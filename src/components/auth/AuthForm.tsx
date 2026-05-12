@@ -34,28 +34,27 @@ export function AuthForm() {
     setLoading(true);
     setError('');
 
-    const fakeEmail = usernameToEmail(username);
-
+    // البحث عن البريد الإلكتروني الحقيقي المرتبط بحساب المستخدم
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('username')
+      .select('email')
       .eq('username', username.trim().toLowerCase())
       .maybeSingle();
 
-    if (!profileData) {
-      setError('اسم المستخدم غير موجود');
+    if (!profileData || !profileData.email) {
+      setError('لا يوجد بريد إلكتروني مسجل لهذا الحساب. تواصل مع الدعم.');
       setLoading(false);
       return;
     }
 
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(fakeEmail, {
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(profileData.email, {
       redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
     });
 
     if (resetError) {
       setError('حدث خطأ، حاول مرة أخرى');
     } else {
-      setForgotPasswordSuccess('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني المسجل');
+      setForgotPasswordSuccess(`تم إرسال رابط إعادة تعيين كلمة المرور إلى: ${profileData.email}`);
     }
     setLoading(false);
   };
