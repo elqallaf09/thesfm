@@ -311,7 +311,10 @@ export default function SalaryManager() {
     europeanMarkets: isArabic ? 'البورصات الأوروبية' : 'European markets',
     cryptoMarkets: isArabic ? 'العملات الرقمية' : 'Cryptocurrencies',
     metalsMarkets: isArabic ? 'الذهب والفضة' : 'Gold and silver',
-    demoPrices: isArabic ? 'أسعار استرشادية للعرض' : 'Indicative display prices',
+    livePrices: isArabic ? 'أسعار مباشرة من مزود خارجي' : 'Live prices from external provider',
+    loadingPrices: isArabic ? 'جار تحديث الأسعار المباشرة' : 'Updating live prices',
+    fallbackPrices: isArabic ? 'بيانات احتياطية عند تعذر الاتصال' : 'Fallback data when provider is unavailable',
+    refreshPrices: isArabic ? 'تحديث الأسعار' : 'Refresh prices',
   };
   const [salary, setSalary] = useState<string>('');
   const [salaryNumber, setSalaryNumber] = useState<number>(0);
@@ -326,6 +329,9 @@ export default function SalaryManager() {
   const [showAdvice, setShowAdvice] = useState<boolean>(false);
   const [selectedCurrency, setSelectedCurrency] = useState<string>('KWD');
   const [tickerCategory, setTickerCategory] = useState<TickerCategory>('gulf');
+  const [liveTickerItems, setLiveTickerItems] = useState<MarketTickerItem[]>(MARKET_TICKERS.gulf);
+  const [tickerLoading, setTickerLoading] = useState<boolean>(true);
+  const [tickerIsLive, setTickerIsLive] = useState<boolean>(false);
   const [randomAdvice, setRandomAdvice] = useState<Advice | null>(null);
 
   // Items states
@@ -354,7 +360,8 @@ export default function SalaryManager() {
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
   const totalIncome = salaryNumber + otherIncomeNumber;
-  const tickerItems = MARKET_TICKERS[tickerCategory];
+  const tickerItems = liveTickerItems.length > 0 ? liveTickerItems : MARKET_TICKERS[tickerCategory];
+  const tickerStatus = tickerLoading ? text.loadingPrices : tickerIsLive ? text.livePrices : text.fallbackPrices;
   const tickerOptions: { value: TickerCategory; label: string }[] = [
     { value: 'global', label: text.globalMarkets },
     { value: 'gulf', label: text.gulfMarkets },
@@ -363,6 +370,23 @@ export default function SalaryManager() {
     { value: 'crypto', label: text.cryptoMarkets },
     { value: 'metals', label: text.metalsMarkets },
   ];
+
+  const fetchTickerData = useCallback(async () => {
+    setTickerLoading(true);
+    try {
+      const response = await fetch(`/api/market-ticker?category=${tickerCategory}`);
+      if (!response.ok) throw new Error('Failed to fetch market ticker');
+
+      const data = await response.json();
+      setLiveTickerItems(Array.isArray(data.items) && data.items.length > 0 ? data.items : MARKET_TICKERS[tickerCategory]);
+      setTickerIsLive(Boolean(data.live));
+    } catch {
+      setLiveTickerItems(MARKET_TICKERS[tickerCategory]);
+      setTickerIsLive(false);
+    } finally {
+      setTickerLoading(false);
+    }
+  }, [tickerCategory]);
 
   const calculateBreakdown = useCallback(() => {
     const baseAmount = salaryNumber + otherIncomeNumber;
@@ -410,6 +434,10 @@ export default function SalaryManager() {
   useEffect(() => {
     calculateBreakdown();
   }, [calculateBreakdown]);
+
+  useEffect(() => {
+    fetchTickerData();
+  }, [fetchTickerData]);
 
   useEffect(() => {
     const num = parseFloat(salary.replace(/[^\d.]/g, ''));
@@ -620,10 +648,20 @@ export default function SalaryManager() {
               <span className="h-2.5 w-2.5 rounded-full bg-[#c4a35a] shadow-[0_0_18px_rgba(196,163,90,0.8)]" />
               <div>
                 <p className="text-sm font-bold">{text.tickerTitle}</p>
-                <p className="text-xs text-emerald-100/75">{text.demoPrices}</p>
+                <p className="text-xs text-emerald-100/75">{tickerStatus}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={fetchTickerData}
+                className="h-10 rounded-xl text-emerald-50 hover:bg-white/10 hover:text-white"
+                aria-label={text.refreshPrices}
+              >
+                <RefreshCw className={`h-4 w-4 ${tickerLoading ? 'animate-spin' : ''}`} />
+              </Button>
               <span className="text-xs text-emerald-100/80">{text.tickerType}</span>
               <Select value={tickerCategory} onValueChange={(value) => setTickerCategory(value as TickerCategory)}>
                 <SelectTrigger className="h-10 w-[190px] border-white/15 bg-white/10 text-white backdrop-blur [&>span]:text-white">
