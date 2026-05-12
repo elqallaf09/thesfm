@@ -372,7 +372,7 @@ function AuthGate({ children }: AuthGateProps) {
   if (loading || checkingProfile) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(135deg,_#f7faf7_0%,_#eef6ef_42%,_#dfeee7_100%)]">
-        <RefreshCw className="h-8 w-8 animate-spin text-emerald-700" />
+        <RefreshCw className="h-8 w-8 animate-spin text-blue-700" />
       </div>
     );
   }
@@ -396,122 +396,124 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   const router = useRouter();
   const [language, setLanguage] = useState<'ar' | 'en' | 'fr' | 'zh'>('ar');
   const isArabic = language === 'ar';
+  const isFrench = language === 'fr';
+  const isChinese = language === 'zh';
   const text = {
-    title: isArabic ? 'المدير المالي الذكي' : 'Smart Financial Manager',
-    subtitle: isArabic ? 'اختر طريقة توزيع دخلك أو أدخل خطتك يدوياً ليتم تحليلها بذكاء' : 'Choose an income split or enter your own plan for smart analysis',
-    langLabel: isArabic ? 'اللغة' : 'Language',
-    salaryTitle: isArabic ? 'أدخل مدخولك الشهري' : 'Enter your monthly income',
-    salaryDesc: isArabic ? 'تم احتساب دخلك من أنواع المدخول التي أدخلتها، ويمكنك إضافة مدخول آخر عند الحاجة' : 'Your income is calculated from saved income sources, and you can add extra income if needed',
-    currency: isArabic ? 'اختر العملة' : 'Choose currency',
-    monthlySalary: isArabic ? 'إجمالي أنواع الدخل' : 'Total income sources',
-    otherIncome: isArabic ? 'مدخول آخر' : 'Other income',
-    totalIncome: isArabic ? 'إجمالي الدخل' : 'Total income',
-    distributionMethod: isArabic ? 'طريقة توزيع الدخل' : 'Income distribution method',
-    plan70: isArabic ? '70% مصروفات | 20% مدخرات | 10% استثمار' : '70% expenses | 20% savings | 10% investment',
-    plan60Savings: isArabic ? '60% مصروفات | 30% مدخرات | 10% استثمار' : '60% expenses | 30% savings | 10% investment',
-    plan60Invest: isArabic ? '60% مصروفات | 20% مدخرات | 20% استثمار' : '60% expenses | 20% savings | 20% investment',
-    manualPlan: isArabic ? 'إدخال يدوي مع تحليل ذكي' : 'Manual entry with smart analysis',
-    manualDesc: isArabic ? 'أدخل المدخول + المدخول الآخر ثم عبئ المصروفات والمدخرات والاستثمار يدوياً' : 'Enter income + other income, then manually fill expenses, savings, and investment',
-    manualExpenses: isArabic ? 'مصروفات يدوية' : 'Manual expenses',
-    manualSavings: isArabic ? 'مدخرات يدوية' : 'Manual savings',
-    manualInvestment: isArabic ? 'استثمار يدوي' : 'Manual investment',
-    aiBestChoice: isArabic ? 'تحليل الذكاء الاصطناعي' : 'AI analysis',
-    placeholder: isArabic ? 'مثال: 5000' : 'Example: 5000',
-    charityTitle: isArabic ? 'الأعمال الخيرية' : 'Charitable works',
-    charityDesc: isArabic ? 'خصص نسبة من مدخولك للأعمال الخيرية' : 'Allocate a percentage of your income for charitable works',
-    charityToggle: isArabic ? 'تفعيل الأعمال الخيرية' : 'Enable charitable works',
-    charityPercent: isArabic ? 'نسبة الأعمال الخيرية' : 'Charity percentage',
-    profileBtn: isArabic ? 'الملف الشخصي' : 'Profile',
-    phoneCountryCode: isArabic ? 'رمز الدولة' : 'Country code',
-    phoneNumber: isArabic ? 'رقم الهاتف' : 'Phone number',
-    newPassword: isArabic ? 'كلمة المرور الجديدة' : 'New password',
-    newPasswordHint: isArabic ? 'اتركه فارغاً إذا كنت لا تريد تغيير كلمة المرور' : 'Leave empty if you do not want to change password',
-    incomeSourcesTitle: isArabic ? 'مصادر الدخل الحالية' : 'Current income sources',
-    updateIncome: isArabic ? 'تعديل المدخول الشهري' : 'Update monthly income',
-    durationUnitDay: isArabic ? 'يوم' : 'day',
-    durationUnitMonth: isArabic ? 'شهر' : 'month',
-    durationUnitYear: isArabic ? 'سنة' : 'year',
-    durationUnit: isArabic ? 'وحدة المدة' : 'Duration unit',
-    calculationDetails: isArabic ? 'تفاصيل العمليات الحسابية السابقة' : 'Previous calculation details',
-    noCharitySelected: isArabic ? 'لم يتم اختيار أي عمل خيري' : 'No charity selected',
-    charityAmount: isArabic ? 'مبلغ' : 'Amount',
-    chart: isArabic ? 'التوزيع البياني' : 'Visual distribution',
-    emptyChart: isArabic ? 'أدخل المدخول لرؤية التوزيع' : 'Enter income to view distribution',
-    profileTitle: isArabic ? 'الملف الشخصي' : 'Profile',
-    profileName: isArabic ? 'اسم المستخدم' : 'Username',
-    profileEmail: isArabic ? 'البريد الإلكتروني' : 'Email',
-    profileAge: isArabic ? 'العمر' : 'Age',
-    profileTotalIncome: isArabic ? 'إجمالي الدخل' : 'Total income',
-    profileSave: isArabic ? 'حفظ التغييرات' : 'Save changes',
-    profileSaved: isArabic ? 'تم الحفظ بنجاح' : 'Saved successfully',
-    profileError: isArabic ? 'حدث خطأ في الحفظ' : 'Error saving',
-    logout: isArabic ? 'تسجيل الخروج' : 'Sign out',
-    expenseNamePlaceholder: isArabic ? 'اسم المصروف' : 'Expense name',
-    savingNamePlaceholder: isArabic ? 'اسم المدخرة' : 'Saving name',
-    investmentNamePlaceholder: isArabic ? 'اسم الاستثمار' : 'Investment name',
-    amountPlaceholder: isArabic ? 'المبلغ' : 'Amount',
-    goalNamePlaceholder: isArabic ? 'مثال: شراء سيارة' : 'Example: Buy a car',
-    goalDurationPlaceholder: isArabic ? 'مثال: 6 أشهر' : 'Example: 6 months',
-    notesPlaceholder: isArabic ? 'ملاحظات' : 'Notes',
-    sumExpenses: isArabic ? 'مجموع المصروفات' : 'Total expenses',
-    sumSavings: isArabic ? 'مجموع المدخرات' : 'Total savings',
-    sumInvestment: isArabic ? 'مجموع الاستثمار' : 'Total investment',
-    previousOperations: isArabic ? 'العمليات السابقة' : 'Previous operations',
-    noOperations: isArabic ? 'لا توجد عمليات مسجلة' : 'No recorded operations',
-    charityTypes: isArabic ? 'أنواع الأعمال الخيرية' : 'Charity types',
-    charitySadaqah: isArabic ? 'صدقة' : 'Sadaqah',
-    charityZakat: isArabic ? 'زكاة' : 'Zakat',
-    charitySacrifice: isArabic ? 'أضحية' : 'Sacrifice',
-    charityExpiation: isArabic ? 'كفارة' : 'Expiation',
-    charityOther: isArabic ? 'أعمال خيرية أخرى' : 'Other charity',
-    selectedCharities: isArabic ? 'المختارة' : 'Selected',
-    salaryDetails: isArabic ? 'تفاصيل المدخول الشهري' : 'Monthly income details',
-    totalSalary: isArabic ? 'إجمالي المدخول' : 'Total income',
-    expenses: isArabic ? 'المصروفات' : 'Expenses',
-    savings: isArabic ? 'المدخرات' : 'Savings',
-    investment: isArabic ? 'الاستثمار' : 'Investment',
-    charity: isArabic ? 'الأعمال الخيرية' : 'Charitable works',
-    addExpense: isArabic ? 'إضافة مصروف' : 'Add expense',
-    addSaving: isArabic ? 'إضافة مدخرة' : 'Add saving',
-    addInvestment: isArabic ? 'إضافة استثمار' : 'Add investment',
-    aiSavings: isArabic ? 'أمثلة للمدخرات:' : 'Savings examples:',
-    aiInvestment: isArabic ? 'أمثلة للاستثمار:' : 'Investment examples:',
-    aiExpenses: isArabic ? 'أمثلة للمصروفات:' : 'Expenses examples:',
-    expensesExamples: isArabic ? 'أمثلة: الإيجار، الطعام، المواصلات...' : 'Examples: Rent, Food, Transportation...',
-    goalsTitle: isArabic ? 'الأهداف المالية' : 'Financial goals',
-    goalsDesc: isArabic ? 'حدد أهدافك المالية ومبالغها ومدتها' : 'Define your financial goals, amounts, and duration',
-    addGoal: isArabic ? 'إضافة هدف جديد' : 'Add new goal',
-    goal: isArabic ? 'الهدف' : 'Goal',
-    amount: isArabic ? 'المبلغ المطلوب' : 'Required amount',
-    duration: isArabic ? 'المدة' : 'Duration',
-    notes: isArabic ? 'ملاحظات' : 'Notes',
-    noGoals: isArabic ? 'لم تضف أي أهداف بعد' : 'No goals added yet',
-    noGoalsHint: isArabic ? 'اضغط على الزر أعلاه لإضافة هدف جديد' : 'Click the button above to add a new goal',
-    adviceTitle: isArabic ? 'نصيحتنا لك' : 'Our advice to you',
-    adviceDesc: isArabic ? 'نصائح مالية مخصصة بناءً على مدخولك' : 'Personalized financial tips based on your income',
-    print: isArabic ? 'طباعة / تصدير' : 'Print / Export',
-    reset: isArabic ? 'إعادة تعيين' : 'Reset',
-    footer: isArabic ? 'المدير المالي الذكي - يساعدك على اتخاذ قرارات مالية أوضح' : 'Smart Financial Manager - helping you make clearer financial decisions',
-    tickerTitle: isArabic ? 'مؤشرات الأسواق' : 'Market watch',
-    tickerType: isArabic ? 'نوع البورصة' : 'Market type',
-    globalMarkets: isArabic ? 'بورصات العالم' : 'Global markets',
-    gulfMarkets: isArabic ? 'بورصات الخليج' : 'Gulf markets',
-    asianMarkets: isArabic ? 'البورصات الآسيوية' : 'Asian markets',
-    europeanMarkets: isArabic ? 'البورصات الأوروبية' : 'European markets',
-    cryptoMarkets: isArabic ? 'العملات الرقمية' : 'Cryptocurrencies',
-    metalsMarkets: isArabic ? 'الذهب والفضة' : 'Gold and silver',
-    livePrices: isArabic ? 'أسعار مباشرة من مزود خارجي' : 'Live prices from external provider',
-    loadingPrices: isArabic ? 'جار تحديث الأسعار المباشرة' : 'Updating live prices',
-    fallbackPrices: isArabic ? 'بيانات احتياطية عند تعذر الاتصال' : 'Fallback data when provider is unavailable',
-    refreshPrices: isArabic ? 'تحديث الأسعار' : 'Refresh prices',
-    showChart: isArabic ? 'إظهار التوزيع البياني' : 'Show chart',
-    hideChart: isArabic ? 'إخفاء التوزيع البياني' : 'Hide chart',
-    goalSuggestion: isArabic ? 'اقتراح للهدف' : 'Goal suggestion',
-    goalMonthlyReq: isArabic ? 'المبلغ الشهري المطلوب' : 'Monthly amount needed',
-    goalCompareSavings: isArabic ? 'مقارنة بالمدخرات الحالية' : 'Compared to current savings',
-    goalReduceExpenses: isArabic ? 'اقتراح: قلل المصروفات أو زد المدخرات' : 'Suggestion: Reduce expenses or increase savings',
-    warningExceeded: isArabic ? 'تحذير: تجاوزت النسبة المحددة' : 'Warning: You exceeded the specified ratio',
-    warningManual: isArabic ? 'أدخلت مبالغ أعلى من النسب المقترحة. تأكد من صحة المدخول أو راجع خطة الإنفاق.' : 'You entered amounts higher than suggested ratios. Verify your income or review your spending plan.',
+    title: isArabic ? 'المدير المالي الذكي' : isFrench ? 'Gestionnaire Financier Intelligent' : isChinese ? '智能财务管理器' : 'Smart Financial Manager',
+    subtitle: isArabic ? 'اختر طريقة توزيع دخلك أو أدخل خطتك يدوياً ليتم تحليلها بذكاء' : isFrench ? "Choisissez un mode de répartition de vos revenus ou saisissez votre propre plan pour une analyse intelligente" : isChinese ? '选择收入分配方式或输入您自己的计划进行智能分析' : 'Choose an income split or enter your own plan for smart analysis',
+    langLabel: isArabic ? 'اللغة' : isFrench ? 'Langue' : isChinese ? '语言' : 'Language',
+    salaryTitle: isArabic ? 'أدخل مدخولك الشهري' : isFrench ? 'Entrez votre revenu mensuel' : isChinese ? '输入您的月收入' : 'Enter your monthly income',
+    salaryDesc: isArabic ? 'تم احتساب دخلك من أنواع المدخول التي أدخلتها، ويمكنك إضافة مدخول آخر عند الحاجة' : isFrench ? 'Votre revenu est calculé à partir des sources de revenus enregistrées, et vous pouvez ajouter un revenu supplémentaire si nécessaire' : isChinese ? '您的收入是根据您输入的收入来源计算的，您可以根据需要添加其他收入' : 'Your income is calculated from saved income sources, and you can add extra income if needed',
+    currency: isArabic ? 'اختر العملة' : isFrench ? 'Choisir la devise' : isChinese ? '选择货币' : 'Choose currency',
+    monthlySalary: isArabic ? 'إجمالي أنواع الدخل' : isFrench ? 'Total des sources de revenu' : isChinese ? '收入来源总计' : 'Total income sources',
+    otherIncome: isArabic ? 'مدخول آخر' : isFrench ? 'Autre revenu' : isChinese ? '其他收入' : 'Other income',
+    totalIncome: isArabic ? 'إجمالي الدخل' : isFrench ? 'Revenu total' : isChinese ? '总收入' : 'Total income',
+    distributionMethod: isArabic ? 'طريقة توزيع الدخل' : isFrench ? 'Méthode de répartition du revenu' : isChinese ? '收入分配方式' : 'Income distribution method',
+    plan70: isArabic ? '70% مصروفات | 20% مدخرات | 10% استثمار' : isFrench ? '70% dépenses | 20% économies | 10% investissement' : isChinese ? '70% 支出 | 20% 储蓄 | 10% 投资' : '70% expenses | 20% savings | 10% investment',
+    plan60Savings: isArabic ? '60% مصروفات | 30% مدخرات | 10% استثمار' : isFrench ? '60% dépenses | 30% économies | 10% investissement' : isChinese ? '60% 支出 | 30% 储蓄 | 10% 投资' : '60% expenses | 30% savings | 10% investment',
+    plan60Invest: isArabic ? '60% مصروفات | 20% مدخرات | 20% استثمار' : isFrench ? '60% dépenses | 20% économies | 20% investissement' : isChinese ? '60% 支出 | 20% 储蓄 | 20% 投资' : '60% expenses | 20% savings | 20% investment',
+    manualPlan: isArabic ? 'إدخال يدوي مع تحليل ذكي' : isFrench ? 'Saisie manuelle avec analyse intelligente' : isChinese ? '手动输入与智能分析' : 'Manual entry with smart analysis',
+    manualDesc: isArabic ? 'أدخل المدخول + المدخول الآخر ثم عبئ المصروفات والمدخرات والاستثمار يدوياً' : isFrench ? 'Entrez le revenu + autre revenu, puis remplissez manuellement les dépenses, économies et investissements' : isChinese ? '输入收入+其他收入，然后手动填写支出、储蓄和投资' : 'Enter income + other income, then manually fill expenses, savings, and investment',
+    manualExpenses: isArabic ? 'مصروفات يدوية' : isFrench ? 'Dépenses manuelles' : isChinese ? '手动支出' : 'Manual expenses',
+    manualSavings: isArabic ? 'مدخرات يدوية' : isFrench ? 'Économies manuelles' : isChinese ? '手动储蓄' : 'Manual savings',
+    manualInvestment: isArabic ? 'استثمار يدوي' : isFrench ? 'Investissement manuel' : isChinese ? '手动投资' : 'Manual investment',
+    aiBestChoice: isArabic ? 'تحليل الذكاء الاصطناعي' : isFrench ? 'Analyse par IA' : isChinese ? '人工智能分析' : 'AI analysis',
+    placeholder: isArabic ? 'مثال: 5000' : isFrench ? 'Exemple: 5000' : isChinese ? '示例：5000' : 'Example: 5000',
+    charityTitle: isArabic ? 'الأعمال الخيرية' : isFrench ? 'Œuvres caritatives' : isChinese ? '慈善事业' : 'Charitable works',
+    charityDesc: isArabic ? 'خصص نسبة من مدخولك للأعمال الخيرية' : isFrench ? 'Attribuez un pourcentage de vos revenus aux œuvres caritatives' : isChinese ? '从您的收入中拨出一部分用于慈善事业' : 'Allocate a percentage of your income for charitable works',
+    charityToggle: isArabic ? 'تفعيل الأعمال الخيرية' : isFrench ? 'Activer les œuvres caritatives' : isChinese ? '启用慈善事业' : 'Enable charitable works',
+    charityPercent: isArabic ? 'نسبة الأعمال الخيرية' : isFrench ? 'Pourcentage caritatif' : isChinese ? '慈善百分比' : 'Charity percentage',
+    profileBtn: isArabic ? 'الملف الشخصي' : isFrench ? 'Profil' : isChinese ? '个人资料' : 'Profile',
+    phoneCountryCode: isArabic ? 'رمز الدولة' : isFrench ? 'Code pays' : isChinese ? '国家代码' : 'Country code',
+    phoneNumber: isArabic ? 'رقم الهاتف' : isFrench ? 'Numéro de téléphone' : isChinese ? '电话号码' : 'Phone number',
+    newPassword: isArabic ? 'كلمة المرور الجديدة' : isFrench ? 'Nouveau mot de passe' : isChinese ? '新密码' : 'New password',
+    newPasswordHint: isArabic ? 'اتركه فارغاً إذا كنت لا تريد تغيير كلمة المرور' : isFrench ? 'Laissez vide si vous ne souhaitez pas changer' : isChinese ? '如果不想更改密码，请留空' : 'Leave empty if you do not want to change password',
+    incomeSourcesTitle: isArabic ? 'مصادر الدخل الحالية' : isFrench ? 'Sources de revenus actuelles' : isChinese ? '当前收入来源' : 'Current income sources',
+    updateIncome: isArabic ? 'تعديل المدخول الشهري' : isFrench ? 'Modifier le revenu mensuel' : isChinese ? '修改月收入' : 'Update monthly income',
+    durationUnitDay: isArabic ? 'يوم' : isFrench ? 'jour' : isChinese ? '天' : 'day',
+    durationUnitMonth: isArabic ? 'شهر' : isFrench ? 'mois' : isChinese ? '月' : 'month',
+    durationUnitYear: isArabic ? 'سنة' : isFrench ? 'an' : isChinese ? '年' : 'year',
+    durationUnit: isArabic ? 'وحدة المدة' : isFrench ? 'Unité de durée' : isChinese ? '时长单位' : 'Duration unit',
+    calculationDetails: isArabic ? 'تفاصيل العمليات الحسابية السابقة' : isFrench ? 'Détails des calculs précédents' : isChinese ? '之前的计算详情' : 'Previous calculation details',
+    noCharitySelected: isArabic ? 'لم يتم اختيار أي عمل خيري' : isFrench ? 'Aucune œuvre caritative sélectionnée' : isChinese ? '未选择任何慈善事业' : 'No charity selected',
+    charityAmount: isArabic ? 'مبلغ' : isFrench ? 'Montant' : isChinese ? '金额' : 'Amount',
+    chart: isArabic ? 'التوزيع البياني' : isFrench ? 'Distribution visuelle' : isChinese ? '可视化分布' : 'Visual distribution',
+    emptyChart: isArabic ? 'أدخل المدخول لرؤية التوزيع' : isFrench ? 'Entrez le revenu pour voir la distribution' : isChinese ? '输入收入以查看分布' : 'Enter income to view distribution',
+    profileTitle: isArabic ? 'الملف الشخصي' : isFrench ? 'Profil' : isChinese ? '个人资料' : 'Profile',
+    profileName: isArabic ? 'اسم المستخدم' : isFrench ? "Nom d'utilisateur" : isChinese ? '用户名' : 'Username',
+    profileEmail: isArabic ? 'البريد الإلكتروني' : isFrench ? 'Email' : isChinese ? '电子邮件' : 'Email',
+    profileAge: isArabic ? 'العمر' : isFrench ? 'Âge' : isChinese ? '年龄' : 'Age',
+    profileTotalIncome: isArabic ? 'إجمالي الدخل' : isFrench ? 'Revenu total' : isChinese ? '总收入' : 'Total income',
+    profileSave: isArabic ? 'حفظ التغييرات' : isFrench ? 'Enregistrer' : isChinese ? '保存更改' : 'Save changes',
+    profileSaved: isArabic ? 'تم الحفظ بنجاح' : isFrench ? 'Enregistré avec succès' : isChinese ? '保存成功' : 'Saved successfully',
+    profileError: isArabic ? 'حدث خطأ في الحفظ' : isFrench ? "Erreur d'enregistrement" : isChinese ? '保存时出错' : 'Error saving',
+    logout: isArabic ? 'تسجيل الخروج' : isFrench ? 'Déconnexion' : isChinese ? '退出' : 'Sign out',
+    expenseNamePlaceholder: isArabic ? 'اسم المصروف' : isFrench ? 'Nom de la dépense' : isChinese ? '支出名称' : 'Expense name',
+    savingNamePlaceholder: isArabic ? 'اسم المدخرة' : isFrench ? "Nom de l'épargne" : isChinese ? '储蓄名称' : 'Saving name',
+    investmentNamePlaceholder: isArabic ? 'اسم الاستثمار' : isFrench ? "Nom de l'investissement" : isChinese ? '投资名称' : 'Investment name',
+    amountPlaceholder: isArabic ? 'المبلغ' : isFrench ? 'Montant' : isChinese ? '金额' : 'Amount',
+    goalNamePlaceholder: isArabic ? 'مثال: شراء سيارة' : isFrench ? 'Exemple: Acheter une voiture' : isChinese ? '示例：购买汽车' : 'Example: Buy a car',
+    goalDurationPlaceholder: isArabic ? 'مثال: 6 أشهر' : isFrench ? 'Exemple: 6 mois' : isChinese ? '示例：6个月' : 'Example: 6 months',
+    notesPlaceholder: isArabic ? 'ملاحظات' : isFrench ? 'Notes' : isChinese ? '备注' : 'Notes',
+    sumExpenses: isArabic ? 'مجموع المصروفات' : isFrench ? 'Total des dépenses' : isChinese ? '支出总计' : 'Total expenses',
+    sumSavings: isArabic ? 'مجموع المدخرات' : isFrench ? 'Total des économies' : isChinese ? '储蓄总计' : 'Total savings',
+    sumInvestment: isArabic ? 'مجموع الاستثمار' : isFrench ? "Total de l'investissement" : isChinese ? '投资总计' : 'Total investment',
+    previousOperations: isArabic ? 'العمليات السابقة' : isFrench ? 'Opérations précédentes' : isChinese ? '之前的操作' : 'Previous operations',
+    noOperations: isArabic ? 'لا توجد عمليات مسجلة' : isFrench ? 'Aucune opération enregistrée' : isChinese ? '没有记录的手术' : 'No recorded operations',
+    charityTypes: isArabic ? 'أنواع الأعمال الخيرية' : isFrench ? 'Types d\'œuvres caritatives' : isChinese ? '慈善类型' : 'Charity types',
+    charitySadaqah: isArabic ? 'صدقة' : isFrench ? 'Sadaqa' : isChinese ? '施舍' : 'Sadaqah',
+    charityZakat: isArabic ? 'زكاة' : isFrench ? 'Zakat' : isChinese ? '天课' : 'Zakat',
+    charitySacrifice: isArabic ? 'أضحية' : isFrench ? 'Sacrifice' : isChinese ? '献祭' : 'Sacrifice',
+    charityExpiation: isArabic ? 'كفارة' : isFrench ? 'Expiation' : isChinese ? '赎罪' : 'Expiation',
+    charityOther: isArabic ? 'أعمال خيرية أخرى' : isFrench ? 'Autres œuvres caritatives' : isChinese ? '其他慈善' : 'Other charity',
+    selectedCharities: isArabic ? 'المختارة' : isFrench ? 'Sélectionnées' : isChinese ? '已选择' : 'Selected',
+    salaryDetails: isArabic ? 'تفاصيل المدخول الشهري' : isFrench ? 'Détails du revenu mensuel' : isChinese ? '月收入详情' : 'Monthly income details',
+    totalSalary: isArabic ? 'إجمالي المدخول' : isFrench ? 'Revenu total' : isChinese ? '总收入' : 'Total income',
+    expenses: isArabic ? 'المصروفات' : isFrench ? 'Dépenses' : isChinese ? '支出' : 'Expenses',
+    savings: isArabic ? 'المدخرات' : isFrench ? 'Économies' : isChinese ? '储蓄' : 'Savings',
+    investment: isArabic ? 'الاستثمار' : isFrench ? 'Investissement' : isChinese ? '投资' : 'Investment',
+    charity: isArabic ? 'الأعمال الخيرية' : isFrench ? 'Œuvres caritatives' : isChinese ? '慈善事业' : 'Charitable works',
+    addExpense: isArabic ? 'إضافة مصروف' : isFrench ? 'Ajouter une dépense' : isChinese ? '添加支出' : 'Add expense',
+    addSaving: isArabic ? 'إضافة مدخرة' : isFrench ? 'Ajouter une économie' : isChinese ? '添加储蓄' : 'Add saving',
+    addInvestment: isArabic ? 'إضافة استثمار' : isFrench ? 'Ajouter un investissement' : isChinese ? '添加投资' : 'Add investment',
+    aiSavings: isArabic ? 'أمثلة للمدخرات:' : isFrench ? 'Exemples d\'économies:' : isChinese ? '储蓄示例：' : 'Savings examples:',
+    aiInvestment: isArabic ? 'أمثلة للاستثمار:' : isFrench ? "Exemples d'investissement:" : isChinese ? '投资示例：' : 'Investment examples:',
+    aiExpenses: isArabic ? 'أمثلة للمصروفات:' : isFrench ? 'Exemples de dépenses:' : isChinese ? '支出示例：' : 'Expenses examples:',
+    expensesExamples: isArabic ? 'أمثلة: الإيجار، الطعام، المواصلات...' : isFrench ? 'Exemples: Loyer, Nourriture, Transport...' : isChinese ? '示例：房租、食物、交通...' : 'Examples: Rent, Food, Transportation...',
+    goalsTitle: isArabic ? 'الأهداف المالية' : isFrench ? 'Objectifs financiers' : isChinese ? '财务目标' : 'Financial goals',
+    goalsDesc: isArabic ? 'حدد أهدافك المالية ومبالغها ومدتها' : isFrench ? 'Définissez vos objectifs financiers, montants et durées' : isChinese ? '定义您的财务目标、金额和期限' : 'Define your financial goals, amounts, and duration',
+    addGoal: isArabic ? 'إضافة هدف جديد' : isFrench ? 'Ajouter un nouvel objectif' : isChinese ? '添加新目标' : 'Add new goal',
+    goal: isArabic ? 'الهدف' : isFrench ? 'Objectif' : isChinese ? '目标' : 'Goal',
+    amount: isArabic ? 'المبلغ المطلوب' : isFrench ? 'Montant requis' : isChinese ? '所需金额' : 'Required amount',
+    duration: isArabic ? 'المدة' : isFrench ? 'Durée' : isChinese ? '期限' : 'Duration',
+    notes: isArabic ? 'ملاحظات' : isFrench ? 'Notes' : isChinese ? '备注' : 'Notes',
+    noGoals: isArabic ? 'لم تضف أي أهداف بعد' : isFrench ? 'Aucun objectif ajouté encore' : isChinese ? '尚未添加任何目标' : 'No goals added yet',
+    noGoalsHint: isArabic ? 'اضغط على الزر أعلاه لإضافة هدف جديد' : isFrench ? 'Cliquez sur le bouton ci-dessus pour ajouter un nouvel objectif' : isChinese ? '点击上方按钮添加新目标' : 'Click the button above to add a new goal',
+    adviceTitle: isArabic ? 'نصيحتنا لك' : isFrench ? 'Notre conseil pour vous' : isChinese ? '给您的建议' : 'Our advice to you',
+    adviceDesc: isArabic ? 'نصائح مالية مخصصة بناءً على مدخولك' : isFrench ? 'Conseils financiers personnalisés basés sur vos revenus' : isChinese ? '基于您收入的个性化财务提示' : 'Personalized financial tips based on your income',
+    print: isArabic ? 'طباعة / تصدير' : isFrench ? 'Imprimer / Exporter' : isChinese ? '打印 / 导出' : 'Print / Export',
+    reset: isArabic ? 'إعادة تعيين' : isFrench ? 'Réinitialiser' : isChinese ? '重置' : 'Reset',
+    footer: isArabic ? 'المدير المالي الذكي - يساعدك على اتخاذ قرارات مالية أوضح' : isFrench ? 'Gestionnaire Financier Intelligent - Vous aide à prendre de meilleures décisions financières' : isChinese ? '智能财务管理器 - 帮助您做出更清晰的财务决策' : 'Smart Financial Manager - helping you make clearer financial decisions',
+    tickerTitle: isArabic ? 'مؤشرات الأسواق' : isFrench ? 'Indices du marché' : isChinese ? '市场指数' : 'Market watch',
+    tickerType: isArabic ? 'نوع البورصة' : isFrench ? 'Type de marché' : isChinese ? '市场类型' : 'Market type',
+    globalMarkets: isArabic ? 'بورصات العالم' : isFrench ? 'Marchés mondiaux' : isChinese ? '全球市场' : 'Global markets',
+    gulfMarkets: isArabic ? 'بورصات الخليج' : isFrench ? 'Marchés du Golfe' : isChinese ? '海湾市场' : 'Gulf markets',
+    asianMarkets: isArabic ? 'البورصات الآسيوية' : isFrench ? 'Marchés asiatiques' : isChinese ? '亚洲市场' : 'Asian markets',
+    europeanMarkets: isArabic ? 'البورصات الأوروبية' : isFrench ? 'Marchés européens' : isChinese ? '欧洲市场' : 'European markets',
+    cryptoMarkets: isArabic ? 'العملات الرقمية' : isFrench ? 'Cryptomonnaies' : isChinese ? '加密货币' : 'Cryptocurrencies',
+    metalsMarkets: isArabic ? 'الذهب والفضة' : isFrench ? 'Or et argent' : isChinese ? '黄金和白银' : 'Gold and silver',
+    livePrices: isArabic ? 'أسعار مباشرة من مزود خارجي' : isFrench ? 'Prix en direct d\'un fournisseur externe' : isChinese ? '来自外部供应商的实时价格' : 'Live prices from external provider',
+    loadingPrices: isArabic ? 'جار تحديث الأسعار المباشرة' : isFrench ? 'Mise à jour des prix en direct' : isChinese ? '正在更新实时价格' : 'Updating live prices',
+    fallbackPrices: isArabic ? 'بيانات احتياطية عند تعذر الاتصال' : isFrench ? 'Données de secours en cas d\'indisponibilité' : isChinese ? '连接失败时的备用数据' : 'Fallback data when provider is unavailable',
+    refreshPrices: isArabic ? 'تحديث الأسعار' : isFrench ? 'Actualiser les prix' : isChinese ? '刷新价格' : 'Refresh prices',
+    showChart: isArabic ? 'إظهار التوزيع البياني' : isFrench ? 'Afficher le graphique' : isChinese ? '显示分布图' : 'Show chart',
+    hideChart: isArabic ? 'إخفاء التوزيع البياني' : isFrench ? 'Masquer le graphique' : isChinese ? '隐藏分布图' : 'Hide chart',
+    goalSuggestion: isArabic ? 'اقتراح للهدف' : isFrench ? 'Suggestion d\'objectif' : isChinese ? '目标建议' : 'Goal suggestion',
+    goalMonthlyReq: isArabic ? 'المبلغ الشهري المطلوب' : isFrench ? 'Montant mensuel requis' : isChinese ? '每月所需金额' : 'Monthly amount needed',
+    goalCompareSavings: isArabic ? 'مقارنة بالمدخرات الحالية' : isFrench ? 'Comparé aux économies actuelles' : isChinese ? '与当前储蓄比较' : 'Compared to current savings',
+    goalReduceExpenses: isArabic ? 'اقتراح: قلل المصروفات أو زد المدخرات' : isFrench ? 'Suggestion: Réduisez les dépenses ou augmentez les économies' : isChinese ? '建议：减少支出或增加储蓄' : 'Suggestion: Reduce expenses or increase savings',
+    warningExceeded: isArabic ? 'تحذير: تجاوزت النسبة المحددة' : isFrench ? 'Avertissement: Vous avez dépassé le ratio spécifié' : isChinese ? '警告：您超过了指定比例' : 'Warning: You exceeded the specified ratio',
+    warningManual: isArabic ? 'أدخلت مبالغ أعلى من النسب المقترحة. تأكد من صحة المدخول أو راجع خطة الإنفاق.' : isFrench ? 'Vous avez entré des montants supérieurs aux ratios suggérés. Vérifiez votre revenu ou revisez votre plan de dépenses.' : isChinese ? '您输入的金额高于建议的比例。请验证您的收入或审查您的支出计划。' : 'You entered amounts higher than suggested ratios. Verify your income or review your spending plan.',
   };
   const [salary, setSalary] = useState<string>(incomeTotal ? String(incomeTotal) : '');
   const [salaryNumber, setSalaryNumber] = useState<number>(incomeTotal || 0);
@@ -914,19 +916,19 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   return (
     <main
       dir={isArabic ? 'rtl' : 'ltr'}
-      className="relative min-h-screen overflow-hidden bg-[linear-gradient(135deg,_#f7faf7_0%,_#eef6ef_42%,_#dfeee7_100%)] px-4 py-6 dark:bg-[linear-gradient(135deg,_#07110d_0%,_#0d1d16_48%,_#111827_100%)]"
+      className="relative min-h-screen overflow-hidden bg-[linear-gradient(135deg,_#eff6ff_0%,_#dbeafe_42%,_#bfdbfe_100%)] px-4 py-6 dark:bg-[linear-gradient(135deg,_#1e3a5f_0%,_#1e3a8a_48%,_#111827_100%)]"
     >
-      <div className="pointer-events-none absolute inset-0 opacity-70 [background-image:linear-gradient(120deg,rgba(0,96,72,0.10)_0,rgba(0,96,72,0.10)_1px,transparent_1px,transparent_42px),linear-gradient(160deg,rgba(187,151,82,0.12)_0,rgba(187,151,82,0.12)_1px,transparent_1px,transparent_68px)] dark:opacity-20" />
-      <div className="pointer-events-none absolute -right-24 top-0 h-[34rem] w-[34rem] rounded-full bg-emerald-700/10 blur-3xl dark:bg-emerald-400/10" />
+      <div className="pointer-events-none absolute inset-0 opacity-70 [background-image:linear-gradient(120deg,rgba(30,58,138,0.10)_0,rgba(30,58,138,0.10)_1px,transparent_1px,transparent_42px),linear-gradient(160deg,rgba(59,130,246,0.12)_0,rgba(59,130,246,0.12)_1px,transparent_1px,transparent_68px)] dark:opacity-20" />
+      <div className="pointer-events-none absolute -right-24 top-0 h-[34rem] w-[34rem] rounded-full bg-blue-700/10 blur-3xl dark:bg-blue-400/10" />
       <div className="pointer-events-none absolute -left-28 top-40 h-[26rem] w-[26rem] rounded-full bg-[#c4a35a]/20 blur-3xl dark:bg-[#c4a35a]/10" />
       <div className="relative max-w-5xl mx-auto space-y-6">
-        <div className="overflow-hidden rounded-[1.75rem] border border-emerald-900/10 bg-white/85 shadow-[0_18px_70px_rgba(0,66,54,0.12)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/65">
-          <div className="flex flex-col gap-3 border-b border-emerald-900/10 bg-emerald-950 px-4 py-3 text-white md:flex-row md:items-center md:justify-between">
+        <div className="overflow-hidden rounded-[1.75rem] border border-blue-900/10 bg-white/85 shadow-[0_18px_70px_rgba(30,58,138,0.12)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/65">
+          <div className="flex flex-col gap-3 border-b border-blue-900/10 bg-blue-950 px-4 py-3 text-white md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3">
               <span className="h-2.5 w-2.5 rounded-full bg-[#c4a35a] shadow-[0_0_18px_rgba(196,163,90,0.8)]" />
               <div>
                 <p className="text-sm font-bold">{text.tickerTitle}</p>
-                <p className="text-xs text-emerald-100/75">{tickerStatus}</p>
+                <p className="text-xs text-blue-100/75">{tickerStatus}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -935,12 +937,12 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 size="sm"
                 variant="ghost"
                 onClick={fetchTickerData}
-                className="h-10 rounded-xl text-emerald-50 hover:bg-white/10 hover:text-white"
+                className="h-10 rounded-xl text-blue-50 hover:bg-white/10 hover:text-white"
                 aria-label={text.refreshPrices}
               >
                 <RefreshCw className={`h-4 w-4 ${tickerLoading ? 'animate-spin' : ''}`} />
               </Button>
-              <span className="text-xs text-emerald-100/80">{text.tickerType}</span>
+              <span className="text-xs text-blue-100/80">{text.tickerType}</span>
               <Select value={tickerCategory} onValueChange={(value) => setTickerCategory(value as TickerCategory)}>
                 <SelectTrigger className="h-10 w-[190px] border-white/15 bg-white/10 text-white backdrop-blur [&>span]:text-white">
                   <SelectValue />
@@ -956,7 +958,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => router.push('/profile')}
-                className="h-10 rounded-xl text-emerald-50 hover:bg-white/10 hover:text-white text-sm font-medium"
+                className="h-10 rounded-xl text-blue-50 hover:bg-white/10 hover:text-white text-sm font-medium"
               >
                 <User className="h-4 w-4 me-1" />
                 {text.profileBtn}
@@ -966,7 +968,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => supabase.auth.signOut()}
-                className="h-10 rounded-xl text-emerald-50 hover:bg-white/10 hover:text-white text-sm font-medium"
+                className="h-10 rounded-xl text-blue-50 hover:bg-white/10 hover:text-white text-sm font-medium"
               >
                 {text.logout}
               </Button>
@@ -975,10 +977,10 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
           <div className="relative flex overflow-hidden bg-white/80 py-3 dark:bg-slate-950/70">
             <div className="flex min-w-full shrink-0 animate-[ticker_26s_linear_infinite] items-center gap-4 px-4">
               {[...tickerItems, ...tickerItems].map((item, index) => (
-                <div key={`${item.nameEn}-${index}`} className="flex shrink-0 items-center gap-3 rounded-full border border-emerald-900/10 bg-white px-4 py-2 text-sm shadow-sm dark:border-white/10 dark:bg-slate-900/80">
-                  <span className="font-bold text-emerald-950 dark:text-emerald-100">{isArabic ? item.nameAr : item.nameEn}</span>
+                <div key={`${item.nameEn}-${index}`} className="flex shrink-0 items-center gap-3 rounded-full border border-blue-900/10 bg-white px-4 py-2 text-sm shadow-sm dark:border-white/10 dark:bg-slate-900/80">
+                  <span className="font-bold text-blue-950 dark:text-blue-100">{isArabic ? item.nameAr : item.nameEn}</span>
                   <span className="font-mono text-slate-700 dark:text-slate-200" dir="ltr">{item.value}</span>
-                  <span className={`font-mono text-xs font-bold ${item.positive ? 'text-emerald-600' : 'text-rose-600'}`} dir="ltr">{item.change}</span>
+                  <span className={`font-mono text-xs font-bold ${item.positive ? 'text-blue-600' : 'text-rose-600'}`} dir="ltr">{item.change}</span>
                 </div>
               ))}
             </div>
@@ -989,8 +991,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         <div className="rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-[0_20px_80px_rgba(15,23,42,0.10)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/50 dark:shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div className="space-y-2 text-center md:text-start">
-              <h1 className="text-4xl font-bold tracking-tight text-emerald-800 dark:text-emerald-300 flex items-center justify-center gap-3 md:justify-start">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl overflow-hidden shadow-lg shadow-emerald-700/20">
+              <h1 className="text-4xl font-bold tracking-tight text-blue-800 dark:text-blue-300 flex items-center justify-center gap-3 md:justify-start">
+                <span className="flex h-20 w-20 items-center justify-center rounded-2xl overflow-hidden shadow-lg shadow-blue-700/20">
                   <img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=100&h=100&fit=crop" alt="Calculator" className="w-full h-full object-cover" />
                 </span>
                 {text.title}
@@ -1001,11 +1003,11 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             </div>
             <div className="flex flex-wrap items-center justify-center gap-3 rounded-2xl bg-slate-900/5 p-2 dark:bg-white/10">
               {username && (
-                <span className="rounded-xl bg-emerald-100 px-3 py-2 text-sm font-bold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-100">
+                <span className="rounded-xl bg-blue-100 px-3 py-2 text-sm font-bold text-blue-800 dark:bg-blue-900/60 dark:text-blue-100">
                   {username}
                 </span>
               )}
-              <Languages className="h-5 w-5 text-emerald-700 dark:text-emerald-300" />
+              <Languages className="h-5 w-5 text-blue-700 dark:text-blue-300" />
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{text.langLabel}</span>
               <Select value={language} onValueChange={(value) => setLanguage(value as 'ar' | 'en' | 'fr' | 'zh')}>
                 <SelectTrigger className="h-10 w-[150px] border-white/70 bg-white/80 dark:border-white/10 dark:bg-slate-900/80">
@@ -1023,9 +1025,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         </div>
 
         {/* Salary Input Card */}
-        <Card className="border-emerald-200 dark:border-emerald-800">
-          <CardHeader className="bg-emerald-50 dark:bg-emerald-900/30 rounded-t-lg">
-            <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+        <Card className="border-blue-200 dark:border-blue-800">
+          <CardHeader className="bg-blue-50 dark:bg-blue-900/30 rounded-t-lg">
+            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
               <Coins className="w-6 h-6" />
               {text.salaryTitle}
             </CardTitle>
@@ -1094,9 +1096,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-center dark:border-emerald-800 dark:bg-emerald-900/30">
-              <span className="text-sm text-emerald-700 dark:text-emerald-300">{text.totalIncome}</span>
-              <p className="text-3xl font-bold text-emerald-800 dark:text-emerald-200">
+            <div className="rounded-2xl border border-blue-200 bg-blue-50/80 p-4 text-center dark:border-blue-800 dark:bg-blue-900/30">
+              <span className="text-sm text-blue-700 dark:text-emerald-300">{text.totalIncome}</span>
+              <p className="text-3xl font-bold text-emerald-800 dark:text-blue-200">
                 {formatCurrency(totalIncome)} {getCurrentCurrency().symbol}
               </p>
             </div>
@@ -1115,8 +1117,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                     type="button"
                     onClick={() => setDistributionMethod(option.value as typeof distributionMethod)}
                     className={`rounded-2xl border p-4 text-start text-sm font-semibold transition-all ${distributionMethod === option.value
-                      ? 'border-emerald-500 bg-emerald-600 text-white shadow-lg shadow-emerald-700/20'
-                      : 'border-slate-200 bg-white/80 text-slate-700 hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200'
+                      ? 'border-blue-500 bg-blue-600 text-white shadow-lg shadow-blue-700/20'
+                      : 'border-slate-200 bg-white/80 text-slate-700 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200'
                     }`}
                   >
                     {option.label}
@@ -1271,19 +1273,19 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         </Card>
 
         {/* Salary Details Cards */}
-        <Card className="border-emerald-200 dark:border-emerald-800">
-            <CardHeader className="bg-emerald-50 dark:bg-emerald-900/30 rounded-t-lg">
-              <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+        <Card className="border-blue-200 dark:border-blue-800">
+            <CardHeader className="bg-blue-50 dark:bg-blue-900/30 rounded-t-lg">
+              <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
                 <Wallet className="w-6 h-6" />
                 {text.salaryDetails}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               {/* Total Salary */}
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl border-2 border-emerald-300 dark:border-emerald-700">
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl border-2 border-blue-300 dark:border-blue-700">
                 <div className="text-center">
-                  <span className="text-sm text-emerald-600 dark:text-emerald-400">{text.totalSalary}</span>
-                  <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
+                  <span className="text-sm text-blue-600 dark:text-blue-400">{text.totalSalary}</span>
+                  <p className="text-3xl font-bold text-blue-700 dark:text-emerald-300">
                     {formatCurrency(totalIncome)} {getCurrentCurrency().symbol}
                   </p>
                 </div>
@@ -1688,7 +1690,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             onClick={handlePrint}
             variant="outline"
             size="lg"
-            className="border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900"
+            className="border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900"
           >
             <Printer className="w-5 h-5 ms-2" />
             {text.print}

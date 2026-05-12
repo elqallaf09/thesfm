@@ -38,11 +38,11 @@ const COUNTRY_DIAL_CODES = [
 ];
 
 const SECURITY_QUESTIONS = [
-  { id: 'pet_name', questionAr: 'ما اسم حيوانك الأليف؟', questionEn: 'What is your pet name?' },
-  { id: 'school_name', questionAr: 'ما اسم مدرستك الأساسية؟', questionEn: 'What is your primary school name?' },
-  { id: 'city_born', questionAr: 'في أي مدينة ولدت؟', questionEn: 'In which city were you born?' },
-  { id: 'father_name', questionAr: 'ما اسم والدك الأول؟', questionEn: 'What is your father first name?' },
-  { id: 'favorite_color', questionAr: 'ما هو لونك المفضل؟', questionEn: 'What is your favorite color?' },
+  { id: 'pet_name', questionAr: 'ما اسم حيوانك الأليف؟', questionEn: 'What is your pet name?', questionFr: "Comment s'appelle votre animal de compagnie?", questionZh: '你宠物的名字是什么？' },
+  { id: 'school_name', questionAr: 'ما اسم مدرستك الأساسية؟', questionEn: 'What is your primary school name?', questionFr: "Quel est le nom de votre école primaire?", questionZh: '你小学的名字是什么？' },
+  { id: 'city_born', questionAr: 'في أي مدينة ولدت؟', questionEn: 'In which city were you born?', questionFr: "Dans quelle ville êtes-vous né?", questionZh: '你在哪个城市出生？' },
+  { id: 'father_name', questionAr: 'ما اسم والدك الأول؟', questionEn: "What is your father's first name?", questionFr: "Quel est le prénom de votre père?", questionZh: '你父亲的名字是什么？' },
+  { id: 'favorite_color', questionAr: 'ما هو لونك المفضل؟', questionEn: 'What is your favorite color?', questionFr: 'Quelle est votre couleur préférée?', questionZh: '你最喜欢的颜色是什么？' },
 ];
 
 export default function ProfilePage() {
@@ -238,17 +238,17 @@ export default function ProfilePage() {
 
   if (loading || authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(135deg,_#f7faf7_0%,_#eef6ef_42%,_#dfeee7_100%)]">
-        <RefreshCw className="h-8 w-8 animate-spin text-emerald-700" />
+      <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(135deg,_#eff6ff_0%,_#dbeafe_42%,_#bfdbfe_100%)]">
+        <RefreshCw className="h-8 w-8 animate-spin text-blue-700" />
       </div>
     );
   }
 
   return (
-    <main dir={isArabic ? 'rtl' : 'ltr'} className="min-h-screen bg-[linear-gradient(135deg,_#f7faf7_0%,_#eef6ef_42%,_#dfeee7_100%)] px-4 py-6 dark:bg-[linear-gradient(135deg,_#07110d_0%,_#0d1d16_48%,_#111827_100%)]">
+    <main dir={isArabic ? 'rtl' : 'ltr'} className="min-h-screen bg-[linear-gradient(135deg,_#eff6ff_0%,_#dbeafe_42%,_#bfdbfe_100%)] px-4 py-6 dark:bg-[linear-gradient(135deg,_#1e3a5f_0%,_#1e3a8a_48%,_#111827_100%)]">
       <div className="relative mx-auto max-w-4xl space-y-6">
         <div className="flex items-center justify-between">
-          <Button onClick={() => router.push('/')} variant="ghost" className="text-emerald-700">
+          <Button onClick={() => router.push('/')} variant="ghost" className="text-blue-700">
             {text.back}
           </Button>
           <Select value={language} onValueChange={(v) => setLanguage(v as typeof language)}>
@@ -264,9 +264,9 @@ export default function ProfilePage() {
           </Select>
         </div>
 
-        <Card className="border-emerald-200 dark:border-emerald-800">
-          <CardHeader className="bg-emerald-50 dark:bg-emerald-900/30 rounded-t-lg">
-            <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+        <Card className="border-blue-200 dark:border-blue-800">
+          <CardHeader className="bg-blue-50 dark:bg-blue-900/30 rounded-t-lg">
+            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
               <User className="w-6 h-6" />
               {text.profileTitle}
             </CardTitle>
@@ -338,15 +338,15 @@ export default function ProfilePage() {
               </div>
             )}
 
-            <Button onClick={saveProfile} disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={saveProfile} disabled={saving} className="w-full bg-blue-600 hover:bg-blue-700">
               {saving ? '...' : text.saveChanges}
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="border-emerald-200 dark:border-emerald-800">
-          <CardHeader className="bg-emerald-50 dark:bg-emerald-900/30 rounded-t-lg">
-            <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+        <Card className="border-blue-200 dark:border-blue-800">
+          <CardHeader className="bg-blue-50 dark:bg-blue-900/30 rounded-t-lg">
+            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
               <Shield className="w-6 h-6" />
               {text.securityQuestion}
             </CardTitle>
@@ -361,7 +361,9 @@ export default function ProfilePage() {
                   </SelectTrigger>
                   <SelectContent>
                     {SECURITY_QUESTIONS.map((q) => (
-                      <SelectItem key={q.id} value={q.id}>{isArabic ? q.questionAr : q.questionEn}</SelectItem>
+                      <SelectItem key={q.id} value={q.id}>
+                        {isArabic ? q.questionAr : language === 'fr' ? q.questionFr : language === 'zh' ? q.questionZh : q.questionEn}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -374,9 +376,9 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card className="border-emerald-200 dark:border-emerald-800">
-          <CardHeader className="bg-emerald-50 dark:bg-emerald-900/30 rounded-t-lg">
-            <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+        <Card className="border-blue-200 dark:border-blue-800">
+          <CardHeader className="bg-blue-50 dark:bg-blue-900/30 rounded-t-lg">
+            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
               <Lock className="w-6 h-6" />
               {text.passwordSection}
             </CardTitle>
@@ -401,9 +403,9 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card className="border-emerald-200 dark:border-emerald-800">
-          <CardHeader className="bg-emerald-50 dark:bg-emerald-900/30 rounded-t-lg">
-            <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+        <Card className="border-blue-200 dark:border-blue-800">
+          <CardHeader className="bg-blue-50 dark:bg-blue-900/30 rounded-t-lg">
+            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
               <Coins className="w-6 h-6" />
               {text.incomeSources}
             </CardTitle>
@@ -423,7 +425,7 @@ export default function ProfilePage() {
                     <Input type="text" value={incomeSourceAmounts[category.id] || ''} onChange={(e) => setIncomeSourceAmounts({ ...incomeSourceAmounts, [category.id]: e.target.value })} className="w-32 h-8 text-sm" dir="ltr" />
                   </div>
                 ))}
-                <Button onClick={saveIncomeSources} disabled={saving} size="sm" className="w-full bg-emerald-600 hover:bg-emerald-700">
+                <Button onClick={saveIncomeSources} disabled={saving} size="sm" className="w-full bg-blue-600 hover:bg-blue-700">
                   {saving ? '...' : text.saveChanges}
                 </Button>
               </div>
