@@ -46,7 +46,56 @@ interface Currency {
   nameAr: string;
 }
 
+type TickerCategory = 'global' | 'gulf' | 'asia' | 'europe' | 'crypto' | 'metals';
+
+interface MarketTickerItem {
+  nameAr: string;
+  nameEn: string;
+  value: string;
+  change: string;
+  positive: boolean;
+}
+
 const COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444'];
+
+const MARKET_TICKERS: Record<TickerCategory, MarketTickerItem[]> = {
+  global: [
+    { nameAr: 'داو جونز', nameEn: 'Dow Jones', value: '39,806.77', change: '+0.32%', positive: true },
+    { nameAr: 'ناسداك', nameEn: 'Nasdaq', value: '16,340.87', change: '+0.58%', positive: true },
+    { nameAr: 'إس آند بي 500', nameEn: 'S&P 500', value: '5,308.13', change: '-0.12%', positive: false },
+    { nameAr: 'فوتسي العالمي', nameEn: 'FTSE All-World', value: '518.42', change: '+0.21%', positive: true },
+  ],
+  gulf: [
+    { nameAr: 'بورصة الكويت', nameEn: 'Boursa Kuwait', value: '7,421.35', change: '+0.44%', positive: true },
+    { nameAr: 'تداول السعودية', nameEn: 'Saudi Tadawul', value: '12,184.90', change: '-0.18%', positive: false },
+    { nameAr: 'سوق دبي المالي', nameEn: 'Dubai Financial Market', value: '4,083.61', change: '+0.27%', positive: true },
+    { nameAr: 'بورصة قطر', nameEn: 'Qatar Exchange', value: '10,242.15', change: '+0.09%', positive: true },
+  ],
+  asia: [
+    { nameAr: 'نيكي 225', nameEn: 'Nikkei 225', value: '38,787.38', change: '+0.73%', positive: true },
+    { nameAr: 'هانغ سنغ', nameEn: 'Hang Seng', value: '19,636.22', change: '-0.31%', positive: false },
+    { nameAr: 'شنغهاي المركب', nameEn: 'Shanghai Composite', value: '3,154.03', change: '+0.16%', positive: true },
+    { nameAr: 'سينسكس الهند', nameEn: 'BSE Sensex', value: '74,221.06', change: '+0.48%', positive: true },
+  ],
+  europe: [
+    { nameAr: 'فوتسي 100', nameEn: 'FTSE 100', value: '8,421.02', change: '+0.24%', positive: true },
+    { nameAr: 'داكس ألمانيا', nameEn: 'DAX', value: '18,704.42', change: '+0.37%', positive: true },
+    { nameAr: 'كاك 40', nameEn: 'CAC 40', value: '8,167.50', change: '-0.11%', positive: false },
+    { nameAr: 'يورو ستوكس 50', nameEn: 'Euro Stoxx 50', value: '5,083.15', change: '+0.19%', positive: true },
+  ],
+  crypto: [
+    { nameAr: 'بيتكوين', nameEn: 'Bitcoin', value: '$67,240', change: '+1.42%', positive: true },
+    { nameAr: 'إيثريوم', nameEn: 'Ethereum', value: '$3,118', change: '+0.86%', positive: true },
+    { nameAr: 'بي إن بي', nameEn: 'BNB', value: '$588.40', change: '-0.40%', positive: false },
+    { nameAr: 'سولانا', nameEn: 'Solana', value: '$153.30', change: '+2.10%', positive: true },
+  ],
+  metals: [
+    { nameAr: 'ذهب فوري', nameEn: 'Spot Gold', value: '$2,356.70', change: '+0.29%', positive: true },
+    { nameAr: 'فضة فورية', nameEn: 'Spot Silver', value: '$28.18', change: '+0.51%', positive: true },
+    { nameAr: 'ذهب الكويت 24 قيراط', nameEn: 'Kuwait Gold 24K', value: '23.18 د.ك', change: '+0.18%', positive: true },
+    { nameAr: 'فضة الكويت', nameEn: 'Kuwait Silver', value: '0.28 د.ك', change: '-0.07%', positive: false },
+  ],
+};
 
 const CURRENCIES: Currency[] = [
   { code: 'KWD', name: 'Kuwaiti Dinar', symbol: 'د.ك', nameAr: 'دينار كويتي' },
@@ -228,7 +277,7 @@ export default function SalaryManager() {
     charityPercent: isArabic ? 'نسبة التبرع' : 'Donation percentage',
     chart: isArabic ? 'التوزيع البياني' : 'Visual distribution',
     emptyChart: isArabic ? 'أدخل الراتب لرؤية التوزيع' : 'Enter salary to view distribution',
-    salaryDetails: isArabic ? 'تفاصيل الراتب' : 'Salary details',
+    salaryDetails: isArabic ? 'تفاصيل المدخول الشهري' : 'Monthly income details',
     totalSalary: isArabic ? 'إجمالي الراتب' : 'Total salary',
     expenses: isArabic ? 'المصروفات' : 'Expenses',
     savings: isArabic ? 'المدخرات' : 'Savings',
@@ -254,6 +303,15 @@ export default function SalaryManager() {
     print: isArabic ? 'طباعة / تصدير' : 'Print / Export',
     reset: isArabic ? 'إعادة تعيين' : 'Reset',
     footer: isArabic ? 'المدير المالي الذكي - يساعدك على اتخاذ قرارات مالية أوضح' : 'Smart Financial Manager - helping you make clearer financial decisions',
+    tickerTitle: isArabic ? 'مؤشرات الأسواق' : 'Market watch',
+    tickerType: isArabic ? 'نوع البورصة' : 'Market type',
+    globalMarkets: isArabic ? 'بورصات العالم' : 'Global markets',
+    gulfMarkets: isArabic ? 'بورصات الخليج' : 'Gulf markets',
+    asianMarkets: isArabic ? 'البورصات الآسيوية' : 'Asian markets',
+    europeanMarkets: isArabic ? 'البورصات الأوروبية' : 'European markets',
+    cryptoMarkets: isArabic ? 'العملات الرقمية' : 'Cryptocurrencies',
+    metalsMarkets: isArabic ? 'الذهب والفضة' : 'Gold and silver',
+    demoPrices: isArabic ? 'أسعار استرشادية للعرض' : 'Indicative display prices',
   };
   const [salary, setSalary] = useState<string>('');
   const [salaryNumber, setSalaryNumber] = useState<number>(0);
@@ -267,6 +325,7 @@ export default function SalaryManager() {
   const [includeCharity, setIncludeCharity] = useState<boolean>(false);
   const [showAdvice, setShowAdvice] = useState<boolean>(false);
   const [selectedCurrency, setSelectedCurrency] = useState<string>('KWD');
+  const [tickerCategory, setTickerCategory] = useState<TickerCategory>('gulf');
   const [randomAdvice, setRandomAdvice] = useState<Advice | null>(null);
 
   // Items states
@@ -295,6 +354,15 @@ export default function SalaryManager() {
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
   const totalIncome = salaryNumber + otherIncomeNumber;
+  const tickerItems = MARKET_TICKERS[tickerCategory];
+  const tickerOptions: { value: TickerCategory; label: string }[] = [
+    { value: 'global', label: text.globalMarkets },
+    { value: 'gulf', label: text.gulfMarkets },
+    { value: 'asia', label: text.asianMarkets },
+    { value: 'europe', label: text.europeanMarkets },
+    { value: 'crypto', label: text.cryptoMarkets },
+    { value: 'metals', label: text.metalsMarkets },
+  ];
 
   const calculateBreakdown = useCallback(() => {
     const baseAmount = salaryNumber + otherIncomeNumber;
@@ -540,11 +608,48 @@ export default function SalaryManager() {
   return (
     <div
       dir={isArabic ? 'rtl' : 'ltr'}
-      className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.22),_transparent_32%),radial-gradient(circle_at_85%_15%,_rgba(245,158,11,0.16),_transparent_28%),linear-gradient(135deg,_#f7f5ef_0%,_#ecfdf5_48%,_#eef2ff_100%)] dark:bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_32%),radial-gradient(circle_at_85%_15%,_rgba(245,158,11,0.12),_transparent_28%),linear-gradient(135deg,_#07130f_0%,_#0f172a_55%,_#111827_100%)] py-8 px-4"
+      className="relative min-h-screen overflow-hidden bg-[linear-gradient(135deg,_#f7faf7_0%,_#eef6ef_42%,_#dfeee7_100%)] px-4 py-6 dark:bg-[linear-gradient(135deg,_#07110d_0%,_#0d1d16_48%,_#111827_100%)]"
     >
-      <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(15,23,42,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.045)_1px,transparent_1px)] [background-size:44px_44px] dark:opacity-20" />
-      <div className="pointer-events-none absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-emerald-300/30 blur-3xl dark:bg-emerald-500/10" />
+      <div className="pointer-events-none absolute inset-0 opacity-70 [background-image:linear-gradient(120deg,rgba(0,96,72,0.10)_0,rgba(0,96,72,0.10)_1px,transparent_1px,transparent_42px),linear-gradient(160deg,rgba(187,151,82,0.12)_0,rgba(187,151,82,0.12)_1px,transparent_1px,transparent_68px)] dark:opacity-20" />
+      <div className="pointer-events-none absolute -right-24 top-0 h-[34rem] w-[34rem] rounded-full bg-emerald-700/10 blur-3xl dark:bg-emerald-400/10" />
+      <div className="pointer-events-none absolute -left-28 top-40 h-[26rem] w-[26rem] rounded-full bg-[#c4a35a]/20 blur-3xl dark:bg-[#c4a35a]/10" />
       <div className="relative max-w-5xl mx-auto space-y-6">
+        <div className="overflow-hidden rounded-[1.75rem] border border-emerald-900/10 bg-white/85 shadow-[0_18px_70px_rgba(0,66,54,0.12)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/65">
+          <div className="flex flex-col gap-3 border-b border-emerald-900/10 bg-emerald-950 px-4 py-3 text-white md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#c4a35a] shadow-[0_0_18px_rgba(196,163,90,0.8)]" />
+              <div>
+                <p className="text-sm font-bold">{text.tickerTitle}</p>
+                <p className="text-xs text-emerald-100/75">{text.demoPrices}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-emerald-100/80">{text.tickerType}</span>
+              <Select value={tickerCategory} onValueChange={(value) => setTickerCategory(value as TickerCategory)}>
+                <SelectTrigger className="h-10 w-[190px] border-white/15 bg-white/10 text-white backdrop-blur [&>span]:text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {tickerOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="relative flex overflow-hidden bg-white/80 py-3 dark:bg-slate-950/70">
+            <div className="flex min-w-full shrink-0 animate-[ticker_26s_linear_infinite] items-center gap-4 px-4">
+              {[...tickerItems, ...tickerItems].map((item, index) => (
+                <div key={`${item.nameEn}-${index}`} className="flex shrink-0 items-center gap-3 rounded-full border border-emerald-900/10 bg-white px-4 py-2 text-sm shadow-sm dark:border-white/10 dark:bg-slate-900/80">
+                  <span className="font-bold text-emerald-950 dark:text-emerald-100">{isArabic ? item.nameAr : item.nameEn}</span>
+                  <span className="font-mono text-slate-700 dark:text-slate-200" dir="ltr">{item.value}</span>
+                  <span className={`font-mono text-xs font-bold ${item.positive ? 'text-emerald-600' : 'text-rose-600'}`} dir="ltr">{item.change}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Header */}
         <div className="rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-[0_20px_80px_rgba(15,23,42,0.10)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/50 dark:shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">

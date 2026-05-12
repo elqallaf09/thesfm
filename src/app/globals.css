@@ -128,3 +128,12 @@
 .font-cairo {
   font-family: var(--font-cairo), system-ui, sans-serif;
 }
+
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
