@@ -120,4 +120,11 @@
   body {
     @apply bg-background text-foreground;
   }
+  html {
+    direction: rtl;
+  }
+}
+
+.font-cairo {
+  font-family: var(--font-cairo), system-ui, sans-serif;
 }

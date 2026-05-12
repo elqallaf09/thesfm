@@ -1,24 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Cairo } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import GlobalClientEffects from "@/components/GlobalClientEffects";
 
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const cairo = Cairo({
+  variable: "--font-cairo",
+  subsets: ["arabic", "latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "Zoer.ai",
-  description: "Zoer.ai",
+  title: "مدير الراتب الذكي | AI Salary Manager",
+  description: "إدارة راتبك بذكاء - قسّم راتبك إلى مصروفات ومدخرات واستثمار",
 };
 
 export default function RootLayout({
@@ -34,9 +30,9 @@ export default function RootLayout({
   );
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased `}
+        className={`${cairo.variable} font-cairo antialiased`}
       >
         <Toaster />
         <ThemeProvider
