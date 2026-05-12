@@ -3,6 +3,7 @@ import { Cairo } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import GlobalClientEffects from "@/components/GlobalClientEffects";
+import { AuthProvider } from "@/hooks/useAuth";
 
 import "./globals.css";
 
@@ -41,7 +42,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {content}
+          <AuthProvider>{content}</AuthProvider>
         </ThemeProvider>
       </body>
     </html>

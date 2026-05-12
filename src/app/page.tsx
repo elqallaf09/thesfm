@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,11 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { Calculator, Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Sparkles, Globe, Plus, Trash2, Target, Calendar, Banknote, Goal, ChevronDown, ChevronUp, Languages } from 'lucide-react';
+import { Calculator, Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Sparkles, Globe, Plus, Trash2, Target, Calendar, Banknote, Goal, ChevronDown, ChevronUp, Languages, LogOut } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthForm } from '@/components/auth/AuthForm';
+import { IncomeSourcesForm } from '@/components/income/IncomeSourcesForm';
 
 interface SalaryBreakdown {
   expenses: number;
@@ -247,7 +251,74 @@ const ARABIC_ADVICE: Advice[] = [
   { category: 'التعليم', tip: 'استثمر في تطوير مهاراتك التعليمية. المعرفة أفضل استثمار', icon: '📚' },
 ];
 
-export default function SalaryManager() {
+export default function HomePage() {
+  return (
+    <AuthGate>
+      {({ userId, username, incomeTotal }) => (
+        <SalaryManager userId={userId} username={username} incomeTotal={incomeTotal} />
+      )}
+    </AuthGate>
+  );
+}
+
+interface AuthGateProps {
+  children: (props: { userId: string; username: string; incomeTotal: number }) => ReactNode;
+}
+
+function AuthGate({ children }: AuthGateProps) {
+  const { user, loading } = useAuth();
+  const [incomeTotal, setIncomeTotal] = useState(0);
+  const [username, setUsername] = useState('');
+  const [hasIncomeSources, setHasIncomeSources] = useState(false);
+  const [checkingProfile, setCheckingProfile] = useState(true);
+
+  const loadUserData = useCallback(async () => {
+    if (!user) {
+      setCheckingProfile(false);
+      return;
+    }
+
+    setCheckingProfile(true);
+    const [{ data: profile }, { data: sources }] = await Promise.all([
+      supabase.from('profiles').select('username, display_name').eq('id', user.id).maybeSingle(),
+      supabase.from('monthly_income_sources').select('amount').eq('user_id', user.id),
+    ]);
+
+    setUsername(profile?.display_name || profile?.username || user.user_metadata?.username || '');
+    const total = (sources || []).reduce((sum, source) => sum + Number(source.amount || 0), 0);
+    setIncomeTotal(total);
+    setHasIncomeSources((sources || []).length > 0);
+    setCheckingProfile(false);
+  }, [user]);
+
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
+
+  if (loading || checkingProfile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(135deg,_#f7faf7_0%,_#eef6ef_42%,_#dfeee7_100%)]">
+        <RefreshCw className="h-8 w-8 animate-spin text-emerald-700" />
+      </div>
+    );
+  }
+
+  if (!user) return <AuthForm />;
+
+  if (!hasIncomeSources) {
+    return <IncomeSourcesForm userId={user.id} username={username} onComplete={loadUserData} />;
+  }
+
+  return <>{children({ userId: user.id, username, incomeTotal })}</>;
+}
+
+interface SalaryManagerProps {
+  userId: string;
+  username: string;
+  incomeTotal: number;
+}
+
+function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
   const [language, setLanguage] = useState<'ar' | 'en'>('ar');
   const isArabic = language === 'ar';
   const text = {
@@ -255,9 +326,9 @@ export default function SalaryManager() {
     subtitle: isArabic ? 'اختر طريقة توزيع دخلك أو أدخل خطتك يدوياً ليتم تحليلها بذكاء' : 'Choose an income split or enter your own plan for smart analysis',
     langLabel: isArabic ? 'اللغة' : 'Language',
     salaryTitle: isArabic ? 'أدخل دخلك الشهري' : 'Enter your monthly income',
-    salaryDesc: isArabic ? 'أدخل الراتب والمدخول الآخر ثم اختر طريقة التوزيع المناسبة' : 'Enter salary and other income, then choose the best split method',
+    salaryDesc: isArabic ? 'تم احتساب دخلك من أنواع المدخول التي أدخلتها، ويمكنك إضافة مدخول آخر عند الحاجة' : 'Your income is calculated from saved income sources, and you can add extra income if needed',
     currency: isArabic ? 'اختر العملة' : 'Choose currency',
-    monthlySalary: isArabic ? 'الراتب الشهري' : 'Monthly salary',
+    monthlySalary: isArabic ? 'إجمالي أنواع الدخل' : 'Total income sources',
     otherIncome: isArabic ? 'مدخول آخر' : 'Other income',
     totalIncome: isArabic ? 'إجمالي الدخل' : 'Total income',
     distributionMethod: isArabic ? 'طريقة توزيع الدخل' : 'Income distribution method',
@@ -316,8 +387,8 @@ export default function SalaryManager() {
     fallbackPrices: isArabic ? 'بيانات احتياطية عند تعذر الاتصال' : 'Fallback data when provider is unavailable',
     refreshPrices: isArabic ? 'تحديث الأسعار' : 'Refresh prices',
   };
-  const [salary, setSalary] = useState<string>('');
-  const [salaryNumber, setSalaryNumber] = useState<number>(0);
+  const [salary, setSalary] = useState<string>(incomeTotal ? String(incomeTotal) : '');
+  const [salaryNumber, setSalaryNumber] = useState<number>(incomeTotal || 0);
   const [otherIncome, setOtherIncome] = useState<string>('');
   const [otherIncomeNumber, setOtherIncomeNumber] = useState<number>(0);
   const [distributionMethod, setDistributionMethod] = useState<'70-20-10' | '60-30-10' | '60-20-20' | 'manual'>('70-20-10');
@@ -438,6 +509,12 @@ export default function SalaryManager() {
   useEffect(() => {
     fetchTickerData();
   }, [fetchTickerData]);
+
+
+  useEffect(() => {
+    setSalary(incomeTotal ? String(incomeTotal) : '');
+    setSalaryNumber(incomeTotal || 0);
+  }, [incomeTotal]);
 
   useEffect(() => {
     const num = parseFloat(salary.replace(/[^\d.]/g, ''));
@@ -673,6 +750,15 @@ export default function SalaryManager() {
                   ))}
                 </SelectContent>
               </Select>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => supabase.auth.signOut()}
+                className="h-10 rounded-xl text-emerald-50 hover:bg-white/10 hover:text-white"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </div>
           <div className="relative flex overflow-hidden bg-white/80 py-3 dark:bg-slate-950/70">
@@ -702,7 +788,12 @@ export default function SalaryManager() {
                 {text.subtitle}
               </p>
             </div>
-            <div className="flex items-center justify-center gap-3 rounded-2xl bg-slate-900/5 p-2 dark:bg-white/10">
+            <div className="flex flex-wrap items-center justify-center gap-3 rounded-2xl bg-slate-900/5 p-2 dark:bg-white/10">
+              {username && (
+                <span className="rounded-xl bg-emerald-100 px-3 py-2 text-sm font-bold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-100">
+                  {username}
+                </span>
+              )}
               <Languages className="h-5 w-5 text-emerald-700 dark:text-emerald-300" />
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{text.langLabel}</span>
               <Select value={language} onValueChange={(value) => setLanguage(value as 'ar' | 'en')}>
