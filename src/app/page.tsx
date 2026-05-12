@@ -9,8 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { Calculator, Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Sparkles, Globe, Plus, Trash2, Target, Calendar, Banknote, Goal, ChevronDown, ChevronUp, Languages, LogOut } from 'lucide-react';
+import { Calculator, Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Sparkles, Globe, Plus, Trash2, Target, Calendar, Banknote, Goal, ChevronDown, ChevronUp, Languages, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/auth/AuthForm';
@@ -59,8 +58,6 @@ interface MarketTickerItem {
   change: string;
   positive: boolean;
 }
-
-const COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444'];
 
 const MARKET_TICKERS: Record<TickerCategory, MarketTickerItem[]> = {
   global: [
@@ -251,6 +248,17 @@ const ARABIC_ADVICE: Advice[] = [
   { category: 'التعليم', tip: 'استثمر في تطوير مهاراتك التعليمية. المعرفة أفضل استثمار', icon: '📚' },
 ];
 
+const ENGLISH_ADVICE: Advice[] = [
+  { category: 'Expenses', tip: 'Try to stick to 70% of your income for essential expenses. Reduce unnecessary spending', icon: '💰' },
+  { category: 'Savings', tip: 'Do not touch your savings in emergencies. Keep them in a separate account that is hard to access', icon: '🏦' },
+  { category: 'Investment', tip: 'Start investing early even with small amounts. Compound interest works in your favor', icon: '📈' },
+  { category: 'Charity', tip: 'Charity extinguishes the anger of the Lord and blesses the provision. Even a small amount has value', icon: '🤲' },
+  { category: 'Debt', tip: 'If you are in debt, work on paying off debts first before thinking about investing', icon: '⚖️' },
+  { category: 'Insurance', tip: 'Make sure you have health insurance and life insurance to protect you and your family', icon: '🛡️' },
+  { category: 'Retirement', tip: 'Allocate a portion of your income for retirement early. The earlier you start, the better', icon: '🌴' },
+  { category: 'Education', tip: 'Invest in developing your educational skills. Knowledge is the best investment', icon: '📚' },
+];
+
 export default function HomePage() {
   return (
     <AuthGate>
@@ -318,7 +326,7 @@ interface SalaryManagerProps {
   incomeTotal: number;
 }
 
-function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
+function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   const [language, setLanguage] = useState<'ar' | 'en'>('ar');
   const isArabic = language === 'ar';
   const text = {
@@ -342,12 +350,40 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
     manualInvestment: isArabic ? 'استثمار يدوي' : 'Manual investment',
     aiBestChoice: isArabic ? 'تحليل الذكاء الاصطناعي' : 'AI analysis',
     placeholder: isArabic ? 'مثال: 5000' : 'Example: 5000',
-    charityTitle: isArabic ? 'التبرع والصدقة' : 'Donation and charity',
-    charityDesc: isArabic ? 'خصص نسبة من مدخولك للتبرع والصدقة' : 'Allocate a percentage of your income for donation and charity',
-    charityToggle: isArabic ? 'تفعيل التبرع من المدخول' : 'Enable donation from income',
-    charityPercent: isArabic ? 'نسبة التبرع' : 'Donation percentage',
+    charityTitle: isArabic ? 'الأعمال الخيرية' : 'Charitable works',
+    charityDesc: isArabic ? 'خصص نسبة من مدخولك للأعمال الخيرية' : 'Allocate a percentage of your income for charitable works',
+    charityToggle: isArabic ? 'تفعيل الأعمال الخيرية' : 'Enable charitable works',
+    charityPercent: isArabic ? 'نسبة الأعمال الخيرية' : 'Charity percentage',
     chart: isArabic ? 'التوزيع البياني' : 'Visual distribution',
     emptyChart: isArabic ? 'أدخل المدخول لرؤية التوزيع' : 'Enter income to view distribution',
+    profileTitle: isArabic ? 'الملف الشخصي' : 'Profile',
+    profileName: isArabic ? 'اسم المستخدم' : 'Username',
+    profileEmail: isArabic ? 'البريد الإلكتروني' : 'Email',
+    profileAge: isArabic ? 'العمر' : 'Age',
+    profileTotalIncome: isArabic ? 'إجمالي الدخل' : 'Total income',
+    profileSave: isArabic ? 'حفظ التغييرات' : 'Save changes',
+    profileSaved: isArabic ? 'تم الحفظ بنجاح' : 'Saved successfully',
+    profileError: isArabic ? 'حدث خطأ في الحفظ' : 'Error saving',
+    logout: isArabic ? 'تسجيل الخروج' : 'Sign out',
+    expenseNamePlaceholder: isArabic ? 'اسم المصروف' : 'Expense name',
+    savingNamePlaceholder: isArabic ? 'اسم المدخرة' : 'Saving name',
+    investmentNamePlaceholder: isArabic ? 'اسم الاستثمار' : 'Investment name',
+    amountPlaceholder: isArabic ? 'المبلغ' : 'Amount',
+    goalNamePlaceholder: isArabic ? 'مثال: شراء سيارة' : 'Example: Buy a car',
+    goalDurationPlaceholder: isArabic ? 'مثال: 6 أشهر' : 'Example: 6 months',
+    notesPlaceholder: isArabic ? 'ملاحظات' : 'Notes',
+    sumExpenses: isArabic ? 'مجموع المصروفات' : 'Total expenses',
+    sumSavings: isArabic ? 'مجموع المدخرات' : 'Total savings',
+    sumInvestment: isArabic ? 'مجموع الاستثمار' : 'Total investment',
+    previousOperations: isArabic ? 'العمليات السابقة' : 'Previous operations',
+    noOperations: isArabic ? 'لا توجد عمليات مسجلة' : 'No recorded operations',
+    charityTypes: isArabic ? 'أنواع الأعمال الخيرية' : 'Charity types',
+    charitySadaqah: isArabic ? 'صدقة' : 'Sadaqah',
+    charityZakat: isArabic ? 'زكاة' : 'Zakat',
+    charitySacrifice: isArabic ? 'أضحية' : 'Sacrifice',
+    charityExpiation: isArabic ? 'كفارة' : 'Expiation',
+    charityOther: isArabic ? 'أعمال خيرية أخرى' : 'Other charity',
+    selectedCharities: isArabic ? 'المختارة' : 'Selected',
     salaryDetails: isArabic ? 'تفاصيل المدخول الشهري' : 'Monthly income details',
     totalSalary: isArabic ? 'إجمالي المدخول' : 'Total income',
     expenses: isArabic ? 'المصروفات' : 'Expenses',
@@ -414,8 +450,17 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
   const [tickerLoading, setTickerLoading] = useState<boolean>(true);
   const [tickerIsLive, setTickerIsLive] = useState<boolean>(false);
   const [randomAdvice, setRandomAdvice] = useState<Advice | null>(null);
-  const [showChart, setShowChart] = useState<boolean>(false);
   const [manualWarning, setManualWarning] = useState<boolean>(false);
+
+  // Profile state
+  const [showProfile, setShowProfile] = useState<boolean>(false);
+  const [profileData, setProfileData] = useState<{ display_name?: string; email?: string; age?: number }>({});
+  const [profileSaving, setProfileSaving] = useState<boolean>(false);
+  const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Charity types state
+  const [selectedCharityTypes, setSelectedCharityTypes] = useState<string[]>([]);
+  const CHARITY_TYPE_OPTIONS = ['sadaqah', 'zakat', 'sacrifice', 'expiation', 'other'];
 
   // Items states
   const [expenseItems, setExpenseItems] = useState<ItemEntry[]>([]);
@@ -583,29 +628,19 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
   };
 
   const getRandomAdvice = () => {
-    const randomIndex = Math.floor(Math.random() * ARABIC_ADVICE.length);
-    setRandomAdvice(ARABIC_ADVICE[randomIndex]);
+    const adviceList = isArabic ? ARABIC_ADVICE : ENGLISH_ADVICE;
+    const randomIndex = Math.floor(Math.random() * adviceList.length);
+    setRandomAdvice(adviceList[randomIndex]);
     setShowAdvice(true);
   };
 
   const formatCurrency = (amount: number) => {
     const decimals = ['JPY', 'KRW', 'VND', 'IDR'].includes(selectedCurrency) ? 0 : 2;
-    return new Intl.NumberFormat('ar-SA', {
+    const locale = isArabic ? 'ar-SA' : 'en-US';
+    return new Intl.NumberFormat(locale, {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     }).format(amount);
-  };
-
-  const getChartData = () => {
-    const data = [
-      { name: text.expenses, value: breakdown.expenses, color: COLORS[0] },
-      { name: text.savings, value: breakdown.savings, color: COLORS[1] },
-      { name: text.investment, value: breakdown.investment, color: COLORS[2] },
-    ];
-    if (includeCharity && breakdown.charity > 0) {
-      data.push({ name: text.charity, value: breakdown.charity, color: COLORS[3] });
-    }
-    return data;
   };
 
   const handlePrint = () => {
@@ -632,7 +667,6 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
     setExpensesExpanded(false);
     setSavingsExpanded(false);
     setInvestmentExpanded(false);
-    setShowChart(false);
     setManualWarning(false);
   };
 
@@ -686,6 +720,37 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
     setInvestmentItems(investmentItems.filter(item => item.id !== id));
   };
 
+  // Profile functions
+  const loadProfile = async (userId: string) => {
+    const { data } = await supabase.from('profiles').select('display_name, email, age').eq('id', userId).maybeSingle();
+    if (data) {
+      setProfileData({
+        display_name: data.display_name || '',
+        email: data.email || '',
+        age: data.age || undefined,
+      });
+    }
+  };
+
+  const saveProfile = async (userId: string) => {
+    setProfileSaving(true);
+    setProfileMessage(null);
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        display_name: profileData.display_name,
+        email: profileData.email,
+        age: profileData.age,
+      })
+      .eq('id', userId);
+    if (error) {
+      setProfileMessage({ type: 'error', text: text.profileError });
+    } else {
+      setProfileMessage({ type: 'success', text: text.profileSaved });
+    }
+    setProfileSaving(false);
+  };
+
   // Goal management functions
   const addGoal = () => {
     setGoals([...goals, { id: generateId(), goal: '', amount: '', duration: '', notes: '' }]);
@@ -709,22 +774,36 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
 
     if (['KWD', 'BHD', 'OMR'].includes(selectedCurrency)) {
       if (totalIncome < 500) {
-        return `مدخولك ${incomeInCurrency} جيد مقارنة بالعديد من الدول. ركز على تقليل المصاريف وبحث عن فرص إضافية.`;
+        return isArabic
+          ? `مدخولك ${incomeInCurrency} جيد مقارنة بالعديد من الدول. ركز على تقليل المصاريف وبحث عن فرص إضافية.`
+          : `Your income of ${incomeInCurrency} is good compared to many countries. Focus on reducing expenses and look for additional opportunities.`;
       } else if (totalIncome < 1500) {
-        return `مدخولك ${incomeInCurrency} ممتاز. استثمر في صندوق طوارئ وفكر في الاستثمار العقاري.`;
+        return isArabic
+          ? `مدخولك ${incomeInCurrency} ممتاز. استثمر في صندوق طوارئ وفكر في الاستثمار العقاري.`
+          : `Your income of ${incomeInCurrency} is excellent. Invest in an emergency fund and consider real estate investment.`;
       } else {
-        return `مدخولك ${incomeInCurrency} عالي جداً. فكر في استشارات مالية متخصصة وتوزيع استثماراتك.`;
+        return isArabic
+          ? `مدخولك ${incomeInCurrency} عالي جداً. فكر في استشارات مالية متخصصة وتوزيع استثماراتك.`
+          : `Your income of ${incomeInCurrency} is very high. Consider specialized financial consulting and diversify your investments.`;
       }
     }
 
     if (totalIncome < 2000) {
-      return `مع مدخولك ${incomeInCurrency}، ركز على تقليل المصاريف. تجنب الديون وبحث عن مصادر دخل إضافية.`;
+      return isArabic
+        ? `مع مدخولك ${incomeInCurrency}، ركز على تقليل المصاريف. تجنب الديون وبحث عن مصادر دخل إضافية.`
+        : `With your income of ${incomeInCurrency}, focus on reducing expenses. Avoid debt and look for additional income sources.`;
     } else if (totalIncome < 5000) {
-      return `مدخولك ${incomeInCurrency} جيد. ابدأ صندوق طوارئ لـ 3-6 أشهر واستثمر في تطوير مهاراتك.`;
+      return isArabic
+        ? `مدخولك ${incomeInCurrency} جيد. ابدأ صندوق طوارئ لـ 3-6 أشهر واستثمر في تطوير مهاراتك.`
+        : `Your income of ${incomeInCurrency} is good. Start an emergency fund for 3-6 months and invest in developing your skills.`;
     } else if (totalIncome < 10000) {
-      return `لديك ${incomeInCurrency} مرونة جيدة. نوّع استثماراتك وفكر في التأمين الصحي الشامل.`;
+      return isArabic
+        ? `لديك ${incomeInCurrency} مرونة جيدة. نوّع استثماراتك وفكر في التأمين الصحي الشامل.`
+        : `You have ${incomeInCurrency} with good flexibility. Diversify your investments and consider comprehensive health insurance.`;
     } else {
-      return `مدخولك ${incomeInCurrency} ممتاز! فكر في استشارة مالية متخصصة وتبرع للأعمال الخيرية.`;
+      return isArabic
+        ? `مدخولك ${incomeInCurrency} ممتاز! فكر في استشارة مالية متخصصة وتبرع للأعمال الخيرية.`
+        : `Your income of ${incomeInCurrency} is excellent! Consider specialized financial consulting and donate to charitable causes.`;
     }
   };
 
@@ -773,7 +852,7 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
   };
 
   return (
-    <div
+    <main
       dir={isArabic ? 'rtl' : 'ltr'}
       className="relative min-h-screen overflow-hidden bg-[linear-gradient(135deg,_#f7faf7_0%,_#eef6ef_42%,_#dfeee7_100%)] px-4 py-6 dark:bg-[linear-gradient(135deg,_#07110d_0%,_#0d1d16_48%,_#111827_100%)]"
     >
@@ -817,9 +896,9 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => supabase.auth.signOut()}
-                className="h-10 rounded-xl text-emerald-50 hover:bg-white/10 hover:text-white"
+                className="h-10 rounded-xl text-emerald-50 hover:bg-white/10 hover:text-white text-sm font-medium"
               >
-                <LogOut className="h-4 w-4" />
+                {text.logout}
               </Button>
             </div>
           </div>
@@ -856,6 +935,19 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                   {username}
                 </span>
               )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  loadProfile(userId);
+                  setShowProfile(!showProfile);
+                }}
+                className="h-10 rounded-xl bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300 dark:hover:bg-emerald-800"
+              >
+                <User className="h-4 w-4 me-1" />
+                {text.profileTitle}
+              </Button>
               <Languages className="h-5 w-5 text-emerald-700 dark:text-emerald-300" />
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{text.langLabel}</span>
               <Select value={language} onValueChange={(value) => setLanguage(value as 'ar' | 'en')}>
@@ -870,6 +962,151 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
             </div>
           </div>
         </div>
+
+        {/* Profile Card */}
+        {showProfile && (
+          <Card className="border-emerald-200 dark:border-emerald-800">
+            <CardHeader className="bg-emerald-50 dark:bg-emerald-900/30 rounded-t-lg">
+              <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                <User className="w-6 h-6" />
+                {text.profileTitle}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="profile-name" className="text-lg font-medium">{text.profileName}</Label>
+                  <Input
+                    id="profile-name"
+                    type="text"
+                    value={profileData.display_name || ''}
+                    onChange={(e) => setProfileData({ ...profileData, display_name: e.target.value })}
+                    placeholder={text.profileName}
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="profile-email" className="text-lg font-medium">{text.profileEmail}</Label>
+                  <Input
+                    id="profile-email"
+                    type="email"
+                    value={profileData.email || ''}
+                    onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                    placeholder={text.profileEmail}
+                    className="h-10"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="profile-age" className="text-lg font-medium">{text.profileAge}</Label>
+                  <Input
+                    id="profile-age"
+                    type="number"
+                    value={profileData.age || ''}
+                    onChange={(e) => setProfileData({ ...profileData, age: e.target.value ? parseInt(e.target.value) : undefined })}
+                    placeholder={text.profileAge}
+                    className="h-10"
+                    dir="ltr"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-lg font-medium">{text.profileTotalIncome}</Label>
+                  <div className="h-10 flex items-center px-3 bg-slate-100 dark:bg-slate-800 rounded-md">
+                    <span className="font-bold">{formatCurrency(incomeTotal)} {getCurrentCurrency().symbol}</span>
+                  </div>
+                </div>
+              </div>
+              {profileMessage && (
+                <div className={`p-3 rounded-lg text-sm ${profileMessage.type === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>
+                  {profileMessage.text}
+                </div>
+              )}
+              <Button
+                onClick={() => saveProfile(userId)}
+                disabled={profileSaving}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {profileSaving ? '...' : text.profileSave}
+              </Button>
+
+              {/* Previous Operations */}
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                <h3 className="text-lg font-semibold mb-3 text-emerald-700 dark:text-emerald-400">{text.previousOperations}</h3>
+                {(expenseItems.length === 0 && savingsItems.length === 0 && investmentItems.length === 0 && goals.length === 0) ? (
+                  <p className="text-muted-foreground text-center py-4">{text.noOperations}</p>
+                ) : (
+                  <div className="space-y-3">
+                    {expenseItems.length > 0 && (
+                      <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                        <p className="text-sm font-semibold text-green-700 dark:text-green-400 mb-2">{text.expenses} ({text.sumExpenses}: {formatCurrency(expenseItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol})</p>
+                        <div className="flex flex-wrap gap-1">
+                          {expenseItems.map(item => (
+                            <span key={item.id} className="px-2 py-1 text-xs bg-white dark:bg-green-800 rounded-full border border-green-200 dark:border-green-700">
+                              {item.name || text.expenseNamePlaceholder}: {item.amount || '0'} {getCurrentCurrency().symbol}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {savingsItems.length > 0 && (
+                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <p className="text-sm font-semibold text-blue-700 dark:text-blue-400 mb-2">{text.savings} ({text.sumSavings}: {formatCurrency(savingsItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol})</p>
+                        <div className="flex flex-wrap gap-1">
+                          {savingsItems.map(item => (
+                            <span key={item.id} className="px-2 py-1 text-xs bg-white dark:bg-blue-800 rounded-full border border-blue-200 dark:border-blue-700">
+                              {item.name || text.savingNamePlaceholder}: {item.amount || '0'} {getCurrentCurrency().symbol}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {investmentItems.length > 0 && (
+                      <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                        <p className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-2">{text.investment} ({text.sumInvestment}: {formatCurrency(investmentItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol})</p>
+                        <div className="flex flex-wrap gap-1">
+                          {investmentItems.map(item => (
+                            <span key={item.id} className="px-2 py-1 text-xs bg-white dark:bg-amber-800 rounded-full border border-amber-200 dark:border-amber-700">
+                              {item.name || text.investmentNamePlaceholder}: {item.amount || '0'} {getCurrentCurrency().symbol}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {goals.length > 0 && (
+                      <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                        <p className="text-sm font-semibold text-purple-700 dark:text-purple-400 mb-2">{text.goalsTitle}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {goals.map(goal => (
+                            <span key={goal.id} className="px-2 py-1 text-xs bg-white dark:bg-purple-800 rounded-full border border-purple-200 dark:border-purple-700">
+                              {goal.goal || text.goalNamePlaceholder}: {goal.amount || '0'} {getCurrentCurrency().symbol}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {includeCharity && selectedCharityTypes.length > 0 && (
+                      <div className="p-3 bg-rose-50 dark:bg-rose-900/20 rounded-lg">
+                        <p className="text-sm font-semibold text-rose-700 dark:text-rose-400 mb-2">{text.charityTypes}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {selectedCharityTypes.map(type => (
+                            <span key={type} className="px-2 py-1 text-xs bg-white dark:bg-rose-800 rounded-full border border-rose-200 dark:border-rose-700">
+                              {type === 'sadaqah' ? text.charitySadaqah :
+                               type === 'zakat' ? text.charityZakat :
+                               type === 'sacrifice' ? text.charitySacrifice :
+                               type === 'expiation' ? text.charityExpiation :
+                               text.charityOther}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Salary Input Card */}
         <Card className="border-emerald-200 dark:border-emerald-800">
@@ -1041,126 +1278,45 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                   <span>{isArabic ? '0% (الحد الأدنى)' : '0% (Min)'}</span>
                   <span>{isArabic ? '20% (الحد الأقصى)' : '20% (Max)'}</span>
                 </div>
+                <div className="space-y-2 pt-2">
+                  <Label className="font-medium">{text.charityTypes}</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {CHARITY_TYPE_OPTIONS.map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => {
+                          if (selectedCharityTypes.includes(type)) {
+                            setSelectedCharityTypes(selectedCharityTypes.filter(t => t !== type));
+                          } else {
+                            setSelectedCharityTypes([...selectedCharityTypes, type]);
+                          }
+                        }}
+                        className={`px-3 py-2 text-sm rounded-xl border transition-all ${
+                          selectedCharityTypes.includes(type)
+                            ? 'bg-rose-600 text-white border-rose-600'
+                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-rose-300'
+                        }`}
+                      >
+                        {type === 'sadaqah' ? text.charitySadaqah :
+                         type === 'zakat' ? text.charityZakat :
+                         type === 'sacrifice' ? text.charitySacrifice :
+                         type === 'expiation' ? text.charityExpiation :
+                         text.charityOther}
+                      </button>
+                    ))}
+                  </div>
+                  {selectedCharityTypes.length > 0 && (
+                    <p className="text-sm text-muted-foreground">{text.selectedCharities}: {selectedCharityTypes.length}</p>
+                  )}
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Results Section */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Chart - Improved */}
-          <Card className="border-emerald-200 dark:border-emerald-800">
-            <CardHeader className="bg-emerald-50 dark:bg-emerald-900/30 rounded-t-lg flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                <PieChart className="w-6 h-6" />
-                {text.chart}
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="show-chart-toggle"
-                  checked={showChart}
-                  onCheckedChange={setShowChart}
-                />
-                <Label htmlFor="show-chart-toggle" className="text-sm cursor-pointer">
-                  {showChart ? text.hideChart : text.showChart}
-                </Label>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {!showChart ? (
-                <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-                  <div className="text-center space-y-2">
-                    <PieChart className="w-16 h-16 mx-auto opacity-50" />
-                    <p>{isArabic ? 'فعّل التوزيع البياني لرؤية التفاصيل' : 'Enable chart to view details'}</p>
-                    <Button onClick={() => setShowChart(true)} variant="outline" size="sm">
-                      {text.showChart}
-                    </Button>
-                  </div>
-                </div>
-              ) : totalIncome > 0 ? (
-                <div className="space-y-4">
-                  <div className="h-[280px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={getChartData()}
-                          cx="50%"
-                          cy="45%"
-                          innerRadius={50}
-                          outerRadius={90}
-                          paddingAngle={3}
-                          dataKey="value"
-                          label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
-                          labelLine={true}
-                        >
-                          {getChartData().map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} stroke="#fff" strokeWidth={2} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          formatter={(value: number) => [
-                            `${formatCurrency(value)} ${getCurrentCurrency().symbol}`,
-                            ''
-                          ]}
-                          contentStyle={{
-                            direction: 'rtl',
-                            fontSize: '14px',
-                            padding: '10px',
-                            borderRadius: '8px',
-                            border: '1px solid #e5e7eb',
-                            backgroundColor: 'white'
-                          }}
-                        />
-                        <Legend
-                          layout="horizontal"
-                          verticalAlign="bottom"
-                          align="center"
-                          iconType="circle"
-                          iconSize={10}
-                          wrapperStyle={{ fontSize: '13px', paddingTop: '10px' }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  {/* Bar Chart for amounts */}
-                  <div className="h-[120px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={getChartData()} layout="vertical">
-                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                        <XAxis type="number" hide />
-                        <YAxis
-                          type="category"
-                          dataKey="name"
-                          tick={{ fontSize: 12 }}
-                          width={80}
-                          tickLine={false}
-                        />
-                        <Tooltip
-                          formatter={(value: number) => `${formatCurrency(value)} ${getCurrentCurrency().symbol}`}
-                          contentStyle={{ direction: 'rtl' }}
-                        />
-                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                          {getChartData().map((entry, index) => (
-                            <Cell key={`bar-${index}`} fill={entry.color} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              ) : (
-                <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-                  <div className="text-center space-y-2">
-                    <PieChart className="w-16 h-16 mx-auto opacity-50" />
-                    <p>{text.emptyChart}</p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Salary Details Cards */}
-          <Card className="border-emerald-200 dark:border-emerald-800">
+        {/* Salary Details Cards */}
+        <Card className="border-emerald-200 dark:border-emerald-800">
             <CardHeader className="bg-emerald-50 dark:bg-emerald-900/30 rounded-t-lg">
               <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                 <Wallet className="w-6 h-6" />
@@ -1217,24 +1373,34 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                         {expenseItems.map((item) => (
                           <div key={item.id} className="flex gap-2 items-center">
                             <Input
-                              placeholder="اسم المصروف"
+                              placeholder={text.expenseNamePlaceholder}
                               value={item.name}
                               onChange={(e) => updateExpenseItem(item.id, 'name', e.target.value)}
                               className="flex-1 h-8 text-sm"
                             />
-                            <Input
-                              placeholder="المبلغ"
-                              type="text"
-                              value={item.amount}
-                              onChange={(e) => updateExpenseItem(item.id, 'amount', e.target.value)}
-                              className="w-24 h-8 text-sm"
-                              dir="ltr"
-                            />
+                            <div className="relative">
+                              <Input
+                                placeholder={text.amountPlaceholder}
+                                type="text"
+                                value={item.amount}
+                                onChange={(e) => updateExpenseItem(item.id, 'amount', e.target.value)}
+                                className="w-32 h-8 text-sm pe-10"
+                                dir="ltr"
+                              />
+                              <span className={`absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground ${isArabic ? 'left-3' : 'right-3'}`}>
+                                {getCurrentCurrency().symbol}
+                              </span>
+                            </div>
                             <Button variant="ghost" size="icon" onClick={() => removeExpenseItem(item.id)} className="h-8 w-8 text-red-500 hover:text-red-600">
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
                         ))}
+                        <div className="flex justify-end pt-2 border-t border-green-200 dark:border-green-700">
+                          <span className="text-sm font-semibold text-green-700 dark:text-green-400">
+                            {text.sumExpenses}: {formatCurrency(expenseItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1280,24 +1446,34 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                         {savingsItems.map((item) => (
                           <div key={item.id} className="flex gap-2 items-center">
                             <Input
-                              placeholder="اسم المدخرة"
+                              placeholder={text.savingNamePlaceholder}
                               value={item.name}
                               onChange={(e) => updateSavingsItem(item.id, 'name', e.target.value)}
                               className="flex-1 h-8 text-sm"
                             />
-                            <Input
-                              placeholder="المبلغ"
-                              type="text"
-                              value={item.amount}
-                              onChange={(e) => updateSavingsItem(item.id, 'amount', e.target.value)}
-                              className="w-24 h-8 text-sm"
-                              dir="ltr"
-                            />
+                            <div className="relative">
+                              <Input
+                                placeholder={text.amountPlaceholder}
+                                type="text"
+                                value={item.amount}
+                                onChange={(e) => updateSavingsItem(item.id, 'amount', e.target.value)}
+                                className="w-32 h-8 text-sm pe-10"
+                                dir="ltr"
+                              />
+                              <span className={`absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground ${isArabic ? 'left-3' : 'right-3'}`}>
+                                {getCurrentCurrency().symbol}
+                              </span>
+                            </div>
                             <Button variant="ghost" size="icon" onClick={() => removeSavingsItem(item.id)} className="h-8 w-8 text-red-500 hover:text-red-600">
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
                         ))}
+                        <div className="flex justify-end pt-2 border-t border-blue-200 dark:border-blue-700">
+                          <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                            {text.sumSavings}: {formatCurrency(savingsItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1343,24 +1519,34 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                         {investmentItems.map((item) => (
                           <div key={item.id} className="flex gap-2 items-center">
                             <Input
-                              placeholder="اسم الاستثمار"
+                              placeholder={text.investmentNamePlaceholder}
                               value={item.name}
                               onChange={(e) => updateInvestmentItem(item.id, 'name', e.target.value)}
                               className="flex-1 h-8 text-sm"
                             />
-                            <Input
-                              placeholder="المبلغ"
-                              type="text"
-                              value={item.amount}
-                              onChange={(e) => updateInvestmentItem(item.id, 'amount', e.target.value)}
-                              className="w-24 h-8 text-sm"
-                              dir="ltr"
-                            />
+                            <div className="relative">
+                              <Input
+                                placeholder={text.amountPlaceholder}
+                                type="text"
+                                value={item.amount}
+                                onChange={(e) => updateInvestmentItem(item.id, 'amount', e.target.value)}
+                                className="w-32 h-8 text-sm pe-10"
+                                dir="ltr"
+                              />
+                              <span className={`absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground ${isArabic ? 'left-3' : 'right-3'}`}>
+                                {getCurrentCurrency().symbol}
+                              </span>
+                            </div>
                             <Button variant="ghost" size="icon" onClick={() => removeInvestmentItem(item.id)} className="h-8 w-8 text-red-500 hover:text-red-600">
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
                         ))}
+                        <div className="flex justify-end pt-2 border-t border-amber-200 dark:border-amber-700">
+                          <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                            {text.sumInvestment}: {formatCurrency(investmentItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1383,8 +1569,7 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                 </div>
               )}
             </CardContent>
-          </Card>
-        </div>
+        </Card>
 
         {/* Goals Section */}
         <Card className="border-purple-200 dark:border-purple-800">
@@ -1411,7 +1596,7 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                           <Target className="w-3 h-3" /> {text.goal}
                         </Label>
                         <Input
-                          placeholder="مثال: شراء سيارة"
+                          placeholder={text.goalNamePlaceholder}
                           value={goal.goal}
                           onChange={(e) => updateGoal(goal.id, 'goal', e.target.value)}
                           className="h-10"
@@ -1427,10 +1612,10 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                             type="text"
                             value={goal.amount}
                             onChange={(e) => updateGoal(goal.id, 'amount', e.target.value)}
-                            className="h-10 ltr"
+                            className="h-10 ltr pe-12"
                             dir="ltr"
                           />
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                          <span className={`absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground ${isArabic ? 'left-4' : 'right-4'}`}>
                             {getCurrentCurrency().symbol}
                           </span>
                         </div>
@@ -1440,7 +1625,7 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                           <Calendar className="w-3 h-3" /> {text.duration}
                         </Label>
                         <Input
-                          placeholder="مثال: 6 أشهر"
+                          placeholder={text.goalDurationPlaceholder}
                           value={goal.duration}
                           onChange={(e) => updateGoal(goal.id, 'duration', e.target.value)}
                           className="h-10"
@@ -1452,7 +1637,7 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                         </Label>
                         <div className="flex gap-2">
                           <Input
-                            placeholder="ملاحظات"
+                            placeholder={text.notesPlaceholder}
                             value={goal.notes}
                             onChange={(e) => updateGoal(goal.id, 'notes', e.target.value)}
                             className="h-10 flex-1"
@@ -1557,6 +1742,6 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
           <p>{text.footer}</p>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
