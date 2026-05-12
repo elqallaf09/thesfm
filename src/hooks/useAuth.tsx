@@ -43,13 +43,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     loading,
     signIn: async (username: string, password: string) => {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: usernameToEmail(username),
+      const loginEmail = username.includes('@') ? username.trim().toLowerCase() : usernameToEmail(username);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
         password,
       });
 
-      if (error?.message === 'Email not confirmed') {
-        return { error: new Error('الحساب جاهز الآن. أعد الضغط على تسجيل الدخول.') };
+      if (!error) {
+        setSession(data.session);
+        setUser(data.user ?? null);
+        return { error: null };
+      }
+
+      if (error.message === 'Email not confirmed') {
+        return { error: new Error('الحساب غير مؤكد. أعد إنشاء الحساب أو استخدم حساباً آخر.') };
       }
 
       return { error: error as Error | null };
