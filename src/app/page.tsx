@@ -9,14 +9,28 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Calculator, Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Sparkles, Globe } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { Calculator, Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Sparkles, Globe, Plus, Trash2, Target, Calendar, Banknote, TrendingUp, PiggyBank, Goal, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface SalaryBreakdown {
   expenses: number;
   savings: number;
   investment: number;
   charity: number;
+}
+
+interface ItemEntry {
+  id: string;
+  name: string;
+  amount: string;
+}
+
+interface GoalEntry {
+  id: string;
+  goal: string;
+  amount: string;
+  duration: string;
+  notes: string;
 }
 
 interface Advice {
@@ -136,6 +150,43 @@ const CURRENCIES: Currency[] = [
   { code: 'AFN', name: 'Afghan Afghani', symbol: '؋', nameAr: 'أفغاني أفغاني' },
 ];
 
+const INVESTMENT_EXAMPLES = [
+  { name: 'صناديق الاستثمار', icon: '📊' },
+  { name: 'الأسهم', icon: '📈' },
+  { name: 'العقارات', icon: '🏠' },
+  { name: 'الذهب', icon: '🥇' },
+  { name: 'السندات', icon: '📜' },
+  { name: 'التأمين التكافلي', icon: '🛡️' },
+  { name: 'المتاجرة', icon: '🛒' },
+  { name: 'المشاريع الصغيرة', icon: '🏪' },
+  { name: 'التعليم والدورات', icon: '📚' },
+  { name: 'التقنيات الحديثة', icon: '💻' },
+];
+
+const SAVINGS_EXAMPLES = [
+  { name: 'صندوق الطوارئ', icon: '🚨' },
+  { name: 'حساب التوفير', icon: '🏦' },
+  { name: 'شهادات الإدخار', icon: '📋' },
+  { name: 'إيجار شقة', icon: '🏢' },
+  { name: 'سيارة جديدة', icon: '🚗' },
+  { name: 'جهاز كهربائي', icon: '📺' },
+  { name: 'رحلة سياحية', icon: '✈️' },
+  { name: 'جهاز جوال', icon: '📱' },
+  { name: 'تجديد أثاث', icon: '🪑' },
+  { name: 'زواج أو خطوبة', icon: '💍' },
+];
+
+const EXPENSES_EXAMPLES = [
+  { name: 'الإيجار', icon: '🏠' },
+  { name: 'الطعام والشراب', icon: '🍔' },
+  { name: 'المواصلات', icon: '🚌' },
+  { name: 'الكهرباء والماء', icon: '💡' },
+  { name: 'الاتصالات', icon: '📱' },
+  { name: 'الملابس', icon: '👔' },
+  { name: 'الرعاية الصحية', icon: '🏥' },
+  { name: 'الملاهي', icon: '🎮' },
+];
+
 const ARABIC_ADVICE: Advice[] = [
   { category: 'المصروفات', tip: 'حاول الالتزام بـ 70% من راتبك للمصروفات الأساسية. قلل من المصاريف غير الضرورية', icon: '💰' },
   { category: 'المدخرات', tip: 'لا تلمس مدخراتك في الطوارئ. اجعلها في حساب منفصل يصعب الوصول إليه', icon: '🏦' },
@@ -152,20 +203,35 @@ export default function SalaryManager() {
   const [salaryNumber, setSalaryNumber] = useState<number>(0);
   const [charityPercentage, setCharityPercentage] = useState<number>(0);
   const [includeCharity, setIncludeCharity] = useState<boolean>(false);
-  const [userNotes, setUserNotes] = useState<string>('');
   const [showAdvice, setShowAdvice] = useState<boolean>(false);
   const [selectedCurrency, setSelectedCurrency] = useState<string>('KWD');
+  const [randomAdvice, setRandomAdvice] = useState<Advice | null>(null);
+
+  // Items states
+  const [expenseItems, setExpenseItems] = useState<ItemEntry[]>([]);
+  const [savingsItems, setSavingsItems] = useState<ItemEntry[]>([]);
+  const [investmentItems, setInvestmentItems] = useState<ItemEntry[]>([]);
+
+  // Expanded states
+  const [expensesExpanded, setExpensesExpanded] = useState<boolean>(false);
+  const [savingsExpanded, setSavingsExpanded] = useState<boolean>(false);
+  const [investmentExpanded, setInvestmentExpanded] = useState<boolean>(false);
+
+  // Goals state
+  const [goals, setGoals] = useState<GoalEntry[]>([]);
+
   const [breakdown, setBreakdown] = useState<SalaryBreakdown>({
     expenses: 0,
     savings: 0,
     investment: 0,
     charity: 0,
   });
-  const [randomAdvice, setRandomAdvice] = useState<Advice | null>(null);
 
   const getCurrentCurrency = () => {
     return CURRENCIES.find(c => c.code === selectedCurrency) || CURRENCIES[0];
   };
+
+  const generateId = () => Math.random().toString(36).substr(2, 9);
 
   const calculateBreakdown = useCallback(() => {
     const baseAmount = salaryNumber;
@@ -210,7 +276,6 @@ export default function SalaryManager() {
   };
 
   const formatCurrency = (amount: number) => {
-    const currency = getCurrentCurrency();
     const decimals = ['JPY', 'KRW', 'VND', 'IDR'].includes(selectedCurrency) ? 0 : 2;
     return new Intl.NumberFormat('ar-SA', {
       minimumFractionDigits: decimals,
@@ -239,13 +304,80 @@ export default function SalaryManager() {
     setSalaryNumber(0);
     setCharityPercentage(0);
     setIncludeCharity(false);
-    setUserNotes('');
     setShowAdvice(false);
     setRandomAdvice(null);
+    setExpenseItems([]);
+    setSavingsItems([]);
+    setInvestmentItems([]);
+    setGoals([]);
+    setExpensesExpanded(false);
+    setSavingsExpanded(false);
+    setInvestmentExpanded(false);
   };
 
   const handleCurrencyChange = (value: string) => {
     setSelectedCurrency(value);
+  };
+
+  // Item management functions
+  const addExpenseItem = () => {
+    setExpenseItems([...expenseItems, { id: generateId(), name: '', amount: '' }]);
+    setExpensesExpanded(true);
+  };
+
+  const addSavingsItem = () => {
+    setSavingsItems([...savingsItems, { id: generateId(), name: '', amount: '' }]);
+    setSavingsExpanded(true);
+  };
+
+  const addInvestmentItem = () => {
+    setInvestmentItems([...investmentItems, { id: generateId(), name: '', amount: '' }]);
+    setInvestmentExpanded(true);
+  };
+
+  const updateExpenseItem = (id: string, field: 'name' | 'amount', value: string) => {
+    setExpenseItems(expenseItems.map(item =>
+      item.id === id ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const updateSavingsItem = (id: string, field: 'name' | 'amount', value: string) => {
+    setSavingsItems(savingsItems.map(item =>
+      item.id === id ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const updateInvestmentItem = (id: string, field: 'name' | 'amount', value: string) => {
+    setInvestmentItems(investmentItems.map(item =>
+      item.id === id ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const removeExpenseItem = (id: string) => {
+    setExpenseItems(expenseItems.filter(item => item.id !== id));
+  };
+
+  const removeSavingsItem = (id: string) => {
+    setSavingsItems(savingsItems.filter(item => item.id !== id));
+  };
+
+  const removeInvestmentItem = (id: string) => {
+    setInvestmentItems(investmentItems.filter(item => item.id !== id));
+  };
+
+  // Goal management functions
+  const addGoal = () => {
+    setGoals([...goals, { id: generateId(), goal: '', amount: '', duration: '', notes: '' }]);
+  };
+
+  const updateGoal = (id: string, field: keyof GoalEntry, value: string) => {
+    setGoals(goals.map(goal =>
+      goal.id === id ? { ...goal, [field]: value } : goal
+    ));
+  };
+
+  const removeGoal = (id: string) => {
+    setGoals(goals.filter(goal => goal.id !== id));
   };
 
   const getAIAdvice = (): string => {
@@ -390,8 +522,8 @@ export default function SalaryManager() {
         </Card>
 
         {/* Results Section */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Chart */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Chart - Improved */}
           <Card className="border-emerald-200 dark:border-emerald-800">
             <CardHeader className="bg-emerald-50 dark:bg-emerald-900/30 rounded-t-lg">
               <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
@@ -402,45 +534,77 @@ export default function SalaryManager() {
             <CardContent className="pt-6">
               {salaryNumber > 0 ? (
                 <div className="space-y-4">
-                  <div className="h-[250px]">
+                  <div className="h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={getChartData()}
                           cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
-                          paddingAngle={2}
+                          cy="45%"
+                          innerRadius={50}
+                          outerRadius={90}
+                          paddingAngle={3}
                           dataKey="value"
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
                           labelLine={true}
                         >
                           {getChartData().map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
+                            <Cell key={`cell-${index}`} fill={entry.color} stroke="#fff" strokeWidth={2} />
                           ))}
                         </Pie>
                         <Tooltip
-                          formatter={(value: number) => `${formatCurrency(value)} ${getCurrentCurrency().symbol}`}
-                          contentStyle={{ direction: 'rtl' }}
+                          formatter={(value: number) => [
+                            `${formatCurrency(value)} ${getCurrentCurrency().symbol}`,
+                            ''
+                          ]}
+                          contentStyle={{
+                            direction: 'rtl',
+                            fontSize: '14px',
+                            padding: '10px',
+                            borderRadius: '8px',
+                            border: '1px solid #e5e7eb',
+                            backgroundColor: 'white'
+                          }}
+                        />
+                        <Legend
+                          layout="horizontal"
+                          verticalAlign="bottom"
+                          align="center"
+                          iconType="circle"
+                          iconSize={10}
+                          wrapperStyle={{ fontSize: '13px', paddingTop: '10px' }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="flex flex-wrap justify-center gap-3">
-                    {getChartData().map((item, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <div
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: item.color }}
+                  {/* Bar Chart for amounts */}
+                  <div className="h-[120px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={getChartData()} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                        <XAxis type="number" hide />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          tick={{ fontSize: 12 }}
+                          width={80}
+                          tickLine={false}
                         />
-                        <span className="text-sm font-medium">{item.name}</span>
-                      </div>
-                    ))}
+                        <Tooltip
+                          formatter={(value: number) => `${formatCurrency(value)} ${getCurrentCurrency().symbol}`}
+                          contentStyle={{ direction: 'rtl' }}
+                        />
+                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                          {getChartData().map((entry, index) => (
+                            <Cell key={`bar-${index}`} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
               ) : (
-                <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+                <div className="h-[400px] flex items-center justify-center text-muted-foreground">
                   <div className="text-center space-y-2">
                     <PieChart className="w-16 h-16 mx-auto opacity-50" />
                     <p>أدخل الراتب لرؤية التوزيع</p>
@@ -450,83 +614,312 @@ export default function SalaryManager() {
             </CardContent>
           </Card>
 
-          {/* Breakdown Cards */}
+          {/* Salary Details Cards */}
           <Card className="border-emerald-200 dark:border-emerald-800">
             <CardHeader className="bg-emerald-50 dark:bg-emerald-900/30 rounded-t-lg">
               <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                 <Wallet className="w-6 h-6" />
-                تفاصيل التقسيم
+                تفاصيل الراتب
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
+              {/* Total Salary */}
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl border-2 border-emerald-300 dark:border-emerald-700">
+                <div className="text-center">
+                  <span className="text-sm text-emerald-600 dark:text-emerald-400">إجمالي الراتب</span>
+                  <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
+                    {formatCurrency(salaryNumber)} {getCurrentCurrency().symbol}
+                  </p>
+                </div>
+              </div>
+
               {/* Expenses */}
               <div className="p-4 bg-green-50 dark:bg-green-900/30 rounded-xl border border-green-200 dark:border-green-800">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-2 cursor-pointer" onClick={() => setExpensesExpanded(!expensesExpanded)}>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-green-500" />
+                    <div className="w-4 h-4 rounded-full bg-green-500" />
                     <span className="font-semibold text-green-700 dark:text-green-400">المصروفات</span>
+                    <span className="text-green-600 dark:text-green-400 font-bold">70%</span>
                   </div>
-                  <span className="font-bold text-lg text-green-600 dark:text-green-400">
-                    70%
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold text-green-800 dark:text-green-300">
+                      {formatCurrency(breakdown.expenses)}
+                    </span>
+                    {expensesExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  </div>
                 </div>
-                <p className="text-2xl font-bold text-green-800 dark:text-green-300">
-                  {formatCurrency(breakdown.expenses)} {getCurrentCurrency().symbol}
-                </p>
+                <Button onClick={addExpenseItem} variant="ghost" size="sm" className="w-full mt-2 text-green-600 hover:text-green-700 hover:bg-green-100">
+                  <Plus className="w-4 h-4 ms-1" /> إضافة مصروف
+                </Button>
+                {expensesExpanded && expenseItems.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs text-muted-foreground mb-2">امثلة: الإيجار، الطعام، المواصلات...</p>
+                    {expenseItems.map((item) => (
+                      <div key={item.id} className="flex gap-2 items-center">
+                        <Input
+                          placeholder="اسم المصروف"
+                          value={item.name}
+                          onChange={(e) => updateExpenseItem(item.id, 'name', e.target.value)}
+                          className="flex-1 h-8 text-sm"
+                        />
+                        <Input
+                          placeholder="المبلغ"
+                          type="text"
+                          value={item.amount}
+                          onChange={(e) => updateExpenseItem(item.id, 'amount', e.target.value)}
+                          className="w-24 h-8 text-sm"
+                          dir="ltr"
+                        />
+                        <Button variant="ghost" size="icon" onClick={() => removeExpenseItem(item.id)} className="h-8 w-8 text-red-500 hover:text-red-600">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Savings */}
               <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-2 cursor-pointer" onClick={() => setSavingsExpanded(!savingsExpanded)}>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-blue-500" />
+                    <div className="w-4 h-4 rounded-full bg-blue-500" />
                     <span className="font-semibold text-blue-700 dark:text-blue-400">المدخرات</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-bold">20%</span>
                   </div>
-                  <span className="font-bold text-lg text-blue-600 dark:text-blue-400">
-                    20%
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold text-blue-800 dark:text-blue-300">
+                      {formatCurrency(breakdown.savings)}
+                    </span>
+                    {savingsExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  </div>
                 </div>
-                <p className="text-2xl font-bold text-blue-800 dark:text-blue-300">
-                  {formatCurrency(breakdown.savings)} {getCurrentCurrency().symbol}
-                </p>
+                <Button onClick={addSavingsItem} variant="ghost" size="sm" className="w-full mt-2 text-blue-600 hover:text-blue-700 hover:bg-blue-100">
+                  <Plus className="w-4 h-4 ms-1" /> إضافة مدخرة
+                </Button>
+                {savingsExpanded && (
+                  <div className="mt-3 space-y-3">
+                    <div className="p-3 bg-blue-100/50 dark:bg-blue-800/30 rounded-lg">
+                      <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-2">امثلة للمدخرات (بالذكاء الاصطناعي):</p>
+                      <div className="flex flex-wrap gap-1">
+                        {SAVINGS_EXAMPLES.map((ex, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setSavingsItems([...savingsItems, { id: generateId(), name: ex.name, amount: '' }])}
+                            className="px-2 py-1 text-xs bg-white dark:bg-blue-900 rounded-full border border-blue-200 dark:border-blue-700 hover:bg-blue-50"
+                          >
+                            {ex.icon} {ex.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {savingsItems.length > 0 && (
+                      <div className="space-y-2">
+                        {savingsItems.map((item) => (
+                          <div key={item.id} className="flex gap-2 items-center">
+                            <Input
+                              placeholder="اسم المدخرة"
+                              value={item.name}
+                              onChange={(e) => updateSavingsItem(item.id, 'name', e.target.value)}
+                              className="flex-1 h-8 text-sm"
+                            />
+                            <Input
+                              placeholder="المبلغ"
+                              type="text"
+                              value={item.amount}
+                              onChange={(e) => updateSavingsItem(item.id, 'amount', e.target.value)}
+                              className="w-24 h-8 text-sm"
+                              dir="ltr"
+                            />
+                            <Button variant="ghost" size="icon" onClick={() => removeSavingsItem(item.id)} className="h-8 w-8 text-red-500 hover:text-red-600">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Investment */}
               <div className="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-xl border border-amber-200 dark:border-amber-800">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-2 cursor-pointer" onClick={() => setInvestmentExpanded(!investmentExpanded)}>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-amber-500" />
+                    <div className="w-4 h-4 rounded-full bg-amber-500" />
                     <span className="font-semibold text-amber-700 dark:text-amber-400">الاستثمار</span>
+                    <span className="text-amber-600 dark:text-amber-400 font-bold">10%</span>
                   </div>
-                  <span className="font-bold text-lg text-amber-600 dark:text-amber-400">
-                    10%
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold text-amber-800 dark:text-amber-300">
+                      {formatCurrency(breakdown.investment)}
+                    </span>
+                    {investmentExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  </div>
                 </div>
-                <p className="text-2xl font-bold text-amber-800 dark:text-amber-300">
-                  {formatCurrency(breakdown.investment)} {getCurrentCurrency().symbol}
-                </p>
+                <Button onClick={addInvestmentItem} variant="ghost" size="sm" className="w-full mt-2 text-amber-600 hover:text-amber-700 hover:bg-amber-100">
+                  <Plus className="w-4 h-4 ms-1" /> إضافة استثمار
+                </Button>
+                {investmentExpanded && (
+                  <div className="mt-3 space-y-3">
+                    <div className="p-3 bg-amber-100/50 dark:bg-amber-800/30 rounded-lg">
+                      <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-2">امثلة للاستثمار (بالذكاء الاصطناعي):</p>
+                      <div className="flex flex-wrap gap-1">
+                        {INVESTMENT_EXAMPLES.map((ex, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setInvestmentItems([...investmentItems, { id: generateId(), name: ex.name, amount: '' }])}
+                            className="px-2 py-1 text-xs bg-white dark:bg-amber-900 rounded-full border border-amber-200 dark:border-amber-700 hover:bg-amber-50"
+                          >
+                            {ex.icon} {ex.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {investmentItems.length > 0 && (
+                      <div className="space-y-2">
+                        {investmentItems.map((item) => (
+                          <div key={item.id} className="flex gap-2 items-center">
+                            <Input
+                              placeholder="اسم الاستثمار"
+                              value={item.name}
+                              onChange={(e) => updateInvestmentItem(item.id, 'name', e.target.value)}
+                              className="flex-1 h-8 text-sm"
+                            />
+                            <Input
+                              placeholder="المبلغ"
+                              type="text"
+                              value={item.amount}
+                              onChange={(e) => updateInvestmentItem(item.id, 'amount', e.target.value)}
+                              className="w-24 h-8 text-sm"
+                              dir="ltr"
+                            />
+                            <Button variant="ghost" size="icon" onClick={() => removeInvestmentItem(item.id)} className="h-8 w-8 text-red-500 hover:text-red-600">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Charity */}
               {includeCharity && breakdown.charity > 0 && (
                 <div className="p-4 bg-rose-50 dark:bg-rose-900/30 rounded-xl border border-rose-200 dark:border-rose-800">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-rose-500" />
+                      <div className="w-4 h-4 rounded-full bg-rose-500" />
                       <span className="font-semibold text-rose-700 dark:text-rose-400">الصدقة</span>
+                      <span className="text-rose-600 dark:text-rose-400 font-bold">{charityPercentage}%</span>
                     </div>
-                    <span className="font-bold text-lg text-rose-600 dark:text-rose-400">
-                      {charityPercentage}%
+                    <span className="text-xl font-bold text-rose-800 dark:text-rose-300">
+                      {formatCurrency(breakdown.charity)}
                     </span>
                   </div>
-                  <p className="text-2xl font-bold text-rose-800 dark:text-rose-300">
-                    {formatCurrency(breakdown.charity)} {getCurrentCurrency().symbol}
-                  </p>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
+
+        {/* Goals Section */}
+        <Card className="border-purple-200 dark:border-purple-800">
+          <CardHeader className="bg-purple-50 dark:bg-purple-900/30 rounded-t-lg">
+            <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-400">
+              <Target className="w-6 h-6" />
+              الأهداف المالية
+            </CardTitle>
+            <CardDescription>حدد أهدافك المالية ومبالغها ومدتها</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-4">
+            <Button onClick={addGoal} variant="outline" className="w-full border-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900">
+              <Plus className="w-5 h-5 ms-2" />
+              إضافة هدف جديد
+            </Button>
+
+            {goals.length > 0 && (
+              <div className="space-y-4">
+                {goals.map((goal) => (
+                  <div key={goal.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Target className="w-3 h-3" /> الهدف
+                        </Label>
+                        <Input
+                          placeholder="مثال: شراء سيارة"
+                          value={goal.goal}
+                          onChange={(e) => updateGoal(goal.id, 'goal', e.target.value)}
+                          className="h-10"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Banknote className="w-3 h-3" /> المبلغ المطلوب
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            placeholder="0.00"
+                            type="text"
+                            value={goal.amount}
+                            onChange={(e) => updateGoal(goal.id, 'amount', e.target.value)}
+                            className="h-10 ltr"
+                            dir="ltr"
+                          />
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                            {getCurrentCurrency().symbol}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="w-3 h-3" /> المدة
+                        </Label>
+                        <Input
+                          placeholder="مثال: 6 أشهر"
+                          value={goal.duration}
+                          onChange={(e) => updateGoal(goal.id, 'duration', e.target.value)}
+                          className="h-10"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Lightbulb className="w-3 h-3" /> ملاحظات
+                        </Label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="ملاحظات"
+                            value={goal.notes}
+                            onChange={(e) => updateGoal(goal.id, 'notes', e.target.value)}
+                            className="h-10 flex-1"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeGoal(goal.id)}
+                            className="h-10 w-10 text-red-500 hover:text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {goals.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Goal className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>لم تضف أي أهداف بعد</p>
+                <p className="text-sm">اضغط على الزر أعلاه لإضافة هدف جديد</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* AI Advice Section */}
         <Card className="border-purple-200 dark:border-purple-800">
@@ -566,26 +959,6 @@ export default function SalaryManager() {
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Notes Section */}
-        <Card className="border-slate-200 dark:border-slate-700">
-          <CardHeader className="bg-slate-50 dark:bg-slate-800/50 rounded-t-lg">
-            <CardTitle className="flex items-center gap-2 text-slate-700 dark:text-slate-400">
-              <Lightbulb className="w-6 h-6" />
-              ملاحظاتك الشخصية
-            </CardTitle>
-            <CardDescription>أضف ملاحظاتك أو أهدافك المالية</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <Textarea
-              value={userNotes}
-              onChange={(e) => setUserNotes(e.target.value)}
-              placeholder="مثال: أريد توفير مبلغ لشراء سيارة خلال 6 أشهر..."
-              className="min-h-[120px] text-base"
-              dir="rtl"
-            />
           </CardContent>
         </Card>
 
