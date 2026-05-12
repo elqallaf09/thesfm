@@ -52,7 +52,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: oklch(0.488 0.15 252);  /* #1E3A8A blue-900 */
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -86,7 +86,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
+  --primary: oklch(0.55 0.17 252);  /* #3B82F6 blue-500 */
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -174,21 +174,21 @@
     print-color-adjust: exact;
   }
 
-  .bg-emerald-950,
-  .bg-emerald-900\/30,
+  .bg-blue-950,
+  .bg-blue-900\/30,
   .bg-slate-900\/5,
   .bg-white\/70,
   .dark\:bg-slate-950\/50 {
     background-color: white !important;
   }
 
-  .text-emerald-100,
-  .text-emerald-50,
-  .dark\:text-emerald-300 {
-    color: #022c22 !important;
+  .text-blue-100,
+  .text-blue-50,
+  .dark\:text-blue-300 {
+    color: #1e3a8a !important;
   }
 
-  .border-emerald-900\/10,
+  .border-blue-900\/10,
   .dark\:border-white\/10 {
     border-color: #e5e7eb !important;
   }
