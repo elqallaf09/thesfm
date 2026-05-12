@@ -202,13 +202,25 @@ export default function SalaryManager() {
   const [language, setLanguage] = useState<'ar' | 'en'>('ar');
   const isArabic = language === 'ar';
   const text = {
-    title: isArabic ? 'مدير الراتب الذكي' : 'Smart Salary Manager',
-    subtitle: isArabic ? 'قسّم راتبك بذكاء: 70% مصروفات | 20% مدخرات | 10% استثمار' : 'Split your salary smartly: 70% expenses | 20% savings | 10% investment',
+    title: isArabic ? 'المدير المالي الذكي' : 'Smart Financial Manager',
+    subtitle: isArabic ? 'اختر طريقة توزيع دخلك أو أدخل خطتك يدوياً ليتم تحليلها بذكاء' : 'Choose an income split or enter your own plan for smart analysis',
     langLabel: isArabic ? 'اللغة' : 'Language',
-    salaryTitle: isArabic ? 'أدخل راتبك الشهري' : 'Enter your monthly salary',
-    salaryDesc: isArabic ? 'سيتم تقسيم الراتب تلقائياً حسب النسب المحددة' : 'Your salary will be split automatically by the selected percentages',
+    salaryTitle: isArabic ? 'أدخل دخلك الشهري' : 'Enter your monthly income',
+    salaryDesc: isArabic ? 'أدخل الراتب والمدخول الآخر ثم اختر طريقة التوزيع المناسبة' : 'Enter salary and other income, then choose the best split method',
     currency: isArabic ? 'اختر العملة' : 'Choose currency',
     monthlySalary: isArabic ? 'الراتب الشهري' : 'Monthly salary',
+    otherIncome: isArabic ? 'مدخول آخر' : 'Other income',
+    totalIncome: isArabic ? 'إجمالي الدخل' : 'Total income',
+    distributionMethod: isArabic ? 'طريقة توزيع الدخل' : 'Income distribution method',
+    plan70: isArabic ? '70% مصروفات | 20% مدخرات | 10% استثمار' : '70% expenses | 20% savings | 10% investment',
+    plan60Savings: isArabic ? '60% مصروفات | 30% مدخرات | 10% استثمار' : '60% expenses | 30% savings | 10% investment',
+    plan60Invest: isArabic ? '60% مصروفات | 20% مدخرات | 20% استثمار' : '60% expenses | 20% savings | 20% investment',
+    manualPlan: isArabic ? 'إدخال يدوي مع تحليل ذكي' : 'Manual entry with smart analysis',
+    manualDesc: isArabic ? 'أدخل الراتب + المدخول الآخر ثم عبئ المصروفات والمدخرات والاستثمار يدوياً' : 'Enter salary + other income, then manually fill expenses, savings, and investment',
+    manualExpenses: isArabic ? 'مصروفات يدوية' : 'Manual expenses',
+    manualSavings: isArabic ? 'مدخرات يدوية' : 'Manual savings',
+    manualInvestment: isArabic ? 'استثمار يدوي' : 'Manual investment',
+    aiBestChoice: isArabic ? 'تحليل الذكاء الاصطناعي' : 'AI analysis',
     placeholder: isArabic ? 'مثال: 5000' : 'Example: 5000',
     charityTitle: isArabic ? 'التبرع والصدقة' : 'Donation and charity',
     charityDesc: isArabic ? 'خصص نسبة من راتبك للتبرع والصدقة' : 'Allocate a percentage of your salary for donation and charity',
@@ -241,10 +253,16 @@ export default function SalaryManager() {
     randomAdvice: isArabic ? 'احصل على نصيحة عشوائية' : 'Get a random tip',
     print: isArabic ? 'طباعة / تصدير' : 'Print / Export',
     reset: isArabic ? 'إعادة تعيين' : 'Reset',
-    footer: isArabic ? 'مدير الراتب الذكي - ساعدك على تحقيق أهدافك المالية' : 'Smart Salary Manager - helping you reach your financial goals',
+    footer: isArabic ? 'المدير المالي الذكي - يساعدك على اتخاذ قرارات مالية أوضح' : 'Smart Financial Manager - helping you make clearer financial decisions',
   };
   const [salary, setSalary] = useState<string>('');
   const [salaryNumber, setSalaryNumber] = useState<number>(0);
+  const [otherIncome, setOtherIncome] = useState<string>('');
+  const [otherIncomeNumber, setOtherIncomeNumber] = useState<number>(0);
+  const [distributionMethod, setDistributionMethod] = useState<'70-20-10' | '60-30-10' | '60-20-20' | 'manual'>('70-20-10');
+  const [manualExpenses, setManualExpenses] = useState<string>('');
+  const [manualSavings, setManualSavings] = useState<string>('');
+  const [manualInvestment, setManualInvestment] = useState<string>('');
   const [charityPercentage, setCharityPercentage] = useState<number>(0);
   const [includeCharity, setIncludeCharity] = useState<boolean>(false);
   const [showAdvice, setShowAdvice] = useState<boolean>(false);
@@ -276,18 +294,35 @@ export default function SalaryManager() {
   };
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
+  const totalIncome = salaryNumber + otherIncomeNumber;
 
   const calculateBreakdown = useCallback(() => {
-    const baseAmount = salaryNumber;
+    const baseAmount = salaryNumber + otherIncomeNumber;
     if (baseAmount <= 0) {
       setBreakdown({ expenses: 0, savings: 0, investment: 0, charity: 0 });
       return;
     }
 
-    let expenses = baseAmount * 0.7;
-    let savings = baseAmount * 0.2;
-    let investment = baseAmount * 0.1;
+    let expenses = 0;
+    let savings = 0;
+    let investment = 0;
     let charity = 0;
+
+    if (distributionMethod === 'manual') {
+      expenses = parseFloat(manualExpenses.replace(/[^\d.]/g, '')) || 0;
+      savings = parseFloat(manualSavings.replace(/[^\d.]/g, '')) || 0;
+      investment = parseFloat(manualInvestment.replace(/[^\d.]/g, '')) || 0;
+    } else {
+      const ratios = {
+        '70-20-10': { expenses: 0.7, savings: 0.2, investment: 0.1 },
+        '60-30-10': { expenses: 0.6, savings: 0.3, investment: 0.1 },
+        '60-20-20': { expenses: 0.6, savings: 0.2, investment: 0.2 },
+      }[distributionMethod];
+
+      expenses = baseAmount * ratios.expenses;
+      savings = baseAmount * ratios.savings;
+      investment = baseAmount * ratios.investment;
+    }
 
     if (includeCharity && charityPercentage > 0) {
       charity = baseAmount * (charityPercentage / 100);
@@ -302,7 +337,7 @@ export default function SalaryManager() {
       investment: Math.round(investment * 100) / 100,
       charity: Math.round(charity * 100) / 100,
     });
-  }, [salaryNumber, includeCharity, charityPercentage]);
+  }, [salaryNumber, otherIncomeNumber, includeCharity, charityPercentage, distributionMethod, manualExpenses, manualSavings, manualInvestment]);
 
   useEffect(() => {
     calculateBreakdown();
@@ -312,6 +347,51 @@ export default function SalaryManager() {
     const num = parseFloat(salary.replace(/[^\d.]/g, ''));
     setSalaryNumber(isNaN(num) ? 0 : num);
   }, [salary]);
+
+  useEffect(() => {
+    const num = parseFloat(otherIncome.replace(/[^\d.]/g, ''));
+    setOtherIncomeNumber(isNaN(num) ? 0 : num);
+  }, [otherIncome]);
+
+  const getManualAnalysis = () => {
+    if (distributionMethod !== 'manual') return '';
+    if (totalIncome <= 0) return isArabic ? 'أدخل الراتب والمدخول الآخر لبدء التحليل.' : 'Enter salary and other income to start analysis.';
+
+    const expenses = parseFloat(manualExpenses.replace(/[^\d.]/g, '')) || 0;
+    const savings = parseFloat(manualSavings.replace(/[^\d.]/g, '')) || 0;
+    const investment = parseFloat(manualInvestment.replace(/[^\d.]/g, '')) || 0;
+    const plannedTotal = expenses + savings + investment;
+
+    if (plannedTotal === 0) return isArabic ? 'املأ المصروفات والمدخرات والاستثمار ليتم حساب الأفضل تلقائياً.' : 'Fill expenses, savings, and investment to calculate the best choice automatically.';
+
+    const expenseRatio = expenses / totalIncome;
+    const savingRatio = savings / totalIncome;
+    const investmentRatio = investment / totalIncome;
+    const difference = totalIncome - plannedTotal;
+
+    const plans = [
+      { name: text.plan70, expenses: 0.7, savings: 0.2, investment: 0.1 },
+      { name: text.plan60Savings, expenses: 0.6, savings: 0.3, investment: 0.1 },
+      { name: text.plan60Invest, expenses: 0.6, savings: 0.2, investment: 0.2 },
+    ];
+
+    const bestPlan = plans
+      .map((plan) => ({
+        ...plan,
+        score: Math.abs(expenseRatio - plan.expenses) + Math.abs(savingRatio - plan.savings) + Math.abs(investmentRatio - plan.investment),
+      }))
+      .sort((a, b) => a.score - b.score)[0];
+
+    const balanceNote = difference > 0
+      ? (isArabic ? `يوجد مبلغ غير موزع قدره ${formatCurrency(difference)} ${getCurrentCurrency().symbol}.` : `There is an unallocated amount of ${formatCurrency(difference)} ${getCurrentCurrency().symbol}.`)
+      : difference < 0
+        ? (isArabic ? `الخطة تتجاوز دخلك بمبلغ ${formatCurrency(Math.abs(difference))} ${getCurrentCurrency().symbol}.` : `The plan exceeds your income by ${formatCurrency(Math.abs(difference))} ${getCurrentCurrency().symbol}.`)
+        : (isArabic ? 'تم توزيع كامل الدخل بشكل متوازن.' : 'Your full income has been allocated.');
+
+    return isArabic
+      ? `الأقرب لخطة إدخالك هو: ${bestPlan.name}. ${balanceNote} الأفضل آلياً هو تقليل المصروفات إذا تجاوزت 60% وزيادة المدخرات أو الاستثمار حسب هدفك.`
+      : `Closest match: ${bestPlan.name}. ${balanceNote} The smart recommendation is to reduce expenses if they exceed 60% and increase savings or investment based on your goal.`;
+  };
 
   const getRandomAdvice = () => {
     const randomIndex = Math.floor(Math.random() * ARABIC_ADVICE.length);
@@ -346,6 +426,12 @@ export default function SalaryManager() {
   const handleReset = () => {
     setSalary('');
     setSalaryNumber(0);
+    setOtherIncome('');
+    setOtherIncomeNumber(0);
+    setDistributionMethod('70-20-10');
+    setManualExpenses('');
+    setManualSavings('');
+    setManualInvestment('');
     setCharityPercentage(0);
     setIncludeCharity(false);
     setShowAdvice(false);
@@ -425,26 +511,26 @@ export default function SalaryManager() {
   };
 
   const getAIAdvice = (): string => {
-    if (salaryNumber === 0) return 'أدخل راتبك للحصول على نصائح مالية مخصصة';
+    if (totalIncome === 0) return isArabic ? 'أدخل راتبك ومدخولك الآخر للحصول على نصائح مالية مخصصة' : 'Enter your salary and other income to get personalized financial tips';
 
     const currency = getCurrentCurrency();
-    const salaryInCurrency = `${formatCurrency(salaryNumber)} ${currency.symbol}`;
+    const salaryInCurrency = `${formatCurrency(totalIncome)} ${currency.symbol}`;
 
     if (['KWD', 'BHD', 'OMR'].includes(selectedCurrency)) {
-      if (salaryNumber < 500) {
+      if (totalIncome < 500) {
         return `راتبك ${salaryInCurrency} جيد مقارنة بالعديد من الدول. ركز على تقليل المصاريف وبحث عن فرص إضافية.`;
-      } else if (salaryNumber < 1500) {
+      } else if (totalIncome < 1500) {
         return `راتبك ${salaryInCurrency} ممتاز. استثمر في صندوق طوارئ وفكر في الاستثمار العقاري.`;
       } else {
         return `راتبك ${salaryInCurrency} عالي جداً. فكر في استشارات مالية متخصصة وتوزيع استثماراتك.`;
       }
     }
 
-    if (salaryNumber < 2000) {
+    if (totalIncome < 2000) {
       return `مع راتبك ${salaryInCurrency}، ركز على تقليل المصاريف. تجنب الديون وبحث عن مصادر دخل إضافية.`;
-    } else if (salaryNumber < 5000) {
+    } else if (totalIncome < 5000) {
       return `راتبك ${salaryInCurrency} جيد. ابدأ صندوق طوارئ لـ 3-6 أشهر واستثمر في تطوير مهاراتك.`;
-    } else if (salaryNumber < 10000) {
+    } else if (totalIncome < 10000) {
       return `لديك ${salaryInCurrency} مرونة جيدة. نوّع استثماراتك وفكر في التأمين الصحي الشامل.`;
     } else {
       return `راتبك ${salaryInCurrency} ممتاز! فكر في استشارة مالية متخصصة وتبرع للأعمال الخيرية.`;
@@ -524,23 +610,96 @@ export default function SalaryManager() {
             </div>
 
             {/* Salary Input */}
-            <div className="space-y-2">
-              <Label htmlFor="salary" className="text-lg font-medium">{text.monthlySalary}</Label>
-              <div className="relative">
-                <Input
-                  id="salary"
-                  type="text"
-                  value={salary}
-                  onChange={(e) => setSalary(e.target.value)}
-                  placeholder={text.placeholder}
-                  className="text-xl font-bold text-center h-14 text-input text-lg"
-                  dir="ltr"
-                />
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
-                  {getCurrentCurrency().symbol}
-                </span>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="salary" className="text-lg font-medium">{text.monthlySalary}</Label>
+                <div className="relative">
+                  <Input
+                    id="salary"
+                    type="text"
+                    value={salary}
+                    onChange={(e) => setSalary(e.target.value)}
+                    placeholder={text.placeholder}
+                    className="text-xl font-bold text-center h-14 text-input text-lg"
+                    dir="ltr"
+                  />
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+                    {getCurrentCurrency().symbol}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="other-income" className="text-lg font-medium">{text.otherIncome}</Label>
+                <div className="relative">
+                  <Input
+                    id="other-income"
+                    type="text"
+                    value={otherIncome}
+                    onChange={(e) => setOtherIncome(e.target.value)}
+                    placeholder={text.placeholder}
+                    className="text-xl font-bold text-center h-14 text-input text-lg"
+                    dir="ltr"
+                  />
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+                    {getCurrentCurrency().symbol}
+                  </span>
+                </div>
               </div>
             </div>
+
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-center dark:border-emerald-800 dark:bg-emerald-900/30">
+              <span className="text-sm text-emerald-700 dark:text-emerald-300">{text.totalIncome}</span>
+              <p className="text-3xl font-bold text-emerald-800 dark:text-emerald-200">
+                {formatCurrency(totalIncome)} {getCurrentCurrency().symbol}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-lg font-medium">{text.distributionMethod}</Label>
+              <div className="grid gap-3 md:grid-cols-2">
+                {[
+                  { value: '70-20-10', label: text.plan70 },
+                  { value: '60-30-10', label: text.plan60Savings },
+                  { value: '60-20-20', label: text.plan60Invest },
+                  { value: 'manual', label: text.manualPlan },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setDistributionMethod(option.value as typeof distributionMethod)}
+                    className={`rounded-2xl border p-4 text-start text-sm font-semibold transition-all ${distributionMethod === option.value
+                      ? 'border-emerald-500 bg-emerald-600 text-white shadow-lg shadow-emerald-700/20'
+                      : 'border-slate-200 bg-white/80 text-slate-700 hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {distributionMethod === 'manual' && (
+              <div className="space-y-4 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-800 dark:bg-amber-900/30">
+                <p className="text-sm text-amber-800 dark:text-amber-200">{text.manualDesc}</p>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label>{text.manualExpenses}</Label>
+                    <Input value={manualExpenses} onChange={(e) => setManualExpenses(e.target.value)} placeholder="0.00" dir="ltr" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{text.manualSavings}</Label>
+                    <Input value={manualSavings} onChange={(e) => setManualSavings(e.target.value)} placeholder="0.00" dir="ltr" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{text.manualInvestment}</Label>
+                    <Input value={manualInvestment} onChange={(e) => setManualInvestment(e.target.value)} placeholder="0.00" dir="ltr" />
+                  </div>
+                </div>
+                <div className="rounded-xl border border-amber-300 bg-white/80 p-3 text-sm leading-relaxed text-amber-900 dark:border-amber-700 dark:bg-slate-950/40 dark:text-amber-100">
+                  <strong>{text.aiBestChoice}: </strong>{getManualAnalysis()}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -600,7 +759,7 @@ export default function SalaryManager() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              {salaryNumber > 0 ? (
+              {totalIncome > 0 ? (
                 <div className="space-y-4">
                   <div className="h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -696,7 +855,7 @@ export default function SalaryManager() {
                 <div className="text-center">
                   <span className="text-sm text-emerald-600 dark:text-emerald-400">{text.totalSalary}</span>
                   <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
-                    {formatCurrency(salaryNumber)} {getCurrentCurrency().symbol}
+                    {formatCurrency(totalIncome)} {getCurrentCurrency().symbol}
                   </p>
                 </div>
               </div>
