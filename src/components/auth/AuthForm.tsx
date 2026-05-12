@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Calculator, Lock, UserPlus } from 'lucide-react';
+import { Calculator, Lock, UserPlus, KeyRound, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 export function AuthForm() {
   const { signIn, signUp } = useAuth();
@@ -18,8 +19,46 @@ export function AuthForm() {
   const [age, setAge] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState('');
 
   const isRegister = mode === 'register';
+
+  const usernameToEmail = (username: string) => `${username.trim().toLowerCase()}@smart-finance.local`;
+
+  const handleForgotPassword = async () => {
+    if (!username.trim()) {
+      setError('أدخل اسم المستخدم أولاً');
+      return;
+    }
+    setLoading(true);
+    setError('');
+
+    const fakeEmail = usernameToEmail(username);
+
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('username', username.trim().toLowerCase())
+      .maybeSingle();
+
+    if (!profileData) {
+      setError('اسم المستخدم غير موجود');
+      setLoading(false);
+      return;
+    }
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(fakeEmail, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    });
+
+    if (resetError) {
+      setError('حدث خطأ، حاول مرة أخرى');
+    } else {
+      setForgotPasswordSuccess('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني المسجل');
+    }
+    setLoading(false);
+  };
 
   const validateEmail = (email: string) => {
     return email.includes('@');
@@ -104,16 +143,27 @@ export function AuthForm() {
             </CardHeader>
             <CardContent>
               <form className="space-y-4" onSubmit={submit}>
-                {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">{error}</div>}
+                {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200 flex items-center gap-2"><AlertCircle className="h-4 w-4" />{error}</div>}
+                {forgotPasswordSuccess && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200 flex items-center gap-2"><AlertCircle className="h-4 w-4" />{forgotPasswordSuccess}</div>}
                 <div className="space-y-2">
                   <Label htmlFor="username">اسم المستخدم</Label>
                   <Input id="username" value={username} onChange={(event) => setUsername(event.target.value)} placeholder="مثال: ahmad" dir="ltr" autoComplete="username" />
                 </div>
+                {!showForgotPassword ? (
+                <>
                 <div className="space-y-2">
                   <Label htmlFor="password">كلمة المرور</Label>
                   <Input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} dir="ltr" autoComplete={isRegister ? 'new-password' : 'current-password'} />
                 </div>
-                {isRegister && (
+                {!isRegister && (
+                  <Button type="button" variant="link" className="p-0 h-auto text-emerald-600 hover:text-emerald-700 text-sm" onClick={() => { setShowForgotPassword(true); setError(''); setForgotPasswordSuccess(''); }}>
+                    <KeyRound className="h-4 w-4 ms-1" />
+                    نسيت كلمة المرور؟
+                  </Button>
+                )}
+                </>
+                ) : null}
+                {isRegister && !showForgotPassword && (
                   <>
                     <div className="space-y-2">
                       <Label htmlFor="confirm-password">تأكيد كلمة المرور</Label>
@@ -132,10 +182,22 @@ export function AuthForm() {
                 <Button type="submit" className="h-12 w-full bg-emerald-700 text-base hover:bg-emerald-800" disabled={loading}>
                   {loading ? 'جار المعالجة...' : isRegister ? 'إنشاء الحساب' : 'تسجيل الدخول'}
                 </Button>
-                <Button type="button" variant="ghost" className="w-full" onClick={() => { setMode(isRegister ? 'login' : 'register'); setError(''); }}>
-                  {isRegister ? 'لديك حساب؟ سجّل الدخول' : 'ليس لديك حساب؟ إنشاء حساب جديد'}
-                </Button>
+                {!showForgotPassword && (
+                  <Button type="button" variant="ghost" className="w-full" onClick={() => { setMode(isRegister ? 'login' : 'register'); setError(''); }}>
+                    {isRegister ? 'لديك حساب؟ سجّل الدخول' : 'ليس لديك حساب؟ إنشاء حساب جديد'}
+                  </Button>
+                )}
               </form>
+              {showForgotPassword && (
+                <div className="mt-4 space-y-3">
+                  <Button type="button" className="h-10 w-full bg-emerald-600 hover:bg-emerald-700 text-sm" disabled={loading} onClick={handleForgotPassword}>
+                    {loading ? 'جار الإرسال...' : 'إرسال رابط إعادة التعيين'}
+                  </Button>
+                  <Button type="button" variant="ghost" className="w-full text-sm" onClick={() => { setShowForgotPassword(false); setForgotPasswordSuccess(''); }}>
+                    العودة لتسجيل الدخول
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
