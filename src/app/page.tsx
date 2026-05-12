@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calculator, Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Sparkles, Globe, Plus, Trash2, Target, Calendar, Banknote, Goal, ChevronDown, ChevronUp, Languages, User } from 'lucide-react';
+import { Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Sparkles, Globe, Plus, Trash2, Target, Calendar, Banknote, Goal, ChevronDown, ChevronUp, Languages, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/auth/AuthForm';
@@ -36,12 +37,6 @@ interface GoalEntry {
   duration: string;
   durationUnit: DurationUnit;
   notes: string;
-}
-
-interface Advice {
-  category: string;
-  tip: string;
-  icon: string;
 }
 
 interface Currency {
@@ -239,28 +234,6 @@ const EXPENSES_EXAMPLES = [
   { name: 'الملاهي', nameEn: 'Entertainment', icon: '🎮' },
 ];
 
-const ARABIC_ADVICE: Advice[] = [
-  { category: 'المصروفات', tip: 'حاول الالتزام بـ 70% من مدخولك للمصروفات الأساسية. قلل من المصاريف غير الضرورية', icon: '💰' },
-  { category: 'المدخرات', tip: 'لا تلمس مدخراتك في الطوارئ. اجعلها في حساب منفصل يصعب الوصول إليه', icon: '🏦' },
-  { category: 'الاستثمار', tip: 'ابدأ بالاستثمار مبكراً حتى لو بمبالغ صغيرة. الفائدة المركبة تعمل لصالحك', icon: '📈' },
-  { category: 'الأعمال الخيرية', tip: 'الصدقة تطفئ غضب الرب وتبارك في الرزق. حتى المبلغ الصغير له قيمة', icon: '🤲' },
-  { category: 'الدين', tip: 'إذا كنت مديناً، اعمل على سداد الديون أولاً قبل التفكير في الاستثمار', icon: '⚖️' },
-  { category: 'التأمين', tip: 'تأكد من وجود تأمين صحي وتأمين حياة يحميك وعائلتك', icon: '🛡️' },
-  { category: 'التقاعد', tip: 'خصص نسبة من دخلك للتقاعد مبكراً. كلما بدأت أبكر كلما كان أفضل', icon: '🌴' },
-  { category: 'التعليم', tip: 'استثمر في تطوير مهاراتك التعليمية. المعرفة أفضل استثمار', icon: '📚' },
-];
-
-const ENGLISH_ADVICE: Advice[] = [
-  { category: 'Expenses', tip: 'Try to stick to 70% of your income for essential expenses. Reduce unnecessary spending', icon: '💰' },
-  { category: 'Savings', tip: 'Do not touch your savings in emergencies. Keep them in a separate account that is hard to access', icon: '🏦' },
-  { category: 'Investment', tip: 'Start investing early even with small amounts. Compound interest works in your favor', icon: '📈' },
-  { category: 'Charitable works', tip: 'Charity extinguishes the anger of the Lord and blesses the provision. Even a small amount has value', icon: '🤲' },
-  { category: 'Debt', tip: 'If you are in debt, work on paying off debts first before thinking about investing', icon: '⚖️' },
-  { category: 'Insurance', tip: 'Make sure you have health insurance and life insurance to protect you and your family', icon: '🛡️' },
-  { category: 'Retirement', tip: 'Allocate a portion of your income for retirement early. The earlier you start, the better', icon: '🌴' },
-  { category: 'Education', tip: 'Invest in developing your educational skills. Knowledge is the best investment', icon: '📚' },
-];
-
 // Country dial codes for phone number
 const COUNTRY_DIAL_CODES = [
   { code: '+971', name: 'UAE', nameAr: 'الإمارات' },
@@ -420,7 +393,8 @@ interface SalaryManagerProps {
 }
 
 function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
-  const [language, setLanguage] = useState<'ar' | 'en'>('ar');
+  const router = useRouter();
+  const [language, setLanguage] = useState<'ar' | 'en' | 'fr' | 'zh'>('ar');
   const isArabic = language === 'ar';
   const text = {
     title: isArabic ? 'المدير المالي الذكي' : 'Smart Financial Manager',
@@ -515,7 +489,6 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     noGoalsHint: isArabic ? 'اضغط على الزر أعلاه لإضافة هدف جديد' : 'Click the button above to add a new goal',
     adviceTitle: isArabic ? 'نصيحتنا لك' : 'Our advice to you',
     adviceDesc: isArabic ? 'نصائح مالية مخصصة بناءً على مدخولك' : 'Personalized financial tips based on your income',
-    randomAdvice: isArabic ? 'احصل على نصيحة عشوائية' : 'Get a random tip',
     print: isArabic ? 'طباعة / تصدير' : 'Print / Export',
     reset: isArabic ? 'إعادة تعيين' : 'Reset',
     footer: isArabic ? 'المدير المالي الذكي - يساعدك على اتخاذ قرارات مالية أوضح' : 'Smart Financial Manager - helping you make clearer financial decisions',
@@ -549,21 +522,12 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   const [manualSavings, setManualSavings] = useState<string>('');
   const [manualInvestment, setManualInvestment] = useState<string>('');
   const [includeCharity, setIncludeCharity] = useState<boolean>(false);
-  const [showAdvice, setShowAdvice] = useState<boolean>(false);
   const [selectedCurrency, setSelectedCurrency] = useState<string>('KWD');
   const [tickerCategory, setTickerCategory] = useState<TickerCategory>('gulf');
   const [liveTickerItems, setLiveTickerItems] = useState<MarketTickerItem[]>(MARKET_TICKERS.gulf);
   const [tickerLoading, setTickerLoading] = useState<boolean>(true);
   const [tickerIsLive, setTickerIsLive] = useState<boolean>(false);
-  const [randomAdvice, setRandomAdvice] = useState<Advice | null>(null);
   const [manualWarning, setManualWarning] = useState<boolean>(false);
-
-  // Profile state
-  const [showProfile, setShowProfile] = useState<boolean>(false);
-  const [profileData, setProfileData] = useState<{ display_name?: string; email?: string; age?: number; phone_country_code?: string; phone_number?: string }>({});
-  const [profileSaving, setProfileSaving] = useState<boolean>(false);
-  const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [newPassword, setNewPassword] = useState<string>('');
 
   // Income sources editing state
   const [editingIncomeSources, setEditingIncomeSources] = useState<boolean>(false);
@@ -742,13 +706,6 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
       : `Closest match: ${bestPlan.name}. ${balanceNote} The smart recommendation is to reduce expenses if they exceed 60% and increase savings or investment based on your goal.`;
   };
 
-  const getRandomAdvice = () => {
-    const adviceList = isArabic ? ARABIC_ADVICE : ENGLISH_ADVICE;
-    const randomIndex = Math.floor(Math.random() * adviceList.length);
-    setRandomAdvice(adviceList[randomIndex]);
-    setShowAdvice(true);
-  };
-
   const formatCurrency = (amount: number) => {
     const decimals = ['JPY', 'KRW', 'VND', 'IDR'].includes(selectedCurrency) ? 0 : 2;
     const locale = isArabic ? 'ar-SA' : 'en-US';
@@ -775,8 +732,6 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     setSelectedCharityTypes([]);
     setCharityPercentages({});
     setTotalCharityPercentage(0);
-    setShowAdvice(false);
-    setRandomAdvice(null);
     setExpenseItems([]);
     setSavingsItems([]);
     setInvestmentItems([]);
@@ -835,96 +790,6 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
   const removeInvestmentItem = (id: string) => {
     setInvestmentItems(investmentItems.filter(item => item.id !== id));
-  };
-
-  // Profile functions
-  const loadProfile = async (userId: string) => {
-    const { data } = await supabase.from('profiles').select('display_name, email, age, phone_country_code, phone_number').eq('id', userId).maybeSingle();
-    if (data) {
-      setProfileData({
-        display_name: data.display_name || '',
-        email: data.email || '',
-        age: data.age || undefined,
-        phone_country_code: data.phone_country_code || '',
-        phone_number: data.phone_number || '',
-      });
-    }
-  };
-
-  const loadCurrentIncomeSources = async (userId: string) => {
-    setIncomeSourcesLoading(true);
-    const { data } = await supabase.from('monthly_income_sources').select('id, category, label, amount').eq('user_id', userId);
-    if (data) {
-      setCurrentIncomeSources(data);
-      const amounts: Record<string, string> = {};
-      data.forEach((source) => {
-        amounts[source.category] = String(source.amount);
-      });
-      setIncomeSourceAmounts(amounts);
-    }
-    setIncomeSourcesLoading(false);
-  };
-
-  const saveProfile = async (userId: string) => {
-    setProfileSaving(true);
-    setProfileMessage(null);
-
-    // Update password if provided
-    if (newPassword.trim()) {
-      const { error: passwordError } = await supabase.auth.updateUser({ password: newPassword });
-      if (passwordError) {
-        setProfileMessage({ type: 'error', text: passwordError.message });
-        setProfileSaving(false);
-        return;
-      }
-    }
-
-    // Update profile data
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        display_name: profileData.display_name,
-        email: profileData.email,
-        age: profileData.age,
-        phone_country_code: profileData.phone_country_code,
-        phone_number: profileData.phone_number,
-      })
-      .eq('id', userId);
-    if (error) {
-      setProfileMessage({ type: 'error', text: text.profileError });
-    } else {
-      setProfileMessage({ type: 'success', text: text.profileSaved });
-      setNewPassword('');
-    }
-    setProfileSaving(false);
-  };
-
-  const saveIncomeSources = async (userId: string) => {
-    setProfileSaving(true);
-    setProfileMessage(null);
-
-    // Delete existing sources and insert new ones
-    await supabase.from('monthly_income_sources').delete().eq('user_id', userId);
-
-    const rows = INCOME_CATEGORIES.map((category) => ({
-      user_id: userId,
-      category: category.id,
-      label: category.nameAr,
-      amount: parseFloat((incomeSourceAmounts[category.id] || '').replace(/[^\d.]/g, '')) || 0,
-    })).filter((row) => row.amount > 0);
-
-    const { error: insertError } = await supabase.from('monthly_income_sources').insert(rows);
-    if (insertError) {
-      setProfileMessage({ type: 'error', text: insertError.message });
-    } else {
-      // Update local salary state
-      const newTotal = rows.reduce((sum, row) => sum + row.amount, 0);
-      setSalary(String(newTotal));
-      setSalaryNumber(newTotal);
-      setProfileMessage({ type: 'success', text: text.profileSaved });
-      setEditingIncomeSources(false);
-    }
-    setProfileSaving(false);
   };
 
   // Goal management functions
@@ -1090,11 +955,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  loadProfile(userId);
-                  loadCurrentIncomeSources(userId);
-                  setShowProfile(!showProfile);
-                }}
+                onClick={() => router.push('/profile')}
                 className="h-10 rounded-xl text-emerald-50 hover:bg-white/10 hover:text-white text-sm font-medium"
               >
                 <User className="h-4 w-4 me-1" />
@@ -1129,8 +990,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div className="space-y-2 text-center md:text-start">
               <h1 className="text-4xl font-bold tracking-tight text-emerald-800 dark:text-emerald-300 flex items-center justify-center gap-3 md:justify-start">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-700/20">
-                  <Calculator className="w-7 h-7" />
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl overflow-hidden shadow-lg shadow-emerald-700/20">
+                  <img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=100&h=100&fit=crop" alt="Calculator" className="w-full h-full object-cover" />
                 </span>
                 {text.title}
               </h1>
@@ -1146,263 +1007,20 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               )}
               <Languages className="h-5 w-5 text-emerald-700 dark:text-emerald-300" />
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{text.langLabel}</span>
-              <Select value={language} onValueChange={(value) => setLanguage(value as 'ar' | 'en')}>
+              <Select value={language} onValueChange={(value) => setLanguage(value as 'ar' | 'en' | 'fr' | 'zh')}>
                 <SelectTrigger className="h-10 w-[150px] border-white/70 bg-white/80 dark:border-white/10 dark:bg-slate-900/80">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ar">العربية</SelectItem>
                   <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="fr">Francais</SelectItem>
+                  <SelectItem value="zh">中文</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
         </div>
-
-        {/* Profile Card */}
-        {showProfile && (
-          <Card className="border-emerald-200 dark:border-emerald-800">
-            <CardHeader className="bg-emerald-50 dark:bg-emerald-900/30 rounded-t-lg">
-              <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                <User className="w-6 h-6" />
-                {text.profileTitle}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="profile-name" className="text-lg font-medium">{text.profileName}</Label>
-                  <Input
-                    id="profile-name"
-                    type="text"
-                    value={profileData.display_name || ''}
-                    onChange={(e) => setProfileData({ ...profileData, display_name: e.target.value })}
-                    placeholder={text.profileName}
-                    className="h-10"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="profile-email" className="text-lg font-medium">{text.profileEmail}</Label>
-                  <div className="h-10 flex items-center px-3 bg-slate-100 dark:bg-slate-800 rounded-md border">
-                    <span className="text-sm">{profileData.email || '-'}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="profile-age" className="text-lg font-medium">{text.profileAge}</Label>
-                  <Input
-                    id="profile-age"
-                    type="number"
-                    value={profileData.age || ''}
-                    onChange={(e) => setProfileData({ ...profileData, age: e.target.value ? parseInt(e.target.value) : undefined })}
-                    placeholder={text.profileAge}
-                    className="h-10"
-                    dir="ltr"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-lg font-medium">{text.profileTotalIncome}</Label>
-                  <div className="h-10 flex items-center px-3 bg-slate-100 dark:bg-slate-800 rounded-md">
-                    <span className="font-bold">{formatCurrency(incomeTotal)} {getCurrentCurrency().symbol}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Phone Number Section */}
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="phone-country-code" className="text-lg font-medium">{text.phoneCountryCode}</Label>
-                  <Select
-                    value={profileData.phone_country_code || ''}
-                    onValueChange={(value) => setProfileData({ ...profileData, phone_country_code: value })}
-                  >
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder={text.phoneCountryCode} />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[200px]">
-                      {COUNTRY_DIAL_CODES.map((country) => (
-                        <SelectItem key={country.code} value={country.code}>
-                          {country.code} {isArabic ? country.nameAr : country.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="phone-number" className="text-lg font-medium">{text.phoneNumber}</Label>
-                  <Input
-                    id="phone-number"
-                    type="tel"
-                    value={profileData.phone_number || ''}
-                    onChange={(e) => setProfileData({ ...profileData, phone_number: e.target.value })}
-                    placeholder={text.phoneNumber}
-                    className="h-10"
-                    dir="ltr"
-                  />
-                </div>
-              </div>
-
-              {/* New Password Section */}
-              <div className="space-y-2">
-                <Label htmlFor="new-password" className="text-lg font-medium">{text.newPassword}</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder={text.newPasswordHint}
-                  className="h-10"
-                  dir="ltr"
-                />
-                <p className="text-xs text-muted-foreground">{text.newPasswordHint}</p>
-              </div>
-
-              {profileMessage && (
-                <div className={`p-3 rounded-lg text-sm ${profileMessage.type === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>
-                  {profileMessage.text}
-                </div>
-              )}
-              <Button
-                onClick={() => saveProfile(userId)}
-                disabled={profileSaving}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                {profileSaving ? '...' : text.profileSave}
-              </Button>
-
-              {/* Calculation Details */}
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                <h3 className="text-lg font-semibold mb-3 text-emerald-700 dark:text-emerald-400">{text.calculationDetails}</h3>
-                {(expenseItems.length === 0 && savingsItems.length === 0 && investmentItems.length === 0 && goals.length === 0) ? (
-                  <p className="text-muted-foreground text-center py-4">{text.noOperations}</p>
-                ) : (
-                  <div className="space-y-3">
-                    {expenseItems.length > 0 && (
-                      <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                        <p className="text-sm font-semibold text-green-700 dark:text-green-400 mb-2">{text.expenses} ({text.sumExpenses}: {formatCurrency(expenseItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol})</p>
-                        <div className="flex flex-wrap gap-1">
-                          {expenseItems.map(item => (
-                            <span key={item.id} className="px-2 py-1 text-xs bg-white dark:bg-green-800 rounded-full border border-green-200 dark:border-green-700">
-                              {item.name || text.expenseNamePlaceholder}: {item.amount || '0'} {getCurrentCurrency().symbol}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {savingsItems.length > 0 && (
-                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <p className="text-sm font-semibold text-blue-700 dark:text-blue-400 mb-2">{text.savings} ({text.sumSavings}: {formatCurrency(savingsItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol})</p>
-                        <div className="flex flex-wrap gap-1">
-                          {savingsItems.map(item => (
-                            <span key={item.id} className="px-2 py-1 text-xs bg-white dark:bg-blue-800 rounded-full border border-blue-200 dark:border-blue-700">
-                              {item.name || text.savingNamePlaceholder}: {item.amount || '0'} {getCurrentCurrency().symbol}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {investmentItems.length > 0 && (
-                      <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-                        <p className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-2">{text.investment} ({text.sumInvestment}: {formatCurrency(investmentItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol})</p>
-                        <div className="flex flex-wrap gap-1">
-                          {investmentItems.map(item => (
-                            <span key={item.id} className="px-2 py-1 text-xs bg-white dark:bg-amber-800 rounded-full border border-amber-200 dark:border-amber-700">
-                              {item.name || text.investmentNamePlaceholder}: {item.amount || '0'} {getCurrentCurrency().symbol}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {goals.length > 0 && (
-                      <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                        <p className="text-sm font-semibold text-purple-700 dark:text-purple-400 mb-2">{text.goalsTitle}</p>
-                        <div className="flex flex-wrap gap-1">
-                          {goals.map(goal => (
-                            <span key={goal.id} className="px-2 py-1 text-xs bg-white dark:bg-purple-800 rounded-full border border-purple-200 dark:border-purple-700">
-                              {goal.goal || text.goalNamePlaceholder}: {goal.amount || '0'} {getCurrentCurrency().symbol}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {includeCharity && selectedCharityTypes.length > 0 && (
-                      <div className="p-3 bg-rose-50 dark:bg-rose-900/20 rounded-lg">
-                        <p className="text-sm font-semibold text-rose-700 dark:text-rose-400 mb-2">{text.charityTypes}</p>
-                        <div className="flex flex-wrap gap-1">
-                          {selectedCharityTypes.map(type => (
-                            <span key={type} className="px-2 py-1 text-xs bg-white dark:bg-rose-800 rounded-full border border-rose-200 dark:border-rose-700">
-                              {type === 'sadaqah' ? text.charitySadaqah :
-                               type === 'zakat' ? text.charityZakat :
-                               type === 'sacrifice' ? text.charitySacrifice :
-                               type === 'expiation' ? text.charityExpiation :
-                               text.charityOther}
-                              {charityPercentages[type] ? `: ${charityPercentages[type]}%` : ''}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Income Sources Update Section */}
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">{text.incomeSourcesTitle}</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (!editingIncomeSources) {
-                        loadCurrentIncomeSources(userId);
-                      }
-                      setEditingIncomeSources(!editingIncomeSources);
-                    }}
-                    className="border-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900"
-                  >
-                    <Coins className="w-4 h-4 me-1" />
-                    {text.updateIncome}
-                  </Button>
-                </div>
-                {editingIncomeSources && (
-                  <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                    {incomeSourcesLoading ? (
-                      <p className="text-center py-4">{text.loadingPrices}</p>
-                    ) : (
-                      <>
-                        {INCOME_CATEGORIES.map((category) => (
-                          <div key={category.id} className="flex gap-3 items-center">
-                            <div className="flex-1">
-                              <span className="text-sm font-medium">{category.nameAr}</span>
-                            </div>
-                            <Input
-                              type="text"
-                              value={incomeSourceAmounts[category.id] || ''}
-                              onChange={(e) => setIncomeSourceAmounts({ ...incomeSourceAmounts, [category.id]: e.target.value })}
-                              placeholder="0.00"
-                              className="w-32 h-8 text-sm"
-                              dir="ltr"
-                            />
-                          </div>
-                        ))}
-                        <Button
-                          onClick={() => saveIncomeSources(userId)}
-                          disabled={profileSaving}
-                          size="sm"
-                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white mt-2"
-                        >
-                          {profileSaving ? '...' : text.profileSave}
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Salary Input Card */}
         <Card className="border-emerald-200 dark:border-emerald-800">
@@ -1966,19 +1584,14 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                         <Label className="text-xs text-muted-foreground flex items-center gap-1">
                           <Banknote className="w-3 h-3" /> {text.amount}
                         </Label>
-                        <div className="relative">
-                          <Input
+                        <Input
                             placeholder="0.00"
                             type="text"
                             value={goal.amount}
                             onChange={(e) => updateGoal(goal.id, 'amount', e.target.value)}
-                            className="h-10 ltr pe-12"
+                            className="h-10 ltr"
                             dir="ltr"
                           />
-                          <span className={`absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground ${isArabic ? 'left-4' : 'right-4'}`}>
-                            {getCurrentCurrency().symbol}
-                          </span>
-                        </div>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground flex items-center gap-1">
@@ -2066,29 +1679,6 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 {getAIAdvice()}
               </p>
             </div>
-            <Button
-              onClick={getRandomAdvice}
-              variant="outline"
-              className="w-full border-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900"
-            >
-              <Lightbulb className="w-5 h-5 ms-2" />
-              {text.randomAdvice}
-            </Button>
-            {showAdvice && randomAdvice && (
-              <div className="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-xl border border-amber-200 dark:border-amber-800">
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl">{randomAdvice.icon}</span>
-                  <div>
-                    <h4 className="font-bold text-amber-800 dark:text-amber-300 mb-1">
-                      {randomAdvice.category}
-                    </h4>
-                    <p className="text-amber-900 dark:text-amber-100">
-                      {randomAdvice.tip}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
 
