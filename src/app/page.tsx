@@ -1097,8 +1097,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             </div>
 
             <div className="rounded-2xl border border-blue-200 bg-blue-50/80 p-4 text-center dark:border-blue-800 dark:bg-blue-900/30">
-              <span className="text-sm text-blue-700 dark:text-emerald-300">{text.totalIncome}</span>
-              <p className="text-3xl font-bold text-emerald-800 dark:text-blue-200">
+              <span className="text-sm text-blue-700 dark:text-blue-300">{text.totalIncome}</span>
+              <p className="text-3xl font-bold text-blue-800 dark:text-blue-200">
                 {formatCurrency(totalIncome)} {getCurrentCurrency().symbol}
               </p>
             </div>
@@ -1285,7 +1285,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl border-2 border-blue-300 dark:border-blue-700">
                 <div className="text-center">
                   <span className="text-sm text-blue-600 dark:text-blue-400">{text.totalSalary}</span>
-                  <p className="text-3xl font-bold text-blue-700 dark:text-emerald-300">
+                  <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">
                     {formatCurrency(totalIncome)} {getCurrentCurrency().symbol}
                   </p>
                 </div>
