@@ -107,7 +107,7 @@ export function AuthForm() {
                 {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">{error}</div>}
                 <div className="space-y-2">
                   <Label htmlFor="username">اسم المستخدم</Label>
-                  <Input id="username" value={username} onChange={(event) => setUsername(event.target.value)} placeholder="مثال: ahmad" dir="ltr" />
+                  <Input id="username" value={username} onChange={(event) => setUsername(event.target.value)} placeholder="مثال: ahmad" dir="ltr" autoComplete="username" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">كلمة المرور</Label>

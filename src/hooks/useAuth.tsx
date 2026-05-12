@@ -47,6 +47,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: usernameToEmail(username),
         password,
       });
+
+      if (error?.message === 'Email not confirmed') {
+        return { error: new Error('الحساب جاهز الآن. أعد الضغط على تسجيل الدخول.') };
+      }
+
       return { error: error as Error | null };
     },
     signUp: async (username: string, password: string, email: string, age: string) => {
