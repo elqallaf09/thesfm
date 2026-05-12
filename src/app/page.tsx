@@ -8,8 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Calculator, PiggyBank, TrendingUp, Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Sparkles } from 'lucide-react';
+import { Calculator, Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Sparkles, Globe } from 'lucide-react';
 
 interface SalaryBreakdown {
   expenses: number;
@@ -24,7 +25,116 @@ interface Advice {
   icon: string;
 }
 
+interface Currency {
+  code: string;
+  name: string;
+  symbol: string;
+  nameAr: string;
+}
+
 const COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444'];
+
+const CURRENCIES: Currency[] = [
+  { code: 'KWD', name: 'Kuwaiti Dinar', symbol: 'د.ك', nameAr: 'دينار كويتي' },
+  { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ', nameAr: 'درهم إماراتي' },
+  { code: 'SAR', name: 'Saudi Riyal', symbol: 'ر.س', nameAr: 'ريال سعودي' },
+  { code: 'BHD', name: 'Bahraini Dinar', symbol: 'د.ب', nameAr: 'دينار بحريني' },
+  { code: 'OMR', name: 'Omani Rial', symbol: 'ر.ع.', nameAr: 'ريال عماني' },
+  { code: 'QAR', name: 'Qatari Riyal', symbol: 'ر.ق', nameAr: 'ريال قطري' },
+  { code: 'JOD', name: 'Jordanian Dinar', symbol: 'د.أ', nameAr: 'دينار أردني' },
+  { code: 'ILS', name: 'Israeli Shekel', symbol: '₪', nameAr: 'شيكل إسرائيلي' },
+  { code: 'LBP', name: 'Lebanese Pound', symbol: 'ل.ل', nameAr: 'ليرة لبنانية' },
+  { code: 'SYR', name: 'Syrian Pound', symbol: 'ل.س', nameAr: 'ليرة سورية' },
+  { code: 'IQD', name: 'Iraqi Dinar', symbol: 'ع.د', nameAr: 'دينار عراقي' },
+  { code: 'USD', name: 'US Dollar', symbol: '$', nameAr: 'دولار أمريكي' },
+  { code: 'EUR', name: 'Euro', symbol: '€', nameAr: 'يورو' },
+  { code: 'GBP', name: 'British Pound', symbol: '£', nameAr: 'جنيه إسترليني' },
+  { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF', nameAr: 'فرنك سويسري' },
+  { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$', nameAr: 'دولار كندي' },
+  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$', nameAr: 'دولار أسترالي' },
+  { code: 'JPY', name: 'Japanese Yen', symbol: '¥', nameAr: 'ين ياباني' },
+  { code: 'CNY', name: 'Chinese Yuan', symbol: '¥', nameAr: 'يوان صيني' },
+  { code: 'INR', name: 'Indian Rupee', symbol: '₹', nameAr: 'روبية هندية' },
+  { code: 'PKR', name: 'Pakistani Rupee', symbol: '₨', nameAr: 'روبية باكستانية' },
+  { code: 'BDT', name: 'Bangladeshi Taka', symbol: '৳', nameAr: 'تاكا بنغلاديشية' },
+  { code: 'LKR', name: 'Sri Lankan Rupee', symbol: 'Rs', nameAr: 'روبية سريلانكية' },
+  { code: 'NPR', name: 'Nepalese Rupee', symbol: 'रू', nameAr: 'روبية نيبالية' },
+  { code: 'MMK', name: 'Myanmar Kyat', symbol: 'K', nameAr: 'كيات ميانمار' },
+  { code: 'THB', name: 'Thai Baht', symbol: '฿', nameAr: 'باهت تايلاندي' },
+  { code: 'MYR', name: 'Malaysian Ringgit', symbol: 'RM', nameAr: 'رينجيت ماليزي' },
+  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$', nameAr: 'دولار سنغافوري' },
+  { code: 'IDR', name: 'Indonesian Rupiah', symbol: 'Rp', nameAr: 'روبية إندونيسية' },
+  { code: 'PHP', name: 'Philippine Peso', symbol: '₱', nameAr: 'بيزو فلبيني' },
+  { code: 'VND', name: 'Vietnamese Dong', symbol: '₫', nameAr: 'دونغ فيتنامي' },
+  { code: 'KRW', name: 'South Korean Won', symbol: '₩', nameAr: 'وون كوري' },
+  { code: 'TWD', name: 'Taiwan Dollar', symbol: 'NT$', nameAr: 'دولار تايواني' },
+  { code: 'HKD', name: 'Hong Kong Dollar', symbol: 'HK$', nameAr: 'دولار هونغ كونغ' },
+  { code: 'NZD', name: 'New Zealand Dollar', symbol: 'NZ$', nameAr: 'دولار نيوزيلندي' },
+  { code: 'ZAR', name: 'South African Rand', symbol: 'R', nameAr: 'راند جنوب أفريقي' },
+  { code: 'EGP', name: 'Egyptian Pound', symbol: 'ج.م', nameAr: 'جنيه مصري' },
+  { code: 'MAD', name: 'Moroccan Dirham', symbol: 'د.م.', nameAr: 'درهم مغربي' },
+  { code: 'TND', name: 'Tunisian Dinar', symbol: 'د.ت', nameAr: 'دينار تونسي' },
+  { code: 'DZD', name: 'Algerian Dinar', symbol: 'د.ج', nameAr: 'دينار جزائري' },
+  { code: 'LYD', name: 'Libyan Dinar', symbol: 'ل.د', nameAr: 'دينار ليبي' },
+  { code: 'SDG', name: 'Sudanese Pound', symbol: 'ج.س', nameAr: 'جنيه سوداني' },
+  { code: 'KES', name: 'Kenyan Shilling', symbol: 'KSh', nameAr: 'شلن كيني' },
+  { code: 'NGN', name: 'Nigerian Naira', symbol: '₦', nameAr: 'نيرا نيجيري' },
+  { code: 'GHS', name: 'Ghanaian Cedi', symbol: '₵', nameAr: 'سيدي غاني' },
+  { code: 'TZS', name: 'Tanzanian Shilling', symbol: 'TSh', nameAr: 'شلن تنزاني' },
+  { code: 'UGX', name: 'Ugandan Shilling', symbol: 'USh', nameAr: 'شلن أوغندي' },
+  { code: 'ETB', name: 'Ethiopian Birr', symbol: 'Br', nameAr: 'بر أثيوبي' },
+  { code: 'RWF', name: 'Rwandan Franc', symbol: 'FRw', nameAr: 'فرنك رواندي' },
+  { code: 'AOA', name: 'Angolan Kwanza', symbol: 'Kz', nameAr: 'كوانزا أنغولي' },
+  { code: 'ZMW', name: 'Zambian Kwacha', symbol: 'ZK', nameAr: 'كواشا زامبي' },
+  { code: 'BWP', name: 'Botswana Pula', symbol: 'P', nameAr: 'بولا بوتسوانية' },
+  { code: 'MUR', name: 'Mauritian Rupee', symbol: '₨', nameAr: 'روبية موريشيوسية' },
+  { code: 'SCR', name: 'Seychellois Rupee', symbol: '₨', nameAr: 'روبية سيشل' },
+  { code: 'NAD', name: 'Namibian Dollar', symbol: '$', nameAr: 'دولار ناميبي' },
+  { code: 'MZN', name: 'Mozambican Metical', symbol: 'MT', nameAr: 'مetical موزمبيقي' },
+  { code: 'BRL', name: 'Brazilian Real', symbol: 'R$', nameAr: 'ريال برازيلي' },
+  { code: 'ARS', name: 'Argentine Peso', symbol: '$', nameAr: 'بيزو أرجنتيني' },
+  { code: 'CLP', name: 'Chilean Peso', symbol: '$', nameAr: 'بيزو تشيلي' },
+  { code: 'COP', name: 'Colombian Peso', symbol: '$', nameAr: 'بيزو كولومبي' },
+  { code: 'PEN', name: 'Peruvian Sol', symbol: 'S/', nameAr: 'سول بيروفي' },
+  { code: 'MXN', name: 'Mexican Peso', symbol: '$', nameAr: 'بيزو مكسيكي' },
+  { code: 'VES', name: 'Venezuelan Bolivar', symbol: 'Bs', nameAr: 'بوليفار فنزويلي' },
+  { code: 'PYG', name: 'Paraguayan Guarani', symbol: '₲', nameAr: 'غواراني باراغواي' },
+  { code: 'UYU', name: 'Uruguayan Peso', symbol: '$', nameAr: 'بيزو أوروغواي' },
+  { code: 'CRC', name: 'Costa Rican Colon', symbol: '₡', nameAr: 'كولون كوستاريكي' },
+  { code: 'PAB', name: 'Panamanian Balboa', symbol: 'B/.', nameAr: 'بالبوا بنمي' },
+  { code: 'DOP', name: 'Dominican Peso', symbol: 'RD$', nameAr: 'بيزو دومينيكي' },
+  { code: 'CUP', name: 'Cuban Peso', symbol: '₱', nameAr: 'بيزو كوبي' },
+  { code: 'JMD', name: 'Jamaican Dollar', symbol: 'J$', nameAr: 'دولار جامايكي' },
+  { code: 'HTG', name: 'Haitian Gourde', symbol: 'G', nameAr: 'غورد هايتي' },
+  { code: 'TRY', name: 'Turkish Lira', symbol: '₺', nameAr: 'ليرة تركية' },
+  { code: 'RUB', name: 'Russian Ruble', symbol: '₽', nameAr: 'روبل روسي' },
+  { code: 'UAH', name: 'Ukrainian Hryvnia', symbol: '₴', nameAr: 'غريفنيا أوكرانية' },
+  { code: 'PLN', name: 'Polish Zloty', symbol: 'zł', nameAr: 'زلوتي بولندي' },
+  { code: 'CZK', name: 'Czech Koruna', symbol: 'Kč', nameAr: 'كرونة تشيكية' },
+  { code: 'HUF', name: 'Hungarian Forint', symbol: 'Ft', nameAr: 'فورنت مجري' },
+  { code: 'RON', name: 'Romanian Leu', symbol: 'lei', nameAr: 'ليو روماني' },
+  { code: 'BGN', name: 'Bulgarian Lev', symbol: 'лв', nameAr: 'ليف بلغاري' },
+  { code: 'RSD', name: 'Serbian Dinar', symbol: 'дин', nameAr: 'دينار صربي' },
+  { code: 'MKD', name: 'Macedonian Denar', symbol: 'ден', nameAr: 'دينار مقدوني' },
+  { code: 'ALL', name: 'Albanian Lek', symbol: 'L', nameAr: 'ليك ألباني' },
+  { code: 'BAM', name: 'Bosnia Mark', symbol: 'KM', nameAr: 'مارك البوسنة' },
+  { code: 'HRK', name: 'Croatian Kuna', symbol: 'kn', nameAr: 'كونا كرواتية' },
+  { code: 'SEK', name: 'Swedish Krona', symbol: 'kr', nameAr: 'كرونة سويدية' },
+  { code: 'NOK', name: 'Norwegian Krone', symbol: 'kr', nameAr: 'كرونة نرويجية' },
+  { code: 'DKK', name: 'Danish Krone', symbol: 'kr', nameAr: 'كرونة دنماركية' },
+  { code: 'ISK', name: 'Icelandic Krona', symbol: 'kr', nameAr: 'كرونة آيسلندية' },
+  { code: 'KZT', name: 'Kazakhstani Tenge', symbol: '₸', nameAr: 'تينغ كازاخستاني' },
+  { code: 'UZS', name: 'Uzbekistani Som', symbol: 'soʻm', nameAr: 'سوم أوزبكي' },
+  { code: 'TJS', name: 'Tajikistani Somoni', symbol: 'SM', nameAr: 'سوموني طاجيكستاني' },
+  { code: 'TMT', name: 'Turkmenistani Manat', symbol: 'm', nameAr: 'مانات تركماني' },
+  { code: 'KGS', name: 'Kyrgyzstani Som', symbol: 'сом', nameAr: 'سوم قيرغيزستاني' },
+  { code: 'AZN', name: 'Azerbaijani Manat', symbol: '₼', nameAr: 'مانات أذربيجاني' },
+  { code: 'GEL', name: 'Georgian Lari', symbol: '₾', nameAr: 'لاري جورجي' },
+  { code: 'AMD', name: 'Armenian Dram', symbol: '֏', nameAr: 'درام أرميني' },
+  { code: 'BYN', name: 'Belarusian Ruble', symbol: 'Br', nameAr: 'روبل بيلاروسي' },
+  { code: 'MDL', name: 'Moldovan Leu', symbol: 'L', nameAr: 'ليو مولدوفي' },
+  { code: 'AFN', name: 'Afghan Afghani', symbol: '؋', nameAr: 'أفغاني أفغاني' },
+];
 
 const ARABIC_ADVICE: Advice[] = [
   { category: 'المصروفات', tip: 'حاول الالتزام بـ 70% من راتبك للمصروفات الأساسية. قلل من المصاريف غير الضرورية', icon: '💰' },
@@ -44,6 +154,7 @@ export default function SalaryManager() {
   const [includeCharity, setIncludeCharity] = useState<boolean>(false);
   const [userNotes, setUserNotes] = useState<string>('');
   const [showAdvice, setShowAdvice] = useState<boolean>(false);
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('KWD');
   const [breakdown, setBreakdown] = useState<SalaryBreakdown>({
     expenses: 0,
     savings: 0,
@@ -51,6 +162,10 @@ export default function SalaryManager() {
     charity: 0,
   });
   const [randomAdvice, setRandomAdvice] = useState<Advice | null>(null);
+
+  const getCurrentCurrency = () => {
+    return CURRENCIES.find(c => c.code === selectedCurrency) || CURRENCIES[0];
+  };
 
   const calculateBreakdown = useCallback(() => {
     const baseAmount = salaryNumber;
@@ -95,9 +210,11 @@ export default function SalaryManager() {
   };
 
   const formatCurrency = (amount: number) => {
+    const currency = getCurrentCurrency();
+    const decimals = ['JPY', 'KRW', 'VND', 'IDR'].includes(selectedCurrency) ? 0 : 2;
     return new Intl.NumberFormat('ar-SA', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
     }).format(amount);
   };
 
@@ -127,17 +244,34 @@ export default function SalaryManager() {
     setRandomAdvice(null);
   };
 
+  const handleCurrencyChange = (value: string) => {
+    setSelectedCurrency(value);
+  };
+
   const getAIAdvice = (): string => {
     if (salaryNumber === 0) return 'أدخل راتبك للحصول على نصائح مالية مخصصة';
 
+    const currency = getCurrentCurrency();
+    const salaryInCurrency = `${formatCurrency(salaryNumber)} ${currency.symbol}`;
+
+    if (['KWD', 'BHD', 'OMR'].includes(selectedCurrency)) {
+      if (salaryNumber < 500) {
+        return `راتبك ${salaryInCurrency} جيد مقارنة بالعديد من الدول. ركز على تقليل المصاريف وبحث عن فرص إضافية.`;
+      } else if (salaryNumber < 1500) {
+        return `راتبك ${salaryInCurrency} ممتاز. استثمر في صندوق طوارئ وفكر في الاستثمار العقاري.`;
+      } else {
+        return `راتبك ${salaryInCurrency} عالي جداً. فكر في استشارات مالية متخصصة وتوزيع استثماراتك.`;
+      }
+    }
+
     if (salaryNumber < 2000) {
-      return 'مع راتبك الحالي، ركز على تقليل المصاريف قدر الإمكان. حاول توفير 20% على الأقل وتجنب الديون. ابحث عن مصادر دخل إضافية.';
+      return `مع راتبك ${salaryInCurrency}، ركز على تقليل المصاريف. تجنب الديون وبحث عن مصادر دخل إضافية.`;
     } else if (salaryNumber < 5000) {
-      return 'راتبك جيد. ابدأ صندوق طوارئ يسد 3-6 أشهر من مصاريفك. استثمر في تطوير مهاراتك لزيادة دخلك.';
+      return `راتبك ${salaryInCurrency} جيد. ابدأ صندوق طوارئ لـ 3-6 أشهر واستثمر في تطوير مهاراتك.`;
     } else if (salaryNumber < 10000) {
-      return 'لديك مرونة جيدة. نوّع استثماراتك بين صناديق الاستثمار وشهادات الادخار. فكر في التأمين الصحي الشامل.';
+      return `لديك ${salaryInCurrency} مرونة جيدة. نوّع استثماراتك وفكر في التأمين الصحي الشامل.`;
     } else {
-      return 'ممتاز! فكر في استشارة مالية متخصصة. وزّع استثماراتك في عدة فئات. تبرع بنسبة من دخلك للأعمال الخيرية.';
+      return `راتبك ${salaryInCurrency} ممتاز! فكر في استشارة مالية متخصصة وتبرع للأعمال الخيرية.`;
     }
   };
 
@@ -165,6 +299,31 @@ export default function SalaryManager() {
             <CardDescription>سيتم تقسيم الراتب تلقائياً حسب النسب المحددة</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
+            {/* Currency Selector */}
+            <div className="space-y-2">
+              <Label className="text-lg font-medium flex items-center gap-2">
+                <Globe className="w-5 h-5" />
+                اختر العملة
+              </Label>
+              <Select value={selectedCurrency} onValueChange={handleCurrencyChange}>
+                <SelectTrigger className="h-12 text-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {CURRENCIES.map((currency) => (
+                    <SelectItem key={currency.code} value={currency.code}>
+                      <span className="flex items-center gap-2">
+                        <span className="font-bold min-w-[60px]">{currency.symbol}</span>
+                        <span>{currency.nameAr}</span>
+                        <span className="text-muted-foreground text-sm">({currency.code})</span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Salary Input */}
             <div className="space-y-2">
               <Label htmlFor="salary" className="text-lg font-medium">الراتب الشهري</Label>
               <div className="relative">
@@ -178,7 +337,7 @@ export default function SalaryManager() {
                   dir="ltr"
                 />
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
-                  ر.س
+                  {getCurrentCurrency().symbol}
                 </span>
               </div>
             </div>
@@ -262,7 +421,7 @@ export default function SalaryManager() {
                           ))}
                         </Pie>
                         <Tooltip
-                          formatter={(value: number) => formatCurrency(value) + ' ر.س'}
+                          formatter={(value: number) => `${formatCurrency(value)} ${getCurrentCurrency().symbol}`}
                           contentStyle={{ direction: 'rtl' }}
                         />
                       </PieChart>
@@ -312,7 +471,7 @@ export default function SalaryManager() {
                   </span>
                 </div>
                 <p className="text-2xl font-bold text-green-800 dark:text-green-300">
-                  {formatCurrency(breakdown.expenses)} ر.س
+                  {formatCurrency(breakdown.expenses)} {getCurrentCurrency().symbol}
                 </p>
               </div>
 
@@ -328,7 +487,7 @@ export default function SalaryManager() {
                   </span>
                 </div>
                 <p className="text-2xl font-bold text-blue-800 dark:text-blue-300">
-                  {formatCurrency(breakdown.savings)} ر.س
+                  {formatCurrency(breakdown.savings)} {getCurrentCurrency().symbol}
                 </p>
               </div>
 
@@ -344,7 +503,7 @@ export default function SalaryManager() {
                   </span>
                 </div>
                 <p className="text-2xl font-bold text-amber-800 dark:text-amber-300">
-                  {formatCurrency(breakdown.investment)} ر.س
+                  {formatCurrency(breakdown.investment)} {getCurrentCurrency().symbol}
                 </p>
               </div>
 
@@ -361,7 +520,7 @@ export default function SalaryManager() {
                     </span>
                   </div>
                   <p className="text-2xl font-bold text-rose-800 dark:text-rose-300">
-                    {formatCurrency(breakdown.charity)} ر.س
+                    {formatCurrency(breakdown.charity)} {getCurrentCurrency().symbol}
                   </p>
                 </div>
               )}
