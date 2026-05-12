@@ -14,10 +14,21 @@ export function AuthForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [age, setAge] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const isRegister = mode === 'register';
+
+  const validateEmail = (email: string) => {
+    return email.includes('@');
+  };
+
+  const validateAge = (age: string) => {
+    const ageNum = parseInt(age, 10);
+    return !isNaN(ageNum) && ageNum >= 10 && ageNum <= 120;
+  };
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -33,13 +44,31 @@ export function AuthForm() {
       return;
     }
 
-    if (isRegister && password !== confirmPassword) {
-      setError('كلمة المرور وتأكيدها غير متطابقين');
-      return;
+    if (isRegister) {
+      if (!email.trim()) {
+        setError('البريد الإلكتروني مطلوب');
+        return;
+      }
+      if (!validateEmail(email)) {
+        setError('البريد الإلكتروني يجب أن يحتوي على @');
+        return;
+      }
+      if (!age.trim()) {
+        setError('العمر مطلوب');
+        return;
+      }
+      if (!validateAge(age)) {
+        setError('العمر يجب أن يكون بين 10 و 120');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError('كلمة المرور وتأكيدها غير متطابقين');
+        return;
+      }
     }
 
     setLoading(true);
-    const result = isRegister ? await signUp(username, password) : await signIn(username, password);
+    const result = isRegister ? await signUp(username, password, email, age) : await signIn(username, password);
     if (result.error) setError(result.error.message || 'تعذر تنفيذ العملية');
     setLoading(false);
   };
@@ -82,13 +111,23 @@ export function AuthForm() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">كلمة المرور</Label>
-                  <Input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} dir="ltr" />
+                  <Input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} dir="ltr" autoComplete={isRegister ? 'new-password' : 'current-password'} />
                 </div>
                 {isRegister && (
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password">تأكيد كلمة المرور</Label>
-                    <Input id="confirm-password" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} dir="ltr" />
-                  </div>
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">تأكيد كلمة المرور</Label>
+                      <Input id="confirm-password" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} dir="ltr" autoComplete="new-password" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">البريد الإلكتروني</Label>
+                      <Input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="example@domain.com" dir="ltr" autoComplete="email" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="age">العمر</Label>
+                      <Input id="age" type="number" value={age} onChange={(event) => setAge(event.target.value)} placeholder="مثال: 25" dir="ltr" min="10" max="120" />
+                    </div>
+                  </>
                 )}
                 <Button type="submit" className="h-12 w-full bg-emerald-700 text-base hover:bg-emerald-800" disabled={loading}>
                   {loading ? 'جار المعالجة...' : isRegister ? 'إنشاء الحساب' : 'تسجيل الدخول'}

@@ -12,7 +12,7 @@ export const INCOME_CATEGORIES: IncomeCategory[] = [
     id: 'active',
     nameAr: 'الدخل النشط',
     nameEn: 'Active Income',
-    examples: ['الراتب الشهري', 'الأجر اليومي أو بالساعة', 'العمولات', 'العمل الحر'],
+    examples: ['المدخول الشهري', 'الأجر اليومي أو بالساعة', 'العمولات', 'العمل الحر'],
   },
   {
     id: 'passive',

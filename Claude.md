@@ -36,18 +36,18 @@ src/
 ### Authentication
 - Status: Implemented
 - Location: `src/hooks/useAuth.tsx`, `src/components/auth/AuthForm.tsx`, `src/app/layout.tsx`
-- Description: Username/password auth flow using Supabase auth. Usernames are mapped to internal email-style identifiers, session state is provided through `AuthProvider`, and unauthenticated users see the login/register screen first.
+- Description: Username/password auth flow using Supabase auth. Registration collects username, password, email, and age; login remains username/password. Usernames are mapped to internal email-style identifiers, session state is provided through `AuthProvider`, and unauthenticated users see the login/register screen first.
 
 ### Monthly Income Sources
 - Status: Implemented
 - Location: `src/components/income/IncomeSourcesForm.tsx`, `src/lib/income-categories.ts`, `src/app/page.tsx`
-- Database: `public.profiles`, `public.monthly_income_sources`
+- Database: `public.profiles` (username, display name, email, age), `public.monthly_income_sources`
 - Description: New users enter monthly income by category: active, passive, investment, business, additional, seasonal, and government/support income. Saved sources are summed and passed into the financial manager as monthly income.
 
 ### Financial Manager
 - Status: Implemented
 - Location: `src/app/page.tsx`
-- Description: Calculates monthly income distribution with preset and manual allocation modes, charity percentage, dynamic financial items, goals, charts, and advice. The main income amount is now initialized from saved monthly income sources after login.
+- Description: Calculates monthly income distribution with preset and manual allocation modes, charity percentage, dynamic expense/savings/investment items, bilingual examples, optional chart display, goal suggestions, manual allocation warnings, print optimization, and advice. The main income amount is initialized from saved monthly income sources after login.
 
 ### Market Ticker
 - Status: Implemented
@@ -66,6 +66,7 @@ src/
 
 ## Current State
 - [x] Username/password login and registration as homepage entry
+- [x] Registration fields for username, password, email, and age
 - [x] Nubase database tables for user profiles and monthly income sources
 - [x] RLS policies for user-owned profile and income data
 - [x] Monthly income setup with seven income categories and examples
@@ -73,7 +74,11 @@ src/
 - [x] Currency selector with KWD default
 - [x] Income split presets and manual allocation analysis
 - [x] Dynamic rows for expenses, savings, and investment
-- [x] Financial goals section
+- [x] Bilingual examples for expenses, savings, and investment
+- [x] Optional chart display controlled by user toggle
+- [x] Financial goals section with achievement suggestions
+- [x] Manual allocation warning when entered values exceed suggested ratios
+- [x] Print optimization for the financial page
 - [x] Arabic/English language selector
 - [x] Moving market ticker with external data route
 - [x] Boursa Kuwait-inspired visual background
@@ -81,3 +86,4 @@ src/
 ## Maintenance Log
 - 2026-05-12: Added username/password authentication, user profiles, monthly income source database tables, income setup UI, and connected saved income sources to the financial manager.
 - 2026-05-12: Added project knowledge base and documented financial manager, market ticker API, language support, and current implementation state.
+- 2026-05-12: Updated registration to collect email and age, added bilingual financial examples, optional chart display, goal suggestions, manual warnings, and print optimization.

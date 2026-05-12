@@ -137,3 +137,67 @@
     transform: translateX(-50%);
   }
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0.5cm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  body {
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+
+  .pointer-events-none {
+    pointer-events: none !important;
+  }
+
+  button,
+  .no-print,
+  [aria-label="Refresh prices"],
+  [class*="animate-spin"],
+  .animate-\[ticker\] {
+    display: none !important;
+  }
+
+  .dark,
+  [class*="dark:"] {
+    color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .bg-emerald-950,
+  .bg-emerald-900\/30,
+  .bg-slate-900\/5,
+  .bg-white\/70,
+  .dark\:bg-slate-950\/50 {
+    background-color: white !important;
+  }
+
+  .text-emerald-100,
+  .text-emerald-50,
+  .dark\:text-emerald-300 {
+    color: #022c22 !important;
+  }
+
+  .border-emerald-900\/10,
+  .dark\:border-white\/10 {
+    border-color: #e5e7eb !important;
+  }
+
+  .page-break-inside-avoid {
+    page-break-inside: avoid;
+  }
+
+  .shadow-\[0_20px_80px_rgba\(15\2c 23\2c 42\2c 0\.10\)\] {
+    box-shadow: none !important;
+  }
+}

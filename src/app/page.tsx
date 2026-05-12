@@ -204,44 +204,44 @@ const CURRENCIES: Currency[] = [
 ];
 
 const INVESTMENT_EXAMPLES = [
-  { name: 'صناديق الاستثمار', icon: '📊' },
-  { name: 'الأسهم', icon: '📈' },
-  { name: 'العقارات', icon: '🏠' },
-  { name: 'الذهب', icon: '🥇' },
-  { name: 'السندات', icon: '📜' },
-  { name: 'التأمين التكافلي', icon: '🛡️' },
-  { name: 'المتاجرة', icon: '🛒' },
-  { name: 'المشاريع الصغيرة', icon: '🏪' },
-  { name: 'التعليم والدورات', icon: '📚' },
-  { name: 'التقنيات الحديثة', icon: '💻' },
+  { name: 'صناديق الاستثمار', nameEn: 'Investment funds', icon: '📊' },
+  { name: 'الأسهم', nameEn: 'Stocks', icon: '📈' },
+  { name: 'العقارات', nameEn: 'Real estate', icon: '🏠' },
+  { name: 'الذهب', nameEn: 'Gold', icon: '🥇' },
+  { name: 'السندات', nameEn: 'Bonds', icon: '📜' },
+  { name: 'التأمين التكافلي', nameEn: 'Takaful insurance', icon: '🛡️' },
+  { name: 'المتاجرة', nameEn: 'Trading', icon: '🛒' },
+  { name: 'المشاريع الصغيرة', nameEn: 'Small businesses', icon: '🏪' },
+  { name: 'التعليم والدورات', nameEn: 'Education & courses', icon: '📚' },
+  { name: 'التقنيات الحديثة', nameEn: 'Modern technology', icon: '💻' },
 ];
 
 const SAVINGS_EXAMPLES = [
-  { name: 'صندوق الطوارئ', icon: '🚨' },
-  { name: 'حساب التوفير', icon: '🏦' },
-  { name: 'شهادات الإدخار', icon: '📋' },
-  { name: 'إيجار شقة', icon: '🏢' },
-  { name: 'سيارة جديدة', icon: '🚗' },
-  { name: 'جهاز كهربائي', icon: '📺' },
-  { name: 'رحلة سياحية', icon: '✈️' },
-  { name: 'جهاز جوال', icon: '📱' },
-  { name: 'تجديد أثاث', icon: '🪑' },
-  { name: 'زواج أو خطوبة', icon: '💍' },
+  { name: 'صندوق الطوارئ', nameEn: 'Emergency fund', icon: '🚨' },
+  { name: 'حساب التوفير', nameEn: 'Savings account', icon: '🏦' },
+  { name: 'شهادات الإدخار', nameEn: 'Savings certificates', icon: '📋' },
+  { name: 'إيجار شقة', nameEn: 'Apartment rent', icon: '🏢' },
+  { name: 'سيارة جديدة', nameEn: 'New car', icon: '🚗' },
+  { name: 'جهاز كهربائي', nameEn: 'Appliance', icon: '📺' },
+  { name: 'رحلة سياحية', nameEn: 'Travel', icon: '✈️' },
+  { name: 'جهاز جوال', nameEn: 'Mobile phone', icon: '📱' },
+  { name: 'تجديد أثاث', nameEn: 'Furniture renewal', icon: '🪑' },
+  { name: 'زواج أو خطوبة', nameEn: 'Wedding/Engagement', icon: '💍' },
 ];
 
 const EXPENSES_EXAMPLES = [
-  { name: 'الإيجار', icon: '🏠' },
-  { name: 'الطعام والشراب', icon: '🍔' },
-  { name: 'المواصلات', icon: '🚌' },
-  { name: 'الكهرباء والماء', icon: '💡' },
-  { name: 'الاتصالات', icon: '📱' },
-  { name: 'الملابس', icon: '👔' },
-  { name: 'الرعاية الصحية', icon: '🏥' },
-  { name: 'الملاهي', icon: '🎮' },
+  { name: 'الإيجار', nameEn: 'Rent', icon: '🏠' },
+  { name: 'الطعام والشراب', nameEn: 'Food & Drinks', icon: '🍔' },
+  { name: 'المواصلات', nameEn: 'Transportation', icon: '🚌' },
+  { name: 'الكهرباء والماء', nameEn: 'Utilities', icon: '💡' },
+  { name: 'الاتصالات', nameEn: 'Communications', icon: '📱' },
+  { name: 'الملابس', nameEn: 'Clothing', icon: '👔' },
+  { name: 'الرعاية الصحية', nameEn: 'Healthcare', icon: '🏥' },
+  { name: 'الملاهي', nameEn: 'Entertainment', icon: '🎮' },
 ];
 
 const ARABIC_ADVICE: Advice[] = [
-  { category: 'المصروفات', tip: 'حاول الالتزام بـ 70% من راتبك للمصروفات الأساسية. قلل من المصاريف غير الضرورية', icon: '💰' },
+  { category: 'المصروفات', tip: 'حاول الالتزام بـ 70% من مدخولك للمصروفات الأساسية. قلل من المصاريف غير الضرورية', icon: '💰' },
   { category: 'المدخرات', tip: 'لا تلمس مدخراتك في الطوارئ. اجعلها في حساب منفصل يصعب الوصول إليه', icon: '🏦' },
   { category: 'الاستثمار', tip: 'ابدأ بالاستثمار مبكراً حتى لو بمبالغ صغيرة. الفائدة المركبة تعمل لصالحك', icon: '📈' },
   { category: 'الصدقة', tip: 'الصدقة تطفئ غضب الرب وتبارك في الرزق. حتى المبلغ الصغير له قيمة', icon: '🤲' },
@@ -325,7 +325,7 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
     title: isArabic ? 'المدير المالي الذكي' : 'Smart Financial Manager',
     subtitle: isArabic ? 'اختر طريقة توزيع دخلك أو أدخل خطتك يدوياً ليتم تحليلها بذكاء' : 'Choose an income split or enter your own plan for smart analysis',
     langLabel: isArabic ? 'اللغة' : 'Language',
-    salaryTitle: isArabic ? 'أدخل دخلك الشهري' : 'Enter your monthly income',
+    salaryTitle: isArabic ? 'أدخل مدخولك الشهري' : 'Enter your monthly income',
     salaryDesc: isArabic ? 'تم احتساب دخلك من أنواع المدخول التي أدخلتها، ويمكنك إضافة مدخول آخر عند الحاجة' : 'Your income is calculated from saved income sources, and you can add extra income if needed',
     currency: isArabic ? 'اختر العملة' : 'Choose currency',
     monthlySalary: isArabic ? 'إجمالي أنواع الدخل' : 'Total income sources',
@@ -336,20 +336,20 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
     plan60Savings: isArabic ? '60% مصروفات | 30% مدخرات | 10% استثمار' : '60% expenses | 30% savings | 10% investment',
     plan60Invest: isArabic ? '60% مصروفات | 20% مدخرات | 20% استثمار' : '60% expenses | 20% savings | 20% investment',
     manualPlan: isArabic ? 'إدخال يدوي مع تحليل ذكي' : 'Manual entry with smart analysis',
-    manualDesc: isArabic ? 'أدخل الراتب + المدخول الآخر ثم عبئ المصروفات والمدخرات والاستثمار يدوياً' : 'Enter salary + other income, then manually fill expenses, savings, and investment',
+    manualDesc: isArabic ? 'أدخل المدخول + المدخول الآخر ثم عبئ المصروفات والمدخرات والاستثمار يدوياً' : 'Enter income + other income, then manually fill expenses, savings, and investment',
     manualExpenses: isArabic ? 'مصروفات يدوية' : 'Manual expenses',
     manualSavings: isArabic ? 'مدخرات يدوية' : 'Manual savings',
     manualInvestment: isArabic ? 'استثمار يدوي' : 'Manual investment',
     aiBestChoice: isArabic ? 'تحليل الذكاء الاصطناعي' : 'AI analysis',
     placeholder: isArabic ? 'مثال: 5000' : 'Example: 5000',
     charityTitle: isArabic ? 'التبرع والصدقة' : 'Donation and charity',
-    charityDesc: isArabic ? 'خصص نسبة من راتبك للتبرع والصدقة' : 'Allocate a percentage of your salary for donation and charity',
-    charityToggle: isArabic ? 'تفعيل التبرع من الراتب' : 'Enable donation from salary',
+    charityDesc: isArabic ? 'خصص نسبة من مدخولك للتبرع والصدقة' : 'Allocate a percentage of your income for donation and charity',
+    charityToggle: isArabic ? 'تفعيل التبرع من المدخول' : 'Enable donation from income',
     charityPercent: isArabic ? 'نسبة التبرع' : 'Donation percentage',
     chart: isArabic ? 'التوزيع البياني' : 'Visual distribution',
-    emptyChart: isArabic ? 'أدخل الراتب لرؤية التوزيع' : 'Enter salary to view distribution',
+    emptyChart: isArabic ? 'أدخل المدخول لرؤية التوزيع' : 'Enter income to view distribution',
     salaryDetails: isArabic ? 'تفاصيل المدخول الشهري' : 'Monthly income details',
-    totalSalary: isArabic ? 'إجمالي الراتب' : 'Total salary',
+    totalSalary: isArabic ? 'إجمالي المدخول' : 'Total income',
     expenses: isArabic ? 'المصروفات' : 'Expenses',
     savings: isArabic ? 'المدخرات' : 'Savings',
     investment: isArabic ? 'الاستثمار' : 'Investment',
@@ -357,8 +357,10 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
     addExpense: isArabic ? 'إضافة مصروف' : 'Add expense',
     addSaving: isArabic ? 'إضافة مدخرة' : 'Add saving',
     addInvestment: isArabic ? 'إضافة استثمار' : 'Add investment',
-    aiSavings: isArabic ? 'امثلة للمدخرات (بالذكاء الاصطناعي):' : 'Savings examples (AI):',
-    aiInvestment: isArabic ? 'امثلة للاستثمار (بالذكاء الاصطناعي):' : 'Investment examples (AI):',
+    aiSavings: isArabic ? 'أمثلة للمدخرات:' : 'Savings examples:',
+    aiInvestment: isArabic ? 'أمثلة للاستثمار:' : 'Investment examples:',
+    aiExpenses: isArabic ? 'أمثلة للمصروفات:' : 'Expenses examples:',
+    expensesExamples: isArabic ? 'أمثلة: الإيجار، الطعام، المواصلات...' : 'Examples: Rent, Food, Transportation...',
     goalsTitle: isArabic ? 'الأهداف المالية' : 'Financial goals',
     goalsDesc: isArabic ? 'حدد أهدافك المالية ومبالغها ومدتها' : 'Define your financial goals, amounts, and duration',
     addGoal: isArabic ? 'إضافة هدف جديد' : 'Add new goal',
@@ -368,8 +370,8 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
     notes: isArabic ? 'ملاحظات' : 'Notes',
     noGoals: isArabic ? 'لم تضف أي أهداف بعد' : 'No goals added yet',
     noGoalsHint: isArabic ? 'اضغط على الزر أعلاه لإضافة هدف جديد' : 'Click the button above to add a new goal',
-    adviceTitle: isArabic ? 'نصائح الذكاء الاصطناعي' : 'AI advice',
-    adviceDesc: isArabic ? 'نصائح مالية مخصصة بناءً على راتبك' : 'Personalized financial tips based on your salary',
+    adviceTitle: isArabic ? 'نصيحتنا لك' : 'Our advice to you',
+    adviceDesc: isArabic ? 'نصائح مالية مخصصة بناءً على مدخولك' : 'Personalized financial tips based on your income',
     randomAdvice: isArabic ? 'احصل على نصيحة عشوائية' : 'Get a random tip',
     print: isArabic ? 'طباعة / تصدير' : 'Print / Export',
     reset: isArabic ? 'إعادة تعيين' : 'Reset',
@@ -386,6 +388,14 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
     loadingPrices: isArabic ? 'جار تحديث الأسعار المباشرة' : 'Updating live prices',
     fallbackPrices: isArabic ? 'بيانات احتياطية عند تعذر الاتصال' : 'Fallback data when provider is unavailable',
     refreshPrices: isArabic ? 'تحديث الأسعار' : 'Refresh prices',
+    showChart: isArabic ? 'إظهار التوزيع البياني' : 'Show chart',
+    hideChart: isArabic ? 'إخفاء التوزيع البياني' : 'Hide chart',
+    goalSuggestion: isArabic ? 'اقتراح للهدف' : 'Goal suggestion',
+    goalMonthlyReq: isArabic ? 'المبلغ الشهري المطلوب' : 'Monthly amount needed',
+    goalCompareSavings: isArabic ? 'مقارنة بالمدخرات الحالية' : 'Compared to current savings',
+    goalReduceExpenses: isArabic ? 'اقتراح: قلل المصروفات أو زد المدخرات' : 'Suggestion: Reduce expenses or increase savings',
+    warningExceeded: isArabic ? 'تحذير: تجاوزت النسبة المحددة' : 'Warning: You exceeded the specified ratio',
+    warningManual: isArabic ? 'أدخلت مبالغ أعلى من النسب المقترحة. تأكد من صحة المدخول أو راجع خطة الإنفاق.' : 'You entered amounts higher than suggested ratios. Verify your income or review your spending plan.',
   };
   const [salary, setSalary] = useState<string>(incomeTotal ? String(incomeTotal) : '');
   const [salaryNumber, setSalaryNumber] = useState<number>(incomeTotal || 0);
@@ -404,6 +414,8 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
   const [tickerLoading, setTickerLoading] = useState<boolean>(true);
   const [tickerIsLive, setTickerIsLive] = useState<boolean>(false);
   const [randomAdvice, setRandomAdvice] = useState<Advice | null>(null);
+  const [showChart, setShowChart] = useState<boolean>(false);
+  const [manualWarning, setManualWarning] = useState<boolean>(false);
 
   // Items states
   const [expenseItems, setExpenseItems] = useState<ItemEntry[]>([]);
@@ -507,6 +519,10 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
   }, [calculateBreakdown]);
 
   useEffect(() => {
+    checkManualWarning();
+  }, [manualExpenses, manualSavings, manualInvestment, totalIncome, distributionMethod]);
+
+  useEffect(() => {
     fetchTickerData();
   }, [fetchTickerData]);
 
@@ -528,7 +544,7 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
 
   const getManualAnalysis = () => {
     if (distributionMethod !== 'manual') return '';
-    if (totalIncome <= 0) return isArabic ? 'أدخل الراتب والمدخول الآخر لبدء التحليل.' : 'Enter salary and other income to start analysis.';
+    if (totalIncome <= 0) return isArabic ? 'أدخل المدخول والمدخول الآخر لبدء التحليل.' : 'Enter income and other income to start analysis.';
 
     const expenses = parseFloat(manualExpenses.replace(/[^\d.]/g, '')) || 0;
     const savings = parseFloat(manualSavings.replace(/[^\d.]/g, '')) || 0;
@@ -616,6 +632,8 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
     setExpensesExpanded(false);
     setSavingsExpanded(false);
     setInvestmentExpanded(false);
+    setShowChart(false);
+    setManualWarning(false);
   };
 
   const handleCurrencyChange = (value: string) => {
@@ -684,29 +702,73 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
   };
 
   const getAIAdvice = (): string => {
-    if (totalIncome === 0) return isArabic ? 'أدخل راتبك ومدخولك الآخر للحصول على نصائح مالية مخصصة' : 'Enter your salary and other income to get personalized financial tips';
+    if (totalIncome === 0) return isArabic ? 'أدخل مدخولك ومدخولك الآخر للحصول على نصائح مالية مخصصة' : 'Enter your income and other income to get personalized financial tips';
 
     const currency = getCurrentCurrency();
-    const salaryInCurrency = `${formatCurrency(totalIncome)} ${currency.symbol}`;
+    const incomeInCurrency = `${formatCurrency(totalIncome)} ${currency.symbol}`;
 
     if (['KWD', 'BHD', 'OMR'].includes(selectedCurrency)) {
       if (totalIncome < 500) {
-        return `راتبك ${salaryInCurrency} جيد مقارنة بالعديد من الدول. ركز على تقليل المصاريف وبحث عن فرص إضافية.`;
+        return `مدخولك ${incomeInCurrency} جيد مقارنة بالعديد من الدول. ركز على تقليل المصاريف وبحث عن فرص إضافية.`;
       } else if (totalIncome < 1500) {
-        return `راتبك ${salaryInCurrency} ممتاز. استثمر في صندوق طوارئ وفكر في الاستثمار العقاري.`;
+        return `مدخولك ${incomeInCurrency} ممتاز. استثمر في صندوق طوارئ وفكر في الاستثمار العقاري.`;
       } else {
-        return `راتبك ${salaryInCurrency} عالي جداً. فكر في استشارات مالية متخصصة وتوزيع استثماراتك.`;
+        return `مدخولك ${incomeInCurrency} عالي جداً. فكر في استشارات مالية متخصصة وتوزيع استثماراتك.`;
       }
     }
 
     if (totalIncome < 2000) {
-      return `مع راتبك ${salaryInCurrency}، ركز على تقليل المصاريف. تجنب الديون وبحث عن مصادر دخل إضافية.`;
+      return `مع مدخولك ${incomeInCurrency}، ركز على تقليل المصاريف. تجنب الديون وبحث عن مصادر دخل إضافية.`;
     } else if (totalIncome < 5000) {
-      return `راتبك ${salaryInCurrency} جيد. ابدأ صندوق طوارئ لـ 3-6 أشهر واستثمر في تطوير مهاراتك.`;
+      return `مدخولك ${incomeInCurrency} جيد. ابدأ صندوق طوارئ لـ 3-6 أشهر واستثمر في تطوير مهاراتك.`;
     } else if (totalIncome < 10000) {
-      return `لديك ${salaryInCurrency} مرونة جيدة. نوّع استثماراتك وفكر في التأمين الصحي الشامل.`;
+      return `لديك ${incomeInCurrency} مرونة جيدة. نوّع استثماراتك وفكر في التأمين الصحي الشامل.`;
     } else {
-      return `راتبك ${salaryInCurrency} ممتاز! فكر في استشارة مالية متخصصة وتبرع للأعمال الخيرية.`;
+      return `مدخولك ${incomeInCurrency} ممتاز! فكر في استشارة مالية متخصصة وتبرع للأعمال الخيرية.`;
+    }
+  };
+
+  const getGoalSuggestion = (goal: GoalEntry): string => {
+    if (!goal.amount || !goal.duration || totalIncome === 0) return '';
+    const amount = parseFloat(goal.amount.replace(/[^\d.]/g, '')) || 0;
+    if (amount <= 0) return '';
+    const durationMonths = parseInt(goal.duration.replace(/[^\d]/g, ''), 10) || 1;
+    const monthlyRequired = amount / durationMonths;
+    const savingsPerMonth = distributionMethod === 'manual'
+      ? parseFloat(manualSavings.replace(/[^\d.]/g, '')) || 0
+      : totalIncome * 0.2;
+    const suggestion = isArabic
+      ? `المبلغ الشهري المطلوب: ${formatCurrency(monthlyRequired)} ${getCurrentCurrency().symbol}. `
+      : `Monthly amount needed: ${formatCurrency(monthlyRequired)} ${getCurrentCurrency().symbol}. `;
+    if (monthlyRequired > savingsPerMonth) {
+      const diff = monthlyRequired - savingsPerMonth;
+      const suggestion2 = isArabic
+        ? `يتجاوز ذلك مدخراتك بمبلغ ${formatCurrency(diff)} ${getCurrentCurrency().symbol}. حاول تقليل المصروفات أو زيادة المدخرات.`
+        : `This exceeds your savings by ${formatCurrency(diff)} ${getCurrentCurrency().symbol}. Try reducing expenses or increasing savings.`;
+      return suggestion + suggestion2;
+    }
+    const extra = savingsPerMonth - monthlyRequired;
+    const suggestion2 = isArabic
+      ? ` مقارنة بالمدخرات الحالية البالغة ${formatCurrency(savingsPerMonth)} ${getCurrentCurrency().symbol}، لديك فائض شهري قدره ${formatCurrency(extra)}.`
+      : `Compared to your current savings of ${formatCurrency(savingsPerMonth)} ${getCurrentCurrency().symbol}, you have a monthly surplus of ${formatCurrency(extra)}.`;
+    return suggestion + suggestion2;
+  };
+
+  const checkManualWarning = () => {
+    if (distributionMethod !== 'manual') {
+      setManualWarning(false);
+      return;
+    }
+    const expenses = parseFloat(manualExpenses.replace(/[^\d.]/g, '')) || 0;
+    const savings = parseFloat(manualSavings.replace(/[^\d.]/g, '')) || 0;
+    const investment = parseFloat(manualInvestment.replace(/[^\d.]/g, '')) || 0;
+    const refExpenses = totalIncome * 0.7;
+    const refSavings = totalIncome * 0.2;
+    const refInvestment = totalIncome * 0.1;
+    if (expenses > refExpenses || savings > refSavings || investment > refInvestment) {
+      setManualWarning(true);
+    } else {
+      setManualWarning(false);
     }
   };
 
@@ -932,6 +994,11 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                 <div className="rounded-xl border border-amber-300 bg-white/80 p-3 text-sm leading-relaxed text-amber-900 dark:border-amber-700 dark:bg-slate-950/40 dark:text-amber-100">
                   <strong>{text.aiBestChoice}: </strong>{getManualAnalysis()}
                 </div>
+                {manualWarning && (
+                  <div className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-sm leading-relaxed text-rose-900 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-100">
+                    <strong>{text.warningExceeded}:</strong> {text.warningManual}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -971,11 +1038,8 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                   className="py-2"
                 />
                 <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>0%</span>
-                  <span>5%</span>
-                  <span>10%</span>
-                  <span>15%</span>
-                  <span>20%</span>
+                  <span>{isArabic ? '0% (الحد الأدنى)' : '0% (Min)'}</span>
+                  <span>{isArabic ? '20% (الحد الأقصى)' : '20% (Max)'}</span>
                 </div>
               </div>
             )}
@@ -986,14 +1050,34 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Chart - Improved */}
           <Card className="border-emerald-200 dark:border-emerald-800">
-            <CardHeader className="bg-emerald-50 dark:bg-emerald-900/30 rounded-t-lg">
+            <CardHeader className="bg-emerald-50 dark:bg-emerald-900/30 rounded-t-lg flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                 <PieChart className="w-6 h-6" />
                 {text.chart}
               </CardTitle>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="show-chart-toggle"
+                  checked={showChart}
+                  onCheckedChange={setShowChart}
+                />
+                <Label htmlFor="show-chart-toggle" className="text-sm cursor-pointer">
+                  {showChart ? text.hideChart : text.showChart}
+                </Label>
+              </div>
             </CardHeader>
             <CardContent className="pt-6">
-              {totalIncome > 0 ? (
+              {!showChart ? (
+                <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+                  <div className="text-center space-y-2">
+                    <PieChart className="w-16 h-16 mx-auto opacity-50" />
+                    <p>{isArabic ? 'فعّل التوزيع البياني لرؤية التفاصيل' : 'Enable chart to view details'}</p>
+                    <Button onClick={() => setShowChart(true)} variant="outline" size="sm">
+                      {text.showChart}
+                    </Button>
+                  </div>
+                </div>
+              ) : totalIncome > 0 ? (
                 <div className="space-y-4">
                   <div className="h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -1104,7 +1188,7 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xl font-bold text-green-800 dark:text-green-300">
-                      {formatCurrency(breakdown.expenses)}
+                      {formatCurrency(breakdown.expenses)} {getCurrentCurrency().symbol}
                     </span>
                     {expensesExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                   </div>
@@ -1112,30 +1196,47 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                 <Button onClick={addExpenseItem} variant="ghost" size="sm" className="w-full mt-2 text-green-600 hover:text-green-700 hover:bg-green-100">
                   <Plus className="w-4 h-4 ms-1" /> {text.addExpense}
                 </Button>
-                {expensesExpanded && expenseItems.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-xs text-muted-foreground mb-2">امثلة: الإيجار، الطعام، المواصلات...</p>
-                    {expenseItems.map((item) => (
-                      <div key={item.id} className="flex gap-2 items-center">
-                        <Input
-                          placeholder="اسم المصروف"
-                          value={item.name}
-                          onChange={(e) => updateExpenseItem(item.id, 'name', e.target.value)}
-                          className="flex-1 h-8 text-sm"
-                        />
-                        <Input
-                          placeholder="المبلغ"
-                          type="text"
-                          value={item.amount}
-                          onChange={(e) => updateExpenseItem(item.id, 'amount', e.target.value)}
-                          className="w-24 h-8 text-sm"
-                          dir="ltr"
-                        />
-                        <Button variant="ghost" size="icon" onClick={() => removeExpenseItem(item.id)} className="h-8 w-8 text-red-500 hover:text-red-600">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                {expensesExpanded && (
+                  <div className="mt-3 space-y-3">
+                    <div className="p-3 bg-green-100/50 dark:bg-green-800/30 rounded-lg">
+                      <p className="text-xs font-semibold text-green-600 dark:text-green-400 mb-2">{text.aiExpenses}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {EXPENSES_EXAMPLES.map((ex, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setExpenseItems([...expenseItems, { id: generateId(), name: language === 'ar' ? ex.name : ex.nameEn, amount: '' }])}
+                            className="px-2 py-1 text-xs bg-white dark:bg-green-900 rounded-full border border-green-200 dark:border-green-700 hover:bg-green-50"
+                          >
+                            {ex.icon} {language === 'ar' ? ex.name : ex.nameEn}
+                          </button>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                    {expenseItems.length > 0 && (
+                      <div className="space-y-2">
+                        {expenseItems.map((item) => (
+                          <div key={item.id} className="flex gap-2 items-center">
+                            <Input
+                              placeholder="اسم المصروف"
+                              value={item.name}
+                              onChange={(e) => updateExpenseItem(item.id, 'name', e.target.value)}
+                              className="flex-1 h-8 text-sm"
+                            />
+                            <Input
+                              placeholder="المبلغ"
+                              type="text"
+                              value={item.amount}
+                              onChange={(e) => updateExpenseItem(item.id, 'amount', e.target.value)}
+                              className="w-24 h-8 text-sm"
+                              dir="ltr"
+                            />
+                            <Button variant="ghost" size="icon" onClick={() => removeExpenseItem(item.id)} className="h-8 w-8 text-red-500 hover:text-red-600">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1150,7 +1251,7 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xl font-bold text-blue-800 dark:text-blue-300">
-                      {formatCurrency(breakdown.savings)}
+                      {formatCurrency(breakdown.savings)} {getCurrentCurrency().symbol}
                     </span>
                     {savingsExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                   </div>
@@ -1166,10 +1267,10 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                         {SAVINGS_EXAMPLES.map((ex, i) => (
                           <button
                             key={i}
-                            onClick={() => setSavingsItems([...savingsItems, { id: generateId(), name: ex.name, amount: '' }])}
+                            onClick={() => setSavingsItems([...savingsItems, { id: generateId(), name: language === 'ar' ? ex.name : ex.nameEn, amount: '' }])}
                             className="px-2 py-1 text-xs bg-white dark:bg-blue-900 rounded-full border border-blue-200 dark:border-blue-700 hover:bg-blue-50"
                           >
-                            {ex.icon} {ex.name}
+                            {ex.icon} {language === 'ar' ? ex.name : ex.nameEn}
                           </button>
                         ))}
                       </div>
@@ -1213,7 +1314,7 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xl font-bold text-amber-800 dark:text-amber-300">
-                      {formatCurrency(breakdown.investment)}
+                      {formatCurrency(breakdown.investment)} {getCurrentCurrency().symbol}
                     </span>
                     {investmentExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                   </div>
@@ -1229,10 +1330,10 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                         {INVESTMENT_EXAMPLES.map((ex, i) => (
                           <button
                             key={i}
-                            onClick={() => setInvestmentItems([...investmentItems, { id: generateId(), name: ex.name, amount: '' }])}
+                            onClick={() => setInvestmentItems([...investmentItems, { id: generateId(), name: language === 'ar' ? ex.name : ex.nameEn, amount: '' }])}
                             className="px-2 py-1 text-xs bg-white dark:bg-amber-900 rounded-full border border-amber-200 dark:border-amber-700 hover:bg-amber-50"
                           >
-                            {ex.icon} {ex.name}
+                            {ex.icon} {language === 'ar' ? ex.name : ex.nameEn}
                           </button>
                         ))}
                       </div>
@@ -1276,7 +1377,7 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                       <span className="text-rose-600 dark:text-rose-400 font-bold">{charityPercentage}%</span>
                     </div>
                     <span className="text-xl font-bold text-rose-800 dark:text-rose-300">
-                      {formatCurrency(breakdown.charity)}
+                      {formatCurrency(breakdown.charity)} {getCurrentCurrency().symbol}
                     </span>
                   </div>
                 </div>
@@ -1367,6 +1468,12 @@ function SalaryManager({ username, incomeTotal }: SalaryManagerProps) {
                         </div>
                       </div>
                     </div>
+                    {goal.amount && goal.duration && totalIncome > 0 && (
+                      <div className="mt-2 p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-700">
+                        <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 mb-1">{text.goalSuggestion}</p>
+                        <p className="text-sm text-purple-800 dark:text-purple-200 leading-relaxed">{getGoalSuggestion(goal)}</p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

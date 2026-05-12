@@ -18,6 +18,7 @@ export type Database = {
           username: string
           display_name: string | null
           email: string | null
+          age: number | null
           created_at: string | null
           updated_at: string | null
         }
@@ -26,6 +27,7 @@ export type Database = {
           username: string
           display_name?: string | null
           email?: string | null
+          age?: number | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -34,6 +36,7 @@ export type Database = {
           username?: string
           display_name?: string | null
           email?: string | null
+          age?: number | null
           created_at?: string | null
           updated_at?: string | null
         }
