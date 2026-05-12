@@ -1,14 +1,13 @@
 # Project Structure
 
 ## Overview
-Arabic-first smart financial manager with username/password authentication, monthly income source setup, income distribution planning, goals, charts, and market indicators.
+Arabic-first smart financial manager with username/password authentication, monthly income source setup, income distribution planning, financial goals, charitable works allocation, profile management, and market indicators.
 
 ## Tech Stack
 - Framework: Next.js 15 App Router
 - Language: TypeScript
 - Database/Auth: Nubase/Supabase client integration
 - UI: React, Tailwind CSS, shadcn/ui-style components
-- Charts: Recharts
 - Icons: lucide-react
 - Font/Layout: Cairo font with RTL support
 
@@ -41,13 +40,19 @@ src/
 ### Monthly Income Sources
 - Status: Implemented
 - Location: `src/components/income/IncomeSourcesForm.tsx`, `src/lib/income-categories.ts`, `src/app/page.tsx`
-- Database: `public.profiles` (username, display name, email, age), `public.monthly_income_sources`
-- Description: New users enter monthly income by category: active, passive, investment, business, additional, seasonal, and government/support income. Saved sources are summed and passed into the financial manager as monthly income.
+- Database: `public.profiles` (username, display name, email, age, phone country code, phone number), `public.monthly_income_sources`
+- Description: New users enter monthly income by category: active, passive, investment, business, additional, seasonal, and government/support income. Saved sources are summed and passed into the financial manager as monthly income, and users can update those income sources from the profile panel.
+
+### Profile Management
+- Status: Implemented
+- Location: `src/app/page.tsx`
+- Database: `public.profiles`
+- Description: Authenticated users can open the profile panel from the top bar to view and update profile data, phone country code, phone number, monthly income sources, and password. Current passwords are never displayed; only password changes are supported.
 
 ### Financial Manager
 - Status: Implemented
 - Location: `src/app/page.tsx`
-- Description: Calculates monthly income distribution with preset and manual allocation modes, charity percentage, dynamic expense/savings/investment items, bilingual examples, optional chart display, goal suggestions, manual allocation warnings, print optimization, and advice. The main income amount is initialized from saved monthly income sources after login.
+- Description: Calculates monthly income distribution with preset and manual allocation modes, independent charitable works percentages by type, dynamic expense/savings/investment items, bilingual examples, financial goal suggestions with day/month/year duration units, manual allocation warnings, print optimization, and advice. The main income amount is initialized from saved monthly income sources after login.
 
 ### Market Ticker
 - Status: Implemented
@@ -75,8 +80,9 @@ src/
 - [x] Income split presets and manual allocation analysis
 - [x] Dynamic rows for expenses, savings, and investment
 - [x] Bilingual examples for expenses, savings, and investment
-- [x] Optional chart display controlled by user toggle
-- [x] Financial goals section with achievement suggestions
+- [x] Charitable works section with independent percentages for Sadaqah, Zakat, sacrifice, expiation, and other charity
+- [x] Financial goals section with achievement suggestions and day/month/year duration units
+- [x] Profile panel with profile updates, phone details, password change, previous calculation details, and monthly income updates
 - [x] Manual allocation warning when entered values exceed suggested ratios
 - [x] Print optimization for the financial page
 - [x] Arabic/English language selector
@@ -87,3 +93,4 @@ src/
 - 2026-05-12: Added username/password authentication, user profiles, monthly income source database tables, income setup UI, and connected saved income sources to the financial manager.
 - 2026-05-12: Added project knowledge base and documented financial manager, market ticker API, language support, and current implementation state.
 - 2026-05-12: Updated registration to collect email and age, added bilingual financial examples, optional chart display, goal suggestions, manual warnings, and print optimization.
+- 2026-05-12: Added profile management with phone fields and password change, monthly income updates from the profile panel, independent charitable works percentages, and goal duration units.

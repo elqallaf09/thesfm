@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { IncomeSourcesForm } from '@/components/income/IncomeSourcesForm';
+import { INCOME_CATEGORIES } from '@/lib/income-categories';
 
 interface SalaryBreakdown {
   expenses: number;
@@ -33,6 +34,7 @@ interface GoalEntry {
   goal: string;
   amount: string;
   duration: string;
+  durationUnit: DurationUnit;
   notes: string;
 }
 
@@ -241,7 +243,7 @@ const ARABIC_ADVICE: Advice[] = [
   { category: 'المصروفات', tip: 'حاول الالتزام بـ 70% من مدخولك للمصروفات الأساسية. قلل من المصاريف غير الضرورية', icon: '💰' },
   { category: 'المدخرات', tip: 'لا تلمس مدخراتك في الطوارئ. اجعلها في حساب منفصل يصعب الوصول إليه', icon: '🏦' },
   { category: 'الاستثمار', tip: 'ابدأ بالاستثمار مبكراً حتى لو بمبالغ صغيرة. الفائدة المركبة تعمل لصالحك', icon: '📈' },
-  { category: 'الصدقة', tip: 'الصدقة تطفئ غضب الرب وتبارك في الرزق. حتى المبلغ الصغير له قيمة', icon: '🤲' },
+  { category: 'الأعمال الخيرية', tip: 'الصدقة تطفئ غضب الرب وتبارك في الرزق. حتى المبلغ الصغير له قيمة', icon: '🤲' },
   { category: 'الدين', tip: 'إذا كنت مديناً، اعمل على سداد الديون أولاً قبل التفكير في الاستثمار', icon: '⚖️' },
   { category: 'التأمين', tip: 'تأكد من وجود تأمين صحي وتأمين حياة يحميك وعائلتك', icon: '🛡️' },
   { category: 'التقاعد', tip: 'خصص نسبة من دخلك للتقاعد مبكراً. كلما بدأت أبكر كلما كان أفضل', icon: '🌴' },
@@ -252,12 +254,103 @@ const ENGLISH_ADVICE: Advice[] = [
   { category: 'Expenses', tip: 'Try to stick to 70% of your income for essential expenses. Reduce unnecessary spending', icon: '💰' },
   { category: 'Savings', tip: 'Do not touch your savings in emergencies. Keep them in a separate account that is hard to access', icon: '🏦' },
   { category: 'Investment', tip: 'Start investing early even with small amounts. Compound interest works in your favor', icon: '📈' },
-  { category: 'Charity', tip: 'Charity extinguishes the anger of the Lord and blesses the provision. Even a small amount has value', icon: '🤲' },
+  { category: 'Charitable works', tip: 'Charity extinguishes the anger of the Lord and blesses the provision. Even a small amount has value', icon: '🤲' },
   { category: 'Debt', tip: 'If you are in debt, work on paying off debts first before thinking about investing', icon: '⚖️' },
   { category: 'Insurance', tip: 'Make sure you have health insurance and life insurance to protect you and your family', icon: '🛡️' },
   { category: 'Retirement', tip: 'Allocate a portion of your income for retirement early. The earlier you start, the better', icon: '🌴' },
   { category: 'Education', tip: 'Invest in developing your educational skills. Knowledge is the best investment', icon: '📚' },
 ];
+
+// Country dial codes for phone number
+const COUNTRY_DIAL_CODES = [
+  { code: '+971', name: 'UAE', nameAr: 'الإمارات' },
+  { code: '+966', name: 'Saudi Arabia', nameAr: 'السعودية' },
+  { code: '+965', name: 'Kuwait', nameAr: 'الكويت' },
+  { code: '+973', name: 'Bahrain', nameAr: 'البحرين' },
+  { code: '+968', name: 'Oman', nameAr: 'عُمان' },
+  { code: '+974', name: 'Qatar', nameAr: 'قطر' },
+  { code: '+962', name: 'Jordan', nameAr: 'الأردن' },
+  { code: '+961', name: 'Lebanon', nameAr: 'لبنان' },
+  { code: '+963', name: 'Syria', nameAr: 'سوريا' },
+  { code: '+964', name: 'Iraq', nameAr: 'العراق' },
+  { code: '+970', name: 'Palestine', nameAr: 'فلسطين' },
+  { code: '+972', name: 'Israel', nameAr: 'إسرائيل' },
+  { code: '+20', name: 'Egypt', nameAr: 'مصر' },
+  { code: '+216', name: 'Tunisia', nameAr: 'تونس' },
+  { code: '+213', name: 'Algeria', nameAr: 'الجزائر' },
+  { code: '+212', name: 'Morocco', nameAr: 'المغرب' },
+  { code: '+218', name: 'Libya', nameAr: 'ليبيا' },
+  { code: '+249', name: 'Sudan', nameAr: 'السودان' },
+  { code: '+252', name: 'Somalia', nameAr: 'الصومال' },
+  { code: '+251', name: 'Ethiopia', nameAr: 'إثيوبيا' },
+  { code: '+254', name: 'Kenya', nameAr: 'كينيا' },
+  { code: '+256', name: 'Uganda', nameAr: 'أوغندا' },
+  { code: '+255', name: 'Tanzania', nameAr: 'تنزانيا' },
+  { code: '+1', name: 'USA/Canada', nameAr: 'أمريكا/كندا' },
+  { code: '+44', name: 'UK', nameAr: 'بريطانيا' },
+  { code: '+33', name: 'France', nameAr: 'فرنسا' },
+  { code: '+49', name: 'Germany', nameAr: 'ألمانيا' },
+  { code: '+39', name: 'Italy', nameAr: 'إيطاليا' },
+  { code: '+34', name: 'Spain', nameAr: 'إسبانيا' },
+  { code: '+31', name: 'Netherlands', nameAr: 'هولندا' },
+  { code: '+32', name: 'Belgium', nameAr: 'بلجيكا' },
+  { code: '+41', name: 'Switzerland', nameAr: 'سويسرا' },
+  { code: '+43', name: 'Austria', nameAr: 'النمسا' },
+  { code: '+46', name: 'Sweden', nameAr: 'السويد' },
+  { code: '+47', name: 'Norway', nameAr: 'النرويج' },
+  { code: '+45', name: 'Denmark', nameAr: 'الدنمارك' },
+  { code: '+358', name: 'Finland', nameAr: 'فنلندا' },
+  { code: '+30', name: 'Greece', nameAr: 'اليونان' },
+  { code: '+90', name: 'Turkey', nameAr: 'تركيا' },
+  { code: '+7', name: 'Russia', nameAr: 'روسيا' },
+  { code: '+91', name: 'India', nameAr: 'الهند' },
+  { code: '+92', name: 'Pakistan', nameAr: 'باكستان' },
+  { code: '+880', name: 'Bangladesh', nameAr: 'بنغلاديش' },
+  { code: '+93', name: 'Afghanistan', nameAr: 'أفغانستان' },
+  { code: '+94', name: 'Sri Lanka', nameAr: 'سريلانكا' },
+  { code: '+95', name: 'Myanmar', nameAr: 'ميانمار' },
+  { code: '+66', name: 'Thailand', nameAr: 'تايلاند' },
+  { code: '+60', name: 'Malaysia', nameAr: 'ماليزيا' },
+  { code: '+62', name: 'Indonesia', nameAr: 'إندونيسيا' },
+  { code: '+63', name: 'Philippines', nameAr: 'الفلبين' },
+  { code: '+65', name: 'Singapore', nameAr: 'سنغافورة' },
+  { code: '+84', name: 'Vietnam', nameAr: 'فيتنام' },
+  { code: '+82', name: 'South Korea', nameAr: 'كوريا الجنوبية' },
+  { code: '+81', name: 'Japan', nameAr: 'اليابان' },
+  { code: '+86', name: 'China', nameAr: 'الصين' },
+  { code: '+852', name: 'Hong Kong', nameAr: 'هونغ كونغ' },
+  { code: '+886', name: 'Taiwan', nameAr: 'تايوان' },
+  { code: '+61', name: 'Australia', nameAr: 'أستراليا' },
+  { code: '+64', name: 'New Zealand', nameAr: 'نيوزيلندا' },
+  { code: '+27', name: 'South Africa', nameAr: 'جنوب أفريقيا' },
+  { code: '+234', name: 'Nigeria', nameAr: 'نيجيريا' },
+  { code: '+233', name: 'Ghana', nameAr: 'غانا' },
+  { code: '+225', name: "Cote d'Ivoire", nameAr: 'ساحل العاج' },
+  { code: '+221', name: 'Senegal', nameAr: 'السنغال' },
+  { code: '+226', name: 'Burkina Faso', nameAr: 'بوركينا فاسو' },
+  { code: '+227', name: 'Niger', nameAr: 'النيجر' },
+  { code: '+228', name: 'Togo', nameAr: 'توغو' },
+  { code: '+229', name: 'Benin', nameAr: 'بنين' },
+  { code: '+237', name: 'Cameroon', nameAr: 'الكاميرون' },
+  { code: '+241', name: 'Gabon', nameAr: 'الغابون' },
+  { code: '+242', name: 'Congo', nameAr: 'الكونغو' },
+  { code: '+243', name: 'DR Congo', nameAr: 'الكونغو الديموقراطية' },
+  { code: '+507', name: 'Panama', nameAr: 'بنما' },
+  { code: '+52', name: 'Mexico', nameAr: 'المكسيك' },
+  { code: '+53', name: 'Cuba', nameAr: 'كوبا' },
+  { code: '+1', name: 'USA', nameAr: 'أمريكا' },
+  { code: '+55', name: 'Brazil', nameAr: 'البرازيل' },
+  { code: '+54', name: 'Argentina', nameAr: 'الأرجنتين' },
+  { code: '+56', name: 'Chile', nameAr: 'تشيلي' },
+  { code: '+57', name: 'Colombia', nameAr: 'كولومبيا' },
+  { code: '+51', name: 'Peru', nameAr: 'بيرو' },
+  { code: '+598', name: 'Uruguay', nameAr: 'أوروغواي' },
+  { code: '+595', name: 'Paraguay', nameAr: 'باراغواي' },
+  { code: '+592', name: 'Guyana', nameAr: 'غيانا' },
+  { code: '+509', name: 'Haiti', nameAr: 'هايتي' },
+];
+
+type DurationUnit = 'day' | 'month' | 'year';
 
 export default function HomePage() {
   return (
@@ -354,6 +447,20 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     charityDesc: isArabic ? 'خصص نسبة من مدخولك للأعمال الخيرية' : 'Allocate a percentage of your income for charitable works',
     charityToggle: isArabic ? 'تفعيل الأعمال الخيرية' : 'Enable charitable works',
     charityPercent: isArabic ? 'نسبة الأعمال الخيرية' : 'Charity percentage',
+    profileBtn: isArabic ? 'الملف الشخصي' : 'Profile',
+    phoneCountryCode: isArabic ? 'رمز الدولة' : 'Country code',
+    phoneNumber: isArabic ? 'رقم الهاتف' : 'Phone number',
+    newPassword: isArabic ? 'كلمة المرور الجديدة' : 'New password',
+    newPasswordHint: isArabic ? 'اتركه فارغاً إذا كنت لا تريد تغيير كلمة المرور' : 'Leave empty if you do not want to change password',
+    incomeSourcesTitle: isArabic ? 'مصادر الدخل الحالية' : 'Current income sources',
+    updateIncome: isArabic ? 'تعديل المدخول الشهري' : 'Update monthly income',
+    durationUnitDay: isArabic ? 'يوم' : 'day',
+    durationUnitMonth: isArabic ? 'شهر' : 'month',
+    durationUnitYear: isArabic ? 'سنة' : 'year',
+    durationUnit: isArabic ? 'وحدة المدة' : 'Duration unit',
+    calculationDetails: isArabic ? 'تفاصيل العمليات الحسابية السابقة' : 'Previous calculation details',
+    noCharitySelected: isArabic ? 'لم يتم اختيار أي عمل خيري' : 'No charity selected',
+    charityAmount: isArabic ? 'مبلغ' : 'Amount',
     chart: isArabic ? 'التوزيع البياني' : 'Visual distribution',
     emptyChart: isArabic ? 'أدخل المدخول لرؤية التوزيع' : 'Enter income to view distribution',
     profileTitle: isArabic ? 'الملف الشخصي' : 'Profile',
@@ -389,7 +496,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     expenses: isArabic ? 'المصروفات' : 'Expenses',
     savings: isArabic ? 'المدخرات' : 'Savings',
     investment: isArabic ? 'الاستثمار' : 'Investment',
-    charity: isArabic ? 'الصدقة' : 'Charity',
+    charity: isArabic ? 'الأعمال الخيرية' : 'Charitable works',
     addExpense: isArabic ? 'إضافة مصروف' : 'Add expense',
     addSaving: isArabic ? 'إضافة مدخرة' : 'Add saving',
     addInvestment: isArabic ? 'إضافة استثمار' : 'Add investment',
@@ -441,7 +548,6 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   const [manualExpenses, setManualExpenses] = useState<string>('');
   const [manualSavings, setManualSavings] = useState<string>('');
   const [manualInvestment, setManualInvestment] = useState<string>('');
-  const [charityPercentage, setCharityPercentage] = useState<number>(0);
   const [includeCharity, setIncludeCharity] = useState<boolean>(false);
   const [showAdvice, setShowAdvice] = useState<boolean>(false);
   const [selectedCurrency, setSelectedCurrency] = useState<string>('KWD');
@@ -454,13 +560,22 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
   // Profile state
   const [showProfile, setShowProfile] = useState<boolean>(false);
-  const [profileData, setProfileData] = useState<{ display_name?: string; email?: string; age?: number }>({});
+  const [profileData, setProfileData] = useState<{ display_name?: string; email?: string; age?: number; phone_country_code?: string; phone_number?: string }>({});
   const [profileSaving, setProfileSaving] = useState<boolean>(false);
   const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [newPassword, setNewPassword] = useState<string>('');
 
-  // Charity types state
+  // Income sources editing state
+  const [editingIncomeSources, setEditingIncomeSources] = useState<boolean>(false);
+  const [incomeSourceAmounts, setIncomeSourceAmounts] = useState<Record<string, string>>({});
+  const [currentIncomeSources, setCurrentIncomeSources] = useState<{ id: string; category: string; label: string | null; amount: number }[]>([]);
+  const [incomeSourcesLoading, setIncomeSourcesLoading] = useState<boolean>(false);
+
+  // Charity types state with individual percentages
   const [selectedCharityTypes, setSelectedCharityTypes] = useState<string[]>([]);
+  const [charityPercentages, setCharityPercentages] = useState<Record<string, number>>({});
   const CHARITY_TYPE_OPTIONS = ['sadaqah', 'zakat', 'sacrifice', 'expiation', 'other'];
+  const [totalCharityPercentage, setTotalCharityPercentage] = useState<number>(0);
 
   // Items states
   const [expenseItems, setExpenseItems] = useState<ItemEntry[]>([]);
@@ -544,11 +659,11 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
       investment = baseAmount * ratios.investment;
     }
 
-    if (includeCharity && charityPercentage > 0) {
-      charity = baseAmount * (charityPercentage / 100);
-      expenses = expenses * (1 - charityPercentage / 100);
-      savings = savings * (1 - charityPercentage / 100);
-      investment = investment * (1 - charityPercentage / 100);
+    if (includeCharity && totalCharityPercentage > 0) {
+      charity = baseAmount * (totalCharityPercentage / 100);
+      expenses = expenses * (1 - totalCharityPercentage / 100);
+      savings = savings * (1 - totalCharityPercentage / 100);
+      investment = investment * (1 - totalCharityPercentage / 100);
     }
 
     setBreakdown({
@@ -557,7 +672,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
       investment: Math.round(investment * 100) / 100,
       charity: Math.round(charity * 100) / 100,
     });
-  }, [salaryNumber, otherIncomeNumber, includeCharity, charityPercentage, distributionMethod, manualExpenses, manualSavings, manualInvestment]);
+  }, [salaryNumber, otherIncomeNumber, includeCharity, totalCharityPercentage, distributionMethod, manualExpenses, manualSavings, manualInvestment]);
 
   useEffect(() => {
     calculateBreakdown();
@@ -656,8 +771,10 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     setManualExpenses('');
     setManualSavings('');
     setManualInvestment('');
-    setCharityPercentage(0);
     setIncludeCharity(false);
+    setSelectedCharityTypes([]);
+    setCharityPercentages({});
+    setTotalCharityPercentage(0);
     setShowAdvice(false);
     setRandomAdvice(null);
     setExpenseItems([]);
@@ -722,38 +839,97 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
   // Profile functions
   const loadProfile = async (userId: string) => {
-    const { data } = await supabase.from('profiles').select('display_name, email, age').eq('id', userId).maybeSingle();
+    const { data } = await supabase.from('profiles').select('display_name, email, age, phone_country_code, phone_number').eq('id', userId).maybeSingle();
     if (data) {
       setProfileData({
         display_name: data.display_name || '',
         email: data.email || '',
         age: data.age || undefined,
+        phone_country_code: data.phone_country_code || '',
+        phone_number: data.phone_number || '',
       });
     }
+  };
+
+  const loadCurrentIncomeSources = async (userId: string) => {
+    setIncomeSourcesLoading(true);
+    const { data } = await supabase.from('monthly_income_sources').select('id, category, label, amount').eq('user_id', userId);
+    if (data) {
+      setCurrentIncomeSources(data);
+      const amounts: Record<string, string> = {};
+      data.forEach((source) => {
+        amounts[source.category] = String(source.amount);
+      });
+      setIncomeSourceAmounts(amounts);
+    }
+    setIncomeSourcesLoading(false);
   };
 
   const saveProfile = async (userId: string) => {
     setProfileSaving(true);
     setProfileMessage(null);
+
+    // Update password if provided
+    if (newPassword.trim()) {
+      const { error: passwordError } = await supabase.auth.updateUser({ password: newPassword });
+      if (passwordError) {
+        setProfileMessage({ type: 'error', text: passwordError.message });
+        setProfileSaving(false);
+        return;
+      }
+    }
+
+    // Update profile data
     const { error } = await supabase
       .from('profiles')
       .update({
         display_name: profileData.display_name,
         email: profileData.email,
         age: profileData.age,
+        phone_country_code: profileData.phone_country_code,
+        phone_number: profileData.phone_number,
       })
       .eq('id', userId);
     if (error) {
       setProfileMessage({ type: 'error', text: text.profileError });
     } else {
       setProfileMessage({ type: 'success', text: text.profileSaved });
+      setNewPassword('');
+    }
+    setProfileSaving(false);
+  };
+
+  const saveIncomeSources = async (userId: string) => {
+    setProfileSaving(true);
+    setProfileMessage(null);
+
+    // Delete existing sources and insert new ones
+    await supabase.from('monthly_income_sources').delete().eq('user_id', userId);
+
+    const rows = INCOME_CATEGORIES.map((category) => ({
+      user_id: userId,
+      category: category.id,
+      label: category.nameAr,
+      amount: parseFloat((incomeSourceAmounts[category.id] || '').replace(/[^\d.]/g, '')) || 0,
+    })).filter((row) => row.amount > 0);
+
+    const { error: insertError } = await supabase.from('monthly_income_sources').insert(rows);
+    if (insertError) {
+      setProfileMessage({ type: 'error', text: insertError.message });
+    } else {
+      // Update local salary state
+      const newTotal = rows.reduce((sum, row) => sum + row.amount, 0);
+      setSalary(String(newTotal));
+      setSalaryNumber(newTotal);
+      setProfileMessage({ type: 'success', text: text.profileSaved });
+      setEditingIncomeSources(false);
     }
     setProfileSaving(false);
   };
 
   // Goal management functions
   const addGoal = () => {
-    setGoals([...goals, { id: generateId(), goal: '', amount: '', duration: '', notes: '' }]);
+    setGoals([...goals, { id: generateId(), goal: '', amount: '', duration: '', durationUnit: 'month', notes: '' }]);
   };
 
   const updateGoal = (id: string, field: keyof GoalEntry, value: string) => {
@@ -811,11 +987,30 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     if (!goal.amount || !goal.duration || totalIncome === 0) return '';
     const amount = parseFloat(goal.amount.replace(/[^\d.]/g, '')) || 0;
     if (amount <= 0) return '';
-    const durationMonths = parseInt(goal.duration.replace(/[^\d]/g, ''), 10) || 1;
+
+    // Convert duration to months based on unit
+    const durationNum = parseInt(goal.duration.replace(/[^\d]/g, ''), 10) || 1;
+    let durationMonths: number;
+    switch (goal.durationUnit) {
+      case 'day':
+        durationMonths = durationNum / 30;
+        break;
+      case 'year':
+        durationMonths = durationNum * 12;
+        break;
+      default:
+        durationMonths = durationNum;
+    }
+
     const monthlyRequired = amount / durationMonths;
     const savingsPerMonth = distributionMethod === 'manual'
       ? parseFloat(manualSavings.replace(/[^\d.]/g, '')) || 0
       : totalIncome * 0.2;
+
+    const unitLabel = goal.durationUnit === 'day' ? text.durationUnitDay
+      : goal.durationUnit === 'year' ? text.durationUnitYear
+      : text.durationUnitMonth;
+
     const suggestion = isArabic
       ? `المبلغ الشهري المطلوب: ${formatCurrency(monthlyRequired)} ${getCurrentCurrency().symbol}. `
       : `Monthly amount needed: ${formatCurrency(monthlyRequired)} ${getCurrentCurrency().symbol}. `;
@@ -895,6 +1090,20 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
+                onClick={() => {
+                  loadProfile(userId);
+                  loadCurrentIncomeSources(userId);
+                  setShowProfile(!showProfile);
+                }}
+                className="h-10 rounded-xl text-emerald-50 hover:bg-white/10 hover:text-white text-sm font-medium"
+              >
+                <User className="h-4 w-4 me-1" />
+                {text.profileBtn}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => supabase.auth.signOut()}
                 className="h-10 rounded-xl text-emerald-50 hover:bg-white/10 hover:text-white text-sm font-medium"
               >
@@ -935,19 +1144,6 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                   {username}
                 </span>
               )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  loadProfile(userId);
-                  setShowProfile(!showProfile);
-                }}
-                className="h-10 rounded-xl bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300 dark:hover:bg-emerald-800"
-              >
-                <User className="h-4 w-4 me-1" />
-                {text.profileTitle}
-              </Button>
               <Languages className="h-5 w-5 text-emerald-700 dark:text-emerald-300" />
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{text.langLabel}</span>
               <Select value={language} onValueChange={(value) => setLanguage(value as 'ar' | 'en')}>
@@ -987,14 +1183,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="profile-email" className="text-lg font-medium">{text.profileEmail}</Label>
-                  <Input
-                    id="profile-email"
-                    type="email"
-                    value={profileData.email || ''}
-                    onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                    placeholder={text.profileEmail}
-                    className="h-10"
-                  />
+                  <div className="h-10 flex items-center px-3 bg-slate-100 dark:bg-slate-800 rounded-md border">
+                    <span className="text-sm">{profileData.email || '-'}</span>
+                  </div>
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
@@ -1017,6 +1208,56 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                   </div>
                 </div>
               </div>
+
+              {/* Phone Number Section */}
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="phone-country-code" className="text-lg font-medium">{text.phoneCountryCode}</Label>
+                  <Select
+                    value={profileData.phone_country_code || ''}
+                    onValueChange={(value) => setProfileData({ ...profileData, phone_country_code: value })}
+                  >
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder={text.phoneCountryCode} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {COUNTRY_DIAL_CODES.map((country) => (
+                        <SelectItem key={country.code} value={country.code}>
+                          {country.code} {isArabic ? country.nameAr : country.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="phone-number" className="text-lg font-medium">{text.phoneNumber}</Label>
+                  <Input
+                    id="phone-number"
+                    type="tel"
+                    value={profileData.phone_number || ''}
+                    onChange={(e) => setProfileData({ ...profileData, phone_number: e.target.value })}
+                    placeholder={text.phoneNumber}
+                    className="h-10"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+
+              {/* New Password Section */}
+              <div className="space-y-2">
+                <Label htmlFor="new-password" className="text-lg font-medium">{text.newPassword}</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder={text.newPasswordHint}
+                  className="h-10"
+                  dir="ltr"
+                />
+                <p className="text-xs text-muted-foreground">{text.newPasswordHint}</p>
+              </div>
+
               {profileMessage && (
                 <div className={`p-3 rounded-lg text-sm ${profileMessage.type === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>
                   {profileMessage.text}
@@ -1030,9 +1271,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 {profileSaving ? '...' : text.profileSave}
               </Button>
 
-              {/* Previous Operations */}
+              {/* Calculation Details */}
               <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                <h3 className="text-lg font-semibold mb-3 text-emerald-700 dark:text-emerald-400">{text.previousOperations}</h3>
+                <h3 className="text-lg font-semibold mb-3 text-emerald-700 dark:text-emerald-400">{text.calculationDetails}</h3>
                 {(expenseItems.length === 0 && savingsItems.length === 0 && investmentItems.length === 0 && goals.length === 0) ? (
                   <p className="text-muted-foreground text-center py-4">{text.noOperations}</p>
                 ) : (
@@ -1096,10 +1337,65 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                                type === 'sacrifice' ? text.charitySacrifice :
                                type === 'expiation' ? text.charityExpiation :
                                text.charityOther}
+                              {charityPercentages[type] ? `: ${charityPercentages[type]}%` : ''}
                             </span>
                           ))}
                         </div>
                       </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Income Sources Update Section */}
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">{text.incomeSourcesTitle}</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (!editingIncomeSources) {
+                        loadCurrentIncomeSources(userId);
+                      }
+                      setEditingIncomeSources(!editingIncomeSources);
+                    }}
+                    className="border-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900"
+                  >
+                    <Coins className="w-4 h-4 me-1" />
+                    {text.updateIncome}
+                  </Button>
+                </div>
+                {editingIncomeSources && (
+                  <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                    {incomeSourcesLoading ? (
+                      <p className="text-center py-4">{text.loadingPrices}</p>
+                    ) : (
+                      <>
+                        {INCOME_CATEGORIES.map((category) => (
+                          <div key={category.id} className="flex gap-3 items-center">
+                            <div className="flex-1">
+                              <span className="text-sm font-medium">{category.nameAr}</span>
+                            </div>
+                            <Input
+                              type="text"
+                              value={incomeSourceAmounts[category.id] || ''}
+                              onChange={(e) => setIncomeSourceAmounts({ ...incomeSourceAmounts, [category.id]: e.target.value })}
+                              placeholder="0.00"
+                              className="w-32 h-8 text-sm"
+                              dir="ltr"
+                            />
+                          </div>
+                        ))}
+                        <Button
+                          onClick={() => saveIncomeSources(userId)}
+                          disabled={profileSaving}
+                          size="sm"
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white mt-2"
+                        >
+                          {profileSaving ? '...' : text.profileSave}
+                        </Button>
+                      </>
                     )}
                   </div>
                 )}
@@ -1264,16 +1560,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             {includeCharity && (
               <div className="space-y-3 animate-in slide-in-from-top-2 duration-300">
                 <div className="flex justify-between items-center">
-                  <Label className="font-medium">{text.charityPercent}: {charityPercentage}%</Label>
+                  <Label className="font-medium">{text.charityPercent}: {totalCharityPercentage}%</Label>
                 </div>
-                <Slider
-                  value={[charityPercentage]}
-                  onValueChange={(value) => setCharityPercentage(value[0])}
-                  max={20}
-                  min={0}
-                  step={1}
-                  className="py-2"
-                />
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>{isArabic ? '0% (الحد الأدنى)' : '0% (Min)'}</span>
                   <span>{isArabic ? '20% (الحد الأقصى)' : '20% (Max)'}</span>
@@ -1288,9 +1576,21 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                         onClick={() => {
                           if (selectedCharityTypes.includes(type)) {
                             setSelectedCharityTypes(selectedCharityTypes.filter(t => t !== type));
+                            const newPercentages = { ...charityPercentages };
+                            delete newPercentages[type];
+                            setCharityPercentages(newPercentages);
                           } else {
                             setSelectedCharityTypes([...selectedCharityTypes, type]);
+                            setCharityPercentages({ ...charityPercentages, [type]: 0 });
                           }
+                          // Recalculate total
+                          setTimeout(() => {
+                            const newSelected = selectedCharityTypes.includes(type)
+                              ? selectedCharityTypes.filter(t => t !== type)
+                              : [...selectedCharityTypes, type];
+                            const total = newSelected.reduce((sum, t) => sum + (charityPercentages[t] || 0), 0);
+                            setTotalCharityPercentage(total);
+                          }, 0);
                         }}
                         className={`px-3 py-2 text-sm rounded-xl border transition-all ${
                           selectedCharityTypes.includes(type)
@@ -1306,10 +1606,47 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                       </button>
                     ))}
                   </div>
-                  {selectedCharityTypes.length > 0 && (
-                    <p className="text-sm text-muted-foreground">{text.selectedCharities}: {selectedCharityTypes.length}</p>
-                  )}
                 </div>
+                {selectedCharityTypes.length > 0 && (
+                  <div className="space-y-3 pt-2 border-t border-rose-200 dark:border-rose-800">
+                    <p className="text-sm font-medium">{text.selectedCharities}: {selectedCharityTypes.length}</p>
+                    {selectedCharityTypes.map((type) => {
+                      const remainingBudget = 20 - totalCharityPercentage + (charityPercentages[type] || 0);
+                      return (
+                        <div key={type} className="space-y-2 p-3 bg-rose-50/50 dark:bg-rose-900/20 rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium">
+                              {type === 'sadaqah' ? text.charitySadaqah :
+                               type === 'zakat' ? text.charityZakat :
+                               type === 'sacrifice' ? text.charitySacrifice :
+                               type === 'expiation' ? text.charityExpiation :
+                               text.charityOther}
+                            </span>
+                            <span className="text-sm font-bold text-rose-600 dark:text-rose-400">
+                              {charityPercentages[type] || 0}%
+                            </span>
+                          </div>
+                          <Slider
+                            value={[charityPercentages[type] || 0]}
+                            onValueChange={(value) => {
+                              const newPercentages = { ...charityPercentages, [type]: value[0] };
+                              setCharityPercentages(newPercentages);
+                              const newTotal = Object.values(newPercentages).reduce((sum, v) => sum + v, 0);
+                              setTotalCharityPercentage(Math.min(newTotal, 20));
+                            }}
+                            max={Math.max(remainingBudget, 1)}
+                            min={0}
+                            step={0.5}
+                            className="py-2"
+                          />
+                          <div className="text-xs text-muted-foreground">
+                            {isArabic ? 'المتبقي' : 'Remaining'}: {remainingBudget.toFixed(1)}%
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -1556,16 +1893,39 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               {/* Charity */}
               {includeCharity && breakdown.charity > 0 && (
                 <div className="p-4 bg-rose-50 dark:bg-rose-900/30 rounded-xl border border-rose-200 dark:border-rose-800">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded-full bg-rose-500" />
                       <span className="font-semibold text-rose-700 dark:text-rose-400">{text.charity}</span>
-                      <span className="text-rose-600 dark:text-rose-400 font-bold">{charityPercentage}%</span>
+                      <span className="text-rose-600 dark:text-rose-400 font-bold">{totalCharityPercentage}%</span>
                     </div>
                     <span className="text-xl font-bold text-rose-800 dark:text-rose-300">
                       {formatCurrency(breakdown.charity)} {getCurrentCurrency().symbol}
                     </span>
                   </div>
+                  {selectedCharityTypes.length > 0 && (
+                    <div className="space-y-2 pt-2 border-t border-rose-200 dark:border-rose-800">
+                      <p className="text-sm font-medium text-rose-600 dark:text-rose-400">{text.charityTypes}:</p>
+                      {selectedCharityTypes.map((type) => {
+                        const percentage = charityPercentages[type] || 0;
+                        const amount = totalIncome * (percentage / 100);
+                        return (
+                          <div key={type} className="flex justify-between items-center text-sm">
+                            <span className="text-rose-700 dark:text-rose-300">
+                              {type === 'sadaqah' ? text.charitySadaqah :
+                               type === 'zakat' ? text.charityZakat :
+                               type === 'sacrifice' ? text.charitySacrifice :
+                               type === 'expiation' ? text.charityExpiation :
+                               text.charityOther}
+                            </span>
+                            <span className="text-rose-600 dark:text-rose-400">
+                              {percentage}% = {formatCurrency(amount)} {getCurrentCurrency().symbol}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -1590,7 +1950,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               <div className="space-y-4">
                 {goals.map((goal) => (
                   <div key={goal.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground flex items-center gap-1">
                           <Target className="w-3 h-3" /> {text.goal}
@@ -1624,33 +1984,50 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                         <Label className="text-xs text-muted-foreground flex items-center gap-1">
                           <Calendar className="w-3 h-3" /> {text.duration}
                         </Label>
-                        <Input
-                          placeholder={text.goalDurationPlaceholder}
-                          value={goal.duration}
-                          onChange={(e) => updateGoal(goal.id, 'duration', e.target.value)}
-                          className="h-10"
-                        />
+                        <div className="flex gap-1">
+                          <Input
+                            placeholder={isArabic ? 'المدة' : 'Duration'}
+                            type="number"
+                            value={goal.duration}
+                            onChange={(e) => updateGoal(goal.id, 'duration', e.target.value)}
+                            className="h-10 w-20"
+                            dir="ltr"
+                          />
+                          <Select
+                            value={goal.durationUnit}
+                            onValueChange={(value) => updateGoal(goal.id, 'durationUnit', value as DurationUnit)}
+                          >
+                            <SelectTrigger className="h-10 w-24">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="day">{text.durationUnitDay}</SelectItem>
+                              <SelectItem value="month">{text.durationUnitMonth}</SelectItem>
+                              <SelectItem value="year">{text.durationUnitYear}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground flex items-center gap-1">
                           <Lightbulb className="w-3 h-3" /> {text.notes}
                         </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder={text.notesPlaceholder}
-                            value={goal.notes}
-                            onChange={(e) => updateGoal(goal.id, 'notes', e.target.value)}
-                            className="h-10 flex-1"
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeGoal(goal.id)}
-                            className="h-10 w-10 text-red-500 hover:text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        <Input
+                          placeholder={text.notesPlaceholder}
+                          value={goal.notes}
+                          onChange={(e) => updateGoal(goal.id, 'notes', e.target.value)}
+                          className="h-10"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeGoal(goal.id)}
+                          className="h-10 w-10 text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
                     {goal.amount && goal.duration && totalIncome > 0 && (
