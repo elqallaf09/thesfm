@@ -1,7 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+<<<<<<< HEAD
 import { Lock, UserPlus, KeyRound, AlertCircle, Languages } from 'lucide-react';
+=======
+import { Calculator, Lock, UserPlus, KeyRound, AlertCircle, User } from 'lucide-react';
+>>>>>>> 4b9a707 (Add guest mode, expand market tickers, and financial wisdom bar)
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -460,6 +464,29 @@ export function AuthForm() {
                 {!showForgotPassword && (
                   <Button type="button" variant="ghost" className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => { setMode(isRegister ? 'login' : 'register'); setError(''); }}>
                     {isRegister ? t.haveAccount : t.noAccount} {isRegister ? t.login : t.createNew}
+                  </Button>
+                )}
+
+                {!showForgotPassword && (
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-slate-200 dark:border-slate-700" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white dark:bg-slate-950 px-2 text-slate-500">أو</span>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full border-emerald-600 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
+                    onClick={() => {
+                      // Guest mode - redirect to main app without authentication
+                      window.location.href = '/guest';
+                    }}
+                  >
+                    <User className="h-4 w-4 ms-2" />
+                    الدخول بدون تسجيل (ضيف)
                   </Button>
                 )}
               </form>

@@ -138,6 +138,15 @@
   }
 }
 
+@keyframes wisdom-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
 @media print {
   @page {
     size: A4;

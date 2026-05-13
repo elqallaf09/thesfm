@@ -46,7 +46,7 @@ interface Currency {
   nameAr: string;
 }
 
-type TickerCategory = 'global' | 'gulf' | 'asia' | 'europe' | 'crypto' | 'metals';
+type TickerCategory = 'global' | 'gulf' | 'asia' | 'europe' | 'crypto' | 'metals' | 'usa' | 'china';
 
 interface MarketTickerItem {
   nameAr: string;
@@ -55,6 +55,41 @@ interface MarketTickerItem {
   change: string;
   positive: boolean;
 }
+
+const FINANCIAL_WISDOM_TIPS = [
+  {
+    title: 'ادفع لنفسك أولاً',
+    content: 'أول ما ينزل راتبك، خذ جزء لك قبل أي صرف. 10% أو 20% أو أقل بالبداية. الناس تصرف ثم تدخر. الأغنياء يدخرون ثم يصرفون.'
+  },
+  {
+    title: 'مو المهم جم تكسب… المهم جم تحتفظ',
+    content: 'الراتب وحده ما يصنع ثروة. لازم تبني أصول مثل: استثمارات، مشروع، عقار.'
+  },
+  {
+    title: 'السلوك أهم من الذكاء',
+    content: 'أكبر درس: النجاح المالي مو بس حسابات واستثمار، أغلبه سلوك. الصبر، ضبط النفس، عدم المقارنة، الاستمرار.'
+  },
+  {
+    title: 'عيش أقل من قدرتك',
+    content: 'كثير أثرياء سياراتهم عادية وصرفهم محسوب. بينما ناس دخلهم عالي يكونون مضغوطين بسبب المظاهر.'
+  },
+  {
+    title: 'الفائدة المركبة تغيّر حياتك',
+    content: 'إذا تستثمر مبلغ صغير شهرياً باستمرار لسنوات، النمو يصير قوي جداً مع الوقت. السر بالاستمرارية والوقت.'
+  },
+  {
+    title: 'الديون الاستهلاكية تقتل الحرية المالية',
+    content: 'لا تدخل نفسك بأقساط وكماليات تستهلك راتبك. كل قسط يقلل حريتك المستقبلية.'
+  },
+  {
+    title: 'لا تقارن نفسك بالناس',
+    content: 'كثير ناس تخرب ميزانيتها بسبب المقارنة والضغط الاجتماعي. الثروة الحقيقية غالباً ما تنشاف.'
+  },
+  {
+    title: 'تعلم مهارات ترفع دخلك',
+    content: 'البيع، التفاوض، الاستثمار، إدارة الأعمال. مهارات تقدر تزيد دخلك أكثر من الاعتماد على وظيفة فقط.'
+  },
+];
 
 const MARKET_TICKERS: Record<TickerCategory, MarketTickerItem[]> = {
   global: [
@@ -66,8 +101,28 @@ const MARKET_TICKERS: Record<TickerCategory, MarketTickerItem[]> = {
   gulf: [
     { nameAr: 'بورصة الكويت', nameEn: 'Boursa Kuwait', value: '7,421.35', change: '+0.44%', positive: true },
     { nameAr: 'تداول السعودية', nameEn: 'Saudi Tadawul', value: '12,184.90', change: '-0.18%', positive: false },
+    { nameAr: 'سوق أبوظبي', nameEn: 'Abu Dhabi Exchange', value: '9,234.18', change: '+0.35%', positive: true },
     { nameAr: 'سوق دبي المالي', nameEn: 'Dubai Financial Market', value: '4,083.61', change: '+0.27%', positive: true },
     { nameAr: 'بورصة قطر', nameEn: 'Qatar Exchange', value: '10,242.15', change: '+0.09%', positive: true },
+    { nameAr: 'بورصة البحرين', nameEn: 'Bahrain Exchange', value: '1,987.42', change: '+0.15%', positive: true },
+    { nameAr: 'سوق مسقط', nameEn: 'Muscat Exchange', value: '4,512.30', change: '-0.08%', positive: false },
+  ],
+  usa: [
+    { nameAr: 'داو جونز', nameEn: 'Dow Jones', value: '39,806.77', change: '+0.32%', positive: true },
+    { nameAr: 'ناسداك', nameEn: 'Nasdaq', value: '16,340.87', change: '+0.58%', positive: true },
+    { nameAr: 'إس آند بي 500', nameEn: 'S&P 500', value: '5,308.13', change: '-0.12%', positive: false },
+    { nameAr: 'ناسداك 100', nameEn: 'Nasdaq 100', value: '18,452.12', change: '+0.64%', positive: true },
+    { nameAr: 'آر تي إس', nameEn: 'Russell 2000', value: '2,156.87', change: '+0.18%', positive: true },
+    { nameAr: 'فيليب 500', nameEn: 'S&P 500 VIX', value: '14.32', change: '-0.42%', positive: false },
+  ],
+  china: [
+    { nameAr: 'نيكي 225', nameEn: 'Nikkei 225', value: '38,787.38', change: '+0.73%', positive: true },
+    { nameAr: 'هانغ سنغ', nameEn: 'Hang Seng', value: '19,636.22', change: '-0.31%', positive: false },
+    { nameAr: 'شنغهاي المركب', nameEn: 'Shanghai Composite', value: '3,154.03', change: '+0.16%', positive: true },
+    { nameAr: 'سينسكس الهند', nameEn: 'BSE Sensex', value: '74,221.06', change: '+0.48%', positive: true },
+    { nameAr: 'كوسبي', nameEn: 'KOSPI', value: '2,689.45', change: '+0.22%', positive: true },
+    { nameAr: 'شنتشن المركب', nameEn: 'Shenzhen Composite', value: '1,789.23', change: '+0.41%', positive: true },
+    { nameAr: 'تايكان', nameEn: 'Taiwan Weighted', value: '22,156.78', change: '+0.55%', positive: true },
   ],
   asia: [
     { nameAr: 'نيكي 225', nameEn: 'Nikkei 225', value: '38,787.38', change: '+0.73%', positive: true },
@@ -574,6 +629,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   const tickerOptions: { value: TickerCategory; label: string }[] = [
     { value: 'global', label: text.globalMarkets },
     { value: 'gulf', label: text.gulfMarkets },
+    { value: 'usa', label: 'بورصات أمريكا' },
+    { value: 'china', label: 'بورصات آسيا' },
     { value: 'asia', label: text.asianMarkets },
     { value: 'europe', label: text.europeanMarkets },
     { value: 'crypto', label: text.cryptoMarkets },
@@ -1020,6 +1077,30 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                   <SelectItem value="zh">中文</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* Financial Wisdom Scroll Bar */}
+          <div className="mt-4 overflow-hidden rounded-xl border border-amber-200/50 bg-gradient-to-r from-amber-50/90 via-yellow-50/90 to-amber-50/90 dark:border-amber-700/30 dark:from-slate-900/90 dark:via-amber-900/20 dark:to-slate-900/90">
+            <div className="relative flex items-center">
+              <div className="absolute left-0 z-10 h-full w-12 bg-gradient-to-r from-amber-100/95 to-transparent dark:from-slate-900/95" />
+              <div className="absolute right-0 z-10 h-full w-12 bg-gradient-to-l from-amber-100/95 to-transparent dark:from-slate-900/95" />
+              <div className="flex animate-[wisdom-scroll_60s_linear_infinite] items-center gap-6 px-4 py-3">
+                {[...FINANCIAL_WISDOM_TIPS, ...FINANCIAL_WISDOM_TIPS].map((tip, index) => (
+                  <div
+                    key={`${tip.title}-${index}`}
+                    className="flex shrink-0 max-w-[340px] items-center gap-3 rounded-lg border border-amber-200/60 bg-white/80 px-4 py-2 shadow-sm dark:border-amber-600/30 dark:bg-slate-800/80"
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md">
+                      <Sparkles className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-amber-800 dark:text-amber-300">{tip.title}</p>
+                      <p className="truncate text-xs text-amber-600 dark:text-amber-400/80">{tip.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
