@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -420,6 +421,7 @@ interface SalaryManagerProps {
 }
 
 function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
+  const router = useRouter();
   const [language, setLanguage] = useState<'ar' | 'en'>('ar');
   const isArabic = language === 'ar';
   const text = {
@@ -448,6 +450,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     charityToggle: isArabic ? 'تفعيل الأعمال الخيرية' : 'Enable charitable works',
     charityPercent: isArabic ? 'نسبة الأعمال الخيرية' : 'Charity percentage',
     profileBtn: isArabic ? 'الملف الشخصي' : 'Profile',
+    investmentTypesBtn: isArabic ? 'أنواع الاستثمار' : 'Investment',
+    savingsTypesBtn: isArabic ? 'أنواع الإدخار' : 'Savings',
+    expensesInfoBtn: isArabic ? 'ماهي المصروفات' : 'Expenses',
     phoneCountryCode: isArabic ? 'رمز الدولة' : 'Country code',
     phoneNumber: isArabic ? 'رقم الهاتف' : 'Phone number',
     newPassword: isArabic ? 'كلمة المرور الجديدة' : 'New password',
@@ -1086,6 +1091,33 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                   ))}
                 </SelectContent>
               </Select>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/education/investments')}
+                className="h-10 rounded-xl text-emerald-50 hover:bg-white/10 hover:text-white text-sm font-medium"
+              >
+                {text.investmentTypesBtn}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/education/savings')}
+                className="h-10 rounded-xl text-emerald-50 hover:bg-white/10 hover:text-white text-sm font-medium"
+              >
+                {text.savingsTypesBtn}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/education/expenses')}
+                className="h-10 rounded-xl text-emerald-50 hover:bg-white/10 hover:text-white text-sm font-medium"
+              >
+                {text.expensesInfoBtn}
+              </Button>
               <Button
                 type="button"
                 variant="ghost"
