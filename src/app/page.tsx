@@ -373,9 +373,15 @@ function AuthGate({ children }: AuthGateProps) {
   const [username, setUsername] = useState('');
   const [hasIncomeSources, setHasIncomeSources] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
+  const [isGuest, setIsGuest] = useState(false);
 
   const loadUserData = useCallback(async () => {
-    if (!user) {
+    if (!user && !isGuest) {
+      setCheckingProfile(false);
+      return;
+    }
+
+    if (isGuest) {
       setCheckingProfile(false);
       return;
     }
@@ -391,9 +397,13 @@ function AuthGate({ children }: AuthGateProps) {
     setIncomeTotal(total);
     setHasIncomeSources((sources || []).length > 0);
     setCheckingProfile(false);
-  }, [user]);
+  }, [user, isGuest]);
 
   useEffect(() => {
+    const guestSession = localStorage.getItem('guest_session');
+    if (guestSession === 'true') {
+      setIsGuest(true);
+    }
     loadUserData();
   }, [loadUserData]);
 
@@ -405,13 +415,13 @@ function AuthGate({ children }: AuthGateProps) {
     );
   }
 
-  if (!user) return <AuthForm />;
+  if (!user && !isGuest) return <AuthForm />;
 
   if (!hasIncomeSources) {
-    return <IncomeSourcesForm userId={user.id} username={username} onComplete={loadUserData} />;
+    return <IncomeSourcesForm userId={user?.id || 'guest'} username={isGuest ? 'ضيف' : username} onComplete={loadUserData} />;
   }
 
-  return <>{children({ userId: user.id, username, incomeTotal })}</>;
+  return <>{children({ userId: user?.id || 'guest', username: isGuest ? 'ضيف' : username, incomeTotal })}</>;
 }
 
 interface SalaryManagerProps {

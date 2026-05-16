@@ -9,7 +9,7 @@ interface AuthContextValue {
   session: Session | null;
   loading: boolean;
   signIn: (username: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (username: string, password: string, email: string, age: string) => Promise<{ error: Error | null }>;
+  signUp: (username: string, password: string, email: string, age: string, gender?: string, securityQuestion?: string, securityAnswer?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { error: error as Error | null };
     },
-    signUp: async (username: string, password: string, email: string, age: string) => {
+    signUp: async (username: string, password: string, email: string, age: string, gender?: string, securityQuestion?: string, securityAnswer?: string) => {
       const cleanUsername = username.trim().toLowerCase();
       const { error } = await supabase.auth.signUp({
         email: usernameToEmail(cleanUsername),
@@ -66,9 +66,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             display_name: username.trim(),
             email,
             age: parseInt(age, 10) || null,
+            gender: gender || null,
+            security_question: securityQuestion || null,
+            security_answer: securityAnswer || null,
           },
         },
       });
+
+      if (!error) {
+        const { error: profileError } = await supabase.from('profiles').upsert({
+          id: (await supabase.auth.getUser()).data.user?.id,
+          username: cleanUsername,
+          display_name: username.trim(),
+          email,
+          age: parseInt(age, 10) || null,
+          gender: gender || null,
+          security_question: securityQuestion || null,
+          security_answer: securityAnswer || null,
+        });
+
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+        }
+      }
+
       return { error: error as Error | null };
     },
     signOut: async () => {
