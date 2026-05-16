@@ -43,25 +43,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     loading,
     signIn: async (username: string, password: string) => {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: usernameToEmail(username),
-        password,
-      });
+      try {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: usernameToEmail(username),
+          password,
+        });
 
-      if (error?.message === 'Email not confirmed') {
-        return { error: new Error('الحساب جاهز الآن. أعد الضغط على تسجيل الدخول.') };
+        if (error) {
+          if (error.message === 'Email not confirmed') {
+            return { error: new Error('الحساب جاهز الآن. أعد الضغط على تسجيل الدخول.') };
+          }
+          return { error: new Error(error.message) };
+        }
+        return { error: null };
+      } catch (err: any) {
+        return { error: new Error(err.message || 'فشل الاتصال بالخادم') };
       }
-
-      return { error: error as Error | null };
     },
     signUp: async (username: string, password: string, email: string, age: string, gender?: string, securityQuestion?: string, securityAnswer?: string) => {
       const cleanUsername = username.trim().toLowerCase();
-      const { error } = await supabase.auth.signUp({
-        email: usernameToEmail(cleanUsername),
-        password,
-        options: {
-          emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
-          data: {
+      try {
+        const { error } = await supabase.auth.signUp({
+          email: usernameToEmail(cleanUsername),
+          password,
+          options: {
+            emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+            data: {
+              username: cleanUsername,
+              display_name: username.trim(),
+              email,
+              age: parseInt(age, 10) || null,
+              gender: gender || null,
+              security_question: securityQuestion || null,
+              security_answer: securityAnswer || null,
+            },
+          },
+        });
+
+        if (error) {
+          return { error: new Error(error.message) };
+        }
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('profiles').upsert({
+            id: user.id,
             username: cleanUsername,
             display_name: username.trim(),
             email,
@@ -69,28 +95,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             gender: gender || null,
             security_question: securityQuestion || null,
             security_answer: securityAnswer || null,
-          },
-        },
-      });
-
-      if (!error) {
-        const { error: profileError } = await supabase.from('profiles').upsert({
-          id: (await supabase.auth.getUser()).data.user?.id,
-          username: cleanUsername,
-          display_name: username.trim(),
-          email,
-          age: parseInt(age, 10) || null,
-          gender: gender || null,
-          security_question: securityQuestion || null,
-          security_answer: securityAnswer || null,
-        });
-
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
+          });
         }
-      }
 
-      return { error: error as Error | null };
+        return { error: null };
+      } catch (err: any) {
+        return { error: new Error(err.message || 'فشل الاتصال بالخادم') };
+      }
     },
     signOut: async () => {
       await supabase.auth.signOut();

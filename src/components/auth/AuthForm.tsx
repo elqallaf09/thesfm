@@ -110,7 +110,7 @@ export function AuthForm() {
     genderRequired: isArabic ? 'الجنس مطلوب' : isFrench ? 'Genre requis' : 'Gender is required',
     securityQuestionRequired: isArabic ? 'سؤال الأمان مطلوب' : isFrench ? 'Question de sécurité requise' : 'Security question is required',
     securityAnswerRequired: isArabic ? 'إجابة سؤال الأمان مطلوبة' : isFrench ? 'Réponse de sécurité requise' : 'Security answer is required',
-    operationFailed: isArabic ? 'تعذر تنفيذ العملية' : isFrench ? 'Opération impossible' : 'Unable to complete operation',
+    operationFailed: isArabic ? 'حدث خطأ في الاتصال' : isFrench ? 'Erreur de connexion' : 'Connection error',
     guestLogin: isArabic ? 'الدخول بدون تسجيل (ضيف)' : isFrench ? 'Entrer sans inscription (invité)' : 'Continue without registration (Guest)',
   };
 
@@ -181,7 +181,18 @@ export function AuthForm() {
         if (error) { setError(error.message || t.operationFailed); setLoading(false); return; }
       } else {
         const { error } = await signIn(loginIdentifier, password);
-        if (error) setError(error.message || t.operationFailed);
+        if (error) {
+          const errorMsg = error.message || '';
+          if (errorMsg.includes('Invalid login credentials')) {
+            setError('اسم المستخدم أو كلمة المرور غير صحيحة');
+          } else if (errorMsg.includes('Failed to fetch') || errorMsg.includes('network') || errorMsg.includes('فشل')) {
+            setError('فشل الاتصال بالخادم - تحقق من اتصالك بالإنترنت');
+          } else if (errorMsg === 'الحساب جاهز الآن. أعد الضغط على تسجيل الدخول.') {
+            setError(errorMsg);
+          } else {
+            setError(errorMsg || 'حدث خطأ غير متوقع');
+          }
+        }
         setLoading(false);
         return;
       }
