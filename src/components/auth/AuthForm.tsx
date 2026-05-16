@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Calculator, Lock, UserPlus, KeyRound, AlertCircle, User, Languages, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,6 +33,7 @@ const FINANCIAL_WISDOM_TIPS = [
 
 export function AuthForm() {
   const { signIn, signUp } = useAuth();
+  const router = useRouter();
   const [language, setLanguage] = useState<'ar' | 'en' | 'fr'>('ar');
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
@@ -185,7 +187,14 @@ export function AuthForm() {
       }
     } else {
       const result = await signUp(username, password, email, age, gender, securityQuestion, securityAnswer);
-      if (result.error) setError(result.error.message || t.operationFailed);
+      if (result.error) {
+        setError(result.error.message || t.operationFailed);
+        setLoading(false);
+        return;
+      } else {
+        router.push('/');
+        return;
+      }
     }
     setLoading(false);
   };
