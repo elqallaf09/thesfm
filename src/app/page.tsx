@@ -376,6 +376,12 @@ function AuthGate({ children }: AuthGateProps) {
   const [isGuest, setIsGuest] = useState(false);
 
   const loadUserData = useCallback(async () => {
+    // Clear guest session if user is logged in
+    if (user) {
+      localStorage.removeItem('guest_session');
+      setIsGuest(false);
+    }
+
     if (!user && !isGuest) {
       setCheckingProfile(false);
       return;
@@ -1287,7 +1293,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => supabase.auth.signOut()}
+                onClick={() => { localStorage.removeItem('guest_session'); supabase.auth.signOut(); }}
                 className="h-10 rounded-xl text-emerald-50 hover:bg-white/10 hover:text-white text-sm font-medium"
               >
                 {text.logout}
