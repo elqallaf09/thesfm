@@ -569,6 +569,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   const [profileSaving, setProfileSaving] = useState<boolean>(false);
   const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState<string>('');
 
   // Income sources editing state
   const [editingIncomeSources, setEditingIncomeSources] = useState<boolean>(false);
@@ -876,6 +877,16 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
     // Update password if provided
     if (newPassword.trim()) {
+      if (newPassword !== confirmNewPassword) {
+        setProfileMessage({ type: 'error', text: isArabic ? 'كلمة المرور وتأكيدها غير متطابقين' : 'Password and confirm do not match' });
+        setProfileSaving(false);
+        return;
+      }
+      if (newPassword.length < 6) {
+        setProfileMessage({ type: 'error', text: isArabic ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters' });
+        setProfileSaving(false);
+        return;
+      }
       const { error: passwordError } = await supabase.auth.updateUser({ password: newPassword });
       if (passwordError) {
         setProfileMessage({ type: 'error', text: passwordError.message });
@@ -900,6 +911,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     } else {
       setProfileMessage({ type: 'success', text: text.profileSaved });
       setNewPassword('');
+      setConfirmNewPassword('');
     }
     setProfileSaving(false);
   };
@@ -931,6 +943,135 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     }
     setProfileSaving(false);
   };
+
+  // Load expense, savings, investment items from database
+  const loadUserItems = async (userId: string) => {
+    const [expensesRes, savingsRes, investmentsRes, goalsRes] = await Promise.all([
+      supabase.from('expense_items').select('id, name, amount').eq('user_id', userId),
+      supabase.from('savings_items').select('id, name, amount').eq('user_id', userId),
+      supabase.from('investment_items').select('id, name, amount').eq('user_id', userId),
+      supabase.from('financial_goals').select('id, goal, amount, duration, duration_unit, notes').eq('user_id', userId),
+    ]);
+
+    if (expensesRes.data) {
+      setExpenseItems(expensesRes.data.map(item => ({ id: item.id, name: item.name, amount: String(item.amount) })));
+    }
+    if (savingsRes.data) {
+      setSavingsItems(savingsRes.data.map(item => ({ id: item.id, name: item.name, amount: String(item.amount) })));
+    }
+    if (investmentsRes.data) {
+      setInvestmentItems(investmentsRes.data.map(item => ({ id: item.id, name: item.name, amount: String(item.amount) })));
+    }
+    if (goalsRes.data) {
+      setGoals(goalsRes.data.map(item => ({
+        id: item.id,
+        goal: item.goal,
+        amount: String(item.amount),
+        duration: item.duration || '',
+        durationUnit: (item.duration_unit as DurationUnit) || 'month',
+        notes: item.notes || '',
+      })));
+    }
+  };
+
+  // Save expense items
+  const saveExpenseItems = async (userId: string) => {
+    await supabase.from('expense_items').delete().eq('user_id', userId);
+    const rows = expenseItems.filter(item => item.name.trim() && item.amount).map(item => ({
+      user_id: userId,
+      name: item.name,
+      amount: parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0,
+    }));
+    if (rows.length > 0) {
+      await supabase.from('expense_items').insert(rows);
+    }
+  };
+
+  // Save savings items
+  const saveSavingsItems = async (userId: string) => {
+    await supabase.from('savings_items').delete().eq('user_id', userId);
+    const rows = savingsItems.filter(item => item.name.trim() && item.amount).map(item => ({
+      user_id: userId,
+      name: item.name,
+      amount: parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0,
+    }));
+    if (rows.length > 0) {
+      await supabase.from('savings_items').insert(rows);
+    }
+  };
+
+  // Save investment items
+  const saveInvestmentItems = async (userId: string) => {
+    await supabase.from('investment_items').delete().eq('user_id', userId);
+    const rows = investmentItems.filter(item => item.name.trim() && item.amount).map(item => ({
+      user_id: userId,
+      name: item.name,
+      amount: parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0,
+    }));
+    if (rows.length > 0) {
+      await supabase.from('investment_items').insert(rows);
+    }
+  };
+
+  // Save goals
+  const saveGoals = async (userId: string) => {
+    await supabase.from('financial_goals').delete().eq('user_id', userId);
+    const rows = goals.filter(item => item.goal.trim()).map(item => ({
+      user_id: userId,
+      goal: item.goal,
+      amount: parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0,
+      duration: item.duration,
+      duration_unit: item.durationUnit,
+      notes: item.notes,
+    }));
+    if (rows.length > 0) {
+      await supabase.from('financial_goals').insert(rows);
+    }
+  };
+
+  // Auto-save items when they change
+  useEffect(() => {
+    if (userId && hasIncomeSources) {
+      const timeout = setTimeout(() => {
+        saveExpenseItems(userId);
+      }, 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [expenseItems, userId, hasIncomeSources]);
+
+  useEffect(() => {
+    if (userId && hasIncomeSources) {
+      const timeout = setTimeout(() => {
+        saveSavingsItems(userId);
+      }, 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [savingsItems, userId, hasIncomeSources]);
+
+  useEffect(() => {
+    if (userId && hasIncomeSources) {
+      const timeout = setTimeout(() => {
+        saveInvestmentItems(userId);
+      }, 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [investmentItems, userId, hasIncomeSources]);
+
+  useEffect(() => {
+    if (userId && hasIncomeSources) {
+      const timeout = setTimeout(() => {
+        saveGoals(userId);
+      }, 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [goals, userId, hasIncomeSources]);
+
+  // Load items on mount after income sources are loaded
+  useEffect(() => {
+    if (userId && hasIncomeSources && !checkingProfile) {
+      loadUserItems(userId);
+    }
+  }, [userId, hasIncomeSources, checkingProfile]);
 
   // Goal management functions
   const addGoal = () => {
@@ -1287,7 +1428,18 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                   className="h-10"
                   dir="ltr"
                 />
-                <p className="text-xs text-muted-foreground">{text.newPasswordHint}</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-new-password" className="text-lg font-medium">{isArabic ? 'تأكيد كلمة المرور الجديدة' : 'Confirm new password'}</Label>
+                <Input
+                  id="confirm-new-password"
+                  type="password"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder={isArabic ? 'أعد إدخال كلمة المرور الجديدة' : 'Re-enter new password'}
+                  className="h-10"
+                  dir="ltr"
+                />
               </div>
 
               {profileMessage && (
@@ -1300,7 +1452,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 disabled={profileSaving}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
               >
-                {profileSaving ? '...' : text.profileSave}
+                {profileSaving ? '...' : (isArabic ? 'حفظ تغيير كلمة المرور' : 'Save password changes')}
               </Button>
 
               {/* Calculation Details */}
@@ -2147,8 +2299,15 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         </div>
 
         {/* Footer */}
-        <div className="text-center text-sm text-muted-foreground pt-4">
-          <p>{text.footer}</p>
+        <div className="mt-8 pt-8 border-t border-emerald-200 dark:border-emerald-800">
+          <div className="text-center text-sm text-muted-foreground">
+            <p className="mb-1">{text.footer}</p>
+            <div className="flex items-center justify-center gap-2">
+              <span className="w-24 h-px bg-emerald-300 dark:bg-emerald-700"></span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium">powered by M.Q</span>
+              <span className="w-24 h-px bg-emerald-300 dark:bg-emerald-700"></span>
+            </div>
+          </div>
         </div>
       </div>
     </main>
