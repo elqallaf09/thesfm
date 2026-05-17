@@ -695,17 +695,20 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   };
 
   return (
-    <main dir={isArabic ? 'rtl' : 'ltr'} className="relative min-h-screen overflow-hidden px-4 py-6" style={{background: 'linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #0d0d20 100%)'}}>
-      <div className="pointer-events-none absolute inset-0 opacity-20" style={{backgroundImage: 'linear-gradient(120deg,rgba(196,163,90,0.1) 0,rgba(196,163,90,0.1) 1px,transparent 1px,transparent 42px)'}} />
+    <>
+    <style>{`@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}.ticker-scroll{animation:ticker 30s linear infinite;display:flex;width:max-content;}`}</style>
+    <main dir={isArabic ? 'rtl' : 'ltr'} className="relative min-h-screen overflow-hidden px-4 py-6" style={{background: 'linear-gradient(135deg, #fffdf5 0%, #fef9e7 50%, #fdf5d0 100%)'}}>
+      <div className="pointer-events-none absolute inset-0 opacity-40" style={{backgroundImage: 'linear-gradient(120deg,rgba(196,163,90,0.15) 0,rgba(196,163,90,0.15) 1px,transparent 1px,transparent 42px)'}} />
+      <div className="pointer-events-none absolute -right-24 top-0 h-[34rem] w-[34rem] rounded-full blur-3xl" style={{background: 'rgba(196,163,90,0.2)'}} />
       <div className="relative max-w-5xl mx-auto space-y-6">
         {/* Ticker */}
-        <div className="overflow-hidden rounded-[1.75rem] border shadow-[0_18px_70px_rgba(0,0,0,0.5)]" style={{borderColor: 'rgba(196,163,90,0.3)', background: 'rgba(26,26,46,0.95)'}}>
-          <div className="flex flex-col gap-3 border-b px-4 py-3 text-white md:flex-row md:items-center md:justify-between" style={{background: '#0d0d1a', borderColor: 'rgba(196,163,90,0.2)'}}>
+        <div className="overflow-hidden rounded-[1.75rem] border shadow-[0_8px_40px_rgba(196,163,90,0.25)]" style={{borderColor: 'rgba(196,163,90,0.4)', background: '#1a1228'}}>
+          <div className="flex flex-col gap-3 border-b px-4 py-3 text-white md:flex-row md:items-center md:justify-between" style={{background: '#120d1e', borderColor: 'rgba(196,163,90,0.25)'}}>
             <div className="flex items-center gap-3">
               <span className="h-2.5 w-2.5 rounded-full bg-[#c4a35a] shadow-[0_0_18px_rgba(196,163,90,0.8)]" />
               <div>
                 <p className="text-sm font-bold" style={{color: '#c4a35a'}}>{text.tickerTitle}</p>
-                <p className="text-xs" style={{color: 'rgba(196,163,90,0.6)'}}>{tickerStatus}</p>
+                <p className="text-xs" style={{color: 'rgba(196,163,90,0.5)'}}>{tickerStatus}</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -731,10 +734,10 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               <Button type="button" variant="ghost" size="sm" onClick={() => { localStorage.removeItem('guest_session'); supabase.auth.signOut(); }} className="h-10 rounded-xl hover:bg-white/10 text-sm" style={{color: 'rgba(196,163,90,0.7)'}}>{text.logout}</Button>
             </div>
           </div>
-          <div className="relative flex overflow-hidden py-3" style={{background: 'rgba(13,13,26,0.8)'}}>
-            <div className="flex min-w-full shrink-0 animate-[ticker_26s_linear_infinite] items-center gap-4 px-4">
-              {[...tickerItems, ...tickerItems].map((item, index) => (
-                <div key={`${item.nameEn}-${index}`} className="flex shrink-0 items-center gap-3 rounded-full px-4 py-2 text-sm" style={{border: '0.5px solid rgba(196,163,90,0.25)', background: 'rgba(26,26,46,0.8)'}}>
+          <div className="overflow-hidden py-3" style={{background: 'rgba(18,13,30,0.9)'}}>
+            <div className="ticker-scroll items-center gap-4 px-4">
+              {[...tickerItems, ...tickerItems, ...tickerItems].map((item, index) => (
+                <div key={`${item.nameEn}-${index}`} className="flex shrink-0 items-center gap-3 rounded-full px-4 py-2 text-sm mx-2" style={{border: '0.5px solid rgba(196,163,90,0.3)', background: 'rgba(26,20,40,0.9)'}}>
                   <span className="font-bold" style={{color: '#c4a35a'}}>{isArabic ? item.nameAr : item.nameEn}</span>
                   <span className="font-mono text-slate-300" dir="ltr">{item.value}</span>
                   <span className={`font-mono text-xs font-bold ${item.positive ? 'text-emerald-400' : 'text-rose-400'}`} dir="ltr">{item.change}</span>
@@ -745,10 +748,10 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         </div>
 
         {/* Header */}
-        <div className="rounded-[2rem] p-5" style={{border: '0.5px solid rgba(196,163,90,0.3)', background: 'rgba(26,26,46,0.9)'}}>
+        <div className="rounded-[2rem] p-5" style={{border: '1px solid rgba(196,163,90,0.4)', background: 'rgba(255,253,245,0.95)', boxShadow: '0 8px 40px rgba(196,163,90,0.15)'}}>
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div className="space-y-2 text-center md:text-start">
-              <h1 className="text-4xl font-bold tracking-tight flex items-center justify-center gap-3 md:justify-start" style={{color: '#c4a35a'}}>
+              <h1 className="text-4xl font-bold tracking-tight flex items-center justify-center gap-3 md:justify-start" style={{color: '#7a5c1a'}}>
                 <span className="flex items-center justify-center">
                   <svg viewBox="0 0 300 300" width="52" height="52" xmlns="http://www.w3.org/2000/svg">
                     <defs>
@@ -777,21 +780,21 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 </span>
                 {text.title}
               </h1>
-              <p className="text-lg" style={{color: 'rgba(196,163,90,0.6)'}}>{text.subtitle}</p>
+              <p className="text-lg" style={{color: 'rgba(122,92,26,0.7)'}}>{text.subtitle}</p>
               {isGuest && (
                 <div className="flex items-center gap-3 flex-wrap">
-                  <p className="text-sm font-medium" style={{color: '#c4a35a'}}>🔒 {isArabic ? 'أنت تتصفح كضيف - البيانات لن تُحفظ' : 'Guest mode - data will not be saved'}</p>
-                  <Button onClick={() => { localStorage.removeItem('guest_session'); window.location.reload(); }} size="sm" className="rounded-xl text-sm px-4 text-black font-bold" style={{background: '#c4a35a'}}>
+                  <p className="text-sm font-medium" style={{color: '#9a7a30'}}>🔒 {isArabic ? 'أنت تتصفح كضيف - البيانات لن تُحفظ' : 'Guest mode - data will not be saved'}</p>
+                  <Button onClick={() => { localStorage.removeItem('guest_session'); window.location.reload(); }} size="sm" className="rounded-xl text-sm px-4 font-bold" style={{background: '#c4a35a', color: '#1a1228'}}>
                     🔑 {isArabic ? 'تسجيل الدخول / إنشاء حساب' : 'Login / Register'}
                   </Button>
                 </div>
               )}
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-3 rounded-2xl p-2" style={{background: 'rgba(196,163,90,0.08)'}}>
-              {username && <span className="rounded-xl px-3 py-2 text-sm font-bold" style={{background: 'rgba(196,163,90,0.15)', color: '#c4a35a'}}>{username}</span>}
+            <div className="flex flex-wrap items-center justify-center gap-3 rounded-2xl p-2" style={{background: 'rgba(196,163,90,0.1)'}}>
+              {username && <span className="rounded-xl px-3 py-2 text-sm font-bold" style={{background: 'rgba(196,163,90,0.2)', color: '#7a5c1a'}}>{username}</span>}
               <Languages className="h-5 w-5" style={{color: '#c4a35a'}} />
               <Select value={language} onValueChange={(value) => setLanguage(value as 'ar' | 'en')}>
-                <SelectTrigger className="h-10 w-[150px]" style={{borderColor: 'rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.1)', color: '#c4a35a'}}><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-10 w-[150px]" style={{borderColor: 'rgba(196,163,90,0.4)', background: 'white', color: '#7a5c1a'}}><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ar">العربية</SelectItem>
                   <SelectItem value="en">English</SelectItem>
@@ -803,9 +806,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
         {/* Profile Card - only for logged in */}
         {showProfile && !isGuest && (
-          <Card style={{border: '0.5px solid rgba(196,163,90,0.3)', background: 'rgba(26,26,46,0.95)'}}>
+          <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
             <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
-              <CardTitle className="flex items-center gap-2" style={{color: '#c4a35a'}}><User className="w-6 h-6" />{text.profileTitle}</CardTitle>
+              <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><User className="w-6 h-6" />{text.profileTitle}</CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
@@ -860,10 +863,10 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         )}
 
         {/* Salary Input */}
-        <Card style={{border: '0.5px solid rgba(196,163,90,0.3)', background: 'rgba(26,26,46,0.95)'}}>
+        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
           <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
-            <CardTitle className="flex items-center gap-2" style={{color: '#c4a35a'}}><Coins className="w-6 h-6" />{text.salaryTitle}</CardTitle>
-            <CardDescription style={{color: 'rgba(196,163,90,0.6)'}}>{text.salaryDesc}</CardDescription>
+            <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><Coins className="w-6 h-6" />{text.salaryTitle}</CardTitle>
+            <CardDescription style={{color: 'rgba(122,92,26,0.6)'}}>{text.salaryDesc}</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
             <div className="space-y-2">
@@ -941,10 +944,10 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         </Card>
 
         {/* Charity */}
-        <Card style={{border: '0.5px solid rgba(196,163,90,0.3)', background: 'rgba(26,26,46,0.95)'}}>
+        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
           <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
-            <CardTitle className="flex items-center gap-2" style={{color: '#c4a35a'}}><Heart className="w-6 h-6" />{text.charityTitle}</CardTitle>
-            <CardDescription style={{color: 'rgba(196,163,90,0.6)'}}>{text.charityDesc}</CardDescription>
+            <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><Heart className="w-6 h-6" />{text.charityTitle}</CardTitle>
+            <CardDescription style={{color: 'rgba(122,92,26,0.6)'}}>{text.charityDesc}</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
             <div className="flex items-center justify-between">
@@ -985,14 +988,14 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         </Card>
 
         {/* Salary Details */}
-        <Card style={{border: '0.5px solid rgba(196,163,90,0.3)', background: 'rgba(26,26,46,0.95)'}}>
+        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
           <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
-            <CardTitle className="flex items-center gap-2" style={{color: '#c4a35a'}}><Wallet className="w-6 h-6" />{text.salaryDetails}</CardTitle>
+            <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><Wallet className="w-6 h-6" />{text.salaryDetails}</CardTitle>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
-            <div className="p-4 rounded-xl text-center" style={{border: '2px solid rgba(196,163,90,0.5)', background: 'rgba(196,163,90,0.08)'}}>
-              <span className="text-sm" style={{color: 'rgba(196,163,90,0.7)'}}>{text.totalSalary}</span>
-              <p className="text-3xl font-bold" style={{color: '#c4a35a'}}>{formatCurrency(totalIncome)} {getCurrentCurrency().symbol}</p>
+            <div className="p-4 rounded-xl text-center" style={{border: '2px solid rgba(196,163,90,0.4)', background: 'rgba(196,163,90,0.08)'}}>
+              <span className="text-sm" style={{color: 'rgba(122,92,26,0.7)'}}>{text.totalSalary}</span>
+              <p className="text-3xl font-bold" style={{color: '#7a5c1a'}}>{formatCurrency(totalIncome)} {getCurrentCurrency().symbol}</p>
             </div>
 
             {/* Expenses */}
@@ -1086,13 +1089,13 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         </Card>
 
         {/* Goals */}
-        <Card style={{border: '0.5px solid rgba(196,163,90,0.3)', background: 'rgba(26,26,46,0.95)'}}>
+        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
           <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
-            <CardTitle className="flex items-center gap-2" style={{color: '#c4a35a'}}><Target className="w-6 h-6" />{text.goalsTitle}</CardTitle>
-            <CardDescription style={{color: 'rgba(196,163,90,0.6)'}}>{text.goalsDesc}</CardDescription>
+            <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><Target className="w-6 h-6" />{text.goalsTitle}</CardTitle>
+            <CardDescription style={{color: 'rgba(122,92,26,0.6)'}}>{text.goalsDesc}</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
-            <Button onClick={addGoal} variant="outline" className="w-full" style={{borderColor: 'rgba(196,163,90,0.4)', color: '#c4a35a'}}><Plus className="w-5 h-5 ms-2" />{text.addGoal}</Button>
+            <Button onClick={addGoal} variant="outline" className="w-full" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'}}><Plus className="w-5 h-5 ms-2" />{text.addGoal}</Button>
             {goals.map(goal => (
               <div key={goal.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -1123,21 +1126,21 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         </Card>
 
         {/* Advice */}
-        <Card style={{border: '0.5px solid rgba(196,163,90,0.3)', background: 'rgba(26,26,46,0.95)'}}>
+        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
           <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
-            <CardTitle className="flex items-center gap-2" style={{color: '#c4a35a'}}><Sparkles className="w-6 h-6" />{text.adviceTitle}</CardTitle>
-            <CardDescription style={{color: 'rgba(196,163,90,0.6)'}}>{text.adviceDesc}</CardDescription>
+            <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><Sparkles className="w-6 h-6" />{text.adviceTitle}</CardTitle>
+            <CardDescription style={{color: 'rgba(122,92,26,0.6)'}}>{text.adviceDesc}</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
-            <div className="p-4 rounded-xl" style={{border: '0.5px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.08)'}}>
-              <p className="text-lg leading-relaxed" style={{color: '#c4a35a'}}>{getAIAdvice()}</p>
+            <div className="p-4 rounded-xl" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.06)'}}>
+              <p className="text-lg leading-relaxed" style={{color: '#7a5c1a'}}>{getAIAdvice()}</p>
             </div>
-            <Button onClick={getRandomAdvice} variant="outline" className="w-full" style={{borderColor: 'rgba(196,163,90,0.4)', color: '#c4a35a'}}><Lightbulb className="w-5 h-5 ms-2" />{text.randomAdvice}</Button>
+            <Button onClick={getRandomAdvice} variant="outline" className="w-full" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'}}><Lightbulb className="w-5 h-5 ms-2" />{text.randomAdvice}</Button>
             {showAdvice && randomAdvice && (
-              <div className="p-4 rounded-xl" style={{border: '0.5px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.06)'}}>
+              <div className="p-4 rounded-xl" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.06)'}}>
                 <div className="flex items-start gap-3">
                   <span className="text-3xl">{randomAdvice.icon}</span>
-                  <div><h4 className="font-bold mb-1" style={{color: '#c4a35a'}}>{randomAdvice.category}</h4><p style={{color: 'rgba(196,163,90,0.8)'}}>{randomAdvice.tip}</p></div>
+                  <div><h4 className="font-bold mb-1" style={{color: '#7a5c1a'}}>{randomAdvice.category}</h4><p style={{color: 'rgba(122,92,26,0.8)'}}>{randomAdvice.tip}</p></div>
                 </div>
               </div>
             )}
@@ -1146,19 +1149,20 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
         {/* Actions */}
         <div className="flex flex-wrap gap-4 justify-center">
-          <Button onClick={handlePrint} variant="outline" size="lg" style={{borderColor: 'rgba(196,163,90,0.4)', color: '#c4a35a'}}><Printer className="w-5 h-5 ms-2" />{text.print}</Button>
-          <Button onClick={handleReset} variant="outline" size="lg" style={{borderColor: 'rgba(196,163,90,0.2)', color: 'rgba(196,163,90,0.6)'}}><RefreshCw className="w-5 h-5 ms-2" />{text.reset}</Button>
+          <Button onClick={handlePrint} variant="outline" size="lg" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'}}><Printer className="w-5 h-5 ms-2" />{text.print}</Button>
+          <Button onClick={handleReset} variant="outline" size="lg" style={{borderColor: 'rgba(196,163,90,0.3)', color: 'rgba(122,92,26,0.6)'}}><RefreshCw className="w-5 h-5 ms-2" />{text.reset}</Button>
         </div>
 
-        <div className="mt-8 pt-8 text-center text-sm" style={{borderTop: '0.5px solid rgba(196,163,90,0.2)'}}>
-          <p className="mb-1" style={{color: 'rgba(196,163,90,0.5)'}}>{text.footer}</p>
+        <div className="mt-8 pt-8 text-center text-sm" style={{borderTop: '1px solid rgba(196,163,90,0.3)'}}>
+          <p className="mb-1" style={{color: 'rgba(122,92,26,0.5)'}}>{text.footer}</p>
           <div className="flex items-center justify-center gap-2">
-            <span className="w-24 h-px" style={{background: 'rgba(196,163,90,0.3)'}}></span>
+            <span className="w-24 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
             <span className="font-medium" style={{color: '#c4a35a'}}>powered by M.Q</span>
-            <span className="w-24 h-px" style={{background: 'rgba(196,163,90,0.3)'}}></span>
+            <span className="w-24 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
           </div>
         </div>
       </div>
     </main>
+    </>
   );
 }
