@@ -455,6 +455,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   const [investmentExpanded, setInvestmentExpanded] = useState<boolean>(false);
   const [goals, setGoals] = useState<GoalEntry[]>([]);
   const [breakdown, setBreakdown] = useState<SalaryBreakdown>({ expenses: 0, savings: 0, investment: 0, charity: 0 });
+  const [percentCalc, setPercentCalc] = useState<number>(10);
+  const [percentAmount, setPercentAmount] = useState<string>('');
 
   const getCurrentCurrency = () => CURRENCIES.find(c => c.code === selectedCurrency) || CURRENCIES[0];
   const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -731,7 +733,13 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                   <User className="h-4 w-4 me-1" />{text.profileBtn}
                 </Button>
               )}
-              <Button type="button" variant="ghost" size="sm" onClick={() => { localStorage.removeItem('guest_session'); supabase.auth.signOut(); }} className="h-10 rounded-xl hover:bg-white/10 text-sm" style={{color: 'rgba(196,163,90,0.7)'}}>{text.logout}</Button>
+              {isGuest ? (
+                <Button type="button" size="sm" onClick={() => { localStorage.removeItem('guest_session'); window.location.reload(); }} className="h-10 rounded-xl text-sm font-bold px-4" style={{background: '#c4a35a', color: '#1a0f00'}}>
+                  🔑 {isArabic ? 'تسجيل الدخول' : 'Login'}
+                </Button>
+              ) : (
+                <Button type="button" variant="ghost" size="sm" onClick={() => { localStorage.removeItem('guest_session'); supabase.auth.signOut(); }} className="h-10 rounded-xl hover:bg-white/10 text-sm" style={{color: 'rgba(196,163,90,0.7)'}}>{text.logout}</Button>
+              )}
             </div>
           </div>
           <div className="overflow-hidden py-3" style={{background: 'rgba(18,13,30,0.9)'}}>
@@ -1085,6 +1093,116 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Goals */}
+        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
+          <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
+            <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}>
+              <span style={{fontSize: '22px'}}>%</span>
+              {isArabic ? 'حاسبة النسب المئوية' : 'Percentage Calculator'}
+            </CardTitle>
+            <CardDescription style={{color: 'rgba(122,92,26,0.6)'}}>
+              {isArabic ? 'احسب نسبة معينة من إجمالي دخلك الشهري' : 'Calculate a percentage of your total monthly income'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-6">
+            {/* Slider */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label style={{color: '#7a5c1a', fontSize: '16px'}}>{isArabic ? 'النسبة المئوية' : 'Percentage'}</Label>
+                <span className="text-3xl font-bold" style={{color: '#c4a35a'}}>{percentCalc}%</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="100"
+                value={percentCalc}
+                onChange={(e) => {
+                  const p = Number(e.target.value);
+                  setPercentCalc(p);
+                  setPercentAmount(totalIncome > 0 ? String(Math.round(totalIncome * p / 100 * 100) / 100) : '');
+                }}
+                className="w-full"
+                style={{accentColor: '#c4a35a', height: '6px'}}
+              />
+              <div className="flex justify-between text-xs" style={{color: 'rgba(122,92,26,0.5)'}}>
+                <span>1%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+              </div>
+            </div>
+
+            {/* Quick percentages */}
+            <div className="space-y-2">
+              <Label style={{color: 'rgba(122,92,26,0.7)', fontSize: '13px'}}>{isArabic ? 'نسب سريعة' : 'Quick percentages'}</Label>
+              <div className="flex flex-wrap gap-2">
+                {[5, 10, 15, 20, 25, 30, 33, 40, 50, 75, 100].map(p => (
+                  <button key={p} onClick={() => {
+                    setPercentCalc(p);
+                    setPercentAmount(totalIncome > 0 ? String(Math.round(totalIncome * p / 100 * 100) / 100) : '');
+                  }}
+                  className="px-3 py-1.5 rounded-xl text-sm font-bold transition-all"
+                  style={percentCalc === p
+                    ? {background: '#c4a35a', color: '#1a0f00', border: '1px solid #c4a35a'}
+                    : {background: 'rgba(196,163,90,0.1)', color: '#7a5c1a', border: '1px solid rgba(196,163,90,0.3)'}
+                  }>
+                    {p}%
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Result + editable amount */}
+            <div className="rounded-2xl p-5 space-y-4" style={{background: 'rgba(196,163,90,0.08)', border: '1px solid rgba(196,163,90,0.3)'}}>
+              <div className="text-center space-y-1">
+                <p className="text-sm" style={{color: 'rgba(122,92,26,0.6)'}}>{percentCalc}% {isArabic ? 'من إجمالي دخلك' : 'of your total income'}</p>
+                <p className="text-4xl font-bold" style={{color: '#c4a35a'}}>
+                  {totalIncome > 0 ? formatCurrency(Math.round(totalIncome * percentCalc / 100 * 100) / 100) : '0.00'} {getCurrentCurrency().symbol}
+                </p>
+              </div>
+
+              {/* Editable amount */}
+              <div className="space-y-2">
+                <Label style={{color: 'rgba(122,92,26,0.7)', fontSize: '13px'}}>
+                  {isArabic ? 'أو أدخل المبلغ مباشرة لحساب النسبة:' : 'Or enter amount to calculate percentage:'}
+                </Label>
+                <div className="flex items-center gap-2 h-12 rounded-xl border px-4" style={{borderColor: 'rgba(196,163,90,0.4)', background: 'white'}}>
+                  <span style={{color: '#c4a35a', fontWeight: 'bold'}}>{getCurrentCurrency().symbol}</span>
+                  <input
+                    type="text"
+                    value={percentAmount}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPercentAmount(val);
+                      const num = parseFloat(val.replace(/[^\d.]/g, ''));
+                      if (!isNaN(num) && totalIncome > 0) {
+                        setPercentCalc(Math.min(100, Math.max(1, Math.round(num / totalIncome * 100))));
+                      }
+                    }}
+                    placeholder="0.00"
+                    className="flex-1 bg-transparent text-lg font-bold outline-none text-center"
+                    dir="ltr"
+                    style={{color: '#7a5c1a'}}
+                  />
+                </div>
+              </div>
+
+              {/* Monthly/Weekly/Daily breakdown */}
+              {totalIncome > 0 && (
+                <div className="grid grid-cols-3 gap-3 pt-2">
+                  {[
+                    { label: isArabic ? 'يومياً' : 'Daily', value: Math.round(totalIncome * percentCalc / 100 / 30 * 100) / 100 },
+                    { label: isArabic ? 'أسبوعياً' : 'Weekly', value: Math.round(totalIncome * percentCalc / 100 / 4 * 100) / 100 },
+                    { label: isArabic ? 'سنوياً' : 'Yearly', value: Math.round(totalIncome * percentCalc / 100 * 12 * 100) / 100 },
+                  ].map(item => (
+                    <div key={item.label} className="rounded-xl p-3 text-center" style={{background: 'rgba(255,253,245,0.8)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
+                      <p className="text-xs mb-1" style={{color: 'rgba(122,92,26,0.5)'}}>{item.label}</p>
+                      <p className="text-sm font-bold" style={{color: '#7a5c1a'}}>{formatCurrency(item.value)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
