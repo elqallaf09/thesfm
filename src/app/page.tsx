@@ -753,7 +753,18 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 {text.title}
               </h1>
               <p className="text-muted-foreground text-lg">{text.subtitle}</p>
-              {isGuest && <p className="text-sm text-amber-600 font-medium">{isArabic ? '🔒 أنت تتصفح كضيف - البيانات لن تُحفظ' : '🔒 Guest mode - data will not be saved'}</p>}
+              {isGuest && (
+                <div className="flex items-center gap-3 flex-wrap">
+                  <p className="text-sm text-amber-600 font-medium">{isArabic ? '🔒 أنت تتصفح كضيف - البيانات لن تُحفظ' : '🔒 Guest mode - data will not be saved'}</p>
+                  <Button
+                    onClick={() => { localStorage.removeItem('guest_session'); window.location.reload(); }}
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm px-4"
+                  >
+                    {isArabic ? '🔑 تسجيل الدخول / إنشاء حساب' : '🔑 Login / Register'}
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap items-center justify-center gap-3 rounded-2xl bg-slate-900/5 p-2">
               {username && <span className="rounded-xl bg-emerald-100 px-3 py-2 text-sm font-bold text-emerald-800">{username}</span>}
@@ -850,16 +861,30 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>{text.monthlySalary}</Label>
-                <div className="relative">
-                  <Input type="text" value={salary} onChange={(e) => setSalary(e.target.value)} placeholder={text.placeholder} className="text-xl font-bold text-center h-14" dir="ltr" />
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">{getCurrentCurrency().symbol}</span>
+                <div className="flex items-center gap-2 h-14 rounded-xl border border-input bg-background px-4">
+                  <span className="text-muted-foreground font-medium text-lg">{getCurrentCurrency().symbol}</span>
+                  <input
+                    type="text"
+                    value={salary}
+                    onChange={(e) => setSalary(e.target.value)}
+                    placeholder="0.00"
+                    className="flex-1 bg-transparent text-xl font-bold outline-none text-center"
+                    dir="ltr"
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>{text.otherIncome}</Label>
-                <div className="relative">
-                  <Input type="text" value={otherIncome} onChange={(e) => setOtherIncome(e.target.value)} placeholder={text.placeholder} className="text-xl font-bold text-center h-14" dir="ltr" />
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">{getCurrentCurrency().symbol}</span>
+                <div className="flex items-center gap-2 h-14 rounded-xl border border-input bg-background px-4">
+                  <span className="text-muted-foreground font-medium text-lg">{getCurrentCurrency().symbol}</span>
+                  <input
+                    type="text"
+                    value={otherIncome}
+                    onChange={(e) => setOtherIncome(e.target.value)}
+                    placeholder="0.00"
+                    className="flex-1 bg-transparent text-xl font-bold outline-none text-center"
+                    dir="ltr"
+                  />
                 </div>
               </div>
             </div>
