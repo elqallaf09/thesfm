@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Languages } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 type Language = 'ar' | 'en' | 'fr';
 
 const content = {
@@ -73,7 +74,7 @@ const content = {
       'Enregistrez chaque dépense et ne comptez pas sur la mémoire.',
       'Révisez vos dépenses mensuellement pour savoir où va votre argent.',
       'Réduisez progressivement les dépenses non essentielles.',
-      'Utilisez la règle 50/30/20: 50% pour les besoins, 30% pour les envies, 20% pour l\'épargne.'
+      "Utilisez la règle 50/30/20: 50% pour les besoins, 30% pour les envies, 20% pour l'épargne."
     ],
     categories: [
       { title: 'Besoins', desc: 'Dépenses essentielles pour la vie quotidienne.' },
@@ -88,7 +89,7 @@ const content = {
       { title: 'Éducation', desc: 'Frais de scolarité, livres et cours.', examples: ['Frais de scolarité', 'Livres', 'Formations'] },
       { title: 'Shopping', desc: 'Vêtements, électronique et fournitures ménagères.', examples: ['Vêtements', 'Électronique', 'Meubles', 'Fournitures'] },
       { title: 'Divertissement', desc: 'Cinéma, jeux et voyages.', examples: ['Cinéma', 'Jeux', 'Voyages', 'Abonnements streaming'] },
-      { title: 'Cadeaux et dons', desc: 'Cadeaux pour la famille, amis et dons caritatifs.', examples: ['Cadeaux d\'occasion', 'Dons caritatifs', 'Zakat'] },
+      { title: 'Cadeaux et dons', desc: 'Cadeaux pour la famille, amis et dons caritatifs.', examples: ["Cadeaux d'occasion", 'Dons caritatifs', 'Zakat'] },
       { title: 'Assurances', desc: 'Assurances vie, santé et biens.', examples: ['Assurance vie', 'Assurance santé', 'Assurance biens'] },
       { title: 'Dettes', desc: 'Remboursement de prêts et cartes de crédit.', examples: ['Mensualité voiture', 'Mensualité maison', 'Retrait carte crédit'] }
     ]
