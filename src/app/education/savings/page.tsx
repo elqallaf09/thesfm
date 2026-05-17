@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Languages } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 type Language = 'ar' | 'en' | 'fr';
 
 const content = {
@@ -65,11 +66,11 @@ const content = {
     ],
     items: [
       { title: 'Compte épargne ordinaire', desc: 'Compte bancaire avec retrait et dépôt faciles.', examples: ['Compte courant', 'Épargne ordinaire', 'Épargne dorée'] },
-      { title: 'Certificats d\'épargne', desc: 'Dépôts avec des taux plus élevés que les comptes ordinaires.', examples: ['Certificat 12 mois', 'Certificat 24 mois', 'Certificat 36 mois'] },
-      { title: 'Fonds d\'investissement', desc: 'Portefeuilles gérés par des spécialistes pour de meilleurs rendements.', examples: ['Fonds du marché monétaire', 'Fonds à revenu fixe', 'Fonds d\'actions'] },
+      { title: "Certificats d'épargne", desc: 'Dépôts avec des taux plus élevés que les comptes ordinaires.', examples: ['Certificat 12 mois', 'Certificat 24 mois', 'Certificat 36 mois'] },
+      { title: "Fonds d'investissement", desc: 'Portefeuilles gérés par des spécialistes pour de meilleurs rendements.', examples: ['Fonds du marché monétaire', 'Fonds à revenu fixe', "Fonds d'actions"] },
       { title: 'Assurance-vie', desc: 'Épargne avec protection financière pour votre famille.', examples: ['Assurance-vie entière', 'Assurance temporaire', 'Assurance épargne'] },
       { title: 'Plans de pension', desc: "Plan d'épargne pour l'avenir après la retraite.", examples: ['Fonds gouvernemental', 'Fonds privé', 'Compte de pension individuel'] },
-      { title: 'Or et métaux', desc: 'Acheter des actifs réels pour se protéger de l\'inflation.', examples: ['Or 21K', 'Argent', 'Platine'] },
+      { title: 'Or et métaux', desc: "Acheter des actifs réels pour se protéger de l'inflation.", examples: ['Or 21K', 'Argent', 'Platine'] },
       { title: 'Immobilier', desc: 'Acheter une propriété à louer comme source de revenus stable.', examples: ['Appartement', 'Local commercial', 'Terrain', 'Complexe résidentiel'] },
       { title: 'Devises étrangères', desc: 'Épargner en monnaie stable à valeur fixe.', examples: ['Dollar américain', 'Euro', 'Franc suisse'] },
       { title: 'Réinvestissement', desc: 'Rediriger les bénéfices pour acheter des actifs supplémentaires.', examples: ['Dividendes', 'Profits immobiliers', "Rendements d'investissement"] }
