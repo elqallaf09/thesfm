@@ -872,7 +872,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/education/investments')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">{text.investmentTypesBtn}</Button>
               <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/education/savings')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">{text.savingsTypesBtn}</Button>
               <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/education/expenses')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">{text.expensesInfoBtn}</Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/projects')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">{isArabic ? '🚀 مشاريعي' : '🚀 Projects'}</Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/projects')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">{isArabic ? 'مشروعي' : 'My Projects'}</Button>
               {!isGuest && (
                 <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/profile')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">
                   <User className="h-4 w-4 me-1" />{text.profileBtn}
@@ -1244,107 +1244,65 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
           </CardContent>
         </Card>
 
-        {/* Goals */}
-        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
+        {/* Percentage Calculator */}
+        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 8px 30px rgba(196,163,90,0.1)'}}>
           <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
             <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}>
               <span style={{fontSize: '22px'}}>%</span>
               {isArabic ? 'حاسبة النسب المئوية' : 'Percentage Calculator'}
             </CardTitle>
-            <CardDescription style={{color: 'rgba(122,92,26,0.6)'}}>
-              {isArabic ? 'احسب نسبة معينة من إجمالي دخلك الشهري' : 'Calculate a percentage of your total monthly income'}
-            </CardDescription>
           </CardHeader>
-          <CardContent className="pt-6 space-y-6">
-            {/* Slider */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label style={{color: '#7a5c1a', fontSize: '16px'}}>{isArabic ? 'النسبة المئوية' : 'Percentage'}</Label>
-                <span className="text-3xl font-bold" style={{color: '#c4a35a'}}>{percentCalc}%</span>
-              </div>
-              <input
-                type="range"
-                min="1"
-                max="100"
-                value={percentCalc}
-                onChange={(e) => {
-                  const p = Number(e.target.value);
-                  setPercentCalc(p);
-                  setPercentAmount(totalIncome > 0 ? String(Math.round(totalIncome * p / 100 * 100) / 100) : '');
-                }}
-                className="w-full"
-                style={{accentColor: '#c4a35a', height: '6px'}}
-              />
-              <div className="flex justify-between text-xs" style={{color: 'rgba(122,92,26,0.5)'}}>
-                <span>1%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
-              </div>
-            </div>
-
-            {/* Quick percentages */}
-            <div className="space-y-2">
-              <Label style={{color: 'rgba(122,92,26,0.7)', fontSize: '13px'}}>{isArabic ? 'نسب سريعة' : 'Quick percentages'}</Label>
-              <div className="flex flex-wrap gap-2">
-                {[5, 10, 15, 20, 25, 30, 33, 40, 50, 75, 100].map(p => (
-                  <button key={p} onClick={() => {
-                    setPercentCalc(p);
-                    setPercentAmount(totalIncome > 0 ? String(Math.round(totalIncome * p / 100 * 100) / 100) : '');
-                  }}
-                  className="px-3 py-1.5 rounded-xl text-sm font-bold transition-all"
-                  style={percentCalc === p
-                    ? {background: '#c4a35a', color: '#1a0f00', border: '1px solid #c4a35a'}
-                    : {background: 'rgba(196,163,90,0.1)', color: '#7a5c1a', border: '1px solid rgba(196,163,90,0.3)'}
-                  }>
-                    {p}%
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Result + editable amount */}
-            <div className="rounded-2xl p-5 space-y-4" style={{background: 'rgba(196,163,90,0.08)', border: '1px solid rgba(196,163,90,0.3)'}}>
-              <div className="text-center space-y-1">
-                <p className="text-sm" style={{color: 'rgba(122,92,26,0.6)'}}>{percentCalc}% {isArabic ? 'من إجمالي دخلك' : 'of your total income'}</p>
-                <p className="text-4xl font-bold" style={{color: '#c4a35a'}}>
-                  {totalIncome > 0 ? formatCurrency(Math.round(totalIncome * percentCalc / 100 * 100) / 100) : '0.00'} {getCurrentCurrency().symbol}
-                </p>
-              </div>
-
-              {/* Editable amount */}
-              <div className="space-y-2">
-                <Label style={{color: 'rgba(122,92,26,0.7)', fontSize: '13px'}}>
-                  {isArabic ? 'أو أدخل المبلغ مباشرة لحساب النسبة:' : 'Or enter amount to calculate percentage:'}
-                </Label>
-                <div className="flex items-center gap-2 h-12 rounded-xl border px-4" style={{borderColor: 'rgba(196,163,90,0.4)', background: 'white'}}>
-                  <span style={{color: '#c4a35a', fontWeight: 'bold'}}>{getCurrentCurrency().symbol}</span>
-                  <input
-                    type="text"
-                    value={percentAmount}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setPercentAmount(val);
-                      const num = parseFloat(val.replace(/[^\d.]/g, ''));
-                      if (!isNaN(num) && totalIncome > 0) {
-                        setPercentCalc(Math.min(100, Math.max(1, Math.round(num / totalIncome * 100))));
-                      }
-                    }}
-                    placeholder="0.00"
-                    className="flex-1 bg-transparent text-lg font-bold outline-none text-center"
-                    dir="ltr"
-                    style={{color: '#7a5c1a'}}
-                  />
+          <CardContent className="pt-5 space-y-5">
+            <div className="flex flex-col md:flex-row gap-5 items-center">
+              {/* Circular Ring */}
+              <div className="relative shrink-0 flex items-center justify-center w-36 h-36">
+                <svg width="144" height="144" viewBox="0 0 144 144" className="-rotate-90">
+                  <circle cx="72" cy="72" r="60" fill="none" stroke="rgba(196,163,90,0.15)" strokeWidth="12"/>
+                  <circle cx="72" cy="72" r="60" fill="none"
+                    stroke={percentCalc <= 25 ? '#2d8a4e' : percentCalc <= 50 ? '#c4a35a' : percentCalc <= 75 ? '#b87333' : '#c0392b'}
+                    strokeWidth="12"
+                    strokeDasharray={`${(percentCalc / 100) * 2 * Math.PI * 60} ${2 * Math.PI * 60}`}
+                    strokeLinecap="round"
+                    style={{transition: 'stroke-dasharray 0.4s ease, stroke 0.4s ease'}}/>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-3xl font-bold" style={{color: percentCalc <= 25 ? '#2d8a4e' : percentCalc <= 50 ? '#c4a35a' : percentCalc <= 75 ? '#b87333' : '#c0392b'}}>{percentCalc}%</span>
+                  <span className="text-xs mt-0.5" style={{color: 'rgba(122,92,26,0.5)'}}>{isArabic ? 'من دخلك' : 'of income'}</span>
                 </div>
               </div>
-
-              {/* Monthly/Weekly/Daily breakdown */}
+              {/* Slider + Quick */}
+              <div className="flex-1 w-full space-y-3">
+                <input type="range" min="1" max="100" value={percentCalc}
+                  onChange={(e) => { const p = Number(e.target.value); setPercentCalc(p); setPercentAmount(totalIncome > 0 ? String(Math.round(totalIncome * p / 100 * 1000) / 1000) : ''); }}
+                  className="w-full" style={{accentColor: percentCalc <= 25 ? '#2d8a4e' : percentCalc <= 50 ? '#c4a35a' : '#c0392b', height: '6px'}}/>
+                <div className="flex justify-between text-xs" style={{color: 'rgba(122,92,26,0.4)'}}><span>1%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[5,10,15,20,25,30,40,50,75,100].map(p => (
+                    <button key={p} onClick={() => { setPercentCalc(p); setPercentAmount(totalIncome > 0 ? String(Math.round(totalIncome * p / 100 * 1000) / 1000) : ''); }}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold transition-all hover:scale-105"
+                      style={percentCalc === p ? {background: '#c4a35a', color: '#1a0f00', border: '1px solid #c4a35a'} : {background: 'rgba(196,163,90,0.1)', color: '#7a5c1a', border: '1px solid rgba(196,163,90,0.3)'}}>
+                      {p}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl p-4 space-y-3" style={{background: 'rgba(196,163,90,0.06)', border: '1px solid rgba(196,163,90,0.25)'}}>
+              <div className="text-center">
+                <p className="text-sm" style={{color: 'rgba(122,92,26,0.6)'}}>{percentCalc}% {isArabic ? 'من إجمالي دخلك' : 'of your income'}</p>
+                <p className="text-4xl font-bold mt-1" style={{color: '#c4a35a'}}>{totalIncome > 0 ? formatCurrency(Math.round(totalIncome * percentCalc / 100 * 1000) / 1000) : '0.000'} <span className="text-lg">{getCurrentCurrency().symbol}</span></p>
+              </div>
+              <div className="flex items-center gap-2 h-11 rounded-xl border px-4" style={{borderColor: 'rgba(196,163,90,0.4)', background: 'white'}}>
+                <span style={{color: '#c4a35a', fontWeight: 'bold'}}>{getCurrentCurrency().symbol}</span>
+                <input type="text" value={percentAmount}
+                  onChange={(e) => { const val = e.target.value; setPercentAmount(val); const num = parseFloat(val.replace(/[^\d.]/g, '')); if (!isNaN(num) && totalIncome > 0) setPercentCalc(Math.min(100, Math.max(1, Math.round(num / totalIncome * 100)))); }}
+                  placeholder="0.000" className="flex-1 bg-transparent text-base font-bold outline-none text-center" dir="ltr" style={{color: '#7a5c1a'}}/>
+              </div>
               {totalIncome > 0 && (
-                <div className="grid grid-cols-3 gap-3 pt-2">
-                  {[
-                    { label: isArabic ? 'يومياً' : 'Daily', value: Math.round(totalIncome * percentCalc / 100 / 30 * 100) / 100 },
-                    { label: isArabic ? 'أسبوعياً' : 'Weekly', value: Math.round(totalIncome * percentCalc / 100 / 4 * 100) / 100 },
-                    { label: isArabic ? 'سنوياً' : 'Yearly', value: Math.round(totalIncome * percentCalc / 100 * 12 * 100) / 100 },
-                  ].map(item => (
-                    <div key={item.label} className="rounded-xl p-3 text-center" style={{background: 'rgba(255,253,245,0.8)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
-                      <p className="text-xs mb-1" style={{color: 'rgba(122,92,26,0.5)'}}>{item.label}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[{label: isArabic ? 'يومياً' : 'Daily', value: Math.round(totalIncome * percentCalc / 100 / 30 * 1000) / 1000},{label: isArabic ? 'أسبوعياً' : 'Weekly', value: Math.round(totalIncome * percentCalc / 100 / 4 * 1000) / 1000},{label: isArabic ? 'سنوياً' : 'Yearly', value: Math.round(totalIncome * percentCalc / 100 * 12 * 1000) / 1000}].map(item => (
+                    <div key={item.label} className="rounded-xl p-2.5 text-center" style={{background: 'rgba(255,253,245,0.8)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
+                      <p className="text-xs mb-0.5" style={{color: 'rgba(122,92,26,0.5)'}}>{item.label}</p>
                       <p className="text-sm font-bold" style={{color: '#7a5c1a'}}>{formatCurrency(item.value)}</p>
                     </div>
                   ))}
@@ -1353,6 +1311,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             </div>
           </CardContent>
         </Card>
+
+
+
 
         {/* Goals */}
         <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
@@ -1391,35 +1352,122 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
           </CardContent>
         </Card>
 
-        {/* Advice */}
-        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
-          <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
-            <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><Sparkles className="w-6 h-6" />{text.adviceTitle}</CardTitle>
-            <CardDescription style={{color: 'rgba(122,92,26,0.6)'}}>{text.adviceDesc}</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6 space-y-4">
-            <div className="p-4 rounded-xl" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.06)'}}>
-              <p className="text-lg leading-relaxed" style={{color: '#7a5c1a'}}>{getAIAdvice()}</p>
-            </div>
-            <Button onClick={getRandomAdvice} variant="outline" className="w-full" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'}}><Lightbulb className="w-5 h-5 ms-2" />{text.randomAdvice}</Button>
-            {showAdvice && randomAdvice && (
-              <div className="p-4 rounded-xl" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.06)'}}>
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl">{randomAdvice.icon}</span>
-                  <div><h4 className="font-bold mb-1" style={{color: '#7a5c1a'}}>{randomAdvice.category}</h4><p style={{color: 'rgba(122,92,26,0.8)'}}>{randomAdvice.tip}</p></div>
+        {/* Financial Health Dashboard */}
+        {totalIncome > 0 && (() => {
+          const savingsRate = breakdown.savings / totalIncome * 100;
+          const expenseRate = breakdown.expenses / totalIncome * 100;
+          const investRate = breakdown.investment / totalIncome * 100;
+          const hasGoals = goals.length > 0;
+          const hasItems = expenseItems.length > 0 || savingsItems.length > 0 || investmentItems.length > 0;
+
+          // حساب الـ score
+          let score = 0;
+          if (savingsRate >= 20) score += 30;
+          else if (savingsRate >= 10) score += 20;
+          else if (savingsRate > 0) score += 10;
+          if (expenseRate <= 50) score += 25;
+          else if (expenseRate <= 65) score += 15;
+          else score += 5;
+          if (investRate >= 10) score += 25;
+          else if (investRate >= 5) score += 15;
+          else if (investRate > 0) score += 8;
+          if (hasGoals) score += 10;
+          if (hasItems) score += 10;
+          score = Math.min(100, score);
+
+          const scoreColor = score >= 75 ? '#2d8a4e' : score >= 50 ? '#c4a35a' : '#c0392b';
+          const scoreLabel = isArabic
+            ? score >= 75 ? 'وضعك المالي ممتاز 🌟' : score >= 50 ? 'وضعك المالي جيد 👍' : 'يحتاج تحسين ⚠️'
+            : score >= 75 ? 'Excellent Financial Health 🌟' : score >= 50 ? 'Good Financial Health 👍' : 'Needs Improvement ⚠️';
+
+          const months = breakdown.expenses > 0 ? Math.round(totalIncome / breakdown.expenses) : 0;
+          const circumference = 2 * Math.PI * 40;
+          const strokeDash = (score / 100) * circumference;
+
+          const insights: string[] = [];
+          if (savingsRate >= 20) insights.push(isArabic ? '✅ معدل ادخارك ممتاز (' + savingsRate.toFixed(0) + '%)' : '✅ Great savings rate (' + savingsRate.toFixed(0) + '%)');
+          else if (savingsRate < 10) insights.push(isArabic ? '⚠️ ادخارك أقل من 10% - حاول زيادته' : '⚠️ Savings below 10% - try to increase');
+          if (investRate >= 10) insights.push(isArabic ? '📈 نسبة استثمار صحية (' + investRate.toFixed(0) + '%)' : '📈 Healthy investment rate (' + investRate.toFixed(0) + '%)');
+          else if (investRate === 0) insights.push(isArabic ? '💡 لا توجد استثمارات - فكر في البدء' : '💡 No investments - consider starting');
+          if (expenseRate > 65) insights.push(isArabic ? '🔴 المصروفات عالية (' + expenseRate.toFixed(0) + '%) - راجعها' : '🔴 High expenses (' + expenseRate.toFixed(0) + '%) - review them');
+          if (hasGoals) insights.push(isArabic ? '🎯 لديك أهداف مالية - ممتاز!' : '🎯 You have financial goals - great!');
+          if (!hasGoals) insights.push(isArabic ? '🎯 أضف أهدافاً مالية لتتبع تقدمك' : '🎯 Add financial goals to track progress');
+
+          return (
+            <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 8px 30px rgba(196,163,90,0.12)', overflow: 'hidden'}}>
+              <div className="p-5" style={{background: 'linear-gradient(135deg, #7f5c48 0%, #5c3d2a 100%)'}}>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-white/70 mb-1">⚡ {isArabic ? 'تقييم صحتك المالية' : 'Financial Health Score'}</p>
+                    <h2 className="text-xl font-bold text-white">{scoreLabel}</h2>
+                    <p className="text-sm mt-1" style={{color: 'rgba(240,208,128,0.8)'}}>{isArabic ? `طاقتك الشهرية: ${formatCurrency(totalIncome)} ${getCurrentCurrency().symbol}` : `Monthly capacity: ${formatCurrency(totalIncome)} ${getCurrentCurrency().symbol}`}</p>
+                  </div>
+                  {/* Score Ring */}
+                  <div className="relative shrink-0 flex items-center justify-center w-24 h-24">
+                    <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
+                      <circle cx="48" cy="48" r="40" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="8" />
+                      <circle cx="48" cy="48" r="40" fill="none" stroke={scoreColor} strokeWidth="8"
+                        strokeDasharray={`${strokeDash} ${circumference}`} strokeLinecap="round"
+                        style={{transition: 'stroke-dasharray 1s ease'}} />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-2xl font-bold text-white">{score}</span>
+                      <span className="text-xs text-white/60">/100</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              <CardContent className="pt-4 space-y-4">
+                {/* Quick Stats */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: isArabic ? 'معدل الادخار' : 'Savings Rate', value: savingsRate.toFixed(0) + '%', color: savingsRate >= 20 ? '#2d8a4e' : savingsRate >= 10 ? '#c4a35a' : '#c0392b' },
+                    { label: isArabic ? 'نسبة الاستثمار' : 'Investment Rate', value: investRate.toFixed(0) + '%', color: investRate >= 10 ? '#2d8a4e' : investRate >= 5 ? '#c4a35a' : '#c0392b' },
+                    { label: isArabic ? 'أمان مالي' : 'Safety', value: months > 0 ? months + (isArabic ? ' أشهر' : 'mo') : '—', color: '#7a5c1a' },
+                  ].map(stat => (
+                    <div key={stat.label} className="text-center p-3 rounded-xl" style={{background: 'rgba(196,163,90,0.06)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
+                      <p className="text-xs mb-1" style={{color: 'rgba(122,92,26,0.5)'}}>{stat.label}</p>
+                      <p className="text-lg font-bold" style={{color: stat.color}}>{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* AI Insights */}
+                <div className="space-y-2">
+                  <p className="text-xs font-bold" style={{color: '#7a5c1a'}}>💡 {isArabic ? 'تحليل ذكي' : 'Smart Analysis'}</p>
+                  {insights.map((insight, i) => (
+                    <div key={i} className="text-sm py-2 px-3 rounded-xl" style={{background: 'rgba(196,163,90,0.06)', border: '0.5px solid rgba(196,163,90,0.15)', color: 'rgba(122,92,26,0.85)'}}>
+                      {insight}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Random Tip */}
+                <Button onClick={getRandomAdvice} variant="outline" className="w-full" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'}}>
+                  <Lightbulb className="w-5 h-5 ms-2" />{text.randomAdvice}
+                </Button>
+                {showAdvice && randomAdvice && (
+                  <div className="p-4 rounded-xl" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.06)'}}>
+                    <div className="flex items-start gap-3">
+                      <span className="text-3xl">{randomAdvice.icon}</span>
+                      <div><h4 className="font-bold mb-1" style={{color: '#7a5c1a'}}>{randomAdvice.category}</h4><p style={{color: 'rgba(122,92,26,0.8)'}}>{randomAdvice.tip}</p></div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Actions */}
         <div className="flex flex-wrap gap-4 justify-center">
-          <Button onClick={handlePrint} variant="outline" size="lg" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'}}><Printer className="w-5 h-5 ms-2" />{text.print}</Button>
-          <Button onClick={handleReset} variant="outline" size="lg" style={{borderColor: 'rgba(196,163,90,0.3)', color: 'rgba(122,92,26,0.6)'}}><RefreshCw className="w-5 h-5 ms-2" />{text.reset}</Button>
+          <Button onClick={handlePrint} size="lg" className="font-bold" style={{background: '#7f5c48', color: 'white', boxShadow: '0 4px 16px rgba(127,92,72,0.3)'}}><Printer className="w-5 h-5 ms-2" />{text.print}</Button>
+          <Button onClick={() => router.push('/projects')} size="lg" variant="outline" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'}}>🚀 {isArabic ? 'مشروعي' : 'My Projects'}</Button>
+          <Button onClick={handleReset} variant="outline" size="lg" style={{borderColor: 'rgba(196,163,90,0.3)', color: 'rgba(122,92,26,0.5)'}}><RefreshCw className="w-5 h-5 ms-2" />{text.reset}</Button>
         </div>
 
-        <div className="mt-8 pt-8 text-center text-sm" style={{borderTop: '1px solid rgba(196,163,90,0.3)'}}>
+        <div className="mt-6 pt-6 text-center text-sm" style={{borderTop: '1px solid rgba(196,163,90,0.3)'}}>
           <p className="mb-1" style={{color: 'rgba(122,92,26,0.5)'}}>{text.footer}</p>
           <div className="flex items-center justify-center gap-2">
             <span className="w-24 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
