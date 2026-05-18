@@ -397,7 +397,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     adviceTitle: isArabic ? 'نصيحتنا لك' : 'Our advice to you',
     adviceDesc: isArabic ? 'نصائح مالية مخصصة بناءً على مدخولك' : 'Personalized financial tips based on your income',
     randomAdvice: isArabic ? 'احصل على نصيحة عشوائية' : 'Get a random tip',
-    print: isArabic ? 'طباعة / تصدير' : 'Print / Export',
+    print: isArabic ? '📊 تصدير Excel لـ Power BI' : '📊 Export Excel for Power BI',
     reset: isArabic ? 'إعادة تعيين' : 'Reset',
     footer: isArabic ? 'المدير المالي الذكي - يساعدك على اتخاذ قرارات مالية أوضح' : 'Smart Financial Manager - helping you make clearer financial decisions',
     tickerTitle: isArabic ? 'مؤشرات الأسواق' : 'Market watch',
@@ -570,7 +570,121 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     setShowAdvice(true);
   };
 
-  const handlePrint = () => window.print();
+  const handlePrint = async () => {
+    // استيراد مكتبة SheetJS لإنشاء ملف Excel
+    const XLSX = await import('xlsx');
+
+    const currency = getCurrentCurrency().symbol;
+    const formatNum = (n: number) => Math.round(n * 1000) / 1000;
+
+    // ===== Sheet 1: الملخص =====
+    const summaryData = [
+      ['المدير المالي الذكي - تقرير مالي شامل', '', '', ''],
+      ['powered by M.Q', '', '', ''],
+      ['', '', '', ''],
+      ['البيان', 'المبلغ', 'العملة', 'النسبة %'],
+      ['إجمالي الدخل الشهري', formatNum(totalIncome), currency, '100%'],
+      ['المصروفات', formatNum(breakdown.expenses), currency, totalIncome ? `${Math.round(breakdown.expenses/totalIncome*100)}%` : '0%'],
+      ['المدخرات', formatNum(breakdown.savings), currency, totalIncome ? `${Math.round(breakdown.savings/totalIncome*100)}%` : '0%'],
+      ['الاستثمار', formatNum(breakdown.investment), currency, totalIncome ? `${Math.round(breakdown.investment/totalIncome*100)}%` : '0%'],
+      ...(breakdown.charity > 0 ? [['الأعمال الخيرية', formatNum(breakdown.charity), currency, totalIncome ? `${Math.round(breakdown.charity/totalIncome*100)}%` : '0%']] : []),
+      ['', '', '', ''],
+      ['طريقة التوزيع', distributionMethod, '', ''],
+      ['دخل إضافي', formatNum(otherIncomeNumber), currency, ''],
+      ['تاريخ التقرير', new Date().toLocaleDateString('ar-SA'), '', ''],
+    ];
+
+    // ===== Sheet 2: مصادر الدخل =====
+    const incomeData = [
+      ['مصادر الدخل الشهري', '', ''],
+      ['المصدر', 'المبلغ', 'العملة'],
+      ...INCOME_CATEGORIES.map(cat => [
+        cat.nameAr,
+        formatNum(parseFloat((incomeSourceAmounts[cat.id] || '0').replace(/[^\d.]/g, '')) || 0),
+        currency
+      ]),
+      ['', '', ''],
+      ['الإجمالي', formatNum(salaryNumber), currency],
+      ['دخل إضافي', formatNum(otherIncomeNumber), currency],
+      ['إجمالي الدخل', formatNum(totalIncome), currency],
+    ];
+
+    // ===== Sheet 3: المصروفات =====
+    const expensesData = [
+      ['تفاصيل المصروفات', '', ''],
+      ['البند', 'المبلغ', 'العملة'],
+      ...expenseItems.map(item => [
+        item.name || 'بدون اسم',
+        formatNum(parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0),
+        currency
+      ]),
+      ['', '', ''],
+      ['الإجمالي المخطط', formatNum(breakdown.expenses), currency],
+      ['الإجمالي الفعلي', formatNum(expenseItems.reduce((s, i) => s + (parseFloat(i.amount.replace(/[^\d.]/g, '')) || 0), 0)), currency],
+    ];
+
+    // ===== Sheet 4: المدخرات =====
+    const savingsData = [
+      ['تفاصيل المدخرات', '', ''],
+      ['البند', 'المبلغ', 'العملة'],
+      ...savingsItems.map(item => [
+        item.name || 'بدون اسم',
+        formatNum(parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0),
+        currency
+      ]),
+      ['', '', ''],
+      ['الإجمالي المخطط', formatNum(breakdown.savings), currency],
+      ['الإجمالي الفعلي', formatNum(savingsItems.reduce((s, i) => s + (parseFloat(i.amount.replace(/[^\d.]/g, '')) || 0), 0)), currency],
+    ];
+
+    // ===== Sheet 5: الاستثمارات =====
+    const investData = [
+      ['تفاصيل الاستثمارات', '', ''],
+      ['البند', 'المبلغ', 'العملة'],
+      ...investmentItems.map(item => [
+        item.name || 'بدون اسم',
+        formatNum(parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0),
+        currency
+      ]),
+      ['', '', ''],
+      ['الإجمالي المخطط', formatNum(breakdown.investment), currency],
+      ['الإجمالي الفعلي', formatNum(investmentItems.reduce((s, i) => s + (parseFloat(i.amount.replace(/[^\d.]/g, '')) || 0), 0)), currency],
+    ];
+
+    // ===== Sheet 6: الأهداف المالية =====
+    const goalsData = [
+      ['الأهداف المالية', '', '', '', ''],
+      ['الهدف', 'المبلغ المطلوب', 'المدة', 'الوحدة', 'ملاحظات'],
+      ...goals.map(g => [
+        g.goal || 'بدون اسم',
+        formatNum(parseFloat(g.amount.replace(/[^\d.]/g, '')) || 0),
+        g.duration,
+        g.durationUnit === 'day' ? 'يوم' : g.durationUnit === 'year' ? 'سنة' : 'شهر',
+        g.notes || ''
+      ]),
+    ];
+
+    // إنشاء الـ Workbook
+    const wb = XLSX.utils.book_new();
+
+    const addSheet = (data: any[][], name: string) => {
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      // تعيين عرض الأعمدة
+      ws['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 10 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, ws, name);
+    };
+
+    addSheet(summaryData, 'الملخص');
+    addSheet(incomeData, 'مصادر الدخل');
+    addSheet(expensesData, 'المصروفات');
+    addSheet(savingsData, 'المدخرات');
+    addSheet(investData, 'الاستثمارات');
+    addSheet(goalsData, 'الأهداف المالية');
+
+    // تصدير الملف
+    const date = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `SFM_تقرير_مالي_${date}.xlsx`);
+  };
 
   const handleReset = () => {
     // Only reset calculator settings - NOT saved items or goals
