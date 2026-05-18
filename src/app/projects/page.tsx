@@ -1,4 +1,5 @@
 'use client';
+import { WisdomTicker } from '@/components/WisdomTicker';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,7 @@ export default function ProjectsPage() {
 
   return (
     <main dir="rtl" className="min-h-screen px-4 py-8" style={{ background: 'linear-gradient(135deg, #fffdf5 0%, #fef9e7 50%, #fdf5d0 100%)' }}>
+        <WisdomTicker language="ar" showLanguageSelector={false} />
       <div className="mx-auto max-w-5xl space-y-6">
 
         <div className="rounded-3xl p-6" style={{ background: '#7f5c48', boxShadow: '0 4px 20px rgba(127,92,72,0.35), 0 8px 40px rgba(127,92,72,0.15)' }}>
