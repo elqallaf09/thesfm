@@ -1,29 +1,36 @@
 import { NextResponse } from 'next/server';
+import { generateText } from 'ai';
+import { createAnthropic } from '@ai-sdk/anthropic';
+
+const getProvider = () => {
+  const gatewayToken = process.env.AI_GATEWAY_TOKEN;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (gatewayToken) {
+    return createAnthropic({
+      apiKey: gatewayToken,
+      baseURL: 'https://ai-gateway.vercel.sh/v1/anthropic',
+    });
+  }
+  return createAnthropic({ apiKey: anthropicKey || '' });
+};
 
 export async function GET() {
   try {
     const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+    const anthropic = getProvider();
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 200,
-        system: 'أنت مستشار مالي. أنشئ نصيحة مالية يومية من كتاب مشهور. أجب فقط بـ JSON هكذا بدون نص إضافي: {"titleAr":"اسم الكتاب","contentAr":"النصيحة","titleEn":"Book Name","contentEn":"Tip"}',
-        messages: [{ role: 'user', content: `نصيحة مالية لليوم رقم ${dayOfYear}` }],
-      }),
+    const { text } = await generateText({
+      model: anthropic('claude-haiku-4-5-20251001'),
+      system: 'أنت مستشار مالي. أنشئ نصيحة مالية يومية من كتاب مشهور. أجب فقط بـ JSON بدون نص إضافي: {"titleAr":"اسم الكتاب","contentAr":"النصيحة","titleEn":"Book Name","contentEn":"Tip"}',
+      prompt: `نصيحة مالية مميزة لليوم رقم ${dayOfYear}`,
+      maxTokens: 200,
     });
 
-    if (!response.ok) return NextResponse.json({ tip: null });
-
-    const data = await response.json();
-    const text = (data.content?.[0]?.text || '').replace(/```json|```/g, '').trim();
-    const tip = JSON.parse(text);
+    const clean = text.replace(/```json|```/g, '').trim();
+    const start = clean.indexOf('{');
+    const end = clean.lastIndexOf('}');
+    if (start === -1 || end === -1) return NextResponse.json({ tip: null });
+    const tip = JSON.parse(clean.slice(start, end + 1));
     return NextResponse.json({ tip });
   } catch {
     return NextResponse.json({ tip: null });
