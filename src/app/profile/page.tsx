@@ -83,7 +83,18 @@ export default function ProfilePage() {
 
   const loadData = async () => {
     const { data: p } = await supabase.from('profiles').select('*').eq('id', user!.id).maybeSingle();
-    if (p) setProfile({ ...p, phone_country_code: p.phone_country_code || '+965' });
+    if (p) {
+      setProfile({
+        display_name: p.display_name || '',
+        username: p.username || '',
+        email: p.email || '',
+        age: p.age ? String(p.age) : '',
+        gender: p.gender || '',
+        profession: p.profession || '',
+        phone_country_code: p.phone_country_code || '+965',
+        phone_number: p.phone_number || '',
+      });
+    }
     const { data: s } = await supabase.from('monthly_income_sources').select('*').eq('user_id', user!.id);
     if (s) {
       const amounts: Record<string, string> = {};
@@ -97,15 +108,18 @@ export default function ProfilePage() {
     setSaving(true); setMessage(null);
     const { error } = await supabase.from('profiles').update({
       display_name: profile.display_name?.trim(),
-      username: profile.username?.trim(),
+      username: profile.username?.trim() || null,
       age: profile.age ? parseInt(profile.age) : null,
-      gender: profile.gender,
-      profession: profile.profession,
+      gender: profile.gender || null,
+      profession: profile.profession || null,
       phone_country_code: profile.phone_country_code,
-      phone_number: profile.phone_number,
+      phone_number: profile.phone_number || null,
     }).eq('id', user!.id);
     if (error) setMessage({ type: 'error', text: 'حدث خطأ: ' + error.message });
-    else setMessage({ type: 'success', text: '✅ تم حفظ البيانات بنجاح' });
+    else {
+      setMessage({ type: 'success', text: '✅ تم حفظ البيانات بنجاح' });
+      await loadData(); // أعد تحميل البيانات بعد الحفظ
+    }
     setSaving(false);
   };
 
