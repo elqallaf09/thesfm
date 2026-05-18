@@ -1768,7 +1768,7 @@ ${goals.length > 0 ? '\n🏆 أهدافك المالية:\n' + goals.filter(g =>
                       const feasible = months > 0 && months <= 36;
                       const unit = project.durationUnit === 'year' ? (isArabic ? 'سنة' : 'yr') : project.durationUnit === 'day' ? (isArabic ? 'يوم' : 'day') : (isArabic ? 'شهر' : 'mo');
                     
-  return (
+                       return (
                         <div key={project.id} className="flex items-center gap-3 p-3 rounded-xl" style={{background: feasible ? 'rgba(45,138,78,0.06)' : months > 0 ? 'rgba(196,163,90,0.06)' : 'rgba(196,163,90,0.04)', border: `0.5px solid ${feasible ? 'rgba(45,138,78,0.2)' : 'rgba(196,163,90,0.2)'}`}}>
                           <span className="text-xl">{project.emoji}</span>
                           <div className="flex-1 min-w-0">
