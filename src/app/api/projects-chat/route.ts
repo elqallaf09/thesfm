@@ -1,35 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { generateText } from 'ai';
+import { createAnthropic } from '@ai-sdk/anthropic';
+
+const getProvider = () => {
+  const gatewayToken = process.env.AI_GATEWAY_TOKEN;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+
+  if (gatewayToken) {
+    return createAnthropic({
+      apiKey: gatewayToken,
+      baseURL: 'https://ai-gateway.vercel.sh/v1/anthropic',
+    });
+  }
+  return createAnthropic({ apiKey: anthropicKey || '' });
+};
 
 export async function POST(req: NextRequest) {
   try {
     const { messages } = await req.json();
+    const anthropic = getProvider();
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 800,
-        system: 'أنت مستشار مالي متخصص في المشاريع الصغيرة في الكويت والخليج. ساعد في التخطيط للمشاريع وحساب التكاليف بالدينار الكويتي. لا تتحدث في مواضيع خارج المشاريع والمال. ردودك مختصرة ومفيدة بالعربية.',
-        messages,
-      }),
+    const { text } = await generateText({
+      model: anthropic('claude-haiku-4-5-20251001'),
+      system: `أنت مستشار مالي متخصص في المشاريع الصغيرة والمتوسطة في الكويت والخليج العربي.
+مهمتك حصراً:
+- مساعدة المستخدم في التخطيط لمشاريعه المستقبلية
+- حساب التكاليف التقريبية بالدينار الكويتي
+- تقديم خطوات عملية لتنفيذ المشروع
+- نصائح استثمارية وتمويلية للمشاريع
+- تحليل مخاطر المشاريع وفرص النجاح
+لا تتحدث في أي موضوع خارج المشاريع والاستثمار. ردودك بالعربية مختصرة ومفيدة.`,
+      messages: messages.map((m: any) => ({ role: m.role, content: m.content })),
+      maxTokens: 800,
     });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Anthropic error:', response.status, errText);
-      return NextResponse.json({ text: `خطأ ${response.status}: تحقق من مفتاح API` }, { status: 200 });
-    }
-
-    const data = await response.json();
-    const text = data.content?.[0]?.text || 'عذراً، لم أتمكن من الرد.';
     return NextResponse.json({ text });
-  } catch (error) {
-    console.error('Route error:', error);
-    return NextResponse.json({ text: 'عذراً، حدث خطأ في الاتصال بالخادم.' }, { status: 200 });
+  } catch (error: any) {
+    console.error('AI error:', error?.message || error);
+    return NextResponse.json({ text: 'عذراً، حدث خطأ في الخدمة. حاول مرة أخرى.' }, { status: 200 });
   }
 }
