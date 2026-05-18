@@ -573,11 +573,12 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   const handlePrint = () => window.print();
 
   const handleReset = () => {
-    setSalary(''); setSalaryNumber(0); setOtherIncome(''); setOtherIncomeNumber(0);
+    // Only reset calculator settings - NOT saved items or goals
+    setOtherIncome(''); setOtherIncomeNumber(0);
     setDistributionMethod('70-20-10'); setManualExpenses(''); setManualSavings(''); setManualInvestment('');
     setIncludeCharity(false); setSelectedCharityTypes([]); setCharityPercentages({}); setTotalCharityPercentage(0);
-    setShowAdvice(false); setRandomAdvice(null); setExpenseItems([]); setSavingsItems([]);
-    setInvestmentItems([]); setGoals([]); setExpensesExpanded(false); setSavingsExpanded(false); setInvestmentExpanded(false); setManualWarning(false);
+    setShowAdvice(false); setRandomAdvice(null); setManualWarning(false);
+    // Note: expenseItems, savingsItems, investmentItems, goals are NOT reset - they persist in DB
   };
 
   const addExpenseItem = () => { setExpenseItems([...expenseItems, { id: generateId(), name: '', amount: '' }]); setExpensesExpanded(true); };
@@ -698,47 +699,63 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
   return (
     <>
-    <style>{`@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}.ticker-scroll{animation:ticker 30s linear infinite;display:flex;width:max-content;}`}</style>
+    <style>{`
+      @keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}.ticker-scroll{animation:ticker 30s linear infinite;display:flex;width:max-content;}
+      @media print {
+        body { background: white !important; }
+        .no-print { display: none !important; }
+        .print-only { display: block !important; }
+        header, nav, button, select { display: none !important; }
+        .rounded-\\[1\\.75rem\\] { display: none !important; }
+        main { padding: 0 !important; background: white !important; }
+        .max-w-5xl { max-width: 100% !important; }
+        * { box-shadow: none !important; border-radius: 4px !important; }
+        h1 { color: #7f5c48 !important; font-size: 24px !important; }
+        h2, h3 { color: #7a5c1a !important; }
+        .rounded-\\[2rem\\] { border: 1px solid #c4a35a !important; padding: 16px !important; margin-bottom: 12px !important; }
+      }
+    `}</style>
     <main dir={isArabic ? 'rtl' : 'ltr'} className="relative min-h-screen overflow-hidden px-4 py-6" style={{background: 'linear-gradient(135deg, #fffdf5 0%, #fef9e7 50%, #fdf5d0 100%)'}}>
       <div className="pointer-events-none absolute inset-0 opacity-40" style={{backgroundImage: 'linear-gradient(120deg,rgba(196,163,90,0.15) 0,rgba(196,163,90,0.15) 1px,transparent 1px,transparent 42px)'}} />
       <div className="pointer-events-none absolute -right-24 top-0 h-[34rem] w-[34rem] rounded-full blur-3xl" style={{background: 'rgba(196,163,90,0.2)'}} />
       <div className="relative max-w-5xl mx-auto space-y-6">
         {/* Ticker */}
         <div className="overflow-hidden rounded-[1.75rem] border shadow-[0_8px_40px_rgba(196,163,90,0.25)]" style={{borderColor: 'rgba(196,163,90,0.4)', background: '#1a1228'}}>
-          <div className="flex flex-col gap-3 border-b px-4 py-3 text-white md:flex-row md:items-center md:justify-between" style={{background: '#120d1e', borderColor: 'rgba(196,163,90,0.25)'}}>
+          <div className="flex flex-col gap-3 border-b px-4 py-3 text-white md:flex-row md:items-center md:justify-between" style={{background: '#7f5c48', borderColor: 'rgba(255,255,255,0.15)', boxShadow: '0 2px 8px rgba(127,92,72,0.3), 0 4px 16px rgba(127,92,72,0.15)'}}>
             <div className="flex items-center gap-3">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#c4a35a] shadow-[0_0_18px_rgba(196,163,90,0.8)]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#f0d080] shadow-[0_0_18px_rgba(240,208,128,0.8)]" />
               <div>
-                <p className="text-sm font-bold" style={{color: '#c4a35a'}}>{text.tickerTitle}</p>
-                <p className="text-xs" style={{color: 'rgba(196,163,90,0.5)'}}>{tickerStatus}</p>
+                <p className="text-sm font-bold text-white">{text.tickerTitle}</p>
+                <p className="text-xs text-white/70">{tickerStatus}</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" size="sm" variant="ghost" onClick={fetchTickerData} className="h-10 rounded-xl hover:bg-white/10" style={{color: '#c4a35a'}}>
+              <Button type="button" size="sm" variant="ghost" onClick={fetchTickerData} className="h-10 rounded-xl text-white hover:bg-white/20">
                 <RefreshCw className={`h-4 w-4 ${tickerLoading ? 'animate-spin' : ''}`} />
               </Button>
               <Select value={tickerCategory} onValueChange={(value) => setTickerCategory(value as TickerCategory)}>
-                <SelectTrigger className="h-10 w-[190px] text-white [&>span]:text-white" style={{borderColor: 'rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.1)'}}>
+                <SelectTrigger className="h-10 w-[190px] text-white [&>span]:text-white" style={{borderColor: 'rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.15)'}}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {tickerOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/education/investments')} className="h-10 rounded-xl hover:bg-white/10 text-sm" style={{color: '#c4a35a'}}>{text.investmentTypesBtn}</Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/education/savings')} className="h-10 rounded-xl hover:bg-white/10 text-sm" style={{color: '#c4a35a'}}>{text.savingsTypesBtn}</Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/education/expenses')} className="h-10 rounded-xl hover:bg-white/10 text-sm" style={{color: '#c4a35a'}}>{text.expensesInfoBtn}</Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/education/investments')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">{text.investmentTypesBtn}</Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/education/savings')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">{text.savingsTypesBtn}</Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/education/expenses')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">{text.expensesInfoBtn}</Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/projects')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">{isArabic ? '🚀 مشاريعي' : '🚀 Projects'}</Button>
               {!isGuest && (
-                <Button type="button" variant="ghost" size="sm" onClick={() => { loadProfile(userId); loadCurrentIncomeSources(userId); setShowProfile(!showProfile); }} className="h-10 rounded-xl hover:bg-white/10 text-sm" style={{color: '#c4a35a'}}>
+                <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/profile')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">
                   <User className="h-4 w-4 me-1" />{text.profileBtn}
                 </Button>
               )}
               {isGuest ? (
-                <Button type="button" size="sm" onClick={() => { localStorage.removeItem('guest_session'); window.location.reload(); }} className="h-10 rounded-xl text-sm font-bold px-4" style={{background: '#c4a35a', color: '#1a0f00'}}>
+                <Button type="button" size="sm" onClick={() => { localStorage.removeItem('guest_session'); window.location.reload(); }} className="h-10 rounded-xl text-sm font-bold px-4" style={{background: '#f0d080', color: '#3d2b1a'}}>
                   🔑 {isArabic ? 'تسجيل الدخول' : 'Login'}
                 </Button>
               ) : (
-                <Button type="button" variant="ghost" size="sm" onClick={() => { localStorage.removeItem('guest_session'); supabase.auth.signOut(); }} className="h-10 rounded-xl hover:bg-white/10 text-sm" style={{color: 'rgba(196,163,90,0.7)'}}>{text.logout}</Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => { localStorage.removeItem('guest_session'); supabase.auth.signOut(); }} className="h-10 rounded-xl text-white/70 hover:bg-white/20 text-sm">{text.logout}</Button>
               )}
             </div>
           </div>
@@ -1007,79 +1024,82 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             </div>
 
             {/* Expenses */}
-            <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+            <div className="p-4 rounded-xl" style={{background: 'rgba(139,90,60,0.06)', border: '1px solid rgba(139,90,60,0.2)'}}>
               <div className="flex items-center justify-between mb-2 cursor-pointer" onClick={() => setExpensesExpanded(!expensesExpanded)}>
-                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-green-500" /><span className="font-semibold text-green-700">{text.expenses}</span></div>
-                <div className="flex items-center gap-2"><span className="text-xl font-bold text-green-800">{formatCurrency(breakdown.expenses)} {getCurrentCurrency().symbol}</span>{expensesExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}</div>
+                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={{background: '#7f5c48'}} /><span className="font-semibold" style={{color: '#7f5c48'}}>{text.expenses}</span></div>
+                <div className="flex items-center gap-2"><span className="text-xl font-bold" style={{color: '#7f5c48'}}>{formatCurrency(breakdown.expenses)} {getCurrentCurrency().symbol}</span>{expensesExpanded ? <ChevronUp className="w-5 h-5" style={{color: '#7f5c48'}} /> : <ChevronDown className="w-5 h-5" style={{color: '#7f5c48'}} />}</div>
               </div>
-              <Button onClick={addExpenseItem} variant="ghost" size="sm" className="w-full mt-2 text-green-600 hover:bg-green-100"><Plus className="w-4 h-4 ms-1" /> {text.addExpense}</Button>
+              <Button onClick={addExpenseItem} variant="ghost" size="sm" className="w-full mt-2" style={{color: '#7f5c48'}}><Plus className="w-4 h-4 ms-1" /> {text.addExpense}</Button>
               {expensesExpanded && (
                 <div className="mt-3 space-y-3">
-                  <div className="p-3 bg-green-100/50 rounded-lg">
-                    <p className="text-xs font-semibold text-green-600 mb-2">{text.aiExpenses}</p>
+                  <div className="p-3 rounded-lg" style={{background: 'rgba(127,92,72,0.08)'}}>
+                    <p className="text-xs font-semibold mb-2" style={{color: '#7f5c48'}}>{text.aiExpenses}</p>
                     <div className="flex flex-wrap gap-1">
-                      {EXPENSES_EXAMPLES.map((ex, i) => <button key={i} onClick={() => setExpenseItems([...expenseItems, { id: generateId(), name: language === 'ar' ? ex.name : ex.nameEn, amount: '' }])} className="px-2 py-1 text-xs bg-white rounded-full border border-green-200 hover:bg-green-50">{ex.icon} {language === 'ar' ? ex.name : ex.nameEn}</button>)}
+                      {EXPENSES_EXAMPLES.map((ex, i) => <button key={i} onClick={() => setExpenseItems([...expenseItems, { id: generateId(), name: language === 'ar' ? ex.name : ex.nameEn, amount: '' }])} className="px-2 py-1 text-xs rounded-full" style={{background: 'white', border: '0.5px solid rgba(127,92,72,0.3)', color: '#7f5c48'}}>{ex.icon} {language === 'ar' ? ex.name : ex.nameEn}</button>)}
                     </div>
                   </div>
                   {expenseItems.map(item => (
                     <div key={item.id} className="flex gap-2 items-center">
-                      <Input placeholder={text.expenseNamePlaceholder} value={item.name} onChange={(e) => updateExpenseItem(item.id, 'name', e.target.value)} className="flex-1 h-8 text-sm" />
-                      <Input placeholder={text.amountPlaceholder} type="text" value={item.amount} onChange={(e) => updateExpenseItem(item.id, 'amount', e.target.value)} className="w-32 h-8 text-sm" dir="ltr" />
-                      <Button variant="ghost" size="icon" onClick={() => removeExpenseItem(item.id)} className="h-8 w-8 text-red-500"><Trash2 className="w-4 h-4" /></Button>
+                      <Input placeholder={text.expenseNamePlaceholder} value={item.name} onChange={(e) => updateExpenseItem(item.id, 'name', e.target.value)} className="flex-1 h-8 text-sm" style={{borderColor: 'rgba(127,92,72,0.3)'}} />
+                      <Input placeholder={text.amountPlaceholder} type="text" value={item.amount} onChange={(e) => updateExpenseItem(item.id, 'amount', e.target.value)} className="w-32 h-8 text-sm" dir="ltr" style={{borderColor: 'rgba(127,92,72,0.3)'}} />
+                      <Button variant="ghost" size="icon" onClick={() => removeExpenseItem(item.id)} className="h-8 w-8 text-red-400"><Trash2 className="w-4 h-4" /></Button>
                     </div>
                   ))}
+                  {expenseItems.length > 0 && <div className="flex justify-end pt-2" style={{borderTop: '0.5px solid rgba(127,92,72,0.2)'}}><span className="text-sm font-semibold" style={{color: '#7f5c48'}}>{text.sumExpenses}: {formatCurrency(expenseItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol}</span></div>}
                 </div>
               )}
             </div>
 
             {/* Savings */}
-            <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+            <div className="p-4 rounded-xl" style={{background: 'rgba(196,163,90,0.06)', border: '1px solid rgba(196,163,90,0.25)'}}>
               <div className="flex items-center justify-between mb-2 cursor-pointer" onClick={() => setSavingsExpanded(!savingsExpanded)}>
-                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-blue-500" /><span className="font-semibold text-blue-700">{text.savings}</span></div>
-                <div className="flex items-center gap-2"><span className="text-xl font-bold text-blue-800">{formatCurrency(breakdown.savings)} {getCurrentCurrency().symbol}</span>{savingsExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}</div>
+                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-[#c4a35a]" /><span className="font-semibold" style={{color: '#7a5c1a'}}>{text.savings}</span></div>
+                <div className="flex items-center gap-2"><span className="text-xl font-bold" style={{color: '#7a5c1a'}}>{formatCurrency(breakdown.savings)} {getCurrentCurrency().symbol}</span>{savingsExpanded ? <ChevronUp className="w-5 h-5" style={{color: '#c4a35a'}} /> : <ChevronDown className="w-5 h-5" style={{color: '#c4a35a'}} />}</div>
               </div>
-              <Button onClick={addSavingsItem} variant="ghost" size="sm" className="w-full mt-2 text-blue-600 hover:bg-blue-100"><Plus className="w-4 h-4 ms-1" /> {text.addSaving}</Button>
+              <Button onClick={addSavingsItem} variant="ghost" size="sm" className="w-full mt-2" style={{color: '#7a5c1a'}}><Plus className="w-4 h-4 ms-1" /> {text.addSaving}</Button>
               {savingsExpanded && (
                 <div className="mt-3 space-y-3">
-                  <div className="p-3 bg-blue-100/50 rounded-lg">
-                    <p className="text-xs font-semibold text-blue-600 mb-2">{text.aiSavings}</p>
+                  <div className="p-3 rounded-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
+                    <p className="text-xs font-semibold mb-2" style={{color: '#7a5c1a'}}>{text.aiSavings}</p>
                     <div className="flex flex-wrap gap-1">
-                      {SAVINGS_EXAMPLES.map((ex, i) => <button key={i} onClick={() => setSavingsItems([...savingsItems, { id: generateId(), name: language === 'ar' ? ex.name : ex.nameEn, amount: '' }])} className="px-2 py-1 text-xs bg-white rounded-full border border-blue-200 hover:bg-blue-50">{ex.icon} {language === 'ar' ? ex.name : ex.nameEn}</button>)}
+                      {SAVINGS_EXAMPLES.map((ex, i) => <button key={i} onClick={() => setSavingsItems([...savingsItems, { id: generateId(), name: language === 'ar' ? ex.name : ex.nameEn, amount: '' }])} className="px-2 py-1 text-xs rounded-full" style={{background: 'white', border: '0.5px solid rgba(196,163,90,0.3)', color: '#7a5c1a'}}>{ex.icon} {language === 'ar' ? ex.name : ex.nameEn}</button>)}
                     </div>
                   </div>
                   {savingsItems.map(item => (
                     <div key={item.id} className="flex gap-2 items-center">
-                      <Input placeholder={text.savingNamePlaceholder} value={item.name} onChange={(e) => updateSavingsItem(item.id, 'name', e.target.value)} className="flex-1 h-8 text-sm" />
-                      <Input placeholder={text.amountPlaceholder} type="text" value={item.amount} onChange={(e) => updateSavingsItem(item.id, 'amount', e.target.value)} className="w-32 h-8 text-sm" dir="ltr" />
-                      <Button variant="ghost" size="icon" onClick={() => removeSavingsItem(item.id)} className="h-8 w-8 text-red-500"><Trash2 className="w-4 h-4" /></Button>
+                      <Input placeholder={text.savingNamePlaceholder} value={item.name} onChange={(e) => updateSavingsItem(item.id, 'name', e.target.value)} className="flex-1 h-8 text-sm" style={{borderColor: 'rgba(196,163,90,0.3)'}} />
+                      <Input placeholder={text.amountPlaceholder} type="text" value={item.amount} onChange={(e) => updateSavingsItem(item.id, 'amount', e.target.value)} className="w-32 h-8 text-sm" dir="ltr" style={{borderColor: 'rgba(196,163,90,0.3)'}} />
+                      <Button variant="ghost" size="icon" onClick={() => removeSavingsItem(item.id)} className="h-8 w-8 text-red-400"><Trash2 className="w-4 h-4" /></Button>
                     </div>
                   ))}
+                  {savingsItems.length > 0 && <div className="flex justify-end pt-2" style={{borderTop: '0.5px solid rgba(196,163,90,0.2)'}}><span className="text-sm font-semibold" style={{color: '#7a5c1a'}}>{text.sumSavings}: {formatCurrency(savingsItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol}</span></div>}
                 </div>
               )}
             </div>
 
             {/* Investment */}
-            <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
+            <div className="p-4 rounded-xl" style={{background: 'rgba(180,140,60,0.06)', border: '1px solid rgba(180,140,60,0.2)'}}>
               <div className="flex items-center justify-between mb-2 cursor-pointer" onClick={() => setInvestmentExpanded(!investmentExpanded)}>
-                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-amber-500" /><span className="font-semibold text-amber-700">{text.investment}</span></div>
-                <div className="flex items-center gap-2"><span className="text-xl font-bold text-amber-800">{formatCurrency(breakdown.investment)} {getCurrentCurrency().symbol}</span>{investmentExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}</div>
+                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={{background: '#b48c3c'}} /><span className="font-semibold" style={{color: '#8a6020'}}>{text.investment}</span></div>
+                <div className="flex items-center gap-2"><span className="text-xl font-bold" style={{color: '#8a6020'}}>{formatCurrency(breakdown.investment)} {getCurrentCurrency().symbol}</span>{investmentExpanded ? <ChevronUp className="w-5 h-5" style={{color: '#b48c3c'}} /> : <ChevronDown className="w-5 h-5" style={{color: '#b48c3c'}} />}</div>
               </div>
-              <Button onClick={addInvestmentItem} variant="ghost" size="sm" className="w-full mt-2 text-amber-600 hover:bg-amber-100"><Plus className="w-4 h-4 ms-1" /> {text.addInvestment}</Button>
+              <Button onClick={addInvestmentItem} variant="ghost" size="sm" className="w-full mt-2" style={{color: '#8a6020'}}><Plus className="w-4 h-4 ms-1" /> {text.addInvestment}</Button>
               {investmentExpanded && (
                 <div className="mt-3 space-y-3">
-                  <div className="p-3 bg-amber-100/50 rounded-lg">
-                    <p className="text-xs font-semibold text-amber-600 mb-2">{text.aiInvestment}</p>
+                  <div className="p-3 rounded-lg" style={{background: 'rgba(180,140,60,0.08)'}}>
+                    <p className="text-xs font-semibold mb-2" style={{color: '#8a6020'}}>{text.aiInvestment}</p>
                     <div className="flex flex-wrap gap-1">
-                      {INVESTMENT_EXAMPLES.map((ex, i) => <button key={i} onClick={() => setInvestmentItems([...investmentItems, { id: generateId(), name: language === 'ar' ? ex.name : ex.nameEn, amount: '' }])} className="px-2 py-1 text-xs bg-white rounded-full border border-amber-200 hover:bg-amber-50">{ex.icon} {language === 'ar' ? ex.name : ex.nameEn}</button>)}
+                      {INVESTMENT_EXAMPLES.map((ex, i) => <button key={i} onClick={() => setInvestmentItems([...investmentItems, { id: generateId(), name: language === 'ar' ? ex.name : ex.nameEn, amount: '' }])} className="px-2 py-1 text-xs rounded-full" style={{background: 'white', border: '0.5px solid rgba(180,140,60,0.3)', color: '#8a6020'}}>{ex.icon} {language === 'ar' ? ex.name : ex.nameEn}</button>)}
                     </div>
                   </div>
                   {investmentItems.map(item => (
                     <div key={item.id} className="flex gap-2 items-center">
-                      <Input placeholder={text.investmentNamePlaceholder} value={item.name} onChange={(e) => updateInvestmentItem(item.id, 'name', e.target.value)} className="flex-1 h-8 text-sm" />
-                      <Input placeholder={text.amountPlaceholder} type="text" value={item.amount} onChange={(e) => updateInvestmentItem(item.id, 'amount', e.target.value)} className="w-32 h-8 text-sm" dir="ltr" />
-                      <Button variant="ghost" size="icon" onClick={() => removeInvestmentItem(item.id)} className="h-8 w-8 text-red-500"><Trash2 className="w-4 h-4" /></Button>
+                      <Input placeholder={text.investmentNamePlaceholder} value={item.name} onChange={(e) => updateInvestmentItem(item.id, 'name', e.target.value)} className="flex-1 h-8 text-sm" style={{borderColor: 'rgba(180,140,60,0.3)'}} />
+                      <Input placeholder={text.amountPlaceholder} type="text" value={item.amount} onChange={(e) => updateInvestmentItem(item.id, 'amount', e.target.value)} className="w-32 h-8 text-sm" dir="ltr" style={{borderColor: 'rgba(180,140,60,0.3)'}} />
+                      <Button variant="ghost" size="icon" onClick={() => removeInvestmentItem(item.id)} className="h-8 w-8 text-red-400"><Trash2 className="w-4 h-4" /></Button>
                     </div>
                   ))}
+                  {investmentItems.length > 0 && <div className="flex justify-end pt-2" style={{borderTop: '0.5px solid rgba(180,140,60,0.2)'}}><span className="text-sm font-semibold" style={{color: '#8a6020'}}>{text.sumInvestment}: {formatCurrency(investmentItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol}</span></div>}
                 </div>
               )}
             </div>
