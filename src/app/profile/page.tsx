@@ -106,19 +106,21 @@ export default function ProfilePage() {
   const saveInfo = async () => {
     if (!profile.display_name?.trim()) { setMessage({ type: 'error', text: 'الاسم المعروض مطلوب' }); return; }
     setSaving(true); setMessage(null);
-    const { error } = await supabase.from('profiles').update({
+    const { error } = await supabase.from('profiles').upsert({
+      id: user!.id,
       display_name: profile.display_name?.trim(),
       username: profile.username?.trim() || null,
       age: profile.age ? parseInt(profile.age) : null,
       gender: profile.gender || null,
       profession: profile.profession || null,
-      phone_country_code: profile.phone_country_code,
+      phone_country_code: profile.phone_country_code || '+965',
       phone_number: profile.phone_number || null,
-    }).eq('id', user!.id);
-    if (error) setMessage({ type: 'error', text: 'حدث خطأ: ' + error.message });
-    else {
+    }, { onConflict: 'id' });
+    if (error) {
+      setMessage({ type: 'error', text: 'حدث خطأ: ' + error.message });
+    } else {
       setMessage({ type: 'success', text: '✅ تم حفظ البيانات بنجاح' });
-      await loadData(); // أعد تحميل البيانات بعد الحفظ
+      await loadData();
     }
     setSaving(false);
   };
