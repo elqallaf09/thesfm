@@ -104,23 +104,45 @@ export default function ProfilePage() {
   };
 
   const saveInfo = async () => {
-    if (!profile.display_name?.trim()) { setMessage({ type: 'error', text: 'الاسم المعروض مطلوب' }); return; }
-    setSaving(true); setMessage(null);
-    const { error } = await supabase.from('profiles').upsert({
-      id: user!.id,
-      display_name: profile.display_name?.trim(),
+    if (!profile.display_name?.trim()) {
+      setMessage({ type: 'error', text: 'الاسم المعروض مطلوب' });
+      return;
+    }
+    setSaving(true);
+    setMessage(null);
+
+    // جرب update أولاً
+    const updateData = {
+      display_name: profile.display_name.trim(),
       username: profile.username?.trim() || null,
-      age: profile.age ? parseInt(profile.age) : null,
+      age: profile.age ? parseInt(String(profile.age)) : null,
       gender: profile.gender || null,
       profession: profile.profession || null,
       phone_country_code: profile.phone_country_code || '+965',
       phone_number: profile.phone_number || null,
-    }, { onConflict: 'id' });
-    if (error) {
-      setMessage({ type: 'error', text: 'حدث خطأ: ' + error.message });
+    };
+
+    const { error: updateError, count } = await supabase
+      .from('profiles')
+      .update(updateData)
+      .eq('id', user!.id)
+      .select();
+
+    let finalError = updateError;
+
+    // إذا ما في صف (count = 0)، اعمل insert
+    if (!updateError && (!count || count === 0)) {
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert({ id: user!.id, ...updateData });
+      finalError = insertError || null;
+    }
+
+    if (finalError) {
+      setMessage({ type: 'error', text: 'حدث خطأ في الحفظ: ' + finalError.message });
     } else {
       setMessage({ type: 'success', text: '✅ تم حفظ البيانات بنجاح' });
-      await loadData();
+      // أبق البيانات في الـ state كما هي (محفوظة في DB)
     }
     setSaving(false);
   };
