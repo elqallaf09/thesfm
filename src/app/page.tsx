@@ -234,7 +234,7 @@ function AuthGate({ children }: AuthGateProps) {
   const { user, loading } = useAuth();
   const [incomeTotal, setIncomeTotal] = useState(0);
   const [username, setUsername] = useState('');
-  const [userProjects, setUserProjects] = useState<Array<{id:string;name:string;emoji:string;budget:string;timeline:string;durationUnit:string;notes:any}>>([]);
+
   const [hasIncomeSources, setHasIncomeSources] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
@@ -398,7 +398,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     adviceTitle: isArabic ? 'نصيحتنا لك' : 'Our advice to you',
     adviceDesc: isArabic ? 'نصائح مالية مخصصة بناءً على مدخولك' : 'Personalized financial tips based on your income',
     randomAdvice: isArabic ? 'احصل على نصيحة عشوائية' : 'Get a random tip',
-    print: isArabic ? 'إنشاء تقرير PDF' : 'Create PDF Report',
+    print: isArabic ? 'طباعة / تصدير' : 'Print / Export',
     reset: isArabic ? 'إعادة تعيين' : 'Reset',
     footer: isArabic ? 'المدير المالي الذكي - يساعدك على اتخاذ قرارات مالية أوضح' : 'Smart Financial Manager - helping you make clearer financial decisions',
     tickerTitle: isArabic ? 'مؤشرات الأسواق' : 'Market watch',
@@ -428,9 +428,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   const [manualInvestment, setManualInvestment] = useState<string>('');
   const [includeCharity, setIncludeCharity] = useState<boolean>(false);
   const [showAdvice, setShowAdvice] = useState<boolean>(false);
-  const [showSmartPanel, setShowSmartPanel] = useState<'none'|'analysis'|'assessment'|'savingsplan'>('none');
-  const [smartLoading, setSmartLoading] = useState<boolean>(false);
-  const [smartResult, setSmartResult] = useState<string>('');
+
   const [selectedCurrency, setSelectedCurrency] = useState<string>('KWD');
   const [tickerCategory, setTickerCategory] = useState<TickerCategory>('gulf');
   const [liveTickerItems, setLiveTickerItems] = useState<MarketTickerItem[]>(MARKET_TICKERS.gulf);
@@ -574,390 +572,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     setShowAdvice(true);
   };
 
-  const handlePrint = async () => {
-    const XLSX = await import('xlsx');
-    const wb = XLSX.utils.book_new();
-    const cur = getCurrentCurrency().symbol;
-    const fmt = (n: number) => Math.round(n * 1000) / 1000;
-    const pct = (n: number) => totalIncome > 0 ? `${Math.round(n / totalIncome * 100)}%` : '0%';
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('ar-SA');
-
-    const dashboard: any[][] = [
-      ['المدير المالي الذكي - SFM', '', '', '', ''],
-      [`تاريخ التقرير: ${dateStr}`, '', '', '', `المستخدم: ${username}`],
-      ['', '', '', '', ''],
-      ['━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', '', '', '', ''],
-      ['البيان', `المبلغ (${cur})`, 'النسبة %', 'الحالة', 'ملاحظة'],
-      ['━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', '', '', '', ''],
-      ['اجمالي الدخل الشهري', fmt(totalIncome), '100%', 'OK', `طريقة التوزيع: ${distributionMethod}`],
-      ['المصروفات المخططة', fmt(breakdown.expenses), pct(breakdown.expenses), breakdown.expenses > 0 ? 'OK' : '-', 'جميع النفقات'],
-      ['المدخرات المخططة', fmt(breakdown.savings), pct(breakdown.savings), breakdown.savings > 0 ? 'OK' : '-', 'ادخار شهري'],
-      ['الاستثمار المخطط', fmt(breakdown.investment), pct(breakdown.investment), breakdown.investment > 0 ? 'OK' : '-', 'عائد مستقبلي'],
-      ...(breakdown.charity > 0 ? [['الاعمال الخيرية', fmt(breakdown.charity), pct(breakdown.charity), 'OK', `النسبة: ${totalCharityPercentage}%`]] : []),
-      ['', '', '', '', ''],
-      ['المصروفات الفعلية', fmt(expenseItems.reduce((s,i) => s+(parseFloat(i.amount.replace(/[^\d.]/g,''))||0),0)), '', '', ''],
-      ['المدخرات الفعلية', fmt(savingsItems.reduce((s,i) => s+(parseFloat(i.amount.replace(/[^\d.]/g,''))||0),0)), '', '', ''],
-      ['الاستثمار الفعلي', fmt(investmentItems.reduce((s,i) => s+(parseFloat(i.amount.replace(/[^\d.]/g,''))||0),0)), '', '', ''],
-    ];
-
-    const incomeSheet: any[][] = [
-      ['مصادر الدخل الشهري', '', '', ''],
-      [`تاريخ: ${dateStr}`, '', '', ''],
-      ['', '', '', ''],
-      ['#', 'مصدر الدخل', `المبلغ (${cur})`, 'النسبة %'],
-    ];
-    let row = 1;
-    INCOME_CATEGORIES.forEach(cat => {
-      const amt = parseFloat((incomeSourceAmounts[cat.id]||'0').replace(/[^\d.]/g,''))||0;
-      if (amt > 0) incomeSheet.push([row++, cat.nameAr, fmt(amt), salaryNumber > 0 ? `${Math.round(amt/salaryNumber*100)}%` : '0%']);
-    });
-    if (otherIncomeNumber > 0) incomeSheet.push([row++, 'دخل اضافي', fmt(otherIncomeNumber), pct(otherIncomeNumber)]);
-    incomeSheet.push(['','','','']);
-    incomeSheet.push(['','الاجمالي',fmt(totalIncome),'100%']);
-
-    const expSheet: any[][] = [
-      ['تفاصيل المصروفات', '', '', '', ''],
-      [`تاريخ: ${dateStr}`, '', '', '', ''],
-      ['', '', '', '', ''],
-      ['#', 'البند', `المبلغ الفعلي (${cur})`, `المخطط (${cur})`, 'الحالة'],
-    ];
-    const totExp = expenseItems.reduce((s,i)=>s+(parseFloat(i.amount.replace(/[^\d.]/g,''))||0),0);
-    expenseItems.forEach((item,idx) => {
-      const amt = parseFloat(item.amount.replace(/[^\d.]/g,''))||0;
-      expSheet.push([idx+1, item.name||'-', fmt(amt), '-', amt > 0 ? 'مسجل' : '-']);
-    });
-    expSheet.push(['','','','','']);
-    expSheet.push(['','الاجمالي الفعلي',fmt(totExp),fmt(breakdown.expenses), totExp <= breakdown.expenses ? 'ضمن الميزانية' : 'تجاوز الميزانية']);
-
-    const savSheet: any[][] = [
-      ['تفاصيل المدخرات', '', '', '', ''],
-      [`تاريخ: ${dateStr}`, '', '', '', ''],
-      ['', '', '', '', ''],
-      ['#', 'البند', `المبلغ الشهري (${cur})`, `الهدف السنوي (${cur})`, 'النسبة من الدخل'],
-    ];
-    const totSav = savingsItems.reduce((s,i)=>s+(parseFloat(i.amount.replace(/[^\d.]/g,''))||0),0);
-    savingsItems.forEach((item,idx) => {
-      const amt = parseFloat(item.amount.replace(/[^\d.]/g,''))||0;
-      savSheet.push([idx+1, item.name||'-', fmt(amt), fmt(amt*12), totalIncome > 0 ? `${Math.round(amt/totalIncome*100)}%` : '0%']);
-    });
-    savSheet.push(['','','','','']);
-    savSheet.push(['','الاجمالي',fmt(totSav),fmt(totSav*12),'']);
-    savSheet.push(['','المخطط',fmt(breakdown.savings),fmt(breakdown.savings*12),'']);
-
-    const invSheet: any[][] = [
-      ['تفاصيل الاستثمارات', '', '', '', ''],
-      [`تاريخ: ${dateStr}`, '', '', '', ''],
-      ['', '', '', '', ''],
-      ['#', 'البند', `الشهري (${cur})`, `السنوي (${cur})`, 'النسبة من الدخل'],
-    ];
-    const totInv = investmentItems.reduce((s,i)=>s+(parseFloat(i.amount.replace(/[^\d.]/g,''))||0),0);
-    investmentItems.forEach((item,idx) => {
-      const amt = parseFloat(item.amount.replace(/[^\d.]/g,''))||0;
-      invSheet.push([idx+1, item.name||'-', fmt(amt), fmt(amt*12), totalIncome > 0 ? `${Math.round(amt/totalIncome*100)}%` : '0%']);
-    });
-    invSheet.push(['','','','','']);
-    invSheet.push(['','الاجمالي',fmt(totInv),fmt(totInv*12),pct(totInv)]);
-
-    const goalsSheet: any[][] = [
-      ['الاهداف المالية', '', '', '', '', ''],
-      [`تاريخ: ${dateStr}`, '', '', '', '', ''],
-      ['', '', '', '', '', ''],
-      ['#', 'الهدف', `المبلغ (${cur})`, 'المدة', `المبلغ الشهري (${cur})`, 'ملاحظات'],
-    ];
-    goals.forEach((g,idx) => {
-      const amt = parseFloat(g.amount.replace(/[^\d.]/g,''))||0;
-      const dur = parseInt(g.duration)||1;
-      const months = g.durationUnit==='day' ? dur/30 : g.durationUnit==='year' ? dur*12 : dur;
-      const unit = g.durationUnit==='day' ? 'يوم' : g.durationUnit==='year' ? 'سنة' : 'شهر';
-      goalsSheet.push([idx+1, g.goal||'-', fmt(amt), `${dur} ${unit}`, fmt(months>0?amt/months:0), g.notes||'']);
-    });
-
-    const pbiSheet: any[][] = [
-      ['Category','SubCategory','Amount','Currency','Type','Month','Year'],
-      ['Income','Total',totalIncome,cur,'Income',now.getMonth()+1,now.getFullYear()],
-      ['Distribution','Expenses',breakdown.expenses,cur,'Planned',now.getMonth()+1,now.getFullYear()],
-      ['Distribution','Savings',breakdown.savings,cur,'Planned',now.getMonth()+1,now.getFullYear()],
-      ['Distribution','Investment',breakdown.investment,cur,'Planned',now.getMonth()+1,now.getFullYear()],
-      ...(breakdown.charity>0?[['Distribution','Charity',breakdown.charity,cur,'Planned',now.getMonth()+1,now.getFullYear()]]:[]),
-      ...expenseItems.map(i=>['Expense',i.name||'Other',parseFloat(i.amount.replace(/[^\d.]/g,''))||0,cur,'Actual',now.getMonth()+1,now.getFullYear()]),
-      ...savingsItems.map(i=>['Saving',i.name||'Other',parseFloat(i.amount.replace(/[^\d.]/g,''))||0,cur,'Actual',now.getMonth()+1,now.getFullYear()]),
-      ...investmentItems.map(i=>['Investment',i.name||'Other',parseFloat(i.amount.replace(/[^\d.]/g,''))||0,cur,'Actual',now.getMonth()+1,now.getFullYear()]),
-      ...goals.map(g=>['Goal',g.goal||'Other',parseFloat(g.amount.replace(/[^\d.]/g,''))||0,cur,'Goal',now.getMonth()+1,now.getFullYear()]),
-    ];
-
-    const make = (data: any[][], cols: number[]) => {
-      const ws = XLSX.utils.aoa_to_sheet(data);
-      ws['!cols'] = cols.map(w=>({wch:w}));
-      return ws;
-    };
-
-    XLSX.utils.book_append_sheet(wb, make(dashboard,[35,18,12,15,35]), 'Dashboard');
-    XLSX.utils.book_append_sheet(wb, make(incomeSheet,[5,30,18,12]), 'Income');
-    XLSX.utils.book_append_sheet(wb, make(expSheet,[5,30,18,18,22]), 'Expenses');
-    XLSX.utils.book_append_sheet(wb, make(savSheet,[5,30,18,18,18]), 'Savings');
-    XLSX.utils.book_append_sheet(wb, make(invSheet,[5,30,18,18,18]), 'Investments');
-    if (goals.length > 0) XLSX.utils.book_append_sheet(wb, make(goalsSheet,[5,28,18,12,18,25]), 'Goals');
-    XLSX.utils.book_append_sheet(wb, make(pbiSheet,[15,25,15,10,12,8,8]), 'PowerBI_Data');
-
-    const date = now.toISOString().split('T')[0];
-    XLSX.writeFile(wb, `SFM_Report_${date}.xlsx`);
-  };
-
-  const handlePDF = () => {
-    const cur = getCurrentCurrency().symbol;
-    const dateStr = new Date().toLocaleDateString('ar-SA');
-    const sr = totalIncome > 0 ? breakdown.savings / totalIncome * 100 : 0;
-    const er = totalIncome > 0 ? breakdown.expenses / totalIncome * 100 : 0;
-    const ir = totalIncome > 0 ? breakdown.investment / totalIncome * 100 : 0;
-    const healthScore = Math.min(100, Math.round(
-      (sr >= 20 ? 30 : sr >= 10 ? 20 : 10) +
-      (er <= 50 ? 25 : er <= 65 ? 15 : 5) +
-      (ir >= 10 ? 25 : ir >= 5 ? 15 : 0)
-    ));
-    const srStr = sr.toFixed(0);
-    const erStr = er.toFixed(0);
-    const irStr = ir.toFixed(0);
-    const srBadge = sr >= 20 ? 'green' : 'gold';
-    const erBadge = er > 65 ? 'red' : 'gold';
-    const irBadge = ir >= 10 ? 'green' : 'gold';
-    const totalExpActual = expenseItems.reduce((s, i) => s + (parseFloat(i.amount.replace(/[^\d.]/g, '')) || 0), 0);
-    const monthlySavings = breakdown.savings + breakdown.investment;
-
-    const expRows = expenseItems.map(i => {
-      const amt = parseFloat(i.amount.replace(/[^\d.]/g, '')) || 0;
-      return '<div class="row"><span class="label">' + i.name + '</span><span class="value">' + formatCurrency(amt) + ' ' + cur + '</span></div>';
-    }).join('');
-
-    const savRows = savingsItems.map(i => {
-      const amt = parseFloat(i.amount.replace(/[^\d.]/g, '')) || 0;
-      return '<div class="row"><span class="label">' + i.name + '</span><span class="value green">' + formatCurrency(amt) + ' ' + cur + '</span></div>';
-    }).join('');
-
-    const invRows = investmentItems.map(i => {
-      const amt = parseFloat(i.amount.replace(/[^\d.]/g, '')) || 0;
-      return '<div class="row"><span class="label">' + i.name + '</span><span class="value green">' + formatCurrency(amt) + ' ' + cur + '</span></div>';
-    }).join('');
-
-    const goalRows = goals.map(g => {
-      const amt = parseFloat(g.amount.replace(/[^\d.]/g, '')) || 0;
-      const months = monthlySavings > 0 ? Math.ceil(amt / monthlySavings) : 0;
-      const monthStr = months > 0 ? ' <span style="color:#c4a35a;font-size:11px">(' + months + ' شهر)</span>' : '';
-      return '<div class="row"><span class="label">' + g.goal + '</span><span class="value">' + formatCurrency(amt) + ' ' + cur + monthStr + '</span></div>';
-    }).join('');
-
-    const charityRow = breakdown.charity > 0
-      ? '<div class="row"><span class="label">الأعمال الخيرية</span><span class="value">' + formatCurrency(breakdown.charity) + ' ' + cur + '</span></div>'
-      : '';
-
-    const expSection = expenseItems.length > 0
-      ? '<div class="section"><div class="section-header">🛒 تفاصيل المصروفات</div><div class="section-body">' + expRows + '<div class="row" style="background:rgba(196,163,90,0.05)"><span class="label" style="font-weight:bold">الإجمالي</span><span class="value gold">' + formatCurrency(totalExpActual) + ' ' + cur + '</span></div></div></div>'
-      : '';
-
-    const savSection = savingsItems.length > 0
-      ? '<div class="section"><div class="section-header">🏦 تفاصيل المدخرات</div><div class="section-body">' + savRows + '</div></div>'
-      : '';
-
-    const invSection = investmentItems.length > 0
-      ? '<div class="section"><div class="section-header">📈 تفاصيل الاستثمارات</div><div class="section-body">' + invRows + '</div></div>'
-      : '';
-
-    const goalSection = goals.length > 0
-      ? '<div class="section"><div class="section-header">🎯 الأهداف المالية</div><div class="section-body">' + goalRows + '</div></div>'
-      : '';
-
-    const html = `<!DOCTYPE html><html dir="rtl" lang="ar">
-<head><meta charset="UTF-8"><title>تقرير مالي - SFM</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; background: white; color: #2d1a0a; font-size: 13px; }
-  .page { max-width: 800px; margin: 0 auto; padding: 32px; }
-  .header { background: linear-gradient(135deg, #7f5c48, #5c3d2a); color: white; padding: 24px 32px; border-radius: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
-  .header h1 { font-size: 24px; color: #f0d080; margin-bottom: 4px; }
-  .header p { color: rgba(255,255,255,0.7); font-size: 12px; margin-top: 3px; }
-  .section { margin-bottom: 18px; border: 1px solid rgba(196,163,90,0.3); border-radius: 12px; overflow: hidden; }
-  .section-header { background: rgba(196,163,90,0.1); padding: 10px 16px; font-weight: bold; color: #7f5c48; font-size: 14px; border-bottom: 1px solid rgba(196,163,90,0.2); }
-  .section-body { padding: 12px 16px; }
-  .row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(196,163,90,0.1); }
-  .row:last-child { border-bottom: none; }
-  .label { color: rgba(45,26,10,0.6); }
-  .value { font-weight: bold; color: #5c3d2a; }
-  .value.green { color: #2d8a4e; }
-  .value.gold { color: #c4a35a; }
-  .value.red { color: #c0392b; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 18px; }
-  .stat-card { background: rgba(196,163,90,0.06); border: 1px solid rgba(196,163,90,0.2); border-radius: 10px; padding: 12px; text-align: center; }
-  .stat-card .s-label { font-size: 11px; color: rgba(45,26,10,0.5); margin-bottom: 4px; }
-  .stat-card .s-value { font-size: 20px; font-weight: bold; color: #7f5c48; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: bold; }
-  .badge-green { background: rgba(45,138,78,0.1); color: #2d8a4e; }
-  .badge-gold { background: rgba(196,163,90,0.1); color: #c4a35a; }
-  .badge-red { background: rgba(192,57,43,0.1); color: #c0392b; }
-  .footer { text-align: center; margin-top: 28px; padding-top: 14px; border-top: 1px solid rgba(196,163,90,0.3); color: rgba(45,26,10,0.4); font-size: 11px; }
-  @page { margin: 1.5cm; }
-  @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
-</style></head>
-<body><div class="page">
-  <div class="header">
-    <div>
-      <h1>📊 التقرير المالي الشهري</h1>
-      <p>المدير المالي الذكي — SFM</p>
-      <p>التاريخ: ${dateStr} | المستخدم: ${username || 'المستخدم'}</p>
-    </div>
-    <div style="text-align:center">
-      <div style="font-size:40px;font-weight:bold;color:#f0d080">${healthScore}</div>
-      <div style="color:rgba(255,255,255,0.6);font-size:11px">الصحة المالية /100</div>
-    </div>
-  </div>
-
-  <div class="grid">
-    <div class="stat-card"><div class="s-label">إجمالي الدخل</div><div class="s-value">${formatCurrency(totalIncome)} <span style="font-size:12px">${cur}</span></div></div>
-    <div class="stat-card"><div class="s-label">نسبة الادخار</div><div class="s-value" style="color:${sr >= 20 ? '#2d8a4e' : '#c4a35a'}">${srStr}%</div></div>
-    <div class="stat-card"><div class="s-label">نسبة الاستثمار</div><div class="s-value" style="color:${ir >= 10 ? '#2d8a4e' : '#c4a35a'}">${irStr}%</div></div>
-  </div>
-
-  <div class="section">
-    <div class="section-header">💰 توزيع الدخل الشهري</div>
-    <div class="section-body">
-      <div class="row"><span class="label">إجمالي الدخل</span><span class="value gold">${formatCurrency(totalIncome)} ${cur}</span></div>
-      <div class="row"><span class="label">المصروفات <span class="badge badge-${erBadge}">${erStr}%</span></span><span class="value">${formatCurrency(breakdown.expenses)} ${cur}</span></div>
-      <div class="row"><span class="label">المدخرات <span class="badge badge-${srBadge}">${srStr}%</span></span><span class="value green">${formatCurrency(breakdown.savings)} ${cur}</span></div>
-      <div class="row"><span class="label">الاستثمار <span class="badge badge-${irBadge}">${irStr}%</span></span><span class="value green">${formatCurrency(breakdown.investment)} ${cur}</span></div>
-      ${charityRow}
-    </div>
-  </div>
-
-  ${expSection}${savSection}${invSection}${goalSection}
-
-  <div class="footer">
-    <p>المدير المالي الذكي — يساعدك على اتخاذ قرارات مالية أوضح</p>
-    <p style="color:#c4a35a;margin-top:4px">powered by M.Q | ${dateStr}</p>
-  </div>
-</div></body></html>`;
-
-    const win = window.open('', '_blank');
-    if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 600); }
-  };
-
-  const callSmartAI = async (type: 'analysis'|'assessment'|'savingsplan') => {
-    setShowSmartPanel(type); setSmartLoading(true); setSmartResult('');
-
-    const savingsRate = totalIncome > 0 ? breakdown.savings / totalIncome * 100 : 0;
-    const expenseRate = totalIncome > 0 ? breakdown.expenses / totalIncome * 100 : 0;
-    const investRate = totalIncome > 0 ? breakdown.investment / totalIncome * 100 : 0;
-    const monthlySavings = breakdown.savings + breakdown.investment;
-    const cur = getCurrentCurrency().symbol;
-
-    // Try AI first
-    try {
-      const prompts: Record<string, string> = {
-        analysis: `حلل وضعي المالي:
-- دخل شهري: ${formatCurrency(totalIncome)} ${cur}
-- مصروفات: ${formatCurrency(breakdown.expenses)} (${expenseRate.toFixed(0)}%)
-- مدخرات: ${formatCurrency(breakdown.savings)} (${savingsRate.toFixed(0)}%)
-- استثمار: ${formatCurrency(breakdown.investment)} (${investRate.toFixed(0)}%)
-- أهداف: ${goals.length > 0 ? goals.map(g => g.goal).join(', ') : 'لا توجد'}
-أعطني تحليلاً شاملاً مع توصيات عملية بالعربية (5-8 نقاط)`,
-        assessment: `قيّم وضعي المالي من 100:
-- نسبة الادخار: ${savingsRate.toFixed(0)}%
-- نسبة الاستثمار: ${investRate.toFixed(0)}%
-- نسبة المصروفات: ${expenseRate.toFixed(0)}%
-- عدد الأهداف: ${goals.length}
-أعطني: التقييم/100، نقاط القوة، نقاط الضعف، خطوات التحسين - بالعربية`,
-        savingsplan: `خطة توفير ذكية:
-- دخل: ${formatCurrency(totalIncome)} ${cur}/شهر
-- ادخار حالي: ${formatCurrency(breakdown.savings)} ${cur}/شهر
-- استثمار: ${formatCurrency(breakdown.investment)} ${cur}/شهر
-- أهداف: ${goals.map(g => g.goal + ' (' + g.amount + ')').join(', ') || 'لا توجد'}
-ضع خطة توفير مفصلة مع مثال: "إذا استمريت على ادخارك، تقدر تبدأ مشروع X خلال Y شهر" - بالعربية`
-      };
-
-      const res = await fetch('/api/projects-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [{ role: 'user', content: prompts[type] }] }),
-      });
-      const data = await res.json();
-      if (data.text && !data.text.includes('خطأ') && !data.text.includes('error')) {
-        setSmartResult(data.text);
-        setSmartLoading(false);
-        return;
-      }
-    } catch { /* fallback to local */ }
-
-    // Local fallback - no API needed
-    const score = Math.min(100, Math.round(
-      (savingsRate >= 20 ? 30 : savingsRate >= 10 ? 20 : 10) +
-      (expenseRate <= 50 ? 25 : expenseRate <= 65 ? 15 : 5) +
-      (investRate >= 10 ? 25 : investRate >= 5 ? 15 : 0) +
-      (goals.length > 0 ? 10 : 0) +
-      (expenseItems.length > 0 ? 10 : 0)
-    ));
-
-    const localResults: Record<string, string> = {
-      analysis: `📊 التحليل المالي الشامل
-━━━━━━━━━━━━━━━━━━━━━━
-
-💰 دخلك الشهري: ${formatCurrency(totalIncome)} ${cur}
-
-📈 توزيع الدخل:
-• المصروفات: ${formatCurrency(breakdown.expenses)} (${expenseRate.toFixed(0)}%) ${expenseRate > 65 ? '⚠️ مرتفعة' : '✅ معقولة'}
-• المدخرات: ${formatCurrency(breakdown.savings)} (${savingsRate.toFixed(0)}%) ${savingsRate >= 20 ? '✅ ممتازة' : savingsRate >= 10 ? '👍 جيدة' : '⚠️ منخفضة'}
-• الاستثمار: ${formatCurrency(breakdown.investment)} (${investRate.toFixed(0)}%) ${investRate >= 10 ? '✅ صحي' : '💡 يحتاج زيادة'}
-
-🔍 التوصيات:
-${savingsRate < 10 ? '• حاول رفع نسبة الادخار إلى 10% على الأقل\n' : ''}${expenseRate > 65 ? '• راجع مصروفاتك وحدد ما يمكن تقليله\n' : ''}${investRate === 0 ? '• ابدأ بتخصيص 5% على الأقل للاستثمار\n' : ''}${goals.length === 0 ? '• أضف أهدافاً مالية واضحة لتتبع تقدمك\n' : ''}${savingsRate >= 20 ? '• ادخارك ممتاز، فكر في تنويع الاستثمارات\n' : ''}
-• الأمان المالي لديك: ${breakdown.expenses > 0 ? Math.round(totalIncome / breakdown.expenses) : 0} شهر من الدخل
-• الهدف المثالي: 70% مصروفات، 20% مدخرات، 10% استثمار`,
-
-      assessment: `📊 تقييم وضعك المالي
-━━━━━━━━━━━━━━━━━━━━━━
-
-🏆 التقييم: ${score}/100 ${score >= 75 ? '(ممتاز 🌟)' : score >= 50 ? '(جيد 👍)' : '(يحتاج تحسين ⚠️)'}
-
-✅ نقاط القوة:
-${(savingsRate >= 10 ? '• نسبة ادخار جيدة (' + savingsRate.toFixed(0) + '%)\n' : '') + (investRate > 0 ? '• لديك استثمار نشط (' + investRate.toFixed(0) + '%)\n' : '') + (goals.length > 0 ? '• لديك ' + goals.length + ' هدف مالي محدد\n' : '') + (expenseRate <= 60 ? '• نسبة مصروفات معقولة (' + expenseRate.toFixed(0) + '%)\n' : '') + (savingsRate === 0 && investRate === 0 && expenseRate === 0 ? '• ابدأ بإدخال بيانات دقيقة للحصول على تقييم صحيح\n' : '')}
-
-⚠️ نقاط الضعف:
-${savingsRate < 10 ? '• الادخار أقل من المستوى المثالي\n' : ''}${investRate === 0 ? '• لا يوجد استثمار\n' : ''}${goals.length === 0 ? '• لا توجد أهداف مالية محددة\n' : ''}${expenseRate > 65 ? '• المصروفات مرتفعة نسبياً\n' : ''}
-
-🚀 خطوات التحسين:
-1. ${savingsRate < 20 ? 'زد ادخارك بـ 2% كل شهر حتى تصل لـ 20%' : 'حافظ على نسبة الادخار الممتازة'}
-2. ${investRate < 10 ? 'خصص 5-10% من دخلك للاستثمار' : 'نوّع محفظتك الاستثمارية'}
-3. ${goals.length === 0 ? 'أضف أهدافاً مالية واضحة ومحددة بوقت' : 'راجع تقدمك نحو أهدافك شهرياً'}
-4. راجع مصروفاتك الشهرية وحذف غير الضروري`,
-
-      savingsplan: `💡 خطة التوفير التلقائية
-━━━━━━━━━━━━━━━━━━━━━━
-
-📅 وضعك الحالي:
-• توفير شهري: ${formatCurrency(monthlySavings)} ${cur}
-• سنوياً: ${formatCurrency(monthlySavings * 12)} ${cur}
-
-🎯 يمكنك تحقيق:
-${monthlySavings > 0 ? [
-  { name: 'متجر إلكتروني', cost: 1500 },
-  { name: 'محل تجاري', cost: 5000 },
-  { name: 'كافيه', cost: 15000 },
-  { name: 'استثمار عقاري', cost: 50000 },
-].map(p => {
-  const months = Math.ceil(p.cost / monthlySavings);
-  const years = months >= 12 ? (months/12).toFixed(1) : null;
-  return `• ${p.name}: خلال ${years ? years + ' سنة' : months + ' شهر'} 💰 ${p.cost.toLocaleString()} ${cur}`;
-}).join('\n') : '• ابدأ بتحديد مبلغ ادخار شهري'}
-
-${goals.length > 0 ? '\n🏆 أهدافك المالية:\n' + goals.filter(g => g.amount && monthlySavings > 0).map(g => { const amt = parseFloat(g.amount.replace(/[^\d.]/g, '')) || 0; const months = amt > 0 && monthlySavings > 0 ? Math.ceil(amt / monthlySavings) : 0; return months > 0 ? '• ' + g.goal + ': ' + months + ' شهر (' + formatCurrency(amt) + ' ' + cur + ')' : '• ' + g.goal + ': حدد المبلغ'; }).join('\n') : ''}
-
-📈 نصيحة:
-لو زدت ادخارك بـ ${formatCurrency(totalIncome * 0.05)} ${cur} إضافي كل شهر (5%)، تقدر تختصر الوقت بـ 20%!
-
-⭐ الهدف: اجعل ادخارك + استثمارك = 30% من دخلك`
-    };
-
-    await new Promise(r => setTimeout(r, 800)); // Simulate loading
-    setSmartResult(localResults[type]);
-    setSmartLoading(false);
-  };
+  const handlePrint = () => window.print();
 
   const handleReset = () => {
     // Only reset calculator settings - NOT saved items or goals
@@ -1085,31 +700,6 @@ ${goals.length > 0 ? '\n🏆 أهدافك المالية:\n' + goals.filter(g =>
     if (monthlyRequired > savingsPerMonth) { return suggestion + (isArabic ? `يتجاوز مدخراتك. حاول تقليل المصروفات.` : `Exceeds your savings. Try reducing expenses.`); }
     return suggestion + (isArabic ? `لديك فائض شهري قدره ${formatCurrency(savingsPerMonth - monthlyRequired)}.` : `Monthly surplus: ${formatCurrency(savingsPerMonth - monthlyRequired)}.`);
   };
-
-
-  // Financial Health calculations
-  const fhSavingsRate = totalIncome > 0 ? breakdown.savings / totalIncome * 100 : 0;
-  const fhExpenseRate = totalIncome > 0 ? breakdown.expenses / totalIncome * 100 : 0;
-  const fhInvestRate = totalIncome > 0 ? breakdown.investment / totalIncome * 100 : 0;
-  const fhScore = Math.min(100, Math.round(
-    (fhSavingsRate >= 20 ? 30 : fhSavingsRate >= 10 ? 20 : 10) +
-    (fhExpenseRate <= 50 ? 25 : fhExpenseRate <= 65 ? 15 : 5) +
-    (fhInvestRate >= 10 ? 25 : fhInvestRate >= 5 ? 15 : 0) +
-    (goals.length > 0 ? 10 : 0) + (expenseItems.length > 0 ? 10 : 0)
-  ));
-  const fhScoreColor = fhScore >= 75 ? '#2d8a4e' : fhScore >= 50 ? '#c4a35a' : '#c0392b';
-  const fhScoreLabel = fhScore >= 75 ? (isArabic ? 'وضعك المالي ممتاز 🌟' : 'Excellent 🌟') : fhScore >= 50 ? (isArabic ? 'وضعك المالي جيد 👍' : 'Good 👍') : (isArabic ? 'يحتاج تحسين ⚠️' : 'Needs Work ⚠️');
-  const fhMonths = breakdown.expenses > 0 ? Math.round(totalIncome / breakdown.expenses) : 0;
-  const fhCircumference = 2 * Math.PI * 40;
-  const fhStrokeDash = (fhScore / 100) * fhCircumference;
-  const fhInsights: string[] = [];
-  if (fhSavingsRate >= 20) fhInsights.push(isArabic ? '✅ معدل ادخارك ممتاز (' + fhSavingsRate.toFixed(0) + '%)' : '✅ Great savings rate');
-  else if (fhSavingsRate < 10) fhInsights.push(isArabic ? '⚠️ ادخارك أقل من 10% - حاول زيادته' : '⚠️ Savings below 10%');
-  if (fhInvestRate >= 10) fhInsights.push(isArabic ? '📈 نسبة استثمار صحية (' + fhInvestRate.toFixed(0) + '%)' : '📈 Healthy investment rate');
-  else if (fhInvestRate === 0) fhInsights.push(isArabic ? '💡 لا توجد استثمارات - فكر في البدء' : '💡 No investments - consider starting');
-  if (fhExpenseRate > 65) fhInsights.push(isArabic ? '🔴 المصروفات عالية - راجعها' : '🔴 High expenses - review them');
-  if (goals.length > 0) fhInsights.push(isArabic ? '🎯 لديك أهداف مالية - ممتاز!' : '🎯 You have financial goals!');
-  else fhInsights.push(isArabic ? '🎯 أضف أهدافاً مالية لتتبع تقدمك' : '🎯 Add financial goals to track progress');
 
   return (
     <>
@@ -1638,157 +1228,35 @@ ${goals.length > 0 ? '\n🏆 أهدافك المالية:\n' + goals.filter(g =>
           </CardContent>
         </Card>
 
-        {/* Financial Health Dashboard */}
-        {totalIncome > 0 && (
-          <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 8px 30px rgba(196,163,90,0.12)', overflow: 'hidden'}}>
-            <div className="p-5" style={{background: 'linear-gradient(135deg, #7f5c48 0%, #5c3d2a 100%)'}}>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm text-white/70 mb-1">⚡ {isArabic ? 'تقييم صحتك المالية' : 'Financial Health Score'}</p>
-                  <h2 className="text-xl font-bold text-white">{fhScoreLabel}</h2>
-                  <p className="text-sm mt-1" style={{color: 'rgba(240,208,128,0.8)'}}>{isArabic ? 'طاقتك الشهرية' : 'Monthly capacity'}: {formatCurrency(totalIncome)} {getCurrentCurrency().symbol}</p>
-                </div>
-                <div className="relative shrink-0 flex items-center justify-center w-24 h-24">
-                  <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
-                    <circle cx="48" cy="48" r="40" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="8"/>
-                    <circle cx="48" cy="48" r="40" fill="none" stroke={fhScoreColor} strokeWidth="8" strokeDasharray={fhStrokeDash + ' ' + fhCircumference} strokeLinecap="round"/>
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-2xl font-bold text-white">{fhScore}</span>
-                    <span className="text-xs text-white/60">/100</span>
-                  </div>
-                </div>
-              </div>
+        {/* Advice */}
+        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
+          <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
+            <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><Sparkles className="w-6 h-6" />{text.adviceTitle}</CardTitle>
+            <CardDescription style={{color: 'rgba(122,92,26,0.6)'}}>{text.adviceDesc}</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-4">
+            <div className="p-4 rounded-xl" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.06)'}}>
+              <p className="text-lg leading-relaxed" style={{color: '#7a5c1a'}}>{getAIAdvice()}</p>
             </div>
-            <CardContent className="pt-4 space-y-4">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="text-center p-3 rounded-xl" style={{background: 'rgba(196,163,90,0.06)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
-                  <p className="text-xs mb-1" style={{color: 'rgba(122,92,26,0.5)'}}>{isArabic ? 'معدل الادخار' : 'Savings Rate'}</p>
-                  <p className="text-lg font-bold" style={{color: fhSavingsRate >= 20 ? '#2d8a4e' : fhSavingsRate >= 10 ? '#c4a35a' : '#c0392b'}}>{fhSavingsRate.toFixed(0)}%</p>
-                </div>
-                <div className="text-center p-3 rounded-xl" style={{background: 'rgba(196,163,90,0.06)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
-                  <p className="text-xs mb-1" style={{color: 'rgba(122,92,26,0.5)'}}>{isArabic ? 'نسبة الاستثمار' : 'Investment'}</p>
-                  <p className="text-lg font-bold" style={{color: fhInvestRate >= 10 ? '#2d8a4e' : fhInvestRate >= 5 ? '#c4a35a' : '#c0392b'}}>{fhInvestRate.toFixed(0)}%</p>
-                </div>
-                <div className="text-center p-3 rounded-xl" style={{background: 'rgba(196,163,90,0.06)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
-                  <p className="text-xs mb-1" style={{color: 'rgba(122,92,26,0.5)'}}>{isArabic ? 'أمان مالي' : 'Safety'}</p>
-                  <p className="text-lg font-bold" style={{color: '#7a5c1a'}}>{fhMonths > 0 ? fhMonths + (isArabic ? ' شهر' : 'mo') : '—'}</p>
+            <Button onClick={getRandomAdvice} variant="outline" className="w-full" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'}}><Lightbulb className="w-5 h-5 ms-2" />{text.randomAdvice}</Button>
+            {showAdvice && randomAdvice && (
+              <div className="p-4 rounded-xl" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.06)'}}>
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">{randomAdvice.icon}</span>
+                  <div><h4 className="font-bold mb-1" style={{color: '#7a5c1a'}}>{randomAdvice.category}</h4><p style={{color: 'rgba(122,92,26,0.8)'}}>{randomAdvice.tip}</p></div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <p className="text-xs font-bold" style={{color: '#7a5c1a'}}>💡 {isArabic ? 'تحليل ذكي' : 'Smart Analysis'}</p>
-                {fhInsights.map((insight, i) => (
-                  <div key={i} className="text-sm py-2 px-3 rounded-xl" style={{background: 'rgba(196,163,90,0.06)', border: '0.5px solid rgba(196,163,90,0.15)', color: 'rgba(122,92,26,0.85)'}}>{insight}</div>
-                ))}
-              </div>
-              <Button onClick={getRandomAdvice} variant="outline" className="w-full" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'}}>
-                <Lightbulb className="w-5 h-5 ms-2"/>{text.randomAdvice}
-              </Button>
-              {showAdvice && randomAdvice && (
-                <div className="p-4 rounded-xl" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.06)'}}>
-                  <div className="flex items-start gap-3">
-                    <span className="text-3xl">{randomAdvice.icon}</span>
-                    <div><h4 className="font-bold mb-1" style={{color: '#7a5c1a'}}>{randomAdvice.category}</h4><p style={{color: 'rgba(122,92,26,0.8)'}}>{randomAdvice.tip}</p></div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+            )}
+          </CardContent>
+        </Card>
 
-        {/* Smart Actions */}
-        <div className="space-y-4">
-
-          {/* Main CTAs */}
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Button onClick={handlePDF} size="lg" className="font-bold h-14 flex-col gap-1" style={{background: '#7f5c48', color: 'white', boxShadow: '0 4px 16px rgba(127,92,72,0.3)'}}>
-              <Printer className="w-5 h-5" />
-              <span className="text-xs">{isArabic ? 'إنشاء تقرير PDF' : 'Create PDF'}</span>
-            </Button>
-            <Button onClick={() => callSmartAI('analysis')} size="lg" variant="outline" className="h-14 flex-col gap-1 font-bold" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a', background: showSmartPanel === 'analysis' ? 'rgba(196,163,90,0.12)' : 'white'}}>
-              <span className="text-lg">🧠</span>
-              <span className="text-xs">{isArabic ? 'تحليل ذكي' : 'Analysis'}</span>
-            </Button>
-            <Button onClick={() => callSmartAI('assessment')} size="lg" variant="outline" className="h-14 flex-col gap-1 font-bold" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a', background: showSmartPanel === 'assessment' ? 'rgba(196,163,90,0.12)' : 'white'}}>
-              <span className="text-lg">📊</span>
-              <span className="text-xs">{isArabic ? 'تقييم مالي' : 'Assessment'}</span>
-            </Button>
-            <Button onClick={() => callSmartAI('savingsplan')} size="lg" variant="outline" className="h-14 flex-col gap-1 font-bold" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a', background: showSmartPanel === 'savingsplan' ? 'rgba(196,163,90,0.12)' : 'white'}}>
-              <span className="text-lg">💡</span>
-              <span className="text-xs">{isArabic ? 'خطة توفير' : 'Savings Plan'}</span>
-            </Button>
-          </div>
-
-          {/* Smart AI Result */}
-          {showSmartPanel !== 'none' && (
-            <Card style={{border: '1px solid rgba(196,163,90,0.4)', background: 'rgba(255,253,245,0.98)'}}>
-              <CardHeader className="pb-3 rounded-t-lg" style={{background: 'linear-gradient(135deg, #7f5c48, #5c3d2a)'}}>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-white text-base">
-                    {showSmartPanel === 'analysis' && (isArabic ? '🧠 التحليل المالي' : '🧠 Financial Analysis')}
-                    {showSmartPanel === 'assessment' && (isArabic ? '📊 تقييم مالي' : '📊 Assessment')}
-                    {showSmartPanel === 'savingsplan' && (isArabic ? '💡 خطة التوفير' : '💡 Savings Plan')}
-                  </CardTitle>
-                  <button onClick={() => { setShowSmartPanel('none'); setSmartResult(''); }} className="text-white/70 hover:text-white text-xl">×</button>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-4">
-                {smartLoading ? (
-                  <div className="flex items-center justify-center py-8 gap-3">
-                    <div className="w-6 h-6 rounded-full border-2 animate-spin" style={{borderColor: '#c4a35a', borderTopColor: 'transparent'}} />
-                    <p style={{color: '#7a5c1a'}}>{isArabic ? 'جارٍ التحليل...' : 'Analyzing...'}</p>
-                  </div>
-                ) : (
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed" style={{color: 'rgba(122,92,26,0.9)'}}>{smartResult}</div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Projects Connection */}
-          {totalIncome > 0 && breakdown.savings + breakdown.investment > 0 && (
-            <Card style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(255,253,245,0.98)'}}>
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-bold text-sm" style={{color: '#7a5c1a'}}>🚀 {isArabic ? 'مشروعي' : 'My Projects'}</h3>
-                  <Button onClick={() => router.push('/projects')} size="sm" style={{background: '#7f5c48', color: 'white'}} className="text-xs">{isArabic ? 'إدارة مشروعي' : 'Manage'}</Button>
-                </div>
-                {userProjects.length > 0 ? (
-                  <div className="space-y-2">
-                    {userProjects.map(project => {
-                      const cost = parseFloat(String(project.budget).replace(/[^\d.]/g, '')) || 0;
-                      const ms = breakdown.savings + breakdown.investment;
-                      const months = cost > 0 && ms > 0 ? Math.ceil(cost / ms) : 0;
-                      const feasible = months > 0 && months <= 36;
-                      return (
-                        <div key={project.id} className="flex items-center gap-3 p-3 rounded-xl" style={{background: feasible ? 'rgba(45,138,78,0.06)' : 'rgba(196,163,90,0.06)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
-                          <span className="text-lg">{project.emoji}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold truncate" style={{color: '#7a5c1a'}}>{project.name}</p>
-                            {cost > 0 && <p className="text-xs" style={{color: 'rgba(122,92,26,0.5)'}}>{formatCurrency(cost)} {getCurrentCurrency().symbol}</p>}
-                          </div>
-                          {months > 0 && <div className="text-end shrink-0"><p className="text-sm font-bold" style={{color: feasible ? '#2d8a4e' : '#c4a35a'}}>{months >= 12 ? (months/12).toFixed(1) + (isArabic ? 'س' : 'yr') : months + (isArabic ? 'ش' : 'mo')}</p></div>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-4 rounded-xl" style={{border: '1px dashed rgba(196,163,90,0.3)'}}>
-                    <p className="text-sm" style={{color: 'rgba(122,92,26,0.5)'}}>{isArabic ? 'لم تضف مشاريع بعد' : 'No projects yet'}</p>
-                    <Button onClick={() => router.push('/projects')} size="sm" className="mt-2" style={{background: '#c4a35a', color: '#1a0f00'}}>{isArabic ? '+ أضف مشروعك' : '+ Add Project'}</Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Reset */}
-          <div className="flex justify-center">
-            <Button onClick={handleReset} variant="outline" style={{borderColor: 'rgba(196,163,90,0.3)', color: 'rgba(122,92,26,0.5)'}}><RefreshCw className="w-4 h-4 ms-2" />{text.reset}</Button>
-          </div>
+        {/* Actions */}
+        <div className="flex flex-wrap gap-4 justify-center">
+          <Button onClick={handlePrint} variant="outline" size="lg" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'}}><Printer className="w-5 h-5 ms-2" />{text.print}</Button>
+          <Button onClick={handleReset} variant="outline" size="lg" style={{borderColor: 'rgba(196,163,90,0.3)', color: 'rgba(122,92,26,0.6)'}}><RefreshCw className="w-5 h-5 ms-2" />{text.reset}</Button>
         </div>
 
-        <div className="mt-6 pt-6 text-center text-sm" style={{borderTop: '1px solid rgba(196,163,90,0.3)'}}>
+        <div className="mt-8 pt-8 text-center text-sm" style={{borderTop: '1px solid rgba(196,163,90,0.3)'}}>
           <p className="mb-1" style={{color: 'rgba(122,92,26,0.5)'}}>{text.footer}</p>
           <div className="flex items-center justify-center gap-2">
             <span className="w-24 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
