@@ -84,14 +84,16 @@ export default function SavingsEducationPage() {
   const isArabic = language === 'ar';
 
   return (
-    <main dir={isArabic ? 'rtl' : 'ltr'} className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-100 px-4 py-8 text-slate-900">
+    <main dir={isArabic ? 'rtl' : 'ltr'} className="min-h-screen px-4 py-8" style={{background: 'linear-gradient(135deg, #fffdf5 0%, #fef9e7 50%, #fdf5d0 100%)'}}>
       <div className="mx-auto max-w-5xl space-y-6">
-        <div className="rounded-3xl bg-green-950 p-6 text-white shadow-xl">
+
+        {/* Header */}
+        <div className="rounded-3xl p-6 text-white shadow-xl" style={{background: '#1a1228'}}>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <Link href="/" className="text-sm text-green-100 hover:text-white">{t.back}</Link>
+            <Link href="/" className="text-sm hover:opacity-80 transition-opacity" style={{color: '#c4a35a'}}>{t.back}</Link>
             <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
-              <SelectTrigger className="w-[150px] border-white/20 bg-white/10 text-white [&>span]:text-white">
-                <Languages className="h-4 w-4 me-2" />
+              <SelectTrigger className="w-[150px] text-white [&>span]:text-white" style={{borderColor: 'rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.1)'}}>
+                <Languages className="h-4 w-4 me-2" style={{color: '#c4a35a'}} />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -101,28 +103,45 @@ export default function SavingsEducationPage() {
               </SelectContent>
             </Select>
           </div>
-          <h1 className="mt-4 text-4xl font-bold">{t.title}</h1>
-          <p className="mt-3 max-w-3xl text-green-100">{t.intro}</p>
+          <h1 className="mt-4 text-4xl font-bold" style={{color: '#c4a35a'}}>{t.title}</h1>
+          <p className="mt-3 max-w-3xl" style={{color: 'rgba(196,163,90,0.7)'}}>{t.intro}</p>
         </div>
+
+        {/* Cards */}
         <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {t.items.map((item, index) => (
-            <article key={index} className="rounded-2xl border border-green-100 bg-white p-5 shadow-sm">
-              <h2 className="text-xl font-bold text-green-900">{item.title}</h2>
-              <p className="mt-2 text-slate-700">{item.desc}</p>
+            <article key={index} className="rounded-2xl p-5" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 2px 12px rgba(196,163,90,0.08)'}}>
+              <h2 className="text-xl font-bold" style={{color: '#7a5c1a'}}>{item.title}</h2>
+              <p className="mt-2" style={{color: 'rgba(122,92,26,0.7)'}}>{item.desc}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {item.examples.map((example, i) => (
-                  <span key={i} className="rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-800">{example}</span>
+                  <span key={i} className="rounded-full px-3 py-1 text-sm font-medium" style={{background: 'rgba(196,163,90,0.12)', color: '#7a5c1a', border: '0.5px solid rgba(196,163,90,0.3)'}}>{example}</span>
                 ))}
               </div>
             </article>
           ))}
         </section>
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
-          <h2 className="text-xl font-bold">{t.tipsTitle}</h2>
-          <ul className="mt-3 list-disc space-y-2 ps-6">
+
+        {/* Tips */}
+        <div className="rounded-2xl p-5" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.06)'}}>
+          <h2 className="text-xl font-bold" style={{color: '#7a5c1a'}}>✦ {t.tipsTitle}</h2>
+          <ul className="mt-3 list-disc space-y-2 ps-6" style={{color: 'rgba(122,92,26,0.8)'}}>
             {t.tips.map((tip, i) => <li key={i}>{tip}</li>)}
           </ul>
         </div>
+
+        {/* Footer */}
+        <div className="pt-6 text-center text-sm" style={{borderTop: '1px solid rgba(196,163,90,0.3)'}}>
+          <p style={{color: 'rgba(122,92,26,0.5)'}}>
+            {isArabic ? 'المدير المالي الذكي - يساعدك على اتخاذ قرارات مالية أوضح' : language === 'fr' ? 'Le gestionnaire financier intelligent - vous aide à prendre des décisions financières plus claires' : 'Smart Financial Manager - helping you make clearer financial decisions'}
+          </p>
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <span className="w-20 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
+            <span className="font-medium" style={{color: '#c4a35a'}}>powered by M.Q</span>
+            <span className="w-20 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
+          </div>
+        </div>
+
       </div>
     </main>
   );
