@@ -1614,112 +1614,62 @@ ${goals.length > 0 ? '\n🏆 أهدافك المالية:\n' + goals.filter(g =>
         </Card>
 
         {/* Financial Health Dashboard */}
-        {totalIncome > 0 && (() => {
-          const savingsRate = breakdown.savings / totalIncome * 100;
-          const expenseRate = breakdown.expenses / totalIncome * 100;
-          const investRate = breakdown.investment / totalIncome * 100;
-          const hasGoals = goals.length > 0;
-          const hasItems = expenseItems.length > 0 || savingsItems.length > 0 || investmentItems.length > 0;
-
-          // حساب الـ score
-          let score = 0;
-          if (savingsRate >= 20) score += 30;
-          else if (savingsRate >= 10) score += 20;
-          else if (savingsRate > 0) score += 10;
-          if (expenseRate <= 50) score += 25;
-          else if (expenseRate <= 65) score += 15;
-          else score += 5;
-          if (investRate >= 10) score += 25;
-          else if (investRate >= 5) score += 15;
-          else if (investRate > 0) score += 8;
-          if (hasGoals) score += 10;
-          if (hasItems) score += 10;
-          score = Math.min(100, score);
-
-          const scoreColor = score >= 75 ? '#2d8a4e' : score >= 50 ? '#c4a35a' : '#c0392b';
-          const scoreLabel = isArabic
-            ? score >= 75 ? 'وضعك المالي ممتاز 🌟' : score >= 50 ? 'وضعك المالي جيد 👍' : 'يحتاج تحسين ⚠️'
-            : score >= 75 ? 'Excellent Financial Health 🌟' : score >= 50 ? 'Good Financial Health 👍' : 'Needs Improvement ⚠️';
-
-          const months = breakdown.expenses > 0 ? Math.round(totalIncome / breakdown.expenses) : 0;
-          const circumference = 2 * Math.PI * 40;
-          const strokeDash = (score / 100) * circumference;
-
-          const insights: string[] = [];
-          if (savingsRate >= 20) insights.push(isArabic ? '✅ معدل ادخارك ممتاز (' + savingsRate.toFixed(0) + '%)' : '✅ Great savings rate (' + savingsRate.toFixed(0) + '%)');
-          else if (savingsRate < 10) insights.push(isArabic ? '⚠️ ادخارك أقل من 10% - حاول زيادته' : '⚠️ Savings below 10% - try to increase');
-          if (investRate >= 10) insights.push(isArabic ? '📈 نسبة استثمار صحية (' + investRate.toFixed(0) + '%)' : '📈 Healthy investment rate (' + investRate.toFixed(0) + '%)');
-          else if (investRate === 0) insights.push(isArabic ? '💡 لا توجد استثمارات - فكر في البدء' : '💡 No investments - consider starting');
-          if (expenseRate > 65) insights.push(isArabic ? '🔴 المصروفات عالية (' + expenseRate.toFixed(0) + '%) - راجعها' : '🔴 High expenses (' + expenseRate.toFixed(0) + '%) - review them');
-          if (hasGoals) insights.push(isArabic ? '🎯 لديك أهداف مالية - ممتاز!' : '🎯 You have financial goals - great!');
-          if (!hasGoals) insights.push(isArabic ? '🎯 أضف أهدافاً مالية لتتبع تقدمك' : '🎯 Add financial goals to track progress');
-
-          return (
-            <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 8px 30px rgba(196,163,90,0.12)', overflow: 'hidden'}}>
-              <div className="p-5" style={{background: 'linear-gradient(135deg, #7f5c48 0%, #5c3d2a 100%)'}}>
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-white/70 mb-1">⚡ {isArabic ? 'تقييم صحتك المالية' : 'Financial Health Score'}</p>
-                    <h2 className="text-xl font-bold text-white">{scoreLabel}</h2>
-                    <p className="text-sm mt-1" style={{color: 'rgba(240,208,128,0.8)'}}>{isArabic ? `طاقتك الشهرية: ${formatCurrency(totalIncome)} ${getCurrentCurrency().symbol}` : `Monthly capacity: ${formatCurrency(totalIncome)} ${getCurrentCurrency().symbol}`}</p>
-                  </div>
-                  {/* Score Ring */}
-                  <div className="relative shrink-0 flex items-center justify-center w-24 h-24">
-                    <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
-                      <circle cx="48" cy="48" r="40" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="8" />
-                      <circle cx="48" cy="48" r="40" fill="none" stroke={scoreColor} strokeWidth="8"
-                        strokeDasharray={`${strokeDash} ${circumference}`} strokeLinecap="round"
-                        style={{transition: 'stroke-dasharray 1s ease'}} />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-bold text-white">{score}</span>
-                      <span className="text-xs text-white/60">/100</span>
-                    </div>
+        {totalIncome > 0 && (
+          <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 8px 30px rgba(196,163,90,0.12)', overflow: 'hidden'}}>
+            <div className="p-5" style={{background: 'linear-gradient(135deg, #7f5c48 0%, #5c3d2a 100%)'}}>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm text-white/70 mb-1">⚡ {isArabic ? 'تقييم صحتك المالية' : 'Financial Health Score'}</p>
+                  <h2 className="text-xl font-bold text-white">{fhScoreLabel}</h2>
+                  <p className="text-sm mt-1" style={{color: 'rgba(240,208,128,0.8)'}}>{isArabic ? 'طاقتك الشهرية' : 'Monthly capacity'}: {formatCurrency(totalIncome)} {getCurrentCurrency().symbol}</p>
+                </div>
+                <div className="relative shrink-0 flex items-center justify-center w-24 h-24">
+                  <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
+                    <circle cx="48" cy="48" r="40" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="8"/>
+                    <circle cx="48" cy="48" r="40" fill="none" stroke={fhScoreColor} strokeWidth="8" strokeDasharray={fhStrokeDash + ' ' + fhCircumference} strokeLinecap="round"/>
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-bold text-white">{fhScore}</span>
+                    <span className="text-xs text-white/60">/100</span>
                   </div>
                 </div>
               </div>
-
-              <CardContent className="pt-4 space-y-4">
-                {/* Quick Stats */}
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: isArabic ? 'معدل الادخار' : 'Savings Rate', value: savingsRate.toFixed(0) + '%', color: savingsRate >= 20 ? '#2d8a4e' : savingsRate >= 10 ? '#c4a35a' : '#c0392b' },
-                    { label: isArabic ? 'نسبة الاستثمار' : 'Investment Rate', value: investRate.toFixed(0) + '%', color: investRate >= 10 ? '#2d8a4e' : investRate >= 5 ? '#c4a35a' : '#c0392b' },
-                    { label: isArabic ? 'أمان مالي' : 'Safety', value: months > 0 ? months + (isArabic ? ' أشهر' : 'mo') : '—', color: '#7a5c1a' },
-                  ].map(stat => (
-                    <div key={stat.label} className="text-center p-3 rounded-xl" style={{background: 'rgba(196,163,90,0.06)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
-                      <p className="text-xs mb-1" style={{color: 'rgba(122,92,26,0.5)'}}>{stat.label}</p>
-                      <p className="text-lg font-bold" style={{color: stat.color}}>{stat.value}</p>
-                    </div>
-                  ))}
+            </div>
+            <CardContent className="pt-4 space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center p-3 rounded-xl" style={{background: 'rgba(196,163,90,0.06)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
+                  <p className="text-xs mb-1" style={{color: 'rgba(122,92,26,0.5)'}}>{isArabic ? 'معدل الادخار' : 'Savings Rate'}</p>
+                  <p className="text-lg font-bold" style={{color: fhSavingsRate >= 20 ? '#2d8a4e' : fhSavingsRate >= 10 ? '#c4a35a' : '#c0392b'}}>{fhSavingsRate.toFixed(0)}%</p>
                 </div>
-
-                {/* AI Insights */}
-                <div className="space-y-2">
-                  <p className="text-xs font-bold" style={{color: '#7a5c1a'}}>💡 {isArabic ? 'تحليل ذكي' : 'Smart Analysis'}</p>
-                  {insights.map((insight, i) => (
-                    <div key={i} className="text-sm py-2 px-3 rounded-xl" style={{background: 'rgba(196,163,90,0.06)', border: '0.5px solid rgba(196,163,90,0.15)', color: 'rgba(122,92,26,0.85)'}}>
-                      {insight}
-                    </div>
-                  ))}
+                <div className="text-center p-3 rounded-xl" style={{background: 'rgba(196,163,90,0.06)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
+                  <p className="text-xs mb-1" style={{color: 'rgba(122,92,26,0.5)'}}>{isArabic ? 'نسبة الاستثمار' : 'Investment'}</p>
+                  <p className="text-lg font-bold" style={{color: fhInvestRate >= 10 ? '#2d8a4e' : fhInvestRate >= 5 ? '#c4a35a' : '#c0392b'}}>{fhInvestRate.toFixed(0)}%</p>
                 </div>
-
-                {/* Random Tip */}
-                <Button onClick={getRandomAdvice} variant="outline" className="w-full" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'}}>
-                  <Lightbulb className="w-5 h-5 ms-2" />{text.randomAdvice}
-                </Button>
-                {showAdvice && randomAdvice && (
-                  <div className="p-4 rounded-xl" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.06)'}}>
-                    <div className="flex items-start gap-3">
-                      <span className="text-3xl">{randomAdvice.icon}</span>
-                      <div><h4 className="font-bold mb-1" style={{color: '#7a5c1a'}}>{randomAdvice.category}</h4><p style={{color: 'rgba(122,92,26,0.8)'}}>{randomAdvice.tip}</p></div>
-                    </div>
+                <div className="text-center p-3 rounded-xl" style={{background: 'rgba(196,163,90,0.06)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
+                  <p className="text-xs mb-1" style={{color: 'rgba(122,92,26,0.5)'}}>{isArabic ? 'أمان مالي' : 'Safety'}</p>
+                  <p className="text-lg font-bold" style={{color: '#7a5c1a'}}>{fhMonths > 0 ? fhMonths + (isArabic ? ' شهر' : 'mo') : '—'}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-bold" style={{color: '#7a5c1a'}}>💡 {isArabic ? 'تحليل ذكي' : 'Smart Analysis'}</p>
+                {fhInsights.map((insight, i) => (
+                  <div key={i} className="text-sm py-2 px-3 rounded-xl" style={{background: 'rgba(196,163,90,0.06)', border: '0.5px solid rgba(196,163,90,0.15)', color: 'rgba(122,92,26,0.85)'}}>{insight}</div>
+                ))}
+              </div>
+              <Button onClick={getRandomAdvice} variant="outline" className="w-full" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'}}>
+                <Lightbulb className="w-5 h-5 ms-2"/>{text.randomAdvice}
+              </Button>
+              {showAdvice && randomAdvice && (
+                <div className="p-4 rounded-xl" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.06)'}}>
+                  <div className="flex items-start gap-3">
+                    <span className="text-3xl">{randomAdvice.icon}</span>
+                    <div><h4 className="font-bold mb-1" style={{color: '#7a5c1a'}}>{randomAdvice.category}</h4><p style={{color: 'rgba(122,92,26,0.8)'}}>{randomAdvice.tip}</p></div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })()}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Smart Actions */}
         <div className="space-y-4">
@@ -1792,7 +1742,32 @@ ${goals.length > 0 ? '\n🏆 أهدافك المالية:\n' + goals.filter(g =>
                       const years = months >= 12 ? (months / 12).toFixed(1) : null;
                       const feasible = months > 0 && months <= 36;
                       const unit = project.durationUnit === 'year' ? (isArabic ? 'سنة' : 'yr') : project.durationUnit === 'day' ? (isArabic ? 'يوم' : 'day') : (isArabic ? 'شهر' : 'mo');
-                      return (
+                    
+  // Financial Health calculations
+  const fhSavingsRate = totalIncome > 0 ? breakdown.savings / totalIncome * 100 : 0;
+  const fhExpenseRate = totalIncome > 0 ? breakdown.expenses / totalIncome * 100 : 0;
+  const fhInvestRate = totalIncome > 0 ? breakdown.investment / totalIncome * 100 : 0;
+  const fhScore = Math.min(100, Math.round(
+    (fhSavingsRate >= 20 ? 30 : fhSavingsRate >= 10 ? 20 : 10) +
+    (fhExpenseRate <= 50 ? 25 : fhExpenseRate <= 65 ? 15 : 5) +
+    (fhInvestRate >= 10 ? 25 : fhInvestRate >= 5 ? 15 : 0) +
+    (goals.length > 0 ? 10 : 0) + (expenseItems.length > 0 ? 10 : 0)
+  ));
+  const fhScoreColor = fhScore >= 75 ? '#2d8a4e' : fhScore >= 50 ? '#c4a35a' : '#c0392b';
+  const fhScoreLabel = fhScore >= 75 ? (isArabic ? 'وضعك المالي ممتاز 🌟' : 'Excellent 🌟') : fhScore >= 50 ? (isArabic ? 'وضعك المالي جيد 👍' : 'Good 👍') : (isArabic ? 'يحتاج تحسين ⚠️' : 'Needs Work ⚠️');
+  const fhMonths = breakdown.expenses > 0 ? Math.round(totalIncome / breakdown.expenses) : 0;
+  const fhCircumference = 2 * Math.PI * 40;
+  const fhStrokeDash = (fhScore / 100) * fhCircumference;
+  const fhInsights: string[] = [];
+  if (fhSavingsRate >= 20) fhInsights.push(isArabic ? '✅ معدل ادخارك ممتاز (' + fhSavingsRate.toFixed(0) + '%)' : '✅ Great savings rate');
+  else if (fhSavingsRate < 10) fhInsights.push(isArabic ? '⚠️ ادخارك أقل من 10% - حاول زيادته' : '⚠️ Savings below 10%');
+  if (fhInvestRate >= 10) fhInsights.push(isArabic ? '📈 نسبة استثمار صحية (' + fhInvestRate.toFixed(0) + '%)' : '📈 Healthy investment rate');
+  else if (fhInvestRate === 0) fhInsights.push(isArabic ? '💡 لا توجد استثمارات - فكر في البدء' : '💡 No investments - consider starting');
+  if (fhExpenseRate > 65) fhInsights.push(isArabic ? '🔴 المصروفات عالية - راجعها' : '🔴 High expenses - review them');
+  if (goals.length > 0) fhInsights.push(isArabic ? '🎯 لديك أهداف مالية - ممتاز!' : '🎯 You have financial goals!');
+  else fhInsights.push(isArabic ? '🎯 أضف أهدافاً مالية لتتبع تقدمك' : '🎯 Add financial goals to track progress');
+
+  return (
                         <div key={project.id} className="flex items-center gap-3 p-3 rounded-xl" style={{background: feasible ? 'rgba(45,138,78,0.06)' : months > 0 ? 'rgba(196,163,90,0.06)' : 'rgba(196,163,90,0.04)', border: `0.5px solid ${feasible ? 'rgba(45,138,78,0.2)' : 'rgba(196,163,90,0.2)'}`}}>
                           <span className="text-xl">{project.emoji}</span>
                           <div className="flex-1 min-w-0">
