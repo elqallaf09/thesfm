@@ -397,7 +397,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     adviceTitle: isArabic ? 'نصيحتنا لك' : 'Our advice to you',
     adviceDesc: isArabic ? 'نصائح مالية مخصصة بناءً على مدخولك' : 'Personalized financial tips based on your income',
     randomAdvice: isArabic ? 'احصل على نصيحة عشوائية' : 'Get a random tip',
-    print: isArabic ? '📊 تصدير Excel لـ Power BI' : '📊 Export Excel for Power BI',
+    print: isArabic ? 'إنشاء تقرير PDF' : isFrench ? 'Créer PDF' : 'Create PDF Report',
     reset: isArabic ? 'إعادة تعيين' : 'Reset',
     footer: isArabic ? 'المدير المالي الذكي - يساعدك على اتخاذ قرارات مالية أوضح' : 'Smart Financial Manager - helping you make clearer financial decisions',
     tickerTitle: isArabic ? 'مؤشرات الأسواق' : 'Market watch',
@@ -427,6 +427,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   const [manualInvestment, setManualInvestment] = useState<string>('');
   const [includeCharity, setIncludeCharity] = useState<boolean>(false);
   const [showAdvice, setShowAdvice] = useState<boolean>(false);
+  const [showSmartPanel, setShowSmartPanel] = useState<'none'|'analysis'|'assessment'|'savingsplan'>('none');
+  const [smartLoading, setSmartLoading] = useState<boolean>(false);
+  const [smartResult, setSmartResult] = useState<string>('');
   const [selectedCurrency, setSelectedCurrency] = useState<string>('KWD');
   const [tickerCategory, setTickerCategory] = useState<TickerCategory>('gulf');
   const [liveTickerItems, setLiveTickerItems] = useState<MarketTickerItem[]>(MARKET_TICKERS.gulf);
@@ -698,6 +701,53 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
     const date = now.toISOString().split('T')[0];
     XLSX.writeFile(wb, `SFM_Report_${date}.xlsx`);
+  };
+
+  const handlePDF = () => {
+    const style = document.createElement('style');
+    style.textContent = `@media print { .no-print{display:none!important} body{background:white!important} }`;
+    document.head.appendChild(style);
+    window.print();
+    setTimeout(() => document.head.removeChild(style), 1000);
+  };
+
+  const callSmartAI = async (type: 'analysis'|'assessment'|'savingsplan') => {
+    setShowSmartPanel(type); setSmartLoading(true); setSmartResult('');
+    const savingsRate = totalIncome > 0 ? (breakdown.savings / totalIncome * 100).toFixed(0) : '0';
+    const investRate = totalIncome > 0 ? (breakdown.investment / totalIncome * 100).toFixed(0) : '0';
+    const prompts = {
+      analysis: `أنا مستخدم لديّ:
+- إجمالي دخل شهري: ${formatCurrency(totalIncome)} ${getCurrentCurrency().symbol}
+- مصروفات: ${formatCurrency(breakdown.expenses)} ${getCurrentCurrency().symbol} (${totalIncome > 0 ? (breakdown.expenses/totalIncome*100).toFixed(0) : 0}%)
+- مدخرات: ${formatCurrency(breakdown.savings)} ${getCurrentCurrency().symbol} (${savingsRate}%)
+- استثمار: ${formatCurrency(breakdown.investment)} ${getCurrentCurrency().symbol} (${investRate}%)
+- أهداف مالية: ${goals.length} هدف
+- عدد بنود المصروفات: ${expenseItems.length}
+- أعطني تحليلاً مالياً شاملاً ومفصلاً بالعربية مع توصيات عملية محددة`,
+      assessment: `بناءً على وضعي المالي:
+- دخل: ${formatCurrency(totalIncome)} ${getCurrentCurrency().symbol}
+- مدخرات: ${savingsRate}% - استثمار: ${investRate}%
+- مصروفات: ${(totalIncome > 0 ? breakdown.expenses/totalIncome*100 : 0).toFixed(0)}%
+- قيّم وضعي المالي من 100 واعطني: نقاط قوتي، نقاط ضعفي، وخطوات تحسين واضحة بالعربية`,
+      savingsplan: `وضعي المالي:
+- دخل شهري: ${formatCurrency(totalIncome)} ${getCurrentCurrency().symbol}
+- ادخار حالي شهري: ${formatCurrency(breakdown.savings)} ${getCurrentCurrency().symbol}
+- استثمار شهري: ${formatCurrency(breakdown.investment)} ${getCurrentCurrency().symbol}
+- أهداف: ${goals.map(g => `${g.goal} (${g.amount} ${getCurrentCurrency().symbol})`).join(', ') || 'لا توجد أهداف محددة'}
+ضع لي خطة توفير ذكية ومفصلة تتضمن: كيف أزيد مدخراتي، متى أحقق كل هدف، ونصائح استثمار عملية. اذكر مثالاً مثل "إذا استمريت على ادخارك الحالي، تقدر تبدأ مشروع X خلال Y شهر" بالعربية`
+    };
+    try {
+      const res = await fetch('/api/projects-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: prompts[type] }] }),
+      });
+      const data = await res.json();
+      setSmartResult(data.text || 'عذراً، حدث خطأ في التحليل.');
+    } catch {
+      setSmartResult('عذراً، حدث خطأ في الاتصال.');
+    }
+    setSmartLoading(false);
   };
 
   const handleReset = () => {
@@ -1460,11 +1510,122 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
           );
         })()}
 
-        {/* Actions */}
-        <div className="flex flex-wrap gap-4 justify-center">
-          <Button onClick={handlePrint} size="lg" className="font-bold" style={{background: '#7f5c48', color: 'white', boxShadow: '0 4px 16px rgba(127,92,72,0.3)'}}><Printer className="w-5 h-5 ms-2" />{text.print}</Button>
-          <Button onClick={() => router.push('/projects')} size="lg" variant="outline" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'}}>🚀 {isArabic ? 'مشروعي' : 'My Projects'}</Button>
-          <Button onClick={handleReset} variant="outline" size="lg" style={{borderColor: 'rgba(196,163,90,0.3)', color: 'rgba(122,92,26,0.5)'}}><RefreshCw className="w-5 h-5 ms-2" />{text.reset}</Button>
+        {/* Smart Actions */}
+        <div className="space-y-4">
+          {/* Main CTAs */}
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Button onClick={handlePDF} size="lg" className="font-bold h-14 flex-col gap-1" style={{background: '#7f5c48', color: 'white', boxShadow: '0 4px 16px rgba(127,92,72,0.3)'}}>
+              <Printer className="w-5 h-5" />
+              <span className="text-xs">{isArabic ? 'إنشاء تقرير PDF' : 'Create PDF Report'}</span>
+            </Button>
+            <Button onClick={() => callSmartAI('analysis')} size="lg" variant="outline" className="h-14 flex-col gap-1 font-bold" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a', background: showSmartPanel === 'analysis' ? 'rgba(196,163,90,0.1)' : 'white'}}>
+              <span className="text-lg">🧠</span>
+              <span className="text-xs">{isArabic ? 'تحليل مالي ذكي' : 'Smart Analysis'}</span>
+            </Button>
+            <Button onClick={() => callSmartAI('assessment')} size="lg" variant="outline" className="h-14 flex-col gap-1 font-bold" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a', background: showSmartPanel === 'assessment' ? 'rgba(196,163,90,0.1)' : 'white'}}>
+              <span className="text-lg">📊</span>
+              <span className="text-xs">{isArabic ? 'تقييم وضعك المالي' : 'Financial Assessment'}</span>
+            </Button>
+            <Button onClick={() => callSmartAI('savingsplan')} size="lg" variant="outline" className="h-14 flex-col gap-1 font-bold" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a', background: showSmartPanel === 'savingsplan' ? 'rgba(196,163,90,0.1)' : 'white'}}>
+              <span className="text-lg">💡</span>
+              <span className="text-xs">{isArabic ? 'خطة توفير تلقائية' : 'Auto Savings Plan'}</span>
+            </Button>
+          </div>
+
+          {/* Smart AI Result Panel */}
+          {showSmartPanel !== 'none' && (
+            <Card style={{border: '1px solid rgba(196,163,90,0.4)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 8px 30px rgba(196,163,90,0.15)'}}>
+              <CardHeader className="pb-3 rounded-t-lg" style={{background: 'linear-gradient(135deg, #7f5c48 0%, #5c3d2a 100%)'}}>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-white text-base flex items-center gap-2">
+                    {showSmartPanel === 'analysis' && <><span>🧠</span>{isArabic ? 'التحليل المالي الذكي' : 'Smart Financial Analysis'}</>}
+                    {showSmartPanel === 'assessment' && <><span>📊</span>{isArabic ? 'تقييم وضعك المالي' : 'Financial Assessment'}</>}
+                    {showSmartPanel === 'savingsplan' && <><span>💡</span>{isArabic ? 'خطة التوفير التلقائية' : 'Auto Savings Plan'}</>}
+                  </CardTitle>
+                  <button onClick={() => { setShowSmartPanel('none'); setSmartResult(''); }} className="text-white/70 hover:text-white text-xl font-bold">×</button>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                {smartLoading ? (
+                  <div className="flex items-center justify-center py-8 gap-3">
+                    <div className="w-6 h-6 rounded-full border-2 animate-spin" style={{borderColor: '#c4a35a', borderTopColor: 'transparent'}} />
+                    <p style={{color: '#7a5c1a'}}>{isArabic ? 'جارٍ التحليل الذكي...' : 'Analyzing...'}</p>
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed" style={{color: 'rgba(122,92,26,0.9)'}}>{smartResult}</div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Projects Connection */}
+          {totalIncome > 0 && breakdown.savings > 0 && (
+            <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)', overflow: 'hidden'}}>
+              <div className="p-4" style={{background: 'linear-gradient(135deg, rgba(196,163,90,0.1) 0%, rgba(196,163,90,0.05) 100%)'}}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold flex items-center gap-2" style={{color: '#7a5c1a'}}>
+                    🚀 {isArabic ? 'مشروعي — ماذا يمكنني تحقيقه؟' : 'My Projects — What can I achieve?'}
+                  </h3>
+                  <Button onClick={() => router.push('/projects')} size="sm" style={{background: '#7f5c48', color: 'white'}} className="text-xs">
+                    {isArabic ? 'إدارة مشاريعي' : 'Manage Projects'}
+                  </Button>
+                </div>
+
+                {/* Insights based on savings */}
+                <div className="space-y-2">
+                  {[
+                    { name: isArabic ? 'متجر إلكتروني' : 'Online Store', cost: 1500, emoji: '📱' },
+                    { name: isArabic ? 'محل تجاري صغير' : 'Small Shop', cost: 5000, emoji: '🏪' },
+                    { name: isArabic ? 'كافيه أو مطعم' : 'Café or Restaurant', cost: 15000, emoji: '☕' },
+                    { name: isArabic ? 'استثمار عقاري' : 'Real Estate', cost: 50000, emoji: '🏠' },
+                  ].map(project => {
+                    const totalSaved = (breakdown.savings + breakdown.investment);
+                    const months = totalSaved > 0 ? Math.ceil(project.cost / totalSaved) : 0;
+                    const years = months >= 12 ? (months / 12).toFixed(1) : null;
+                    const feasible = months <= 36;
+                    return (
+                      <div key={project.name} className="flex items-center gap-3 p-3 rounded-xl" style={{background: feasible ? 'rgba(45,138,78,0.06)' : 'rgba(196,163,90,0.06)', border: `0.5px solid ${feasible ? 'rgba(45,138,78,0.2)' : 'rgba(196,163,90,0.2)'}`}}>
+                        <span className="text-xl">{project.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold" style={{color: '#7a5c1a'}}>{project.name}</p>
+                          <p className="text-xs" style={{color: 'rgba(122,92,26,0.6)'}}>
+                            {isArabic ? 'رأس المال المطلوب: ' : 'Required capital: '}{project.cost.toLocaleString()} {getCurrentCurrency().symbol}
+                          </p>
+                        </div>
+                        <div className="text-end shrink-0">
+                          {months > 0 ? (
+                            <>
+                              <p className="text-sm font-bold" style={{color: feasible ? '#2d8a4e' : '#c4a35a'}}>
+                                {years ? `${years} ${isArabic ? 'سنة' : 'yr'}` : `${months} ${isArabic ? 'شهر' : 'mo'}`}
+                              </p>
+                              <p className="text-xs" style={{color: 'rgba(122,92,26,0.5)'}}>{feasible ? (isArabic ? '✅ قريب' : '✅ Close') : (isArabic ? '⏳ صبر' : '⏳ Patience')}</p>
+                            </>
+                          ) : (
+                            <p className="text-xs" style={{color: 'rgba(122,92,26,0.4)'}}>{isArabic ? 'ابدأ الادخار' : 'Start saving'}</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Tip */}
+                {breakdown.savings > 0 && (
+                  <div className="mt-3 p-3 rounded-xl text-sm" style={{background: 'rgba(127,92,72,0.08)', border: '0.5px solid rgba(127,92,72,0.2)', color: '#7f5c48'}}>
+                    💡 {isArabic
+                      ? `بادخارك الحالي ${formatCurrency(breakdown.savings + breakdown.investment)} ${getCurrentCurrency().symbol}/شهر، تقدر تبدأ متجراً إلكترونياً خلال ${breakdown.savings + breakdown.investment > 0 ? Math.ceil(1500 / (breakdown.savings + breakdown.investment)) : '—'} شهر، أو كافيه خلال ${breakdown.savings + breakdown.investment > 0 ? Math.ceil(15000 / (breakdown.savings + breakdown.investment)) : '—'} شهر.`
+                      : `With your current savings of ${formatCurrency(breakdown.savings + breakdown.investment)} ${getCurrentCurrency().symbol}/month, you can start an online store in ${breakdown.savings + breakdown.investment > 0 ? Math.ceil(1500 / (breakdown.savings + breakdown.investment)) : '—'} months.`
+                    }
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Reset */}
+          <div className="flex justify-center">
+            <Button onClick={handleReset} variant="outline" style={{borderColor: 'rgba(196,163,90,0.3)', color: 'rgba(122,92,26,0.5)'}}><RefreshCw className="w-4 h-4 ms-2" />{text.reset}</Button>
+          </div>
         </div>
 
         <div className="mt-6 pt-6 text-center text-sm" style={{borderTop: '1px solid rgba(196,163,90,0.3)'}}>
