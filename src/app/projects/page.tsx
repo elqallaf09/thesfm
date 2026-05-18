@@ -1,145 +1,230 @@
 'use client';
-import { WisdomTicker } from '@/components/WisdomTicker';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowRight, Plus, Trash2, Send, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowRight, Plus, Trash2, Send, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { WisdomTicker } from '@/components/WisdomTicker';
 
-const PROJECT_TEMPLATES = [
-  { emoji: '🏪', name: 'فتح محل تجاري', budget: '5,000 - 15,000', time: '3-6 أشهر', steps: ['اختيار الموقع المناسب', 'الحصول على الترخيص التجاري', 'تجهيز المحل وشراء البضاعة', 'التسويق والإعلان'] },
-  { emoji: '🍕', name: 'مطعم أو كافيه', budget: '10,000 - 50,000', time: '6-12 شهراً', steps: ['دراسة السوق والمنافسين', 'الحصول على تراخيص الصحة', 'تجهيز المطبخ والمكان', 'تدريب الفريق وبدء العمل'] },
-  { emoji: '💻', name: 'مشروع تقني', budget: '2,000 - 20,000', time: '3-12 شهراً', steps: ['تحديد الفكرة والجمهور المستهدف', 'تصميم النموذج الأولي', 'التطوير والبرمجة', 'الإطلاق والتسويق'] },
-  { emoji: '🏠', name: 'استثمار عقاري', budget: '50,000+', time: '6-24 شهراً', steps: ['تحليل السوق العقاري', 'تحديد نوع العقار المناسب', 'التمويل وإجراءات الشراء', 'إدارة العقار أو إعادة البيع'] },
-  { emoji: '📱', name: 'متجر إلكتروني', budget: '500 - 5,000', time: '1-3 أشهر', steps: ['اختيار المنتجات والموردين', 'إنشاء المتجر وربط الدفع', 'استراتيجية التسويق الرقمي', 'إدارة الشحن والمخزون'] },
-  { emoji: '📚', name: 'مركز تعليمي', budget: '3,000 - 15,000', time: '2-6 أشهر', steps: ['تحديد التخصص والجمهور', 'إعداد المناهج والمحتوى', 'إيجاد المكان أو المنصة', 'تسجيل الطلاب والبدء'] },
+const TEMPLATES = [
+  { emoji: '🏪', name: 'فتح محل تجاري', budget: '5000', durationUnit: 'month', timeline: '6', steps: ['اختيار الموقع', 'الترخيص التجاري', 'تجهيز المحل', 'التسويق'] },
+  { emoji: '🍕', name: 'مطعم أو كافيه', budget: '15000', durationUnit: 'month', timeline: '9', steps: ['دراسة السوق', 'تراخيص الصحة', 'تجهيز المطبخ', 'تدريب الفريق'] },
+  { emoji: '💻', name: 'مشروع تقني', budget: '5000', durationUnit: 'month', timeline: '6', steps: ['تحديد الفكرة', 'النموذج الأولي', 'التطوير', 'الإطلاق'] },
+  { emoji: '🏠', name: 'استثمار عقاري', budget: '50000', durationUnit: 'year', timeline: '2', steps: ['تحليل السوق', 'اختيار العقار', 'التمويل', 'الإدارة'] },
+  { emoji: '📱', name: 'متجر إلكتروني', budget: '1500', durationUnit: 'month', timeline: '3', steps: ['اختيار المنتجات', 'إنشاء المتجر', 'التسويق', 'الشحن'] },
+  { emoji: '📚', name: 'مركز تعليمي', budget: '8000', durationUnit: 'month', timeline: '4', steps: ['التخصص', 'المناهج', 'المكان', 'التسجيل'] },
 ];
 
-interface Project { id: string; name: string; emoji: string; budget: string; timeline: string; notes: string; steps: string[]; }
+const NOTE_CATS = [
+  { id: 'budget_detail', label: 'الميزانية التفصيلية', placeholder: 'إيجار 200 د.ك + بضاعة 500 د.ك ...' },
+  { id: 'location', label: 'الموقع والمكان', placeholder: 'منطقة السالمية، مساحة 50 متر...' },
+  { id: 'feasibility', label: 'دراسة الجدوى', placeholder: 'العائد المتوقع 15% سنوياً...' },
+  { id: 'labor', label: 'العمالة والكادر', placeholder: 'موظف كاشير + عامل...' },
+  { id: 'marketing', label: 'خطة التسويق', placeholder: 'إنستغرام + لوحات إعلانية...' },
+  { id: 'risks', label: 'المخاطر والتحديات', placeholder: 'المنافسة العالية في المنطقة...' },
+  { id: 'funding', label: 'مصادر التمويل', placeholder: 'مدخرات 70% + قرض 30%...' },
+  { id: 'partners', label: 'الشركاء والموردين', placeholder: 'مورد البضاعة من الشركة X...' },
+  { id: 'goals', label: 'الأهداف والمستهدفات', placeholder: '50 عميل في الشهر الأول...' },
+  { id: 'other', label: 'ملاحظات أخرى', placeholder: 'أي معلومات إضافية...' },
+];
+
+interface Project { id: string; name: string; emoji: string; budget: string; timeline: string; durationUnit: string; steps: string[]; notes: Record<string, string>; expanded?: boolean; }
 interface Message { role: 'user' | 'assistant'; content: string; }
 
 export default function ProjectsPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [newProject, setNewProject] = useState({ name: '', emoji: '🚀', budget: '', timeline: '', notes: '' });
-  const [messages, setMessages] = useState<Message[]>([{ role: 'assistant', content: 'مرحباً! 👋 أنا مستشارك المالي للمشاريع. أخبرني عن مشروعك المستقبلي وسأساعدك في التخطيط وحساب التكاليف. ما هو مشروعك الحلم؟ 🚀' }]);
+  const [form, setForm] = useState({ name: '', emoji: '🚀', budget: '', timeline: '', durationUnit: 'month', notes: {} as Record<string, string> });
+  const [activeNotes, setActiveNotes] = useState<string[]>([]);
+  const [messages, setMessages] = useState<Message[]>([{ role: 'assistant', content: 'مرحباً! 👋 أنا مستشارك المالي للمشاريع. أخبرني عن مشروعك وسأساعدك في التخطيط وحساب التكاليف. ما هو مشروعك الحلم؟ 🚀' }]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  const addProject = (template?: typeof PROJECT_TEMPLATES[0]) => {
-    setProjects(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), name: template?.name || newProject.name || 'مشروع جديد', emoji: template?.emoji || newProject.emoji, budget: template?.budget || newProject.budget, timeline: template?.time || newProject.timeline, notes: newProject.notes, steps: template?.steps || [] }]);
-    setNewProject({ name: '', emoji: '🚀', budget: '', timeline: '', notes: '' });
-    setShowForm(false);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => { if (user) loadProjects(); }, [user]);
+
+  const loadProjects = async () => {
+    const { data } = await supabase.from('projects').select('*').eq('user_id', user!.id).order('created_at', { ascending: false });
+    if (data) setProjects(data.map((p: any) => ({ id: p.id, name: p.name, emoji: p.emoji || '🚀', budget: String(p.budget || ''), timeline: String(p.timeline || ''), durationUnit: p.duration_unit || 'month', steps: p.steps || [], notes: p.notes || {}, expanded: false })));
   };
+
+  const addProject = async (template?: typeof TEMPLATES[0]) => {
+    setSaving(true);
+    const proj = { name: template?.name || form.name || 'مشروع جديد', emoji: template?.emoji || form.emoji, budget: template?.budget || form.budget, timeline: template?.timeline || form.timeline, durationUnit: template?.durationUnit || form.durationUnit, steps: template?.steps || [], notes: form.notes };
+    if (user) {
+      const { data } = await supabase.from('projects').insert({ user_id: user.id, name: proj.name, emoji: proj.emoji, budget: proj.budget, timeline: proj.timeline, duration_unit: proj.durationUnit, steps: proj.steps, notes: proj.notes }).select().single();
+      if (data) setProjects(prev => [{ ...proj, id: data.id, expanded: false }, ...prev]);
+    } else {
+      setProjects(prev => [{ ...proj, id: crypto.randomUUID(), expanded: false }, ...prev]);
+    }
+    setForm({ name: '', emoji: '🚀', budget: '', timeline: '', durationUnit: 'month', notes: {} });
+    setActiveNotes([]); setShowForm(false); setSaving(false);
+  };
+
+  const removeProject = async (id: string) => {
+    if (user) await supabase.from('projects').delete().eq('id', id);
+    setProjects(prev => prev.filter(p => p.id !== id));
+  };
+
+  const unitLabel = (u: string) => u === 'day' ? 'يوم' : u === 'year' ? 'سنة' : 'شهر';
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
-    const userMsg = input.trim();
-    setInput('');
-    const newMessages: Message[] = [...messages, { role: 'user', content: userMsg }];
-    setMessages(newMessages);
-    setIsLoading(true);
+    const userMsg = input.trim(); setInput('');
+    const newMsgs: Message[] = [...messages, { role: 'user', content: userMsg }];
+    setMessages(newMsgs); setIsLoading(true);
     try {
-      const res = await fetch('/api/projects-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages.map(m => ({ role: m.role, content: m.content })) }),
-      });
+      const res = await fetch('/api/projects-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: newMsgs.map(m => ({ role: m.role, content: m.content })) }) });
       const data = await res.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.text || 'عذراً، حدث خطأ. حاول مرة أخرى.' }]);
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'عذراً، حدث خطأ في الاتصال.' }]);
-    }
+      setMessages(prev => [...prev, { role: 'assistant', content: data.text || 'عذراً، حدث خطأ.' }]);
+    } catch { setMessages(prev => [...prev, { role: 'assistant', content: 'عذراً، حدث خطأ في الاتصال.' }]); }
     setIsLoading(false);
   };
 
-  return (
-    <main dir="rtl" className="min-h-screen px-4 py-8" style={{ background: 'linear-gradient(135deg, #fffdf5 0%, #fef9e7 50%, #fdf5d0 100%)' }}>
-        <WisdomTicker language="ar" showLanguageSelector={false} />
-      <div className="mx-auto max-w-5xl space-y-6">
+  const S = { card: { border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(255,253,245,0.98)' } as React.CSSProperties, input: { borderColor: 'rgba(196,163,90,0.4)' } as React.CSSProperties };
 
-        <div className="rounded-3xl p-6" style={{ background: '#7f5c48', boxShadow: '0 4px 20px rgba(127,92,72,0.35), 0 8px 40px rgba(127,92,72,0.15)' }}>
-          <div className="flex items-center gap-4">
+  return (
+    <main dir="rtl" className="min-h-screen px-4 py-6" style={{ background: 'linear-gradient(135deg, #fffdf5 0%, #fef9e7 50%, #fdf5d0 100%)' }}>
+      <div className="mx-auto max-w-5xl space-y-4">
+        <WisdomTicker language="ar" showLanguageSelector={false} />
+
+        <div className="rounded-3xl p-5" style={{ background: '#7f5c48', boxShadow: '0 4px 20px rgba(127,92,72,0.35)' }}>
+          <div className="flex items-center gap-3">
             <button onClick={() => router.push('/')} className="text-white/80 hover:text-white"><ArrowRight className="w-6 h-6" /></button>
             <div>
-              <h1 className="text-3xl font-bold" style={{ color: '#f0d080' }}>🚀 مشاريعي المستقبلية</h1>
-              <p className="mt-1 text-white/70 text-sm">خطط لمشاريعك واحسب تكاليفها بمساعدة الذكاء الاصطناعي</p>
+              <h1 className="text-2xl font-bold" style={{ color: '#f0d080' }}>🚀 مشاريعي المستقبلية</h1>
+              <p className="text-sm text-white/60 mt-0.5">خطط لمشاريعك واحسب تكاليفها بمساعدة الذكاء الاصطناعي</p>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-5 lg:grid-cols-2">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold" style={{ color: '#7a5c1a' }}>مشاريعي ({projects.length})</h2>
-              <Button onClick={() => setShowForm(!showForm)} className="font-bold" style={{ background: '#c4a35a', color: '#1a0f00' }}><Plus className="w-4 h-4 ms-1" /> إضافة</Button>
+              <h2 className="font-bold" style={{ color: '#7a5c1a' }}>مشاريعي ({projects.length})</h2>
+              <Button onClick={() => setShowForm(!showForm)} className="font-bold text-sm" style={{ background: '#c4a35a', color: '#1a0f00' }}><Plus className="w-4 h-4 ms-1" /> إضافة</Button>
             </div>
 
             {showForm && (
-              <Card style={{ border: '1px solid rgba(196,163,90,0.4)', background: 'rgba(255,253,245,0.98)' }}>
+              <Card style={S.card}>
                 <CardContent className="pt-4 space-y-3">
                   <div className="flex gap-2">
-                    <Input value={newProject.emoji} onChange={e => setNewProject({ ...newProject, emoji: e.target.value })} className="w-16 text-center text-2xl" style={{ borderColor: 'rgba(196,163,90,0.4)' }} />
-                    <Input value={newProject.name} onChange={e => setNewProject({ ...newProject, name: e.target.value })} placeholder="اسم المشروع" className="flex-1" style={{ borderColor: 'rgba(196,163,90,0.4)' }} />
+                    <Input value={form.emoji} onChange={e => setForm({ ...form, emoji: e.target.value })} className="w-12 text-center text-lg" style={S.input} />
+                    <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="اسم المشروع" className="flex-1" style={S.input} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs" style={{ color: '#7a5c1a' }}>الميزانية الإجمالية</Label>
+                    <div className="flex items-center gap-2 h-10 rounded-xl border px-3" style={{ borderColor: 'rgba(196,163,90,0.4)', background: 'white' }}>
+                      <span className="text-sm font-bold shrink-0" style={{ color: '#c4a35a' }}>د.ك</span>
+                      <input type="text" value={form.budget} onChange={e => setForm({ ...form, budget: e.target.value })} placeholder="0.000" className="flex-1 bg-transparent text-sm outline-none" dir="ltr" />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <Input value={newProject.budget} onChange={e => setNewProject({ ...newProject, budget: e.target.value })} placeholder="الميزانية (د.ك)" dir="ltr" style={{ borderColor: 'rgba(196,163,90,0.4)' }} />
-                    <Input value={newProject.timeline} onChange={e => setNewProject({ ...newProject, timeline: e.target.value })} placeholder="المدة الزمنية" style={{ borderColor: 'rgba(196,163,90,0.4)' }} />
+                    <div className="space-y-1">
+                      <Label className="text-xs" style={{ color: '#7a5c1a' }}>المدة</Label>
+                      <Input value={form.timeline} onChange={e => setForm({ ...form, timeline: e.target.value })} placeholder="6" type="number" dir="ltr" style={S.input} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs" style={{ color: '#7a5c1a' }}>الوحدة</Label>
+                      <Select value={form.durationUnit} onValueChange={v => setForm({ ...form, durationUnit: v })}>
+                        <SelectTrigger style={S.input}><SelectValue /></SelectTrigger>
+                        <SelectContent><SelectItem value="day">يوم</SelectItem><SelectItem value="month">شهر</SelectItem><SelectItem value="year">سنة</SelectItem></SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <Input value={newProject.notes} onChange={e => setNewProject({ ...newProject, notes: e.target.value })} placeholder="ملاحظات..." style={{ borderColor: 'rgba(196,163,90,0.4)' }} />
-                  <Button onClick={() => addProject()} className="w-full font-bold" style={{ background: '#7f5c48', color: 'white' }}>✅ إضافة المشروع</Button>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold" style={{ color: '#7a5c1a' }}>📋 تفاصيل المشروع</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {NOTE_CATS.map(cat => (
+                        <button key={cat.id} type="button" onClick={() => setActiveNotes(prev => prev.includes(cat.id) ? prev.filter(n => n !== cat.id) : [...prev, cat.id])}
+                          className="px-2 py-1 rounded-full text-xs transition-all"
+                          style={activeNotes.includes(cat.id) ? { background: '#7f5c48', color: 'white' } : { background: 'rgba(196,163,90,0.1)', color: '#7a5c1a', border: '0.5px solid rgba(196,163,90,0.3)' }}>
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+                    {activeNotes.map(nid => {
+                      const cat = NOTE_CATS.find(c => c.id === nid)!;
+                      return (
+                        <div key={nid} className="space-y-1">
+                          <Label className="text-xs" style={{ color: '#7a5c1a' }}>{cat.label}</Label>
+                          <Textarea value={form.notes[nid] || ''} onChange={e => setForm({ ...form, notes: { ...form.notes, [nid]: e.target.value } })} placeholder={cat.placeholder} className="text-xs min-h-[50px]" style={S.input} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <Button onClick={() => addProject()} disabled={saving} className="w-full font-bold" style={{ background: '#7f5c48', color: 'white' }}>
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : '✅ حفظ المشروع'}
+                  </Button>
                 </CardContent>
               </Card>
             )}
 
             {projects.length === 0 ? (
-              <div className="text-center py-10 rounded-2xl" style={{ border: '1px dashed rgba(196,163,90,0.4)', color: 'rgba(122,92,26,0.5)' }}>
-                <p className="text-4xl mb-2">🚀</p><p>لم تضف أي مشاريع بعد</p>
-                <p className="text-sm mt-1">اختر قالباً جاهزاً من الأسفل</p>
+              <div className="text-center py-8 rounded-2xl" style={{ border: '1px dashed rgba(196,163,90,0.4)', color: 'rgba(122,92,26,0.5)' }}>
+                <p className="text-3xl mb-2">🚀</p><p className="text-sm">اختر قالباً أو أضف مشروعاً جديداً</p>
               </div>
             ) : projects.map(project => (
-              <Card key={project.id} style={{ border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(255,253,245,0.98)' }}>
-                <CardContent className="pt-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">{project.emoji}</span>
-                      <div>
-                        <h3 className="font-bold" style={{ color: '#7a5c1a' }}>{project.name}</h3>
-                        <div className="flex gap-3 mt-0.5 text-xs" style={{ color: 'rgba(122,92,26,0.6)' }}>
+              <Card key={project.id} style={S.card}>
+                <CardContent className="pt-3 pb-3">
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setProjects(prev => prev.map(p => p.id === project.id ? { ...p, expanded: !p.expanded } : p))} className="flex items-center gap-2 flex-1 text-start min-w-0">
+                      <span className="text-xl shrink-0">{project.emoji}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-sm truncate" style={{ color: '#7a5c1a' }}>{project.name}</p>
+                        <div className="flex gap-3 text-xs" style={{ color: 'rgba(122,92,26,0.6)' }}>
                           {project.budget && <span>💰 {project.budget} د.ك</span>}
-                          {project.timeline && <span>📅 {project.timeline}</span>}
+                          {project.timeline && <span>📅 {project.timeline} {unitLabel(project.durationUnit)}</span>}
                         </div>
                       </div>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={() => setProjects(prev => prev.filter(p => p.id !== project.id))} className="text-red-400 h-8 w-8 shrink-0"><Trash2 className="w-4 h-4" /></Button>
+                      {project.expanded ? <ChevronUp className="w-4 h-4 shrink-0" style={{ color: '#c4a35a' }} /> : <ChevronDown className="w-4 h-4 shrink-0" style={{ color: '#c4a35a' }} />}
+                    </button>
+                    <Button variant="ghost" size="icon" onClick={() => removeProject(project.id)} className="text-red-400 h-7 w-7 shrink-0"><Trash2 className="w-3.5 h-3.5" /></Button>
                   </div>
-                  {project.steps.length > 0 && (
-                    <ul className="mt-3 space-y-1.5">
-                      {project.steps.map((step, i) => (
-                        <li key={i} className="flex items-center gap-2 text-xs" style={{ color: 'rgba(122,92,26,0.7)' }}>
-                          <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: 'rgba(196,163,90,0.15)', color: '#c4a35a' }}>{i + 1}</span>
-                          {step}
-                        </li>
-                      ))}
-                    </ul>
+                  {project.expanded && (
+                    <div className="mt-3 space-y-2">
+                      {project.steps.length > 0 && (
+                        <div className="space-y-1">
+                          {project.steps.map((step, i) => (
+                            <div key={i} className="flex items-center gap-2 text-xs" style={{ color: 'rgba(122,92,26,0.7)' }}>
+                              <span className="w-4 h-4 rounded-full flex items-center justify-center text-xs shrink-0 font-bold" style={{ background: 'rgba(196,163,90,0.15)', color: '#c4a35a' }}>{i + 1}</span>{step}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {Object.entries(project.notes).filter(([, v]) => v).map(([key, value]) => {
+                        const cat = NOTE_CATS.find(c => c.id === key);
+                        return cat ? (
+                          <div key={key} className="rounded-lg p-2" style={{ background: 'rgba(196,163,90,0.06)', border: '0.5px solid rgba(196,163,90,0.2)' }}>
+                            <p className="text-xs font-bold" style={{ color: '#7a5c1a' }}>{cat.label}:</p>
+                            <p className="text-xs mt-0.5 whitespace-pre-wrap" style={{ color: 'rgba(122,92,26,0.7)' }}>{value}</p>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
                   )}
-                  {project.notes && <p className="mt-2 text-xs" style={{ color: 'rgba(122,92,26,0.6)' }}>{project.notes}</p>}
                 </CardContent>
               </Card>
             ))}
 
             <div>
-              <p className="text-sm font-bold mb-3" style={{ color: 'rgba(122,92,26,0.6)' }}>📋 قوالب جاهزة</p>
+              <p className="text-xs font-bold mb-2" style={{ color: 'rgba(122,92,26,0.5)' }}>📋 قوالب جاهزة</p>
               <div className="grid grid-cols-2 gap-2">
-                {PROJECT_TEMPLATES.map((t, i) => (
-                  <button key={i} onClick={() => addProject(t)} className="p-3 rounded-xl text-start transition-all hover:scale-[1.02]" style={{ border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(255,253,245,0.9)' }}>
-                    <span className="text-xl">{t.emoji}</span>
+                {TEMPLATES.map((t, i) => (
+                  <button key={i} onClick={() => addProject(t)} className="p-3 rounded-xl text-start hover:scale-[1.02] transition-all" style={{ border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(255,253,245,0.9)' }}>
+                    <span className="text-lg">{t.emoji}</span>
                     <p className="text-xs font-bold mt-1" style={{ color: '#7a5c1a' }}>{t.name}</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'rgba(122,92,26,0.45)' }}>{t.budget} د.ك</p>
+                    <p className="text-xs" style={{ color: 'rgba(122,92,26,0.45)' }}>{t.budget} د.ك | {t.timeline} {unitLabel(t.durationUnit)}</p>
                   </button>
                 ))}
               </div>
@@ -147,8 +232,8 @@ export default function ProjectsPage() {
           </div>
 
           <div className="space-y-3">
-            <h2 className="text-xl font-bold" style={{ color: '#7a5c1a' }}>🤖 مستشار المشاريع الذكي</h2>
-            <Card style={{ border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', display: 'flex', flexDirection: 'column', height: '560px' }}>
+            <h2 className="font-bold" style={{ color: '#7a5c1a' }}>🤖 مستشار المشاريع الذكي</h2>
+            <Card style={{ ...S.card, display: 'flex', flexDirection: 'column', height: '560px' }}>
               <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ minHeight: 0 }}>
                 {messages.map((msg, i) => (
                   <div key={i} className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}>
@@ -163,7 +248,7 @@ export default function ProjectsPage() {
               </div>
               <div className="p-3 border-t" style={{ borderColor: 'rgba(196,163,90,0.2)' }}>
                 <div className="flex gap-2">
-                  <Input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} placeholder="اسألني عن مشروعك..." style={{ borderColor: 'rgba(196,163,90,0.4)' }} />
+                  <Input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} placeholder="اسألني عن مشروعك..." style={S.input} />
                   <Button onClick={sendMessage} disabled={isLoading || !input.trim()} style={{ background: '#7f5c48', color: 'white' }}><Send className="w-4 h-4" /></Button>
                 </div>
                 <p className="text-xs mt-1 text-center" style={{ color: 'rgba(122,92,26,0.4)' }}>متخصص فقط في المشاريع والاستثمار المالي</p>
