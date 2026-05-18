@@ -1698,44 +1698,45 @@ ${goals.length > 0 ? '\n🏆 أهدافك المالية:\n' + goals.filter(g =>
 
         {/* Smart Actions */}
         <div className="space-y-4">
+
           {/* Main CTAs */}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Button onClick={handlePDF} size="lg" className="font-bold h-14 flex-col gap-1" style={{background: '#7f5c48', color: 'white', boxShadow: '0 4px 16px rgba(127,92,72,0.3)'}}>
               <Printer className="w-5 h-5" />
-              <span className="text-xs">{isArabic ? 'إنشاء تقرير PDF' : 'Create PDF Report'}</span>
+              <span className="text-xs">{isArabic ? 'إنشاء تقرير PDF' : 'Create PDF'}</span>
             </Button>
-            <Button onClick={() => callSmartAI('analysis')} size="lg" variant="outline" className="h-14 flex-col gap-1 font-bold" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a', background: showSmartPanel === 'analysis' ? 'rgba(196,163,90,0.1)' : 'white'}}>
+            <Button onClick={() => callSmartAI('analysis')} size="lg" variant="outline" className="h-14 flex-col gap-1 font-bold" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a', background: showSmartPanel === 'analysis' ? 'rgba(196,163,90,0.12)' : 'white'}}>
               <span className="text-lg">🧠</span>
-              <span className="text-xs">{isArabic ? 'تحليل مالي ذكي' : 'Smart Analysis'}</span>
+              <span className="text-xs">{isArabic ? 'تحليل ذكي' : 'Analysis'}</span>
             </Button>
-            <Button onClick={() => callSmartAI('assessment')} size="lg" variant="outline" className="h-14 flex-col gap-1 font-bold" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a', background: showSmartPanel === 'assessment' ? 'rgba(196,163,90,0.1)' : 'white'}}>
+            <Button onClick={() => callSmartAI('assessment')} size="lg" variant="outline" className="h-14 flex-col gap-1 font-bold" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a', background: showSmartPanel === 'assessment' ? 'rgba(196,163,90,0.12)' : 'white'}}>
               <span className="text-lg">📊</span>
-              <span className="text-xs">{isArabic ? 'تقييم وضعك المالي' : 'Financial Assessment'}</span>
+              <span className="text-xs">{isArabic ? 'تقييم مالي' : 'Assessment'}</span>
             </Button>
-            <Button onClick={() => callSmartAI('savingsplan')} size="lg" variant="outline" className="h-14 flex-col gap-1 font-bold" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a', background: showSmartPanel === 'savingsplan' ? 'rgba(196,163,90,0.1)' : 'white'}}>
+            <Button onClick={() => callSmartAI('savingsplan')} size="lg" variant="outline" className="h-14 flex-col gap-1 font-bold" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a', background: showSmartPanel === 'savingsplan' ? 'rgba(196,163,90,0.12)' : 'white'}}>
               <span className="text-lg">💡</span>
-              <span className="text-xs">{isArabic ? 'خطة توفير تلقائية' : 'Auto Savings Plan'}</span>
+              <span className="text-xs">{isArabic ? 'خطة توفير' : 'Savings Plan'}</span>
             </Button>
           </div>
 
-          {/* Smart AI Result Panel */}
+          {/* Smart AI Result */}
           {showSmartPanel !== 'none' && (
-            <Card style={{border: '1px solid rgba(196,163,90,0.4)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 8px 30px rgba(196,163,90,0.15)'}}>
-              <CardHeader className="pb-3 rounded-t-lg" style={{background: 'linear-gradient(135deg, #7f5c48 0%, #5c3d2a 100%)'}}>
+            <Card style={{border: '1px solid rgba(196,163,90,0.4)', background: 'rgba(255,253,245,0.98)'}}>
+              <CardHeader className="pb-3 rounded-t-lg" style={{background: 'linear-gradient(135deg, #7f5c48, #5c3d2a)'}}>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-white text-base flex items-center gap-2">
-                    {showSmartPanel === 'analysis' && <><span>🧠</span>{isArabic ? 'التحليل المالي الذكي' : 'Smart Financial Analysis'}</>}
-                    {showSmartPanel === 'assessment' && <><span>📊</span>{isArabic ? 'تقييم وضعك المالي' : 'Financial Assessment'}</>}
-                    {showSmartPanel === 'savingsplan' && <><span>💡</span>{isArabic ? 'خطة التوفير التلقائية' : 'Auto Savings Plan'}</>}
+                  <CardTitle className="text-white text-base">
+                    {showSmartPanel === 'analysis' && (isArabic ? '🧠 التحليل المالي' : '🧠 Financial Analysis')}
+                    {showSmartPanel === 'assessment' && (isArabic ? '📊 تقييم مالي' : '📊 Assessment')}
+                    {showSmartPanel === 'savingsplan' && (isArabic ? '💡 خطة التوفير' : '💡 Savings Plan')}
                   </CardTitle>
-                  <button onClick={() => { setShowSmartPanel('none'); setSmartResult(''); }} className="text-white/70 hover:text-white text-xl font-bold">×</button>
+                  <button onClick={() => { setShowSmartPanel('none'); setSmartResult(''); }} className="text-white/70 hover:text-white text-xl">×</button>
                 </div>
               </CardHeader>
               <CardContent className="pt-4">
                 {smartLoading ? (
                   <div className="flex items-center justify-center py-8 gap-3">
                     <div className="w-6 h-6 rounded-full border-2 animate-spin" style={{borderColor: '#c4a35a', borderTopColor: 'transparent'}} />
-                    <p style={{color: '#7a5c1a'}}>{isArabic ? 'جارٍ التحليل الذكي...' : 'Analyzing...'}</p>
+                    <p style={{color: '#7a5c1a'}}>{isArabic ? 'جارٍ التحليل...' : 'Analyzing...'}</p>
                   </div>
                 ) : (
                   <div className="whitespace-pre-wrap text-sm leading-relaxed" style={{color: 'rgba(122,92,26,0.9)'}}>{smartResult}</div>
@@ -1744,75 +1745,40 @@ ${goals.length > 0 ? '\n🏆 أهدافك المالية:\n' + goals.filter(g =>
             </Card>
           )}
 
-          {/* Projects Connection - show user's actual projects */}
+          {/* Projects Connection */}
           {totalIncome > 0 && breakdown.savings + breakdown.investment > 0 && (
-            <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)', overflow: 'hidden'}}>
-              <div className="p-4">
+            <Card style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(255,253,245,0.98)'}}>
+              <CardContent className="pt-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-bold flex items-center gap-2" style={{color: '#7a5c1a'}}>
-                    🚀 {isArabic ? 'مشروعي — ماذا يمكنني تحقيقه؟' : 'My Projects — What can I achieve?'}
-                  </h3>
-                  <Button onClick={() => router.push('/projects')} size="sm" style={{background: '#7f5c48', color: 'white'}} className="text-xs">
-                    {isArabic ? 'إدارة مشروعي' : 'Manage Projects'}
-                  </Button>
+                  <h3 className="font-bold text-sm" style={{color: '#7a5c1a'}}>🚀 {isArabic ? 'مشروعي' : 'My Projects'}</h3>
+                  <Button onClick={() => router.push('/projects')} size="sm" style={{background: '#7f5c48', color: 'white'}} className="text-xs">{isArabic ? 'إدارة مشروعي' : 'Manage'}</Button>
                 </div>
-
-                {/* User's actual projects */}
                 {userProjects.length > 0 ? (
                   <div className="space-y-2">
                     {userProjects.map(project => {
                       const cost = parseFloat(String(project.budget).replace(/[^\d.]/g, '')) || 0;
-                      const monthlySavings = breakdown.savings + breakdown.investment;
-                      const months = cost > 0 && monthlySavings > 0 ? Math.ceil(cost / monthlySavings) : 0;
-                      const years = months >= 12 ? (months / 12).toFixed(1) : null;
+                      const ms = breakdown.savings + breakdown.investment;
+                      const months = cost > 0 && ms > 0 ? Math.ceil(cost / ms) : 0;
                       const feasible = months > 0 && months <= 36;
-                      const unit = project.durationUnit === 'year' ? (isArabic ? 'سنة' : 'yr') : project.durationUnit === 'day' ? (isArabic ? 'يوم' : 'day') : (isArabic ? 'شهر' : 'mo');
-                    
-                       return (
-                        <div key={project.id} className="flex items-center gap-3 p-3 rounded-xl" style={{background: feasible ? 'rgba(45,138,78,0.06)' : months > 0 ? 'rgba(196,163,90,0.06)' : 'rgba(196,163,90,0.04)', border: `0.5px solid ${feasible ? 'rgba(45,138,78,0.2)' : 'rgba(196,163,90,0.2)'}`}}>
-                          <span className="text-xl">{project.emoji}</span>
+                      return (
+                        <div key={project.id} className="flex items-center gap-3 p-3 rounded-xl" style={{background: feasible ? 'rgba(45,138,78,0.06)' : 'rgba(196,163,90,0.06)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
+                          <span className="text-lg">{project.emoji}</span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold truncate" style={{color: '#7a5c1a'}}>{project.name}</p>
-                            {cost > 0 && <p className="text-xs" style={{color: 'rgba(122,92,26,0.6)'}}>{isArabic ? 'الميزانية: ' : 'Budget: '}{formatCurrency(cost)} {getCurrentCurrency().symbol}</p>}
+                            {cost > 0 && <p className="text-xs" style={{color: 'rgba(122,92,26,0.5)'}}>{formatCurrency(cost)} {getCurrentCurrency().symbol}</p>}
                           </div>
-                          <div className="text-end shrink-0">
-                            {months > 0 ? (
-                              <>
-                                <p className="text-sm font-bold" style={{color: feasible ? '#2d8a4e' : '#c4a35a'}}>
-                                  {years ? `${years} ${isArabic ? 'سنة' : 'yr'}` : `${months} ${isArabic ? 'شهر' : 'mo'}`}
-                                </p>
-                                <p className="text-xs" style={{color: 'rgba(122,92,26,0.5)'}}>{feasible ? '✅ قريب' : '⏳ صبر'}</p>
-                              </>
-                            ) : cost === 0 ? (
-                              <p className="text-xs" style={{color: 'rgba(122,92,26,0.4)'}}>{isArabic ? 'حدد الميزانية' : 'Set budget'}</p>
-                            ) : (
-                              <p className="text-xs" style={{color: 'rgba(122,92,26,0.4)'}}>{isArabic ? 'ابدأ الادخار' : 'Start saving'}</p>
-                            )}
-                          </div>
+                          {months > 0 && <div className="text-end shrink-0"><p className="text-sm font-bold" style={{color: feasible ? '#2d8a4e' : '#c4a35a'}}>{months >= 12 ? (months/12).toFixed(1) + (isArabic ? 'س' : 'yr') : months + (isArabic ? 'ش' : 'mo')}</p></div>}
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <div className="text-center py-6 rounded-xl" style={{background: 'rgba(196,163,90,0.04)', border: '1px dashed rgba(196,163,90,0.3)'}}>
-                    <p className="text-3xl mb-2">🚀</p>
-                    <p className="text-sm font-medium" style={{color: '#7a5c1a'}}>{isArabic ? 'لم تضف أي مشاريع بعد' : 'No projects added yet'}</p>
-                    <Button onClick={() => router.push('/projects')} size="sm" className="mt-2" style={{background: '#c4a35a', color: '#1a0f00'}}>
-                      {isArabic ? '+ أضف مشروعك الأول' : '+ Add your first project'}
-                    </Button>
+                  <div className="text-center py-4 rounded-xl" style={{border: '1px dashed rgba(196,163,90,0.3)'}}>
+                    <p className="text-sm" style={{color: 'rgba(122,92,26,0.5)'}}>{isArabic ? 'لم تضف مشاريع بعد' : 'No projects yet'}</p>
+                    <Button onClick={() => router.push('/projects')} size="sm" className="mt-2" style={{background: '#c4a35a', color: '#1a0f00'}}>{isArabic ? '+ أضف مشروعك' : '+ Add Project'}</Button>
                   </div>
                 )}
-
-                {/* Smart tip */}
-                {breakdown.savings + breakdown.investment > 0 && (
-                  <div className="mt-3 p-3 rounded-xl text-sm" style={{background: 'rgba(127,92,72,0.08)', border: '0.5px solid rgba(127,92,72,0.2)', color: '#7f5c48'}}>
-                    💡 {isArabic
-                      ? `بادخارك الحالي ${formatCurrency(breakdown.savings + breakdown.investment)} ${getCurrentCurrency().symbol}/شهر، تقدر تبدأ متجراً إلكترونياً خلال ${Math.ceil(1500 / (breakdown.savings + breakdown.investment))} شهر، أو كافيه خلال ${Math.ceil(15000 / (breakdown.savings + breakdown.investment))} شهر.`
-                      : `With ${formatCurrency(breakdown.savings + breakdown.investment)} ${getCurrentCurrency().symbol}/month savings, you can start an online store in ${Math.ceil(1500 / (breakdown.savings + breakdown.investment))} months.`
-                    }
-                  </div>
-                )}
-              </div>
+              </CardContent>
             </Card>
           )}
 
