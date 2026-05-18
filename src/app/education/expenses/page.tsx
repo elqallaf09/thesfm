@@ -106,7 +106,7 @@ export default function ExpensesEducationPage() {
       <div className="mx-auto max-w-5xl space-y-6">
 
         {/* Header */}
-        <div className="rounded-3xl p-6 text-white shadow-xl" style={{background: '#1a1228'}}>
+        <div className="rounded-3xl p-6 text-white shadow-xl" style={{background: '#7f5c48'}}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Link href="/" className="text-sm hover:opacity-80 transition-opacity" style={{color: '#c4a35a'}}>{t.back}</Link>
             <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
