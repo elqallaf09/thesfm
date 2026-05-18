@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { WisdomTicker } from '@/components/WisdomTicker';
 import Link from 'next/link';
 import { Languages } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -95,7 +96,8 @@ export default function InvestmentEducationPage() {
 
   return (
     <main dir={isArabic ? 'rtl' : 'ltr'} className="min-h-screen px-4 py-8" style={{background: 'linear-gradient(135deg, #fffdf5 0%, #fef9e7 50%, #fdf5d0 100%)'}}>
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="mx-auto max-w-5xl space-y-4">
+        <WisdomTicker language={language} onLanguageChange={setLanguage} showLanguageSelector={false} />
 
         {/* Header */}
         <div className="rounded-3xl p-6 shadow-xl" style={{background: '#7f5c48', boxShadow: '0 4px 24px rgba(127,92,72,0.35), 0 8px 40px rgba(127,92,72,0.15)'}}>
