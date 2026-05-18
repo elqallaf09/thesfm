@@ -1,4 +1,5 @@
 'use client';
+import { WisdomTicker } from '@/components/WisdomTicker';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
@@ -174,6 +175,7 @@ export default function ProfilePage() {
 
   return (
     <main dir="rtl" className="min-h-screen px-4 py-8" style={{ background: 'linear-gradient(135deg, #fffdf5 0%, #fef9e7 50%, #fdf5d0 100%)' }}>
+        <WisdomTicker language="ar" showLanguageSelector={false} />
       <div className="mx-auto max-w-3xl space-y-5">
 
         {/* Header */}
