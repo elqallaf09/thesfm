@@ -75,7 +75,7 @@ export default function ProjectsPage() {
 
   const loadProjects = async () => {
     const { data } = await supabase.from('projects').select('*').eq('user_id', user!.id).order('created_at', { ascending: false });
-    if (data) setProjects(data.map((p: any) => ({ ...emptyForm, id: p.id, name: p.name, emoji: p.emoji || '🚀', type: p.notes?.type || '', idea: p.notes?.idea || '', capital: p.notes?.capital || '', monthlyExpenses: p.notes?.monthlyExpenses || '', monthlyRevenue: p.notes?.monthlyRevenue || '', riskLevel: p.notes?.riskLevel || 33, needs: p.notes?.needs || [], goal: p.notes?.goal || '', startTimeline: p.notes?.startTimeline || '', progress: p.notes?.progress || emptyForm.progress, analysis: p.notes?.analysis, expanded: false, createdAt: p.created_at })));
+    if (data) setProjects(data.map((p: any) => ({ ...emptyForm, id: p.id, name: p.name, emoji: p.emoji || '🚀', type: p.notes?.type || '', idea: p.notes?.idea || '', capital: p.notes?.capital || '', monthlyExpenses: p.notes?.monthlyExpenses || '', monthlyRevenue: p.notes?.monthlyRevenue || '', riskLevel: p.notes?.riskLevel || 33, needs: p.notes?.needs || {}, goal: p.notes?.goal || '', startTimeline: p.notes?.startTimeline || '', progress: p.notes?.progress || emptyForm.progress, analysis: p.notes?.analysis, expanded: false, createdAt: p.created_at })));
   };
 
   const analyzeProject = async (): Promise<AIAnalysis | null> => {
@@ -92,7 +92,7 @@ export default function ProjectsPage() {
 مستوى المخاطرة: ${riskLabel(form.riskLevel).label}
 الهدف: ${form.goal}
 وقت البدء: ${form.startTimeline}
-الاحتياجات: ${form.needs.join(', ')}
+الاحتياجات: ${Object.entries(form.needs).filter(([,v])=>v!=='none').map(([k,v])=>`${k}(${v})`).join(', ')}
 
 أجب فقط بـ JSON بدون أي نص:
 {"score":75,"successRate":"70%","strengths":["نقطة قوة 1","نقطة قوة 2"],"weaknesses":["نقطة ضعف 1","نقطة ضعف 2"],"suggestions":["اقتراح 1","اقتراح 2","اقتراح 3"],"marketStatus":"وصف حالة السوق"}`;
@@ -193,11 +193,7 @@ export default function ProjectsPage() {
               <div>
                 <p className="text-sm font-bold mb-3 flex items-center gap-1" style={{ color: DG }}><Target className="w-4 h-4" style={{ color: G }} /> المعلومات الأساسية</p>
                 <div className="grid gap-3 md:grid-cols-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs" style={{ color: DG }}>إيموجي</Label>
-                    <Input value={form.emoji} onChange={e => setForm({ ...form, emoji: e.target.value })} className="text-center text-xl" style={{ borderColor: 'rgba(196,163,90,0.4)' }} />
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
+                  <div className="space-y-1 md:col-span-3">
                     <Label className="text-xs" style={{ color: DG }}>اسم المشروع *</Label>
                     <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="مثال: كافيه الأصيل" style={{ borderColor: 'rgba(196,163,90,0.4)' }} />
                   </div>
@@ -270,9 +266,14 @@ export default function ProjectsPage() {
                 <p className="text-sm font-bold mb-3 flex items-center gap-1" style={{ color: DG }}><Zap className="w-4 h-4" style={{ color: G }} /> احتياجات المشروع</p>
                 <div className="flex flex-wrap gap-2">
                   {PROJECT_NEEDS.map(n => (
-                    <button key={n.id} type="button" onClick={() => setForm(prev => ({ ...prev, needs: prev.needs.includes(n.id) ? prev.needs.filter(x => x !== n.id) : [...prev.needs, n.id] }))}
+                    <button key={n.id} type="button" onClick={() => setForm(prev => {
+                      const cur = prev.needs[n.id] || 'none';
+                      const next = cur === 'none' ? 'pending' : cur === 'pending' ? 'done' : 'none';
+                      return { ...prev, needs: { ...prev.needs, [n.id]: next } };
+                    })}
                       className="need-btn px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1"
-                      style={form.needs.includes(n.id) ? { background: Br, color: 'white', border: `1px solid ${Br}` } : { background: 'rgba(196,163,90,0.08)', color: DG, border: '1px solid rgba(196,163,90,0.25)' }}>
+                      style={form.needs[n.id] === 'done' ? { background: 'rgba(45,138,78,0.15)', color: '#2d8a4e', border: '1px solid rgba(45,138,78,0.4)' } : form.needs[n.id] === 'pending' ? { background: Br, color: 'white', border: `1px solid ${Br}` } : { background: 'rgba(196,163,90,0.08)', color: DG, border: '1px solid rgba(196,163,90,0.25)' }}>
+                      {form.needs[n.id] === 'done' ? '✅ ' : form.needs[n.id] === 'pending' ? '⏳ ' : ''}
                       {n.icon} {n.label}
                     </button>
                   ))}
@@ -437,7 +438,7 @@ export default function ProjectsPage() {
                       {project.needs.length > 0 && (
                         <div><p className="text-xs font-bold mb-2" style={{ color: DG }}>⚡ الاحتياجات:</p>
                           <div className="flex flex-wrap gap-1.5">
-                            {project.needs.map(nid => { const n = PROJECT_NEEDS.find(x => x.id === nid); return n ? <span key={nid} className="text-xs px-2 py-1 rounded-full" style={{ background: 'rgba(127,92,72,0.1)', color: Br }}>{n.icon} {n.label}</span> : null; })}
+                            {Object.entries(project.needs).filter(([,v]) => v !== 'none').map(([nid, status]) => { const n = PROJECT_NEEDS.find(x => x.id === nid); return n ? <span key={nid} className="text-xs px-2 py-1 rounded-full flex items-center gap-1" style={status === 'done' ? { background: 'rgba(45,138,78,0.12)', color: '#2d8a4e' } : { background: 'rgba(127,92,72,0.1)', color: Br }}>{status === 'done' ? '✅' : '⏳'} {n.icon} {n.label}</span> : null; })}
                           </div>
                         </div>
                       )}
