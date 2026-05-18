@@ -109,7 +109,7 @@ export function WisdomTicker({ language, onLanguageChange, showLanguageSelector 
           100% { transform: translateX(-50%); }
         }
         .wisdom-ticker {
-          animation: wisdom-scroll 60s linear infinite;
+          animation: wisdom-scroll 120s linear infinite;
           display: flex;
           width: max-content;
         }
