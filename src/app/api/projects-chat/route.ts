@@ -4,12 +4,20 @@ export async function POST(req: NextRequest) {
   try {
     const { messages } = await req.json();
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const apiKey = process.env.AI_GATEWAY_TOKEN || process.env.ANTHROPIC_API_KEY || '';
+    const isGateway = !!process.env.AI_GATEWAY_TOKEN;
+
+    const url = isGateway
+      ? 'https://ai-gateway.vercel.sh/v1/anthropic/v1/messages'
+      : 'https://api.anthropic.com/v1/messages';
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'Authorization': `Bearer ${apiKey}`,
         'anthropic-version': '2023-06-01',
+        ...(!isGateway ? { 'x-api-key': apiKey } : {}),
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
@@ -19,14 +27,14 @@ export async function POST(req: NextRequest) {
 2. حساب التكاليف التقريبية بالدينار الكويتي
 3. تقديم خطوات عملية لتنفيذ المشروع
 4. نصائح استثمارية وتمويلية للمشاريع
-5. تحليل مخاطر المشاريع وفرص النجاح
-
-لا تتحدث في أي موضوع خارج المشاريع والاستثمار والتخطيط المالي. ردودك باللغة العربية بشكل مختصر ومفيد مع نقاط واضحة.`,
-        messages: messages,
+لا تتحدث في أي موضوع خارج المشاريع والاستثمار. ردودك باللغة العربية بشكل مختصر.`,
+        messages,
       }),
     });
 
     if (!response.ok) {
+      const err = await response.text();
+      console.error('AI error:', response.status, err);
       return NextResponse.json({ error: 'AI service error' }, { status: 500 });
     }
 
@@ -34,6 +42,7 @@ export async function POST(req: NextRequest) {
     const text = data.content?.[0]?.text || 'عذراً، لم أتمكن من الرد.';
     return NextResponse.json({ text });
   } catch (error) {
+    console.error('Server error:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
