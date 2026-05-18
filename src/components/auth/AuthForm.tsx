@@ -14,10 +14,14 @@ import { supabase } from '@/integrations/supabase/client';
 
 const SECURITY_QUESTIONS = [
   { id: 'pet_name', questionAr: 'ما اسم حيوانك الأليف؟', questionEn: 'What is your pet name?', questionFr: "Comment s'appelle votre animal de compagnie?" },
-  { id: 'school_name', questionAr: 'ما اسم مدرستك الأساسية؟', questionEn: 'What is your primary school name?', questionFr: "Quel est le nom de votre école primaire?" },
+  { id: 'school_name', questionAr: 'ما اسم مدرستك الابتدائية؟', questionEn: 'What is your primary school name?', questionFr: "Quel est le nom de votre école primaire?" },
   { id: 'city_born', questionAr: 'في أي مدينة ولدت؟', questionEn: 'In which city were you born?', questionFr: "Dans quelle ville êtes-vous né?" },
-  { id: 'father_name', questionAr: 'ما اسم والدك الأول؟', questionEn: "What is your father's first name?", questionFr: "Quel est le prénom de votre père?" },
+  { id: 'father_name', questionAr: 'ما اسم والدك؟', questionEn: "What is your father's name?", questionFr: "Quel est le nom de votre père?" },
+  { id: 'mother_name', questionAr: 'ما اسم والدتك؟', questionEn: "What is your mother's name?", questionFr: "Quel est le nom de votre mère?" },
   { id: 'favorite_color', questionAr: 'ما هو لونك المفضل؟', questionEn: 'What is your favorite color?', questionFr: 'Quelle est votre couleur préférée?' },
+  { id: 'childhood_friend', questionAr: 'ما اسم صديق طفولتك؟', questionEn: 'What is your childhood friend name?', questionFr: "Quel est le nom de votre ami d'enfance?" },
+  { id: 'first_car', questionAr: 'ما نوع أول سيارة امتلكتها؟', questionEn: 'What was your first car?', questionFr: 'Quelle était votre première voiture?' },
+  { id: 'favorite_food', questionAr: 'ما هو طعامك المفضل؟', questionEn: 'What is your favorite food?', questionFr: 'Quel est votre plat préféré?' },
 ];
 
 const FINANCIAL_WISDOM_TIPS = [
@@ -77,6 +81,8 @@ export function AuthForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('');
@@ -86,6 +92,10 @@ export function AuthForm() {
   const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState('');
   const [securityQuestion, setSecurityQuestion] = useState('');
   const [securityAnswer, setSecurityAnswer] = useState('');
+  const [securityQuestion2, setSecurityQuestion2] = useState('');
+  const [securityAnswer2, setSecurityAnswer2] = useState('');
+  const [securityQuestion3, setSecurityQuestion3] = useState('');
+  const [securityAnswer3, setSecurityAnswer3] = useState('');
   const [resetStep, setResetStep] = useState<'username' | 'question' | 'reset'>('username');
   const [storedQuestion, setStoredQuestion] = useState('');
   const [resetUsername, setResetUsername] = useState('');
@@ -193,6 +203,8 @@ export function AuthForm() {
     if (username.trim().length < 3) { setError(t.usernameMinLength); return; }
     if (password.length < 6) { setError(t.passwordMinLength); return; }
     if (isRegister) {
+      if (!firstName.trim()) { setError(isArabic ? 'الاسم الأول مطلوب' : 'First name is required'); return; }
+      if (!lastName.trim()) { setError(isArabic ? 'اسم العائلة مطلوب' : 'Last name is required'); return; }
       if (!email.trim()) { setError(t.emailRequired); return; }
       if (!email.includes('@')) { setError(t.invalidEmail); return; }
       if (!age.trim()) { setError(t.ageRequired); return; }
@@ -201,6 +213,8 @@ export function AuthForm() {
       if (!gender) { setError(t.genderRequired); return; }
       if (!securityQuestion) { setError(t.securityQuestionRequired); return; }
       if (!securityAnswer.trim()) { setError(t.securityAnswerRequired); return; }
+      if (!securityQuestion2) { setError(isArabic ? 'سؤال الأمان الثاني مطلوب' : 'Second security question required'); return; }
+      if (!securityAnswer2.trim()) { setError(isArabic ? 'إجابة السؤال الثاني مطلوبة' : 'Second answer required'); return; }
       if (password !== confirmPassword) { setError(t.passwordMismatch); return; }
     }
     setLoading(true);
@@ -223,7 +237,19 @@ export function AuthForm() {
     } else {
       const result = await signUp(username, password, email, age, gender, securityQuestion, securityAnswer);
       if (result.error) { setError(result.error.message || t.operationFailed); setLoading(false); return; }
-      else { router.push('/'); return; }
+      // Save extra profile data
+      const { data: { user: newUser } } = await supabase.auth.getUser();
+      if (newUser) {
+        await supabase.from('profiles').upsert({
+          id: newUser.id,
+          display_name: `${firstName.trim()} ${lastName.trim()}`,
+          security_question_2: securityQuestion2,
+          security_answer_2: securityAnswer2,
+          security_question_3: securityQuestion3 || null,
+          security_answer_3: securityAnswer3 || null,
+        });
+      }
+      router.push('/'); return;
     }
     setLoading(false);
   };
@@ -335,12 +361,43 @@ export function AuthForm() {
 
                 {isRegister && !showForgotPassword && (
                   <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label style={{color: '#7a5c1a'}}>{isArabic ? 'الاسم الأول' : isFrench ? 'Prénom' : 'First name'} <span className="text-red-400">*</span></Label>
+                        <Input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder={isArabic ? 'محمد' : 'John'} style={{borderColor: 'rgba(196,163,90,0.4)'}} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label style={{color: '#7a5c1a'}}>{isArabic ? 'اسم العائلة' : isFrench ? 'Nom' : 'Last name'} <span className="text-red-400">*</span></Label>
+                        <Input value={lastName} onChange={e => setLastName(e.target.value)} placeholder={isArabic ? 'القلاف' : 'Smith'} style={{borderColor: 'rgba(196,163,90,0.4)'}} />
+                      </div>
+                    </div>
                     <div className="space-y-2"><Label style={{color: '#7a5c1a'}}>{t.confirmPassword}</Label><Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} dir="ltr" autoComplete="new-password" style={{borderColor: 'rgba(196,163,90,0.4)'}} /></div>
                     <div className="space-y-2"><Label style={{color: '#7a5c1a'}}>{t.email}</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@domain.com" dir="ltr" style={{borderColor: 'rgba(196,163,90,0.4)'}} /></div>
                     <div className="space-y-2"><Label style={{color: '#7a5c1a'}}>{t.age}</Label><Input type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="25" dir="ltr" min="10" max="120" style={{borderColor: 'rgba(196,163,90,0.4)'}} /></div>
                     <div className="space-y-2"><Label style={{color: '#7a5c1a'}}>{t.gender}</Label><RadioGroup value={gender} onValueChange={setGender} className="flex gap-6"><div className="flex items-center gap-2"><RadioGroupItem value="male" id="male" /><Label htmlFor="male" className="cursor-pointer" style={{color: '#7a5c1a'}}>{t.male}</Label></div><div className="flex items-center gap-2"><RadioGroupItem value="female" id="female" /><Label htmlFor="female" className="cursor-pointer" style={{color: '#7a5c1a'}}>{t.female}</Label></div></RadioGroup></div>
-                    <div className="space-y-2"><Label style={{color: '#7a5c1a'}}>{t.securityQuestion}</Label><Select value={securityQuestion} onValueChange={setSecurityQuestion}><SelectTrigger style={{borderColor: 'rgba(196,163,90,0.4)'}}><SelectValue placeholder={t.selectQuestion} /></SelectTrigger><SelectContent>{SECURITY_QUESTIONS.map((q) => (<SelectItem key={q.id} value={q.id}>{isArabic ? q.questionAr : isFrench ? q.questionFr : q.questionEn}</SelectItem>))}</SelectContent></Select></div>
-                    <div className="space-y-2"><Label style={{color: '#7a5c1a'}}>{t.securityAnswer}</Label><Input value={securityAnswer} onChange={(e) => setSecurityAnswer(e.target.value)} style={{borderColor: 'rgba(196,163,90,0.4)'}} /></div>
+
+                    {/* Security Questions - 3 with 2 mandatory */}
+                    <div className="space-y-3 rounded-xl p-3" style={{background: 'rgba(196,163,90,0.06)', border: '1px solid rgba(196,163,90,0.2)'}}>
+                      <p className="text-xs font-bold" style={{color: '#7a5c1a'}}>{isArabic ? '🔐 أسئلة الأمان (الأول والثاني إجباري)' : '🔐 Security Questions (1st & 2nd required)'}</p>
+
+                      <div className="space-y-1.5">
+                        <Label style={{color: '#7a5c1a', fontSize: '12px'}}>{isArabic ? 'السؤال الأول *' : '1st Question *'}</Label>
+                        <Select value={securityQuestion} onValueChange={setSecurityQuestion}><SelectTrigger style={{borderColor: 'rgba(196,163,90,0.4)', fontSize: '12px'}}><SelectValue placeholder={t.selectQuestion} /></SelectTrigger><SelectContent>{SECURITY_QUESTIONS.map((q) => (<SelectItem key={q.id} value={q.id}>{isArabic ? q.questionAr : isFrench ? q.questionFr : q.questionEn}</SelectItem>))}</SelectContent></Select>
+                        <Input value={securityAnswer} onChange={(e) => setSecurityAnswer(e.target.value)} placeholder={isArabic ? 'الإجابة...' : 'Answer...'} style={{borderColor: 'rgba(196,163,90,0.4)', fontSize: '12px'}} />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label style={{color: '#7a5c1a', fontSize: '12px'}}>{isArabic ? 'السؤال الثاني *' : '2nd Question *'}</Label>
+                        <Select value={securityQuestion2} onValueChange={setSecurityQuestion2}><SelectTrigger style={{borderColor: 'rgba(196,163,90,0.4)', fontSize: '12px'}}><SelectValue placeholder={t.selectQuestion} /></SelectTrigger><SelectContent>{SECURITY_QUESTIONS.filter(q => q.id !== securityQuestion).map((q) => (<SelectItem key={q.id} value={q.id}>{isArabic ? q.questionAr : isFrench ? q.questionFr : q.questionEn}</SelectItem>))}</SelectContent></Select>
+                        <Input value={securityAnswer2} onChange={(e) => setSecurityAnswer2(e.target.value)} placeholder={isArabic ? 'الإجابة...' : 'Answer...'} style={{borderColor: 'rgba(196,163,90,0.4)', fontSize: '12px'}} />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label style={{color: 'rgba(122,92,26,0.7)', fontSize: '12px'}}>{isArabic ? 'السؤال الثالث (اختياري)' : '3rd Question (optional)'}</Label>
+                        <Select value={securityQuestion3} onValueChange={setSecurityQuestion3}><SelectTrigger style={{borderColor: 'rgba(196,163,90,0.3)', fontSize: '12px'}}><SelectValue placeholder={t.selectQuestion} /></SelectTrigger><SelectContent>{SECURITY_QUESTIONS.filter(q => q.id !== securityQuestion && q.id !== securityQuestion2).map((q) => (<SelectItem key={q.id} value={q.id}>{isArabic ? q.questionAr : isFrench ? q.questionFr : q.questionEn}</SelectItem>))}</SelectContent></Select>
+                        {securityQuestion3 && <Input value={securityAnswer3} onChange={(e) => setSecurityAnswer3(e.target.value)} placeholder={isArabic ? 'الإجابة...' : 'Answer...'} style={{borderColor: 'rgba(196,163,90,0.3)', fontSize: '12px'}} />}
+                      </div>
+                    </div>
                   </>
                 )}
 
