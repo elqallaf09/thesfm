@@ -398,7 +398,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     adviceTitle: isArabic ? 'نصيحتنا لك' : 'Our advice to you',
     adviceDesc: isArabic ? 'نصائح مالية مخصصة بناءً على مدخولك' : 'Personalized financial tips based on your income',
     randomAdvice: isArabic ? 'احصل على نصيحة عشوائية' : 'Get a random tip',
-    print: isArabic ? 'إنشاء تقرير PDF' : isFrench ? 'Créer PDF' : 'Create PDF Report',
+    print: isArabic ? 'إنشاء تقرير PDF' : 'Create PDF Report',
     reset: isArabic ? 'إعادة تعيين' : 'Reset',
     footer: isArabic ? 'المدير المالي الذكي - يساعدك على اتخاذ قرارات مالية أوضح' : 'Smart Financial Manager - helping you make clearer financial decisions',
     tickerTitle: isArabic ? 'مؤشرات الأسواق' : 'Market watch',
