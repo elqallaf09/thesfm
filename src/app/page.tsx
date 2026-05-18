@@ -428,6 +428,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   const [manualInvestment, setManualInvestment] = useState<string>('');
   const [includeCharity, setIncludeCharity] = useState<boolean>(false);
   const [showAdvice, setShowAdvice] = useState<boolean>(false);
+  const [smartPanel, setSmartPanel] = useState<string>('');
+  const [smartText, setSmartText] = useState<string>('');
 
   const [selectedCurrency, setSelectedCurrency] = useState<string>('KWD');
   const [tickerCategory, setTickerCategory] = useState<TickerCategory>('gulf');
@@ -573,6 +575,89 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   };
 
   const handlePrint = () => window.print();
+
+  const runSmartAnalysis = (type: string) => {
+    if (smartPanel === type) { setSmartPanel(''); setSmartText(''); return; }
+    setSmartPanel(type);
+    const cur = getCurrentCurrency().symbol;
+    const sr = totalIncome > 0 ? breakdown.savings / totalIncome * 100 : 0;
+    const er = totalIncome > 0 ? breakdown.expenses / totalIncome * 100 : 0;
+    const ir = totalIncome > 0 ? breakdown.investment / totalIncome * 100 : 0;
+    const ms = breakdown.savings + breakdown.investment;
+    const score = Math.min(100, Math.round((sr>=20?30:sr>=10?20:10)+(er<=50?25:er<=65?15:5)+(ir>=10?25:ir>=5?15:5)+(goals.length>0?10:0)+(expenseItems.length>0?10:0)));
+    if (type === 'analysis') {
+      setSmartText([
+        '📊 التحليل المالي الشامل',
+        '━━━━━━━━━━━━━━━━━━━━',
+        '',
+        `💰 الدخل الشهري: ${formatCurrency(totalIncome)} ${cur}`,
+        '',
+        '📈 توزيع دخلك:',
+        `  • المصروفات: ${formatCurrency(breakdown.expenses)} (${er.toFixed(0)}%) ${er>65?'⚠️ مرتفعة':'✅ معقولة'}`,
+        `  • المدخرات: ${formatCurrency(breakdown.savings)} (${sr.toFixed(0)}%) ${sr>=20?'✅ ممتازة':sr>=10?'👍 جيدة':'⚠️ منخفضة'}`,
+        `  • الاستثمار: ${formatCurrency(breakdown.investment)} (${ir.toFixed(0)}%) ${ir>=10?'✅ صحي':'💡 يحتاج زيادة'}`,
+        '',
+        '🎯 التوصيات:',
+        sr<10 ? `  • ارفع ادخارك إلى 10% على الأقل (+${formatCurrency(totalIncome*0.1-breakdown.savings)} ${cur})` : '',
+        er>65 ? `  • قلل مصروفاتك بـ ${formatCurrency(breakdown.expenses-totalIncome*0.6)} ${cur} شهرياً` : '',
+        ir===0 ? `  • ابدأ باستثمار 5% من دخلك = ${formatCurrency(totalIncome*0.05)} ${cur}/شهر` : '',
+        goals.length===0 ? '  • أضف أهدافاً مالية لتتبع تقدمك' : `  • لديك ${goals.length} هدف - ${ms>0?'متوقع تحقيقها خلال '+Math.ceil((goals.reduce((s,g)=>s+(parseFloat(g.amount.replace(/[^\d.]/g,''))||0),0))/ms)+' شهر':'ابدأ الادخار'}`,
+        '',
+        `⚡ الصحة المالية: ${score}/100 ${score>=75?'ممتاز 🌟':score>=50?'جيد 👍':'يحتاج تحسين ⚠️'}`,
+      ].filter(Boolean).join('\n'));
+    } else if (type === 'assessment') {
+      setSmartText([
+        '📊 تقييم وضعك المالي',
+        '━━━━━━━━━━━━━━━━━━━━',
+        '',
+        `🏆 التقييم الكلي: ${score}/100`,
+        '',
+        '✅ نقاط قوتك:',
+        sr>=10 ? `  • ادخار جيد ${sr.toFixed(0)}%` : '',
+        ir>0 ? `  • استثمار نشط ${ir.toFixed(0)}%` : '',
+        goals.length>0 ? `  • ${goals.length} هدف مالي محدد` : '',
+        er<=60 ? `  • نسبة إنفاق معقولة ${er.toFixed(0)}%` : '',
+        totalIncome>0 ? '' : '  • أدخل بياناتك للحصول على تقييم دقيق',
+        '',
+        '⚠️ نقاط الضعف:',
+        sr<10 ? `  • الادخار أقل من المثالي (هدف: 20%)` : '',
+        ir===0 ? '  • لا يوجد استثمار' : '',
+        goals.length===0 ? '  • لا توجد أهداف مالية' : '',
+        er>65 ? `  • المصروفات مرتفعة (${er.toFixed(0)}%)` : '',
+        '',
+        '🚀 خطة التحسين:',
+        `  1. ${sr<20?`زد ادخارك بـ 2% كل شهر`:'حافظ على ادخارك الممتاز'}`,
+        `  2. ${ir<10?`خصص 5-10% للاستثمار`:'نوّع محفظتك الاستثمارية'}`,
+        `  3. ${goals.length===0?'أضف أهدافاً مالية واضحة':'راجع تقدمك نحو أهدافك شهرياً'}`,
+      ].filter(Boolean).join('\n'));
+    } else if (type === 'savingsplan') {
+      const projects18 = ms>0?Math.ceil(1500/ms):0;
+      const projects5k = ms>0?Math.ceil(5000/ms):0;
+      const projects15k = ms>0?Math.ceil(15000/ms):0;
+      setSmartText([
+        '💡 خطة التوفير الذكية',
+        '━━━━━━━━━━━━━━━━━━━━',
+        '',
+        `📅 توفيرك الحالي: ${formatCurrency(ms)} ${cur}/شهر`,
+        `📆 توقع سنوي: ${formatCurrency(ms*12)} ${cur}`,
+        '',
+        '🎯 يمكنك تحقيق:',
+        ms>0?`  • متجر إلكتروني: ${projects18} شهر`:'',
+        ms>0?`  • محل تجاري: ${projects5k} شهر`:'',
+        ms>0?`  • كافيه أو مطعم: ${projects15k} شهر`:'',
+        '',
+        goals.length>0 ? '🏆 أهدافك المالية:' : '',
+        ...goals.filter(g=>g.amount).map(g=>{
+          const amt = parseFloat(g.amount.replace(/[^\d.]/g,''))||0;
+          return ms>0&&amt>0?`  • ${g.goal}: ${Math.ceil(amt/ms)} شهر`:`  • ${g.goal}: حدد مبلغ الادخار`;
+        }),
+        '',
+        '⭐ نصيحة ذهبية:',
+        `  لو زدت ادخارك 5% = +${formatCurrency(totalIncome*0.05)} ${cur}/شهر`,
+        ms>0?`  تختصر الوقت بـ ~20% لكل هدف!`:'  ابدأ بأي مبلغ ولو صغير.',
+      ].filter(l=>l!==undefined).join('\n'));
+    }
+  };
 
   const handleReset = () => {
     // Only reset calculator settings - NOT saved items or goals
@@ -1351,10 +1436,49 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
           );
         })()}
 
-        {/* Actions */}
-        <div className="flex flex-wrap gap-4 justify-center">
-          <Button onClick={handlePrint} variant="outline" size="lg" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'}}><Printer className="w-5 h-5 ms-2" />{text.print}</Button>
-          <Button onClick={handleReset} variant="outline" size="lg" style={{borderColor: 'rgba(196,163,90,0.3)', color: 'rgba(122,92,26,0.6)'}}><RefreshCw className="w-5 h-5 ms-2" />{text.reset}</Button>
+        {/* Smart Actions */}
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Button onClick={handlePrint} size="lg" className="h-14 flex-col gap-1 font-bold" style={{background:'#7f5c48',color:'white',boxShadow:'0 4px 16px rgba(127,92,72,0.3)'}}>
+              <Printer className="w-5 h-5"/>
+              <span className="text-xs">{isArabic?'طباعة':'Print'}</span>
+            </Button>
+            {[
+              {id:'analysis', icon:'🧠', label: isArabic?'تحليل ذكي':'Analysis'},
+              {id:'assessment', icon:'📊', label: isArabic?'تقييم مالي':'Assessment'},
+              {id:'savingsplan', icon:'💡', label: isArabic?'خطة توفير':'Savings Plan'},
+            ].map(btn => (
+              <Button key={btn.id} onClick={() => runSmartAnalysis(btn.id)} size="lg" variant="outline"
+                className="h-14 flex-col gap-1 font-bold transition-all"
+                style={{borderColor:'rgba(196,163,90,0.5)',color:'#7a5c1a',background:smartPanel===btn.id?'rgba(127,92,72,0.1)':'white',transform:smartPanel===btn.id?'scale(0.97)':'scale(1)'}}>
+                <span className="text-xl">{btn.icon}</span>
+                <span className="text-xs">{btn.label}</span>
+              </Button>
+            ))}
+          </div>
+
+          {/* Result Panel */}
+          {smartPanel && smartText && (
+            <Card style={{border:'1px solid rgba(196,163,90,0.35)',background:'rgba(255,253,245,0.98)',boxShadow:'0 8px 30px rgba(196,163,90,0.12)'}}>
+              <CardHeader className="pb-3 rounded-t-lg" style={{background:'linear-gradient(135deg,#7f5c48,#5c3d2a)'}}>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-white text-base">
+                    {smartPanel==='analysis'&&(isArabic?'🧠 التحليل المالي':'🧠 Financial Analysis')}
+                    {smartPanel==='assessment'&&(isArabic?'📊 التقييم المالي':'📊 Assessment')}
+                    {smartPanel==='savingsplan'&&(isArabic?'💡 خطة التوفير':'💡 Savings Plan')}
+                  </CardTitle>
+                  <button onClick={()=>{setSmartPanel('');setSmartText('');}} className="text-white/70 hover:text-white text-xl font-bold transition-colors">×</button>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans" style={{color:'rgba(122,92,26,0.9)'}}>{smartText}</pre>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="flex justify-center">
+            <Button onClick={handleReset} variant="outline" style={{borderColor:'rgba(196,163,90,0.3)',color:'rgba(122,92,26,0.5)'}}><RefreshCw className="w-4 h-4 ms-2"/>{text.reset}</Button>
+          </div>
         </div>
 
         <div className="mt-8 pt-8 text-center text-sm" style={{borderTop: '1px solid rgba(196,163,90,0.3)'}}>
