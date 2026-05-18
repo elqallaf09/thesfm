@@ -1086,6 +1086,31 @@ ${goals.length > 0 ? '\n🏆 أهدافك المالية:\n' + goals.filter(g =>
     return suggestion + (isArabic ? `لديك فائض شهري قدره ${formatCurrency(savingsPerMonth - monthlyRequired)}.` : `Monthly surplus: ${formatCurrency(savingsPerMonth - monthlyRequired)}.`);
   };
 
+
+  // Financial Health calculations
+  const fhSavingsRate = totalIncome > 0 ? breakdown.savings / totalIncome * 100 : 0;
+  const fhExpenseRate = totalIncome > 0 ? breakdown.expenses / totalIncome * 100 : 0;
+  const fhInvestRate = totalIncome > 0 ? breakdown.investment / totalIncome * 100 : 0;
+  const fhScore = Math.min(100, Math.round(
+    (fhSavingsRate >= 20 ? 30 : fhSavingsRate >= 10 ? 20 : 10) +
+    (fhExpenseRate <= 50 ? 25 : fhExpenseRate <= 65 ? 15 : 5) +
+    (fhInvestRate >= 10 ? 25 : fhInvestRate >= 5 ? 15 : 0) +
+    (goals.length > 0 ? 10 : 0) + (expenseItems.length > 0 ? 10 : 0)
+  ));
+  const fhScoreColor = fhScore >= 75 ? '#2d8a4e' : fhScore >= 50 ? '#c4a35a' : '#c0392b';
+  const fhScoreLabel = fhScore >= 75 ? (isArabic ? 'وضعك المالي ممتاز 🌟' : 'Excellent 🌟') : fhScore >= 50 ? (isArabic ? 'وضعك المالي جيد 👍' : 'Good 👍') : (isArabic ? 'يحتاج تحسين ⚠️' : 'Needs Work ⚠️');
+  const fhMonths = breakdown.expenses > 0 ? Math.round(totalIncome / breakdown.expenses) : 0;
+  const fhCircumference = 2 * Math.PI * 40;
+  const fhStrokeDash = (fhScore / 100) * fhCircumference;
+  const fhInsights: string[] = [];
+  if (fhSavingsRate >= 20) fhInsights.push(isArabic ? '✅ معدل ادخارك ممتاز (' + fhSavingsRate.toFixed(0) + '%)' : '✅ Great savings rate');
+  else if (fhSavingsRate < 10) fhInsights.push(isArabic ? '⚠️ ادخارك أقل من 10% - حاول زيادته' : '⚠️ Savings below 10%');
+  if (fhInvestRate >= 10) fhInsights.push(isArabic ? '📈 نسبة استثمار صحية (' + fhInvestRate.toFixed(0) + '%)' : '📈 Healthy investment rate');
+  else if (fhInvestRate === 0) fhInsights.push(isArabic ? '💡 لا توجد استثمارات - فكر في البدء' : '💡 No investments - consider starting');
+  if (fhExpenseRate > 65) fhInsights.push(isArabic ? '🔴 المصروفات عالية - راجعها' : '🔴 High expenses - review them');
+  if (goals.length > 0) fhInsights.push(isArabic ? '🎯 لديك أهداف مالية - ممتاز!' : '🎯 You have financial goals!');
+  else fhInsights.push(isArabic ? '🎯 أضف أهدافاً مالية لتتبع تقدمك' : '🎯 Add financial goals to track progress');
+
   return (
     <>
     <style>{`
@@ -1743,30 +1768,6 @@ ${goals.length > 0 ? '\n🏆 أهدافك المالية:\n' + goals.filter(g =>
                       const feasible = months > 0 && months <= 36;
                       const unit = project.durationUnit === 'year' ? (isArabic ? 'سنة' : 'yr') : project.durationUnit === 'day' ? (isArabic ? 'يوم' : 'day') : (isArabic ? 'شهر' : 'mo');
                     
-  // Financial Health calculations
-  const fhSavingsRate = totalIncome > 0 ? breakdown.savings / totalIncome * 100 : 0;
-  const fhExpenseRate = totalIncome > 0 ? breakdown.expenses / totalIncome * 100 : 0;
-  const fhInvestRate = totalIncome > 0 ? breakdown.investment / totalIncome * 100 : 0;
-  const fhScore = Math.min(100, Math.round(
-    (fhSavingsRate >= 20 ? 30 : fhSavingsRate >= 10 ? 20 : 10) +
-    (fhExpenseRate <= 50 ? 25 : fhExpenseRate <= 65 ? 15 : 5) +
-    (fhInvestRate >= 10 ? 25 : fhInvestRate >= 5 ? 15 : 0) +
-    (goals.length > 0 ? 10 : 0) + (expenseItems.length > 0 ? 10 : 0)
-  ));
-  const fhScoreColor = fhScore >= 75 ? '#2d8a4e' : fhScore >= 50 ? '#c4a35a' : '#c0392b';
-  const fhScoreLabel = fhScore >= 75 ? (isArabic ? 'وضعك المالي ممتاز 🌟' : 'Excellent 🌟') : fhScore >= 50 ? (isArabic ? 'وضعك المالي جيد 👍' : 'Good 👍') : (isArabic ? 'يحتاج تحسين ⚠️' : 'Needs Work ⚠️');
-  const fhMonths = breakdown.expenses > 0 ? Math.round(totalIncome / breakdown.expenses) : 0;
-  const fhCircumference = 2 * Math.PI * 40;
-  const fhStrokeDash = (fhScore / 100) * fhCircumference;
-  const fhInsights: string[] = [];
-  if (fhSavingsRate >= 20) fhInsights.push(isArabic ? '✅ معدل ادخارك ممتاز (' + fhSavingsRate.toFixed(0) + '%)' : '✅ Great savings rate');
-  else if (fhSavingsRate < 10) fhInsights.push(isArabic ? '⚠️ ادخارك أقل من 10% - حاول زيادته' : '⚠️ Savings below 10%');
-  if (fhInvestRate >= 10) fhInsights.push(isArabic ? '📈 نسبة استثمار صحية (' + fhInvestRate.toFixed(0) + '%)' : '📈 Healthy investment rate');
-  else if (fhInvestRate === 0) fhInsights.push(isArabic ? '💡 لا توجد استثمارات - فكر في البدء' : '💡 No investments - consider starting');
-  if (fhExpenseRate > 65) fhInsights.push(isArabic ? '🔴 المصروفات عالية - راجعها' : '🔴 High expenses - review them');
-  if (goals.length > 0) fhInsights.push(isArabic ? '🎯 لديك أهداف مالية - ممتاز!' : '🎯 You have financial goals!');
-  else fhInsights.push(isArabic ? '🎯 أضف أهدافاً مالية لتتبع تقدمك' : '🎯 Add financial goals to track progress');
-
   return (
                         <div key={project.id} className="flex items-center gap-3 p-3 rounded-xl" style={{background: feasible ? 'rgba(45,138,78,0.06)' : months > 0 ? 'rgba(196,163,90,0.06)' : 'rgba(196,163,90,0.04)', border: `0.5px solid ${feasible ? 'rgba(45,138,78,0.2)' : 'rgba(196,163,90,0.2)'}`}}>
                           <span className="text-xl">{project.emoji}</span>
