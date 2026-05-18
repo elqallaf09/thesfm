@@ -705,6 +705,14 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     <>
     <style>{`
       @keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}.ticker-scroll{animation:ticker 30s linear infinite;display:flex;width:max-content;}
+      @keyframes ringFill{from{stroke-dasharray:0 226}to{stroke-dasharray:var(--rd,0) 226}}
+      @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes pulse-dot{0%,100%{box-shadow:0 0 0 0 currentColor}50%{box-shadow:0 0 0 4px rgba(196,163,90,0.2)}}
+      .ring-anim{animation:ringFill 1.4s cubic-bezier(0.4,0,0.2,1) 0.2s both}
+      .kpi-card{animation:fadeUp 0.5s ease both}.kpi-card:nth-child(1){animation-delay:.05s}.kpi-card:nth-child(2){animation-delay:.15s}.kpi-card:nth-child(3){animation-delay:.25s}.kpi-card:nth-child(4){animation-delay:.35s}
+      .ai-ins{animation:fadeUp 0.4s ease both}.ai-ins:nth-child(1){animation-delay:.1s}.ai-ins:nth-child(2){animation-delay:.2s}.ai-ins:nth-child(3){animation-delay:.3s}.ai-ins:nth-child(4){animation-delay:.4s}
+      .score-val{animation:fadeUp 0.6s ease 0.4s both}
+      .kpi-card:hover{transform:translateY(-3px)!important;box-shadow:0 12px 32px rgba(196,163,90,0.18)!important}
       @media print {
         body { background: white !important; }
         .no-print { display: none !important; }
@@ -1054,8 +1062,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 sub: isArabic ? 'تقييم شامل' : 'overall rating',
               },
             ].map((kpi, i) => (
-              <div key={i} className="rounded-2xl p-4 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg cursor-default"
-                style={{background: 'rgba(255,253,245,0.98)', border: '1px solid rgba(196,163,90,0.25)', boxShadow: '0 4px 20px rgba(196,163,90,0.08)'}}>
+              <div key={i} className="kpi-card rounded-2xl p-4 cursor-default"
+                style={{background: 'rgba(255,253,245,0.98)', border: '1px solid rgba(196,163,90,0.25)', boxShadow: '0 4px 20px rgba(196,163,90,0.08)', transition: 'all 0.2s ease'}}>
                 <div className="flex items-start justify-between mb-2">
                   <span className="text-2xl">{kpi.icon}</span>
                   <div className="w-2 h-2 rounded-full mt-1" style={{background: kpi.color, boxShadow: `0 0 8px ${kpi.color}`}} />
@@ -1310,10 +1318,11 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                     <svg width="80" height="80" viewBox="0 0 80 80" className="-rotate-90">
                       <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="7"/>
                       <circle cx="40" cy="40" r="36" fill="none" stroke={scoreColor} strokeWidth="7"
-                        strokeDasharray={`${dash} ${c}`} strokeLinecap="round"/>
+                        strokeDasharray={`${dash} ${c}`} strokeLinecap="round"
+                        className="ring-anim" style={{'--rd': `${dash}`} as React.CSSProperties}/>
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-xl font-bold text-white">{score}</span>
+                      <span className="text-xl font-bold text-white score-val">{score}</span>
                       <span className="text-xs text-white/50">/100</span>
                     </div>
                   </div>
@@ -1321,7 +1330,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               </div>
               <CardContent className="pt-4 space-y-2">
                 {insights.map((ins, i) => (
-                  <div key={i} className="flex items-start gap-2 p-2.5 rounded-xl text-sm"
+                  <div key={i} className="ai-ins flex items-start gap-2 p-2.5 rounded-xl text-sm"
                     style={{background: ins.good?'rgba(45,138,78,0.05)':'rgba(196,163,90,0.05)', border:`0.5px solid ${ins.good?'rgba(45,138,78,0.15)':'rgba(196,163,90,0.2)'}`}}>
                     <span className="shrink-0">{ins.t}</span>
                     <span style={{color:'rgba(122,92,26,0.85)'}}>{ins.msg}</span>
