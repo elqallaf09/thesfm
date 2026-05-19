@@ -958,14 +958,14 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               )}
             </div>
           </div>
-          <div className="overflow-hidden py-2.5" style={{background: '#7f5c48', borderTop: '1px solid rgba(255,255,255,0.1)'}}>
+          <div className="overflow-hidden py-2.5" style={{background: 'rgba(20,13,30,0.95)', borderTop: '1px solid rgba(196,163,90,0.2)'}}>
             <div className="ticker-scroll items-center gap-3 px-4">
               {[...tickerItems, ...tickerItems, ...tickerItems].map((item, index) => (
                 <div key={`${item.nameEn}-${index}`} className="flex shrink-0 items-center gap-2.5 rounded-full px-3 py-1.5 text-sm mx-1.5"
-                  style={{background: 'rgba(255,255,255,0.12)', border: '0.5px solid rgba(255,255,255,0.2)'}}>
-                  <span className="font-bold" style={{color: '#f0d080'}}>{isArabic ? item.nameAr : item.nameEn}</span>
-                  <span className="font-mono text-white/90 text-xs" dir="ltr">{item.value}</span>
-                  <span className={`font-mono text-xs font-bold ${item.positive ? 'text-emerald-300' : 'text-rose-300'}`} dir="ltr">{item.change}</span>
+                  style={{background: 'rgba(196,163,90,0.12)', border: '0.5px solid rgba(196,163,90,0.3)'}}>
+                  <span className="font-bold" style={{color: '#c4a35a'}}>{isArabic ? item.nameAr : item.nameEn}</span>
+                  <span className="font-mono text-sm" style={{color: '#e2d5b8'}} dir="ltr">{item.value}</span>
+                  <span className={`font-mono text-xs font-bold ${item.positive ? 'text-emerald-400' : 'text-rose-400'}`} dir="ltr">{item.change}</span>
                 </div>
               ))}
             </div>
@@ -1031,8 +1031,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
         {/* Profile Card - only for logged in */}
         {showProfile && !isGuest && (
-          <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
-            <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
+          <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 2px 8px rgba(196,163,90,0.06), 0 4px 20px rgba(196,163,90,0.09), 0 1px 3px rgba(0,0,0,0.04)'}}>
+            <CardHeader className="rounded-t-xl pb-3" style={{background: 'linear-gradient(135deg, rgba(196,163,90,0.07) 0%, rgba(196,163,90,0.04) 100%)', borderBottom: '1px solid rgba(196,163,90,0.12)'}}>
               <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><User className="w-6 h-6" />{text.profileTitle}</CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
@@ -1088,8 +1088,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         )}
 
         {/* Salary Input */}
-        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
-          <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
+        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 2px 8px rgba(196,163,90,0.06), 0 4px 20px rgba(196,163,90,0.09), 0 1px 3px rgba(0,0,0,0.04)'}}>
+          <CardHeader className="rounded-t-xl pb-3" style={{background: 'linear-gradient(135deg, rgba(196,163,90,0.07) 0%, rgba(196,163,90,0.04) 100%)', borderBottom: '1px solid rgba(196,163,90,0.12)'}}>
             <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><Coins className="w-6 h-6" />{text.salaryTitle}</CardTitle>
             <CardDescription style={{color: 'rgba(122,92,26,0.6)'}}>{text.salaryDesc}</CardDescription>
           </CardHeader>
@@ -1169,8 +1169,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         </Card>
 
         {/* Charity */}
-        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
-          <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
+        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 2px 8px rgba(196,163,90,0.06), 0 4px 20px rgba(196,163,90,0.09), 0 1px 3px rgba(0,0,0,0.04)'}}>
+          <CardHeader className="rounded-t-xl pb-3" style={{background: 'linear-gradient(135deg, rgba(196,163,90,0.07) 0%, rgba(196,163,90,0.04) 100%)', borderBottom: '1px solid rgba(196,163,90,0.12)'}}>
             <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><Heart className="w-6 h-6" />{text.charityTitle}</CardTitle>
             <CardDescription style={{color: 'rgba(122,92,26,0.6)'}}>{text.charityDesc}</CardDescription>
           </CardHeader>
@@ -1250,23 +1250,31 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 sub: isArabic ? 'تقييم شامل' : 'overall rating',
               },
             ].map((kpi, i) => (
-              <div key={i} className="kpi-card rounded-2xl p-4 cursor-default"
-                style={{background: 'rgba(255,253,245,0.98)', border: '1px solid rgba(196,163,90,0.25)', boxShadow: '0 4px 20px rgba(196,163,90,0.08)', transition: 'all 0.2s ease'}}>
-                <div className="flex items-start justify-between mb-2">
-                  <span className="text-2xl">{kpi.icon}</span>
-                  <div className="w-2 h-2 rounded-full mt-1" style={{background: kpi.color, boxShadow: `0 0 8px ${kpi.color}`}} />
+              <div key={i} className="sfm-card-hover sfm-fade-up relative rounded-2xl p-4 cursor-default overflow-hidden"
+                style={{
+                  background: 'rgba(255,253,245,0.98)',
+                  border: '1px solid rgba(196,163,90,0.2)',
+                  boxShadow: '0 2px 12px rgba(196,163,90,0.07)',
+                  animationDelay: `${i * 0.07}s`,
+                  animationFillMode: 'both',
+                }}>
+                <div className="absolute top-0 right-0 w-14 h-14 rounded-full opacity-10 pointer-events-none"
+                  style={{background: kpi.color, transform: 'translate(30%, -30%)', filter: 'blur(16px)'}}/>
+                <div className="flex items-start justify-between mb-2.5">
+                  <span className="text-xl">{kpi.icon}</span>
+                  <div className="w-1.5 h-1.5 rounded-full mt-1.5" style={{background: kpi.color}}/>
                 </div>
-                <p className="text-xs mb-1" style={{color: 'rgba(122,92,26,0.55)'}}>{kpi.label}</p>
-                <p className="text-xl font-bold leading-tight" style={{color: kpi.color}}>{kpi.value}</p>
-                <p className="text-xs mt-1" style={{color: 'rgba(122,92,26,0.4)'}}>{kpi.sub}</p>
+                <p className="text-xs mb-1 font-medium" style={{color: 'rgba(122,92,26,0.5)'}}>{kpi.label}</p>
+                <p className="text-lg font-bold leading-tight" style={{color: kpi.color}}>{kpi.value}</p>
+                <p className="text-xs mt-1" style={{color: 'rgba(122,92,26,0.35)'}}>{kpi.sub}</p>
               </div>
             ))}
           </div>
         )}
 
         {/* Salary Details */}
-        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
-          <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
+        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 2px 8px rgba(196,163,90,0.06), 0 4px 20px rgba(196,163,90,0.09), 0 1px 3px rgba(0,0,0,0.04)'}}>
+          <CardHeader className="rounded-t-xl pb-3" style={{background: 'linear-gradient(135deg, rgba(196,163,90,0.07) 0%, rgba(196,163,90,0.04) 100%)', borderBottom: '1px solid rgba(196,163,90,0.12)'}}>
             <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><Wallet className="w-6 h-6" />{text.salaryDetails}</CardTitle>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
@@ -1311,7 +1319,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               <Button onClick={addSavingsItem} variant="ghost" size="sm" className="w-full mt-2" style={{color: '#7a5c1a'}}><Plus className="w-4 h-4 ms-1" /> {text.addSaving}</Button>
               {savingsExpanded && (
                 <div className="mt-3 space-y-3">
-                  <div className="p-3 rounded-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
+                  <div className="p-3 rounded-lg" style={{background: 'linear-gradient(135deg, rgba(196,163,90,0.07) 0%, rgba(196,163,90,0.04) 100%)', borderBottom: '1px solid rgba(196,163,90,0.12)'}}>
                     <p className="text-xs font-semibold mb-2" style={{color: '#7a5c1a'}}>{text.aiSavings}</p>
                     <div className="flex flex-wrap gap-1">
                       {SAVINGS_EXAMPLES.map((ex, i) => <button key={i} onClick={() => setSavingsItems([...savingsItems, { id: generateId(), name: language === 'ar' ? ex.name : ex.nameEn, amount: '' }])} className="px-2 py-1 text-xs rounded-full" style={{background: 'white', border: '0.5px solid rgba(196,163,90,0.3)', color: '#7a5c1a'}}>{ex.icon} {language === 'ar' ? ex.name : ex.nameEn}</button>)}
@@ -1370,7 +1378,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
         {/* Percentage Calculator */}
         <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 8px 30px rgba(196,163,90,0.1)'}}>
-          <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
+          <CardHeader className="rounded-t-xl pb-3" style={{background: 'linear-gradient(135deg, rgba(196,163,90,0.07) 0%, rgba(196,163,90,0.04) 100%)', borderBottom: '1px solid rgba(196,163,90,0.12)'}}>
             <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}>
               <span style={{fontSize: '22px'}}>%</span>
               {isArabic ? 'حاسبة النسب المئوية' : 'Percentage Calculator'}
@@ -1440,8 +1448,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
 
         {/* Goals */}
-        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 4px 20px rgba(196,163,90,0.1)'}}>
-          <CardHeader className="rounded-t-lg" style={{background: 'rgba(196,163,90,0.08)'}}>
+        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 2px 8px rgba(196,163,90,0.06), 0 4px 20px rgba(196,163,90,0.09), 0 1px 3px rgba(0,0,0,0.04)'}}>
+          <CardHeader className="rounded-t-xl pb-3" style={{background: 'linear-gradient(135deg, rgba(196,163,90,0.07) 0%, rgba(196,163,90,0.04) 100%)', borderBottom: '1px solid rgba(196,163,90,0.12)'}}>
             <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><Target className="w-6 h-6" />{text.goalsTitle}</CardTitle>
             <CardDescription style={{color: 'rgba(122,92,26,0.6)'}}>{text.goalsDesc}</CardDescription>
           </CardHeader>
@@ -1493,16 +1501,16 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
           ];
           return (
             <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', overflow:'hidden', boxShadow:'0 8px 32px rgba(196,163,90,0.12)'}}>
-              <div className="p-5" style={{background:'linear-gradient(135deg, #8b6650 0%, #6b4a35 100%)'}}>
+              <div className="p-5" style={{background:'linear-gradient(135deg, #7f5c48 0%, #5c3d2a 100%)'}}>
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{background:'rgba(240,208,128,0.25)', color:'#f5dc80', border:'1px solid rgba(240,208,128,0.3)'}}>⚡ AI INSIGHTS</span>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'rgba(240,208,128,0.2)', color:'#f0d080', border:'1px solid rgba(240,208,128,0.2)'}}>⚡ AI INSIGHTS</span>
                     </div>
-                    <h2 className="text-xl font-bold" style={{color:'#ffffff', textShadow:'0 1px 3px rgba(0,0,0,0.3)'}}>
+                    <h2 className="text-lg font-bold" style={{color:'#ffffff'}}>
                       {score>=75?(isArabic?'وضعك المالي ممتاز 🌟':'Excellent Health 🌟'):score>=50?(isArabic?'وضعك المالي جيد 👍':'Good Health 👍'):(isArabic?'يحتاج تحسين ⚠️':'Needs Work ⚠️')}
                     </h2>
-                    <p className="text-sm mt-1" style={{color:'rgba(255,255,255,0.75)'}}>
+                    <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.65)'}}>
                       {isArabic?`دخل شهري: ${formatCurrency(totalIncome)} ${getCurrentCurrency().symbol}`:`Monthly: ${formatCurrency(totalIncome)} ${getCurrentCurrency().symbol}`}
                     </p>
                   </div>
@@ -1510,11 +1518,10 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                     <svg width="80" height="80" viewBox="0 0 80 80" className="-rotate-90">
                       <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="8"/>
                       <circle cx="40" cy="40" r="36" fill="none" stroke={scoreColor} strokeWidth="8"
-                        strokeDasharray={`${dash} ${c}`} strokeLinecap="round"
-                        className="ring-anim" style={{'--rd': `${dash}`} as React.CSSProperties}/>
+                        strokeDasharray={`${dash} ${c}`} strokeLinecap="round"/>
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-bold score-val" style={{color:'#ffffff'}}>{score}</span>
+                      <span className="text-2xl font-bold" style={{color:'#ffffff'}}>{score}</span>
                       <span className="text-xs" style={{color:'rgba(255,255,255,0.6)'}}>/100</span>
                     </div>
                   </div>
@@ -1522,10 +1529,10 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               </div>
               <CardContent className="pt-4 space-y-2">
                 {insights.map((ins, i) => (
-                  <div key={i} className="ai-ins flex items-start gap-2 p-2.5 rounded-xl text-sm"
+                  <div key={i} className="flex items-start gap-2 p-2.5 rounded-xl text-sm"
                     style={{background: ins.good?'rgba(45,138,78,0.06)':'rgba(196,163,90,0.06)', border:`1px solid ${ins.good?'rgba(45,138,78,0.18)':'rgba(196,163,90,0.2)'}`}}>
-                    <span className="shrink-0 text-base">{ins.t}</span>
-                    <span style={{color:'#5c3d2a', fontWeight: '500'}}>{ins.msg}</span>
+                    <span className="shrink-0">{ins.t}</span>
+                    <span style={{color:'rgba(92,61,42,0.9)'}}>{ins.msg}</span>
                   </div>
                 ))}
                 <Button onClick={getRandomAdvice} variant="outline" className="w-full mt-2" style={{borderColor:'rgba(196,163,90,0.4)',color:'#7a5c1a'}}>
