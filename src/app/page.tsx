@@ -1711,9 +1711,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             <span className="font-medium" style={{color: '#c4a35a'}}>powered by M.Q</span>
             <span className="w-24 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
           </div>
-        </div>{/* /page content */}
-      </main>{/* /main */}
-    </div>{/* /app wrapper */}
-    </> 
+        </div>
+      </main>
+    </div>
+    </>
   );
 }
