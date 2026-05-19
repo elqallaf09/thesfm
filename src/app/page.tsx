@@ -574,7 +574,108 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     setShowAdvice(true);
   };
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    const cur = getCurrentCurrency().symbol;
+    const date = new Date().toLocaleDateString('ar-SA');
+    const sr = totalIncome > 0 ? (breakdown.savings / totalIncome * 100).toFixed(0) : '0';
+    const er = totalIncome > 0 ? (breakdown.expenses / totalIncome * 100).toFixed(0) : '0';
+    const ir = totalIncome > 0 ? (breakdown.investment / totalIncome * 100).toFixed(0) : '0';
+    const score = Math.min(100, Math.round(
+      (Number(sr)>=20?30:Number(sr)>=10?20:10)+
+      (Number(er)<=50?25:Number(er)<=65?15:5)+
+      (Number(ir)>=10?25:Number(ir)>=5?15:5)+
+      (goals.length>0?10:0)+(expenseItems.length>0?10:0)
+    ));
+    const scoreColor = score>=75?'#2d8a4e':score>=50?'#c4a35a':'#c0392b';
+    const ms = breakdown.savings + breakdown.investment;
+    const yearlyGrowth = formatCurrency(ms * 12);
+    const totalExpActual = expenseItems.reduce((s,i)=>s+(parseFloat(i.amount.replace(/[^\d.]/g,''))||0),0);
+
+    const expRows = expenseItems.length > 0 ? expenseItems.map(i => {
+      const amt = parseFloat(i.amount.replace(/[^\d.]/g,''))||0;
+      return '<tr><td>' + (i.name||'—') + '</td><td class="num">' + formatCurrency(amt) + ' ' + cur + '</td></tr>';
+    }).join('') : '<tr><td colspan="2" class="empty">لا توجد بنود</td></tr>';
+
+    const savRows = savingsItems.length > 0 ? savingsItems.map(i => {
+      const amt = parseFloat(i.amount.replace(/[^\d.]/g,''))||0;
+      return '<tr><td>' + (i.name||'—') + '</td><td class="num green">' + formatCurrency(amt) + ' ' + cur + '</td></tr>';
+    }).join('') : '<tr><td colspan="2" class="empty">لا توجد بنود</td></tr>';
+
+    const invRows = investmentItems.length > 0 ? investmentItems.map(i => {
+      const amt = parseFloat(i.amount.replace(/[^\d.]/g,''))||0;
+      return '<tr><td>' + (i.name||'—') + '</td><td class="num green">' + formatCurrency(amt) + ' ' + cur + '</td></tr>';
+    }).join('') : '<tr><td colspan="2" class="empty">لا توجد بنود</td></tr>';
+
+    const goalRows = goals.length > 0 ? goals.map(g => {
+      const amt = parseFloat(g.amount.replace(/[^\d.]/g,''))||0;
+      const mons = ms > 0 && amt > 0 ? Math.ceil(amt/ms) : 0;
+      const unitLabel = g.durationUnit==='year'?'سنة':g.durationUnit==='day'?'يوم':'شهر';
+      return '<tr><td>' + (g.goal||'—') + '</td><td class="num">' + formatCurrency(amt) + ' ' + cur + '</td><td class="num">' + (mons>0?mons+' شهر':'—') + '</td></tr>';
+    }).join('') : '<tr><td colspan="3" class="empty">لا توجد أهداف</td></tr>';
+
+    const insightsList = [
+      Number(sr)>=20 ? '✅ معدل ادخار ممتاز (' + sr + '%) أعلى من المتوسط' : '⚠️ ادخارك (' + sr + '%) أقل من المثالي 20%',
+      Number(er)<=60 ? '✅ نسبة إنفاق معقولة (' + er + '%)' : '🔴 مصروفاتك مرتفعة (' + er + '%) - راجعها',
+      Number(ir)>=10 ? '📈 استثمارك (' + ir + '%) يبني ثروتك' : '💡 زيادة استثمارك ولو 5% ترفع ثروتك',
+      goals.length>0 ? '🎯 لديك ' + goals.length + ' هدف مالي - استمر!' : '🎯 أضف أهدافاً مالية لتتبع تقدمك',
+    ].map(t => '<li>' + t + '</li>').join('');
+
+    const html = '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير مالي SFM</title><style>' +
+      '*{margin:0;padding:0;box-sizing:border-box}' +
+      'body{font-family:Arial,sans-serif;background:#fff;color:#2d1a0a;font-size:13px;direction:rtl}' +
+      '.page{max-width:820px;margin:0 auto;padding:32px}' +
+      '.header{background:linear-gradient(135deg,#7f5c48,#4a2e1a);color:#fff;padding:28px 32px;border-radius:16px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center}' +
+      '.header-left h1{font-size:22px;color:#f0d080;margin-bottom:4px}' +
+      '.header-left p{color:rgba(255,255,255,0.6);font-size:11px;margin-top:2px}' +
+      '.score-circle{width:80px;height:80px;border-radius:50%;border:4px solid ' + scoreColor + ';display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,0.1)}' +
+      '.score-num{font-size:24px;font-weight:bold;color:#fff}' +
+      '.score-label{font-size:9px;color:rgba(255,255,255,0.6)}' +
+      '.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}' +
+      '.kpi{background:rgba(196,163,90,0.06);border:1px solid rgba(196,163,90,0.25);border-radius:12px;padding:14px;text-align:center}' +
+      '.kpi-label{font-size:10px;color:rgba(45,26,10,0.5);margin-bottom:4px}' +
+      '.kpi-value{font-size:18px;font-weight:bold;color:#7f5c48}' +
+      '.section{margin-bottom:18px;border:1px solid rgba(196,163,90,0.25);border-radius:12px;overflow:hidden}' +
+      '.section-title{background:rgba(196,163,90,0.08);padding:10px 16px;font-weight:bold;color:#7f5c48;font-size:13px;border-bottom:1px solid rgba(196,163,90,0.15)}' +
+      'table{width:100%;border-collapse:collapse}' +
+      'td{padding:8px 16px;border-bottom:1px solid rgba(196,163,90,0.1);font-size:12px;color:rgba(45,26,10,0.75)}' +
+      'tr:last-child td{border-bottom:none}' +
+      '.num{text-align:left;font-weight:bold;color:#5c3d2a}' +
+      '.green{color:#2d8a4e}' +
+      '.empty{text-align:center;color:rgba(45,26,10,0.3);padding:12px}' +
+      '.insights{padding:14px 16px}' +
+      '.insights ul{list-style:none;space-y:4px}' +
+      '.insights li{padding:5px 0;font-size:12px;color:rgba(45,26,10,0.8);border-bottom:0.5px solid rgba(196,163,90,0.1)}' +
+      '.insights li:last-child{border:none}' +
+      '.footer{margin-top:28px;padding-top:14px;border-top:1px solid rgba(196,163,90,0.25);text-align:center;color:rgba(45,26,10,0.35);font-size:10px}' +
+      '@page{margin:1.5cm}' +
+      '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}' +
+      '</style></head><body><div class="page">' +
+      '<div class="header"><div class="header-left"><h1>📊 التقرير المالي الشهري</h1><p>المدير المالي الذكي — SFM</p><p>التاريخ: ' + date + ' | المستخدم: ' + (username||'المستخدم') + '</p></div>' +
+      '<div class="score-circle"><div class="score-num">' + score + '</div><div class="score-label">الصحة المالية</div></div></div>' +
+      '<div class="kpi-grid">' +
+      '<div class="kpi"><div class="kpi-label">إجمالي الدخل</div><div class="kpi-value">' + formatCurrency(totalIncome) + ' ' + cur + '</div></div>' +
+      '<div class="kpi"><div class="kpi-label">نسبة الادخار</div><div class="kpi-value" style="color:' + (Number(sr)>=20?'#2d8a4e':'#c4a35a') + '">' + sr + '%</div></div>' +
+      '<div class="kpi"><div class="kpi-label">نسبة الاستثمار</div><div class="kpi-value" style="color:' + (Number(ir)>=10?'#2d8a4e':'#c4a35a') + '">' + ir + '%</div></div>' +
+      '<div class="kpi"><div class="kpi-label">نمو سنوي متوقع</div><div class="kpi-value" style="color:#2d8a4e">' + yearlyGrowth + ' ' + cur + '</div></div>' +
+      '</div>' +
+      '<div class="section"><div class="section-title">💰 توزيع الدخل الشهري</div><table>' +
+      '<tr><td>إجمالي الدخل</td><td class="num" style="color:#c4a35a">' + formatCurrency(totalIncome) + ' ' + cur + '</td></tr>' +
+      '<tr><td>المصروفات (' + er + '%)</td><td class="num">' + formatCurrency(breakdown.expenses) + ' ' + cur + '</td></tr>' +
+      '<tr><td>المدخرات (' + sr + '%)</td><td class="num green">' + formatCurrency(breakdown.savings) + ' ' + cur + '</td></tr>' +
+      '<tr><td>الاستثمار (' + ir + '%)</td><td class="num green">' + formatCurrency(breakdown.investment) + ' ' + cur + '</td></tr>' +
+      (breakdown.charity>0?'<tr><td>الأعمال الخيرية</td><td class="num">' + formatCurrency(breakdown.charity) + ' ' + cur + '</td></tr>':'') +
+      '</table></div>' +
+      '<div class="section"><div class="section-title">🛒 المصروفات</div><table>' + expRows + '<tr><td style="font-weight:bold">الإجمالي الفعلي</td><td class="num" style="color:#c4a35a">' + formatCurrency(totalExpActual) + ' ' + cur + '</td></tr></table></div>' +
+      '<div class="section"><div class="section-title">🏦 المدخرات</div><table>' + savRows + '</table></div>' +
+      '<div class="section"><div class="section-title">📈 الاستثمارات</div><table>' + invRows + '</table></div>' +
+      '<div class="section"><div class="section-title">🎯 الأهداف المالية</div><table><tr><th style="text-align:right;padding:8px 16px;font-size:11px;color:#7f5c48">الهدف</th><th style="text-align:left;padding:8px 16px;font-size:11px;color:#7f5c48">المبلغ</th><th style="text-align:left;padding:8px 16px;font-size:11px;color:#7f5c48">المدة</th></tr>' + goalRows + '</table></div>' +
+      '<div class="section"><div class="section-title">⚡ التحليل الذكي</div><div class="insights"><ul>' + insightsList + '</ul></div></div>' +
+      '<div class="footer"><p>المدير المالي الذكي — يساعدك على اتخاذ قرارات مالية أوضح</p><p style="color:#c4a35a;margin-top:4px">powered by M.Q | ' + date + '</p></div>' +
+      '</div><script>window.onload=function(){window.print();}<\/script></body></html>';
+
+    const w = window.open('', '_blank', 'width=900,height=700');
+    if (w) { w.document.write(html); w.document.close(); }
+  };
 
   const runSmartAnalysis = (type: string) => {
     if (smartPanel === type) { setSmartPanel(''); setSmartText(''); return; }
