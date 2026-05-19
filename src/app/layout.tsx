@@ -6,7 +6,6 @@ import GlobalClientEffects from "@/components/GlobalClientEffects";
 import { AuthProvider } from "@/hooks/useAuth";
 
 import "./globals.css";
-import "../styles/safari-fix.css";
 
 const cairo = Cairo({
   variable: "--font-cairo",
