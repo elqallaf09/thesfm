@@ -567,3 +567,253 @@ tbody tr:hover td{background:var(--bg-muted)}
   body{background:white !important}
   *{box-shadow:none !important}
 }
+
+/* ════════════════════════════════════
+   AUTH PAGE — Login / Register
+   ════════════════════════════════════ */
+
+.auth-scene {
+  min-height: 100vh;
+  background: #F5F2EA;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  position: relative;
+  overflow: hidden;
+  direction: rtl;
+}
+
+/* SFM watermark background */
+.auth-scene::before {
+  content: 'SFM';
+  position: absolute;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 240px;
+  font-weight: 900;
+  color: rgba(180,155,80,0.055);
+  letter-spacing: -8px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* ── Auth Card ── */
+.auth-card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 44px 40px 36px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow:
+    0 1px 2px rgba(27,36,48,0.04),
+    0 8px 32px rgba(27,36,48,0.09),
+    0 24px 64px rgba(27,36,48,0.06);
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Brand Block ── */
+.auth-brand { text-align: center; margin-bottom: 32px; }
+
+.auth-logo {
+  width: 68px; height: 68px;
+  background: linear-gradient(145deg, #1B2430, #2C3444);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: 0 4px 18px rgba(27,36,48,0.28);
+}
+.auth-logo-text {
+  font-family: 'IBM Plex Sans Arabic', 'Tajawal', sans-serif;
+  font-size: 19px; font-weight: 900;
+  color: #D4AF37; letter-spacing: -0.5px;
+}
+.auth-brand-name {
+  font-family: 'Tajawal', sans-serif;
+  font-size: 20px; font-weight: 800;
+  color: #1B2430; margin-bottom: 5px;
+  letter-spacing: -0.3px;
+}
+.auth-brand-sub {
+  font-family: 'Tajawal', sans-serif;
+  font-size: 13.5px; font-weight: 400;
+  color: #8A9BB0;
+}
+
+/* ── Divider ── */
+.auth-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #E8E2D6, transparent);
+  margin: 0 0 28px;
+}
+
+/* ── Field ── */
+.auth-field { margin-bottom: 18px; }
+.auth-field-label {
+  font-family: 'Tajawal', sans-serif;
+  font-size: 13.5px; font-weight: 600;
+  color: #4A5568; display: block; margin-bottom: 7px;
+}
+.auth-input-wrap { position: relative; }
+.auth-input-icon {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  right: 14px; color: #C4A84A; font-size: 17px;
+  pointer-events: none;
+}
+.auth-input-eye {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  left: 12px;
+  background: none; border: none; cursor: pointer;
+  color: #C4A84A; font-size: 17px; padding: 4px;
+  transition: color 0.15s;
+}
+.auth-input-eye:hover { color: #D4AF37; }
+
+.auth-input {
+  width: 100% !important; height: 50px !important;
+  background: #FAFAF7 !important;
+  border: 1.5px solid #E8E2D6 !important;
+  border-radius: 12px !important;
+  padding: 0 44px 0 42px !important;
+  font-family: 'Tajawal', inherit !important;
+  font-size: 15px !important;
+  color: #1B2430 !important;
+  -webkit-text-fill-color: #1B2430 !important;
+  outline: none !important;
+  direction: rtl;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.auth-input::placeholder {
+  color: #B0B8C4 !important;
+  -webkit-text-fill-color: #B0B8C4 !important;
+  font-size: 14px !important;
+}
+.auth-input:focus {
+  border-color: #D4AF37 !important;
+  box-shadow: 0 0 0 3px rgba(212,175,55,0.14) !important;
+  background: #ffffff !important;
+}
+.auth-input-no-pad { padding: 0 44px 0 16px !important; }
+
+/* ── Primary Button ── */
+.auth-btn-primary {
+  width: 100%; height: 52px;
+  background: linear-gradient(135deg, #D4AF37, #C49B3A);
+  border: none; border-radius: 13px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 16px; font-weight: 700;
+  color: #1B2430; cursor: pointer;
+  letter-spacing: 0.2px;
+  box-shadow: 0 4px 18px rgba(212,175,55,0.32);
+  transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.auth-btn-primary:hover {
+  background: linear-gradient(135deg, #E4BF47, #D4AB4A);
+  box-shadow: 0 6px 22px rgba(212,175,55,0.42);
+  transform: translateY(-1px);
+}
+.auth-btn-primary:active { transform: scale(0.98); }
+.auth-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* ── Secondary Button (ghost) ── */
+.auth-btn-secondary {
+  width: 100%; height: 46px;
+  background: #F5F2EA;
+  border: 1.5px solid #E8E2D6;
+  border-radius: 12px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 14px; font-weight: 600;
+  color: #4A5568; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 0.18s;
+}
+.auth-btn-secondary:hover {
+  border-color: #C4A84A; color: #1B2430; background: #FDF9F0;
+}
+
+/* ── Separator ── */
+.auth-sep {
+  display: flex; align-items: center; gap: 12px;
+  margin: 20px 0;
+}
+.auth-sep-line { flex: 1; height: 1px; background: #ECE8DD; }
+.auth-sep-text { font-size: 12.5px; color: #B0B8C4; white-space: nowrap; }
+
+/* ── Links ── */
+.auth-links { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.auth-link-row { display: flex; align-items: center; gap: 16px; }
+.auth-link {
+  font-family: 'Tajawal', sans-serif;
+  font-size: 13.5px; font-weight: 500;
+  color: #4A5568; cursor: pointer;
+  background: none; border: none; padding: 0;
+  transition: color 0.15s;
+}
+.auth-link:hover { color: #D4AF37; }
+.auth-link-primary {
+  font-weight: 700; color: #1B2430;
+  border-bottom: 1.5px solid #D4AF37; padding-bottom: 1px;
+}
+.auth-link-primary:hover { color: #C49B3A; }
+.auth-link-dot { width: 3px; height: 3px; border-radius: 50%; background: #D4C8B0; }
+
+/* ── Error / Success ── */
+.auth-error {
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.2);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 13.5px; font-weight: 500;
+  color: #DC2626;
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.auth-success {
+  background: rgba(34,197,94,0.08);
+  border: 1px solid rgba(34,197,94,0.2);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 13.5px; font-weight: 500;
+  color: #16A34A;
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* ── Progress Steps ── */
+.auth-steps {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 24px;
+}
+.auth-step {
+  display: flex; align-items: center; gap: 6px; flex: 1;
+}
+.auth-step-circle {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'IBM Plex Sans Arabic', sans-serif;
+  font-size: 12px; font-weight: 700;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.auth-step-circle.done { background: #22C55E; color: #fff; }
+.auth-step-circle.active { background: #1B2430; color: #D4AF37; }
+.auth-step-circle.idle {
+  background: #F0EDE4; color: #B0B8C4;
+  border: 1.5px solid #E8E2D6;
+}
+.auth-step-label { font-size: 11.5px; color: #8A9BB0; font-family: 'Tajawal', sans-serif; }
+.auth-step-label.active { color: #1B2430; font-weight: 600; }
+.auth-step-line { flex: 1; height: 1px; background: #E8E2D6; margin: 0 4px; }
+
+/* ── Mobile Auth ── */
+@media (max-width: 480px) {
+  .auth-card { padding: 32px 24px 28px; border-radius: 20px; }
+  .auth-brand-name { font-size: 18px; }
+  .auth-btn-primary { height: 50px; font-size: 15px; }
+}
