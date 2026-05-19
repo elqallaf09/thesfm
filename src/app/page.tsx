@@ -933,139 +933,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
       @media print{body{background:white!important}.no-print{display:none!important}.sfm-sidebar{display:none!important}main{background:white!important}*{box-shadow:none!important}}
     `}</style>
 
-    <div dir={isArabic ? 'rtl' : 'ltr'} style={{display:'flex', minHeight:'100vh', background:'linear-gradient(160deg, #fffdf5 0%, #fef9e7 60%, #fdf5d0 100%)'}}>
-
-      {/* ── SIDEBAR ── */}
-      <aside className="sfm-sidebar no-print" style={{
-        width: '200px', flexShrink: 0,
-        background: 'linear-gradient(180deg, #6b4a35 0%, #4a2e1a 100%)',
-        display: 'flex', flexDirection: 'column',
-        position: 'sticky', top: 0, height: '100vh', overflowY: 'auto',
-        zIndex: 40, boxShadow: '4px 0 24px rgba(0,0,0,0.15)',
-      }}>
-        {/* Logo */}
-        <div style={{padding:'20px 14px 16px', borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-          <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-            <div style={{width:'36px', height:'36px', background:'linear-gradient(135deg,#d4b36a,#c4a35a)', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:'700', fontSize:'14px', color:'#3d2510', flexShrink:0}}>SFM</div>
-            <div>
-              <div style={{fontSize:'13px', fontWeight:'600', color:'rgba(255,255,255,0.9)', lineHeight:1.2}}>المدير المالي</div>
-              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'2px'}}>الذكي • Premium</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Nav Items */}
-        <nav style={{flex:1, padding:'10px 0'}}>
-          <button className="nav-link active" onClick={() => {}}>
-            <span className="nav-link-icon">⊞</span>
-            <span className="nav-link-label">{isArabic ? 'لوحة التحكم' : 'Dashboard'}</span>
-          </button>
-          <button className="nav-link" onClick={() => router.push('/profile')}>
-            <span className="nav-link-icon">◎</span>
-            <span className="nav-link-label">{isArabic ? 'ملفي الشخصي' : 'Profile'}</span>
-          </button>
-          <button className="nav-link" onClick={() => router.push('/projects')}>
-            <span className="nav-link-icon">🚀</span>
-            <span className="nav-link-label">{isArabic ? 'مشروعي' : 'Projects'}</span>
-          </button>
-          <button className="nav-link" onClick={() => router.push('/education/investments')}>
-            <span className="nav-link-icon">📈</span>
-            <span className="nav-link-label">{isArabic ? 'الاستثمار' : 'Investments'}</span>
-          </button>
-          <button className="nav-link" onClick={() => router.push('/education/savings')}>
-            <span className="nav-link-icon">💰</span>
-            <span className="nav-link-label">{isArabic ? 'المدخرات' : 'Savings'}</span>
-          </button>
-          <button className="nav-link" onClick={() => router.push('/education/expenses')}>
-            <span className="nav-link-icon">📊</span>
-            <span className="nav-link-label">{isArabic ? 'المصروفات' : 'Expenses'}</span>
-          </button>
-          <div style={{margin:'8px 14px', borderTop:'1px solid rgba(255,255,255,0.07)'}}/>
-          {!isGuest && (
-            <button className="nav-link" onClick={() => { localStorage.removeItem('guest_session'); supabase.auth.signOut(); }}>
-              <span className="nav-link-icon">⤴</span>
-              <span className="nav-link-label">{text.logout}</span>
-            </button>
-          )}
-          {isGuest && (
-            <button className="nav-link" onClick={() => { localStorage.removeItem('guest_session'); window.location.reload(); }}>
-              <span className="nav-link-icon">🔑</span>
-              <span className="nav-link-label">{isArabic ? 'تسجيل الدخول' : 'Login'}</span>
-            </button>
-          )}
-        </nav>
-
-        {/* User */}
-        <div style={{padding:'12px', borderTop:'1px solid rgba(255,255,255,0.08)'}}>
-          <button className="nav-link" onClick={() => router.push('/profile')} style={{margin:0, width:'100%', padding:'10px'}}>
-            <div style={{width:'30px', height:'30px', background:'linear-gradient(135deg,#d4b36a,#c4a35a)', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', fontWeight:'700', color:'#3d2510', flexShrink:0}}>
-              {username ? username.substring(0,2).toUpperCase() : 'مس'}
-            </div>
-            <div style={{minWidth:0, flex:1}}>
-              <div style={{fontSize:'12px', fontWeight:'600', color:'rgba(255,255,255,0.85)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{username || (isArabic ? 'المستخدم' : 'User')}</div>
-              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)'}}>Premium ⭐</div>
-            </div>
-          </button>
-          {/* Language */}
-          <div style={{display:'flex', gap:'4px', marginTop:'8px', padding:'0 4px'}}>
-            {(['ar','en'] as const).map(lang => (
-              <button key={lang} onClick={() => setLanguage(lang)} style={{flex:1, padding:'5px', borderRadius:'8px', border:'none', cursor:'pointer', fontSize:'11px', fontWeight:'600', transition:'all 0.15s', background: language === lang ? 'rgba(196,163,90,0.25)' : 'transparent', color: language === lang ? '#f0d080' : 'rgba(255,255,255,0.4)'}}>
-                {lang === 'ar' ? 'عربي' : 'EN'}
-              </button>
-            ))}
-          </div>
-        </div>
-      </aside>
-
-      {/* ── MAIN CONTENT ── */}
-      <main className="sfm-content" style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', overflowX:'hidden'}}>
-
-        {/* Top Bar (Ticker + Actions) */}
-        <div style={{background:'linear-gradient(135deg, #7f5c48 0%, #6b4a35 100%)', borderBottom:'1px solid rgba(255,255,255,0.1)', position:'sticky', top:0, zIndex:30, boxShadow:'0 2px 12px rgba(127,92,72,0.25)'}}>
-          {/* Nav row */}
-          <div style={{display:'flex', alignItems:'center', gap:'8px', padding:'10px 16px', borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
-            <div style={{flex:1, display:'flex', alignItems:'center', gap:'6px'}}>
-              {[
-                {label: text.investmentTypesBtn, path:'/education/investments'},
-                {label: text.savingsTypesBtn, path:'/education/savings'},
-                {label: text.expensesInfoBtn, path:'/education/expenses'},
-                {label: isArabic?'ماذا الإدخار':'What to Save', path:'/'},
-              ].map(item => (
-                <button key={item.path} type="button" onClick={() => router.push(item.path)}
-                  style={{padding:'5px 10px', borderRadius:'8px', background:'rgba(255,255,255,0.12)', border:'1px solid rgba(255,255,255,0.15)', color:'rgba(255,255,255,0.85)', fontSize:'12px', cursor:'pointer', transition:'all 0.15s', whiteSpace:'nowrap'}}
-                  onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; }}
-                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}>
-                  {item.label}
-                </button>
-              ))}
-            </div>
-            <Select value={tickerCategory} onValueChange={(value) => setTickerCategory(value as TickerCategory)}>
-              <SelectTrigger className="h-8 w-[160px] text-white text-xs" style={{borderColor:'rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.12)'}}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {tickerOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <button type="button" onClick={() => { localStorage.removeItem('guest_session'); supabase.auth.signOut(); }}
-              style={{padding:'5px 10px', borderRadius:'8px', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.15)', color:'rgba(255,255,255,0.7)', fontSize:'12px', cursor:'pointer'}}>{text.logout}</button>
-          </div>
-          {/* Ticker */}
-          <div style={{overflow:'hidden', padding:'8px 0', background:'rgba(0,0,0,0.15)'}}>
-            <div className="ticker-scroll" style={{alignItems:'center', gap:'8px', paddingRight:'16px'}}>
-              {[...tickerItems, ...tickerItems, ...tickerItems].map((item, index) => (
-                <div key={`${item.nameEn}-${index}`} style={{display:'flex', flexShrink:0, alignItems:'center', gap:'8px', borderRadius:'20px', padding:'4px 12px', margin:'0 4px', background:'rgba(196,163,90,0.12)', border:'0.5px solid rgba(196,163,90,0.3)', fontSize:'12px'}}>
-                  <span style={{fontWeight:'600', color:'#f0d080'}}>{isArabic ? item.nameAr : item.nameEn}</span>
-                  <span style={{color:'rgba(255,255,255,0.85)', fontVariantNumeric:'tabular-nums'}} dir="ltr">{item.value}</span>
-                  <span style={{fontWeight:'700', fontSize:'11px', color: item.positive ? '#4ade80' : '#f87171'}} dir="ltr">{item.change}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Page Content */}
-        <div style={{flex:1, padding:'20px', display:'flex', flexDirection:'column', gap:'16px', maxWidth:'960px', margin:'0 auto', width:'100%'}}>
+    <main dir={isArabic ? 'rtl' : 'ltr'} className="relative min-h-screen overflow-hidden" style={{background: 'linear-gradient(135deg, #fffdf5 0%, #fef9e7 50%, #fdf5d0 100%)'}}>
+      <div className="relative max-w-5xl mx-auto space-y-6 px-4 py-6">
 
 
         {/* Compact Page Title */}
@@ -1715,9 +1584,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             <span className="font-medium" style={{color: '#c4a35a'}}>powered by M.Q</span>
             <span className="w-24 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
           </div>
-        </div>
-      </main>
-    </div>
+      </div>
+    </main>
     </>
   );
 }
