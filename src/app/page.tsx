@@ -888,6 +888,25 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     return suggestion + (isArabic ? `لديك فائض شهري قدره ${formatCurrency(savingsPerMonth - monthlyRequired)}.` : `Monthly surplus: ${formatCurrency(savingsPerMonth - monthlyRequired)}.`);
   };
 
+
+  // AI Health Card pre-calculated vars
+  const aiSr = totalIncome > 0 ? breakdown.savings / totalIncome * 100 : 0;
+  const aiEr = totalIncome > 0 ? breakdown.expenses / totalIncome * 100 : 0;
+  const aiIr = totalIncome > 0 ? breakdown.investment / totalIncome * 100 : 0;
+  const aiScore = Math.min(100, Math.round(
+    (aiSr>=20?30:aiSr>=10?20:10) + (aiEr<=50?25:aiEr<=65?15:5) +
+    (aiIr>=10?25:aiIr>=5?15:5) + (goals.length>0?10:0) + (expenseItems.length>0?10:0)
+  ));
+  const aiScoreColor = aiScore>=75?'#2d8a4e':aiScore>=50?'#c4a35a':'#c0392b';
+  const aiCirc = 2*Math.PI*36;
+  const aiDash = (aiScore/100)*aiCirc;
+  const aiInsights = [
+    aiSr>=20 ? {t:'✅', msg: isArabic ? 'معدل ادخارك ' + aiSr.toFixed(0) + '% ممتاز' : 'Savings rate ' + aiSr.toFixed(0) + '% excellent', good:true} : {t:'⚠️', msg: isArabic ? 'ادخارك ' + aiSr.toFixed(0) + '% أقل من المثالي' : 'Savings ' + aiSr.toFixed(0) + '% below ideal', good:false},
+    aiEr<=60 ? {t:'✅', msg: isArabic ? 'نسبة مصروفاتك ' + aiEr.toFixed(0) + '% معقولة' : 'Expenses ' + aiEr.toFixed(0) + '% reasonable', good:true} : {t:'🔴', msg: isArabic ? 'مصروفاتك ' + aiEr.toFixed(0) + '% مرتفعة' : 'High expenses ' + aiEr.toFixed(0) + '%', good:false},
+    aiIr>=10 ? {t:'📈', msg: isArabic ? 'استثمارك ' + aiIr.toFixed(0) + '% يبني ثروتك' : 'Investment ' + aiIr.toFixed(0) + '% building wealth', good:true} : {t:'💡', msg: isArabic ? 'زيادة استثمارك ترفع ثروتك' : 'Increase investment to grow wealth', good:false},
+    goals.length>0 ? {t:'🎯', msg: isArabic ? 'لديك ' + goals.length + ' هدف مالي - استمر!' : 'You have ' + goals.length + ' goals - keep going!', good:true} : {t:'🎯', msg: isArabic ? 'أضف أهدافاً مالية لتتبع تقدمك' : 'Add financial goals to track progress', good:false},
+  ];
+
   return (
     <>
     <style>{`
@@ -1518,70 +1537,55 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         </Card>
 
         {/* AI Financial Health Card */}
-        {totalIncome > 0 && (() => {
-          const sr = breakdown.savings / totalIncome * 100;
-          const er = breakdown.expenses / totalIncome * 100;
-          const ir = breakdown.investment / totalIncome * 100;
-          const score = Math.min(100, Math.round((sr>=20?30:sr>=10?20:10)+(er<=50?25:er<=65?15:5)+(ir>=10?25:ir>=5?15:5)+(goals.length>0?10:0)+(expenseItems.length>0?10:0)));
-          const scoreColor = score>=75?'#2d8a4e':score>=50?'#c4a35a':'#c0392b';
-          const c = 2*Math.PI*36;
-          const dash = (score/100)*c;
-          const insights = [
-            sr>=20 ? {t:'✅', msg: isArabic?`معدل ادخارك ${sr.toFixed(0)}% ممتاز - أعلى من المتوسط`:`Savings rate ${sr.toFixed(0)}% is excellent`, good:true} : {t:'⚠️', msg: isArabic?`ادخارك ${sr.toFixed(0)}% أقل من المثالي (20%)`:`Savings ${sr.toFixed(0)}% below ideal 20%`, good:false},
-            er<=60 ? {t:'✅', msg: isArabic?`نسبة مصروفاتك ${er.toFixed(0)}% معقولة`:`Expense ratio ${er.toFixed(0)}% is reasonable`, good:true} : {t:'🔴', msg: isArabic?`مصروفاتك ${er.toFixed(0)}% مرتفعة - حاول تقليصها`:`High expenses ${er.toFixed(0)}% - reduce spending`, good:false},
-            ir>=10 ? {t:'📈', msg: isArabic?`استثمارك ${ir.toFixed(0)}% يبني ثروتك`:`Investment ${ir.toFixed(0)}% is building wealth`, good:true} : {t:'💡', msg: isArabic?`زيادة استثمارك ولو 5% ترفع ثروتك بشكل كبير`:`Increase investment by 5% to grow wealth`, good:false},
-            goals.length>0 ? {t:'🎯', msg: isArabic?`لديك ${goals.length} هدف مالي - استمر!`:`You have ${goals.length} financial goals - keep going!`, good:true} : {t:'🎯', msg: isArabic?`أضف أهدافاً مالية لتتبع تقدمك`:`Add financial goals to track progress`, good:false},
-          ];
-          return (
-            <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', overflow:'hidden', boxShadow:'0 8px 32px rgba(196,163,90,0.12)'}}>
-              <div className="p-5" style={{background:'linear-gradient(135deg, #7f5c48 0%, #5c3d2a 100%)'}}>
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'rgba(240,208,128,0.2)', color:'#f0d080', border:'1px solid rgba(240,208,128,0.2)'}}>⚡ AI INSIGHTS</span>
-                    </div>
-                    <h2 className="text-lg font-bold" style={{color:'#ffffff'}}>
-                      {score>=75?(isArabic?'وضعك المالي ممتاز 🌟':'Excellent Health 🌟'):score>=50?(isArabic?'وضعك المالي جيد 👍':'Good Health 👍'):(isArabic?'يحتاج تحسين ⚠️':'Needs Work ⚠️')}
-                    </h2>
-                    <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.65)'}}>
-                      {isArabic?`دخل شهري: ${formatCurrency(totalIncome)} ${getCurrentCurrency().symbol}`:`Monthly: ${formatCurrency(totalIncome)} ${getCurrentCurrency().symbol}`}
-                    </p>
+        {totalIncome > 0 && (
+          <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', overflow:'hidden', boxShadow:'0 8px 32px rgba(196,163,90,0.12)'}}>
+            <div className="p-5" style={{background:'linear-gradient(135deg, #7f5c48 0%, #5c3d2a 100%)'}}>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'rgba(240,208,128,0.2)', color:'#f0d080', border:'1px solid rgba(240,208,128,0.2)'}}>⚡ AI INSIGHTS</span>
                   </div>
-                  <div className="relative shrink-0 w-20 h-20">
-                    <svg width="80" height="80" viewBox="0 0 80 80" className="-rotate-90">
-                      <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="8"/>
-                      <circle cx="40" cy="40" r="36" fill="none" stroke={scoreColor} strokeWidth="8"
-                        strokeDasharray={`${dash} ${c}`} strokeLinecap="round"/>
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-bold" style={{color:'#ffffff'}}>{score}</span>
-                      <span className="text-xs" style={{color:'rgba(255,255,255,0.6)'}}>/100</span>
-                    </div>
+                  <h2 className="text-lg font-bold" style={{color:'#ffffff'}}>
+                    {aiScore>=75?(isArabic?'وضعك المالي ممتاز 🌟':'Excellent Health 🌟'):aiScore>=50?(isArabic?'وضعك المالي جيد 👍':'Good Health 👍'):(isArabic?'يحتاج تحسين ⚠️':'Needs Work ⚠️')}
+                  </h2>
+                  <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.65)'}}>
+                    {isArabic ? 'دخل شهري: ' + formatCurrency(totalIncome) + ' ' + getCurrentCurrency().symbol : 'Monthly: ' + formatCurrency(totalIncome) + ' ' + getCurrentCurrency().symbol}
+                  </p>
+                </div>
+                <div className="relative shrink-0 w-20 h-20">
+                  <svg width="80" height="80" viewBox="0 0 80 80" className="-rotate-90">
+                    <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="8"/>
+                    <circle cx="40" cy="40" r="36" fill="none" stroke={aiScoreColor} strokeWidth="8"
+                      strokeDasharray={aiDash + ' ' + aiCirc} strokeLinecap="round"/>
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-bold" style={{color:'#ffffff'}}>{aiScore}</span>
+                    <span className="text-xs" style={{color:'rgba(255,255,255,0.6)'}}>/100</span>
                   </div>
                 </div>
               </div>
-              <CardContent className="pt-4 space-y-2">
-                {insights.map((ins, i) => (
-                  <div key={i} className="flex items-start gap-2 p-2.5 rounded-xl text-sm"
-                    style={{background: ins.good?'rgba(45,138,78,0.06)':'rgba(196,163,90,0.06)', border:`1px solid ${ins.good?'rgba(45,138,78,0.18)':'rgba(196,163,90,0.2)'}`}}>
-                    <span className="shrink-0">{ins.t}</span>
-                    <span style={{color:'rgba(92,61,42,0.9)'}}>{ins.msg}</span>
+            </div>
+            <CardContent className="pt-4 space-y-2">
+              {aiInsights.map((ins, i) => (
+                <div key={i} className="flex items-start gap-2 p-2.5 rounded-xl text-sm"
+                  style={{background: ins.good?'rgba(45,138,78,0.06)':'rgba(196,163,90,0.06)', border:'1px solid ' + (ins.good?'rgba(45,138,78,0.18)':'rgba(196,163,90,0.2)')}}>
+                  <span className="shrink-0">{ins.t}</span>
+                  <span style={{color:'rgba(92,61,42,0.9)'}}>{ins.msg}</span>
+                </div>
+              ))}
+              <Button onClick={getRandomAdvice} variant="outline" className="w-full mt-2" style={{borderColor:'rgba(196,163,90,0.4)',color:'#7a5c1a'}}>
+                <Lightbulb className="w-4 h-4 ms-2"/>{text.randomAdvice}
+              </Button>
+              {showAdvice && randomAdvice && (
+                <div className="p-3 rounded-xl" style={{border:'1px solid rgba(196,163,90,0.25)',background:'rgba(196,163,90,0.06)'}}>
+                  <div className="flex items-start gap-2"><span className="text-2xl">{randomAdvice.icon}</span>
+                    <div><p className="font-bold text-sm" style={{color:'#7a5c1a'}}>{randomAdvice.category}</p><p className="text-sm" style={{color:'rgba(122,92,26,0.8)'}}>{randomAdvice.tip}</p></div>
                   </div>
-                ))}
-                <Button onClick={getRandomAdvice} variant="outline" className="w-full mt-2" style={{borderColor:'rgba(196,163,90,0.4)',color:'#7a5c1a'}}>
-                  <Lightbulb className="w-4 h-4 ms-2"/>{text.randomAdvice}
-                </Button>
-                {showAdvice && randomAdvice && (
-                  <div className="p-3 rounded-xl" style={{border:'1px solid rgba(196,163,90,0.25)',background:'rgba(196,163,90,0.06)'}}>
-                    <div className="flex items-start gap-2"><span className="text-2xl">{randomAdvice.icon}</span>
-                      <div><p className="font-bold text-sm" style={{color:'#7a5c1a'}}>{randomAdvice.category}</p><p className="text-sm" style={{color:'rgba(122,92,26,0.8)'}}>{randomAdvice.tip}</p></div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })()}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Projects Integration */}
         {totalIncome > 0 && breakdown.savings + breakdown.investment > 0 && (
