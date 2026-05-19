@@ -19,6 +19,14 @@ export type Database = {
           display_name: string | null
           email: string | null
           age: number | null
+          gender: string | null
+          profession: string | null
+          security_question: string | null
+          security_answer: string | null
+          security_question_2: string | null
+          security_answer_2: string | null
+          security_question_3: string | null
+          security_answer_3: string | null
           phone_country_code: string | null
           phone_number: string | null
           created_at: string | null
@@ -30,6 +38,14 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           age?: number | null
+          gender?: string | null
+          profession?: string | null
+          security_question?: string | null
+          security_answer?: string | null
+          security_question_2?: string | null
+          security_answer_2?: string | null
+          security_question_3?: string | null
+          security_answer_3?: string | null
           phone_country_code?: string | null
           phone_number?: string | null
           created_at?: string | null
@@ -41,6 +57,14 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           age?: number | null
+          gender?: string | null
+          profession?: string | null
+          security_question?: string | null
+          security_answer?: string | null
+          security_question_2?: string | null
+          security_answer_2?: string | null
+          security_question_3?: string | null
+          security_answer_3?: string | null
           phone_country_code?: string | null
           phone_number?: string | null
           created_at?: string | null
@@ -73,6 +97,165 @@ export type Database = {
           category?: string
           label?: string | null
           amount?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      expense_items: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          amount: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          amount?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          amount?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      savings_items: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          amount: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          amount?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          amount?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      investment_items: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          amount: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          amount?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          amount?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      financial_goals: {
+        Row: {
+          id: string
+          user_id: string
+          goal: string
+          amount: number
+          duration: string | null
+          duration_unit: string | null
+          notes: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          goal: string
+          amount?: number
+          duration?: string | null
+          duration_unit?: string | null
+          notes?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          goal?: string
+          amount?: number
+          duration?: string | null
+          duration_unit?: string | null
+          notes?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          emoji: string | null
+          budget: number | string | null
+          timeline: string | null
+          duration_unit: string | null
+          steps: Json | null
+          notes: Json | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          emoji?: string | null
+          budget?: number | string | null
+          timeline?: string | null
+          duration_unit?: string | null
+          steps?: Json | null
+          notes?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          emoji?: string | null
+          budget?: number | string | null
+          timeline?: string | null
+          duration_unit?: string | null
+          steps?: Json | null
+          notes?: Json | null
           created_at?: string | null
           updated_at?: string | null
         }

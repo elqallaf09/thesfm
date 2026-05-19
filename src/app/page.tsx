@@ -859,7 +859,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   };
 
   const addGoal = () => setGoals([...goals, { id: generateId(), goal: '', amount: '', duration: '', durationUnit: 'month', notes: '' }]);
-  const updateGoal = (id: string, field: keyof GoalEntry, value: string) => setGoals(goals.map(goal => goal.id === id ? { ...goal, [field]: value } : goal));
+  const updateGoal = <K extends keyof GoalEntry>(id: string, field: K, value: GoalEntry[K]) => setGoals(goals.map(goal => goal.id === id ? { ...goal, [field]: value } : goal));
   const removeGoal = (id: string) => setGoals(goals.filter(goal => goal.id !== id));
 
   const getAIAdvice = (): string => {
@@ -1162,9 +1162,11 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                     {CHARITY_TYPE_OPTIONS.map(type => (
                       <button key={type} type="button" onClick={() => {
                         if (selectedCharityTypes.includes(type)) {
+                          const newP = { ...charityPercentages };
+                          delete newP[type];
                           setSelectedCharityTypes(selectedCharityTypes.filter(t => t !== type));
-                          const newP = { ...charityPercentages }; delete newP[type]; setCharityPercentages(newP);
-                          setTotalCharityPercentage(Object.values({ ...charityPercentages, [type]: 0 }).reduce((a, b) => a + b, 0) - (charityPercentages[type] || 0));
+                          setCharityPercentages(newP);
+                          setTotalCharityPercentage(Math.min(Object.values(newP).reduce((a, b) => a + b, 0), 20));
                         } else {
                           setSelectedCharityTypes([...selectedCharityTypes, type]);
                           setCharityPercentages({ ...charityPercentages, [type]: 0 });
@@ -1437,7 +1439,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                   <div className="space-y-1"><Label className="text-xs text-muted-foreground"><Calendar className="w-3 h-3 inline me-1" />{text.duration}</Label>
                     <div className="flex gap-1">
                       <Input placeholder="0" type="number" value={goal.duration} onChange={(e) => updateGoal(goal.id, 'duration', e.target.value)} className="h-10 w-20" dir="ltr" />
-                      <Select value={goal.durationUnit} onValueChange={(value) => updateGoal(goal.id, 'durationUnit', value)}>
+                      <Select value={goal.durationUnit} onValueChange={(value) => updateGoal(goal.id, 'durationUnit', value as DurationUnit)}>
                         <SelectTrigger className="h-10 w-24"><SelectValue /></SelectTrigger>
                         <SelectContent><SelectItem value="day">{text.durationUnitDay}</SelectItem><SelectItem value="month">{text.durationUnitMonth}</SelectItem><SelectItem value="year">{text.durationUnitYear}</SelectItem></SelectContent>
                       </Select>
