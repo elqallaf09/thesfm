@@ -8,9 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calculator, Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Globe, Plus, Trash2, Target, Calendar, Banknote, Goal, ChevronDown, ChevronUp, User } from 'lucide-react';
+import { Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Globe, Plus, Trash2, Target, Calendar, Banknote, Goal, ChevronDown, ChevronUp, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/auth/AuthForm';
@@ -576,7 +575,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   };
 
   const escHtml = (s: string) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    const handlePrint = () => {
+  const handlePrint = () => {
     const cur = getCurrentCurrency().symbol;
     const date = new Date().toLocaleDateString('ar-SA');
     const sr = totalIncome > 0 ? (breakdown.savings / totalIncome * 100).toFixed(0) : '0';
@@ -611,7 +610,6 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     const goalRows = goals.length > 0 ? goals.map(g => {
       const amt = parseFloat(g.amount.replace(/[^\d.]/g,''))||0;
       const mons = ms > 0 && amt > 0 ? Math.ceil(amt/ms) : 0;
-      const unitLabel = g.durationUnit==='year'?'سنة':g.durationUnit==='day'?'يوم':'شهر';
       return '<tr><td>' + escHtml(g.goal||'—') + '</td><td class="num">' + formatCurrency(amt) + ' ' + cur + '</td><td class="num">' + (mons>0?mons+' شهر':'—') + '</td></tr>';
     }).join('') : '<tr><td colspan="3" class="empty">لا توجد أهداف</td></tr>';
 
