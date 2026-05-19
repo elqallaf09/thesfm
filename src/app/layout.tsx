@@ -6,6 +6,7 @@ import GlobalClientEffects from "@/components/GlobalClientEffects";
 import { AuthProvider } from "@/hooks/useAuth";
 
 import "./globals.css";
+import "../styles/safari-fix.css";
 
 const cairo = Cairo({
   variable: "--font-cairo",
@@ -32,9 +33,13 @@ export default function RootLayout({
 
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
-      <body
-        className={`${cairo.variable} font-cairo antialiased`}
-      >
+      <head>
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1"
+        />
+      </head>
+      <body className={`${cairo.variable} font-cairo antialiased`}>
         <Toaster />
         <ThemeProvider
           attribute="class"
