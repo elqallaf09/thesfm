@@ -931,12 +931,85 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
       .sfm-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(196,163,90,0.15),0 2px 8px rgba(0,0,0,0.06)}
       .sfm-nav-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.88);font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;text-decoration:none}
       .sfm-nav-btn:hover{background:rgba(255,255,255,0.24);color:white}
-      @media(max-width:768px){.sfm-top-nav{display:none!important}}
+      @media(max-width:768px){.sfm-top-nav{display:flex!important;overflow-x:auto}}
       @media print{body{background:white!important}.no-print{display:none!important}main{background:white!important}*{box-shadow:none!important}}
     `}</style>
 
     <main dir={isArabic ? 'rtl' : 'ltr'} className="relative min-h-screen" style={{background:'linear-gradient(160deg,#fffdf5 0%,#fef9e7 55%,#fdf5d0 100%)'}}>
 
+      {/* Fixed desktop sidebar */}
+      <aside className="sfm-sidebar no-print" dir="rtl">
+        <div className="sfm-logo">
+          <div className="sfm-logo-badge">SFM</div>
+          <div className="sfm-logo-name">{isArabic ? 'المدير المالي' : 'Smart Finance'}</div>
+          <div className="sfm-logo-sub">{isArabic ? 'الذكي - Premium' : 'Premium SaaS'}</div>
+        </div>
+
+        <nav className="sfm-nav">
+          <button className="sfm-nav-item active" type="button">
+            <span className="sfm-nav-icon">⊞</span>
+            <span>{isArabic ? 'لوحة التحكم' : 'Dashboard'}</span>
+            <span className="sfm-nav-badge">AI</span>
+          </button>
+          <button className="sfm-nav-item" type="button" onClick={() => router.push('/projects')}>
+            <span className="sfm-nav-icon">🚀</span>
+            <span>{isArabic ? 'مشروعي' : 'Projects'}</span>
+          </button>
+          <button className="sfm-nav-item" type="button" onClick={() => router.push('/education/investments')}>
+            <span className="sfm-nav-icon">📈</span>
+            <span>{isArabic ? 'الاستثمار' : 'Invest'}</span>
+          </button>
+          <button className="sfm-nav-item" type="button" onClick={() => router.push('/education/savings')}>
+            <span className="sfm-nav-icon">💰</span>
+            <span>{isArabic ? 'المدخرات' : 'Savings'}</span>
+          </button>
+          <button className="sfm-nav-item" type="button" onClick={() => router.push('/education/expenses')}>
+            <span className="sfm-nav-icon">📊</span>
+            <span>{isArabic ? 'المصروفات' : 'Expenses'}</span>
+          </button>
+          {!isGuest && (
+            <button className="sfm-nav-item" type="button" onClick={() => router.push('/profile')}>
+              <span className="sfm-nav-icon">👤</span>
+              <span>{isArabic ? 'ملفي' : 'Profile'}</span>
+            </button>
+          )}
+
+          <div className="sfm-nav-divider" />
+
+          {!isGuest ? (
+            <button className="sfm-nav-item" type="button" onClick={() => { localStorage.removeItem('guest_session'); supabase.auth.signOut(); }}>
+              <span className="sfm-nav-icon">⤴</span>
+              <span>{text.logout}</span>
+            </button>
+          ) : (
+            <button className="sfm-nav-item" type="button" onClick={() => { localStorage.removeItem('guest_session'); window.location.reload(); }}>
+              <span className="sfm-nav-icon">🔑</span>
+              <span>{isArabic ? 'تسجيل الدخول' : 'Login'}</span>
+            </button>
+          )}
+        </nav>
+
+        <div className="sfm-sidebar-foot">
+          {username && (
+            <button className="sfm-user-pill" type="button" onClick={() => router.push('/profile')}>
+              <div className="sfm-avatar">{username.substring(0, 2).toUpperCase()}</div>
+              <div className="min-w-0 flex-1">
+                <div className="sfm-user-name">{username}</div>
+                <div className="sfm-user-role">Premium</div>
+              </div>
+            </button>
+          )}
+          <div className="sfm-lang-row">
+            {(['ar', 'en'] as const).map(lang => (
+              <button key={lang} type="button" className={'sfm-lang-btn' + (language === lang ? ' active' : '')} onClick={() => setLanguage(lang)}>
+                {lang === 'ar' ? 'عربي' : 'EN'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      <div className="sfm-main">
       {/* ── Premium Top Navigation Bar ── */}
       <div className="no-print" style={{background:'linear-gradient(135deg,#7f5c48 0%,#5c3d2a 100%)',boxShadow:'0 4px 24px rgba(92,61,42,0.25)',position:'sticky',top:0,zIndex:40}}>
         {/* Main nav row */}
@@ -1639,6 +1712,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             <span className="font-medium" style={{color: '#c4a35a'}}>powered by M.Q</span>
             <span className="w-24 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
           </div>
+      </div>
       </div>
       </div>
     </main>
