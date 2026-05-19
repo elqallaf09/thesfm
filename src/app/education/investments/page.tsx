@@ -1,190 +1,473 @@
 'use client';
-import { useState } from 'react';
-import { WisdomTicker } from '@/components/WisdomTicker';
-import Link from 'next/link';
-import { Languages } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
-type Language = 'ar' | 'en' | 'fr';
+/* ─── Animated Counter ─── */
+function useCounter(target: number, duration = 1400) {
+  const [val, setVal] = useState(0);
+  const r = useRef(false);
+  useEffect(() => {
+    if (r.current) return; r.current = true;
+    const steps = 60; let cur = 0; const inc = target / steps;
+    const t = setInterval(() => { cur += inc; if (cur >= target) { setVal(target); clearInterval(t); } else setVal(Math.floor(cur)); }, duration / steps);
+    return () => clearInterval(t);
+  }, [target, duration]);
+  return val;
+}
 
-const content = {
-  ar: {
-    back: 'العودة للرئيسية',
-    title: 'أنواع الاستثمار',
-    intro: 'الاستثمار يعني تشغيل المال أو الوقت في أصل أو مهارة بهدف تحقيق نمو مستقبلي. الأفضل دائماً توزيع المخاطر وعدم وضع كل المال في خيار واحد.',
-    tipsTitle: 'نصائح مهمة',
-    tips: [
-      'ابدأ بمبلغ صغير وتعلم قبل زيادة المبلغ.',
-      'نوّع بين أكثر من نوع استثمار لتقليل المخاطر.',
-      'لا تستثمر مال الطوارئ أو المال الذي تحتاجه قريباً.',
-      'قارن الرسوم والمخاطر قبل الاختيار.',
-      'الاستثمار طويل الأمد أكثر أماناً من المضاربة قصيرة الأمد.',
-    ],
-    items: [
-      { title: 'الأسهم', emoji: '📈', risk: 'عالي', desc: 'شراء حصة في شركة مدرجة. قد تربح من ارتفاع السعر أو توزيعات الأرباح. مناسب للمستثمر الصبور على المدى الطويل.', examples: ['أسهم البنوك', 'أسهم الاتصالات', 'أسهم الطاقة', 'الشركات القيادية', 'أسهم الصناعة'] },
-      { title: 'الصناديق الاستثمارية', emoji: '🏦', risk: 'متوسط', desc: 'محفظة يديرها مختصون وتجمع أموال عدة مستثمرين. توفر تنويعاً تلقائياً وتقليل مخاطر.', examples: ['صناديق الأسهم', 'صناديق الدخل الثابت', 'صناديق متوازنة', 'صناديق مؤشرات', 'صناديق النمو'] },
-      { title: 'الصكوك والسندات', emoji: '📋', risk: 'منخفض', desc: 'أدوات دخل ثابت أو شبه ثابت. تمنحك عائداً دورياً منتظماً مع مخاطر أقل من الأسهم. مناسب لمن يريد دخلاً ثابتاً.', examples: ['صكوك حكومية', 'صكوك شركات', 'سندات قصيرة الأجل', 'صكوك إسلامية'] },
-      { title: 'العقار', emoji: '🏠', risk: 'متوسط', desc: 'شراء أصل عقاري للاستفادة من الإيجار الشهري أو ارتفاع القيمة مع الوقت. من أكثر الاستثمارات استقراراً في الخليج.', examples: ['شقة للإيجار', 'أرض', 'محل تجاري', 'صناديق عقارية (REITs)', 'مجمع سكني'] },
-      { title: 'الذهب والمعادن', emoji: '🥇', risk: 'منخفض-متوسط', desc: 'أصول تستخدم للحماية من التضخم وتنويع المحفظة. الذهب يحتفظ بقيمته عبر الزمن وهو ملاذ آمن في أوقات الأزمات.', examples: ['ذهب عيار 24', 'سبائك ذهب', 'صناديق ذهب ETF', 'فضة', 'بلاتين'] },
-      { title: 'المشاريع الصغيرة', emoji: '🏪', risk: 'متوسط-عالي', desc: 'استثمار مباشر في نشاط تجاري. العائد قد يكون كبيراً لكنه يحتاج وقتاً وجهداً وإدارة. من أفضل الاستثمارات إذا كان في مجال تتقنه.', examples: ['متجر إلكتروني', 'مطعم أو كافيه', 'خدمات رقمية', 'تجارة العملات', 'الفرنشايز'] },
-      { title: 'التعليم والمهارات', emoji: '📚', risk: 'منخفض جداً', desc: 'أفضل استثمار وأعلى عائد على المدى الطويل. تطوير مهاراتك يرفع دخلك ويفتح أبواباً جديدة لا تُغلق.', examples: ['دورات مهنية معتمدة', 'تعلم البرمجة', 'اللغات الأجنبية', 'إدارة الأعمال', 'التسويق الرقمي'] },
-      { title: 'العملات الرقمية', emoji: '💎', risk: 'عالي جداً', desc: 'أصول رقمية عالية التذبذب. قد تحقق مكاسب كبيرة أو خسائر فادحة. لا تستثمر فيها إلا ما تقبل خسارته كاملاً.', examples: ['بيتكوين BTC', 'إيثريوم ETH', 'صناديق مرتبطة بالعملات', 'BNB', 'Solana'] },
-    ]
-  },
-  en: {
-    back: 'Back to home',
-    title: 'Investment Types',
-    intro: 'Investing means using money or time in an asset or skill to achieve future growth. It is always best to diversify risks and avoid putting everything in one option.',
-    tipsTitle: 'Important tips',
-    tips: [
-      'Start small and learn before increasing the amount.',
-      'Diversify across more than one investment type to reduce risk.',
-      'Do not invest emergency money or money you need soon.',
-      'Compare fees and risks before choosing.',
-      'Long-term investing is safer than short-term speculation.',
-    ],
-    items: [
-      { title: 'Stocks', emoji: '📈', risk: 'High', desc: 'Buying a share in a listed company. You may profit from price growth or dividends. Best for patient long-term investors.', examples: ['Bank stocks', 'Telecom stocks', 'Energy stocks', 'Blue-chip companies', 'Industrial stocks'] },
-      { title: 'Investment Funds', emoji: '🏦', risk: 'Medium', desc: 'A portfolio managed by specialists combining money from multiple investors. Provides automatic diversification and reduced risk.', examples: ['Equity funds', 'Fixed income funds', 'Balanced funds', 'Index funds', 'Growth funds'] },
-      { title: 'Sukuk & Bonds', emoji: '📋', risk: 'Low', desc: 'Fixed or semi-fixed income instruments giving regular periodic returns with lower risk than stocks. Ideal for steady income seekers.', examples: ['Government sukuk', 'Corporate sukuk', 'Short-term bonds', 'Islamic sukuk'] },
-      { title: 'Real Estate', emoji: '🏠', risk: 'Medium', desc: 'Buying property to benefit from monthly rent or value appreciation over time. One of the most stable investments in the Gulf.', examples: ['Rental apartment', 'Land', 'Commercial shop', 'REITs', 'Residential complex'] },
-      { title: 'Gold & Metals', emoji: '🥇', risk: 'Low-Medium', desc: 'Assets used to protect against inflation and diversify your portfolio. Gold preserves value over time and serves as a safe haven in crises.', examples: ['24K gold', 'Gold bullion', 'Gold ETF funds', 'Silver', 'Platinum'] },
-      { title: 'Small Businesses', emoji: '🏪', risk: 'Medium-High', desc: 'Direct investment in a business activity. Returns can be significant but require time, effort, and management. Best if in a field you master.', examples: ['Online store', 'Restaurant or cafe', 'Digital services', 'Franchise', 'Currency trading'] },
-      { title: 'Education & Skills', emoji: '📚', risk: 'Very Low', desc: 'The best investment with the highest long-term return. Developing your skills raises your income and opens doors that never close.', examples: ['Certified professional courses', 'Programming', 'Foreign languages', 'Business management', 'Digital marketing'] },
-      { title: 'Digital Assets', emoji: '💎', risk: 'Very High', desc: 'Highly volatile digital assets. May generate large gains or severe losses. Only invest what you can afford to lose entirely.', examples: ['Bitcoin BTC', 'Ethereum ETH', 'Crypto-linked funds', 'BNB', 'Solana'] },
-    ]
-  },
-  fr: {
-    back: "Retour à l'accueil",
-    title: "Types d'investissement",
-    intro: "Investir signifie utiliser de l'argent ou du temps dans un actif ou une compétence pour obtenir une croissance future. Il vaut toujours mieux diversifier les risques.",
-    tipsTitle: 'Conseils importants',
-    tips: [
-      "Commencez petit et apprenez avant d'augmenter.",
-      "Diversifiez entre plusieurs types d'investissement.",
-      "N'investissez pas votre fonds d'urgence.",
-      "Comparez les frais et les risques avant de choisir.",
-      "L'investissement à long terme est plus sûr que la spéculation.",
-    ],
-    items: [
-      { title: 'Actions', emoji: '📈', risk: 'Élevé', desc: "Acheter une part d'une entreprise cotée. Profit possible via hausse du prix ou dividendes. Idéal pour les investisseurs patients à long terme.", examples: ['Banques', 'Télécoms', 'Énergie', 'Grandes sociétés', 'Industrie'] },
-      { title: "Fonds d'investissement", emoji: '🏦', risk: 'Moyen', desc: "Portefeuille géré par des spécialistes regroupant l'argent de plusieurs investisseurs. Offre une diversification automatique.", examples: ['Fonds actions', 'Fonds revenus fixes', 'Fonds équilibrés', 'Fonds indiciels', 'Fonds croissance'] },
-      { title: 'Sukuk et obligations', emoji: '📋', risk: 'Faible', desc: "Instruments de revenu fixe ou semi-fixe donnant des rendements périodiques réguliers avec moins de risque que les actions.", examples: ['Sukuk publics', 'Sukuk sociétés', 'Obligations courtes', 'Sukuk islamiques'] },
-      { title: 'Immobilier', emoji: '🏠', risk: 'Moyen', desc: "Acheter un bien pour le loyer mensuel ou la valorisation. Un des investissements les plus stables dans le Golfe.", examples: ['Appartement locatif', 'Terrain', 'Local commercial', 'Fonds immobiliers', 'Complexe résidentiel'] },
-      { title: 'Or et métaux', emoji: '🥇', risk: 'Faible-Moyen', desc: "Actifs utilisés pour protéger contre l'inflation et diversifier le portefeuille. L'or préserve sa valeur dans le temps.", examples: ['Or 24K', 'Lingots d\'or', 'Fonds or ETF', 'Argent', 'Platine'] },
-      { title: 'Petites entreprises', emoji: '🏪', risk: 'Moyen-Élevé', desc: "Investissement direct dans une activité. Les rendements peuvent être importants mais nécessitent temps et gestion.", examples: ['Boutique en ligne', 'Restaurant', 'Services numériques', 'Franchise', 'Commerce'] },
-      { title: 'Éducation et compétences', emoji: '📚', risk: 'Très faible', desc: "Le meilleur investissement avec le rendement le plus élevé à long terme. Développer ses compétences augmente ses revenus.", examples: ['Formations certifiées', 'Programmation', 'Langues étrangères', 'Gestion', 'Marketing digital'] },
-      { title: 'Actifs numériques', emoji: '💎', risk: 'Très élevé', desc: "Actifs numériques très volatils. Peuvent générer de grands gains ou de lourdes pertes. N'investissez que ce que vous pouvez perdre.", examples: ['Bitcoin BTC', 'Ethereum ETH', 'Fonds crypto', 'BNB', 'Solana'] },
-    ]
-  }
-};
-
-const riskColor: Record<string, string> = {
-  'منخفض جداً': '#2d8a4e', 'Very Low': '#2d8a4e', 'Très faible': '#2d8a4e',
-  'منخفض': '#4a9e6b', 'Low': '#4a9e6b', 'Faible': '#4a9e6b',
-  'منخفض-متوسط': '#7a8a2e', 'Low-Medium': '#7a8a2e', 'Faible-Moyen': '#7a8a2e',
-  'متوسط': '#c4a35a', 'Medium': '#c4a35a', 'Moyen': '#c4a35a',
-  'متوسط-عالي': '#b87333', 'Medium-High': '#b87333', 'Moyen-Élevé': '#b87333',
-  'عالي': '#c0622e', 'High': '#c0622e', 'Élevé': '#c0622e',
-  'عالي جداً': '#c0392b', 'Very High': '#c0392b', 'Très élevé': '#c0392b',
-};
-
-export default function InvestmentEducationPage() {
-  const [language, setLanguage] = useState<Language>('ar');
-  const t = content[language];
-  const isArabic = language === 'ar';
-
+/* ─── SVG Donut ─── */
+function Donut({ data }: { data: { color: string; pct: number; label: string }[] }) {
+  const r = 54, cx = 70, cy = 70, circ = 2 * Math.PI * r;
+  let offset = 0;
   return (
-    <main dir={isArabic ? 'rtl' : 'ltr'} className="min-h-screen px-4 py-8" style={{background: 'linear-gradient(135deg, #fffdf5 0%, #fef9e7 50%, #fdf5d0 100%)'}}>
-      <div className="mx-auto max-w-5xl space-y-4">
-        <WisdomTicker language={language} onLanguageChange={setLanguage} showLanguageSelector={false} />
+    <svg width="140" height="140" viewBox="0 0 140 140">
+      {data.map((d, i) => {
+        const dash = (d.pct / 100) * circ;
+        const gap = circ - dash;
+        const el = (
+          <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={d.color} strokeWidth="18"
+            strokeDasharray={`${dash} ${gap}`} strokeDashoffset={-offset}
+            transform={`rotate(-90 ${cx} ${cy})`}
+            style={{ transition: `stroke-dasharray 1.2s ease ${i * 0.15}s` }} />
+        );
+        offset += dash;
+        return el;
+      })}
+      <circle cx={cx} cy={cy} r={r - 10} fill="white" />
+      <text x={cx} y={cy - 4} textAnchor="middle" fontSize="18" fontWeight="900" fill="#2B2118">62</text>
+      <text x={cx} y={cy + 14} textAnchor="middle" fontSize="10" fill="#8A9BB0">risk</text>
+    </svg>
+  );
+}
 
-        {/* Header */}
-        <div className="rounded-3xl p-6 shadow-xl" style={{background: '#7f5c48', boxShadow: '0 4px 24px rgba(127,92,72,0.35), 0 8px 40px rgba(127,92,72,0.15)'}}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Link href="/" className="text-sm hover:opacity-80 transition-opacity" style={{color: '#f0d080'}}>{t.back}</Link>
-            <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
-              <SelectTrigger className="w-[150px] text-white [&>span]:text-white" style={{borderColor: 'rgba(240,208,128,0.3)', background: 'rgba(240,208,128,0.1)'}}>
-                <Languages className="h-4 w-4 me-2" style={{color: '#f0d080'}} />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ar">العربية</SelectItem>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="fr">Français</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <h1 className="mt-4 text-4xl font-bold" style={{color: '#f0d080'}}>{t.title}</h1>
-          <p className="mt-3 max-w-3xl text-white/75">{t.intro}</p>
+/* ─── Progress Ring ─── */
+function Ring({ pct, g1, g2, id }: { pct: number; g1: string; g2: string; id: string }) {
+  const r = 20, c = 2 * Math.PI * r, dash = (pct / 100) * c;
+  return (
+    <svg width="52" height="52" viewBox="0 0 52 52">
+      <defs><linearGradient id={id} x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor={g1} /><stop offset="100%" stopColor={g2} />
+      </linearGradient></defs>
+      <circle cx="26" cy="26" r={r} fill="none" stroke="rgba(0,0,0,.07)" strokeWidth="5" />
+      <circle cx="26" cy="26" r={r} fill="none" stroke={`url(#${id})`} strokeWidth="5"
+        strokeDasharray={`${dash} ${c}`} strokeLinecap="round" transform="rotate(-90 26 26)"
+        style={{ transition: 'stroke-dasharray 1.2s cubic-bezier(0.4,0,0.2,1) 0.3s' }} />
+      <text x="26" y="30" textAnchor="middle" fontSize="10.5" fontWeight="800" fill="#2B2118">{pct}</text>
+    </svg>
+  );
+}
+
+/* ─── Bar Chart ─── */
+function BarChart({ data }: { data: { label: string; val: number; max: number; color: string }[] }) {
+  return (
+    <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', height: '100px' }}>
+      {data.map((b, i) => (
+        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
+          <div style={{ fontSize: '9px', color: '#8A9BB0', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{(b.val / 1000).toFixed(0)}K</div>
+          <div style={{ width: '100%', borderRadius: '6px 6px 0 0', background: `linear-gradient(180deg,${b.color},${b.color}88)`, height: `${Math.max((b.val / b.max) * 80, 4)}px`, transition: 'height .9s cubic-bezier(.4,0,.2,1)', opacity: 0.65 + i * 0.07 }} />
+          <div style={{ fontSize: '9px', color: '#8A9BB0' }}>{b.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Data ─── */
+const INVESTMENTS = [
+  { icon: '📈', key: 'stocks', name: 'الأسهم', name_en: 'Stocks', desc: 'ملكية في شركات حقيقية مع إمكانية نمو رأس المال وتوزيعات الأرباح السنوية.', risk: 'متوسطة', riskColor: '#F59E0B', riskBg: 'rgba(245,158,11,.10)', returns: '8–15%', horizon: '3–7 سنوات', aiScore: 78, g1: '#F59E0B', g2: '#D97706', progress: 78 },
+  { icon: '🏦', key: 'funds', name: 'الصناديق الاستثمارية', name_en: 'Investment Funds', desc: 'تنويع تلقائي مع إدارة احترافية. أفضل خيار للمستثمر المبتدئ والمتوسط.', risk: 'منخفضة', riskColor: '#22C55E', riskBg: 'rgba(34,197,94,.10)', returns: '6–12%', horizon: '3–5 سنوات', aiScore: 92, g1: '#22C55E', g2: '#16A34A', progress: 92 },
+  { icon: '📜', key: 'bonds', name: 'الصكوك والسندات', name_en: 'Bonds & Sukuk', desc: 'دخل ثابت ومنتظم مع حماية رأس المال. مثالي للمحافظين وكبار السن.', risk: 'منخفضة', riskColor: '#22C55E', riskBg: 'rgba(34,197,94,.10)', returns: '3–6%', horizon: '1–5 سنوات', aiScore: 85, g1: '#3B82F6', g2: '#2563EB', progress: 85 },
+  { icon: '🏠', key: 'realestate', name: 'العقار', name_en: 'Real Estate', desc: 'أصل حقيقي بدخل إيجاري ثابت وارتفاع رأسمالي تاريخي على المدى البعيد.', risk: 'منخفضة-متوسطة', riskColor: '#22C55E', riskBg: 'rgba(34,197,94,.10)', returns: '8–14%', horizon: '5–20 سنة', aiScore: 88, g1: '#EC4899', g2: '#BE185D', progress: 88 },
+  { icon: '🥇', key: 'gold', name: 'الذهب والمعادن', name_en: 'Gold & Metals', desc: 'تحوط ضد التضخم وعدم الاستقرار. ملاذ آمن تاريخي يحفظ القيمة على المدى البعيد.', risk: 'متوسطة', riskColor: '#F59E0B', riskBg: 'rgba(245,158,11,.10)', returns: '5–10%', horizon: '3–10 سنوات', aiScore: 82, g1: '#C8A96B', g2: '#8A6D2A', progress: 82 },
+  { icon: '🚀', key: 'startup', name: 'المشاريع الصغيرة', name_en: 'Small Businesses', desc: 'عوائد مرتفعة محتملة مع خبرة عملية وتأثير مباشر على الاقتصاد المحلي.', risk: 'عالية', riskColor: '#EF4444', riskBg: 'rgba(239,68,68,.10)', returns: '15–30%', horizon: '3–7 سنوات', aiScore: 58, g1: '#F97316', g2: '#EA580C', progress: 58 },
+  { icon: '🎓', key: 'education', name: 'التعليم والمهارات', name_en: 'Education & Skills', desc: 'أفضل استثمار في نفسك. يرفع قيمتك السوقية ودخلك المستقبلي بشكل دائم.', risk: 'منخفضة جداً', riskColor: '#22C55E', riskBg: 'rgba(34,197,94,.10)', returns: '20–50%', horizon: '1–3 سنوات', aiScore: 95, g1: '#8B5CF6', g2: '#7C3AED', progress: 95 },
+  { icon: '💎', key: 'crypto', name: 'العملات الرقمية', name_en: 'Cryptocurrency', desc: 'فئة أصول جديدة عالية التقلب. إمكانية عوائد استثنائية مع مخاطر مقابلة عالية.', risk: 'عالية جداً', riskColor: '#EF4444', riskBg: 'rgba(239,68,68,.10)', returns: '−50% – +500%', horizon: '1–5 سنوات', aiScore: 42, g1: '#06B6D4', g2: '#0891B2', progress: 42 },
+];
+
+const DONUT_DATA = [
+  { label: 'أسهم', color: '#F59E0B', pct: 35 },
+  { label: 'عقار', color: '#EC4899', pct: 25 },
+  { label: 'صناديق', color: '#22C55E', pct: 20 },
+  { label: 'ذهب', color: '#C8A96B', pct: 12 },
+  { label: 'أخرى', color: '#8B5CF6', pct: 8 },
+];
+
+const WEALTH_PATH = [
+  { icon: '🌱', title: 'مبتدئ', sub: 'أولى خطواتك', done: true },
+  { icon: '💰', title: 'مدخر', sub: 'تراكم رأس المال', done: true },
+  { icon: '📈', title: 'مستثمر', sub: 'نمو نشط', done: false },
+  { icon: '🏠', title: 'مالك أصول', sub: 'دخل سلبي', done: false },
+  { icon: '👑', title: 'حر مالياً', sub: 'الاستقلال التام', done: false },
+];
+
+const AI_MESSAGES = [
+  { icon: '📊', text: 'محفظتك تفتقر للتنويع — 70% في أصل واحد يزيد المخاطر. أضف صناديق استثمارية.' },
+  { icon: '🥇', text: 'اقتصادك المحلي يمر بضغوط تضخمية — خصص 10-15% للذهب كتحوط فوري.' },
+  { icon: '📈', text: 'العوائد المتوقعة أعلى 12% مع محفظة متوازنة من الأسهم + الصكوك + العقار.' },
+  { icon: '⚖️', text: 'مؤشر خطرك 62/100 — قابل للتخفيض إلى 45 بإضافة أصول ذات دخل ثابت.' },
+];
+
+/* ══════════════════════════════════
+   MAIN PAGE
+══════════════════════════════════ */
+export default function InvestmentsPage() {
+  const router = useRouter();
+  const [chatMsg, setChatMsg] = useState('');
+  const [saving, setSaving] = useState(500);
+  const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'ai'; text: string }[]>([
+    { role: 'ai', text: 'مرحباً! أنا مستشارك الاستثماري الذكي. أخبرني عن أهدافك المالية وسأبني لك محفظة مثالية 🤖' },
+  ]);
+  const [mounted, setMounted] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const chatRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 60); return () => clearTimeout(t); }, []);
+  useEffect(() => { if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [chatHistory]);
+
+  const wealth = useCounter(19000);
+  const goal = useCounter(80000);
+  const riskScore = useCounter(62);
+  const yr1 = saving * 12;
+  const yr5 = Math.round(saving * 12 * 5 * 1.10);
+  const yr10 = Math.round(saving * 12 * 10 * 1.22);
+
+  const handleChat = () => {
+    if (!chatMsg.trim()) return;
+    const q = chatMsg; setChatMsg('');
+    setChatHistory(h => [...h, { role: 'user', text: q }]);
+    setTimeout(() => {
+      setChatHistory(h => [...h, {
+        role: 'ai',
+        text: q.includes('أسهم') || q.includes('سهم') ? '📈 الأسهم الكويتية تتمتع بعوائد توزيعات مرتفعة نسبياً. أنصح بالتركيز على البنوك الإسلامية وشركات الاتصالات كمحور أساسي.' :
+          q.includes('ذهب') ? '🥇 الذهب الآن عند مستويات تاريخية مرتفعة. لا تزيد حصته عن 15% من محفظتك — استخدمه للتحوط لا للمضاربة.' :
+          q.includes('عقار') ? '🏠 العقار الكويتي يشهد طلباً قوياً في المناطق المطورة. العائد الإيجاري يتراوح 5-8% سنوياً مع نمو رأسمالي محتمل.' :
+          q.includes('كريبتو') || q.includes('بيتكوين') ? '💎 العملات الرقمية شديدة التقلب. إن كنت مصراً، لا تتجاوز 5% من محفظتك وتقبّل احتمال خسارة المبلغ كاملاً.' :
+          '💡 توصيتي: ابدأ بصندوق استثماري متنوع (40%) + أسهم محلية (30%) + ذهب (15%) + سيولة (15%). هذا التوزيع يوازن بين النمو والحماية.',
+      }]);
+    }, 700);
+  };
+
+  const S = (d: number) => ({
+    opacity: mounted ? 1 : 0,
+    transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+    transition: `opacity 0.5s ease ${d}ms, transform 0.5s ease ${d}ms`,
+  });
+
+  return (<>
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap');
+      *{box-sizing:border-box;margin:0;padding:0}
+      .ip{font-family:'Tajawal',sans-serif;direction:rtl;background:#FAF8F2;min-height:100vh;color:#2B2118}
+      .ip ::-webkit-scrollbar{width:4px}.ip ::-webkit-scrollbar-thumb{background:rgba(200,169,107,.3);border-radius:10px}
+      @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+      @keyframes spin{to{transform:rotate(360deg)}}
+      @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+      @keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(200,169,107,0)}50%{box-shadow:0 0 0 8px rgba(200,169,107,.12)}}
+      .icard{background:#fff;border:1px solid rgba(200,169,107,.18);border-radius:28px;box-shadow:0 16px 50px rgba(92,61,42,.06);transition:all .25s cubic-bezier(.4,0,.2,1)}
+      .icard:hover:not(.no-h){transform:translateY(-4px);box-shadow:0 24px 64px rgba(92,61,42,.12),0 0 0 1px rgba(200,169,107,.28)}
+      .inv-card{cursor:default;overflow:hidden;position:relative}
+      .inv-card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(200,169,107,.06),transparent);opacity:0;transition:opacity .25s;border-radius:28px}
+      .inv-card:hover::after{opacity:1}
+      .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+      .btn-g{background:linear-gradient(135deg,#C8A96B,#A8873E);color:#1a0f00;border:none;border-radius:14px;padding:13px 26px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap}
+      .btn-g:hover{background:linear-gradient(135deg,#D4AF37,#C49B3A);box-shadow:0 6px 20px rgba(212,175,55,.35);transform:translateY(-1px)}
+      .btn-o{background:transparent;border:1.5px solid rgba(200,169,107,.35);border-radius:14px;padding:12px 22px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+      .btn-o:hover{background:rgba(200,169,107,.09);border-color:#C8A96B}
+      .islider{-webkit-appearance:none;appearance:none;height:6px;border-radius:10px;background:linear-gradient(90deg,#C8A96B var(--p),rgba(200,169,107,.18) var(--p));cursor:pointer;width:100%}
+      .islider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#C8A96B;box-shadow:0 2px 12px rgba(200,169,107,.4);cursor:pointer;transition:transform .15s}
+      .islider::-webkit-slider-thumb:hover{transform:scale(1.15)}
+      .chat-in{width:100%;background:#FAF8F2;border:1.5px solid rgba(200,169,107,.28);border-radius:14px;padding:12px 16px;font-family:'Tajawal',sans-serif;font-size:14px;color:#2B2118;outline:none;direction:rtl}
+      .chat-in:focus{border-color:#C8A96B;box-shadow:0 0 0 3px rgba(200,169,107,.12)}
+      @media(max-width:900px){.g3{grid-template-columns:1fr 1fr!important}.g4{grid-template-columns:1fr 1fr!important}.g2{grid-template-columns:1fr!important}}
+      @media(max-width:600px){.g3{grid-template-columns:1fr!important}.g4{grid-template-columns:1fr 1fr!important}.hero-pad{padding:32px 22px!important}.hero-btns{flex-direction:column!important}.hero-m{grid-template-columns:1fr 1fr!important}.sim-g{grid-template-columns:1fr!important}}
+      @media(max-width:400px){.g4{grid-template-columns:1fr!important}}
+    `}</style>
+    <div className="ip">
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px 20px 80px' }}>
+
+        {/* Back */}
+        <div style={{ ...S(0), marginBottom: '20px' }}>
+          <button onClick={() => router.back()} className="btn-o" style={{ color: '#5C3D2A', padding: '8px 18px', fontSize: '13px', borderRadius: '12px' }}>← العودة</button>
         </div>
 
-        {/* Risk Legend */}
-        <div className="flex flex-wrap gap-3 justify-center">
-          {[
-            { label: isArabic ? 'مخاطرة منخفضة' : 'Low risk', color: '#4a9e6b' },
-            { label: isArabic ? 'مخاطرة متوسطة' : 'Medium risk', color: '#c4a35a' },
-            { label: isArabic ? 'مخاطرة عالية' : 'High risk', color: '#c0392b' },
-          ].map(item => (
-            <div key={item.label} className="flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium" style={{background: `${item.color}18`, border: `1px solid ${item.color}40`, color: item.color}}>
-              <span className="w-2.5 h-2.5 rounded-full" style={{background: item.color}}></span>
-              {item.label}
-            </div>
+        {/* ═══ HERO ═══ */}
+        <div style={{ ...S(40), marginBottom: '24px', background: 'linear-gradient(145deg,#2B2118 0%,#3D2B1A 40%,#4A3420 70%,#2B2118 100%)', border: '1px solid rgba(200,169,107,.22)', borderRadius: '32px', position: 'relative', overflow: 'hidden' }} className="icard no-h">
+          {/* Glow orbs */}
+          <div style={{ position: 'absolute', top: '-80px', right: '-80px', width: '320px', height: '320px', background: 'radial-gradient(circle,rgba(200,169,107,.18) 0%,transparent 70%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: '-60px', left: '8%', width: '260px', height: '260px', background: 'radial-gradient(circle,rgba(200,169,107,.09) 0%,transparent 70%)', pointerEvents: 'none' }} />
+          {/* Floating particles */}
+          {[...Array(10)].map((_, i) => (
+            <div key={i} style={{ position: 'absolute', width: `${8 + (i % 3) * 5}px`, height: `${8 + (i % 3) * 5}px`, borderRadius: '50%', background: i % 2 === 0 ? 'rgba(200,169,107,.14)' : 'rgba(255,255,255,.07)', left: `${(i * 19 + 4) % 92}%`, top: `${(i * 27 + 8) % 85}%`, animation: `float ${4 + i % 3}s ease-in-out infinite`, animationDelay: `${i * 0.35}s`, filter: 'blur(1px)', pointerEvents: 'none' }} />
           ))}
+          <div className="hero-pad" style={{ padding: '52px 48px', position: 'relative', zIndex: 1 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(200,169,107,.14)', border: '1px solid rgba(200,169,107,.28)', borderRadius: '20px', padding: '6px 16px', marginBottom: '22px' }}>
+              <span>📈</span>
+              <span style={{ fontSize: '11.5px', fontWeight: '700', color: '#C8A96B', letterSpacing: '.06em' }}>SFM INVESTMENT PLATFORM</span>
+            </div>
+            <h1 style={{ fontSize: 'clamp(26px,4.5vw,50px)', fontWeight: '900', color: '#fff', lineHeight: 1.15, marginBottom: '10px', letterSpacing: '-0.02em' }}>أنواع الاستثمار</h1>
+            <p style={{ fontSize: '16px', color: 'rgba(255,255,255,.55)', marginBottom: '34px', maxWidth: '500px', lineHeight: 1.7 }}>ابنِ محفظتك الاستثمارية الذكية وحقق أهدافك المالية</p>
+            {/* Metrics */}
+            <div className="hero-m" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '14px', marginBottom: '34px' }}>
+              {[
+                { label: 'الثروة الحالية', val: `${wealth.toLocaleString('ar-KW')} د.ك`, color: '#C8A96B' },
+                { label: 'هدف الاستثمار', val: `${goal.toLocaleString('ar-KW')} د.ك`, color: '#4ADE80' },
+                { label: 'مؤشر المخاطر', val: `${riskScore}/100`, color: '#60A5FA' },
+                { label: 'العائد المتوقع', val: '12%', color: '#C084FC' },
+              ].map((m, i) => (
+                <div key={i} style={{ background: 'rgba(255,255,255,.06)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,.09)', borderRadius: '18px', padding: '18px 14px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '10.5px', color: 'rgba(255,255,255,.4)', marginBottom: '7px', fontWeight: '500' }}>{m.label}</div>
+                  <div style={{ fontSize: 'clamp(14px,1.8vw,20px)', fontWeight: '800', color: m.color, fontFamily: "'IBM Plex Sans Arabic',sans-serif", lineHeight: 1 }}>{m.val}</div>
+                </div>
+              ))}
+            </div>
+            {/* Buttons */}
+            <div className="hero-btns" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button className="btn-g" style={{ fontSize: '15px', padding: '14px 32px', borderRadius: '16px', animation: 'glow 2.5s infinite' }}>ابدأ الاستثمار ←</button>
+              <button className="btn-o" style={{ color: 'rgba(255,255,255,.72)', borderColor: 'rgba(255,255,255,.18)', fontSize: '14px' }}>🤖 تحليل AI</button>
+              <button className="btn-o" style={{ color: 'rgba(255,255,255,.72)', borderColor: 'rgba(255,255,255,.18)', fontSize: '14px' }}>+ إنشاء محفظة</button>
+            </div>
+          </div>
         </div>
 
-        {/* Investment Cards */}
-        <section className="grid gap-4 md:grid-cols-2">
-          {t.items.map((item, index) => {
-            const color = riskColor[item.risk] || '#c4a35a';
-            return (
-              <article key={index} className="rounded-2xl p-5" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 2px 12px rgba(196,163,90,0.08)'}}>
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">{item.emoji}</span>
-                    <h2 className="text-xl font-bold" style={{color: '#7a5c1a'}}>{item.title}</h2>
-                  </div>
-                  <span className="text-xs font-bold px-2 py-1 rounded-full shrink-0" style={{background: `${color}15`, color, border: `1px solid ${color}40`}}>
-                    {isArabic ? 'مخاطرة: ' : language === 'fr' ? 'Risque: ' : 'Risk: '}{item.risk}
-                  </span>
+        {/* ═══ INVESTMENT CARDS ═══ */}
+        <div style={{ ...S(100), marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
+            <div style={{ width: '4px', height: '22px', background: 'linear-gradient(180deg,#C8A96B,#8A6D2A)', borderRadius: '4px' }} />
+            <h2 style={{ fontSize: '19px', fontWeight: '800', color: '#2B2118', margin: 0 }}>فئات الاستثمار</h2>
+            <span className="badge" style={{ background: 'rgba(200,169,107,.12)', color: '#8A6D2A', marginRight: 'auto' }}>8 فئات</span>
+          </div>
+          <div className="g3" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px' }}>
+            {INVESTMENTS.map((inv) => (
+              <div key={inv.key} className="icard inv-card" style={{ padding: '22px 20px' }}
+                onMouseEnter={() => setHovered(inv.key)} onMouseLeave={() => setHovered(null)}>
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '14px' }}>
+                  <div style={{ width: '46px', height: '46px', background: inv.riskBg, borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>{inv.icon}</div>
+                  <Ring pct={inv.aiScore} g1={inv.g1} g2={inv.g2} id={`r-${inv.key}`} />
                 </div>
-                <p className="text-sm leading-relaxed" style={{color: 'rgba(122,92,26,0.75)'}}>{item.desc}</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {item.examples.map((example, i) => (
-                    <span key={i} className="rounded-full px-3 py-1 text-xs font-medium" style={{background: 'rgba(196,163,90,0.12)', color: '#7a5c1a', border: '0.5px solid rgba(196,163,90,0.3)'}}>{example}</span>
+                <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#2B2118', marginBottom: '7px', lineHeight: 1.3 }}>{inv.name}</h3>
+                <p style={{ fontSize: '12px', color: '#8A9BB0', lineHeight: 1.6, marginBottom: '13px' }}>{inv.desc}</p>
+                {/* Stats */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px', marginBottom: '12px' }}>
+                  <div style={{ background: '#FAF8F2', borderRadius: '9px', padding: '7px 9px' }}>
+                    <div style={{ fontSize: '9.5px', color: '#8A9BB0', marginBottom: '2px' }}>العائد</div>
+                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#2B2118', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{inv.returns}</div>
+                  </div>
+                  <div style={{ background: '#FAF8F2', borderRadius: '9px', padding: '7px 9px' }}>
+                    <div style={{ fontSize: '9.5px', color: '#8A9BB0', marginBottom: '2px' }}>المدة</div>
+                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#2B2118' }}>{inv.horizon}</div>
+                  </div>
+                </div>
+                {/* Risk + AI Score */}
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '11px' }}>
+                  <span className="badge" style={{ background: inv.riskBg, color: inv.riskColor }}>مخاطرة {inv.risk}</span>
+                  <span className="badge" style={{ background: 'rgba(200,169,107,.10)', color: '#8A6D2A' }}>AI: {inv.aiScore}</span>
+                </div>
+                {/* AI progress bar */}
+                <div style={{ height: '5px', background: 'rgba(0,0,0,.06)', borderRadius: '10px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${inv.progress}%`, background: `linear-gradient(90deg,${inv.g1},${inv.g2})`, borderRadius: '10px', transition: 'width 1.2s cubic-bezier(.4,0,.2,1) .3s' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ═══ PORTFOLIO DASHBOARD ═══ */}
+        <div style={{ ...S(160), marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
+            <div style={{ width: '4px', height: '22px', background: 'linear-gradient(180deg,#C8A96B,#8A6D2A)', borderRadius: '4px' }} />
+            <h2 style={{ fontSize: '19px', fontWeight: '800', color: '#2B2118', margin: 0 }}>لوحة المحفظة</h2>
+          </div>
+          <div className="g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            {/* Donut chart card */}
+            <div className="icard" style={{ padding: '28px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#2B2118', marginBottom: '20px' }}>توزيع الأصول</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
+                <Donut data={DONUT_DATA} />
+                <div style={{ flex: 1, minWidth: '120px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {DONUT_DATA.map((d, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: d.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: '13px', fontWeight: '600', color: '#2B2118', flex: 1 }}>{d.label}</span>
+                      <span style={{ fontSize: '13px', fontWeight: '800', color: '#2B2118', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{d.pct}%</span>
+                    </div>
                   ))}
                 </div>
-              </article>
-            );
-          })}
-        </section>
+              </div>
+            </div>
 
-        {/* Tips */}
-        <div className="rounded-2xl p-5" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.06)'}}>
-          <h2 className="text-xl font-bold" style={{color: '#7a5c1a'}}>✦ {t.tipsTitle}</h2>
-          <ul className="mt-3 space-y-2 ps-2">
-            {t.tips.map((tip, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm" style={{color: 'rgba(122,92,26,0.8)'}}>
-                <span className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{background: 'rgba(196,163,90,0.2)', color: '#c4a35a'}}>{i + 1}</span>
-                {tip}
-              </li>
-            ))}
-          </ul>
+            {/* KPI cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {[
+                { icon: '⚖️', label: 'مؤشر المخاطر', val: '62/100', sub: 'متوسط', color: '#F59E0B', bg: 'rgba(245,158,11,.10)' },
+                { icon: '🌐', label: 'نسبة التنويع', val: '74%', sub: 'جيد', color: '#22C55E', bg: 'rgba(34,197,94,.10)' },
+                { icon: '📈', label: 'العائد المتوقع', val: '12%', sub: 'سنوياً', color: '#C8A96B', bg: 'rgba(200,169,107,.12)' },
+                { icon: '🏆', label: 'تقييم المحفظة', val: '78/100', sub: 'ممتاز', color: '#8B5CF6', bg: 'rgba(139,92,246,.10)' },
+              ].map((k, i) => (
+                <div key={i} className="icard" style={{ padding: '18px 16px', textAlign: 'center' }}>
+                  <div style={{ width: '40px', height: '40px', background: k.bg, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', margin: '0 auto 12px' }}>{k.icon}</div>
+                  <div style={{ fontSize: '20px', fontWeight: '900', color: k.color, fontFamily: "'IBM Plex Sans Arabic',sans-serif", lineHeight: 1 }}>{k.val}</div>
+                  <div style={{ fontSize: '12px', fontWeight: '700', color: '#2B2118', marginTop: '6px' }}>{k.label}</div>
+                  <div style={{ fontSize: '10.5px', color: '#8A9BB0', marginTop: '2px' }}>{k.sub}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="pt-6 text-center text-sm" style={{borderTop: '1px solid rgba(196,163,90,0.3)'}}>
-          <p style={{color: 'rgba(122,92,26,0.5)'}}>
-            {isArabic ? 'المدير المالي الذكي - يساعدك على اتخاذ قرارات مالية أوضح' : language === 'fr' ? 'Le gestionnaire financier intelligent - vous aide à prendre des décisions financières plus claires' : 'Smart Financial Manager - helping you make clearer financial decisions'}
-          </p>
-          <div className="flex items-center justify-center gap-2 mt-2">
-            <span className="w-20 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
-            <span className="font-medium" style={{color: '#c4a35a'}}>powered by M.Q</span>
-            <span className="w-20 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
+        {/* ═══ AI ADVISOR ═══ */}
+        <div style={{ ...S(220), marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
+            <div style={{ width: '4px', height: '22px', background: 'linear-gradient(180deg,#C8A96B,#8A6D2A)', borderRadius: '4px' }} />
+            <h2 style={{ fontSize: '19px', fontWeight: '800', color: '#2B2118', margin: 0 }}>مستشار الاستثمار الذكي</h2>
+            <span className="badge" style={{ background: 'rgba(192,132,252,.12)', color: '#9333EA' }}>🤖 AI</span>
+          </div>
+          <div className="icard" style={{ padding: 0, overflow: 'hidden' }}>
+            {/* Header */}
+            <div style={{ background: 'linear-gradient(135deg,#2B2118,#3D2B1A)', padding: '18px 26px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '42px', height: '42px', background: 'rgba(200,169,107,.18)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', border: '1px solid rgba(200,169,107,.3)', flexShrink: 0 }}>📊</div>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff' }}>SFM Investment AI</div>
+                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,.45)' }}>تحليل محفظة • توصيات ذكية</div>
+              </div>
+              <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22C55E', animation: 'pulse 1.5s infinite' }} />
+                <span style={{ fontSize: '11px', color: '#22C55E', fontWeight: '600' }}>متصل</span>
+              </div>
+            </div>
+
+            {/* AI Insights strip */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: '0', borderBottom: '1px solid rgba(200,169,107,.12)' }}>
+              {AI_MESSAGES.map((m, i) => (
+                <div key={i} onClick={() => setChatHistory(h => [...h, { role: 'ai', text: m.text }])}
+                  style={{ padding: '14px 18px', borderBottom: i < 2 ? '1px solid rgba(200,169,107,.08)' : 'none', borderLeft: i % 2 === 0 ? '1px solid rgba(200,169,107,.08)' : 'none', cursor: 'pointer', transition: 'background .15s' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(200,169,107,.04)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <span style={{ fontSize: '18px', flexShrink: 0 }}>{m.icon}</span>
+                    <span style={{ fontSize: '12.5px', color: '#5C3D2A', lineHeight: 1.5, fontWeight: '500' }}>{m.text.slice(0, 70)}…</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Chat */}
+            <div ref={chatRef} style={{ maxHeight: '240px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', padding: '18px 22px' }}>
+              {chatHistory.map((msg, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-start' : 'flex-end', gap: '8px', alignItems: 'flex-end' }}>
+                  {msg.role === 'ai' && <div style={{ width: '28px', height: '28px', background: 'rgba(200,169,107,.14)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flexShrink: 0 }}>🤖</div>}
+                  <div style={{ maxWidth: '78%', padding: '11px 15px', borderRadius: msg.role === 'ai' ? '18px 18px 18px 4px' : '18px 18px 4px 18px', background: msg.role === 'ai' ? '#fff' : 'linear-gradient(135deg,#C8A96B,#A8873E)', border: msg.role === 'ai' ? '1px solid rgba(200,169,107,.18)' : 'none', color: msg.role === 'ai' ? '#2B2118' : '#1a0f00', fontSize: '13.5px', lineHeight: 1.6, fontWeight: msg.role === 'user' ? '600' : '400', boxShadow: '0 2px 8px rgba(0,0,0,.05)' }}>{msg.text}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Quick questions */}
+            <div style={{ padding: '0 22px', display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+              {['ما أفضل استثمار الآن؟', 'كيف أبني محفظة؟', 'رأيك في الذهب؟'].map((q, i) => (
+                <button key={i} onClick={() => { setChatMsg(q); }} style={{ background: '#FAF8F2', border: '1px solid rgba(200,169,107,.22)', borderRadius: '20px', padding: '5px 12px', fontSize: '11.5px', fontWeight: '600', color: '#5C3D2A', cursor: 'pointer', fontFamily: 'Tajawal,sans-serif', transition: 'all .15s' }}>{q}</button>
+              ))}
+            </div>
+
+            {/* Input */}
+            <div style={{ padding: '10px 22px 22px', borderTop: '1px solid rgba(200,169,107,.10)', display: 'flex', gap: '10px' }}>
+              <input className="chat-in" value={chatMsg} onChange={e => setChatMsg(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleChat()} placeholder="اسألني عن أي استثمار..." />
+              <button className="btn-g" onClick={handleChat} style={{ padding: '12px 18px', borderRadius: '12px', flexShrink: 0 }}>إرسال</button>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ WEALTH PATH ═══ */}
+        <div style={{ ...S(280), marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
+            <div style={{ width: '4px', height: '22px', background: 'linear-gradient(180deg,#C8A96B,#8A6D2A)', borderRadius: '4px' }} />
+            <h2 style={{ fontSize: '19px', fontWeight: '800', color: '#2B2118', margin: 0 }}>مسار الاستثمار</h2>
+          </div>
+          <div className="icard" style={{ padding: '32px 36px', overflowX: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', minWidth: '600px' }}>
+              {WEALTH_PATH.map((s, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', flex: i < WEALTH_PATH.length - 1 ? '1' : 'none' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                    <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: s.done ? 'linear-gradient(135deg,#C8A96B,#A8873E)' : 'rgba(200,169,107,.10)', border: s.done ? 'none' : '2px dashed rgba(200,169,107,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', boxShadow: s.done ? '0 4px 16px rgba(200,169,107,.25)' : 'none', transition: 'all .3s' }}>{s.icon}</div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '800', color: s.done ? '#2B2118' : '#8A9BB0', whiteSpace: 'nowrap' }}>{s.title}</div>
+                      <div style={{ fontSize: '11px', color: '#8A9BB0', marginTop: '2px', whiteSpace: 'nowrap' }}>{s.sub}</div>
+                      {s.done && <span className="badge" style={{ background: 'rgba(34,197,94,.10)', color: '#22C55E', marginTop: '5px' }}>✓ مكتمل</span>}
+                    </div>
+                  </div>
+                  {i < WEALTH_PATH.length - 1 && (
+                    <div style={{ flex: 1, height: '2px', margin: '0 8px', marginBottom: '32px', background: WEALTH_PATH[i + 1].done ? '#C8A96B' : 'linear-gradient(90deg,#C8A96B,rgba(200,169,107,.2))' }} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ WEALTH SIMULATOR ═══ */}
+        <div style={{ ...S(340), marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
+            <div style={{ width: '4px', height: '22px', background: 'linear-gradient(180deg,#C8A96B,#8A6D2A)', borderRadius: '4px' }} />
+            <h2 style={{ fontSize: '19px', fontWeight: '800', color: '#2B2118', margin: 0 }}>محاكي نمو الثروة</h2>
+          </div>
+          <div className="icard" style={{ padding: '32px 36px' }}>
+            <div style={{ marginBottom: '26px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <label style={{ fontSize: '14px', fontWeight: '700', color: '#5C3D2A' }}>الاستثمار الشهري</label>
+                <span style={{ fontSize: '22px', fontWeight: '900', color: '#C8A96B', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{saving.toLocaleString('ar-KW')} د.ك</span>
+              </div>
+              <input type="range" className="islider" min={50} max={3000} step={50} value={saving}
+                onChange={e => setSaving(+e.target.value)}
+                style={{ '--p': `${((saving - 50) / (3000 - 50)) * 100}%` } as React.CSSProperties} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
+                {[200, 500, 1000, 2000].map(v => (
+                  <button key={v} onClick={() => setSaving(v)} style={{ padding: '5px 14px', borderRadius: '20px', border: '1.5px solid', borderColor: saving === v ? '#C8A96B' : 'rgba(200,169,107,.25)', background: saving === v ? 'rgba(200,169,107,.12)' : 'transparent', color: saving === v ? '#8A6D2A' : '#8A9BB0', fontSize: '12px', fontWeight: '700', cursor: 'pointer', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{v} د.ك</button>
+                ))}
+              </div>
+            </div>
+            <div className="sim-g" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '14px', marginBottom: '24px' }}>
+              {[
+                { label: 'بعد سنة', val: yr1, color: '#3B82F6', icon: '📅', note: 'بدون عائد' },
+                { label: 'بعد 5 سنوات', val: yr5, color: '#C8A96B', icon: '⭐', note: 'عائد سنوي 10%' },
+                { label: 'بعد 10 سنوات', val: yr10, color: '#22C55E', icon: '🚀', note: 'مركب 12% سنوياً' },
+              ].map((r, i) => (
+                <div key={i} style={{ background: 'linear-gradient(135deg,#FAF8F2,#F5F0E8)', border: '1px solid rgba(200,169,107,.18)', borderRadius: '18px', padding: '20px 16px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>{r.icon}</div>
+                  <div style={{ fontSize: '11px', color: '#8A9BB0', marginBottom: '6px' }}>{r.label}</div>
+                  <div style={{ fontSize: 'clamp(18px,2.5vw,26px)', fontWeight: '900', color: r.color, fontFamily: "'IBM Plex Sans Arabic',sans-serif", lineHeight: 1 }}>{r.val.toLocaleString('ar-KW')}</div>
+                  <div style={{ fontSize: '12px', color: '#8A9BB0', marginTop: '4px' }}>د.ك</div>
+                  <div style={{ fontSize: '10px', color: '#B0B8C4', marginTop: '4px' }}>{r.note}</div>
+                </div>
+              ))}
+            </div>
+            {/* Bar chart */}
+            <div>
+              <div style={{ fontSize: '12px', color: '#8A9BB0', marginBottom: '12px', fontWeight: '500' }}>نمو رأس المال مع الاستثمار المنتظم (المركب)</div>
+              <BarChart data={[
+                { label: '1س', val: yr1, max: yr10, color: '#C8A96B' },
+                { label: '2س', val: Math.round(yr1 * 2.21), max: yr10, color: '#C8A96B' },
+                { label: '3س', val: Math.round(yr1 * 3.64), max: yr10, color: '#C8A96B' },
+                { label: '5س', val: yr5, max: yr10, color: '#C8A96B' },
+                { label: '7س', val: Math.round(yr10 * 0.60), max: yr10, color: '#C8A96B' },
+                { label: '10س', val: yr10, max: yr10, color: '#C8A96B' },
+              ]} />
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ CTA ═══ */}
+        <div style={S(400)}>
+          <div className="icard no-h" style={{ background: 'linear-gradient(135deg,#2B2118,#3D2B1A)', padding: '44px 48px', textAlign: 'center', border: '1px solid rgba(200,169,107,.22)', borderRadius: '32px' }}>
+            <div style={{ fontSize: '36px', marginBottom: '14px' }}>📈</div>
+            <h3 style={{ fontSize: 'clamp(20px,3vw,28px)', fontWeight: '900', color: '#fff', marginBottom: '10px' }}>ابدأ بناء محفظتك الاستثمارية</h3>
+            <p style={{ fontSize: '15px', color: 'rgba(255,255,255,.52)', marginBottom: '28px', maxWidth: '440px', margin: '0 auto 28px', lineHeight: 1.7 }}>كل شهر تأخير يكلفك آلاف الدنانير من العوائد المفقودة. ابدأ الآن.</p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button className="btn-g" style={{ fontSize: '15px', padding: '14px 36px' }}>ابدأ الاستثمار الآن</button>
+              <button className="btn-o" style={{ color: 'rgba(255,255,255,.72)', borderColor: 'rgba(255,255,255,.2)', fontSize: '14px' }}>استشر المستشار الذكي</button>
+            </div>
           </div>
         </div>
 
       </div>
-    </main>
-  );
+    </div>
+  </>);
 }
