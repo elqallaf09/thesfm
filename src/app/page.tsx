@@ -633,22 +633,22 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
       '.score-num{font-size:24px;font-weight:bold;color:#fff}' +
       '.score-label{font-size:9px;color:rgba(255,255,255,0.6)}' +
       '.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}' +
-      '.kpi{background:rgba(196,163,90,0.06);border:1px solid rgba(196,163,90,0.25);border-radius:12px;padding:14px;text-align:center}' +
+      '.kpi{background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.22);border-radius:12px;padding:14px;text-align:center}' +
       '.kpi-label{font-size:10px;color:rgba(45,26,10,0.5);margin-bottom:4px}' +
       '.kpi-value{font-size:18px;font-weight:bold;color:#7f5c48}' +
-      '.section{margin-bottom:18px;border:1px solid rgba(196,163,90,0.25);border-radius:12px;overflow:hidden}' +
-      '.section-title{background:rgba(196,163,90,0.08);padding:10px 16px;font-weight:bold;color:#7f5c48;font-size:13px;border-bottom:1px solid rgba(196,163,90,0.15)}' +
+      '.section{margin-bottom:18px;border:1px solid rgba(212,175,55,0.22);border-radius:12px;overflow:hidden}' +
+      '.section-title{background:rgba(196,163,90,0.08);padding:10px 16px;font-weight:bold;color:#7f5c48;font-size:13px;border-bottom:1px solid rgba(212,175,55,0.12)}' +
       'table{width:100%;border-collapse:collapse}' +
       'td{padding:8px 16px;border-bottom:1px solid rgba(196,163,90,0.1);font-size:12px;color:rgba(45,26,10,0.75)}' +
       'tr:last-child td{border-bottom:none}' +
-      '.num{text-align:left;font-weight:bold;color:#5c3d2a}' +
+      '.num{text-align:left;font-weight:bold;color:#2C3444}' +
       '.green{color:#2d8a4e}' +
       '.empty{text-align:center;color:rgba(45,26,10,0.3);padding:12px}' +
       '.insights{padding:14px 16px}' +
       '.insights ul{list-style:none;space-y:4px}' +
       '.insights li{padding:5px 0;font-size:12px;color:rgba(45,26,10,0.8);border-bottom:0.5px solid rgba(196,163,90,0.1)}' +
       '.insights li:last-child{border:none}' +
-      '.footer{margin-top:28px;padding-top:14px;border-top:1px solid rgba(196,163,90,0.25);text-align:center;color:rgba(45,26,10,0.35);font-size:10px}' +
+      '.footer{margin-top:28px;padding-top:14px;border-top:1px solid rgba(212,175,55,0.22);text-align:center;color:rgba(45,26,10,0.35);font-size:10px}' +
       '@page{margin:1.5cm}' +
       '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}' +
       '</style></head><body><div class="page">' +
@@ -915,27 +915,25 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
       @keyframes ringFill{from{stroke-dasharray:0 226}to{stroke-dasharray:var(--rd,0) 226}}
       @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
       .ring-anim{animation:ringFill 1.4s cubic-bezier(0.4,0,0.2,1) 0.2s both}
-      .sfm-card-hover{transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}
-      .sfm-card-hover:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(196,163,90,0.18)!important}
-      .kpi-card{animation:fadeUp 0.5s ease both}
-      .kpi-card:nth-child(1){animation-delay:.05s}.kpi-card:nth-child(2){animation-delay:.15s}
-      .kpi-card:nth-child(3){animation-delay:.25s}.kpi-card:nth-child(4){animation-delay:.35s}
-      .kpi-card:hover{transform:translateY(-3px)!important;box-shadow:0 12px 32px rgba(196,163,90,0.18)!important}
-      .ai-ins{animation:fadeUp 0.4s ease both}
+      .sfm-card-hover{transition:all 0.2s cubic-bezier(0.4,0,0.2,1)}
+      .sfm-card-hover:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(27,36,48,0.10)!important}
+      .kpi-card{animation:sfm-fadeUp 0.45s ease both;background:#FFFFFF;border:1px solid #E8E2D6;border-radius:20px;padding:20px 22px;box-shadow:0 2px 12px rgba(27,36,48,0.07);transition:all 0.2s cubic-bezier(0.4,0,0.2,1);position:relative;overflow:hidden;cursor:default}
+      .kpi-card:nth-child(1){animation-delay:.05s}.kpi-card:nth-child(2){animation-delay:.12s}
+      .kpi-card:nth-child(3){animation-delay:.19s}.kpi-card:nth-child(4){animation-delay:.26s}
+      .kpi-card:hover{transform:translateY(-3px)!important;box-shadow:0 10px 30px rgba(27,36,48,0.12)!important}
+      .ai-ins{animation:sfm-fadeUp 0.4s ease both}
       .ai-ins:nth-child(1){animation-delay:.1s}.ai-ins:nth-child(2){animation-delay:.2s}
       .ai-ins:nth-child(3){animation-delay:.3s}.ai-ins:nth-child(4){animation-delay:.4s}
-      .score-val{animation:fadeUp 0.6s ease 0.4s both}
-      .nav-link{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:1px 6px;border-radius:12px;cursor:pointer;transition:all 0.18s;color:rgba(255,255,255,0.55);font-size:13px;font-weight:500;text-decoration:none;border:none;background:transparent;width:calc(100% - 12px);text-align:right;direction:rtl}
-      .nav-link:hover{background:rgba(255,255,255,0.09);color:rgba(255,255,255,0.88)}
-      .sfm-card{background:rgba(255,253,245,0.98);border:1px solid rgba(196,163,90,0.22);border-radius:20px;box-shadow:0 2px 12px rgba(196,163,90,0.08),0 1px 4px rgba(0,0,0,0.04);transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}
-      .sfm-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(196,163,90,0.15),0 2px 8px rgba(0,0,0,0.06)}
-      .sfm-nav-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.88);font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;text-decoration:none}
-      .sfm-nav-btn:hover{background:rgba(255,255,255,0.24);color:white}
-      @media(max-width:768px){.sfm-top-nav{display:none!important}}
+      .score-val{animation:sfm-fadeUp 0.6s ease 0.4s both}
+      .sfm-card{background:#FFFFFF;border:1px solid #E8E2D6;border-radius:20px;box-shadow:0 2px 12px rgba(27,36,48,0.07),0 1px 3px rgba(0,0,0,0.04);transition:all 0.2s cubic-bezier(0.4,0,0.2,1)}
+      .sfm-card:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(27,36,48,0.10),0 2px 8px rgba(0,0,0,0.05)}
+      .sfm-nav-btn{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:10px;background:#F5F2EA;border:1px solid #E8E2D6;color:#4A5568;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.2s}
+      .sfm-nav-btn:hover{background:#1B2430;color:#FFFFFF;border-color:#1B2430}
+      @media(max-width:1024px){.sfm-top-nav{display:none!important}}
       @media print{body{background:white!important}.no-print{display:none!important}main{background:white!important}*{box-shadow:none!important}}
     `}</style>
 
-    <main dir={isArabic ? 'rtl' : 'ltr'} className="relative min-h-screen" style={{background:'linear-gradient(160deg,#fffdf5 0%,#fef9e7 55%,#fdf5d0 100%)'}}>
+    <main dir={isArabic ? 'rtl' : 'ltr'} className="relative min-h-screen" style={{background:'#F5F2EA'}}>
 
       {/* ══ FIXED SIDEBAR ══ */}
       <aside className="sfm-sidebar no-print" dir="rtl">
@@ -1120,9 +1118,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
         {/* Profile Card - only for logged in */}
         {showProfile && !isGuest && (
-          <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 2px 8px rgba(196,163,90,0.06), 0 4px 20px rgba(196,163,90,0.09), 0 1px 3px rgba(0,0,0,0.04)'}}>
-            <CardHeader className="rounded-t-xl pb-3" style={{background: 'linear-gradient(135deg, rgba(196,163,90,0.07) 0%, rgba(196,163,90,0.04) 100%)', borderBottom: '1px solid rgba(196,163,90,0.12)'}}>
-              <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><User className="w-6 h-6" />{text.profileTitle}</CardTitle>
+          <Card style={{background:'#FFFFFF',border:'1px solid #E8E2D6',borderRadius:'20px',boxShadow:'0 2px 12px rgba(27,36,48,0.07),0 1px 3px rgba(0,0,0,0.04)'}}>
+            <CardHeader className="" style={{background:'#FAFAF7',borderBottom:'1px solid #E8E2D6',borderRadius:'20px 20px 0 0'}}>
+              <CardTitle className="flex items-center gap-2" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}><User className="w-6 h-6" />{text.profileTitle}</CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
@@ -1144,13 +1142,13 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 <Input type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} dir="ltr" />
               </div>
               {profileMessage && <div className={`p-3 rounded-lg text-sm ${profileMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{profileMessage.text}</div>}
-              <Button onClick={() => saveProfile(userId)} disabled={profileSaving} className="w-full font-bold text-black" style={{background: '#c4a35a'}}>
+              <Button onClick={() => saveProfile(userId)} disabled={profileSaving} className="w-full font-bold text-black" style={{background:'linear-gradient(135deg,#D4AF37,#C49B3A)'}}>
                 {profileSaving ? '...' : (isArabic ? 'حفظ التغييرات' : 'Save changes')}
               </Button>
-              <div className="pt-4 border-t" style={{borderColor: 'rgba(196,163,90,0.2)'}}>
+              <div className="pt-4 border-t" style={{borderColor: 'rgba(212,175,55,0.18)'}}>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-semibold" style={{color: '#c4a35a'}}>{text.incomeSourcesTitle}</h3>
-                  <Button variant="outline" size="sm" onClick={() => { if (!editingIncomeSources) loadCurrentIncomeSources(userId); setEditingIncomeSources(!editingIncomeSources); }} style={{borderColor: 'rgba(196,163,90,0.4)', color: '#c4a35a'}}>
+                  <h3 className="text-lg font-semibold" style={{color:'#D4AF37'}}>{text.incomeSourcesTitle}</h3>
+                  <Button variant="outline" size="sm" onClick={() => { if (!editingIncomeSources) loadCurrentIncomeSources(userId); setEditingIncomeSources(!editingIncomeSources); }} style={{borderColor:'#D4AF37', color:'#D4AF37'}}>
                     <Coins className="w-4 h-4 me-1" />{text.updateIncome}
                   </Button>
                 </div>
@@ -1164,7 +1162,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                             <Input type="text" value={incomeSourceAmounts[category.id] || ''} onChange={(e) => setIncomeSourceAmounts({ ...incomeSourceAmounts, [category.id]: e.target.value })} placeholder="0.00" className="w-32 h-8 text-sm" dir="ltr" />
                           </div>
                         ))}
-                        <Button onClick={() => saveIncomeSources(userId)} disabled={profileSaving} size="sm" className="w-full font-bold text-black mt-2" style={{background: '#c4a35a'}}>
+                        <Button onClick={() => saveIncomeSources(userId)} disabled={profileSaving} size="sm" className="w-full font-bold text-black mt-2" style={{background:'linear-gradient(135deg,#D4AF37,#C49B3A)'}}>
                           {profileSaving ? '...' : text.profileSave}
                         </Button>
                       </>
@@ -1177,10 +1175,10 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         )}
 
         {/* Salary Input */}
-        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 2px 8px rgba(196,163,90,0.06), 0 4px 20px rgba(196,163,90,0.09), 0 1px 3px rgba(0,0,0,0.04)'}}>
-          <CardHeader className="rounded-t-xl pb-3" style={{background: 'linear-gradient(135deg, rgba(196,163,90,0.07) 0%, rgba(196,163,90,0.04) 100%)', borderBottom: '1px solid rgba(196,163,90,0.12)'}}>
-            <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><Coins className="w-6 h-6" />{text.salaryTitle}</CardTitle>
-            <CardDescription style={{color: 'rgba(122,92,26,0.6)'}}>{text.salaryDesc}</CardDescription>
+        <Card style={{background:'#FFFFFF',border:'1px solid #E8E2D6',borderRadius:'20px',boxShadow:'0 2px 12px rgba(27,36,48,0.07),0 1px 3px rgba(0,0,0,0.04)'}}>
+          <CardHeader className="" style={{background:'#FAFAF7',borderBottom:'1px solid #E8E2D6',borderRadius:'20px 20px 0 0'}}>
+            <CardTitle className="flex items-center gap-2" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}><Coins className="w-6 h-6" />{text.salaryTitle}</CardTitle>
+            <CardDescription style={{color:'#8A9BB0'}}>{text.salaryDesc}</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
             <div className="space-y-2">
@@ -1226,19 +1224,23 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 </div>
               </div>
             </div>
-            <div className="rounded-2xl p-4 text-center" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.08)'}}>
-              <span className="text-sm" style={{color: 'rgba(196,163,90,0.7)'}}>{text.totalIncome}</span>
-              <p className="text-3xl font-bold" style={{color: '#c4a35a'}}>{formatCurrency(totalIncome)} {getCurrentCurrency().symbol}</p>
+            <div className="rounded-2xl p-4 text-center" style={{background:'linear-gradient(135deg,#1B2430,#2C3444)',borderRadius:'16px',padding:'20px 24px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div>
+                <div style={{fontSize:'13px',color:'rgba(255,255,255,0.5)',fontFamily:'Tajawal,sans-serif',marginBottom:'6px'}}>{text.totalIncome}</div>
+                <div style={{fontSize:'32px',fontWeight:'800',color:'#FFFFFF',lineHeight:1,fontFamily:"'IBM Plex Sans Arabic','Cairo',sans-serif"}}>{formatCurrency(totalIncome)}</div>
+                <div style={{fontSize:'14px',color:'#D4AF37',fontWeight:'600',marginTop:'4px'}}>{getCurrentCurrency().symbol}</div>
+              </div>
+              <div style={{width:'52px',height:'52px',background:'rgba(212,175,55,0.15)',borderRadius:'14px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'28px'}}>💰</div>
             </div>
             <div className="space-y-3">
-              <Label className="text-lg font-medium" style={{color: '#c4a35a'}}>{text.distributionMethod}</Label>
+              <Label className="text-lg font-medium" style={{color:'#D4AF37'}}>{text.distributionMethod}</Label>
               <div className="grid gap-3 md:grid-cols-2">
                 {[{ value: '70-20-10', label: text.plan70 }, { value: '60-30-10', label: text.plan60Savings }, { value: '60-20-20', label: text.plan60Invest }, { value: 'manual', label: text.manualPlan }].map(option => (
                   <button key={option.value} type="button" onClick={() => setDistributionMethod(option.value as typeof distributionMethod)}
                     className="rounded-2xl p-4 text-start text-sm font-semibold transition-all"
                     style={distributionMethod === option.value
-                      ? {border: '1px solid #c4a35a', background: '#c4a35a', color: '#0d0d1a'}
-                      : {border: '0.5px solid rgba(196,163,90,0.25)', background: 'rgba(196,163,90,0.05)', color: 'rgba(196,163,90,0.8)'}
+                      ? {border: '1px solid #c4a35a', background:'linear-gradient(135deg,#D4AF37,#C49B3A)', color: '#0d0d1a'}
+                      : {border: '0.5px solid rgba(212,175,55,0.22)', background:'#FAFAF7', color: 'rgba(196,163,90,0.8)'}
                     }>{option.label}</button>
                 ))}
               </div>
@@ -1258,10 +1260,10 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         </Card>
 
         {/* Charity */}
-        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 2px 8px rgba(196,163,90,0.06), 0 4px 20px rgba(196,163,90,0.09), 0 1px 3px rgba(0,0,0,0.04)'}}>
-          <CardHeader className="rounded-t-xl pb-3" style={{background: 'linear-gradient(135deg, rgba(196,163,90,0.07) 0%, rgba(196,163,90,0.04) 100%)', borderBottom: '1px solid rgba(196,163,90,0.12)'}}>
-            <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><Heart className="w-6 h-6" />{text.charityTitle}</CardTitle>
-            <CardDescription style={{color: 'rgba(122,92,26,0.6)'}}>{text.charityDesc}</CardDescription>
+        <Card style={{background:'#FFFFFF',border:'1px solid #E8E2D6',borderRadius:'20px',boxShadow:'0 2px 12px rgba(27,36,48,0.07),0 1px 3px rgba(0,0,0,0.04)'}}>
+          <CardHeader className="" style={{background:'#FAFAF7',borderBottom:'1px solid #E8E2D6',borderRadius:'20px 20px 0 0'}}>
+            <CardTitle className="flex items-center gap-2" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}><Heart className="w-6 h-6" />{text.charityTitle}</CardTitle>
+            <CardDescription style={{color:'#8A9BB0'}}>{text.charityDesc}</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
             <div className="flex items-center justify-between">
@@ -1357,29 +1359,35 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         )}
 
         {/* Salary Details */}
-        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 2px 8px rgba(196,163,90,0.06), 0 4px 20px rgba(196,163,90,0.09), 0 1px 3px rgba(0,0,0,0.04)'}}>
-          <CardHeader className="rounded-t-xl pb-3" style={{background: 'linear-gradient(135deg, rgba(196,163,90,0.07) 0%, rgba(196,163,90,0.04) 100%)', borderBottom: '1px solid rgba(196,163,90,0.12)'}}>
-            <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><Wallet className="w-6 h-6" />{text.salaryDetails}</CardTitle>
+        <Card style={{background:'#FFFFFF',border:'1px solid #E8E2D6',borderRadius:'20px',boxShadow:'0 2px 12px rgba(27,36,48,0.07),0 1px 3px rgba(0,0,0,0.04)'}}>
+          <CardHeader className="" style={{background:'#FAFAF7',borderBottom:'1px solid #E8E2D6',borderRadius:'20px 20px 0 0'}}>
+            <CardTitle className="flex items-center gap-2" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}><Wallet className="w-6 h-6" />{text.salaryDetails}</CardTitle>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
-            <div className="p-4 rounded-xl text-center" style={{border: '2px solid rgba(196,163,90,0.4)', background: 'rgba(196,163,90,0.08)'}}>
-              <span className="text-sm" style={{color: 'rgba(122,92,26,0.7)'}}>{text.totalSalary}</span>
-              <p className="text-3xl font-bold" style={{color: '#7a5c1a'}}>{formatCurrency(totalIncome)} {getCurrentCurrency().symbol}</p>
+            <div className="p-4 rounded-xl text-center" style={{border: '2px solid rgba(212,175,55,0.35)', background:'#F5F2EA'}}>
+              <span className="text-sm" style={{color:'#8A9BB0'}}>{text.totalSalary}</span>
+              <p className="text-3xl font-bold" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}>{formatCurrency(totalIncome)} {getCurrentCurrency().symbol}</p>
             </div>
 
             {/* Expenses */}
             <div className="p-4 rounded-xl" style={{background: 'rgba(139,90,60,0.06)', border: '1px solid rgba(139,90,60,0.2)'}}>
-              <div className="flex items-center justify-between mb-2 cursor-pointer" onClick={() => setExpensesExpanded(!expensesExpanded)}>
-                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={{background: '#7f5c48'}} /><span className="font-semibold" style={{color: '#7f5c48'}}>{text.expenses}</span></div>
-                <div className="flex items-center gap-2"><span className="text-xl font-bold" style={{color: '#7f5c48'}}>{formatCurrency(breakdown.expenses)} {getCurrentCurrency().symbol}</span>{expensesExpanded ? <ChevronUp className="w-5 h-5" style={{color: '#7f5c48'}} /> : <ChevronDown className="w-5 h-5" style={{color: '#7f5c48'}} />}</div>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',padding:'4px 0'}} onClick={() => setExpensesExpanded(!expensesExpanded)}>
+                <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+                  <div style={{width:'36px',height:'36px',background:'rgba(239,68,68,0.10)',borderRadius:'10px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px'}}>🔥</div>
+                  <span style={{fontWeight:'700',color:'#1B2430',fontSize:'15px',fontFamily:'Tajawal,sans-serif'}}>{text.expenses}</span>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                  <span style={{fontWeight:'800',color:'#EF4444',fontSize:'17px',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{formatCurrency(breakdown.expenses)} {getCurrentCurrency().symbol}</span>
+                  {expensesExpanded ? <ChevronUp className="w-4 h-4" style={{color:'#8A9BB0'}} /> : <ChevronDown className="w-4 h-4" style={{color:'#8A9BB0'}} />}
+                </div>
               </div>
-              <Button onClick={addExpenseItem} variant="ghost" size="sm" className="w-full mt-2" style={{color: '#7f5c48'}}><Plus className="w-4 h-4 ms-1" /> {text.addExpense}</Button>
+              <Button onClick={addExpenseItem} variant="ghost" size="sm" className="w-full mt-2" style={{color:'#1B2430'}}><Plus className="w-4 h-4 ms-1" /> {text.addExpense}</Button>
               {expensesExpanded && (
                 <div className="mt-3 space-y-3">
                   <div className="p-3 rounded-lg" style={{background: 'rgba(127,92,72,0.08)'}}>
-                    <p className="text-xs font-semibold mb-2" style={{color: '#7f5c48'}}>{text.aiExpenses}</p>
+                    <p className="text-xs font-semibold mb-2" style={{color:'#1B2430'}}>{text.aiExpenses}</p>
                     <div className="flex flex-wrap gap-1">
-                      {EXPENSES_EXAMPLES.map((ex, i) => <button key={i} onClick={() => setExpenseItems([...expenseItems, { id: generateId(), name: language === 'ar' ? ex.name : ex.nameEn, amount: '' }])} className="px-2 py-1 text-xs rounded-full" style={{background: 'white', border: '0.5px solid rgba(127,92,72,0.3)', color: '#7f5c48'}}>{ex.icon} {language === 'ar' ? ex.name : ex.nameEn}</button>)}
+                      {EXPENSES_EXAMPLES.map((ex, i) => <button key={i} onClick={() => setExpenseItems([...expenseItems, { id: generateId(), name: language === 'ar' ? ex.name : ex.nameEn, amount: '' }])} className="px-2 py-1 text-xs rounded-full" style={{background: 'white', border: '0.5px solid rgba(127,92,72,0.3)', color:'#1B2430'}}>{ex.icon} {language === 'ar' ? ex.name : ex.nameEn}</button>)}
                     </div>
                   </div>
                   {expenseItems.map(item => (
@@ -1389,34 +1397,34 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                       <Button variant="ghost" size="icon" onClick={() => removeExpenseItem(item.id)} className="h-8 w-8 text-red-400"><Trash2 className="w-4 h-4" /></Button>
                     </div>
                   ))}
-                  {expenseItems.length > 0 && <div className="flex justify-end pt-2" style={{borderTop: '0.5px solid rgba(127,92,72,0.2)'}}><span className="text-sm font-semibold" style={{color: '#7f5c48'}}>{text.sumExpenses}: {formatCurrency(expenseItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol}</span></div>}
+                  {expenseItems.length > 0 && <div className="flex justify-end pt-2" style={{borderTop: '0.5px solid rgba(127,92,72,0.2)'}}><span className="text-sm font-semibold" style={{color:'#1B2430'}}>{text.sumExpenses}: {formatCurrency(expenseItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol}</span></div>}
                 </div>
               )}
             </div>
 
             {/* Savings */}
-            <div className="p-4 rounded-xl" style={{background: 'rgba(196,163,90,0.06)', border: '1px solid rgba(196,163,90,0.25)'}}>
+            <div className="p-4 rounded-xl" style={{background:'#F5F2EA', border:'1px solid #E8E2D6'}}>
               <div className="flex items-center justify-between mb-2 cursor-pointer" onClick={() => setSavingsExpanded(!savingsExpanded)}>
-                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-[#c4a35a]" /><span className="font-semibold" style={{color: '#7a5c1a'}}>{text.savings}</span></div>
-                <div className="flex items-center gap-2"><span className="text-xl font-bold" style={{color: '#7a5c1a'}}>{formatCurrency(breakdown.savings)} {getCurrentCurrency().symbol}</span>{savingsExpanded ? <ChevronUp className="w-5 h-5" style={{color: '#c4a35a'}} /> : <ChevronDown className="w-5 h-5" style={{color: '#c4a35a'}} />}</div>
+                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-[#c4a35a]" /><span className="font-semibold" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}>{text.savings}</span></div>
+                <div className="flex items-center gap-2"><span className="text-xl font-bold" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}>{formatCurrency(breakdown.savings)} {getCurrentCurrency().symbol}</span>{savingsExpanded ? <ChevronUp className="w-5 h-5" style={{color:'#D4AF37'}} /> : <ChevronDown className="w-5 h-5" style={{color:'#D4AF37'}} />}</div>
               </div>
-              <Button onClick={addSavingsItem} variant="ghost" size="sm" className="w-full mt-2" style={{color: '#7a5c1a'}}><Plus className="w-4 h-4 ms-1" /> {text.addSaving}</Button>
+              <Button onClick={addSavingsItem} variant="ghost" size="sm" className="w-full mt-2" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}><Plus className="w-4 h-4 ms-1" /> {text.addSaving}</Button>
               {savingsExpanded && (
                 <div className="mt-3 space-y-3">
-                  <div className="p-3 rounded-lg" style={{background: 'linear-gradient(135deg, rgba(196,163,90,0.07) 0%, rgba(196,163,90,0.04) 100%)', borderBottom: '1px solid rgba(196,163,90,0.12)'}}>
-                    <p className="text-xs font-semibold mb-2" style={{color: '#7a5c1a'}}>{text.aiSavings}</p>
+                  <div className="p-3 rounded-lg" style={{background:'#FAFAF7',borderBottom:'1px solid #E8E2D6',borderRadius:'20px 20px 0 0'}}>
+                    <p className="text-xs font-semibold mb-2" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}>{text.aiSavings}</p>
                     <div className="flex flex-wrap gap-1">
-                      {SAVINGS_EXAMPLES.map((ex, i) => <button key={i} onClick={() => setSavingsItems([...savingsItems, { id: generateId(), name: language === 'ar' ? ex.name : ex.nameEn, amount: '' }])} className="px-2 py-1 text-xs rounded-full" style={{background: 'white', border: '0.5px solid rgba(196,163,90,0.3)', color: '#7a5c1a'}}>{ex.icon} {language === 'ar' ? ex.name : ex.nameEn}</button>)}
+                      {SAVINGS_EXAMPLES.map((ex, i) => <button key={i} onClick={() => setSavingsItems([...savingsItems, { id: generateId(), name: language === 'ar' ? ex.name : ex.nameEn, amount: '' }])} className="px-2 py-1 text-xs rounded-full" style={{background: 'white', border: '0.5px solid rgba(196,163,90,0.3)', color: '#1B2430'}}>{ex.icon} {language === 'ar' ? ex.name : ex.nameEn}</button>)}
                     </div>
                   </div>
                   {savingsItems.map(item => (
                     <div key={item.id} className="flex gap-2 items-center">
-                      <Input placeholder={text.savingNamePlaceholder} value={item.name} onChange={(e) => updateSavingsItem(item.id, 'name', e.target.value)} className="flex-1 h-8 text-sm" style={{borderColor: 'rgba(196,163,90,0.3)'}} />
-                      <Input placeholder={text.amountPlaceholder} type="text" value={item.amount} onChange={(e) => updateSavingsItem(item.id, 'amount', e.target.value)} className="w-32 h-8 text-sm" dir="ltr" style={{borderColor: 'rgba(196,163,90,0.3)'}} />
+                      <Input placeholder={text.savingNamePlaceholder} value={item.name} onChange={(e) => updateSavingsItem(item.id, 'name', e.target.value)} className="flex-1 h-8 text-sm" style={{borderColor:'#E8E2D6'}} />
+                      <Input placeholder={text.amountPlaceholder} type="text" value={item.amount} onChange={(e) => updateSavingsItem(item.id, 'amount', e.target.value)} className="w-32 h-8 text-sm" dir="ltr" style={{borderColor:'#E8E2D6'}} />
                       <Button variant="ghost" size="icon" onClick={() => removeSavingsItem(item.id)} className="h-8 w-8 text-red-400"><Trash2 className="w-4 h-4" /></Button>
                     </div>
                   ))}
-                  {savingsItems.length > 0 && <div className="flex justify-end pt-2" style={{borderTop: '0.5px solid rgba(196,163,90,0.2)'}}><span className="text-sm font-semibold" style={{color: '#7a5c1a'}}>{text.sumSavings}: {formatCurrency(savingsItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol}</span></div>}
+                  {savingsItems.length > 0 && <div className="flex justify-end pt-2" style={{borderTop: '0.5px solid rgba(196,163,90,0.2)'}}><span className="text-sm font-semibold" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}>{text.sumSavings}: {formatCurrency(savingsItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol}</span></div>}
                 </div>
               )}
             </div>
@@ -1461,9 +1469,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         </Card>
 
         {/* Percentage Calculator */}
-        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 8px 30px rgba(196,163,90,0.1)'}}>
-          <CardHeader className="rounded-t-xl pb-3" style={{background: 'linear-gradient(135deg, rgba(196,163,90,0.07) 0%, rgba(196,163,90,0.04) 100%)', borderBottom: '1px solid rgba(196,163,90,0.12)'}}>
-            <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}>
+        <Card style={{border: '1px solid rgba(212,175,55,0.30)', background:'#FFFFFF', boxShadow: '0 8px 30px rgba(196,163,90,0.1)'}}>
+          <CardHeader className="" style={{background:'#FAFAF7',borderBottom:'1px solid #E8E2D6',borderRadius:'20px 20px 0 0'}}>
+            <CardTitle className="flex items-center gap-2" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}>
               <span style={{fontSize: '22px'}}>%</span>
               {isArabic ? 'حاسبة النسب المئوية' : 'Percentage Calculator'}
             </CardTitle>
@@ -1473,7 +1481,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               {/* Circular Ring */}
               <div className="relative shrink-0 flex items-center justify-center w-36 h-36">
                 <svg width="144" height="144" viewBox="0 0 144 144" className="-rotate-90">
-                  <circle cx="72" cy="72" r="60" fill="none" stroke="rgba(196,163,90,0.15)" strokeWidth="12"/>
+                  <circle cx="72" cy="72" r="60" fill="none" stroke="rgba(212,175,55,0.12)" strokeWidth="12"/>
                   <circle cx="72" cy="72" r="60" fill="none"
                     stroke={percentCalc <= 25 ? '#2d8a4e' : percentCalc <= 50 ? '#c4a35a' : percentCalc <= 75 ? '#b87333' : '#c0392b'}
                     strokeWidth="12"
@@ -1483,7 +1491,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-3xl font-bold" style={{color: percentCalc <= 25 ? '#2d8a4e' : percentCalc <= 50 ? '#c4a35a' : percentCalc <= 75 ? '#b87333' : '#c0392b'}}>{percentCalc}%</span>
-                  <span className="text-xs mt-0.5" style={{color: 'rgba(122,92,26,0.5)'}}>{isArabic ? 'من دخلك' : 'of income'}</span>
+                  <span className="text-xs mt-0.5" style={{color:'#8A9BB0'}}>{isArabic ? 'من دخلك' : 'of income'}</span>
                 </div>
               </div>
               {/* Slider + Quick */}
@@ -1491,35 +1499,35 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 <input type="range" min="1" max="100" value={percentCalc}
                   onChange={(e) => { const p = Number(e.target.value); setPercentCalc(p); setPercentAmount(totalIncome > 0 ? String(Math.round(totalIncome * p / 100 * 1000) / 1000) : ''); }}
                   className="w-full" style={{accentColor: percentCalc <= 25 ? '#2d8a4e' : percentCalc <= 50 ? '#c4a35a' : '#c0392b', height: '6px'}}/>
-                <div className="flex justify-between text-xs" style={{color: 'rgba(122,92,26,0.4)'}}><span>1%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>
+                <div className="flex justify-between text-xs" style={{color:'#8A9BB0'}}><span>1%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>
                 <div className="flex flex-wrap gap-1.5">
                   {[5,10,15,20,25,30,40,50,75,100].map(p => (
                     <button key={p} onClick={() => { setPercentCalc(p); setPercentAmount(totalIncome > 0 ? String(Math.round(totalIncome * p / 100 * 1000) / 1000) : ''); }}
                       className="px-2.5 py-1 rounded-lg text-xs font-bold transition-all hover:scale-105"
-                      style={percentCalc === p ? {background: '#c4a35a', color: '#1a0f00', border: '1px solid #c4a35a'} : {background: 'rgba(196,163,90,0.1)', color: '#7a5c1a', border: '1px solid rgba(196,163,90,0.3)'}}>
+                      style={percentCalc === p ? {background:'linear-gradient(135deg,#D4AF37,#C49B3A)', color: '#1a0f00', border: '1px solid #c4a35a'} : {background:'rgba(212,175,55,0.08)', color: '#1B2430', border:'1px solid #E8E2D6'}}>
                       {p}%
                     </button>
                   ))}
                 </div>
               </div>
             </div>
-            <div className="rounded-2xl p-4 space-y-3" style={{background: 'rgba(196,163,90,0.06)', border: '1px solid rgba(196,163,90,0.25)'}}>
+            <div className="rounded-2xl p-4 space-y-3" style={{background:'#F5F2EA', border:'1px solid #E8E2D6'}}>
               <div className="text-center">
-                <p className="text-sm" style={{color: 'rgba(122,92,26,0.6)'}}>{percentCalc}% {isArabic ? 'من إجمالي دخلك' : 'of your income'}</p>
-                <p className="text-4xl font-bold mt-1" style={{color: '#c4a35a'}}>{totalIncome > 0 ? formatCurrency(Math.round(totalIncome * percentCalc / 100 * 1000) / 1000) : '0.000'} <span className="text-lg">{getCurrentCurrency().symbol}</span></p>
+                <p className="text-sm" style={{color:'#8A9BB0'}}>{percentCalc}% {isArabic ? 'من إجمالي دخلك' : 'of your income'}</p>
+                <p className="text-4xl font-bold mt-1" style={{color:'#D4AF37'}}>{totalIncome > 0 ? formatCurrency(Math.round(totalIncome * percentCalc / 100 * 1000) / 1000) : '0.000'} <span className="text-lg">{getCurrentCurrency().symbol}</span></p>
               </div>
-              <div className="flex items-center gap-2 h-11 rounded-xl border px-4" style={{borderColor: 'rgba(196,163,90,0.4)', background: 'white'}}>
-                <span style={{color: '#c4a35a', fontWeight: 'bold'}}>{getCurrentCurrency().symbol}</span>
+              <div className="flex items-center gap-2 h-11 rounded-xl border px-4" style={{borderColor:'#D4AF37', background: 'white'}}>
+                <span style={{color:'#D4AF37', fontWeight: 'bold'}}>{getCurrentCurrency().symbol}</span>
                 <input type="text" value={percentAmount}
                   onChange={(e) => { const val = e.target.value; setPercentAmount(val); const num = parseFloat(val.replace(/[^\d.]/g, '')); if (!isNaN(num) && totalIncome > 0) setPercentCalc(Math.min(100, Math.max(1, Math.round(num / totalIncome * 100)))); }}
-                  placeholder="0.000" className="flex-1 bg-transparent text-base font-bold outline-none text-center" dir="ltr" style={{color: '#7a5c1a'}}/>
+                  placeholder="0.000" className="flex-1 bg-transparent text-base font-bold outline-none text-center" dir="ltr" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}/>
               </div>
               {totalIncome > 0 && (
                 <div className="grid grid-cols-3 gap-2">
                   {[{label: isArabic ? 'يومياً' : 'Daily', value: Math.round(totalIncome * percentCalc / 100 / 30 * 1000) / 1000},{label: isArabic ? 'أسبوعياً' : 'Weekly', value: Math.round(totalIncome * percentCalc / 100 / 4 * 1000) / 1000},{label: isArabic ? 'سنوياً' : 'Yearly', value: Math.round(totalIncome * percentCalc / 100 * 12 * 1000) / 1000}].map(item => (
                     <div key={item.label} className="rounded-xl p-2.5 text-center" style={{background: 'rgba(255,253,245,0.8)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
-                      <p className="text-xs mb-0.5" style={{color: 'rgba(122,92,26,0.5)'}}>{item.label}</p>
-                      <p className="text-sm font-bold" style={{color: '#7a5c1a'}}>{formatCurrency(item.value)}</p>
+                      <p className="text-xs mb-0.5" style={{color:'#8A9BB0'}}>{item.label}</p>
+                      <p className="text-sm font-bold" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}>{formatCurrency(item.value)}</p>
                     </div>
                   ))}
                 </div>
@@ -1532,13 +1540,13 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
 
         {/* Goals */}
-        <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 2px 8px rgba(196,163,90,0.06), 0 4px 20px rgba(196,163,90,0.09), 0 1px 3px rgba(0,0,0,0.04)'}}>
-          <CardHeader className="rounded-t-xl pb-3" style={{background: 'linear-gradient(135deg, rgba(196,163,90,0.07) 0%, rgba(196,163,90,0.04) 100%)', borderBottom: '1px solid rgba(196,163,90,0.12)'}}>
-            <CardTitle className="flex items-center gap-2" style={{color: '#7a5c1a'}}><Target className="w-6 h-6" />{text.goalsTitle}</CardTitle>
-            <CardDescription style={{color: 'rgba(122,92,26,0.6)'}}>{text.goalsDesc}</CardDescription>
+        <Card style={{background:'#FFFFFF',border:'1px solid #E8E2D6',borderRadius:'20px',boxShadow:'0 2px 12px rgba(27,36,48,0.07),0 1px 3px rgba(0,0,0,0.04)'}}>
+          <CardHeader className="" style={{background:'#FAFAF7',borderBottom:'1px solid #E8E2D6',borderRadius:'20px 20px 0 0'}}>
+            <CardTitle className="flex items-center gap-2" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}><Target className="w-6 h-6" />{text.goalsTitle}</CardTitle>
+            <CardDescription style={{color:'#8A9BB0'}}>{text.goalsDesc}</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
-            <Button onClick={addGoal} variant="outline" className="w-full" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'}}><Plus className="w-5 h-5 ms-2" />{text.addGoal}</Button>
+            <Button onClick={addGoal} variant="outline" className="w-full" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#1B2430'}}><Plus className="w-5 h-5 ms-2" />{text.addGoal}</Button>
             {goals.map(goal => (
               <div key={goal.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -1570,8 +1578,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
         {/* AI Financial Health Card */}
         {totalIncome > 0 && (
-          <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', overflow:'hidden', boxShadow:'0 8px 32px rgba(196,163,90,0.12)'}}>
-            <div className="p-5" style={{background:'linear-gradient(135deg, #7f5c48 0%, #5c3d2a 100%)'}}>
+          <Card style={{border: '1px solid rgba(212,175,55,0.30)', background:'#FFFFFF', overflow:'hidden', boxShadow:'0 8px 32px rgba(212,175,55,0.10)'}}>
+            <div className="p-5" style={{background:'linear-gradient(135deg,#1B2430 0%,#2C3444 100%)'}}>
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -1600,18 +1608,18 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             <CardContent className="pt-4 space-y-2">
               {aiInsights.map((ins, i) => (
                 <div key={i} className="flex items-start gap-2 p-2.5 rounded-xl text-sm"
-                  style={{background: ins.good?'rgba(45,138,78,0.06)':'rgba(196,163,90,0.06)', border:'1px solid ' + (ins.good?'rgba(45,138,78,0.18)':'rgba(196,163,90,0.2)')}}>
+                  style={{background: ins.good?'rgba(45,138,78,0.06)':'rgba(212,175,55,0.06)', border:'1px solid ' + (ins.good?'rgba(45,138,78,0.18)':'rgba(212,175,55,0.18)')}}>
                   <span className="shrink-0">{ins.t}</span>
-                  <span style={{color:'rgba(92,61,42,0.9)'}}>{ins.msg}</span>
+                  <span style={{color:'#1B2430'}}>{ins.msg}</span>
                 </div>
               ))}
-              <Button onClick={getRandomAdvice} variant="outline" className="w-full mt-2" style={{borderColor:'rgba(196,163,90,0.4)',color:'#7a5c1a'}}>
+              <Button onClick={getRandomAdvice} variant="outline" className="w-full mt-2" style={{borderColor:'rgba(212,175,55,0.35)',color:'#1B2430'}}>
                 <Lightbulb className="w-4 h-4 ms-2"/>{text.randomAdvice}
               </Button>
               {showAdvice && randomAdvice && (
-                <div className="p-3 rounded-xl" style={{border:'1px solid rgba(196,163,90,0.25)',background:'rgba(196,163,90,0.06)'}}>
+                <div className="p-3 rounded-xl" style={{border:'1px solid rgba(212,175,55,0.22)',background:'rgba(212,175,55,0.06)'}}>
                   <div className="flex items-start gap-2"><span className="text-2xl">{randomAdvice.icon}</span>
-                    <div><p className="font-bold text-sm" style={{color:'#7a5c1a'}}>{randomAdvice.category}</p><p className="text-sm" style={{color:'rgba(122,92,26,0.8)'}}>{randomAdvice.tip}</p></div>
+                    <div><p className="font-bold text-sm" style={{color:'#1B2430'}}>{randomAdvice.category}</p><p className="text-sm" style={{color:'rgba(122,92,26,0.8)'}}>{randomAdvice.tip}</p></div>
                   </div>
                 </div>
               )}
@@ -1621,10 +1629,10 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
         {/* Projects Integration */}
         {totalIncome > 0 && breakdown.savings + breakdown.investment > 0 && (
-          <Card style={{border:'1px solid rgba(196,163,90,0.3)',background:'rgba(255,253,245,0.98)',boxShadow:'0 4px 20px rgba(196,163,90,0.1)'}}>
-            <CardHeader className="pb-3 rounded-t-lg" style={{background:'rgba(196,163,90,0.07)'}}>
+          <Card style={{background:'#FFFFFF',border:'1px solid #E8E2D6',borderRadius:'20px',boxShadow:'0 2px 12px rgba(27,36,48,0.07)'}}>
+            <CardHeader className="pb-3 rounded-t-lg" style={{background:'#F5F2EA'}}>
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base" style={{color:'#7a5c1a'}}>
+                <CardTitle className="flex items-center gap-2 text-base" style={{color:'#1B2430'}}>
                   🚀 {isArabic ? 'مشروعي — متى أبدأ؟' : 'My Projects — When can I start?'}
                 </CardTitle>
                 <Button onClick={() => router.push('/projects')} size="sm" style={{background:'#7f5c48',color:'white'}} className="text-xs">
@@ -1648,8 +1656,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                         <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
                           style={{background:'rgba(196,163,90,0.1)'}}>{project.emoji}</div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold truncate" style={{color:'#7a5c1a'}}>{project.name}</p>
-                          <p className="text-xs" style={{color:'rgba(122,92,26,0.5)'}}>
+                          <p className="text-sm font-bold truncate" style={{color:'#1B2430'}}>{project.name}</p>
+                          <p className="text-xs" style={{color:'#8A9BB0'}}>
                             {cost > 0 ? formatCurrency(cost) + ' ' + getCurrentCurrency().symbol : (isArabic ? 'بدون ميزانية' : 'No budget')}
                           </p>
                         </div>
@@ -1662,12 +1670,12 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                                   {months >= 12 ? (months/12).toFixed(1) + (isArabic ? ' سنة' : ' yr') : months + (isArabic ? ' شهر' : ' mo')}
                                 </p>
                               </div>
-                              <p className="text-xs mt-0.5" style={{color:'rgba(122,92,26,0.4)'}}>
+                              <p className="text-xs mt-0.5" style={{color:'#8A9BB0'}}>
                                 {feasible ? (isArabic ? '✅ قريب' : '✅ Soon') : moderate ? (isArabic ? '⏳ متوسط' : '⏳ Med') : (isArabic ? '🔴 بعيد' : '🔴 Long')}
                               </p>
                             </>
                           ) : (
-                            <p className="text-xs" style={{color:'rgba(122,92,26,0.4)'}}>{isArabic ? 'حدد ميزانية' : 'Set budget'}</p>
+                            <p className="text-xs" style={{color:'#8A9BB0'}}>{isArabic ? 'حدد ميزانية' : 'Set budget'}</p>
                           )}
                         </div>
                       </div>
@@ -1685,8 +1693,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               ) : (
                 <div className="text-center py-5 rounded-xl" style={{border:'1px dashed rgba(196,163,90,0.3)'}}>
                   <p className="text-3xl mb-2">🚀</p>
-                  <p className="text-sm" style={{color:'rgba(122,92,26,0.5)'}}>{isArabic ? 'لم تضف مشاريع بعد' : 'No projects yet'}</p>
-                  <Button onClick={() => router.push('/projects')} size="sm" className="mt-2" style={{background:'#c4a35a',color:'#1a0f00'}}>
+                  <p className="text-sm" style={{color:'#8A9BB0'}}>{isArabic ? 'لم تضف مشاريع بعد' : 'No projects yet'}</p>
+                  <Button onClick={() => router.push('/projects')} size="sm" className="mt-2" style={{background:'linear-gradient(135deg,#D4AF37,#C49B3A)',color:'#1a0f00'}}>
                     {isArabic ? '+ أضف مشروعك الأول' : '+ Add First Project'}
                   </Button>
                 </div>
@@ -1709,7 +1717,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             ].map(btn => (
               <Button key={btn.id} onClick={() => runSmartAnalysis(btn.id)} size="lg" variant="outline"
                 className="h-14 flex-col gap-1 font-bold transition-all"
-                style={{borderColor:'rgba(196,163,90,0.5)',color:'#7a5c1a',background:smartPanel===btn.id?'rgba(127,92,72,0.1)':'white',transform:smartPanel===btn.id?'scale(0.97)':'scale(1)'}}>
+                style={{borderColor:'rgba(196,163,90,0.5)',color:'#1B2430',background:smartPanel===btn.id?'rgba(127,92,72,0.1)':'white',transform:smartPanel===btn.id?'scale(0.97)':'scale(1)'}}>
                 <span className="text-xl">{btn.icon}</span>
                 <span className="text-xs">{btn.label}</span>
               </Button>
@@ -1718,8 +1726,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
           {/* Result Panel */}
           {smartPanel && smartText && (
-            <Card style={{border:'1px solid rgba(196,163,90,0.35)',background:'rgba(255,253,245,0.98)',boxShadow:'0 8px 30px rgba(196,163,90,0.12)'}}>
-              <CardHeader className="pb-3 rounded-t-lg" style={{background:'linear-gradient(135deg,#7f5c48,#5c3d2a)'}}>
+            <Card style={{border:'1px solid rgba(212,175,55,0.30)',background:'rgba(255,253,245,0.98)',boxShadow:'0 8px 30px rgba(212,175,55,0.10)'}}>
+              <CardHeader className="pb-3 rounded-t-lg" style={{background:'linear-gradient(135deg,#7f5c48,#2C3444)'}}>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-white text-base">
                     {smartPanel==='analysis'&&(isArabic?'🧠 التحليل المالي':'🧠 Financial Analysis')}
@@ -1736,16 +1744,16 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
           )}
 
           <div className="flex justify-center">
-            <Button onClick={handleReset} variant="outline" style={{borderColor:'rgba(196,163,90,0.3)',color:'rgba(122,92,26,0.5)'}}><RefreshCw className="w-4 h-4 ms-2"/>{text.reset}</Button>
+            <Button onClick={handleReset} variant="outline" style={{borderColor:'#E8E2D6',color:'#8A9BB0'}}><RefreshCw className="w-4 h-4 ms-2"/>{text.reset}</Button>
           </div>
         </div>
 
-        <div className="mt-8 pt-8 text-center text-sm" style={{borderTop: '1px solid rgba(196,163,90,0.3)'}}>
-          <p className="mb-1" style={{color: 'rgba(122,92,26,0.5)'}}>{text.footer}</p>
+        <div className="mt-8 pt-8 text-center text-sm" style={{borderTop:'1px solid #E8E2D6'}}>
+          <p className="mb-1" style={{color:'#8A9BB0'}}>{text.footer}</p>
           <div className="flex items-center justify-center gap-2">
-            <span className="w-24 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
-            <span className="font-medium" style={{color: '#c4a35a'}}>powered by M.Q</span>
-            <span className="w-24 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
+            <span className="w-24 h-px" style={{background: 'rgba(212,175,55,0.35)'}}></span>
+            <span className="font-medium" style={{color:'#D4AF37'}}>powered by M.Q</span>
+            <span className="w-24 h-px" style={{background: 'rgba(212,175,55,0.35)'}}></span>
           </div>
         </div>
       </div>
