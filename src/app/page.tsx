@@ -10,7 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calculator, Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Sparkles, Globe, Plus, Trash2, Target, Calendar, Banknote, Goal, ChevronDown, ChevronUp, Languages, User } from 'lucide-react';
+import { Calculator, Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Globe, Plus, Trash2, Target, Calendar, Banknote, Goal, ChevronDown, ChevronUp, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/auth/AuthForm';
@@ -1014,8 +1014,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               ].map(item => (
                 <button key={item.path} type="button" onClick={() => router.push(item.path)}
                   style={{padding:'5px 10px', borderRadius:'8px', background:'rgba(255,255,255,0.12)', border:'1px solid rgba(255,255,255,0.15)', color:'rgba(255,255,255,0.85)', fontSize:'12px', cursor:'pointer', transition:'all 0.15s', whiteSpace:'nowrap'}}
-                  onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
-                  onMouseOut={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')}>
+                  onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}>
                   {item.label}
                 </button>
               ))}
