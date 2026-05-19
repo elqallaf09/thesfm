@@ -927,26 +927,78 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
       .score-val{animation:fadeUp 0.6s ease 0.4s both}
       .nav-link{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:1px 6px;border-radius:12px;cursor:pointer;transition:all 0.18s;color:rgba(255,255,255,0.55);font-size:13px;font-weight:500;text-decoration:none;border:none;background:transparent;width:calc(100% - 12px);text-align:right;direction:rtl}
       .nav-link:hover{background:rgba(255,255,255,0.09);color:rgba(255,255,255,0.88)}
-      .nav-link.active{background:rgba(196,163,90,0.22);color:#f0d080}
-      .nav-link-icon{font-size:17px;flex-shrink:0;width:22px;display:flex;align-items:center;justify-content:center}
-      .sidebar-collapsed .nav-link-label{display:none}
-      @media(max-width:768px){.sfm-sidebar{display:none!important}.sfm-content{padding:12px!important}}
-      @media print{body{background:white!important}.no-print{display:none!important}.sfm-sidebar{display:none!important}main{background:white!important}*{box-shadow:none!important}}
+      .sfm-card{background:rgba(255,253,245,0.98);border:1px solid rgba(196,163,90,0.22);border-radius:20px;box-shadow:0 2px 12px rgba(196,163,90,0.08),0 1px 4px rgba(0,0,0,0.04);transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}
+      .sfm-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(196,163,90,0.15),0 2px 8px rgba(0,0,0,0.06)}
+      .sfm-nav-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.88);font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;text-decoration:none}
+      .sfm-nav-btn:hover{background:rgba(255,255,255,0.24);color:white}
+      @media(max-width:768px){.sfm-top-nav{display:none!important}}
+      @media print{body{background:white!important}.no-print{display:none!important}main{background:white!important}*{box-shadow:none!important}}
     `}</style>
 
-    <main dir={isArabic ? 'rtl' : 'ltr'} className="relative min-h-screen overflow-hidden" style={{background: 'linear-gradient(135deg, #fffdf5 0%, #fef9e7 50%, #fdf5d0 100%)'}}>
-      <div className="relative max-w-5xl mx-auto space-y-6 px-4 py-6">
+    <main dir={isArabic ? 'rtl' : 'ltr'} className="relative min-h-screen" style={{background:'linear-gradient(160deg,#fffdf5 0%,#fef9e7 55%,#fdf5d0 100%)'}}>
 
-
-        {/* Compact Page Title */}
-        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'4px 0 8px'}}>
-          <div>
-            <h1 style={{fontSize:'22px', fontWeight:'700', color:'#7a5c1a', margin:0}}>{text.title}</h1>
-            <p style={{fontSize:'13px', color:'rgba(122,92,26,0.55)', margin:'2px 0 0'}}>{text.subtitle}</p>
+      {/* ── Premium Top Navigation Bar ── */}
+      <div className="no-print" style={{background:'linear-gradient(135deg,#7f5c48 0%,#5c3d2a 100%)',boxShadow:'0 4px 24px rgba(92,61,42,0.25)',position:'sticky',top:0,zIndex:40}}>
+        {/* Main nav row */}
+        <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'10px 20px',borderBottom:'1px solid rgba(255,255,255,0.1)'}} className="sfm-top-nav">
+          {/* Logo */}
+          <div style={{display:'flex',alignItems:'center',gap:'8px',marginLeft:'auto',paddingLeft:'16px',borderLeft:'1px solid rgba(255,255,255,0.12)'}}>
+            <div style={{width:'28px',height:'28px',background:'linear-gradient(135deg,#d4b36a,#c4a35a)',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',fontWeight:'700',color:'#3d2510',flexShrink:0}}>SFM</div>
+            <span style={{fontSize:'13px',fontWeight:'600',color:'rgba(255,255,255,0.9)'}}>{isArabic?'المدير المالي الذكي':'Smart Financial Manager'}</span>
           </div>
+          <div style={{flex:1,display:'flex',alignItems:'center',gap:'6px',flexWrap:'wrap'}}>
+            <button className="sfm-nav-btn" onClick={() => router.push('/projects')}>🚀 {isArabic?'مشروعي':'Projects'}</button>
+            <button className="sfm-nav-btn" onClick={() => router.push('/education/investments')}>📈 {isArabic?'الاستثمار':'Investments'}</button>
+            <button className="sfm-nav-btn" onClick={() => router.push('/education/savings')}>💰 {isArabic?'المدخرات':'Savings'}</button>
+            <button className="sfm-nav-btn" onClick={() => router.push('/education/expenses')}>📊 {isArabic?'المصروفات':'Expenses'}</button>
+            {!isGuest && <button className="sfm-nav-btn" onClick={() => router.push('/profile')}>👤 {isArabic?'ملفي':'Profile'}</button>}
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
+            <Select value={language} onValueChange={(value) => setLanguage(value as 'ar'|'en')}>
+              <SelectTrigger className="h-8 w-[90px] text-white text-xs" style={{borderColor:'rgba(255,255,255,0.25)',background:'rgba(255,255,255,0.12)'}}><SelectValue/></SelectTrigger>
+              <SelectContent><SelectItem value="ar">العربية</SelectItem><SelectItem value="en">English</SelectItem></SelectContent>
+            </Select>
+            {!isGuest ? (
+              <button className="sfm-nav-btn" onClick={() => {localStorage.removeItem('guest_session');supabase.auth.signOut();}}>⤴ {text.logout}</button>
+            ) : (
+              <button className="sfm-nav-btn" style={{background:'rgba(196,163,90,0.3)',borderColor:'rgba(196,163,90,0.5)',color:'#f0d080',fontWeight:'700'}} onClick={() => {localStorage.removeItem('guest_session');window.location.reload();}}>🔑 {isArabic?'دخول':'Login'}</button>
+            )}
+          </div>
+        </div>
+        {/* Ticker row */}
+        <div style={{overflow:'hidden',padding:'7px 0',background:'rgba(0,0,0,0.18)'}}>
+          <div className="ticker-scroll" style={{alignItems:'center',gap:'6px',paddingRight:'16px'}}>
+            {[...tickerItems,...tickerItems,...tickerItems].map((item,index) => (
+              <div key={`${item.nameEn}-${index}`} style={{display:'flex',flexShrink:0,alignItems:'center',gap:'7px',borderRadius:'20px',padding:'4px 11px',margin:'0 3px',background:'rgba(196,163,90,0.12)',border:'0.5px solid rgba(196,163,90,0.28)',fontSize:'12px'}}>
+                <span style={{fontWeight:'600',color:'#f0d080'}}>{isArabic?item.nameAr:item.nameEn}</span>
+                <span style={{color:'rgba(255,255,255,0.88)',fontVariantNumeric:'tabular-nums'}} dir="ltr">{item.value}</span>
+                <span style={{fontWeight:'700',fontSize:'11px',color:item.positive?'#4ade80':'#f87171'}} dir="ltr">{item.change}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="relative max-w-5xl mx-auto space-y-5 px-4 py-6">
+
+        {/* Page Header */}
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',paddingBottom:'4px'}}>
+          <div>
+            <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'2px'}}>
+              <div style={{width:'32px',height:'32px',background:'linear-gradient(135deg,#d4b36a,#c4a35a)',borderRadius:'9px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:'700',color:'#3d2510'}}>SFM</div>
+              <h1 style={{fontSize:'22px',fontWeight:'700',color:'#7a5c1a',margin:0}}>{text.title}</h1>
+            </div>
+            <p style={{fontSize:'13px',color:'rgba(122,92,26,0.5)',margin:'0 42px'}}>{text.subtitle}</p>
+          </div>
+          {username && !isGuest && (
+            <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'6px 14px',borderRadius:'20px',background:'rgba(196,163,90,0.1)',border:'1px solid rgba(196,163,90,0.2)'}}>
+              <div style={{width:'28px',height:'28px',background:'linear-gradient(135deg,#c4a35a,#a8873e)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:'700',color:'white'}}>{username.substring(0,2).toUpperCase()}</div>
+              <span style={{fontSize:'12px',fontWeight:'600',color:'#7a5c1a'}}>{username}</span>
+            </div>
+          )}
           {isGuest && (
-            <Button onClick={() => { localStorage.removeItem('guest_session'); window.location.reload(); }} size="sm" style={{background:'#c4a35a', color:'#1a1228', borderRadius:'10px', fontWeight:'700'}}>
-              🔑 {isArabic ? 'تسجيل الدخول' : 'Login'}
+            <Button onClick={() => {localStorage.removeItem('guest_session');window.location.reload();}} size="sm" style={{background:'linear-gradient(135deg,#c4a35a,#a8873e)',color:'white',borderRadius:'12px',fontWeight:'700',boxShadow:'0 4px 12px rgba(196,163,90,0.35)'}}>
+              🔑 {isArabic?'تسجيل الدخول':'Login'}
             </Button>
           )}
         </div>
