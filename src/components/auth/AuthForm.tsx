@@ -2,13 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, UserPlus, KeyRound, AlertCircle, User, Languages, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -32,46 +27,6 @@ const FINANCIAL_WISDOM_TIPS = [
   { titleAr: 'اصنع صندوق طوارئ', contentAr: 'احتفظ بمبلغ يحميك وقت الأزمات.', titleEn: 'Build an emergency fund', contentEn: 'Keep money that protects you in crises.', titleFr: "Créez un fonds d'urgence", contentFr: 'Gardez une somme qui vous protège en cas de crise.' },
   { titleAr: 'راقب مصروفاتك', contentAr: 'ما لا تقيسه يصعب تحسينه.', titleEn: 'Track your expenses', contentEn: 'What you do not measure is hard to improve.', titleFr: 'Suivez vos dépenses', contentFr: "Ce que vous ne mesurez pas est difficile à améliorer." },
 ];
-
-const SFMLogo = () => (
-  <svg viewBox="0 0 300 300" width="160" height="160" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <radialGradient id="authBgG" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#1e1e3f"/>
-        <stop offset="100%" stopColor="#0d0d1a"/>
-      </radialGradient>
-      <linearGradient id="authGG" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#f0d080"/>
-        <stop offset="40%" stopColor="#c4a35a"/>
-        <stop offset="70%" stopColor="#e8c870"/>
-        <stop offset="100%" stopColor="#9a7a30"/>
-      </linearGradient>
-      <linearGradient id="authGG2" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#e8c870"/>
-        <stop offset="50%" stopColor="#c4a35a"/>
-        <stop offset="100%" stopColor="#f0d080"/>
-      </linearGradient>
-    </defs>
-    <circle cx="150" cy="150" r="140" fill="url(#authBgG)" stroke="url(#authGG)" strokeWidth="1.5"/>
-    <circle cx="150" cy="150" r="128" fill="none" stroke="url(#authGG)" strokeWidth="0.4" opacity="0.4"/>
-    <g stroke="url(#authGG)" strokeWidth="1" fill="none" opacity="0.7">
-      <path d="M 58 58 L 58 72 L 72 72"/><path d="M 242 58 L 242 72 L 228 72"/>
-      <path d="M 58 242 L 58 228 L 72 228"/><path d="M 242 242 L 242 228 L 228 228"/>
-    </g>
-    <g fill="url(#authGG)" opacity="0.8">
-      <polygon points="150,38 154,43 150,48 146,43"/><polygon points="150,252 154,257 150,262 146,257"/>
-      <polygon points="38,150 43,154 48,150 43,146"/><polygon points="252,150 257,154 262,150 257,146"/>
-    </g>
-    <text x="74" y="175" fontFamily="Georgia, serif" fontSize="82" fontWeight="700" fill="url(#authGG)" textAnchor="middle">S</text>
-    <text x="150" y="175" fontFamily="Georgia, serif" fontSize="82" fontWeight="700" fill="url(#authGG2)" textAnchor="middle">F</text>
-    <text x="226" y="175" fontFamily="Georgia, serif" fontSize="82" fontWeight="700" fill="url(#authGG)" textAnchor="middle">M</text>
-    <line x1="68" y1="188" x2="232" y2="188" stroke="url(#authGG)" strokeWidth="1" opacity="0.6"/>
-    <circle cx="68" cy="188" r="2.5" fill="url(#authGG)" opacity="0.9"/>
-    <circle cx="150" cy="188" r="2.5" fill="url(#authGG)" opacity="0.9"/>
-    <circle cx="232" cy="188" r="2.5" fill="url(#authGG)" opacity="0.9"/>
-    <text x="150" y="212" fontFamily="Georgia, serif" fontSize="10" fill="#c4a35a" textAnchor="middle" letterSpacing="5" opacity="0.8">SINCE 2026</text>
-  </svg>
-);
 
 export function AuthForm() {
   const { signIn, signUp } = useAuth();
@@ -97,6 +52,8 @@ export function AuthForm() {
   const [securityQuestion3, setSecurityQuestion3] = useState('');
   const [securityAnswer3, setSecurityAnswer3] = useState('');
   const [resetStep, setResetStep] = useState<'username' | 'question' | 'reset'>('username');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [storedQuestion, setStoredQuestion] = useState('');
   const [resetUsername, setResetUsername] = useState('');
 
@@ -324,259 +281,364 @@ export function AuthForm() {
     return q.questionEn;
   };
 
-  const goldBtn = {background: '#c4a35a', color: '#1a0f00', fontWeight: '600'};
-  const goldBorder = {borderColor: 'rgba(196,163,90,0.5)', color: '#7a5c1a'};
+  const authStyles = `@keyframes spin{to{transform:rotate(360deg)}}`;
+
+
 
   return (
-    <>
-    <style>{`
-      @keyframes wisdom-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-      .wisdom-animate { animation: wisdom-scroll 52s linear infinite; display: flex; width: max-content; }
-    `}</style>
-    <main dir={isArabic ? 'rtl' : 'ltr'} className="relative min-h-screen overflow-hidden px-4 py-10" style={{background: 'linear-gradient(135deg, #fffdf5 0%, #fef9e7 50%, #fdf5d0 100%)'}}>
-      <div className="pointer-events-none absolute inset-0 opacity-40" style={{backgroundImage: 'linear-gradient(120deg,rgba(196,163,90,0.15) 0,rgba(196,163,90,0.15) 1px,transparent 1px,transparent 42px)'}} />
-      <div className="pointer-events-none absolute -right-24 top-0 h-[34rem] w-[34rem] rounded-full blur-3xl" style={{background: 'rgba(196,163,90,0.2)'}} />
+    <div className="auth-scene" dir={isArabic ? 'rtl' : 'ltr'}>
 
-      {/* Wisdom ticker */}
-      <div className="absolute left-4 right-4 top-4 z-10 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="order-2 min-w-0 flex-1 overflow-hidden rounded-xl py-1.5 px-3 sm:order-1" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(255,253,245,0.9)'}}>
-          <div className="wisdom-animate items-center gap-4 whitespace-nowrap text-xs">
-            {[...FINANCIAL_WISDOM_TIPS, ...FINANCIAL_WISDOM_TIPS].map((tip, index) => {
-              const title = isArabic ? tip.titleAr : isFrench ? tip.titleFr : tip.titleEn;
-              const content = isArabic ? tip.contentAr : isFrench ? tip.contentFr : tip.contentEn;
-              return (
-                <span key={`${title}-${index}`} className="inline-flex items-center gap-2" style={{color: '#7a5c1a'}}>
-                  <span style={{color: '#c4a35a'}}>✦</span>
-                  <strong>{title}</strong>
-                  <span style={{color: 'rgba(122,92,26,0.6)'}}>{content}</span>
-                </span>
-              );
-            })}
+      {/* ── Language picker (top corner) ── */}
+      <div style={{position:'absolute', top:'16px', left: isArabic ? '16px' : 'auto', right: isArabic ? 'auto' : '16px', zIndex:10, display:'flex', gap:'6px'}}>
+        {(['ar','en','fr'] as const).map(lang => (
+          <button key={lang} onClick={() => setLanguage(lang)}
+            style={{padding:'5px 10px', borderRadius:'8px', border:'1.5px solid',
+              borderColor: language === lang ? '#D4AF37' : '#E8E2D6',
+              background: language === lang ? 'rgba(212,175,55,0.12)' : '#fff',
+              color: language === lang ? '#8A6D2A' : '#8A9BB0',
+              fontSize:'11.5px', fontWeight:'700', cursor:'pointer',
+              fontFamily:'Tajawal,sans-serif', transition:'all 0.15s'}}>
+            {lang === 'ar' ? 'عربي' : lang === 'en' ? 'EN' : 'FR'}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Card ── */}
+      <div className="auth-card">
+
+        {/* Brand */}
+        <div className="auth-brand">
+          <div className="auth-logo">
+            <span className="auth-logo-text">SFM</span>
+          </div>
+          <div className="auth-brand-name">{t.title}</div>
+          <div className="auth-brand-sub">
+            {showForgotPassword
+              ? (isArabic ? 'استعادة كلمة المرور' : isFrench ? 'Récupérer le mot de passe' : 'Recover your password')
+              : isRegister
+              ? (isArabic ? 'إنشاء حساب جديد' : isFrench ? 'Créer un nouveau compte' : 'Create a new account')
+              : (isArabic ? 'مرحباً بعودتك — Welcome Back' : isFrench ? 'Bienvenue — Welcome Back' : 'Welcome Back')}
           </div>
         </div>
-        <Select value={language} onValueChange={(v) => setLanguage(v as typeof language)}>
-          <SelectTrigger className="order-1 w-[140px] sm:order-2" style={{background: 'rgba(255,253,245,0.9)', borderColor: 'rgba(196,163,90,0.4)', color: '#7a5c1a'}}>
-            <Languages className="h-4 w-4 me-2" style={{color: '#c4a35a'}} />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ar">العربية</SelectItem>
-            <SelectItem value="en">English</SelectItem>
-            <SelectItem value="fr">Français</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
-      <div className="relative mx-auto flex min-h-[calc(100vh-5rem)] max-w-6xl items-center justify-center">
-        <div className="grid w-full items-center gap-12 md:grid-cols-[1.2fr_0.8fr]">
+        <div className="auth-divider" />
 
-          {/* Left side - Logo & info */}
-          <section className="space-y-6 text-center md:text-start">
-            <div className="flex justify-center md:justify-start">
-              <SFMLogo />
+        <form onSubmit={submit} style={{display:'flex', flexDirection:'column', gap:'0'}}>
+
+          {/* Error / Success */}
+          {error && (
+            <div className="auth-error" style={{marginBottom:'16px'}}>
+              <span style={{fontSize:'16px'}}>⚠️</span> {error}
             </div>
-            <div className="space-y-4">
-              <h1 className="text-5xl font-bold tracking-tight md:text-6xl" style={{color: '#7a5c1a'}}>{t.title}</h1>
-              <p className="max-w-xl text-xl leading-relaxed" style={{color: 'rgba(122,92,26,0.7)'}}>{t.subtitle}</p>
+          )}
+          {forgotPasswordSuccess && (
+            <div className="auth-success" style={{marginBottom:'16px'}}>
+              <span style={{fontSize:'16px'}}>✅</span> {forgotPasswordSuccess}
             </div>
-          </section>
+          )}
 
-          {/* Right side - Form */}
-          <Card style={{border: '1px solid rgba(196,163,90,0.4)', background: 'rgba(255,253,245,0.98)', boxShadow: '0 20px_80px rgba(196,163,90,0.2)'}}>
-            <CardHeader className="space-y-2">
-              <CardTitle className="flex items-center gap-2 text-2xl" style={{color: '#7a5c1a'}}>
-                {isRegister ? <UserPlus className="h-6 w-6" style={{color: '#c4a35a'}} /> : <Lock className="h-6 w-6" style={{color: '#c4a35a'}} />}
-                {showForgotPassword ? t.forgotPassword : isRegister ? t.createAccount : t.login}
-              </CardTitle>
-              <CardDescription style={{color: 'rgba(122,92,26,0.6)'}}>
-                {isRegister ? (isArabic ? 'إن لم يكن لديك حساب، املأ البيانات التالية للبدء.' : isFrench ? "Remplissez les informations suivantes pour commencer." : 'Fill in the following information to get started.') : showForgotPassword ? '' : (isArabic ? 'أدخل اسم المستخدم وكلمة المرور للمتابعة.' : isFrench ? "Entrez votre nom d'utilisateur et mot de passe pour continuer." : 'Enter your username and password to continue.')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form className="space-y-4" onSubmit={submit}>
-                {error && <div className="rounded-xl p-3 text-sm flex items-center gap-2" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.08)', color: '#7a5c1a'}}><AlertCircle className="h-4 w-4" style={{color: '#c4a35a'}} />{error}</div>}
-                {forgotPasswordSuccess && <div className="rounded-xl p-3 text-sm flex items-center gap-2" style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(196,163,90,0.08)', color: '#7a5c1a'}}><AlertCircle className="h-4 w-4" />{forgotPasswordSuccess}</div>}
-
-                {!showForgotPassword ? (
-                  <>
-                    <div className="space-y-2">
-                      <Label style={{color: '#7a5c1a'}}>{isRegister ? t.username : t.usernameOrEmail}</Label>
-                      <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder={isRegister ? t.enterUsername : t.enterUsernameOrEmail} dir="ltr" autoComplete="username" style={{borderColor: 'rgba(196,163,90,0.4)'}} />
+          {/* ══ FORGOT PASSWORD FLOW ══ */}
+          {showForgotPassword && (
+            <>
+              {/* Steps indicator */}
+              <div className="auth-steps" style={{marginBottom:'20px'}}>
+                {[
+                  {id:'username', label: isArabic ? 'المستخدم' : 'Username'},
+                  {id:'question', label: isArabic ? 'التحقق' : 'Verify'},
+                ].map((s, i) => {
+                  const idx = ['username','question'].indexOf(resetStep);
+                  const done = idx > i;
+                  const cur  = resetStep === s.id;
+                  return (
+                    <div key={s.id} className="auth-step">
+                      <div className={'auth-step-circle ' + (done ? 'done' : cur ? 'active' : 'idle')}>
+                        {done ? '✓' : i + 1}
+                      </div>
+                      <span className={'auth-step-label ' + (cur ? 'active' : '')}>{s.label}</span>
+                      {i < 1 && <div className="auth-step-line" />}
                     </div>
-                    <div className="space-y-2">
-                      <Label style={{color: '#7a5c1a'}}>{t.password}</Label>
-                      <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} dir="ltr" autoComplete={isRegister ? 'new-password' : 'current-password'} style={{borderColor: 'rgba(196,163,90,0.4)'}} />
-                    </div>
-                    {!isRegister && (
-                      <Button type="button" variant="link" className="p-0 h-auto text-sm" style={{color: '#c4a35a'}} onClick={() => { setShowForgotPassword(true); setError(''); setForgotPasswordSuccess(''); setResetStep('username'); }}>
-                        <KeyRound className="h-4 w-4 ms-1" />{isArabic ? 'نسيت كلمة المرور؟' : isFrench ? 'Mot de passe oublié?' : 'Forgot password?'}
-                      </Button>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {/* Step 1: اسم المستخدم */}
-                    {resetStep === 'username' && (
-                      <div className="space-y-3">
-                        <div className="space-y-2">
-                          <Label style={{color:'#7a5c1a'}}>{t.username}</Label>
-                          <Input value={resetUsername} onChange={e => setResetUsername(e.target.value)}
-                            placeholder={isArabic ? 'مثال: ahmad' : 'e.g. ahmad'}
-                            dir="ltr" style={{borderColor:'rgba(196,163,90,0.4)',fontSize:'16px'}} />
-                        </div>
-                        <p className="text-xs" style={{color:'rgba(122,92,26,0.5)'}}>
-                          💡 {isArabic ? 'سنتحقق من هويتك عبر سؤال الأمان ثم نرسل رابط الاستعادة لبريدك الإلكتروني.' : 'We verify via security question, then send a reset link to your email.'}
-                        </p>
-                      </div>
-                    )}
+                  );
+                })}
+              </div>
 
-                    {/* Step 2: سؤال الأمان */}
-                    {resetStep === 'question' && (
-                      <div className="space-y-4">
-                        <div className="p-3 rounded-xl text-sm" style={{background:'rgba(196,163,90,0.07)',border:'1px solid rgba(196,163,90,0.2)'}}>
-                          <p style={{color:'rgba(122,92,26,0.6)'}}>{isArabic?'المستخدم: ':'User: '}
-                            <span className="font-bold" style={{color:'#7a5c1a'}}>{resetUsername}</span>
-                          </p>
-                        </div>
-                        {storedQuestion && (
-                          <div className="space-y-2">
-                            <Label style={{color:'#7a5c1a'}}>{t.securityQuestion}</Label>
-                            <div className="p-3 rounded-lg" style={{background:'rgba(196,163,90,0.08)',border:'1px solid rgba(196,163,90,0.25)'}}>
-                              <p className="text-sm font-medium" style={{color:'#7a5c1a'}}>{getSecurityQuestionText(storedQuestion)}</p>
-                            </div>
-                            <Input value={securityAnswer} onChange={e => setSecurityAnswer(e.target.value)}
-                              placeholder={isArabic?'اكتب إجابتك...':'Type your answer...'}
-                              style={{borderColor:'rgba(196,163,90,0.4)',fontSize:'16px'}} />
-                          </div>
-                        )}
-                        <div className="relative flex items-center gap-3">
-                          <div className="flex-1 h-px" style={{background:'rgba(196,163,90,0.2)'}}/>
-                          <span className="text-xs shrink-0" style={{color:'rgba(122,92,26,0.45)'}}>{isArabic?'ناسي الإجابة؟':'Forgot answer?'}</span>
-                          <div className="flex-1 h-px" style={{background:'rgba(196,163,90,0.2)'}}/>
-                        </div>
-                        <button type="button" onClick={handleSendEmailReset} disabled={loading}
-                          className="w-full text-sm py-2.5 px-4 rounded-xl transition-all"
-                          style={{border:'1px solid rgba(196,163,90,0.35)',color:'#c4a35a',background:'rgba(196,163,90,0.04)'}}>
-                          📧 {isArabic?'أرسل رابط الاستعادة على بريدي الإلكتروني':'Send reset link to my email'}
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {isRegister && !showForgotPassword && (
-                  <>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label style={{color: '#7a5c1a'}}>{isArabic ? 'الاسم الأول' : isFrench ? 'Prénom' : 'First name'} <span className="text-red-400">*</span></Label>
-                        <Input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder={isArabic ? 'محمد' : 'John'} style={{borderColor: 'rgba(196,163,90,0.4)'}} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label style={{color: '#7a5c1a'}}>{isArabic ? 'اسم العائلة' : isFrench ? 'Nom' : 'Last name'} <span className="text-red-400">*</span></Label>
-                        <Input value={lastName} onChange={e => setLastName(e.target.value)} placeholder={isArabic ? 'القلاف' : 'Smith'} style={{borderColor: 'rgba(196,163,90,0.4)'}} />
-                      </div>
-                    </div>
-                    <div className="space-y-2"><Label style={{color: '#7a5c1a'}}>{t.confirmPassword}</Label><Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} dir="ltr" autoComplete="new-password" style={{borderColor: 'rgba(196,163,90,0.4)'}} /></div>
-                    <div className="space-y-2"><Label style={{color: '#7a5c1a'}}>{t.email}</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@domain.com" dir="ltr" style={{borderColor: 'rgba(196,163,90,0.4)'}} /></div>
-                    <div className="space-y-2"><Label style={{color: '#7a5c1a'}}>{t.age}</Label><Input type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="25" dir="ltr" min="10" max="120" style={{borderColor: 'rgba(196,163,90,0.4)'}} /></div>
-                    <div className="space-y-2"><Label style={{color: '#7a5c1a'}}>{t.gender}</Label><RadioGroup value={gender} onValueChange={setGender} className="flex gap-6"><div className="flex items-center gap-2"><RadioGroupItem value="male" id="male" /><Label htmlFor="male" className="cursor-pointer" style={{color: '#7a5c1a'}}>{t.male}</Label></div><div className="flex items-center gap-2"><RadioGroupItem value="female" id="female" /><Label htmlFor="female" className="cursor-pointer" style={{color: '#7a5c1a'}}>{t.female}</Label></div></RadioGroup></div>
-
-                    {/* Security Questions - 3 with 2 mandatory */}
-                    <div className="space-y-3 rounded-xl p-3" style={{background: 'rgba(196,163,90,0.06)', border: '1px solid rgba(196,163,90,0.2)'}}>
-                      <p className="text-xs font-bold" style={{color: '#7a5c1a'}}>{isArabic ? '🔐 أسئلة الأمان (الأول والثاني إجباري)' : '🔐 Security Questions (1st & 2nd required)'}</p>
-
-                      <div className="space-y-1.5">
-                        <Label style={{color: '#7a5c1a', fontSize: '12px'}}>{isArabic ? 'السؤال الأول *' : '1st Question *'}</Label>
-                        <Select value={securityQuestion} onValueChange={setSecurityQuestion}><SelectTrigger style={{borderColor: 'rgba(196,163,90,0.4)', fontSize: '12px'}}><SelectValue placeholder={t.selectQuestion} /></SelectTrigger><SelectContent>{SECURITY_QUESTIONS.map((q) => (<SelectItem key={q.id} value={q.id}>{isArabic ? q.questionAr : isFrench ? q.questionFr : q.questionEn}</SelectItem>))}</SelectContent></Select>
-                        <Input value={securityAnswer} onChange={(e) => setSecurityAnswer(e.target.value)} placeholder={isArabic ? 'الإجابة...' : 'Answer...'} style={{borderColor: 'rgba(196,163,90,0.4)', fontSize: '12px'}} />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label style={{color: '#7a5c1a', fontSize: '12px'}}>{isArabic ? 'السؤال الثاني *' : '2nd Question *'}</Label>
-                        <Select value={securityQuestion2} onValueChange={setSecurityQuestion2}><SelectTrigger style={{borderColor: 'rgba(196,163,90,0.4)', fontSize: '12px'}}><SelectValue placeholder={t.selectQuestion} /></SelectTrigger><SelectContent>{SECURITY_QUESTIONS.filter(q => q.id !== securityQuestion).map((q) => (<SelectItem key={q.id} value={q.id}>{isArabic ? q.questionAr : isFrench ? q.questionFr : q.questionEn}</SelectItem>))}</SelectContent></Select>
-                        <Input value={securityAnswer2} onChange={(e) => setSecurityAnswer2(e.target.value)} placeholder={isArabic ? 'الإجابة...' : 'Answer...'} style={{borderColor: 'rgba(196,163,90,0.4)', fontSize: '12px'}} />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label style={{color: 'rgba(122,92,26,0.7)', fontSize: '12px'}}>{isArabic ? 'السؤال الثالث (اختياري)' : '3rd Question (optional)'}</Label>
-                        <Select value={securityQuestion3} onValueChange={setSecurityQuestion3}><SelectTrigger style={{borderColor: 'rgba(196,163,90,0.3)', fontSize: '12px'}}><SelectValue placeholder={t.selectQuestion} /></SelectTrigger><SelectContent>{SECURITY_QUESTIONS.filter(q => q.id !== securityQuestion && q.id !== securityQuestion2).map((q) => (<SelectItem key={q.id} value={q.id}>{isArabic ? q.questionAr : isFrench ? q.questionFr : q.questionEn}</SelectItem>))}</SelectContent></Select>
-                        {securityQuestion3 && <Input value={securityAnswer3} onChange={(e) => setSecurityAnswer3(e.target.value)} placeholder={isArabic ? 'الإجابة...' : 'Answer...'} style={{borderColor: 'rgba(196,163,90,0.3)', fontSize: '12px'}} />}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Progress Steps Indicator */}
-                {showForgotPassword && (
-                  <div className="flex items-center gap-2 mb-2">
-                    {['username','question','reset'].map((s,i) => (
-                      <div key={s} className="flex items-center gap-2 flex-1">
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                          style={{background: resetStep===s?'#7f5c48':['username','question','reset'].indexOf(resetStep)>i?'#2d8a4e':'rgba(196,163,90,0.2)',color:['username','question','reset'].indexOf(resetStep)>=i?'white':'rgba(122,92,26,0.4)'}}>
-                          {['username','question','reset'].indexOf(resetStep)>i?'✓':i+1}
-                        </div>
-                        <span className="text-xs hidden md:block" style={{color:resetStep===s?'#7a5c1a':'rgba(122,92,26,0.4)'}}>
-                          {i===0?(isArabic?'المستخدم':'Username'):i===1?(isArabic?'التحقق':'Verify'):(isArabic?'كلمة المرور':'Password')}
-                        </span>
-                        {i<2&&<div className="flex-1 h-px" style={{background:'rgba(196,163,90,0.25)'}}/>}
-                      </div>
-                    ))}
+              {/* Step 1: Username */}
+              {resetStep === 'username' && (
+                <div className="auth-field">
+                  <label className="auth-field-label">{t.username}</label>
+                  <div className="auth-input-wrap">
+                    <i className="ti ti-user auth-input-icon" aria-hidden="true" />
+                    <input className="auth-input" value={resetUsername}
+                      onChange={e => setResetUsername(e.target.value)}
+                      placeholder={isArabic ? 'مثال: ahmad' : 'e.g. ahmad'}
+                      dir="ltr" autoComplete="username" />
                   </div>
-                )}
-
-                {/* Progress - 2 Steps */}
-                {showForgotPassword && (
-                  <div className="flex items-center gap-2">
-                    {[{id:'username',label:isArabic?'المستخدم':'Username'},{id:'question',label:isArabic?'التحقق':'Verify'}].map((s,i)=>{
-                      const idx = ['username','question'].indexOf(resetStep);
-                      const done = idx > i; const cur = resetStep === s.id;
-                      return (
-                        <div key={s.id} className="flex items-center gap-2 flex-1">
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                            style={{background:done?'#2d8a4e':cur?'#7f5c48':'rgba(196,163,90,0.2)',color:done||cur?'white':'rgba(122,92,26,0.4)'}}>
-                            {done?'✓':i+1}
-                          </div>
-                          <span className="text-xs" style={{color:cur?'#7a5c1a':'rgba(122,92,26,0.4)'}}>{s.label}</span>
-                          {i<1&&<div className="flex-1 h-px mx-1" style={{background:'rgba(196,163,90,0.25)'}}/>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <Button type="submit" className="h-12 w-full text-base" style={goldBtn} disabled={loading}>
-                  {loading ? t.processing : showForgotPassword
-                    ? (resetStep === 'username'
-                        ? (isArabic ? 'التالي ←' : 'Next ←')
-                        : (isArabic ? '✅ تحقق وأرسل رابط الاستعادة' : '✅ Verify & Send Reset Link'))
-                    : isRegister ? t.createBtn : t.loginBtn}
-                </Button>
-
-                {!showForgotPassword && (
-                  <Button type="button" variant="ghost" className="w-full" style={{color: '#7a5c1a'}} onClick={() => { setMode(isRegister ? 'login' : 'register'); setError(''); }}>
-                    {isRegister ? t.haveAccount : t.noAccount} {isRegister ? t.login : t.createNew}
-                  </Button>
-                )}
-
-                {!showForgotPassword && (
-                  <>
-                    <div className="relative"><div className="absolute inset-0 flex items-center"><span className="w-full border-t" style={{borderColor: 'rgba(196,163,90,0.3)'}} /></div><div className="relative flex justify-center text-xs uppercase"><span className="px-2" style={{background: 'rgba(255,253,245,0.98)', color: 'rgba(122,92,26,0.5)'}}>أو</span></div></div>
-                    <Button type="button" variant="outline" className="w-full" style={goldBorder} onClick={() => { window.location.href = '/guest'; }}>
-                      <User className="h-4 w-4 ms-2" />{t.guestLogin}
-                    </Button>
-                  </>
-                )}
-              </form>
-              {showForgotPassword && (
-                <div className="mt-4">
-                  <Button type="button" variant="ghost" className="w-full text-sm" style={{color: '#c4a35a'}} onClick={() => { setShowForgotPassword(false); setForgotPasswordSuccess(''); setResetStep('username'); }}>{t.back}</Button>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </div>
+
+              {/* Step 2: Security question */}
+              {resetStep === 'question' && storedQuestion && (
+                <div className="auth-field">
+                  <label className="auth-field-label">
+                    {getSecurityQuestionText(storedQuestion)}
+                  </label>
+                  <div className="auth-input-wrap">
+                    <i className="ti ti-shield-check auth-input-icon" aria-hidden="true" />
+                    <input className="auth-input" value={securityAnswer}
+                      onChange={e => setSecurityAnswer(e.target.value)}
+                      placeholder={t.enterSecurityAnswer} />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: New password */}
+              {resetStep === 'reset' && (
+                <>
+                  <div className="auth-field">
+                    <label className="auth-field-label">{t.newPassword}</label>
+                    <div className="auth-input-wrap">
+                      <i className="ti ti-lock auth-input-icon" aria-hidden="true" />
+                      <input className="auth-input" type={showPassword ? 'text' : 'password'}
+                        value={password} onChange={e => setPassword(e.target.value)}
+                        dir="ltr" autoComplete="new-password" />
+                      <button type="button" className="auth-input-eye"
+                        onClick={() => setShowPassword(!showPassword)} aria-label="toggle">
+                        <i className={'ti ' + (showPassword ? 'ti-eye-off' : 'ti-eye')} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="auth-field" style={{marginBottom:'20px'}}>
+                    <label className="auth-field-label">{t.confirmPassword}</label>
+                    <div className="auth-input-wrap">
+                      <i className="ti ti-lock auth-input-icon" aria-hidden="true" />
+                      <input className="auth-input" type="password"
+                        value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                        dir="ltr" autoComplete="new-password" />
+                    </div>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {/* ══ LOGIN FORM ══ */}
+          {!showForgotPassword && !isRegister && (
+            <>
+              <div className="auth-field">
+                <label className="auth-field-label">{t.usernameOrEmail}</label>
+                <div className="auth-input-wrap">
+                  <i className="ti ti-user auth-input-icon" aria-hidden="true" />
+                  <input className="auth-input" value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    placeholder={t.enterUsernameOrEmail}
+                    dir="ltr" autoComplete="username" />
+                </div>
+              </div>
+              <div className="auth-field" style={{marginBottom:'6px'}}>
+                <label className="auth-field-label">{t.password}</label>
+                <div className="auth-input-wrap">
+                  <i className="ti ti-lock auth-input-icon" aria-hidden="true" />
+                  <input className="auth-input" type={showPassword ? 'text' : 'password'}
+                    value={password} onChange={e => setPassword(e.target.value)}
+                    dir="ltr" autoComplete="current-password" />
+                  <button type="button" className="auth-input-eye"
+                    onClick={() => setShowPassword(!showPassword)} aria-label="toggle">
+                    <i className={'ti ' + (showPassword ? 'ti-eye-off' : 'ti-eye')} />
+                  </button>
+                </div>
+              </div>
+              <div style={{textAlign: isArabic ? 'left' : 'right', marginBottom:'20px'}}>
+                <button type="button" className="auth-link"
+                  style={{fontSize:'13px', color:'#C4A84A', fontWeight:'600'}}
+                  onClick={() => { setShowForgotPassword(true); setError(''); setForgotPasswordSuccess(''); setResetStep('username'); }}>
+                  {isArabic ? 'نسيت كلمة المرور؟' : isFrench ? 'Mot de passe oublié?' : 'Forgot password?'}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ══ REGISTER FORM ══ */}
+          {!showForgotPassword && isRegister && (
+            <>
+              {/* Name row */}
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>
+                <div className="auth-field">
+                  <label className="auth-field-label">{isArabic ? 'الاسم الأول' : 'First name'} <span style={{color:'#EF4444'}}>*</span></label>
+                  <input className="auth-input auth-input-no-pad"
+                    value={firstName} onChange={e => setFirstName(e.target.value)}
+                    placeholder={isArabic ? 'محمد' : 'John'} />
+                </div>
+                <div className="auth-field">
+                  <label className="auth-field-label">{isArabic ? 'اسم العائلة' : 'Last name'} <span style={{color:'#EF4444'}}>*</span></label>
+                  <input className="auth-input auth-input-no-pad"
+                    value={lastName} onChange={e => setLastName(e.target.value)}
+                    placeholder={isArabic ? 'القلاف' : 'Smith'} />
+                </div>
+              </div>
+
+              <div className="auth-field">
+                <label className="auth-field-label">{t.username} <span style={{color:'#EF4444'}}>*</span></label>
+                <div className="auth-input-wrap">
+                  <i className="ti ti-user auth-input-icon" aria-hidden="true" />
+                  <input className="auth-input" value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    placeholder={t.enterUsername} dir="ltr" autoComplete="username" />
+                </div>
+              </div>
+
+              <div className="auth-field">
+                <label className="auth-field-label">{t.email} <span style={{color:'#EF4444'}}>*</span></label>
+                <div className="auth-input-wrap">
+                  <i className="ti ti-mail auth-input-icon" aria-hidden="true" />
+                  <input className="auth-input" type="email" value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="example@domain.com" dir="ltr" />
+                </div>
+              </div>
+
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>
+                <div className="auth-field">
+                  <label className="auth-field-label">{t.password} <span style={{color:'#EF4444'}}>*</span></label>
+                  <div className="auth-input-wrap">
+                    <i className="ti ti-lock auth-input-icon" aria-hidden="true" />
+                    <input className="auth-input" type={showPassword ? 'text' : 'password'}
+                      value={password} onChange={e => setPassword(e.target.value)}
+                      dir="ltr" autoComplete="new-password" />
+                    <button type="button" className="auth-input-eye"
+                      onClick={() => setShowPassword(!showPassword)} aria-label="toggle">
+                      <i className={'ti ' + (showPassword ? 'ti-eye-off' : 'ti-eye')} />
+                    </button>
+                  </div>
+                </div>
+                <div className="auth-field">
+                  <label className="auth-field-label">{t.confirmPassword} <span style={{color:'#EF4444'}}>*</span></label>
+                  <div className="auth-input-wrap">
+                    <i className="ti ti-lock auth-input-icon" aria-hidden="true" />
+                    <input className="auth-input" type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                      dir="ltr" autoComplete="new-password" />
+                    <button type="button" className="auth-input-eye"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label="toggle">
+                      <i className={'ti ' + (showConfirmPassword ? 'ti-eye-off' : 'ti-eye')} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'4px'}}>
+                <div className="auth-field">
+                  <label className="auth-field-label">{t.age}</label>
+                  <input className="auth-input auth-input-no-pad" type="number"
+                    value={age} onChange={e => setAge(e.target.value)}
+                    placeholder="25" dir="ltr" min="10" max="120" />
+                </div>
+                <div className="auth-field">
+                  <label className="auth-field-label">{t.gender}</label>
+                  <div style={{display:'flex', gap:'16px', height:'48px', alignItems:'center'}}>
+                    {['male','female'].map(g => (
+                      <label key={g} style={{display:'flex', alignItems:'center', gap:'6px', cursor:'pointer',
+                        fontSize:'14px', fontWeight:'500', color: gender === g ? '#1B2430' : '#8A9BB0',
+                        fontFamily:'Tajawal,sans-serif'}}>
+                        <input type="radio" name="gender" value={g}
+                          checked={gender === g} onChange={() => setGender(g)}
+                          style={{accentColor:'#D4AF37', width:'16px', height:'16px'}} />
+                        {g === 'male' ? t.male : t.female}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Security Questions */}
+              <div style={{background:'#FAFAF7', border:'1.5px solid #E8E2D6', borderRadius:'12px', padding:'16px', marginBottom:'4px'}}>
+                <p style={{fontSize:'12.5px', fontWeight:'700', color:'#1B2430', marginBottom:'12px', fontFamily:'Tajawal,sans-serif'}}>
+                  🔐 {isArabic ? 'أسئلة الأمان (الأول والثاني إجباري)' : 'Security Questions (1st & 2nd required)'}
+                </p>
+                {[
+                  {q:securityQuestion,  setQ:setSecurityQuestion,  a:securityAnswer,  setA:setSecurityAnswer,  label: isArabic?'السؤال الأول *':'1st Question *',  filter:[] as string[]},
+                  {q:securityQuestion2, setQ:setSecurityQuestion2, a:securityAnswer2, setA:setSecurityAnswer2, label: isArabic?'السؤال الثاني *':'2nd Question *', filter:[securityQuestion]},
+                  {q:securityQuestion3, setQ:setSecurityQuestion3, a:securityAnswer3, setA:setSecurityAnswer3, label: isArabic?'السؤال الثالث (اختياري)':'3rd Question (optional)', filter:[securityQuestion,securityQuestion2]},
+                ].map((sq, idx) => (
+                  <div key={idx} style={{marginBottom: idx < 2 ? '12px' : '0'}}>
+                    <label style={{fontSize:'12px', fontWeight:'600', color: idx === 2 ? '#8A9BB0' : '#4A5568', display:'block', marginBottom:'6px', fontFamily:'Tajawal,sans-serif'}}>{sq.label}</label>
+                    <Select value={sq.q} onValueChange={sq.setQ}>
+                      <SelectTrigger style={{height:'40px', fontSize:'12.5px', borderColor:'#E8E2D6', marginBottom:'6px'}}>
+                        <SelectValue placeholder={t.selectQuestion} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SECURITY_QUESTIONS.filter(question => !sq.filter.includes(question.id)).map(question => (
+                          <SelectItem key={question.id} value={question.id}>
+                            {isArabic ? question.questionAr : isFrench ? question.questionFr : question.questionEn}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {(sq.q || idx < 2) && (
+                      <input className="auth-input auth-input-no-pad"
+                        style={{height:'40px', fontSize:'13px'}}
+                        value={sq.a} onChange={e => sq.setA(e.target.value)}
+                        placeholder={isArabic ? 'الإجابة...' : 'Answer...'} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* ══ PRIMARY BUTTON ══ */}
+          <button type="submit" className="auth-btn-primary" style={{marginTop:'20px', marginBottom:'16px'}} disabled={loading}>
+            {loading ? (
+              <><span style={{display:'inline-block', animation:'spin 1s linear infinite', borderRadius:'50%', border:'2px solid rgba(27,36,48,0.2)', borderTopColor:'#1B2430', width:'18px', height:'18px'}} />{t.processing}</>
+            ) : showForgotPassword
+              ? (resetStep === 'username' ? (isArabic ? 'التالي ←' : 'Next →') : (isArabic ? 'تحقق وأرسل رابط الاستعادة' : 'Verify & Send Reset'))
+              : isRegister ? t.createBtn : t.loginBtn}
+          </button>
+
+          {/* ══ LINKS ══ */}
+          {!showForgotPassword && (
+            <>
+              <div className="auth-sep">
+                <div className="auth-sep-line" />
+                <span className="auth-sep-text">{isArabic ? 'أو' : 'or'}</span>
+                <div className="auth-sep-line" />
+              </div>
+              <div className="auth-links">
+                <div className="auth-link-row">
+                  <button type="button" className={'auth-link ' + (isRegister ? '' : 'auth-link-primary')}
+                    onClick={() => { setMode('login'); setError(''); }}>
+                    {isArabic ? 'تسجيل الدخول' : isFrench ? 'Se connecter' : 'Sign in'}
+                  </button>
+                  <div className="auth-link-dot" />
+                  <button type="button" className={'auth-link ' + (isRegister ? 'auth-link-primary' : '')}
+                    onClick={() => { setMode('register'); setError(''); }}>
+                    {isArabic ? 'إنشاء حساب' : isFrench ? 'Créer un compte' : 'Create account'}
+                  </button>
+                </div>
+                <button type="button" className="auth-btn-secondary"
+                  onClick={() => { window.location.href = '/guest'; }}>
+                  <i className="ti ti-user-circle" style={{fontSize:'18px'}} aria-hidden="true" />
+                  {t.guestLogin}
+                </button>
+              </div>
+            </>
+          )}
+
+          {showForgotPassword && (
+            <button type="button" className="auth-link" style={{textAlign:'center', marginTop:'8px', width:'100%'}}
+              onClick={() => { setShowForgotPassword(false); setForgotPasswordSuccess(''); setResetStep('username'); setError(''); }}>
+              ← {t.back}
+            </button>
+          )}
+
+        </form>
       </div>
-    </main>
-    </>
+
+      {/* Footer */}
+      <p style={{position:'absolute', bottom:'16px', left:'50%', transform:'translateX(-50%)',
+        fontSize:'11.5px', color:'#B0B8C4', whiteSpace:'nowrap',
+        fontFamily:'Tajawal,sans-serif'}}>
+        المدير المالي الذكي — SFM © 2026
+      </p>
+
+    </div>
   );
 }
