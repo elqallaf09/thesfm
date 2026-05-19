@@ -958,13 +958,14 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               )}
             </div>
           </div>
-          <div className="overflow-hidden py-3" style={{background: 'rgba(18,13,30,0.9)'}}>
-            <div className="ticker-scroll items-center gap-4 px-4">
+          <div className="overflow-hidden py-2.5" style={{background: '#7f5c48', borderTop: '1px solid rgba(255,255,255,0.1)'}}>
+            <div className="ticker-scroll items-center gap-3 px-4">
               {[...tickerItems, ...tickerItems, ...tickerItems].map((item, index) => (
-                <div key={`${item.nameEn}-${index}`} className="flex shrink-0 items-center gap-3 rounded-full px-4 py-2 text-sm mx-2" style={{border: '0.5px solid rgba(196,163,90,0.3)', background: 'rgba(26,20,40,0.9)'}}>
-                  <span className="font-bold" style={{color: '#c4a35a'}}>{isArabic ? item.nameAr : item.nameEn}</span>
-                  <span className="font-mono text-slate-300" dir="ltr">{item.value}</span>
-                  <span className={`font-mono text-xs font-bold ${item.positive ? 'text-emerald-400' : 'text-rose-400'}`} dir="ltr">{item.change}</span>
+                <div key={`${item.nameEn}-${index}`} className="flex shrink-0 items-center gap-2.5 rounded-full px-3 py-1.5 text-sm mx-1.5"
+                  style={{background: 'rgba(255,255,255,0.12)', border: '0.5px solid rgba(255,255,255,0.2)'}}>
+                  <span className="font-bold" style={{color: '#f0d080'}}>{isArabic ? item.nameAr : item.nameEn}</span>
+                  <span className="font-mono text-white/90 text-xs" dir="ltr">{item.value}</span>
+                  <span className={`font-mono text-xs font-bold ${item.positive ? 'text-emerald-300' : 'text-rose-300'}`} dir="ltr">{item.change}</span>
                 </div>
               ))}
             </div>
@@ -1491,26 +1492,30 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             goals.length>0 ? {t:'🎯', msg: isArabic?`لديك ${goals.length} هدف مالي - استمر!`:`You have ${goals.length} financial goals - keep going!`, good:true} : {t:'🎯', msg: isArabic?`أضف أهدافاً مالية لتتبع تقدمك`:`Add financial goals to track progress`, good:false},
           ];
           return (
-            <Card style={{border: '1px solid rgba(196,163,90,0.3)', background: 'rgba(255,253,245,0.98)', overflow:'hidden', boxShadow:'0 8px 32px rgba(196,163,90,0.12)'}}>
-              <div className="p-5" style={{background:'linear-gradient(135deg,#7f5c48 0%,#5c3d2a 100%)'}}>
+            <Card style={{border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.98)', overflow:'hidden', boxShadow:'0 8px 32px rgba(196,163,90,0.12)'}}>
+              <div className="p-5" style={{background:'linear-gradient(135deg, #8b6650 0%, #6b4a35 100%)'}}>
                 <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'rgba(240,208,128,0.2)',color:'#f0d080'}}>⚡ AI INSIGHTS</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{background:'rgba(240,208,128,0.25)', color:'#f5dc80', border:'1px solid rgba(240,208,128,0.3)'}}>⚡ AI INSIGHTS</span>
                     </div>
-                    <h2 className="text-lg font-bold text-white">{score>=75?(isArabic?'وضعك المالي ممتاز 🌟':'Excellent Financial Health 🌟'):score>=50?(isArabic?'وضعك المالي جيد 👍':'Good Financial Health 👍'):(isArabic?'يحتاج تحسين ⚠️':'Needs Improvement ⚠️')}</h2>
-                    <p className="text-xs text-white/60 mt-1">{isArabic?`دخل شهري: ${formatCurrency(totalIncome)} ${getCurrentCurrency().symbol}`:`Monthly: ${formatCurrency(totalIncome)} ${getCurrentCurrency().symbol}`}</p>
+                    <h2 className="text-xl font-bold" style={{color:'#ffffff', textShadow:'0 1px 3px rgba(0,0,0,0.3)'}}>
+                      {score>=75?(isArabic?'وضعك المالي ممتاز 🌟':'Excellent Health 🌟'):score>=50?(isArabic?'وضعك المالي جيد 👍':'Good Health 👍'):(isArabic?'يحتاج تحسين ⚠️':'Needs Work ⚠️')}
+                    </h2>
+                    <p className="text-sm mt-1" style={{color:'rgba(255,255,255,0.75)'}}>
+                      {isArabic?`دخل شهري: ${formatCurrency(totalIncome)} ${getCurrentCurrency().symbol}`:`Monthly: ${formatCurrency(totalIncome)} ${getCurrentCurrency().symbol}`}
+                    </p>
                   </div>
                   <div className="relative shrink-0 w-20 h-20">
                     <svg width="80" height="80" viewBox="0 0 80 80" className="-rotate-90">
-                      <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="7"/>
-                      <circle cx="40" cy="40" r="36" fill="none" stroke={scoreColor} strokeWidth="7"
+                      <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="8"/>
+                      <circle cx="40" cy="40" r="36" fill="none" stroke={scoreColor} strokeWidth="8"
                         strokeDasharray={`${dash} ${c}`} strokeLinecap="round"
                         className="ring-anim" style={{'--rd': `${dash}`} as React.CSSProperties}/>
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-xl font-bold text-white score-val">{score}</span>
-                      <span className="text-xs text-white/50">/100</span>
+                      <span className="text-2xl font-bold score-val" style={{color:'#ffffff'}}>{score}</span>
+                      <span className="text-xs" style={{color:'rgba(255,255,255,0.6)'}}>/100</span>
                     </div>
                   </div>
                 </div>
@@ -1518,9 +1523,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               <CardContent className="pt-4 space-y-2">
                 {insights.map((ins, i) => (
                   <div key={i} className="ai-ins flex items-start gap-2 p-2.5 rounded-xl text-sm"
-                    style={{background: ins.good?'rgba(45,138,78,0.05)':'rgba(196,163,90,0.05)', border:`0.5px solid ${ins.good?'rgba(45,138,78,0.15)':'rgba(196,163,90,0.2)'}`}}>
-                    <span className="shrink-0">{ins.t}</span>
-                    <span style={{color:'rgba(122,92,26,0.85)'}}>{ins.msg}</span>
+                    style={{background: ins.good?'rgba(45,138,78,0.06)':'rgba(196,163,90,0.06)', border:`1px solid ${ins.good?'rgba(45,138,78,0.18)':'rgba(196,163,90,0.2)'}`}}>
+                    <span className="shrink-0 text-base">{ins.t}</span>
+                    <span style={{color:'#5c3d2a', fontWeight: '500'}}>{ins.msg}</span>
                   </div>
                 ))}
                 <Button onClick={getRandomAdvice} variant="outline" className="w-full mt-2" style={{borderColor:'rgba(196,163,90,0.4)',color:'#7a5c1a'}}>
