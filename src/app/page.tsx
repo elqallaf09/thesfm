@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Globe, Plus, Trash2, Target, Calendar, Banknote, Goal, ChevronDown, ChevronUp, User } from 'lucide-react';
+import { Calculator, Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Globe, Plus, Trash2, Target, Calendar, Banknote, Goal, ChevronDown, ChevronUp, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/auth/AuthForm';
@@ -575,7 +576,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   };
 
   const escHtml = (s: string) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  const handlePrint = () => {
+    const handlePrint = () => {
     const cur = getCurrentCurrency().symbol;
     const date = new Date().toLocaleDateString('ar-SA');
     const sr = totalIncome > 0 ? (breakdown.savings / totalIncome * 100).toFixed(0) : '0';
@@ -610,6 +611,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     const goalRows = goals.length > 0 ? goals.map(g => {
       const amt = parseFloat(g.amount.replace(/[^\d.]/g,''))||0;
       const mons = ms > 0 && amt > 0 ? Math.ceil(amt/ms) : 0;
+      const unitLabel = g.durationUnit==='year'?'سنة':g.durationUnit==='day'?'يوم':'شهر';
       return '<tr><td>' + escHtml(g.goal||'—') + '</td><td class="num">' + formatCurrency(amt) + ' ' + cur + '</td><td class="num">' + (mons>0?mons+' شهر':'—') + '</td></tr>';
     }).join('') : '<tr><td colspan="3" class="empty">لا توجد أهداف</td></tr>';
 
@@ -857,7 +859,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   };
 
   const addGoal = () => setGoals([...goals, { id: generateId(), goal: '', amount: '', duration: '', durationUnit: 'month', notes: '' }]);
-  const updateGoal = <K extends keyof GoalEntry>(id: string, field: K, value: GoalEntry[K]) => setGoals(goals.map(goal => goal.id === id ? { ...goal, [field]: value } : goal));
+  const updateGoal = (id: string, field: keyof GoalEntry, value: string) => setGoals(goals.map(goal => goal.id === id ? { ...goal, [field]: value } : goal));
   const removeGoal = (id: string) => setGoals(goals.filter(goal => goal.id !== id));
 
   const getAIAdvice = (): string => {
@@ -929,77 +931,76 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
       .sfm-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(196,163,90,0.15),0 2px 8px rgba(0,0,0,0.06)}
       .sfm-nav-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.88);font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;text-decoration:none}
       .sfm-nav-btn:hover{background:rgba(255,255,255,0.24);color:white}
-      @media(max-width:768px){.sfm-top-nav{display:flex!important;overflow-x:auto}}
+      @media(max-width:768px){.sfm-top-nav{display:none!important}}
       @media print{body{background:white!important}.no-print{display:none!important}main{background:white!important}*{box-shadow:none!important}}
     `}</style>
 
     <main dir={isArabic ? 'rtl' : 'ltr'} className="relative min-h-screen" style={{background:'linear-gradient(160deg,#fffdf5 0%,#fef9e7 55%,#fdf5d0 100%)'}}>
 
-      {/* Fixed desktop sidebar */}
+      {/* ══ FIXED SIDEBAR ══ */}
       <aside className="sfm-sidebar no-print" dir="rtl">
+        {/* Logo */}
         <div className="sfm-logo">
           <div className="sfm-logo-badge">SFM</div>
           <div className="sfm-logo-name">{isArabic ? 'المدير المالي' : 'Smart Finance'}</div>
-          <div className="sfm-logo-sub">{isArabic ? 'الذكي - Premium' : 'Premium SaaS'}</div>
+          <div className="sfm-logo-sub">{isArabic ? 'الذكي • Premium' : 'Premium SaaS'}</div>
         </div>
-
+        {/* Nav */}
         <nav className="sfm-nav">
-          <button className="sfm-nav-item active" type="button">
+          <button className="sfm-nav-item active" onClick={() => {}}>
             <span className="sfm-nav-icon">⊞</span>
-            <span>{isArabic ? 'لوحة التحكم' : 'Dashboard'}</span>
+            {isArabic ? 'لوحة التحكم' : 'Dashboard'}
             <span className="sfm-nav-badge">AI</span>
           </button>
-          <button className="sfm-nav-item" type="button" onClick={() => router.push('/projects')}>
+          <button className="sfm-nav-item" onClick={() => router.push('/projects')}>
             <span className="sfm-nav-icon">🚀</span>
-            <span>{isArabic ? 'مشروعي' : 'Projects'}</span>
+            {isArabic ? 'مشروعي' : 'Projects'}
           </button>
-          <button className="sfm-nav-item" type="button" onClick={() => router.push('/education/investments')}>
+          <button className="sfm-nav-item" onClick={() => router.push('/education/investments')}>
             <span className="sfm-nav-icon">📈</span>
-            <span>{isArabic ? 'الاستثمار' : 'Invest'}</span>
+            {isArabic ? 'الاستثمار' : 'Invest'}
           </button>
-          <button className="sfm-nav-item" type="button" onClick={() => router.push('/education/savings')}>
+          <button className="sfm-nav-item" onClick={() => router.push('/education/savings')}>
             <span className="sfm-nav-icon">💰</span>
-            <span>{isArabic ? 'المدخرات' : 'Savings'}</span>
+            {isArabic ? 'المدخرات' : 'Savings'}
           </button>
-          <button className="sfm-nav-item" type="button" onClick={() => router.push('/education/expenses')}>
+          <button className="sfm-nav-item" onClick={() => router.push('/education/expenses')}>
             <span className="sfm-nav-icon">📊</span>
-            <span>{isArabic ? 'المصروفات' : 'Expenses'}</span>
+            {isArabic ? 'المصروفات' : 'Expenses'}
           </button>
           {!isGuest && (
-            <button className="sfm-nav-item" type="button" onClick={() => router.push('/profile')}>
+            <button className="sfm-nav-item" onClick={() => router.push('/profile')}>
               <span className="sfm-nav-icon">👤</span>
-              <span>{isArabic ? 'ملفي' : 'Profile'}</span>
+              {isArabic ? 'ملفي' : 'Profile'}
             </button>
           )}
-
           <div className="sfm-nav-divider" />
-
           {!isGuest ? (
-            <button className="sfm-nav-item" type="button" onClick={() => { localStorage.removeItem('guest_session'); supabase.auth.signOut(); }}>
+            <button className="sfm-nav-item" onClick={() => { localStorage.removeItem('guest_session'); supabase.auth.signOut(); }}>
               <span className="sfm-nav-icon">⤴</span>
-              <span>{text.logout}</span>
+              {text.logout}
             </button>
           ) : (
-            <button className="sfm-nav-item" type="button" onClick={() => { localStorage.removeItem('guest_session'); window.location.reload(); }}>
+            <button className="sfm-nav-item" style={{color:'#f0d080'}} onClick={() => { localStorage.removeItem('guest_session'); window.location.reload(); }}>
               <span className="sfm-nav-icon">🔑</span>
-              <span>{isArabic ? 'تسجيل الدخول' : 'Login'}</span>
+              {isArabic ? 'تسجيل الدخول' : 'Login'}
             </button>
           )}
         </nav>
-
+        {/* Footer */}
         <div className="sfm-sidebar-foot">
           {username && (
-            <button className="sfm-user-pill" type="button" onClick={() => router.push('/profile')}>
-              <div className="sfm-avatar">{username.substring(0, 2).toUpperCase()}</div>
-              <div className="min-w-0 flex-1">
+            <button className="sfm-user-pill" style={{width:'100%',border:'none',direction:'rtl'}} onClick={() => router.push('/profile')}>
+              <div className="sfm-avatar">{username.substring(0,2).toUpperCase()}</div>
+              <div style={{flex:1, minWidth:0}}>
                 <div className="sfm-user-name">{username}</div>
-                <div className="sfm-user-role">Premium</div>
+                <div className="sfm-user-role">Premium ⭐</div>
               </div>
             </button>
           )}
           <div className="sfm-lang-row">
-            {(['ar', 'en'] as const).map(lang => (
-              <button key={lang} type="button" className={'sfm-lang-btn' + (language === lang ? ' active' : '')} onClick={() => setLanguage(lang)}>
+            {(['ar','en'] as const).map(lang => (
+              <button key={lang} className={'sfm-lang-btn' + (language === lang ? ' active' : '')} onClick={() => setLanguage(lang)}>
                 {lang === 'ar' ? 'عربي' : 'EN'}
               </button>
             ))}
@@ -1007,71 +1008,114 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         </div>
       </aside>
 
+      {/* ══ MAIN WRAPPER (offset from sidebar) ══ */}
       <div className="sfm-main">
-      {/* ── Premium Top Navigation Bar ── */}
-      <div className="no-print" style={{background:'linear-gradient(135deg,#7f5c48 0%,#5c3d2a 100%)',boxShadow:'0 4px 24px rgba(92,61,42,0.25)',position:'sticky',top:0,zIndex:40}}>
-        {/* Main nav row */}
-        <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'10px 20px',borderBottom:'1px solid rgba(255,255,255,0.1)'}} className="sfm-top-nav">
-          {/* Logo */}
-          <div style={{display:'flex',alignItems:'center',gap:'8px',marginLeft:'auto',paddingLeft:'16px',borderLeft:'1px solid rgba(255,255,255,0.12)'}}>
-            <div style={{width:'28px',height:'28px',background:'linear-gradient(135deg,#d4b36a,#c4a35a)',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',fontWeight:'700',color:'#3d2510',flexShrink:0}}>SFM</div>
-            <span style={{fontSize:'13px',fontWeight:'600',color:'rgba(255,255,255,0.9)'}}>{isArabic?'المدير المالي الذكي':'Smart Financial Manager'}</span>
+      {/* ══ TOP BAR ══ */}
+      <header className="no-print" style={{
+        background:'#FFFFFF',
+        borderBottom:'1px solid #E8E2D6',
+        position:'sticky', top:0, zIndex:40,
+        boxShadow:'0 1px 8px rgba(27,36,48,0.06)',
+      }}>
+        {/* Main row */}
+        <div style={{display:'flex',alignItems:'center',gap:'12px',padding:'12px 24px'}}>
+          {/* Page title */}
+          <div style={{flex:1}}>
+            <div style={{fontSize:'16px',fontWeight:'800',color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}>
+              {isArabic ? 'لوحة التحكم' : 'Dashboard'}
+            </div>
+            <div style={{fontSize:'12px',color:'#8A9BB0',marginTop:'1px',fontFamily:'Tajawal,sans-serif'}}>
+              {new Date().toLocaleDateString(isArabic ? 'ar-KW' : 'en-US', {weekday:'long',year:'numeric',month:'long',day:'numeric'})}
+            </div>
           </div>
-          <div style={{flex:1,display:'flex',alignItems:'center',gap:'6px',flexWrap:'wrap'}}>
-            <button className="sfm-nav-btn" onClick={() => router.push('/projects')}>🚀 {isArabic?'مشروعي':'Projects'}</button>
-            <button className="sfm-nav-btn" onClick={() => router.push('/education/investments')}>📈 {isArabic?'الاستثمار':'Investments'}</button>
-            <button className="sfm-nav-btn" onClick={() => router.push('/education/savings')}>💰 {isArabic?'المدخرات':'Savings'}</button>
-            <button className="sfm-nav-btn" onClick={() => router.push('/education/expenses')}>📊 {isArabic?'المصروفات':'Expenses'}</button>
-            {!isGuest && <button className="sfm-nav-btn" onClick={() => router.push('/profile')}>👤 {isArabic?'ملفي':'Profile'}</button>}
+
+          {/* Ticker pills */}
+          <div style={{display:'flex',gap:'8px',alignItems:'center',overflow:'hidden'}} className="sfm-top-nav">
+            {tickerItems.slice(0,3).map((item) => (
+              <div key={item.nameEn} style={{display:'flex',alignItems:'center',gap:'6px',
+                background:'#F5F2EA',border:'1px solid #E8E2D6',borderRadius:'20px',
+                padding:'5px 12px',fontSize:'12px',whiteSpace:'nowrap',flexShrink:0}}>
+                <span style={{fontWeight:'700',color:'#1B2430',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{isArabic?item.nameAr:item.nameEn}</span>
+                <span style={{color:'#4A5568',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}} dir="ltr">{item.value}</span>
+                <span style={{fontWeight:'700',color:item.positive?'#22C55E':'#EF4444'}} dir="ltr">{item.change}</span>
+              </div>
+            ))}
           </div>
+
+          {/* Actions */}
           <div style={{display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
             <Select value={language} onValueChange={(value) => setLanguage(value as 'ar'|'en')}>
-              <SelectTrigger className="h-8 w-[90px] text-white text-xs" style={{borderColor:'rgba(255,255,255,0.25)',background:'rgba(255,255,255,0.12)'}}><SelectValue/></SelectTrigger>
-              <SelectContent><SelectItem value="ar">العربية</SelectItem><SelectItem value="en">English</SelectItem></SelectContent>
+              <SelectTrigger style={{height:'36px',width:'100px',fontSize:'13px',borderColor:'#E8E2D6',background:'#F5F2EA',color:'#4A5568'}}>
+                <SelectValue/>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ar">العربية</SelectItem>
+                <SelectItem value="en">English</SelectItem>
+              </SelectContent>
             </Select>
-            {!isGuest ? (
-              <button className="sfm-nav-btn" onClick={() => {localStorage.removeItem('guest_session');supabase.auth.signOut();}}>⤴ {text.logout}</button>
-            ) : (
-              <button className="sfm-nav-btn" style={{background:'rgba(196,163,90,0.3)',borderColor:'rgba(196,163,90,0.5)',color:'#f0d080',fontWeight:'700'}} onClick={() => {localStorage.removeItem('guest_session');window.location.reload();}}>🔑 {isArabic?'دخول':'Login'}</button>
+
+            {username && !isGuest && (
+              <button onClick={() => router.push('/profile')}
+                style={{display:'flex',alignItems:'center',gap:'8px',padding:'6px 12px',
+                  borderRadius:'20px',background:'#F5F2EA',border:'1px solid #E8E2D6',
+                  cursor:'pointer',transition:'all 0.2s'}}>
+                <div style={{width:'30px',height:'30px',background:'linear-gradient(135deg,#D4AF37,#C49B3A)',
+                  borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',
+                  fontSize:'11px',fontWeight:'800',color:'#1B2430',flexShrink:0}}>
+                  {username.substring(0,2).toUpperCase()}
+                </div>
+                <span style={{fontSize:'13px',fontWeight:'600',color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}>{username}</span>
+              </button>
+            )}
+            {isGuest && (
+              <button onClick={() => {localStorage.removeItem('guest_session');window.location.reload();}}
+                style={{padding:'7px 16px',background:'linear-gradient(135deg,#D4AF37,#C49B3A)',
+                  border:'none',borderRadius:'10px',color:'#1B2430',fontSize:'13px',
+                  fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>
+                🔑 {isArabic?'دخول':'Login'}
+              </button>
+            )}
+            {!isGuest && (
+              <button onClick={() => {localStorage.removeItem('guest_session');supabase.auth.signOut();}}
+                style={{width:'36px',height:'36px',background:'#F5F2EA',border:'1px solid #E8E2D6',
+                  borderRadius:'10px',cursor:'pointer',fontSize:'16px',display:'flex',
+                  alignItems:'center',justifyContent:'center',color:'#8A9BB0',
+                  transition:'all 0.2s'}}
+                title={text.logout}>⤴</button>
             )}
           </div>
         </div>
-        {/* Ticker row */}
-        <div style={{overflow:'hidden',padding:'7px 0',background:'rgba(0,0,0,0.18)'}}>
-          <div className="ticker-scroll" style={{alignItems:'center',gap:'6px',paddingRight:'16px'}}>
+
+        {/* Ticker bar */}
+        <div style={{background:'#1B2430',overflow:'hidden',padding:'7px 0'}}>
+          <div className="ticker-scroll" style={{alignItems:'center',gap:'4px',paddingRight:'16px'}}>
             {[...tickerItems,...tickerItems,...tickerItems].map((item,index) => (
-              <div key={`${item.nameEn}-${index}`} style={{display:'flex',flexShrink:0,alignItems:'center',gap:'7px',borderRadius:'20px',padding:'4px 11px',margin:'0 3px',background:'rgba(196,163,90,0.12)',border:'0.5px solid rgba(196,163,90,0.28)',fontSize:'12px'}}>
-                <span style={{fontWeight:'600',color:'#f0d080'}}>{isArabic?item.nameAr:item.nameEn}</span>
-                <span style={{color:'rgba(255,255,255,0.88)',fontVariantNumeric:'tabular-nums'}} dir="ltr">{item.value}</span>
-                <span style={{fontWeight:'700',fontSize:'11px',color:item.positive?'#4ade80':'#f87171'}} dir="ltr">{item.change}</span>
+              <div key={`${item.nameEn}-${index}`} style={{display:'flex',flexShrink:0,alignItems:'center',
+                gap:'7px',borderRadius:'20px',padding:'4px 12px',margin:'0 3px',
+                background:'rgba(212,175,55,0.10)',border:'0.5px solid rgba(212,175,55,0.25)',
+                fontSize:'11.5px',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>
+                <span style={{fontWeight:'700',color:'#D4AF37'}}>{isArabic?item.nameAr:item.nameEn}</span>
+                <span style={{color:'rgba(255,255,255,0.85)'}} dir="ltr">{item.value}</span>
+                <span style={{fontWeight:'700',color:item.positive?'#4ade80':'#f87171'}} dir="ltr">{item.change}</span>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="relative max-w-5xl mx-auto space-y-5 px-4 py-6">
 
-        {/* Page Header */}
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',paddingBottom:'4px'}}>
-          <div>
-            <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'2px'}}>
-              <div style={{width:'32px',height:'32px',background:'linear-gradient(135deg,#d4b36a,#c4a35a)',borderRadius:'9px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:'700',color:'#3d2510'}}>SFM</div>
-              <h1 style={{fontSize:'22px',fontWeight:'700',color:'#7a5c1a',margin:0}}>{text.title}</h1>
-            </div>
-            <p style={{fontSize:'13px',color:'rgba(122,92,26,0.5)',margin:'0 42px'}}>{text.subtitle}</p>
-          </div>
-          {username && !isGuest && (
-            <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'6px 14px',borderRadius:'20px',background:'rgba(196,163,90,0.1)',border:'1px solid rgba(196,163,90,0.2)'}}>
-              <div style={{width:'28px',height:'28px',background:'linear-gradient(135deg,#c4a35a,#a8873e)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:'700',color:'white'}}>{username.substring(0,2).toUpperCase()}</div>
-              <span style={{fontSize:'12px',fontWeight:'600',color:'#7a5c1a'}}>{username}</span>
-            </div>
-          )}
-          {isGuest && (
-            <Button onClick={() => {localStorage.removeItem('guest_session');window.location.reload();}} size="sm" style={{background:'linear-gradient(135deg,#c4a35a,#a8873e)',color:'white',borderRadius:'12px',fontWeight:'700',boxShadow:'0 4px 12px rgba(196,163,90,0.35)'}}>
-              🔑 {isArabic?'تسجيل الدخول':'Login'}
-            </Button>
-          )}
+        {/* ══ GREETING HEADER ══ */}
+        <div style={{marginBottom:'8px'}} className="sfm-au1">
+          <h1 style={{
+            fontSize:'26px', fontWeight:'800', color:'#1B2430',
+            fontFamily:'Tajawal,sans-serif', lineHeight:1.2, marginBottom:'6px',
+          }}>
+            👋 {isArabic ? `مرحباً ${username || 'بك'}` : `Welcome back, ${username || 'there'}`}
+          </h1>
+          <p style={{fontSize:'14px',color:'#8A9BB0',fontFamily:'Tajawal,sans-serif'}}>
+            {isArabic ? 'إليك نظرة عامة على وضعك المالي اليوم' : 'Here's an overview of your financial status today'}
+          </p>
         </div>
 
         {/* Profile Card - only for logged in */}
@@ -1233,11 +1277,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                     {CHARITY_TYPE_OPTIONS.map(type => (
                       <button key={type} type="button" onClick={() => {
                         if (selectedCharityTypes.includes(type)) {
-                          const newP = { ...charityPercentages };
-                          delete newP[type];
                           setSelectedCharityTypes(selectedCharityTypes.filter(t => t !== type));
-                          setCharityPercentages(newP);
-                          setTotalCharityPercentage(Math.min(Object.values(newP).reduce((a, b) => a + b, 0), 20));
+                          const newP = { ...charityPercentages }; delete newP[type]; setCharityPercentages(newP);
+                          setTotalCharityPercentage(Object.values({ ...charityPercentages, [type]: 0 }).reduce((a, b) => a + b, 0) - (charityPercentages[type] || 0));
                         } else {
                           setSelectedCharityTypes([...selectedCharityTypes, type]);
                           setCharityPercentages({ ...charityPercentages, [type]: 0 });
@@ -1259,63 +1301,58 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
           </CardContent>
         </Card>
 
-        {/* KPI Dashboard */}
+        {/* ══ KPI CARDS ══ */}
         {totalIncome > 0 && (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {[
-              {
-                label: isArabic ? 'معدل الادخار' : 'Savings Rate',
-                value: totalIncome > 0 ? (breakdown.savings / totalIncome * 100).toFixed(0) + '%' : '0%',
-                icon: '💰',
-                color: breakdown.savings / totalIncome >= 0.2 ? '#2d8a4e' : breakdown.savings / totalIncome >= 0.1 ? '#c4a35a' : '#c0392b',
-                sub: isArabic ? 'من إجمالي الدخل' : 'of total income',
-              },
-              {
-                label: isArabic ? 'معدل الإنفاق' : 'Burn Rate',
-                value: formatCurrency(breakdown.expenses) + ' ' + getCurrentCurrency().symbol,
-                icon: '🔥',
-                color: breakdown.expenses / totalIncome > 0.7 ? '#c0392b' : '#7a5c1a',
-                sub: isArabic ? 'شهرياً' : 'per month',
-              },
-              {
-                label: isArabic ? 'نمو الثروة' : 'Wealth Growth',
-                value: totalIncome > 0 ? formatCurrency((breakdown.savings + breakdown.investment) * 12) : '0',
-                icon: '📈',
-                color: '#2d8a4e',
-                sub: isArabic ? 'توقع سنوي' : 'yearly forecast',
-              },
-              {
-                label: isArabic ? 'الصحة المالية' : 'Health Score',
-                value: Math.min(100, Math.round(
-                  (breakdown.savings / totalIncome >= 0.2 ? 30 : breakdown.savings / totalIncome >= 0.1 ? 20 : 10) +
-                  (breakdown.expenses / totalIncome <= 0.5 ? 25 : breakdown.expenses / totalIncome <= 0.65 ? 15 : 5) +
-                  (breakdown.investment / totalIncome >= 0.1 ? 25 : breakdown.investment / totalIncome >= 0.05 ? 15 : 5) +
-                  (goals.length > 0 ? 10 : 0) + (expenseItems.length > 0 ? 10 : 0)
-                )) + '/100',
-                icon: '⚡',
-                color: '#c4a35a',
-                sub: isArabic ? 'تقييم شامل' : 'overall rating',
-              },
-            ].map((kpi, i) => (
-              <div key={i} className="sfm-card-hover sfm-fade-up relative rounded-2xl p-4 cursor-default overflow-hidden"
-                style={{
-                  background: 'rgba(255,253,245,0.98)',
-                  border: '1px solid rgba(196,163,90,0.2)',
-                  boxShadow: '0 2px 12px rgba(196,163,90,0.07)',
-                  animationDelay: `${i * 0.07}s`,
-                  animationFillMode: 'both',
-                }}>
-                <div className="absolute top-0 right-0 w-14 h-14 rounded-full opacity-10 pointer-events-none"
-                  style={{background: kpi.color, transform: 'translate(30%, -30%)', filter: 'blur(16px)'}}/>
-                <div className="flex items-start justify-between mb-2.5">
-                  <span className="text-xl">{kpi.icon}</span>
-                  <div className="w-1.5 h-1.5 rounded-full mt-1.5" style={{background: kpi.color}}/>
-                </div>
-                <p className="text-xs mb-1 font-medium" style={{color: 'rgba(122,92,26,0.5)'}}>{kpi.label}</p>
-                <p className="text-lg font-bold leading-tight" style={{color: kpi.color}}>{kpi.value}</p>
-                <p className="text-xs mt-1" style={{color: 'rgba(122,92,26,0.35)'}}>{kpi.sub}</p>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 sfm-au2">
+            {/* 1. إجمالي الدخل */}
+            <div className="kpi-card gold">
+              <div className="kpi-icon" style={{background:'rgba(212,175,55,0.12)'}}>💰</div>
+              <div className="kpi-label">{isArabic ? 'إجمالي الدخل' : 'Total Income'}</div>
+              <div className="kpi-val" style={{color:'#1B2430'}}>
+                {formatCurrency(totalIncome)}
+                <span className="kpi-unit">{getCurrentCurrency().symbol}</span>
               </div>
-            ))}
+              <div className="kpi-trend up">↑ {isArabic ? 'ثابت هذا الشهر' : 'Stable this month'}</div>
+            </div>
+
+            {/* 2. إجمالي المصروفات */}
+            <div className="kpi-card red">
+              <div className="kpi-icon" style={{background:'rgba(239,68,68,0.10)'}}>🔥</div>
+              <div className="kpi-label">{isArabic ? 'إجمالي المصروفات' : 'Total Expenses'}</div>
+              <div className="kpi-val" style={{color: breakdown.expenses / totalIncome > 0.7 ? '#EF4444' : '#1B2430'}}>
+                {formatCurrency(breakdown.expenses)}
+                <span className="kpi-unit">{getCurrentCurrency().symbol}</span>
+              </div>
+              <div className={'kpi-trend ' + (breakdown.expenses / totalIncome > 0.7 ? 'down' : 'up')}>
+                {breakdown.expenses / totalIncome > 0.7 ? '↑' : '→'} {(breakdown.expenses / totalIncome * 100).toFixed(0)}% {isArabic ? 'من الدخل' : 'of income'}
+              </div>
+            </div>
+
+            {/* 3. صافي التدفق النقدي */}
+            <div className="kpi-card green">
+              <div className="kpi-icon" style={{background:'rgba(34,197,94,0.10)'}}>📈</div>
+              <div className="kpi-label">{isArabic ? 'صافي التدفق النقدي' : 'Net Cash Flow'}</div>
+              <div className="kpi-val" style={{color: (breakdown.savings + breakdown.investment) > 0 ? '#22C55E' : '#EF4444'}}>
+                {formatCurrency(breakdown.savings + breakdown.investment)}
+                <span className="kpi-unit">{getCurrentCurrency().symbol}</span>
+              </div>
+              <div className={'kpi-trend ' + ((breakdown.savings + breakdown.investment) > 0 ? 'up' : 'down')}>
+                {(breakdown.savings + breakdown.investment) > 0 ? '↑' : '↓'} {isArabic ? 'مدخرات + استثمار' : 'savings + invest'}
+              </div>
+            </div>
+
+            {/* 4. نسبة الادخار */}
+            <div className="kpi-card">
+              <div className="kpi-icon" style={{background:'rgba(59,130,246,0.10)'}}>⚡</div>
+              <div className="kpi-label">{isArabic ? 'نسبة الادخار' : 'Savings Rate'}</div>
+              <div className="kpi-val" style={{color: breakdown.savings/totalIncome >= 0.2 ? '#22C55E' : breakdown.savings/totalIncome >= 0.1 ? '#D4AF37' : '#EF4444'}}>
+                {(breakdown.savings / totalIncome * 100).toFixed(0)}
+                <span className="kpi-unit">%</span>
+              </div>
+              <div className={'kpi-trend ' + (breakdown.savings/totalIncome >= 0.2 ? 'up' : 'down')}>
+                {breakdown.savings/totalIncome >= 0.2 ? '✓' : '↑'} {isArabic ? (breakdown.savings/totalIncome >= 0.2 ? 'ممتاز!' : 'المثالي 20%') : (breakdown.savings/totalIncome >= 0.2 ? 'Excellent!' : 'Target: 20%')}
+              </div>
+            </div>
           </div>
         )}
 
@@ -1510,7 +1547,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                   <div className="space-y-1"><Label className="text-xs text-muted-foreground"><Calendar className="w-3 h-3 inline me-1" />{text.duration}</Label>
                     <div className="flex gap-1">
                       <Input placeholder="0" type="number" value={goal.duration} onChange={(e) => updateGoal(goal.id, 'duration', e.target.value)} className="h-10 w-20" dir="ltr" />
-                      <Select value={goal.durationUnit} onValueChange={(value) => updateGoal(goal.id, 'durationUnit', value as DurationUnit)}>
+                      <Select value={goal.durationUnit} onValueChange={(value) => updateGoal(goal.id, 'durationUnit', value)}>
                         <SelectTrigger className="h-10 w-24"><SelectValue /></SelectTrigger>
                         <SelectContent><SelectItem value="day">{text.durationUnitDay}</SelectItem><SelectItem value="month">{text.durationUnitMonth}</SelectItem><SelectItem value="year">{text.durationUnitYear}</SelectItem></SelectContent>
                       </Select>
@@ -1710,7 +1747,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             <span className="font-medium" style={{color: '#c4a35a'}}>powered by M.Q</span>
             <span className="w-24 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
           </div>
-      </div>
+        </div>
       </div>
       </div>
     </main>
