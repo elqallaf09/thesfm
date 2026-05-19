@@ -891,142 +891,175 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   return (
     <>
     <style>{`
-      @keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}.ticker-scroll{animation:ticker 30s linear infinite;display:flex;width:max-content;}
+      @keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}.ticker-scroll{animation:ticker 40s linear infinite;display:flex;width:max-content;}
       @keyframes ringFill{from{stroke-dasharray:0 226}to{stroke-dasharray:var(--rd,0) 226}}
       @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-      @keyframes pulse-dot{0%,100%{box-shadow:0 0 0 0 currentColor}50%{box-shadow:0 0 0 4px rgba(196,163,90,0.2)}}
       .ring-anim{animation:ringFill 1.4s cubic-bezier(0.4,0,0.2,1) 0.2s both}
-      .kpi-card{animation:fadeUp 0.5s ease both}.kpi-card:nth-child(1){animation-delay:.05s}.kpi-card:nth-child(2){animation-delay:.15s}.kpi-card:nth-child(3){animation-delay:.25s}.kpi-card:nth-child(4){animation-delay:.35s}
-      .ai-ins{animation:fadeUp 0.4s ease both}.ai-ins:nth-child(1){animation-delay:.1s}.ai-ins:nth-child(2){animation-delay:.2s}.ai-ins:nth-child(3){animation-delay:.3s}.ai-ins:nth-child(4){animation-delay:.4s}
-      .score-val{animation:fadeUp 0.6s ease 0.4s both}
+      .sfm-card-hover{transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}
+      .sfm-card-hover:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(196,163,90,0.18)!important}
+      .kpi-card{animation:fadeUp 0.5s ease both}
+      .kpi-card:nth-child(1){animation-delay:.05s}.kpi-card:nth-child(2){animation-delay:.15s}
+      .kpi-card:nth-child(3){animation-delay:.25s}.kpi-card:nth-child(4){animation-delay:.35s}
       .kpi-card:hover{transform:translateY(-3px)!important;box-shadow:0 12px 32px rgba(196,163,90,0.18)!important}
-      @media print {
-        body { background: white !important; }
-        .no-print { display: none !important; }
-        .print-only { display: block !important; }
-        header, nav, button, select { display: none !important; }
-        .rounded-\\[1\\.75rem\\] { display: none !important; }
-        main { padding: 0 !important; background: white !important; }
-        .max-w-5xl { max-width: 100% !important; }
-        * { box-shadow: none !important; border-radius: 4px !important; }
-        h1 { color: #7f5c48 !important; font-size: 24px !important; }
-        h2, h3 { color: #7a5c1a !important; }
-        .rounded-\\[2rem\\] { border: 1px solid #c4a35a !important; padding: 16px !important; margin-bottom: 12px !important; }
-      }
+      .ai-ins{animation:fadeUp 0.4s ease both}
+      .ai-ins:nth-child(1){animation-delay:.1s}.ai-ins:nth-child(2){animation-delay:.2s}
+      .ai-ins:nth-child(3){animation-delay:.3s}.ai-ins:nth-child(4){animation-delay:.4s}
+      .score-val{animation:fadeUp 0.6s ease 0.4s both}
+      .nav-link{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:1px 6px;border-radius:12px;cursor:pointer;transition:all 0.18s;color:rgba(255,255,255,0.55);font-size:13px;font-weight:500;text-decoration:none;border:none;background:transparent;width:calc(100% - 12px);text-align:right;direction:rtl}
+      .nav-link:hover{background:rgba(255,255,255,0.09);color:rgba(255,255,255,0.88)}
+      .nav-link.active{background:rgba(196,163,90,0.22);color:#f0d080}
+      .nav-link-icon{font-size:17px;flex-shrink:0;width:22px;display:flex;align-items:center;justify-content:center}
+      .sidebar-collapsed .nav-link-label{display:none}
+      @media(max-width:768px){.sfm-sidebar{display:none!important}.sfm-content{padding:12px!important}}
+      @media print{body{background:white!important}.no-print{display:none!important}.sfm-sidebar{display:none!important}main{background:white!important}*{box-shadow:none!important}}
     `}</style>
-    <main dir={isArabic ? 'rtl' : 'ltr'} className="relative min-h-screen overflow-hidden px-4 py-6" style={{background: 'linear-gradient(135deg, #fffdf5 0%, #fef9e7 50%, #fdf5d0 100%)'}}>
-      <div className="pointer-events-none absolute inset-0 opacity-40" style={{backgroundImage: 'linear-gradient(120deg,rgba(196,163,90,0.15) 0,rgba(196,163,90,0.15) 1px,transparent 1px,transparent 42px)'}} />
-      <div className="pointer-events-none absolute -right-24 top-0 h-[34rem] w-[34rem] rounded-full blur-3xl" style={{background: 'rgba(196,163,90,0.2)'}} />
-      <div className="relative max-w-5xl mx-auto space-y-6">
-        {/* Ticker */}
-        <div className="overflow-hidden rounded-[1.75rem] border shadow-[0_8px_40px_rgba(196,163,90,0.25)]" style={{borderColor: 'rgba(196,163,90,0.4)', background: '#1a1228'}}>
-          <div className="flex flex-col gap-3 border-b px-4 py-3 text-white md:flex-row md:items-center md:justify-between" style={{background: '#7f5c48', borderColor: 'rgba(255,255,255,0.15)', boxShadow: '0 2px 8px rgba(127,92,72,0.3), 0 4px 16px rgba(127,92,72,0.15)'}}>
-            <div className="flex items-center gap-3">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#f0d080] shadow-[0_0_18px_rgba(240,208,128,0.8)]" />
-              <div>
-                <p className="text-sm font-bold text-white">{text.tickerTitle}</p>
-                <p className="text-xs text-white/70">{tickerStatus}</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" size="sm" variant="ghost" onClick={fetchTickerData} className="h-10 rounded-xl text-white hover:bg-white/20">
-                <RefreshCw className={`h-4 w-4 ${tickerLoading ? 'animate-spin' : ''}`} />
-              </Button>
-              <Select value={tickerCategory} onValueChange={(value) => setTickerCategory(value as TickerCategory)}>
-                <SelectTrigger className="h-10 w-[190px] text-white [&>span]:text-white" style={{borderColor: 'rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.15)'}}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {tickerOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/education/investments')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">{text.investmentTypesBtn}</Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/education/savings')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">{text.savingsTypesBtn}</Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/education/expenses')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">{text.expensesInfoBtn}</Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/projects')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">{isArabic ? 'مشروعي' : 'My Projects'}</Button>
-              {!isGuest && (
-                <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/profile')} className="h-10 rounded-xl text-white hover:bg-white/20 text-sm">
-                  <User className="h-4 w-4 me-1" />{text.profileBtn}
-                </Button>
-              )}
-              {isGuest ? (
-                <Button type="button" size="sm" onClick={() => { localStorage.removeItem('guest_session'); window.location.reload(); }} className="h-10 rounded-xl text-sm font-bold px-4" style={{background: '#f0d080', color: '#3d2b1a'}}>
-                  🔑 {isArabic ? 'تسجيل الدخول' : 'Login'}
-                </Button>
-              ) : (
-                <Button type="button" variant="ghost" size="sm" onClick={() => { localStorage.removeItem('guest_session'); supabase.auth.signOut(); }} className="h-10 rounded-xl text-white/70 hover:bg-white/20 text-sm">{text.logout}</Button>
-              )}
+
+    <div dir={isArabic ? 'rtl' : 'ltr'} style={{display:'flex', minHeight:'100vh', background:'linear-gradient(160deg, #fffdf5 0%, #fef9e7 60%, #fdf5d0 100%)'}}>
+
+      {/* ── SIDEBAR ── */}
+      <aside className="sfm-sidebar no-print" style={{
+        width: '200px', flexShrink: 0,
+        background: 'linear-gradient(180deg, #6b4a35 0%, #4a2e1a 100%)',
+        display: 'flex', flexDirection: 'column',
+        position: 'sticky', top: 0, height: '100vh', overflowY: 'auto',
+        zIndex: 40, boxShadow: '4px 0 24px rgba(0,0,0,0.15)',
+      }}>
+        {/* Logo */}
+        <div style={{padding:'20px 14px 16px', borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+          <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+            <div style={{width:'36px', height:'36px', background:'linear-gradient(135deg,#d4b36a,#c4a35a)', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:'700', fontSize:'14px', color:'#3d2510', flexShrink:0}}>SFM</div>
+            <div>
+              <div style={{fontSize:'13px', fontWeight:'600', color:'rgba(255,255,255,0.9)', lineHeight:1.2}}>المدير المالي</div>
+              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)', marginTop:'2px'}}>الذكي • Premium</div>
             </div>
           </div>
-          <div className="overflow-hidden py-2.5" style={{background: 'rgba(20,13,30,0.95)', borderTop: '1px solid rgba(196,163,90,0.2)'}}>
-            <div className="ticker-scroll items-center gap-3 px-4">
+        </div>
+
+        {/* Nav Items */}
+        <nav style={{flex:1, padding:'10px 0'}}>
+          <button className="nav-link active" onClick={() => {}}>
+            <span className="nav-link-icon">⊞</span>
+            <span className="nav-link-label">{isArabic ? 'لوحة التحكم' : 'Dashboard'}</span>
+          </button>
+          <button className="nav-link" onClick={() => router.push('/profile')}>
+            <span className="nav-link-icon">◎</span>
+            <span className="nav-link-label">{isArabic ? 'ملفي الشخصي' : 'Profile'}</span>
+          </button>
+          <button className="nav-link" onClick={() => router.push('/projects')}>
+            <span className="nav-link-icon">🚀</span>
+            <span className="nav-link-label">{isArabic ? 'مشروعي' : 'Projects'}</span>
+          </button>
+          <button className="nav-link" onClick={() => router.push('/education/investments')}>
+            <span className="nav-link-icon">📈</span>
+            <span className="nav-link-label">{isArabic ? 'الاستثمار' : 'Investments'}</span>
+          </button>
+          <button className="nav-link" onClick={() => router.push('/education/savings')}>
+            <span className="nav-link-icon">💰</span>
+            <span className="nav-link-label">{isArabic ? 'المدخرات' : 'Savings'}</span>
+          </button>
+          <button className="nav-link" onClick={() => router.push('/education/expenses')}>
+            <span className="nav-link-icon">📊</span>
+            <span className="nav-link-label">{isArabic ? 'المصروفات' : 'Expenses'}</span>
+          </button>
+          <div style={{margin:'8px 14px', borderTop:'1px solid rgba(255,255,255,0.07)'}}/>
+          {!isGuest && (
+            <button className="nav-link" onClick={() => { localStorage.removeItem('guest_session'); supabase.auth.signOut(); }}>
+              <span className="nav-link-icon">⤴</span>
+              <span className="nav-link-label">{text.logout}</span>
+            </button>
+          )}
+          {isGuest && (
+            <button className="nav-link" onClick={() => { localStorage.removeItem('guest_session'); window.location.reload(); }}>
+              <span className="nav-link-icon">🔑</span>
+              <span className="nav-link-label">{isArabic ? 'تسجيل الدخول' : 'Login'}</span>
+            </button>
+          )}
+        </nav>
+
+        {/* User */}
+        <div style={{padding:'12px', borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+          <button className="nav-link" onClick={() => router.push('/profile')} style={{margin:0, width:'100%', padding:'10px'}}>
+            <div style={{width:'30px', height:'30px', background:'linear-gradient(135deg,#d4b36a,#c4a35a)', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', fontWeight:'700', color:'#3d2510', flexShrink:0}}>
+              {username ? username.substring(0,2).toUpperCase() : 'مس'}
+            </div>
+            <div style={{minWidth:0, flex:1}}>
+              <div style={{fontSize:'12px', fontWeight:'600', color:'rgba(255,255,255,0.85)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{username || (isArabic ? 'المستخدم' : 'User')}</div>
+              <div style={{fontSize:'10px', color:'rgba(255,255,255,0.4)'}}>Premium ⭐</div>
+            </div>
+          </button>
+          {/* Language */}
+          <div style={{display:'flex', gap:'4px', marginTop:'8px', padding:'0 4px'}}>
+            {(['ar','en'] as const).map(lang => (
+              <button key={lang} onClick={() => setLanguage(lang)} style={{flex:1, padding:'5px', borderRadius:'8px', border:'none', cursor:'pointer', fontSize:'11px', fontWeight:'600', transition:'all 0.15s', background: language === lang ? 'rgba(196,163,90,0.25)' : 'transparent', color: language === lang ? '#f0d080' : 'rgba(255,255,255,0.4)'}}>
+                {lang === 'ar' ? 'عربي' : 'EN'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      {/* ── MAIN CONTENT ── */}
+      <main className="sfm-content" style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', overflowX:'hidden'}}>
+
+        {/* Top Bar (Ticker + Actions) */}
+        <div style={{background:'linear-gradient(135deg, #7f5c48 0%, #6b4a35 100%)', borderBottom:'1px solid rgba(255,255,255,0.1)', position:'sticky', top:0, zIndex:30, boxShadow:'0 2px 12px rgba(127,92,72,0.25)'}}>
+          {/* Nav row */}
+          <div style={{display:'flex', alignItems:'center', gap:'8px', padding:'10px 16px', borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
+            <div style={{flex:1, display:'flex', alignItems:'center', gap:'6px'}}>
+              {[
+                {label: text.investmentTypesBtn, path:'/education/investments'},
+                {label: text.savingsTypesBtn, path:'/education/savings'},
+                {label: text.expensesInfoBtn, path:'/education/expenses'},
+                {label: isArabic?'ماذا الإدخار':'What to Save', path:'/'},
+              ].map(item => (
+                <button key={item.path} type="button" onClick={() => router.push(item.path)}
+                  style={{padding:'5px 10px', borderRadius:'8px', background:'rgba(255,255,255,0.12)', border:'1px solid rgba(255,255,255,0.15)', color:'rgba(255,255,255,0.85)', fontSize:'12px', cursor:'pointer', transition:'all 0.15s', whiteSpace:'nowrap'}}
+                  onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
+                  onMouseOut={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')}>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <Select value={tickerCategory} onValueChange={(value) => setTickerCategory(value as TickerCategory)}>
+              <SelectTrigger className="h-8 w-[160px] text-white text-xs" style={{borderColor:'rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.12)'}}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {tickerOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <button type="button" onClick={() => { localStorage.removeItem('guest_session'); supabase.auth.signOut(); }}
+              style={{padding:'5px 10px', borderRadius:'8px', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.15)', color:'rgba(255,255,255,0.7)', fontSize:'12px', cursor:'pointer'}}>{text.logout}</button>
+          </div>
+          {/* Ticker */}
+          <div style={{overflow:'hidden', padding:'8px 0', background:'rgba(0,0,0,0.15)'}}>
+            <div className="ticker-scroll" style={{alignItems:'center', gap:'8px', paddingRight:'16px'}}>
               {[...tickerItems, ...tickerItems, ...tickerItems].map((item, index) => (
-                <div key={`${item.nameEn}-${index}`} className="flex shrink-0 items-center gap-2.5 rounded-full px-3 py-1.5 text-sm mx-1.5"
-                  style={{background: 'rgba(196,163,90,0.12)', border: '0.5px solid rgba(196,163,90,0.3)'}}>
-                  <span className="font-bold" style={{color: '#c4a35a'}}>{isArabic ? item.nameAr : item.nameEn}</span>
-                  <span className="font-mono text-sm" style={{color: '#e2d5b8'}} dir="ltr">{item.value}</span>
-                  <span className={`font-mono text-xs font-bold ${item.positive ? 'text-emerald-400' : 'text-rose-400'}`} dir="ltr">{item.change}</span>
+                <div key={`${item.nameEn}-${index}`} style={{display:'flex', flexShrink:0, alignItems:'center', gap:'8px', borderRadius:'20px', padding:'4px 12px', margin:'0 4px', background:'rgba(196,163,90,0.12)', border:'0.5px solid rgba(196,163,90,0.3)', fontSize:'12px'}}>
+                  <span style={{fontWeight:'600', color:'#f0d080'}}>{isArabic ? item.nameAr : item.nameEn}</span>
+                  <span style={{color:'rgba(255,255,255,0.85)', fontVariantNumeric:'tabular-nums'}} dir="ltr">{item.value}</span>
+                  <span style={{fontWeight:'700', fontSize:'11px', color: item.positive ? '#4ade80' : '#f87171'}} dir="ltr">{item.change}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Header */}
-        <div className="rounded-[2rem] p-5" style={{border: '1px solid rgba(196,163,90,0.4)', background: 'rgba(255,253,245,0.95)', boxShadow: '0 8px 40px rgba(196,163,90,0.15)'}}>
-          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-2 text-center md:text-start">
-              <h1 className="text-4xl font-bold tracking-tight flex items-center justify-center gap-3 md:justify-start" style={{color: '#7a5c1a'}}>
-                <span className="flex items-center justify-center">
-                  <svg viewBox="0 0 300 300" width="52" height="52" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <radialGradient id="bgG" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#1e1e3f"/><stop offset="100%" stopColor="#0d0d1a"/></radialGradient>
-                      <linearGradient id="gG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#f0d080"/><stop offset="40%" stopColor="#c4a35a"/><stop offset="100%" stopColor="#9a7a30"/></linearGradient>
-                      <linearGradient id="gG2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#e8c870"/><stop offset="50%" stopColor="#c4a35a"/><stop offset="100%" stopColor="#f0d080"/></linearGradient>
-                    </defs>
-                    <circle cx="150" cy="150" r="140" fill="url(#bgG)" stroke="url(#gG)" strokeWidth="1.5"/>
-                    <circle cx="150" cy="150" r="128" fill="none" stroke="url(#gG)" strokeWidth="0.4" opacity="0.4"/>
-                    <g stroke="url(#gG)" strokeWidth="1" fill="none" opacity="0.7">
-                      <path d="M 58 58 L 58 72 L 72 72"/><path d="M 242 58 L 242 72 L 228 72"/>
-                      <path d="M 58 242 L 58 228 L 72 228"/><path d="M 242 242 L 242 228 L 228 228"/>
-                    </g>
-                    <g fill="url(#gG)" opacity="0.8">
-                      <polygon points="150,38 154,43 150,48 146,43"/><polygon points="150,252 154,257 150,262 146,257"/>
-                      <polygon points="38,150 43,154 48,150 43,146"/><polygon points="252,150 257,154 262,150 257,146"/>
-                    </g>
-                    <text x="74" y="175" fontFamily="Georgia, serif" fontSize="82" fontWeight="700" fill="url(#gG)" textAnchor="middle">S</text>
-                    <text x="150" y="175" fontFamily="Georgia, serif" fontSize="82" fontWeight="700" fill="url(#gG2)" textAnchor="middle">F</text>
-                    <text x="226" y="175" fontFamily="Georgia, serif" fontSize="82" fontWeight="700" fill="url(#gG)" textAnchor="middle">M</text>
-                    <line x1="68" y1="188" x2="232" y2="188" stroke="url(#gG)" strokeWidth="1" opacity="0.6"/>
-                    <circle cx="68" cy="188" r="2.5" fill="url(#gG)" opacity="0.9"/>
-                    <circle cx="150" cy="188" r="2.5" fill="url(#gG)" opacity="0.9"/>
-                    <circle cx="232" cy="188" r="2.5" fill="url(#gG)" opacity="0.9"/>
-                  </svg>
-                </span>
-                {text.title}
-              </h1>
-              <p className="text-lg" style={{color: 'rgba(122,92,26,0.7)'}}>{text.subtitle}</p>
-              {isGuest && (
-                <div className="flex items-center gap-3 flex-wrap">
-                  <p className="text-sm font-medium" style={{color: '#9a7a30'}}>🔒 {isArabic ? 'أنت تتصفح كضيف - البيانات لن تُحفظ' : 'Guest mode - data will not be saved'}</p>
-                  <Button onClick={() => { localStorage.removeItem('guest_session'); window.location.reload(); }} size="sm" className="rounded-xl text-sm px-4 font-bold" style={{background: '#c4a35a', color: '#1a1228'}}>
-                    🔑 {isArabic ? 'تسجيل الدخول / إنشاء حساب' : 'Login / Register'}
-                  </Button>
-                </div>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-3 rounded-2xl p-2" style={{background: 'rgba(196,163,90,0.1)'}}>
-              {username && <span className="rounded-xl px-3 py-2 text-sm font-bold" style={{background: 'rgba(196,163,90,0.2)', color: '#7a5c1a'}}>{username}</span>}
-              <Languages className="h-5 w-5" style={{color: '#c4a35a'}} />
-              <Select value={language} onValueChange={(value) => setLanguage(value as 'ar' | 'en')}>
-                <SelectTrigger className="h-10 w-[150px]" style={{borderColor: 'rgba(196,163,90,0.4)', background: 'white', color: '#7a5c1a'}}><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ar">العربية</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        {/* Page Content */}
+        <div style={{flex:1, padding:'20px', display:'flex', flexDirection:'column', gap:'16px', maxWidth:'960px', margin:'0 auto', width:'100%'}}>
+
+
+        {/* Compact Page Title */}
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'4px 0 8px'}}>
+          <div>
+            <h1 style={{fontSize:'22px', fontWeight:'700', color:'#7a5c1a', margin:0}}>{text.title}</h1>
+            <p style={{fontSize:'13px', color:'rgba(122,92,26,0.55)', margin:'2px 0 0'}}>{text.subtitle}</p>
           </div>
+          {isGuest && (
+            <Button onClick={() => { localStorage.removeItem('guest_session'); window.location.reload(); }} size="sm" style={{background:'#c4a35a', color:'#1a1228', borderRadius:'10px', fontWeight:'700'}}>
+              🔑 {isArabic ? 'تسجيل الدخول' : 'Login'}
+            </Button>
+          )}
         </div>
 
         {/* Profile Card - only for logged in */}
@@ -1678,9 +1711,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             <span className="font-medium" style={{color: '#c4a35a'}}>powered by M.Q</span>
             <span className="w-24 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
           </div>
-        </div>
-      </div>
-    </main>
-    </>
+        </div>{/* /page content */}
+      </main>{/* /main */}
+    </div>{/* /app wrapper */}
+    </> 
   );
 }
