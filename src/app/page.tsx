@@ -430,6 +430,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   const [showAdvice, setShowAdvice] = useState<boolean>(false);
   const [smartPanel, setSmartPanel] = useState<string>('');
   const [smartText, setSmartText] = useState<string>('');
+  const [userProjects, setUserProjects] = useState<Array<{id:string;name:string;emoji:string;budget:string}>>([]);
 
   const [selectedCurrency, setSelectedCurrency] = useState<string>('KWD');
   const [tickerCategory, setTickerCategory] = useState<TickerCategory>('gulf');
@@ -829,7 +830,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     if (savingsRes.data) setSavingsItems(savingsRes.data.map(item => ({ id: item.id, name: item.name, amount: String(item.amount) })));
     if (investmentsRes.data) setInvestmentItems(investmentsRes.data.map(item => ({ id: item.id, name: item.name, amount: String(item.amount) })));
     if (goalsRes.data) setGoals(goalsRes.data.map(item => ({ id: item.id, goal: item.goal, amount: String(item.amount), duration: item.duration || '', durationUnit: (item.duration_unit as DurationUnit) || 'month', notes: item.notes || '' })));
-    if (projRes.data) setUserProjects(projRes.data.map((p:any) => ({ id: p.id, name: p.name, emoji: p.emoji || '🚀', budget: String(p.budget || ''), timeline: String(p.timeline || ''), durationUnit: p.duration_unit || 'month', notes: p.notes || {} })));
+    if (projRes.data) setUserProjects(projRes.data.map((p:any) => ({ id: p.id, name: p.name || '', emoji: p.emoji || '🚀', budget: String(p.budget || '') })));
   };
 
   const saveExpenseItems = async (uid: string) => {
@@ -1536,6 +1537,82 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             </Card>
           );
         })()}
+
+        {/* Projects Integration */}
+        {totalIncome > 0 && breakdown.savings + breakdown.investment > 0 && (
+          <Card style={{border:'1px solid rgba(196,163,90,0.3)',background:'rgba(255,253,245,0.98)',boxShadow:'0 4px 20px rgba(196,163,90,0.1)'}}>
+            <CardHeader className="pb-3 rounded-t-lg" style={{background:'rgba(196,163,90,0.07)'}}>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base" style={{color:'#7a5c1a'}}>
+                  🚀 {isArabic ? 'مشروعي — متى أبدأ؟' : 'My Projects — When can I start?'}
+                </CardTitle>
+                <Button onClick={() => router.push('/projects')} size="sm" style={{background:'#7f5c48',color:'white'}} className="text-xs">
+                  {isArabic ? 'إدارة مشروعي' : 'Manage'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-3 space-y-2">
+              {userProjects.length > 0 ? (
+                <>
+                  {userProjects.slice(0, 4).map(project => {
+                    const cost = parseFloat(project.budget.replace(/[^\d.]/g, '')) || 0;
+                    const ms = breakdown.savings + breakdown.investment;
+                    const months = cost > 0 && ms > 0 ? Math.ceil(cost / ms) : 0;
+                    const feasible = months > 0 && months <= 24;
+                    const moderate = months > 24 && months <= 48;
+                    const dotColor = feasible ? '#2d8a4e' : moderate ? '#c4a35a' : '#c0392b';
+                    return (
+                      <div key={project.id} className="flex items-center gap-3 p-3 rounded-xl"
+                        style={{background: feasible ? 'rgba(45,138,78,0.05)' : 'rgba(196,163,90,0.05)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
+                          style={{background:'rgba(196,163,90,0.1)'}}>{project.emoji}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold truncate" style={{color:'#7a5c1a'}}>{project.name}</p>
+                          <p className="text-xs" style={{color:'rgba(122,92,26,0.5)'}}>
+                            {cost > 0 ? formatCurrency(cost) + ' ' + getCurrentCurrency().symbol : (isArabic ? 'بدون ميزانية' : 'No budget')}
+                          </p>
+                        </div>
+                        <div className="text-end shrink-0">
+                          {months > 0 ? (
+                            <>
+                              <div className="flex items-center gap-1.5 justify-end">
+                                <div className="w-2 h-2 rounded-full" style={{background: dotColor}}/>
+                                <p className="text-sm font-bold" style={{color: dotColor}}>
+                                  {months >= 12 ? (months/12).toFixed(1) + (isArabic ? ' سنة' : ' yr') : months + (isArabic ? ' شهر' : ' mo')}
+                                </p>
+                              </div>
+                              <p className="text-xs mt-0.5" style={{color:'rgba(122,92,26,0.4)'}}>
+                                {feasible ? (isArabic ? '✅ قريب' : '✅ Soon') : moderate ? (isArabic ? '⏳ متوسط' : '⏳ Med') : (isArabic ? '🔴 بعيد' : '🔴 Long')}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-xs" style={{color:'rgba(122,92,26,0.4)'}}>{isArabic ? 'حدد ميزانية' : 'Set budget'}</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {breakdown.savings + breakdown.investment > 0 && (
+                    <div className="p-3 rounded-xl text-xs" style={{background:'rgba(127,92,72,0.06)',border:'0.5px solid rgba(127,92,72,0.15)',color:'#7f5c48'}}>
+                      💡 {isArabic
+                        ? 'بادخارك ' + formatCurrency(breakdown.savings + breakdown.investment) + ' ' + getCurrentCurrency().symbol + '/شهر — كافيه خلال ' + (breakdown.savings + breakdown.investment > 0 ? Math.ceil(15000 / (breakdown.savings + breakdown.investment)) : '—') + ' شهر، متجر إلكتروني خلال ' + (breakdown.savings + breakdown.investment > 0 ? Math.ceil(1500 / (breakdown.savings + breakdown.investment)) : '—') + ' شهر.'
+                        : 'Saving ' + formatCurrency(breakdown.savings + breakdown.investment) + ' ' + getCurrentCurrency().symbol + '/mo — café in ' + (breakdown.savings + breakdown.investment > 0 ? Math.ceil(15000 / (breakdown.savings + breakdown.investment)) : '—') + ' months.'
+                      }
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-5 rounded-xl" style={{border:'1px dashed rgba(196,163,90,0.3)'}}>
+                  <p className="text-3xl mb-2">🚀</p>
+                  <p className="text-sm" style={{color:'rgba(122,92,26,0.5)'}}>{isArabic ? 'لم تضف مشاريع بعد' : 'No projects yet'}</p>
+                  <Button onClick={() => router.push('/projects')} size="sm" className="mt-2" style={{background:'#c4a35a',color:'#1a0f00'}}>
+                    {isArabic ? '+ أضف مشروعك الأول' : '+ Add First Project'}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Smart Actions */}
         <div className="space-y-3">
