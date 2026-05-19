@@ -167,88 +167,77 @@ export function AuthForm() {
     if (resetStep === 'username') {
       if (!resetUsername.trim()) { setError(t.enterUsernameFirst); return; }
       setLoading(true); setError('');
+
       const { data: profile } = await supabase
         .from('profiles')
-        .select('email, security_question, security_question_2, security_question_3, display_name')
+        .select('email, security_question')
         .eq('username', resetUsername.trim().toLowerCase())
         .maybeSingle();
 
       if (!profile) {
-        setError(isArabic ? 'اسم المستخدم غير موجود' : 'Username not found');
+        setError(isArabic ? 'اسم المستخدم غير موجود. تحقق من الكتابة.' : 'Username not found. Check spelling.');
         setLoading(false); return;
       }
 
-      // حفظ بيانات الملف الشخصي
-      setStoredQuestion(profile.security_question || '');
+      if (!profile.security_question) {
+        // لا توجد أسئلة أمان - أرسل رابط مباشرة
+        await sendResetEmail(profile.email);
+        setLoading(false); return;
+      }
+
+      setStoredQuestion(profile.security_question);
       setResetStep('question');
       setLoading(false); return;
     }
 
-    // ── Step 2: التحقق من أسئلة الأمان ──
+    // ── Step 2: التحقق من سؤال الأمان ──
     if (resetStep === 'question') {
       if (!securityAnswer.trim()) { setError(t.enterSecurityAnswer); return; }
       setLoading(true); setError('');
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('email, security_answer, security_answer_2, security_answer_3')
+        .select('email, security_answer')
         .eq('username', resetUsername.trim().toLowerCase())
         .maybeSingle();
 
       if (!profile) { setError(t.errorOccurred); setLoading(false); return; }
 
-      const correct = profile.security_answer?.toLowerCase().trim() === securityAnswer.trim().toLowerCase();
-      if (!correct) { setError(t.wrongSecurityAnswer); setLoading(false); return; }
-
-      setResetStep('reset');
-      setLoading(false); return;
-    }
-
-    // ── Step 3: تعيين كلمة مرور جديدة ──
-    if (resetStep === 'reset') {
-      if (password.length < 6) { setError(t.passwordMinLength); return; }
-      if (password !== confirmPassword) { setError(t.passwordMismatch); return; }
-      setLoading(true); setError('');
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('username', resetUsername.trim().toLowerCase())
-        .maybeSingle();
-
-      if (!profile?.email) { setError(t.errorOccurred); setLoading(false); return; }
-
-      // تسجيل دخول مؤقت بالإيميل الداخلي
-      const tempEmail = usernameToEmail(resetUsername);
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: tempEmail,
-        password: profile.email, // المفتاح المستخدم عند التسجيل
-      });
-
-      if (signInError) {
-        // fallback: أرسل رابط استعادة عبر Supabase
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(profile.email, {
-          redirectTo: `${window.location.origin}/reset-password`,
-        });
-        if (!resetError) {
-          setForgotPasswordSuccess(isArabic ? 'تم إرسال رابط الاستعادة على بريدك الإلكتروني ✅' : 'Reset link sent to your email ✅');
-        } else {
-          setError(t.errorOccurred);
-        }
-        setLoading(false);
-        setResetStep('username');
-        setShowForgotPassword(false);
-        return;
+      const correct = (profile.security_answer || '').toLowerCase().trim() === securityAnswer.trim().toLowerCase();
+      if (!correct) {
+        setError(isArabic ? 'إجابة خاطئة. حاول مرة أخرى.' : 'Wrong answer. Try again.');
+        setLoading(false); return;
       }
 
-      const { error: updateError } = await supabase.auth.updateUser({ password });
-      if (updateError) { setError(isArabic ? 'خطأ في تحديث كلمة المرور' : 'Error updating password'); setLoading(false); return; }
+      // ✅ الإجابة صحيحة - أرسل رابط الاستعادة
+      await sendResetEmail(profile.email);
+      setLoading(false); return;
+    }
+  };
 
-      await supabase.auth.signOut();
-      setForgotPasswordSuccess(isArabic ? '✅ تم تغيير كلمة المرور بنجاح! سجل دخولك الآن.' : '✅ Password changed successfully! Login now.');
+  const sendResetEmail = async (email: string) => {
+    if (!email) {
+      setError(isArabic ? 'لا يوجد بريد إلكتروني مرتبط بهذا الحساب' : 'No email linked to this account');
+      return;
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: typeof window !== 'undefined'
+        ? `${window.location.origin}/?reset=true`
+        : undefined,
+    });
+
+    if (error) {
+      setError(isArabic ? 'حدث خطأ. تحقق من بريدك الإلكتروني وحاول مرة أخرى.' : 'Error occurred. Check your email and try again.');
+    } else {
+      setForgotPasswordSuccess(
+        isArabic
+          ? '📧 تم إرسال رابط الاستعادة! تحقق من بريدك الإلكتروني وافتح الرابط لإنشاء كلمة مرور جديدة.'
+          : '📧 Reset link sent! Check your email to create a new password.'
+      );
       setResetStep('username');
       setShowForgotPassword(false);
-      setLoading(false);
+      setSecurityAnswer('');
     }
   };
 
@@ -267,17 +256,7 @@ export function AuthForm() {
       setLoading(false); return;
     }
 
-    const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-
-    if (!error) {
-      setForgotPasswordSuccess(isArabic ? '📧 تم إرسال رابط الاستعادة على بريدك الإلكتروني' : '📧 Reset link sent to your email');
-      setShowForgotPassword(false);
-      setResetStep('username');
-    } else {
-      setError(t.errorOccurred);
-    }
+    await sendResetEmail(profile.email);
     setLoading(false);
   };
 
@@ -438,73 +417,48 @@ export function AuthForm() {
                   <>
                     {/* Step 1: اسم المستخدم */}
                     {resetStep === 'username' && (
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         <div className="space-y-2">
                           <Label style={{color:'#7a5c1a'}}>{t.username}</Label>
                           <Input value={resetUsername} onChange={e => setResetUsername(e.target.value)}
                             placeholder={isArabic ? 'مثال: ahmad' : 'e.g. ahmad'}
                             dir="ltr" style={{borderColor:'rgba(196,163,90,0.4)',fontSize:'16px'}} />
                         </div>
+                        <p className="text-xs" style={{color:'rgba(122,92,26,0.5)'}}>
+                          💡 {isArabic ? 'سنتحقق من هويتك عبر سؤال الأمان ثم نرسل رابط الاستعادة لبريدك الإلكتروني.' : 'We verify via security question, then send a reset link to your email.'}
+                        </p>
                       </div>
                     )}
 
-                    {/* Step 2: أسئلة الأمان + إيميل بديل */}
+                    {/* Step 2: سؤال الأمان */}
                     {resetStep === 'question' && (
                       <div className="space-y-4">
-                        {/* معلومات المستخدم */}
-                        <div className="p-3 rounded-xl text-sm" style={{background:'rgba(196,163,90,0.08)',border:'1px solid rgba(196,163,90,0.25)'}}>
-                          <p style={{color:'rgba(122,92,26,0.7)'}}>{isArabic?'المستخدم: ':'User: '}<span className="font-bold" style={{color:'#7a5c1a'}}>{resetUsername}</span></p>
+                        <div className="p-3 rounded-xl text-sm" style={{background:'rgba(196,163,90,0.07)',border:'1px solid rgba(196,163,90,0.2)'}}>
+                          <p style={{color:'rgba(122,92,26,0.6)'}}>{isArabic?'المستخدم: ':'User: '}
+                            <span className="font-bold" style={{color:'#7a5c1a'}}>{resetUsername}</span>
+                          </p>
                         </div>
-
-                        {/* سؤال الأمان */}
                         {storedQuestion && (
                           <div className="space-y-2">
                             <Label style={{color:'#7a5c1a'}}>{t.securityQuestion}</Label>
-                            <div className="p-3 rounded-lg" style={{background:'rgba(196,163,90,0.08)',border:'1px solid rgba(196,163,90,0.3)'}}>
+                            <div className="p-3 rounded-lg" style={{background:'rgba(196,163,90,0.08)',border:'1px solid rgba(196,163,90,0.25)'}}>
                               <p className="text-sm font-medium" style={{color:'#7a5c1a'}}>{getSecurityQuestionText(storedQuestion)}</p>
                             </div>
                             <Input value={securityAnswer} onChange={e => setSecurityAnswer(e.target.value)}
-                              placeholder={isArabic?'إجابة سؤال الأمان':'Security answer'}
+                              placeholder={isArabic?'اكتب إجابتك...':'Type your answer...'}
                               style={{borderColor:'rgba(196,163,90,0.4)',fontSize:'16px'}} />
                           </div>
                         )}
-
-                        {/* فاصل */}
                         <div className="relative flex items-center gap-3">
-                          <div className="flex-1 h-px" style={{background:'rgba(196,163,90,0.25)'}}/>
-                          <span className="text-xs" style={{color:'rgba(122,92,26,0.5)'}}>{isArabic?'أو':'or'}</span>
-                          <div className="flex-1 h-px" style={{background:'rgba(196,163,90,0.25)'}}/>
+                          <div className="flex-1 h-px" style={{background:'rgba(196,163,90,0.2)'}}/>
+                          <span className="text-xs shrink-0" style={{color:'rgba(122,92,26,0.45)'}}>{isArabic?'ناسي الإجابة؟':'Forgot answer?'}</span>
+                          <div className="flex-1 h-px" style={{background:'rgba(196,163,90,0.2)'}}/>
                         </div>
-
-                        {/* استعادة بالإيميل */}
-                        <button type="button" onClick={handleSendEmailReset}
-                          className="w-full text-sm py-2 px-4 rounded-xl transition-all"
-                          style={{border:'1px solid rgba(196,163,90,0.4)',color:'#c4a35a',background:'rgba(196,163,90,0.05)'}}>
-                          📧 {isArabic?'استعادة عبر البريد الإلكتروني':'Reset via Email'}
+                        <button type="button" onClick={handleSendEmailReset} disabled={loading}
+                          className="w-full text-sm py-2.5 px-4 rounded-xl transition-all"
+                          style={{border:'1px solid rgba(196,163,90,0.35)',color:'#c4a35a',background:'rgba(196,163,90,0.04)'}}>
+                          📧 {isArabic?'أرسل رابط الاستعادة على بريدي الإلكتروني':'Send reset link to my email'}
                         </button>
-                      </div>
-                    )}
-
-                    {/* Step 3: كلمة مرور جديدة */}
-                    {resetStep === 'reset' && (
-                      <div className="space-y-4">
-                        <div className="p-3 rounded-xl text-sm flex items-center gap-2" style={{background:'rgba(45,138,78,0.08)',border:'1px solid rgba(45,138,78,0.25)',color:'#2d8a4e'}}>
-                          ✅ {isArabic?'تم التحقق من هويتك! أنشئ كلمة مرور جديدة.':'Identity verified! Create a new password.'}
-                        </div>
-                        <div className="space-y-2">
-                          <Label style={{color:'#7a5c1a'}}>{t.newPassword}</Label>
-                          <Input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                            dir="ltr" autoComplete="new-password"
-                            placeholder="••••••••"
-                            style={{borderColor:'rgba(196,163,90,0.4)',fontSize:'16px'}} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label style={{color:'#7a5c1a'}}>{t.confirmPassword}</Label>
-                          <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
-                            dir="ltr" autoComplete="new-password"
-                            placeholder="••••••••"
-                            style={{borderColor:'rgba(196,163,90,0.4)',fontSize:'16px'}} />
-                        </div>
                       </div>
                     )}
                   </>
@@ -570,11 +524,31 @@ export function AuthForm() {
                   </div>
                 )}
 
+                {/* Progress - 2 Steps */}
+                {showForgotPassword && (
+                  <div className="flex items-center gap-2">
+                    {[{id:'username',label:isArabic?'المستخدم':'Username'},{id:'question',label:isArabic?'التحقق':'Verify'}].map((s,i)=>{
+                      const idx = ['username','question'].indexOf(resetStep);
+                      const done = idx > i; const cur = resetStep === s.id;
+                      return (
+                        <div key={s.id} className="flex items-center gap-2 flex-1">
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                            style={{background:done?'#2d8a4e':cur?'#7f5c48':'rgba(196,163,90,0.2)',color:done||cur?'white':'rgba(122,92,26,0.4)'}}>
+                            {done?'✓':i+1}
+                          </div>
+                          <span className="text-xs" style={{color:cur?'#7a5c1a':'rgba(122,92,26,0.4)'}}>{s.label}</span>
+                          {i<1&&<div className="flex-1 h-px mx-1" style={{background:'rgba(196,163,90,0.25)'}}/>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <Button type="submit" className="h-12 w-full text-base" style={goldBtn} disabled={loading}>
                   {loading ? t.processing : showForgotPassword
-                    ? (resetStep === 'username' ? (isArabic?'التالي →':'Next →')
-                      : resetStep === 'question' ? (isArabic?'تحقق من الإجابة':'Verify Answer')
-                      : (isArabic?'💾 حفظ كلمة المرور الجديدة':'💾 Save New Password'))
+                    ? (resetStep === 'username'
+                        ? (isArabic ? 'التالي ←' : 'Next ←')
+                        : (isArabic ? '✅ تحقق وأرسل رابط الاستعادة' : '✅ Verify & Send Reset Link'))
                     : isRegister ? t.createBtn : t.loginBtn}
                 </Button>
 
