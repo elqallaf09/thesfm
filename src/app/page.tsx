@@ -8,9 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calculator, Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Globe, Plus, Trash2, Target, Calendar, Banknote, Goal, ChevronDown, ChevronUp, User } from 'lucide-react';
+import { Heart, Lightbulb, Printer, RefreshCw, Coins, Wallet, Globe, Plus, Trash2, Target, Calendar, Banknote, Goal, ChevronDown, ChevronUp, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/auth/AuthForm';
@@ -611,7 +610,6 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     const goalRows = goals.length > 0 ? goals.map(g => {
       const amt = parseFloat(g.amount.replace(/[^\d.]/g,''))||0;
       const mons = ms > 0 && amt > 0 ? Math.ceil(amt/ms) : 0;
-      const unitLabel = g.durationUnit==='year'?'سنة':g.durationUnit==='day'?'يوم':'شهر';
       return '<tr><td>' + escHtml(g.goal||'—') + '</td><td class="num">' + formatCurrency(amt) + ' ' + cur + '</td><td class="num">' + (mons>0?mons+' شهر':'—') + '</td></tr>';
     }).join('') : '<tr><td colspan="3" class="empty">لا توجد أهداف</td></tr>';
 
@@ -859,7 +857,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   };
 
   const addGoal = () => setGoals([...goals, { id: generateId(), goal: '', amount: '', duration: '', durationUnit: 'month', notes: '' }]);
-  const updateGoal = (id: string, field: keyof GoalEntry, value: string) => setGoals(goals.map(goal => goal.id === id ? { ...goal, [field]: value } : goal));
+  const updateGoal = <K extends keyof GoalEntry>(id: string, field: K, value: GoalEntry[K]) => setGoals(goals.map(goal => goal.id === id ? { ...goal, [field]: value } : goal));
   const removeGoal = (id: string) => setGoals(goals.filter(goal => goal.id !== id));
 
   const getAIAdvice = (): string => {
@@ -929,7 +927,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
       .sfm-card:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(27,36,48,0.10),0 2px 8px rgba(0,0,0,0.05)}
       .sfm-nav-btn{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:10px;background:#F5F2EA;border:1px solid #E8E2D6;color:#4A5568;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.2s}
       .sfm-nav-btn:hover{background:#1B2430;color:#FFFFFF;border-color:#1B2430}
-      @media(max-width:1024px){.sfm-top-nav{display:none!important}}
+      @media(max-width:1024px){.sfm-top-nav{display:flex!important;overflow-x:auto}}
       @media print{body{background:white!important}.no-print{display:none!important}main{background:white!important}*{box-shadow:none!important}}
     `}</style>
 
@@ -1281,7 +1279,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                         if (selectedCharityTypes.includes(type)) {
                           setSelectedCharityTypes(selectedCharityTypes.filter(t => t !== type));
                           const newP = { ...charityPercentages }; delete newP[type]; setCharityPercentages(newP);
-                          setTotalCharityPercentage(Object.values({ ...charityPercentages, [type]: 0 }).reduce((a, b) => a + b, 0) - (charityPercentages[type] || 0));
+                          setTotalCharityPercentage(Object.values(newP).reduce((a, b) => a + b, 0));
                         } else {
                           setSelectedCharityTypes([...selectedCharityTypes, type]);
                           setCharityPercentages({ ...charityPercentages, [type]: 0 });
@@ -1555,7 +1553,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                   <div className="space-y-1"><Label className="text-xs text-muted-foreground"><Calendar className="w-3 h-3 inline me-1" />{text.duration}</Label>
                     <div className="flex gap-1">
                       <Input placeholder="0" type="number" value={goal.duration} onChange={(e) => updateGoal(goal.id, 'duration', e.target.value)} className="h-10 w-20" dir="ltr" />
-                      <Select value={goal.durationUnit} onValueChange={(value) => updateGoal(goal.id, 'durationUnit', value)}>
+                      <Select value={goal.durationUnit} onValueChange={(value) => updateGoal(goal.id, 'durationUnit', value as DurationUnit)}>
                         <SelectTrigger className="h-10 w-24"><SelectValue /></SelectTrigger>
                         <SelectContent><SelectItem value="day">{text.durationUnitDay}</SelectItem><SelectItem value="month">{text.durationUnitMonth}</SelectItem><SelectItem value="year">{text.durationUnitYear}</SelectItem></SelectContent>
                       </Select>
