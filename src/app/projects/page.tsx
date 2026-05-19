@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowRight, Plus, Trash2, Send, Loader2, ChevronDown, ChevronUp, Sparkles, TrendingUp, AlertTriangle, CheckCircle2, Clock, Target, Zap, BarChart3 } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Send, Loader2, ChevronDown, ChevronUp, Sparkles, TrendingUp, CheckCircle2, Clock, Target, Zap, BarChart3, Pencil } from 'lucide-react';
 import { WisdomTicker } from '@/components/WisdomTicker';
 
 const PROJECT_TYPES = ['مطعم / كافيه', 'متجر إلكتروني', 'عقار واستثمار', 'تقنية وبرمجة', 'تعليم وتدريب', 'خدمات منزلية', 'صحة وجمال', 'تجارة وتوزيع', 'إعلام وتسويق', 'أخرى'];
@@ -62,6 +62,7 @@ export default function ProjectsPage() {
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProjectForm>(emptyForm);
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -107,13 +108,33 @@ export default function ProjectsPage() {
     return null;
   };
 
+  const startEdit = (project: Project) => {
+    setForm({
+      name: project.name, emoji: project.emoji, type: project.type,
+      idea: project.idea, capital: project.capital,
+      monthlyExpenses: project.monthlyExpenses, monthlyRevenue: project.monthlyRevenue,
+      riskLevel: project.riskLevel, needs: project.needs,
+      goal: project.goal, startTimeline: project.startTimeline, progress: project.progress,
+    });
+    setEditingId(project.id);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const saveProject = async () => {
     if (!form.name.trim()) return;
     setSaving(true);
     const analysis = await analyzeProject();
     setAnalyzing(false);
     const notesData = { type: form.type, idea: form.idea, capital: form.capital, monthlyExpenses: form.monthlyExpenses, monthlyRevenue: form.monthlyRevenue, riskLevel: form.riskLevel, needs: form.needs, goal: form.goal, startTimeline: form.startTimeline, progress: form.progress, analysis };
-    if (user) {
+
+    if (editingId && user) {
+      // تعديل مشروع موجود
+      await supabase.from('projects').update({ name: form.name, emoji: form.emoji, budget: form.capital, timeline: form.startTimeline, notes: notesData }).eq('id', editingId);
+      setProjects(prev => prev.map(p => p.id === editingId ? { ...form, id: editingId, analysis: analysis || p.analysis, expanded: p.expanded } : p));
+      setEditingId(null);
+    } else if (user) {
+      // إضافة مشروع جديد
       const { data } = await supabase.from('projects').insert({ user_id: user.id, name: form.name, emoji: form.emoji, budget: form.capital, timeline: form.startTimeline, duration_unit: 'month', steps: [], notes: notesData }).select().single();
       if (data) setProjects(prev => [{ ...form, id: data.id, analysis: analysis || undefined, expanded: false }, ...prev]);
     }
@@ -186,7 +207,9 @@ export default function ProjectsPage() {
         {showForm && (
           <Card style={{ ...card, border: '1px solid rgba(196,163,90,0.4)' }}>
             <CardHeader className="pb-3" style={{ background: 'rgba(196,163,90,0.06)', borderRadius: '12px 12px 0 0' }}>
-              <CardTitle className="flex items-center gap-2 text-lg" style={{ color: DG }}><Sparkles className="w-5 h-5" style={{ color: G }} />إضافة مشروع جديد</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-lg" style={{ color: DG }}>
+                {editingId ? <><Pencil className="w-5 h-5" style={{ color: G }} />تعديل المشروع</> : <><Sparkles className="w-5 h-5" style={{ color: G }} />إضافة مشروع جديد</>}
+              </CardTitle>
             </CardHeader>
             <CardContent className="pt-5 space-y-5">
               {/* Basic Info */}
@@ -306,9 +329,9 @@ export default function ProjectsPage() {
 
               <div className="flex gap-3 pt-2">
                 <Button onClick={saveProject} disabled={saving || !form.name.trim()} className="flex-1 font-bold h-12" style={{ background: Br, color: 'white' }}>
-                  {saving || analyzing ? <><Loader2 className="w-4 h-4 animate-spin ms-2" />{analyzing ? 'جارٍ تحليل المشروع...' : 'جارٍ الحفظ...'}</> : <><Sparkles className="w-4 h-4 ms-2" />حفظ + تحليل بالذكاء الاصطناعي</>}
+                  {saving || analyzing ? <><Loader2 className="w-4 h-4 animate-spin ms-2" />{analyzing ? 'جارٍ التحليل...' : 'جارٍ الحفظ...'}</> : editingId ? <><Pencil className="w-4 h-4 ms-2" />حفظ التعديلات</> : <><Sparkles className="w-4 h-4 ms-2" />حفظ + تحليل بالذكاء الاصطناعي</>}
                 </Button>
-                <Button onClick={() => { setShowForm(false); setForm(emptyForm); }} variant="outline" className="px-6" style={{ borderColor: 'rgba(196,163,90,0.4)', color: DG }}>إلغاء</Button>
+                <Button onClick={() => { setShowForm(false); setForm(emptyForm); setEditingId(null); }} variant="outline" className="px-6" style={{ borderColor: 'rgba(196,163,90,0.4)', color: DG }}>إلغاء</Button>
               </div>
             </CardContent>
           </Card>
@@ -357,6 +380,7 @@ export default function ProjectsPage() {
                                 <p className="text-xs mt-0.5" style={{ color: 'rgba(122,92,26,0.5)' }}>/100</p>
                               </div>
                             )}
+                            <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); startEdit(project); }} className="h-8 w-8" style={{color:'#c4a35a'}} title="تعديل"><Pencil className="w-3.5 h-3.5" /></Button>
                             <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); removeProject(project.id); }} className="text-red-400 h-8 w-8"><Trash2 className="w-4 h-4" /></Button>
                           </div>
                         </div>
