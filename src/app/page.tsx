@@ -1112,7 +1112,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             👋 {isArabic ? `مرحباً ${username || 'بك'}` : `Welcome back, ${username || 'there'}`}
           </h1>
           <p style={{fontSize:'14px',color:'#8A9BB0',fontFamily:'Tajawal,sans-serif'}}>
-            {isArabic ? 'إليك نظرة عامة على وضعك المالي اليوم' : 'Here's an overview of your financial status today'}
+            {isArabic ? 'إليك نظرة عامة على وضعك المالي اليوم' : "Here's an overview of your financial status today"}
           </p>
         </div>
 
