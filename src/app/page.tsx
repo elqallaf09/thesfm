@@ -575,7 +575,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     setShowAdvice(true);
   };
 
-  const handlePrint = () => {
+  const escHtml = (s: string) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const handlePrint = () => {
     const cur = getCurrentCurrency().symbol;
     const date = new Date().toLocaleDateString('ar-SA');
     const sr = totalIncome > 0 ? (breakdown.savings / totalIncome * 100).toFixed(0) : '0';
@@ -594,24 +595,24 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
     const expRows = expenseItems.length > 0 ? expenseItems.map(i => {
       const amt = parseFloat(i.amount.replace(/[^\d.]/g,''))||0;
-      return '<tr><td>' + (i.name||'—') + '</td><td class="num">' + formatCurrency(amt) + ' ' + cur + '</td></tr>';
+      return '<tr><td>' + escHtml(i.name||'—') + '</td><td class="num">' + formatCurrency(amt) + ' ' + cur + '</td></tr>';
     }).join('') : '<tr><td colspan="2" class="empty">لا توجد بنود</td></tr>';
 
     const savRows = savingsItems.length > 0 ? savingsItems.map(i => {
       const amt = parseFloat(i.amount.replace(/[^\d.]/g,''))||0;
-      return '<tr><td>' + (i.name||'—') + '</td><td class="num green">' + formatCurrency(amt) + ' ' + cur + '</td></tr>';
+      return '<tr><td>' + escHtml(i.name||'—') + '</td><td class="num green">' + formatCurrency(amt) + ' ' + cur + '</td></tr>';
     }).join('') : '<tr><td colspan="2" class="empty">لا توجد بنود</td></tr>';
 
     const invRows = investmentItems.length > 0 ? investmentItems.map(i => {
       const amt = parseFloat(i.amount.replace(/[^\d.]/g,''))||0;
-      return '<tr><td>' + (i.name||'—') + '</td><td class="num green">' + formatCurrency(amt) + ' ' + cur + '</td></tr>';
+      return '<tr><td>' + escHtml(i.name||'—') + '</td><td class="num green">' + formatCurrency(amt) + ' ' + cur + '</td></tr>';
     }).join('') : '<tr><td colspan="2" class="empty">لا توجد بنود</td></tr>';
 
     const goalRows = goals.length > 0 ? goals.map(g => {
       const amt = parseFloat(g.amount.replace(/[^\d.]/g,''))||0;
       const mons = ms > 0 && amt > 0 ? Math.ceil(amt/ms) : 0;
       const unitLabel = g.durationUnit==='year'?'سنة':g.durationUnit==='day'?'يوم':'شهر';
-      return '<tr><td>' + (g.goal||'—') + '</td><td class="num">' + formatCurrency(amt) + ' ' + cur + '</td><td class="num">' + (mons>0?mons+' شهر':'—') + '</td></tr>';
+      return '<tr><td>' + escHtml(g.goal||'—') + '</td><td class="num">' + formatCurrency(amt) + ' ' + cur + '</td><td class="num">' + (mons>0?mons+' شهر':'—') + '</td></tr>';
     }).join('') : '<tr><td colspan="3" class="empty">لا توجد أهداف</td></tr>';
 
     const insightsList = [
@@ -1584,6 +1585,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             <span className="font-medium" style={{color: '#c4a35a'}}>powered by M.Q</span>
             <span className="w-24 h-px" style={{background: 'rgba(196,163,90,0.4)'}}></span>
           </div>
+      </div>
       </div>
     </main>
     </>
