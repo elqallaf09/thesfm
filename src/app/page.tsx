@@ -933,7 +933,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
       @media print{body{background:white!important}.no-print{display:none!important}main{background:white!important}*{box-shadow:none!important}}
     `}</style>
 
-    <main dir={isArabic ? 'rtl' : 'ltr'} className="relative min-h-screen" style={{background:'#F5F2EA'}}>
+    <main dir={isArabic ? 'rtl' : 'ltr'} className="relative min-h-screen" style={{background:"#F5F2EA",paddingBottom:"0"}}>
 
       {/* ══ FIXED SIDEBAR ══ */}
       <aside className="sfm-sidebar no-print" dir="rtl">
@@ -1101,7 +1101,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         </div>
       </header>
 
-      <div className="relative max-w-5xl mx-auto space-y-5 px-4 py-6">
+      <div className="relative max-w-5xl mx-auto space-y-5 px-4 py-6" style={{paddingBottom:"calc(24px + env(safe-area-inset-bottom, 0px));"}}>
 
         {/* ══ GREETING HEADER ══ */}
         <div style={{marginBottom:'8px'}} className="sfm-au1">
@@ -1175,7 +1175,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         )}
 
         {/* Salary Input */}
-        <Card style={{background:'#FFFFFF',border:'1px solid #E8E2D6',borderRadius:'20px',boxShadow:'0 2px 12px rgba(27,36,48,0.07),0 1px 3px rgba(0,0,0,0.04)'}}>
+        <Card id="salary-input" style={{background:'#FFFFFF',border:'1px solid #E8E2D6',borderRadius:'20px',boxShadow:'0 2px 12px rgba(27,36,48,0.07),0 1px 3px rgba(0,0,0,0.04)'}}>
           <CardHeader className="" style={{background:'#FAFAF7',borderBottom:'1px solid #E8E2D6',borderRadius:'20px 20px 0 0'}}>
             <CardTitle className="flex items-center gap-2" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}><Coins className="w-6 h-6" />{text.salaryTitle}</CardTitle>
             <CardDescription style={{color:'#8A9BB0'}}>{text.salaryDesc}</CardDescription>
@@ -1260,7 +1260,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         </Card>
 
         {/* Charity */}
-        <Card style={{background:'#FFFFFF',border:'1px solid #E8E2D6',borderRadius:'20px',boxShadow:'0 2px 12px rgba(27,36,48,0.07),0 1px 3px rgba(0,0,0,0.04)'}}>
+        <Card id="salary-input" style={{background:'#FFFFFF',border:'1px solid #E8E2D6',borderRadius:'20px',boxShadow:'0 2px 12px rgba(27,36,48,0.07),0 1px 3px rgba(0,0,0,0.04)'}}>
           <CardHeader className="" style={{background:'#FAFAF7',borderBottom:'1px solid #E8E2D6',borderRadius:'20px 20px 0 0'}}>
             <CardTitle className="flex items-center gap-2" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}><Heart className="w-6 h-6" />{text.charityTitle}</CardTitle>
             <CardDescription style={{color:'#8A9BB0'}}>{text.charityDesc}</CardDescription>
@@ -1359,7 +1359,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
         )}
 
         {/* Salary Details */}
-        <Card style={{background:'#FFFFFF',border:'1px solid #E8E2D6',borderRadius:'20px',boxShadow:'0 2px 12px rgba(27,36,48,0.07),0 1px 3px rgba(0,0,0,0.04)'}}>
+        <Card id="salary-input" style={{background:'#FFFFFF',border:'1px solid #E8E2D6',borderRadius:'20px',boxShadow:'0 2px 12px rgba(27,36,48,0.07),0 1px 3px rgba(0,0,0,0.04)'}}>
           <CardHeader className="" style={{background:'#FAFAF7',borderBottom:'1px solid #E8E2D6',borderRadius:'20px 20px 0 0'}}>
             <CardTitle className="flex items-center gap-2" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}><Wallet className="w-6 h-6" />{text.salaryDetails}</CardTitle>
           </CardHeader>
@@ -1540,13 +1540,13 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
 
         {/* Goals */}
-        <Card style={{background:'#FFFFFF',border:'1px solid #E8E2D6',borderRadius:'20px',boxShadow:'0 2px 12px rgba(27,36,48,0.07),0 1px 3px rgba(0,0,0,0.04)'}}>
+        <Card id="salary-input" style={{background:'#FFFFFF',border:'1px solid #E8E2D6',borderRadius:'20px',boxShadow:'0 2px 12px rgba(27,36,48,0.07),0 1px 3px rgba(0,0,0,0.04)'}}>
           <CardHeader className="" style={{background:'#FAFAF7',borderBottom:'1px solid #E8E2D6',borderRadius:'20px 20px 0 0'}}>
             <CardTitle className="flex items-center gap-2" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}><Target className="w-6 h-6" />{text.goalsTitle}</CardTitle>
             <CardDescription style={{color:'#8A9BB0'}}>{text.goalsDesc}</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
-            <Button onClick={addGoal} variant="outline" className="w-full" style={{borderColor: 'rgba(196,163,90,0.5)', color: '#1B2430'}}><Plus className="w-5 h-5 ms-2" />{text.addGoal}</Button>
+            <Button onClick={addGoal} variant="outline" className="w-full" style={{borderColor:'#D4AF37', color: '#1B2430'}}><Plus className="w-5 h-5 ms-2" />{text.addGoal}</Button>
             {goals.map(goal => (
               <div key={goal.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -1583,7 +1583,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'rgba(240,208,128,0.2)', color:'#f0d080', border:'1px solid rgba(240,208,128,0.2)'}}>⚡ AI INSIGHTS</span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'rgba(212,175,55,0.20)',color:'#D4AF37',border:'1px solid rgba(212,175,55,0.30)',fontSize:'11px',fontWeight:'800',padding:'3px 10px',borderRadius:'20px'}}>⚡ AI INSIGHTS</span>
                   </div>
                   <h2 className="text-lg font-bold" style={{color:'#ffffff'}}>
                     {aiScore>=75?(isArabic?'وضعك المالي ممتاز 🌟':'Excellent Health 🌟'):aiScore>=50?(isArabic?'وضعك المالي جيد 👍':'Good Health 👍'):(isArabic?'يحتاج تحسين ⚠️':'Needs Work ⚠️')}
@@ -1654,7 +1654,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                       <div key={project.id} className="flex items-center gap-3 p-3 rounded-xl"
                         style={{background: feasible ? 'rgba(45,138,78,0.05)' : 'rgba(196,163,90,0.05)', border: '0.5px solid rgba(196,163,90,0.2)'}}>
                         <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
-                          style={{background:'rgba(196,163,90,0.1)'}}>{project.emoji}</div>
+                          style={{background:'rgba(212,175,55,0.08)'}}>{project.emoji}</div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold truncate" style={{color:'#1B2430'}}>{project.name}</p>
                           <p className="text-xs" style={{color:'#8A9BB0'}}>
@@ -1682,7 +1682,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                     );
                   })}
                   {breakdown.savings + breakdown.investment > 0 && (
-                    <div className="p-3 rounded-xl text-xs" style={{background:'rgba(127,92,72,0.06)',border:'0.5px solid rgba(127,92,72,0.15)',color:'#7f5c48'}}>
+                    <div className="p-3 rounded-xl text-xs" style={{background:'rgba(212,175,55,0.07)',border:'1px solid rgba(212,175,55,0.18)',color:'#8A6D2A',borderRadius:'12px'}}>
                       💡 {isArabic
                         ? 'بادخارك ' + formatCurrency(breakdown.savings + breakdown.investment) + ' ' + getCurrentCurrency().symbol + '/شهر — كافيه خلال ' + (breakdown.savings + breakdown.investment > 0 ? Math.ceil(15000 / (breakdown.savings + breakdown.investment)) : '—') + ' شهر، متجر إلكتروني خلال ' + (breakdown.savings + breakdown.investment > 0 ? Math.ceil(1500 / (breakdown.savings + breakdown.investment)) : '—') + ' شهر.'
                         : 'Saving ' + formatCurrency(breakdown.savings + breakdown.investment) + ' ' + getCurrentCurrency().symbol + '/mo — café in ' + (breakdown.savings + breakdown.investment > 0 ? Math.ceil(15000 / (breakdown.savings + breakdown.investment)) : '—') + ' months.'
@@ -1691,7 +1691,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                   )}
                 </>
               ) : (
-                <div className="text-center py-5 rounded-xl" style={{border:'1px dashed rgba(196,163,90,0.3)'}}>
+                <div className="text-center py-5 rounded-xl" style={{border:'1.5px dashed #E8E2D6'}}>
                   <p className="text-3xl mb-2">🚀</p>
                   <p className="text-sm" style={{color:'#8A9BB0'}}>{isArabic ? 'لم تضف مشاريع بعد' : 'No projects yet'}</p>
                   <Button onClick={() => router.push('/projects')} size="sm" className="mt-2" style={{background:'linear-gradient(135deg,#D4AF37,#C49B3A)',color:'#1a0f00'}}>
@@ -1703,13 +1703,23 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
           </Card>
         )}
 
-        {/* Smart Actions */}
-        <div className="space-y-3">
+        {/* ══ SMART ACTIONS ══ */}
+        <div className="space-y-3 sfm-au5">
+          <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'4px'}}>
+            <div style={{width:'4px',height:'22px',background:'linear-gradient(180deg,#D4AF37,#C49B3A)',borderRadius:'4px'}}/>
+            <h3 style={{fontSize:'16px',fontWeight:'700',color:'#1B2430',fontFamily:'Tajawal,sans-serif',margin:0}}>
+              {isArabic ? 'الإجراءات الذكية' : 'Smart Actions'}
+            </h3>
+          </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Button onClick={handlePrint} size="lg" className="h-14 flex-col gap-1 font-bold" style={{background:'#7f5c48',color:'white',boxShadow:'0 4px 16px rgba(127,92,72,0.3)'}}>
-              <Printer className="w-5 h-5"/>
-              <span className="text-xs">{isArabic?'طباعة':'Print'}</span>
-            </Button>
+            <button onClick={handlePrint} style={{
+              height:'72px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'6px',
+              background:'#1B2430',color:'#FFFFFF',border:'none',borderRadius:'16px',cursor:'pointer',
+              boxShadow:'0 4px 16px rgba(27,36,48,0.22)',transition:'all 0.2s',fontFamily:'Tajawal,sans-serif',
+            }}>
+              <Printer style={{width:'22px',height:'22px'}}/>
+              <span style={{fontSize:'12.5px',fontWeight:'700'}}>{isArabic?'طباعة التقرير':'Print Report'}</span>
+            </button>
             {[
               {id:'analysis', icon:'🧠', label: isArabic?'تحليل ذكي':'Analysis'},
               {id:'assessment', icon:'📊', label: isArabic?'تقييم مالي':'Assessment'},
@@ -1717,7 +1727,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
             ].map(btn => (
               <Button key={btn.id} onClick={() => runSmartAnalysis(btn.id)} size="lg" variant="outline"
                 className="h-14 flex-col gap-1 font-bold transition-all"
-                style={{borderColor:'rgba(196,163,90,0.5)',color:'#1B2430',background:smartPanel===btn.id?'rgba(127,92,72,0.1)':'white',transform:smartPanel===btn.id?'scale(0.97)':'scale(1)'}}>
+                style={{borderColor:'#D4AF37',color:'#1B2430',background:smartPanel===btn.id?'rgba(127,92,72,0.1)':'white',transform:smartPanel===btn.id?'scale(0.97)':'scale(1)'}}>
                 <span className="text-xl">{btn.icon}</span>
                 <span className="text-xs">{btn.label}</span>
               </Button>
@@ -1748,16 +1758,49 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
           </div>
         </div>
 
-        <div className="mt-8 pt-8 text-center text-sm" style={{borderTop:'1px solid #E8E2D6'}}>
-          <p className="mb-1" style={{color:'#8A9BB0'}}>{text.footer}</p>
-          <div className="flex items-center justify-center gap-2">
-            <span className="w-24 h-px" style={{background: 'rgba(212,175,55,0.35)'}}></span>
-            <span className="font-medium" style={{color:'#D4AF37'}}>powered by M.Q</span>
-            <span className="w-24 h-px" style={{background: 'rgba(212,175,55,0.35)'}}></span>
+        {/* ══ FOOTER ══ */}
+        <div style={{marginTop:'32px',paddingTop:'24px',borderTop:'1px solid #E8E2D6',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'12px'}}>
+          <div>
+            <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
+              <div style={{width:'28px',height:'28px',background:'linear-gradient(135deg,#1B2430,#2C3444)',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',fontWeight:'900',color:'#D4AF37'}}>SFM</div>
+              <span style={{fontSize:'14px',fontWeight:'700',color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}>المدير المالي الذكي</span>
+            </div>
+            <p style={{fontSize:'12px',color:'#8A9BB0',fontFamily:'Tajawal,sans-serif'}}>{text.footer}</p>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:'6px',padding:'6px 14px',borderRadius:'20px',background:'#F5F2EA',border:'1px solid #E8E2D6'}}>
+            <span style={{fontSize:'11px',color:'#8A9BB0',fontFamily:'Tajawal,sans-serif'}}>powered by</span>
+            <span style={{fontSize:'12px',fontWeight:'800',color:'#D4AF37',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>M.Q</span>
           </div>
         </div>
       </div>
       </div>
+
+      {/* ══ MOBILE BOTTOM NAVIGATION ══ */}
+      <nav className="sfm-bottom-nav no-print" dir="rtl">
+        <div className="sfm-bottom-nav-inner">
+          <button className="sfm-bottom-nav-item active" onClick={() => {}}>
+            <span className="sfm-bottom-nav-icon">⊞</span>
+            <span>{isArabic ? 'الرئيسية' : 'Home'}</span>
+          </button>
+          <button className="sfm-bottom-nav-item" onClick={() => router.push('/education/expenses')}>
+            <span className="sfm-bottom-nav-icon">📊</span>
+            <span>{isArabic ? 'المصروفات' : 'Expenses'}</span>
+          </button>
+          <button className="sfm-bottom-nav-add" onClick={() => {
+            const el = document.getElementById('salary-input');
+            if (el) el.scrollIntoView({behavior:'smooth'});
+          }}>＋</button>
+          <button className="sfm-bottom-nav-item" onClick={() => router.push('/projects')}>
+            <span className="sfm-bottom-nav-icon">🚀</span>
+            <span>{isArabic ? 'مشروعي' : 'Projects'}</span>
+          </button>
+          <button className="sfm-bottom-nav-item" onClick={() => router.push('/profile')}>
+            <span className="sfm-bottom-nav-icon">👤</span>
+            <span>{isArabic ? 'حسابي' : 'Profile'}</span>
+          </button>
+        </div>
+      </nav>
+
     </main>
     </>
   );
