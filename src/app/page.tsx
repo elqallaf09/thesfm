@@ -428,6 +428,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   const [manualInvestment, setManualInvestment] = useState<string>('');
   const [includeCharity, setIncludeCharity] = useState<boolean>(false);
   const [showAdvice, setShowAdvice] = useState<boolean>(false);
+  const [savingSection, setSavingSection] = useState<Record<string,boolean>>({});
+  const [savedSection, setSavedSection] = useState<Record<string,boolean>>({});
+  const [investAI, setInvestAI] = useState<Record<string, {loading:boolean; result:string|null}>>({});
   const [smartPanel, setSmartPanel] = useState<string>('');
   const [smartText, setSmartText] = useState<string>('');
   const [userProjects, setUserProjects] = useState<Array<{id:string;name:string;emoji:string;budget:string}>>([]);
@@ -852,6 +855,61 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     if (rows.length > 0) await supabase.from('investment_items').insert(rows);
   };
 
+  // ── Manual save handlers ──
+  const handleSaveSection = async (section: 'expenses'|'savings'|'investments') => {
+    if (!userId || isGuest) return;
+    setSavingSection(s=>({...s,[section]:true}));
+    try {
+      if (section==='expenses')   await saveExpenseItems(userId);
+      if (section==='savings')    await saveSavingsItems(userId);
+      if (section==='investments') await saveInvestmentItems(userId);
+      setSavedSection(s=>({...s,[section]:true}));
+      setTimeout(()=>setSavedSection(s=>({...s,[section]:false})),2200);
+    } finally { setSavingSection(s=>({...s,[section]:false})); }
+  };
+
+  // ── AI Investment Analysis ──
+  const analyzeInvestment = async (id: string, name: string, amount: string) => {
+    if (!name.trim()) return;
+    setInvestAI(prev=>({...prev,[id]:{loading:true,result:null}}));
+    // Local AI analysis (offline-capable)
+    const curr = getCurrentCurrency().symbol;
+    const amt = parseFloat(amount.replace(/[^\d.]/g,'')) || 0;
+    const ar = language === 'ar';
+    await new Promise(r=>setTimeout(r,900)); // simulate analysis
+    const name_lower = name.toLowerCase();
+    const isStock = name_lower.includes('سهم') || name_lower.includes('أسهم') || name_lower.includes('stock') || name_lower.includes('share');
+    const isGold = name_lower.includes('ذهب') || name_lower.includes('gold');
+    const isCrypto = name_lower.includes('بيتكوين') || name_lower.includes('crypto') || name_lower.includes('bitcoin') || name_lower.includes('eth');
+    const isRE = name_lower.includes('عقار') || name_lower.includes('property') || name_lower.includes('real estate');
+    const isFund = name_lower.includes('صندوق') || name_lower.includes('fund');
+    let risk = ar ? 'متوسطة' : 'Medium';
+    let riskEmoji = '🟡';
+    let insight = '';
+    if (isCrypto) { risk = ar?'عالية':'High'; riskEmoji='🔴'; insight = ar?`العملات الرقمية شديدة التقلب. لا تستثمر أكثر من 5-10% من محفظتك. المبلغ المُدخل ${amt} ${curr} يمثل جزءاً محدوداً — احرص على التنويع.`:`Crypto assets are highly volatile. Limit to 5-10% of your portfolio. Your ${amt} ${curr} entry requires careful risk management.`; }
+    else if (isStock) { risk = ar?'متوسطة':'Medium'; riskEmoji='🟡'; insight = ar?`الأسهم تحمل مخاطر متوسطة مع إمكانية عوائد مرتفعة. استثمار ${amt} ${curr} يُنصح بالاحتفاظ به طويل المدى (3-5 سنوات). راقب الأداء الفصلي وتقرير الأرباح.`:`Stocks carry medium risk with potential for high returns. Holding ${amt} ${curr} long-term (3-5 years) is advisable. Monitor quarterly earnings reports.`; }
+    else if (isGold) { risk = ar?'منخفضة':'Low'; riskEmoji='🟢'; insight = ar?`الذهب ملاذ آمن ممتاز للتحوط من التضخم. استثمار ${amt} ${curr} في الذهب يحمي قيمة ثروتك. يُنصح بتخصيص 10-15% من المحفظة للمعادن.`:`Gold is an excellent safe-haven hedge against inflation. Your ${amt} ${curr} allocation protects wealth value. Recommended: 10-15% of portfolio in precious metals.`; }
+    else if (isRE) { risk = ar?'منخفضة إلى متوسطة':'Low-Medium'; riskEmoji='🟢'; insight = ar?`العقارات استثمار طويل المدى ممتاز. يوفر دخلاً إيجارياً ثابتاً مع ارتفاع رأسمالي تاريخي. ${amt} ${curr} — تأكد من دراسة الموقع والسيولة قبل الاستثمار.`:`Real estate is an excellent long-term investment providing rental income + capital appreciation. ${amt} ${curr} — ensure due diligence on location and liquidity.`; }
+    else if (isFund) { risk = ar?'منخفضة':'Low'; riskEmoji='🟢'; insight = ar?`الصناديق الاستثمارية توفر تنويعاً تلقائياً وإدارة احترافية. استثمار ${amt} ${curr} في صندوق متنوع يقلل المخاطر بشكل كبير. تحقق من رسوم الإدارة (يفضل أقل من 1%).`:`Investment funds provide automatic diversification and professional management. ${amt} ${curr} in a diversified fund significantly reduces risk. Check management fees (prefer <1%).`; }
+    else { insight = ar?`تحليل "${name}": استثمار بقيمة ${amt} ${curr}. تأكد من دراسة هذا الأصل جيداً قبل الاستثمار. المخاطرة المتوسطة هي التقدير الافتراضي في غياب بيانات محددة.`:`Analysis for "${name}": Investment of ${amt} ${curr}. Ensure thorough research before committing. Medium risk is the default assessment without specific data.`; }
+    const result = ar
+      ? `🎯 نوع الأصل: ${isStock?'أسهم':isGold?'ذهب ومعادن':isCrypto?'عملات رقمية':isRE?'عقارات':isFund?'صناديق استثمارية':'أصل مالي عام'}
+
+${riskEmoji} مستوى المخاطرة: ${risk}
+
+💡 ${insight}
+
+📊 التوصية: ${amt>0&&amt<100?'مبلغ منخفض — مناسب للبداية.':amt>=100&&amt<1000?'مبلغ معقول — حافظ على التنويع.':'مبلغ كبير — تأكد من التنويع وعدم التركيز في أصل واحد.'}`
+      : `🎯 Asset Type: ${isStock?'Stocks':isGold?'Gold & Metals':isCrypto?'Cryptocurrency':isRE?'Real Estate':isFund?'Investment Fund':'General Financial Asset'}
+
+${riskEmoji} Risk Level: ${risk}
+
+💡 ${insight}
+
+📊 Recommendation: ${amt>0&&amt<100?'Small amount — good for testing.':amt>=100&&amt<1000?'Reasonable amount — maintain diversification.':'Significant amount — ensure diversification across multiple assets.'}`;
+    setInvestAI(prev=>({...prev,[id]:{loading:false,result}}));
+  };
+
   const saveGoals = async (uid: string) => {
     await supabase.from('financial_goals').delete().eq('user_id', uid);
     const rows = goals.filter(item => item.goal.trim()).map(item => ({ user_id: uid, goal: item.goal, amount: parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0, duration: item.duration, duration_unit: item.durationUnit, notes: item.notes }));
@@ -1029,15 +1087,22 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
 
           {/* Actions */}
           <div style={{display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
-            <Select value={language} onValueChange={(value) => setLanguage(value as 'ar'|'en')}>
-              <SelectTrigger style={{height:'36px',width:'100px',fontSize:'13px',borderColor:'#E8E2D6',background:'#F5F2EA',color:'#4A5568'}}>
-                <SelectValue/>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ar">العربية</SelectItem>
-                <SelectItem value="en">English</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Language switcher */}
+            <div style={{display:'flex',gap:'3px',background:'#F5F2EA',border:'1.5px solid #E8E2D6',borderRadius:'12px',padding:'3px'}}>
+              {(['ar','en'] as const).map(lang => (
+                <button key={lang} onClick={() => setLanguage(lang)} style={{
+                  padding:'6px 14px', borderRadius:'9px', border:'none', cursor:'pointer',
+                  fontSize:'13px', fontWeight:'700', fontFamily:'Tajawal,sans-serif',
+                  transition:'all 0.18s cubic-bezier(0.4,0,0.2,1)',
+                  background: language===lang ? '#FFFFFF' : 'transparent',
+                  color: language===lang ? '#1B2430' : '#8A9BB0',
+                  boxShadow: language===lang ? '0 1px 6px rgba(27,36,48,0.12)' : 'none',
+                  minWidth:'44px',
+                }}>
+                  {lang==='ar' ? 'عربي' : 'EN'}
+                </button>
+              ))}
+            </div>
 
             {username && !isGuest && (
               <button onClick={() => router.push('/profile')}
@@ -1334,13 +1399,27 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                     </div>
                   </div>
                   {expenseItems.map(item => (
-                    <div key={item.id} className="flex gap-2 items-center">
-                      <Input placeholder={text.expenseNamePlaceholder} value={item.name} onChange={(e) => updateExpenseItem(item.id, 'name', e.target.value)} className="flex-1 h-8 text-sm" style={{borderColor: 'rgba(127,92,72,0.3)'}} />
-                      <Input placeholder={text.amountPlaceholder} type="text" value={item.amount} onChange={(e) => updateExpenseItem(item.id, 'amount', e.target.value)} className="w-32 h-8 text-sm" dir="ltr" style={{borderColor: 'rgba(127,92,72,0.3)'}} />
-                      <Button variant="ghost" size="icon" onClick={() => removeExpenseItem(item.id)} className="h-8 w-8 text-red-400"><Trash2 className="w-4 h-4" /></Button>
+                    <div key={item.id} style={{display:'flex',gap:'8px',alignItems:'center',padding:'4px 0'}}>
+                      <Input placeholder={text.expenseNamePlaceholder} value={item.name} onChange={(e) => updateExpenseItem(item.id, 'name', e.target.value)}
+                        className="flex-1" style={{height:'38px',fontSize:'14px',borderColor:'#E8E2D6',borderRadius:'10px'}}/>
+                      <div style={{display:'flex',alignItems:'center',border:'1.5px solid #E8E2D6',borderRadius:'10px',overflow:'hidden',background:'#FAFAF7',flexShrink:0}}>
+                        <span style={{padding:'0 8px',fontSize:'11px',fontWeight:'700',color:'#D4AF37',borderLeft:'1px solid #E8E2D6',height:'38px',display:'flex',alignItems:'center',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{getCurrentCurrency().symbol}</span>
+                        <input type="text" placeholder="0.00" value={item.amount} onChange={(e) => updateExpenseItem(item.id, 'amount', e.target.value)}
+                          dir="ltr" style={{width:'80px',height:'38px',padding:'0 8px',background:'transparent',border:'none',outline:'none',fontSize:'14px',fontWeight:'700',color:'#1B2430',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}/>
+                      </div>
+                      <button onClick={() => removeExpenseItem(item.id)} style={{width:'34px',height:'34px',background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',borderRadius:'8px',cursor:'pointer',color:'#EF4444',fontSize:'14px',flexShrink:0}}>✕</button>
                     </div>
                   ))}
-                  {expenseItems.length > 0 && <div className="flex justify-end pt-2" style={{borderTop: '0.5px solid rgba(127,92,72,0.2)'}}><span className="text-sm font-semibold" style={{color:'#1B2430'}}>{text.sumExpenses}: {formatCurrency(expenseItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol}</span></div>}
+                  {expenseItems.length > 0 && (
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',paddingTop:'12px',borderTop:'1px solid #E8E2D6',marginTop:'4px'}}>
+                      <span style={{fontSize:'13.5px',fontWeight:'700',color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}>
+                        {text.sumExpenses}: <span style={{color:'#EF4444',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{formatCurrency(expenseItems.reduce((s,i)=>s+(parseFloat(i.amount.replace(/[^\d.]/g,''))||0),0))}</span> {getCurrentCurrency().symbol}
+                      </span>
+                      <button onClick={() => handleSaveSection('expenses')} style={{display:'flex',alignItems:'center',gap:'7px',padding:'9px 20px',background:savedSection['expenses']?'rgba(34,197,94,0.10)':'linear-gradient(135deg,#1B2430,#2C3444)',border:`1.5px solid ${savedSection['expenses']?'#22C55E':'transparent'}`,borderRadius:'12px',color:savedSection['expenses']?'#22C55E':'#fff',fontSize:'13px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif',transition:'all 0.2s',minWidth:'90px',justifyContent:'center'}}>
+                        {savingSection['expenses'] ? <span style={{animation:'spin 1s linear infinite',display:'inline-block',borderRadius:'50%',border:'2px solid rgba(255,255,255,0.25)',borderTopColor:'#fff',width:'14px',height:'14px'}}/> : savedSection['expenses'] ? '✅ محفوظ' : isArabic?'💾 حفظ':'💾 Save'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1361,13 +1440,27 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                     </div>
                   </div>
                   {savingsItems.map(item => (
-                    <div key={item.id} className="flex gap-2 items-center">
-                      <Input placeholder={text.savingNamePlaceholder} value={item.name} onChange={(e) => updateSavingsItem(item.id, 'name', e.target.value)} className="flex-1 h-8 text-sm" style={{borderColor:'#E8E2D6'}} />
-                      <Input placeholder={text.amountPlaceholder} type="text" value={item.amount} onChange={(e) => updateSavingsItem(item.id, 'amount', e.target.value)} className="w-32 h-8 text-sm" dir="ltr" style={{borderColor:'#E8E2D6'}} />
-                      <Button variant="ghost" size="icon" onClick={() => removeSavingsItem(item.id)} className="h-8 w-8 text-red-400"><Trash2 className="w-4 h-4" /></Button>
+                    <div key={item.id} style={{display:'flex',gap:'8px',alignItems:'center',padding:'4px 0'}}>
+                      <Input placeholder={text.savingNamePlaceholder} value={item.name} onChange={(e) => updateSavingsItem(item.id, 'name', e.target.value)}
+                        className="flex-1" style={{height:'38px',fontSize:'14px',borderColor:'#E8E2D6',borderRadius:'10px'}}/>
+                      <div style={{display:'flex',alignItems:'center',border:'1.5px solid #E8E2D6',borderRadius:'10px',overflow:'hidden',background:'#FAFAF7',flexShrink:0}}>
+                        <span style={{padding:'0 8px',fontSize:'11px',fontWeight:'700',color:'#22C55E',borderLeft:'1px solid #E8E2D6',height:'38px',display:'flex',alignItems:'center',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{getCurrentCurrency().symbol}</span>
+                        <input type="text" placeholder="0.00" value={item.amount} onChange={(e) => updateSavingsItem(item.id, 'amount', e.target.value)}
+                          dir="ltr" style={{width:'80px',height:'38px',padding:'0 8px',background:'transparent',border:'none',outline:'none',fontSize:'14px',fontWeight:'700',color:'#1B2430',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}/>
+                      </div>
+                      <button onClick={() => removeSavingsItem(item.id)} style={{width:'34px',height:'34px',background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',borderRadius:'8px',cursor:'pointer',color:'#EF4444',fontSize:'14px',flexShrink:0}}>✕</button>
                     </div>
                   ))}
-                  {savingsItems.length > 0 && <div className="flex justify-end pt-2" style={{borderTop: '0.5px solid rgba(196,163,90,0.2)'}}><span className="text-sm font-semibold" style={{color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}>{text.sumSavings}: {formatCurrency(savingsItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol}</span></div>}
+                  {savingsItems.length > 0 && (
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',paddingTop:'12px',borderTop:'1px solid #E8E2D6',marginTop:'4px'}}>
+                      <span style={{fontSize:'13.5px',fontWeight:'700',color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}>
+                        {text.sumSavings}: <span style={{color:'#22C55E',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{formatCurrency(savingsItems.reduce((s,i)=>s+(parseFloat(i.amount.replace(/[^\d.]/g,''))||0),0))}</span> {getCurrentCurrency().symbol}
+                      </span>
+                      <button onClick={() => handleSaveSection('savings')} style={{display:'flex',alignItems:'center',gap:'7px',padding:'9px 20px',background:savedSection['savings']?'rgba(34,197,94,0.10)':'linear-gradient(135deg,#1B2430,#2C3444)',border:`1.5px solid ${savedSection['savings']?'#22C55E':'transparent'}`,borderRadius:'12px',color:savedSection['savings']?'#22C55E':'#fff',fontSize:'13px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif',transition:'all 0.2s',minWidth:'90px',justifyContent:'center'}}>
+                        {savingSection['savings'] ? <span style={{animation:'spin 1s linear infinite',display:'inline-block',borderRadius:'50%',border:'2px solid rgba(255,255,255,0.25)',borderTopColor:'#fff',width:'14px',height:'14px'}}/> : savedSection['savings'] ? '✅ محفوظ' : isArabic?'💾 حفظ':'💾 Save'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1388,13 +1481,55 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                     </div>
                   </div>
                   {investmentItems.map(item => (
-                    <div key={item.id} className="flex gap-2 items-center">
-                      <Input placeholder={text.investmentNamePlaceholder} value={item.name} onChange={(e) => updateInvestmentItem(item.id, 'name', e.target.value)} className="flex-1 h-8 text-sm" style={{borderColor: 'rgba(180,140,60,0.3)'}} />
-                      <Input placeholder={text.amountPlaceholder} type="text" value={item.amount} onChange={(e) => updateInvestmentItem(item.id, 'amount', e.target.value)} className="w-32 h-8 text-sm" dir="ltr" style={{borderColor: 'rgba(180,140,60,0.3)'}} />
-                      <Button variant="ghost" size="icon" onClick={() => removeInvestmentItem(item.id)} className="h-8 w-8 text-red-400"><Trash2 className="w-4 h-4" /></Button>
+                    <div key={item.id}>
+                      {/* Input row */}
+                      <div style={{display:'flex',gap:'8px',alignItems:'center',padding:'4px 0'}}>
+                        <Input placeholder={text.investmentNamePlaceholder} value={item.name} onChange={(e) => updateInvestmentItem(item.id, 'name', e.target.value)}
+                          className="flex-1" style={{height:'38px',fontSize:'14px',borderColor:'#E8E2D6',borderRadius:'10px'}}/>
+                        <div style={{display:'flex',alignItems:'center',border:'1.5px solid #E8E2D6',borderRadius:'10px',overflow:'hidden',background:'#FAFAF7',flexShrink:0}}>
+                          <span style={{padding:'0 8px',fontSize:'11px',fontWeight:'700',color:'#D4AF37',borderLeft:'1px solid #E8E2D6',height:'38px',display:'flex',alignItems:'center',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{getCurrentCurrency().symbol}</span>
+                          <input type="text" placeholder="0.00" value={item.amount} onChange={(e) => updateInvestmentItem(item.id, 'amount', e.target.value)}
+                            dir="ltr" style={{width:'80px',height:'38px',padding:'0 8px',background:'transparent',border:'none',outline:'none',fontSize:'14px',fontWeight:'700',color:'#1B2430',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}/>
+                        </div>
+                        <button onClick={() => { analyzeInvestment(item.id, item.name, item.amount); }}
+                          disabled={!item.name.trim()}
+                          style={{padding:'0 12px',height:'38px',background:'linear-gradient(135deg,#D4AF37,#C49B3A)',border:'none',borderRadius:'10px',color:'#1B2430',fontSize:'12px',fontWeight:'700',cursor:item.name.trim()?'pointer':'not-allowed',opacity:item.name.trim()?1:0.45,flexShrink:0,fontFamily:'Tajawal,sans-serif',whiteSpace:'nowrap'}}>
+                          🤖 {isArabic?'تحليل':'Analyze'}
+                        </button>
+                        <button onClick={() => removeInvestmentItem(item.id)} style={{width:'34px',height:'34px',background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',borderRadius:'8px',cursor:'pointer',color:'#EF4444',fontSize:'14px',flexShrink:0}}>✕</button>
+                      </div>
+                      {/* AI Analysis card */}
+                      {investAI[item.id] && (
+                        <div style={{margin:'8px 0 4px',padding:'14px 16px',background:'linear-gradient(135deg,#1B2430,#2C3444)',borderRadius:'14px',border:'1px solid rgba(212,175,55,0.2)'}}>
+                          {investAI[item.id].loading ? (
+                            <div style={{display:'flex',alignItems:'center',gap:'10px',color:'rgba(255,255,255,0.6)',fontSize:'13px',fontFamily:'Tajawal,sans-serif'}}>
+                              <span style={{animation:'spin 1s linear infinite',display:'inline-block',borderRadius:'50%',border:'2px solid rgba(255,255,255,0.2)',borderTopColor:'#D4AF37',width:'18px',height:'18px',flexShrink:0}}/>
+                              {isArabic?'جارٍ تحليل الاستثمار...':'Analyzing investment...'}
+                            </div>
+                          ) : (
+                            <div>
+                              <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px'}}>
+                                <div style={{width:'28px',height:'28px',background:'rgba(212,175,55,0.18)',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',border:'1px solid rgba(212,175,55,0.28)'}}>🤖</div>
+                                <span style={{fontSize:'13px',fontWeight:'700',color:'#D4AF37',fontFamily:'Tajawal,sans-serif'}}>{isArabic?'تحليل SFM الذكي':'SFM AI Analysis'}</span>
+                                <span style={{marginRight:'auto',fontSize:'11px',fontWeight:'700',padding:'2px 8px',borderRadius:'20px',background:'rgba(212,175,55,0.15)',color:'#D4AF37',border:'1px solid rgba(212,175,55,0.25)'}}>AI</span>
+                              </div>
+                              <p style={{fontSize:'13.5px',color:'rgba(255,255,255,0.82)',lineHeight:1.65,fontFamily:'Tajawal,sans-serif',whiteSpace:'pre-line'}}>{investAI[item.id].result}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
-                  {investmentItems.length > 0 && <div className="flex justify-end pt-2" style={{borderTop: '0.5px solid rgba(180,140,60,0.2)'}}><span className="text-sm font-semibold" style={{color: '#8a6020'}}>{text.sumInvestment}: {formatCurrency(investmentItems.reduce((sum, item) => sum + (parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0), 0))} {getCurrentCurrency().symbol}</span></div>}
+                  {investmentItems.length > 0 && (
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',paddingTop:'12px',borderTop:'1px solid #E8E2D6',marginTop:'4px'}}>
+                      <span style={{fontSize:'13.5px',fontWeight:'700',color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}>
+                        {text.sumInvestment}: <span style={{color:'#D4AF37',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{formatCurrency(investmentItems.reduce((s,i)=>s+(parseFloat(i.amount.replace(/[^\d.]/g,''))||0),0))}</span> {getCurrentCurrency().symbol}
+                      </span>
+                      <button onClick={() => handleSaveSection('investments')} style={{display:'flex',alignItems:'center',gap:'7px',padding:'9px 20px',background:savedSection['investments']?'rgba(34,197,94,0.10)':'linear-gradient(135deg,#1B2430,#2C3444)',border:`1.5px solid ${savedSection['investments']?'#22C55E':'transparent'}`,borderRadius:'12px',color:savedSection['investments']?'#22C55E':'#fff',fontSize:'13px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif',transition:'all 0.2s',minWidth:'90px',justifyContent:'center'}}>
+                        {savingSection['investments'] ? <span style={{animation:'spin 1s linear infinite',display:'inline-block',borderRadius:'50%',border:'2px solid rgba(255,255,255,0.25)',borderTopColor:'#fff',width:'14px',height:'14px'}}/> : savedSection['investments'] ? '✅ محفوظ' : isArabic?'💾 حفظ':'💾 Save'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1706,8 +1841,8 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
                 <CardTitle className="flex items-center gap-2 text-base" style={{color:'#1B2430'}}>
                   🚀 {isArabic ? 'مشروعي — متى أبدأ؟' : 'My Projects — When can I start?'}
                 </CardTitle>
-                <Button onClick={() => router.push('/projects')} size="sm" style={{background:'#7f5c48',color:'white'}} className="text-xs">
-                  {isArabic ? 'إدارة مشروعي' : 'Manage'}
+                <Button onClick={() => router.push('/projects')} size="sm" style={{background:'linear-gradient(135deg,#D4AF37,#C49B3A)',color:'#1B2430',border:'none',borderRadius:'12px',fontWeight:'800',fontSize:'13px',padding:'0 18px',height:'36px',boxShadow:'0 4px 14px rgba(212,175,55,0.30)',fontFamily:'Tajawal,sans-serif',display:'flex',alignItems:'center',gap:'6px'}}>
+                  ⚡ {isArabic ? 'إدارة مشروعي' : 'Manage Projects'}
                 </Button>
               </div>
             </CardHeader>
