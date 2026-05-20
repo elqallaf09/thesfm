@@ -1,7 +1,7 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { Lang } from './translations';
-import { t as translate, TR } from './translations';
+import type { Lang } from '@/lib/translations';
+import { t as translate, TR } from '@/lib/translations';
 
 const STORAGE_KEY = 'sfm_lang';
 
