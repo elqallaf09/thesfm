@@ -127,35 +127,6 @@ const pageMeta: Record<PageKind, { title: LangText; subtitle: LangText; accent: 
   },
 };
 
-const sampleExpenses: MoneyItem[] = [
-  { id: 'sample-exp-1', name: 'السكن', amount: 420 },
-  { id: 'sample-exp-2', name: 'الطعام', amount: 185 },
-  { id: 'sample-exp-3', name: 'المواصلات', amount: 95 },
-];
-
-const sampleIncome: MoneyItem[] = [
-  { id: 'sample-inc-1', name: 'Salary', amount: 1450 },
-  { id: 'sample-inc-2', name: 'Side income', amount: 280 },
-  { id: 'sample-inc-3', name: 'Business income', amount: 420 },
-];
-
-const sampleInvestments: MoneyItem[] = [
-  { id: 'sample-inv-1', name: 'ETF Portfolio', amount: 850 },
-  { id: 'sample-inv-2', name: 'Gold', amount: 320 },
-  { id: 'sample-inv-3', name: 'Cash contribution', amount: 180 },
-];
-
-const sampleSavings: MoneyItem[] = [
-  { id: 'sample-sav-1', name: 'Emergency fund', amount: 700 },
-  { id: 'sample-sav-2', name: 'Travel fund', amount: 250 },
-];
-
-const sampleGoals: GoalItem[] = [
-  { id: 'sample-goal-1', name: 'شراء سيارة', target_amount: 8000, current_amount: 2800, deadline: null },
-  { id: 'sample-goal-2', name: 'دفعة منزل', target_amount: 25000, current_amount: 6400, deadline: null },
-  { id: 'sample-goal-3', name: 'صندوق الطوارئ', target_amount: 3000, current_amount: 1700, deadline: null },
-];
-
 function pick(text: LangText, isAr: boolean) {
   return isAr ? text.ar : text.en;
 }
@@ -239,11 +210,11 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   }, [user]);
 
   const data = useMemo(() => {
-    const income = snapshot.income.length ? snapshot.income : sampleIncome;
-    const expenses = snapshot.expenses.length ? snapshot.expenses : sampleExpenses;
-    const savings = snapshot.savings.length ? snapshot.savings : sampleSavings;
-    const investments = snapshot.investments.length ? snapshot.investments : sampleInvestments;
-    const goals = snapshot.goals.length ? snapshot.goals : sampleGoals;
+    const income = snapshot.income;
+    const expenses = snapshot.expenses;
+    const savings = snapshot.savings;
+    const investments = snapshot.investments;
+    const goals = snapshot.goals;
     const totalIncome = sum(income);
     const totalExpenses = sum(expenses);
     const totalSavings = sum(savings);
@@ -415,6 +386,9 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               {dataLoading && <span className="loading-pill">{isAr ? 'جاري التحميل' : 'Loading'}</span>}
             </div>
             <div className="row-list">
+              {rows.length === 0 && (
+                <div className="empty-state">{isAr ? 'لا توجد بيانات محفوظة حالياً' : 'No saved data yet'}</div>
+              )}
               {rows.map(row => (
                 <div className="data-row" key={row.title}>
                   <div>
@@ -659,7 +633,16 @@ function buildPrimaryActions(kind: PageKind, isAr: boolean, router: ReturnType<t
   if (kind === 'reports') {
     return [
       { label: isAr ? 'طباعة' : 'Print', icon: Printer, variant: 'print' as const, onClick: () => window.print() },
-      { label: isAr ? 'تصدير' : 'Export', icon: Download, variant: 'default' as const, onClick: () => window.print() },
+      { label: isAr ? 'تصدير' : 'Export', icon: Download, variant: 'default' as const, onClick: () => {
+        const html = document.querySelector('.sfm-main')?.innerHTML || document.body.innerHTML;
+        const blob = new Blob([`<!doctype html><html><head><meta charset="utf-8"><title>SFM Report</title></head><body>${html}</body></html>`], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'sfm-report.html';
+        a.click();
+        URL.revokeObjectURL(url);
+      } },
     ];
   }
   if (kind === 'ai') {
@@ -704,7 +687,7 @@ const baseStyles = `
   .kpi-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}.kpi-card,.panel{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:20px;box-shadow:0 4px 22px rgba(90,67,51,.06)}
   .kpi-card{padding:18px;position:relative;overflow:hidden}.kpi-card>span{position:absolute;inset-inline-start:0;top:0;width:4px;height:100%}.kpi-card p{font-size:12px;color:#9A6C3C;font-weight:800;margin:0 0 7px}.kpi-card strong{font-size:23px;font-weight:900;display:block}.kpi-card small{display:block;margin-top:8px;color:#7C6A5D;font-size:12px;line-height:1.6}
   .content-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(280px,.8fr);gap:18px}.panel{padding:20px}.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.panel-head p{margin:0 0 4px;font-size:11px;color:#9A6C3C;font-weight:800}.panel-head h3{margin:0;font-size:18px}.loading-pill{font-size:11px;font-weight:800;color:#D8AE63;background:rgba(216,174,99,.11);border-radius:999px;padding:5px 10px}
-  .row-list{display:grid;gap:10px}.data-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid rgba(216,174,99,.08)}.data-row:last-child{border-bottom:0}.data-row strong{display:block;font-size:14px}.data-row span{display:block;color:#8B7A6D;font-size:12px;margin-top:4px}.data-row b{font-size:14px;color:#D8AE63;white-space:nowrap}
+  .row-list{display:grid;gap:10px}.empty-state{padding:22px;border:1px dashed rgba(216,174,99,.25);border-radius:16px;color:#9A6C3C;text-align:center;font-size:13px;font-weight:800}.data-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid rgba(216,174,99,.08)}.data-row:last-child{border-bottom:0}.data-row strong{display:block;font-size:14px}.data-row span{display:block;color:#8B7A6D;font-size:12px;margin-top:4px}.data-row b{font-size:14px;color:#D8AE63;white-space:nowrap}
   .insight-list{display:grid;gap:12px}.insight-list>div{display:flex;gap:10px;padding:12px;border-radius:14px;background:rgba(216,174,99,.07)}.insight-list svg{color:#D8AE63;flex-shrink:0}.insight-list strong{display:block;font-size:13px}.insight-list span{display:block;font-size:12px;color:#7C6A5D;line-height:1.6;margin-top:3px}
   .summary-band,.ai-panel{margin-top:18px;background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:20px;padding:18px 20px;display:flex;align-items:center;gap:14px}.summary-band svg{color:#D8AE63}.summary-band strong,.ai-panel h3{font-size:16px}.summary-band p,.ai-panel p{margin:4px 0 0;color:#7C6A5D;line-height:1.7;font-size:13px}
   .ai-panel{align-items:stretch;justify-content:space-between}.chat-history{display:grid;gap:8px;min-width:min(460px,100%);max-height:190px;overflow:auto;margin-bottom:10px}.chat-history>div{padding:10px 12px;border-radius:14px;font-size:13px;line-height:1.6}.chat-history .user{background:#111;color:#FFFDFC}.chat-history .assistant{background:rgba(216,174,99,.11);color:#5B4332}.chat-box{display:flex;gap:10px;min-width:min(460px,100%)}.chat-box input{height:46px;border:1.5px solid rgba(216,174,99,.22);border-radius:14px;padding:0 14px;background:#F7F3EA;min-width:0;flex:1;font:600 14px Tajawal,Arial,sans-serif;color:#111}.chat-box button{width:46px;border-radius:14px;border:0;background:#111;color:#D8AE63;display:grid;place-items:center;cursor:pointer}.chat-box button:disabled{opacity:.55;cursor:wait}

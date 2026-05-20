@@ -204,7 +204,7 @@ export async function GET(request: NextRequest) {
   try {
     const items = await fetchMarketItems(category);
     const live = items.length > 0;
-    const responseItems = live ? items : FALLBACK_ITEMS[category];
+    const responseItems = live ? items : [];
 
     return NextResponse.json(
       {
@@ -223,7 +223,7 @@ export async function GET(request: NextRequest) {
       {
         live: false,
         updatedAt: new Date().toISOString(),
-        items: FALLBACK_ITEMS[category],
+        items: [],
       },
       {
         headers: {

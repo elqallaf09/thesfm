@@ -15,6 +15,7 @@ interface ProjectForm {
   riskLevel: number; needs: string[]; goal: string;
   startTimeline: string; notes: string;
   progress: Record<string, boolean>;
+  feasibilityTypes: string[];
 }
 interface AIAnalysis { score: number; successRate: string; strengths: string[]; weaknesses: string[]; suggestions: string[]; marketStatus: string; }
 interface Project extends ProjectForm { id: string; analysis?: AIAnalysis; expanded?: boolean; createdAt?: string; }
@@ -38,7 +39,17 @@ const emptyForm: ProjectForm = {
   monthlyExpenses:'',monthlyRevenue:'',startDate:'',status:'فكرة',
   riskLevel:33,needs:[],goal:'',startTimeline:'',notes:'',
   progress:{idea:true,feasibility:false,funding:false,license:false,launch:false},
+  feasibilityTypes:[],
 };
+const FEASIBILITY_TYPES = [
+  { id: 'economic', icon: '💰', color: '#D8AE63', title: 'الجدوى الاقتصادية', desc: 'دراسة الربحية المتوقعة وقياس العوائد مقابل التكاليف.' },
+  { id: 'market', icon: '📈', color: '#22C55E', title: 'الجدوى السوقية', desc: 'تحليل السوق المستهدف وحجم الطلب والمنافسة.' },
+  { id: 'technical', icon: '⚙️', color: '#3B82F6', title: 'الجدوى الفنية / التشغيلية', desc: 'قياس إمكانية تنفيذ المشروع فنياً ولوجستياً.' },
+  { id: 'legal', icon: '⚖️', color: '#8B5CF6', title: 'الجدوى القانونية', desc: 'التأكد من توافق المشروع مع القوانين والأنظمة.' },
+  { id: 'financial', icon: '💵', color: '#F59E0B', title: 'الجدوى المالية', desc: 'تحليل مالي متعمق ومصادر التمويل.' },
+  { id: 'esg', icon: '🌱', color: '#16A34A', title: 'الجدوى البيئية والاجتماعية', desc: 'تقييم الأثر البيئي والاجتماعي للمشروع.' },
+  { id: 'marketing', icon: '🎯', color: '#EC4899', title: 'الجدوى التسويقية والرقمية', desc: 'استراتيجية التسويق والحضور الرقمي.' },
+];
 
 /* ─── Helpers ─── */
 const riskInfo = (v: number) => v < 34
@@ -124,6 +135,7 @@ export default function ProjectsPage() {
       needs: p.notes?.needs || [], goal: p.notes?.goal || '',
       startTimeline: p.notes?.startTimeline || '', notes: p.notes?.notes || '',
       progress: p.notes?.progress || emptyForm.progress,
+      feasibilityTypes: p.notes?.feasibility_types || p.notes?.feasibilityTypes || [],
       analysis: p.notes?.analysis, expanded: false, createdAt: p.created_at,
     })));
   };
@@ -146,18 +158,26 @@ export default function ProjectsPage() {
   const saveProject = async () => {
     if (!form.name.trim()) return;
     setSaving(true);
-    const analysis = await analyzeProject();
-    setAnalyzing(false);
-    const notes = { ...form, analysis };
-    if (editingId && user) {
-      await supabase.from('projects').update({ name: form.name, emoji: form.emoji, budget: form.capital, timeline: form.startTimeline, notes }).eq('id', editingId);
-      setProjects(prev => prev.map(p => p.id === editingId ? { ...form, id: editingId, analysis: analysis || p.analysis, expanded: p.expanded } : p));
-      setEditingId(null);
-    } else if (user) {
-      const { data } = await supabase.from('projects').insert({ user_id: user.id, name: form.name, emoji: form.emoji, budget: form.capital, timeline: form.startTimeline, duration_unit: 'month', steps: [], notes }).select().single();
-      if (data) setProjects(prev => [{ ...form, id: data.id, analysis: analysis || undefined, expanded: false }, ...prev]);
+    try {
+      const analysis = await analyzeProject();
+      setAnalyzing(false);
+      const notes = { ...form, feasibility_types: form.feasibilityTypes, analysis };
+      if (editingId && user) {
+        const { data, error } = await supabase.from('projects').update({ name: form.name, emoji: form.emoji, budget: form.capital, timeline: form.startTimeline, notes }).eq('id', editingId).select().single();
+        if (error) throw new Error(error.message);
+        setProjects(prev => prev.map(p => p.id === editingId ? { ...form, id: data.id, analysis: analysis || p.analysis, expanded: p.expanded } : p));
+        setEditingId(null);
+      } else if (user) {
+        const { data, error } = await supabase.from('projects').insert({ user_id: user.id, name: form.name, emoji: form.emoji, budget: form.capital, timeline: form.startTimeline, duration_unit: 'month', steps: [], notes }).select().single();
+        if (error) throw new Error(error.message);
+        if (data) setProjects(prev => [{ ...form, id: data.id, analysis: analysis || undefined, expanded: false }, ...prev]);
+      }
+      setForm(emptyForm); setShowForm(false); setFormStep(0);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر حفظ المشروع');
+    } finally {
+      setSaving(false);
     }
-    setForm(emptyForm); setShowForm(false); setSaving(false); setFormStep(0);
   };
 
   const removeProject = async (id: string) => {
@@ -166,7 +186,7 @@ export default function ProjectsPage() {
   };
 
   const startEdit = (project: Project) => {
-    setForm({ name: project.name, emoji: project.emoji, type: project.type, idea: project.idea, capital: project.capital, expectedProfit: project.expectedProfit, currentProfit: project.currentProfit, monthlyExpenses: project.monthlyExpenses, monthlyRevenue: project.monthlyRevenue, startDate: project.startDate, status: project.status, riskLevel: project.riskLevel, needs: project.needs, goal: project.goal, startTimeline: project.startTimeline, notes: project.notes, progress: project.progress });
+    setForm({ name: project.name, emoji: project.emoji, type: project.type, idea: project.idea, capital: project.capital, expectedProfit: project.expectedProfit, currentProfit: project.currentProfit, monthlyExpenses: project.monthlyExpenses, monthlyRevenue: project.monthlyRevenue, startDate: project.startDate, status: project.status, riskLevel: project.riskLevel, needs: project.needs, goal: project.goal, startTimeline: project.startTimeline, notes: project.notes, progress: project.progress, feasibilityTypes: project.feasibilityTypes || [] });
     setEditingId(project.id); setShowForm(true); setFormStep(0);
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
   };
@@ -198,7 +218,7 @@ export default function ProjectsPage() {
   const totalCurrentProfit = projects.reduce((s, p) => s + fmt(p.currentProfit), 0);
   const activeProjects = projects.filter(p => p.status === 'نشط').length;
   const S = (d: number) => ({ opacity: mounted ? 1 : 0, transform: mounted ? 'translateY(0)' : 'translateY(18px)', transition: `opacity .5s ease ${d}ms, transform .5s ease ${d}ms` });
-  const STEP_LABELS = ['الأساسيات', 'المالية', 'التفاصيل', 'التقدم'];
+  const STEP_LABELS = ['الأساسيات', 'المالية', 'التفاصيل', 'التقدم', 'نوع دراسة الجدوى'];
 
   return (<>
     <style>{`
@@ -259,7 +279,12 @@ export default function ProjectsPage() {
             </button>
           ))}
           <div style={{ height: '1px', background: 'rgba(216,174,99,.08)', margin: '8px 6px' }} />
-          <button className="nav-item" onClick={() => { supabase.auth.signOut(); router.push('/'); }}>
+          <button className="nav-item" onClick={async () => {
+            await supabase.auth.signOut();
+            localStorage.clear();
+            router.push('/');
+            router.refresh();
+          }}>
             <span style={{ fontSize: '16px', width: '20px', textAlign: 'center' }}>⤴</span>تسجيل الخروج
           </button>
         </nav>
@@ -276,6 +301,9 @@ export default function ProjectsPage() {
                 <h1 style={{ fontSize: 'clamp(22px,3vw,30px)', fontWeight: '900', color: '#111111', marginBottom: '4px' }}>🚀 مشاريعي</h1>
                 <p style={{ fontSize: '13px', color: '#9A6C3C' }}>تابع مشاريعك وخططك المالية والاستثمارية</p>
               </div>
+              <button className="pbtn pbtn-o" style={{ padding: '11px 18px', fontSize: '14px', marginLeft: '10px' }} onClick={() => router.push('/projects/ad-calculator')}>
+                🎯 حاسبة ميزانية حملة إعلانية
+              </button>
               <button className="pbtn pbtn-g" style={{ padding: '11px 22px', fontSize: '14px' }}
                 onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyForm); setFormStep(0); setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth' }), 100); }}>
                 {showForm ? <><X className="w-4 h-4" /> إغلاق</> : <><Plus className="w-4 h-4" /> مشروع جديد</>}
@@ -449,13 +477,31 @@ export default function ProjectsPage() {
                   </div>
                 </div>
               )}
+              {formStep === 4 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ fontSize: '13px', color: '#9A6C3C' }}>اختر نوع دراسة الجدوى المطلوبة. يمكن اختيار أكثر من نوع.</div>
+                  <div className="g2" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: '12px' }}>
+                    {FEASIBILITY_TYPES.map(type => {
+                      const active = form.feasibilityTypes.includes(type.id);
+                      return (
+                        <button key={type.id} onClick={() => setForm(f => ({ ...f, feasibilityTypes: active ? f.feasibilityTypes.filter(x => x !== type.id) : [...f.feasibilityTypes, type.id] }))} style={{ textAlign: 'right', border: `1.8px solid ${active ? '#D8AE63' : 'rgba(216,174,99,.18)'}`, background: active ? 'rgba(216,174,99,.10)' : '#FAF8F2', borderRadius: '16px', padding: '14px', cursor: 'pointer', fontFamily: 'Tajawal,sans-serif' }}>
+                          <div style={{ fontSize: '26px', color: type.color }}>{type.icon}</div>
+                          <div style={{ fontSize: '13px', fontWeight: 800, color: '#111', marginTop: '8px' }}>{type.title}</div>
+                          <div style={{ fontSize: '11px', color: '#9A6C3C', lineHeight: 1.6, marginTop: '5px' }}>{type.desc}</div>
+                          <div style={{ marginTop: '9px', fontSize: '11px', color: type.color, fontWeight: 800 }}>{active ? 'تم الاختيار' : 'اختر'}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Nav buttons */}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '26px', paddingTop: '18px', borderTop: '1px solid rgba(216,174,99,.10)' }}>
                 <button className="pbtn pbtn-o" style={{ padding: '10px 20px', fontSize: '14px' }} onClick={() => formStep > 0 ? setFormStep(s => s - 1) : (setShowForm(false), setEditingId(null))}>
                   {formStep > 0 ? '← السابق' : 'إلغاء'}
                 </button>
-                {formStep < 3 ? (
+                {formStep < STEP_LABELS.length - 1 ? (
                   <button className="pbtn pbtn-d" style={{ padding: '10px 22px', fontSize: '14px' }} disabled={formStep === 0 && !form.name.trim()} onClick={() => setFormStep(s => s + 1)}>
                     التالي →
                   </button>

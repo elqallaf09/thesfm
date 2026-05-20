@@ -432,7 +432,12 @@ export default function DashboardPage(){
               </button>
             ))}
             <div style={{height:'1px',background:'rgba(216,174,99,.08)',margin:'8px 6px'}}/>
-            <button className="nav-item" onClick={()=>{supabase.auth.signOut();router.push('/');}}>
+            <button className="nav-item" onClick={async()=>{
+              await supabase.auth.signOut();
+              localStorage.clear();
+              router.push('/');
+              router.refresh();
+            }}>
               <span style={{fontSize:'16px',width:'20px',textAlign:'center'}}>⤴</span>
               تسجيل الخروج
             </button>
@@ -791,9 +796,18 @@ export default function DashboardPage(){
                   {icon:'💵',label:'إضافة دخل',action:()=>router.push('/income/add')},
                   {icon:'🛒',label:'إضافة مصروف',action:()=>router.push('/expenses/add')},
                   {icon:'📈',label:'تحويل استثمار',action:()=>router.push('/education/investments')},
-                  {icon:'📊',label:'تقرير شهري',action:()=>window.print()},
+                  {icon:'📊',label:'تقرير شهري',action:()=>router.push('/reports')},
                   {icon:'🖨️',label:'طباعة التقرير',action:()=>window.print()},
-                  {icon:'📥',label:'تصدير PDF',action:()=>window.print()},
+                  {icon:'📥',label:'تصدير PDF',action:()=>{
+                    const html=document.getElementById('report-content')?.innerHTML||document.body.innerHTML;
+                    const blob=new Blob([`<!doctype html><html><head><meta charset="utf-8"><title>SFM Report</title></head><body>${html}</body></html>`],{type:'text/html'});
+                    const url=URL.createObjectURL(blob);
+                    const a=document.createElement('a');
+                    a.href=url;
+                    a.download='sfm-report.html';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }},
                 ].map((a,i)=>(
                   <button key={i} className="action-btn" onClick={a.action}>
                     <span style={{fontSize:'20px'}}>{a.icon}</span>

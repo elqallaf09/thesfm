@@ -78,7 +78,7 @@ export default function ProfilePage() {
     if (!userId) return;
     if (!profile.display_name?.trim()) { showToast(t('error'), 'err'); return; }
     setSaving(true);
-    const { error } = await supabase.from('profiles').update({ display_name:profile.display_name.trim(), username:profile.username?.trim()||null, age:profile.age?parseInt(String(profile.age)):null, gender:profile.gender||null, profession:profile.profession||null, phone_country_code:profile.phone_country_code||'+965', phone_number:profile.phone_number||null }).eq('id', userId);
+    const { error } = await supabase.from('profiles').update({ display_name:profile.display_name.trim(), username:profile.username?.trim()||null, age:profile.age?parseInt(String(profile.age)):null, gender:profile.gender||null, profession:profile.profession||null, phone_country_code:profile.phone_country_code||'+965', phone_number:profile.phone_number||null }).eq('id', userId).select().single();
     if (error) showToast(t('error') + ': ' + error.message, 'err');
     else { showToast(t('saved')); setSaved(true); setTimeout(()=>setSaved(false),2500); }
     setSaving(false);
@@ -102,9 +102,14 @@ export default function ProfilePage() {
     const userId = user?.id;
     if (!userId) return;
     setSaving(true);
-    await supabase.from('monthly_income_sources').delete().eq('user_id', userId);
+    const { error: deleteError } = await supabase.from('monthly_income_sources').delete().eq('user_id', userId);
+    if (deleteError) { showToast(t('error') + ': ' + deleteError.message, 'err'); setSaving(false); return; }
     const rows = INCOME_CATEGORIES.map(cat => ({ user_id:userId, category:cat.id, label:cat.nameAr, amount:parseFloat((incomeAmounts[cat.id]||'0').replace(/[^\d.]/g,''))||0 })).filter(r => r.amount > 0);
-    if (rows.length > 0) await supabase.from('monthly_income_sources').insert(rows);
+    if (rows.length > 0) {
+      const { error: insertError } = await supabase.from('monthly_income_sources').insert(rows).select();
+      if (insertError) { showToast(t('error') + ': ' + insertError.message, 'err'); setSaving(false); return; }
+    }
+    await loadData();
     showToast(isAr?'✅ تم تحديث مصادر الدخل':'✅ Income sources updated');
     setSaving(false);
   };

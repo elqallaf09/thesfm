@@ -24,6 +24,11 @@ const CURRENCIES = [
   { code: 'USD', symbol: '$', label_ar: 'دولار أمريكي', label_en: 'US Dollar', label_fr: 'Dollar américain' },
   { code: 'EUR', symbol: '€', label_ar: 'يورو', label_en: 'Euro', label_fr: 'Euro' },
 ];
+const NECESSITIES = [
+  { id: 'essential', ar: 'ضروري', en: 'Essential', color: '#EF4444', hintAr: 'الإيجار، الفواتير' },
+  { id: 'important', ar: 'مهم', en: 'Important', color: '#F59E0B', hintAr: 'التأمين، التعليم' },
+  { id: 'optional', ar: 'اختياري', en: 'Optional', color: '#22C55E', hintAr: 'الترفيه، التسوق' },
+];
 
 export default function AddExpensePage() {
   const { user, loading: authLoading } = useAuth();
@@ -35,6 +40,7 @@ export default function AddExpensePage() {
   const [showSuccess, setShowSuccess] = useState(false);
 
   const [category, setCategory] = useState('');
+  const [necessity, setNecessity] = useState('');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('KWD');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -71,15 +77,20 @@ export default function AddExpensePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !category || !amount) return;
+    if (!user || !category || !necessity || !amount) return;
 
     setLoading(true);
     try {
+      const selectedCategory = EXPENSE_CATEGORIES.find(c => c.id === category)!;
+      const selectedNecessity = NECESSITIES.find(item => item.id === necessity)!;
+      const userText = description.trim() || getLabel(selectedCategory);
       const { error } = await supabase.from('expense_items').insert({
         user_id: user.id,
         amount: parseFloat(amount),
-        name: description || getLabel(EXPENSE_CATEGORIES.find(c => c.id === category)!),
-      });
+        name: `${getLabel(selectedCategory)}|${isAr ? selectedNecessity.ar : selectedNecessity.en}|${userText}`,
+        category,
+        necessity,
+      }).select().single();
 
       if (error) throw error;
 
@@ -145,6 +156,9 @@ export default function AddExpensePage() {
         .category-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 8px; border: 1.5px solid rgba(216,174,99,.2); border-radius: 14px; background: #FFFDFC; cursor: pointer; transition: all .2s; }
         .category-btn:hover { border-color: #D8AE63; background: rgba(216,174,99,.05); }
         .category-btn.selected { border-color: #D8AE63; background: rgba(216,174,99,.1); box-shadow: 0 0 0 3px rgba(216,174,99,.15); }
+        .necessity-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .necessity-btn { border: 1.5px solid rgba(216,174,99,.2); border-radius: 14px; background: #FFFDFC; padding: 12px; cursor: pointer; text-align: center; font-family: 'Tajawal', sans-serif; transition: all .2s; }
+        .necessity-btn.selected { box-shadow: 0 0 0 3px rgba(216,174,99,.12); }
         .category-icon { font-size: 24px; }
         .category-label { font-size: 12px; font-weight: 600; color: #5B4332; text-align: center; }
         .success-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 1000; animation: fadeUp .3s ease; }
@@ -193,6 +207,26 @@ export default function AddExpensePage() {
                     >
                       <span className="category-icon">{cat.icon}</span>
                       <span className="category-label">{getLabel(cat)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  {isAr ? 'درجة الضرورة *' : 'Necessity *'}
+                </label>
+                <div className="necessity-row">
+                  {NECESSITIES.map(item => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`necessity-btn ${necessity === item.id ? 'selected' : ''}`}
+                      onClick={() => setNecessity(item.id)}
+                      style={{ borderColor: necessity === item.id ? item.color : 'rgba(216,174,99,.2)' }}
+                    >
+                      <div style={{ fontWeight: 800, color: item.color }}>{isAr ? item.ar : item.en}</div>
+                      <div style={{ fontSize: '11px', color: '#9A6C3C', marginTop: '4px' }}>{isAr ? item.hintAr : item.id}</div>
                     </button>
                   ))}
                 </div>
@@ -274,7 +308,7 @@ export default function AddExpensePage() {
               <button
                 type="submit"
                 className="btn-submit"
-                disabled={loading || !category || !amount}
+                disabled={loading || !category || !necessity || !amount}
               >
                 {loading ? (
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>

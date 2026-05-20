@@ -225,7 +225,7 @@ export function AuthForm() {
       if (!firstName.trim()) { setError(isArabic ? 'الاسم الأول مطلوب' : 'First name is required'); return; }
       if (!lastName.trim()) { setError(isArabic ? 'اسم العائلة مطلوب' : 'Last name is required'); return; }
       if (!email.trim()) { setError(t.emailRequired); return; }
-      if (!email.includes('@')) { setError(t.invalidEmail); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError(t.invalidEmail); return; }
       if (!age.trim()) { setError(t.ageRequired); return; }
       const ageNum = parseInt(age, 10);
       if (isNaN(ageNum) || ageNum < 10 || ageNum > 120) { setError(t.invalidAge); return; }
@@ -254,21 +254,31 @@ export function AuthForm() {
         setLoading(false); return;
       }
     } else {
-      const result = await signUp(username, password, email, age, gender, securityQuestion, securityAnswer);
+      const result = await signUp(username, password, email.trim().toLowerCase(), age, gender, securityQuestion, securityAnswer);
       if (result.error) { setError(result.error.message || t.operationFailed); setLoading(false); return; }
       // Save extra profile data
       const { data: { user: newUser } } = await supabase.auth.getUser();
       if (newUser) {
-        await supabase.from('profiles').upsert({
+        const { error: profileError } = await supabase.from('profiles').upsert({
           id: newUser.id,
           display_name: `${firstName.trim()} ${lastName.trim()}`,
+          username: username.trim().toLowerCase(),
+          email: email.trim().toLowerCase(),
+          age: parseInt(age, 10) || null,
+          gender: gender || null,
+          security_question: securityQuestion || null,
+          security_answer: securityAnswer || null,
           security_question_2: securityQuestion2,
           security_answer_2: securityAnswer2,
           security_question_3: securityQuestion3 || null,
           security_answer_3: securityAnswer3 || null,
-        });
+          preferred_lang: language === 'fr' ? 'en' : language,
+        }, { onConflict: 'id' }).select().single();
+        if (profileError) { setError(profileError.message); setLoading(false); return; }
       }
-      router.push('/'); return;
+      router.push('/');
+      router.refresh();
+      return;
     }
     setLoading(false);
   };

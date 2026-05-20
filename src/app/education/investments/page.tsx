@@ -255,9 +255,9 @@ export default function InvestmentsPage() {
             </div>
             {/* Buttons */}
             <div className="hero-btns" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button className="btn-g" style={{ fontSize: '15px', padding: '14px 32px', borderRadius: '16px', animation: 'glow 2.5s infinite' }}>ابدأ الاستثمار ←</button>
-              <button className="btn-o" style={{ color: 'rgba(255,255,255,.72)', borderColor: 'rgba(255,255,255,.18)', fontSize: '14px' }}>🤖 تحليل AI</button>
-              <button className="btn-o" style={{ color: 'rgba(255,255,255,.72)', borderColor: 'rgba(255,255,255,.18)', fontSize: '14px' }}>+ إنشاء محفظة</button>
+              <button className="btn-g" onClick={() => router.push('/projects')} style={{ fontSize: '15px', padding: '14px 32px', borderRadius: '16px', animation: 'glow 2.5s infinite' }}>ابدأ الاستثمار ←</button>
+              <button className="btn-o" onClick={() => document.getElementById('investment-ai-chat')?.scrollIntoView({ behavior: 'smooth' })} style={{ color: 'rgba(255,255,255,.72)', borderColor: 'rgba(255,255,255,.18)', fontSize: '14px' }}>🤖 تحليل AI</button>
+              <button className="btn-o" onClick={() => router.push('/goals')} style={{ color: 'rgba(255,255,255,.72)', borderColor: 'rgba(255,255,255,.18)', fontSize: '14px' }}>+ إنشاء محفظة</button>
             </div>
           </div>
         </div>
@@ -349,7 +349,7 @@ export default function InvestmentsPage() {
         </div>
 
         {/* ═══ AI ADVISOR ═══ */}
-        <div style={{ ...S(220), marginBottom: '24px' }}>
+        <div id="investment-ai-chat" style={{ ...S(220), marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
             <div style={{ width: '4px', height: '22px', background: 'linear-gradient(180deg,#C8A96B,#8A6D2A)', borderRadius: '4px' }} />
             <h2 style={{ fontSize: '19px', fontWeight: '800', color: '#2B2118', margin: 0 }}>مستشار الاستثمار الذكي</h2>
@@ -495,8 +495,8 @@ export default function InvestmentsPage() {
             <h3 style={{ fontSize: 'clamp(20px,3vw,28px)', fontWeight: '900', color: '#fff', marginBottom: '10px' }}>ابدأ بناء محفظتك الاستثمارية</h3>
             <p style={{ fontSize: '15px', color: 'rgba(255,255,255,.52)', marginBottom: '28px', maxWidth: '440px', margin: '0 auto 28px', lineHeight: 1.7 }}>كل شهر تأخير يكلفك آلاف الدنانير من العوائد المفقودة. ابدأ الآن.</p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button className="btn-g" style={{ fontSize: '15px', padding: '14px 36px' }}>ابدأ الاستثمار الآن</button>
-              <button className="btn-o" style={{ color: 'rgba(255,255,255,.72)', borderColor: 'rgba(255,255,255,.2)', fontSize: '14px' }}>استشر المستشار الذكي</button>
+              <button className="btn-g" onClick={() => router.push('/projects')} style={{ fontSize: '15px', padding: '14px 36px' }}>ابدأ الاستثمار الآن</button>
+              <button className="btn-o" onClick={() => document.getElementById('investment-ai-chat')?.scrollIntoView({ behavior: 'smooth' })} style={{ color: 'rgba(255,255,255,.72)', borderColor: 'rgba(255,255,255,.2)', fontSize: '14px' }}>استشر المستشار الذكي</button>
             </div>
           </div>
         </div>
