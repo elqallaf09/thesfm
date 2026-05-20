@@ -1,9 +1,10 @@
 'use client';
+
 /**
- * SFM Language Hook (standalone — for pages without the Provider)
+ * SFM Language Hook (standalone - for pages without the Provider)
  * Reads/writes localStorage directly.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Lang } from '@/lib/translations';
 import { t as translate, TR } from '@/lib/translations';
 
@@ -14,21 +15,35 @@ export function useLanguage() {
 
   useEffect(() => {
     try {
-      const s = localStorage.getItem(KEY) as Lang | null;
-      if (s === 'ar' || s === 'en') setLangState(s);
+      const stored = localStorage.getItem(KEY) as Lang | null;
+      if (stored === 'ar' || stored === 'en') setLangState(stored);
     } catch {}
   }, []);
 
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
-    try { localStorage.setItem(KEY, l); } catch {}
-    if (typeof document !== 'undefined') {
-      document.documentElement.dir  = l === 'ar' ? 'rtl' : 'ltr';
-      document.documentElement.lang = l;
-    }
+    try {
+      localStorage.setItem(KEY, l);
+    } catch {}
   }, []);
 
-  const t = useCallback((key: keyof typeof TR) => translate(key, lang), [lang]);
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      document.documentElement.lang = lang;
+    }
+  }, [lang]);
 
-  return { lang, setLang, t, dir: lang === 'ar' ? 'rtl' : 'ltr' as const, isAr: lang === 'ar', isEn: lang === 'en' };
+  const t = useCallback((key: keyof typeof TR) => translate(key, lang), [lang]);
+  const dir: 'rtl' | 'ltr' = lang === 'ar' ? 'rtl' : 'ltr';
+
+  return {
+    lang,
+    setLang,
+    t,
+    dir,
+    isAr: lang === 'ar',
+    isEn: lang === 'en',
+    isFr: false,
+  };
 }

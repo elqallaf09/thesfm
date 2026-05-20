@@ -1,22 +1,22 @@
-import type { Metadata } from "next";
-import { Cairo } from "next/font/google";
-import { ThemeProvider } from "@/components/ThemeProvider";
-import { Toaster } from "@/components/ui/sonner";
-import GlobalClientEffects from "@/components/GlobalClientEffects";
-import { AuthProvider } from "@/hooks/useAuth";
-import { LanguageProvider } from "@/components/LanguageProvider";
-import "./globals.css";
+import type { Metadata } from 'next';
+import { Cairo } from 'next/font/google';
+import { ThemeProvider } from '@/components/ThemeProvider';
+import { Toaster } from '@/components/ui/sonner';
+import GlobalClientEffects from '@/components/GlobalClientEffects';
+import { AuthProvider } from '@/hooks/useAuth';
+import { LanguageProvider } from '@/components/LanguageProvider';
+import './globals.css';
 
 const cairo = Cairo({
-  variable: "--font-cairo",
-  subsets: ["arabic", "latin"],
-  weight: ["300", "400", "500", "600", "700", "900"],
-  display: "swap",
+  variable: '--font-cairo',
+  subsets: ['arabic', 'latin'],
+  weight: ['300', '400', '500', '600', '700', '900'],
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: "المدير المالي الذكي | SFM",
-  description: "إدارة راتبك بذكاء - قسّم راتبك إلى مصروفات ومدخرات واستثمار",
+  title: 'المدير المالي الذكي | SFM',
+  description: 'إدارة راتبك بذكاء - قسّم راتبك إلى مصروفات ومدخرات واستثمار',
 };
 
 export default function RootLayout({

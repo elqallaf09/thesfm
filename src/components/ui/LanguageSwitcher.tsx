@@ -1,46 +1,53 @@
 'use client';
-import { useState, useEffect } from 'react';
+
+import { useEffect, useState } from 'react';
+import { useLanguage } from '@/hooks/useLanguage';
 
 type Lang = 'ar' | 'en';
 
 interface Props {
-  value:    Lang;
-  onChange: (l: Lang) => void;
+  value?: Lang;
+  onChange?: (l: Lang) => void;
   variant?: 'light' | 'dark' | 'gold';
   compact?: boolean;
+  size?: 'sm' | 'md';
 }
 
 const LANGS: { id: Lang; label: string; flag: string }[] = [
   { id: 'ar', label: 'عربي', flag: '🇸🇦' },
-  { id: 'en', label: 'EN',   flag: '🇺🇸' },
+  { id: 'en', label: 'EN', flag: '🇺🇸' },
 ];
 
-export function LanguageSwitcher({ value, onChange, variant = 'light', compact = false }: Props) {
+export function LanguageSwitcher({ value, onChange, variant = 'light', compact = false, size = 'md' }: Props) {
   const [mounted, setMounted] = useState(false);
+  const language = useLanguage();
   useEffect(() => setMounted(true), []);
 
-  const idx = LANGS.findIndex(l => l.id === value);
+  const selected = value ?? language.lang;
+  const handleChange = onChange ?? language.setLang;
+  const isCompact = compact || size === 'sm';
+  const idx = Math.max(0, LANGS.findIndex(l => l.id === selected));
 
-  const track = variant === 'dark'  ? 'rgba(255,255,255,0.09)'
-              : variant === 'gold'  ? 'rgba(216,174,99,0.14)'
-              : '#EFEDE8';
+  const track = variant === 'dark' ? 'rgba(255,255,255,0.09)'
+    : variant === 'gold' ? 'rgba(216,174,99,0.14)'
+      : '#EFEDE8';
 
-  const pill  = variant === 'dark'  ? 'rgba(255,255,255,0.90)'
-              : variant === 'gold'  ? '#FFFDFC'
-              : '#FFFFFF';
+  const pill = variant === 'dark' ? 'rgba(255,255,255,0.90)'
+    : variant === 'gold' ? '#FFFDFC'
+      : '#FFFFFF';
 
-  const border = variant === 'dark'  ? '1px solid rgba(255,255,255,0.12)'
-               : variant === 'gold'  ? '1px solid rgba(216,174,99,0.28)'
-               : '1.5px solid #E8E2D6';
+  const border = variant === 'dark' ? '1px solid rgba(255,255,255,0.12)'
+    : variant === 'gold' ? '1px solid rgba(216,174,99,0.28)'
+      : '1.5px solid #E8E2D6';
 
   const textActive = variant === 'dark' ? '#111111' : '#1B2430';
-  const textIdle   = variant === 'dark' ? 'rgba(255,255,255,0.50)'
-                   : variant === 'gold' ? 'rgba(216,174,99,0.65)'
-                   : '#9A9086';
+  const textIdle = variant === 'dark' ? 'rgba(255,255,255,0.50)'
+    : variant === 'gold' ? 'rgba(216,174,99,0.65)'
+      : '#9A9086';
 
-  const h = compact ? '26px' : '30px';
-  const px = compact ? '7px' : '10px';
-  const fs = compact ? '11px' : '12px';
+  const h = isCompact ? '26px' : '30px';
+  const px = isCompact ? '7px' : '10px';
+  const fs = isCompact ? '11px' : '12px';
 
   return (
     <div
@@ -58,14 +65,13 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         userSelect: 'none',
       }}
     >
-      {/* Sliding pill */}
       {mounted && (
         <span style={{
           position: 'absolute',
           top: '3px',
-          left: `calc(3px + ${idx * 50}%)`,
-          width: '50%',
-          height: `calc(100% - 6px)`,
+          left: idx === 0 ? '3px' : '50%',
+          width: 'calc(50% - 3px)',
+          height: 'calc(100% - 6px)',
           background: pill,
           borderRadius: '36px',
           boxShadow: variant === 'dark'
@@ -77,15 +83,16 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         }} />
       )}
 
-      {LANGS.map((lang, i) => (
+      {LANGS.map(lang => (
         <button
           key={lang.id}
-          onClick={() => onChange(lang.id)}
-          aria-pressed={value === lang.id}
+          onClick={() => handleChange(lang.id)}
+          aria-pressed={selected === lang.id}
           style={{
-            position: 'relative', zIndex: 2,
+            position: 'relative',
+            zIndex: 2,
             flex: 1,
-            minWidth: compact ? '36px' : '44px',
+            minWidth: isCompact ? '36px' : '44px',
             height: h,
             padding: `0 ${px}`,
             background: 'transparent',
@@ -93,8 +100,8 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
             borderRadius: '36px',
             cursor: 'pointer',
             fontSize: fs,
-            fontWeight: value === lang.id ? '700' : '500',
-            color: value === lang.id ? textActive : textIdle,
+            fontWeight: selected === lang.id ? '700' : '500',
+            color: selected === lang.id ? textActive : textIdle,
             fontFamily: lang.id === 'ar'
               ? "'Tajawal', sans-serif"
               : "-apple-system, 'Segoe UI', sans-serif",
@@ -107,7 +114,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
             gap: '4px',
           }}
         >
-          {!compact && <span style={{ fontSize: '13px' }}>{lang.flag}</span>}
+          {!isCompact && <span style={{ fontSize: '13px' }}>{lang.flag}</span>}
           {lang.label}
         </button>
       ))}
@@ -115,7 +122,6 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
   );
 }
 
-/* ─ Floating global switcher (fixed position) ─ */
 export function FloatingLangSwitcher({ value, onChange }: Pick<Props, 'value' | 'onChange'>) {
   return (
     <div style={{
