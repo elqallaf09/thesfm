@@ -3,7 +3,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/hooks/useLanguage';
 import { INCOME_CATEGORIES } from '@/lib/income-categories';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 
 /* ─── Static Data ─── */
 const PROFESSIONS = ['طبيب عام','طبيب أسنان','طبيب متخصص','صيدلاني','ممرض/ممرضة','مهندس مدني','مهندس كهربائي','مهندس ميكانيكي','مهندس معماري','مهندس برمجيات','مطور تطبيقات','مطور ويب','محلل نظم','خبير أمن معلومات','محلل بيانات','مهندس ذكاء اصطناعي','مصمم UX/UI','معلم ابتدائي','معلم متوسط','معلم ثانوي','أستاذ جامعي','مدرب مهني','محاسب','مدقق حسابات','محلل مالي','مصرفي','خبير أسواق ومعلومات','مستشار استثمار','مدير أعمال','رجل أعمال','مدير تسويق','محامي','مستشار قانوني','قاضي','ضابط شرطة','موظف حكومي','صحفي','مصور','مصمم جرافيك','فنان','كاتب','تاجر','مستورد ومصدر','مدرب رياضي','طالب','متقاعد','ربة منزل','باحث علمي','أخرى'];
@@ -29,6 +31,7 @@ function ProgressRing({pct,size=100,stroke=8}:{pct:number;size?:number;stroke?:n
 
 export default function ProfilePage(){
   const {user,loading}=useAuth();
+  const {t, dir, isAr, isEn, isFr} = useLanguage();
   const router=useRouter();
   const [profile,setProfile]=useState<any>({phone_country_code:'+965',gender:'',profession:''});
   const [incomeAmounts,setIncomeAmounts]=useState<Record<string,string>>({});
@@ -96,13 +99,13 @@ export default function ProfilePage(){
   );
 
   const TABS=[
-    {id:'info',label:'المعلومات الشخصية',icon:'👤'},
-    {id:'password',label:'كلمة المرور',icon:'🔒'},
-    {id:'income',label:'مصادر الدخل',icon:'💰'},
-    {id:'goals',label:'الأهداف المالية',icon:'🎯'},
-    {id:'invest',label:'الاستثمار',icon:'📈'},
-    {id:'charity',label:'الأعمال الخيرية',icon:'🤲'},
-    {id:'ai',label:'AI التحليلات',icon:'🤖'},
+    {id:'info',label: isAr ? 'المعلومات الشخصية' : isFr ? 'Informations Personnelles' : 'Personal Info',icon:'👤'},
+    {id:'password',label: isAr ? 'كلمة المرور' : isFr ? 'Mot de Passe' : 'Password',icon:'🔒'},
+    {id:'income',label: isAr ? 'مصادر الدخل' : isFr ? 'Sources de Revenus' : 'Income Sources',icon:'💰'},
+    {id:'goals',label: isAr ? 'الأهداف المالية' : isFr ? 'Objectifs Financiers' : 'Financial Goals',icon:'🎯'},
+    {id:'invest',label: isAr ? 'الاستثمار' : isFr ? 'Investissement' : 'Investment',icon:'📈'},
+    {id:'charity',label: isAr ? 'الأعمال الخيرية' : isFr ? 'Actions Caritatives' : 'Charity',icon:'🤲'},
+    {id:'ai',label: isAr ? 'AI التحليلات' : isFr ? 'Analyse IA' : 'AI Analytics',icon:'🤖'},
   ] as const;
 
   const AI_CARDS=[
@@ -140,11 +143,15 @@ export default function ProfilePage(){
       .ai-card:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(90,67,51,.10),0 0 0 1px rgba(216,174,99,.28)}
       .ai-card:hover::after{opacity:1}
       .wfield{position:relative;width:100%}
-      .wfield input,.wfield select,.wfield textarea{width:100%;height:56px;background:rgba(247,243,234,.7);border:1.5px solid rgba(216,174,99,.25);border-radius:16px;padding:18px 16px 6px 42px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:400;color:#151515;outline:none;transition:all .2s;-webkit-appearance:none;backdrop-filter:blur(4px)}
+      .wfield input,.wfield select,.wfield textarea{width:100%;height:56px;background:rgba(247,243,234,.7);border:1.5px solid rgba(216,174,99,.25);border-radius:16px;padding:18px 42px 6px 16px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:400;color:#151515;outline:none;transition:all .2s;-webkit-appearance:none;backdrop-filter:blur(4px)}
+      [dir="ltr"] .wfield input,[dir="ltr"] .wfield select{padding:18px 16px 6px 42px}
       .wfield input:focus,.wfield select:focus{border-color:#D8AE63;box-shadow:0 0 0 3px rgba(216,174,99,.14),0 2px 8px rgba(216,174,99,.10);background:rgba(255,253,251,0.9)}
       .wfield label{position:absolute;right:16px;top:10px;font-size:11px;font-weight:700;color:#9A6C3C;pointer-events:none;letter-spacing:.03em}
+      [dir="ltr"] .wfield label{right:auto;left:16px}
       .wfield .icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px;opacity:.55;pointer-events:none}
+      [dir="ltr"] .wfield .icon{left:auto;right:14px}
       .wfield select{cursor:pointer;padding-left:38px;background:rgba(247,243,234,.7) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23D8AE63' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat left 14px center}
+      [dir="ltr"] .wfield select{background-position:right 14px center;padding-left:16px;padding-right:42px}
       .tab-pill{display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:40px;border:none;cursor:pointer;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:600;white-space:nowrap;transition:all .22s cubic-bezier(.4,0,.2,1)}
       .tab-pill.active{background:linear-gradient(135deg,#151515,#2D1A0A);color:#D8AE63;box-shadow:0 4px 16px rgba(21,21,21,.25)}
       .tab-pill.idle{background:rgba(255,253,251,.75);color:#9A6C3C;border:1px solid rgba(216,174,99,.2)}
@@ -168,7 +175,7 @@ export default function ProfilePage(){
       @media(max-width:600px){.pg2{grid-template-columns:1fr!important}.hero-pad{padding:28px 22px!important}.save-btn{height:52px;font-size:15px}}
     `}</style>
 
-    <div className="wp">
+    <div className="wp" dir={dir}>
 
       {/* ── Background blobs ── */}
       <div style={{position:'fixed',inset:0,overflow:'hidden',pointerEvents:'none',zIndex:0}}>
@@ -177,17 +184,18 @@ export default function ProfilePage(){
         <div style={{position:'absolute',top:'40%',left:'30%',width:'300px',height:'300px',borderRadius:'50%',background:'radial-gradient(circle,rgba(216,174,99,.05) 0%,transparent 70%)'}}/>
       </div>
 
-      <div style={{maxWidth:'1280px',margin:'0 auto',padding:'24px 20px 80px',position:'relative',zIndex:1}}>
+      <div style={{maxWidth:'1280px',margin:'0 auto',padding:'24px 20px 80px',position:'relative',zIndex:1,dir}}>
 
         {/* ═══ SECTION 1: HERO ═══ */}
         <div style={{...S(0),marginBottom:'28px',display:'grid',gridTemplateColumns:'1fr 340px',gap:'20px',alignItems:'stretch'}} className="hero-grid">
 
           {/* Left: AI cards */}
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'14px',alignContent:'center'}}>
-            <div style={{gridColumn:'1/-1',display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
+            <div style={{gridColumn:'1/-1',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'8px',marginBottom:'4px',flexWrap:'wrap'}}>
               <button onClick={()=>router.push('/')} style={{display:'flex',alignItems:'center',gap:'8px',background:'rgba(255,253,251,.8)',border:'1px solid rgba(216,174,99,.22)',borderRadius:'12px',padding:'8px 16px',cursor:'pointer',color:'#5A4333',fontSize:'13px',fontWeight:'700',fontFamily:'Tajawal,sans-serif',transition:'all .2s',backdropFilter:'blur(8px)'}}>
-                ← لوحة التحكم
+                {isAr ? '← لوحة التحكم' : isFr ? '← Tableau de Bord' : '← Dashboard'}
               </button>
+              <LanguageSwitcher size="sm" />
             </div>
             {AI_CARDS.map((card,i)=>(
               <div key={i} className="ai-card" style={{animationDelay:`${i*.08}s`}}>

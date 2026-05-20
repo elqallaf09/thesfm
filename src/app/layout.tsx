@@ -4,6 +4,8 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import GlobalClientEffects from "@/components/GlobalClientEffects";
 import { AuthProvider } from "@/hooks/useAuth";
+import { LanguageProvider } from "@/hooks/useLanguage";
+import LanguageInitializer from "@/components/LanguageInitializer";
 
 import "./globals.css";
 
@@ -22,13 +24,6 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const content = (
-    <>
-      {children}
-      <GlobalClientEffects />
-    </>
-  );
-
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
@@ -40,15 +35,19 @@ export default function RootLayout({
         />
       </head>
       <body className={`${cairo.variable} font-cairo antialiased`}>
-        <Toaster />
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          <AuthProvider>{content}</AuthProvider>
-        </ThemeProvider>
+        <LanguageProvider>
+          <LanguageInitializer />
+          <Toaster />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem={false}
+            disableTransitionOnChange
+          >
+            <AuthProvider>{children}</AuthProvider>
+          </ThemeProvider>
+        </LanguageProvider>
+        <GlobalClientEffects />
       </body>
     </html>
   );

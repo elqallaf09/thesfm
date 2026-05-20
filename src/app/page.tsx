@@ -3,6 +3,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/hooks/useLanguage';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 
 /* ═══════════════════════════════════════════════════
    TYPES
@@ -188,6 +190,7 @@ function BarChart({data}:{data:{label:string;v1:number;v2:number}[]}){
 ═══════════════════════════════════════════════════ */
 export default function DashboardPage(){
   const {user,loading}=useAuth();
+  const {dir, isAr, isEn, isFr} = useLanguage();
   const router=useRouter();
   const [profile,setProfile]=useState<any>({display_name:'محمد القلاف',profession:'خبير أسواق ومعلومات'});
   const [totalIncome,setTotalIncome]=useState(1936);
@@ -254,7 +257,7 @@ export default function DashboardPage(){
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap');
       *{box-sizing:border-box;margin:0;padding:0}
-      .dp{font-family:'Tajawal',sans-serif;direction:rtl;background:#F7F3EA;min-height:100vh;color:#111111;display:flex;flex-direction:column}
+      .dp{font-family:'Tajawal',sans-serif;background:#F7F3EA;min-height:100vh;color:#111111;display:flex;flex-direction:column}
       .dp ::-webkit-scrollbar{width:4px;height:4px}.dp ::-webkit-scrollbar-thumb{background:rgba(216,174,99,.3);border-radius:10px}
       @keyframes spin{to{transform:rotate(360deg)}}
       @keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
@@ -279,7 +282,7 @@ export default function DashboardPage(){
       @media(max-width:768px){.kpi-grid{grid-template-columns:1fr 1fr!important}.hero-grid{grid-template-columns:1fr!important}.insight-grid{grid-template-columns:1fr!important}.dist-grid{grid-template-columns:1fr!important}.invest-grid{grid-template-columns:1fr!important}.goals-grid{grid-template-columns:1fr 1fr!important}.feat-grid{grid-template-columns:repeat(3,1fr)!important}}
     `}</style>
 
-    <div className="dp">
+    <div className="dp" dir={dir}>
 
       {/* ═══ TICKER BAR ═══ */}
       <div style={{background:'rgba(17,17,17,0.96)',backdropFilter:'blur(12px)',borderBottom:'1px solid rgba(216,174,99,.12)',padding:'8px 0',overflow:'hidden',position:'sticky',top:0,zIndex:100}}>
@@ -300,8 +303,13 @@ export default function DashboardPage(){
         <aside className="sidebar" style={{width:'230px',background:'linear-gradient(180deg,#1A0F05 0%,#0D0804 100%)',position:'fixed',right:0,top:'37px',bottom:0,zIndex:50,display:'flex',flexDirection:'column',overflowY:'auto',borderLeft:'1px solid rgba(216,174,99,.1)'}}>
           {/* Logo */}
           <div style={{padding:'20px 16px 16px',borderBottom:'1px solid rgba(216,174,99,.08)'}}>
-            <div style={{fontSize:'18px',fontWeight:'900',color:'#D8AE63',letterSpacing:'.05em',marginBottom:'2px'}}>THE SFM</div>
-            <div style={{fontSize:'11px',color:'rgba(216,174,99,.45)'}}>المدير المالي الذكي</div>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'8px'}}>
+              <div style={{display:'flex',flexDirection:'column'}}>
+                <div style={{fontSize:'18px',fontWeight:'900',color:'#D8AE63',letterSpacing:'.05em'}}>THE SFM</div>
+                <div style={{fontSize:'11px',color:'rgba(216,174,99,.45)'}}>{isAr ? 'المدير المالي الذكي' : isFr ? 'Gestionnaire Financier Intelligent' : 'Smart Financial Manager'}</div>
+              </div>
+              <LanguageSwitcher variant="dark" size="sm" />
+            </div>
           </div>
 
           {/* User card */}
