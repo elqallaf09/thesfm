@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 
 /* ─── Types ─── */
 interface CharityRecord {
@@ -237,12 +238,12 @@ export default function CharityPage() {
         <div style={{ maxWidth: '960px', margin: '0 auto', padding: '24px 20px 60px' }}>
 
           {/* ─── Header ─── */}
-          <div style={{ ...S(0), display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '28px' }}>
+          <div style={{ ...S(0), display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '28px', flexWrap: 'wrap' }}>
             <button
               onClick={() => router.push('/')}
               style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 16px', background: '#FFFDFC', border: '1.5px solid rgba(216,174,99,.22)', borderRadius: '12px', cursor: 'pointer', color: '#5B4332', fontSize: '13px', fontWeight: '700', fontFamily: 'Tajawal,sans-serif', flexShrink: 0 }}
             >← الرئيسية</button>
-            <div>
+            <div style={{ flex: 1, minWidth: '220px' }}>
               <h1 style={{ fontSize: 'clamp(22px,4vw,30px)', fontWeight: '900', color: '#111111', lineHeight: 1.2 }}>
                 🤲 الأعمال الخيرية
               </h1>
@@ -250,6 +251,7 @@ export default function CharityPage() {
                 أضف المبالغ الخيرية الشهرية وسيتم احتسابها تلقائياً ضمن المصروفات
               </p>
             </div>
+            <LanguageSwitcher variant="gold" compact />
           </div>
 
           {/* ─── KPI row ─── */}
