@@ -307,18 +307,19 @@ interface SalaryManagerProps {
 function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
   const router = useRouter();
   const isGuest = !userId;
-  const [language, setLanguage] = useState<'ar' | 'en'>('ar');
+  const [language, setLanguage] = useState<'ar' | 'en' | 'fr'>('ar');
   const isArabic = language === 'ar';
+  const isFrench = language === 'fr';
   const text = {
-    title: isArabic ? 'المدير المالي الذكي' : 'Smart Financial Manager',
-    subtitle: isArabic ? 'اختر طريقة توزيع دخلك أو أدخل خطتك يدوياً ليتم تحليلها بذكاء' : 'Choose an income split or enter your own plan for smart analysis',
+    title: isArabic ? 'المدير المالي الذكي' : isFrench ? 'Gestionnaire Financier Intelligent' : 'Smart Financial Manager',
+    subtitle: isArabic ? 'اختر طريقة توزيع دخلك أو أدخل خطتك يدوياً ليتم تحليلها بذكاء' : isFrench ? 'Choisissez un plan de revenus ou saisissez le vôtre pour une analyse intelligente' : 'Choose an income split or enter your own plan for smart analysis',
     langLabel: isArabic ? 'اللغة' : 'Language',
     salaryTitle: isArabic ? 'أدخل مدخولك الشهري' : 'Enter your monthly income',
     salaryDesc: isArabic ? 'تم احتساب دخلك من أنواع المدخول التي أدخلتها، ويمكنك إضافة مدخول آخر عند الحاجة' : 'Your income is calculated from saved income sources, and you can add extra income if needed',
-    currency: isArabic ? 'اختر العملة' : 'Choose currency',
-    monthlySalary: isArabic ? 'إجمالي أنواع الدخل' : 'Total income sources',
-    otherIncome: isArabic ? 'مدخول آخر' : 'Other income',
-    totalIncome: isArabic ? 'إجمالي الدخل' : 'Total income',
+    currency: isArabic ? 'اختر العملة' : isFrench ? 'Choisir la devise' : 'Choose currency',
+    monthlySalary: isArabic ? 'إجمالي أنواع الدخل' : isFrench ? 'Total des sources de revenu' : 'Total income sources',
+    otherIncome: isArabic ? 'مدخول آخر' : isFrench ? 'Autre revenu' : 'Other income',
+    totalIncome: isArabic ? 'إجمالي الدخل' : isFrench ? 'Revenu total' : 'Total income',
     distributionMethod: isArabic ? 'طريقة توزيع الدخل' : 'Income distribution method',
     plan70: isArabic ? '70% مصروفات | 20% مدخرات | 10% استثمار' : '70% expenses | 20% savings | 10% investment',
     plan60Savings: isArabic ? '60% مصروفات | 30% مدخرات | 10% استثمار' : '60% expenses | 30% savings | 10% investment',
@@ -352,7 +353,7 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     profileName: isArabic ? 'اسم المستخدم' : 'Username',
     profileEmail: isArabic ? 'البريد الإلكتروني' : 'Email',
     profileAge: isArabic ? 'العمر' : 'Age',
-    profileTotalIncome: isArabic ? 'إجمالي الدخل' : 'Total income',
+    profileTotalIncome: isArabic ? 'إجمالي الدخل' : isFrench ? 'Revenu total' : 'Total income',
     profileSave: isArabic ? 'حفظ التغييرات' : 'Save changes',
     profileSaved: isArabic ? 'تم الحفظ بنجاح' : 'Saved successfully',
     profileError: isArabic ? 'حدث خطأ في الحفظ' : 'Error saving',
@@ -376,9 +377,9 @@ function SalaryManager({ userId, username, incomeTotal }: SalaryManagerProps) {
     selectedCharities: isArabic ? 'المختارة' : 'Selected',
     salaryDetails: isArabic ? 'تفاصيل المدخول الشهري' : 'Monthly income details',
     totalSalary: isArabic ? 'إجمالي المدخول' : 'Total income',
-    expenses: isArabic ? 'المصروفات' : 'Expenses',
-    savings: isArabic ? 'المدخرات' : 'Savings',
-    investment: isArabic ? 'الاستثمار' : 'Investment',
+    expenses: isArabic ? 'المصروفات' : isFrench ? 'Dépenses' : 'Expenses',
+    savings: isArabic ? 'المدخرات' : isFrench ? 'Épargne' : 'Savings',
+    investment: isArabic ? 'الاستثمار' : isFrench ? 'Investissement' : 'Investment',
     charity: isArabic ? 'الأعمال الخيرية' : 'Charitable works',
     addExpense: isArabic ? 'إضافة مصروف' : 'Add expense',
     addSaving: isArabic ? 'إضافة مدخرة' : 'Add saving',
@@ -1005,12 +1006,12 @@ ${riskEmoji} Risk Level: ${risk}
         <nav className="sfm-nav">
           <button className="sfm-nav-item active" onClick={() => {}}>
             <span className="sfm-nav-icon">⊞</span>
-            {isArabic ? 'لوحة التحكم' : 'Dashboard'}
+            {isArabic ? 'لوحة التحكم' : isFrench ? 'Tableau de bord' : 'Dashboard'}
             <span className="sfm-nav-badge">AI</span>
           </button>
           <button className="sfm-nav-item" onClick={() => router.push('/projects')}>
             <span className="sfm-nav-icon">🚀</span>
-            {isArabic ? 'مشروعي' : 'Projects'}
+            {isArabic ? 'مشروعي' : isFrench ? 'Projets' : 'Projects'}
           </button>
           <button className="sfm-nav-item" onClick={() => router.push('/education/investments')}>
             <span className="sfm-nav-icon">📈</span>
@@ -1018,16 +1019,16 @@ ${riskEmoji} Risk Level: ${risk}
           </button>
           <button className="sfm-nav-item" onClick={() => router.push('/education/savings')}>
             <span className="sfm-nav-icon">💰</span>
-            {isArabic ? 'المدخرات' : 'Savings'}
+            {isArabic ? 'المدخرات' : isFrench ? 'Épargne' : 'Savings'}
           </button>
           <button className="sfm-nav-item" onClick={() => router.push('/education/expenses')}>
             <span className="sfm-nav-icon">📊</span>
-            {isArabic ? 'المصروفات' : 'Expenses'}
+            {isArabic ? 'المصروفات' : isFrench ? 'Dépenses' : 'Expenses'}
           </button>
           {!isGuest && (
             <button className="sfm-nav-item" onClick={() => router.push('/profile')}>
               <span className="sfm-nav-icon">👤</span>
-              {isArabic ? 'ملفي' : 'Profile'}
+              {isArabic ? 'ملفي' : isFrench ? 'Profil' : 'Profile'}
             </button>
           )}
           <div className="sfm-nav-divider" />
@@ -1078,7 +1079,7 @@ ${riskEmoji} Risk Level: ${risk}
           {/* Page title */}
           <div style={{flex:1}}>
             <div style={{fontSize:'16px',fontWeight:'800',color:'#1B2430',fontFamily:'Tajawal,sans-serif'}}>
-              {isArabic ? 'لوحة التحكم' : 'Dashboard'}
+              {isArabic ? 'لوحة التحكم' : isFrench ? 'Tableau de bord' : 'Dashboard'}
             </div>
             <div style={{fontSize:'12px',color:'#8A9BB0',marginTop:'1px',fontFamily:'Tajawal,sans-serif'}}>
               {new Date().toLocaleDateString(isArabic ? 'ar-KW' : 'en-US', {weekday:'long',year:'numeric',month:'long',day:'numeric'})}
@@ -1087,19 +1088,13 @@ ${riskEmoji} Risk Level: ${risk}
 
           {/* Actions */}
           <div style={{display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
-            {/* Language switcher */}
-            <div style={{display:'flex',gap:'3px',background:'#F5F2EA',border:'1.5px solid #E8E2D6',borderRadius:'12px',padding:'3px'}}>
-              {(['ar','en'] as const).map(lang => (
-                <button key={lang} onClick={() => setLanguage(lang)} style={{
-                  padding:'6px 14px', borderRadius:'9px', border:'none', cursor:'pointer',
-                  fontSize:'13px', fontWeight:'700', fontFamily:'Tajawal,sans-serif',
-                  transition:'all 0.18s cubic-bezier(0.4,0,0.2,1)',
-                  background: language===lang ? '#FFFFFF' : 'transparent',
-                  color: language===lang ? '#1B2430' : '#8A9BB0',
-                  boxShadow: language===lang ? '0 1px 6px rgba(27,36,48,0.12)' : 'none',
-                  minWidth:'44px',
-                }}>
-                  {lang==='ar' ? 'عربي' : 'EN'}
+            {/* Premium 3-lang switcher */}
+            <div dir="ltr" style={{display:'inline-flex',alignItems:'center',background:'#EFEDE7',borderRadius:'40px',padding:'3px',border:'1.5px solid #E8E2D6',position:'relative',minWidth:'126px'}}>
+              {/* Sliding pill */}
+              <span style={{position:'absolute',top:'3px',left:`calc(3px + ${(['ar','en','fr'] as const).indexOf(language as 'ar'|'en'|'fr')} * 33.33%)`,width:'calc(33.33%)',height:'calc(100% - 6px)',background:'#FFFFFF',borderRadius:'36px',boxShadow:'0 1px 6px rgba(27,36,48,0.13)',transition:'left 0.22s cubic-bezier(0.4,0,0.2,1)',pointerEvents:'none',zIndex:1}}/>
+              {([{id:'ar',label:'عربي'},{id:'en',label:'EN'},{id:'fr',label:'FR'}] as const).map(lang => (
+                <button key={lang.id} onClick={() => setLanguage(lang.id)} style={{position:'relative',zIndex:2,flex:1,height:'28px',padding:'0 4px',background:'transparent',border:'none',borderRadius:'36px',cursor:'pointer',fontSize:'11.5px',fontWeight:language===lang.id?'700':'500',color:language===lang.id?'#1B2430':'#8A9BB0',fontFamily:lang.id==='ar'?"'Tajawal',sans-serif":"-apple-system,'Segoe UI',sans-serif",letterSpacing:lang.id!=='ar'?'0.04em':'0',transition:'color 0.18s ease',whiteSpace:'nowrap'}}>
+                  {lang.label}
                 </button>
               ))}
             </div>
@@ -1122,7 +1117,7 @@ ${riskEmoji} Risk Level: ${risk}
                 style={{padding:'7px 16px',background:'linear-gradient(135deg,#D4AF37,#C49B3A)',
                   border:'none',borderRadius:'10px',color:'#1B2430',fontSize:'13px',
                   fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>
-                🔑 {isArabic?'دخول':'Login'}
+                🔑 {isArabic?'دخول':isFrench?'Connexion':'Login'}
               </button>
             )}
             {!isGuest && (
@@ -1161,10 +1156,10 @@ ${riskEmoji} Risk Level: ${risk}
             fontSize:'26px', fontWeight:'800', color:'#1B2430',
             fontFamily:'Tajawal,sans-serif', lineHeight:1.2, marginBottom:'6px',
           }}>
-            👋 {isArabic ? `مرحباً ${username || 'بك'}` : `Welcome back, ${username || 'there'}`}
+            👋 {isArabic ? `مرحباً ${username || 'بك'}` : isFrench ? `Bonjour, ${username || ''}` : `Welcome back, ${username || 'there'}`}
           </h1>
           <p style={{fontSize:'14px',color:'#8A9BB0',fontFamily:'Tajawal,sans-serif'}}>
-            {isArabic ? 'إليك نظرة عامة على وضعك المالي اليوم' : "Here's an overview of your financial status today"}
+            {isArabic ? 'إليك نظرة عامة على وضعك المالي اليوم' : isFrench ? "Voici un aperçu de votre situation financière aujourd'hui" : "Here's an overview of your financial status today"}
           </p>
         </div>
 
@@ -1416,7 +1411,7 @@ ${riskEmoji} Risk Level: ${risk}
                         {text.sumExpenses}: <span style={{color:'#EF4444',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{formatCurrency(expenseItems.reduce((s,i)=>s+(parseFloat(i.amount.replace(/[^\d.]/g,''))||0),0))}</span> {getCurrentCurrency().symbol}
                       </span>
                       <button onClick={() => handleSaveSection('expenses')} style={{display:'flex',alignItems:'center',gap:'7px',padding:'9px 20px',background:savedSection['expenses']?'rgba(34,197,94,0.10)':'linear-gradient(135deg,#1B2430,#2C3444)',border:`1.5px solid ${savedSection['expenses']?'#22C55E':'transparent'}`,borderRadius:'12px',color:savedSection['expenses']?'#22C55E':'#fff',fontSize:'13px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif',transition:'all 0.2s',minWidth:'90px',justifyContent:'center'}}>
-                        {savingSection['expenses'] ? <span style={{animation:'spin 1s linear infinite',display:'inline-block',borderRadius:'50%',border:'2px solid rgba(255,255,255,0.25)',borderTopColor:'#fff',width:'14px',height:'14px'}}/> : savedSection['expenses'] ? '✅ محفوظ' : isArabic?'💾 حفظ':'💾 Save'}
+                        {savingSection['expenses'] ? <span style={{animation:'spin 1s linear infinite',display:'inline-block',borderRadius:'50%',border:'2px solid rgba(255,255,255,0.25)',borderTopColor:'#fff',width:'14px',height:'14px'}}/> : savedSection['expenses'] ? isArabic ? '✅ محفوظ' : isFrench ? '✅ Sauvegardé' : '✅ Saved' : isArabic?'💾 حفظ':isFrench?'💾 Sauv':'💾 Save'}
                       </button>
                     </div>
                   )}
@@ -1457,7 +1452,7 @@ ${riskEmoji} Risk Level: ${risk}
                         {text.sumSavings}: <span style={{color:'#22C55E',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{formatCurrency(savingsItems.reduce((s,i)=>s+(parseFloat(i.amount.replace(/[^\d.]/g,''))||0),0))}</span> {getCurrentCurrency().symbol}
                       </span>
                       <button onClick={() => handleSaveSection('savings')} style={{display:'flex',alignItems:'center',gap:'7px',padding:'9px 20px',background:savedSection['savings']?'rgba(34,197,94,0.10)':'linear-gradient(135deg,#1B2430,#2C3444)',border:`1.5px solid ${savedSection['savings']?'#22C55E':'transparent'}`,borderRadius:'12px',color:savedSection['savings']?'#22C55E':'#fff',fontSize:'13px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif',transition:'all 0.2s',minWidth:'90px',justifyContent:'center'}}>
-                        {savingSection['savings'] ? <span style={{animation:'spin 1s linear infinite',display:'inline-block',borderRadius:'50%',border:'2px solid rgba(255,255,255,0.25)',borderTopColor:'#fff',width:'14px',height:'14px'}}/> : savedSection['savings'] ? '✅ محفوظ' : isArabic?'💾 حفظ':'💾 Save'}
+                        {savingSection['savings'] ? <span style={{animation:'spin 1s linear infinite',display:'inline-block',borderRadius:'50%',border:'2px solid rgba(255,255,255,0.25)',borderTopColor:'#fff',width:'14px',height:'14px'}}/> : savedSection['savings'] ? isArabic ? '✅ محفوظ' : isFrench ? '✅ Sauvegardé' : '✅ Saved' : isArabic?'💾 حفظ':isFrench?'💾 Sauv':'💾 Save'}
                       </button>
                     </div>
                   )}
@@ -1526,7 +1521,7 @@ ${riskEmoji} Risk Level: ${risk}
                         {text.sumInvestment}: <span style={{color:'#D4AF37',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{formatCurrency(investmentItems.reduce((s,i)=>s+(parseFloat(i.amount.replace(/[^\d.]/g,''))||0),0))}</span> {getCurrentCurrency().symbol}
                       </span>
                       <button onClick={() => handleSaveSection('investments')} style={{display:'flex',alignItems:'center',gap:'7px',padding:'9px 20px',background:savedSection['investments']?'rgba(34,197,94,0.10)':'linear-gradient(135deg,#1B2430,#2C3444)',border:`1.5px solid ${savedSection['investments']?'#22C55E':'transparent'}`,borderRadius:'12px',color:savedSection['investments']?'#22C55E':'#fff',fontSize:'13px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif',transition:'all 0.2s',minWidth:'90px',justifyContent:'center'}}>
-                        {savingSection['investments'] ? <span style={{animation:'spin 1s linear infinite',display:'inline-block',borderRadius:'50%',border:'2px solid rgba(255,255,255,0.25)',borderTopColor:'#fff',width:'14px',height:'14px'}}/> : savedSection['investments'] ? '✅ محفوظ' : isArabic?'💾 حفظ':'💾 Save'}
+                        {savingSection['investments'] ? <span style={{animation:'spin 1s linear infinite',display:'inline-block',borderRadius:'50%',border:'2px solid rgba(255,255,255,0.25)',borderTopColor:'#fff',width:'14px',height:'14px'}}/> : savedSection['investments'] ? isArabic ? '✅ محفوظ' : isFrench ? '✅ Sauvegardé' : '✅ Saved' : isArabic?'💾 حفظ':isFrench?'💾 Sauv':'💾 Save'}
                       </button>
                     </div>
                   )}
@@ -1914,7 +1909,7 @@ ${riskEmoji} Risk Level: ${risk}
           <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'4px'}}>
             <div style={{width:'4px',height:'22px',background:'linear-gradient(180deg,#D4AF37,#C49B3A)',borderRadius:'4px'}}/>
             <h3 style={{fontSize:'16px',fontWeight:'700',color:'#1B2430',fontFamily:'Tajawal,sans-serif',margin:0}}>
-              {isArabic ? 'الإجراءات الذكية' : 'Smart Actions'}
+              {isArabic ? 'الإجراءات الذكية' : isFrench ? 'Actions intelligentes' : 'Smart Actions'}
             </h3>
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -1924,7 +1919,7 @@ ${riskEmoji} Risk Level: ${risk}
               boxShadow:'0 4px 16px rgba(27,36,48,0.22)',transition:'all 0.2s',fontFamily:'Tajawal,sans-serif',
             }}>
               <Printer style={{width:'22px',height:'22px'}}/>
-              <span style={{fontSize:'12.5px',fontWeight:'700'}}>{isArabic?'طباعة التقرير':'Print Report'}</span>
+              <span style={{fontSize:'12.5px',fontWeight:'700'}}>{isArabic?'طباعة التقرير':isFrench?'Imprimer':'Print Report'}</span>
             </button>
             {[
               {id:'analysis', icon:'🧠', label: isArabic?'تحليل ذكي':'Analysis'},
@@ -1990,7 +1985,7 @@ ${riskEmoji} Risk Level: ${risk}
           </button>
           <button className="sfm-bottom-nav-item" onClick={() => router.push('/education/expenses')}>
             <span className="sfm-bottom-nav-icon">📊</span>
-            <span>{isArabic ? 'المصروفات' : 'Expenses'}</span>
+            <span>{isArabic ? 'المصروفات' : isFrench ? 'Dépenses' : 'Expenses'}</span>
           </button>
           <button className="sfm-bottom-nav-add" onClick={() => {
             const el = document.getElementById('salary-input');
@@ -1998,7 +1993,7 @@ ${riskEmoji} Risk Level: ${risk}
           }}>＋</button>
           <button className="sfm-bottom-nav-item" onClick={() => router.push('/projects')}>
             <span className="sfm-bottom-nav-icon">🚀</span>
-            <span>{isArabic ? 'مشروعي' : 'Projects'}</span>
+            <span>{isArabic ? 'مشروعي' : isFrench ? 'Projets' : 'Projects'}</span>
           </button>
           <button className="sfm-bottom-nav-item" onClick={() => router.push('/profile')}>
             <span className="sfm-bottom-nav-icon">👤</span>
