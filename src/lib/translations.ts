@@ -3,9 +3,11 @@
    Shared across all pages. Add keys here, use via t()
 ═══════════════════════════════════════════════════════ */
 
-export type Lang = 'ar' | 'en';
+export type Lang = 'ar' | 'en' | 'fr';
 
-export const TR = {
+type TranslationEntry = Partial<Record<Lang, string>> & { ar: string; en: string };
+
+export const TR: Record<string, TranslationEntry> = {
 
   /* ── Common / UI ── */
   back:        { ar:'← رجوع',           en:'← Back' },
@@ -287,15 +289,34 @@ export const TR = {
   footer_rights:  { ar:'جميع الحقوق محفوظة', en:'All rights reserved' },
   footer_tagline: { ar:'المدير المالي الذكي • AI Wealth Platform', en:'AI Wealth Platform • Smart Financial Manager' },
 
+  settings_title: { ar:'الإعدادات', en:'Settings', fr:'Parametres' },
+  settings_subtitle: { ar:'اضبط حسابك وتفضيلاتك المالية وتجربة THE SFM', en:'Manage your account, financial preferences, and THE SFM experience', fr:'Gerez votre compte, vos preferences financieres et votre experience THE SFM' },
+  settings_language: { ar:'إعدادات اللغة', en:'Language Settings', fr:'Langue' },
+  settings_account: { ar:'إعدادات الحساب', en:'Account Settings', fr:'Compte' },
+  settings_financial: { ar:'التفضيلات المالية', en:'Financial Preferences', fr:'Preferences financieres' },
+  settings_appearance: { ar:'المظهر', en:'Appearance', fr:'Apparence' },
+  settings_notifications: { ar:'الإشعارات', en:'Notifications', fr:'Notifications' },
+  settings_security: { ar:'الخصوصية والأمان', en:'Privacy & Security', fr:'Confidentialite et securite' },
+  settings_data: { ar:'البيانات والتقارير', en:'Data & Reports', fr:'Donnees et rapports' },
+  settings_save_language: { ar:'حفظ اللغة', en:'Save language', fr:'Enregistrer la langue' },
+  settings_save_profile: { ar:'حفظ الملف', en:'Save profile', fr:'Enregistrer le profil' },
+  settings_save_preferences: { ar:'حفظ التفضيلات', en:'Save preferences', fr:'Enregistrer les preferences' },
+  settings_export_data: { ar:'تصدير البيانات', en:'Export data', fr:'Exporter les donnees' },
+  settings_export_pdf: { ar:'تصدير تقرير PDF', en:'Export monthly PDF', fr:'Exporter le rapport PDF' },
+  settings_clear_demo: { ar:'مسح البيانات التجريبية', en:'Clear demo data', fr:'Effacer les donnees demo' },
+  placeholder_first_name: { ar:'أدخل الاسم الأول', en:'Enter first name', fr:'Entrez le prenom' },
+  placeholder_last_name: { ar:'أدخل الاسم الأخير', en:'Enter last name', fr:'Entrez le nom' },
+
 } as const;
 
 /** Helper: get translation for current language */
 export function t(key: keyof typeof TR, lang: Lang): string {
-  return TR[key]?.[lang] ?? TR[key]?.['ar'] ?? String(key);
+  return TR[key]?.[lang] ?? TR[key]?.en ?? TR[key]?.ar ?? String(key);
 }
 
 /** Get all months in a language */
 export const MONTHS = {
   ar: ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],
   en: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+  fr: ['Janvier','Fevrier','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Decembre'],
 };

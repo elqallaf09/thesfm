@@ -47,6 +47,19 @@ const NAV_ITEMS = [
   {id:'settings', icon:'⚙️', label:'الإعدادات'},
 ];
 
+const NAV_ROUTES: Record<string, string> = {
+  home: '/',
+  expenses: '/expenses',
+  income: '/income',
+  invest: '/invest',
+  goals: '/goals',
+  reports: '/reports',
+  ai: '/ai',
+  charity: '/charity',
+  notifications: '/notifications',
+  settings: '/settings',
+};
+
 const DONUT_DATA = [
   {label:'المواصلات',pct:25,color:'#D8AE63'},
   {label:'الطعام',pct:20,color:'#9A6C3C'},
@@ -362,7 +375,7 @@ export default function DashboardPage(){
           {/* Nav */}
           <nav style={{flex:1,padding:'10px 8px'}}>
             {NAV_ITEMS.map(n=>(
-              <button key={n.id} className={'nav-item'+(activeNav===n.id?' active':'')} onClick={()=>{setActiveNav(n.id);if(n.id==='home')router.push('/');else router.push('/'+n.id);}}>
+              <button key={n.id} className={'nav-item'+(activeNav===n.id?' active':'')} onClick={()=>{setActiveNav(n.id);router.push(NAV_ROUTES[n.id] ?? '/');}}>
                 <span style={{fontSize:'16px',width:'20px',textAlign:'center'}}>{n.icon}</span>
                 {n.label}
               </button>
@@ -710,7 +723,7 @@ export default function DashboardPage(){
                 {[
                   {icon:'💵',label:'إضافة دخل',action:()=>router.push('/income/add')},
                   {icon:'🛒',label:'إضافة مصروف',action:()=>router.push('/expenses/add')},
-                  {icon:'📈',label:'تحويل استثمار',action:()=>router.push('/education/investments')},
+                  {icon:'📈',label:'تحويل استثمار',action:()=>router.push('/invest')},
                   {icon:'📊',label:'تقرير شهري',action:()=>window.print()},
                   {icon:'🖨️',label:'طباعة التقرير',action:()=>window.print()},
                   {icon:'📥',label:'تصدير PDF',action:()=>window.print()},

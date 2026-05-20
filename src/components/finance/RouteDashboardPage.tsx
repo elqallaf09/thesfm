@@ -618,7 +618,7 @@ function buildPrimaryActions(kind: PageKind, isAr: boolean, router: ReturnType<t
   const routes: Record<Exclude<PageKind, 'reports' | 'ai'>, { label: LangText; href: string }> = {
     expenses: { label: { ar: 'إضافة مصروف', en: 'Add expense' }, href: '/expenses/add' },
     income: { label: { ar: 'إضافة دخل', en: 'Add income' }, href: '/income/add' },
-    invest: { label: { ar: 'إضافة استثمار', en: 'Add investment' }, href: '/education/investments' },
+    invest: { label: { ar: 'إضافة استثمار', en: 'Add investment' }, href: '/invest' },
     goals: { label: { ar: 'إضافة هدف', en: 'Add goal' }, href: '/projects' },
   };
 

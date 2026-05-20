@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
-
-type Lang = 'ar' | 'en';
+import type { Lang } from '@/lib/translations';
 
 interface Props {
   value?: Lang;
@@ -16,6 +15,7 @@ interface Props {
 const LANGS: { id: Lang; label: string; flag: string }[] = [
   { id: 'ar', label: 'عربي', flag: '🇸🇦' },
   { id: 'en', label: 'EN', flag: '🇺🇸' },
+  { id: 'fr', label: 'FR', flag: '🇫🇷' },
 ];
 
 export function LanguageSwitcher({ value, onChange, variant = 'light', compact = false, size = 'md' }: Props) {
@@ -69,15 +69,16 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         <span style={{
           position: 'absolute',
           top: '3px',
-          left: idx === 0 ? '3px' : '50%',
-          width: 'calc(50% - 3px)',
+          left: '3px',
+          width: `calc((100% - 6px) / ${LANGS.length})`,
           height: 'calc(100% - 6px)',
           background: pill,
           borderRadius: '36px',
           boxShadow: variant === 'dark'
             ? '0 1px 6px rgba(0,0,0,0.25)'
             : '0 1px 5px rgba(27,36,48,0.12)',
-          transition: 'left 0.22s cubic-bezier(0.4,0,0.2,1)',
+          transform: `translateX(${idx * 100}%)`,
+          transition: 'transform 0.22s cubic-bezier(0.4,0,0.2,1)',
           pointerEvents: 'none',
           zIndex: 1,
         }} />
@@ -92,7 +93,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
             position: 'relative',
             zIndex: 2,
             flex: 1,
-            minWidth: isCompact ? '36px' : '44px',
+            minWidth: isCompact ? '34px' : '42px',
             height: h,
             padding: `0 ${px}`,
             background: 'transparent',

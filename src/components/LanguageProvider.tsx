@@ -5,6 +5,21 @@ import type { Lang } from '@/lib/translations';
 import { t as translate, TR } from '@/lib/translations';
 
 const STORAGE_KEY = 'sfm_lang';
+const LANG_EVENT = 'sfm-language-change';
+
+function isLang(value: unknown): value is Lang {
+  return value === 'ar' || value === 'en' || value === 'fr';
+}
+
+function readStoredLang(): Lang {
+  if (typeof window === 'undefined') return 'ar';
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return isLang(stored) ? stored : 'ar';
+  } catch {
+    return 'ar';
+  }
+}
 
 interface LangCtx {
   lang: Lang;
@@ -30,16 +45,27 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>('ar');
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as Lang | null;
-      if (stored === 'ar' || stored === 'en') setLangState(stored);
-    } catch {}
+    setLangState(readStoredLang());
+
+    const syncLang = (event?: Event) => {
+      const customLang = event instanceof CustomEvent ? event.detail?.lang : undefined;
+      setLangState(isLang(customLang) ? customLang : readStoredLang());
+    };
+
+    window.addEventListener(LANG_EVENT, syncLang as EventListener);
+    window.addEventListener('storage', syncLang);
+    return () => {
+      window.removeEventListener(LANG_EVENT, syncLang as EventListener);
+      window.removeEventListener('storage', syncLang);
+    };
   }, []);
 
   const setLang = useCallback((l: Lang) => {
+    if (!isLang(l)) return;
     setLangState(l);
     try {
       localStorage.setItem(STORAGE_KEY, l);
+      window.dispatchEvent(new CustomEvent(LANG_EVENT, { detail: { lang: l } }));
     } catch {}
   }, []);
 
@@ -47,6 +73,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     if (typeof document !== 'undefined') {
       document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
       document.documentElement.lang = lang;
+      document.body.dir = lang === 'ar' ? 'rtl' : 'ltr';
     }
   }, [lang]);
 
@@ -59,7 +86,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     dir: lang === 'ar' ? 'rtl' : 'ltr',
     isAr: lang === 'ar',
     isEn: lang === 'en',
-    isFr: false,
+    isFr: lang === 'fr',
   }), [lang, setLang, tFn]);
 
   return (
