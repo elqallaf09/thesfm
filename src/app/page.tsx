@@ -708,8 +708,8 @@ export default function DashboardPage(){
               <h3 style={{fontSize:'14px',fontWeight:'800',color:'#111111',marginBottom:'14px'}}>إجراءات سريعة</h3>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
                 {[
-                  {icon:'💵',label:'إضافة دخل',action:()=>router.push('/')},
-                  {icon:'🛒',label:'إضافة مصروف',action:()=>router.push('/')},
+                  {icon:'💵',label:'إضافة دخل',action:()=>router.push('/income/add')},
+                  {icon:'🛒',label:'إضافة مصروف',action:()=>router.push('/expenses/add')},
                   {icon:'📈',label:'تحويل استثمار',action:()=>router.push('/education/investments')},
                   {icon:'📊',label:'تقرير شهري',action:()=>window.print()},
                   {icon:'🖨️',label:'طباعة التقرير',action:()=>window.print()},
