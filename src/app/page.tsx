@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,30 +9,20 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 /* ═══════════════════════════════════════════════════
    TYPES
 ═══════════════════════════════════════════════════ */
-interface MonthRecord {
+interface MonthSnapshot {
   month: string; label: string;
   income: number; expenses: number; savings: number; investment: number; charity: number;
 }
-interface ExpenseItem { date: string; category: string; desc: string; amount: number; pct: number; }
-interface Goal { id: string; name: string; icon: string; target: number; saved: number; color: string; }
-interface Investment { id: string; name: string; icon: string; amount: number; profit: number; pct: number; }
+type ExpenseRow = { id: string; name: string | null; amount: number | string | null; created_at?: string | null };
+type GoalRow = { id: string; name: string | null; icon?: string | null; target_amount: number | string | null; current_amount: number | string | null; color?: string | null };
+type InvestmentRow = { id: string; name: string | null; amount: number | string | null };
+type DonutItem = { label: string; pct: number; color: string; amount: number };
+type ProfileRow = { display_name?: string | null; profession?: string | null };
 
 /* ═══════════════════════════════════════════════════
    STATIC DATA
 ═══════════════════════════════════════════════════ */
 const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-
-const TICKER_ITEMS = [
-  {name:'ناسداك', val:'10,982.3', chg:'+0.68%', up:true},
-  {name:'الذهب', val:'2,360.10', chg:'+0.35%', up:true},
-  {name:'فتشة', val:'27.61', chg:'+0.42%', up:true},
-  {name:'آبل موز', val:'82.45', chg:'-0.24%', up:false},
-  {name:'الكاكاو', val:'8,683.3', chg:'-2.38%', up:false},
-  {name:'بيتكوين', val:'67,240', chg:'+1.85%', up:true},
-  {name:'تداول السعودية', val:'11,542', chg:'+0.45%', up:true},
-  {name:'بورصة قطر', val:'9,876', chg:'-0.32%', up:false},
-  {name:'سوق دبي', val:'4,512', chg:'+0.78%', up:true},
-];
 
 const NAV_ITEMS = [
   {id:'home', icon:'⊞', label:'الرئيسية'},
@@ -60,47 +50,10 @@ const NAV_ROUTES: Record<string, string> = {
   settings: '/settings',
 };
 
-const DONUT_DATA = [
-  {label:'المواصلات',pct:25,color:'#D8AE63'},
-  {label:'الطعام',pct:20,color:'#9A6C3C'},
-  {label:'السكن',pct:20,color:'#5B4332'},
-  {label:'التسوق',pct:15,color:'#C8A96B'},
-  {label:'الترفيه',pct:10,color:'#8A7060'},
-  {label:'أخرى',pct:10,color:'#BFB5A8'},
-];
-
-const SAMPLE_GOALS: Goal[] = [
-  {id:'car',name:'شراء سيارة',icon:'🚗',target:10000,saved:8200,color:'#D8AE63'},
-  {id:'house',name:'منزل الأحلام',icon:'🏠',target:50000,saved:13500,color:'#9A6C3C'},
-  {id:'retire',name:'التقاعد',icon:'👴',target:100000,saved:41000,color:'#22C55E'},
-  {id:'project',name:'مشروع',icon:'🚀',target:10000,saved:4200,color:'#3B82F6'},
-];
-
-const SAMPLE_INVESTMENTS: Investment[] = [
-  {id:'tech',name:'صندوق تكنولوجيا',icon:'💻',amount:850,profit:133.60,pct:18.50},
-  {id:'gold',name:'الذهب',icon:'🥇',amount:754,profit:90.48,pct:12.20},
-  {id:'stocks',name:'الأسهم الأمريكية',icon:'📈',amount:666,profit:57.94,pct:8.71},
-];
-
-/* ─── Generate 6 months of sample history ─── */
-function genHistory(baseIncome=1936,baseExp=1305): MonthRecord[] {
-  const now=new Date(); const months:MonthRecord[]=[];
-  for(let i=5;i>=0;i--){
-    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-    const variance=0.85+Math.random()*0.3;
-    const inc=Math.round(baseIncome*variance*100)/100;
-    const exp=Math.round(baseExp*variance*100)/100;
-    const sav=Math.round((inc-exp)*0.3*100)/100;
-    const inv=Math.round(inc*0.15*100)/100;
-    months.push({month:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,label:MONTHS_AR[d.getMonth()]+' '+d.getFullYear(),income:inc,expenses:exp,savings:sav,investment:inv,charity:Math.round(inc*0.02*100)/100});
-  }
-  return months;
-}
-
 /* ═══════════════════════════════════════════════════
    SVG CHARTS
 ═══════════════════════════════════════════════════ */
-function LineChart({data,width=520,height=200}:{data:MonthRecord[];width?:number;height?:number}){
+function LineChart({data,width=520,height=200}:{data:MonthSnapshot[];width?:number;height?:number}){
   const pad={t:20,r:20,b:40,l:50};
   const w=width-pad.l-pad.r, h=height-pad.t-pad.b;
   const series=[
@@ -109,7 +62,7 @@ function LineChart({data,width=520,height=200}:{data:MonthRecord[];width?:number
     {key:'savings',color:'#D8AE63',label:'الادخار'},
     {key:'investment',color:'#3B82F6',label:'الاستثمار'},
   ] as const;
-  const allVals=data.flatMap(d=>series.map(s=>d[s.key as keyof MonthRecord] as number));
+  const allVals=data.flatMap(d=>series.map(s=>d[s.key]));
   const maxV=Math.max(...allVals)*1.1||1;
   const xStep=w/(data.length-1||1);
   const toY=(v:number)=>pad.t+h-(v/maxV)*h;
@@ -127,11 +80,11 @@ function LineChart({data,width=520,height=200}:{data:MonthRecord[];width?:number
         {data.map((d,i)=><text key={i} x={toX(i)} y={height-8} textAnchor="middle" fontSize="10" fill="#9A6C3C">{d.label.split(' ')[0]}</text>)}
         {/* Lines + dots */}
         {series.map(s=>{
-          const pts=data.map((d,i)=>`${toX(i)},${toY(d[s.key as keyof MonthRecord] as number)}`).join(' ');
+          const pts=data.map((d,i)=>`${toX(i)},${toY(d[s.key])}`).join(' ');
           return(
             <g key={s.key}>
               <polyline points={pts} fill="none" stroke={s.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              {data.map((d,i)=><circle key={i} cx={toX(i)} cy={toY(d[s.key as keyof MonthRecord] as number)} r="4" fill={s.color} stroke="#FFFDFC" strokeWidth="2" style={{cursor:'pointer'}} onMouseEnter={()=>setTooltip({x:toX(i),y:toY(d[s.key as keyof MonthRecord] as number),idx:i})} onMouseLeave={()=>setTooltip(null)}/>)}
+              {data.map((d,i)=><circle key={i} cx={toX(i)} cy={toY(d[s.key])} r="4" fill={s.color} stroke="#FFFDFC" strokeWidth="2" style={{cursor:'pointer'}} onMouseEnter={()=>setTooltip({x:toX(i),y:toY(d[s.key]),idx:i})} onMouseLeave={()=>setTooltip(null)}/>)}
             </g>
           );
         })}
@@ -143,7 +96,7 @@ function LineChart({data,width=520,height=200}:{data:MonthRecord[];width?:number
             <g>
               <rect x={x} y={tooltip.y-60} width="130" height="80" rx="8" fill="#111111" opacity="0.92"/>
               <text x={x+8} y={tooltip.y-42} fontSize="11" fill="#D8AE63" fontWeight="700">{d.label}</text>
-              {series.map((s,i)=><text key={s.key} x={x+8} y={tooltip.y-26+i*14} fontSize="10" fill={s.color}>{s.label}: {(d[s.key as keyof MonthRecord] as number).toFixed(2)}</text>)}
+              {series.map((s,i)=><text key={s.key} x={x+8} y={tooltip.y-26+i*14} fontSize="10" fill={s.color}>{s.label}: {d[s.key].toFixed(2)}</text>)}
             </g>
           );
         })()}
@@ -156,7 +109,7 @@ function LineChart({data,width=520,height=200}:{data:MonthRecord[];width?:number
   );
 }
 
-function DonutChart({data,total}:{data:typeof DONUT_DATA;total:number}){
+function DonutChart({data,total}:{data:DonutItem[];total:number}){
   const r=70,cx=100,cy=100,circ=2*Math.PI*r;
   let offset=0;
   return(
@@ -198,29 +151,81 @@ function BarChart({data}:{data:{label:string;v1:number;v2:number}[]}){
   );
 }
 
+function EmptyState({
+  icon, title, subtitle, btnLabel, btnHref,
+}: {
+  icon: string;
+  title: string;
+  subtitle: string;
+  btnLabel?: string;
+  btnHref?: string;
+}) {
+  return (
+    <div style={{
+      textAlign: 'center',
+      padding: '40px 20px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: '12px',
+    }}>
+      <div style={{ fontSize: '44px' }}>{icon}</div>
+      <div style={{
+        fontSize: '15px', fontWeight: '700',
+        color: '#111111', fontFamily: 'Tajawal,sans-serif',
+      }}>{title}</div>
+      <div style={{
+        fontSize: '13px', color: '#9A6C3C',
+        lineHeight: 1.6, maxWidth: '260px',
+        fontFamily: 'Tajawal,sans-serif',
+      }}>{subtitle}</div>
+      {btnLabel && btnHref && (
+        <a href={btnHref} style={{
+          display: 'inline-flex', alignItems: 'center', gap: '7px',
+          padding: '10px 22px',
+          background: 'linear-gradient(135deg,#D8AE63,#9A6C3C)',
+          border: 'none', borderRadius: '13px',
+          color: '#111111', fontSize: '13.5px', fontWeight: '700',
+          textDecoration: 'none', fontFamily: 'Tajawal,sans-serif',
+          cursor: 'pointer',
+        }}>{btnLabel}</a>
+      )}
+    </div>
+  );
+}
+
+function amountOf(value: number | string | null | undefined) {
+  return parseFloat(String(value ?? 0)) || 0;
+}
+
+function formatExpenseName(name: string | null | undefined) {
+  const raw = name || 'مصروف';
+  if (!raw.startsWith('خيرية:')) return raw;
+  const note = raw.split(':').slice(2).join(':').trim();
+  return `🤲 ${note || 'عمل خيري'}`;
+}
+
 /* ═══════════════════════════════════════════════════
    MAIN DASHBOARD
 ═══════════════════════════════════════════════════ */
 export default function DashboardPage(){
   const {user,loading}=useAuth();
-  const {dir, isAr, isEn, isFr} = useLanguage();
+  const {dir, isAr, isFr} = useLanguage();
   const router=useRouter();
-  const [profile,setProfile]=useState<any>({display_name:'SFM',profession:'خبير مالي'});
-  const [totalIncome,setTotalIncome]=useState(1936);
-  const [totalExpenses,setTotalExpenses]=useState(1305);
-  const [history,setHistory]=useState<MonthRecord[]>([]);
+  const [profile,setProfile]=useState<ProfileRow>({display_name:'SFM',profession:'خبير مالي'});
+  const [totalIncome,setTotalIncome]=useState(0);
+  const [totalExpenses,setTotalExpenses]=useState(0);
+  const [goals,setGoals]=useState<GoalRow[]>([]);
+  const [investments,setInvestments]=useState<InvestmentRow[]>([]);
+  const [expenseItems,setExpenseItems]=useState<ExpenseRow[]>([]);
+  const [monthHistory,setMonthHistory]=useState<MonthSnapshot[]>([]);
   const [cmpA,setCmpA]=useState(0);
   const [cmpB,setCmpB]=useState(1);
   const [activeNav,setActiveNav]=useState('home');
-  const [transTab,setTransTab]=useState<'exp'|'inc'|'inv'>('exp');
   const [mounted,setMounted]=useState(false);
-  const [sidebarOpen,setSidebarOpen]=useState(true);
-  const [selectedMonth,setSelectedMonth]=useState('');
 
   useEffect(()=>{
     setTimeout(()=>setMounted(true),60);
-    const h=genHistory();
-    setHistory(h);
     if(!loading&&user){loadProfile();}
   },[user,loading]);
 
@@ -230,35 +235,84 @@ export default function DashboardPage(){
     const{data}=await supabase.from('profiles').select('*').eq('id',userId).maybeSingle();
     if(data)setProfile(data);
     const{data:s}=await supabase.from('monthly_income_sources').select('*').eq('user_id',userId);
-    if(s&&s.length>0){const t=s.reduce((a:number,r:{amount:number|string|null})=>a+(parseFloat(String(r.amount ?? 0))||0),0);setTotalIncome(t);}
-    const{data:e}=await supabase.from('expense_items').select('*').eq('user_id',userId);
-    if(e&&e.length>0){const t=e.reduce((a:number,r:{amount:number|string|null})=>a+(parseFloat(String(r.amount ?? 0))||0),0);setTotalExpenses(t);}
+    const realIncome=s?.reduce((a:number,r:{amount:number|string|null})=>a+amountOf(r.amount),0) ?? 0;
+    setTotalIncome(realIncome);
+
+    const{data:goalsData}=await supabase.from('financial_goals').select('*').eq('user_id',userId).order('created_at',{ascending:false});
+    if(goalsData)setGoals(goalsData as GoalRow[]);
+
+    const{data:invData}=await supabase.from('investment_items').select('*').eq('user_id',userId);
+    const invRows=(invData ?? []) as InvestmentRow[];
+    setInvestments(invRows);
+
+    const{data:expData}=await supabase.from('expense_items').select('*').eq('user_id',userId).order('created_at',{ascending:false});
+    const expRows=(expData ?? []) as ExpenseRow[];
+    setExpenseItems(expRows);
+    const realExp=expRows.reduce((sum,row)=>sum+amountOf(row.amount),0);
+    setTotalExpenses(realExp);
+
+    const realCharity=expRows
+      .filter(row=>row.name?.startsWith('خيرية:'))
+      .reduce((sum,row)=>sum+amountOf(row.amount),0);
+    const realInvestment=invRows.reduce((sum,row)=>sum+amountOf(row.amount),0);
+    const now=new Date();
+    const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    if(realIncome>0||realExp>0){
+      setMonthHistory([{
+        month:ym,
+        label:MONTHS_AR[now.getMonth()]+' '+now.getFullYear(),
+        income:realIncome,
+        expenses:realExp,
+        savings:Math.max(0,realIncome-realExp),
+        investment:realInvestment,
+        charity:realCharity,
+      }]);
+    } else {
+      setMonthHistory([]);
+    }
   };
 
-  const totalSavings=Math.max(0,totalIncome-totalExpenses)*0.3;
-  const totalInvestment=totalIncome*0.15;
+  const totalSavings=Math.max(0,totalIncome-totalExpenses);
+  const totalInvestment=investments.reduce((sum,item)=>sum+amountOf(item.amount),0);
   const netWorth=totalIncome+totalSavings;
-  const healthScore=Math.min(100,Math.round(60+(totalSavings/totalIncome)*40));
-  const prevMonth=history[history.length-2];
-  const currMonth=history[history.length-1];
-  const monthlyGrowth=prevMonth?totalIncome-prevMonth.income:128.6;
-  const monthlyGrowthPct=prevMonth?((totalIncome-prevMonth.income)/prevMonth.income*100):7.09;
+  const healthScore=totalIncome>0?Math.min(100,Math.round(60+(totalSavings/totalIncome)*40)):0;
+  const monthlyGrowth=0;
+  const monthlyGrowthPct=0;
   const initials=(profile.display_name||'SFM').substring(0,2).toUpperCase();
 
   const S=(d:number)=>({opacity:mounted?1:0,transform:mounted?'translateY(0)':'translateY(18px)',transition:`opacity .5s ease ${d}ms, transform .5s ease ${d}ms`});
 
-  const sampleTransactions:ExpenseItem[]=[
-    {date:'2024-05-26',category:'مواصلات',desc:'—',amount:-45,pct:10},
-    {date:'2024-05-24',category:'طعام',desc:'—',amount:-28,pct:12},
-    {date:'2024-05-22',category:'ترفيه',desc:'—',amount:-15,pct:23},
-    {date:'2024-05-21',category:'تسوق',desc:'—',amount:-60,pct:5},
-    {date:'2024-05-20',category:'كهرباء',desc:'—',amount:-30,pct:0},
-  ];
+  const donutData=useMemo(()=>{
+    if(expenseItems.length===0)return[];
+    const groups:Record<string,number>={};
+    const total=expenseItems.reduce((sum,item)=>sum+amountOf(item.amount),0);
+    expenseItems.forEach(item=>{
+      const name=item.name||'';
+      const amt=amountOf(item.amount);
+      let cat='أخرى';
+      if(name.startsWith('خيرية:'))cat='خيرية';
+      else if(/سكن|إيجار|منزل/i.test(name))cat='السكن';
+      else if(/طعام|مطعم|أكل/i.test(name))cat='الطعام';
+      else if(/سيارة|مواصلات|بنزين/i.test(name))cat='المواصلات';
+      else if(/كهرباء|ماء|فاتورة/i.test(name))cat='المرافق';
+      else if(/تسوق|ملابس/i.test(name))cat='التسوق';
+      else if(/ترفيه|سينما|سفر/i.test(name))cat='الترفيه';
+      else if(/صحة|دواء|طبيب/i.test(name))cat='الصحة';
+      groups[cat]=(groups[cat]||0)+amt;
+    });
+    const PALETTE=['#D8AE63','#9A6C3C','#5B4332','#C8A96B','#22C55E','#3B82F6','#8A7060','#BFB5A8'];
+    return Object.entries(groups).map(([label,amount],i)=>({
+      label,
+      pct:total>0?Math.round((amount/total)*100):0,
+      color:PALETTE[i%PALETTE.length],
+      amount,
+    }));
+  },[expenseItems]);
 
-  const cmpDiff=(key:keyof MonthRecord)=>{
-    if(history.length<2)return{diff:0,pct:0};
-    const a=history[cmpA]?.[key] as number||0;
-    const b=history[cmpB]?.[key] as number||0;
+  const cmpDiff=(key:keyof MonthSnapshot)=>{
+    if(monthHistory.length<2)return{diff:0,pct:0};
+    const a=monthHistory[cmpA]?.[key] as number||0;
+    const b=monthHistory[cmpB]?.[key] as number||0;
     return{diff:b-a,pct:a>0?((b-a)/a*100):0};
   };
 
@@ -301,14 +355,9 @@ export default function DashboardPage(){
 
       {/* ═══ TICKER BAR ═══ */}
       <div style={{background:'rgba(17,17,17,0.96)',backdropFilter:'blur(12px)',borderBottom:'1px solid rgba(216,174,99,.12)',padding:'8px 0',overflow:'hidden',position:'sticky',top:0,zIndex:100}}>
-        <div style={{display:'flex',gap:'0',width:'max-content',animation:'ticker 60s linear infinite'}}>
-          {[...TICKER_ITEMS,...TICKER_ITEMS,...TICKER_ITEMS].map((t,i)=>(
-            <div key={i} style={{display:'flex',alignItems:'center',gap:'8px',padding:'0 20px',borderRight:'1px solid rgba(216,174,99,.1)',flexShrink:0,fontSize:'12px',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>
-              <span style={{fontWeight:'700',color:'#D8AE63'}}>{t.name}</span>
-              <span style={{color:'rgba(255,255,255,.85)'}} dir="ltr">{t.val}</span>
-              <span style={{fontWeight:'700',color:t.up?'#22C55E':'#EF4444'}} dir="ltr">{t.chg}</span>
-            </div>
-          ))}
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',fontSize:'12px',fontWeight:'700',color:'#D8AE63',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>
+          <span>THE SFM</span>
+          <span style={{color:'rgba(255,255,255,.55)'}}>يعرض لوحة بياناتك الفعلية فقط</span>
         </div>
       </div>
 
@@ -358,10 +407,10 @@ export default function DashboardPage(){
             {/* Stats */}
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginTop:'12px'}}>
               {[
-                {label:'الحسابات',val:'8,495'},
-                {label:'عضوية منذ',val:'يناير 2023'},
-                {label:'عدد الأهداف',val:SAMPLE_GOALS.length},
-                {label:'الاستثمارات',val:SAMPLE_INVESTMENTS.length},
+                {label:'الدخل',val:totalIncome>0?`${totalIncome.toFixed(3)} د.ك`:'—'},
+                {label:'المصروفات',val:totalExpenses>0?`${totalExpenses.toFixed(3)} د.ك`:'—'},
+                {label:'عدد الأهداف',val:goals.length || '—'},
+                {label:'الاستثمارات',val:investments.length || '—'},
               ].map((s,i)=>(
                 <div key={i} style={{background:'rgba(255,255,255,.04)',borderRadius:'10px',padding:'8px 10px'}}>
                   <div style={{fontSize:'9.5px',color:'rgba(255,255,255,.3)',marginBottom:'3px'}}>{s.label}</div>
@@ -395,7 +444,7 @@ export default function DashboardPage(){
             <div style={{fontSize:'22px',marginBottom:'6px'}}>🤖</div>
             <div style={{fontSize:'13px',fontWeight:'800',color:'#D8AE63',marginBottom:'4px'}}>الذكاء المالي</div>
             <div style={{fontSize:'11px',color:'rgba(255,255,255,.45)',marginBottom:'12px',lineHeight:1.5}}>اكتشف فرص جديدة لتحقيق توصيات مخصصة</div>
-            <button style={{width:'100%',padding:'8px',background:'linear-gradient(135deg,#D8AE63,#9A6C3C)',border:'none',borderRadius:'10px',color:'#111111',fontSize:'12px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>
+            <button onClick={()=>router.push('/ai')} style={{width:'100%',padding:'8px',background:'linear-gradient(135deg,#D8AE63,#9A6C3C)',border:'none',borderRadius:'10px',color:'#111111',fontSize:'12px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>
               استكشف الآن
             </button>
           </div>
@@ -429,14 +478,20 @@ export default function DashboardPage(){
                 <div style={{fontSize:'clamp(28px,4vw,42px)',fontWeight:'900',color:'#FFFDFC',fontFamily:"'IBM Plex Sans Arabic',sans-serif",lineHeight:1,marginBottom:'12px',position:'relative',zIndex:1}}>
                   {netWorth.toFixed(2)} <span style={{fontSize:'18px',color:'rgba(216,174,99,.7)'}}>د.ك</span>
                 </div>
-                <div style={{display:'flex',gap:'10px',alignItems:'center',position:'relative',zIndex:1}}>
-                  <div style={{display:'inline-flex',alignItems:'center',gap:'5px',background:'rgba(34,197,94,.12)',borderRadius:'20px',padding:'5px 12px'}}>
-                    <span style={{fontSize:'14px'}}>↑</span>
-                    <span style={{fontSize:'13px',fontWeight:'700',color:'#22C55E',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>+{monthlyGrowth.toFixed(2)} د.ك</span>
-                  </div>
-                  <span style={{fontSize:'13px',fontWeight:'700',color:'#22C55E'}}>+{Math.abs(monthlyGrowthPct).toFixed(2)}%</span>
-                </div>
-                <div style={{fontSize:'11px',color:'rgba(216,174,99,.35)',marginTop:'8px',position:'relative',zIndex:1}}>مقارنة بالشهر الماضي</div>
+                {monthlyGrowth!==0 ? (
+                  <>
+                    <div style={{display:'flex',gap:'10px',alignItems:'center',position:'relative',zIndex:1}}>
+                      <div style={{display:'inline-flex',alignItems:'center',gap:'5px',background:'rgba(34,197,94,.12)',borderRadius:'20px',padding:'5px 12px'}}>
+                        <span style={{fontSize:'14px'}}>↑</span>
+                        <span style={{fontSize:'13px',fontWeight:'700',color:'#22C55E',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>+{monthlyGrowth.toFixed(2)} د.ك</span>
+                      </div>
+                      <span style={{fontSize:'13px',fontWeight:'700',color:'#22C55E'}}>+{Math.abs(monthlyGrowthPct).toFixed(2)}%</span>
+                    </div>
+                    <div style={{fontSize:'11px',color:'rgba(216,174,99,.35)',marginTop:'8px',position:'relative',zIndex:1}}>مقارنة بالشهر الماضي</div>
+                  </>
+                ) : (
+                  <div style={{fontSize:'12px',color:'rgba(216,174,99,.55)',marginTop:'8px',position:'relative',zIndex:1}}>أدخل بيانات الشهر لرؤية النمو</div>
+                )}
               </div>
 
               {/* Center: Health score ring */}
@@ -479,18 +534,15 @@ export default function DashboardPage(){
           {/* ─── KPI GRID ─── */}
           <div className="kpi-grid" style={{...S(80),display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'14px'}}>
             {[
-              {label:'إجمالي الدخل',val:totalIncome,chg:'+7.09%',up:true,icon:'💵',color:'#22C55E'},
-              {label:'إجمالي المصروفات',val:totalExpenses,chg:'+4.32%',up:false,icon:'🛒',color:'#EF4444'},
-              {label:'إجمالي الادخار',val:totalSavings,chg:'+15.31%',up:true,icon:'💰',color:'#D8AE63'},
-              {label:'إجمالي الاستثمار',val:totalInvestment,chg:'+12.71%',up:true,icon:'📈',color:'#3B82F6'},
+              {label:'إجمالي الدخل',val:totalIncome,icon:'💵',color:'#22C55E'},
+              {label:'إجمالي المصروفات',val:totalExpenses,icon:'🛒',color:'#EF4444'},
+              {label:'إجمالي الادخار',val:totalSavings,icon:'💰',color:'#D8AE63'},
+              {label:'إجمالي الاستثمار',val:totalInvestment,icon:'📈',color:'#3B82F6'},
             ].map((k,i)=>(
               <div key={i} className="dc kpi-c" style={{animationDelay:`${i*.06}s`}}>
                 <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:'12px'}}>
                   <div style={{width:'40px',height:'40px',background:`${k.color}14`,borderRadius:'12px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px'}}>{k.icon}</div>
-                  <div style={{display:'inline-flex',alignItems:'center',gap:'4px',background:k.up?'rgba(34,197,94,.08)':'rgba(239,68,68,.08)',borderRadius:'20px',padding:'3px 9px'}}>
-                    <span style={{fontSize:'13px'}}>{k.up?'↑':'↓'}</span>
-                    <span style={{fontSize:'11.5px',fontWeight:'700',color:k.up?'#22C55E':'#EF4444'}}>{k.chg}</span>
-                  </div>
+                  <span style={{fontSize:'11px',fontWeight:'700',color:'#9A6C3C'}}>بيانات فعلية</span>
                 </div>
                 <div style={{fontSize:'11px',color:'#9A6C3C',marginBottom:'4px'}}>{k.label}</div>
                 <div style={{fontSize:'22px',fontWeight:'900',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif",lineHeight:1}}>
@@ -510,9 +562,9 @@ export default function DashboardPage(){
               </div>
               <div style={{fontSize:'11.5px',color:'#9A6C3C',marginBottom:'14px',fontWeight:'600'}}>تحليل هذا الشهر</div>
               {[
-                {text:'الادخار أعلى من الشهر الماضي',chg:'+15.31%',up:true},
-                {text:'المصروفات ارتفعت من بند الترفيه',chg:'+23%',up:false},
-                {text:'الاستثمار ممتاز — استمر',chg:'+12.71%',up:true},
+                {text:totalIncome>0?'تم تسجيل الدخل لهذا الشهر':'لم يتم تسجيل دخل بعد',chg:totalIncome>0?`${totalIncome.toFixed(3)} د.ك`:'—',up:totalIncome>0},
+                {text:expenseItems.length>0?'تم تسجيل مصروفات فعلية':'لا توجد مصروفات مسجلة',chg:expenseItems.length>0?`${totalExpenses.toFixed(3)} د.ك`:'—',up:false},
+                {text:investments.length>0?'توجد استثمارات مسجلة':'لا توجد استثمارات مسجلة',chg:investments.length>0?`${totalInvestment.toFixed(3)} د.ك`:'—',up:investments.length>0},
               ].map((ins,i)=>(
                 <div key={i} style={{display:'flex',alignItems:'flex-start',gap:'10px',padding:'11px 13px',borderRadius:'12px',background:ins.up?'rgba(34,197,94,.05)':'rgba(239,68,68,.05)',border:`1px solid ${ins.up?'rgba(34,197,94,.15)':'rgba(239,68,68,.15)'}`,marginBottom:'8px'}}>
                   <span style={{fontSize:'14px',flexShrink:0}}>{ins.up?'✅':'⚠️'}</span>
@@ -531,53 +583,58 @@ export default function DashboardPage(){
             <div className="dc" style={{padding:'22px'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}}>
                 <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111'}}>نظرة عامة على 6 أشهر</h3>
-                <select style={{fontSize:'12px',padding:'6px 10px',borderRadius:'10px',border:'1px solid rgba(216,174,99,.2)',background:'#FFFDFC',color:'#5B4332',fontFamily:'Tajawal,sans-serif',cursor:'pointer',outline:'none'}} onChange={e=>setSelectedMonth(e.target.value)}>
-                  {history.map(h=><option key={h.month} value={h.month}>{h.label}</option>)}
+                <select style={{fontSize:'12px',padding:'6px 10px',borderRadius:'10px',border:'1px solid rgba(216,174,99,.2)',background:'#FFFDFC',color:'#5B4332',fontFamily:'Tajawal,sans-serif',cursor:'pointer',outline:'none'}}>
+                  {monthHistory.map(h=><option key={h.month} value={h.month}>{h.label}</option>)}
                 </select>
               </div>
-              <LineChart data={history}/>
+              {monthHistory.length>0 ? <LineChart data={monthHistory}/> : (
+                <EmptyState icon="📈" title="لا يوجد تاريخ شهري بعد" subtitle="ابدأ بإدخال دخلك ومصاريفك ليتكوّن الرسم تلقائياً" btnLabel="إدخال الدخل الشهري" btnHref="/income" />
+              )}
             </div>
           </div>
 
           {/* ─── MONTH COMPARISON ─── */}
           <div className="dc" style={{...S(160),padding:'24px'}}>
             <h3 style={{fontSize:'16px',fontWeight:'800',color:'#111111',marginBottom:'4px'}}>مقارنة الأشهر</h3>
-            <p style={{fontSize:'12px',color:'#9A6C3C',marginBottom:'18px'}}>احسب الفرق بين كل شهر وآخر</p>
-            <div style={{display:'flex',alignItems:'center',gap:'14px',marginBottom:'20px',flexWrap:'wrap'}}>
-              <div>
-                <label style={{fontSize:'11px',color:'#9A6C3C',display:'block',marginBottom:'5px',fontWeight:'600'}}>اختر الشهر الأول</label>
-                <select className="sf-select" style={{padding:'8px 12px',borderRadius:'12px',border:'1.5px solid rgba(216,174,99,.25)',background:'#FFFDFC',color:'#111111',fontFamily:'Tajawal,sans-serif',fontSize:'13px',outline:'none',cursor:'pointer'}} value={cmpA} onChange={e=>setCmpA(+e.target.value)}>
-                  {history.map((h,i)=><option key={h.month} value={i}>{h.label}</option>)}
-                </select>
-              </div>
-              <div style={{fontSize:'16px',color:'#9A6C3C',alignSelf:'flex-end',paddingBottom:'6px',fontWeight:'800'}}>VS</div>
-              <div>
-                <label style={{fontSize:'11px',color:'#9A6C3C',display:'block',marginBottom:'5px',fontWeight:'600'}}>اختر الشهر الثاني</label>
-                <select style={{padding:'8px 12px',borderRadius:'12px',border:'1.5px solid rgba(216,174,99,.25)',background:'#FFFDFC',color:'#111111',fontFamily:'Tajawal,sans-serif',fontSize:'13px',outline:'none',cursor:'pointer'}} value={cmpB} onChange={e=>setCmpB(+e.target.value)}>
-                  {history.map((h,i)=><option key={h.month} value={i}>{h.label}</option>)}
-                </select>
-              </div>
-              <button style={{alignSelf:'flex-end',padding:'9px 18px',background:'linear-gradient(135deg,#D8AE63,#9A6C3C)',border:'none',borderRadius:'12px',color:'#111111',fontSize:'13px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>
-                عرض الفرق
-              </button>
-            </div>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'12px'}}>
-              {([['income','الدخل'],['expenses','المصروفات'],['savings','الادخار'],['investment','الاستثمار']] as const).map(([key,label])=>{
-                const{diff,pct}=cmpDiff(key as keyof MonthRecord);
-                const up=diff>=0;
-                return(
-                  <div key={key} style={{background:up?'rgba(34,197,94,.05)':'rgba(239,68,68,.05)',border:`1.5px solid ${up?'rgba(34,197,94,.18)':'rgba(239,68,68,.18)'}`,borderRadius:'16px',padding:'16px'}}>
-                    <div style={{fontSize:'11px',color:'#9A6C3C',marginBottom:'8px',fontWeight:'600'}}>الفرق في {label}</div>
-                    <div style={{fontSize:'22px',fontWeight:'900',color:up?'#22C55E':'#EF4444',fontFamily:"'IBM Plex Sans Arabic',sans-serif",lineHeight:1,marginBottom:'4px'}}>
-                      {up?'+':''}{diff.toFixed(2)} <span style={{fontSize:'12px'}}>د.ك</span>
-                    </div>
-                    <div style={{fontSize:'12px',fontWeight:'700',color:up?'#22C55E':'#EF4444',display:'flex',alignItems:'center',gap:'4px'}}>
-                      <span>{up?'↑':'↓'}</span>{Math.abs(pct).toFixed(2)}%
-                    </div>
+            {monthHistory.length<2 ? (
+              <EmptyState icon="📊" title="لا توجد بيانات كافية للمقارنة" subtitle="أضف بيانات لشهرين على الأقل" btnLabel="إضافة بيانات الدخل" btnHref="/income" />
+            ) : (
+              <>
+                <p style={{fontSize:'12px',color:'#9A6C3C',marginBottom:'18px'}}>احسب الفرق بين كل شهر وآخر</p>
+                <div style={{display:'flex',alignItems:'center',gap:'14px',marginBottom:'20px',flexWrap:'wrap'}}>
+                  <div>
+                    <label style={{fontSize:'11px',color:'#9A6C3C',display:'block',marginBottom:'5px',fontWeight:'600'}}>اختر الشهر الأول</label>
+                    <select className="sf-select" style={{padding:'8px 12px',borderRadius:'12px',border:'1.5px solid rgba(216,174,99,.25)',background:'#FFFDFC',color:'#111111',fontFamily:'Tajawal,sans-serif',fontSize:'13px',outline:'none',cursor:'pointer'}} value={cmpA} onChange={e=>setCmpA(+e.target.value)}>
+                      {monthHistory.map((h,i)=><option key={h.month} value={i}>{h.label}</option>)}
+                    </select>
                   </div>
-                );
-              })}
-            </div>
+                  <div style={{fontSize:'16px',color:'#9A6C3C',alignSelf:'flex-end',paddingBottom:'6px',fontWeight:'800'}}>VS</div>
+                  <div>
+                    <label style={{fontSize:'11px',color:'#9A6C3C',display:'block',marginBottom:'5px',fontWeight:'600'}}>اختر الشهر الثاني</label>
+                    <select style={{padding:'8px 12px',borderRadius:'12px',border:'1.5px solid rgba(216,174,99,.25)',background:'#FFFDFC',color:'#111111',fontFamily:'Tajawal,sans-serif',fontSize:'13px',outline:'none',cursor:'pointer'}} value={cmpB} onChange={e=>setCmpB(+e.target.value)}>
+                      {monthHistory.map((h,i)=><option key={h.month} value={i}>{h.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'12px'}}>
+                  {([['income','الدخل'],['expenses','المصروفات'],['savings','الادخار'],['investment','الاستثمار']] as const).map(([key,label])=>{
+                    const{diff,pct}=cmpDiff(key as keyof MonthSnapshot);
+                    const up=diff>=0;
+                    return(
+                      <div key={key} style={{background:up?'rgba(34,197,94,.05)':'rgba(239,68,68,.05)',border:`1.5px solid ${up?'rgba(34,197,94,.18)':'rgba(239,68,68,.18)'}`,borderRadius:'16px',padding:'16px'}}>
+                        <div style={{fontSize:'11px',color:'#9A6C3C',marginBottom:'8px',fontWeight:'600'}}>الفرق في {label}</div>
+                        <div style={{fontSize:'22px',fontWeight:'900',color:up?'#22C55E':'#EF4444',fontFamily:"'IBM Plex Sans Arabic',sans-serif",lineHeight:1,marginBottom:'4px'}}>
+                          {up?'+':''}{diff.toFixed(2)} <span style={{fontSize:'12px'}}>د.ك</span>
+                        </div>
+                        <div style={{fontSize:'12px',fontWeight:'700',color:up?'#22C55E':'#EF4444',display:'flex',alignItems:'center',gap:'4px'}}>
+                          <span>{up?'↑':'↓'}</span>{Math.abs(pct).toFixed(2)}%
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
 
           {/* ─── TRANSACTIONS + EXPENSE DIST ─── */}
@@ -586,57 +643,56 @@ export default function DashboardPage(){
             <div className="dc" style={{padding:'22px'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}}>
                 <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111'}}>تاريخ المعاملات</h3>
-                <div style={{display:'flex',gap:'6px'}}>
-                  {(['المصاريف','الدخل','الاستثمارات'] as const).map((t,i)=>(
-                    <button key={t} className={'tab-btn '+(i===(['exp','inc','inv'] as const).indexOf(transTab)?'on':'off')}
-                      onClick={()=>setTransTab(['exp','inc','inv'][i] as any)}>{t}</button>
-                  ))}
-                </div>
               </div>
-              <table style={{width:'100%',borderCollapse:'collapse'}}>
-                <thead>
-                  <tr style={{borderBottom:'2px solid rgba(216,174,99,.12)'}}>
-                    {['التاريخ','الفئة','الوصف','المبلغ','النسبة'].map(h=><th key={h} style={{padding:'8px 10px',textAlign:'right',fontSize:'11.5px',fontWeight:'700',color:'#9A6C3C',letterSpacing:'.02em'}}>{h}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sampleTransactions.map((t,i)=>(
-                    <tr key={i} style={{borderBottom:'1px solid rgba(216,174,99,.07)',transition:'background .15s'}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(216,174,99,.04)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
-                      <td style={{padding:'11px 10px',fontSize:'12px',color:'#9A6C3C',direction:'ltr'}}>{t.date}</td>
-                      <td style={{padding:'11px 10px',fontSize:'12.5px',color:'#5B4332',fontWeight:'600'}}>{t.category}</td>
-                      <td style={{padding:'11px 10px',fontSize:'12.5px',color:'#9A6C3C'}}>{t.desc}</td>
-                      <td style={{padding:'11px 10px',fontSize:'13px',fontWeight:'800',color:t.amount<0?'#EF4444':'#22C55E',fontFamily:"'IBM Plex Sans Arabic',sans-serif",direction:'ltr'}}>{t.amount.toFixed(2)}</td>
-                      <td style={{padding:'11px 10px'}}>
-                        <div style={{display:'inline-flex',alignItems:'center',gap:'4px',background:`${t.pct>10?'rgba(34,197,94,.08)':'rgba(216,174,99,.08)'}`,borderRadius:'20px',padding:'2px 8px'}}>
-                          <span style={{fontSize:'11px',fontWeight:'700',color:t.pct>10?'#22C55E':'#D8AE63'}}>{t.pct>0?'+':''}{t.pct.toFixed(2)}%</span>
-                          <span style={{fontSize:'12px'}}>{t.pct>0?'↑':'↓'}</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <button style={{width:'100%',marginTop:'14px',padding:'9px',background:'transparent',border:'1.5px solid rgba(216,174,99,.2)',borderRadius:'12px',color:'#9A6C3C',fontSize:'12.5px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>عرض كل المعاملات</button>
+              {expenseItems.length===0 ? (
+                <EmptyState icon="📋" title="لا توجد مصاريف مسجلة بعد" subtitle="ابدأ بإضافة مصروفك الأول" btnLabel="إضافة مصروف" btnHref="/expenses" />
+              ) : (
+                <>
+                  <table style={{width:'100%',borderCollapse:'collapse'}}>
+                    <thead>
+                      <tr style={{borderBottom:'2px solid rgba(216,174,99,.12)'}}>
+                        {['اسم المصروف','المبلغ','التاريخ'].map(h=><th key={h} style={{padding:'8px 10px',textAlign:'right',fontSize:'11.5px',fontWeight:'700',color:'#9A6C3C',letterSpacing:'.02em'}}>{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {expenseItems.slice(0,5).map(item=>(
+                        <tr key={item.id} style={{borderBottom:'1px solid rgba(216,174,99,.07)',transition:'background .15s'}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(216,174,99,.04)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+                          <td style={{padding:'11px 10px',fontSize:'12.5px',color:'#5B4332',fontWeight:'600'}}>{formatExpenseName(item.name)}</td>
+                          <td style={{padding:'11px 10px',fontSize:'13px',fontWeight:'800',color:'#EF4444',fontFamily:"'IBM Plex Sans Arabic',sans-serif",direction:'ltr'}}>{amountOf(item.amount).toFixed(3)} د.ك</td>
+                          <td style={{padding:'11px 10px',fontSize:'12px',color:'#9A6C3C',direction:'ltr'}}>{item.created_at?new Date(item.created_at).toISOString().slice(0,10):'—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <button onClick={()=>router.push('/expenses')} style={{width:'100%',marginTop:'14px',padding:'9px',background:'transparent',border:'1.5px solid rgba(216,174,99,.2)',borderRadius:'12px',color:'#9A6C3C',fontSize:'12.5px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>عرض كل المعاملات</button>
+                </>
+              )}
             </div>
 
             {/* Donut chart */}
             <div className="dc" style={{padding:'22px'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}}>
                 <h3 style={{fontSize:'14px',fontWeight:'800',color:'#111111'}}>توزيع المصروفات</h3>
-                <span style={{fontSize:'11px',color:'#9A6C3C',background:'rgba(216,174,99,.08)',borderRadius:'20px',padding:'3px 10px'}}>مايو 2024</span>
+                <span style={{fontSize:'11px',color:'#9A6C3C',background:'rgba(216,174,99,.08)',borderRadius:'20px',padding:'3px 10px'}}>بيانات فعلية</span>
               </div>
-              <div style={{display:'flex',justifyContent:'center',marginBottom:'14px'}}>
-                <DonutChart data={DONUT_DATA} total={totalExpenses}/>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',gap:'7px'}}>
-                {DONUT_DATA.map((d,i)=>(
-                  <div key={i} style={{display:'flex',alignItems:'center',gap:'8px'}}>
-                    <div style={{width:'10px',height:'10px',borderRadius:'50%',background:d.color,flexShrink:0}}/>
-                    <span style={{flex:1,fontSize:'12px',color:'#5B4332',fontWeight:'500'}}>{d.label}</span>
-                    <span style={{fontSize:'12px',fontWeight:'700',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{d.pct}%</span>
+              {donutData.length===0 ? (
+                <EmptyState icon="🥧" title="لا توجد مصاريف مسجلة" subtitle="أضف مصاريفك لرؤية التوزيع" btnLabel="إضافة مصروف" btnHref="/expenses" />
+              ) : (
+                <>
+                  <div style={{display:'flex',justifyContent:'center',marginBottom:'14px'}}>
+                    <DonutChart data={donutData} total={totalExpenses}/>
                   </div>
-                ))}
-              </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:'7px'}}>
+                    {donutData.map((d,i)=>(
+                      <div key={i} style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                        <div style={{width:'10px',height:'10px',borderRadius:'50%',background:d.color,flexShrink:0}}/>
+                        <span style={{flex:1,fontSize:'12px',color:'#5B4332',fontWeight:'500'}}>{d.label}</span>
+                        <span style={{fontSize:'12px',fontWeight:'700',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{d.pct}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -645,46 +701,48 @@ export default function DashboardPage(){
             {/* Summary */}
             <div className="dc" style={{padding:'20px'}}>
               <h3 style={{fontSize:'14px',fontWeight:'800',color:'#111111',marginBottom:'16px'}}>ملخص الاستثمارات</h3>
-              {[
-                {label:'إجمالي قيمة المحفظة',val:`${SAMPLE_INVESTMENTS.reduce((a,i)=>a+i.amount,0).toFixed(0)} د.ك`},
-                {label:'الأرباح المحققة',val:`+${SAMPLE_INVESTMENTS.reduce((a,i)=>a+i.profit,0).toFixed(2)} د.ك`,color:'#22C55E'},
-                {label:'الأرباح غير المحققة',val:`+38.20 د.ك`,color:'#D8AE63'},
-                {label:'إجمالي العائد',val:`+133.60 د.ك`,color:'#22C55E'},
-              ].map((r,i)=>(
-                <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:i<3?'1px solid rgba(216,174,99,.07)':'none'}}>
-                  <span style={{fontSize:'11px',color:'#9A6C3C',fontWeight:'500',maxWidth:'100px',lineHeight:1.4}}>{r.label}</span>
-                  <span style={{fontSize:'13px',fontWeight:'800',color:r.color||'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{r.val}</span>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid rgba(216,174,99,.07)'}}>
+                <span style={{fontSize:'11px',color:'#9A6C3C',fontWeight:'500',maxWidth:'100px',lineHeight:1.4}}>إجمالي قيمة المحفظة</span>
+                <span style={{fontSize:'13px',fontWeight:'800',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{totalInvestment.toFixed(3)} د.ك</span>
+              </div>
+              {investments.length===0 ? (
+                <EmptyState icon="📈" title="لا توجد استثمارات مسجلة" subtitle="أضف استثمارك الأول" btnLabel="إضافة استثمار" btnHref="/education/investments" />
+              ) : investments.map(item=>(
+                <div key={item.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid rgba(216,174,99,.07)'}}>
+                  <span style={{fontSize:'11px',color:'#9A6C3C',fontWeight:'500',maxWidth:'100px',lineHeight:1.4}}>{item.name || 'استثمار'}</span>
+                  <span style={{fontSize:'13px',fontWeight:'800',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{amountOf(item.amount).toFixed(3)} د.ك</span>
                 </div>
               ))}
-              <button style={{width:'100%',marginTop:'12px',padding:'9px',background:'linear-gradient(135deg,#D8AE63,#9A6C3C)',border:'none',borderRadius:'12px',color:'#111111',fontSize:'12px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>عرض محفظة الاستثمارات</button>
+              <button onClick={()=>router.push('/education/investments')} style={{width:'100%',marginTop:'12px',padding:'9px',background:'linear-gradient(135deg,#D8AE63,#9A6C3C)',border:'none',borderRadius:'12px',color:'#111111',fontSize:'12px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>عرض محفظة الاستثمارات</button>
             </div>
 
             {/* Bar chart */}
             <div className="dc" style={{padding:'20px'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'14px'}}>
-                <h3 style={{fontSize:'14px',fontWeight:'800',color:'#111111'}}>أداء الاستثمارات (6 أشهر)</h3>
-                <div style={{display:'flex',gap:'10px'}}>
-                  {[{color:'#D8AE63',label:'الأصول المحققة'},{color:'#22C55E',label:'الأرباح المحققة'}].map((l,i)=>(
-                    <div key={i} style={{display:'flex',alignItems:'center',gap:'5px'}}><div style={{width:'10px',height:'10px',borderRadius:'3px',background:l.color}}/><span style={{fontSize:'10px',color:'#9A6C3C'}}>{l.label}</span></div>
-                  ))}
-                </div>
+                <h3 style={{fontSize:'14px',fontWeight:'800',color:'#111111'}}>أداء الاستثمارات</h3>
               </div>
-              <BarChart data={history.map(h=>({label:h.label.split(' ')[0],v1:h.investment,v2:h.investment*0.15}))}/>
+              {monthHistory.length===0 ? (
+                <EmptyState icon="📈" title="لا يوجد تاريخ استثماري بعد" subtitle="أضف دخلك ومصاريفك واستثماراتك لعرض الأداء" btnLabel="إدخال الدخل الشهري" btnHref="/income" />
+              ) : (
+                <BarChart data={monthHistory.map(h=>({label:h.label.split(' ')[0],v1:h.investment,v2:0}))}/>
+              )}
             </div>
 
             {/* Top investments */}
             <div className="dc" style={{padding:'20px'}}>
               <h3 style={{fontSize:'14px',fontWeight:'800',color:'#111111',marginBottom:'14px'}}>أفضل الاستثمارات</h3>
-              {SAMPLE_INVESTMENTS.map((inv,i)=>(
-                <div key={i} style={{display:'flex',alignItems:'center',gap:'10px',padding:'10px 0',borderBottom:i<2?'1px solid rgba(216,174,99,.07)':'none'}}>
-                  <div style={{width:'36px',height:'36px',background:'rgba(216,174,99,.10)',borderRadius:'11px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'17px',flexShrink:0}}>{inv.icon}</div>
+              {investments.length===0 ? (
+                <EmptyState icon="📈" title="لا توجد استثمارات" subtitle="ستظهر أعلى الاستثمارات بعد إضافتها" btnLabel="إضافة استثمار" btnHref="/education/investments" />
+              ) : [...investments].sort((a,b)=>amountOf(b.amount)-amountOf(a.amount)).slice(0,3).map((inv,i)=>(
+                <div key={inv.id} style={{display:'flex',alignItems:'center',gap:'10px',padding:'10px 0',borderBottom:i<2?'1px solid rgba(216,174,99,.07)':'none'}}>
+                  <div style={{width:'36px',height:'36px',background:'rgba(216,174,99,.10)',borderRadius:'11px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'17px',flexShrink:0}}>📈</div>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:'12px',fontWeight:'700',color:'#111111',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{inv.name}</div>
-                    <div style={{fontSize:'11px',fontWeight:'800',color:'#22C55E'}}>+{inv.pct}%</div>
+                    <div style={{fontSize:'12px',fontWeight:'700',color:'#111111',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{inv.name || 'استثمار'}</div>
+                    <div style={{fontSize:'11px',fontWeight:'800',color:'#9A6C3C'}}>{amountOf(inv.amount).toFixed(3)} د.ك</div>
                   </div>
                 </div>
               ))}
-              <button style={{width:'100%',marginTop:'12px',padding:'9px',background:'transparent',border:'1.5px solid rgba(216,174,99,.2)',borderRadius:'12px',color:'#9A6C3C',fontSize:'12px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>عرض كل الاستثمارات</button>
+              <button onClick={()=>router.push('/education/investments')} style={{width:'100%',marginTop:'12px',padding:'9px',background:'transparent',border:'1.5px solid rgba(216,174,99,.2)',borderRadius:'12px',color:'#9A6C3C',fontSize:'12px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>عرض كل الاستثمارات</button>
             </div>
           </div>
 
@@ -693,29 +751,36 @@ export default function DashboardPage(){
             {/* Goals */}
             <div className="dc" style={{padding:'22px'}}>
               <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111',marginBottom:'18px'}}>الأهداف المالية</h3>
-              <div className="goals-grid" style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:'14px'}}>
-                {SAMPLE_GOALS.map(g=>{
-                  const pct=Math.round((g.saved/g.target)*100);
-                  return(
-                    <div key={g.id} className="dc" style={{padding:'16px',border:`1px solid ${g.color}22`}}>
-                      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px'}}>
-                        <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-                          <span style={{fontSize:'20px'}}>{g.icon}</span>
-                          <span style={{fontSize:'13px',fontWeight:'800',color:'#111111'}}>{g.name}</span>
+              {goals.length===0 ? (
+                <EmptyState icon="🎯" title="لا توجد أهداف مالية بعد" subtitle="ابدأ بتحديد هدفك الأول" btnLabel="إضافة هدف" btnHref="/goals" />
+              ) : (
+                <div className="goals-grid" style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:'14px'}}>
+                  {goals.map(g=>{
+                    const target=amountOf(g.target_amount);
+                    const saved=amountOf(g.current_amount);
+                    const color=g.color||'#D8AE63';
+                    const pct=target>0?Math.min(100,Math.round((saved/target)*100)):0;
+                    return(
+                      <div key={g.id} className="dc" style={{padding:'16px',border:`1px solid ${color}22`}}>
+                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px'}}>
+                          <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                            <span style={{fontSize:'20px'}}>{g.icon||'🎯'}</span>
+                            <span style={{fontSize:'13px',fontWeight:'800',color:'#111111'}}>{g.name||'هدف مالي'}</span>
+                          </div>
+                          <span style={{fontSize:'14px',fontWeight:'900',color}}>{pct}%</span>
                         </div>
-                        <span style={{fontSize:'14px',fontWeight:'900',color:g.color}}>{pct}%</span>
+                        <div className="prog-bar" style={{marginBottom:'8px'}}>
+                          <div className="prog-fill" style={{width:`${pct}%`,background:`linear-gradient(90deg,${color},${color}88)`}}/>
+                        </div>
+                        <div style={{display:'flex',justifyContent:'space-between',fontSize:'11px',color:'#9A6C3C'}}>
+                          <span style={{fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{saved.toLocaleString('ar-KW')} د.ك</span>
+                          <span style={{fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>من {target.toLocaleString('ar-KW')} د.ك</span>
+                        </div>
                       </div>
-                      <div className="prog-bar" style={{marginBottom:'8px'}}>
-                        <div className="prog-fill" style={{width:`${pct}%`,background:`linear-gradient(90deg,${g.color},${g.color}88)`}}/>
-                      </div>
-                      <div style={{display:'flex',justifyContent:'space-between',fontSize:'11px',color:'#9A6C3C'}}>
-                        <span style={{fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{g.saved.toLocaleString('ar-KW')} د.ك</span>
-                        <span style={{fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>من {g.target.toLocaleString('ar-KW')} د.ك</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Quick actions */}
@@ -741,68 +806,52 @@ export default function DashboardPage(){
 
           {/* ─── HISTORY TABLES ─── */}
           <div style={{...S(320),display:'grid',gridTemplateColumns:'1fr 1fr',gap:'16px'}}>
-            {/* Investment history */}
-            <div className="dc" style={{padding:'22px'}}>
-              <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111',marginBottom:'16px'}}>الاستثمارات الشهرية</h3>
-              <table style={{width:'100%',borderCollapse:'collapse'}}>
-                <thead>
-                  <tr style={{borderBottom:'2px solid rgba(216,174,99,.12)'}}>
-                    {['الشهر','إجمالي الاستثمار','الأرباح','التغيير %'].map(h=><th key={h} style={{padding:'8px 8px',textAlign:'right',fontSize:'11px',fontWeight:'700',color:'#9A6C3C'}}>{h}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...history].reverse().map((h,i)=>{
-                    const prev=history[history.length-i-2];
-                    const profit=h.investment*0.157;
-                    const chgPct=prev?((h.investment-prev.investment)/prev.investment*100):18.02;
-                    return(
-                      <tr key={i} style={{borderBottom:'1px solid rgba(216,174,99,.07)'}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(216,174,99,.03)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
-                        <td style={{padding:'10px 8px',fontSize:'12px',color:'#5B4332',fontWeight:'600'}}>{h.label}</td>
-                        <td style={{padding:'10px 8px',fontSize:'12px',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif",fontWeight:'700'}}>{h.investment.toFixed(2)} <span style={{fontSize:'10px',color:'#9A6C3C'}}>د.ك</span></td>
-                        <td style={{padding:'10px 8px',fontSize:'12px',color:'#22C55E',fontWeight:'700',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>+{profit.toFixed(2)}</td>
-                        <td style={{padding:'10px 8px'}}>
-                          <span style={{fontSize:'12px',fontWeight:'800',color:chgPct>=0?'#22C55E':'#EF4444'}}>{chgPct>=0?'+':''}{chgPct.toFixed(2)}%</span>
-                        </td>
+            {monthHistory.length===0 ? (
+              <div className="dc" style={{padding:'22px',gridColumn:'1 / -1'}}>
+                <EmptyState icon="📈" title="لا يوجد تاريخ شهري بعد" subtitle="ابدأ بإدخال دخلك ومصاريفك ليتراكم السجل تلقائياً" btnLabel="إدخال الدخل الشهري" btnHref="/income" />
+              </div>
+            ) : (
+              <>
+                <div className="dc" style={{padding:'22px'}}>
+                  <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111',marginBottom:'16px'}}>الاستثمارات الشهرية</h3>
+                  <table style={{width:'100%',borderCollapse:'collapse'}}>
+                    <thead>
+                      <tr style={{borderBottom:'2px solid rgba(216,174,99,.12)'}}>
+                        {['الشهر','إجمالي الاستثمار','—'].map(h=><th key={h} style={{padding:'8px 8px',textAlign:'right',fontSize:'11px',fontWeight:'700',color:'#9A6C3C'}}>{h}</th>)}
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Expenses history */}
-            <div className="dc" style={{padding:'22px'}}>
-              <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111',marginBottom:'16px'}}>المصروفات الشهرية</h3>
-              <table style={{width:'100%',borderCollapse:'collapse'}}>
-                <thead>
-                  <tr style={{borderBottom:'2px solid rgba(216,174,99,.12)'}}>
-                    {['الشهر','إجمالي المصروفات','%','الفرق من السابق'].map(h=><th key={h} style={{padding:'8px 8px',textAlign:'right',fontSize:'11px',fontWeight:'700',color:'#9A6C3C'}}>{h}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...history].reverse().map((h,i)=>{
-                    const prev=history[history.length-i-2];
-                    const chg=prev?h.expenses-prev.expenses:53.90;
-                    const chgPct=prev?((h.expenses-prev.expenses)/prev.expenses*100):4.32;
-                    return(
-                      <tr key={i} style={{borderBottom:'1px solid rgba(216,174,99,.07)'}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(216,174,99,.03)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
-                        <td style={{padding:'10px 8px',fontSize:'12px',color:'#5B4332',fontWeight:'600'}}>{h.label}</td>
-                        <td style={{padding:'10px 8px',fontSize:'12px',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif",fontWeight:'700'}}>{h.expenses.toFixed(0)} <span style={{fontSize:'10px',color:'#9A6C3C'}}>د.ك</span></td>
-                        <td style={{padding:'10px 8px',fontSize:'12px',color:chgPct>=0?'#EF4444':'#22C55E',fontWeight:'800'}}>{chgPct>=0?'+':''}{chgPct.toFixed(2)}%</td>
-                        <td style={{padding:'10px 8px'}}>
-                          <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
-                            <div style={{width:'40px',height:'6px',borderRadius:'10px',overflow:'hidden',background:'rgba(216,174,99,.12)'}}>
-                              <div style={{height:'100%',width:`${Math.min(100,Math.abs(chgPct)*5)}%`,background:chgPct>=0?'#EF4444':'#22C55E',borderRadius:'10px'}}/>
-                            </div>
-                            <span style={{fontSize:'11px',color:chgPct>=0?'#EF4444':'#22C55E',fontWeight:'700'}}>{chg>=0?'+':''}{chg.toFixed(2)}</span>
-                          </div>
-                        </td>
+                    </thead>
+                    <tbody>
+                      {[...monthHistory].reverse().map(h=>(
+                        <tr key={h.month} style={{borderBottom:'1px solid rgba(216,174,99,.07)'}}>
+                          <td style={{padding:'10px 8px',fontSize:'12px',color:'#5B4332',fontWeight:'600'}}>{h.label}</td>
+                          <td style={{padding:'10px 8px',fontSize:'12px',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif",fontWeight:'700'}}>{h.investment.toFixed(3)} <span style={{fontSize:'10px',color:'#9A6C3C'}}>د.ك</span></td>
+                          <td style={{padding:'10px 8px',fontSize:'12px',color:'#9A6C3C'}}>—</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="dc" style={{padding:'22px'}}>
+                  <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111',marginBottom:'16px'}}>المصروفات الشهرية</h3>
+                  <table style={{width:'100%',borderCollapse:'collapse'}}>
+                    <thead>
+                      <tr style={{borderBottom:'2px solid rgba(216,174,99,.12)'}}>
+                        {['الشهر','إجمالي المصروفات','—'].map(h=><th key={h} style={{padding:'8px 8px',textAlign:'right',fontSize:'11px',fontWeight:'700',color:'#9A6C3C'}}>{h}</th>)}
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody>
+                      {[...monthHistory].reverse().map(h=>(
+                        <tr key={h.month} style={{borderBottom:'1px solid rgba(216,174,99,.07)'}}>
+                          <td style={{padding:'10px 8px',fontSize:'12px',color:'#5B4332',fontWeight:'600'}}>{h.label}</td>
+                          <td style={{padding:'10px 8px',fontSize:'12px',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif",fontWeight:'700'}}>{h.expenses.toFixed(3)} <span style={{fontSize:'10px',color:'#9A6C3C'}}>د.ك</span></td>
+                          <td style={{padding:'10px 8px',fontSize:'12px',color:'#9A6C3C'}}>—</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
 
           {/* ─── FOOTER ─── */}
