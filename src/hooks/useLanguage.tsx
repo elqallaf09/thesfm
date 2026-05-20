@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Lang } from '@/lib/translations';
 import { t as translate, TR } from '@/lib/translations';
+import { supabase } from '@/integrations/supabase/client';
 
 const KEY = 'sfm_lang';
 const LANG_EVENT = 'sfm-language-change';
@@ -19,7 +20,11 @@ function readStoredLang(): Lang {
   if (typeof window === 'undefined') return 'ar';
   try {
     const stored = localStorage.getItem(KEY);
-    return isLang(stored) ? stored : 'ar';
+    if (isLang(stored)) return stored;
+    const browserLang = navigator.language || (navigator as Navigator & { userLanguage?: string }).userLanguage || '';
+    if (browserLang.toLowerCase().startsWith('fr')) return 'fr';
+    if (browserLang.toLowerCase().startsWith('ar')) return 'ar';
+    return 'en';
   } catch {
     return 'ar';
   }
@@ -31,7 +36,10 @@ export function useLanguage() {
   useEffect(() => {
     setLangState(readStoredLang());
 
-    const sync = () => setLangState(readStoredLang());
+    const sync = (event?: Event) => {
+      const nextLang = event instanceof CustomEvent && isLang(event.detail?.lang) ? event.detail.lang : readStoredLang();
+      setLangState(nextLang);
+    };
     const onStorage = (event: StorageEvent) => {
       if (event.key === KEY) sync();
     };
@@ -49,8 +57,12 @@ export function useLanguage() {
     setLangState(l);
     try {
       localStorage.setItem(KEY, l);
-      window.dispatchEvent(new CustomEvent(LANG_EVENT, { detail: l }));
+      window.dispatchEvent(new CustomEvent(LANG_EVENT, { detail: { lang: l } }));
     } catch {}
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return;
+      return supabase.from('profiles').update({ preferred_lang: l }).eq('id', data.user.id);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {

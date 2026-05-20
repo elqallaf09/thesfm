@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { Sidebar } from '@/components/Sidebar';
 import { Loader2, Pencil, Trash2, Send, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 
 /* ─── Types ─── */
@@ -255,40 +256,7 @@ export default function ProjectsPage() {
     `}</style>
 
     <div className="pp">
-      {/* ── Sidebar ── */}
-      <aside className="sidebar" style={{ width: '220px', background: 'linear-gradient(180deg,#1A0F05,#0D0804)', position: 'fixed', right: 0, top: 0, bottom: 0, zIndex: 50, display: 'flex', flexDirection: 'column', overflowY: 'auto', borderLeft: '1px solid rgba(216,174,99,.1)' }}>
-        <div style={{ padding: '20px 16px 14px', borderBottom: '1px solid rgba(216,174,99,.08)' }}>
-          <div style={{ fontSize: '17px', fontWeight: '900', color: '#D8AE63' }}>THE SFM</div>
-          <div style={{ fontSize: '11px', color: 'rgba(216,174,99,.45)' }}>المدير المالي الذكي</div>
-        </div>
-        <nav style={{ flex: 1, padding: '10px 8px' }}>
-          {[
-            { icon: '⊞', label: 'الرئيسية', path: '/' },
-            { icon: '🛒', label: 'المصاريف', path: '/expenses' },
-            { icon: '💵', label: 'الدخل', path: '/income' },
-            { icon: '📈', label: 'الاستثمارات', path: '/education/investments' },
-            { icon: '🎯', label: 'الأهداف', path: '/goals' },
-            { icon: '🚀', label: 'مشاريعي', path: '/projects', active: true },
-            { icon: '🤲', label: 'الأعمال الخيرية', path: '/charity' },
-            { icon: '🔔', label: 'الإشعارات', path: '/notifications' },
-            { icon: '⚙️', label: 'الإعدادات', path: '/settings' },
-            { icon: '👤', label: 'الملف الشخصي', path: '/profile' },
-          ].map((n, i) => (
-            <button key={i} className={'nav-item' + (n.active ? ' active' : '')} onClick={() => router.push(n.path)}>
-              <span style={{ fontSize: '16px', width: '20px', textAlign: 'center' }}>{n.icon}</span>{n.label}
-            </button>
-          ))}
-          <div style={{ height: '1px', background: 'rgba(216,174,99,.08)', margin: '8px 6px' }} />
-          <button className="nav-item" onClick={async () => {
-            await supabase.auth.signOut();
-            localStorage.clear();
-            router.push('/');
-            router.refresh();
-          }}>
-            <span style={{ fontSize: '16px', width: '20px', textAlign: 'center' }}>⤴</span>تسجيل الخروج
-          </button>
-        </nav>
-      </aside>
+      <Sidebar />
 
       {/* ── Main ── */}
       <main className="main-ml" style={{ marginRight: '220px', padding: '24px 24px 60px', maxWidth: '100%', overflowX: 'hidden' }}>

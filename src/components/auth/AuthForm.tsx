@@ -621,7 +621,7 @@ export function AuthForm() {
                   </button>
                 </div>
                 <button type="button" className="auth-btn-secondary"
-                  onClick={() => { window.location.href = '/guest'; }}>
+                  onClick={() => { router.push('/guest'); }}>
                   <i className="ti ti-user-circle" style={{fontSize:'18px'}} aria-hidden="true" />
                   {t.guestLogin}
                 </button>

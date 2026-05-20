@@ -1,3 +1,5 @@
+'use client';
+
 import { RouteDashboardPage } from '@/components/finance/RouteDashboardPage';
 
 export default function AiPage() {

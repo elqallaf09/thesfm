@@ -30,6 +30,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { Sidebar } from '@/components/Sidebar';
 
 type PageKind = 'expenses' | 'income' | 'invest' | 'goals' | 'reports' | 'ai';
 type LangText = { ar: string; en: string };
@@ -77,7 +78,7 @@ const navItems = [
   { href: '/', label: { ar: 'الرئيسية', en: 'Dashboard' }, icon: Home },
   { href: '/expenses', label: { ar: 'المصروفات', en: 'Expenses' }, icon: ReceiptText },
   { href: '/income', label: { ar: 'الدخل', en: 'Income' }, icon: Wallet },
-  { href: '/education/investments', label: { ar: 'الاستثمارات', en: 'Investments' }, icon: TrendingUp },
+  { href: '/invest', label: { ar: 'الاستثمارات', en: 'Investments' }, icon: TrendingUp },
   { href: '/goals', label: { ar: 'الأهداف', en: 'Goals' }, icon: Target },
   { href: '/projects', label: { ar: 'مشاريعي', en: 'My Projects' }, icon: FolderKanban },
   { href: '/reports', label: { ar: 'التقارير', en: 'Reports' }, icon: ChartPie },
@@ -281,27 +282,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
   return (
     <div className="sfm-shell" dir={dir}>
-      <aside className="sfm-sidebar">
-        <div className="brand" onClick={() => router.push('/')}>
-          <div className="brand-mark">S</div>
-          <div>
-            <strong>THE SFM</strong>
-            <span>{isAr ? 'المدير المالي الذكي' : 'Smart Finance Manager'}</span>
-          </div>
-        </div>
-        <nav>
-          {navItems.map(item => {
-            const NavIcon = item.icon;
-            const active = item.href === `/${kind}` || (kind === 'invest' && item.href === '/education/investments');
-            return (
-              <button key={item.href} className={active ? 'active' : ''} onClick={() => router.push(item.href)}>
-                <NavIcon size={17} />
-                <span>{pick(item.label, isAr)}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </aside>
+      <Sidebar />
 
       <main className="sfm-main">
         <header className="sfm-header">
@@ -655,7 +636,7 @@ function buildPrimaryActions(kind: PageKind, isAr: boolean, router: ReturnType<t
     expenses: { label: { ar: 'إضافة مصروف', en: 'Add expense' }, href: '/expenses/add' },
     income: { label: { ar: 'إضافة دخل', en: 'Add income' }, href: '/income/add' },
     invest: { label: { ar: 'إضافة استثمار', en: 'Add investment' }, href: '/education/investments' },
-    goals: { label: { ar: 'إضافة هدف', en: 'Add goal' }, href: '/projects' },
+    goals: { label: { ar: 'إضافة هدف', en: 'Add goal' }, href: '/goals' },
   };
 
   const action = routes[kind];
@@ -675,7 +656,7 @@ const baseStyles = `
   .brand strong{display:block;font-size:15px}.brand span{display:block;font-size:11px;color:rgba(255,255,255,.48);margin-top:2px}
   nav{display:grid;gap:7px}nav button,.mobile-panel button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:rgba(255,255,255,.62);padding:11px 12px;border-radius:12px;cursor:pointer;font:700 13px Tajawal,Arial,sans-serif;text-align:start}
   nav button:hover,nav button.active{background:rgba(216,174,99,.13);color:#D8AE63}
-  .sfm-main{flex:1;padding:22px;max-width:1280px;margin:0 auto;width:100%}
+  .sfm-main{flex:1;padding:22px;max-width:1280px;margin:0 auto;width:100%;margin-inline-start:230px}
   .sfm-header{height:62px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
   .title-wrap{display:flex;align-items:center;gap:13px}.title-wrap p{font-size:11px;color:#9A6C3C;font-weight:700;margin:0 0 3px}.title-wrap h1{font-size:24px;margin:0;font-weight:900}
   .title-icon{width:44px;height:44px;border-radius:14px;background:color-mix(in srgb,var(--accent) 14%,#fff);color:var(--accent);display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--accent) 22%,transparent)}
@@ -692,6 +673,6 @@ const baseStyles = `
   .summary-band,.ai-panel{margin-top:18px;background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:20px;padding:18px 20px;display:flex;align-items:center;gap:14px}.summary-band svg{color:#D8AE63}.summary-band strong,.ai-panel h3{font-size:16px}.summary-band p,.ai-panel p{margin:4px 0 0;color:#7C6A5D;line-height:1.7;font-size:13px}
   .ai-panel{align-items:stretch;justify-content:space-between}.chat-history{display:grid;gap:8px;min-width:min(460px,100%);max-height:190px;overflow:auto;margin-bottom:10px}.chat-history>div{padding:10px 12px;border-radius:14px;font-size:13px;line-height:1.6}.chat-history .user{background:#111;color:#FFFDFC}.chat-history .assistant{background:rgba(216,174,99,.11);color:#5B4332}.chat-box{display:flex;gap:10px;min-width:min(460px,100%)}.chat-box input{height:46px;border:1.5px solid rgba(216,174,99,.22);border-radius:14px;padding:0 14px;background:#F7F3EA;min-width:0;flex:1;font:600 14px Tajawal,Arial,sans-serif;color:#111}.chat-box button{width:46px;border-radius:14px;border:0;background:#111;color:#D8AE63;display:grid;place-items:center;cursor:pointer}.chat-box button:disabled{opacity:.55;cursor:wait}
   .mobile-panel{position:fixed;inset:12px;z-index:50;background:#111;border-radius:22px;padding:16px;color:#FFFDFC;box-shadow:0 24px 80px rgba(0,0,0,.35)}.mobile-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-  @media(max-width:920px){.sfm-sidebar{display:none}.menu-btn{display:grid}.sfm-main{padding:16px}.hero{display:block}.hero-actions{margin-top:18px}.content-grid{grid-template-columns:1fr}.ai-panel{display:grid}.chat-box{min-width:0}}
+  @media(max-width:920px){.sfm-sidebar{display:none}.menu-btn{display:grid}.sfm-main{padding:16px;margin-inline-start:0}.hero{display:block}.hero-actions{margin-top:18px}.content-grid{grid-template-columns:1fr}.ai-panel{display:grid}.chat-box{min-width:0}}
   @media(max-width:640px){.kpi-grid{grid-template-columns:1fr}.sfm-header{height:auto}.title-wrap h1{font-size:20px}.hero{padding:22px}.hero h2{font-size:27px}.data-row{align-items:flex-start;flex-direction:column}.summary-band{align-items:flex-start}.primary-btn,.ghost-btn{width:100%;justify-content:center}}
 `;

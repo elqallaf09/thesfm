@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { Sidebar } from '@/components/Sidebar';
 
 /* ═══════════════════════════════════════════════════
    TYPES
@@ -160,6 +161,7 @@ function EmptyState({
   btnLabel?: string;
   btnHref?: string;
 }) {
+  const router = useRouter();
   return (
     <div style={{
       textAlign: 'center',
@@ -180,7 +182,7 @@ function EmptyState({
         fontFamily: 'Tajawal,sans-serif',
       }}>{subtitle}</div>
       {btnLabel && btnHref && (
-        <a href={btnHref} style={{
+        <button type="button" onClick={() => router.push(btnHref)} style={{
           display: 'inline-flex', alignItems: 'center', gap: '7px',
           padding: '10px 22px',
           background: 'linear-gradient(135deg,#D8AE63,#9A6C3C)',
@@ -188,7 +190,7 @@ function EmptyState({
           color: '#111111', fontSize: '13.5px', fontWeight: '700',
           textDecoration: 'none', fontFamily: 'Tajawal,sans-serif',
           cursor: 'pointer',
-        }}>{btnLabel}</a>
+        }}>{btnLabel}</button>
       )}
     </div>
   );
@@ -357,106 +359,17 @@ export default function DashboardPage(){
       <div style={{background:'rgba(17,17,17,0.96)',backdropFilter:'blur(12px)',borderBottom:'1px solid rgba(216,174,99,.12)',padding:'8px 0',overflow:'hidden',position:'sticky',top:0,zIndex:100}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',fontSize:'12px',fontWeight:'700',color:'#D8AE63',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>
           <span>THE SFM</span>
-          <span style={{color:'rgba(255,255,255,.55)'}}>يعرض لوحة بياناتك الفعلية فقط</span>
+          <span style={{color:'rgba(255,255,255,.55)'}}>{isAr ? 'لوحة مالية متصلة ببياناتك' : isFr ? 'Tableau financier connecte a vos donnees' : 'Financial dashboard connected to your data'}</span>
         </div>
       </div>
 
       <div style={{display:'flex',flex:1}}>
 
         {/* ═══ SIDEBAR ═══ */}
-        <aside className="sidebar" style={{width:'230px',background:'linear-gradient(180deg,#1A0F05 0%,#0D0804 100%)',position:'fixed',right:0,top:'37px',bottom:0,zIndex:50,display:'flex',flexDirection:'column',overflowY:'auto',borderLeft:'1px solid rgba(216,174,99,.1)'}}>
-          {/* Logo */}
-          <div style={{padding:'20px 16px 16px',borderBottom:'1px solid rgba(216,174,99,.08)'}}>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'8px'}}>
-              <div style={{display:'flex',flexDirection:'column'}}>
-                <div style={{fontSize:'18px',fontWeight:'900',color:'#D8AE63',letterSpacing:'.05em'}}>THE SFM</div>
-                <div style={{fontSize:'11px',color:'rgba(216,174,99,.45)'}}>{isAr ? 'المدير المالي الذكي' : isFr ? 'Gestionnaire Financier Intelligent' : 'Smart Financial Manager'}</div>
-              </div>
-              <LanguageSwitcher variant="dark" size="sm" />
-            </div>
-          </div>
-
-          {/* User card */}
-          <div style={{padding:'16px',borderBottom:'1px solid rgba(216,174,99,.08)'}}>
-            <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'10px',padding:'14px',background:'rgba(216,174,99,.07)',borderRadius:'16px',border:'1px solid rgba(216,174,99,.12)'}}>
-              <div style={{width:'52px',height:'52px',borderRadius:'50%',background:'linear-gradient(135deg,#D8AE63,#9A6C3C)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px',fontWeight:'900',color:'#111111',boxShadow:'0 3px 14px rgba(216,174,99,.35)'}}>{initials}</div>
-              <div style={{textAlign:'center'}}>
-                <div style={{fontSize:'13.5px',fontWeight:'800',color:'rgba(255,255,255,.9)',marginBottom:'2px'}}>{profile.display_name||'SFM'}</div>
-                <div style={{fontSize:'11px',color:'rgba(216,174,99,.6)',marginBottom:'8px'}}>{profile.profession||'خبير أسواق ومعلومات'}</div>
-                <div style={{display:'inline-flex',alignItems:'center',gap:'5px',background:'linear-gradient(135deg,rgba(216,174,99,.2),rgba(154,108,60,.14))',border:'1px solid rgba(216,174,99,.3)',borderRadius:'20px',padding:'3px 12px'}}>
-                  <span style={{fontSize:'10px'}}>⭐</span>
-                  <span style={{fontSize:'10px',fontWeight:'800',color:'#D8AE63',letterSpacing:'.05em'}}>ELITE MEMBER</span>
-                </div>
-              </div>
-              {/* Financial score */}
-              <div style={{width:'100%',background:'rgba(255,255,255,.04)',borderRadius:'10px',padding:'10px 12px'}}>
-                <div style={{display:'flex',justifyContent:'space-between',marginBottom:'6px'}}>
-                  <span style={{fontSize:'10px',color:'rgba(255,255,255,.4)'}}>الصحة المالية</span>
-                  <span style={{fontSize:'11px',fontWeight:'800',color:'#D8AE63'}}>{healthScore}%</span>
-                </div>
-                <div className="prog-bar"><div className="prog-fill" style={{width:`${healthScore}%`,background:'linear-gradient(90deg,#D8AE63,#9A6C3C)'}}/></div>
-              </div>
-              {/* AI status */}
-              <div style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'11px',color:'rgba(255,255,255,.5)'}}>
-                <div style={{width:'6px',height:'6px',borderRadius:'50%',background:'#22C55E',animation:'pulse 1.5s infinite'}}/>
-                نشط
-                <span style={{marginRight:'auto',fontSize:'14px'}}>🤖</span>
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginTop:'12px'}}>
-              {[
-                {label:'الدخل',val:totalIncome>0?`${totalIncome.toFixed(3)} د.ك`:'—'},
-                {label:'المصروفات',val:totalExpenses>0?`${totalExpenses.toFixed(3)} د.ك`:'—'},
-                {label:'عدد الأهداف',val:goals.length || '—'},
-                {label:'الاستثمارات',val:investments.length || '—'},
-              ].map((s,i)=>(
-                <div key={i} style={{background:'rgba(255,255,255,.04)',borderRadius:'10px',padding:'8px 10px'}}>
-                  <div style={{fontSize:'9.5px',color:'rgba(255,255,255,.3)',marginBottom:'3px'}}>{s.label}</div>
-                  <div style={{fontSize:'13px',fontWeight:'800',color:'rgba(255,255,255,.85)',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{s.val}</div>
-                </div>
-              ))}
-            </div>
-            <button onClick={()=>router.push('/profile')} style={{width:'100%',marginTop:'10px',padding:'9px',background:'linear-gradient(135deg,#D8AE63,#9A6C3C)',border:'none',borderRadius:'12px',color:'#111111',fontSize:'12px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>
-              عرض الملف الشخصي
-            </button>
-          </div>
-
-          {/* Nav */}
-          <nav style={{flex:1,padding:'10px 8px'}}>
-            {NAV_ITEMS.map(n=>(
-              <button key={n.id} className={'nav-item'+(activeNav===n.id?' active':'')} onClick={()=>{setActiveNav(n.id);router.push(NAV_ROUTES[n.id] ?? '/');}}>
-                <span style={{fontSize:'16px',width:'20px',textAlign:'center'}}>{n.icon}</span>
-                {n.label}
-              </button>
-            ))}
-            <div style={{height:'1px',background:'rgba(216,174,99,.08)',margin:'8px 6px'}}/>
-            <button className="nav-item" onClick={async()=>{
-              await supabase.auth.signOut();
-              localStorage.clear();
-              router.push('/');
-              router.refresh();
-            }}>
-              <span style={{fontSize:'16px',width:'20px',textAlign:'center'}}>⤴</span>
-              تسجيل الخروج
-            </button>
-          </nav>
-
-          {/* AI Card bottom */}
-          <div style={{padding:'12px',margin:'8px',background:'linear-gradient(135deg,#2B1A0D,#3D2618)',borderRadius:'18px',border:'1px solid rgba(216,174,99,.2)',textAlign:'center',position:'relative',overflow:'hidden'}}>
-            <div style={{position:'absolute',top:'-20px',right:'-20px',width:'80px',height:'80px',borderRadius:'50%',background:'radial-gradient(circle,rgba(216,174,99,.15) 0%,transparent 70%)',pointerEvents:'none'}}/>
-            <div style={{fontSize:'22px',marginBottom:'6px'}}>🤖</div>
-            <div style={{fontSize:'13px',fontWeight:'800',color:'#D8AE63',marginBottom:'4px'}}>الذكاء المالي</div>
-            <div style={{fontSize:'11px',color:'rgba(255,255,255,.45)',marginBottom:'12px',lineHeight:1.5}}>اكتشف فرص جديدة لتحقيق توصيات مخصصة</div>
-            <button onClick={()=>router.push('/ai')} style={{width:'100%',padding:'8px',background:'linear-gradient(135deg,#D8AE63,#9A6C3C)',border:'none',borderRadius:'10px',color:'#111111',fontSize:'12px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>
-              استكشف الآن
-            </button>
-          </div>
-        </aside>
+        <Sidebar />
 
         {/* ═══ MAIN CONTENT ═══ */}
-        <main className="main-pad" style={{flex:1,marginRight:'230px',padding:'20px',display:'flex',flexDirection:'column',gap:'16px',maxWidth:'100%',overflowX:'hidden'}}>
+        <main className="main-pad" style={{flex:1,marginInlineStart:'230px',padding:'20px',display:'flex',flexDirection:'column',gap:'16px',maxWidth:'100%',overflowX:'hidden'}}>
 
           {/* ─── PAGE HEADER ─── */}
           <div style={{...S(0),display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'12px'}}>

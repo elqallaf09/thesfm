@@ -4,9 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Bell, Database, Download, Eye, Globe2, Home, KeyRound, Moon, Save, ShieldAlert, ShieldCheck, SlidersHorizontal, Sun, Trash2, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { Lang } from '@/lib/translations';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { Sidebar } from '@/components/Sidebar';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -68,9 +72,15 @@ const copy = {
 export default function SettingsPage() {
   const router = useRouter();
   const { lang, setLang, dir } = useLanguage();
+  const { user, loading } = useAuth();
+  const { theme, setTheme } = useTheme();
   const c = copy[lang];
   const [settings, setSettings] = useState<SettingsState>(initialSettings);
   const [saved, setSaved] = useState('');
+
+  useEffect(() => {
+    if (!loading && !user) router.push('/');
+  }, [loading, router, user]);
 
   useEffect(() => {
     try {
@@ -82,6 +92,22 @@ export default function SettingsPage() {
   const persist = (next = settings, message = c.saved) => {
     setSettings(next);
     try { localStorage.setItem(STORE_KEY, JSON.stringify(next)); } catch {}
+    if (user) {
+      supabase.from('profiles').update({
+        preferred_lang: lang,
+        preferred_currency: next.finance.currency,
+        preferred_theme: theme || next.appearance.theme,
+        dashboard_prefs: {
+          budget: next.finance.budget,
+          savings: next.finance.savings,
+          investments: next.finance.investments,
+          charity: next.finance.charity,
+          monthStart: next.finance.monthStart,
+          luxury: next.appearance.luxury,
+        },
+        notification_prefs: next.notifications,
+      }).eq('id', user.id).then(() => {}).catch(() => {});
+    }
     setSaved(message);
     window.setTimeout(() => setSaved(''), 1600);
   };
@@ -108,6 +134,7 @@ export default function SettingsPage() {
 
   return (
     <main className="settings-shell" dir={dir}>
+      <Sidebar />
       <section className="settings-page">
         <header className="topbar">
           <button className="ghost-btn" onClick={() => router.push('/')}><Home size={17} />{c.home}</button>
@@ -154,7 +181,7 @@ export default function SettingsPage() {
           <Card icon={<Eye />} title={c.appearance}>
             <div className="mode-row">
               {(['light', 'dark', 'system'] as ThemeMode[]).map(mode => (
-                <button key={mode} className={settings.appearance.theme === mode ? 'mode active' : 'mode'} onClick={() => setNested('appearance', 'theme', mode)}>
+                <button key={mode} className={(theme || settings.appearance.theme) === mode ? 'mode active' : 'mode'} onClick={() => { setTheme(mode); setNested('appearance', 'theme', mode); }}>
                   {mode === 'dark' ? <Moon size={15} /> : <Sun size={15} />}{c[mode]}
                 </button>
               ))}
@@ -185,7 +212,7 @@ export default function SettingsPage() {
         </div>
       </section>
       <style jsx>{`
-        .settings-shell{min-height:100vh;background:linear-gradient(180deg,#f7f1e6 0%,#fffdf8 56%,#f3ead9 100%);color:#15110d;font-family:Tajawal,Arial,sans-serif}.settings-page{max-width:1180px;margin:0 auto;padding:24px 18px 70px}.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.ghost-btn,.gold-btn,.soft-btn,.danger-btn,.mode{min-height:40px;border-radius:12px;border:1px solid rgba(190,149,82,.28);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 14px;font:800 13px Tajawal,Arial,sans-serif;cursor:pointer}.ghost-btn,.soft-btn{background:#fffaf1;color:#5c4228}.gold-btn{width:100%;background:linear-gradient(135deg,#d8ae63,#b88935);color:#1d1207;border:0;box-shadow:0 12px 24px rgba(184,137,53,.22)}.danger-btn{background:#fff4f1;color:#9c2f1d;border-color:#f0c7bf}.hero{position:relative;display:flex;gap:18px;align-items:center;background:linear-gradient(135deg,#111 0%,#2b1a0d 58%,#8b6328 135%);color:#fffdf7;border-radius:26px;padding:28px;margin-bottom:16px;box-shadow:0 24px 50px rgba(43,26,13,.18)}.hero-icon{width:64px;height:64px;border-radius:20px;background:rgba(216,174,99,.14);display:grid;place-items:center;color:#d8ae63;flex:0 0 auto}.hero h1{font-size:34px;line-height:1;margin:0 0 10px}.hero p{margin:0;max-width:760px;line-height:1.8;color:rgba(255,255,255,.72)}.saved-pill{position:absolute;top:22px;inset-inline-end:24px;background:#fffaf1;color:#6f4a16;border-radius:999px;padding:8px 14px;font-size:12px;font-weight:900}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.card{background:rgba(255,253,248,.88);border:1px solid rgba(190,149,82,.2);border-radius:20px;padding:18px;box-shadow:0 16px 40px rgba(75,51,29,.08);backdrop-filter:blur(10px)}.card.full{grid-column:1/-1}.card-title{display:flex;align-items:center;gap:10px;margin-bottom:14px}.card-title svg{color:#c99b4f}.card-title h2{font-size:18px;margin:0}.field{display:grid;gap:7px;margin-bottom:12px}.field label,label{font-size:12px;font-weight:900;color:#6c5842}input,select{width:100%;height:42px;border-radius:12px;border:1px solid rgba(190,149,82,.28);background:#fffaf1;color:#18120d;padding:0 12px;font:700 14px Tajawal,Arial,sans-serif;outline:none}input:focus,select:focus{border-color:#c99b4f;box-shadow:0 0 0 3px rgba(216,174,99,.16)}.mode-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.mode{background:#fffaf1;color:#7a6148}.mode.active{background:#19130d;color:#f7d79c;border-color:#19130d}.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid rgba(190,149,82,.12);font-weight:800;color:#4d3b2c}.switch{width:46px;height:26px;border-radius:999px;border:0;background:#d9cbbb;padding:3px;cursor:pointer}.switch span{display:block;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s ease}.switch.on{background:#c99b4f}.switch.on span{transform:translateX(-20px)}[dir="ltr"] .switch.on span{transform:translateX(20px)}.hint{font-size:12px;line-height:1.7;color:#8a7764;margin:10px 0 0}.danger{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;background:#fff3ed;border:1px solid #f0c7bf;border-radius:14px;padding:12px;color:#8d2d1e}.danger span{grid-column:2;color:#9b6a5b;font-size:12px;line-height:1.6}@media(max-width:760px){.grid{grid-template-columns:1fr}.hero{align-items:flex-start;padding:22px;flex-direction:column}.hero h1{font-size:28px}.saved-pill{position:static;align-self:flex-start}.mode-row{grid-template-columns:1fr}.topbar{gap:10px;align-items:flex-start;flex-direction:column}}
+        .settings-shell{min-height:100vh;background:linear-gradient(180deg,#f7f1e6 0%,#fffdf8 56%,#f3ead9 100%);color:#15110d;font-family:Tajawal,Arial,sans-serif}.settings-page{max-width:1180px;margin:0 auto;margin-inline-start:230px;padding:24px 18px 70px}.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.ghost-btn,.gold-btn,.soft-btn,.danger-btn,.mode{min-height:40px;border-radius:12px;border:1px solid rgba(190,149,82,.28);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 14px;font:800 13px Tajawal,Arial,sans-serif;cursor:pointer}.ghost-btn,.soft-btn{background:#fffaf1;color:#5c4228}.gold-btn{width:100%;background:linear-gradient(135deg,#d8ae63,#b88935);color:#1d1207;border:0;box-shadow:0 12px 24px rgba(184,137,53,.22)}.danger-btn{background:#fff4f1;color:#9c2f1d;border-color:#f0c7bf}.hero{position:relative;display:flex;gap:18px;align-items:center;background:linear-gradient(135deg,#111 0%,#2b1a0d 58%,#8b6328 135%);color:#fffdf7;border-radius:26px;padding:28px;margin-bottom:16px;box-shadow:0 24px 50px rgba(43,26,13,.18)}.hero-icon{width:64px;height:64px;border-radius:20px;background:rgba(216,174,99,.14);display:grid;place-items:center;color:#d8ae63;flex:0 0 auto}.hero h1{font-size:34px;line-height:1;margin:0 0 10px}.hero p{margin:0;max-width:760px;line-height:1.8;color:rgba(255,255,255,.72)}.saved-pill{position:absolute;top:22px;inset-inline-end:24px;background:#fffaf1;color:#6f4a16;border-radius:999px;padding:8px 14px;font-size:12px;font-weight:900}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.card{background:rgba(255,253,248,.88);border:1px solid rgba(190,149,82,.2);border-radius:20px;padding:18px;box-shadow:0 16px 40px rgba(75,51,29,.08);backdrop-filter:blur(10px)}.card.full{grid-column:1/-1}.card-title{display:flex;align-items:center;gap:10px;margin-bottom:14px}.card-title svg{color:#c99b4f}.card-title h2{font-size:18px;margin:0}.field{display:grid;gap:7px;margin-bottom:12px}.field label,label{font-size:12px;font-weight:900;color:#6c5842}input,select{width:100%;height:42px;border-radius:12px;border:1px solid rgba(190,149,82,.28);background:#fffaf1;color:#18120d;padding:0 12px;font:700 14px Tajawal,Arial,sans-serif;outline:none}input:focus,select:focus{border-color:#c99b4f;box-shadow:0 0 0 3px rgba(216,174,99,.16)}.mode-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.mode{background:#fffaf1;color:#7a6148}.mode.active{background:#19130d;color:#f7d79c;border-color:#19130d;box-shadow:0 0 0 3px rgba(216,174,99,.2)}.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid rgba(190,149,82,.12);font-weight:800;color:#4d3b2c}.switch{width:46px;height:26px;border-radius:999px;border:0;background:#d9cbbb;padding:3px;cursor:pointer}.switch span{display:block;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s ease}.switch.on{background:#c99b4f}.switch.on span{transform:translateX(-20px)}[dir="ltr"] .switch.on span{transform:translateX(20px)}.hint{font-size:12px;line-height:1.7;color:#8a7764;margin:10px 0 0}.danger{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;background:#fff3ed;border:1px solid #f0c7bf;border-radius:14px;padding:12px;color:#8d2d1e}.danger span{grid-column:2;color:#9b6a5b;font-size:12px;line-height:1.6}@media(max-width:1024px){.settings-page{margin-inline-start:0}}@media(max-width:760px){.grid{grid-template-columns:1fr}.hero{align-items:flex-start;padding:22px;flex-direction:column}.hero h1{font-size:28px}.saved-pill{position:static;align-self:flex-start}.mode-row{grid-template-columns:1fr}.topbar{gap:10px;align-items:flex-start;flex-direction:column}}
       `}</style>
     </main>
   );
