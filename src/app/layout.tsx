@@ -4,9 +4,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import GlobalClientEffects from "@/components/GlobalClientEffects";
 import { AuthProvider } from "@/hooks/useAuth";
-import { LanguageProvider } from "@/hooks/useLanguage";
-import LanguageInitializer from "@/components/LanguageInitializer";
-
+import { LanguageProvider } from "@/components/LanguageProvider";
 import "./globals.css";
 
 const cairo = Cairo({
@@ -35,19 +33,20 @@ export default function RootLayout({
         />
       </head>
       <body className={`${cairo.variable} font-cairo antialiased`}>
-        <LanguageProvider>
-          <LanguageInitializer />
-          <Toaster />
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem={false}
-            disableTransitionOnChange
-          >
-            <AuthProvider>{children}</AuthProvider>
-          </ThemeProvider>
-        </LanguageProvider>
-        <GlobalClientEffects />
+        <Toaster />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <LanguageProvider>
+              {children}
+              <GlobalClientEffects />
+            </LanguageProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
