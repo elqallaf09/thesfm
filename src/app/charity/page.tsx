@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -82,37 +82,39 @@ export default function CharityPage() {
   const [msg,     setMsg]       = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [mounted, setMounted]   = useState(false);
 
-  const monthOptions = buildMonthOptions();
+  const monthOptions = useMemo(() => buildMonthOptions(), []);
 
   /* ── Auth guard ── */
   useEffect(() => {
     if (!loading && !user) router.push('/');
   }, [user, loading, router]);
 
-  useEffect(() => {
-    setTimeout(() => setMounted(true), 60);
-    if (user) load();
-  }, [user]);
-
   /* ── Load charity records ── */
-  const load = async () => {
+  const load = useCallback(async () => {
+    if (!user) return;
+
     // Try charity table first; fall back to expense_items with charity category
     const { data, error } = await supabase
       .from('expense_items')
       .select('id, user_id, name, amount, created_at')
-      .eq('user_id', user!.id)
+      .eq('user_id', user.id)
       .like('name', 'خيرية:%')
       .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      const mapped: CharityRecord[] = data.map((r: any) => {
+    if (error) {
+      setMsg({ type: 'err', text: `تعذر تحميل الأعمال الخيرية: ${error.message}` });
+      return;
+    }
+
+    if (data) {
+      const mapped: CharityRecord[] = data.map(r => {
         // name format: "خيرية:YYYY-MM:note"
         const parts = r.name.split(':');
         return {
           id:         r.id,
           user_id:    r.user_id,
           name:       parts[2] || 'أعمال خيرية',
-          amount:     parseFloat(r.amount) || 0,
+          amount:     Number(r.amount) || 0,
           month:      parts[1] || currentYM(),
           note:       parts[2] || '',
           created_at: r.created_at,
@@ -120,10 +122,21 @@ export default function CharityPage() {
       });
       setRecords(mapped);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 60);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (user) load();
+  }, [user, load]);
 
   /* ── Save ── */
   const save = async () => {
+    if (!user || saving) return;
+
     const amt = parseFloat(amount.replace(/[^\d.]/g, ''));
     if (!amt || amt <= 0) { setMsg({ type: 'err', text: 'أدخل مبلغاً صحيحاً' }); return; }
     if (!name.trim())     { setMsg({ type: 'err', text: 'أدخل اسماً أو ملاحظة للعمل الخيري' }); return; }
@@ -140,29 +153,39 @@ export default function CharityPage() {
     */
     const rowName = `خيرية:${month}:${name.trim()}`;
 
-    const { error } = await supabase
-      .from('expense_items')
-      .insert({
-        user_id: user!.id,
-        name:    rowName,
-        amount:  amt,
-      });
+    try {
+      const { error } = await supabase
+        .from('expense_items')
+        .insert({
+          user_id: user.id,
+          name:    rowName,
+          amount:  amt,
+        });
 
-    if (error) {
-      setMsg({ type: 'err', text: `خطأ في الحفظ: ${error.message}` });
-    } else {
-      setMsg({ type: 'ok', text: `✅ تم تسجيل ${amt.toFixed(3)} د.ك كعمل خيري في ${labelFromYM(month)}` });
-      setAmount(''); setName('');
-      await load();
+      if (error) {
+        setMsg({ type: 'err', text: `خطأ في الحفظ: ${error.message}` });
+      } else {
+        setMsg({ type: 'ok', text: `✅ تم تسجيل ${amt.toFixed(3)} د.ك كعمل خيري في ${labelFromYM(month)}` });
+        setAmount(''); setName('');
+        await load();
+      }
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   /* ── Delete ── */
   const remove = async (id: string) => {
+    if (deleting) return;
+
     setDeleting(id);
-    await supabase.from('expense_items').delete().eq('id', id);
-    setRecords(r => r.filter(x => x.id !== id));
+    const { error } = await supabase.from('expense_items').delete().eq('id', id);
+    if (error) {
+      setMsg({ type: 'err', text: `تعذر حذف السجل: ${error.message}` });
+    } else {
+      setRecords(r => r.filter(x => x.id !== id));
+      setMsg({ type: 'ok', text: 'تم حذف السجل' });
+    }
     setDeleting(null);
   };
 
