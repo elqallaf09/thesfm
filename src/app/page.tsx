@@ -51,7 +51,7 @@ const NAV_ROUTES: Record<string, string> = {
   home: '/',
   expenses: '/expenses',
   income: '/income',
-  invest: '/invest',
+  invest: '/education/investments',
   goals: '/goals',
   reports: '/reports',
   ai: '/ai',
@@ -225,12 +225,14 @@ export default function DashboardPage(){
   },[user,loading]);
 
   const loadProfile=async()=>{
-    const{data}=await supabase.from('profiles').select('*').eq('id',user!.id).maybeSingle();
+    const userId = user?.id;
+    if (!userId) return;
+    const{data}=await supabase.from('profiles').select('*').eq('id',userId).maybeSingle();
     if(data)setProfile(data);
-    const{data:s}=await supabase.from('monthly_income_sources').select('*').eq('user_id',user!.id);
-    if(s&&s.length>0){const t=s.reduce((a:number,r:any)=>a+(parseFloat(r.amount)||0),0);setTotalIncome(t);}
-    const{data:e}=await supabase.from('expense_items').select('*').eq('user_id',user!.id);
-    if(e&&e.length>0){const t=e.reduce((a:number,r:any)=>a+(parseFloat(r.amount)||0),0);setTotalExpenses(t);}
+    const{data:s}=await supabase.from('monthly_income_sources').select('*').eq('user_id',userId);
+    if(s&&s.length>0){const t=s.reduce((a:number,r:{amount:number|string|null})=>a+(parseFloat(String(r.amount ?? 0))||0),0);setTotalIncome(t);}
+    const{data:e}=await supabase.from('expense_items').select('*').eq('user_id',userId);
+    if(e&&e.length>0){const t=e.reduce((a:number,r:{amount:number|string|null})=>a+(parseFloat(String(r.amount ?? 0))||0),0);setTotalExpenses(t);}
   };
 
   const totalSavings=Math.max(0,totalIncome-totalExpenses)*0.3;
@@ -723,7 +725,7 @@ export default function DashboardPage(){
                 {[
                   {icon:'💵',label:'إضافة دخل',action:()=>router.push('/income/add')},
                   {icon:'🛒',label:'إضافة مصروف',action:()=>router.push('/expenses/add')},
-                  {icon:'📈',label:'تحويل استثمار',action:()=>router.push('/invest')},
+                  {icon:'📈',label:'تحويل استثمار',action:()=>router.push('/education/investments')},
                   {icon:'📊',label:'تقرير شهري',action:()=>window.print()},
                   {icon:'🖨️',label:'طباعة التقرير',action:()=>window.print()},
                   {icon:'📥',label:'تصدير PDF',action:()=>window.print()},

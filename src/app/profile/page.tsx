@@ -62,19 +62,23 @@ export default function ProfilePage() {
   useEffect(() => { setTimeout(() => setMounted(true), 60); if (user) loadData(); }, [user]);
 
   const loadData = async () => {
-    const { data: p } = await supabase.from('profiles').select('*').eq('id', user!.id).maybeSingle();
+    const userId = user?.id;
+    if (!userId) return;
+    const { data: p } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
     if (p) setProfile({ display_name:p.display_name||'', username:p.username||'', email:p.email||user?.email||'', age:p.age?String(p.age):'', gender:p.gender||'', profession:p.profession||'', phone_country_code:p.phone_country_code||'+965', phone_number:p.phone_number||'' });
-    else setProfile((prev:any) => ({ ...prev, email: user?.email||'' }));
-    const { data: s } = await supabase.from('monthly_income_sources').select('*').eq('user_id', user!.id);
-    if (s) { const a: Record<string,string>={}; s.forEach((r:any) => { a[r.category]=String(r.amount); }); setIncomeAmounts(a); }
+    else setProfile(prev => ({ ...prev, email: user?.email||'' }));
+    const { data: s } = await supabase.from('monthly_income_sources').select('*').eq('user_id', userId);
+    if (s) { const a: Record<string,string>={}; s.forEach((r: { category: string | null; amount: number | string | null }) => { if (r.category) a[r.category]=String(r.amount ?? ''); }); setIncomeAmounts(a); }
   };
 
   const showToast = (text: string, type: 'ok'|'err' = 'ok') => setToast({ text, type });
 
   const saveInfo = async () => {
+    const userId = user?.id;
+    if (!userId) return;
     if (!profile.display_name?.trim()) { showToast(t('error'), 'err'); return; }
     setSaving(true);
-    const { error } = await supabase.from('profiles').update({ display_name:profile.display_name.trim(), username:profile.username?.trim()||null, age:profile.age?parseInt(String(profile.age)):null, gender:profile.gender||null, profession:profile.profession||null, phone_country_code:profile.phone_country_code||'+965', phone_number:profile.phone_number||null }).eq('id', user!.id);
+    const { error } = await supabase.from('profiles').update({ display_name:profile.display_name.trim(), username:profile.username?.trim()||null, age:profile.age?parseInt(String(profile.age)):null, gender:profile.gender||null, profession:profile.profession||null, phone_country_code:profile.phone_country_code||'+965', phone_number:profile.phone_number||null }).eq('id', userId);
     if (error) showToast(t('error') + ': ' + error.message, 'err');
     else { showToast(t('saved')); setSaved(true); setTimeout(()=>setSaved(false),2500); }
     setSaving(false);
@@ -95,9 +99,11 @@ export default function ProfilePage() {
   };
 
   const saveIncome = async () => {
+    const userId = user?.id;
+    if (!userId) return;
     setSaving(true);
-    await supabase.from('monthly_income_sources').delete().eq('user_id', user!.id);
-    const rows = INCOME_CATEGORIES.map(cat => ({ user_id:user!.id, category:cat.id, label:cat.nameAr, amount:parseFloat((incomeAmounts[cat.id]||'0').replace(/[^\d.]/g,''))||0 })).filter(r => r.amount > 0);
+    await supabase.from('monthly_income_sources').delete().eq('user_id', userId);
+    const rows = INCOME_CATEGORIES.map(cat => ({ user_id:userId, category:cat.id, label:cat.nameAr, amount:parseFloat((incomeAmounts[cat.id]||'0').replace(/[^\d.]/g,''))||0 })).filter(r => r.amount > 0);
     if (rows.length > 0) await supabase.from('monthly_income_sources').insert(rows);
     showToast(isAr?'✅ تم تحديث مصادر الدخل':'✅ Income sources updated');
     setSaving(false);

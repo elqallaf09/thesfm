@@ -246,7 +246,7 @@ export default function ProjectsPage() {
             { icon: '⊞', label: 'الرئيسية', path: '/' },
             { icon: '🛒', label: 'المصاريف', path: '/expenses' },
             { icon: '💵', label: 'الدخل', path: '/income' },
-            { icon: '📈', label: 'الاستثمارات', path: '/invest' },
+            { icon: '📈', label: 'الاستثمارات', path: '/education/investments' },
             { icon: '🎯', label: 'الأهداف', path: '/goals' },
             { icon: '🚀', label: 'مشاريعي', path: '/projects', active: true },
             { icon: '🤲', label: 'الأعمال الخيرية', path: '/charity' },

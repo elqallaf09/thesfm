@@ -87,8 +87,7 @@ export default function AddExpensePage() {
       setTimeout(() => {
         router.push('/expenses');
       }, 1500);
-    } catch (err) {
-      console.error('Error adding expense:', err);
+    } catch {
       alert('حدث خطأ أثناء إضافة المصروف');
     } finally {
       setLoading(false);

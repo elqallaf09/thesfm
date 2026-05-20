@@ -104,8 +104,7 @@ export default function AddIncomePage() {
       setTimeout(() => {
         router.push('/income');
       }, 1500);
-    } catch (err) {
-      console.error('Error adding income:', err);
+    } catch {
       alert('حدث خطأ أثناء إضافة الدخل');
     } finally {
       setLoading(false);

@@ -13,6 +13,7 @@ import {
   GraduationCap,
   HandHeart,
   Home,
+  FolderKanban,
   LineChart,
   Menu,
   Plus,
@@ -34,8 +35,18 @@ type PageKind = 'expenses' | 'income' | 'invest' | 'goals' | 'reports' | 'ai';
 type LangText = { ar: string; en: string };
 type MoneyItem = { id: string; name: string; amount: number; created_at?: string | null };
 type IncomeSource = MoneyItem & { label?: string | null; category?: string | null };
-type GoalItem = { id: string; goal: string; amount: number; duration?: string | null; notes?: string | null };
+type GoalItem = {
+  id: string;
+  name: string;
+  target_amount: number;
+  current_amount: number;
+  icon?: string | null;
+  color?: string | null;
+  deadline?: string | null;
+  created_at?: string | null;
+};
 type QueryResult<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
+type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 interface Snapshot {
   income: MoneyItem[];
@@ -66,14 +77,15 @@ const navItems = [
   { href: '/', label: { ar: 'الرئيسية', en: 'Dashboard' }, icon: Home },
   { href: '/expenses', label: { ar: 'المصروفات', en: 'Expenses' }, icon: ReceiptText },
   { href: '/income', label: { ar: 'الدخل', en: 'Income' }, icon: Wallet },
-  { href: '/invest', label: { ar: 'الاستثمار', en: 'Invest' }, icon: TrendingUp },
+  { href: '/education/investments', label: { ar: 'الاستثمارات', en: 'Investments' }, icon: TrendingUp },
   { href: '/goals', label: { ar: 'الأهداف', en: 'Goals' }, icon: Target },
+  { href: '/projects', label: { ar: 'مشاريعي', en: 'My Projects' }, icon: FolderKanban },
   { href: '/reports', label: { ar: 'التقارير', en: 'Reports' }, icon: ChartPie },
   { href: '/ai', label: { ar: 'الذكاء المالي', en: 'AI' }, icon: Bot },
   { href: '/charity', label: { ar: 'الأعمال الخيرية', en: 'Charity' }, icon: HandHeart },
   { href: '/notifications', label: { ar: 'الإشعارات', en: 'Notifications' }, icon: BellIcon },
-  { href: '/education', label: { ar: 'التعليم المالي', en: 'Education' }, icon: GraduationCap },
   { href: '/settings', label: { ar: 'الإعدادات', en: 'Settings' }, icon: Settings },
+  { href: '/profile', label: { ar: 'الملف الشخصي', en: 'Profile' }, icon: GraduationCap },
 ];
 
 const pageMeta: Record<PageKind, { title: LangText; subtitle: LangText; accent: string; icon: typeof ReceiptText }> = {
@@ -139,9 +151,9 @@ const sampleSavings: MoneyItem[] = [
 ];
 
 const sampleGoals: GoalItem[] = [
-  { id: 'sample-goal-1', goal: 'شراء سيارة', amount: 8000, duration: '18' },
-  { id: 'sample-goal-2', goal: 'دفعة منزل', amount: 25000, duration: '48' },
-  { id: 'sample-goal-3', goal: 'صندوق الطوارئ', amount: 3000, duration: '8' },
+  { id: 'sample-goal-1', name: 'شراء سيارة', target_amount: 8000, current_amount: 2800, deadline: null },
+  { id: 'sample-goal-2', name: 'دفعة منزل', target_amount: 25000, current_amount: 6400, deadline: null },
+  { id: 'sample-goal-3', name: 'صندوق الطوارئ', target_amount: 3000, current_amount: 1700, deadline: null },
 ];
 
 function pick(text: LangText, isAr: boolean) {
@@ -182,6 +194,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [dataLoading, setDataLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [chatValue, setChatValue] = useState('');
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.push('/');
@@ -198,11 +212,11 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
       setDataLoading(true);
       const [income, expenses, savings, investments, goals] = await Promise.all([
-        safeQuery<IncomeSource>(supabase.from('monthly_income_sources').select('id, label, category, amount, created_at').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<IncomeSource>),
+        safeQuery<IncomeSource>(supabase.from('monthly_income_sources').select('id, label, category, amount').eq('user_id', user.id) as unknown as QueryResult<IncomeSource>),
         safeQuery<MoneyItem>(supabase.from('expense_items').select('id, name, amount, created_at').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<MoneyItem>),
-        safeQuery<MoneyItem>(supabase.from('savings_items').select('id, name, amount, created_at').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<MoneyItem>),
-        safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount, created_at').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<MoneyItem>),
-        safeQuery<GoalItem>(supabase.from('financial_goals').select('id, goal, amount, duration, notes, created_at').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<GoalItem>),
+        safeQuery<MoneyItem>(supabase.from('savings_items').select('id, name, amount').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>),
+        safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>),
+        safeQuery<GoalItem>(supabase.from('financial_goals').select('id, name, target_amount, current_amount, icon, color, deadline').eq('user_id', user.id) as unknown as QueryResult<GoalItem>),
       ]);
 
       if (cancelled) return;
@@ -255,6 +269,36 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const rows = useMemo(() => buildRows(kind, data, isAr), [data, isAr, kind]);
   const insights = useMemo(() => buildInsights(kind, data, isAr), [data, isAr, kind]);
 
+  async function sendAiMessage() {
+    const content = chatValue.trim();
+    if (!content || chatLoading) return;
+
+    const nextHistory: ChatMessage[] = [...chatHistory, { role: 'user', content }];
+    setChatHistory(nextHistory);
+    setChatValue('');
+    setChatLoading(true);
+
+    try {
+      const response = await fetch('/api/projects-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: nextHistory }),
+      });
+      const result = await response.json() as { text?: string };
+      setChatHistory([...nextHistory, {
+        role: 'assistant',
+        content: result.text || (isAr ? 'وصلتني رسالتك، لكن لم أستطع توليد رد الآن.' : 'I received your message, but could not generate a reply right now.'),
+      }]);
+    } catch {
+      setChatHistory([...nextHistory, {
+        role: 'assistant',
+        content: isAr ? 'الخدمة غير متاحة حالياً. حاول مرة أخرى بعد قليل.' : 'The service is unavailable right now. Please try again shortly.',
+      }]);
+    } finally {
+      setChatLoading(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="sfm-shell" dir={dir}>
@@ -277,7 +321,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         <nav>
           {navItems.map(item => {
             const NavIcon = item.icon;
-            const active = item.href === `/${kind}`;
+            const active = item.href === `/${kind}` || (kind === 'invest' && item.href === '/education/investments');
             return (
               <button key={item.href} className={active ? 'active' : ''} onClick={() => router.push(item.href)}>
                 <NavIcon size={17} />
@@ -411,14 +455,24 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               <h3>{isAr ? 'اسأل المساعد المالي' : 'Ask the financial assistant'}</h3>
               <p>{isAr ? 'اكتب سؤالك عن الميزانية، الدخل، أو الاستثمار. الواجهة جاهزة للتوصيل بخدمة الذكاء الموجودة.' : 'Ask about budgets, income, or investing. The interface is ready for the existing AI service.'}</p>
             </div>
+            <div className="chat-history">
+              {(chatHistory.length ? chatHistory : [{ role: 'assistant', content: isAr ? 'مرحباً، اسألني عن دخلك أو مصروفاتك أو فرص تحسين الادخار.' : 'Hi, ask me about income, expenses, or savings optimization.' }]).map((message, index) => (
+                <div key={`${message.role}-${index}`} className={message.role}>
+                  {message.content}
+                </div>
+              ))}
+            </div>
             <div className="chat-box">
               <input
                 id="ai-chat-input"
                 value={chatValue}
                 onChange={event => setChatValue(event.target.value)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter') void sendAiMessage();
+                }}
                 placeholder={isAr ? 'مثال: كيف أخفض مصاريفي هذا الشهر؟' : 'Example: How can I reduce expenses this month?'}
               />
-              <button aria-label="Send message">
+              <button aria-label="Send message" onClick={() => void sendAiMessage()} disabled={chatLoading}>
                 <Send size={18} />
               </button>
             </div>
@@ -465,8 +519,8 @@ function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, isA
   ];
   if (kind === 'goals') return [
     { title: { ar: 'الأهداف النشطة', en: 'Active goals' }, body: { ar: 'أهداف مالية قيد المتابعة.', en: 'Financial goals being tracked.' }, value: String(data.goals.length), tone: '#D8AE63' },
-    { title: { ar: 'إجمالي المستهدف', en: 'Target total' }, body: { ar: 'مجموع مبالغ الأهداف.', en: 'Combined target amounts.' }, value: money(data.goals.reduce((total, goal) => total + goal.amount, 0), isAr), tone: '#3B82F6' },
-    { title: { ar: 'مدخرات حالية', en: 'Current savings' }, body: { ar: 'تستخدم لقياس تقدم الأهداف.', en: 'Used to estimate goal progress.' }, value: common.savings, tone: '#22C55E' },
+    { title: { ar: 'إجمالي المستهدف', en: 'Target total' }, body: { ar: 'مجموع مبالغ الأهداف.', en: 'Combined target amounts.' }, value: money(data.goals.reduce((total, goal) => total + goal.target_amount, 0), isAr), tone: '#3B82F6' },
+    { title: { ar: 'تقدم حالي', en: 'Current progress' }, body: { ar: 'مجموع المبالغ الحالية داخل الأهداف.', en: 'Combined current goal progress.' }, value: money(data.goals.reduce((total, goal) => total + goal.current_amount, 0), isAr), tone: '#22C55E' },
   ];
   if (kind === 'reports') return [
     { title: { ar: 'الدخل مقابل المصروفات', en: 'Income vs expenses' }, body: { ar: 'مؤشر التوازن المالي الحالي.', en: 'Current financial balance signal.' }, value: common.balance, tone: '#111111' },
@@ -498,13 +552,12 @@ function buildDataShape() {
 
 function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean) {
   if (kind === 'goals') {
-    const saved = data.totalSavings;
     return data.goals.map(goal => {
-      const done = progress(saved, goal.amount);
+      const done = progress(goal.current_amount, goal.target_amount);
       return {
-        title: goal.goal,
-        subtitle: isAr ? `تقدم ${done}%، المتبقي ${money(Math.max(goal.amount - saved, 0), isAr)}` : `${done}% complete, remaining ${money(Math.max(goal.amount - saved, 0), isAr)}`,
-        value: money(goal.amount, isAr),
+        title: goal.name,
+        subtitle: isAr ? `تقدم ${done}%، المتبقي ${money(Math.max(goal.target_amount - goal.current_amount, 0), isAr)}` : `${done}% complete, remaining ${money(Math.max(goal.target_amount - goal.current_amount, 0), isAr)}`,
+        value: money(goal.target_amount, isAr),
       };
     });
   }
@@ -618,7 +671,7 @@ function buildPrimaryActions(kind: PageKind, isAr: boolean, router: ReturnType<t
   const routes: Record<Exclude<PageKind, 'reports' | 'ai'>, { label: LangText; href: string }> = {
     expenses: { label: { ar: 'إضافة مصروف', en: 'Add expense' }, href: '/expenses/add' },
     income: { label: { ar: 'إضافة دخل', en: 'Add income' }, href: '/income/add' },
-    invest: { label: { ar: 'إضافة استثمار', en: 'Add investment' }, href: '/invest' },
+    invest: { label: { ar: 'إضافة استثمار', en: 'Add investment' }, href: '/education/investments' },
     goals: { label: { ar: 'إضافة هدف', en: 'Add goal' }, href: '/projects' },
   };
 
@@ -654,7 +707,7 @@ const baseStyles = `
   .row-list{display:grid;gap:10px}.data-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid rgba(216,174,99,.08)}.data-row:last-child{border-bottom:0}.data-row strong{display:block;font-size:14px}.data-row span{display:block;color:#8B7A6D;font-size:12px;margin-top:4px}.data-row b{font-size:14px;color:#D8AE63;white-space:nowrap}
   .insight-list{display:grid;gap:12px}.insight-list>div{display:flex;gap:10px;padding:12px;border-radius:14px;background:rgba(216,174,99,.07)}.insight-list svg{color:#D8AE63;flex-shrink:0}.insight-list strong{display:block;font-size:13px}.insight-list span{display:block;font-size:12px;color:#7C6A5D;line-height:1.6;margin-top:3px}
   .summary-band,.ai-panel{margin-top:18px;background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:20px;padding:18px 20px;display:flex;align-items:center;gap:14px}.summary-band svg{color:#D8AE63}.summary-band strong,.ai-panel h3{font-size:16px}.summary-band p,.ai-panel p{margin:4px 0 0;color:#7C6A5D;line-height:1.7;font-size:13px}
-  .ai-panel{align-items:stretch;justify-content:space-between}.chat-box{display:flex;gap:10px;min-width:min(460px,100%)}.chat-box input{height:46px;border:1.5px solid rgba(216,174,99,.22);border-radius:14px;padding:0 14px;background:#F7F3EA;min-width:0;flex:1;font:600 14px Tajawal,Arial,sans-serif;color:#111}.chat-box button{width:46px;border-radius:14px;border:0;background:#111;color:#D8AE63;display:grid;place-items:center}
+  .ai-panel{align-items:stretch;justify-content:space-between}.chat-history{display:grid;gap:8px;min-width:min(460px,100%);max-height:190px;overflow:auto;margin-bottom:10px}.chat-history>div{padding:10px 12px;border-radius:14px;font-size:13px;line-height:1.6}.chat-history .user{background:#111;color:#FFFDFC}.chat-history .assistant{background:rgba(216,174,99,.11);color:#5B4332}.chat-box{display:flex;gap:10px;min-width:min(460px,100%)}.chat-box input{height:46px;border:1.5px solid rgba(216,174,99,.22);border-radius:14px;padding:0 14px;background:#F7F3EA;min-width:0;flex:1;font:600 14px Tajawal,Arial,sans-serif;color:#111}.chat-box button{width:46px;border-radius:14px;border:0;background:#111;color:#D8AE63;display:grid;place-items:center;cursor:pointer}.chat-box button:disabled{opacity:.55;cursor:wait}
   .mobile-panel{position:fixed;inset:12px;z-index:50;background:#111;border-radius:22px;padding:16px;color:#FFFDFC;box-shadow:0 24px 80px rgba(0,0,0,.35)}.mobile-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
   @media(max-width:920px){.sfm-sidebar{display:none}.menu-btn{display:grid}.sfm-main{padding:16px}.hero{display:block}.hero-actions{margin-top:18px}.content-grid{grid-template-columns:1fr}.ai-panel{display:grid}.chat-box{min-width:0}}
   @media(max-width:640px){.kpi-grid{grid-template-columns:1fr}.sfm-header{height:auto}.title-wrap h1{font-size:20px}.hero{padding:22px}.hero h2{font-size:27px}.data-row{align-items:flex-start;flex-direction:column}.summary-band{align-items:flex-start}.primary-btn,.ghost-btn{width:100%;justify-content:center}}
