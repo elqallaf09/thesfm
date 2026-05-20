@@ -49,10 +49,7 @@ export default function AddExpensePage() {
 
   useEffect(() => {
     setMounted(true);
-    if (!authLoading && !user) {
-      router.push('/');
-    }
-  }, [user, authLoading, router]);
+  }, []);
 
   const getLabel = (item: typeof EXPENSE_CATEGORIES[0]) => {
     if (isAr) return item.label_ar;

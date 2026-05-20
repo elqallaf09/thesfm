@@ -79,10 +79,6 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState('');
 
   useEffect(() => {
-    if (!loading && !user) router.push('/');
-  }, [loading, router, user]);
-
-  useEffect(() => {
     try {
       const stored = localStorage.getItem(STORE_KEY);
       if (stored) setSettings({ ...initialSettings, ...JSON.parse(stored) });

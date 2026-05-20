@@ -58,7 +58,6 @@ export default function ProfilePage() {
   const [saved, setSaved]               = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { if (!loading && !user) router.push('/'); }, [user, loading, router]);
   useEffect(() => { setTimeout(() => setMounted(true), 60); if (user) loadData(); }, [user]);
 
   const loadData = async () => {

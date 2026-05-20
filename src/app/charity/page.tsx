@@ -85,11 +85,6 @@ export default function CharityPage() {
 
   const monthOptions = useMemo(() => buildMonthOptions(), []);
 
-  /* ── Auth guard ── */
-  useEffect(() => {
-    if (!loading && !user) router.push('/');
-  }, [user, loading, router]);
-
   /* ── Load charity records ── */
   const load = useCallback(async () => {
     if (!user) return;

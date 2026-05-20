@@ -50,10 +50,6 @@ export function NotificationsPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!loading && !user) router.push('/');
-  }, [loading, router, user]);
-
-  useEffect(() => {
     let cancelled = false;
     async function load() {
       if (!user) return;

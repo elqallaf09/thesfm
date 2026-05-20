@@ -170,10 +170,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) router.push('/');
-  }, [loading, router, user]);
-
-  useEffect(() => {
     let cancelled = false;
 
     async function load() {

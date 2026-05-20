@@ -43,10 +43,7 @@ export default function AddIncomePage() {
 
   useEffect(() => {
     setMounted(true);
-    if (!authLoading && !user) {
-      router.push('/');
-    }
-  }, [user, authLoading, router]);
+  }, []);
 
   const getLabel = (item: typeof INCOME_TYPES[0]) => {
     if (isAr) return item.label_ar;

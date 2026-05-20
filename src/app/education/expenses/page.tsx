@@ -26,7 +26,6 @@ export default function ExpensesPage() {
   const [mounted, setMounted] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => { if (!loading && !user) router.push('/'); }, [user, loading, router]);
   useEffect(() => { setTimeout(() => setMounted(true), 60); if (user) load(); }, [user]);
 
   const load = async () => {
