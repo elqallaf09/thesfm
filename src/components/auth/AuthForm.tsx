@@ -288,19 +288,16 @@ export function AuthForm() {
   return (
     <div className="auth-scene" dir={isArabic ? 'rtl' : 'ltr'}>
 
-      {/* ── Language picker (top corner) ── */}
-      <div style={{position:'absolute', top:'16px', left: isArabic ? '16px' : 'auto', right: isArabic ? 'auto' : '16px', zIndex:10, display:'flex', gap:'6px'}}>
-        {(['ar','en','fr'] as const).map(lang => (
-          <button key={lang} onClick={() => setLanguage(lang)}
-            style={{padding:'5px 10px', borderRadius:'8px', border:'1.5px solid',
-              borderColor: language === lang ? '#D4AF37' : '#E8E2D6',
-              background: language === lang ? 'rgba(212,175,55,0.12)' : '#fff',
-              color: language === lang ? '#8A6D2A' : '#8A9BB0',
-              fontSize:'11.5px', fontWeight:'700', cursor:'pointer',
-              fontFamily:'Tajawal,sans-serif', transition:'all 0.15s'}}>
-            {lang === 'ar' ? 'عربي' : lang === 'en' ? 'EN' : 'FR'}
-          </button>
-        ))}
+      {/* ── Premium 3-lang pill (top corner) ── */}
+      <div style={{position:'absolute',top:'16px',left:'16px',zIndex:10}}>
+        <div dir="ltr" style={{display:'inline-flex',alignItems:'center',background:'#EFEDE7',borderRadius:'40px',padding:'3px',border:'1.5px solid #E8E2D6',position:'relative',minWidth:'126px'}}>
+          <span style={{position:'absolute',top:'3px',left:`calc(3px + ${(['ar','en','fr'] as const).indexOf(language)} * 33.33%)`,width:'calc(33.33%)',height:'calc(100% - 6px)',background:'#FFFFFF',borderRadius:'36px',boxShadow:'0 1px 6px rgba(27,36,48,0.13)',transition:'left 0.22s cubic-bezier(0.4,0,0.2,1)',pointerEvents:'none',zIndex:1}}/>
+          {([{id:'ar',label:'عربي'},{id:'en',label:'EN'},{id:'fr',label:'FR'}] as {id:'ar'|'en'|'fr',label:string}[]).map(lang => (
+            <button key={lang.id} onClick={() => setLanguage(lang.id)} style={{position:'relative',zIndex:2,flex:1,height:'28px',padding:'0 4px',background:'transparent',border:'none',borderRadius:'36px',cursor:'pointer',fontSize:'11.5px',fontWeight:language===lang.id?'700':'500',color:language===lang.id?'#1B2430':'#8A9BB0',fontFamily:lang.id==='ar'?"'Tajawal',sans-serif":"-apple-system,sans-serif",transition:'color 0.18s ease',whiteSpace:'nowrap'}}>
+              {lang.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Card ── */}
