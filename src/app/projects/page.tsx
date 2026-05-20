@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -74,6 +74,37 @@ function Steps({current,total}:{current:number;total:number}){
           }}>{i<current?'✓':i+1}</div>
           {i<total-1&&<div style={{flex:1,height:'2px',background:i<current?'#D4AF37':'rgba(200,169,107,.18)',transition:'background .3s'}}/>}
         </div>
+      ))}
+    </div>
+  );
+}
+
+
+/* ── Inline language pill for standalone pages ── */
+function useLang() {
+  const [lang, setLang] = React.useState<'ar'|'en'|'fr'>(() => {
+    if (typeof window !== 'undefined') return (localStorage.getItem('sfm_lang') as 'ar'|'en'|'fr') || 'ar';
+    return 'ar';
+  });
+  const change = (l: 'ar'|'en'|'fr') => { setLang(l); if (typeof window !== 'undefined') localStorage.setItem('sfm_lang', l); };
+  return { lang, change, isAr: lang==='ar', isFr: lang==='fr' };
+}
+
+function LangPill() {
+  const [lang, setLangState] = React.useState<'ar'|'en'|'fr'>('ar');
+  React.useEffect(() => {
+    const stored = localStorage.getItem('sfm_lang') as 'ar'|'en'|'fr' | null;
+    if (stored) setLangState(stored);
+  }, []);
+  const setL = (l: 'ar'|'en'|'fr') => { setLangState(l); localStorage.setItem('sfm_lang', l); };
+  const idx = ['ar','en','fr'].indexOf(lang);
+  return (
+    <div dir="ltr" style={{display:'inline-flex',alignItems:'center',background:'#FFFFFF',borderRadius:'40px',padding:'3px',border:'1.5px solid #E8E2D6',position:'relative',minWidth:'126px',boxShadow:'0 2px 12px rgba(27,36,48,0.10)'}}>
+      <span style={{position:'absolute',top:'3px',left:`calc(3px + ${idx} * 33.33%)`,width:'calc(33.33%)',height:'calc(100% - 6px)',background:'#1B2430',borderRadius:'36px',transition:'left 0.22s cubic-bezier(0.4,0,0.2,1)',pointerEvents:'none',zIndex:1}}/>
+      {([{id:'ar',label:'عربي'},{id:'en',label:'EN'},{id:'fr',label:'FR'}] as const).map(l => (
+        <button key={l.id} onClick={() => setL(l.id)} style={{position:'relative',zIndex:2,flex:1,height:'28px',padding:'0 4px',background:'transparent',border:'none',borderRadius:'36px',cursor:'pointer',fontSize:'11.5px',fontWeight:lang===l.id?'700':'500',color:lang===l.id?'#FFFFFF':'#8A9BB0',fontFamily:l.id==='ar'?"'Tajawal',sans-serif":"-apple-system,sans-serif",transition:'color 0.18s ease',whiteSpace:'nowrap'}}>
+          {l.label}
+        </button>
       ))}
     </div>
   );
