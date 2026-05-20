@@ -1,29 +1,13 @@
 // This file is protected and cannot be modified.
 import { createClient } from "@supabase/supabase-js";
 
-const getEnvUrl = () => {
-  if (process.env.NEXT_PUBLIC_DATABASE_URL &&
-      process.env.NEXT_PUBLIC_DATABASE_URL.startsWith('http')) {
-    return process.env.NEXT_PUBLIC_DATABASE_URL;
-  }
-  return 'https://placeholder.supabase.co';
-};
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hirjgsyfolsvfqjayyfz.supabase.co';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-const getEnvKey = () => {
-  if (process.env.NEXT_PUBLIC_DATABASE_PUBLISHABLE_KEY) {
-    return process.env.NEXT_PUBLIC_DATABASE_PUBLISHABLE_KEY;
-  }
-  return 'placeholder-key';
-};
-
-export const supabase = createClient(
-  getEnvUrl(),
-  getEnvKey(),
-  {
-    auth: {
-      storage: typeof window !== 'undefined' ? localStorage : undefined,
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-  }
-);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    storage: typeof window !== 'undefined' ? localStorage : undefined,
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+});
