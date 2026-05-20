@@ -43,7 +43,7 @@ const NAV_ITEMS = [
   {id:'reports', icon:'📊', label:'التقارير'},
   {id:'ai', icon:'🧠', label:'تحليلات الذكية'},
   {id:'charity', icon:'🤲', label:'الأعمال الخيرية'},
-  {id:'notif', icon:'🔔', label:'الإشعارات'},
+  {id:'notifications', icon:'🔔', label:'الإشعارات'},
   {id:'settings', icon:'⚙️', label:'الإعدادات'},
 ];
 
@@ -192,7 +192,7 @@ export default function DashboardPage(){
   const {user,loading}=useAuth();
   const {dir, isAr, isEn, isFr} = useLanguage();
   const router=useRouter();
-  const [profile,setProfile]=useState<any>({display_name:'محمد القلاف',profession:'خبير أسواق ومعلومات'});
+  const [profile,setProfile]=useState<any>({display_name:'SFM',profession:'خبير مالي'});
   const [totalIncome,setTotalIncome]=useState(1936);
   const [totalExpenses,setTotalExpenses]=useState(1305);
   const [history,setHistory]=useState<MonthRecord[]>([]);
@@ -317,7 +317,7 @@ export default function DashboardPage(){
             <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'10px',padding:'14px',background:'rgba(216,174,99,.07)',borderRadius:'16px',border:'1px solid rgba(216,174,99,.12)'}}>
               <div style={{width:'52px',height:'52px',borderRadius:'50%',background:'linear-gradient(135deg,#D8AE63,#9A6C3C)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px',fontWeight:'900',color:'#111111',boxShadow:'0 3px 14px rgba(216,174,99,.35)'}}>{initials}</div>
               <div style={{textAlign:'center'}}>
-                <div style={{fontSize:'13.5px',fontWeight:'800',color:'rgba(255,255,255,.9)',marginBottom:'2px'}}>{profile.display_name||'محمد القلاف'}</div>
+                <div style={{fontSize:'13.5px',fontWeight:'800',color:'rgba(255,255,255,.9)',marginBottom:'2px'}}>{profile.display_name||'SFM'}</div>
                 <div style={{fontSize:'11px',color:'rgba(216,174,99,.6)',marginBottom:'8px'}}>{profile.profession||'خبير أسواق ومعلومات'}</div>
                 <div style={{display:'inline-flex',alignItems:'center',gap:'5px',background:'linear-gradient(135deg,rgba(216,174,99,.2),rgba(154,108,60,.14))',border:'1px solid rgba(216,174,99,.3)',borderRadius:'20px',padding:'3px 12px'}}>
                   <span style={{fontSize:'10px'}}>⭐</span>
@@ -393,7 +393,7 @@ export default function DashboardPage(){
           <div style={{...S(0),display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'12px'}}>
             <div>
               <h1 style={{fontSize:'clamp(20px,3vw,28px)',fontWeight:'900',color:'#111111',marginBottom:'4px'}}>
-                مرحباً {profile.display_name||'محمد القلاف'} 👋
+                مرحباً {profile.display_name||'SFM'} 👋
               </h1>
               <p style={{fontSize:'13px',color:'#9A6C3C'}}>هذه نظرة عامة على وضعك المالي اليوم</p>
             </div>

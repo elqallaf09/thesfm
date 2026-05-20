@@ -5,10 +5,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Bot,
+  Bell as BellIcon,
   ChartPie,
   Download,
   Flag,
   Gauge,
+  GraduationCap,
   HandHeart,
   Home,
   LineChart,
@@ -17,6 +19,7 @@ import {
   Printer,
   ReceiptText,
   Send,
+  Settings,
   Target,
   TrendingUp,
   Wallet,
@@ -68,6 +71,9 @@ const navItems = [
   { href: '/reports', label: { ar: 'التقارير', en: 'Reports' }, icon: ChartPie },
   { href: '/ai', label: { ar: 'الذكاء المالي', en: 'AI' }, icon: Bot },
   { href: '/charity', label: { ar: 'الأعمال الخيرية', en: 'Charity' }, icon: HandHeart },
+  { href: '/notifications', label: { ar: 'الإشعارات', en: 'Notifications' }, icon: BellIcon },
+  { href: '/education', label: { ar: 'التعليم المالي', en: 'Education' }, icon: GraduationCap },
+  { href: '/settings', label: { ar: 'الإعدادات', en: 'Settings' }, icon: Settings },
 ];
 
 const pageMeta: Record<PageKind, { title: LangText; subtitle: LangText; accent: string; icon: typeof ReceiptText }> = {

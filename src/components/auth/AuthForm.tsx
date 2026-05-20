@@ -459,16 +459,16 @@ export function AuthForm() {
               {/* Name row */}
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>
                 <div className="auth-field">
-                  <label className="auth-field-label">{isArabic ? 'الاسم الأول' : 'First name'} <span style={{color:'#EF4444'}}>*</span></label>
+                  <label className="auth-field-label">{isArabic ? 'الاسم الأول' : isFrench ? 'Prénom' : 'First name'} <span style={{color:'#EF4444'}}>*</span></label>
                   <input className="auth-input auth-input-no-pad"
                     value={firstName} onChange={e => setFirstName(e.target.value)}
-                    placeholder={isArabic ? 'محمد' : 'John'} />
+                    placeholder={isArabic ? 'أدخل الاسم الأول' : isFrench ? 'Entrez le prénom' : 'Enter first name'} />
                 </div>
                 <div className="auth-field">
-                  <label className="auth-field-label">{isArabic ? 'اسم العائلة' : 'Last name'} <span style={{color:'#EF4444'}}>*</span></label>
+                  <label className="auth-field-label">{isArabic ? 'الاسم الأخير' : isFrench ? 'Nom' : 'Last name'} <span style={{color:'#EF4444'}}>*</span></label>
                   <input className="auth-input auth-input-no-pad"
                     value={lastName} onChange={e => setLastName(e.target.value)}
-                    placeholder={isArabic ? 'القلاف' : 'Smith'} />
+                    placeholder={isArabic ? 'أدخل الاسم الأخير' : isFrench ? 'Entrez le nom' : 'Enter last name'} />
                 </div>
               </div>
 

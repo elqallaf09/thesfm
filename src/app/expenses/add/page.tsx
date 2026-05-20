@@ -44,7 +44,7 @@ export default function AddExpensePage() {
   useEffect(() => {
     setMounted(true);
     if (!authLoading && !user) {
-      router.push('/login');
+      router.push('/');
     }
   }, [user, authLoading, router]);
 
@@ -77,19 +77,15 @@ export default function AddExpensePage() {
     try {
       const { error } = await supabase.from('expense_items').insert({
         user_id: user.id,
-        category,
         amount: parseFloat(amount),
-        currency,
-        date,
-        description: description || getLabel(EXPENSE_CATEGORIES.find(c => c.id === category)!),
-        notes,
+        name: description || getLabel(EXPENSE_CATEGORIES.find(c => c.id === category)!),
       });
 
       if (error) throw error;
 
       setShowSuccess(true);
       setTimeout(() => {
-        router.push('/');
+        router.push('/expenses');
       }, 1500);
     } catch (err) {
       console.error('Error adding expense:', err);

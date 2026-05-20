@@ -44,7 +44,7 @@ export default function AddIncomePage() {
   useEffect(() => {
     setMounted(true);
     if (!authLoading && !user) {
-      router.push('/login');
+      router.push('/');
     }
   }, [user, authLoading, router]);
 
@@ -93,19 +93,16 @@ export default function AddIncomePage() {
 
       const { error } = await supabase.from('monthly_income_sources').insert({
         user_id: user.id,
-        source_type: incomeType,
+        category: incomeType,
         amount: finalAmount,
-        currency: 'KWD',
-        source_name: description || getLabel(INCOME_TYPES.find(t => t.id === incomeType)!),
-        notes: notes,
-        effective_date: date,
+        label: description || getLabel(INCOME_TYPES.find(t => t.id === incomeType)!),
       });
 
       if (error) throw error;
 
       setShowSuccess(true);
       setTimeout(() => {
-        router.push('/');
+        router.push('/income');
       }, 1500);
     } catch (err) {
       console.error('Error adding income:', err);

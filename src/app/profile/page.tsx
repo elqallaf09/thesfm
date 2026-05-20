@@ -311,7 +311,7 @@ export default function ProfilePage() {
                     <div className="wf">
                       <label>{t('profile_fullname')}</label>
                       <span className="icon">✍️</span>
-                      <input placeholder={isAr?'محمد القلاف':'John Smith'} value={profile.display_name||''} onChange={e=>setProfile((p:any)=>({...p,display_name:e.target.value}))}/>
+                      <input placeholder={isAr?'أدخل الاسم':'Enter name'} value={profile.display_name||''} onChange={e=>setProfile((p:any)=>({...p,display_name:e.target.value}))}/>
                     </div>
                     <div className="wf">
                       <label>{t('profile_username')}</label>
