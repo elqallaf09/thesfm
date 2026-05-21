@@ -76,10 +76,6 @@ export function UserChip({ displayName }: { displayName?: string }) {
             <button type="button" onClick={() => { router.push('/profile'); setOpen(false); }} style={item}>
               👤 الملف الشخصي
             </button>
-            <button type="button" onClick={() => { router.push('/settings'); setOpen(false); }} style={item}>
-              ⚙️ الإعدادات
-            </button>
-            <div style={{ height: '1px', background: 'rgba(216,174,99,.12)', margin: '4px 2px' }} />
             <button type="button" onClick={handleSignOut} style={{ ...item, color: '#ef4444' }}>
               ⤴ تسجيل الخروج
             </button>

@@ -21,8 +21,9 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     try {
       const direct = localStorage.getItem('sfm_currency');
       if (direct) { setCurrencyState(direct); return; }
-      const settings = JSON.parse(localStorage.getItem('sfm_settings') || '{}') as { finance?: { currency?: string } };
-      if (settings?.finance?.currency) setCurrencyState(settings.finance.currency);
+      const settings = JSON.parse(localStorage.getItem('sfm_settings') || '{}') as { currency?: string; finance?: { currency?: string } };
+      if (settings?.currency) setCurrencyState(settings.currency);
+      else if (settings?.finance?.currency) setCurrencyState(settings.finance.currency);
     } catch {}
   }, []);
 

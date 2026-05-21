@@ -31,6 +31,12 @@ export function middleware(request: NextRequest) {
   response.headers.set('X-Frame-Options', 'ALLOWALL');
   response.headers.set('Content-Security-Policy', 'frame-ancestors *');
 
+  if (pathname === '/settings' || pathname.startsWith('/settings/')) {
+    const profileUrl = request.nextUrl.clone();
+    profileUrl.pathname = '/profile';
+    return NextResponse.redirect(profileUrl);
+  }
+
   if (!isProtected(pathname)) return response;
 
   const hasAuth = request.cookies.get('sfm_auth')?.value === 'true';

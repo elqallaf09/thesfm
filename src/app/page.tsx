@@ -39,7 +39,6 @@ const NAV_ITEMS = [
   {id:'ai', icon:'🧠', label:'تحليلات الذكية'},
   {id:'charity', icon:'🤲', label:'الأعمال الخيرية'},
   {id:'notifications', icon:'🔔', label:'الإشعارات'},
-  {id:'settings', icon:'⚙️', label:'الإعدادات'},
 ];
 
 const NAV_ROUTES: Record<string, string> = {
@@ -52,7 +51,6 @@ const NAV_ROUTES: Record<string, string> = {
   ai: '/ai',
   charity: '/charity',
   notifications: '/notifications',
-  settings: '/settings',
 };
 
 /* ═══════════════════════════════════════════════════

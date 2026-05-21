@@ -22,7 +22,6 @@ import {
   Printer,
   ReceiptText,
   Send,
-  Settings,
   Trash2,
   Target,
   TrendingUp,
@@ -146,61 +145,60 @@ const deleteConfirmKeys = {
 } as const;
 
 const navItems = [
-  { href: '/', label: { ar: 'الرئيسية', en: 'Dashboard' }, icon: Home },
-  { href: '/expenses', label: { ar: 'المصروفات', en: 'Expenses' }, icon: ReceiptText },
-  { href: '/income', label: { ar: 'الدخل', en: 'Income' }, icon: Wallet },
-  { href: '/invest', label: { ar: 'الاستثمارات', en: 'Investments' }, icon: TrendingUp },
-  { href: '/savings', label: { ar: 'الإدخار', en: 'Savings' }, icon: PiggyBank },
-  { href: '/goals', label: { ar: 'الأهداف', en: 'Goals' }, icon: Target },
-  { href: '/projects', label: { ar: 'مشاريعي', en: 'My Projects' }, icon: FolderKanban },
-  { href: '/reports', label: { ar: 'التقارير', en: 'Reports' }, icon: ChartPie },
-  { href: '/ai', label: { ar: 'الذكاء المالي', en: 'AI' }, icon: Bot },
-  { href: '/charity', label: { ar: 'الأعمال الخيرية', en: 'Charity' }, icon: HandHeart },
-  { href: '/notifications', label: { ar: 'الإشعارات', en: 'Notifications' }, icon: BellIcon },
-  { href: '/settings', label: { ar: 'الإعدادات', en: 'Settings' }, icon: Settings },
-  { href: '/profile', label: { ar: 'الملف الشخصي', en: 'Profile' }, icon: GraduationCap },
+  { href: '/', label: { ar: 'الرئيسية', en: 'Dashboard', fr: 'Tableau de bord' }, icon: Home },
+  { href: '/expenses', label: { ar: 'المصروفات', en: 'Expenses', fr: 'Dépenses' }, icon: ReceiptText },
+  { href: '/income', label: { ar: 'الدخل', en: 'Income', fr: 'Revenus' }, icon: Wallet },
+  { href: '/invest', label: { ar: 'الاستثمارات', en: 'Investments', fr: 'Investissements' }, icon: TrendingUp },
+  { href: '/savings', label: { ar: 'الإدخار', en: 'Savings', fr: 'Épargne' }, icon: PiggyBank },
+  { href: '/goals', label: { ar: 'الأهداف', en: 'Goals', fr: 'Objectifs' }, icon: Target },
+  { href: '/projects', label: { ar: 'مشاريعي', en: 'My Projects', fr: 'Mes projets' }, icon: FolderKanban },
+  { href: '/reports', label: { ar: 'التقارير', en: 'Reports', fr: 'Rapports' }, icon: ChartPie },
+  { href: '/ai', label: { ar: 'الذكاء المالي', en: 'AI', fr: 'IA' }, icon: Bot },
+  { href: '/charity', label: { ar: 'الأعمال الخيرية', en: 'Charity', fr: 'Charité' }, icon: HandHeart },
+  { href: '/notifications', label: { ar: 'الإشعارات', en: 'Notifications', fr: 'Notifications' }, icon: BellIcon },
+  { href: '/profile', label: { ar: 'الملف الشخصي', en: 'Profile', fr: 'Profil' }, icon: GraduationCap },
 ];
 
 const pageMeta: Record<PageKind, { title: LangText; subtitle: LangText; accent: string; icon: typeof ReceiptText }> = {
   expenses: {
-    title: { ar: 'المصروفات', en: 'Expenses' },
-    subtitle: { ar: 'راقب الصرف الشهري، التصنيفات، وآخر العمليات في مكان واحد.', en: 'Track monthly spend, categories, and recent expense activity in one place.' },
+    title: { ar: 'المصروفات', en: 'Expenses', fr: 'Dépenses' },
+    subtitle: { ar: 'راقب الصرف الشهري، التصنيفات، وآخر العمليات في مكان واحد.', en: 'Track monthly spend, categories, and recent expense activity in one place.', fr: 'Suivez vos dépenses mensuelles, catégories et activités récentes en un seul endroit.' },
     accent: '#EF4444',
     icon: ReceiptText,
   },
   income: {
-    title: { ar: 'الدخل', en: 'Income' },
-    subtitle: { ar: 'نظرة واضحة على الراتب، الدخل الجانبي، ومصادر الدخل الشهرية.', en: 'A clean view of salary, side income, and monthly income sources.' },
+    title: { ar: 'الدخل', en: 'Income', fr: 'Revenus' },
+    subtitle: { ar: 'نظرة واضحة على الراتب، الدخل الجانبي، ومصادر الدخل الشهرية.', en: 'A clean view of salary, side income, and monthly income sources.', fr: 'Vue claire du salaire, revenus annexes et sources de revenus mensuels.' },
     accent: '#22C55E',
     icon: Wallet,
   },
   invest: {
-    title: { ar: 'الاستثمار', en: 'Investments' },
-    subtitle: { ar: 'تابع المحفظة، فئات الاستثمار، المخاطر، والمساهمة الشهرية.', en: 'Follow portfolio value, investment categories, risk level, and monthly contribution.' },
+    title: { ar: 'الاستثمار', en: 'Investments', fr: 'Investissements' },
+    subtitle: { ar: 'تابع المحفظة، فئات الاستثمار، المخاطر، والمساهمة الشهرية.', en: 'Follow portfolio value, investment categories, risk level, and monthly contribution.', fr: 'Suivez la valeur du portefeuille, les catégories, le risque et la contribution mensuelle.' },
     accent: '#3B82F6',
     icon: TrendingUp,
   },
   savings: {
-    title: { ar: 'الإدخار', en: 'Savings' },
-    subtitle: { ar: 'تتبّع مدخراتك وحقّق أهدافك المالية بخطوات واضحة ومنتظمة.', en: 'Track your savings and reach your financial goals with clear, consistent steps.' },
+    title: { ar: 'الإدخار', en: 'Savings', fr: 'Épargne' },
+    subtitle: { ar: 'تتبّع مدخراتك وحقّق أهدافك المالية بخطوات واضحة ومنتظمة.', en: 'Track your savings and reach your financial goals with clear, consistent steps.', fr: 'Suivez votre épargne et atteignez vos objectifs financiers étape par étape.' },
     accent: '#22C55E',
     icon: PiggyBank,
   },
   goals: {
-    title: { ar: 'الأهداف المالية', en: 'Financial Goals' },
-    subtitle: { ar: 'حوّل أهدافك إلى بطاقات تقدم بمبلغ مستهدف ومتبقي واضح.', en: 'Turn targets into progress cards with clear target and remaining amounts.' },
+    title: { ar: 'الأهداف المالية', en: 'Financial Goals', fr: 'Objectifs financiers' },
+    subtitle: { ar: 'حوّل أهدافك إلى بطاقات تقدم بمبلغ مستهدف ومتبقي واضح.', en: 'Turn targets into progress cards with clear target and remaining amounts.', fr: 'Transformez vos objectifs en cartes de progression avec montant cible et restant.' },
     accent: '#D8AE63',
     icon: Target,
   },
   reports: {
-    title: { ar: 'التقارير', en: 'Reports' },
-    subtitle: { ar: 'ملخص مالي قابل للطباعة للتدفقات، الادخار، الاستثمار، والتوازن الشهري.', en: 'Printable financial summaries for cash flow, savings, investments, and monthly balance.' },
+    title: { ar: 'التقارير', en: 'Reports', fr: 'Rapports' },
+    subtitle: { ar: 'ملخص مالي قابل للطباعة للتدفقات، الادخار، الاستثمار، والتوازن الشهري.', en: 'Printable financial summaries for cash flow, savings, investments, and monthly balance.', fr: 'Résumés financiers imprimables : flux, épargne, investissements et solde mensuel.' },
     accent: '#8B5CF6',
     icon: ChartPie,
   },
   ai: {
-    title: { ar: 'المساعد المالي الذكي', en: 'AI Financial Assistant' },
-    subtitle: { ar: 'اقتراحات ذكية، رؤى فورية، وبطاقات عمل لتحسين قراراتك المالية.', en: 'Smart suggestions, instant insights, and action cards for better financial decisions.' },
+    title: { ar: 'المساعد المالي الذكي', en: 'AI Financial Assistant', fr: 'Assistant financier IA' },
+    subtitle: { ar: 'اقتراحات ذكية، رؤى فورية، وبطاقات عمل لتحسين قراراتك المالية.', en: 'Smart suggestions, instant insights, and action cards for better financial decisions.', fr: 'Suggestions intelligentes, insights instantanés et actions pour améliorer vos décisions.' },
     accent: '#06B6D4',
     icon: Bot,
   },
@@ -1399,7 +1397,7 @@ function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, lang
       return {
         id: goal.id,
         title: goal.name,
-        subtitle: isAr ? `تقدم ${done}%، المتبقي ${money(Math.max(goal.target_amount - goal.current_amount, 0), isAr, currency)}` : `${done}% complete, remaining ${money(Math.max(goal.target_amount - goal.current_amount, 0), isAr, currency)}`,
+        subtitle: pick({ ar: `تقدم ${done}%، المتبقي ${money(Math.max(goal.target_amount - goal.current_amount, 0), lang, currency)}`, en: `${done}% complete, remaining ${money(Math.max(goal.target_amount - goal.current_amount, 0), lang, currency)}`, fr: `${done}% accompli, reste ${money(Math.max(goal.target_amount - goal.current_amount, 0), lang, currency)}` }, lang),
         value: money(goal.target_amount, lang, currency),
       };
     });
@@ -1407,17 +1405,17 @@ function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, lang
 
   if (kind === 'reports') {
     return [
-      { id: 'income-vs-expenses', title: isAr ? 'الدخل مقابل المصروفات' : 'Income vs expenses', subtitle: isAr ? 'ملخص التدفق النقدي الحالي' : 'Current cash flow summary', value: money(data.balance, lang, currency) },
-      { id: 'savings-report', title: isAr ? 'تقرير الادخار' : 'Savings report', subtitle: isAr ? 'رصيد الادخار المسجل' : 'Recorded savings balance', value: money(data.totalSavings, lang, currency) },
-      { id: 'investment-report', title: isAr ? 'تقرير الاستثمار' : 'Investment report', subtitle: isAr ? 'قيمة المحفظة الحالية' : 'Current portfolio value', value: money(data.totalInvestments, lang, currency) },
+      { id: 'income-vs-expenses', title: pick({ ar: 'الدخل مقابل المصروفات', en: 'Income vs expenses', fr: 'Revenus vs dépenses' }, lang), subtitle: pick({ ar: 'ملخص التدفق النقدي الحالي', en: 'Current cash flow summary', fr: 'Résumé des flux de trésorerie' }, lang), value: money(data.balance, lang, currency) },
+      { id: 'savings-report', title: pick({ ar: 'تقرير الادخار', en: 'Savings report', fr: "Rapport d'épargne" }, lang), subtitle: pick({ ar: 'رصيد الادخار المسجل', en: 'Recorded savings balance', fr: "Solde d'épargne enregistré" }, lang), value: money(data.totalSavings, lang, currency) },
+      { id: 'investment-report', title: pick({ ar: 'تقرير الاستثمار', en: 'Investment report', fr: "Rapport d'investissement" }, lang), subtitle: pick({ ar: 'قيمة المحفظة الحالية', en: 'Current portfolio value', fr: 'Valeur actuelle du portefeuille' }, lang), value: money(data.totalInvestments, lang, currency) },
     ];
   }
 
   if (kind === 'ai') {
     return [
-      { id: 'reduce-expenses', title: isAr ? 'خفض المصروفات' : 'Reduce expenses', subtitle: isAr ? 'راجع أعلى 3 بنود صرف هذا الشهر.' : 'Review the top 3 spending items this month.', value: money(data.totalExpenses, lang, currency) },
-      { id: 'increase-savings', title: isAr ? 'زيادة الادخار' : 'Increase savings', subtitle: isAr ? 'حوّل جزءًا من الصافي إلى هدف واضح.' : 'Move part of your surplus into a clear goal.', value: money(Math.max(data.balance * 0.2, 0), isAr, currency) },
-      { id: 'recurring-investing', title: isAr ? 'استثمار منتظم' : 'Recurring investing', subtitle: isAr ? 'مساهمة شهرية صغيرة تحافظ على الاستمرارية.' : 'A small monthly contribution keeps momentum.', value: money(data.totalIncome * 0.1, lang, currency) },
+      { id: 'reduce-expenses', title: pick({ ar: 'خفض المصروفات', en: 'Reduce expenses', fr: 'Réduire les dépenses' }, lang), subtitle: pick({ ar: 'راجع أعلى 3 بنود صرف هذا الشهر.', en: 'Review the top 3 spending items this month.', fr: 'Examinez les 3 principales dépenses du mois.' }, lang), value: money(data.totalExpenses, lang, currency) },
+      { id: 'increase-savings', title: pick({ ar: 'زيادة الادخار', en: 'Increase savings', fr: "Augmenter l'épargne" }, lang), subtitle: pick({ ar: 'حوّل جزءًا من الصافي إلى هدف واضح.', en: 'Move part of your surplus into a clear goal.', fr: 'Transférez une partie de votre excédent vers un objectif.' }, lang), value: money(Math.max(data.balance * 0.2, 0), lang, currency) },
+      { id: 'recurring-investing', title: pick({ ar: 'استثمار منتظم', en: 'Recurring investing', fr: 'Investissement régulier' }, lang), subtitle: pick({ ar: 'مساهمة شهرية صغيرة تحافظ على الاستمرارية.', en: 'A small monthly contribution keeps momentum.', fr: 'Une petite contribution mensuelle maintient la dynamique.' }, lang), value: money(data.totalIncome * 0.1, lang, currency) },
     ];
   }
 
@@ -1425,7 +1423,7 @@ function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, lang
   return source.map(item => ({
     id: item.id,
     title: item.name.replace(/^خيرية:\d{4}-\d{2}:/, ''),
-    subtitle: item.created_at ? new Date(item.created_at).toLocaleDateString() : (isAr ? 'سجل مالي' : 'Financial record'),
+    subtitle: item.created_at ? new Date(item.created_at).toLocaleDateString() : pick({ ar: 'سجل مالي', en: 'Financial record', fr: 'Relevé financier' }, lang),
     value: money(item.amount, lang, currency),
     item,
   }));
@@ -1509,12 +1507,12 @@ function buildInsights(kind: PageKind, data: ReturnType<typeof buildDataShape>, 
   const ratio = data.totalIncome ? Math.round((data.totalExpenses / data.totalIncome) * 100) : 0;
   const base = [
     {
-      title: isAr ? 'نسبة الصرف' : 'Spend ratio',
-      body: isAr ? `مصروفاتك تساوي ${ratio}% من الدخل.` : `Expenses equal ${ratio}% of income.`,
+      title: pick({ ar: 'نسبة الصرف', en: 'Spend ratio', fr: 'Ratio de dépenses' }, lang),
+      body: pick({ ar: `مصروفاتك تساوي ${ratio}% من الدخل.`, en: `Expenses equal ${ratio}% of income.`, fr: `Vos dépenses représentent ${ratio}% des revenus.` }, lang),
     },
     {
-      title: isAr ? 'مساحة الصافي' : 'Net runway',
-      body: isAr ? `الصافي الحالي ${money(data.balance, lang, currency)}.` : `Current net balance is ${money(data.balance, lang, currency)}.`,
+      title: pick({ ar: 'مساحة الصافي', en: 'Net runway', fr: 'Marge nette' }, lang),
+      body: pick({ ar: `الصافي الحالي ${money(data.balance, lang, currency)}.`, en: `Current net balance is ${money(data.balance, lang, currency)}.`, fr: `Solde net actuel: ${money(data.balance, lang, currency)}.` }, lang),
     },
   ];
   return [
@@ -1529,13 +1527,13 @@ function buildInsights(kind: PageKind, data: ReturnType<typeof buildDataShape>, 
 function suggestion(kind: PageKind, lang: string) {
   const isAr = lang === 'ar';
   const text: Record<PageKind, LangText> = {
-    expenses: { ar: 'ابدأ بأكبر تصنيف مصروفات وخفّضه 5%.', en: 'Start with your largest expense category and reduce it by 5%.' },
-    income: { ar: 'قسّم الدخل إلى راتب، دخل جانبي، وأعمال لقراءة أوضح.', en: 'Split income into salary, side income, and business for cleaner tracking.' },
-    invest: { ar: 'حافظ على مساهمة شهرية ثابتة قبل زيادة المخاطر.', en: 'Keep a steady monthly contribution before increasing risk.' },
-    savings: { ar: 'حدد هدفًا شهريًا للادخار وراقب تقدمك في كل دورة.', en: 'Set a monthly savings target and track your progress each cycle.' },
-    goals: { ar: 'اربط كل هدف بمبلغ شهري صغير قابل للاستمرار.', en: 'Attach every goal to a small sustainable monthly amount.' },
-    reports: { ar: 'اطبع التقرير قبل نهاية الشهر لمراجعة قراراتك.', en: 'Print the report before month-end to review decisions.' },
-    ai: { ar: 'اسأل المساعد عن أفضل قرار واحد لهذا الأسبوع.', en: 'Ask the assistant for one best action this week.' },
+    expenses: { ar: 'ابدأ بأكبر تصنيف مصروفات وخفّضه 5%.', en: 'Start with your largest expense category and reduce it by 5%.', fr: 'Commencez par votre plus grande catégorie de dépenses et réduisez-la de 5%.' },
+    income: { ar: 'قسّم الدخل إلى راتب، دخل جانبي، وأعمال لقراءة أوضح.', en: 'Split income into salary, side income, and business for cleaner tracking.', fr: 'Divisez vos revenus en salaire, revenus annexes et activité pour un suivi plus clair.' },
+    invest: { ar: 'حافظ على مساهمة شهرية ثابتة قبل زيادة المخاطر.', en: 'Keep a steady monthly contribution before increasing risk.', fr: 'Maintenez une contribution mensuelle stable avant d\'augmenter le risque.' },
+    savings: { ar: 'حدد هدفًا شهريًا للادخار وراقب تقدمك في كل دورة.', en: 'Set a monthly savings target and track your progress each cycle.', fr: 'Fixez un objectif d\'épargne mensuel et suivez votre progression à chaque cycle.' },
+    goals: { ar: 'اربط كل هدف بمبلغ شهري صغير قابل للاستمرار.', en: 'Attach every goal to a small sustainable monthly amount.', fr: 'Associez chaque objectif à un montant mensuel modeste et durable.' },
+    reports: { ar: 'اطبع التقرير قبل نهاية الشهر لمراجعة قراراتك.', en: 'Print the report before month-end to review decisions.', fr: 'Imprimez le rapport avant la fin du mois pour revoir vos décisions.' },
+    ai: { ar: 'اسأل المساعد عن أفضل قرار واحد لهذا الأسبوع.', en: 'Ask the assistant for one best action this week.', fr: 'Demandez à l\'assistant la meilleure action à prendre cette semaine.' },
   };
   return pick(text[kind], lang);
 }
@@ -1543,13 +1541,13 @@ function suggestion(kind: PageKind, lang: string) {
 function sectionTitle(kind: PageKind, lang: string) {
   const isAr = lang === 'ar';
   const text: Record<PageKind, LangText> = {
-    expenses: { ar: 'آخر المصروفات والتصنيفات', en: 'Recent expenses and categories' },
-    income: { ar: 'مصادر الدخل والتوزيع', en: 'Income sources and distribution' },
-    invest: { ar: 'بطاقات المحفظة وفئات الاستثمار', en: 'Portfolio cards and investment categories' },
-    savings: { ar: 'سجلات الادخار والمبالغ', en: 'Savings records and amounts' },
-    goals: { ar: 'بطاقات تقدم الأهداف', en: 'Goal progress cards' },
-    reports: { ar: 'ملخص التقارير المالية', en: 'Financial report summary' },
-    ai: { ar: 'بطاقات العمل الذكية', en: 'Smart action cards' },
+    expenses: { ar: 'آخر المصروفات والتصنيفات', en: 'Recent expenses and categories', fr: 'Dépenses récentes et catégories' },
+    income: { ar: 'مصادر الدخل والتوزيع', en: 'Income sources and distribution', fr: 'Sources de revenus et répartition' },
+    invest: { ar: 'بطاقات المحفظة وفئات الاستثمار', en: 'Portfolio cards and investment categories', fr: 'Portefeuille et catégories d\'investissement' },
+    savings: { ar: 'سجلات الادخار والمبالغ', en: 'Savings records and amounts', fr: 'Relevés d\'épargne et montants' },
+    goals: { ar: 'بطاقات تقدم الأهداف', en: 'Goal progress cards', fr: 'Cartes de progression des objectifs' },
+    reports: { ar: 'ملخص التقارير المالية', en: 'Financial report summary', fr: 'Résumé des rapports financiers' },
+    ai: { ar: 'بطاقات العمل الذكية', en: 'Smart action cards', fr: 'Cartes d\'actions intelligentes' },
   };
   return pick(text[kind], lang);
 }
@@ -1557,13 +1555,13 @@ function sectionTitle(kind: PageKind, lang: string) {
 function summaryTitle(kind: PageKind, lang: string) {
   const isAr = lang === 'ar';
   const text: Record<PageKind, LangText> = {
-    expenses: { ar: 'ملخص المصروفات الشهري', en: 'Monthly expense summary' },
-    income: { ar: 'ملخص توزيع الدخل', en: 'Income distribution summary' },
-    invest: { ar: 'ملخص المساهمة الاستثمارية', en: 'Investment contribution summary' },
-    savings: { ar: 'ملخص المدخرات المسجلة', en: 'Recorded savings summary' },
-    goals: { ar: 'ملخص تقدم الادخار', en: 'Savings progress summary' },
-    reports: { ar: 'جاهز للتصدير والطباعة', en: 'Ready to export and print' },
-    ai: { ar: 'واجهة المساعد', en: 'Assistant interface' },
+    expenses: { ar: 'ملخص المصروفات الشهري', en: 'Monthly expense summary', fr: 'Résumé des dépenses mensuelles' },
+    income: { ar: 'ملخص توزيع الدخل', en: 'Income distribution summary', fr: 'Résumé de la répartition des revenus' },
+    invest: { ar: 'ملخص المساهمة الاستثمارية', en: 'Investment contribution summary', fr: 'Résumé de la contribution investissement' },
+    savings: { ar: 'ملخص المدخرات المسجلة', en: 'Recorded savings summary', fr: 'Résumé de l\'épargne enregistrée' },
+    goals: { ar: 'ملخص تقدم الادخار', en: 'Savings progress summary', fr: 'Résumé de la progression de l\'épargne' },
+    reports: { ar: 'جاهز للتصدير والطباعة', en: 'Ready to export and print', fr: 'Prêt à exporter et imprimer' },
+    ai: { ar: 'واجهة المساعد', en: 'Assistant interface', fr: 'Interface de l\'assistant' },
   };
   return pick(text[kind], lang);
 }
@@ -1571,13 +1569,13 @@ function summaryTitle(kind: PageKind, lang: string) {
 function summaryText(kind: PageKind, data: ReturnType<typeof buildDataShape>, lang: string, currency = 'KWD') {
   const isAr = lang === 'ar';
   const values: Record<PageKind, LangText> = {
-    expenses: { ar: `إجمالي المصروفات الحالي ${money(data.totalExpenses, lang, currency)} مع ${data.expenses.length} سجل.`, en: `Current expenses total ${money(data.totalExpenses, lang, currency)} across ${data.expenses.length} records.` },
-    income: { ar: `الدخل الشهري الحالي ${money(data.totalIncome, lang, currency)} موزع على ${data.income.length} مصادر.`, en: `Monthly income is ${money(data.totalIncome, lang, currency)} across ${data.income.length} sources.` },
-    invest: { ar: `قيمة المحفظة ${money(data.totalInvestments, lang, currency)} مع مساهمة مقترحة ${money(data.totalIncome * 0.15, lang, currency)}.`, en: `Portfolio value is ${money(data.totalInvestments, lang, currency)} with suggested contribution ${money(data.totalIncome * 0.15, lang, currency)}.` },
-    savings: { ar: `إجمالي المدخرات ${money(data.totalSavings, lang, currency)} موزع على ${data.savings.length} سجلات.`, en: `Total savings are ${money(data.totalSavings, lang, currency)} across ${data.savings.length} entries.` },
-    goals: { ar: `مدخراتك الحالية ${money(data.totalSavings, lang, currency)} تقيس تقدم ${data.goals.length} أهداف.`, en: `Current savings of ${money(data.totalSavings, lang, currency)} measure progress across ${data.goals.length} goals.` },
-    reports: { ar: 'استخدم أزرار الطباعة والتصدير لحفظ نسخة من ملخصك المالي.', en: 'Use print and export actions to save a copy of your financial summary.' },
-    ai: { ar: 'اكتب سؤالك للحصول على مساعدة مالية موجهة حسب بياناتك.', en: 'Type a prompt to get financial guidance shaped by your data.' },
+    expenses: { ar: `إجمالي المصروفات الحالي ${money(data.totalExpenses, lang, currency)} مع ${data.expenses.length} سجل.`, en: `Current expenses total ${money(data.totalExpenses, lang, currency)} across ${data.expenses.length} records.`, fr: `Total des dépenses: ${money(data.totalExpenses, lang, currency)} sur ${data.expenses.length} relevés.` },
+    income: { ar: `الدخل الشهري الحالي ${money(data.totalIncome, lang, currency)} موزع على ${data.income.length} مصادر.`, en: `Monthly income is ${money(data.totalIncome, lang, currency)} across ${data.income.length} sources.`, fr: `Revenus mensuels: ${money(data.totalIncome, lang, currency)} sur ${data.income.length} sources.` },
+    invest: { ar: `قيمة المحفظة ${money(data.totalInvestments, lang, currency)} مع مساهمة مقترحة ${money(data.totalIncome * 0.15, lang, currency)}.`, en: `Portfolio value is ${money(data.totalInvestments, lang, currency)} with suggested contribution ${money(data.totalIncome * 0.15, lang, currency)}.`, fr: `Valeur du portefeuille: ${money(data.totalInvestments, lang, currency)}, contribution suggérée: ${money(data.totalIncome * 0.15, lang, currency)}.` },
+    savings: { ar: `إجمالي المدخرات ${money(data.totalSavings, lang, currency)} موزع على ${data.savings.length} سجلات.`, en: `Total savings are ${money(data.totalSavings, lang, currency)} across ${data.savings.length} entries.`, fr: `Épargne totale: ${money(data.totalSavings, lang, currency)} sur ${data.savings.length} relevés.` },
+    goals: { ar: `مدخراتك الحالية ${money(data.totalSavings, lang, currency)} تقيس تقدم ${data.goals.length} أهداف.`, en: `Current savings of ${money(data.totalSavings, lang, currency)} measure progress across ${data.goals.length} goals.`, fr: `Épargne actuelle ${money(data.totalSavings, lang, currency)} pour ${data.goals.length} objectifs.` },
+    reports: { ar: 'استخدم أزرار الطباعة والتصدير لحفظ نسخة من ملخصك المالي.', en: 'Use print and export actions to save a copy of your financial summary.', fr: 'Utilisez impression et export pour sauvegarder votre résumé financier.' },
+    ai: { ar: 'اكتب سؤالك للحصول على مساعدة مالية موجهة حسب بياناتك.', en: 'Type a prompt to get financial guidance shaped by your data.', fr: 'Posez votre question pour obtenir des conseils financiers personnalisés.' },
   };
   return pick(values[kind], lang);
 }
@@ -1586,8 +1584,8 @@ function buildPrimaryActions(kind: PageKind, lang: string, openEntry: () => void
   const isAr = lang === 'ar';
   if (kind === 'reports') {
     return [
-      { label: isAr ? 'طباعة' : 'Print', icon: Printer, variant: 'print' as const, onClick: () => window.print() },
-      { label: isAr ? 'تصدير' : 'Export', icon: Download, variant: 'default' as const, onClick: () => {
+      { label: pick({ ar: 'طباعة', en: 'Print', fr: 'Imprimer' }, lang), icon: Printer, variant: 'print' as const, onClick: () => window.print() },
+      { label: pick({ ar: 'تصدير', en: 'Export', fr: 'Exporter' }, lang), icon: Download, variant: 'default' as const, onClick: () => {
         const html = document.querySelector('.sfm-main')?.innerHTML || document.body.innerHTML;
         const blob = new Blob([`<!doctype html><html><head><meta charset="utf-8"><title>SFM Report</title></head><body>${html}</body></html>`], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
@@ -1601,7 +1599,7 @@ function buildPrimaryActions(kind: PageKind, lang: string, openEntry: () => void
   }
   if (kind === 'ai') {
     return [
-      { label: isAr ? 'اسأل الآن' : 'Ask now', icon: Send, variant: 'default' as const, onClick: focusAi },
+      { label: pick({ ar: 'اسأل الآن', en: 'Ask now', fr: 'Demander maintenant' }, lang), icon: Send, variant: 'default' as const, onClick: focusAi },
     ];
   }
 

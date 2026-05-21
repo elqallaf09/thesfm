@@ -15,7 +15,6 @@ import {
   LogOut,
   PiggyBank,
   ReceiptText,
-  Settings,
   Target,
   TrendingUp,
   UserRound,
@@ -71,7 +70,6 @@ const NAV_SECTIONS: NavSection[] = [
   {
     id: 'account',
     items: [
-      { id: 'settings', icon: Settings,  path: '/settings', labelKey: 'nav_settings' },
       { id: 'profile',  icon: UserRound, path: '/profile',  labelKey: 'nav_profile'  },
     ],
   },
