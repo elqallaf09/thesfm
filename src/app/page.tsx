@@ -358,17 +358,6 @@ export default function DashboardPage(){
 
     <div className="dp" dir={dir}>
 
-      {/* ═══ TICKER BAR ═══ */}
-      <div style={{background:'rgba(17,17,17,0.96)',backdropFilter:'blur(12px)',borderBottom:'1px solid rgba(216,174,99,.12)',padding:'6px 16px',position:'sticky',top:0,zIndex:100}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px'}}>
-          <div style={{display:'flex',alignItems:'center',gap:'10px',fontSize:'12px',fontWeight:'700',color:'#D8AE63',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>
-            <span>THE SFM</span>
-            <span style={{color:'rgba(255,255,255,.45)',fontWeight:'500'}}>{isAr ? 'لوحة مالية متصلة ببياناتك' : isFr ? 'Tableau financier connecte a vos donnees' : 'Financial dashboard connected to your data'}</span>
-          </div>
-          <UserChip displayName={profile.display_name||undefined} />
-        </div>
-      </div>
-
       <div style={{display:'flex',flex:1}}>
 
         {/* ═══ SIDEBAR ═══ */}
@@ -391,8 +380,9 @@ export default function DashboardPage(){
                   وضع الضيف
                 </span>
               )}
-              <div className="home-language-mobile">
+              <div className="home-language-mobile" style={{display:'flex',alignItems:'center',gap:'8px'}}>
                 <LanguageSwitcher variant="gold" compact />
+                <UserChip displayName={profile.display_name||undefined} />
               </div>
               <button onClick={()=>window.print()} style={{display:'flex',alignItems:'center',gap:'7px',padding:'9px 18px',background:'#FFFDFC',border:'1.5px solid rgba(216,174,99,.25)',borderRadius:'12px',cursor:'pointer',color:'#5B4332',fontSize:'13px',fontWeight:'700',fontFamily:'Tajawal,sans-serif'}}>
                 🖨️ تقرير شهري

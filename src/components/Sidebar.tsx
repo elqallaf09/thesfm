@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { UserChip } from '@/components/UserChip';
 
 const NAV_ITEMS = [
   { id: 'home', icon: '⊞', path: '/', labelKey: 'nav_home' },
@@ -55,6 +56,9 @@ export function Sidebar() {
       </div>
       <div className="sfm-shared-lang">
         <LanguageSwitcher variant="dark" compact />
+      </div>
+      <div style={{padding:'10px 12px',borderBottom:'1px solid rgba(216,174,99,.08)'}}>
+        <UserChip />
       </div>
       <nav className="sfm-shared-nav">
         {NAV_ITEMS.map(item => {
