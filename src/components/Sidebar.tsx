@@ -1,8 +1,8 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useAuth } from '@/hooks/useAuth';
 
 const NAV_ITEMS = [
   { id: 'home', icon: '⊞', path: '/', labelKey: 'nav_home' },
@@ -23,13 +23,11 @@ export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { t, dir } = useLanguage();
+  const { signOut } = useAuth();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    try {
-      localStorage.clear();
-    } catch {}
-    router.push('/');
+    await signOut();
+    router.push('/login');
     router.refresh();
   };
 

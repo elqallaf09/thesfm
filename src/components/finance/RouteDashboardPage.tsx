@@ -157,7 +157,7 @@ async function safeQuery<T>(query: QueryResult<T>) {
 
 export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, isGuest } = useAuth();
   const { isAr, dir } = useLanguage();
   const meta = pageMeta[kind];
   const Icon = meta.icon;
@@ -295,6 +295,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             </div>
           </div>
           <LanguageSwitcher variant="gold" compact />
+          {isGuest && <span className="guest-pill">{isAr ? 'وضع الضيف' : 'Guest mode'}</span>}
         </header>
 
         {menuOpen && (
@@ -654,6 +655,7 @@ const baseStyles = `
   nav button:hover,nav button.active{background:rgba(216,174,99,.13);color:#D8AE63}
   .sfm-main{flex:1;padding:22px;max-width:1280px;margin:0 auto;width:100%;margin-inline-start:230px}
   .sfm-header{height:62px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+  .guest-pill{display:inline-flex;align-items:center;padding:7px 11px;border-radius:999px;border:1px solid rgba(216,174,99,.24);background:rgba(216,174,99,.12);color:#9A6C3C;font-size:12px;font-weight:900;white-space:nowrap}
   .title-wrap{display:flex;align-items:center;gap:13px}.title-wrap p{font-size:11px;color:#9A6C3C;font-weight:700;margin:0 0 3px}.title-wrap h1{font-size:24px;margin:0;font-weight:900}
   .title-icon{width:44px;height:44px;border-radius:14px;background:color-mix(in srgb,var(--accent) 14%,#fff);color:var(--accent);display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--accent) 22%,transparent)}
   .icon-btn{width:40px;height:40px;border-radius:12px;border:1px solid rgba(216,174,99,.22);background:#FFFDFC;color:#5B4332;display:grid;place-items:center;cursor:pointer}.menu-btn{display:none}

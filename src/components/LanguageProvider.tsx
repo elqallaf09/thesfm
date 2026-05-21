@@ -3,7 +3,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { Lang } from '@/lib/translations';
 import { t as translate, TR } from '@/lib/translations';
-import { supabase } from '@/integrations/supabase/client';
 
 const STORAGE_KEY = 'sfm_lang';
 const LANG_EVENT = 'sfm-language-change';
@@ -17,10 +16,7 @@ function readStoredLang(): Lang {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (isLang(stored)) return stored;
-    const browserLang = navigator.language || (navigator as Navigator & { userLanguage?: string }).userLanguage || '';
-    if (browserLang.toLowerCase().startsWith('fr')) return 'fr';
-    if (browserLang.toLowerCase().startsWith('ar')) return 'ar';
-    return 'en';
+    return 'ar';
   } catch {
     return 'ar';
   }
@@ -51,18 +47,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setLangState(readStoredLang());
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return;
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('preferred_lang')
-        .eq('id', data.user.id)
-        .maybeSingle();
-      if (isLang(profile?.preferred_lang)) {
-        localStorage.setItem(STORAGE_KEY, profile.preferred_lang);
-        setLangState(profile.preferred_lang);
-      }
-    }).catch(() => {});
 
     const syncLang = (event?: Event) => {
       const customLang = event instanceof CustomEvent ? event.detail?.lang : undefined;
@@ -84,10 +68,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_KEY, l);
       window.dispatchEvent(new CustomEvent(LANG_EVENT, { detail: { lang: l } }));
     } catch {}
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) return;
-      return supabase.from('profiles').update({ preferred_lang: l }).eq('id', data.user.id);
-    }).catch(() => {});
   }, []);
 
   useEffect(() => {

@@ -89,20 +89,16 @@ export default function SettingsPage() {
     setSettings(next);
     try { localStorage.setItem(STORE_KEY, JSON.stringify(next)); } catch {}
     if (user) {
-      supabase.from('profiles').update({
-        preferred_lang: lang,
-        preferred_currency: next.finance.currency,
-        preferred_theme: theme || next.appearance.theme,
-        dashboard_prefs: {
-          budget: next.finance.budget,
-          savings: next.finance.savings,
-          investments: next.finance.investments,
-          charity: next.finance.charity,
-          monthStart: next.finance.monthStart,
-          luxury: next.appearance.luxury,
-        },
-        notification_prefs: next.notifications,
-      }).eq('id', user.id).then(() => {}).catch(() => {});
+      void (async () => {
+        try {
+          await supabase.from('profiles').update({
+            display_name: next.profile.name || null,
+            email: next.profile.email || null,
+            profession: next.profile.profession || null,
+            phone_number: next.profile.phone || null,
+          }).eq('id', user.id);
+        } catch {}
+      })();
     }
     setSaved(message);
     window.setTimeout(() => setSaved(''), 1600);

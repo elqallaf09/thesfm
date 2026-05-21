@@ -8,6 +8,8 @@ interface AuthContextValue {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isGuest: boolean;
+  continueAsGuest: () => void;
   signIn: (username: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (username: string, password: string, email: string, age: string, gender?: string, securityQuestion?: string, securityAnswer?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -22,17 +24,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
+    const syncCookies = (nextSession: Session | null, guestMode: boolean) => {
+      if (typeof document === 'undefined') return;
+      document.cookie = `sfm_auth=${nextSession ? 'true' : ''}; path=/; max-age=${nextSession ? 60 * 60 * 24 * 30 : 0}; SameSite=Lax`;
+      document.cookie = `sfm_guest=${guestMode ? 'true' : ''}; path=/; max-age=${guestMode ? 60 * 60 * 24 : 0}; SameSite=Lax`;
+    };
+
     supabase.auth.getSession().then(({ data }) => {
+      const guestMode = typeof window !== 'undefined' && localStorage.getItem('sfm_guest_mode') === 'true';
       setSession(data.session);
       setUser(data.session?.user ?? null);
+      setIsGuest(!data.session && guestMode);
+      syncCookies(data.session, !data.session && guestMode);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
+      const guestMode = typeof window !== 'undefined' && localStorage.getItem('sfm_guest_mode') === 'true';
+      setIsGuest(!nextSession && guestMode);
+      syncCookies(nextSession, !nextSession && guestMode);
       setLoading(false);
     });
 
@@ -43,6 +58,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     session,
     loading,
+    isGuest,
+    continueAsGuest: () => {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('sfm_guest_mode', 'true');
+        localStorage.setItem('sfm_guest_started_at', new Date().toISOString());
+      }
+      if (typeof document !== 'undefined') {
+        document.cookie = `sfm_guest=true; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`;
+        document.cookie = 'sfm_auth=; path=/; max-age=0; SameSite=Lax';
+      }
+      setSession(null);
+      setUser(null);
+      setIsGuest(true);
+    },
     signIn: async (username: string, password: string) => {
       try {
         const identifier = username.trim();
@@ -57,6 +86,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           return { error: new Error(error.message) };
         }
+        if (typeof window !== 'undefined') localStorage.removeItem('sfm_guest_mode');
+        if (typeof document !== 'undefined') {
+          document.cookie = `sfm_auth=true; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+          document.cookie = 'sfm_guest=; path=/; max-age=0; SameSite=Lax';
+        }
+        setIsGuest(false);
         return { error: null };
       } catch (err: any) {
         return { error: new Error(err.message || 'فشل الاتصال بالخادم') };
@@ -101,7 +136,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             gender: gender || null,
             security_question: securityQuestion || null,
             security_answer: securityAnswer || null,
-            preferred_lang: typeof window !== 'undefined' ? localStorage.getItem('sfm_lang') || 'ar' : 'ar',
           }, { onConflict: 'id' }).select().single();
           if (profileError) return { error: new Error(profileError.message) };
         }
@@ -113,9 +147,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     signOut: async () => {
       await supabase.auth.signOut();
-      if (typeof window !== 'undefined') localStorage.clear();
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('sfm_guest_mode');
+        localStorage.removeItem('sfm_guest_started_at');
+      }
+      if (typeof document !== 'undefined') {
+        document.cookie = 'sfm_auth=; path=/; max-age=0; SameSite=Lax';
+        document.cookie = 'sfm_guest=; path=/; max-age=0; SameSite=Lax';
+      }
+      setIsGuest(false);
     },
-  }), [loading, session, user]);
+  }), [isGuest, loading, session, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

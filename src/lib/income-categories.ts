@@ -4,6 +4,7 @@ export interface IncomeCategory {
   id: IncomeCategoryId;
   nameAr: string;
   nameEn: string;
+  icon?: string;
   examples: string[];
 }
 

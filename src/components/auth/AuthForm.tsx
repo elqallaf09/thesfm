@@ -272,7 +272,6 @@ export function AuthForm() {
           security_answer_2: securityAnswer2,
           security_question_3: securityQuestion3 || null,
           security_answer_3: securityAnswer3 || null,
-          preferred_lang: language === 'fr' ? 'en' : language,
         }, { onConflict: 'id' }).select().single();
         if (profileError) { setError(profileError.message); setLoading(false); return; }
       }

@@ -531,6 +531,28 @@ export const TR: Record<string, TranslationEntry> = {
   placeholder_first_name: { ar:'أدخل الاسم الأول', en:'Enter first name', fr:'Entrez le prenom' },
   placeholder_last_name: { ar:'أدخل الاسم الأخير', en:'Enter last name', fr:'Entrez le nom' },
 
+  login_title: { ar:'المدير المالي الذكي', en:'Smart Financial Manager', fr:'Gestionnaire financier intelligent' },
+  login_subtitle: { ar:'ادخل إلى لوحة THE SFM لإدارة دخلك ومصاريفك وأهدافك بوضوح.', en:'Sign in to THE SFM dashboard to manage income, expenses, and goals clearly.', fr:'Connectez-vous au tableau THE SFM pour gerer revenus, depenses et objectifs.' },
+  login_username: { ar:'اسم المستخدم', en:'Username', fr:"Nom d'utilisateur" },
+  login_password: { ar:'كلمة المرور', en:'Password', fr:'Mot de passe' },
+  login_confirm_password: { ar:'تأكيد كلمة المرور', en:'Confirm password', fr:'Confirmer le mot de passe' },
+  login_sign_in: { ar:'تسجيل الدخول', en:'Sign in', fr:'Connexion' },
+  login_create_account: { ar:'إنشاء حساب', en:'Create account', fr:'Creer un compte' },
+  login_switch_create: { ar:'إنشاء حساب جديد', en:'Create new account', fr:'Creer un nouveau compte' },
+  login_switch_login: { ar:'لدي حساب بالفعل', en:'I already have an account', fr:"J'ai deja un compte" },
+  login_guest: { ar:'متابعة كضيف', en:'Continue as guest', fr:'Continuer en invite' },
+  login_forgot: { ar:'نسيت كلمة المرور؟', en:'Forgot password?', fr:'Mot de passe oublie ?' },
+  login_username_placeholder: { ar:'أدخل اسم المستخدم', en:'Enter username', fr:"Entrez le nom d'utilisateur" },
+  login_password_placeholder: { ar:'أدخل كلمة المرور', en:'Enter password', fr:'Entrez le mot de passe' },
+  login_error_empty: { ar:'أكمل كل الحقول المطلوبة.', en:'Complete all required fields.', fr:'Completez tous les champs requis.' },
+  login_error_short_username: { ar:'اسم المستخدم يجب أن يكون 3 أحرف على الأقل.', en:'Username must be at least 3 characters.', fr:"Le nom d'utilisateur doit contenir au moins 3 caracteres." },
+  login_error_short_password: { ar:'كلمة المرور يجب أن تكون 6 أحرف على الأقل.', en:'Password must be at least 6 characters.', fr:'Le mot de passe doit contenir au moins 6 caracteres.' },
+  login_error_mismatch: { ar:'كلمتا المرور غير متطابقتين.', en:'Passwords do not match.', fr:'Les mots de passe ne correspondent pas.' },
+  login_error_exists: { ar:'اسم المستخدم مستخدم بالفعل.', en:'This username is already taken.', fr:"Ce nom d'utilisateur est deja utilise." },
+  login_error_failed: { ar:'اسم المستخدم أو كلمة المرور غير صحيحة.', en:'Username or password is incorrect.', fr:"Nom d'utilisateur ou mot de passe incorrect." },
+  login_error_register: { ar:'تعذر إنشاء الحساب. حاول مرة أخرى.', en:'Could not create the account. Try again.', fr:'Impossible de creer le compte. Reessayez.' },
+  login_reset_sent: { ar:'تم إرسال رابط استعادة كلمة المرور إن كان الحساب موجوداً.', en:'A reset link was sent if the account exists.', fr:'Un lien de reinitialisation a ete envoye si le compte existe.' },
+
 } as const;
 
 /** Helper: get translation for current language */

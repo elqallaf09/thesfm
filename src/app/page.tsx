@@ -211,7 +211,7 @@ function formatExpenseName(name: string | null | undefined) {
    MAIN DASHBOARD
 ═══════════════════════════════════════════════════ */
 export default function DashboardPage(){
-  const {user,loading}=useAuth();
+  const {user,loading,isGuest}=useAuth();
   const {dir, isAr, isFr} = useLanguage();
   const router=useRouter();
   const [profile,setProfile]=useState<ProfileRow>({display_name:'SFM',profession:'خبير مالي'});
@@ -278,8 +278,8 @@ export default function DashboardPage(){
   const totalInvestment=investments.reduce((sum,item)=>sum+amountOf(item.amount),0);
   const netWorth=totalIncome+totalSavings;
   const healthScore=totalIncome>0?Math.min(100,Math.round(60+(totalSavings/totalIncome)*40)):0;
-  const monthlyGrowth=0;
-  const monthlyGrowthPct=0;
+  const monthlyGrowth:number=0;
+  const monthlyGrowthPct:number=0;
   const initials=(profile.display_name||'SFM').substring(0,2).toUpperCase();
 
   const S=(d:number)=>({opacity:mounted?1:0,transform:mounted?'translateY(0)':'translateY(18px)',transition:`opacity .5s ease ${d}ms, transform .5s ease ${d}ms`});
@@ -380,6 +380,11 @@ export default function DashboardPage(){
               <p style={{fontSize:'13px',color:'#9A6C3C'}}>هذه نظرة عامة على وضعك المالي اليوم</p>
             </div>
             <div style={{display:'flex',gap:'10px',alignItems:'center'}}>
+              {isGuest && (
+                <span style={{display:'inline-flex',alignItems:'center',gap:'6px',padding:'8px 12px',background:'rgba(216,174,99,.12)',border:'1px solid rgba(216,174,99,.24)',borderRadius:'999px',color:'#9A6C3C',fontSize:'12px',fontWeight:'900'}}>
+                  وضع الضيف
+                </span>
+              )}
               <button onClick={()=>window.print()} style={{display:'flex',alignItems:'center',gap:'7px',padding:'9px 18px',background:'#FFFDFC',border:'1.5px solid rgba(216,174,99,.25)',borderRadius:'12px',cursor:'pointer',color:'#5B4332',fontSize:'13px',fontWeight:'700',fontFamily:'Tajawal,sans-serif'}}>
                 🖨️ تقرير شهري
               </button>

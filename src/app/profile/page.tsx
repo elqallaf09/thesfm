@@ -65,7 +65,7 @@ export default function ProfilePage() {
     if (!userId) return;
     const { data: p } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
     if (p) setProfile({ display_name:p.display_name||'', username:p.username||'', email:p.email||user?.email||'', age:p.age?String(p.age):'', gender:p.gender||'', profession:p.profession||'', phone_country_code:p.phone_country_code||'+965', phone_number:p.phone_number||'' });
-    else setProfile(prev => ({ ...prev, email: user?.email||'' }));
+    else setProfile((prev: any) => ({ ...prev, email: user?.email||'' }));
     const { data: s } = await supabase.from('monthly_income_sources').select('*').eq('user_id', userId);
     if (s) { const a: Record<string,string>={}; s.forEach((r: { category: string | null; amount: number | string | null }) => { if (r.category) a[r.category]=String(r.amount ?? ''); }); setIncomeAmounts(a); }
   };
