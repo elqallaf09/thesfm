@@ -84,7 +84,6 @@ function toLegacyRow(item: Investment): DbInvestmentRow {
     name: item.name,
     amount: item.currentValue,
     created_at: item.createdAt,
-    updated_at: item.updatedAt,
   };
 }
 
@@ -133,7 +132,7 @@ export function useInvestments() {
       const meta = readJson<Record<string, InvestmentMeta>>(userMetaKey, {});
       const extended = await supabase
         .from('investment_items')
-        .select('id,name,amount,type,current_value,monthly_contribution,start_date,risk_level,expected_annual_return,notes,created_at,updated_at')
+        .select('id,name,amount,type,current_value,monthly_contribution,start_date,risk_level,expected_annual_return,notes,created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -145,7 +144,7 @@ export function useInvestments() {
 
       const legacy = await supabase
         .from('investment_items')
-        .select('id,name,amount,created_at,updated_at')
+        .select('id,name,amount,created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -204,7 +203,7 @@ export function useInvestments() {
       user_id: user.id,
       name: data.name,
       amount: data.currentValue,
-    }).select('id,name,amount,created_at,updated_at').single();
+    }).select('id,name,amount,created_at').single();
 
     if (legacy.error || !legacy.data) throw new Error(legacy.error?.message || created.error?.message || 'Could not save investment');
 
@@ -241,7 +240,6 @@ export function useInvestments() {
       risk_level: data.riskLevel,
       expected_annual_return: data.expectedAnnualReturn ?? null,
       notes: data.notes ?? null,
-      updated_at: updatedAt,
     };
 
     const extended = await supabase.from('investment_items').update(extendedPayload).eq('id', id).eq('user_id', user.id);
@@ -253,7 +251,6 @@ export function useInvestments() {
     const legacy = await supabase.from('investment_items').update({
       name: data.name,
       amount: data.currentValue,
-      updated_at: updatedAt,
     }).eq('id', id).eq('user_id', user.id);
 
     if (legacy.error) throw new Error(legacy.error.message || extended.error.message);
@@ -274,7 +271,8 @@ export function useInvestments() {
     if (result.error) throw new Error(result.error.message);
 
     const meta = readJson<Record<string, InvestmentMeta>>(userMetaKey, {});
-    const { [id]: _removed, ...rest } = meta;
+    const rest = { ...meta };
+    delete rest[id];
     writeJson(userMetaKey, rest);
     setItems(prev => prev.filter(item => item.id !== id));
   }, [isGuest, items, persistGuest, user, userMetaKey]);
@@ -288,4 +286,3 @@ export function useInvestments() {
     remove,
   };
 }
-

@@ -5,15 +5,17 @@ ALTER TABLE investment_items
   ADD COLUMN IF NOT EXISTS start_date date,
   ADD COLUMN IF NOT EXISTS risk_level text DEFAULT 'medium',
   ADD COLUMN IF NOT EXISTS expected_annual_return numeric,
-  ADD COLUMN IF NOT EXISTS notes text;
+  ADD COLUMN IF NOT EXISTS notes text,
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz;
 
 UPDATE investment_items
 SET current_value = COALESCE(current_value, amount),
     start_date = COALESCE(start_date, created_at::date),
     type = COALESCE(type, 'stocks'),
-    risk_level = COALESCE(risk_level, 'medium')
+    risk_level = COALESCE(risk_level, 'medium'),
+    updated_at = COALESCE(updated_at, created_at)
 WHERE current_value IS NULL
    OR start_date IS NULL
    OR type IS NULL
-   OR risk_level IS NULL;
-
+   OR risk_level IS NULL
+   OR updated_at IS NULL;
