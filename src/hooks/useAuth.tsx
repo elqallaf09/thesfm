@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 
 interface AuthContextValue {
   user: User | null;
@@ -74,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     signIn: async (username: string, password: string) => {
       try {
+        if (supabaseConfigError) return { error: new Error(supabaseConfigError) };
         const identifier = username.trim();
         const { error } = await supabase.auth.signInWithPassword({
           email: isEmail(identifier) ? identifier : usernameToEmail(identifier),
@@ -100,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp: async (username: string, password: string, email: string, age: string, gender?: string, securityQuestion?: string, securityAnswer?: string) => {
       const cleanUsername = username.trim().toLowerCase();
       try {
+        if (supabaseConfigError) return { error: new Error(supabaseConfigError) };
         const cleanEmail = email.trim().toLowerCase();
         if (!isEmail(cleanEmail)) return { error: new Error('Invalid email format') };
         if (password.length < 6) return { error: new Error('Password must be at least 6 characters') };

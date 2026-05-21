@@ -3,7 +3,7 @@
 import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, LockKeyhole, UserRound } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -57,6 +57,12 @@ function LoginContent() {
 
     setSubmitting(true);
     const cleanUsername = username.trim().toLowerCase();
+
+    if (supabaseConfigError) {
+      setSubmitting(false);
+      setMessage({ type: 'error', text: supabaseConfigError });
+      return;
+    }
 
     if (mode === 'login') {
       const { error } = await signIn(cleanUsername, password);
@@ -125,6 +131,10 @@ function LoginContent() {
   };
 
   const resetPassword = async () => {
+    if (supabaseConfigError) {
+      setMessage({ type: 'error', text: supabaseConfigError });
+      return;
+    }
     if (username.trim().length < 3) {
       setMessage({ type: 'error', text: t('login_error_short_username') });
       return;

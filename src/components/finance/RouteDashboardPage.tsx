@@ -46,6 +46,15 @@ type GoalItem = {
   deadline?: string | null;
   created_at?: string | null;
 };
+type GoalRow = {
+  id: string;
+  goal: string;
+  amount: number;
+  duration?: string | null;
+  duration_unit?: string | null;
+  notes?: string | null;
+  created_at?: string | null;
+};
 type QueryResult<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -184,7 +193,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         safeQuery<MoneyItem>(supabase.from('expense_items').select('id, name, amount, created_at').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<MoneyItem>),
         safeQuery<MoneyItem>(supabase.from('savings_items').select('id, name, amount').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>),
         safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>),
-        safeQuery<GoalItem>(supabase.from('financial_goals').select('id, name, target_amount, current_amount, icon, color, deadline').eq('user_id', user.id) as unknown as QueryResult<GoalItem>),
+        safeQuery<GoalRow>(supabase.from('financial_goals').select('id, goal, amount, duration, duration_unit, notes, created_at').eq('user_id', user.id) as unknown as QueryResult<GoalRow>),
       ]);
 
       if (cancelled) return;
@@ -194,7 +203,16 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         expenses: expenses.data,
         savings: savings.data,
         investments: investments.data,
-        goals: goals.data,
+        goals: goals.data.map(item => ({
+          id: item.id,
+          name: item.goal,
+          target_amount: Number(item.amount) || 0,
+          current_amount: 0,
+          icon: '🎯',
+          color: '#D8AE63',
+          deadline: item.duration ? `${item.duration} ${item.duration_unit || ''}`.trim() : null,
+          created_at: item.created_at,
+        })),
         error: [income.error, expenses.error, savings.error, investments.error, goals.error].filter(Boolean)[0] ?? null,
       });
       setDataLoading(false);
@@ -632,8 +650,8 @@ function buildPrimaryActions(kind: PageKind, isAr: boolean, router: ReturnType<t
   const routes: Record<Exclude<PageKind, 'reports' | 'ai'>, { label: LangText; href: string }> = {
     expenses: { label: { ar: 'إضافة مصروف', en: 'Add expense' }, href: '/expenses/add' },
     income: { label: { ar: 'إضافة دخل', en: 'Add income' }, href: '/income/add' },
-    invest: { label: { ar: 'إضافة استثمار', en: 'Add investment' }, href: '/education/investments' },
-    goals: { label: { ar: 'إضافة هدف', en: 'Add goal' }, href: '/goals' },
+    invest: { label: { ar: 'إضافة استثمار', en: 'Add investment' }, href: '/invest/add' },
+    goals: { label: { ar: 'إضافة هدف', en: 'Add goal' }, href: '/goals/add' },
   };
 
   const action = routes[kind];

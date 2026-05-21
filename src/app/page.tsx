@@ -15,7 +15,7 @@ interface MonthSnapshot {
   income: number; expenses: number; savings: number; investment: number; charity: number;
 }
 type ExpenseRow = { id: string; name: string | null; amount: number | string | null; created_at?: string | null };
-type GoalRow = { id: string; name: string | null; icon?: string | null; target_amount: number | string | null; current_amount: number | string | null; color?: string | null };
+type GoalRow = { id: string; goal?: string | null; name?: string | null; amount?: number | string | null; target_amount?: number | string | null; current_amount?: number | string | null; icon?: string | null; color?: string | null };
 type InvestmentRow = { id: string; name: string | null; amount: number | string | null };
 type DonutItem = { label: string; pct: number; color: string; amount: number };
 type ProfileRow = { display_name?: string | null; profession?: string | null };
@@ -675,11 +675,11 @@ export default function DashboardPage(){
             <div className="dc" style={{padding:'22px'}}>
               <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111',marginBottom:'18px'}}>الأهداف المالية</h3>
               {goals.length===0 ? (
-                <EmptyState icon="🎯" title="لا توجد أهداف مالية بعد" subtitle="ابدأ بتحديد هدفك الأول" btnLabel="إضافة هدف" btnHref="/goals" />
+                <EmptyState icon="🎯" title="لا توجد أهداف مالية بعد" subtitle="ابدأ بتحديد هدفك الأول" btnLabel="إضافة هدف" btnHref="/goals/add" />
               ) : (
                 <div className="goals-grid" style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:'14px'}}>
                   {goals.map(g=>{
-                    const target=amountOf(g.target_amount);
+                    const target=amountOf(g.target_amount ?? g.amount);
                     const saved=amountOf(g.current_amount);
                     const color=g.color||'#D8AE63';
                     const pct=target>0?Math.min(100,Math.round((saved/target)*100)):0;
@@ -688,7 +688,7 @@ export default function DashboardPage(){
                         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px'}}>
                           <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
                             <span style={{fontSize:'20px'}}>{g.icon||'🎯'}</span>
-                            <span style={{fontSize:'13px',fontWeight:'800',color:'#111111'}}>{g.name||'هدف مالي'}</span>
+                            <span style={{fontSize:'13px',fontWeight:'800',color:'#111111'}}>{g.name||g.goal||'هدف مالي'}</span>
                           </div>
                           <span style={{fontSize:'14px',fontWeight:'900',color}}>{pct}%</span>
                         </div>

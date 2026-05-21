@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 
@@ -74,6 +74,10 @@ export default function AddExpensePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (supabaseConfigError) {
+      alert(supabaseConfigError);
+      return;
+    }
     if (!user || !category || !necessity || !amount) return;
 
     setLoading(true);
@@ -84,9 +88,7 @@ export default function AddExpensePage() {
       const { error } = await supabase.from('expense_items').insert({
         user_id: user.id,
         amount: parseFloat(amount),
-        name: `${getLabel(selectedCategory)}|${isAr ? selectedNecessity.ar : selectedNecessity.en}|${userText}`,
-        category,
-        necessity,
+        name: `${getLabel(selectedCategory)} | ${isAr ? selectedNecessity.ar : selectedNecessity.en} | ${userText}${notes.trim() ? ` | ${notes.trim()}` : ''}`,
       }).select().single();
 
       if (error) throw error;
