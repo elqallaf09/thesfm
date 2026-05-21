@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/Sidebar';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { useLanguage } from '@/hooks/useLanguage';
 import { Loader2, Pencil, Trash2, Send, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 
 /* ─── Types ─── */
@@ -51,6 +53,63 @@ const FEASIBILITY_TYPES = [
   { id: 'esg', icon: '🌱', color: '#16A34A', title: 'الجدوى البيئية والاجتماعية', desc: 'تقييم الأثر البيئي والاجتماعي للمشروع.' },
   { id: 'marketing', icon: '🎯', color: '#EC4899', title: 'الجدوى التسويقية والرقمية', desc: 'استراتيجية التسويق والحضور الرقمي.' },
 ];
+
+const PROJECT_TEXT = {
+  ar: {
+    title: '🚀 مشاريعي',
+    subtitle: 'تابع مشاريعك وخططك المالية والاستثمارية',
+    adCalculator: '🎯 حاسبة ميزانية حملة إعلانية',
+    close: 'إغلاق',
+    newProject: 'مشروع جديد',
+    totalProjects: 'إجمالي المشاريع',
+    activeProjects: 'المشاريع النشطة',
+    totalCapital: 'إجمالي رأس المال',
+    totalProfit: 'إجمالي الأرباح',
+    currency: 'د.ك',
+    noProjects: 'لا توجد مشاريع بعد',
+    noProjectsDesc: 'أضف مشروعك الأول واحصل على تحليل AI شامل',
+    addFirst: 'إضافة أول مشروع',
+    advisorTitle: 'SFM Project Advisor',
+    advisorSub: 'مستشار مشاريع متخصص',
+    connected: 'متصل',
+  },
+  en: {
+    title: '🚀 My Projects',
+    subtitle: 'Track your projects, financial plans, and investment ideas',
+    adCalculator: '🎯 Ad campaign budget calculator',
+    close: 'Close',
+    newProject: 'New project',
+    totalProjects: 'Total projects',
+    activeProjects: 'Active projects',
+    totalCapital: 'Total capital',
+    totalProfit: 'Total profit',
+    currency: 'KWD',
+    noProjects: 'No projects yet',
+    noProjectsDesc: 'Add your first project and get a full AI analysis',
+    addFirst: 'Add first project',
+    advisorTitle: 'SFM Project Advisor',
+    advisorSub: 'Specialized project advisor',
+    connected: 'Connected',
+  },
+  fr: {
+    title: '🚀 Mes projets',
+    subtitle: 'Suivez vos projets, plans financiers et idées d’investissement',
+    adCalculator: '🎯 Calculateur de budget publicitaire',
+    close: 'Fermer',
+    newProject: 'Nouveau projet',
+    totalProjects: 'Total des projets',
+    activeProjects: 'Projets actifs',
+    totalCapital: 'Capital total',
+    totalProfit: 'Bénéfice total',
+    currency: 'KWD',
+    noProjects: 'Aucun projet pour le moment',
+    noProjectsDesc: 'Ajoutez votre premier projet et obtenez une analyse IA complète',
+    addFirst: 'Ajouter le premier projet',
+    advisorTitle: 'SFM Project Advisor',
+    advisorSub: 'Conseiller spécialisé en projets',
+    connected: 'Connecté',
+  },
+} as const;
 
 /* ─── Helpers ─── */
 const riskInfo = (v: number) => v < 34
@@ -106,6 +165,8 @@ function RiskGauge({ value }: { value: number }) {
 export default function ProjectsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { lang, dir } = useLanguage();
+  const pt = PROJECT_TEXT[lang];
   const [projects, setProjects] = useState<Project[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [formStep, setFormStep] = useState(0);
@@ -225,7 +286,7 @@ export default function ProjectsPage() {
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap');
       *{box-sizing:border-box;margin:0;padding:0}
-      .pp{font-family:'Tajawal',sans-serif;direction:rtl;background:#F7F3EA;min-height:100vh;color:#111111}
+      .pp{font-family:'Tajawal',sans-serif;background:#F7F3EA;min-height:100vh;color:#111111}
       .pp ::-webkit-scrollbar{width:4px}.pp ::-webkit-scrollbar-thumb{background:rgba(216,174,99,.3);border-radius:10px}
       @keyframes spin{to{transform:rotate(360deg)}}
       @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
@@ -251,41 +312,44 @@ export default function ProjectsPage() {
       .need-chip{cursor:pointer;transition:all .15s;border:1.5px solid rgba(216,174,99,.22);border-radius:20px;padding:7px 13px;font-size:12.5px;font-weight:600;font-family:'Tajawal',sans-serif;background:transparent;color:#5B4332;display:inline-flex;align-items:center;gap:6px}
       .need-chip:hover{border-color:#D8AE63;background:rgba(216,174,99,.08)}
       .need-chip.active{background:rgba(216,174,99,.16);border-color:#D8AE63;color:#8A6D2A}
-      @media(max-width:1024px){.sidebar{display:none!important}.main-ml{margin-right:0!important}}
+      @media(max-width:1024px){.sidebar{display:none!important}.main-ml{margin-inline-start:0!important}}
       @media(max-width:768px){.kpi-g{grid-template-columns:1fr 1fr!important}.g2{grid-template-columns:1fr!important}}
     `}</style>
 
-    <div className="pp">
+    <div className="pp" dir={dir}>
       <Sidebar />
 
       {/* ── Main ── */}
-      <main className="main-ml" style={{ marginRight: '220px', padding: '24px 24px 60px', maxWidth: '100%', overflowX: 'hidden' }}>
+      <main className="main-ml" style={{ marginInlineStart: '230px', padding: '24px 24px 60px', maxWidth: '100%', overflowX: 'hidden' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
           {/* Header */}
           <div style={S(0)}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <h1 style={{ fontSize: 'clamp(22px,3vw,30px)', fontWeight: '900', color: '#111111', marginBottom: '4px' }}>🚀 مشاريعي</h1>
-                <p style={{ fontSize: '13px', color: '#9A6C3C' }}>تابع مشاريعك وخططك المالية والاستثمارية</p>
+                <h1 style={{ fontSize: 'clamp(22px,3vw,30px)', fontWeight: '900', color: '#111111', marginBottom: '4px' }}>{pt.title}</h1>
+                <p style={{ fontSize: '13px', color: '#9A6C3C' }}>{pt.subtitle}</p>
               </div>
-              <button className="pbtn pbtn-o" style={{ padding: '11px 18px', fontSize: '14px', marginLeft: '10px' }} onClick={() => router.push('/projects/ad-calculator')}>
-                🎯 حاسبة ميزانية حملة إعلانية
-              </button>
-              <button className="pbtn pbtn-g" style={{ padding: '11px 22px', fontSize: '14px' }}
-                onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyForm); setFormStep(0); setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth' }), 100); }}>
-                {showForm ? <><X className="w-4 h-4" /> إغلاق</> : <><Plus className="w-4 h-4" /> مشروع جديد</>}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <LanguageSwitcher variant="gold" compact />
+                <button className="pbtn pbtn-o" style={{ padding: '11px 18px', fontSize: '14px' }} onClick={() => router.push('/projects/ad-calculator')}>
+                  {pt.adCalculator}
+                </button>
+                <button className="pbtn pbtn-g" style={{ padding: '11px 22px', fontSize: '14px' }}
+                  onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyForm); setFormStep(0); setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth' }), 100); }}>
+                  {showForm ? <><X className="w-4 h-4" /> {pt.close}</> : <><Plus className="w-4 h-4" /> {pt.newProject}</>}
+                </button>
+              </div>
             </div>
           </div>
 
           {/* KPI Cards */}
           <div className="kpi-g" style={{ ...S(40), display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '14px' }}>
             {[
-              { icon: '🚀', label: 'إجمالي المشاريع', val: projects.length, color: '#D8AE63', isN: true },
-              { icon: '✅', label: 'المشاريع النشطة', val: activeProjects, color: '#22C55E', isN: true },
-              { icon: '💰', label: 'إجمالي رأس المال', val: totalCapital, color: '#3B82F6', unit: 'د.ك' },
-              { icon: '📈', label: 'إجمالي الأرباح', val: totalCurrentProfit, color: totalCurrentProfit >= 0 ? '#22C55E' : '#EF4444', unit: 'د.ك' },
+              { icon: '🚀', label: pt.totalProjects, val: projects.length, color: '#D8AE63', isN: true },
+              { icon: '✅', label: pt.activeProjects, val: activeProjects, color: '#22C55E', isN: true },
+              { icon: '💰', label: pt.totalCapital, val: totalCapital, color: '#3B82F6', unit: pt.currency },
+              { icon: '📈', label: pt.totalProfit, val: totalCurrentProfit, color: totalCurrentProfit >= 0 ? '#22C55E' : '#EF4444', unit: pt.currency },
             ].map((k, i) => (
               <div key={i} className="pc no-h" style={{ padding: '18px 20px' }}>
                 <div style={{ width: '40px', height: '40px', background: `${k.color}14`, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', marginBottom: '12px' }}>{k.icon}</div>
@@ -486,10 +550,10 @@ export default function ProjectsPage() {
           {projects.length === 0 && !showForm && (
             <div className="pc" style={{ ...S(80), padding: '60px 40px', textAlign: 'center' }}>
               <div style={{ fontSize: '56px', marginBottom: '18px' }}>🚀</div>
-              <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#111111', marginBottom: '10px' }}>لا توجد مشاريع بعد</h3>
-              <p style={{ fontSize: '14px', color: '#9A6C3C', marginBottom: '22px', lineHeight: 1.7 }}>أضف مشروعك الأول واحصل على تحليل AI شامل</p>
+              <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#111111', marginBottom: '10px' }}>{pt.noProjects}</h3>
+              <p style={{ fontSize: '14px', color: '#9A6C3C', marginBottom: '22px', lineHeight: 1.7 }}>{pt.noProjectsDesc}</p>
               <button className="pbtn pbtn-g" style={{ padding: '12px 26px', fontSize: '15px', margin: '0 auto' }} onClick={() => setShowForm(true)}>
-                <Plus className="w-4 h-4" /> أضف مشروعك الأول
+                <Plus className="w-4 h-4" /> {pt.addFirst}
               </button>
             </div>
           )}
@@ -624,12 +688,12 @@ export default function ProjectsPage() {
             <div style={{ background: 'linear-gradient(135deg,#1A0F05,#2B1A0D)', padding: '16px 22px', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ width: '38px', height: '38px', background: 'rgba(216,174,99,.18)', borderRadius: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', border: '1px solid rgba(216,174,99,.28)', flexShrink: 0 }}>🤖</div>
               <div>
-                <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#fff' }}>SFM Project Advisor</div>
-                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,.4)' }}>مستشار مشاريع متخصص</div>
+                <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#fff' }}>{pt.advisorTitle}</div>
+                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,.4)' }}>{pt.advisorSub}</div>
               </div>
-              <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <div style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22C55E', animation: 'pulse 1.5s infinite' }} />
-                <span style={{ fontSize: '11px', color: '#22C55E', fontWeight: '600' }}>متصل</span>
+                <span style={{ fontSize: '11px', color: '#22C55E', fontWeight: '600' }}>{pt.connected}</span>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', padding: '12px 22px 0', flexWrap: 'wrap', borderBottom: '1px solid rgba(216,174,99,.08)', paddingBottom: '12px' }}>
@@ -660,3 +724,5 @@ export default function ProjectsPage() {
     </div>
   </>);
 }
+
+
