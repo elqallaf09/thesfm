@@ -30,6 +30,8 @@ export const TR: Record<string, TranslationEntry> = {
   error:       { ar:'حدث خطأ', en:'An error occurred', fr:'Une erreur est survenue' },
 
   success:     { ar:'تمت العملية بنجاح', en:'Operation successful', fr:'Operation reussie' },
+  actualData:  { ar:'بيانات فعلية', en:'Actual data', fr:'Donnees reelles' },
+  demoData:    { ar:'بيانات تجريبية', en:'Demo data', fr:'Donnees demo' },
 
   close:       { ar:'إغلاق',             en:'Close', fr:'Fermer' },
 
@@ -564,6 +566,7 @@ export const TR: Record<string, TranslationEntry> = {
   entry_save: { ar:'إضافة', en:'Add', fr:'Ajouter' },
   entry_validation_error: { ar:'أدخل الاسم والمبلغ بشكل صحيح', en:'Enter a valid name and amount', fr:'Entrez un nom et un montant valides' },
   entry_auth_required: { ar:'سجل الدخول أولاً لإتمام العملية', en:'Sign in first to complete this action', fr:"Connectez-vous d'abord pour terminer cette action" },
+  savings_noEntriesYet: { ar:'لم تُسجّل عمليات إدخار بعد', en:'No savings recorded yet', fr:'Aucune epargne enregistree' },
   expenses_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف هذا المصروف؟', en:'Delete this expense?', fr:'Supprimer cette depense ?' },
   income_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف هذا الدخل؟', en:'Delete this income?', fr:'Supprimer ce revenu ?' },
   invest_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف هذا الاستثمار؟', en:'Delete this investment?', fr:'Supprimer cet investissement ?' },
