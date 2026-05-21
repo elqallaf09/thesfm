@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  Edit3,
   Bot,
   Bell as BellIcon,
   ChartPie,
@@ -21,6 +22,7 @@ import {
   ReceiptText,
   Send,
   Settings,
+  Trash2,
   Target,
   TrendingUp,
   Wallet,
@@ -36,6 +38,9 @@ type PageKind = 'expenses' | 'income' | 'invest' | 'goals' | 'reports' | 'ai';
 type LangText = { ar: string; en: string };
 type MoneyItem = { id: string; name: string; amount: number; created_at?: string | null };
 type IncomeSource = MoneyItem & { label?: string | null; category?: string | null };
+type EntryKind = Extract<PageKind, 'expenses' | 'income' | 'invest'>;
+type EntryFormState = { id?: string; name: string; amount: string; category: string };
+type EntryRow = { id: string; title: string; subtitle: string; value: string; item?: MoneyItem | IncomeSource };
 type GoalItem = {
   id: string;
   name: string;
@@ -59,7 +64,7 @@ type QueryResult<T> = PromiseLike<{ data: T[] | null; error: { message: string }
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 interface Snapshot {
-  income: MoneyItem[];
+  income: IncomeSource[];
   expenses: MoneyItem[];
   savings: MoneyItem[];
   investments: MoneyItem[];
@@ -82,6 +87,18 @@ const emptySnapshot: Snapshot = {
   goals: [],
   error: null,
 };
+
+const emptyEntryForm: EntryFormState = { name: '', amount: '', category: 'general' };
+const entryTitleKeys = {
+  expenses: 'expenses_entry_title',
+  income: 'income_entry_title',
+  invest: 'invest_entry_title',
+} as const;
+const deleteConfirmKeys = {
+  expenses: 'expenses_deleteConfirmMessage',
+  income: 'income_deleteConfirmMessage',
+  invest: 'invest_deleteConfirmMessage',
+} as const;
 
 const navItems = [
   { href: '/', label: { ar: 'الرئيسية', en: 'Dashboard' }, icon: Home },
@@ -154,6 +171,37 @@ function progress(current: number, target: number) {
   return Math.min(100, Math.max(0, Math.round((current / target) * 100)));
 }
 
+function editableKind(kind: PageKind): kind is EntryKind {
+  return kind === 'expenses' || kind === 'income' || kind === 'invest';
+}
+
+function guestKey(kind: EntryKind) {
+  return `sfm_guest_${kind}`;
+}
+
+function readGuestItems(kind: EntryKind): MoneyItem[] | IncomeSource[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(guestKey(kind)) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeGuestItems(kind: EntryKind, items: MoneyItem[] | IncomeSource[]) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(guestKey(kind), JSON.stringify(items));
+}
+
+function entryTitleKey(kind: EntryKind) {
+  return entryTitleKeys[kind];
+}
+
+function deleteConfirmKey(kind: EntryKind) {
+  return deleteConfirmKeys[kind];
+}
+
 async function safeQuery<T>(query: QueryResult<T>) {
   try {
     const { data, error } = await query;
@@ -167,7 +215,7 @@ async function safeQuery<T>(query: QueryResult<T>) {
 export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const router = useRouter();
   const { user, loading, isGuest } = useAuth();
-  const { isAr, dir } = useLanguage();
+  const { isAr, dir, t } = useLanguage();
   const meta = pageMeta[kind];
   const Icon = meta.icon;
 
@@ -177,12 +225,26 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [chatValue, setChatValue] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
+  const [entryForm, setEntryForm] = useState<EntryFormState>(emptyEntryForm);
+  const [entryMode, setEntryMode] = useState<'create' | 'edit'>('create');
+  const [entryOpen, setEntryOpen] = useState(false);
+  const [entrySaving, setEntrySaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<(MoneyItem | IncomeSource) | null>(null);
+  const [entryMessage, setEntryMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       if (!user) {
+        if (isGuest) {
+          setSnapshot({
+            ...emptySnapshot,
+            income: readGuestItems('income') as IncomeSource[],
+            expenses: readGuestItems('expenses') as MoneyItem[],
+            investments: readGuestItems('invest') as MoneyItem[],
+          });
+        }
         setDataLoading(false);
         return;
       }
@@ -222,7 +284,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [isGuest, user]);
 
   const data = useMemo(() => {
     const income = snapshot.income;
@@ -254,6 +316,158 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const cards = useMemo<SectionCard[]>(() => buildCards(kind, data, isAr), [data, isAr, kind]);
   const rows = useMemo(() => buildRows(kind, data, isAr), [data, isAr, kind]);
   const insights = useMemo(() => buildInsights(kind, data, isAr), [data, isAr, kind]);
+
+  function showEntryMessage(type: 'ok' | 'err', text: string) {
+    setEntryMessage({ type, text });
+    window.setTimeout(() => setEntryMessage(null), 2200);
+  }
+
+  function openCreateEntry() {
+    if (!editableKind(kind)) return;
+    setEntryMode('create');
+    setEntryForm(emptyEntryForm);
+    setEntryOpen(true);
+  }
+
+  function openEditEntry(item: MoneyItem | IncomeSource) {
+    if (!editableKind(kind)) return;
+    setEntryMode('edit');
+    setEntryForm({
+      id: item.id,
+      name: 'label' in item && item.label ? item.label : item.name,
+      amount: String(item.amount ?? ''),
+      category: 'category' in item && item.category ? item.category : 'general',
+    });
+    setEntryOpen(true);
+  }
+
+  function applyEntryToSnapshot(entryKind: EntryKind, item: MoneyItem | IncomeSource, mode: 'create' | 'edit') {
+    setSnapshot(prev => {
+      const apply = <T extends MoneyItem>(items: T[]) => (
+        mode === 'create'
+          ? [item as T, ...items]
+          : items.map(existing => existing.id === item.id ? { ...existing, ...item } as T : existing)
+      );
+
+      if (entryKind === 'income') return { ...prev, income: apply(prev.income) as IncomeSource[] };
+      if (entryKind === 'expenses') return { ...prev, expenses: apply(prev.expenses) };
+      return { ...prev, investments: apply(prev.investments) };
+    });
+  }
+
+  async function saveEntry(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editableKind(kind) || entrySaving) return;
+
+    const name = entryForm.name.trim();
+    const amount = Number(entryForm.amount);
+    if (!name || !amount || amount <= 0) {
+      showEntryMessage('err', t('entry_validation_error'));
+      return;
+    }
+
+    setEntrySaving(true);
+    const mode = entryMode;
+    const id = entryForm.id || (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`);
+
+    try {
+      if (isGuest) {
+        const current = readGuestItems(kind);
+        const item = kind === 'income'
+          ? { id, name, label: name, category: entryForm.category || 'general', amount, created_at: new Date().toISOString() } as IncomeSource
+          : { id, name, amount, created_at: new Date().toISOString() } as MoneyItem;
+        const next = mode === 'create' ? [item, ...current] : current.map(existing => existing.id === id ? item : existing);
+        writeGuestItems(kind, next);
+        applyEntryToSnapshot(kind, item, mode);
+      } else {
+        if (!user) throw new Error(t('entry_auth_required'));
+        if (kind === 'income') {
+          if (mode === 'create') {
+            const { data: created, error } = await supabase.from('monthly_income_sources').insert({
+              user_id: user.id,
+              category: entryForm.category || 'general',
+              label: name,
+              amount,
+            }).select('id,label,category,amount').single();
+            if (error) throw error;
+            applyEntryToSnapshot(kind, { id: created.id, name: created.label || name, label: created.label, category: created.category, amount: Number(created.amount) || amount }, mode);
+          } else {
+            const { error } = await supabase.from('monthly_income_sources').update({
+              category: entryForm.category || 'general',
+              label: name,
+              amount,
+            }).eq('id', id);
+            if (error) throw error;
+            applyEntryToSnapshot(kind, { id, name, label: name, category: entryForm.category || 'general', amount }, mode);
+          }
+        } else {
+          const table = kind === 'expenses' ? 'expense_items' : 'investment_items';
+          if (mode === 'create') {
+            const { data: created, error } = await supabase.from(table).insert({
+              user_id: user.id,
+              name,
+              amount,
+            }).select('id,name,amount,created_at').single();
+            if (error) throw error;
+            applyEntryToSnapshot(kind, { id: created.id, name: created.name, amount: Number(created.amount) || amount, created_at: created.created_at }, mode);
+          } else {
+            const { error } = await supabase.from(table).update({ name, amount }).eq('id', id);
+            if (error) throw error;
+            applyEntryToSnapshot(kind, { id, name, amount }, mode);
+          }
+        }
+      }
+
+      setEntryOpen(false);
+      setEntryForm(emptyEntryForm);
+      showEntryMessage('ok', mode === 'create' ? t('success') : t('updateSuccess'));
+    } catch (err) {
+      showEntryMessage('err', err instanceof Error ? err.message : t('error'));
+    } finally {
+      setEntrySaving(false);
+    }
+  }
+
+  async function deleteEntry() {
+    if (!editableKind(kind) || !confirmDelete || entrySaving) return;
+
+    setEntrySaving(true);
+    try {
+      if (isGuest) {
+        const next = readGuestItems(kind).filter(item => item.id !== confirmDelete.id);
+        writeGuestItems(kind, next);
+      } else {
+        if (!user) throw new Error(t('entry_auth_required'));
+        const table = kind === 'income' ? 'monthly_income_sources' : kind === 'expenses' ? 'expense_items' : 'investment_items';
+        const { error } = await supabase.from(table).delete().eq('id', confirmDelete.id);
+        if (error) throw error;
+      }
+
+      setSnapshot(prev => {
+        if (kind === 'income') return { ...prev, income: prev.income.filter(item => item.id !== confirmDelete.id) };
+        if (kind === 'expenses') return { ...prev, expenses: prev.expenses.filter(item => item.id !== confirmDelete.id) };
+        return { ...prev, investments: prev.investments.filter(item => item.id !== confirmDelete.id) };
+      });
+      setConfirmDelete(null);
+      showEntryMessage('ok', t('deleteSuccess'));
+    } catch (err) {
+      showEntryMessage('err', err instanceof Error ? err.message : t('error'));
+    } finally {
+      setEntrySaving(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!entryOpen && !confirmDelete) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setEntryOpen(false);
+        setConfirmDelete(null);
+      }
+    };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, [confirmDelete, entryOpen]);
 
   async function sendAiMessage() {
     const content = chatValue.trim();
@@ -345,7 +559,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             <p>{pick(meta.subtitle, isAr)}</p>
           </div>
           <div className="hero-actions">
-            {buildPrimaryActions(kind, isAr, router, () => {
+            {buildPrimaryActions(kind, isAr, router, openCreateEntry, () => {
               const input = document.getElementById('ai-chat-input');
               input?.focus();
             }).map(action => (
@@ -388,12 +602,24 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 <div className="empty-state">{isAr ? 'لا توجد بيانات محفوظة حالياً' : 'No saved data yet'}</div>
               )}
               {rows.map(row => (
-                <div className="data-row" key={row.title}>
+                <div className="data-row" key={row.id}>
                   <div>
                     <strong>{row.title}</strong>
                     <span>{row.subtitle}</span>
                   </div>
-                  <b>{row.value}</b>
+                  <div className="row-actions-wrap">
+                    <b>{row.value}</b>
+                    {editableKind(kind) && row.item && (
+                      <div className="row-actions">
+                        <button type="button" className="row-action" onClick={() => openEditEntry(row.item!)} aria-label={t('edit')} title={t('edit')}>
+                          <Edit3 size={15} />
+                        </button>
+                        <button type="button" className="row-action" onClick={() => setConfirmDelete(row.item!)} aria-label={t('delete')} title={t('delete')}>
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -458,6 +684,84 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             </div>
           </section>
         )}
+
+        {entryOpen && editableKind(kind) && (
+          <div className="entry-overlay" role="presentation" onMouseDown={() => setEntryOpen(false)}>
+            <div className="entry-modal" role="dialog" aria-modal="true" aria-labelledby="entry-modal-title" onMouseDown={event => event.stopPropagation()}>
+              <div className="entry-modal-head">
+                <div>
+                  <p>{entryMode === 'edit' ? t('update') : t('entry_save')}</p>
+                  <h3 id="entry-modal-title">{t(entryTitleKey(kind))}</h3>
+                </div>
+                <button type="button" className="icon-btn" onClick={() => setEntryOpen(false)} aria-label={t('close')}>
+                  <X size={18} />
+                </button>
+              </div>
+              <form className="entry-form" onSubmit={saveEntry}>
+                <label>
+                  <span>{t('entry_name')}</span>
+                  <input
+                    value={entryForm.name}
+                    onChange={event => setEntryForm(prev => ({ ...prev, name: event.target.value }))}
+                    autoFocus
+                  />
+                </label>
+                <label>
+                  <span>{t('entry_amount')}</span>
+                  <input
+                    inputMode="decimal"
+                    value={entryForm.amount}
+                    onChange={event => setEntryForm(prev => ({ ...prev, amount: event.target.value }))}
+                  />
+                </label>
+                {kind === 'income' && (
+                  <label>
+                    <span>{t('entry_category')}</span>
+                    <input
+                      value={entryForm.category}
+                      onChange={event => setEntryForm(prev => ({ ...prev, category: event.target.value }))}
+                    />
+                  </label>
+                )}
+                <div className="entry-actions">
+                  <button type="button" className="ghost-form-btn" onClick={() => setEntryOpen(false)} disabled={entrySaving}>
+                    {t('cancel')}
+                  </button>
+                  <button type="submit" className="primary-form-btn" disabled={entrySaving}>
+                    {entrySaving ? t('saving') : entryMode === 'edit' ? t('update') : t('entry_save')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {confirmDelete && editableKind(kind) && (
+          <div className="entry-overlay" role="presentation" onMouseDown={() => setConfirmDelete(null)}>
+            <div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-delete-title" onMouseDown={event => event.stopPropagation()}>
+              <div className="confirm-icon">
+                <Trash2 size={24} />
+              </div>
+              <h3 id="confirm-delete-title">{t('confirmDelete')}</h3>
+              <p>{t(deleteConfirmKey(kind))}</p>
+              <small>{t('deleteWarning')}</small>
+              <div className="entry-actions">
+                <button type="button" className="ghost-form-btn" onClick={() => setConfirmDelete(null)} disabled={entrySaving}>
+                  {t('cancel')}
+                </button>
+                <button type="button" className="danger-form-btn" onClick={() => void deleteEntry()} disabled={entrySaving}>
+                  {entrySaving ? t('saving') : t('delete')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {entryMessage && (
+          <div className={`entry-toast ${entryMessage.type}`}>
+            {entryMessage.text}
+          </div>
+        )}
       </main>
 
       <style>{baseStyles}</style>
@@ -508,7 +812,7 @@ function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, isA
 
 function buildDataShape() {
   return {
-    income: [] as MoneyItem[],
+    income: [] as IncomeSource[],
     expenses: [] as MoneyItem[],
     savings: [] as MoneyItem[],
     investments: [] as MoneyItem[],
@@ -522,11 +826,12 @@ function buildDataShape() {
   };
 }
 
-function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean) {
+function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean): EntryRow[] {
   if (kind === 'goals') {
     return data.goals.map(goal => {
       const done = progress(goal.current_amount, goal.target_amount);
       return {
+        id: goal.id,
         title: goal.name,
         subtitle: isAr ? `تقدم ${done}%، المتبقي ${money(Math.max(goal.target_amount - goal.current_amount, 0), isAr)}` : `${done}% complete, remaining ${money(Math.max(goal.target_amount - goal.current_amount, 0), isAr)}`,
         value: money(goal.target_amount, isAr),
@@ -536,25 +841,27 @@ function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr
 
   if (kind === 'reports') {
     return [
-      { title: isAr ? 'الدخل مقابل المصروفات' : 'Income vs expenses', subtitle: isAr ? 'ملخص التدفق النقدي الحالي' : 'Current cash flow summary', value: money(data.balance, isAr) },
-      { title: isAr ? 'تقرير الادخار' : 'Savings report', subtitle: isAr ? 'رصيد الادخار المسجل' : 'Recorded savings balance', value: money(data.totalSavings, isAr) },
-      { title: isAr ? 'تقرير الاستثمار' : 'Investment report', subtitle: isAr ? 'قيمة المحفظة الحالية' : 'Current portfolio value', value: money(data.totalInvestments, isAr) },
+      { id: 'income-vs-expenses', title: isAr ? 'الدخل مقابل المصروفات' : 'Income vs expenses', subtitle: isAr ? 'ملخص التدفق النقدي الحالي' : 'Current cash flow summary', value: money(data.balance, isAr) },
+      { id: 'savings-report', title: isAr ? 'تقرير الادخار' : 'Savings report', subtitle: isAr ? 'رصيد الادخار المسجل' : 'Recorded savings balance', value: money(data.totalSavings, isAr) },
+      { id: 'investment-report', title: isAr ? 'تقرير الاستثمار' : 'Investment report', subtitle: isAr ? 'قيمة المحفظة الحالية' : 'Current portfolio value', value: money(data.totalInvestments, isAr) },
     ];
   }
 
   if (kind === 'ai') {
     return [
-      { title: isAr ? 'خفض المصروفات' : 'Reduce expenses', subtitle: isAr ? 'راجع أعلى 3 بنود صرف هذا الشهر.' : 'Review the top 3 spending items this month.', value: money(data.totalExpenses, isAr) },
-      { title: isAr ? 'زيادة الادخار' : 'Increase savings', subtitle: isAr ? 'حوّل جزءًا من الصافي إلى هدف واضح.' : 'Move part of your surplus into a clear goal.', value: money(Math.max(data.balance * 0.2, 0), isAr) },
-      { title: isAr ? 'استثمار منتظم' : 'Recurring investing', subtitle: isAr ? 'مساهمة شهرية صغيرة تحافظ على الاستمرارية.' : 'A small monthly contribution keeps momentum.', value: money(data.totalIncome * 0.1, isAr) },
+      { id: 'reduce-expenses', title: isAr ? 'خفض المصروفات' : 'Reduce expenses', subtitle: isAr ? 'راجع أعلى 3 بنود صرف هذا الشهر.' : 'Review the top 3 spending items this month.', value: money(data.totalExpenses, isAr) },
+      { id: 'increase-savings', title: isAr ? 'زيادة الادخار' : 'Increase savings', subtitle: isAr ? 'حوّل جزءًا من الصافي إلى هدف واضح.' : 'Move part of your surplus into a clear goal.', value: money(Math.max(data.balance * 0.2, 0), isAr) },
+      { id: 'recurring-investing', title: isAr ? 'استثمار منتظم' : 'Recurring investing', subtitle: isAr ? 'مساهمة شهرية صغيرة تحافظ على الاستمرارية.' : 'A small monthly contribution keeps momentum.', value: money(data.totalIncome * 0.1, isAr) },
     ];
   }
 
   const source = kind === 'income' ? data.income : kind === 'invest' ? data.investments : data.expenses;
   return source.slice(0, 6).map(item => ({
+    id: item.id,
     title: item.name.replace(/^خيرية:\d{4}-\d{2}:/, ''),
     subtitle: item.created_at ? new Date(item.created_at).toLocaleDateString() : (isAr ? 'سجل مالي' : 'Financial record'),
     value: money(item.amount, isAr),
+    item,
   }));
 }
 
@@ -627,7 +934,7 @@ function summaryText(kind: PageKind, data: ReturnType<typeof buildDataShape>, is
   return pick(values[kind], isAr);
 }
 
-function buildPrimaryActions(kind: PageKind, isAr: boolean, router: ReturnType<typeof useRouter>, focusAi: () => void) {
+function buildPrimaryActions(kind: PageKind, isAr: boolean, router: ReturnType<typeof useRouter>, openEntry: () => void, focusAi: () => void) {
   if (kind === 'reports') {
     return [
       { label: isAr ? 'طباعة' : 'Print', icon: Printer, variant: 'print' as const, onClick: () => window.print() },
@@ -649,10 +956,18 @@ function buildPrimaryActions(kind: PageKind, isAr: boolean, router: ReturnType<t
     ];
   }
 
-  const routes: Record<Exclude<PageKind, 'reports' | 'ai'>, { label: LangText; href: string }> = {
-    expenses: { label: { ar: 'إضافة مصروف', en: 'Add expense' }, href: '/expenses/add' },
-    income: { label: { ar: 'إضافة دخل', en: 'Add income' }, href: '/income/add' },
-    invest: { label: { ar: 'إضافة استثمار', en: 'Add investment' }, href: '/invest/add' },
+  if (editableKind(kind)) {
+    const labels: Record<EntryKind, LangText> = {
+      expenses: { ar: 'إضافة مصروف', en: 'Add expense' },
+      income: { ar: 'إضافة دخل', en: 'Add income' },
+      invest: { ar: 'إضافة استثمار', en: 'Add investment' },
+    };
+    return [
+      { label: pick(labels[kind], isAr), icon: Plus, variant: 'default' as const, onClick: openEntry },
+    ];
+  }
+
+  const routes: Record<'goals', { label: LangText; href: string }> = {
     goals: { label: { ar: 'إضافة هدف', en: 'Add goal' }, href: '/goals/add' },
   };
 
@@ -686,13 +1001,14 @@ const baseStyles = `
   .kpi-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}.kpi-card,.panel{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:20px;box-shadow:0 4px 22px rgba(90,67,51,.06)}
   .kpi-card{padding:18px;position:relative;overflow:hidden}.kpi-card>span{position:absolute;inset-inline-start:0;top:0;width:4px;height:100%}.kpi-card p{font-size:12px;color:#9A6C3C;font-weight:800;margin:0 0 7px}.kpi-card strong{font-size:23px;font-weight:900;display:block}.kpi-card small{display:block;margin-top:8px;color:#7C6A5D;font-size:12px;line-height:1.6}
   .content-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(280px,.8fr);gap:18px}.panel{padding:20px}.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.panel-head p{margin:0 0 4px;font-size:11px;color:#9A6C3C;font-weight:800}.panel-head h3{margin:0;font-size:18px}.loading-pill{font-size:11px;font-weight:800;color:#D8AE63;background:rgba(216,174,99,.11);border-radius:999px;padding:5px 10px}
-  .row-list{display:grid;gap:10px}.empty-state{padding:22px;border:1px dashed rgba(216,174,99,.25);border-radius:16px;color:#9A6C3C;text-align:center;font-size:13px;font-weight:800}.data-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid rgba(216,174,99,.08)}.data-row:last-child{border-bottom:0}.data-row strong{display:block;font-size:14px}.data-row span{display:block;color:#8B7A6D;font-size:12px;margin-top:4px}.data-row b{font-size:14px;color:#D8AE63;white-space:nowrap}
+  .row-list{display:grid;gap:10px}.empty-state{padding:22px;border:1px dashed rgba(216,174,99,.25);border-radius:16px;color:#9A6C3C;text-align:center;font-size:13px;font-weight:800}.data-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid rgba(216,174,99,.08)}.data-row:last-child{border-bottom:0}.data-row strong{display:block;font-size:14px}.data-row span{display:block;color:#8B7A6D;font-size:12px;margin-top:4px}.data-row b{font-size:14px;color:#D8AE63;white-space:nowrap}.row-actions-wrap{display:flex;align-items:center;gap:10px}.row-actions{display:flex;align-items:center;gap:6px}.row-action{width:34px;height:34px;border-radius:11px;border:1px solid rgba(216,174,99,.16);background:#FFFDFC;color:#5B4332;display:grid;place-items:center;cursor:pointer;transition:all .18s ease}.row-action:hover{border-color:rgba(216,174,99,.45);color:#D8AE63;background:rgba(216,174,99,.08);transform:translateY(-1px)}
   .insight-list{display:grid;gap:12px}.insight-list>div{display:flex;gap:10px;padding:12px;border-radius:14px;background:rgba(216,174,99,.07)}.insight-list svg{color:#D8AE63;flex-shrink:0}.insight-list strong{display:block;font-size:13px}.insight-list span{display:block;font-size:12px;color:#7C6A5D;line-height:1.6;margin-top:3px}
   .summary-band,.ai-panel{margin-top:18px;background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:20px;padding:18px 20px;display:flex;align-items:center;gap:14px}.summary-band svg{color:#D8AE63}.summary-band strong,.ai-panel h3{font-size:16px}.summary-band p,.ai-panel p{margin:4px 0 0;color:#7C6A5D;line-height:1.7;font-size:13px}
   .ai-panel{align-items:stretch;justify-content:space-between}.chat-history{display:grid;gap:8px;min-width:min(460px,100%);max-height:190px;overflow:auto;margin-bottom:10px}.chat-history>div{padding:10px 12px;border-radius:14px;font-size:13px;line-height:1.6}.chat-history .user{background:#111;color:#FFFDFC}.chat-history .assistant{background:rgba(216,174,99,.11);color:#5B4332}.chat-box{display:flex;gap:10px;min-width:min(460px,100%)}.chat-box input{height:46px;border:1.5px solid rgba(216,174,99,.22);border-radius:14px;padding:0 14px;background:#F7F3EA;min-width:0;flex:1;font:600 14px Tajawal,Arial,sans-serif;color:#111}.chat-box button{width:46px;border-radius:14px;border:0;background:#111;color:#D8AE63;display:grid;place-items:center;cursor:pointer}.chat-box button:disabled{opacity:.55;cursor:wait}
   .mobile-panel{position:fixed;inset:12px;z-index:50;background:#111;border-radius:22px;padding:16px;color:#FFFDFC;box-shadow:0 24px 80px rgba(0,0,0,.35)}.mobile-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .entry-overlay{position:fixed;inset:0;background:rgba(17,17,17,.42);backdrop-filter:blur(8px);z-index:80;display:grid;place-items:center;padding:18px}.entry-modal,.confirm-modal{width:min(480px,100%);background:#FFFDFC;border:1px solid rgba(216,174,99,.2);border-radius:22px;box-shadow:0 26px 80px rgba(45,26,10,.26);padding:20px}.entry-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.entry-modal-head p{margin:0 0 4px;color:#9A6C3C;font-size:12px;font-weight:900}.entry-modal-head h3,.confirm-modal h3{margin:0;font-size:21px;font-weight:900}.entry-form{display:grid;gap:14px}.entry-form label{display:grid;gap:7px;font-weight:900;color:#5B4332;font-size:13px}.entry-form input{height:50px;border:1.5px solid rgba(216,174,99,.22);border-radius:14px;background:#F7F3EA;padding:0 14px;color:#111;font:800 14px Tajawal,Arial,sans-serif;outline:0}.entry-form input:focus{border-color:#D8AE63;box-shadow:0 0 0 4px rgba(216,174,99,.12);background:#FFFDFC}.entry-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}.primary-form-btn,.ghost-form-btn,.danger-form-btn{height:44px;border-radius:13px;padding:0 18px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer}.primary-form-btn{border:0;background:linear-gradient(135deg,#111,#2D1A0A,#D8AE63);color:#fff}.ghost-form-btn{border:1px solid rgba(216,174,99,.22);background:#FFFDFC;color:#5B4332}.danger-form-btn{border:0;background:#C2410C;color:#fff}.primary-form-btn:disabled,.ghost-form-btn:disabled,.danger-form-btn:disabled{opacity:.58;cursor:wait}.confirm-modal{text-align:center}.confirm-icon{width:58px;height:58px;border-radius:18px;background:rgba(194,65,12,.09);color:#C2410C;display:grid;place-items:center;margin:0 auto 12px}.confirm-modal p{margin:8px 0 4px;color:#5B4332;font-weight:800}.confirm-modal small{display:block;color:#9A6C3C;line-height:1.6;margin-bottom:14px}.confirm-modal .entry-actions{justify-content:center}.entry-toast{position:fixed;z-index:90;inset-inline-end:22px;bottom:22px;max-width:min(360px,calc(100vw - 32px));padding:13px 16px;border-radius:15px;font:900 13px Tajawal,Arial,sans-serif;box-shadow:0 18px 45px rgba(45,26,10,.18);animation:slideUp .22s ease}.entry-toast.ok{background:#ECFDF5;color:#047857;border:1px solid rgba(34,197,94,.2)}.entry-toast.err{background:#FEF2F2;color:#B91C1C;border:1px solid rgba(239,68,68,.2)}@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   .finance-header-lang{display:none}
   @media(max-width:1024px){.finance-header-lang{display:block}}
   @media(max-width:920px){.sfm-sidebar{display:none}.menu-btn{display:grid}.sfm-main{padding:16px;margin-inline-start:0}.hero{display:block}.hero-actions{margin-top:18px}.content-grid{grid-template-columns:1fr}.ai-panel{display:grid}.chat-box{min-width:0}}
-  @media(max-width:640px){.kpi-grid{grid-template-columns:1fr}.sfm-header{height:auto}.title-wrap h1{font-size:20px}.hero{padding:22px}.hero h2{font-size:27px}.data-row{align-items:flex-start;flex-direction:column}.summary-band{align-items:flex-start}.primary-btn,.ghost-btn{width:100%;justify-content:center}}
+  @media(max-width:640px){.kpi-grid{grid-template-columns:1fr}.sfm-header{height:auto}.title-wrap h1{font-size:20px}.hero{padding:22px}.hero h2{font-size:27px}.data-row{align-items:flex-start;flex-direction:column}.row-actions-wrap{width:100%;justify-content:space-between}.summary-band{align-items:flex-start}.primary-btn,.ghost-btn{width:100%;justify-content:center}.entry-actions{display:grid;grid-template-columns:1fr 1fr}.primary-form-btn,.ghost-form-btn,.danger-form-btn{width:100%}}
 `;

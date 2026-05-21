@@ -19,9 +19,9 @@ export const TR: Record<string, TranslationEntry> = {
   saved:       { ar:'✅ تم الحفظ', en:'✅ Saved', fr:'✅ Enregistre' },
   cancel:      { ar:'إلغاء', en:'Cancel', fr:'Annuler' },
 
-  edit:        { ar:'تعديل',             en:'Edit' },
+  edit:        { ar:'تعديل',             en:'Edit', fr:'Modifier' },
 
-  delete:      { ar:'حذف',              en:'Delete' },
+  delete:      { ar:'حذف',              en:'Delete', fr:'Supprimer' },
 
   add:         { ar:'إضافة',             en:'Add' },
 
@@ -29,11 +29,11 @@ export const TR: Record<string, TranslationEntry> = {
   loading:     { ar:'جارٍ التحميل...', en:'Loading...', fr:'Chargement...' },
   error:       { ar:'حدث خطأ', en:'An error occurred', fr:'Une erreur est survenue' },
 
-  success:     { ar:'تمت العملية بنجاح', en:'Operation successful' },
+  success:     { ar:'تمت العملية بنجاح', en:'Operation successful', fr:'Operation reussie' },
 
-  close:       { ar:'إغلاق',             en:'Close' },
+  close:       { ar:'إغلاق',             en:'Close', fr:'Fermer' },
 
-  confirm:     { ar:'تأكيد',             en:'Confirm' },
+  confirm:     { ar:'تأكيد',             en:'Confirm', fr:'Confirmer' },
 
   next:        { ar:'التالي →',          en:'Next →' },
 
@@ -552,6 +552,24 @@ export const TR: Record<string, TranslationEntry> = {
   login_error_failed: { ar:'اسم المستخدم أو كلمة المرور غير صحيحة.', en:'Username or password is incorrect.', fr:"Nom d'utilisateur ou mot de passe incorrect." },
   login_error_register: { ar:'تعذر إنشاء الحساب. حاول مرة أخرى.', en:'Could not create the account. Try again.', fr:'Impossible de creer le compte. Reessayez.' },
   login_reset_sent: { ar:'تم إرسال رابط استعادة كلمة المرور إن كان الحساب موجوداً.', en:'A reset link was sent if the account exists.', fr:'Un lien de reinitialisation a ete envoye si le compte existe.' },
+
+  update: { ar:'تحديث', en:'Update', fr:'Mettre a jour' },
+  confirmDelete: { ar:'تأكيد الحذف', en:'Confirm deletion', fr:'Confirmer la suppression' },
+  deleteWarning: { ar:'لا يمكن التراجع عن هذا الإجراء', en:'This action cannot be undone', fr:'Cette action est irreversible' },
+  deleteSuccess: { ar:'تم الحذف', en:'Deleted successfully', fr:'Supprime avec succes' },
+  updateSuccess: { ar:'تم التحديث', en:'Updated successfully', fr:'Mis a jour avec succes' },
+  entry_name: { ar:'الاسم', en:'Name', fr:'Nom' },
+  entry_amount: { ar:'المبلغ', en:'Amount', fr:'Montant' },
+  entry_category: { ar:'التصنيف', en:'Category', fr:'Categorie' },
+  entry_save: { ar:'إضافة', en:'Add', fr:'Ajouter' },
+  entry_validation_error: { ar:'أدخل الاسم والمبلغ بشكل صحيح', en:'Enter a valid name and amount', fr:'Entrez un nom et un montant valides' },
+  entry_auth_required: { ar:'سجل الدخول أولاً لإتمام العملية', en:'Sign in first to complete this action', fr:"Connectez-vous d'abord pour terminer cette action" },
+  expenses_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف هذا المصروف؟', en:'Delete this expense?', fr:'Supprimer cette depense ?' },
+  income_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف هذا الدخل؟', en:'Delete this income?', fr:'Supprimer ce revenu ?' },
+  invest_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف هذا الاستثمار؟', en:'Delete this investment?', fr:'Supprimer cet investissement ?' },
+  expenses_entry_title: { ar:'مصروف', en:'Expense', fr:'Depense' },
+  income_entry_title: { ar:'دخل', en:'Income', fr:'Revenu' },
+  invest_entry_title: { ar:'استثمار', en:'Investment', fr:'Investissement' },
 
 } as const;
 
