@@ -153,41 +153,42 @@ function BarChart({data}:{data:{label:string;v1:number;v2:number}[]}){
 }
 
 function EmptyState({
-  icon, title, subtitle, btnLabel, btnHref,
+  icon, title, subtitle, btnLabel, btnHref, compact,
 }: {
   icon: string;
   title: string;
   subtitle: string;
   btnLabel?: string;
   btnHref?: string;
+  compact?: boolean;
 }) {
   const router = useRouter();
   return (
     <div style={{
       textAlign: 'center',
-      padding: '40px 20px',
+      padding: compact ? '16px 12px' : '40px 20px',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: '12px',
+      gap: compact ? '8px' : '12px',
     }}>
-      <div style={{ fontSize: '44px' }}>{icon}</div>
+      <div style={{ fontSize: compact ? '28px' : '44px' }}>{icon}</div>
       <div style={{
-        fontSize: '15px', fontWeight: '700',
+        fontSize: compact ? '13px' : '15px', fontWeight: '700',
         color: '#111111', fontFamily: 'Tajawal,sans-serif',
       }}>{title}</div>
       <div style={{
-        fontSize: '13px', color: '#9A6C3C',
-        lineHeight: 1.6, maxWidth: '260px',
+        fontSize: '12px', color: '#9A6C3C',
+        lineHeight: 1.5, maxWidth: '220px',
         fontFamily: 'Tajawal,sans-serif',
       }}>{subtitle}</div>
       {btnLabel && btnHref && (
         <button type="button" onClick={() => router.push(btnHref)} style={{
           display: 'inline-flex', alignItems: 'center', gap: '7px',
-          padding: '10px 22px',
+          padding: compact ? '7px 16px' : '10px 22px',
           background: 'linear-gradient(135deg,#D8AE63,#9A6C3C)',
           border: 'none', borderRadius: '13px',
-          color: '#111111', fontSize: '13.5px', fontWeight: '700',
+          color: '#111111', fontSize: compact ? '12px' : '13.5px', fontWeight: '700',
           textDecoration: 'none', fontFamily: 'Tajawal,sans-serif',
           cursor: 'pointer',
         }}>{btnLabel}</button>
@@ -515,7 +516,7 @@ export default function DashboardPage(){
                 </select>
               </div>
               {monthHistory.length>0 ? <LineChart data={monthHistory}/> : (
-                <EmptyState icon="📈" title="لا يوجد تاريخ شهري بعد" subtitle="ابدأ بإدخال دخلك ومصاريفك ليتكوّن الرسم تلقائياً" btnLabel="إدخال الدخل الشهري" btnHref="/income" />
+                <EmptyState compact icon="📈" title="لا يوجد تاريخ شهري بعد" subtitle="ابدأ بإدخال دخلك ومصاريفك ليتكوّن الرسم تلقائياً" btnLabel="إدخال الدخل الشهري" btnHref="/income" />
               )}
             </div>
           </div>
@@ -524,7 +525,7 @@ export default function DashboardPage(){
           <div className="dc" style={{...S(160),padding:'24px'}}>
             <h3 style={{fontSize:'16px',fontWeight:'800',color:'#111111',marginBottom:'4px'}}>مقارنة الأشهر</h3>
             {monthHistory.length<2 ? (
-              <EmptyState icon="📊" title="لا توجد بيانات كافية للمقارنة" subtitle="أضف بيانات لشهرين على الأقل" btnLabel="إضافة بيانات الدخل" btnHref="/income" />
+              <EmptyState compact icon="📊" title="لا توجد بيانات كافية للمقارنة" subtitle="أضف بيانات لشهرين على الأقل" btnLabel="إضافة بيانات الدخل" btnHref="/income" />
             ) : (
               <>
                 <p style={{fontSize:'12px',color:'#9A6C3C',marginBottom:'18px'}}>احسب الفرق بين كل شهر وآخر</p>
@@ -572,7 +573,7 @@ export default function DashboardPage(){
                 <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111'}}>تاريخ المعاملات</h3>
               </div>
               {expenseItems.length===0 ? (
-                <EmptyState icon="📋" title="لا توجد مصاريف مسجلة بعد" subtitle="ابدأ بإضافة مصروفك الأول" btnLabel="إضافة مصروف" btnHref="/expenses" />
+                <EmptyState compact icon="📋" title="لا توجد مصاريف مسجلة بعد" subtitle="ابدأ بإضافة مصروفك الأول" btnLabel="إضافة مصروف" btnHref="/expenses" />
               ) : (
                 <>
                   <table style={{width:'100%',borderCollapse:'collapse'}}>
@@ -603,7 +604,7 @@ export default function DashboardPage(){
                 <span style={{fontSize:'11px',color:'#9A6C3C',background:'rgba(216,174,99,.08)',borderRadius:'20px',padding:'3px 10px'}}>بيانات فعلية</span>
               </div>
               {donutData.length===0 ? (
-                <EmptyState icon="🥧" title="لا توجد مصاريف مسجلة" subtitle="أضف مصاريفك لرؤية التوزيع" btnLabel="إضافة مصروف" btnHref="/expenses" />
+                <EmptyState compact icon="🥧" title="لا توجد مصاريف مسجلة" subtitle="أضف مصاريفك لرؤية التوزيع" btnLabel="إضافة مصروف" btnHref="/expenses" />
               ) : (
                 <>
                   <div style={{display:'flex',justifyContent:'center',marginBottom:'14px'}}>
@@ -633,7 +634,7 @@ export default function DashboardPage(){
                 <span style={{fontSize:'13px',fontWeight:'800',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{totalInvestment.toFixed(3)} د.ك</span>
               </div>
               {investments.length===0 ? (
-                <EmptyState icon="📈" title="لا توجد استثمارات مسجلة" subtitle="أضف استثمارك الأول" btnLabel="إضافة استثمار" btnHref="/education/investments" />
+                <EmptyState compact icon="📈" title="لا توجد استثمارات مسجلة" subtitle="أضف استثمارك الأول" btnLabel="إضافة استثمار" btnHref="/education/investments" />
               ) : investments.map(item=>(
                 <div key={item.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid rgba(216,174,99,.07)'}}>
                   <span style={{fontSize:'11px',color:'#9A6C3C',fontWeight:'500',maxWidth:'100px',lineHeight:1.4}}>{item.name || 'استثمار'}</span>
@@ -649,7 +650,7 @@ export default function DashboardPage(){
                 <h3 style={{fontSize:'14px',fontWeight:'800',color:'#111111'}}>أداء الاستثمارات</h3>
               </div>
               {monthHistory.length===0 ? (
-                <EmptyState icon="📈" title="لا يوجد تاريخ استثماري بعد" subtitle="أضف دخلك ومصاريفك واستثماراتك لعرض الأداء" btnLabel="إدخال الدخل الشهري" btnHref="/income" />
+                <EmptyState compact icon="📈" title="لا يوجد تاريخ استثماري بعد" subtitle="أضف دخلك ومصاريفك واستثماراتك لعرض الأداء" btnLabel="إدخال الدخل الشهري" btnHref="/income" />
               ) : (
                 <BarChart data={monthHistory.map(h=>({label:h.label.split(' ')[0],v1:h.investment,v2:0}))}/>
               )}
@@ -659,7 +660,7 @@ export default function DashboardPage(){
             <div className="dc" style={{padding:'20px'}}>
               <h3 style={{fontSize:'14px',fontWeight:'800',color:'#111111',marginBottom:'14px'}}>أفضل الاستثمارات</h3>
               {investments.length===0 ? (
-                <EmptyState icon="📈" title="لا توجد استثمارات" subtitle="ستظهر أعلى الاستثمارات بعد إضافتها" btnLabel="إضافة استثمار" btnHref="/education/investments" />
+                <EmptyState compact icon="📈" title="لا توجد استثمارات" subtitle="ستظهر أعلى الاستثمارات بعد إضافتها" btnLabel="إضافة استثمار" btnHref="/education/investments" />
               ) : [...investments].sort((a,b)=>amountOf(b.amount)-amountOf(a.amount)).slice(0,3).map((inv,i)=>(
                 <div key={inv.id} style={{display:'flex',alignItems:'center',gap:'10px',padding:'10px 0',borderBottom:i<2?'1px solid rgba(216,174,99,.07)':'none'}}>
                   <div style={{width:'36px',height:'36px',background:'rgba(216,174,99,.10)',borderRadius:'11px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'17px',flexShrink:0}}>📈</div>
@@ -679,7 +680,7 @@ export default function DashboardPage(){
             <div className="dc" style={{padding:'22px'}}>
               <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111',marginBottom:'18px'}}>الأهداف المالية</h3>
               {goals.length===0 ? (
-                <EmptyState icon="🎯" title="لا توجد أهداف مالية بعد" subtitle="ابدأ بتحديد هدفك الأول" btnLabel="إضافة هدف" btnHref="/goals/add" />
+                <EmptyState compact icon="🎯" title="لا توجد أهداف مالية بعد" subtitle="ابدأ بتحديد هدفك الأول" btnLabel="إضافة هدف" btnHref="/goals/add" />
               ) : (
                 <div className="goals-grid" style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:'14px'}}>
                   {goals.map(g=>{
@@ -744,7 +745,7 @@ export default function DashboardPage(){
           <div style={{...S(320),display:'grid',gridTemplateColumns:'1fr 1fr',gap:'16px'}}>
             {monthHistory.length===0 ? (
               <div className="dc" style={{padding:'22px',gridColumn:'1 / -1'}}>
-                <EmptyState icon="📈" title="لا يوجد تاريخ شهري بعد" subtitle="ابدأ بإدخال دخلك ومصاريفك ليتراكم السجل تلقائياً" btnLabel="إدخال الدخل الشهري" btnHref="/income" />
+                <EmptyState compact icon="📈" title="لا يوجد تاريخ شهري بعد" subtitle="ابدأ بإدخال دخلك ومصاريفك ليتراكم السجل تلقائياً" btnLabel="إدخال الدخل الشهري" btnHref="/income" />
               </div>
             ) : (
               <>
