@@ -1,11 +1,27 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
-import { Bell, Database, Download, Eye, Globe2, Home, KeyRound, Moon, Save, ShieldAlert, ShieldCheck, SlidersHorizontal, Sun, Trash2, UserRound } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  AlertTriangle,
+  Bell,
+  Database,
+  Download,
+  Globe2,
+  Home,
+  KeyRound,
+  Monitor,
+  Moon,
+  Palette,
+  Save,
+  ShieldAlert,
+  ShieldCheck,
+  SlidersHorizontal,
+  Sun,
+  Target,
+  Trash2,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { Lang } from '@/lib/translations';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,227 +29,636 @@ import { supabase } from '@/integrations/supabase/client';
 import { Sidebar } from '@/components/Sidebar';
 import { CURRENCIES } from '@/lib/currencies';
 import { useCurrency } from '@/lib/useCurrency';
+import { SettingsCard } from '@/components/settings/SettingsCard';
+import { ToggleSwitch } from '@/components/settings/ToggleSwitch';
+import { ChangePasswordModal } from '@/components/settings/ChangePasswordModal';
+import { DeleteAccountModal } from '@/components/settings/DeleteAccountModal';
+import { TwoFAModal } from '@/components/settings/TwoFAModal';
 
+/* ─── Types ──────────────────────────────────────────────── */
 type ThemeMode = 'light' | 'dark' | 'system';
 
 type SettingsState = {
-  profile: { name: string; email: string; phone: string; country: string; profession: string };
-  finance: { currency: string; budget: string; savings: string; investments: string; charity: string; monthStart: string };
-  appearance: { theme: ThemeMode; luxury: boolean };
+  profile:       { name: string; email: string; phone: string; country: string; profession: string };
+  finance:       { currency: string; budget: string; savings: string; investments: string; charity: string };
+  cycle:         { day: string };
+  appearance:    { theme: ThemeMode; luxury: boolean };
   notifications: { reports: boolean; expenses: boolean; investments: boolean; ai: boolean };
 };
 
 const STORE_KEY = 'sfm_settings';
 
-const initialSettings: SettingsState = {
-  profile: { name: '', email: '', phone: '', country: '', profession: '' },
-  finance: { currency: 'KWD', budget: '750', savings: '20', investments: '15', charity: '5', monthStart: '1' },
-  appearance: { theme: 'system', luxury: true },
+const DEFAULTS: SettingsState = {
+  profile:       { name: '', email: '', phone: '', country: '', profession: '' },
+  finance:       { currency: 'KWD', budget: '750', savings: '20', investments: '15', charity: '5' },
+  cycle:         { day: '1' },
+  appearance:    { theme: 'light', luxury: true },
   notifications: { reports: true, expenses: true, investments: true, ai: true },
 };
 
-const copy = {
-  ar: {
-    home: 'الرئيسية', title: 'الإعدادات', subtitle: 'تحكم بتجربة THE SFM من اللغة إلى الأمان والتقارير، مع حفظ التفضيلات بعد التحديث والتنقل.',
-    language: 'إعدادات اللغة', account: 'إعدادات الحساب', finance: 'التفضيلات المالية', appearance: 'المظهر', notifications: 'الإشعارات',
-    security: 'الخصوصية والأمان', data: 'البيانات والتقارير', saveLanguage: 'حفظ اللغة', saveProfile: 'حفظ الملف', savePrefs: 'حفظ التفضيلات',
-    displayName: 'اسم العرض', email: 'البريد الإلكتروني', phone: 'الهاتف', country: 'الدولة', profession: 'المهنة', currency: 'العملة الافتراضية',
-    budget: 'هدف الميزانية الشهرية', savings: 'هدف الادخار %', investments: 'هدف الاستثمار %', charity: 'هدف الخير %', monthStart: 'بداية الشهر المالي',
-    light: 'فاتح', dark: 'داكن', system: 'النظام', luxury: 'تفعيل اللمسة الفاخرة', reports: 'تذكير التقرير الشهري', expenses: 'تنبيهات المصروفات',
-    investAlerts: 'تنبيهات الاستثمار', aiAlerts: 'تنبيهات توصيات الذكاء الاصطناعي', changePassword: 'تغيير كلمة المرور', twoFactor: 'المصادقة الثنائية',
-    twoFactorHint: 'جاهزة للربط عند تفعيل مزود المصادقة.', deleteAccount: 'منطقة حذف الحساب', deleteHint: 'إجراء حساس يحتاج تأكيداً إضافياً قبل التنفيذ.',
-    exportData: 'تصدير البيانات', exportPdf: 'تصدير تقرير PDF', clearDemo: 'مسح البيانات التجريبية', saved: 'تم الحفظ', notConnected: 'واجهة آمنة بدون حذف فعلي الآن',
-    selectLanguage: 'اختر اللغة', namePh: 'أدخل الاسم', emailPh: 'name@example.com', phonePh: '+965 0000 0000', countryPh: 'الكويت', professionPh: 'المهنة',
-  },
-  en: {
-    home: 'Home', title: 'Settings', subtitle: 'Control THE SFM from language and appearance to security, notifications, and reports. Preferences persist after refresh and navigation.',
-    language: 'Language Settings', account: 'Account Settings', finance: 'Financial Preferences', appearance: 'Appearance', notifications: 'Notifications',
-    security: 'Privacy & Security', data: 'Data & Reports', saveLanguage: 'Save language', saveProfile: 'Save profile', savePrefs: 'Save preferences',
-    displayName: 'Display name', email: 'Email', phone: 'Phone', country: 'Country', profession: 'Profession', currency: 'Default currency',
-    budget: 'Monthly budget target', savings: 'Savings target %', investments: 'Investment target %', charity: 'Charity target %', monthStart: 'Financial month start',
-    light: 'Light', dark: 'Dark', system: 'System', luxury: 'Luxury theme accent', reports: 'Monthly report reminders', expenses: 'Expense alerts',
-    investAlerts: 'Investment alerts', aiAlerts: 'AI recommendation alerts', changePassword: 'Change password', twoFactor: 'Two-factor authentication',
-    twoFactorHint: 'Ready to connect when auth provider support is enabled.', deleteAccount: 'Delete account area', deleteHint: 'Sensitive action requires extra confirmation before any execution.',
-    exportData: 'Export data', exportPdf: 'Export monthly PDF', clearDemo: 'Clear demo data', saved: 'Saved', notConnected: 'Safe placeholder, no destructive action is wired',
-    selectLanguage: 'Select language', namePh: 'Enter name', emailPh: 'name@example.com', phonePh: '+965 0000 0000', countryPh: 'Kuwait', professionPh: 'Profession',
-  },
-  fr: {
-    home: 'Accueil', title: 'Parametres', subtitle: 'Controlez THE SFM: langue, apparence, securite, notifications et rapports. Les preferences restent apres actualisation et navigation.',
-    language: 'Langue', account: 'Compte', finance: 'Preferences financieres', appearance: 'Apparence', notifications: 'Notifications',
-    security: 'Confidentialite et securite', data: 'Donnees et rapports', saveLanguage: 'Enregistrer la langue', saveProfile: 'Enregistrer le profil', savePrefs: 'Enregistrer les preferences',
-    displayName: 'Nom affiche', email: 'E-mail', phone: 'Telephone', country: 'Pays', profession: 'Profession', currency: 'Devise par defaut',
-    budget: 'Budget mensuel cible', savings: 'Objectif epargne %', investments: 'Objectif investissement %', charity: 'Objectif charite %', monthStart: 'Debut du mois financier',
-    light: 'Clair', dark: 'Sombre', system: 'Systeme', luxury: 'Accent luxe', reports: 'Rappels du rapport mensuel', expenses: 'Alertes de depenses',
-    investAlerts: 'Alertes investissement', aiAlerts: 'Alertes IA', changePassword: 'Changer le mot de passe', twoFactor: 'Authentification a deux facteurs',
-    twoFactorHint: 'Pret a connecter lorsque le fournisseur auth est active.', deleteAccount: 'Zone de suppression du compte', deleteHint: 'Action sensible avec confirmation supplementaire avant execution.',
-    exportData: 'Exporter les donnees', exportPdf: 'Exporter le PDF mensuel', clearDemo: 'Effacer les donnees demo', saved: 'Enregistre', notConnected: 'Espace sur, aucune action destructive connectee',
-    selectLanguage: 'Choisir la langue', namePh: 'Entrez le nom', emailPh: 'name@example.com', phonePh: '+965 0000 0000', countryPh: 'Koweit', professionPh: 'Profession',
-  },
-} satisfies Record<Lang, Record<string, string>>;
-
+/* ─── Component ──────────────────────────────────────────── */
 export default function SettingsPage() {
-  const router = useRouter();
-  const { lang, setLang, dir } = useLanguage();
-  const { user, loading } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const router                = useRouter();
+  const { lang, setLang, dir, t } = useLanguage();
+  const { user }              = useAuth();
+  const { theme, setTheme }   = useTheme();
   const { currency: ctxCurrency, setCurrency: setCtxCurrency } = useCurrency();
-  const c = copy[lang];
-  const [settings, setSettings] = useState<SettingsState>(initialSettings);
-  const [saved, setSaved] = useState('');
 
+  const [settings, setSettings]               = useState<SettingsState>(DEFAULTS);
+  const [saved, setSaved]                     = useState('');
+  const [showChangePass, setShowChangePass]   = useState(false);
+  const [showTwoFA, setShowTwoFA]             = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+
+  /* Load stored settings on mount */
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORE_KEY);
-      if (stored) setSettings({ ...initialSettings, ...JSON.parse(stored) });
-    } catch {}
+      const raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<SettingsState>;
+      setSettings(prev => ({
+        ...prev,
+        ...parsed,
+        profile:       { ...prev.profile,       ...(parsed.profile       ?? {}) },
+        finance:       { ...prev.finance,        ...(parsed.finance       ?? {}) },
+        cycle:         { ...prev.cycle,          ...(parsed.cycle         ?? {}) },
+        appearance:    { ...prev.appearance,     ...(parsed.appearance    ?? {}) },
+        notifications: { ...prev.notifications,  ...(parsed.notifications ?? {}) },
+      }));
+    } catch { /* ignore parse errors */ }
   }, []);
 
-  const persist = (next = settings, message = c.saved) => {
+  /* Sync luxury CSS class */
+  useEffect(() => {
+    if (settings.appearance.luxury) {
+      document.documentElement.classList.add('luxury');
+    } else {
+      document.documentElement.classList.remove('luxury');
+    }
+  }, [settings.appearance.luxury]);
+
+  /* Flash saved banner */
+  const flash = useCallback((msg?: string) => {
+    setSaved(msg ?? t('settings_saved'));
+    window.setTimeout(() => setSaved(''), 2200);
+  }, [t]);
+
+  /* Persist to localStorage + Supabase profile */
+  const persist = useCallback((next: SettingsState) => {
     setSettings(next);
     setCtxCurrency(next.finance.currency);
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(next)); } catch {}
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
     if (user) {
-      void (async () => {
-        try {
-          await supabase.from('profiles').update({
-            display_name: next.profile.name || null,
-            email: next.profile.email || null,
-            profession: next.profile.profession || null,
-            phone_number: next.profile.phone || null,
-          }).eq('id', user.id);
-        } catch {}
-      })();
+      void supabase
+        .from('profiles')
+        .update({
+          display_name: next.profile.name   || null,
+          phone_number: next.profile.phone  || null,
+        })
+        .eq('id', user.id);
     }
-    setSaved(message);
-    window.setTimeout(() => setSaved(''), 1600);
-  };
+    flash();
+  }, [user, setCtxCurrency, flash]);
 
-  const languageOptions = useMemo(() => [
-    { id: 'ar' as Lang, label: 'العربية' },
-    { id: 'en' as Lang, label: 'English' },
-    { id: 'fr' as Lang, label: 'Français' },
-  ], []);
+  /* Typed setter for nested keys */
+  const set = <S extends keyof SettingsState, K extends keyof SettingsState[S]>(
+    section: S, key: K, value: SettingsState[S][K],
+  ) => setSettings(prev => ({ ...prev, [section]: { ...prev[section], [key]: value } }));
 
-  const setNested = <S extends keyof SettingsState, K extends keyof SettingsState[S]>(section: S, key: K, value: SettingsState[S][K]) => {
-    setSettings(prev => ({ ...prev, [section]: { ...prev[section], [key]: value } }));
-  };
-
+  /* Export settings as JSON */
   const exportJson = () => {
     const blob = new Blob([JSON.stringify({ lang, settings }, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
     a.href = url;
     a.download = 'the-sfm-settings.json';
     a.click();
     URL.revokeObjectURL(url);
+    flash(t('settings_saved'));
   };
 
+  /* Clear demo data keys from localStorage */
+  const clearDemoData = () => {
+    const DEMO_KEYS = [
+      'sfm_demo_expenses', 'sfm_demo_income',
+      'sfm_demo_invest',   'sfm_demo_savings', 'sfm_demo_goals',
+    ];
+    DEMO_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch { /* ignore */ } });
+    flash(t('deleteSuccess'));
+  };
+
+  /* ─── Data ──────────────────────────────────────────────── */
+  const langOptions: { id: Lang; label: string }[] = [
+    { id: 'ar', label: 'العربية' },
+    { id: 'en', label: 'English' },
+    { id: 'fr', label: 'Français' },
+  ];
+
+  const themeOptions: { id: ThemeMode; icon: React.ReactNode; label: string }[] = [
+    { id: 'light',  icon: <Sun size={14} />,     label: t('settings_theme_light')  },
+    { id: 'dark',   icon: <Moon size={14} />,    label: t('settings_theme_dark')   },
+    { id: 'system', icon: <Monitor size={14} />, label: t('settings_theme_system') },
+  ];
+
+  const activeTheme = (theme ?? settings.appearance.theme) as ThemeMode;
+
+  /* ─── Render ─────────────────────────────────────────────── */
   return (
-    <main className="settings-shell" dir={dir}>
-      <Sidebar />
-      <section className="settings-page">
-        <header className="topbar">
-          <button className="ghost-btn" onClick={() => router.push('/')}><Home size={17} />{c.home}</button>
-          <LanguageSwitcher variant="gold" />
-        </header>
+    <>
+      {/* ── Modals ───────────────────────────────────────────── */}
+      {showChangePass    && <ChangePasswordModal onClose={() => setShowChangePass(false)} />}
+      {showTwoFA         && <TwoFAModal          onClose={() => setShowTwoFA(false)} />}
+      {showDeleteAccount && user && (
+        <DeleteAccountModal userId={user.id} onClose={() => setShowDeleteAccount(false)} />
+      )}
 
-        <section className="hero">
-          <div className="hero-icon"><SlidersHorizontal size={34} /></div>
-          <div>
-            <h1>{c.title}</h1>
-            <p>{c.subtitle}</p>
-          </div>
-          {saved && <span className="saved-pill">{saved}</span>}
-        </section>
+      <main className="sshell" dir={dir}>
+        <Sidebar />
 
-        <div className="grid">
-          <Card icon={<Globe2 />} title={c.language}>
-            <label>{c.selectLanguage}</label>
-            <select value={lang} onChange={e => setLang(e.target.value as Lang)}>
-              {languageOptions.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
-            </select>
-            <button className="gold-btn" onClick={() => persist(settings, c.saved)}><Save size={16} />{c.saveLanguage}</button>
-          </Card>
+        <div className="spage">
+          {/* Top bar */}
+          <header className="stop">
+            <button className="sghost" onClick={() => router.push('/')}>
+              <Home size={15} />{t('settings_home')}
+            </button>
+            {saved && <span className="spill">{saved}</span>}
+          </header>
 
-          <Card icon={<UserRound />} title={c.account}>
-            <Input label={c.displayName} value={settings.profile.name} placeholder={c.namePh} onChange={v => setNested('profile', 'name', v)} />
-            <Input label={c.email} value={settings.profile.email} placeholder={c.emailPh} onChange={v => setNested('profile', 'email', v)} />
-            <Input label={c.phone} value={settings.profile.phone} placeholder={c.phonePh} onChange={v => setNested('profile', 'phone', v)} />
-            <Input label={c.country} value={settings.profile.country} placeholder={c.countryPh} onChange={v => setNested('profile', 'country', v)} />
-            <Input label={c.profession} value={settings.profile.profession} placeholder={c.professionPh} onChange={v => setNested('profile', 'profession', v)} />
-            <button className="gold-btn" onClick={() => persist()}><Save size={16} />{c.saveProfile}</button>
-          </Card>
+          {/* Hero */}
+          <section className="shero">
+            <div className="shero-icon"><SlidersHorizontal size={28} /></div>
+            <div>
+              <h1 className="shero-title">{t('settings_title')}</h1>
+              <p className="shero-sub">{t('settings_subtitle')}</p>
+            </div>
+          </section>
 
-          <Card icon={<SlidersHorizontal />} title={c.finance}>
-            <div className="field">
-              <label>{c.currency}</label>
-              <select
-                value={ctxCurrency}
-                onChange={e => { setNested('finance', 'currency', e.target.value); setCtxCurrency(e.target.value); }}
-              >
-                {CURRENCIES.map(cur => (
-                  <option key={cur.code} value={cur.code}>
-                    {cur.symbolAr} — {lang === 'fr' ? cur.nameFr : lang === 'en' ? cur.nameEn : cur.nameAr} ({cur.code})
-                  </option>
+          {/* Grid of cards */}
+          <div className="sgrid">
+
+            {/* ── 1. Language ─────────────────────────────────── */}
+            <SettingsCard icon={<Globe2 size={20} />} title={t('settings_language')}>
+              <div className="sfield">
+                <label className="slabel">{t('settings_select_lang')}</label>
+                <select
+                  className="sselect"
+                  value={lang}
+                  onChange={e => setLang(e.target.value as Lang)}
+                >
+                  {langOptions.map(o => (
+                    <option key={o.id} value={o.id}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <button className="sbtn sbtn-gold" onClick={() => flash()}>
+                <Save size={14} />{t('settings_save_language')}
+              </button>
+            </SettingsCard>
+
+            {/* ── 2. Appearance ───────────────────────────────── */}
+            <SettingsCard icon={<Palette size={20} />} title={t('settings_appearance')}>
+              <div className="smode-row">
+                {themeOptions.map(opt => (
+                  <button
+                    key={opt.id}
+                    className={`smode-btn${activeTheme === opt.id ? ' smode-btn-active' : ''}`}
+                    onClick={() => {
+                      setTheme(opt.id);
+                      set('appearance', 'theme', opt.id);
+                    }}
+                  >
+                    {opt.icon}{opt.label}
+                  </button>
                 ))}
-              </select>
-            </div>
-            <Input label={c.monthStart} value={settings.finance.monthStart} type="number" onChange={v => setNested('finance', 'monthStart', v)} />
-            <Input label={c.budget} value={settings.finance.budget} type="number" onChange={v => setNested('finance', 'budget', v)} />
-            <Input label={c.savings} value={settings.finance.savings} type="number" onChange={v => setNested('finance', 'savings', v)} />
-            <Input label={c.investments} value={settings.finance.investments} type="number" onChange={v => setNested('finance', 'investments', v)} />
-            <Input label={c.charity} value={settings.finance.charity} type="number" onChange={v => setNested('finance', 'charity', v)} />
-            <button className="gold-btn" onClick={() => persist()}><Save size={16} />{c.savePrefs}</button>
-          </Card>
+              </div>
+              <ToggleSwitch
+                checked={settings.appearance.luxury}
+                label={t('settings_luxury')}
+                onChange={v => set('appearance', 'luxury', v)}
+              />
+              <button
+                className="sbtn sbtn-gold"
+                style={{ marginTop: '6px' }}
+                onClick={() => persist(settings)}
+              >
+                <Save size={14} />{t('settings_save_preferences')}
+              </button>
+            </SettingsCard>
 
-          <Card icon={<Eye />} title={c.appearance}>
-            <div className="mode-row">
-              {(['light', 'dark', 'system'] as ThemeMode[]).map(mode => (
-                <button key={mode} className={(theme || settings.appearance.theme) === mode ? 'mode active' : 'mode'} onClick={() => { setTheme(mode); setNested('appearance', 'theme', mode); }}>
-                  {mode === 'dark' ? <Moon size={15} /> : <Sun size={15} />}{c[mode]}
-                </button>
-              ))}
-            </div>
-            <Toggle checked={settings.appearance.luxury} label={c.luxury} onChange={v => setNested('appearance', 'luxury', v)} />
-          </Card>
+            {/* ── 3. Financial Plan ───────────────────────────── */}
+            <SettingsCard icon={<SlidersHorizontal size={20} />} title={t('settings_financial')}>
+              <div className="sfield">
+                <label className="slabel">{t('settings_currency')}</label>
+                <select
+                  className="sselect"
+                  value={ctxCurrency}
+                  onChange={e => {
+                    set('finance', 'currency', e.target.value);
+                    setCtxCurrency(e.target.value);
+                  }}
+                >
+                  {CURRENCIES.map(cur => (
+                    <option key={cur.code} value={cur.code}>
+                      {cur.symbolAr} — {lang === 'fr' ? cur.nameFr : lang === 'en' ? cur.nameEn : cur.nameAr} ({cur.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <SField label={t('settings_budget')}      value={settings.finance.budget}      type="number" min="0"        onChange={v => set('finance', 'budget',      v)} />
+              <SField label={t('settings_savings_pct')} value={settings.finance.savings}     type="number" min="0" max="100" onChange={v => set('finance', 'savings',     v)} />
+              <SField label={t('settings_invest_pct')}  value={settings.finance.investments} type="number" min="0" max="100" onChange={v => set('finance', 'investments', v)} />
+              <SField label={t('settings_charity_pct')} value={settings.finance.charity}     type="number" min="0" max="100" onChange={v => set('finance', 'charity',     v)} />
+              <button className="sbtn sbtn-gold" onClick={() => persist(settings)}>
+                <Save size={14} />{t('settings_save_preferences')}
+              </button>
+            </SettingsCard>
 
-          <Card icon={<Bell />} title={c.notifications}>
-            <Toggle checked={settings.notifications.reports} label={c.reports} onChange={v => setNested('notifications', 'reports', v)} />
-            <Toggle checked={settings.notifications.expenses} label={c.expenses} onChange={v => setNested('notifications', 'expenses', v)} />
-            <Toggle checked={settings.notifications.investments} label={c.investAlerts} onChange={v => setNested('notifications', 'investments', v)} />
-            <Toggle checked={settings.notifications.ai} label={c.aiAlerts} onChange={v => setNested('notifications', 'ai', v)} />
-          </Card>
+            {/* ── 4. Cycle Start ──────────────────────────────── */}
+            <SettingsCard
+              icon={<Target size={20} />}
+              title={t('settings_cycle_start')}
+              subtitle={t('settings_cycle_hint')}
+            >
+              <div className="sfield">
+                <label className="slabel">{t('settings_cycle_day_label')}</label>
+                <select
+                  className="sselect"
+                  value={settings.cycle.day}
+                  onChange={e => set('cycle', 'day', e.target.value)}
+                >
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                    <option key={d} value={String(d)}>{d}</option>
+                  ))}
+                </select>
+              </div>
+              <button className="sbtn sbtn-gold" onClick={() => persist(settings)}>
+                <Save size={14} />{t('settings_save_preferences')}
+              </button>
+            </SettingsCard>
 
-          <Card icon={<ShieldCheck />} title={c.security}>
-            <button className="soft-btn"><KeyRound size={16} />{c.changePassword}</button>
-            <button className="soft-btn"><ShieldCheck size={16} />{c.twoFactor}</button>
-            <p className="hint">{c.twoFactorHint}</p>
-            <div className="danger"><ShieldAlert size={18} /><strong>{c.deleteAccount}</strong><span>{c.deleteHint}</span></div>
-          </Card>
+            {/* ── 5. Notifications ────────────────────────────── */}
+            <SettingsCard icon={<Bell size={20} />} title={t('settings_notifications')}>
+              <ToggleSwitch
+                checked={settings.notifications.reports}
+                label={t('settings_notif_reports')}
+                onChange={v => set('notifications', 'reports', v)}
+              />
+              <ToggleSwitch
+                checked={settings.notifications.expenses}
+                label={t('settings_notif_expenses')}
+                onChange={v => set('notifications', 'expenses', v)}
+              />
+              <ToggleSwitch
+                checked={settings.notifications.investments}
+                label={t('settings_notif_invest')}
+                onChange={v => set('notifications', 'investments', v)}
+              />
+              <ToggleSwitch
+                checked={settings.notifications.ai}
+                label={t('settings_notif_ai')}
+                hint={t('settings_notif_hint')}
+                onChange={v => set('notifications', 'ai', v)}
+              />
+              <button
+                className="sbtn sbtn-gold"
+                style={{ marginTop: '6px' }}
+                onClick={() => persist(settings)}
+              >
+                <Save size={14} />{t('settings_save_preferences')}
+              </button>
+            </SettingsCard>
 
-          <Card icon={<Database />} title={c.data}>
-            <button className="soft-btn" onClick={exportJson}><Download size={16} />{c.exportData}</button>
-            <button className="soft-btn" onClick={() => window.print()}><Download size={16} />{c.exportPdf}</button>
-            <button className="danger-btn" type="button"><Trash2 size={16} />{c.clearDemo}</button>
-            <p className="hint">{c.notConnected}</p>
-          </Card>
-        </div>
-      </section>
+            {/* ── 6. Security ─────────────────────────────────── */}
+            <SettingsCard icon={<ShieldCheck size={20} />} title={t('settings_security')}>
+              <button
+                className="sbtn sbtn-soft"
+                onClick={() => setShowChangePass(true)}
+              >
+                <KeyRound size={15} />{t('settings_change_password')}
+              </button>
+              <button
+                className="sbtn sbtn-soft"
+                onClick={() => setShowTwoFA(true)}
+              >
+                <ShieldCheck size={15} />{t('settings_two_factor')}
+                <span className="sbadge-under">{t('settings_under_dev')}</span>
+              </button>
+              <p className="shint">{t('settings_2fa_hint')}</p>
+            </SettingsCard>
+
+            {/* ── 7. Data & Reports ───────────────────────────── */}
+            <SettingsCard icon={<Database size={20} />} title={t('settings_data')}>
+              <button className="sbtn sbtn-soft" onClick={exportJson}>
+                <Download size={15} />{t('settings_export_data')}
+              </button>
+              <button className="sbtn sbtn-soft" onClick={() => window.print()}>
+                <Download size={15} />{t('settings_export_pdf')}
+              </button>
+              <button className="sbtn sbtn-danger-soft" onClick={clearDemoData}>
+                <Trash2 size={15} />{t('settings_clear_demo')}
+              </button>
+            </SettingsCard>
+
+            {/* ── 8. Danger Zone ──────────────────────────────── */}
+            <SettingsCard
+              icon={<ShieldAlert size={20} />}
+              title={t('settings_danger_zone')}
+              subtitle={t('settings_danger_hint')}
+              danger
+            >
+              <div className="sdanger-warn">
+                <AlertTriangle size={16} />
+                <span>{t('settings_delete_confirm')}</span>
+              </div>
+              <button
+                className="sbtn sbtn-delete"
+                onClick={() => setShowDeleteAccount(true)}
+                disabled={!user}
+              >
+                <Trash2 size={15} />{t('settings_delete_account')}
+              </button>
+              {!user && (
+                <p className="shint" style={{ color: '#9c6b3a' }}>{t('login_sign_in')}</p>
+              )}
+            </SettingsCard>
+
+          </div>{/* /sgrid */}
+        </div>{/* /spage */}
+      </main>
+
+      {/* ── Styles ───────────────────────────────────────────── */}
       <style jsx>{`
-        .settings-shell{min-height:100vh;background:linear-gradient(180deg,#f7f1e6 0%,#fffdf8 56%,#f3ead9 100%);color:#15110d;font-family:Tajawal,Arial,sans-serif}.settings-page{max-width:1180px;margin:0 auto;margin-inline-start:230px;padding:24px 18px 70px}.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.ghost-btn,.gold-btn,.soft-btn,.danger-btn,.mode{min-height:40px;border-radius:12px;border:1px solid rgba(190,149,82,.28);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 14px;font:800 13px Tajawal,Arial,sans-serif;cursor:pointer}.ghost-btn,.soft-btn{background:#fffaf1;color:#5c4228}.gold-btn{width:100%;background:linear-gradient(135deg,#d8ae63,#b88935);color:#1d1207;border:0;box-shadow:0 12px 24px rgba(184,137,53,.22)}.danger-btn{background:#fff4f1;color:#9c2f1d;border-color:#f0c7bf}.hero{position:relative;display:flex;gap:18px;align-items:center;background:linear-gradient(135deg,#111 0%,#2b1a0d 58%,#8b6328 135%);color:#fffdf7;border-radius:26px;padding:28px;margin-bottom:16px;box-shadow:0 24px 50px rgba(43,26,13,.18)}.hero-icon{width:64px;height:64px;border-radius:20px;background:rgba(216,174,99,.14);display:grid;place-items:center;color:#d8ae63;flex:0 0 auto}.hero h1{font-size:34px;line-height:1;margin:0 0 10px}.hero p{margin:0;max-width:760px;line-height:1.8;color:rgba(255,255,255,.72)}.saved-pill{position:absolute;top:22px;inset-inline-end:24px;background:#fffaf1;color:#6f4a16;border-radius:999px;padding:8px 14px;font-size:12px;font-weight:900}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.card{background:rgba(255,253,248,.88);border:1px solid rgba(190,149,82,.2);border-radius:20px;padding:18px;box-shadow:0 16px 40px rgba(75,51,29,.08);backdrop-filter:blur(10px)}.card.full{grid-column:1/-1}.card-title{display:flex;align-items:center;gap:10px;margin-bottom:14px}.card-title svg{color:#c99b4f}.card-title h2{font-size:18px;margin:0}.field{display:grid;gap:7px;margin-bottom:12px}.field label,label{font-size:12px;font-weight:900;color:#6c5842}input,select{width:100%;height:42px;border-radius:12px;border:1px solid rgba(190,149,82,.28);background:#fffaf1;color:#18120d;padding:0 12px;font:700 14px Tajawal,Arial,sans-serif;outline:none}input:focus,select:focus{border-color:#c99b4f;box-shadow:0 0 0 3px rgba(216,174,99,.16)}.mode-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.mode{background:#fffaf1;color:#7a6148}.mode.active{background:#19130d;color:#f7d79c;border-color:#19130d;box-shadow:0 0 0 3px rgba(216,174,99,.2)}.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid rgba(190,149,82,.12);font-weight:800;color:#4d3b2c}.switch{width:46px;height:26px;border-radius:999px;border:0;background:#d9cbbb;padding:3px;cursor:pointer}.switch span{display:block;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s ease}.switch.on{background:#c99b4f}.switch.on span{transform:translateX(-20px)}[dir="ltr"] .switch.on span{transform:translateX(20px)}.hint{font-size:12px;line-height:1.7;color:#8a7764;margin:10px 0 0}.danger{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;background:#fff3ed;border:1px solid #f0c7bf;border-radius:14px;padding:12px;color:#8d2d1e}.danger span{grid-column:2;color:#9b6a5b;font-size:12px;line-height:1.6}@media(max-width:1024px){.settings-page{margin-inline-start:0}}@media(max-width:760px){.grid{grid-template-columns:1fr}.hero{align-items:flex-start;padding:22px;flex-direction:column}.hero h1{font-size:28px}.saved-pill{position:static;align-self:flex-start}.mode-row{grid-template-columns:1fr}.topbar{gap:10px;align-items:flex-start;flex-direction:column}}
+        /* Shell */
+        .sshell {
+          min-height: 100vh;
+          background: linear-gradient(180deg, #f7f1e6 0%, #fffdf8 56%, #f3ead9 100%);
+          color: #15110d;
+          font-family: Tajawal, Cairo, Arial, sans-serif;
+        }
+        .spage {
+          max-width: 1160px;
+          margin: 0 auto;
+          margin-inline-start: 230px;
+          padding: 24px 18px 80px;
+        }
+
+        /* Top bar */
+        .stop {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 18px;
+          min-height: 38px;
+        }
+        .sghost {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          height: 36px;
+          padding: 0 14px;
+          border-radius: 10px;
+          border: 1px solid rgba(190, 149, 82, 0.28);
+          background: #fffaf1;
+          color: #5c4228;
+          font: 800 13px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+        }
+        .sghost:hover { background: #f5e8d0; }
+        .spill {
+          background: #edf7ee;
+          color: #1a6e3c;
+          border: 1px solid #b5ddc0;
+          border-radius: 999px;
+          padding: 5px 16px;
+          font-size: 12px;
+          font-weight: 900;
+          animation: sfade-in 0.2s ease;
+        }
+        @keyframes sfade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+        /* Hero */
+        .shero {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          background: linear-gradient(135deg, #111 0%, #2b1a0d 58%, #8b6328 135%);
+          color: #fffdf7;
+          border-radius: 24px;
+          padding: 26px 28px;
+          margin-bottom: 18px;
+          box-shadow: 0 20px 50px rgba(43, 26, 13, 0.18);
+        }
+        .shero-icon {
+          width: 58px;
+          height: 58px;
+          border-radius: 18px;
+          background: rgba(216, 174, 99, 0.14);
+          display: grid;
+          place-items: center;
+          color: #d8ae63;
+          flex-shrink: 0;
+        }
+        .shero-title {
+          font-size: 30px;
+          font-weight: 900;
+          margin: 0 0 8px;
+          line-height: 1;
+        }
+        .shero-sub {
+          margin: 0;
+          font-size: 13.5px;
+          line-height: 1.8;
+          color: rgba(255, 255, 255, 0.7);
+          max-width: 680px;
+        }
+
+        /* Grid */
+        .sgrid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        /* Shared field */
+        .sfield {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .slabel {
+          font-size: 12px;
+          font-weight: 900;
+          color: #6c5842;
+        }
+        .sselect {
+          width: 100%;
+          height: 42px;
+          border-radius: 12px;
+          border: 1px solid rgba(190, 149, 82, 0.28);
+          background: #fffaf1;
+          color: #18120d;
+          padding: 0 12px;
+          font: 700 13px Tajawal, Arial, sans-serif;
+          outline: none;
+          cursor: pointer;
+        }
+        .sselect:focus {
+          border-color: #c99b4f;
+          box-shadow: 0 0 0 3px rgba(216, 174, 99, 0.15);
+        }
+
+        /* Buttons */
+        .sbtn {
+          width: 100%;
+          height: 42px;
+          border-radius: 12px;
+          border: 1px solid rgba(190, 149, 82, 0.28);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 0 14px;
+          font: 800 13px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+          transition: background 0.15s, box-shadow 0.15s;
+        }
+        .sbtn-gold {
+          background: linear-gradient(135deg, #d8ae63, #b88935);
+          color: #1d1207;
+          border: 0;
+          box-shadow: 0 8px 20px rgba(184, 137, 53, 0.22);
+        }
+        .sbtn-gold:hover {
+          box-shadow: 0 12px 28px rgba(184, 137, 53, 0.32);
+        }
+        .sbtn-soft {
+          background: #fffaf1;
+          color: #5c4228;
+          justify-content: flex-start;
+        }
+        .sbtn-soft:hover { background: #f5e8d0; }
+        .sbtn-danger-soft {
+          background: #fff4f1;
+          color: #9c2f1d;
+          border-color: #f0c7bf;
+          justify-content: flex-start;
+        }
+        .sbtn-danger-soft:hover { background: #ffecea; }
+        .sbtn-delete {
+          background: #ffecea;
+          color: #9c2f1d;
+          border-color: #e8b4aa;
+        }
+        .sbtn-delete:hover:not(:disabled) { background: #ffdad6; }
+        .sbtn-delete:disabled { opacity: 0.45; cursor: not-allowed; }
+        .sbadge-under {
+          margin-inline-start: 6px;
+          background: #f5e8cf;
+          color: #7a5c28;
+          border-radius: 999px;
+          padding: 2px 10px;
+          font-size: 10px;
+          font-weight: 900;
+        }
+
+        /* Theme mode row */
+        .smode-row {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+        }
+        .smode-btn {
+          height: 38px;
+          border-radius: 10px;
+          border: 1px solid rgba(190, 149, 82, 0.25);
+          background: #fffaf1;
+          color: #7a6148;
+          font: 800 12px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          transition: background 0.15s;
+        }
+        .smode-btn-active {
+          background: #19130d;
+          color: #f7d79c;
+          border-color: #19130d;
+          box-shadow: 0 0 0 3px rgba(216, 174, 99, 0.18);
+        }
+
+        /* Danger zone warning */
+        .sdanger-warn {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          background: #fff3ed;
+          border: 1px solid #f0c7bf;
+          border-radius: 12px;
+          padding: 10px 12px;
+          color: #8d2d1e;
+          font-size: 12.5px;
+          line-height: 1.6;
+        }
+        .sdanger-warn svg { flex-shrink: 0; margin-top: 1px; }
+
+        /* Hint text */
+        .shint {
+          font-size: 11.5px;
+          line-height: 1.7;
+          color: #8a7764;
+          margin: 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) { .spage { margin-inline-start: 0; } }
+        @media (max-width: 760px) {
+          .sgrid { grid-template-columns: 1fr; }
+          .shero { flex-direction: column; align-items: flex-start; padding: 20px; }
+          .shero-title { font-size: 24px; }
+          .smode-row { grid-template-columns: 1fr; }
+        }
       `}</style>
-    </main>
+    </>
   );
 }
 
-function Card({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
-  return <section className="card"><div className="card-title">{icon}<h2>{title}</h2></div>{children}</section>;
+/* ─── Inline field sub-component ───────────────────────────── */
+interface SFieldProps {
+  label: string;
+  value: string;
+  type?: string;
+  min?: string;
+  max?: string;
+  onChange: (v: string) => void;
 }
-
-function Input({ label, value, onChange, placeholder, type = 'text' }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string }) {
-  return <div className="field"><label>{label}</label><input type={type} value={value} placeholder={placeholder} onChange={event => onChange(event.target.value)} /></div>;
-}
-
-function Toggle({ checked, label, onChange }: { checked: boolean; label: string; onChange: (checked: boolean) => void }) {
-  return <div className="toggle"><span>{label}</span><button className={checked ? 'switch on' : 'switch'} onClick={() => onChange(!checked)} aria-pressed={checked}><span /></button></div>;
+function SField({ label, value, type = 'text', min, max, onChange }: SFieldProps) {
+  return (
+    <div className="sfield">
+      <label className="slabel">{label}</label>
+      <input
+        className="sinput"
+        type={type}
+        value={value}
+        min={min}
+        max={max}
+        onChange={e => onChange(e.target.value)}
+      />
+      <style jsx>{`
+        .sfield { display: flex; flex-direction: column; gap: 6px; }
+        .slabel { font-size: 12px; font-weight: 900; color: #6c5842; }
+        .sinput {
+          width: 100%; height: 42px;
+          border-radius: 12px;
+          border: 1px solid rgba(190,149,82,.28);
+          background: #fffaf1; color: #18120d;
+          padding: 0 12px;
+          font: 700 14px Tajawal, Arial, sans-serif;
+          outline: none; box-sizing: border-box;
+        }
+        .sinput:focus { border-color: #c99b4f; box-shadow: 0 0 0 3px rgba(216,174,99,.15); }
+      `}</style>
+    </div>
+  );
 }
