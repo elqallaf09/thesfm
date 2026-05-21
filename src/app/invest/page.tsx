@@ -1,7 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Plus, TrendingUp } from 'lucide-react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { BarChart3, Brain, Layers3, LineChart as LineChartIcon, PieChart as PieChartIcon, Plus, ShieldAlert, TrendingUp, WalletCards } from 'lucide-react';
+import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { InvestmentFormModal } from '@/components/invest/InvestmentFormModal';
@@ -17,6 +19,8 @@ import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/t
 
 const TYPES: InvestmentType[] = ['stocks', 'realEstate', 'fund', 'gold', 'cash', 'crypto', 'project', 'other'];
 const RISKS: RiskLevel[] = ['low', 'medium', 'high'];
+const CHART_COLORS = ['#D8AE63', '#9A6C3C', '#5B4332', '#22C55E', '#3B82F6', '#8A7060', '#C8A96B', '#BFB5A8'];
+const RISK_SCORE: Record<RiskLevel, number> = { low: 1, medium: 2, high: 3 };
 
 export default function InvestPage() {
   const { lang, dir, t } = useLanguage();
@@ -30,12 +34,14 @@ export default function InvestPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState('');
+  const insightsRef = useRef<HTMLDivElement | null>(null);
 
   const labels = useMemo(() => ({
     heroTitle: t('invest_hero_title'),
     heroSubtitle: t('invest_hero_subtitle'),
     activeBadge: t('invest_hero_activeBadge'),
     addCta: t('invest_hero_addCta'),
+    aiCta: t('invest_hero_aiCta'),
     emptyTitle: t('invest_empty_title'),
     emptyDescription: t('invest_empty_description'),
     emptyCta: t('invest_empty_cta'),
@@ -85,7 +91,95 @@ export default function InvestPage() {
     },
   }), [t]);
 
+  const typeLabel = useCallback((type: InvestmentType) => t(`invest_types_${type}`), [t]);
+  const riskLabel = useCallback((risk: RiskLevel) => t(`invest_risks_${risk}`), [t]);
+  const money = useCallback((amount: number) => formatCurrency(amount, currency, lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en'), [currency, lang]);
   const totalValue = useMemo(() => items.reduce((sum, item) => sum + item.currentValue, 0), [items]);
+  const totalMonthly = useMemo(() => items.reduce((sum, item) => sum + item.monthlyContribution, 0), [items]);
+  const uniqueCategories = useMemo(() => new Set(items.map(item => item.type)).size, [items]);
+  const weightedRiskScore = useMemo(() => {
+    if (totalValue <= 0) return 0;
+    return items.reduce((sum, item) => sum + RISK_SCORE[item.riskLevel] * (item.currentValue / totalValue), 0);
+  }, [items, totalValue]);
+  const overallRisk: RiskLevel = weightedRiskScore < 1.5 ? 'low' : weightedRiskScore < 2.5 ? 'medium' : 'high';
+  const weightedReturn = useMemo(() => {
+    const withReturns = items.filter(item => typeof item.expectedAnnualReturn === 'number' && item.expectedAnnualReturn >= 0);
+    const returnBase = withReturns.reduce((sum, item) => sum + item.currentValue, 0);
+    if (returnBase <= 0) return null;
+    return withReturns.reduce((sum, item) => sum + (item.expectedAnnualReturn ?? 0) * item.currentValue, 0) / returnBase;
+  }, [items]);
+  const analysisReturn = weightedReturn ?? 6;
+  const typeDistribution = useMemo(() => TYPES.map((type, index) => ({
+    name: typeLabel(type),
+    value: items.filter(item => item.type === type).reduce((sum, item) => sum + item.currentValue, 0),
+    color: CHART_COLORS[index % CHART_COLORS.length],
+  })).filter(item => item.value > 0), [items, typeLabel]);
+  const valueByInvestment = useMemo(() => items.map(item => ({
+    name: item.name,
+    value: item.currentValue,
+  })), [items]);
+  const projectionLineData = useMemo(() => {
+    const monthlyRate = analysisReturn / 100 / 12;
+    return Array.from({ length: 13 }, (_, month) => {
+      const factor = monthlyRate > 0 ? Math.pow(1 + monthlyRate, month) : 1;
+      const contributionGrowth = monthlyRate > 0 ? totalMonthly * ((factor - 1) / monthlyRate) : totalMonthly * month;
+      return {
+        month: `${t('invest_charts_month')} ${month}`,
+        value: Math.round(totalValue * factor + contributionGrowth),
+      };
+    });
+  }, [analysisReturn, totalMonthly, totalValue, t]);
+  const projections = useMemo(() => [1, 3, 5].map(years => {
+    const months = years * 12;
+    const monthlyRate = analysisReturn / 100 / 12;
+    const factor = monthlyRate > 0 ? Math.pow(1 + monthlyRate, months) : 1;
+    const contributionGrowth = monthlyRate > 0 ? totalMonthly * ((factor - 1) / monthlyRate) : totalMonthly * months;
+    const value = totalValue * factor + contributionGrowth;
+    const contribTotal = totalMonthly * months;
+    return {
+      years,
+      value,
+      contribTotal,
+      gain: value - totalValue - contribTotal,
+    };
+  }), [analysisReturn, totalMonthly, totalValue]);
+  const insights = useMemo(() => {
+    if (items.length === 0) return [];
+    if (items.length === 1) return [t('invest_insights_addMoreForDiversification')];
+
+    const next: string[] = [];
+    const biggest = [...items].sort((a, b) => b.currentValue - a.currentValue)[0];
+    const biggestPct = totalValue > 0 ? (biggest.currentValue / totalValue) * 100 : 0;
+    if (biggestPct > 70) {
+      next.push(t('invest_insights_concentratedRisk')
+        .replace('{type}', typeLabel(biggest.type))
+        .replace('{pct}', biggestPct.toFixed(0)));
+    }
+
+    if (totalMonthly <= 0) {
+      next.push(t('invest_insights_noMonthlyContribution'));
+    } else {
+      const fiveYearMonthlyTotal = totalMonthly * 60;
+      next.push(t('invest_insights_monthlyContribution')
+        .replace('{amount}', money(totalMonthly))
+        .replace('{total}', money(fiveYearMonthlyTotal)));
+    }
+
+    const futureFiveYears = projections.find(item => item.years === 5);
+    if (futureFiveYears) {
+      next.push(t('invest_insights_projection5y')
+        .replace('{amount}', money(Math.round(futureFiveYears.value)))
+        .replace('{rate}', analysisReturn.toFixed(1)));
+    }
+
+    if (uniqueCategories >= 4) {
+      next.push(t('invest_insights_wellDiversified').replace('{count}', String(uniqueCategories)));
+    } else {
+      next.push(t('invest_insights_diversifyMore').replace('{count}', String(uniqueCategories)));
+    }
+
+    return next;
+  }, [analysisReturn, items, money, projections, t, totalMonthly, totalValue, typeLabel, uniqueCategories]);
 
   function showToast(message: string) {
     setToast(message);
@@ -137,9 +231,7 @@ export default function InvestPage() {
     }
   }
 
-  const typeLabel = (type: InvestmentType) => t(`invest_types_${type}`);
-  const riskLabel = (risk: RiskLevel) => t(`invest_risks_${risk}`);
-  const money = (amount: number) => formatCurrency(amount, currency, lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en');
+  const pct = (value: number) => `${value.toFixed(1)}%`;
 
   return (
     <div className="invest-shell" dir={dir}>
@@ -165,6 +257,12 @@ export default function InvestPage() {
               <Plus size={17} />
               {labels.addCta}
             </button>
+            {items.length > 0 && (
+              <button type="button" className="invest-glass-btn" onClick={() => insightsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+                <Brain size={17} />
+                {labels.aiCta}
+              </button>
+            )}
           </div>
           <div className="invest-hero-total">
             <TrendingUp size={25} />
@@ -180,17 +278,94 @@ export default function InvestPage() {
         ) : items.length === 0 ? (
           <EmptyState title={labels.emptyTitle} description={labels.emptyDescription} cta={labels.emptyCta} onCreate={openCreate} />
         ) : (
-          <InvestmentList
-            investments={items}
-            labels={labels}
-            types={TYPES}
-            typeLabel={typeLabel}
-            riskLabel={riskLabel}
-            formatMoney={money}
-            onDetails={setDetails}
-            onEdit={openEdit}
-            onDelete={setDeleteTarget}
-          />
+          <>
+            <section className="invest-summary-grid">
+              <SummaryCard icon={<WalletCards size={20} />} title={t('invest_summary_portfolioValue')} value={money(totalValue)} subtitle={t('actualData')} />
+              <SummaryCard icon={<TrendingUp size={20} />} title={t('invest_summary_monthlyContribution')} value={money(totalMonthly)} subtitle={t('invest_projections_totalContributions')} />
+              <SummaryCard icon={<ShieldAlert size={20} />} title={t('invest_summary_riskLevel')} value={riskLabel(overallRisk)} subtitle={t('invest_summary_notFinancialAdvice')} />
+              <SummaryCard icon={<Layers3 size={20} />} title={t('invest_summary_diversification')} value={t('invest_summary_categoriesCount').replace('{count}', String(uniqueCategories))} subtitle={uniqueCategories >= 4 ? t('invest_insights_wellDiversified').replace('{count}', String(uniqueCategories)) : t('invest_insights_diversifyMore').replace('{count}', String(uniqueCategories))} />
+              <SummaryCard icon={<LineChartIcon size={20} />} title={t('invest_summary_expectedReturn')} value={weightedReturn === null ? '6.0%' : pct(weightedReturn)} subtitle={weightedReturn === null ? t('invest_summary_defaultReturn') : t('invest_summary_notFinancialAdvice')} />
+            </section>
+
+            <section className="invest-chart-grid">
+              <ChartCard icon={<PieChartIcon size={18} />} title={t('invest_charts_distribution')}>
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie data={typeDistribution} dataKey="value" nameKey="name" innerRadius={62} outerRadius={95} paddingAngle={3}>
+                      {typeDistribution.map(item => <Cell key={item.name} fill={item.color} />)}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => money(Number(value))} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartCard>
+              <ChartCard icon={<BarChart3 size={18} />} title={t('invest_charts_byInvestment')}>
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={valueByInvestment}>
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#8A7060' }} axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={value => String(Math.round(Number(value)))} tick={{ fontSize: 11, fill: '#8A7060' }} axisLine={false} tickLine={false} />
+                    <Tooltip formatter={(value: number) => money(Number(value))} />
+                    <Bar dataKey="value" fill="#D8AE63" radius={[10, 10, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+              <ChartCard icon={<LineChartIcon size={18} />} title={t('invest_charts_projection12')}>
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={projectionLineData}>
+                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#8A7060' }} axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={value => String(Math.round(Number(value)))} tick={{ fontSize: 11, fill: '#8A7060' }} axisLine={false} tickLine={false} />
+                    <Tooltip formatter={(value: number) => money(Number(value))} />
+                    <Line type="monotone" dataKey="value" stroke="#9A6C3C" strokeWidth={3} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </section>
+
+            <section className="invest-analysis-grid" ref={insightsRef}>
+              <div className="invest-panel invest-insights">
+                <div className="invest-section-head">
+                  <Brain size={19} />
+                  <h2>{t('invest_insights_title')}</h2>
+                </div>
+                <div className="invest-insight-list">
+                  {insights.map((insight, index) => (
+                    <div key={`${insight}-${index}`} className="invest-insight-item">
+                      <span>{index + 1}</span>
+                      <p>{insight}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="invest-panel invest-projections">
+                <div className="invest-section-head">
+                  <LineChartIcon size={19} />
+                  <h2>{t('invest_projections_title')}</h2>
+                </div>
+                <div className="invest-projection-grid">
+                  {projections.map(item => (
+                    <div key={item.years}>
+                      <span>{t(`invest_projections_years${item.years}`)}</span>
+                      <strong>{money(Math.round(item.value))}</strong>
+                      <small>{t('invest_projections_totalContributions')}: {money(item.contribTotal)}</small>
+                      <small>{t('invest_projections_expectedGain')}: {money(Math.round(item.gain))}</small>
+                    </div>
+                  ))}
+                </div>
+                <p className="invest-disclaimer">{t('invest_projections_disclaimer')}</p>
+              </div>
+            </section>
+
+            <InvestmentList
+              investments={items}
+              labels={labels}
+              types={TYPES}
+              typeLabel={typeLabel}
+              riskLabel={riskLabel}
+              formatMoney={money}
+              onDetails={setDetails}
+              onEdit={openEdit}
+              onDelete={setDeleteTarget}
+            />
+          </>
         )}
 
         <InvestmentFormModal
@@ -244,8 +419,12 @@ export default function InvestPage() {
         .invest-hero-content{position:relative;z-index:1}.invest-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.14);color:#86EFAC;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:900;margin-bottom:14px}.invest-badge span{width:7px;height:7px;border-radius:50%;background:#22C55E;animation:pulse 1.6s infinite}
         .invest-hero h2{font-size:34px;line-height:1.05;margin:0 0 10px;font-weight:900}.invest-hero p{max-width:680px;margin:0 0 18px;color:rgba(255,255,255,.72);line-height:1.8;font-size:14px}
         .invest-hero-total{position:relative;z-index:1;min-width:230px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:18px;display:grid;gap:7px;backdrop-filter:blur(12px)}.invest-hero-total svg{color:#D8AE63}.invest-hero-total span{color:rgba(255,255,255,.68);font-size:12px;font-weight:800}.invest-hero-total strong{font-size:23px;color:#D8AE63}
-        .invest-primary-btn,.invest-secondary-btn,.invest-danger-btn{height:43px;border-radius:14px;border:0;padding:0 17px;font:900 13px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:all .2s}.invest-primary-btn{background:linear-gradient(135deg,#D8AE63,#9A6C3C);color:#111;box-shadow:0 10px 24px rgba(216,174,99,.22)}.invest-primary-btn:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(216,174,99,.28)}.invest-secondary-btn{background:#FFFDFC;color:#5B4332;border:1px solid rgba(216,174,99,.22)}.invest-danger-btn{background:#B91C1C;color:#fff}.invest-primary-btn:disabled,.invest-secondary-btn:disabled,.invest-danger-btn:disabled{opacity:.6;cursor:wait}
+        .invest-primary-btn,.invest-secondary-btn,.invest-danger-btn,.invest-glass-btn{height:43px;border-radius:14px;border:0;padding:0 17px;font:900 13px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:all .2s}.invest-primary-btn{background:linear-gradient(135deg,#D8AE63,#9A6C3C);color:#111;box-shadow:0 10px 24px rgba(216,174,99,.22)}.invest-primary-btn:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(216,174,99,.28)}.invest-secondary-btn{background:#FFFDFC;color:#5B4332;border:1px solid rgba(216,174,99,.22)}.invest-danger-btn{background:#B91C1C;color:#fff}.invest-glass-btn{margin-inline-start:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#FFFDFC}.invest-glass-btn:hover{background:rgba(255,255,255,.18)}.invest-primary-btn:disabled,.invest-secondary-btn:disabled,.invest-danger-btn:disabled{opacity:.6;cursor:wait}
         .invest-panel,.invest-empty{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:22px;box-shadow:0 4px 22px rgba(90,67,51,.06)}
+        .invest-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px}.invest-summary-card{min-height:132px;padding:16px;display:grid;gap:8px}.invest-summary-card .icon{width:38px;height:38px;border-radius:13px;background:rgba(216,174,99,.12);color:#D8AE63;display:grid;place-items:center}.invest-summary-card span{font-size:11px;font-weight:900;color:#9A6C3C}.invest-summary-card strong{font-size:18px;color:#111}.invest-summary-card p{margin:0;color:#7C6A5D;font-size:11px;font-weight:800;line-height:1.6}
+        .invest-chart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}.invest-chart-card{padding:17px;min-height:330px}.invest-section-head{display:flex;align-items:center;gap:9px;margin-bottom:14px;color:#9A6C3C}.invest-section-head h2{margin:0;color:#111;font-size:16px;font-weight:900}
+        .invest-analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}.invest-insights,.invest-projections{padding:18px}.invest-insight-list{display:grid;gap:10px}.invest-insight-item{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:15px;padding:12px}.invest-insight-item span{width:30px;height:30px;border-radius:11px;background:linear-gradient(135deg,#D8AE63,#9A6C3C);display:grid;place-items:center;color:#111;font-size:12px;font-weight:900}.invest-insight-item p{margin:0;color:#5B4332;font-size:13px;font-weight:800;line-height:1.7}
+        .invest-projection-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.invest-projection-grid div{background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:15px;padding:12px;display:grid;gap:6px}.invest-projection-grid span{color:#9A6C3C;font-size:11px;font-weight:900}.invest-projection-grid strong{font-size:15px;color:#111}.invest-projection-grid small{font-size:11px;color:#7C6A5D;font-weight:800}.invest-disclaimer{margin:12px 0 0;color:#9A6C3C;font-size:11px;font-weight:900}
         .invest-empty{min-height:280px;padding:42px 20px;text-align:center;display:grid;place-items:center;align-content:center;gap:12px}.invest-empty-icon{width:68px;height:68px;border-radius:22px;background:rgba(216,174,99,.12);color:#D8AE63;display:grid;place-items:center}.invest-empty h3{margin:0;font-size:20px}.invest-empty p{max-width:520px;margin:0;color:#7C6A5D;line-height:1.8;font-size:14px}
         .invest-controls{display:grid;grid-template-columns:1fr 220px 220px;gap:10px;padding:16px;border-bottom:1px solid rgba(216,174,99,.1)}.invest-controls input,.invest-controls select,.invest-field input,.invest-field select,.invest-field textarea{height:48px;border:1.5px solid rgba(216,174,99,.22);border-radius:14px;background:#F7F3EA;color:#111;padding:0 13px;font:800 13px Tajawal,Arial,sans-serif;outline:0}.invest-controls input:focus,.invest-controls select:focus,.invest-field input:focus,.invest-field select:focus,.invest-field textarea:focus{border-color:#D8AE63;background:#FFFDFC;box-shadow:0 0 0 4px rgba(216,174,99,.12)}
         .invest-list{display:grid;gap:0;padding:4px 16px 16px}.invest-row{padding:16px 0;border-bottom:1px solid rgba(216,174,99,.1);display:grid;gap:11px}.invest-row:last-child{border-bottom:0}.invest-row-main{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.invest-row-main h3{margin:0 0 5px;font-size:16px;font-weight:900}.invest-row-main p{margin:0;color:#8B7A6D;font-size:12px;font-weight:800}.invest-row-main strong{font-size:16px;color:#D8AE63;white-space:nowrap}.invest-row-meta{display:flex;flex-wrap:wrap;gap:8px}.invest-row-meta span{font-size:12px;font-weight:800;color:#5B4332;background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:999px;padding:6px 10px}.invest-row-actions{display:flex;gap:7px;flex-wrap:wrap}.invest-row-actions button{height:34px;border-radius:11px;border:1px solid rgba(216,174,99,.16);background:#FFFDFC;color:#5B4332;padding:0 10px;font:900 12px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;gap:6px;cursor:pointer}.invest-row-actions button:hover{background:rgba(216,174,99,.09);color:#9A6C3C}.invest-row-actions button.danger:hover{background:rgba(185,28,28,.08);color:#B91C1C}
@@ -253,9 +432,31 @@ export default function InvestPage() {
         .invest-confirm{position:relative;width:min(430px,100%);background:#FFFDFC;border-radius:24px;border:1px solid rgba(216,174,99,.18);box-shadow:0 24px 75px rgba(45,26,10,.28);padding:26px;text-align:center}.invest-close{position:absolute;top:14px;inset-inline-end:14px}.invest-confirm-icon{width:62px;height:62px;margin:0 auto 12px;border-radius:20px;background:rgba(185,28,28,.08);color:#B91C1C;display:grid;place-items:center}.invest-confirm h3{margin:0 0 8px}.invest-confirm p{margin:0 0 18px;color:#5B4332;line-height:1.8;font-weight:800}
         .invest-drawer{width:min(460px,100%);max-height:92vh;overflow:auto;background:#FFFDFC;border:1px solid rgba(216,174,99,.18);border-radius:24px;padding:20px;box-shadow:0 28px 90px rgba(45,26,10,.3)}.invest-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.invest-drawer-title{display:flex;align-items:center;gap:12px}.invest-drawer-title>span{width:42px;height:42px;border-radius:14px;background:rgba(216,174,99,.12);color:#D8AE63;display:grid;place-items:center}.invest-drawer-title p{margin:0 0 4px;color:#9A6C3C;font-size:12px;font-weight:900}.invest-drawer-title h3{margin:0;font-size:19px}.invest-detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.invest-detail-grid div,.invest-notes-box{background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:15px;padding:12px}.invest-detail-grid span,.invest-notes-box strong{display:block;color:#9A6C3C;font-size:11px;font-weight:900;margin-bottom:6px}.invest-detail-grid strong,.invest-notes-box p{margin:0;color:#111;font-size:13px;font-weight:800;line-height:1.7}.invest-notes-box{margin-top:10px}
         .invest-toast{position:fixed;z-index:100;inset-inline-end:22px;bottom:22px;background:#111;color:#D8AE63;border:1px solid rgba(216,174,99,.28);border-radius:16px;padding:13px 16px;font:900 13px Tajawal,Arial,sans-serif;box-shadow:0 18px 45px rgba(45,26,10,.2)}.invest-notice{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18);color:#B91C1C;border-radius:15px;padding:12px 14px;margin-bottom:14px;font-weight:800}.invest-loading{padding:34px;text-align:center;color:#9A6C3C;font-weight:900}
-        @keyframes pulse{50%{opacity:.45}}@media(max-width:1024px){.invest-main{margin-inline-start:0}}@media(max-width:760px){.invest-main{padding:14px}.invest-hero{display:grid;padding:22px}.invest-hero h2{font-size:28px}.invest-hero-total{min-width:0}.invest-controls{grid-template-columns:1fr}.invest-form{grid-template-columns:1fr}.span-2{grid-column:auto}.invest-row-main{display:grid}.invest-row-main strong{white-space:normal}.invest-row-actions button{flex:1}.invest-detail-grid{grid-template-columns:1fr}.invest-overlay{align-items:flex-end;padding:0}.invest-modal,.invest-drawer{border-radius:24px 24px 0 0;max-height:95vh}.invest-confirm{margin:16px}}
+        @keyframes pulse{50%{opacity:.45}}@media(max-width:1180px){.invest-summary-grid{grid-template-columns:repeat(3,1fr)}.invest-chart-grid{grid-template-columns:1fr 1fr}.invest-analysis-grid{grid-template-columns:1fr}}@media(max-width:1024px){.invest-main{margin-inline-start:0}}@media(max-width:760px){.invest-main{padding:14px}.invest-hero{display:grid;padding:22px}.invest-hero h2{font-size:28px}.invest-hero-total{min-width:0}.invest-summary-grid,.invest-chart-grid,.invest-projection-grid{grid-template-columns:1fr}.invest-controls{grid-template-columns:1fr}.invest-form{grid-template-columns:1fr}.span-2{grid-column:auto}.invest-row-main{display:grid}.invest-row-main strong{white-space:normal}.invest-row-actions button{flex:1}.invest-detail-grid{grid-template-columns:1fr}.invest-overlay{align-items:flex-end;padding:0}.invest-modal,.invest-drawer{border-radius:24px 24px 0 0;max-height:95vh}.invest-confirm{margin:16px}}
       `}</style>
     </div>
   );
 }
 
+function SummaryCard({ icon, title, value, subtitle }: { icon: ReactNode; title: string; value: string; subtitle: string }) {
+  return (
+    <div className="invest-panel invest-summary-card">
+      <div className="icon">{icon}</div>
+      <span>{title}</span>
+      <strong>{value}</strong>
+      <p>{subtitle}</p>
+    </div>
+  );
+}
+
+function ChartCard({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+  return (
+    <div className="invest-panel invest-chart-card">
+      <div className="invest-section-head">
+        {icon}
+        <h2>{title}</h2>
+      </div>
+      {children}
+    </div>
+  );
+}
