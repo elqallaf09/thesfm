@@ -349,7 +349,8 @@ export default function DashboardPage(){
       .prog-fill{height:100%;border-radius:10px;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
       .action-btn{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 10px;border:1.5px solid rgba(216,174,99,.2);border-radius:16px;background:#FFFDFC;cursor:pointer;transition:all .2s;font-family:'Tajawal',sans-serif;text-align:center}
       .action-btn:hover{border-color:#D8AE63;background:rgba(216,174,99,.06);transform:translateY(-2px);box-shadow:0 6px 20px rgba(216,174,99,.15)}
-      @media(max-width:1024px){.sidebar{display:none!important}.main-pad{margin-right:0!important}}
+      .home-language-mobile{display:none}
+      @media(max-width:1024px){.sidebar{display:none!important}.main-pad{margin-right:0!important}.home-language-mobile{display:block}}
       @media(max-width:768px){.kpi-grid{grid-template-columns:1fr 1fr!important}.hero-grid{grid-template-columns:1fr!important}.insight-grid{grid-template-columns:1fr!important}.dist-grid{grid-template-columns:1fr!important}.invest-grid{grid-template-columns:1fr!important}.goals-grid{grid-template-columns:1fr 1fr!important}.feat-grid{grid-template-columns:repeat(3,1fr)!important}}
     `}</style>
 
@@ -385,6 +386,9 @@ export default function DashboardPage(){
                   وضع الضيف
                 </span>
               )}
+              <div className="home-language-mobile">
+                <LanguageSwitcher variant="gold" compact />
+              </div>
               <button onClick={()=>window.print()} style={{display:'flex',alignItems:'center',gap:'7px',padding:'9px 18px',background:'#FFFDFC',border:'1.5px solid rgba(216,174,99,.25)',borderRadius:'12px',cursor:'pointer',color:'#5B4332',fontSize:'13px',fontWeight:'700',fontFamily:'Tajawal,sans-serif'}}>
                 🖨️ تقرير شهري
               </button>
