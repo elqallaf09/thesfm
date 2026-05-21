@@ -1,26 +1,50 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
+import {
+  Bell,
+  Bot,
+  ChartPie,
+  FolderKanban,
+  HandHeart,
+  Home,
+  LayoutDashboard,
+  LogOut,
+  PiggyBank,
+  ReceiptText,
+  Settings,
+  Target,
+  TrendingUp,
+  UserRound,
+  Wallet,
+} from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 
-const NAV_ITEMS = [
-  { id: 'home', icon: '⊞', path: '/', labelKey: 'nav_home' },
-  { id: 'expenses', icon: '🛒', path: '/expenses', labelKey: 'nav_expenses' },
-  { id: 'income', icon: '💵', path: '/income', labelKey: 'nav_income' },
-  { id: 'invest', icon: '📈', path: '/invest', labelKey: 'nav_invest' },
-  { id: 'savings', icon: '🐷', path: '/savings', labelKey: 'nav_savings' },
-  { id: 'goals', icon: '🎯', path: '/goals', labelKey: 'nav_goals' },
-  { id: 'projects', icon: '🚀', path: '/projects', labelKey: 'nav_projects' },
-  { id: 'charity', icon: '🤲', path: '/charity', labelKey: 'nav_charity' },
-  { id: 'reports', icon: '📊', path: '/reports', labelKey: 'nav_reports' },
-  { id: 'ai', icon: '🧠', path: '/ai', labelKey: 'nav_ai' },
-  { id: 'notif', icon: '🔔', path: '/notifications', labelKey: 'nav_notif' },
-  { id: 'settings', icon: '⚙️', path: '/settings', labelKey: 'nav_settings' },
-  { id: 'profile', icon: '👤', path: '/profile', labelKey: 'nav_profile' },
-] as const;
+type NavItem = {
+  id: string;
+  icon: React.ComponentType<{ size?: number }>;
+  path: string;
+  labelKey: string;
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { id: 'home',          icon: LayoutDashboard, path: '/',              labelKey: 'nav_home'     },
+  { id: 'expenses',      icon: ReceiptText,     path: '/expenses',      labelKey: 'nav_expenses' },
+  { id: 'income',        icon: Wallet,          path: '/income',        labelKey: 'nav_income'   },
+  { id: 'invest',        icon: TrendingUp,      path: '/invest',        labelKey: 'nav_invest'   },
+  { id: 'savings',       icon: PiggyBank,       path: '/savings',       labelKey: 'nav_savings'  },
+  { id: 'goals',         icon: Target,          path: '/goals',         labelKey: 'nav_goals'    },
+  { id: 'projects',      icon: FolderKanban,    path: '/projects',      labelKey: 'nav_projects' },
+  { id: 'charity',       icon: HandHeart,       path: '/charity',       labelKey: 'nav_charity'  },
+  { id: 'reports',       icon: ChartPie,        path: '/reports',       labelKey: 'nav_reports'  },
+  { id: 'ai',            icon: Bot,             path: '/ai',            labelKey: 'nav_ai'       },
+  { id: 'notif',         icon: Bell,            path: '/notifications', labelKey: 'nav_notif'    },
+  { id: 'settings',      icon: Settings,        path: '/settings',      labelKey: 'nav_settings' },
+  { id: 'profile',       icon: UserRound,       path: '/profile',       labelKey: 'nav_profile'  },
+];
 
 export function Sidebar() {
   const router = useRouter();
@@ -47,7 +71,7 @@ export function Sidebar() {
         .sfm-shared-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;cursor:pointer;transition:all .2s;color:rgba(255,255,255,.58);font-size:13px;font-weight:600;border:none;background:transparent;width:100%;text-align:start;font-family:Tajawal,Arial,sans-serif}
         .sfm-shared-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.9)}
         .sfm-shared-item.active{background:rgba(216,174,99,.18);color:#D8AE63;font-weight:800;box-shadow:inset 0 0 0 1px rgba(216,174,99,.08)}
-        .sfm-shared-icon{width:20px;text-align:center;font-size:16px;flex:0 0 20px}
+        .sfm-shared-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex:0 0 20px}
         .sfm-shared-divider{height:1px;background:rgba(216,174,99,.08);margin:8px 6px}
         @media(max-width:1024px){.sfm-shared-sidebar{display:none}}
       `}</style>
@@ -64,6 +88,7 @@ export function Sidebar() {
       <nav className="sfm-shared-nav">
         {NAV_ITEMS.map(item => {
           const active = pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
+          const NavIcon = item.icon;
           return (
             <button
               key={item.id}
@@ -71,14 +96,14 @@ export function Sidebar() {
               onClick={() => router.push(item.path)}
               className={`sfm-shared-item${active ? ' active' : ''}`}
             >
-              <span className="sfm-shared-icon">{item.icon}</span>
+              <span className="sfm-shared-icon"><NavIcon size={17} /></span>
               <span>{t(item.labelKey)}</span>
             </button>
           );
         })}
         <div className="sfm-shared-divider" />
         <button type="button" onClick={handleLogout} className="sfm-shared-item">
-          <span className="sfm-shared-icon">⤴</span>
+          <span className="sfm-shared-icon"><LogOut size={17} /></span>
           <span>{t('nav_logout')}</span>
         </button>
       </nav>

@@ -808,10 +808,6 @@ export default function DashboardPage(){
               <div style={{fontSize:'11px',color:'#9A6C3C'}}>المدير المالي الذكي • AI Wealth Platform</div>
             </div>
             <div style={{fontSize:'11px',color:'#BFB5A8',textAlign:'center'}}>جميع الحقوق محفوظة • THE SFM 2026</div>
-            <div style={{display:'flex',gap:'10px'}}>
-              <button onClick={()=>router.push('/profile')} style={{padding:'7px 14px',background:'transparent',border:'1px solid rgba(216,174,99,.2)',borderRadius:'10px',color:'#9A6C3C',fontSize:'12px',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>الملف الشخصي</button>
-              <button onClick={()=>router.push('/projects')} style={{padding:'7px 14px',background:'transparent',border:'1px solid rgba(216,174,99,.2)',borderRadius:'10px',color:'#9A6C3C',fontSize:'12px',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>المشاريع</button>
-            </div>
           </div>
 
         </main>
