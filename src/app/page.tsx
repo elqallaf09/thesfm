@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { Sidebar } from '@/components/Sidebar';
+import { UserChip } from '@/components/UserChip';
 
 /* ═══════════════════════════════════════════════════
    TYPES
@@ -358,10 +359,13 @@ export default function DashboardPage(){
     <div className="dp" dir={dir}>
 
       {/* ═══ TICKER BAR ═══ */}
-      <div style={{background:'rgba(17,17,17,0.96)',backdropFilter:'blur(12px)',borderBottom:'1px solid rgba(216,174,99,.12)',padding:'8px 0',overflow:'hidden',position:'sticky',top:0,zIndex:100}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',fontSize:'12px',fontWeight:'700',color:'#D8AE63',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>
-          <span>THE SFM</span>
-          <span style={{color:'rgba(255,255,255,.55)'}}>{isAr ? 'لوحة مالية متصلة ببياناتك' : isFr ? 'Tableau financier connecte a vos donnees' : 'Financial dashboard connected to your data'}</span>
+      <div style={{background:'rgba(17,17,17,0.96)',backdropFilter:'blur(12px)',borderBottom:'1px solid rgba(216,174,99,.12)',padding:'6px 16px',position:'sticky',top:0,zIndex:100}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'10px',fontSize:'12px',fontWeight:'700',color:'#D8AE63',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>
+            <span>THE SFM</span>
+            <span style={{color:'rgba(255,255,255,.45)',fontWeight:'500'}}>{isAr ? 'لوحة مالية متصلة ببياناتك' : isFr ? 'Tableau financier connecte a vos donnees' : 'Financial dashboard connected to your data'}</span>
+          </div>
+          <UserChip displayName={profile.display_name||undefined} />
         </div>
       </div>
 
@@ -481,7 +485,7 @@ export default function DashboardPage(){
           </div>
 
           {/* ─── AI INSIGHT + 6-MONTH CHART ─── */}
-          <div className="insight-grid" style={{...S(120),display:'grid',gridTemplateColumns:'280px 1fr',gap:'16px'}}>
+          <div className="insight-grid" style={{...S(120),display:'grid',gridTemplateColumns:'280px 1fr',gap:'16px',alignItems:'start'}}>
             {/* AI insight card */}
             <div className="dc" style={{padding:'22px'}}>
               <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'18px'}}>
@@ -566,7 +570,7 @@ export default function DashboardPage(){
           </div>
 
           {/* ─── TRANSACTIONS + EXPENSE DIST ─── */}
-          <div className="dist-grid" style={{...S(200),display:'grid',gridTemplateColumns:'1fr 320px',gap:'16px'}}>
+          <div className="dist-grid" style={{...S(200),display:'grid',gridTemplateColumns:'1fr 320px',gap:'16px',alignItems:'start'}}>
             {/* Transactions table */}
             <div className="dc" style={{padding:'22px'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}}>
@@ -625,7 +629,7 @@ export default function DashboardPage(){
           </div>
 
           {/* ─── INVESTMENT SECTION ─── */}
-          <div className="invest-grid" style={{...S(240),display:'grid',gridTemplateColumns:'200px 1fr 200px',gap:'16px'}}>
+          <div className="invest-grid" style={{...S(240),display:'grid',gridTemplateColumns:'200px 1fr 200px',gap:'16px',alignItems:'start'}}>
             {/* Summary */}
             <div className="dc" style={{padding:'20px'}}>
               <h3 style={{fontSize:'14px',fontWeight:'800',color:'#111111',marginBottom:'16px'}}>ملخص الاستثمارات</h3>
@@ -675,7 +679,7 @@ export default function DashboardPage(){
           </div>
 
           {/* ─── GOALS + QUICK ACTIONS ─── */}
-          <div style={{...S(280),display:'grid',gridTemplateColumns:'1fr 240px',gap:'16px'}}>
+          <div style={{...S(280),display:'grid',gridTemplateColumns:'1fr 240px',gap:'16px',alignItems:'start'}}>
             {/* Goals */}
             <div className="dc" style={{padding:'22px'}}>
               <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111',marginBottom:'18px'}}>الأهداف المالية</h3>
@@ -742,7 +746,7 @@ export default function DashboardPage(){
           </div>
 
           {/* ─── HISTORY TABLES ─── */}
-          <div style={{...S(320),display:'grid',gridTemplateColumns:'1fr 1fr',gap:'16px'}}>
+          <div style={{...S(320),display:'grid',gridTemplateColumns:'1fr 1fr',gap:'16px',alignItems:'start'}}>
             {monthHistory.length===0 ? (
               <div className="dc" style={{padding:'22px',gridColumn:'1 / -1'}}>
                 <EmptyState compact icon="📈" title="لا يوجد تاريخ شهري بعد" subtitle="ابدأ بإدخال دخلك ومصاريفك ليتراكم السجل تلقائياً" btnLabel="إدخال الدخل الشهري" btnHref="/income" />
