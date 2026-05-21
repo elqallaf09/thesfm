@@ -72,7 +72,7 @@ function LineChart({data,width=520,height=200}:{data:MonthSnapshot[];width?:numb
   const [tooltip,setTooltip]=useState<{x:number;y:number;idx:number}|null>(null);
   return(
     <div style={{position:'relative',width:'100%'}}>
-      <svg viewBox={`0 0 ${width} ${height}`} style={{width:'100%',height:'auto',overflow:'visible'}}>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{width:'100%',height:'auto',maxHeight:'260px',overflow:'visible'}}>
         {/* Grid lines */}
         {[0,0.25,0.5,0.75,1].map((t,i)=>{
           const y=pad.t+h*(1-t);
@@ -135,9 +135,11 @@ function DonutChart({data,total}:{data:DonutItem[];total:number}){
 function BarChart({data}:{data:{label:string;v1:number;v2:number}[]}){
   const maxV=Math.max(...data.flatMap(d=>[d.v1,d.v2]))*1.15||1;
   const h=120,pad=30,bw=14,gap=6;
-  const W=data.length*(bw*2+gap+12)+pad*2;
+  // minimum W=480 keeps the viewBox always landscape (480:150 = 3.2:1)
+  // preventing the SVG from scaling to >300px tall on wide containers
+  const W=Math.max(data.length*(bw*2+gap+12)+pad*2, 480);
   return(
-    <svg viewBox={`0 0 ${W} ${h+30}`} style={{width:'100%',height:'auto'}}>
+    <svg viewBox={`0 0 ${W} ${h+30}`} style={{width:'100%',height:'auto',maxHeight:'220px'}}>
       {data.map((d,i)=>{
         const x=pad+i*(bw*2+gap+12);
         const b1h=(d.v1/maxV)*h; const b2h=(d.v2/maxV)*h;
@@ -502,7 +504,7 @@ export default function DashboardPage(){
               </button>
             </div>
             {/* 6-month chart */}
-            <div className="dc" style={{padding:'22px'}}>
+            <div className="dc" style={{padding:'22px',maxHeight:'360px',overflow:'hidden'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}}>
                 <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111'}}>نظرة عامة على 6 أشهر</h3>
                 <select style={{fontSize:'12px',padding:'6px 10px',borderRadius:'10px',border:'1px solid rgba(216,174,99,.2)',background:'#FFFDFC',color:'#5B4332',fontFamily:'Tajawal,sans-serif',cursor:'pointer',outline:'none'}}>
@@ -639,7 +641,7 @@ export default function DashboardPage(){
             </div>
 
             {/* Bar chart */}
-            <div className="dc" style={{padding:'20px'}}>
+            <div className="dc" style={{padding:'20px',maxHeight:'320px',overflow:'hidden'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'14px'}}>
                 <h3 style={{fontSize:'14px',fontWeight:'800',color:'#111111'}}>أداء الاستثمارات</h3>
               </div>
