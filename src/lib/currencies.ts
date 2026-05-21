@@ -45,5 +45,77 @@ export const CURRENCIES: Currency[] = [
 export const DEFAULT_CURRENCY = 'KWD';
 
 export function getCurrency(code: string): Currency {
-  return CURRENCIES.find(c => c.code === code) ?? CURRENCIES.find(c => c.code === DEFAULT_CURRENCY)!;
+  const normalized = code.toUpperCase();
+  return CURRENCIES.find(c => c.code === normalized) ?? createCurrency(normalized);
+}
+
+type CurrencyLocale = 'ar' | 'en' | 'fr';
+
+const FALLBACK_WORLD_CURRENCIES = [
+  'AED','AFN','ALL','AMD','ANG','AOA','ARS','AUD','AWG','AZN','BAM','BBD','BDT','BGN','BHD','BIF','BMD','BND','BOB','BRL','BSD','BTN','BWP','BYN','BZD',
+  'CAD','CDF','CHF','CLP','CNY','COP','CRC','CUP','CVE','CZK','DJF','DKK','DOP','DZD','EGP','ERN','ETB','EUR','FJD','FKP','GBP','GEL','GHS','GIP','GMD',
+  'GNF','GTQ','GYD','HKD','HNL','HRK','HTG','HUF','IDR','ILS','INR','IQD','IRR','ISK','JMD','JOD','JPY','KES','KGS','KHR','KMF','KPW','KRW','KWD','KYD',
+  'KZT','LAK','LBP','LKR','LRD','LSL','LYD','MAD','MDL','MGA','MKD','MMK','MNT','MOP','MRU','MUR','MVR','MWK','MXN','MYR','MZN','NAD','NGN','NIO','NOK',
+  'NPR','NZD','OMR','PAB','PEN','PGK','PHP','PKR','PLN','PYG','QAR','RON','RSD','RUB','RWF','SAR','SBD','SCR','SDG','SEK','SGD','SHP','SLE','SOS','SRD',
+  'SSP','STN','SYP','SZL','THB','TJS','TMT','TND','TOP','TRY','TTD','TWD','TZS','UAH','UGX','USD','UYU','UZS','VES','VND','VUV','WST','XAF','XCD','XOF',
+  'XPF','YER','ZAR','ZMW','ZWL',
+];
+
+function supportedCurrencyCodes() {
+  const intlWithValues = Intl as typeof Intl & { supportedValuesOf?: (key: 'currency') => string[] };
+  return intlWithValues.supportedValuesOf?.('currency') ?? FALLBACK_WORLD_CURRENCIES;
+}
+
+function currencyName(code: string, locale: CurrencyLocale) {
+  try {
+    return new Intl.DisplayNames([locale], { type: 'currency' }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+function currencySymbol(code: string, locale: CurrencyLocale) {
+  try {
+    const parts = new Intl.NumberFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', {
+      style: 'currency',
+      currency: code,
+      currencyDisplay: 'narrowSymbol',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).formatToParts(0);
+    return parts.find(part => part.type === 'currency')?.value || code;
+  } catch {
+    return code;
+  }
+}
+
+function currencyDecimals(code: string) {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: code }).resolvedOptions().maximumFractionDigits;
+  } catch {
+    return 2;
+  }
+}
+
+function createCurrency(code: string): Currency {
+  return {
+    code,
+    symbolAr: currencySymbol(code, 'ar'),
+    symbolEn: currencySymbol(code, 'en'),
+    nameAr: currencyName(code, 'ar'),
+    nameEn: currencyName(code, 'en'),
+    nameFr: currencyName(code, 'fr'),
+    decimals: currencyDecimals(code) ?? 2,
+  };
+}
+
+export function getCurrencyOptions(locale: CurrencyLocale = 'ar'): Currency[] {
+  const current = new Map(CURRENCIES.map(currency => [currency.code, currency]));
+  return supportedCurrencyCodes()
+    .map(code => current.get(code) ?? createCurrency(code))
+    .sort((a, b) => {
+      const nameA = locale === 'ar' ? a.nameAr : locale === 'fr' ? a.nameFr : a.nameEn;
+      const nameB = locale === 'ar' ? b.nameAr : locale === 'fr' ? b.nameFr : b.nameEn;
+      return nameA.localeCompare(nameB, locale);
+    });
 }

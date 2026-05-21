@@ -36,9 +36,10 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { Sidebar } from '@/components/Sidebar';
 import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
+import { getCurrency, getCurrencyOptions } from '@/lib/currencies';
 
 type PageKind = 'expenses' | 'income' | 'invest' | 'savings' | 'goals' | 'reports' | 'ai';
-type LangText = { ar: string; en: string };
+type LangText = { ar: string; en: string; fr?: string };
 type TranslateFn = ReturnType<typeof useLanguage>['t'];
 type MoneyItem = { id: string; name: string; amount: number; created_at?: string | null };
 type IncomeSource = MoneyItem & { label?: string | null; category?: string | null };
@@ -205,12 +206,16 @@ const pageMeta: Record<PageKind, { title: LangText; subtitle: LangText; accent: 
   },
 };
 
-function pick(text: LangText, isAr: boolean) {
-  return isAr ? text.ar : text.en;
+function pick(text: LangText, langOrIsAr: string | boolean) {
+  const lang = typeof langOrIsAr === 'boolean' ? (langOrIsAr ? 'ar' : 'en') : langOrIsAr;
+  if (lang === 'ar') return text.ar;
+  if (lang === 'fr') return text.fr ?? text.en;
+  return text.en;
 }
 
-function money(value: number, isAr: boolean, currency = 'KWD') {
-  return formatCurrency(value, currency, isAr ? 'ar' : 'en');
+function money(value: number, langOrIsAr: string | boolean, currency = 'KWD') {
+  const lang = typeof langOrIsAr === 'boolean' ? (langOrIsAr ? 'ar' : 'en') : langOrIsAr;
+  return formatCurrency(value, currency, lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en');
 }
 
 function sum(items: MoneyItem[]) {
@@ -328,7 +333,7 @@ async function safeQuery<T>(query: QueryResult<T>) {
 export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const router = useRouter();
   const { user, loading, isGuest } = useAuth();
-  const { isAr, dir, t } = useLanguage();
+  const { lang, isAr, dir, t } = useLanguage();
   const { currency } = useCurrency();
   const meta = pageMeta[kind];
   const Icon = meta.icon;
@@ -428,9 +433,12 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     };
   }, [snapshot]);
 
-  const cards = useMemo<SectionCard[]>(() => buildCards(kind, data, isAr, currency), [data, isAr, kind, currency]);
-  const rows = useMemo(() => buildRows(kind, data, isAr, currency), [data, isAr, kind, currency]);
-  const insights = useMemo(() => buildInsights(kind, data, isAr, currency), [data, isAr, kind, currency]);
+  const cards = useMemo<SectionCard[]>(() => buildCards(kind, data, lang, currency), [data, lang, kind, currency]);
+  const rows = useMemo(() => buildRows(kind, data, lang, currency, t), [data, lang, kind, currency, t]);
+  const insights = useMemo(() => buildInsights(kind, data, lang, currency, t), [data, lang, kind, currency, t]);
+  const currencyOptions = useMemo(() => getCurrencyOptions(lang), [lang]);
+  const selectedGoalCurrency = useMemo(() => getCurrency(goalForm.currency || currency || 'KWD'), [currency, goalForm.currency]);
+  const selectedCurrencySymbol = isAr ? selectedGoalCurrency.symbolAr : selectedGoalCurrency.symbolEn;
   const goalPreview = useMemo(() => buildGoalAnalysis({
     id: goalForm.id || 'preview',
     name: goalForm.name || t('goal_name_label'),
@@ -447,7 +455,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     icon: '🎯',
     color: '#D8AE63',
     notes: goalForm.notes,
-  }, data, isAr, goalForm.currency || currency, t), [currency, data, goalForm, isAr, t]);
+  }, data, lang, goalForm.currency || currency, t), [currency, data, goalForm, lang, t]);
 
   const filteredRows = useMemo(() => {
     if (!editableKind(kind)) return rows;
@@ -785,12 +793,12 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       const result = await response.json() as { text?: string };
       setChatHistory([...nextHistory, {
         role: 'assistant',
-        content: result.text || (isAr ? 'وصلتني رسالتك، لكن لم أستطع توليد رد الآن.' : 'I received your message, but could not generate a reply right now.'),
+        content: result.text || t('ai_fallback'),
       }]);
     } catch {
       setChatHistory([...nextHistory, {
         role: 'assistant',
-        content: isAr ? 'الخدمة غير متاحة حالياً. حاول مرة أخرى بعد قليل.' : 'The service is unavailable right now. Please try again shortly.',
+        content: t('ai_unavailable'),
       }]);
     } finally {
       setChatLoading(false);
@@ -820,14 +828,14 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               <Icon size={22} />
             </div>
             <div>
-              <p>{isAr ? 'THE SFM / لوحة التحكم' : 'THE SFM / Dashboard'}</p>
-              <h1>{pick(meta.title, isAr)}</h1>
+              <p>{t('route_breadcrumb')}</p>
+              <h1>{pick(meta.title, lang)}</h1>
             </div>
           </div>
           <div className="finance-header-lang">
             <LanguageSwitcher variant="gold" compact />
           </div>
-          {isGuest && <span className="guest-pill">{isAr ? 'وضع الضيف' : 'Guest mode'}</span>}
+          {isGuest && <span className="guest-pill">{t('guest_mode')}</span>}
         </header>
 
         {menuOpen && (
@@ -843,7 +851,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               return (
                 <button key={item.href} onClick={() => { setMenuOpen(false); router.push(item.href); }}>
                   <NavIcon size={18} />
-                  {pick(item.label, isAr)}
+                  {pick(item.label, lang)}
                 </button>
               );
             })}
@@ -852,12 +860,12 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
         <section className="hero">
           <div>
-            <span className="eyebrow">{isAr ? 'مسار نشط' : 'Active route'}</span>
-            <h2>{pick(meta.title, isAr)}</h2>
-            <p>{pick(meta.subtitle, isAr)}</p>
+            <span className="eyebrow">{t('active_route')}</span>
+            <h2>{pick(meta.title, lang)}</h2>
+            <p>{pick(meta.subtitle, lang)}</p>
           </div>
           <div className="hero-actions">
-            {buildPrimaryActions(kind, isAr, openCreateEntry, openCreateGoal, () => {
+            {buildPrimaryActions(kind, lang, openCreateEntry, openCreateGoal, () => {
               const input = document.getElementById('ai-chat-input');
               input?.focus();
             }).map(action => (
@@ -871,17 +879,17 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
         {snapshot.error && (
           <div className="notice">
-            {isAr ? 'تعذر تحميل بعض البيانات، لذلك نعرض واجهة آمنة بدون تعطيل الصفحة.' : 'Some data could not load, so the page is showing a safe fallback instead.'}
+            {t('error_partial_load')}
           </div>
         )}
 
         <section className="kpi-grid">
           {cards.map(card => (
-            <article key={pick(card.title, isAr)} className="kpi-card">
+            <article key={pick(card.title, lang)} className="kpi-card">
               <span style={{ background: card.tone }} />
-              <p>{pick(card.title, isAr)}</p>
+              <p>{pick(card.title, lang)}</p>
               <strong>{card.value}</strong>
-              <small>{pick(card.body, isAr)}</small>
+              <small>{pick(card.body, lang)}</small>
             </article>
           ))}
         </section>
@@ -890,10 +898,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           <div className="panel wide">
             <div className="panel-head">
               <div>
-                <p>{isAr ? 'تفاصيل الصفحة' : 'Page details'}</p>
-                <h3>{sectionTitle(kind, isAr)}</h3>
+                <p>{t('page_details')}</p>
+                <h3>{sectionTitle(kind, lang)}</h3>
               </div>
-              {dataLoading && <span className="loading-pill">{isAr ? 'جاري التحميل' : 'Loading'}</span>}
+              {dataLoading && <span className="loading-pill">{t('loading')}</span>}
             </div>
 
             {editableKind(kind) && (
@@ -901,21 +909,21 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 <input
                   type="search"
                   className="row-search"
-                  placeholder={isAr ? 'بحث...' : 'Search...'}
+                  placeholder={t('search')}
                   value={rowSearch}
                   onChange={e => setRowSearch(e.target.value)}
                 />
                 <select className="row-select" value={rowRange} onChange={e => setRowRange(e.target.value as typeof rowRange)}>
-                  <option value="all">{isAr ? 'كل الفترات' : 'All time'}</option>
-                  <option value="month">{isAr ? 'هذا الشهر' : 'This month'}</option>
-                  <option value="last3">{isAr ? 'آخر 3 أشهر' : 'Last 3 months'}</option>
-                  <option value="year">{isAr ? 'هذه السنة' : 'This year'}</option>
+                  <option value="all">{t('filter_all')}</option>
+                  <option value="month">{t('filter_month')}</option>
+                  <option value="last3">{t('filter_last3')}</option>
+                  <option value="year">{t('filter_year')}</option>
                 </select>
                 <select className="row-select" value={rowSort} onChange={e => setRowSort(e.target.value as typeof rowSort)}>
-                  <option value="dateDesc">{isAr ? 'الأحدث أولاً' : 'Newest first'}</option>
-                  <option value="dateAsc">{isAr ? 'الأقدم أولاً' : 'Oldest first'}</option>
-                  <option value="amountDesc">{isAr ? 'أعلى مبلغ' : 'Highest amount'}</option>
-                  <option value="amountAsc">{isAr ? 'أقل مبلغ' : 'Lowest amount'}</option>
+                  <option value="dateDesc">{t('sort_newest')}</option>
+                  <option value="dateAsc">{t('sort_oldest')}</option>
+                  <option value="amountDesc">{t('sort_highest')}</option>
+                  <option value="amountAsc">{t('sort_lowest')}</option>
                 </select>
               </div>
             )}
@@ -935,7 +943,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 <div className="empty-state">{t('goals_empty_state')}</div>
               )}
               {kind === 'goals' && data.goals.map(goal => {
-                const analysis = buildGoalAnalysis(goal, data, isAr, currency, t);
+                const analysis = buildGoalAnalysis(goal, data, lang, currency, t);
                 const done = progress(goal.current_amount, goal.target_amount);
                 return (
                   <article className="goal-card" key={goal.id}>
@@ -944,7 +952,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                         <span className="goal-icon">{goal.icon || '🎯'}</span>
                         <div>
                           <strong>{goal.name}</strong>
-                          <span>{t('goal_remaining_amount')}: {money(analysis.remainingAmount, isAr, goal.currency || currency)}</span>
+                          <span>{t('goal_remaining_amount')}: {money(analysis.remainingAmount, lang, goal.currency || currency)}</span>
                         </div>
                       </div>
                       <button type="button" className="goal-edit-btn" onClick={() => openEditGoal(goal)}>
@@ -959,9 +967,9 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                       <b>{done}%</b>
                     </div>
                     <div className="goal-meta-grid">
-                      <div><span>{t('goal_target_amount')}</span><strong>{money(goal.target_amount, isAr, goal.currency || currency)}</strong></div>
-                      <div><span>{t('goal_current_amount')}</span><strong>{money(goal.current_amount, isAr, goal.currency || currency)}</strong></div>
-                      <div><span>{t('goal_monthly_contribution')}</span><strong>{money(goal.monthly_contribution, isAr, goal.currency || currency)}</strong></div>
+                      <div><span>{t('goal_target_amount')}</span><strong>{money(goal.target_amount, lang, goal.currency || currency)}</strong></div>
+                      <div><span>{t('goal_current_amount')}</span><strong>{money(goal.current_amount, lang, goal.currency || currency)}</strong></div>
+                      <div><span>{t('goal_monthly_contribution')}</span><strong>{money(goal.monthly_contribution, lang, goal.currency || currency)}</strong></div>
                       <div><span>{t('goal_deadline')}</span><strong>{goal.deadline || t('goal_deadline_missing')}</strong></div>
                     </div>
                     <div className="goal-ai-card">
@@ -971,10 +979,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                         <span className={`risk-pill ${analysis.riskClass}`}>{analysis.riskLabel}</span>
                       </div>
                       <div className="goal-ai-metrics">
-                        <div><span>{t('goal_required_monthly')}</span><b>{money(analysis.requiredMonthlySaving, isAr, goal.currency || currency)}</b></div>
+                        <div><span>{t('goal_required_monthly')}</span><b>{money(analysis.requiredMonthlySaving, lang, goal.currency || currency)}</b></div>
                         <div><span>{t('goal_estimated_completion')}</span><b>{analysis.estimatedCompletion}</b></div>
                         <div><span>{t('goal_status_label')}</span><b>{analysis.statusLabel}</b></div>
-                        <div><span>{t('goal_adjustment_label')}</span><b>{money(analysis.adjustment, isAr, goal.currency || currency)}</b></div>
+                        <div><span>{t('goal_adjustment_label')}</span><b>{money(analysis.adjustment, lang, goal.currency || currency)}</b></div>
                       </div>
                       <p>{analysis.summary}</p>
                       <div className="goal-ai-plan">
@@ -988,7 +996,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 );
               })}
               {kind !== 'goals' && filteredRows.length === 0 && (
-                <div className="empty-state">{isAr ? 'لا توجد بيانات محفوظة حالياً' : 'No saved data yet'}</div>
+                <div className="empty-state">{t('no_data_saved')}</div>
               )}
               {kind !== 'goals' && (editableKind(kind) ? filteredRows.slice(0, visibleCount) : filteredRows).map(row => (
                 <div className="data-row" key={row.id}>
@@ -1013,7 +1021,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               ))}
               {editableKind(kind) && filteredRows.length > visibleCount && (
                 <button type="button" className="load-more-btn" onClick={() => setVisibleCount(v => v + 30)}>
-                  {isAr ? `تحميل المزيد (${filteredRows.length - visibleCount} متبقية)` : `Load more (${filteredRows.length - visibleCount} remaining)`}
+                  {t('load_more').replace('{n}', String(filteredRows.length - visibleCount))}
                 </button>
               )}
             </div>
@@ -1022,8 +1030,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           <aside className="panel">
             <div className="panel-head compact">
               <div>
-                <p>{isAr ? 'رؤى ذكية' : 'Smart insights'}</p>
-                <h3>{isAr ? 'اقتراحات الآن' : 'Suggestions now'}</h3>
+                <p>{t('smart_insights')}</p>
+                <h3>{t('suggestions_now')}</h3>
               </div>
               <Gauge size={21} />
             </div>
@@ -1044,11 +1052,11 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         {kind === 'ai' ? (
           <section className="ai-panel">
             <div>
-              <h3>{isAr ? 'اسأل المساعد المالي' : 'Ask the financial assistant'}</h3>
-              <p>{isAr ? 'اكتب سؤالك عن الميزانية، الدخل، أو الاستثمار. الواجهة جاهزة للتوصيل بخدمة الذكاء الموجودة.' : 'Ask about budgets, income, or investing. The interface is ready for the existing AI service.'}</p>
+              <h3>{t('ask_assistant')}</h3>
+              <p>{t('ai_chat_hint')}</p>
             </div>
             <div className="chat-history">
-              {(chatHistory.length ? chatHistory : [{ role: 'assistant', content: isAr ? 'مرحباً، اسألني عن دخلك أو مصروفاتك أو فرص تحسين الادخار.' : 'Hi, ask me about income, expenses, or savings optimization.' }]).map((message, index) => (
+              {(chatHistory.length ? chatHistory : [{ role: 'assistant' as const, content: t('ai_welcome') }]).map((message, index) => (
                 <div key={`${message.role}-${index}`} className={message.role}>
                   {message.content}
                 </div>
@@ -1062,7 +1070,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 onKeyDown={event => {
                   if (event.key === 'Enter') void sendAiMessage();
                 }}
-                placeholder={isAr ? 'مثال: كيف أخفض مصاريفي هذا الشهر؟' : 'Example: How can I reduce expenses this month?'}
+                placeholder={t('ai_placeholder')}
               />
               <button aria-label="Send message" onClick={() => void sendAiMessage()} disabled={chatLoading}>
                 <Send size={18} />
@@ -1073,8 +1081,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           <section className="summary-band">
             <LineChart size={20} />
             <div>
-              <strong>{summaryTitle(kind, isAr)}</strong>
-              <p>{summaryText(kind, data, isAr, currency)}</p>
+              <strong>{summaryTitle(kind, lang)}</strong>
+              <p>{summaryText(kind, data, lang, currency)}</p>
             </div>
           </section>
         )}
@@ -1163,15 +1171,24 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 </label>
                 <label>
                   <span>{t('goal_target_amount')}</span>
-                  <input inputMode="decimal" value={goalForm.targetAmount} onChange={event => setGoalForm(prev => ({ ...prev, targetAmount: event.target.value }))} />
+                  <div className="currency-input-wrap">
+                    <span className="currency-symbol">{selectedCurrencySymbol}</span>
+                    <input inputMode="decimal" value={goalForm.targetAmount} onChange={event => setGoalForm(prev => ({ ...prev, targetAmount: event.target.value }))} />
+                  </div>
                 </label>
                 <label>
                   <span>{t('goal_current_amount')}</span>
-                  <input inputMode="decimal" value={goalForm.currentAmount} onChange={event => setGoalForm(prev => ({ ...prev, currentAmount: event.target.value }))} />
+                  <div className="currency-input-wrap">
+                    <span className="currency-symbol">{selectedCurrencySymbol}</span>
+                    <input inputMode="decimal" value={goalForm.currentAmount} onChange={event => setGoalForm(prev => ({ ...prev, currentAmount: event.target.value }))} />
+                  </div>
                 </label>
                 <label>
                   <span>{t('goal_monthly_contribution')}</span>
-                  <input inputMode="decimal" value={goalForm.monthlyContribution} onChange={event => setGoalForm(prev => ({ ...prev, monthlyContribution: event.target.value }))} />
+                  <div className="currency-input-wrap">
+                    <span className="currency-symbol">{selectedCurrencySymbol}</span>
+                    <input inputMode="decimal" value={goalForm.monthlyContribution} onChange={event => setGoalForm(prev => ({ ...prev, monthlyContribution: event.target.value }))} />
+                  </div>
                 </label>
                 <label>
                   <span>{t('goal_deadline')}</span>
@@ -1209,11 +1226,15 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 <label>
                   <span>{t('goal_currency_label')}</span>
                   <select value={goalForm.currency} onChange={event => setGoalForm(prev => ({ ...prev, currency: event.target.value }))}>
-                    <option value="KWD">KWD</option>
-                    <option value="USD">USD</option>
-                    <option value="SAR">SAR</option>
-                    <option value="AED">AED</option>
-                    <option value="EUR">EUR</option>
+                    {currencyOptions.map(item => {
+                      const name = lang === 'ar' ? item.nameAr : lang === 'fr' ? item.nameFr : item.nameEn;
+                      const symbol = isAr ? item.symbolAr : item.symbolEn;
+                      return (
+                        <option key={item.code} value={item.code}>
+                          {item.code} - {symbol} - {name}
+                        </option>
+                      );
+                    })}
                   </select>
                 </label>
                 <label className="goal-notes-field">
@@ -1246,9 +1267,9 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                     ) : (
                       <>
                         <div className="goal-ai-metrics">
-                          <div><span>{t('goal_remaining_amount')}</span><b>{money(goalPreview.remainingAmount, isAr, goalForm.currency || currency)}</b></div>
-                          <div><span>{t('goal_required_monthly')}</span><b>{money(goalPreview.requiredMonthlySaving, isAr, goalForm.currency || currency)}</b></div>
-                          <div><span>{t('goal_current_contribution')}</span><b>{money(Number(goalForm.monthlyContribution) || 0, isAr, goalForm.currency || currency)}</b></div>
+                          <div><span>{t('goal_remaining_amount')}</span><b>{money(goalPreview.remainingAmount, lang, goalForm.currency || currency)}</b></div>
+                          <div><span>{t('goal_required_monthly')}</span><b>{money(goalPreview.requiredMonthlySaving, lang, goalForm.currency || currency)}</b></div>
+                          <div><span>{t('goal_current_contribution')}</span><b>{money(Number(goalForm.monthlyContribution) || 0, lang, goalForm.currency || currency)}</b></div>
                           <div><span>{t('goal_estimated_completion')}</span><b>{goalPreview.estimatedCompletion}</b></div>
                         </div>
                         <p>{goalPreview.summary}</p>
@@ -1307,18 +1328,19 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   );
 }
 
-function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean, currency = 'KWD'): SectionCard[] {
+function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, lang: string, currency = 'KWD'): SectionCard[] {
+  const isAr = lang === 'ar';
   const common = {
-    income: money(data.totalIncome, isAr, currency),
-    expenses: money(data.totalExpenses, isAr, currency),
-    savings: money(data.totalSavings, isAr, currency),
-    investments: money(data.totalInvestments, isAr, currency),
-    balance: money(data.balance, isAr, currency),
+    income: money(data.totalIncome, lang, currency),
+    expenses: money(data.totalExpenses, lang, currency),
+    savings: money(data.totalSavings, lang, currency),
+    investments: money(data.totalInvestments, lang, currency),
+    balance: money(data.balance, lang, currency),
   };
 
   if (kind === 'expenses') return [
     { title: { ar: 'إجمالي المصروفات', en: 'Total expenses' }, body: { ar: 'يشمل كل عمليات المصروفات المسجلة.', en: 'Includes all recorded expense items.' }, value: common.expenses, tone: '#EF4444' },
-    { title: { ar: 'الأعمال الخيرية', en: 'Charity spend' }, body: { ar: 'مرتبطة بالمصروفات الشهرية عند تسجيلها.', en: 'Included in monthly expenses when recorded.' }, value: money(data.charityTotal, isAr, currency), tone: '#D8AE63' },
+    { title: { ar: 'الأعمال الخيرية', en: 'Charity spend' }, body: { ar: 'مرتبطة بالمصروفات الشهرية عند تسجيلها.', en: 'Included in monthly expenses when recorded.' }, value: money(data.charityTotal, lang, currency), tone: '#D8AE63' },
     { title: { ar: 'عدد التصنيفات', en: 'Categories' }, body: { ar: 'تصنيفات نشطة من آخر السجلات.', en: 'Active categories from recent records.' }, value: String(data.expenses.length), tone: '#3B82F6' },
   ];
   if (kind === 'income') return [
@@ -1328,13 +1350,13 @@ function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, isA
   ];
   if (kind === 'invest') return [
     { title: { ar: 'قيمة المحفظة', en: 'Portfolio value' }, body: { ar: 'إجمالي الاستثمارات المسجلة.', en: 'Total recorded investments.' }, value: common.investments, tone: '#3B82F6' },
-    { title: { ar: 'المساهمة الشهرية', en: 'Monthly contribution' }, body: { ar: 'تقدير 15% من الدخل الحالي.', en: 'Estimated as 15% of current income.' }, value: money(data.totalIncome * 0.15, isAr, currency), tone: '#22C55E' },
-    { title: { ar: 'مستوى المخاطر', en: 'Risk level' }, body: { ar: 'متوازن بناءً على التوزيع الحالي.', en: 'Balanced based on current allocation.' }, value: isAr ? 'متوسط' : 'Medium', tone: '#D8AE63' },
+    { title: { ar: 'المساهمة الشهرية', en: 'Monthly contribution' }, body: { ar: 'تقدير 15% من الدخل الحالي.', en: 'Estimated as 15% of current income.' }, value: money(data.totalIncome * 0.15, lang, currency), tone: '#22C55E' },
+    { title: { ar: 'مستوى المخاطر', en: 'Risk level' }, body: { ar: 'متوازن بناءً على التوزيع الحالي.', en: 'Balanced based on current allocation.' }, value: pick({ ar: 'متوسط', en: 'Medium', fr: 'Moyen' }, lang), tone: '#D8AE63' },
   ];
   if (kind === 'savings') return [
     { title: { ar: 'إجمالي المدخرات', en: 'Total savings' }, body: { ar: 'مجموع عمليات الادخار المسجلة.', en: 'Total recorded savings entries.' }, value: common.savings, tone: '#22C55E' },
     { title: { ar: 'عدد السجلات', en: 'Entries count' }, body: { ar: 'سجلات الادخار النشطة.', en: 'Active saving records.' }, value: String(data.savings.length), tone: '#D8AE63' },
-    { title: { ar: 'الصافي بعد الادخار', en: 'Net after savings' }, body: { ar: 'الدخل ناقص المصروفات والمدخرات.', en: 'Income minus expenses and savings.' }, value: money(data.balance - data.totalSavings, isAr, currency), tone: '#3B82F6' },
+    { title: { ar: 'الصافي بعد الادخار', en: 'Net after savings' }, body: { ar: 'الدخل ناقص المصروفات والمدخرات.', en: 'Income minus expenses and savings.' }, value: money(data.balance - data.totalSavings, lang, currency), tone: '#3B82F6' },
   ];
   if (kind === 'goals') return [
     { title: { ar: 'الأهداف النشطة', en: 'Active goals' }, body: { ar: 'أهداف مالية قيد المتابعة.', en: 'Financial goals being tracked.' }, value: String(data.goals.length), tone: '#D8AE63' },
@@ -1348,8 +1370,8 @@ function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, isA
   ];
   return [
     { title: { ar: 'الصحة المالية', en: 'Financial health' }, body: { ar: 'تقدير سريع من الدخل والمصروفات.', en: 'Quick estimate from income and expenses.' }, value: `${progress(data.balance, data.totalIncome)}%`, tone: '#06B6D4' },
-    { title: { ar: 'فرصة ادخار', en: 'Savings opportunity' }, body: { ar: 'الفرق المتاح بعد المصروفات.', en: 'Potential surplus after expenses.' }, value: money(data.balance, isAr, currency), tone: '#22C55E' },
-    { title: { ar: 'تنبيه ذكي', en: 'Smart alert' }, body: { ar: 'الصفحة جاهزة للرؤى والإجراءات.', en: 'Page is ready for insights and actions.' }, value: isAr ? 'نشط' : 'Active', tone: '#D8AE63' },
+    { title: { ar: 'فرصة ادخار', en: 'Savings opportunity' }, body: { ar: 'الفرق المتاح بعد المصروفات.', en: 'Potential surplus after expenses.' }, value: money(data.balance, lang, currency), tone: '#22C55E' },
+    { title: { ar: 'تنبيه ذكي', en: 'Smart alert' }, body: { ar: 'الصفحة جاهزة للرؤى والإجراءات.', en: 'Page is ready for insights and actions.' }, value: pick({ ar: 'نشط', en: 'Active', fr: 'Actif' }, lang), tone: '#D8AE63' },
   ];
 }
 
@@ -1369,7 +1391,8 @@ function buildDataShape() {
   };
 }
 
-function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean, currency = 'KWD'): EntryRow[] {
+function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, lang: string, currency = 'KWD', t?: TranslateFn): EntryRow[] {
+  const isAr = lang === 'ar';
   if (kind === 'goals') {
     return data.goals.map(goal => {
       const done = progress(goal.current_amount, goal.target_amount);
@@ -1377,24 +1400,24 @@ function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr
         id: goal.id,
         title: goal.name,
         subtitle: isAr ? `تقدم ${done}%، المتبقي ${money(Math.max(goal.target_amount - goal.current_amount, 0), isAr, currency)}` : `${done}% complete, remaining ${money(Math.max(goal.target_amount - goal.current_amount, 0), isAr, currency)}`,
-        value: money(goal.target_amount, isAr, currency),
+        value: money(goal.target_amount, lang, currency),
       };
     });
   }
 
   if (kind === 'reports') {
     return [
-      { id: 'income-vs-expenses', title: isAr ? 'الدخل مقابل المصروفات' : 'Income vs expenses', subtitle: isAr ? 'ملخص التدفق النقدي الحالي' : 'Current cash flow summary', value: money(data.balance, isAr, currency) },
-      { id: 'savings-report', title: isAr ? 'تقرير الادخار' : 'Savings report', subtitle: isAr ? 'رصيد الادخار المسجل' : 'Recorded savings balance', value: money(data.totalSavings, isAr, currency) },
-      { id: 'investment-report', title: isAr ? 'تقرير الاستثمار' : 'Investment report', subtitle: isAr ? 'قيمة المحفظة الحالية' : 'Current portfolio value', value: money(data.totalInvestments, isAr, currency) },
+      { id: 'income-vs-expenses', title: isAr ? 'الدخل مقابل المصروفات' : 'Income vs expenses', subtitle: isAr ? 'ملخص التدفق النقدي الحالي' : 'Current cash flow summary', value: money(data.balance, lang, currency) },
+      { id: 'savings-report', title: isAr ? 'تقرير الادخار' : 'Savings report', subtitle: isAr ? 'رصيد الادخار المسجل' : 'Recorded savings balance', value: money(data.totalSavings, lang, currency) },
+      { id: 'investment-report', title: isAr ? 'تقرير الاستثمار' : 'Investment report', subtitle: isAr ? 'قيمة المحفظة الحالية' : 'Current portfolio value', value: money(data.totalInvestments, lang, currency) },
     ];
   }
 
   if (kind === 'ai') {
     return [
-      { id: 'reduce-expenses', title: isAr ? 'خفض المصروفات' : 'Reduce expenses', subtitle: isAr ? 'راجع أعلى 3 بنود صرف هذا الشهر.' : 'Review the top 3 spending items this month.', value: money(data.totalExpenses, isAr, currency) },
+      { id: 'reduce-expenses', title: isAr ? 'خفض المصروفات' : 'Reduce expenses', subtitle: isAr ? 'راجع أعلى 3 بنود صرف هذا الشهر.' : 'Review the top 3 spending items this month.', value: money(data.totalExpenses, lang, currency) },
       { id: 'increase-savings', title: isAr ? 'زيادة الادخار' : 'Increase savings', subtitle: isAr ? 'حوّل جزءًا من الصافي إلى هدف واضح.' : 'Move part of your surplus into a clear goal.', value: money(Math.max(data.balance * 0.2, 0), isAr, currency) },
-      { id: 'recurring-investing', title: isAr ? 'استثمار منتظم' : 'Recurring investing', subtitle: isAr ? 'مساهمة شهرية صغيرة تحافظ على الاستمرارية.' : 'A small monthly contribution keeps momentum.', value: money(data.totalIncome * 0.1, isAr, currency) },
+      { id: 'recurring-investing', title: isAr ? 'استثمار منتظم' : 'Recurring investing', subtitle: isAr ? 'مساهمة شهرية صغيرة تحافظ على الاستمرارية.' : 'A small monthly contribution keeps momentum.', value: money(data.totalIncome * 0.1, lang, currency) },
     ];
   }
 
@@ -1403,12 +1426,13 @@ function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr
     id: item.id,
     title: item.name.replace(/^خيرية:\d{4}-\d{2}:/, ''),
     subtitle: item.created_at ? new Date(item.created_at).toLocaleDateString() : (isAr ? 'سجل مالي' : 'Financial record'),
-    value: money(item.amount, isAr, currency),
+    value: money(item.amount, lang, currency),
     item,
   }));
 }
 
-function buildGoalAnalysis(goal: GoalItem, data: ReturnType<typeof buildDataShape>, isAr: boolean, currency = 'KWD', t: TranslateFn) {
+function buildGoalAnalysis(goal: GoalItem, data: ReturnType<typeof buildDataShape>, lang: string, currency = 'KWD', t: TranslateFn) {
+  const isAr = lang === 'ar';
   const remainingAmount = Math.max(goal.target_amount - goal.current_amount, 0);
   const monthsRemaining = monthsBetween(new Date(), goal.deadline);
   const missing = [
@@ -1458,7 +1482,7 @@ function buildGoalAnalysis(goal: GoalItem, data: ReturnType<typeof buildDataShap
       : t('goal_step_review_spending'),
     t('goal_step_automate'),
     suggestedSavingIncrease > 0
-      ? t('goal_step_increase_saving').replace('{amount}', money(suggestedSavingIncrease, isAr, goal.currency || currency))
+      ? t('goal_step_increase_saving').replace('{amount}', money(suggestedSavingIncrease, lang, goal.currency || currency))
       : t('goal_step_monthly_review'),
   ];
 
@@ -1472,15 +1496,16 @@ function buildGoalAnalysis(goal: GoalItem, data: ReturnType<typeof buildDataShap
     statusLabel,
     missing,
     summary: summary
-      .replace('{remaining}', money(remainingAmount, isAr, goal.currency || currency))
-      .replace('{required}', money(requiredMonthlySaving, isAr, goal.currency || currency))
-      .replace('{adjustment}', money(adjustment, isAr, goal.currency || currency))
+      .replace('{remaining}', money(remainingAmount, lang, goal.currency || currency))
+      .replace('{required}', money(requiredMonthlySaving, lang, goal.currency || currency))
+      .replace('{adjustment}', money(adjustment, lang, goal.currency || currency))
       .replace('{expenseRatio}', String(Math.round(expenseRatio * 100))),
     steps,
   };
 }
 
-function buildInsights(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean, currency = 'KWD') {
+function buildInsights(kind: PageKind, data: ReturnType<typeof buildDataShape>, lang: string, currency = 'KWD', t?: TranslateFn) {
+  const isAr = lang === 'ar';
   const ratio = data.totalIncome ? Math.round((data.totalExpenses / data.totalIncome) * 100) : 0;
   const base = [
     {
@@ -1489,19 +1514,20 @@ function buildInsights(kind: PageKind, data: ReturnType<typeof buildDataShape>, 
     },
     {
       title: isAr ? 'مساحة الصافي' : 'Net runway',
-      body: isAr ? `الصافي الحالي ${money(data.balance, isAr, currency)}.` : `Current net balance is ${money(data.balance, isAr, currency)}.`,
+      body: isAr ? `الصافي الحالي ${money(data.balance, lang, currency)}.` : `Current net balance is ${money(data.balance, lang, currency)}.`,
     },
   ];
   return [
     ...base,
     {
-      title: isAr ? 'خطوة مقترحة' : 'Suggested action',
-      body: suggestion(kind, isAr),
+      title: pick({ ar: 'خطوة مقترحة', en: 'Suggested action', fr: 'Action suggérée' }, lang),
+      body: suggestion(kind, lang),
     },
   ];
 }
 
-function suggestion(kind: PageKind, isAr: boolean) {
+function suggestion(kind: PageKind, lang: string) {
+  const isAr = lang === 'ar';
   const text: Record<PageKind, LangText> = {
     expenses: { ar: 'ابدأ بأكبر تصنيف مصروفات وخفّضه 5%.', en: 'Start with your largest expense category and reduce it by 5%.' },
     income: { ar: 'قسّم الدخل إلى راتب، دخل جانبي، وأعمال لقراءة أوضح.', en: 'Split income into salary, side income, and business for cleaner tracking.' },
@@ -1511,10 +1537,11 @@ function suggestion(kind: PageKind, isAr: boolean) {
     reports: { ar: 'اطبع التقرير قبل نهاية الشهر لمراجعة قراراتك.', en: 'Print the report before month-end to review decisions.' },
     ai: { ar: 'اسأل المساعد عن أفضل قرار واحد لهذا الأسبوع.', en: 'Ask the assistant for one best action this week.' },
   };
-  return pick(text[kind], isAr);
+  return pick(text[kind], lang);
 }
 
-function sectionTitle(kind: PageKind, isAr: boolean) {
+function sectionTitle(kind: PageKind, lang: string) {
+  const isAr = lang === 'ar';
   const text: Record<PageKind, LangText> = {
     expenses: { ar: 'آخر المصروفات والتصنيفات', en: 'Recent expenses and categories' },
     income: { ar: 'مصادر الدخل والتوزيع', en: 'Income sources and distribution' },
@@ -1524,10 +1551,11 @@ function sectionTitle(kind: PageKind, isAr: boolean) {
     reports: { ar: 'ملخص التقارير المالية', en: 'Financial report summary' },
     ai: { ar: 'بطاقات العمل الذكية', en: 'Smart action cards' },
   };
-  return pick(text[kind], isAr);
+  return pick(text[kind], lang);
 }
 
-function summaryTitle(kind: PageKind, isAr: boolean) {
+function summaryTitle(kind: PageKind, lang: string) {
+  const isAr = lang === 'ar';
   const text: Record<PageKind, LangText> = {
     expenses: { ar: 'ملخص المصروفات الشهري', en: 'Monthly expense summary' },
     income: { ar: 'ملخص توزيع الدخل', en: 'Income distribution summary' },
@@ -1537,23 +1565,25 @@ function summaryTitle(kind: PageKind, isAr: boolean) {
     reports: { ar: 'جاهز للتصدير والطباعة', en: 'Ready to export and print' },
     ai: { ar: 'واجهة المساعد', en: 'Assistant interface' },
   };
-  return pick(text[kind], isAr);
+  return pick(text[kind], lang);
 }
 
-function summaryText(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean, currency = 'KWD') {
+function summaryText(kind: PageKind, data: ReturnType<typeof buildDataShape>, lang: string, currency = 'KWD') {
+  const isAr = lang === 'ar';
   const values: Record<PageKind, LangText> = {
-    expenses: { ar: `إجمالي المصروفات الحالي ${money(data.totalExpenses, isAr, currency)} مع ${data.expenses.length} سجل.`, en: `Current expenses total ${money(data.totalExpenses, isAr, currency)} across ${data.expenses.length} records.` },
-    income: { ar: `الدخل الشهري الحالي ${money(data.totalIncome, isAr, currency)} موزع على ${data.income.length} مصادر.`, en: `Monthly income is ${money(data.totalIncome, isAr, currency)} across ${data.income.length} sources.` },
-    invest: { ar: `قيمة المحفظة ${money(data.totalInvestments, isAr, currency)} مع مساهمة مقترحة ${money(data.totalIncome * 0.15, isAr, currency)}.`, en: `Portfolio value is ${money(data.totalInvestments, isAr, currency)} with suggested contribution ${money(data.totalIncome * 0.15, isAr, currency)}.` },
-    savings: { ar: `إجمالي المدخرات ${money(data.totalSavings, isAr, currency)} موزع على ${data.savings.length} سجلات.`, en: `Total savings are ${money(data.totalSavings, isAr, currency)} across ${data.savings.length} entries.` },
-    goals: { ar: `مدخراتك الحالية ${money(data.totalSavings, isAr, currency)} تقيس تقدم ${data.goals.length} أهداف.`, en: `Current savings of ${money(data.totalSavings, isAr, currency)} measure progress across ${data.goals.length} goals.` },
+    expenses: { ar: `إجمالي المصروفات الحالي ${money(data.totalExpenses, lang, currency)} مع ${data.expenses.length} سجل.`, en: `Current expenses total ${money(data.totalExpenses, lang, currency)} across ${data.expenses.length} records.` },
+    income: { ar: `الدخل الشهري الحالي ${money(data.totalIncome, lang, currency)} موزع على ${data.income.length} مصادر.`, en: `Monthly income is ${money(data.totalIncome, lang, currency)} across ${data.income.length} sources.` },
+    invest: { ar: `قيمة المحفظة ${money(data.totalInvestments, lang, currency)} مع مساهمة مقترحة ${money(data.totalIncome * 0.15, lang, currency)}.`, en: `Portfolio value is ${money(data.totalInvestments, lang, currency)} with suggested contribution ${money(data.totalIncome * 0.15, lang, currency)}.` },
+    savings: { ar: `إجمالي المدخرات ${money(data.totalSavings, lang, currency)} موزع على ${data.savings.length} سجلات.`, en: `Total savings are ${money(data.totalSavings, lang, currency)} across ${data.savings.length} entries.` },
+    goals: { ar: `مدخراتك الحالية ${money(data.totalSavings, lang, currency)} تقيس تقدم ${data.goals.length} أهداف.`, en: `Current savings of ${money(data.totalSavings, lang, currency)} measure progress across ${data.goals.length} goals.` },
     reports: { ar: 'استخدم أزرار الطباعة والتصدير لحفظ نسخة من ملخصك المالي.', en: 'Use print and export actions to save a copy of your financial summary.' },
     ai: { ar: 'اكتب سؤالك للحصول على مساعدة مالية موجهة حسب بياناتك.', en: 'Type a prompt to get financial guidance shaped by your data.' },
   };
-  return pick(values[kind], isAr);
+  return pick(values[kind], lang);
 }
 
-function buildPrimaryActions(kind: PageKind, isAr: boolean, openEntry: () => void, openGoal: () => void, focusAi: () => void) {
+function buildPrimaryActions(kind: PageKind, lang: string, openEntry: () => void, openGoal: () => void, focusAi: () => void, t?: TranslateFn) {
+  const isAr = lang === 'ar';
   if (kind === 'reports') {
     return [
       { label: isAr ? 'طباعة' : 'Print', icon: Printer, variant: 'print' as const, onClick: () => window.print() },
@@ -1583,7 +1613,7 @@ function buildPrimaryActions(kind: PageKind, isAr: boolean, openEntry: () => voi
       savings: { ar: 'إضافة مدخرات', en: 'Add saving' },
     };
     return [
-      { label: pick(labels[kind], isAr), icon: Plus, variant: 'default' as const, onClick: openEntry },
+      { label: pick(labels[kind], lang), icon: Plus, variant: 'default' as const, onClick: openEntry },
     ];
   }
 
@@ -1592,7 +1622,7 @@ function buildPrimaryActions(kind: PageKind, isAr: boolean, openEntry: () => voi
     onClick: openGoal,
   };
   return [
-    { label: pick(action.label, isAr), icon: Plus, variant: 'default' as const, onClick: action.onClick },
+    { label: pick(action.label, lang), icon: Plus, variant: 'default' as const, onClick: action.onClick },
   ];
 }
 
@@ -1622,7 +1652,7 @@ const baseStyles = `
   .content-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(280px,.8fr);gap:18px}.panel{padding:20px}.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.panel-head p{margin:0 0 4px;font-size:11px;color:#9A6C3C;font-weight:800}.panel-head h3{margin:0;font-size:18px}.loading-pill{font-size:11px;font-weight:800;color:#D8AE63;background:rgba(216,174,99,.11);border-radius:999px;padding:5px 10px}
   .row-controls{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}.row-search{flex:1;min-width:160px;height:38px;border:1.5px solid rgba(216,174,99,.22);border-radius:12px;padding:0 12px;background:#F7F3EA;font:700 13px Tajawal,Arial,sans-serif;color:#111;outline:none}.row-search:focus{border-color:#D8AE63;background:#FFFDFC}.row-select{height:38px;border:1.5px solid rgba(216,174,99,.22);border-radius:12px;padding:0 10px;background:#F7F3EA;font:700 13px Tajawal,Arial,sans-serif;color:#111;outline:none;cursor:pointer}.row-select:focus{border-color:#D8AE63}.row-count{font-size:12px;font-weight:800;color:#9A6C3C;margin-bottom:10px;padding:6px 0;border-bottom:1px solid rgba(216,174,99,.1)}.load-more-btn{width:100%;margin-top:12px;padding:12px;border-radius:14px;border:1.5px dashed rgba(216,174,99,.3);background:transparent;color:#9A6C3C;font:800 13px Tajawal,Arial,sans-serif;cursor:pointer;transition:all .2s}.load-more-btn:hover{background:rgba(216,174,99,.08);border-color:#D8AE63;color:#7a5a2a}
   .row-list{display:grid;gap:10px}.empty-state{padding:22px;border:1px dashed rgba(216,174,99,.25);border-radius:16px;color:#9A6C3C;text-align:center;font-size:13px;font-weight:800}.data-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid rgba(216,174,99,.08)}.data-row:last-child{border-bottom:0}.data-row strong{display:block;font-size:14px}.data-row span{display:block;color:#8B7A6D;font-size:12px;margin-top:4px}.data-row b{font-size:14px;color:#D8AE63;white-space:nowrap}.row-actions-wrap{display:flex;align-items:center;gap:10px}.row-actions{display:flex;align-items:center;gap:6px}.row-action{width:34px;height:34px;border-radius:11px;border:1px solid rgba(216,174,99,.16);background:#FFFDFC;color:#5B4332;display:grid;place-items:center;cursor:pointer;transition:all .18s ease}.row-action:hover{border-color:rgba(216,174,99,.45);color:#D8AE63;background:rgba(216,174,99,.08);transform:translateY(-1px)}
-  .goal-card{background:#FFFDFC;border:1px solid rgba(216,174,99,.16);border-radius:22px;padding:18px;box-shadow:0 8px 28px rgba(90,67,51,.07);display:grid;gap:15px;transition:all .22s ease}.goal-card:hover{transform:translateY(-2px);box-shadow:0 16px 38px rgba(90,67,51,.11)}.goal-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.goal-title-wrap{display:flex;align-items:center;gap:12px}.goal-icon{width:42px;height:42px;border-radius:14px;background:rgba(216,174,99,.13);display:grid;place-items:center;font-size:20px}.goal-title-wrap strong{display:block;font-size:16px;font-weight:900;color:#111}.goal-title-wrap span{display:block;margin-top:4px;color:#9A6C3C;font-size:12px;font-weight:800}.goal-edit-btn{height:38px;border:1px solid rgba(216,174,99,.28);border-radius:13px;background:linear-gradient(135deg,rgba(216,174,99,.16),rgba(255,253,252,.95));color:#5B4332;padding:0 12px;font:900 12px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;gap:7px;cursor:pointer;box-shadow:0 6px 18px rgba(216,174,99,.12);transition:all .2s ease}.goal-edit-btn:hover{background:#D8AE63;color:#111;transform:translateY(-1px)}.goal-progress-row{display:flex;align-items:center;gap:10px}.goal-progress-track{height:10px;border-radius:999px;background:#F0E8DA;overflow:hidden;flex:1}.goal-progress-track span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#D8AE63,#9A6C3C)}.goal-progress-row b{color:#9A6C3C;font-size:13px}.goal-meta-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.goal-meta-grid div,.goal-ai-metrics div{background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:14px;padding:10px}.goal-meta-grid span,.goal-ai-metrics span{display:block;color:#9A6C3C;font-size:11px;font-weight:900;margin-bottom:5px}.goal-meta-grid strong,.goal-ai-metrics b{font-size:13px;color:#111}.goal-ai-card,.goal-modal-preview{border:1px solid rgba(216,174,99,.2);background:linear-gradient(180deg,#FFFDFC,#FFF8EA);border-radius:18px;padding:15px;display:grid;gap:12px}.goal-ai-head{display:flex;align-items:center;gap:9px;color:#5B4332}.goal-ai-head svg{color:#D8AE63}.goal-ai-head strong{font-size:14px;font-weight:900}.risk-pill{margin-inline-start:auto;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900}.risk-pill.low{background:rgba(34,197,94,.12);color:#15803D}.risk-pill.medium{background:rgba(216,174,99,.16);color:#9A6C3C}.risk-pill.high{background:rgba(239,68,68,.1);color:#B91C1C}.goal-ai-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.goal-ai-card p,.goal-modal-preview p{margin:0;color:#5B4332;font-size:13px;line-height:1.8;font-weight:700}.goal-ai-plan{background:rgba(255,255,255,.72);border-radius:14px;padding:12px}.goal-ai-plan strong{font-size:13px;color:#111}.goal-ai-plan ol{margin:8px 18px 0;padding:0;color:#5B4332;font-size:12.5px;line-height:1.8;font-weight:700}.goal-modal{width:min(860px,100%);max-height:min(88vh,980px);overflow:auto}.goal-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.goal-form-grid label:first-child,.goal-form-grid .entry-actions,.goal-notes-field,.goal-ai-toggle,.goal-modal-preview{grid-column:1/-1}.goal-form-grid select,.goal-form-grid textarea{border:1.5px solid rgba(216,174,99,.22);border-radius:14px;background:#F7F3EA;padding:0 13px;color:#111;font:800 14px Tajawal,Arial,sans-serif;outline:0}.goal-form-grid select{height:50px}.goal-form-grid textarea{min-height:92px;padding-top:12px;resize:vertical}.goal-form-grid select:focus,.goal-form-grid textarea:focus{border-color:#D8AE63;box-shadow:0 0 0 4px rgba(216,174,99,.12);background:#FFFDFC}.goal-ai-toggle{display:flex!important;align-items:center;justify-content:space-between;border:1px solid rgba(216,174,99,.14);background:#FFF8EA;border-radius:16px;padding:12px 14px}.switch{width:54px;height:30px;border:0;border-radius:999px;background:#D9CDBB;padding:3px;cursor:pointer;transition:.2s}.switch span{display:block;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);transition:.2s}.switch.active{background:#D8AE63}.switch.active span{transform:translateX(24px)}[dir="rtl"] .switch.active span{transform:translateX(-24px)}.preview-missing{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.12);border-radius:14px;padding:12px;color:#B91C1C}.preview-missing strong{font-size:13px}.preview-missing ul{margin:8px 18px 0;padding:0;font-size:12.5px;line-height:1.8;font-weight:800}.form-error{grid-column:1/-1;border-radius:13px;padding:11px 13px;background:rgba(239,68,68,.08);color:#B91C1C;font-size:13px;font-weight:900}
+  .goal-card{background:#FFFDFC;border:1px solid rgba(216,174,99,.16);border-radius:22px;padding:18px;box-shadow:0 8px 28px rgba(90,67,51,.07);display:grid;gap:15px;transition:all .22s ease}.goal-card:hover{transform:translateY(-2px);box-shadow:0 16px 38px rgba(90,67,51,.11)}.goal-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.goal-title-wrap{display:flex;align-items:center;gap:12px}.goal-icon{width:42px;height:42px;border-radius:14px;background:rgba(216,174,99,.13);display:grid;place-items:center;font-size:20px}.goal-title-wrap strong{display:block;font-size:16px;font-weight:900;color:#111}.goal-title-wrap span{display:block;margin-top:4px;color:#9A6C3C;font-size:12px;font-weight:800}.goal-edit-btn{height:38px;border:1px solid rgba(216,174,99,.28);border-radius:13px;background:linear-gradient(135deg,rgba(216,174,99,.16),rgba(255,253,252,.95));color:#5B4332;padding:0 12px;font:900 12px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;gap:7px;cursor:pointer;box-shadow:0 6px 18px rgba(216,174,99,.12);transition:all .2s ease}.goal-edit-btn:hover{background:#D8AE63;color:#111;transform:translateY(-1px)}.goal-progress-row{display:flex;align-items:center;gap:10px}.goal-progress-track{height:10px;border-radius:999px;background:#F0E8DA;overflow:hidden;flex:1}.goal-progress-track span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#D8AE63,#9A6C3C)}.goal-progress-row b{color:#9A6C3C;font-size:13px}.goal-meta-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.goal-meta-grid div,.goal-ai-metrics div{background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:14px;padding:10px}.goal-meta-grid span,.goal-ai-metrics span{display:block;color:#9A6C3C;font-size:11px;font-weight:900;margin-bottom:5px}.goal-meta-grid strong,.goal-ai-metrics b{font-size:13px;color:#111}.goal-ai-card,.goal-modal-preview{border:1px solid rgba(216,174,99,.2);background:linear-gradient(180deg,#FFFDFC,#FFF8EA);border-radius:18px;padding:15px;display:grid;gap:12px}.goal-ai-head{display:flex;align-items:center;gap:9px;color:#5B4332}.goal-ai-head svg{color:#D8AE63}.goal-ai-head strong{font-size:14px;font-weight:900}.risk-pill{margin-inline-start:auto;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900}.risk-pill.low{background:rgba(34,197,94,.12);color:#15803D}.risk-pill.medium{background:rgba(216,174,99,.16);color:#9A6C3C}.risk-pill.high{background:rgba(239,68,68,.1);color:#B91C1C}.goal-ai-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.goal-ai-card p,.goal-modal-preview p{margin:0;color:#5B4332;font-size:13px;line-height:1.8;font-weight:700}.goal-ai-plan{background:rgba(255,255,255,.72);border-radius:14px;padding:12px}.goal-ai-plan strong{font-size:13px;color:#111}.goal-ai-plan ol{margin:8px 18px 0;padding:0;color:#5B4332;font-size:12.5px;line-height:1.8;font-weight:700}.goal-modal{width:min(860px,100%);max-height:min(88vh,980px);overflow:auto}.goal-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.goal-form-grid label:first-child,.goal-form-grid .entry-actions,.goal-notes-field,.goal-ai-toggle,.goal-modal-preview{grid-column:1/-1}.goal-form-grid select,.goal-form-grid textarea{border:1.5px solid rgba(216,174,99,.22);border-radius:14px;background:#F7F3EA;padding:0 13px;color:#111;font:800 14px Tajawal,Arial,sans-serif;outline:0}.goal-form-grid select{height:50px}.goal-form-grid textarea{min-height:92px;padding-top:12px;resize:vertical}.goal-form-grid select:focus,.goal-form-grid textarea:focus{border-color:#D8AE63;box-shadow:0 0 0 4px rgba(216,174,99,.12);background:#FFFDFC}.currency-input-wrap{position:relative}.currency-input-wrap input{width:100%;padding-inline-start:58px}.currency-symbol{position:absolute;inset-inline-start:10px;top:50%;transform:translateY(-50%);min-width:38px;height:30px;border-radius:10px;background:rgba(216,174,99,.16);color:#5B4332;display:grid;place-items:center;font-size:12px;font-weight:900;z-index:1}.goal-ai-toggle{display:flex!important;align-items:center;justify-content:space-between;border:1px solid rgba(216,174,99,.14);background:#FFF8EA;border-radius:16px;padding:12px 14px}.switch{width:54px;height:30px;border:0;border-radius:999px;background:#D9CDBB;padding:3px;cursor:pointer;transition:.2s}.switch span{display:block;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);transition:.2s}.switch.active{background:#D8AE63}.switch.active span{transform:translateX(24px)}[dir="rtl"] .switch.active span{transform:translateX(-24px)}.preview-missing{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.12);border-radius:14px;padding:12px;color:#B91C1C}.preview-missing strong{font-size:13px}.preview-missing ul{margin:8px 18px 0;padding:0;font-size:12.5px;line-height:1.8;font-weight:800}.form-error{grid-column:1/-1;border-radius:13px;padding:11px 13px;background:rgba(239,68,68,.08);color:#B91C1C;font-size:13px;font-weight:900}
   .insight-list{display:grid;gap:12px}.insight-list>div{display:flex;gap:10px;padding:12px;border-radius:14px;background:rgba(216,174,99,.07)}.insight-list svg{color:#D8AE63;flex-shrink:0}.insight-list strong{display:block;font-size:13px}.insight-list span{display:block;font-size:12px;color:#7C6A5D;line-height:1.6;margin-top:3px}
   .summary-band,.ai-panel{margin-top:18px;background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:20px;padding:18px 20px;display:flex;align-items:center;gap:14px}.summary-band svg{color:#D8AE63}.summary-band strong,.ai-panel h3{font-size:16px}.summary-band p,.ai-panel p{margin:4px 0 0;color:#7C6A5D;line-height:1.7;font-size:13px}
   .ai-panel{align-items:stretch;justify-content:space-between}.chat-history{display:grid;gap:8px;min-width:min(460px,100%);max-height:190px;overflow:auto;margin-bottom:10px}.chat-history>div{padding:10px 12px;border-radius:14px;font-size:13px;line-height:1.6}.chat-history .user{background:#111;color:#FFFDFC}.chat-history .assistant{background:rgba(216,174,99,.11);color:#5B4332}.chat-box{display:flex;gap:10px;min-width:min(460px,100%)}.chat-box input{height:46px;border:1.5px solid rgba(216,174,99,.22);border-radius:14px;padding:0 14px;background:#F7F3EA;min-width:0;flex:1;font:600 14px Tajawal,Arial,sans-serif;color:#111}.chat-box button{width:46px;border-radius:14px;border:0;background:#111;color:#D8AE63;display:grid;place-items:center;cursor:pointer}.chat-box button:disabled{opacity:.55;cursor:wait}
