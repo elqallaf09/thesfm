@@ -39,6 +39,7 @@ import { formatCurrency } from '@/lib/format';
 
 type PageKind = 'expenses' | 'income' | 'invest' | 'savings' | 'goals' | 'reports' | 'ai';
 type LangText = { ar: string; en: string };
+type TranslateFn = ReturnType<typeof useLanguage>['t'];
 type MoneyItem = { id: string; name: string; amount: number; created_at?: string | null };
 type IncomeSource = MoneyItem & { label?: string | null; category?: string | null };
 type EntryKind = Extract<PageKind, 'expenses' | 'income' | 'invest' | 'savings'>;
@@ -49,9 +50,17 @@ type GoalItem = {
   name: string;
   target_amount: number;
   current_amount: number;
+  monthly_contribution: number;
+  goal_type: string;
+  category: string;
+  priority: string;
+  funding_source: string;
+  currency: string;
+  ai_enabled: boolean;
   icon?: string | null;
   color?: string | null;
   deadline?: string | null;
+  notes?: string | null;
   created_at?: string | null;
 };
 type GoalRow = {
@@ -62,6 +71,21 @@ type GoalRow = {
   duration_unit?: string | null;
   notes?: string | null;
   created_at?: string | null;
+};
+type GoalFormState = {
+  id: string;
+  name: string;
+  goalType: string;
+  targetAmount: string;
+  currentAmount: string;
+  monthlyContribution: string;
+  deadline: string;
+  category: string;
+  priority: string;
+  fundingSource: string;
+  currency: string;
+  notes: string;
+  aiEnabled: boolean;
 };
 type QueryResult<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
@@ -92,6 +116,21 @@ const emptySnapshot: Snapshot = {
 };
 
 const emptyEntryForm: EntryFormState = { name: '', amount: '', category: 'general' };
+const emptyGoalForm: GoalFormState = {
+  id: '',
+  name: '',
+  goalType: 'saving',
+  targetAmount: '',
+  currentAmount: '',
+  monthlyContribution: '',
+  deadline: '',
+  category: 'general',
+  priority: 'medium',
+  fundingSource: 'salary',
+  currency: 'KWD',
+  notes: '',
+  aiEnabled: true,
+};
 const entryTitleKeys = {
   expenses: 'expenses_entry_title',
   income: 'income_entry_title',
@@ -206,6 +245,68 @@ function writeGuestItems(kind: EntryKind, items: MoneyItem[] | IncomeSource[]) {
   localStorage.setItem(guestKey(kind), JSON.stringify(items));
 }
 
+function parseGoalNotes(notes?: string | null): Record<string, unknown> {
+  if (!notes) return {};
+  try {
+    const parsed = JSON.parse(notes) as Record<string, unknown>;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return { description: notes };
+  }
+}
+
+function addMonths(date: Date, months: number) {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + Math.max(0, months));
+  return next;
+}
+
+function formatDateInput(date: Date) {
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function monthsBetween(from: Date, to?: string | null) {
+  if (!to) return 0;
+  const end = new Date(to);
+  if (Number.isNaN(end.getTime()) || end <= from) return 0;
+  const years = end.getFullYear() - from.getFullYear();
+  const months = end.getMonth() - from.getMonth();
+  const days = end.getDate() >= from.getDate() ? 0 : -1;
+  return Math.max(1, years * 12 + months + days);
+}
+
+function goalFromRow(item: GoalRow): GoalItem {
+  const notes = parseGoalNotes(item.notes);
+  const deadline = typeof notes.deadline === 'string'
+    ? notes.deadline
+    : item.duration && item.duration_unit === 'month'
+      ? formatDateInput(addMonths(new Date(), Number(item.duration) || 0))
+      : null;
+
+  return {
+    id: item.id,
+    name: item.goal,
+    target_amount: Number(item.amount) || 0,
+    current_amount: Number(notes.currentAmount) || 0,
+    monthly_contribution: Number(notes.monthlyContribution) || 0,
+    goal_type: typeof notes.goalType === 'string' ? notes.goalType : 'saving',
+    category: typeof notes.category === 'string' ? notes.category : 'general',
+    priority: typeof notes.priority === 'string' ? notes.priority : 'medium',
+    funding_source: typeof notes.fundingSource === 'string' ? notes.fundingSource : 'salary',
+    currency: typeof notes.currency === 'string' ? notes.currency : 'KWD',
+    ai_enabled: typeof notes.aiEnabled === 'boolean' ? notes.aiEnabled : true,
+    icon: '🎯',
+    color: '#D8AE63',
+    deadline,
+    notes: item.notes,
+    created_at: item.created_at,
+  };
+}
+
 function entryTitleKey(kind: EntryKind) {
   return entryTitleKeys[kind];
 }
@@ -244,6 +345,11 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [entrySaving, setEntrySaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<(MoneyItem | IncomeSource) | null>(null);
   const [entryMessage, setEntryMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [goalEditOpen, setGoalEditOpen] = useState(false);
+  const [goalMode, setGoalMode] = useState<'create' | 'edit'>('edit');
+  const [goalForm, setGoalForm] = useState<GoalFormState>(emptyGoalForm);
+  const [goalSaving, setGoalSaving] = useState(false);
+  const [goalError, setGoalError] = useState('');
   const [rowSearch, setRowSearch] = useState('');
   const [rowSort, setRowSort] = useState<'dateDesc' | 'dateAsc' | 'amountDesc' | 'amountAsc'>('dateDesc');
   const [rowRange, setRowRange] = useState<'all' | 'month' | 'last3' | 'year'>('all');
@@ -283,16 +389,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         expenses: expenses.data,
         savings: savings.data,
         investments: investments.data,
-        goals: goals.data.map(item => ({
-          id: item.id,
-          name: item.goal,
-          target_amount: Number(item.amount) || 0,
-          current_amount: 0,
-          icon: '🎯',
-          color: '#D8AE63',
-          deadline: item.duration ? `${item.duration} ${item.duration_unit || ''}`.trim() : null,
-          created_at: item.created_at,
-        })),
+        goals: goals.data.map(goalFromRow),
         error: [income.error, expenses.error, savings.error, investments.error, goals.error].filter(Boolean)[0] ?? null,
       });
       setDataLoading(false);
@@ -334,6 +431,23 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const cards = useMemo<SectionCard[]>(() => buildCards(kind, data, isAr, currency), [data, isAr, kind, currency]);
   const rows = useMemo(() => buildRows(kind, data, isAr, currency), [data, isAr, kind, currency]);
   const insights = useMemo(() => buildInsights(kind, data, isAr, currency), [data, isAr, kind, currency]);
+  const goalPreview = useMemo(() => buildGoalAnalysis({
+    id: goalForm.id || 'preview',
+    name: goalForm.name || t('goal_name_label'),
+    target_amount: Number(goalForm.targetAmount) || 0,
+    current_amount: Number(goalForm.currentAmount) || 0,
+    monthly_contribution: Number(goalForm.monthlyContribution) || 0,
+    goal_type: goalForm.goalType,
+    category: goalForm.category,
+    priority: goalForm.priority,
+    funding_source: goalForm.fundingSource,
+    currency: goalForm.currency || currency || 'KWD',
+    ai_enabled: goalForm.aiEnabled,
+    deadline: goalForm.deadline || null,
+    icon: '🎯',
+    color: '#D8AE63',
+    notes: goalForm.notes,
+  }, data, isAr, goalForm.currency || currency, t), [currency, data, goalForm, isAr, t]);
 
   const filteredRows = useMemo(() => {
     if (!editableKind(kind)) return rows;
@@ -505,17 +619,153 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     }
   }
 
+  function openEditGoal(goal: GoalItem) {
+    setGoalError('');
+    const notes = parseGoalNotes(goal.notes);
+    setGoalMode('edit');
+    setGoalForm({
+      id: goal.id,
+      name: goal.name,
+      goalType: goal.goal_type || 'saving',
+      targetAmount: String(goal.target_amount || ''),
+      currentAmount: String(goal.current_amount || ''),
+      monthlyContribution: String(goal.monthly_contribution || ''),
+      deadline: goal.deadline || '',
+      category: goal.category || 'general',
+      priority: goal.priority || 'medium',
+      fundingSource: goal.funding_source || 'salary',
+      currency: goal.currency || currency || 'KWD',
+      notes: typeof notes.description === 'string' ? notes.description : '',
+      aiEnabled: goal.ai_enabled,
+    });
+    setGoalEditOpen(true);
+  }
+
+  function openCreateGoal() {
+    const nextMonth = addMonths(new Date(), 12);
+    setGoalError('');
+    setGoalMode('create');
+    setGoalForm({
+      ...emptyGoalForm,
+      currency: currency || 'KWD',
+      deadline: formatDateInput(nextMonth),
+    });
+    setGoalEditOpen(true);
+  }
+
+  async function saveGoal(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (goalSaving) return;
+
+    const name = goalForm.name.trim();
+    const targetAmount = Number(goalForm.targetAmount);
+    const currentAmount = Number(goalForm.currentAmount || 0);
+    const monthlyContribution = Number(goalForm.monthlyContribution || 0);
+
+    const deadlineDate = goalForm.deadline ? new Date(goalForm.deadline) : null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (!name || !targetAmount || targetAmount <= 0) {
+      setGoalError(t('goal_validation_required'));
+      return;
+    }
+    if (currentAmount < 0 || monthlyContribution < 0) {
+      setGoalError(t('goal_validation_positive'));
+      return;
+    }
+    if (currentAmount > targetAmount) {
+      setGoalError(t('goal_validation_current_over_target'));
+      return;
+    }
+    if (!deadlineDate || Number.isNaN(deadlineDate.getTime()) || deadlineDate <= today) {
+      setGoalError(t('goal_validation_future_deadline'));
+      return;
+    }
+
+    setGoalSaving(true);
+    setGoalError('');
+
+    const notes = JSON.stringify({
+      currentAmount,
+      monthlyContribution,
+      goalType: goalForm.goalType,
+      deadline: goalForm.deadline || null,
+      category: goalForm.category,
+      priority: goalForm.priority,
+      fundingSource: goalForm.fundingSource,
+      currency: goalForm.currency,
+      description: goalForm.notes.trim() || null,
+      aiEnabled: goalForm.aiEnabled,
+    });
+    const months = monthsBetween(new Date(), goalForm.deadline);
+
+    try {
+      if (!user) throw new Error(t('entry_auth_required'));
+      const payload = {
+        goal: name,
+        amount: targetAmount,
+        duration: months ? String(months) : null,
+        duration_unit: months ? 'month' : null,
+        notes,
+      };
+
+      if (goalMode === 'create') {
+        const { data: created, error } = await supabase.from('financial_goals').insert({
+          ...payload,
+          user_id: user.id,
+        }).select('id, goal, amount, duration, duration_unit, notes, created_at').single();
+        if (error) throw error;
+        setSnapshot(prev => ({
+          ...prev,
+          goals: [goalFromRow(created as GoalRow), ...prev.goals],
+        }));
+      } else {
+        const { error } = await supabase.from('financial_goals').update(payload).eq('id', goalForm.id).eq('user_id', user.id);
+        if (error) throw error;
+
+        setSnapshot(prev => ({
+          ...prev,
+          goals: prev.goals.map(goal => goal.id === goalForm.id ? {
+            ...goal,
+            name,
+            target_amount: targetAmount,
+            current_amount: currentAmount,
+            monthly_contribution: monthlyContribution,
+            goal_type: goalForm.goalType,
+            deadline: goalForm.deadline || null,
+            category: goalForm.category,
+            priority: goalForm.priority,
+            funding_source: goalForm.fundingSource,
+            currency: goalForm.currency,
+            ai_enabled: goalForm.aiEnabled,
+            notes,
+          } : goal),
+        }));
+      }
+
+      setGoalEditOpen(false);
+      showEntryMessage('ok', goalMode === 'create' ? t('goal_create_success') : t('goal_update_success'));
+    } catch (err) {
+      setGoalError(err instanceof Error ? err.message : t('goal_update_error'));
+      showEntryMessage('err', err instanceof Error ? err.message : t('goal_update_error'));
+    } finally {
+      setGoalSaving(false);
+    }
+  }
+
   useEffect(() => {
-    if (!entryOpen && !confirmDelete) return;
+    if (!entryOpen && !confirmDelete && !goalEditOpen) return;
     const close = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setEntryOpen(false);
         setConfirmDelete(null);
+        setGoalEditOpen(false);
       }
     };
     window.addEventListener('keydown', close);
     return () => window.removeEventListener('keydown', close);
-  }, [confirmDelete, entryOpen]);
+  }, [confirmDelete, entryOpen, goalEditOpen]);
 
   async function sendAiMessage() {
     const content = chatValue.trim();
@@ -607,7 +857,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             <p>{pick(meta.subtitle, isAr)}</p>
           </div>
           <div className="hero-actions">
-            {buildPrimaryActions(kind, isAr, router, openCreateEntry, () => {
+            {buildPrimaryActions(kind, isAr, openCreateEntry, openCreateGoal, () => {
               const input = document.getElementById('ai-chat-input');
               input?.focus();
             }).map(action => (
@@ -681,10 +931,66 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             )}
 
             <div className="row-list">
-              {filteredRows.length === 0 && (
+              {kind === 'goals' && data.goals.length === 0 && (
+                <div className="empty-state">{t('goals_empty_state')}</div>
+              )}
+              {kind === 'goals' && data.goals.map(goal => {
+                const analysis = buildGoalAnalysis(goal, data, isAr, currency, t);
+                const done = progress(goal.current_amount, goal.target_amount);
+                return (
+                  <article className="goal-card" key={goal.id}>
+                    <div className="goal-card-head">
+                      <div className="goal-title-wrap">
+                        <span className="goal-icon">{goal.icon || '🎯'}</span>
+                        <div>
+                          <strong>{goal.name}</strong>
+                          <span>{t('goal_remaining_amount')}: {money(analysis.remainingAmount, isAr, goal.currency || currency)}</span>
+                        </div>
+                      </div>
+                      <button type="button" className="goal-edit-btn" onClick={() => openEditGoal(goal)}>
+                        <Edit3 size={15} />
+                        {t('goal_edit_button')}
+                      </button>
+                    </div>
+                    <div className="goal-progress-row">
+                      <div className="goal-progress-track">
+                        <span style={{ width: `${done}%` }} />
+                      </div>
+                      <b>{done}%</b>
+                    </div>
+                    <div className="goal-meta-grid">
+                      <div><span>{t('goal_target_amount')}</span><strong>{money(goal.target_amount, isAr, goal.currency || currency)}</strong></div>
+                      <div><span>{t('goal_current_amount')}</span><strong>{money(goal.current_amount, isAr, goal.currency || currency)}</strong></div>
+                      <div><span>{t('goal_monthly_contribution')}</span><strong>{money(goal.monthly_contribution, isAr, goal.currency || currency)}</strong></div>
+                      <div><span>{t('goal_deadline')}</span><strong>{goal.deadline || t('goal_deadline_missing')}</strong></div>
+                    </div>
+                    <div className="goal-ai-card">
+                      <div className="goal-ai-head">
+                        <Bot size={18} />
+                        <strong>{t('goal_ai_title')}</strong>
+                        <span className={`risk-pill ${analysis.riskClass}`}>{analysis.riskLabel}</span>
+                      </div>
+                      <div className="goal-ai-metrics">
+                        <div><span>{t('goal_required_monthly')}</span><b>{money(analysis.requiredMonthlySaving, isAr, goal.currency || currency)}</b></div>
+                        <div><span>{t('goal_estimated_completion')}</span><b>{analysis.estimatedCompletion}</b></div>
+                        <div><span>{t('goal_status_label')}</span><b>{analysis.statusLabel}</b></div>
+                        <div><span>{t('goal_adjustment_label')}</span><b>{money(analysis.adjustment, isAr, goal.currency || currency)}</b></div>
+                      </div>
+                      <p>{analysis.summary}</p>
+                      <div className="goal-ai-plan">
+                        <strong>{t('goal_plan_title')}</strong>
+                        <ol>
+                          {analysis.steps.map(step => <li key={step}>{step}</li>)}
+                        </ol>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+              {kind !== 'goals' && filteredRows.length === 0 && (
                 <div className="empty-state">{isAr ? 'لا توجد بيانات محفوظة حالياً' : 'No saved data yet'}</div>
               )}
-              {(editableKind(kind) ? filteredRows.slice(0, visibleCount) : filteredRows).map(row => (
+              {kind !== 'goals' && (editableKind(kind) ? filteredRows.slice(0, visibleCount) : filteredRows).map(row => (
                 <div className="data-row" key={row.id}>
                   <div>
                     <strong>{row.title}</strong>
@@ -817,6 +1123,150 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                   </button>
                   <button type="submit" className="primary-form-btn" disabled={entrySaving}>
                     {entrySaving ? t('saving') : entryMode === 'edit' ? t('update') : t('entry_save')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {goalEditOpen && (
+          <div className="entry-overlay" role="presentation" onMouseDown={() => setGoalEditOpen(false)}>
+            <div className="entry-modal goal-modal" role="dialog" aria-modal="true" aria-labelledby="goal-modal-title" onMouseDown={event => event.stopPropagation()}>
+              <div className="entry-modal-head">
+                <div>
+                  <p>{t('goal_edit_button')}</p>
+                  <h3 id="goal-modal-title">{t('goal_edit_title')}</h3>
+                </div>
+                <button type="button" className="icon-btn" onClick={() => setGoalEditOpen(false)} aria-label={t('close')}>
+                  <X size={18} />
+                </button>
+              </div>
+              <form className="entry-form goal-form-grid" onSubmit={saveGoal}>
+                <label>
+                  <span>{t('goal_name_label')}</span>
+                  <input value={goalForm.name} onChange={event => setGoalForm(prev => ({ ...prev, name: event.target.value }))} autoFocus />
+                </label>
+                <label>
+                  <span>{t('goal_type_label')}</span>
+                  <select value={goalForm.goalType} onChange={event => setGoalForm(prev => ({ ...prev, goalType: event.target.value }))}>
+                    <option value="debt">{t('goal_type_debt')}</option>
+                    <option value="saving">{t('goal_type_saving')}</option>
+                    <option value="investment">{t('goal_type_investment')}</option>
+                    <option value="emergency">{t('goal_type_emergency')}</option>
+                    <option value="asset">{t('goal_type_asset')}</option>
+                    <option value="education">{t('goal_type_education')}</option>
+                    <option value="travel">{t('goal_type_travel')}</option>
+                    <option value="retirement">{t('goal_type_retirement')}</option>
+                    <option value="custom">{t('goal_type_custom')}</option>
+                  </select>
+                </label>
+                <label>
+                  <span>{t('goal_target_amount')}</span>
+                  <input inputMode="decimal" value={goalForm.targetAmount} onChange={event => setGoalForm(prev => ({ ...prev, targetAmount: event.target.value }))} />
+                </label>
+                <label>
+                  <span>{t('goal_current_amount')}</span>
+                  <input inputMode="decimal" value={goalForm.currentAmount} onChange={event => setGoalForm(prev => ({ ...prev, currentAmount: event.target.value }))} />
+                </label>
+                <label>
+                  <span>{t('goal_monthly_contribution')}</span>
+                  <input inputMode="decimal" value={goalForm.monthlyContribution} onChange={event => setGoalForm(prev => ({ ...prev, monthlyContribution: event.target.value }))} />
+                </label>
+                <label>
+                  <span>{t('goal_deadline')}</span>
+                  <input type="date" value={goalForm.deadline} onChange={event => setGoalForm(prev => ({ ...prev, deadline: event.target.value }))} />
+                </label>
+                <label>
+                  <span>{t('goal_category_label')}</span>
+                  <select value={goalForm.category} onChange={event => setGoalForm(prev => ({ ...prev, category: event.target.value }))}>
+                    <option value="general">{t('goal_category_general')}</option>
+                    <option value="emergency">{t('goal_category_emergency')}</option>
+                    <option value="home">{t('goal_category_home')}</option>
+                    <option value="car">{t('goal_category_car')}</option>
+                    <option value="education">{t('goal_category_education')}</option>
+                    <option value="business">{t('goal_category_business')}</option>
+                  </select>
+                </label>
+                <label>
+                  <span>{t('goal_priority_label')}</span>
+                  <select value={goalForm.priority} onChange={event => setGoalForm(prev => ({ ...prev, priority: event.target.value }))}>
+                    <option value="low">{t('goal_priority_low')}</option>
+                    <option value="medium">{t('goal_priority_medium')}</option>
+                    <option value="high">{t('goal_priority_high')}</option>
+                  </select>
+                </label>
+                <label>
+                  <span>{t('goal_funding_source_label')}</span>
+                  <select value={goalForm.fundingSource} onChange={event => setGoalForm(prev => ({ ...prev, fundingSource: event.target.value }))}>
+                    <option value="salary">{t('goal_funding_salary')}</option>
+                    <option value="investment_return">{t('goal_funding_investment_return')}</option>
+                    <option value="expense_reduction">{t('goal_funding_expense_reduction')}</option>
+                    <option value="extra_income">{t('goal_funding_extra_income')}</option>
+                    <option value="automatic">{t('goal_funding_automatic')}</option>
+                  </select>
+                </label>
+                <label>
+                  <span>{t('goal_currency_label')}</span>
+                  <select value={goalForm.currency} onChange={event => setGoalForm(prev => ({ ...prev, currency: event.target.value }))}>
+                    <option value="KWD">KWD</option>
+                    <option value="USD">USD</option>
+                    <option value="SAR">SAR</option>
+                    <option value="AED">AED</option>
+                    <option value="EUR">EUR</option>
+                  </select>
+                </label>
+                <label className="goal-notes-field">
+                  <span>{t('goal_notes_label')}</span>
+                  <textarea value={goalForm.notes} onChange={event => setGoalForm(prev => ({ ...prev, notes: event.target.value }))} placeholder={t('optional')} />
+                </label>
+                <label className="goal-ai-toggle">
+                  <span>{t('goal_ai_toggle')}</span>
+                  <button
+                    type="button"
+                    className={goalForm.aiEnabled ? 'switch active' : 'switch'}
+                    aria-pressed={goalForm.aiEnabled}
+                    onClick={() => setGoalForm(prev => ({ ...prev, aiEnabled: !prev.aiEnabled }))}
+                  >
+                    <span />
+                  </button>
+                </label>
+                {goalForm.aiEnabled && (
+                  <div className="goal-modal-preview">
+                    <div className="goal-ai-head">
+                      <Bot size={18} />
+                      <strong>{t('goal_ai_preview_title')}</strong>
+                      <span className={`risk-pill ${goalPreview.riskClass}`}>{goalPreview.riskLabel}</span>
+                    </div>
+                    {goalPreview.missing.length > 0 ? (
+                      <div className="preview-missing">
+                        <strong>{t('goal_ai_missing_title')}</strong>
+                        <ul>{goalPreview.missing.map(item => <li key={item}>{item}</li>)}</ul>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="goal-ai-metrics">
+                          <div><span>{t('goal_remaining_amount')}</span><b>{money(goalPreview.remainingAmount, isAr, goalForm.currency || currency)}</b></div>
+                          <div><span>{t('goal_required_monthly')}</span><b>{money(goalPreview.requiredMonthlySaving, isAr, goalForm.currency || currency)}</b></div>
+                          <div><span>{t('goal_current_contribution')}</span><b>{money(Number(goalForm.monthlyContribution) || 0, isAr, goalForm.currency || currency)}</b></div>
+                          <div><span>{t('goal_estimated_completion')}</span><b>{goalPreview.estimatedCompletion}</b></div>
+                        </div>
+                        <p>{goalPreview.summary}</p>
+                        <div className="goal-ai-plan">
+                          <strong>{t('goal_plan_title')}</strong>
+                          <ol>{goalPreview.steps.map(step => <li key={step}>{step}</li>)}</ol>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+                {goalError && <div className="form-error">{goalError}</div>}
+                <div className="entry-actions">
+                  <button type="button" className="ghost-form-btn" onClick={() => setGoalEditOpen(false)} disabled={goalSaving}>
+                    {t('cancel')}
+                  </button>
+                  <button type="submit" className="primary-form-btn" disabled={goalSaving}>
+                    {goalSaving ? t('saving') : t('save')}
                   </button>
                 </div>
               </form>
@@ -958,6 +1408,78 @@ function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr
   }));
 }
 
+function buildGoalAnalysis(goal: GoalItem, data: ReturnType<typeof buildDataShape>, isAr: boolean, currency = 'KWD', t: TranslateFn) {
+  const remainingAmount = Math.max(goal.target_amount - goal.current_amount, 0);
+  const monthsRemaining = monthsBetween(new Date(), goal.deadline);
+  const missing = [
+    goal.target_amount <= 0 ? t('goal_missing_target') : '',
+    goal.current_amount < 0 ? t('goal_missing_current') : '',
+    goal.monthly_contribution <= 0 ? t('goal_missing_contribution') : '',
+    monthsRemaining <= 0 ? t('goal_missing_deadline') : '',
+  ].filter(Boolean);
+  const requiredMonthlySaving = monthsRemaining > 0
+    ? remainingAmount / monthsRemaining
+    : goal.monthly_contribution > 0
+      ? goal.monthly_contribution
+      : 0;
+  const contribution = goal.monthly_contribution;
+  const adjustment = Math.max(requiredMonthlySaving - contribution, 0);
+  const expenseRatio = data.totalIncome > 0 ? data.totalExpenses / data.totalIncome : 0;
+  const availableSurplus = Math.max(data.totalIncome - data.totalExpenses - data.totalSavings, 0);
+  const estimatedMonths = contribution > 0 ? Math.ceil(remainingAmount / contribution) : 0;
+  const estimatedCompletion = monthsRemaining > 0
+    ? `${monthsRemaining} ${t('goal_months')}`
+    : estimatedMonths > 0
+      ? `${estimatedMonths} ${t('goal_months')}`
+      : t('goal_unknown_completion');
+  const ratio = requiredMonthlySaving > 0 ? contribution / requiredMonthlySaving : 1;
+  const riskClass = contribution <= 0 || ratio < 0.55 ? 'high' : ratio < 0.95 ? 'medium' : 'low';
+  const riskLabel = riskClass === 'low' ? t('goal_risk_low') : riskClass === 'medium' ? t('goal_risk_medium') : t('goal_risk_high');
+  const statusLabel = riskClass === 'low' ? t('goal_status_on_track') : riskClass === 'medium' ? t('goal_status_needs_adjustment') : t('goal_status_high_risk');
+  const suggestedExpenseReduction = data.totalExpenses > 0
+    ? Math.min(15, Math.max(5, Math.ceil((adjustment / data.totalExpenses) * 100)))
+    : 0;
+  const suggestedSavingIncrease = availableSurplus > 0 ? Math.min(adjustment, availableSurplus) : adjustment;
+
+  const summary = contribution <= 0
+    ? t('goal_ai_no_contribution')
+    : riskClass === 'low'
+      ? t('goal_ai_on_track')
+      : riskClass === 'medium'
+        ? t('goal_ai_needs_adjustment')
+        : t('goal_ai_high_risk');
+
+  const steps = [
+    contribution <= 0
+      ? t('goal_step_add_contribution')
+      : t('goal_step_raise_contribution').replace('{amount}', money(Math.max(requiredMonthlySaving, contribution), isAr, goal.currency || currency)),
+    suggestedExpenseReduction > 0
+      ? t('goal_step_reduce_expenses').replace('{percent}', String(suggestedExpenseReduction))
+      : t('goal_step_review_spending'),
+    t('goal_step_automate'),
+    suggestedSavingIncrease > 0
+      ? t('goal_step_increase_saving').replace('{amount}', money(suggestedSavingIncrease, isAr, goal.currency || currency))
+      : t('goal_step_monthly_review'),
+  ];
+
+  return {
+    remainingAmount,
+    requiredMonthlySaving,
+    estimatedCompletion,
+    adjustment,
+    riskClass,
+    riskLabel,
+    statusLabel,
+    missing,
+    summary: summary
+      .replace('{remaining}', money(remainingAmount, isAr, goal.currency || currency))
+      .replace('{required}', money(requiredMonthlySaving, isAr, goal.currency || currency))
+      .replace('{adjustment}', money(adjustment, isAr, goal.currency || currency))
+      .replace('{expenseRatio}', String(Math.round(expenseRatio * 100))),
+    steps,
+  };
+}
+
 function buildInsights(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean, currency = 'KWD') {
   const ratio = data.totalIncome ? Math.round((data.totalExpenses / data.totalIncome) * 100) : 0;
   const base = [
@@ -1031,7 +1553,7 @@ function summaryText(kind: PageKind, data: ReturnType<typeof buildDataShape>, is
   return pick(values[kind], isAr);
 }
 
-function buildPrimaryActions(kind: PageKind, isAr: boolean, router: ReturnType<typeof useRouter>, openEntry: () => void, focusAi: () => void) {
+function buildPrimaryActions(kind: PageKind, isAr: boolean, openEntry: () => void, openGoal: () => void, focusAi: () => void) {
   if (kind === 'reports') {
     return [
       { label: isAr ? 'طباعة' : 'Print', icon: Printer, variant: 'print' as const, onClick: () => window.print() },
@@ -1065,13 +1587,12 @@ function buildPrimaryActions(kind: PageKind, isAr: boolean, router: ReturnType<t
     ];
   }
 
-  const routes: Record<'goals', { label: LangText; href: string }> = {
-    goals: { label: { ar: 'إضافة هدف', en: 'Add goal' }, href: '/goals/add' },
+  const action: { label: LangText; onClick: () => void } = {
+    label: { ar: 'إضافة هدف', en: 'Add goal' },
+    onClick: openGoal,
   };
-
-  const action = routes[kind];
   return [
-    { label: pick(action.label, isAr), icon: Plus, variant: 'default' as const, onClick: () => router.push(action.href) },
+    { label: pick(action.label, isAr), icon: Plus, variant: 'default' as const, onClick: action.onClick },
   ];
 }
 
@@ -1101,6 +1622,7 @@ const baseStyles = `
   .content-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(280px,.8fr);gap:18px}.panel{padding:20px}.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.panel-head p{margin:0 0 4px;font-size:11px;color:#9A6C3C;font-weight:800}.panel-head h3{margin:0;font-size:18px}.loading-pill{font-size:11px;font-weight:800;color:#D8AE63;background:rgba(216,174,99,.11);border-radius:999px;padding:5px 10px}
   .row-controls{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}.row-search{flex:1;min-width:160px;height:38px;border:1.5px solid rgba(216,174,99,.22);border-radius:12px;padding:0 12px;background:#F7F3EA;font:700 13px Tajawal,Arial,sans-serif;color:#111;outline:none}.row-search:focus{border-color:#D8AE63;background:#FFFDFC}.row-select{height:38px;border:1.5px solid rgba(216,174,99,.22);border-radius:12px;padding:0 10px;background:#F7F3EA;font:700 13px Tajawal,Arial,sans-serif;color:#111;outline:none;cursor:pointer}.row-select:focus{border-color:#D8AE63}.row-count{font-size:12px;font-weight:800;color:#9A6C3C;margin-bottom:10px;padding:6px 0;border-bottom:1px solid rgba(216,174,99,.1)}.load-more-btn{width:100%;margin-top:12px;padding:12px;border-radius:14px;border:1.5px dashed rgba(216,174,99,.3);background:transparent;color:#9A6C3C;font:800 13px Tajawal,Arial,sans-serif;cursor:pointer;transition:all .2s}.load-more-btn:hover{background:rgba(216,174,99,.08);border-color:#D8AE63;color:#7a5a2a}
   .row-list{display:grid;gap:10px}.empty-state{padding:22px;border:1px dashed rgba(216,174,99,.25);border-radius:16px;color:#9A6C3C;text-align:center;font-size:13px;font-weight:800}.data-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid rgba(216,174,99,.08)}.data-row:last-child{border-bottom:0}.data-row strong{display:block;font-size:14px}.data-row span{display:block;color:#8B7A6D;font-size:12px;margin-top:4px}.data-row b{font-size:14px;color:#D8AE63;white-space:nowrap}.row-actions-wrap{display:flex;align-items:center;gap:10px}.row-actions{display:flex;align-items:center;gap:6px}.row-action{width:34px;height:34px;border-radius:11px;border:1px solid rgba(216,174,99,.16);background:#FFFDFC;color:#5B4332;display:grid;place-items:center;cursor:pointer;transition:all .18s ease}.row-action:hover{border-color:rgba(216,174,99,.45);color:#D8AE63;background:rgba(216,174,99,.08);transform:translateY(-1px)}
+  .goal-card{background:#FFFDFC;border:1px solid rgba(216,174,99,.16);border-radius:22px;padding:18px;box-shadow:0 8px 28px rgba(90,67,51,.07);display:grid;gap:15px;transition:all .22s ease}.goal-card:hover{transform:translateY(-2px);box-shadow:0 16px 38px rgba(90,67,51,.11)}.goal-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.goal-title-wrap{display:flex;align-items:center;gap:12px}.goal-icon{width:42px;height:42px;border-radius:14px;background:rgba(216,174,99,.13);display:grid;place-items:center;font-size:20px}.goal-title-wrap strong{display:block;font-size:16px;font-weight:900;color:#111}.goal-title-wrap span{display:block;margin-top:4px;color:#9A6C3C;font-size:12px;font-weight:800}.goal-edit-btn{height:38px;border:1px solid rgba(216,174,99,.28);border-radius:13px;background:linear-gradient(135deg,rgba(216,174,99,.16),rgba(255,253,252,.95));color:#5B4332;padding:0 12px;font:900 12px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;gap:7px;cursor:pointer;box-shadow:0 6px 18px rgba(216,174,99,.12);transition:all .2s ease}.goal-edit-btn:hover{background:#D8AE63;color:#111;transform:translateY(-1px)}.goal-progress-row{display:flex;align-items:center;gap:10px}.goal-progress-track{height:10px;border-radius:999px;background:#F0E8DA;overflow:hidden;flex:1}.goal-progress-track span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#D8AE63,#9A6C3C)}.goal-progress-row b{color:#9A6C3C;font-size:13px}.goal-meta-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.goal-meta-grid div,.goal-ai-metrics div{background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:14px;padding:10px}.goal-meta-grid span,.goal-ai-metrics span{display:block;color:#9A6C3C;font-size:11px;font-weight:900;margin-bottom:5px}.goal-meta-grid strong,.goal-ai-metrics b{font-size:13px;color:#111}.goal-ai-card,.goal-modal-preview{border:1px solid rgba(216,174,99,.2);background:linear-gradient(180deg,#FFFDFC,#FFF8EA);border-radius:18px;padding:15px;display:grid;gap:12px}.goal-ai-head{display:flex;align-items:center;gap:9px;color:#5B4332}.goal-ai-head svg{color:#D8AE63}.goal-ai-head strong{font-size:14px;font-weight:900}.risk-pill{margin-inline-start:auto;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900}.risk-pill.low{background:rgba(34,197,94,.12);color:#15803D}.risk-pill.medium{background:rgba(216,174,99,.16);color:#9A6C3C}.risk-pill.high{background:rgba(239,68,68,.1);color:#B91C1C}.goal-ai-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.goal-ai-card p,.goal-modal-preview p{margin:0;color:#5B4332;font-size:13px;line-height:1.8;font-weight:700}.goal-ai-plan{background:rgba(255,255,255,.72);border-radius:14px;padding:12px}.goal-ai-plan strong{font-size:13px;color:#111}.goal-ai-plan ol{margin:8px 18px 0;padding:0;color:#5B4332;font-size:12.5px;line-height:1.8;font-weight:700}.goal-modal{width:min(860px,100%);max-height:min(88vh,980px);overflow:auto}.goal-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.goal-form-grid label:first-child,.goal-form-grid .entry-actions,.goal-notes-field,.goal-ai-toggle,.goal-modal-preview{grid-column:1/-1}.goal-form-grid select,.goal-form-grid textarea{border:1.5px solid rgba(216,174,99,.22);border-radius:14px;background:#F7F3EA;padding:0 13px;color:#111;font:800 14px Tajawal,Arial,sans-serif;outline:0}.goal-form-grid select{height:50px}.goal-form-grid textarea{min-height:92px;padding-top:12px;resize:vertical}.goal-form-grid select:focus,.goal-form-grid textarea:focus{border-color:#D8AE63;box-shadow:0 0 0 4px rgba(216,174,99,.12);background:#FFFDFC}.goal-ai-toggle{display:flex!important;align-items:center;justify-content:space-between;border:1px solid rgba(216,174,99,.14);background:#FFF8EA;border-radius:16px;padding:12px 14px}.switch{width:54px;height:30px;border:0;border-radius:999px;background:#D9CDBB;padding:3px;cursor:pointer;transition:.2s}.switch span{display:block;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);transition:.2s}.switch.active{background:#D8AE63}.switch.active span{transform:translateX(24px)}[dir="rtl"] .switch.active span{transform:translateX(-24px)}.preview-missing{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.12);border-radius:14px;padding:12px;color:#B91C1C}.preview-missing strong{font-size:13px}.preview-missing ul{margin:8px 18px 0;padding:0;font-size:12.5px;line-height:1.8;font-weight:800}.form-error{grid-column:1/-1;border-radius:13px;padding:11px 13px;background:rgba(239,68,68,.08);color:#B91C1C;font-size:13px;font-weight:900}
   .insight-list{display:grid;gap:12px}.insight-list>div{display:flex;gap:10px;padding:12px;border-radius:14px;background:rgba(216,174,99,.07)}.insight-list svg{color:#D8AE63;flex-shrink:0}.insight-list strong{display:block;font-size:13px}.insight-list span{display:block;font-size:12px;color:#7C6A5D;line-height:1.6;margin-top:3px}
   .summary-band,.ai-panel{margin-top:18px;background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:20px;padding:18px 20px;display:flex;align-items:center;gap:14px}.summary-band svg{color:#D8AE63}.summary-band strong,.ai-panel h3{font-size:16px}.summary-band p,.ai-panel p{margin:4px 0 0;color:#7C6A5D;line-height:1.7;font-size:13px}
   .ai-panel{align-items:stretch;justify-content:space-between}.chat-history{display:grid;gap:8px;min-width:min(460px,100%);max-height:190px;overflow:auto;margin-bottom:10px}.chat-history>div{padding:10px 12px;border-radius:14px;font-size:13px;line-height:1.6}.chat-history .user{background:#111;color:#FFFDFC}.chat-history .assistant{background:rgba(216,174,99,.11);color:#5B4332}.chat-box{display:flex;gap:10px;min-width:min(460px,100%)}.chat-box input{height:46px;border:1.5px solid rgba(216,174,99,.22);border-radius:14px;padding:0 14px;background:#F7F3EA;min-width:0;flex:1;font:600 14px Tajawal,Arial,sans-serif;color:#111}.chat-box button{width:46px;border-radius:14px;border:0;background:#111;color:#D8AE63;display:grid;place-items:center;cursor:pointer}.chat-box button:disabled{opacity:.55;cursor:wait}
@@ -1109,5 +1631,5 @@ const baseStyles = `
   .finance-header-lang{display:none}
   @media(max-width:1024px){.finance-header-lang{display:block}}
   @media(max-width:920px){.sfm-sidebar{display:none}.menu-btn{display:grid}.sfm-main{padding:16px;margin-inline-start:0}.hero{display:block}.hero-actions{margin-top:18px}.content-grid{grid-template-columns:1fr}.ai-panel{display:grid}.chat-box{min-width:0}}
-  @media(max-width:640px){.kpi-grid{grid-template-columns:1fr}.sfm-header{height:auto}.title-wrap h1{font-size:20px}.hero{padding:22px}.hero h2{font-size:27px}.data-row{align-items:flex-start;flex-direction:column}.row-actions-wrap{width:100%;justify-content:space-between}.summary-band{align-items:flex-start}.primary-btn,.ghost-btn{width:100%;justify-content:center}.entry-actions{display:grid;grid-template-columns:1fr 1fr}.primary-form-btn,.ghost-form-btn,.danger-form-btn{width:100%}}
+  @media(max-width:640px){.kpi-grid{grid-template-columns:1fr}.sfm-header{height:auto}.title-wrap h1{font-size:20px}.hero{padding:22px}.hero h2{font-size:27px}.data-row{align-items:flex-start;flex-direction:column}.row-actions-wrap{width:100%;justify-content:space-between}.summary-band{align-items:flex-start}.primary-btn,.ghost-btn{width:100%;justify-content:center}.entry-actions{display:grid;grid-template-columns:1fr 1fr}.primary-form-btn,.ghost-form-btn,.danger-form-btn{width:100%}.goal-card-head{display:grid}.goal-edit-btn{width:100%;justify-content:center}.goal-meta-grid,.goal-ai-metrics,.goal-form-grid{grid-template-columns:1fr}.goal-form-grid label:first-child{grid-column:auto}}
 `;
