@@ -5,6 +5,7 @@ const protectedPrefixes = [
   '/expenses',
   '/income',
   '/invest',
+  '/savings',
   '/education/investments',
   '/goals',
   '/reports',

@@ -567,9 +567,11 @@ export const TR: Record<string, TranslationEntry> = {
   expenses_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف هذا المصروف؟', en:'Delete this expense?', fr:'Supprimer cette depense ?' },
   income_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف هذا الدخل؟', en:'Delete this income?', fr:'Supprimer ce revenu ?' },
   invest_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف هذا الاستثمار؟', en:'Delete this investment?', fr:'Supprimer cet investissement ?' },
+  savings_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف عملية الإدخار هذه؟', en:'Delete this saving entry?', fr:'Supprimer cette epargne ?' },
   expenses_entry_title: { ar:'مصروف', en:'Expense', fr:'Depense' },
   income_entry_title: { ar:'دخل', en:'Income', fr:'Revenu' },
   invest_entry_title: { ar:'استثمار', en:'Investment', fr:'Investissement' },
+  savings_entry_title: { ar:'إدخار', en:'Saving', fr:'Epargne' },
 
 } as const;
 

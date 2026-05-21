@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { id: 'expenses', icon: '🛒', path: '/expenses', labelKey: 'nav_expenses' },
   { id: 'income', icon: '💵', path: '/income', labelKey: 'nav_income' },
   { id: 'invest', icon: '📈', path: '/invest', labelKey: 'nav_invest' },
+  { id: 'savings', icon: '🐷', path: '/savings', labelKey: 'nav_savings' },
   { id: 'goals', icon: '🎯', path: '/goals', labelKey: 'nav_goals' },
   { id: 'projects', icon: '🚀', path: '/projects', labelKey: 'nav_projects' },
   { id: 'charity', icon: '🤲', path: '/charity', labelKey: 'nav_charity' },

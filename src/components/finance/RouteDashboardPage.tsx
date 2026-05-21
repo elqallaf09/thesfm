@@ -17,6 +17,7 @@ import {
   FolderKanban,
   LineChart,
   Menu,
+  PiggyBank,
   Plus,
   Printer,
   ReceiptText,
@@ -34,11 +35,11 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { Sidebar } from '@/components/Sidebar';
 
-type PageKind = 'expenses' | 'income' | 'invest' | 'goals' | 'reports' | 'ai';
+type PageKind = 'expenses' | 'income' | 'invest' | 'savings' | 'goals' | 'reports' | 'ai';
 type LangText = { ar: string; en: string };
 type MoneyItem = { id: string; name: string; amount: number; created_at?: string | null };
 type IncomeSource = MoneyItem & { label?: string | null; category?: string | null };
-type EntryKind = Extract<PageKind, 'expenses' | 'income' | 'invest'>;
+type EntryKind = Extract<PageKind, 'expenses' | 'income' | 'invest' | 'savings'>;
 type EntryFormState = { id?: string; name: string; amount: string; category: string };
 type EntryRow = { id: string; title: string; subtitle: string; value: string; item?: MoneyItem | IncomeSource };
 type GoalItem = {
@@ -93,11 +94,13 @@ const entryTitleKeys = {
   expenses: 'expenses_entry_title',
   income: 'income_entry_title',
   invest: 'invest_entry_title',
+  savings: 'savings_entry_title',
 } as const;
 const deleteConfirmKeys = {
   expenses: 'expenses_deleteConfirmMessage',
   income: 'income_deleteConfirmMessage',
   invest: 'invest_deleteConfirmMessage',
+  savings: 'savings_deleteConfirmMessage',
 } as const;
 
 const navItems = [
@@ -105,6 +108,7 @@ const navItems = [
   { href: '/expenses', label: { ar: 'المصروفات', en: 'Expenses' }, icon: ReceiptText },
   { href: '/income', label: { ar: 'الدخل', en: 'Income' }, icon: Wallet },
   { href: '/invest', label: { ar: 'الاستثمارات', en: 'Investments' }, icon: TrendingUp },
+  { href: '/savings', label: { ar: 'الإدخار', en: 'Savings' }, icon: PiggyBank },
   { href: '/goals', label: { ar: 'الأهداف', en: 'Goals' }, icon: Target },
   { href: '/projects', label: { ar: 'مشاريعي', en: 'My Projects' }, icon: FolderKanban },
   { href: '/reports', label: { ar: 'التقارير', en: 'Reports' }, icon: ChartPie },
@@ -133,6 +137,12 @@ const pageMeta: Record<PageKind, { title: LangText; subtitle: LangText; accent: 
     subtitle: { ar: 'تابع المحفظة، فئات الاستثمار، المخاطر، والمساهمة الشهرية.', en: 'Follow portfolio value, investment categories, risk level, and monthly contribution.' },
     accent: '#3B82F6',
     icon: TrendingUp,
+  },
+  savings: {
+    title: { ar: 'الإدخار', en: 'Savings' },
+    subtitle: { ar: 'تتبّع مدخراتك وحقّق أهدافك المالية بخطوات واضحة ومنتظمة.', en: 'Track your savings and reach your financial goals with clear, consistent steps.' },
+    accent: '#22C55E',
+    icon: PiggyBank,
   },
   goals: {
     title: { ar: 'الأهداف المالية', en: 'Financial Goals' },
@@ -172,7 +182,7 @@ function progress(current: number, target: number) {
 }
 
 function editableKind(kind: PageKind): kind is EntryKind {
-  return kind === 'expenses' || kind === 'income' || kind === 'invest';
+  return kind === 'expenses' || kind === 'income' || kind === 'invest' || kind === 'savings';
 }
 
 function guestKey(kind: EntryKind) {
@@ -242,6 +252,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             ...emptySnapshot,
             income: readGuestItems('income') as IncomeSource[],
             expenses: readGuestItems('expenses') as MoneyItem[],
+            savings: readGuestItems('savings') as MoneyItem[],
             investments: readGuestItems('invest') as MoneyItem[],
           });
         }
@@ -351,6 +362,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
       if (entryKind === 'income') return { ...prev, income: apply(prev.income) as IncomeSource[] };
       if (entryKind === 'expenses') return { ...prev, expenses: apply(prev.expenses) };
+      if (entryKind === 'savings') return { ...prev, savings: apply(prev.savings) };
       return { ...prev, investments: apply(prev.investments) };
     });
   }
@@ -401,7 +413,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             applyEntryToSnapshot(kind, { id, name, label: name, category: entryForm.category || 'general', amount }, mode);
           }
         } else {
-          const table = kind === 'expenses' ? 'expense_items' : 'investment_items';
+          const table = kind === 'expenses' ? 'expense_items' : kind === 'savings' ? 'savings_items' : 'investment_items';
           if (mode === 'create') {
             const { data: created, error } = await supabase.from(table).insert({
               user_id: user.id,
@@ -438,7 +450,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         writeGuestItems(kind, next);
       } else {
         if (!user) throw new Error(t('entry_auth_required'));
-        const table = kind === 'income' ? 'monthly_income_sources' : kind === 'expenses' ? 'expense_items' : 'investment_items';
+        const table = kind === 'income' ? 'monthly_income_sources' : kind === 'expenses' ? 'expense_items' : kind === 'savings' ? 'savings_items' : 'investment_items';
         const { error } = await supabase.from(table).delete().eq('id', confirmDelete.id);
         if (error) throw error;
       }
@@ -446,6 +458,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       setSnapshot(prev => {
         if (kind === 'income') return { ...prev, income: prev.income.filter(item => item.id !== confirmDelete.id) };
         if (kind === 'expenses') return { ...prev, expenses: prev.expenses.filter(item => item.id !== confirmDelete.id) };
+        if (kind === 'savings') return { ...prev, savings: prev.savings.filter(item => item.id !== confirmDelete.id) };
         return { ...prev, investments: prev.investments.filter(item => item.id !== confirmDelete.id) };
       });
       setConfirmDelete(null);
@@ -793,6 +806,11 @@ function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, isA
     { title: { ar: 'المساهمة الشهرية', en: 'Monthly contribution' }, body: { ar: 'تقدير 15% من الدخل الحالي.', en: 'Estimated as 15% of current income.' }, value: money(data.totalIncome * 0.15, isAr), tone: '#22C55E' },
     { title: { ar: 'مستوى المخاطر', en: 'Risk level' }, body: { ar: 'متوازن بناءً على التوزيع الحالي.', en: 'Balanced based on current allocation.' }, value: isAr ? 'متوسط' : 'Medium', tone: '#D8AE63' },
   ];
+  if (kind === 'savings') return [
+    { title: { ar: 'إجمالي المدخرات', en: 'Total savings' }, body: { ar: 'مجموع عمليات الادخار المسجلة.', en: 'Total recorded savings entries.' }, value: common.savings, tone: '#22C55E' },
+    { title: { ar: 'عدد السجلات', en: 'Entries count' }, body: { ar: 'سجلات الادخار النشطة.', en: 'Active saving records.' }, value: String(data.savings.length), tone: '#D8AE63' },
+    { title: { ar: 'الصافي بعد الادخار', en: 'Net after savings' }, body: { ar: 'الدخل ناقص المصروفات والمدخرات.', en: 'Income minus expenses and savings.' }, value: money(data.balance - data.totalSavings, isAr), tone: '#3B82F6' },
+  ];
   if (kind === 'goals') return [
     { title: { ar: 'الأهداف النشطة', en: 'Active goals' }, body: { ar: 'أهداف مالية قيد المتابعة.', en: 'Financial goals being tracked.' }, value: String(data.goals.length), tone: '#D8AE63' },
     { title: { ar: 'إجمالي المستهدف', en: 'Target total' }, body: { ar: 'مجموع مبالغ الأهداف.', en: 'Combined target amounts.' }, value: money(data.goals.reduce((total, goal) => total + goal.target_amount, 0), isAr), tone: '#3B82F6' },
@@ -855,7 +873,7 @@ function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr
     ];
   }
 
-  const source = kind === 'income' ? data.income : kind === 'invest' ? data.investments : data.expenses;
+  const source = kind === 'income' ? data.income : kind === 'invest' ? data.investments : kind === 'savings' ? data.savings : data.expenses;
   return source.slice(0, 6).map(item => ({
     id: item.id,
     title: item.name.replace(/^خيرية:\d{4}-\d{2}:/, ''),
@@ -891,6 +909,7 @@ function suggestion(kind: PageKind, isAr: boolean) {
     expenses: { ar: 'ابدأ بأكبر تصنيف مصروفات وخفّضه 5%.', en: 'Start with your largest expense category and reduce it by 5%.' },
     income: { ar: 'قسّم الدخل إلى راتب، دخل جانبي، وأعمال لقراءة أوضح.', en: 'Split income into salary, side income, and business for cleaner tracking.' },
     invest: { ar: 'حافظ على مساهمة شهرية ثابتة قبل زيادة المخاطر.', en: 'Keep a steady monthly contribution before increasing risk.' },
+    savings: { ar: 'حدد هدفًا شهريًا للادخار وراقب تقدمك في كل دورة.', en: 'Set a monthly savings target and track your progress each cycle.' },
     goals: { ar: 'اربط كل هدف بمبلغ شهري صغير قابل للاستمرار.', en: 'Attach every goal to a small sustainable monthly amount.' },
     reports: { ar: 'اطبع التقرير قبل نهاية الشهر لمراجعة قراراتك.', en: 'Print the report before month-end to review decisions.' },
     ai: { ar: 'اسأل المساعد عن أفضل قرار واحد لهذا الأسبوع.', en: 'Ask the assistant for one best action this week.' },
@@ -903,6 +922,7 @@ function sectionTitle(kind: PageKind, isAr: boolean) {
     expenses: { ar: 'آخر المصروفات والتصنيفات', en: 'Recent expenses and categories' },
     income: { ar: 'مصادر الدخل والتوزيع', en: 'Income sources and distribution' },
     invest: { ar: 'بطاقات المحفظة وفئات الاستثمار', en: 'Portfolio cards and investment categories' },
+    savings: { ar: 'سجلات الادخار والمبالغ', en: 'Savings records and amounts' },
     goals: { ar: 'بطاقات تقدم الأهداف', en: 'Goal progress cards' },
     reports: { ar: 'ملخص التقارير المالية', en: 'Financial report summary' },
     ai: { ar: 'بطاقات العمل الذكية', en: 'Smart action cards' },
@@ -915,6 +935,7 @@ function summaryTitle(kind: PageKind, isAr: boolean) {
     expenses: { ar: 'ملخص المصروفات الشهري', en: 'Monthly expense summary' },
     income: { ar: 'ملخص توزيع الدخل', en: 'Income distribution summary' },
     invest: { ar: 'ملخص المساهمة الاستثمارية', en: 'Investment contribution summary' },
+    savings: { ar: 'ملخص المدخرات المسجلة', en: 'Recorded savings summary' },
     goals: { ar: 'ملخص تقدم الادخار', en: 'Savings progress summary' },
     reports: { ar: 'جاهز للتصدير والطباعة', en: 'Ready to export and print' },
     ai: { ar: 'واجهة المساعد', en: 'Assistant interface' },
@@ -927,6 +948,7 @@ function summaryText(kind: PageKind, data: ReturnType<typeof buildDataShape>, is
     expenses: { ar: `إجمالي المصروفات الحالي ${money(data.totalExpenses, isAr)} مع ${data.expenses.length} سجل.`, en: `Current expenses total ${money(data.totalExpenses, isAr)} across ${data.expenses.length} records.` },
     income: { ar: `الدخل الشهري الحالي ${money(data.totalIncome, isAr)} موزع على ${data.income.length} مصادر.`, en: `Monthly income is ${money(data.totalIncome, isAr)} across ${data.income.length} sources.` },
     invest: { ar: `قيمة المحفظة ${money(data.totalInvestments, isAr)} مع مساهمة مقترحة ${money(data.totalIncome * 0.15, isAr)}.`, en: `Portfolio value is ${money(data.totalInvestments, isAr)} with suggested contribution ${money(data.totalIncome * 0.15, isAr)}.` },
+    savings: { ar: `إجمالي المدخرات ${money(data.totalSavings, isAr)} موزع على ${data.savings.length} سجلات.`, en: `Total savings are ${money(data.totalSavings, isAr)} across ${data.savings.length} entries.` },
     goals: { ar: `مدخراتك الحالية ${money(data.totalSavings, isAr)} تقيس تقدم ${data.goals.length} أهداف.`, en: `Current savings of ${money(data.totalSavings, isAr)} measure progress across ${data.goals.length} goals.` },
     reports: { ar: 'استخدم أزرار الطباعة والتصدير لحفظ نسخة من ملخصك المالي.', en: 'Use print and export actions to save a copy of your financial summary.' },
     ai: { ar: 'اكتب سؤالك للحصول على مساعدة مالية موجهة حسب بياناتك.', en: 'Type a prompt to get financial guidance shaped by your data.' },
@@ -961,6 +983,7 @@ function buildPrimaryActions(kind: PageKind, isAr: boolean, router: ReturnType<t
       expenses: { ar: 'إضافة مصروف', en: 'Add expense' },
       income: { ar: 'إضافة دخل', en: 'Add income' },
       invest: { ar: 'إضافة استثمار', en: 'Add investment' },
+      savings: { ar: 'إضافة مدخرات', en: 'Add saving' },
     };
     return [
       { label: pick(labels[kind], isAr), icon: Plus, variant: 'default' as const, onClick: openEntry },
