@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════
 
-   SFM — Global Translations (AR | EN)
+   SFM — Global Translations (AR | EN | FR)
 
    Shared across all pages. Add keys here, use via t()
 
@@ -16,581 +16,581 @@ export const TR: Record<string, TranslationEntry> = {
   back:        { ar:'← رجوع', en:'← Back', fr:'← Retour' },
   save:        { ar:'💾 حفظ', en:'💾 Save', fr:'💾 Enregistrer' },
   saving:      { ar:'جارٍ الحفظ...', en:'Saving...', fr:'Enregistrement...' },
-  saved:       { ar:'✅ تم الحفظ', en:'✅ Saved', fr:'✅ Enregistre' },
+  saved:       { ar:'✅ تم الحفظ', en:'✅ Saved', fr:'✅ Enregistré' },
   cancel:      { ar:'إلغاء', en:'Cancel', fr:'Annuler' },
 
   edit:        { ar:'تعديل',             en:'Edit', fr:'Modifier' },
 
   delete:      { ar:'حذف',              en:'Delete', fr:'Supprimer' },
 
-  add:         { ar:'إضافة',             en:'Add' },
+  add:         { ar:'إضافة',             en:'Add', fr:'Ajouter' },
 
-  search:      { ar:'بحث...',            en:'Search...' },
+  search:      { ar:'بحث...',            en:'Search...', fr:'Rechercher...' },
   loading:     { ar:'جارٍ التحميل...', en:'Loading...', fr:'Chargement...' },
   error:       { ar:'حدث خطأ', en:'An error occurred', fr:'Une erreur est survenue' },
 
-  success:     { ar:'تمت العملية بنجاح', en:'Operation successful', fr:'Operation reussie' },
-  actualData:  { ar:'بيانات فعلية', en:'Actual data', fr:'Donnees reelles' },
-  demoData:    { ar:'بيانات تجريبية', en:'Demo data', fr:'Donnees demo' },
-  common_underDevelopment: { ar:'الصفحة تحت التطوير والإنشاء', en:'This page is under development', fr:'Cette page est en cours de developpement' },
-  common_comingSoon: { ar:'قريباً', en:'Coming soon', fr:'Bientot disponible' },
+  success:     { ar:'تمت العملية بنجاح', en:'Operation successful', fr:'Opération réussie' },
+  actualData:  { ar:'بيانات فعلية', en:'Actual data', fr:'Données réelles' },
+  demoData:    { ar:'بيانات تجريبية', en:'Demo data', fr:'Données démo' },
+  common_underDevelopment: { ar:'الصفحة تحت التطوير والإنشاء', en:'This page is under development', fr:'Cette page est en cours de développement' },
+  common_comingSoon: { ar:'قريباً', en:'Coming soon', fr:'Bientôt disponible' },
   common_backToDashboard: { ar:'العودة للرئيسية', en:'Back to dashboard', fr:'Retour au tableau de bord' },
 
   close:       { ar:'إغلاق',             en:'Close', fr:'Fermer' },
 
   confirm:     { ar:'تأكيد',             en:'Confirm', fr:'Confirmer' },
 
-  next:        { ar:'التالي →',          en:'Next →' },
+  next:        { ar:'التالي →',          en:'Next →', fr:'Suivant →' },
 
-  previous:    { ar:'← السابق',          en:'← Previous' },
+  previous:    { ar:'← السابق',          en:'← Previous', fr:'← Précédent' },
 
-  noData:      { ar:'لا توجد بيانات',    en:'No data found' },
+  noData:      { ar:'لا توجد بيانات',    en:'No data found', fr:'Aucune donnée' },
 
-  optional:    { ar:'(اختياري)',         en:'(optional)' },
+  optional:    { ar:'(اختياري)',         en:'(optional)', fr:'(facultatif)' },
 
-  required:    { ar:'مطلوب',            en:'Required' },
+  required:    { ar:'مطلوب',            en:'Required', fr:'Requis' },
 
-  currency:    { ar:'د.ك',              en:'KWD' },
+  currency:    { ar:'د.ك',              en:'KWD', fr:'KWD' },
 
   /* ── Navigation / Sidebar ── */
   nav_home:       { ar:'الرئيسية', en:'Dashboard', fr:'Tableau de bord' },
-  nav_expenses:   { ar:'المصاريف', en:'Expenses', fr:'Depenses' },
+  nav_expenses:   { ar:'المصاريف', en:'Expenses', fr:'Dépenses' },
   nav_income:     { ar:'الدخل', en:'Income', fr:'Revenus' },
   nav_invest:     { ar:'الاستثمارات', en:'Investments', fr:'Investissements' },
   nav_goals:      { ar:'الأهداف المالية', en:'Financial Goals', fr:'Objectifs financiers' },
   nav_projects:   { ar:'مشاريعي', en:'My Projects', fr:'Mes projets' },
-  nav_charity:    { ar:'الأعمال الخيرية', en:'Charity', fr:'Charite' },
+  nav_charity:    { ar:'الأعمال الخيرية', en:'Charity', fr:'Charité' },
   nav_reports:    { ar:'التقارير', en:'Reports', fr:'Rapports' },
   nav_ai:         { ar:'تحليلات الذكاء', en:'AI Analytics', fr:'Analyses IA' },
   nav_notif:      { ar:'الإشعارات', en:'Notifications', fr:'Notifications' },
-  nav_settings:   { ar:'الإعدادات', en:'Settings', fr:'Parametres' },
+  nav_settings:   { ar:'الإعدادات', en:'Settings', fr:'Paramètres' },
   nav_profile:    { ar:'الملف الشخصي', en:'Profile', fr:'Profil' },
-  nav_logout:     { ar:'تسجيل الخروج', en:'Sign Out', fr:'Deconnexion' },
-  nav_savings:    { ar:'المدخرات', en:'Savings', fr:'Epargne' },
-  nav_education:  { ar:'التعليم المالي', en:'Financial Education', fr:'Education financiere' },
+  nav_logout:     { ar:'تسجيل الخروج', en:'Sign Out', fr:'Déconnexion' },
+  nav_savings:    { ar:'المدخرات', en:'Savings', fr:'Épargne' },
+  nav_education:  { ar:'التعليم المالي', en:'Financial Education', fr:'Éducation financière' },
   nav_services_section: { ar:'الخدمات', en:'Services', fr:'Services' },
-  nav_investment_firms: { ar:'شركات الاستثمار', en:'Investment Firms', fr:"Societes d'investissement" },
+  nav_investment_firms: { ar:'شركات الاستثمار', en:'Investment Firms', fr:"Sociétés d'investissement" },
   nav_accounting_firms: { ar:'شركات المحاسبة', en:'Accounting Firms', fr:'Cabinets comptables' },
-  nav_feasibility_firms: { ar:'شركات دراسة الجدوى', en:'Feasibility Study Firms', fr:'Etudes de faisabilite' },
+  nav_feasibility_firms: { ar:'شركات دراسة الجدوى', en:'Feasibility Study Firms', fr:'Études de faisabilité' },
   nav_advisory_firms: { ar:'شركات الاستشارات المالية', en:'Financial Advisory Firms', fr:'Conseil financier' },
-  'services.investmentFirms.title': { ar:'شركات الاستثمار', en:'Investment Firms', fr:"Societes d'investissement" },
-  'services.investmentFirms.description': { ar:'دليل شامل لشركات الاستثمار المرخّصة محلياً وإقليمياً', en:'A comprehensive directory of licensed investment firms', fr:"Annuaire complet des societes d'investissement agreees" },
+  'services.investmentFirms.title': { ar:'شركات الاستثمار', en:'Investment Firms', fr:"Sociétés d'investissement" },
+  'services.investmentFirms.description': { ar:'دليل شامل لشركات الاستثمار المرخّصة محلياً وإقليمياً', en:'A comprehensive directory of licensed investment firms', fr:"Annuaire complet des sociétés d'investissement agréées" },
   'services.accountingFirms.title': { ar:'شركات المحاسبة', en:'Accounting Firms', fr:'Cabinets comptables' },
-  'services.accountingFirms.description': { ar:'دليل بأفضل مكاتب وشركات المحاسبة والمراجعة', en:'Top accounting and auditing firms', fr:"Annuaire des meilleurs cabinets de comptabilite et d'audit" },
-  'services.feasibilityFirms.title': { ar:'شركات دراسة الجدوى', en:'Feasibility Study Firms', fr:'Etudes de faisabilite' },
-  'services.feasibilityFirms.description': { ar:'دليل بشركات إعداد دراسات الجدوى الاقتصادية للمشاريع', en:'Firms specialized in economic feasibility studies', fr:'Cabinets specialises en etudes de faisabilite economique' },
+  'services.accountingFirms.description': { ar:'دليل بأفضل مكاتب وشركات المحاسبة والمراجعة', en:'Top accounting and auditing firms', fr:"Annuaire des meilleurs cabinets de comptabilité et d'audit" },
+  'services.feasibilityFirms.title': { ar:'شركات دراسة الجدوى', en:'Feasibility Study Firms', fr:'Études de faisabilité' },
+  'services.feasibilityFirms.description': { ar:'دليل بشركات إعداد دراسات الجدوى الاقتصادية للمشاريع', en:'Firms specialized in economic feasibility studies', fr:'Cabinets spécialisés en études de faisabilité économique' },
   'services.advisoryFirms.title': { ar:'شركات الاستشارات المالية للأفراد', en:'Personal Financial Advisory Firms', fr:'Conseil financier aux particuliers' },
-  'services.advisoryFirms.description': { ar:'دليل بمستشارين ماليين معتمدين للأفراد والعائلات', en:'Certified financial advisors for individuals and families', fr:'Conseillers financiers certifies pour particuliers et familles' },
+  'services.advisoryFirms.description': { ar:'دليل بمستشارين ماليين معتمدين للأفراد والعائلات', en:'Certified financial advisors for individuals and families', fr:'Conseillers financiers certifiés pour particuliers et familles' },
 
   /* ── Dashboard Hero ── */
 
-  dash_hello:     { ar:'مرحباً',          en:'Welcome back,' },
+  dash_hello:     { ar:'مرحباً',          en:'Welcome back,', fr:'Bienvenue,' },
 
-  dash_subtitle:  { ar:'هذه نظرة عامة على وضعك المالي اليوم', en:'Here\'s your financial overview for today' },
+  dash_subtitle:  { ar:'هذه نظرة عامة على وضعك المالي اليوم', en:"Here's your financial overview for today", fr:"Voici votre aperçu financier d'aujourd'hui" },
 
-  dash_report:    { ar:'🖨️ تقرير شهري',  en:'🖨️ Monthly Report' },
+  dash_report:    { ar:'🖨️ تقرير شهري',  en:'🖨️ Monthly Report', fr:'🖨️ Rapport mensuel' },
 
-  net_wealth:     { ar:'📊 صافي الثروة',  en:'📊 Net Wealth' },
+  net_wealth:     { ar:'📊 صافي الثروة',  en:'📊 Net Wealth', fr:'📊 Patrimoine net' },
 
-  health_score:   { ar:'الصحة المالية',   en:'Financial Health' },
+  health_score:   { ar:'الصحة المالية',   en:'Financial Health', fr:'Santé financière' },
 
-  health_great:   { ar:'ممتاز',           en:'Excellent' },
+  health_great:   { ar:'ممتاز',           en:'Excellent', fr:'Excellent' },
   ai_manager:     { ar:'المدير المالي الذكي', en:'AI Finance Manager', fr:'Gestionnaire financier IA' },
 
-  ai_active:      { ar:'نشط',             en:'Active' },
+  ai_active:      { ar:'نشط',             en:'Active', fr:'Actif' },
 
-  ai_working:     { ar:'يعمل حالياً لتحسين وضعك المالي', en:'Currently optimizing your financial health' },
+  ai_working:     { ar:'يعمل حالياً لتحسين وضعك المالي', en:'Currently optimizing your financial health', fr:'Optimisation de votre santé financière en cours' },
 
-  vs_prev_month:  { ar:'مقارنة بالشهر الماضي', en:'vs. previous month' },
+  vs_prev_month:  { ar:'مقارنة بالشهر الماضي', en:'vs. previous month', fr:'vs. mois précédent' },
 
   /* ── KPI Cards ── */
 
-  total_income:   { ar:'إجمالي الدخل',    en:'Total Income' },
+  total_income:   { ar:'إجمالي الدخل',    en:'Total Income', fr:'Total des revenus' },
 
-  total_expenses: { ar:'إجمالي المصروفات',en:'Total Expenses' },
+  total_expenses: { ar:'إجمالي المصروفات',en:'Total Expenses', fr:'Total des dépenses' },
 
-  total_savings:  { ar:'إجمالي الادخار',  en:'Total Savings' },
+  total_savings:  { ar:'إجمالي الادخار',  en:'Total Savings', fr:"Total de l'épargne" },
 
-  total_invest:   { ar:'إجمالي الاستثمار',en:'Total Investment' },
+  total_invest:   { ar:'إجمالي الاستثمار',en:'Total Investment', fr:'Total des investissements' },
 
   /* ── AI Insights ── */
 
-  ai_insights_title: { ar:'رؤية المدير المالي الذكي', en:'AI Financial Manager Insights' },
+  ai_insights_title: { ar:'رؤية المدير المالي الذكي', en:'AI Financial Manager Insights', fr:'Insights du Gestionnaire Financier IA' },
 
-  ai_month_analysis: { ar:'تحليل هذا الشهر', en:'This month\'s analysis' },
+  ai_month_analysis: { ar:'تحليل هذا الشهر', en:"This month's analysis", fr:'Analyse du mois' },
 
-  ai_view_full:      { ar:'عرض التحليل الكامل', en:'View Full Analysis' },
+  ai_view_full:      { ar:'عرض التحليل الكامل', en:'View Full Analysis', fr:"Voir l'analyse complète" },
 
-  chart_6months:     { ar:'نظرة عامة على 6 أشهر', en:'6-Month Overview' },
+  chart_6months:     { ar:'نظرة عامة على 6 أشهر', en:'6-Month Overview', fr:'Aperçu sur 6 mois' },
 
-  chart_income:      { ar:'الدخل',        en:'Income' },
+  chart_income:      { ar:'الدخل',        en:'Income', fr:'Revenus' },
 
-  chart_expenses:    { ar:'المصروفات',    en:'Expenses' },
+  chart_expenses:    { ar:'المصروفات',    en:'Expenses', fr:'Dépenses' },
 
-  chart_savings:     { ar:'الادخار',      en:'Savings' },
+  chart_savings:     { ar:'الادخار',      en:'Savings', fr:'Épargne' },
 
-  chart_investment:  { ar:'الاستثمار',    en:'Investment' },
+  chart_investment:  { ar:'الاستثمار',    en:'Investment', fr:'Investissement' },
 
   /* ── Month Comparison ── */
 
-  month_cmp_title:  { ar:'مقارنة الأشهر',                   en:'Month Comparison' },
+  month_cmp_title:  { ar:'مقارنة الأشهر',                   en:'Month Comparison', fr:'Comparaison des mois' },
 
-  month_cmp_sub:    { ar:'احسب الفرق بين كل شهر وآخر',       en:'Calculate the difference between any two months' },
+  month_cmp_sub:    { ar:'احسب الفرق بين كل شهر وآخر',       en:'Calculate the difference between any two months', fr:'Calculez la différence entre deux mois' },
 
-  month_first:      { ar:'اختر الشهر الأول',                  en:'Select first month' },
+  month_first:      { ar:'اختر الشهر الأول',                  en:'Select first month', fr:'Sélectionner le premier mois' },
 
-  month_second:     { ar:'اختر الشهر الثاني',                 en:'Select second month' },
+  month_second:     { ar:'اختر الشهر الثاني',                 en:'Select second month', fr:'Sélectionner le deuxième mois' },
 
-  month_show_diff:  { ar:'عرض الفرق',                         en:'Show Difference' },
+  month_show_diff:  { ar:'عرض الفرق',                         en:'Show Difference', fr:'Afficher la différence' },
 
-  diff_income:      { ar:'الفرق في الدخل',                   en:'Income Difference' },
+  diff_income:      { ar:'الفرق في الدخل',                   en:'Income Difference', fr:'Différence de revenus' },
 
-  diff_expenses:    { ar:'الفرق في المصروفات',                en:'Expenses Difference' },
+  diff_expenses:    { ar:'الفرق في المصروفات',                en:'Expenses Difference', fr:'Différence de dépenses' },
 
-  diff_savings:     { ar:'الفرق في الادخار',                  en:'Savings Difference' },
+  diff_savings:     { ar:'الفرق في الادخار',                  en:'Savings Difference', fr:"Différence d'épargne" },
 
-  diff_invest:      { ar:'الفرق في الاستثمار',               en:'Investment Difference' },
+  diff_invest:      { ar:'الفرق في الاستثمار',               en:'Investment Difference', fr:"Différence d'investissement" },
 
   /* ── Transactions ── */
 
-  trans_title:      { ar:'تاريخ المعاملات', en:'Transaction History' },
+  trans_title:      { ar:'تاريخ المعاملات', en:'Transaction History', fr:'Historique des transactions' },
 
-  trans_date:       { ar:'التاريخ',        en:'Date' },
+  trans_date:       { ar:'التاريخ',        en:'Date', fr:'Date' },
 
-  trans_cat:        { ar:'الفئة',          en:'Category' },
+  trans_cat:        { ar:'الفئة',          en:'Category', fr:'Catégorie' },
 
-  trans_desc:       { ar:'الوصف',          en:'Description' },
+  trans_desc:       { ar:'الوصف',          en:'Description', fr:'Description' },
 
-  trans_amount:     { ar:'المبلغ',         en:'Amount' },
+  trans_amount:     { ar:'المبلغ',         en:'Amount', fr:'Montant' },
 
-  trans_pct:        { ar:'النسبة',         en:'Change %' },
+  trans_pct:        { ar:'النسبة',         en:'Change %', fr:'Variation %' },
 
-  trans_view_all:   { ar:'عرض كل المعاملات', en:'View All Transactions' },
+  trans_view_all:   { ar:'عرض كل المعاملات', en:'View All Transactions', fr:'Voir toutes les transactions' },
 
   /* ── Expense Distribution ── */
 
-  dist_title:       { ar:'توزيع المصروفات', en:'Expense Distribution' },
+  dist_title:       { ar:'توزيع المصروفات', en:'Expense Distribution', fr:'Répartition des dépenses' },
 
-  dist_transport:   { ar:'المواصلات',       en:'Transport' },
+  dist_transport:   { ar:'المواصلات',       en:'Transport', fr:'Transport' },
 
-  dist_food:        { ar:'الطعام',          en:'Food' },
+  dist_food:        { ar:'الطعام',          en:'Food', fr:'Alimentation' },
 
-  dist_housing:     { ar:'السكن',           en:'Housing' },
+  dist_housing:     { ar:'السكن',           en:'Housing', fr:'Logement' },
 
-  dist_shopping:    { ar:'التسوق',          en:'Shopping' },
+  dist_shopping:    { ar:'التسوق',          en:'Shopping', fr:'Shopping' },
 
-  dist_entertain:   { ar:'الترفيه',         en:'Entertainment' },
+  dist_entertain:   { ar:'الترفيه',         en:'Entertainment', fr:'Loisirs' },
 
-  dist_other:       { ar:'أخرى',            en:'Other' },
+  dist_other:       { ar:'أخرى',            en:'Other', fr:'Autres' },
 
   /* ── Investments ── */
 
-  invest_summary:    { ar:'ملخص الاستثمارات',       en:'Investment Summary' },
+  invest_summary:    { ar:'ملخص الاستثمارات',       en:'Investment Summary', fr:'Résumé des investissements' },
 
-  invest_portfolio:  { ar:'إجمالي قيمة المحفظة',    en:'Total Portfolio Value' },
+  invest_portfolio:  { ar:'إجمالي قيمة المحفظة',    en:'Total Portfolio Value', fr:'Valeur totale du portefeuille' },
 
-  invest_realized:   { ar:'الأرباح المحققة',         en:'Realized Profits' },
+  invest_realized:   { ar:'الأرباح المحققة',         en:'Realized Profits', fr:'Profits réalisés' },
 
-  invest_unrealized: { ar:'الأرباح غير المحققة',    en:'Unrealized Profits' },
+  invest_unrealized: { ar:'الأرباح غير المحققة',    en:'Unrealized Profits', fr:'Profits non réalisés' },
 
-  invest_total_ret:  { ar:'إجمالي العائد',           en:'Total Return' },
+  invest_total_ret:  { ar:'إجمالي العائد',           en:'Total Return', fr:'Rendement total' },
 
-  invest_view_all:   { ar:'عرض محفظة الاستثمارات',  en:'View Investment Portfolio' },
+  invest_view_all:   { ar:'عرض محفظة الاستثمارات',  en:'View Investment Portfolio', fr:'Voir le portefeuille' },
 
-  invest_perf:       { ar:'أداء الاستثمارات (6 أشهر)', en:'Investment Performance (6 months)' },
+  invest_perf:       { ar:'أداء الاستثمارات (6 أشهر)', en:'Investment Performance (6 months)', fr:'Performance des investissements (6 mois)' },
 
-  invest_best:       { ar:'أفضل الاستثمارات',        en:'Top Investments' },
+  invest_best:       { ar:'أفضل الاستثمارات',        en:'Top Investments', fr:'Meilleurs investissements' },
 
-  invest_view_more:  { ar:'عرض كل الاستثمارات',     en:'View All Investments' },
+  invest_view_more:  { ar:'عرض كل الاستثمارات',     en:'View All Investments', fr:'Voir tous les investissements' },
 
   /* ── Goals ── */
 
-  goals_title:    { ar:'الأهداف المالية', en:'Financial Goals' },
+  goals_title:    { ar:'الأهداف المالية', en:'Financial Goals', fr:'Objectifs financiers' },
 
-  goal_saved:     { ar:'المبلغ المدخر',   en:'Amount saved' },
+  goal_saved:     { ar:'المبلغ المدخر',   en:'Amount saved', fr:'Montant épargné' },
 
-  goal_target:    { ar:'المستهدف',       en:'Target' },
+  goal_target:    { ar:'المستهدف',       en:'Target', fr:'Objectif' },
 
-  goal_car:       { ar:'شراء سيارة',     en:'Buy a Car' },
+  goal_car:       { ar:'شراء سيارة',     en:'Buy a Car', fr:'Acheter une voiture' },
 
-  goal_house:     { ar:'منزل الأحلام',   en:'Dream Home' },
+  goal_house:     { ar:'منزل الأحلام',   en:'Dream Home', fr:'Maison de rêve' },
 
-  goal_retire:    { ar:'التقاعد',        en:'Retirement' },
+  goal_retire:    { ar:'التقاعد',        en:'Retirement', fr:'Retraite' },
 
-  goal_project:   { ar:'مشروع',          en:'Project' },
+  goal_project:   { ar:'مشروع',          en:'Project', fr:'Projet' },
 
   /* ── Quick Actions ── */
 
-  action_add_income:  { ar:'إضافة دخل',      en:'Add Income' },
+  action_add_income:  { ar:'إضافة دخل',      en:'Add Income', fr:'Ajouter un revenu' },
 
-  action_add_expense: { ar:'إضافة مصروف',    en:'Add Expense' },
+  action_add_expense: { ar:'إضافة مصروف',    en:'Add Expense', fr:'Ajouter une dépense' },
 
-  action_transfer:    { ar:'تحويل استثمار',  en:'Transfer Investment' },
+  action_transfer:    { ar:'تحويل استثمار',  en:'Transfer Investment', fr:'Transfert investissement' },
 
-  action_report:      { ar:'تقرير شهري',     en:'Monthly Report' },
+  action_report:      { ar:'تقرير شهري',     en:'Monthly Report', fr:'Rapport mensuel' },
 
-  action_print:       { ar:'طباعة التقرير',  en:'Print Report' },
+  action_print:       { ar:'طباعة التقرير',  en:'Print Report', fr:'Imprimer le rapport' },
 
-  action_export:      { ar:'تصدير PDF',      en:'Export PDF' },
+  action_export:      { ar:'تصدير PDF',      en:'Export PDF', fr:'Exporter PDF' },
 
   /* ── Profile ── */
 
-  profile_title:     { ar:'الملف الشخصي',           en:'Profile' },
+  profile_title:     { ar:'الملف الشخصي',           en:'Profile', fr:'Profil' },
 
-  profile_subtitle:  { ar:'إدارة بياناتك الشخصية وإعدادات الحساب', en:'Manage your personal info and account settings' },
+  profile_subtitle:  { ar:'إدارة بياناتك الشخصية وإعدادات الحساب', en:'Manage your personal info and account settings', fr:'Gérez vos informations personnelles et les paramètres du compte' },
 
-  profile_tab_info:  { ar:'المعلومات الشخصية',       en:'Personal Info' },
+  profile_tab_info:  { ar:'المعلومات الشخصية',       en:'Personal Info', fr:'Informations personnelles' },
 
-  profile_tab_pass:  { ar:'كلمة المرور',             en:'Password' },
+  profile_tab_pass:  { ar:'كلمة المرور',             en:'Password', fr:'Mot de passe' },
 
-  profile_tab_income:{ ar:'مصادر الدخل',             en:'Income Sources' },
+  profile_tab_income:{ ar:'مصادر الدخل',             en:'Income Sources', fr:'Sources de revenus' },
 
-  profile_fullname:  { ar:'الاسم الكامل',            en:'Full Name' },
+  profile_fullname:  { ar:'الاسم الكامل',            en:'Full Name', fr:'Nom complet' },
 
-  profile_username:  { ar:'اسم المستخدم',            en:'Username' },
+  profile_username:  { ar:'اسم المستخدم',            en:'Username', fr:"Nom d'utilisateur" },
 
-  profile_age:       { ar:'العمر',                   en:'Age' },
+  profile_age:       { ar:'العمر',                   en:'Age', fr:'Âge' },
 
-  profile_gender:    { ar:'الجنس',                   en:'Gender' },
+  profile_gender:    { ar:'الجنس',                   en:'Gender', fr:'Genre' },
 
-  profile_male:      { ar:'ذكر',                     en:'Male' },
+  profile_male:      { ar:'ذكر',                     en:'Male', fr:'Homme' },
 
-  profile_female:    { ar:'أنثى',                    en:'Female' },
+  profile_female:    { ar:'أنثى',                    en:'Female', fr:'Femme' },
 
-  profile_country:   { ar:'رمز الدولة',              en:'Country Code' },
+  profile_country:   { ar:'رمز الدولة',              en:'Country Code', fr:'Code pays' },
 
-  profile_phone:     { ar:'رقم الهاتف',              en:'Phone Number' },
+  profile_phone:     { ar:'رقم الهاتف',              en:'Phone Number', fr:'Numéro de téléphone' },
 
-  profile_profession:{ ar:'المهنة',                  en:'Profession' },
+  profile_profession:{ ar:'المهنة',                  en:'Profession', fr:'Profession' },
 
-  profile_email:     { ar:'البريد الإلكتروني',       en:'Email' },
+  profile_email:     { ar:'البريد الإلكتروني',       en:'Email', fr:'E-mail' },
 
-  profile_save_info: { ar:'✦ حفظ المعلومات الشخصية', en:'✦ Save Personal Info' },
+  profile_save_info: { ar:'✦ حفظ المعلومات الشخصية', en:'✦ Save Personal Info', fr:'✦ Enregistrer les informations' },
 
-  profile_security:  { ar:'تأمين بيانات عالٍ',       en:'High data security' },
+  profile_security:  { ar:'تأمين بيانات عالٍ',       en:'High data security', fr:'Sécurité des données élevée' },
 
-  profile_curr_pass: { ar:'كلمة المرور الحالية',     en:'Current Password' },
+  profile_curr_pass: { ar:'كلمة المرور الحالية',     en:'Current Password', fr:'Mot de passe actuel' },
 
-  profile_new_pass:  { ar:'كلمة المرور الجديدة',     en:'New Password' },
+  profile_new_pass:  { ar:'كلمة المرور الجديدة',     en:'New Password', fr:'Nouveau mot de passe' },
 
-  profile_confirm_pass:{ ar:'تأكيد كلمة المرور',    en:'Confirm Password' },
+  profile_confirm_pass:{ ar:'تأكيد كلمة المرور',    en:'Confirm Password', fr:'Confirmer le mot de passe' },
 
-  profile_change_pass:{ ar:'🔐 تغيير كلمة المرور',  en:'🔐 Change Password' },
+  profile_change_pass:{ ar:'🔐 تغيير كلمة المرور',  en:'🔐 Change Password', fr:'🔐 Changer le mot de passe' },
 
-  profile_income_title:{ ar:'مصادر الدخل الشهري',   en:'Monthly Income Sources' },
+  profile_income_title:{ ar:'مصادر الدخل الشهري',   en:'Monthly Income Sources', fr:'Sources de revenus mensuels' },
 
-  profile_income_sub: { ar:'أدخل مبالغ مصادر دخلك الشهرية', en:'Enter your monthly income amounts' },
+  profile_income_sub: { ar:'أدخل مبالغ مصادر دخلك الشهرية', en:'Enter your monthly income amounts', fr:'Entrez vos montants de revenus mensuels' },
 
-  profile_save_income:{ ar:'💰 حفظ مصادر الدخل',    en:'💰 Save Income Sources' },
+  profile_save_income:{ ar:'💰 حفظ مصادر الدخل',    en:'💰 Save Income Sources', fr:'💰 Enregistrer les revenus' },
 
-  profile_elite:      { ar:'ELITE MEMBER',            en:'ELITE MEMBER' },
+  profile_elite:      { ar:'ELITE MEMBER',            en:'ELITE MEMBER', fr:'ELITE MEMBER' },
 
-  profile_completion: { ar:'اكتمال الملف الشخصي',   en:'Profile Completion' },
+  profile_completion: { ar:'اكتمال الملف الشخصي',   en:'Profile Completion', fr:'Complétion du profil' },
 
-  profile_ai_active:  { ar:'المدير المالي الذكي نشط', en:'AI Finance Manager active' },
+  profile_ai_active:  { ar:'المدير المالي الذكي نشط', en:'AI Finance Manager active', fr:'Gestionnaire financier IA actif' },
 
-  profile_health:     { ar:'مستوى الصحة المالية',    en:'Financial Health Level' },
+  profile_health:     { ar:'مستوى الصحة المالية',    en:'Financial Health Level', fr:'Niveau de santé financière' },
 
-  profile_ai_preds:   { ar:'توقعات الذكاء الاصطناعي', en:'AI Predictions' },
+  profile_ai_preds:   { ar:'توقعات الذكاء الاصطناعي', en:'AI Predictions', fr:'Prédictions IA' },
 
-  profile_save_inc:   { ar:'زيادة الادخار',          en:'Savings increase' },
+  profile_save_inc:   { ar:'زيادة الادخار',          en:'Savings increase', fr:"Augmentation de l'épargne" },
 
-  profile_invest_opp: { ar:'فرصة استثمار',           en:'Investment opportunity' },
+  profile_invest_opp: { ar:'فرصة استثمار',           en:'Investment opportunity', fr:"Opportunité d'investissement" },
 
-  profile_portfolio_risk: { ar:'مخاطر المحفظة',     en:'Portfolio risk' },
+  profile_portfolio_risk: { ar:'مخاطر المحفظة',     en:'Portfolio risk', fr:'Risque du portefeuille' },
 
-  profile_daily_msg:  { ar:'رسالة اليوم',            en:'Today\'s Message' },
+  profile_daily_msg:  { ar:'رسالة اليوم',            en:"Today's Message", fr:'Message du jour' },
 
   profile_quote:      { ar:'"استثمر في التعلم فهو أفضل استثمار يمكن أن تقوم به طوال حياتك"',
+                        en:'"Invest in learning — it is the best investment you can make throughout your life."',
+                        fr:'"Investissez dans l\'apprentissage — c\'est le meilleur investissement de votre vie."' },
 
-                        en:'"Invest in learning — it is the best investment you can make throughout your life."' },
+  profile_features:   { ar:'مميزات SFM Premium',    en:'SFM Premium Features', fr:'Fonctionnalités SFM Premium' },
 
-  profile_features:   { ar:'مميزات SFM Premium',    en:'SFM Premium Features' },
+  feat_smart_ui:   { ar:'واجهة ذكية',         en:'Smart UI', fr:'Interface intelligente' },
 
-  feat_smart_ui:   { ar:'واجهة ذكية',         en:'Smart UI' },
+  feat_ai_finance: { ar:'ذكاء مالي',          en:'AI Finance', fr:'Finance IA' },
 
-  feat_ai_finance: { ar:'ذكاء مالي',          en:'AI Finance' },
+  feat_ai_analytics:{ ar:'تحليلات AI',        en:'AI Analytics', fr:'Analyses IA' },
 
-  feat_ai_analytics:{ ar:'تحليلات AI',        en:'AI Analytics' },
+  feat_security:   { ar:'حماية متقدمة',       en:'Advanced Security', fr:'Sécurité avancée' },
 
-  feat_security:   { ar:'حماية متقدمة',       en:'Advanced Security' },
+  feat_realtime:   { ar:'تحديث لحظي',         en:'Real-time Updates', fr:'Mises à jour en temps réel' },
 
-  feat_realtime:   { ar:'تحديث لحظي',         en:'Real-time Updates' },
+  feat_goals:      { ar:'أهداف مالية',        en:'Financial Goals', fr:'Objectifs financiers' },
 
-  feat_goals:      { ar:'أهداف مالية',        en:'Financial Goals' },
+  feat_smart_ui_desc:   { ar:'تصميم عصري وسهل', en:'Modern & intuitive design', fr:'Design moderne et intuitif' },
 
-  feat_smart_ui_desc:   { ar:'تصميم عصري وسهل', en:'Modern & intuitive design' },
+  feat_ai_finance_desc: { ar:'تحليلات دقيقة',   en:'Precise AI analysis', fr:'Analyse IA précise' },
 
-  feat_ai_finance_desc: { ar:'تحليلات دقيقة',   en:'Precise AI analysis' },
+  feat_analytics_desc:  { ar:'توصيات ذكية',    en:'Smart recommendations', fr:'Recommandations intelligentes' },
 
-  feat_analytics_desc:  { ar:'توصيات ذكية',    en:'Smart recommendations' },
+  feat_security_desc:   { ar:'تشفير بنكي',     en:'Bank-level encryption', fr:'Chiffrement bancaire' },
 
-  feat_security_desc:   { ar:'تشفير بنكي',     en:'Bank-level encryption' },
+  feat_realtime_desc:   { ar:'بيانات محدثة',   en:'Always up-to-date', fr:'Données toujours à jour' },
 
-  feat_realtime_desc:   { ar:'بيانات محدثة',   en:'Always up-to-date' },
-
-  feat_goals_desc:      { ar:'تتبع دقيق',      en:'Precise tracking' },
+  feat_goals_desc:      { ar:'تتبع دقيق',      en:'Precise tracking', fr:'Suivi précis' },
 
   /* ── Projects ── */
 
-  proj_title:     { ar:'مشاريعي',             en:'My Projects' },
+  proj_title:     { ar:'مشاريعي',             en:'My Projects', fr:'Mes projets' },
 
-  proj_subtitle:  { ar:'تابع مشاريعك وخططك المالية والاستثمارية', en:'Track your financial and business projects' },
+  proj_subtitle:  { ar:'تابع مشاريعك وخططك المالية والاستثمارية', en:'Track your financial and business projects', fr:'Suivez vos projets financiers et commerciaux' },
 
-  proj_new:       { ar:'+ مشروع جديد',        en:'+ New Project' },
+  proj_new:       { ar:'+ مشروع جديد',        en:'+ New Project', fr:'+ Nouveau projet' },
 
-  proj_total:     { ar:'إجمالي المشاريع',      en:'Total Projects' },
+  proj_total:     { ar:'إجمالي المشاريع',      en:'Total Projects', fr:'Total des projets' },
 
-  proj_active:    { ar:'المشاريع النشطة',      en:'Active Projects' },
+  proj_active:    { ar:'المشاريع النشطة',      en:'Active Projects', fr:'Projets actifs' },
 
-  proj_capital:   { ar:'إجمالي رأس المال',     en:'Total Capital' },
+  proj_capital:   { ar:'إجمالي رأس المال',     en:'Total Capital', fr:'Capital total' },
 
-  proj_profit:    { ar:'إجمالي الأرباح',       en:'Total Profits' },
+  proj_profit:    { ar:'إجمالي الأرباح',       en:'Total Profits', fr:'Profits totaux' },
 
-  proj_name:      { ar:'اسم المشروع',          en:'Project Name' },
+  proj_name:      { ar:'اسم المشروع',          en:'Project Name', fr:'Nom du projet' },
 
-  proj_type:      { ar:'نوع المشروع',          en:'Project Type' },
+  proj_type:      { ar:'نوع المشروع',          en:'Project Type', fr:'Type de projet' },
 
-  proj_status:    { ar:'حالة المشروع',         en:'Project Status' },
+  proj_status:    { ar:'حالة المشروع',         en:'Project Status', fr:'Statut du projet' },
 
-  proj_capital_f: { ar:'رأس المال المطلوب',    en:'Required Capital' },
+  proj_capital_f: { ar:'رأس المال المطلوب',    en:'Required Capital', fr:'Capital requis' },
 
-  proj_exp_profit:{ ar:'الربح المتوقع',        en:'Expected Profit' },
+  proj_exp_profit:{ ar:'الربح المتوقع',        en:'Expected Profit', fr:'Profit attendu' },
 
-  proj_cur_profit:{ ar:'الربح الحالي',         en:'Current Profit' },
+  proj_cur_profit:{ ar:'الربح الحالي',         en:'Current Profit', fr:'Profit actuel' },
 
-  proj_expenses:  { ar:'المصروفات الشهرية',    en:'Monthly Expenses' },
+  proj_expenses:  { ar:'المصروفات الشهرية',    en:'Monthly Expenses', fr:'Dépenses mensuelles' },
 
-  proj_revenue:   { ar:'الإيراد الشهري',       en:'Monthly Revenue' },
+  proj_revenue:   { ar:'الإيراد الشهري',       en:'Monthly Revenue', fr:'Revenu mensuel' },
 
-  proj_start:     { ar:'تاريخ البداية',        en:'Start Date' },
+  proj_start:     { ar:'تاريخ البداية',        en:'Start Date', fr:'Date de début' },
 
-  proj_notes:     { ar:'ملاحظات',              en:'Notes' },
+  proj_notes:     { ar:'ملاحظات',              en:'Notes', fr:'Notes' },
 
-  proj_idea:      { ar:'فكرة',                 en:'Idea' },
+  proj_idea:      { ar:'فكرة',                 en:'Idea', fr:'Idée' },
 
-  proj_inprogress:{ ar:'قيد التنفيذ',          en:'In Progress' },
+  proj_inprogress:{ ar:'قيد التنفيذ',          en:'In Progress', fr:'En cours' },
 
-  proj_active_s:  { ar:'نشط',                  en:'Active' },
+  proj_active_s:  { ar:'نشط',                  en:'Active', fr:'Actif' },
 
-  proj_paused:    { ar:'متوقف',                en:'Paused' },
+  proj_paused:    { ar:'متوقف',                en:'Paused', fr:'Suspendu' },
 
-  proj_done:      { ar:'مكتمل',                en:'Completed' },
+  proj_done:      { ar:'مكتمل',                en:'Completed', fr:'Terminé' },
 
-  proj_empty:     { ar:'لا توجد مشاريع بعد — أضف مشروعك الأول', en:'No projects yet — add your first project' },
+  proj_empty:     { ar:'لا توجد مشاريع بعد — أضف مشروعك الأول', en:'No projects yet — add your first project', fr:'Aucun projet — ajoutez votre premier projet' },
 
-  proj_save_analyze:{ ar:'💾 حفظ وتحليل',      en:'💾 Save & Analyze' },
+  proj_save_analyze:{ ar:'💾 حفظ وتحليل',      en:'💾 Save & Analyze', fr:'💾 Enregistrer et analyser' },
 
-  proj_roi:       { ar:'استرجاع رأس المال',    en:'Capital Payback' },
+  proj_roi:       { ar:'استرجاع رأس المال',    en:'Capital Payback', fr:'Retour sur investissement' },
 
-  proj_monthly_profit:{ ar:'الربح الشهري',     en:'Monthly Profit' },
+  proj_monthly_profit:{ ar:'الربح الشهري',     en:'Monthly Profit', fr:'Profit mensuel' },
 
-  proj_yearly_return: { ar:'العائد السنوي',    en:'Yearly Return' },
+  proj_yearly_return: { ar:'العائد السنوي',    en:'Yearly Return', fr:'Rendement annuel' },
 
-  proj_risk:      { ar:'مستوى المخاطرة',       en:'Risk Level' },
+  proj_risk:      { ar:'مستوى المخاطرة',       en:'Risk Level', fr:'Niveau de risque' },
 
-  proj_risk_low:  { ar:'منخفض',               en:'Low' },
+  proj_risk_low:  { ar:'منخفض',               en:'Low', fr:'Faible' },
 
-  proj_risk_med:  { ar:'متوسط',               en:'Medium' },
+  proj_risk_med:  { ar:'متوسط',               en:'Medium', fr:'Moyen' },
 
-  proj_risk_high: { ar:'عالٍ',                en:'High' },
+  proj_risk_high: { ar:'عالٍ',                en:'High', fr:'Élevé' },
 
   /* ── Expenses ── */
 
-  exp_title:    { ar:'المصاريف',             en:'Expenses' },
+  exp_title:    { ar:'المصاريف',             en:'Expenses', fr:'Dépenses' },
 
-  exp_subtitle: { ar:'إدارة وتتبع مصاريفك الشهرية', en:'Manage and track your monthly expenses' },
+  exp_subtitle: { ar:'إدارة وتتبع مصاريفك الشهرية', en:'Manage and track your monthly expenses', fr:'Gérez et suivez vos dépenses mensuelles' },
 
-  exp_add:      { ar:'+ إضافة مصروف',       en:'+ Add Expense' },
+  exp_add:      { ar:'+ إضافة مصروف',       en:'+ Add Expense', fr:'+ Ajouter une dépense' },
 
-  exp_edit:     { ar:'✏️ تعديل المصروف',    en:'✏️ Edit Expense' },
+  exp_edit:     { ar:'✏️ تعديل المصروف',    en:'✏️ Edit Expense', fr:'✏️ Modifier la dépense' },
 
-  exp_name:     { ar:'اسم المصروف أو الفئة', en:'Expense name or category' },
+  exp_name:     { ar:'اسم المصروف أو الفئة', en:'Expense name or category', fr:'Nom ou catégorie de la dépense' },
 
-  exp_amount:   { ar:'المبلغ',              en:'Amount' },
+  exp_amount:   { ar:'المبلغ',              en:'Amount', fr:'Montant' },
 
-  exp_count:    { ar:'عدد المصاريف',        en:'Expense Count' },
+  exp_count:    { ar:'عدد المصاريف',        en:'Expense Count', fr:'Nombre de dépenses' },
 
-  exp_total:    { ar:'إجمالي المصاريف',    en:'Total Expenses' },
+  exp_total:    { ar:'إجمالي المصاريف',    en:'Total Expenses', fr:'Total des dépenses' },
 
-  exp_charity:  { ar:'الأعمال الخيرية',    en:'Charity' },
+  exp_charity:  { ar:'الأعمال الخيرية',    en:'Charity', fr:'Charité' },
 
-  exp_avg:      { ar:'متوسط المصروف',      en:'Average Expense' },
+  exp_avg:      { ar:'متوسط المصروف',      en:'Average Expense', fr:'Dépense moyenne' },
 
-  exp_no_data:  { ar:'لا توجد مصاريف مسجلة بعد', en:'No expenses recorded yet' },
+  exp_no_data:  { ar:'لا توجد مصاريف مسجلة بعد', en:'No expenses recorded yet', fr:'Aucune dépense enregistrée' },
 
-  exp_save_confirm: { ar:'✅ تأكيد التعديل', en:'✅ Confirm Edit' },
+  exp_save_confirm: { ar:'✅ تأكيد التعديل', en:'✅ Confirm Edit', fr:'✅ Confirmer la modification' },
 
-  exp_save_new:     { ar:'💾 حفظ المصروف',   en:'💾 Save Expense' },
+  exp_save_new:     { ar:'💾 حفظ المصروف',   en:'💾 Save Expense', fr:'💾 Enregistrer la dépense' },
 
-  exp_list:     { ar:'قائمة المصاريف',     en:'Expenses List' },
+  exp_list:     { ar:'قائمة المصاريف',     en:'Expenses List', fr:'Liste des dépenses' },
 
-  exp_total_row:{ ar:'الإجمالي',           en:'Total' },
+  exp_total_row:{ ar:'الإجمالي',           en:'Total', fr:'Total' },
 
-  exp_footer:   { ar:'جميع المصاريف تُحتسب تلقائياً في لوحة التحكم', en:'All expenses are automatically counted in the dashboard' },
+  exp_footer:   { ar:'جميع المصاريف تُحتسب تلقائياً في لوحة التحكم', en:'All expenses are automatically counted in the dashboard', fr:'Toutes les dépenses sont automatiquement comptabilisées dans le tableau de bord' },
 
   /* ── Charity ── */
 
-  charity_title:   { ar:'الأعمال الخيرية',  en:'Charity' },
+  charity_title:   { ar:'الأعمال الخيرية',  en:'Charity', fr:'Charité' },
 
-  charity_subtitle:{ ar:'أضف المبالغ الخيرية الشهرية وسيتم احتسابها ضمن المصروفات', en:'Add monthly charity amounts — counted as expenses automatically' },
+  charity_subtitle:{ ar:'أضف المبالغ الخيرية الشهرية وسيتم احتسابها ضمن المصروفات', en:'Add monthly charity amounts — counted as expenses automatically', fr:'Ajoutez les montants mensuels — comptés automatiquement dans les dépenses' },
 
-  charity_add:     { ar:'إضافة عمل خيري',  en:'Add Charity Payment' },
+  charity_add:     { ar:'إضافة عمل خيري',  en:'Add Charity Payment', fr:'Ajouter un don' },
 
-  charity_month:   { ar:'الشهر',           en:'Month' },
+  charity_month:   { ar:'الشهر',           en:'Month', fr:'Mois' },
 
-  charity_amount:  { ar:'المبلغ',          en:'Amount' },
+  charity_amount:  { ar:'المبلغ',          en:'Amount', fr:'Montant' },
 
-  charity_name:    { ar:'الاسم أو الملاحظة', en:'Name or Note' },
+  charity_name:    { ar:'الاسم أو الملاحظة', en:'Name or Note', fr:'Nom ou note' },
 
-  charity_save:    { ar:'🤲 حفظ وتسجيل ضمن المصروفات', en:'🤲 Save & Record as Expense' },
+  charity_save:    { ar:'🤲 حفظ وتسجيل ضمن المصروفات', en:'🤲 Save & Record as Expense', fr:'🤲 Enregistrer comme dépense' },
 
-  charity_month_total:{ ar:'إجمالي الشهر', en:'Month Total' },
+  charity_month_total:{ ar:'إجمالي الشهر', en:'Month Total', fr:'Total du mois' },
 
-  charity_year:    { ar:'إجمالي السنة',    en:'Year Total' },
+  charity_year:    { ar:'إجمالي السنة',    en:'Year Total', fr:"Total de l'année" },
 
-  charity_count:   { ar:'عدد التبرعات',    en:'Donation Count' },
+  charity_count:   { ar:'عدد التبرعات',    en:'Donation Count', fr:'Nombre de dons' },
 
-  charity_types:   { ar:'أنواع الأعمال الخيرية', en:'Charity Types' },
+  charity_types:   { ar:'أنواع الأعمال الخيرية', en:'Charity Types', fr:'Types de charité' },
 
-  charity_daily_msg:{ ar:'رسالة اليوم',   en:"Today's Message" },
+  charity_daily_msg:{ ar:'رسالة اليوم',   en:"Today's Message", fr:'Message du jour' },
 
-  charity_quote:   { ar:'"الصدقة تطفئ غضب الرب وتبارك في الرزق"', en:'"Charity extinguishes the Lord\'s wrath and blesses provision"' },
+  charity_quote:   { ar:'"الصدقة تطفئ غضب الرب وتبارك في الرزق"', en:"\"Charity extinguishes the Lord's wrath and blesses provision\"", fr:'\"La charité éteint la colère du Seigneur et bénit la provision\"' },
 
-  charity_history: { ar:'سجل الأعمال الخيرية', en:'Charity History' },
+  charity_history: { ar:'سجل الأعمال الخيرية', en:'Charity History', fr:'Historique des dons' },
 
-  charity_summary: { ar:'ملخص كل الأشهر',  en:'All Months Summary' },
+  charity_summary: { ar:'ملخص كل الأشهر',  en:'All Months Summary', fr:'Résumé de tous les mois' },
 
-  charity_ring:    { ar:'الأعمال الخيرية هذا الشهر', en:"This month's charity" },
+  charity_ring:    { ar:'الأعمال الخيرية هذا الشهر', en:"This month's charity", fr:'Charité ce mois-ci' },
 
-  charity_note:    { ar:'يُحتسب هذا المبلغ تلقائياً في إجمالي مصروفاتك', en:'This amount is automatically included in your total expenses' },
+  charity_note:    { ar:'يُحتسب هذا المبلغ تلقائياً في إجمالي مصروفاتك', en:'This amount is automatically included in your total expenses', fr:'Ce montant est automatiquement inclus dans vos dépenses totales' },
 
   /* ── Savings education ── */
 
-  sav_hero_title:   { ar:'أنشئ مستقبل ثروتك',  en:'Build Your Wealth Future' },
+  sav_hero_title:   { ar:'أنشئ مستقبل ثروتك',  en:'Build Your Wealth Future', fr:'Construisez votre avenir financier' },
 
-  sav_hero_sub:     { ar:'حوّل الادخار من عادة إلى نظام ذكي لبناء الثروة', en:'Transform saving from habit to a smart wealth-building system' },
+  sav_hero_sub:     { ar:'حوّل الادخار من عادة إلى نظام ذكي لبناء الثروة', en:'Transform saving from habit to a smart wealth-building system', fr:"Transformez l'épargne en un système intelligent de création de richesse" },
 
-  sav_plan_btn:     { ar:'ابدأ الخطة ←',       en:'Start the Plan ←' },
+  sav_plan_btn:     { ar:'ابدأ الخطة ←',       en:'Start the Plan ←', fr:'Commencer le plan ←' },
 
-  sav_ai_btn:       { ar:'🤖 تحليل الذكاء المالي', en:'🤖 AI Financial Analysis' },
+  sav_ai_btn:       { ar:'🤖 تحليل الذكاء المالي', en:'🤖 AI Financial Analysis', fr:'🤖 Analyse financière IA' },
 
-  sav_new_goal:     { ar:'+ إنشاء هدف جديد',   en:'+ Create New Goal' },
+  sav_new_goal:     { ar:'+ إنشاء هدف جديد',   en:'+ Create New Goal', fr:'+ Créer un nouvel objectif' },
 
-  sav_current:      { ar:'ادخارك الحالي',       en:'Current Savings' },
+  sav_current:      { ar:'ادخارك الحالي',       en:'Current Savings', fr:'Épargne actuelle' },
 
-  sav_target:       { ar:'الهدف المستهدف',      en:'Target Goal' },
+  sav_target:       { ar:'الهدف المستهدف',      en:'Target Goal', fr:'Objectif cible' },
 
-  sav_time_est:     { ar:'الوقت المقدّر',       en:'Estimated Time' },
+  sav_time_est:     { ar:'الوقت المقدّر',       en:'Estimated Time', fr:'Délai estimé' },
 
-  sav_ai_score:     { ar:'تقييم SFM AI',        en:'SFM AI Score' },
+  sav_ai_score:     { ar:'تقييم SFM AI',        en:'SFM AI Score', fr:'Score SFM AI' },
 
-  sav_path:         { ar:'مسار الثروة',          en:'Wealth Path' },
+  sav_path:         { ar:'مسار الثروة',          en:'Wealth Path', fr:'Parcours de richesse' },
 
-  sav_tools:        { ar:'أدوات بناء الثروة',   en:'Wealth Building Tools' },
+  sav_tools:        { ar:'أدوات بناء الثروة',   en:'Wealth Building Tools', fr:'Outils de création de richesse' },
 
-  sav_simulator:    { ar:'محاكي الثروة المستقبلية', en:'Future Wealth Simulator' },
+  sav_simulator:    { ar:'محاكي الثروة المستقبلية', en:'Future Wealth Simulator', fr:'Simulateur de richesse future' },
 
-  sav_ai_advisor:   { ar:'مستشار الثروة الذكي', en:'AI Wealth Advisor' },
+  sav_ai_advisor:   { ar:'مستشار الثروة الذكي', en:'AI Wealth Advisor', fr:'Conseiller richesse IA' },
 
-  sav_dashboard:    { ar:'لوحة الثروة',         en:'Wealth Dashboard' },
+  sav_dashboard:    { ar:'لوحة الثروة',         en:'Wealth Dashboard', fr:'Tableau de bord richesse' },
 
   /* ── Investments education ── */
 
-  inv_hero_title:   { ar:'أنواع الاستثمار',        en:'Investment Types' },
+  inv_hero_title:   { ar:'أنواع الاستثمار',        en:'Investment Types', fr:"Types d'investissement" },
 
-  inv_hero_sub:     { ar:'ابنِ محفظتك الاستثمارية الذكية', en:'Build your smart investment portfolio' },
+  inv_hero_sub:     { ar:'ابنِ محفظتك الاستثمارية الذكية', en:'Build your smart investment portfolio', fr:'Construisez votre portefeuille intelligent' },
 
-  inv_start_btn:    { ar:'ابدأ الاستثمار ←',       en:'Start Investing ←' },
+  inv_start_btn:    { ar:'ابدأ الاستثمار ←',       en:'Start Investing ←', fr:'Commencer à investir ←' },
 
-  inv_ai_btn:       { ar:'🤖 تحليل AI',            en:'🤖 AI Analysis' },
+  inv_ai_btn:       { ar:'🤖 تحليل AI',            en:'🤖 AI Analysis', fr:'🤖 Analyse IA' },
 
-  inv_create_btn:   { ar:'+ إنشاء محفظة',          en:'+ Create Portfolio' },
+  inv_create_btn:   { ar:'+ إنشاء محفظة',          en:'+ Create Portfolio', fr:'+ Créer un portefeuille' },
 
-  inv_current:      { ar:'الثروة الحالية',          en:'Current Wealth' },
+  inv_current:      { ar:'الثروة الحالية',          en:'Current Wealth', fr:'Richesse actuelle' },
 
-  inv_goal:         { ar:'هدف الاستثمار',           en:'Investment Goal' },
+  inv_goal:         { ar:'هدف الاستثمار',           en:'Investment Goal', fr:"Objectif d'investissement" },
 
-  inv_risk_idx:     { ar:'مؤشر المخاطر',            en:'Risk Index' },
+  inv_risk_idx:     { ar:'مؤشر المخاطر',            en:'Risk Index', fr:'Indice de risque' },
 
-  inv_expected_ret: { ar:'العائد المتوقع',           en:'Expected Return' },
+  inv_expected_ret: { ar:'العائد المتوقع',           en:'Expected Return', fr:'Rendement attendu' },
 
-  inv_categories:   { ar:'فئات الاستثمار',          en:'Investment Categories' },
+  inv_categories:   { ar:'فئات الاستثمار',          en:'Investment Categories', fr:"Catégories d'investissement" },
 
-  inv_portfolio:    { ar:'لوحة المحفظة',            en:'Portfolio Dashboard' },
+  inv_portfolio:    { ar:'لوحة المحفظة',            en:'Portfolio Dashboard', fr:'Tableau de bord portefeuille' },
 
-  inv_ai_advisor:   { ar:'مستشار الاستثمار الذكي',  en:'AI Investment Advisor' },
+  inv_ai_advisor:   { ar:'مستشار الاستثمار الذكي',  en:'AI Investment Advisor', fr:'Conseiller en investissement IA' },
 
-  inv_wealth_path:  { ar:'مسار الاستثمار',          en:'Investment Path' },
+  inv_wealth_path:  { ar:'مسار الاستثمار',          en:'Investment Path', fr:"Parcours d'investissement" },
 
-  inv_simulator:    { ar:'محاكي نمو الثروة',        en:'Wealth Growth Simulator' },
+  inv_simulator:    { ar:'محاكي نمو الثروة',        en:'Wealth Growth Simulator', fr:'Simulateur de croissance de richesse' },
 
   /* ── Footer ── */
 
-  footer_rights:  { ar:'جميع الحقوق محفوظة', en:'All rights reserved' },
+  footer_rights:  { ar:'جميع الحقوق محفوظة', en:'All rights reserved', fr:'Tous droits réservés' },
 
-  footer_tagline: { ar:'المدير المالي الذكي • AI Wealth Platform', en:'AI Wealth Platform • Smart Financial Manager' },
+  footer_tagline: { ar:'المدير المالي الذكي • AI Wealth Platform', en:'AI Wealth Platform • Smart Financial Manager', fr:'Plateforme de richesse IA • Gestionnaire financier intelligent' },
 
-  settings_title: { ar:'الإعدادات', en:'Settings', fr:'Parametres' },
-  settings_subtitle: { ar:'اضبط حسابك وتفضيلاتك المالية وتجربة THE SFM', en:'Manage your account, financial preferences, and THE SFM experience', fr:'Gerez votre compte, vos preferences financieres et votre experience THE SFM' },
+  settings_title: { ar:'الإعدادات', en:'Settings', fr:'Paramètres' },
+  settings_subtitle: { ar:'اضبط حسابك وتفضيلاتك المالية وتجربة THE SFM', en:'Manage your account, financial preferences, and THE SFM experience', fr:'Gérez votre compte, vos préférences financières et votre expérience THE SFM' },
   settings_language: { ar:'إعدادات اللغة', en:'Language Settings', fr:'Langue' },
   settings_account: { ar:'إعدادات الحساب', en:'Account Settings', fr:'Compte' },
-  settings_financial: { ar:'التفضيلات المالية', en:'Financial Preferences', fr:'Preferences financieres' },
+  settings_financial: { ar:'التفضيلات المالية', en:'Financial Preferences', fr:'Préférences financières' },
   settings_appearance: { ar:'المظهر', en:'Appearance', fr:'Apparence' },
   settings_notifications: { ar:'الإشعارات', en:'Notifications', fr:'Notifications' },
-  settings_security: { ar:'الخصوصية والأمان', en:'Privacy & Security', fr:'Confidentialite et securite' },
-  settings_data: { ar:'البيانات والتقارير', en:'Data & Reports', fr:'Donnees et rapports' },
+  settings_security: { ar:'الخصوصية والأمان', en:'Privacy & Security', fr:'Confidentialité et sécurité' },
+  settings_data: { ar:'البيانات والتقارير', en:'Data & Reports', fr:'Données et rapports' },
   settings_save_language: { ar:'حفظ اللغة', en:'Save language', fr:'Enregistrer la langue' },
   settings_save_profile: { ar:'حفظ الملف', en:'Save profile', fr:'Enregistrer le profil' },
-  settings_save_preferences: { ar:'حفظ التفضيلات', en:'Save preferences', fr:'Enregistrer les preferences' },
-  settings_export_data: { ar:'تصدير البيانات', en:'Export data', fr:'Exporter les donnees' },
+  settings_save_preferences: { ar:'حفظ التفضيلات', en:'Save preferences', fr:'Enregistrer les préférences' },
+  settings_export_data: { ar:'تصدير البيانات', en:'Export data', fr:'Exporter les données' },
   settings_export_pdf: { ar:'تصدير تقرير PDF', en:'Export monthly PDF', fr:'Exporter le rapport PDF' },
-  settings_clear_demo: { ar:'مسح البيانات التجريبية', en:'Clear demo data', fr:'Effacer les donnees demo' },
-  placeholder_first_name: { ar:'أدخل الاسم الأول', en:'Enter first name', fr:'Entrez le prenom' },
+  settings_clear_demo: { ar:'مسح البيانات التجريبية', en:'Clear demo data', fr:'Effacer les données démo' },
+  placeholder_first_name: { ar:'أدخل الاسم الأول', en:'Enter first name', fr:'Entrez le prénom' },
   placeholder_last_name: { ar:'أدخل الاسم الأخير', en:'Enter last name', fr:'Entrez le nom' },
 
   login_title: { ar:'المدير المالي الذكي', en:'Smart Financial Manager', fr:'Gestionnaire financier intelligent' },
-  login_subtitle: { ar:'ادخل إلى لوحة THE SFM لإدارة دخلك ومصاريفك وأهدافك بوضوح.', en:'Sign in to THE SFM dashboard to manage income, expenses, and goals clearly.', fr:'Connectez-vous au tableau THE SFM pour gerer revenus, depenses et objectifs.' },
+  login_subtitle: { ar:'ادخل إلى لوحة THE SFM لإدارة دخلك ومصاريفك وأهدافك بوضوح.', en:'Sign in to THE SFM dashboard to manage income, expenses, and goals clearly.', fr:'Connectez-vous au tableau THE SFM pour gérer revenus, dépenses et objectifs.' },
   login_username: { ar:'اسم المستخدم', en:'Username', fr:"Nom d'utilisateur" },
   login_password: { ar:'كلمة المرور', en:'Password', fr:'Mot de passe' },
   login_confirm_password: { ar:'تأكيد كلمة المرور', en:'Confirm password', fr:'Confirmer le mot de passe' },
   login_sign_in: { ar:'تسجيل الدخول', en:'Sign in', fr:'Connexion' },
-  login_create_account: { ar:'إنشاء حساب', en:'Create account', fr:'Creer un compte' },
-  login_switch_create: { ar:'إنشاء حساب جديد', en:'Create new account', fr:'Creer un nouveau compte' },
-  login_switch_login: { ar:'لدي حساب بالفعل', en:'I already have an account', fr:"J'ai deja un compte" },
-  login_guest: { ar:'متابعة كضيف', en:'Continue as guest', fr:'Continuer en invite' },
-  login_forgot: { ar:'نسيت كلمة المرور؟', en:'Forgot password?', fr:'Mot de passe oublie ?' },
+  login_create_account: { ar:'إنشاء حساب', en:'Create account', fr:'Créer un compte' },
+  login_switch_create: { ar:'إنشاء حساب جديد', en:'Create new account', fr:'Créer un nouveau compte' },
+  login_switch_login: { ar:'لدي حساب بالفعل', en:'I already have an account', fr:"J'ai déjà un compte" },
+  login_guest: { ar:'متابعة كضيف', en:'Continue as guest', fr:'Continuer en invité' },
+  login_forgot: { ar:'نسيت كلمة المرور؟', en:'Forgot password?', fr:'Mot de passe oublié ?' },
   login_username_placeholder: { ar:'أدخل اسم المستخدم', en:'Enter username', fr:"Entrez le nom d'utilisateur" },
   login_password_placeholder: { ar:'أدخل كلمة المرور', en:'Enter password', fr:'Entrez le mot de passe' },
-  login_error_empty: { ar:'أكمل كل الحقول المطلوبة.', en:'Complete all required fields.', fr:'Completez tous les champs requis.' },
-  login_error_short_username: { ar:'اسم المستخدم يجب أن يكون 3 أحرف على الأقل.', en:'Username must be at least 3 characters.', fr:"Le nom d'utilisateur doit contenir au moins 3 caracteres." },
-  login_error_short_password: { ar:'كلمة المرور يجب أن تكون 6 أحرف على الأقل.', en:'Password must be at least 6 characters.', fr:'Le mot de passe doit contenir au moins 6 caracteres.' },
+  login_error_empty: { ar:'أكمل كل الحقول المطلوبة.', en:'Complete all required fields.', fr:'Complétez tous les champs requis.' },
+  login_error_short_username: { ar:'اسم المستخدم يجب أن يكون 3 أحرف على الأقل.', en:'Username must be at least 3 characters.', fr:"Le nom d'utilisateur doit contenir au moins 3 caractères." },
+  login_error_short_password: { ar:'كلمة المرور يجب أن تكون 6 أحرف على الأقل.', en:'Password must be at least 6 characters.', fr:'Le mot de passe doit contenir au moins 6 caractères.' },
   login_error_mismatch: { ar:'كلمتا المرور غير متطابقتين.', en:'Passwords do not match.', fr:'Les mots de passe ne correspondent pas.' },
-  login_error_exists: { ar:'اسم المستخدم مستخدم بالفعل.', en:'This username is already taken.', fr:"Ce nom d'utilisateur est deja utilise." },
+  login_error_exists: { ar:'اسم المستخدم مستخدم بالفعل.', en:'This username is already taken.', fr:"Ce nom d'utilisateur est déjà utilisé." },
   login_error_failed: { ar:'اسم المستخدم أو كلمة المرور غير صحيحة.', en:'Username or password is incorrect.', fr:"Nom d'utilisateur ou mot de passe incorrect." },
-  login_error_register: { ar:'تعذر إنشاء الحساب. حاول مرة أخرى.', en:'Could not create the account. Try again.', fr:'Impossible de creer le compte. Reessayez.' },
-  login_reset_sent: { ar:'تم إرسال رابط استعادة كلمة المرور إن كان الحساب موجوداً.', en:'A reset link was sent if the account exists.', fr:'Un lien de reinitialisation a ete envoye si le compte existe.' },
+  login_error_register: { ar:'تعذر إنشاء الحساب. حاول مرة أخرى.', en:'Could not create the account. Try again.', fr:'Impossible de créer le compte. Réessayez.' },
+  login_reset_sent: { ar:'تم إرسال رابط استعادة كلمة المرور إن كان الحساب موجوداً.', en:'A reset link was sent if the account exists.', fr:'Un lien de réinitialisation a été envoyé si le compte existe.' },
 
-  update: { ar:'تحديث', en:'Update', fr:'Mettre a jour' },
+  update: { ar:'تحديث', en:'Update', fr:'Mettre à jour' },
   confirmDelete: { ar:'تأكيد الحذف', en:'Confirm deletion', fr:'Confirmer la suppression' },
-  deleteWarning: { ar:'لا يمكن التراجع عن هذا الإجراء', en:'This action cannot be undone', fr:'Cette action est irreversible' },
-  deleteSuccess: { ar:'تم الحذف', en:'Deleted successfully', fr:'Supprime avec succes' },
-  updateSuccess: { ar:'تم التحديث', en:'Updated successfully', fr:'Mis a jour avec succes' },
+  deleteWarning: { ar:'لا يمكن التراجع عن هذا الإجراء', en:'This action cannot be undone', fr:'Cette action est irréversible' },
+  deleteSuccess: { ar:'تم الحذف', en:'Deleted successfully', fr:'Supprimé avec succès' },
+  updateSuccess: { ar:'تم التحديث', en:'Updated successfully', fr:'Mis à jour avec succès' },
   entry_name: { ar:'الاسم', en:'Name', fr:'Nom' },
   entry_amount: { ar:'المبلغ', en:'Amount', fr:'Montant' },
-  entry_category: { ar:'التصنيف', en:'Category', fr:'Categorie' },
+  entry_category: { ar:'التصنيف', en:'Category', fr:'Catégorie' },
   entry_save: { ar:'إضافة', en:'Add', fr:'Ajouter' },
   entry_validation_error: { ar:'أدخل الاسم والمبلغ بشكل صحيح', en:'Enter a valid name and amount', fr:'Entrez un nom et un montant valides' },
   entry_auth_required: { ar:'سجل الدخول أولاً لإتمام العملية', en:'Sign in first to complete this action', fr:"Connectez-vous d'abord pour terminer cette action" },
-  savings_noEntriesYet: { ar:'لم تُسجّل عمليات إدخار بعد', en:'No savings recorded yet', fr:'Aucune epargne enregistree' },
-  expenses_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف هذا المصروف؟', en:'Delete this expense?', fr:'Supprimer cette depense ?' },
+  savings_noEntriesYet: { ar:'لم تُسجّل عمليات إدخار بعد', en:'No savings recorded yet', fr:'Aucune épargne enregistrée' },
+  expenses_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف هذا المصروف؟', en:'Delete this expense?', fr:'Supprimer cette dépense ?' },
   income_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف هذا الدخل؟', en:'Delete this income?', fr:'Supprimer ce revenu ?' },
   invest_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف هذا الاستثمار؟', en:'Delete this investment?', fr:'Supprimer cet investissement ?' },
-  savings_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف عملية الإدخار هذه؟', en:'Delete this saving entry?', fr:'Supprimer cette epargne ?' },
-  expenses_entry_title: { ar:'مصروف', en:'Expense', fr:'Depense' },
+  savings_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف عملية الإدخار هذه؟', en:'Delete this saving entry?', fr:'Supprimer cette épargne ?' },
+  expenses_entry_title: { ar:'مصروف', en:'Expense', fr:'Dépense' },
   income_entry_title: { ar:'دخل', en:'Income', fr:'Revenu' },
   invest_entry_title: { ar:'استثمار', en:'Investment', fr:'Investissement' },
-  savings_entry_title: { ar:'إدخار', en:'Saving', fr:'Epargne' },
+  savings_entry_title: { ar:'إدخار', en:'Saving', fr:'Épargne' },
   goals_empty_state: { ar:'لا توجد أهداف مالية محفوظة حالياً', en:'No financial goals saved yet', fr:'Aucun objectif financier enregistré' },
   goal_edit_button: { ar:'تعديل الهدف', en:'Edit Goal', fr:"Modifier l'objectif" },
   goal_edit_title: { ar:'تعديل الهدف المالي', en:'Edit financial goal', fr:"Modifier l'objectif financier" },
@@ -662,14 +662,14 @@ export const TR: Record<string, TranslationEntry> = {
   goal_ai_no_contribution: { ar:'لا توجد مساهمة شهرية لهذا الهدف، أضف مبلغاً شهرياً حتى نقدر مدة الوصول.', en:'There is no monthly contribution for this goal. Add one so we can estimate the completion timeline.', fr:"Aucune contribution mensuelle n'est définie pour cet objectif. Ajoutez-en une pour estimer le délai." },
   goal_ai_on_track: { ar:'تحتاج إلى ادخار {required} شهرياً للوصول إلى هذا الهدف، ومساهمتك الحالية مناسبة.', en:'You need to save {required} monthly to reach this goal, and your current contribution is suitable.', fr:'Vous devez épargner {required} par mois pour atteindre cet objectif, et votre contribution actuelle est adaptée.' },
   goal_ai_needs_adjustment: { ar:'مساهمتك الحالية أقل من المطلوب. تحتاج إلى زيادة الادخار بمقدار {adjustment} شهرياً.', en:'Your current contribution is below the requirement. Increase saving by {adjustment} monthly.', fr:'Votre contribution actuelle est inférieure au besoin. Augmentez votre épargne de {adjustment} par mois.' },
-  goal_ai_high_risk: { ar:'الهدف يحتاج خطة أقوى. نسبة الصرف الحالية {expenseRatio}% وقد تحتاج إلى خفض المصروفات وزيادة الادخار.', en:'This goal needs a stronger plan. Current spending ratio is {expenseRatio}% and may require expense reduction plus higher saving.', fr:'Cet objectif nécessite un plan plus solide. Le ratio de dépenses actuel est de {expenseRatio}% et peut nécessiter une réduction des dépenses ainsi qu’une épargne plus élevée.' },
+  goal_ai_high_risk: { ar:'الهدف يحتاج خطة أقوى. نسبة الصرف الحالية {expenseRatio}% وقد تحتاج إلى خفض المصروفات وزيادة الادخار.', en:'This goal needs a stronger plan. Current spending ratio is {expenseRatio}% and may require expense reduction plus higher saving.', fr:'Cet objectif nécessite un plan plus solide. Le ratio de dépenses actuel est de {expenseRatio}% et peut nécessiter une réduction des dépenses ainsi qu\'une épargne plus élevée.' },
   goal_step_add_contribution: { ar:'أضف مساهمة شهرية ثابتة لهذا الهدف قبل الصرف اليومي.', en:'Add a fixed monthly contribution to this goal before daily spending.', fr:'Ajoutez une contribution mensuelle fixe à cet objectif avant les dépenses quotidiennes.' },
   goal_step_raise_contribution: { ar:'ارفع مساهمة الهدف الشهرية إلى {amount}.', en:'Raise the monthly goal contribution to {amount}.', fr:'Augmentez la contribution mensuelle à {amount}.' },
   goal_step_reduce_expenses: { ar:'قلل المصروفات غير الأساسية بنسبة {percent}% شهرياً.', en:'Reduce non-essential expenses by {percent}% monthly.', fr:'Réduisez les dépenses non essentielles de {percent}% par mois.' },
   goal_step_review_spending: { ar:'راجع المصروفات المتكررة وحدد بنداً واحداً يمكن تخفيضه.', en:'Review recurring expenses and identify one item to reduce.', fr:'Passez en revue les dépenses récurrentes et choisissez un poste à réduire.' },
-  goal_step_automate: { ar:'حوّل مبلغ الهدف تلقائياً بداية كل شهر.', en:'Automate the goal transfer at the start of every month.', fr:'Automatisez le transfert vers l’objectif au début de chaque mois.' },
-  goal_step_increase_saving: { ar:'وجّه {amount} من الفائض الشهري مباشرة إلى هذا الهدف.', en:'Move {amount} of monthly surplus directly into this goal.', fr:'Affectez {amount} de l’excédent mensuel directement à cet objectif.' },
-  goal_step_monthly_review: { ar:'راجع الهدف كل شهر وعدّل المساهمة حسب الدخل والمصروفات.', en:'Review the goal monthly and adjust contribution based on income and expenses.', fr:'Révisez l’objectif chaque mois et ajustez la contribution selon les revenus et les dépenses.' },
+  goal_step_automate: { ar:'حوّل مبلغ الهدف تلقائياً بداية كل شهر.', en:'Automate the goal transfer at the start of every month.', fr:"Automatisez le transfert vers l'objectif au début de chaque mois." },
+  goal_step_increase_saving: { ar:'وجّه {amount} من الفائض الشهري مباشرة إلى هذا الهدف.', en:'Move {amount} of monthly surplus directly into this goal.', fr:"Affectez {amount} de l'excédent mensuel directement à cet objectif." },
+  goal_step_monthly_review: { ar:'راجع الهدف كل شهر وعدّل المساهمة حسب الدخل والمصروفات.', en:'Review the goal monthly and adjust contribution based on income and expenses.', fr:"Révisez l'objectif chaque mois et ajustez la contribution selon les revenus et les dépenses." },
 
 } as const;
 
@@ -684,5 +684,5 @@ export function t(key: keyof typeof TR, lang: Lang): string {
 export const MONTHS = {
   ar: ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],
   en: ['January','February','March','April','May','June','July','August','September','October','November','December'],
-  fr: ['Janvier','Fevrier','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Decembre'],
+  fr: ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'],
 };
