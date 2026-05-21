@@ -7,6 +7,8 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { Sidebar } from '@/components/Sidebar';
 import { UserChip } from '@/components/UserChip';
+import { useCurrency } from '@/lib/useCurrency';
+import { formatCurrency } from '@/lib/format';
 
 /* ═══════════════════════════════════════════════════
    TYPES
@@ -18,6 +20,7 @@ interface MonthSnapshot {
 type ExpenseRow = { id: string; name: string | null; amount: number | string | null; created_at?: string | null };
 type GoalRow = { id: string; goal?: string | null; name?: string | null; amount?: number | string | null; target_amount?: number | string | null; current_amount?: number | string | null; icon?: string | null; color?: string | null };
 type InvestmentRow = { id: string; name: string | null; amount: number | string | null };
+type SavingsRow = { id: string; name: string | null; amount: number | string | null; created_at?: string | null };
 type DonutItem = { label: string; pct: number; color: string; amount: number };
 type ProfileRow = { display_name?: string | null; profession?: string | null };
 
@@ -216,13 +219,16 @@ function formatExpenseName(name: string | null | undefined) {
 ═══════════════════════════════════════════════════ */
 export default function DashboardPage(){
   const {user,loading,isGuest}=useAuth();
-  const {dir, isAr, isFr} = useLanguage();
+  const {dir, isAr, isFr, t} = useLanguage();
+  const { currency } = useCurrency();
+  const fmt = (v: number) => formatCurrency(v, currency, isAr ? 'ar' : 'en');
   const router=useRouter();
   const [profile,setProfile]=useState<ProfileRow>({display_name:'SFM',profession:'خبير مالي'});
   const [totalIncome,setTotalIncome]=useState(0);
   const [totalExpenses,setTotalExpenses]=useState(0);
   const [goals,setGoals]=useState<GoalRow[]>([]);
   const [investments,setInvestments]=useState<InvestmentRow[]>([]);
+  const [savingsItems,setSavingsItems]=useState<SavingsRow[]>([]);
   const [expenseItems,setExpenseItems]=useState<ExpenseRow[]>([]);
   const [monthHistory,setMonthHistory]=useState<MonthSnapshot[]>([]);
   const [cmpA,setCmpA]=useState(0);
@@ -251,6 +257,11 @@ export default function DashboardPage(){
     const invRows=(invData ?? []) as InvestmentRow[];
     setInvestments(invRows);
 
+    const{data:savingsData}=await supabase.from('savings_items').select('*').eq('user_id',userId);
+    const savingRows=(savingsData ?? []) as SavingsRow[];
+    setSavingsItems(savingRows);
+    const realSavings=savingRows.reduce((sum,row)=>sum+amountOf(row.amount),0);
+
     const{data:expData}=await supabase.from('expense_items').select('*').eq('user_id',userId).order('created_at',{ascending:false});
     const expRows=(expData ?? []) as ExpenseRow[];
     setExpenseItems(expRows);
@@ -263,13 +274,13 @@ export default function DashboardPage(){
     const realInvestment=invRows.reduce((sum,row)=>sum+amountOf(row.amount),0);
     const now=new Date();
     const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    if(realIncome>0||realExp>0){
+    if(realIncome>0||realExp>0||realSavings>0){
       setMonthHistory([{
         month:ym,
         label:MONTHS_AR[now.getMonth()]+' '+now.getFullYear(),
         income:realIncome,
         expenses:realExp,
-        savings:Math.max(0,realIncome-realExp),
+        savings:realSavings,
         investment:realInvestment,
         charity:realCharity,
       }]);
@@ -278,7 +289,7 @@ export default function DashboardPage(){
     }
   };
 
-  const totalSavings=Math.max(0,totalIncome-totalExpenses);
+  const totalSavings=savingsItems.reduce((sum,item)=>sum+amountOf(item.amount),0);
   const totalInvestment=investments.reduce((sum,item)=>sum+amountOf(item.amount),0);
   const netWorth=totalIncome+totalSavings;
   const healthScore=totalIncome>0?Math.min(100,Math.round(60+(totalSavings/totalIncome)*40)):0;
@@ -400,14 +411,14 @@ export default function DashboardPage(){
                 <div style={{position:'absolute',top:'-40px',right:'-40px',width:'180px',height:'180px',borderRadius:'50%',background:'radial-gradient(circle,rgba(216,174,99,.14) 0%,transparent 70%)',pointerEvents:'none'}}/>
                 <div style={{fontSize:'12.5px',color:'rgba(216,174,99,.6)',fontWeight:'600',marginBottom:'10px',position:'relative',zIndex:1}}>📊 صافي الثروة</div>
                 <div style={{fontSize:'clamp(28px,4vw,42px)',fontWeight:'900',color:'#FFFDFC',fontFamily:"'IBM Plex Sans Arabic',sans-serif",lineHeight:1,marginBottom:'12px',position:'relative',zIndex:1}}>
-                  {netWorth.toFixed(2)} <span style={{fontSize:'18px',color:'rgba(216,174,99,.7)'}}>د.ك</span>
+                  {fmt(netWorth)}
                 </div>
                 {monthlyGrowth!==0 ? (
                   <>
                     <div style={{display:'flex',gap:'10px',alignItems:'center',position:'relative',zIndex:1}}>
                       <div style={{display:'inline-flex',alignItems:'center',gap:'5px',background:'rgba(34,197,94,.12)',borderRadius:'20px',padding:'5px 12px'}}>
                         <span style={{fontSize:'14px'}}>↑</span>
-                        <span style={{fontSize:'13px',fontWeight:'700',color:'#22C55E',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>+{monthlyGrowth.toFixed(2)} د.ك</span>
+                        <span style={{fontSize:'13px',fontWeight:'700',color:'#22C55E',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>+{fmt(monthlyGrowth)}</span>
                       </div>
                       <span style={{fontSize:'13px',fontWeight:'700',color:'#22C55E'}}>+{Math.abs(monthlyGrowthPct).toFixed(2)}%</span>
                     </div>
@@ -458,20 +469,23 @@ export default function DashboardPage(){
           {/* ─── KPI GRID ─── */}
           <div className="kpi-grid" style={{...S(80),display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'14px'}}>
             {[
-              {label:'إجمالي الدخل',val:totalIncome,icon:'💵',color:'#22C55E'},
-              {label:'إجمالي المصروفات',val:totalExpenses,icon:'🛒',color:'#EF4444'},
-              {label:'إجمالي الادخار',val:totalSavings,icon:'💰',color:'#D8AE63'},
-              {label:'إجمالي الاستثمار',val:totalInvestment,icon:'📈',color:'#3B82F6'},
+              {id:'income',label:'إجمالي الدخل',val:totalIncome,icon:'💵',color:'#22C55E',hasData:totalIncome>0},
+              {id:'expenses',label:'إجمالي المصروفات',val:totalExpenses,icon:'🛒',color:'#EF4444',hasData:expenseItems.length>0},
+              {id:'savings',label:'إجمالي الادخار',val:totalSavings,icon:'💰',color:'#D8AE63',hasData:savingsItems.length>0},
+              {id:'invest',label:'إجمالي الاستثمار',val:totalInvestment,icon:'📈',color:'#3B82F6',hasData:investments.length>0},
             ].map((k,i)=>(
               <div key={i} className="dc kpi-c" style={{animationDelay:`${i*.06}s`}}>
                 <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:'12px'}}>
                   <div style={{width:'40px',height:'40px',background:`${k.color}14`,borderRadius:'12px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px'}}>{k.icon}</div>
-                  <span style={{fontSize:'11px',fontWeight:'700',color:'#9A6C3C'}}>بيانات فعلية</span>
+                  {k.hasData && <span style={{fontSize:'11px',fontWeight:'700',color:'#15803D',background:'rgba(34,197,94,.08)',borderRadius:'20px',padding:'3px 9px'}}>{t('actualData')}</span>}
                 </div>
                 <div style={{fontSize:'11px',color:'#9A6C3C',marginBottom:'4px'}}>{k.label}</div>
                 <div style={{fontSize:'22px',fontWeight:'900',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif",lineHeight:1}}>
-                  {k.val.toFixed(2)} <span style={{fontSize:'12px',fontWeight:'500',color:'#9A6C3C'}}>د.ك</span>
+                  {fmt(k.val)}
                 </div>
+                {k.id==='savings' && !k.hasData && (
+                  <div style={{fontSize:'11px',color:'#8A7060',marginTop:'7px',lineHeight:1.5}}>{t('savings_noEntriesYet')}</div>
+                )}
               </div>
             ))}
           </div>
@@ -486,9 +500,9 @@ export default function DashboardPage(){
               </div>
               <div style={{fontSize:'11.5px',color:'#9A6C3C',marginBottom:'14px',fontWeight:'600'}}>تحليل هذا الشهر</div>
               {[
-                {text:totalIncome>0?'تم تسجيل الدخل لهذا الشهر':'لم يتم تسجيل دخل بعد',chg:totalIncome>0?`${totalIncome.toFixed(3)} د.ك`:'—',up:totalIncome>0},
-                {text:expenseItems.length>0?'تم تسجيل مصروفات فعلية':'لا توجد مصروفات مسجلة',chg:expenseItems.length>0?`${totalExpenses.toFixed(3)} د.ك`:'—',up:false},
-                {text:investments.length>0?'توجد استثمارات مسجلة':'لا توجد استثمارات مسجلة',chg:investments.length>0?`${totalInvestment.toFixed(3)} د.ك`:'—',up:investments.length>0},
+                {text:totalIncome>0?'تم تسجيل الدخل لهذا الشهر':'لم يتم تسجيل دخل بعد',chg:totalIncome>0?fmt(totalIncome):'—',up:totalIncome>0},
+                {text:expenseItems.length>0?'تم تسجيل مصروفات فعلية':'لا توجد مصروفات مسجلة',chg:expenseItems.length>0?fmt(totalExpenses):'—',up:false},
+                {text:investments.length>0?'توجد استثمارات مسجلة':'لا توجد استثمارات مسجلة',chg:investments.length>0?fmt(totalInvestment):'—',up:investments.length>0},
               ].map((ins,i)=>(
                 <div key={i} style={{display:'flex',alignItems:'flex-start',gap:'10px',padding:'11px 13px',borderRadius:'12px',background:ins.up?'rgba(34,197,94,.05)':'rgba(239,68,68,.05)',border:`1px solid ${ins.up?'rgba(34,197,94,.15)':'rgba(239,68,68,.15)'}`,marginBottom:'8px'}}>
                   <span style={{fontSize:'14px',flexShrink:0}}>{ins.up?'✅':'⚠️'}</span>
@@ -548,7 +562,7 @@ export default function DashboardPage(){
                       <div key={key} style={{background:up?'rgba(34,197,94,.05)':'rgba(239,68,68,.05)',border:`1.5px solid ${up?'rgba(34,197,94,.18)':'rgba(239,68,68,.18)'}`,borderRadius:'16px',padding:'16px'}}>
                         <div style={{fontSize:'11px',color:'#9A6C3C',marginBottom:'8px',fontWeight:'600'}}>الفرق في {label}</div>
                         <div style={{fontSize:'22px',fontWeight:'900',color:up?'#22C55E':'#EF4444',fontFamily:"'IBM Plex Sans Arabic',sans-serif",lineHeight:1,marginBottom:'4px'}}>
-                          {up?'+':''}{diff.toFixed(2)} <span style={{fontSize:'12px'}}>د.ك</span>
+                          {up?'+':''}{fmt(diff)}
                         </div>
                         <div style={{fontSize:'12px',fontWeight:'700',color:up?'#22C55E':'#EF4444',display:'flex',alignItems:'center',gap:'4px'}}>
                           <span>{up?'↑':'↓'}</span>{Math.abs(pct).toFixed(2)}%
@@ -582,7 +596,7 @@ export default function DashboardPage(){
                       {expenseItems.slice(0,5).map(item=>(
                         <tr key={item.id} style={{borderBottom:'1px solid rgba(216,174,99,.07)',transition:'background .15s'}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(216,174,99,.04)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
                           <td style={{padding:'11px 10px',fontSize:'12.5px',color:'#5B4332',fontWeight:'600'}}>{formatExpenseName(item.name)}</td>
-                          <td style={{padding:'11px 10px',fontSize:'13px',fontWeight:'800',color:'#EF4444',fontFamily:"'IBM Plex Sans Arabic',sans-serif",direction:'ltr'}}>{amountOf(item.amount).toFixed(3)} د.ك</td>
+                          <td style={{padding:'11px 10px',fontSize:'13px',fontWeight:'800',color:'#EF4444',fontFamily:"'IBM Plex Sans Arabic',sans-serif",direction:'ltr'}}>{fmt(amountOf(item.amount))}</td>
                           <td style={{padding:'11px 10px',fontSize:'12px',color:'#9A6C3C',direction:'ltr'}}>{item.created_at?new Date(item.created_at).toISOString().slice(0,10):'—'}</td>
                         </tr>
                       ))}
@@ -597,7 +611,7 @@ export default function DashboardPage(){
             <div className="dc" style={{padding:'22px'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}}>
                 <h3 style={{fontSize:'14px',fontWeight:'800',color:'#111111'}}>توزيع المصروفات</h3>
-                <span style={{fontSize:'11px',color:'#9A6C3C',background:'rgba(216,174,99,.08)',borderRadius:'20px',padding:'3px 10px'}}>بيانات فعلية</span>
+                {donutData.length>0 && <span style={{fontSize:'11px',color:'#15803D',background:'rgba(34,197,94,.08)',borderRadius:'20px',padding:'3px 10px'}}>{t('actualData')}</span>}
               </div>
               {donutData.length===0 ? (
                 <EmptyState compact icon="🥧" title="لا توجد مصاريف مسجلة" subtitle="أضف مصاريفك لرؤية التوزيع" btnLabel="إضافة مصروف" btnHref="/expenses" />
@@ -627,14 +641,14 @@ export default function DashboardPage(){
               <h3 style={{fontSize:'14px',fontWeight:'800',color:'#111111',marginBottom:'16px'}}>ملخص الاستثمارات</h3>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid rgba(216,174,99,.07)'}}>
                 <span style={{fontSize:'11px',color:'#9A6C3C',fontWeight:'500',maxWidth:'100px',lineHeight:1.4}}>إجمالي قيمة المحفظة</span>
-                <span style={{fontSize:'13px',fontWeight:'800',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{totalInvestment.toFixed(3)} د.ك</span>
+                <span style={{fontSize:'13px',fontWeight:'800',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{fmt(totalInvestment)}</span>
               </div>
               {investments.length===0 ? (
                 <EmptyState compact icon="📈" title="لا توجد استثمارات مسجلة" subtitle="أضف استثمارك الأول" btnLabel="إضافة استثمار" btnHref="/education/investments" />
               ) : investments.map(item=>(
                 <div key={item.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid rgba(216,174,99,.07)'}}>
                   <span style={{fontSize:'11px',color:'#9A6C3C',fontWeight:'500',maxWidth:'100px',lineHeight:1.4}}>{item.name || 'استثمار'}</span>
-                  <span style={{fontSize:'13px',fontWeight:'800',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{amountOf(item.amount).toFixed(3)} د.ك</span>
+                  <span style={{fontSize:'13px',fontWeight:'800',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{fmt(amountOf(item.amount))}</span>
                 </div>
               ))}
               <button onClick={()=>router.push('/education/investments')} style={{width:'100%',marginTop:'12px',padding:'9px',background:'linear-gradient(135deg,#D8AE63,#9A6C3C)',border:'none',borderRadius:'12px',color:'#111111',fontSize:'12px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>عرض محفظة الاستثمارات</button>
@@ -662,7 +676,7 @@ export default function DashboardPage(){
                   <div style={{width:'36px',height:'36px',background:'rgba(216,174,99,.10)',borderRadius:'11px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'17px',flexShrink:0}}>📈</div>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:'12px',fontWeight:'700',color:'#111111',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{inv.name || 'استثمار'}</div>
-                    <div style={{fontSize:'11px',fontWeight:'800',color:'#9A6C3C'}}>{amountOf(inv.amount).toFixed(3)} د.ك</div>
+                    <div style={{fontSize:'11px',fontWeight:'800',color:'#9A6C3C'}}>{fmt(amountOf(inv.amount))}</div>
                   </div>
                 </div>
               ))}
@@ -697,8 +711,8 @@ export default function DashboardPage(){
                           <div className="prog-fill" style={{width:`${pct}%`,background:`linear-gradient(90deg,${color},${color}88)`}}/>
                         </div>
                         <div style={{display:'flex',justifyContent:'space-between',fontSize:'11px',color:'#9A6C3C'}}>
-                          <span style={{fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{saved.toLocaleString('ar-KW')} د.ك</span>
-                          <span style={{fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>من {target.toLocaleString('ar-KW')} د.ك</span>
+                          <span style={{fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>{fmt(saved)}</span>
+                          <span style={{fontFamily:"'IBM Plex Sans Arabic',sans-serif"}}>من {fmt(target)}</span>
                         </div>
                       </div>
                     );
@@ -757,7 +771,7 @@ export default function DashboardPage(){
                       {[...monthHistory].reverse().map(h=>(
                         <tr key={h.month} style={{borderBottom:'1px solid rgba(216,174,99,.07)'}}>
                           <td style={{padding:'10px 8px',fontSize:'12px',color:'#5B4332',fontWeight:'600'}}>{h.label}</td>
-                          <td style={{padding:'10px 8px',fontSize:'12px',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif",fontWeight:'700'}}>{h.investment.toFixed(3)} <span style={{fontSize:'10px',color:'#9A6C3C'}}>د.ك</span></td>
+                          <td style={{padding:'10px 8px',fontSize:'12px',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif",fontWeight:'700'}}>{fmt(h.investment)}</td>
                           <td style={{padding:'10px 8px',fontSize:'12px',color:'#9A6C3C'}}>—</td>
                         </tr>
                       ))}
@@ -776,7 +790,7 @@ export default function DashboardPage(){
                       {[...monthHistory].reverse().map(h=>(
                         <tr key={h.month} style={{borderBottom:'1px solid rgba(216,174,99,.07)'}}>
                           <td style={{padding:'10px 8px',fontSize:'12px',color:'#5B4332',fontWeight:'600'}}>{h.label}</td>
-                          <td style={{padding:'10px 8px',fontSize:'12px',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif",fontWeight:'700'}}>{h.expenses.toFixed(3)} <span style={{fontSize:'10px',color:'#9A6C3C'}}>د.ك</span></td>
+                          <td style={{padding:'10px 8px',fontSize:'12px',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif",fontWeight:'700'}}>{fmt(h.expenses)}</td>
                           <td style={{padding:'10px 8px',fontSize:'12px',color:'#9A6C3C'}}>—</td>
                         </tr>
                       ))}

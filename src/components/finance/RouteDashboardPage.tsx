@@ -34,6 +34,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { Sidebar } from '@/components/Sidebar';
+import { useCurrency } from '@/lib/useCurrency';
+import { formatCurrency } from '@/lib/format';
 
 type PageKind = 'expenses' | 'income' | 'invest' | 'savings' | 'goals' | 'reports' | 'ai';
 type LangText = { ar: string; en: string };
@@ -168,8 +170,8 @@ function pick(text: LangText, isAr: boolean) {
   return isAr ? text.ar : text.en;
 }
 
-function money(value: number, isAr: boolean) {
-  return `${value.toLocaleString(undefined, { maximumFractionDigits: 3 })} ${isAr ? 'د.ك' : 'KWD'}`;
+function money(value: number, isAr: boolean, currency = 'KWD') {
+  return formatCurrency(value, currency, isAr ? 'ar' : 'en');
 }
 
 function sum(items: MoneyItem[]) {
@@ -226,6 +228,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const router = useRouter();
   const { user, loading, isGuest } = useAuth();
   const { isAr, dir, t } = useLanguage();
+  const { currency } = useCurrency();
   const meta = pageMeta[kind];
   const Icon = meta.icon;
 
@@ -241,6 +244,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [entrySaving, setEntrySaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<(MoneyItem | IncomeSource) | null>(null);
   const [entryMessage, setEntryMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [rowSearch, setRowSearch] = useState('');
+  const [rowSort, setRowSort] = useState<'dateDesc' | 'dateAsc' | 'amountDesc' | 'amountAsc'>('dateDesc');
+  const [rowRange, setRowRange] = useState<'all' | 'month' | 'last3' | 'year'>('all');
+  const [visibleCount, setVisibleCount] = useState(30);
 
   useEffect(() => {
     let cancelled = false;
@@ -324,9 +331,37 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     };
   }, [snapshot]);
 
-  const cards = useMemo<SectionCard[]>(() => buildCards(kind, data, isAr), [data, isAr, kind]);
-  const rows = useMemo(() => buildRows(kind, data, isAr), [data, isAr, kind]);
-  const insights = useMemo(() => buildInsights(kind, data, isAr), [data, isAr, kind]);
+  const cards = useMemo<SectionCard[]>(() => buildCards(kind, data, isAr, currency), [data, isAr, kind, currency]);
+  const rows = useMemo(() => buildRows(kind, data, isAr, currency), [data, isAr, kind, currency]);
+  const insights = useMemo(() => buildInsights(kind, data, isAr, currency), [data, isAr, kind, currency]);
+
+  const filteredRows = useMemo(() => {
+    if (!editableKind(kind)) return rows;
+    let result = [...rows];
+    if (rowSearch.trim()) {
+      const q = rowSearch.toLowerCase();
+      result = result.filter(r => r.title.toLowerCase().includes(q) || r.subtitle.toLowerCase().includes(q));
+    }
+    if (rowRange !== 'all') {
+      const now = new Date();
+      result = result.filter(r => {
+        const ca = r.item?.created_at;
+        if (!ca) return true;
+        const d = new Date(ca);
+        if (rowRange === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        if (rowRange === 'last3') return d >= new Date(now.getFullYear(), now.getMonth() - 2, 1);
+        if (rowRange === 'year') return d.getFullYear() === now.getFullYear();
+        return true;
+      });
+    }
+    if (rowSort === 'amountDesc') result.sort((a, b) => (b.item?.amount ?? 0) - (a.item?.amount ?? 0));
+    else if (rowSort === 'amountAsc') result.sort((a, b) => (a.item?.amount ?? 0) - (b.item?.amount ?? 0));
+    else if (rowSort === 'dateAsc') result.sort((a, b) => new Date(a.item?.created_at ?? 0).getTime() - new Date(b.item?.created_at ?? 0).getTime());
+    else result.sort((a, b) => new Date(b.item?.created_at ?? 0).getTime() - new Date(a.item?.created_at ?? 0).getTime());
+    return result;
+  }, [rows, rowSearch, rowSort, rowRange, kind]);
+
+  useEffect(() => { setVisibleCount(30); }, [rowSearch, rowSort, rowRange, kind]);
 
   function showEntryMessage(type: 'ok' | 'err', text: string) {
     setEntryMessage({ type, text });
@@ -610,11 +645,46 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               </div>
               {dataLoading && <span className="loading-pill">{isAr ? 'جاري التحميل' : 'Loading'}</span>}
             </div>
+
+            {editableKind(kind) && (
+              <div className="row-controls">
+                <input
+                  type="search"
+                  className="row-search"
+                  placeholder={isAr ? 'بحث...' : 'Search...'}
+                  value={rowSearch}
+                  onChange={e => setRowSearch(e.target.value)}
+                />
+                <select className="row-select" value={rowRange} onChange={e => setRowRange(e.target.value as typeof rowRange)}>
+                  <option value="all">{isAr ? 'كل الفترات' : 'All time'}</option>
+                  <option value="month">{isAr ? 'هذا الشهر' : 'This month'}</option>
+                  <option value="last3">{isAr ? 'آخر 3 أشهر' : 'Last 3 months'}</option>
+                  <option value="year">{isAr ? 'هذه السنة' : 'This year'}</option>
+                </select>
+                <select className="row-select" value={rowSort} onChange={e => setRowSort(e.target.value as typeof rowSort)}>
+                  <option value="dateDesc">{isAr ? 'الأحدث أولاً' : 'Newest first'}</option>
+                  <option value="dateAsc">{isAr ? 'الأقدم أولاً' : 'Oldest first'}</option>
+                  <option value="amountDesc">{isAr ? 'أعلى مبلغ' : 'Highest amount'}</option>
+                  <option value="amountAsc">{isAr ? 'أقل مبلغ' : 'Lowest amount'}</option>
+                </select>
+              </div>
+            )}
+
+            {editableKind(kind) && rows.length > 0 && (
+              <div className="row-count">
+                {isAr
+                  ? `يعرض ${Math.min(visibleCount, filteredRows.length)} من ${filteredRows.length} ${rows.length !== filteredRows.length ? `(المجموع ${rows.length})` : ''}`
+                  : `Showing ${Math.min(visibleCount, filteredRows.length)} of ${filteredRows.length}${rows.length !== filteredRows.length ? ` (total ${rows.length})` : ''}`}
+                {' · '}
+                {money(filteredRows.slice(0, visibleCount).reduce((s, r) => s + (r.item?.amount ?? 0), 0), isAr, currency)}
+              </div>
+            )}
+
             <div className="row-list">
-              {rows.length === 0 && (
+              {filteredRows.length === 0 && (
                 <div className="empty-state">{isAr ? 'لا توجد بيانات محفوظة حالياً' : 'No saved data yet'}</div>
               )}
-              {rows.map(row => (
+              {(editableKind(kind) ? filteredRows.slice(0, visibleCount) : filteredRows).map(row => (
                 <div className="data-row" key={row.id}>
                   <div>
                     <strong>{row.title}</strong>
@@ -635,6 +705,11 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                   </div>
                 </div>
               ))}
+              {editableKind(kind) && filteredRows.length > visibleCount && (
+                <button type="button" className="load-more-btn" onClick={() => setVisibleCount(v => v + 30)}>
+                  {isAr ? `تحميل المزيد (${filteredRows.length - visibleCount} متبقية)` : `Load more (${filteredRows.length - visibleCount} remaining)`}
+                </button>
+              )}
             </div>
           </div>
 
@@ -693,7 +768,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             <LineChart size={20} />
             <div>
               <strong>{summaryTitle(kind, isAr)}</strong>
-              <p>{summaryText(kind, data, isAr)}</p>
+              <p>{summaryText(kind, data, isAr, currency)}</p>
             </div>
           </section>
         )}
@@ -782,18 +857,18 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   );
 }
 
-function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean): SectionCard[] {
+function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean, currency = 'KWD'): SectionCard[] {
   const common = {
-    income: money(data.totalIncome, isAr),
-    expenses: money(data.totalExpenses, isAr),
-    savings: money(data.totalSavings, isAr),
-    investments: money(data.totalInvestments, isAr),
-    balance: money(data.balance, isAr),
+    income: money(data.totalIncome, isAr, currency),
+    expenses: money(data.totalExpenses, isAr, currency),
+    savings: money(data.totalSavings, isAr, currency),
+    investments: money(data.totalInvestments, isAr, currency),
+    balance: money(data.balance, isAr, currency),
   };
 
   if (kind === 'expenses') return [
     { title: { ar: 'إجمالي المصروفات', en: 'Total expenses' }, body: { ar: 'يشمل كل عمليات المصروفات المسجلة.', en: 'Includes all recorded expense items.' }, value: common.expenses, tone: '#EF4444' },
-    { title: { ar: 'الأعمال الخيرية', en: 'Charity spend' }, body: { ar: 'مرتبطة بالمصروفات الشهرية عند تسجيلها.', en: 'Included in monthly expenses when recorded.' }, value: money(data.charityTotal, isAr), tone: '#D8AE63' },
+    { title: { ar: 'الأعمال الخيرية', en: 'Charity spend' }, body: { ar: 'مرتبطة بالمصروفات الشهرية عند تسجيلها.', en: 'Included in monthly expenses when recorded.' }, value: money(data.charityTotal, isAr, currency), tone: '#D8AE63' },
     { title: { ar: 'عدد التصنيفات', en: 'Categories' }, body: { ar: 'تصنيفات نشطة من آخر السجلات.', en: 'Active categories from recent records.' }, value: String(data.expenses.length), tone: '#3B82F6' },
   ];
   if (kind === 'income') return [
@@ -803,18 +878,18 @@ function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, isA
   ];
   if (kind === 'invest') return [
     { title: { ar: 'قيمة المحفظة', en: 'Portfolio value' }, body: { ar: 'إجمالي الاستثمارات المسجلة.', en: 'Total recorded investments.' }, value: common.investments, tone: '#3B82F6' },
-    { title: { ar: 'المساهمة الشهرية', en: 'Monthly contribution' }, body: { ar: 'تقدير 15% من الدخل الحالي.', en: 'Estimated as 15% of current income.' }, value: money(data.totalIncome * 0.15, isAr), tone: '#22C55E' },
+    { title: { ar: 'المساهمة الشهرية', en: 'Monthly contribution' }, body: { ar: 'تقدير 15% من الدخل الحالي.', en: 'Estimated as 15% of current income.' }, value: money(data.totalIncome * 0.15, isAr, currency), tone: '#22C55E' },
     { title: { ar: 'مستوى المخاطر', en: 'Risk level' }, body: { ar: 'متوازن بناءً على التوزيع الحالي.', en: 'Balanced based on current allocation.' }, value: isAr ? 'متوسط' : 'Medium', tone: '#D8AE63' },
   ];
   if (kind === 'savings') return [
     { title: { ar: 'إجمالي المدخرات', en: 'Total savings' }, body: { ar: 'مجموع عمليات الادخار المسجلة.', en: 'Total recorded savings entries.' }, value: common.savings, tone: '#22C55E' },
     { title: { ar: 'عدد السجلات', en: 'Entries count' }, body: { ar: 'سجلات الادخار النشطة.', en: 'Active saving records.' }, value: String(data.savings.length), tone: '#D8AE63' },
-    { title: { ar: 'الصافي بعد الادخار', en: 'Net after savings' }, body: { ar: 'الدخل ناقص المصروفات والمدخرات.', en: 'Income minus expenses and savings.' }, value: money(data.balance - data.totalSavings, isAr), tone: '#3B82F6' },
+    { title: { ar: 'الصافي بعد الادخار', en: 'Net after savings' }, body: { ar: 'الدخل ناقص المصروفات والمدخرات.', en: 'Income minus expenses and savings.' }, value: money(data.balance - data.totalSavings, isAr, currency), tone: '#3B82F6' },
   ];
   if (kind === 'goals') return [
     { title: { ar: 'الأهداف النشطة', en: 'Active goals' }, body: { ar: 'أهداف مالية قيد المتابعة.', en: 'Financial goals being tracked.' }, value: String(data.goals.length), tone: '#D8AE63' },
-    { title: { ar: 'إجمالي المستهدف', en: 'Target total' }, body: { ar: 'مجموع مبالغ الأهداف.', en: 'Combined target amounts.' }, value: money(data.goals.reduce((total, goal) => total + goal.target_amount, 0), isAr), tone: '#3B82F6' },
-    { title: { ar: 'تقدم حالي', en: 'Current progress' }, body: { ar: 'مجموع المبالغ الحالية داخل الأهداف.', en: 'Combined current goal progress.' }, value: money(data.goals.reduce((total, goal) => total + goal.current_amount, 0), isAr), tone: '#22C55E' },
+    { title: { ar: 'إجمالي المستهدف', en: 'Target total' }, body: { ar: 'مجموع مبالغ الأهداف.', en: 'Combined target amounts.' }, value: money(data.goals.reduce((total, goal) => total + goal.target_amount, 0), isAr, currency), tone: '#3B82F6' },
+    { title: { ar: 'تقدم حالي', en: 'Current progress' }, body: { ar: 'مجموع المبالغ الحالية داخل الأهداف.', en: 'Combined current goal progress.' }, value: money(data.goals.reduce((total, goal) => total + goal.current_amount, 0), isAr, currency), tone: '#22C55E' },
   ];
   if (kind === 'reports') return [
     { title: { ar: 'الدخل مقابل المصروفات', en: 'Income vs expenses' }, body: { ar: 'مؤشر التوازن المالي الحالي.', en: 'Current financial balance signal.' }, value: common.balance, tone: '#111111' },
@@ -823,7 +898,7 @@ function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, isA
   ];
   return [
     { title: { ar: 'الصحة المالية', en: 'Financial health' }, body: { ar: 'تقدير سريع من الدخل والمصروفات.', en: 'Quick estimate from income and expenses.' }, value: `${progress(data.balance, data.totalIncome)}%`, tone: '#06B6D4' },
-    { title: { ar: 'فرصة ادخار', en: 'Savings opportunity' }, body: { ar: 'الفرق المتاح بعد المصروفات.', en: 'Potential surplus after expenses.' }, value: common.balance, tone: '#22C55E' },
+    { title: { ar: 'فرصة ادخار', en: 'Savings opportunity' }, body: { ar: 'الفرق المتاح بعد المصروفات.', en: 'Potential surplus after expenses.' }, value: money(data.balance, isAr, currency), tone: '#22C55E' },
     { title: { ar: 'تنبيه ذكي', en: 'Smart alert' }, body: { ar: 'الصفحة جاهزة للرؤى والإجراءات.', en: 'Page is ready for insights and actions.' }, value: isAr ? 'نشط' : 'Active', tone: '#D8AE63' },
   ];
 }
@@ -844,46 +919,46 @@ function buildDataShape() {
   };
 }
 
-function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean): EntryRow[] {
+function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean, currency = 'KWD'): EntryRow[] {
   if (kind === 'goals') {
     return data.goals.map(goal => {
       const done = progress(goal.current_amount, goal.target_amount);
       return {
         id: goal.id,
         title: goal.name,
-        subtitle: isAr ? `تقدم ${done}%، المتبقي ${money(Math.max(goal.target_amount - goal.current_amount, 0), isAr)}` : `${done}% complete, remaining ${money(Math.max(goal.target_amount - goal.current_amount, 0), isAr)}`,
-        value: money(goal.target_amount, isAr),
+        subtitle: isAr ? `تقدم ${done}%، المتبقي ${money(Math.max(goal.target_amount - goal.current_amount, 0), isAr, currency)}` : `${done}% complete, remaining ${money(Math.max(goal.target_amount - goal.current_amount, 0), isAr, currency)}`,
+        value: money(goal.target_amount, isAr, currency),
       };
     });
   }
 
   if (kind === 'reports') {
     return [
-      { id: 'income-vs-expenses', title: isAr ? 'الدخل مقابل المصروفات' : 'Income vs expenses', subtitle: isAr ? 'ملخص التدفق النقدي الحالي' : 'Current cash flow summary', value: money(data.balance, isAr) },
-      { id: 'savings-report', title: isAr ? 'تقرير الادخار' : 'Savings report', subtitle: isAr ? 'رصيد الادخار المسجل' : 'Recorded savings balance', value: money(data.totalSavings, isAr) },
-      { id: 'investment-report', title: isAr ? 'تقرير الاستثمار' : 'Investment report', subtitle: isAr ? 'قيمة المحفظة الحالية' : 'Current portfolio value', value: money(data.totalInvestments, isAr) },
+      { id: 'income-vs-expenses', title: isAr ? 'الدخل مقابل المصروفات' : 'Income vs expenses', subtitle: isAr ? 'ملخص التدفق النقدي الحالي' : 'Current cash flow summary', value: money(data.balance, isAr, currency) },
+      { id: 'savings-report', title: isAr ? 'تقرير الادخار' : 'Savings report', subtitle: isAr ? 'رصيد الادخار المسجل' : 'Recorded savings balance', value: money(data.totalSavings, isAr, currency) },
+      { id: 'investment-report', title: isAr ? 'تقرير الاستثمار' : 'Investment report', subtitle: isAr ? 'قيمة المحفظة الحالية' : 'Current portfolio value', value: money(data.totalInvestments, isAr, currency) },
     ];
   }
 
   if (kind === 'ai') {
     return [
-      { id: 'reduce-expenses', title: isAr ? 'خفض المصروفات' : 'Reduce expenses', subtitle: isAr ? 'راجع أعلى 3 بنود صرف هذا الشهر.' : 'Review the top 3 spending items this month.', value: money(data.totalExpenses, isAr) },
-      { id: 'increase-savings', title: isAr ? 'زيادة الادخار' : 'Increase savings', subtitle: isAr ? 'حوّل جزءًا من الصافي إلى هدف واضح.' : 'Move part of your surplus into a clear goal.', value: money(Math.max(data.balance * 0.2, 0), isAr) },
-      { id: 'recurring-investing', title: isAr ? 'استثمار منتظم' : 'Recurring investing', subtitle: isAr ? 'مساهمة شهرية صغيرة تحافظ على الاستمرارية.' : 'A small monthly contribution keeps momentum.', value: money(data.totalIncome * 0.1, isAr) },
+      { id: 'reduce-expenses', title: isAr ? 'خفض المصروفات' : 'Reduce expenses', subtitle: isAr ? 'راجع أعلى 3 بنود صرف هذا الشهر.' : 'Review the top 3 spending items this month.', value: money(data.totalExpenses, isAr, currency) },
+      { id: 'increase-savings', title: isAr ? 'زيادة الادخار' : 'Increase savings', subtitle: isAr ? 'حوّل جزءًا من الصافي إلى هدف واضح.' : 'Move part of your surplus into a clear goal.', value: money(Math.max(data.balance * 0.2, 0), isAr, currency) },
+      { id: 'recurring-investing', title: isAr ? 'استثمار منتظم' : 'Recurring investing', subtitle: isAr ? 'مساهمة شهرية صغيرة تحافظ على الاستمرارية.' : 'A small monthly contribution keeps momentum.', value: money(data.totalIncome * 0.1, isAr, currency) },
     ];
   }
 
   const source = kind === 'income' ? data.income : kind === 'invest' ? data.investments : kind === 'savings' ? data.savings : data.expenses;
-  return source.slice(0, 6).map(item => ({
+  return source.map(item => ({
     id: item.id,
     title: item.name.replace(/^خيرية:\d{4}-\d{2}:/, ''),
     subtitle: item.created_at ? new Date(item.created_at).toLocaleDateString() : (isAr ? 'سجل مالي' : 'Financial record'),
-    value: money(item.amount, isAr),
+    value: money(item.amount, isAr, currency),
     item,
   }));
 }
 
-function buildInsights(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean) {
+function buildInsights(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean, currency = 'KWD') {
   const ratio = data.totalIncome ? Math.round((data.totalExpenses / data.totalIncome) * 100) : 0;
   const base = [
     {
@@ -892,7 +967,7 @@ function buildInsights(kind: PageKind, data: ReturnType<typeof buildDataShape>, 
     },
     {
       title: isAr ? 'مساحة الصافي' : 'Net runway',
-      body: isAr ? `الصافي الحالي ${money(data.balance, isAr)}.` : `Current net balance is ${money(data.balance, isAr)}.`,
+      body: isAr ? `الصافي الحالي ${money(data.balance, isAr, currency)}.` : `Current net balance is ${money(data.balance, isAr, currency)}.`,
     },
   ];
   return [
@@ -943,13 +1018,13 @@ function summaryTitle(kind: PageKind, isAr: boolean) {
   return pick(text[kind], isAr);
 }
 
-function summaryText(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean) {
+function summaryText(kind: PageKind, data: ReturnType<typeof buildDataShape>, isAr: boolean, currency = 'KWD') {
   const values: Record<PageKind, LangText> = {
-    expenses: { ar: `إجمالي المصروفات الحالي ${money(data.totalExpenses, isAr)} مع ${data.expenses.length} سجل.`, en: `Current expenses total ${money(data.totalExpenses, isAr)} across ${data.expenses.length} records.` },
-    income: { ar: `الدخل الشهري الحالي ${money(data.totalIncome, isAr)} موزع على ${data.income.length} مصادر.`, en: `Monthly income is ${money(data.totalIncome, isAr)} across ${data.income.length} sources.` },
-    invest: { ar: `قيمة المحفظة ${money(data.totalInvestments, isAr)} مع مساهمة مقترحة ${money(data.totalIncome * 0.15, isAr)}.`, en: `Portfolio value is ${money(data.totalInvestments, isAr)} with suggested contribution ${money(data.totalIncome * 0.15, isAr)}.` },
-    savings: { ar: `إجمالي المدخرات ${money(data.totalSavings, isAr)} موزع على ${data.savings.length} سجلات.`, en: `Total savings are ${money(data.totalSavings, isAr)} across ${data.savings.length} entries.` },
-    goals: { ar: `مدخراتك الحالية ${money(data.totalSavings, isAr)} تقيس تقدم ${data.goals.length} أهداف.`, en: `Current savings of ${money(data.totalSavings, isAr)} measure progress across ${data.goals.length} goals.` },
+    expenses: { ar: `إجمالي المصروفات الحالي ${money(data.totalExpenses, isAr, currency)} مع ${data.expenses.length} سجل.`, en: `Current expenses total ${money(data.totalExpenses, isAr, currency)} across ${data.expenses.length} records.` },
+    income: { ar: `الدخل الشهري الحالي ${money(data.totalIncome, isAr, currency)} موزع على ${data.income.length} مصادر.`, en: `Monthly income is ${money(data.totalIncome, isAr, currency)} across ${data.income.length} sources.` },
+    invest: { ar: `قيمة المحفظة ${money(data.totalInvestments, isAr, currency)} مع مساهمة مقترحة ${money(data.totalIncome * 0.15, isAr, currency)}.`, en: `Portfolio value is ${money(data.totalInvestments, isAr, currency)} with suggested contribution ${money(data.totalIncome * 0.15, isAr, currency)}.` },
+    savings: { ar: `إجمالي المدخرات ${money(data.totalSavings, isAr, currency)} موزع على ${data.savings.length} سجلات.`, en: `Total savings are ${money(data.totalSavings, isAr, currency)} across ${data.savings.length} entries.` },
+    goals: { ar: `مدخراتك الحالية ${money(data.totalSavings, isAr, currency)} تقيس تقدم ${data.goals.length} أهداف.`, en: `Current savings of ${money(data.totalSavings, isAr, currency)} measure progress across ${data.goals.length} goals.` },
     reports: { ar: 'استخدم أزرار الطباعة والتصدير لحفظ نسخة من ملخصك المالي.', en: 'Use print and export actions to save a copy of your financial summary.' },
     ai: { ar: 'اكتب سؤالك للحصول على مساعدة مالية موجهة حسب بياناتك.', en: 'Type a prompt to get financial guidance shaped by your data.' },
   };
@@ -1024,6 +1099,7 @@ const baseStyles = `
   .kpi-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}.kpi-card,.panel{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:20px;box-shadow:0 4px 22px rgba(90,67,51,.06)}
   .kpi-card{padding:18px;position:relative;overflow:hidden}.kpi-card>span{position:absolute;inset-inline-start:0;top:0;width:4px;height:100%}.kpi-card p{font-size:12px;color:#9A6C3C;font-weight:800;margin:0 0 7px}.kpi-card strong{font-size:23px;font-weight:900;display:block}.kpi-card small{display:block;margin-top:8px;color:#7C6A5D;font-size:12px;line-height:1.6}
   .content-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(280px,.8fr);gap:18px}.panel{padding:20px}.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.panel-head p{margin:0 0 4px;font-size:11px;color:#9A6C3C;font-weight:800}.panel-head h3{margin:0;font-size:18px}.loading-pill{font-size:11px;font-weight:800;color:#D8AE63;background:rgba(216,174,99,.11);border-radius:999px;padding:5px 10px}
+  .row-controls{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}.row-search{flex:1;min-width:160px;height:38px;border:1.5px solid rgba(216,174,99,.22);border-radius:12px;padding:0 12px;background:#F7F3EA;font:700 13px Tajawal,Arial,sans-serif;color:#111;outline:none}.row-search:focus{border-color:#D8AE63;background:#FFFDFC}.row-select{height:38px;border:1.5px solid rgba(216,174,99,.22);border-radius:12px;padding:0 10px;background:#F7F3EA;font:700 13px Tajawal,Arial,sans-serif;color:#111;outline:none;cursor:pointer}.row-select:focus{border-color:#D8AE63}.row-count{font-size:12px;font-weight:800;color:#9A6C3C;margin-bottom:10px;padding:6px 0;border-bottom:1px solid rgba(216,174,99,.1)}.load-more-btn{width:100%;margin-top:12px;padding:12px;border-radius:14px;border:1.5px dashed rgba(216,174,99,.3);background:transparent;color:#9A6C3C;font:800 13px Tajawal,Arial,sans-serif;cursor:pointer;transition:all .2s}.load-more-btn:hover{background:rgba(216,174,99,.08);border-color:#D8AE63;color:#7a5a2a}
   .row-list{display:grid;gap:10px}.empty-state{padding:22px;border:1px dashed rgba(216,174,99,.25);border-radius:16px;color:#9A6C3C;text-align:center;font-size:13px;font-weight:800}.data-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid rgba(216,174,99,.08)}.data-row:last-child{border-bottom:0}.data-row strong{display:block;font-size:14px}.data-row span{display:block;color:#8B7A6D;font-size:12px;margin-top:4px}.data-row b{font-size:14px;color:#D8AE63;white-space:nowrap}.row-actions-wrap{display:flex;align-items:center;gap:10px}.row-actions{display:flex;align-items:center;gap:6px}.row-action{width:34px;height:34px;border-radius:11px;border:1px solid rgba(216,174,99,.16);background:#FFFDFC;color:#5B4332;display:grid;place-items:center;cursor:pointer;transition:all .18s ease}.row-action:hover{border-color:rgba(216,174,99,.45);color:#D8AE63;background:rgba(216,174,99,.08);transform:translateY(-1px)}
   .insight-list{display:grid;gap:12px}.insight-list>div{display:flex;gap:10px;padding:12px;border-radius:14px;background:rgba(216,174,99,.07)}.insight-list svg{color:#D8AE63;flex-shrink:0}.insight-list strong{display:block;font-size:13px}.insight-list span{display:block;font-size:12px;color:#7C6A5D;line-height:1.6;margin-top:3px}
   .summary-band,.ai-panel{margin-top:18px;background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:20px;padding:18px 20px;display:flex;align-items:center;gap:14px}.summary-band svg{color:#D8AE63}.summary-band strong,.ai-panel h3{font-size:16px}.summary-band p,.ai-panel p{margin:4px 0 0;color:#7C6A5D;line-height:1.7;font-size:13px}

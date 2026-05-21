@@ -11,6 +11,8 @@ import type { Lang } from '@/lib/translations';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Sidebar } from '@/components/Sidebar';
+import { CURRENCIES } from '@/lib/currencies';
+import { useCurrency } from '@/lib/useCurrency';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -74,6 +76,7 @@ export default function SettingsPage() {
   const { lang, setLang, dir } = useLanguage();
   const { user, loading } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { currency: ctxCurrency, setCurrency: setCtxCurrency } = useCurrency();
   const c = copy[lang];
   const [settings, setSettings] = useState<SettingsState>(initialSettings);
   const [saved, setSaved] = useState('');
@@ -87,6 +90,7 @@ export default function SettingsPage() {
 
   const persist = (next = settings, message = c.saved) => {
     setSettings(next);
+    setCtxCurrency(next.finance.currency);
     try { localStorage.setItem(STORE_KEY, JSON.stringify(next)); } catch {}
     if (user) {
       void (async () => {
@@ -161,7 +165,19 @@ export default function SettingsPage() {
           </Card>
 
           <Card icon={<SlidersHorizontal />} title={c.finance}>
-            <Input label={c.currency} value={settings.finance.currency} onChange={v => setNested('finance', 'currency', v)} />
+            <div className="field">
+              <label>{c.currency}</label>
+              <select
+                value={ctxCurrency}
+                onChange={e => { setNested('finance', 'currency', e.target.value); setCtxCurrency(e.target.value); }}
+              >
+                {CURRENCIES.map(cur => (
+                  <option key={cur.code} value={cur.code}>
+                    {cur.symbolAr} — {lang === 'fr' ? cur.nameFr : lang === 'en' ? cur.nameEn : cur.nameAr} ({cur.code})
+                  </option>
+                ))}
+              </select>
+            </div>
             <Input label={c.monthStart} value={settings.finance.monthStart} type="number" onChange={v => setNested('finance', 'monthStart', v)} />
             <Input label={c.budget} value={settings.finance.budget} type="number" onChange={v => setNested('finance', 'budget', v)} />
             <Input label={c.savings} value={settings.finance.savings} type="number" onChange={v => setNested('finance', 'savings', v)} />

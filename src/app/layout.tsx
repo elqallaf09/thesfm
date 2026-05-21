@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/sonner';
 import GlobalClientEffects from '@/components/GlobalClientEffects';
 import { AuthProvider } from '@/hooks/useAuth';
 import { LanguageProvider } from '@/components/LanguageProvider';
+import { CurrencyProvider } from '@/lib/useCurrency';
 import './globals.css';
 
 const cairo = Cairo({
@@ -42,7 +43,9 @@ export default function RootLayout({
         >
           <AuthProvider>
             <LanguageProvider>
-              {children}
+              <CurrencyProvider>
+                {children}
+              </CurrencyProvider>
               <GlobalClientEffects />
             </LanguageProvider>
           </AuthProvider>
