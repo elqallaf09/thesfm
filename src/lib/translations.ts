@@ -32,6 +32,9 @@ export const TR: Record<string, TranslationEntry> = {
   success:     { ar:'تمت العملية بنجاح', en:'Operation successful', fr:'Operation reussie' },
   actualData:  { ar:'بيانات فعلية', en:'Actual data', fr:'Donnees reelles' },
   demoData:    { ar:'بيانات تجريبية', en:'Demo data', fr:'Donnees demo' },
+  common_underDevelopment: { ar:'الصفحة تحت التطوير والإنشاء', en:'This page is under development', fr:'Cette page est en cours de developpement' },
+  common_comingSoon: { ar:'قريباً', en:'Coming soon', fr:'Bientot disponible' },
+  common_backToDashboard: { ar:'العودة للرئيسية', en:'Back to dashboard', fr:'Retour au tableau de bord' },
 
   close:       { ar:'إغلاق',             en:'Close', fr:'Fermer' },
 
@@ -65,6 +68,19 @@ export const TR: Record<string, TranslationEntry> = {
   nav_logout:     { ar:'تسجيل الخروج', en:'Sign Out', fr:'Deconnexion' },
   nav_savings:    { ar:'المدخرات', en:'Savings', fr:'Epargne' },
   nav_education:  { ar:'التعليم المالي', en:'Financial Education', fr:'Education financiere' },
+  nav_services_section: { ar:'الخدمات', en:'Services', fr:'Services' },
+  nav_investment_firms: { ar:'شركات الاستثمار', en:'Investment Firms', fr:"Societes d'investissement" },
+  nav_accounting_firms: { ar:'شركات المحاسبة', en:'Accounting Firms', fr:'Cabinets comptables' },
+  nav_feasibility_firms: { ar:'شركات دراسة الجدوى', en:'Feasibility Study Firms', fr:'Etudes de faisabilite' },
+  nav_advisory_firms: { ar:'شركات الاستشارات المالية', en:'Financial Advisory Firms', fr:'Conseil financier' },
+  'services.investmentFirms.title': { ar:'شركات الاستثمار', en:'Investment Firms', fr:"Societes d'investissement" },
+  'services.investmentFirms.description': { ar:'دليل شامل لشركات الاستثمار المرخّصة محلياً وإقليمياً', en:'A comprehensive directory of licensed investment firms', fr:"Annuaire complet des societes d'investissement agreees" },
+  'services.accountingFirms.title': { ar:'شركات المحاسبة', en:'Accounting Firms', fr:'Cabinets comptables' },
+  'services.accountingFirms.description': { ar:'دليل بأفضل مكاتب وشركات المحاسبة والمراجعة', en:'Top accounting and auditing firms', fr:"Annuaire des meilleurs cabinets de comptabilite et d'audit" },
+  'services.feasibilityFirms.title': { ar:'شركات دراسة الجدوى', en:'Feasibility Study Firms', fr:'Etudes de faisabilite' },
+  'services.feasibilityFirms.description': { ar:'دليل بشركات إعداد دراسات الجدوى الاقتصادية للمشاريع', en:'Firms specialized in economic feasibility studies', fr:'Cabinets specialises en etudes de faisabilite economique' },
+  'services.advisoryFirms.title': { ar:'شركات الاستشارات المالية للأفراد', en:'Personal Financial Advisory Firms', fr:'Conseil financier aux particuliers' },
+  'services.advisoryFirms.description': { ar:'دليل بمستشارين ماليين معتمدين للأفراد والعائلات', en:'Certified financial advisors for individuals and families', fr:'Conseillers financiers certifies pour particuliers et familles' },
 
   /* ── Dashboard Hero ── */
 

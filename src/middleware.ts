@@ -14,6 +14,10 @@ const protectedPrefixes = [
   '/settings',
   '/profile',
   '/notifications',
+  '/services/investment-firms',
+  '/services/accounting-firms',
+  '/services/feasibility-firms',
+  '/services/advisory-firms',
 ];
 
 function isProtected(pathname: string) {
