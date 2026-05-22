@@ -632,7 +632,7 @@ export const TR: Record<string, TranslationEntry> = {
 
   footer_rights:  { ar:'جميع الحقوق محفوظة', en:'All rights reserved', fr:'Tous droits réservés' },
 
-  footer_tagline: { ar:'المدير المالي الذكي • AI Wealth Platform', en:'AI Wealth Platform • Smart Financial Manager', fr:'Plateforme de richesse IA • Gestionnaire financier intelligent' },
+  footer_tagline: { ar:'المدير المالي الذكي • منصة الثروة الذكية', en:'AI Wealth Platform • Smart Financial Manager', fr:'Plateforme de richesse IA • Gestionnaire financier intelligent' },
 
   settings_title: { ar:'الإعدادات', en:'Settings', fr:'Paramètres' },
   settings_subtitle: { ar:'اضبط حسابك وتفضيلاتك المالية وتجربة THE SFM', en:'Manage your account, financial preferences, and THE SFM experience', fr:'Gérez votre compte, vos préférences financières et votre expérience THE SFM' },
