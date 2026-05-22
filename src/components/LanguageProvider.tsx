@@ -77,6 +77,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       document.documentElement.lang = lang;
       document.body.dir = dir;
       document.body.style.overflow = '';
+      document.body.style.overflowX = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.inset = '';
+      document.body.style.transform = '';
+      document.documentElement.style.overflowX = '';
       document.body.classList.remove('sfm-mobile-lock');
       document.documentElement.dataset.sfmLang = lang;
       document.documentElement.dataset.sfmDir = dir;

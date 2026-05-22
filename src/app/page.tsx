@@ -430,8 +430,38 @@ export default function DashboardPage(){
       .action-btn{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 10px;border:1.5px solid rgba(216,174,99,.2);border-radius:16px;background:#FFFDFC;cursor:pointer;transition:all .2s;font-family:'Tajawal',sans-serif;text-align:center}
       .action-btn:hover{border-color:#D8AE63;background:rgba(216,174,99,.06);transform:translateY(-2px);box-shadow:0 6px 20px rgba(216,174,99,.15)}
       .home-language-mobile{display:none}
-      @media(max-width:1024px){.sidebar{display:none!important}.main-pad{margin-right:0!important}.home-language-mobile{display:block}}
-      @media(max-width:768px){.kpi-grid{grid-template-columns:1fr 1fr!important}.hero-grid{grid-template-columns:1fr!important}.insight-grid{grid-template-columns:1fr!important}.dist-grid{grid-template-columns:1fr!important}.invest-grid{grid-template-columns:1fr!important}.goals-grid{grid-template-columns:1fr 1fr!important}.feat-grid{grid-template-columns:repeat(3,1fr)!important}}
+      .dp{width:100%;max-width:100%;min-height:100dvh;overflow-x:hidden}
+      .dp *{box-sizing:border-box;min-width:0}
+      .dc{width:100%;max-width:100%;min-width:0}
+      .table-scroll{width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+      @media(max-width:1024px){
+        .sidebar{display:none!important}
+        .main-pad{
+          margin-inline-start:0!important;
+          margin-inline-end:0!important;
+          margin-left:0!important;
+          margin-right:0!important;
+          width:100%!important;
+          max-width:100%!important;
+          padding:16px!important;
+          overflow-x:hidden!important;
+        }
+        .home-language-mobile{display:flex!important;max-width:100%;min-width:0}
+      }
+      @media(max-width:768px){
+        .main-pad{padding-inline:14px!important;gap:14px!important}
+        .main-pad>div{width:100%;max-width:100%;min-width:0}
+        .hero-grid,.insight-grid,.dist-grid,.invest-grid,.comparison-grid,.goals-actions-grid,.history-grid,.full-analysis-summary,.full-analysis-grid{grid-template-columns:1fr!important}
+        .kpi-grid,.goals-grid{grid-template-columns:1fr!important}
+        .quick-actions-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+        .dc{border-radius:16px}
+        .table-scroll table{min-width:520px}
+      }
+      @media(max-width:390px){
+        .main-pad{padding-inline:12px!important}
+        .quick-actions-grid{grid-template-columns:1fr!important}
+        .home-language-mobile{gap:6px!important}
+      }
     `}</style>
 
     <div className="dp" dir={dir}>
@@ -442,7 +472,7 @@ export default function DashboardPage(){
         <Sidebar />
 
         {/* ═══ MAIN CONTENT ═══ */}
-        <main className="main-pad" style={{flex:1,marginInlineStart:'230px',padding:'20px',display:'flex',flexDirection:'column',gap:'16px',maxWidth:'100%',overflowX:'hidden'}}>
+        <main className="main-pad" style={{flex:1,marginInlineStart:'230px',padding:'20px',display:'flex',flexDirection:'column',gap:'16px',width:'auto',maxWidth:'100%',minWidth:0,overflowX:'hidden'}}>
 
           {/* ─── PAGE HEADER ─── */}
           <div style={{...S(0),display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'12px'}}>
@@ -622,7 +652,7 @@ export default function DashboardPage(){
                     </select>
                   </div>
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'12px'}}>
+                <div className="comparison-grid" style={{display:'grid',gridTemplateColumns:'repeat(4,minmax(0,1fr))',gap:'12px'}}>
                   {([['income',t('chart_income')],['expenses',t('chart_expenses')],['savings',t('chart_savings')],['investment',t('chart_investment')]] as const).map(([key,label])=>{
                     const{diff,pct}=cmpDiff(key as keyof MonthSnapshot);
                     const up=diff>=0;
@@ -654,7 +684,8 @@ export default function DashboardPage(){
                 <EmptyState compact icon="📋" title={t('dash_noExpenses')} subtitle={t('dash_addFirstExpense')} btnLabel={t('dash_addExpense')} btnHref="/expenses" />
               ) : (
                 <>
-                  <table style={{width:'100%',borderCollapse:'collapse'}}>
+                  <div className="table-scroll">
+                    <table style={{width:'100%',borderCollapse:'collapse'}}>
                     <thead>
                       <tr style={{borderBottom:'2px solid rgba(216,174,99,.12)'}}>
                         {[t('dash_expenseName'),t('trans_amount'),t('trans_date')].map(h=><th key={h} style={{padding:'8px 10px',textAlign:'right',fontSize:'11.5px',fontWeight:'700',color:'#9A6C3C',letterSpacing:'.02em'}}>{h}</th>)}
@@ -669,7 +700,8 @@ export default function DashboardPage(){
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                    </table>
+                  </div>
                   <button onClick={()=>router.push('/expenses')} style={{width:'100%',marginTop:'14px',padding:'9px',background:'transparent',border:'1.5px solid rgba(216,174,99,.2)',borderRadius:'12px',color:'#9A6C3C',fontSize:'12.5px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif'}}>{t('trans_view_all')}</button>
                 </>
               )}
@@ -753,7 +785,7 @@ export default function DashboardPage(){
           </div>
 
           {/* ─── GOALS + QUICK ACTIONS ─── */}
-          <div style={{...S(280),display:'grid',gridTemplateColumns:'1fr 240px',gap:'16px',alignItems:'start'}}>
+          <div className="goals-actions-grid" style={{...S(280),display:'grid',gridTemplateColumns:'minmax(0,1fr) 240px',gap:'16px',alignItems:'start'}}>
             {/* Goals */}
             <div className="dc" style={{padding:'22px'}}>
               <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111',marginBottom:'18px'}}>{t('goals_title')}</h3>
@@ -792,7 +824,7 @@ export default function DashboardPage(){
             {/* Quick actions */}
             <div className="dc" style={{padding:'20px'}}>
               <h3 style={{fontSize:'14px',fontWeight:'800',color:'#111111',marginBottom:'14px'}}>{t('quick_title')}</h3>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+              <div className="quick-actions-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
                 {[
                   {icon:'💵',label:t('action_add_income'),action:()=>router.push('/income/add')},
                   {icon:'🛒',label:t('action_add_expense'),action:()=>router.push('/expenses/add')},
@@ -820,7 +852,7 @@ export default function DashboardPage(){
           </div>
 
           {/* ─── HISTORY TABLES ─── */}
-          <div style={{...S(320),display:'grid',gridTemplateColumns:'1fr 1fr',gap:'16px',alignItems:'start'}}>
+          <div className="history-grid" style={{...S(320),display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:'16px',alignItems:'start'}}>
             {monthHistory.length===0 ? (
               <div className="dc" style={{padding:'22px',gridColumn:'1 / -1'}}>
                 <EmptyState compact icon="📈" title={t('dash_noMonthlyHistory')} subtitle={t('dash_monthlyHistoryAccumHint')} btnLabel={t('dash_enterMonthlyIncome')} btnHref="/income" />
@@ -829,7 +861,8 @@ export default function DashboardPage(){
               <>
                 <div className="dc" style={{padding:'22px'}}>
                   <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111',marginBottom:'16px'}}>{t('dash_monthlyInvestments')}</h3>
-                  <table style={{width:'100%',borderCollapse:'collapse'}}>
+                  <div className="table-scroll">
+                    <table style={{width:'100%',borderCollapse:'collapse'}}>
                     <thead>
                       <tr style={{borderBottom:'2px solid rgba(216,174,99,.12)'}}>
                         {[t('charity_month'),t('total_invest'),'—'].map(h=><th key={h} style={{padding:'8px 8px',textAlign:'right',fontSize:'11px',fontWeight:'700',color:'#9A6C3C'}}>{h}</th>)}
@@ -844,11 +877,13 @@ export default function DashboardPage(){
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                    </table>
+                  </div>
                 </div>
                 <div className="dc" style={{padding:'22px'}}>
                   <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111',marginBottom:'16px'}}>{t('dash_monthlyExpenses')}</h3>
-                  <table style={{width:'100%',borderCollapse:'collapse'}}>
+                  <div className="table-scroll">
+                    <table style={{width:'100%',borderCollapse:'collapse'}}>
                     <thead>
                       <tr style={{borderBottom:'2px solid rgba(216,174,99,.12)'}}>
                         {[t('charity_month'),t('total_expenses'),'—'].map(h=><th key={h} style={{padding:'8px 8px',textAlign:'right',fontSize:'11px',fontWeight:'700',color:'#9A6C3C'}}>{h}</th>)}
@@ -863,7 +898,8 @@ export default function DashboardPage(){
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                    </table>
+                  </div>
                 </div>
               </>
             )}
@@ -900,7 +936,7 @@ export default function DashboardPage(){
                     </div>
                   ) : (
                     <>
-                      <div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:'10px'}}>
+                      <div className="full-analysis-summary" style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:'10px'}}>
                         {[
                           [L('الصحة المالية','Financial health','Santé financière'), `${healthScore}%`, '#22C55E'],
                           [L('صافي الرصيد','Net balance','Solde net'), fmt(netBalance), netBalance>=0?'#22C55E':'#EF4444'],
@@ -913,7 +949,7 @@ export default function DashboardPage(){
                         ))}
                       </div>
 
-                      <div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:'14px'}}>
+                      <div className="full-analysis-grid" style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:'14px'}}>
                         <AnalysisBlock title={L('الملخص المالي','Financial Summary','Résumé financier')} items={[`${L('إجمالي الدخل','Total income','Total des revenus')}: ${fmt(totalIncome)}`,`${L('إجمالي المصروفات','Total expenses','Total des dépenses')}: ${fmt(totalExpenses)}`,`${L('الادخار','Savings','Épargne')}: ${fmt(totalSavings)}`,`${L('الاستثمارات','Investments','Investissements')}: ${fmt(totalInvestment)}`]} />
                         <AnalysisBlock title={L('نقاط القوة','Strengths','Points forts')} items={[totalIncome>0?L('تم تسجيل الدخل ويمكن بناء خطة شهرية عليه.','Income is recorded, so a monthly plan can be built.','Les revenus sont enregistrés, un plan mensuel peut être construit.'):L('ابدأ بتسجيل الدخل لفتح تحليل أدق.','Add income to unlock better analysis.','Ajoutez vos revenus pour une analyse plus précise.'),totalSavings>0?L('لديك مدخرات مسجلة تدعم الاستقرار المالي.','Recorded savings support financial stability.','Votre épargne enregistrée renforce la stabilité financière.'):L('إضافة المدخرات ستوضح قوة وضعك المالي.','Adding savings will clarify your financial strength.','Ajouter l’épargne clarifiera votre solidité financière.'),investments.length>0?L('توجد استثمارات ضمن لوحة المتابعة.','Investments are included in tracking.','Les investissements sont inclus dans le suivi.'):L('تنويع الاستثمار يمكن أن يحسن النمو طويل الأجل.','Investment diversification can improve long-term growth.','La diversification peut améliorer la croissance à long terme.')]} />
                         <AnalysisBlock title={L('نقاط تحتاج تحسين','Areas to Improve','Points à améliorer')} items={[expenseRatio>0.8?L('المصروفات مرتفعة مقارنة بالدخل هذا الشهر.','Expenses are high compared with income this month.','Les dépenses sont élevées par rapport aux revenus ce mois-ci.'):L('راقب المصروفات المتكررة للحفاظ على الفائض.','Monitor recurring expenses to protect surplus.','Surveillez les dépenses récurrentes pour préserver l’excédent.'),goals.length===0?L('لا توجد أهداف مالية مسجلة حتى الآن.','No financial goals are registered yet.','Aucun objectif financier n’est encore enregistré.'):L('راجع تقدم الأهداف شهريًا لتجنب التأخير.','Review goal progress monthly to avoid delays.','Vérifiez les objectifs chaque mois pour éviter les retards.'),expenseItems.length===0?L('لا توجد معاملات مصروفات كافية لتحليل السلوك.','There are not enough expense transactions to analyze behavior.','Il n’y a pas assez de dépenses pour analyser les habitudes.'):L('صنّف المصروفات بدقة لتحسين توصيات الذكاء المالي.','Categorize expenses accurately to improve AI recommendations.','Classez les dépenses précisément pour améliorer les recommandations IA.')]} />
