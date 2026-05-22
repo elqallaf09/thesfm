@@ -104,6 +104,8 @@ type DataLoadError = {
   page: string;
   functionName: string;
   queryName: string;
+  table?: string;
+  missingColumn?: string;
   message: string;
   kind: DataErrorKind;
 };
@@ -128,6 +130,7 @@ type SmartExpense = MoneyItem & {
   date?: string | null;
   payment_method?: string | null;
   notes?: string | null;
+  enhanced?: Record<string, unknown> | null;
   receipt_image_url?: string | null;
   receipt_file_name?: string | null;
   ai_extracted_data?: AiExtractedData | null;
@@ -508,10 +511,18 @@ function classifyDataError(message: string): DataErrorKind {
   return 'unknown';
 }
 
+function missingColumnFromError(message: string) {
+  const match = message.match(/column\s+["']?(?:\w+\.)?(\w+)["']?\s+(?:does not exist|not found)/i)
+    ?? message.match(/could not find the ['"]?(\w+)['"]? column/i);
+  return match?.[1];
+}
+
 function logDataLoadError(error: DataLoadError, userId?: string) {
   console.error('Data loading failed:', {
     page: error.page,
     functionName: error.functionName,
+    table: error.table,
+    missingColumn: error.missingColumn,
     error: error.message,
     userId,
     queryName: error.queryName,
@@ -520,7 +531,7 @@ function logDataLoadError(error: DataLoadError, userId?: string) {
 
 async function safeQuery<T>(
   query: QueryResult<T>,
-  meta: { page: string; functionName: string; queryName: string; userId?: string },
+  meta: { page: string; functionName: string; queryName: string; userId?: string; table?: string },
 ): Promise<DataResult<T>> {
   try {
     const { data, error } = await query;
@@ -529,6 +540,8 @@ async function safeQuery<T>(
         page: meta.page,
         functionName: meta.functionName,
         queryName: meta.queryName,
+        table: meta.table,
+        missingColumn: missingColumnFromError(error.message),
         message: error.message,
         kind: classifyDataError(error.message),
       };
@@ -542,6 +555,8 @@ async function safeQuery<T>(
       page: meta.page,
       functionName: meta.functionName,
       queryName: meta.queryName,
+      table: meta.table,
+      missingColumn: missingColumnFromError(message),
       message,
       kind: classifyDataError(message),
     };
@@ -604,31 +619,32 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       }
 
       setDataLoading(true);
-      const queryMeta = (queryName: string) => ({
+      const queryMeta = (queryName: string, table?: string) => ({
         page: kind,
         functionName: 'RouteDashboardPage.load',
         queryName,
         userId: user.id,
+        table,
       });
       const expensesQuery = async () => {
-        const enhanced = await safeQuery<SmartExpense>(
-          supabase.from('expense_items').select('id, name, amount, category, date, payment_method, notes, receipt_image_url, receipt_file_name, ai_extracted_data, ai_confidence_score, created_at, updated_at').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<SmartExpense>,
-          queryMeta('expense_items.enhanced'),
+        const currentSchema = await safeQuery<SmartExpense>(
+          supabase.from('expense_items').select('*').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<SmartExpense>,
+          queryMeta('expense_items', 'expense_items'),
         );
-        if (!enhanced.error || !/column|schema|pgrst/i.test(enhanced.error.message)) return enhanced;
+        if (!currentSchema.error || !/column|schema|pgrst/i.test(currentSchema.error.message)) return currentSchema;
 
         const legacy = await safeQuery<SmartExpense>(
           supabase.from('expense_items').select('id, name, amount, category, created_at, updated_at').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<SmartExpense>,
-          queryMeta('expense_items.legacy'),
+          queryMeta('expense_items.legacy', 'expense_items'),
         );
-        return legacy.error ? enhanced : legacy;
+        return legacy.error ? currentSchema : legacy;
       };
       const [income, expenses, savings, investments, goals] = await Promise.all([
-        safeQuery<IncomeSource>(supabase.from('monthly_income_sources').select('id, label, category, amount').eq('user_id', user.id) as unknown as QueryResult<IncomeSource>, queryMeta('monthly_income_sources')),
+        safeQuery<IncomeSource>(supabase.from('monthly_income_sources').select('id, label, category, amount').eq('user_id', user.id) as unknown as QueryResult<IncomeSource>, queryMeta('monthly_income_sources', 'monthly_income_sources')),
         expensesQuery(),
-        safeQuery<MoneyItem>(supabase.from('savings_items').select('id, name, amount, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('savings_items')),
-        safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('investment_items')),
-        safeQuery<GoalRow>(supabase.from('financial_goals').select('id, goal, amount, duration, duration_unit, notes, created_at').eq('user_id', user.id) as unknown as QueryResult<GoalRow>, queryMeta('financial_goals')),
+        safeQuery<MoneyItem>(supabase.from('savings_items').select('id, name, amount, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('savings_items', 'savings_items')),
+        safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('investment_items', 'investment_items')),
+        safeQuery<GoalRow>(supabase.from('financial_goals').select('id, goal, amount, duration, duration_unit, notes, created_at').eq('user_id', user.id) as unknown as QueryResult<GoalRow>, queryMeta('financial_goals', 'financial_goals')),
       ]);
 
       if (cancelled) return;
