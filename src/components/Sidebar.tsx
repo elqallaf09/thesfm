@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Bell,
@@ -92,7 +93,8 @@ export function Sidebar() {
       <style>{`
         .sfm-shared-sidebar{width:230px;background:linear-gradient(180deg,#1A0F05 0%,#0D0804 100%);position:fixed;right:0;top:0;bottom:0;z-index:50;display:flex;flex-direction:column;overflow-y:auto;border-left:1px solid rgba(216,174,99,.1);font-family:Tajawal,Arial,sans-serif}
         [dir="ltr"].sfm-shared-sidebar{right:auto;left:0;border-left:0;border-right:1px solid rgba(216,174,99,.1)}
-        .sfm-shared-brand{padding:20px 16px 14px;border-bottom:1px solid rgba(216,174,99,.08)}
+        .sfm-shared-brand{padding:20px 16px 14px;border-bottom:1px solid rgba(216,174,99,.08);display:flex;align-items:center;gap:11px}
+        .sfm-shared-logo{border-radius:10px;flex:0 0 38px}
         .sfm-shared-brand strong{display:block;font-size:17px;font-weight:900;color:#D8AE63;letter-spacing:.02em}
         .sfm-shared-brand span{display:block;font-size:11px;color:rgba(216,174,99,.45);margin-top:3px}
         .sfm-shared-lang{padding:12px 16px;border-bottom:1px solid rgba(216,174,99,.08);display:flex;justify-content:center}
@@ -106,8 +108,18 @@ export function Sidebar() {
         @media(max-width:1024px){.sfm-shared-sidebar{display:none}}
       `}</style>
       <div className="sfm-shared-brand">
-        <strong>THE SFM</strong>
-        <span>{t('ai_manager')}</span>
+        <Image
+          src="/sfm-logo.png"
+          alt="THE SFM"
+          width={38}
+          height={38}
+          priority
+          className="sfm-shared-logo"
+        />
+        <div>
+          <strong>THE SFM</strong>
+          <span>{t('ai_manager')}</span>
+        </div>
       </div>
       <div className="sfm-shared-lang">
         <LanguageSwitcher variant="dark" compact />

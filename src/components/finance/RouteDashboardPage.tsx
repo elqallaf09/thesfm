@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   Edit3,
@@ -839,7 +840,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         {menuOpen && (
           <div className="mobile-panel">
             <div className="mobile-head">
-              <strong>THE SFM</strong>
+              <span style={{display:'flex',alignItems:'center',gap:8}}>
+                <Image src="/sfm-logo.png" alt="THE SFM" width={28} height={28} style={{borderRadius:7}} />
+                <strong>THE SFM</strong>
+              </span>
               <button className="icon-btn" onClick={() => setMenuOpen(false)} aria-label="Close navigation">
                 <X size={19} />
               </button>
