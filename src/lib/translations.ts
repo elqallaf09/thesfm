@@ -233,6 +233,64 @@ export const TR: Record<string, TranslationEntry> = {
 
   action_export:      { ar:'تصدير PDF',      en:'Export PDF', fr:'Exporter PDF' },
 
+  quick_actions:      { ar:'إجراءات سريعة',  en:'Quick Actions', fr:'Actions rapides' },
+
+  /* ── Dashboard — Net wealth / AI insight lines ── */
+
+  net_wealth_enter:   { ar:'أدخل بيانات الشهر لرؤية النمو', en:'Enter this month\'s data to see growth', fr:'Saisissez les données du mois pour voir la croissance' },
+
+  ai_ins_income_yes:  { ar:'تم تسجيل الدخل لهذا الشهر', en:'Income recorded for this month', fr:'Revenu enregistré pour ce mois' },
+  ai_ins_income_no:   { ar:'لم يتم تسجيل دخل بعد', en:'No income recorded yet', fr:'Aucun revenu enregistré' },
+  ai_ins_expense_yes: { ar:'تم تسجيل مصروفات فعلية', en:'Actual expenses recorded', fr:'Dépenses réelles enregistrées' },
+  ai_ins_expense_no:  { ar:'لا توجد مصروفات مسجلة', en:'No expenses recorded', fr:'Aucune dépense enregistrée' },
+  ai_ins_invest_yes:  { ar:'توجد استثمارات مسجلة', en:'Investments recorded', fr:'Investissements enregistrés' },
+  ai_ins_invest_no:   { ar:'لا توجد استثمارات مسجلة', en:'No investments recorded', fr:'Aucun investissement enregistré' },
+
+  /* ── Dashboard — Expense distribution extra categories ── */
+
+  dist_charity:       { ar:'خيرية',          en:'Charity', fr:'Charité' },
+  dist_utilities:     { ar:'المرافق',         en:'Utilities', fr:'Services publics' },
+  dist_health:        { ar:'الصحة',           en:'Health', fr:'Santé' },
+
+  /* ── Dashboard — Transactions / history tables ── */
+
+  trans_name:         { ar:'اسم المصروف',     en:'Expense Name', fr:'Nom de la dépense' },
+  hist_invest_title:  { ar:'الاستثمارات الشهرية', en:'Monthly Investments', fr:'Investissements mensuels' },
+  hist_expense_title: { ar:'المصروفات الشهرية', en:'Monthly Expenses', fr:'Dépenses mensuelles' },
+  hist_month:         { ar:'الشهر',           en:'Month', fr:'Mois' },
+
+  /* ── Dashboard — defaults / misc ── */
+
+  goal_default:       { ar:'هدف مالي',        en:'Financial Goal', fr:'Objectif financier' },
+  invest_default:     { ar:'استثمار',         en:'Investment', fr:'Investissement' },
+  goal_of:            { ar:'من',              en:'of', fr:'sur' },
+  expense_default:    { ar:'مصروف',           en:'Expense', fr:'Dépense' },
+  charity_work:       { ar:'عمل خيري',        en:'Charitable donation', fr:'Don caritatif' },
+
+  /* ── Dashboard — empty states ── */
+
+  es_chart_title:     { ar:'لا يوجد تاريخ شهري بعد', en:'No monthly history yet', fr:'Aucun historique mensuel' },
+  es_chart_sub:       { ar:'ابدأ بإدخال دخلك ومصاريفك ليتكوّن الرسم تلقائياً', en:'Add your income and expenses and the chart builds automatically', fr:'Ajoutez vos revenus et dépenses, le graphique se construit automatiquement' },
+  es_enter_income:    { ar:'إدخال الدخل الشهري', en:'Enter Monthly Income', fr:'Saisir le revenu mensuel' },
+  es_cmp_title:       { ar:'لا توجد بيانات كافية للمقارنة', en:'Not enough data to compare', fr:'Pas assez de données pour comparer' },
+  es_cmp_sub:         { ar:'أضف بيانات لشهرين على الأقل', en:'Add data for at least two months', fr:'Ajoutez des données pour au moins deux mois' },
+  es_cmp_btn:         { ar:'إضافة بيانات الدخل', en:'Add Income Data', fr:'Ajouter des données de revenu' },
+  es_trans_title:     { ar:'لا توجد مصاريف مسجلة بعد', en:'No expenses recorded yet', fr:'Aucune dépense enregistrée' },
+  es_trans_sub:       { ar:'ابدأ بإضافة مصروفك الأول', en:'Start by adding your first expense', fr:'Commencez par ajouter votre première dépense' },
+  es_donut_title:     { ar:'لا توجد مصاريف مسجلة', en:'No expenses recorded', fr:'Aucune dépense enregistrée' },
+  es_donut_sub:       { ar:'أضف مصاريفك لرؤية التوزيع', en:'Add expenses to see the breakdown', fr:'Ajoutez des dépenses pour voir la répartition' },
+  es_invest_title:    { ar:'لا توجد استثمارات مسجلة', en:'No investments recorded', fr:'Aucun investissement enregistré' },
+  es_invest_sub:      { ar:'أضف استثمارك الأول', en:'Add your first investment', fr:'Ajoutez votre premier investissement' },
+  es_add_invest:      { ar:'إضافة استثمار',   en:'Add Investment', fr:'Ajouter un investissement' },
+  es_invperf_title:   { ar:'لا يوجد تاريخ استثماري بعد', en:'No investment history yet', fr:'Aucun historique d\'investissement' },
+  es_invperf_sub:     { ar:'أضف دخلك ومصاريفك واستثماراتك لعرض الأداء', en:'Add income, expenses and investments to view performance', fr:'Ajoutez revenus, dépenses et investissements pour voir la performance' },
+  es_best_title:      { ar:'لا توجد استثمارات', en:'No investments', fr:'Aucun investissement' },
+  es_best_sub:        { ar:'ستظهر أعلى الاستثمارات بعد إضافتها', en:'Top investments appear once added', fr:'Les meilleurs investissements apparaissent une fois ajoutés' },
+  es_goals_title:     { ar:'لا توجد أهداف مالية بعد', en:'No financial goals yet', fr:'Aucun objectif financier' },
+  es_goals_sub:       { ar:'ابدأ بتحديد هدفك الأول', en:'Start by setting your first goal', fr:'Commencez par définir votre premier objectif' },
+  es_add_goal:        { ar:'إضافة هدف',       en:'Add Goal', fr:'Ajouter un objectif' },
+  es_hist_sub:        { ar:'ابدأ بإدخال دخلك ومصاريفك ليتراكم السجل تلقائياً', en:'Add income and expenses and the history accumulates automatically', fr:'Ajoutez revenus et dépenses, l\'historique s\'accumule automatiquement' },
+
   /* ── Profile ── */
 
   profile_title:     { ar:'الملف الشخصي',           en:'Profile', fr:'Profil' },

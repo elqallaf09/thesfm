@@ -10,7 +10,9 @@ export function formatCurrency(
   const currency = getCurrency(currencyCode);
   const symbol = locale === 'ar' ? currency.symbolAr : currency.symbolEn;
 
-  const formatted = amount.toLocaleString('en-US', {
+  // French uses space thousands separators + comma decimal (e.g. 4 250,000)
+  const numberLocale = locale === 'fr' ? 'fr-FR' : 'en-US';
+  const formatted = amount.toLocaleString(numberLocale, {
     minimumFractionDigits: currency.decimals,
     maximumFractionDigits: currency.decimals,
   });

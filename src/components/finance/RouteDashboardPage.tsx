@@ -932,11 +932,17 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
             {editableKind(kind) && rows.length > 0 && (
               <div className="row-count">
-                {isAr
-                  ? `يعرض ${Math.min(visibleCount, filteredRows.length)} من ${filteredRows.length} ${rows.length !== filteredRows.length ? `(المجموع ${rows.length})` : ''}`
-                  : `Showing ${Math.min(visibleCount, filteredRows.length)} of ${filteredRows.length}${rows.length !== filteredRows.length ? ` (total ${rows.length})` : ''}`}
+                {(() => {
+                  const shown = Math.min(visibleCount, filteredRows.length);
+                  const total = filteredRows.length;
+                  const grand = rows.length;
+                  const hasMore = grand !== total;
+                  if (lang === 'ar') return `يعرض ${shown} من ${total} ${hasMore ? `(المجموع ${grand})` : ''}`;
+                  if (lang === 'fr') return `Affichage de ${shown} sur ${total}${hasMore ? ` (total ${grand})` : ''}`;
+                  return `Showing ${shown} of ${total}${hasMore ? ` (total ${grand})` : ''}`;
+                })()}
                 {' · '}
-                {money(filteredRows.slice(0, visibleCount).reduce((s, r) => s + (r.item?.amount ?? 0), 0), isAr, currency)}
+                {money(filteredRows.slice(0, visibleCount).reduce((s, r) => s + (r.item?.amount ?? 0), 0), lang, currency)}
               </div>
             )}
 

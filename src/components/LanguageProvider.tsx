@@ -11,14 +11,20 @@ function isLang(value: unknown): value is Lang {
   return value === 'ar' || value === 'en' || value === 'fr';
 }
 
+function readCookieLang(): Lang | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(/(?:^|;\s*)sfm_lang=(ar|en|fr)/);
+  return match ? (match[1] as Lang) : null;
+}
+
 function readStoredLang(): Lang {
   if (typeof window === 'undefined') return 'ar';
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (isLang(stored)) return stored;
-    return 'ar';
+    return readCookieLang() ?? 'ar';
   } catch {
-    return 'ar';
+    return readCookieLang() ?? 'ar';
   }
 }
 
@@ -66,6 +72,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     setLangState(l);
     try {
       localStorage.setItem(STORAGE_KEY, l);
+      // Mirror to a cookie so the server can pick the right dir/lang on SSR
+      document.cookie = `${STORAGE_KEY}=${l};path=/;max-age=31536000;samesite=lax`;
       window.dispatchEvent(new CustomEvent(LANG_EVENT, { detail: { lang: l } }));
     } catch {}
   }, []);
