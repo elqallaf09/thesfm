@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import Image from 'next/image';
 import {
   Activity,
   AlertTriangle,
@@ -368,10 +369,13 @@ export default function ProfilePage() {
       <Sidebar />
       <main className="profile-main">
         <header className="profile-top">
-          <div>
-            <span>THE SFM</span>
-            <h1>{L('title')}</h1>
-            <p>{L('subtitle')}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/sfm-logo.png" alt="THE SFM" width={42} height={42} priority className="rounded-lg" />
+            <div>
+              <span>THE SFM</span>
+              <h1>{L('title')}</h1>
+              <p>{L('subtitle')}</p>
+            </div>
           </div>
           <LanguageSwitcher variant="gold" compact />
         </header>

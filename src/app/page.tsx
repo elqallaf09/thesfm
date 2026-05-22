@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -379,11 +380,14 @@ export default function DashboardPage(){
 
           {/* ─── PAGE HEADER ─── */}
           <div style={{...S(0),display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'12px'}}>
-            <div>
+            <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+              <Image src="/sfm-logo.png" alt="THE SFM" width={28} height={28} className="rounded-sm" />
+              <div>
               <h1 style={{fontSize:'clamp(20px,3vw,28px)',fontWeight:'900',color:'#111111',marginBottom:'4px'}}>
                 مرحباً {profile.display_name||'SFM'} 👋
               </h1>
               <p style={{fontSize:'13px',color:'#9A6C3C'}}>هذه نظرة عامة على وضعك المالي اليوم</p>
+              </div>
             </div>
             <div style={{display:'flex',gap:'10px',alignItems:'center'}}>
               {isGuest && (
@@ -802,7 +806,10 @@ export default function DashboardPage(){
           {/* ─── FOOTER ─── */}
           <div style={{...S(360),marginTop:'8px',padding:'20px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',borderTop:'1px solid rgba(216,174,99,.12)',flexWrap:'wrap',gap:'12px'}}>
             <div>
-              <div style={{fontSize:'16px',fontWeight:'900',color:'#D8AE63',marginBottom:'2px'}}>THE SFM</div>
+              <div style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'16px',fontWeight:'900',color:'#D8AE63',marginBottom:'2px'}}>
+                <Image src="/sfm-logo.png" alt="THE SFM" width={24} height={24} className="rounded-sm" />
+                <span>THE SFM</span>
+              </div>
               <div style={{fontSize:'11px',color:'#9A6C3C'}}>المدير المالي الذكي • AI Wealth Platform</div>
             </div>
             <div style={{fontSize:'11px',color:'#BFB5A8',textAlign:'center'}}>جميع الحقوق محفوظة • THE SFM 2026</div>

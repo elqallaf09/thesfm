@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -314,9 +315,7 @@ export function AuthForm() {
 
         {/* Brand */}
         <div className="auth-brand">
-          <div className="auth-logo">
-            <span className="auth-logo-text">SFM</span>
-          </div>
+          <Image src="/sfm-logo.png" alt="THE SFM" width={88} height={88} priority className="auth-logo" />
           <div className="auth-brand-name">{t.title}</div>
           <div className="auth-brand-sub">
             {showForgotPassword

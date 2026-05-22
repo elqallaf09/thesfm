@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Bell, CheckCheck, Home, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -119,7 +120,7 @@ export function NotificationsPage() {
             {t('nav_home')}
           </button>
           <div className="title">
-            <span><Bell size={22} /></span>
+            <Image src="/sfm-logo.png" alt="THE SFM" width={42} height={42} priority className="brand-logo" />
             <div>
               <p>THE SFM</p>
               <h1>{t('nav_notif')}</h1>
@@ -199,7 +200,7 @@ const styles = `
   .notif-page{max-width:1180px;margin-inline-start:230px;padding:24px 20px 60px}
   .notif-header{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:22px;flex-wrap:wrap}
   .back-btn,.notice-actions button{border:1.5px solid rgba(216,174,99,.22);background:#FFFDFC;color:#5B4332;border-radius:13px;height:40px;padding:0 14px;display:inline-flex;align-items:center;gap:8px;font:800 13px Tajawal,Arial,sans-serif;cursor:pointer}
-  .title{display:flex;align-items:center;gap:12px;flex:1;min-width:220px}.title>span{width:46px;height:46px;border-radius:15px;background:linear-gradient(135deg,#D8AE63,#9A6C3C);display:grid;place-items:center;color:#111}.title p{margin:0 0 3px;font-size:11px;color:#9A6C3C;font-weight:800}.title h1{margin:0;font-size:26px;font-weight:900}
+  .title{display:flex;align-items:center;gap:12px;flex:1;min-width:220px}.brand-logo{border-radius:14px;object-fit:cover;box-shadow:0 10px 24px rgba(45,26,10,.14)}.title p{margin:0 0 3px;font-size:11px;color:#9A6C3C;font-weight:800}.title h1{margin:0;font-size:26px;font-weight:900}
   .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;background:linear-gradient(135deg,#111,#2B1A0D 62%,#D8AE63 140%);color:#FFFDFC;border-radius:24px;padding:28px;margin-bottom:18px;box-shadow:0 18px 45px rgba(45,26,10,.16)}
   .eyebrow{display:inline-flex;padding:4px 10px;border-radius:999px;background:rgba(216,174,99,.15);color:#D8AE63;font-size:11px;font-weight:900;margin-bottom:12px}.hero h2{margin:0 0 8px;font-size:31px}.hero p{margin:0;color:rgba(255,255,255,.68);line-height:1.8;max-width:640px}.counter{min-width:118px;text-align:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:16px}.counter strong{display:block;font-size:34px;color:#D8AE63}.counter span{font-size:12px;color:rgba(255,255,255,.62)}
   .list{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:22px;box-shadow:0 4px 22px rgba(90,67,51,.06);padding:18px}.list-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.list-head p{margin:0 0 3px;color:#9A6C3C;font-size:11px;font-weight:900}.list-head h3{margin:0;font-size:19px}.loading{color:#9A6C3C;font-size:12px;font-weight:900}

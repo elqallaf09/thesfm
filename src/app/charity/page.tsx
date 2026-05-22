@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -503,7 +504,10 @@ export default function CharityPage() {
 
           {/* Footer */}
           <div style={{ ...S(300), marginTop: '24px', paddingTop: '18px', borderTop: '1px solid rgba(216,174,99,.12)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '800', color: '#D8AE63' }}>THE SFM</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '800', color: '#D8AE63' }}>
+              <Image src="/sfm-logo.png" alt="THE SFM" width={24} height={24} className="rounded-sm" />
+              <span>THE SFM</span>
+            </div>
             <p style={{ fontSize: '11px', color: '#9A6C3C' }}>جميع المبالغ المُدخلة تُسجَّل تلقائياً ضمن المصروفات الشهرية</p>
           </div>
 

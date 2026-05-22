@@ -2,6 +2,7 @@
 
 import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { Eye, EyeOff, LockKeyhole, UserRound } from 'lucide-react';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -159,7 +160,14 @@ function LoginContent() {
         </div>
 
         <div className="brand">
-          <div className="mark">SFM</div>
+          <Image
+            src="/sfm-logo.png"
+            alt="THE SFM"
+            width={88}
+            height={88}
+            priority
+            className="mark"
+          />
           <h1>{t('login_title')}</h1>
           <p>{t('login_subtitle')}</p>
         </div>
@@ -231,7 +239,7 @@ function LoginContent() {
         .login-shell{min-height:100vh;background:linear-gradient(180deg,#F7F3EA,#FFFDFC);display:grid;place-items:center;padding:24px;font-family:Tajawal,Arial,sans-serif;color:#111}
         .login-card{width:min(100%,440px);background:#FFFDFC;border:1px solid rgba(216,174,99,.18);border-radius:26px;box-shadow:0 22px 70px rgba(90,67,51,.12);padding:24px}
         .language-row{display:flex;justify-content:flex-end;margin-bottom:14px}
-        .brand{text-align:center;margin-bottom:22px}.mark{width:64px;height:64px;margin:0 auto 12px;border-radius:18px;background:linear-gradient(135deg,#111,#2D1A0A,#D8AE63);color:#fff;display:grid;place-items:center;font-weight:900;letter-spacing:.08em}.brand h1{font-size:26px;margin:0 0 8px;color:#111}.brand p{font-size:13px;color:#9A6C3C;line-height:1.7;margin:0}
+        .brand{text-align:center;margin-bottom:22px}.mark{width:88px;height:88px;margin:0 auto 12px;border-radius:22px;display:block;object-fit:cover;box-shadow:0 12px 28px rgba(45,26,10,.18)}.brand h1{font-size:26px;margin:0 0 8px;color:#111}.brand p{font-size:13px;color:#9A6C3C;line-height:1.7;margin:0}
         .form{display:grid;gap:14px}label span{display:block;font-size:13px;font-weight:800;color:#5B4332;margin-bottom:7px}.input-wrap{height:52px;border:1.5px solid rgba(216,174,99,.22);background:rgba(247,243,234,.7);border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 13px;color:#9A6C3C}.input-wrap:focus-within{border-color:#D8AE63;box-shadow:0 0 0 4px rgba(216,174,99,.14)}input{flex:1;border:0;background:transparent;outline:0;color:#111;font:700 14px Tajawal,Arial,sans-serif;min-width:0}.icon{border:0;background:transparent;color:#9A6C3C;display:grid;place-items:center;cursor:pointer}.primary{height:54px;border:0;border-radius:16px;background:linear-gradient(135deg,#111,#2D1A0A,#D8AE63);color:#fff;font:900 15px Tajawal,Arial,sans-serif;cursor:pointer;margin-top:4px}.primary:disabled{opacity:.65;cursor:wait}.message{background:rgba(239,68,68,.08);color:#B91C1C;border:1px solid rgba(239,68,68,.18);border-radius:13px;padding:11px 13px;font-size:13px;font-weight:800}.message.ok{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.18);color:#15803D}.actions{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin-top:18px}.actions button{border:1px solid rgba(216,174,99,.2);background:#fffaf1;color:#6B4B2B;border-radius:999px;padding:9px 13px;font:800 12px Tajawal,Arial,sans-serif;cursor:pointer}
       `}</style>
     </main>

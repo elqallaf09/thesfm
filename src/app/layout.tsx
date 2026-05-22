@@ -15,9 +15,25 @@ const cairo = Cairo({
   display: 'swap',
 });
 
+const description = 'إدارة راتبك بذكاء - قسّم راتبك إلى مصروفات ومدخرات واستثمار';
+
 export const metadata: Metadata = {
-  title: 'المدير المالي الذكي | SFM',
-  description: 'إدارة راتبك بذكاء - قسّم راتبك إلى مصروفات ومدخرات واستثمار',
+  metadataBase: new URL('https://www.the-sfm.com'),
+  title: 'THE SFM',
+  description,
+  icons: {
+    icon: '/icons/icon-192.png',
+    apple: '/icons/apple-touch-icon.png',
+  },
+  openGraph: {
+    title: 'THE SFM',
+    description,
+    images: [{ url: '/icons/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: ['/icons/og-image.png'],
+  },
 };
 
 export default function RootLayout({

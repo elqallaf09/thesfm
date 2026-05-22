@@ -708,12 +708,12 @@ tbody tr:hover td{background:var(--bg-muted)}
 .auth-brand { text-align: center; margin-bottom: 32px; }
 
 .auth-logo {
-  width: 68px; height: 68px;
-  background: linear-gradient(145deg, #1B2430, #2C3444);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
+  width: 88px; height: 88px;
+  border-radius: 22px;
+  display: block;
+  object-fit: cover;
   margin: 0 auto 16px;
-  box-shadow: 0 4px 18px rgba(27,36,48,0.28);
+  box-shadow: 0 12px 28px rgba(27,36,48,0.22);
 }
 .auth-logo-text {
   font-family: 'IBM Plex Sans Arabic', 'Tajawal', sans-serif;

@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   Edit3,
@@ -839,7 +840,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         {menuOpen && (
           <div className="mobile-panel">
             <div className="mobile-head">
-              <strong>THE SFM</strong>
+              <span className="mobile-brand">
+                <Image src="/sfm-logo.png" alt="THE SFM" width={32} height={32} priority />
+                <strong>THE SFM</strong>
+              </span>
               <button className="icon-btn" onClick={() => setMenuOpen(false)} aria-label="Close navigation">
                 <X size={19} />
               </button>
@@ -1631,7 +1635,7 @@ const baseStyles = `
   .sfm-sidebar{width:250px;background:#111;border-left:1px solid rgba(216,174,99,.22);padding:22px 16px;position:sticky;top:0;height:100vh;color:#FFFDFC;flex-shrink:0}
   [dir="ltr"] .sfm-sidebar{border-left:0;border-right:1px solid rgba(216,174,99,.22)}
   .brand{display:flex;align-items:center;gap:12px;margin-bottom:28px;cursor:pointer}
-  .brand-mark{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#D8AE63,#9A6C3C);display:grid;place-items:center;color:#111;font-weight:900}
+  .brand-mark{width:42px;height:42px;border-radius:12px;object-fit:cover;display:block}
   .brand strong{display:block;font-size:15px}.brand span{display:block;font-size:11px;color:rgba(255,255,255,.48);margin-top:2px}
   nav{display:grid;gap:7px}nav button,.mobile-panel button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:rgba(255,255,255,.62);padding:11px 12px;border-radius:12px;cursor:pointer;font:700 13px Tajawal,Arial,sans-serif;text-align:start}
   nav button:hover,nav button.active{background:rgba(216,174,99,.13);color:#D8AE63}
@@ -1654,7 +1658,7 @@ const baseStyles = `
   .insight-list{display:grid;gap:12px}.insight-list>div{display:flex;gap:10px;padding:12px;border-radius:14px;background:rgba(216,174,99,.07)}.insight-list svg{color:#D8AE63;flex-shrink:0}.insight-list strong{display:block;font-size:13px}.insight-list span{display:block;font-size:12px;color:#7C6A5D;line-height:1.6;margin-top:3px}
   .summary-band,.ai-panel{margin-top:18px;background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:20px;padding:18px 20px;display:flex;align-items:center;gap:14px}.summary-band svg{color:#D8AE63}.summary-band strong,.ai-panel h3{font-size:16px}.summary-band p,.ai-panel p{margin:4px 0 0;color:#7C6A5D;line-height:1.7;font-size:13px}
   .ai-panel{align-items:stretch;justify-content:space-between}.chat-history{display:grid;gap:8px;min-width:min(460px,100%);max-height:190px;overflow:auto;margin-bottom:10px}.chat-history>div{padding:10px 12px;border-radius:14px;font-size:13px;line-height:1.6}.chat-history .user{background:#111;color:#FFFDFC}.chat-history .assistant{background:rgba(216,174,99,.11);color:#5B4332}.chat-box{display:flex;gap:10px;min-width:min(460px,100%)}.chat-box input{height:46px;border:1.5px solid rgba(216,174,99,.22);border-radius:14px;padding:0 14px;background:#F7F3EA;min-width:0;flex:1;font:600 14px Tajawal,Arial,sans-serif;color:#111}.chat-box button{width:46px;border-radius:14px;border:0;background:#111;color:#D8AE63;display:grid;place-items:center;cursor:pointer}.chat-box button:disabled{opacity:.55;cursor:wait}
-  .mobile-panel{position:fixed;inset:12px;z-index:50;background:#111;border-radius:22px;padding:16px;color:#FFFDFC;box-shadow:0 24px 80px rgba(0,0,0,.35)}.mobile-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .mobile-panel{position:fixed;inset:12px;z-index:50;background:#111;border-radius:22px;padding:16px;color:#FFFDFC;box-shadow:0 24px 80px rgba(0,0,0,.35)}.mobile-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.mobile-brand{display:flex;align-items:center;gap:10px}.mobile-brand img{border-radius:10px;object-fit:cover}
   .entry-overlay{position:fixed;inset:0;background:rgba(17,17,17,.42);backdrop-filter:blur(8px);z-index:80;display:grid;place-items:center;padding:18px}.entry-modal,.confirm-modal{width:min(480px,100%);background:#FFFDFC;border:1px solid rgba(216,174,99,.2);border-radius:22px;box-shadow:0 26px 80px rgba(45,26,10,.26);padding:20px}.entry-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.entry-modal-head p{margin:0 0 4px;color:#9A6C3C;font-size:12px;font-weight:900}.entry-modal-head h3,.confirm-modal h3{margin:0;font-size:21px;font-weight:900}.entry-form{display:grid;gap:14px}.entry-form label{display:grid;gap:7px;font-weight:900;color:#5B4332;font-size:13px}.entry-form input{height:50px;border:1.5px solid rgba(216,174,99,.22);border-radius:14px;background:#F7F3EA;padding:0 14px;color:#111;font:800 14px Tajawal,Arial,sans-serif;outline:0}.entry-form input:focus{border-color:#D8AE63;box-shadow:0 0 0 4px rgba(216,174,99,.12);background:#FFFDFC}.entry-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}.primary-form-btn,.ghost-form-btn,.danger-form-btn{height:44px;border-radius:13px;padding:0 18px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer}.primary-form-btn{border:0;background:linear-gradient(135deg,#111,#2D1A0A,#D8AE63);color:#fff}.ghost-form-btn{border:1px solid rgba(216,174,99,.22);background:#FFFDFC;color:#5B4332}.danger-form-btn{border:0;background:#C2410C;color:#fff}.primary-form-btn:disabled,.ghost-form-btn:disabled,.danger-form-btn:disabled{opacity:.58;cursor:wait}.confirm-modal{text-align:center}.confirm-icon{width:58px;height:58px;border-radius:18px;background:rgba(194,65,12,.09);color:#C2410C;display:grid;place-items:center;margin:0 auto 12px}.confirm-modal p{margin:8px 0 4px;color:#5B4332;font-weight:800}.confirm-modal small{display:block;color:#9A6C3C;line-height:1.6;margin-bottom:14px}.confirm-modal .entry-actions{justify-content:center}.entry-toast{position:fixed;z-index:90;inset-inline-end:22px;bottom:22px;max-width:min(360px,calc(100vw - 32px));padding:13px 16px;border-radius:15px;font:900 13px Tajawal,Arial,sans-serif;box-shadow:0 18px 45px rgba(45,26,10,.18);animation:slideUp .22s ease}.entry-toast.ok{background:#ECFDF5;color:#047857;border:1px solid rgba(34,197,94,.2)}.entry-toast.err{background:#FEF2F2;color:#B91C1C;border:1px solid rgba(239,68,68,.2)}@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   .finance-header-lang{display:block}
   @media(max-width:920px){.sfm-sidebar{display:none}.menu-btn{display:grid}.sfm-main{padding:16px;margin-inline-start:0}.hero{display:block}.hero-actions{margin-top:18px}.content-grid{grid-template-columns:1fr}.ai-panel{display:grid}.chat-box{min-width:0}}
