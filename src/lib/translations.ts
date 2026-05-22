@@ -810,6 +810,7 @@ export const TR: Record<string, TranslationEntry> = {
   goal_ai_preview_title: { ar:'معاينة خطة الذكاء الاصطناعي', en:'AI plan preview', fr:'Aperçu du plan IA' },
   goal_ai_missing_title: { ar:'أكمل هذه البيانات لإظهار خطة رقمية دقيقة', en:'Complete these fields for a precise numeric plan', fr:'Complétez ces champs pour obtenir un plan chiffré précis' },
   goal_missing_target: { ar:'المبلغ المستهدف', en:'Target amount', fr:'Montant cible' },
+  goal_missing_target_hint: { ar:'أدخل مبلغ الهدف لحساب التقدم', en:'Enter a target amount to calculate progress', fr:'Saisissez un montant cible pour calculer la progression' },
   goal_missing_current: { ar:'المبلغ الحالي', en:'Current amount', fr:'Montant actuel' },
   goal_missing_contribution: { ar:'المساهمة الشهرية', en:'Monthly contribution', fr:'Contribution mensuelle' },
   goal_missing_deadline: { ar:'تاريخ مستقبلي للهدف', en:'Future target date', fr:'Date cible future' },

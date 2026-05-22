@@ -10,6 +10,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { UserChip } from '@/components/UserChip';
 import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
+import { calculateGoalProgress, parseMoney } from '@/lib/goalProgress';
 
 /* ═══════════════════════════════════════════════════
    TYPES
@@ -19,7 +20,7 @@ interface MonthSnapshot {
   income: number; expenses: number; savings: number; investment: number; charity: number;
 }
 type ExpenseRow = { id: string; name: string | null; amount: number | string | null; created_at?: string | null };
-type GoalRow = { id: string; goal?: string | null; name?: string | null; amount?: number | string | null; target_amount?: number | string | null; current_amount?: number | string | null; icon?: string | null; color?: string | null };
+type GoalRow = { id: string; goal?: string | null; name?: string | null; amount?: number | string | null; target_amount?: number | string | null; targetAmount?: number | string | null; current_amount?: number | string | null; currentAmount?: number | string | null; saved_amount?: number | string | null; savedAmount?: number | string | null; notes?: string | null; icon?: string | null; color?: string | null };
 type InvestmentRow = { id: string; name: string | null; amount: number | string | null };
 type SavingsRow = { id: string; name: string | null; amount: number | string | null; created_at?: string | null };
 type DonutItem = { label: string; pct: number; color: string; amount: number };
@@ -205,7 +206,7 @@ function EmptyState({
 }
 
 function amountOf(value: number | string | null | undefined) {
-  return parseFloat(String(value ?? 0)) || 0;
+  return parseMoney(value);
 }
 
 function formatExpenseName(name: string | null | undefined, fallback: string, charityFallback: string) {
@@ -794,10 +795,11 @@ export default function DashboardPage(){
               ) : (
                 <div className="goals-grid" style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:'14px'}}>
                   {goals.map(g=>{
-                    const target=amountOf(g.target_amount ?? g.amount);
-                    const saved=amountOf(g.current_amount);
+                    const goalProgress=calculateGoalProgress(g);
+                    const target=goalProgress.targetAmount;
+                    const saved=goalProgress.currentAmount;
                     const color=g.color||'#D8AE63';
-                    const pct=target>0?Math.min(100,Math.round((saved/target)*100)):0;
+                    const pct=goalProgress.progressPercent;
                     return(
                       <div key={g.id} className="dc" style={{padding:'16px',border:`1px solid ${color}22`}}>
                         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px'}}>

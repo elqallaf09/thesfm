@@ -189,6 +189,7 @@ export type Database = {
           user_id: string
           goal: string
           amount: number
+          current_amount: number | null
           duration: string | null
           duration_unit: string | null
           notes: string | null
@@ -200,6 +201,7 @@ export type Database = {
           user_id: string
           goal: string
           amount?: number
+          current_amount?: number | null
           duration?: string | null
           duration_unit?: string | null
           notes?: string | null
@@ -211,6 +213,7 @@ export type Database = {
           user_id?: string
           goal?: string
           amount?: number
+          current_amount?: number | null
           duration?: string | null
           duration_unit?: string | null
           notes?: string | null

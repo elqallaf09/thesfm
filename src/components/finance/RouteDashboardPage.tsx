@@ -46,6 +46,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
 import { getCurrency, getCurrencyOptions } from '@/lib/currencies';
+import { calculateGoalProgress, parseMoney } from '@/lib/goalProgress';
 
 type PageKind = 'expenses' | 'income' | 'invest' | 'savings' | 'goals' | 'reports' | 'ai';
 type LangText = { ar: string; en: string; fr?: string };
@@ -76,7 +77,13 @@ type GoalItem = {
 type GoalRow = {
   id: string;
   goal: string;
-  amount: number;
+  amount: number | string | null;
+  target_amount?: number | string | null;
+  targetAmount?: number | string | null;
+  current_amount?: number | string | null;
+  currentAmount?: number | string | null;
+  saved_amount?: number | string | null;
+  savedAmount?: number | string | null;
   duration?: string | null;
   duration_unit?: string | null;
   notes?: string | null;
@@ -554,12 +561,11 @@ function money(value: number, langOrIsAr: string | boolean, currency = 'KWD') {
 }
 
 function sum(items: MoneyItem[]) {
-  return items.reduce((total, item) => total + (Number(item.amount) || 0), 0);
+  return items.reduce((total, item) => total + parseMoney(item.amount), 0);
 }
 
 function progress(current: number, target: number) {
-  if (!target) return 0;
-  return Math.min(100, Math.max(0, Math.round((current / target) * 100)));
+  return calculateGoalProgress({ current_amount: current, target_amount: target }).progressPercent;
 }
 
 function editableKind(kind: PageKind): kind is EntryKind {
@@ -621,6 +627,7 @@ function monthsBetween(from: Date, to?: string | null) {
 
 function goalFromRow(item: GoalRow): GoalItem {
   const notes = parseGoalNotes(item.notes);
+  const amounts = calculateGoalProgress(item);
   const deadline = typeof notes.deadline === 'string'
     ? notes.deadline
     : item.duration && item.duration_unit === 'month'
@@ -630,9 +637,9 @@ function goalFromRow(item: GoalRow): GoalItem {
   return {
     id: item.id,
     name: item.goal,
-    target_amount: Number(item.amount) || 0,
-    current_amount: Number(notes.currentAmount) || 0,
-    monthly_contribution: Number(notes.monthlyContribution) || 0,
+    target_amount: amounts.targetAmount,
+    current_amount: amounts.currentAmount,
+    monthly_contribution: parseMoney(notes.monthlyContribution),
     goal_type: typeof notes.goalType === 'string' ? notes.goalType : 'saving',
     category: typeof notes.category === 'string' ? notes.category : 'general',
     priority: typeof notes.priority === 'string' ? notes.priority : 'medium',
@@ -799,7 +806,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         expensesQuery(),
         safeQuery<MoneyItem>(supabase.from('savings_items').select('id, name, amount, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('savings_items', 'savings_items')),
         safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('investment_items', 'investment_items')),
-        safeQuery<GoalRow>(supabase.from('financial_goals').select('id, goal, amount, duration, duration_unit, notes, created_at').eq('user_id', user.id) as unknown as QueryResult<GoalRow>, queryMeta('financial_goals', 'financial_goals')),
+        safeQuery<GoalRow>(supabase.from('financial_goals').select('*').eq('user_id', user.id) as unknown as QueryResult<GoalRow>, queryMeta('financial_goals', 'financial_goals')),
       ]);
 
       if (cancelled) return;
@@ -857,9 +864,9 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const goalPreview = useMemo(() => buildGoalAnalysis({
     id: goalForm.id || 'preview',
     name: goalForm.name || t('goal_name_label'),
-    target_amount: Number(goalForm.targetAmount) || 0,
-    current_amount: Number(goalForm.currentAmount) || 0,
-    monthly_contribution: Number(goalForm.monthlyContribution) || 0,
+    target_amount: parseMoney(goalForm.targetAmount),
+    current_amount: parseMoney(goalForm.currentAmount),
+    monthly_contribution: parseMoney(goalForm.monthlyContribution),
     goal_type: goalForm.goalType,
     category: goalForm.category,
     priority: goalForm.priority,
@@ -1492,9 +1499,9 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     if (goalSaving) return;
 
     const name = goalForm.name.trim();
-    const targetAmount = Number(goalForm.targetAmount);
-    const currentAmount = Number(goalForm.currentAmount || 0);
-    const monthlyContribution = Number(goalForm.monthlyContribution || 0);
+    const targetAmount = parseMoney(goalForm.targetAmount);
+    const currentAmount = parseMoney(goalForm.currentAmount);
+    const monthlyContribution = parseMoney(goalForm.monthlyContribution);
 
     const deadlineDate = goalForm.deadline ? new Date(goalForm.deadline) : null;
     const today = new Date();
@@ -1539,23 +1546,37 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       const payload = {
         goal: name,
         amount: targetAmount,
+        current_amount: currentAmount,
         duration: months ? String(months) : null,
         duration_unit: months ? 'month' : null,
         notes,
       };
 
       if (goalMode === 'create') {
-        const { data: created, error } = await supabase.from('financial_goals').insert({
+        let insertResult = await supabase.from('financial_goals').insert({
           ...payload,
           user_id: user.id,
         }).select('id, goal, amount, duration, duration_unit, notes, created_at').single();
+        if (insertResult.error && /current_amount|column|schema|PGRST/i.test(insertResult.error.message)) {
+          const { current_amount: _currentAmount, ...legacyPayload } = payload;
+          insertResult = await supabase.from('financial_goals').insert({
+            ...legacyPayload,
+            user_id: user.id,
+          }).select('id, goal, amount, duration, duration_unit, notes, created_at').single();
+        }
+        const { data: created, error } = insertResult;
         if (error) throw error;
         setSnapshot(prev => ({
           ...prev,
           goals: [goalFromRow(created as GoalRow), ...prev.goals],
         }));
       } else {
-        const { error } = await supabase.from('financial_goals').update(payload).eq('id', goalForm.id).eq('user_id', user.id);
+        let updateResult = await supabase.from('financial_goals').update(payload).eq('id', goalForm.id).eq('user_id', user.id);
+        if (updateResult.error && /current_amount|column|schema|PGRST/i.test(updateResult.error.message)) {
+          const { current_amount: _currentAmount, ...legacyPayload } = payload;
+          updateResult = await supabase.from('financial_goals').update(legacyPayload).eq('id', goalForm.id).eq('user_id', user.id);
+        }
+        const { error } = updateResult;
         if (error) throw error;
 
         setSnapshot(prev => ({
@@ -2150,7 +2171,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               )}
               {kind === 'goals' && data.goals.map(goal => {
                 const analysis = buildGoalAnalysis(goal, data, lang, currency, t);
-                const done = progress(goal.current_amount, goal.target_amount);
+                const goalProgress = calculateGoalProgress(goal);
+                const done = goalProgress.progressPercent;
                 return (
                   <article className="goal-card" key={goal.id}>
                     <div className="goal-card-head">
@@ -2173,10 +2195,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                       <b>{done}%</b>
                     </div>
                     <div className="goal-meta-grid">
-                      <div><span>{t('goal_target_amount')}</span><strong>{money(goal.target_amount, lang, goal.currency || currency)}</strong></div>
-                      <div><span>{t('goal_current_amount')}</span><strong>{money(goal.current_amount, lang, goal.currency || currency)}</strong></div>
+                      <div><span>{t('goal_target_amount')}</span><strong>{goalProgress.targetAmount > 0 ? money(goalProgress.targetAmount, lang, goal.currency || currency) : t('goal_missing_target_hint')}</strong></div>
+                      <div><span>{t('goal_current_amount')}</span><strong>{money(goalProgress.currentAmount, lang, goal.currency || currency)}</strong></div>
+                      <div><span>{t('goal_remaining_amount')}</span><strong>{money(goalProgress.remainingAmount, lang, goal.currency || currency)}</strong></div>
                       <div><span>{t('goal_monthly_contribution')}</span><strong>{money(goal.monthly_contribution, lang, goal.currency || currency)}</strong></div>
-                      <div><span>{t('goal_deadline')}</span><strong>{goal.deadline || t('goal_deadline_missing')}</strong></div>
                     </div>
                     <div className="goal-ai-card">
                       <div className="goal-ai-head">
@@ -2607,12 +2629,12 @@ function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, lang
   const isAr = lang === 'ar';
   if (kind === 'goals') {
     return data.goals.map(goal => {
-      const done = progress(goal.current_amount, goal.target_amount);
+      const goalProgress = calculateGoalProgress(goal);
       return {
         id: goal.id,
         title: goal.name,
-        subtitle: pick({ ar: `تقدم ${done}%، المتبقي ${money(Math.max(goal.target_amount - goal.current_amount, 0), lang, currency)}`, en: `${done}% complete, remaining ${money(Math.max(goal.target_amount - goal.current_amount, 0), lang, currency)}`, fr: `${done}% accompli, reste ${money(Math.max(goal.target_amount - goal.current_amount, 0), lang, currency)}` }, lang),
-        value: money(goal.target_amount, lang, currency),
+        subtitle: pick({ ar: `تقدم ${goalProgress.progressPercent}%، المتبقي ${money(goalProgress.remainingAmount, lang, currency)}`, en: `${goalProgress.progressPercent}% complete, remaining ${money(goalProgress.remainingAmount, lang, currency)}`, fr: `${goalProgress.progressPercent}% accompli, reste ${money(goalProgress.remainingAmount, lang, currency)}` }, lang),
+        value: money(goalProgress.targetAmount, lang, currency),
       };
     });
   }
