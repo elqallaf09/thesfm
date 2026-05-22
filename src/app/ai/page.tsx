@@ -41,6 +41,8 @@ import {
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
+import { t as tr } from '@/lib/translations';
+import { NotificationService } from '@/lib/notifications';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/format';
@@ -349,6 +351,37 @@ export default function AiPage() {
     window.setTimeout(() => setToast(''), 2400);
   }
 
+  // Run the analysis and persist it as a notification
+  async function analyzeNow() {
+    showToast(aiSummary);
+    if (!user?.id || !hasCoreData) return;
+    const recs: string[] = [];
+    if (totals.totalExpenses > totals.totalIncome * 0.6) recs.push(tr('rec_reduce_expenses', lang));
+    if (totals.totalIncome > 0 && totals.totalSavings < totals.totalIncome * 0.2) recs.push(tr('rec_increase_savings', lang));
+    if (totals.totalInvestments === 0) recs.push(tr('rec_start_investing', lang));
+    const severity: 'success' | 'warning' | 'info' = score >= 70 ? 'success' : score >= 40 ? 'warning' : 'info';
+    await NotificationService.createFromAnalysis(
+      {
+        title: tr('analysis_title', lang),
+        summary: aiSummary.slice(0, 140),
+        body: aiSummary,
+        type: 'analysis',
+        severity,
+        data: {
+          metrics: [
+            { label: tr('total_income', lang), value: totals.totalIncome },
+            { label: tr('total_expenses', lang), value: totals.totalExpenses },
+            { label: tr('total_savings', lang), value: totals.totalSavings },
+            { label: tr('total_invest', lang), value: totals.totalInvestments },
+          ],
+          recommendations: recs,
+        },
+        link: '/notifications',
+      },
+      user.id,
+    );
+  }
+
   function answerQuestion(raw: string) {
     const question = raw.trim();
     if (!question) return;
@@ -388,7 +421,7 @@ export default function AiPage() {
             <h2>{L('title')}</h2>
             <p>{aiSummary}</p>
             <div className="ai-hero-actions">
-              <button onClick={() => showToast(aiSummary)}><Brain size={16} />{L('analyze')}</button>
+              <button onClick={analyzeNow}><Brain size={16} />{L('analyze')}</button>
               <button onClick={() => document.getElementById('ai-plan')?.scrollIntoView({ behavior: 'smooth' })}><CalendarClock size={16} />{L('monthlyPlan')}</button>
               <button onClick={() => document.getElementById('ai-prediction')?.scrollIntoView({ behavior: 'smooth' })}><TrendingUp size={16} />{L('predict')}</button>
             </div>

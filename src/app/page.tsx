@@ -9,6 +9,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { UserChip } from '@/components/UserChip';
 import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
+import { NotificationService } from '@/lib/notifications';
 
 /* ═══════════════════════════════════════════════════
    TYPES
@@ -333,6 +334,42 @@ export default function DashboardPage(){
     return{diff:b-a,pct:a>0?((b-a)/a*100):0};
   };
 
+  // Build a financial analysis from current totals and persist it as a notification
+  const saveFullAnalysis=async()=>{
+    if(!user?.id){router.push('/login');return;}
+    const recs:string[]=[];
+    if(totalExpenses>totalIncome*0.6) recs.push(t('rec_reduce_expenses'));
+    if(totalIncome>0 && totalSavings<totalIncome*0.2) recs.push(t('rec_increase_savings'));
+    if(totalInvestment===0) recs.push(t('rec_start_investing'));
+    const severity=healthScore>=60?'success':healthScore>=30?'warning':'info';
+    const body=[
+      `${t('net_wealth')}: ${fmt(netWorth)}`,
+      `${t('health_score')}: ${healthScore}%`,
+      `${t('total_income')}: ${fmt(totalIncome)}`,
+      `${t('total_expenses')}: ${fmt(totalExpenses)}`,
+      `${t('total_savings')}: ${fmt(totalSavings)}`,
+      `${t('total_invest')}: ${fmt(totalInvestment)}`,
+    ].join('\n');
+    await NotificationService.createFromAnalysis({
+      title:t('analysis_title'),
+      summary:`${t('net_wealth')}: ${fmt(netWorth)} · ${t('health_score')}: ${healthScore}%`,
+      body,
+      type:'analysis',
+      severity,
+      data:{
+        metrics:[
+          {label:t('total_income'),value:totalIncome},
+          {label:t('total_expenses'),value:totalExpenses},
+          {label:t('total_savings'),value:totalSavings},
+          {label:t('total_invest'),value:totalInvestment},
+        ],
+        recommendations:recs,
+      },
+      link:'/notifications',
+    },user.id);
+    router.push('/notifications');
+  };
+
   if(loading)return(
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:'#F7F3EA'}}>
       <div style={{width:'44px',height:'44px',borderRadius:'50%',border:'3px solid rgba(216,174,99,.2)',borderTopColor:'#D8AE63',animation:'spin 1s linear infinite'}}/>
@@ -512,7 +549,7 @@ export default function DashboardPage(){
                   </div>
                 </div>
               ))}
-              <button style={{width:'100%',marginTop:'14px',padding:'11px',background:'linear-gradient(135deg,#111111,#2D1A0A)',border:'none',borderRadius:'13px',color:'#D8AE63',fontSize:'13px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif',transition:'all .2s'}}
+              <button onClick={saveFullAnalysis} style={{width:'100%',marginTop:'14px',padding:'11px',background:'linear-gradient(135deg,#111111,#2D1A0A)',border:'none',borderRadius:'13px',color:'#D8AE63',fontSize:'13px',fontWeight:'700',cursor:'pointer',fontFamily:'Tajawal,sans-serif',transition:'all .2s'}}
                 onMouseEnter={e=>(e.currentTarget.style.opacity='0.85')} onMouseLeave={e=>(e.currentTarget.style.opacity='1')}>
                 {t('ai_view_full')}
               </button>

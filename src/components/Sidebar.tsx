@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 
@@ -81,6 +82,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { t, dir } = useLanguage();
   const { signOut } = useAuth();
+  const { count: unreadCount } = useUnreadNotifications();
 
   const handleLogout = async () => {
     await signOut();
@@ -103,6 +105,7 @@ export function Sidebar() {
         .sfm-shared-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.9)}
         .sfm-shared-item.active{background:rgba(216,174,99,.18);color:#D8AE63;font-weight:800;box-shadow:inset 0 0 0 1px rgba(216,174,99,.08)}
         .sfm-shared-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex:0 0 20px}
+        .sfm-shared-badge{margin-inline-start:auto;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#EF4444;color:#fff;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;line-height:1}
         .sfm-shared-divider{height:1px;background:rgba(216,174,99,.08);margin:8px 6px}
         .sfm-shared-section-title{padding:5px 12px 7px;color:rgba(216,174,99,.48);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
         @media(max-width:1024px){.sfm-shared-sidebar{display:none}}
@@ -144,6 +147,9 @@ export function Sidebar() {
                 >
                   <span className="sfm-shared-icon"><NavIcon size={17} /></span>
                   <span>{t(item.labelKey)}</span>
+                  {item.path === '/notifications' && unreadCount > 0 && (
+                    <span className="sfm-shared-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                  )}
                 </button>
               );
             })}

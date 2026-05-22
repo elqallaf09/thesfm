@@ -291,6 +291,51 @@ export const TR: Record<string, TranslationEntry> = {
   es_add_goal:        { ar:'إضافة هدف',       en:'Add Goal', fr:'Ajouter un objectif' },
   es_hist_sub:        { ar:'ابدأ بإدخال دخلك ومصاريفك ليتراكم السجل تلقائياً', en:'Add income and expenses and the history accumulates automatically', fr:'Ajoutez revenus et dépenses, l\'historique s\'accumule automatiquement' },
 
+  /* ── Notifications center ── */
+
+  notif_center:       { ar:'مركز التنبيهات', en:'Notification center', fr:'Centre de notifications' },
+  notif_subtitle:     { ar:'إشعاراتك المالية في مكان واحد', en:'Your financial notifications in one place', fr:'Vos notifications financières en un seul endroit' },
+  notif_unread:       { ar:'غير مقروءة',    en:'Unread', fr:'Non lues' },
+  notif_mark_all:     { ar:'تعليم الكل كمقروء', en:'Mark all as read', fr:'Tout marquer comme lu' },
+  notif_empty:        { ar:'لا توجد إشعارات حالياً', en:'No notifications right now', fr:'Aucune notification pour le moment' },
+  notif_list:         { ar:'قائمة الإشعارات', en:'Notification list', fr:'Liste des notifications' },
+  notif_load_more:    { ar:'تحميل المزيد',   en:'Load more', fr:'Charger plus' },
+
+  notif_filter_type:  { ar:'النوع',          en:'Type', fr:'Type' },
+  notif_filter_sev:   { ar:'الخطورة',        en:'Severity', fr:'Gravité' },
+  notif_all:          { ar:'الكل',           en:'All', fr:'Tout' },
+
+  notif_type_analysis:   { ar:'تحليل',       en:'Analysis', fr:'Analyse' },
+  notif_type_alert:      { ar:'تنبيه',       en:'Alert', fr:'Alerte' },
+  notif_type_system:     { ar:'النظام',      en:'System', fr:'Système' },
+  notif_type_goal:       { ar:'هدف',         en:'Goal', fr:'Objectif' },
+  notif_type_investment: { ar:'استثمار',     en:'Investment', fr:'Investissement' },
+  notif_type_expense:    { ar:'مصروف',       en:'Expense', fr:'Dépense' },
+
+  sev_info:           { ar:'معلومة',         en:'Info', fr:'Info' },
+  sev_success:        { ar:'نجاح',           en:'Success', fr:'Succès' },
+  sev_warning:        { ar:'تحذير',          en:'Warning', fr:'Avertissement' },
+  sev_critical:       { ar:'حرج',            en:'Critical', fr:'Critique' },
+
+  notif_view:         { ar:'عرض التفاصيل',   en:'View details', fr:'Voir les détails' },
+  notif_share:        { ar:'مشاركة',         en:'Share', fr:'Partager' },
+  notif_export_pdf:   { ar:'تصدير PDF',      en:'Export PDF', fr:'Exporter PDF' },
+  notif_mark_read:    { ar:'تعليم كمقروء',   en:'Mark as read', fr:'Marquer comme lu' },
+  notif_metrics:      { ar:'المؤشرات',       en:'Metrics', fr:'Indicateurs' },
+  notif_recommend:    { ar:'التوصيات',       en:'Recommendations', fr:'Recommandations' },
+
+  notif_today:        { ar:'اليوم',          en:'Today', fr:"Aujourd'hui" },
+  notif_yesterday:    { ar:'أمس',            en:'Yesterday', fr:'Hier' },
+  notif_this_week:    { ar:'هذا الأسبوع',    en:'This week', fr:'Cette semaine' },
+  notif_no_date:      { ar:'بدون تاريخ',     en:'No date', fr:'Sans date' },
+
+  analysis_title:     { ar:'تحليل وضعك المالي', en:'Your financial analysis', fr:'Analyse de votre situation financière' },
+  analysis_saved:     { ar:'تم حفظ التحليل في الإشعارات', en:'Analysis saved to notifications', fr:'Analyse enregistrée dans les notifications' },
+
+  rec_increase_savings: { ar:'حاول زيادة نسبة الادخار إلى 20% من الدخل', en:'Aim to save at least 20% of your income', fr:'Visez à épargner au moins 20% de vos revenus' },
+  rec_reduce_expenses:  { ar:'راجع أكبر المصروفات لتقليل الإنفاق', en:'Review your largest expenses to cut spending', fr:'Examinez vos plus grosses dépenses pour réduire les coûts' },
+  rec_start_investing:  { ar:'ابدأ بالاستثمار لتنمية ثروتك على المدى الطويل', en:'Start investing to grow your wealth long-term', fr:'Commencez à investir pour faire croître votre patrimoine à long terme' },
+
   /* ── Profile ── */
 
   profile_title:     { ar:'الملف الشخصي',           en:'Profile', fr:'Profil' },
