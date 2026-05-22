@@ -918,6 +918,14 @@ export const TR: Record<string, TranslationEntry> = {
   error_partial_load:   { ar:'تعذر تحميل بعض البيانات، لذلك نعرض واجهة آمنة بدون تعطيل الصفحة.', en:'Some data could not load, so the page is showing a safe fallback instead.', fr:'Certaines données n\'ont pas pu être chargées, la page affiche un écran de secours.' },
   no_data_saved:        { ar:'لا توجد بيانات محفوظة حالياً', en:'No saved data yet', fr:'Aucune donnée enregistrée' },
 
+  /* ── Data error states ── */
+  err_db_connection:    { ar:'تعذر الاتصال بقاعدة البيانات', en:'Could not connect to the database', fr:'Impossible de se connecter à la base de données' },
+  err_db_connection_hint:{ ar:'تحقق من إعدادات الاتصال أو حاول لاحقاً', en:'Check the connection settings or try again later', fr:'Vérifiez la connexion ou réessayez plus tard' },
+  err_not_logged:       { ar:'يرجى تسجيل الدخول لعرض بياناتك', en:'Please sign in to view your data', fr:'Veuillez vous connecter pour voir vos données' },
+  err_no_permission:    { ar:'لا توجد صلاحية لعرض هذه البيانات', en:'You do not have permission to view this data', fr:"Vous n'avez pas l'autorisation de voir ces données" },
+  err_unknown:          { ar:'حدث خطأ غير متوقع أثناء تحميل البيانات', en:'An unexpected error occurred while loading data', fr:'Une erreur inattendue est survenue lors du chargement' },
+  retry:                { ar:'إعادة المحاولة', en:'Retry', fr:'Réessayer' },
+
   /* ── Filters / Sort ── */
   filter_all:           { ar:'كل الفترات', en:'All time', fr:'Toute la période' },
   filter_month:         { ar:'هذا الشهر', en:'This month', fr:'Ce mois-ci' },

@@ -319,13 +319,18 @@ function deleteConfirmKey(kind: EntryKind) {
   return deleteConfirmKeys[kind];
 }
 
-async function safeQuery<T>(query: QueryResult<T>) {
+async function safeQuery<T>(queryName: string, query: QueryResult<T>, context: { page: string; userId?: string }) {
   try {
     const { data, error } = await query;
-    if (error) return { data: [] as T[], error: error.message };
+    if (error) {
+      console.error('Data loading failed:', { ...context, functionName: 'safeQuery', queryName, error: error.message });
+      return { data: [] as T[], error: error.message };
+    }
     return { data: data ?? [], error: null };
   } catch (err) {
-    return { data: [] as T[], error: err instanceof Error ? err.message : 'Unknown data error' };
+    const message = err instanceof Error ? err.message : 'Unknown data error';
+    console.error('Data loading failed:', { ...context, functionName: 'safeQuery', queryName, error: message });
+    return { data: [] as T[], error: message };
   }
 }
 
@@ -358,6 +363,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [rowSort, setRowSort] = useState<'dateDesc' | 'dateAsc' | 'amountDesc' | 'amountAsc'>('dateDesc');
   const [rowRange, setRowRange] = useState<'all' | 'month' | 'last3' | 'year'>('all');
   const [visibleCount, setVisibleCount] = useState(30);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -378,12 +384,14 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       }
 
       setDataLoading(true);
+      // select('*') keeps queries resilient to schema drift; fields are read defensively below
+      const ctx = { page: `route:${kind}`, userId: user.id };
       const [income, expenses, savings, investments, goals] = await Promise.all([
-        safeQuery<IncomeSource>(supabase.from('monthly_income_sources').select('*').eq('user_id', user.id) as unknown as QueryResult<IncomeSource>),
-        safeQuery<MoneyItem>(supabase.from('expense_items').select('id, name, amount, created_at').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<MoneyItem>),
-        safeQuery<MoneyItem>(supabase.from('savings_items').select('id, name, amount').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>),
-        safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>),
-        safeQuery<GoalRow>(supabase.from('financial_goals').select('id, goal, amount, duration, duration_unit, notes, created_at').eq('user_id', user.id) as unknown as QueryResult<GoalRow>),
+        safeQuery<IncomeSource>('monthly_income_sources', supabase.from('monthly_income_sources').select('*').eq('user_id', user.id) as unknown as QueryResult<IncomeSource>, ctx),
+        safeQuery<MoneyItem>('expense_items', supabase.from('expense_items').select('*').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<MoneyItem>, ctx),
+        safeQuery<MoneyItem>('savings_items', supabase.from('savings_items').select('*').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, ctx),
+        safeQuery<MoneyItem>('investment_items', supabase.from('investment_items').select('*').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, ctx),
+        safeQuery<GoalRow>('financial_goals', supabase.from('financial_goals').select('*').eq('user_id', user.id) as unknown as QueryResult<GoalRow>, ctx),
       ]);
 
       if (cancelled) return;
@@ -403,7 +411,17 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     return () => {
       cancelled = true;
     };
-  }, [isGuest, user]);
+  }, [isGuest, user, kind, reloadKey]);
+
+  // Map a raw DB error message to a user-friendly, categorized translation key
+  const errorMessageKey = useMemo(() => {
+    const raw = (snapshot.error ?? '').toLowerCase();
+    if (!raw) return null;
+    if (raw.includes('jwt') || raw.includes('not authenticated') || raw.includes('auth')) return 'err_not_logged' as const;
+    if (raw.includes('permission') || raw.includes('row-level') || raw.includes('rls') || raw.includes('policy')) return 'err_no_permission' as const;
+    if (raw.includes('fetch') || raw.includes('network') || raw.includes('connect') || raw.includes('timeout') || raw.includes('failed to')) return 'err_db_connection' as const;
+    return 'err_unknown' as const;
+  }, [snapshot.error]);
 
   const data = useMemo(() => {
     const income = snapshot.income;
@@ -556,7 +574,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               category: entryForm.category || 'general',
               label: name,
               amount,
-            }).select('id,label,category,amount').single();
+            }).select('*').single();
             if (error) throw error;
             applyEntryToSnapshot(kind, { id: created.id, name: created.label || name, label: created.label, category: created.category, amount: Number(created.amount) || amount }, mode);
           } else {
@@ -721,7 +739,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         const { data: created, error } = await supabase.from('financial_goals').insert({
           ...payload,
           user_id: user.id,
-        }).select('id, goal, amount, duration, duration_unit, notes, created_at').single();
+        }).select('*').single();
         if (error) throw error;
         setSnapshot(prev => ({
           ...prev,
@@ -879,9 +897,15 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           </div>
         </section>
 
-        {snapshot.error && (
+        {errorMessageKey && (
           <div className="notice">
-            {t('error_partial_load')}
+            <div className="notice-text">
+              <strong>{t(errorMessageKey)}</strong>
+              {errorMessageKey === 'err_db_connection' && <span>{t('err_db_connection_hint')}</span>}
+            </div>
+            <button type="button" className="notice-retry" onClick={() => setReloadKey(k => k + 1)}>
+              {t('retry')}
+            </button>
           </div>
         )}
 
@@ -1654,7 +1678,9 @@ const baseStyles = `
   .hero{background:linear-gradient(135deg,#111 0%,#2B1A0D 62%,#D8AE63 140%);color:#FFFDFC;border-radius:24px;padding:28px;display:flex;align-items:flex-end;justify-content:space-between;gap:18px;box-shadow:0 18px 45px rgba(45,26,10,.16);margin-bottom:18px}
   .eyebrow{display:inline-flex;padding:4px 10px;border-radius:999px;background:rgba(216,174,99,.15);color:#D8AE63;font-size:11px;font-weight:800;margin-bottom:12px}.hero h2{font-size:34px;line-height:1.05;margin:0 0 9px}.hero p{max-width:640px;margin:0;color:rgba(255,255,255,.68);line-height:1.8;font-size:14px}
   .hero-actions{display:flex;gap:10px;flex-wrap:wrap}.primary-btn,.ghost-btn{height:42px;border-radius:13px;border:0;padding:0 15px;font:800 13px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap}.primary-btn{background:#D8AE63;color:#111}.ghost-btn{background:rgba(255,255,255,.08);color:#FFFDFC;border:1px solid rgba(255,255,255,.12)}
-  .notice{padding:12px 15px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18);color:#B91C1C;border-radius:14px;margin-bottom:14px;font-size:13px;font-weight:700}
+  .notice{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 15px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18);color:#B91C1C;border-radius:14px;margin-bottom:14px;font-size:13px;font-weight:700;flex-wrap:wrap}
+  .notice-text{display:flex;flex-direction:column;gap:2px}.notice-text span{font-weight:500;opacity:.85;font-size:12px}
+  .notice-retry{border:1px solid rgba(185,28,28,.35);background:#fff;color:#B91C1C;border-radius:10px;padding:7px 14px;font:800 12px Tajawal,Arial,sans-serif;cursor:pointer}
   .kpi-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}.kpi-card,.panel{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:20px;box-shadow:0 4px 22px rgba(90,67,51,.06)}
   .kpi-card{padding:18px;position:relative;overflow:hidden}.kpi-card>span{position:absolute;inset-inline-start:0;top:0;width:4px;height:100%}.kpi-card p{font-size:12px;color:#9A6C3C;font-weight:800;margin:0 0 7px}.kpi-card strong{font-size:23px;font-weight:900;display:block}.kpi-card small{display:block;margin-top:8px;color:#7C6A5D;font-size:12px;line-height:1.6}
   .content-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(280px,.8fr);gap:18px}.panel{padding:20px}.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.panel-head p{margin:0 0 4px;font-size:11px;color:#9A6C3C;font-weight:800}.panel-head h3{margin:0;font-size:18px}.loading-pill{font-size:11px;font-weight:800;color:#D8AE63;background:rgba(216,174,99,.11);border-radius:999px;padding:5px 10px}
