@@ -99,6 +99,19 @@ type GoalFormState = {
 };
 type QueryResult<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
+type DataErrorKind = 'database' | 'permission' | 'auth' | 'unknown';
+type DataLoadError = {
+  page: string;
+  functionName: string;
+  queryName: string;
+  message: string;
+  kind: DataErrorKind;
+};
+type DataResult<T> = {
+  data: T[];
+  error: DataLoadError | null;
+  source: 'database' | 'fallback';
+};
 type ReceiptItem = { name: string; price: number };
 type AiExtractedData = {
   merchantName?: string;
@@ -144,7 +157,7 @@ interface Snapshot {
   savings: MoneyItem[];
   investments: MoneyItem[];
   goals: GoalItem[];
-  error: string | null;
+  error: DataLoadError | null;
 }
 
 interface SectionCard {
@@ -356,6 +369,30 @@ function paymentLabel(paymentMethod: string | null | undefined, lang: string) {
   return pick(PAYMENT_METHODS.find(item => item.id === paymentMethod)?.label ?? PAYMENT_METHODS.at(-1)!.label, lang);
 }
 
+function dataErrorCopy(error: DataLoadError | null, lang: string) {
+  if (!error) return null;
+  const copy: Record<DataErrorKind, { title: LangText; body: LangText }> = {
+    database: {
+      title: { ar: 'تعذر الاتصال بقاعدة البيانات', en: 'Could not connect to the database', fr: 'Connexion a la base de donnees impossible' },
+      body: { ar: 'تحقق من إعدادات الاتصال أو حاول لاحقًا.', en: 'Check connection settings or try again later.', fr: 'Verifiez les parametres de connexion ou reessayez plus tard.' },
+    },
+    permission: {
+      title: { ar: 'لا توجد صلاحية لعرض هذه البيانات', en: 'You do not have permission to view this data', fr: 'Vous n avez pas la permission de voir ces donnees' },
+      body: { ar: 'تحقق من تسجيل الدخول وسياسات الوصول.', en: 'Check sign-in state and access policies.', fr: 'Verifiez la session et les regles d acces.' },
+    },
+    auth: {
+      title: { ar: 'يرجى تسجيل الدخول لعرض بياناتك', en: 'Please sign in to view your data', fr: 'Connectez-vous pour voir vos donnees' },
+      body: { ar: 'لم يتم العثور على جلسة مستخدم صالحة.', en: 'No valid user session was found.', fr: 'Aucune session utilisateur valide.' },
+    },
+    unknown: {
+      title: { ar: 'حدث خطأ غير متوقع أثناء تحميل البيانات', en: 'Unexpected error while loading data', fr: 'Erreur inattendue pendant le chargement' },
+      body: { ar: 'حاول إعادة تحميل البيانات.', en: 'Try loading the data again.', fr: 'Essayez de recharger les donnees.' },
+    },
+  };
+  const selected = copy[error.kind];
+  return { title: pick(selected.title, lang), body: pick(selected.body, lang), queryName: error.queryName };
+}
+
 function money(value: number, langOrIsAr: string | boolean, currency = 'KWD') {
   const lang = typeof langOrIsAr === 'boolean' ? (langOrIsAr ? 'ar' : 'en') : langOrIsAr;
   return formatCurrency(value, currency, lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en');
@@ -463,13 +500,53 @@ function deleteConfirmKey(kind: EntryKind) {
   return deleteConfirmKeys[kind];
 }
 
-async function safeQuery<T>(query: QueryResult<T>) {
+function classifyDataError(message: string): DataErrorKind {
+  const lower = message.toLowerCase();
+  if (lower.includes('permission') || lower.includes('row-level') || lower.includes('rls') || lower.includes('not authorized') || lower.includes('42501')) return 'permission';
+  if (lower.includes('jwt') || lower.includes('auth') || lower.includes('session')) return 'auth';
+  if (lower.includes('relation') || lower.includes('column') || lower.includes('schema') || lower.includes('pgrst') || lower.includes('failed to fetch')) return 'database';
+  return 'unknown';
+}
+
+function logDataLoadError(error: DataLoadError, userId?: string) {
+  console.error('Data loading failed:', {
+    page: error.page,
+    functionName: error.functionName,
+    error: error.message,
+    userId,
+    queryName: error.queryName,
+  });
+}
+
+async function safeQuery<T>(
+  query: QueryResult<T>,
+  meta: { page: string; functionName: string; queryName: string; userId?: string },
+): Promise<DataResult<T>> {
   try {
     const { data, error } = await query;
-    if (error) return { data: [] as T[], error: error.message };
-    return { data: data ?? [], error: null };
+    if (error) {
+      const structured: DataLoadError = {
+        page: meta.page,
+        functionName: meta.functionName,
+        queryName: meta.queryName,
+        message: error.message,
+        kind: classifyDataError(error.message),
+      };
+      logDataLoadError(structured, meta.userId);
+      return { data: [] as T[], error: structured, source: 'fallback' };
+    }
+    return { data: data ?? [], error: null, source: 'database' };
   } catch (err) {
-    return { data: [] as T[], error: err instanceof Error ? err.message : 'Unknown data error' };
+    const message = err instanceof Error ? err.message : 'Unknown data error';
+    const structured: DataLoadError = {
+      page: meta.page,
+      functionName: meta.functionName,
+      queryName: meta.queryName,
+      message,
+      kind: classifyDataError(message),
+    };
+    logDataLoadError(structured, meta.userId);
+    return { data: [] as T[], error: structured, source: 'fallback' };
   }
 }
 
@@ -527,12 +604,31 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       }
 
       setDataLoading(true);
+      const queryMeta = (queryName: string) => ({
+        page: kind,
+        functionName: 'RouteDashboardPage.load',
+        queryName,
+        userId: user.id,
+      });
+      const expensesQuery = async () => {
+        const enhanced = await safeQuery<SmartExpense>(
+          supabase.from('expense_items').select('id, name, amount, category, date, payment_method, notes, receipt_image_url, receipt_file_name, ai_extracted_data, ai_confidence_score, created_at, updated_at').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<SmartExpense>,
+          queryMeta('expense_items.enhanced'),
+        );
+        if (!enhanced.error || !/column|schema|pgrst/i.test(enhanced.error.message)) return enhanced;
+
+        const legacy = await safeQuery<SmartExpense>(
+          supabase.from('expense_items').select('id, name, amount, category, created_at, updated_at').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<SmartExpense>,
+          queryMeta('expense_items.legacy'),
+        );
+        return legacy.error ? enhanced : legacy;
+      };
       const [income, expenses, savings, investments, goals] = await Promise.all([
-        safeQuery<IncomeSource>(supabase.from('monthly_income_sources').select('id, label, category, amount').eq('user_id', user.id) as unknown as QueryResult<IncomeSource>),
-        safeQuery<SmartExpense>(supabase.from('expense_items').select('id, name, amount, category, date, payment_method, notes, receipt_image_url, receipt_file_name, ai_extracted_data, ai_confidence_score, created_at, updated_at').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<SmartExpense>),
-        safeQuery<MoneyItem>(supabase.from('savings_items').select('id, name, amount').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>),
-        safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>),
-        safeQuery<GoalRow>(supabase.from('financial_goals').select('id, goal, amount, duration, duration_unit, notes, created_at').eq('user_id', user.id) as unknown as QueryResult<GoalRow>),
+        safeQuery<IncomeSource>(supabase.from('monthly_income_sources').select('id, label, category, amount').eq('user_id', user.id) as unknown as QueryResult<IncomeSource>, queryMeta('monthly_income_sources')),
+        expensesQuery(),
+        safeQuery<MoneyItem>(supabase.from('savings_items').select('id, name, amount, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('savings_items')),
+        safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('investment_items')),
+        safeQuery<GoalRow>(supabase.from('financial_goals').select('id, goal, amount, duration, duration_unit, notes, created_at').eq('user_id', user.id) as unknown as QueryResult<GoalRow>, queryMeta('financial_goals')),
       ]);
 
       if (cancelled) return;
@@ -543,7 +639,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         savings: savings.data,
         investments: investments.data,
         goals: goals.data.map(goalFromRow),
-        error: [income.error, expenses.error, savings.error, investments.error, goals.error].filter(Boolean)[0] ?? null,
+        error: [income.error, expenses.error, savings.error, investments.error, goals.error].find(Boolean) ?? null,
       });
       setDataLoading(false);
     }
@@ -552,7 +648,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     return () => {
       cancelled = true;
     };
-  }, [isGuest, user]);
+  }, [isGuest, kind, user]);
 
   const data = useMemo(() => {
     const income = snapshot.income;
@@ -1182,6 +1278,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     );
   }
 
+  const dataError = dataErrorCopy(snapshot.error, lang);
+
   if (kind === 'expenses') {
     const visibleExpenses = filteredExpenses.slice(0, visibleCount);
     const monthlyExpenses = data.expenses.filter(item => {
@@ -1214,7 +1312,14 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             </div>
           </section>
 
-          {snapshot.error && <div className="notice">{t('error_partial_load')}</div>}
+          {dataError && (
+            <div className="notice data-error-notice">
+              <strong>{dataError.title}</strong>
+              <span>{dataError.body}</span>
+              <small>{dataError.queryName}</small>
+              <button type="button" onClick={() => window.location.reload()}>{isAr ? 'إعادة المحاولة' : lang === 'fr' ? 'Reessayer' : 'Retry'}</button>
+            </div>
+          )}
 
           <section className="expense-kpi-grid">
             {cards.map(card => (
@@ -1556,9 +1661,12 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           </div>
         </section>
 
-        {snapshot.error && (
-          <div className="notice">
-            {t('error_partial_load')}
+        {dataError && (
+          <div className="notice data-error-notice">
+            <strong>{dataError.title}</strong>
+            <span>{dataError.body}</span>
+            <small>{dataError.queryName}</small>
+            <button type="button" onClick={() => window.location.reload()}>{isAr ? 'إعادة المحاولة' : lang === 'fr' ? 'Reessayer' : 'Retry'}</button>
           </div>
         )}
 
@@ -2369,6 +2477,7 @@ const baseStyles = `
   .eyebrow{display:inline-flex;padding:4px 10px;border-radius:999px;background:rgba(216,174,99,.15);color:#D8AE63;font-size:11px;font-weight:800;margin-bottom:12px}.hero h2{font-size:34px;line-height:1.05;margin:0 0 9px}.hero p{max-width:640px;margin:0;color:rgba(255,255,255,.68);line-height:1.8;font-size:14px}
   .hero-actions{display:flex;gap:10px;flex-wrap:wrap}.primary-btn,.ghost-btn{height:42px;border-radius:13px;border:0;padding:0 15px;font:800 13px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap}.primary-btn{background:#D8AE63;color:#111}.ghost-btn{background:rgba(255,255,255,.08);color:#FFFDFC;border:1px solid rgba(255,255,255,.12)}
   .notice{padding:12px 15px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18);color:#B91C1C;border-radius:14px;margin-bottom:14px;font-size:13px;font-weight:700}
+  .data-error-notice{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.data-error-notice strong{font-size:13px}.data-error-notice span{color:#7F1D1D}.data-error-notice small{color:#9A3412;background:rgba(255,255,255,.65);border-radius:999px;padding:4px 8px}.data-error-notice button{margin-inline-start:auto;border:0;border-radius:10px;background:#111;color:#D8AE63;height:34px;padding:0 12px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}
   .kpi-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}.kpi-card,.panel{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:20px;box-shadow:0 4px 22px rgba(90,67,51,.06)}
   .kpi-card{padding:18px;position:relative;overflow:hidden}.kpi-card>span{position:absolute;inset-inline-start:0;top:0;width:4px;height:100%}.kpi-card p{font-size:12px;color:#9A6C3C;font-weight:800;margin:0 0 7px}.kpi-card strong{font-size:23px;font-weight:900;display:block}.kpi-card small{display:block;margin-top:8px;color:#7C6A5D;font-size:12px;line-height:1.6}
   .content-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(280px,.8fr);gap:18px}.panel{padding:20px}.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.panel-head p{margin:0 0 4px;font-size:11px;color:#9A6C3C;font-weight:800}.panel-head h3{margin:0;font-size:18px}.loading-pill{font-size:11px;font-weight:800;color:#D8AE63;background:rgba(216,174,99,.11);border-radius:999px;padding:5px 10px}
