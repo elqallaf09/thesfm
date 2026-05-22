@@ -45,6 +45,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
   const h = isCompact ? '26px' : '30px';
   const px = isCompact ? '7px' : '10px';
   const fs = isCompact ? '11px' : '12px';
+  const itemMinWidth = isCompact ? 38 : 48;
 
   return (
     <div
@@ -54,14 +55,17 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         position: 'relative',
         display: 'inline-flex',
         alignItems: 'center',
-        maxWidth: '100%',
+        width: 'max-content',
+        minWidth: `${LANGS.length * itemMinWidth + 8}px`,
+        maxWidth: 'none',
         background: track,
         borderRadius: '40px',
         padding: '3px',
         border,
         gap: 0,
         userSelect: 'none',
-        overflow: 'hidden',
+        overflow: 'visible',
+        flexShrink: 0,
       }}
     >
       {mounted && (
@@ -93,8 +97,8 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           style={{
             position: 'relative',
             zIndex: 2,
-            flex: '1 1 0',
-            minWidth: isCompact ? '34px' : '42px',
+            flex: '0 0 auto',
+            minWidth: `${itemMinWidth}px`,
             height: h,
             padding: `0 ${px}`,
             background: 'transparent',

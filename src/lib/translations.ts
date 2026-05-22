@@ -88,6 +88,35 @@ export const TR: Record<string, TranslationEntry> = {
   dash_hello:     { ar:'مرحباً',          en:'Welcome back,', fr:'Bienvenue,' },
 
   dash_subtitle:  { ar:'هذه نظرة عامة على وضعك المالي اليوم', en:"Here's your financial overview for today", fr:"Voici votre aperçu financier d'aujourd'hui" },
+  dash_guest:     { ar:'وضع الضيف', en:'Guest mode', fr:'Mode invité' },
+  dash_enterMonthData: { ar:'أدخل بيانات الشهر لرؤية النمو', en:'Enter this month’s data to see growth', fr:'Saisissez les données du mois pour voir la croissance' },
+  dash_noMonthlyHistory: { ar:'لا يوجد تاريخ شهري بعد', en:'No monthly history yet', fr:'Aucun historique mensuel pour le moment' },
+  dash_monthlyHistoryHint: { ar:'ابدأ بإدخال دخلك ومصاريفك ليتكوّن الرسم تلقائياً', en:'Start by entering income and expenses so the chart builds automatically', fr:'Commencez par saisir vos revenus et dépenses pour générer le graphique automatiquement' },
+  dash_monthlyHistoryAccumHint: { ar:'ابدأ بإدخال دخلك ومصاريفك ليتراكم السجل تلقائياً', en:'Start by entering income and expenses so history builds automatically', fr:'Commencez par saisir vos revenus et dépenses pour créer l’historique automatiquement' },
+  dash_enterMonthlyIncome: { ar:'إدخال الدخل الشهري', en:'Enter monthly income', fr:'Saisir le revenu mensuel' },
+  dash_noComparisonData: { ar:'لا توجد بيانات كافية للمقارنة', en:'Not enough data to compare', fr:'Données insuffisantes pour comparer' },
+  dash_addTwoMonths: { ar:'أضف بيانات لشهرين على الأقل', en:'Add data for at least two months', fr:'Ajoutez les données d’au moins deux mois' },
+  dash_addIncomeData: { ar:'إضافة بيانات الدخل', en:'Add income data', fr:'Ajouter des données de revenu' },
+  dash_expenseName: { ar:'اسم المصروف', en:'Expense name', fr:'Nom de la dépense' },
+  dash_expenseFallback: { ar:'مصروف', en:'Expense', fr:'Dépense' },
+  dash_noExpenses: { ar:'لا توجد مصاريف مسجلة بعد', en:'No expenses recorded yet', fr:'Aucune dépense enregistrée pour le moment' },
+  dash_addFirstExpense: { ar:'ابدأ بإضافة مصروفك الأول', en:'Start by adding your first expense', fr:'Commencez par ajouter votre première dépense' },
+  dash_addExpense: { ar:'إضافة مصروف', en:'Add expense', fr:'Ajouter une dépense' },
+  dash_noExpenseDistribution: { ar:'لا توجد مصاريف مسجلة', en:'No expenses recorded', fr:'Aucune dépense enregistrée' },
+  dash_addExpensesForDistribution: { ar:'أضف مصاريفك لرؤية التوزيع', en:'Add expenses to see the distribution', fr:'Ajoutez vos dépenses pour voir la répartition' },
+  dash_noInvestments: { ar:'لا توجد استثمارات مسجلة', en:'No investments recorded', fr:'Aucun investissement enregistré' },
+  dash_addFirstInvestment: { ar:'أضف استثمارك الأول', en:'Add your first investment', fr:'Ajoutez votre premier investissement' },
+  dash_addInvestment: { ar:'إضافة استثمار', en:'Add investment', fr:'Ajouter un investissement' },
+  dash_noInvestmentHistory: { ar:'لا يوجد تاريخ استثماري بعد', en:'No investment history yet', fr:'Aucun historique d’investissement pour le moment' },
+  dash_investmentHistoryHint: { ar:'أضف دخلك ومصاريفك واستثماراتك لعرض الأداء', en:'Add income, expenses, and investments to show performance', fr:'Ajoutez revenus, dépenses et investissements pour afficher la performance' },
+  dash_topInvestmentsEmpty: { ar:'ستظهر أعلى الاستثمارات بعد إضافتها', en:'Top investments will appear after you add them', fr:'Les meilleurs investissements apparaîtront après leur ajout' },
+  dash_investmentFallback: { ar:'استثمار', en:'Investment', fr:'Investissement' },
+  dash_goalFallback: { ar:'هدف مالي', en:'Financial goal', fr:'Objectif financier' },
+  dash_from: { ar:'من', en:'of', fr:'sur' },
+  dash_footerTagline: { ar:'المدير المالي الذكي • AI Wealth Platform', en:'Smart Financial Manager • AI Wealth Platform', fr:'Gestionnaire financier intelligent • Plateforme IA de patrimoine' },
+  dash_footerRights: { ar:'جميع الحقوق محفوظة • THE SFM 2026', en:'All rights reserved • THE SFM 2026', fr:'Tous droits réservés • THE SFM 2026' },
+  dash_monthlyInvestments: { ar:'الاستثمارات الشهرية', en:'Monthly investments', fr:'Investissements mensuels' },
+  dash_monthlyExpenses: { ar:'المصروفات الشهرية', en:'Monthly expenses', fr:'Dépenses mensuelles' },
 
   dash_report:    { ar:'🖨️ تقرير شهري',  en:'🖨️ Monthly Report', fr:'🖨️ Rapport mensuel' },
 
@@ -231,6 +260,7 @@ export const TR: Record<string, TranslationEntry> = {
   goal_project:   { ar:'مشروع',          en:'Project', fr:'Projet' },
 
   /* ── Quick Actions ── */
+  quick_title: { ar:'إجراءات سريعة', en:'Quick Actions', fr:'Actions rapides' },
 
   action_add_income:  { ar:'إضافة دخل',      en:'Add Income', fr:'Ajouter un revenu' },
 
