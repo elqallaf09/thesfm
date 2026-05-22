@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/hooks/useLanguage';
+import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 
 /* ─── Types ─── */
@@ -72,6 +74,7 @@ function Ring({ pct, size = 80 }: { pct: number; size?: number }) {
 ═══════════════════════════════════════ */
 export default function CharityPage() {
   const { user, loading } = useAuth();
+  const { dir } = useLanguage();
   const router = useRouter();
 
   /* ── State ── */
@@ -211,7 +214,10 @@ export default function CharityPage() {
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
-        .cp { font-family: 'Tajawal', sans-serif; direction: rtl; background: #F7F3EA; min-height: 100vh; color: #111111; }
+        .cp { font-family: 'Tajawal', sans-serif; background: #F7F3EA; min-height: 100vh; color: #111111; display: flex; overflow-x: hidden; }
+        .charity-main { flex: 1; min-width: 0; width: 100%; max-width: 1280px; margin: 0 auto; margin-inline-start: 230px; padding: 24px 20px 60px; overflow-x: hidden; }
+        .charity-content { max-width: 960px; margin: 0 auto; min-width: 0; }
+        .g2 > *, .kpi-g > *, .cc { min-width: 0; }
         .cp ::-webkit-scrollbar { width: 4px; }
         .cp ::-webkit-scrollbar-thumb { background: rgba(216,174,99,.3); border-radius: 10px; }
         .cc { background: #FFFDFC; border: 1px solid rgba(216,174,99,.14); border-radius: 22px; box-shadow: 0 4px 22px rgba(90,67,51,.06); transition: all .25s cubic-bezier(.4,0,.2,1); }
@@ -227,11 +233,14 @@ export default function CharityPage() {
         .save-btn:disabled { opacity: .55; cursor: not-allowed; }
         .save-btn span { position: relative; z-index: 1; }
         .row-hover:hover { background: rgba(216,174,99,.04) !important; }
-        @media (max-width: 768px) { .g2 { grid-template-columns: 1fr !important; } .kpi-g { grid-template-columns: 1fr 1fr !important; } }
+        @media (max-width: 1024px) { .charity-main { margin-inline-start: 0; } }
+        @media (max-width: 768px) { .charity-main { padding: 18px 14px 44px; } .g2 { grid-template-columns: 1fr !important; } .kpi-g { grid-template-columns: 1fr 1fr !important; } }
       `}</style>
 
-      <div className="cp">
-        <div style={{ maxWidth: '960px', margin: '0 auto', padding: '24px 20px 60px' }}>
+      <div className="cp" dir={dir}>
+        <Sidebar />
+        <main className="charity-main">
+          <div className="charity-content">
 
           {/* ─── Header ─── */}
           <div style={{ ...S(0), display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '28px', flexWrap: 'wrap' }}>
@@ -511,7 +520,8 @@ export default function CharityPage() {
             <p style={{ fontSize: '11px', color: '#9A6C3C' }}>جميع المبالغ المُدخلة تُسجَّل تلقائياً ضمن المصروفات الشهرية</p>
           </div>
 
-        </div>
+          </div>
+        </main>
       </div>
     </>
   );
