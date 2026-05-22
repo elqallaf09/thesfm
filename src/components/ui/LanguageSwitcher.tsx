@@ -12,10 +12,10 @@ interface Props {
   size?: 'sm' | 'md';
 }
 
-const LANGS: { id: Lang; label: string; flag: string }[] = [
-  { id: 'ar', label: 'عربي', flag: '🇸🇦' },
-  { id: 'en', label: 'EN', flag: '🇺🇸' },
-  { id: 'fr', label: 'FR', flag: '🇫🇷' },
+const LANGS: { id: Lang; label: string; flag: string; full: string }[] = [
+  { id: 'ar', label: 'عربي', flag: 'SA', full: 'العربية' },
+  { id: 'en', label: 'EN', flag: 'EN', full: 'English' },
+  { id: 'fr', label: 'FR', flag: 'FR', full: 'Français' },
 ];
 
 export function LanguageSwitcher({ value, onChange, variant = 'light', compact = false, size = 'md' }: Props) {
@@ -31,18 +31,15 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
   const track = variant === 'dark' ? 'rgba(255,255,255,0.09)'
     : variant === 'gold' ? 'rgba(216,174,99,0.14)'
       : '#EFEDE8';
-
   const pill = variant === 'dark' ? 'rgba(255,255,255,0.90)'
     : variant === 'gold' ? '#FFFDFC'
       : '#FFFFFF';
-
   const border = variant === 'dark' ? '1px solid rgba(255,255,255,0.12)'
     : variant === 'gold' ? '1px solid rgba(216,174,99,0.28)'
       : '1.5px solid #E8E2D6';
-
   const textActive = variant === 'dark' ? '#111111' : '#1B2430';
   const textIdle = variant === 'dark' ? 'rgba(255,255,255,0.50)'
-    : variant === 'gold' ? 'rgba(216,174,99,0.65)'
+    : variant === 'gold' ? 'rgba(90,67,51,0.72)'
       : '#9A9086';
 
   const h = isCompact ? '26px' : '30px';
@@ -52,17 +49,19 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
   return (
     <div
       dir="ltr"
-      title="Switch language"
+      title={selected === 'ar' ? 'تغيير اللغة' : selected === 'fr' ? 'Changer la langue' : 'Switch language'}
       style={{
         position: 'relative',
         display: 'inline-flex',
         alignItems: 'center',
+        maxWidth: '100%',
         background: track,
         borderRadius: '40px',
         padding: '3px',
         border,
         gap: 0,
         userSelect: 'none',
+        overflow: 'hidden',
       }}
     >
       {mounted && (
@@ -87,12 +86,14 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
       {LANGS.map(lang => (
         <button
           key={lang.id}
+          type="button"
           onClick={() => handleChange(lang.id)}
+          aria-label={lang.full}
           aria-pressed={selected === lang.id}
           style={{
             position: 'relative',
             zIndex: 2,
-            flex: 1,
+            flex: '1 1 0',
             minWidth: isCompact ? '34px' : '42px',
             height: h,
             padding: `0 ${px}`,
@@ -101,12 +102,12 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
             borderRadius: '36px',
             cursor: 'pointer',
             fontSize: fs,
-            fontWeight: selected === lang.id ? '700' : '500',
+            fontWeight: selected === lang.id ? '800' : '600',
             color: selected === lang.id ? textActive : textIdle,
             fontFamily: lang.id === 'ar'
               ? "'Tajawal', sans-serif"
               : "-apple-system, 'Segoe UI', sans-serif",
-            letterSpacing: lang.id !== 'ar' ? '0.04em' : '0',
+            letterSpacing: 0,
             transition: 'color 0.18s ease',
             whiteSpace: 'nowrap',
             display: 'flex',
@@ -115,7 +116,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
             gap: '4px',
           }}
         >
-          {!isCompact && <span style={{ fontSize: '13px' }}>{lang.flag}</span>}
+          {!isCompact && <span style={{ fontSize: '10px', fontWeight: 900 }}>{lang.flag}</span>}
           {lang.label}
         </button>
       ))}
@@ -127,9 +128,10 @@ export function FloatingLangSwitcher({ value, onChange }: Pick<Props, 'value' | 
   return (
     <div style={{
       position: 'fixed',
-      bottom: '20px',
-      left: '20px',
+      bottom: 'max(20px, env(safe-area-inset-bottom))',
+      left: 'max(20px, env(safe-area-inset-left))',
       zIndex: 9999,
+      maxWidth: 'calc(100vw - 40px)',
       filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.12))',
     }}>
       <LanguageSwitcher value={value} onChange={onChange} variant="light" />

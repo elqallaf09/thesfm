@@ -81,6 +81,8 @@ export function AppHeader() {
             align-items: center;
             justify-content: space-between;
             gap: 10px;
+            max-width: 100%;
+            overflow: hidden;
             background: rgba(247, 243, 234, 0.92);
             border-bottom: 1px solid rgba(216, 174, 99, 0.22);
             box-shadow: 0 12px 34px rgba(24, 14, 7, 0.12);
@@ -130,6 +132,7 @@ export function AppHeader() {
             display: flex;
             align-items: center;
             gap: 8px;
+            min-width: 0;
           }
 
           .sfm-global-menu-button {

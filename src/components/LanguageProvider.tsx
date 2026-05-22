@@ -72,9 +72,17 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      const dir = lang === 'ar' ? 'rtl' : 'ltr';
+      document.documentElement.dir = dir;
       document.documentElement.lang = lang;
-      document.body.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      document.body.dir = dir;
+      document.body.style.overflow = '';
+      document.body.classList.remove('sfm-mobile-lock');
+      document.documentElement.dataset.sfmLang = lang;
+      document.documentElement.dataset.sfmDir = dir;
+      window.requestAnimationFrame(() => {
+        window.dispatchEvent(new Event('resize'));
+      });
     }
   }, [lang]);
 

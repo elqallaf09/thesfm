@@ -73,6 +73,8 @@ html {
   text-rendering:optimizeLegibility;
   scroll-behavior:smooth;
   -webkit-text-size-adjust:100%;
+  max-width:100%;
+  overflow-x:hidden;
 }
 
 body {
@@ -83,7 +85,22 @@ body {
   color:var(--text-1);
   background:linear-gradient(160deg,#fffdf5 0%,#fef9e7 60%,#fdf5d0 100%);
   direction:rtl;
+  max-width:100%;
+  min-width:0;
+  overflow-x:hidden;
+  overscroll-behavior-x:none;
 }
+
+body.sfm-mobile-lock{overflow:hidden;touch-action:none}
+
+img,svg,canvas,video,iframe{max-width:100%}
+
+button,input,select,textarea{max-width:100%;min-width:0}
+
+main,section,article,aside,header,footer,nav,div{min-width:0}
+
+[dir="ltr"] body{text-align:left}
+[dir="rtl"] body{text-align:right}
 
 /* ── 3. Typography ── */
 h1{font-size:30px;font-weight:800;line-height:1.2;letter-spacing:-0.02em}
@@ -114,7 +131,7 @@ p {font-size:14px;line-height:1.7;color:var(--text-2)}
    ════════════════════════════════════ */
 .sfm-sidebar{
   position:fixed; top:0; right:0;
-  width:var(--sidebar-w); height:100vh;
+  width:var(--sidebar-w); height:100vh; height:100dvh;
   z-index:60;
   background:linear-gradient(180deg,var(--brown-2) 0%,var(--brown-3) 100%);
   display:flex; flex-direction:column;
@@ -124,6 +141,8 @@ p {font-size:14px;line-height:1.7;color:var(--text-2)}
 }
 .sfm-sidebar::-webkit-scrollbar{width:2px}
 .sfm-sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08)}
+
+[dir="ltr"] .sfm-sidebar{right:auto;left:0}
 
 .sfm-logo{
   padding:22px 18px 18px;
@@ -205,7 +224,7 @@ p {font-size:14px;line-height:1.7;color:var(--text-2)}
 /* ════════════════════════════════════
    MAIN CONTENT
    ════════════════════════════════════ */
-.sfm-main{margin-right:var(--sidebar-w);min-height:100vh;display:flex;flex-direction:column}
+.sfm-main{margin-inline-start:var(--sidebar-w);min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;max-width:100%;overflow-x:hidden}
 
 /* ════════════════════════════════════
    TOP BAR

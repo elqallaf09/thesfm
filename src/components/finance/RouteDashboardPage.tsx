@@ -1402,7 +1402,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                           <div className="expense-row-main">
                             <div className="expense-row-icon"><ReceiptText size={19} /></div>
                             <div>
-                              <strong>{item.name.replace(/^Ø®ÙŠØ±ÙŠØ©:\d{4}-\d{2}:/, '')}</strong>
+                              <strong>{item.name.replace(/^خيرية:\d{4}-\d{2}:/, '')}</strong>
                               <span>{item.date || (item.created_at ? new Date(item.created_at).toISOString().slice(0, 10) : '')} · {paymentLabel(item.payment_method, lang)}</span>
                               <div className="expense-badges">
                                 <em>{categoryLabel(item.category, lang)}</em>
