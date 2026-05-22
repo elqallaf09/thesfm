@@ -114,16 +114,23 @@ type DataResult<T> = {
   error: DataLoadError | null;
   source: 'database' | 'fallback';
 };
-type ReceiptItem = { name: string; price: number };
+type ReceiptItem = { name: string; price?: number; quantity?: number; unitPrice?: number; total?: number };
 type AiExtractedData = {
   merchantName?: string;
   totalAmount?: number;
+  amount?: number;
+  total?: number;
+  finalTotal?: number;
+  currency?: string;
   taxAmount?: number;
   receiptDate?: string;
+  date?: string;
   category?: string;
   paymentMethod?: string;
+  rawText?: string;
   items?: ReceiptItem[];
   confidenceScore?: number;
+  confidence?: number;
 };
 type SmartExpense = MoneyItem & {
   category?: string | null;
@@ -370,6 +377,75 @@ function categoryLabel(category: string | null | undefined, lang: string) {
 
 function paymentLabel(paymentMethod: string | null | undefined, lang: string) {
   return pick(PAYMENT_METHODS.find(item => item.id === paymentMethod)?.label ?? PAYMENT_METHODS.at(-1)!.label, lang);
+}
+
+function normalizeReceiptNumber(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) return Number(value.toFixed(3));
+  if (typeof value !== 'string') return undefined;
+  const arabic = '٠١٢٣٤٥٦٧٨٩';
+  const persian = '۰۱۲۳۴۵۶۷۸۹';
+  const normalized = value
+    .replace(/[٠-٩]/g, digit => String(arabic.indexOf(digit)))
+    .replace(/[۰-۹]/g, digit => String(persian.indexOf(digit)))
+    .replace(/\u066B/g, '.')
+    .replace(/\u066C/g, ',')
+    .replace(/(?:KWD|KD|د\.?ك|د\s*ك)/gi, '')
+    .replace(/[^\d.,-]/g, '')
+    .trim();
+  if (!normalized) return undefined;
+  const amount = Number((normalized.includes('.') ? normalized.replace(/,/g, '') : normalized.replace(',', '.')));
+  return Number.isFinite(amount) && amount > 0 ? Number(amount.toFixed(3)) : undefined;
+}
+
+function extractedReceiptAmount(data: AiExtractedData) {
+  return normalizeReceiptNumber(data.totalAmount)
+    ?? normalizeReceiptNumber(data.amount)
+    ?? normalizeReceiptNumber(data.total)
+    ?? normalizeReceiptNumber(data.finalTotal);
+}
+
+function normalizeReceiptDate(data: AiExtractedData) {
+  const value = data.receiptDate || data.date;
+  return typeof value === 'string' && value ? value : new Date().toISOString().slice(0, 10);
+}
+
+function normalizeReceiptCategory(value: string | undefined) {
+  if (!value) return 'other';
+  const lower = value.toLowerCase();
+  if (EXPENSE_CATEGORIES.some(item => item.id === lower)) return lower;
+  if (/مطاعم|restaurant|cafe|food/.test(lower)) return 'restaurants';
+  if (/مشتريات|shopping|market|store|تجارة|جمعية/.test(lower)) return 'shopping';
+  if (/فواتير|bill|utility/.test(lower)) return 'bills';
+  if (/مواصلات|transport|fuel|taxi/.test(lower)) return 'transport';
+  if (/صحة|health|pharmacy|clinic/.test(lower)) return 'health';
+  if (/تعليم|education|school/.test(lower)) return 'education';
+  if (/إيجار|ايجار|rent/.test(lower)) return 'rent';
+  if (/قروض|loan/.test(lower)) return 'loans';
+  if (/اشتراكات|subscription/.test(lower)) return 'subscriptions';
+  return 'other';
+}
+
+function normalizeReceiptPayment(value: string | undefined) {
+  if (!value) return 'other';
+  const lower = value.toLowerCase();
+  if (PAYMENT_METHODS.some(item => item.id === lower)) return lower;
+  if (/knet|كي\s?نت/.test(lower)) return 'knet';
+  if (/cash|كاش|نقد/.test(lower)) return 'cash';
+  if (/apple/.test(lower)) return 'apple_pay';
+  if (/transfer|تحويل/.test(lower)) return 'transfer';
+  if (/card|visa|master|بطاقة/.test(lower)) return 'card';
+  return 'other';
+}
+
+function receiptItemsNotes(items: ReceiptItem[] | undefined) {
+  if (!items?.length) return '';
+  return items
+    .slice(0, 8)
+    .map(item => {
+      const amount = normalizeReceiptNumber(item.total) ?? normalizeReceiptNumber(item.price) ?? normalizeReceiptNumber(item.unitPrice);
+      return amount ? `${item.name}: ${amount}` : item.name;
+    })
+    .join('\n');
 }
 
 function dataErrorCopy(error: DataLoadError | null, lang: string) {
@@ -854,7 +930,11 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
   function handleExpenseFile(file: File | null) {
     setReceiptError('');
-    if (!file) return;
+    if (!file) {
+      setExpenseForm(prev => ({ ...prev, receiptFile: null, receiptPreview: '', receiptFileName: null, aiExtractedData: null, aiConfidenceScore: null }));
+      return;
+    }
+    console.log('Receipt image selected:', file);
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     if (!allowed.includes(file.type)) {
       setReceiptError(expenseText('fileUnsupported', lang));
@@ -883,20 +963,32 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     try {
       const form = new FormData();
       form.append('receipt', expenseForm.receiptFile);
+      console.log('Sending receipt to AI scan API...');
       const response = await fetch('/api/ai/receipt-scan', { method: 'POST', body: form });
-      const payload = await response.json() as { error?: string; data?: AiExtractedData };
+      const payload = await response.json() as { success?: boolean; error?: string; data?: AiExtractedData };
       if (!response.ok || !payload.data) throw new Error(payload.error || expenseText('couldNotRead', lang));
       const extracted = payload.data;
+      console.log('AI receipt result:', payload);
+      const amount = extractedReceiptAmount(extracted);
+      const notes = receiptItemsNotes(extracted.items);
       setExpenseForm(prev => ({
         ...prev,
         name: extracted.merchantName || prev.name,
-        amount: extracted.totalAmount ? String(extracted.totalAmount) : prev.amount,
-        category: extracted.category || prev.category || 'other',
-        date: extracted.receiptDate || prev.date,
-        paymentMethod: extracted.paymentMethod || prev.paymentMethod || 'other',
+        amount: amount ? String(amount) : prev.amount,
+        category: normalizeReceiptCategory(extracted.category) || prev.category || 'other',
+        date: normalizeReceiptDate(extracted) || prev.date,
+        paymentMethod: normalizeReceiptPayment(extracted.paymentMethod) || prev.paymentMethod || 'other',
+        notes: notes || prev.notes,
         aiExtractedData: extracted,
-        aiConfidenceScore: extracted.confidenceScore ?? 0.82,
+        aiConfidenceScore: extracted.confidenceScore ?? extracted.confidence ?? (amount ? 0.84 : 0.48),
       }));
+      if (!amount) {
+        setReceiptError(pick({
+          ar: 'لم نتمكن من قراءة مبلغ الفاتورة. الرجاء إدخال المبلغ يدويًا أو رفع صورة أوضح.',
+          en: 'We could not read the receipt amount. Please enter it manually or upload a clearer image.',
+          fr: 'Nous n’avons pas pu lire le montant de la facture. Veuillez le saisir manuellement ou importer une image plus claire.',
+        }, lang));
+      }
     } catch (err) {
       setReceiptError(err instanceof Error ? err.message : expenseText('couldNotRead', lang));
     } finally {
@@ -1579,7 +1671,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               {!!receiptDetails.ai_extracted_data?.items?.length && (
                 <div className="receipt-items">
                   <strong>{expenseText('receiptItems', lang)}</strong>
-                  {receiptDetails.ai_extracted_data.items.map((item, index) => <span key={`${item.name}-${index}`}>{item.name}<b>{money(item.price, lang, currency)}</b></span>)}
+                  {receiptDetails.ai_extracted_data.items.map((item, index) => <span key={`${item.name}-${index}`}>{item.name}<b>{money(normalizeReceiptNumber(item.total) ?? normalizeReceiptNumber(item.price) ?? 0, lang, currency)}</b></span>)}
                 </div>
               )}
               <div className="entry-actions">
