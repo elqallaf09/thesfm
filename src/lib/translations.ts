@@ -37,6 +37,7 @@ export const TR: Record<string, TranslationEntry> = {
   common_backToDashboard: { ar:'العودة للرئيسية', en:'Back to dashboard', fr:'Retour au tableau de bord' },
 
   close:       { ar:'إغلاق',             en:'Close', fr:'Fermer' },
+  'common.close': { ar:'إغلاق', en:'Close', fr:'Fermer' },
 
   confirm:     { ar:'تأكيد',             en:'Confirm', fr:'Confirmer' },
 
@@ -120,6 +121,16 @@ export const TR: Record<string, TranslationEntry> = {
   ai_month_analysis: { ar:'تحليل هذا الشهر', en:"This month's analysis", fr:'Analyse du mois' },
 
   ai_view_full:      { ar:'عرض التحليل الكامل', en:'View Full Analysis', fr:"Voir l'analyse complète" },
+  'ai.viewFullAnalysis': { ar:'عرض التحليل الكامل', en:'View Full Analysis', fr:"Voir l'analyse complète" },
+  'ai.fullAnalysisTitle': { ar:'التحليل المالي الكامل', en:'Full Financial Analysis', fr:'Analyse financière complète' },
+  'ai.financialSummary': { ar:'الملخص المالي', en:'Financial Summary', fr:'Résumé financier' },
+  'ai.strengths': { ar:'نقاط القوة', en:'Strengths', fr:'Points forts' },
+  'ai.improvements': { ar:'نقاط تحتاج تحسين', en:'Areas to Improve', fr:'Points à améliorer' },
+  'ai.recommendations': { ar:'توصيات الذكاء المالي', en:'Financial AI Recommendations', fr:"Recommandations de l'IA financière" },
+  'ai.nextMonthPlan': { ar:'خطة الشهر القادم', en:'Next Month Plan', fr:'Plan du mois prochain' },
+  'ai.alerts': { ar:'التنبيهات المهمة', en:'Important Alerts', fr:'Alertes importantes' },
+  'ai.notEnoughData': { ar:'لا توجد بيانات كافية لإنشاء تحليل كامل', en:'Not enough data to generate a full analysis', fr:'Données insuffisantes pour générer une analyse complète' },
+  'ai.goToAiPage': { ar:'الانتقال إلى صفحة الذكاء المالي', en:'Go to Financial AI page', fr:'Aller à la page IA financière' },
 
   chart_6months:     { ar:'نظرة عامة على 6 أشهر', en:'6-Month Overview', fr:'Aperçu sur 6 mois' },
 
