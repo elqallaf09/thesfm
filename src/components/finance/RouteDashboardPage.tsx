@@ -117,12 +117,16 @@ type DataResult<T> = {
 type ReceiptItem = { name: string; price?: number; quantity?: number; unitPrice?: number; total?: number };
 type AiExtractedData = {
   merchantName?: string;
+  invoiceNumber?: string;
   totalAmount?: number;
+  subtotal?: number;
   amount?: number;
   total?: number;
   finalTotal?: number;
   currency?: string;
   taxAmount?: number;
+  paidAmount?: number;
+  changeAmount?: number;
   receiptDate?: string;
   date?: string;
   category?: string;
@@ -160,6 +164,23 @@ type ExpenseFormState = {
   aiConfidenceScore?: number | null;
 };
 type ExpenseModalMode = 'manual' | 'scan';
+type PendingReceiptExpense = {
+  id: string;
+  selected: boolean;
+  status: 'ready' | 'review' | 'failed';
+  file: File;
+  fileName: string;
+  previewUrl: string;
+  name: string;
+  amount: string;
+  date: string;
+  category: string;
+  paymentMethod: string;
+  notes: string;
+  aiConfidenceScore: number;
+  aiExtractedData: AiExtractedData | null;
+  error: string | null;
+};
 
 interface Snapshot {
   income: IncomeSource[];
@@ -274,6 +295,10 @@ const expenseUi = {
   scanTab: { ar: 'رفع فاتورة بالذكاء الاصطناعي', en: 'AI Receipt Scan', fr: 'Scan IA de facture' },
   addExpense: { ar: 'إضافة مصروف', en: 'Add expense', fr: 'Ajouter une depense' },
   uploadReceipt: { ar: 'رفع فاتورة', en: 'Upload receipt', fr: 'Telecharger une facture' },
+  uploadOneReceipt: { ar: 'رفع فاتورة واحدة', en: 'Upload one receipt', fr: 'Importer une facture' },
+  uploadMultipleReceipts: { ar: 'رفع عدة فواتير', en: 'Upload multiple receipts', fr: 'Importer plusieurs factures' },
+  chooseImages: { ar: 'اختر الصور أو اسحبها هنا', en: 'Choose images or drag them here', fr: 'Choisissez des images ou glissez-les ici' },
+  selectedReceipts: { ar: 'تم اختيار {count} فواتير', en: '{count} receipts selected', fr: '{count} factures sélectionnées' },
   smartTitle: { ar: 'إدارة المصروفات الذكية', en: 'Smart expense management', fr: 'Gestion intelligente des depenses' },
   smartSubtitle: { ar: 'سجل مصروفاتك يدويًا أو ارفع فاتورة ليقرأها الذكاء الاصطناعي ثم راجعها قبل الإضافة.', en: 'Add expenses manually or upload a receipt for AI extraction, then review before saving.', fr: 'Ajoutez manuellement ou telechargez une facture pour extraction IA, puis verifiez avant enregistrement.' },
   name: { ar: 'اسم المصروف', en: 'Expense name', fr: 'Nom de la depense' },
@@ -286,17 +311,31 @@ const expenseUi = {
   uploadTitle: { ar: 'ارفع صورة الفاتورة', en: 'Upload receipt image', fr: 'Telecharger l image de la facture' },
   uploadHint: { ar: 'اسحب الصورة هنا أو اختر من الجهاز', en: 'Drag image here or choose from device', fr: 'Glissez l image ici ou choisissez un fichier' },
   analyze: { ar: 'تحليل الفاتورة بالذكاء الاصطناعي', en: 'Analyze receipt with AI', fr: 'Analyser la facture avec l IA' },
+  analyzeAll: { ar: 'تحليل كل الفواتير', en: 'Analyze all receipts', fr: 'Analyser toutes les factures' },
   reading: { ar: 'جاري قراءة الفاتورة...', en: 'Reading receipt...', fr: 'Lecture de la facture...' },
+  readingAll: { ar: 'جاري تحليل الفواتير...', en: 'Analyzing receipts...', fr: 'Analyse des factures...' },
+  batchProgress: { ar: 'جاري تحليل {current} من {total}', en: 'Analyzing {current} of {total}', fr: 'Analyse {current} sur {total}' },
   extracted: { ar: 'تم استخراج البيانات', en: 'Data extracted successfully', fr: 'Donnees extraites avec succes' },
   review: { ar: 'راجع البيانات قبل الإضافة', en: 'Review before adding', fr: 'Verifiez avant l ajout' },
   confirmAdd: { ar: 'تأكيد وإضافة المصروف', en: 'Confirm and add expense', fr: 'Confirmer et ajouter la depense' },
+  confirmAll: { ar: 'تأكيد كل المصروفات', en: 'Confirm all expenses', fr: 'Confirmer toutes les dépenses' },
+  confirmSelected: { ar: 'تأكيد المحدد فقط', en: 'Confirm selected only', fr: 'Confirmer uniquement la sélection' },
   reanalyze: { ar: 'إعادة التحليل', en: 'Re-analyze', fr: 'Reanalyser' },
+  reanalyzeThis: { ar: 'إعادة تحليل هذه الفاتورة', en: 'Re-analyze this receipt', fr: 'Réanalyser cette facture' },
+  removeReceipt: { ar: 'حذف هذه الفاتورة', en: 'Remove this receipt', fr: 'Supprimer cette facture' },
   changeImage: { ar: 'تغيير الصورة', en: 'Change image', fr: 'Changer l image' },
   confirmOnly: { ar: 'تأكيد الإضافة', en: 'Confirm addition', fr: 'Confirmer l ajout' },
   editData: { ar: 'تعديل البيانات', en: 'Edit data', fr: 'Modifier les donnees' },
   merchant: { ar: 'المتجر', en: 'Merchant', fr: 'Commercant' },
   suggestedCategory: { ar: 'التصنيف المقترح', en: 'Suggested category', fr: 'Categorie suggeree' },
   confidence: { ar: 'الثقة', en: 'Confidence', fr: 'Confiance' },
+  ready: { ar: 'جاهز للإضافة', en: 'Ready to add', fr: 'Prêt à ajouter' },
+  needsReview: { ar: 'يحتاج مراجعة', en: 'Needs review', fr: 'À vérifier' },
+  failed: { ar: 'فشل التحليل', en: 'Failed', fr: 'Échec' },
+  amountNotDetected: { ar: 'لم نتمكن من قراءة مبلغ هذه الفاتورة. الرجاء إدخاله يدويًا أو رفع صورة أوضح.', en: 'We could not read this receipt amount. Please enter it manually or upload a clearer image.', fr: 'Nous n’avons pas pu lire le montant de cette facture. Veuillez le saisir manuellement ou importer une image plus claire.' },
+  selectAll: { ar: 'تحديد الكل', en: 'Select all', fr: 'Tout sélectionner' },
+  uploadLimit: { ar: 'يمكنك رفع 10 فواتير كحد أقصى في المرة الواحدة.', en: 'You can upload up to 10 receipts at once.', fr: 'Vous pouvez importer jusqu’à 10 factures à la fois.' },
+  batchSaveResult: { ar: 'تمت إضافة {successCount} مصروفات بنجاح. فشل {failedCount}.', en: '{successCount} expenses added successfully. {failedCount} failed.', fr: '{successCount} dépenses ajoutées avec succès. {failedCount} ont échoué.' },
   aiAdded: { ar: 'مضاف بالذكاء الاصطناعي', en: 'Added by AI', fr: 'Ajoute par IA' },
   hasReceipt: { ar: 'يوجد فاتورة', en: 'Receipt attached', fr: 'Facture jointe' },
   noReceipt: { ar: 'بدون فاتورة', en: 'No receipt', fr: 'Sans facture' },
@@ -446,6 +485,43 @@ function receiptItemsNotes(items: ReceiptItem[] | undefined) {
       return amount ? `${item.name}: ${amount}` : item.name;
     })
     .join('\n');
+}
+
+function receiptFallbackName(lang: string) {
+  return pick({ ar: 'مصروف من فاتورة', en: 'Receipt expense', fr: 'Dépense de facture' }, lang);
+}
+
+function textWithCount(template: string, values: Record<string, string | number>) {
+  return Object.entries(values).reduce((text, [key, value]) => text.replaceAll(`{${key}}`, String(value)), template);
+}
+
+function pendingReceiptFromResult(
+  file: File,
+  previewUrl: string,
+  result: { success?: boolean; data?: AiExtractedData; error?: string },
+  lang: string,
+): PendingReceiptExpense {
+  const data = result.data ?? null;
+  const amount = data ? extractedReceiptAmount(data) : undefined;
+  const confidence = data?.confidenceScore ?? data?.confidence ?? (amount ? 0.84 : 0.3);
+  const status: PendingReceiptExpense['status'] = !result.success || !amount ? 'failed' : confidence < 0.7 ? 'review' : 'ready';
+  return {
+    id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${file.name}`,
+    selected: Boolean(amount) && confidence >= 0.7,
+    status,
+    file,
+    fileName: file.name,
+    previewUrl,
+    name: data?.merchantName?.trim() || receiptFallbackName(lang),
+    amount: amount ? String(amount) : '',
+    date: data ? normalizeReceiptDate(data) : todayInputDate(),
+    category: normalizeReceiptCategory(data?.category),
+    paymentMethod: normalizeReceiptPayment(data?.paymentMethod),
+    notes: receiptItemsNotes(data?.items),
+    aiConfidenceScore: confidence,
+    aiExtractedData: data,
+    error: result.error || (!amount ? expenseText('amountNotDetected', lang) : null),
+  };
 }
 
 function dataErrorCopy(error: DataLoadError | null, lang: string) {
@@ -662,6 +738,9 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [expenseModalMode, setExpenseModalMode] = useState<ExpenseModalMode>('manual');
   const [receiptAnalyzing, setReceiptAnalyzing] = useState(false);
   const [receiptError, setReceiptError] = useState('');
+  const [receiptBatchProgress, setReceiptBatchProgress] = useState('');
+  const [receiptFiles, setReceiptFiles] = useState<Array<{ file: File; previewUrl: string }>>([]);
+  const [pendingReceiptExpenses, setPendingReceiptExpenses] = useState<PendingReceiptExpense[]>([]);
   const [receiptDetails, setReceiptDetails] = useState<SmartExpense | null>(null);
   const [entrySaving, setEntrySaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<(MoneyItem | IncomeSource) | null>(null);
@@ -932,6 +1011,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     setReceiptError('');
     if (!file) {
       setExpenseForm(prev => ({ ...prev, receiptFile: null, receiptPreview: '', receiptFileName: null, aiExtractedData: null, aiConfidenceScore: null }));
+      setReceiptFiles([]);
+      setPendingReceiptExpenses([]);
       return;
     }
     console.log('Receipt image selected:', file);
@@ -950,6 +1031,45 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       receiptFile: file,
       receiptPreview: preview,
       receiptFileName: file.name,
+    }));
+    setReceiptFiles([{ file, previewUrl: preview }]);
+    setPendingReceiptExpenses([]);
+  }
+
+  function handleExpenseFiles(files: FileList | File[] | null) {
+    setReceiptError('');
+    setReceiptBatchProgress('');
+    setPendingReceiptExpenses([]);
+    const selected = Array.from(files || []);
+    if (!selected.length) {
+      handleExpenseFile(null);
+      return;
+    }
+    if (selected.length > 10) {
+      setReceiptError(expenseText('uploadLimit', lang));
+      return;
+    }
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    const invalid = selected.find(file => !allowed.includes(file.type));
+    if (invalid) {
+      setReceiptError(expenseText('fileUnsupported', lang));
+      return;
+    }
+    const large = selected.find(file => file.size > 10 * 1024 * 1024);
+    if (large) {
+      setReceiptError(expenseText('fileLarge', lang));
+      return;
+    }
+    const entries = selected.map(file => ({ file, previewUrl: file.type === 'application/pdf' ? '' : URL.createObjectURL(file) }));
+    setReceiptFiles(entries);
+    const first = entries[0];
+    setExpenseForm(prev => ({
+      ...prev,
+      receiptFile: first.file,
+      receiptPreview: first.previewUrl,
+      receiptFileName: first.file.name,
+      aiExtractedData: null,
+      aiConfidenceScore: null,
     }));
   }
 
@@ -973,7 +1093,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       const notes = receiptItemsNotes(extracted.items);
       setExpenseForm(prev => ({
         ...prev,
-        name: extracted.merchantName || prev.name,
+        name: extracted.merchantName?.trim() || prev.name || receiptFallbackName(lang),
         amount: amount ? String(amount) : prev.amount,
         category: normalizeReceiptCategory(extracted.category) || prev.category || 'other',
         date: normalizeReceiptDate(extracted) || prev.date,
@@ -996,28 +1116,88 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     }
   }
 
-  async function uploadReceiptIfAvailable(id: string) {
-    if (!expenseForm.receiptFile || !user || isGuest) {
+  async function analyzeAllReceipts() {
+    if (!receiptFiles.length || receiptAnalyzing) {
+      setReceiptError(expenseText('unclear', lang));
+      return;
+    }
+    setReceiptAnalyzing(true);
+    setReceiptError('');
+    setReceiptBatchProgress(textWithCount(expenseText('batchProgress', lang), { current: 1, total: receiptFiles.length }));
+    try {
+      const form = new FormData();
+      receiptFiles.forEach(({ file }) => form.append('receipt', file));
+      const response = await fetch('/api/ai/receipt-scan', { method: 'POST', body: form });
+      const payload = await response.json() as {
+        success?: boolean;
+        error?: string;
+        data?: AiExtractedData;
+        results?: Array<{ fileName: string; success?: boolean; data?: AiExtractedData; error?: string }>;
+      };
+      if (!response.ok) throw new Error(payload.error || expenseText('couldNotRead', lang));
+      const results = payload.results?.length
+        ? payload.results
+        : [{ fileName: receiptFiles[0].file.name, success: payload.success, data: payload.data, error: payload.error }];
+      const pending = receiptFiles.map((entry, index) => pendingReceiptFromResult(entry.file, entry.previewUrl, results[index] || { success: false, error: expenseText('couldNotRead', lang) }, lang));
+      setPendingReceiptExpenses(pending);
+      const firstReady = pending.find(item => item.amount) || pending[0];
+      if (firstReady) {
+        setExpenseForm(prev => ({
+          ...prev,
+          name: firstReady.name,
+          amount: firstReady.amount,
+          category: firstReady.category,
+          date: firstReady.date,
+          paymentMethod: firstReady.paymentMethod,
+          notes: firstReady.notes,
+          receiptFile: firstReady.file,
+          receiptPreview: firstReady.previewUrl,
+          receiptFileName: firstReady.fileName,
+          aiExtractedData: firstReady.aiExtractedData,
+          aiConfidenceScore: firstReady.aiConfidenceScore,
+        }));
+      }
+      if (pending.some(item => item.status === 'failed')) setReceiptError(expenseText('amountNotDetected', lang));
+    } catch (err) {
+      setReceiptError(err instanceof Error ? err.message : expenseText('couldNotRead', lang));
+    } finally {
+      setReceiptAnalyzing(false);
+      setReceiptBatchProgress('');
+    }
+  }
+
+  async function uploadReceiptFile(file: File | null, id: string, previewUrl?: string | null) {
+    if (!file || !user || isGuest) {
       return {
-        receiptImageUrl: expenseForm.receiptImageUrl || expenseForm.receiptPreview || null,
-        receiptFileName: expenseForm.receiptFileName || expenseForm.receiptFile?.name || null,
+        receiptImageUrl: previewUrl || null,
+        receiptFileName: file?.name || null,
       };
     }
 
-    const safeName = expenseForm.receiptFile.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
     const path = `${user.id}/${id}-${Date.now()}-${safeName}`;
-    const { error } = await supabase.storage.from('receipts').upload(path, expenseForm.receiptFile, { upsert: true });
+    const { error } = await supabase.storage.from('receipts').upload(path, file, { upsert: true });
     if (error) {
       return {
-        receiptImageUrl: expenseForm.receiptImageUrl || null,
-        receiptFileName: expenseForm.receiptFile.name,
+        receiptImageUrl: previewUrl || null,
+        receiptFileName: file.name,
       };
     }
     const { data: publicUrl } = supabase.storage.from('receipts').getPublicUrl(path);
     return {
       receiptImageUrl: publicUrl.publicUrl,
-      receiptFileName: expenseForm.receiptFile.name,
+      receiptFileName: file.name,
     };
+  }
+
+  async function uploadReceiptIfAvailable(id: string) {
+    if (!expenseForm.receiptFile) {
+      return {
+        receiptImageUrl: expenseForm.receiptImageUrl || expenseForm.receiptPreview || null,
+        receiptFileName: expenseForm.receiptFileName || null,
+      };
+    }
+    return uploadReceiptFile(expenseForm.receiptFile, id, expenseForm.receiptImageUrl || expenseForm.receiptPreview || null);
   }
 
   async function saveExpense(event?: React.FormEvent<HTMLFormElement>) {
@@ -1093,6 +1273,81 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     } finally {
       setEntrySaving(false);
     }
+  }
+
+  async function savePendingReceiptExpenses(selectedOnly = true) {
+    if (entrySaving) return;
+    const candidates = pendingReceiptExpenses.filter(item => (!selectedOnly || item.selected) && item.name.trim() && Number(item.amount) > 0);
+    if (!candidates.length) {
+      showEntryMessage('err', expenseText('amountNotDetected', lang));
+      return;
+    }
+    setEntrySaving(true);
+    let successCount = 0;
+    let failedCount = 0;
+    const now = new Date().toISOString();
+    const savedItems: SmartExpense[] = [];
+
+    for (const receipt of candidates) {
+      try {
+        const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${successCount}`;
+        const uploaded = await uploadReceiptFile(receipt.file, id, receipt.previewUrl);
+        const item: SmartExpense = {
+          id,
+          name: receipt.name.trim() || receiptFallbackName(lang),
+          amount: Number(receipt.amount),
+          category: receipt.category,
+          date: receipt.date,
+          payment_method: receipt.paymentMethod,
+          notes: receipt.notes,
+          receipt_image_url: uploaded.receiptImageUrl,
+          receipt_file_name: uploaded.receiptFileName,
+          ai_extracted_data: receipt.aiExtractedData,
+          ai_confidence_score: receipt.aiConfidenceScore,
+          created_at: now,
+          updated_at: now,
+        };
+
+        if (isGuest) {
+          savedItems.push(item);
+        } else {
+          if (!user) throw new Error(t('entry_auth_required'));
+          const payload = {
+            user_id: user.id,
+            name: item.name,
+            amount: item.amount,
+            category: item.category,
+            date: item.date,
+            payment_method: item.payment_method,
+            notes: item.notes || null,
+            receipt_image_url: item.receipt_image_url,
+            receipt_file_name: item.receipt_file_name,
+            ai_extracted_data: item.ai_extracted_data,
+            ai_confidence_score: item.ai_confidence_score,
+            updated_at: now,
+          };
+          const { data: created, error } = await supabase.from('expense_items').insert(payload).select('id,name,amount,category,date,payment_method,notes,receipt_image_url,receipt_file_name,ai_extracted_data,ai_confidence_score,created_at,updated_at').single();
+          if (error) throw error;
+          savedItems.push({ ...item, ...created });
+        }
+        successCount += 1;
+      } catch (error) {
+        console.error('Batch receipt save failed:', { fileName: receipt.fileName, error });
+        failedCount += 1;
+      }
+    }
+
+    if (isGuest && savedItems.length) {
+      const current = readGuestItems('expenses') as SmartExpense[];
+      writeGuestItems('expenses', [...savedItems, ...current]);
+    }
+    savedItems.reverse().forEach(item => applyEntryToSnapshot('expenses', item, 'create'));
+    setPendingReceiptExpenses([]);
+    setReceiptFiles([]);
+    setExpenseForm(emptyExpenseForm());
+    setEntryOpen(false);
+    showEntryMessage('ok', textWithCount(expenseText('batchSaveResult', lang), { successCount, failedCount }));
+    setEntrySaving(false);
   }
 
   async function saveEntry(event: React.FormEvent<HTMLFormElement>) {
@@ -1596,22 +1851,78 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 {expenseModalMode === 'scan' && (
                   <div className="receipt-scan-area">
                     <label className="receipt-drop">
-                      <input type="file" accept="image/*,application/pdf" capture="environment" onChange={event => handleExpenseFile(event.target.files?.[0] || null)} />
-                      {expenseForm.receiptPreview ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={expenseForm.receiptPreview} alt={expenseText('uploadTitle', lang)} />
+                      <input type="file" accept="image/*,.pdf,application/pdf" multiple onChange={event => handleExpenseFiles(event.target.files)} />
+                      {receiptFiles.length ? (
+                        <div className="receipt-preview-grid">
+                          {receiptFiles.map(({ file, previewUrl }) => (
+                            <div key={`${file.name}-${file.size}`}>
+                              {previewUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={previewUrl} alt={file.name} />
+                              ) : <ReceiptText size={28} />}
+                              <small>{file.name}</small>
+                            </div>
+                          ))}
+                        </div>
                       ) : (
-                        <span><Upload size={26} />{expenseText('uploadTitle', lang)}<small>{expenseText('uploadHint', lang)}</small></span>
+                        <span><Upload size={26} />{expenseText('uploadMultipleReceipts', lang)}<small>{expenseText('chooseImages', lang)}</small></span>
                       )}
                     </label>
+                    {!!receiptFiles.length && (
+                      <div className="receipt-selected-count">
+                        {textWithCount(expenseText('selectedReceipts', lang), { count: receiptFiles.length })}
+                      </div>
+                    )}
                     <div className="receipt-scan-actions">
                       <button type="button" className="ghost-form-btn" onClick={() => handleExpenseFile(null)}>{expenseText('changeImage', lang)}</button>
-                      <button type="button" className="primary-form-btn" onClick={() => void analyzeReceipt()} disabled={receiptAnalyzing || !expenseForm.receiptFile}>
+                      <button type="button" className="ghost-form-btn" onClick={() => void analyzeReceipt()} disabled={receiptAnalyzing || !expenseForm.receiptFile || receiptFiles.length > 1}>
                         {receiptAnalyzing ? <RefreshCw size={15} className="spin-icon" /> : <Sparkles size={15} />}
                         {receiptAnalyzing ? expenseText('reading', lang) : expenseText('analyze', lang)}
                       </button>
+                      <button type="button" className="primary-form-btn" onClick={() => void analyzeAllReceipts()} disabled={receiptAnalyzing || !receiptFiles.length}>
+                        {receiptAnalyzing ? <RefreshCw size={15} className="spin-icon" /> : <Sparkles size={15} />}
+                        {receiptAnalyzing ? expenseText('readingAll', lang) : expenseText('analyzeAll', lang)}
+                      </button>
                     </div>
+                    {receiptBatchProgress && <div className="receipt-selected-count">{receiptBatchProgress}</div>}
                     {receiptError && <div className="receipt-error">{receiptError}</div>}
+                    {!!pendingReceiptExpenses.length && (
+                      <div className="receipt-batch-review">
+                        <div className="receipt-batch-head">
+                          <button type="button" className="ghost-form-btn" onClick={() => setPendingReceiptExpenses(prev => prev.map(item => ({ ...item, selected: true })))}>{expenseText('selectAll', lang)}</button>
+                          <button type="button" className="primary-form-btn" onClick={() => void savePendingReceiptExpenses(true)} disabled={entrySaving}>{expenseText('confirmSelected', lang)}</button>
+                          <button type="button" className="primary-form-btn" onClick={() => void savePendingReceiptExpenses(false)} disabled={entrySaving}>{expenseText('confirmAll', lang)}</button>
+                        </div>
+                        {pendingReceiptExpenses.map(item => (
+                          <div key={item.id} className={`receipt-review-card ${item.status}`}>
+                            <label className="receipt-review-select">
+                              <input type="checkbox" checked={item.selected} onChange={event => setPendingReceiptExpenses(prev => prev.map(row => row.id === item.id ? { ...row, selected: event.target.checked } : row))} />
+                              <span>{item.status === 'ready' ? expenseText('ready', lang) : item.status === 'review' ? expenseText('needsReview', lang) : expenseText('failed', lang)}</span>
+                            </label>
+                            <div className="receipt-review-body">
+                              {item.previewUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={item.previewUrl} alt={item.fileName} />
+                              ) : <ReceiptText size={34} />}
+                              <div className="receipt-review-fields">
+                                <input value={item.name} onChange={event => setPendingReceiptExpenses(prev => prev.map(row => row.id === item.id ? { ...row, name: event.target.value } : row))} />
+                                <input inputMode="decimal" value={item.amount} placeholder={expenseText('amount', lang)} onChange={event => setPendingReceiptExpenses(prev => prev.map(row => row.id === item.id ? { ...row, amount: event.target.value, status: Number(event.target.value) > 0 && row.status === 'failed' ? 'review' : row.status } : row))} />
+                                <input type="date" value={item.date} onChange={event => setPendingReceiptExpenses(prev => prev.map(row => row.id === item.id ? { ...row, date: event.target.value } : row))} />
+                                <select value={item.category} onChange={event => setPendingReceiptExpenses(prev => prev.map(row => row.id === item.id ? { ...row, category: event.target.value } : row))}>{EXPENSE_CATEGORIES.map(category => <option key={category.id} value={category.id}>{pick(category.label, lang)}</option>)}</select>
+                                <select value={item.paymentMethod} onChange={event => setPendingReceiptExpenses(prev => prev.map(row => row.id === item.id ? { ...row, paymentMethod: event.target.value } : row))}>{PAYMENT_METHODS.map(method => <option key={method.id} value={method.id}>{pick(method.label, lang)}</option>)}</select>
+                              </div>
+                            </div>
+                            <div className="receipt-review-meta">
+                              <span>{expenseText('confidence', lang)}: {Math.round(item.aiConfidenceScore * 100)}%</span>
+                              {item.error && <span>{item.error}</span>}
+                            </div>
+                            <div className="receipt-scan-actions">
+                              <button type="button" className="ghost-form-btn" onClick={() => setPendingReceiptExpenses(prev => prev.filter(row => row.id !== item.id))}>{expenseText('removeReceipt', lang)}</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {expenseForm.aiExtractedData && (
                       <div className="ai-result-card">
                         <div><CheckCircle2 size={18} /><strong>{expenseText('extracted', lang)}</strong></div>
@@ -2651,8 +2962,25 @@ const expenseSmartStyles = `
   .receipt-drop img{width:100%;max-height:320px;object-fit:contain;border-radius:16px}
   .receipt-drop span{display:grid;place-items:center;gap:8px;color:#9A6C3C;font-weight:900}
   .receipt-drop small{display:block;color:#8A7060;font-size:12px;font-weight:800}
+  .receipt-preview-grid{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;padding:12px}
+  .receipt-preview-grid>div{min-width:0;background:#FFFDFC;border:1px solid rgba(216,174,99,.16);border-radius:16px;padding:8px;display:grid;gap:7px;place-items:center}
+  .receipt-preview-grid img{width:100%;height:112px;max-height:112px;object-fit:contain;border-radius:12px}
+  .receipt-preview-grid small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .receipt-selected-count{margin-top:9px;background:#FFF8EA;border:1px solid rgba(216,174,99,.18);border-radius:13px;padding:9px 11px;color:#5B4332;font-size:12px;font-weight:900}
   .receipt-scan-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;margin-top:10px}
   .receipt-error{border:1px solid rgba(239,68,68,.18);background:rgba(239,68,68,.08);color:#B91C1C;border-radius:13px;padding:10px 12px;font-size:13px;font-weight:900;margin-top:10px}
+  .receipt-batch-review{display:grid;gap:12px;margin-top:12px}
+  .receipt-batch-head{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .receipt-review-card{border:1px solid rgba(216,174,99,.18);background:#FFFDFC;border-radius:18px;padding:12px;display:grid;gap:10px}
+  .receipt-review-card.failed{border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)}
+  .receipt-review-card.review{border-color:rgba(216,174,99,.35);background:#FFF8EA}
+  .receipt-review-select{display:flex!important;align-items:center!important;justify-content:space-between;gap:10px;color:#5B4332;font-weight:900}
+  .receipt-review-select input{width:18px;height:18px}
+  .receipt-review-body{display:grid;grid-template-columns:100px 1fr;gap:12px;align-items:start}
+  .receipt-review-body>img{width:100px;height:110px;object-fit:contain;border-radius:13px;background:#F7F3EA;border:1px solid rgba(216,174,99,.12)}
+  .receipt-review-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .receipt-review-fields input,.receipt-review-fields select{width:100%;min-width:0;border:1px solid rgba(216,174,99,.22);border-radius:11px;padding:9px;background:#fff;color:#111;font-family:Tajawal,Arial,sans-serif}
+  .receipt-review-meta{display:flex;gap:8px;flex-wrap:wrap;color:#8A7060;font-size:12px;font-weight:900}
   .ai-result-card{margin-top:12px;border:1px solid rgba(216,174,99,.24);border-radius:18px;background:linear-gradient(180deg,#FFFDFC,#FFF8EA);padding:15px}
   .ai-result-card>div:first-child{display:flex;align-items:center;gap:8px;color:#15803D}
   .ai-result-card p{margin:8px 0 12px;color:#5B4332;font-weight:800}
@@ -2671,5 +2999,5 @@ const expenseSmartStyles = `
   .receipt-items span{display:flex;justify-content:space-between;gap:10px;background:#FFF8EA;border-radius:12px;padding:9px 11px;color:#5B4332;font-weight:800}
   @media(max-width:1180px){.expense-dashboard-grid{grid-template-columns:1fr}.expense-kpi-grid{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:920px){.expense-smart-main{margin-inline-start:0;padding:16px}.expense-hero{display:grid}.expense-hero-actions .primary-btn,.expense-hero-actions .ghost-btn{width:auto}.expense-side-stack{grid-template-columns:1fr}.expense-floating-add{position:fixed;display:grid;place-items:center;z-index:70;inset-inline-end:18px;bottom:18px;width:56px;height:56px;border-radius:18px;border:0;background:#D8AE63;color:#111;box-shadow:0 18px 40px rgba(45,26,10,.28)}}
-  @media(max-width:640px){.expense-hero{padding:22px}.expense-hero h1{font-size:27px}.expense-kpi-grid,.expense-form-grid,.receipt-detail-grid,.monthly-grid{grid-template-columns:1fr}.expense-card-row{display:grid}.expense-row-actions{justify-content:space-between}.expense-row-actions>div{flex-wrap:wrap;justify-content:flex-end}.expense-modal-overlay{align-items:end;padding:10px}.expense-smart-modal{border-radius:22px 22px 0 0;max-height:94vh}.expense-modal-tabs{grid-template-columns:1fr}.receipt-scan-actions,.expense-actions{display:grid;grid-template-columns:1fr}.ai-result-card dl{grid-template-columns:1fr}.expense-hero-actions{display:grid}.expense-hero-actions .primary-btn,.expense-hero-actions .ghost-btn{width:100%;justify-content:center}}
+  @media(max-width:640px){.expense-hero{padding:22px}.expense-hero h1{font-size:27px}.expense-kpi-grid,.expense-form-grid,.receipt-detail-grid,.monthly-grid{grid-template-columns:1fr}.expense-card-row{display:grid}.expense-row-actions{justify-content:space-between}.expense-row-actions>div{flex-wrap:wrap;justify-content:flex-end}.expense-modal-overlay{align-items:end;padding:10px}.expense-smart-modal{border-radius:22px 22px 0 0;max-height:94dvh;overflow-y:auto;max-width:100%;overflow-x:hidden}.expense-modal-tabs{grid-template-columns:1fr}.receipt-scan-actions,.expense-actions,.receipt-batch-head{display:grid;grid-template-columns:1fr}.ai-result-card dl{grid-template-columns:1fr}.expense-hero-actions{display:grid}.expense-hero-actions .primary-btn,.expense-hero-actions .ghost-btn{width:100%;justify-content:center}.receipt-preview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.receipt-review-body{grid-template-columns:1fr}.receipt-review-body>img{width:100%;height:150px}.receipt-review-fields{grid-template-columns:1fr}}
 `;

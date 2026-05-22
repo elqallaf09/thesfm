@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_RECEIPTS = 10;
 const SUPPORTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 
 type ReceiptItem = {
@@ -13,9 +14,13 @@ type ReceiptItem = {
 
 type ReceiptScanResult = {
   merchantName?: string;
+  invoiceNumber?: string;
   totalAmount?: number;
+  subtotal?: number;
   currency?: string;
   taxAmount?: number;
+  paidAmount?: number;
+  changeAmount?: number;
   receiptDate?: string;
   date?: string;
   category?: string;
@@ -56,8 +61,9 @@ function parseMoney(value: unknown) {
 function parseReceiptTotal(text: string) {
   const normalized = normalizeArabicNumbers(text);
   const patterns = [
-    /(?:الإجمالي\s*النهائي|المجموع\s*النهائي|الصافي\s*المستحق)\s*[:：]?\s*(?:KWD|KD|د\.?ك|د\s*ك)?\s*([\d.,]+)/i,
-    /(?:Grand\s*Total|Total\s*Amount|Amount\s*Due|Net\s*Total|Final\s*Total)\s*[:：]?\s*(?:KWD|KD)?\s*([\d.,]+)/i,
+    /(?:الإجمالي\s*النهائي|إجمالي\s*الفاتورة|المجموع\s*النهائي|الصافي\s*المستحق|الصافي)\s*[:：]?\s*(?:KWD|KD|د\.?ك|د\s*ك)?\s*([\d.,]+)/i,
+    /(?:Grand\s*Total|Total\s*Amount|Amount\s*Due|Total\s*Due|Net\s*Total|Final\s*Total)\s*[:：]?\s*(?:KWD|KD)?\s*([\d.,]+)/i,
+    /(?:Total\s*final|Montant\s*total|Total\s*à\s*payer)\s*[:：]?\s*(?:KWD|KD)?\s*([\d.,]+)/i,
     /(?:الإجمالي|المجموع|الصافي)\s*[:：]?\s*(?:KWD|KD|د\.?ك|د\s*ك)?\s*([\d.,]+)/i,
     /(?:KWD|KD)\s*([\d.,]+)\s*(?:Grand\s*Total|Total)?/i,
     /([\d.,]+)\s*(?:د\.?ك|د\s*ك)\s*(?:الإجمالي|المجموع|Total)?/i,
@@ -68,6 +74,20 @@ function parseReceiptTotal(text: string) {
     if (amount) return amount;
   }
   return undefined;
+}
+
+function parseReceiptNumber(text: string, patterns: RegExp[]) {
+  const normalized = normalizeArabicNumbers(text);
+  for (const pattern of patterns) {
+    const amount = parseMoney(normalized.match(pattern)?.[1]);
+    if (amount) return amount;
+  }
+  return undefined;
+}
+
+function parseInvoiceNumber(text: string) {
+  const normalized = normalizeArabicNumbers(text);
+  return normalized.match(/(?:invoice|inv|فاتورة|رقم\s*الفاتورة)\s*[-#:：]?\s*([A-Z0-9-]+)/i)?.[1];
 }
 
 function parseMerchantName(text: string) {
@@ -143,7 +163,7 @@ function normalizeItems(value: unknown) {
 }
 
 function getFirstAmount(data: Record<string, unknown>, rawText?: string) {
-  const keys = ['totalAmount', 'amount', 'total', 'finalTotal', 'grandTotal', 'total_amount', 'amountDue', 'netTotal'];
+  const keys = ['totalAmount', 'finalTotal', 'grandTotal', 'total_amount', 'amountDue', 'netTotal', 'total', 'amount'];
   for (const key of keys) {
     const amount = parseMoney(data[key]);
     if (amount) return amount;
@@ -156,14 +176,21 @@ function normalizeResult(value: unknown, fileName: string): ReceiptScanResult {
   const rawText = typeof data.rawText === 'string' ? data.rawText : typeof data.text === 'string' ? data.text : '';
   const totalAmount = getFirstAmount(data, rawText);
   const taxAmount = parseMoney(data.taxAmount);
+  const subtotal = parseMoney(data.subtotal) ?? (rawText ? parseReceiptNumber(rawText, [/(?:subtotal|sub\s*total|المجموع\s*الفرعي|قبل\s*الضريبة)\s*[:：]?\s*([\d.,]+)/i]) : undefined);
+  const paidAmount = parseMoney(data.paidAmount) ?? (rawText ? parseReceiptNumber(rawText, [/(?:paid|paid\s*amount|amount\s*paid|المدفوع|المبلغ\s*المدفوع)\s*[:：]?\s*([\d.,]+)/i]) : undefined);
+  const changeAmount = parseMoney(data.changeAmount) ?? (rawText ? parseReceiptNumber(rawText, [/(?:change|balance|الباقي|المتبقي)\s*[:：]?\s*([\d.,]+)/i]) : undefined);
   const confidenceScore = Number(data.confidenceScore ?? data.confidence);
   const merchant = data.merchantName ?? data.merchant ?? data.storeName ?? data.vendor ?? (rawText ? parseMerchantName(rawText) : undefined);
 
   return {
-    merchantName: typeof merchant === 'string' && merchant.trim() ? merchant.trim() : fileName.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' '),
+    merchantName: typeof merchant === 'string' && merchant.trim() ? merchant.trim() : undefined,
+    invoiceNumber: typeof data.invoiceNumber === 'string' ? data.invoiceNumber : rawText ? parseInvoiceNumber(rawText) : undefined,
     totalAmount,
+    subtotal,
     currency: typeof data.currency === 'string' ? data.currency : 'KWD',
     taxAmount,
+    paidAmount,
+    changeAmount,
     receiptDate: normalizeDate(data.receiptDate ?? data.date, rawText),
     date: normalizeDate(data.receiptDate ?? data.date, rawText),
     category: normalizeCategory(data.category, rawText),
@@ -177,7 +204,7 @@ function normalizeResult(value: unknown, fileName: string): ReceiptScanResult {
 
 function fallbackResult(fileName: string): ReceiptScanResult {
   return {
-    merchantName: fileName.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ') || 'Receipt',
+    merchantName: undefined,
     totalAmount: undefined,
     currency: 'KWD',
     taxAmount: undefined,
@@ -229,7 +256,7 @@ async function analyzeWithOpenAI(file: File, bytes: ArrayBuffer): Promise<Receip
               'Prioritize the final payable receipt total, not subtotal, tax, paid amount, or change.',
               'Total labels include: الإجمالي النهائي, المجموع النهائي, Grand Total, Total Amount, Net Total, Amount Due, Total, الإجمالي.',
               'Convert Arabic/Persian digits to normal decimal numbers.',
-              'Use this schema: {"merchantName":"string","totalAmount":number,"currency":"KWD","taxAmount":number|null,"receiptDate":"YYYY-MM-DD","category":"restaurants|shopping|bills|transport|health|education|rent|loans|subscriptions|other","paymentMethod":"cash|knet|card|transfer|apple_pay|other","items":[{"name":"string","quantity":number|null,"unitPrice":number|null,"total":number}],"confidenceScore":number,"rawText":"string"}.',
+              'Use this schema: {"merchantName":"string","invoiceNumber":"string|null","subtotal":number|null,"totalAmount":number,"currency":"KWD","taxAmount":number|null,"paidAmount":number|null,"changeAmount":number|null,"receiptDate":"YYYY-MM-DD","category":"restaurants|shopping|bills|transport|health|education|rent|loans|subscriptions|other","paymentMethod":"cash|knet|card|transfer|apple_pay|other","items":[{"name":"string","quantity":number|null,"unitPrice":number|null,"total":number}],"confidenceScore":number,"rawText":"string"}.',
             ].join(' '),
           },
           {
@@ -247,9 +274,13 @@ async function analyzeWithOpenAI(file: File, bytes: ArrayBuffer): Promise<Receip
             additionalProperties: false,
             properties: {
               merchantName: { type: 'string' },
+              invoiceNumber: { type: ['string', 'null'] },
+              subtotal: { type: ['number', 'null'] },
               totalAmount: { type: 'number' },
               currency: { type: 'string' },
               taxAmount: { type: ['number', 'null'] },
+              paidAmount: { type: ['number', 'null'] },
+              changeAmount: { type: ['number', 'null'] },
               receiptDate: { type: 'string' },
               category: { type: 'string' },
               paymentMethod: { type: 'string' },
@@ -270,7 +301,7 @@ async function analyzeWithOpenAI(file: File, bytes: ArrayBuffer): Promise<Receip
               confidenceScore: { type: 'number' },
               rawText: { type: 'string' },
             },
-            required: ['merchantName', 'totalAmount', 'currency', 'receiptDate', 'category', 'paymentMethod', 'items', 'confidenceScore', 'rawText'],
+            required: ['merchantName', 'invoiceNumber', 'subtotal', 'totalAmount', 'currency', 'taxAmount', 'paidAmount', 'changeAmount', 'receiptDate', 'category', 'paymentMethod', 'items', 'confidenceScore', 'rawText'],
           },
         },
       },
@@ -284,28 +315,41 @@ async function analyzeWithOpenAI(file: File, bytes: ArrayBuffer): Promise<Receip
   return normalizeResult(JSON.parse(text), file.name);
 }
 
+async function scanFile(file: File, receiptText?: string) {
+  if (!SUPPORTED_TYPES.has(file.type)) {
+    return { fileName: file.name, success: false, error: 'Unsupported file type' };
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    return { fileName: file.name, success: false, error: 'File size is too large' };
+  }
+
+  const bytes = await file.arrayBuffer();
+  if (receiptText?.trim()) {
+    const parsed = normalizeResult({ rawText: receiptText }, file.name);
+    return { fileName: file.name, success: Boolean(parsed.totalAmount), data: parsed, error: parsed.totalAmount ? undefined : 'Could not read receipt amount clearly' };
+  }
+
+  const aiResult = await analyzeWithOpenAI(file, bytes).catch(error => {
+    console.error('Receipt AI scan failed:', { fileName: file.name, error });
+    return null;
+  });
+  const result = aiResult ?? fallbackResult(file.name);
+  return { fileName: file.name, success: Boolean(result.totalAmount), data: result, error: result.totalAmount ? undefined : 'Could not read receipt amount clearly' };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    const file = formData.get('receipt');
-
-    if (!(file instanceof File)) return errorResponse('No receipt file uploaded');
-    if (!SUPPORTED_TYPES.has(file.type)) return errorResponse('Unsupported file type', 415);
-    if (file.size > MAX_FILE_SIZE) return errorResponse('File size is too large', 413);
-
-    const bytes = await file.arrayBuffer();
+    const files = [...formData.getAll('receipt'), ...formData.getAll('receipts')].filter((file): file is File => file instanceof File);
+    if (!files.length) return errorResponse('No receipt file uploaded');
+    if (files.length > MAX_RECEIPTS) return errorResponse('You can upload up to 10 receipts at once', 413);
     const receiptText = formData.get('receiptText');
-    if (typeof receiptText === 'string' && receiptText.trim()) {
-      const parsed = normalizeResult({ rawText: receiptText }, file.name);
-      return NextResponse.json({ success: Boolean(parsed.totalAmount), data: parsed });
+    const results = await Promise.all(files.map(file => scanFile(file, typeof receiptText === 'string' ? receiptText : undefined)));
+    if (files.length === 1) {
+      const [result] = results;
+      return NextResponse.json({ success: result.success, data: result.data, error: result.error, results });
     }
-
-    const aiResult = await analyzeWithOpenAI(file, bytes).catch(error => {
-      console.error('Receipt AI scan failed:', error);
-      return null;
-    });
-    const result = aiResult ?? fallbackResult(file.name);
-    return NextResponse.json({ success: Boolean(result.totalAmount), data: result });
+    return NextResponse.json({ success: results.some(result => result.success), results });
   } catch (error) {
     console.error('Receipt scan route failed:', error);
     return errorResponse('We could not read the receipt clearly', 500);
