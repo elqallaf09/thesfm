@@ -8,8 +8,13 @@ import {
   Edit3,
   Bot,
   Bell as BellIcon,
+  Calendar,
+  Camera,
+  CheckCircle2,
   ChartPie,
+  CreditCard,
   Download,
+  Eye,
   Flag,
   Gauge,
   GraduationCap,
@@ -21,11 +26,15 @@ import {
   PiggyBank,
   Plus,
   Printer,
+  Receipt,
   ReceiptText,
+  RefreshCw,
   Send,
+  Sparkles,
   Trash2,
   Target,
   TrendingUp,
+  Upload,
   Wallet,
   X,
 } from 'lucide-react';
@@ -90,10 +99,48 @@ type GoalFormState = {
 };
 type QueryResult<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
+type ReceiptItem = { name: string; price: number };
+type AiExtractedData = {
+  merchantName?: string;
+  totalAmount?: number;
+  taxAmount?: number;
+  receiptDate?: string;
+  category?: string;
+  paymentMethod?: string;
+  items?: ReceiptItem[];
+  confidenceScore?: number;
+};
+type SmartExpense = MoneyItem & {
+  category?: string | null;
+  date?: string | null;
+  payment_method?: string | null;
+  notes?: string | null;
+  receipt_image_url?: string | null;
+  receipt_file_name?: string | null;
+  ai_extracted_data?: AiExtractedData | null;
+  ai_confidence_score?: number | null;
+  updated_at?: string | null;
+};
+type ExpenseFormState = {
+  id?: string;
+  name: string;
+  amount: string;
+  category: string;
+  date: string;
+  paymentMethod: string;
+  notes: string;
+  receiptFile: File | null;
+  receiptPreview: string;
+  receiptImageUrl?: string | null;
+  receiptFileName?: string | null;
+  aiExtractedData?: AiExtractedData | null;
+  aiConfidenceScore?: number | null;
+};
+type ExpenseModalMode = 'manual' | 'scan';
 
 interface Snapshot {
   income: IncomeSource[];
-  expenses: MoneyItem[];
+  expenses: SmartExpense[];
   savings: MoneyItem[];
   investments: MoneyItem[];
   goals: GoalItem[];
@@ -117,6 +164,23 @@ const emptySnapshot: Snapshot = {
 };
 
 const emptyEntryForm: EntryFormState = { name: '', amount: '', category: 'general' };
+function todayInputDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+const emptyExpenseForm = (): ExpenseFormState => ({
+  name: '',
+  amount: '',
+  category: 'other',
+  date: todayInputDate(),
+  paymentMethod: 'cash',
+  notes: '',
+  receiptFile: null,
+  receiptPreview: '',
+  receiptImageUrl: null,
+  receiptFileName: null,
+  aiExtractedData: null,
+  aiConfidenceScore: null,
+});
 const emptyGoalForm: GoalFormState = {
   id: '',
   name: '',
@@ -159,6 +223,74 @@ const navItems = [
   { href: '/notifications', label: { ar: 'الإشعارات', en: 'Notifications', fr: 'Notifications' }, icon: BellIcon },
   { href: '/profile', label: { ar: 'الملف الشخصي', en: 'Profile', fr: 'Profil' }, icon: GraduationCap },
 ];
+
+const EXPENSE_CATEGORIES = [
+  { id: 'restaurants', label: { ar: 'مطاعم', en: 'Restaurants', fr: 'Restaurants' } },
+  { id: 'shopping', label: { ar: 'مشتريات', en: 'Shopping', fr: 'Achats' } },
+  { id: 'bills', label: { ar: 'فواتير', en: 'Bills', fr: 'Factures' } },
+  { id: 'transport', label: { ar: 'مواصلات', en: 'Transport', fr: 'Transport' } },
+  { id: 'health', label: { ar: 'صحة', en: 'Health', fr: 'Sante' } },
+  { id: 'education', label: { ar: 'تعليم', en: 'Education', fr: 'Education' } },
+  { id: 'rent', label: { ar: 'إيجار', en: 'Rent', fr: 'Loyer' } },
+  { id: 'loans', label: { ar: 'قروض', en: 'Loans', fr: 'Prets' } },
+  { id: 'subscriptions', label: { ar: 'اشتراكات', en: 'Subscriptions', fr: 'Abonnements' } },
+  { id: 'other', label: { ar: 'أخرى', en: 'Other', fr: 'Autre' } },
+];
+
+const PAYMENT_METHODS = [
+  { id: 'cash', label: { ar: 'كاش', en: 'Cash', fr: 'Especes' } },
+  { id: 'knet', label: { ar: 'KNET', en: 'KNET', fr: 'KNET' } },
+  { id: 'card', label: { ar: 'بطاقة بنكية', en: 'Bank card', fr: 'Carte bancaire' } },
+  { id: 'transfer', label: { ar: 'تحويل بنكي', en: 'Bank transfer', fr: 'Virement bancaire' } },
+  { id: 'apple_pay', label: { ar: 'Apple Pay', en: 'Apple Pay', fr: 'Apple Pay' } },
+  { id: 'other', label: { ar: 'أخرى', en: 'Other', fr: 'Autre' } },
+];
+
+const expenseUi = {
+  manualTab: { ar: 'إدخال يدوي', en: 'Manual Entry', fr: 'Saisie manuelle' },
+  scanTab: { ar: 'رفع فاتورة بالذكاء الاصطناعي', en: 'AI Receipt Scan', fr: 'Scan IA de facture' },
+  addExpense: { ar: 'إضافة مصروف', en: 'Add expense', fr: 'Ajouter une depense' },
+  uploadReceipt: { ar: 'رفع فاتورة', en: 'Upload receipt', fr: 'Telecharger une facture' },
+  smartTitle: { ar: 'إدارة المصروفات الذكية', en: 'Smart expense management', fr: 'Gestion intelligente des depenses' },
+  smartSubtitle: { ar: 'سجل مصروفاتك يدويًا أو ارفع فاتورة ليقرأها الذكاء الاصطناعي ثم راجعها قبل الإضافة.', en: 'Add expenses manually or upload a receipt for AI extraction, then review before saving.', fr: 'Ajoutez manuellement ou telechargez une facture pour extraction IA, puis verifiez avant enregistrement.' },
+  name: { ar: 'اسم المصروف', en: 'Expense name', fr: 'Nom de la depense' },
+  amount: { ar: 'المبلغ', en: 'Amount', fr: 'Montant' },
+  category: { ar: 'التصنيف', en: 'Category', fr: 'Categorie' },
+  date: { ar: 'التاريخ', en: 'Date', fr: 'Date' },
+  paymentMethod: { ar: 'طريقة الدفع', en: 'Payment method', fr: 'Mode de paiement' },
+  notes: { ar: 'ملاحظات', en: 'Notes', fr: 'Notes' },
+  attachReceipt: { ar: 'إرفاق صورة الفاتورة', en: 'Attach receipt image', fr: 'Joindre l image de facture' },
+  uploadTitle: { ar: 'ارفع صورة الفاتورة', en: 'Upload receipt image', fr: 'Telecharger l image de la facture' },
+  uploadHint: { ar: 'اسحب الصورة هنا أو اختر من الجهاز', en: 'Drag image here or choose from device', fr: 'Glissez l image ici ou choisissez un fichier' },
+  analyze: { ar: 'تحليل الفاتورة بالذكاء الاصطناعي', en: 'Analyze receipt with AI', fr: 'Analyser la facture avec l IA' },
+  reading: { ar: 'جاري قراءة الفاتورة...', en: 'Reading receipt...', fr: 'Lecture de la facture...' },
+  extracted: { ar: 'تم استخراج البيانات', en: 'Data extracted successfully', fr: 'Donnees extraites avec succes' },
+  review: { ar: 'راجع البيانات قبل الإضافة', en: 'Review before adding', fr: 'Verifiez avant l ajout' },
+  confirmAdd: { ar: 'تأكيد وإضافة المصروف', en: 'Confirm and add expense', fr: 'Confirmer et ajouter la depense' },
+  reanalyze: { ar: 'إعادة التحليل', en: 'Re-analyze', fr: 'Reanalyser' },
+  changeImage: { ar: 'تغيير الصورة', en: 'Change image', fr: 'Changer l image' },
+  confirmOnly: { ar: 'تأكيد الإضافة', en: 'Confirm addition', fr: 'Confirmer l ajout' },
+  editData: { ar: 'تعديل البيانات', en: 'Edit data', fr: 'Modifier les donnees' },
+  merchant: { ar: 'المتجر', en: 'Merchant', fr: 'Commercant' },
+  suggestedCategory: { ar: 'التصنيف المقترح', en: 'Suggested category', fr: 'Categorie suggeree' },
+  confidence: { ar: 'الثقة', en: 'Confidence', fr: 'Confiance' },
+  aiAdded: { ar: 'مضاف بالذكاء الاصطناعي', en: 'Added by AI', fr: 'Ajoute par IA' },
+  hasReceipt: { ar: 'يوجد فاتورة', en: 'Receipt attached', fr: 'Facture jointe' },
+  noReceipt: { ar: 'بدون فاتورة', en: 'No receipt', fr: 'Sans facture' },
+  viewReceipt: { ar: 'عرض الفاتورة', en: 'View receipt', fr: 'Voir la facture' },
+  receiptDetails: { ar: 'تفاصيل الفاتورة', en: 'Receipt details', fr: 'Details de la facture' },
+  extractedData: { ar: 'البيانات المستخرجة', en: 'Extracted data', fr: 'Donnees extraites' },
+  receiptItems: { ar: 'عناصر الفاتورة', en: 'Receipt items', fr: 'Articles de la facture' },
+  originalImage: { ar: 'عرض الصورة الأصلية', en: 'View original image', fr: 'Voir l image originale' },
+  emptyTitle: { ar: 'لا توجد مصروفات حتى الآن', en: 'No expenses yet', fr: 'Aucune depense pour le moment' },
+  emptyBody: { ar: 'ابدأ بإضافة أول مصروف يدويًا أو ارفع صورة فاتورة ليتم تحليلها بالذكاء الاصطناعي.', en: 'Start by adding an expense manually or upload a receipt to analyze it with AI.', fr: 'Ajoutez une depense manuellement ou telechargez une facture pour l analyser avec l IA.' },
+  fileLarge: { ar: 'حجم الملف كبير جدًا', en: 'File size is too large', fr: 'Le fichier est trop volumineux' },
+  fileUnsupported: { ar: 'نوع الملف غير مدعوم', en: 'Unsupported file type', fr: 'Type de fichier non pris en charge' },
+  unclear: { ar: 'الصورة غير واضحة، حاول رفع صورة أوضح', en: 'The image is unclear, try uploading a clearer one', fr: 'L image n est pas claire, essayez une image plus nette' },
+  couldNotRead: { ar: 'لم نتمكن من قراءة الفاتورة بوضوح', en: 'We could not read the receipt clearly', fr: 'Nous n avons pas pu lire la facture clairement' },
+  monthlySummary: { ar: 'ملخص الشهر', en: 'Monthly summary', fr: 'Resume mensuel' },
+  aiInsights: { ar: 'رؤى الذكاء المالي', en: 'Financial AI insights', fr: 'Insights IA financiers' },
+};
 
 const pageMeta: Record<PageKind, { title: LangText; subtitle: LangText; accent: string; icon: typeof ReceiptText }> = {
   expenses: {
@@ -210,6 +342,18 @@ function pick(text: LangText, langOrIsAr: string | boolean) {
   if (lang === 'ar') return text.ar;
   if (lang === 'fr') return text.fr ?? text.en;
   return text.en;
+}
+
+function expenseText(key: keyof typeof expenseUi, lang: string) {
+  return pick(expenseUi[key], lang);
+}
+
+function categoryLabel(category: string | null | undefined, lang: string) {
+  return pick(EXPENSE_CATEGORIES.find(item => item.id === category)?.label ?? EXPENSE_CATEGORIES.at(-1)!.label, lang);
+}
+
+function paymentLabel(paymentMethod: string | null | undefined, lang: string) {
+  return pick(PAYMENT_METHODS.find(item => item.id === paymentMethod)?.label ?? PAYMENT_METHODS.at(-1)!.label, lang);
 }
 
 function money(value: number, langOrIsAr: string | boolean, currency = 'KWD') {
@@ -346,6 +490,11 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [entryForm, setEntryForm] = useState<EntryFormState>(emptyEntryForm);
   const [entryMode, setEntryMode] = useState<'create' | 'edit'>('create');
   const [entryOpen, setEntryOpen] = useState(false);
+  const [expenseForm, setExpenseForm] = useState<ExpenseFormState>(() => emptyExpenseForm());
+  const [expenseModalMode, setExpenseModalMode] = useState<ExpenseModalMode>('manual');
+  const [receiptAnalyzing, setReceiptAnalyzing] = useState(false);
+  const [receiptError, setReceiptError] = useState('');
+  const [receiptDetails, setReceiptDetails] = useState<SmartExpense | null>(null);
   const [entrySaving, setEntrySaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<(MoneyItem | IncomeSource) | null>(null);
   const [entryMessage, setEntryMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
@@ -380,7 +529,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       setDataLoading(true);
       const [income, expenses, savings, investments, goals] = await Promise.all([
         safeQuery<IncomeSource>(supabase.from('monthly_income_sources').select('id, label, category, amount').eq('user_id', user.id) as unknown as QueryResult<IncomeSource>),
-        safeQuery<MoneyItem>(supabase.from('expense_items').select('id, name, amount, created_at').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<MoneyItem>),
+        safeQuery<SmartExpense>(supabase.from('expense_items').select('id, name, amount, category, date, payment_method, notes, receipt_image_url, receipt_file_name, ai_extracted_data, ai_confidence_score, created_at, updated_at').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<SmartExpense>),
         safeQuery<MoneyItem>(supabase.from('savings_items').select('id, name, amount').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>),
         safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>),
         safeQuery<GoalRow>(supabase.from('financial_goals').select('id, goal, amount, duration, duration_unit, notes, created_at').eq('user_id', user.id) as unknown as QueryResult<GoalRow>),
@@ -482,6 +631,35 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     return result;
   }, [rows, rowSearch, rowSort, rowRange, kind]);
 
+  const filteredExpenses = useMemo(() => {
+    let result = [...data.expenses];
+    if (rowSearch.trim()) {
+      const q = rowSearch.toLowerCase();
+      result = result.filter(item =>
+        item.name.toLowerCase().includes(q) ||
+        categoryLabel(item.category, lang).toLowerCase().includes(q) ||
+        paymentLabel(item.payment_method, lang).toLowerCase().includes(q),
+      );
+    }
+    if (rowRange !== 'all') {
+      const now = new Date();
+      result = result.filter(item => {
+        const rawDate = item.date || item.created_at;
+        if (!rawDate) return true;
+        const d = new Date(rawDate);
+        if (rowRange === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        if (rowRange === 'last3') return d >= new Date(now.getFullYear(), now.getMonth() - 2, 1);
+        if (rowRange === 'year') return d.getFullYear() === now.getFullYear();
+        return true;
+      });
+    }
+    if (rowSort === 'amountDesc') result.sort((a, b) => b.amount - a.amount);
+    else if (rowSort === 'amountAsc') result.sort((a, b) => a.amount - b.amount);
+    else if (rowSort === 'dateAsc') result.sort((a, b) => new Date(a.date || a.created_at || 0).getTime() - new Date(b.date || b.created_at || 0).getTime());
+    else result.sort((a, b) => new Date(b.date || b.created_at || 0).getTime() - new Date(a.date || a.created_at || 0).getTime());
+    return result;
+  }, [data.expenses, lang, rowRange, rowSearch, rowSort]);
+
   useEffect(() => { setVisibleCount(30); }, [rowSearch, rowSort, rowRange, kind]);
 
   function showEntryMessage(type: 'ok' | 'err', text: string) {
@@ -491,13 +669,52 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
   function openCreateEntry() {
     if (!editableKind(kind)) return;
+    if (kind === 'expenses') {
+      setEntryMode('create');
+      setExpenseModalMode('manual');
+      setReceiptError('');
+      setExpenseForm(emptyExpenseForm());
+      setEntryOpen(true);
+      return;
+    }
     setEntryMode('create');
     setEntryForm(emptyEntryForm);
     setEntryOpen(true);
   }
 
+  function openReceiptScan() {
+    setEntryMode('create');
+    setExpenseModalMode('scan');
+    setReceiptError('');
+    setExpenseForm(emptyExpenseForm());
+    setEntryOpen(true);
+  }
+
   function openEditEntry(item: MoneyItem | IncomeSource) {
     if (!editableKind(kind)) return;
+    if (kind === 'expenses') {
+      const expense = item as SmartExpense;
+      setEntryMode('edit');
+      setExpenseModalMode('manual');
+      setReceiptError('');
+      setExpenseForm({
+        id: expense.id,
+        name: expense.name,
+        amount: String(expense.amount ?? ''),
+        category: expense.category || 'other',
+        date: expense.date || (expense.created_at ? expense.created_at.slice(0, 10) : todayInputDate()),
+        paymentMethod: expense.payment_method || 'cash',
+        notes: expense.notes || '',
+        receiptFile: null,
+        receiptPreview: expense.receipt_image_url || '',
+        receiptImageUrl: expense.receipt_image_url || null,
+        receiptFileName: expense.receipt_file_name || null,
+        aiExtractedData: expense.ai_extracted_data || null,
+        aiConfidenceScore: expense.ai_confidence_score || null,
+      });
+      setEntryOpen(true);
+      return;
+    }
     setEntryMode('edit');
     setEntryForm({
       id: item.id,
@@ -521,6 +738,157 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       if (entryKind === 'savings') return { ...prev, savings: apply(prev.savings) };
       return { ...prev, investments: apply(prev.investments) };
     });
+  }
+
+  function handleExpenseFile(file: File | null) {
+    setReceiptError('');
+    if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!allowed.includes(file.type)) {
+      setReceiptError(expenseText('fileUnsupported', lang));
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setReceiptError(expenseText('fileLarge', lang));
+      return;
+    }
+    const preview = file.type === 'application/pdf' ? '' : URL.createObjectURL(file);
+    setExpenseForm(prev => ({
+      ...prev,
+      receiptFile: file,
+      receiptPreview: preview,
+      receiptFileName: file.name,
+    }));
+  }
+
+  async function analyzeReceipt() {
+    if (!expenseForm.receiptFile || receiptAnalyzing) {
+      setReceiptError(expenseText('unclear', lang));
+      return;
+    }
+    setReceiptAnalyzing(true);
+    setReceiptError('');
+    try {
+      const form = new FormData();
+      form.append('receipt', expenseForm.receiptFile);
+      const response = await fetch('/api/ai/receipt-scan', { method: 'POST', body: form });
+      const payload = await response.json() as { error?: string; data?: AiExtractedData };
+      if (!response.ok || !payload.data) throw new Error(payload.error || expenseText('couldNotRead', lang));
+      const extracted = payload.data;
+      setExpenseForm(prev => ({
+        ...prev,
+        name: extracted.merchantName || prev.name,
+        amount: extracted.totalAmount ? String(extracted.totalAmount) : prev.amount,
+        category: extracted.category || prev.category || 'other',
+        date: extracted.receiptDate || prev.date,
+        paymentMethod: extracted.paymentMethod || prev.paymentMethod || 'other',
+        aiExtractedData: extracted,
+        aiConfidenceScore: extracted.confidenceScore ?? 0.82,
+      }));
+    } catch (err) {
+      setReceiptError(err instanceof Error ? err.message : expenseText('couldNotRead', lang));
+    } finally {
+      setReceiptAnalyzing(false);
+    }
+  }
+
+  async function uploadReceiptIfAvailable(id: string) {
+    if (!expenseForm.receiptFile || !user || isGuest) {
+      return {
+        receiptImageUrl: expenseForm.receiptImageUrl || expenseForm.receiptPreview || null,
+        receiptFileName: expenseForm.receiptFileName || expenseForm.receiptFile?.name || null,
+      };
+    }
+
+    const safeName = expenseForm.receiptFile.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+    const path = `${user.id}/${id}-${Date.now()}-${safeName}`;
+    const { error } = await supabase.storage.from('receipts').upload(path, expenseForm.receiptFile, { upsert: true });
+    if (error) {
+      return {
+        receiptImageUrl: expenseForm.receiptImageUrl || null,
+        receiptFileName: expenseForm.receiptFile.name,
+      };
+    }
+    const { data: publicUrl } = supabase.storage.from('receipts').getPublicUrl(path);
+    return {
+      receiptImageUrl: publicUrl.publicUrl,
+      receiptFileName: expenseForm.receiptFile.name,
+    };
+  }
+
+  async function saveExpense(event?: React.FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    if (entrySaving) return;
+
+    const name = expenseForm.name.trim();
+    const amount = Number(expenseForm.amount);
+    if (!name || !amount || amount <= 0 || !expenseForm.category || !expenseForm.date) {
+      showEntryMessage('err', t('entry_validation_error'));
+      return;
+    }
+
+    setEntrySaving(true);
+    const mode = entryMode;
+    const id = expenseForm.id || (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`);
+    const now = new Date().toISOString();
+
+    try {
+      const uploaded = await uploadReceiptIfAvailable(id);
+      const item: SmartExpense = {
+        id,
+        name,
+        amount,
+        category: expenseForm.category,
+        date: expenseForm.date,
+        payment_method: expenseForm.paymentMethod,
+        notes: expenseForm.notes,
+        receipt_image_url: uploaded.receiptImageUrl,
+        receipt_file_name: uploaded.receiptFileName,
+        ai_extracted_data: expenseForm.aiExtractedData,
+        ai_confidence_score: expenseForm.aiConfidenceScore ?? expenseForm.aiExtractedData?.confidenceScore ?? null,
+        created_at: mode === 'create' ? now : undefined,
+        updated_at: now,
+      };
+
+      if (isGuest) {
+        const current = readGuestItems('expenses') as SmartExpense[];
+        const next = mode === 'create' ? [item, ...current] : current.map(existing => existing.id === id ? { ...existing, ...item } : existing);
+        writeGuestItems('expenses', next);
+      } else {
+        if (!user) throw new Error(t('entry_auth_required'));
+        const payload = {
+          user_id: user.id,
+          name,
+          amount,
+          category: expenseForm.category,
+          date: expenseForm.date,
+          payment_method: expenseForm.paymentMethod,
+          notes: expenseForm.notes || null,
+          receipt_image_url: uploaded.receiptImageUrl,
+          receipt_file_name: uploaded.receiptFileName,
+          ai_extracted_data: expenseForm.aiExtractedData ?? null,
+          ai_confidence_score: expenseForm.aiConfidenceScore ?? expenseForm.aiExtractedData?.confidenceScore ?? null,
+          updated_at: now,
+        };
+        if (mode === 'create') {
+          const { data: created, error } = await supabase.from('expense_items').insert(payload).select('id,name,amount,category,date,payment_method,notes,receipt_image_url,receipt_file_name,ai_extracted_data,ai_confidence_score,created_at,updated_at').single();
+          if (error) throw error;
+          Object.assign(item, created);
+        } else {
+          const { error } = await supabase.from('expense_items').update(payload).eq('id', id);
+          if (error) throw error;
+        }
+      }
+
+      applyEntryToSnapshot('expenses', item, mode);
+      setEntryOpen(false);
+      setExpenseForm(emptyExpenseForm());
+      showEntryMessage('ok', mode === 'create' ? t('success') : t('updateSuccess'));
+    } catch (err) {
+      showEntryMessage('err', err instanceof Error ? err.message : t('error'));
+    } finally {
+      setEntrySaving(false);
+    }
   }
 
   async function saveEntry(event: React.FormEvent<HTMLFormElement>) {
@@ -762,17 +1130,18 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   }
 
   useEffect(() => {
-    if (!entryOpen && !confirmDelete && !goalEditOpen) return;
+    if (!entryOpen && !confirmDelete && !goalEditOpen && !receiptDetails) return;
     const close = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setEntryOpen(false);
         setConfirmDelete(null);
         setGoalEditOpen(false);
+        setReceiptDetails(null);
       }
     };
     window.addEventListener('keydown', close);
     return () => window.removeEventListener('keydown', close);
-  }, [confirmDelete, entryOpen, goalEditOpen]);
+  }, [confirmDelete, entryOpen, goalEditOpen, receiptDetails]);
 
   async function sendAiMessage() {
     const content = chatValue.trim();
@@ -809,6 +1178,314 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       <div className="sfm-shell" dir={dir}>
         <div className="sfm-spinner" />
         <style>{baseStyles}</style>
+      </div>
+    );
+  }
+
+  if (kind === 'expenses') {
+    const visibleExpenses = filteredExpenses.slice(0, visibleCount);
+    const monthlyExpenses = data.expenses.filter(item => {
+      const d = new Date(item.date || item.created_at || 0);
+      const now = new Date();
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    const monthlyTotal = monthlyExpenses.reduce((sum, item) => sum + item.amount, 0);
+    const recurringTotal = data.expenses.filter(item => ['subscriptions', 'bills', 'loans'].includes(item.category || '')).reduce((sum, item) => sum + item.amount, 0);
+
+    return (
+      <div className="sfm-shell expense-smart-shell" dir={dir}>
+        <Sidebar />
+        <main className="sfm-main expense-smart-main">
+          <section className="expense-hero">
+            <div>
+              <span className="eyebrow"><Sparkles size={14} /> {expenseText('aiInsights', lang)}</span>
+              <h1>{expenseText('smartTitle', lang)}</h1>
+              <p>{expenseText('smartSubtitle', lang)}</p>
+            </div>
+            <div className="expense-hero-actions">
+              <button type="button" className="ghost-btn" onClick={openReceiptScan}>
+                <Camera size={17} />
+                {expenseText('uploadReceipt', lang)}
+              </button>
+              <button type="button" className="primary-btn" onClick={openCreateEntry}>
+                <Plus size={17} />
+                {expenseText('addExpense', lang)}
+              </button>
+            </div>
+          </section>
+
+          {snapshot.error && <div className="notice">{t('error_partial_load')}</div>}
+
+          <section className="expense-kpi-grid">
+            {cards.map(card => (
+              <article key={pick(card.title, lang)} className="kpi-card">
+                <span style={{ background: card.tone }} />
+                <p>{pick(card.title, lang)}</p>
+                <strong>{card.value}</strong>
+                <small>{pick(card.body, lang)}</small>
+              </article>
+            ))}
+          </section>
+
+          <section className="expense-dashboard-grid">
+            <div className="panel expense-list-panel">
+              <div className="panel-head">
+                <div>
+                  <p>{t('page_details')}</p>
+                  <h3>{sectionTitle(kind, lang)}</h3>
+                </div>
+                {dataLoading && <span className="loading-pill">{t('loading')}</span>}
+              </div>
+
+              <div className="row-controls">
+                <input className="row-search" type="search" placeholder={t('search')} value={rowSearch} onChange={e => setRowSearch(e.target.value)} />
+                <select className="row-select" value={rowRange} onChange={e => setRowRange(e.target.value as typeof rowRange)}>
+                  <option value="all">{t('filter_all')}</option>
+                  <option value="month">{t('filter_month')}</option>
+                  <option value="last3">{t('filter_last3')}</option>
+                  <option value="year">{t('filter_year')}</option>
+                </select>
+                <select className="row-select" value={rowSort} onChange={e => setRowSort(e.target.value as typeof rowSort)}>
+                  <option value="dateDesc">{t('sort_newest')}</option>
+                  <option value="dateAsc">{t('sort_oldest')}</option>
+                  <option value="amountDesc">{t('sort_highest')}</option>
+                  <option value="amountAsc">{t('sort_lowest')}</option>
+                </select>
+              </div>
+
+              {data.expenses.length === 0 ? (
+                <div className="expense-empty">
+                  <div><Receipt size={34} /></div>
+                  <h3>{expenseText('emptyTitle', lang)}</h3>
+                  <p>{expenseText('emptyBody', lang)}</p>
+                  <div>
+                    <button type="button" className="primary-btn" onClick={openCreateEntry}>{expenseText('addExpense', lang)}</button>
+                    <button type="button" className="ghost-form-btn" onClick={openReceiptScan}>{expenseText('uploadReceipt', lang)}</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="row-count">
+                    {isAr
+                      ? `يعرض ${Math.min(visibleCount, filteredExpenses.length)} من ${filteredExpenses.length}`
+                      : `Showing ${Math.min(visibleCount, filteredExpenses.length)} of ${filteredExpenses.length}`}
+                    {' · '}
+                    {money(visibleExpenses.reduce((s, item) => s + item.amount, 0), lang, currency)}
+                  </div>
+                  <div className="expense-card-list">
+                    {visibleExpenses.map(item => {
+                      const hasReceipt = Boolean(item.receipt_image_url || item.receipt_file_name);
+                      const aiAdded = Boolean(item.ai_extracted_data || item.ai_confidence_score);
+                      return (
+                        <article className="expense-card-row" key={item.id}>
+                          <div className="expense-row-main">
+                            <div className="expense-row-icon"><ReceiptText size={19} /></div>
+                            <div>
+                              <strong>{item.name.replace(/^Ø®ÙŠØ±ÙŠØ©:\d{4}-\d{2}:/, '')}</strong>
+                              <span>{item.date || (item.created_at ? new Date(item.created_at).toISOString().slice(0, 10) : '')} · {paymentLabel(item.payment_method, lang)}</span>
+                              <div className="expense-badges">
+                                <em>{categoryLabel(item.category, lang)}</em>
+                                <em className={hasReceipt ? 'ok' : ''}>{hasReceipt ? expenseText('hasReceipt', lang) : expenseText('noReceipt', lang)}</em>
+                                {aiAdded && <em className="ai">{expenseText('aiAdded', lang)}</em>}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="expense-row-actions">
+                            <b>{money(item.amount, lang, currency)}</b>
+                            <div>
+                              {hasReceipt && (
+                                <button type="button" className="row-action" onClick={() => setReceiptDetails(item)} aria-label={expenseText('viewReceipt', lang)} title={expenseText('viewReceipt', lang)}>
+                                  <Eye size={15} />
+                                </button>
+                              )}
+                              <button type="button" className="row-action" onClick={() => openEditEntry(item)} aria-label={t('edit')} title={t('edit')}>
+                                <Edit3 size={15} />
+                              </button>
+                              <button type="button" className="row-action" onClick={() => setConfirmDelete(item)} aria-label={t('delete')} title={t('delete')}>
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                  {filteredExpenses.length > visibleCount && (
+                    <button type="button" className="load-more-btn" onClick={() => setVisibleCount(v => v + 30)}>
+                      {t('load_more').replace('{n}', String(filteredExpenses.length - visibleCount))}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+
+            <aside className="expense-side-stack">
+              <section className="panel">
+                <div className="panel-head compact">
+                  <div>
+                    <p>{expenseText('aiInsights', lang)}</p>
+                    <h3>{t('suggestions_now')}</h3>
+                  </div>
+                  <Bot size={21} />
+                </div>
+                <div className="insight-list">
+                  {insights.map(item => (
+                    <div key={item.title}>
+                      <Flag size={16} />
+                      <div>
+                        <strong>{item.title}</strong>
+                        <span>{item.body}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+              <section className="panel monthly-panel">
+                <div className="panel-head compact">
+                  <div>
+                    <p>{expenseText('monthlySummary', lang)}</p>
+                    <h3>{money(monthlyTotal, lang, currency)}</h3>
+                  </div>
+                  <ChartPie size={21} />
+                </div>
+                <div className="monthly-grid">
+                  <div><span>{t('filter_month')}</span><b>{monthlyExpenses.length}</b></div>
+                  <div><span>{expenseText('hasReceipt', lang)}</span><b>{monthlyExpenses.filter(item => item.receipt_image_url || item.receipt_file_name).length}</b></div>
+                  <div><span>{expenseText('aiAdded', lang)}</span><b>{monthlyExpenses.filter(item => item.ai_extracted_data || item.ai_confidence_score).length}</b></div>
+                  <div><span>{pick({ ar: 'المتكرر', en: 'Recurring', fr: 'Recurrent' }, lang)}</span><b>{money(recurringTotal, lang, currency)}</b></div>
+                </div>
+              </section>
+            </aside>
+          </section>
+
+          <button type="button" className="expense-floating-add" onClick={openCreateEntry} aria-label={expenseText('addExpense', lang)}>
+            <Plus size={22} />
+          </button>
+        </main>
+
+        {entryOpen && (
+          <div className="entry-overlay expense-modal-overlay" role="presentation" onMouseDown={() => setEntryOpen(false)}>
+            <div className="entry-modal expense-smart-modal" role="dialog" aria-modal="true" aria-labelledby="expense-modal-title" onMouseDown={event => event.stopPropagation()}>
+              <div className="entry-modal-head">
+                <div>
+                  <p>{entryMode === 'edit' ? t('update') : expenseText('addExpense', lang)}</p>
+                  <h3 id="expense-modal-title">{expenseModalMode === 'scan' ? expenseText('scanTab', lang) : expenseText('manualTab', lang)}</h3>
+                </div>
+                <button type="button" className="icon-btn" onClick={() => setEntryOpen(false)} aria-label={t('close')}><X size={18} /></button>
+              </div>
+
+              <div className="expense-modal-tabs">
+                <button type="button" className={expenseModalMode === 'manual' ? 'active' : ''} onClick={() => setExpenseModalMode('manual')}>{expenseText('manualTab', lang)}</button>
+                <button type="button" className={expenseModalMode === 'scan' ? 'active' : ''} onClick={() => setExpenseModalMode('scan')}>{expenseText('scanTab', lang)}</button>
+              </div>
+
+              <form className="entry-form expense-form-grid" onSubmit={saveExpense}>
+                {expenseModalMode === 'scan' && (
+                  <div className="receipt-scan-area">
+                    <label className="receipt-drop">
+                      <input type="file" accept="image/*,application/pdf" capture="environment" onChange={event => handleExpenseFile(event.target.files?.[0] || null)} />
+                      {expenseForm.receiptPreview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={expenseForm.receiptPreview} alt={expenseText('uploadTitle', lang)} />
+                      ) : (
+                        <span><Upload size={26} />{expenseText('uploadTitle', lang)}<small>{expenseText('uploadHint', lang)}</small></span>
+                      )}
+                    </label>
+                    <div className="receipt-scan-actions">
+                      <button type="button" className="ghost-form-btn" onClick={() => handleExpenseFile(null)}>{expenseText('changeImage', lang)}</button>
+                      <button type="button" className="primary-form-btn" onClick={() => void analyzeReceipt()} disabled={receiptAnalyzing || !expenseForm.receiptFile}>
+                        {receiptAnalyzing ? <RefreshCw size={15} className="spin-icon" /> : <Sparkles size={15} />}
+                        {receiptAnalyzing ? expenseText('reading', lang) : expenseText('analyze', lang)}
+                      </button>
+                    </div>
+                    {receiptError && <div className="receipt-error">{receiptError}</div>}
+                    {expenseForm.aiExtractedData && (
+                      <div className="ai-result-card">
+                        <div><CheckCircle2 size={18} /><strong>{expenseText('extracted', lang)}</strong></div>
+                        <p>{expenseText('review', lang)}</p>
+                        <dl>
+                          <dt>{expenseText('merchant', lang)}</dt><dd>{expenseForm.aiExtractedData.merchantName || expenseForm.name || '-'}</dd>
+                          <dt>{expenseText('amount', lang)}</dt><dd>{expenseForm.amount ? money(Number(expenseForm.amount), lang, currency) : '-'}</dd>
+                          <dt>{expenseText('date', lang)}</dt><dd>{expenseForm.date}</dd>
+                          <dt>{expenseText('suggestedCategory', lang)}</dt><dd>{categoryLabel(expenseForm.category, lang)}</dd>
+                          <dt>{expenseText('confidence', lang)}</dt><dd>{Math.round((expenseForm.aiConfidenceScore || expenseForm.aiExtractedData.confidenceScore || 0.82) * 100)}%</dd>
+                        </dl>
+                        <div className="receipt-scan-actions">
+                          <button type="submit" className="primary-form-btn">{expenseText('confirmOnly', lang)}</button>
+                          <button type="button" className="ghost-form-btn" onClick={() => setExpenseModalMode('manual')}>{expenseText('editData', lang)}</button>
+                          <button type="button" className="ghost-form-btn" onClick={() => void analyzeReceipt()}>{expenseText('reanalyze', lang)}</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <label><span>{expenseText('name', lang)}</span><input value={expenseForm.name} onChange={event => setExpenseForm(prev => ({ ...prev, name: event.target.value }))} autoFocus /></label>
+                <label><span>{expenseText('amount', lang)}</span><input inputMode="decimal" value={expenseForm.amount} onChange={event => setExpenseForm(prev => ({ ...prev, amount: event.target.value }))} /></label>
+                <label><span>{expenseText('category', lang)}</span><select value={expenseForm.category} onChange={event => setExpenseForm(prev => ({ ...prev, category: event.target.value }))}>{EXPENSE_CATEGORIES.map(item => <option key={item.id} value={item.id}>{pick(item.label, lang)}</option>)}</select></label>
+                <label><span>{expenseText('date', lang)}</span><input type="date" value={expenseForm.date} onChange={event => setExpenseForm(prev => ({ ...prev, date: event.target.value }))} /></label>
+                <label><span>{expenseText('paymentMethod', lang)}</span><select value={expenseForm.paymentMethod} onChange={event => setExpenseForm(prev => ({ ...prev, paymentMethod: event.target.value }))}>{PAYMENT_METHODS.map(item => <option key={item.id} value={item.id}>{pick(item.label, lang)}</option>)}</select></label>
+                <label><span>{expenseText('attachReceipt', lang)}</span><input type="file" accept="image/*,application/pdf" capture="environment" onChange={event => handleExpenseFile(event.target.files?.[0] || null)} /></label>
+                <label className="expense-notes"><span>{expenseText('notes', lang)}</span><textarea value={expenseForm.notes} onChange={event => setExpenseForm(prev => ({ ...prev, notes: event.target.value }))} /></label>
+
+                <div className="entry-actions expense-actions">
+                  <button type="button" className="ghost-form-btn" onClick={() => setEntryOpen(false)} disabled={entrySaving}>{t('cancel')}</button>
+                  <button type="submit" className="primary-form-btn" disabled={entrySaving}>{entrySaving ? t('saving') : expenseText('confirmAdd', lang)}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {receiptDetails && (
+          <div className="entry-overlay" role="presentation" onMouseDown={() => setReceiptDetails(null)}>
+            <div className="entry-modal receipt-details-modal" role="dialog" aria-modal="true" onMouseDown={event => event.stopPropagation()}>
+              <div className="entry-modal-head">
+                <div><p>{expenseText('extractedData', lang)}</p><h3>{expenseText('receiptDetails', lang)}</h3></div>
+                <button type="button" className="icon-btn" onClick={() => setReceiptDetails(null)} aria-label={t('close')}><X size={18} /></button>
+              </div>
+              {receiptDetails.receipt_image_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className="receipt-detail-image" src={receiptDetails.receipt_image_url} alt={expenseText('originalImage', lang)} />
+              )}
+              <div className="receipt-detail-grid">
+                <div><span>{expenseText('merchant', lang)}</span><b>{receiptDetails.ai_extracted_data?.merchantName || receiptDetails.name}</b></div>
+                <div><span>{expenseText('amount', lang)}</span><b>{money(receiptDetails.amount, lang, currency)}</b></div>
+                <div><span>{expenseText('date', lang)}</span><b>{receiptDetails.date || '-'}</b></div>
+                <div><span>{expenseText('category', lang)}</span><b>{categoryLabel(receiptDetails.category, lang)}</b></div>
+                <div><span>{expenseText('confidence', lang)}</span><b>{receiptDetails.ai_confidence_score ? `${Math.round(receiptDetails.ai_confidence_score * 100)}%` : '-'}</b></div>
+              </div>
+              {!!receiptDetails.ai_extracted_data?.items?.length && (
+                <div className="receipt-items">
+                  <strong>{expenseText('receiptItems', lang)}</strong>
+                  {receiptDetails.ai_extracted_data.items.map((item, index) => <span key={`${item.name}-${index}`}>{item.name}<b>{money(item.price, lang, currency)}</b></span>)}
+                </div>
+              )}
+              <div className="entry-actions">
+                <button type="button" className="ghost-form-btn" onClick={() => { openEditEntry(receiptDetails); setReceiptDetails(null); }}>{t('edit')}</button>
+                <button type="button" className="danger-form-btn" onClick={() => { setConfirmDelete(receiptDetails); setReceiptDetails(null); }}>{t('delete')}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {confirmDelete && (
+          <div className="entry-overlay" role="presentation" onMouseDown={() => setConfirmDelete(null)}>
+            <div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-delete-title" onMouseDown={event => event.stopPropagation()}>
+              <div className="confirm-icon"><Trash2 size={24} /></div>
+              <h3 id="confirm-delete-title">{t('confirmDelete')}</h3>
+              <p>{t(deleteConfirmKey(kind))}</p>
+              <small>{t('deleteWarning')}</small>
+              <div className="entry-actions">
+                <button type="button" className="ghost-form-btn" onClick={() => setConfirmDelete(null)} disabled={entrySaving}>{t('cancel')}</button>
+                <button type="button" className="danger-form-btn" onClick={() => void deleteEntry()} disabled={entrySaving}>{entrySaving ? t('saving') : t('delete')}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {entryMessage && <div className={`entry-toast ${entryMessage.type}`}>{entryMessage.text}</div>}
+        <style>{baseStyles + expenseSmartStyles}</style>
       </div>
     );
   }
@@ -1340,11 +2017,17 @@ function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, lan
     balance: money(data.balance, lang, currency),
   };
 
-  if (kind === 'expenses') return [
-    { title: { ar: 'إجمالي المصروفات', en: 'Total expenses' }, body: { ar: 'يشمل كل عمليات المصروفات المسجلة.', en: 'Includes all recorded expense items.' }, value: common.expenses, tone: '#EF4444' },
-    { title: { ar: 'الأعمال الخيرية', en: 'Charity spend' }, body: { ar: 'مرتبطة بالمصروفات الشهرية عند تسجيلها.', en: 'Included in monthly expenses when recorded.' }, value: money(data.charityTotal, lang, currency), tone: '#D8AE63' },
-    { title: { ar: 'عدد التصنيفات', en: 'Categories' }, body: { ar: 'تصنيفات نشطة من آخر السجلات.', en: 'Active categories from recent records.' }, value: String(data.expenses.length), tone: '#3B82F6' },
-  ];
+  if (kind === 'expenses') {
+    const categoryCount = new Set(data.expenses.map(item => item.category || 'other')).size;
+    const aiCount = data.expenses.filter(item => item.ai_extracted_data || item.ai_confidence_score).length;
+    const receiptCount = data.expenses.filter(item => item.receipt_image_url || item.receipt_file_name).length;
+    return [
+      { title: { ar: 'إجمالي المصروفات', en: 'Total expenses', fr: 'Total des depenses' }, body: { ar: 'كل المصروفات المسجلة لهذا الحساب.', en: 'All recorded expenses for this account.', fr: 'Toutes les depenses enregistrees.' }, value: common.expenses, tone: '#EF4444' },
+      { title: { ar: 'مصروفات بالذكاء الاصطناعي', en: 'AI scanned expenses', fr: 'Depenses scannees IA' }, body: { ar: 'فواتير تمت قراءتها أو اقتراحها بالذكاء الاصطناعي.', en: 'Receipts read or suggested by AI.', fr: 'Factures lues ou suggerees par IA.' }, value: String(aiCount), tone: '#D8AE63' },
+      { title: { ar: 'الفواتير المرفقة', en: 'Receipts attached', fr: 'Factures jointes' }, body: { ar: 'مصروفات تحتوي على صورة أو ملف فاتورة.', en: 'Expenses with receipt image or file.', fr: 'Depenses avec facture jointe.' }, value: String(receiptCount), tone: '#3B82F6' },
+      { title: { ar: 'التصنيفات النشطة', en: 'Active categories', fr: 'Categories actives' }, body: { ar: 'تصنيفات مستخدمة في سجل المصروفات.', en: 'Categories used in your expense log.', fr: 'Categories utilisees dans le journal.' }, value: String(categoryCount), tone: '#22C55E' },
+    ];
+  }
   if (kind === 'income') return [
     { title: { ar: 'إجمالي الدخل', en: 'Total income' }, body: { ar: 'راتب، دخل جانبي، وأعمال.', en: 'Salary, side income, and business.' }, value: common.income, tone: '#22C55E' },
     { title: { ar: 'مصادر الدخل', en: 'Income sources' }, body: { ar: 'مصادر شهرية مسجلة أو بيانات نموذجية.', en: 'Recorded monthly sources or safe fallback data.' }, value: String(data.income.length), tone: '#D8AE63' },
@@ -1380,7 +2063,7 @@ function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, lan
 function buildDataShape() {
   return {
     income: [] as IncomeSource[],
-    expenses: [] as MoneyItem[],
+    expenses: [] as SmartExpense[],
     savings: [] as MoneyItem[],
     investments: [] as MoneyItem[],
     goals: [] as GoalItem[],
@@ -1509,6 +2192,43 @@ function buildGoalAnalysis(goal: GoalItem, data: ReturnType<typeof buildDataShap
 function buildInsights(kind: PageKind, data: ReturnType<typeof buildDataShape>, lang: string, currency = 'KWD', t?: TranslateFn) {
   const isAr = lang === 'ar';
   const ratio = data.totalIncome ? Math.round((data.totalExpenses / data.totalIncome) * 100) : 0;
+  if (kind === 'expenses') {
+    const byCategory = data.expenses.reduce<Record<string, number>>((acc, item) => {
+      const key = item.category || 'other';
+      acc[key] = (acc[key] || 0) + item.amount;
+      return acc;
+    }, {});
+    const top = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0];
+    const avg = data.expenses.length ? data.totalExpenses / data.expenses.length : 0;
+    const unusual = data.expenses.find(item => item.amount > avg * 2 && item.amount > 0);
+    const recurring = data.expenses.filter(item => ['subscriptions', 'bills', 'loans'].includes(item.category || '')).reduce((sum, item) => sum + item.amount, 0);
+    const saving = Math.max(recurring * 0.15, data.totalExpenses * 0.05);
+    const trendLabel = ratio > 100
+      ? pick({ ar: 'مصروفاتك أعلى من الدخل هذا الشهر.', en: 'Expenses are higher than income this month.', fr: 'Les depenses depassent les revenus ce mois-ci.' }, lang)
+      : pick({ ar: `مصروفاتك تساوي ${ratio}% من الدخل.`, en: `Expenses equal ${ratio}% of income.`, fr: `Les depenses representent ${ratio}% des revenus.` }, lang);
+    return [
+      {
+        title: pick({ ar: 'أعلى تصنيف', en: 'Highest category', fr: 'Categorie principale' }, lang),
+        body: top
+          ? pick({ ar: `أكثر تصنيف صرفت عليه هذا الشهر هو ${categoryLabel(top[0], lang)} بمبلغ ${money(top[1], lang, currency)}.`, en: `Your highest category is ${categoryLabel(top[0], lang)} at ${money(top[1], lang, currency)}.`, fr: `La categorie la plus elevee est ${categoryLabel(top[0], lang)} avec ${money(top[1], lang, currency)}.` }, lang)
+          : pick({ ar: 'أضف مصروفات لعرض تحليل التصنيفات.', en: 'Add expenses to see category analysis.', fr: 'Ajoutez des depenses pour voir l analyse.' }, lang),
+      },
+      {
+        title: pick({ ar: 'اتجاه الصرف', en: 'Spending trend', fr: 'Tendance des depenses' }, lang),
+        body: trendLabel,
+      },
+      {
+        title: pick({ ar: 'مراجعة ذكية', en: 'Smart review', fr: 'Revision intelligente' }, lang),
+        body: unusual
+          ? pick({ ar: `يوجد مصروف غير معتاد يحتاج مراجعة: ${unusual.name} (${money(unusual.amount, lang, currency)}).`, en: `Unusual expense needs review: ${unusual.name} (${money(unusual.amount, lang, currency)}).`, fr: `Depense inhabituelle a verifier: ${unusual.name} (${money(unusual.amount, lang, currency)}).` }, lang)
+          : pick({ ar: 'لا توجد مصروفات غير معتادة حسب السجل الحالي.', en: 'No unusual expenses found in the current log.', fr: 'Aucune depense inhabituelle dans le journal actuel.' }, lang),
+      },
+      {
+        title: pick({ ar: 'فرصة توفير', en: 'Saving opportunity', fr: 'Opportunite d economie' }, lang),
+        body: pick({ ar: `يمكنك توفير ${money(saving, lang, currency)} إذا خفضت المصروفات المتكررة.`, en: `You could save ${money(saving, lang, currency)} by trimming repeated payments.`, fr: `Vous pourriez economiser ${money(saving, lang, currency)} en reduisant les paiements recurrents.` }, lang),
+      },
+    ];
+  }
   const base = [
     {
       title: pick({ ar: 'نسبة الصرف', en: 'Spend ratio', fr: 'Ratio de dépenses' }, lang),
@@ -1663,4 +2383,76 @@ const baseStyles = `
   .finance-header-lang{display:block}
   @media(max-width:920px){.sfm-sidebar{display:none}.menu-btn{display:grid}.sfm-main{padding:16px;margin-inline-start:0}.hero{display:block}.hero-actions{margin-top:18px}.content-grid{grid-template-columns:1fr}.ai-panel{display:grid}.chat-box{min-width:0}}
   @media(max-width:640px){.kpi-grid{grid-template-columns:1fr}.sfm-header{height:auto}.title-wrap h1{font-size:20px}.hero{padding:22px}.hero h2{font-size:27px}.data-row{align-items:flex-start;flex-direction:column}.row-actions-wrap{width:100%;justify-content:space-between}.summary-band{align-items:flex-start}.primary-btn,.ghost-btn{width:100%;justify-content:center}.entry-actions{display:grid;grid-template-columns:1fr 1fr}.primary-form-btn,.ghost-form-btn,.danger-form-btn{width:100%}.goal-card-head{display:grid}.goal-edit-btn{width:100%;justify-content:center}.goal-meta-grid,.goal-ai-metrics,.goal-form-grid{grid-template-columns:1fr}.goal-form-grid label:first-child{grid-column:auto}}
+`;
+
+const expenseSmartStyles = `
+  .expense-smart-main{max-width:1360px;padding:22px 24px 36px}
+  .expense-hero{background:linear-gradient(135deg,#111 0%,#2B1A0D 60%,#D8AE63 150%);color:#FFFDFC;border-radius:26px;padding:28px;display:flex;align-items:flex-end;justify-content:space-between;gap:18px;box-shadow:0 20px 50px rgba(45,26,10,.18);margin-bottom:16px}
+  .expense-hero .eyebrow{display:inline-flex;align-items:center;gap:7px}
+  .expense-hero h1{font-size:34px;line-height:1.08;margin:0 0 9px;font-weight:900}
+  .expense-hero p{max-width:720px;margin:0;color:rgba(255,255,255,.7);font-size:14px;line-height:1.8;font-weight:700}
+  .expense-hero-actions{display:flex;gap:10px;flex-wrap:wrap}
+  .expense-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
+  .expense-dashboard-grid{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(320px,.75fr);gap:16px;align-items:start}
+  .expense-side-stack{display:grid;gap:16px}
+  .expense-list-panel{min-width:0}
+  .expense-card-list{display:grid;gap:10px}
+  .expense-card-row{display:flex;justify-content:space-between;gap:14px;padding:15px;border:1px solid rgba(216,174,99,.13);border-radius:18px;background:linear-gradient(180deg,#FFFDFC,#FFF9EF);box-shadow:0 8px 26px rgba(90,67,51,.06)}
+  .expense-row-main{display:flex;align-items:flex-start;gap:12px;min-width:0}
+  .expense-row-icon{width:42px;height:42px;flex:0 0 42px;border-radius:14px;background:rgba(216,174,99,.13);color:#9A6C3C;display:grid;place-items:center}
+  .expense-row-main strong{display:block;font-size:15px;font-weight:900;color:#111;line-height:1.35}
+  .expense-row-main span{display:block;margin-top:4px;color:#8A7060;font-size:12px;font-weight:800}
+  .expense-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .expense-badges em{font-style:normal;border-radius:999px;padding:5px 9px;background:#F2EBDD;color:#8A7060;border:1px solid rgba(216,174,99,.14);font-size:11px;font-weight:900}
+  .expense-badges em.ok{background:rgba(34,197,94,.1);color:#15803D;border-color:rgba(34,197,94,.18)}
+  .expense-badges em.ai{background:rgba(216,174,99,.16);color:#9A6C3C;border-color:rgba(216,174,99,.25)}
+  .expense-row-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}
+  .expense-row-actions>b{font-size:16px;color:#111;font-weight:900;white-space:nowrap}
+  .expense-row-actions>div{display:flex;gap:6px}
+  .expense-empty{text-align:center;border:1.5px dashed rgba(216,174,99,.26);border-radius:22px;padding:34px 20px;background:#FFFDFC}
+  .expense-empty>div:first-child{width:66px;height:66px;margin:0 auto 14px;border-radius:20px;background:rgba(216,174,99,.13);color:#9A6C3C;display:grid;place-items:center}
+  .expense-empty h3{margin:0 0 8px;font-size:20px;font-weight:900}
+  .expense-empty p{max-width:520px;margin:0 auto 18px;color:#7C6A5D;line-height:1.8;font-weight:700}
+  .expense-empty>div:last-child{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .monthly-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .monthly-grid div{background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:15px;padding:12px}
+  .monthly-grid span{display:block;color:#9A6C3C;font-size:11px;font-weight:900;margin-bottom:5px}
+  .monthly-grid b{font-size:16px;color:#111}
+  .expense-floating-add{display:none}
+  .expense-smart-modal{width:min(920px,100%);max-height:min(92vh,980px);overflow:auto;padding:22px}
+  .expense-modal-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#F7F3EA;border:1px solid rgba(216,174,99,.14);border-radius:16px;padding:5px;margin-bottom:16px}
+  .expense-modal-tabs button{height:42px;border:0;border-radius:12px;background:transparent;color:#8A7060;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer}
+  .expense-modal-tabs button.active{background:#111;color:#D8AE63;box-shadow:0 8px 22px rgba(45,26,10,.14)}
+  .expense-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .expense-form-grid select,.expense-form-grid textarea{border:1.5px solid rgba(216,174,99,.22);border-radius:14px;background:#F7F3EA;padding:0 13px;color:#111;font:800 14px Tajawal,Arial,sans-serif;outline:0}
+  .expense-form-grid select{height:50px}
+  .expense-form-grid textarea{min-height:92px;padding-top:12px;resize:vertical}
+  .expense-form-grid select:focus,.expense-form-grid textarea:focus{border-color:#D8AE63;box-shadow:0 0 0 4px rgba(216,174,99,.12);background:#FFFDFC}
+  .receipt-scan-area,.expense-notes,.expense-actions{grid-column:1/-1}
+  .receipt-drop{min-height:220px;border:1.5px dashed rgba(216,174,99,.34);border-radius:20px;background:linear-gradient(180deg,#FFFDFC,#FFF6E8);display:grid!important;place-items:center;text-align:center;cursor:pointer;overflow:hidden}
+  .receipt-drop input{display:none}
+  .receipt-drop img{width:100%;max-height:320px;object-fit:contain;border-radius:16px}
+  .receipt-drop span{display:grid;place-items:center;gap:8px;color:#9A6C3C;font-weight:900}
+  .receipt-drop small{display:block;color:#8A7060;font-size:12px;font-weight:800}
+  .receipt-scan-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;margin-top:10px}
+  .receipt-error{border:1px solid rgba(239,68,68,.18);background:rgba(239,68,68,.08);color:#B91C1C;border-radius:13px;padding:10px 12px;font-size:13px;font-weight:900;margin-top:10px}
+  .ai-result-card{margin-top:12px;border:1px solid rgba(216,174,99,.24);border-radius:18px;background:linear-gradient(180deg,#FFFDFC,#FFF8EA);padding:15px}
+  .ai-result-card>div:first-child{display:flex;align-items:center;gap:8px;color:#15803D}
+  .ai-result-card p{margin:8px 0 12px;color:#5B4332;font-weight:800}
+  .ai-result-card dl{display:grid;grid-template-columns:150px 1fr;gap:8px 12px;margin:0}
+  .ai-result-card dt{color:#9A6C3C;font-weight:900;font-size:12px}
+  .ai-result-card dd{margin:0;color:#111;font-weight:900}
+  .spin-icon{animation:spin 1s linear infinite}
+  .receipt-details-modal{width:min(760px,100%);max-height:90vh;overflow:auto}
+  .receipt-detail-image{width:100%;max-height:360px;object-fit:contain;border-radius:18px;background:#F7F3EA;border:1px solid rgba(216,174,99,.14);margin-bottom:14px}
+  .receipt-detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+  .receipt-detail-grid div{background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:14px;padding:11px}
+  .receipt-detail-grid span{display:block;color:#9A6C3C;font-size:11px;font-weight:900;margin-bottom:5px}
+  .receipt-detail-grid b{color:#111;font-size:13px}
+  .receipt-items{display:grid;gap:8px;margin-bottom:12px}
+  .receipt-items>strong{color:#111;font-size:14px}
+  .receipt-items span{display:flex;justify-content:space-between;gap:10px;background:#FFF8EA;border-radius:12px;padding:9px 11px;color:#5B4332;font-weight:800}
+  @media(max-width:1180px){.expense-dashboard-grid{grid-template-columns:1fr}.expense-kpi-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:920px){.expense-smart-main{margin-inline-start:0;padding:16px}.expense-hero{display:grid}.expense-hero-actions .primary-btn,.expense-hero-actions .ghost-btn{width:auto}.expense-side-stack{grid-template-columns:1fr}.expense-floating-add{position:fixed;display:grid;place-items:center;z-index:70;inset-inline-end:18px;bottom:18px;width:56px;height:56px;border-radius:18px;border:0;background:#D8AE63;color:#111;box-shadow:0 18px 40px rgba(45,26,10,.28)}}
+  @media(max-width:640px){.expense-hero{padding:22px}.expense-hero h1{font-size:27px}.expense-kpi-grid,.expense-form-grid,.receipt-detail-grid,.monthly-grid{grid-template-columns:1fr}.expense-card-row{display:grid}.expense-row-actions{justify-content:space-between}.expense-row-actions>div{flex-wrap:wrap;justify-content:flex-end}.expense-modal-overlay{align-items:end;padding:10px}.expense-smart-modal{border-radius:22px 22px 0 0;max-height:94vh}.expense-modal-tabs{grid-template-columns:1fr}.receipt-scan-actions,.expense-actions{display:grid;grid-template-columns:1fr}.ai-result-card dl{grid-template-columns:1fr}.expense-hero-actions{display:grid}.expense-hero-actions .primary-btn,.expense-hero-actions .ghost-btn{width:100%;justify-content:center}}
 `;
