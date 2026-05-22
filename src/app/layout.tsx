@@ -6,6 +6,7 @@ import GlobalClientEffects from '@/components/GlobalClientEffects';
 import { AuthProvider } from '@/hooks/useAuth';
 import { LanguageProvider } from '@/components/LanguageProvider';
 import { CurrencyProvider } from '@/lib/useCurrency';
+import { AppLayout } from '@/components/AppLayout';
 import './globals.css';
 
 const cairo = Cairo({
@@ -60,7 +61,7 @@ export default function RootLayout({
           <AuthProvider>
             <LanguageProvider>
               <CurrencyProvider>
-                {children}
+                <AppLayout>{children}</AppLayout>
               </CurrencyProvider>
               <GlobalClientEffects />
             </LanguageProvider>
