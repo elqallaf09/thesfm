@@ -247,6 +247,10 @@ export default function CharityPage() {
               onClick={() => router.push('/')}
               style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 16px', background: '#FFFDFC', border: '1.5px solid rgba(216,174,99,.22)', borderRadius: '12px', cursor: 'pointer', color: '#5B4332', fontSize: '13px', fontWeight: '700', fontFamily: 'Tajawal,sans-serif', flexShrink: 0 }}
             >{t('common_backToDashboard')}</button>
+            <button
+              onClick={() => router.push('/charity-projects')}
+              style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 16px', background: 'linear-gradient(135deg,#D8AE63,#9A6C3C)', border: '0', borderRadius: '12px', cursor: 'pointer', color: '#111111', fontSize: '13px', fontWeight: '800', fontFamily: 'Tajawal,sans-serif', flexShrink: 0 }}
+            >{t('charity.manageProjects')}</button>
             <div style={{ flex: 1, minWidth: '220px' }}>
               <h1 style={{ fontSize: 'clamp(22px,4vw,30px)', fontWeight: '900', color: '#111111', lineHeight: 1.2 }}>
                 🤲 {t('charity.title')}

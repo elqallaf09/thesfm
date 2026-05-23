@@ -13,6 +13,7 @@ import {
   FileSearch,
   FolderKanban,
   HandHeart,
+  HeartHandshake,
   LayoutDashboard,
   LineChart,
   LogOut,
@@ -56,6 +57,7 @@ const NAV_SECTIONS: NavSection[] = [
       { id: 'goals',         icon: Target,          path: '/goals',         labelKey: 'nav_goals'    },
       { id: 'projects',      icon: FolderKanban,    path: '/projects',      labelKey: 'nav_projects' },
       { id: 'charity',       icon: HandHeart,       path: '/charity',       labelKey: 'nav_charity'  },
+      { id: 'charity-projects', icon: HeartHandshake, path: '/charity-projects', labelKey: 'nav_charity_projects' },
       { id: 'reports',       icon: ChartPie,        path: '/reports',       labelKey: 'nav_reports'  },
       { id: 'ai',            icon: Bot,             path: '/ai',            labelKey: 'nav_ai'       },
       { id: 'notif',         icon: Bell,            path: '/notifications', labelKey: 'nav_notif'    },
@@ -136,7 +138,7 @@ export function Sidebar() {
             {index > 0 && <div className="sfm-shared-divider" />}
             {section.titleKey && <div className="sfm-shared-section-title">{t(section.titleKey)}</div>}
             {section.items.map(item => {
-              const active = pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
+              const active = pathname === item.path || (item.path !== '/' && pathname.startsWith(`${item.path}/`));
               const NavIcon = item.icon;
               return (
                 <button
