@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BarChart3, BriefcaseBusiness, CalendarDays, CircleDollarSign, Download, Edit3, LineChart, Plus, ReceiptText, Sparkles, Trash2, Wallet, X } from 'lucide-react';
+import { AlertTriangle, BarChart3, BriefcaseBusiness, CalendarDays, CheckCircle2, CircleDollarSign, Download, Edit3, LineChart, Plus, ReceiptText, Sparkles, Trash2, Wallet, X } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { Sidebar } from '@/components/Sidebar';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,6 +12,7 @@ type IncomeType = 'salary' | 'side' | 'investment' | 'bonus' | 'gift' | 'rent' |
 type IncomeStatus = 'received' | 'pending' | 'expected' | 'late';
 type Frequency = 'monthly' | 'weekly' | 'yearly';
 type Lang = 'ar' | 'en' | 'fr';
+type IncomeFilter = 'all' | IncomeStatus | 'recurring' | 'one-time';
 
 type IncomeRow = {
   id: string;
@@ -28,8 +29,17 @@ type IncomeRow = {
   notes?: string | null;
   is_recurring?: boolean | null;
   frequency?: string | null;
+  recurrence_start_date?: string | null;
+  recurrence_end_date?: string | null;
+  parent_recurring_income_id?: string | null;
+  generated_for_date?: string | null;
+  confirmed_at?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+};
+
+type IncomeViewRow = IncomeRow & {
+  workflowStatus: IncomeStatus;
 };
 
 type IncomeForm = {
@@ -42,6 +52,8 @@ type IncomeForm = {
   status: IncomeStatus;
   isRecurring: boolean;
   frequency: Frequency;
+  recurrenceStartDate: string;
+  recurrenceEndDate: string;
   sourceName: string;
   notes: string;
 };
@@ -73,6 +85,21 @@ const TX: Record<string, Record<Lang, string>> = {
   recurring: { ar: 'متكرر', en: 'Recurring', fr: 'Récurrent' },
   oneTime: { ar: 'لمرة واحدة', en: 'One time', fr: 'Une fois' },
   frequency: { ar: 'التكرار', en: 'Frequency', fr: 'Fréquence' },
+  startDate: { ar: 'تاريخ البداية', en: 'Start date', fr: 'Date de début' },
+  endDateOptional: { ar: 'تاريخ النهاية اختياري', en: 'End date optional', fr: 'Date de fin facultative' },
+  upcomingIncome: { ar: 'دخل متوقع قادم', en: 'Upcoming Income', fr: 'Revenus à venir' },
+  lateWarning: { ar: 'يوجد دخل متأخر يحتاج تأكيد.', en: 'There is overdue income that needs confirmation.', fr: 'Un revenu en retard nécessite une confirmation.' },
+  viewLateIncome: { ar: 'عرض المتأخرات', en: 'View late income', fr: 'Voir les revenus en retard' },
+  confirmReceived: { ar: 'تأكيد الاستلام', en: 'Confirm received', fr: 'Confirmer la réception' },
+  confirmed: { ar: 'تم تأكيد استلام الدخل.', en: 'Income receipt confirmed.', fr: 'Réception du revenu confirmée.' },
+  confirmError: { ar: 'تعذر تأكيد الاستلام. حاول مرة أخرى.', en: 'Could not confirm receipt. Please try again.', fr: 'Impossible de confirmer la réception. Réessayez.' },
+  all: { ar: 'الكل', en: 'All', fr: 'Tous' },
+  recurringFilter: { ar: 'متكرر', en: 'Recurring', fr: 'Récurrent' },
+  oneTimeFilter: { ar: 'لمرة واحدة', en: 'One-time', fr: 'Unique' },
+  editThisOnly: { ar: 'تعديل هذا السجل فقط', en: 'Edit this entry only', fr: 'Modifier uniquement cette entrée' },
+  editFutureEntries: { ar: 'تعديل السجلات القادمة', en: 'Edit future entries', fr: 'Modifier les entrées futures' },
+  deleteThisOnly: { ar: 'حذف هذا فقط', en: 'Delete this only', fr: 'Supprimer uniquement celui-ci' },
+  deleteFutureEntries: { ar: 'حذف السجلات القادمة', en: 'Delete future entries', fr: 'Supprimer les entrées futures' },
   sourceCompany: { ar: 'المصدر / الجهة', en: 'Source / Company', fr: 'Source / organisme' },
   notes: { ar: 'ملاحظات', en: 'Notes', fr: 'Notes' },
   cancel: { ar: 'إلغاء', en: 'Cancel', fr: 'Annuler' },
@@ -122,10 +149,12 @@ const emptyForm = (): IncomeForm => ({
   amount: '',
   currency: 'KWD',
   incomeType: 'other',
-  receivedDate: new Date().toISOString().slice(0, 10),
+  receivedDate: todayDateOnly(),
   status: 'received',
   isRecurring: false,
   frequency: 'monthly',
+  recurrenceStartDate: todayDateOnly(),
+  recurrenceEndDate: '',
   sourceName: '',
   notes: '',
 });
@@ -147,13 +176,59 @@ function normalizeStatus(value?: string | null): IncomeStatus {
   return 'received';
 }
 
+function todayDateOnly() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function dateOnlyToLocalDate(value: string | null | undefined) {
+  if (!value) return new Date();
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  if (!year || !month || !day) return new Date(value);
+  return new Date(year, month - 1, day);
+}
+
+function compareDateOnly(a: string, b: string) {
+  return dateOnlyToLocalDate(a).getTime() - dateOnlyToLocalDate(b).getTime();
+}
+
+function addFrequencyDate(value: string, frequency: Frequency) {
+  const date = dateOnlyToLocalDate(value);
+  if (frequency === 'weekly') date.setDate(date.getDate() + 7);
+  if (frequency === 'monthly') date.setMonth(date.getMonth() + 1);
+  if (frequency === 'yearly') date.setFullYear(date.getFullYear() + 1);
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function generateOccurrenceDates(startDate: string, frequency: Frequency, endDate?: string | null) {
+  const dates: string[] = [];
+  let cursor = startDate;
+  for (let index = 0; index < 6; index += 1) {
+    if (endDate && compareDateOnly(cursor, endDate) > 0) break;
+    dates.push(cursor);
+    cursor = addFrequencyDate(cursor, frequency);
+  }
+  return dates;
+}
+
+function workflowStatus(row: IncomeRow): IncomeStatus {
+  if (row.confirmed_at || row.status === 'received') return 'received';
+  const dueDate = (row.received_date || row.generated_for_date || row.created_at || todayDateOnly()).slice(0, 10);
+  const diff = compareDateOnly(dueDate, todayDateOnly());
+  if (diff > 0) return 'expected';
+  if (diff === 0) return 'pending';
+  return 'late';
+}
+
 function formatMoney(value: number, lang: string, currency = 'KWD') {
   const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
   return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(value)} ${currency}`;
 }
 
 function formatDate(value: string | null | undefined, lang: string) {
-  const date = value ? new Date(value) : new Date();
+  const date = dateOnlyToLocalDate(value);
   const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
   return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 }
@@ -187,6 +262,7 @@ export default function IncomePage() {
   const [formError, setFormError] = useState('');
   const [toast, setToast] = useState('');
   const [insightOpen, setInsightOpen] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<IncomeFilter>('all');
 
   const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
 
@@ -225,8 +301,21 @@ export default function IncomePage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [modalOpen]);
 
-  const total = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
-  const activeSources = rows.filter(row => normalizeStatus(row.status) !== 'late').length;
+  const viewRows = useMemo<IncomeViewRow[]>(() => rows.map(row => ({ ...row, workflowStatus: workflowStatus(row) })), [rows]);
+  const filteredRows = useMemo(() => {
+    if (statusFilter === 'all') return viewRows;
+    if (statusFilter === 'recurring') return viewRows.filter(row => row.is_recurring);
+    if (statusFilter === 'one-time') return viewRows.filter(row => !row.is_recurring);
+    return viewRows.filter(row => row.workflowStatus === statusFilter);
+  }, [statusFilter, viewRows]);
+  const upcomingRows = useMemo(() => viewRows
+    .filter(row => row.workflowStatus === 'expected' || row.workflowStatus === 'pending')
+    .sort((a, b) => compareDateOnly(a.received_date || a.generated_for_date || todayDateOnly(), b.received_date || b.generated_for_date || todayDateOnly()))
+    .slice(0, 5), [viewRows]);
+  const lateRows = useMemo(() => viewRows.filter(row => row.workflowStatus === 'late'), [viewRows]);
+
+  const total = viewRows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  const activeSources = viewRows.filter(row => row.workflowStatus !== 'late').length;
   const expectedNet = Math.max(total * 0.433, 0);
 
   const distribution = useMemo(() => {
@@ -264,6 +353,8 @@ export default function IncomePage() {
       status: normalizeStatus(row.status),
       isRecurring: Boolean(row.is_recurring),
       frequency: (row.frequency === 'weekly' || row.frequency === 'yearly' ? row.frequency : 'monthly'),
+      recurrenceStartDate: row.recurrence_start_date || row.received_date || (row.created_at ? row.created_at.slice(0, 10) : todayDateOnly()),
+      recurrenceEndDate: row.recurrence_end_date || '',
       sourceName: row.source_name || '',
       notes: row.notes || '',
     });
@@ -283,29 +374,62 @@ export default function IncomePage() {
     const amount = Number(form.amount);
     if (name.length < 2) return setFormError(tr('nameError', lang));
     if (!amount || amount <= 0) return setFormError(tr('amountError', lang));
-    if (!form.incomeType || !form.receivedDate || !form.status) return setFormError(tr('requiredError', lang));
+    if (!form.incomeType || !form.status) return setFormError(tr('requiredError', lang));
+    if (form.isRecurring && (!form.frequency || !form.recurrenceStartDate)) return setFormError(tr('requiredError', lang));
+    if (!form.isRecurring && !form.receivedDate) return setFormError(tr('requiredError', lang));
 
     setSaving(true);
     const id = form.id || crypto.randomUUID();
+    const now = new Date().toISOString();
+    const receivedDate = form.isRecurring ? form.recurrenceStartDate : form.receivedDate;
+    const savedStatus = form.isRecurring ? workflowStatus({ id, amount, status: 'expected', received_date: receivedDate }) : form.status;
     const payload = {
       label: name,
       category: form.incomeType,
       amount,
       income_type: form.incomeType,
-      status: form.status,
-      received_date: form.receivedDate,
+      status: savedStatus,
+      received_date: receivedDate,
       currency: form.currency,
       source_name: form.sourceName || null,
       notes: form.notes || null,
       is_recurring: form.isRecurring,
       frequency: form.isRecurring ? form.frequency : null,
-      updated_at: new Date().toISOString(),
+      recurrence_start_date: form.isRecurring ? form.recurrenceStartDate : null,
+      recurrence_end_date: form.isRecurring && form.recurrenceEndDate ? form.recurrenceEndDate : null,
+      parent_recurring_income_id: null,
+      generated_for_date: form.isRecurring ? form.recurrenceStartDate : null,
+      confirmed_at: savedStatus === 'received' ? now : null,
+      updated_at: now,
     };
-    const nextRow: IncomeRow = { id, ...payload, created_at: new Date().toISOString() };
+    const nextRow: IncomeRow = { id, ...payload, created_at: now };
+    const occurrenceDates = form.isRecurring ? generateOccurrenceDates(form.recurrenceStartDate, form.frequency, form.recurrenceEndDate) : [];
+    const futureDates = occurrenceDates.slice(1);
+    const makeGeneratedRows = (parentId: string, createdAt = now): IncomeRow[] => futureDates.map(date => ({
+      ...nextRow,
+      id: crypto.randomUUID(),
+      status: 'expected',
+      received_date: date,
+      recurrence_start_date: form.recurrenceStartDate,
+      recurrence_end_date: form.recurrenceEndDate || null,
+      parent_recurring_income_id: parentId,
+      generated_for_date: date,
+      confirmed_at: null,
+      created_at: createdAt,
+      updated_at: createdAt,
+    }));
 
     try {
       if (isGuest || !user) {
-        const next = form.id ? rows.map(row => row.id === id ? { ...row, ...nextRow } : row) : [nextRow, ...rows];
+        const generatedRows = form.isRecurring && !form.id ? makeGeneratedRows(id) : [];
+        const combined = form.id ? rows.map(row => row.id === id ? { ...row, ...nextRow } : row) : [nextRow, ...generatedRows, ...rows];
+        const seen = new Set<string>();
+        const next = combined.filter(row => {
+          const key = row.parent_recurring_income_id && row.generated_for_date ? `${row.parent_recurring_income_id}:${row.generated_for_date}` : row.id;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
         localStorage.setItem('sfm_guest_income', JSON.stringify(next));
         setRows(next);
       } else if (form.id) {
@@ -319,7 +443,48 @@ export default function IncomePage() {
           .select('*')
           .single();
         if (error) throw error;
-        setRows(previous => [data as IncomeRow, ...previous]);
+        const parent = data as IncomeRow;
+        let generatedRows: IncomeRow[] = [];
+        if (form.isRecurring && futureDates.length > 0) {
+          const { data: existing } = await supabase
+            .from('monthly_income_sources')
+            .select('generated_for_date')
+            .eq('user_id', user.id)
+            .eq('parent_recurring_income_id', parent.id)
+            .in('generated_for_date', futureDates);
+          const existingDates = new Set((existing ?? []).map(item => item.generated_for_date));
+          const inserts = futureDates
+            .filter(date => !existingDates.has(date))
+            .map(date => ({
+              label: name,
+              category: form.incomeType,
+              amount,
+              income_type: form.incomeType,
+              status: 'expected',
+              received_date: date,
+              currency: form.currency,
+              source_name: form.sourceName || null,
+              notes: form.notes || null,
+              is_recurring: true,
+              frequency: form.frequency,
+              recurrence_start_date: form.recurrenceStartDate,
+              recurrence_end_date: form.recurrenceEndDate || null,
+              parent_recurring_income_id: parent.id,
+              generated_for_date: date,
+              confirmed_at: null,
+              user_id: user.id,
+              updated_at: now,
+            }));
+          if (inserts.length > 0) {
+            const { data: inserted, error: insertError } = await supabase
+              .from('monthly_income_sources')
+              .insert(inserts)
+              .select('*');
+            if (insertError) throw insertError;
+            generatedRows = (inserted ?? []) as IncomeRow[];
+          }
+        }
+        setRows(previous => [parent, ...generatedRows, ...previous]);
       }
       setModalOpen(false);
       showToast(tr('saved', lang));
@@ -340,6 +505,29 @@ export default function IncomePage() {
       setRows(previous => previous.filter(item => item.id !== row.id));
     }
     showToast(tr('deleted', lang));
+  }
+
+  async function confirmReceived(row: IncomeRow) {
+    const confirmedAt = new Date().toISOString();
+    const nextRow = { ...row, status: 'received', confirmed_at: confirmedAt, updated_at: confirmedAt };
+    try {
+      if (isGuest || !user) {
+        const next = rows.map(item => item.id === row.id ? nextRow : item);
+        localStorage.setItem('sfm_guest_income', JSON.stringify(next));
+        setRows(next);
+      } else {
+        const { error } = await supabase
+          .from('monthly_income_sources')
+          .update({ status: 'received', confirmed_at: confirmedAt, updated_at: confirmedAt })
+          .eq('id', row.id)
+          .eq('user_id', user.id);
+        if (error) throw error;
+        setRows(previous => previous.map(item => item.id === row.id ? nextRow : item));
+      }
+      showToast(tr('confirmed', lang));
+    } catch {
+      showToast(tr('confirmError', lang));
+    }
   }
 
   function donutBackground() {
@@ -393,6 +581,35 @@ export default function IncomePage() {
           <article><span><CircleDollarSign size={18} />{tr('expectedNet', lang)}</span><strong>{formatMoney(expectedNet || 1046.4, lang)}</strong><em>↑ 3.1%</em></article>
         </section>
 
+        {lateRows.length > 0 && (
+          <section className="late-card">
+            <span><AlertTriangle size={18} />{tr('lateWarning', lang)}</span>
+            <button type="button" onClick={() => setStatusFilter('late')}>{tr('viewLateIncome', lang)}</button>
+          </section>
+        )}
+
+        <section className="panel upcoming-panel">
+          <div className="panel-title list-title">
+            <CalendarDays size={18} /><h2>{tr('upcomingIncome', lang)}</h2>
+          </div>
+          <div className="upcoming-list">
+            {upcomingRows.length === 0 ? <div className="empty">{tr('noIncome', lang)}</div> : upcomingRows.map(row => (
+              <article className="upcoming-item" key={row.id}>
+                <div>
+                  <strong>{legacyName(row)}</strong>
+                  <span>{formatDate(row.received_date || row.generated_for_date, lang)} · {formatMoney(Number(row.amount || 0), lang, row.currency || 'KWD')}</span>
+                </div>
+                <em className={`status ${row.workflowStatus}`}>{statusLabel(row.workflowStatus, lang)}</em>
+                {row.workflowStatus !== 'expected' || compareDateOnly(row.received_date || row.generated_for_date || todayDateOnly(), todayDateOnly()) <= 0 ? (
+                  <button type="button" onClick={() => void confirmReceived(row)} aria-label={tr('confirmReceived', lang)}>
+                    <CheckCircle2 size={15} />{tr('confirmReceived', lang)}
+                  </button>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </section>
+
         <section className="chart-grid">
           <article className="panel">
             <div className="panel-title"><BarChart3 size={18} /><h2>{tr('distribution', lang)}</h2></div>
@@ -416,8 +633,23 @@ export default function IncomePage() {
           <div className="panel-title list-title">
             <ReceiptText size={18} /><h2>{tr('incomeList', lang)}</h2>
           </div>
+          <div className="income-filters" role="group" aria-label={tr('status', lang)}>
+            {[
+              ['all', tr('all', lang)],
+              ['received', statusLabel('received', lang)],
+              ['pending', statusLabel('pending', lang)],
+              ['expected', statusLabel('expected', lang)],
+              ['late', statusLabel('late', lang)],
+              ['recurring', tr('recurringFilter', lang)],
+              ['one-time', tr('oneTimeFilter', lang)],
+            ].map(([id, label]) => (
+              <button key={id} type="button" className={statusFilter === id ? 'active' : ''} onClick={() => setStatusFilter(id as IncomeFilter)}>
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="income-list">
-            {loading ? <div className="empty">{tr('title', lang)}...</div> : rows.length === 0 ? <div className="empty">{tr('noIncome', lang)}</div> : rows.map(row => {
+            {loading ? <div className="empty">{tr('title', lang)}...</div> : filteredRows.length === 0 ? <div className="empty">{tr('noIncome', lang)}</div> : filteredRows.map(row => {
               const amount = Number(row.amount || 0);
               const pct = total > 0 ? Math.round((amount / total) * 100) : 0;
               return (
@@ -428,8 +660,9 @@ export default function IncomePage() {
                       <strong>{legacyName(row)}</strong>
                       <span>{typeLabel(row.income_type || row.category, lang)} · {row.source_name || tr('source', lang)}</span>
                       <div className="row-meta">
-                        <em className={`status ${normalizeStatus(row.status)}`}>{statusLabel(row.status, lang)}</em>
-                        <em><CalendarDays size={12} />{formatDate(row.received_date || row.created_at, lang)}</em>
+                        <em className={`status ${row.workflowStatus}`}>{statusLabel(row.workflowStatus, lang)}</em>
+                        <em>{row.is_recurring ? tr('recurring', lang) : tr('oneTime', lang)}</em>
+                        <em><CalendarDays size={12} />{formatDate(row.received_date || row.generated_for_date || row.created_at, lang)}</em>
                         <em>{pct}% {tr('percent', lang)}</em>
                       </div>
                     </div>
@@ -437,6 +670,9 @@ export default function IncomePage() {
                   <div className="row-side">
                     <b>{formatMoney(amount, lang, row.currency || 'KWD')}</b>
                     <div>
+                      {row.workflowStatus !== 'received' && (
+                        <button type="button" aria-label={tr('confirmReceived', lang)} onClick={() => void confirmReceived(row)}><CheckCircle2 size={15} /></button>
+                      )}
                       <button type="button" aria-label={tr('edit', lang)} onClick={() => openEdit(row)}><Edit3 size={15} /></button>
                       <button type="button" aria-label={tr('delete', lang)} onClick={() => void deleteIncome(row)}><Trash2 size={15} /></button>
                     </div>
@@ -459,11 +695,18 @@ export default function IncomePage() {
               <label><span>{tr('name', lang)}</span><input autoFocus value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required minLength={2} /></label>
               <label><span>{tr('amount', lang)}</span><input value={form.amount} inputMode="decimal" onChange={e => setForm({ ...form, amount: e.target.value })} required /></label>
               <label><span>{tr('currency', lang)}</span><input value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value.toUpperCase().slice(0, 3) })} /></label>
-              <label><span>{tr('receivedDate', lang)}</span><input type="date" value={form.receivedDate} onChange={e => setForm({ ...form, receivedDate: e.target.value })} required /></label>
+              <label><span>{tr('receivedDate', lang)}</span><input type="date" value={form.receivedDate} onChange={e => setForm({ ...form, receivedDate: e.target.value })} required={!form.isRecurring} /></label>
               <label><span>{tr('type', lang)}</span><select value={form.incomeType} onChange={e => setForm({ ...form, incomeType: e.target.value as IncomeType })}>{TYPES.map(item => <option key={item.id} value={item.id}>{item.icon} {item.label[lang as Lang]}</option>)}</select></label>
               <label><span>{tr('status', lang)}</span><select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as IncomeStatus })}>{STATUSES.map(item => <option key={item.id} value={item.id}>{item.label[lang as Lang]}</option>)}</select></label>
               <label className="toggle-line"><span>{tr('recurring', lang)}</span><button type="button" className={form.isRecurring ? 'toggle on' : 'toggle'} onClick={() => setForm({ ...form, isRecurring: !form.isRecurring })}><span />{form.isRecurring ? tr('recurring', lang) : tr('oneTime', lang)}</button></label>
-              {form.isRecurring && <label><span>{tr('frequency', lang)}</span><select value={form.frequency} onChange={e => setForm({ ...form, frequency: e.target.value as Frequency })}>{FREQUENCIES.map(item => <option key={item.id} value={item.id}>{item.label[lang as Lang]}</option>)}</select></label>}
+              {form.isRecurring && (
+                <>
+                  <label><span>{tr('frequency', lang)}</span><select value={form.frequency} onChange={e => setForm({ ...form, frequency: e.target.value as Frequency })}>{FREQUENCIES.map(item => <option key={item.id} value={item.id}>{item.label[lang as Lang]}</option>)}</select></label>
+                  <label><span>{tr('startDate', lang)}</span><input type="date" value={form.recurrenceStartDate} onChange={e => setForm({ ...form, recurrenceStartDate: e.target.value, receivedDate: e.target.value })} required /></label>
+                  <label><span>{tr('endDateOptional', lang)}</span><input type="date" value={form.recurrenceEndDate} onChange={e => setForm({ ...form, recurrenceEndDate: e.target.value })} /></label>
+                  {form.id && <div className="form-note">{tr('editThisOnly', lang)}</div>}
+                </>
+              )}
               <label><span>{tr('sourceCompany', lang)}</span><input value={form.sourceName} onChange={e => setForm({ ...form, sourceName: e.target.value })} /></label>
               <label className="wide"><span>{tr('notes', lang)}</span><textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></label>
               {formError && <div className="form-error">{formError}</div>}
@@ -494,11 +737,12 @@ export default function IncomePage() {
         .insights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.insight{min-height:74px;text-align:start;border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:14px;background:#fff;display:flex;align-items:center;gap:10px;color:#3D2914;cursor:pointer}.insight span{line-height:1.6;font-weight:500}.insight b{margin-inline-start:auto;font-size:12px;color:#854F0B}.insight.success{background:#EAF3DE;color:#27500A}.insight.warning{background:#FAEEDA;color:#854F0B}.insight.info{background:#E6F1FB;color:#0C447C}
         .stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.stat-grid article,.panel{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:18px;box-shadow:0 8px 22px rgba(61,41,20,.04)}.stat-grid span{display:flex;gap:8px;align-items:center;color:#7b6248;font-size:13px}.stat-grid strong{display:block;margin-top:10px;font-size:26px;font-weight:600;color:#3D2914}.stat-grid em{display:inline-flex;margin-top:10px;border-radius:999px;background:#EAF3DE;color:#27500A;padding:4px 9px;font-style:normal;font-size:12px}
         .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.panel-title{display:flex;align-items:center;gap:9px;margin-bottom:16px;color:#BA7517}.panel-title h2{margin:0;font-size:18px;font-weight:600;color:#3D2914}.donut-wrap{display:grid;grid-template-columns:180px 1fr;gap:18px;align-items:center}.donut{width:170px;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;position:relative}.donut:after{content:"";position:absolute;inset:32px;background:#fff;border-radius:50%}.donut span{position:relative;z-index:1;font-weight:600;color:#3D2914}.legend{display:grid;gap:10px}.legend div{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:13px}.legend i{width:10px;height:10px;border-radius:50%}.line-chart{width:100%;height:auto;min-height:170px;background:#F5F1E8;border-radius:14px;padding:12px;overflow:visible}
+        .late-card{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#FAEEDA;color:#854F0B;border:1px solid rgba(133,79,11,.16);border-radius:16px;padding:14px 16px}.late-card span{display:flex;align-items:center;gap:8px;font-weight:600}.late-card button,.upcoming-item button{border:1px solid rgba(133,79,11,.16);background:#fff7eb;color:#854F0B;border-radius:12px;min-height:38px;padding:0 12px;display:inline-flex;align-items:center;gap:7px;font:600 12px inherit;cursor:pointer}.upcoming-panel{display:grid;gap:10px}.upcoming-list{display:grid;gap:9px}.upcoming-item{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:12px;background:#fff}.upcoming-item strong{display:block;color:#3D2914;font-weight:600}.upcoming-item span{display:block;margin-top:4px;color:#7b6248;font-size:12px}.upcoming-item em,.income-filters button{font-style:normal;border-radius:999px;background:#F5F1E8;color:#7b6248;padding:5px 10px;font-size:12px;white-space:nowrap}.upcoming-item .received{background:#EAF3DE;color:#27500A}.upcoming-item .pending,.upcoming-item .expected{background:#FAEEDA;color:#854F0B}.upcoming-item .late{background:#FCEBEB;color:#791F1F}.income-filters{display:flex;gap:8px;overflow-x:auto;padding:0 0 12px;margin-top:-4px;scrollbar-width:thin}.income-filters button{border:1px solid rgba(0,0,0,.08);cursor:pointer;font:600 12px inherit}.income-filters button.active{background:#3D2914;color:#fff;border-color:#3D2914}
         .income-list{display:grid;gap:10px}.income-row{display:flex;justify-content:space-between;gap:14px;border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:14px;background:#fff}.row-main{display:flex;gap:12px;min-width:0}.row-icon{width:44px;height:44px;border-radius:14px;background:#FAEEDA;display:grid;place-items:center;font-size:21px}.row-main strong{display:block;font-size:15px;font-weight:600;color:#3D2914}.row-main span{display:block;margin-top:4px;color:#7b6248;font-size:12px}.row-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.row-meta em{font-style:normal;border-radius:999px;background:#F5F1E8;color:#7b6248;padding:4px 8px;font-size:11px;display:inline-flex;align-items:center;gap:4px}.row-meta .received{background:#EAF3DE;color:#27500A}.row-meta .pending,.row-meta .expected{background:#FAEEDA;color:#854F0B}.row-meta .late{background:#FCEBEB;color:#791F1F}.row-side{display:flex;align-items:center;gap:12px}.row-side b{white-space:nowrap;color:#3D2914}.row-side div{display:flex;gap:6px}.row-side button,.modal-head button,.mini-pop button{width:36px;height:36px;border-radius:11px;border:1px solid rgba(0,0,0,.08);background:#fff;color:#3D2914;display:grid;place-items:center;cursor:pointer}.empty{padding:24px;text-align:center;color:#7b6248;border:1px dashed rgba(0,0,0,.12);border-radius:14px}
-        .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(36,24,13,.42);display:grid;place-items:center;padding:18px}.income-modal{width:min(760px,100%);max-height:min(92dvh,900px);overflow:auto;background:#fff;border-radius:20px;border:1px solid rgba(0,0,0,.08);padding:20px}.modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}.modal-head p{margin:0;color:#BA7517;font-size:12px}.modal-head h2{margin:4px 0 0;font-size:24px;color:#3D2914}.income-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.income-form label{display:grid;gap:7px;color:#3D2914;font-size:13px;font-weight:500}.income-form input,.income-form select,.income-form textarea{width:100%;border:1px solid rgba(0,0,0,.08);border-radius:12px;background:#F5F1E8;color:#3D2914;padding:0 12px;min-height:46px;font:500 14px inherit;outline:none}.income-form textarea{min-height:92px;padding-top:12px;resize:vertical}.income-form input:focus,.income-form select:focus,.income-form textarea:focus{border-color:#BA7517;box-shadow:0 0 0 3px rgba(186,117,23,.14);background:#fff}.wide,.form-actions,.form-error{grid-column:1/-1}.toggle-line{align-content:end}.toggle{height:46px;border-radius:12px;border:1px solid rgba(0,0,0,.08);background:#F5F1E8;color:#3D2914;display:flex;align-items:center;gap:9px;padding:0 12px;cursor:pointer}.toggle span{width:20px;height:20px;border-radius:50%;background:#c9bea9}.toggle.on span{background:#BA7517}.form-actions{display:flex;justify-content:flex-end;gap:10px}.form-error{background:#FCEBEB;color:#791F1F;border-radius:12px;padding:10px 12px;font-size:13px}
+        .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(36,24,13,.42);display:grid;place-items:center;padding:18px}.income-modal{width:min(760px,100%);max-height:min(92dvh,900px);overflow:auto;background:#fff;border-radius:20px;border:1px solid rgba(0,0,0,.08);padding:20px}.modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}.modal-head p{margin:0;color:#BA7517;font-size:12px}.modal-head h2{margin:4px 0 0;font-size:24px;color:#3D2914}.income-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.income-form label{display:grid;gap:7px;color:#3D2914;font-size:13px;font-weight:500}.income-form input,.income-form select,.income-form textarea{width:100%;border:1px solid rgba(0,0,0,.08);border-radius:12px;background:#F5F1E8;color:#3D2914;padding:0 12px;min-height:46px;font:500 14px inherit;outline:none}.income-form textarea{min-height:92px;padding-top:12px;resize:vertical}.income-form input:focus,.income-form select:focus,.income-form textarea:focus{border-color:#BA7517;box-shadow:0 0 0 3px rgba(186,117,23,.14);background:#fff}.wide,.form-actions,.form-error,.form-note{grid-column:1/-1}.toggle-line{align-content:end}.toggle{height:46px;border-radius:12px;border:1px solid rgba(0,0,0,.08);background:#F5F1E8;color:#3D2914;display:flex;align-items:center;gap:9px;padding:0 12px;cursor:pointer}.toggle span{width:20px;height:20px;border-radius:50%;background:#c9bea9}.toggle.on span{background:#BA7517}.form-actions{display:flex;justify-content:flex-end;gap:10px}.form-error{background:#FCEBEB;color:#791F1F;border-radius:12px;padding:10px 12px;font-size:13px}.form-note{background:#E6F1FB;color:#0C447C;border-radius:12px;padding:10px 12px;font-size:13px}
         .mini-pop,.toast{position:fixed;z-index:100;inset-inline-end:22px;bottom:22px;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:14px;max-width:min(360px,calc(100vw - 32px));box-shadow:0 16px 38px rgba(61,41,20,.12)}.mini-pop strong{display:block;margin-bottom:6px}.mini-pop p{margin:0;color:#7b6248;line-height:1.6}.mini-pop button{float:inline-end;width:28px;height:28px}.toast{background:#EAF3DE;color:#27500A;font-weight:600}
         @media(max-width:1024px){.income-main{margin-inline-start:0;padding:calc(84px + env(safe-area-inset-top)) 16px 24px}.insights,.chart-grid{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:680px){.income-header,.income-row{display:grid}.income-actions,.form-actions{display:grid;grid-template-columns:1fr}.primary,.ghost,.primary-dark,.ghost-light{width:100%}.stat-grid,.income-form,.donut-wrap{grid-template-columns:1fr}.row-side{justify-content:space-between}.modal-backdrop{align-items:end;padding:10px}.income-modal{border-radius:20px 20px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.insight{align-items:flex-start}.insight b{margin-inline-start:0}.row-meta{gap:5px}}
+        @media(max-width:680px){.income-header,.income-row,.late-card{display:grid}.income-actions,.form-actions{display:grid;grid-template-columns:1fr}.primary,.ghost,.primary-dark,.ghost-light{width:100%}.stat-grid,.income-form,.donut-wrap,.upcoming-item{grid-template-columns:1fr}.row-side{justify-content:space-between}.modal-backdrop{align-items:end;padding:10px}.income-modal{border-radius:20px 20px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.insight{align-items:flex-start}.insight b{margin-inline-start:0}.row-meta{gap:5px}.upcoming-item button,.late-card button{width:100%;justify-content:center}}
       `}</style>
     </div>
   );
