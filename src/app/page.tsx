@@ -831,6 +831,7 @@ export default function DashboardPage(){
                   {icon:'💵',label:t('action_add_income'),action:()=>router.push('/income/add')},
                   {icon:'🛒',label:t('action_add_expense'),action:()=>router.push('/expenses/add')},
                   {icon:'📈',label:t('action_transfer'),action:()=>router.push('/education/investments')},
+                  {icon:'📉',label:t('action_market_analysis'),action:()=>router.push('/market-analysis')},
                   {icon:'📊',label:t('action_report'),action:()=>router.push('/reports')},
                   {icon:'🖨️',label:t('action_print'),action:()=>window.print()},
                   {icon:'📥',label:t('action_export'),action:()=>{

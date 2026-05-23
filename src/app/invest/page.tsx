@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { BarChart3, Brain, Layers3, LineChart as LineChartIcon, PieChart as PieChartIcon, Plus, ShieldAlert, TrendingUp, WalletCards } from 'lucide-react';
 import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Sidebar } from '@/components/Sidebar';
@@ -23,6 +24,7 @@ const CHART_COLORS = ['#D8AE63', '#9A6C3C', '#5B4332', '#22C55E', '#3B82F6', '#8
 const RISK_SCORE: Record<RiskLevel, number> = { low: 1, medium: 2, high: 3 };
 
 export default function InvestPage() {
+  const router = useRouter();
   const { lang, dir, t } = useLanguage();
   const { currency } = useCurrency();
   const { items, isLoading, error, add, update, remove } = useInvestments();
@@ -42,6 +44,7 @@ export default function InvestPage() {
     activeBadge: t('invest_hero_activeBadge'),
     addCta: t('invest_hero_addCta'),
     aiCta: t('invest_hero_aiCta'),
+    marketCta: t('market_title'),
     emptyTitle: t('invest_empty_title'),
     emptyDescription: t('invest_empty_description'),
     emptyCta: t('invest_empty_cta'),
@@ -263,6 +266,10 @@ export default function InvestPage() {
                 {labels.aiCta}
               </button>
             )}
+            <button type="button" className="invest-glass-btn" onClick={() => router.push('/market-analysis')}>
+              <LineChartIcon size={17} />
+              {labels.marketCta}
+            </button>
           </div>
           <div className="invest-hero-total">
             <TrendingUp size={25} />
