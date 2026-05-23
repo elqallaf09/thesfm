@@ -299,7 +299,7 @@ def health() -> dict[str, Any]:
 
 
 @app.get("/market/analyze")
-def market_analyze(symbol: str = Query(..., min_length=1), assetType: str = Query("stock")) -> dict[str, Any]:
+async def market_analyze(symbol: str = Query(..., min_length=1), assetType: str = Query("stock")) -> dict[str, Any]:
     clean = clean_symbol(symbol)
     asset_type = normalize_asset_type(assetType)
     if not clean:
@@ -313,7 +313,7 @@ def market_analyze(symbol: str = Query(..., min_length=1), assetType: str = Quer
 
 
 @app.get("/market/history")
-def market_history(
+async def market_history(
     symbol: str = Query(..., min_length=1),
     assetType: str = Query("stock"),
     period: str = Query("6m"),
@@ -341,7 +341,7 @@ def market_history(
 
 
 @app.get("/market/compare")
-def market_compare(symbols: str = Query(..., min_length=1), assetType: str = Query("stock")) -> dict[str, Any]:
+async def market_compare(symbols: str = Query(..., min_length=1), assetType: str = Query("stock")) -> dict[str, Any]:
     asset_type = normalize_asset_type(assetType)
     results = []
     for raw_symbol in symbols.split(",")[:8]:
@@ -357,7 +357,7 @@ def market_compare(symbols: str = Query(..., min_length=1), assetType: str = Que
 
 
 @app.get("/debug/openbb")
-def debug_openbb(symbol: str = Query("AAPL", min_length=1)) -> dict[str, Any]:
+async def debug_openbb(symbol: str = Query("AAPL", min_length=1)) -> dict[str, Any]:
     clean = clean_symbol(symbol)
     if not clean:
         return {
