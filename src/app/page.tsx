@@ -809,7 +809,7 @@ export default function DashboardPage(){
           </div>
 
           {/* ─── GOALS + QUICK ACTIONS ─── */}
-          <div className="goals-actions-grid" style={{...S(280),display:'grid',gridTemplateColumns:'minmax(0,1fr) 240px',gap:'16px',alignItems:'start'}}>
+          <div className="goals-actions-grid" style={{...S(280),display:'grid',gridTemplateColumns:'1fr',gap:'16px',alignItems:'start'}}>
             {/* Goals */}
             <div className="dc" style={{padding:'22px'}}>
               <h3 style={{fontSize:'15px',fontWeight:'800',color:'#111111',marginBottom:'18px'}}>{t('goals_title')}</h3>
@@ -849,7 +849,7 @@ export default function DashboardPage(){
             {/* Quick actions */}
             <div className="dc" style={{padding:'20px'}}>
               <h3 style={{fontSize:'14px',fontWeight:'800',color:'#111111',marginBottom:'14px'}}>{t('quick_title')}</h3>
-              <div className="quick-actions-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+              <div className="quick-actions-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:'10px'}}>
                 {[
                   {icon:'💵',label:t('action_add_income'),action:()=>router.push('/income/add')},
                   {icon:'🛒',label:t('action_add_expense'),action:()=>router.push('/expenses/add')},
