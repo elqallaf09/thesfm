@@ -314,6 +314,7 @@ export default function ProjectsPage() {
       .need-chip.active{background:rgba(216,174,99,.16);border-color:#D8AE63;color:#8A6D2A}
       @media(max-width:1024px){.sidebar{display:none!important}.main-ml{margin-inline-start:0!important}}
       @media(max-width:768px){.kpi-g{grid-template-columns:1fr 1fr!important}.g2{grid-template-columns:1fr!important}}
+      @media(max-width:560px){.kpi-g{grid-template-columns:1fr!important}.main-ml{padding-inline:14px!important}}
     `}</style>
 
     <div className="pp" dir={dir}>
@@ -321,7 +322,7 @@ export default function ProjectsPage() {
 
       {/* ── Main ── */}
       <main className="main-ml" style={{ marginInlineStart: '230px', padding: '24px 24px 60px', maxWidth: '100%', overflowX: 'hidden' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div style={{ width: '100%', maxWidth: '1320px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
           {/* Header */}
           <div style={S(0)}>
