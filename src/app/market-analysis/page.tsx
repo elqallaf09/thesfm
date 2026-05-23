@@ -153,6 +153,7 @@ export default function MarketAnalysisPage() {
   const [alertThreshold, setAlertThreshold] = useState('200');
   const [whatIfAmount, setWhatIfAmount] = useState('1000');
   const [reportOpen, setReportOpen] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState('');
 
   const requestAnalysis = useCallback(async (symbolInput: string, typeInput: MarketAssetType | 'all') => {
     const symbol = validateSymbol(symbolInput);
@@ -179,6 +180,7 @@ export default function MarketAnalysisPage() {
         setAnalysis(makeClientFallback(symbol, normalizedType, 'provider_returned_no_usable_data'));
         setNotice(t('market_demo_data_shown'));
       }
+      setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
       if (result.openbbService === 'not_configured' || result.openbbService === 'unavailable') {
         setServiceState(result.openbbService);
@@ -187,6 +189,7 @@ export default function MarketAnalysisPage() {
       setAnalysis(makeClientFallback(symbol, normalizedType, err instanceof Error ? err.message : 'client_request_failed'));
       setError('');
       setNotice(t('market_demo_data_shown'));
+      setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } finally {
       setLoading(false);
     }
@@ -523,10 +526,14 @@ export default function MarketAnalysisPage() {
         </div>
 
         <section className="market-status-grid">
-          <MarketMetric label={t('market_service_state')} value={serviceNotice} />
+          <MarketMetric label={t('market_service_state')} value={serviceState === 'connected' ? t('market_connected_short') : serviceNotice} />
           <MarketMetric label={t('market_data_source')} value={isFallbackData ? t('market_badge_demo') : t('market_badge_live')} />
           <MarketMetric label={t('market_selected_asset')} value={selected?.symbol ?? '--'} />
-          <MarketMetric label={t('market_fallback_reason')} value={fallbackReasonText} />
+          {isFallbackData ? (
+            <MarketMetric label={t('market_fallback_reason')} value={fallbackReasonText} />
+          ) : (
+            <MarketMetric label={t('market_last_updated')} value={lastUpdated || '--'} />
+          )}
         </section>
 
         {notice && <div className="market-notice success">{notice}</div>}
