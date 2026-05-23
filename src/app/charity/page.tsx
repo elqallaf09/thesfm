@@ -233,7 +233,14 @@ export default function CharityPage() {
         .save-btn:disabled { opacity: .55; cursor: not-allowed; }
         .save-btn span { position: relative; z-index: 1; }
         .row-hover:hover { background: rgba(216,174,99,.04) !important; }
+        .charity-projects-shortcut { margin: -6px 0 22px; padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 18px; background: radial-gradient(circle at 12% 15%, rgba(216,174,99,.18), transparent 30%), linear-gradient(135deg,#1A0F05,#2B1A0D 62%,#8A5514 145%); border: 1px solid rgba(216,174,99,.24); border-radius: 22px; box-shadow: 0 12px 34px rgba(45,26,10,.14); color: #FFFDFC; overflow: hidden; }
+        .charity-projects-shortcut-icon { width: 52px; height: 52px; border-radius: 16px; background: rgba(216,174,99,.16); border: 1px solid rgba(216,174,99,.22); display: grid; place-items: center; font-size: 24px; flex: 0 0 auto; }
+        .charity-projects-shortcut-copy { display: flex; align-items: center; gap: 14px; min-width: 0; }
+        .charity-projects-shortcut h2 { margin: 0; color: #FFFDFC; font-size: 18px; font-weight: 900; }
+        .charity-projects-shortcut p { margin: 5px 0 0; color: rgba(255,253,252,.68); font-size: 13px; line-height: 1.75; max-width: 760px; }
+        .charity-projects-shortcut button { min-height: 44px; border: 0; border-radius: 14px; background: linear-gradient(135deg,#FAC775,#D8AE63); color: #111111; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; font-family: Tajawal,sans-serif; font-size: 13px; font-weight: 900; white-space: nowrap; box-shadow: 0 8px 22px rgba(216,174,99,.22); }
         @media (max-width: 768px) { .g2 { grid-template-columns: 1fr !important; } .kpi-g { grid-template-columns: 1fr 1fr !important; } }
+        @media (max-width: 640px) { .charity-projects-shortcut { display: grid; padding: 18px; } .charity-projects-shortcut-copy { align-items: flex-start; } .charity-projects-shortcut button { width: 100%; } }
         @media (max-width: 560px) { .kpi-g { grid-template-columns: 1fr !important; } }
       `}</style>
 
@@ -247,10 +254,6 @@ export default function CharityPage() {
               onClick={() => router.push('/')}
               style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 16px', background: '#FFFDFC', border: '1.5px solid rgba(216,174,99,.22)', borderRadius: '12px', cursor: 'pointer', color: '#5B4332', fontSize: '13px', fontWeight: '700', fontFamily: 'Tajawal,sans-serif', flexShrink: 0 }}
             >{t('common_backToDashboard')}</button>
-            <button
-              onClick={() => router.push('/charity-projects')}
-              style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 16px', background: 'linear-gradient(135deg,#D8AE63,#9A6C3C)', border: '0', borderRadius: '12px', cursor: 'pointer', color: '#111111', fontSize: '13px', fontWeight: '800', fontFamily: 'Tajawal,sans-serif', flexShrink: 0 }}
-            >{t('charity.manageProjects')}</button>
             <div style={{ flex: 1, minWidth: '220px' }}>
               <h1 style={{ fontSize: 'clamp(22px,4vw,30px)', fontWeight: '900', color: '#111111', lineHeight: 1.2 }}>
                 🤲 {t('charity.title')}
@@ -281,6 +284,19 @@ export default function CharityPage() {
               </div>
             ))}
           </div>
+
+          <section className="charity-projects-shortcut" style={S(70)}>
+            <div className="charity-projects-shortcut-copy">
+              <div className="charity-projects-shortcut-icon" aria-hidden="true">🌙</div>
+              <div>
+                <h2>{t('charity.projectsShortcutTitle')}</h2>
+                <p>{t('charity.projectsShortcutDescription')}</p>
+              </div>
+            </div>
+            <button type="button" onClick={() => router.push('/charity-projects')}>
+              {t('charity.openProjects')}
+            </button>
+          </section>
 
           <div className="g2" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(320px, .7fr)', gap: '20px', alignItems: 'start' }}>
 
