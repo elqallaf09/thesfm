@@ -10,12 +10,14 @@ import {
   Coins,
   Eye,
   FileText,
+  FileUp,
   Gift,
   HandCoins,
   HeartHandshake,
   Pencil,
   Plus,
   Save,
+  Search,
   ShieldCheck,
   Sparkles,
   X,
@@ -80,6 +82,26 @@ type ProjectDonation = {
   notes: string | null;
   created_at: string | null;
 };
+
+type CharityDocument = {
+  id: string;
+  user_id: string;
+  project_id: string | null;
+  donation_id: string | null;
+  zakat_asset_id: string | null;
+  commitment_id: string | null;
+  title: string;
+  category: DocumentCategory;
+  file_url: string;
+  file_path: string;
+  file_name: string;
+  file_type: string | null;
+  file_size: number | null;
+  notes: string | null;
+  uploaded_at: string | null;
+};
+
+type DocumentCategory = 'donation_receipt' | 'charity_certificate' | 'project_report' | 'zakat_document' | 'beneficiary_report' | 'other';
 
 const TEXT = {
   ar: {
@@ -153,6 +175,36 @@ const TEXT = {
     excelExported: 'تم تصدير ملف Excel بنجاح.',
     excelExportFailed: 'تعذر تصدير ملف Excel.',
     emptyReportExported: 'لا توجد بيانات كافية، سيتم تصدير تقرير فارغ.',
+    documentVault: 'خزنة المستندات',
+    documentVaultDesc: 'احفظ إيصالات التبرعات، شهادات الجمعيات، وتقارير المشاريع في مكان واحد.',
+    uploadDocument: 'رفع مستند',
+    documentTitle: 'عنوان المستند',
+    documentCategory: 'التصنيف',
+    linkProject: 'ربط بمشروع',
+    linkDonation: 'ربط بتبرع',
+    linkZakatAsset: 'ربط بأصل زكاة',
+    linkCommitment: 'ربط بالتزام',
+    chooseFile: 'اختر الملف',
+    searchDocuments: 'بحث في المستندات',
+    allCategories: 'كل التصنيفات',
+    noDocuments: 'لا توجد مستندات محفوظة حتى الآن.',
+    fileTooLarge: 'حجم الملف كبير جداً.',
+    unsupportedFileType: 'نوع الملف غير مدعوم.',
+    uploadFailed: 'تعذر رفع المستند.',
+    documentUploaded: 'تم رفع المستند بنجاح.',
+    documentDeleted: 'تم حذف المستند بنجاح.',
+    openDocumentFailed: 'تعذر فتح المستند حالياً.',
+    confirmDeleteDocument: 'هل تريد حذف هذا المستند؟',
+    viewDocument: 'عرض',
+    downloadDocument: 'تحميل',
+    deleteDocument: 'حذف',
+    documentsCount: 'المستندات: {count}',
+    searchInsideSoon: 'البحث داخل الملفات قريباً.',
+    donation_receipt: 'إيصال تبرع',
+    charity_certificate: 'شهادة جمعية',
+    project_report: 'تقرير مشروع',
+    zakat_document: 'مستند زكاة',
+    beneficiary_report: 'تقرير مستفيد',
     saved: 'تم الحفظ بنجاح.',
     error: 'تعذر تنفيذ العملية حالياً.',
     planning: 'تخطيط',
@@ -245,6 +297,36 @@ const TEXT = {
     excelExported: 'Excel file exported successfully.',
     excelExportFailed: 'Could not export Excel file.',
     emptyReportExported: 'Not enough data. An empty report will be exported.',
+    documentVault: 'Document Vault',
+    documentVaultDesc: 'Store donation receipts, charity certificates, and project reports in one place.',
+    uploadDocument: 'Upload Document',
+    documentTitle: 'Document title',
+    documentCategory: 'Category',
+    linkProject: 'Link to project',
+    linkDonation: 'Link to donation',
+    linkZakatAsset: 'Link to zakat asset',
+    linkCommitment: 'Link to commitment',
+    chooseFile: 'Choose file',
+    searchDocuments: 'Search documents',
+    allCategories: 'All categories',
+    noDocuments: 'No documents saved yet.',
+    fileTooLarge: 'File is too large.',
+    unsupportedFileType: 'Unsupported file type.',
+    uploadFailed: 'Upload failed.',
+    documentUploaded: 'Document uploaded successfully.',
+    documentDeleted: 'Document deleted successfully.',
+    openDocumentFailed: 'Could not open the document right now.',
+    confirmDeleteDocument: 'Do you want to delete this document?',
+    viewDocument: 'View',
+    downloadDocument: 'Download',
+    deleteDocument: 'Delete',
+    documentsCount: 'Documents: {count}',
+    searchInsideSoon: 'Search inside files coming soon.',
+    donation_receipt: 'Donation receipt',
+    charity_certificate: 'Charity certificate',
+    project_report: 'Project report',
+    zakat_document: 'Zakat document',
+    beneficiary_report: 'Beneficiary report',
     saved: 'Saved successfully.',
     error: 'This action could not be completed right now.',
     planning: 'Planning',
@@ -337,6 +419,36 @@ const TEXT = {
     excelExported: 'Fichier Excel exporté avec succès.',
     excelExportFailed: 'Impossible d’exporter le fichier Excel.',
     emptyReportExported: 'Données insuffisantes. Un rapport vide sera exporté.',
+    documentVault: 'Coffre de documents',
+    documentVaultDesc: 'Conservez les reçus de dons, les certificats d’associations et les rapports de projets au même endroit.',
+    uploadDocument: 'Téléverser un document',
+    documentTitle: 'Titre du document',
+    documentCategory: 'Catégorie',
+    linkProject: 'Lier à un projet',
+    linkDonation: 'Lier à un don',
+    linkZakatAsset: 'Lier à un actif de zakat',
+    linkCommitment: 'Lier à un engagement',
+    chooseFile: 'Choisir un fichier',
+    searchDocuments: 'Rechercher des documents',
+    allCategories: 'Toutes les catégories',
+    noDocuments: 'Aucun document enregistré pour le moment.',
+    fileTooLarge: 'Le fichier est trop volumineux.',
+    unsupportedFileType: 'Type de fichier non pris en charge.',
+    uploadFailed: 'Impossible de téléverser le fichier.',
+    documentUploaded: 'Document téléversé avec succès.',
+    documentDeleted: 'Document supprimé avec succès.',
+    openDocumentFailed: 'Impossible d’ouvrir le document pour le moment.',
+    confirmDeleteDocument: 'Voulez-vous supprimer ce document ?',
+    viewDocument: 'Voir',
+    downloadDocument: 'Télécharger',
+    deleteDocument: 'Supprimer',
+    documentsCount: 'Documents : {count}',
+    searchInsideSoon: 'Recherche dans les fichiers bientôt disponible.',
+    donation_receipt: 'Reçu de don',
+    charity_certificate: 'Certificat d’association',
+    project_report: 'Rapport de projet',
+    zakat_document: 'Document de zakat',
+    beneficiary_report: 'Rapport de bénéficiaire',
     saved: 'Enregistré avec succès.',
     error: "Impossible d'effectuer cette action pour le moment.",
     planning: 'Planification',
@@ -363,6 +475,9 @@ const TEXT = {
 const categories: ProjectCategory[] = ['ongoing', 'sponsorship', 'zakat', 'sacrifice', 'endowment', 'mosque', 'water_well', 'education', 'relief', 'other'];
 const statuses: ProjectStatus[] = ['planning', 'fundraising', 'in_progress', 'completed', 'paused'];
 const assetTypes: AssetType[] = ['cash', 'savings', 'investment', 'gold', 'silver', 'non_zakat'];
+const documentCategories: DocumentCategory[] = ['donation_receipt', 'charity_certificate', 'project_report', 'zakat_document', 'beneficiary_report', 'other'];
+const allowedDocumentTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
+const maxDocumentSize = 10 * 1024 * 1024;
 
 const templates = [
   { category: 'sponsorship' as ProjectCategory, amount: 300, months: 12, ar: 'كفالة يتيم لمدة سنة', en: 'Orphan sponsorship for one year', fr: "Parrainage d'orphelin pendant un an", subAr: '25 د.ك × 12 شهر', subEn: 'KWD 25 x 12 months', subFr: '25 KWD x 12 mois' },
@@ -386,6 +501,16 @@ function toNum(value: string | number | null | undefined) {
   return Number(String(value ?? 0).replace(/[^\d.-]/g, '')) || 0;
 }
 
+function formatFileSize(size?: number | null) {
+  if (!size) return '0 KB';
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function cleanFileName(name: string) {
+  return name.replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-');
+}
+
 export default function CharityProjectsPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -397,15 +522,21 @@ export default function CharityProjectsPage() {
   const [assets, setAssets] = useState<ZakatAsset[]>([]);
   const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [donations, setDonations] = useState<ProjectDonation[]>([]);
+  const [documents, setDocuments] = useState<CharityDocument[]>([]);
   const [incomeTotal, setIncomeTotal] = useState(0);
   const [expenseTotal, setExpenseTotal] = useState(0);
   const [message, setMessage] = useState('');
   const [projectOpen, setProjectOpen] = useState(false);
+  const [documentOpen, setDocumentOpen] = useState(false);
   const [donationProject, setDonationProject] = useState<CharityProject | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingDocument, setUploadingDocument] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
   const [impactDonation, setImpactDonation] = useState('');
   const [selectedReportYear, setSelectedReportYear] = useState(String(new Date().getFullYear()));
+  const [documentSearch, setDocumentSearch] = useState('');
+  const [documentFilter, setDocumentFilter] = useState<'all' | DocumentCategory>('all');
+  const [documentProjectFilter, setDocumentProjectFilter] = useState('');
   const [zakat, setZakat] = useState({ cash: '', investments: '', gold: '', silver: '', debts: '', goldPrice: '', silverPrice: '', nonZakat: false });
   const [assetForm, setAssetForm] = useState({ asset_name: '', asset_type: 'cash' as AssetType, amount: '', ownership_date: today(), zakat_due_date: addYear(today()), is_zakatable: true, notes: '' });
   const [projectForm, setProjectForm] = useState({
@@ -421,6 +552,16 @@ export default function CharityProjectsPage() {
     notes: '',
   });
   const [donationAmount, setDonationAmount] = useState('');
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentForm, setDocumentForm] = useState({
+    title: '',
+    category: 'donation_receipt' as DocumentCategory,
+    project_id: '',
+    donation_id: '',
+    zakat_asset_id: '',
+    commitment_id: '',
+    notes: '',
+  });
 
   const money = useCallback((amount: number, currency = 'KWD') => formatMoney(amount, currency, lang as Lang), [lang]);
   const dateLabel = useCallback((date?: string | null) => date ? new Date(`${date}T00:00:00`).toLocaleDateString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US') : '-', [lang]);
@@ -428,11 +569,12 @@ export default function CharityProjectsPage() {
   const loadData = useCallback(async () => {
     if (!user) return;
     try {
-      const [projectRes, assetRes, commitmentRes, donationRes, incomeRes, expenseRes] = await Promise.all([
+      const [projectRes, assetRes, commitmentRes, donationRes, documentRes, incomeRes, expenseRes] = await Promise.all([
         db.from('charity_projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('zakat_assets').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('charity_commitments').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
         db.from('charity_project_donations').select('*').eq('user_id', user.id).order('donation_date', { ascending: false }),
+        db.from('charity_documents').select('*').eq('user_id', user.id).order('uploaded_at', { ascending: false }),
         db.from('monthly_income_sources').select('amount').eq('user_id', user.id),
         db.from('expense_items').select('amount').eq('user_id', user.id),
       ]);
@@ -440,6 +582,7 @@ export default function CharityProjectsPage() {
       if (!assetRes.error) setAssets((assetRes.data ?? []) as ZakatAsset[]);
       if (!commitmentRes.error) setCommitments((commitmentRes.data ?? []) as Commitment[]);
       if (!donationRes.error) setDonations((donationRes.data ?? []) as ProjectDonation[]);
+      if (!documentRes.error) setDocuments((documentRes.data ?? []) as CharityDocument[]);
       if (!incomeRes.error) setIncomeTotal((incomeRes.data ?? []).reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
       if (!expenseRes.error) setExpenseTotal((expenseRes.data ?? []).reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
     } catch {
@@ -455,6 +598,7 @@ export default function CharityProjectsPage() {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setProjectOpen(false);
+        setDocumentOpen(false);
         setDonationProject(null);
       }
     };
@@ -493,6 +637,17 @@ export default function CharityProjectsPage() {
   const impactPct = incomeTotal > 0 && impactValue > 0 ? (impactValue / incomeTotal) * 100 : null;
   const remainingNet = incomeTotal - expenseTotal - impactValue;
   const hasReportData = projects.length > 0 || assets.length > 0 || commitments.length > 0 || donations.length > 0;
+  const filteredDocuments = documents.filter(document => {
+    const query = documentSearch.trim().toLowerCase();
+    const matchesSearch = !query || [document.title, document.file_name, document.notes ?? ''].some(value => value.toLowerCase().includes(query));
+    const matchesFilter = documentFilter === 'all' || document.category === documentFilter;
+    const matchesProject = !documentProjectFilter || document.project_id === documentProjectFilter;
+    return matchesSearch && matchesFilter && matchesProject;
+  });
+  const projectDocumentCounts = useMemo(() => documents.reduce<Record<string, number>>((acc, document) => {
+    if (document.project_id) acc[document.project_id] = (acc[document.project_id] || 0) + 1;
+    return acc;
+  }, {}), [documents]);
 
   const resetProjectForm = () => {
     setProjectForm({ name: '', category: 'ongoing', status: 'planning', target_amount: '', collected_amount: '', currency: 'KWD', start_date: today(), end_date: '', organization_name: '', notes: '' });
@@ -589,6 +744,97 @@ export default function CharityProjectsPage() {
     const { error } = await db.from('charity_projects').update({ status: 'paused' }).eq('id', project.id).eq('user_id', user.id);
     if (error) setMessage(tr.error);
     else loadData();
+  };
+
+  const resetDocumentForm = () => {
+    setDocumentForm({ title: '', category: 'donation_receipt', project_id: '', donation_id: '', zakat_asset_id: '', commitment_id: '', notes: '' });
+    setDocumentFile(null);
+  };
+
+  const uploadDocument = async () => {
+    if (!user) return;
+    if (!documentForm.title.trim() || !documentFile) {
+      setMessage(tr.uploadFailed);
+      return;
+    }
+    if (!allowedDocumentTypes.includes(documentFile.type)) {
+      setMessage(tr.unsupportedFileType);
+      return;
+    }
+    if (documentFile.size > maxDocumentSize) {
+      setMessage(tr.fileTooLarge);
+      return;
+    }
+
+    setUploadingDocument(true);
+    const documentId = crypto.randomUUID();
+    const year = new Date().getFullYear();
+    const filePath = `${user.id}/${year}/${documentId}-${cleanFileName(documentFile.name)}`;
+
+    try {
+      const upload = await supabase.storage.from('charity-documents').upload(filePath, documentFile, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+      if (upload.error) throw upload.error;
+
+      const { error } = await db.from('charity_documents').insert({
+        id: documentId,
+        user_id: user.id,
+        title: documentForm.title.trim(),
+        category: documentForm.category,
+        project_id: documentForm.project_id || null,
+        donation_id: documentForm.donation_id || null,
+        zakat_asset_id: documentForm.zakat_asset_id || null,
+        commitment_id: documentForm.commitment_id || null,
+        file_url: filePath,
+        file_path: filePath,
+        file_name: documentFile.name,
+        file_type: documentFile.type,
+        file_size: documentFile.size,
+        notes: documentForm.notes || null,
+      });
+      if (error) throw error;
+      setMessage(tr.documentUploaded);
+      setDocumentOpen(false);
+      resetDocumentForm();
+      loadData();
+    } catch {
+      setMessage(tr.uploadFailed);
+    } finally {
+      setUploadingDocument(false);
+    }
+  };
+
+  const openDocument = async (document: CharityDocument, download = false) => {
+    const { data, error } = await supabase.storage.from('charity-documents').createSignedUrl(document.file_path, 60);
+    if (error || !data?.signedUrl) {
+      setMessage(tr.openDocumentFailed);
+      return;
+    }
+    if (download) {
+      const link = window.document.createElement('a');
+      link.href = data.signedUrl;
+      link.download = document.file_name;
+      link.target = '_blank';
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } else {
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const deleteDocument = async (document: CharityDocument) => {
+    if (!window.confirm(tr.confirmDeleteDocument)) return;
+    const { error } = await db.from('charity_documents').delete().eq('id', document.id).eq('user_id', user?.id);
+    if (error) {
+      setMessage(tr.error);
+      return;
+    }
+    await supabase.storage.from('charity-documents').remove([document.file_path]);
+    setMessage(tr.documentDeleted);
+    loadData();
   };
 
   const exportExcel = async () => {
@@ -766,11 +1012,96 @@ export default function CharityProjectsPage() {
                       <div><small>{tr.remaining}</small><strong>{money(Math.max(0, target - collected), project.currency)}</strong></div>
                     </div>
                     {project.notes && <p>{project.notes}</p>}
+                    <button
+                      className="doc-count-btn"
+                      type="button"
+                      aria-label={tr.documentsCount.replace('{count}', String(projectDocumentCounts[project.id] || 0))}
+                      onClick={() => {
+                        setDocumentFilter('all');
+                        setDocumentSearch('');
+                        setDocumentProjectFilter(project.id);
+                        window.setTimeout(() => window.document.getElementById('document-vault')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+                      }}
+                    >
+                      {tr.documentsCount.replace('{count}', String(projectDocumentCounts[project.id] || 0))}
+                    </button>
                     <div className="card-actions">
                       <button aria-label={tr.view}><Eye size={15} /> {tr.view}</button>
                       <button onClick={() => setDonationProject(project)} aria-label={tr.addDonation}><HandCoins size={15} /> {tr.addDonation}</button>
                       <button aria-label={tr.edit}><Pencil size={15} /> {tr.edit}</button>
                       <button onClick={() => archiveProject(project)} aria-label={tr.archive}><Archive size={15} /> {tr.archive}</button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section id="document-vault" className="warm-card document-vault">
+          <div className="section-head vault-head">
+            <div>
+              <small>{tr.searchInsideSoon}</small>
+              <h2>{tr.documentVault}</h2>
+              <p>{tr.documentVaultDesc}</p>
+            </div>
+            <button className="mini-gold" type="button" onClick={() => {
+              resetDocumentForm();
+              setDocumentOpen(true);
+            }}>
+              <FileUp size={16} /> {tr.uploadDocument}
+            </button>
+          </div>
+
+          <div className="document-tools">
+            <label>
+              <Search size={16} />
+              <input
+                value={documentSearch}
+                onChange={e => {
+                  setDocumentSearch(e.target.value);
+                  setDocumentProjectFilter('');
+                }}
+                placeholder={tr.searchDocuments}
+                aria-label={tr.searchDocuments}
+              />
+            </label>
+            <select
+              value={documentFilter}
+              onChange={e => {
+                setDocumentFilter(e.target.value as 'all' | DocumentCategory);
+                setDocumentProjectFilter('');
+              }}
+              aria-label={tr.allCategories}
+            >
+              <option value="all">{tr.allCategories}</option>
+              {documentCategories.map(category => <option key={category} value={category}>{tr[category]}</option>)}
+            </select>
+          </div>
+
+          {filteredDocuments.length === 0 ? (
+            <div className="empty-state compact">
+              <FileText size={38} />
+              <strong>{tr.noDocuments}</strong>
+            </div>
+          ) : (
+            <div className="document-grid">
+              {filteredDocuments.map(document => {
+                const linkedProject = projects.find(project => project.id === document.project_id)?.name;
+                return (
+                  <article className="document-card" key={document.id}>
+                    <div className="document-icon"><FileText size={20} /></div>
+                    <div className="document-body">
+                      <strong>{document.title}</strong>
+                      <span>{tr[document.category] ?? tr.other}</span>
+                      <small>{document.file_name} • {formatFileSize(document.file_size)} • {dateLabel(document.uploaded_at)}</small>
+                      {linkedProject && <em>{tr.projectName}: {linkedProject}</em>}
+                      {document.notes && <p>{document.notes}</p>}
+                    </div>
+                    <div className="document-actions">
+                      <button type="button" onClick={() => openDocument(document)} aria-label={tr.viewDocument}>{tr.viewDocument}</button>
+                      <button type="button" onClick={() => openDocument(document, true)} aria-label={tr.downloadDocument}>{tr.downloadDocument}</button>
+                      <button type="button" onClick={() => deleteDocument(document)} aria-label={tr.deleteDocument}>{tr.deleteDocument}</button>
                     </div>
                   </article>
                 );
@@ -810,7 +1141,7 @@ export default function CharityProjectsPage() {
               </button>
             </div>
             <div className="future-list">
-              {['Excel export', 'Document vault', 'Family collaboration', 'Beneficiary tracking', 'Licensed charity organization database', 'Automatic gold/silver Kuwait price API', 'Hijri calendar advanced reminders'].map(item => (
+              {['Family collaboration', 'Beneficiary tracking', 'Licensed charity organization database', 'Automatic gold/silver Kuwait price API', 'Hijri calendar advanced reminders'].map(item => (
                 <span key={item}>{item} <b>{tr.comingSoon}</b></span>
               ))}
             </div>
@@ -833,6 +1164,90 @@ export default function CharityProjectsPage() {
               <label className="wide"><span>{tr.organization}</span><input value={projectForm.organization_name} onChange={e => setProjectForm(prev => ({ ...prev, organization_name: e.target.value }))} /></label>
               <label className="wide"><span>{tr.notes}</span><textarea value={projectForm.notes} onChange={e => setProjectForm(prev => ({ ...prev, notes: e.target.value }))} /></label>
               <div className="modal-actions"><button className="ghost-btn" onClick={() => setProjectOpen(false)}>{tr.cancel}</button><button className="gold-btn" disabled={saving} onClick={saveProject}>{tr.saveProject}</button></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {documentOpen && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal">
+            <div className="modal-head">
+              <h2>{tr.uploadDocument}</h2>
+              <button aria-label={tr.cancel} onClick={() => setDocumentOpen(false)}><X size={18} /></button>
+            </div>
+            <div className="form-grid">
+              <label className="wide">
+                <span>{tr.documentTitle}</span>
+                <input value={documentForm.title} onChange={e => setDocumentForm(prev => ({ ...prev, title: e.target.value }))} />
+              </label>
+              <label>
+                <span>{tr.documentCategory}</span>
+                <select value={documentForm.category} onChange={e => setDocumentForm(prev => ({ ...prev, category: e.target.value as DocumentCategory }))}>
+                  {documentCategories.map(category => <option key={category} value={category}>{tr[category]}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>{tr.linkProject}</span>
+                <select value={documentForm.project_id} onChange={e => setDocumentForm(prev => ({ ...prev, project_id: e.target.value }))}>
+                  <option value="">-</option>
+                  {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>{tr.linkDonation}</span>
+                <select value={documentForm.donation_id} onChange={e => setDocumentForm(prev => ({ ...prev, donation_id: e.target.value }))}>
+                  <option value="">-</option>
+                  {donations.map(donation => {
+                    const projectName = projects.find(project => project.id === donation.project_id)?.name ?? tr.donations;
+                    return <option key={donation.id} value={donation.id}>{projectName} - {money(toNum(donation.amount), donation.currency)}</option>;
+                  })}
+                </select>
+              </label>
+              <label>
+                <span>{tr.linkZakatAsset}</span>
+                <select value={documentForm.zakat_asset_id} onChange={e => setDocumentForm(prev => ({ ...prev, zakat_asset_id: e.target.value }))}>
+                  <option value="">-</option>
+                  {assets.map(asset => <option key={asset.id} value={asset.id}>{asset.asset_name}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>{tr.linkCommitment}</span>
+                <select value={documentForm.commitment_id} onChange={e => setDocumentForm(prev => ({ ...prev, commitment_id: e.target.value }))}>
+                  <option value="">-</option>
+                  {commitments.map(commitment => <option key={commitment.id} value={commitment.id}>{commitment.name}</option>)}
+                </select>
+              </label>
+              <label className="wide">
+                <span>{tr.chooseFile}</span>
+                <input
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
+                  onChange={e => {
+                    const file = e.target.files?.[0] ?? null;
+                    setDocumentFile(file);
+                    if (file && !documentForm.title.trim()) {
+                      setDocumentForm(prev => ({ ...prev, title: file.name.replace(/\.[^.]+$/, '') }));
+                    }
+                  }}
+                />
+              </label>
+              {documentFile && (
+                <div className="file-chip wide">
+                  <FileText size={16} />
+                  <span>{documentFile.name}</span>
+                  <small>{formatFileSize(documentFile.size)}</small>
+                  <button type="button" onClick={() => setDocumentFile(null)} aria-label={tr.deleteDocument}><X size={14} /></button>
+                </div>
+              )}
+              <label className="wide">
+                <span>{tr.notes}</span>
+                <textarea value={documentForm.notes} onChange={e => setDocumentForm(prev => ({ ...prev, notes: e.target.value }))} />
+              </label>
+              <div className="modal-actions">
+                <button className="ghost-btn" onClick={() => setDocumentOpen(false)}>{tr.cancel}</button>
+                <button className="gold-btn" disabled={uploadingDocument} onClick={uploadDocument}>{tr.uploadDocument}</button>
+              </div>
             </div>
           </div>
         </div>
@@ -861,12 +1276,13 @@ export default function CharityProjectsPage() {
         .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid.one{grid-template-columns:1fr}.form-grid label,.impact-input{display:grid;gap:7px;color:#3D2914;font-size:13px;font-weight:800}.form-grid input,.form-grid select,.form-grid textarea,.impact-input input{width:100%;border:1px solid rgba(186,117,23,.18);border-radius:13px;background:#F5F1E8;color:#1A0F05;min-height:46px;padding:0 12px;outline:none}.form-grid textarea{min-height:92px;padding-top:12px;resize:vertical}.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus,.impact-input input:focus{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.15);background:#FFFDF8}.wide{grid-column:1/-1}.check-row{display:flex!important;align-items:center;gap:9px}.check-row input{width:18px!important;min-height:18px!important}.primary-wide{width:100%}
         .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.result-grid div,.big-metric{background:#FAEEDA;border:1px solid rgba(186,117,23,.14);border-radius:16px;padding:14px}.result-grid small,.big-metric span{display:block;color:#854F0B;font-weight:800}.result-grid strong,.big-metric strong{display:block;margin-top:5px;color:#3D2914;font-size:24px}.disclaimer,.nisab,.muted{margin:12px 0 0;color:#7A6A55;line-height:1.8}.nisab{display:flex;gap:8px;align-items:flex-start;color:#854F0B;background:#FFF8EA;border-radius:13px;padding:10px}
         .template-grid,.project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.template-card{text-align:start;border:1px solid rgba(186,117,23,.16);background:#FDF8EE;border-radius:16px;padding:14px;cursor:pointer}.template-card:hover{background:#FAEEDA}.template-card strong,.template-card span{display:block}.template-card span{margin-top:5px;color:#8A6A55}
-        .project-card{border:1px solid rgba(186,117,23,.14);border-radius:18px;background:#FFFDF8;padding:16px;display:grid;gap:13px}.project-top{display:flex;justify-content:space-between;gap:12px;min-width:0}.project-top strong{display:block;color:#3D2914;font-size:17px;overflow-wrap:anywhere}.project-top span,.badge-row span,.project-card p{color:#7A6A55;font-size:12px;overflow-wrap:anywhere}.status,.badge-row span{border-radius:999px;padding:5px 9px;background:#FAEEDA;color:#854F0B;font-size:11px}.badge-row{display:flex;gap:8px;flex-wrap:wrap}.progress{height:9px;border-radius:99px;background:#F1E6D4;overflow:hidden}.progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#BA7517,#EF9F27)}.money-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.money-row div{background:#F7F0E4;border-radius:13px;padding:10px;min-width:0}.money-row small{display:block;color:#8A6A55}.money-row strong{display:block;color:#3D2914;font-size:13px;overflow-wrap:anywhere}.card-actions{display:flex;gap:8px;flex-wrap:wrap}.card-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:800;font-size:12px}
+        .project-card{border:1px solid rgba(186,117,23,.14);border-radius:18px;background:#FFFDF8;padding:16px;display:grid;gap:13px}.project-top{display:flex;justify-content:space-between;gap:12px;min-width:0}.project-top strong{display:block;color:#3D2914;font-size:17px;overflow-wrap:anywhere}.project-top span,.badge-row span,.project-card p{color:#7A6A55;font-size:12px;overflow-wrap:anywhere}.status,.badge-row span{border-radius:999px;padding:5px 9px;background:#FAEEDA;color:#854F0B;font-size:11px}.badge-row{display:flex;gap:8px;flex-wrap:wrap}.progress{height:9px;border-radius:99px;background:#F1E6D4;overflow:hidden}.progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#BA7517,#EF9F27)}.money-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.money-row div{background:#F7F0E4;border-radius:13px;padding:10px;min-width:0}.money-row small{display:block;color:#8A6A55}.money-row strong{display:block;color:#3D2914;font-size:13px;overflow-wrap:anywhere}.card-actions{display:flex;gap:8px;flex-wrap:wrap}.card-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:800;font-size:12px}.doc-count-btn{justify-self:start;border:1px solid rgba(186,117,23,.16);background:#F7F0E4;color:#854F0B;border-radius:999px;min-height:34px;padding:0 12px;font-weight:900;cursor:pointer}
+        .vault-head{align-items:flex-start}.vault-head p{margin:5px 0 0;color:#7A6A55;line-height:1.7}.document-tools{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,260px);gap:10px;margin-bottom:14px}.document-tools label{display:flex;align-items:center;gap:8px;border:1px solid rgba(186,117,23,.18);background:#F5F1E8;border-radius:14px;padding:0 12px;min-height:46px;color:#BA7517}.document-tools input,.document-tools select{width:100%;border:0;background:transparent;color:#1A0F05;outline:none;font:800 13px Tajawal,Arial,sans-serif}.document-tools select{border:1px solid rgba(186,117,23,.18);background:#F5F1E8;border-radius:14px;padding:0 12px;min-height:46px}.document-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.document-card{display:grid;grid-template-columns:42px minmax(0,1fr);gap:12px;border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;min-width:0}.document-icon{width:42px;height:42px;border-radius:14px;background:#FAEEDA;color:#BA7517;display:grid;place-items:center}.document-body{display:grid;gap:5px;min-width:0}.document-body strong{color:#3D2914;overflow-wrap:anywhere}.document-body span{justify-self:start;border-radius:999px;background:#F7F0E4;color:#854F0B;padding:4px 9px;font-size:11px;font-weight:900}.document-body small,.document-body em,.document-body p{color:#7A6A55;font-size:12px;line-height:1.6;overflow-wrap:anywhere}.document-body em{font-style:normal;color:#3D2914}.document-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}.document-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;cursor:pointer;font-weight:900}.document-actions button:last-child{background:#FCEBEB;color:#791F1F;border-color:rgba(121,31,31,.14)}.empty-state.compact{padding:24px 12px}.file-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(186,117,23,.16);background:#FAEEDA;border-radius:14px;padding:10px;color:#3D2914;min-width:0}.file-chip span{font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-chip small{color:#854F0B;margin-inline-start:auto}.file-chip button{width:30px;height:30px;border-radius:10px;border:1px solid rgba(186,117,23,.18);background:#FFFDF8;display:grid;place-items:center;cursor:pointer}
         .empty-state{display:grid;place-items:center;text-align:center;padding:42px 16px;color:#8A6A55}.empty-state svg{color:#BA7517;margin-bottom:10px}.empty-state strong{color:#3D2914;font-size:18px}.impact-lines{display:grid;gap:9px}.impact-lines p{margin:0;border-radius:13px;background:#F5F1E8;padding:10px;color:#3D2914}.impact-lines .warn{background:#FAEEDA;color:#854F0B}.report-card{display:grid;grid-template-columns:minmax(0,1fr) 110px auto auto;gap:10px;align-items:end;border:1px solid rgba(186,117,23,.18);border-radius:16px;background:#FAEEDA;padding:14px;margin-bottom:12px}.report-card strong,.report-card span{display:block}.report-card strong{color:#3D2914}.report-card span{margin-top:4px;color:#854F0B;font-size:12px}.report-card select{height:42px;border:1px solid rgba(186,117,23,.25);border-radius:12px;background:#FFFDF8;color:#3D2914;padding:0 10px;font:800 13px Tajawal,Arial,sans-serif}.report-card button{height:42px;border:0;border-radius:12px;background:linear-gradient(135deg,#FAC775,#BA7517);color:#1A0F05;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}.report-card button:disabled{opacity:.65;cursor:wait}.future-list{display:grid;gap:9px}.future-list span{display:flex;justify-content:space-between;gap:8px;border:1px solid rgba(186,117,23,.12);border-radius:12px;padding:10px;color:#3D2914}.future-list b{color:#BA7517}
         .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(26,15,5,.46);display:grid;place-items:center;padding:18px}.modal{width:min(760px,100%);max-height:92dvh;overflow:auto;background:#FFFDF8;border:1px solid rgba(186,117,23,.18);border-radius:24px;padding:20px}.modal.small{width:min(420px,100%)}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.modal-head h2{margin:0}.modal-head button{width:40px;height:40px;border-radius:12px;border:1px solid rgba(186,117,23,.18);background:#F5F1E8;display:grid;place-items:center;cursor:pointer}.modal-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
-        @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid{grid-template-columns:1fr}.project-grid{grid-template-columns:1fr}}
+        @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid{grid-template-columns:1fr}.project-grid,.document-grid{grid-template-columns:1fr}}
         @media(max-width:900px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row,.report-card{grid-template-columns:1fr}.report-card button{width:100%}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
+        @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row,.report-card,.document-tools{grid-template-columns:1fr}.report-card button{width:100%}.document-card{grid-template-columns:36px minmax(0,1fr)}.document-actions button{flex:1}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
       `}</style>
     </div>
   );
