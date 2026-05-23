@@ -36,6 +36,18 @@ const WATCHLIST_STORAGE_KEY = 'sfm_market_watchlist';
 const ALERTS_STORAGE_KEY = 'sfm_market_alerts';
 const DEFAULT_MARKET_ASSET = 'AAPL';
 const DEFAULT_MARKET_TYPE: MarketAssetType = 'stock';
+const QUICK_MARKET_EXAMPLES: MarketSearchItem[] = [
+  { symbol: 'AAPL', providerSymbol: 'AAPL', name: 'Apple Inc.', assetType: 'stock', exchange: 'NASDAQ' },
+  { symbol: 'MSFT', providerSymbol: 'MSFT', name: 'Microsoft Corporation', assetType: 'stock', exchange: 'NASDAQ' },
+  { symbol: 'NVDA', providerSymbol: 'NVDA', name: 'NVIDIA Corporation', assetType: 'stock', exchange: 'NASDAQ' },
+  { symbol: 'TSLA', providerSymbol: 'TSLA', name: 'Tesla Inc.', assetType: 'stock', exchange: 'NASDAQ' },
+  { symbol: 'SPY', providerSymbol: 'SPY', name: 'SPDR S&P 500 ETF Trust', assetType: 'etf', exchange: 'NYSE Arca' },
+  { symbol: 'QQQ', providerSymbol: 'QQQ', name: 'Invesco QQQ Trust', assetType: 'etf', exchange: 'NASDAQ' },
+  { symbol: 'BTC', providerSymbol: 'BTC-USD', name: 'Bitcoin', assetType: 'crypto', exchange: 'Crypto' },
+  { symbol: 'ETH', providerSymbol: 'ETH-USD', name: 'Ethereum', assetType: 'crypto', exchange: 'Crypto' },
+  { symbol: 'XAU', providerSymbol: 'GC=F', name: 'Gold', assetType: 'gold', exchange: 'COMEX' },
+  { symbol: 'EURUSD', providerSymbol: 'EURUSD=X', name: 'Euro / US Dollar', assetType: 'forex', exchange: 'FX' },
+];
 
 function money(value: number) {
   const maximumFractionDigits = value > 1000 ? 0 : 2;
@@ -200,7 +212,13 @@ export default function MarketAnalysisPage() {
     setQuery(displaySymbol);
     setAssetType(normalizedType);
     try {
-      const response = await fetch(`/api/market/analyze?symbol=${encodeURIComponent(requestSymbol)}&assetType=${encodeURIComponent(normalizedType)}`);
+      const params = new URLSearchParams({
+        symbol: requestSymbol,
+        assetType: normalizedType,
+        displaySymbol: selectedMeta.symbol,
+      });
+      if (selectedMeta.name) params.set('name', selectedMeta.name);
+      const response = await fetch(`/api/market/analyze?${params.toString()}`);
       const result = await response.json() as MarketResult & { openbbService?: MarketServiceState; source?: string; fallback?: boolean; fallbackReason?: string };
       if (process.env.NODE_ENV === 'development') {
         console.log('Market analysis source:', {
@@ -316,7 +334,11 @@ export default function MarketAnalysisPage() {
         const searchJson = await searchResponse.json() as { results?: MarketSearchItem[] };
         const compareJson = await compareResponse.json() as { results?: MarketResult[] };
         if (cancelled) return;
-        setSuggestedAssets(searchJson.results?.slice(0, 5) ?? []);
+        const apiExamples = (searchJson.results ?? []).slice(0, 10);
+        const mergedExamples = [...QUICK_MARKET_EXAMPLES, ...apiExamples]
+          .filter((asset, index, list) => list.findIndex(item => item.symbol === asset.symbol && item.assetType === asset.assetType) === index)
+          .slice(0, 10);
+        setSuggestedAssets(mergedExamples);
         setCompare((compareJson.results ?? []).filter((item): item is MarketAnalysis => Boolean(item.success)));
       } catch {
         if (!cancelled) {

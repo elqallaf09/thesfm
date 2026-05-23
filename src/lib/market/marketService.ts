@@ -47,6 +47,7 @@ export type MarketSearchItem = {
   assetType: MarketAssetType;
   exchange?: string;
   country?: string;
+  currency?: string;
   providerSymbol?: string;
 };
 

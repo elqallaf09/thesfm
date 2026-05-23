@@ -57,4 +57,29 @@ Setup:
 
 The browser should call the local Next.js proxy routes, such as `/api/market/health` and `/api/market/analyze?symbol=AAPL&assetType=stock`. Client components should not call the Render URL directly.
 
+## Market Symbols Directory
+
+Market search uses a server-side directory so global symbols are not bundled into the frontend. Apply `supabase/migrations/010_create_market_symbols.sql` to create and seed the public read-only `market_symbols` table.
+
+Search order:
+
+1. Supabase `market_symbols`
+2. OpenBB service `/market/search` when `OPENBB_SERVICE_URL` is configured
+3. Local curated fallback in `openbb-service/data/symbols.json`
+
+Future CSV imports can use `scripts/import-market-symbols.ts` with a Supabase service role key on a trusted machine only. Do not expose the service role key to the browser.
+
+CSV columns:
+
+```csv
+symbol,provider_symbol,name,asset_type,exchange,country,currency,source
+AAPL,AAPL,Apple Inc.,stock,NASDAQ,US,USD,nasdaq_import
+```
+
+Run later with:
+
+```bash
+SUPABASE_URL=https://YOUR-PROJECT.supabase.co SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY pnpm dlx tsx scripts/import-market-symbols.ts ./symbols.csv
+```
+
 

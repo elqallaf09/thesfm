@@ -94,6 +94,11 @@ function scoreDirectoryItem(item: Record<string, any>, query: string) {
   return 0;
 }
 
+function defaultCurrency(assetType: MarketAssetType, symbol: string) {
+  if (assetType === 'forex' && symbol.length >= 6) return symbol.slice(-3);
+  return 'USD';
+}
+
 function searchLocalSymbolDirectory(query: string, assetType?: MarketAssetType) {
   return (symbolDirectory as Array<Record<string, any>>)
     .filter(item => !assetType || normalizeAssetType(item.assetType) === assetType)
@@ -107,6 +112,7 @@ function searchLocalSymbolDirectory(query: string, assetType?: MarketAssetType) 
       assetType: normalizeAssetType(item.assetType),
       exchange: item.exchange ? String(item.exchange) : undefined,
       country: item.country ? String(item.country) : undefined,
+      currency: item.currency ? String(item.currency) : defaultCurrency(normalizeAssetType(item.assetType), String(item.symbol ?? '').toUpperCase()),
       providerSymbol: item.providerSymbol ? String(item.providerSymbol).toUpperCase() : String(item.symbol ?? '').toUpperCase(),
     }));
 }
@@ -161,22 +167,39 @@ export async function proxyHealth() {
   return marketServiceConnected();
 }
 
-export async function proxyAnalyze(symbolInput: unknown, assetTypeInput: unknown): Promise<MarketResult & { source?: string; fallback?: boolean; openbbService?: ProxyState }> {
-  const symbol = validateSymbol(symbolInput);
-  if (!symbol) return { success: false, error: 'Invalid symbol' };
+export async function proxyAnalyze(
+  symbolInput: unknown,
+  assetTypeInput: unknown,
+  metaInput?: { displaySymbol?: unknown; name?: unknown },
+): Promise<MarketResult & { displaySymbol?: string; source?: string; fallback?: boolean; openbbService?: ProxyState }> {
+  const providerSymbol = validateSymbol(symbolInput);
+  if (!providerSymbol) return { success: false, error: 'Invalid symbol' };
 
   const assetType = normalizeAssetType(assetTypeInput);
-  const params = new URLSearchParams({ symbol, assetType });
+  const displaySymbol = validateSymbol(metaInput?.displaySymbol) ?? providerSymbol;
+  const friendlyName = typeof metaInput?.name === 'string' ? metaInput.name.trim().slice(0, 120) : '';
+  const params = new URLSearchParams({ symbol: providerSymbol, assetType });
   const result = await fetchOpenBB('/market/analyze', params);
 
   if (result.configured && result.available && result.data?.success) {
-    return enrichAnalysis(result.data, symbol, assetType);
+    const enriched = enrichAnalysis(result.data, displaySymbol, assetType);
+    return {
+      ...enriched,
+      symbol: displaySymbol,
+      displaySymbol,
+      providerSymbol: enriched.providerSymbol ?? providerSymbol,
+      name: friendlyName || enriched.name,
+    };
   }
 
-  const fallback = await fetchMarketAnalysis({ symbol, assetType });
+  const fallback = await fetchMarketAnalysis({ symbol: displaySymbol, assetType });
   if (!fallback.success) return fallback;
   return {
     ...fallback,
+    symbol: displaySymbol,
+    displaySymbol,
+    providerSymbol,
+    name: friendlyName || fallback.name,
     source: 'mock',
     fallback: true,
     openbbService: result.configured ? 'unavailable' : 'not_configured',

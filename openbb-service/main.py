@@ -187,7 +187,13 @@ def normalize_market_symbol(symbol: str, asset_type: str) -> dict[str, Any]:
     return {"displaySymbol": clean, "providerSymbol": unique_attempts[0], "attempts": unique_attempts}
 
 
-def directory_item(symbol: str, name: str, asset_type: str, exchange: str = "", country: str = "", provider_symbol: str | None = None) -> dict[str, Any]:
+def default_currency(asset_type: str, symbol: str) -> str:
+    if asset_type == "forex" and len(symbol) >= 6:
+        return symbol[-3:]
+    return "USD"
+
+
+def directory_item(symbol: str, name: str, asset_type: str, exchange: str = "", country: str = "", provider_symbol: str | None = None, currency: str | None = None) -> dict[str, Any]:
     normalized_type = normalize_asset_type(asset_type)
     normalized = normalize_market_symbol(provider_symbol or symbol, normalized_type)
     return {
@@ -196,6 +202,7 @@ def directory_item(symbol: str, name: str, asset_type: str, exchange: str = "", 
         "assetType": normalized_type,
         "exchange": exchange,
         "country": country,
+        "currency": currency or default_currency(normalized_type, symbol),
         "providerSymbol": provider_symbol or normalized["providerSymbol"],
     }
 
@@ -223,6 +230,7 @@ def load_symbol_directory() -> list[dict[str, Any]]:
             asset_type=asset_type,
             exchange=str(row.get("exchange") or ""),
             country=str(row.get("country") or ""),
+            currency=str(row.get("currency") or default_currency(asset_type, symbol)),
             provider_symbol=str(row.get("providerSymbol") or row.get("provider_symbol") or normalize_market_symbol(symbol, asset_type)["providerSymbol"]),
         ))
     return directory
@@ -305,6 +313,7 @@ def search_provider_yfinance(query: str, asset_type: str | None = None, limit: i
             asset_type=inferred_type,
             exchange=str(match.get("exchange") or match.get("exchDisp") or ""),
             country="",
+            currency=str(match.get("currency") or default_currency(inferred_type, display_symbol)),
             provider_symbol=provider_symbol,
         ))
     return results
