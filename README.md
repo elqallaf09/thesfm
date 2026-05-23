@@ -35,4 +35,26 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
+## OpenBB Market Data Service
+
+THE SFM market analysis uses a separate FastAPI OpenBB service deployed outside Vercel. Do not install OpenBB in the Next.js app.
+
+Required Vercel environment variable:
+
+```text
+OPENBB_SERVICE_URL=https://the-sfm-openbb-service.onrender.com
+```
+
+Setup:
+
+1. Open the Vercel Project.
+2. Go to Settings.
+3. Open Environment Variables.
+4. Add `OPENBB_SERVICE_URL`.
+5. Choose Production.
+6. Save.
+7. Redeploy.
+
+The browser should call the local Next.js proxy routes, such as `/api/market/health` and `/api/market/analyze?symbol=AAPL&assetType=stock`. Client components should not call the Render URL directly.
+
 

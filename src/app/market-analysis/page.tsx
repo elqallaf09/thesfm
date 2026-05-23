@@ -9,6 +9,8 @@ import { useLanguage } from '@/hooks/useLanguage';
 import type { MarketAnalysis, MarketAssetType, MarketResult, MarketSearchItem } from '@/lib/market/marketService';
 import { normalizeAssetType, validateSymbol } from '@/lib/market/marketService';
 
+type MarketServiceState = 'checking' | 'connected' | 'not_configured' | 'unavailable';
+
 function money(value: number) {
   const maximumFractionDigits = value > 1000 ? 0 : 2;
   return `$${value.toLocaleString('en-US', { maximumFractionDigits })}`;
@@ -37,6 +39,7 @@ export default function MarketAnalysisPage() {
   const [compare, setCompare] = useState<MarketAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [serviceState, setServiceState] = useState<MarketServiceState>('checking');
 
   const requestAnalysis = useCallback(async (symbolInput: string, typeInput: MarketAssetType | 'all') => {
     const symbol = validateSymbol(symbolInput);
@@ -52,9 +55,12 @@ export default function MarketAnalysisPage() {
     try {
       const normalizedType = typeInput === 'all' ? 'stock' : normalizeAssetType(typeInput);
       const response = await fetch(`/api/market/analyze?symbol=${encodeURIComponent(symbol)}&assetType=${encodeURIComponent(normalizedType)}`);
-      const result = await response.json() as MarketResult;
+      const result = await response.json() as MarketResult & { openbbService?: MarketServiceState };
       if (!response.ok || !result.success) throw new Error(!result.success ? result.error : t('market_error_message'));
       setAnalysis(result);
+      if (result.openbbService === 'not_configured' || result.openbbService === 'unavailable') {
+        setServiceState(result.openbbService);
+      }
       setQuery(result.symbol);
       setAssetType(result.assetType);
     } catch (err) {
@@ -66,7 +72,24 @@ export default function MarketAnalysisPage() {
   }, [t]);
 
   useEffect(() => {
-    void requestAnalysis('AAPL', 'stock');
+    let cancelled = false;
+    async function checkService() {
+      try {
+        const response = await fetch('/api/market/health');
+        const health = await response.json() as { ok?: boolean; openbbService?: MarketServiceState };
+        if (!cancelled) {
+          setServiceState(health.ok ? 'connected' : health.openbbService ?? 'unavailable');
+        }
+      } catch {
+        if (!cancelled) setServiceState('unavailable');
+      } finally {
+        if (!cancelled) void requestAnalysis('AAPL', 'stock');
+      }
+    }
+    void checkService();
+    return () => {
+      cancelled = true;
+    };
   }, [requestAnalysis]);
 
   useEffect(() => {
@@ -96,6 +119,13 @@ export default function MarketAnalysisPage() {
   }, []);
 
   const selected = analysis;
+  const serviceNotice = serviceState === 'connected'
+    ? t('market_service_connected')
+    : serviceState === 'not_configured'
+      ? t('market_service_not_configured')
+      : serviceState === 'unavailable'
+        ? t('market_service_unavailable')
+        : t('loading');
   const chartColor = selected && selected.changePercent >= 0 ? '#22C55E' : '#EF4444';
   const trendIcon = selected?.trend === 'bearish' ? <TrendingDown size={18} /> : <TrendingUp size={18} />;
   const cards = useMemo(() => [analysis, ...compare].filter((item): item is MarketAnalysis => Boolean(item)).slice(0, 4), [analysis, compare]);
@@ -140,6 +170,11 @@ export default function MarketAnalysisPage() {
             {selected && <b className={`risk ${selected.riskLevel}`}>{t(`market_risk_${selected.riskLevel}`)}</b>}
           </div>
         </section>
+
+        <div className={`market-service ${serviceState}`}>
+          <Activity size={17} />
+          <span>{serviceNotice}</span>
+        </div>
 
         {error && <div className="market-notice">{error}</div>}
 
@@ -197,7 +232,7 @@ export default function MarketAnalysisPage() {
                 <div className="market-section-head">
                   <BarChart3 size={19} />
                   <div>
-                    <span>{t('market_mock_data')}</span>
+                    <span>{serviceState === 'connected' ? t('market_live_data') : t('market_mock_data')}</span>
                     <h2>{t('market_technical_indicators')}</h2>
                   </div>
                 </div>
@@ -280,6 +315,7 @@ export default function MarketAnalysisPage() {
         .market-search-panel{margin-top:22px;display:grid;grid-template-columns:minmax(0,1fr) 180px auto;gap:10px;align-items:end}.market-search-panel label{display:grid;gap:7px}.market-search-panel label>span{font-size:12px;font-weight:900;color:#D8AE63}.market-search-panel label>div{height:48px;display:flex;align-items:center;gap:9px;border:1px solid rgba(255,255,255,.16);border-radius:15px;background:rgba(255,255,255,.08);padding:0 13px}.market-search-panel input,.market-search-panel select{width:100%;height:48px;min-width:0;border:1px solid rgba(255,255,255,.16);border-radius:15px;background:rgba(255,255,255,.08);color:#FFFDFC;padding:0 13px;font:800 13px Tajawal,Arial,sans-serif;outline:0}.market-search-panel input{border:0;background:transparent;padding:0}.market-search-panel input::placeholder{color:rgba(255,255,255,.48)}.market-search-panel select option{color:#111}.market-search-panel button{height:48px;border:0;border-radius:15px;background:linear-gradient(135deg,#D8AE63,#9A6C3C);color:#111;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer}.market-search-panel button:disabled{opacity:.65;cursor:wait}
         .market-hero-card{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);border-radius:20px;padding:18px;display:grid;gap:8px;backdrop-filter:blur(14px)}.market-hero-card span{font-size:12px;color:rgba(255,255,255,.62);font-weight:900}.market-hero-card strong{font-size:42px;color:#D8AE63;line-height:1}.market-hero-card p{margin:0;font-size:13px}.risk{justify-self:start;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:900}.risk.low{background:rgba(34,197,94,.14);color:#16A34A}.risk.medium{background:rgba(216,174,99,.18);color:#9A6C3C}.risk.high{background:rgba(239,68,68,.12);color:#DC2626}
         .market-card-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.market-card,.market-panel,.market-disclaimer,.market-notice{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:22px;box-shadow:0 6px 24px rgba(90,67,51,.06)}.market-card{padding:16px;display:grid;gap:10px}.market-card-head{display:flex;justify-content:space-between;gap:10px}.market-card-head strong{display:block;font-size:18px}.market-card-head span{display:block;color:#8A7060;font-size:12px;font-weight:800;margin-top:3px}.market-price{font-size:24px;font-weight:900;color:#111}.change{font-size:13px;font-weight:900}.change.up{color:#16A34A}.change.down{color:#DC2626}.market-empty{grid-column:1/-1;padding:24px;text-align:center;color:#9A6C3C;font-weight:900;background:#FFFDFC;border:1px dashed rgba(216,174,99,.24);border-radius:18px}.market-notice{padding:13px 15px;color:#B91C1C;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18);font-weight:900}
+        .market-service{display:flex;align-items:center;gap:9px;background:#FFFDFC;border:1px solid rgba(216,174,99,.16);border-radius:18px;padding:12px 14px;color:#5B4332;font-weight:900;box-shadow:0 6px 24px rgba(90,67,51,.05)}.market-service.connected{color:#15803D;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.18)}.market-service.not_configured{color:#9A6C3C;background:rgba(216,174,99,.10)}.market-service.unavailable{color:#B91C1C;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18)}
         .market-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px}.market-panel{padding:18px;min-width:0}.market-section-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;color:#D8AE63}.market-section-head span{display:block;color:#9A6C3C;font-size:11px;font-weight:900;margin-bottom:3px}.market-section-head h2{margin:0;color:#111;font-size:17px;font-weight:900}.market-chart svg{width:100%;height:auto;max-height:300px;display:block}.market-stat-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}.metric{background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:16px;padding:12px;display:grid;gap:5px}.metric span{font-size:11px;color:#9A6C3C;font-weight:900}.metric strong{font-size:15px;color:#111;display:flex;align-items:center;gap:6px}.indicator-list{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         .market-bottom-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.market-copy,.market-muted{margin:0;color:#5B4332;line-height:1.8;font-size:13px;font-weight:800}.market-muted{margin-top:12px;color:#8A7060;font-size:12px}.watchlist{display:flex;flex-wrap:wrap;gap:8px}.watchlist span{border-radius:999px;background:#F7F3EA;border:1px solid rgba(216,174,99,.14);padding:7px 11px;color:#5B4332;font-weight:900;font-size:12px}.compare-bars{display:grid;gap:10px}.compare-bars div{display:grid;grid-template-columns:46px minmax(0,1fr) 54px;gap:8px;align-items:center}.compare-bars span,.compare-bars b{font-size:12px;font-weight:900;color:#5B4332}.compare-bars div i{height:9px;border-radius:999px;background:linear-gradient(90deg,#D8AE63,#9A6C3C);display:block}
         .market-disclaimer{display:flex;align-items:flex-start;gap:12px;padding:16px;color:#9A6C3C}.market-disclaimer strong{display:block;color:#111;margin-bottom:4px}.market-disclaimer p{margin:0;color:#5B4332;font-size:13px;line-height:1.7;font-weight:800}

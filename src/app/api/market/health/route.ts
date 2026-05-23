@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
+import { proxyHealth } from '@/lib/market/openbbProxy';
 
 export async function GET() {
-  return NextResponse.json({
-    ok: true,
-    marketService: 'mock',
-    status: 'working',
-  });
+  const health = await proxyHealth();
+  return NextResponse.json(health, { status: health.ok ? 200 : 503 });
 }
