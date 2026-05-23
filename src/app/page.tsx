@@ -281,25 +281,47 @@ export default function DashboardPage(){
   const loadProfile=async()=>{
     const userId = user?.id;
     if (!userId) return;
-    const{data}=await supabase.from('profiles').select('*').eq('id',userId).maybeSingle();
-    if(data)setProfile(data);
-    const{data:s}=await supabase.from('monthly_income_sources').select('*').eq('user_id',userId);
+    if (process.env.NODE_ENV === 'development') console.time('dashboard_initial_load');
+    const [
+      profileResult,
+      incomeResult,
+      goalsResult,
+      investmentsResult,
+      savingsResult,
+      expensesResult,
+    ] = await Promise.allSettled([
+      supabase.from('profiles').select('*').eq('id',userId).maybeSingle(),
+      supabase.from('monthly_income_sources').select('amount').eq('user_id',userId),
+      supabase.from('financial_goals').select('*').eq('user_id',userId).order('created_at',{ascending:false}),
+      supabase.from('investment_items').select('id,name,amount').eq('user_id',userId),
+      supabase.from('savings_items').select('id,name,amount,created_at').eq('user_id',userId),
+      supabase.from('expense_items').select('id,name,amount,created_at').eq('user_id',userId).order('created_at',{ascending:false}).limit(250),
+    ]);
+
+    const profileResponse = profileResult.status === 'fulfilled' ? profileResult.value : null;
+    if(profileResponse?.data)setProfile(profileResponse.data as ProfileRow);
+
+    const incomeResponse = incomeResult.status === 'fulfilled' ? incomeResult.value : null;
+    const s = incomeResponse?.data as { amount: number | string | null }[] | null | undefined;
     const realIncome=s?.reduce((a:number,r:{amount:number|string|null})=>a+amountOf(r.amount),0) ?? 0;
     setTotalIncome(realIncome);
 
-    const{data:goalsData}=await supabase.from('financial_goals').select('*').eq('user_id',userId).order('created_at',{ascending:false});
-    if(goalsData)setGoals(goalsData as GoalRow[]);
+    const goalsResponse = goalsResult.status === 'fulfilled' ? goalsResult.value : null;
+    const goalsData = goalsResponse?.data;
+    setGoals((goalsData ?? []) as GoalRow[]);
 
-    const{data:invData}=await supabase.from('investment_items').select('*').eq('user_id',userId);
-    const invRows=(invData ?? []) as InvestmentRow[];
+    const investmentsResponse = investmentsResult.status === 'fulfilled' ? investmentsResult.value : null;
+    const invRows=(investmentsResponse?.data ?? []) as InvestmentRow[];
     setInvestments(invRows);
 
-    const{data:savingsData}=await supabase.from('savings_items').select('*').eq('user_id',userId);
+    const savingsResponse = savingsResult.status === 'fulfilled' ? savingsResult.value : null;
+    const savingsData = savingsResponse?.data;
     const savingRows=(savingsData ?? []) as SavingsRow[];
     setSavingsItems(savingRows);
     const realSavings=savingRows.reduce((sum,row)=>sum+amountOf(row.amount),0);
 
-    const{data:expData}=await supabase.from('expense_items').select('*').eq('user_id',userId).order('created_at',{ascending:false});
+    const expensesResponse = expensesResult.status === 'fulfilled' ? expensesResult.value : null;
+    const expData = expensesResponse?.data;
     const expRows=(expData ?? []) as ExpenseRow[];
     setExpenseItems(expRows);
     const realExp=expRows.reduce((sum,row)=>sum+amountOf(row.amount),0);
@@ -324,6 +346,7 @@ export default function DashboardPage(){
     } else {
       setMonthHistory([]);
     }
+    if (process.env.NODE_ENV === 'development') console.timeEnd('dashboard_initial_load');
   };
 
   const totalSavings=savingsItems.reduce((sum,item)=>sum+amountOf(item.amount),0);

@@ -708,6 +708,7 @@ export const TR: Record<string, TranslationEntry> = {
   login_password: { ar:'كلمة المرور', en:'Password', fr:'Mot de passe' },
   login_confirm_password: { ar:'تأكيد كلمة المرور', en:'Confirm password', fr:'Confirmer le mot de passe' },
   login_sign_in: { ar:'تسجيل الدخول', en:'Sign in', fr:'Connexion' },
+  login_signing_in: { ar:'جاري تسجيل الدخول...', en:'Signing in...', fr:'Connexion en cours...' },
   login_create_account: { ar:'إنشاء حساب', en:'Create account', fr:'Créer un compte' },
   login_switch_create: { ar:'إنشاء حساب جديد', en:'Create new account', fr:'Créer un nouveau compte' },
   login_switch_login: { ar:'لدي حساب بالفعل', en:'I already have an account', fr:"J'ai déjà un compte" },

@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         if (supabaseConfigError) return { error: new Error(supabaseConfigError) };
         const identifier = username.trim();
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: isEmail(identifier) ? identifier : usernameToEmail(identifier),
           password,
         });
@@ -92,6 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           document.cookie = `sfm_auth=true; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
           document.cookie = 'sfm_guest=; path=/; max-age=0; SameSite=Lax';
         }
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
         setIsGuest(false);
         return { error: null };
       } catch (err: any) {
