@@ -321,8 +321,8 @@ export default function ProjectsPage() {
       <Sidebar />
 
       {/* ── Main ── */}
-      <main className="main-ml" style={{ marginInlineStart: '230px', padding: '24px 24px 60px', maxWidth: '100%', overflowX: 'hidden' }}>
-        <div style={{ width: '100%', maxWidth: '1320px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <main className="main-ml" style={{ marginInlineStart: '230px', padding: '24px 24px 60px', maxWidth: 'none', overflowX: 'hidden' }}>
+        <div style={{ width: '100%', maxWidth: 'none', margin: 0, display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
           {/* Header */}
           <div style={S(0)}>
