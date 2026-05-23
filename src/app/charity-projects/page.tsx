@@ -769,7 +769,7 @@ export default function CharityProjectsPage() {
     setUploadingDocument(true);
     const documentId = crypto.randomUUID();
     const year = new Date().getFullYear();
-    const filePath = `${user.id}/${year}/${documentId}-${cleanFileName(documentFile.name)}`;
+    const filePath = `${user.id}/charity-documents/${year}/${documentId}-${cleanFileName(documentFile.name)}`;
 
     try {
       const upload = await supabase.storage.from('charity-documents').upload(filePath, documentFile, {
@@ -807,7 +807,7 @@ export default function CharityProjectsPage() {
   };
 
   const openDocument = async (document: CharityDocument, download = false) => {
-    const { data, error } = await supabase.storage.from('charity-documents').createSignedUrl(document.file_path, 60);
+    const { data, error } = await supabase.storage.from('charity-documents').createSignedUrl(document.file_path, 600);
     if (error || !data?.signedUrl) {
       setMessage(tr.openDocumentFailed);
       return;
