@@ -34,10 +34,13 @@ type Lang = 'ar' | 'en' | 'fr';
 type ProjectStatus = 'planning' | 'fundraising' | 'in_progress' | 'completed' | 'paused';
 type ProjectCategory = 'ongoing' | 'sponsorship' | 'zakat' | 'sacrifice' | 'endowment' | 'mosque' | 'water_well' | 'education' | 'relief' | 'other';
 type AssetType = 'cash' | 'savings' | 'investment' | 'gold' | 'silver' | 'non_zakat';
+type OrganizationType = 'charity' | 'zakat_house' | 'humanitarian' | 'waqf' | 'mosque' | 'education' | 'relief' | 'other';
+type VerificationStatus = 'verified' | 'pending_review' | 'unverified' | 'rejected';
 
 type CharityProject = {
   id: string;
   user_id: string;
+  organization_id?: string | null;
   name: string;
   category: ProjectCategory;
   status: ProjectStatus;
@@ -75,6 +78,7 @@ type Commitment = {
 type ProjectDonation = {
   id: string;
   project_id: string | null;
+  organization_id?: string | null;
   amount: number;
   currency: string;
   donation_date: string | null;
@@ -109,6 +113,28 @@ type BeneficiaryCategory = 'orphan' | 'family' | 'student' | 'medical' | 'elderl
 type BeneficiaryStatus = 'active' | 'paused' | 'completed' | 'needs_review';
 type ContributorRole = 'owner' | 'contributor' | 'viewer';
 type PaymentStatus = 'pending' | 'paid' | 'partial' | 'late' | 'cancelled';
+
+type CharityOrganization = {
+  id: string;
+  name_ar: string;
+  name_en: string | null;
+  name_fr: string | null;
+  license_number: string | null;
+  country: string | null;
+  city: string | null;
+  organization_type: OrganizationType;
+  website_url: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  verification_status: VerificationStatus;
+  transparency_score: number;
+  efficiency_score: number;
+  track_record_score: number;
+  notes: string | null;
+  data_source: string | null;
+  is_active: boolean;
+};
 
 type CharityReminder = {
   id: string;
@@ -401,6 +427,34 @@ const TEXT = {
     missingPricesNote: 'تعذر حساب النصاب تلقائياً بسبب عدم توفر أسعار الذهب والفضة.',
     highDebtsNote: 'الديون المستحقة أثرت على صافي الوعاء الزكوي.',
     zakatEstimateDisclaimer: 'هذه الحاسبة تقديرية لأغراض التنظيم والمتابعة، ولا تعتبر فتوى شرعية. للحالات الخاصة، راجع جهة شرعية مختصة.',
+    organizationDirectory: 'دليل الجهات الخيرية',
+    organizationDirectoryDesc: 'اختر جهة خيرية موثوقة واربطها بمشاريعك وتبرعاتك لمتابعة الشفافية والتنظيم.',
+    searchOrganization: 'بحث عن جهة خيرية',
+    allOrganizations: 'كل الجهات',
+    verifiedOrganizations: 'الجهات الموثقة',
+    pendingReview: 'قيد المراجعة',
+    unverified: 'غير موثقة',
+    verified: 'موثقة',
+    rejected: 'مرفوضة',
+    organizationType: 'نوع الجهة',
+    viewDetails: 'عرض التفاصيل',
+    selectOrganization: 'اختيار الجهة',
+    licenseNumber: 'رقم الترخيص',
+    trustIndicators: 'مؤشرات الثقة',
+    transparency: 'الشفافية',
+    efficiency: 'الكفاءة',
+    trackRecord: 'السجل السابق',
+    notReviewedYet: 'لم يتم تقييم الجهة بعد',
+    manualOrganizationEntry: 'لم أجد الجهة، إدخال يدوي',
+    selectExecutingOrganization: 'اختيار الجهة المنفذة',
+    verificationDisclaimer: 'حالة التوثيق في هذا الدليل لأغراض تنظيمية داخل التطبيق، ولا تغني عن التحقق من المصادر الرسمية قبل التبرع.',
+    noOrganizationsAvailable: 'لا توجد جهات خيرية مضافة في الدليل حالياً. يمكن إضافة الجهات لاحقاً من خلال لوحة إدارة أو ملف استيراد موثوق.',
+    dataSource: 'مصدر البيانات',
+    unverifiedOrganizationWarning: 'هذه الجهة غير موثقة داخل التطبيق. تحقق من المصدر الرسمي قبل التبرع.',
+    charity: 'جمعية خيرية',
+    zakat_house: 'بيت زكاة',
+    humanitarian: 'إنسانية',
+    waqf: 'وقف',
     beneficiaryTracking: 'إدارة المستفيدين',
     beneficiaryDesc: 'تابع الكفالات والحالات الخيرية والمستفيدين المرتبطين بمشاريعك بشكل منظم وآمن.',
     privacyNote: 'استخدم رقماً مرجعياً أو اسماً مختصراً بدلاً من البيانات الشخصية الحساسة.',
@@ -706,6 +760,34 @@ const TEXT = {
     missingPricesNote: 'Nisab could not be calculated automatically because gold and silver prices are unavailable.',
     highDebtsNote: 'Deductible debts affected the net zakat base.',
     zakatEstimateDisclaimer: 'This calculator is an estimate for planning and tracking. It is not a religious ruling. For special cases, consult a qualified authority.',
+    organizationDirectory: 'Charity Organization Directory',
+    organizationDirectoryDesc: 'Choose a trusted charity organization and link it to your projects and donations for better transparency and organization.',
+    searchOrganization: 'Search charity organization',
+    allOrganizations: 'All organizations',
+    verifiedOrganizations: 'Verified organizations',
+    pendingReview: 'Pending review',
+    unverified: 'Unverified',
+    verified: 'Verified',
+    rejected: 'Rejected',
+    organizationType: 'Organization type',
+    viewDetails: 'View details',
+    selectOrganization: 'Select organization',
+    licenseNumber: 'License number',
+    trustIndicators: 'Trust Indicators',
+    transparency: 'Transparency',
+    efficiency: 'Efficiency',
+    trackRecord: 'Track record',
+    notReviewedYet: 'Not reviewed yet',
+    manualOrganizationEntry: 'I cannot find the organization, enter manually',
+    selectExecutingOrganization: 'Select executing organization',
+    verificationDisclaimer: 'The verification status in this directory is for in-app organization purposes and does not replace checking official sources before donating.',
+    noOrganizationsAvailable: 'No charity organizations are currently available in the directory. Organizations can be added later through an admin panel or trusted import file.',
+    dataSource: 'Data source',
+    unverifiedOrganizationWarning: 'This organization is not verified inside the app. Check the official source before donating.',
+    charity: 'Charity',
+    zakat_house: 'Zakat house',
+    humanitarian: 'Humanitarian',
+    waqf: 'Waqf',
     beneficiaryTracking: 'Beneficiary Tracking',
     beneficiaryDesc: 'Track sponsorships, charity cases, and beneficiaries linked to your projects in an organized and secure way.',
     privacyNote: 'Use a reference number or short label instead of sensitive personal information.',
@@ -1011,6 +1093,34 @@ const TEXT = {
     missingPricesNote: 'Le nisab ne peut pas être calculé automatiquement car les prix de l’or et de l’argent sont indisponibles.',
     highDebtsNote: 'Les dettes déductibles ont affecté la base nette de zakat.',
     zakatEstimateDisclaimer: 'Ce calculateur fournit une estimation à des fins d’organisation et de suivi. Il ne constitue pas un avis religieux. Pour les cas particuliers, consultez une autorité qualifiée.',
+    organizationDirectory: 'Répertoire des organisations caritatives',
+    organizationDirectoryDesc: 'Choisissez une organisation caritative fiable et liez-la à vos projets et dons pour plus de transparence et d’organisation.',
+    searchOrganization: 'Rechercher une organisation caritative',
+    allOrganizations: 'Toutes les organisations',
+    verifiedOrganizations: 'Organisations vérifiées',
+    pendingReview: 'En cours d’examen',
+    unverified: 'Non vérifiée',
+    verified: 'Vérifiée',
+    rejected: 'Rejetée',
+    organizationType: 'Type d’organisation',
+    viewDetails: 'Voir les détails',
+    selectOrganization: 'Sélectionner l’organisation',
+    licenseNumber: 'Numéro de licence',
+    trustIndicators: 'Indicateurs de confiance',
+    transparency: 'Transparence',
+    efficiency: 'Efficacité',
+    trackRecord: 'Historique',
+    notReviewedYet: 'Pas encore évaluée',
+    manualOrganizationEntry: 'Je ne trouve pas l’organisation, saisie manuelle',
+    selectExecutingOrganization: 'Sélectionner l’organisation exécutante',
+    verificationDisclaimer: 'Le statut de vérification dans ce répertoire sert à l’organisation dans l’application et ne remplace pas la vérification auprès des sources officielles avant de faire un don.',
+    noOrganizationsAvailable: 'Aucune organisation caritative n’est actuellement disponible dans le répertoire. Les organisations pourront être ajoutées plus tard via un panneau d’administration ou un fichier d’import fiable.',
+    dataSource: 'Source des données',
+    unverifiedOrganizationWarning: 'Cette organisation n’est pas vérifiée dans l’application. Vérifiez la source officielle avant de faire un don.',
+    charity: 'Association caritative',
+    zakat_house: 'Maison de zakat',
+    humanitarian: 'Humanitaire',
+    waqf: 'Waqf',
     beneficiaryTracking: 'Suivi des bénéficiaires',
     beneficiaryDesc: 'Suivez les parrainages, les cas caritatifs et les bénéficiaires liés à vos projets de manière organisée et sécurisée.',
     privacyNote: 'Utilisez un numéro de référence ou un libellé court au lieu de données personnelles sensibles.',
@@ -1117,6 +1227,8 @@ const beneficiaryCategories: BeneficiaryCategory[] = ['orphan', 'family', 'stude
 const beneficiaryStatuses: BeneficiaryStatus[] = ['active', 'paused', 'completed', 'needs_review'];
 const contributorRoles: ContributorRole[] = ['owner', 'contributor', 'viewer'];
 const paymentStatuses: PaymentStatus[] = ['pending', 'paid', 'partial', 'late', 'cancelled'];
+const organizationTypes: OrganizationType[] = ['charity', 'zakat_house', 'humanitarian', 'waqf', 'mosque', 'education', 'relief', 'other'];
+const verificationStatuses: VerificationStatus[] = ['verified', 'pending_review', 'unverified'];
 const goldKarats = ['24', '22', '21', '18'] as const;
 const nonZakatOptions = ['personalHome', 'personalCar', 'householdFurniture', 'personalTools', 'residentialLand', 'personalUseAssets', 'other'] as const;
 const allowedDocumentTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
@@ -1195,6 +1307,7 @@ export default function CharityProjectsPage() {
   const [beneficiaries, setBeneficiaries] = useState<CharityBeneficiary[]>([]);
   const [contributors, setContributors] = useState<CharityContributor[]>([]);
   const [zakatHistory, setZakatHistory] = useState<ZakatCalculation[]>([]);
+  const [organizations, setOrganizations] = useState<CharityOrganization[]>([]);
   const [incomeTotal, setIncomeTotal] = useState(0);
   const [expenseTotal, setExpenseTotal] = useState(0);
   const [message, setMessage] = useState('');
@@ -1224,6 +1337,10 @@ export default function CharityProjectsPage() {
   const [beneficiaryStatusFilter, setBeneficiaryStatusFilter] = useState<'all' | BeneficiaryStatus>('all');
   const [beneficiaryCategoryFilter, setBeneficiaryCategoryFilter] = useState<'all' | BeneficiaryCategory>('all');
   const [contributorProjectFilter, setContributorProjectFilter] = useState('');
+  const [organizationSearch, setOrganizationSearch] = useState('');
+  const [organizationTypeFilter, setOrganizationTypeFilter] = useState<'all' | OrganizationType>('all');
+  const [organizationVerificationFilter, setOrganizationVerificationFilter] = useState<'all' | VerificationStatus>('all');
+  const [manualOrganization, setManualOrganization] = useState(false);
   const [zakat, setZakat] = useState({
     cash: '',
     investments: '',
@@ -1250,6 +1367,7 @@ export default function CharityProjectsPage() {
     currency: 'KWD',
     start_date: today(),
     end_date: '',
+    organization_id: '',
     organization_name: '',
     notes: '',
   });
@@ -1408,7 +1526,7 @@ export default function CharityProjectsPage() {
   const loadData = useCallback(async () => {
     if (!user) return;
     try {
-      const [projectRes, assetRes, commitmentRes, donationRes, documentRes, reminderRes, beneficiaryRes, contributorRes, zakatHistoryRes, incomeRes, expenseRes] = await Promise.all([
+      const [projectRes, assetRes, commitmentRes, donationRes, documentRes, reminderRes, beneficiaryRes, contributorRes, zakatHistoryRes, organizationRes, incomeRes, expenseRes] = await Promise.all([
         db.from('charity_projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('zakat_assets').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('charity_commitments').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
@@ -1418,6 +1536,7 @@ export default function CharityProjectsPage() {
         db.from('charity_beneficiaries').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('charity_project_contributors').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('zakat_calculations').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(6),
+        db.from('charity_organizations').select('*').eq('is_active', true).order('name_ar', { ascending: true }),
         db.from('monthly_income_sources').select('amount').eq('user_id', user.id),
         db.from('expense_items').select('amount').eq('user_id', user.id),
       ]);
@@ -1433,6 +1552,7 @@ export default function CharityProjectsPage() {
       if (!beneficiaryRes.error) setBeneficiaries((beneficiaryRes.data ?? []) as CharityBeneficiary[]);
       if (!contributorRes.error) setContributors((contributorRes.data ?? []) as CharityContributor[]);
       if (!zakatHistoryRes.error) setZakatHistory((zakatHistoryRes.data ?? []) as ZakatCalculation[]);
+      if (!organizationRes.error) setOrganizations((organizationRes.data ?? []) as CharityOrganization[]);
       if (!reminderRes.error) {
         setReminders(loadedReminders);
         await syncGeneratedReminders(loadedReminders, loadedProjects, loadedAssets, loadedCommitments);
@@ -1522,6 +1642,24 @@ export default function CharityProjectsPage() {
     if (type === 'non_zakat') return tr.nonZakat;
     return tValue(type, tr.other);
   };
+  const organizationName = (organization?: CharityOrganization | null) => {
+    if (!organization) return '';
+    if (lang === 'ar') return organization.name_ar;
+    if (lang === 'fr') return organization.name_fr || organization.name_en || organization.name_ar;
+    return organization.name_en || organization.name_ar;
+  };
+  const organizationById = useMemo(() => organizations.reduce<Record<string, CharityOrganization>>((acc, organization) => {
+    acc[organization.id] = organization;
+    return acc;
+  }, {}), [organizations]);
+  const organizationLabel = (id?: string | null, fallback?: string | null) => organizationName(id ? organizationById[id] : null) || fallback || '-';
+  const verificationLabel = (status?: string | null) => {
+    if (status === 'verified') return tr.verified;
+    if (status === 'pending_review') return tr.pendingReview;
+    if (status === 'rejected') return tr.rejected;
+    return tr.unverified;
+  };
+  const selectedOrganization = projectForm.organization_id ? organizationById[projectForm.organization_id] : null;
   const nisabMethodLabel = (method: string) => method === 'gold'
     ? tr.goldBased
     : method === 'silver'
@@ -1580,6 +1718,26 @@ export default function CharityProjectsPage() {
     const matchesCategory = beneficiaryCategoryFilter === 'all' || beneficiary.category === beneficiaryCategoryFilter;
     return matchesSearch && matchesStatus && matchesCategory;
   });
+  const filteredOrganizations = organizations.filter(organization => {
+    const query = organizationSearch.trim().toLowerCase();
+    const localizedName = organizationName(organization).toLowerCase();
+    const matchesSearch = !query || [
+      localizedName,
+      organization.name_ar,
+      organization.name_en ?? '',
+      organization.name_fr ?? '',
+      organization.license_number ?? '',
+      organization.country ?? '',
+      organization.city ?? '',
+    ].some(value => value.toLowerCase().includes(query));
+    const matchesType = organizationTypeFilter === 'all' || organization.organization_type === organizationTypeFilter;
+    const matchesVerification = organizationVerificationFilter === 'all' || organization.verification_status === organizationVerificationFilter;
+    return matchesSearch && matchesType && matchesVerification;
+  });
+  const organizationProjectCounts = useMemo(() => projects.reduce<Record<string, number>>((acc, project) => {
+    if (project.organization_id) acc[project.organization_id] = (acc[project.organization_id] || 0) + 1;
+    return acc;
+  }, {}), [projects]);
   const activeBeneficiaries = beneficiaries.filter(beneficiary => beneficiary.status === 'active');
   const monthlySupportTotal = activeBeneficiaries.reduce((sum, beneficiary) => sum + toNum(beneficiary.monthly_support_amount), 0);
   const upcomingRenewals = beneficiaries.filter(beneficiary => beneficiary.next_renewal_date && daysUntil(beneficiary.next_renewal_date) <= 45 && daysUntil(beneficiary.next_renewal_date) >= 0);
@@ -1605,7 +1763,8 @@ export default function CharityProjectsPage() {
   ];
 
   const resetProjectForm = () => {
-    setProjectForm({ name: '', category: 'ongoing', status: 'planning', target_amount: '', collected_amount: '', currency: 'KWD', start_date: today(), end_date: '', organization_name: '', notes: '' });
+    setProjectForm({ name: '', category: 'ongoing', status: 'planning', target_amount: '', collected_amount: '', currency: 'KWD', start_date: today(), end_date: '', organization_id: '', organization_name: '', notes: '' });
+    setManualOrganization(false);
   };
 
   const resetReminderForm = () => {
@@ -1696,6 +1855,7 @@ export default function CharityProjectsPage() {
       currency: 'KWD',
       start_date: today(),
       end_date: end ? end.toISOString().slice(0, 10) : '',
+      organization_id: '',
       organization_name: '',
       notes: '',
     });
@@ -1711,7 +1871,8 @@ export default function CharityProjectsPage() {
       target_amount: toNum(projectForm.target_amount),
       collected_amount: toNum(projectForm.collected_amount),
       end_date: projectForm.end_date || null,
-      organization_name: projectForm.organization_name || null,
+      organization_id: projectForm.organization_id || null,
+      organization_name: manualOrganization ? projectForm.organization_name || null : organizationLabel(projectForm.organization_id, projectForm.organization_name),
       notes: projectForm.notes || null,
     };
     const { error } = await db.from('charity_projects').insert(payload);
@@ -1801,6 +1962,7 @@ export default function CharityProjectsPage() {
     const { error } = await db.from('charity_project_donations').insert({
       user_id: user.id,
       project_id: donationProject.id,
+      organization_id: donationProject.organization_id || null,
       amount,
       currency: donationProject.currency,
       donation_date: today(),
@@ -2416,6 +2578,81 @@ export default function CharityProjectsPage() {
           </article>
         </section>
 
+        <section className="warm-card" id="charity-organization-directory">
+          <div className="vault-head section-head">
+            <div>
+              <h2>{tr.organizationDirectory}</h2>
+              <p>{tr.organizationDirectoryDesc}</p>
+            </div>
+            <ShieldCheck size={22} />
+          </div>
+          <div className="document-tools">
+            <label aria-label={tr.searchOrganization}><Search size={16} /><input value={organizationSearch} onChange={e => setOrganizationSearch(e.target.value)} placeholder={tr.searchOrganization} /></label>
+            <select value={organizationVerificationFilter} onChange={e => setOrganizationVerificationFilter(e.target.value as 'all' | VerificationStatus)} aria-label={tr.verifiedOrganizations}>
+              <option value="all">{tr.allOrganizations}</option>
+              {verificationStatuses.map(status => <option key={status} value={status}>{verificationLabel(status)}</option>)}
+            </select>
+            <select value={organizationTypeFilter} onChange={e => setOrganizationTypeFilter(e.target.value as 'all' | OrganizationType)} aria-label={tr.organizationType}>
+              <option value="all">{tr.organizationType}</option>
+              {organizationTypes.map(type => <option key={type} value={type}>{tValue(type, tr.other)}</option>)}
+            </select>
+          </div>
+          {organizations.length === 0 ? (
+            <div className="empty-state compact">
+              <ShieldCheck size={40} />
+              <strong>{tr.organizationDirectory}</strong>
+              <p>{tr.noOrganizationsAvailable}</p>
+            </div>
+          ) : (
+            <div className="organization-grid">
+              {filteredOrganizations.map(organization => {
+                const reviewed = toNum(organization.transparency_score) > 0 || toNum(organization.efficiency_score) > 0 || toNum(organization.track_record_score) > 0;
+                return (
+                  <article className="organization-card" key={organization.id}>
+                    <div className="organization-top">
+                      <div>
+                        <strong>{organizationName(organization)}</strong>
+                        <span>{[organization.country, organization.city].filter(Boolean).join(' / ') || 'Kuwait'}</span>
+                      </div>
+                      <b className={`verify-badge ${organization.verification_status}`}>{verificationLabel(organization.verification_status)}</b>
+                    </div>
+                    <div className="badge-row">
+                      <span>{tValue(organization.organization_type, tr.other)}</span>
+                      {organization.license_number && <span>{tr.licenseNumber}: {organization.license_number}</span>}
+                      <span>{tr.projects}: {organizationProjectCounts[organization.id] || 0}</span>
+                    </div>
+                    <div className="trust-box">
+                      <strong>{tr.trustIndicators}</strong>
+                      {reviewed ? (
+                        <div className="trust-grid">
+                          <span>{tr.transparency}: {organization.transparency_score}/100</span>
+                          <span>{tr.efficiency}: {organization.efficiency_score}/100</span>
+                          <span>{tr.trackRecord}: {organization.track_record_score}/100</span>
+                        </div>
+                      ) : <p>{tr.notReviewedYet}</p>}
+                    </div>
+                    <div className="org-contact">
+                      {organization.website_url && <a href={organization.website_url} target="_blank" rel="noreferrer">{organization.website_url}</a>}
+                      {organization.phone && <span>{organization.phone}</span>}
+                      {organization.email && <span>{organization.email}</span>}
+                      {organization.data_source && <small>{tr.dataSource}: {organization.data_source}</small>}
+                    </div>
+                    {organization.verification_status !== 'verified' && <p className="privacy-note">{tr.unverifiedOrganizationWarning}</p>}
+                    <div className="card-actions">
+                      <button type="button" aria-label={tr.selectOrganization} onClick={() => {
+                        setProjectForm(prev => ({ ...prev, organization_id: organization.id, organization_name: organizationName(organization) }));
+                        setManualOrganization(false);
+                        setProjectOpen(true);
+                      }}>{tr.selectOrganization}</button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+          <p className="disclaimer">{tr.verificationDisclaimer}</p>
+        </section>
+
         <section className="warm-card">
           <div className="section-head"><h2>{tr.projects}</h2><button className="mini-gold" onClick={() => setProjectOpen(true)}>{tr.newProject}</button></div>
           {projects.length === 0 ? (
@@ -2433,12 +2670,19 @@ export default function CharityProjectsPage() {
                 const projectContributors = contributors.filter(contributor => contributor.project_id === project.id);
                 const contributorPaid = projectContributors.reduce((sum, contributor) => sum + toNum(contributor.paid_amount), 0);
                 const contributorCoverage = target > 0 ? Math.min(100, (contributorPaid / target) * 100) : 0;
+                const projectOrganization = project.organization_id ? organizationById[project.organization_id] : null;
                 return (
                   <article className="project-card" key={project.id}>
                     <div className="project-top">
-                      <div><strong>{project.name}</strong><span>{project.organization_name || 'THE SFM'}</span></div>
+                      <div><strong>{project.name}</strong><span>{organizationLabel(project.organization_id, project.organization_name)}</span></div>
                       <b className={`status ${project.status}`}>{tr[project.status]}</b>
                     </div>
+                    <div className="org-strip">
+                      <span>{tr.organization}</span>
+                      <b className={`verify-badge ${projectOrganization?.verification_status ?? 'unverified'}`}>{verificationLabel(projectOrganization?.verification_status)}</b>
+                      {projectOrganization?.license_number && <small>{tr.licenseNumber}: {projectOrganization.license_number}</small>}
+                    </div>
+                    {projectOrganization && projectOrganization.verification_status !== 'verified' && <p className="privacy-note">{tr.unverifiedOrganizationWarning}</p>}
                     <div className="badge-row"><span>{tr[project.category] ?? tr.other}</span><span>{dateLabel(project.start_date)} - {dateLabel(project.end_date)}</span></div>
                     <div className="progress"><i style={{ width: `${progress}%` }} /></div>
                     <div className="money-row">
@@ -2753,11 +2997,6 @@ export default function CharityProjectsPage() {
                 <FileText size={16} /> {exportingExcel ? tr.preparingExcel : tr.exportExcel}
               </button>
             </div>
-            <div className="future-list">
-              {['Licensed charity organization database'].map(item => (
-                <span key={item}>{item} <b>{tr.comingSoon}</b></span>
-              ))}
-            </div>
           </article>
         </section>
       </DashboardPageShell>
@@ -2774,7 +3013,29 @@ export default function CharityProjectsPage() {
               <label><span>{tr.collected}</span><input inputMode="decimal" value={projectForm.collected_amount} onChange={e => setProjectForm(prev => ({ ...prev, collected_amount: e.target.value }))} /></label>
               <label><span>{tr.startDate}</span><input type="date" value={projectForm.start_date} onChange={e => setProjectForm(prev => ({ ...prev, start_date: e.target.value }))} /></label>
               <label><span>{tr.endDate}</span><input type="date" value={projectForm.end_date} onChange={e => setProjectForm(prev => ({ ...prev, end_date: e.target.value }))} /></label>
-              <label className="wide"><span>{tr.organization}</span><input value={projectForm.organization_name} onChange={e => setProjectForm(prev => ({ ...prev, organization_name: e.target.value }))} /></label>
+              <label className="wide">
+                <span>{tr.selectExecutingOrganization}</span>
+                <select
+                  value={projectForm.organization_id}
+                  disabled={manualOrganization}
+                  onChange={e => {
+                    const organization = organizationById[e.target.value];
+                    setProjectForm(prev => ({ ...prev, organization_id: e.target.value, organization_name: organizationName(organization) }));
+                  }}
+                >
+                  <option value="">-</option>
+                  {organizations.map(organization => <option key={organization.id} value={organization.id}>{organizationName(organization)} - {verificationLabel(organization.verification_status)}</option>)}
+                </select>
+              </label>
+              {selectedOrganization && selectedOrganization.verification_status !== 'verified' && <p className="privacy-note wide">{tr.unverifiedOrganizationWarning}</p>}
+              <label className="check-row wide">
+                <input type="checkbox" checked={manualOrganization} onChange={e => {
+                  setManualOrganization(e.target.checked);
+                  if (e.target.checked) setProjectForm(prev => ({ ...prev, organization_id: '' }));
+                }} />
+                <span>{tr.manualOrganizationEntry}</span>
+              </label>
+              {manualOrganization && <label className="wide"><span>{tr.organization}</span><input value={projectForm.organization_name} onChange={e => setProjectForm(prev => ({ ...prev, organization_name: e.target.value }))} /></label>}
               <label className="wide"><span>{tr.notes}</span><textarea value={projectForm.notes} onChange={e => setProjectForm(prev => ({ ...prev, notes: e.target.value }))} /></label>
               <div className="modal-actions"><button className="ghost-btn" onClick={() => setProjectOpen(false)}>{tr.cancel}</button><button className="gold-btn" disabled={saving} onClick={saveProject}>{tr.saveProject}</button></div>
             </div>
@@ -3046,12 +3307,13 @@ export default function CharityProjectsPage() {
         .project-card{border:1px solid rgba(186,117,23,.14);border-radius:18px;background:#FFFDF8;padding:16px;display:grid;gap:13px}.project-top{display:flex;justify-content:space-between;gap:12px;min-width:0}.project-top strong{display:block;color:#3D2914;font-size:17px;overflow-wrap:anywhere}.project-top span,.badge-row span,.project-card p{color:#7A6A55;font-size:12px;overflow-wrap:anywhere}.status,.badge-row span{border-radius:999px;padding:5px 9px;background:#FAEEDA;color:#854F0B;font-size:11px}.badge-row{display:flex;gap:8px;flex-wrap:wrap}.progress{height:9px;border-radius:99px;background:#F1E6D4;overflow:hidden}.progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#BA7517,#EF9F27)}.money-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.money-row div{background:#F7F0E4;border-radius:13px;padding:10px;min-width:0}.money-row small{display:block;color:#8A6A55}.money-row strong{display:block;color:#3D2914;font-size:13px;overflow-wrap:anywhere}.card-actions{display:flex;gap:8px;flex-wrap:wrap}.card-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:800;font-size:12px}.doc-count-btn{justify-self:start;border:1px solid rgba(186,117,23,.16);background:#F7F0E4;color:#854F0B;border-radius:999px;min-height:34px;padding:0 12px;font-weight:900;cursor:pointer}
         .vault-head{align-items:flex-start}.vault-head p{margin:5px 0 0;color:#7A6A55;line-height:1.7}.document-tools{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,260px) minmax(190px,260px);gap:10px;margin-bottom:14px}.document-tools label{display:flex;align-items:center;gap:8px;border:1px solid rgba(186,117,23,.18);background:#F5F1E8;border-radius:14px;padding:0 12px;min-height:46px;color:#BA7517}.document-tools input,.document-tools select{width:100%;border:0;background:transparent;color:#1A0F05;outline:none;font:800 13px Tajawal,Arial,sans-serif}.document-tools select{border:1px solid rgba(186,117,23,.18);background:#F5F1E8;border-radius:14px;padding:0 12px;min-height:46px}.document-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.document-card{display:grid;grid-template-columns:42px minmax(0,1fr);gap:12px;border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;min-width:0}.document-icon{width:42px;height:42px;border-radius:14px;background:#FAEEDA;color:#BA7517;display:grid;place-items:center}.document-body{display:grid;gap:5px;min-width:0}.document-body strong{color:#3D2914;overflow-wrap:anywhere}.document-body span{justify-self:start;border-radius:999px;background:#F7F0E4;color:#854F0B;padding:4px 9px;font-size:11px;font-weight:900}.document-body small,.document-body em,.document-body p{color:#7A6A55;font-size:12px;line-height:1.6;overflow-wrap:anywhere}.document-body em{font-style:normal;color:#3D2914}.document-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}.document-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;cursor:pointer;font-weight:900}.document-actions button:last-child{background:#FCEBEB;color:#791F1F;border-color:rgba(121,31,31,.14)}.empty-state.compact{padding:24px 12px}.file-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(186,117,23,.16);background:#FAEEDA;border-radius:14px;padding:10px;color:#3D2914;min-width:0}.file-chip span{font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-chip small{color:#854F0B;margin-inline-start:auto}.file-chip button{width:30px;height:30px;border-radius:10px;border:1px solid rgba(186,117,23,.18);background:#FFFDF8;display:grid;place-items:center;cursor:pointer}
         .beneficiary-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.beneficiary-stats div{border:1px solid rgba(186,117,23,.14);background:#FDF8EE;border-radius:16px;padding:12px}.beneficiary-stats small,.details-list b{display:block;color:#854F0B;font-weight:900}.beneficiary-stats strong{display:block;margin-top:4px;color:#3D2914;font-size:18px}.beneficiary-grid,.contributor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.beneficiary-card,.contributor-card{border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;display:grid;gap:12px}.privacy-note{margin:0;border:1px solid rgba(186,117,23,.14);background:#FFF8EA;border-radius:13px;padding:10px;color:#854F0B;line-height:1.7}.details-list{display:grid;gap:9px}.details-list p{margin:0;border:1px solid rgba(186,117,23,.12);background:#FDF8EE;border-radius:12px;padding:10px}.details-list span{display:block;color:#3D2914;margin-top:3px;overflow-wrap:anywhere}.collab-strip{display:flex;flex-wrap:wrap;gap:8px}.collab-strip span{border-radius:999px;background:#FDF8EE;border:1px solid rgba(186,117,23,.14);color:#854F0B;padding:6px 10px;font-size:12px;font-weight:900}
+        .organization-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.organization-card{border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:15px;display:grid;gap:12px;min-width:0}.organization-top{display:flex;justify-content:space-between;gap:12px;min-width:0}.organization-top strong{display:block;color:#3D2914;font-size:17px;overflow-wrap:anywhere}.organization-top span,.org-contact span,.org-contact small{display:block;color:#7A6A55;font-size:12px;line-height:1.6;overflow-wrap:anywhere}.verify-badge{align-self:start;border-radius:999px;padding:5px 9px;font-size:11px;white-space:nowrap;background:#FAEEDA;color:#854F0B}.verify-badge.verified{background:#EAF3DE;color:#27500A}.verify-badge.pending_review{background:#E6F1FB;color:#0C447C}.verify-badge.rejected{background:#FCEBEB;color:#791F1F}.trust-box{border:1px solid rgba(186,117,23,.12);background:#FDF8EE;border-radius:14px;padding:11px;display:grid;gap:8px}.trust-box strong{color:#3D2914}.trust-box p{margin:0;color:#7A6A55}.trust-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.trust-grid span{border-radius:12px;background:#FFFDF8;color:#854F0B;padding:8px;font-size:12px;font-weight:900}.org-contact{display:grid;gap:4px}.org-contact a{color:#0C447C;overflow-wrap:anywhere}.org-strip{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid rgba(186,117,23,.12);background:#FDF8EE;border-radius:14px;padding:9px;color:#3D2914}.org-strip span,.org-strip small{color:#7A6A55;font-size:12px}.org-strip b{font-size:11px}
         .calendar-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.alert-panel,.season-panel{border:1px solid rgba(186,117,23,.14);background:#FDF8EE;border-radius:18px;padding:14px;display:grid;gap:10px}.alert-panel strong,.season-panel strong{color:#3D2914}.alert-panel p{margin:0;color:#7A6A55}.alert-line{border-radius:14px;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);padding:10px;display:grid;gap:4px}.alert-line b{color:#3D2914}.alert-line span{color:#854F0B;font-size:12px}.season-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.season-grid span{border-radius:14px;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);padding:10px;display:grid;gap:5px}.season-grid b{color:#3D2914}.season-grid small{color:#8A6A55;line-height:1.5}.reminder-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.reminder-card{border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;display:grid;gap:10px}.reminder-card.high{border-color:rgba(121,31,31,.2);background:#FFF8F8}.reminder-card.low{background:#F9FBF6}.reminder-top{display:flex;justify-content:space-between;gap:10px;min-width:0}.reminder-top strong{display:block;color:#3D2914;overflow-wrap:anywhere}.reminder-top span,.reminder-card small,.reminder-card p{color:#7A6A55;line-height:1.6}.reminder-top b{align-self:start;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:5px 9px;font-size:11px;white-space:nowrap}
         .empty-state{display:grid;place-items:center;text-align:center;padding:42px 16px;color:#8A6A55}.empty-state svg{color:#BA7517;margin-bottom:10px}.empty-state strong{color:#3D2914;font-size:18px}.impact-lines{display:grid;gap:9px}.impact-lines p{margin:0;border-radius:13px;background:#F5F1E8;padding:10px;color:#3D2914}.impact-lines .warn{background:#FAEEDA;color:#854F0B}.report-card{display:grid;grid-template-columns:minmax(0,1fr) 110px auto auto;gap:10px;align-items:end;border:1px solid rgba(186,117,23,.18);border-radius:16px;background:#FAEEDA;padding:14px;margin-bottom:12px}.report-card strong,.report-card span{display:block}.report-card strong{color:#3D2914}.report-card span{margin-top:4px;color:#854F0B;font-size:12px}.report-card select{height:42px;border:1px solid rgba(186,117,23,.25);border-radius:12px;background:#FFFDF8;color:#3D2914;padding:0 10px;font:800 13px Tajawal,Arial,sans-serif}.report-card button{height:42px;border:0;border-radius:12px;background:linear-gradient(135deg,#FAC775,#BA7517);color:#1A0F05;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}.report-card button:disabled{opacity:.65;cursor:wait}.future-list{display:grid;gap:9px}.future-list span{display:flex;justify-content:space-between;gap:8px;border:1px solid rgba(186,117,23,.12);border-radius:12px;padding:10px;color:#3D2914}.future-list b{color:#BA7517}
         .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(26,15,5,.46);display:grid;place-items:center;padding:18px}.modal{width:min(760px,100%);max-height:92dvh;overflow:auto;background:#FFFDF8;border:1px solid rgba(186,117,23,.18);border-radius:24px;padding:20px}.modal.small{width:min(420px,100%)}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.modal-head h2{margin:0}.modal-head button{width:40px;height:40px;border-radius:12px;border:1px solid rgba(186,117,23,.18);background:#F5F1E8;display:grid;place-items:center;cursor:pointer}.modal-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
-        @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid,.calendar-grid,.zakat-premium-grid{grid-template-columns:1fr}.project-grid,.document-grid,.reminder-grid,.beneficiary-grid,.contributor-grid{grid-template-columns:1fr}.metals-status{grid-template-columns:repeat(2,minmax(0,1fr))}.metals-status button{min-height:42px}}
+        @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid,.calendar-grid,.zakat-premium-grid{grid-template-columns:1fr}.project-grid,.document-grid,.reminder-grid,.beneficiary-grid,.contributor-grid,.organization-grid{grid-template-columns:1fr}.metals-status{grid-template-columns:repeat(2,minmax(0,1fr))}.metals-status button{min-height:42px}}
         @media(max-width:900px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row,.report-card,.document-tools,.season-grid,.metals-status,.beneficiary-stats,.price-status-grid{grid-template-columns:1fr}.history-row{grid-template-columns:1fr}.report-card button{width:100%}.document-card{grid-template-columns:36px minmax(0,1fr)}.document-actions button{flex:1}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
+        @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row,.report-card,.document-tools,.season-grid,.metals-status,.beneficiary-stats,.price-status-grid,.trust-grid{grid-template-columns:1fr}.history-row{grid-template-columns:1fr}.report-card button{width:100%}.document-card{grid-template-columns:36px minmax(0,1fr)}.document-actions button{flex:1}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
       `}</style>
     </div>
   );
