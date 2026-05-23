@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, BarChart3, BriefcaseBusiness, CalendarDays, CheckCircle2, CircleDollarSign, Download, Edit3, ExternalLink, FileDown, FileText, Gauge, LineChart, Paperclip, Plus, ReceiptText, Sparkles, Trash2, TrendingUp, Wallet, X } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { CurrencySelect } from '@/components/CurrencySelect';
@@ -87,7 +87,7 @@ const TX: Record<string, Record<Lang, string>> = {
   monthNow: { ar: 'مايو 2026 • محدّث الآن', en: 'May 2026 • Updated now', fr: 'Mai 2026 • Mis à jour maintenant' },
   export: { ar: 'تصدير', en: 'Export', fr: 'Exporter' },
   exportPdf: { ar: 'تصدير PDF', en: 'Export PDF', fr: 'Exporter PDF' },
-  exportExcel: { ar: 'تصدير Excel', en: 'Export Excel', fr: 'Exporter Excel' },
+  exportExcel: { ar: 'تصدير Excel / CSV', en: 'Export Excel / CSV', fr: 'Exporter Excel / CSV' },
   generatedReport: { ar: 'تقرير الدخل', en: 'Income Report', fr: 'Rapport des revenus' },
   exportSuccess: { ar: 'تم تصدير التقرير بنجاح.', en: 'Report exported successfully.', fr: 'Rapport exporté avec succès.' },
   exportFailed: { ar: 'تعذر تصدير التقرير.', en: 'Could not export report.', fr: 'Impossible d’exporter le rapport.' },
@@ -368,6 +368,7 @@ export default function IncomePage() {
   const [exportOpen, setExportOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [attachmentError, setAttachmentError] = useState('');
+  const exportRef = useRef<HTMLDivElement | null>(null);
 
   const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
 
@@ -436,8 +437,15 @@ export default function IncomePage() {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setExportOpen(false);
     };
+    const onPointerDown = (event: PointerEvent) => {
+      if (!exportRef.current?.contains(event.target as Node)) setExportOpen(false);
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onPointerDown);
+    };
   }, [exportOpen]);
 
   const viewRows = useMemo<IncomeViewRow[]>(() => rows.map(row => ({ ...row, workflowStatus: workflowStatus(row) })), [rows]);
@@ -974,8 +982,15 @@ export default function IncomePage() {
             <button type="button" className="primary hero-primary" onClick={openCreate} aria-label={tr('addIncome', lang)}>
               <Plus size={16} />{tr('addIncome', lang)}
             </button>
-            <div className="export-wrap">
-              <button type="button" className="ghost" aria-label={tr('export', lang)} onClick={() => setExportOpen(open => !open)}>
+            <div className="export-wrap" ref={exportRef}>
+              <button
+                type="button"
+                className="ghost"
+                aria-label={tr('export', lang)}
+                aria-haspopup="menu"
+                aria-expanded={exportOpen}
+                onClick={() => setExportOpen(open => !open)}
+              >
                 <Download size={16} />{tr('export', lang)}
               </button>
               {exportOpen && (
@@ -1207,10 +1222,10 @@ export default function IncomePage() {
       <style jsx>{`
         .income-shell{min-height:100dvh;background:#F5F1E8;color:#24180d;font-family:Cairo,Tajawal,"IBM Plex Sans Arabic",Arial,sans-serif;overflow-x:hidden}
         .income-main{width:100%;max-width:1320px;margin:0 auto;padding:24px;margin-inline-start:250px;display:grid;gap:16px}
-        .income-header{position:relative;overflow:hidden;display:flex;justify-content:space-between;align-items:flex-end;gap:18px;background:linear-gradient(135deg,#2B1A0F 0%,#3D2914 52%,#BA7517 130%);border:1px solid rgba(250,199,117,.22);border-radius:24px;padding:28px;box-shadow:0 18px 42px rgba(61,41,20,.14)}
+        .income-header{position:relative;overflow:visible;z-index:20;display:flex;justify-content:space-between;align-items:flex-end;gap:18px;background:linear-gradient(135deg,#2B1A0F 0%,#3D2914 52%,#BA7517 130%);border:1px solid rgba(250,199,117,.22);border-radius:24px;padding:28px;box-shadow:0 18px 42px rgba(61,41,20,.14)}
         .income-header:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 12% 18%,rgba(250,199,117,.28),transparent 28%),linear-gradient(120deg,transparent 0 60%,rgba(250,199,117,.08) 60% 61%,transparent 61%);pointer-events:none}.income-header>*{position:relative;z-index:1}
         .income-header p{margin:0;color:#FAC775;font-size:13px;font-weight:600}.income-header span{margin:0;color:#F8EAD2;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:7px}.income-header h1{margin:8px 0;font-size:40px;font-weight:600;color:#FFF7E8}
-        .income-actions{display:flex;gap:10px;flex-wrap:wrap}.export-wrap{position:relative}.export-menu{position:absolute;z-index:60;inset-block-start:48px;inset-inline-end:0;min-width:190px;background:#FFFDF8;border:1px solid rgba(186,117,23,.18);border-radius:14px;padding:8px;box-shadow:0 16px 38px rgba(61,41,20,.16)}.export-menu button{width:100%;height:38px;border:0;border-radius:10px;background:#FFFDF8;color:#3D2914;display:flex;align-items:center;gap:8px;padding:0 10px;font:600 13px inherit;cursor:pointer;text-align:start}.export-menu button:hover{background:#FAEEDA;color:#854F0B}.primary,.ghost,.primary-dark,.ghost-light{border-radius:12px;border:1px solid rgba(250,199,117,.26);height:42px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 14px inherit;cursor:pointer}.primary,.primary-dark{background:linear-gradient(135deg,#FAC775,#EF9F27);color:#2B1A0F;border-color:rgba(250,199,117,.48)}.ghost{background:rgba(43,26,15,.34);color:#FFF7E8;border-color:rgba(250,199,117,.3)}.ghost:disabled{opacity:.55;cursor:not-allowed}.ghost-light{background:#FFFDF8;color:#3D2914;border-color:rgba(186,117,23,.18)}
+        .income-actions{display:flex;gap:10px;flex-wrap:wrap}.export-wrap{position:relative}.export-menu{position:absolute;z-index:80;inset-block-start:calc(100% + 8px);inset-inline-end:0;min-width:190px;background:#FFFDF8;border:1px solid rgba(186,117,23,.25);border-radius:12px;padding:8px;box-shadow:0 18px 44px rgba(61,41,20,.24)}.export-menu button{width:100%;min-height:42px;border:0;border-radius:10px;background:#FFFDF8;color:#1A1A1A;display:flex;align-items:center;gap:8px;padding:0 10px;font:600 13px inherit;cursor:pointer;text-align:start;white-space:nowrap}.export-menu button:hover,.export-menu button:focus-visible{background:#FAEEDA;color:#854F0B;outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.18)}.primary,.ghost,.primary-dark,.ghost-light{border-radius:12px;border:1px solid rgba(250,199,117,.26);height:42px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 14px inherit;cursor:pointer}.primary,.primary-dark{background:linear-gradient(135deg,#FAC775,#EF9F27);color:#2B1A0F;border-color:rgba(250,199,117,.48)}.ghost{background:rgba(43,26,15,.34);color:#FFF7E8;border-color:rgba(250,199,117,.3)}.ghost:disabled{opacity:.55;cursor:not-allowed}.ghost-light{background:#FFFDF8;color:#3D2914;border-color:rgba(186,117,23,.18)}
         .insights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.insight{min-height:76px;text-align:start;border:1px solid rgba(186,117,23,.16);border-radius:18px;padding:15px;background:#FFFDF8;display:flex;align-items:center;gap:10px;color:#3D2914;cursor:pointer;box-shadow:0 8px 22px rgba(61,41,20,.04)}.insight span{display:grid;gap:3px;line-height:1.45}.insight span strong{font-weight:600}.insight span small{font-size:13px;font-weight:600}.insight b{margin-inline-start:auto;font-size:12px;color:#854F0B;max-width:140px}.insight.success{background:#F0F7E8;color:#27500A}.insight.warning{background:#FAEEDA;color:#854F0B}.insight.info{background:#EEF5FB;color:#0C447C}.insight.muted{background:#FFFDF8;color:#7b6248}
         .stat-grid,.smart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.stat-grid article,.panel{background:#FFFDF8;border:1px solid rgba(186,117,23,.16);border-radius:20px;padding:18px;box-shadow:0 10px 26px rgba(61,41,20,.05)}.stat-grid span{display:flex;gap:8px;align-items:center;color:#7b6248;font-size:13px}.stat-grid strong{display:block;margin-top:10px;font-size:26px;font-weight:600;color:#3D2914}.stat-grid em{display:inline-flex;margin-top:10px;border-radius:999px;background:#EAF3DE;color:#27500A;padding:4px 9px;font-style:normal;font-size:12px}
         .smart-score strong,.smart-grid strong{display:block;color:#3D2914;font-size:26px;font-weight:600}.smart-score span,.smart-grid p{color:#7b6248;font-size:13px;line-height:1.7;margin:8px 0 0}.smart-view{grid-column:span 1}.smart-view ul{margin:0;padding-inline-start:18px;color:#4c3926;line-height:1.8;font-size:13px}
