@@ -10,6 +10,7 @@ import type { MarketAnalysis, MarketAssetType, MarketResult, MarketSearchItem } 
 import { normalizeAssetType, validateSymbol } from '@/lib/market/marketService';
 
 type MarketServiceState = 'checking' | 'connected' | 'not_configured' | 'unavailable';
+type MarketViewAnalysis = MarketAnalysis & { source?: string; fallback?: boolean; openbbService?: MarketServiceState };
 
 function money(value: number) {
   const maximumFractionDigits = value > 1000 ? 0 : 2;
@@ -30,11 +31,17 @@ function sparkPath(points: MarketAnalysis['history']) {
   }).join(' ');
 }
 
+function chartTicks(points: MarketAnalysis['history']) {
+  if (points.length === 0) return [];
+  const indexes = [0, Math.floor(points.length / 2), points.length - 1];
+  return indexes.map(index => points[index]).filter(Boolean);
+}
+
 export default function MarketAnalysisPage() {
   const { dir, t } = useLanguage();
   const [query, setQuery] = useState('AAPL');
   const [assetType, setAssetType] = useState<MarketAssetType | 'all'>('stock');
-  const [analysis, setAnalysis] = useState<MarketAnalysis | null>(null);
+  const [analysis, setAnalysis] = useState<MarketViewAnalysis | null>(null);
   const [watchlist, setWatchlist] = useState<MarketSearchItem[]>([]);
   const [compare, setCompare] = useState<MarketAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +62,7 @@ export default function MarketAnalysisPage() {
     try {
       const normalizedType = typeInput === 'all' ? 'stock' : normalizeAssetType(typeInput);
       const response = await fetch(`/api/market/analyze?symbol=${encodeURIComponent(symbol)}&assetType=${encodeURIComponent(normalizedType)}`);
-      const result = await response.json() as MarketResult & { openbbService?: MarketServiceState };
+      const result = await response.json() as MarketResult & { openbbService?: MarketServiceState; source?: string; fallback?: boolean };
       if (!response.ok || !result.success) throw new Error(!result.success ? result.error : t('market_error_message'));
       setAnalysis(result);
       if (result.openbbService === 'not_configured' || result.openbbService === 'unavailable') {
@@ -119,13 +126,22 @@ export default function MarketAnalysisPage() {
   }, []);
 
   const selected = analysis;
+  const isFallbackData = Boolean(selected?.fallback || selected?.source === 'mock');
   const serviceNotice = serviceState === 'connected'
-    ? t('market_service_connected')
+    ? isFallbackData
+      ? t('market_status_demo')
+      : t('market_service_connected')
     : serviceState === 'not_configured'
       ? t('market_service_not_configured')
       : serviceState === 'unavailable'
         ? t('market_service_unavailable')
         : t('loading');
+  const heroBadge = isFallbackData ? t('market_badge_demo') : t('market_badge_live');
+  const chartBadge = isFallbackData ? t('market_chart_demo') : t('market_chart_live');
+  const localizedAssetName = selected?.name?.includes('Market Asset') ? t('market_asset_generic').replace('{symbol}', selected.symbol) : selected?.name;
+  const localizedSummary = selected?.summary?.includes('Educational market summary only')
+    ? t('market_summary_educational')
+    : selected?.summary;
   const chartColor = selected && selected.changePercent >= 0 ? '#22C55E' : '#EF4444';
   const trendIcon = selected?.trend === 'bearish' ? <TrendingDown size={18} /> : <TrendingUp size={18} />;
   const cards = useMemo(() => [analysis, ...compare].filter((item): item is MarketAnalysis => Boolean(item)).slice(0, 4), [analysis, compare]);
@@ -137,7 +153,7 @@ export default function MarketAnalysisPage() {
       <main className="market-main">
         <section className="market-hero">
           <div className="market-hero-copy">
-            <span className="market-eyebrow"><Sparkles size={15} />{t('market_hero_badge')}</span>
+            <span className="market-eyebrow"><Sparkles size={15} />{heroBadge}</span>
             <h1>{t('market_title')}</h1>
             <p>{t('market_hero_subtitle')}</p>
             <form className="market-search-panel" onSubmit={event => { event.preventDefault(); void requestAnalysis(query, assetType); }}>
@@ -153,11 +169,11 @@ export default function MarketAnalysisPage() {
                 <select value={assetType} onChange={event => setAssetType(event.target.value as MarketAssetType | 'all')}>
                   <option value="all">{t('market_asset_all')}</option>
                   <option value="stock">{t('market_asset_stocks')}</option>
-                  <option value="etf">ETF</option>
+                  <option value="etf">{t('market_asset_etf')}</option>
                   <option value="crypto">{t('market_asset_crypto')}</option>
-                  <option value="forex">Forex</option>
+                  <option value="forex">{t('market_asset_forex')}</option>
                   <option value="commodity">{t('market_asset_commodities')}</option>
-                  <option value="gold">Gold</option>
+                  <option value="gold">{t('market_asset_gold')}</option>
                 </select>
               </label>
               <button type="submit" disabled={loading}><Activity size={17} />{loading ? t('loading') : t('market_analyze_now')}</button>
@@ -166,14 +182,14 @@ export default function MarketAnalysisPage() {
           <div className="market-hero-card">
             <span>{t('market_selected_asset')}</span>
             <strong>{selected?.symbol ?? '--'}</strong>
-            <p>{selected?.name ?? t('market_no_data')}</p>
+            <p>{localizedAssetName ?? t('market_no_data')}</p>
             {selected && <b className={`risk ${selected.riskLevel}`}>{t(`market_risk_${selected.riskLevel}`)}</b>}
           </div>
         </section>
 
         <div className={`market-service ${serviceState}`}>
           <Activity size={17} />
-          <span>{serviceNotice}</span>
+          <span>{t('market_service_status')}: {serviceNotice}</span>
         </div>
 
         {error && <div className="market-notice">{error}</div>}
@@ -188,7 +204,7 @@ export default function MarketAnalysisPage() {
               <div className="market-card-head">
                 <div>
                   <strong>{asset.symbol}</strong>
-                  <span>{asset.name}</span>
+                  <span>{asset.name.includes('Market Asset') ? t('market_asset_generic').replace('{symbol}', asset.symbol) : asset.name}</span>
                 </div>
                 <b className={`risk ${asset.riskLevel}`}>{t(`market_risk_${asset.riskLevel}`)}</b>
               </div>
@@ -207,7 +223,7 @@ export default function MarketAnalysisPage() {
                 <div className="market-section-head">
                   <LineChart size={19} />
                   <div>
-                    <span>{t('market_price_chart')}</span>
+                    <span>{chartBadge}</span>
                     <h2>{selected.symbol}</h2>
                   </div>
                 </div>
@@ -220,6 +236,12 @@ export default function MarketAnalysisPage() {
                   </defs>
                   <path d={`${sparkPath(selected.history)} L 420 180 L 0 180 Z`} fill="url(#marketLineFill)" />
                   <path d={sparkPath(selected.history)} fill="none" stroke={chartColor} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                  <text x="0" y="176" fill="#8A7060" fontSize="11" fontWeight="800">{chartTicks(selected.history)[0]?.date ?? ''}</text>
+                  <text x="205" y="176" textAnchor="middle" fill="#8A7060" fontSize="11" fontWeight="800">{chartTicks(selected.history)[1]?.date ?? ''}</text>
+                  <text x="420" y="176" textAnchor="end" fill="#8A7060" fontSize="11" fontWeight="800">{chartTicks(selected.history)[2]?.date ?? ''}</text>
+                  <text x="0" y="15" fill="#8A7060" fontSize="11" fontWeight="800">{money(Math.max(...selected.history.map(point => point.close)))}</text>
+                  <text x="0" y="98" fill="#8A7060" fontSize="11" fontWeight="800">{selected.symbol}</text>
+                  <text x="0" y="165" fill="#8A7060" fontSize="11" fontWeight="800">{money(Math.min(...selected.history.map(point => point.close)))}</text>
                 </svg>
                 <div className="market-stat-row">
                   <MarketMetric label={t('market_current_price')} value={money(selected.latestPrice)} />
@@ -232,7 +254,7 @@ export default function MarketAnalysisPage() {
                 <div className="market-section-head">
                   <BarChart3 size={19} />
                   <div>
-                    <span>{serviceState === 'connected' ? t('market_live_data') : t('market_mock_data')}</span>
+                    <span>{isFallbackData ? t('market_mock_data') : t('market_live_data')}</span>
                     <h2>{t('market_technical_indicators')}</h2>
                   </div>
                 </div>
@@ -256,7 +278,7 @@ export default function MarketAnalysisPage() {
                     <h2>{t('market_ai_summary')}</h2>
                   </div>
                 </div>
-                <p className="market-copy">{selected.summary || t('market_ai_summary_text')}</p>
+                <p className="market-copy">{localizedSummary || t('market_ai_summary_text')}</p>
               </div>
               <div className="market-panel">
                 <div className="market-section-head">
