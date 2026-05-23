@@ -105,6 +105,8 @@ type DocumentCategory = 'donation_receipt' | 'charity_certificate' | 'project_re
 type ReminderType = 'zakat' | 'hawl' | 'ramadan' | 'dhul_hijjah' | 'arafah' | 'sacrifice' | 'sponsorship' | 'project_milestone' | 'general';
 type ReminderStatus = 'active' | 'completed' | 'dismissed';
 type ReminderPriority = 'low' | 'normal' | 'high';
+type BeneficiaryCategory = 'orphan' | 'family' | 'student' | 'medical' | 'elderly' | 'refugee' | 'project_group' | 'other';
+type BeneficiaryStatus = 'active' | 'paused' | 'completed' | 'needs_review';
 
 type CharityReminder = {
   id: string;
@@ -130,6 +132,25 @@ type MetalsPriceResponse = {
   silver: { pricePerGram: number; unit: 'gram' };
   updatedAt: string;
   message?: string;
+};
+
+type CharityBeneficiary = {
+  id: string;
+  user_id: string;
+  project_id: string | null;
+  reference_code: string | null;
+  display_name: string;
+  category: BeneficiaryCategory;
+  organization_name: string | null;
+  country: string | null;
+  city: string | null;
+  monthly_support_amount: number;
+  currency: string;
+  sponsorship_start_date: string | null;
+  sponsorship_end_date: string | null;
+  next_renewal_date: string | null;
+  status: BeneficiaryStatus;
+  notes: string | null;
 };
 
 const TEXT = {
@@ -295,6 +316,45 @@ const TEXT = {
     enterPriceManually: 'أدخل السعر يدوياً',
     refreshPrices: 'تحديث الأسعار',
     metalsDisclaimer: 'أسعار الذهب والفضة تقديرية وقد تختلف حسب العيار والمصدر وسعر السوق المحلي. استخدم الأسعار كمرجع، وراجع جهة مختصة للحالات الشرعية الخاصة.',
+    beneficiaryTracking: 'إدارة المستفيدين',
+    beneficiaryDesc: 'تابع الكفالات والحالات الخيرية والمستفيدين المرتبطين بمشاريعك بشكل منظم وآمن.',
+    privacyNote: 'استخدم رقماً مرجعياً أو اسماً مختصراً بدلاً من البيانات الشخصية الحساسة.',
+    addBeneficiary: '+ إضافة مستفيد',
+    shortName: 'الاسم المختصر / المرجع',
+    referenceNumber: 'الرقم المرجعي',
+    beneficiaryType: 'نوع المستفيد',
+    linkedProject: 'المشروع المرتبط',
+    responsibleOrg: 'الجهة المسؤولة',
+    country: 'الدولة',
+    city: 'المدينة',
+    monthlySupport: 'مبلغ الكفالة الشهري',
+    currency: 'العملة',
+    sponsorshipStart: 'تاريخ بداية الكفالة',
+    sponsorshipEnd: 'تاريخ نهاية الكفالة',
+    nextRenewal: 'تاريخ التجديد القادم',
+    totalBeneficiaries: 'إجمالي المستفيدين',
+    activeSponsorships: 'الكفالات النشطة',
+    monthlySupportTotal: 'الدعم الشهري',
+    upcomingRenewals: 'تجديدات قادمة',
+    searchBeneficiaries: 'بحث في المستفيدين',
+    allStatuses: 'كل الحالات',
+    allTypes: 'كل الفئات',
+    noBeneficiaries: 'لا توجد سجلات مستفيدين حتى الآن.',
+    addSupport: 'إضافة دعم',
+    linkedDocuments: 'المستندات المرتبطة',
+    beneficiariesCount: 'المستفيدون: {count}',
+    beneficiarySaved: 'تم حفظ المستفيد بنجاح.',
+    beneficiaryDeleted: 'تم حذف المستفيد.',
+    confirmDeleteBeneficiary: 'هل تريد حذف هذا المستفيد؟',
+    renewalReminderCreated: 'تم إنشاء تذكير التجديد.',
+    needs_review: 'يحتاج مراجعة',
+    orphan: 'يتيم',
+    family: 'أسرة',
+    student: 'طالب',
+    medical: 'حالة طبية',
+    elderly: 'كبار السن',
+    refugee: 'لاجئ',
+    project_group: 'مجموعة مشروع',
     saved: 'تم الحفظ بنجاح.',
     error: 'تعذر تنفيذ العملية حالياً.',
     planning: 'تخطيط',
@@ -478,6 +538,45 @@ const TEXT = {
     enterPriceManually: 'Enter price manually',
     refreshPrices: 'Refresh prices',
     metalsDisclaimer: 'Gold and silver prices are estimates and may vary by purity, source, and local market price. Use these prices as a reference and consult a qualified authority for specific religious cases.',
+    beneficiaryTracking: 'Beneficiary Tracking',
+    beneficiaryDesc: 'Track sponsorships, charity cases, and beneficiaries linked to your projects in an organized and secure way.',
+    privacyNote: 'Use a reference number or short label instead of sensitive personal information.',
+    addBeneficiary: '+ Add Beneficiary',
+    shortName: 'Short name / label',
+    referenceNumber: 'Reference number',
+    beneficiaryType: 'Beneficiary type',
+    linkedProject: 'Linked project',
+    responsibleOrg: 'Responsible organization',
+    country: 'Country',
+    city: 'City',
+    monthlySupport: 'Monthly support amount',
+    currency: 'Currency',
+    sponsorshipStart: 'Sponsorship start date',
+    sponsorshipEnd: 'Sponsorship end date',
+    nextRenewal: 'Next renewal date',
+    totalBeneficiaries: 'Total Beneficiaries',
+    activeSponsorships: 'Active Sponsorships',
+    monthlySupportTotal: 'Monthly Support',
+    upcomingRenewals: 'Upcoming Renewals',
+    searchBeneficiaries: 'Search beneficiaries',
+    allStatuses: 'All statuses',
+    allTypes: 'All categories',
+    noBeneficiaries: 'No beneficiaries yet.',
+    addSupport: 'Add support',
+    linkedDocuments: 'Linked documents',
+    beneficiariesCount: 'Beneficiaries: {count}',
+    beneficiarySaved: 'Beneficiary saved successfully.',
+    beneficiaryDeleted: 'Beneficiary deleted.',
+    confirmDeleteBeneficiary: 'Do you want to delete this beneficiary?',
+    renewalReminderCreated: 'Renewal reminder created.',
+    needs_review: 'Needs review',
+    orphan: 'Orphan',
+    family: 'Family',
+    student: 'Student',
+    medical: 'Medical',
+    elderly: 'Elderly',
+    refugee: 'Refugee',
+    project_group: 'Project group',
     saved: 'Saved successfully.',
     error: 'This action could not be completed right now.',
     planning: 'Planning',
@@ -661,6 +760,45 @@ const TEXT = {
     enterPriceManually: 'Saisir le prix manuellement',
     refreshPrices: 'Actualiser les prix',
     metalsDisclaimer: 'Les prix de l’or et de l’argent sont estimatifs et peuvent varier selon la pureté, la source et le marché local. Utilisez-les comme référence et consultez une autorité qualifiée pour les cas religieux spécifiques.',
+    beneficiaryTracking: 'Suivi des bénéficiaires',
+    beneficiaryDesc: 'Suivez les parrainages, les cas caritatifs et les bénéficiaires liés à vos projets de manière organisée et sécurisée.',
+    privacyNote: 'Utilisez un numéro de référence ou un libellé court au lieu de données personnelles sensibles.',
+    addBeneficiary: '+ Ajouter un bénéficiaire',
+    shortName: 'Nom court / libellé',
+    referenceNumber: 'Numéro de référence',
+    beneficiaryType: 'Type de bénéficiaire',
+    linkedProject: 'Projet lié',
+    responsibleOrg: 'Organisation responsable',
+    country: 'Pays',
+    city: 'Ville',
+    monthlySupport: 'Montant du soutien mensuel',
+    currency: 'Devise',
+    sponsorshipStart: 'Date de début du parrainage',
+    sponsorshipEnd: 'Date de fin du parrainage',
+    nextRenewal: 'Prochaine date de renouvellement',
+    totalBeneficiaries: 'Total des bénéficiaires',
+    activeSponsorships: 'Parrainages actifs',
+    monthlySupportTotal: 'Soutien mensuel',
+    upcomingRenewals: 'Renouvellements à venir',
+    searchBeneficiaries: 'Rechercher des bénéficiaires',
+    allStatuses: 'Tous les statuts',
+    allTypes: 'Toutes les catégories',
+    noBeneficiaries: 'Aucun bénéficiaire pour le moment.',
+    addSupport: 'Ajouter un soutien',
+    linkedDocuments: 'Documents liés',
+    beneficiariesCount: 'Bénéficiaires : {count}',
+    beneficiarySaved: 'Bénéficiaire enregistré avec succès.',
+    beneficiaryDeleted: 'Bénéficiaire supprimé.',
+    confirmDeleteBeneficiary: 'Voulez-vous supprimer ce bénéficiaire ?',
+    renewalReminderCreated: 'Rappel de renouvellement créé.',
+    needs_review: 'À réviser',
+    orphan: 'Orphelin',
+    family: 'Famille',
+    student: 'Étudiant',
+    medical: 'Médical',
+    elderly: 'Personne âgée',
+    refugee: 'Réfugié',
+    project_group: 'Groupe de projet',
     saved: 'Enregistré avec succès.',
     error: "Impossible d'effectuer cette action pour le moment.",
     planning: 'Planification',
@@ -690,6 +828,8 @@ const assetTypes: AssetType[] = ['cash', 'savings', 'investment', 'gold', 'silve
 const documentCategories: DocumentCategory[] = ['donation_receipt', 'charity_certificate', 'project_report', 'zakat_document', 'beneficiary_report', 'other'];
 const reminderTypes: ReminderType[] = ['zakat', 'hawl', 'ramadan', 'dhul_hijjah', 'arafah', 'sacrifice', 'sponsorship', 'project_milestone', 'general'];
 const reminderPriorities: ReminderPriority[] = ['low', 'normal', 'high'];
+const beneficiaryCategories: BeneficiaryCategory[] = ['orphan', 'family', 'student', 'medical', 'elderly', 'refugee', 'project_group', 'other'];
+const beneficiaryStatuses: BeneficiaryStatus[] = ['active', 'paused', 'completed', 'needs_review'];
 const priceSources = ['api', 'manual', 'fallback'] as const;
 const allowedDocumentTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
 const maxDocumentSize = 10 * 1024 * 1024;
@@ -764,6 +904,7 @@ export default function CharityProjectsPage() {
   const [donations, setDonations] = useState<ProjectDonation[]>([]);
   const [documents, setDocuments] = useState<CharityDocument[]>([]);
   const [reminders, setReminders] = useState<CharityReminder[]>([]);
+  const [beneficiaries, setBeneficiaries] = useState<CharityBeneficiary[]>([]);
   const [incomeTotal, setIncomeTotal] = useState(0);
   const [expenseTotal, setExpenseTotal] = useState(0);
   const [message, setMessage] = useState('');
@@ -771,6 +912,9 @@ export default function CharityProjectsPage() {
   const [documentOpen, setDocumentOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [editingReminder, setEditingReminder] = useState<CharityReminder | null>(null);
+  const [beneficiaryOpen, setBeneficiaryOpen] = useState(false);
+  const [editingBeneficiary, setEditingBeneficiary] = useState<CharityBeneficiary | null>(null);
+  const [beneficiaryDetails, setBeneficiaryDetails] = useState<CharityBeneficiary | null>(null);
   const [donationProject, setDonationProject] = useState<CharityProject | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingDocument, setUploadingDocument] = useState(false);
@@ -784,6 +928,9 @@ export default function CharityProjectsPage() {
   const [documentSearch, setDocumentSearch] = useState('');
   const [documentFilter, setDocumentFilter] = useState<'all' | DocumentCategory>('all');
   const [documentProjectFilter, setDocumentProjectFilter] = useState('');
+  const [beneficiarySearch, setBeneficiarySearch] = useState('');
+  const [beneficiaryStatusFilter, setBeneficiaryStatusFilter] = useState<'all' | BeneficiaryStatus>('all');
+  const [beneficiaryCategoryFilter, setBeneficiaryCategoryFilter] = useState<'all' | BeneficiaryCategory>('all');
   const [zakat, setZakat] = useState({ cash: '', investments: '', gold: '', silver: '', debts: '', goldPrice: '', silverPrice: '', nonZakat: false });
   const [assetForm, setAssetForm] = useState({ asset_name: '', asset_type: 'cash' as AssetType, amount: '', ownership_date: today(), zakat_due_date: addYear(today()), is_zakatable: true, notes: '' });
   const [projectForm, setProjectForm] = useState({
@@ -818,6 +965,22 @@ export default function CharityProjectsPage() {
     related_project_id: '',
     related_zakat_asset_id: '',
     related_commitment_id: '',
+    notes: '',
+  });
+  const [beneficiaryForm, setBeneficiaryForm] = useState({
+    project_id: '',
+    reference_code: '',
+    display_name: '',
+    category: 'other' as BeneficiaryCategory,
+    organization_name: '',
+    country: '',
+    city: '',
+    monthly_support_amount: '',
+    currency: 'KWD',
+    sponsorship_start_date: '',
+    sponsorship_end_date: '',
+    next_renewal_date: '',
+    status: 'active' as BeneficiaryStatus,
     notes: '',
   });
 
@@ -925,13 +1088,14 @@ export default function CharityProjectsPage() {
   const loadData = useCallback(async () => {
     if (!user) return;
     try {
-      const [projectRes, assetRes, commitmentRes, donationRes, documentRes, reminderRes, incomeRes, expenseRes] = await Promise.all([
+      const [projectRes, assetRes, commitmentRes, donationRes, documentRes, reminderRes, beneficiaryRes, incomeRes, expenseRes] = await Promise.all([
         db.from('charity_projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('zakat_assets').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('charity_commitments').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
         db.from('charity_project_donations').select('*').eq('user_id', user.id).order('donation_date', { ascending: false }),
         db.from('charity_documents').select('*').eq('user_id', user.id).order('uploaded_at', { ascending: false }),
         db.from('charity_reminders').select('*').eq('user_id', user.id).order('due_date', { ascending: true }),
+        db.from('charity_beneficiaries').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('monthly_income_sources').select('amount').eq('user_id', user.id),
         db.from('expense_items').select('amount').eq('user_id', user.id),
       ]);
@@ -944,6 +1108,7 @@ export default function CharityProjectsPage() {
       if (!commitmentRes.error) setCommitments(loadedCommitments);
       if (!donationRes.error) setDonations((donationRes.data ?? []) as ProjectDonation[]);
       if (!documentRes.error) setDocuments((documentRes.data ?? []) as CharityDocument[]);
+      if (!beneficiaryRes.error) setBeneficiaries((beneficiaryRes.data ?? []) as CharityBeneficiary[]);
       if (!reminderRes.error) {
         setReminders(loadedReminders);
         await syncGeneratedReminders(loadedReminders, loadedProjects, loadedAssets, loadedCommitments);
@@ -987,6 +1152,8 @@ export default function CharityProjectsPage() {
         setProjectOpen(false);
         setDocumentOpen(false);
         setReminderOpen(false);
+        setBeneficiaryOpen(false);
+        setBeneficiaryDetails(null);
         setDonationProject(null);
       }
     };
@@ -1045,6 +1212,20 @@ export default function CharityProjectsPage() {
     if (document.project_id) acc[document.project_id] = (acc[document.project_id] || 0) + 1;
     return acc;
   }, {}), [documents]);
+  const projectBeneficiaryCounts = useMemo(() => beneficiaries.reduce<Record<string, number>>((acc, beneficiary) => {
+    if (beneficiary.project_id) acc[beneficiary.project_id] = (acc[beneficiary.project_id] || 0) + 1;
+    return acc;
+  }, {}), [beneficiaries]);
+  const filteredBeneficiaries = beneficiaries.filter(beneficiary => {
+    const query = beneficiarySearch.trim().toLowerCase();
+    const matchesSearch = !query || [beneficiary.display_name, beneficiary.reference_code ?? '', beneficiary.organization_name ?? '', beneficiary.country ?? ''].some(value => value.toLowerCase().includes(query));
+    const matchesStatus = beneficiaryStatusFilter === 'all' || beneficiary.status === beneficiaryStatusFilter;
+    const matchesCategory = beneficiaryCategoryFilter === 'all' || beneficiary.category === beneficiaryCategoryFilter;
+    return matchesSearch && matchesStatus && matchesCategory;
+  });
+  const activeBeneficiaries = beneficiaries.filter(beneficiary => beneficiary.status === 'active');
+  const monthlySupportTotal = activeBeneficiaries.reduce((sum, beneficiary) => sum + toNum(beneficiary.monthly_support_amount), 0);
+  const upcomingRenewals = beneficiaries.filter(beneficiary => beneficiary.next_renewal_date && daysUntil(beneficiary.next_renewal_date) <= 45 && daysUntil(beneficiary.next_renewal_date) >= 0);
   const activeReminders = reminders
     .filter(reminder => reminder.status === 'active')
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
@@ -1064,6 +1245,32 @@ export default function CharityProjectsPage() {
   const resetReminderForm = () => {
     setEditingReminder(null);
     setReminderForm({ title: '', reminder_type: 'general', due_date: today(), remind_before_days: '30', priority: 'normal', related_project_id: '', related_zakat_asset_id: '', related_commitment_id: '', notes: '' });
+  };
+
+  const resetBeneficiaryForm = () => {
+    setEditingBeneficiary(null);
+    setBeneficiaryForm({ project_id: '', reference_code: '', display_name: '', category: 'other', organization_name: '', country: '', city: '', monthly_support_amount: '', currency: 'KWD', sponsorship_start_date: '', sponsorship_end_date: '', next_renewal_date: '', status: 'active', notes: '' });
+  };
+
+  const openBeneficiaryEditor = (beneficiary: CharityBeneficiary) => {
+    setEditingBeneficiary(beneficiary);
+    setBeneficiaryForm({
+      project_id: beneficiary.project_id ?? '',
+      reference_code: beneficiary.reference_code ?? '',
+      display_name: beneficiary.display_name,
+      category: beneficiary.category,
+      organization_name: beneficiary.organization_name ?? '',
+      country: beneficiary.country ?? '',
+      city: beneficiary.city ?? '',
+      monthly_support_amount: String(beneficiary.monthly_support_amount ?? ''),
+      currency: beneficiary.currency || 'KWD',
+      sponsorship_start_date: beneficiary.sponsorship_start_date ?? '',
+      sponsorship_end_date: beneficiary.sponsorship_end_date ?? '',
+      next_renewal_date: beneficiary.next_renewal_date ?? '',
+      status: beneficiary.status,
+      notes: beneficiary.notes ?? '',
+    });
+    setBeneficiaryOpen(true);
   };
 
   const openReminderEditor = (reminder: CharityReminder) => {
@@ -1319,6 +1526,63 @@ export default function CharityProjectsPage() {
     if (error) setMessage(tr.error);
     else {
       setMessage(tr.reminderDeleted);
+      loadData();
+    }
+  };
+
+  const saveBeneficiary = async () => {
+    if (!user || !beneficiaryForm.display_name.trim()) return;
+    setSaving(true);
+    const payload = {
+      user_id: user.id,
+      project_id: beneficiaryForm.project_id || null,
+      reference_code: beneficiaryForm.reference_code || null,
+      display_name: beneficiaryForm.display_name.trim(),
+      category: beneficiaryForm.category,
+      organization_name: beneficiaryForm.organization_name || null,
+      country: beneficiaryForm.country || null,
+      city: beneficiaryForm.city || null,
+      monthly_support_amount: Math.max(0, toNum(beneficiaryForm.monthly_support_amount)),
+      currency: beneficiaryForm.currency || 'KWD',
+      sponsorship_start_date: beneficiaryForm.sponsorship_start_date || null,
+      sponsorship_end_date: beneficiaryForm.sponsorship_end_date || null,
+      next_renewal_date: beneficiaryForm.next_renewal_date || null,
+      status: beneficiaryForm.status,
+      notes: beneficiaryForm.notes || null,
+    };
+    const { data, error } = editingBeneficiary
+      ? await db.from('charity_beneficiaries').update(payload).eq('id', editingBeneficiary.id).eq('user_id', user.id).select().single()
+      : await db.from('charity_beneficiaries').insert(payload).select().single();
+    if (!error && beneficiaryForm.next_renewal_date && data?.id) {
+      await db.from('charity_reminders').insert({
+        user_id: user.id,
+        title: `${tr.sponsorship}: ${beneficiaryForm.display_name.trim()}`,
+        reminder_type: 'sponsorship',
+        due_date: beneficiaryForm.next_renewal_date,
+        hijri_date: estimatedHijriDate(beneficiaryForm.next_renewal_date, lang as Lang) || null,
+        remind_before_days: 30,
+        status: 'active',
+        priority: 'normal',
+        notes: `beneficiary:${data.id}`,
+      });
+    }
+    setSaving(false);
+    if (error) {
+      setMessage(tr.error);
+      return;
+    }
+    setMessage(tr.beneficiarySaved);
+    setBeneficiaryOpen(false);
+    resetBeneficiaryForm();
+    loadData();
+  };
+
+  const deleteBeneficiary = async (beneficiary: CharityBeneficiary) => {
+    if (!window.confirm(tr.confirmDeleteBeneficiary)) return;
+    const { error } = await db.from('charity_beneficiaries').delete().eq('id', beneficiary.id).eq('user_id', user?.id);
+    if (error) setMessage(tr.error);
+    else {
+      setMessage(tr.beneficiaryDeleted);
       loadData();
     }
   };
@@ -1629,11 +1893,98 @@ export default function CharityProjectsPage() {
                     >
                       {tr.documentsCount.replace('{count}', String(projectDocumentCounts[project.id] || 0))}
                     </button>
+                    <button
+                      className="doc-count-btn"
+                      type="button"
+                      aria-label={tr.beneficiariesCount.replace('{count}', String(projectBeneficiaryCounts[project.id] || 0))}
+                      onClick={() => {
+                        setBeneficiarySearch(project.name);
+                        setBeneficiaryStatusFilter('all');
+                        setBeneficiaryCategoryFilter('all');
+                        window.setTimeout(() => window.document.getElementById('beneficiary-tracking')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+                      }}
+                    >
+                      {tr.beneficiariesCount.replace('{count}', String(projectBeneficiaryCounts[project.id] || 0))}
+                    </button>
                     <div className="card-actions">
                       <button aria-label={tr.view}><Eye size={15} /> {tr.view}</button>
                       <button onClick={() => setDonationProject(project)} aria-label={tr.addDonation}><HandCoins size={15} /> {tr.addDonation}</button>
                       <button aria-label={tr.edit}><Pencil size={15} /> {tr.edit}</button>
                       <button onClick={() => archiveProject(project)} aria-label={tr.archive}><Archive size={15} /> {tr.archive}</button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section id="beneficiary-tracking" className="warm-card beneficiary-tracking">
+          <div className="section-head vault-head">
+            <div>
+              <small>{tr.privacyNote}</small>
+              <h2>{tr.beneficiaryTracking}</h2>
+              <p>{tr.beneficiaryDesc}</p>
+            </div>
+            <button className="mini-gold" type="button" onClick={() => {
+              resetBeneficiaryForm();
+              setBeneficiaryOpen(true);
+            }}>{tr.addBeneficiary}</button>
+          </div>
+          <div className="beneficiary-stats">
+            <div><small>{tr.totalBeneficiaries}</small><strong>{beneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
+            <div><small>{tr.activeSponsorships}</small><strong>{activeBeneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
+            <div><small>{tr.monthlySupportTotal}</small><strong>{money(monthlySupportTotal)}</strong></div>
+            <div><small>{tr.upcomingRenewals}</small><strong>{upcomingRenewals.length.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
+          </div>
+          <div className="document-tools">
+            <label>
+              <Search size={16} />
+              <input value={beneficiarySearch} onChange={e => setBeneficiarySearch(e.target.value)} placeholder={tr.searchBeneficiaries} aria-label={tr.searchBeneficiaries} />
+            </label>
+            <select value={beneficiaryStatusFilter} onChange={e => setBeneficiaryStatusFilter(e.target.value as 'all' | BeneficiaryStatus)} aria-label={tr.allStatuses}>
+              <option value="all">{tr.allStatuses}</option>
+              {beneficiaryStatuses.map(status => <option key={status} value={status}>{tr[status]}</option>)}
+            </select>
+            <select value={beneficiaryCategoryFilter} onChange={e => setBeneficiaryCategoryFilter(e.target.value as 'all' | BeneficiaryCategory)} aria-label={tr.allTypes}>
+              <option value="all">{tr.allTypes}</option>
+              {beneficiaryCategories.map(category => <option key={category} value={category}>{tr[category]}</option>)}
+            </select>
+          </div>
+          {filteredBeneficiaries.length === 0 ? (
+            <div className="empty-state compact">
+              <HeartHandshake size={38} />
+              <strong>{tr.noBeneficiaries}</strong>
+            </div>
+          ) : (
+            <div className="beneficiary-grid">
+              {filteredBeneficiaries.map(beneficiary => {
+                const project = projects.find(item => item.id === beneficiary.project_id);
+                const linkedDocuments = documents.filter(document => document.project_id && document.project_id === beneficiary.project_id).length;
+                return (
+                  <article className="beneficiary-card" key={beneficiary.id}>
+                    <div className="project-top">
+                      <div>
+                        <strong>{beneficiary.display_name}</strong>
+                        <span>{beneficiary.reference_code || tr.privacyNote}</span>
+                      </div>
+                      <b className={`status ${beneficiary.status}`}>{tr[beneficiary.status]}</b>
+                    </div>
+                    <div className="badge-row">
+                      <span>{tr[beneficiary.category]}</span>
+                      {project && <span>{project.name}</span>}
+                      {beneficiary.next_renewal_date && <span>{tr.nextRenewal}: {dateLabel(beneficiary.next_renewal_date)}</span>}
+                    </div>
+                    <div className="money-row">
+                      <div><small>{tr.monthlySupport}</small><strong>{money(toNum(beneficiary.monthly_support_amount), beneficiary.currency)}</strong></div>
+                      <div><small>{tr.responsibleOrg}</small><strong>{beneficiary.organization_name || '-'}</strong></div>
+                      <div><small>{tr.linkedDocuments}</small><strong>{linkedDocuments}</strong></div>
+                    </div>
+                    <div className="card-actions">
+                      <button type="button" onClick={() => setBeneficiaryDetails(beneficiary)} aria-label={tr.view}>{tr.view}</button>
+                      <button type="button" onClick={() => openBeneficiaryEditor(beneficiary)} aria-label={tr.edit}>{tr.edit}</button>
+                      <button type="button" onClick={() => setDonationProject(project ?? null)} disabled={!project} aria-label={tr.addSupport}>{tr.addSupport}</button>
+                      <button type="button" onClick={() => deleteBeneficiary(beneficiary)} aria-label={tr.deleteAction}>{tr.deleteAction}</button>
                     </div>
                   </article>
                 );
@@ -1745,7 +2096,7 @@ export default function CharityProjectsPage() {
               </button>
             </div>
             <div className="future-list">
-              {['Family collaboration', 'Beneficiary tracking', 'Licensed charity organization database', 'Automatic gold/silver Kuwait price API'].map(item => (
+              {['Family collaboration', 'Licensed charity organization database'].map(item => (
                 <span key={item}>{item} <b>{tr.comingSoon}</b></span>
               ))}
             </div>
@@ -1927,6 +2278,60 @@ export default function CharityProjectsPage() {
         </div>
       )}
 
+      {beneficiaryOpen && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal">
+            <div className="modal-head">
+              <h2>{tr.addBeneficiary}</h2>
+              <button aria-label={tr.cancel} onClick={() => { setBeneficiaryOpen(false); resetBeneficiaryForm(); }}><X size={18} /></button>
+            </div>
+            <div className="form-grid">
+              <label><span>{tr.shortName}</span><input value={beneficiaryForm.display_name} onChange={e => setBeneficiaryForm(prev => ({ ...prev, display_name: e.target.value }))} /></label>
+              <label><span>{tr.referenceNumber}</span><input value={beneficiaryForm.reference_code} onChange={e => setBeneficiaryForm(prev => ({ ...prev, reference_code: e.target.value }))} /></label>
+              <label><span>{tr.beneficiaryType}</span><select value={beneficiaryForm.category} onChange={e => setBeneficiaryForm(prev => ({ ...prev, category: e.target.value as BeneficiaryCategory }))}>{beneficiaryCategories.map(category => <option key={category} value={category}>{tr[category]}</option>)}</select></label>
+              <label><span>{tr.linkedProject}</span><select value={beneficiaryForm.project_id} onChange={e => setBeneficiaryForm(prev => ({ ...prev, project_id: e.target.value }))}><option value="">-</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
+              <label><span>{tr.responsibleOrg}</span><input value={beneficiaryForm.organization_name} onChange={e => setBeneficiaryForm(prev => ({ ...prev, organization_name: e.target.value }))} /></label>
+              <label><span>{tr.country}</span><input value={beneficiaryForm.country} onChange={e => setBeneficiaryForm(prev => ({ ...prev, country: e.target.value }))} /></label>
+              <label><span>{tr.city}</span><input value={beneficiaryForm.city} onChange={e => setBeneficiaryForm(prev => ({ ...prev, city: e.target.value }))} /></label>
+              <label><span>{tr.monthlySupport}</span><input inputMode="decimal" value={beneficiaryForm.monthly_support_amount} onChange={e => setBeneficiaryForm(prev => ({ ...prev, monthly_support_amount: e.target.value }))} /></label>
+              <label><span>{tr.currency}</span><input value={beneficiaryForm.currency} onChange={e => setBeneficiaryForm(prev => ({ ...prev, currency: e.target.value.toUpperCase().slice(0, 3) }))} /></label>
+              <label><span>{tr.sponsorshipStart}</span><input type="date" value={beneficiaryForm.sponsorship_start_date} onChange={e => setBeneficiaryForm(prev => ({ ...prev, sponsorship_start_date: e.target.value }))} /></label>
+              <label><span>{tr.sponsorshipEnd}</span><input type="date" value={beneficiaryForm.sponsorship_end_date} onChange={e => setBeneficiaryForm(prev => ({ ...prev, sponsorship_end_date: e.target.value }))} /></label>
+              <label><span>{tr.nextRenewal}</span><input type="date" value={beneficiaryForm.next_renewal_date} onChange={e => setBeneficiaryForm(prev => ({ ...prev, next_renewal_date: e.target.value }))} /></label>
+              <label><span>{tr.status}</span><select value={beneficiaryForm.status} onChange={e => setBeneficiaryForm(prev => ({ ...prev, status: e.target.value as BeneficiaryStatus }))}>{beneficiaryStatuses.map(status => <option key={status} value={status}>{tr[status]}</option>)}</select></label>
+              <label className="wide"><span>{tr.notes}</span><textarea value={beneficiaryForm.notes} onChange={e => setBeneficiaryForm(prev => ({ ...prev, notes: e.target.value }))} /></label>
+              <p className="privacy-note wide">{tr.privacyNote}</p>
+              <div className="modal-actions">
+                <button className="ghost-btn" onClick={() => { setBeneficiaryOpen(false); resetBeneficiaryForm(); }}>{tr.cancel}</button>
+                <button className="gold-btn" disabled={saving} onClick={saveBeneficiary}>{tr.addBeneficiary}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {beneficiaryDetails && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal small">
+            <div className="modal-head">
+              <h2>{beneficiaryDetails.display_name}</h2>
+              <button aria-label={tr.cancel} onClick={() => setBeneficiaryDetails(null)}><X size={18} /></button>
+            </div>
+            <div className="details-list">
+              <p><b>{tr.referenceNumber}</b><span>{beneficiaryDetails.reference_code || '-'}</span></p>
+              <p><b>{tr.beneficiaryType}</b><span>{tr[beneficiaryDetails.category]}</span></p>
+              <p><b>{tr.linkedProject}</b><span>{projects.find(project => project.id === beneficiaryDetails.project_id)?.name || '-'}</span></p>
+              <p><b>{tr.monthlySupport}</b><span>{money(toNum(beneficiaryDetails.monthly_support_amount), beneficiaryDetails.currency)}</span></p>
+              <p><b>{tr.sponsorshipStart}</b><span>{dateLabel(beneficiaryDetails.sponsorship_start_date)}</span></p>
+              <p><b>{tr.sponsorshipEnd}</b><span>{dateLabel(beneficiaryDetails.sponsorship_end_date)}</span></p>
+              <p><b>{tr.nextRenewal}</b><span>{dateLabel(beneficiaryDetails.next_renewal_date)}</span></p>
+              <p><b>{tr.linkedDocuments}</b><span>{documents.filter(document => document.project_id && document.project_id === beneficiaryDetails.project_id).length}</span></p>
+              {beneficiaryDetails.notes && <p><b>{tr.notes}</b><span>{beneficiaryDetails.notes}</span></p>}
+            </div>
+          </div>
+        </div>
+      )}
+
       {donationProject && (
         <div className="modal-backdrop" role="dialog" aria-modal="true">
           <div className="modal small">
@@ -1952,13 +2357,14 @@ export default function CharityProjectsPage() {
         .nisab-reached{background:#EAF3DE!important}.nisab-reached small,.nisab-reached strong{color:#27500A!important}.nisab-missing{background:#FAEEDA!important}.metals-status{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(4,minmax(0,1fr)) auto;gap:10px;align-items:stretch;margin-top:14px;border:1px solid rgba(186,117,23,.14);background:#FFF8EA;border-radius:18px;padding:12px}.metals-status div{min-width:0}.metals-status strong,.metals-status b,.metals-status span,.metals-status small{display:block}.metals-status strong,.metals-status b{color:#3D2914;overflow-wrap:anywhere}.metals-status span,.metals-status small{color:#854F0B;font-size:12px;line-height:1.5}.metals-status button{border:0;border-radius:12px;background:linear-gradient(135deg,#FAC775,#BA7517);color:#1A0F05;padding:0 12px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.metals-status button:disabled{opacity:.65;cursor:wait}
         .template-grid,.project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.template-card{text-align:start;border:1px solid rgba(186,117,23,.16);background:#FDF8EE;border-radius:16px;padding:14px;cursor:pointer}.template-card:hover{background:#FAEEDA}.template-card strong,.template-card span{display:block}.template-card span{margin-top:5px;color:#8A6A55}
         .project-card{border:1px solid rgba(186,117,23,.14);border-radius:18px;background:#FFFDF8;padding:16px;display:grid;gap:13px}.project-top{display:flex;justify-content:space-between;gap:12px;min-width:0}.project-top strong{display:block;color:#3D2914;font-size:17px;overflow-wrap:anywhere}.project-top span,.badge-row span,.project-card p{color:#7A6A55;font-size:12px;overflow-wrap:anywhere}.status,.badge-row span{border-radius:999px;padding:5px 9px;background:#FAEEDA;color:#854F0B;font-size:11px}.badge-row{display:flex;gap:8px;flex-wrap:wrap}.progress{height:9px;border-radius:99px;background:#F1E6D4;overflow:hidden}.progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#BA7517,#EF9F27)}.money-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.money-row div{background:#F7F0E4;border-radius:13px;padding:10px;min-width:0}.money-row small{display:block;color:#8A6A55}.money-row strong{display:block;color:#3D2914;font-size:13px;overflow-wrap:anywhere}.card-actions{display:flex;gap:8px;flex-wrap:wrap}.card-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:800;font-size:12px}.doc-count-btn{justify-self:start;border:1px solid rgba(186,117,23,.16);background:#F7F0E4;color:#854F0B;border-radius:999px;min-height:34px;padding:0 12px;font-weight:900;cursor:pointer}
-        .vault-head{align-items:flex-start}.vault-head p{margin:5px 0 0;color:#7A6A55;line-height:1.7}.document-tools{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,260px);gap:10px;margin-bottom:14px}.document-tools label{display:flex;align-items:center;gap:8px;border:1px solid rgba(186,117,23,.18);background:#F5F1E8;border-radius:14px;padding:0 12px;min-height:46px;color:#BA7517}.document-tools input,.document-tools select{width:100%;border:0;background:transparent;color:#1A0F05;outline:none;font:800 13px Tajawal,Arial,sans-serif}.document-tools select{border:1px solid rgba(186,117,23,.18);background:#F5F1E8;border-radius:14px;padding:0 12px;min-height:46px}.document-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.document-card{display:grid;grid-template-columns:42px minmax(0,1fr);gap:12px;border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;min-width:0}.document-icon{width:42px;height:42px;border-radius:14px;background:#FAEEDA;color:#BA7517;display:grid;place-items:center}.document-body{display:grid;gap:5px;min-width:0}.document-body strong{color:#3D2914;overflow-wrap:anywhere}.document-body span{justify-self:start;border-radius:999px;background:#F7F0E4;color:#854F0B;padding:4px 9px;font-size:11px;font-weight:900}.document-body small,.document-body em,.document-body p{color:#7A6A55;font-size:12px;line-height:1.6;overflow-wrap:anywhere}.document-body em{font-style:normal;color:#3D2914}.document-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}.document-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;cursor:pointer;font-weight:900}.document-actions button:last-child{background:#FCEBEB;color:#791F1F;border-color:rgba(121,31,31,.14)}.empty-state.compact{padding:24px 12px}.file-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(186,117,23,.16);background:#FAEEDA;border-radius:14px;padding:10px;color:#3D2914;min-width:0}.file-chip span{font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-chip small{color:#854F0B;margin-inline-start:auto}.file-chip button{width:30px;height:30px;border-radius:10px;border:1px solid rgba(186,117,23,.18);background:#FFFDF8;display:grid;place-items:center;cursor:pointer}
+        .vault-head{align-items:flex-start}.vault-head p{margin:5px 0 0;color:#7A6A55;line-height:1.7}.document-tools{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,260px) minmax(190px,260px);gap:10px;margin-bottom:14px}.document-tools label{display:flex;align-items:center;gap:8px;border:1px solid rgba(186,117,23,.18);background:#F5F1E8;border-radius:14px;padding:0 12px;min-height:46px;color:#BA7517}.document-tools input,.document-tools select{width:100%;border:0;background:transparent;color:#1A0F05;outline:none;font:800 13px Tajawal,Arial,sans-serif}.document-tools select{border:1px solid rgba(186,117,23,.18);background:#F5F1E8;border-radius:14px;padding:0 12px;min-height:46px}.document-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.document-card{display:grid;grid-template-columns:42px minmax(0,1fr);gap:12px;border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;min-width:0}.document-icon{width:42px;height:42px;border-radius:14px;background:#FAEEDA;color:#BA7517;display:grid;place-items:center}.document-body{display:grid;gap:5px;min-width:0}.document-body strong{color:#3D2914;overflow-wrap:anywhere}.document-body span{justify-self:start;border-radius:999px;background:#F7F0E4;color:#854F0B;padding:4px 9px;font-size:11px;font-weight:900}.document-body small,.document-body em,.document-body p{color:#7A6A55;font-size:12px;line-height:1.6;overflow-wrap:anywhere}.document-body em{font-style:normal;color:#3D2914}.document-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}.document-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;cursor:pointer;font-weight:900}.document-actions button:last-child{background:#FCEBEB;color:#791F1F;border-color:rgba(121,31,31,.14)}.empty-state.compact{padding:24px 12px}.file-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(186,117,23,.16);background:#FAEEDA;border-radius:14px;padding:10px;color:#3D2914;min-width:0}.file-chip span{font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-chip small{color:#854F0B;margin-inline-start:auto}.file-chip button{width:30px;height:30px;border-radius:10px;border:1px solid rgba(186,117,23,.18);background:#FFFDF8;display:grid;place-items:center;cursor:pointer}
+        .beneficiary-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.beneficiary-stats div{border:1px solid rgba(186,117,23,.14);background:#FDF8EE;border-radius:16px;padding:12px}.beneficiary-stats small,.details-list b{display:block;color:#854F0B;font-weight:900}.beneficiary-stats strong{display:block;margin-top:4px;color:#3D2914;font-size:18px}.beneficiary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.beneficiary-card{border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;display:grid;gap:12px}.privacy-note{margin:0;border:1px solid rgba(186,117,23,.14);background:#FFF8EA;border-radius:13px;padding:10px;color:#854F0B;line-height:1.7}.details-list{display:grid;gap:9px}.details-list p{margin:0;border:1px solid rgba(186,117,23,.12);background:#FDF8EE;border-radius:12px;padding:10px}.details-list span{display:block;color:#3D2914;margin-top:3px;overflow-wrap:anywhere}
         .calendar-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.alert-panel,.season-panel{border:1px solid rgba(186,117,23,.14);background:#FDF8EE;border-radius:18px;padding:14px;display:grid;gap:10px}.alert-panel strong,.season-panel strong{color:#3D2914}.alert-panel p{margin:0;color:#7A6A55}.alert-line{border-radius:14px;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);padding:10px;display:grid;gap:4px}.alert-line b{color:#3D2914}.alert-line span{color:#854F0B;font-size:12px}.season-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.season-grid span{border-radius:14px;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);padding:10px;display:grid;gap:5px}.season-grid b{color:#3D2914}.season-grid small{color:#8A6A55;line-height:1.5}.reminder-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.reminder-card{border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;display:grid;gap:10px}.reminder-card.high{border-color:rgba(121,31,31,.2);background:#FFF8F8}.reminder-card.low{background:#F9FBF6}.reminder-top{display:flex;justify-content:space-between;gap:10px;min-width:0}.reminder-top strong{display:block;color:#3D2914;overflow-wrap:anywhere}.reminder-top span,.reminder-card small,.reminder-card p{color:#7A6A55;line-height:1.6}.reminder-top b{align-self:start;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:5px 9px;font-size:11px;white-space:nowrap}
         .empty-state{display:grid;place-items:center;text-align:center;padding:42px 16px;color:#8A6A55}.empty-state svg{color:#BA7517;margin-bottom:10px}.empty-state strong{color:#3D2914;font-size:18px}.impact-lines{display:grid;gap:9px}.impact-lines p{margin:0;border-radius:13px;background:#F5F1E8;padding:10px;color:#3D2914}.impact-lines .warn{background:#FAEEDA;color:#854F0B}.report-card{display:grid;grid-template-columns:minmax(0,1fr) 110px auto auto;gap:10px;align-items:end;border:1px solid rgba(186,117,23,.18);border-radius:16px;background:#FAEEDA;padding:14px;margin-bottom:12px}.report-card strong,.report-card span{display:block}.report-card strong{color:#3D2914}.report-card span{margin-top:4px;color:#854F0B;font-size:12px}.report-card select{height:42px;border:1px solid rgba(186,117,23,.25);border-radius:12px;background:#FFFDF8;color:#3D2914;padding:0 10px;font:800 13px Tajawal,Arial,sans-serif}.report-card button{height:42px;border:0;border-radius:12px;background:linear-gradient(135deg,#FAC775,#BA7517);color:#1A0F05;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}.report-card button:disabled{opacity:.65;cursor:wait}.future-list{display:grid;gap:9px}.future-list span{display:flex;justify-content:space-between;gap:8px;border:1px solid rgba(186,117,23,.12);border-radius:12px;padding:10px;color:#3D2914}.future-list b{color:#BA7517}
         .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(26,15,5,.46);display:grid;place-items:center;padding:18px}.modal{width:min(760px,100%);max-height:92dvh;overflow:auto;background:#FFFDF8;border:1px solid rgba(186,117,23,.18);border-radius:24px;padding:20px}.modal.small{width:min(420px,100%)}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.modal-head h2{margin:0}.modal-head button{width:40px;height:40px;border-radius:12px;border:1px solid rgba(186,117,23,.18);background:#F5F1E8;display:grid;place-items:center;cursor:pointer}.modal-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
-        @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid,.calendar-grid{grid-template-columns:1fr}.project-grid,.document-grid,.reminder-grid{grid-template-columns:1fr}.metals-status{grid-template-columns:repeat(2,minmax(0,1fr))}.metals-status button{min-height:42px}}
+        @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid,.calendar-grid{grid-template-columns:1fr}.project-grid,.document-grid,.reminder-grid,.beneficiary-grid{grid-template-columns:1fr}.metals-status{grid-template-columns:repeat(2,minmax(0,1fr))}.metals-status button{min-height:42px}}
         @media(max-width:900px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row,.report-card,.document-tools,.season-grid,.metals-status{grid-template-columns:1fr}.report-card button{width:100%}.document-card{grid-template-columns:36px minmax(0,1fr)}.document-actions button{flex:1}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
+        @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row,.report-card,.document-tools,.season-grid,.metals-status,.beneficiary-stats{grid-template-columns:1fr}.report-card button{width:100%}.document-card{grid-template-columns:36px minmax(0,1fr)}.document-actions button{flex:1}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
       `}</style>
     </div>
   );
