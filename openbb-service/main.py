@@ -24,6 +24,7 @@ app.add_middleware(
 )
 
 SUPPORTED_ASSET_TYPES = {"stock", "etf", "crypto", "forex", "commodity", "gold"}
+OPENBB_PROVIDER = os.getenv("OPENBB_PROVIDER", "yfinance")
 
 
 def timestamp() -> str:
@@ -80,6 +81,32 @@ def openbb_to_dataframe(result: Any) -> pd.DataFrame:
     return pd.DataFrame(result)
 
 
+def safe_error_message(exc: Exception) -> str:
+    message = str(exc).strip()
+    if not message:
+        return "Provider unavailable or missing dependency"
+    lowered = message.lower()
+    if "api" in lowered and "key" in lowered:
+        return "Provider API key is missing or invalid"
+    if "provider" in lowered or "extension" in lowered or "yfinance" in lowered:
+        return "Provider unavailable or missing dependency"
+    if "no market data" in lowered or "empty" in lowered:
+        return "No market data returned"
+    return message[:180]
+
+
+def log_openbb_failure(symbol: str, asset_type: str, exc: Exception) -> None:
+    print(
+        "OpenBB fetch failed",
+        {
+            "symbol": symbol,
+            "asset_type": asset_type,
+            "error": repr(exc),
+        },
+        flush=True,
+    )
+
+
 def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     next_df = df.copy()
     next_df.columns = [str(col).lower() for col in next_df.columns]
@@ -119,17 +146,29 @@ def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 def fetch_history_dataframe(symbol: str, asset_type: str, period: str | None = None) -> pd.DataFrame:
     obb = get_obb()
     days = period_to_days(period)
-    provider = os.getenv("OPENBB_PROVIDER", "yfinance")
 
     if asset_type in {"stock", "etf"}:
-        result = obb.equity.price.historical(symbol=symbol, provider=provider)
+        attempts = (
+            lambda: obb.equity.price.historical(symbol=symbol, provider=OPENBB_PROVIDER),
+            lambda: obb.equity.price.historical(symbol=symbol),
+            lambda: obb.equity.price.historical(symbol, provider=OPENBB_PROVIDER),
+            lambda: obb.equity.price.historical(symbol),
+        )
+        errors: list[Exception] = []
+        for attempt in attempts:
+            try:
+                result = attempt()
+                return normalize_dataframe(openbb_to_dataframe(result)).tail(days)
+            except Exception as exc:
+                errors.append(exc)
+        raise RuntimeError("; ".join(safe_error_message(exc) for exc in errors))
     elif asset_type == "crypto":
-        result = obb.crypto.price.historical(symbol=symbol, provider=provider)
+        result = obb.crypto.price.historical(symbol=symbol, provider=OPENBB_PROVIDER)
     elif asset_type == "forex":
-        result = obb.currency.price.historical(symbol=symbol, provider=provider)
+        result = obb.currency.price.historical(symbol=symbol, provider=OPENBB_PROVIDER)
     else:
         openbb_symbol = "GC=F" if asset_type == "gold" and symbol in {"XAU", "GOLD"} else symbol
-        result = obb.derivatives.futures.historical(symbol=openbb_symbol, provider=provider)
+        result = obb.derivatives.futures.historical(symbol=openbb_symbol, provider=OPENBB_PROVIDER)
 
     return normalize_dataframe(openbb_to_dataframe(result)).tail(days)
 
@@ -198,6 +237,7 @@ def calculate_analysis(symbol: str, asset_type: str, df: pd.DataFrame, source: s
     response = {
         "success": True,
         "source": source,
+        "fallback": source != "openbb",
         "symbol": symbol,
         "assetType": asset_type,
         "latestPrice": latest_price,
@@ -218,8 +258,6 @@ def calculate_analysis(symbol: str, asset_type: str, df: pd.DataFrame, source: s
         "history": history,
         "summary": "Educational market summary only. This is not financial advice.",
     }
-    if source == "mock":
-        response["fallback"] = True
     return response
 
 
@@ -240,8 +278,10 @@ def mock_dataframe(symbol: str, days: int = 180) -> pd.DataFrame:
     )
 
 
-def fallback_analysis(symbol: str, asset_type: str) -> dict[str, Any]:
-    return calculate_analysis(symbol, asset_type, mock_dataframe(symbol), source="mock")
+def fallback_analysis(symbol: str, asset_type: str, reason: str = "OpenBB provider unavailable") -> dict[str, Any]:
+    response = calculate_analysis(symbol, asset_type, mock_dataframe(symbol), source="mock")
+    response["fallbackReason"] = reason
+    return response
 
 
 def error_response(symbol: str, asset_type: str, message: str = "Unable to fetch market data") -> dict[str, Any]:
@@ -267,8 +307,9 @@ def market_analyze(symbol: str = Query(..., min_length=1), assetType: str = Quer
 
     try:
         return calculate_analysis(clean, asset_type, fetch_history_dataframe(clean, asset_type, "6m"))
-    except Exception:
-        return fallback_analysis(clean, asset_type)
+    except Exception as exc:
+        log_openbb_failure(clean, asset_type, exc)
+        return fallback_analysis(clean, asset_type, safe_error_message(exc))
 
 
 @app.get("/market/history")
@@ -285,12 +326,18 @@ def market_history(
     try:
         df = fetch_history_dataframe(clean, asset_type, period)
         source = "openbb"
-    except Exception:
+        fallback_reason = None
+    except Exception as exc:
+        log_openbb_failure(clean, asset_type, exc)
         df = mock_dataframe(clean, period_to_days(period))
         source = "mock"
+        fallback_reason = safe_error_message(exc)
 
     history = calculate_analysis(clean, asset_type, df, source=source)["history"]
-    return {"success": True, "source": source, "fallback": source == "mock", "symbol": clean, "assetType": asset_type, "period": period, "history": history}
+    response = {"success": True, "source": source, "fallback": source == "mock", "symbol": clean, "assetType": asset_type, "period": period, "history": history}
+    if fallback_reason:
+        response["fallbackReason"] = fallback_reason
+    return response
 
 
 @app.get("/market/compare")
@@ -303,9 +350,60 @@ def market_compare(symbols: str = Query(..., min_length=1), assetType: str = Que
             continue
         try:
             results.append(calculate_analysis(clean, asset_type, fetch_history_dataframe(clean, asset_type, "6m")))
-        except Exception:
-            results.append(fallback_analysis(clean, asset_type))
+        except Exception as exc:
+            log_openbb_failure(clean, asset_type, exc)
+            results.append(fallback_analysis(clean, asset_type, safe_error_message(exc)))
     return {"success": True, "results": results}
+
+
+@app.get("/debug/openbb")
+def debug_openbb(symbol: str = Query("AAPL", min_length=1)) -> dict[str, Any]:
+    clean = clean_symbol(symbol)
+    if not clean:
+        return {
+            "importOk": False,
+            "fetchOk": False,
+            "rowsReturned": 0,
+            "columns": [],
+            "errorType": "ValidationError",
+            "safeErrorMessage": "Invalid symbol",
+        }
+
+    try:
+        get_obb()
+        import_ok = True
+        import_error_type = None
+        import_error = None
+    except Exception as exc:
+        return {
+            "importOk": False,
+            "fetchOk": False,
+            "rowsReturned": 0,
+            "columns": [],
+            "errorType": type(exc).__name__,
+            "safeErrorMessage": safe_error_message(exc),
+        }
+
+    try:
+        df = fetch_history_dataframe(clean, "stock", "6m")
+        return {
+            "importOk": import_ok,
+            "fetchOk": True,
+            "rowsReturned": int(len(df)),
+            "columns": [str(column) for column in df.columns],
+            "errorType": import_error_type,
+            "safeErrorMessage": import_error,
+        }
+    except Exception as exc:
+        log_openbb_failure(clean, "stock", exc)
+        return {
+            "importOk": True,
+            "fetchOk": False,
+            "rowsReturned": 0,
+            "columns": [],
+            "errorType": type(exc).__name__,
+            "safeErrorMessage": safe_error_message(exc),
+        }
 
 
 @app.get("/market/search")
