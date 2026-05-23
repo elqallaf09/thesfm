@@ -107,6 +107,8 @@ type ReminderStatus = 'active' | 'completed' | 'dismissed';
 type ReminderPriority = 'low' | 'normal' | 'high';
 type BeneficiaryCategory = 'orphan' | 'family' | 'student' | 'medical' | 'elderly' | 'refugee' | 'project_group' | 'other';
 type BeneficiaryStatus = 'active' | 'paused' | 'completed' | 'needs_review';
+type ContributorRole = 'owner' | 'contributor' | 'viewer';
+type PaymentStatus = 'pending' | 'paid' | 'partial' | 'late' | 'cancelled';
 
 type CharityReminder = {
   id: string;
@@ -150,6 +152,21 @@ type CharityBeneficiary = {
   sponsorship_end_date: string | null;
   next_renewal_date: string | null;
   status: BeneficiaryStatus;
+  notes: string | null;
+};
+
+type CharityContributor = {
+  id: string;
+  user_id: string;
+  project_id: string;
+  contributor_name: string;
+  contributor_email: string | null;
+  role: ContributorRole;
+  pledged_amount: number;
+  paid_amount: number;
+  currency: string;
+  payment_status: PaymentStatus;
+  due_date: string | null;
   notes: string | null;
 };
 
@@ -347,6 +364,40 @@ const TEXT = {
     beneficiaryDeleted: 'تم حذف المستفيد.',
     confirmDeleteBeneficiary: 'هل تريد حذف هذا المستفيد؟',
     renewalReminderCreated: 'تم إنشاء تذكير التجديد.',
+    familyCollaboration: 'التعاون العائلي',
+    collaborationDesc: 'أضف أفراد العائلة أو المساهمين للمشروع وتابع مساهمة كل شخص ونسبة التغطية.',
+    addContributor: '+ إضافة مساهم',
+    contributorName: 'اسم المساهم',
+    emailOptional: 'البريد الإلكتروني اختياري',
+    role: 'الدور',
+    pledgedAmount: 'المبلغ المتعهد به',
+    paidAmount: 'المبلغ المدفوع',
+    paymentStatus: 'حالة الدفع',
+    markPaid: 'تحديد كمدفوع',
+    totalPledged: 'إجمالي التعهدات',
+    totalPaid: 'إجمالي المدفوع',
+    contributors: 'عدد المساهمين',
+    projectCoverage: 'نسبة تغطية المشروع',
+    contributorSummary: 'ملخص المساهمين',
+    contributorPayments: 'مساهمات المساهمين',
+    recordedDonations: 'التبرعات المسجلة',
+    invitationsSoon: 'إرسال الدعوات قريباً',
+    emailSaved: 'تم حفظ البريد للمتابعة. إرسال الدعوات سيكون متاحاً لاحقاً.',
+    contributorSaved: 'تم حفظ المساهم بنجاح.',
+    contributorDeleted: 'تم حذف المساهم.',
+    contributorPaid: 'تم تحديث مساهمة المساهم.',
+    confirmDeleteContributor: 'هل تريد حذف هذا المساهم؟',
+    lateContribution: 'مساهمة متأخرة',
+    contributorsCount: 'المساهمون: {count}',
+    topContributor: 'أعلى مساهم',
+    owner: 'مالك',
+    contributor: 'مساهم',
+    viewer: 'مشاهد',
+    pending: 'بانتظار',
+    paid: 'مدفوع',
+    partial: 'جزئي',
+    late: 'متأخر',
+    cancelled: 'ملغي',
     needs_review: 'يحتاج مراجعة',
     orphan: 'يتيم',
     family: 'أسرة',
@@ -569,6 +620,40 @@ const TEXT = {
     beneficiaryDeleted: 'Beneficiary deleted.',
     confirmDeleteBeneficiary: 'Do you want to delete this beneficiary?',
     renewalReminderCreated: 'Renewal reminder created.',
+    familyCollaboration: 'Family Collaboration',
+    collaborationDesc: 'Add family members or contributors to a project and track each person’s contribution and coverage percentage.',
+    addContributor: '+ Add Contributor',
+    contributorName: 'Contributor name',
+    emailOptional: 'Email optional',
+    role: 'Role',
+    pledgedAmount: 'Pledged amount',
+    paidAmount: 'Paid amount',
+    paymentStatus: 'Payment status',
+    markPaid: 'Mark as Paid',
+    totalPledged: 'Total pledged',
+    totalPaid: 'Total paid',
+    contributors: 'Contributors',
+    projectCoverage: 'Project coverage',
+    contributorSummary: 'Contributors Summary',
+    contributorPayments: 'Contributor payments',
+    recordedDonations: 'Recorded donations',
+    invitationsSoon: 'Invitations coming soon',
+    emailSaved: 'Email saved for follow-up. Sending invitations will be available later.',
+    contributorSaved: 'Contributor saved successfully.',
+    contributorDeleted: 'Contributor deleted.',
+    contributorPaid: 'Contributor payment updated.',
+    confirmDeleteContributor: 'Do you want to delete this contributor?',
+    lateContribution: 'Late contribution',
+    contributorsCount: 'Contributors: {count}',
+    topContributor: 'Top contributor',
+    owner: 'Owner',
+    contributor: 'Contributor',
+    viewer: 'Viewer',
+    pending: 'Pending',
+    paid: 'Paid',
+    partial: 'Partial',
+    late: 'Late',
+    cancelled: 'Cancelled',
     needs_review: 'Needs review',
     orphan: 'Orphan',
     family: 'Family',
@@ -791,6 +876,40 @@ const TEXT = {
     beneficiaryDeleted: 'Bénéficiaire supprimé.',
     confirmDeleteBeneficiary: 'Voulez-vous supprimer ce bénéficiaire ?',
     renewalReminderCreated: 'Rappel de renouvellement créé.',
+    familyCollaboration: 'Collaboration familiale',
+    collaborationDesc: 'Ajoutez des membres de la famille ou des contributeurs à un projet et suivez la contribution de chacun.',
+    addContributor: '+ Ajouter un contributeur',
+    contributorName: 'Nom du contributeur',
+    emailOptional: 'E-mail facultatif',
+    role: 'Rôle',
+    pledgedAmount: 'Montant promis',
+    paidAmount: 'Montant payé',
+    paymentStatus: 'Statut du paiement',
+    markPaid: 'Marquer comme payé',
+    totalPledged: 'Total promis',
+    totalPaid: 'Total payé',
+    contributors: 'Contributeurs',
+    projectCoverage: 'Couverture du projet',
+    contributorSummary: 'Résumé des contributeurs',
+    contributorPayments: 'Paiements des contributeurs',
+    recordedDonations: 'Dons enregistrés',
+    invitationsSoon: 'Invitations bientôt disponibles',
+    emailSaved: 'E-mail enregistré pour le suivi. L’envoi d’invitations sera disponible plus tard.',
+    contributorSaved: 'Contributeur enregistré avec succès.',
+    contributorDeleted: 'Contributeur supprimé.',
+    contributorPaid: 'Paiement du contributeur mis à jour.',
+    confirmDeleteContributor: 'Voulez-vous supprimer ce contributeur ?',
+    lateContribution: 'Contribution en retard',
+    contributorsCount: 'Contributeurs : {count}',
+    topContributor: 'Meilleur contributeur',
+    owner: 'Propriétaire',
+    contributor: 'Contributeur',
+    viewer: 'Lecteur',
+    pending: 'En attente',
+    paid: 'Payé',
+    partial: 'Partiel',
+    late: 'En retard',
+    cancelled: 'Annulé',
     needs_review: 'À réviser',
     orphan: 'Orphelin',
     family: 'Famille',
@@ -830,6 +949,8 @@ const reminderTypes: ReminderType[] = ['zakat', 'hawl', 'ramadan', 'dhul_hijjah'
 const reminderPriorities: ReminderPriority[] = ['low', 'normal', 'high'];
 const beneficiaryCategories: BeneficiaryCategory[] = ['orphan', 'family', 'student', 'medical', 'elderly', 'refugee', 'project_group', 'other'];
 const beneficiaryStatuses: BeneficiaryStatus[] = ['active', 'paused', 'completed', 'needs_review'];
+const contributorRoles: ContributorRole[] = ['owner', 'contributor', 'viewer'];
+const paymentStatuses: PaymentStatus[] = ['pending', 'paid', 'partial', 'late', 'cancelled'];
 const priceSources = ['api', 'manual', 'fallback'] as const;
 const allowedDocumentTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
 const maxDocumentSize = 10 * 1024 * 1024;
@@ -905,6 +1026,7 @@ export default function CharityProjectsPage() {
   const [documents, setDocuments] = useState<CharityDocument[]>([]);
   const [reminders, setReminders] = useState<CharityReminder[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<CharityBeneficiary[]>([]);
+  const [contributors, setContributors] = useState<CharityContributor[]>([]);
   const [incomeTotal, setIncomeTotal] = useState(0);
   const [expenseTotal, setExpenseTotal] = useState(0);
   const [message, setMessage] = useState('');
@@ -915,6 +1037,8 @@ export default function CharityProjectsPage() {
   const [beneficiaryOpen, setBeneficiaryOpen] = useState(false);
   const [editingBeneficiary, setEditingBeneficiary] = useState<CharityBeneficiary | null>(null);
   const [beneficiaryDetails, setBeneficiaryDetails] = useState<CharityBeneficiary | null>(null);
+  const [contributorOpen, setContributorOpen] = useState(false);
+  const [editingContributor, setEditingContributor] = useState<CharityContributor | null>(null);
   const [donationProject, setDonationProject] = useState<CharityProject | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingDocument, setUploadingDocument] = useState(false);
@@ -931,6 +1055,7 @@ export default function CharityProjectsPage() {
   const [beneficiarySearch, setBeneficiarySearch] = useState('');
   const [beneficiaryStatusFilter, setBeneficiaryStatusFilter] = useState<'all' | BeneficiaryStatus>('all');
   const [beneficiaryCategoryFilter, setBeneficiaryCategoryFilter] = useState<'all' | BeneficiaryCategory>('all');
+  const [contributorProjectFilter, setContributorProjectFilter] = useState('');
   const [zakat, setZakat] = useState({ cash: '', investments: '', gold: '', silver: '', debts: '', goldPrice: '', silverPrice: '', nonZakat: false });
   const [assetForm, setAssetForm] = useState({ asset_name: '', asset_type: 'cash' as AssetType, amount: '', ownership_date: today(), zakat_due_date: addYear(today()), is_zakatable: true, notes: '' });
   const [projectForm, setProjectForm] = useState({
@@ -981,6 +1106,18 @@ export default function CharityProjectsPage() {
     sponsorship_end_date: '',
     next_renewal_date: '',
     status: 'active' as BeneficiaryStatus,
+    notes: '',
+  });
+  const [contributorForm, setContributorForm] = useState({
+    project_id: '',
+    contributor_name: '',
+    contributor_email: '',
+    role: 'contributor' as ContributorRole,
+    pledged_amount: '',
+    paid_amount: '',
+    currency: 'KWD',
+    payment_status: 'pending' as PaymentStatus,
+    due_date: '',
     notes: '',
   });
 
@@ -1088,7 +1225,7 @@ export default function CharityProjectsPage() {
   const loadData = useCallback(async () => {
     if (!user) return;
     try {
-      const [projectRes, assetRes, commitmentRes, donationRes, documentRes, reminderRes, beneficiaryRes, incomeRes, expenseRes] = await Promise.all([
+      const [projectRes, assetRes, commitmentRes, donationRes, documentRes, reminderRes, beneficiaryRes, contributorRes, incomeRes, expenseRes] = await Promise.all([
         db.from('charity_projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('zakat_assets').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('charity_commitments').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
@@ -1096,6 +1233,7 @@ export default function CharityProjectsPage() {
         db.from('charity_documents').select('*').eq('user_id', user.id).order('uploaded_at', { ascending: false }),
         db.from('charity_reminders').select('*').eq('user_id', user.id).order('due_date', { ascending: true }),
         db.from('charity_beneficiaries').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        db.from('charity_project_contributors').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('monthly_income_sources').select('amount').eq('user_id', user.id),
         db.from('expense_items').select('amount').eq('user_id', user.id),
       ]);
@@ -1109,6 +1247,7 @@ export default function CharityProjectsPage() {
       if (!donationRes.error) setDonations((donationRes.data ?? []) as ProjectDonation[]);
       if (!documentRes.error) setDocuments((documentRes.data ?? []) as CharityDocument[]);
       if (!beneficiaryRes.error) setBeneficiaries((beneficiaryRes.data ?? []) as CharityBeneficiary[]);
+      if (!contributorRes.error) setContributors((contributorRes.data ?? []) as CharityContributor[]);
       if (!reminderRes.error) {
         setReminders(loadedReminders);
         await syncGeneratedReminders(loadedReminders, loadedProjects, loadedAssets, loadedCommitments);
@@ -1154,6 +1293,7 @@ export default function CharityProjectsPage() {
         setReminderOpen(false);
         setBeneficiaryOpen(false);
         setBeneficiaryDetails(null);
+        setContributorOpen(false);
         setDonationProject(null);
       }
     };
@@ -1226,6 +1366,15 @@ export default function CharityProjectsPage() {
   const activeBeneficiaries = beneficiaries.filter(beneficiary => beneficiary.status === 'active');
   const monthlySupportTotal = activeBeneficiaries.reduce((sum, beneficiary) => sum + toNum(beneficiary.monthly_support_amount), 0);
   const upcomingRenewals = beneficiaries.filter(beneficiary => beneficiary.next_renewal_date && daysUntil(beneficiary.next_renewal_date) <= 45 && daysUntil(beneficiary.next_renewal_date) >= 0);
+  const projectContributorCounts = useMemo(() => contributors.reduce<Record<string, number>>((acc, contributor) => {
+    acc[contributor.project_id] = (acc[contributor.project_id] || 0) + 1;
+    return acc;
+  }, {}), [contributors]);
+  const filteredContributors = contributorProjectFilter ? contributors.filter(contributor => contributor.project_id === contributorProjectFilter) : contributors;
+  const totalPledged = filteredContributors.reduce((sum, contributor) => sum + toNum(contributor.pledged_amount), 0);
+  const totalPaid = filteredContributors.reduce((sum, contributor) => sum + toNum(contributor.paid_amount), 0);
+  const lateContributors = filteredContributors.filter(contributor => contributor.due_date && daysUntil(contributor.due_date) < 0 && ['pending', 'partial'].includes(contributor.payment_status));
+  const topContributor = filteredContributors.slice().sort((a, b) => toNum(b.paid_amount) - toNum(a.paid_amount))[0];
   const activeReminders = reminders
     .filter(reminder => reminder.status === 'active')
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
@@ -1271,6 +1420,28 @@ export default function CharityProjectsPage() {
       notes: beneficiary.notes ?? '',
     });
     setBeneficiaryOpen(true);
+  };
+
+  const resetContributorForm = (projectId = '') => {
+    setEditingContributor(null);
+    setContributorForm({ project_id: projectId, contributor_name: '', contributor_email: '', role: 'contributor', pledged_amount: '', paid_amount: '', currency: 'KWD', payment_status: 'pending', due_date: '', notes: '' });
+  };
+
+  const openContributorEditor = (contributor: CharityContributor) => {
+    setEditingContributor(contributor);
+    setContributorForm({
+      project_id: contributor.project_id,
+      contributor_name: contributor.contributor_name,
+      contributor_email: contributor.contributor_email ?? '',
+      role: contributor.role,
+      pledged_amount: String(contributor.pledged_amount ?? ''),
+      paid_amount: String(contributor.paid_amount ?? ''),
+      currency: contributor.currency || 'KWD',
+      payment_status: contributor.payment_status,
+      due_date: contributor.due_date ?? '',
+      notes: contributor.notes ?? '',
+    });
+    setContributorOpen(true);
   };
 
   const openReminderEditor = (reminder: CharityReminder) => {
@@ -1587,6 +1758,60 @@ export default function CharityProjectsPage() {
     }
   };
 
+  const saveContributor = async () => {
+    if (!user || !contributorForm.project_id || !contributorForm.contributor_name.trim()) return;
+    setSaving(true);
+    const pledged = Math.max(0, toNum(contributorForm.pledged_amount));
+    const paid = Math.max(0, toNum(contributorForm.paid_amount));
+    const payload = {
+      user_id: user.id,
+      project_id: contributorForm.project_id,
+      contributor_name: contributorForm.contributor_name.trim(),
+      contributor_email: contributorForm.contributor_email || null,
+      role: contributorForm.role,
+      pledged_amount: pledged,
+      paid_amount: paid,
+      currency: contributorForm.currency || 'KWD',
+      payment_status: paid >= pledged && pledged > 0 ? 'paid' : contributorForm.payment_status,
+      due_date: contributorForm.due_date || null,
+      notes: contributorForm.notes || null,
+    };
+    const { error } = editingContributor
+      ? await db.from('charity_project_contributors').update(payload).eq('id', editingContributor.id).eq('user_id', user.id)
+      : await db.from('charity_project_contributors').insert(payload);
+    setSaving(false);
+    if (error) {
+      setMessage(tr.error);
+      return;
+    }
+    setMessage(contributorForm.contributor_email ? tr.emailSaved : tr.contributorSaved);
+    setContributorOpen(false);
+    resetContributorForm();
+    loadData();
+  };
+
+  const markContributorPaid = async (contributor: CharityContributor) => {
+    const { error } = await db.from('charity_project_contributors')
+      .update({ paid_amount: toNum(contributor.pledged_amount), payment_status: 'paid', updated_at: new Date().toISOString() })
+      .eq('id', contributor.id)
+      .eq('user_id', user?.id);
+    if (error) setMessage(tr.error);
+    else {
+      setMessage(tr.contributorPaid);
+      loadData();
+    }
+  };
+
+  const deleteContributor = async (contributor: CharityContributor) => {
+    if (!window.confirm(tr.confirmDeleteContributor)) return;
+    const { error } = await db.from('charity_project_contributors').delete().eq('id', contributor.id).eq('user_id', user?.id);
+    if (error) setMessage(tr.error);
+    else {
+      setMessage(tr.contributorDeleted);
+      loadData();
+    }
+  };
+
   const exportExcel = async () => {
     setExportingExcel(true);
     setMessage(hasReportData ? tr.preparingExcel : tr.emptyReportExported);
@@ -1866,6 +2091,9 @@ export default function CharityProjectsPage() {
                 const target = toNum(project.target_amount);
                 const collected = toNum(project.collected_amount);
                 const progress = target > 0 ? Math.min(100, (collected / target) * 100) : 0;
+                const projectContributors = contributors.filter(contributor => contributor.project_id === project.id);
+                const contributorPaid = projectContributors.reduce((sum, contributor) => sum + toNum(contributor.paid_amount), 0);
+                const contributorCoverage = target > 0 ? Math.min(100, (contributorPaid / target) * 100) : 0;
                 return (
                   <article className="project-card" key={project.id}>
                     <div className="project-top">
@@ -1879,6 +2107,12 @@ export default function CharityProjectsPage() {
                       <div><small>{tr.collected}</small><strong>{money(collected, project.currency)}</strong></div>
                       <div><small>{tr.remaining}</small><strong>{money(Math.max(0, target - collected), project.currency)}</strong></div>
                     </div>
+                    {projectContributors.length > 0 && (
+                      <div className="collab-strip">
+                        <span>{tr.contributorPayments}: {money(contributorPaid, project.currency)}</span>
+                        <span>{tr.projectCoverage}: {contributorCoverage.toFixed(1)}%</span>
+                      </div>
+                    )}
                     {project.notes && <p>{project.notes}</p>}
                     <button
                       className="doc-count-btn"
@@ -1906,11 +2140,96 @@ export default function CharityProjectsPage() {
                     >
                       {tr.beneficiariesCount.replace('{count}', String(projectBeneficiaryCounts[project.id] || 0))}
                     </button>
+                    <button
+                      className="doc-count-btn"
+                      type="button"
+                      aria-label={tr.contributorsCount.replace('{count}', String(projectContributorCounts[project.id] || 0))}
+                      onClick={() => {
+                        setContributorProjectFilter(project.id);
+                        window.setTimeout(() => window.document.getElementById('family-collaboration')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+                      }}
+                    >
+                      {tr.contributorsCount.replace('{count}', String(projectContributorCounts[project.id] || 0))}
+                    </button>
                     <div className="card-actions">
                       <button aria-label={tr.view}><Eye size={15} /> {tr.view}</button>
                       <button onClick={() => setDonationProject(project)} aria-label={tr.addDonation}><HandCoins size={15} /> {tr.addDonation}</button>
+                      <button onClick={() => { resetContributorForm(project.id); setContributorOpen(true); }} aria-label={tr.addContributor}>{tr.addContributor}</button>
                       <button aria-label={tr.edit}><Pencil size={15} /> {tr.edit}</button>
                       <button onClick={() => archiveProject(project)} aria-label={tr.archive}><Archive size={15} /> {tr.archive}</button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section id="family-collaboration" className="warm-card family-collaboration">
+          <div className="section-head vault-head">
+            <div>
+              <small>{tr.invitationsSoon}</small>
+              <h2>{tr.familyCollaboration}</h2>
+              <p>{tr.collaborationDesc}</p>
+            </div>
+            <button className="mini-gold" type="button" onClick={() => {
+              resetContributorForm(contributorProjectFilter || projects[0]?.id || '');
+              setContributorOpen(true);
+            }}>{tr.addContributor}</button>
+          </div>
+          <div className="report-card">
+            <div>
+              <strong>{tr.contributorSummary}</strong>
+              <span>{tr.recordedDonations} / {tr.contributorPayments}</span>
+            </div>
+            <select value={contributorProjectFilter} onChange={e => setContributorProjectFilter(e.target.value)} aria-label={tr.projects}>
+              <option value="">{tr.projects}</option>
+              {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
+            </select>
+            <button type="button" onClick={() => { resetContributorForm(contributorProjectFilter || projects[0]?.id || ''); setContributorOpen(true); }}>{tr.addContributor}</button>
+          </div>
+          <div className="beneficiary-stats">
+            <div><small>{tr.contributors}</small><strong>{filteredContributors.length.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
+            <div><small>{tr.totalPledged}</small><strong>{money(totalPledged)}</strong></div>
+            <div><small>{tr.totalPaid}</small><strong>{money(totalPaid)}</strong></div>
+            <div><small>{tr.lateContribution}</small><strong>{lateContributors.length.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
+          </div>
+          {topContributor && <p className="nisab"><HandCoins size={15} /> {tr.topContributor}: {topContributor.contributor_name} - {money(toNum(topContributor.paid_amount), topContributor.currency)}</p>}
+          {filteredContributors.length === 0 ? (
+            <div className="empty-state compact">
+              <HandCoins size={38} />
+              <strong>{tr.invitationsSoon}</strong>
+            </div>
+          ) : (
+            <div className="contributor-grid">
+              {filteredContributors.map(contributor => {
+                const project = projects.find(item => item.id === contributor.project_id);
+                const target = toNum(project?.target_amount);
+                const percent = target > 0 ? (toNum(contributor.paid_amount) / target) * 100 : 0;
+                const computedLate = contributor.due_date && daysUntil(contributor.due_date) < 0 && ['pending', 'partial'].includes(contributor.payment_status);
+                return (
+                  <article className="contributor-card" key={contributor.id}>
+                    <div className="project-top">
+                      <div>
+                        <strong>{contributor.contributor_name}</strong>
+                        <span>{project?.name || tr.projects}</span>
+                      </div>
+                      <b className={`status ${computedLate ? 'late' : contributor.payment_status}`}>{computedLate ? tr.late : tr[contributor.payment_status]}</b>
+                    </div>
+                    <div className="badge-row">
+                      <span>{tr[contributor.role]}</span>
+                      {contributor.due_date && <span>{tr.dueDate}: {dateLabel(contributor.due_date)}</span>}
+                      {computedLate && <span>{tr.lateContribution}</span>}
+                    </div>
+                    <div className="money-row">
+                      <div><small>{tr.pledgedAmount}</small><strong>{money(toNum(contributor.pledged_amount), contributor.currency)}</strong></div>
+                      <div><small>{tr.paidAmount}</small><strong>{money(toNum(contributor.paid_amount), contributor.currency)}</strong></div>
+                      <div><small>{tr.projectCoverage}</small><strong>{percent.toFixed(1)}%</strong></div>
+                    </div>
+                    <div className="card-actions">
+                      <button type="button" onClick={() => openContributorEditor(contributor)} aria-label={tr.edit}>{tr.edit}</button>
+                      <button type="button" onClick={() => markContributorPaid(contributor)} aria-label={tr.markPaid}>{tr.markPaid}</button>
+                      <button type="button" onClick={() => deleteContributor(contributor)} aria-label={tr.deleteAction}>{tr.deleteAction}</button>
                     </div>
                   </article>
                 );
@@ -2096,7 +2415,7 @@ export default function CharityProjectsPage() {
               </button>
             </div>
             <div className="future-list">
-              {['Family collaboration', 'Licensed charity organization database'].map(item => (
+              {['Licensed charity organization database'].map(item => (
                 <span key={item}>{item} <b>{tr.comingSoon}</b></span>
               ))}
             </div>
@@ -2310,6 +2629,34 @@ export default function CharityProjectsPage() {
         </div>
       )}
 
+      {contributorOpen && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal">
+            <div className="modal-head">
+              <h2>{tr.addContributor}</h2>
+              <button aria-label={tr.cancel} onClick={() => { setContributorOpen(false); resetContributorForm(); }}><X size={18} /></button>
+            </div>
+            <div className="form-grid">
+              <label className="wide"><span>{tr.linkedProject}</span><select value={contributorForm.project_id} onChange={e => setContributorForm(prev => ({ ...prev, project_id: e.target.value }))}><option value="">-</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
+              <label><span>{tr.contributorName}</span><input value={contributorForm.contributor_name} onChange={e => setContributorForm(prev => ({ ...prev, contributor_name: e.target.value }))} /></label>
+              <label><span>{tr.emailOptional}</span><input type="email" value={contributorForm.contributor_email} onChange={e => setContributorForm(prev => ({ ...prev, contributor_email: e.target.value }))} /></label>
+              <label><span>{tr.role}</span><select value={contributorForm.role} onChange={e => setContributorForm(prev => ({ ...prev, role: e.target.value as ContributorRole }))}>{contributorRoles.map(role => <option key={role} value={role}>{tr[role]}</option>)}</select></label>
+              <label><span>{tr.paymentStatus}</span><select value={contributorForm.payment_status} onChange={e => setContributorForm(prev => ({ ...prev, payment_status: e.target.value as PaymentStatus }))}>{paymentStatuses.map(status => <option key={status} value={status}>{tr[status]}</option>)}</select></label>
+              <label><span>{tr.pledgedAmount}</span><input inputMode="decimal" value={contributorForm.pledged_amount} onChange={e => setContributorForm(prev => ({ ...prev, pledged_amount: e.target.value }))} /></label>
+              <label><span>{tr.paidAmount}</span><input inputMode="decimal" value={contributorForm.paid_amount} onChange={e => setContributorForm(prev => ({ ...prev, paid_amount: e.target.value }))} /></label>
+              <label><span>{tr.currency}</span><input value={contributorForm.currency} onChange={e => setContributorForm(prev => ({ ...prev, currency: e.target.value.toUpperCase().slice(0, 3) }))} /></label>
+              <label><span>{tr.dueDate}</span><input type="date" value={contributorForm.due_date} onChange={e => setContributorForm(prev => ({ ...prev, due_date: e.target.value }))} /></label>
+              <label className="wide"><span>{tr.notes}</span><textarea value={contributorForm.notes} onChange={e => setContributorForm(prev => ({ ...prev, notes: e.target.value }))} /></label>
+              <p className="privacy-note wide">{tr.invitationsSoon}</p>
+              <div className="modal-actions">
+                <button className="ghost-btn" onClick={() => { setContributorOpen(false); resetContributorForm(); }}>{tr.cancel}</button>
+                <button className="gold-btn" disabled={saving} onClick={saveContributor}>{tr.addContributor}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {beneficiaryDetails && (
         <div className="modal-backdrop" role="dialog" aria-modal="true">
           <div className="modal small">
@@ -2358,11 +2705,11 @@ export default function CharityProjectsPage() {
         .template-grid,.project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.template-card{text-align:start;border:1px solid rgba(186,117,23,.16);background:#FDF8EE;border-radius:16px;padding:14px;cursor:pointer}.template-card:hover{background:#FAEEDA}.template-card strong,.template-card span{display:block}.template-card span{margin-top:5px;color:#8A6A55}
         .project-card{border:1px solid rgba(186,117,23,.14);border-radius:18px;background:#FFFDF8;padding:16px;display:grid;gap:13px}.project-top{display:flex;justify-content:space-between;gap:12px;min-width:0}.project-top strong{display:block;color:#3D2914;font-size:17px;overflow-wrap:anywhere}.project-top span,.badge-row span,.project-card p{color:#7A6A55;font-size:12px;overflow-wrap:anywhere}.status,.badge-row span{border-radius:999px;padding:5px 9px;background:#FAEEDA;color:#854F0B;font-size:11px}.badge-row{display:flex;gap:8px;flex-wrap:wrap}.progress{height:9px;border-radius:99px;background:#F1E6D4;overflow:hidden}.progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#BA7517,#EF9F27)}.money-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.money-row div{background:#F7F0E4;border-radius:13px;padding:10px;min-width:0}.money-row small{display:block;color:#8A6A55}.money-row strong{display:block;color:#3D2914;font-size:13px;overflow-wrap:anywhere}.card-actions{display:flex;gap:8px;flex-wrap:wrap}.card-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:800;font-size:12px}.doc-count-btn{justify-self:start;border:1px solid rgba(186,117,23,.16);background:#F7F0E4;color:#854F0B;border-radius:999px;min-height:34px;padding:0 12px;font-weight:900;cursor:pointer}
         .vault-head{align-items:flex-start}.vault-head p{margin:5px 0 0;color:#7A6A55;line-height:1.7}.document-tools{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,260px) minmax(190px,260px);gap:10px;margin-bottom:14px}.document-tools label{display:flex;align-items:center;gap:8px;border:1px solid rgba(186,117,23,.18);background:#F5F1E8;border-radius:14px;padding:0 12px;min-height:46px;color:#BA7517}.document-tools input,.document-tools select{width:100%;border:0;background:transparent;color:#1A0F05;outline:none;font:800 13px Tajawal,Arial,sans-serif}.document-tools select{border:1px solid rgba(186,117,23,.18);background:#F5F1E8;border-radius:14px;padding:0 12px;min-height:46px}.document-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.document-card{display:grid;grid-template-columns:42px minmax(0,1fr);gap:12px;border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;min-width:0}.document-icon{width:42px;height:42px;border-radius:14px;background:#FAEEDA;color:#BA7517;display:grid;place-items:center}.document-body{display:grid;gap:5px;min-width:0}.document-body strong{color:#3D2914;overflow-wrap:anywhere}.document-body span{justify-self:start;border-radius:999px;background:#F7F0E4;color:#854F0B;padding:4px 9px;font-size:11px;font-weight:900}.document-body small,.document-body em,.document-body p{color:#7A6A55;font-size:12px;line-height:1.6;overflow-wrap:anywhere}.document-body em{font-style:normal;color:#3D2914}.document-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}.document-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;cursor:pointer;font-weight:900}.document-actions button:last-child{background:#FCEBEB;color:#791F1F;border-color:rgba(121,31,31,.14)}.empty-state.compact{padding:24px 12px}.file-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(186,117,23,.16);background:#FAEEDA;border-radius:14px;padding:10px;color:#3D2914;min-width:0}.file-chip span{font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-chip small{color:#854F0B;margin-inline-start:auto}.file-chip button{width:30px;height:30px;border-radius:10px;border:1px solid rgba(186,117,23,.18);background:#FFFDF8;display:grid;place-items:center;cursor:pointer}
-        .beneficiary-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.beneficiary-stats div{border:1px solid rgba(186,117,23,.14);background:#FDF8EE;border-radius:16px;padding:12px}.beneficiary-stats small,.details-list b{display:block;color:#854F0B;font-weight:900}.beneficiary-stats strong{display:block;margin-top:4px;color:#3D2914;font-size:18px}.beneficiary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.beneficiary-card{border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;display:grid;gap:12px}.privacy-note{margin:0;border:1px solid rgba(186,117,23,.14);background:#FFF8EA;border-radius:13px;padding:10px;color:#854F0B;line-height:1.7}.details-list{display:grid;gap:9px}.details-list p{margin:0;border:1px solid rgba(186,117,23,.12);background:#FDF8EE;border-radius:12px;padding:10px}.details-list span{display:block;color:#3D2914;margin-top:3px;overflow-wrap:anywhere}
+        .beneficiary-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.beneficiary-stats div{border:1px solid rgba(186,117,23,.14);background:#FDF8EE;border-radius:16px;padding:12px}.beneficiary-stats small,.details-list b{display:block;color:#854F0B;font-weight:900}.beneficiary-stats strong{display:block;margin-top:4px;color:#3D2914;font-size:18px}.beneficiary-grid,.contributor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.beneficiary-card,.contributor-card{border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;display:grid;gap:12px}.privacy-note{margin:0;border:1px solid rgba(186,117,23,.14);background:#FFF8EA;border-radius:13px;padding:10px;color:#854F0B;line-height:1.7}.details-list{display:grid;gap:9px}.details-list p{margin:0;border:1px solid rgba(186,117,23,.12);background:#FDF8EE;border-radius:12px;padding:10px}.details-list span{display:block;color:#3D2914;margin-top:3px;overflow-wrap:anywhere}.collab-strip{display:flex;flex-wrap:wrap;gap:8px}.collab-strip span{border-radius:999px;background:#FDF8EE;border:1px solid rgba(186,117,23,.14);color:#854F0B;padding:6px 10px;font-size:12px;font-weight:900}
         .calendar-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.alert-panel,.season-panel{border:1px solid rgba(186,117,23,.14);background:#FDF8EE;border-radius:18px;padding:14px;display:grid;gap:10px}.alert-panel strong,.season-panel strong{color:#3D2914}.alert-panel p{margin:0;color:#7A6A55}.alert-line{border-radius:14px;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);padding:10px;display:grid;gap:4px}.alert-line b{color:#3D2914}.alert-line span{color:#854F0B;font-size:12px}.season-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.season-grid span{border-radius:14px;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);padding:10px;display:grid;gap:5px}.season-grid b{color:#3D2914}.season-grid small{color:#8A6A55;line-height:1.5}.reminder-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.reminder-card{border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;display:grid;gap:10px}.reminder-card.high{border-color:rgba(121,31,31,.2);background:#FFF8F8}.reminder-card.low{background:#F9FBF6}.reminder-top{display:flex;justify-content:space-between;gap:10px;min-width:0}.reminder-top strong{display:block;color:#3D2914;overflow-wrap:anywhere}.reminder-top span,.reminder-card small,.reminder-card p{color:#7A6A55;line-height:1.6}.reminder-top b{align-self:start;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:5px 9px;font-size:11px;white-space:nowrap}
         .empty-state{display:grid;place-items:center;text-align:center;padding:42px 16px;color:#8A6A55}.empty-state svg{color:#BA7517;margin-bottom:10px}.empty-state strong{color:#3D2914;font-size:18px}.impact-lines{display:grid;gap:9px}.impact-lines p{margin:0;border-radius:13px;background:#F5F1E8;padding:10px;color:#3D2914}.impact-lines .warn{background:#FAEEDA;color:#854F0B}.report-card{display:grid;grid-template-columns:minmax(0,1fr) 110px auto auto;gap:10px;align-items:end;border:1px solid rgba(186,117,23,.18);border-radius:16px;background:#FAEEDA;padding:14px;margin-bottom:12px}.report-card strong,.report-card span{display:block}.report-card strong{color:#3D2914}.report-card span{margin-top:4px;color:#854F0B;font-size:12px}.report-card select{height:42px;border:1px solid rgba(186,117,23,.25);border-radius:12px;background:#FFFDF8;color:#3D2914;padding:0 10px;font:800 13px Tajawal,Arial,sans-serif}.report-card button{height:42px;border:0;border-radius:12px;background:linear-gradient(135deg,#FAC775,#BA7517);color:#1A0F05;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}.report-card button:disabled{opacity:.65;cursor:wait}.future-list{display:grid;gap:9px}.future-list span{display:flex;justify-content:space-between;gap:8px;border:1px solid rgba(186,117,23,.12);border-radius:12px;padding:10px;color:#3D2914}.future-list b{color:#BA7517}
         .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(26,15,5,.46);display:grid;place-items:center;padding:18px}.modal{width:min(760px,100%);max-height:92dvh;overflow:auto;background:#FFFDF8;border:1px solid rgba(186,117,23,.18);border-radius:24px;padding:20px}.modal.small{width:min(420px,100%)}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.modal-head h2{margin:0}.modal-head button{width:40px;height:40px;border-radius:12px;border:1px solid rgba(186,117,23,.18);background:#F5F1E8;display:grid;place-items:center;cursor:pointer}.modal-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
-        @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid,.calendar-grid{grid-template-columns:1fr}.project-grid,.document-grid,.reminder-grid,.beneficiary-grid{grid-template-columns:1fr}.metals-status{grid-template-columns:repeat(2,minmax(0,1fr))}.metals-status button{min-height:42px}}
+        @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid,.calendar-grid{grid-template-columns:1fr}.project-grid,.document-grid,.reminder-grid,.beneficiary-grid,.contributor-grid{grid-template-columns:1fr}.metals-status{grid-template-columns:repeat(2,minmax(0,1fr))}.metals-status button{min-height:42px}}
         @media(max-width:900px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
         @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row,.report-card,.document-tools,.season-grid,.metals-status,.beneficiary-stats{grid-template-columns:1fr}.report-card button{width:100%}.document-card{grid-template-columns:36px minmax(0,1fr)}.document-actions button{flex:1}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
       `}</style>
