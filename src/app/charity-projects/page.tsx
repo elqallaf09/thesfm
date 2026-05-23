@@ -122,6 +122,16 @@ type CharityReminder = {
   notes: string | null;
 };
 
+type MetalsPriceResponse = {
+  success: boolean;
+  source: 'api' | 'manual' | 'fallback';
+  currency: 'KWD';
+  gold: { pricePerGram: number; unit: 'gram' };
+  silver: { pricePerGram: number; unit: 'gram' };
+  updatedAt: string;
+  message?: string;
+};
+
 const TEXT = {
   ar: {
     title: 'المشاريع الخيرية',
@@ -266,6 +276,25 @@ const TEXT = {
     dhul_hijjah: 'ذو الحجة',
     arafah: 'عرفة',
     project_milestone: 'مرحلة مشروع',
+    goldNisab: 'النصاب حسب الذهب',
+    silverNisab: 'النصاب حسب الفضة',
+    reachedNisabQuestion: 'هل بلغت النصاب؟',
+    reachedNisab: 'أنت بلغت النصاب',
+    notReachedNisab: 'لم تبلغ النصاب بعد',
+    automaticPrice: 'السعر التلقائي',
+    manualPrice: 'السعر اليدوي',
+    nisabMethod: 'طريقة حساب النصاب',
+    goldBased: 'حسب الذهب',
+    silverBased: 'حسب الفضة',
+    conservative: 'الأكثر احتياطاً',
+    metalsStatus: 'حالة أسعار الذهب والفضة',
+    lastUpdated: 'آخر تحديث',
+    priceSource: 'مصدر السعر',
+    apiNotConfigured: 'واجهة أسعار المعادن غير مفعّلة حالياً. أدخل السعر يدوياً.',
+    metalsConversionWarning: 'تعذر تحويل أسعار الذهب إلى الدينار الكويتي تلقائياً. أدخل السعر يدوياً.',
+    enterPriceManually: 'أدخل السعر يدوياً',
+    refreshPrices: 'تحديث الأسعار',
+    metalsDisclaimer: 'أسعار الذهب والفضة تقديرية وقد تختلف حسب العيار والمصدر وسعر السوق المحلي. استخدم الأسعار كمرجع، وراجع جهة مختصة للحالات الشرعية الخاصة.',
     saved: 'تم الحفظ بنجاح.',
     error: 'تعذر تنفيذ العملية حالياً.',
     planning: 'تخطيط',
@@ -430,6 +459,25 @@ const TEXT = {
     dhul_hijjah: 'Dhul Hijjah',
     arafah: 'Arafah',
     project_milestone: 'Project milestone',
+    goldNisab: 'Gold-based Nisab',
+    silverNisab: 'Silver-based Nisab',
+    reachedNisabQuestion: 'Have you reached Nisab?',
+    reachedNisab: 'You have reached Nisab',
+    notReachedNisab: 'You have not reached Nisab yet',
+    automaticPrice: 'Automatic price',
+    manualPrice: 'Manual price',
+    nisabMethod: 'Nisab calculation method',
+    goldBased: 'Gold-based',
+    silverBased: 'Silver-based',
+    conservative: 'More conservative',
+    metalsStatus: 'Gold and Silver Price Status',
+    lastUpdated: 'Last updated',
+    priceSource: 'Price source',
+    apiNotConfigured: 'Metals price API is not configured. Please enter prices manually.',
+    metalsConversionWarning: 'Could not automatically convert metal prices to KWD. Please enter the price manually.',
+    enterPriceManually: 'Enter price manually',
+    refreshPrices: 'Refresh prices',
+    metalsDisclaimer: 'Gold and silver prices are estimates and may vary by purity, source, and local market price. Use these prices as a reference and consult a qualified authority for specific religious cases.',
     saved: 'Saved successfully.',
     error: 'This action could not be completed right now.',
     planning: 'Planning',
@@ -594,6 +642,25 @@ const TEXT = {
     dhul_hijjah: 'Dhul Hijjah',
     arafah: 'Arafah',
     project_milestone: 'Jalon de projet',
+    goldNisab: 'Nisab basé sur l’or',
+    silverNisab: 'Nisab basé sur l’argent',
+    reachedNisabQuestion: 'Avez-vous atteint le nisab ?',
+    reachedNisab: 'Vous avez atteint le nisab',
+    notReachedNisab: 'Vous n’avez pas encore atteint le nisab',
+    automaticPrice: 'Prix automatique',
+    manualPrice: 'Prix manuel',
+    nisabMethod: 'Méthode de calcul du nisab',
+    goldBased: 'Basé sur l’or',
+    silverBased: 'Basé sur l’argent',
+    conservative: 'Plus prudent',
+    metalsStatus: 'État des prix de l’or et de l’argent',
+    lastUpdated: 'Dernière mise à jour',
+    priceSource: 'Source du prix',
+    apiNotConfigured: 'L’API des prix des métaux n’est pas configurée. Veuillez saisir les prix manuellement.',
+    metalsConversionWarning: 'Impossible de convertir automatiquement les prix des métaux en KWD. Veuillez saisir le prix manuellement.',
+    enterPriceManually: 'Saisir le prix manuellement',
+    refreshPrices: 'Actualiser les prix',
+    metalsDisclaimer: 'Les prix de l’or et de l’argent sont estimatifs et peuvent varier selon la pureté, la source et le marché local. Utilisez-les comme référence et consultez une autorité qualifiée pour les cas religieux spécifiques.',
     saved: 'Enregistré avec succès.',
     error: "Impossible d'effectuer cette action pour le moment.",
     planning: 'Planification',
@@ -623,6 +690,7 @@ const assetTypes: AssetType[] = ['cash', 'savings', 'investment', 'gold', 'silve
 const documentCategories: DocumentCategory[] = ['donation_receipt', 'charity_certificate', 'project_report', 'zakat_document', 'beneficiary_report', 'other'];
 const reminderTypes: ReminderType[] = ['zakat', 'hawl', 'ramadan', 'dhul_hijjah', 'arafah', 'sacrifice', 'sponsorship', 'project_milestone', 'general'];
 const reminderPriorities: ReminderPriority[] = ['low', 'normal', 'high'];
+const priceSources = ['api', 'manual', 'fallback'] as const;
 const allowedDocumentTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
 const maxDocumentSize = 10 * 1024 * 1024;
 
@@ -707,6 +775,10 @@ export default function CharityProjectsPage() {
   const [saving, setSaving] = useState(false);
   const [uploadingDocument, setUploadingDocument] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [loadingMetals, setLoadingMetals] = useState(false);
+  const [priceMode, setPriceMode] = useState<'automatic' | 'manual'>('manual');
+  const [nisabMethod, setNisabMethod] = useState<'gold' | 'silver' | 'conservative'>('conservative');
+  const [metalsPrice, setMetalsPrice] = useState<MetalsPriceResponse | null>(null);
   const [impactDonation, setImpactDonation] = useState('');
   const [selectedReportYear, setSelectedReportYear] = useState(String(new Date().getFullYear()));
   const [documentSearch, setDocumentSearch] = useState('');
@@ -751,6 +823,38 @@ export default function CharityProjectsPage() {
 
   const money = useCallback((amount: number, currency = 'KWD') => formatMoney(amount, currency, lang as Lang), [lang]);
   const dateLabel = useCallback((date?: string | null) => date ? new Date(`${date}T00:00:00`).toLocaleDateString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US') : '-', [lang]);
+
+  const loadMetalsPrices = useCallback(async () => {
+    setLoadingMetals(true);
+    try {
+      const response = await fetch('/api/charity-projects/metals-prices');
+      const data = await response.json() as MetalsPriceResponse;
+      setMetalsPrice(data);
+      if (data.success && data.source === 'api') {
+        setPriceMode('automatic');
+        setZakat(prev => ({
+          ...prev,
+          goldPrice: String(data.gold.pricePerGram || ''),
+          silverPrice: String(data.silver.pricePerGram || ''),
+        }));
+      } else {
+        setPriceMode('manual');
+      }
+    } catch {
+      setPriceMode('manual');
+      setMetalsPrice({
+        success: false,
+        source: 'manual',
+        message: tr.apiNotConfigured,
+        currency: 'KWD',
+        gold: { pricePerGram: 0, unit: 'gram' },
+        silver: { pricePerGram: 0, unit: 'gram' },
+        updatedAt: new Date().toISOString(),
+      });
+    } finally {
+      setLoadingMetals(false);
+    }
+  }, [tr.apiNotConfigured]);
 
   const syncGeneratedReminders = useCallback(async (
     currentReminders: CharityReminder[],
@@ -858,6 +962,26 @@ export default function CharityProjectsPage() {
   }, [loadData]);
 
   useEffect(() => {
+    const savedGold = window.localStorage.getItem('sfm_charity_gold_price_kwd') ?? '';
+    const savedSilver = window.localStorage.getItem('sfm_charity_silver_price_kwd') ?? '';
+    const savedMethod = window.localStorage.getItem('sfm_charity_nisab_method');
+    if (savedGold || savedSilver) {
+      setZakat(prev => ({ ...prev, goldPrice: savedGold, silverPrice: savedSilver }));
+    }
+    if (savedMethod && ['gold', 'silver', 'conservative'].includes(savedMethod)) setNisabMethod(savedMethod as 'gold' | 'silver' | 'conservative');
+    loadMetalsPrices();
+  }, [loadMetalsPrices]);
+
+  useEffect(() => {
+    window.localStorage.setItem('sfm_charity_gold_price_kwd', zakat.goldPrice);
+    window.localStorage.setItem('sfm_charity_silver_price_kwd', zakat.silverPrice);
+  }, [zakat.goldPrice, zakat.silverPrice]);
+
+  useEffect(() => {
+    window.localStorage.setItem('sfm_charity_nisab_method', nisabMethod);
+  }, [nisabMethod]);
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setProjectOpen(false);
@@ -871,7 +995,16 @@ export default function CharityProjectsPage() {
   }, []);
 
   const zakatableAmount = Math.max(0, toNum(zakat.cash) + toNum(zakat.investments) + toNum(zakat.gold) + toNum(zakat.silver) - toNum(zakat.debts));
-  const zakatAmount = zakatableAmount * 0.025;
+  const goldNisabValue = toNum(zakat.goldPrice) * 85;
+  const silverNisabValue = toNum(zakat.silverPrice) * 595;
+  const availableNisabValues = [goldNisabValue, silverNisabValue].filter(value => value > 0);
+  const selectedNisabValue = nisabMethod === 'gold'
+    ? goldNisabValue
+    : nisabMethod === 'silver'
+      ? silverNisabValue
+      : availableNisabValues.length > 0 ? Math.min(...availableNisabValues) : 0;
+  const reachedNisab = selectedNisabValue > 0 && zakatableAmount >= selectedNisabValue;
+  const zakatAmount = reachedNisab ? zakatableAmount * 0.025 : 0;
   const totalDonations = projects.reduce((sum, project) => sum + toNum(project.collected_amount), 0);
   const activeProjects = projects.filter(project => !['completed', 'paused'].includes(project.status)).length;
   const expectedCommitments = commitments.reduce((sum, item) => {
@@ -1357,6 +1490,21 @@ export default function CharityProjectsPage() {
               <Coins size={24} />
             </div>
             <div className="form-grid">
+              <label>
+                <span>{tr.automaticPrice}</span>
+                <select value={priceMode} onChange={e => setPriceMode(e.target.value as 'automatic' | 'manual')}>
+                  <option value="automatic">{tr.automaticPrice}</option>
+                  <option value="manual">{tr.manualPrice}</option>
+                </select>
+              </label>
+              <label>
+                <span>{tr.nisabMethod}</span>
+                <select value={nisabMethod} onChange={e => setNisabMethod(e.target.value as 'gold' | 'silver' | 'conservative')}>
+                  <option value="gold">{tr.goldBased}</option>
+                  <option value="silver">{tr.silverBased}</option>
+                  <option value="conservative">{tr.conservative}</option>
+                </select>
+              </label>
               {[
                 ['cash', tr.cash],
                 ['investments', tr.investments],
@@ -1379,9 +1527,24 @@ export default function CharityProjectsPage() {
             <div className="result-grid">
               <div><small>{tr.zakatableAmount}</small><strong>{money(zakatableAmount)}</strong></div>
               <div><small>{tr.zakatAmount}</small><strong>{money(zakatAmount)}</strong></div>
+              <div><small>{tr.goldNisab}</small><strong>{goldNisabValue > 0 ? money(goldNisabValue) : tr.enterPriceManually}</strong></div>
+              <div><small>{tr.silverNisab}</small><strong>{silverNisabValue > 0 ? money(silverNisabValue) : tr.enterPriceManually}</strong></div>
+              <div className={reachedNisab ? 'nisab-reached' : 'nisab-missing'}><small>{tr.reachedNisabQuestion}</small><strong>{reachedNisab ? tr.reachedNisab : tr.notReachedNisab}</strong></div>
+            </div>
+            <div className="metals-status">
+              <div>
+                <strong>{tr.metalsStatus}</strong>
+                <span>{metalsPrice?.message || (priceMode === 'automatic' ? tr.automaticPrice : tr.manualPrice)}</span>
+              </div>
+              <div><small>{tr.goldPrice}</small><b>{toNum(zakat.goldPrice) > 0 ? money(toNum(zakat.goldPrice)) : '-'}</b></div>
+              <div><small>{tr.silverPrice}</small><b>{toNum(zakat.silverPrice) > 0 ? money(toNum(zakat.silverPrice)) : '-'}</b></div>
+              <div><small>{tr.priceSource}</small><b>{metalsPrice ? tr[metalsPrice.source] ?? metalsPrice.source : tr.manualPrice}</b></div>
+              <div><small>{tr.lastUpdated}</small><b>{metalsPrice?.updatedAt ? dateLabel(metalsPrice.updatedAt) : '-'}</b></div>
+              <button type="button" onClick={loadMetalsPrices} disabled={loadingMetals}>{loadingMetals ? tr.automaticPrice : tr.refreshPrices}</button>
             </div>
             <p className="disclaimer">{tr.zakatDisclaimer}</p>
-            <p className="nisab"><Sparkles size={15} /> {tr.nisabNote}</p>
+            <p className="nisab"><Sparkles size={15} /> {metalsPrice?.success ? tr.metalsDisclaimer : tr.apiNotConfigured}</p>
+            <p className="disclaimer">{tr.metalsDisclaimer}</p>
           </article>
 
           <article className="warm-card span-5">
@@ -1786,15 +1949,16 @@ export default function CharityProjectsPage() {
         .main-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:18px}.span-7,.span-5{grid-column:auto}.split-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}.section-head h2{margin:0;color:#3D2914;font-size:21px}.section-head svg{color:#BA7517}
         .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid.one{grid-template-columns:1fr}.form-grid label,.impact-input{display:grid;gap:7px;color:#3D2914;font-size:13px;font-weight:800}.form-grid input,.form-grid select,.form-grid textarea,.impact-input input{width:100%;border:1px solid rgba(186,117,23,.18);border-radius:13px;background:#F5F1E8;color:#1A0F05;min-height:46px;padding:0 12px;outline:none}.form-grid textarea{min-height:92px;padding-top:12px;resize:vertical}.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus,.impact-input input:focus{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.15);background:#FFFDF8}.wide{grid-column:1/-1}.check-row{display:flex!important;align-items:center;gap:9px}.check-row input{width:18px!important;min-height:18px!important}.primary-wide{width:100%}
         .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.result-grid div,.big-metric{background:#FAEEDA;border:1px solid rgba(186,117,23,.14);border-radius:16px;padding:14px}.result-grid small,.big-metric span{display:block;color:#854F0B;font-weight:800}.result-grid strong,.big-metric strong{display:block;margin-top:5px;color:#3D2914;font-size:24px}.disclaimer,.nisab,.muted{margin:12px 0 0;color:#7A6A55;line-height:1.8}.nisab{display:flex;gap:8px;align-items:flex-start;color:#854F0B;background:#FFF8EA;border-radius:13px;padding:10px}
+        .nisab-reached{background:#EAF3DE!important}.nisab-reached small,.nisab-reached strong{color:#27500A!important}.nisab-missing{background:#FAEEDA!important}.metals-status{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(4,minmax(0,1fr)) auto;gap:10px;align-items:stretch;margin-top:14px;border:1px solid rgba(186,117,23,.14);background:#FFF8EA;border-radius:18px;padding:12px}.metals-status div{min-width:0}.metals-status strong,.metals-status b,.metals-status span,.metals-status small{display:block}.metals-status strong,.metals-status b{color:#3D2914;overflow-wrap:anywhere}.metals-status span,.metals-status small{color:#854F0B;font-size:12px;line-height:1.5}.metals-status button{border:0;border-radius:12px;background:linear-gradient(135deg,#FAC775,#BA7517);color:#1A0F05;padding:0 12px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.metals-status button:disabled{opacity:.65;cursor:wait}
         .template-grid,.project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.template-card{text-align:start;border:1px solid rgba(186,117,23,.16);background:#FDF8EE;border-radius:16px;padding:14px;cursor:pointer}.template-card:hover{background:#FAEEDA}.template-card strong,.template-card span{display:block}.template-card span{margin-top:5px;color:#8A6A55}
         .project-card{border:1px solid rgba(186,117,23,.14);border-radius:18px;background:#FFFDF8;padding:16px;display:grid;gap:13px}.project-top{display:flex;justify-content:space-between;gap:12px;min-width:0}.project-top strong{display:block;color:#3D2914;font-size:17px;overflow-wrap:anywhere}.project-top span,.badge-row span,.project-card p{color:#7A6A55;font-size:12px;overflow-wrap:anywhere}.status,.badge-row span{border-radius:999px;padding:5px 9px;background:#FAEEDA;color:#854F0B;font-size:11px}.badge-row{display:flex;gap:8px;flex-wrap:wrap}.progress{height:9px;border-radius:99px;background:#F1E6D4;overflow:hidden}.progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#BA7517,#EF9F27)}.money-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.money-row div{background:#F7F0E4;border-radius:13px;padding:10px;min-width:0}.money-row small{display:block;color:#8A6A55}.money-row strong{display:block;color:#3D2914;font-size:13px;overflow-wrap:anywhere}.card-actions{display:flex;gap:8px;flex-wrap:wrap}.card-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:800;font-size:12px}.doc-count-btn{justify-self:start;border:1px solid rgba(186,117,23,.16);background:#F7F0E4;color:#854F0B;border-radius:999px;min-height:34px;padding:0 12px;font-weight:900;cursor:pointer}
         .vault-head{align-items:flex-start}.vault-head p{margin:5px 0 0;color:#7A6A55;line-height:1.7}.document-tools{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,260px);gap:10px;margin-bottom:14px}.document-tools label{display:flex;align-items:center;gap:8px;border:1px solid rgba(186,117,23,.18);background:#F5F1E8;border-radius:14px;padding:0 12px;min-height:46px;color:#BA7517}.document-tools input,.document-tools select{width:100%;border:0;background:transparent;color:#1A0F05;outline:none;font:800 13px Tajawal,Arial,sans-serif}.document-tools select{border:1px solid rgba(186,117,23,.18);background:#F5F1E8;border-radius:14px;padding:0 12px;min-height:46px}.document-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.document-card{display:grid;grid-template-columns:42px minmax(0,1fr);gap:12px;border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;min-width:0}.document-icon{width:42px;height:42px;border-radius:14px;background:#FAEEDA;color:#BA7517;display:grid;place-items:center}.document-body{display:grid;gap:5px;min-width:0}.document-body strong{color:#3D2914;overflow-wrap:anywhere}.document-body span{justify-self:start;border-radius:999px;background:#F7F0E4;color:#854F0B;padding:4px 9px;font-size:11px;font-weight:900}.document-body small,.document-body em,.document-body p{color:#7A6A55;font-size:12px;line-height:1.6;overflow-wrap:anywhere}.document-body em{font-style:normal;color:#3D2914}.document-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}.document-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;cursor:pointer;font-weight:900}.document-actions button:last-child{background:#FCEBEB;color:#791F1F;border-color:rgba(121,31,31,.14)}.empty-state.compact{padding:24px 12px}.file-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(186,117,23,.16);background:#FAEEDA;border-radius:14px;padding:10px;color:#3D2914;min-width:0}.file-chip span{font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-chip small{color:#854F0B;margin-inline-start:auto}.file-chip button{width:30px;height:30px;border-radius:10px;border:1px solid rgba(186,117,23,.18);background:#FFFDF8;display:grid;place-items:center;cursor:pointer}
         .calendar-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.alert-panel,.season-panel{border:1px solid rgba(186,117,23,.14);background:#FDF8EE;border-radius:18px;padding:14px;display:grid;gap:10px}.alert-panel strong,.season-panel strong{color:#3D2914}.alert-panel p{margin:0;color:#7A6A55}.alert-line{border-radius:14px;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);padding:10px;display:grid;gap:4px}.alert-line b{color:#3D2914}.alert-line span{color:#854F0B;font-size:12px}.season-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.season-grid span{border-radius:14px;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);padding:10px;display:grid;gap:5px}.season-grid b{color:#3D2914}.season-grid small{color:#8A6A55;line-height:1.5}.reminder-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.reminder-card{border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;display:grid;gap:10px}.reminder-card.high{border-color:rgba(121,31,31,.2);background:#FFF8F8}.reminder-card.low{background:#F9FBF6}.reminder-top{display:flex;justify-content:space-between;gap:10px;min-width:0}.reminder-top strong{display:block;color:#3D2914;overflow-wrap:anywhere}.reminder-top span,.reminder-card small,.reminder-card p{color:#7A6A55;line-height:1.6}.reminder-top b{align-self:start;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:5px 9px;font-size:11px;white-space:nowrap}
         .empty-state{display:grid;place-items:center;text-align:center;padding:42px 16px;color:#8A6A55}.empty-state svg{color:#BA7517;margin-bottom:10px}.empty-state strong{color:#3D2914;font-size:18px}.impact-lines{display:grid;gap:9px}.impact-lines p{margin:0;border-radius:13px;background:#F5F1E8;padding:10px;color:#3D2914}.impact-lines .warn{background:#FAEEDA;color:#854F0B}.report-card{display:grid;grid-template-columns:minmax(0,1fr) 110px auto auto;gap:10px;align-items:end;border:1px solid rgba(186,117,23,.18);border-radius:16px;background:#FAEEDA;padding:14px;margin-bottom:12px}.report-card strong,.report-card span{display:block}.report-card strong{color:#3D2914}.report-card span{margin-top:4px;color:#854F0B;font-size:12px}.report-card select{height:42px;border:1px solid rgba(186,117,23,.25);border-radius:12px;background:#FFFDF8;color:#3D2914;padding:0 10px;font:800 13px Tajawal,Arial,sans-serif}.report-card button{height:42px;border:0;border-radius:12px;background:linear-gradient(135deg,#FAC775,#BA7517);color:#1A0F05;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}.report-card button:disabled{opacity:.65;cursor:wait}.future-list{display:grid;gap:9px}.future-list span{display:flex;justify-content:space-between;gap:8px;border:1px solid rgba(186,117,23,.12);border-radius:12px;padding:10px;color:#3D2914}.future-list b{color:#BA7517}
         .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(26,15,5,.46);display:grid;place-items:center;padding:18px}.modal{width:min(760px,100%);max-height:92dvh;overflow:auto;background:#FFFDF8;border:1px solid rgba(186,117,23,.18);border-radius:24px;padding:20px}.modal.small{width:min(420px,100%)}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.modal-head h2{margin:0}.modal-head button{width:40px;height:40px;border-radius:12px;border:1px solid rgba(186,117,23,.18);background:#F5F1E8;display:grid;place-items:center;cursor:pointer}.modal-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
-        @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid,.calendar-grid{grid-template-columns:1fr}.project-grid,.document-grid,.reminder-grid{grid-template-columns:1fr}}
+        @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid,.calendar-grid{grid-template-columns:1fr}.project-grid,.document-grid,.reminder-grid{grid-template-columns:1fr}.metals-status{grid-template-columns:repeat(2,minmax(0,1fr))}.metals-status button{min-height:42px}}
         @media(max-width:900px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row,.report-card,.document-tools,.season-grid{grid-template-columns:1fr}.report-card button{width:100%}.document-card{grid-template-columns:36px minmax(0,1fr)}.document-actions button{flex:1}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
+        @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row,.report-card,.document-tools,.season-grid,.metals-status{grid-template-columns:1fr}.report-card button{width:100%}.document-card{grid-template-columns:36px minmax(0,1fr)}.document-actions button{flex:1}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
       `}</style>
     </div>
   );
