@@ -130,10 +130,29 @@ type MetalsPriceResponse = {
   success: boolean;
   source: 'api' | 'manual' | 'fallback';
   currency: 'KWD';
-  gold: { pricePerGram: number; unit: 'gram' };
+  gold: { pricePerGram: number; pricePerGram24k?: number; pricePerGram22k?: number; pricePerGram21k?: number; pricePerGram18k?: number; unit: 'gram' };
   silver: { pricePerGram: number; unit: 'gram' };
   updatedAt: string;
   message?: string;
+};
+
+type ZakatCalculation = {
+  id: string;
+  calculation_date: string | null;
+  currency: string;
+  cash_amount: number;
+  investment_amount: number;
+  gold_value: number;
+  silver_value: number;
+  deductible_debts: number;
+  net_zakat_base: number;
+  nisab_method: string;
+  gold_nisab_value: number;
+  silver_nisab_value: number;
+  selected_nisab_value: number;
+  zakat_due: number;
+  price_source: string | null;
+  notes: string | null;
 };
 
 type CharityBeneficiary = {
@@ -333,6 +352,55 @@ const TEXT = {
     enterPriceManually: 'أدخل السعر يدوياً',
     refreshPrices: 'تحديث الأسعار',
     metalsDisclaimer: 'أسعار الذهب والفضة تقديرية وقد تختلف حسب العيار والمصدر وسعر السوق المحلي. استخدم الأسعار كمرجع، وراجع جهة مختصة للحالات الشرعية الخاصة.',
+    zakatInputs: 'بيانات الزكاة',
+    zakatSummaryTitle: 'ملخص الزكاة',
+    zakatGuidanceTitle: 'التوضيح الشرعي والتنظيمي',
+    cashSavings: 'النقد والمدخرات',
+    zakatableInvestments: 'الاستثمارات القابلة للزكاة',
+    goldHoldings: 'الذهب',
+    goldWeight: 'وزن الذهب بالغرام',
+    goldKarat: 'عيار الذهب',
+    directGoldValue: 'أو أدخل القيمة مباشرة',
+    silverHoldings: 'الفضة',
+    silverWeight: 'وزن الفضة بالغرام',
+    directSilverValue: 'أو أدخل القيمة مباشرة',
+    nonZakatableAssets: 'أصول غير خاضعة للزكاة',
+    personalHome: 'السكن الشخصي',
+    personalCar: 'سيارة خاصة',
+    householdFurniture: 'أثاث المنزل',
+    personalTools: 'أدوات شخصية',
+    residentialLand: 'أرض للسكن',
+    personalUseAssets: 'أصول للاستخدام الشخصي',
+    otherNonZakatAsset: 'وصف الأصل غير الخاضع للزكاة',
+    nonZakatHelper: 'استبعد الأصول غير الخاضعة للزكاة مثل السكن الشخصي والسيارة الخاصة والأثاث المستخدم.',
+    goldPriceToday: 'سعر الذهب اليوم',
+    silverPriceToday: 'سعر الفضة اليوم',
+    liveStatus: 'مباشر',
+    manualStatus: 'يدوي',
+    failedStatus: 'تعذر التحديث',
+    manualFallback: 'تعذر تحميل أسعار الذهب والفضة. يمكنك إدخال السعر يدوياً مؤقتاً.',
+    usedNisab: 'النصاب المستخدم في الحساب',
+    netZakatBase: 'صافي الوعاء الزكوي',
+    zakatDue: 'قيمة الزكاة المستحقة',
+    zakatRate: 'نسبة الزكاة 2.5%',
+    dueSummary: 'بلغت النصاب، والزكاة التقديرية المستحقة هي:',
+    notDueSummary: 'لم تبلغ النصاب حسب البيانات المدخلة حالياً.',
+    incompleteZakat: 'أكمل بيانات الأسعار أو الأصول لحساب الزكاة بدقة.',
+    differenceFromNisab: 'الفرق عن النصاب',
+    calculationMethod: 'طريقة الحساب',
+    saveZakatCalculation: 'حفظ حساب الزكاة',
+    zakatHistory: 'سجل حسابات الزكاة',
+    noZakatHistory: 'لا توجد حسابات زكاة محفوظة حتى الآن.',
+    calculationSaved: 'تم حفظ حساب الزكاة.',
+    calculationDeleted: 'تم حذف حساب الزكاة.',
+    completedHawl: 'اكتمل الحول',
+    upcomingHawl: 'الحول قادم',
+    missingOwnershipDate: 'تاريخ التملك غير مكتمل',
+    closeToNisabNote: 'أنت قريب من النصاب. راقب المدخرات والاستثمارات خلال الفترة القادمة.',
+    aboveNisabNote: 'الزكاة التقديرية ظاهرة بناءً على البيانات المدخلة. راجع الحالات الخاصة مع جهة مختصة.',
+    missingPricesNote: 'تعذر حساب النصاب تلقائياً بسبب عدم توفر أسعار الذهب والفضة.',
+    highDebtsNote: 'الديون المستحقة أثرت على صافي الوعاء الزكوي.',
+    zakatEstimateDisclaimer: 'هذه الحاسبة تقديرية لأغراض التنظيم والمتابعة، ولا تعتبر فتوى شرعية. للحالات الخاصة، راجع جهة شرعية مختصة.',
     beneficiaryTracking: 'إدارة المستفيدين',
     beneficiaryDesc: 'تابع الكفالات والحالات الخيرية والمستفيدين المرتبطين بمشاريعك بشكل منظم وآمن.',
     privacyNote: 'استخدم رقماً مرجعياً أو اسماً مختصراً بدلاً من البيانات الشخصية الحساسة.',
@@ -589,6 +657,55 @@ const TEXT = {
     enterPriceManually: 'Enter price manually',
     refreshPrices: 'Refresh prices',
     metalsDisclaimer: 'Gold and silver prices are estimates and may vary by purity, source, and local market price. Use these prices as a reference and consult a qualified authority for specific religious cases.',
+    zakatInputs: 'Zakat Inputs',
+    zakatSummaryTitle: 'Zakat Summary',
+    zakatGuidanceTitle: 'Religious & Planning Notes',
+    cashSavings: 'Cash / Savings',
+    zakatableInvestments: 'Zakatable investments',
+    goldHoldings: 'Gold holdings',
+    goldWeight: 'Gold weight in grams',
+    goldKarat: 'Gold karat',
+    directGoldValue: 'Or enter value directly',
+    silverHoldings: 'Silver holdings',
+    silverWeight: 'Silver weight in grams',
+    directSilverValue: 'Or enter value directly',
+    nonZakatableAssets: 'Non-zakatable assets',
+    personalHome: 'Personal home',
+    personalCar: 'Personal car',
+    householdFurniture: 'Household furniture',
+    personalTools: 'Personal tools',
+    residentialLand: 'Residential land',
+    personalUseAssets: 'Personal-use assets',
+    otherNonZakatAsset: 'Describe other non-zakatable asset',
+    nonZakatHelper: 'Exclude non-zakatable assets such as a personal home, private car, and used household furniture.',
+    goldPriceToday: 'Gold price today',
+    silverPriceToday: 'Silver price today',
+    liveStatus: 'Live',
+    manualStatus: 'Manual',
+    failedStatus: 'Update failed',
+    manualFallback: 'Could not load gold and silver prices. You can enter prices manually temporarily.',
+    usedNisab: 'Selected Nisab',
+    netZakatBase: 'Net zakat base',
+    zakatDue: 'Zakat due',
+    zakatRate: 'Zakat rate 2.5%',
+    dueSummary: 'You have reached Nisab. Estimated zakat due is:',
+    notDueSummary: 'You have not reached Nisab based on the current inputs.',
+    incompleteZakat: 'Complete price or asset data to calculate zakat accurately.',
+    differenceFromNisab: 'Difference from Nisab',
+    calculationMethod: 'Calculation method',
+    saveZakatCalculation: 'Save Zakat Calculation',
+    zakatHistory: 'Zakat History',
+    noZakatHistory: 'No saved zakat calculations yet.',
+    calculationSaved: 'Zakat calculation saved.',
+    calculationDeleted: 'Zakat calculation deleted.',
+    completedHawl: 'Hawl completed',
+    upcomingHawl: 'Hawl upcoming',
+    missingOwnershipDate: 'Ownership date incomplete',
+    closeToNisabNote: 'You are close to Nisab. Monitor savings and investments in the coming period.',
+    aboveNisabNote: 'The estimated zakat is based on your inputs. Consult a qualified authority for special cases.',
+    missingPricesNote: 'Nisab could not be calculated automatically because gold and silver prices are unavailable.',
+    highDebtsNote: 'Deductible debts affected the net zakat base.',
+    zakatEstimateDisclaimer: 'This calculator is an estimate for planning and tracking. It is not a religious ruling. For special cases, consult a qualified authority.',
     beneficiaryTracking: 'Beneficiary Tracking',
     beneficiaryDesc: 'Track sponsorships, charity cases, and beneficiaries linked to your projects in an organized and secure way.',
     privacyNote: 'Use a reference number or short label instead of sensitive personal information.',
@@ -845,6 +962,55 @@ const TEXT = {
     enterPriceManually: 'Saisir le prix manuellement',
     refreshPrices: 'Actualiser les prix',
     metalsDisclaimer: 'Les prix de l’or et de l’argent sont estimatifs et peuvent varier selon la pureté, la source et le marché local. Utilisez-les comme référence et consultez une autorité qualifiée pour les cas religieux spécifiques.',
+    zakatInputs: 'Données de zakat',
+    zakatSummaryTitle: 'Résumé de la zakat',
+    zakatGuidanceTitle: 'Notes religieuses et d’organisation',
+    cashSavings: 'Espèces / épargne',
+    zakatableInvestments: 'Investissements soumis à la zakat',
+    goldHoldings: 'Or',
+    goldWeight: 'Poids de l’or en grammes',
+    goldKarat: 'Carat de l’or',
+    directGoldValue: 'Ou saisir la valeur directement',
+    silverHoldings: 'Argent',
+    silverWeight: 'Poids de l’argent en grammes',
+    directSilverValue: 'Ou saisir la valeur directement',
+    nonZakatableAssets: 'Actifs non soumis à la zakat',
+    personalHome: 'Résidence personnelle',
+    personalCar: 'Voiture personnelle',
+    householdFurniture: 'Mobilier du foyer',
+    personalTools: 'Objets personnels',
+    residentialLand: 'Terrain résidentiel',
+    personalUseAssets: 'Actifs à usage personnel',
+    otherNonZakatAsset: 'Décrire un autre actif non soumis à la zakat',
+    nonZakatHelper: 'Excluez les actifs non soumis à la zakat comme la résidence personnelle, la voiture privée et le mobilier utilisé.',
+    goldPriceToday: 'Prix de l’or aujourd’hui',
+    silverPriceToday: 'Prix de l’argent aujourd’hui',
+    liveStatus: 'Direct',
+    manualStatus: 'Manuel',
+    failedStatus: 'Échec de mise à jour',
+    manualFallback: 'Impossible de charger les prix de l’or et de l’argent. Vous pouvez saisir les prix manuellement temporairement.',
+    usedNisab: 'Nisab utilisé',
+    netZakatBase: 'Base nette de zakat',
+    zakatDue: 'Zakat due',
+    zakatRate: 'Taux de zakat 2,5 %',
+    dueSummary: 'Vous avez atteint le nisab. La zakat estimée due est :',
+    notDueSummary: 'Vous n’avez pas atteint le nisab selon les données actuelles.',
+    incompleteZakat: 'Complétez les prix ou les actifs pour calculer la zakat avec précision.',
+    differenceFromNisab: 'Écart par rapport au nisab',
+    calculationMethod: 'Méthode de calcul',
+    saveZakatCalculation: 'Enregistrer le calcul de zakat',
+    zakatHistory: 'Historique des calculs de zakat',
+    noZakatHistory: 'Aucun calcul de zakat enregistré pour le moment.',
+    calculationSaved: 'Calcul de zakat enregistré.',
+    calculationDeleted: 'Calcul de zakat supprimé.',
+    completedHawl: 'Hawl terminé',
+    upcomingHawl: 'Hawl à venir',
+    missingOwnershipDate: 'Date d’acquisition incomplète',
+    closeToNisabNote: 'Vous êtes proche du nisab. Surveillez l’épargne et les investissements prochainement.',
+    aboveNisabNote: 'La zakat estimée est basée sur vos données. Consultez une autorité qualifiée pour les cas particuliers.',
+    missingPricesNote: 'Le nisab ne peut pas être calculé automatiquement car les prix de l’or et de l’argent sont indisponibles.',
+    highDebtsNote: 'Les dettes déductibles ont affecté la base nette de zakat.',
+    zakatEstimateDisclaimer: 'Ce calculateur fournit une estimation à des fins d’organisation et de suivi. Il ne constitue pas un avis religieux. Pour les cas particuliers, consultez une autorité qualifiée.',
     beneficiaryTracking: 'Suivi des bénéficiaires',
     beneficiaryDesc: 'Suivez les parrainages, les cas caritatifs et les bénéficiaires liés à vos projets de manière organisée et sécurisée.',
     privacyNote: 'Utilisez un numéro de référence ou un libellé court au lieu de données personnelles sensibles.',
@@ -951,7 +1117,8 @@ const beneficiaryCategories: BeneficiaryCategory[] = ['orphan', 'family', 'stude
 const beneficiaryStatuses: BeneficiaryStatus[] = ['active', 'paused', 'completed', 'needs_review'];
 const contributorRoles: ContributorRole[] = ['owner', 'contributor', 'viewer'];
 const paymentStatuses: PaymentStatus[] = ['pending', 'paid', 'partial', 'late', 'cancelled'];
-const priceSources = ['api', 'manual', 'fallback'] as const;
+const goldKarats = ['24', '22', '21', '18'] as const;
+const nonZakatOptions = ['personalHome', 'personalCar', 'householdFurniture', 'personalTools', 'residentialLand', 'personalUseAssets', 'other'] as const;
 const allowedDocumentTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
 const maxDocumentSize = 10 * 1024 * 1024;
 
@@ -1027,6 +1194,7 @@ export default function CharityProjectsPage() {
   const [reminders, setReminders] = useState<CharityReminder[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<CharityBeneficiary[]>([]);
   const [contributors, setContributors] = useState<CharityContributor[]>([]);
+  const [zakatHistory, setZakatHistory] = useState<ZakatCalculation[]>([]);
   const [incomeTotal, setIncomeTotal] = useState(0);
   const [expenseTotal, setExpenseTotal] = useState(0);
   const [message, setMessage] = useState('');
@@ -1056,7 +1224,22 @@ export default function CharityProjectsPage() {
   const [beneficiaryStatusFilter, setBeneficiaryStatusFilter] = useState<'all' | BeneficiaryStatus>('all');
   const [beneficiaryCategoryFilter, setBeneficiaryCategoryFilter] = useState<'all' | BeneficiaryCategory>('all');
   const [contributorProjectFilter, setContributorProjectFilter] = useState('');
-  const [zakat, setZakat] = useState({ cash: '', investments: '', gold: '', silver: '', debts: '', goldPrice: '', silverPrice: '', nonZakat: false });
+  const [zakat, setZakat] = useState({
+    cash: '',
+    investments: '',
+    gold: '',
+    silver: '',
+    debts: '',
+    goldPrice: '',
+    silverPrice: '',
+    goldGrams: '',
+    goldKarat: '24',
+    goldDirectValue: '',
+    silverGrams: '',
+    silverDirectValue: '',
+    nonZakatAssets: [] as string[],
+    nonZakatOther: '',
+  });
   const [assetForm, setAssetForm] = useState({ asset_name: '', asset_type: 'cash' as AssetType, amount: '', ownership_date: today(), zakat_due_date: addYear(today()), is_zakatable: true, notes: '' });
   const [projectForm, setProjectForm] = useState({
     name: '',
@@ -1134,7 +1317,7 @@ export default function CharityProjectsPage() {
         setPriceMode('automatic');
         setZakat(prev => ({
           ...prev,
-          goldPrice: String(data.gold.pricePerGram || ''),
+          goldPrice: String(data.gold.pricePerGram24k || data.gold.pricePerGram || ''),
           silverPrice: String(data.silver.pricePerGram || ''),
         }));
       } else {
@@ -1225,7 +1408,7 @@ export default function CharityProjectsPage() {
   const loadData = useCallback(async () => {
     if (!user) return;
     try {
-      const [projectRes, assetRes, commitmentRes, donationRes, documentRes, reminderRes, beneficiaryRes, contributorRes, incomeRes, expenseRes] = await Promise.all([
+      const [projectRes, assetRes, commitmentRes, donationRes, documentRes, reminderRes, beneficiaryRes, contributorRes, zakatHistoryRes, incomeRes, expenseRes] = await Promise.all([
         db.from('charity_projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('zakat_assets').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('charity_commitments').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
@@ -1234,6 +1417,7 @@ export default function CharityProjectsPage() {
         db.from('charity_reminders').select('*').eq('user_id', user.id).order('due_date', { ascending: true }),
         db.from('charity_beneficiaries').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('charity_project_contributors').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        db.from('zakat_calculations').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(6),
         db.from('monthly_income_sources').select('amount').eq('user_id', user.id),
         db.from('expense_items').select('amount').eq('user_id', user.id),
       ]);
@@ -1248,6 +1432,7 @@ export default function CharityProjectsPage() {
       if (!documentRes.error) setDocuments((documentRes.data ?? []) as CharityDocument[]);
       if (!beneficiaryRes.error) setBeneficiaries((beneficiaryRes.data ?? []) as CharityBeneficiary[]);
       if (!contributorRes.error) setContributors((contributorRes.data ?? []) as CharityContributor[]);
+      if (!zakatHistoryRes.error) setZakatHistory((zakatHistoryRes.data ?? []) as ZakatCalculation[]);
       if (!reminderRes.error) {
         setReminders(loadedReminders);
         await syncGeneratedReminders(loadedReminders, loadedProjects, loadedAssets, loadedCommitments);
@@ -1301,7 +1486,16 @@ export default function CharityProjectsPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const zakatableAmount = Math.max(0, toNum(zakat.cash) + toNum(zakat.investments) + toNum(zakat.gold) + toNum(zakat.silver) - toNum(zakat.debts));
+  const goldPricesByKarat = {
+    '24': toNum(zakat.goldPrice),
+    '22': (metalsPrice?.gold.pricePerGram22k && metalsPrice.gold.pricePerGram22k > 0) ? metalsPrice.gold.pricePerGram22k : toNum(zakat.goldPrice) * (22 / 24),
+    '21': (metalsPrice?.gold.pricePerGram21k && metalsPrice.gold.pricePerGram21k > 0) ? metalsPrice.gold.pricePerGram21k : toNum(zakat.goldPrice) * (21 / 24),
+    '18': (metalsPrice?.gold.pricePerGram18k && metalsPrice.gold.pricePerGram18k > 0) ? metalsPrice.gold.pricePerGram18k : toNum(zakat.goldPrice) * (18 / 24),
+  };
+  const selectedGoldGramPrice = goldPricesByKarat[zakat.goldKarat as keyof typeof goldPricesByKarat] || 0;
+  const zakatableGoldValue = toNum(zakat.goldDirectValue) > 0 ? toNum(zakat.goldDirectValue) : toNum(zakat.goldGrams) * selectedGoldGramPrice;
+  const zakatableSilverValue = toNum(zakat.silverDirectValue) > 0 ? toNum(zakat.silverDirectValue) : toNum(zakat.silverGrams) * toNum(zakat.silverPrice);
+  const zakatableAmount = Math.max(0, toNum(zakat.cash) + toNum(zakat.investments) + zakatableGoldValue + zakatableSilverValue - toNum(zakat.debts));
   const goldNisabValue = toNum(zakat.goldPrice) * 85;
   const silverNisabValue = toNum(zakat.silverPrice) * 595;
   const availableNisabValues = [goldNisabValue, silverNisabValue].filter(value => value > 0);
@@ -1310,8 +1504,31 @@ export default function CharityProjectsPage() {
     : nisabMethod === 'silver'
       ? silverNisabValue
       : availableNisabValues.length > 0 ? Math.min(...availableNisabValues) : 0;
+  const hasCriticalPriceData = goldNisabValue > 0 && silverNisabValue > 0;
   const reachedNisab = selectedNisabValue > 0 && zakatableAmount >= selectedNisabValue;
   const zakatAmount = reachedNisab ? zakatableAmount * 0.025 : 0;
+  const nisabDifference = selectedNisabValue > 0 ? zakatableAmount - selectedNisabValue : 0;
+  const closeToNisab = selectedNisabValue > 0 && !reachedNisab && zakatableAmount >= selectedNisabValue * 0.85;
+  const priceSourceLabel = metalsPrice?.source === 'api'
+    ? tr.automaticPrice
+    : metalsPrice?.source === 'fallback'
+      ? tr.failedStatus
+      : tr.manualPrice;
+  const tValue = (key: string, fallback = key) => (tr as Record<string, string>)[key] ?? fallback;
+  const reminderTypeLabel = (type: ReminderType) => type === 'general' ? tr.other : tValue(type, tr.other);
+  const assetTypeLabel = (type: AssetType) => {
+    if (type === 'savings') return tr.cashSavings;
+    if (type === 'investment') return tr.investments;
+    if (type === 'non_zakat') return tr.nonZakat;
+    return tValue(type, tr.other);
+  };
+  const nisabMethodLabel = (method: string) => method === 'gold'
+    ? tr.goldBased
+    : method === 'silver'
+      ? tr.silverBased
+      : method === 'conservative'
+        ? tr.conservative
+        : method;
   const totalDonations = projects.reduce((sum, project) => sum + toNum(project.collected_amount), 0);
   const activeProjects = projects.filter(project => !['completed', 'paused'].includes(project.status)).length;
   const expectedCommitments = commitments.reduce((sum, item) => {
@@ -1521,6 +1738,58 @@ export default function CharityProjectsPage() {
     else {
       setMessage(tr.saved);
       setAssetForm({ asset_name: '', asset_type: 'cash', amount: '', ownership_date: today(), zakat_due_date: addYear(today()), is_zakatable: true, notes: '' });
+      loadData();
+    }
+  };
+
+  const toggleNonZakatAsset = (asset: string) => {
+    setZakat(prev => ({
+      ...prev,
+      nonZakatAssets: prev.nonZakatAssets.includes(asset)
+        ? prev.nonZakatAssets.filter(item => item !== asset)
+        : [...prev.nonZakatAssets, asset],
+    }));
+  };
+
+  const saveZakatCalculation = async () => {
+    if (!user) return;
+    setSaving(true);
+    const notes = [
+      zakat.nonZakatAssets.length > 0 ? `${tr.nonZakatableAssets}: ${zakat.nonZakatAssets.map(asset => tr[asset as keyof typeof tr] ?? asset).join(', ')}` : '',
+      zakat.nonZakatOther ? `${tr.other}: ${zakat.nonZakatOther}` : '',
+    ].filter(Boolean).join(' | ');
+    const { error } = await db.from('zakat_calculations').insert({
+      user_id: user.id,
+      currency: 'KWD',
+      cash_amount: toNum(zakat.cash),
+      investment_amount: toNum(zakat.investments),
+      gold_value: zakatableGoldValue,
+      silver_value: zakatableSilverValue,
+      deductible_debts: toNum(zakat.debts),
+      net_zakat_base: zakatableAmount,
+      nisab_method: nisabMethod,
+      gold_nisab_value: goldNisabValue,
+      silver_nisab_value: silverNisabValue,
+      selected_nisab_value: selectedNisabValue,
+      zakat_due: zakatAmount,
+      price_source: metalsPrice?.source ?? 'manual',
+      notes: notes || null,
+    });
+    setSaving(false);
+    if (error) {
+      setMessage(tr.error);
+      return;
+    }
+    setMessage(tr.calculationSaved);
+    loadData();
+  };
+
+  const deleteZakatCalculation = async (calculation: ZakatCalculation) => {
+    if (!user) return;
+    const { error } = await db.from('zakat_calculations').delete().eq('id', calculation.id).eq('user_id', user.id);
+    if (error) setMessage(tr.error);
+    else {
+      setMessage(tr.calculationDeleted);
       loadData();
     }
   };
@@ -1947,7 +2216,7 @@ export default function CharityProjectsPage() {
                     <div className="reminder-top">
                       <div>
                         <strong>{reminder.title}</strong>
-                        <span>{tr[reminder.reminder_type] ?? tr.other}</span>
+                        <span>{reminderTypeLabel(reminder.reminder_type)}</span>
                       </div>
                       <b>{tr[reminder.priority]}</b>
                     </div>
@@ -1978,62 +2247,132 @@ export default function CharityProjectsPage() {
               <div><small>2.5%</small><h2>{tr.smartZakat}</h2></div>
               <Coins size={24} />
             </div>
-            <div className="form-grid">
-              <label>
-                <span>{tr.automaticPrice}</span>
-                <select value={priceMode} onChange={e => setPriceMode(e.target.value as 'automatic' | 'manual')}>
-                  <option value="automatic">{tr.automaticPrice}</option>
-                  <option value="manual">{tr.manualPrice}</option>
-                </select>
-              </label>
-              <label>
-                <span>{tr.nisabMethod}</span>
-                <select value={nisabMethod} onChange={e => setNisabMethod(e.target.value as 'gold' | 'silver' | 'conservative')}>
-                  <option value="gold">{tr.goldBased}</option>
-                  <option value="silver">{tr.silverBased}</option>
-                  <option value="conservative">{tr.conservative}</option>
-                </select>
-              </label>
-              {[
-                ['cash', tr.cash],
-                ['investments', tr.investments],
-                ['gold', tr.gold],
-                ['silver', tr.silver],
-                ['debts', tr.debts],
-                ['goldPrice', tr.goldPrice],
-                ['silverPrice', tr.silverPrice],
-              ].map(([key, label]) => (
-                <label key={key}>
-                  <span>{label}</span>
-                  <input inputMode="decimal" value={(zakat as any)[key]} onChange={e => setZakat(prev => ({ ...prev, [key]: e.target.value }))} placeholder="0.000" />
-                </label>
+            <div className="zakat-premium-grid">
+              <section className="zakat-panel">
+                <h3>{tr.zakatInputs}</h3>
+                <div className="form-grid">
+                  <label><span>{tr.cashSavings}</span><input inputMode="decimal" value={zakat.cash} onChange={e => setZakat(prev => ({ ...prev, cash: e.target.value }))} placeholder="0.000" /></label>
+                  <label><span>{tr.zakatableInvestments}</span><input inputMode="decimal" value={zakat.investments} onChange={e => setZakat(prev => ({ ...prev, investments: e.target.value }))} placeholder="0.000" /></label>
+                  <label><span>{tr.debts}</span><input inputMode="decimal" value={zakat.debts} onChange={e => setZakat(prev => ({ ...prev, debts: e.target.value }))} placeholder="0.000" /></label>
+                  <label><span>{tr.nisabMethod}</span><select value={nisabMethod} onChange={e => setNisabMethod(e.target.value as 'gold' | 'silver' | 'conservative')}><option value="gold">{tr.goldBased}</option><option value="silver">{tr.silverBased}</option><option value="conservative">{tr.conservative}</option></select></label>
+                </div>
+                <div className="asset-input-box">
+                  <strong>{tr.goldHoldings}</strong>
+                  <div className="form-grid">
+                    <label><span>{tr.goldWeight}</span><input inputMode="decimal" value={zakat.goldGrams} onChange={e => setZakat(prev => ({ ...prev, goldGrams: e.target.value }))} placeholder="0" /></label>
+                    <label><span>{tr.goldKarat}</span><select value={zakat.goldKarat} onChange={e => setZakat(prev => ({ ...prev, goldKarat: e.target.value }))}>{goldKarats.map(karat => <option key={karat} value={karat}>{karat}K</option>)}</select></label>
+                    <label className="wide"><span>{tr.directGoldValue}</span><input inputMode="decimal" value={zakat.goldDirectValue} onChange={e => setZakat(prev => ({ ...prev, goldDirectValue: e.target.value }))} placeholder="0.000" /></label>
+                  </div>
+                </div>
+                <div className="asset-input-box">
+                  <strong>{tr.silverHoldings}</strong>
+                  <div className="form-grid">
+                    <label><span>{tr.silverWeight}</span><input inputMode="decimal" value={zakat.silverGrams} onChange={e => setZakat(prev => ({ ...prev, silverGrams: e.target.value }))} placeholder="0" /></label>
+                    <label><span>{tr.directSilverValue}</span><input inputMode="decimal" value={zakat.silverDirectValue} onChange={e => setZakat(prev => ({ ...prev, silverDirectValue: e.target.value }))} placeholder="0.000" /></label>
+                  </div>
+                </div>
+                <div className="non-zakat-box">
+                  <strong>{tr.nonZakatableAssets}</strong>
+                  <p>{tr.nonZakatHelper}</p>
+                  <div className="chip-grid" role="group" aria-label={tr.nonZakatableAssets}>
+                    {nonZakatOptions.map(option => (
+                      <button
+                        key={option}
+                        type="button"
+                        className={zakat.nonZakatAssets.includes(option) ? 'chip active' : 'chip'}
+                        onClick={() => toggleNonZakatAsset(option)}
+                        aria-pressed={zakat.nonZakatAssets.includes(option)}
+                      >
+                        {option === 'other' ? tr.other : tr[option]}
+                      </button>
+                    ))}
+                  </div>
+                  {zakat.nonZakatAssets.includes('other') && (
+                    <label className="other-asset-input"><span>{tr.otherNonZakatAsset}</span><input value={zakat.nonZakatOther} onChange={e => setZakat(prev => ({ ...prev, nonZakatOther: e.target.value }))} /></label>
+                  )}
+                </div>
+              </section>
+
+              <section className="zakat-panel summary-panel">
+                <h3>{tr.zakatSummaryTitle}</h3>
+                <div className="price-status-grid">
+                  <div className="price-card">
+                    <small>{tr.goldPriceToday}</small>
+                    <strong>{toNum(zakat.goldPrice) > 0 ? money(toNum(zakat.goldPrice)) : '-'}</strong>
+                    <span>{metalsPrice?.success ? tr.liveStatus : tr.failedStatus}</span>
+                  </div>
+                  <div className="price-card">
+                    <small>{tr.silverPriceToday}</small>
+                    <strong>{toNum(zakat.silverPrice) > 0 ? money(toNum(zakat.silverPrice)) : '-'}</strong>
+                    <span>{metalsPrice?.success ? tr.liveStatus : tr.failedStatus}</span>
+                  </div>
+                </div>
+                <div className="price-meta">
+                  <span>{tr.priceSource}: {priceSourceLabel}</span>
+                  <span>{tr.lastUpdated}: {metalsPrice?.updatedAt ? dateLabel(metalsPrice.updatedAt) : '-'}</span>
+                </div>
+                <button className="primary-wide" type="button" onClick={loadMetalsPrices} disabled={loadingMetals} aria-label={tr.refreshPrices}>
+                  <Sparkles size={16} /> {loadingMetals ? tr.automaticPrice : tr.refreshPrices}
+                </button>
+                {(!metalsPrice?.success || priceMode === 'manual') && (
+                  <div className="manual-price-box">
+                    <p>{tr.manualFallback}</p>
+                    <div className="form-grid">
+                      <label><span>{tr.goldPrice}</span><input inputMode="decimal" value={zakat.goldPrice} onChange={e => setZakat(prev => ({ ...prev, goldPrice: e.target.value }))} placeholder="0.000" /></label>
+                      <label><span>{tr.silverPrice}</span><input inputMode="decimal" value={zakat.silverPrice} onChange={e => setZakat(prev => ({ ...prev, silverPrice: e.target.value }))} placeholder="0.000" /></label>
+                    </div>
+                  </div>
+                )}
+                <div className="result-grid">
+                  <div><small>{tr.netZakatBase}</small><strong>{money(zakatableAmount)}</strong></div>
+                  <div><small>{tr.goldNisab}</small><strong>{goldNisabValue > 0 ? money(goldNisabValue) : tr.enterPriceManually}</strong></div>
+                  <div><small>{tr.silverNisab}</small><strong>{silverNisabValue > 0 ? money(silverNisabValue) : tr.enterPriceManually}</strong></div>
+                  <div><small>{tr.usedNisab}</small><strong>{selectedNisabValue > 0 ? money(selectedNisabValue) : tr.enterPriceManually}</strong></div>
+                  <div><small>{tr.differenceFromNisab}</small><strong>{selectedNisabValue > 0 ? money(Math.abs(nisabDifference)) : '-'}</strong></div>
+                  <div><small>{tr.zakatRate}</small><strong>2.5%</strong></div>
+                  <div className={reachedNisab ? 'nisab-reached' : 'nisab-missing'}><small>{tr.reachedNisabQuestion}</small><strong>{hasCriticalPriceData ? (reachedNisab ? tr.reachedNisab : tr.notReachedNisab) : tr.incompleteZakat}</strong></div>
+                  <div><small>{tr.zakatDue}</small><strong>{hasCriticalPriceData ? money(zakatAmount) : '-'}</strong></div>
+                </div>
+                <p className="zakat-outcome">{hasCriticalPriceData ? (reachedNisab ? `${tr.dueSummary} ${money(zakatAmount)}` : tr.notDueSummary) : tr.incompleteZakat}</p>
+              </section>
+
+              <section className="zakat-panel guidance-panel">
+                <h3>{tr.zakatGuidanceTitle}</h3>
+                <div className="guidance-list">
+                  {!hasCriticalPriceData && <p><AlertTriangle size={16} /> {tr.missingPricesNote}</p>}
+                  {reachedNisab && <p><ShieldCheck size={16} /> {tr.aboveNisabNote}</p>}
+                  {closeToNisab && <p><Sparkles size={16} /> {tr.closeToNisabNote}</p>}
+                  {toNum(zakat.debts) > 0 && <p><Coins size={16} /> {tr.highDebtsNote}</p>}
+                  <p><FileText size={16} /> {tr.zakatEstimateDisclaimer}</p>
+                </div>
+                <div className="hawl-mini-list">
+                  <strong>{tr.hawlTracking}</strong>
+                  {assets.length === 0 ? <span>{tr.noZakatHistory}</span> : assets.slice(0, 4).map(asset => {
+                    const dueDays = asset.zakat_due_date ? daysUntil(asset.zakat_due_date) : null;
+                    const label = !asset.ownership_date ? tr.missingOwnershipDate : dueDays !== null && dueDays <= 0 ? tr.completedHawl : tr.upcomingHawl;
+                    return <div key={asset.id}><b>{asset.asset_name}</b><small>{label} • {dateLabel(asset.zakat_due_date || asset.ownership_date)}</small></div>;
+                  })}
+                </div>
+                <button className="primary-wide" type="button" disabled={saving || !user} onClick={saveZakatCalculation}>
+                  <Save size={16} /> {tr.saveZakatCalculation}
+                </button>
+                <p className="disclaimer">{tr.metalsDisclaimer}</p>
+              </section>
+            </div>
+
+            <div className="zakat-history">
+              <div className="section-head"><h3>{tr.zakatHistory}</h3></div>
+              {zakatHistory.length === 0 ? <p className="muted">{tr.noZakatHistory}</p> : zakatHistory.map(item => (
+                <div className="history-row" key={item.id}>
+                  <span>{dateLabel(item.calculation_date)}</span>
+                  <span>{money(toNum(item.net_zakat_base), item.currency)}</span>
+                  <span>{nisabMethodLabel(item.nisab_method)}</span>
+                  <strong>{money(toNum(item.zakat_due), item.currency)}</strong>
+                  <small>{item.price_source || '-'}</small>
+                  <button type="button" onClick={() => deleteZakatCalculation(item)} aria-label={tr.deleteAction}>{tr.deleteAction}</button>
+                </div>
               ))}
-              <label className="check-row">
-                <input type="checkbox" checked={zakat.nonZakat} onChange={e => setZakat(prev => ({ ...prev, nonZakat: e.target.checked }))} />
-                <span>{tr.nonZakat}</span>
-              </label>
             </div>
-            <div className="result-grid">
-              <div><small>{tr.zakatableAmount}</small><strong>{money(zakatableAmount)}</strong></div>
-              <div><small>{tr.zakatAmount}</small><strong>{money(zakatAmount)}</strong></div>
-              <div><small>{tr.goldNisab}</small><strong>{goldNisabValue > 0 ? money(goldNisabValue) : tr.enterPriceManually}</strong></div>
-              <div><small>{tr.silverNisab}</small><strong>{silverNisabValue > 0 ? money(silverNisabValue) : tr.enterPriceManually}</strong></div>
-              <div className={reachedNisab ? 'nisab-reached' : 'nisab-missing'}><small>{tr.reachedNisabQuestion}</small><strong>{reachedNisab ? tr.reachedNisab : tr.notReachedNisab}</strong></div>
-            </div>
-            <div className="metals-status">
-              <div>
-                <strong>{tr.metalsStatus}</strong>
-                <span>{metalsPrice?.message || (priceMode === 'automatic' ? tr.automaticPrice : tr.manualPrice)}</span>
-              </div>
-              <div><small>{tr.goldPrice}</small><b>{toNum(zakat.goldPrice) > 0 ? money(toNum(zakat.goldPrice)) : '-'}</b></div>
-              <div><small>{tr.silverPrice}</small><b>{toNum(zakat.silverPrice) > 0 ? money(toNum(zakat.silverPrice)) : '-'}</b></div>
-              <div><small>{tr.priceSource}</small><b>{metalsPrice ? tr[metalsPrice.source] ?? metalsPrice.source : tr.manualPrice}</b></div>
-              <div><small>{tr.lastUpdated}</small><b>{metalsPrice?.updatedAt ? dateLabel(metalsPrice.updatedAt) : '-'}</b></div>
-              <button type="button" onClick={loadMetalsPrices} disabled={loadingMetals}>{loadingMetals ? tr.automaticPrice : tr.refreshPrices}</button>
-            </div>
-            <p className="disclaimer">{tr.zakatDisclaimer}</p>
-            <p className="nisab"><Sparkles size={15} /> {metalsPrice?.success ? tr.metalsDisclaimer : tr.apiNotConfigured}</p>
-            <p className="disclaimer">{tr.metalsDisclaimer}</p>
           </article>
 
           <article className="warm-card span-5">
@@ -2043,7 +2382,7 @@ export default function CharityProjectsPage() {
             </div>
             <div className="form-grid one">
               <label><span>{tr.assetName}</span><input value={assetForm.asset_name} onChange={e => setAssetForm(prev => ({ ...prev, asset_name: e.target.value }))} /></label>
-              <label><span>{tr.assetType}</span><select value={assetForm.asset_type} onChange={e => setAssetForm(prev => ({ ...prev, asset_type: e.target.value as AssetType, is_zakatable: e.target.value !== 'non_zakat' }))}>{assetTypes.map(type => <option key={type} value={type}>{tr[type]}</option>)}</select></label>
+              <label><span>{tr.assetType}</span><select value={assetForm.asset_type} onChange={e => setAssetForm(prev => ({ ...prev, asset_type: e.target.value as AssetType, is_zakatable: e.target.value !== 'non_zakat' }))}>{assetTypes.map(type => <option key={type} value={type}>{assetTypeLabel(type)}</option>)}</select></label>
               <label><span>{tr.target}</span><input inputMode="decimal" value={assetForm.amount} onChange={e => setAssetForm(prev => ({ ...prev, amount: e.target.value }))} /></label>
               <label><span>{tr.ownershipDate}</span><input type="date" value={assetForm.ownership_date} onChange={e => setAssetForm(prev => ({ ...prev, ownership_date: e.target.value, zakat_due_date: addYear(e.target.value) }))} /></label>
               <label><span>{tr.dueDate}</span><input type="date" value={assetForm.zakat_due_date} onChange={e => setAssetForm(prev => ({ ...prev, zakat_due_date: e.target.value }))} /></label>
@@ -2458,7 +2797,7 @@ export default function CharityProjectsPage() {
               <label>
                 <span>{tr.reminderType}</span>
                 <select value={reminderForm.reminder_type} onChange={e => setReminderForm(prev => ({ ...prev, reminder_type: e.target.value as ReminderType }))}>
-                  {reminderTypes.map(type => <option key={type} value={type}>{tr[type] ?? tr.other}</option>)}
+                  {reminderTypes.map(type => <option key={type} value={type}>{reminderTypeLabel(type)}</option>)}
                 </select>
               </label>
               <label>
@@ -2543,7 +2882,7 @@ export default function CharityProjectsPage() {
                 <select value={documentForm.donation_id} onChange={e => setDocumentForm(prev => ({ ...prev, donation_id: e.target.value }))}>
                   <option value="">-</option>
                   {donations.map(donation => {
-                    const projectName = projects.find(project => project.id === donation.project_id)?.name ?? tr.donations;
+                    const projectName = projects.find(project => project.id === donation.project_id)?.name ?? tr.linkedDonations;
                     return <option key={donation.id} value={donation.id}>{projectName} - {money(toNum(donation.amount), donation.currency)}</option>;
                   })}
                 </select>
@@ -2700,7 +3039,8 @@ export default function CharityProjectsPage() {
         .summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.summary-card{display:grid;gap:8px}.summary-card span{width:40px;height:40px;border-radius:14px;background:#FAEEDA;color:#BA7517;display:grid;place-items:center}.summary-card small,.section-head small{color:#8A6A55;font-weight:800}.summary-card strong{font-size:20px;color:#3D2914;overflow-wrap:anywhere}
         .main-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:18px}.span-7,.span-5{grid-column:auto}.split-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}.section-head h2{margin:0;color:#3D2914;font-size:21px}.section-head svg{color:#BA7517}
         .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid.one{grid-template-columns:1fr}.form-grid label,.impact-input{display:grid;gap:7px;color:#3D2914;font-size:13px;font-weight:800}.form-grid input,.form-grid select,.form-grid textarea,.impact-input input{width:100%;border:1px solid rgba(186,117,23,.18);border-radius:13px;background:#F5F1E8;color:#1A0F05;min-height:46px;padding:0 12px;outline:none}.form-grid textarea{min-height:92px;padding-top:12px;resize:vertical}.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus,.impact-input input:focus{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.15);background:#FFFDF8}.wide{grid-column:1/-1}.check-row{display:flex!important;align-items:center;gap:9px}.check-row input{width:18px!important;min-height:18px!important}.primary-wide{width:100%}
-        .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.result-grid div,.big-metric{background:#FAEEDA;border:1px solid rgba(186,117,23,.14);border-radius:16px;padding:14px}.result-grid small,.big-metric span{display:block;color:#854F0B;font-weight:800}.result-grid strong,.big-metric strong{display:block;margin-top:5px;color:#3D2914;font-size:24px}.disclaimer,.nisab,.muted{margin:12px 0 0;color:#7A6A55;line-height:1.8}.nisab{display:flex;gap:8px;align-items:flex-start;color:#854F0B;background:#FFF8EA;border-radius:13px;padding:10px}
+        .zakat-premium-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr) minmax(280px,.82fr);gap:14px;align-items:start}.zakat-panel{display:grid;gap:14px;border:1px solid rgba(186,117,23,.14);background:#FFF8EA;border-radius:20px;padding:16px;min-width:0}.zakat-panel h3,.zakat-history h3{margin:0;color:#3D2914;font-size:17px}.asset-input-box,.non-zakat-box,.manual-price-box,.hawl-mini-list{border:1px solid rgba(186,117,23,.13);background:#FFFDF8;border-radius:16px;padding:13px;display:grid;gap:10px;min-width:0}.asset-input-box strong,.non-zakat-box strong,.hawl-mini-list strong{color:#3D2914}.non-zakat-box p,.manual-price-box p{margin:0;color:#7A6A55;line-height:1.7;font-size:13px}.chip-grid{display:flex;flex-wrap:wrap;gap:8px}.chip{border:1px solid rgba(186,117,23,.2);background:#F7F0E4;color:#3D2914;border-radius:999px;min-height:36px;padding:0 12px;font-weight:900;cursor:pointer}.chip.active{background:#3D2914;color:#FFFDF8;border-color:#3D2914}.other-asset-input{display:grid;gap:7px;color:#3D2914;font-weight:800}.other-asset-input input{width:100%;border:1px solid rgba(186,117,23,.18);border-radius:13px;background:#F5F1E8;color:#1A0F05;min-height:44px;padding:0 12px;outline:none}.price-status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.price-card{background:#3D2914;border:1px solid rgba(250,199,117,.18);border-radius:16px;padding:14px;color:#FFFDF8;min-width:0}.price-card small,.price-card span{display:block;color:#FAC775;font-weight:800}.price-card strong{display:block;margin:5px 0;color:#FFFDF8;font-size:20px;overflow-wrap:anywhere}.price-meta{display:flex;flex-wrap:wrap;gap:8px;color:#854F0B;font-size:12px;font-weight:900}.price-meta span{border-radius:999px;background:#FAEEDA;padding:6px 10px}.zakat-outcome{margin:0;border-radius:15px;background:#EAF3DE;color:#27500A;padding:12px;font-weight:900;line-height:1.7}.guidance-list{display:grid;gap:8px}.guidance-list p{margin:0;display:flex;gap:8px;align-items:flex-start;border-radius:14px;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);padding:10px;color:#3D2914;line-height:1.6}.guidance-list svg{color:#BA7517;flex:0 0 auto;margin-top:2px}.hawl-mini-list div{display:grid;gap:2px;border-radius:12px;background:#F7F0E4;padding:9px}.hawl-mini-list b{color:#3D2914}.hawl-mini-list small,.hawl-mini-list span{color:#7A6A55}.zakat-history{margin-top:14px;border-top:1px solid rgba(186,117,23,.14);padding-top:14px}.history-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr .7fr auto;gap:8px;align-items:center;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:14px;padding:10px;margin-top:8px;min-width:0}.history-row span,.history-row small,.history-row strong{min-width:0;overflow-wrap:anywhere;color:#3D2914}.history-row small{color:#854F0B}.history-row button{border:1px solid rgba(121,31,31,.14);background:#FCEBEB;color:#791F1F;border-radius:10px;min-height:34px;padding:0 10px;font-weight:900;cursor:pointer}
+        .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:0}.result-grid div,.big-metric{background:#FAEEDA;border:1px solid rgba(186,117,23,.14);border-radius:16px;padding:14px}.result-grid small,.big-metric span{display:block;color:#854F0B;font-weight:800}.result-grid strong,.big-metric strong{display:block;margin-top:5px;color:#3D2914;font-size:24px;overflow-wrap:anywhere}.disclaimer,.nisab,.muted{margin:12px 0 0;color:#7A6A55;line-height:1.8}.nisab{display:flex;gap:8px;align-items:flex-start;color:#854F0B;background:#FFF8EA;border-radius:13px;padding:10px}
         .nisab-reached{background:#EAF3DE!important}.nisab-reached small,.nisab-reached strong{color:#27500A!important}.nisab-missing{background:#FAEEDA!important}.metals-status{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(4,minmax(0,1fr)) auto;gap:10px;align-items:stretch;margin-top:14px;border:1px solid rgba(186,117,23,.14);background:#FFF8EA;border-radius:18px;padding:12px}.metals-status div{min-width:0}.metals-status strong,.metals-status b,.metals-status span,.metals-status small{display:block}.metals-status strong,.metals-status b{color:#3D2914;overflow-wrap:anywhere}.metals-status span,.metals-status small{color:#854F0B;font-size:12px;line-height:1.5}.metals-status button{border:0;border-radius:12px;background:linear-gradient(135deg,#FAC775,#BA7517);color:#1A0F05;padding:0 12px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.metals-status button:disabled{opacity:.65;cursor:wait}
         .template-grid,.project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.template-card{text-align:start;border:1px solid rgba(186,117,23,.16);background:#FDF8EE;border-radius:16px;padding:14px;cursor:pointer}.template-card:hover{background:#FAEEDA}.template-card strong,.template-card span{display:block}.template-card span{margin-top:5px;color:#8A6A55}
         .project-card{border:1px solid rgba(186,117,23,.14);border-radius:18px;background:#FFFDF8;padding:16px;display:grid;gap:13px}.project-top{display:flex;justify-content:space-between;gap:12px;min-width:0}.project-top strong{display:block;color:#3D2914;font-size:17px;overflow-wrap:anywhere}.project-top span,.badge-row span,.project-card p{color:#7A6A55;font-size:12px;overflow-wrap:anywhere}.status,.badge-row span{border-radius:999px;padding:5px 9px;background:#FAEEDA;color:#854F0B;font-size:11px}.badge-row{display:flex;gap:8px;flex-wrap:wrap}.progress{height:9px;border-radius:99px;background:#F1E6D4;overflow:hidden}.progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#BA7517,#EF9F27)}.money-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.money-row div{background:#F7F0E4;border-radius:13px;padding:10px;min-width:0}.money-row small{display:block;color:#8A6A55}.money-row strong{display:block;color:#3D2914;font-size:13px;overflow-wrap:anywhere}.card-actions{display:flex;gap:8px;flex-wrap:wrap}.card-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:800;font-size:12px}.doc-count-btn{justify-self:start;border:1px solid rgba(186,117,23,.16);background:#F7F0E4;color:#854F0B;border-radius:999px;min-height:34px;padding:0 12px;font-weight:900;cursor:pointer}
@@ -2709,9 +3049,9 @@ export default function CharityProjectsPage() {
         .calendar-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.alert-panel,.season-panel{border:1px solid rgba(186,117,23,.14);background:#FDF8EE;border-radius:18px;padding:14px;display:grid;gap:10px}.alert-panel strong,.season-panel strong{color:#3D2914}.alert-panel p{margin:0;color:#7A6A55}.alert-line{border-radius:14px;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);padding:10px;display:grid;gap:4px}.alert-line b{color:#3D2914}.alert-line span{color:#854F0B;font-size:12px}.season-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.season-grid span{border-radius:14px;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);padding:10px;display:grid;gap:5px}.season-grid b{color:#3D2914}.season-grid small{color:#8A6A55;line-height:1.5}.reminder-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.reminder-card{border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;display:grid;gap:10px}.reminder-card.high{border-color:rgba(121,31,31,.2);background:#FFF8F8}.reminder-card.low{background:#F9FBF6}.reminder-top{display:flex;justify-content:space-between;gap:10px;min-width:0}.reminder-top strong{display:block;color:#3D2914;overflow-wrap:anywhere}.reminder-top span,.reminder-card small,.reminder-card p{color:#7A6A55;line-height:1.6}.reminder-top b{align-self:start;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:5px 9px;font-size:11px;white-space:nowrap}
         .empty-state{display:grid;place-items:center;text-align:center;padding:42px 16px;color:#8A6A55}.empty-state svg{color:#BA7517;margin-bottom:10px}.empty-state strong{color:#3D2914;font-size:18px}.impact-lines{display:grid;gap:9px}.impact-lines p{margin:0;border-radius:13px;background:#F5F1E8;padding:10px;color:#3D2914}.impact-lines .warn{background:#FAEEDA;color:#854F0B}.report-card{display:grid;grid-template-columns:minmax(0,1fr) 110px auto auto;gap:10px;align-items:end;border:1px solid rgba(186,117,23,.18);border-radius:16px;background:#FAEEDA;padding:14px;margin-bottom:12px}.report-card strong,.report-card span{display:block}.report-card strong{color:#3D2914}.report-card span{margin-top:4px;color:#854F0B;font-size:12px}.report-card select{height:42px;border:1px solid rgba(186,117,23,.25);border-radius:12px;background:#FFFDF8;color:#3D2914;padding:0 10px;font:800 13px Tajawal,Arial,sans-serif}.report-card button{height:42px;border:0;border-radius:12px;background:linear-gradient(135deg,#FAC775,#BA7517);color:#1A0F05;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}.report-card button:disabled{opacity:.65;cursor:wait}.future-list{display:grid;gap:9px}.future-list span{display:flex;justify-content:space-between;gap:8px;border:1px solid rgba(186,117,23,.12);border-radius:12px;padding:10px;color:#3D2914}.future-list b{color:#BA7517}
         .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(26,15,5,.46);display:grid;place-items:center;padding:18px}.modal{width:min(760px,100%);max-height:92dvh;overflow:auto;background:#FFFDF8;border:1px solid rgba(186,117,23,.18);border-radius:24px;padding:20px}.modal.small{width:min(420px,100%)}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.modal-head h2{margin:0}.modal-head button{width:40px;height:40px;border-radius:12px;border:1px solid rgba(186,117,23,.18);background:#F5F1E8;display:grid;place-items:center;cursor:pointer}.modal-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
-        @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid,.calendar-grid{grid-template-columns:1fr}.project-grid,.document-grid,.reminder-grid,.beneficiary-grid,.contributor-grid{grid-template-columns:1fr}.metals-status{grid-template-columns:repeat(2,minmax(0,1fr))}.metals-status button{min-height:42px}}
+        @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid,.calendar-grid,.zakat-premium-grid{grid-template-columns:1fr}.project-grid,.document-grid,.reminder-grid,.beneficiary-grid,.contributor-grid{grid-template-columns:1fr}.metals-status{grid-template-columns:repeat(2,minmax(0,1fr))}.metals-status button{min-height:42px}}
         @media(max-width:900px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row,.report-card,.document-tools,.season-grid,.metals-status,.beneficiary-stats{grid-template-columns:1fr}.report-card button{width:100%}.document-card{grid-template-columns:36px minmax(0,1fr)}.document-actions button{flex:1}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
+        @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row,.report-card,.document-tools,.season-grid,.metals-status,.beneficiary-stats,.price-status-grid{grid-template-columns:1fr}.history-row{grid-template-columns:1fr}.report-card button{width:100%}.document-card{grid-template-columns:36px minmax(0,1fr)}.document-actions button{flex:1}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
       `}</style>
     </div>
   );
