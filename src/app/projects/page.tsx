@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/Sidebar';
+import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Loader2, Pencil, Trash2, Send, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
@@ -321,8 +322,7 @@ export default function ProjectsPage() {
       <Sidebar />
 
       {/* ── Main ── */}
-      <main className="main-ml" style={{ marginInlineStart: '230px', padding: '24px 24px 60px', maxWidth: 'none', overflowX: 'hidden' }}>
-        <div style={{ width: '100%', maxWidth: 'none', margin: 0, display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <DashboardPageShell className="main-ml" contentStyle={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
           {/* Header */}
           <div style={S(0)}>
@@ -720,8 +720,7 @@ export default function ProjectsPage() {
             </div>
           </div>
 
-        </div>
-      </main>
+      </DashboardPageShell>
     </div>
   </>);
 }

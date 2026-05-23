@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Sidebar } from '@/components/Sidebar';
+import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { MONTHS } from '@/lib/translations';
 
@@ -215,8 +216,7 @@ export default function CharityPage() {
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
         .cp { font-family: 'Tajawal', sans-serif; background: #F7F3EA; min-height: 100vh; color: #111111; display: flex; overflow-x: hidden; }
-        .charity-main { flex: 1; min-width: 0; width: 100%; max-width: 1280px; margin: 0 auto; margin-inline-start: 230px; padding: 24px 20px 60px; overflow-x: hidden; }
-        .charity-content { max-width: 960px; margin: 0 auto; min-width: 0; }
+        .charity-content { width: 100%; max-width: none; margin: 0; min-width: 0; }
         .g2 > *, .kpi-g > *, .cc { min-width: 0; }
         .cp ::-webkit-scrollbar { width: 4px; }
         .cp ::-webkit-scrollbar-thumb { background: rgba(216,174,99,.3); border-radius: 10px; }
@@ -233,14 +233,13 @@ export default function CharityPage() {
         .save-btn:disabled { opacity: .55; cursor: not-allowed; }
         .save-btn span { position: relative; z-index: 1; }
         .row-hover:hover { background: rgba(216,174,99,.04) !important; }
-        @media (max-width: 1024px) { .charity-main { margin-inline-start: 0; } }
-        @media (max-width: 768px) { .charity-main { padding: 18px 14px 44px; } .g2 { grid-template-columns: 1fr !important; } .kpi-g { grid-template-columns: 1fr 1fr !important; } }
+        @media (max-width: 768px) { .g2 { grid-template-columns: 1fr !important; } .kpi-g { grid-template-columns: 1fr 1fr !important; } }
+        @media (max-width: 560px) { .kpi-g { grid-template-columns: 1fr !important; } }
       `}</style>
 
       <div className="cp" dir={dir}>
         <Sidebar />
-        <main className="charity-main">
-          <div className="charity-content">
+        <DashboardPageShell className="charity-main" contentClassName="charity-content">
 
           {/* ─── Header ─── */}
           <div style={{ ...S(0), display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '28px', flexWrap: 'wrap' }}>
@@ -279,7 +278,7 @@ export default function CharityPage() {
             ))}
           </div>
 
-          <div className="g2" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px', alignItems: 'start' }}>
+          <div className="g2" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(320px, .7fr)', gap: '20px', alignItems: 'start' }}>
 
             {/* ─── LEFT: Form + History ─── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
@@ -520,8 +519,7 @@ export default function CharityPage() {
             <p style={{ fontSize: '11px', color: '#9A6C3C' }}>{t('charity.footerNote')}</p>
           </div>
 
-          </div>
-        </main>
+        </DashboardPageShell>
       </div>
     </>
   );
