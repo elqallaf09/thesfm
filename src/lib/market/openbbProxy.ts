@@ -9,6 +9,7 @@ import {
   type MarketAssetType,
   type MarketResult,
 } from '@/lib/market/marketService';
+import symbolDirectory from '../../../openbb-service/data/symbols.json';
 
 const OPENBB_TIMEOUT_MS = 12000;
 
@@ -75,6 +76,39 @@ async function fetchOpenBB(path: string, params?: URLSearchParams) {
   } catch {
     return { configured: true as const, available: false as const };
   }
+}
+
+function scoreDirectoryItem(item: Record<string, any>, query: string) {
+  const needle = query.toLowerCase();
+  const symbol = String(item.symbol ?? '').toLowerCase();
+  const providerSymbol = String(item.providerSymbol ?? '').toLowerCase();
+  const name = String(item.name ?? '').toLowerCase();
+  const assetType = String(item.assetType ?? '').toLowerCase();
+  if (!needle) return 1;
+  if (symbol === needle || providerSymbol === needle) return 100;
+  if (symbol.startsWith(needle)) return 88;
+  if (name.startsWith(needle)) return 78;
+  if (symbol.includes(needle) || providerSymbol.includes(needle)) return 62;
+  if (name.includes(needle)) return 50;
+  if (assetType.includes(needle)) return 35;
+  return 0;
+}
+
+function searchLocalSymbolDirectory(query: string, assetType?: MarketAssetType) {
+  return (symbolDirectory as Array<Record<string, any>>)
+    .filter(item => !assetType || normalizeAssetType(item.assetType) === assetType)
+    .map(item => ({ score: scoreDirectoryItem(item, query), item }))
+    .filter(entry => entry.score > 0)
+    .sort((a, b) => b.score - a.score || String(a.item.symbol).localeCompare(String(b.item.symbol)))
+    .slice(0, 12)
+    .map(({ item }) => ({
+      symbol: String(item.symbol ?? '').toUpperCase(),
+      name: String(item.name ?? item.symbol ?? ''),
+      assetType: normalizeAssetType(item.assetType),
+      exchange: item.exchange ? String(item.exchange) : undefined,
+      country: item.country ? String(item.country) : undefined,
+      providerSymbol: item.providerSymbol ? String(item.providerSymbol).toUpperCase() : String(item.symbol ?? '').toUpperCase(),
+    }));
 }
 
 function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType, fallback = false): MarketAnalysis {
@@ -207,10 +241,23 @@ export async function proxySearch(queryInput: unknown, assetTypeInput: unknown) 
   const result = await fetchOpenBB('/market/search', params);
   if (result.configured && result.available && result.data?.success) return result.data;
 
+  const directoryResults = searchLocalSymbolDirectory(query, assetType);
+  if (directoryResults.length > 0) {
+    return {
+      success: true,
+      query,
+      source: 'cache',
+      fallback: true,
+      openbbService: result.configured ? 'unavailable' : 'not_configured',
+      results: directoryResults,
+    };
+  }
+
   const results = await searchMarketAssets({ query, assetType });
   return {
     success: true,
-    source: 'mock',
+    query,
+    source: 'fallback',
     fallback: true,
     openbbService: result.configured ? 'unavailable' : 'not_configured',
     results,

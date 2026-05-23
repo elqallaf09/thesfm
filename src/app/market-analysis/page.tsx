@@ -16,6 +16,13 @@ type MarketViewAnalysis = MarketAnalysis & { source?: string; fallback?: boolean
 type WatchlistItem = { id?: string; symbol: string; assetType: MarketAssetType; name?: string | null; createdAt?: string | null };
 type SavedAlert = { id?: string; symbol: string; assetType: MarketAssetType; alertType: AlertType; threshold: number; createdAt?: string | null };
 type AlertType = 'above' | 'below' | 'change_exceeds' | 'rsi_above' | 'rsi_below';
+type SelectedMarketAsset = {
+  symbol: string;
+  providerSymbol?: string;
+  name?: string;
+  assetType: MarketAssetType;
+  exchange?: string;
+};
 type PortfolioInvestment = {
   id: string;
   name: string;
@@ -83,6 +90,15 @@ function makeClientFallback(symbol: string, assetType: MarketAssetType, fallback
   };
 }
 
+function normalizeSearchItem(item: MarketSearchItem): MarketSearchItem {
+  return {
+    ...item,
+    symbol: item.symbol.toUpperCase(),
+    providerSymbol: item.providerSymbol?.toUpperCase(),
+    assetType: normalizeAssetType(item.assetType),
+  };
+}
+
 function hasUsableAnalysis(result: MarketResult): result is MarketAnalysis {
   return Boolean(
     result.success
@@ -140,6 +156,11 @@ export default function MarketAnalysisPage() {
   const [query, setQuery] = useState(DEFAULT_MARKET_ASSET);
   const [assetType, setAssetType] = useState<MarketAssetType | 'all'>(DEFAULT_MARKET_TYPE);
   const [analysis, setAnalysis] = useState<MarketViewAnalysis>(() => makeClientFallback(DEFAULT_MARKET_ASSET, DEFAULT_MARKET_TYPE, 'initial_load'));
+  const [selectedAsset, setSelectedAsset] = useState<SelectedMarketAsset>({ symbol: DEFAULT_MARKET_ASSET, assetType: DEFAULT_MARKET_TYPE, name: 'Apple Inc.', providerSymbol: DEFAULT_MARKET_ASSET });
+  const [searchResults, setSearchResults] = useState<MarketSearchItem[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchMessage, setSearchMessage] = useState('');
   const [suggestedAssets, setSuggestedAssets] = useState<MarketSearchItem[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [alerts, setAlerts] = useState<SavedAlert[]>([]);
@@ -155,9 +176,10 @@ export default function MarketAnalysisPage() {
   const [reportOpen, setReportOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState('');
 
-  const requestAnalysis = useCallback(async (symbolInput: string, typeInput: MarketAssetType | 'all') => {
-    const symbol = validateSymbol(symbolInput);
-    if (!symbol) {
+  const requestAnalysis = useCallback(async (symbolInput: string, typeInput: MarketAssetType | 'all', selectedInput?: Partial<SelectedMarketAsset>) => {
+    const displaySymbol = validateSymbol(selectedInput?.symbol ?? symbolInput);
+    const requestSymbol = validateSymbol(selectedInput?.providerSymbol ?? symbolInput);
+    if (!requestSymbol || !displaySymbol) {
       setError(t('market_select_asset_to_start'));
       setLoading(false);
       return;
@@ -167,10 +189,18 @@ export default function MarketAnalysisPage() {
     setError('');
     setNotice('');
     const normalizedType = typeInput === 'all' ? DEFAULT_MARKET_TYPE : normalizeAssetType(typeInput);
-    setQuery(symbol);
+    const selectedMeta: SelectedMarketAsset = {
+      symbol: displaySymbol,
+      providerSymbol: selectedInput?.providerSymbol ? validateSymbol(selectedInput.providerSymbol) ?? requestSymbol : requestSymbol,
+      name: selectedInput?.name,
+      assetType: normalizeAssetType(selectedInput?.assetType ?? normalizedType),
+      exchange: selectedInput?.exchange,
+    };
+    setSelectedAsset(selectedMeta);
+    setQuery(displaySymbol);
     setAssetType(normalizedType);
     try {
-      const response = await fetch(`/api/market/analyze?symbol=${encodeURIComponent(symbol)}&assetType=${encodeURIComponent(normalizedType)}`);
+      const response = await fetch(`/api/market/analyze?symbol=${encodeURIComponent(requestSymbol)}&assetType=${encodeURIComponent(normalizedType)}`);
       const result = await response.json() as MarketResult & { openbbService?: MarketServiceState; source?: string; fallback?: boolean; fallbackReason?: string };
       if (process.env.NODE_ENV === 'development') {
         console.log('Market analysis source:', {
@@ -183,9 +213,19 @@ export default function MarketAnalysisPage() {
       if (!response.ok || !result.success) throw new Error(!result.success ? result.error : t('market_analysis_unavailable'));
 
       if (hasUsableAnalysis(result)) {
-        setAnalysis(result);
+        setAnalysis({
+          ...result,
+          symbol: selectedMeta.symbol,
+          providerSymbol: result.providerSymbol ?? selectedMeta.providerSymbol,
+          name: selectedMeta.name ?? result.name,
+          assetType: normalizedType,
+        });
       } else {
-        setAnalysis(makeClientFallback(symbol, normalizedType, 'provider_returned_no_usable_data'));
+        setAnalysis({
+          ...makeClientFallback(selectedMeta.symbol, normalizedType, 'provider_returned_no_usable_data'),
+          name: selectedMeta.name ?? `${selectedMeta.symbol} Market Asset`,
+          providerSymbol: selectedMeta.providerSymbol,
+        });
         setNotice(t('market_demo_data_shown'));
       }
       setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -194,7 +234,11 @@ export default function MarketAnalysisPage() {
         setServiceState(result.openbbService);
       }
     } catch (err) {
-      setAnalysis(makeClientFallback(symbol, normalizedType, err instanceof Error ? err.message : 'client_request_failed'));
+      setAnalysis({
+        ...makeClientFallback(displaySymbol, normalizedType, err instanceof Error ? err.message : 'client_request_failed'),
+        name: selectedMeta.name ?? `${displaySymbol} Market Asset`,
+        providerSymbol: selectedMeta.providerSymbol,
+      });
       setError('');
       setNotice(t('market_demo_data_shown'));
       setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -202,6 +246,43 @@ export default function MarketAnalysisPage() {
       setLoading(false);
     }
   }, [t]);
+
+  useEffect(() => {
+    const cleanQuery = query.trim();
+    if (cleanQuery.length < 2) {
+      setSearchResults([]);
+      setSearchMessage('');
+      setSearchLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setSearchLoading(true);
+    const timeout = window.setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ q: cleanQuery });
+        if (assetType !== 'all') params.set('assetType', assetType);
+        const response = await fetch(`/api/market/search?${params.toString()}`);
+        const data = await response.json() as { results?: MarketSearchItem[] };
+        if (cancelled) return;
+        const results = (data.results ?? []).map(normalizeSearchItem).slice(0, 12);
+        setSearchResults(results);
+        setSearchMessage(results.length === 0 ? t('market_no_search_results') : '');
+      } catch {
+        if (!cancelled) {
+          setSearchResults([]);
+          setSearchMessage(t('market_no_search_results'));
+        }
+      } finally {
+        if (!cancelled) setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [assetType, query, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -400,6 +481,23 @@ export default function MarketAnalysisPage() {
     setNotice(t('market_alert_saved'));
   }, [alertThreshold, alertType, alerts, analysis, isGuest, t, user]);
 
+  const analyzeSearchSelection = useCallback((item?: MarketSearchItem) => {
+    const selectedItem = item ? normalizeSearchItem(item) : searchResults[0];
+    if (selectedItem && query.trim().length >= 2) {
+      setSearchOpen(false);
+      void requestAnalysis(selectedItem.providerSymbol ?? selectedItem.symbol, selectedItem.assetType, {
+        symbol: selectedItem.symbol,
+        providerSymbol: selectedItem.providerSymbol ?? selectedItem.symbol,
+        name: selectedItem.name,
+        assetType: selectedItem.assetType,
+        exchange: selectedItem.exchange,
+      });
+      return;
+    }
+
+    void requestAnalysis(query, assetType);
+  }, [assetType, query, requestAnalysis, searchResults]);
+
   const removeAlert = useCallback(async (alert: SavedAlert, index: number) => {
     if (alert.id && user && !isGuest) {
       await supabase.from('market_price_alerts').delete().eq('id', alert.id).eq('user_id', user.id);
@@ -425,7 +523,8 @@ export default function MarketAnalysisPage() {
   const fallbackReasonText = isFallbackData
     ? t('market_demo_data_shown')
     : t('market_no_fallback');
-  const localizedAssetName = selected?.name?.includes('Market Asset') ? t('market_asset_generic').replace('{symbol}', selected.symbol) : selected?.name;
+  const selectedDisplayName = selectedAsset.symbol === selected?.symbol ? selectedAsset.name : undefined;
+  const localizedAssetName = selectedDisplayName ?? (selected?.name?.includes('Market Asset') ? t('market_asset_generic').replace('{symbol}', selected.symbol) : selected?.name);
   const localizedSummary = selected?.summary?.includes('Educational market summary only')
     ? t('market_summary_educational')
     : selected?.summary;
@@ -496,13 +595,45 @@ export default function MarketAnalysisPage() {
             <span className="market-eyebrow"><Sparkles size={15} />{heroBadge}</span>
             <h1>{t('market_title')}</h1>
             <p>{t('market_hero_subtitle')}</p>
-            <form className="market-search-panel" onSubmit={event => { event.preventDefault(); void requestAnalysis(query, assetType); }}>
-              <label>
+            <form className="market-search-panel" onSubmit={event => { event.preventDefault(); analyzeSearchSelection(); }}>
+              <label className="market-search-field">
                 <span>{t('market_search_label')}</span>
                 <div>
                   <Search size={17} />
-                  <input value={query} onChange={event => setQuery(event.target.value.toUpperCase())} placeholder={t('market_search_placeholder')} />
+                  <input
+                    value={query}
+                    onBlur={() => window.setTimeout(() => setSearchOpen(false), 160)}
+                    onChange={event => {
+                      setQuery(event.target.value);
+                      setSearchOpen(true);
+                    }}
+                    onFocus={() => setSearchOpen(true)}
+                    placeholder={t('market_search_placeholder')}
+                  />
                 </div>
+                {searchOpen && query.trim().length >= 2 && (
+                  <div className="market-search-results" role="listbox" aria-label={t('market_search_results')}>
+                    <strong>{t('market_search_results')}</strong>
+                    {searchLoading ? (
+                      <p>{t('loading')}</p>
+                    ) : searchResults.length > 0 ? searchResults.map(item => (
+                      <button
+                        type="button"
+                        key={`${item.symbol}-${item.assetType}-${item.providerSymbol ?? item.symbol}`}
+                        onMouseDown={event => event.preventDefault()}
+                        onClick={() => analyzeSearchSelection(item)}
+                      >
+                        <span>
+                          <b>{item.symbol}</b>
+                          <em>{item.name}</em>
+                        </span>
+                        <small>{t(`market_asset_${item.assetType === 'stock' ? 'stocks' : item.assetType === 'commodity' ? 'commodities' : item.assetType}`)}{item.exchange ? ` · ${item.exchange}` : ''}</small>
+                      </button>
+                    )) : (
+                      <p>{searchMessage || t('market_no_search_results')}</p>
+                    )}
+                  </div>
+                )}
               </label>
               <label>
                 <span>{t('market_asset_type')}</span>
@@ -773,7 +904,19 @@ export default function MarketAnalysisPage() {
                 </button>
                 <div className="watchlist">
                   {watchlist.length === 0 ? suggestedAssets.map(asset => (
-                    <button type="button" key={asset.symbol} onClick={() => void requestAnalysis(asset.symbol, asset.assetType)}>{asset.symbol}</button>
+                    <button
+                      type="button"
+                      key={`${asset.symbol}-${asset.assetType}`}
+                      onClick={() => void requestAnalysis(asset.providerSymbol ?? asset.symbol, asset.assetType, {
+                        symbol: asset.symbol,
+                        providerSymbol: asset.providerSymbol ?? asset.symbol,
+                        name: asset.name,
+                        assetType: asset.assetType,
+                        exchange: asset.exchange,
+                      })}
+                    >
+                      {asset.symbol}
+                    </button>
                   )) : watchlist.map(asset => (
                     <span key={`${asset.id ?? asset.symbol}-${asset.assetType}`}>
                       <button type="button" onClick={() => void requestAnalysis(asset.symbol, asset.assetType)}>{asset.symbol}</button>
@@ -847,7 +990,7 @@ export default function MarketAnalysisPage() {
         .market-hero:before{content:"";position:absolute;inset-inline-end:-70px;top:-80px;width:230px;height:230px;border-radius:50%;background:rgba(216,174,99,.14);filter:blur(18px)}
         .market-hero-copy,.market-hero-card{position:relative;z-index:1}.market-eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(216,174,99,.28);background:rgba(216,174,99,.12);color:#D8AE63;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:900;margin-bottom:14px}
         .market-hero h1{margin:0 0 10px;font-size:clamp(30px,5vw,52px);line-height:1.02;font-weight:900}.market-hero p{max-width:760px;margin:0;color:rgba(255,255,255,.72);line-height:1.8;font-size:14px}
-        .market-search-panel{margin-top:22px;display:grid;grid-template-columns:minmax(0,1fr) 180px auto;gap:10px;align-items:end}.market-search-panel label{display:grid;gap:7px}.market-search-panel label>span{font-size:12px;font-weight:900;color:#D8AE63}.market-search-panel label>div{height:48px;display:flex;align-items:center;gap:9px;border:1px solid rgba(255,255,255,.16);border-radius:15px;background:rgba(255,255,255,.08);padding:0 13px}.market-search-panel input,.market-search-panel select{width:100%;height:48px;min-width:0;border:1px solid rgba(255,255,255,.16);border-radius:15px;background:rgba(255,255,255,.08);color:#FFFDFC;padding:0 13px;font:800 13px Tajawal,Arial,sans-serif;outline:0}.market-search-panel input{border:0;background:transparent;padding:0}.market-search-panel input::placeholder{color:rgba(255,255,255,.48)}.market-search-panel select option{color:#111}.market-search-panel button{height:48px;border:0;border-radius:15px;background:linear-gradient(135deg,#D8AE63,#9A6C3C);color:#111;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer}.market-search-panel button:disabled{opacity:.65;cursor:wait}
+        .market-search-panel{margin-top:22px;display:grid;grid-template-columns:minmax(0,1fr) 180px auto;gap:10px;align-items:end}.market-search-panel label{display:grid;gap:7px}.market-search-panel label>span{font-size:12px;font-weight:900;color:#D8AE63}.market-search-field{position:relative}.market-search-panel label>div{height:48px;display:flex;align-items:center;gap:9px;border:1px solid rgba(255,255,255,.16);border-radius:15px;background:rgba(255,255,255,.08);padding:0 13px}.market-search-panel input,.market-search-panel select{width:100%;height:48px;min-width:0;border:1px solid rgba(255,255,255,.16);border-radius:15px;background:rgba(255,255,255,.08);color:#FFFDFC;padding:0 13px;font:800 13px Tajawal,Arial,sans-serif;outline:0}.market-search-panel input{border:0;background:transparent;padding:0}.market-search-panel input::placeholder{color:rgba(255,255,255,.48)}.market-search-panel select option{color:#111}.market-search-panel button{height:48px;border:0;border-radius:15px;background:linear-gradient(135deg,#D8AE63,#9A6C3C);color:#111;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer}.market-search-panel button:disabled{opacity:.65;cursor:wait}.market-search-results{position:absolute;z-index:40;inset-inline:0;top:calc(100% + 8px);max-height:320px;overflow-y:auto;background:#FFFDFC;color:#111;border:1px solid rgba(216,174,99,.28);border-radius:18px;box-shadow:0 20px 50px rgba(18,14,10,.22);padding:10px;display:grid;gap:7px}.market-search-results strong{color:#9A6C3C;font-size:12px;font-weight:900;padding:4px 6px}.market-search-results p{margin:0;color:#8A7060;font-size:12px;font-weight:900;line-height:1.6;padding:10px}.market-search-results button{height:auto;min-height:54px;width:100%;border:1px solid rgba(216,174,99,.14);background:#F7F3EA;color:#111;border-radius:13px;padding:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:start}.market-search-results button span{display:grid;gap:3px;min-width:0}.market-search-results button b{font-size:14px}.market-search-results button em{font-style:normal;color:#5B4332;font-size:12px;line-height:1.4;white-space:normal;overflow-wrap:anywhere}.market-search-results button small{color:#9A6C3C;font-size:11px;font-weight:900;line-height:1.4;flex-shrink:0}
         .market-hero-card{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);border-radius:20px;padding:18px;display:grid;gap:8px;backdrop-filter:blur(14px)}.market-hero-card span{font-size:12px;color:rgba(255,255,255,.62);font-weight:900}.market-hero-card strong{font-size:42px;color:#D8AE63;line-height:1}.market-hero-card p{margin:0;font-size:13px}.market-hero-card em{font-style:normal;color:rgba(255,255,255,.78);font-size:12px;font-weight:900;line-height:1.5}.risk{justify-self:start;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:900}.risk.low{background:rgba(34,197,94,.14);color:#16A34A}.risk.medium{background:rgba(216,174,99,.18);color:#9A6C3C}.risk.high{background:rgba(239,68,68,.12);color:#DC2626}
         .market-card-grid,.market-status-grid,.market-decision-grid,.market-tools-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.market-status-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.market-decision-grid{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr)}.market-tools-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.market-card,.market-panel,.market-disclaimer,.market-notice{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:22px;box-shadow:0 6px 24px rgba(90,67,51,.06)}.market-card{padding:16px;display:grid;gap:10px}.market-card-head{display:flex;justify-content:space-between;gap:10px}.market-card-head strong{display:block;font-size:18px}.market-card-head span{display:block;color:#8A7060;font-size:12px;font-weight:800;margin-top:3px}.market-price{font-size:24px;font-weight:900;color:#111}.change{font-size:13px;font-weight:900}.change.up,.up{color:#16A34A}.change.down,.down{color:#DC2626}.market-empty{grid-column:1/-1;padding:24px;text-align:center;color:#9A6C3C;font-weight:900;background:#FFFDFC;border:1px dashed rgba(216,174,99,.24);border-radius:18px}.market-notice{padding:13px 15px;color:#B91C1C;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18);font-weight:900}.market-notice.success{color:#15803D;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.18)}.market-notice.demo{color:#9A6C3C;background:rgba(216,174,99,.10);border-color:rgba(216,174,99,.20)}
         .market-service{display:flex;align-items:center;gap:9px;background:#FFFDFC;border:1px solid rgba(216,174,99,.16);border-radius:18px;padding:12px 14px;color:#5B4332;font-weight:900;box-shadow:0 6px 24px rgba(90,67,51,.05)}.market-service.connected{color:#15803D;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.18)}.market-service.not_configured{color:#9A6C3C;background:rgba(216,174,99,.10)}.market-service.unavailable{color:#B91C1C;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18)}

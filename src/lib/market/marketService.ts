@@ -45,6 +45,9 @@ export type MarketSearchItem = {
   symbol: string;
   name: string;
   assetType: MarketAssetType;
+  exchange?: string;
+  country?: string;
+  providerSymbol?: string;
 };
 
 const SUPPORTED_ASSET_TYPES: MarketAssetType[] = ['stock', 'etf', 'crypto', 'forex', 'commodity', 'gold'];
@@ -96,7 +99,7 @@ function mock(
 
 export function validateSymbol(symbol: unknown) {
   const normalized = String(symbol ?? '').trim().toUpperCase();
-  if (!/^[A-Z0-9.-]{1,12}$/.test(normalized)) return null;
+  if (!/^[A-Z0-9.=:/-]{1,24}$/.test(normalized)) return null;
   return normalized;
 }
 
@@ -140,7 +143,7 @@ export async function searchMarketAssets(input: { query?: unknown; assetType?: u
   return MOCK_MARKET_DATA
     .filter(item => !assetType || item.assetType === assetType)
     .filter(item => !query || item.symbol.toLowerCase().includes(query) || item.name.toLowerCase().includes(query))
-    .map<MarketSearchItem>(({ symbol, name, assetType }) => ({ symbol, name, assetType }));
+    .map<MarketSearchItem>(({ symbol, name, assetType }) => ({ symbol, name, assetType, providerSymbol: symbol }));
 }
 
 export async function compareMarketAssets(symbols: unknown, assetType?: unknown) {

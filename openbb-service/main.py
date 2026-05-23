@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import math
 import os
+import json
 from datetime import datetime, timezone
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -26,6 +29,7 @@ app.add_middleware(
 
 SUPPORTED_ASSET_TYPES = {"stock", "etf", "crypto", "forex", "commodity", "gold"}
 OPENBB_PROVIDER = os.getenv("OPENBB_PROVIDER", "yfinance")
+SYMBOL_DIRECTORY_PATH = Path(__file__).parent / "data" / "symbols.json"
 
 
 def timestamp() -> str:
@@ -39,6 +43,10 @@ def clean_symbol(symbol: str) -> str | None:
     if not all(char.isalnum() or char in ".-/:=" for char in normalized):
         return None
     return normalized
+
+
+def clean_search_query(query: str) -> str:
+    return " ".join((query or "").strip().split())[:64]
 
 
 def normalize_asset_type(asset_type: str | None) -> str:
@@ -177,6 +185,143 @@ def normalize_market_symbol(symbol: str, asset_type: str) -> dict[str, Any]:
 
     unique_attempts = list(dict.fromkeys(attempts))
     return {"displaySymbol": clean, "providerSymbol": unique_attempts[0], "attempts": unique_attempts}
+
+
+def directory_item(symbol: str, name: str, asset_type: str, exchange: str = "", country: str = "", provider_symbol: str | None = None) -> dict[str, Any]:
+    normalized_type = normalize_asset_type(asset_type)
+    normalized = normalize_market_symbol(provider_symbol or symbol, normalized_type)
+    return {
+        "symbol": (symbol or "").strip().upper(),
+        "name": name or symbol.upper(),
+        "assetType": normalized_type,
+        "exchange": exchange,
+        "country": country,
+        "providerSymbol": provider_symbol or normalized["providerSymbol"],
+    }
+
+
+@lru_cache(maxsize=1)
+def load_symbol_directory() -> list[dict[str, Any]]:
+    try:
+        with SYMBOL_DIRECTORY_PATH.open("r", encoding="utf-8") as handle:
+            rows = json.load(handle)
+    except Exception as exc:
+        print("Symbol directory load failed", {"error": repr(exc)}, flush=True)
+        rows = []
+
+    directory: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        symbol = clean_symbol(str(row.get("symbol", "")))
+        if not symbol:
+            continue
+        asset_type = normalize_asset_type(str(row.get("assetType") or row.get("asset_type") or "stock"))
+        directory.append(directory_item(
+            symbol=symbol,
+            name=str(row.get("name") or symbol),
+            asset_type=asset_type,
+            exchange=str(row.get("exchange") or ""),
+            country=str(row.get("country") or ""),
+            provider_symbol=str(row.get("providerSymbol") or row.get("provider_symbol") or normalize_market_symbol(symbol, asset_type)["providerSymbol"]),
+        ))
+    return directory
+
+
+def score_symbol_result(item: dict[str, Any], query: str) -> int:
+    needle = query.lower()
+    symbol = str(item.get("symbol", "")).lower()
+    provider_symbol = str(item.get("providerSymbol", "")).lower()
+    name = str(item.get("name", "")).lower()
+    if symbol == needle or provider_symbol == needle:
+        return 100
+    if symbol.startswith(needle):
+        return 88
+    if name.startswith(needle):
+        return 78
+    if needle in symbol:
+        return 62
+    if needle in name:
+        return 50
+    if needle in str(item.get("assetType", "")).lower():
+        return 35
+    return 0
+
+
+def search_symbol_directory(query: str, asset_type: str | None = None, limit: int = 20) -> list[dict[str, Any]]:
+    directory = load_symbol_directory()
+    normalized_query = query.strip().lower()
+    normalized_type = normalize_asset_type(asset_type) if asset_type else None
+
+    scored: list[tuple[int, dict[str, Any]]] = []
+    for item in directory:
+        if normalized_type and item["assetType"] != normalized_type:
+            continue
+        score = score_symbol_result(item, normalized_query) if normalized_query else 1
+        if score:
+            scored.append((score, item))
+
+    scored.sort(key=lambda pair: (-pair[0], pair[1]["symbol"]))
+    return [item for _score, item in scored[:limit]]
+
+
+def infer_asset_type_from_quote_type(quote_type: str, fallback: str) -> str:
+    value = (quote_type or "").strip().lower()
+    if value in {"etf", "mutualfund"}:
+        return "etf"
+    if value in {"cryptocurrency", "crypto"}:
+        return "crypto"
+    if value in {"currency"}:
+        return "forex"
+    if value in {"future"}:
+        return "commodity"
+    if value in {"equity"}:
+        return "stock"
+    return fallback
+
+
+def search_provider_yfinance(query: str, asset_type: str | None = None, limit: int = 10) -> list[dict[str, Any]]:
+    try:
+        matches = yf.Search(query, max_results=limit).quotes
+    except Exception as exc:
+        print("Provider symbol search failed", {"query": query, "error": repr(exc)}, flush=True)
+        return []
+
+    results: list[dict[str, Any]] = []
+    requested_type = normalize_asset_type(asset_type) if asset_type else None
+    for match in matches or []:
+        symbol = clean_symbol(str(match.get("symbol", "")))
+        if not symbol:
+            continue
+        inferred_type = normalize_asset_type(infer_asset_type_from_quote_type(str(match.get("quoteType", "")), requested_type or "stock"))
+        if requested_type and inferred_type != requested_type:
+            continue
+        display_symbol = symbol.replace("-USD", "") if inferred_type == "crypto" else symbol.replace("=X", "") if inferred_type == "forex" else symbol
+        normalized = normalize_market_symbol(display_symbol, inferred_type)
+        provider_symbol = symbol if symbol in normalized["attempts"] else normalized["providerSymbol"]
+        results.append(directory_item(
+            symbol=display_symbol,
+            name=str(match.get("shortname") or match.get("longname") or match.get("name") or display_symbol),
+            asset_type=inferred_type,
+            exchange=str(match.get("exchange") or match.get("exchDisp") or ""),
+            country="",
+            provider_symbol=provider_symbol,
+        ))
+    return results
+
+
+def dedupe_symbol_results(results: list[dict[str, Any]], limit: int = 20) -> list[dict[str, Any]]:
+    seen: set[tuple[str, str, str]] = set()
+    unique: list[dict[str, Any]] = []
+    for item in results:
+        key = (str(item.get("symbol", "")).upper(), str(item.get("assetType", "")), str(item.get("providerSymbol", "")).upper())
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(item)
+        if len(unique) >= limit:
+            break
+    return unique
 
 
 def fetch_openbb_history(provider_symbol: str, asset_type: str) -> pd.DataFrame:
@@ -521,16 +666,37 @@ async def debug_openbb(symbol: str = Query("AAPL", min_length=1), assetType: str
 
 
 @app.get("/market/search")
-def market_search(q: str = Query("", max_length=64)) -> dict[str, Any]:
-    query = q.strip().upper()
+def market_search(
+    q: str = Query("", max_length=64),
+    assetType: str | None = Query(None),
+    limit: int = Query(12, ge=1, le=20),
+) -> dict[str, Any]:
+    query = clean_search_query(q)
+    asset_type = normalize_asset_type(assetType) if assetType else None
+
     if not query:
-        return {"success": True, "results": []}
+        results = search_symbol_directory("", asset_type, limit)
+        return {"success": True, "query": query, "results": results, "source": "cache"}
+
+    provider_results = search_provider_yfinance(query, asset_type, limit)
+    cache_results = search_symbol_directory(query, asset_type, limit)
+    merged = dedupe_symbol_results([*provider_results, *cache_results], limit)
+
+    source = "openbb" if provider_results else "cache" if cache_results else "fallback"
+    fallback = not bool(provider_results)
+    if not merged:
+        direct_symbol = clean_symbol(query)
+        if direct_symbol:
+            inferred_type = asset_type or normalize_asset_type("stock")
+            normalized = normalize_market_symbol(direct_symbol, inferred_type)
+            merged = [directory_item(direct_symbol, f"{direct_symbol} market asset", inferred_type, provider_symbol=normalized["providerSymbol"])]
+            source = "fallback"
+            fallback = True
+
     return {
         "success": True,
-        "source": "mock",
-        "fallback": True,
-        "results": [
-            {"symbol": query, "name": f"{query} market instrument", "assetType": "stock"},
-            {"symbol": f"{query}-USD", "name": f"{query} crypto pair", "assetType": "crypto"},
-        ],
+        "query": query,
+        "results": merged,
+        "source": source,
+        "fallback": fallback,
     }
