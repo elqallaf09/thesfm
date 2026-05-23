@@ -77,7 +77,7 @@ async function fetchOpenBB(path: string, params?: URLSearchParams) {
   }
 }
 
-function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType, fallback = false): MarketAnalysis & { source?: string; fallback?: boolean } {
+function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType, fallback = false): MarketAnalysis {
   const data = raw && typeof raw === 'object' ? raw as Record<string, any> : {};
   const history = Array.isArray(data.history) ? data.history : [];
   const closes = history
@@ -94,6 +94,7 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
     source: String(data.source ?? (fallback ? 'mock' : 'openbb')),
     fallback: Boolean(data.fallback ?? fallback),
     symbol: String(data.symbol ?? symbol).toUpperCase(),
+    providerSymbol: data.providerSymbol ? String(data.providerSymbol) : undefined,
     name: String(data.name ?? `${symbol} Market Asset`),
     assetType,
     latestPrice: Number.isFinite(latestPrice) ? latestPrice : mockFallback.latestPrice,
@@ -115,6 +116,7 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
       close: Number(point.close ?? 0),
     })).filter(point => point.date && Number.isFinite(point.close)) : mockFallback.history,
     summary: String(data.summary ?? mockFallback.summary),
+    fallbackReason: data.fallbackReason ? String(data.fallbackReason) : undefined,
   };
 }
 

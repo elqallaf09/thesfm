@@ -10,6 +10,7 @@ export type MarketHistoryPoint = {
 export type MarketAnalysis = {
   success: true;
   symbol: string;
+  providerSymbol?: string;
   name: string;
   assetType: MarketAssetType;
   latestPrice: number;
@@ -28,6 +29,9 @@ export type MarketAnalysis = {
   };
   history: MarketHistoryPoint[];
   summary: string;
+  source?: string;
+  fallback?: boolean;
+  fallbackReason?: string;
 };
 
 export type MarketError = {

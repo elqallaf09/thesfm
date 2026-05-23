@@ -369,6 +369,7 @@ export const TR: Record<string, TranslationEntry> = {
   market_concentration_medium: { ar:'متوسطة', en:'Medium', fr:'Moyenne' },
   market_concentration_high: { ar:'مرتفعة', en:'High', fr:'Élevée' },
   market_real_watchlist: { ar:'قائمة متابعة محفوظة', en:'Saved watchlist', fr:'Liste de suivi enregistrée' },
+  market_search_examples: { ar:'أمثلة للبحث', en:'Search examples', fr:'Exemples de recherche' },
   market_add_to_watchlist: { ar:'إضافة إلى قائمة المتابعة', en:'Add to watchlist', fr:'Ajouter à la liste de suivi' },
   market_in_watchlist: { ar:'موجود في قائمة المتابعة', en:'In watchlist', fr:'Dans la liste de suivi' },
   market_watchlist_saved: { ar:'تم حفظ الأصل في قائمة المتابعة.', en:'Asset saved to watchlist.', fr:'Actif enregistré dans la liste de suivi.' },

@@ -759,7 +759,7 @@ export default function MarketAnalysisPage() {
                 <div className="market-section-head">
                   <Star size={19} />
                   <div>
-                    <span>{watchlistHasSelected ? t('market_in_watchlist') : t('market_real_watchlist')}</span>
+                    <span>{watchlist.length === 0 ? t('market_search_examples') : watchlistHasSelected ? t('market_in_watchlist') : t('market_real_watchlist')}</span>
                     <h2>{t('market_watchlist')}</h2>
                   </div>
                 </div>

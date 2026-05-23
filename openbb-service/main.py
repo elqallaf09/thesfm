@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+import yfinance as yf
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -143,34 +144,115 @@ def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     return next_df
 
 
-def fetch_history_dataframe(symbol: str, asset_type: str, period: str | None = None) -> pd.DataFrame:
+def normalize_market_symbol(symbol: str, asset_type: str) -> dict[str, Any]:
+    clean = clean_symbol(symbol) or symbol.strip().upper()
+    base = clean.replace("/", "").replace(":", "")
+
+    attempts: list[str]
+    if asset_type in {"stock", "etf"}:
+        attempts = [clean]
+    elif asset_type == "crypto":
+        if clean.endswith("-USD") or clean.endswith("USDT"):
+            attempts = [clean]
+        else:
+            attempts = [f"{base}-USD", clean, f"{base}USDT"]
+    elif asset_type == "forex":
+        pair = base.replace("=X", "")
+        attempts = [f"{pair}=X", pair]
+    elif asset_type == "gold":
+        if clean in {"XAU", "GOLD", "XAUUSD"}:
+            attempts = ["GC=F", "XAUUSD=X", "XAUUSD", clean]
+        else:
+            attempts = [clean, "GC=F"]
+    elif asset_type == "commodity":
+        aliases = {
+            "OIL": ["CL=F", "BZ=F", "OIL"],
+            "WTI": ["CL=F", "WTI"],
+            "BRENT": ["BZ=F", "BRENT"],
+            "SILVER": ["SI=F", "SILVER"],
+        }
+        attempts = aliases.get(clean, [clean])
+    else:
+        attempts = [clean]
+
+    unique_attempts = list(dict.fromkeys(attempts))
+    return {"displaySymbol": clean, "providerSymbol": unique_attempts[0], "attempts": unique_attempts}
+
+
+def fetch_openbb_history(provider_symbol: str, asset_type: str) -> pd.DataFrame:
     obb = get_obb()
-    days = period_to_days(period)
 
     if asset_type in {"stock", "etf"}:
         attempts = (
-            lambda: obb.equity.price.historical(symbol=symbol, provider=OPENBB_PROVIDER),
-            lambda: obb.equity.price.historical(symbol=symbol),
-            lambda: obb.equity.price.historical(symbol, provider=OPENBB_PROVIDER),
-            lambda: obb.equity.price.historical(symbol),
+            lambda: obb.equity.price.historical(symbol=provider_symbol, provider=OPENBB_PROVIDER),
+            lambda: obb.equity.price.historical(symbol=provider_symbol),
+            lambda: obb.equity.price.historical(provider_symbol, provider=OPENBB_PROVIDER),
+            lambda: obb.equity.price.historical(provider_symbol),
         )
-        errors: list[Exception] = []
-        for attempt in attempts:
-            try:
-                result = attempt()
-                return normalize_dataframe(openbb_to_dataframe(result)).tail(days)
-            except Exception as exc:
-                errors.append(exc)
-        raise RuntimeError("; ".join(safe_error_message(exc) for exc in errors))
     elif asset_type == "crypto":
-        result = obb.crypto.price.historical(symbol=symbol, provider=OPENBB_PROVIDER)
+        attempts = (
+            lambda: obb.crypto.price.historical(symbol=provider_symbol, provider=OPENBB_PROVIDER),
+            lambda: obb.crypto.price.historical(symbol=provider_symbol),
+            lambda: obb.equity.price.historical(symbol=provider_symbol, provider=OPENBB_PROVIDER),
+        )
     elif asset_type == "forex":
-        result = obb.currency.price.historical(symbol=symbol, provider=OPENBB_PROVIDER)
+        attempts = (
+            lambda: obb.currency.price.historical(symbol=provider_symbol, provider=OPENBB_PROVIDER),
+            lambda: obb.currency.price.historical(symbol=provider_symbol),
+            lambda: obb.equity.price.historical(symbol=provider_symbol, provider=OPENBB_PROVIDER),
+        )
     else:
-        openbb_symbol = "GC=F" if asset_type == "gold" and symbol in {"XAU", "GOLD"} else symbol
-        result = obb.derivatives.futures.historical(symbol=openbb_symbol, provider=OPENBB_PROVIDER)
+        attempts = (
+            lambda: obb.derivatives.futures.historical(symbol=provider_symbol, provider=OPENBB_PROVIDER),
+            lambda: obb.derivatives.futures.historical(symbol=provider_symbol),
+            lambda: obb.equity.price.historical(symbol=provider_symbol, provider=OPENBB_PROVIDER),
+        )
 
-    return normalize_dataframe(openbb_to_dataframe(result)).tail(days)
+    errors: list[Exception] = []
+    for attempt in attempts:
+        try:
+            result = attempt()
+            return normalize_dataframe(openbb_to_dataframe(result))
+        except Exception as exc:
+            errors.append(exc)
+    raise RuntimeError("; ".join(safe_error_message(exc) for exc in errors))
+
+
+def fetch_yfinance_history(provider_symbol: str) -> pd.DataFrame:
+    df = yf.download(provider_symbol, period="1y", interval="1d", progress=False, auto_adjust=False, threads=False)
+    if df.empty:
+        raise ValueError("No market data returned")
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = [str(col[0]).lower() for col in df.columns]
+    return normalize_dataframe(df.reset_index())
+
+
+def fetch_history_with_attempts(symbol: str, asset_type: str, period: str | None = None) -> tuple[pd.DataFrame, str, list[dict[str, Any]]]:
+    days = period_to_days(period)
+    normalized = normalize_market_symbol(symbol, asset_type)
+    attempts_log: list[dict[str, Any]] = []
+
+    for provider_symbol in normalized["attempts"]:
+        try:
+            df = fetch_openbb_history(provider_symbol, asset_type).tail(days)
+            attempts_log.append({"symbol": provider_symbol, "method": "openbb", "success": True})
+            return df, provider_symbol, attempts_log
+        except Exception as exc:
+            attempts_log.append({"symbol": provider_symbol, "method": "openbb", "success": False, "error": safe_error_message(exc)})
+
+        try:
+            df = fetch_yfinance_history(provider_symbol).tail(days)
+            attempts_log.append({"symbol": provider_symbol, "method": "yfinance", "success": True})
+            return df, provider_symbol, attempts_log
+        except Exception as exc:
+            attempts_log.append({"symbol": provider_symbol, "method": "yfinance", "success": False, "error": safe_error_message(exc)})
+
+    raise RuntimeError("; ".join(f"{attempt['symbol']}: {attempt.get('error', 'failed')}" for attempt in attempts_log if not attempt["success"]))
+
+
+def fetch_history_dataframe(symbol: str, asset_type: str, period: str | None = None) -> pd.DataFrame:
+    df, _provider_symbol, _attempts = fetch_history_with_attempts(symbol, asset_type, period)
+    return df
 
 
 def clean_number(value: Any, digits: int = 4) -> float:
@@ -199,7 +281,7 @@ def calculate_rsi(series: pd.Series, window: int = 14) -> float:
     return clean_number(latest.iloc[-1] if not latest.empty else 50)
 
 
-def calculate_analysis(symbol: str, asset_type: str, df: pd.DataFrame, source: str = "openbb") -> dict[str, Any]:
+def calculate_analysis(symbol: str, asset_type: str, df: pd.DataFrame, source: str = "openbb", provider_symbol: str | None = None) -> dict[str, Any]:
     close = df["close"].astype(float)
     latest_price = clean_number(close.iloc[-1])
     previous_price = clean_number(close.iloc[-2] if len(close) > 1 else close.iloc[-1])
@@ -239,6 +321,7 @@ def calculate_analysis(symbol: str, asset_type: str, df: pd.DataFrame, source: s
         "source": source,
         "fallback": source != "openbb",
         "symbol": symbol,
+        "providerSymbol": provider_symbol or symbol,
         "assetType": asset_type,
         "latestPrice": latest_price,
         "changePercent": pct_change(latest_price, previous_price),
@@ -278,8 +361,8 @@ def mock_dataframe(symbol: str, days: int = 180) -> pd.DataFrame:
     )
 
 
-def fallback_analysis(symbol: str, asset_type: str, reason: str = "OpenBB provider unavailable") -> dict[str, Any]:
-    response = calculate_analysis(symbol, asset_type, mock_dataframe(symbol), source="mock")
+def fallback_analysis(symbol: str, asset_type: str, reason: str = "OpenBB provider unavailable", provider_symbol: str | None = None) -> dict[str, Any]:
+    response = calculate_analysis(symbol, asset_type, mock_dataframe(symbol), source="mock", provider_symbol=provider_symbol or normalize_market_symbol(symbol, asset_type)["providerSymbol"])
     response["fallbackReason"] = reason
     return response
 
@@ -305,11 +388,13 @@ async def market_analyze(symbol: str = Query(..., min_length=1), assetType: str 
     if not clean:
         return error_response(symbol, asset_type, "Invalid symbol")
 
+    normalized = normalize_market_symbol(clean, asset_type)
     try:
-        return calculate_analysis(clean, asset_type, fetch_history_dataframe(clean, asset_type, "6m"))
+        df, provider_symbol, _attempts = fetch_history_with_attempts(clean, asset_type, "6m")
+        return calculate_analysis(clean, asset_type, df, provider_symbol=provider_symbol)
     except Exception as exc:
         log_openbb_failure(clean, asset_type, exc)
-        return fallback_analysis(clean, asset_type, safe_error_message(exc))
+        return fallback_analysis(clean, asset_type, f"OpenBB could not fetch real data for {normalized['providerSymbol']}: {safe_error_message(exc)}", normalized["providerSymbol"])
 
 
 @app.get("/market/history")
@@ -323,18 +408,20 @@ async def market_history(
     if not clean:
         return error_response(symbol, asset_type, "Invalid symbol")
 
+    normalized = normalize_market_symbol(clean, asset_type)
     try:
-        df = fetch_history_dataframe(clean, asset_type, period)
+        df, provider_symbol, _attempts = fetch_history_with_attempts(clean, asset_type, period)
         source = "openbb"
         fallback_reason = None
     except Exception as exc:
         log_openbb_failure(clean, asset_type, exc)
         df = mock_dataframe(clean, period_to_days(period))
+        provider_symbol = normalized["providerSymbol"]
         source = "mock"
-        fallback_reason = safe_error_message(exc)
+        fallback_reason = f"OpenBB could not fetch real data for {provider_symbol}: {safe_error_message(exc)}"
 
-    history = calculate_analysis(clean, asset_type, df, source=source)["history"]
-    response = {"success": True, "source": source, "fallback": source == "mock", "symbol": clean, "assetType": asset_type, "period": period, "history": history}
+    history = calculate_analysis(clean, asset_type, df, source=source, provider_symbol=provider_symbol)["history"]
+    response = {"success": True, "source": source, "fallback": source == "mock", "symbol": clean, "providerSymbol": provider_symbol, "assetType": asset_type, "period": period, "history": history}
     if fallback_reason:
         response["fallbackReason"] = fallback_reason
     return response
@@ -348,21 +435,29 @@ async def market_compare(symbols: str = Query(..., min_length=1), assetType: str
         clean = clean_symbol(raw_symbol)
         if not clean:
             continue
+        normalized = normalize_market_symbol(clean, asset_type)
         try:
-            results.append(calculate_analysis(clean, asset_type, fetch_history_dataframe(clean, asset_type, "6m")))
+            df, provider_symbol, _attempts = fetch_history_with_attempts(clean, asset_type, "6m")
+            results.append(calculate_analysis(clean, asset_type, df, provider_symbol=provider_symbol))
         except Exception as exc:
             log_openbb_failure(clean, asset_type, exc)
-            results.append(fallback_analysis(clean, asset_type, safe_error_message(exc)))
+            results.append(fallback_analysis(clean, asset_type, f"OpenBB could not fetch real data for {normalized['providerSymbol']}: {safe_error_message(exc)}", normalized["providerSymbol"]))
     return {"success": True, "results": results}
 
 
 @app.get("/debug/openbb")
-async def debug_openbb(symbol: str = Query("AAPL", min_length=1)) -> dict[str, Any]:
+async def debug_openbb(symbol: str = Query("AAPL", min_length=1), assetType: str = Query("stock")) -> dict[str, Any]:
     clean = clean_symbol(symbol)
+    asset_type = normalize_asset_type(assetType)
     if not clean:
         return {
             "importOk": False,
             "fetchOk": False,
+            "inputSymbol": symbol,
+            "providerSymbol": None,
+            "assetType": asset_type,
+            "attempts": [],
+            "finalSource": "error",
             "rowsReturned": 0,
             "columns": [],
             "errorType": "ValidationError",
@@ -378,15 +473,26 @@ async def debug_openbb(symbol: str = Query("AAPL", min_length=1)) -> dict[str, A
         return {
             "importOk": False,
             "fetchOk": False,
+            "inputSymbol": clean,
+            "providerSymbol": normalize_market_symbol(clean, asset_type)["providerSymbol"],
+            "assetType": asset_type,
+            "attempts": [],
+            "finalSource": "error",
             "rowsReturned": 0,
             "columns": [],
             "errorType": type(exc).__name__,
             "safeErrorMessage": safe_error_message(exc),
         }
 
+    normalized = normalize_market_symbol(clean, asset_type)
     try:
-        df = fetch_history_dataframe(clean, "stock", "6m")
+        df, provider_symbol, attempts = fetch_history_with_attempts(clean, asset_type, "6m")
         return {
+            "inputSymbol": clean,
+            "providerSymbol": provider_symbol,
+            "assetType": asset_type,
+            "attempts": attempts,
+            "finalSource": "openbb",
             "importOk": import_ok,
             "fetchOk": True,
             "rowsReturned": int(len(df)),
@@ -395,8 +501,16 @@ async def debug_openbb(symbol: str = Query("AAPL", min_length=1)) -> dict[str, A
             "safeErrorMessage": import_error,
         }
     except Exception as exc:
-        log_openbb_failure(clean, "stock", exc)
+        log_openbb_failure(clean, asset_type, exc)
         return {
+            "inputSymbol": clean,
+            "providerSymbol": normalized["providerSymbol"],
+            "assetType": asset_type,
+            "attempts": [
+                {"symbol": attempt, "success": False, "error": "See service logs"}
+                for attempt in normalized["attempts"]
+            ],
+            "finalSource": "mock",
             "importOk": True,
             "fetchOk": False,
             "rowsReturned": 0,
