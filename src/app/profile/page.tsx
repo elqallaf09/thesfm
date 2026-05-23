@@ -38,6 +38,7 @@ import {
   User,
   WalletCards,
 } from 'lucide-react';
+import { CurrencySelect } from '@/components/CurrencySelect';
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
@@ -180,8 +181,6 @@ const txt = {
 
 const countries = ['Kuwait', 'Saudi Arabia', 'United Arab Emirates', 'Bahrain', 'Qatar', 'Oman', 'France', 'United States'];
 const phoneCodes = ['+965', '+966', '+971', '+973', '+974', '+968', '+33', '+1'];
-const currencies = ['KWD', 'USD', 'SAR', 'AED'];
-
 function T(key: keyof typeof txt, lang: Lang) {
   return txt[key][lang] || txt[key].ar;
 }
@@ -397,13 +396,13 @@ export default function ProfilePage() {
           />
         </section>
 
-        <PersonalInfoForm profile={profile} setProfile={setProfile} preferences={preferences} setPreferences={next => persistPreferences(next)} saving={saving} labels={{
+        <PersonalInfoForm lang={lang} profile={profile} setProfile={setProfile} preferences={preferences} setPreferences={next => persistPreferences(next)} saving={saving} labels={{
           title: L('personalInfo'), fullName: L('fullName'), username: L('username'), email: L('email'), phone: L('phone'), phoneCode: L('phoneCode'), age: L('age'), gender: L('gender'), male: L('male'), female: L('female'), country: L('country'), city: L('city'), profession: L('profession'), currency: L('preferredCurrency'), language: L('preferredLanguage'), save: L('savePersonal'),
         }} onSave={() => void saveProfile()} />
 
         <SecuritySettings labels={{ title: L('security'), changePassword: L('changePassword'), twoFactor: L('twoFactor'), devices: L('connectedDevices'), lastLogin: L('lastLogin'), signOutAll: L('signOutAll'), open: L('open'), enable: L('enable'), view: L('view'), execute: L('execute'), today: L('today') }} onModal={setModal} onSignOutAll={() => void signOutEverywhere()} />
 
-        <PreferenceSettings preferences={preferences} onChange={persistPreferences} labels={{
+        <PreferenceSettings lang={lang} preferences={preferences} onChange={persistPreferences} labels={{
           title: L('preferences'), language: L('language'), theme: L('theme'), light: L('light'), dark: L('dark'), system: L('system'), currency: L('currency'), cycleStart: L('cycleStart'), luxury: L('luxury'), notifications: L('notifications'), reports: L('reports'), expenseAlerts: L('expenseAlerts'), investmentAlerts: L('investmentAlerts'), aiAlerts: L('aiAlerts'),
         }} />
 
@@ -498,7 +497,7 @@ function ProfileStatsCards({ labels, stats }: { labels: Record<string, string>; 
   return <section className="stats-grid">{cards.map(card => <div className="stat-card" key={card.label}><div className="stat-icon">{card.icon}</div><span>{card.label}</span><strong>{card.value}</strong></div>)}</section>;
 }
 
-function PersonalInfoForm({ profile, setProfile, preferences, setPreferences, saving, labels, onSave }: { profile: ProfileState; setProfile: (next: ProfileState) => void; preferences: PreferencesState; setPreferences: (next: PreferencesState) => void; saving: boolean; labels: Record<string, string>; onSave: () => void }) {
+function PersonalInfoForm({ lang, profile, setProfile, preferences, setPreferences, saving, labels, onSave }: { lang: Lang; profile: ProfileState; setProfile: (next: ProfileState) => void; preferences: PreferencesState; setPreferences: (next: PreferencesState) => void; saving: boolean; labels: Record<string, string>; onSave: () => void }) {
   const update = (key: keyof ProfileState, value: string) => setProfile({ ...profile, [key]: value });
   return (
     <Section title={labels.title} icon={<User size={19} />}>
@@ -513,7 +512,7 @@ function PersonalInfoForm({ profile, setProfile, preferences, setPreferences, sa
         <Field icon={<MapPin size={16} />} label={labels.country}><select value={profile.country} onChange={event => update('country', event.target.value)}>{countries.map(country => <option key={country}>{country}</option>)}</select></Field>
         <Field icon={<MapPin size={16} />} label={labels.city}><input value={profile.city} onChange={event => update('city', event.target.value)} /></Field>
         <Field icon={<WalletCards size={16} />} label={labels.profession}><input value={profile.profession} onChange={event => update('profession', event.target.value)} /></Field>
-        <Field icon={<WalletCards size={16} />} label={labels.currency}><select value={preferences.currency} onChange={event => setPreferences({ ...preferences, currency: event.target.value })}>{currencies.map(c => <option key={c}>{c}</option>)}</select></Field>
+        <Field icon={<WalletCards size={16} />} label={labels.currency}><CurrencySelect value={preferences.currency} onChange={code => setPreferences({ ...preferences, currency: code })} lang={lang} ariaLabel={labels.currency} /></Field>
         <Field icon={<Languages size={16} />} label={labels.language}><select value={preferences.language} onChange={event => setPreferences({ ...preferences, language: event.target.value as Lang })}><option value="ar">العربية</option><option value="en">English</option><option value="fr">Français</option></select></Field>
       </div>
       <div style={{ marginTop: 16 }}><button className="gold-btn" onClick={onSave} disabled={saving}><Save size={16} />{saving ? '...' : labels.save}</button></div>
@@ -533,14 +532,14 @@ function SecuritySettings({ labels, onModal, onSignOutAll }: { labels: Record<st
   );
 }
 
-function PreferenceSettings({ preferences, onChange, labels }: { preferences: PreferencesState; onChange: (next: PreferencesState) => void; labels: Record<string, string> }) {
+function PreferenceSettings({ lang, preferences, onChange, labels }: { lang: Lang; preferences: PreferencesState; onChange: (next: PreferencesState) => void; labels: Record<string, string> }) {
   const set = (patch: Partial<PreferencesState>) => onChange({ ...preferences, ...patch });
   return (
     <Section title={labels.title} icon={<Palette size={19} />}>
       <div className="pref-grid">
         <Choice label={labels.language} value={preferences.language} options={[['ar', 'العربية'], ['en', 'English'], ['fr', 'Français']]} onChange={value => set({ language: value as Lang })} />
         <Choice label={labels.theme} value={preferences.theme} options={[['light', labels.light], ['dark', labels.dark], ['system', labels.system]]} onChange={value => set({ theme: value as ThemeMode })} />
-        <Choice label={labels.currency} value={preferences.currency} options={currencies.map(c => [c, c])} onChange={value => set({ currency: value })} />
+        <div><div className="mini-label" style={{ marginBottom: 7 }}>{labels.currency}</div><CurrencySelect value={preferences.currency} onChange={value => set({ currency: value })} lang={lang} ariaLabel={labels.currency} /></div>
         <Field icon={<CalendarDays size={16} />} label={labels.cycleStart}><input type="date" value={preferences.cycleStart} onChange={event => set({ cycleStart: event.target.value })} /></Field>
       </div>
       <div style={{ marginTop: 12 }}>

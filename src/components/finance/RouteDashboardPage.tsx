@@ -45,7 +45,8 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { Sidebar } from '@/components/Sidebar';
 import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
-import { getCurrency, getCurrencyOptions } from '@/lib/currencies';
+import { getCurrency } from '@/lib/currencies';
+import { CurrencySelect } from '@/components/CurrencySelect';
 import { calculateGoalProgress, parseMoney } from '@/lib/goalProgress';
 
 type PageKind = 'expenses' | 'income' | 'invest' | 'savings' | 'goals' | 'reports' | 'ai';
@@ -858,7 +859,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const cards = useMemo<SectionCard[]>(() => buildCards(kind, data, lang, currency), [data, lang, kind, currency]);
   const rows = useMemo(() => buildRows(kind, data, lang, currency, t), [data, lang, kind, currency, t]);
   const insights = useMemo(() => buildInsights(kind, data, lang, currency, t), [data, lang, kind, currency, t]);
-  const currencyOptions = useMemo(() => getCurrencyOptions(lang), [lang]);
   const selectedGoalCurrency = useMemo(() => getCurrency(goalForm.currency || currency || 'KWD'), [currency, goalForm.currency]);
   const selectedCurrencySymbol = isAr ? selectedGoalCurrency.symbolAr : selectedGoalCurrency.symbolEn;
   const goalPreview = useMemo(() => buildGoalAnalysis({
@@ -2453,17 +2453,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 </label>
                 <label>
                   <span>{t('goal_currency_label')}</span>
-                  <select value={goalForm.currency} onChange={event => setGoalForm(prev => ({ ...prev, currency: event.target.value }))}>
-                    {currencyOptions.map(item => {
-                      const name = lang === 'ar' ? item.nameAr : lang === 'fr' ? item.nameFr : item.nameEn;
-                      const symbol = isAr ? item.symbolAr : item.symbolEn;
-                      return (
-                        <option key={item.code} value={item.code}>
-                          {item.code} - {symbol} - {name}
-                        </option>
-                      );
-                    })}
-                  </select>
+                  <CurrencySelect value={goalForm.currency} onChange={code => setGoalForm(prev => ({ ...prev, currency: code }))} lang={lang} ariaLabel={t('goal_currency_label')} />
                 </label>
                 <label className="goal-notes-field">
                   <span>{t('goal_notes_label')}</span>

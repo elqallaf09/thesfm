@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { CurrencySelect } from '@/components/CurrencySelect';
+import { useCurrency } from '@/lib/useCurrency';
 
 const INCOME_TYPES = [
   { id: 'salary', label_ar: 'الراتب', label_en: 'Salary', label_fr: 'Salaire', icon: '💼' },
@@ -16,17 +18,10 @@ const INCOME_TYPES = [
   { id: 'other', label_ar: 'دخل آخر', label_en: 'Other Income', label_fr: 'Autre revenu', icon: '💰' },
 ];
 
-const CURRENCIES = [
-  { code: 'KWD', symbol: 'د.ك', label_ar: 'دينار كويتي', label_en: 'Kuwaiti Dinar', label_fr: 'Dinar koweïtien', rate: 1 },
-  { code: 'SAR', symbol: 'ر.س', label_ar: 'ريال سعودي', label_en: 'Saudi Riyal', label_fr: 'Riyal saoudien', rate: 0.082 },
-  { code: 'AED', symbol: 'د.إ', label_ar: 'درهم إماراتي', label_en: 'UAE Dirham', label_fr: 'Dirham émirati', rate: 0.088 },
-  { code: 'USD', symbol: '$', label_ar: 'دولار أمريكي', label_en: 'US Dollar', label_fr: 'Dollar américain', rate: 0.31 },
-  { code: 'EUR', symbol: '€', label_ar: 'يورو', label_en: 'Euro', label_fr: 'Euro', rate: 0.33 },
-];
-
 export default function AddIncomePage() {
   const { user, loading: authLoading } = useAuth();
-  const { dir, isAr, isEn, isFr } = useLanguage();
+  const { dir, isAr, isEn, isFr, lang } = useLanguage();
+  const { currency: defaultCurrency } = useCurrency();
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
@@ -35,7 +30,7 @@ export default function AddIncomePage() {
 
   const [incomeType, setIncomeType] = useState('');
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('KWD');
+  const [currency, setCurrency] = useState(defaultCurrency || 'KWD');
   const [isKwdEquivalent, setIsKwdEquivalent] = useState(true);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
@@ -51,16 +46,6 @@ export default function AddIncomePage() {
     return item.label_en;
   };
 
-  const getCurrencyLabel = (curr: typeof CURRENCIES[0]) => {
-    if (isAr) return curr.label_ar;
-    if (isFr) return curr.label_fr;
-    return curr.label_en;
-  };
-
-  const getCurrencySymbol = (code: string) => {
-    return CURRENCIES.find(c => c.code === code)?.symbol || code;
-  };
-
   const formatAmount = (val: string) => {
     const num = val.replace(/[^\d.]/g, '');
     const parts = num.split('.');
@@ -69,16 +54,6 @@ export default function AddIncomePage() {
     }
     return num;
   };
-
-  const getConvertedAmount = () => {
-    if (!amount) return null;
-    const curr = CURRENCIES.find(c => c.code === currency);
-    if (!curr) return null;
-    if (currency === 'KWD') return parseFloat(amount);
-    return parseFloat(amount) * curr.rate;
-  };
-
-  const convertedAmount = getConvertedAmount();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,12 +65,12 @@ export default function AddIncomePage() {
 
     setLoading(true);
     try {
-      const finalAmount = currency === 'KWD' ? parseFloat(amount) : convertedAmount!;
-
       const { error } = await supabase.from('monthly_income_sources').insert({
         user_id: user.id,
         category: incomeType,
-        amount: finalAmount,
+        amount: parseFloat(amount),
+        currency,
+        amount_kwd: currency === 'KWD' ? parseFloat(amount) : null,
         label: description || getLabel(INCOME_TYPES.find(t => t.id === incomeType)!),
       });
 
@@ -128,8 +103,6 @@ export default function AddIncomePage() {
   }
 
   const pageTitle = isAr ? 'إضافة دخل جديد' : isFr ? 'Ajouter un revenu' : 'Add New Income';
-  const currentCurrency = CURRENCIES.find(c => c.code === currency)!;
-
   return (
     <>
       <style>{`
@@ -235,28 +208,11 @@ export default function AddIncomePage() {
                     onChange={(e) => setAmount(formatAmount(e.target.value))}
                     required
                   />
-                  <select
-                    className="currency-select"
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                  >
-                    {CURRENCIES.map(c => (
-                      <option key={c.code} value={c.code}>
-                        {c.symbol} {c.code}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {amount && currency !== 'KWD' && (
-                  <div className="converted-display">
-                    <span className="converted-label">
-                      {isAr ? 'ما يعادل بالدينار الكويتي:' : isFr ? 'Équivalent en dinar koweïtien:' : 'Equivalent in Kuwaiti Dinar:'}
-                    </span>
-                    <span className="converted-value">
-                      {convertedAmount?.toFixed(3)} {getCurrencySymbol('KWD')}
-                    </span>
+                  <div className="currency-select">
+                    <CurrencySelect value={currency} onChange={setCurrency} lang={lang} ariaLabel={isAr ? 'العملة' : isFr ? 'Devise' : 'Currency'} />
                   </div>
-                )}
+                </div>
+                {amount && currency !== 'KWD' && <div className="converted-display"><span className="converted-label">{isAr ? 'التحويل إلى الدينار الكويتي غير مفعّل حالياً.' : isFr ? 'La conversion vers le KWD n’est pas encore activée.' : 'Conversion to KWD is not enabled yet.'}</span></div>}
                 <p className="currency-info">
                   {isAr ? 'سيتم تحويل المبلغ تلقائياً إلى دينار كويتي للمتابعة' :
                     isFr ? 'Le montant sera automatiquement converti en dinar koweïtien' :

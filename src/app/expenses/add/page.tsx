@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { CurrencySelect } from '@/components/CurrencySelect';
+import { useCurrency } from '@/lib/useCurrency';
 
 const EXPENSE_CATEGORIES = [
   { id: 'transport', label_ar: 'المواصلات', label_en: 'Transport', label_fr: 'Transport', icon: '🚌' },
@@ -17,13 +19,6 @@ const EXPENSE_CATEGORIES = [
   { id: 'other', label_ar: 'أخرى', label_en: 'Other', label_fr: 'Autre', icon: '📦' },
 ];
 
-const CURRENCIES = [
-  { code: 'KWD', symbol: 'د.ك', label_ar: 'دينار كويتي', label_en: 'Kuwaiti Dinar', label_fr: 'Dinar koweïtien' },
-  { code: 'SAR', symbol: 'ر.س', label_ar: 'ريال سعودي', label_en: 'Saudi Riyal', label_fr: 'Riyal saoudien' },
-  { code: 'AED', symbol: 'د.إ', label_ar: 'درهم إماراتي', label_en: 'UAE Dirham', label_fr: 'Dirham émirati' },
-  { code: 'USD', symbol: '$', label_ar: 'دولار أمريكي', label_en: 'US Dollar', label_fr: 'Dollar américain' },
-  { code: 'EUR', symbol: '€', label_ar: 'يورو', label_en: 'Euro', label_fr: 'Euro' },
-];
 const NECESSITIES = [
   { id: 'essential', ar: 'ضروري', en: 'Essential', color: '#EF4444', hintAr: 'الإيجار، الفواتير' },
   { id: 'important', ar: 'مهم', en: 'Important', color: '#F59E0B', hintAr: 'التأمين، التعليم' },
@@ -32,7 +27,8 @@ const NECESSITIES = [
 
 export default function AddExpensePage() {
   const { user, loading: authLoading } = useAuth();
-  const { dir, isAr, isEn, isFr, t } = useLanguage();
+  const { dir, isAr, isEn, isFr, lang } = useLanguage();
+  const { currency: defaultCurrency } = useCurrency();
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
@@ -42,7 +38,7 @@ export default function AddExpensePage() {
   const [category, setCategory] = useState('');
   const [necessity, setNecessity] = useState('');
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('KWD');
+  const [currency, setCurrency] = useState(defaultCurrency || 'KWD');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
@@ -55,12 +51,6 @@ export default function AddExpensePage() {
     if (isAr) return item.label_ar;
     if (isFr) return item.label_fr;
     return item.label_en;
-  };
-
-  const getCurrencyLabel = (curr: typeof CURRENCIES[0]) => {
-    if (isAr) return curr.label_ar;
-    if (isFr) return curr.label_fr;
-    return curr.label_en;
   };
 
   const formatAmount = (val: string) => {
@@ -88,6 +78,7 @@ export default function AddExpensePage() {
       const { error } = await supabase.from('expense_items').insert({
         user_id: user.id,
         amount: parseFloat(amount),
+        currency,
         name: `${getLabel(selectedCategory)} | ${isAr ? selectedNecessity.ar : selectedNecessity.en} | ${userText}${notes.trim() ? ` | ${notes.trim()}` : ''}`,
       }).select().single();
 
@@ -120,8 +111,6 @@ export default function AddExpensePage() {
   }
 
   const pageTitle = isAr ? 'إضافة مصروف جديد' : isFr ? 'Ajouter une dépense' : 'Add New Expense';
-  const currentCurrency = CURRENCIES.find(c => c.code === currency)!;
-
   return (
     <>
       <style>{`
@@ -246,17 +235,9 @@ export default function AddExpensePage() {
                     onChange={(e) => setAmount(formatAmount(e.target.value))}
                     required
                   />
-                  <select
-                    className="currency-select"
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                  >
-                    {CURRENCIES.map(c => (
-                      <option key={c.code} value={c.code}>
-                        {c.symbol} {c.code}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="currency-select">
+                    <CurrencySelect value={currency} onChange={setCurrency} lang={lang} ariaLabel={isAr ? 'العملة' : isFr ? 'Devise' : 'Currency'} />
+                  </div>
                 </div>
               </div>
 

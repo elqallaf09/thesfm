@@ -3,17 +3,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, BarChart3, BriefcaseBusiness, CalendarDays, CheckCircle2, CircleDollarSign, Download, Edit3, ExternalLink, FileDown, FileText, Gauge, LineChart, Paperclip, Plus, ReceiptText, Sparkles, Trash2, TrendingUp, Wallet, X } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
+import { CurrencySelect } from '@/components/CurrencySelect';
 import { Sidebar } from '@/components/Sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
+import { formatMoney } from '@/lib/formatMoney';
+import { useCurrency } from '@/lib/useCurrency';
 
 type IncomeType = 'salary' | 'side' | 'investment' | 'bonus' | 'gift' | 'rent' | 'other';
 type IncomeStatus = 'received' | 'pending' | 'expected' | 'late';
 type Frequency = 'monthly' | 'weekly' | 'yearly';
 type Lang = 'ar' | 'en' | 'fr';
 type IncomeFilter = 'all' | IncomeStatus | 'recurring' | 'one-time';
-type SupportedCurrency = 'KWD' | 'USD' | 'EUR' | 'SAR' | 'AED';
 
 type IncomeRow = {
   id: string;
@@ -53,7 +55,7 @@ type IncomeForm = {
   id?: string;
   name: string;
   amount: string;
-  currency: SupportedCurrency;
+  currency: string;
   incomeType: IncomeType;
   receivedDate: string;
   status: IncomeStatus;
@@ -191,14 +193,6 @@ const FREQUENCIES: Array<{ id: Frequency; label: Record<Lang, string> }> = [
   { id: 'yearly', label: { ar: 'سنوي', en: 'Yearly', fr: 'Annuel' } },
 ];
 
-const CURRENCIES: Array<{ id: SupportedCurrency; label: Record<Lang, string> }> = [
-  { id: 'KWD', label: { ar: 'د.ك', en: 'KWD', fr: 'KWD' } },
-  { id: 'USD', label: { ar: 'دولار', en: 'USD', fr: 'USD' } },
-  { id: 'EUR', label: { ar: 'يورو', en: 'EUR', fr: 'EUR' } },
-  { id: 'SAR', label: { ar: 'ريال سعودي', en: 'SAR', fr: 'SAR' } },
-  { id: 'AED', label: { ar: 'درهم إماراتي', en: 'AED', fr: 'AED' } },
-];
-
 const ALLOWED_ATTACHMENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
 
@@ -280,21 +274,6 @@ function workflowStatus(row: IncomeRow): IncomeStatus {
   return 'late';
 }
 
-function formatMoney(value: number, lang: string, currency = 'KWD') {
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
-  try {
-    return new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: currency === 'KWD' ? 3 : 2, maximumFractionDigits: currency === 'KWD' ? 3 : 2 }).format(value);
-  } catch {
-    const formatted = new Intl.NumberFormat(locale, { minimumFractionDigits: currency === 'KWD' ? 3 : 2, maximumFractionDigits: currency === 'KWD' ? 3 : 2 }).format(value);
-    return `${formatted} ${currency === 'KWD' && lang === 'ar' ? 'د.ك' : currency}`;
-  }
-}
-
-function currencyLabel(currency: string | null | undefined, lang: string) {
-  const item = CURRENCIES.find(entry => entry.id === currency);
-  return item?.label[lang as Lang] ?? currency ?? 'KWD';
-}
-
 function formatFileSize(size?: number | null) {
   if (!size) return '';
   if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
@@ -345,6 +324,7 @@ function legacyName(row: IncomeRow) {
 export default function IncomePage() {
   const { lang, dir } = useLanguage();
   const { user, isGuest } = useAuth();
+  const { currency: defaultCurrency } = useCurrency();
   const [rows, setRows] = useState<IncomeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -475,7 +455,7 @@ export default function IncomePage() {
   }).join(' ');
 
   function openCreate() {
-    setForm(emptyForm());
+    setForm({ ...emptyForm(), currency: defaultCurrency || 'KWD' });
     setFormError('');
     setAttachmentError('');
     setSelectedFile(null);
@@ -487,7 +467,7 @@ export default function IncomePage() {
       id: row.id,
       name: legacyName(row),
       amount: String(row.amount || ''),
-      currency: row.currency || 'KWD',
+      currency: row.currency || defaultCurrency || 'KWD',
       incomeType: normalizeType(row.income_type || row.category),
       receivedDate: row.received_date || (row.created_at ? row.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)),
       status: normalizeStatus(row.status),
@@ -604,7 +584,7 @@ export default function IncomePage() {
           <td>${legacyName(row)}</td>
           <td>${typeLabel(row.income_type || row.category, lang)}</td>
           <td>${statusLabel(row.workflowStatus, lang)}</td>
-          <td>${formatMoney(Number(row.amount || 0), lang, row.currency || 'KWD')}</td>
+          <td>${formatMoney(Number(row.amount || 0), row.currency || 'KWD', lang as Lang)}</td>
         </tr>
       `).join('');
       report.document.write(`
@@ -630,9 +610,9 @@ export default function IncomePage() {
               <h1>${tr('generatedReport', lang)}</h1>
               <p>${tr('monthNow', lang)} · ${formatDate(todayDateOnly(), lang)}</p>
               <section class="stats">
-                <div class="stat">${tr('totalIncome', lang)}<b>${formatMoney(total || 0, lang)}</b></div>
+                <div class="stat">${tr('totalIncome', lang)}<b>${formatMoney(total || 0, defaultCurrency || 'KWD', lang as Lang)}</b></div>
                 <div class="stat">${tr('incomeSources', lang)}<b>${activeSources}</b></div>
-                <div class="stat">${tr('expectedNet', lang)}<b>${formatMoney(expectedNet || 0, lang)}</b></div>
+                <div class="stat">${tr('expectedNet', lang)}<b>${formatMoney(expectedNet || 0, defaultCurrency || 'KWD', lang as Lang)}</b></div>
               </section>
               <h2>${tr('distribution', lang)}</h2>
               <p>${distribution.map(item => `${item.label}: ${item.value}%`).join(' · ')}</p>
@@ -892,9 +872,9 @@ export default function IncomePage() {
         </section>
 
         <section className="stat-grid">
-          <article><span><Wallet size={18} />{tr('totalIncome', lang)}</span><strong>{formatMoney(total || 2416, lang)}</strong><em>↑ 8.2%</em></article>
+          <article><span><Wallet size={18} />{tr('totalIncome', lang)}</span><strong>{formatMoney(total || 2416, defaultCurrency || 'KWD', lang as Lang)}</strong><em>↑ 8.2%</em></article>
           <article><span><BriefcaseBusiness size={18} />{tr('incomeSources', lang)}</span><strong>{activeSources || 3} {tr('active', lang)}</strong><em>↑ 2</em></article>
-          <article><span><CircleDollarSign size={18} />{tr('expectedNet', lang)}</span><strong>{formatMoney(expectedNet || 1046.4, lang)}</strong><em>↑ 3.1%</em></article>
+          <article><span><CircleDollarSign size={18} />{tr('expectedNet', lang)}</span><strong>{formatMoney(expectedNet || 1046.4, defaultCurrency || 'KWD', lang as Lang)}</strong><em>↑ 3.1%</em></article>
         </section>
 
         <section className="smart-grid">
@@ -905,7 +885,7 @@ export default function IncomePage() {
           </article>
           <article className="panel">
             <div className="panel-title"><TrendingUp size={18} /><h2>{tr('nextForecast', lang)}</h2></div>
-            <strong>{forecastValue ? formatMoney(forecastValue, lang) : tr('notEnoughData', lang)}</strong>
+            <strong>{forecastValue ? formatMoney(forecastValue, defaultCurrency || 'KWD', lang as Lang) : tr('notEnoughData', lang)}</strong>
             <p>{forecastValue ? tr('basedOnHistory', lang) : tr('notEnoughData', lang)}</p>
           </article>
           <article className="panel smart-view">
@@ -930,7 +910,7 @@ export default function IncomePage() {
               <article className="upcoming-item" key={row.id}>
                 <div>
                   <strong>{legacyName(row)}</strong>
-                  <span>{formatDate(row.received_date || row.generated_for_date, lang)} · {formatMoney(Number(row.amount || 0), lang, row.currency || 'KWD')}</span>
+                  <span>{formatDate(row.received_date || row.generated_for_date, lang)} · {formatMoney(Number(row.amount || 0), row.currency || 'KWD', lang as Lang)}</span>
                 </div>
                 <em className={`status ${row.workflowStatus}`}>{statusLabel(row.workflowStatus, lang)}</em>
                 {row.workflowStatus !== 'expected' || compareDateOnly(row.received_date || row.generated_for_date || todayDateOnly(), todayDateOnly()) <= 0 ? (
@@ -1002,7 +982,7 @@ export default function IncomePage() {
                     </div>
                   </div>
                   <div className="row-side">
-                    <b>{formatMoney(amount, lang, row.currency || 'KWD')}</b>
+                    <b>{formatMoney(amount, row.currency || 'KWD', lang as Lang)}</b>
                     <div>
                       {row.workflowStatus !== 'received' && (
                         <button type="button" aria-label={tr('confirmReceived', lang)} onClick={() => void confirmReceived(row)}><CheckCircle2 size={15} /></button>
@@ -1038,7 +1018,13 @@ export default function IncomePage() {
                 </div>
               )}
               <label><span>{tr('amount', lang)}</span><input value={form.amount} inputMode="decimal" onChange={e => setForm({ ...form, amount: e.target.value })} required /></label>
-              <label><span>{tr('currency', lang)}</span><select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value as SupportedCurrency })}>{CURRENCIES.map(item => <option key={item.id} value={item.id}>{currencyLabel(item.id, lang)}</option>)}</select></label>
+              <CurrencySelect
+                value={form.currency}
+                onChange={code => setForm({ ...form, currency: code })}
+                lang={lang}
+                label={tr('currency', lang)}
+                ariaLabel={tr('currency', lang)}
+              />
               {form.currency !== 'KWD' && <div className="form-note">{tr('conversionDisabled', lang)}</div>}
               <label><span>{tr('receivedDate', lang)}</span><input type="date" value={form.receivedDate} onChange={e => setForm({ ...form, receivedDate: e.target.value })} required={!form.isRecurring} /></label>
               <label><span>{tr('type', lang)}</span><select value={form.incomeType} onChange={e => setForm({ ...form, incomeType: e.target.value as IncomeType })}>{TYPES.map(item => <option key={item.id} value={item.id}>{item.icon} {item.label[lang as Lang]}</option>)}</select></label>
