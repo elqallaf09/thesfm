@@ -102,6 +102,25 @@ type CharityDocument = {
 };
 
 type DocumentCategory = 'donation_receipt' | 'charity_certificate' | 'project_report' | 'zakat_document' | 'beneficiary_report' | 'other';
+type ReminderType = 'zakat' | 'hawl' | 'ramadan' | 'dhul_hijjah' | 'arafah' | 'sacrifice' | 'sponsorship' | 'project_milestone' | 'general';
+type ReminderStatus = 'active' | 'completed' | 'dismissed';
+type ReminderPriority = 'low' | 'normal' | 'high';
+
+type CharityReminder = {
+  id: string;
+  user_id: string;
+  title: string;
+  reminder_type: ReminderType;
+  related_project_id: string | null;
+  related_zakat_asset_id: string | null;
+  related_commitment_id: string | null;
+  due_date: string;
+  hijri_date: string | null;
+  remind_before_days: number;
+  status: ReminderStatus;
+  priority: ReminderPriority;
+  notes: string | null;
+};
 
 const TEXT = {
   ar: {
@@ -205,6 +224,48 @@ const TEXT = {
     project_report: 'تقرير مشروع',
     zakat_document: 'مستند زكاة',
     beneficiary_report: 'تقرير مستفيد',
+    hijriCalendar: 'التقويم الخيري الهجري',
+    hijriCalendarDesc: 'تابع الزكاة، الحول، رمضان، ذي الحجة، الأضحية، الكفالات، ومواعيد المشاريع من مكان واحد.',
+    upcomingReminders: 'التذكيرات القادمة',
+    addReminder: '+ إضافة تذكير',
+    reminderTitle: 'عنوان التذكير',
+    reminderType: 'نوع التذكير',
+    hijriDate: 'التاريخ الهجري',
+    remindBefore: 'ذكرني قبل',
+    priority: 'الأولوية',
+    hijriEstimated: 'التاريخ الهجري تقديري',
+    preciseHijriLater: 'سيتم تفعيل التاريخ الهجري الدقيق لاحقاً.',
+    completedAction: 'تم',
+    dismissAction: 'تجاهل',
+    deleteAction: 'حذف',
+    noReminders: 'لا توجد تذكيرات قادمة حتى الآن.',
+    reminderSaved: 'تم حفظ التذكير بنجاح.',
+    reminderUpdated: 'تم تحديث التذكير.',
+    reminderDeleted: 'تم حذف التذكير.',
+    confirmDeleteReminder: 'هل تريد حذف هذا التذكير؟',
+    daysBefore: 'قبل {days} يوم',
+    daysRemaining: 'باقي {days} يوم',
+    dueToday: 'مستحق اليوم',
+    overdue: 'متأخر {days} يوم',
+    smartAlerts: 'تنبيهات ذكية',
+    noUrgentAlerts: 'لا توجد تنبيهات عاجلة حالياً.',
+    seasonalReminders: 'مواسم خيرية',
+    notificationNote: 'هذه التذكيرات تظهر داخل صفحة المشاريع الخيرية حالياً، ولم يتم تفعيل الإشعارات الخارجية بعد.',
+    ramadanPlanning: 'رمضان',
+    lastTenNights: 'العشر الأواخر',
+    arafahDay: 'يوم عرفة',
+    eidAdha: 'الأضحية',
+    zakatAnnualReview: 'مراجعة الزكاة السنوية',
+    low: 'منخفضة',
+    normal: 'عادية',
+    high: 'عالية',
+    active: 'نشط',
+    dismissed: 'متجاهل',
+    hawl: 'الحول',
+    ramadan: 'رمضان',
+    dhul_hijjah: 'ذو الحجة',
+    arafah: 'عرفة',
+    project_milestone: 'مرحلة مشروع',
     saved: 'تم الحفظ بنجاح.',
     error: 'تعذر تنفيذ العملية حالياً.',
     planning: 'تخطيط',
@@ -327,6 +388,48 @@ const TEXT = {
     project_report: 'Project report',
     zakat_document: 'Zakat document',
     beneficiary_report: 'Beneficiary report',
+    hijriCalendar: 'Hijri Charity Calendar',
+    hijriCalendarDesc: 'Track zakat, hawl, Ramadan, Dhul Hijjah, sacrifice, sponsorships, and project deadlines in one place.',
+    upcomingReminders: 'Upcoming Reminders',
+    addReminder: '+ Add Reminder',
+    reminderTitle: 'Reminder title',
+    reminderType: 'Reminder type',
+    hijriDate: 'Hijri date',
+    remindBefore: 'Remind me before',
+    priority: 'Priority',
+    hijriEstimated: 'Hijri date is estimated',
+    preciseHijriLater: 'Precise Hijri dates will be enabled later.',
+    completedAction: 'Completed',
+    dismissAction: 'Dismiss',
+    deleteAction: 'Delete',
+    noReminders: 'No upcoming reminders yet.',
+    reminderSaved: 'Reminder saved successfully.',
+    reminderUpdated: 'Reminder updated.',
+    reminderDeleted: 'Reminder deleted.',
+    confirmDeleteReminder: 'Do you want to delete this reminder?',
+    daysBefore: '{days} days before',
+    daysRemaining: '{days} days remaining',
+    dueToday: 'Due today',
+    overdue: '{days} days overdue',
+    smartAlerts: 'Smart Alerts',
+    noUrgentAlerts: 'No urgent alerts right now.',
+    seasonalReminders: 'Islamic charity seasons',
+    notificationNote: 'These reminders appear inside Charity Projects for now. External notifications are not enabled yet.',
+    ramadanPlanning: 'Ramadan planning',
+    lastTenNights: 'Last 10 nights',
+    arafahDay: 'Arafah day',
+    eidAdha: 'Eid Al-Adha / sacrifice',
+    zakatAnnualReview: 'Annual zakat review',
+    low: 'Low',
+    normal: 'Normal',
+    high: 'High',
+    active: 'Active',
+    dismissed: 'Dismissed',
+    hawl: 'Hawl',
+    ramadan: 'Ramadan',
+    dhul_hijjah: 'Dhul Hijjah',
+    arafah: 'Arafah',
+    project_milestone: 'Project milestone',
     saved: 'Saved successfully.',
     error: 'This action could not be completed right now.',
     planning: 'Planning',
@@ -449,6 +552,48 @@ const TEXT = {
     project_report: 'Rapport de projet',
     zakat_document: 'Document de zakat',
     beneficiary_report: 'Rapport de bénéficiaire',
+    hijriCalendar: 'Calendrier caritatif hijri',
+    hijriCalendarDesc: 'Suivez la zakat, le hawl, Ramadan, Dhul Hijjah, le sacrifice, les parrainages et les échéances de projets.',
+    upcomingReminders: 'Rappels à venir',
+    addReminder: '+ Ajouter un rappel',
+    reminderTitle: 'Titre du rappel',
+    reminderType: 'Type de rappel',
+    hijriDate: 'Date hijri',
+    remindBefore: 'Me rappeler avant',
+    priority: 'Priorité',
+    hijriEstimated: 'La date hijri est estimée',
+    preciseHijriLater: 'Les dates hijri précises seront activées ultérieurement.',
+    completedAction: 'Terminé',
+    dismissAction: 'Ignorer',
+    deleteAction: 'Supprimer',
+    noReminders: 'Aucun rappel à venir pour le moment.',
+    reminderSaved: 'Rappel enregistré avec succès.',
+    reminderUpdated: 'Rappel mis à jour.',
+    reminderDeleted: 'Rappel supprimé.',
+    confirmDeleteReminder: 'Voulez-vous supprimer ce rappel ?',
+    daysBefore: '{days} jours avant',
+    daysRemaining: '{days} jours restants',
+    dueToday: "Échéance aujourd'hui",
+    overdue: 'En retard de {days} jours',
+    smartAlerts: 'Alertes intelligentes',
+    noUrgentAlerts: 'Aucune alerte urgente pour le moment.',
+    seasonalReminders: 'Saisons caritatives islamiques',
+    notificationNote: 'Ces rappels apparaissent dans Projets caritatifs pour le moment. Les notifications externes ne sont pas encore activées.',
+    ramadanPlanning: 'Ramadan',
+    lastTenNights: 'Les 10 dernières nuits',
+    arafahDay: 'Jour de Arafah',
+    eidAdha: 'Aïd Al-Adha / sacrifice',
+    zakatAnnualReview: 'Révision annuelle de la zakat',
+    low: 'Faible',
+    normal: 'Normale',
+    high: 'Élevée',
+    active: 'Actif',
+    dismissed: 'Ignoré',
+    hawl: 'Hawl',
+    ramadan: 'Ramadan',
+    dhul_hijjah: 'Dhul Hijjah',
+    arafah: 'Arafah',
+    project_milestone: 'Jalon de projet',
     saved: 'Enregistré avec succès.',
     error: "Impossible d'effectuer cette action pour le moment.",
     planning: 'Planification',
@@ -476,6 +621,8 @@ const categories: ProjectCategory[] = ['ongoing', 'sponsorship', 'zakat', 'sacri
 const statuses: ProjectStatus[] = ['planning', 'fundraising', 'in_progress', 'completed', 'paused'];
 const assetTypes: AssetType[] = ['cash', 'savings', 'investment', 'gold', 'silver', 'non_zakat'];
 const documentCategories: DocumentCategory[] = ['donation_receipt', 'charity_certificate', 'project_report', 'zakat_document', 'beneficiary_report', 'other'];
+const reminderTypes: ReminderType[] = ['zakat', 'hawl', 'ramadan', 'dhul_hijjah', 'arafah', 'sacrifice', 'sponsorship', 'project_milestone', 'general'];
+const reminderPriorities: ReminderPriority[] = ['low', 'normal', 'high'];
 const allowedDocumentTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
 const maxDocumentSize = 10 * 1024 * 1024;
 
@@ -497,6 +644,18 @@ function addYear(date: string) {
   return d.toISOString().slice(0, 10);
 }
 
+function addDays(date: string, days: number) {
+  const d = date ? new Date(`${date}T00:00:00`) : new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function daysUntil(date: string) {
+  const start = new Date(`${today()}T00:00:00`).getTime();
+  const end = new Date(`${date}T00:00:00`).getTime();
+  return Math.round((end - start) / 86400000);
+}
+
 function toNum(value: string | number | null | undefined) {
   return Number(String(value ?? 0).replace(/[^\d.-]/g, '')) || 0;
 }
@@ -511,6 +670,19 @@ function cleanFileName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-');
 }
 
+function estimatedHijriDate(date?: string | null, lang: Lang = 'ar') {
+  if (!date) return '';
+  try {
+    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-ca-islamic-umalqura' : lang === 'fr' ? 'fr-FR-u-ca-islamic-umalqura' : 'en-US-u-ca-islamic-umalqura', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date(`${date}T00:00:00`));
+  } catch {
+    return '';
+  }
+}
+
 export default function CharityProjectsPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -523,11 +695,14 @@ export default function CharityProjectsPage() {
   const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [donations, setDonations] = useState<ProjectDonation[]>([]);
   const [documents, setDocuments] = useState<CharityDocument[]>([]);
+  const [reminders, setReminders] = useState<CharityReminder[]>([]);
   const [incomeTotal, setIncomeTotal] = useState(0);
   const [expenseTotal, setExpenseTotal] = useState(0);
   const [message, setMessage] = useState('');
   const [projectOpen, setProjectOpen] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [editingReminder, setEditingReminder] = useState<CharityReminder | null>(null);
   const [donationProject, setDonationProject] = useState<CharityProject | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingDocument, setUploadingDocument] = useState(false);
@@ -562,33 +737,121 @@ export default function CharityProjectsPage() {
     commitment_id: '',
     notes: '',
   });
+  const [reminderForm, setReminderForm] = useState({
+    title: '',
+    reminder_type: 'general' as ReminderType,
+    due_date: today(),
+    remind_before_days: '30',
+    priority: 'normal' as ReminderPriority,
+    related_project_id: '',
+    related_zakat_asset_id: '',
+    related_commitment_id: '',
+    notes: '',
+  });
 
   const money = useCallback((amount: number, currency = 'KWD') => formatMoney(amount, currency, lang as Lang), [lang]);
   const dateLabel = useCallback((date?: string | null) => date ? new Date(`${date}T00:00:00`).toLocaleDateString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US') : '-', [lang]);
 
+  const syncGeneratedReminders = useCallback(async (
+    currentReminders: CharityReminder[],
+    currentProjects: CharityProject[],
+    currentAssets: ZakatAsset[],
+    currentCommitments: Commitment[],
+  ) => {
+    if (!user) return;
+    const exists = new Set(currentReminders.map(reminder => [
+      reminder.reminder_type,
+      reminder.related_project_id ?? '',
+      reminder.related_zakat_asset_id ?? '',
+      reminder.related_commitment_id ?? '',
+      reminder.due_date,
+    ].join('|')));
+
+    const generated: any[] = [];
+    currentAssets.forEach(asset => {
+      if (!asset.zakat_due_date || !asset.is_zakatable) return;
+      const key = ['zakat', '', asset.id, '', asset.zakat_due_date].join('|');
+      if (!exists.has(key)) generated.push({
+        user_id: user.id,
+        title: `${tr.zakat} - ${asset.asset_name}`,
+        reminder_type: 'zakat',
+        related_zakat_asset_id: asset.id,
+        due_date: asset.zakat_due_date,
+        hijri_date: estimatedHijriDate(asset.zakat_due_date, lang as Lang) || null,
+        remind_before_days: 30,
+        priority: 'high',
+        notes: tr.hijriEstimated,
+      });
+    });
+    currentCommitments.forEach(commitment => {
+      if (!commitment.next_due_date || commitment.status !== 'active') return;
+      const type = commitment.category === 'sponsorship' ? 'sponsorship' : 'general';
+      const key = [type, '', '', commitment.id, commitment.next_due_date].join('|');
+      if (!exists.has(key)) generated.push({
+        user_id: user.id,
+        title: `${tr.commitments}: ${commitment.name}`,
+        reminder_type: type,
+        related_commitment_id: commitment.id,
+        due_date: commitment.next_due_date,
+        hijri_date: estimatedHijriDate(commitment.next_due_date, lang as Lang) || null,
+        remind_before_days: 7,
+        priority: type === 'sponsorship' ? 'high' : 'normal',
+      });
+    });
+    currentProjects.forEach(project => {
+      if (!project.end_date || ['completed', 'paused'].includes(project.status)) return;
+      const key = ['project_milestone', project.id, '', '', project.end_date].join('|');
+      if (!exists.has(key)) generated.push({
+        user_id: user.id,
+        title: `${tr.endDate}: ${project.name}`,
+        reminder_type: 'project_milestone',
+        related_project_id: project.id,
+        due_date: project.end_date,
+        hijri_date: estimatedHijriDate(project.end_date, lang as Lang) || null,
+        remind_before_days: 14,
+        priority: 'normal',
+      });
+    });
+
+    if (generated.length > 0) {
+      await db.from('charity_reminders').insert(generated);
+    }
+  }, [db, lang, tr.commitments, tr.endDate, tr.hijriEstimated, tr.zakat, user]);
+
   const loadData = useCallback(async () => {
     if (!user) return;
     try {
-      const [projectRes, assetRes, commitmentRes, donationRes, documentRes, incomeRes, expenseRes] = await Promise.all([
+      const [projectRes, assetRes, commitmentRes, donationRes, documentRes, reminderRes, incomeRes, expenseRes] = await Promise.all([
         db.from('charity_projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('zakat_assets').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('charity_commitments').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
         db.from('charity_project_donations').select('*').eq('user_id', user.id).order('donation_date', { ascending: false }),
         db.from('charity_documents').select('*').eq('user_id', user.id).order('uploaded_at', { ascending: false }),
+        db.from('charity_reminders').select('*').eq('user_id', user.id).order('due_date', { ascending: true }),
         db.from('monthly_income_sources').select('amount').eq('user_id', user.id),
         db.from('expense_items').select('amount').eq('user_id', user.id),
       ]);
-      if (!projectRes.error) setProjects((projectRes.data ?? []) as CharityProject[]);
-      if (!assetRes.error) setAssets((assetRes.data ?? []) as ZakatAsset[]);
-      if (!commitmentRes.error) setCommitments((commitmentRes.data ?? []) as Commitment[]);
+      const loadedProjects = !projectRes.error ? (projectRes.data ?? []) as CharityProject[] : [];
+      const loadedAssets = !assetRes.error ? (assetRes.data ?? []) as ZakatAsset[] : [];
+      const loadedCommitments = !commitmentRes.error ? (commitmentRes.data ?? []) as Commitment[] : [];
+      const loadedReminders = !reminderRes.error ? (reminderRes.data ?? []) as CharityReminder[] : [];
+      if (!projectRes.error) setProjects(loadedProjects);
+      if (!assetRes.error) setAssets(loadedAssets);
+      if (!commitmentRes.error) setCommitments(loadedCommitments);
       if (!donationRes.error) setDonations((donationRes.data ?? []) as ProjectDonation[]);
       if (!documentRes.error) setDocuments((documentRes.data ?? []) as CharityDocument[]);
+      if (!reminderRes.error) {
+        setReminders(loadedReminders);
+        await syncGeneratedReminders(loadedReminders, loadedProjects, loadedAssets, loadedCommitments);
+        const refreshed = await db.from('charity_reminders').select('*').eq('user_id', user.id).order('due_date', { ascending: true });
+        if (!refreshed.error) setReminders((refreshed.data ?? []) as CharityReminder[]);
+      }
       if (!incomeRes.error) setIncomeTotal((incomeRes.data ?? []).reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
       if (!expenseRes.error) setExpenseTotal((expenseRes.data ?? []).reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
     } catch {
       setMessage(tr.error);
     }
-  }, [db, tr.error, user]);
+  }, [db, syncGeneratedReminders, tr.error, user]);
 
   useEffect(() => {
     loadData();
@@ -599,6 +862,7 @@ export default function CharityProjectsPage() {
       if (event.key === 'Escape') {
         setProjectOpen(false);
         setDocumentOpen(false);
+        setReminderOpen(false);
         setDonationProject(null);
       }
     };
@@ -648,9 +912,48 @@ export default function CharityProjectsPage() {
     if (document.project_id) acc[document.project_id] = (acc[document.project_id] || 0) + 1;
     return acc;
   }, {}), [documents]);
+  const activeReminders = reminders
+    .filter(reminder => reminder.status === 'active')
+    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+  const urgentReminders = activeReminders.filter(reminder => daysUntil(reminder.due_date) <= reminder.remind_before_days).slice(0, 3);
+  const seasonalCards = [
+    { title: tr.ramadanPlanning },
+    { title: tr.lastTenNights },
+    { title: tr.arafahDay },
+    { title: tr.eidAdha },
+    { title: tr.zakatAnnualReview },
+  ];
 
   const resetProjectForm = () => {
     setProjectForm({ name: '', category: 'ongoing', status: 'planning', target_amount: '', collected_amount: '', currency: 'KWD', start_date: today(), end_date: '', organization_name: '', notes: '' });
+  };
+
+  const resetReminderForm = () => {
+    setEditingReminder(null);
+    setReminderForm({ title: '', reminder_type: 'general', due_date: today(), remind_before_days: '30', priority: 'normal', related_project_id: '', related_zakat_asset_id: '', related_commitment_id: '', notes: '' });
+  };
+
+  const openReminderEditor = (reminder: CharityReminder) => {
+    setEditingReminder(reminder);
+    setReminderForm({
+      title: reminder.title,
+      reminder_type: reminder.reminder_type,
+      due_date: reminder.due_date,
+      remind_before_days: String(reminder.remind_before_days),
+      priority: reminder.priority,
+      related_project_id: reminder.related_project_id ?? '',
+      related_zakat_asset_id: reminder.related_zakat_asset_id ?? '',
+      related_commitment_id: reminder.related_commitment_id ?? '',
+      notes: reminder.notes ?? '',
+    });
+    setReminderOpen(true);
+  };
+
+  const reminderTimingLabel = (reminder: CharityReminder) => {
+    const days = daysUntil(reminder.due_date);
+    if (days === 0) return tr.dueToday;
+    if (days < 0) return tr.overdue.replace('{days}', String(Math.abs(days)));
+    return tr.daysRemaining.replace('{days}', String(days));
   };
 
   const openTemplate = (template: typeof templates[number]) => {
@@ -837,6 +1140,56 @@ export default function CharityProjectsPage() {
     loadData();
   };
 
+  const saveReminder = async () => {
+    if (!user || !reminderForm.title.trim() || !reminderForm.due_date) return;
+    setSaving(true);
+    const payload = {
+      user_id: user.id,
+      title: reminderForm.title.trim(),
+      reminder_type: reminderForm.reminder_type,
+      related_project_id: reminderForm.related_project_id || null,
+      related_zakat_asset_id: reminderForm.related_zakat_asset_id || null,
+      related_commitment_id: reminderForm.related_commitment_id || null,
+      due_date: reminderForm.due_date,
+      hijri_date: estimatedHijriDate(reminderForm.due_date, lang as Lang) || null,
+      remind_before_days: Math.max(0, Math.round(toNum(reminderForm.remind_before_days))),
+      status: 'active',
+      priority: reminderForm.priority,
+      notes: reminderForm.notes || null,
+    };
+    const { error } = editingReminder
+      ? await db.from('charity_reminders').update(payload).eq('id', editingReminder.id).eq('user_id', user.id)
+      : await db.from('charity_reminders').insert(payload);
+    setSaving(false);
+    if (error) {
+      setMessage(tr.error);
+      return;
+    }
+    setMessage(editingReminder ? tr.reminderUpdated : tr.reminderSaved);
+    setReminderOpen(false);
+    resetReminderForm();
+    loadData();
+  };
+
+  const updateReminderStatus = async (reminder: CharityReminder, status: ReminderStatus) => {
+    const { error } = await db.from('charity_reminders').update({ status }).eq('id', reminder.id).eq('user_id', user?.id);
+    if (error) setMessage(tr.error);
+    else {
+      setMessage(tr.reminderUpdated);
+      loadData();
+    }
+  };
+
+  const deleteReminder = async (reminder: CharityReminder) => {
+    if (!window.confirm(tr.confirmDeleteReminder)) return;
+    const { error } = await db.from('charity_reminders').delete().eq('id', reminder.id).eq('user_id', user?.id);
+    if (error) setMessage(tr.error);
+    else {
+      setMessage(tr.reminderDeleted);
+      loadData();
+    }
+  };
+
   const exportExcel = async () => {
     setExportingExcel(true);
     setMessage(hasReportData ? tr.preparingExcel : tr.emptyReportExported);
@@ -907,6 +1260,94 @@ export default function CharityProjectsPage() {
               </article>
             );
           })}
+        </section>
+
+        <section className="warm-card hijri-calendar">
+          <div className="section-head vault-head">
+            <div>
+              <small>{tr.hijriEstimated}</small>
+              <h2>{tr.hijriCalendar}</h2>
+              <p>{tr.hijriCalendarDesc}</p>
+            </div>
+            <button className="mini-gold" type="button" onClick={() => {
+              resetReminderForm();
+              setReminderOpen(true);
+            }}>
+              <CalendarDays size={16} /> {tr.addReminder}
+            </button>
+          </div>
+          <div className="calendar-grid">
+            <article className="alert-panel">
+              <strong>{tr.smartAlerts}</strong>
+              {urgentReminders.length === 0 ? <p>{tr.noUrgentAlerts}</p> : urgentReminders.map(reminder => (
+                <div className="alert-line" key={reminder.id}>
+                  <b>{reminder.title}</b>
+                  <span>{reminderTimingLabel(reminder)} • {dateLabel(reminder.due_date)}</span>
+                </div>
+              ))}
+            </article>
+            <article className="season-panel">
+              <strong>{tr.seasonalReminders}</strong>
+              <div className="season-grid">
+                {seasonalCards.map(card => (
+                  <span key={card.title}>
+                    <b>{card.title}</b>
+                    <small>{tr.preciseHijriLater}</small>
+                  </span>
+                ))}
+              </div>
+            </article>
+          </div>
+          <p className="nisab"><CalendarDays size={15} /> {tr.notificationNote}</p>
+        </section>
+
+        <section className="warm-card">
+          <div className="section-head">
+            <h2>{tr.upcomingReminders}</h2>
+            <button className="mini-gold" type="button" onClick={() => {
+              resetReminderForm();
+              setReminderOpen(true);
+            }}>{tr.addReminder}</button>
+          </div>
+          {activeReminders.length === 0 ? (
+            <div className="empty-state compact">
+              <CalendarDays size={38} />
+              <strong>{tr.noReminders}</strong>
+            </div>
+          ) : (
+            <div className="reminder-grid">
+              {activeReminders.map(reminder => {
+                const relatedProject = projects.find(project => project.id === reminder.related_project_id)?.name;
+                const relatedAsset = assets.find(asset => asset.id === reminder.related_zakat_asset_id)?.asset_name;
+                const relatedCommitment = commitments.find(commitment => commitment.id === reminder.related_commitment_id)?.name;
+                return (
+                  <article className={`reminder-card ${reminder.priority}`} key={reminder.id}>
+                    <div className="reminder-top">
+                      <div>
+                        <strong>{reminder.title}</strong>
+                        <span>{tr[reminder.reminder_type] ?? tr.other}</span>
+                      </div>
+                      <b>{tr[reminder.priority]}</b>
+                    </div>
+                    <div className="badge-row">
+                      <span>{dateLabel(reminder.due_date)}</span>
+                      {reminder.hijri_date && <span>{tr.hijriDate}: {reminder.hijri_date}</span>}
+                      <span>{tr.daysBefore.replace('{days}', String(reminder.remind_before_days))}</span>
+                    </div>
+                    <small>{reminderTimingLabel(reminder)} • {tr.hijriEstimated}</small>
+                    {(relatedProject || relatedAsset || relatedCommitment) && <p>{relatedProject || relatedAsset || relatedCommitment}</p>}
+                    {reminder.notes && <p>{reminder.notes}</p>}
+                    <div className="card-actions">
+                      <button type="button" onClick={() => updateReminderStatus(reminder, 'completed')} aria-label={tr.completedAction}>{tr.completedAction}</button>
+                      <button type="button" onClick={() => updateReminderStatus(reminder, 'dismissed')} aria-label={tr.dismissAction}>{tr.dismissAction}</button>
+                      <button type="button" onClick={() => openReminderEditor(reminder)} aria-label={tr.edit}>{tr.edit}</button>
+                      <button type="button" onClick={() => deleteReminder(reminder)} aria-label={tr.deleteAction}>{tr.deleteAction}</button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         <section className="main-grid">
@@ -1141,7 +1582,7 @@ export default function CharityProjectsPage() {
               </button>
             </div>
             <div className="future-list">
-              {['Family collaboration', 'Beneficiary tracking', 'Licensed charity organization database', 'Automatic gold/silver Kuwait price API', 'Hijri calendar advanced reminders'].map(item => (
+              {['Family collaboration', 'Beneficiary tracking', 'Licensed charity organization database', 'Automatic gold/silver Kuwait price API'].map(item => (
                 <span key={item}>{item} <b>{tr.comingSoon}</b></span>
               ))}
             </div>
@@ -1164,6 +1605,76 @@ export default function CharityProjectsPage() {
               <label className="wide"><span>{tr.organization}</span><input value={projectForm.organization_name} onChange={e => setProjectForm(prev => ({ ...prev, organization_name: e.target.value }))} /></label>
               <label className="wide"><span>{tr.notes}</span><textarea value={projectForm.notes} onChange={e => setProjectForm(prev => ({ ...prev, notes: e.target.value }))} /></label>
               <div className="modal-actions"><button className="ghost-btn" onClick={() => setProjectOpen(false)}>{tr.cancel}</button><button className="gold-btn" disabled={saving} onClick={saveProject}>{tr.saveProject}</button></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reminderOpen && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal">
+            <div className="modal-head">
+              <h2>{tr.addReminder}</h2>
+              <button aria-label={tr.cancel} onClick={() => { setReminderOpen(false); resetReminderForm(); }}><X size={18} /></button>
+            </div>
+            <div className="form-grid">
+              <label className="wide">
+                <span>{tr.reminderTitle}</span>
+                <input value={reminderForm.title} onChange={e => setReminderForm(prev => ({ ...prev, title: e.target.value }))} />
+              </label>
+              <label>
+                <span>{tr.reminderType}</span>
+                <select value={reminderForm.reminder_type} onChange={e => setReminderForm(prev => ({ ...prev, reminder_type: e.target.value as ReminderType }))}>
+                  {reminderTypes.map(type => <option key={type} value={type}>{tr[type] ?? tr.other}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>{tr.dueDate}</span>
+                <input type="date" value={reminderForm.due_date} onChange={e => setReminderForm(prev => ({ ...prev, due_date: e.target.value }))} />
+              </label>
+              <label>
+                <span>{tr.remindBefore}</span>
+                <input inputMode="numeric" value={reminderForm.remind_before_days} onChange={e => setReminderForm(prev => ({ ...prev, remind_before_days: e.target.value }))} />
+              </label>
+              <label>
+                <span>{tr.priority}</span>
+                <select value={reminderForm.priority} onChange={e => setReminderForm(prev => ({ ...prev, priority: e.target.value as ReminderPriority }))}>
+                  {reminderPriorities.map(priority => <option key={priority} value={priority}>{tr[priority]}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>{tr.linkProject}</span>
+                <select value={reminderForm.related_project_id} onChange={e => setReminderForm(prev => ({ ...prev, related_project_id: e.target.value }))}>
+                  <option value="">-</option>
+                  {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>{tr.linkZakatAsset}</span>
+                <select value={reminderForm.related_zakat_asset_id} onChange={e => setReminderForm(prev => ({ ...prev, related_zakat_asset_id: e.target.value }))}>
+                  <option value="">-</option>
+                  {assets.map(asset => <option key={asset.id} value={asset.id}>{asset.asset_name}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>{tr.linkCommitment}</span>
+                <select value={reminderForm.related_commitment_id} onChange={e => setReminderForm(prev => ({ ...prev, related_commitment_id: e.target.value }))}>
+                  <option value="">-</option>
+                  {commitments.map(commitment => <option key={commitment.id} value={commitment.id}>{commitment.name}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>{tr.hijriDate}</span>
+                <input value={estimatedHijriDate(reminderForm.due_date, lang as Lang) || tr.hijriEstimated} readOnly />
+              </label>
+              <label className="wide">
+                <span>{tr.notes}</span>
+                <textarea value={reminderForm.notes} onChange={e => setReminderForm(prev => ({ ...prev, notes: e.target.value }))} />
+              </label>
+              <div className="modal-actions">
+                <button className="ghost-btn" onClick={() => { setReminderOpen(false); resetReminderForm(); }}>{tr.cancel}</button>
+                <button className="gold-btn" disabled={saving} onClick={saveReminder}>{tr.addReminder}</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1266,7 +1777,7 @@ export default function CharityProjectsPage() {
       <style jsx>{`
         .charity-projects-page{min-height:100vh;background:#F5F1E8;color:#1A0F05;font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}
         .charity-projects-content{display:grid;gap:18px;width:100%;max-width:100%;min-width:0}
-        .charity-projects-content > *,.summary-grid > *,.main-grid > *,.split-grid > *,.template-grid > *,.project-grid > *{min-width:0}
+        .charity-projects-content > *,.summary-grid > *,.main-grid > *,.split-grid > *,.template-grid > *,.project-grid > *,.calendar-grid > *,.reminder-grid > *{min-width:0}
         .cp-hero{width:100%;max-width:100%;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;border-radius:26px;padding:30px;background:radial-gradient(circle at 18% 20%,rgba(239,159,39,.28),transparent 28%),linear-gradient(135deg,#1A0F05,#2B1A0F 58%,#8A5514 140%);color:#FFFDF8;box-shadow:0 18px 48px rgba(45,26,10,.18);overflow:hidden}
         .cp-hero span{color:#FAC775;font-size:12px;font-weight:800}.cp-hero h1{margin:8px 0;font-size:clamp(32px,5vw,54px);font-weight:900}.cp-hero p{max-width:760px;color:rgba(255,253,248,.78);font-size:16px;line-height:1.8}.hero-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
         button,a{font-family:inherit}.gold-btn,.dark-btn,.ghost-btn,.mini-gold,.primary-wide{border:0;border-radius:14px;min-height:44px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:800;cursor:pointer;text-decoration:none}.gold-btn,.mini-gold,.primary-wide{background:linear-gradient(135deg,#FAC775,#BA7517);color:#1A0F05}.dark-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#FFFDF8}.ghost-btn{background:#FFFDF8;border:1px solid rgba(186,117,23,.22);color:#3D2914}.mini-gold{min-height:36px;font-size:12px}
@@ -1278,11 +1789,12 @@ export default function CharityProjectsPage() {
         .template-grid,.project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.template-card{text-align:start;border:1px solid rgba(186,117,23,.16);background:#FDF8EE;border-radius:16px;padding:14px;cursor:pointer}.template-card:hover{background:#FAEEDA}.template-card strong,.template-card span{display:block}.template-card span{margin-top:5px;color:#8A6A55}
         .project-card{border:1px solid rgba(186,117,23,.14);border-radius:18px;background:#FFFDF8;padding:16px;display:grid;gap:13px}.project-top{display:flex;justify-content:space-between;gap:12px;min-width:0}.project-top strong{display:block;color:#3D2914;font-size:17px;overflow-wrap:anywhere}.project-top span,.badge-row span,.project-card p{color:#7A6A55;font-size:12px;overflow-wrap:anywhere}.status,.badge-row span{border-radius:999px;padding:5px 9px;background:#FAEEDA;color:#854F0B;font-size:11px}.badge-row{display:flex;gap:8px;flex-wrap:wrap}.progress{height:9px;border-radius:99px;background:#F1E6D4;overflow:hidden}.progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#BA7517,#EF9F27)}.money-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.money-row div{background:#F7F0E4;border-radius:13px;padding:10px;min-width:0}.money-row small{display:block;color:#8A6A55}.money-row strong{display:block;color:#3D2914;font-size:13px;overflow-wrap:anywhere}.card-actions{display:flex;gap:8px;flex-wrap:wrap}.card-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:800;font-size:12px}.doc-count-btn{justify-self:start;border:1px solid rgba(186,117,23,.16);background:#F7F0E4;color:#854F0B;border-radius:999px;min-height:34px;padding:0 12px;font-weight:900;cursor:pointer}
         .vault-head{align-items:flex-start}.vault-head p{margin:5px 0 0;color:#7A6A55;line-height:1.7}.document-tools{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,260px);gap:10px;margin-bottom:14px}.document-tools label{display:flex;align-items:center;gap:8px;border:1px solid rgba(186,117,23,.18);background:#F5F1E8;border-radius:14px;padding:0 12px;min-height:46px;color:#BA7517}.document-tools input,.document-tools select{width:100%;border:0;background:transparent;color:#1A0F05;outline:none;font:800 13px Tajawal,Arial,sans-serif}.document-tools select{border:1px solid rgba(186,117,23,.18);background:#F5F1E8;border-radius:14px;padding:0 12px;min-height:46px}.document-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.document-card{display:grid;grid-template-columns:42px minmax(0,1fr);gap:12px;border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;min-width:0}.document-icon{width:42px;height:42px;border-radius:14px;background:#FAEEDA;color:#BA7517;display:grid;place-items:center}.document-body{display:grid;gap:5px;min-width:0}.document-body strong{color:#3D2914;overflow-wrap:anywhere}.document-body span{justify-self:start;border-radius:999px;background:#F7F0E4;color:#854F0B;padding:4px 9px;font-size:11px;font-weight:900}.document-body small,.document-body em,.document-body p{color:#7A6A55;font-size:12px;line-height:1.6;overflow-wrap:anywhere}.document-body em{font-style:normal;color:#3D2914}.document-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}.document-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;cursor:pointer;font-weight:900}.document-actions button:last-child{background:#FCEBEB;color:#791F1F;border-color:rgba(121,31,31,.14)}.empty-state.compact{padding:24px 12px}.file-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(186,117,23,.16);background:#FAEEDA;border-radius:14px;padding:10px;color:#3D2914;min-width:0}.file-chip span{font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-chip small{color:#854F0B;margin-inline-start:auto}.file-chip button{width:30px;height:30px;border-radius:10px;border:1px solid rgba(186,117,23,.18);background:#FFFDF8;display:grid;place-items:center;cursor:pointer}
+        .calendar-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.alert-panel,.season-panel{border:1px solid rgba(186,117,23,.14);background:#FDF8EE;border-radius:18px;padding:14px;display:grid;gap:10px}.alert-panel strong,.season-panel strong{color:#3D2914}.alert-panel p{margin:0;color:#7A6A55}.alert-line{border-radius:14px;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);padding:10px;display:grid;gap:4px}.alert-line b{color:#3D2914}.alert-line span{color:#854F0B;font-size:12px}.season-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.season-grid span{border-radius:14px;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);padding:10px;display:grid;gap:5px}.season-grid b{color:#3D2914}.season-grid small{color:#8A6A55;line-height:1.5}.reminder-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.reminder-card{border:1px solid rgba(186,117,23,.14);background:#FFFDF8;border-radius:18px;padding:14px;display:grid;gap:10px}.reminder-card.high{border-color:rgba(121,31,31,.2);background:#FFF8F8}.reminder-card.low{background:#F9FBF6}.reminder-top{display:flex;justify-content:space-between;gap:10px;min-width:0}.reminder-top strong{display:block;color:#3D2914;overflow-wrap:anywhere}.reminder-top span,.reminder-card small,.reminder-card p{color:#7A6A55;line-height:1.6}.reminder-top b{align-self:start;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:5px 9px;font-size:11px;white-space:nowrap}
         .empty-state{display:grid;place-items:center;text-align:center;padding:42px 16px;color:#8A6A55}.empty-state svg{color:#BA7517;margin-bottom:10px}.empty-state strong{color:#3D2914;font-size:18px}.impact-lines{display:grid;gap:9px}.impact-lines p{margin:0;border-radius:13px;background:#F5F1E8;padding:10px;color:#3D2914}.impact-lines .warn{background:#FAEEDA;color:#854F0B}.report-card{display:grid;grid-template-columns:minmax(0,1fr) 110px auto auto;gap:10px;align-items:end;border:1px solid rgba(186,117,23,.18);border-radius:16px;background:#FAEEDA;padding:14px;margin-bottom:12px}.report-card strong,.report-card span{display:block}.report-card strong{color:#3D2914}.report-card span{margin-top:4px;color:#854F0B;font-size:12px}.report-card select{height:42px;border:1px solid rgba(186,117,23,.25);border-radius:12px;background:#FFFDF8;color:#3D2914;padding:0 10px;font:800 13px Tajawal,Arial,sans-serif}.report-card button{height:42px;border:0;border-radius:12px;background:linear-gradient(135deg,#FAC775,#BA7517);color:#1A0F05;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}.report-card button:disabled{opacity:.65;cursor:wait}.future-list{display:grid;gap:9px}.future-list span{display:flex;justify-content:space-between;gap:8px;border:1px solid rgba(186,117,23,.12);border-radius:12px;padding:10px;color:#3D2914}.future-list b{color:#BA7517}
         .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(26,15,5,.46);display:grid;place-items:center;padding:18px}.modal{width:min(760px,100%);max-height:92dvh;overflow:auto;background:#FFFDF8;border:1px solid rgba(186,117,23,.18);border-radius:24px;padding:20px}.modal.small{width:min(420px,100%)}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.modal-head h2{margin:0}.modal-head button{width:40px;height:40px;border-radius:12px;border:1px solid rgba(186,117,23,.18);background:#F5F1E8;display:grid;place-items:center;cursor:pointer}.modal-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
-        @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid{grid-template-columns:1fr}.project-grid,.document-grid{grid-template-columns:1fr}}
+        @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid,.calendar-grid{grid-template-columns:1fr}.project-grid,.document-grid,.reminder-grid{grid-template-columns:1fr}}
         @media(max-width:900px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row,.report-card,.document-tools{grid-template-columns:1fr}.report-card button{width:100%}.document-card{grid-template-columns:36px minmax(0,1fr)}.document-actions button{flex:1}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
+        @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row,.report-card,.document-tools,.season-grid{grid-template-columns:1fr}.report-card button{width:100%}.document-card{grid-template-columns:36px minmax(0,1fr)}.document-actions button{flex:1}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
       `}</style>
     </div>
   );
