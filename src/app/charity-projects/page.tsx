@@ -70,6 +70,17 @@ type Commitment = {
   status: string;
 };
 
+type ProjectDonation = {
+  id: string;
+  project_id: string | null;
+  amount: number;
+  currency: string;
+  donation_date: string | null;
+  donation_type: string | null;
+  notes: string | null;
+  created_at: string | null;
+};
+
 const TEXT = {
   ar: {
     title: 'المشاريع الخيرية',
@@ -134,6 +145,9 @@ const TEXT = {
     projectName: 'اسم المشروع',
     comingSoon: 'قريباً',
     futureTitle: 'ميزات قادمة',
+    annualPdfReport: 'تقرير الأعمال الخيرية السنوي PDF',
+    generateReport: 'إنشاء التقرير',
+    reportYear: 'سنة التقرير',
     saved: 'تم الحفظ بنجاح.',
     error: 'تعذر تنفيذ العملية حالياً.',
     planning: 'تخطيط',
@@ -218,6 +232,9 @@ const TEXT = {
     projectName: 'Project name',
     comingSoon: 'Coming soon',
     futureTitle: 'Future features',
+    annualPdfReport: 'Annual Charity PDF Report',
+    generateReport: 'Generate Report',
+    reportYear: 'Report year',
     saved: 'Saved successfully.',
     error: 'This action could not be completed right now.',
     planning: 'Planning',
@@ -302,6 +319,9 @@ const TEXT = {
     projectName: 'Nom du projet',
     comingSoon: 'Bientôt',
     futureTitle: 'Fonctionnalités à venir',
+    annualPdfReport: 'Rapport annuel caritatif PDF',
+    generateReport: 'Générer le rapport',
+    reportYear: 'Année du rapport',
     saved: 'Enregistré avec succès.',
     error: "Impossible d'effectuer cette action pour le moment.",
     planning: 'Planification',
@@ -361,6 +381,7 @@ export default function CharityProjectsPage() {
   const [projects, setProjects] = useState<CharityProject[]>([]);
   const [assets, setAssets] = useState<ZakatAsset[]>([]);
   const [commitments, setCommitments] = useState<Commitment[]>([]);
+  const [donations, setDonations] = useState<ProjectDonation[]>([]);
   const [incomeTotal, setIncomeTotal] = useState(0);
   const [expenseTotal, setExpenseTotal] = useState(0);
   const [message, setMessage] = useState('');
@@ -368,6 +389,7 @@ export default function CharityProjectsPage() {
   const [donationProject, setDonationProject] = useState<CharityProject | null>(null);
   const [saving, setSaving] = useState(false);
   const [impactDonation, setImpactDonation] = useState('');
+  const [selectedReportYear, setSelectedReportYear] = useState(String(new Date().getFullYear()));
   const [zakat, setZakat] = useState({ cash: '', investments: '', gold: '', silver: '', debts: '', goldPrice: '', silverPrice: '', nonZakat: false });
   const [assetForm, setAssetForm] = useState({ asset_name: '', asset_type: 'cash' as AssetType, amount: '', ownership_date: today(), zakat_due_date: addYear(today()), is_zakatable: true, notes: '' });
   const [projectForm, setProjectForm] = useState({
@@ -390,16 +412,18 @@ export default function CharityProjectsPage() {
   const loadData = useCallback(async () => {
     if (!user) return;
     try {
-      const [projectRes, assetRes, commitmentRes, incomeRes, expenseRes] = await Promise.all([
+      const [projectRes, assetRes, commitmentRes, donationRes, incomeRes, expenseRes] = await Promise.all([
         db.from('charity_projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('zakat_assets').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('charity_commitments').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
+        db.from('charity_project_donations').select('*').eq('user_id', user.id).order('donation_date', { ascending: false }),
         db.from('monthly_income_sources').select('amount').eq('user_id', user.id),
         db.from('expense_items').select('amount').eq('user_id', user.id),
       ]);
       if (!projectRes.error) setProjects((projectRes.data ?? []) as CharityProject[]);
       if (!assetRes.error) setAssets((assetRes.data ?? []) as ZakatAsset[]);
       if (!commitmentRes.error) setCommitments((commitmentRes.data ?? []) as Commitment[]);
+      if (!donationRes.error) setDonations((donationRes.data ?? []) as ProjectDonation[]);
       if (!incomeRes.error) setIncomeTotal((incomeRes.data ?? []).reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
       if (!expenseRes.error) setExpenseTotal((expenseRes.data ?? []).reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
     } catch {
@@ -433,6 +457,22 @@ export default function CharityProjectsPage() {
     return sum + amount;
   }, 0) + projects.filter(project => project.status !== 'completed').reduce((sum, project) => sum + Math.max(0, toNum(project.target_amount) - toNum(project.collected_amount)), 0) + zakatAmount;
   const nextDue = assets.map(asset => asset.zakat_due_date).filter(Boolean).sort()[0];
+  const reportYears = useMemo(() => {
+    const years = new Set<number>([new Date().getFullYear()]);
+    const add = (value?: string | null) => {
+      if (!value) return;
+      const year = new Date(`${value.slice(0, 10)}T00:00:00`).getFullYear();
+      if (Number.isFinite(year)) years.add(year);
+    };
+    projects.forEach(project => {
+      add(project.start_date);
+      add(project.end_date);
+    });
+    assets.forEach(asset => add(asset.zakat_due_date || asset.ownership_date));
+    commitments.forEach(commitment => add(commitment.next_due_date));
+    donations.forEach(donation => add(donation.donation_date || donation.created_at));
+    return Array.from(years).sort((a, b) => b - a);
+  }, [assets, commitments, donations, projects]);
   const impactValue = toNum(impactDonation);
   const impactPct = incomeTotal > 0 && impactValue > 0 ? (impactValue / incomeTotal) * 100 : null;
   const remainingNet = incomeTotal - expenseTotal - impactValue;
@@ -709,8 +749,20 @@ export default function CharityProjectsPage() {
 
           <article className="warm-card">
             <div className="section-head"><h2>{tr.futureTitle}</h2><Sparkles size={22} /></div>
+            <div className="report-card">
+              <div>
+                <strong>{tr.annualPdfReport}</strong>
+                <span>{tr.reportYear}</span>
+              </div>
+              <select value={selectedReportYear} onChange={e => setSelectedReportYear(e.target.value)} aria-label={tr.reportYear}>
+                {reportYears.map(year => <option key={year} value={year}>{year}</option>)}
+              </select>
+              <button type="button" onClick={() => router.push(`/charity-projects/report?year=${selectedReportYear}`)} aria-label={tr.generateReport}>
+                <FileText size={16} /> {tr.generateReport}
+              </button>
+            </div>
             <div className="future-list">
-              {['PDF annual charity report', 'Excel export', 'Document vault', 'Family collaboration', 'Beneficiary tracking', 'Licensed charity organization database', 'Automatic gold/silver Kuwait price API', 'Hijri calendar advanced reminders'].map(item => (
+              {['Excel export', 'Document vault', 'Family collaboration', 'Beneficiary tracking', 'Licensed charity organization database', 'Automatic gold/silver Kuwait price API', 'Hijri calendar advanced reminders'].map(item => (
                 <span key={item}>{item} <b>{tr.comingSoon}</b></span>
               ))}
             </div>
@@ -762,11 +814,11 @@ export default function CharityProjectsPage() {
         .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.result-grid div,.big-metric{background:#FAEEDA;border:1px solid rgba(186,117,23,.14);border-radius:16px;padding:14px}.result-grid small,.big-metric span{display:block;color:#854F0B;font-weight:800}.result-grid strong,.big-metric strong{display:block;margin-top:5px;color:#3D2914;font-size:24px}.disclaimer,.nisab,.muted{margin:12px 0 0;color:#7A6A55;line-height:1.8}.nisab{display:flex;gap:8px;align-items:flex-start;color:#854F0B;background:#FFF8EA;border-radius:13px;padding:10px}
         .template-grid,.project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.template-card{text-align:start;border:1px solid rgba(186,117,23,.16);background:#FDF8EE;border-radius:16px;padding:14px;cursor:pointer}.template-card:hover{background:#FAEEDA}.template-card strong,.template-card span{display:block}.template-card span{margin-top:5px;color:#8A6A55}
         .project-card{border:1px solid rgba(186,117,23,.14);border-radius:18px;background:#FFFDF8;padding:16px;display:grid;gap:13px}.project-top{display:flex;justify-content:space-between;gap:12px;min-width:0}.project-top strong{display:block;color:#3D2914;font-size:17px;overflow-wrap:anywhere}.project-top span,.badge-row span,.project-card p{color:#7A6A55;font-size:12px;overflow-wrap:anywhere}.status,.badge-row span{border-radius:999px;padding:5px 9px;background:#FAEEDA;color:#854F0B;font-size:11px}.badge-row{display:flex;gap:8px;flex-wrap:wrap}.progress{height:9px;border-radius:99px;background:#F1E6D4;overflow:hidden}.progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#BA7517,#EF9F27)}.money-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.money-row div{background:#F7F0E4;border-radius:13px;padding:10px;min-width:0}.money-row small{display:block;color:#8A6A55}.money-row strong{display:block;color:#3D2914;font-size:13px;overflow-wrap:anywhere}.card-actions{display:flex;gap:8px;flex-wrap:wrap}.card-actions button{border:1px solid rgba(186,117,23,.16);background:#FFF8EA;color:#3D2914;border-radius:11px;min-height:36px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:800;font-size:12px}
-        .empty-state{display:grid;place-items:center;text-align:center;padding:42px 16px;color:#8A6A55}.empty-state svg{color:#BA7517;margin-bottom:10px}.empty-state strong{color:#3D2914;font-size:18px}.impact-lines{display:grid;gap:9px}.impact-lines p{margin:0;border-radius:13px;background:#F5F1E8;padding:10px;color:#3D2914}.impact-lines .warn{background:#FAEEDA;color:#854F0B}.future-list{display:grid;gap:9px}.future-list span{display:flex;justify-content:space-between;gap:8px;border:1px solid rgba(186,117,23,.12);border-radius:12px;padding:10px;color:#3D2914}.future-list b{color:#BA7517}
+        .empty-state{display:grid;place-items:center;text-align:center;padding:42px 16px;color:#8A6A55}.empty-state svg{color:#BA7517;margin-bottom:10px}.empty-state strong{color:#3D2914;font-size:18px}.impact-lines{display:grid;gap:9px}.impact-lines p{margin:0;border-radius:13px;background:#F5F1E8;padding:10px;color:#3D2914}.impact-lines .warn{background:#FAEEDA;color:#854F0B}.report-card{display:grid;grid-template-columns:minmax(0,1fr) 110px auto;gap:10px;align-items:end;border:1px solid rgba(186,117,23,.18);border-radius:16px;background:#FAEEDA;padding:14px;margin-bottom:12px}.report-card strong,.report-card span{display:block}.report-card strong{color:#3D2914}.report-card span{margin-top:4px;color:#854F0B;font-size:12px}.report-card select{height:42px;border:1px solid rgba(186,117,23,.25);border-radius:12px;background:#FFFDF8;color:#3D2914;padding:0 10px;font:800 13px Tajawal,Arial,sans-serif}.report-card button{height:42px;border:0;border-radius:12px;background:linear-gradient(135deg,#FAC775,#BA7517);color:#1A0F05;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer}.future-list{display:grid;gap:9px}.future-list span{display:flex;justify-content:space-between;gap:8px;border:1px solid rgba(186,117,23,.12);border-radius:12px;padding:10px;color:#3D2914}.future-list b{color:#BA7517}
         .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(26,15,5,.46);display:grid;place-items:center;padding:18px}.modal{width:min(760px,100%);max-height:92dvh;overflow:auto;background:#FFFDF8;border:1px solid rgba(186,117,23,.18);border-radius:24px;padding:20px}.modal.small{width:min(420px,100%)}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.modal-head h2{margin:0}.modal-head button{width:40px;height:40px;border-radius:12px;border:1px solid rgba(186,117,23,.18);background:#F5F1E8;display:grid;place-items:center;cursor:pointer}.modal-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
         @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid{grid-template-columns:1fr}.project-grid{grid-template-columns:1fr}}
         @media(max-width:900px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row{grid-template-columns:1fr}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
+        @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row,.report-card{grid-template-columns:1fr}.report-card button{width:100%}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
       `}</style>
     </div>
   );
