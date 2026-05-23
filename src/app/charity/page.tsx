@@ -89,6 +89,11 @@ export default function CharityPage() {
   const monthOptions = useMemo(() => buildMonthOptions(lang), [lang]);
   const selectedMonthLabel = labelFromYM(month, lang);
   const currencyLabel = t('charity.currency');
+  const zakatShortcut = lang === 'ar'
+    ? { title: 'الزكاة', button: 'فتح صفحة الزكاة' }
+    : lang === 'fr'
+      ? { title: 'Zakat', button: 'Ouvrir la page Zakat' }
+      : { title: 'Zakat', button: 'Open Zakat Page' };
 
   /* ── Load charity records ── */
   const load = useCallback(async () => {
@@ -238,9 +243,10 @@ export default function CharityPage() {
         .charity-projects-shortcut-copy { display: flex; align-items: center; gap: 14px; min-width: 0; }
         .charity-projects-shortcut h2 { margin: 0; color: #FFFDFC; font-size: 18px; font-weight: 900; }
         .charity-projects-shortcut p { margin: 5px 0 0; color: rgba(255,253,252,.68); font-size: 13px; line-height: 1.75; max-width: 760px; }
+        .charity-projects-shortcut-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
         .charity-projects-shortcut button { min-height: 44px; border: 0; border-radius: 14px; background: linear-gradient(135deg,#FAC775,#D8AE63); color: #111111; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; font-family: Tajawal,sans-serif; font-size: 13px; font-weight: 900; white-space: nowrap; box-shadow: 0 8px 22px rgba(216,174,99,.22); }
         @media (max-width: 768px) { .g2 { grid-template-columns: 1fr !important; } .kpi-g { grid-template-columns: 1fr 1fr !important; } }
-        @media (max-width: 640px) { .charity-projects-shortcut { display: grid; padding: 18px; } .charity-projects-shortcut-copy { align-items: flex-start; } .charity-projects-shortcut button { width: 100%; } }
+        @media (max-width: 640px) { .charity-projects-shortcut { display: grid; padding: 18px; } .charity-projects-shortcut-copy { align-items: flex-start; } .charity-projects-shortcut-actions { display: grid; } .charity-projects-shortcut button { width: 100%; } }
         @media (max-width: 560px) { .kpi-g { grid-template-columns: 1fr !important; } }
       `}</style>
 
@@ -293,9 +299,14 @@ export default function CharityPage() {
                 <p>{t('charity.projectsShortcutDescription')}</p>
               </div>
             </div>
-            <button type="button" onClick={() => router.push('/charity-projects')}>
-              {t('charity.openProjects')}
-            </button>
+            <div className="charity-projects-shortcut-actions">
+              <button type="button" onClick={() => router.push('/charity-projects')}>
+                {t('charity.openProjects')}
+              </button>
+              <button type="button" onClick={() => router.push('/zakat')} aria-label={zakatShortcut.button}>
+                {zakatShortcut.button}
+              </button>
+            </div>
           </section>
 
           <div className="g2" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(320px, .7fr)', gap: '20px', alignItems: 'start' }}>

@@ -49,6 +49,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/ai', label: { ar: 'الذكاء المالي', en: 'Financial AI', fr: 'IA financière' }, icon: Bot },
   { href: '/charity', label: { ar: 'الأعمال الخيرية', en: 'Charity', fr: 'Charité' }, icon: HandHeart },
   { href: '/charity-projects', label: { ar: 'المشاريع الخيرية', en: 'Charity Projects', fr: 'Projets caritatifs' }, icon: HeartHandshake },
+  { href: '/zakat', label: { ar: 'الزكاة', en: 'Zakat', fr: 'Zakat' }, icon: Calculator },
   { href: '/notifications', label: { ar: 'الإشعارات', en: 'Notifications', fr: 'Notifications' }, icon: Bell },
   { href: '/profile', label: { ar: 'الملف الشخصي', en: 'Profile', fr: 'Profil' }, icon: UserRound },
   { href: '/services/investment-firms', label: { ar: 'شركات الاستثمار', en: 'Investment Firms', fr: "Sociétés d'investissement" }, icon: Building2, section: 'services' },

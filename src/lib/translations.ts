@@ -63,6 +63,7 @@ export const TR: Record<string, TranslationEntry> = {
   nav_projects:   { ar:'مشاريعي', en:'My Projects', fr:'Mes projets' },
   nav_charity:    { ar:'الأعمال الخيرية', en:'Charity', fr:'Charité' },
   nav_charity_projects: { ar:'المشاريع الخيرية', en:'Charity Projects', fr:'Projets caritatifs' },
+  nav_zakat:      { ar:'الزكاة', en:'Zakat', fr:'Zakat' },
   nav_reports:    { ar:'التقارير', en:'Reports', fr:'Rapports' },
   nav_ai:         { ar:'تحليلات الذكاء', en:'AI Analytics', fr:'Analyses IA' },
   nav_notif:      { ar:'الإشعارات', en:'Notifications', fr:'Notifications' },

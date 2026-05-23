@@ -1410,6 +1410,27 @@ export default function CharityProjectsPage() {
   const { user } = useAuth();
   const { lang, dir } = useLanguage();
   const tr = TEXT[lang as Lang] ?? TEXT.ar;
+  const zakatShortcut = {
+    ar: {
+      title: 'إدارة الزكاة',
+      description: 'انتقل إلى صفحة الزكاة لحساب النصاب، تتبع الحول، وحفظ حسابات الزكاة.',
+      button: 'فتح صفحة الزكاة',
+    },
+    en: {
+      title: 'Manage Zakat',
+      description: 'Open the Zakat page to calculate nisab, track hawl, and save zakat calculations.',
+      button: 'Open Zakat Page',
+    },
+    fr: {
+      title: 'Gérer la zakat',
+      description: 'Ouvrez la page Zakat pour calculer le nisab, suivre le hawl et enregistrer les calculs de zakat.',
+      button: 'Ouvrir la page Zakat',
+    },
+  }[lang as Lang] ?? {
+    title: 'إدارة الزكاة',
+    description: 'انتقل إلى صفحة الزكاة لحساب النصاب، تتبع الحول، وحفظ حسابات الزكاة.',
+    button: 'فتح صفحة الزكاة',
+  };
   const db = supabase as any;
 
   const [projects, setProjects] = useState<CharityProject[]>([]);
@@ -1847,7 +1868,7 @@ export default function CharityProjectsPage() {
     if (item.frequency === 'monthly') return sum + amount * 12;
     if (item.frequency === 'annual') return sum + amount;
     return sum + amount;
-  }, 0) + projects.filter(project => project.status !== 'completed').reduce((sum, project) => sum + Math.max(0, toNum(project.target_amount) - toNum(project.collected_amount)), 0) + zakatAmount;
+  }, 0) + projects.filter(project => project.status !== 'completed').reduce((sum, project) => sum + Math.max(0, toNum(project.target_amount) - toNum(project.collected_amount)), 0) + toNum(latestEstimatedZakat);
   const nextDue = assets.map(asset => asset.zakat_due_date).filter(Boolean).sort()[0];
   const reportYears = useMemo(() => {
     const years = new Set<number>([new Date().getFullYear()]);
@@ -2467,7 +2488,7 @@ export default function CharityProjectsPage() {
     { icon: HeartHandshake, label: tr.activeProjects, value: activeProjects.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US') },
     { icon: HandCoins, label: tr.totalDonations, value: money(totalDonations) },
     { icon: CalendarDays, label: tr.commitments, value: expectedCommitments > 0 ? money(expectedCommitments) : '0' },
-    { icon: Coins, label: tr.estimatedZakat, value: money(zakatAmount) },
+    { icon: Coins, label: tr.estimatedZakat, value: money(toNum(latestEstimatedZakat)) },
     { icon: ShieldCheck, label: tr.nextZakat, value: nextDue ? dateLabel(nextDue) : tr.noDueDate },
   ];
 
@@ -2485,7 +2506,7 @@ export default function CharityProjectsPage() {
             <button className="gold-btn" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
               <Plus size={17} /> {tr.newProject}
             </button>
-            <a className="dark-btn" href="#zakat-calculator">
+            <a className="dark-btn" href="/zakat">
               <Calculator size={17} /> {tr.zakatCalculator}
             </a>
             <LanguageSwitcher variant="dark" compact />
@@ -2596,6 +2617,16 @@ export default function CharityProjectsPage() {
         </section>
 
         <section className="main-grid">
+          <article className="warm-card span-7 zakat-shortcut-card">
+            <div className="section-head">
+              <div><small>{tr.zakat}</small><h2>{zakatShortcut.title}</h2></div>
+              <Calculator size={24} />
+            </div>
+            <p className="muted">{zakatShortcut.description}</p>
+            <a className="primary-wide" href="/zakat">
+              <Calculator size={16} /> {zakatShortcut.button}
+            </a>
+          </article>
           <article id="zakat-calculator" className="warm-card span-7">
             <div className="section-head">
               <div><small>2.5%</small><h2>{tr.smartZakat}</h2></div>
@@ -3617,7 +3648,7 @@ export default function CharityProjectsPage() {
         button,a{font-family:inherit}.gold-btn,.dark-btn,.ghost-btn,.mini-gold,.primary-wide{border:0;border-radius:14px;min-height:44px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:800;cursor:pointer;text-decoration:none}.gold-btn,.mini-gold,.primary-wide{background:linear-gradient(135deg,#FAC775,#BA7517);color:#1A0F05}.dark-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#FFFDF8}.ghost-btn{background:#FFFDF8;border:1px solid rgba(186,117,23,.22);color:#3D2914}.mini-gold{min-height:36px;font-size:12px}
         .notice{border:1px solid rgba(186,117,23,.2);background:#FFF8EA;color:#854F0B;border-radius:14px;padding:12px 14px;font-weight:800}.warm-card{background:#FFFDF8;border:1px solid rgba(186,117,23,.14);border-radius:22px;padding:20px;box-shadow:0 8px 26px rgba(61,41,20,.05)}
         .summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.summary-card{display:grid;gap:8px}.summary-card span{width:40px;height:40px;border-radius:14px;background:#FAEEDA;color:#BA7517;display:grid;place-items:center}.summary-card small,.section-head small{color:#8A6A55;font-weight:800}.summary-card strong{font-size:20px;color:#3D2914;overflow-wrap:anywhere}
-        .main-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:18px}.span-7,.span-5{grid-column:auto}.split-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}.section-head h2{margin:0;color:#3D2914;font-size:21px}.section-head svg{color:#BA7517}
+        .main-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:18px}.main-grid > #zakat-calculator,.main-grid > #zakat-calculator + .span-5{display:none}.zakat-shortcut-card{align-self:start}.zakat-shortcut-card .primary-wide{margin-top:14px}.span-7,.span-5{grid-column:auto}.split-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}.section-head h2{margin:0;color:#3D2914;font-size:21px}.section-head svg{color:#BA7517}
         .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid.one{grid-template-columns:1fr}.form-grid label,.impact-input{display:grid;gap:7px;color:#3D2914;font-size:13px;font-weight:800}.form-grid input,.form-grid select,.form-grid textarea,.impact-input input{width:100%;border:1px solid rgba(186,117,23,.18);border-radius:13px;background:#F5F1E8;color:#1A0F05;min-height:46px;padding:0 12px;outline:none}.form-grid textarea{min-height:92px;padding-top:12px;resize:vertical}.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus,.impact-input input:focus{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.15);background:#FFFDF8}.wide{grid-column:1/-1}.check-row{display:flex!important;align-items:center;gap:9px}.check-row input{width:18px!important;min-height:18px!important}.primary-wide{width:100%}
         .zakat-premium-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr) minmax(280px,.82fr);gap:14px;align-items:start}.zakat-panel{display:grid;gap:14px;border:1px solid rgba(186,117,23,.14);background:#FFF8EA;border-radius:20px;padding:16px;min-width:0}.zakat-panel h3,.zakat-history h3{margin:0;color:#3D2914;font-size:17px}.asset-input-box,.non-zakat-box,.manual-price-box,.hawl-mini-list{border:1px solid rgba(186,117,23,.13);background:#FFFDF8;border-radius:16px;padding:13px;display:grid;gap:10px;min-width:0}.asset-input-box strong,.non-zakat-box strong,.hawl-mini-list strong{color:#3D2914}.non-zakat-box p,.manual-price-box p{margin:0;color:#7A6A55;line-height:1.7;font-size:13px}.chip-grid{display:flex;flex-wrap:wrap;gap:8px}.chip{border:1px solid rgba(186,117,23,.2);background:#F7F0E4;color:#3D2914;border-radius:999px;min-height:36px;padding:0 12px;font-weight:900;cursor:pointer}.chip.active{background:#3D2914;color:#FFFDF8;border-color:#3D2914}.other-asset-input{display:grid;gap:7px;color:#3D2914;font-weight:800}.other-asset-input input{width:100%;border:1px solid rgba(186,117,23,.18);border-radius:13px;background:#F5F1E8;color:#1A0F05;min-height:44px;padding:0 12px;outline:none}.price-status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.price-card{background:#3D2914;border:1px solid rgba(250,199,117,.18);border-radius:16px;padding:14px;color:#FFFDF8;min-width:0}.price-card small,.price-card span{display:block;color:#FAC775;font-weight:800}.price-card strong{display:block;margin:5px 0;color:#FFFDF8;font-size:20px;overflow-wrap:anywhere}.price-meta{display:flex;flex-wrap:wrap;gap:8px;color:#854F0B;font-size:12px;font-weight:900}.price-meta span{border-radius:999px;background:#FAEEDA;padding:6px 10px}.zakat-outcome{margin:0;border-radius:15px;background:#EAF3DE;color:#27500A;padding:12px;font-weight:900;line-height:1.7}.guidance-list{display:grid;gap:8px}.guidance-list p{margin:0;display:flex;gap:8px;align-items:flex-start;border-radius:14px;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);padding:10px;color:#3D2914;line-height:1.6}.guidance-list svg{color:#BA7517;flex:0 0 auto;margin-top:2px}.hawl-mini-list div{display:grid;gap:2px;border-radius:12px;background:#F7F0E4;padding:9px}.hawl-mini-list b{color:#3D2914}.hawl-mini-list small,.hawl-mini-list span{color:#7A6A55}.zakat-history{margin-top:14px;border-top:1px solid rgba(186,117,23,.14);padding-top:14px}.history-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr .7fr auto;gap:8px;align-items:center;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:14px;padding:10px;margin-top:8px;min-width:0}.history-row span,.history-row small,.history-row strong{min-width:0;overflow-wrap:anywhere;color:#3D2914}.history-row small{color:#854F0B}.history-row button{border:1px solid rgba(121,31,31,.14);background:#FCEBEB;color:#791F1F;border-radius:10px;min-height:34px;padding:0 10px;font-weight:900;cursor:pointer}
         .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:0}.result-grid div,.big-metric{background:#FAEEDA;border:1px solid rgba(186,117,23,.14);border-radius:16px;padding:14px}.result-grid small,.big-metric span{display:block;color:#854F0B;font-weight:800}.result-grid strong,.big-metric strong{display:block;margin-top:5px;color:#3D2914;font-size:24px;overflow-wrap:anywhere}.disclaimer,.nisab,.muted{margin:12px 0 0;color:#7A6A55;line-height:1.8}.nisab{display:flex;gap:8px;align-items:flex-start;color:#854F0B;background:#FFF8EA;border-radius:13px;padding:10px}

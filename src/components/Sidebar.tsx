@@ -58,6 +58,7 @@ const NAV_SECTIONS: NavSection[] = [
       { id: 'projects',      icon: FolderKanban,    path: '/projects',      labelKey: 'nav_projects' },
       { id: 'charity',       icon: HandHeart,       path: '/charity',       labelKey: 'nav_charity'  },
       { id: 'charity-projects', icon: HeartHandshake, path: '/charity-projects', labelKey: 'nav_charity_projects' },
+      { id: 'zakat',         icon: Calculator,      path: '/zakat',         labelKey: 'nav_zakat'    },
       { id: 'reports',       icon: ChartPie,        path: '/reports',       labelKey: 'nav_reports'  },
       { id: 'ai',            icon: Bot,             path: '/ai',            labelKey: 'nav_ai'       },
       { id: 'notif',         icon: Bell,            path: '/notifications', labelKey: 'nav_notif'    },
