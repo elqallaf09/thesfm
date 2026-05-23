@@ -51,6 +51,13 @@ type IncomeViewRow = IncomeRow & {
   workflowStatus: IncomeStatus;
 };
 
+type ExpenseRow = {
+  id: string;
+  amount?: number | string | null;
+  date?: string | null;
+  created_at?: string | null;
+};
+
 type IncomeForm = {
   id?: string;
   name: string;
@@ -104,9 +111,14 @@ const TX: Record<string, Record<Lang, string>> = {
   lateFollowup: { ar: 'حاول متابعة الدخل المتأخر لتحديث الصافي المتوقع.', en: 'Follow up overdue income to keep expected net updated.', fr: 'Suivez les revenus en retard pour actualiser le net prévu.' },
   diversificationHelps: { ar: 'تنويع مصادر الدخل يقلل الاعتماد على مصدر واحد.', en: 'Diversifying income sources reduces reliance on one source.', fr: 'Diversifier les sources réduit la dépendance à une seule source.' },
   addIncome: { ar: '+ إضافة دخل', en: '+ Add Income', fr: '+ Ajouter un revenu' },
-  savingsInsight: { ar: 'معدل الادخار 43% — أعلى من المستهدف', en: 'Savings rate 43% — above target', fr: 'Taux d’épargne 43% — au-dessus de l’objectif' },
-  spendingInsight: { ar: 'نسبة الصرف 57% — تجاوزت قاعدة 50/30/20', en: 'Spending ratio 57% — above the 50/30/20 rule', fr: 'Ratio de dépenses 57% — au-dessus de la règle 50/30/20' },
-  forecastInsight: { ar: 'توقع الشهر القادم +5.2% بناءً على 6 شهور', en: 'Next month forecast +5.2% based on 6 months', fr: 'Prévision du mois prochain +5,2% sur 6 mois' },
+  savingsRateTitle: { ar: 'معدل الادخار', en: 'Savings rate', fr: 'Taux d’épargne' },
+  spendingRatioTitle: { ar: 'نسبة الصرف', en: 'Spending ratio', fr: 'Ratio de dépenses' },
+  calculatedFromRealData: { ar: 'محسوب من بياناتك الفعلية', en: 'Calculated from your real data', fr: 'Calculé à partir de vos données réelles' },
+  insufficientData: { ar: 'بيانات غير كافية', en: 'Insufficient data', fr: 'Données insuffisantes' },
+  insufficientIncomeSavings: { ar: 'لا توجد بيانات دخل كافية لحساب معدل الادخار.', en: 'Not enough income data to calculate savings rate.', fr: 'Données de revenus insuffisantes pour calculer le taux d’épargne.' },
+  insufficientExpensesSpending: { ar: 'لا توجد بيانات مصروفات كافية لحساب نسبة الصرف.', en: 'Not enough expense data to calculate spending ratio.', fr: 'Données de dépenses insuffisantes pour calculer le ratio de dépenses.' },
+  insufficientForecast: { ar: 'لا توجد بيانات كافية لتوقع الشهر القادم.', en: 'Not enough data to forecast next month.', fr: 'Données insuffisantes pour prévoir le mois prochain.' },
+  insightUnavailable: { ar: 'تعذر حساب هذه البطاقة حالياً.', en: 'This insight could not be calculated right now.', fr: 'Cette analyse ne peut pas être calculée pour le moment.' },
   viewExpenses: { ar: 'اعرض المصاريف', en: 'View expenses', fr: 'Voir les dépenses' },
   totalIncome: { ar: 'إجمالي الدخل', en: 'Total Income', fr: 'Revenu total' },
   incomeSources: { ar: 'مصادر الدخل', en: 'Income Sources', fr: 'Sources de revenus' },
@@ -167,7 +179,7 @@ const TX: Record<string, Record<Lang, string>> = {
   saved: { ar: 'تم حفظ الدخل', en: 'Income saved', fr: 'Revenu enregistré' },
   deleted: { ar: 'تم حذف الدخل', en: 'Income deleted', fr: 'Revenu supprimé' },
   exportSoon: { ar: 'التصدير غير مفعّل في هذه المرحلة.', en: 'Export is not enabled in this phase.', fr: 'L’export n’est pas activé dans cette phase.' },
-  insightDetails: { ar: 'هذه قراءة إرشادية مؤقتة لتحسين التخطيط الشهري.', en: 'This is a temporary guidance insight for monthly planning.', fr: 'Il s’agit d’un aperçu indicatif temporaire pour la planification mensuelle.' },
+  insightDetails: { ar: 'تعتمد هذه البطاقة على السجلات المحفوظة فقط، وتظهر بيانات غير كافية عندما لا تتوفر أرقام حقيقية كافية.', en: 'This card uses saved records only and shows insufficient data when there are not enough real numbers.', fr: 'Cette carte utilise uniquement les enregistrements sauvegardés et affiche des données insuffisantes lorsque les chiffres réels manquent.' },
 };
 
 const TYPES: Array<{ id: IncomeType; icon: string; label: Record<Lang, string> }> = [
@@ -291,6 +303,23 @@ function formatDate(value: string | null | undefined, lang: string) {
   return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 }
 
+function monthKey(value: string | null | undefined) {
+  return value ? value.slice(0, 7) : '';
+}
+
+function toFiniteAmount(value: unknown) {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function formatPercent(value: number, locale: string, signed = false) {
+  if (!Number.isFinite(value)) return '';
+  const formatted = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(Math.abs(value));
+  if (!signed) return `${formatted}%`;
+  const sign = value > 0 ? '+' : value < 0 ? '-' : '';
+  return `${sign}${formatted}%`;
+}
+
 function typeLabel(type: string | null | undefined, lang: string) {
   const item = TYPES.find(entry => entry.id === normalizeType(type)) ?? TYPES.at(-1)!;
   return item.label[lang as Lang] ?? item.label.ar;
@@ -326,6 +355,8 @@ export default function IncomePage() {
   const { user, isGuest } = useAuth();
   const { currency: defaultCurrency } = useCurrency();
   const [rows, setRows] = useState<IncomeRow[]>([]);
+  const [expenseRows, setExpenseRows] = useState<ExpenseRow[]>([]);
+  const [insightLoadError, setInsightLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<IncomeForm>(() => emptyForm());
@@ -342,6 +373,7 @@ export default function IncomePage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setInsightLoadError(false);
     if (isGuest || !user) {
       try {
         const local = JSON.parse(localStorage.getItem('sfm_guest_income') || '[]') as IncomeRow[];
@@ -349,16 +381,40 @@ export default function IncomePage() {
       } catch {
         setRows([]);
       }
+      try {
+        const localExpenses = JSON.parse(localStorage.getItem('sfm_guest_expenses') || '[]') as ExpenseRow[];
+        setExpenseRows(localExpenses);
+      } catch {
+        setExpenseRows([]);
+      }
       setLoading(false);
       return;
     }
-    const { data } = await supabase
-      .from('monthly_income_sources')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('received_date', { ascending: false, nullsFirst: false })
-      .order('created_at', { ascending: false });
-    setRows((data ?? []) as IncomeRow[]);
+    const [incomeResult, expenseResult] = await Promise.all([
+      supabase
+        .from('monthly_income_sources')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('received_date', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('expense_items')
+        .select('id, amount, date, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false }),
+    ]);
+    if (incomeResult.error) {
+      setRows([]);
+      setInsightLoadError(true);
+    } else {
+      setRows((incomeResult.data ?? []) as IncomeRow[]);
+    }
+    if (expenseResult.error) {
+      setExpenseRows([]);
+      setInsightLoadError(true);
+    } else {
+      setExpenseRows((expenseResult.data ?? []) as ExpenseRow[]);
+    }
     setLoading(false);
   }, [isGuest, user]);
 
@@ -397,13 +453,22 @@ export default function IncomePage() {
     .slice(0, 5), [viewRows]);
   const lateRows = useMemo(() => viewRows.filter(row => row.workflowStatus === 'late'), [viewRows]);
 
-  const total = viewRows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  const selectedMonth = todayDateOnly().slice(0, 7);
+  const selectedMonthRows = useMemo(() => viewRows.filter(row => {
+    const key = monthKey(row.received_date || row.generated_for_date || row.created_at);
+    return key === selectedMonth;
+  }), [selectedMonth, viewRows]);
+  const selectedMonthExpenses = useMemo(() => expenseRows.filter(row => monthKey(row.date || row.created_at) === selectedMonth), [expenseRows, selectedMonth]);
+
+  const total = viewRows.reduce((sum, row) => sum + toFiniteAmount(row.amount), 0);
+  const selectedMonthIncomeTotal = selectedMonthRows.reduce((sum, row) => sum + toFiniteAmount(row.amount), 0);
+  const selectedMonthExpenseTotal = selectedMonthExpenses.reduce((sum, row) => sum + toFiniteAmount(row.amount), 0);
   const activeSources = viewRows.filter(row => row.workflowStatus !== 'late').length;
-  const expectedNet = Math.max(total * 0.433, 0);
-  const recurringTotal = viewRows.filter(row => row.is_recurring).reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  const expectedNet = Math.max(selectedMonthIncomeTotal - selectedMonthExpenseTotal, 0);
+  const recurringTotal = viewRows.filter(row => row.is_recurring).reduce((sum, row) => sum + toFiniteAmount(row.amount), 0);
   const recurringPercent = total > 0 ? Math.round((recurringTotal / total) * 100) : 0;
-  const largestRow = viewRows.reduce<IncomeViewRow | null>((largest, row) => Number(row.amount || 0) > Number(largest?.amount || 0) ? row : largest, null);
-  const concentrationPercent = total > 0 && largestRow ? Math.round((Number(largestRow.amount || 0) / total) * 100) : 0;
+  const largestRow = viewRows.reduce<IncomeViewRow | null>((largest, row) => toFiniteAmount(row.amount) > toFiniteAmount(largest?.amount) ? row : largest, null);
+  const concentrationPercent = total > 0 && largestRow ? Math.round((toFiniteAmount(largestRow.amount) / total) * 100) : 0;
   const stableMonths = new Set(viewRows.map(row => (row.received_date || row.generated_for_date || '').slice(0, 7)).filter(Boolean)).size;
   const stabilityScore = Math.max(0, Math.min(100,
     45
@@ -416,15 +481,72 @@ export default function IncomePage() {
   const monthTotals = useMemo(() => {
     const totals = new Map<string, number>();
     viewRows.forEach(row => {
-      const key = (row.received_date || row.generated_for_date || '').slice(0, 7);
+      const key = monthKey(row.received_date || row.generated_for_date || row.created_at);
       if (!key) return;
-      totals.set(key, (totals.get(key) ?? 0) + Number(row.amount || 0));
+      totals.set(key, (totals.get(key) ?? 0) + toFiniteAmount(row.amount));
     });
     return [...totals.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [viewRows]);
+  const savingsRate = selectedMonthIncomeTotal > 0
+    ? ((selectedMonthIncomeTotal - selectedMonthExpenseTotal) / selectedMonthIncomeTotal) * 100
+    : null;
+  const spendingRatio = selectedMonthIncomeTotal > 0 && selectedMonthExpenses.length > 0
+    ? (selectedMonthExpenseTotal / selectedMonthIncomeTotal) * 100
+    : null;
+  const forecastPercent = useMemo(() => {
+    if (monthTotals.length < 3) return null;
+    const latest = monthTotals.at(-1)?.[1] ?? 0;
+    const previous = monthTotals.slice(Math.max(0, monthTotals.length - 4), -1);
+    const previousAverage = previous.reduce((sum, [, value]) => sum + value, 0) / previous.length;
+    if (!Number.isFinite(previousAverage) || previousAverage <= 0) return null;
+    return ((latest - previousAverage) / previousAverage) * 100;
+  }, [monthTotals]);
   const forecastValue = monthTotals.length >= 3
     ? monthTotals.slice(-3).reduce((sum, [, value]) => sum + value, 0) / Math.min(3, monthTotals.length)
     : null;
+  const insightCards = useMemo(() => {
+    const unavailable = (title: string, tone: 'success' | 'warning' | 'info') => ({
+      title,
+      tone,
+      value: '',
+      message: tr('insightUnavailable', lang),
+      source: tr('insufficientData', lang),
+      available: false,
+    });
+    if (insightLoadError) {
+      return [
+        unavailable(tr('savingsRateTitle', lang), 'success'),
+        unavailable(tr('spendingRatioTitle', lang), 'warning'),
+        unavailable(tr('nextForecast', lang), 'info'),
+      ];
+    }
+    return [
+      {
+        title: tr('savingsRateTitle', lang),
+        tone: 'success' as const,
+        value: savingsRate === null ? '' : formatPercent(savingsRate, locale),
+        message: savingsRate === null ? tr('insufficientIncomeSavings', lang) : tr('calculatedFromRealData', lang),
+        source: savingsRate === null ? tr('insufficientData', lang) : tr('calculatedFromRealData', lang),
+        available: savingsRate !== null,
+      },
+      {
+        title: tr('spendingRatioTitle', lang),
+        tone: 'warning' as const,
+        value: spendingRatio === null ? '' : formatPercent(spendingRatio, locale),
+        message: spendingRatio === null ? tr('insufficientExpensesSpending', lang) : tr('calculatedFromRealData', lang),
+        source: spendingRatio === null ? tr('insufficientData', lang) : tr('calculatedFromRealData', lang),
+        available: spendingRatio !== null,
+      },
+      {
+        title: tr('nextForecast', lang),
+        tone: 'info' as const,
+        value: forecastPercent === null ? '' : formatPercent(forecastPercent, locale, true),
+        message: forecastPercent === null ? tr('insufficientForecast', lang) : tr('calculatedFromRealData', lang),
+        source: forecastPercent === null ? tr('insufficientData', lang) : tr('calculatedFromRealData', lang),
+        available: forecastPercent !== null,
+      },
+    ];
+  }, [forecastPercent, insightLoadError, lang, locale, savingsRate, spendingRatio]);
   const smartGuidance = useMemo(() => {
     const items: string[] = [];
     if (recurringPercent >= 50) items.push(tr('recurringStrong', lang));
@@ -437,17 +559,25 @@ export default function IncomePage() {
   const categorySuggestion = suggestIncomeType(form.name);
 
   const distribution = useMemo(() => {
-    const data = [
-      { label: typeLabel('salary', lang), value: 74, color: '#3D2914' },
-      { label: typeLabel('bonus', lang), value: 19.8, color: '#BA7517' },
-      { label: typeLabel('rent', lang), value: 6.2, color: '#EF9F27' },
-    ];
-    return data;
-  }, [lang]);
+    const colors = ['#3D2914', '#BA7517', '#EF9F27', '#FAC775', '#7C4A12', '#27500A', '#0C447C'];
+    const totals = new Map<IncomeType, number>();
+    selectedMonthRows.forEach(row => {
+      const type = normalizeType(row.income_type || row.category);
+      totals.set(type, (totals.get(type) ?? 0) + toFiniteAmount(row.amount));
+    });
+    return [...totals.entries()]
+      .filter(([, value]) => value > 0)
+      .sort(([, a], [, b]) => b - a)
+      .map(([type, value], index) => ({
+        label: typeLabel(type, lang),
+        value: selectedMonthIncomeTotal > 0 ? (value / selectedMonthIncomeTotal) * 100 : 0,
+        color: colors[index % colors.length],
+      }));
+  }, [lang, selectedMonthIncomeTotal, selectedMonthRows]);
 
-  const trend = [1850, 1910, 1980, 2025, 2100, 2160, 2210, 2260, 2310, 2380, 2416, 2542];
+  const trend = monthTotals.map(([, value]) => value);
   const points = trend.map((value, index) => {
-    const x = (index / (trend.length - 1)) * 360;
+    const x = trend.length > 1 ? (index / (trend.length - 1)) * 360 : 180;
     const min = Math.min(...trend);
     const max = Math.max(...trend);
     const y = 130 - ((value - min) / (max - min || 1)) * 110;
@@ -819,6 +949,7 @@ export default function IncomePage() {
   }
 
   function donutBackground() {
+    if (distribution.length === 0) return '#F5F1E8';
     let cursor = 0;
     const stops = distribution.map(item => {
       const start = cursor;
@@ -858,23 +989,22 @@ export default function IncomePage() {
         </header>
 
         <section className="insights" aria-label="income insights">
-          {[
-            ['success', `${tr('stabilityScore', lang)} ${Math.round(stabilityScore)}/100 — ${stabilityScore >= 70 ? tr('stable', lang) : tr('needsReview', lang)}`, null],
-            ['warning', concentrationPercent > 65 ? tr('highDependency', lang) : tr('diversifiedGood', lang), tr('incomeDiversification', lang)],
-            ['info', `${tr('recurringRatio', lang)} ${new Intl.NumberFormat(locale).format(recurringPercent)}%`, tr('nextForecast', lang)],
-          ].map(([tone, text, action]) => (
-            <button type="button" className={`insight ${tone}`} key={text} onClick={() => setInsightOpen(text)}>
+          {insightCards.map(card => (
+            <button type="button" className={`insight ${card.tone} ${card.available ? '' : 'muted'}`} key={card.title} onClick={() => setInsightOpen(`${card.title}: ${card.value || card.message}`)}>
               <Sparkles size={17} />
-              <span>{text}</span>
-              {action && <b>{action}</b>}
+              <span>
+                <strong>{card.title}</strong>
+                <small>{card.value || card.message}</small>
+              </span>
+              <b>{card.source}</b>
             </button>
           ))}
         </section>
 
         <section className="stat-grid">
-          <article><span><Wallet size={18} />{tr('totalIncome', lang)}</span><strong>{formatMoney(total || 2416, defaultCurrency || 'KWD', lang as Lang)}</strong><em>↑ 8.2%</em></article>
-          <article><span><BriefcaseBusiness size={18} />{tr('incomeSources', lang)}</span><strong>{activeSources || 3} {tr('active', lang)}</strong><em>↑ 2</em></article>
-          <article><span><CircleDollarSign size={18} />{tr('expectedNet', lang)}</span><strong>{formatMoney(expectedNet || 1046.4, defaultCurrency || 'KWD', lang as Lang)}</strong><em>↑ 3.1%</em></article>
+          <article><span><Wallet size={18} />{tr('totalIncome', lang)}</span><strong>{formatMoney(selectedMonthIncomeTotal, defaultCurrency || 'KWD', lang as Lang)}</strong><em>{tr('calculatedFromRealData', lang)}</em></article>
+          <article><span><BriefcaseBusiness size={18} />{tr('incomeSources', lang)}</span><strong>{activeSources} {tr('active', lang)}</strong><em>{tr('calculatedFromRealData', lang)}</em></article>
+          <article><span><CircleDollarSign size={18} />{tr('expectedNet', lang)}</span><strong>{formatMoney(expectedNet, defaultCurrency || 'KWD', lang as Lang)}</strong><em>{selectedMonthIncomeTotal > 0 ? tr('calculatedFromRealData', lang) : tr('insufficientData', lang)}</em></article>
         </section>
 
         <section className="smart-grid">
@@ -927,9 +1057,9 @@ export default function IncomePage() {
           <article className="panel">
             <div className="panel-title"><BarChart3 size={18} /><h2>{tr('distribution', lang)}</h2></div>
             <div className="donut-wrap">
-              <div className="donut" style={{ background: donutBackground() }}><span>{new Intl.NumberFormat(locale).format(100)}%</span></div>
+              <div className="donut" style={{ background: donutBackground() }}><span>{formatPercent(distribution.reduce((sum, item) => sum + item.value, 0), locale)}</span></div>
               <div className="legend">
-                {distribution.map(item => <div key={item.label}><i style={{ background: item.color }} /> <span>{item.label}</span><b>{new Intl.NumberFormat(locale).format(item.value)}%</b></div>)}
+                {distribution.length === 0 ? <div className="empty">{tr('insufficientData', lang)}</div> : distribution.map(item => <div key={item.label}><i style={{ background: item.color }} /> <span>{item.label}</span><b>{formatPercent(item.value, locale)}</b></div>)}
               </div>
             </div>
           </article>
@@ -1081,7 +1211,7 @@ export default function IncomePage() {
         .income-header:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 12% 18%,rgba(250,199,117,.28),transparent 28%),linear-gradient(120deg,transparent 0 60%,rgba(250,199,117,.08) 60% 61%,transparent 61%);pointer-events:none}.income-header>*{position:relative;z-index:1}
         .income-header p{margin:0;color:#FAC775;font-size:13px;font-weight:600}.income-header span{margin:0;color:#F8EAD2;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:7px}.income-header h1{margin:8px 0;font-size:40px;font-weight:600;color:#FFF7E8}
         .income-actions{display:flex;gap:10px;flex-wrap:wrap}.export-wrap{position:relative}.export-menu{position:absolute;z-index:60;inset-block-start:48px;inset-inline-end:0;min-width:190px;background:#FFFDF8;border:1px solid rgba(186,117,23,.18);border-radius:14px;padding:8px;box-shadow:0 16px 38px rgba(61,41,20,.16)}.export-menu button{width:100%;height:38px;border:0;border-radius:10px;background:#FFFDF8;color:#3D2914;display:flex;align-items:center;gap:8px;padding:0 10px;font:600 13px inherit;cursor:pointer;text-align:start}.export-menu button:hover{background:#FAEEDA;color:#854F0B}.primary,.ghost,.primary-dark,.ghost-light{border-radius:12px;border:1px solid rgba(250,199,117,.26);height:42px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 14px inherit;cursor:pointer}.primary,.primary-dark{background:linear-gradient(135deg,#FAC775,#EF9F27);color:#2B1A0F;border-color:rgba(250,199,117,.48)}.ghost{background:rgba(43,26,15,.34);color:#FFF7E8;border-color:rgba(250,199,117,.3)}.ghost:disabled{opacity:.55;cursor:not-allowed}.ghost-light{background:#FFFDF8;color:#3D2914;border-color:rgba(186,117,23,.18)}
-        .insights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.insight{min-height:76px;text-align:start;border:1px solid rgba(186,117,23,.16);border-radius:18px;padding:15px;background:#FFFDF8;display:flex;align-items:center;gap:10px;color:#3D2914;cursor:pointer;box-shadow:0 8px 22px rgba(61,41,20,.04)}.insight span{line-height:1.6;font-weight:600}.insight b{margin-inline-start:auto;font-size:12px;color:#854F0B}.insight.success{background:#F0F7E8;color:#27500A}.insight.warning{background:#FAEEDA;color:#854F0B}.insight.info{background:#EEF5FB;color:#0C447C}
+        .insights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.insight{min-height:76px;text-align:start;border:1px solid rgba(186,117,23,.16);border-radius:18px;padding:15px;background:#FFFDF8;display:flex;align-items:center;gap:10px;color:#3D2914;cursor:pointer;box-shadow:0 8px 22px rgba(61,41,20,.04)}.insight span{display:grid;gap:3px;line-height:1.45}.insight span strong{font-weight:600}.insight span small{font-size:13px;font-weight:600}.insight b{margin-inline-start:auto;font-size:12px;color:#854F0B;max-width:140px}.insight.success{background:#F0F7E8;color:#27500A}.insight.warning{background:#FAEEDA;color:#854F0B}.insight.info{background:#EEF5FB;color:#0C447C}.insight.muted{background:#FFFDF8;color:#7b6248}
         .stat-grid,.smart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.stat-grid article,.panel{background:#FFFDF8;border:1px solid rgba(186,117,23,.16);border-radius:20px;padding:18px;box-shadow:0 10px 26px rgba(61,41,20,.05)}.stat-grid span{display:flex;gap:8px;align-items:center;color:#7b6248;font-size:13px}.stat-grid strong{display:block;margin-top:10px;font-size:26px;font-weight:600;color:#3D2914}.stat-grid em{display:inline-flex;margin-top:10px;border-radius:999px;background:#EAF3DE;color:#27500A;padding:4px 9px;font-style:normal;font-size:12px}
         .smart-score strong,.smart-grid strong{display:block;color:#3D2914;font-size:26px;font-weight:600}.smart-score span,.smart-grid p{color:#7b6248;font-size:13px;line-height:1.7;margin:8px 0 0}.smart-view{grid-column:span 1}.smart-view ul{margin:0;padding-inline-start:18px;color:#4c3926;line-height:1.8;font-size:13px}
         .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.panel-title{display:flex;align-items:center;gap:9px;margin-bottom:16px;color:#BA7517}.panel-title h2{margin:0;font-size:18px;font-weight:600;color:#3D2914}.donut-wrap{display:grid;grid-template-columns:180px 1fr;gap:18px;align-items:center}.donut{width:170px;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;position:relative}.donut:after{content:"";position:absolute;inset:32px;background:#FFFDF8;border-radius:50%}.donut span{position:relative;z-index:1;font-weight:600;color:#3D2914}.legend{display:grid;gap:10px}.legend div{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:13px}.legend i{width:10px;height:10px;border-radius:50%}.line-chart{width:100%;height:auto;min-height:170px;background:#FBF7EE;border-radius:14px;padding:12px;overflow:visible}
