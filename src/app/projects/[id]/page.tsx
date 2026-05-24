@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { ProjectFinancialModelTab } from '@/components/projects/ProjectFinancialModelTab';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -1064,6 +1065,14 @@ export default function ProjectWorkspacePage() {
               </aside>
             </div>
           </section>
+        ) : activeTab === 'financial' ? (
+          <ProjectFinancialModelTab
+            userId={user.id}
+            projectId={project.id}
+            initialCapital={model.capital}
+            defaultCurrency={String(model.notes.currency ?? 'KWD')}
+            lang={lang}
+          />
         ) : (
           <section className="placeholder-grid">
             {tabs.filter(tab => tab.id === activeTab).map(tab => {
