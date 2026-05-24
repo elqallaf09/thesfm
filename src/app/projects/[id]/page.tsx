@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { ProjectDocumentsTab } from '@/components/projects/ProjectDocumentsTab';
 import { ProjectFinancialModelTab } from '@/components/projects/ProjectFinancialModelTab';
 import {
   ProjectTasksTab,
@@ -208,6 +209,7 @@ const TEXT = {
     upcomingDeadlines: 'المواعيد القادمة',
     nextMilestone: 'المعلم القادم',
     estimatedTaskCosts: 'تكلفة المهام المتوقعة',
+    documentsCount: 'عدد المستندات',
   },
   en: {
     workspace: 'Project Workspace',
@@ -341,6 +343,7 @@ const TEXT = {
     upcomingDeadlines: 'Upcoming deadlines',
     nextMilestone: 'Next milestone',
     estimatedTaskCosts: 'Estimated Task Costs',
+    documentsCount: 'Documents count',
   },
   fr: {
     workspace: 'Espace projet',
@@ -474,6 +477,7 @@ const TEXT = {
     upcomingDeadlines: 'Échéances à venir',
     nextMilestone: 'Prochain jalon',
     estimatedTaskCosts: 'Coûts estimés des tâches',
+    documentsCount: 'Nombre de documents',
   },
 } as const;
 
@@ -608,6 +612,7 @@ export default function ProjectWorkspacePage() {
   const [savingFeasibility, setSavingFeasibility] = useState(false);
   const [notice, setNotice] = useState('');
   const [taskSummary, setTaskSummary] = useState<ProjectTasksSummary>(emptyProjectTasksSummary);
+  const [documentsCount, setDocumentsCount] = useState(0);
 
   const money = useCallback((amount: number, currency = 'KWD') => formatMoney(amount, currency, lang as Lang), [lang]);
   const dateLabel = useCallback((value?: string | null) => {
@@ -723,7 +728,7 @@ export default function ProjectWorkspacePage() {
   const loadProject = useCallback(async () => {
     if (!user || !id) return;
     setLoadingProject(true);
-    const [projectRes, savingsRes, feasibilityRes, taskRes, milestoneRes] = await Promise.all([
+    const [projectRes, savingsRes, feasibilityRes, taskRes, milestoneRes, documentsRes] = await Promise.all([
       supabase.from('projects').select('*').eq('user_id', user.id).eq('id', id).maybeSingle(),
       supabase.from('savings_items').select('amount').eq('user_id', user.id),
       (supabase as any)
@@ -740,6 +745,11 @@ export default function ProjectWorkspacePage() {
       (supabase as any)
         .from('project_milestones')
         .select('*')
+        .eq('user_id', user.id)
+        .eq('project_id', id),
+      (supabase as any)
+        .from('project_documents')
+        .select('id')
         .eq('user_id', user.id)
         .eq('project_id', id),
     ]);
@@ -760,6 +770,7 @@ export default function ProjectWorkspacePage() {
       taskRes.error ? [] : (taskRes.data ?? []) as ProjectTaskRow[],
       milestoneRes.error ? [] : (milestoneRes.data ?? []) as ProjectMilestoneRow[],
     ));
+    setDocumentsCount(documentsRes.error ? 0 : (documentsRes.data ?? []).length);
     setLoadingProject(false);
   }, [id, user]);
 
@@ -987,6 +998,7 @@ export default function ProjectWorkspacePage() {
             statusLabel={statusProjectLabel}
             riskText={riskText}
             taskSummary={taskSummary}
+            documentsCount={documentsCount}
             money={money}
             dateLabel={dateLabel}
             setActiveTab={setActiveTab}
@@ -1126,6 +1138,13 @@ export default function ProjectWorkspacePage() {
             lang={lang}
             onSummaryChange={setTaskSummary}
           />
+        ) : activeTab === 'documents' ? (
+          <ProjectDocumentsTab
+            userId={user.id}
+            projectId={project.id}
+            lang={lang}
+            onDocumentsCountChange={setDocumentsCount}
+          />
         ) : (
           <section className="placeholder-grid">
             {tabs.filter(tab => tab.id === activeTab).map(tab => {
@@ -1159,6 +1178,7 @@ function OverviewTab({
   statusLabel,
   riskText,
   taskSummary,
+  documentsCount,
   money,
   dateLabel,
   setActiveTab,
@@ -1171,6 +1191,7 @@ function OverviewTab({
   statusLabel: string;
   riskText: string;
   taskSummary: ProjectTasksSummary;
+  documentsCount: number;
   money: (value: number) => string;
   dateLabel: (value?: string | null) => string;
   setActiveTab: (tab: TabId) => void;
@@ -1231,6 +1252,7 @@ function OverviewTab({
           <Metric label={tr.upcomingDeadlines} value={dateLabel(taskSummary.upcomingDeadline)} />
           <Metric label={tr.nextMilestone} value={dateLabel(taskSummary.nextMilestone)} />
           <Metric label={tr.estimatedTaskCosts} value={money(taskSummary.estimatedTaskCosts)} />
+          <Metric label={tr.documentsCount} value={String(documentsCount)} />
         </div>
         <div className="progress-bar" aria-label={tr.projectProgress}>
           <span style={{ width: `${taskSummary.progressPercent}%` }} />
