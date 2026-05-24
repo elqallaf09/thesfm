@@ -16,6 +16,7 @@ import {
   FolderKanban,
   Gauge,
   Pencil,
+  Presentation,
   Plus,
   Save,
   Target,
@@ -25,6 +26,7 @@ import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { ProjectAiAdvisorTab } from '@/components/projects/ProjectAiAdvisorTab';
 import { ProjectDocumentsTab } from '@/components/projects/ProjectDocumentsTab';
 import { ProjectFinancialModelTab } from '@/components/projects/ProjectFinancialModelTab';
+import { ProjectPitchDeckTab } from '@/components/projects/ProjectPitchDeckTab';
 import {
   ProjectKpisTab,
   buildProjectKpiSummary,
@@ -46,7 +48,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
 
 type Lang = 'ar' | 'en' | 'fr';
-type TabId = 'overview' | 'feasibility' | 'financial' | 'tasks' | 'documents' | 'kpis' | 'ai';
+type TabId = 'overview' | 'feasibility' | 'financial' | 'tasks' | 'documents' | 'kpis' | 'ai' | 'pitchDeck';
 type RiskLevel = 'low' | 'medium' | 'high';
 type FeasibilitySection = 'market' | 'technical' | 'financial' | 'legal';
 type FeasibilityStatus = 'feasible' | 'needs_review' | 'high_risk';
@@ -107,6 +109,7 @@ const TEXT = {
     documents: 'المستندات',
     kpis: 'المؤشرات',
     ai: 'مستشار AI',
+    pitchDeck: 'العرض الاستثماري',
     comingSoon: 'سيتم تفعيل هذا القسم في المرحلة القادمة.',
     projectSummary: 'ملخص المشروع',
     financialSnapshot: 'اللقطة المالية',
@@ -154,6 +157,7 @@ const TEXT = {
     documentsHint: 'خزنة مستندات للعقود والتراخيص والفواتير.',
     kpisHint: 'مؤشرات أداء المشروع والربحية والتقدم.',
     aiHint: 'مستشار ذكي يقرأ بيانات مشروعك ويقترح الخطوات القادمة.',
+    pitchDeckHint: 'عرض استثماري منظم مبني على بيانات المشروع الحقيقية.',
     feasibilitySummary: 'ملخص دراسة الجدوى',
     marketFeasibility: 'الجدوى السوقية',
     technicalFeasibility: 'الجدوى الفنية',
@@ -259,6 +263,7 @@ const TEXT = {
     documents: 'Documents',
     kpis: 'KPIs',
     ai: 'AI Advisor',
+    pitchDeck: 'Pitch Deck',
     comingSoon: 'This section will be activated in the next phase.',
     projectSummary: 'Project Summary',
     financialSnapshot: 'Financial Snapshot',
@@ -306,6 +311,7 @@ const TEXT = {
     documentsHint: 'A document vault for contracts, licenses, and invoices.',
     kpisHint: 'Project performance, profitability, and progress KPIs.',
     aiHint: 'An intelligent advisor that reads your project data and suggests next steps.',
+    pitchDeckHint: 'Structured investor deck based on real project data.',
     feasibilitySummary: 'Feasibility Summary',
     marketFeasibility: 'Market Feasibility',
     technicalFeasibility: 'Technical Feasibility',
@@ -411,6 +417,7 @@ const TEXT = {
     documents: 'Documents',
     kpis: 'KPI',
     ai: 'Conseiller IA',
+    pitchDeck: 'Pitch Deck',
     comingSoon: 'Cette section sera activée dans la prochaine phase.',
     projectSummary: 'Résumé du projet',
     financialSnapshot: 'Aperçu financier',
@@ -458,6 +465,7 @@ const TEXT = {
     documentsHint: 'Un coffre de documents pour les contrats, licences et factures.',
     kpisHint: 'Indicateurs de performance, rentabilité et progression du projet.',
     aiHint: 'Un conseiller intelligent qui lit vos données et suggère les prochaines étapes.',
+    pitchDeckHint: 'Pitch deck structuré basé sur les données réelles du projet.',
     feasibilitySummary: 'Résumé de faisabilité',
     marketFeasibility: 'Faisabilité du marché',
     technicalFeasibility: 'Faisabilité technique',
@@ -552,6 +560,7 @@ const tabs: Array<{ id: TabId; icon: typeof FolderKanban; hintKey?: keyof typeof
   { id: 'documents', icon: FileText, hintKey: 'documentsHint' },
   { id: 'kpis', icon: Gauge, hintKey: 'kpisHint' },
   { id: 'ai', icon: Bot, hintKey: 'aiHint' },
+  { id: 'pitchDeck', icon: Presentation, hintKey: 'pitchDeckHint' },
 ];
 
 const sectionWeights: Record<FeasibilitySection, number> = {
@@ -1233,6 +1242,12 @@ export default function ProjectWorkspacePage() {
           />
         ) : activeTab === 'ai' ? (
           <ProjectAiAdvisorTab
+            projectId={project.id}
+            lang={lang as Lang}
+            onNavigateTab={(tab) => setActiveTab(tab)}
+          />
+        ) : activeTab === 'pitchDeck' ? (
+          <ProjectPitchDeckTab
             projectId={project.id}
             lang={lang as Lang}
             onNavigateTab={(tab) => setActiveTab(tab)}
