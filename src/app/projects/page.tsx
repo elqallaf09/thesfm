@@ -70,6 +70,9 @@ const PROJECT_TEXT = {
     noProjects: 'لا توجد مشاريع بعد',
     noProjectsDesc: 'أضف مشروعك الأول واحصل على تحليل AI شامل',
     addFirst: 'إضافة أول مشروع',
+    viewDetails: 'عرض التفاصيل',
+    expandProject: 'توسيع المشروع',
+    collapseProject: 'طي المشروع',
     advisorTitle: 'SFM Project Advisor',
     advisorSub: 'مستشار مشاريع متخصص',
     connected: 'متصل',
@@ -88,6 +91,9 @@ const PROJECT_TEXT = {
     noProjects: 'No projects yet',
     noProjectsDesc: 'Add your first project and get a full AI analysis',
     addFirst: 'Add first project',
+    viewDetails: 'View Details',
+    expandProject: 'Expand project',
+    collapseProject: 'Collapse project',
     advisorTitle: 'SFM Project Advisor',
     advisorSub: 'Specialized project advisor',
     connected: 'Connected',
@@ -106,6 +112,9 @@ const PROJECT_TEXT = {
     noProjects: 'Aucun projet pour le moment',
     noProjectsDesc: 'Ajoutez votre premier projet et obtenez une analyse IA complète',
     addFirst: 'Ajouter le premier projet',
+    viewDetails: 'Voir les détails',
+    expandProject: 'Développer le projet',
+    collapseProject: 'Réduire le projet',
     advisorTitle: 'SFM Project Advisor',
     advisorSub: 'Conseiller spécialisé en projets',
     connected: 'Connecté',
@@ -563,7 +572,7 @@ export default function ProjectsPage() {
           {projects.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', ...S(100) }}>
               {projects.map(project => {
-                const sc = STATUS_CONFIG[project.status];
+                const sc = STATUS_CONFIG[project.status] ?? STATUS_CONFIG['فكرة'];
                 const cap = fmt(project.capital), curP = fmt(project.currentProfit), expP = fmt(project.expectedProfit);
                 const roi = (() => { const rev = fmt(project.monthlyRevenue), exp = fmt(project.monthlyExpenses); const p = rev - exp; return cap > 0 && p > 0 ? { months: Math.ceil(cap / p), yearly: ((p * 12 / cap) * 100).toFixed(1) } : null; })();
                 const progressDone = Object.values(project.progress || {}).filter(Boolean).length;
@@ -572,7 +581,7 @@ export default function ProjectsPage() {
                   <div key={project.id} className="pc" style={{ overflow: 'hidden' }}>
                     {/* Card header */}
                     <div style={{ padding: '20px 24px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '14px' }}
-                      onClick={() => setProjects(prev => prev.map(p => p.id === project.id ? { ...p, expanded: !p.expanded } : p))}>
+                      onClick={() => router.push(`/projects/${project.id}`)}>
                       <div style={{ width: '50px', height: '50px', background: sc.bg, borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0, border: `1px solid ${sc.color}22` }}>{project.emoji}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
@@ -597,7 +606,10 @@ export default function ProjectsPage() {
                         )}
                         <button onClick={e => { e.stopPropagation(); startEdit(project); }} style={{ width: '34px', height: '34px', background: 'rgba(216,174,99,.10)', border: '1px solid rgba(216,174,99,.22)', borderRadius: '10px', cursor: 'pointer', color: '#D8AE63', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Pencil className="w-3.5 h-3.5" /></button>
                         <button onClick={e => { e.stopPropagation(); removeProject(project.id); }} style={{ width: '34px', height: '34px', background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.2)', borderRadius: '10px', cursor: 'pointer', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 className="w-3.5 h-3.5" /></button>
-                        {project.expanded ? <ChevronUp className="w-5 h-5" style={{ color: '#9A6C3C' }} /> : <ChevronDown className="w-5 h-5" style={{ color: '#9A6C3C' }} />}
+                        <button onClick={e => { e.stopPropagation(); router.push(`/projects/${project.id}`); }} style={{ minHeight: '34px', background: 'linear-gradient(135deg,#FAC775,#D8AE63)', border: '0', borderRadius: '10px', cursor: 'pointer', color: '#111111', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px', fontSize: '12px', fontWeight: 900, fontFamily: 'Tajawal,sans-serif', whiteSpace: 'nowrap' }}>{pt.viewDetails}</button>
+                        <button onClick={e => { e.stopPropagation(); setProjects(prev => prev.map(p => p.id === project.id ? { ...p, expanded: !p.expanded } : p)); }} aria-label={project.expanded ? pt.collapseProject : pt.expandProject} style={{ width: '34px', height: '34px', background: 'rgba(216,174,99,.08)', border: '1px solid rgba(216,174,99,.2)', borderRadius: '10px', cursor: 'pointer', color: '#9A6C3C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {project.expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                        </button>
                       </div>
                     </div>
 
