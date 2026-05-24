@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { ProjectAiAdvisorTab } from '@/components/projects/ProjectAiAdvisorTab';
 import { ProjectDocumentsTab } from '@/components/projects/ProjectDocumentsTab';
 import { ProjectFinancialModelTab } from '@/components/projects/ProjectFinancialModelTab';
 import {
@@ -1229,6 +1230,12 @@ export default function ProjectWorkspacePage() {
             currency={String(model.notes.currency ?? 'KWD')}
             lang={lang}
             onSummaryChange={setKpiSummary}
+          />
+        ) : activeTab === 'ai' ? (
+          <ProjectAiAdvisorTab
+            projectId={project.id}
+            lang={lang as Lang}
+            onNavigateTab={(tab) => setActiveTab(tab)}
           />
         ) : (
           <section className="placeholder-grid">
