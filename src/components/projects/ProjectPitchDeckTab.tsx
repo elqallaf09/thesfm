@@ -47,8 +47,15 @@ const TEXT = {
     saveChanges: 'حفظ التعديلات',
     cancel: 'إلغاء',
     printPdf: 'تصدير PDF',
-    powerPointSoon: 'تصدير PowerPoint',
+    exportPowerPoint: 'تصدير PowerPoint احترافي',
+    voiceoverSoon: 'توليد تعليق صوتي قريباً',
     comingSoon: 'قريباً',
+    preparingSlides: 'جاري تجهيز الشرائح...',
+    designingLayout: 'جاري تصميم العرض...',
+    generatingNotes: 'جاري إنشاء الملاحظات...',
+    exportingPowerPoint: 'جاري تصدير PowerPoint...',
+    exportSuccess: 'تم تصدير العرض بنجاح.',
+    exportFailed: 'تعذر تصدير العرض. حاول مرة أخرى.',
     slides: 'الشرائح',
     slidePreview: 'معاينة الشريحة',
     missingData: 'البيانات الناقصة',
@@ -89,8 +96,15 @@ const TEXT = {
     saveChanges: 'Save Changes',
     cancel: 'Cancel',
     printPdf: 'Export PDF',
-    powerPointSoon: 'Export PowerPoint',
+    exportPowerPoint: 'Export Professional PowerPoint',
+    voiceoverSoon: 'Voice-over generation coming soon',
     comingSoon: 'Coming soon',
+    preparingSlides: 'Preparing slides...',
+    designingLayout: 'Designing layout...',
+    generatingNotes: 'Generating notes...',
+    exportingPowerPoint: 'Exporting PowerPoint...',
+    exportSuccess: 'PowerPoint exported successfully.',
+    exportFailed: 'Could not export the deck. Please try again.',
     slides: 'Slides',
     slidePreview: 'Slide Preview',
     missingData: 'Missing Data',
@@ -131,8 +145,15 @@ const TEXT = {
     saveChanges: 'Enregistrer les modifications',
     cancel: 'Annuler',
     printPdf: 'Exporter PDF',
-    powerPointSoon: 'Exporter PowerPoint',
+    exportPowerPoint: 'Exporter PowerPoint professionnel',
+    voiceoverSoon: 'Génération de narration bientôt disponible',
     comingSoon: 'Bientôt',
+    preparingSlides: 'Préparation des diapositives...',
+    designingLayout: 'Conception de la mise en page...',
+    generatingNotes: 'Génération des notes...',
+    exportingPowerPoint: 'Export PowerPoint en cours...',
+    exportSuccess: 'PowerPoint exporté avec succès.',
+    exportFailed: 'Impossible d’exporter le deck. Réessayez.',
     slides: 'Diapositives',
     slidePreview: 'Aperçu de la diapositive',
     missingData: 'Données manquantes',
@@ -174,6 +195,8 @@ export function ProjectPitchDeckTab({ projectId, lang, onNavigateTab }: Props) {
   const [loading, setLoading] = useState(false);
   const [improving, setImproving] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportStep, setExportStep] = useState('');
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState(false);
   const [headline, setHeadline] = useState('');
@@ -300,6 +323,60 @@ export function ProjectPitchDeckTab({ projectId, lang, onNavigateTab }: Props) {
     window.print();
   };
 
+  const filenameFromDisposition = (disposition: string | null) => {
+    if (!disposition) return `project-pitch-deck-${projectId}.pptx`;
+    const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utfMatch?.[1]) return decodeURIComponent(utfMatch[1].replace(/"/g, ''));
+    const plainMatch = disposition.match(/filename="?([^";]+)"?/i);
+    if (plainMatch?.[1]) return decodeURIComponent(plainMatch[1].replace(/"/g, ''));
+    return `project-pitch-deck-${projectId}.pptx`;
+  };
+
+  const exportPowerPoint = async () => {
+    if (!deck) return;
+    setExporting(true);
+    setMessage('');
+    try {
+      setExportStep(t.preparingSlides);
+      if (editing) {
+        await saveEdits();
+      }
+
+      setExportStep(t.designingLayout);
+      const sessionRes = await supabase.auth.getSession();
+      const token = sessionRes.data.session?.access_token;
+      if (!token) throw new Error('Unauthorized');
+
+      setExportStep(t.generatingNotes);
+      const response = await fetch(`/api/projects/${projectId}/pitch-deck/export`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ language: lang }),
+      });
+      if (!response.ok) throw new Error('PowerPoint export failed');
+
+      setExportStep(t.exportingPowerPoint);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filenameFromDisposition(response.headers.get('content-disposition'));
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setMessage(t.exportSuccess);
+    } catch {
+      setMessage(t.exportFailed);
+    } finally {
+      setExporting(false);
+      setExportStep('');
+    }
+  };
+
   return (
     <section className="project-pitch-deck" dir={lang === 'ar' ? 'rtl' : 'ltr'} aria-label={t.pitchDeck}>
       <article className="pitch-hero">
@@ -330,9 +407,13 @@ export function ProjectPitchDeckTab({ projectId, lang, onNavigateTab }: Props) {
           <Download size={16} />
           {t.printPdf}
         </button>
+        <button type="button" onClick={exportPowerPoint} disabled={!deck || exporting} aria-label={t.exportPowerPoint}>
+          {exporting ? <Loader2 size={16} className="spin" /> : <Presentation size={16} />}
+          {exporting ? exportStep || t.exportingPowerPoint : t.exportPowerPoint}
+        </button>
         <button type="button" disabled aria-disabled="true" className="disabled">
           <Presentation size={16} />
-          {t.powerPointSoon}
+          {t.voiceoverSoon}
           <span>{t.comingSoon}</span>
         </button>
       </div>
