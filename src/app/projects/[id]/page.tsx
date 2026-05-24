@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -17,6 +17,7 @@ import {
   Gauge,
   Pencil,
   Plus,
+  Save,
   Target,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
@@ -30,6 +31,8 @@ import { formatMoney } from '@/lib/formatMoney';
 type Lang = 'ar' | 'en' | 'fr';
 type TabId = 'overview' | 'feasibility' | 'financial' | 'tasks' | 'documents' | 'kpis' | 'ai';
 type RiskLevel = 'low' | 'medium' | 'high';
+type FeasibilitySection = 'market' | 'technical' | 'financial' | 'legal';
+type FeasibilityStatus = 'feasible' | 'needs_review' | 'high_risk';
 
 type ProjectRow = {
   id: string;
@@ -45,6 +48,23 @@ type ProjectRow = {
 };
 
 type SavingsRow = { amount?: string | number | null };
+
+type FeasibilityForm = {
+  market: Record<string, string>;
+  technical: Record<string, string>;
+  financial: Record<string, string>;
+  legal: Record<string, string>;
+};
+
+type FeasibilityStudyRow = {
+  id: string;
+  market_data: Record<string, string> | null;
+  technical_data: Record<string, string> | null;
+  financial_data: Record<string, string> | null;
+  legal_data: Record<string, string> | null;
+  feasibility_score: number | null;
+  feasibility_status: string | null;
+};
 
 const TEXT = {
   ar: {
@@ -87,7 +107,7 @@ const TEXT = {
     daysRemaining: 'الأيام المتبقية',
     duration: 'مدة المشروع',
     noDate: 'غير محدد',
-    noData: 'لا توجد بيانات كافية',
+    noData: 'بيانات غير كافية',
     low: 'منخفض',
     medium: 'متوسط',
     high: 'مرتفع',
@@ -117,6 +137,61 @@ const TEXT = {
     documentsHint: 'خزنة مستندات للعقود والتراخيص والفواتير.',
     kpisHint: 'مؤشرات أداء المشروع والربحية والتقدم.',
     aiHint: 'مستشار ذكي يقرأ بيانات مشروعك ويقترح الخطوات القادمة.',
+    feasibilitySummary: 'ملخص دراسة الجدوى',
+    marketFeasibility: 'الجدوى السوقية',
+    technicalFeasibility: 'الجدوى الفنية',
+    financialFeasibility: 'الجدوى المالية',
+    legalFeasibility: 'الجدوى القانونية والتنظيمية',
+    marketSize: 'حجم السوق المتوقع',
+    targetCustomers: 'شريحة العملاء المستهدفة',
+    problemSolved: 'المشكلة التي يحلها المشروع',
+    competitors: 'المنافسون الرئيسيون',
+    competitiveAdvantage: 'ميزة المشروع التنافسية',
+    pricingStrategy: 'استراتيجية التسعير',
+    acquisitionChannels: 'قنوات الوصول للعملاء',
+    requiredResources: 'الموارد المطلوبة',
+    requiredTechnology: 'التكنولوجيا أو الأدوات المطلوبة',
+    operationalSetup: 'الموقع أو البنية التشغيلية',
+    keySuppliers: 'الموردون الرئيسيون',
+    teamSize: 'عدد الموظفين المطلوب',
+    implementationChallenges: 'صعوبات التنفيذ المتوقعة',
+    requiredCapital: 'رأس المال المطلوب',
+    capex: 'التكاليف التأسيسية CAPEX',
+    monthlyOpex: 'التكاليف التشغيلية الشهرية OPEX',
+    expectedMonthlyRevenue: 'الإيرادات الشهرية المتوقعة',
+    expectedProfitMargin: 'هامش الربح المتوقع %',
+    breakEvenPoint: 'نقطة التعادل التقريبية',
+    paybackPeriod: 'فترة الاسترداد المتوقعة',
+    targetCountry: 'الدولة / السوق المستهدف',
+    licenseType: 'نوع الترخيص المطلوب',
+    governmentEntities: 'الجهات الحكومية ذات العلاقة',
+    legalRequirements: 'متطلبات قانونية خاصة',
+    insuranceObligations: 'التأمينات أو الالتزامات النظامية',
+    legalNotes: 'ملاحظات قانونية',
+    kuwait: 'الكويت',
+    saudiArabia: 'السعودية',
+    uae: 'الإمارات',
+    qatar: 'قطر',
+    bahrain: 'البحرين',
+    oman: 'عُمان',
+    globalOther: 'عالمي / أخرى',
+    feasibilityScore: 'درجة الجدوى',
+    feasible: 'قابل للتنفيذ',
+    needsReview: 'يحتاج مراجعة',
+    highRisk: 'مخاطرة مرتفعة',
+    monthlyProfitEstimate: 'الربح الشهري المتوقع',
+    breakEvenEstimate: 'نقطة التعادل المقدرة',
+    roiEstimate: 'تقدير العائد السنوي ROI',
+    missingSections: 'الأقسام غير المكتملة',
+    saveFeasibilityStudy: 'حفظ دراسة الجدوى',
+    feasibilitySaved: 'تم حفظ دراسة الجدوى.',
+    feasibilitySaveError: 'تعذر حفظ دراسة الجدوى حالياً.',
+    aiFeasibilityAnalysis: 'تحليل AI لدراسة الجدوى',
+    aiFeasibilitySoon: 'سيتم تفعيل تحليل الذكاء الاصطناعي المتقدم في مرحلة لاحقة.',
+    exportFeasibilityPdf: 'تصدير دراسة الجدوى PDF',
+    comingSoonShort: 'قريباً',
+    internalScoreDisclaimer: 'هذه درجة تخطيط داخلية وليست توصية مضمونة لنجاح المشروع.',
+    months: 'شهر',
   },
   en: {
     workspace: 'Project Workspace',
@@ -188,6 +263,61 @@ const TEXT = {
     documentsHint: 'A document vault for contracts, licenses, and invoices.',
     kpisHint: 'Project performance, profitability, and progress KPIs.',
     aiHint: 'An intelligent advisor that reads your project data and suggests next steps.',
+    feasibilitySummary: 'Feasibility Summary',
+    marketFeasibility: 'Market Feasibility',
+    technicalFeasibility: 'Technical Feasibility',
+    financialFeasibility: 'Financial Feasibility',
+    legalFeasibility: 'Legal / Regulatory Feasibility',
+    marketSize: 'Expected market size',
+    targetCustomers: 'Target customer segment',
+    problemSolved: 'Problem solved by the project',
+    competitors: 'Main competitors',
+    competitiveAdvantage: 'Competitive advantage',
+    pricingStrategy: 'Pricing strategy',
+    acquisitionChannels: 'Customer acquisition channels',
+    requiredResources: 'Required resources',
+    requiredTechnology: 'Required technology/tools',
+    operationalSetup: 'Location or operational setup',
+    keySuppliers: 'Key suppliers',
+    teamSize: 'Required team size',
+    implementationChallenges: 'Expected implementation challenges',
+    requiredCapital: 'Required capital',
+    capex: 'Setup costs CAPEX',
+    monthlyOpex: 'Monthly operating costs OPEX',
+    expectedMonthlyRevenue: 'Expected monthly revenue',
+    expectedProfitMargin: 'Expected profit margin %',
+    breakEvenPoint: 'Estimated break-even point',
+    paybackPeriod: 'Expected payback period',
+    targetCountry: 'Country / target market',
+    licenseType: 'Required license type',
+    governmentEntities: 'Relevant government entities',
+    legalRequirements: 'Special legal requirements',
+    insuranceObligations: 'Insurance or regulatory obligations',
+    legalNotes: 'Legal notes',
+    kuwait: 'Kuwait',
+    saudiArabia: 'Saudi Arabia',
+    uae: 'UAE',
+    qatar: 'Qatar',
+    bahrain: 'Bahrain',
+    oman: 'Oman',
+    globalOther: 'Global / Other',
+    feasibilityScore: 'Feasibility Score',
+    feasible: 'Feasible',
+    needsReview: 'Needs Review',
+    highRisk: 'High Risk',
+    monthlyProfitEstimate: 'Monthly profit estimate',
+    breakEvenEstimate: 'Break-even estimate',
+    roiEstimate: 'Annual ROI estimate',
+    missingSections: 'Missing sections',
+    saveFeasibilityStudy: 'Save Feasibility Study',
+    feasibilitySaved: 'Feasibility study saved.',
+    feasibilitySaveError: 'Could not save the feasibility study right now.',
+    aiFeasibilityAnalysis: 'AI Feasibility Analysis',
+    aiFeasibilitySoon: 'Advanced AI analysis will be enabled in a later phase.',
+    exportFeasibilityPdf: 'Export Feasibility PDF',
+    comingSoonShort: 'Coming soon',
+    internalScoreDisclaimer: 'This is an internal planning score, not a guaranteed business recommendation.',
+    months: 'months',
   },
   fr: {
     workspace: 'Espace projet',
@@ -259,8 +389,65 @@ const TEXT = {
     documentsHint: 'Un coffre de documents pour les contrats, licences et factures.',
     kpisHint: 'Indicateurs de performance, rentabilité et progression du projet.',
     aiHint: 'Un conseiller intelligent qui lit vos données et suggère les prochaines étapes.',
+    feasibilitySummary: 'Résumé de faisabilité',
+    marketFeasibility: 'Faisabilité du marché',
+    technicalFeasibility: 'Faisabilité technique',
+    financialFeasibility: 'Faisabilité financière',
+    legalFeasibility: 'Faisabilité juridique et réglementaire',
+    marketSize: 'Taille estimée du marché',
+    targetCustomers: 'Segment client cible',
+    problemSolved: 'Problème résolu par le projet',
+    competitors: 'Principaux concurrents',
+    competitiveAdvantage: 'Avantage concurrentiel',
+    pricingStrategy: 'Stratégie de prix',
+    acquisitionChannels: 'Canaux d’acquisition client',
+    requiredResources: 'Ressources nécessaires',
+    requiredTechnology: 'Technologies/outils nécessaires',
+    operationalSetup: 'Emplacement ou configuration opérationnelle',
+    keySuppliers: 'Fournisseurs clés',
+    teamSize: 'Taille d’équipe requise',
+    implementationChallenges: 'Difficultés de mise en œuvre prévues',
+    requiredCapital: 'Capital requis',
+    capex: 'Coûts de démarrage CAPEX',
+    monthlyOpex: 'Coûts opérationnels mensuels OPEX',
+    expectedMonthlyRevenue: 'Revenu mensuel attendu',
+    expectedProfitMargin: 'Marge bénéficiaire estimée %',
+    breakEvenPoint: 'Point mort estimé',
+    paybackPeriod: 'Période de récupération estimée',
+    targetCountry: 'Pays / marché cible',
+    licenseType: 'Type de licence requis',
+    governmentEntities: 'Entités gouvernementales concernées',
+    legalRequirements: 'Exigences légales particulières',
+    insuranceObligations: 'Assurances ou obligations réglementaires',
+    legalNotes: 'Notes juridiques',
+    kuwait: 'Koweït',
+    saudiArabia: 'Arabie saoudite',
+    uae: 'Émirats arabes unis',
+    qatar: 'Qatar',
+    bahrain: 'Bahreïn',
+    oman: 'Oman',
+    globalOther: 'Global / Autre',
+    feasibilityScore: 'Score de faisabilité',
+    feasible: 'Faisable',
+    needsReview: 'À réviser',
+    highRisk: 'Risque élevé',
+    monthlyProfitEstimate: 'Bénéfice mensuel estimé',
+    breakEvenEstimate: 'Seuil de rentabilité estimé',
+    roiEstimate: 'ROI annuel estimé',
+    missingSections: 'Sections manquantes',
+    saveFeasibilityStudy: 'Enregistrer l’étude de faisabilité',
+    feasibilitySaved: 'Étude de faisabilité enregistrée.',
+    feasibilitySaveError: 'Impossible d’enregistrer l’étude de faisabilité pour le moment.',
+    aiFeasibilityAnalysis: 'Analyse IA de faisabilité',
+    aiFeasibilitySoon: 'L’analyse IA avancée sera activée dans une phase ultérieure.',
+    exportFeasibilityPdf: 'Exporter l’étude PDF',
+    comingSoonShort: 'Bientôt',
+    internalScoreDisclaimer: 'Il s’agit d’un score interne de planification, pas d’une recommandation commerciale garantie.',
+    months: 'mois',
   },
 } as const;
+
+type Translation = Record<keyof typeof TEXT.ar, string>;
 
 const tabs: Array<{ id: TabId; icon: typeof FolderKanban; hintKey?: keyof typeof TEXT.ar }> = [
   { id: 'overview', icon: FolderKanban },
@@ -271,6 +458,19 @@ const tabs: Array<{ id: TabId; icon: typeof FolderKanban; hintKey?: keyof typeof
   { id: 'kpis', icon: Gauge, hintKey: 'kpisHint' },
   { id: 'ai', icon: Bot, hintKey: 'aiHint' },
 ];
+
+const sectionWeights: Record<FeasibilitySection, number> = {
+  market: 25,
+  technical: 20,
+  financial: 35,
+  legal: 20,
+};
+
+const countryOptions = ['kuwait', 'saudiArabia', 'uae', 'qatar', 'bahrain', 'oman', 'globalOther'] as const;
+
+function createEmptyFeasibility(): FeasibilityForm {
+  return { market: {}, technical: {}, financial: {}, legal: {} };
+}
 
 function parseNotes(value: ProjectRow['notes']) {
   if (!value) return {};
@@ -321,17 +521,62 @@ function riskCopyKey(risk: RiskLevel) {
   return 'riskLowText';
 }
 
+function defaultFeasibilityFromProject(project: ProjectRow | null): FeasibilityForm {
+  const notes = parseNotes(project?.notes);
+  return {
+    market: {
+      problemSolved: String(notes.idea ?? notes.description ?? ''),
+    },
+    technical: {},
+    financial: {
+      requiredCapital: String(notes.capital ?? notes.capital_amount ?? project?.budget ?? ''),
+      monthlyOpex: String(notes.monthlyExpenses ?? notes.monthly_expenses ?? ''),
+      expectedMonthlyRevenue: String(notes.monthlyRevenue ?? notes.monthly_revenue ?? ''),
+      expectedProfitMargin: String(notes.expectedProfitMargin ?? notes.expected_profit_margin ?? ''),
+    },
+    legal: {},
+  };
+}
+
+function normalizeFeasibilityRow(row: FeasibilityStudyRow | null, project: ProjectRow | null): FeasibilityForm {
+  if (!row) return defaultFeasibilityFromProject(project);
+  return {
+    market: row.market_data ?? {},
+    technical: row.technical_data ?? {},
+    financial: row.financial_data ?? {},
+    legal: row.legal_data ?? {},
+  };
+}
+
+function hasValue(value: unknown) {
+  return String(value ?? '').trim().length > 0;
+}
+
+function sectionCompletion(data: Record<string, string>, fields: string[]) {
+  if (!fields.length) return 0;
+  const filled = fields.filter(field => hasValue(data[field])).length;
+  return filled / fields.length;
+}
+
+function clampScore(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
 export default function ProjectWorkspacePage() {
   const router = useRouter();
   const params = useParams();
   const id = Array.isArray(params?.id) ? params.id[0] : String(params?.id ?? '');
   const { user, loading } = useAuth();
   const { lang, dir } = useLanguage();
-  const tr = TEXT[lang as Lang] ?? TEXT.ar;
+  const tr = (TEXT[lang as Lang] ?? TEXT.ar) as Translation;
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [savings, setSavings] = useState(0);
   const [loadingProject, setLoadingProject] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [feasibility, setFeasibility] = useState<FeasibilityForm>(() => createEmptyFeasibility());
+  const [feasibilityId, setFeasibilityId] = useState<string | null>(null);
+  const [savingFeasibility, setSavingFeasibility] = useState(false);
+  const [notice, setNotice] = useState('');
 
   const money = useCallback((amount: number, currency = 'KWD') => formatMoney(amount, currency, lang as Lang), [lang]);
   const dateLabel = useCallback((value?: string | null) => {
@@ -339,16 +584,136 @@ export default function ProjectWorkspacePage() {
     return date ? date.toLocaleDateString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US') : tr.noDate;
   }, [lang, tr.noDate]);
 
+  const feasibilitySections = useMemo(() => [
+    {
+      id: 'market' as const,
+      title: tr.marketFeasibility,
+      icon: Target,
+      fields: [
+        { id: 'marketSize', label: tr.marketSize },
+        { id: 'targetCustomers', label: tr.targetCustomers },
+        { id: 'problemSolved', label: tr.problemSolved },
+        { id: 'competitors', label: tr.competitors },
+        { id: 'competitiveAdvantage', label: tr.competitiveAdvantage },
+        { id: 'pricingStrategy', label: tr.pricingStrategy },
+        { id: 'acquisitionChannels', label: tr.acquisitionChannels },
+      ],
+    },
+    {
+      id: 'technical' as const,
+      title: tr.technicalFeasibility,
+      icon: ClipboardList,
+      fields: [
+        { id: 'requiredResources', label: tr.requiredResources },
+        { id: 'requiredTechnology', label: tr.requiredTechnology },
+        { id: 'operationalSetup', label: tr.operationalSetup },
+        { id: 'keySuppliers', label: tr.keySuppliers },
+        { id: 'teamSize', label: tr.teamSize },
+        { id: 'implementationChallenges', label: tr.implementationChallenges },
+      ],
+    },
+    {
+      id: 'financial' as const,
+      title: tr.financialFeasibility,
+      icon: Coins,
+      fields: [
+        { id: 'requiredCapital', label: tr.requiredCapital, type: 'number' },
+        { id: 'capex', label: tr.capex, type: 'number' },
+        { id: 'monthlyOpex', label: tr.monthlyOpex, type: 'number' },
+        { id: 'expectedMonthlyRevenue', label: tr.expectedMonthlyRevenue, type: 'number' },
+        { id: 'expectedProfitMargin', label: tr.expectedProfitMargin, type: 'number' },
+        { id: 'breakEvenPoint', label: tr.breakEvenPoint },
+        { id: 'paybackPeriod', label: tr.paybackPeriod },
+      ],
+    },
+    {
+      id: 'legal' as const,
+      title: tr.legalFeasibility,
+      icon: FileText,
+      fields: [
+        { id: 'targetCountry', label: tr.targetCountry, type: 'select' },
+        { id: 'licenseType', label: tr.licenseType },
+        { id: 'governmentEntities', label: tr.governmentEntities },
+        { id: 'legalRequirements', label: tr.legalRequirements },
+        { id: 'insuranceObligations', label: tr.insuranceObligations },
+        { id: 'legalNotes', label: tr.legalNotes },
+      ],
+    },
+  ], [tr]);
+
+  const fieldMap = useMemo(() => ({
+    market: feasibilitySections.find(section => section.id === 'market')?.fields.map(field => field.id) ?? [],
+    technical: feasibilitySections.find(section => section.id === 'technical')?.fields.map(field => field.id) ?? [],
+    financial: feasibilitySections.find(section => section.id === 'financial')?.fields.map(field => field.id) ?? [],
+    legal: feasibilitySections.find(section => section.id === 'legal')?.fields.map(field => field.id) ?? [],
+  }), [feasibilitySections]);
+
+  const feasibilityMetrics = useMemo(() => {
+    const requiredCapital = toNum(feasibility.financial.requiredCapital);
+    const capex = toNum(feasibility.financial.capex);
+    const monthlyOpex = toNum(feasibility.financial.monthlyOpex);
+    const expectedMonthlyRevenue = toNum(feasibility.financial.expectedMonthlyRevenue);
+    const monthlyProfit = expectedMonthlyRevenue - monthlyOpex;
+    const annualProfit = monthlyProfit * 12;
+    const breakEvenMonths = capex > 0 && monthlyProfit > 0 ? capex / monthlyProfit : null;
+    const roi = requiredCapital > 0 ? (annualProfit / requiredCapital) * 100 : null;
+    const hasFinancialInput = [requiredCapital, capex, monthlyOpex, expectedMonthlyRevenue].some(value => value > 0);
+    let score = (Object.keys(sectionWeights) as FeasibilitySection[]).reduce((sum, section) => {
+      return sum + sectionCompletion(feasibility[section], fieldMap[section]) * sectionWeights[section];
+    }, 0);
+    if (hasFinancialInput && monthlyProfit <= 0) score -= 15;
+    if (breakEvenMonths !== null && breakEvenMonths > 36) score -= 10;
+    if (requiredCapital <= 0) score -= 10;
+    const roundedScore = clampScore(score);
+    const missingSections = (Object.keys(sectionWeights) as FeasibilitySection[]).filter(section => {
+      return sectionCompletion(feasibility[section], fieldMap[section]) < 0.5;
+    }).length;
+    const status: FeasibilityStatus = roundedScore < 50 || (hasFinancialInput && monthlyProfit <= 0)
+      ? 'high_risk'
+      : roundedScore < 75 || (breakEvenMonths !== null && breakEvenMonths > 36)
+        ? 'needs_review'
+        : 'feasible';
+    return {
+      requiredCapital,
+      capex,
+      monthlyOpex,
+      expectedMonthlyRevenue,
+      monthlyProfit,
+      annualProfit,
+      breakEvenMonths,
+      roi,
+      hasFinancialInput,
+      score: roundedScore,
+      status,
+      missingSections,
+    };
+  }, [feasibility, fieldMap]);
+
   const loadProject = useCallback(async () => {
     if (!user || !id) return;
     setLoadingProject(true);
-    const [projectRes, savingsRes] = await Promise.all([
+    const [projectRes, savingsRes, feasibilityRes] = await Promise.all([
       supabase.from('projects').select('*').eq('user_id', user.id).eq('id', id).maybeSingle(),
       supabase.from('savings_items').select('amount').eq('user_id', user.id),
+      (supabase as any)
+        .from('project_feasibility_studies')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('project_id', id)
+        .maybeSingle(),
     ]);
-    setProject(projectRes.error ? null : (projectRes.data as ProjectRow | null));
+    const loadedProject = projectRes.error ? null : (projectRes.data as ProjectRow | null);
+    setProject(loadedProject);
     if (!savingsRes.error) {
       setSavings(((savingsRes.data ?? []) as SavingsRow[]).reduce((sum, row) => sum + toNum(row.amount), 0));
+    }
+    if (!feasibilityRes.error && feasibilityRes.data) {
+      const row = feasibilityRes.data as FeasibilityStudyRow;
+      setFeasibilityId(row.id);
+      setFeasibility(normalizeFeasibilityRow(row, loadedProject));
+    } else {
+      setFeasibilityId(null);
+      setFeasibility(normalizeFeasibilityRow(null, loadedProject));
     }
     setLoadingProject(false);
   }, [id, user]);
@@ -408,19 +773,73 @@ export default function ProjectWorkspacePage() {
     };
   }, [project, savings, tr.high, tr.low, tr.medium, tr.noData]);
 
+  const updateFeasibility = (section: FeasibilitySection, field: string, value: string) => {
+    setNotice('');
+    setFeasibility(prev => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [field]: value,
+      },
+    }));
+  };
+
+  const saveFeasibility = async () => {
+    if (!user || !project) return;
+    setSavingFeasibility(true);
+    setNotice('');
+    const payload = {
+      id: feasibilityId ?? undefined,
+      user_id: user.id,
+      project_id: project.id,
+      market_data: feasibility.market,
+      technical_data: feasibility.technical,
+      financial_data: feasibility.financial,
+      legal_data: feasibility.legal,
+      feasibility_score: feasibilityMetrics.score,
+      feasibility_status: feasibilityMetrics.status,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await (supabase as any)
+      .from('project_feasibility_studies')
+      .upsert(payload, { onConflict: 'user_id,project_id' })
+      .select('id')
+      .single();
+    setSavingFeasibility(false);
+    if (error) {
+      setNotice(tr.feasibilitySaveError);
+      return;
+    }
+    setFeasibilityId(data?.id ?? feasibilityId);
+    setNotice(tr.feasibilitySaved);
+  };
+
   const tabLabel = (tab: TabId) => {
     if (tab === 'financial') return tr.financial;
     return tr[tab];
   };
 
+  const statusLabel = (status: FeasibilityStatus) => {
+    if (status === 'feasible') return tr.feasible;
+    if (status === 'high_risk') return tr.highRisk;
+    return tr.needsReview;
+  };
+
+  const numericLabel = (value: number | null, suffix = '') => {
+    if (value === null || !Number.isFinite(value)) return tr.noData;
+    return `${new Intl.NumberFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1 }).format(value)}${suffix}`;
+  };
+
+  const moneyOrNoData = (value: number) => (value > 0 || value < 0 ? money(value) : tr.noData);
+
   const projectTitle = project?.name || tr.projectName;
-  const statusLabel = tr[model.statusKey];
+  const statusProjectLabel = tr[model.statusKey];
   const typeLabel = tr[model.typeKey];
   const riskText = tr[riskCopyKey(model.risk)];
 
   const heroMetrics = [
     { label: tr.projectType, value: typeLabel },
-    { label: tr.status, value: statusLabel },
+    { label: tr.status, value: statusProjectLabel },
     { label: tr.capital, value: money(model.capital) },
     { label: tr.financialTarget, value: model.target > 0 ? money(model.target) : tr.noData },
     { label: tr.startDate, value: dateLabel(model.startDate) },
@@ -429,10 +848,10 @@ export default function ProjectWorkspacePage() {
 
   if (loading || loadingProject) {
     return (
-      <div className="project-workspace" dir={dir} style={{ minHeight: '100vh', background: '#F5F1E8', color: '#2B1A0F', fontFamily: 'Tajawal,Arial,sans-serif' }}>
+      <div className="project-workspace" dir={dir}>
         <Sidebar />
         <DashboardPageShell contentClassName="workspace-content">
-          <div style={{ borderRadius: '20px', background: '#FFFDF8', border: '1px solid rgba(186,117,23,.16)', padding: '24px', color: '#3D2914', fontWeight: 900 }}>{tr.workspace}</div>
+          <div className="state-card">{tr.workspace}</div>
         </DashboardPageShell>
       </div>
     );
@@ -440,7 +859,7 @@ export default function ProjectWorkspacePage() {
 
   if (!user) {
     return (
-      <div className="project-workspace" dir={dir} style={{ minHeight: '100vh', background: '#F5F1E8', color: '#2B1A0F', fontFamily: 'Tajawal,Arial,sans-serif' }}>
+      <div className="project-workspace" dir={dir}>
         <Sidebar />
         <DashboardPageShell contentClassName="workspace-content">
           <EmptyState title={tr.signIn} button={tr.back} onClick={() => router.push('/projects')} />
@@ -451,7 +870,7 @@ export default function ProjectWorkspacePage() {
 
   if (!project) {
     return (
-      <div className="project-workspace" dir={dir} style={{ minHeight: '100vh', background: '#F5F1E8', color: '#2B1A0F', fontFamily: 'Tajawal,Arial,sans-serif' }}>
+      <div className="project-workspace" dir={dir}>
         <Sidebar />
         <DashboardPageShell contentClassName="workspace-content">
           <EmptyState title={tr.notFound} button={tr.back} onClick={() => router.push('/projects')} />
@@ -515,61 +934,135 @@ export default function ProjectWorkspacePage() {
         </nav>
 
         {activeTab === 'overview' ? (
-          <section className="overview-grid">
-            <article className="warm-card span-6">
-              <CardTitle icon={<FolderKanban size={20} />} title={tr.projectSummary} />
-              <dl className="details-list">
-                <div><dt>{tr.projectName}</dt><dd>{projectTitle}</dd></div>
-                <div><dt>{tr.description}</dt><dd>{model.description || tr.noData}</dd></div>
-                <div><dt>{tr.projectType}</dt><dd>{typeLabel}</dd></div>
-                <div><dt>{tr.status}</dt><dd><span className={`badge ${model.statusKey}`}>{statusLabel}</span></dd></div>
-                <div><dt>{tr.priority}</dt><dd>{model.priority}</dd></div>
-                <div><dt>{tr.currentPhase}</dt><dd>{String(model.phase)}</dd></div>
-              </dl>
-            </article>
+          <OverviewTab
+            tr={tr}
+            projectTitle={projectTitle}
+            model={model}
+            typeLabel={typeLabel}
+            statusLabel={statusProjectLabel}
+            riskText={riskText}
+            money={money}
+            dateLabel={dateLabel}
+            setActiveTab={setActiveTab}
+            routerPush={router.push}
+          />
+        ) : activeTab === 'feasibility' ? (
+          <section className="feasibility-tab" role="tabpanel">
+            <div className="feasibility-summary-grid">
+              <article className={`warm-card score-card ${feasibilityMetrics.status}`}>
+                <CardTitle icon={<Target size={20} />} title={tr.feasibilitySummary} />
+                <div className="score-row">
+                  <div className="score-number" style={{ '--score-angle': `${feasibilityMetrics.score * 3.6}deg` } as CSSProperties}>
+                    <strong>{feasibilityMetrics.score}</strong>
+                    <span>/100</span>
+                  </div>
+                  <div>
+                    <span className={`status-pill ${feasibilityMetrics.status}`}>{statusLabel(feasibilityMetrics.status)}</span>
+                    <p>{tr.internalScoreDisclaimer}</p>
+                  </div>
+                </div>
+              </article>
+              <Metric label={tr.requiredCapital} value={moneyOrNoData(feasibilityMetrics.requiredCapital)} />
+              <Metric label={tr.monthlyProfitEstimate} value={feasibilityMetrics.hasFinancialInput ? money(feasibilityMetrics.monthlyProfit) : tr.noData} />
+              <Metric label={tr.breakEvenEstimate} value={feasibilityMetrics.breakEvenMonths === null ? tr.noData : `${numericLabel(feasibilityMetrics.breakEvenMonths)} ${tr.months}`} />
+              <Metric label={tr.roiEstimate} value={feasibilityMetrics.roi === null ? tr.noData : numericLabel(feasibilityMetrics.roi, '%')} />
+              <Metric label={tr.missingSections} value={String(feasibilityMetrics.missingSections)} />
+            </div>
 
-            <article className="warm-card span-6">
-              <CardTitle icon={<Coins size={20} />} title={tr.financialSnapshot} />
-              <div className="metric-grid">
-                <Metric label={tr.capital} value={money(model.capital)} />
-                <Metric label={tr.totalIncome} value={model.monthlyIncome > 0 ? money(model.monthlyIncome) : tr.noData} />
-                <Metric label={tr.totalExpenses} value={model.monthlyExpenses > 0 ? money(model.monthlyExpenses) : tr.noData} />
-                <Metric label={tr.netResult} value={money(model.net)} />
-                <Metric label={tr.remainingBudget} value={money(model.remainingBudget)} />
-                <Metric label={tr.targetProgress} value={`${model.progress.toFixed(0)}%`} />
-              </div>
-              <div className="progress-bar" aria-label={tr.targetProgress}>
-                <span style={{ width: `${model.progress}%` }} />
-              </div>
-            </article>
+            {notice ? <div className="notice" role="status">{notice}</div> : null}
 
-            <article className="warm-card">
-              <CardTitle icon={<CalendarDays size={20} />} title={tr.timelineSnapshot} />
-              <div className="timeline-list">
-                <Metric label={tr.startDate} value={dateLabel(model.startDate)} />
-                <Metric label={tr.endDate} value={dateLabel(model.endDate)} />
-                <Metric label={tr.daysRemaining} value={model.daysRemaining === null ? tr.noData : String(model.daysRemaining)} />
-                <Metric label={tr.duration} value={model.duration === null ? tr.noData : `${model.duration}`} />
-                <Metric label={tr.currentPhase} value={String(model.phase)} />
+            <div className="feasibility-layout">
+              <div className="feasibility-sections">
+                {feasibilitySections.map(section => {
+                  const Icon = section.icon;
+                  return (
+                    <article className="warm-card feasibility-section" key={section.id}>
+                      <div className="section-heading">
+                        <div>
+                          <small>{Math.round(sectionCompletion(feasibility[section.id], fieldMap[section.id]) * 100)}%</small>
+                          <h2>{section.title}</h2>
+                        </div>
+                        <Icon size={22} />
+                      </div>
+                      <div className="feasibility-form-grid">
+                        {section.fields.map(field => {
+                          const value = feasibility[section.id][field.id] ?? '';
+                          const inputId = `${section.id}-${field.id}`;
+                          const fieldType = 'type' in field ? field.type : undefined;
+                          if (fieldType === 'select') {
+                            return (
+                              <label className="form-field" htmlFor={inputId} key={field.id}>
+                                <span>{field.label}</span>
+                                <select id={inputId} value={value} onChange={event => updateFeasibility(section.id, field.id, event.target.value)}>
+                                  <option value="">{tr.noData}</option>
+                                  {countryOptions.map(country => (
+                                    <option value={country} key={country}>{tr[country]}</option>
+                                  ))}
+                                </select>
+                              </label>
+                            );
+                          }
+                          return (
+                            <label className="form-field" htmlFor={inputId} key={field.id}>
+                              <span>{field.label}</span>
+                              {fieldType === 'number' ? (
+                                <input
+                                  id={inputId}
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={value}
+                                  onChange={event => updateFeasibility(section.id, field.id, event.target.value)}
+                                />
+                              ) : (
+                                <textarea
+                                  id={inputId}
+                                  rows={3}
+                                  value={value}
+                                  onChange={event => updateFeasibility(section.id, field.id, event.target.value)}
+                                />
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
-            </article>
 
-            <article className={`warm-card risk-card ${model.risk}`}>
-              <CardTitle icon={<AlertTriangle size={20} />} title={tr.riskSnapshot} />
-              <div className="risk-badge">{tr[model.risk]}</div>
-              <p>{riskText}</p>
-            </article>
+              <aside className="feasibility-side">
+                <article className="warm-card calculations-card">
+                  <CardTitle icon={<Coins size={20} />} title={tr.financialFeasibility} />
+                  <Metric label={tr.monthlyProfitEstimate} value={feasibilityMetrics.hasFinancialInput ? money(feasibilityMetrics.monthlyProfit) : tr.noData} />
+                  <Metric label={tr.breakEvenEstimate} value={feasibilityMetrics.breakEvenMonths === null ? tr.noData : `${numericLabel(feasibilityMetrics.breakEvenMonths)} ${tr.months}`} />
+                  <Metric label={tr.roiEstimate} value={feasibilityMetrics.roi === null ? tr.noData : numericLabel(feasibilityMetrics.roi, '%')} />
+                </article>
 
-            <article className="warm-card quick-card">
-              <CardTitle icon={<CheckCircle2 size={20} />} title={tr.quickActions} />
-              <div className="quick-grid">
-                <button type="button" onClick={() => router.push('/expenses/add')}>{tr.addExpense}</button>
-                <button type="button" onClick={() => router.push('/income/add')}>{tr.addIncome}</button>
-                <button type="button" onClick={() => setActiveTab('tasks')}>{tr.addTask}</button>
-                <button type="button" onClick={() => setActiveTab('feasibility')}>{tr.generateFeasibility}</button>
-                <button type="button" onClick={() => setActiveTab('financial')}>{tr.createFinancialModel}</button>
-              </div>
-            </article>
+                <article className="warm-card ai-placeholder">
+                  <CardTitle icon={<Bot size={20} />} title={tr.aiFeasibilityAnalysis} />
+                  <p>{tr.aiFeasibilitySoon}</p>
+                </article>
+
+                <article className="warm-card future-actions">
+                  <button
+                    type="button"
+                    className="primary-save"
+                    onClick={saveFeasibility}
+                    disabled={savingFeasibility}
+                    aria-label={tr.saveFeasibilityStudy}
+                  >
+                    <Save size={16} />
+                    {savingFeasibility ? tr.saveFeasibilityStudy : tr.saveFeasibilityStudy}
+                  </button>
+                  <button type="button" className="disabled-btn" disabled aria-disabled="true">
+                    <FileText size={16} />
+                    {tr.exportFeasibilityPdf}
+                    <span>{tr.comingSoonShort}</span>
+                  </button>
+                </article>
+              </aside>
+            </div>
           </section>
         ) : (
           <section className="placeholder-grid">
@@ -589,14 +1082,97 @@ export default function ProjectWorkspacePage() {
         )}
       </DashboardPageShell>
 
-      <style jsx>{`
-        .project-workspace{min-height:100vh;background:#F5F1E8;color:#2B1A0F;font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}.workspace-content{display:grid;gap:18px}.workspace-hero{position:relative;overflow:hidden;border-radius:24px;padding:26px;background:radial-gradient(circle at 14% 10%,rgba(250,199,117,.26),transparent 30%),linear-gradient(135deg,#1A0F05,#2B1A0F 50%,#8A5514 138%);color:#FFFDF8;box-shadow:0 22px 55px rgba(61,41,20,.18);display:grid;gap:20px}.hero-copy span,.back-link{color:#FAC775;font-size:12px;font-weight:900}.back-link{display:inline-flex;align-items:center;gap:7px;text-decoration:none;margin-bottom:10px}.hero-copy h1{margin:8px 0;font-size:clamp(30px,5vw,48px);font-weight:950;line-height:1.08}.hero-copy p{margin:0;color:rgba(255,253,248,.76);line-height:1.8;max-width:820px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px}.hero-actions button{min-height:42px;border-radius:13px;border:1px solid rgba(250,199,117,.28);background:rgba(20,12,6,.48);color:#FFFDF8;padding:0 14px;display:inline-flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.hero-actions button:first-child{background:linear-gradient(135deg,#FAC775,#EF9F27);color:#251407}.hero-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.hero-metrics div{border:1px solid rgba(250,199,117,.18);background:rgba(255,253,248,.08);border-radius:16px;padding:12px;min-width:0}.hero-metrics small{display:block;color:#FAC775;font-weight:900}.hero-metrics strong{display:block;margin-top:5px;color:#FFFDF8;overflow-wrap:anywhere}.workspace-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin}.workspace-tabs button{flex:0 0 auto;min-height:42px;border:1px solid rgba(186,117,23,.18);border-radius:999px;background:#FFFDF8;color:#5B4332;padding:0 14px;display:flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.workspace-tabs button.active,.workspace-tabs button:focus-visible{background:#3D2914;color:#FAC775;outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.16)}.overview-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}.warm-card{background:#FFFDF8;border:1px solid rgba(186,117,23,.16);border-radius:20px;padding:18px;box-shadow:0 14px 34px rgba(61,41,20,.07);min-width:0}.span-6{grid-column:span 6}.card-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.card-title h2{margin:0;color:#3D2914;font-size:19px}.card-title svg{color:#BA7517}.details-list{display:grid;gap:10px;margin:0}.details-list div{display:grid;grid-template-columns:minmax(120px,.35fr) minmax(0,1fr);gap:12px;border-bottom:1px solid rgba(186,117,23,.1);padding-bottom:10px}.details-list dt,.metric small{color:#7A6A55;font-weight:900}.details-list dd{margin:0;color:#2B1A0F;font-weight:900;overflow-wrap:anywhere}.badge{display:inline-flex;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:5px 10px;font-size:12px}.badge.completed{background:#EAF3DE;color:#27500A}.badge.paused{background:#FCEBEB;color:#791F1F}.metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.metric,.timeline-list .metric{border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:12px;min-width:0}.metric strong{display:block;margin-top:6px;color:#2B1A0F;font-size:18px;overflow-wrap:anywhere}.progress-bar{height:10px;border-radius:999px;background:#FAEEDA;overflow:hidden;margin-top:14px}.progress-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#FAC775,#BA7517)}.timeline-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.risk-card,.quick-card{grid-column:span 6}.risk-badge{display:inline-flex;border-radius:999px;padding:8px 12px;font-weight:950;margin-bottom:10px}.risk-card.low .risk-badge{background:#EAF3DE;color:#27500A}.risk-card.medium .risk-badge{background:#FFF4DE;color:#9A5E0D}.risk-card.high .risk-badge{background:#FCEBEB;color:#791F1F}.risk-card p{margin:0;color:#5B4332;line-height:1.7}.quick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.quick-grid button{min-height:44px;border:1px solid rgba(186,117,23,.18);border-radius:13px;background:#FFF8EA;color:#3D2914;font-weight:900;font-family:inherit;cursor:pointer}.quick-grid button:hover,.quick-grid button:focus-visible{background:#FAEEDA;outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.14)}.placeholder-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}.placeholder-card{min-height:280px;display:grid;place-items:center;text-align:center;align-content:center}.placeholder-card svg{color:#BA7517}.placeholder-card h2{margin:12px 0 6px;color:#3D2914}.placeholder-card p{margin:0;max-width:620px;color:#5B4332;line-height:1.8}.placeholder-card span{margin-top:14px;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:7px 12px;font-weight:900}.state-card{border-radius:20px;background:#FFFDF8;border:1px solid rgba(186,117,23,.16);padding:24px;color:#3D2914;font-weight:900}.empty-state{min-height:360px;display:grid;place-items:center;text-align:center}.empty-state article{background:#FFFDF8;border:1px solid rgba(186,117,23,.16);border-radius:22px;padding:28px;box-shadow:0 14px 34px rgba(61,41,20,.07)}.empty-state button{margin-top:16px;min-height:42px;border:0;border-radius:13px;background:linear-gradient(135deg,#FAC775,#EF9F27);color:#251407;padding:0 16px;font-weight:900;font-family:inherit;cursor:pointer}@media(max-width:1180px){.hero-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.span-6,.risk-card,.quick-card{grid-column:1 / -1}}@media(max-width:760px){.workspace-hero{padding:22px}.hero-actions{display:grid;grid-template-columns:1fr}.hero-actions button{width:100%;justify-content:center}.hero-metrics,.metric-grid,.timeline-list,.quick-grid{grid-template-columns:1fr}.details-list div{grid-template-columns:1fr}.warm-card{padding:16px}.overview-grid{grid-template-columns:1fr}}
+      <style jsx global>{`
+        .project-workspace{min-height:100vh;background:#F5F1E8;color:#2B1A0F;font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}.workspace-content{display:grid;gap:18px;min-width:0}.workspace-hero{position:relative;overflow:hidden;border-radius:24px;padding:26px;background:radial-gradient(circle at 14% 10%,rgba(250,199,117,.26),transparent 30%),linear-gradient(135deg,#1A0F05,#2B1A0F 50%,#8A5514 138%);color:#FFFDF8;box-shadow:0 22px 55px rgba(61,41,20,.18);display:grid;gap:20px;min-width:0}.hero-copy span,.back-link{color:#FAC775;font-size:12px;font-weight:900}.back-link{display:inline-flex;align-items:center;gap:7px;text-decoration:none;margin-bottom:10px}.hero-copy h1{margin:8px 0;font-size:clamp(30px,5vw,48px);font-weight:950;line-height:1.08}.hero-copy p{margin:0;color:rgba(255,253,248,.76);line-height:1.8;max-width:820px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px}.hero-actions button{min-height:42px;border-radius:13px;border:1px solid rgba(250,199,117,.28);background:rgba(20,12,6,.48);color:#FFFDF8;padding:0 14px;display:inline-flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.hero-actions button:first-child,.primary-save{background:linear-gradient(135deg,#FAC775,#EF9F27);color:#251407}.hero-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.hero-metrics div{border:1px solid rgba(250,199,117,.18);background:rgba(255,253,248,.08);border-radius:16px;padding:12px;min-width:0}.hero-metrics small{display:block;color:#FAC775;font-weight:900}.hero-metrics strong{display:block;margin-top:5px;color:#FFFDF8;overflow-wrap:anywhere}.workspace-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin}.workspace-tabs button{flex:0 0 auto;min-height:42px;border:1px solid rgba(186,117,23,.18);border-radius:999px;background:#FFFDF8;color:#5B4332;padding:0 14px;display:flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.workspace-tabs button.active,.workspace-tabs button:focus-visible{background:#3D2914;color:#FAC775;outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.16)}.overview-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}.warm-card{background:#FFFDF8;border:1px solid rgba(186,117,23,.16);border-radius:20px;padding:18px;box-shadow:0 14px 34px rgba(61,41,20,.07);min-width:0}.span-6{grid-column:span 6}.card-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.card-title h2{margin:0;color:#3D2914;font-size:19px}.card-title svg{color:#BA7517}.details-list{display:grid;gap:10px;margin:0}.details-list div{display:grid;grid-template-columns:minmax(120px,.35fr) minmax(0,1fr);gap:12px;border-bottom:1px solid rgba(186,117,23,.1);padding-bottom:10px}.details-list dt,.metric small{color:#7A6A55;font-weight:900}.details-list dd{margin:0;color:#2B1A0F;font-weight:900;overflow-wrap:anywhere}.badge{display:inline-flex;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:5px 10px;font-size:12px}.badge.completed{background:#EAF3DE;color:#27500A}.badge.paused{background:#FCEBEB;color:#791F1F}.metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.metric,.timeline-list .metric{border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:12px;min-width:0}.metric strong{display:block;margin-top:6px;color:#2B1A0F;font-size:18px;overflow-wrap:anywhere}.progress-bar{height:10px;border-radius:999px;background:#FAEEDA;overflow:hidden;margin-top:14px}.progress-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#FAC775,#BA7517)}.timeline-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.risk-card,.quick-card{grid-column:span 6}.risk-badge{display:inline-flex;border-radius:999px;padding:8px 12px;font-weight:950;margin-bottom:10px}.risk-card.low .risk-badge{background:#EAF3DE;color:#27500A}.risk-card.medium .risk-badge{background:#FFF4DE;color:#9A5E0D}.risk-card.high .risk-badge{background:#FCEBEB;color:#791F1F}.risk-card p,.ai-placeholder p{margin:0;color:#5B4332;line-height:1.7}.quick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.quick-grid button{min-height:44px;border:1px solid rgba(186,117,23,.18);border-radius:13px;background:#FFF8EA;color:#3D2914;font-weight:900;font-family:inherit;cursor:pointer}.quick-grid button:hover,.quick-grid button:focus-visible{background:#FAEEDA;outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.14)}.feasibility-tab{display:grid;gap:16px;min-width:0}.feasibility-summary-grid{display:grid;grid-template-columns:1.6fr repeat(5,minmax(0,1fr));gap:12px;align-items:stretch}.score-card{display:grid;align-content:start}.score-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}.score-number{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#BA7517 var(--score-angle, 270deg),#FAEEDA 0);position:relative;box-shadow:inset 0 0 0 12px #FFF8EA}.score-number strong{font-size:30px;color:#2B1A0F}.score-number span{font-size:12px;color:#7A6A55;font-weight:900}.status-pill{display:inline-flex;border-radius:999px;padding:7px 11px;font-weight:950;font-size:12px}.status-pill.feasible{background:#EAF3DE;color:#27500A}.status-pill.needs_review{background:#FFF4DE;color:#9A5E0D}.status-pill.high_risk{background:#FCEBEB;color:#791F1F}.score-row p{margin:10px 0 0;color:#5B4332;line-height:1.6}.notice{border:1px solid rgba(186,117,23,.2);background:#FFF8EA;color:#3D2914;border-radius:15px;padding:12px 14px;font-weight:900}.feasibility-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(290px,.85fr);gap:16px;align-items:start}.feasibility-sections{display:grid;gap:16px;min-width:0}.feasibility-side{display:grid;gap:16px;min-width:0;position:sticky;top:16px}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.section-heading small{display:inline-flex;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:5px 10px;font-weight:950}.section-heading h2{margin:8px 0 0;color:#3D2914;font-size:20px}.section-heading svg{color:#BA7517}.feasibility-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-field{display:grid;gap:7px;min-width:0}.form-field span{font-weight:900;color:#5B4332}.form-field input,.form-field textarea,.form-field select{width:100%;min-width:0;border:1px solid rgba(186,117,23,.2);background:#FFFDF8;color:#1A1A1A;border-radius:13px;padding:11px 12px;font-family:inherit;font-weight:800;outline:none}.form-field textarea{resize:vertical;line-height:1.6}.form-field input:focus,.form-field textarea:focus,.form-field select:focus{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.15)}.calculations-card{display:grid;gap:10px}.future-actions{display:grid;gap:10px}.future-actions button{min-height:44px;border-radius:13px;border:1px solid rgba(186,117,23,.18);font-family:inherit;font-weight:950;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}.future-actions button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.16)}.primary-save:disabled{opacity:.66;cursor:not-allowed}.disabled-btn{background:#FFF8EA;color:#7A6A55;cursor:not-allowed}.disabled-btn span{border-radius:999px;background:#FAEEDA;color:#854F0B;padding:3px 8px;font-size:11px}.placeholder-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}.placeholder-card{min-height:280px;display:grid;place-items:center;text-align:center;align-content:center}.placeholder-card svg{color:#BA7517}.placeholder-card h2{margin:12px 0 6px;color:#3D2914}.placeholder-card p{margin:0;max-width:620px;color:#5B4332;line-height:1.8}.placeholder-card span{margin-top:14px;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:7px 12px;font-weight:900}.state-card{border-radius:20px;background:#FFFDF8;border:1px solid rgba(186,117,23,.16);padding:24px;color:#3D2914;font-weight:900}.empty-state{min-height:360px;display:grid;place-items:center;text-align:center}.empty-state article{background:#FFFDF8;border:1px solid rgba(186,117,23,.16);border-radius:22px;padding:28px;box-shadow:0 14px 34px rgba(61,41,20,.07)}.empty-state button{margin-top:16px;min-height:42px;border:0;border-radius:13px;background:linear-gradient(135deg,#FAC775,#EF9F27);color:#251407;padding:0 16px;font-weight:900;font-family:inherit;cursor:pointer}@media(max-width:1280px){.feasibility-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.score-card{grid-column:1 / -1}}@media(max-width:1180px){.hero-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.span-6,.risk-card,.quick-card{grid-column:1 / -1}.feasibility-layout{grid-template-columns:1fr}.feasibility-side{position:static}}@media(max-width:760px){.workspace-hero{padding:22px}.hero-actions{display:grid;grid-template-columns:1fr}.hero-actions button{width:100%;justify-content:center}.hero-metrics,.metric-grid,.timeline-list,.quick-grid,.feasibility-summary-grid,.feasibility-form-grid{grid-template-columns:1fr}.details-list div{grid-template-columns:1fr}.warm-card{padding:16px}.overview-grid{grid-template-columns:1fr}.score-row{grid-template-columns:1fr}.score-number{width:92px;height:92px}.section-heading{align-items:flex-start}.placeholder-card{min-height:220px}}
       `}</style>
     </div>
   );
 }
 
-function CardTitle({ icon, title }: { icon: React.ReactNode; title: string }) {
+function OverviewTab({
+  tr,
+  projectTitle,
+  model,
+  typeLabel,
+  statusLabel,
+  riskText,
+  money,
+  dateLabel,
+  setActiveTab,
+  routerPush,
+}: {
+  tr: Translation;
+  projectTitle: string;
+  model: any;
+  typeLabel: string;
+  statusLabel: string;
+  riskText: string;
+  money: (value: number) => string;
+  dateLabel: (value?: string | null) => string;
+  setActiveTab: (tab: TabId) => void;
+  routerPush: (href: string) => void;
+}) {
+  return (
+    <section className="overview-grid">
+      <article className="warm-card span-6">
+        <CardTitle icon={<FolderKanban size={20} />} title={tr.projectSummary} />
+        <dl className="details-list">
+          <div><dt>{tr.projectName}</dt><dd>{projectTitle}</dd></div>
+          <div><dt>{tr.description}</dt><dd>{model.description || tr.noData}</dd></div>
+          <div><dt>{tr.projectType}</dt><dd>{typeLabel}</dd></div>
+          <div><dt>{tr.status}</dt><dd><span className={`badge ${model.statusKey}`}>{statusLabel}</span></dd></div>
+          <div><dt>{tr.priority}</dt><dd>{model.priority}</dd></div>
+          <div><dt>{tr.currentPhase}</dt><dd>{String(model.phase)}</dd></div>
+        </dl>
+      </article>
+
+      <article className="warm-card span-6">
+        <CardTitle icon={<Coins size={20} />} title={tr.financialSnapshot} />
+        <div className="metric-grid">
+          <Metric label={tr.capital} value={money(model.capital)} />
+          <Metric label={tr.totalIncome} value={model.monthlyIncome > 0 ? money(model.monthlyIncome) : tr.noData} />
+          <Metric label={tr.totalExpenses} value={model.monthlyExpenses > 0 ? money(model.monthlyExpenses) : tr.noData} />
+          <Metric label={tr.netResult} value={money(model.net)} />
+          <Metric label={tr.remainingBudget} value={money(model.remainingBudget)} />
+          <Metric label={tr.targetProgress} value={`${model.progress.toFixed(0)}%`} />
+        </div>
+        <div className="progress-bar" aria-label={tr.targetProgress}>
+          <span style={{ width: `${model.progress}%` }} />
+        </div>
+      </article>
+
+      <article className="warm-card">
+        <CardTitle icon={<CalendarDays size={20} />} title={tr.timelineSnapshot} />
+        <div className="timeline-list">
+          <Metric label={tr.startDate} value={dateLabel(model.startDate)} />
+          <Metric label={tr.endDate} value={dateLabel(model.endDate)} />
+          <Metric label={tr.daysRemaining} value={model.daysRemaining === null ? tr.noData : String(model.daysRemaining)} />
+          <Metric label={tr.duration} value={model.duration === null ? tr.noData : `${model.duration}`} />
+          <Metric label={tr.currentPhase} value={String(model.phase)} />
+        </div>
+      </article>
+
+      <article className={`warm-card risk-card ${model.risk}`}>
+        <CardTitle icon={<AlertTriangle size={20} />} title={tr.riskSnapshot} />
+        <div className="risk-badge">{tr[model.risk as RiskLevel]}</div>
+        <p>{riskText}</p>
+      </article>
+
+      <article className="warm-card quick-card">
+        <CardTitle icon={<CheckCircle2 size={20} />} title={tr.quickActions} />
+        <div className="quick-grid">
+          <button type="button" onClick={() => routerPush('/expenses/add')}>{tr.addExpense}</button>
+          <button type="button" onClick={() => routerPush('/income/add')}>{tr.addIncome}</button>
+          <button type="button" onClick={() => setActiveTab('tasks')}>{tr.addTask}</button>
+          <button type="button" onClick={() => setActiveTab('feasibility')}>{tr.generateFeasibility}</button>
+          <button type="button" onClick={() => setActiveTab('financial')}>{tr.createFinancialModel}</button>
+        </div>
+      </article>
+    </section>
+  );
+}
+
+function CardTitle({ icon, title }: { icon: ReactNode; title: string }) {
   return <div className="card-title"><h2>{title}</h2>{icon}</div>;
 }
 
@@ -606,11 +1182,11 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function EmptyState({ title, button, onClick }: { title: string; button: string; onClick: () => void }) {
   return (
-    <div style={{ minHeight: '360px', display: 'grid', placeItems: 'center', textAlign: 'center' }}>
-      <article style={{ background: '#FFFDF8', border: '1px solid rgba(186,117,23,.16)', borderRadius: '22px', padding: '28px', boxShadow: '0 14px 34px rgba(61,41,20,.07)' }}>
+    <div className="empty-state">
+      <article>
         <FolderKanban size={42} color="#BA7517" />
-        <h1 style={{ margin: '14px 0 0', color: '#3D2914', fontSize: '22px' }}>{title}</h1>
-        <button type="button" onClick={onClick} style={{ marginTop: '16px', minHeight: '42px', border: 0, borderRadius: '13px', background: 'linear-gradient(135deg,#FAC775,#EF9F27)', color: '#251407', padding: '0 16px', fontWeight: 900, fontFamily: 'inherit', cursor: 'pointer' }}>{button}</button>
+        <h1>{title}</h1>
+        <button type="button" onClick={onClick}>{button}</button>
       </article>
     </div>
   );
