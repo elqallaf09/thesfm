@@ -25,6 +25,12 @@ import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { ProjectDocumentsTab } from '@/components/projects/ProjectDocumentsTab';
 import { ProjectFinancialModelTab } from '@/components/projects/ProjectFinancialModelTab';
 import {
+  ProjectKpisTab,
+  buildProjectKpiSummary,
+  emptyProjectKpiSummary,
+  type ProjectKpiSummary,
+} from '@/components/projects/ProjectKpisTab';
+import {
   ProjectTasksTab,
   buildProjectTasksSummary,
   emptyProjectTasksSummary,
@@ -210,6 +216,24 @@ const TEXT = {
     nextMilestone: 'المعلم القادم',
     estimatedTaskCosts: 'تكلفة المهام المتوقعة',
     documentsCount: 'عدد المستندات',
+    projectHealthScore: 'درجة صحة المشروع',
+    strong: 'قوي',
+    good: 'جيد',
+    needs_review: 'يحتاج مراجعة',
+    high_risk: 'عالي المخاطر',
+    insufficient: 'بيانات غير كافية',
+    topRiskFlag: 'أبرز تنبيه مخاطر',
+    openKpis: 'فتح المؤشرات',
+    noRiskFlags: 'لا توجد تنبيهات مخاطر حالياً.',
+    financial_model_missing: 'النموذج المالي غير مكتمل',
+    feasibility_incomplete: 'دراسة الجدوى غير مكتملة',
+    overdue_tasks: 'يوجد مهام متأخرة',
+    no_documents: 'لا توجد مستندات',
+    project_end_passed: 'تاريخ نهاية المشروع تجاوز اليوم',
+    expenses_exceed_budget: 'المصاريف تجاوزت الميزانية',
+    negative_cash: 'التدفق النقدي المتوقع سلبي',
+    payback_too_long: 'فترة الاسترداد طويلة',
+    behind_schedule: 'التقدم الفعلي أقل من المخطط',
   },
   en: {
     workspace: 'Project Workspace',
@@ -344,6 +368,24 @@ const TEXT = {
     nextMilestone: 'Next milestone',
     estimatedTaskCosts: 'Estimated Task Costs',
     documentsCount: 'Documents count',
+    projectHealthScore: 'Project Health Score',
+    strong: 'Strong',
+    good: 'Good',
+    needs_review: 'Needs Review',
+    high_risk: 'High Risk',
+    insufficient: 'Insufficient data',
+    topRiskFlag: 'Top risk flag',
+    openKpis: 'Open KPIs',
+    noRiskFlags: 'No current risk flags.',
+    financial_model_missing: 'Financial model missing',
+    feasibility_incomplete: 'Feasibility study incomplete',
+    overdue_tasks: 'Overdue tasks',
+    no_documents: 'No documents uploaded',
+    project_end_passed: 'Project end date passed',
+    expenses_exceed_budget: 'Expenses exceed budget',
+    negative_cash: 'Negative projected cash balance',
+    payback_too_long: 'Payback period too long',
+    behind_schedule: 'Actual progress is behind schedule',
   },
   fr: {
     workspace: 'Espace projet',
@@ -478,6 +520,24 @@ const TEXT = {
     nextMilestone: 'Prochain jalon',
     estimatedTaskCosts: 'Coûts estimés des tâches',
     documentsCount: 'Nombre de documents',
+    projectHealthScore: 'Score de santé du projet',
+    strong: 'Fort',
+    good: 'Bon',
+    needs_review: 'À réviser',
+    high_risk: 'Risque élevé',
+    insufficient: 'Données insuffisantes',
+    topRiskFlag: 'Principale alerte de risque',
+    openKpis: 'Ouvrir les KPI',
+    noRiskFlags: 'Aucune alerte de risque actuellement.',
+    financial_model_missing: 'Modèle financier manquant',
+    feasibility_incomplete: 'Étude de faisabilité incomplète',
+    overdue_tasks: 'Tâches en retard',
+    no_documents: 'Aucun document téléversé',
+    project_end_passed: 'Date de fin du projet dépassée',
+    expenses_exceed_budget: 'Les dépenses dépassent le budget',
+    negative_cash: 'Solde de trésorerie projeté négatif',
+    payback_too_long: 'Période de récupération trop longue',
+    behind_schedule: 'Progression réelle en retard',
   },
 } as const;
 
@@ -613,6 +673,7 @@ export default function ProjectWorkspacePage() {
   const [notice, setNotice] = useState('');
   const [taskSummary, setTaskSummary] = useState<ProjectTasksSummary>(emptyProjectTasksSummary);
   const [documentsCount, setDocumentsCount] = useState(0);
+  const [kpiSummary, setKpiSummary] = useState<ProjectKpiSummary>(emptyProjectKpiSummary);
 
   const money = useCallback((amount: number, currency = 'KWD') => formatMoney(amount, currency, lang as Lang), [lang]);
   const dateLabel = useCallback((value?: string | null) => {
@@ -728,7 +789,7 @@ export default function ProjectWorkspacePage() {
   const loadProject = useCallback(async () => {
     if (!user || !id) return;
     setLoadingProject(true);
-    const [projectRes, savingsRes, feasibilityRes, taskRes, milestoneRes, documentsRes] = await Promise.all([
+    const [projectRes, savingsRes, feasibilityRes, taskRes, milestoneRes, documentsRes, financialRes] = await Promise.all([
       supabase.from('projects').select('*').eq('user_id', user.id).eq('id', id).maybeSingle(),
       supabase.from('savings_items').select('amount').eq('user_id', user.id),
       (supabase as any)
@@ -752,25 +813,39 @@ export default function ProjectWorkspacePage() {
         .select('id')
         .eq('user_id', user.id)
         .eq('project_id', id),
+      (supabase as any)
+        .from('project_financial_models')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('project_id', id)
+        .maybeSingle(),
     ]);
     const loadedProject = projectRes.error ? null : (projectRes.data as ProjectRow | null);
+    const loadedTasks = taskRes.error ? [] : (taskRes.data ?? []) as ProjectTaskRow[];
+    const loadedMilestones = milestoneRes.error ? [] : (milestoneRes.data ?? []) as ProjectMilestoneRow[];
+    const loadedDocumentsCount = documentsRes.error ? 0 : (documentsRes.data ?? []).length;
+    const loadedFeasibility = !feasibilityRes.error && feasibilityRes.data ? feasibilityRes.data as FeasibilityStudyRow : null;
     setProject(loadedProject);
     if (!savingsRes.error) {
       setSavings(((savingsRes.data ?? []) as SavingsRow[]).reduce((sum, row) => sum + toNum(row.amount), 0));
     }
-    if (!feasibilityRes.error && feasibilityRes.data) {
-      const row = feasibilityRes.data as FeasibilityStudyRow;
-      setFeasibilityId(row.id);
-      setFeasibility(normalizeFeasibilityRow(row, loadedProject));
+    if (loadedFeasibility) {
+      setFeasibilityId(loadedFeasibility.id);
+      setFeasibility(normalizeFeasibilityRow(loadedFeasibility, loadedProject));
     } else {
       setFeasibilityId(null);
       setFeasibility(normalizeFeasibilityRow(null, loadedProject));
     }
-    setTaskSummary(buildProjectTasksSummary(
-      taskRes.error ? [] : (taskRes.data ?? []) as ProjectTaskRow[],
-      milestoneRes.error ? [] : (milestoneRes.data ?? []) as ProjectMilestoneRow[],
-    ));
-    setDocumentsCount(documentsRes.error ? 0 : (documentsRes.data ?? []).length);
+    setTaskSummary(buildProjectTasksSummary(loadedTasks, loadedMilestones));
+    setDocumentsCount(loadedDocumentsCount);
+    setKpiSummary(buildProjectKpiSummary({
+      project: loadedProject,
+      financialModel: financialRes.error ? null : financialRes.data,
+      feasibilityStudy: loadedFeasibility,
+      tasks: loadedTasks,
+      milestones: loadedMilestones,
+      documentsCount: loadedDocumentsCount,
+    }));
     setLoadingProject(false);
   }, [id, user]);
 
@@ -999,6 +1074,7 @@ export default function ProjectWorkspacePage() {
             riskText={riskText}
             taskSummary={taskSummary}
             documentsCount={documentsCount}
+            kpiSummary={kpiSummary}
             money={money}
             dateLabel={dateLabel}
             setActiveTab={setActiveTab}
@@ -1145,6 +1221,15 @@ export default function ProjectWorkspacePage() {
             lang={lang}
             onDocumentsCountChange={setDocumentsCount}
           />
+        ) : activeTab === 'kpis' ? (
+          <ProjectKpisTab
+            userId={user.id}
+            projectId={project.id}
+            project={project}
+            currency={String(model.notes.currency ?? 'KWD')}
+            lang={lang}
+            onSummaryChange={setKpiSummary}
+          />
         ) : (
           <section className="placeholder-grid">
             {tabs.filter(tab => tab.id === activeTab).map(tab => {
@@ -1164,7 +1249,7 @@ export default function ProjectWorkspacePage() {
       </DashboardPageShell>
 
       <style jsx global>{`
-        .project-workspace{min-height:100vh;background:#F5F1E8;color:#2B1A0F;font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}.workspace-content{display:grid;gap:18px;min-width:0}.workspace-hero{position:relative;overflow:hidden;border-radius:24px;padding:26px;background:radial-gradient(circle at 14% 10%,rgba(250,199,117,.26),transparent 30%),linear-gradient(135deg,#1A0F05,#2B1A0F 50%,#8A5514 138%);color:#FFFDF8;box-shadow:0 22px 55px rgba(61,41,20,.18);display:grid;gap:20px;min-width:0}.hero-copy span,.back-link{color:#FAC775;font-size:12px;font-weight:900}.back-link{display:inline-flex;align-items:center;gap:7px;text-decoration:none;margin-bottom:10px}.hero-copy h1{margin:8px 0;font-size:clamp(30px,5vw,48px);font-weight:950;line-height:1.08}.hero-copy p{margin:0;color:rgba(255,253,248,.76);line-height:1.8;max-width:820px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px}.hero-actions button{min-height:42px;border-radius:13px;border:1px solid rgba(250,199,117,.28);background:rgba(20,12,6,.48);color:#FFFDF8;padding:0 14px;display:inline-flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.hero-actions button:first-child,.primary-save{background:linear-gradient(135deg,#FAC775,#EF9F27);color:#251407}.hero-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.hero-metrics div{border:1px solid rgba(250,199,117,.18);background:rgba(255,253,248,.08);border-radius:16px;padding:12px;min-width:0}.hero-metrics small{display:block;color:#FAC775;font-weight:900}.hero-metrics strong{display:block;margin-top:5px;color:#FFFDF8;overflow-wrap:anywhere}.workspace-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin}.workspace-tabs button{flex:0 0 auto;min-height:42px;border:1px solid rgba(186,117,23,.18);border-radius:999px;background:#FFFDF8;color:#5B4332;padding:0 14px;display:flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.workspace-tabs button.active,.workspace-tabs button:focus-visible{background:#3D2914;color:#FAC775;outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.16)}.overview-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}.warm-card{background:#FFFDF8;border:1px solid rgba(186,117,23,.16);border-radius:20px;padding:18px;box-shadow:0 14px 34px rgba(61,41,20,.07);min-width:0}.span-6{grid-column:span 6}.card-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.card-title h2{margin:0;color:#3D2914;font-size:19px}.card-title svg{color:#BA7517}.details-list{display:grid;gap:10px;margin:0}.details-list div{display:grid;grid-template-columns:minmax(120px,.35fr) minmax(0,1fr);gap:12px;border-bottom:1px solid rgba(186,117,23,.1);padding-bottom:10px}.details-list dt,.metric small{color:#7A6A55;font-weight:900}.details-list dd{margin:0;color:#2B1A0F;font-weight:900;overflow-wrap:anywhere}.badge{display:inline-flex;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:5px 10px;font-size:12px}.badge.completed{background:#EAF3DE;color:#27500A}.badge.paused{background:#FCEBEB;color:#791F1F}.metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.metric,.timeline-list .metric{border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:12px;min-width:0}.metric strong{display:block;margin-top:6px;color:#2B1A0F;font-size:18px;overflow-wrap:anywhere}.progress-bar{height:10px;border-radius:999px;background:#FAEEDA;overflow:hidden;margin-top:14px}.progress-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#FAC775,#BA7517)}.timeline-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.risk-card,.quick-card,.task-overview-card{grid-column:span 6}.risk-badge{display:inline-flex;border-radius:999px;padding:8px 12px;font-weight:950;margin-bottom:10px}.risk-card.low .risk-badge{background:#EAF3DE;color:#27500A}.risk-card.medium .risk-badge{background:#FFF4DE;color:#9A5E0D}.risk-card.high .risk-badge{background:#FCEBEB;color:#791F1F}.risk-card p,.ai-placeholder p{margin:0;color:#5B4332;line-height:1.7}.quick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.quick-grid button{min-height:44px;border:1px solid rgba(186,117,23,.18);border-radius:13px;background:#FFF8EA;color:#3D2914;font-weight:900;font-family:inherit;cursor:pointer}.quick-grid button:hover,.quick-grid button:focus-visible{background:#FAEEDA;outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.14)}.feasibility-tab{display:grid;gap:16px;min-width:0}.feasibility-summary-grid{display:grid;grid-template-columns:1.6fr repeat(5,minmax(0,1fr));gap:12px;align-items:stretch}.score-card{display:grid;align-content:start}.score-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}.score-number{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#BA7517 var(--score-angle, 270deg),#FAEEDA 0);position:relative;box-shadow:inset 0 0 0 12px #FFF8EA}.score-number strong{font-size:30px;color:#2B1A0F}.score-number span{font-size:12px;color:#7A6A55;font-weight:900}.status-pill{display:inline-flex;border-radius:999px;padding:7px 11px;font-weight:950;font-size:12px}.status-pill.feasible{background:#EAF3DE;color:#27500A}.status-pill.needs_review{background:#FFF4DE;color:#9A5E0D}.status-pill.high_risk{background:#FCEBEB;color:#791F1F}.score-row p{margin:10px 0 0;color:#5B4332;line-height:1.6}.notice{border:1px solid rgba(186,117,23,.2);background:#FFF8EA;color:#3D2914;border-radius:15px;padding:12px 14px;font-weight:900}.feasibility-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(290px,.85fr);gap:16px;align-items:start}.feasibility-sections{display:grid;gap:16px;min-width:0}.feasibility-side{display:grid;gap:16px;min-width:0;position:sticky;top:16px}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.section-heading small{display:inline-flex;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:5px 10px;font-weight:950}.section-heading h2{margin:8px 0 0;color:#3D2914;font-size:20px}.section-heading svg{color:#BA7517}.feasibility-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-field{display:grid;gap:7px;min-width:0}.form-field span{font-weight:900;color:#5B4332}.form-field input,.form-field textarea,.form-field select{width:100%;min-width:0;border:1px solid rgba(186,117,23,.2);background:#FFFDF8;color:#1A1A1A;border-radius:13px;padding:11px 12px;font-family:inherit;font-weight:800;outline:none}.form-field textarea{resize:vertical;line-height:1.6}.form-field input:focus,.form-field textarea:focus,.form-field select:focus{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.15)}.calculations-card{display:grid;gap:10px}.future-actions{display:grid;gap:10px}.future-actions button{min-height:44px;border-radius:13px;border:1px solid rgba(186,117,23,.18);font-family:inherit;font-weight:950;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}.future-actions button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.16)}.primary-save:disabled{opacity:.66;cursor:not-allowed}.disabled-btn{background:#FFF8EA;color:#7A6A55;cursor:not-allowed}.disabled-btn span{border-radius:999px;background:#FAEEDA;color:#854F0B;padding:3px 8px;font-size:11px}.placeholder-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}.placeholder-card{min-height:280px;display:grid;place-items:center;text-align:center;align-content:center}.placeholder-card svg{color:#BA7517}.placeholder-card h2{margin:12px 0 6px;color:#3D2914}.placeholder-card p{margin:0;max-width:620px;color:#5B4332;line-height:1.8}.placeholder-card span{margin-top:14px;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:7px 12px;font-weight:900}.state-card{border-radius:20px;background:#FFFDF8;border:1px solid rgba(186,117,23,.16);padding:24px;color:#3D2914;font-weight:900}.empty-state{min-height:360px;display:grid;place-items:center;text-align:center}.empty-state article{background:#FFFDF8;border:1px solid rgba(186,117,23,.16);border-radius:22px;padding:28px;box-shadow:0 14px 34px rgba(61,41,20,.07)}.empty-state button{margin-top:16px;min-height:42px;border:0;border-radius:13px;background:linear-gradient(135deg,#FAC775,#EF9F27);color:#251407;padding:0 16px;font-weight:900;font-family:inherit;cursor:pointer}@media(max-width:1280px){.feasibility-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.score-card{grid-column:1 / -1}}@media(max-width:1180px){.hero-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.span-6,.risk-card,.quick-card,.task-overview-card{grid-column:1 / -1}.feasibility-layout{grid-template-columns:1fr}.feasibility-side{position:static}}@media(max-width:760px){.workspace-hero{padding:22px}.hero-actions{display:grid;grid-template-columns:1fr}.hero-actions button{width:100%;justify-content:center}.hero-metrics,.metric-grid,.timeline-list,.quick-grid,.feasibility-summary-grid,.feasibility-form-grid{grid-template-columns:1fr}.details-list div{grid-template-columns:1fr}.warm-card{padding:16px}.overview-grid{grid-template-columns:1fr}.score-row{grid-template-columns:1fr}.score-number{width:92px;height:92px}.section-heading{align-items:flex-start}.placeholder-card{min-height:220px}}
+        .project-workspace{min-height:100vh;background:#F5F1E8;color:#2B1A0F;font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}.workspace-content{display:grid;gap:18px;min-width:0}.workspace-hero{position:relative;overflow:hidden;border-radius:24px;padding:26px;background:radial-gradient(circle at 14% 10%,rgba(250,199,117,.26),transparent 30%),linear-gradient(135deg,#1A0F05,#2B1A0F 50%,#8A5514 138%);color:#FFFDF8;box-shadow:0 22px 55px rgba(61,41,20,.18);display:grid;gap:20px;min-width:0}.hero-copy span,.back-link{color:#FAC775;font-size:12px;font-weight:900}.back-link{display:inline-flex;align-items:center;gap:7px;text-decoration:none;margin-bottom:10px}.hero-copy h1{margin:8px 0;font-size:clamp(30px,5vw,48px);font-weight:950;line-height:1.08}.hero-copy p{margin:0;color:rgba(255,253,248,.76);line-height:1.8;max-width:820px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px}.hero-actions button{min-height:42px;border-radius:13px;border:1px solid rgba(250,199,117,.28);background:rgba(20,12,6,.48);color:#FFFDF8;padding:0 14px;display:inline-flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.hero-actions button:first-child,.primary-save{background:linear-gradient(135deg,#FAC775,#EF9F27);color:#251407}.hero-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.hero-metrics div{border:1px solid rgba(250,199,117,.18);background:rgba(255,253,248,.08);border-radius:16px;padding:12px;min-width:0}.hero-metrics small{display:block;color:#FAC775;font-weight:900}.hero-metrics strong{display:block;margin-top:5px;color:#FFFDF8;overflow-wrap:anywhere}.workspace-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin}.workspace-tabs button{flex:0 0 auto;min-height:42px;border:1px solid rgba(186,117,23,.18);border-radius:999px;background:#FFFDF8;color:#5B4332;padding:0 14px;display:flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.workspace-tabs button.active,.workspace-tabs button:focus-visible{background:#3D2914;color:#FAC775;outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.16)}.overview-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}.warm-card{background:#FFFDF8;border:1px solid rgba(186,117,23,.16);border-radius:20px;padding:18px;box-shadow:0 14px 34px rgba(61,41,20,.07);min-width:0}.span-6{grid-column:span 6}.card-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.card-title h2{margin:0;color:#3D2914;font-size:19px}.card-title svg{color:#BA7517}.details-list{display:grid;gap:10px;margin:0}.details-list div{display:grid;grid-template-columns:minmax(120px,.35fr) minmax(0,1fr);gap:12px;border-bottom:1px solid rgba(186,117,23,.1);padding-bottom:10px}.details-list dt,.metric small{color:#7A6A55;font-weight:900}.details-list dd{margin:0;color:#2B1A0F;font-weight:900;overflow-wrap:anywhere}.badge{display:inline-flex;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:5px 10px;font-size:12px}.badge.completed{background:#EAF3DE;color:#27500A}.badge.paused{background:#FCEBEB;color:#791F1F}.metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.metric,.timeline-list .metric{border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:12px;min-width:0}.metric strong{display:block;margin-top:6px;color:#2B1A0F;font-size:18px;overflow-wrap:anywhere}.progress-bar{height:10px;border-radius:999px;background:#FAEEDA;overflow:hidden;margin-top:14px}.progress-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#FAC775,#BA7517)}.timeline-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.risk-card,.quick-card,.task-overview-card,.kpi-overview-card{grid-column:span 6}.risk-badge{display:inline-flex;border-radius:999px;padding:8px 12px;font-weight:950;margin-bottom:10px}.risk-card.low .risk-badge{background:#EAF3DE;color:#27500A}.risk-card.medium .risk-badge{background:#FFF4DE;color:#9A5E0D}.risk-card.high .risk-badge{background:#FCEBEB;color:#791F1F}.risk-card p,.ai-placeholder p{margin:0;color:#5B4332;line-height:1.7}.overview-link-btn{margin-top:14px;min-height:42px;border:1px solid rgba(186,117,23,.18);border-radius:13px;background:linear-gradient(135deg,#FAC775,#EF9F27);color:#251407;padding:0 14px;font-weight:950;font-family:inherit;cursor:pointer}.overview-link-btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.16)}.quick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.quick-grid button{min-height:44px;border:1px solid rgba(186,117,23,.18);border-radius:13px;background:#FFF8EA;color:#3D2914;font-weight:900;font-family:inherit;cursor:pointer}.quick-grid button:hover,.quick-grid button:focus-visible{background:#FAEEDA;outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.14)}.feasibility-tab{display:grid;gap:16px;min-width:0}.feasibility-summary-grid{display:grid;grid-template-columns:1.6fr repeat(5,minmax(0,1fr));gap:12px;align-items:stretch}.score-card{display:grid;align-content:start}.score-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}.score-number{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#BA7517 var(--score-angle, 270deg),#FAEEDA 0);position:relative;box-shadow:inset 0 0 0 12px #FFF8EA}.score-number strong{font-size:30px;color:#2B1A0F}.score-number span{font-size:12px;color:#7A6A55;font-weight:900}.status-pill{display:inline-flex;border-radius:999px;padding:7px 11px;font-weight:950;font-size:12px}.status-pill.feasible{background:#EAF3DE;color:#27500A}.status-pill.needs_review{background:#FFF4DE;color:#9A5E0D}.status-pill.high_risk{background:#FCEBEB;color:#791F1F}.score-row p{margin:10px 0 0;color:#5B4332;line-height:1.6}.notice{border:1px solid rgba(186,117,23,.2);background:#FFF8EA;color:#3D2914;border-radius:15px;padding:12px 14px;font-weight:900}.feasibility-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(290px,.85fr);gap:16px;align-items:start}.feasibility-sections{display:grid;gap:16px;min-width:0}.feasibility-side{display:grid;gap:16px;min-width:0;position:sticky;top:16px}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.section-heading small{display:inline-flex;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:5px 10px;font-weight:950}.section-heading h2{margin:8px 0 0;color:#3D2914;font-size:20px}.section-heading svg{color:#BA7517}.feasibility-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-field{display:grid;gap:7px;min-width:0}.form-field span{font-weight:900;color:#5B4332}.form-field input,.form-field textarea,.form-field select{width:100%;min-width:0;border:1px solid rgba(186,117,23,.2);background:#FFFDF8;color:#1A1A1A;border-radius:13px;padding:11px 12px;font-family:inherit;font-weight:800;outline:none}.form-field textarea{resize:vertical;line-height:1.6}.form-field input:focus,.form-field textarea:focus,.form-field select:focus{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.15)}.calculations-card{display:grid;gap:10px}.future-actions{display:grid;gap:10px}.future-actions button{min-height:44px;border-radius:13px;border:1px solid rgba(186,117,23,.18);font-family:inherit;font-weight:950;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}.future-actions button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.16)}.primary-save:disabled{opacity:.66;cursor:not-allowed}.disabled-btn{background:#FFF8EA;color:#7A6A55;cursor:not-allowed}.disabled-btn span{border-radius:999px;background:#FAEEDA;color:#854F0B;padding:3px 8px;font-size:11px}.placeholder-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}.placeholder-card{min-height:280px;display:grid;place-items:center;text-align:center;align-content:center}.placeholder-card svg{color:#BA7517}.placeholder-card h2{margin:12px 0 6px;color:#3D2914}.placeholder-card p{margin:0;max-width:620px;color:#5B4332;line-height:1.8}.placeholder-card span{margin-top:14px;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:7px 12px;font-weight:900}.state-card{border-radius:20px;background:#FFFDF8;border:1px solid rgba(186,117,23,.16);padding:24px;color:#3D2914;font-weight:900}.empty-state{min-height:360px;display:grid;place-items:center;text-align:center}.empty-state article{background:#FFFDF8;border:1px solid rgba(186,117,23,.16);border-radius:22px;padding:28px;box-shadow:0 14px 34px rgba(61,41,20,.07)}.empty-state button{margin-top:16px;min-height:42px;border:0;border-radius:13px;background:linear-gradient(135deg,#FAC775,#EF9F27);color:#251407;padding:0 16px;font-weight:900;font-family:inherit;cursor:pointer}@media(max-width:1280px){.feasibility-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.score-card{grid-column:1 / -1}}@media(max-width:1180px){.hero-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.span-6,.risk-card,.quick-card,.task-overview-card,.kpi-overview-card{grid-column:1 / -1}.feasibility-layout{grid-template-columns:1fr}.feasibility-side{position:static}}@media(max-width:760px){.workspace-hero{padding:22px}.hero-actions{display:grid;grid-template-columns:1fr}.hero-actions button{width:100%;justify-content:center}.hero-metrics,.metric-grid,.timeline-list,.quick-grid,.feasibility-summary-grid,.feasibility-form-grid{grid-template-columns:1fr}.details-list div{grid-template-columns:1fr}.warm-card{padding:16px}.overview-grid{grid-template-columns:1fr}.overview-link-btn{width:100%}.score-row{grid-template-columns:1fr}.score-number{width:92px;height:92px}.section-heading{align-items:flex-start}.placeholder-card{min-height:220px}}
       `}</style>
     </div>
   );
@@ -1179,6 +1264,7 @@ function OverviewTab({
   riskText,
   taskSummary,
   documentsCount,
+  kpiSummary,
   money,
   dateLabel,
   setActiveTab,
@@ -1192,6 +1278,7 @@ function OverviewTab({
   riskText: string;
   taskSummary: ProjectTasksSummary;
   documentsCount: number;
+  kpiSummary: ProjectKpiSummary;
   money: (value: number) => string;
   dateLabel: (value?: string | null) => string;
   setActiveTab: (tab: TabId) => void;
@@ -1257,6 +1344,23 @@ function OverviewTab({
         <div className="progress-bar" aria-label={tr.projectProgress}>
           <span style={{ width: `${taskSummary.progressPercent}%` }} />
         </div>
+      </article>
+
+      <article className={`warm-card kpi-overview-card ${kpiSummary.status}`}>
+        <CardTitle icon={<Gauge size={20} />} title={tr.projectHealthScore} />
+        <div className="metric-grid">
+          <Metric label={tr.projectHealthScore} value={kpiSummary.score === null ? tr.noData : `${kpiSummary.score}/100`} />
+          <Metric label={tr.status} value={tr[kpiSummary.status]} />
+          <Metric label={tr.projectProgress} value={kpiSummary.taskProgress === null ? tr.noData : `${kpiSummary.taskProgress}%`} />
+          <Metric label={tr.lateTasks} value={String(kpiSummary.lateTasks)} />
+          <Metric
+            label={tr.topRiskFlag}
+            value={kpiSummary.topRiskCode ? tr[kpiSummary.topRiskCode] : tr.noRiskFlags}
+          />
+        </div>
+        <button type="button" className="overview-link-btn" onClick={() => setActiveTab('kpis')} aria-label={tr.openKpis}>
+          {tr.openKpis}
+        </button>
       </article>
 
       <article className="warm-card quick-card">
