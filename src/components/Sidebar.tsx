@@ -129,7 +129,7 @@ export function Sidebar() {
   return (
     <aside className="sfm-shared-sidebar" dir={dir}>
       <style>{`
-        .sfm-shared-sidebar{width:230px;background:var(--sfm-sidebar);position:fixed;right:0;top:0;bottom:0;z-index:50;display:flex;flex-direction:column;overflow-y:auto;border-left:1px solid var(--sidebar-border);box-shadow:-8px 0 32px rgba(3,18,37,.26);font-family:Tajawal,Arial,sans-serif}
+        .sfm-shared-sidebar{width:var(--sidebar-w,230px);background:var(--sfm-sidebar);position:fixed;right:0;top:0;bottom:0;z-index:50;display:flex;flex-direction:column;overflow-y:auto;border-left:1px solid var(--sidebar-border);box-shadow:-8px 0 32px rgba(3,18,37,.26);font-family:Tajawal,Arial,sans-serif}
         [dir="ltr"].sfm-shared-sidebar{right:auto;left:0;border-left:0;border-right:1px solid rgba(167,243,240,.1)}
         .sfm-shared-brand{padding:20px 16px 14px;border-bottom:1px solid rgba(167,243,240,.08);display:flex;align-items:center;gap:10px;text-decoration:none}
         .sfm-shared-brand img{flex:0 0 auto;object-fit:cover}

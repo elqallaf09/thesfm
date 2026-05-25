@@ -1053,8 +1053,8 @@ const dashboardStyles = `
     min-height: 100vh;
     background:
       radial-gradient(circle at 18% 12%, rgba(29, 140, 255, 0.12), transparent 34%),
-      linear-gradient(180deg, #fffdf8 0%, #f5f1e8 56%, #efe5d2 100%);
-    color: #2b1a0f;
+      linear-gradient(160deg, var(--sfm-background) 0%, #F8FBFF 58%, #E7F1FF 100%);
+    color: var(--sfm-foreground);
   }
 
   .dashboard-main {
@@ -1080,12 +1080,12 @@ const dashboardStyles = `
     place-items: center;
     align-content: center;
     gap: 12px;
-    color: #6f5a42;
+    color: var(--sfm-muted);
   }
 
   .loader {
     animation: dashboard-spin 0.9s linear infinite;
-    color: #ba7517;
+    color: var(--sfm-primary);
   }
 
   @keyframes dashboard-spin {
@@ -1100,16 +1100,16 @@ const dashboardStyles = `
     padding: 34px;
     border-radius: 24px;
     background:
-      linear-gradient(135deg, rgba(3, 18, 37, 0.98), rgba(3, 18, 37, 0.96)),
-      #2b1a0f;
-    color: #fffdf8;
+      radial-gradient(circle at 12% 10%, rgba(24, 212, 212, 0.20), transparent 32%),
+      linear-gradient(135deg, var(--sfm-deep-navy), var(--sfm-primary-dark) 56%, var(--sfm-card-dark));
+    color: #EAF6FF;
     border: 1px solid rgba(24, 212, 212, 0.32);
     box-shadow: 0 24px 60px rgba(3, 18, 37, 0.18);
     overflow: hidden;
   }
 
   .hero-kicker {
-    color: #ef9f27;
+    color: var(--sfm-soft-cyan);
     font-weight: 800;
     letter-spacing: 0;
     font-size: 0.78rem;
@@ -1125,7 +1125,7 @@ const dashboardStyles = `
   .hero-card p {
     max-width: 740px;
     margin: 0;
-    color: rgba(255, 253, 248, 0.82);
+    color: rgba(234, 246, 255, 0.78);
     font-size: 1.04rem;
     line-height: 1.8;
   }
@@ -1145,7 +1145,7 @@ const dashboardStyles = `
   .metric-card,
   .quick-links {
     border: 1px solid rgba(29, 140, 255, 0.18);
-    background: rgba(255, 253, 248, 0.88);
+    background: rgba(255, 255, 255, 0.92);
     box-shadow: 0 16px 38px rgba(3, 18, 37, 0.08);
   }
 
@@ -1156,7 +1156,7 @@ const dashboardStyles = `
     margin-top: 18px;
     padding: 14px 16px;
     border-radius: 18px;
-    color: #8a4f08;
+    color: var(--sfm-primary-hover);
   }
 
   .setup-card {
@@ -1176,7 +1176,7 @@ const dashboardStyles = `
 
   .setup-card p {
     margin: 0;
-    color: #765f45;
+    color: var(--sfm-muted);
   }
 
   .metrics-grid {
@@ -1203,14 +1203,14 @@ const dashboardStyles = `
     align-items: center;
     justify-content: center;
     border-radius: 14px;
-    color: #fffdf8;
-    background: linear-gradient(135deg, #ba7517, #ef9f27);
+    color: #FFFFFF;
+    background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
   }
 
   .metric-card p,
   .metric-card span {
     margin: 0;
-    color: #7a654b;
+    color: var(--sfm-muted);
     line-height: 1.5;
   }
 
@@ -1227,7 +1227,7 @@ const dashboardStyles = `
   }
 
   .metric-warning .metric-icon {
-    background: linear-gradient(135deg, #9a5a08, #ef9f27);
+    background: linear-gradient(135deg, var(--sfm-primary-hover), var(--sfm-primary));
   }
 
   .dashboard-grid {
@@ -1271,8 +1271,8 @@ const dashboardStyles = `
     gap: 8px;
     padding: 9px 13px;
     border-radius: 12px;
-    background: #2b1a0f;
-    color: #fffdf8;
+    background: linear-gradient(135deg, var(--sfm-primary-dark), var(--sfm-card-dark));
+    color: #EAF6FF;
     text-decoration: none;
     font-weight: 800;
     font-size: 0.88rem;
@@ -1306,13 +1306,13 @@ const dashboardStyles = `
     min-width: 0;
     padding: 14px;
     border-radius: 16px;
-    background: #f5f1e8;
+    background: var(--sfm-light-card);
     border: 1px solid rgba(29, 140, 255, 0.14);
   }
 
   .small-stat span {
     display: block;
-    color: #7a654b;
+    color: var(--sfm-muted);
     font-size: 0.86rem;
     line-height: 1.4;
   }
@@ -1327,9 +1327,9 @@ const dashboardStyles = `
   .empty-state {
     padding: 18px;
     border-radius: 18px;
-    background: #f5f1e8;
+    background: var(--sfm-light-card);
     border: 1px dashed rgba(29, 140, 255, 0.34);
-    color: #6f5a42;
+    color: var(--sfm-muted);
   }
 
   .empty-state p {
@@ -1356,7 +1356,7 @@ const dashboardStyles = `
   }
 
   .score-row span {
-    color: #8a4f08;
+    color: var(--sfm-primary-hover);
     font-weight: 800;
   }
 
@@ -1371,14 +1371,14 @@ const dashboardStyles = `
   .progress-wrap div {
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(90deg, #ba7517, #ef9f27);
+    background: linear-gradient(90deg, var(--sfm-primary), var(--sfm-accent));
   }
 
   .priority-card {
     padding: 16px;
     border-radius: 18px;
     border: 1px solid rgba(29, 140, 255, 0.18);
-    background: #f5f1e8;
+    background: var(--sfm-light-card);
   }
 
   .priority-card strong {
@@ -1388,7 +1388,7 @@ const dashboardStyles = `
 
   .priority-card p {
     margin: 8px 0 0;
-    color: #6f5a42;
+    color: var(--sfm-muted);
     line-height: 1.7;
   }
 
@@ -1399,7 +1399,7 @@ const dashboardStyles = `
 
   .priority-warning {
     border-color: rgba(24, 212, 212, 0.36);
-    background: #fff7e7;
+    background: rgba(245, 158, 11, 0.12);
   }
 
   .notification-list {
@@ -1412,8 +1412,8 @@ const dashboardStyles = `
     display: block;
     padding: 12px;
     border-radius: 14px;
-    background: #f5f1e8;
-    color: #2b1a0f;
+    background: var(--sfm-light-card);
+    color: var(--sfm-primary-dark);
     text-decoration: none;
     border: 1px solid rgba(29, 140, 255, 0.12);
   }
@@ -1426,7 +1426,7 @@ const dashboardStyles = `
 
   .notification-list span {
     margin-top: 4px;
-    color: #765f45;
+    color: var(--sfm-muted);
     line-height: 1.55;
   }
 

@@ -732,8 +732,8 @@ export default function IncomePage() {
             <meta charset="utf-8" />
             <title>${tr('generatedReport', lang)}</title>
             <style>
-              body{font-family:Arial,sans-serif;background:#f5f1e8;color:#24180d;padding:32px}
-              .page{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:24px}
+              body{font-family:Arial,sans-serif;background:#EEF6FF;color:#0B172A;padding:32px}
+              .page{background:#fff;border:1px solid rgba(29,140,255,.16);border-radius:18px;padding:24px}
               h1{margin:0 0 8px;color:var(--sfm-midnight)}.brand{color:var(--sfm-primary);font-weight:700}
               .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}
               .stat{border:1px solid rgba(0,0,0,.08);border-radius:12px;padding:12px}.stat b{display:block;margin-top:6px}

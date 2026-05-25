@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from 'react';
 
 type DashboardPageShellProps = {
   children: ReactNode;
+  ariaLabel?: string;
   className?: string;
   contentClassName?: string;
   style?: CSSProperties;
@@ -12,13 +13,19 @@ type DashboardPageShellProps = {
 
 export function DashboardPageShell({
   children,
+  ariaLabel,
   className = '',
   contentClassName = '',
   style,
   contentStyle,
 }: DashboardPageShellProps) {
   return (
-    <main className={`sfm-dashboard-page-shell ${className}`.trim()} style={style}>
+    <main
+      aria-label={ariaLabel}
+      className={`sfm-dashboard-page-shell ${className}`.trim()}
+      data-sfm-shell="dashboard"
+      style={style}
+    >
       <div className={`sfm-dashboard-page-content ${contentClassName}`.trim()} style={contentStyle}>
         {children}
       </div>
