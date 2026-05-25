@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -29,6 +30,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
+import { supabase } from '@/integrations/supabase/client';
 
 type TranslationKey = keyof typeof import('@/lib/translations').TR;
 
@@ -88,7 +90,34 @@ export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { t, dir } = useLanguage();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadUnread() {
+      if (!user) {
+        setUnreadNotifications(0);
+        return;
+      }
+      const db = supabase as any;
+      let result = await db.from('notifications').select('id,read,status').eq('user_id', user.id).limit(500);
+      if (result.error) result = await db.from('notifications').select('id,read').eq('user_id', user.id).limit(500);
+      if (cancelled) return;
+      if (result.error) {
+        setUnreadNotifications(0);
+        return;
+      }
+      const count = (result.data ?? []).filter((row: any) => row.status !== 'archived' && (row.status === 'unread' || row.read === false)).length;
+      setUnreadNotifications(count);
+    }
+    loadUnread();
+    const id = window.setInterval(loadUnread, 60000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [user]);
 
   const handleLogout = async () => {
     await signOut();
@@ -111,6 +140,8 @@ export function Sidebar() {
         .sfm-shared-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.9)}
         .sfm-shared-item.active{background:rgba(216,174,99,.18);color:#D8AE63;font-weight:800;box-shadow:inset 0 0 0 1px rgba(216,174,99,.08)}
         .sfm-shared-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex:0 0 20px}
+        .sfm-shared-label{min-width:0;flex:1}
+        .sfm-shared-badge{min-width:22px;height:22px;border-radius:999px;background:#BA7517;color:#fffdfc;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;font-size:11px;font-weight:950}
         .sfm-shared-divider{height:1px;background:rgba(216,174,99,.08);margin:8px 6px}
         .sfm-shared-section-title{padding:5px 12px 7px;color:rgba(216,174,99,.48);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
         @media(max-width:1024px){.sfm-shared-sidebar{display:none}}
@@ -151,7 +182,8 @@ export function Sidebar() {
                   className={`sfm-shared-item${active ? ' active' : ''}`}
                 >
                   <span className="sfm-shared-icon"><NavIcon size={17} /></span>
-                  <span>{t(item.labelKey)}</span>
+                  <span className="sfm-shared-label">{t(item.labelKey)}</span>
+                  {item.id === 'notif' && unreadNotifications > 0 && <span className="sfm-shared-badge">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}
                 </button>
               );
             })}
