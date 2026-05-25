@@ -15,6 +15,7 @@ import {
   FileText,
   FolderKanban,
   Gauge,
+  Globe2,
   Pencil,
   Presentation,
   Plus,
@@ -99,6 +100,7 @@ const TEXT = {
     addExpense: 'إضافة مصروف للمشروع',
     addIncome: 'إضافة دخل للمشروع',
     analyzeProject: 'تحليل المشروع',
+    chooseJurisdiction: 'اختيار دولة التأسيس',
     back: 'العودة إلى مشاريعي',
     signIn: 'سجّل الدخول لعرض تفاصيل مشاريعك.',
     notFound: 'لم يتم العثور على المشروع.',
@@ -254,6 +256,7 @@ const TEXT = {
     addExpense: 'Add Project Expense',
     addIncome: 'Add Project Income',
     analyzeProject: 'Analyze Project',
+    chooseJurisdiction: 'Choose Jurisdiction',
     back: 'Back to My Projects',
     signIn: 'Sign in to view your project details.',
     notFound: 'Project not found.',
@@ -409,6 +412,7 @@ const TEXT = {
     addExpense: 'Ajouter une dépense',
     addIncome: 'Ajouter un revenu',
     analyzeProject: 'Analyser le projet',
+    chooseJurisdiction: 'Choisir la juridiction',
     back: 'Retour à mes projets',
     signIn: 'Connectez-vous pour voir les détails de vos projets.',
     notFound: 'Projet introuvable.',
@@ -1045,6 +1049,7 @@ export default function ProjectWorkspacePage() {
             <button type="button" onClick={() => router.push('/expenses/add')}><Plus size={16} /> {tr.addExpense}</button>
             <button type="button" onClick={() => router.push('/income/add')}><Plus size={16} /> {tr.addIncome}</button>
             <button type="button" onClick={() => setActiveTab('ai')}><Bot size={16} /> {tr.analyzeProject}</button>
+            <button type="button" onClick={() => router.push(`/business-hub?project=${project.id}#jurisdiction-wizard-module`)}><Globe2 size={16} /> {tr.chooseJurisdiction}</button>
             <LanguageSwitcher variant="dark" compact />
           </div>
           <div className="hero-metrics">

@@ -32,7 +32,6 @@ import { formatMoney } from '@/lib/formatMoney';
 
 type Lang = 'ar' | 'en' | 'fr';
 type ReadinessStatus = 'not_ready' | 'needs_improvement' | 'good' | 'ready_for_review';
-type WizardField = 'targetMarket' | 'businessType' | 'capitalRange' | 'customers' | 'needsInvestors' | 'gccExpansion';
 type InvestorItemStatus = 'complete' | 'missing' | 'needs_review';
 type UseOfFundsKey = 'product' | 'marketing' | 'operations' | 'hiring' | 'licensesLegal' | 'emergencyReserve' | 'other';
 type UseOfFundsEntry = { amount: string; percent: string };
@@ -56,7 +55,6 @@ type ModuleRows = {
   pitchDecks: any[];
 };
 
-type WizardState = Record<WizardField, string>;
 type UseOfFundsState = Record<UseOfFundsKey, UseOfFundsEntry>;
 
 type FundingReadinessRow = {
@@ -99,6 +97,38 @@ type StrategicDocumentItem = {
 };
 type DraftSection = { title: string; lines: string[]; missing?: string[] };
 type DocumentDraft = { type: 'businessPlan' | 'executiveSummary' | 'investmentMemo'; title: string; source: 'rules'; sections: DraftSection[] };
+type JurisdictionWizardState = {
+  targetMarket: string;
+  businessType: string;
+  industry: string;
+  productService: string;
+  deliveryModel: string;
+  targetCustomers: string[];
+  operationalNeeds: string[];
+  availableCapital: string;
+  fundingNeeded: string;
+  fundingGoals: string[];
+  expansionPlan: string;
+};
+type JurisdictionAssessmentRow = {
+  id?: string;
+  inputs?: Record<string, unknown> | null;
+  results?: Record<string, unknown> | null;
+  recommended_jurisdictions?: unknown[] | null;
+  status?: string | null;
+};
+type JurisdictionResult = {
+  code: string;
+  label: string;
+  region: string;
+  score: number;
+  strengths: string[];
+  limitations: string[];
+  verificationItems: string[];
+  suitableFor: string[];
+  riskNotes: string[];
+  nextSteps: string[];
+};
 
 const EMPTY_MODULES: ModuleRows = {
   feasibility: [],
@@ -697,6 +727,264 @@ const STRATEGIC_TEXT = {
   },
 } as const;
 
+const JURISDICTION_TEXT = {
+  ar: {
+    jurisdictionWizardDescription: 'قارن بين الدول والأسواق لتحديد المكان الأنسب لتأسيس أو توسيع مشروعك، بناءً على بيانات مشروعك واحتياجاتك.',
+    selectProjectStep: 'اختر المشروع',
+    businessActivity: 'النشاط التجاري',
+    targetCustomersStep: 'العملاء المستهدفون',
+    operationalNeeds: 'الاحتياجات التشغيلية',
+    capitalFunding: 'رأس المال والتمويل',
+    expansionPlan: 'خطة التوسع',
+    stepOf: 'خطوة',
+    previous: 'السابق',
+    next: 'التالي',
+    generateComparison: 'إنشاء المقارنة',
+    saveAssessment: 'حفظ نتيجة اختيار الدولة',
+    assessmentSaved: 'تم حفظ نتيجة اختيار الدولة.',
+    assessmentSaveError: 'تعذر حفظ نتيجة اختيار الدولة حالياً.',
+    primaryMarket: 'السوق أو الدولة الأساسية',
+    industry: 'القطاع',
+    productService: 'المنتج أو الخدمة',
+    deliveryModel: 'رقمي / فعلي / مختلط',
+    digital: 'رقمي',
+    physical: 'فعلي',
+    hybrid: 'مختلط',
+    individuals: 'الأفراد',
+    companies: 'الشركات',
+    governmentCustomers: 'الجهات الحكومية',
+    internationalCustomers: 'عملاء دوليون',
+    gccCustomers: 'عملاء خليجيون',
+    physicalOffice: 'مكتب فعلي',
+    warehouse: 'مستودع',
+    employeesNeed: 'موظفون',
+    foreignHiring: 'عمالة وافدة',
+    paymentGateway: 'بوابة دفع',
+    importExport: 'استيراد / تصدير',
+    licensesNeed: 'تراخيص',
+    investorFriendly: 'بيئة مناسبة للمستثمرين',
+    availableCapital: 'رأس المال المتاح',
+    wantsInvestors: 'أبحث عن مستثمرين',
+    wantsBankLoan: 'قرض بنكي',
+    wantsGovernmentSupport: 'دعم حكومي',
+    wantsIslamicFinance: 'تمويل إسلامي',
+    localOnly: 'محلي فقط',
+    gccExpansionPlan: 'توسع خليجي',
+    menaExpansion: 'توسع في الشرق الأوسط',
+    globalExpansion: 'توسع عالمي',
+    crossBorderEcommerce: 'تجارة إلكترونية عابرة للحدود',
+    matchScore: 'درجة الملاءمة',
+    strengths: 'نقاط القوة',
+    limitations: 'القيود',
+    verificationInfo: 'معلومات تحتاج تحقق',
+    suitableFor: 'مناسب لـ',
+    riskNotes: 'ملاحظات المخاطر',
+    topMatches: 'أفضل الخيارات المبدئية',
+    comparisonMatrix: 'جدول المقارنة',
+    officialVerificationRequired: 'تحقق رسمي مطلوب',
+    legalDisclaimer: 'تنبيه قانوني وتنظيمي',
+    jurisdictionDisclaimerFull: 'هذه الأداة لأغراض التخطيط الأولي فقط، ولا تعتبر استشارة قانونية أو ضريبية. يجب التحقق من الجهات الرسمية أو مستشار مختص قبل اتخاذ قرار التأسيس.',
+    notVerifiedYet: 'غير موثق بعد',
+    requiresOfficialVerification: 'تحتاج هذه المعلومة إلى تحقق من مصدر رسمي.',
+    addAssessmentToPackage: 'إضافة نتيجة اختيار الدولة إلى حزمة المستثمر',
+    requiredLicenseType: 'نوع الرخصة المطلوبة',
+    corporateTaxFees: 'ضريبة الشركات / الرسوم',
+    foreignOwnership: 'متطلبات الملكية الأجنبية',
+    officeAddress: 'متطلبات المكتب أو العنوان',
+    hiringVisa: 'متطلبات العمالة والتأشيرات',
+    businessActivityRequirements: 'متطلبات النشاط التجاري',
+    paymentGatewayRequirements: 'متطلبات بوابات الدفع',
+    importExportRequirements: 'متطلبات الاستيراد والتصدير إن وجدت',
+    targetMarketFit: 'تطابق السوق المستهدف',
+    operationalFit: 'تطابق الاحتياجات التشغيلية',
+    fundingFit: 'تطابق التمويل',
+    expansionFit: 'تطابق خطة التوسع',
+    verificationPenalty: 'خصم نقص التحقق الرسمي',
+    matchesSelectedMarket: 'يتطابق مع السوق الأساسي الذي اخترته.',
+    matchesGccExpansion: 'يناسب تفضيل التوسع الخليجي مبدئياً.',
+    matchesGlobalExpansion: 'يناسب التوسع العالمي أو التجارة العابرة للحدود مبدئياً.',
+    localFocusFit: 'يناسب التركيز المحلي حسب مدخلاتك.',
+    investorSetupRequiresVerification: 'إعداد مناسب للمستثمرين يحتاج تحققاً رسمياً في هذه الدولة.',
+    importExportRequiresVerification: 'متطلبات الاستيراد والتصدير تحتاج تحققاً رسمياً.',
+    paymentGatewayRequiresVerification: 'متطلبات بوابات الدفع تحتاج تحققاً من مزودي الخدمة والجهات الرسمية.',
+    licenseRequiresVerification: 'نوع الترخيص والمتطلبات التنظيمية تحتاج تحققاً رسمياً.',
+    physicalNeedsRequireVerification: 'متطلبات المكتب أو المستودع أو العنوان تحتاج تحققاً رسمياً.',
+    fundingSupportRequiresVerification: 'برامج الدعم أو التمويل لا تُعرض إلا بعد تحقق رسمي.',
+    basedOnInputsOnly: 'النتيجة مبنية على مدخلاتك فقط وليست توصية قانونية أو ضريبية.',
+    saveBeforeSharing: 'احفظ النتيجة وراجعها مع مستشار مختص قبل مشاركة حزمة المستثمر.',
+  },
+  en: {
+    jurisdictionWizardDescription: 'Compare countries and markets to identify the most suitable place to establish or expand your business, based on your project data and needs.',
+    selectProjectStep: 'Select Project',
+    businessActivity: 'Business Activity',
+    targetCustomersStep: 'Target Customers',
+    operationalNeeds: 'Operational Needs',
+    capitalFunding: 'Capital and Funding',
+    expansionPlan: 'Expansion Plan',
+    stepOf: 'Step',
+    previous: 'Previous',
+    next: 'Next',
+    generateComparison: 'Generate comparison',
+    saveAssessment: 'Save jurisdiction assessment',
+    assessmentSaved: 'Jurisdiction assessment saved.',
+    assessmentSaveError: 'Could not save the jurisdiction assessment right now.',
+    primaryMarket: 'Primary market or jurisdiction',
+    industry: 'Industry',
+    productService: 'Product or service',
+    deliveryModel: 'Digital / physical / hybrid',
+    digital: 'Digital',
+    physical: 'Physical',
+    hybrid: 'Hybrid',
+    individuals: 'Individuals',
+    companies: 'Companies',
+    governmentCustomers: 'Government entities',
+    internationalCustomers: 'International customers',
+    gccCustomers: 'GCC customers',
+    physicalOffice: 'Physical office',
+    warehouse: 'Warehouse',
+    employeesNeed: 'Employees',
+    foreignHiring: 'Foreign hiring',
+    paymentGateway: 'Payment gateway',
+    importExport: 'Import / export',
+    licensesNeed: 'Licenses',
+    investorFriendly: 'Investor-friendly jurisdiction',
+    availableCapital: 'Available capital',
+    wantsInvestors: 'Looking for investors',
+    wantsBankLoan: 'Bank loan',
+    wantsGovernmentSupport: 'Government support',
+    wantsIslamicFinance: 'Islamic finance',
+    localOnly: 'Local only',
+    gccExpansionPlan: 'GCC expansion',
+    menaExpansion: 'MENA expansion',
+    globalExpansion: 'Global expansion',
+    crossBorderEcommerce: 'Cross-border e-commerce',
+    matchScore: 'Match Score',
+    strengths: 'Strengths',
+    limitations: 'Limitations',
+    verificationInfo: 'Information requiring verification',
+    suitableFor: 'Suitable for',
+    riskNotes: 'Risk notes',
+    topMatches: 'Top Matches',
+    comparisonMatrix: 'Comparison Matrix',
+    officialVerificationRequired: 'Official Verification Required',
+    legalDisclaimer: 'Legal disclaimer',
+    jurisdictionDisclaimerFull: 'This tool is for initial planning only and is not legal or tax advice. Verify with official authorities or qualified advisors before making incorporation decisions.',
+    notVerifiedYet: 'Not verified yet',
+    requiresOfficialVerification: 'This information requires verification from an official source.',
+    addAssessmentToPackage: 'Add jurisdiction assessment to investor package',
+    requiredLicenseType: 'Required license type',
+    corporateTaxFees: 'Corporate tax / fees',
+    foreignOwnership: 'Foreign ownership requirements',
+    officeAddress: 'Office/address requirements',
+    hiringVisa: 'Hiring and visa requirements',
+    businessActivityRequirements: 'Business activity requirements',
+    paymentGatewayRequirements: 'Payment gateway requirements',
+    importExportRequirements: 'Import/export requirements if applicable',
+    targetMarketFit: 'Target market fit',
+    operationalFit: 'Operational fit',
+    fundingFit: 'Funding fit',
+    expansionFit: 'Expansion fit',
+    verificationPenalty: 'Missing official verification penalty',
+    matchesSelectedMarket: 'Matches the primary market you selected.',
+    matchesGccExpansion: 'Initially fits a GCC expansion preference.',
+    matchesGlobalExpansion: 'Initially fits global expansion or cross-border commerce.',
+    localFocusFit: 'Fits a local-focus setup based on your inputs.',
+    investorSetupRequiresVerification: 'Investor-friendly setup requires official verification in this jurisdiction.',
+    importExportRequiresVerification: 'Import/export requirements require official verification.',
+    paymentGatewayRequiresVerification: 'Payment gateway requirements require verification with providers and official authorities.',
+    licenseRequiresVerification: 'License type and regulatory requirements require official verification.',
+    physicalNeedsRequireVerification: 'Office, warehouse, or address requirements require official verification.',
+    fundingSupportRequiresVerification: 'Support or funding programs are not shown unless officially verified.',
+    basedOnInputsOnly: 'The score is based on your inputs only and is not legal or tax advice.',
+    saveBeforeSharing: 'Save the result and review it with a qualified advisor before sharing the investor package.',
+  },
+  fr: {
+    jurisdictionWizardDescription: 'Comparez les pays et marchés pour identifier le lieu le plus adapté à la création ou l’expansion de votre entreprise, selon les données de votre projet.',
+    selectProjectStep: 'Sélectionner le projet',
+    businessActivity: 'Activité commerciale',
+    targetCustomersStep: 'Clients cibles',
+    operationalNeeds: 'Besoins opérationnels',
+    capitalFunding: 'Capital et financement',
+    expansionPlan: 'Plan d’expansion',
+    stepOf: 'Étape',
+    previous: 'Précédent',
+    next: 'Suivant',
+    generateComparison: 'Générer la comparaison',
+    saveAssessment: 'Enregistrer l’évaluation de juridiction',
+    assessmentSaved: 'Évaluation de juridiction enregistrée.',
+    assessmentSaveError: 'Impossible d’enregistrer l’évaluation de juridiction pour le moment.',
+    primaryMarket: 'Marché ou juridiction principale',
+    industry: 'Secteur',
+    productService: 'Produit ou service',
+    deliveryModel: 'Numérique / physique / hybride',
+    digital: 'Numérique',
+    physical: 'Physique',
+    hybrid: 'Hybride',
+    individuals: 'Particuliers',
+    companies: 'Entreprises',
+    governmentCustomers: 'Entités gouvernementales',
+    internationalCustomers: 'Clients internationaux',
+    gccCustomers: 'Clients du GCC',
+    physicalOffice: 'Bureau physique',
+    warehouse: 'Entrepôt',
+    employeesNeed: 'Employés',
+    foreignHiring: 'Recrutement étranger',
+    paymentGateway: 'Passerelle de paiement',
+    importExport: 'Import / export',
+    licensesNeed: 'Licences',
+    investorFriendly: 'Juridiction adaptée aux investisseurs',
+    availableCapital: 'Capital disponible',
+    wantsInvestors: 'Recherche d’investisseurs',
+    wantsBankLoan: 'Prêt bancaire',
+    wantsGovernmentSupport: 'Soutien gouvernemental',
+    wantsIslamicFinance: 'Finance islamique',
+    localOnly: 'Local uniquement',
+    gccExpansionPlan: 'Expansion GCC',
+    menaExpansion: 'Expansion MENA',
+    globalExpansion: 'Expansion mondiale',
+    crossBorderEcommerce: 'E-commerce transfrontalier',
+    matchScore: 'Score d’adéquation',
+    strengths: 'Forces',
+    limitations: 'Limites',
+    verificationInfo: 'Informations à vérifier',
+    suitableFor: 'Adapté à',
+    riskNotes: 'Notes de risque',
+    topMatches: 'Meilleures options initiales',
+    comparisonMatrix: 'Tableau comparatif',
+    officialVerificationRequired: 'Vérification officielle requise',
+    legalDisclaimer: 'Avertissement juridique',
+    jurisdictionDisclaimerFull: 'Cet outil est destiné à la planification initiale uniquement et ne constitue pas un conseil juridique ou fiscal. Vérifiez auprès des autorités officielles ou de conseillers qualifiés avant toute décision.',
+    notVerifiedYet: 'Pas encore vérifié',
+    requiresOfficialVerification: 'Cette information nécessite une vérification auprès d’une source officielle.',
+    addAssessmentToPackage: 'Ajouter l’évaluation de juridiction au dossier investisseur',
+    requiredLicenseType: 'Type de licence requis',
+    corporateTaxFees: 'Impôt société / frais',
+    foreignOwnership: 'Exigences de propriété étrangère',
+    officeAddress: 'Exigences de bureau/adresse',
+    hiringVisa: 'Exigences d’emploi et de visa',
+    businessActivityRequirements: 'Exigences liées à l’activité',
+    paymentGatewayRequirements: 'Exigences de passerelle de paiement',
+    importExportRequirements: 'Exigences import/export le cas échéant',
+    targetMarketFit: 'Adéquation au marché cible',
+    operationalFit: 'Adéquation opérationnelle',
+    fundingFit: 'Adéquation au financement',
+    expansionFit: 'Adéquation à l’expansion',
+    verificationPenalty: 'Pénalité de vérification officielle manquante',
+    matchesSelectedMarket: 'Correspond au marché principal sélectionné.',
+    matchesGccExpansion: 'Correspond initialement à une préférence d’expansion GCC.',
+    matchesGlobalExpansion: 'Correspond initialement à l’expansion mondiale ou au commerce transfrontalier.',
+    localFocusFit: 'Correspond à une implantation locale selon vos données.',
+    investorSetupRequiresVerification: 'Une configuration adaptée aux investisseurs nécessite une vérification officielle dans cette juridiction.',
+    importExportRequiresVerification: 'Les exigences import/export nécessitent une vérification officielle.',
+    paymentGatewayRequiresVerification: 'Les exigences de paiement nécessitent une vérification auprès des fournisseurs et autorités.',
+    licenseRequiresVerification: 'Le type de licence et les exigences réglementaires nécessitent une vérification officielle.',
+    physicalNeedsRequireVerification: 'Les exigences de bureau, entrepôt ou adresse nécessitent une vérification officielle.',
+    fundingSupportRequiresVerification: 'Les programmes de soutien ou financement ne sont affichés qu’après vérification officielle.',
+    basedOnInputsOnly: 'Le score est basé uniquement sur vos données et ne constitue pas un conseil juridique ou fiscal.',
+    saveBeforeSharing: 'Enregistrez le résultat et révisez-le avec un conseiller qualifié avant de partager le dossier investisseur.',
+  },
+} as const;
+
 const COUNTRIES = [
   { value: 'kuwait', label: { ar: 'الكويت', en: 'Kuwait', fr: 'Koweït' } },
   { value: 'saudi-arabia', label: { ar: 'السعودية', en: 'Saudi Arabia', fr: 'Arabie saoudite' } },
@@ -716,26 +1004,6 @@ const BUSINESS_TYPES = [
   { value: 'real-estate', label: { ar: 'عقار', en: 'Real Estate', fr: 'Immobilier' } },
   { value: 'other', label: { ar: 'مشروع آخر', en: 'Other Project', fr: 'Autre projet' } },
 ];
-
-const CUSTOMER_TYPES = [
-  { value: 'b2b', labelKey: 'b2b' },
-  { value: 'b2c', labelKey: 'b2c' },
-  { value: 'government', labelKey: 'government' },
-  { value: 'mixed', labelKey: 'mixed' },
-] as const;
-
-const CAPITAL_RANGES = [
-  { value: 'under-5000', labelKey: 'smallCapital' },
-  { value: '5000-25000', labelKey: 'mediumCapital' },
-  { value: '25000-100000', labelKey: 'growthCapital' },
-  { value: 'over-100000', labelKey: 'enterpriseCapital' },
-] as const;
-
-const YES_NO = [
-  { value: 'yes', labelKey: 'yes' },
-  { value: 'no', labelKey: 'no' },
-  { value: 'not-sure', labelKey: 'notSure' },
-] as const;
 
 const FUNDING_TYPES = [
   { value: 'self_funded', labelKey: 'selfFunded' },
@@ -757,13 +1025,78 @@ const USE_OF_FUNDS_KEYS: UseOfFundsKey[] = [
   'other',
 ];
 
-const initialWizard: WizardState = {
+const DELIVERY_MODELS = [
+  { value: 'digital', labelKey: 'digital' },
+  { value: 'physical', labelKey: 'physical' },
+  { value: 'hybrid', labelKey: 'hybrid' },
+] as const;
+
+const TARGET_CUSTOMER_OPTIONS = [
+  { value: 'b2c', labelKey: 'individuals' },
+  { value: 'b2b', labelKey: 'companies' },
+  { value: 'government', labelKey: 'governmentCustomers' },
+  { value: 'international', labelKey: 'internationalCustomers' },
+  { value: 'gcc', labelKey: 'gccCustomers' },
+] as const;
+
+const OPERATIONAL_NEED_OPTIONS = [
+  { value: 'physical_office', labelKey: 'physicalOffice' },
+  { value: 'warehouse', labelKey: 'warehouse' },
+  { value: 'employees', labelKey: 'employeesNeed' },
+  { value: 'foreign_hiring', labelKey: 'foreignHiring' },
+  { value: 'payment_gateway', labelKey: 'paymentGateway' },
+  { value: 'import_export', labelKey: 'importExport' },
+  { value: 'licenses', labelKey: 'licensesNeed' },
+  { value: 'investor_friendly', labelKey: 'investorFriendly' },
+] as const;
+
+const FUNDING_GOAL_OPTIONS = [
+  { value: 'investors', labelKey: 'wantsInvestors' },
+  { value: 'bank_loan', labelKey: 'wantsBankLoan' },
+  { value: 'government_support', labelKey: 'wantsGovernmentSupport' },
+  { value: 'islamic_finance', labelKey: 'wantsIslamicFinance' },
+] as const;
+
+const EXPANSION_OPTIONS = [
+  { value: 'local_only', labelKey: 'localOnly' },
+  { value: 'gcc', labelKey: 'gccExpansionPlan' },
+  { value: 'mena', labelKey: 'menaExpansion' },
+  { value: 'global', labelKey: 'globalExpansion' },
+  { value: 'cross_border', labelKey: 'crossBorderEcommerce' },
+] as const;
+
+const JURISDICTION_STEPS = [
+  'selectProjectStep',
+  'businessActivity',
+  'targetCustomersStep',
+  'operationalNeeds',
+  'capitalFunding',
+  'expansionPlan',
+] as const;
+
+const OFFICIAL_VERIFICATION_KEYS = [
+  'requiredLicenseType',
+  'corporateTaxFees',
+  'foreignOwnership',
+  'officeAddress',
+  'hiringVisa',
+  'businessActivityRequirements',
+  'paymentGatewayRequirements',
+  'importExportRequirements',
+] as const;
+
+const initialWizard: JurisdictionWizardState = {
   targetMarket: '',
   businessType: '',
-  capitalRange: '',
-  customers: '',
-  needsInvestors: '',
-  gccExpansion: '',
+  industry: '',
+  productService: '',
+  deliveryModel: '',
+  targetCustomers: [],
+  operationalNeeds: [],
+  availableCapital: '',
+  fundingNeeded: '',
+  fundingGoals: [],
+  expansionPlan: '',
 };
 
 const emptyUseOfFunds = (): UseOfFundsState => ({
@@ -872,6 +1205,114 @@ function percent(value: number, lang: Lang) {
 
 function selectedLabel(options: Array<{ value: string; label: Record<Lang, string> }>, value: string, lang: Lang) {
   return options.find(item => item.value === value)?.label[lang] ?? '';
+}
+
+function normalizeWizard(value: unknown): JurisdictionWizardState {
+  const row = toRecord(value);
+  return {
+    targetMarket: typeof row.targetMarket === 'string' ? row.targetMarket : '',
+    businessType: typeof row.businessType === 'string' ? row.businessType : '',
+    industry: typeof row.industry === 'string' ? row.industry : '',
+    productService: typeof row.productService === 'string' ? row.productService : '',
+    deliveryModel: typeof row.deliveryModel === 'string' ? row.deliveryModel : '',
+    targetCustomers: Array.isArray(row.targetCustomers) ? row.targetCustomers.map(String) : [],
+    operationalNeeds: Array.isArray(row.operationalNeeds) ? row.operationalNeeds.map(String) : [],
+    availableCapital: row.availableCapital === undefined || row.availableCapital === null ? '' : String(row.availableCapital),
+    fundingNeeded: row.fundingNeeded === undefined || row.fundingNeeded === null ? '' : String(row.fundingNeeded),
+    fundingGoals: Array.isArray(row.fundingGoals) ? row.fundingGoals.map(String) : [],
+    expansionPlan: typeof row.expansionPlan === 'string' ? row.expansionPlan : '',
+  };
+}
+
+function optionLabel(options: ReadonlyArray<{ value: string; labelKey: string }>, value: string, text: Record<string, string>) {
+  const item = options.find(option => option.value === value);
+  return item ? text[item.labelKey] : '';
+}
+
+function checkboxLabels(options: ReadonlyArray<{ value: string; labelKey: string }>, values: string[], text: Record<string, string>) {
+  return values.map(value => optionLabel(options, value, text)).filter(Boolean);
+}
+
+function clampScore(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function buildJurisdictionResults(wizard: JurisdictionWizardState, text: Record<string, string>, lang: Lang): JurisdictionResult[] {
+  const targetLabels = checkboxLabels(TARGET_CUSTOMER_OPTIONS, wizard.targetCustomers, text);
+  const delivery = optionLabel(DELIVERY_MODELS, wizard.deliveryModel, text);
+  const expansion = optionLabel(EXPANSION_OPTIONS, wizard.expansionPlan, text);
+  const verificationItems = OFFICIAL_VERIFICATION_KEYS.map(key => text[key]);
+  return COUNTRIES.map(country => {
+    const isGcc = country.value !== 'global-other';
+    const isSelectedMarket = wizard.targetMarket === country.value;
+    const isGlobal = country.value === 'global-other';
+    const hasGccFocus = wizard.targetCustomers.includes('gcc') || wizard.expansionPlan === 'gcc';
+    const hasGlobalFocus = wizard.targetCustomers.includes('international') || wizard.expansionPlan === 'global' || wizard.expansionPlan === 'cross_border';
+    let targetFit = wizard.targetMarket ? 10 : 12;
+    if (isSelectedMarket) targetFit = 25;
+    else if (hasGccFocus && isGcc) targetFit = 20;
+    else if (hasGlobalFocus && isGlobal) targetFit = 22;
+
+    let operationalFit = 12;
+    if (wizard.deliveryModel === 'digital' && !wizard.operationalNeeds.includes('physical_office') && !wizard.operationalNeeds.includes('warehouse')) operationalFit += 5;
+    if ((wizard.deliveryModel === 'physical' || wizard.deliveryModel === 'hybrid') && isSelectedMarket) operationalFit += 6;
+    if (wizard.operationalNeeds.includes('investor_friendly') && !isGlobal) operationalFit += 3;
+    if (wizard.operationalNeeds.length > 0) operationalFit += 2;
+    operationalFit = Math.min(25, operationalFit);
+
+    let fundingFit = wizard.fundingGoals.length ? 10 : 12;
+    if (wizard.fundingGoals.includes('investors') && wizard.operationalNeeds.includes('investor_friendly')) fundingFit += 5;
+    if (wizard.fundingGoals.includes('bank_loan')) fundingFit += 2;
+    if (wizard.fundingGoals.includes('islamic_finance')) fundingFit += 2;
+    if (wizard.fundingGoals.includes('government_support')) fundingFit += 1;
+    fundingFit = Math.min(20, fundingFit);
+
+    let expansionFit = 10;
+    if (wizard.expansionPlan === 'local_only') expansionFit = isSelectedMarket ? 20 : 8;
+    if (wizard.expansionPlan === 'gcc') expansionFit = isGcc ? 20 : 10;
+    if (wizard.expansionPlan === 'mena') expansionFit = isGcc ? 16 : 12;
+    if (wizard.expansionPlan === 'global' || wizard.expansionPlan === 'cross_border') expansionFit = isGlobal ? 20 : 14;
+
+    const score = clampScore(targetFit + operationalFit + fundingFit + expansionFit - 10);
+    const strengths = [
+      isSelectedMarket ? text.matchesSelectedMarket : '',
+      hasGccFocus && isGcc ? text.matchesGccExpansion : '',
+      hasGlobalFocus && isGlobal ? text.matchesGlobalExpansion : '',
+      wizard.expansionPlan === 'local_only' && isSelectedMarket ? text.localFocusFit : '',
+    ].filter(Boolean);
+    if (strengths.length === 0) strengths.push(text.basedOnInputsOnly);
+
+    const limitations = [text.requiresOfficialVerification, text.notVerifiedYet];
+    if (wizard.operationalNeeds.includes('investor_friendly')) limitations.push(text.investorSetupRequiresVerification);
+    if (wizard.operationalNeeds.includes('import_export')) limitations.push(text.importExportRequiresVerification);
+    if (wizard.operationalNeeds.includes('payment_gateway')) limitations.push(text.paymentGatewayRequiresVerification);
+    if (wizard.operationalNeeds.includes('licenses')) limitations.push(text.licenseRequiresVerification);
+    if (wizard.operationalNeeds.includes('physical_office') || wizard.operationalNeeds.includes('warehouse')) limitations.push(text.physicalNeedsRequireVerification);
+    if (wizard.fundingGoals.includes('government_support')) limitations.push(text.fundingSupportRequiresVerification);
+
+    const suitableFor = [delivery, expansion, ...targetLabels].filter(Boolean);
+    const riskNotes = [text.basedOnInputsOnly, text.requiresOfficialVerification];
+    const nextSteps = [
+      text.requiredLicenseType,
+      text.officeAddress,
+      text.corporateTaxFees,
+      wizard.operationalNeeds.includes('import_export') ? text.importExportRequirements : '',
+      wizard.operationalNeeds.includes('payment_gateway') ? text.paymentGatewayRequirements : '',
+    ].filter(Boolean);
+
+    return {
+      code: country.value,
+      label: country.label[lang],
+      region: isGlobal ? 'Global' : 'GCC',
+      score,
+      strengths,
+      limitations,
+      verificationItems,
+      suitableFor: suitableFor.length ? suitableFor : [text.basedOnInputsOnly],
+      riskNotes,
+      nextSteps,
+    };
+  }).sort((a, b) => b.score - a.score);
 }
 
 function fundingRowToForm(row: FundingReadinessRow | null, fallbackCurrency: string): FundingPlannerForm {
@@ -1288,14 +1729,18 @@ export default function BusinessHubPage() {
   const { user, loading: authLoading } = useAuth();
   const { lang, dir } = useLanguage();
   const locale = (lang === 'en' || lang === 'fr' || lang === 'ar' ? lang : 'ar') as Lang;
-  const text = useMemo(() => ({ ...TEXT[locale], ...STRATEGIC_TEXT[locale] }), [locale]);
+  const text = useMemo(() => ({ ...TEXT[locale], ...STRATEGIC_TEXT[locale], ...JURISDICTION_TEXT[locale] }), [locale]);
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [modules, setModules] = useState<ModuleRows>(EMPTY_MODULES);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [loadingModules, setLoadingModules] = useState(false);
   const [loadError, setLoadError] = useState('');
-  const [wizard, setWizard] = useState<WizardState>(initialWizard);
+  const [wizard, setWizard] = useState<JurisdictionWizardState>(initialWizard);
+  const [wizardStep, setWizardStep] = useState(0);
+  const [jurisdictionAssessment, setJurisdictionAssessment] = useState<JurisdictionAssessmentRow | null>(null);
+  const [savingJurisdiction, setSavingJurisdiction] = useState(false);
+  const [jurisdictionMessage, setJurisdictionMessage] = useState('');
   const [fundingRecord, setFundingRecord] = useState<FundingReadinessRow | null>(null);
   const [fundingForm, setFundingForm] = useState<FundingPlannerForm>(() => emptyFundingForm());
   const [savingFunding, setSavingFunding] = useState(false);
@@ -1321,8 +1766,10 @@ export default function BusinessHubPage() {
       setProjects([]);
     } else {
       const rows = (data ?? []) as ProjectRow[];
+      const requestedProjectId = typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('project') || '';
+      const requestedProject = rows.some(project => project.id === requestedProjectId) ? requestedProjectId : '';
       setProjects(rows);
-      setSelectedProjectId(current => current || rows[0]?.id || '');
+      setSelectedProjectId(current => current || requestedProject || rows[0]?.id || '');
     }
     setLoadingProjects(false);
   }, [text.loadError, user]);
@@ -1409,6 +1856,40 @@ export default function BusinessHubPage() {
       cancelled = true;
     };
   }, [selectedCurrency, selectedProjectId, user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadJurisdictionAssessment() {
+      setJurisdictionMessage('');
+      if (!user || !selectedProjectId) {
+        setJurisdictionAssessment(null);
+        setWizard(initialWizard);
+        setWizardStep(0);
+        return;
+      }
+      const db = supabase as any;
+      const { data, error } = await db
+        .from('project_jurisdiction_assessments')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('project_id', selectedProjectId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        setJurisdictionAssessment(null);
+        setWizard(prev => ({ ...prev, targetMarket: prev.targetMarket || '' }));
+        return;
+      }
+      const row = (data ?? null) as JurisdictionAssessmentRow | null;
+      setJurisdictionAssessment(row);
+      setWizard(row?.inputs ? normalizeWizard(row.inputs) : initialWizard);
+      setWizardStep(0);
+    }
+    loadJurisdictionAssessment();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProjectId, user]);
 
   const readiness = useMemo(() => {
     if (!selectedProject) return null;
@@ -1517,16 +1998,39 @@ export default function BusinessHubPage() {
     };
   }, [fundingRecord, modules, readiness, selectedProject, text]);
 
+  const jurisdictionResults = useMemo(
+    () => buildJurisdictionResults(wizard, text, locale),
+    [locale, text, wizard],
+  );
+
   const projectUrl = selectedProject ? `/projects/${selectedProject.id}` : '/projects';
   const pitchDeckUrl = selectedProject ? `/projects/${selectedProject.id}?tab=pitchDeck` : '/projects';
 
-  const wizardMissing = useMemo(
-    () => (Object.keys(wizard) as WizardField[]).filter(key => !wizard[key]),
-    [wizard],
-  );
+  const wizardMissing = useMemo(() => {
+    const items: string[] = [];
+    if (!selectedProjectId) items.push(text.selectProjectStep);
+    if (!wizard.targetMarket) items.push(text.primaryMarket);
+    if (!wizard.businessType) items.push(text.businessType);
+    if (!wizard.industry.trim()) items.push(text.industry);
+    if (!wizard.productService.trim()) items.push(text.productService);
+    if (!wizard.deliveryModel) items.push(text.deliveryModel);
+    if (wizard.targetCustomers.length === 0) items.push(text.targetCustomersStep);
+    if (!wizard.expansionPlan) items.push(text.expansionPlan);
+    return items;
+  }, [selectedProjectId, text, wizard]);
 
-  const updateWizard = (field: WizardField, value: string) => {
+  const updateWizard = <K extends keyof JurisdictionWizardState>(field: K, value: JurisdictionWizardState[K]) => {
     setWizard(prev => ({ ...prev, [field]: value }));
+  };
+
+  const toggleWizardList = (field: 'targetCustomers' | 'operationalNeeds' | 'fundingGoals', value: string) => {
+    setWizard(prev => {
+      const selected = prev[field].includes(value);
+      return {
+        ...prev,
+        [field]: selected ? prev[field].filter(item => item !== value) : [...prev[field], value],
+      };
+    });
   };
 
   const updateUseOfFunds = (key: UseOfFundsKey, field: keyof UseOfFundsEntry, value: string) => {
@@ -1582,6 +2086,42 @@ export default function BusinessHubPage() {
       setFundingMessage(text.useOfFundsSaved);
     }
     setSavingFunding(false);
+  };
+
+  const saveJurisdictionAssessment = async () => {
+    if (!user || !selectedProject) return;
+    setSavingJurisdiction(true);
+    setJurisdictionMessage('');
+    const payload = {
+      user_id: user.id,
+      project_id: selectedProject.id,
+      inputs: wizard,
+      results: {
+        source: 'rules',
+        generated_at: new Date().toISOString(),
+        jurisdictions: jurisdictionResults,
+      },
+      recommended_jurisdictions: jurisdictionResults.slice(0, 3).map(result => ({
+        code: result.code,
+        label: result.label,
+        score: result.score,
+      })),
+      status: 'generated',
+      updated_at: new Date().toISOString(),
+    };
+    const db = supabase as any;
+    const { data, error } = await db
+      .from('project_jurisdiction_assessments')
+      .upsert(payload, { onConflict: 'user_id,project_id' })
+      .select('*')
+      .maybeSingle();
+    if (error) {
+      setJurisdictionMessage(text.assessmentSaveError);
+    } else {
+      setJurisdictionAssessment((data ?? payload) as JurisdictionAssessmentRow);
+      setJurisdictionMessage(text.assessmentSaved);
+    }
+    setSavingJurisdiction(false);
   };
 
   const generateDocumentDraft = (type: DocumentDraft['type']) => {
@@ -1861,55 +2401,240 @@ export default function BusinessHubPage() {
           </>
         )}
 
-        <section className="hub-grid wizard-layout">
-          <article className="warm-card wizard-card">
+        <section className="jurisdiction-module" id="jurisdiction-wizard-module">
+          <div className="jurisdiction-header">
+            <div>
+              <span className="eyebrow"><Globe2 size={16} /> {text.jurisdictionWizard}</span>
+              <h2>{text.jurisdictionWizard}</h2>
+              <p>{text.jurisdictionWizardDescription}</p>
+            </div>
+            <span className="status-badge needs-improvement">{text.notVerifiedYet}</span>
+          </div>
+
+          <div className="jurisdiction-stepper" role="tablist" aria-label={text.jurisdictionWizard}>
+            {JURISDICTION_STEPS.map((step, index) => (
+              <button key={step} type="button" className={wizardStep === index ? 'active' : ''} onClick={() => setWizardStep(index)} aria-label={`${text.stepOf} ${index + 1}: ${text[step]}`}>
+                <span>{index + 1}</span>
+                {text[step]}
+              </button>
+            ))}
+          </div>
+
+          <div className="jurisdiction-layout">
+            <article className="warm-card wizard-card">
+              <div className="card-title">
+                <div>
+                  <h2>{text[JURISDICTION_STEPS[wizardStep]]}</h2>
+                  <p>{text.basedOnInputsOnly}</p>
+                </div>
+                <Scale size={22} />
+              </div>
+
+              {wizardStep === 0 && (
+                <div className="wizard-form">
+                  <label className="field">
+                    <span>{text.selectProjectStep}</span>
+                    <select value={selectedProjectId} onChange={event => setSelectedProjectId(event.target.value)} disabled={!projects.length} aria-label={text.selectProjectStep}>
+                      {projects.length === 0 ? <option value="">{text.addProjectFirst}</option> : projects.map(project => (
+                        <option key={project.id} value={project.id}>{firstText(project, ['name', 'project_name', 'title'], project.id)}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <SelectField label={text.primaryMarket} value={wizard.targetMarket} onChange={value => updateWizard('targetMarket', value)} options={COUNTRIES.map(item => ({ value: item.value, label: item.label[locale] }))} placeholder={text.choose} />
+                  {projects.length === 0 && <div className="planner-warning"><AlertTriangle size={15} /> {text.addProjectFirst}</div>}
+                </div>
+              )}
+
+              {wizardStep === 1 && (
+                <div className="wizard-form">
+                  <SelectField label={text.businessType} value={wizard.businessType} onChange={value => updateWizard('businessType', value)} options={BUSINESS_TYPES.map(item => ({ value: item.value, label: item.label[locale] }))} placeholder={text.choose} />
+                  <label className="field"><span>{text.industry}</span><input value={wizard.industry} onChange={event => updateWizard('industry', event.target.value)} aria-label={text.industry} /></label>
+                  <label className="field"><span>{text.productService}</span><input value={wizard.productService} onChange={event => updateWizard('productService', event.target.value)} aria-label={text.productService} /></label>
+                  <SelectField label={text.deliveryModel} value={wizard.deliveryModel} onChange={value => updateWizard('deliveryModel', value)} options={DELIVERY_MODELS.map(item => ({ value: item.value, label: text[item.labelKey] }))} placeholder={text.choose} />
+                </div>
+              )}
+
+              {wizardStep === 2 && (
+                <div className="choice-grid">
+                  {TARGET_CUSTOMER_OPTIONS.map(option => (
+                    <label className="choice-pill" key={option.value}>
+                      <input type="checkbox" checked={wizard.targetCustomers.includes(option.value)} onChange={() => toggleWizardList('targetCustomers', option.value)} />
+                      <span>{text[option.labelKey]}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {wizardStep === 3 && (
+                <div className="choice-grid">
+                  {OPERATIONAL_NEED_OPTIONS.map(option => (
+                    <label className="choice-pill" key={option.value}>
+                      <input type="checkbox" checked={wizard.operationalNeeds.includes(option.value)} onChange={() => toggleWizardList('operationalNeeds', option.value)} />
+                      <span>{text[option.labelKey]}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {wizardStep === 4 && (
+                <div className="wizard-form">
+                  <label className="field"><span>{text.availableCapital}</span><input value={wizard.availableCapital} onChange={event => updateWizard('availableCapital', event.target.value)} inputMode="decimal" aria-label={text.availableCapital} /></label>
+                  <label className="field"><span>{text.fundingNeeded}</span><input value={wizard.fundingNeeded} onChange={event => updateWizard('fundingNeeded', event.target.value)} inputMode="decimal" aria-label={text.fundingNeeded} /></label>
+                  <div className="choice-grid wide">
+                    {FUNDING_GOAL_OPTIONS.map(option => (
+                      <label className="choice-pill" key={option.value}>
+                        <input type="checkbox" checked={wizard.fundingGoals.includes(option.value)} onChange={() => toggleWizardList('fundingGoals', option.value)} />
+                        <span>{text[option.labelKey]}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === 5 && (
+                <div className="choice-grid">
+                  {EXPANSION_OPTIONS.map(option => (
+                    <label className="choice-pill" key={option.value}>
+                      <input type="radio" name="expansion-plan" checked={wizard.expansionPlan === option.value} onChange={() => updateWizard('expansionPlan', option.value)} />
+                      <span>{text[option.labelKey]}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              <div className="wizard-controls">
+                <button type="button" onClick={() => setWizardStep(step => Math.max(0, step - 1))} disabled={wizardStep === 0} aria-label={text.previous}>{text.previous}</button>
+                <button type="button" onClick={() => setWizardStep(step => Math.min(JURISDICTION_STEPS.length - 1, step + 1))} disabled={wizardStep === JURISDICTION_STEPS.length - 1} aria-label={text.next}>{text.next}</button>
+                <button type="button" onClick={() => setWizardStep(JURISDICTION_STEPS.length - 1)} aria-label={text.generateComparison}>{text.generateComparison}</button>
+              </div>
+            </article>
+
+            <aside className="warm-card wizard-output">
+              <div className="card-title">
+                <div>
+                  <h2>{text.topMatches}</h2>
+                  <p>{text.requiresOfficialVerification}</p>
+                </div>
+                <Scale size={22} />
+              </div>
+              <div className="jurisdiction-summary">
+                <p><b>{text.selectedProject}</b><span>{selectedProject ? firstText(selectedProject, ['name', 'project_name', 'title'], text.insufficient) : text.addProjectFirst}</span></p>
+                <p><b>{text.primaryMarket}</b><span>{selectedLabel(COUNTRIES, wizard.targetMarket, locale) || text.missing}</span></p>
+                <p><b>{text.expansionPlan}</b><span>{optionLabel(EXPANSION_OPTIONS, wizard.expansionPlan, text) || text.missing}</span></p>
+              </div>
+              {wizardMissing.length > 0 && (
+                <div className="missing-box">
+                  <strong>{text.missingWizardData}</strong>
+                  <ul>{wizardMissing.map(item => <li key={item}>{item}</li>)}</ul>
+                </div>
+              )}
+              <div className="top-match-list">
+                {jurisdictionResults.slice(0, 3).map(result => (
+                  <div key={result.code}>
+                    <strong>{result.label}</strong>
+                    <span>{text.matchScore}: {percent(result.score, locale)}</span>
+                  </div>
+                ))}
+              </div>
+              <button className="primary-action" type="button" onClick={saveJurisdictionAssessment} disabled={!selectedProject || savingJurisdiction} aria-label={text.saveAssessment}>
+                {savingJurisdiction ? <Loader2 className="spin" size={15} /> : <CheckCircle2 size={15} />} {savingJurisdiction ? text.saving : text.saveAssessment}
+              </button>
+              <span className={`status-badge ${jurisdictionAssessment?.id ? 'ready-for-review' : 'not-ready'}`}>
+                {jurisdictionAssessment?.id ? text.available : text.missing}
+              </span>
+              {jurisdictionMessage && <p className="form-message">{jurisdictionMessage}</p>}
+              <button className="secondary-action" type="button" disabled aria-disabled="true" aria-label={text.addAssessmentToPackage}>{text.addAssessmentToPackage} - {text.comingSoon}</button>
+            </aside>
+          </div>
+
+          <div className="jurisdiction-results">
+            <div className="section-title-row">
+              <h3>{text.topMatches}</h3>
+              <span>{text.notVerifiedYet}</span>
+            </div>
+            <div className="jurisdiction-cards">
+              {jurisdictionResults.map(result => (
+                <article className="jurisdiction-card" key={result.code}>
+                  <div className="jurisdiction-card-head">
+                    <div>
+                      <h4>{result.label}</h4>
+                      <small>{result.region} - {text.notVerifiedYet}</small>
+                    </div>
+                    <strong>{percent(result.score, locale)}</strong>
+                  </div>
+                  <div className="jurisdiction-columns">
+                    <div><b>{text.strengths}</b><ul>{result.strengths.map(item => <li key={item}>{item}</li>)}</ul></div>
+                    <div><b>{text.limitations}</b><ul>{result.limitations.slice(0, 4).map(item => <li key={item}>{item}</li>)}</ul></div>
+                    <div><b>{text.suitableFor}</b><ul>{result.suitableFor.slice(0, 4).map(item => <li key={item}>{item}</li>)}</ul></div>
+                    <div><b>{text.nextSteps}</b><ul>{result.nextSteps.slice(0, 4).map(item => <li key={item}>{item}</li>)}</ul></div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="warm-card comparison-card">
             <div className="card-title">
               <div>
-                <h2>{text.jurisdictionWizard}</h2>
-                <p>{text.jurisdictionIntro}</p>
+                <h2>{text.comparisonMatrix}</h2>
+                <p>{text.basedOnInputsOnly}</p>
               </div>
-              <Globe2 size={22} />
+              <BarChart3 size={22} />
             </div>
+            <div className="matrix-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>{text.primaryMarket}</th>
+                    <th>{text.matchScore}</th>
+                    <th>{text.targetMarketFit}</th>
+                    <th>{text.operationalFit}</th>
+                    <th>{text.fundingFit}</th>
+                    <th>{text.expansionFit}</th>
+                    <th>{text.verificationPenalty}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jurisdictionResults.map(result => (
+                    <tr key={result.code}>
+                      <td>{result.label}</td>
+                      <td>{percent(result.score, locale)}</td>
+                      <td>{text.basedOnInputsOnly}</td>
+                      <td>{text.requiresOfficialVerification}</td>
+                      <td>{text.requiresOfficialVerification}</td>
+                      <td>{optionLabel(EXPANSION_OPTIONS, wizard.expansionPlan, text) || text.missing}</td>
+                      <td>{text.notVerifiedYet}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-            <div className="wizard-form">
-              <SelectField label={text.targetMarket} value={wizard.targetMarket} onChange={value => updateWizard('targetMarket', value)} options={COUNTRIES.map(item => ({ value: item.value, label: item.label[locale] }))} placeholder={text.choose} />
-              <SelectField label={text.businessType} value={wizard.businessType} onChange={value => updateWizard('businessType', value)} options={BUSINESS_TYPES.map(item => ({ value: item.value, label: item.label[locale] }))} placeholder={text.choose} />
-              <SelectField label={text.capitalRange} value={wizard.capitalRange} onChange={value => updateWizard('capitalRange', value)} options={CAPITAL_RANGES.map(item => ({ value: item.value, label: text[item.labelKey] }))} placeholder={text.choose} />
-              <SelectField label={text.customers} value={wizard.customers} onChange={value => updateWizard('customers', value)} options={CUSTOMER_TYPES.map(item => ({ value: item.value, label: text[item.labelKey] }))} placeholder={text.choose} />
-              <SelectField label={text.needsInvestors} value={wizard.needsInvestors} onChange={value => updateWizard('needsInvestors', value)} options={YES_NO.map(item => ({ value: item.value, label: text[item.labelKey] }))} placeholder={text.choose} />
-              <SelectField label={text.gccExpansion} value={wizard.gccExpansion} onChange={value => updateWizard('gccExpansion', value)} options={YES_NO.map(item => ({ value: item.value, label: text[item.labelKey] }))} placeholder={text.choose} />
-            </div>
-          </article>
-
-          <aside className="warm-card wizard-output">
-            <div className="card-title">
-              <div>
-                <h2>{text.comparisonChecklist}</h2>
-                <p>{text.jurisdictionDisclaimer}</p>
+          <div className="hub-grid two">
+            <article className="warm-card">
+              <div className="card-title">
+                <div>
+                  <h2>{text.officialVerificationRequired}</h2>
+                  <p>{text.requiresOfficialVerification}</p>
+                </div>
+                <AlertTriangle size={22} />
               </div>
-              <Scale size={22} />
-            </div>
-            <span className="status-badge needs-improvement">{text.needsReviewStatus}</span>
-            <div className="jurisdiction-summary">
-              <p><b>{text.targetMarket}</b><span>{selectedLabel(COUNTRIES, wizard.targetMarket, locale) || text.missing}</span></p>
-              <p><b>{text.businessType}</b><span>{selectedLabel(BUSINESS_TYPES, wizard.businessType, locale) || text.missing}</span></p>
-            </div>
-            <ul className="plain-list">
-              <li>{text.officialRequirements}</li>
-              <li>{text.officialTaxZakat}</li>
-              <li>{text.bankingDocs}</li>
-              <li>{text.investorRules}</li>
-            </ul>
-            {wizardMissing.length > 0 && (
-              <div className="missing-box">
-                <strong>{text.missingWizardData}</strong>
-                <ul>
-                  {wizardMissing.map(field => <li key={field}>{text[field]}</li>)}
-                </ul>
+              <ul className="plain-list">
+                {OFFICIAL_VERIFICATION_KEYS.map(key => <li key={key}>{text[key]}</li>)}
+              </ul>
+            </article>
+            <article className="warm-card">
+              <div className="card-title">
+                <div>
+                  <h2>{text.legalDisclaimer}</h2>
+                  <p>{text.jurisdictionDisclaimerFull}</p>
+                </div>
+                <ShieldCheck size={22} />
               </div>
-            )}
-            <p className="trusted-note">{text.trustedSourceNeeded}</p>
-          </aside>
+              <p className="trusted-note">{text.saveBeforeSharing}</p>
+            </article>
+          </div>
         </section>
 
         <section className="strategic-documents-module" id="strategic-documents">
@@ -2171,6 +2896,7 @@ const styles = `
   .planner-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.planner-grid .field:last-child{grid-column:1 / -1}.funds-table{display:grid;gap:9px;margin-top:14px}.fund-row{display:grid;grid-template-columns:minmax(120px,.75fr) repeat(2,minmax(0,1fr));gap:9px;align-items:end;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:10px;min-width:0}.fund-row strong{color:#3D2914;line-height:1.35}.fund-row label{display:grid;gap:5px;min-width:0}.fund-row label span{font-size:11px;color:#7A5A3C;font-weight:950}.fund-row input{width:100%;min-width:0;border:1px solid rgba(186,117,23,.18);border-radius:12px;background:#FFFDF8;min-height:38px;padding:0 10px;font:900 12px Tajawal,Arial,sans-serif;outline:none}.fund-row input:focus{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.12)}
   .planner-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.planner-totals p{margin:0;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:12px}.planner-totals span{display:block;color:#7A5A3C;font-size:12px;font-weight:950}.planner-totals strong{display:block;margin-top:5px;color:#2B1A0F;overflow-wrap:anywhere}.planner-warning{display:flex;align-items:center;gap:7px;margin-top:10px;border:1px solid rgba(154,94,13,.18);background:#FFF4DE;color:#7A4B09;border-radius:14px;padding:10px 12px;font-size:12px;font-weight:950}.field.wide{margin-top:12px}.save-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}.save-row button,.package-actions button{border:0;border-radius:14px;background:linear-gradient(135deg,#BA7517,#EF9F27);color:#211207;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 13px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}.save-row button:disabled,.package-actions button:disabled{opacity:.62;cursor:not-allowed}.form-message{margin:10px 0 0;color:#7A5A3C;font-weight:900}
   .funding-side{position:sticky;top:18px}.warning-list{margin:0;padding-inline-start:18px;color:#791F1F;line-height:1.8;font-weight:900}.missing-box a{color:#854F0B;font-weight:950;text-decoration:none}.package-actions{display:grid;gap:9px;margin-top:14px}.package-actions a{min-height:42px;border-radius:14px;border:1px solid rgba(186,117,23,.14);background:#FFF8EA;color:#3D2914;text-decoration:none;display:flex;align-items:center;justify-content:center;font-weight:950}.funding-empty{background:#FFFDF8;border:1px dashed rgba(186,117,23,.24);border-radius:22px;padding:28px;display:grid;place-items:center;text-align:center;color:#7A5A3C;gap:8px}.funding-empty svg{color:#BA7517}
+  .jurisdiction-module{display:grid;gap:14px;min-width:0}.jurisdiction-header{background:linear-gradient(135deg,#1A0F05,#2B1A0F 58%,#8A5514 145%);color:#FFFDF8;border-radius:24px;padding:22px;display:flex;justify-content:space-between;gap:16px;align-items:center;min-width:0;overflow:hidden;box-shadow:0 18px 48px rgba(43,26,15,.16)}.jurisdiction-header h2{margin:12px 0 8px;font-size:clamp(26px,4vw,40px);font-weight:950}.jurisdiction-header p{margin:0;color:rgba(255,253,248,.74);line-height:1.7;font-weight:850}.jurisdiction-stepper{display:flex;gap:8px;overflow-x:auto;padding:2px 1px 8px;scrollbar-width:thin}.jurisdiction-stepper button{flex:0 0 auto;min-height:42px;border-radius:999px;border:1px solid rgba(186,117,23,.18);background:#FFFDF8;color:#5B4332;padding:0 12px;display:flex;align-items:center;gap:8px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}.jurisdiction-stepper button span{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#FAEEDA;color:#854F0B}.jurisdiction-stepper button.active{background:#3D2914;color:#FAC775}.jurisdiction-stepper button.active span{background:#FAC775;color:#2B1A0F}.jurisdiction-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(310px,.5fr);gap:16px;align-items:start;min-width:0}.choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-width:0}.choice-grid.wide{grid-column:1 / -1}.choice-pill{border:1px solid rgba(186,117,23,.14);background:#FFF8EA;border-radius:15px;padding:11px;display:flex;align-items:center;gap:9px;color:#3D2914;font-weight:950;min-width:0}.choice-pill input{accent-color:#BA7517}.choice-pill span{min-width:0;overflow-wrap:anywhere}.wizard-controls{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.wizard-controls button,.primary-action,.secondary-action{border:0;border-radius:14px;min-height:42px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}.wizard-controls button,.primary-action{background:linear-gradient(135deg,#BA7517,#EF9F27);color:#211207}.wizard-controls button:disabled,.primary-action:disabled,.secondary-action:disabled{opacity:.58;cursor:not-allowed}.secondary-action{width:100%;margin-top:10px;background:#FFF8EA;color:#7A5A3C;border:1px solid rgba(186,117,23,.14)}.top-match-list{display:grid;gap:9px;margin-top:12px}.top-match-list div{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:14px;padding:10px;min-width:0}.top-match-list strong,.top-match-list span{min-width:0;overflow-wrap:anywhere}.primary-action{width:100%;margin-top:12px}.jurisdiction-results{display:grid;gap:12px}.section-title-row{display:flex;justify-content:space-between;gap:12px;align-items:center}.section-title-row h3{margin:0;color:#3D2914;font-size:22px;font-weight:950}.section-title-row span{border-radius:999px;background:#FFF4DE;color:#9A5E0D;padding:7px 10px;font-size:12px;font-weight:950}.jurisdiction-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.jurisdiction-card{background:#FFFDF8;border:1px solid rgba(186,117,23,.14);border-radius:20px;padding:15px;box-shadow:0 14px 38px rgba(43,26,15,.06);min-width:0}.jurisdiction-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.jurisdiction-card-head h4{margin:0;color:#3D2914;font-size:19px;font-weight:950}.jurisdiction-card-head small{display:block;margin-top:4px;color:#7A5A3C;font-weight:900}.jurisdiction-card-head strong{font-size:22px;color:#BA7517}.jurisdiction-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.jurisdiction-columns div{border:1px solid rgba(186,117,23,.1);background:#FFF8EA;border-radius:14px;padding:10px;min-width:0}.jurisdiction-columns b{display:block;color:#854F0B;margin-bottom:6px}.jurisdiction-columns ul{margin:0;padding-inline-start:18px;color:#4F3728;line-height:1.7;font-weight:850;overflow-wrap:anywhere}.comparison-card{min-width:0}.matrix-scroll{overflow-x:auto;max-width:100%;border-radius:15px;border:1px solid rgba(186,117,23,.12)}.matrix-scroll table{width:100%;min-width:760px;border-collapse:collapse;background:#FFF8EA}.matrix-scroll th,.matrix-scroll td{text-align:start;border-bottom:1px solid rgba(186,117,23,.1);padding:11px;color:#3D2914;font-size:12px;line-height:1.5}.matrix-scroll th{color:#854F0B;background:#FAEEDA;font-weight:950}
   .strategic-documents-module{display:grid;gap:14px;min-width:0}.documents-header{background:linear-gradient(135deg,#2B1A0F,#3D2914 62%,#8A5514 140%);color:#FFFDF8;border-radius:24px;padding:22px;display:flex;justify-content:space-between;gap:16px;align-items:center;min-width:0;overflow:hidden;box-shadow:0 18px 48px rgba(43,26,15,.14)}.documents-header h2{margin:12px 0 8px;font-size:clamp(26px,4vw,40px);font-weight:950}.documents-header p{margin:0;color:rgba(255,253,248,.72);line-height:1.7;font-weight:850}.documents-header .score-pill{background:rgba(255,253,248,.1);border-color:rgba(250,199,117,.2)}.documents-header .score-pill strong{color:#FFFDF8}.documents-header .score-pill span{color:#FAC775}.documents-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.35fr);gap:16px;align-items:start;min-width:0}.documents-main{min-width:0}.document-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-width:0}.strategic-doc-card{border:1px solid rgba(186,117,23,.13);background:#FFF8EA;border-radius:18px;padding:14px;display:grid;gap:11px;min-width:0}.doc-card-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start}.doc-card-head svg{color:#BA7517}.doc-card-head h3{margin:0 0 7px;color:#3D2914;font-size:17px;font-weight:950;line-height:1.35;overflow-wrap:anywhere}.strategic-doc-card p{margin:0;color:#6D5647;font-size:12px;font-weight:850;line-height:1.65}.doc-missing{border:1px dashed rgba(186,117,23,.24);background:#FFFDF8;border-radius:14px;padding:10px;display:grid;gap:8px;min-width:0}.doc-missing strong{color:#854F0B;font-size:12px}.doc-missing div{display:flex;flex-wrap:wrap;gap:7px}.doc-missing a,.inline-link{border-radius:999px;background:#FAEEDA;color:#854F0B;text-decoration:none;font-size:11px;font-weight:950;padding:7px 9px}.doc-actions{display:flex;gap:8px;flex-wrap:wrap}.doc-actions a,.doc-actions button,.draft-actions button{border:0;border-radius:13px;min-height:38px;padding:0 11px;display:inline-flex;align-items:center;justify-content:center;background:#FFFDF8;color:#3D2914;border:1px solid rgba(186,117,23,.14);font:950 12px Tajawal,Arial,sans-serif;text-decoration:none;cursor:pointer}.doc-actions button:not(:disabled),.draft-actions button:not(:disabled){background:linear-gradient(135deg,#BA7517,#EF9F27);color:#211207;border:0}.doc-actions button:disabled,.draft-actions button:disabled{opacity:.62;cursor:not-allowed}.documents-side{position:sticky;top:18px}.dd-list{display:grid;gap:9px}.dd-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:9px;align-items:center;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:14px;padding:10px;min-width:0}.dd-row strong{font-size:13px;color:#3D2914;overflow-wrap:anywhere}.dd-row small{font-size:11px;font-weight:950;color:#7A5A3C}.document-vault-summary{display:grid;gap:10px;margin-top:14px}.document-vault-summary p{margin:0;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:12px}.document-vault-summary span{display:block;color:#7A5A3C;font-size:12px;font-weight:950}.document-vault-summary strong{display:block;color:#2B1A0F;font-size:19px}.category-list{display:grid;gap:7px;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:12px}.category-list strong{font-size:13px}.category-list span{border-bottom:1px solid rgba(186,117,23,.08);padding-bottom:6px}.draft-preview{scroll-margin-top:24px}.draft-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.draft-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.draft-sections section{border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:17px;padding:14px;min-width:0}.draft-sections h3{margin:0 0 8px;color:#3D2914;font-size:16px;font-weight:950}.draft-sections ul{margin:0;padding-inline-start:18px;color:#4F3728;line-height:1.75;font-weight:850;overflow-wrap:anywhere}
   .hub-grid{display:grid;gap:16px;min-width:0}.hub-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.wizard-layout{grid-template-columns:minmax(0,1.25fr) minmax(320px,.75fr);align-items:start}.warm-card{padding:18px}.card-title{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}.card-title svg{color:#BA7517;flex:0 0 auto}
   .check-list,.document-grid,.module-links{display:grid;gap:10px}.check-row,.document-link{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:11px;text-decoration:none;color:#2B1A0F;min-width:0}.check-row strong,.document-link span{min-width:0;font-weight:950;overflow-wrap:anywhere}.check-row small,.document-link small{color:#7A5A3C;font-size:11px;font-weight:950}.done,.todo{width:28px;height:28px;border-radius:11px;display:grid;place-items:center}.done{background:#EAF3DE;color:#27500A}.todo{background:#FCEBEB;color:#791F1F}.document-link.disabled{opacity:.68;cursor:not-allowed}
@@ -2178,7 +2904,7 @@ const styles = `
   .wizard-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.wizard-output{position:sticky;top:18px}.jurisdiction-summary{display:grid;gap:8px;margin:12px 0}.jurisdiction-summary p{margin:0;display:grid;grid-template-columns:minmax(120px,.42fr) minmax(0,1fr);gap:10px;border-bottom:1px solid rgba(186,117,23,.1);padding-bottom:8px}.jurisdiction-summary b{color:#7A5A3C}.jurisdiction-summary span{font-weight:950;color:#2B1A0F}.plain-list,.missing-box ul{margin:12px 0 0;padding-inline-start:18px;color:#5B4332;line-height:1.8;font-weight:850}.missing-box{margin-top:12px;border:1px dashed rgba(186,117,23,.24);background:#FFF8EA;border-radius:15px;padding:12px}.missing-box strong{color:#854F0B}.trusted-note{margin:12px 0 0;color:#7A5A3C;font-weight:900;line-height:1.7}
   .module-links{grid-template-columns:repeat(2,minmax(0,1fr))}.module-links a{background:#FFF8EA;color:#3D2914;border:1px solid rgba(186,117,23,.14);min-height:46px}.mini-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.mini-metrics p{margin:0;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:12px;min-width:0}.mini-metrics span{display:block;color:#7A5A3C;font-size:12px;font-weight:950}.mini-metrics strong{display:block;margin-top:5px;color:#2B1A0F;overflow-wrap:anywhere}
   a:focus-visible,button:focus-visible,select:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.18)}
-  @media(max-width:1260px){.readiness-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.hub-grid.two,.wizard-layout,.funding-layout,.documents-layout{grid-template-columns:1fr}.wizard-output,.funding-side,.documents-side{position:static}}
-  @media(max-width:1024px){.business-hub-main{width:100%;max-width:100%;margin-inline-start:0;margin-inline-end:0;padding:calc(84px + env(safe-area-inset-top)) 16px 24px}.business-hero{grid-template-columns:1fr}.hero-actions{justify-content:stretch}.hero-actions a,.hero-actions button{flex:1 1 180px}.selector-panel{grid-template-columns:1fr}.funding-header,.documents-header{display:grid}.funding-header .score-pill,.documents-header .score-pill{width:100%}}
-  @media(max-width:720px){.topbar{align-items:flex-start}.business-hero{border-radius:22px}.hero-actions{display:grid}.hero-actions a,.hero-actions button{width:100%}.readiness-head{display:grid}.score-pill{width:100%}.readiness-grid,.wizard-form,.module-links,.mini-metrics,.planner-grid,.planner-totals,.document-card-grid,.draft-sections{grid-template-columns:1fr}.copilot-panel{grid-template-columns:1fr}.check-row,.document-link,.package-item,.dd-row{grid-template-columns:auto minmax(0,1fr)}.check-row small,.document-link small,.package-item small,.dd-row small{grid-column:2}.fund-row{grid-template-columns:1fr}.jurisdiction-summary p{grid-template-columns:1fr}}
+  @media(max-width:1260px){.readiness-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.hub-grid.two,.wizard-layout,.funding-layout,.documents-layout,.jurisdiction-layout{grid-template-columns:1fr}.wizard-output,.funding-side,.documents-side{position:static}}
+  @media(max-width:1024px){.business-hub-main{width:100%;max-width:100%;margin-inline-start:0;margin-inline-end:0;padding:calc(84px + env(safe-area-inset-top)) 16px 24px}.business-hero{grid-template-columns:1fr}.hero-actions{justify-content:stretch}.hero-actions a,.hero-actions button{flex:1 1 180px}.selector-panel{grid-template-columns:1fr}.funding-header,.documents-header,.jurisdiction-header{display:grid}.funding-header .score-pill,.documents-header .score-pill{width:100%}.jurisdiction-header .status-badge{width:max-content}}
+  @media(max-width:720px){.topbar{align-items:flex-start}.business-hero{border-radius:22px}.hero-actions{display:grid}.hero-actions a,.hero-actions button{width:100%}.readiness-head{display:grid}.score-pill{width:100%}.readiness-grid,.wizard-form,.module-links,.mini-metrics,.planner-grid,.planner-totals,.document-card-grid,.draft-sections,.jurisdiction-cards,.jurisdiction-columns,.choice-grid{grid-template-columns:1fr}.copilot-panel{grid-template-columns:1fr}.check-row,.document-link,.package-item,.dd-row{grid-template-columns:auto minmax(0,1fr)}.check-row small,.document-link small,.package-item small,.dd-row small{grid-column:2}.fund-row{grid-template-columns:1fr}.jurisdiction-summary p{grid-template-columns:1fr}.section-title-row,.jurisdiction-card-head{display:grid}.wizard-controls button{flex:1 1 140px}}
 `;
