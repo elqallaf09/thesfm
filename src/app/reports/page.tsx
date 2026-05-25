@@ -45,20 +45,23 @@ function ReportsCenterShortcut() {
         .reports-center-shortcut{
           position:fixed;
           inset-block-end:22px;
-          inset-inline-start:24px;
-          z-index:30;
-          width:min(430px, calc(100vw - 48px));
+          left:max(24px, env(safe-area-inset-left));
+          right:auto;
+          z-index:40;
+          width:min(520px, calc(100vw - 48px));
+          max-width:calc(100vw - 48px);
           display:grid;
-          grid-template-columns:auto 1fr auto;
-          align-items:center;
+          grid-template-columns:auto minmax(0, 1fr);
+          align-items:start;
           gap:12px;
-          padding:12px;
+          padding:14px;
           border-radius:18px;
           border:1px solid rgba(186,117,23,.22);
           background:rgba(255,253,248,.96);
           box-shadow:0 16px 36px rgba(43,26,15,.16);
           color:#2B1A0F;
           backdrop-filter:blur(12px);
+          overflow:visible;
         }
         .shortcut-icon{
           width:42px;
@@ -69,10 +72,31 @@ function ReportsCenterShortcut() {
           color:#FFFDF8;
           background:linear-gradient(135deg,#2B1A0F,#BA7517);
         }
-        .shortcut-text{display:grid;gap:3px;min-width:0}
-        .shortcut-text strong{font-size:.95rem}
-        .shortcut-text span{font-size:.78rem;line-height:1.45;color:#7A5A36}
+        .shortcut-text{
+          display:grid;
+          gap:4px;
+          min-width:0;
+          white-space:normal;
+          overflow:visible;
+        }
+        .shortcut-text strong{
+          font-size:.95rem;
+          line-height:1.35;
+          white-space:normal;
+          overflow-wrap:anywhere;
+        }
+        .shortcut-text span{
+          font-size:.8rem;
+          line-height:1.65;
+          color:#7A5A36;
+          white-space:normal;
+          overflow:visible;
+          overflow-wrap:anywhere;
+          text-overflow:clip;
+        }
         .reports-center-shortcut button{
+          grid-column:2;
+          justify-self:start;
           border:0;
           border-radius:12px;
           padding:10px 12px;
@@ -81,6 +105,7 @@ function ReportsCenterShortcut() {
           font-weight:800;
           cursor:pointer;
           white-space:nowrap;
+          max-width:100%;
         }
         .reports-center-shortcut button:focus-visible{
           outline:3px solid rgba(239,159,39,.38);
@@ -88,9 +113,14 @@ function ReportsCenterShortcut() {
         }
         @media(max-width:720px){
           .reports-center-shortcut{
-            position:static;
+            position:fixed;
+            inset-inline:16px;
+            inset-block-end:16px;
+            left:16px;
+            right:16px;
             width:auto;
-            margin:12px;
+            max-width:none;
+            margin:0;
             grid-template-columns:auto 1fr;
           }
           .reports-center-shortcut button{grid-column:1/-1;width:100%}
