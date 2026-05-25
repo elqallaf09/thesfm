@@ -111,7 +111,8 @@ export default function InvestPage() {
     if (returnBase <= 0) return null;
     return withReturns.reduce((sum, item) => sum + (item.expectedAnnualReturn ?? 0) * item.currentValue, 0) / returnBase;
   }, [items]);
-  const analysisReturn = weightedReturn ?? 6;
+  const analysisReturn = weightedReturn ?? 0;
+  const canShowReturnProjection = weightedReturn !== null;
   const typeDistribution = useMemo(() => TYPES.map((type, index) => ({
     name: typeLabel(type),
     value: items.filter(item => item.type === type).reduce((sum, item) => sum + item.currentValue, 0),
@@ -168,11 +169,13 @@ export default function InvestPage() {
         .replace('{total}', money(fiveYearMonthlyTotal)));
     }
 
-    const futureFiveYears = projections.find(item => item.years === 5);
+    const futureFiveYears = canShowReturnProjection ? projections.find(item => item.years === 5) : null;
     if (futureFiveYears) {
       next.push(t('invest_insights_projection5y')
         .replace('{amount}', money(Math.round(futureFiveYears.value)))
         .replace('{rate}', analysisReturn.toFixed(1)));
+    } else {
+      next.push(t('invest_summary_defaultReturn'));
     }
 
     if (uniqueCategories >= 4) {
@@ -182,7 +185,7 @@ export default function InvestPage() {
     }
 
     return next;
-  }, [analysisReturn, items, money, projections, t, totalMonthly, totalValue, typeLabel, uniqueCategories]);
+  }, [analysisReturn, canShowReturnProjection, items, money, projections, t, totalMonthly, totalValue, typeLabel, uniqueCategories]);
 
   function showToast(message: string) {
     setToast(message);
@@ -287,11 +290,11 @@ export default function InvestPage() {
         ) : (
           <>
             <section className="invest-summary-grid">
-              <SummaryCard icon={<WalletCards size={20} />} title={t('invest_summary_portfolioValue')} value={money(totalValue)} subtitle={t('actualData')} />
+              <SummaryCard icon={<WalletCards size={20} />} title={t('invest_summary_portfolioValue')} value={money(totalValue)} subtitle={t('recordedData')} />
               <SummaryCard icon={<TrendingUp size={20} />} title={t('invest_summary_monthlyContribution')} value={money(totalMonthly)} subtitle={t('invest_projections_totalContributions')} />
               <SummaryCard icon={<ShieldAlert size={20} />} title={t('invest_summary_riskLevel')} value={riskLabel(overallRisk)} subtitle={t('invest_summary_notFinancialAdvice')} />
               <SummaryCard icon={<Layers3 size={20} />} title={t('invest_summary_diversification')} value={t('invest_summary_categoriesCount').replace('{count}', String(uniqueCategories))} subtitle={uniqueCategories >= 4 ? t('invest_insights_wellDiversified').replace('{count}', String(uniqueCategories)) : t('invest_insights_diversifyMore').replace('{count}', String(uniqueCategories))} />
-              <SummaryCard icon={<LineChartIcon size={20} />} title={t('invest_summary_expectedReturn')} value={weightedReturn === null ? '6.0%' : pct(weightedReturn)} subtitle={weightedReturn === null ? t('invest_summary_defaultReturn') : t('invest_summary_notFinancialAdvice')} />
+              <SummaryCard icon={<LineChartIcon size={20} />} title={t('invest_summary_expectedReturn')} value={weightedReturn === null ? t('insufficientData') : pct(weightedReturn)} subtitle={weightedReturn === null ? t('invest_summary_defaultReturn') : t('invest_summary_notFinancialAdvice')} />
             </section>
 
             <section className="invest-chart-grid">
@@ -315,16 +318,22 @@ export default function InvestPage() {
                   </BarChart>
                 </ResponsiveContainer>
               </ChartCard>
-              <ChartCard icon={<LineChartIcon size={18} />} title={t('invest_charts_projection12')}>
-                <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={projectionLineData}>
-                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#8A7060' }} axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={value => String(Math.round(Number(value)))} tick={{ fontSize: 11, fill: '#8A7060' }} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={(value: number) => money(Number(value))} />
-                    <Line type="monotone" dataKey="value" stroke="#9A6C3C" strokeWidth={3} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartCard>
+              {canShowReturnProjection ? (
+                <ChartCard icon={<LineChartIcon size={18} />} title={t('invest_charts_projection12')}>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <LineChart data={projectionLineData}>
+                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#8A7060' }} axisLine={false} tickLine={false} />
+                      <YAxis tickFormatter={value => String(Math.round(Number(value)))} tick={{ fontSize: 11, fill: '#8A7060' }} axisLine={false} tickLine={false} />
+                      <Tooltip formatter={(value: number) => money(Number(value))} />
+                      <Line type="monotone" dataKey="value" stroke="#9A6C3C" strokeWidth={3} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartCard>
+              ) : (
+                <ChartCard icon={<LineChartIcon size={18} />} title={t('invest_charts_projection12')}>
+                  <div className="invest-empty-chart">{t('invest_summary_defaultReturn')}</div>
+                </ChartCard>
+              )}
             </section>
 
             <section className="invest-analysis-grid" ref={insightsRef}>
@@ -347,17 +356,23 @@ export default function InvestPage() {
                   <LineChartIcon size={19} />
                   <h2>{t('invest_projections_title')}</h2>
                 </div>
-                <div className="invest-projection-grid">
-                  {projections.map(item => (
-                    <div key={item.years}>
-                      <span>{t(`invest_projections_years${item.years}`)}</span>
-                      <strong>{money(Math.round(item.value))}</strong>
-                      <small>{t('invest_projections_totalContributions')}: {money(item.contribTotal)}</small>
-                      <small>{t('invest_projections_expectedGain')}: {money(Math.round(item.gain))}</small>
+                {canShowReturnProjection ? (
+                  <>
+                    <div className="invest-projection-grid">
+                      {projections.map(item => (
+                        <div key={item.years}>
+                          <span>{t(`invest_projections_years${item.years}`)}</span>
+                          <strong>{money(Math.round(item.value))}</strong>
+                          <small>{t('invest_projections_totalContributions')}: {money(item.contribTotal)}</small>
+                          <small>{t('invest_projections_expectedGain')}: {money(Math.round(item.gain))}</small>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <p className="invest-disclaimer">{t('invest_projections_disclaimer')}</p>
+                    <p className="invest-disclaimer">{t('invest_projections_disclaimer')}</p>
+                  </>
+                ) : (
+                  <div className="invest-empty-chart">{t('invest_summary_defaultReturn')}</div>
+                )}
               </div>
             </section>
 
@@ -430,7 +445,7 @@ export default function InvestPage() {
         .invest-panel,.invest-empty{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:22px;box-shadow:0 4px 22px rgba(90,67,51,.06)}
         .invest-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px}.invest-summary-card{min-height:132px;padding:16px;display:grid;gap:8px}.invest-summary-card .icon{width:38px;height:38px;border-radius:13px;background:rgba(216,174,99,.12);color:#D8AE63;display:grid;place-items:center}.invest-summary-card span{font-size:11px;font-weight:900;color:#9A6C3C}.invest-summary-card strong{font-size:18px;color:#111}.invest-summary-card p{margin:0;color:#7C6A5D;font-size:11px;font-weight:800;line-height:1.6}
         .invest-chart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}.invest-chart-card{padding:17px;min-height:330px}.invest-section-head{display:flex;align-items:center;gap:9px;margin-bottom:14px;color:#9A6C3C}.invest-section-head h2{margin:0;color:#111;font-size:16px;font-weight:900}
-        .invest-analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}.invest-insights,.invest-projections{padding:18px}.invest-insight-list{display:grid;gap:10px}.invest-insight-item{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:15px;padding:12px}.invest-insight-item span{width:30px;height:30px;border-radius:11px;background:linear-gradient(135deg,#D8AE63,#9A6C3C);display:grid;place-items:center;color:#111;font-size:12px;font-weight:900}.invest-insight-item p{margin:0;color:#5B4332;font-size:13px;font-weight:800;line-height:1.7}
+        .invest-analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}.invest-insights,.invest-projections{padding:18px}.invest-insight-list{display:grid;gap:10px}.invest-insight-item{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:15px;padding:12px}.invest-insight-item span{width:30px;height:30px;border-radius:11px;background:linear-gradient(135deg,#D8AE63,#9A6C3C);display:grid;place-items:center;color:#111;font-size:12px;font-weight:900}.invest-insight-item p{margin:0;color:#5B4332;font-size:13px;font-weight:800;line-height:1.7}.invest-empty-chart{min-height:220px;display:grid;place-items:center;text-align:center;color:#9A6C3C;font-size:13px;font-weight:900;line-height:1.7;background:#F7F3EA;border:1px dashed rgba(216,174,99,.24);border-radius:18px;padding:18px}
         .invest-projection-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.invest-projection-grid div{background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:15px;padding:12px;display:grid;gap:6px}.invest-projection-grid span{color:#9A6C3C;font-size:11px;font-weight:900}.invest-projection-grid strong{font-size:15px;color:#111}.invest-projection-grid small{font-size:11px;color:#7C6A5D;font-weight:800}.invest-disclaimer{margin:12px 0 0;color:#9A6C3C;font-size:11px;font-weight:900}
         .invest-empty{min-height:280px;padding:42px 20px;text-align:center;display:grid;place-items:center;align-content:center;gap:12px}.invest-empty-icon{width:68px;height:68px;border-radius:22px;background:rgba(216,174,99,.12);color:#D8AE63;display:grid;place-items:center}.invest-empty h3{margin:0;font-size:20px}.invest-empty p{max-width:520px;margin:0;color:#7C6A5D;line-height:1.8;font-size:14px}
         .invest-controls{display:grid;grid-template-columns:1fr 220px 220px;gap:10px;padding:16px;border-bottom:1px solid rgba(216,174,99,.1)}.invest-controls input,.invest-controls select,.invest-field input,.invest-field select,.invest-field textarea{height:48px;border:1.5px solid rgba(216,174,99,.22);border-radius:14px;background:#F7F3EA;color:#111;padding:0 13px;font:800 13px Tajawal,Arial,sans-serif;outline:0}.invest-controls input:focus,.invest-controls select:focus,.invest-field input:focus,.invest-field select:focus,.invest-field textarea:focus{border-color:#D8AE63;background:#FFFDFC;box-shadow:0 0 0 4px rgba(216,174,99,.12)}

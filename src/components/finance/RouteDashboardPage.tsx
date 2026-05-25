@@ -2548,6 +2548,11 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
 function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, lang: string, currency = 'KWD'): SectionCard[] {
   const isAr = lang === 'ar';
+  const insufficient = pick({
+    ar: 'بيانات غير كافية',
+    en: 'Insufficient data',
+    fr: 'Données insuffisantes',
+  }, lang);
   const common = {
     income: money(data.totalIncome, lang, currency),
     expenses: money(data.totalExpenses, lang, currency),
@@ -2569,13 +2574,13 @@ function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, lan
   }
   if (kind === 'income') return [
     { title: { ar: 'إجمالي الدخل', en: 'Total income' }, body: { ar: 'راتب، دخل جانبي، وأعمال.', en: 'Salary, side income, and business.' }, value: common.income, tone: '#22C55E' },
-    { title: { ar: 'مصادر الدخل', en: 'Income sources' }, body: { ar: 'مصادر شهرية مسجلة أو بيانات نموذجية.', en: 'Recorded monthly sources or safe fallback data.' }, value: String(data.income.length), tone: '#D8AE63' },
+    { title: { ar: 'مصادر الدخل', en: 'Income sources' }, body: { ar: 'مصادر شهرية مسجلة فقط.', en: 'Recorded monthly sources only.', fr: 'Sources mensuelles enregistrées uniquement.' }, value: String(data.income.length), tone: '#D8AE63' },
     { title: { ar: 'الصافي المتوقع', en: 'Expected net' }, body: { ar: 'الدخل ناقص المصروفات الحالية.', en: 'Income minus current expenses.' }, value: common.balance, tone: '#111111' },
   ];
   if (kind === 'invest') return [
     { title: { ar: 'قيمة المحفظة', en: 'Portfolio value' }, body: { ar: 'إجمالي الاستثمارات المسجلة.', en: 'Total recorded investments.' }, value: common.investments, tone: '#3B82F6' },
-    { title: { ar: 'المساهمة الشهرية', en: 'Monthly contribution' }, body: { ar: 'تقدير 15% من الدخل الحالي.', en: 'Estimated as 15% of current income.' }, value: money(data.totalIncome * 0.15, lang, currency), tone: '#22C55E' },
-    { title: { ar: 'مستوى المخاطر', en: 'Risk level' }, body: { ar: 'متوازن بناءً على التوزيع الحالي.', en: 'Balanced based on current allocation.' }, value: pick({ ar: 'متوسط', en: 'Medium', fr: 'Moyen' }, lang), tone: '#D8AE63' },
+    { title: { ar: 'المساهمة الشهرية', en: 'Monthly contribution', fr: 'Contribution mensuelle' }, body: { ar: 'أضف مساهمات شهرية فعلية لعرض هذا المؤشر.', en: 'Add real monthly contributions to show this metric.', fr: 'Ajoutez des contributions mensuelles réelles pour afficher cet indicateur.' }, value: insufficient, tone: '#22C55E' },
+    { title: { ar: 'مستوى المخاطر', en: 'Risk level', fr: 'Niveau de risque' }, body: { ar: 'أضف توزيع الاستثمار لعرض مستوى المخاطر.', en: 'Add investment allocation to show risk level.', fr: 'Ajoutez la répartition des investissements pour afficher le risque.' }, value: insufficient, tone: '#D8AE63' },
   ];
   if (kind === 'savings') return [
     { title: { ar: 'إجمالي المدخرات', en: 'Total savings' }, body: { ar: 'مجموع عمليات الادخار المسجلة.', en: 'Total recorded savings entries.' }, value: common.savings, tone: '#22C55E' },
@@ -2593,9 +2598,9 @@ function buildCards(kind: PageKind, data: ReturnType<typeof buildDataShape>, lan
     { title: { ar: 'تقرير الاستثمار', en: 'Investment report' }, body: { ar: 'إجمالي قيمة الاستثمارات.', en: 'Total investment value.' }, value: common.investments, tone: '#3B82F6' },
   ];
   return [
-    { title: { ar: 'الصحة المالية', en: 'Financial health' }, body: { ar: 'تقدير سريع من الدخل والمصروفات.', en: 'Quick estimate from income and expenses.' }, value: `${progress(data.balance, data.totalIncome)}%`, tone: '#06B6D4' },
+    { title: { ar: 'الصحة المالية', en: 'Financial health', fr: 'Santé financière' }, body: { ar: 'تحتاج إلى دخل ومصروفات فعلية لعرض النسبة.', en: 'Real income and expenses are required to show the score.', fr: 'Des revenus et dépenses réels sont requis pour afficher le score.' }, value: data.totalIncome > 0 && data.expenses.length > 0 ? `${progress(data.balance, data.totalIncome)}%` : insufficient, tone: '#06B6D4' },
     { title: { ar: 'فرصة ادخار', en: 'Savings opportunity' }, body: { ar: 'الفرق المتاح بعد المصروفات.', en: 'Potential surplus after expenses.' }, value: money(data.balance, lang, currency), tone: '#22C55E' },
-    { title: { ar: 'تنبيه ذكي', en: 'Smart alert' }, body: { ar: 'الصفحة جاهزة للرؤى والإجراءات.', en: 'Page is ready for insights and actions.' }, value: pick({ ar: 'نشط', en: 'Active', fr: 'Actif' }, lang), tone: '#D8AE63' },
+    { title: { ar: 'تنبيه ذكي', en: 'Smart alert', fr: 'Alerte intelligente' }, body: { ar: 'أضف بيانات مالية كافية لعرض التنبيهات.', en: 'Add enough financial data to show alerts.', fr: 'Ajoutez suffisamment de données financières pour afficher les alertes.' }, value: insufficient, tone: '#D8AE63' },
   ];
 }
 

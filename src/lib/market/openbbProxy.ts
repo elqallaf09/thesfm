@@ -1,8 +1,4 @@
 import {
-  compareMarketAssets,
-  fetchMarketAnalysis,
-  getFallbackMockData,
-  searchMarketAssets,
   normalizeAssetType,
   validateSymbol,
   type MarketAnalysis,
@@ -117,45 +113,78 @@ function searchLocalSymbolDirectory(query: string, assetType?: MarketAssetType) 
     }));
 }
 
-function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType, fallback = false): MarketAnalysis {
+function average(values: number[]) {
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+}
+
+function standardDeviation(values: number[]) {
+  if (values.length < 2) return 0;
+  const avg = average(values);
+  const variance = average(values.map(value => (value - avg) ** 2));
+  return Math.sqrt(variance);
+}
+
+function calculateRsi(closes: number[]) {
+  if (closes.length < 2) return 50;
+  const changes = closes.slice(1).map((close, index) => close - closes[index]);
+  const gains = changes.filter(change => change > 0);
+  const losses = changes.filter(change => change < 0).map(Math.abs);
+  const avgGain = average(gains);
+  const avgLoss = average(losses);
+  if (avgLoss === 0) return avgGain > 0 ? 100 : 50;
+  const rs = avgGain / avgLoss;
+  return Math.max(0, Math.min(100, 100 - (100 / (1 + rs))));
+}
+
+function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType): MarketAnalysis | null {
   const data = raw && typeof raw === 'object' ? raw as Record<string, any> : {};
   const history = Array.isArray(data.history) ? data.history : [];
   const closes = history
     .map(point => Number(point?.close))
     .filter(value => Number.isFinite(value));
   const latestPrice = Number(data.latestPrice ?? closes.at(-1) ?? 0);
-  const support = closes.length ? Math.min(...closes) : latestPrice * 0.95;
-  const resistance = closes.length ? Math.max(...closes) : latestPrice * 1.05;
-  const mockFallback = getFallbackMockData(symbol, assetType);
+  if (!Number.isFinite(latestPrice) || latestPrice <= 0 || closes.length === 0) return null;
+
+  const firstClose = closes[0] || latestPrice;
+  const derivedChange = firstClose ? ((latestPrice - firstClose) / firstClose) * 100 : 0;
+  const changePercent = Number.isFinite(Number(data.changePercent)) ? Number(data.changePercent) : derivedChange;
+  const volatility = Number.isFinite(Number(data.indicators?.volatility))
+    ? Number(data.indicators.volatility)
+    : latestPrice ? (standardDeviation(closes) / latestPrice) * 100 : 0;
+  const trend = ['bullish', 'neutral', 'bearish'].includes(String(data.trend))
+    ? data.trend
+    : changePercent > 0.5 ? 'bullish' : changePercent < -0.5 ? 'bearish' : 'neutral';
+  const riskLevel = ['low', 'medium', 'high'].includes(String(data.riskLevel))
+    ? data.riskLevel
+    : volatility >= 30 ? 'high' : volatility >= 12 ? 'medium' : 'low';
 
   return {
-    ...mockFallback,
     success: true,
-    source: String(data.source ?? (fallback ? 'mock' : 'openbb')),
-    fallback: Boolean(data.fallback ?? fallback),
+    source: 'openbb',
+    fallback: false,
     symbol: String(data.symbol ?? symbol).toUpperCase(),
     providerSymbol: data.providerSymbol ? String(data.providerSymbol) : undefined,
     name: String(data.name ?? `${symbol} Market Asset`),
     assetType,
-    latestPrice: Number.isFinite(latestPrice) ? latestPrice : mockFallback.latestPrice,
-    changePercent: Number(data.changePercent ?? mockFallback.changePercent),
-    trend: ['bullish', 'neutral', 'bearish'].includes(String(data.trend)) ? data.trend : mockFallback.trend,
-    riskLevel: ['low', 'medium', 'high'].includes(String(data.riskLevel)) ? data.riskLevel : mockFallback.riskLevel,
+    latestPrice,
+    changePercent,
+    trend,
+    riskLevel,
     indicators: {
-      rsi: Number(data.indicators?.rsi ?? mockFallback.indicators.rsi),
-      sma20: Number(data.indicators?.sma20 ?? mockFallback.indicators.sma20),
-      sma50: Number(data.indicators?.sma50 ?? mockFallback.indicators.sma50),
-      volatility: Number(data.indicators?.volatility ?? mockFallback.indicators.volatility),
+      rsi: Number.isFinite(Number(data.indicators?.rsi)) ? Number(data.indicators.rsi) : Number(calculateRsi(closes).toFixed(1)),
+      sma20: Number.isFinite(Number(data.indicators?.sma20)) ? Number(data.indicators.sma20) : Number(average(closes.slice(-20)).toFixed(2)),
+      sma50: Number.isFinite(Number(data.indicators?.sma50)) ? Number(data.indicators.sma50) : Number(average(closes.slice(-50)).toFixed(2)),
+      volatility: Number(volatility.toFixed(1)),
     },
     levels: {
-      support: Number.isFinite(support) ? support : mockFallback.levels.support,
-      resistance: Number.isFinite(resistance) ? resistance : mockFallback.levels.resistance,
+      support: Math.min(...closes),
+      resistance: Math.max(...closes),
     },
     history: history.length ? history.map((point: any) => ({
       date: String(point.date ?? ''),
       close: Number(point.close ?? 0),
-    })).filter(point => point.date && Number.isFinite(point.close)) : mockFallback.history,
-    summary: String(data.summary ?? mockFallback.summary),
+    })).filter(point => point.date && Number.isFinite(point.close)) : [],
+    summary: String(data.summary ?? 'Market data loaded from the configured provider. Review the source before making decisions.'),
     fallbackReason: data.fallbackReason ? String(data.fallbackReason) : undefined,
   };
 }
@@ -183,6 +212,15 @@ export async function proxyAnalyze(
 
   if (result.configured && result.available && result.data?.success) {
     const enriched = enrichAnalysis(result.data, displaySymbol, assetType);
+    if (!enriched) {
+      return {
+        success: false,
+        error: 'Real market provider did not return enough data for this asset.',
+        source: 'openbb',
+        fallback: false,
+        openbbService: 'connected',
+      };
+    }
     return {
       ...enriched,
       symbol: displaySymbol,
@@ -192,16 +230,11 @@ export async function proxyAnalyze(
     };
   }
 
-  const fallback = await fetchMarketAnalysis({ symbol: displaySymbol, assetType });
-  if (!fallback.success) return fallback;
   return {
-    ...fallback,
-    symbol: displaySymbol,
-    displaySymbol,
-    providerSymbol,
-    name: friendlyName || fallback.name,
-    source: 'mock',
-    fallback: true,
+    success: false,
+    error: result.configured ? 'Market data provider is unavailable.' : 'Market data provider is not configured.',
+    source: 'openbb',
+    fallback: false,
     openbbService: result.configured ? 'unavailable' : 'not_configured',
   };
 }
@@ -215,16 +248,16 @@ export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown
   const result = await fetchOpenBB('/market/history', new URLSearchParams({ symbol, assetType, period }));
   if (result.configured && result.available && result.data?.success) return result.data;
 
-  const fallback = getFallbackMockData(symbol, assetType);
   return {
-    success: true,
-    source: 'mock',
-    fallback: true,
+    success: false,
+    source: 'openbb',
+    fallback: false,
     openbbService: result.configured ? 'unavailable' : 'not_configured',
     symbol,
     assetType,
     period,
-    history: fallback.history,
+    history: [],
+    error: result.configured ? 'Market data provider is unavailable.' : 'Market data provider is not configured.',
   };
 }
 
@@ -239,18 +272,17 @@ export async function proxyCompare(symbolsInput: unknown, assetTypeInput: unknow
   const result = await fetchOpenBB('/market/compare', new URLSearchParams({ symbols: symbols.join(','), assetType }));
   if (result.configured && result.available && result.data?.success) {
     const results = Array.isArray(result.data.results)
-      ? result.data.results.map((item: unknown, index: number) => enrichAnalysis(item, symbols[index] ?? 'AAPL', assetType))
+      ? result.data.results.map((item: unknown, index: number) => enrichAnalysis(item, symbols[index] ?? 'AAPL', assetType)).filter(Boolean)
       : [];
     return { success: true, source: 'openbb', results };
   }
 
-  const results = await compareMarketAssets(symbols.join(','), assetType);
   return {
     success: true,
-    source: 'mock',
-    fallback: true,
+    source: 'openbb',
+    fallback: false,
     openbbService: result.configured ? 'unavailable' : 'not_configured',
-    results,
+    results: [],
   };
 }
 
@@ -270,19 +302,18 @@ export async function proxySearch(queryInput: unknown, assetTypeInput: unknown) 
       success: true,
       query,
       source: 'cache',
-      fallback: true,
+      fallback: false,
       openbbService: result.configured ? 'unavailable' : 'not_configured',
       results: directoryResults,
     };
   }
 
-  const results = await searchMarketAssets({ query, assetType });
   return {
     success: true,
     query,
-    source: 'fallback',
-    fallback: true,
+    source: 'cache',
+    fallback: false,
     openbbService: result.configured ? 'unavailable' : 'not_configured',
-    results,
+    results: [],
   };
 }

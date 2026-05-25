@@ -115,7 +115,7 @@ function normalizeDate(value: unknown, rawText?: string) {
       return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
   }
-  return new Date().toISOString().slice(0, 10);
+  return undefined;
 }
 
 function normalizeCategory(value: unknown, rawText?: string) {
@@ -199,22 +199,6 @@ function normalizeResult(value: unknown, fileName: string): ReceiptScanResult {
     rawText: rawText || undefined,
     confidenceScore: Number.isFinite(confidenceScore) ? Math.max(0, Math.min(1, confidenceScore)) : totalAmount ? 0.84 : 0.48,
     confidence: Number.isFinite(confidenceScore) ? Math.max(0, Math.min(1, confidenceScore)) : totalAmount ? 0.84 : 0.48,
-  };
-}
-
-function fallbackResult(fileName: string): ReceiptScanResult {
-  return {
-    merchantName: undefined,
-    totalAmount: undefined,
-    currency: 'KWD',
-    taxAmount: undefined,
-    receiptDate: new Date().toISOString().slice(0, 10),
-    date: new Date().toISOString().slice(0, 10),
-    category: normalizeCategory(fileName),
-    paymentMethod: normalizePayment(fileName),
-    items: [],
-    confidenceScore: 0.3,
-    confidence: 0.3,
   };
 }
 
@@ -333,8 +317,10 @@ async function scanFile(file: File, receiptText?: string) {
     console.error('Receipt AI scan failed:', { fileName: file.name, error });
     return null;
   });
-  const result = aiResult ?? fallbackResult(file.name);
-  return { fileName: file.name, success: Boolean(result.totalAmount), data: result, error: result.totalAmount ? undefined : 'Could not read receipt amount clearly' };
+  if (!aiResult?.totalAmount) {
+    return { fileName: file.name, success: false, data: undefined, error: 'Could not read receipt amount clearly' };
+  }
+  return { fileName: file.name, success: true, data: aiResult };
 }
 
 export async function POST(request: NextRequest) {

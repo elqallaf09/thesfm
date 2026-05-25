@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import type { MarketAnalysis, MarketAssetType, MarketResult, MarketSearchItem } from '@/lib/market/marketService';
-import { getFallbackMockData, normalizeAssetType, validateSymbol } from '@/lib/market/marketService';
+import { normalizeAssetType, validateSymbol } from '@/lib/market/marketService';
 
 type MarketServiceState = 'checking' | 'connected' | 'not_configured' | 'unavailable';
 type MarketViewAnalysis = MarketAnalysis & { source?: string; fallback?: boolean; fallbackReason?: string; openbbService?: MarketServiceState };
@@ -93,15 +93,6 @@ function parseNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function makeClientFallback(symbol: string, assetType: MarketAssetType, fallbackReason?: string): MarketViewAnalysis {
-  return {
-    ...getFallbackMockData(symbol, assetType),
-    source: 'mock',
-    fallback: true,
-    fallbackReason,
-  };
-}
-
 function normalizeSearchItem(item: MarketSearchItem): MarketSearchItem {
   return {
     ...item,
@@ -167,7 +158,7 @@ export default function MarketAnalysisPage() {
   const { user, isGuest } = useAuth();
   const [query, setQuery] = useState(DEFAULT_MARKET_ASSET);
   const [assetType, setAssetType] = useState<MarketAssetType | 'all'>(DEFAULT_MARKET_TYPE);
-  const [analysis, setAnalysis] = useState<MarketViewAnalysis>(() => makeClientFallback(DEFAULT_MARKET_ASSET, DEFAULT_MARKET_TYPE, 'initial_load'));
+  const [analysis, setAnalysis] = useState<MarketViewAnalysis | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<SelectedMarketAsset>({ symbol: DEFAULT_MARKET_ASSET, assetType: DEFAULT_MARKET_TYPE, name: 'Apple Inc.', providerSymbol: DEFAULT_MARKET_ASSET });
   const [searchResults, setSearchResults] = useState<MarketSearchItem[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -193,6 +184,7 @@ export default function MarketAnalysisPage() {
     const requestSymbol = validateSymbol(selectedInput?.providerSymbol ?? symbolInput);
     if (!requestSymbol || !displaySymbol) {
       setError(t('market_select_asset_to_start'));
+      setAnalysis(null);
       setLoading(false);
       return;
     }
@@ -239,12 +231,8 @@ export default function MarketAnalysisPage() {
           assetType: normalizedType,
         });
       } else {
-        setAnalysis({
-          ...makeClientFallback(selectedMeta.symbol, normalizedType, 'provider_returned_no_usable_data'),
-          name: selectedMeta.name ?? `${selectedMeta.symbol} Market Asset`,
-          providerSymbol: selectedMeta.providerSymbol,
-        });
-        setNotice(t('market_demo_data_shown'));
+        setAnalysis(null);
+        setError(t('market_analysis_unavailable'));
       }
       setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
@@ -252,13 +240,9 @@ export default function MarketAnalysisPage() {
         setServiceState(result.openbbService);
       }
     } catch (err) {
-      setAnalysis({
-        ...makeClientFallback(displaySymbol, normalizedType, err instanceof Error ? err.message : 'client_request_failed'),
-        name: selectedMeta.name ?? `${displaySymbol} Market Asset`,
-        providerSymbol: selectedMeta.providerSymbol,
-      });
-      setError('');
-      setNotice(t('market_demo_data_shown'));
+      setAnalysis(null);
+      setError(err instanceof Error ? err.message : t('market_analysis_unavailable'));
+      setNotice('');
       setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } finally {
       setLoading(false);
@@ -530,21 +514,15 @@ export default function MarketAnalysisPage() {
   }, [alerts, isGuest, user]);
 
   const selected = analysis;
-  const isFallbackData = Boolean(selected?.fallback || selected?.source === 'mock');
   const serviceNotice = serviceState === 'connected'
-    ? isFallbackData
-      ? t('market_status_demo')
-      : t('market_service_connected')
+    ? t('market_service_connected')
     : serviceState === 'not_configured'
       ? t('market_service_not_configured')
       : serviceState === 'unavailable'
         ? t('market_service_unavailable')
         : t('loading');
-  const heroBadge = isFallbackData ? t('market_badge_demo') : t('market_badge_live');
-  const chartBadge = isFallbackData ? t('market_chart_demo') : t('market_chart_live');
-  const fallbackReasonText = isFallbackData
-    ? t('market_demo_data_shown')
-    : t('market_no_fallback');
+  const heroBadge = t('market_badge_live');
+  const chartBadge = t('market_chart_live');
   const selectedDisplayName = selectedAsset.symbol === selected?.symbol ? selectedAsset.name : undefined;
   const localizedAssetName = selectedDisplayName ?? (selected?.name?.includes('Market Asset') ? t('market_asset_generic').replace('{symbol}', selected.symbol) : selected?.name);
   const localizedSummary = selected?.summary?.includes('Educational market summary only')
@@ -685,7 +663,7 @@ export default function MarketAnalysisPage() {
             <span>{t('market_selected_asset')}</span>
             <strong>{selected?.symbol ?? '--'}</strong>
             <p>{localizedAssetName ?? t('market_no_data')}</p>
-            {selected && <em>{money(selected.latestPrice)} · {isFallbackData ? t('market_badge_demo') : t('market_badge_live')}</em>}
+            {selected && <em>{money(selected.latestPrice)} · {t('market_badge_live')}</em>}
             {selected && <b className={`risk ${selected.riskLevel}`}>{t(`market_risk_${selected.riskLevel}`)}</b>}
           </div>
         </section>
@@ -697,20 +675,15 @@ export default function MarketAnalysisPage() {
 
         <section className="market-status-grid">
           <MarketMetric label={t('market_service_state')} value={serviceState === 'connected' ? t('market_connected_short') : serviceNotice} />
-          <MarketMetric label={t('market_data_source')} value={isFallbackData ? t('market_badge_demo') : t('market_badge_live')} />
+          <MarketMetric label={t('market_data_source')} value={selected ? t('market_badge_live') : t('market_no_data')} />
           <MarketMetric label={t('market_selected_asset')} value={selected?.symbol ?? '--'} />
-          {isFallbackData ? (
-            <MarketMetric label={t('market_fallback_reason')} value={fallbackReasonText} />
-          ) : (
-            <MarketMetric label={t('market_last_updated')} value={lastUpdated || '--'} />
-          )}
+          <MarketMetric label={t('market_last_updated')} value={selected ? lastUpdated || '--' : '--'} />
         </section>
 
         {notice && <div className="market-notice success">{notice}</div>}
-        {isFallbackData && <div className="market-notice demo">{t('market_demo_data_shown')}</div>}
         {error && <div className="market-notice">{error}</div>}
 
-        <section className="market-card-grid" aria-label={t('market_sample_cards')}>
+        <section className="market-card-grid" aria-label={t('market_analysis_cards')}>
           {loading ? (
             <div className="market-empty">{t('loading')}</div>
           ) : cards.length === 0 ? (
@@ -817,7 +790,7 @@ export default function MarketAnalysisPage() {
                 <div className="market-section-head">
                   <BarChart3 size={19} />
                   <div>
-                    <span>{isFallbackData ? t('market_mock_data') : t('market_live_data')}</span>
+                    <span>{t('market_live_data')}</span>
                     <h2>{t('market_technical_indicators')}</h2>
                   </div>
                 </div>
@@ -992,7 +965,7 @@ export default function MarketAnalysisPage() {
                         <span className={asset.changePercent >= 0 ? 'up' : 'down'}>{percent(asset.changePercent)}</span>
                         <span>{asset.indicators.rsi}</span>
                         <span>{t(`market_risk_${asset.riskLevel}`)}</span>
-                        <span>{view.fallback || view.source === 'mock' ? t('market_status_demo') : 'OpenBB'}</span>
+                        <span>{view.fallback ? t('market_no_data') : 'OpenBB'}</span>
                       </div>
                     );
                   })}
@@ -1023,7 +996,7 @@ export default function MarketAnalysisPage() {
         .market-hero h1{margin:0 0 10px;font-size:clamp(30px,5vw,52px);line-height:1.02;font-weight:900}.market-hero p{max-width:760px;margin:0;color:rgba(255,255,255,.72);line-height:1.8;font-size:14px}
         .market-search-panel{margin-top:22px;display:grid;grid-template-columns:minmax(0,1fr) 180px auto;gap:10px;align-items:end}.market-search-panel label{display:grid;gap:7px}.market-search-panel label>span{font-size:12px;font-weight:900;color:#F6C66E}.market-search-field{position:relative}.market-search-panel label>div{height:48px;display:flex;align-items:center;gap:9px;border:1px solid rgba(186,117,23,.35);border-radius:15px;background:rgba(255,253,248,.94);padding:0 13px;color:#1A1A1A;box-shadow:0 8px 22px rgba(18,14,10,.12)}.market-search-panel label>div:focus-within{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.22),0 10px 24px rgba(18,14,10,.14)}.market-search-panel label>div svg{color:#BA7517;flex-shrink:0}.market-search-panel input,.market-search-panel select{width:100%;height:48px;min-width:0;border:1px solid rgba(186,117,23,.35);border-radius:15px;background:#FFFDF8;color:#1A1A1A;padding:0 13px;font:800 13px Tajawal,Arial,sans-serif;outline:0}.market-search-panel input{border:0;background:transparent;padding:0;color:#1A1A1A}.market-search-panel input::placeholder{color:#7A6A55;opacity:1}.market-search-panel select{cursor:pointer;box-shadow:0 8px 22px rgba(18,14,10,.12)}.market-search-panel select:focus{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.22),0 10px 24px rgba(18,14,10,.14)}.market-search-panel select option{color:#111;background:#FFFDF8}.market-search-panel button{height:48px;border:0;border-radius:15px;background:linear-gradient(135deg,#FAC775,#EF9F27);color:#2B1A0F;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;box-shadow:0 10px 24px rgba(18,14,10,.16)}.market-search-panel button svg{color:#2B1A0F}.market-search-panel button:disabled{opacity:.9;cursor:wait;background:linear-gradient(135deg,#F8D28B,#D99424);color:#2B1A0F}.market-search-results{position:absolute;z-index:90;inset-inline:0;top:calc(100% + 12px);max-height:min(320px,48dvh);overflow-y:auto;background:#FFFDF8;color:#1A1A1A;border:1px solid rgba(186,117,23,.25);border-radius:14px;box-shadow:0 22px 60px rgba(18,14,10,.32);padding:10px;display:grid;gap:8px;overscroll-behavior:contain}.market-search-results strong{color:#854F0B;font-size:12px;font-weight:900;padding:5px 7px}.market-search-results p{margin:0;color:#5B4332;font-size:13px;font-weight:900;line-height:1.7;padding:12px}.market-search-results button{height:auto;min-height:58px;width:100%;border:1px solid rgba(186,117,23,.14);background:#FFFDF8;color:#1A1A1A;border-radius:12px;padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:start;box-shadow:none}.market-search-results button:hover,.market-search-results button:focus-visible,.market-search-results button[aria-selected="true"]{background:#FAEEDA;border-color:rgba(186,117,23,.32);outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.18)}.market-search-results button span{display:grid;gap:4px;min-width:0}.market-search-results button b{font-size:15px;color:#1A1A1A;letter-spacing:.02em;direction:ltr;unicode-bidi:isolate}.market-search-results button em{font-style:normal;color:#3D2914;font-size:13px;line-height:1.45;white-space:normal;overflow-wrap:anywhere}.market-search-results button small{color:#854F0B;background:#FAEEDA;border:1px solid rgba(186,117,23,.18);border-radius:999px;padding:4px 8px;font-size:11px;font-weight:900;line-height:1.3;flex-shrink:0;white-space:nowrap}
         .market-hero-card{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);border-radius:20px;padding:18px;display:grid;gap:8px;backdrop-filter:blur(14px)}.market-hero-card span{font-size:12px;color:rgba(255,255,255,.62);font-weight:900}.market-hero-card strong{font-size:42px;color:#D8AE63;line-height:1}.market-hero-card p{margin:0;font-size:13px}.market-hero-card em{font-style:normal;color:rgba(255,255,255,.78);font-size:12px;font-weight:900;line-height:1.5}.risk{justify-self:start;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:900}.risk.low{background:rgba(34,197,94,.14);color:#16A34A}.risk.medium{background:rgba(216,174,99,.18);color:#9A6C3C}.risk.high{background:rgba(239,68,68,.12);color:#DC2626}
-        .market-card-grid,.market-status-grid,.market-decision-grid,.market-tools-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.market-status-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.market-decision-grid{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr)}.market-tools-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.market-card,.market-panel,.market-disclaimer,.market-notice{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:22px;box-shadow:0 6px 24px rgba(90,67,51,.06)}.market-card{padding:16px;display:grid;gap:10px}.market-card-head{display:flex;justify-content:space-between;gap:10px}.market-card-head strong{display:block;font-size:18px}.market-card-head span{display:block;color:#8A7060;font-size:12px;font-weight:800;margin-top:3px}.market-price{font-size:24px;font-weight:900;color:#111}.change{font-size:13px;font-weight:900}.change.up,.up{color:#16A34A}.change.down,.down{color:#DC2626}.market-empty{grid-column:1/-1;padding:24px;text-align:center;color:#9A6C3C;font-weight:900;background:#FFFDFC;border:1px dashed rgba(216,174,99,.24);border-radius:18px}.market-notice{padding:13px 15px;color:#B91C1C;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18);font-weight:900}.market-notice.success{color:#15803D;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.18)}.market-notice.demo{color:#9A6C3C;background:rgba(216,174,99,.10);border-color:rgba(216,174,99,.20)}
+        .market-card-grid,.market-status-grid,.market-decision-grid,.market-tools-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.market-status-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.market-decision-grid{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr)}.market-tools-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.market-card,.market-panel,.market-disclaimer,.market-notice{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:22px;box-shadow:0 6px 24px rgba(90,67,51,.06)}.market-card{padding:16px;display:grid;gap:10px}.market-card-head{display:flex;justify-content:space-between;gap:10px}.market-card-head strong{display:block;font-size:18px}.market-card-head span{display:block;color:#8A7060;font-size:12px;font-weight:800;margin-top:3px}.market-price{font-size:24px;font-weight:900;color:#111}.change{font-size:13px;font-weight:900}.change.up,.up{color:#16A34A}.change.down,.down{color:#DC2626}.market-empty{grid-column:1/-1;padding:24px;text-align:center;color:#9A6C3C;font-weight:900;background:#FFFDFC;border:1px dashed rgba(216,174,99,.24);border-radius:18px}.market-notice{padding:13px 15px;color:#B91C1C;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18);font-weight:900}.market-notice.success{color:#15803D;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.18)}
         .market-service{display:flex;align-items:center;gap:9px;background:#FFFDFC;border:1px solid rgba(216,174,99,.16);border-radius:18px;padding:12px 14px;color:#5B4332;font-weight:900;box-shadow:0 6px 24px rgba(90,67,51,.05)}.market-service.connected{color:#15803D;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.18)}.market-service.not_configured{color:#9A6C3C;background:rgba(216,174,99,.10)}.market-service.unavailable{color:#B91C1C;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18)}
         .market-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px}.market-panel{padding:20px;min-width:0}.market-section-head{display:flex;align-items:flex-start;gap:11px;margin-bottom:16px;color:#D8AE63}.market-section-head span{display:block;color:#9A6C3C;font-size:11px;font-weight:900;margin-bottom:5px;line-height:1.4}.market-section-head h2{margin:0;color:#111;font-size:17px;font-weight:900;line-height:1.35}.market-chart svg{width:100%;height:auto;max-height:300px;display:block}.market-stat-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.metric{background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:16px;padding:13px;display:grid;gap:7px;min-width:0;align-content:start}.metric span{font-size:11px;color:#9A6C3C;font-weight:900;line-height:1.45}.metric strong{font-size:15px;color:#111;display:flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere;line-height:1.45}.indicator-list,.scenario-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.decision-body{display:grid;gap:13px}.decision-body b{font-size:25px;font-weight:900;color:#111;line-height:1.25}.decision-body p,.decision-body small,.decision-body strong{margin:0;color:#5B4332;line-height:1.9;font-weight:800;overflow-wrap:anywhere}.decision-body small{font-size:12px;color:#7B6251}.decision-body strong{color:#9A6C3C}.decision.ok{border-color:rgba(34,197,94,.22)}.decision.warn{border-color:rgba(216,174,99,.28)}.decision.danger{border-color:rgba(239,68,68,.22)}.levels-strip{margin-top:16px;display:grid;gap:10px;color:#5B4332;font-size:12px;font-weight:900;line-height:1.6}.levels-strip i{position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,#22C55E,#D8AE63,#EF4444);display:block}.levels-strip b{position:absolute;top:-4px;width:4px;height:18px;border-radius:999px;background:#111}.levels-strip b.current{width:10px;height:10px;top:0;transform:translateX(-50%);background:#FFF;border:2px solid #111}.tool-input,.alert-form{display:grid;gap:10px}.tool-input span{font-size:12px;font-weight:900;color:#9A6C3C;line-height:1.5}.tool-input input,.alert-form input,.alert-form select{width:100%;min-width:0;border:1px solid rgba(216,174,99,.22);border-radius:14px;background:#F7F3EA;padding:12px 13px;font:900 13px Tajawal,Arial,sans-serif;outline:0;line-height:1.5}.alert-form{grid-template-columns:minmax(0,1fr) 110px auto;align-items:stretch}.alert-form button,.inline-action,.report-button{border:0;border-radius:14px;background:#111;color:#FFFDFC;padding:12px 14px;font:900 12px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;line-height:1.45}.inline-action{margin-bottom:14px;background:linear-gradient(135deg,#D8AE63,#9A6C3C);color:#111}.inline-action:disabled{opacity:.58;cursor:default}.saved-alerts,.asset-report{display:grid;gap:10px;margin-top:14px}.saved-alerts span,.asset-report p{margin:0;background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:12px;padding:10px 11px;color:#5B4332;font-size:12px;font-weight:900;line-height:1.65}.saved-alerts span{display:flex;align-items:center;justify-content:space-between;gap:9px}.saved-alerts span b{min-width:0;overflow-wrap:anywhere}.saved-alerts button{border:0;background:transparent;color:#9A6C3C;cursor:pointer;display:inline-flex;padding:2px}.asset-report small{color:#8A7060;line-height:1.75;font-weight:800;display:block}
         .market-bottom-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.market-copy,.market-muted{margin:0;color:#5B4332;line-height:1.8;font-size:13px;font-weight:800}.market-muted{margin-top:12px;color:#8A7060;font-size:12px}.watchlist{display:flex;flex-wrap:wrap;gap:8px}.watchlist span,.watchlist>button{border-radius:999px;background:#F7F3EA;border:1px solid rgba(216,174,99,.14);padding:7px 11px;color:#5B4332;font-weight:900;font-size:12px;display:inline-flex;align-items:center;gap:6px}.watchlist button{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:0}.compare-bars{display:grid;gap:10px}.compare-bars div{display:grid;grid-template-columns:46px minmax(0,1fr) 54px;gap:8px;align-items:center}.compare-bars span,.compare-bars b{font-size:12px;font-weight:900;color:#5B4332}.compare-bars div i{height:9px;border-radius:999px;background:linear-gradient(90deg,#D8AE63,#9A6C3C);display:block}.compare-table{margin-top:14px;overflow-x:auto;display:grid;gap:7px}.compare-table>div{display:grid;grid-template-columns:60px 90px 70px 52px 76px 80px;gap:7px;min-width:470px}.compare-table b,.compare-table span{font-size:11px;font-weight:900;color:#5B4332}.compare-table b{color:#9A6C3C}

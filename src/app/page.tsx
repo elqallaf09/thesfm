@@ -352,7 +352,8 @@ export default function DashboardPage(){
   const totalSavings=savingsItems.reduce((sum,item)=>sum+amountOf(item.amount),0);
   const totalInvestment=investments.reduce((sum,item)=>sum+amountOf(item.amount),0);
   const netWorth=totalIncome+totalSavings;
-  const healthScore=totalIncome>0?Math.min(100,Math.round(60+(totalSavings/totalIncome)*40)):0;
+  const hasHealthData = totalIncome > 0 && expenseItems.length > 0;
+  const healthScore = hasHealthData ? Math.max(0, Math.min(100, Math.round(((totalIncome - totalExpenses) / totalIncome) * 100))) : null;
   const monthlyGrowth:number=0;
   const monthlyGrowthPct:number=0;
   const initials=(profile.display_name||'SFM').substring(0,2).toUpperCase();
@@ -558,15 +559,15 @@ export default function DashboardPage(){
                     <defs><linearGradient id="hg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#22C55E"/><stop offset="100%" stopColor="#D8AE63"/></linearGradient></defs>
                     <circle cx="55" cy="55" r="46" fill="none" stroke="rgba(216,174,99,.1)" strokeWidth="10"/>
                     <circle cx="55" cy="55" r="46" fill="none" stroke="url(#hg)" strokeWidth="10"
-                      strokeDasharray={`${(healthScore/100)*289} 289`} strokeLinecap="round"
+                      strokeDasharray={`${((healthScore ?? 0)/100)*289} 289`} strokeLinecap="round"
                       style={{transition:'stroke-dasharray 1.4s ease .3s'}}/>
                   </svg>
                   <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
-                    <div style={{fontSize:'24px',fontWeight:'900',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif",lineHeight:1}}>{healthScore}%</div>
+                    <div style={{fontSize:healthScore===null?'12px':'24px',fontWeight:'900',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif",lineHeight:1,textAlign:'center'}}>{healthScore===null?L('بيانات غير كافية','Insufficient data','Données insuffisantes'):`${healthScore}%`}</div>
                     <div style={{fontSize:'9px',color:'#9A6C3C',marginTop:'2px'}}>{t('health_score')}</div>
                   </div>
                 </div>
-                <div style={{fontSize:'12px',fontWeight:'700',color:'#22C55E',background:'rgba(34,197,94,.08)',borderRadius:'20px',padding:'4px 12px'}}>{t('health_great')}</div>
+                <div style={{fontSize:'12px',fontWeight:'700',color:healthScore===null?'#9A6C3C':'#22C55E',background:healthScore===null?'rgba(216,174,99,.12)':'rgba(34,197,94,.08)',borderRadius:'20px',padding:'4px 12px'}}>{healthScore===null?L('أضف دخلاً ومصروفات فعلية','Add real income and expenses','Ajoutez revenus et dépenses réels'):t('health_great')}</div>
               </div>
 
               {/* Right: AI Manager */}
@@ -577,12 +578,12 @@ export default function DashboardPage(){
                     <div style={{fontSize:'13.5px',fontWeight:'800',color:'#111111'}}>{t('ai_manager')}</div>
                     <div style={{display:'flex',alignItems:'center',gap:'5px',marginTop:'3px'}}>
                       <div style={{width:'6px',height:'6px',borderRadius:'50%',background:'#22C55E',animation:'pulse 1.5s infinite'}}/>
-                      <span style={{fontSize:'11px',color:'#22C55E',fontWeight:'600'}}>{t('ai_active')}</span>
+                      <span style={{fontSize:'11px',color:hasEnoughAnalysisData?'#22C55E':'#9A6C3C',fontWeight:'600'}}>{hasEnoughAnalysisData?t('ai_active'):L('بيانات غير كافية','Insufficient data','Données insuffisantes')}</span>
                     </div>
                   </div>
                 </div>
                 <div style={{background:'rgba(216,174,99,.07)',border:'1px solid rgba(216,174,99,.15)',borderRadius:'12px',padding:'12px 14px'}}>
-                  <p style={{fontSize:'12.5px',color:'#5B4332',lineHeight:1.65,fontWeight:'500'}}>{t('ai_working')}</p>
+                  <p style={{fontSize:'12.5px',color:'#5B4332',lineHeight:1.65,fontWeight:'500'}}>{hasEnoughAnalysisData?t('ai_working'):L('ابدأ بإضافة بياناتك لعرض التحليل.','Start adding your data to view analysis.','Ajoutez vos données pour afficher l’analyse.')}</p>
                 </div>
               </div>
             </div>
@@ -599,7 +600,7 @@ export default function DashboardPage(){
               <div key={i} className="dc kpi-c" style={{animationDelay:`${i*.06}s`}}>
                 <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:'12px'}}>
                   <div style={{width:'40px',height:'40px',background:`${k.color}14`,borderRadius:'12px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px'}}>{k.icon}</div>
-                  {k.hasData && <span style={{fontSize:'11px',fontWeight:'700',color:'#15803D',background:'rgba(34,197,94,.08)',borderRadius:'20px',padding:'3px 9px'}}>{t('actualData')}</span>}
+                  {k.hasData && <span style={{fontSize:'11px',fontWeight:'700',color:'#15803D',background:'rgba(34,197,94,.08)',borderRadius:'20px',padding:'3px 9px'}}>{t('recordedData')}</span>}
                 </div>
                 <div style={{fontSize:'11px',color:'#9A6C3C',marginBottom:'4px'}}>{k.label}</div>
                 <div style={{fontSize:'22px',fontWeight:'900',color:'#111111',fontFamily:"'IBM Plex Sans Arabic',sans-serif",lineHeight:1}}>
@@ -735,7 +736,7 @@ export default function DashboardPage(){
             <div className="dc" style={{padding:'22px'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}}>
                 <h3 style={{fontSize:'14px',fontWeight:'800',color:'#111111'}}>{t('dist_title')}</h3>
-                {donutData.length>0 && <span style={{fontSize:'11px',color:'#15803D',background:'rgba(34,197,94,.08)',borderRadius:'20px',padding:'3px 10px'}}>{t('actualData')}</span>}
+                {donutData.length>0 && <span style={{fontSize:'11px',color:'#15803D',background:'rgba(34,197,94,.08)',borderRadius:'20px',padding:'3px 10px'}}>{t('recordedData')}</span>}
               </div>
               {donutData.length===0 ? (
                 <EmptyState compact icon="🥧" title={t('dash_noExpenseDistribution')} subtitle={t('dash_addExpensesForDistribution')} btnLabel={t('dash_addExpense')} btnHref="/expenses" />
@@ -965,7 +966,7 @@ export default function DashboardPage(){
                     <>
                       <div className="full-analysis-summary" style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:'10px'}}>
                         {[
-                          [L('الصحة المالية','Financial health','Santé financière'), `${healthScore}%`, '#22C55E'],
+                          [L('الصحة المالية','Financial health','Santé financière'), healthScore===null?L('بيانات غير كافية','Insufficient data','Données insuffisantes'):`${healthScore}%`, healthScore===null?'#9A6C3C':'#22C55E'],
                           [L('صافي الرصيد','Net balance','Solde net'), fmt(netBalance), netBalance>=0?'#22C55E':'#EF4444'],
                           [L('نسبة المصروفات','Expense ratio','Ratio des dépenses'), totalIncome>0?`${Math.round(expenseRatio*100)}%`:'-', expenseRatio>0.8?'#EF4444':'#D8AE63'],
                         ].map(([label,value,color])=>(
@@ -981,7 +982,7 @@ export default function DashboardPage(){
                         <AnalysisBlock title={L('نقاط القوة','Strengths','Points forts')} items={[totalIncome>0?L('تم تسجيل الدخل ويمكن بناء خطة شهرية عليه.','Income is recorded, so a monthly plan can be built.','Les revenus sont enregistrés, un plan mensuel peut être construit.'):L('ابدأ بتسجيل الدخل لفتح تحليل أدق.','Add income to unlock better analysis.','Ajoutez vos revenus pour une analyse plus précise.'),totalSavings>0?L('لديك مدخرات مسجلة تدعم الاستقرار المالي.','Recorded savings support financial stability.','Votre épargne enregistrée renforce la stabilité financière.'):L('إضافة المدخرات ستوضح قوة وضعك المالي.','Adding savings will clarify your financial strength.','Ajouter l’épargne clarifiera votre solidité financière.'),investments.length>0?L('توجد استثمارات ضمن لوحة المتابعة.','Investments are included in tracking.','Les investissements sont inclus dans le suivi.'):L('تنويع الاستثمار يمكن أن يحسن النمو طويل الأجل.','Investment diversification can improve long-term growth.','La diversification peut améliorer la croissance à long terme.')]} />
                         <AnalysisBlock title={L('نقاط تحتاج تحسين','Areas to Improve','Points à améliorer')} items={[expenseRatio>0.8?L('المصروفات مرتفعة مقارنة بالدخل هذا الشهر.','Expenses are high compared with income this month.','Les dépenses sont élevées par rapport aux revenus ce mois-ci.'):L('راقب المصروفات المتكررة للحفاظ على الفائض.','Monitor recurring expenses to protect surplus.','Surveillez les dépenses récurrentes pour préserver l’excédent.'),goals.length===0?L('لا توجد أهداف مالية مسجلة حتى الآن.','No financial goals are registered yet.','Aucun objectif financier n’est encore enregistré.'):L('راجع تقدم الأهداف شهريًا لتجنب التأخير.','Review goal progress monthly to avoid delays.','Vérifiez les objectifs chaque mois pour éviter les retards.'),expenseItems.length===0?L('لا توجد معاملات مصروفات كافية لتحليل السلوك.','There are not enough expense transactions to analyze behavior.','Il n’y a pas assez de dépenses pour analyser les habitudes.'):L('صنّف المصروفات بدقة لتحسين توصيات الذكاء المالي.','Categorize expenses accurately to improve AI recommendations.','Classez les dépenses précisément pour améliorer les recommandations IA.')]} />
                         <AnalysisBlock title={L('توصيات الذكاء المالي','Financial AI Recommendations','Recommandations de l’IA financière')} items={[netBalance>0?L('وجّه جزءًا من الفائض مباشرة إلى الادخار أو الأهداف.','Move part of the surplus directly to savings or goals.','Affectez une partie de l’excédent à l’épargne ou aux objectifs.'):L('خفّض المصروفات غير الضرورية قبل إضافة التزامات جديدة.','Reduce nonessential expenses before adding new commitments.','Réduisez les dépenses non essentielles avant de nouveaux engagements.'),L('راجع أعلى ثلاثة مصروفات هذا الشهر وحدد ما يمكن خفضه.','Review the top three expenses this month and choose what to reduce.','Examinez les trois principales dépenses du mois et choisissez quoi réduire.'),L('استعمل صفحة الذكاء المالي للحصول على خطة تفصيلية محدثة.','Use the Financial AI page for a detailed updated plan.','Utilisez la page IA financière pour un plan détaillé actualisé.')]} />
-                        <AnalysisBlock title={L('خطة الشهر القادم','Next Month Plan','Plan du mois prochain')} items={[`${L('حد المصروفات المقترح','Suggested expense cap','Plafond de dépenses suggéré')}: ${fmt(totalIncome>0?Math.max(totalIncome*0.7,0):totalExpenses)}`,`${L('الادخار المقترح','Suggested saving','Épargne suggérée')}: ${fmt(totalIncome>0?Math.max(totalIncome-totalExpenses,0)*0.5:0)}`,L('حدد هدفًا واحدًا كأولوية وراجعه أسبوعيًا.','Pick one priority goal and review it weekly.','Choisissez un objectif prioritaire et révisez-le chaque semaine.')]} />
+                        <AnalysisBlock title={L('خطة الشهر القادم','Next Month Plan','Plan du mois prochain')} items={[totalIncome>0&&expenseItems.length>0?L('راجع المصروفات المسجلة وحدد بندًا واحدًا يمكن تحسينه.','Review recorded expenses and choose one line item to improve.','Examinez les dépenses enregistrées et choisissez une ligne à améliorer.'):L('أضف الدخل والمصروفات قبل إنشاء خطة شهرية رقمية.','Add income and expenses before creating a numeric monthly plan.','Ajoutez revenus et dépenses avant de créer un plan mensuel chiffré.'),totalSavings>0?L('راجع المدخرات المسجلة وحدد ما إذا كانت مرتبطة بهدف واضح.','Review recorded savings and connect them to a clear goal where useful.','Examinez l’épargne enregistrée et reliez-la à un objectif clair si utile.'):L('أضف رصيد المدخرات لقياس قدرة الخطة على الصمود.','Add savings balances to measure plan resilience.','Ajoutez vos soldes d’épargne pour mesurer la résilience du plan.'),L('حدد هدفًا واحدًا كأولوية وراجعه أسبوعيًا.','Pick one priority goal and review it weekly.','Choisissez un objectif prioritaire et révisez-le chaque semaine.')]} />
                         <AnalysisBlock title={L('التنبيهات المهمة','Important Alerts','Alertes importantes')} items={[totalIncome===0?L('لم يتم تسجيل دخل، لذلك لا يمكن حساب الفائض بدقة.','No income is recorded, so surplus cannot be calculated accurately.','Aucun revenu enregistré, le surplus ne peut pas être calculé précisément.'):L('الدخل مسجل ويمكن حساب الفائض الشهري.','Income is recorded and monthly surplus can be calculated.','Les revenus sont enregistrés et le surplus peut être calculé.'),totalExpenses>totalIncome&&totalIncome>0?L('المصروفات أعلى من الدخل وتحتاج مراجعة فورية.','Expenses exceed income and need immediate review.','Les dépenses dépassent les revenus et exigent une révision immédiate.'):L('لا يوجد تنبيه عجز حاد في البيانات الحالية.','No severe deficit alert in current data.','Aucune alerte de déficit important dans les données actuelles.'),`${L('عدد الأهداف','Goals count','Nombre d’objectifs')}: ${goals.length}`]} />
                       </div>
                     </>
