@@ -7,15 +7,12 @@ import { Menu } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
-import { MobileMenu, NAV_ITEMS } from '@/components/MobileMenu';
-
-function isActive(pathname: string, href: string) {
-  return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
-}
+import { MobileMenu } from '@/components/MobileMenu';
+import { flattenNavigationItems, isNavigationItemActive } from '@/components/navigationConfig';
 
 export function AppHeader() {
   const pathname = usePathname() || '/';
-  const { lang, dir } = useLanguage();
+  const { dir, t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [effectivePathname, setEffectivePathname] = useState(pathname);
 
@@ -28,11 +25,14 @@ export function AppHeader() {
   }, [pathname]);
 
   const activeItem = useMemo(
-    () => [...NAV_ITEMS].sort((a, b) => b.href.length - a.href.length).find(item => isActive(effectivePathname, item.href)),
+    () => flattenNavigationItems()
+      .filter(item => item.href && !item.href.includes('#'))
+      .sort((a, b) => (b.href?.length ?? 0) - (a.href?.length ?? 0))
+      .find(item => isNavigationItemActive(effectivePathname, item.href)),
     [effectivePathname],
   );
 
-  const title = activeItem?.label[lang] ?? activeItem?.label.en ?? 'THE SFM';
+  const title = activeItem ? t(activeItem.labelKey) : 'THE SFM';
   const crumb = effectivePathname === '/' ? 'THE SFM' : `THE SFM / ${title}`;
 
   return (
@@ -51,7 +51,7 @@ export function AppHeader() {
           <button
             type="button"
             className="sfm-global-menu-button"
-            aria-label="Open navigation"
+            aria-label={t('nav_open_menu')}
             aria-expanded={open}
             aria-controls="sfm-mobile-menu"
             onClick={() => setOpen(true)}

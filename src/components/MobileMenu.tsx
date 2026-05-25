@@ -1,85 +1,52 @@
 'use client';
 
-import type { ComponentType } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import {
-  Bell,
-  Bot,
-  BriefcaseBusiness,
-  Building2,
-  Calculator,
-  ChartPie,
-  FileSearch,
-  FileText,
-  FolderKanban,
-  HandHeart,
-  HeartHandshake,
-  Home,
-  LineChart,
-  PiggyBank,
-  ReceiptText,
-  Target,
-  TrendingUp,
-  UserRound,
-  Wallet,
-  X,
-} from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  findActiveNavigationGroup,
+  flattenNavigationItems,
+  isNavigationItemActive,
+  NAV_GROUPS,
+  normalizeNavigationSource,
+  type NavigationItem,
+} from '@/components/navigationConfig';
 
-type NavLabel = { ar: string; en: string; fr: string };
-type NavItem = {
-  href: string;
-  label: NavLabel;
-  icon: ComponentType<{ size?: number }>;
-  section?: 'main' | 'services';
-};
-
-export const NAV_ITEMS: NavItem[] = [
-  { href: '/', label: { ar: 'الرئيسية', en: 'Dashboard', fr: 'Tableau de bord' }, icon: Home },
-  { href: '/expenses', label: { ar: 'المصروفات', en: 'Expenses', fr: 'Dépenses' }, icon: ReceiptText },
-  { href: '/income', label: { ar: 'الدخل', en: 'Income', fr: 'Revenus' }, icon: Wallet },
-  { href: '/invest', label: { ar: 'الاستثمارات', en: 'Investments', fr: 'Investissements' }, icon: TrendingUp },
-  { href: '/market-analysis', label: { ar: 'تحليلات السوق', en: 'Market Analysis', fr: 'Analyse du marché' }, icon: LineChart },
-  { href: '/savings', label: { ar: 'الإدخار', en: 'Savings', fr: 'Épargne' }, icon: PiggyBank },
-  { href: '/goals', label: { ar: 'الأهداف', en: 'Goals', fr: 'Objectifs' }, icon: Target },
-  { href: '/projects', label: { ar: 'مشاريعي', en: 'My Projects', fr: 'Mes projets' }, icon: FolderKanban },
-  { href: '/business-hub', label: { ar: 'مركز الأعمال', en: 'Business Hub', fr: 'Centre d’affaires' }, icon: BriefcaseBusiness },
-  { href: '/reports', label: { ar: 'التقارير', en: 'Reports', fr: 'Rapports' }, icon: ChartPie },
-  { href: '/reports-center', label: { ar: 'مركز التقارير', en: 'Reports Center', fr: 'Centre des rapports' }, icon: FileText },
-  { href: '/ai', label: { ar: 'الذكاء المالي', en: 'Financial AI', fr: 'IA financière' }, icon: Bot },
-  { href: '/charity', label: { ar: 'الأعمال الخيرية', en: 'Charity', fr: 'Charité' }, icon: HandHeart },
-  { href: '/charity-projects', label: { ar: 'المشاريع الخيرية', en: 'Charity Projects', fr: 'Projets caritatifs' }, icon: HeartHandshake },
-  { href: '/zakat', label: { ar: 'الزكاة', en: 'Zakat', fr: 'Zakat' }, icon: Calculator },
-  { href: '/notifications', label: { ar: 'الإشعارات', en: 'Notifications', fr: 'Notifications' }, icon: Bell },
-  { href: '/profile', label: { ar: 'الملف الشخصي', en: 'Profile', fr: 'Profil' }, icon: UserRound },
-  { href: '/services/investment-firms', label: { ar: 'شركات الاستثمار', en: 'Investment Firms', fr: "Sociétés d'investissement" }, icon: Building2, section: 'services' },
-  { href: '/services/accounting-firms', label: { ar: 'شركات المحاسبة', en: 'Accounting Firms', fr: 'Cabinets comptables' }, icon: Calculator, section: 'services' },
-  { href: '/services/feasibility-firms', label: { ar: 'شركات دراسة الجدوى', en: 'Feasibility Firms', fr: 'Études de faisabilité' }, icon: FileSearch, section: 'services' },
-  { href: '/services/advisory-firms', label: { ar: 'الاستشارات المالية', en: 'Advisory Firms', fr: 'Conseil financier' }, icon: BriefcaseBusiness, section: 'services' },
-];
-
-function activePath(pathname: string, href: string) {
-  return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
-}
+export const NAV_ITEMS = flattenNavigationItems();
 
 export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname() || '/';
   const router = useRouter();
-  const { lang, dir } = useLanguage();
+  const { lang, dir, t } = useLanguage();
+  const { signOut } = useAuth();
   const [activeSource, setActiveSource] = useState(pathname);
+  const [closedGroups, setClosedGroups] = useState<Record<string, boolean>>({});
   const previousLang = useRef(lang);
-  const mainItems = NAV_ITEMS.filter(item => item.section !== 'services');
-  const serviceItems = NAV_ITEMS.filter(item => item.section === 'services');
+
+  const activeGroupId = useMemo(() => findActiveNavigationGroup(activeSource), [activeSource]);
 
   useEffect(() => {
     const nextPath = typeof window === 'undefined'
       ? null
       : new URLSearchParams(window.location.search).get('next');
-    setActiveSource(pathname === '/login' && nextPath?.startsWith('/') ? nextPath : pathname);
+    const basePath = pathname === '/login' && nextPath?.startsWith('/') ? nextPath : pathname;
+    const hash = typeof window === 'undefined' ? '' : window.location.hash;
+    setActiveSource(normalizeNavigationSource(basePath, hash));
   }, [pathname]);
+
+  useEffect(() => {
+    const updateHash = () => setActiveSource(normalizeNavigationSource(pathname, window.location.hash));
+    window.addEventListener('hashchange', updateHash);
+    return () => window.removeEventListener('hashchange', updateHash);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (activeGroupId) setClosedGroups(prev => ({ ...prev, [activeGroupId]: false }));
+  }, [activeGroupId]);
 
   useEffect(() => {
     if (!open) return;
@@ -105,14 +72,21 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose, open]);
 
-  const go = (href: string) => {
+  const go = async (item: NavigationItem) => {
+    if (item.action === 'logout') {
+      await signOut();
+      onClose();
+      router.push('/login');
+      router.refresh();
+      return;
+    }
+    if (!item.href) return;
     onClose();
-    router.push(href);
+    router.push(item.href);
   };
 
-  const menuLabel = lang === 'ar' ? 'القائمة الرئيسية' : lang === 'fr' ? 'Menu principal' : 'Main menu';
-  const servicesLabel = lang === 'ar' ? 'الخدمات' : 'Services';
-  const closeLabel = lang === 'ar' ? 'إغلاق القائمة' : lang === 'fr' ? 'Fermer le menu' : 'Close navigation';
+  const menuLabel = t('nav_mobile_menu');
+  const closeLabel = t('nav_close_menu');
 
   return (
     <div className={`sfm-mobile-layer${open ? ' open' : ''}`} aria-hidden={!open} dir={dir}>
@@ -135,40 +109,43 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
           <LanguageSwitcher variant="dark" compact />
         </div>
 
-        <nav className="sfm-mobile-nav">
-          {mainItems.map(item => {
-            const Icon = item.icon;
-            const active = activePath(activeSource, item.href);
+        <nav className="sfm-mobile-nav" aria-label={menuLabel}>
+          {NAV_GROUPS.map(group => {
+            const expanded = !closedGroups[group.id] && (group.defaultOpen || activeGroupId === group.id || closedGroups[group.id] === false);
+            const groupId = `sfm-mobile-group-${group.id}`;
             return (
-              <button
-                key={item.href}
-                type="button"
-                className={active ? 'active' : ''}
-                aria-current={active ? 'page' : undefined}
-                onClick={() => go(item.href)}
-              >
-                <span className="sfm-mobile-nav-icon"><Icon size={18} /></span>
-                <span>{item.label[lang]}</span>
-              </button>
-            );
-          })}
-
-          <div className="sfm-mobile-section">{servicesLabel}</div>
-
-          {serviceItems.map(item => {
-            const Icon = item.icon;
-            const active = activePath(activeSource, item.href);
-            return (
-              <button
-                key={item.href}
-                type="button"
-                className={active ? 'active' : ''}
-                aria-current={active ? 'page' : undefined}
-                onClick={() => go(item.href)}
-              >
-                <span className="sfm-mobile-nav-icon"><Icon size={18} /></span>
-                <span>{item.label[lang]}</span>
-              </button>
+              <section key={group.id} className="sfm-mobile-group">
+                <button
+                  type="button"
+                  className="sfm-mobile-section"
+                  aria-expanded={expanded}
+                  aria-controls={groupId}
+                  onClick={() => setClosedGroups(prev => ({ ...prev, [group.id]: expanded }))}
+                >
+                  <span>{t(group.labelKey)}</span>
+                  <ChevronDown size={15} />
+                </button>
+                {expanded && (
+                  <div className="sfm-mobile-group-items" id={groupId}>
+                    {group.items.map(item => {
+                      const Icon = item.icon;
+                      const active = isNavigationItemActive(activeSource, item.href);
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={active ? 'active' : ''}
+                          aria-current={active ? 'page' : undefined}
+                          onClick={() => go(item)}
+                        >
+                          <span className="sfm-mobile-nav-icon"><Icon size={18} /></span>
+                          <span>{t(item.labelKey)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
             );
           })}
         </nav>
@@ -177,21 +154,28 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
       <style jsx global>{`
         .sfm-mobile-layer{position:fixed;inset:0;z-index:9999;pointer-events:none;visibility:hidden;font-family:Tajawal,Arial,sans-serif;max-width:100%;overflow:hidden}
         .sfm-mobile-layer.open{pointer-events:auto;visibility:visible}
-        .sfm-mobile-overlay{position:fixed;inset:0;z-index:9998;border:0;background:rgba(10,7,4,.62);opacity:0;cursor:pointer;transition:opacity .24s ease;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+        .sfm-mobile-overlay{position:fixed;inset:0;z-index:9998;border:0;background:rgba(3,18,37,.68);opacity:0;cursor:pointer;transition:opacity .24s ease;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
         .sfm-mobile-layer.open .sfm-mobile-overlay{opacity:1}
         .sfm-mobile-panel{position:fixed;top:0;right:0;height:100vh;height:100dvh;width:85%;max-width:min(420px,100%);z-index:9999;display:flex;flex-direction:column;padding:calc(18px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));overflow-y:auto;overflow-x:hidden;background:linear-gradient(160deg,rgba(167,243,240,.14),transparent 28%),linear-gradient(180deg,rgba(3,18,37,.98),rgba(6,27,51,.98));border-inline-start:1px solid rgba(167,243,240,.22);border-radius:24px 0 0 24px;box-shadow:-24px 0 70px rgba(0,0,0,.42);color:#FFFFFF;transform:translateX(104%);transition:transform .28s cubic-bezier(.2,.9,.2,1);will-change:transform}
         [dir="ltr"] .sfm-mobile-panel{right:auto;left:0;border-inline-start:0;border-inline-end:1px solid rgba(167,243,240,.22);border-radius:0 24px 24px 0;box-shadow:24px 0 70px rgba(0,0,0,.42);transform:translateX(-104%)}
         .sfm-mobile-layer.open .sfm-mobile-panel{transform:translateX(0)}
         .sfm-mobile-panel-head,.sfm-mobile-logo,.sfm-mobile-lang,.sfm-mobile-nav button{display:flex;align-items:center}
         .sfm-mobile-panel-head{justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:1px solid rgba(167,243,240,.14)}
-        .sfm-mobile-logo{min-width:0;gap:10px}.sfm-mobile-logo img{border-radius:12px;object-fit:cover}.sfm-mobile-logo strong{display:block;color:#d8ae63;font-size:17px;font-weight:900;letter-spacing:0}.sfm-mobile-logo span{display:block;color:rgba(248,251,255,.56);font-size:12px;font-weight:700;margin-top:2px}
+        .sfm-mobile-logo{min-width:0;gap:10px}.sfm-mobile-logo img{border-radius:12px;object-fit:cover}.sfm-mobile-logo strong{display:block;color:var(--sfm-soft-cyan);font-size:17px;font-weight:900;letter-spacing:0}.sfm-mobile-logo span{display:block;color:rgba(248,251,255,.56);font-size:12px;font-weight:700;margin-top:2px}
         .sfm-mobile-close{flex:0 0 auto;width:42px;height:42px;border:1px solid rgba(167,243,240,.24);border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.08);color:#FFFFFF;cursor:pointer}
         .sfm-mobile-lang{justify-content:center;padding:14px 0;border-bottom:1px solid rgba(167,243,240,.1)}
-        .sfm-mobile-nav{display:grid;gap:6px;padding:12px 0 4px}.sfm-mobile-nav button{width:100%;min-height:46px;gap:11px;border:1px solid transparent;border-radius:15px;padding:10px 12px;background:transparent;color:rgba(248,251,255,.72);cursor:pointer;font:800 13.5px Tajawal,Arial,sans-serif;text-align:start;transition:background .18s ease,color .18s ease,border-color .18s ease,transform .18s ease;min-width:0}
-        .sfm-mobile-nav button span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:normal}
-        .sfm-mobile-nav button:hover,.sfm-mobile-nav button.active{border-color:rgba(167,243,240,.2);background:rgba(167,243,240,.14);color:#d8ae63}.sfm-mobile-nav button.active{box-shadow:inset 0 0 0 1px rgba(167,243,240,.08)}.sfm-mobile-nav button:active{transform:scale(.99)}
-        .sfm-mobile-nav-icon{width:26px;height:26px;flex:0 0 26px;display:grid;place-items:center;border-radius:10px;background:rgba(255,255,255,.07)}.sfm-mobile-nav button.active .sfm-mobile-nav-icon{background:rgba(167,243,240,.2)}
-        .sfm-mobile-section{margin:12px 6px 4px;color:rgba(167,243,240,.62);font-size:11px;font-weight:900;letter-spacing:0}
+        .sfm-mobile-nav{display:grid;gap:8px;padding:12px 0 4px}
+        .sfm-mobile-group{display:grid;gap:5px;border-bottom:1px solid rgba(167,243,240,.08);padding-bottom:7px}
+        .sfm-mobile-group:last-child{border-bottom:0}
+        .sfm-mobile-section{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:34px;border:0;border-radius:12px;padding:6px 10px;background:transparent;color:rgba(167,243,240,.72);cursor:pointer;font:900 11px Tajawal,Arial,sans-serif;text-align:start}
+        .sfm-mobile-section svg{transition:transform .18s ease}
+        .sfm-mobile-section[aria-expanded="false"] svg{transform:rotate(90deg)}
+        [dir="ltr"] .sfm-mobile-section[aria-expanded="false"] svg{transform:rotate(-90deg)}
+        .sfm-mobile-group-items{display:grid;gap:5px}
+        .sfm-mobile-nav .sfm-mobile-group-items button{width:100%;min-height:44px;gap:11px;border:1px solid transparent;border-radius:15px;padding:9px 12px;background:transparent;color:rgba(248,251,255,.72);cursor:pointer;font:800 13.5px Tajawal,Arial,sans-serif;text-align:start;transition:background .18s ease,color .18s ease,border-color .18s ease,transform .18s ease;min-width:0}
+        .sfm-mobile-nav .sfm-mobile-group-items button span:last-child{min-width:0;overflow-wrap:anywhere;white-space:normal}
+        .sfm-mobile-nav .sfm-mobile-group-items button:hover,.sfm-mobile-nav .sfm-mobile-group-items button.active{border-color:rgba(167,243,240,.2);background:rgba(29,140,255,.18);color:#EAF6FF}.sfm-mobile-nav .sfm-mobile-group-items button.active{box-shadow:inset 0 0 0 1px rgba(167,243,240,.08)}.sfm-mobile-nav button:active{transform:scale(.99)}
+        .sfm-mobile-nav-icon{width:26px;height:26px;flex:0 0 26px;display:grid;place-items:center;border-radius:10px;background:rgba(255,255,255,.07);color:var(--sfm-soft-cyan)}.sfm-mobile-nav button.active .sfm-mobile-nav-icon{background:rgba(167,243,240,.2)}
       `}</style>
     </div>
   );

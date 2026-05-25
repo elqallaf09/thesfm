@@ -3330,7 +3330,7 @@ export default function CharityProjectsPage() {
             ) : <p className="muted">{tr.incomeMissing}</p>}
           </article>
 
-          <article className="warm-card">
+          <article className="warm-card" id="charity-reports">
             <div className="section-head"><h2>{tr.futureTitle}</h2><Sparkles size={22} /></div>
             <div className="report-card">
               <div>

@@ -830,7 +830,7 @@ export default function MarketAnalysisPage() {
                 </div>
               </article>
 
-              <article className="market-panel">
+              <article className="market-panel" id="market-alerts">
                 <div className="market-section-head">
                   <Bell size={19} />
                   <div>
@@ -890,7 +890,7 @@ export default function MarketAnalysisPage() {
                 </div>
                 <p className="market-copy">{localizedSummary || t('market_ai_summary_text')}</p>
               </div>
-              <div className="market-panel">
+              <div className="market-panel" id="watchlist">
                 <div className="market-section-head">
                   <Star size={19} />
                   <div>
