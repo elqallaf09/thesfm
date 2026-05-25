@@ -64,27 +64,27 @@ export default function ExpensesPage() {
   const charityTotal = items.filter(i => i.name.startsWith('خيرية:')).reduce((s, i) => s + i.amount, 0);
   const S = (d: number) => ({ opacity: mounted ? 1 : 0, transform: mounted ? 'translateY(0)' : 'translateY(16px)', transition: `opacity .5s ease ${d}ms, transform .5s ease ${d}ms` });
 
-  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#F7F3EA' }}><div style={{ width: '44px', height: '44px', borderRadius: '50%', border: '3px solid rgba(216,174,99,.2)', borderTopColor: '#D8AE63', animation: 'spin 1s linear infinite' }} /></div>;
+  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--sfm-light-card)' }}><div style={{ width: '44px', height: '44px', borderRadius: '50%', border: '3px solid rgba(167,243,240,.2)', borderTopColor: 'var(--sfm-soft-cyan)', animation: 'spin 1s linear infinite' }} /></div>;
 
   return (<>
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap');
       *{box-sizing:border-box;margin:0;padding:0}
       @keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-      .ep{font-family:'Tajawal',sans-serif;direction:rtl;background:#F7F3EA;min-height:100vh;color:#111111}
-      .ep ::-webkit-scrollbar{width:4px}.ep ::-webkit-scrollbar-thumb{background:rgba(216,174,99,.3);border-radius:10px}
-      .ec{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:22px;box-shadow:0 4px 22px rgba(90,67,51,.06);transition:all .25s}
-      .ec:hover:not(.no-h){transform:translateY(-2px);box-shadow:0 10px 34px rgba(90,67,51,.10)}
-      .ei{width:100%;background:rgba(247,243,234,.7);border:1.5px solid rgba(216,174,99,.22);border-radius:13px;padding:12px 15px;font-family:'Tajawal',sans-serif;font-size:15px;color:#111111;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
-      .ei:focus{border-color:#D8AE63;box-shadow:0 0 0 3px rgba(216,174,99,.14)}
-      .esel{background:rgba(247,243,234,.7) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23D8AE63' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat left 14px center;cursor:pointer;padding-left:36px}
+      .ep{font-family:'Tajawal',sans-serif;direction:rtl;background:var(--sfm-light-card);min-height:100vh;color:var(--sfm-foreground)}
+      .ep ::-webkit-scrollbar{width:4px}.ep ::-webkit-scrollbar-thumb{background:rgba(167,243,240,.3);border-radius:10px}
+      .ec{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:22px;box-shadow:0 4px 22px rgba(3,18,37,.06);transition:all .25s}
+      .ec:hover:not(.no-h){transform:translateY(-2px);box-shadow:0 10px 34px rgba(3,18,37,.10)}
+      .ei{width:100%;background:rgba(247,243,234,.7);border:1.5px solid rgba(167,243,240,.22);border-radius:13px;padding:12px 15px;font-family:'Tajawal',sans-serif;font-size:15px;color:var(--sfm-foreground);outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
+      .ei:focus{border-color:var(--sfm-soft-cyan);box-shadow:0 0 0 3px rgba(167,243,240,.14)}
+      .esel{background:rgba(247,243,234,.7) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231D8CFF' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat left 14px center;cursor:pointer;padding-left:36px}
       .ebtn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:13px;font-family:'Tajawal',sans-serif;font-weight:700;cursor:pointer;transition:all .2s;padding:11px 22px;font-size:14px}
-      .ebtn-g{background:linear-gradient(135deg,#D8AE63,#9A6C3C);color:#111111;box-shadow:0 4px 14px rgba(216,174,99,.25)}
+      .ebtn-g{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 4px 14px rgba(167,243,240,.25)}
       .ebtn-g:hover:not(:disabled){background:linear-gradient(135deg,#E4BC73,#A87C4C);transform:translateY(-1px)}
       .ebtn-g:disabled{opacity:.55;cursor:not-allowed}
-      .ebtn-d{background:#111111;color:#D8AE63}.ebtn-d:hover{background:#222;transform:translateY(-1px)}
-      .ebtn-o{background:transparent;border:1.5px solid rgba(216,174,99,.28);color:#9A6C3C}.ebtn-o:hover{border-color:#D8AE63;color:#5B4332}
-      .row-h:hover{background:rgba(216,174,99,.04)!important}
+      .ebtn-d{background:var(--sfm-foreground);color:var(--sfm-soft-cyan)}.ebtn-d:hover{background:#222;transform:translateY(-1px)}
+      .ebtn-o{background:transparent;border:1.5px solid rgba(167,243,240,.28);color:var(--sfm-muted)}.ebtn-o:hover{border-color:var(--sfm-soft-cyan);color:var(--sfm-muted)}
+      .row-h:hover{background:rgba(167,243,240,.04)!important}
       @media(max-width:768px){.kg{grid-template-columns:1fr 1fr!important}.g2{grid-template-columns:1fr!important}}
     `}</style>
     <div className="ep">
@@ -94,10 +94,10 @@ export default function ExpensesPage() {
         <div style={S(0)}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <button onClick={() => router.push('/')} style={{ padding: '8px 16px', background: '#FFFDFC', border: '1.5px solid rgba(216,174,99,.22)', borderRadius: '12px', cursor: 'pointer', color: '#5B4332', fontSize: '13px', fontWeight: '700', fontFamily: 'Tajawal,sans-serif' }}>← الرئيسية</button>
+              <button onClick={() => router.push('/')} style={{ padding: '8px 16px', background: 'var(--sfm-card)', border: '1.5px solid rgba(167,243,240,.22)', borderRadius: '12px', cursor: 'pointer', color: 'var(--sfm-muted)', fontSize: '13px', fontWeight: '700', fontFamily: 'Tajawal,sans-serif' }}>← الرئيسية</button>
               <div>
-                <h1 style={{ fontSize: 'clamp(20px,3vw,28px)', fontWeight: '900', color: '#111111' }}>🛒 المصاريف</h1>
-                <p style={{ fontSize: '13px', color: '#9A6C3C', marginTop: '2px' }}>إدارة وتتبع مصاريفك الشهرية</p>
+                <h1 style={{ fontSize: 'clamp(20px,3vw,28px)', fontWeight: '900', color: 'var(--sfm-foreground)' }}>🛒 المصاريف</h1>
+                <p style={{ fontSize: '13px', color: 'var(--sfm-muted)', marginTop: '2px' }}>إدارة وتتبع مصاريفك الشهرية</p>
               </div>
             </div>
             <button className="ebtn ebtn-g" onClick={() => { setShowForm(!showForm); setEditId(null); setName(''); setAmount(''); }}>
@@ -109,16 +109,16 @@ export default function ExpensesPage() {
         {/* KPI */}
         <div className="kg" style={{ ...S(40), display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '14px' }}>
           {[
-            { icon: '📋', label: 'عدد المصاريف', val: items.length, color: '#D8AE63', isN: true },
+            { icon: '📋', label: 'عدد المصاريف', val: items.length, color: 'var(--sfm-soft-cyan)', isN: true },
             { icon: '💰', label: 'إجمالي المصاريف', val: total, color: '#EF4444', unit: 'د.ك' },
             { icon: '🤲', label: 'الأعمال الخيرية', val: charityTotal, color: '#22C55E', unit: 'د.ك' },
             { icon: '📊', label: 'متوسط المصروف', val: items.length > 0 ? total / items.length : 0, color: '#3B82F6', unit: 'د.ك' },
           ].map((k, i) => (
             <div key={i} className="ec no-h" style={{ padding: '18px 20px' }}>
               <div style={{ width: '38px', height: '38px', background: `${k.color}14`, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', marginBottom: '10px' }}>{k.icon}</div>
-              <div style={{ fontSize: '11px', color: '#9A6C3C', marginBottom: '4px', fontWeight: '600' }}>{k.label}</div>
+              <div style={{ fontSize: '11px', color: 'var(--sfm-muted)', marginBottom: '4px', fontWeight: '600' }}>{k.label}</div>
               <div style={{ fontSize: '20px', fontWeight: '900', color: k.color, fontFamily: "'IBM Plex Sans Arabic',sans-serif", lineHeight: 1 }}>
-                {(k as any).isN ? k.val : (k.val as number).toFixed(3)}{k.unit && <span style={{ fontSize: '11px', color: '#9A6C3C', marginRight: '3px' }}> {k.unit}</span>}
+                {(k as any).isN ? k.val : (k.val as number).toFixed(3)}{k.unit && <span style={{ fontSize: '11px', color: 'var(--sfm-muted)', marginRight: '3px' }}> {k.unit}</span>}
               </div>
             </div>
           ))}
@@ -130,25 +130,25 @@ export default function ExpensesPage() {
         {/* Add/Edit form */}
         {showForm && (
           <div className="ec" style={{ ...S(60), padding: '26px 28px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#111111', marginBottom: '20px' }}>{editId ? '✏️ تعديل المصروف' : '➕ إضافة مصروف جديد'}</h3>
+            <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--sfm-foreground)', marginBottom: '20px' }}>{editId ? '✏️ تعديل المصروف' : '➕ إضافة مصروف جديد'}</h3>
             <div className="g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '18px' }}>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: '700', color: '#5B4332', display: 'block', marginBottom: '7px' }}>اسم المصروف أو الفئة</label>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>اسم المصروف أو الفئة</label>
                 <input className="ei" list="cats-dl" placeholder="مثال: فاتورة الكهرباء" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && save()} style={{ height: '48px' }} />
                 <datalist id="cats-dl">{CATS.map(c => <option key={c} value={c} />)}</datalist>
               </div>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: '700', color: '#5B4332', display: 'block', marginBottom: '7px' }}>المبلغ</label>
-                <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid rgba(216,174,99,.22)', borderRadius: '13px', overflow: 'hidden', background: 'rgba(247,243,234,.7)' }}>
-                  <span style={{ padding: '0 10px', fontSize: '12px', fontWeight: '700', color: '#EF4444', borderLeft: '1px solid rgba(216,174,99,.15)', height: '48px', display: 'flex', alignItems: 'center', flexShrink: 0, fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>د.ك</span>
-                  <input type="text" inputMode="decimal" placeholder="0.000" dir="ltr" value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => e.key === 'Enter' && save()} style={{ flex: 1, height: '48px', padding: '0 12px', background: 'transparent', border: 'none', outline: 'none', fontSize: '17px', fontWeight: '700', color: '#111111', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }} />
+                <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>المبلغ</label>
+                <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid rgba(167,243,240,.22)', borderRadius: '13px', overflow: 'hidden', background: 'rgba(247,243,234,.7)' }}>
+                  <span style={{ padding: '0 10px', fontSize: '12px', fontWeight: '700', color: '#EF4444', borderLeft: '1px solid rgba(167,243,240,.15)', height: '48px', display: 'flex', alignItems: 'center', flexShrink: 0, fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>د.ك</span>
+                  <input type="text" inputMode="decimal" placeholder="0.000" dir="ltr" value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => e.key === 'Enter' && save()} style={{ flex: 1, height: '48px', padding: '0 12px', background: 'transparent', border: 'none', outline: 'none', fontSize: '17px', fontWeight: '700', color: 'var(--sfm-foreground)', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }} />
                 </div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
               <button className="ebtn ebtn-o" onClick={() => { setShowForm(false); setEditId(null); setName(''); setAmount(''); }}>إلغاء</button>
               <button className="ebtn ebtn-g" onClick={save} disabled={saving || !name.trim() || !amount}>
-                {saving ? <><span style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid rgba(0,0,0,.2)', borderTopColor: '#111', animation: 'spin 1s linear infinite', display: 'inline-block' }} />جارٍ الحفظ...</> : editId ? '✅ تأكيد التعديل' : '💾 حفظ المصروف'}
+                {saving ? <><span style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid rgba(0,0,0,.2)', borderTopColor: 'var(--sfm-foreground)', animation: 'spin 1s linear infinite', display: 'inline-block' }} />جارٍ الحفظ...</> : editId ? '✅ تأكيد التعديل' : '💾 حفظ المصروف'}
               </button>
             </div>
           </div>
@@ -157,20 +157,20 @@ export default function ExpensesPage() {
         {/* Table */}
         <div className="ec" style={{ ...S(120), padding: '22px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#111111' }}>قائمة المصاريف ({items.length})</h3>
-            <input placeholder="🔍 بحث في المصاريف..." value={filter} onChange={e => setFilter(e.target.value)} style={{ padding: '8px 14px', borderRadius: '12px', border: '1.5px solid rgba(216,174,99,.22)', background: '#FAF8F2', fontFamily: 'Tajawal,sans-serif', fontSize: '13px', color: '#111111', outline: 'none', width: '220px' }} />
+            <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--sfm-foreground)' }}>قائمة المصاريف ({items.length})</h3>
+            <input placeholder="🔍 بحث في المصاريف..." value={filter} onChange={e => setFilter(e.target.value)} style={{ padding: '8px 14px', borderRadius: '12px', border: '1.5px solid rgba(167,243,240,.22)', background: 'var(--sfm-card)', fontFamily: 'Tajawal,sans-serif', fontSize: '13px', color: 'var(--sfm-foreground)', outline: 'none', width: '220px' }} />
           </div>
 
           {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <div style={{ fontSize: '40px', marginBottom: '12px' }}>🛒</div>
-              <p style={{ color: '#9A6C3C', fontSize: '14px' }}>{filter ? 'لا نتائج لهذا البحث' : 'لا توجد مصاريف مسجلة بعد'}</p>
+              <p style={{ color: 'var(--sfm-muted)', fontSize: '14px' }}>{filter ? 'لا نتائج لهذا البحث' : 'لا توجد مصاريف مسجلة بعد'}</p>
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '2px solid rgba(216,174,99,.12)' }}>
-                  {['الاسم / الفئة', 'المبلغ', 'التاريخ', ''].map(h => <th key={h} style={{ padding: '9px 10px', textAlign: 'right', fontSize: '11.5px', fontWeight: '700', color: '#9A6C3C' }}>{h}</th>)}
+                <tr style={{ borderBottom: '2px solid rgba(167,243,240,.12)' }}>
+                  {['الاسم / الفئة', 'المبلغ', 'التاريخ', ''].map(h => <th key={h} style={{ padding: '9px 10px', textAlign: 'right', fontSize: '11.5px', fontWeight: '700', color: 'var(--sfm-muted)' }}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -179,20 +179,20 @@ export default function ExpensesPage() {
                   const displayName = isCharity ? '🤲 ' + item.name.split(':')[2] : item.name;
                   const date = item.created_at ? new Date(item.created_at) : null;
                   return (
-                    <tr key={item.id} className="row-h" style={{ borderBottom: i < filtered.length - 1 ? '1px solid rgba(216,174,99,.07)' : 'none', background: 'transparent', transition: 'background .15s' }}>
-                      <td style={{ padding: '12px 10px', fontSize: '13.5px', color: '#5B4332', fontWeight: '600' }}>
+                    <tr key={item.id} className="row-h" style={{ borderBottom: i < filtered.length - 1 ? '1px solid rgba(167,243,240,.07)' : 'none', background: 'transparent', transition: 'background .15s' }}>
+                      <td style={{ padding: '12px 10px', fontSize: '13.5px', color: 'var(--sfm-muted)', fontWeight: '600' }}>
                         <span style={{ fontSize: '14px', marginLeft: '6px' }}>{item.name.includes('السكن') || item.name.includes('إيجار') ? '🏠' : item.name.includes('طعام') || item.name.includes('مطعم') ? '🍽' : item.name.includes('مواصلات') || item.name.includes('سيارة') ? '🚗' : item.name.includes('صحة') ? '💊' : item.name.includes('كهرباء') ? '💡' : item.name.includes('تعليم') ? '📚' : isCharity ? '' : '💳'}</span>
                         {displayName}
                       </td>
                       <td style={{ padding: '12px 10px', fontSize: '14px', fontWeight: '800', color: '#EF4444', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>
-                        {item.amount.toFixed(3)} <span style={{ fontSize: '11px', color: '#9A6C3C' }}>د.ك</span>
+                        {item.amount.toFixed(3)} <span style={{ fontSize: '11px', color: 'var(--sfm-muted)' }}>د.ك</span>
                       </td>
-                      <td style={{ padding: '12px 10px', fontSize: '11.5px', color: '#9A6C3C' }}>
+                      <td style={{ padding: '12px 10px', fontSize: '11.5px', color: 'var(--sfm-muted)' }}>
                         {date ? `${MONTH_AR[date.getMonth()]} ${date.getFullYear()}` : '—'}
                       </td>
                       <td style={{ padding: '12px 10px' }}>
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                          {!isCharity && <button onClick={() => startEdit(item)} style={{ width: '32px', height: '32px', background: 'rgba(216,174,99,.10)', border: '1px solid rgba(216,174,99,.22)', borderRadius: '9px', cursor: 'pointer', color: '#D8AE63', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Pencil className="w-3.5 h-3.5" /></button>}
+                          {!isCharity && <button onClick={() => startEdit(item)} style={{ width: '32px', height: '32px', background: 'rgba(167,243,240,.10)', border: '1px solid rgba(167,243,240,.22)', borderRadius: '9px', cursor: 'pointer', color: 'var(--sfm-soft-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Pencil className="w-3.5 h-3.5" /></button>}
                           <button onClick={() => remove(item.id)} disabled={deleting === item.id} style={{ width: '32px', height: '32px', background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.18)', borderRadius: '9px', cursor: 'pointer', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {deleting === item.id ? <span style={{ width: '12px', height: '12px', borderRadius: '50%', border: '2px solid rgba(239,68,68,.3)', borderTopColor: '#EF4444', animation: 'spin 1s linear infinite', display: 'inline-block' }} /> : <Trash2 className="w-3.5 h-3.5" />}
                           </button>
@@ -203,10 +203,10 @@ export default function ExpensesPage() {
                 })}
               </tbody>
               <tfoot>
-                <tr style={{ borderTop: '2px solid rgba(216,174,99,.12)' }}>
-                  <td style={{ padding: '12px 10px', fontSize: '14px', fontWeight: '800', color: '#111111' }}>الإجمالي</td>
+                <tr style={{ borderTop: '2px solid rgba(167,243,240,.12)' }}>
+                  <td style={{ padding: '12px 10px', fontSize: '14px', fontWeight: '800', color: 'var(--sfm-foreground)' }}>الإجمالي</td>
                   <td style={{ padding: '12px 10px', fontSize: '16px', fontWeight: '900', color: '#EF4444', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>
-                    {total.toFixed(3)} <span style={{ fontSize: '12px', color: '#9A6C3C' }}>د.ك</span>
+                    {total.toFixed(3)} <span style={{ fontSize: '12px', color: 'var(--sfm-muted)' }}>د.ك</span>
                   </td>
                   <td colSpan={2} />
                 </tr>
@@ -216,8 +216,8 @@ export default function ExpensesPage() {
         </div>
 
         {/* Footer */}
-        <div style={{ textAlign: 'center', fontSize: '11px', color: '#9A6C3C', paddingTop: '8px' }}>
-          جميع المصاريف المسجلة تُحتسب تلقائياً في لوحة التحكم الرئيسية • <span style={{ color: '#D8AE63', fontWeight: '700' }}>THE SFM</span>
+        <div style={{ textAlign: 'center', fontSize: '11px', color: 'var(--sfm-muted)', paddingTop: '8px' }}>
+          جميع المصاريف المسجلة تُحتسب تلقائياً في لوحة التحكم الرئيسية • <span style={{ color: 'var(--sfm-soft-cyan)', fontWeight: '700' }}>THE SFM</span>
         </div>
       </div>
     </div>

@@ -129,22 +129,22 @@ export function Sidebar() {
   return (
     <aside className="sfm-shared-sidebar" dir={dir}>
       <style>{`
-        .sfm-shared-sidebar{width:230px;background:linear-gradient(180deg,#1A0F05 0%,#0D0804 100%);position:fixed;right:0;top:0;bottom:0;z-index:50;display:flex;flex-direction:column;overflow-y:auto;border-left:1px solid rgba(216,174,99,.1);font-family:Tajawal,Arial,sans-serif}
-        [dir="ltr"].sfm-shared-sidebar{right:auto;left:0;border-left:0;border-right:1px solid rgba(216,174,99,.1)}
-        .sfm-shared-brand{padding:20px 16px 14px;border-bottom:1px solid rgba(216,174,99,.08);display:flex;align-items:center;gap:10px;text-decoration:none}
+        .sfm-shared-sidebar{width:230px;background:var(--sfm-sidebar);position:fixed;right:0;top:0;bottom:0;z-index:50;display:flex;flex-direction:column;overflow-y:auto;border-left:1px solid var(--sidebar-border);box-shadow:-8px 0 32px rgba(3,18,37,.26);font-family:Tajawal,Arial,sans-serif}
+        [dir="ltr"].sfm-shared-sidebar{right:auto;left:0;border-left:0;border-right:1px solid rgba(167,243,240,.1)}
+        .sfm-shared-brand{padding:20px 16px 14px;border-bottom:1px solid rgba(167,243,240,.08);display:flex;align-items:center;gap:10px;text-decoration:none}
         .sfm-shared-brand img{flex:0 0 auto;object-fit:cover}
-        .sfm-shared-brand strong{display:block;font-size:17px;font-weight:900;color:#D8AE63;letter-spacing:.02em}
-        .sfm-shared-brand span{display:block;font-size:11px;color:rgba(216,174,99,.45);margin-top:3px}
-        .sfm-shared-lang{padding:12px 16px;border-bottom:1px solid rgba(216,174,99,.08);display:flex;justify-content:center}
+        .sfm-shared-brand strong{display:block;font-size:17px;font-weight:900;color:var(--sfm-soft-cyan);letter-spacing:.02em}
+        .sfm-shared-brand span{display:block;font-size:11px;color:rgba(167,243,240,.45);margin-top:3px}
+        .sfm-shared-lang{padding:12px 16px;border-bottom:1px solid rgba(167,243,240,.08);display:flex;justify-content:center}
         .sfm-shared-nav{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:4px}
-        .sfm-shared-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;cursor:pointer;transition:all .2s;color:rgba(255,255,255,.58);font-size:13px;font-weight:600;border:none;background:transparent;width:100%;text-align:start;font-family:Tajawal,Arial,sans-serif}
-        .sfm-shared-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.9)}
-        .sfm-shared-item.active{background:rgba(216,174,99,.18);color:#D8AE63;font-weight:800;box-shadow:inset 0 0 0 1px rgba(216,174,99,.08)}
+        .sfm-shared-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;cursor:pointer;transition:all .2s;color:rgba(234,246,255,.68);font-size:13px;font-weight:600;border:none;background:transparent;width:100%;text-align:start;font-family:Tajawal,Arial,sans-serif}
+        .sfm-shared-item:hover,.sfm-shared-item:focus-visible{background:rgba(29,140,255,.12);color:#EAF6FF;outline:0;box-shadow:0 0 0 2px rgba(24,212,212,.18)}
+        .sfm-shared-item.active{background:var(--sfm-sidebar-active);color:#EAF6FF;font-weight:800;box-shadow:inset 0 0 0 1px rgba(167,243,240,.16),0 8px 22px rgba(29,140,255,.14)}
         .sfm-shared-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex:0 0 20px}
         .sfm-shared-label{min-width:0;flex:1}
-        .sfm-shared-badge{min-width:22px;height:22px;border-radius:999px;background:#BA7517;color:#fffdfc;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;font-size:11px;font-weight:950}
-        .sfm-shared-divider{height:1px;background:rgba(216,174,99,.08);margin:8px 6px}
-        .sfm-shared-section-title{padding:5px 12px 7px;color:rgba(216,174,99,.48);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+        .sfm-shared-badge{min-width:22px;height:22px;border-radius:999px;background:var(--sfm-primary);color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;font-size:11px;font-weight:950}
+        .sfm-shared-divider{height:1px;background:rgba(167,243,240,.08);margin:8px 6px}
+        .sfm-shared-section-title{padding:5px 12px 7px;color:rgba(167,243,240,.48);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
         @media(max-width:1024px){.sfm-shared-sidebar{display:none}}
       `}</style>
       <Link href="/" className="sfm-shared-brand">
@@ -164,7 +164,7 @@ export function Sidebar() {
       <div className="sfm-shared-lang">
         <LanguageSwitcher variant="dark" compact />
       </div>
-      <div style={{padding:'10px 12px',borderBottom:'1px solid rgba(216,174,99,.08)'}}>
+      <div style={{padding:'10px 12px',borderBottom:'1px solid rgba(167,243,240,.08)'}}>
         <UserChip />
       </div>
       <nav className="sfm-shared-nav">

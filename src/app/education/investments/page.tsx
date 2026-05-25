@@ -46,29 +46,29 @@ export default function InvestmentEducationPage() {
   return (
     <main className="investment-data-page" dir={dir}>
       <style>{`
-        .investment-data-page{min-height:100vh;background:#F7F3EA;color:#24160E;font-family:Tajawal,Arial,sans-serif;padding:22px}
+        .investment-data-page{min-height:100vh;background:var(--sfm-light-card);color:#24160E;font-family:Tajawal,Arial,sans-serif;padding:22px}
         .investment-wrap{width:min(1120px,100%);margin:0 auto;display:grid;gap:18px}
         .investment-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-        .investment-hero{background:linear-gradient(135deg,#2B1A0F,#3D2914);border-radius:28px;padding:clamp(24px,5vw,54px);color:#FFFDF8;box-shadow:0 24px 70px rgba(43,26,15,.20);overflow:hidden;position:relative}
-        .investment-hero:after{content:'';position:absolute;inset:auto -80px -110px auto;width:260px;height:260px;border-radius:50%;background:rgba(186,117,23,.22)}
+        .investment-hero{background:linear-gradient(135deg,var(--sfm-primary-dark),var(--sfm-midnight));border-radius:28px;padding:clamp(24px,5vw,54px);color:var(--sfm-card);box-shadow:0 24px 70px rgba(3,18,37,.20);overflow:hidden;position:relative}
+        .investment-hero:after{content:'';position:absolute;inset:auto -80px -110px auto;width:260px;height:260px;border-radius:50%;background:rgba(29,140,255,.22)}
         .investment-hero h1{margin:0 0 10px;font-size:clamp(32px,7vw,64px);line-height:1;font-weight:900;letter-spacing:0}
-        .investment-hero p{margin:0;max-width:720px;color:rgba(255,253,248,.78);font-size:clamp(15px,2.2vw,19px);line-height:1.8;font-weight:700}
+        .investment-hero p{margin:0;max-width:720px;color:rgba(234,246,255,.78);font-size:clamp(15px,2.2vw,19px);line-height:1.8;font-weight:700}
         .investment-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
         .investment-actions button,.investment-card button{border:0;border-radius:15px;padding:12px 18px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer}
-        .investment-primary{background:linear-gradient(135deg,#BA7517,#EF9F27);color:#211207}
-        .investment-secondary{background:rgba(255,253,248,.10);color:#FFFDF8;border:1px solid rgba(255,253,248,.18)!important}
+        .investment-primary{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}
+        .investment-secondary{background:rgba(234,246,255,.10);color:var(--sfm-card);border:1px solid rgba(234,246,255,.18)!important}
         .investment-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-        .investment-card{background:#FFFDF8;border:1px solid rgba(186,117,23,.15);border-radius:22px;padding:20px;display:grid;gap:12px;box-shadow:0 12px 34px rgba(43,26,15,.07)}
-        .investment-card h2{margin:0;color:#2B1A0F;font-size:19px;font-weight:900}
-        .investment-card p{margin:0;color:#6D5647;line-height:1.75;font-size:14px;font-weight:700}
-        .investment-card button{justify-self:start;background:#2B1A0F;color:#FFFDF8}
-        .investment-note{background:#FFFDF8;border:1px dashed rgba(186,117,23,.28);border-radius:20px;padding:18px;color:#8A5A20;font-weight:900;line-height:1.7;text-align:center}
+        .investment-card{background:var(--sfm-card);border:1px solid rgba(29,140,255,.15);border-radius:22px;padding:20px;display:grid;gap:12px;box-shadow:0 12px 34px rgba(3,18,37,.07)}
+        .investment-card h2{margin:0;color:var(--sfm-primary-dark);font-size:19px;font-weight:900}
+        .investment-card p{margin:0;color:var(--sfm-muted);line-height:1.75;font-size:14px;font-weight:700}
+        .investment-card button{justify-self:start;background:var(--sfm-primary-dark);color:var(--sfm-card)}
+        .investment-note{background:var(--sfm-card);border:1px dashed rgba(29,140,255,.28);border-radius:20px;padding:18px;color:var(--sfm-primary);font-weight:900;line-height:1.7;text-align:center}
         @media(max-width:820px){.investment-data-page{padding:14px}.investment-grid{grid-template-columns:1fr}.investment-hero{border-radius:22px}.investment-actions button{width:100%}.investment-card button{width:100%}}
       `}</style>
 
       <div className="investment-wrap">
         <header className="investment-top">
-          <button type="button" className="investment-secondary" onClick={() => router.push('/')} style={{ color: '#2B1A0F', background: '#FFFDF8', border: '1px solid rgba(186,117,23,.18)' }}>
+          <button type="button" className="investment-secondary" onClick={() => router.push('/')} style={{ color: 'var(--sfm-primary-dark)', background: 'var(--sfm-card)', border: '1px solid rgba(29,140,255,.18)' }}>
             {L('العودة للرئيسية', 'Back Home', 'Retour accueil')}
           </button>
           <LanguageSwitcher variant="gold" compact />

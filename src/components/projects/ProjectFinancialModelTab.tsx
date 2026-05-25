@@ -632,12 +632,12 @@ export function ProjectFinancialModelTab({
               <ChartBox title={t.revenueVsCosts}>
                 <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={chartData}>
-                    <CartesianGrid stroke="rgba(186,117,23,.16)" />
-                    <XAxis dataKey="month" tick={{ fill: '#7A6A55', fontSize: 12 }} />
-                    <YAxis tick={{ fill: '#7A6A55', fontSize: 12 }} width={46} />
+                    <CartesianGrid stroke="rgba(29,140,255,.16)" />
+                    <XAxis dataKey="month" tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} />
+                    <YAxis tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} width={46} />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="revenue" name={t.revenue} stroke="#BA7517" strokeWidth={3} dot={false} />
+                    <Line type="monotone" dataKey="revenue" name={t.revenue} stroke="var(--sfm-primary)" strokeWidth={3} dot={false} />
                     <Line type="monotone" dataKey="costs" name={t.costs} stroke="#7A3E1D" strokeWidth={3} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -645,9 +645,9 @@ export function ProjectFinancialModelTab({
               <ChartBox title={t.cashOverTime}>
                 <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={chartData}>
-                    <CartesianGrid stroke="rgba(186,117,23,.16)" />
-                    <XAxis dataKey="month" tick={{ fill: '#7A6A55', fontSize: 12 }} />
-                    <YAxis tick={{ fill: '#7A6A55', fontSize: 12 }} width={46} />
+                    <CartesianGrid stroke="rgba(29,140,255,.16)" />
+                    <XAxis dataKey="month" tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} />
+                    <YAxis tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} width={46} />
                     <Tooltip />
                     <Line type="monotone" dataKey="cash" name={t.cashBalance} stroke="#1F7A4D" strokeWidth={3} dot={false} />
                   </LineChart>
@@ -722,11 +722,11 @@ export function ProjectFinancialModelTab({
             <ChartBox title={t.scenarioComparison}>
               <ResponsiveContainer width="100%" height={210}>
                 <BarChart data={scenarios.map(item => ({ name: t[item.id], profit: Math.round(item.totalProfit), revenue: Math.round(item.totalRevenue) }))}>
-                  <CartesianGrid stroke="rgba(186,117,23,.16)" />
-                  <XAxis dataKey="name" tick={{ fill: '#7A6A55', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#7A6A55', fontSize: 11 }} width={42} />
+                  <CartesianGrid stroke="rgba(29,140,255,.16)" />
+                  <XAxis dataKey="name" tick={{ fill: 'var(--sfm-muted)', fontSize: 11 }} />
+                  <YAxis tick={{ fill: 'var(--sfm-muted)', fontSize: 11 }} width={42} />
                   <Tooltip />
-                  <Bar dataKey="profit" name={t.totalProfit} fill="#BA7517" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="profit" name={t.totalProfit} fill="var(--sfm-primary)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartBox>
@@ -757,46 +757,46 @@ export function ProjectFinancialModelTab({
         .financial-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,.9fr);gap:16px;align-items:start}
         .financial-main,.financial-side{display:grid;gap:16px;min-width:0}
         .financial-side{position:sticky;top:16px}
-        .financial-card,.financial-metric{background:#FFFDF8;border:1px solid rgba(186,117,23,.16);border-radius:20px;padding:18px;box-shadow:0 14px 34px rgba(61,41,20,.07);min-width:0}
-        .financial-metric{background:#FFF8EA}
-        .financial-metric small{display:block;color:#7A6A55;font-weight:900}
-        .financial-metric strong{display:block;margin-top:6px;color:#2B1A0F;font-size:18px;overflow-wrap:anywhere}
+        .financial-card,.financial-metric{background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);border-radius:20px;padding:18px;box-shadow:0 14px 34px rgba(3,18,37,.07);min-width:0}
+        .financial-metric{background:var(--sfm-light-card)}
+        .financial-metric small{display:block;color:var(--sfm-muted);font-weight:900}
+        .financial-metric strong{display:block;margin-top:6px;color:var(--sfm-primary-dark);font-size:18px;overflow-wrap:anywhere}
         .section-title,.section-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-        .section-title h2,.section-header h2{margin:0;color:#3D2914;font-size:19px}
-        .section-title svg{color:#BA7517}
-        .section-header button{min-height:40px;border:1px solid rgba(186,117,23,.18);border-radius:12px;background:#FFF8EA;color:#3D2914;padding:0 12px;font-family:inherit;font-weight:900;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+        .section-title h2,.section-header h2{margin:0;color:var(--sfm-midnight);font-size:19px}
+        .section-title svg{color:var(--sfm-primary)}
+        .section-header button{min-height:40px;border:1px solid rgba(29,140,255,.18);border-radius:12px;background:var(--sfm-light-card);color:var(--sfm-midnight);padding:0 12px;font-family:inherit;font-weight:900;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
         .financial-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
         .financial-field{display:grid;gap:7px;min-width:0}
-        .financial-field span{font-weight:900;color:#5B4332}
-        .financial-field input,.financial-field select,.financial-field textarea{width:100%;min-width:0;border:1px solid rgba(186,117,23,.2);background:#FFFDF8;color:#1A1A1A;border-radius:13px;padding:11px 12px;font-family:inherit;font-weight:800;outline:none}
+        .financial-field span{font-weight:900;color:var(--sfm-muted)}
+        .financial-field input,.financial-field select,.financial-field textarea{width:100%;min-width:0;border:1px solid rgba(29,140,255,.2);background:var(--sfm-card);color:var(--sfm-foreground);border-radius:13px;padding:11px 12px;font-family:inherit;font-weight:800;outline:none}
         .financial-field textarea{resize:vertical;line-height:1.6}
-        .financial-field input:focus,.financial-field select:focus,.financial-field textarea:focus{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.15)}
+        .financial-field input:focus,.financial-field select:focus,.financial-field textarea:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.15)}
         .model-row-list{display:grid;gap:12px}
-        .model-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border:1px solid rgba(186,117,23,.12);border-radius:16px;background:#FFF8EA;padding:14px;min-width:0}
+        .model-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border:1px solid rgba(29,140,255,.12);border-radius:16px;background:var(--sfm-light-card);padding:14px;min-width:0}
         .row-heading{grid-column:1 / -1;display:flex;justify-content:space-between;align-items:center;gap:12px}
-        .row-heading strong{color:#3D2914}
-        .row-heading button{width:36px;height:36px;border:1px solid rgba(121,31,31,.18);border-radius:11px;background:#FCEBEB;color:#791F1F;display:grid;place-items:center;cursor:pointer}
+        .row-heading strong{color:var(--sfm-midnight)}
+        .row-heading button{width:36px;height:36px;border:1px solid rgba(121,31,31,.18);border-radius:11px;background:#FEF2F2;color:#B91C1C;display:grid;place-items:center;cursor:pointer}
         .chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-        .chart-box{border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:16px;padding:12px;min-width:0}
-        .chart-box h3{margin:0 0 10px;color:#3D2914;font-size:15px}
-        .forecast-table-wrap{overflow-x:auto;border:1px solid rgba(186,117,23,.12);border-radius:16px}
-        .forecast-table{width:100%;min-width:980px;border-collapse:collapse;background:#FFF8EA}
-        .forecast-table th,.forecast-table td{padding:11px 12px;border-bottom:1px solid rgba(186,117,23,.1);text-align:start;white-space:nowrap;color:#3D2914}
-        .forecast-table th{font-size:12px;color:#7A6A55;background:#FAEEDA}
+        .chart-box{border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:16px;padding:12px;min-width:0}
+        .chart-box h3{margin:0 0 10px;color:var(--sfm-midnight);font-size:15px}
+        .forecast-table-wrap{overflow-x:auto;border:1px solid rgba(29,140,255,.12);border-radius:16px}
+        .forecast-table{width:100%;min-width:980px;border-collapse:collapse;background:var(--sfm-light-card)}
+        .forecast-table th,.forecast-table td{padding:11px 12px;border-bottom:1px solid rgba(29,140,255,.1);text-align:start;white-space:nowrap;color:var(--sfm-midnight)}
+        .forecast-table th{font-size:12px;color:var(--sfm-muted);background:rgba(29,140,255,.10)}
         .side-metrics,.scenario-list,.financial-actions{display:grid;gap:10px}
-        .scenario-note{margin:0 0 12px;color:#5B4332;line-height:1.7}
-        .scenario-card{border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:16px;padding:12px;display:grid;gap:7px}
+        .scenario-note{margin:0 0 12px;color:var(--sfm-muted);line-height:1.7}
+        .scenario-card{border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:16px;padding:12px;display:grid;gap:7px}
         .scenario-card div{display:flex;justify-content:space-between;gap:10px;align-items:center}
-        .scenario-card strong{color:#3D2914}.scenario-card small{color:#5B4332;font-weight:800}
+        .scenario-card strong{color:var(--sfm-midnight)}.scenario-card small{color:var(--sfm-muted);font-weight:800}
         .scenario-card span{border-radius:999px;padding:4px 9px;font-size:11px;font-weight:950}
-        .scenario-card.low span{background:#EAF3DE;color:#27500A}.scenario-card.medium span{background:#FFF4DE;color:#9A5E0D}.scenario-card.high span{background:#FCEBEB;color:#791F1F}
-        .ai-card p{margin:0;color:#5B4332;line-height:1.7}
-        .financial-actions button{min-height:44px;border-radius:13px;border:1px solid rgba(186,117,23,.18);font-family:inherit;font-weight:950;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
-        .primary-financial-btn{background:linear-gradient(135deg,#FAC775,#EF9F27);color:#251407}
+        .scenario-card.low span{background:#ECFDF5;color:#047857}.scenario-card.medium span{background:#FFF7ED;color:#B45309}.scenario-card.high span{background:#FEF2F2;color:#B91C1C}
+        .ai-card p{margin:0;color:var(--sfm-muted);line-height:1.7}
+        .financial-actions button{min-height:44px;border-radius:13px;border:1px solid rgba(29,140,255,.18);font-family:inherit;font-weight:950;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+        .primary-financial-btn{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}
         .primary-financial-btn:disabled{opacity:.68;cursor:not-allowed}
-        .disabled-financial-btn{background:#FFF8EA;color:#7A6A55;cursor:not-allowed}
-        .disabled-financial-btn span{border-radius:999px;background:#FAEEDA;color:#854F0B;padding:3px 8px;font-size:11px}
-        .financial-notice{border:1px solid rgba(186,117,23,.2);background:#FFF8EA;color:#3D2914;border-radius:15px;padding:12px 14px;font-weight:900}
+        .disabled-financial-btn{background:var(--sfm-light-card);color:var(--sfm-muted);cursor:not-allowed}
+        .disabled-financial-btn span{border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:3px 8px;font-size:11px}
+        .financial-notice{border:1px solid rgba(29,140,255,.2);background:var(--sfm-light-card);color:var(--sfm-midnight);border-radius:15px;padding:12px 14px;font-weight:900}
         @media(max-width:1280px){.financial-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.financial-layout{grid-template-columns:1fr}.financial-side{position:static}.chart-grid{grid-template-columns:1fr}}
         @media(max-width:760px){.financial-summary-grid,.financial-form-grid,.model-row{grid-template-columns:1fr}.financial-card,.financial-metric{padding:16px}.section-header{align-items:flex-start;flex-direction:column}.section-header button{width:100%;justify-content:center}}
       `}</style>

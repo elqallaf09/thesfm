@@ -54,7 +54,7 @@ export function IncomeSourcesForm({ userId, username, onComplete }: IncomeSource
   };
 
   return (
-    <main dir="rtl" className="relative min-h-screen overflow-hidden bg-[linear-gradient(135deg,_#f7faf7_0%,_#eef6ef_42%,_#dfeee7_100%)] px-4 py-8 dark:bg-[linear-gradient(135deg,_#07110d_0%,_#0d1d16_48%,_#111827_100%)]">
+    <main dir="rtl" className="relative min-h-screen overflow-hidden bg-[linear-gradient(135deg,_#f7faf7_0%,_#eef6ef_42%,_#dfeee7_100%)] px-4 py-8 dark:bg-[linear-gradient(135deg,_#07110d_0%,_#0d1d16_48%,_var(--sfm-foreground)827_100%)]">
       <div className="pointer-events-none absolute inset-0 opacity-70 [background-image:linear-gradient(120deg,rgba(0,96,72,0.10)_0,rgba(0,96,72,0.10)_1px,transparent_1px,transparent_42px),linear-gradient(160deg,rgba(187,151,82,0.12)_0,rgba(187,151,82,0.12)_1px,transparent_1px,transparent_68px)] dark:opacity-20" />
       <div className="relative mx-auto max-w-5xl space-y-6">
         <div className="space-y-2 text-center">

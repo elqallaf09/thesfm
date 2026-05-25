@@ -122,7 +122,7 @@ export function WisdomTicker({ language, onLanguageChange, showLanguageSelector 
         {/* شريط النصائح */}
         <div
           className="order-2 sm:order-1 overflow-hidden rounded-xl py-2 px-3 flex-1 min-w-0"
-          style={{ border: '1px solid rgba(196,163,90,0.35)', background: 'rgba(255,253,245,0.92)' }}
+          style={{ border: '1px solid rgba(29,140,255,0.35)', background: 'rgba(255,253,245,0.92)' }}
         >
           <div className="wisdom-ticker items-center gap-6 whitespace-nowrap text-xs">
             {allTips.map((tip, index) => (
@@ -138,7 +138,7 @@ export function WisdomTicker({ language, onLanguageChange, showLanguageSelector 
                 <span className="font-medium">
                   {isArabic ? tip.contentAr : tip.contentEn}
                 </span>
-                <span style={{ color: 'rgba(196,163,90,0.4)', margin: '0 8px' }}>|</span>
+                <span style={{ color: 'rgba(29,140,255,0.4)', margin: '0 8px' }}>|</span>
               </span>
             ))}
           </div>
@@ -149,7 +149,7 @@ export function WisdomTicker({ language, onLanguageChange, showLanguageSelector 
           <Select value={language} onValueChange={(v) => onLanguageChange(v as 'ar' | 'en' | 'fr')}>
             <SelectTrigger
               className="order-1 sm:order-2 w-[140px] shrink-0"
-              style={{ background: 'rgba(255,253,245,0.92)', borderColor: 'rgba(196,163,90,0.4)', color: '#7a5c1a' }}
+              style={{ background: 'rgba(255,253,245,0.92)', borderColor: 'rgba(29,140,255,0.4)', color: '#7a5c1a' }}
             >
               <Languages className="h-4 w-4 me-2" style={{ color: '#c4a35a' }} />
               <SelectValue />

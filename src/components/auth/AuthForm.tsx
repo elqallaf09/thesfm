@@ -300,10 +300,10 @@ export function AuthForm() {
 
       {/* ── Premium 3-lang pill (top corner) ── */}
       <div style={{position:'absolute',top:'16px',left:'16px',zIndex:10}}>
-        <div dir="ltr" style={{display:'inline-flex',alignItems:'center',background:'#EFEDE7',borderRadius:'40px',padding:'3px',border:'1.5px solid #E8E2D6',position:'relative',minWidth:'126px'}}>
+        <div dir="ltr" style={{display:'inline-flex',alignItems:'center',background:'#EFEDE7',borderRadius:'40px',padding:'3px',border:'1.5px solid var(--sfm-border)',position:'relative',minWidth:'126px'}}>
           <span style={{position:'absolute',top:'3px',left:`calc(3px + ${(['ar','en','fr'] as const).indexOf(language)} * 33.33%)`,width:'calc(33.33%)',height:'calc(100% - 6px)',background:'#FFFFFF',borderRadius:'36px',boxShadow:'0 1px 6px rgba(27,36,48,0.13)',transition:'left 0.22s cubic-bezier(0.4,0,0.2,1)',pointerEvents:'none',zIndex:1}}/>
           {([{id:'ar',label:'عربي'},{id:'en',label:'EN'},{id:'fr',label:'FR'}] as {id:'ar'|'en'|'fr',label:string}[]).map(lang => (
-            <button key={lang.id} onClick={() => setLanguage(lang.id)} style={{position:'relative',zIndex:2,flex:1,height:'28px',padding:'0 4px',background:'transparent',border:'none',borderRadius:'36px',cursor:'pointer',fontSize:'11.5px',fontWeight:language===lang.id?'700':'500',color:language===lang.id?'#1B2430':'#8A9BB0',fontFamily:lang.id==='ar'?"'Tajawal',sans-serif":"-apple-system,sans-serif",transition:'color 0.18s ease',whiteSpace:'nowrap'}}>
+            <button key={lang.id} onClick={() => setLanguage(lang.id)} style={{position:'relative',zIndex:2,flex:1,height:'28px',padding:'0 4px',background:'transparent',border:'none',borderRadius:'36px',cursor:'pointer',fontSize:'11.5px',fontWeight:language===lang.id?'700':'500',color:language===lang.id?'var(--sfm-foreground)':'var(--sfm-muted)',fontFamily:lang.id==='ar'?"'Tajawal',sans-serif":"-apple-system,sans-serif",transition:'color 0.18s ease',whiteSpace:'nowrap'}}>
               {lang.label}
             </button>
           ))}
@@ -453,7 +453,7 @@ export function AuthForm() {
               </div>
               <div style={{textAlign: isArabic ? 'left' : 'right', marginBottom:'20px'}}>
                 <button type="button" className="auth-link"
-                  style={{fontSize:'13px', color:'#C4A84A', fontWeight:'600'}}
+                  style={{fontSize:'13px', color:'var(--sfm-accent)', fontWeight:'600'}}
                   onClick={() => { setShowForgotPassword(true); setError(''); setForgotPasswordSuccess(''); setResetStep('username'); }}>
                   {isArabic ? 'نسيت كلمة المرور؟' : isFrench ? 'Mot de passe oublié?' : 'Forgot password?'}
                 </button>
@@ -541,11 +541,11 @@ export function AuthForm() {
                   <div style={{display:'flex', gap:'16px', height:'48px', alignItems:'center'}}>
                     {['male','female'].map(g => (
                       <label key={g} style={{display:'flex', alignItems:'center', gap:'6px', cursor:'pointer',
-                        fontSize:'14px', fontWeight:'500', color: gender === g ? '#1B2430' : '#8A9BB0',
+                        fontSize:'14px', fontWeight:'500', color: gender === g ? 'var(--sfm-foreground)' : 'var(--sfm-muted)',
                         fontFamily:'Tajawal,sans-serif'}}>
                         <input type="radio" name="gender" value={g}
                           checked={gender === g} onChange={() => setGender(g)}
-                          style={{accentColor:'#D4AF37', width:'16px', height:'16px'}} />
+                          style={{accentColor:'var(--sfm-primary)', width:'16px', height:'16px'}} />
                         {g === 'male' ? t.male : t.female}
                       </label>
                     ))}
@@ -554,8 +554,8 @@ export function AuthForm() {
               </div>
 
               {/* Security Questions */}
-              <div style={{background:'#FAFAF7', border:'1.5px solid #E8E2D6', borderRadius:'12px', padding:'16px', marginBottom:'4px'}}>
-                <p style={{fontSize:'12.5px', fontWeight:'700', color:'#1B2430', marginBottom:'12px', fontFamily:'Tajawal,sans-serif'}}>
+              <div style={{background:'var(--sfm-light-card)', border:'1.5px solid var(--sfm-border)', borderRadius:'12px', padding:'16px', marginBottom:'4px'}}>
+                <p style={{fontSize:'12.5px', fontWeight:'700', color:'var(--sfm-foreground)', marginBottom:'12px', fontFamily:'Tajawal,sans-serif'}}>
                   🔐 {isArabic ? 'أسئلة الأمان (الأول والثاني إجباري)' : 'Security Questions (1st & 2nd required)'}
                 </p>
                 {[
@@ -564,9 +564,9 @@ export function AuthForm() {
                   {q:securityQuestion3, setQ:setSecurityQuestion3, a:securityAnswer3, setA:setSecurityAnswer3, label: isArabic?'السؤال الثالث (اختياري)':'3rd Question (optional)', filter:[securityQuestion,securityQuestion2]},
                 ].map((sq, idx) => (
                   <div key={idx} style={{marginBottom: idx < 2 ? '12px' : '0'}}>
-                    <label style={{fontSize:'12px', fontWeight:'600', color: idx === 2 ? '#8A9BB0' : '#4A5568', display:'block', marginBottom:'6px', fontFamily:'Tajawal,sans-serif'}}>{sq.label}</label>
+                    <label style={{fontSize:'12px', fontWeight:'600', color: idx === 2 ? 'var(--sfm-muted)' : 'var(--sfm-muted)', display:'block', marginBottom:'6px', fontFamily:'Tajawal,sans-serif'}}>{sq.label}</label>
                     <Select value={sq.q} onValueChange={sq.setQ}>
-                      <SelectTrigger style={{height:'40px', fontSize:'12.5px', borderColor:'#E8E2D6', marginBottom:'6px'}}>
+                      <SelectTrigger style={{height:'40px', fontSize:'12.5px', borderColor:'var(--sfm-border)', marginBottom:'6px'}}>
                         <SelectValue placeholder={t.selectQuestion} />
                       </SelectTrigger>
                       <SelectContent>
@@ -592,7 +592,7 @@ export function AuthForm() {
           {/* ══ PRIMARY BUTTON ══ */}
           <button type="submit" className="auth-btn-primary" style={{marginTop:'20px', marginBottom:'16px'}} disabled={loading}>
             {loading ? (
-              <><span style={{display:'inline-block', animation:'spin 1s linear infinite', borderRadius:'50%', border:'2px solid rgba(27,36,48,0.2)', borderTopColor:'#1B2430', width:'18px', height:'18px'}} />{t.processing}</>
+              <><span style={{display:'inline-block', animation:'spin 1s linear infinite', borderRadius:'50%', border:'2px solid rgba(27,36,48,0.2)', borderTopColor:'var(--sfm-foreground)', width:'18px', height:'18px'}} />{t.processing}</>
             ) : showForgotPassword
               ? (resetStep === 'username' ? (isArabic ? 'التالي ←' : 'Next →') : (isArabic ? 'تحقق وأرسل رابط الاستعادة' : 'Verify & Send Reset'))
               : isRegister ? t.createBtn : t.loginBtn}
@@ -639,7 +639,7 @@ export function AuthForm() {
 
       {/* Footer */}
       <p style={{position:'absolute', bottom:'16px', left:'50%', transform:'translateX(-50%)',
-        fontSize:'11.5px', color:'#B0B8C4', whiteSpace:'nowrap',
+        fontSize:'11.5px', color:'var(--sfm-muted)', whiteSpace:'nowrap',
         fontFamily:'Tajawal,sans-serif'}}>
         المدير المالي الذكي — SFM © 2026
       </p>

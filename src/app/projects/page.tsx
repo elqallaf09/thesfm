@@ -36,7 +36,7 @@ const STATUS_CONFIG: Record<ProjectStatus, { color: string; bg: string; icon: st
   'قيد التنفيذ': { color: '#F59E0B', bg: 'rgba(245,158,11,.10)',  icon: '⚙️' },
   'نشط':         { color: '#22C55E', bg: 'rgba(34,197,94,.10)',   icon: '✅' },
   'متوقف':       { color: '#EF4444', bg: 'rgba(239,68,68,.10)',   icon: '⏸' },
-  'مكتمل':       { color: '#D8AE63', bg: 'rgba(216,174,99,.12)',  icon: '🏆' },
+  'مكتمل':       { color: 'var(--sfm-soft-cyan)', bg: 'rgba(167,243,240,.12)',  icon: '🏆' },
 };
 const emptyForm: ProjectForm = {
   name:'',emoji:'🚀',type:'',idea:'',capital:'',expectedProfit:'',currentProfit:'',
@@ -46,7 +46,7 @@ const emptyForm: ProjectForm = {
   feasibilityTypes:[],
 };
 const FEASIBILITY_TYPES = [
-  { id: 'economic', icon: '💰', color: '#D8AE63', title: 'الجدوى الاقتصادية', desc: 'دراسة الربحية المتوقعة وقياس العوائد مقابل التكاليف.' },
+  { id: 'economic', icon: '💰', color: 'var(--sfm-soft-cyan)', title: 'الجدوى الاقتصادية', desc: 'دراسة الربحية المتوقعة وقياس العوائد مقابل التكاليف.' },
   { id: 'market', icon: '📈', color: '#22C55E', title: 'الجدوى السوقية', desc: 'تحليل السوق المستهدف وحجم الطلب والمنافسة.' },
   { id: 'technical', icon: '⚙️', color: '#3B82F6', title: 'الجدوى الفنية / التشغيلية', desc: 'قياس إمكانية تنفيذ المشروع فنياً ولوجستياً.' },
   { id: 'legal', icon: '⚖️', color: '#8B5CF6', title: 'الجدوى القانونية', desc: 'التأكد من توافق المشروع مع القوانين والأنظمة.' },
@@ -128,7 +128,7 @@ const riskInfo = (v: number) => v < 34
   ? {label:'متوسط',  color:'#F59E0B', bg:'rgba(245,158,11,.10)', bar:'#F59E0B'}
   : {label:'عالٍ',   color:'#EF4444', bg:'rgba(239,68,68,.10)',  bar:'#EF4444'};
 
-const scoreColor = (s: number) => s >= 70 ? '#22C55E' : s >= 50 ? '#D8AE63' : '#EF4444';
+const scoreColor = (s: number) => s >= 70 ? '#22C55E' : s >= 50 ? 'var(--sfm-soft-cyan)' : '#EF4444';
 const fmt = (v: string | number) => parseFloat(String(v).replace(/[^\d.]/g, '')) || 0;
 
 /* ─── Step Indicator ─── */
@@ -138,12 +138,12 @@ function StepDots({ step, total }: { step: number; total: number }) {
       {Array.from({ length: total }, (_, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: i < total - 1 ? 1 : 'none' }}>
           <div style={{ width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', flexShrink: 0,
-            background: i < step ? '#D8AE63' : i === step ? '#111111' : 'rgba(216,174,99,.12)',
-            color: i < step ? '#111111' : i === step ? '#D8AE63' : '#9A6C3C',
-            border: i === step ? '2px solid #D8AE63' : '2px solid transparent',
-            boxShadow: i === step ? '0 0 0 4px rgba(216,174,99,.14)' : 'none',
+            background: i < step ? 'var(--sfm-soft-cyan)' : i === step ? 'var(--sfm-foreground)' : 'rgba(167,243,240,.12)',
+            color: i < step ? 'var(--sfm-foreground)' : i === step ? 'var(--sfm-soft-cyan)' : 'var(--sfm-muted)',
+            border: i === step ? '2px solid var(--sfm-soft-cyan)' : '2px solid transparent',
+            boxShadow: i === step ? '0 0 0 4px rgba(167,243,240,.14)' : 'none',
           }}>{i < step ? '✓' : i + 1}</div>
-          {i < total - 1 && <div style={{ flex: 1, height: '2px', background: i < step ? '#D8AE63' : 'rgba(216,174,99,.15)', borderRadius: '2px', transition: 'background .3s' }} />}
+          {i < total - 1 && <div style={{ flex: 1, height: '2px', background: i < step ? 'var(--sfm-soft-cyan)' : 'rgba(167,243,240,.15)', borderRadius: '2px', transition: 'background .3s' }} />}
         </div>
       ))}
     </div>
@@ -157,7 +157,7 @@ function RiskGauge({ value }: { value: number }) {
   return (
     <div style={{ position: 'relative', width: '110px', height: '66px', margin: '0 auto' }}>
       <svg width="110" height="66" viewBox="0 0 110 66">
-        <path d="M10 60 A45 45 0 0 1 100 60" fill="none" stroke="rgba(216,174,99,.12)" strokeWidth="9" strokeLinecap="round" />
+        <path d="M10 60 A45 45 0 0 1 100 60" fill="none" stroke="rgba(167,243,240,.12)" strokeWidth="9" strokeLinecap="round" />
         <path d="M10 60 A45 45 0 0 1 100 60" fill="none" stroke={ri.bar} strokeWidth="9" strokeLinecap="round"
           strokeDasharray={`${dash * 0.9} 157`} style={{ transition: 'stroke-dasharray .8s ease' }} />
       </svg>
@@ -296,32 +296,32 @@ export default function ProjectsPage() {
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap');
       *{box-sizing:border-box;margin:0;padding:0}
-      .pp{font-family:'Tajawal',sans-serif;background:#F7F3EA;min-height:100vh;color:#111111}
-      .pp ::-webkit-scrollbar{width:4px}.pp ::-webkit-scrollbar-thumb{background:rgba(216,174,99,.3);border-radius:10px}
+      .pp{font-family:'Tajawal',sans-serif;background:var(--sfm-light-card);min-height:100vh;color:var(--sfm-foreground)}
+      .pp ::-webkit-scrollbar{width:4px}.pp ::-webkit-scrollbar-thumb{background:rgba(167,243,240,.3);border-radius:10px}
       @keyframes spin{to{transform:rotate(360deg)}}
       @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
       @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-      .pc{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:22px;box-shadow:0 4px 22px rgba(90,67,51,.06);transition:all .25s cubic-bezier(.4,0,.2,1)}
-      .pc:hover:not(.no-h){transform:translateY(-2px);box-shadow:0 10px 34px rgba(90,67,51,.10)}
-      .pi{width:100%;background:rgba(247,243,234,.7);border:1.5px solid rgba(216,174,99,.22);border-radius:13px;padding:12px 15px;font-family:'Tajawal',sans-serif;font-size:15px;color:#111111;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
-      .pi:focus{border-color:#D8AE63;box-shadow:0 0 0 3px rgba(216,174,99,.14)}
-      .psel{background:rgba(247,243,234,.7) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23D8AE63' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat left 14px center;cursor:pointer;padding-left:36px}
+      .pc{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:22px;box-shadow:0 4px 22px rgba(3,18,37,.06);transition:all .25s cubic-bezier(.4,0,.2,1)}
+      .pc:hover:not(.no-h){transform:translateY(-2px);box-shadow:0 10px 34px rgba(3,18,37,.10)}
+      .pi{width:100%;background:rgba(247,243,234,.7);border:1.5px solid rgba(167,243,240,.22);border-radius:13px;padding:12px 15px;font-family:'Tajawal',sans-serif;font-size:15px;color:var(--sfm-foreground);outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
+      .pi:focus{border-color:var(--sfm-soft-cyan);box-shadow:0 0 0 3px rgba(167,243,240,.14)}
+      .psel{background:rgba(247,243,234,.7) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231D8CFF' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat left 14px center;cursor:pointer;padding-left:36px}
       .pbtn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:14px;font-family:'Tajawal',sans-serif;font-weight:700;cursor:pointer;transition:all .2s}
-      .pbtn-g{background:linear-gradient(135deg,#D8AE63,#9A6C3C);color:#111111;box-shadow:0 4px 16px rgba(216,174,99,.28)}
-      .pbtn-g:hover{background:linear-gradient(135deg,#E4BC73,#A87C4C);transform:translateY(-1px);box-shadow:0 6px 20px rgba(216,174,99,.35)}
-      .pbtn-d{background:#111111;color:#D8AE63}
+      .pbtn-g{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 4px 16px rgba(167,243,240,.28)}
+      .pbtn-g:hover{background:linear-gradient(135deg,#E4BC73,#A87C4C);transform:translateY(-1px);box-shadow:0 6px 20px rgba(167,243,240,.35)}
+      .pbtn-d{background:var(--sfm-foreground);color:var(--sfm-soft-cyan)}
       .pbtn-d:hover{background:#222;transform:translateY(-1px)}
-      .pbtn-o{background:transparent;border:1.5px solid rgba(216,174,99,.3);color:#9A6C3C}
-      .pbtn-o:hover{border-color:#D8AE63;color:#5B4332}
+      .pbtn-o{background:transparent;border:1.5px solid rgba(167,243,240,.3);color:var(--sfm-muted)}
+      .pbtn-o:hover{border-color:var(--sfm-soft-cyan);color:var(--sfm-muted)}
       .pbtn:disabled{opacity:.55;cursor:not-allowed;transform:none!important}
       .nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;cursor:pointer;transition:all .2s;color:rgba(255,255,255,.55);font-size:13px;font-weight:500;border:none;background:transparent;width:100%;text-align:right;direction:rtl;font-family:'Tajawal',sans-serif}
       .nav-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.88)}
-      .nav-item.active{background:rgba(216,174,99,.18);color:#D8AE63;font-weight:700}
-      .prog-bar{height:7px;background:rgba(216,174,99,.12);border-radius:10px;overflow:hidden}
+      .nav-item.active{background:rgba(167,243,240,.18);color:var(--sfm-soft-cyan);font-weight:700}
+      .prog-bar{height:7px;background:rgba(167,243,240,.12);border-radius:10px;overflow:hidden}
       .prog-fill{height:100%;border-radius:10px;transition:width 1s cubic-bezier(.4,0,.2,1)}
-      .need-chip{cursor:pointer;transition:all .15s;border:1.5px solid rgba(216,174,99,.22);border-radius:20px;padding:7px 13px;font-size:12.5px;font-weight:600;font-family:'Tajawal',sans-serif;background:transparent;color:#5B4332;display:inline-flex;align-items:center;gap:6px}
-      .need-chip:hover{border-color:#D8AE63;background:rgba(216,174,99,.08)}
-      .need-chip.active{background:rgba(216,174,99,.16);border-color:#D8AE63;color:#8A6D2A}
+      .need-chip{cursor:pointer;transition:all .15s;border:1.5px solid rgba(167,243,240,.22);border-radius:20px;padding:7px 13px;font-size:12.5px;font-weight:600;font-family:'Tajawal',sans-serif;background:transparent;color:var(--sfm-muted);display:inline-flex;align-items:center;gap:6px}
+      .need-chip:hover{border-color:var(--sfm-soft-cyan);background:rgba(167,243,240,.08)}
+      .need-chip.active{background:rgba(167,243,240,.16);border-color:var(--sfm-soft-cyan);color:#8A6D2A}
       @media(max-width:1024px){.sidebar{display:none!important}.main-ml{margin-inline-start:0!important}}
       @media(max-width:768px){.kpi-g{grid-template-columns:1fr 1fr!important}.g2{grid-template-columns:1fr!important}}
       @media(max-width:560px){.kpi-g{grid-template-columns:1fr!important}.main-ml{padding-inline:14px!important}}
@@ -337,8 +337,8 @@ export default function ProjectsPage() {
           <div style={S(0)}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <h1 style={{ fontSize: 'clamp(22px,3vw,30px)', fontWeight: '900', color: '#111111', marginBottom: '4px' }}>{pt.title}</h1>
-                <p style={{ fontSize: '13px', color: '#9A6C3C' }}>{pt.subtitle}</p>
+                <h1 style={{ fontSize: 'clamp(22px,3vw,30px)', fontWeight: '900', color: 'var(--sfm-foreground)', marginBottom: '4px' }}>{pt.title}</h1>
+                <p style={{ fontSize: '13px', color: 'var(--sfm-muted)' }}>{pt.subtitle}</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <LanguageSwitcher variant="gold" compact />
@@ -356,17 +356,17 @@ export default function ProjectsPage() {
           {/* KPI Cards */}
           <div className="kpi-g" style={{ ...S(40), display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '14px' }}>
             {[
-              { icon: '🚀', label: pt.totalProjects, val: projects.length, color: '#D8AE63', isN: true },
+              { icon: '🚀', label: pt.totalProjects, val: projects.length, color: 'var(--sfm-soft-cyan)', isN: true },
               { icon: '✅', label: pt.activeProjects, val: activeProjects, color: '#22C55E', isN: true },
               { icon: '💰', label: pt.totalCapital, val: totalCapital, color: '#3B82F6', unit: pt.currency },
               { icon: '📈', label: pt.totalProfit, val: totalCurrentProfit, color: totalCurrentProfit >= 0 ? '#22C55E' : '#EF4444', unit: pt.currency },
             ].map((k, i) => (
               <div key={i} className="pc no-h" style={{ padding: '18px 20px' }}>
                 <div style={{ width: '40px', height: '40px', background: `${k.color}14`, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', marginBottom: '12px' }}>{k.icon}</div>
-                <div style={{ fontSize: '11px', color: '#9A6C3C', marginBottom: '4px', fontWeight: '600' }}>{k.label}</div>
+                <div style={{ fontSize: '11px', color: 'var(--sfm-muted)', marginBottom: '4px', fontWeight: '600' }}>{k.label}</div>
                 <div style={{ fontSize: '22px', fontWeight: '900', color: k.color, fontFamily: "'IBM Plex Sans Arabic',sans-serif", lineHeight: 1 }}>
                   {k.isN ? k.val : k.val.toFixed(3)}
-                  {k.unit && <span style={{ fontSize: '12px', color: '#9A6C3C', marginRight: '4px' }}> {k.unit}</span>}
+                  {k.unit && <span style={{ fontSize: '12px', color: 'var(--sfm-muted)', marginRight: '4px' }}> {k.unit}</span>}
                 </div>
               </div>
             ))}
@@ -375,10 +375,10 @@ export default function ProjectsPage() {
           {/* Multi-step form */}
           {showForm && (
             <div ref={formRef} className="pc" style={{ ...S(60), padding: '30px 34px' }}>
-              <div style={{ marginBottom: '4px', fontSize: '16px', fontWeight: '800', color: '#111111' }}>
+              <div style={{ marginBottom: '4px', fontSize: '16px', fontWeight: '800', color: 'var(--sfm-foreground)' }}>
                 {editingId ? '✏️ تعديل المشروع' : '➕ مشروع جديد'} — {STEP_LABELS[formStep]}
               </div>
-              <div style={{ fontSize: '12px', color: '#9A6C3C', marginBottom: '20px' }}>الخطوة {formStep + 1} من {STEP_LABELS.length}</div>
+              <div style={{ fontSize: '12px', color: 'var(--sfm-muted)', marginBottom: '20px' }}>الخطوة {formStep + 1} من {STEP_LABELS.length}</div>
               <StepDots step={formStep} total={STEP_LABELS.length} />
 
               {/* Step 0: Basics */}
@@ -386,16 +386,16 @@ export default function ProjectsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
                     <div style={{ position: 'relative' }}>
-                      <button style={{ width: '52px', height: '52px', background: '#FAF8F2', border: '1.5px solid rgba(216,174,99,.22)', borderRadius: '14px', fontSize: '24px', cursor: 'pointer' }}
+                      <button style={{ width: '52px', height: '52px', background: 'var(--sfm-card)', border: '1.5px solid rgba(167,243,240,.22)', borderRadius: '14px', fontSize: '24px', cursor: 'pointer' }}
                         onClick={() => { const el = document.getElementById('ep'); if (el) el.style.display = el.style.display === 'grid' ? 'none' : 'grid'; }}>
                         {form.emoji}
                       </button>
-                      <div id="ep" style={{ display: 'none', position: 'absolute', top: '56px', right: 0, zIndex: 100, background: '#fff', border: '1px solid rgba(216,174,99,.2)', borderRadius: '16px', padding: '10px', boxShadow: '0 16px 40px rgba(27,36,48,.10)', gridTemplateColumns: 'repeat(5,1fr)', gap: '5px', width: '180px' }}>
+                      <div id="ep" style={{ display: 'none', position: 'absolute', top: '56px', right: 0, zIndex: 100, background: '#fff', border: '1px solid rgba(167,243,240,.2)', borderRadius: '16px', padding: '10px', boxShadow: '0 16px 40px rgba(27,36,48,.10)', gridTemplateColumns: 'repeat(5,1fr)', gap: '5px', width: '180px' }}>
                         {EMOJIS.map(e => <button key={e} onClick={() => { setForm(f => ({ ...f, emoji: e })); const el = document.getElementById('ep'); if (el) el.style.display = 'none'; }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '4px', borderRadius: '6px' }}>{e}</button>)}
                       </div>
                     </div>
                     <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: '13px', fontWeight: '700', color: '#5B4332', display: 'block', marginBottom: '7px' }}>اسم المشروع *</label>
+                      <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>اسم المشروع *</label>
                       <input className="pi" placeholder="مثال: كافيه الرياض" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={{ height: '48px' }} />
                     </div>
                   </div>
@@ -406,7 +406,7 @@ export default function ProjectsPage() {
                       { key: 'startTimeline', label: 'وقت البدء المتوقع', opts: START_TIMELINES },
                     ].map(f => (
                       <div key={f.key}>
-                        <label style={{ fontSize: '13px', fontWeight: '700', color: '#5B4332', display: 'block', marginBottom: '7px' }}>{f.label}</label>
+                        <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>{f.label}</label>
                         <select className="pi psel" style={{ height: '48px' }} value={(form as any)[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}>
                           <option value="">اختر...</option>
                           {f.opts.map(o => <option key={o} value={o}>{o}</option>)}
@@ -414,17 +414,17 @@ export default function ProjectsPage() {
                       </div>
                     ))}
                     <div>
-                      <label style={{ fontSize: '13px', fontWeight: '700', color: '#5B4332', display: 'block', marginBottom: '7px' }}>حالة المشروع</label>
+                      <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>حالة المشروع</label>
                       <select className="pi psel" style={{ height: '48px' }} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as ProjectStatus }))}>
                         {(Object.keys(STATUS_CONFIG) as ProjectStatus[]).map(s => <option key={s} value={s}>{STATUS_CONFIG[s].icon} {s}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label style={{ fontSize: '13px', fontWeight: '700', color: '#5B4332', display: 'block', marginBottom: '7px' }}>تاريخ البداية</label>
+                      <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>تاريخ البداية</label>
                       <input className="pi" type="date" style={{ height: '48px' }} value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
                     </div>
                     <div style={{ gridColumn: '1/-1' }}>
-                      <label style={{ fontSize: '13px', fontWeight: '700', color: '#5B4332', display: 'block', marginBottom: '7px' }}>فكرة المشروع</label>
+                      <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>فكرة المشروع</label>
                       <input className="pi" placeholder="وصف مختصر..." value={form.idea} onChange={e => setForm(f => ({ ...f, idea: e.target.value }))} style={{ height: '48px' }} />
                     </div>
                   </div>
@@ -436,18 +436,18 @@ export default function ProjectsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div className="g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                     {[
-                      { key: 'capital', label: 'رأس المال المطلوب', icon: '💰', color: '#D8AE63' },
+                      { key: 'capital', label: 'رأس المال المطلوب', icon: '💰', color: 'var(--sfm-soft-cyan)' },
                       { key: 'expectedProfit', label: 'الربح المتوقع الشهري', icon: '📈', color: '#22C55E' },
                       { key: 'currentProfit', label: 'الربح الحالي الفعلي', icon: '💵', color: '#3B82F6' },
                       { key: 'monthlyExpenses', label: 'المصروفات الشهرية', icon: '🔥', color: '#EF4444' },
                       { key: 'monthlyRevenue', label: 'الإيراد الشهري المتوقع', icon: '📊', color: '#22C55E' },
                     ].map(f => (
                       <div key={f.key}>
-                        <label style={{ fontSize: '13px', fontWeight: '700', color: '#5B4332', display: 'block', marginBottom: '7px' }}>{f.icon} {f.label}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid rgba(216,174,99,.22)', borderRadius: '13px', overflow: 'hidden', background: 'rgba(247,243,234,.7)' }}>
-                          <span style={{ padding: '0 10px', fontSize: '12px', fontWeight: '700', color: f.color, borderLeft: '1px solid rgba(216,174,99,.15)', height: '48px', display: 'flex', alignItems: 'center', flexShrink: 0, fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>د.ك</span>
+                        <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>{f.icon} {f.label}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid rgba(167,243,240,.22)', borderRadius: '13px', overflow: 'hidden', background: 'rgba(247,243,234,.7)' }}>
+                          <span style={{ padding: '0 10px', fontSize: '12px', fontWeight: '700', color: f.color, borderLeft: '1px solid rgba(167,243,240,.15)', height: '48px', display: 'flex', alignItems: 'center', flexShrink: 0, fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>د.ك</span>
                           <input type="text" placeholder="0.000" dir="ltr" value={(form as any)[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                            style={{ flex: 1, height: '48px', padding: '0 12px', background: 'transparent', border: 'none', outline: 'none', fontSize: '16px', fontWeight: '700', color: '#111111', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }} />
+                            style={{ flex: 1, height: '48px', padding: '0 12px', background: 'transparent', border: 'none', outline: 'none', fontSize: '16px', fontWeight: '700', color: 'var(--sfm-foreground)', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }} />
                         </div>
                       </div>
                     ))}
@@ -458,8 +458,8 @@ export default function ProjectsPage() {
                       if (cap > 0 && profit > 0) {
                         return (
                           <div style={{ background: 'rgba(34,197,94,.06)', border: '1.5px solid rgba(34,197,94,.2)', borderRadius: '14px', padding: '14px', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px', textAlign: 'center' }}>
-                            {[{ label: 'الربح الشهري', val: `${profit.toFixed(3)} د.ك`, color: '#22C55E' }, { label: 'استرجاع رأس المال', val: `${Math.ceil(cap / profit)} شهر`, color: '#D8AE63' }, { label: 'العائد السنوي', val: `${((profit * 12 / cap) * 100).toFixed(1)}%`, color: '#3B82F6' }].map((r, i) => (
-                              <div key={i}><div style={{ fontSize: '10px', color: '#9A6C3C', marginBottom: '4px' }}>{r.label}</div><div style={{ fontSize: '15px', fontWeight: '800', color: r.color, fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{r.val}</div></div>
+                            {[{ label: 'الربح الشهري', val: `${profit.toFixed(3)} د.ك`, color: '#22C55E' }, { label: 'استرجاع رأس المال', val: `${Math.ceil(cap / profit)} شهر`, color: 'var(--sfm-soft-cyan)' }, { label: 'العائد السنوي', val: `${((profit * 12 / cap) * 100).toFixed(1)}%`, color: '#3B82F6' }].map((r, i) => (
+                              <div key={i}><div style={{ fontSize: '10px', color: 'var(--sfm-muted)', marginBottom: '4px' }}>{r.label}</div><div style={{ fontSize: '15px', fontWeight: '800', color: r.color, fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{r.val}</div></div>
                             ))}
                           </div>
                         );
@@ -470,7 +470,7 @@ export default function ProjectsPage() {
                   {/* Risk slider */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                      <label style={{ fontSize: '13px', fontWeight: '700', color: '#5B4332' }}>⚖️ مستوى المخاطرة</label>
+                      <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)' }}>⚖️ مستوى المخاطرة</label>
                       <span style={{ fontSize: '12.5px', fontWeight: '700', padding: '3px 12px', borderRadius: '20px', background: riskInfo(form.riskLevel).bg, color: riskInfo(form.riskLevel).color }}>{riskInfo(form.riskLevel).label} ({form.riskLevel})</span>
                     </div>
                     <input type="range" min={0} max={100} value={form.riskLevel} onChange={e => setForm(f => ({ ...f, riskLevel: +e.target.value }))} style={{ width: '100%', height: '6px', borderRadius: '10px', accentColor: riskInfo(form.riskLevel).color, cursor: 'pointer' }} />
@@ -482,11 +482,11 @@ export default function ProjectsPage() {
               {formStep === 2 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div>
-                    <label style={{ fontSize: '13px', fontWeight: '700', color: '#5B4332', display: 'block', marginBottom: '8px' }}>📝 ملاحظات</label>
+                    <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '8px' }}>📝 ملاحظات</label>
                     <textarea className="pi" rows={4} placeholder="أضف أي ملاحظات أو تفاصيل إضافية عن المشروع..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={{ resize: 'vertical', minHeight: '100px' }} />
                   </div>
                   <div>
-                    <label style={{ fontSize: '13px', fontWeight: '700', color: '#5B4332', display: 'block', marginBottom: '10px' }}>⚡ ما يحتاجه المشروع</label>
+                    <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '10px' }}>⚡ ما يحتاجه المشروع</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {['تمويل 💰', 'شريك 🤝', 'موظفين 👥', 'متجر إلكتروني 🛒', 'تطبيق 📱', 'تسويق 📣', 'موردين 🏭', 'موقع 🌐', 'معدات ⚙️', 'محل 🏪', 'رخصة 📋', 'خطة عمل 📊', 'دراسة جدوى 🔍', 'مستشار قانوني ⚖️'].map(n => {
                         const active = form.needs.includes(n);
@@ -500,19 +500,19 @@ export default function ProjectsPage() {
               {/* Step 3: Progress */}
               {formStep === 3 && (
                 <div>
-                  <div style={{ fontSize: '13px', color: '#9A6C3C', marginBottom: '14px' }}>حدّد المراحل التي أتممتها</div>
+                  <div style={{ fontSize: '13px', color: 'var(--sfm-muted)', marginBottom: '14px' }}>حدّد المراحل التي أتممتها</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {PROGRESS_STEPS.map((s, i) => {
                       const done = form.progress[s.id];
                       return (
                         <div key={s.id} onClick={() => setForm(f => ({ ...f, progress: { ...f.progress, [s.id]: !f.progress[s.id] } }))}
-                          style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', borderRadius: '16px', border: `1.5px solid ${done ? 'rgba(34,197,94,.3)' : 'rgba(216,174,99,.18)'}`, background: done ? 'rgba(34,197,94,.05)' : '#FAFAF7', cursor: 'pointer', transition: 'all .2s' }}>
-                          <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', background: done ? 'rgba(34,197,94,.12)' : 'rgba(216,174,99,.10)', border: `2px solid ${done ? '#22C55E' : 'rgba(216,174,99,.3)'}`, flexShrink: 0 }}>{done ? '✅' : s.icon}</div>
+                          style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', borderRadius: '16px', border: `1.5px solid ${done ? 'rgba(34,197,94,.3)' : 'rgba(167,243,240,.18)'}`, background: done ? 'rgba(34,197,94,.05)' : 'var(--sfm-light-card)', cursor: 'pointer', transition: 'all .2s' }}>
+                          <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', background: done ? 'rgba(34,197,94,.12)' : 'rgba(167,243,240,.10)', border: `2px solid ${done ? '#22C55E' : 'rgba(167,243,240,.3)'}`, flexShrink: 0 }}>{done ? '✅' : s.icon}</div>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '14px', fontWeight: '700', color: done ? '#22C55E' : '#111111' }}>{s.label}</div>
-                            <div style={{ fontSize: '11px', color: '#9A6C3C' }}>المرحلة {i + 1} من 5</div>
+                            <div style={{ fontSize: '14px', fontWeight: '700', color: done ? '#22C55E' : 'var(--sfm-foreground)' }}>{s.label}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--sfm-muted)' }}>المرحلة {i + 1} من 5</div>
                           </div>
-                          <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${done ? '#22C55E' : 'rgba(216,174,99,.3)'}`, background: done ? '#22C55E' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '12px', flexShrink: 0 }}>{done && '✓'}</div>
+                          <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${done ? '#22C55E' : 'rgba(167,243,240,.3)'}`, background: done ? '#22C55E' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '12px', flexShrink: 0 }}>{done && '✓'}</div>
                         </div>
                       );
                     })}
@@ -521,15 +521,15 @@ export default function ProjectsPage() {
               )}
               {formStep === 4 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div style={{ fontSize: '13px', color: '#9A6C3C' }}>اختر نوع دراسة الجدوى المطلوبة. يمكن اختيار أكثر من نوع.</div>
+                  <div style={{ fontSize: '13px', color: 'var(--sfm-muted)' }}>اختر نوع دراسة الجدوى المطلوبة. يمكن اختيار أكثر من نوع.</div>
                   <div className="g2" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: '12px' }}>
                     {FEASIBILITY_TYPES.map(type => {
                       const active = form.feasibilityTypes.includes(type.id);
                       return (
-                        <button key={type.id} onClick={() => setForm(f => ({ ...f, feasibilityTypes: active ? f.feasibilityTypes.filter(x => x !== type.id) : [...f.feasibilityTypes, type.id] }))} style={{ textAlign: 'right', border: `1.8px solid ${active ? '#D8AE63' : 'rgba(216,174,99,.18)'}`, background: active ? 'rgba(216,174,99,.10)' : '#FAF8F2', borderRadius: '16px', padding: '14px', cursor: 'pointer', fontFamily: 'Tajawal,sans-serif' }}>
+                        <button key={type.id} onClick={() => setForm(f => ({ ...f, feasibilityTypes: active ? f.feasibilityTypes.filter(x => x !== type.id) : [...f.feasibilityTypes, type.id] }))} style={{ textAlign: 'right', border: `1.8px solid ${active ? 'var(--sfm-soft-cyan)' : 'rgba(167,243,240,.18)'}`, background: active ? 'rgba(167,243,240,.10)' : 'var(--sfm-card)', borderRadius: '16px', padding: '14px', cursor: 'pointer', fontFamily: 'Tajawal,sans-serif' }}>
                           <div style={{ fontSize: '26px', color: type.color }}>{type.icon}</div>
-                          <div style={{ fontSize: '13px', fontWeight: 800, color: '#111', marginTop: '8px' }}>{type.title}</div>
-                          <div style={{ fontSize: '11px', color: '#9A6C3C', lineHeight: 1.6, marginTop: '5px' }}>{type.desc}</div>
+                          <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--sfm-foreground)', marginTop: '8px' }}>{type.title}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--sfm-muted)', lineHeight: 1.6, marginTop: '5px' }}>{type.desc}</div>
                           <div style={{ marginTop: '9px', fontSize: '11px', color: type.color, fontWeight: 800 }}>{active ? 'تم الاختيار' : 'اختر'}</div>
                         </button>
                       );
@@ -539,7 +539,7 @@ export default function ProjectsPage() {
               )}
 
               {/* Nav buttons */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '26px', paddingTop: '18px', borderTop: '1px solid rgba(216,174,99,.10)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '26px', paddingTop: '18px', borderTop: '1px solid rgba(167,243,240,.10)' }}>
                 <button className="pbtn pbtn-o" style={{ padding: '10px 20px', fontSize: '14px' }} onClick={() => formStep > 0 ? setFormStep(s => s - 1) : (setShowForm(false), setEditingId(null))}>
                   {formStep > 0 ? '← السابق' : 'إلغاء'}
                 </button>
@@ -549,7 +549,7 @@ export default function ProjectsPage() {
                   </button>
                 ) : (
                   <button className="pbtn pbtn-g" style={{ padding: '10px 22px', fontSize: '14px' }} onClick={saveProject} disabled={saving || analyzing}>
-                    {saving || analyzing ? <><span style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid rgba(0,0,0,.2)', borderTopColor: '#111', animation: 'spin 1s linear infinite', display: 'inline-block' }} /> {analyzing ? 'تحليل AI...' : 'حفظ...'}</> : '💾 حفظ وتحليل'}
+                    {saving || analyzing ? <><span style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid rgba(0,0,0,.2)', borderTopColor: 'var(--sfm-foreground)', animation: 'spin 1s linear infinite', display: 'inline-block' }} /> {analyzing ? 'تحليل AI...' : 'حفظ...'}</> : '💾 حفظ وتحليل'}
                   </button>
                 )}
               </div>
@@ -560,8 +560,8 @@ export default function ProjectsPage() {
           {projects.length === 0 && !showForm && (
             <div className="pc" style={{ ...S(80), padding: '60px 40px', textAlign: 'center' }}>
               <div style={{ fontSize: '56px', marginBottom: '18px' }}>🚀</div>
-              <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#111111', marginBottom: '10px' }}>{pt.noProjects}</h3>
-              <p style={{ fontSize: '14px', color: '#9A6C3C', marginBottom: '22px', lineHeight: 1.7 }}>{pt.noProjectsDesc}</p>
+              <h3 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--sfm-foreground)', marginBottom: '10px' }}>{pt.noProjects}</h3>
+              <p style={{ fontSize: '14px', color: 'var(--sfm-muted)', marginBottom: '22px', lineHeight: 1.7 }}>{pt.noProjectsDesc}</p>
               <button className="pbtn pbtn-g" style={{ padding: '12px 26px', fontSize: '15px', margin: '0 auto' }} onClick={() => setShowForm(true)}>
                 <Plus className="w-4 h-4" /> {pt.addFirst}
               </button>
@@ -585,17 +585,17 @@ export default function ProjectsPage() {
                       <div style={{ width: '50px', height: '50px', background: sc.bg, borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0, border: `1px solid ${sc.color}22` }}>{project.emoji}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                          <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#111111' }}>{project.name}</h3>
+                          <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--sfm-foreground)' }}>{project.name}</h3>
                           <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: '20px', background: sc.bg, color: sc.color, flexShrink: 0 }}>{sc.icon} {project.status}</span>
-                          {project.type && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '20px', background: 'rgba(216,174,99,.10)', color: '#9A6C3C' }}>{project.type}</span>}
+                          {project.type && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '20px', background: 'rgba(167,243,240,.10)', color: 'var(--sfm-muted)' }}>{project.type}</span>}
                         </div>
                         <div className="prog-bar" style={{ marginBottom: '6px' }}>
-                          <div className="prog-fill" style={{ width: `${progressPct}%`, background: progressPct === 100 ? '#22C55E' : 'linear-gradient(90deg,#D8AE63,#9A6C3C)' }} />
+                          <div className="prog-fill" style={{ width: `${progressPct}%`, background: progressPct === 100 ? '#22C55E' : 'linear-gradient(90deg,var(--sfm-primary),var(--sfm-accent))' }} />
                         </div>
                         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                          {cap > 0 && <span style={{ fontSize: '12px', color: '#9A6C3C' }}>رأس المال: <b style={{ color: '#D8AE63', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{cap.toFixed(3)} د.ك</b></span>}
-                          {curP !== 0 && <span style={{ fontSize: '12px', color: '#9A6C3C' }}>الربح الحالي: <b style={{ color: curP >= 0 ? '#22C55E' : '#EF4444', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{curP >= 0 ? '+' : ''}{curP.toFixed(3)} د.ك</b></span>}
-                          {roi && <span style={{ fontSize: '12px', color: '#9A6C3C' }}>استرجاع: <b style={{ color: '#3B82F6' }}>{roi.months} شهر</b></span>}
+                          {cap > 0 && <span style={{ fontSize: '12px', color: 'var(--sfm-muted)' }}>رأس المال: <b style={{ color: 'var(--sfm-soft-cyan)', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{cap.toFixed(3)} د.ك</b></span>}
+                          {curP !== 0 && <span style={{ fontSize: '12px', color: 'var(--sfm-muted)' }}>الربح الحالي: <b style={{ color: curP >= 0 ? '#22C55E' : '#EF4444', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{curP >= 0 ? '+' : ''}{curP.toFixed(3)} د.ك</b></span>}
+                          {roi && <span style={{ fontSize: '12px', color: 'var(--sfm-muted)' }}>استرجاع: <b style={{ color: '#3B82F6' }}>{roi.months} شهر</b></span>}
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
@@ -604,10 +604,10 @@ export default function ProjectsPage() {
                             <span style={{ fontSize: '12px', fontWeight: '900', color: scoreColor(project.analysis.score) }}>{project.analysis.score}</span>
                           </div>
                         )}
-                        <button onClick={e => { e.stopPropagation(); startEdit(project); }} style={{ width: '34px', height: '34px', background: 'rgba(216,174,99,.10)', border: '1px solid rgba(216,174,99,.22)', borderRadius: '10px', cursor: 'pointer', color: '#D8AE63', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Pencil className="w-3.5 h-3.5" /></button>
+                        <button onClick={e => { e.stopPropagation(); startEdit(project); }} style={{ width: '34px', height: '34px', background: 'rgba(167,243,240,.10)', border: '1px solid rgba(167,243,240,.22)', borderRadius: '10px', cursor: 'pointer', color: 'var(--sfm-soft-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Pencil className="w-3.5 h-3.5" /></button>
                         <button onClick={e => { e.stopPropagation(); removeProject(project.id); }} style={{ width: '34px', height: '34px', background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.2)', borderRadius: '10px', cursor: 'pointer', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 className="w-3.5 h-3.5" /></button>
-                        <button onClick={e => { e.stopPropagation(); router.push(`/projects/${project.id}`); }} style={{ minHeight: '34px', background: 'linear-gradient(135deg,#FAC775,#D8AE63)', border: '0', borderRadius: '10px', cursor: 'pointer', color: '#111111', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px', fontSize: '12px', fontWeight: 900, fontFamily: 'Tajawal,sans-serif', whiteSpace: 'nowrap' }}>{pt.viewDetails}</button>
-                        <button onClick={e => { e.stopPropagation(); setProjects(prev => prev.map(p => p.id === project.id ? { ...p, expanded: !p.expanded } : p)); }} aria-label={project.expanded ? pt.collapseProject : pt.expandProject} style={{ width: '34px', height: '34px', background: 'rgba(216,174,99,.08)', border: '1px solid rgba(216,174,99,.2)', borderRadius: '10px', cursor: 'pointer', color: '#9A6C3C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <button onClick={e => { e.stopPropagation(); router.push(`/projects/${project.id}`); }} style={{ minHeight: '34px', background: 'linear-gradient(135deg,var(--sfm-soft-cyan),var(--sfm-soft-cyan))', border: '0', borderRadius: '10px', cursor: 'pointer', color: 'var(--sfm-foreground)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px', fontSize: '12px', fontWeight: 900, fontFamily: 'Tajawal,sans-serif', whiteSpace: 'nowrap' }}>{pt.viewDetails}</button>
+                        <button onClick={e => { e.stopPropagation(); setProjects(prev => prev.map(p => p.id === project.id ? { ...p, expanded: !p.expanded } : p)); }} aria-label={project.expanded ? pt.collapseProject : pt.expandProject} style={{ width: '34px', height: '34px', background: 'rgba(167,243,240,.08)', border: '1px solid rgba(167,243,240,.2)', borderRadius: '10px', cursor: 'pointer', color: 'var(--sfm-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {project.expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                         </button>
                       </div>
@@ -615,27 +615,27 @@ export default function ProjectsPage() {
 
                     {/* Expanded details */}
                     {project.expanded && (
-                      <div style={{ padding: '0 24px 22px', borderTop: '1px solid rgba(216,174,99,.10)' }}>
+                      <div style={{ padding: '0 24px 22px', borderTop: '1px solid rgba(167,243,240,.10)' }}>
                         <div className="g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px', paddingTop: '18px' }}>
                           {/* Financials */}
                           <div>
-                            <div style={{ fontSize: '13px', fontWeight: '700', color: '#5B4332', marginBottom: '12px' }}>💰 البيانات المالية</div>
+                            <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', marginBottom: '12px' }}>💰 البيانات المالية</div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                               {[
-                                { label: 'رأس المال', val: project.capital, icon: '💰', color: '#D8AE63' },
+                                { label: 'رأس المال', val: project.capital, icon: '💰', color: 'var(--sfm-soft-cyan)' },
                                 { label: 'الربح المتوقع', val: project.expectedProfit, icon: '📈', color: '#22C55E' },
                                 { label: 'الربح الحالي', val: project.currentProfit, icon: '💵', color: curP >= 0 ? '#22C55E' : '#EF4444' },
                                 { label: 'مصروف/شهر', val: project.monthlyExpenses, icon: '🔥', color: '#EF4444' },
                               ].map((f, i) => f.val ? (
-                                <div key={i} style={{ background: '#FAF8F2', borderRadius: '12px', padding: '12px', textAlign: 'center', border: '1px solid rgba(216,174,99,.10)' }}>
+                                <div key={i} style={{ background: 'var(--sfm-card)', borderRadius: '12px', padding: '12px', textAlign: 'center', border: '1px solid rgba(167,243,240,.10)' }}>
                                   <div style={{ fontSize: '16px', marginBottom: '4px' }}>{f.icon}</div>
-                                  <div style={{ fontSize: '10px', color: '#9A6C3C', marginBottom: '4px' }}>{f.label}</div>
-                                  <div style={{ fontSize: '14px', fontWeight: '800', color: f.color, fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{fmt(f.val).toFixed(3)}<span style={{ fontSize: '10px', color: '#9A6C3C', marginRight: '3px' }}> د.ك</span></div>
+                                  <div style={{ fontSize: '10px', color: 'var(--sfm-muted)', marginBottom: '4px' }}>{f.label}</div>
+                                  <div style={{ fontSize: '14px', fontWeight: '800', color: f.color, fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{fmt(f.val).toFixed(3)}<span style={{ fontSize: '10px', color: 'var(--sfm-muted)', marginRight: '3px' }}> د.ك</span></div>
                                 </div>
                               ) : null)}
                             </div>
-                            <div style={{ marginTop: '12px', background: '#FAF8F2', borderRadius: '12px', padding: '14px', textAlign: 'center', border: '1px solid rgba(216,174,99,.10)' }}>
-                              <div style={{ fontSize: '12px', color: '#9A6C3C', marginBottom: '10px' }}>مستوى المخاطرة</div>
+                            <div style={{ marginTop: '12px', background: 'var(--sfm-card)', borderRadius: '12px', padding: '14px', textAlign: 'center', border: '1px solid rgba(167,243,240,.10)' }}>
+                              <div style={{ fontSize: '12px', color: 'var(--sfm-muted)', marginBottom: '10px' }}>مستوى المخاطرة</div>
                               <RiskGauge value={project.riskLevel} />
                             </div>
                           </div>
@@ -643,8 +643,8 @@ export default function ProjectsPage() {
                           {/* AI Analysis */}
                           {project.analysis && (
                             <div>
-                              <div style={{ fontSize: '13px', fontWeight: '700', color: '#5B4332', marginBottom: '12px' }}>🤖 تحليل الذكاء الاصطناعي</div>
-                              <div style={{ background: 'linear-gradient(135deg,#1A0F05,#2B1A0D)', borderRadius: '16px', padding: '16px', marginBottom: '10px' }}>
+                              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', marginBottom: '12px' }}>🤖 تحليل الذكاء الاصطناعي</div>
+                              <div style={{ background: 'linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark))', borderRadius: '16px', padding: '16px', marginBottom: '10px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                                   <span style={{ fontSize: '12px', color: 'rgba(255,255,255,.6)' }}>نسبة النجاح المتوقعة</span>
                                   <span style={{ fontSize: '18px', fontWeight: '900', color: scoreColor(project.analysis.score) }}>{project.analysis.successRate}</span>
@@ -652,7 +652,7 @@ export default function ProjectsPage() {
                                 {[
                                   { label: 'نقاط القوة', items: project.analysis.strengths, color: '#22C55E', icon: '✅' },
                                   { label: 'نقاط الضعف', items: project.analysis.weaknesses, color: '#EF4444', icon: '⚠️' },
-                                  { label: 'التوصيات', items: project.analysis.suggestions, color: '#D8AE63', icon: '💡' },
+                                  { label: 'التوصيات', items: project.analysis.suggestions, color: 'var(--sfm-soft-cyan)', icon: '💡' },
                                 ].map((sec, i) => (
                                   <div key={i} style={{ marginBottom: '8px' }}>
                                     <div style={{ fontSize: '10.5px', fontWeight: '700', color: 'rgba(255,255,255,.45)', marginBottom: '4px' }}>{sec.icon} {sec.label}</div>
@@ -661,9 +661,9 @@ export default function ProjectsPage() {
                                 ))}
                               </div>
                               {project.analysis.marketStatus && (
-                                <div style={{ background: 'rgba(216,174,99,.07)', border: '1px solid rgba(216,174,99,.18)', borderRadius: '12px', padding: '11px 14px' }}>
-                                  <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#9A6C3C', marginBottom: '4px' }}>📊 حالة السوق</div>
-                                  <div style={{ fontSize: '12px', color: '#5B4332', lineHeight: 1.6 }}>{project.analysis.marketStatus}</div>
+                                <div style={{ background: 'rgba(167,243,240,.07)', border: '1px solid rgba(167,243,240,.18)', borderRadius: '12px', padding: '11px 14px' }}>
+                                  <div style={{ fontSize: '10.5px', fontWeight: '700', color: 'var(--sfm-muted)', marginBottom: '4px' }}>📊 حالة السوق</div>
+                                  <div style={{ fontSize: '12px', color: 'var(--sfm-muted)', lineHeight: 1.6 }}>{project.analysis.marketStatus}</div>
                                 </div>
                               )}
                             </div>
@@ -671,21 +671,21 @@ export default function ProjectsPage() {
                         </div>
 
                         {/* Progress steps */}
-                        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(216,174,99,.08)' }}>
-                          <div style={{ fontSize: '13px', fontWeight: '700', color: '#5B4332', marginBottom: '10px' }}>📋 مراحل المشروع</div>
+                        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(167,243,240,.08)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', marginBottom: '10px' }}>📋 مراحل المشروع</div>
                           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                             {PROGRESS_STEPS.map(s => {
                               const done = project.progress?.[s.id];
-                              return <button key={s.id} onClick={() => toggleProgress(project.id, s.id)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '20px', border: `1.5px solid ${done ? '#22C55E' : 'rgba(216,174,99,.22)'}`, background: done ? 'rgba(34,197,94,.08)' : '#FAF8F2', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600', color: done ? '#22C55E' : '#5B4332', fontFamily: 'Tajawal,sans-serif', transition: 'all .2s' }}><span>{done ? '✅' : s.icon}</span>{s.label}</button>;
+                              return <button key={s.id} onClick={() => toggleProgress(project.id, s.id)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '20px', border: `1.5px solid ${done ? '#22C55E' : 'rgba(167,243,240,.22)'}`, background: done ? 'rgba(34,197,94,.08)' : 'var(--sfm-card)', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600', color: done ? '#22C55E' : 'var(--sfm-muted)', fontFamily: 'Tajawal,sans-serif', transition: 'all .2s' }}><span>{done ? '✅' : s.icon}</span>{s.label}</button>;
                             })}
                           </div>
                         </div>
 
                         {/* Notes */}
                         {project.notes && (
-                          <div style={{ marginTop: '14px', background: 'rgba(216,174,99,.06)', border: '1px solid rgba(216,174,99,.15)', borderRadius: '12px', padding: '12px 14px' }}>
-                            <div style={{ fontSize: '11px', fontWeight: '700', color: '#9A6C3C', marginBottom: '4px' }}>📝 ملاحظات</div>
-                            <div style={{ fontSize: '13px', color: '#5B4332', lineHeight: 1.6 }}>{project.notes}</div>
+                          <div style={{ marginTop: '14px', background: 'rgba(167,243,240,.06)', border: '1px solid rgba(167,243,240,.15)', borderRadius: '12px', padding: '12px 14px' }}>
+                            <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--sfm-muted)', marginBottom: '4px' }}>📝 ملاحظات</div>
+                            <div style={{ fontSize: '13px', color: 'var(--sfm-muted)', lineHeight: 1.6 }}>{project.notes}</div>
                           </div>
                         )}
                       </div>
@@ -698,8 +698,8 @@ export default function ProjectsPage() {
 
           {/* AI Chat */}
           <div id="ai-chat" className="pc" style={{ ...S(200), padding: 0, overflow: 'hidden' }}>
-            <div style={{ background: 'linear-gradient(135deg,#1A0F05,#2B1A0D)', padding: '16px 22px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '38px', height: '38px', background: 'rgba(216,174,99,.18)', borderRadius: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', border: '1px solid rgba(216,174,99,.28)', flexShrink: 0 }}>🤖</div>
+            <div style={{ background: 'linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark))', padding: '16px 22px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '38px', height: '38px', background: 'rgba(167,243,240,.18)', borderRadius: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', border: '1px solid rgba(167,243,240,.28)', flexShrink: 0 }}>🤖</div>
               <div>
                 <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#fff' }}>{pt.advisorTitle}</div>
                 <div style={{ fontSize: '11px', color: 'rgba(255,255,255,.4)' }}>{pt.advisorSub}</div>
@@ -709,25 +709,25 @@ export default function ProjectsPage() {
                 <span style={{ fontSize: '11px', color: '#22C55E', fontWeight: '600' }}>{pt.connected}</span>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px', padding: '12px 22px 0', flexWrap: 'wrap', borderBottom: '1px solid rgba(216,174,99,.08)', paddingBottom: '12px' }}>
+            <div style={{ display: 'flex', gap: '8px', padding: '12px 22px 0', flexWrap: 'wrap', borderBottom: '1px solid rgba(167,243,240,.08)', paddingBottom: '12px' }}>
               {['كيف أبدأ مشروعي؟', 'أفضل مشروع بـ 5000 د.ك؟', 'كيف أحسب الجدوى؟'].map((q, i) => (
-                <button key={i} onClick={() => setChatInput(q)} style={{ background: '#FAF8F2', border: '1px solid rgba(216,174,99,.2)', borderRadius: '20px', padding: '5px 12px', fontSize: '12px', fontWeight: '600', color: '#5B4332', cursor: 'pointer', fontFamily: 'Tajawal,sans-serif' }}>{q}</button>
+                <button key={i} onClick={() => setChatInput(q)} style={{ background: 'var(--sfm-card)', border: '1px solid rgba(167,243,240,.2)', borderRadius: '20px', padding: '5px 12px', fontSize: '12px', fontWeight: '600', color: 'var(--sfm-muted)', cursor: 'pointer', fontFamily: 'Tajawal,sans-serif' }}>{q}</button>
               ))}
             </div>
             <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px 22px' }}>
               {messages.map((msg, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-start' : 'flex-end', gap: '8px', alignItems: 'flex-end' }}>
-                  {msg.role === 'assistant' && <div style={{ width: '28px', height: '28px', background: 'rgba(216,174,99,.14)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flexShrink: 0 }}>🤖</div>}
-                  <div style={{ maxWidth: '80%', padding: '11px 15px', borderRadius: msg.role === 'assistant' ? '18px 18px 18px 4px' : '18px 18px 4px 18px', background: msg.role === 'assistant' ? '#FFFDFC' : 'linear-gradient(135deg,#D8AE63,#9A6C3C)', border: msg.role === 'assistant' ? '1px solid rgba(216,174,99,.16)' : 'none', color: msg.role === 'assistant' ? '#111111' : '#1a0f00', fontSize: '13.5px', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                  {msg.role === 'assistant' && <div style={{ width: '28px', height: '28px', background: 'rgba(167,243,240,.14)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flexShrink: 0 }}>🤖</div>}
+                  <div style={{ maxWidth: '80%', padding: '11px 15px', borderRadius: msg.role === 'assistant' ? '18px 18px 18px 4px' : '18px 18px 4px 18px', background: msg.role === 'assistant' ? 'var(--sfm-card)' : 'linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent))', border: msg.role === 'assistant' ? '1px solid rgba(167,243,240,.16)' : 'none', color: msg.role === 'assistant' ? 'var(--sfm-foreground)' : '#1a0f00', fontSize: '13.5px', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{msg.content}</div>
                 </div>
               ))}
-              {chatLoading && <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}><div style={{ width: '28px', height: '28px', background: 'rgba(216,174,99,.14)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🤖</div><div style={{ padding: '12px 16px', background: '#FFFDFC', border: '1px solid rgba(216,174,99,.16)', borderRadius: '18px 18px 18px 4px' }}><Loader2 className="w-4 h-4" style={{ animation: 'spin 1s linear infinite', color: '#D8AE63' }} /></div></div>}
+              {chatLoading && <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}><div style={{ width: '28px', height: '28px', background: 'rgba(167,243,240,.14)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🤖</div><div style={{ padding: '12px 16px', background: 'var(--sfm-card)', border: '1px solid rgba(167,243,240,.16)', borderRadius: '18px 18px 18px 4px' }}><Loader2 className="w-4 h-4" style={{ animation: 'spin 1s linear infinite', color: 'var(--sfm-soft-cyan)' }} /></div></div>}
               <div ref={chatEndRef} />
             </div>
-            <div style={{ padding: '12px 22px 20px', borderTop: '1px solid rgba(216,174,99,.08)', display: 'flex', gap: '10px' }}>
+            <div style={{ padding: '12px 22px 20px', borderTop: '1px solid rgba(167,243,240,.08)', display: 'flex', gap: '10px' }}>
               <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} placeholder="اسألني عن مشروعك..."
-                style={{ flex: 1, background: '#FAF8F2', border: '1.5px solid rgba(216,174,99,.2)', borderRadius: '14px', padding: '11px 16px', fontFamily: 'Tajawal,sans-serif', fontSize: '14px', color: '#111111', outline: 'none', transition: 'border-color .2s' }}
-                onFocus={e => e.currentTarget.style.borderColor = '#D8AE63'} onBlur={e => e.currentTarget.style.borderColor = 'rgba(216,174,99,.2)'} />
+                style={{ flex: 1, background: 'var(--sfm-card)', border: '1.5px solid rgba(167,243,240,.2)', borderRadius: '14px', padding: '11px 16px', fontFamily: 'Tajawal,sans-serif', fontSize: '14px', color: 'var(--sfm-foreground)', outline: 'none', transition: 'border-color .2s' }}
+                onFocus={e => e.currentTarget.style.borderColor = 'var(--sfm-soft-cyan)'} onBlur={e => e.currentTarget.style.borderColor = 'rgba(167,243,240,.2)'} />
               <button className="pbtn pbtn-g" style={{ padding: '11px 18px', flexShrink: 0 }} onClick={sendMessage} disabled={chatLoading || !chatInput.trim()}><Send className="w-4 h-4" /></button>
             </div>
           </div>

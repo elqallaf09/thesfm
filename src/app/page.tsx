@@ -1052,7 +1052,7 @@ const dashboardStyles = `
   .dashboard-shell {
     min-height: 100vh;
     background:
-      radial-gradient(circle at 18% 12%, rgba(186, 117, 23, 0.12), transparent 34%),
+      radial-gradient(circle at 18% 12%, rgba(29, 140, 255, 0.12), transparent 34%),
       linear-gradient(180deg, #fffdf8 0%, #f5f1e8 56%, #efe5d2 100%);
     color: #2b1a0f;
   }
@@ -1100,11 +1100,11 @@ const dashboardStyles = `
     padding: 34px;
     border-radius: 24px;
     background:
-      linear-gradient(135deg, rgba(43, 26, 15, 0.98), rgba(61, 41, 20, 0.96)),
+      linear-gradient(135deg, rgba(3, 18, 37, 0.98), rgba(3, 18, 37, 0.96)),
       #2b1a0f;
     color: #fffdf8;
-    border: 1px solid rgba(239, 159, 39, 0.32);
-    box-shadow: 0 24px 60px rgba(43, 26, 15, 0.18);
+    border: 1px solid rgba(24, 212, 212, 0.32);
+    box-shadow: 0 24px 60px rgba(3, 18, 37, 0.18);
     overflow: hidden;
   }
 
@@ -1144,9 +1144,9 @@ const dashboardStyles = `
   .dashboard-card,
   .metric-card,
   .quick-links {
-    border: 1px solid rgba(186, 117, 23, 0.18);
+    border: 1px solid rgba(29, 140, 255, 0.18);
     background: rgba(255, 253, 248, 0.88);
-    box-shadow: 0 16px 38px rgba(43, 26, 15, 0.08);
+    box-shadow: 0 16px 38px rgba(3, 18, 37, 0.08);
   }
 
   .notice-card {
@@ -1276,15 +1276,15 @@ const dashboardStyles = `
     text-decoration: none;
     font-weight: 800;
     font-size: 0.88rem;
-    border: 1px solid rgba(239, 159, 39, 0.26);
+    border: 1px solid rgba(24, 212, 212, 0.26);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
 
   .action-link:hover,
   .action-link:focus-visible {
     transform: translateY(-1px);
-    box-shadow: 0 12px 26px rgba(43, 26, 15, 0.16);
-    outline: 2px solid rgba(239, 159, 39, 0.45);
+    box-shadow: 0 12px 26px rgba(3, 18, 37, 0.16);
+    outline: 2px solid rgba(24, 212, 212, 0.45);
     outline-offset: 2px;
   }
 
@@ -1307,7 +1307,7 @@ const dashboardStyles = `
     padding: 14px;
     border-radius: 16px;
     background: #f5f1e8;
-    border: 1px solid rgba(186, 117, 23, 0.14);
+    border: 1px solid rgba(29, 140, 255, 0.14);
   }
 
   .small-stat span {
@@ -1328,7 +1328,7 @@ const dashboardStyles = `
     padding: 18px;
     border-radius: 18px;
     background: #f5f1e8;
-    border: 1px dashed rgba(186, 117, 23, 0.34);
+    border: 1px dashed rgba(29, 140, 255, 0.34);
     color: #6f5a42;
   }
 
@@ -1365,7 +1365,7 @@ const dashboardStyles = `
     height: 12px;
     border-radius: 999px;
     overflow: hidden;
-    background: rgba(43, 26, 15, 0.1);
+    background: rgba(3, 18, 37, 0.1);
   }
 
   .progress-wrap div {
@@ -1377,7 +1377,7 @@ const dashboardStyles = `
   .priority-card {
     padding: 16px;
     border-radius: 18px;
-    border: 1px solid rgba(186, 117, 23, 0.18);
+    border: 1px solid rgba(29, 140, 255, 0.18);
     background: #f5f1e8;
   }
 
@@ -1398,7 +1398,7 @@ const dashboardStyles = `
   }
 
   .priority-warning {
-    border-color: rgba(239, 159, 39, 0.36);
+    border-color: rgba(24, 212, 212, 0.36);
     background: #fff7e7;
   }
 
@@ -1415,7 +1415,7 @@ const dashboardStyles = `
     background: #f5f1e8;
     color: #2b1a0f;
     text-decoration: none;
-    border: 1px solid rgba(186, 117, 23, 0.12);
+    border: 1px solid rgba(29, 140, 255, 0.12);
   }
 
   .notification-list strong,

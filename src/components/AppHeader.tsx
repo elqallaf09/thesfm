@@ -83,9 +83,9 @@ export function AppHeader() {
             gap: 10px;
             max-width: 100%;
             overflow: hidden;
-            background: rgba(247, 243, 234, 0.92);
-            border-bottom: 1px solid rgba(216, 174, 99, 0.22);
-            box-shadow: 0 12px 34px rgba(24, 14, 7, 0.12);
+            background: rgba(248, 251, 255, 0.94);
+            border-bottom: 1px solid rgba(167, 243, 240, 0.22);
+            box-shadow: 0 12px 34px rgba(3, 18, 37, 0.12);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
             font-family: Tajawal, Arial, sans-serif;
@@ -96,7 +96,7 @@ export function AppHeader() {
             display: flex;
             align-items: center;
             gap: 10px;
-            color: #111;
+            color: var(--sfm-foreground);
             text-decoration: none;
           }
 
@@ -108,7 +108,7 @@ export function AppHeader() {
 
           .sfm-global-brand strong {
             display: block;
-            color: #111;
+            color: var(--sfm-foreground);
             font-size: 14px;
             font-weight: 900;
             line-height: 1.1;
@@ -119,7 +119,7 @@ export function AppHeader() {
             display: block;
             max-width: 46vw;
             overflow: hidden;
-            color: #9a6c3c;
+            color: var(--sfm-muted);
             font-size: 11px;
             font-weight: 800;
             line-height: 1.35;
@@ -138,13 +138,13 @@ export function AppHeader() {
           .sfm-global-menu-button {
             width: 44px;
             height: 44px;
-            border: 1px solid rgba(216, 174, 99, 0.34);
+            border: 1px solid rgba(167, 243, 240, 0.34);
             border-radius: 14px;
             display: grid;
             place-items: center;
-            background: linear-gradient(180deg, #fffdfc, #f4ead9);
-            color: #2d1a0a;
-            box-shadow: 0 8px 20px rgba(90, 67, 51, 0.12);
+            background: linear-gradient(180deg, #FFFFFF, #F8FBFF);
+            color: var(--sfm-primary-dark);
+            box-shadow: 0 8px 20px rgba(3, 18, 37, 0.12);
             cursor: pointer;
           }
         }

@@ -27,15 +27,15 @@ export type PitchDeckExportData = {
 };
 
 const COLORS = {
-  darkBrown: '2B1A0F',
-  deepBrown: '3D2914',
-  gold: 'BA7517',
-  amber: 'EF9F27',
-  cream: 'F5F1E8',
-  warmWhite: 'FFFDF8',
-  muted: '7A6A55',
-  danger: 'B3261E',
-  success: '27500A',
+  darkBrown: '061B33',
+  deepBrown: '031225',
+  gold: '1D8CFF',
+  amber: '18D4D4',
+  cream: 'EEF6FF',
+  warmWhite: 'FFFFFF',
+  muted: '64748B',
+  danger: 'EF4444',
+  success: '10B981',
 };
 
 const NOTES_TEXT = {

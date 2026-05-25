@@ -29,18 +29,18 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
   const idx = Math.max(0, LANGS.findIndex(l => l.id === selected));
 
   const track = variant === 'dark' ? 'rgba(255,255,255,0.09)'
-    : variant === 'gold' ? 'rgba(216,174,99,0.14)'
-      : '#EFEDE8';
+    : variant === 'gold' ? 'rgba(167,243,240,0.14)'
+      : 'rgba(29,140,255,0.10)';
   const pill = variant === 'dark' ? 'rgba(255,255,255,0.90)'
-    : variant === 'gold' ? '#FFFDFC'
+    : variant === 'gold' ? 'var(--sfm-card)'
       : '#FFFFFF';
   const border = variant === 'dark' ? '1px solid rgba(255,255,255,0.12)'
-    : variant === 'gold' ? '1px solid rgba(216,174,99,0.28)'
-      : '1.5px solid #E8E2D6';
-  const textActive = variant === 'dark' ? '#111111' : '#1B2430';
-  const textIdle = variant === 'dark' ? 'rgba(255,255,255,0.50)'
-    : variant === 'gold' ? 'rgba(90,67,51,0.72)'
-      : '#9A9086';
+    : variant === 'gold' ? '1px solid rgba(167,243,240,0.28)'
+      : '1.5px solid var(--sfm-border)';
+  const textActive = variant === 'dark' ? 'var(--sfm-foreground)' : 'var(--sfm-foreground)';
+  const textIdle = variant === 'dark' ? 'rgba(255,255,255,0.56)'
+    : variant === 'gold' ? 'rgba(234,246,255,0.72)'
+      : 'var(--sfm-muted)';
 
   const h = isCompact ? '26px' : '30px';
   const px = isCompact ? '7px' : '10px';

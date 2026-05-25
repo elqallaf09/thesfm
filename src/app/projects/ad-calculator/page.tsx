@@ -9,7 +9,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 
 const PLATFORMS = [
   { id: 'instagram', name: 'Instagram', pct: 30, cpm: 3.8, cpc: 0.42, color: '#EC4899' },
-  { id: 'tiktok', name: 'TikTok', pct: 25, cpm: 2.9, cpc: 0.35, color: '#111111' },
+  { id: 'tiktok', name: 'TikTok', pct: 25, cpm: 2.9, cpc: 0.35, color: 'var(--sfm-foreground)' },
   { id: 'snapchat', name: 'Snapchat', pct: 15, cpm: 3.2, cpc: 0.38, color: '#FACC15' },
   { id: 'twitter', name: 'Twitter/X', pct: 10, cpm: 4.1, cpc: 0.48, color: '#3B82F6' },
   { id: 'facebook', name: 'Facebook', pct: 10, cpm: 3.5, cpc: 0.40, color: '#2563EB' },
@@ -109,23 +109,23 @@ export default function AdCampaignCalculatorPage() {
   return (
     <div dir={dir} className="ad-page">
       <style>{`
-        .ad-page{min-height:100vh;background:#F7F3EA;color:#111;font-family:Tajawal,Arial,sans-serif;padding:24px}
+        .ad-page{min-height:100vh;background:var(--sfm-light-card);color:var(--sfm-foreground);font-family:Tajawal,Arial,sans-serif;padding:24px}
         .wrap{max-width:1120px;margin:0 auto}
         .top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
-        .home{border:0;border-radius:12px;background:linear-gradient(135deg,#D8AE63,#9A6C3C);color:#111;padding:10px 16px;font-weight:800;cursor:pointer;font-family:Tajawal,Arial,sans-serif}
-        .panel{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:22px;box-shadow:0 4px 22px rgba(90,67,51,.06);padding:22px}
+        .home{border:0;border-radius:12px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;padding:10px 16px;font-weight:800;cursor:pointer;font-family:Tajawal,Arial,sans-serif}
+        .panel{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:22px;box-shadow:0 4px 22px rgba(3,18,37,.06);padding:22px}
         .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-        label{display:block;font-size:13px;font-weight:800;color:#5B4332;margin-bottom:7px}
-        input,select{width:100%;height:48px;border:1.5px solid rgba(216,174,99,.24);border-radius:13px;background:#FFFDFC;padding:0 13px;font:700 15px Tajawal,Arial,sans-serif;outline:none}
-        input:focus,select:focus{border-color:#D8AE63;box-shadow:0 0 0 3px rgba(216,174,99,.12)}
-        .platform{display:grid;grid-template-columns:130px 1fr 54px;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(216,174,99,.08)}
-        .bar{height:24px;border-radius:999px;overflow:hidden;background:rgba(216,174,99,.10);display:flex;margin-top:14px}
+        label{display:block;font-size:13px;font-weight:800;color:var(--sfm-muted);margin-bottom:7px}
+        input,select{width:100%;height:48px;border:1.5px solid rgba(167,243,240,.24);border-radius:13px;background:var(--sfm-card);padding:0 13px;font:700 15px Tajawal,Arial,sans-serif;outline:none}
+        input:focus,select:focus{border-color:var(--sfm-soft-cyan);box-shadow:0 0 0 3px rgba(167,243,240,.12)}
+        .platform{display:grid;grid-template-columns:130px 1fr 54px;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(167,243,240,.08)}
+        .bar{height:24px;border-radius:999px;overflow:hidden;background:rgba(167,243,240,.10);display:flex;margin-top:14px}
         .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
-        .kpi{background:rgba(216,174,99,.08);border-radius:16px;padding:16px;text-align:center}
-        .kpi strong{display:block;font-size:22px;color:#111}
-        .kpi span{font-size:12px;color:#9A6C3C;font-weight:800}
-        table{width:100%;border-collapse:collapse;margin-top:14px}th,td{padding:10px;border-bottom:1px solid rgba(216,174,99,.10);text-align:start;font-size:13px}th{color:#9A6C3C}
-        .save{margin-top:16px;width:100%;height:50px;border:0;border-radius:14px;background:#111;color:#D8AE63;font-weight:900;cursor:pointer;font-family:Tajawal,Arial,sans-serif}
+        .kpi{background:rgba(167,243,240,.08);border-radius:16px;padding:16px;text-align:center}
+        .kpi strong{display:block;font-size:22px;color:var(--sfm-foreground)}
+        .kpi span{font-size:12px;color:var(--sfm-muted);font-weight:800}
+        table{width:100%;border-collapse:collapse;margin-top:14px}th,td{padding:10px;border-bottom:1px solid rgba(167,243,240,.10);text-align:start;font-size:13px}th{color:var(--sfm-muted)}
+        .save{margin-top:16px;width:100%;height:50px;border:0;border-radius:14px;background:var(--sfm-foreground);color:var(--sfm-soft-cyan);font-weight:900;cursor:pointer;font-family:Tajawal,Arial,sans-serif}
         .save:disabled{opacity:.55;cursor:not-allowed}
         @media(max-width:760px){.grid,.kpis{grid-template-columns:1fr}.platform{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
       `}</style>
@@ -136,7 +136,7 @@ export default function AdCampaignCalculatorPage() {
         </div>
         <div className="panel" style={{ marginBottom: 16 }}>
           <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 8 }}>🎯 {isAr ? 'حاسبة ميزانية حملة إعلانية' : 'Ad Campaign Budget Calculator'}</h1>
-          <p style={{ color: '#9A6C3C', lineHeight: 1.8 }}>{isAr ? 'وزع الميزانية على المنصات واحفظ الخطة في قاعدة البيانات.' : 'Allocate budget by platform and save the plan to the database.'}</p>
+          <p style={{ color: 'var(--sfm-muted)', lineHeight: 1.8 }}>{isAr ? 'وزع الميزانية على المنصات واحفظ الخطة في قاعدة البيانات.' : 'Allocate budget by platform and save the plan to the database.'}</p>
         </div>
         <div className="grid">
           <div className="panel">
@@ -190,7 +190,7 @@ export default function AdCampaignCalculatorPage() {
                 ))}
               </tbody>
             </table>
-            <div style={{ marginTop: 14, padding: 14, borderRadius: 14, background: 'rgba(216,174,99,.08)', color: '#5B4332', lineHeight: 1.8, fontWeight: 700 }}>
+            <div style={{ marginTop: 14, padding: 14, borderRadius: 14, background: 'rgba(167,243,240,.08)', color: 'var(--sfm-muted)', lineHeight: 1.8, fontWeight: 700 }}>
               {isAr ? 'نوصي بتخصيص أكبر لـ TikTok وInstagram عند استهداف جمهور 18-30، مع إبقاء Google Ads للنية الشرائية العالية.' : 'For ages 18-30, allocate more to TikTok and Instagram while keeping Google Ads for high-purchase intent.'}
             </div>
             <button className="save" disabled={!user || !totalBudget || totalPct !== 100 || saving} onClick={saveCampaign}>
