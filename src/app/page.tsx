@@ -24,7 +24,7 @@ type GoalRow = { id: string; goal?: string | null; name?: string | null; amount?
 type InvestmentRow = { id: string; name: string | null; amount: number | string | null };
 type SavingsRow = { id: string; name: string | null; amount: number | string | null; created_at?: string | null };
 type DonutItem = { label: string; pct: number; color: string; amount: number };
-type ProfileRow = { display_name?: string | null; profession?: string | null };
+type ProfileRow = { display_name?: string | null; profession?: string | null; onboarding_completed?: boolean | null };
 
 /* ═══════════════════════════════════════════════════
    STATIC DATA
@@ -362,6 +362,8 @@ export default function DashboardPage(){
   const hasEnoughAnalysisData=totalIncome>0||totalExpenses>0||goals.length>0||investments.length>0||savingsItems.length>0;
   const L=useCallback((ar:string,en:string,fr:string)=>isAr?ar:isFr?fr:en,[isAr,isFr]);
   const locale=isAr?'ar-KW':isFr?'fr-FR':'en-US';
+  const hasAnySetupData=totalIncome>0||expenseItems.length>0||goals.length>0||investments.length>0||savingsItems.length>0;
+  const showSetupCard=!isGuest&&profile.onboarding_completed===false&&!hasAnySetupData;
 
   const S=(d:number)=>({opacity:mounted?1:0,transform:mounted?'translateY(0)':'translateY(18px)',transition:`opacity .5s ease ${d}ms, transform .5s ease ${d}ms`});
 
@@ -525,6 +527,22 @@ export default function DashboardPage(){
               </button>
             </div>
           </div>
+
+          {showSetupCard && (
+            <section className="dc no-h" style={{...S(20),padding:'18px 20px',display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(240px,100%),1fr))',gap:'14px',alignItems:'center',background:'linear-gradient(135deg,#FFFDF8,#FFF8EA)',border:'1px solid rgba(216,174,99,.22)'}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:'15px',fontWeight:900,color:'#111111',marginBottom:'5px'}}>
+                  {L('إعداد الحساب','Account Setup','Configuration du compte')}
+                </div>
+                <p style={{margin:0,fontSize:'13px',lineHeight:1.65,color:'#7A6A55',fontWeight:700}}>
+                  {L('أكمل إعداد حسابك للحصول على تحليلات أدق. لن يتم إنشاء أي بيانات تجريبية.','Complete your account setup for more accurate analysis. No demo data will be created.','Terminez la configuration du compte pour obtenir une analyse plus précise. Aucune donnée de démonstration ne sera créée.')}
+                </p>
+              </div>
+              <button type="button" onClick={()=>router.push('/setup')} aria-label={L('إكمال الإعداد','Complete setup','Terminer la configuration')} style={{minHeight:'42px',border:0,borderRadius:'13px',padding:'0 18px',background:'linear-gradient(135deg,#D8AE63,#9A6C3C)',color:'#111111',font:'900 13px Tajawal,Arial,sans-serif',cursor:'pointer',whiteSpace:'nowrap',justifySelf:'start'}}>
+                {L('إكمال الإعداد','Complete setup','Terminer la configuration')}
+              </button>
+            </section>
+          )}
 
           {/* ─── HERO CARD ─── */}
           <div style={{...S(40)}} className="dc no-h">
