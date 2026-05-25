@@ -78,6 +78,27 @@ type FundingPlannerForm = {
   notes: string;
 };
 type InvestorPackageItem = { key: string; label: string; status: InvestorItemStatus; href: string };
+type StrategicDocumentStatus = 'ready' | 'needs_data' | 'unavailable' | 'in_progress';
+type StrategicDocumentKey =
+  | 'businessPlan'
+  | 'pitchDeck'
+  | 'financialModel'
+  | 'feasibilityStudy'
+  | 'investmentMemo'
+  | 'dueDiligencePack'
+  | 'executiveSummary'
+  | 'launchPlan90';
+type StrategicMissingAction = { label: string; href: string };
+type StrategicDocumentItem = {
+  key: StrategicDocumentKey;
+  title: string;
+  status: StrategicDocumentStatus;
+  href: string;
+  description: string;
+  missing: StrategicMissingAction[];
+};
+type DraftSection = { title: string; lines: string[]; missing?: string[] };
+type DocumentDraft = { type: 'businessPlan' | 'executiveSummary' | 'investmentMemo'; title: string; source: 'rules'; sections: DraftSection[] };
 
 const EMPTY_MODULES: ModuleRows = {
   feasibility: [],
@@ -505,6 +526,177 @@ const TEXT = {
   },
 } as const;
 
+const STRATEGIC_TEXT = {
+  ar: {
+    strategicDocumentsDescription: 'اجمع مستندات مشروعك المهمة في مكان واحد وجهّزها للمراجعة أو التمويل أو الشراكات.',
+    noProjectSelectedDocuments: 'اختر مشروعاً لعرض مستنداته الاستراتيجية.',
+    readyDocument: 'جاهز',
+    needsData: 'يحتاج بيانات',
+    currentlyUnavailable: 'غير متاح حالياً',
+    inProgress: 'قيد التحضير',
+    executiveSummary: 'الملخص التنفيذي',
+    launchPlan90: 'خطة إطلاق 90 يوم',
+    documentReadinessScore: 'جاهزية المستندات',
+    generateBusinessPlanDraft: 'إنشاء مسودة خطة العمل',
+    generateExecutiveSummary: 'إنشاء الملخص التنفيذي',
+    generateInvestmentMemo: 'إنشاء مذكرة الاستثمار',
+    preview: 'معاينة',
+    printSavePdf: 'طباعة / حفظ PDF',
+    exportSoon: 'تصدير قريباً',
+    contentSource: 'مصدر المحتوى',
+    rulesSource: 'قواعد تحليلية',
+    missingData: 'البيانات الناقصة',
+    incompleteInfo: 'هذه البيانات غير مكتملة.',
+    completeFeasibility: 'أكمل دراسة الجدوى',
+    addFinancialModel: 'أضف النموذج المالي',
+    uploadDocuments: 'ارفع مستندات المشروع',
+    createPitchDeckAction: 'أنشئ العرض الاستثماري',
+    completeUseOfFunds: 'أكمل خطة استخدام التمويل',
+    addKpis: 'أكمل مؤشرات الأداء',
+    addTasksMilestones: 'أضف المهام والمعالم',
+    documentVaultEmpty: 'لا توجد مستندات مرفوعة لهذا المشروع.',
+    documentCountLabel: 'عدد مستندات المشروع',
+    groupedDocuments: 'المستندات حسب التصنيف',
+    openDocumentsTab: 'فتح تبويب المستندات',
+    dueDiligenceChecklist: 'حزمة الفحص النافي للجهالة',
+    licenseRegistration: 'السجل أو الترخيص',
+    invoices: 'الفواتير',
+    riskReport: 'تقرير المخاطر',
+    teamInfo: 'بيانات الفريق إن وجدت',
+    projectSummarySection: 'ملخص المشروع',
+    problemSection: 'المشكلة',
+    solutionSection: 'الحل',
+    marketSection: 'السوق',
+    productServiceSection: 'المنتج أو الخدمة',
+    businessModelSection: 'نموذج الربح',
+    operationsPlanSection: 'خطة التشغيل',
+    financialSummarySection: 'الملخص المالي',
+    revenueStreamsLabel: 'مصادر الإيرادات',
+    roiLabel: 'العائد على الاستثمار ROI',
+    risksSection: 'المخاطر',
+    nextStepsSection: 'الخطوات القادمة',
+    opportunitySection: 'الفرصة',
+    fundingNeedSection: 'التمويل المطلوب',
+    useOfFundsSection: 'استخدام التمويل',
+    milestonesSection: 'المعالم',
+    recommendationStatusSection: 'حالة المراجعة',
+    planningOnlyDisclaimer: 'هذا المحتوى مسودة تخطيطية للمراجعة فقط، ولا يعتبر مستنداً قانونياً أو مالياً معتمداً.',
+    readyForReviewText: 'جاهز للمراجعة بناءً على البيانات المتاحة.',
+  },
+  en: {
+    strategicDocumentsDescription: 'Collect your key business documents in one place and prepare them for review, funding, or partnerships.',
+    noProjectSelectedDocuments: 'Select a project to view its strategic documents.',
+    readyDocument: 'Ready',
+    needsData: 'Needs Data',
+    currentlyUnavailable: 'Currently Unavailable',
+    inProgress: 'In Progress',
+    executiveSummary: 'Executive Summary',
+    launchPlan90: '90-Day Launch Plan',
+    documentReadinessScore: 'Document Readiness',
+    generateBusinessPlanDraft: 'Generate Business Plan Draft',
+    generateExecutiveSummary: 'Generate Executive Summary',
+    generateInvestmentMemo: 'Generate Investment Memo',
+    preview: 'Preview',
+    printSavePdf: 'Print / Save PDF',
+    exportSoon: 'Export coming soon',
+    contentSource: 'Content source',
+    rulesSource: 'Rules',
+    missingData: 'Missing Data',
+    incompleteInfo: 'This information is incomplete.',
+    completeFeasibility: 'Complete Feasibility',
+    addFinancialModel: 'Add Financial Model',
+    uploadDocuments: 'Upload Documents',
+    createPitchDeckAction: 'Create Pitch Deck',
+    completeUseOfFunds: 'Complete Use of Funds Plan',
+    addKpis: 'Complete KPIs',
+    addTasksMilestones: 'Add Tasks and Milestones',
+    documentVaultEmpty: 'No documents uploaded for this project.',
+    documentCountLabel: 'Project documents count',
+    groupedDocuments: 'Documents by category',
+    openDocumentsTab: 'Open Documents tab',
+    dueDiligenceChecklist: 'Due Diligence Pack',
+    licenseRegistration: 'License/registration',
+    invoices: 'Invoices',
+    riskReport: 'Risk report',
+    teamInfo: 'Team information if available',
+    projectSummarySection: 'Project summary',
+    problemSection: 'Problem',
+    solutionSection: 'Solution',
+    marketSection: 'Market',
+    productServiceSection: 'Product / service',
+    businessModelSection: 'Business model',
+    operationsPlanSection: 'Operations plan',
+    financialSummarySection: 'Financial summary',
+    revenueStreamsLabel: 'Revenue streams',
+    roiLabel: 'ROI',
+    risksSection: 'Risks',
+    nextStepsSection: 'Next steps',
+    opportunitySection: 'Opportunity',
+    fundingNeedSection: 'Funding need',
+    useOfFundsSection: 'Use of funds',
+    milestonesSection: 'Milestones',
+    recommendationStatusSection: 'Recommendation status',
+    planningOnlyDisclaimer: 'This content is a planning draft for review only and is not an approved legal or financial document.',
+    readyForReviewText: 'Ready for review based on available data.',
+  },
+  fr: {
+    strategicDocumentsDescription: 'Regroupez vos documents d’affaires essentiels en un seul endroit et préparez-les pour la révision, le financement ou les partenariats.',
+    noProjectSelectedDocuments: 'Sélectionnez un projet pour afficher ses documents stratégiques.',
+    readyDocument: 'Prêt',
+    needsData: 'Données requises',
+    currentlyUnavailable: 'Indisponible',
+    inProgress: 'En cours',
+    executiveSummary: 'Résumé exécutif',
+    launchPlan90: 'Plan de lancement 90 jours',
+    documentReadinessScore: 'Préparation des documents',
+    generateBusinessPlanDraft: 'Générer le brouillon du plan d’affaires',
+    generateExecutiveSummary: 'Générer le résumé exécutif',
+    generateInvestmentMemo: 'Générer le mémo d’investissement',
+    preview: 'Aperçu',
+    printSavePdf: 'Imprimer / Enregistrer PDF',
+    exportSoon: 'Export bientôt disponible',
+    contentSource: 'Source du contenu',
+    rulesSource: 'Règles',
+    missingData: 'Données manquantes',
+    incompleteInfo: 'Ces informations sont incomplètes.',
+    completeFeasibility: 'Compléter la faisabilité',
+    addFinancialModel: 'Ajouter le modèle financier',
+    uploadDocuments: 'Téléverser des documents',
+    createPitchDeckAction: 'Créer le Pitch Deck',
+    completeUseOfFunds: 'Compléter le plan d’utilisation des fonds',
+    addKpis: 'Compléter les KPI',
+    addTasksMilestones: 'Ajouter tâches et jalons',
+    documentVaultEmpty: 'Aucun document téléversé pour ce projet.',
+    documentCountLabel: 'Nombre de documents du projet',
+    groupedDocuments: 'Documents par catégorie',
+    openDocumentsTab: 'Ouvrir l’onglet Documents',
+    dueDiligenceChecklist: 'Dossier de due diligence',
+    licenseRegistration: 'Licence / enregistrement',
+    invoices: 'Factures',
+    riskReport: 'Rapport des risques',
+    teamInfo: 'Informations sur l’équipe si disponibles',
+    projectSummarySection: 'Résumé du projet',
+    problemSection: 'Problème',
+    solutionSection: 'Solution',
+    marketSection: 'Marché',
+    productServiceSection: 'Produit / service',
+    businessModelSection: 'Modèle économique',
+    operationsPlanSection: 'Plan opérationnel',
+    financialSummarySection: 'Résumé financier',
+    revenueStreamsLabel: 'Sources de revenus',
+    roiLabel: 'ROI',
+    risksSection: 'Risques',
+    nextStepsSection: 'Prochaines étapes',
+    opportunitySection: 'Opportunité',
+    fundingNeedSection: 'Besoin de financement',
+    useOfFundsSection: 'Utilisation des fonds',
+    milestonesSection: 'Jalons',
+    recommendationStatusSection: 'Statut de recommandation',
+    planningOnlyDisclaimer: 'Ce contenu est un brouillon de planification à réviser uniquement et ne constitue pas un document juridique ou financier approuvé.',
+    readyForReviewText: 'Prêt pour révision selon les données disponibles.',
+  },
+} as const;
+
 const COUNTRIES = [
   { value: 'kuwait', label: { ar: 'الكويت', en: 'Kuwait', fr: 'Koweït' } },
   { value: 'saudi-arabia', label: { ar: 'السعودية', en: 'Saudi Arabia', fr: 'Arabie saoudite' } },
@@ -808,11 +1000,295 @@ function buildFundingWarnings({
   return warnings;
 }
 
+function strategicStatusLabel(status: StrategicDocumentStatus, text: Record<string, string>) {
+  if (status === 'ready') return text.readyDocument;
+  if (status === 'in_progress') return text.inProgress;
+  if (status === 'unavailable') return text.currentlyUnavailable;
+  return text.needsData;
+}
+
+function strategicStatusClass(status: StrategicDocumentStatus) {
+  if (status === 'ready') return 'ready-for-review';
+  if (status === 'in_progress') return 'needs-improvement';
+  if (status === 'unavailable') return 'not-ready';
+  return 'not-ready';
+}
+
+function missingAction(label: string, href: string): StrategicMissingAction {
+  return { label, href };
+}
+
+function addIfMissing(actions: StrategicMissingAction[], condition: boolean, label: string, href: string) {
+  if (!condition) actions.push(missingAction(label, href));
+}
+
+function hasFundingPlan(fundingRecord: FundingReadinessRow | null, useOfFundsStatus?: InvestorItemStatus) {
+  return Boolean(fundingRecord?.id) || useOfFundsStatus === 'complete';
+}
+
+function buildStrategicDocumentItems({
+  selectedProject,
+  modules,
+  readiness,
+  fundingRecord,
+  text,
+}: {
+  selectedProject: ProjectRow;
+  modules: ModuleRows;
+  readiness: any;
+  fundingRecord: FundingReadinessRow | null;
+  text: Record<string, string>;
+}): StrategicDocumentItem[] {
+  const base = `/projects/${selectedProject.id}`;
+  const hasOverview = Boolean(firstText(selectedProject, ['name', 'project_name', 'title'])) && Boolean(firstText(selectedProject, ['category', 'type', 'project_type', 'description', 'summary']));
+  const feasibility = Boolean(readiness?.feasibility);
+  const feasibilityComplete = Boolean(readiness?.feasibilityComplete);
+  const financialModel = Boolean(readiness?.financialModel);
+  const pitchDeck = Boolean(readiness?.pitchDeck);
+  const kpis = Boolean(readiness?.kpis);
+  const tasksMilestones = Boolean(readiness?.tasksMilestones);
+  const documents = modules.documents.length > 0;
+  const fundingPlan = hasFundingPlan(fundingRecord, readiness?.useOfFundsStatus);
+  const hasLegalDocs = documentHasCategory(modules.documents, ['legal']);
+  const hasLicenses = documentHasCategory(modules.documents, ['license']);
+  const hasContracts = documentHasCategory(modules.documents, ['contract']);
+  const overviewAction = missingAction(text.projectSummary, base);
+  const feasibilityAction = missingAction(text.completeFeasibility, `${base}?tab=feasibility`);
+  const financialAction = missingAction(text.addFinancialModel, `${base}?tab=financial`);
+  const documentsAction = missingAction(text.uploadDocuments, `${base}?tab=documents`);
+  const pitchDeckAction = missingAction(text.createPitchDeckAction, `${base}?tab=pitchDeck`);
+  const kpisAction = missingAction(text.addKpis, `${base}?tab=kpis`);
+  const tasksAction = missingAction(text.addTasksMilestones, `${base}?tab=tasks`);
+  const fundingAction = missingAction(text.completeUseOfFunds, '#funding-readiness-module');
+
+  const businessPlanMissing = [overviewAction];
+  addIfMissing(businessPlanMissing, feasibilityComplete, text.completeFeasibility, `${base}?tab=feasibility`);
+  addIfMissing(businessPlanMissing, financialModel, text.addFinancialModel, `${base}?tab=financial`);
+  addIfMissing(businessPlanMissing, tasksMilestones, text.addTasksMilestones, `${base}?tab=tasks`);
+  const businessPlanReady = hasOverview && feasibilityComplete && financialModel && tasksMilestones;
+
+  const pitchMissing: StrategicMissingAction[] = [];
+  addIfMissing(pitchMissing, pitchDeck || (hasOverview && feasibility && financialModel), text.createPitchDeckAction, `${base}?tab=pitchDeck`);
+
+  const investmentMissing: StrategicMissingAction[] = [];
+  addIfMissing(investmentMissing, hasOverview, text.projectSummary, base);
+  addIfMissing(investmentMissing, financialModel, text.addFinancialModel, `${base}?tab=financial`);
+  addIfMissing(investmentMissing, kpis, text.addKpis, `${base}?tab=kpis`);
+  addIfMissing(investmentMissing, fundingPlan, text.completeUseOfFunds, '#funding-readiness-module');
+  addIfMissing(investmentMissing, feasibility, text.completeFeasibility, `${base}?tab=feasibility`);
+
+  const dueDiligenceMissing: StrategicMissingAction[] = [];
+  addIfMissing(dueDiligenceMissing, documents, text.uploadDocuments, `${base}?tab=documents`);
+  addIfMissing(dueDiligenceMissing, financialModel, text.addFinancialModel, `${base}?tab=financial`);
+  addIfMissing(dueDiligenceMissing, feasibility, text.completeFeasibility, `${base}?tab=feasibility`);
+  addIfMissing(dueDiligenceMissing, hasLegalDocs || hasLicenses || hasContracts, text.legalDocuments, `${base}?tab=documents`);
+
+  const executiveMissing: StrategicMissingAction[] = [];
+  addIfMissing(executiveMissing, hasOverview, text.projectSummary, base);
+  addIfMissing(executiveMissing, feasibility || financialModel, text.completeFeasibility, `${base}?tab=feasibility`);
+
+  return [
+    {
+      key: 'businessPlan',
+      title: text.businessPlan,
+      status: businessPlanReady ? 'ready' : feasibility || financialModel || tasksMilestones ? 'in_progress' : 'needs_data',
+      href: base,
+      description: text.generateBusinessPlanDraft,
+      missing: businessPlanMissing.filter(action => action !== overviewAction || !hasOverview),
+    },
+    {
+      key: 'pitchDeck',
+      title: text.pitchDeck,
+      status: pitchDeck ? 'ready' : hasOverview && (feasibility || financialModel) ? 'in_progress' : 'needs_data',
+      href: `${base}?tab=pitchDeck`,
+      description: text.createPitchDeckAction,
+      missing: pitchMissing,
+    },
+    {
+      key: 'financialModel',
+      title: text.financialModel,
+      status: financialModel ? 'ready' : 'needs_data',
+      href: `${base}?tab=financial`,
+      description: text.addFinancialModel,
+      missing: financialModel ? [] : [financialAction],
+    },
+    {
+      key: 'feasibilityStudy',
+      title: text.feasibilityStudy,
+      status: feasibilityComplete ? 'ready' : feasibility ? 'in_progress' : 'needs_data',
+      href: `${base}?tab=feasibility`,
+      description: text.completeFeasibility,
+      missing: feasibilityComplete ? [] : [feasibilityAction],
+    },
+    {
+      key: 'investmentMemo',
+      title: text.investmentMemo,
+      status: investmentMissing.length === 0 ? 'ready' : investmentMissing.length <= 2 ? 'in_progress' : 'needs_data',
+      href: base,
+      description: text.generateInvestmentMemo,
+      missing: investmentMissing,
+    },
+    {
+      key: 'dueDiligencePack',
+      title: text.dueDiligenceChecklist,
+      status: dueDiligenceMissing.length === 0 ? 'ready' : documents ? 'in_progress' : 'needs_data',
+      href: `${base}?tab=documents`,
+      description: text.openDocumentsTab,
+      missing: dueDiligenceMissing,
+    },
+    {
+      key: 'executiveSummary',
+      title: text.executiveSummary,
+      status: executiveMissing.length === 0 ? 'ready' : hasOverview ? 'in_progress' : 'needs_data',
+      href: base,
+      description: text.generateExecutiveSummary,
+      missing: executiveMissing,
+    },
+    {
+      key: 'launchPlan90',
+      title: text.launchPlan90,
+      status: tasksMilestones ? 'ready' : 'needs_data',
+      href: `${base}?tab=tasks`,
+      description: text.addTasksMilestones,
+      missing: tasksMilestones ? [] : [tasksAction],
+    },
+  ];
+}
+
+function buildDueDiligenceItems(modules: ModuleRows, readiness: any, text: Record<string, string>) {
+  return [
+    { label: text.licenseRegistration, status: maybeDocumentStatus(modules.documents, ['license']) },
+    { label: text.keyContracts, status: maybeDocumentStatus(modules.documents, ['contract']) },
+    { label: text.invoices, status: maybeDocumentStatus(modules.documents, ['invoice', 'receipt']) },
+    { label: text.financialModel, status: readiness?.financialModel ? 'complete' : 'missing' },
+    { label: text.feasibilityStudy, status: readiness?.feasibility ? 'complete' : 'missing' },
+    { label: text.legalDocuments, status: maybeDocumentStatus(modules.documents, ['legal']) },
+    { label: text.riskReport, status: readiness?.fundingWarnings?.length ? 'needs_review' : readiness?.kpis ? 'complete' : 'missing' },
+    { label: text.teamInfo, status: 'needs_review' },
+  ] as Array<{ label: string; status: InvestorItemStatus }>;
+}
+
+function groupedDocumentCounts(documents: any[]) {
+  return documents.reduce<Record<string, number>>((acc, document) => {
+    const category = String(document?.category || 'other');
+    acc[category] = (acc[category] ?? 0) + 1;
+    return acc;
+  }, {});
+}
+
+function getValueOrMissing(value: unknown, text: Record<string, string>) {
+  if (value === null || value === undefined || value === '') return text.incompleteInfo;
+  return String(value);
+}
+
+function financialKpiLine(label: string, value: unknown, text: Record<string, string>, currency?: string, locale?: Lang) {
+  const numeric = toNumber(value);
+  if (numeric !== null && currency && locale) return `${label}: ${formatMoney(numeric, currency, locale)}`;
+  return `${label}: ${getValueOrMissing(value, text)}`;
+}
+
+function buildDocumentDraft({
+  kind,
+  selectedProject,
+  modules,
+  readiness,
+  fundingForm,
+  selectedCurrency,
+  locale,
+  text,
+}: {
+  kind: DocumentDraft['type'];
+  selectedProject: ProjectRow;
+  modules: ModuleRows;
+  readiness: any;
+  fundingForm: FundingPlannerForm;
+  selectedCurrency: string;
+  locale: Lang;
+  text: Record<string, string>;
+}): DocumentDraft {
+  const feasibility = modules.feasibility[0] ?? {};
+  const market = toRecord(feasibility.market_data);
+  const technical = toRecord(feasibility.technical_data);
+  const financial = toRecord(feasibility.financial_data);
+  const financialModel = modules.financialModels[0] ?? {};
+  const kpis = toRecord(financialModel.kpis);
+  const assumptions = toRecord(financialModel.assumptions);
+  const revenueStreams = Array.isArray(financialModel.revenue_streams) ? financialModel.revenue_streams : [];
+  const projectName = firstText(selectedProject, ['name', 'project_name', 'title'], text.incompleteInfo);
+  const projectType = firstText(selectedProject, ['category', 'type', 'project_type'], text.incompleteInfo);
+  const description = firstText(selectedProject, ['description', 'summary', 'notes'], '');
+  const fundingNeeded = toNumber(fundingForm.fundingNeeded) ?? readiness?.capitalAmount ?? toNumber(financial.requiredCapital) ?? null;
+  const useOfFundsLines = USE_OF_FUNDS_KEYS
+    .map(key => {
+      const amount = toNumber(fundingForm.useOfFunds[key].amount);
+      const percentValue = toNumber(fundingForm.useOfFunds[key].percent);
+      if (amount === null && percentValue === null) return '';
+      const amountText = amount !== null ? formatMoney(amount, fundingForm.currency || selectedCurrency, locale) : text.incompleteInfo;
+      const percentText = percentValue !== null ? percent(percentValue, locale) : text.incompleteInfo;
+      return `${text[key]}: ${amountText} / ${percentText}`;
+    })
+    .filter(Boolean);
+  const riskLines = readiness?.fundingWarnings?.length ? readiness.fundingWarnings : [text.incompleteInfo];
+  const milestoneLines = [
+    `${text.tasksCount}: ${modules.tasks.length}`,
+    `${text.milestonesSection}: ${modules.milestones.length}`,
+  ];
+
+  if (kind === 'executiveSummary') {
+    return {
+      type: kind,
+      title: text.executiveSummary,
+      source: 'rules',
+      sections: [
+        { title: text.projectSummarySection, lines: [`${text.selectedProject}: ${projectName}`, `${text.businessType}: ${projectType}`, description || text.incompleteInfo] },
+        { title: text.opportunitySection, lines: [firstText(market, ['targetCustomerSegment', 'target_customer_segment', 'customerSegment'], text.incompleteInfo), firstText(market, ['problemSolved', 'problem_solved', 'problem'], text.incompleteInfo)] },
+        { title: text.financialSummarySection, lines: [financialKpiLine(text.capitalRequired, fundingNeeded, text, fundingForm.currency || selectedCurrency, locale), `${text.roiLabel}: ${getValueOrMissing(kpis.roi ?? kpis.ROI, text)}`, `${text.fundingReadiness}: ${readiness ? percent(readiness.fundingScore, locale) : text.incompleteInfo}`] },
+        { title: text.nextStepsSection, lines: readiness?.packageItems?.filter((item: InvestorPackageItem) => item.status !== 'complete').slice(0, 5).map((item: InvestorPackageItem) => item.label) ?? [text.incompleteInfo] },
+      ],
+    };
+  }
+
+  if (kind === 'investmentMemo') {
+    return {
+      type: kind,
+      title: text.investmentMemo,
+      source: 'rules',
+      sections: [
+        { title: text.projectSummarySection, lines: [`${text.selectedProject}: ${projectName}`, `${text.businessType}: ${projectType}`, description || text.incompleteInfo] },
+        { title: text.opportunitySection, lines: [firstText(market, ['expectedMarketSize', 'expected_market_size', 'marketSize'], text.incompleteInfo), firstText(market, ['targetCustomerSegment', 'target_customer_segment'], text.incompleteInfo)] },
+        { title: text.financialSummarySection, lines: [financialKpiLine(text.fundingNeeded, fundingNeeded, text, fundingForm.currency || selectedCurrency, locale), `${text.financialModel}: ${readiness?.financialModel ? text.readyDocument : text.needsData}`, `${text.roiLabel}: ${getValueOrMissing(kpis.roi ?? kpis.ROI, text)}`, `${text.fundingReadiness}: ${readiness ? percent(readiness.fundingScore, locale) : text.incompleteInfo}`] },
+        { title: text.useOfFundsSection, lines: useOfFundsLines.length ? useOfFundsLines : [text.incompleteInfo] },
+        { title: text.risksSection, lines: riskLines },
+        { title: text.milestonesSection, lines: milestoneLines },
+        { title: text.recommendationStatusSection, lines: [text.planningOnlyDisclaimer] },
+      ],
+    };
+  }
+
+  return {
+    type: kind,
+    title: text.businessPlan,
+    source: 'rules',
+    sections: [
+      { title: text.projectSummarySection, lines: [`${text.selectedProject}: ${projectName}`, `${text.businessType}: ${projectType}`, description || text.incompleteInfo] },
+      { title: text.problemSection, lines: [firstText(market, ['problemSolved', 'problem_solved', 'problem'], text.incompleteInfo), firstText(market, ['targetCustomerSegment', 'target_customer_segment'], text.incompleteInfo)] },
+      { title: text.solutionSection, lines: [firstText(selectedProject, ['solution', 'value_proposition'], ''), firstText(market, ['competitiveAdvantage', 'competitive_advantage'], text.incompleteInfo)].filter(Boolean) },
+      { title: text.marketSection, lines: [firstText(market, ['expectedMarketSize', 'expected_market_size', 'marketSize'], text.incompleteInfo), firstText(market, ['mainCompetitors', 'main_competitors', 'competitors'], text.incompleteInfo)] },
+      { title: text.productServiceSection, lines: [firstText(selectedProject, ['product', 'service', 'description'], text.incompleteInfo), firstText(technical, ['requiredTechnologyTools', 'technology_tools', 'required_technology'], text.incompleteInfo)] },
+      { title: text.businessModelSection, lines: [firstText(market, ['pricingStrategy', 'pricing_strategy'], text.incompleteInfo), revenueStreams.length ? `${text.revenueStreamsLabel}: ${revenueStreams.length}` : text.incompleteInfo] },
+      { title: text.operationsPlanSection, lines: [firstText(technical, ['requiredResources', 'required_resources'], text.incompleteInfo), `${text.tasksCount}: ${modules.tasks.length}`, `${text.milestonesSection}: ${modules.milestones.length}`] },
+      { title: text.financialSummarySection, lines: [financialKpiLine(text.capitalRequired, fundingNeeded ?? assumptions.initialCapital, text, fundingForm.currency || selectedCurrency, locale), `${text.roiLabel}: ${getValueOrMissing(kpis.roi ?? kpis.ROI, text)}`, `${text.financialModel}: ${readiness?.financialModel ? text.readyDocument : text.needsData}`] },
+      { title: text.risksSection, lines: riskLines },
+      { title: text.nextStepsSection, lines: readiness?.packageItems?.filter((item: InvestorPackageItem) => item.status !== 'complete').slice(0, 5).map((item: InvestorPackageItem) => item.label) ?? [text.incompleteInfo] },
+    ],
+  };
+}
+
 export default function BusinessHubPage() {
   const { user, loading: authLoading } = useAuth();
   const { lang, dir } = useLanguage();
   const locale = (lang === 'en' || lang === 'fr' || lang === 'ar' ? lang : 'ar') as Lang;
-  const text = TEXT[locale];
+  const text = useMemo(() => ({ ...TEXT[locale], ...STRATEGIC_TEXT[locale] }), [locale]);
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [modules, setModules] = useState<ModuleRows>(EMPTY_MODULES);
@@ -824,6 +1300,7 @@ export default function BusinessHubPage() {
   const [fundingForm, setFundingForm] = useState<FundingPlannerForm>(() => emptyFundingForm());
   const [savingFunding, setSavingFunding] = useState(false);
   const [fundingMessage, setFundingMessage] = useState('');
+  const [documentDraft, setDocumentDraft] = useState<DocumentDraft | null>(null);
 
   const loadProjects = useCallback(async () => {
     if (!user) {
@@ -853,6 +1330,10 @@ export default function BusinessHubPage() {
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
+
+  useEffect(() => {
+    setDocumentDraft(null);
+  }, [selectedProjectId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1015,6 +1496,27 @@ export default function BusinessHubPage() {
     };
   }, [fundingForm, modules, selectedProject, text]);
 
+  const strategicDocuments = useMemo(() => {
+    if (!selectedProject || !readiness) {
+      return { items: [] as StrategicDocumentItem[], score: null as number | null, dueDiligence: [] as Array<{ label: string; status: InvestorItemStatus }>, groupedDocuments: {} as Record<string, number> };
+    }
+    const items = buildStrategicDocumentItems({ selectedProject, modules, readiness, fundingRecord, text });
+    const score =
+      (items.find(item => item.key === 'businessPlan')?.status === 'ready' ? 20 : items.find(item => item.key === 'businessPlan')?.status === 'in_progress' ? 10 : 0) +
+      (readiness.pitchDeck ? 15 : 0) +
+      (readiness.financialModel ? 15 : 0) +
+      (readiness.feasibility ? 15 : 0) +
+      (readiness.documents ? 15 : 0) +
+      (hasFundingPlan(fundingRecord, readiness.useOfFundsStatus) ? 10 : 0) +
+      (readiness.kpis ? 10 : 0);
+    return {
+      items,
+      score: Math.min(100, score),
+      dueDiligence: buildDueDiligenceItems(modules, readiness, text),
+      groupedDocuments: groupedDocumentCounts(modules.documents),
+    };
+  }, [fundingRecord, modules, readiness, selectedProject, text]);
+
   const projectUrl = selectedProject ? `/projects/${selectedProject.id}` : '/projects';
   const pitchDeckUrl = selectedProject ? `/projects/${selectedProject.id}?tab=pitchDeck` : '/projects';
 
@@ -1080,6 +1582,26 @@ export default function BusinessHubPage() {
       setFundingMessage(text.useOfFundsSaved);
     }
     setSavingFunding(false);
+  };
+
+  const generateDocumentDraft = (type: DocumentDraft['type']) => {
+    if (!selectedProject || !readiness) return;
+    setDocumentDraft(buildDocumentDraft({
+      kind: type,
+      selectedProject,
+      modules,
+      readiness,
+      fundingForm,
+      selectedCurrency,
+      locale,
+      text,
+    }));
+    window.setTimeout(() => document.getElementById('strategic-document-preview')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
+
+  const printDocumentDraft = () => {
+    if (!documentDraft) return;
+    window.print();
   };
 
   if (authLoading || loadingProjects) {
@@ -1390,25 +1912,127 @@ export default function BusinessHubPage() {
           </aside>
         </section>
 
-        <section className="hub-grid two">
-          <article className="warm-card">
-            <div className="card-title">
-              <div>
-                <h2>{text.strategicDocuments}</h2>
-                <p>{text.realDataOnly}</p>
+        <section className="strategic-documents-module" id="strategic-documents">
+          <div className="documents-header">
+            <div>
+              <span className="eyebrow"><ShieldCheck size={16} /> {text.strategicDocuments}</span>
+              <h2>{text.strategicDocuments}</h2>
+              <p>{text.strategicDocumentsDescription}</p>
+            </div>
+            {selectedProject && strategicDocuments.score !== null ? (
+              <div className={`score-pill ${statusClass(completionStatus(strategicDocuments.score))}`} role="progressbar" aria-label={text.documentReadinessScore} aria-valuenow={strategicDocuments.score} aria-valuemin={0} aria-valuemax={100}>
+                <strong>{percent(strategicDocuments.score, locale)}</strong>
+                <span>{text.documentReadinessScore}</span>
               </div>
-              <ShieldCheck size={22} />
-            </div>
-            <div className="document-grid">
-              <DocumentLink title={text.businessPlan} href="/projects" status={text.comingSoon} disabled />
-              <DocumentLink title={text.pitchDeck} href={pitchDeckUrl} status={readiness?.pitchDeck ? text.available : text.missing} />
-              <DocumentLink title={text.financialModel} href={selectedProject ? `/projects/${selectedProject.id}?tab=financial` : '/projects'} status={readiness?.financialModel ? text.available : text.missing} />
-              <DocumentLink title={text.feasibilityStudy} href={selectedProject ? `/projects/${selectedProject.id}?tab=feasibility` : '/projects'} status={readiness?.feasibility ? text.available : text.missing} />
-              <DocumentLink title={text.investmentMemo} href="/projects" status={text.comingSoon} disabled />
-              <DocumentLink title={text.dueDiligencePack} href="/projects" status={text.comingSoon} disabled />
-            </div>
-          </article>
+            ) : null}
+          </div>
 
+          {!selectedProject ? (
+            <div className="funding-empty">
+              <FileText size={28} />
+              <strong>{text.noProjectSelectedDocuments}</strong>
+            </div>
+          ) : (
+            <div className="documents-layout">
+              <article className="warm-card documents-main">
+                <div className="document-card-grid">
+                  {strategicDocuments.items.map(item => (
+                    <div className="strategic-doc-card" key={item.key}>
+                      <div className="doc-card-head">
+                        <FileText size={19} />
+                        <div>
+                          <h3>{item.title}</h3>
+                          <span className={`status-badge ${strategicStatusClass(item.status)}`}>{strategicStatusLabel(item.status, text)}</span>
+                        </div>
+                      </div>
+                      <p>{item.description}</p>
+                      {item.missing.length > 0 ? (
+                        <div className="doc-missing">
+                          <strong>{text.missingData}</strong>
+                          <div>
+                            {item.missing.map(action => (
+                              <Link href={action.href} key={`${item.key}-${action.label}`}>{action.label}</Link>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="trusted-note">{text.readyForReviewText}</p>
+                      )}
+                      <div className="doc-actions">
+                        <Link href={item.href} aria-label={`${text.preview} ${item.title}`}>{text.preview}</Link>
+                        {item.key === 'businessPlan' && <button type="button" onClick={() => generateDocumentDraft('businessPlan')} aria-label={text.generateBusinessPlanDraft}>{text.generateBusinessPlanDraft}</button>}
+                        {item.key === 'executiveSummary' && <button type="button" onClick={() => generateDocumentDraft('executiveSummary')} aria-label={text.generateExecutiveSummary}>{text.generateExecutiveSummary}</button>}
+                        {item.key === 'investmentMemo' && <button type="button" onClick={() => generateDocumentDraft('investmentMemo')} aria-label={text.generateInvestmentMemo}>{text.generateInvestmentMemo}</button>}
+                        {item.key !== 'businessPlan' && item.key !== 'executiveSummary' && item.key !== 'investmentMemo' && <button type="button" disabled aria-disabled="true" aria-label={text.exportSoon}>{text.exportSoon}</button>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <aside className="warm-card documents-side">
+                <div className="card-title">
+                  <div>
+                    <h2>{text.dueDiligenceChecklist}</h2>
+                    <p>{text.realDataOnly}</p>
+                  </div>
+                  <ClipboardCheck size={22} />
+                </div>
+                <div className="dd-list">
+                  {strategicDocuments.dueDiligence.map(item => (
+                    <div className="dd-row" key={item.label}>
+                      <span className={`package-status ${item.status}`}>{item.status === 'complete' ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}</span>
+                      <strong>{item.label}</strong>
+                      <small>{investorStatusLabel(item.status, text)}</small>
+                    </div>
+                  ))}
+                </div>
+                <div className="document-vault-summary">
+                  <p><span>{text.documentCountLabel}</span><strong>{modules.documents.length}</strong></p>
+                  {modules.documents.length === 0 ? (
+                    <div className="planner-warning"><AlertTriangle size={15} /> {text.documentVaultEmpty}</div>
+                  ) : (
+                    <div className="category-list">
+                      <strong>{text.groupedDocuments}</strong>
+                      {Object.entries(strategicDocuments.groupedDocuments).map(([category, count]) => (
+                        <span key={category}>{category}: {count}</span>
+                      ))}
+                    </div>
+                  )}
+                  <Link href={`${projectUrl}?tab=documents`} className="inline-link" aria-label={text.openDocumentsTab}>{text.openDocumentsTab}</Link>
+                </div>
+              </aside>
+            </div>
+          )}
+
+          {documentDraft && (
+            <article className="warm-card draft-preview" id="strategic-document-preview">
+              <div className="card-title">
+                <div>
+                  <h2>{documentDraft.title}</h2>
+                  <p>{text.planningOnlyDisclaimer}</p>
+                </div>
+                <span className="status-badge needs-improvement">{text.contentSource}: {text.rulesSource}</span>
+              </div>
+              <div className="draft-actions">
+                <button type="button" onClick={printDocumentDraft} aria-label={text.printSavePdf}>{text.printSavePdf}</button>
+                <button type="button" disabled aria-disabled="true" aria-label={text.exportSoon}>{text.exportSoon}</button>
+              </div>
+              <div className="draft-sections">
+                {documentDraft.sections.map(section => (
+                  <section key={section.title}>
+                    <h3>{section.title}</h3>
+                    <ul>
+                      {section.lines.map((line, index) => <li key={`${section.title}-${index}`}>{line || text.incompleteInfo}</li>)}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            </article>
+          )}
+        </section>
+
+        <section className="hub-grid two">
           <article className="warm-card">
             <div className="card-title">
               <div>
@@ -1522,18 +2146,6 @@ function SelectField({
   );
 }
 
-function DocumentLink({ title, href, status, disabled = false }: { title: string; href: string; status: string; disabled?: boolean }) {
-  const content = (
-    <>
-      <FileText size={17} />
-      <span>{title}</span>
-      <small>{status}</small>
-    </>
-  );
-  if (disabled) return <div className="document-link disabled" aria-disabled="true">{content}</div>;
-  return <Link className="document-link" href={href} aria-label={title}>{content}</Link>;
-}
-
 const styles = `
   .business-hub-shell{min-height:100vh;background:#F5F1E8;color:#2B1A0F;font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}
   .business-hub-main{width:calc(100% - 230px);max-width:1320px;margin:0 auto;margin-inline-start:230px;margin-inline-end:auto;padding:22px 24px 60px;display:grid;gap:18px;min-width:0;overflow-x:hidden}
@@ -1559,13 +2171,14 @@ const styles = `
   .planner-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.planner-grid .field:last-child{grid-column:1 / -1}.funds-table{display:grid;gap:9px;margin-top:14px}.fund-row{display:grid;grid-template-columns:minmax(120px,.75fr) repeat(2,minmax(0,1fr));gap:9px;align-items:end;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:10px;min-width:0}.fund-row strong{color:#3D2914;line-height:1.35}.fund-row label{display:grid;gap:5px;min-width:0}.fund-row label span{font-size:11px;color:#7A5A3C;font-weight:950}.fund-row input{width:100%;min-width:0;border:1px solid rgba(186,117,23,.18);border-radius:12px;background:#FFFDF8;min-height:38px;padding:0 10px;font:900 12px Tajawal,Arial,sans-serif;outline:none}.fund-row input:focus{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.12)}
   .planner-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.planner-totals p{margin:0;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:12px}.planner-totals span{display:block;color:#7A5A3C;font-size:12px;font-weight:950}.planner-totals strong{display:block;margin-top:5px;color:#2B1A0F;overflow-wrap:anywhere}.planner-warning{display:flex;align-items:center;gap:7px;margin-top:10px;border:1px solid rgba(154,94,13,.18);background:#FFF4DE;color:#7A4B09;border-radius:14px;padding:10px 12px;font-size:12px;font-weight:950}.field.wide{margin-top:12px}.save-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}.save-row button,.package-actions button{border:0;border-radius:14px;background:linear-gradient(135deg,#BA7517,#EF9F27);color:#211207;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 13px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}.save-row button:disabled,.package-actions button:disabled{opacity:.62;cursor:not-allowed}.form-message{margin:10px 0 0;color:#7A5A3C;font-weight:900}
   .funding-side{position:sticky;top:18px}.warning-list{margin:0;padding-inline-start:18px;color:#791F1F;line-height:1.8;font-weight:900}.missing-box a{color:#854F0B;font-weight:950;text-decoration:none}.package-actions{display:grid;gap:9px;margin-top:14px}.package-actions a{min-height:42px;border-radius:14px;border:1px solid rgba(186,117,23,.14);background:#FFF8EA;color:#3D2914;text-decoration:none;display:flex;align-items:center;justify-content:center;font-weight:950}.funding-empty{background:#FFFDF8;border:1px dashed rgba(186,117,23,.24);border-radius:22px;padding:28px;display:grid;place-items:center;text-align:center;color:#7A5A3C;gap:8px}.funding-empty svg{color:#BA7517}
+  .strategic-documents-module{display:grid;gap:14px;min-width:0}.documents-header{background:linear-gradient(135deg,#2B1A0F,#3D2914 62%,#8A5514 140%);color:#FFFDF8;border-radius:24px;padding:22px;display:flex;justify-content:space-between;gap:16px;align-items:center;min-width:0;overflow:hidden;box-shadow:0 18px 48px rgba(43,26,15,.14)}.documents-header h2{margin:12px 0 8px;font-size:clamp(26px,4vw,40px);font-weight:950}.documents-header p{margin:0;color:rgba(255,253,248,.72);line-height:1.7;font-weight:850}.documents-header .score-pill{background:rgba(255,253,248,.1);border-color:rgba(250,199,117,.2)}.documents-header .score-pill strong{color:#FFFDF8}.documents-header .score-pill span{color:#FAC775}.documents-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.35fr);gap:16px;align-items:start;min-width:0}.documents-main{min-width:0}.document-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-width:0}.strategic-doc-card{border:1px solid rgba(186,117,23,.13);background:#FFF8EA;border-radius:18px;padding:14px;display:grid;gap:11px;min-width:0}.doc-card-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start}.doc-card-head svg{color:#BA7517}.doc-card-head h3{margin:0 0 7px;color:#3D2914;font-size:17px;font-weight:950;line-height:1.35;overflow-wrap:anywhere}.strategic-doc-card p{margin:0;color:#6D5647;font-size:12px;font-weight:850;line-height:1.65}.doc-missing{border:1px dashed rgba(186,117,23,.24);background:#FFFDF8;border-radius:14px;padding:10px;display:grid;gap:8px;min-width:0}.doc-missing strong{color:#854F0B;font-size:12px}.doc-missing div{display:flex;flex-wrap:wrap;gap:7px}.doc-missing a,.inline-link{border-radius:999px;background:#FAEEDA;color:#854F0B;text-decoration:none;font-size:11px;font-weight:950;padding:7px 9px}.doc-actions{display:flex;gap:8px;flex-wrap:wrap}.doc-actions a,.doc-actions button,.draft-actions button{border:0;border-radius:13px;min-height:38px;padding:0 11px;display:inline-flex;align-items:center;justify-content:center;background:#FFFDF8;color:#3D2914;border:1px solid rgba(186,117,23,.14);font:950 12px Tajawal,Arial,sans-serif;text-decoration:none;cursor:pointer}.doc-actions button:not(:disabled),.draft-actions button:not(:disabled){background:linear-gradient(135deg,#BA7517,#EF9F27);color:#211207;border:0}.doc-actions button:disabled,.draft-actions button:disabled{opacity:.62;cursor:not-allowed}.documents-side{position:sticky;top:18px}.dd-list{display:grid;gap:9px}.dd-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:9px;align-items:center;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:14px;padding:10px;min-width:0}.dd-row strong{font-size:13px;color:#3D2914;overflow-wrap:anywhere}.dd-row small{font-size:11px;font-weight:950;color:#7A5A3C}.document-vault-summary{display:grid;gap:10px;margin-top:14px}.document-vault-summary p{margin:0;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:12px}.document-vault-summary span{display:block;color:#7A5A3C;font-size:12px;font-weight:950}.document-vault-summary strong{display:block;color:#2B1A0F;font-size:19px}.category-list{display:grid;gap:7px;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:12px}.category-list strong{font-size:13px}.category-list span{border-bottom:1px solid rgba(186,117,23,.08);padding-bottom:6px}.draft-preview{scroll-margin-top:24px}.draft-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.draft-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.draft-sections section{border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:17px;padding:14px;min-width:0}.draft-sections h3{margin:0 0 8px;color:#3D2914;font-size:16px;font-weight:950}.draft-sections ul{margin:0;padding-inline-start:18px;color:#4F3728;line-height:1.75;font-weight:850;overflow-wrap:anywhere}
   .hub-grid{display:grid;gap:16px;min-width:0}.hub-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.wizard-layout{grid-template-columns:minmax(0,1.25fr) minmax(320px,.75fr);align-items:start}.warm-card{padding:18px}.card-title{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}.card-title svg{color:#BA7517;flex:0 0 auto}
   .check-list,.document-grid,.module-links{display:grid;gap:10px}.check-row,.document-link{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:11px;text-decoration:none;color:#2B1A0F;min-width:0}.check-row strong,.document-link span{min-width:0;font-weight:950;overflow-wrap:anywhere}.check-row small,.document-link small{color:#7A5A3C;font-size:11px;font-weight:950}.done,.todo{width:28px;height:28px;border-radius:11px;display:grid;place-items:center}.done{background:#EAF3DE;color:#27500A}.todo{background:#FCEBEB;color:#791F1F}.document-link.disabled{opacity:.68;cursor:not-allowed}
   .copilot-panel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:16px;padding:14px}.copilot-panel span{display:block;color:#7A5A3C;font-size:12px;font-weight:950}.copilot-panel strong{display:block;margin-top:5px;color:#2B1A0F;overflow-wrap:anywhere}
   .wizard-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.wizard-output{position:sticky;top:18px}.jurisdiction-summary{display:grid;gap:8px;margin:12px 0}.jurisdiction-summary p{margin:0;display:grid;grid-template-columns:minmax(120px,.42fr) minmax(0,1fr);gap:10px;border-bottom:1px solid rgba(186,117,23,.1);padding-bottom:8px}.jurisdiction-summary b{color:#7A5A3C}.jurisdiction-summary span{font-weight:950;color:#2B1A0F}.plain-list,.missing-box ul{margin:12px 0 0;padding-inline-start:18px;color:#5B4332;line-height:1.8;font-weight:850}.missing-box{margin-top:12px;border:1px dashed rgba(186,117,23,.24);background:#FFF8EA;border-radius:15px;padding:12px}.missing-box strong{color:#854F0B}.trusted-note{margin:12px 0 0;color:#7A5A3C;font-weight:900;line-height:1.7}
   .module-links{grid-template-columns:repeat(2,minmax(0,1fr))}.module-links a{background:#FFF8EA;color:#3D2914;border:1px solid rgba(186,117,23,.14);min-height:46px}.mini-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.mini-metrics p{margin:0;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:15px;padding:12px;min-width:0}.mini-metrics span{display:block;color:#7A5A3C;font-size:12px;font-weight:950}.mini-metrics strong{display:block;margin-top:5px;color:#2B1A0F;overflow-wrap:anywhere}
   a:focus-visible,button:focus-visible,select:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.18)}
-  @media(max-width:1260px){.readiness-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.hub-grid.two,.wizard-layout,.funding-layout{grid-template-columns:1fr}.wizard-output,.funding-side{position:static}}
-  @media(max-width:1024px){.business-hub-main{width:100%;max-width:100%;margin-inline-start:0;margin-inline-end:0;padding:calc(84px + env(safe-area-inset-top)) 16px 24px}.business-hero{grid-template-columns:1fr}.hero-actions{justify-content:stretch}.hero-actions a,.hero-actions button{flex:1 1 180px}.selector-panel{grid-template-columns:1fr}.funding-header{display:grid}.funding-header .score-pill{width:100%}}
-  @media(max-width:720px){.topbar{align-items:flex-start}.business-hero{border-radius:22px}.hero-actions{display:grid}.hero-actions a,.hero-actions button{width:100%}.readiness-head{display:grid}.score-pill{width:100%}.readiness-grid,.wizard-form,.module-links,.mini-metrics,.planner-grid,.planner-totals{grid-template-columns:1fr}.copilot-panel{grid-template-columns:1fr}.check-row,.document-link,.package-item{grid-template-columns:auto minmax(0,1fr)}.check-row small,.document-link small,.package-item small{grid-column:2}.fund-row{grid-template-columns:1fr}.jurisdiction-summary p{grid-template-columns:1fr}}
+  @media(max-width:1260px){.readiness-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.hub-grid.two,.wizard-layout,.funding-layout,.documents-layout{grid-template-columns:1fr}.wizard-output,.funding-side,.documents-side{position:static}}
+  @media(max-width:1024px){.business-hub-main{width:100%;max-width:100%;margin-inline-start:0;margin-inline-end:0;padding:calc(84px + env(safe-area-inset-top)) 16px 24px}.business-hero{grid-template-columns:1fr}.hero-actions{justify-content:stretch}.hero-actions a,.hero-actions button{flex:1 1 180px}.selector-panel{grid-template-columns:1fr}.funding-header,.documents-header{display:grid}.funding-header .score-pill,.documents-header .score-pill{width:100%}}
+  @media(max-width:720px){.topbar{align-items:flex-start}.business-hero{border-radius:22px}.hero-actions{display:grid}.hero-actions a,.hero-actions button{width:100%}.readiness-head{display:grid}.score-pill{width:100%}.readiness-grid,.wizard-form,.module-links,.mini-metrics,.planner-grid,.planner-totals,.document-card-grid,.draft-sections{grid-template-columns:1fr}.copilot-panel{grid-template-columns:1fr}.check-row,.document-link,.package-item,.dd-row{grid-template-columns:auto minmax(0,1fr)}.check-row small,.document-link small,.package-item small,.dd-row small{grid-column:2}.fund-row{grid-template-columns:1fr}.jurisdiction-summary p{grid-template-columns:1fr}}
 `;
