@@ -2181,7 +2181,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           <div className="mobile-panel">
             <div className="mobile-head">
               <span className="mobile-brand">
-                <Image src="/sfm-logo.png" alt="THE SFM" width={32} height={32} priority />
+                <Image src="/sfm-logo.png" alt="THE SFM" width={32} height={32} priority className="sfm-brand-mark sfm-brand-mark--header" />
                 <strong>THE SFM</strong>
               </span>
               <button className="icon-btn" onClick={() => setMenuOpen(false)} aria-label="Close navigation">

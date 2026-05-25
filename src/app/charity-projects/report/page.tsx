@@ -310,7 +310,7 @@ function ReportContent() {
       <article className="report-sheet">
         <header className="cover">
           <div className="brand">
-            <Image src="/sfm-logo.png" alt="THE SFM" width={54} height={54} priority />
+            <Image src="/sfm-logo.png" alt="THE SFM" width={54} height={54} priority className="sfm-brand-mark sfm-brand-mark--report" />
             <div><strong>THE SFM</strong><span>{tr.preview}</span></div>
           </div>
           <h1>{tr.title}</h1>

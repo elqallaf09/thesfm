@@ -39,7 +39,7 @@ export function AppHeader() {
     <>
       <header className="sfm-global-header" dir={dir}>
         <Link href="/" className="sfm-global-brand" aria-label="THE SFM">
-          <Image src="/sfm-logo.png" alt="THE SFM" width={34} height={34} priority />
+          <Image src="/sfm-logo.png" alt="THE SFM" width={34} height={34} priority className="sfm-brand-mark sfm-brand-mark--header" />
           <div>
             <strong>THE SFM</strong>
             <span>{crumb}</span>
@@ -102,7 +102,6 @@ export function AppHeader() {
 
           .sfm-global-brand img {
             flex: 0 0 auto;
-            border-radius: 10px;
             object-fit: cover;
           }
 

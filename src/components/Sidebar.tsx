@@ -116,7 +116,7 @@ export function Sidebar() {
           width={38}
           height={38}
           priority
-          className="rounded-lg"
+          className="sfm-brand-mark sfm-brand-mark--sidebar"
         />
         <div>
           <strong>THE SFM</strong>

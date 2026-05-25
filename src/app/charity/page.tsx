@@ -544,7 +544,7 @@ export default function CharityPage() {
           {/* Footer */}
           <div style={{ ...S(300), marginTop: '24px', paddingTop: '18px', borderTop: '1px solid rgba(167,243,240,.12)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '800', color: 'var(--sfm-soft-cyan)' }}>
-              <Image src="/sfm-logo.png" alt="THE SFM" width={24} height={24} className="rounded-sm" />
+              <Image src="/sfm-logo.png" alt="THE SFM" width={24} height={24} className="sfm-brand-mark sfm-brand-mark--compact" />
               <span>THE SFM</span>
             </div>
             <p style={{ fontSize: '11px', color: 'var(--sfm-muted)' }}>{t('charity.footerNote')}</p>

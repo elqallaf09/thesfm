@@ -315,7 +315,7 @@ export function AuthForm() {
 
         {/* Brand */}
         <div className="auth-brand">
-          <Image src="/sfm-logo.png" alt="THE SFM" width={88} height={88} priority className="auth-logo" />
+          <Image src="/sfm-logo.png" alt="THE SFM" width={88} height={88} priority className="auth-logo sfm-brand-mark sfm-brand-mark--auth" />
           <div className="auth-brand-name">{t.title}</div>
           <div className="auth-brand-sub">
             {showForgotPassword

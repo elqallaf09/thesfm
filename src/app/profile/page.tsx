@@ -369,7 +369,7 @@ export default function ProfilePage() {
       <main className="profile-main">
         <header className="profile-top">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Image src="/sfm-logo.png" alt="THE SFM" width={42} height={42} priority className="rounded-lg" />
+            <Image src="/sfm-logo.png" alt="THE SFM" width={42} height={42} priority className="sfm-brand-mark sfm-brand-mark--mobile" />
             <div>
               <span>THE SFM</span>
               <h1>{L('title')}</h1>

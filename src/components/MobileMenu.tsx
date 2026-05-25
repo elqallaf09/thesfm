@@ -94,7 +94,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
       <aside id="sfm-mobile-menu" className="sfm-mobile-panel" aria-label={menuLabel}>
         <div className="sfm-mobile-panel-head">
           <div className="sfm-mobile-logo">
-            <Image src="/sfm-logo.png" alt="THE SFM" width={42} height={42} priority />
+            <Image src="/sfm-logo.png" alt="THE SFM" width={42} height={42} priority className="sfm-brand-mark sfm-brand-mark--mobile" />
             <div>
               <strong>THE SFM</strong>
               <span>{menuLabel}</span>
@@ -161,7 +161,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
         .sfm-mobile-layer.open .sfm-mobile-panel{transform:translateX(0)}
         .sfm-mobile-panel-head,.sfm-mobile-logo,.sfm-mobile-lang,.sfm-mobile-nav button{display:flex;align-items:center}
         .sfm-mobile-panel-head{justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:1px solid rgba(167,243,240,.14)}
-        .sfm-mobile-logo{min-width:0;gap:10px}.sfm-mobile-logo img{border-radius:12px;object-fit:cover}.sfm-mobile-logo strong{display:block;color:var(--sfm-soft-cyan);font-size:17px;font-weight:900;letter-spacing:0}.sfm-mobile-logo span{display:block;color:rgba(248,251,255,.56);font-size:12px;font-weight:700;margin-top:2px}
+        .sfm-mobile-logo{min-width:0;gap:10px}.sfm-mobile-logo img{object-fit:cover}.sfm-mobile-logo strong{display:block;color:var(--sfm-soft-cyan);font-size:17px;font-weight:900;letter-spacing:0}.sfm-mobile-logo span{display:block;color:rgba(248,251,255,.56);font-size:12px;font-weight:700;margin-top:2px}
         .sfm-mobile-close{flex:0 0 auto;width:42px;height:42px;border:1px solid rgba(167,243,240,.24);border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.08);color:#FFFFFF;cursor:pointer}
         .sfm-mobile-lang{justify-content:center;padding:14px 0;border-bottom:1px solid rgba(167,243,240,.1)}
         .sfm-mobile-nav{display:grid;gap:8px;padding:12px 0 4px}
