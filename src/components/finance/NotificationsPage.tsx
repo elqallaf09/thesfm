@@ -32,6 +32,8 @@ import {
   type SmartNotificationSeverity,
   type SmartNotificationType,
 } from '@/lib/notifications/generateNotifications';
+import { loadUserDataTables } from '@/lib/data/notificationsData';
+import { formatDate } from '@/lib/formatDate';
 
 type Lang = NotificationLang;
 type NotificationFilter =
@@ -283,9 +285,7 @@ function dueGroup(notice: SmartNotification, lang: Lang) {
 }
 
 function dateLabel(value: string | null | undefined, lang: Lang) {
-  const date = parseDate(value);
-  if (!date) return '';
-  return date.toLocaleDateString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
+  return formatDate(value, lang);
 }
 
 function sourceLabel(type: SmartNotificationType, lang: Lang) {
@@ -417,21 +417,11 @@ export function NotificationsPage() {
       }
       if (storedResult.error) nextErrors.push(storedResult.error.message);
 
-      const nextSourceData: NotificationSourceData = {};
-      await Promise.all(SOURCE_TABLES.map(async item => {
-        try {
-          const { data, error } = await db.from(item.table).select('*').eq('user_id', user.id).limit(1000);
-          if (error) {
-            nextSourceData[item.key] = [];
-            nextErrors.push(error.message);
-          } else {
-            nextSourceData[item.key] = data ?? [];
-          }
-        } catch (error) {
-          nextSourceData[item.key] = [];
-          nextErrors.push(error instanceof Error ? error.message : 'Load error');
-        }
-      }));
+      const sourceResult = await loadUserDataTables(db, user.id, SOURCE_TABLES);
+      const nextSourceData = sourceResult.records as NotificationSourceData;
+      Object.values(sourceResult.errors).forEach(message => {
+        if (message) nextErrors.push(message);
+      });
 
       if (!cancelled) {
         setStoredNotifications(((storedResult.data ?? []) as StoredNotificationRow[]).map(normalizeStored));

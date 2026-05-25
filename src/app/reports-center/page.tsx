@@ -24,6 +24,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
+import { loadUserDataTables } from '@/lib/data/reportsData';
 
 type Lang = 'ar' | 'en' | 'fr';
 type ReportStatus = 'ready' | 'needs_data' | 'unavailable' | 'error';
@@ -1262,29 +1263,11 @@ export default function ReportsCenterPage() {
         return;
       }
       setIsLoading(true);
-      const nextRecords = { ...EMPTY_RECORDS } as RecordsState;
-      const nextErrors: Partial<Record<TableKey, string>> = {};
-
-      await Promise.all(TABLES.map(async item => {
-        try {
-          let query = supabase.from(item.table).select('*').limit(1000);
-          if (item.userScoped) query = query.eq('user_id', user.id);
-          const { data, error } = await query;
-          if (error) {
-            nextErrors[item.key] = error.message;
-            nextRecords[item.key] = [];
-          } else {
-            nextRecords[item.key] = data ?? [];
-          }
-        } catch (error) {
-          nextErrors[item.key] = error instanceof Error ? error.message : 'Load error';
-          nextRecords[item.key] = [];
-        }
-      }));
+      const result = await loadUserDataTables(supabase as any, user.id, TABLES);
 
       if (!cancelled) {
-        setRecords(nextRecords);
-        setLoadErrors(nextErrors);
+        setRecords(result.records as RecordsState);
+        setLoadErrors(result.errors as Partial<Record<TableKey, string>>);
         setIsLoading(false);
       }
     }

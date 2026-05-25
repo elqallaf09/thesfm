@@ -21,6 +21,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
+import { loadUserDataTables } from '@/lib/data/financeData';
+import { zakatImportCandidates } from '@/lib/data/zakatData';
 
 type Lang = 'ar' | 'en' | 'fr';
 type AssetType = 'cash' | 'savings' | 'investment' | 'gold' | 'silver' | 'non_zakat';
@@ -164,6 +166,12 @@ const TEXT = {
     saved: 'تم الحفظ بنجاح.',
     error: 'تعذر تنفيذ العملية حالياً.',
     openCharityProjects: 'المشاريع الخيرية',
+    importedDataTitle: 'قيم مالية من حسابك',
+    importedDataHint: 'يمكنك إدخال هذه القيم في حساب الزكاة بعد موافقتك فقط.',
+    foundSavings: 'تم العثور على مدخرات بقيمة {amount}. هل تريد إضافتها لحساب الزكاة؟',
+    foundInvestments: 'تم العثور على استثمارات بقيمة {amount}. هل تريد إضافتها لحساب الزكاة؟',
+    includeInZakat: 'إضافتها للحساب',
+    alreadyIncluded: 'تمت الإضافة',
   },
   en: {
     title: 'Zakat',
@@ -254,6 +262,12 @@ const TEXT = {
     saved: 'Saved successfully.',
     error: 'Could not complete this action right now.',
     openCharityProjects: 'Charity Projects',
+    importedDataTitle: 'Financial values from your account',
+    importedDataHint: 'You can include these values in zakat only after you confirm.',
+    foundSavings: 'Savings of {amount} were found. Do you want to include them in zakat calculation?',
+    foundInvestments: 'Investments of {amount} were found. Do you want to include them in zakat calculation?',
+    includeInZakat: 'Include in calculation',
+    alreadyIncluded: 'Included',
   },
   fr: {
     title: 'Zakat',
@@ -344,6 +358,12 @@ const TEXT = {
     saved: 'Enregistré avec succès.',
     error: 'Impossible d’effectuer cette action pour le moment.',
     openCharityProjects: 'Projets caritatifs',
+    importedDataTitle: 'Valeurs financières de votre compte',
+    importedDataHint: 'Vous pouvez inclure ces valeurs dans la zakat uniquement après confirmation.',
+    foundSavings: 'Une épargne de {amount} a été trouvée. Voulez-vous l’inclure dans le calcul de la zakat ?',
+    foundInvestments: 'Des investissements de {amount} ont été trouvés. Voulez-vous les inclure dans le calcul de la zakat ?',
+    includeInZakat: 'Inclure dans le calcul',
+    alreadyIncluded: 'Inclus',
   },
 } as const;
 
@@ -398,6 +418,8 @@ export default function ZakatPage() {
   const [priceMode, setPriceMode] = useState<'automatic' | 'manual'>('manual');
   const [metalsPrice, setMetalsPrice] = useState<MetalsPriceResponse | null>(null);
   const [nisabMethod, setNisabMethod] = useState<NisabMethod>('conservative');
+  const [importedFinance, setImportedFinance] = useState({ savingsTotal: 0, investmentTotal: 0 });
+  const [includedImports, setIncludedImports] = useState({ savings: false, investments: false });
   const [zakat, setZakat] = useState({
     cash: '',
     investments: '',
@@ -427,12 +449,17 @@ export default function ZakatPage() {
 
   const loadData = useCallback(async () => {
     if (!user) return;
-    const [assetRes, historyRes] = await Promise.all([
+    const [assetRes, historyRes, financeRes] = await Promise.all([
       db.from('zakat_assets').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       db.from('zakat_calculations').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(12),
+      loadUserDataTables(db, user.id, [
+        { key: 'savings', table: 'savings_items' },
+        { key: 'investments', table: 'investment_items' },
+      ]),
     ]);
     if (!assetRes.error) setAssets((assetRes.data ?? []) as ZakatAsset[]);
     if (!historyRes.error) setHistory((historyRes.data ?? []) as ZakatCalculation[]);
+    setImportedFinance(zakatImportCandidates(financeRes.records.savings, financeRes.records.investments));
   }, [db, user]);
 
   const loadMetalsPrices = useCallback(async () => {
@@ -516,6 +543,13 @@ export default function ZakatPage() {
   const nextHawl = assets.map(asset => asset.zakat_due_date).filter(Boolean).sort()[0];
   const lastSaved = history[0];
   const priceSourceLabel = metalsPrice?.source === 'api' ? tr.live : metalsPrice?.source === 'fallback' ? tr.failed : tr.manual;
+
+  function includeImportedAmount(kind: 'savings' | 'investments') {
+    const amount = kind === 'savings' ? importedFinance.savingsTotal : importedFinance.investmentTotal;
+    if (amount <= 0) return;
+    setZakat(prev => ({ ...prev, [kind === 'savings' ? 'cash' : 'investments']: String(amount) }));
+    setIncludedImports(prev => ({ ...prev, [kind]: true }));
+  }
 
   const summaryCards = [
     { icon: Coins, label: tr.estimatedZakat, value: money(zakatDue) },
@@ -642,6 +676,28 @@ export default function ZakatPage() {
         <section id="zakat-calculator" className="zakat-main-grid">
           <article className="warm-card input-panel">
             <div className="section-head"><h2>{tr.zakatInputs}</h2><Coins size={22} /></div>
+            {(importedFinance.savingsTotal > 0 || importedFinance.investmentTotal > 0) && (
+              <div className="import-box">
+                <strong>{tr.importedDataTitle}</strong>
+                <p>{tr.importedDataHint}</p>
+                {importedFinance.savingsTotal > 0 && (
+                  <div>
+                    <span>{tr.foundSavings.replace('{amount}', money(importedFinance.savingsTotal))}</span>
+                    <button type="button" onClick={() => includeImportedAmount('savings')} disabled={includedImports.savings}>
+                      {includedImports.savings ? tr.alreadyIncluded : tr.includeInZakat}
+                    </button>
+                  </div>
+                )}
+                {importedFinance.investmentTotal > 0 && (
+                  <div>
+                    <span>{tr.foundInvestments.replace('{amount}', money(importedFinance.investmentTotal))}</span>
+                    <button type="button" onClick={() => includeImportedAmount('investments')} disabled={includedImports.investments}>
+                      {includedImports.investments ? tr.alreadyIncluded : tr.includeInZakat}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="form-grid">
               <label><span>{tr.cash}</span><input inputMode="decimal" value={zakat.cash} onChange={e => setZakat(prev => ({ ...prev, cash: e.target.value }))} placeholder="0.000" /></label>
               <label><span>{tr.investments}</span><input inputMode="decimal" value={zakat.investments} onChange={e => setZakat(prev => ({ ...prev, investments: e.target.value }))} placeholder="0.000" /></label>
@@ -799,7 +855,7 @@ export default function ZakatPage() {
       </DashboardPageShell>
 
       <style jsx>{`
-        .zakat-page{min-height:100vh;background:#F5F1E8;color:#2B1A0F;font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}.zakat-content{display:grid;gap:18px}.zakat-hero{position:relative;overflow:hidden;border-radius:24px;padding:28px;background:radial-gradient(circle at 14% 10%,rgba(250,199,117,.28),transparent 30%),linear-gradient(135deg,#1A0F05,#2B1A0F 48%,#7B4A12 135%);color:#FFFDF8;display:flex;align-items:center;justify-content:space-between;gap:20px;box-shadow:0 22px 55px rgba(61,41,20,.18)}.zakat-hero span{color:#FAC775;font-size:12px;font-weight:900}.zakat-hero h1{margin:10px 0 8px;font-size:42px;line-height:1.05;font-weight:950}.zakat-hero p{margin:0;color:rgba(255,253,248,.76);max-width:720px;line-height:1.75}.hero-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}.gold-btn,.dark-btn,.primary-wide,.secondary-link{min-height:44px;border-radius:14px;border:1px solid rgba(250,199,117,.28);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 16px;font-weight:900;text-decoration:none;cursor:pointer;font-family:inherit}.gold-btn,.primary-wide{background:linear-gradient(135deg,#FAC775,#EF9F27);color:#251407;box-shadow:0 10px 24px rgba(239,159,39,.2)}.dark-btn{background:rgba(20,12,6,.5);color:#FFFDF8}.dark-btn:disabled,.primary-wide:disabled{opacity:.55;cursor:not-allowed}.secondary-link{background:#FFFDF8;color:#3D2914;border-color:rgba(186,117,23,.18)}.notice{border:1px solid rgba(186,117,23,.18);background:#FFF8EA;color:#854F0B;border-radius:16px;padding:12px 14px;font-weight:900}.summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}.warm-card{background:#FFFDF8;border:1px solid rgba(186,117,23,.16);border-radius:20px;box-shadow:0 14px 34px rgba(61,41,20,.07);padding:18px;min-width:0}.summary-card{display:grid;gap:8px}.summary-card span{width:36px;height:36px;border-radius:13px;background:#FAEEDA;color:#9A5E0D;display:grid;place-items:center}.summary-card small{color:#7A6A55;font-weight:900}.summary-card strong{font-size:20px;color:#2B1A0F;overflow-wrap:anywhere}.zakat-main-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(280px,.78fr);gap:16px;align-items:start}.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}.section-head h2{margin:0;font-size:19px;color:#3D2914}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid.one{grid-template-columns:1fr}.form-grid label,.asset-box label{display:grid;gap:7px;color:#3D2914;font-size:13px;font-weight:900;min-width:0}.form-grid span,.asset-box span{min-width:0}.form-grid input,.form-grid select,.asset-box input{width:100%;min-height:44px;border:1px solid rgba(186,117,23,.18);border-radius:13px;background:#FFFDF8;color:#1A0F05;padding:0 12px;outline:none;font-family:inherit}.form-grid input:focus,.form-grid select:focus,.asset-box input:focus{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.16)}.wide{grid-column:1 / -1}.asset-box,.manual-box{margin-top:12px;border:1px solid rgba(186,117,23,.13);background:#FFF8EA;border-radius:16px;padding:14px;display:grid;gap:10px;min-width:0}.asset-box strong{color:#3D2914}.asset-box p,.manual-box p,.muted,.disclaimer{margin:0;color:#7A6A55;line-height:1.7;font-size:13px}.chip-grid{display:flex;flex-wrap:wrap;gap:8px}.chip{border:1px solid rgba(186,117,23,.2);background:#F7F0E4;color:#3D2914;border-radius:999px;min-height:36px;padding:0 12px;font-weight:900;cursor:pointer}.chip.active{background:#3D2914;color:#FFFDF8;border-color:#3D2914}.price-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.price-card{background:#3D2914;border:1px solid rgba(250,199,117,.18);border-radius:16px;padding:14px;color:#FFFDF8;min-width:0}.price-card small,.price-card span{display:block;color:#FAC775;font-weight:900}.price-card strong{display:block;margin:6px 0;color:#FFFDF8;font-size:20px;overflow-wrap:anywhere}.price-meta{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;color:#854F0B;font-size:12px;font-weight:900}.price-meta span{border-radius:999px;background:#FAEEDA;padding:6px 10px}.result-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.result-grid div{border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:14px;padding:11px;min-width:0}.result-grid small{display:block;color:#7A6A55;font-weight:900}.result-grid strong{display:block;color:#2B1A0F;font-size:16px;margin-top:4px;overflow-wrap:anywhere}.result-grid .nisab-reached{background:#EAF3DE}.result-grid .nisab-reached strong{color:#27500A}.result-grid .nisab-missing{background:#FFF4DE}.outcome{margin:12px 0 0;border-radius:15px;background:#EAF3DE;color:#27500A;padding:12px;font-weight:900;line-height:1.7}.guidance-list{display:grid;gap:9px}.guidance-list p{margin:0;display:flex;gap:8px;align-items:flex-start;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:14px;padding:11px;color:#3D2914;line-height:1.65}.guidance-list svg{color:#BA7517;flex:0 0 auto;margin-top:2px}.guidance-panel .primary-wide{width:100%;margin:14px 0}.split-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:16px}.check-row{display:flex!important;align-items:center;gap:9px}.check-row input{width:auto;min-height:auto}.asset-list,.history-list{display:grid;gap:10px}.asset-list article,.history-list article{border:1px solid rgba(186,117,23,.13);background:#FFF8EA;border-radius:15px;padding:12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}.asset-list span,.asset-list small,.history-list span,.history-list small{color:#7A6A55;overflow-wrap:anywhere}.asset-list strong,.history-list strong{color:#2B1A0F;overflow-wrap:anywhere}.asset-list b{color:#854F0B}.history-list article{grid-template-columns:1fr 1fr 1fr 1fr .7fr auto}.history-list button{width:36px;height:36px;border:1px solid rgba(121,31,31,.14);border-radius:11px;background:#FCEBEB;color:#791F1F;display:grid;place-items:center;cursor:pointer}@media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.zakat-main-grid{grid-template-columns:1fr 1fr}.guidance-panel{grid-column:1 / -1}}@media(max-width:760px){.zakat-hero{display:grid;padding:22px}.zakat-hero h1{font-size:34px}.hero-actions{display:grid;grid-template-columns:1fr;width:100%}.summary-grid,.zakat-main-grid,.split-grid,.form-grid,.price-grid,.result-grid{grid-template-columns:1fr}.history-list article,.asset-list article{grid-template-columns:1fr}.warm-card{padding:16px}.gold-btn,.dark-btn,.primary-wide,.secondary-link{width:100%}}
+        .zakat-page{min-height:100vh;background:#F5F1E8;color:#2B1A0F;font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}.zakat-content{display:grid;gap:18px}.zakat-hero{position:relative;overflow:hidden;border-radius:24px;padding:28px;background:radial-gradient(circle at 14% 10%,rgba(250,199,117,.28),transparent 30%),linear-gradient(135deg,#1A0F05,#2B1A0F 48%,#7B4A12 135%);color:#FFFDF8;display:flex;align-items:center;justify-content:space-between;gap:20px;box-shadow:0 22px 55px rgba(61,41,20,.18)}.zakat-hero span{color:#FAC775;font-size:12px;font-weight:900}.zakat-hero h1{margin:10px 0 8px;font-size:42px;line-height:1.05;font-weight:950}.zakat-hero p{margin:0;color:rgba(255,253,248,.76);max-width:720px;line-height:1.75}.hero-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}.gold-btn,.dark-btn,.primary-wide,.secondary-link{min-height:44px;border-radius:14px;border:1px solid rgba(250,199,117,.28);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 16px;font-weight:900;text-decoration:none;cursor:pointer;font-family:inherit}.gold-btn,.primary-wide{background:linear-gradient(135deg,#FAC775,#EF9F27);color:#251407;box-shadow:0 10px 24px rgba(239,159,39,.2)}.dark-btn{background:rgba(20,12,6,.5);color:#FFFDF8}.dark-btn:disabled,.primary-wide:disabled{opacity:.55;cursor:not-allowed}.secondary-link{background:#FFFDF8;color:#3D2914;border-color:rgba(186,117,23,.18)}.notice{border:1px solid rgba(186,117,23,.18);background:#FFF8EA;color:#854F0B;border-radius:16px;padding:12px 14px;font-weight:900}.summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}.warm-card{background:#FFFDF8;border:1px solid rgba(186,117,23,.16);border-radius:20px;box-shadow:0 14px 34px rgba(61,41,20,.07);padding:18px;min-width:0}.summary-card{display:grid;gap:8px}.summary-card span{width:36px;height:36px;border-radius:13px;background:#FAEEDA;color:#9A5E0D;display:grid;place-items:center}.summary-card small{color:#7A6A55;font-weight:900}.summary-card strong{font-size:20px;color:#2B1A0F;overflow-wrap:anywhere}.zakat-main-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(280px,.78fr);gap:16px;align-items:start}.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}.section-head h2{margin:0;font-size:19px;color:#3D2914}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid.one{grid-template-columns:1fr}.form-grid label,.asset-box label{display:grid;gap:7px;color:#3D2914;font-size:13px;font-weight:900;min-width:0}.form-grid span,.asset-box span{min-width:0}.form-grid input,.form-grid select,.asset-box input{width:100%;min-height:44px;border:1px solid rgba(186,117,23,.18);border-radius:13px;background:#FFFDF8;color:#1A0F05;padding:0 12px;outline:none;font-family:inherit}.form-grid input:focus,.form-grid select:focus,.asset-box input:focus{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.16)}.wide{grid-column:1 / -1}.asset-box,.manual-box,.import-box{margin-top:12px;border:1px solid rgba(186,117,23,.13);background:#FFF8EA;border-radius:16px;padding:14px;display:grid;gap:10px;min-width:0}.asset-box strong,.import-box strong{color:#3D2914}.asset-box p,.manual-box p,.import-box p,.muted,.disclaimer{margin:0;color:#7A6A55;line-height:1.7;font-size:13px}.import-box div{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;border:1px solid rgba(186,117,23,.12);background:#FFFDF8;border-radius:14px;padding:10px}.import-box span{color:#3D2914;font-weight:900;line-height:1.6}.import-box button{min-height:36px;border-radius:12px;border:1px solid rgba(186,117,23,.2);background:#3D2914;color:#FFFDF8;padding:0 12px;font-weight:900;font-family:inherit;cursor:pointer}.import-box button:disabled{background:#EAF3DE;color:#27500A;cursor:default}.chip-grid{display:flex;flex-wrap:wrap;gap:8px}.chip{border:1px solid rgba(186,117,23,.2);background:#F7F0E4;color:#3D2914;border-radius:999px;min-height:36px;padding:0 12px;font-weight:900;cursor:pointer}.chip.active{background:#3D2914;color:#FFFDF8;border-color:#3D2914}.price-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.price-card{background:#3D2914;border:1px solid rgba(250,199,117,.18);border-radius:16px;padding:14px;color:#FFFDF8;min-width:0}.price-card small,.price-card span{display:block;color:#FAC775;font-weight:900}.price-card strong{display:block;margin:6px 0;color:#FFFDF8;font-size:20px;overflow-wrap:anywhere}.price-meta{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;color:#854F0B;font-size:12px;font-weight:900}.price-meta span{border-radius:999px;background:#FAEEDA;padding:6px 10px}.result-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.result-grid div{border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:14px;padding:11px;min-width:0}.result-grid small{display:block;color:#7A6A55;font-weight:900}.result-grid strong{display:block;color:#2B1A0F;font-size:16px;margin-top:4px;overflow-wrap:anywhere}.result-grid .nisab-reached{background:#EAF3DE}.result-grid .nisab-reached strong{color:#27500A}.result-grid .nisab-missing{background:#FFF4DE}.outcome{margin:12px 0 0;border-radius:15px;background:#EAF3DE;color:#27500A;padding:12px;font-weight:900;line-height:1.7}.guidance-list{display:grid;gap:9px}.guidance-list p{margin:0;display:flex;gap:8px;align-items:flex-start;border:1px solid rgba(186,117,23,.12);background:#FFF8EA;border-radius:14px;padding:11px;color:#3D2914;line-height:1.65}.guidance-list svg{color:#BA7517;flex:0 0 auto;margin-top:2px}.guidance-panel .primary-wide{width:100%;margin:14px 0}.split-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:16px}.check-row{display:flex!important;align-items:center;gap:9px}.check-row input{width:auto;min-height:auto}.asset-list,.history-list{display:grid;gap:10px}.asset-list article,.history-list article{border:1px solid rgba(186,117,23,.13);background:#FFF8EA;border-radius:15px;padding:12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}.asset-list span,.asset-list small,.history-list span,.history-list small{color:#7A6A55;overflow-wrap:anywhere}.asset-list strong,.history-list strong{color:#2B1A0F;overflow-wrap:anywhere}.asset-list b{color:#854F0B}.history-list article{grid-template-columns:1fr 1fr 1fr 1fr .7fr auto}.history-list button{width:36px;height:36px;border:1px solid rgba(121,31,31,.14);border-radius:11px;background:#FCEBEB;color:#791F1F;display:grid;place-items:center;cursor:pointer}@media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.zakat-main-grid{grid-template-columns:1fr 1fr}.guidance-panel{grid-column:1 / -1}}@media(max-width:760px){.zakat-hero{display:grid;padding:22px}.zakat-hero h1{font-size:34px}.hero-actions{display:grid;grid-template-columns:1fr;width:100%}.summary-grid,.zakat-main-grid,.split-grid,.form-grid,.price-grid,.result-grid,.import-box div{grid-template-columns:1fr}.history-list article,.asset-list article{grid-template-columns:1fr}.warm-card{padding:16px}.gold-btn,.dark-btn,.primary-wide,.secondary-link,.import-box button{width:100%}}
       `}</style>
     </div>
   );

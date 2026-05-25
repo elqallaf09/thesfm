@@ -11,6 +11,7 @@ import { UserChip } from '@/components/UserChip';
 import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
 import { calculateGoalProgress, parseMoney } from '@/lib/goalProgress';
+import { safeDivide, safePercent } from '@/lib/data/financeData';
 
 /* ═══════════════════════════════════════════════════
    TYPES
@@ -353,12 +354,13 @@ export default function DashboardPage(){
   const totalInvestment=investments.reduce((sum,item)=>sum+amountOf(item.amount),0);
   const netWorth=totalIncome+totalSavings;
   const hasHealthData = totalIncome > 0 && expenseItems.length > 0;
-  const healthScore = hasHealthData ? Math.max(0, Math.min(100, Math.round(((totalIncome - totalExpenses) / totalIncome) * 100))) : null;
+  const healthPercent = safePercent(totalIncome - totalExpenses, totalIncome);
+  const healthScore = hasHealthData && healthPercent !== null ? Math.max(0, Math.min(100, Math.round(healthPercent))) : null;
   const monthlyGrowth:number=0;
   const monthlyGrowthPct:number=0;
   const initials=(profile.display_name||'SFM').substring(0,2).toUpperCase();
   const netBalance=totalIncome-totalExpenses;
-  const expenseRatio=totalIncome>0?totalExpenses/totalIncome:0;
+  const expenseRatio=safeDivide(totalExpenses,totalIncome) ?? 0;
   const hasEnoughAnalysisData=totalIncome>0||totalExpenses>0||goals.length>0||investments.length>0||savingsItems.length>0;
   const L=useCallback((ar:string,en:string,fr:string)=>isAr?ar:isFr?fr:en,[isAr,isFr]);
   const locale=isAr?'ar-KW':isFr?'fr-FR':'en-US';

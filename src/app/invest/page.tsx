@@ -16,6 +16,7 @@ import { useInvestments } from '@/hooks/useInvestments';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
+import { investmentSymbol, marketAnalysisUrl } from '@/lib/data/investmentData';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
 
 const TYPES: InvestmentType[] = ['stocks', 'realEstate', 'fund', 'gold', 'cash', 'crypto', 'project', 'other'];
@@ -96,6 +97,7 @@ export default function InvestPage() {
 
   const typeLabel = useCallback((type: InvestmentType) => t(`invest_types_${type}`), [t]);
   const riskLabel = useCallback((risk: RiskLevel) => t(`invest_risks_${risk}`), [t]);
+  const L = useCallback((ar: string, en: string, fr: string) => lang === 'ar' ? ar : lang === 'fr' ? fr : en, [lang]);
   const money = useCallback((amount: number) => formatCurrency(amount, currency, lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en'), [currency, lang]);
   const totalValue = useMemo(() => items.reduce((sum, item) => sum + item.currentValue, 0), [items]);
   const totalMonthly = useMemo(() => items.reduce((sum, item) => sum + item.monthlyContribution, 0), [items]);
@@ -147,6 +149,9 @@ export default function InvestPage() {
       gain: value - totalValue - contribTotal,
     };
   }), [analysisReturn, totalMonthly, totalValue]);
+  const marketLinkedInvestments = useMemo(() => items
+    .map(item => ({ investment: item, symbol: investmentSymbol(item) }))
+    .filter(item => item.symbol), [items]);
   const insights = useMemo(() => {
     if (items.length === 0) return [];
     if (items.length === 1) return [t('invest_insights_addMoreForDiversification')];
@@ -297,6 +302,25 @@ export default function InvestPage() {
               <SummaryCard icon={<LineChartIcon size={20} />} title={t('invest_summary_expectedReturn')} value={weightedReturn === null ? t('insufficientData') : pct(weightedReturn)} subtitle={weightedReturn === null ? t('invest_summary_defaultReturn') : t('invest_summary_notFinancialAdvice')} />
             </section>
 
+            <section className="invest-panel invest-market-link">
+              <div className="invest-section-head">
+                <LineChartIcon size={18} />
+                <h2>{L('ربط الاستثمار بتحليل السوق','Investments and Market Analysis','Investissements et analyse du marché')}</h2>
+              </div>
+              {marketLinkedInvestments.length > 0 ? (
+                <div className="invest-market-chips">
+                  {marketLinkedInvestments.map(item => (
+                    <button key={`${item.investment.id}-${item.symbol}`} type="button" onClick={() => router.push(marketAnalysisUrl(item.symbol))}>
+                      <strong>{item.symbol}</strong>
+                      <span>{item.investment.name}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p>{L('أضف رمز الأصل لتحليل السوق. لا يتم عرض أسعار أو أرباح غير محققة بدون بيانات سوق حقيقية.','Add asset symbol for market analysis. No prices or unrealized gains are shown without real market data.','Ajoutez le symbole de l’actif pour l’analyse du marché. Aucun prix ni gain latent n’est affiché sans données de marché réelles.')}</p>
+              )}
+            </section>
+
             <section className="invest-chart-grid">
               <ChartCard icon={<PieChartIcon size={18} />} title={t('invest_charts_distribution')}>
                 <ResponsiveContainer width="100%" height={260}>
@@ -445,6 +469,7 @@ export default function InvestPage() {
         .invest-panel,.invest-empty{background:#FFFDFC;border:1px solid rgba(216,174,99,.14);border-radius:22px;box-shadow:0 4px 22px rgba(90,67,51,.06)}
         .invest-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px}.invest-summary-card{min-height:132px;padding:16px;display:grid;gap:8px}.invest-summary-card .icon{width:38px;height:38px;border-radius:13px;background:rgba(216,174,99,.12);color:#D8AE63;display:grid;place-items:center}.invest-summary-card span{font-size:11px;font-weight:900;color:#9A6C3C}.invest-summary-card strong{font-size:18px;color:#111}.invest-summary-card p{margin:0;color:#7C6A5D;font-size:11px;font-weight:800;line-height:1.6}
         .invest-chart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}.invest-chart-card{padding:17px;min-height:330px}.invest-section-head{display:flex;align-items:center;gap:9px;margin-bottom:14px;color:#9A6C3C}.invest-section-head h2{margin:0;color:#111;font-size:16px;font-weight:900}
+        .invest-market-link{padding:17px;margin-bottom:14px}.invest-market-link p{margin:0;color:#7C6A5D;font-size:13px;font-weight:900;line-height:1.7}.invest-market-chips{display:flex;flex-wrap:wrap;gap:9px}.invest-market-chips button{min-height:44px;border:1px solid rgba(216,174,99,.16);border-radius:14px;background:#F7F3EA;color:#111;padding:8px 12px;display:flex;align-items:center;gap:8px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.invest-market-chips button strong{direction:ltr;color:#9A6C3C}.invest-market-chips button span{color:#5B4332}
         .invest-analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}.invest-insights,.invest-projections{padding:18px}.invest-insight-list{display:grid;gap:10px}.invest-insight-item{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:15px;padding:12px}.invest-insight-item span{width:30px;height:30px;border-radius:11px;background:linear-gradient(135deg,#D8AE63,#9A6C3C);display:grid;place-items:center;color:#111;font-size:12px;font-weight:900}.invest-insight-item p{margin:0;color:#5B4332;font-size:13px;font-weight:800;line-height:1.7}.invest-empty-chart{min-height:220px;display:grid;place-items:center;text-align:center;color:#9A6C3C;font-size:13px;font-weight:900;line-height:1.7;background:#F7F3EA;border:1px dashed rgba(216,174,99,.24);border-radius:18px;padding:18px}
         .invest-projection-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.invest-projection-grid div{background:#F7F3EA;border:1px solid rgba(216,174,99,.12);border-radius:15px;padding:12px;display:grid;gap:6px}.invest-projection-grid span{color:#9A6C3C;font-size:11px;font-weight:900}.invest-projection-grid strong{font-size:15px;color:#111}.invest-projection-grid small{font-size:11px;color:#7C6A5D;font-weight:800}.invest-disclaimer{margin:12px 0 0;color:#9A6C3C;font-size:11px;font-weight:900}
         .invest-empty{min-height:280px;padding:42px 20px;text-align:center;display:grid;place-items:center;align-content:center;gap:12px}.invest-empty-icon{width:68px;height:68px;border-radius:22px;background:rgba(216,174,99,.12);color:#D8AE63;display:grid;place-items:center}.invest-empty h3{margin:0;font-size:20px}.invest-empty p{max-width:520px;margin:0;color:#7C6A5D;line-height:1.8;font-size:14px}
