@@ -93,6 +93,7 @@ type Filters = {
 };
 
 type RecordsState = Record<TableKey, any[]>;
+type MissingAction = { label: string; href: string };
 
 const TABLES: Array<{ key: TableKey; table: string; userScoped: boolean }> = [
   { key: 'income', table: 'monthly_income_sources', userScoped: true },
@@ -130,10 +131,17 @@ const TEXT = {
     investment: 'تقارير الاستثمار والسوق',
     projects: 'تقارير المشاريع',
     charity: 'تقارير الزكاة والأعمال الخيرية',
+    tabAll: 'الكل',
+    tabFinancial: 'التقارير المالية',
+    tabInvestment: 'الاستثمار والسوق',
+    tabProjects: 'المشاريع',
+    tabCharity: 'الزكاة والأعمال الخيرية',
+    readyReports: 'التقارير الجاهزة',
+    noReadyReports: 'لا توجد تقارير جاهزة حالياً. أضف بياناتك أولاً.',
     allReports: 'كل التقارير',
     ready: 'جاهز',
     needsData: 'يحتاج بيانات',
-    unavailable: 'غير متاح',
+    unavailable: 'غير متاح حالياً',
     error: 'خطأ في التحميل',
     preview: 'معاينة',
     pdf: 'تحميل PDF',
@@ -142,7 +150,8 @@ const TEXT = {
     printPdf: 'طباعة / حفظ PDF',
     reportPreview: 'معاينة التقرير',
     closePreview: 'إغلاق المعاينة',
-    requiredData: 'مصادر البيانات المطلوبة',
+    requiredData: 'البيانات المطلوبة:',
+    dataUsed: 'البيانات المستخدمة:',
     missingData: 'أضف البيانات المطلوبة قبل إنشاء هذا التقرير.',
     unavailableCopy: 'هذا التقرير غير متاح حالياً من مركز التقارير. افتح الوحدة المرتبطة عند توفر البيانات.',
     noData: 'لا توجد بيانات حتى الآن.',
@@ -172,6 +181,18 @@ const TEXT = {
     csvDownloaded: 'تم تنزيل ملف CSV.',
     printOpened: 'تم فتح نافذة الطباعة.',
     signedInRequired: 'سجّل الدخول لعرض تقاريرك.',
+    addIncome: 'إضافة دخل',
+    addExpense: 'إضافة مصروف',
+    openSavings: 'فتح المدخرات',
+    openGoals: 'فتح الأهداف',
+    openInvestments: 'فتح الاستثمارات',
+    openMarket: 'فتح السوق',
+    openProject: 'فتح المشروع',
+    openZakat: 'فتح الزكاة',
+    openCharity: 'فتح الأعمال الخيرية',
+    openModule: 'فتح الوحدة',
+    exportsDisabled: 'التصدير متاح فقط عند توفر بيانات حقيقية ضمن الفلاتر الحالية.',
+    comingSoon: 'قريباً',
     openReportsCenter: 'فتح مركز التقارير',
     oldReportsHint: 'هذه صفحة التقارير المختصرة. استخدم مركز التقارير للتقارير المالية والمشاريع والزكاة والاستثمار.',
     monthlyFinancial: 'التقرير المالي الشهري',
@@ -201,10 +222,17 @@ const TEXT = {
     investment: 'Investment & Market Reports',
     projects: 'Project Reports',
     charity: 'Charity & Zakat Reports',
+    tabAll: 'All',
+    tabFinancial: 'Financial Reports',
+    tabInvestment: 'Investment & Market',
+    tabProjects: 'Projects',
+    tabCharity: 'Zakat & Charity',
+    readyReports: 'Ready Reports',
+    noReadyReports: 'No reports are ready right now. Add your data first.',
     allReports: 'All reports',
     ready: 'Ready',
     needsData: 'Needs data',
-    unavailable: 'Unavailable',
+    unavailable: 'Currently unavailable',
     error: 'Load error',
     preview: 'Preview',
     pdf: 'Download PDF',
@@ -213,7 +241,8 @@ const TEXT = {
     printPdf: 'Print / Save PDF',
     reportPreview: 'Report Preview',
     closePreview: 'Close preview',
-    requiredData: 'Required data sources',
+    requiredData: 'Required data:',
+    dataUsed: 'Data used:',
     missingData: 'Add the required data before generating this report.',
     unavailableCopy: 'This report is currently unavailable from the Reports Center. Open the linked module when data is available.',
     noData: 'No data yet.',
@@ -243,6 +272,18 @@ const TEXT = {
     csvDownloaded: 'CSV downloaded.',
     printOpened: 'Print dialog opened.',
     signedInRequired: 'Sign in to view your reports.',
+    addIncome: 'Add Income',
+    addExpense: 'Add Expense',
+    openSavings: 'Open Savings',
+    openGoals: 'Open Goals',
+    openInvestments: 'Open Investments',
+    openMarket: 'Open Market',
+    openProject: 'Open Project',
+    openZakat: 'Open Zakat',
+    openCharity: 'Open Charity',
+    openModule: 'Open module',
+    exportsDisabled: 'Export is available only when real data exists for the current filters.',
+    comingSoon: 'Coming soon',
     openReportsCenter: 'Open Reports Center',
     oldReportsHint: 'This is the compact reports page. Use Reports Center for financial, project, zakat, and investment reports.',
     monthlyFinancial: 'Monthly Financial Report',
@@ -272,10 +313,17 @@ const TEXT = {
     investment: 'Rapports investissement et marché',
     projects: 'Rapports projets',
     charity: 'Rapports zakat et charité',
+    tabAll: 'Tous',
+    tabFinancial: 'Rapports financiers',
+    tabInvestment: 'Investissement et marché',
+    tabProjects: 'Projets',
+    tabCharity: 'Zakat et charité',
+    readyReports: 'Rapports prêts',
+    noReadyReports: 'Aucun rapport n’est prêt pour le moment. Ajoutez d’abord vos données.',
     allReports: 'Tous les rapports',
     ready: 'Prêt',
     needsData: 'Données requises',
-    unavailable: 'Non disponible',
+    unavailable: 'Non disponible actuellement',
     error: 'Erreur de chargement',
     preview: 'Aperçu',
     pdf: 'Télécharger PDF',
@@ -284,7 +332,8 @@ const TEXT = {
     printPdf: 'Imprimer / Enregistrer PDF',
     reportPreview: 'Aperçu du rapport',
     closePreview: 'Fermer l’aperçu',
-    requiredData: 'Sources de données requises',
+    requiredData: 'Données requises :',
+    dataUsed: 'Données utilisées :',
     missingData: 'Ajoutez les données nécessaires avant de générer ce rapport.',
     unavailableCopy: 'Ce rapport n’est pas encore disponible depuis le Centre des rapports. Ouvrez le module lié lorsque les données sont disponibles.',
     noData: 'Aucune donnée pour le moment.',
@@ -314,6 +363,18 @@ const TEXT = {
     csvDownloaded: 'CSV téléchargé.',
     printOpened: 'Fenêtre d’impression ouverte.',
     signedInRequired: 'Connectez-vous pour voir vos rapports.',
+    addIncome: 'Ajouter un revenu',
+    addExpense: 'Ajouter une dépense',
+    openSavings: 'Ouvrir l’épargne',
+    openGoals: 'Ouvrir les objectifs',
+    openInvestments: 'Ouvrir les investissements',
+    openMarket: 'Ouvrir le marché',
+    openProject: 'Ouvrir le projet',
+    openZakat: 'Ouvrir la zakat',
+    openCharity: 'Ouvrir la charité',
+    openModule: 'Ouvrir le module',
+    exportsDisabled: 'L’export est disponible uniquement lorsque des données réelles existent pour les filtres actuels.',
+    comingSoon: 'Bientôt',
     openReportsCenter: 'Ouvrir le Centre des rapports',
     oldReportsHint: 'Ceci est la page compacte des rapports. Utilisez le Centre des rapports pour les rapports financiers, projets, zakat et investissements.',
     monthlyFinancial: 'Rapport financier mensuel',
@@ -528,6 +589,14 @@ const REPORTS: ReportDefinition[] = [
     route: '/charity-projects',
     exportable: true,
   },
+];
+
+const CATEGORY_TABS: Array<{ id: Filters['category']; labelKey: 'tabAll' | 'tabFinancial' | 'tabInvestment' | 'tabProjects' | 'tabCharity' }> = [
+  { id: 'all', labelKey: 'tabAll' },
+  { id: 'financial', labelKey: 'tabFinancial' },
+  { id: 'investment', labelKey: 'tabInvestment' },
+  { id: 'projects', labelKey: 'tabProjects' },
+  { id: 'charity', labelKey: 'tabCharity' },
 ];
 
 const STATUS_TONE: Record<ReportStatus, string> = {
@@ -765,6 +834,7 @@ const SOURCE_LABELS: Record<Lang, Record<string, string>> = {
     charity_projects: 'المشاريع الخيرية',
     charity_project_donations: 'تبرعات المشاريع الخيرية',
     charity_beneficiaries: 'المستفيدون',
+    charity_project_impact_metrics: 'مقاييس الأثر الخيري',
     'impact metrics': 'مقاييس الأثر',
     donations: 'التبرعات',
     beneficiaries: 'المستفيدون',
@@ -788,6 +858,7 @@ const SOURCE_LABELS: Record<Lang, Record<string, string>> = {
     charity_projects: 'Charity projects',
     charity_project_donations: 'Charity donations',
     charity_beneficiaries: 'Beneficiaries',
+    charity_project_impact_metrics: 'Charity impact metrics',
     'impact metrics': 'Impact metrics',
     donations: 'Donations',
     beneficiaries: 'Beneficiaries',
@@ -811,14 +882,24 @@ const SOURCE_LABELS: Record<Lang, Record<string, string>> = {
     charity_projects: 'Projets caritatifs',
     charity_project_donations: 'Dons caritatifs',
     charity_beneficiaries: 'Bénéficiaires',
+    charity_project_impact_metrics: 'Métriques d’impact caritatif',
     'impact metrics': 'Métriques d’impact',
     donations: 'Dons',
     beneficiaries: 'Bénéficiaires',
   },
 };
 
+const TABLE_SOURCE_BY_KEY = TABLES.reduce((acc, item) => {
+  acc[item.key] = item.table;
+  return acc;
+}, {} as Record<TableKey, string>);
+
 function sourceLabel(source: string, lang: Lang) {
   return SOURCE_LABELS[lang]?.[source] ?? source;
+}
+
+function tableKeyLabel(key: TableKey, lang: Lang) {
+  return sourceLabel(TABLE_SOURCE_BY_KEY[key] ?? key, lang);
 }
 
 function numberValue(value: unknown) {
@@ -898,6 +979,38 @@ function reportStatus(report: ReportDefinition, records: RecordsState, loadError
       : 'needs_data';
   }
   return report.required.every(key => records[key]?.length > 0) ? 'ready' : 'needs_data';
+}
+
+function missingDataKeys(report: ReportDefinition, records: RecordsState) {
+  if (report.unavailable) return [] as TableKey[];
+  if (report.id === 'monthly-financial') {
+    const keys: TableKey[] = ['income', 'expenses', 'savings', 'investments'];
+    return keys.some(key => records[key]?.length > 0) ? [] : keys;
+  }
+  if (report.id === 'zakat') {
+    const keys: TableKey[] = ['zakatCalculations', 'zakatAssets'];
+    return keys.some(key => records[key]?.length > 0) ? [] : keys;
+  }
+  if (report.id === 'charity-impact') {
+    const keys: TableKey[] = ['charityImpact', 'charityDonations', 'charityBeneficiaries'];
+    return keys.some(key => records[key]?.length > 0) ? [] : keys;
+  }
+  if (report.id === 'project-kpis') {
+    if (!records.projects.length) return ['projects'];
+    const supportKeys: TableKey[] = ['tasks', 'financialModels', 'documents', 'milestones'];
+    return supportKeys.some(key => records[key]?.length > 0) ? [] : supportKeys;
+  }
+  return report.required.filter(key => !records[key]?.length);
+}
+
+function uniqueActions(actions: MissingAction[]) {
+  const seen = new Set<string>();
+  return actions.filter(action => {
+    const key = `${action.href}:${action.label}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function reportRows(report: ReportDefinition, records: RecordsState, filters: Filters, lang: Lang) {
@@ -1192,7 +1305,33 @@ export default function ReportsCenterPage() {
   const activeStatus = reportStatus(activeReport, records, loadErrors);
   const readyCount = reportCards.filter(card => card.status === 'ready').length;
   const needsCount = reportCards.filter(card => card.status === 'needs_data').length;
+  const readyCards = reportCards.filter(card => card.status === 'ready' && card.rows.length > 0);
+  const activeCanExport = activeStatus === 'ready' && activeRows.length > 0;
+  const activeMissing = missingDataKeys(activeReport, records);
   const projects = records.projects;
+
+  const missingActionForKey = useCallback((key: TableKey): MissingAction => {
+    if (key === 'income') return { label: tr.addIncome, href: '/income/add' };
+    if (key === 'expenses') return { label: tr.addExpense, href: '/expenses/add' };
+    if (key === 'savings') return { label: tr.openSavings, href: '/savings' };
+    if (key === 'goals') return { label: tr.openGoals, href: '/goals' };
+    if (key === 'investments') return { label: tr.openInvestments, href: '/invest/add' };
+    if (key === 'marketWatchlist') return { label: tr.openMarket, href: '/market-analysis' };
+    if (key === 'zakatCalculations' || key === 'zakatAssets') return { label: tr.openZakat, href: '/zakat' };
+    if (key === 'charityProjects' || key === 'charityDonations' || key === 'charityBeneficiaries' || key === 'charityImpact') {
+      return { label: tr.openCharity, href: '/charity-projects' };
+    }
+    if (key === 'projects' || key === 'feasibility' || key === 'financialModels' || key === 'tasks' || key === 'milestones' || key === 'documents' || key === 'pitchDecks') {
+      return { label: tr.openProject, href: '/projects' };
+    }
+    return { label: tr.openModule, href: '/' };
+  }, [tr]);
+
+  const selectCategory = useCallback((category: Filters['category']) => {
+    setFilters(prev => ({ ...prev, category }));
+    const nextReport = category === 'all' ? REPORTS[0] : REPORTS.find(report => report.category === category);
+    if (nextReport) setActiveReportId(nextReport.id);
+  }, []);
 
   const exportCsv = useCallback((report: ReportDefinition) => {
     const status = reportStatus(report, records, loadErrors);
@@ -1203,12 +1342,15 @@ export default function ReportsCenterPage() {
   }, [filters, lang, loadErrors, records, showToast, tr.csvDownloaded, tr.noRowsForExport]);
 
   const printReport = useCallback((report: ReportDefinition) => {
+    const status = reportStatus(report, records, loadErrors);
+    const rows = status === 'ready' ? reportRows(report, records, filters, lang as Lang) : [];
+    if (status !== 'ready' || !rows.length) return showToast(tr.exportsDisabled);
     setActiveReportId(report.id);
     window.setTimeout(() => {
       window.print();
       showToast(tr.printOpened);
     }, 120);
-  }, [showToast, tr.printOpened]);
+  }, [filters, lang, loadErrors, records, showToast, tr.exportsDisabled, tr.printOpened]);
 
   const statusLabel = (status: ReportStatus) => {
     if (status === 'ready') return tr.ready;
@@ -1272,10 +1414,22 @@ export default function ReportsCenterPage() {
               <span><CalendarDays size={16} /> {filters.year}</span>
             </div>
           </div>
-          <button type="button" onClick={() => printReport(activeReport)} aria-label={tr.printPdf}>
+          <button type="button" disabled={!activeCanExport} aria-disabled={!activeCanExport} onClick={() => printReport(activeReport)} aria-label={tr.printPdf}>
             <Printer size={18} /> {tr.printPdf}
           </button>
         </section>
+
+        <nav className="category-tabs no-print" aria-label={tr.category}>
+          {CATEGORY_TABS.map(tab => {
+            const isActive = filters.category === tab.id;
+            const count = tab.id === 'all' ? reportCards.length : reportCards.filter(card => card.report.category === tab.id).length;
+            return (
+              <button key={tab.id} type="button" className={isActive ? 'active' : ''} onClick={() => selectCategory(tab.id)} aria-pressed={isActive}>
+                {tr[tab.labelKey]} <span>{count}</span>
+              </button>
+            );
+          })}
+        </nav>
 
         <section className="filters-panel no-print" aria-label={tr.filters}>
           <div className="section-title">
@@ -1317,17 +1471,26 @@ export default function ReportsCenterPage() {
                 {projects.map(project => <option key={project.id} value={project.id}>{firstText(project, ['name', 'project_name'], project.id)}</option>)}
               </select>
             </label>
-            <label>
-              <span>{tr.category}</span>
-              <select value={filters.category} onChange={event => setFilters(prev => ({ ...prev, category: event.target.value as Filters['category'] }))}>
-                <option value="all">{tr.allReports}</option>
-                <option value="financial">{tr.financial}</option>
-                <option value="investment">{tr.investment}</option>
-                <option value="projects">{tr.projects}</option>
-                <option value="charity">{tr.charity}</option>
-              </select>
-            </label>
           </div>
+        </section>
+
+        <section className="ready-panel no-print" aria-label={tr.readyReports}>
+          <div className="section-title">
+            <CheckCircle2 size={18} />
+            <h2>{tr.readyReports}</h2>
+          </div>
+          {readyCards.length ? (
+            <div className="ready-list">
+              {readyCards.slice(0, 6).map(({ report, rows }) => (
+                <button key={report.id} type="button" onClick={() => setActiveReportId(report.id)} aria-label={`${tr.preview} ${report.title[lang as Lang]}`}>
+                  <span>{report.title[lang as Lang]}</span>
+                  <strong>{tr.rows}: {rows.length}</strong>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p>{tr.noReadyReports}</p>
+          )}
         </section>
 
         <div className="reports-layout">
@@ -1343,42 +1506,71 @@ export default function ReportsCenterPage() {
                     <h2>{tr[category]}</h2>
                   </div>
                   <div className="reports-grid">
-                    {items.map(({ report, status, rows }) => (
-                      <article key={report.id} className="report-card">
-                        <div className="report-card-head">
-                          <div>
-                            <h3>{report.title[lang as Lang]}</h3>
-                            <p>{report.description[lang as Lang]}</p>
+                    {items.map(({ report, status, rows }) => {
+                      const missing = missingDataKeys(report, records);
+                      const missingActions = uniqueActions(missing.map(missingActionForKey));
+                      const canPrint = status === 'ready' && rows.length > 0;
+                      const canCsv = canPrint && report.exportable;
+                      return (
+                        <article key={report.id} className={`report-card ${status}`}>
+                          <div className="report-card-head">
+                            <div>
+                              <h3>{report.title[lang as Lang]}</h3>
+                              <p>{report.description[lang as Lang]}</p>
+                            </div>
+                            <span className="status-badge" style={{ color: STATUS_TONE[status], background: `${STATUS_TONE[status]}12`, borderColor: `${STATUS_TONE[status]}30` }}>
+                              {statusLabel(status)}
+                            </span>
                           </div>
-                          <span className="status-badge" style={{ color: STATUS_TONE[status], background: `${STATUS_TONE[status]}12`, borderColor: `${STATUS_TONE[status]}30` }}>
-                            {statusLabel(status)}
-                          </span>
-                        </div>
-                        <div className="sources">
-                          <strong>{tr.requiredData}</strong>
-                          <div>{report.sources[lang as Lang].map(source => <span key={source}>{sourceLabel(source, lang as Lang)}</span>)}</div>
-                        </div>
-                        <div className="card-meta">
-                          <span>{tr.rows}: {rows.length}</span>
-                          <span>{tr.lastGenerated}: {tr.notSaved}</span>
-                        </div>
-                        {status !== 'ready' && <p className="card-warning">{status === 'unavailable' ? tr.unavailableCopy : status === 'error' ? tr.loadError : tr.missingData}</p>}
-                        <div className="card-actions">
-                          <button type="button" onClick={() => setActiveReportId(report.id)} aria-label={`${tr.preview} ${report.title[lang as Lang]}`}>
-                            <FileText size={15} /> {tr.preview}
-                          </button>
-                          <button type="button" disabled={status !== 'ready'} onClick={() => printReport(report)} aria-label={`${tr.pdf} ${report.title[lang as Lang]}`}>
-                            <Printer size={15} /> {tr.pdf}
-                          </button>
-                          <button type="button" disabled={status !== 'ready' || !report.exportable} onClick={() => exportCsv(report)} aria-label={`${tr.excel} ${report.title[lang as Lang]}`}>
-                            <FileSpreadsheet size={15} /> {tr.excel}
-                          </button>
-                          <button type="button" className="configure" onClick={() => router.push(report.route)} aria-label={`${tr.configure} ${report.title[lang as Lang]}`}>
-                            <Settings2 size={15} /> {tr.configure}
-                          </button>
-                        </div>
-                      </article>
-                    ))}
+
+                          <div className={status === 'ready' ? 'sources' : 'missing-requirements'}>
+                            <strong>{status === 'ready' ? tr.dataUsed : tr.requiredData}</strong>
+                            {status === 'ready' ? (
+                              <div>{report.sources[lang as Lang].map(source => <span key={source}>{sourceLabel(source, lang as Lang)}</span>)}</div>
+                            ) : (
+                              <ul>
+                                {(missing.length ? missing : report.required).map(key => <li key={key}>{tableKeyLabel(key, lang as Lang)}</li>)}
+                              </ul>
+                            )}
+                          </div>
+
+                          <div className="card-meta">
+                            <span>{tr.rows}: {rows.length}</span>
+                            <span>{tr.lastGenerated}: {tr.notSaved}</span>
+                          </div>
+
+                          {status !== 'ready' && (
+                            <div className="card-warning">
+                              <p>{status === 'unavailable' ? tr.unavailableCopy : status === 'error' ? tr.loadError : tr.missingData}</p>
+                              {status === 'needs_data' && missingActions.length > 0 && (
+                                <div className="missing-actions">
+                                  {missingActions.slice(0, 3).map(action => (
+                                    <button key={`${action.href}-${action.label}`} type="button" onClick={() => router.push(action.href)} aria-label={action.label}>
+                                      {action.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="card-actions">
+                            <button type="button" onClick={() => setActiveReportId(report.id)} aria-label={`${tr.preview} ${report.title[lang as Lang]}`}>
+                              <FileText size={15} /> {tr.preview}
+                            </button>
+                            <button type="button" disabled={!canPrint} aria-disabled={!canPrint} title={!canPrint ? tr.exportsDisabled : undefined} onClick={() => printReport(report)} aria-label={`${tr.pdf} ${report.title[lang as Lang]}`}>
+                              <Printer size={15} /> {tr.pdf}
+                            </button>
+                            <button type="button" disabled={!canCsv} aria-disabled={!canCsv} title={!canCsv ? tr.exportsDisabled : undefined} onClick={() => exportCsv(report)} aria-label={`${tr.excel} ${report.title[lang as Lang]}`}>
+                              <FileSpreadsheet size={15} /> {report.exportable ? tr.excel : tr.comingSoon}
+                            </button>
+                            <button type="button" className="configure" onClick={() => router.push(report.route)} aria-label={`${tr.configure} ${report.title[lang as Lang]}`}>
+                              <Settings2 size={15} /> {tr.configure}
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -1427,15 +1619,30 @@ export default function ReportsCenterPage() {
                 <ShieldAlert size={28} />
                 <strong>{activeStatus === 'unavailable' ? tr.unavailable : tr.noData}</strong>
                 <p>{activeStatus === 'unavailable' ? tr.unavailableCopy : activeStatus === 'error' ? tr.loadError : tr.missingData}</p>
+                {activeStatus === 'needs_data' && activeMissing.length > 0 && (
+                  <div className="preview-requirements">
+                    <strong>{tr.requiredData}</strong>
+                    <ul>
+                      {activeMissing.map(key => <li key={key}>{tableKeyLabel(key, lang as Lang)}</li>)}
+                    </ul>
+                    <div className="missing-actions">
+                      {uniqueActions(activeMissing.map(missingActionForKey)).slice(0, 3).map(action => (
+                        <button key={`${action.href}-${action.label}`} type="button" onClick={() => router.push(action.href)} aria-label={action.label}>
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             <div className="preview-actions no-print">
-              <button type="button" disabled={activeStatus !== 'ready'} onClick={() => printReport(activeReport)}>
+              <button type="button" disabled={!activeCanExport} aria-disabled={!activeCanExport} title={!activeCanExport ? tr.exportsDisabled : undefined} onClick={() => printReport(activeReport)}>
                 <Printer size={16} /> {tr.printPdf}
               </button>
-              <button type="button" disabled={activeStatus !== 'ready' || !activeReport.exportable} onClick={() => exportCsv(activeReport)}>
-                <Download size={16} /> {tr.excel}
+              <button type="button" disabled={!activeCanExport || !activeReport.exportable} aria-disabled={!activeCanExport || !activeReport.exportable} title={!activeCanExport || !activeReport.exportable ? tr.exportsDisabled : undefined} onClick={() => exportCsv(activeReport)}>
+                <Download size={16} /> {activeReport.exportable ? tr.excel : tr.comingSoon}
               </button>
             </div>
           </aside>
@@ -1467,18 +1674,20 @@ const pageStyles = `
   .reports-hero h1{margin:18px 0 10px;font-size:clamp(34px,7vw,66px);line-height:1;font-weight:950;letter-spacing:0}.reports-hero p{margin:0;max-width:780px;color:rgba(255,253,248,.76);font-size:clamp(15px,2vw,19px);line-height:1.8;font-weight:800}
   .hero-stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.hero-stats span{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:7px 11px;color:rgba(255,253,248,.8);font-size:12px;font-weight:900}
   .reports-hero button,.preview-actions button,.card-actions button{border:0;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;min-height:42px;padding:0 13px}
-  .reports-hero button{background:linear-gradient(135deg,#BA7517,#EF9F27);color:#211207;white-space:nowrap}
-  .filters-panel,.category-section,.preview-panel,.history-panel{background:#FFFDF8;border:1px solid rgba(186,117,23,.14);border-radius:22px;box-shadow:0 14px 44px rgba(43,26,15,.07)}
-  .filters-panel,.history-panel{padding:18px}.section-title{display:flex;align-items:center;gap:9px;margin-bottom:14px;color:#BA7517}.section-title h2{margin:0;color:#2B1A0F;font-size:18px;font-weight:950}
-  .filters-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}.filters-grid label{display:grid;gap:6px;min-width:0}.filters-grid span{font-size:11px;font-weight:950;color:#7A5A3C}.filters-grid input,.filters-grid select{width:100%;min-width:0;border:1px solid rgba(186,117,23,.18);border-radius:13px;background:#F7F3EA;color:#2B1A0F;padding:10px 11px;font:900 12px Tajawal,Arial,sans-serif;outline:0}.filters-grid input:focus,.filters-grid select:focus{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.14)}
+  .reports-hero button{background:linear-gradient(135deg,#BA7517,#EF9F27);color:#211207;white-space:nowrap}.reports-hero button:disabled{background:rgba(255,253,248,.2);color:rgba(255,253,248,.62);cursor:not-allowed}
+  .category-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin}.category-tabs button{flex:0 0 auto;min-height:42px;border:1px solid rgba(186,117,23,.18);border-radius:999px;background:#FFFDF8;color:#5B4332;padding:0 14px;display:inline-flex;align-items:center;gap:8px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}.category-tabs button span{min-width:24px;border-radius:999px;background:#FAEEDA;color:#854F0B;padding:3px 7px}.category-tabs button.active,.category-tabs button:focus-visible{background:#2B1A0F;color:#FAC775;outline:none;box-shadow:0 0 0 3px rgba(239,159,39,.14)}.category-tabs button.active span{background:rgba(250,199,117,.16);color:#FAC775}
+  .filters-panel,.category-section,.preview-panel,.history-panel,.ready-panel{background:#FFFDF8;border:1px solid rgba(186,117,23,.14);border-radius:22px;box-shadow:0 14px 44px rgba(43,26,15,.07)}
+  .filters-panel,.history-panel,.ready-panel{padding:16px}.section-title{display:flex;align-items:center;gap:9px;margin-bottom:12px;color:#BA7517}.section-title h2{margin:0;color:#2B1A0F;font-size:18px;font-weight:950}
+  .filters-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.filters-grid label{display:grid;gap:6px;min-width:0}.filters-grid span{font-size:11px;font-weight:950;color:#7A5A3C}.filters-grid input,.filters-grid select{width:100%;min-width:0;border:1px solid rgba(186,117,23,.18);border-radius:13px;background:#F7F3EA;color:#2B1A0F;padding:10px 11px;font:900 12px Tajawal,Arial,sans-serif;outline:0}.filters-grid input:focus,.filters-grid select:focus{border-color:#EF9F27;box-shadow:0 0 0 3px rgba(239,159,39,.14)}
+  .ready-panel p{margin:0;color:#7A5A3C;font-weight:900;line-height:1.7}.ready-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}.ready-list button{min-width:0;border:1px solid rgba(21,128,61,.14);border-radius:15px;background:#F2FAEA;color:#27500A;padding:10px 12px;text-align:start;display:grid;gap:4px;font-family:inherit;cursor:pointer}.ready-list button span{font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ready-list button strong{font-size:11px;color:#4D6B32}
   .reports-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,420px);gap:18px;align-items:start}.report-categories{display:grid;gap:18px}.category-section{padding:18px}.reports-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
-  .report-card{background:#FFF8EA;border:1px solid rgba(186,117,23,.13);border-radius:18px;padding:16px;display:grid;gap:12px;min-width:0}.report-card-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start}.report-card h3{margin:0 0 7px;color:#2B1A0F;font-size:17px;font-weight:950;line-height:1.35}.report-card p{margin:0;color:#6D5647;font-size:13px;font-weight:800;line-height:1.65}
-  .status-badge{display:inline-flex;align-items:center;border:1px solid;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:950;white-space:nowrap}.sources{display:grid;gap:8px}.sources strong{font-size:11px;color:#8A5A20}.sources div{display:flex;flex-wrap:wrap;gap:6px}.sources span{font-size:11px;font-weight:900;color:#7A5A3C;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);border-radius:999px;padding:5px 8px}
-  .card-meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:#8A7060;font-size:11px;font-weight:900}.card-warning{background:rgba(154,94,13,.08);border:1px solid rgba(154,94,13,.16);border-radius:13px;padding:10px;color:#7A4B09!important}
-  .card-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.card-actions button{background:#2B1A0F;color:#FFFDF8}.card-actions button.configure{background:#FAEEDA;color:#854F0B}.card-actions button:disabled,.preview-actions button:disabled{opacity:.48;cursor:not-allowed}
+  .report-card{background:#FFF8EA;border:1px solid rgba(186,117,23,.13);border-radius:18px;padding:14px;display:grid;gap:10px;min-width:0}.report-card.ready{border-color:rgba(21,128,61,.18)}.report-card.needs_data{border-color:rgba(154,94,13,.22)}.report-card.unavailable,.report-card.error{background:#F7F3EA}.report-card-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start}.report-card h3{margin:0 0 5px;color:#2B1A0F;font-size:16px;font-weight:950;line-height:1.35}.report-card p{margin:0;color:#6D5647;font-size:12px;font-weight:800;line-height:1.55}
+  .status-badge{display:inline-flex;align-items:center;border:1px solid;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:950;white-space:nowrap}.sources,.missing-requirements{display:grid;gap:7px}.sources strong,.missing-requirements strong{font-size:11px;color:#8A5A20}.sources div{display:flex;flex-wrap:wrap;gap:5px}.sources span{font-size:11px;font-weight:900;color:#7A5A3C;background:#FFFDF8;border:1px solid rgba(186,117,23,.12);border-radius:999px;padding:4px 7px}.missing-requirements ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:5px}.missing-requirements li{font-size:11px;font-weight:950;color:#7A4B09;background:#FFF4DE;border:1px solid rgba(154,94,13,.16);border-radius:999px;padding:4px 8px}
+  .card-meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:#8A7060;font-size:11px;font-weight:900}.card-warning{background:rgba(154,94,13,.08);border:1px solid rgba(154,94,13,.16);border-radius:13px;padding:10px;color:#7A4B09!important;display:grid;gap:8px}.card-warning p{color:#7A4B09!important}.missing-actions{display:flex;flex-wrap:wrap;gap:6px}.missing-actions button{border:1px solid rgba(186,117,23,.18);border-radius:999px;background:#FFFDF8;color:#854F0B;padding:7px 10px;font:950 11px Tajawal,Arial,sans-serif;cursor:pointer}
+  .card-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.card-actions button{background:#2B1A0F;color:#FFFDF8;min-width:0;padding:0 8px}.card-actions button.configure{background:#FAEEDA;color:#854F0B}.card-actions button:disabled,.preview-actions button:disabled{opacity:1;background:#E8E1D6!important;color:#8A7B6D!important;border:1px solid rgba(122,90,60,.18);cursor:not-allowed}
   .preview-panel{padding:18px;position:sticky;top:18px}.preview-head{display:flex;justify-content:space-between;gap:12px;align-items:start;border-bottom:1px solid rgba(186,117,23,.12);padding-bottom:12px}.preview-head span:first-child{font-size:12px;color:#BA7517;font-weight:950}.preview-head h2{margin:5px 0 0;color:#2B1A0F;font-size:24px;line-height:1.2}.preview-meta{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.preview-meta span{background:#F7F3EA;border:1px solid rgba(186,117,23,.12);border-radius:999px;padding:6px 9px;font-size:11px;font-weight:900;color:#7A5A3C}.ready-copy{margin:0 0 12px;color:#27500A;background:#EAF3DE;border:1px solid rgba(39,80,10,.12);border-radius:13px;padding:10px;font-size:13px;font-weight:900}
   .preview-table-wrap{max-height:540px;overflow:auto;border:1px solid rgba(186,117,23,.14);border-radius:14px}.preview-table-wrap table{width:100%;border-collapse:collapse;background:#FFFDF8;min-width:560px}.preview-table-wrap th,.preview-table-wrap td{padding:10px;border-bottom:1px solid rgba(186,117,23,.1);text-align:start;font-size:12px;white-space:nowrap}.preview-table-wrap th{color:#8A5A20;background:#FAEEDA;font-weight:950}.preview-table-wrap td{color:#3D2914;font-weight:800}
-  .preview-empty{min-height:260px;display:grid;place-items:center;text-align:center;align-content:center;gap:9px;background:#F7F3EA;border:1px dashed rgba(186,117,23,.26);border-radius:18px;color:#8A5A20;padding:18px}.preview-empty strong{color:#2B1A0F;font-size:18px}.preview-empty p{margin:0;color:#7A5A3C;line-height:1.7;font-weight:900}
+  .preview-empty{min-height:260px;display:grid;place-items:center;text-align:center;align-content:center;gap:9px;background:#F7F3EA;border:1px dashed rgba(186,117,23,.26);border-radius:18px;color:#8A5A20;padding:18px}.preview-empty strong{color:#2B1A0F;font-size:18px}.preview-empty p{margin:0;color:#7A5A3C;line-height:1.7;font-weight:900}.preview-requirements{width:100%;display:grid;gap:8px;text-align:start;background:#FFFDF8;border:1px solid rgba(186,117,23,.14);border-radius:14px;padding:12px}.preview-requirements>strong{font-size:12px;color:#8A5A20}.preview-requirements ul{margin:0;padding-inline-start:20px;color:#7A4B09;font-weight:950}
   .preview-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.preview-actions button{background:#2B1A0F;color:#FFFDF8}.preview-actions button+button{background:linear-gradient(135deg,#BA7517,#EF9F27);color:#211207}
   .history-panel p{margin:0;color:#6D5647;line-height:1.7;font-weight:800}.toast{position:fixed;inset:auto 24px 24px auto;z-index:80;background:#2B1A0F;color:#FFFDF8;border:1px solid rgba(186,117,23,.3);border-radius:16px;padding:12px 14px;font-weight:950;box-shadow:0 18px 50px rgba(43,26,15,.28)}
   [dir="rtl"] .toast{inset:auto auto 24px 24px}
