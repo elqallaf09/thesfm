@@ -147,6 +147,7 @@ type AiExtractedData = {
 type SmartExpense = MoneyItem & {
   category?: string | null;
   date?: string | null;
+  currency?: string | null;
   payment_method?: string | null;
   notes?: string | null;
   enhanced?: Record<string, unknown> | null;
@@ -360,6 +361,12 @@ const expenseUi = {
   couldNotRead: { ar: 'لم نتمكن من قراءة الفاتورة بوضوح', en: 'We could not read the receipt clearly', fr: 'Nous n avons pas pu lire la facture clairement' },
   monthlySummary: { ar: 'ملخص الشهر', en: 'Monthly summary', fr: 'Resume mensuel' },
   aiInsights: { ar: 'رؤى الذكاء المالي', en: 'Financial AI insights', fr: 'Insights IA financiers' },
+  nameRequired: { ar: 'الرجاء إدخال اسم المصروف.', en: 'Please enter the expense name.', fr: 'Veuillez saisir le nom de la depense.' },
+  amountRequired: { ar: 'المبلغ يجب أن يكون أكبر من صفر.', en: 'Amount must be greater than zero.', fr: 'Le montant doit etre superieur a zero.' },
+  dateRequired: { ar: 'الرجاء اختيار التاريخ.', en: 'Please choose the date.', fr: 'Veuillez choisir la date.' },
+  categoryRequired: { ar: 'الرجاء اختيار تصنيف المصروف.', en: 'Please choose an expense category.', fr: 'Veuillez choisir une categorie de depense.' },
+  saveSuccess: { ar: 'تمت إضافة المصروف بنجاح.', en: 'Expense added successfully.', fr: 'Depense ajoutee avec succes.' },
+  saveFailed: { ar: 'تعذر إضافة المصروف. حاول مرة أخرى.', en: 'Could not add expense. Please try again.', fr: 'Impossible d ajouter la depense. Veuillez reessayer.' },
 };
 
 const pageMeta: Record<PageKind, { title: LangText; subtitle: LangText; accent: string; icon: typeof ReceiptText }> = {
@@ -417,6 +424,19 @@ function pick(text: LangText, langOrIsAr: string | boolean) {
 function expenseText(key: keyof typeof expenseUi, lang: string) {
   return pick(expenseUi[key], lang);
 }
+
+const EXPENSE_OPTIONAL_SAVE_COLUMNS = [
+  'currency',
+  'category',
+  'date',
+  'payment_method',
+  'notes',
+  'receipt_image_url',
+  'receipt_file_name',
+  'ai_extracted_data',
+  'ai_confidence_score',
+  'updated_at',
+] as const;
 
 function categoryLabel(category: string | null | undefined, lang: string) {
   return pick(EXPENSE_CATEGORIES.find(item => item.id === category)?.label ?? EXPENSE_CATEGORIES.at(-1)!.label, lang);
@@ -675,6 +695,13 @@ function missingColumnFromError(message: string) {
   const match = message.match(/column\s+["']?(?:\w+\.)?(\w+)["']?\s+(?:does not exist|not found)/i)
     ?? message.match(/could not find the ['"]?(\w+)['"]? column/i);
   return match?.[1];
+}
+
+function isSchemaColumnError(error: unknown) {
+  const message = typeof error === 'object' && error && 'message' in error
+    ? String((error as { message?: unknown }).message ?? '')
+    : String(error ?? '');
+  return /column|schema cache|pgrst204|does not exist|could not find/i.test(message);
 }
 
 function logDataLoadError(error: DataLoadError, userId?: string) {
@@ -1207,14 +1234,99 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     return uploadReceiptFile(expenseForm.receiptFile, id, expenseForm.receiptImageUrl || expenseForm.receiptPreview || null);
   }
 
+  async function insertExpenseItem(payload: Record<string, unknown>) {
+    let nextPayload = { ...payload };
+    let lastError: unknown = null;
+
+    for (let attempt = 0; attempt <= EXPENSE_OPTIONAL_SAVE_COLUMNS.length; attempt += 1) {
+      const { data: created, error } = await supabase
+        .from('expense_items')
+        .insert(nextPayload)
+        .select('*')
+        .single();
+
+      if (!error) return created as SmartExpense;
+
+      lastError = error;
+      console.error('Expense insert failed:', {
+        table: 'expense_items',
+        missingColumn: missingColumnFromError(error.message),
+        message: error.message,
+      });
+
+      const missingColumn = missingColumnFromError(error.message);
+      if (
+        !isSchemaColumnError(error) ||
+        !missingColumn ||
+        !EXPENSE_OPTIONAL_SAVE_COLUMNS.includes(missingColumn as typeof EXPENSE_OPTIONAL_SAVE_COLUMNS[number]) ||
+        !(missingColumn in nextPayload)
+      ) {
+        throw error;
+      }
+
+      const { [missingColumn]: _removed, ...remainingPayload } = nextPayload;
+      nextPayload = remainingPayload;
+    }
+
+    throw lastError instanceof Error ? lastError : new Error(expenseText('saveFailed', lang));
+  }
+
+  async function updateExpenseItem(id: string, payload: Record<string, unknown>) {
+    let nextPayload = { ...payload };
+    let lastError: unknown = null;
+
+    for (let attempt = 0; attempt <= EXPENSE_OPTIONAL_SAVE_COLUMNS.length; attempt += 1) {
+      const { error } = await supabase
+        .from('expense_items')
+        .update(nextPayload)
+        .eq('id', id);
+
+      if (!error) return;
+
+      lastError = error;
+      console.error('Expense update failed:', {
+        table: 'expense_items',
+        missingColumn: missingColumnFromError(error.message),
+        message: error.message,
+      });
+
+      const missingColumn = missingColumnFromError(error.message);
+      if (
+        !isSchemaColumnError(error) ||
+        !missingColumn ||
+        !EXPENSE_OPTIONAL_SAVE_COLUMNS.includes(missingColumn as typeof EXPENSE_OPTIONAL_SAVE_COLUMNS[number]) ||
+        !(missingColumn in nextPayload)
+      ) {
+        throw error;
+      }
+
+      const { [missingColumn]: _removed, ...remainingPayload } = nextPayload;
+      nextPayload = remainingPayload;
+    }
+
+    throw lastError instanceof Error ? lastError : new Error(expenseText('saveFailed', lang));
+  }
+
   async function saveExpense(event?: React.FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     if (entrySaving) return;
 
     const name = expenseForm.name.trim();
-    const amount = Number(expenseForm.amount);
-    if (!name || !amount || amount <= 0 || !expenseForm.category || !expenseForm.date) {
-      showEntryMessage('err', t('entry_validation_error'));
+    const amount = parseMoney(expenseForm.amount);
+    if (name.length < 2) {
+      showEntryMessage('err', expenseText('nameRequired', lang));
+      return;
+    }
+    if (!amount || amount <= 0) {
+      showEntryMessage('err', expenseText('amountRequired', lang));
+      return;
+    }
+    if (!expenseForm.date) {
+      showEntryMessage('err', expenseText('dateRequired', lang));
+      return;
+    }
+    if (!expenseForm.category) {
+      showEntryMessage('err', expenseText('categoryRequired', lang));
       return;
     }
 
@@ -1231,6 +1343,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         amount,
         category: expenseForm.category,
         date: expenseForm.date,
+        currency: currency || 'KWD',
         payment_method: expenseForm.paymentMethod,
         notes: expenseForm.notes,
         receipt_image_url: uploaded.receiptImageUrl,
@@ -1251,6 +1364,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           user_id: user.id,
           name,
           amount,
+          currency: currency || 'KWD',
           category: expenseForm.category,
           date: expenseForm.date,
           payment_method: expenseForm.paymentMethod,
@@ -1262,21 +1376,24 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           updated_at: now,
         };
         if (mode === 'create') {
-          const { data: created, error } = await supabase.from('expense_items').insert(payload).select('id,name,amount,category,date,payment_method,notes,receipt_image_url,receipt_file_name,ai_extracted_data,ai_confidence_score,created_at,updated_at').single();
-          if (error) throw error;
+          const created = await insertExpenseItem(payload);
           Object.assign(item, created);
         } else {
-          const { error } = await supabase.from('expense_items').update(payload).eq('id', id);
-          if (error) throw error;
+          await updateExpenseItem(id, payload);
         }
       }
 
       applyEntryToSnapshot('expenses', item, mode);
       setEntryOpen(false);
       setExpenseForm(emptyExpenseForm());
-      showEntryMessage('ok', mode === 'create' ? t('success') : t('updateSuccess'));
+      showEntryMessage('ok', mode === 'create' ? expenseText('saveSuccess', lang) : t('updateSuccess'));
     } catch (err) {
-      showEntryMessage('err', err instanceof Error ? err.message : t('error'));
+      console.error('Expense save failed:', {
+        table: 'expense_items',
+        mode,
+        message: err instanceof Error ? err.message : String(err),
+      });
+      showEntryMessage('err', expenseText('saveFailed', lang));
     } finally {
       setEntrySaving(false);
     }
@@ -1284,7 +1401,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
   async function savePendingReceiptExpenses(selectedOnly = true) {
     if (entrySaving) return;
-    const candidates = pendingReceiptExpenses.filter(item => (!selectedOnly || item.selected) && item.name.trim() && Number(item.amount) > 0);
+    const candidates = pendingReceiptExpenses.filter(item => (!selectedOnly || item.selected) && item.name.trim() && parseMoney(item.amount) > 0);
     if (!candidates.length) {
       showEntryMessage('err', expenseText('amountNotDetected', lang));
       return;
@@ -1302,9 +1419,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         const item: SmartExpense = {
           id,
           name: receipt.name.trim() || receiptFallbackName(lang),
-          amount: Number(receipt.amount),
+          amount: parseMoney(receipt.amount),
           category: receipt.category,
           date: receipt.date,
+          currency: currency || 'KWD',
           payment_method: receipt.paymentMethod,
           notes: receipt.notes,
           receipt_image_url: uploaded.receiptImageUrl,
@@ -1323,6 +1441,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             user_id: user.id,
             name: item.name,
             amount: item.amount,
+            currency: currency || 'KWD',
             category: item.category,
             date: item.date,
             payment_method: item.payment_method,
@@ -1333,8 +1452,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             ai_confidence_score: item.ai_confidence_score,
             updated_at: now,
           };
-          const { data: created, error } = await supabase.from('expense_items').insert(payload).select('id,name,amount,category,date,payment_method,notes,receipt_image_url,receipt_file_name,ai_extracted_data,ai_confidence_score,created_at,updated_at').single();
-          if (error) throw error;
+          const created = await insertExpenseItem(payload);
           savedItems.push({ ...item, ...created });
         }
         successCount += 1;
