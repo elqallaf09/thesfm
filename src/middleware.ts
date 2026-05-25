@@ -9,6 +9,7 @@ const protectedPrefixes = [
   '/education/investments',
   '/goals',
   '/reports',
+  '/business-hub',
   '/ai',
   '/charity',
   '/settings',

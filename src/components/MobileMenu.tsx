@@ -46,6 +46,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/savings', label: { ar: 'الإدخار', en: 'Savings', fr: 'Épargne' }, icon: PiggyBank },
   { href: '/goals', label: { ar: 'الأهداف', en: 'Goals', fr: 'Objectifs' }, icon: Target },
   { href: '/projects', label: { ar: 'مشاريعي', en: 'My Projects', fr: 'Mes projets' }, icon: FolderKanban },
+  { href: '/business-hub', label: { ar: 'مركز الأعمال', en: 'Business Hub', fr: 'Centre d’affaires' }, icon: BriefcaseBusiness },
   { href: '/reports', label: { ar: 'التقارير', en: 'Reports', fr: 'Rapports' }, icon: ChartPie },
   { href: '/reports-center', label: { ar: 'مركز التقارير', en: 'Reports Center', fr: 'Centre des rapports' }, icon: FileText },
   { href: '/ai', label: { ar: 'الذكاء المالي', en: 'Financial AI', fr: 'IA financière' }, icon: Bot },

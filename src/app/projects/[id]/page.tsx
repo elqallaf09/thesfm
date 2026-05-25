@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -671,6 +671,7 @@ function clampScore(value: number) {
 
 export default function ProjectWorkspacePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const params = useParams();
   const id = Array.isArray(params?.id) ? params.id[0] : String(params?.id ?? '');
   const { user, loading } = useAuth();
@@ -680,6 +681,11 @@ export default function ProjectWorkspacePage() {
   const [savings, setSavings] = useState(0);
   const [loadingProject, setLoadingProject] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
+
+  useEffect(() => {
+    const tab = searchParams.get('tab') as TabId | null;
+    if (tab && tabs.some(item => item.id === tab)) setActiveTab(tab);
+  }, [searchParams]);
   const [feasibility, setFeasibility] = useState<FeasibilityForm>(() => createEmptyFeasibility());
   const [feasibilityId, setFeasibilityId] = useState<string | null>(null);
   const [savingFeasibility, setSavingFeasibility] = useState(false);
