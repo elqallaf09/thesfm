@@ -1093,12 +1093,19 @@ const dashboardStyles = `
   }
 
   .dashboard-main {
-    width: calc(100% - 230px);
-    max-width: 1320px;
-    margin-inline-start: 230px;
-    margin-inline-end: auto;
-    padding: 28px 24px 44px;
+    width: calc(100% - var(--sidebar-w, 230px)) !important;
+    max-width: none !important;
+    margin-inline-start: var(--sidebar-w, 230px) !important;
+    margin-inline-end: 0 !important;
+    padding: 28px 24px 44px !important;
     box-sizing: border-box;
+    min-width: 0;
+  }
+
+  .dashboard-main > * {
+    width: 100%;
+    max-inline-size: none !important;
+    margin-inline: 0 !important;
   }
 
   .topbar {
@@ -1491,10 +1498,10 @@ const dashboardStyles = `
 
   @media (max-width: 1024px) {
     .dashboard-main {
-      width: 100%;
+      width: 100% !important;
       max-width: none;
-      margin-inline: 0;
-      padding: 86px 16px 36px;
+      margin-inline: 0 !important;
+      padding: 86px 16px 36px !important;
     }
 
     .hero-card,

@@ -1324,6 +1324,18 @@ tbody tr:hover td{background:var(--bg-muted)}
   margin-inline: auto;
 }
 
+/* The executive dashboard is the app's command overview and should use the
+   whole sidebar-safe workspace instead of the narrower content cap used by
+   dense form/report pages. */
+.dashboard-main {
+  width: calc(100% - var(--sidebar-w)) !important;
+}
+
+.dashboard-main > * {
+  max-inline-size: none !important;
+  margin-inline: 0 !important;
+}
+
 .dashboard-shell,
 .profile-page,
 .ai-page,
