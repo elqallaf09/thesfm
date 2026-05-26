@@ -259,10 +259,12 @@ export default function PublicLandingPage() {
   const text = COPY[(lang as Lang) || 'ar'];
   const appHref = session || isGuest ? '/dashboard' : '/login';
   const primaryLabel = session || isGuest ? text.openDashboard : text.start;
+  const aboutLabel = lang === 'ar' ? 'من نحن' : lang === 'fr' ? 'À propos' : 'About';
   const features = useMemo(() => pick(featureKeys, lang as Lang), [lang]);
   const audiences = useMemo(() => pick(audienceKeys, lang as Lang), [lang]);
 
   const navLinks = [
+    { href: '/about', label: aboutLabel },
     { href: '#features', label: text.navFeatures },
     { href: '#tools', label: text.navTools },
     { href: '#pricing', label: text.navPricing },
@@ -431,6 +433,7 @@ export default function PublicLandingPage() {
         </div>
         <FooterColumn title={text.footerProduct} links={[['/login', text.login], ['/dashboard', text.openDashboard], ['/reports-center', text.navTools]]} />
         <FooterColumn title={text.footerTools} links={[['/business-hub', text.businessHub], ['/zakat', text.zakat], ['/reports-center', text.reportsCenter]]} />
+        <FooterColumn title={text.footerCompany} links={[['/about', aboutLabel], ['#faq', text.navFaq]]} />
         <FooterColumn title={text.footerAccount} links={[['/login', text.login], ['/setup', text.start]]} />
         <FooterColumn title={text.footerLegal} links={[['#', text.privacy], ['#', text.terms]]} />
       </footer>
@@ -891,7 +894,7 @@ const landingStyles = `
     margin-top: 70px;
     padding: 34px 0 44px;
     display: grid;
-    grid-template-columns: 1.3fr repeat(4, minmax(0, 1fr));
+    grid-template-columns: 1.3fr repeat(5, minmax(0, 1fr));
     gap: 18px;
   }
   .footer-brand {

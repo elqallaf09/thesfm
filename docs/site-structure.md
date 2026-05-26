@@ -5,6 +5,7 @@ This map documents the cleaned product organization. The public landing page sta
 | Route | Arabic name | English name | French name | Purpose | Sidebar group | Related pages |
 | --- | --- | --- | --- | --- | --- | --- |
 | `/` | الصفحة العامة | Public Landing | Page publique | Public marketing page for visitors. | Public | `/login`, `/dashboard` |
+| `/about` | من نحن | About THE SFM | À propos de THE SFM | Public product story, mission, real-data principle, privacy posture, and disclaimer. | Public | `/`, `/login`, `/security` |
 | `/dashboard` | لوحة القيادة | Executive Dashboard | Tableau de bord exécutif | Executive overview only, based on real user data. | الرئيسية | `/command-center`, `/today`, `/reports-center`, `/notifications` |
 | `/command-center` | مركز القيادة | Command Center | Centre de commande | Clean gateway to the main worlds of THE SFM. | الرئيسية | `/dashboard`, `/today`, `/site-map` |
 | `/today` | اليوم المالي | Financial Today | Aujourd’hui financier | Daily focus page for real due items and alerts. | الرئيسية | `/notifications`, `/tasks`, `/income`, `/projects`, `/zakat` |

@@ -158,6 +158,12 @@ const PURPOSE_KEY: Record<string, keyof typeof TEXT.ar> = {
 export default function SiteMapPage() {
   const { lang, dir, t } = useLanguage();
   const text = TEXT[(lang as Lang) || 'ar'];
+  const aboutTitle = lang === 'ar' ? 'من نحن' : lang === 'fr' ? 'À propos de THE SFM' : 'About THE SFM';
+  const aboutDesc = lang === 'ar'
+    ? 'صفحة عامة تشرح مهمة THE SFM ومبادئ الثقة والبيانات الحقيقية.'
+    : lang === 'fr'
+      ? 'Page publique expliquant la mission de THE SFM, la confiance et les données réelles.'
+      : 'Public page explaining THE SFM mission, trust principles, and real-data approach.';
 
   return (
     <div className="site-map-shell" dir={dir}>
@@ -199,6 +205,14 @@ export default function SiteMapPage() {
           <AppCard className="site-map-group">
             <h2>{text.extra}</h2>
             <div className="site-map-routes">
+              <Link href="/about">
+                <span className="route-icon" aria-hidden="true"><MapPinned size={18} /></span>
+                <div>
+                  <strong>{aboutTitle}</strong>
+                  <p>{aboutDesc}</p>
+                </div>
+                <em>{text.open}<ExternalLink size={13} /></em>
+              </Link>
               <Link href="/site-map">
                 <span className="route-icon" aria-hidden="true"><MapPinned size={18} /></span>
                 <div>
