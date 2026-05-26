@@ -9,6 +9,7 @@ import {
   BriefcaseBusiness,
   Calculator,
   CheckCircle2,
+  ChevronDown,
   FileText,
   FolderKanban,
   HandHeart,
@@ -91,10 +92,7 @@ const COPY = {
     openMenu: 'فتح القائمة',
     closeMenu: 'إغلاق القائمة',
     faqTitle: 'الأسئلة الشائعة',
-    faqRealDataQ: 'هل تعرض المنصة بيانات تجريبية؟',
-    faqRealDataA: 'لا. داخل التطبيق تظهر البيانات الحقيقية فقط، أو حالات فارغة عند عدم توفر البيانات.',
-    faqLandingQ: 'هل الأرقام في معاينة الواجهة حقيقية؟',
-    faqLandingA: 'لا. المعاينة توضيحية وموسومة بوضوح بأنها لا تعرض بيانات مستخدم حقيقية.',
+    faqSubtitle: 'إجابات مختصرة عن THE SFM، طريقة عمله، البيانات، التقارير، الزكاة، المشاريع، والخصوصية.',
   },
   en: {
     navFeatures: 'Features',
@@ -154,11 +152,8 @@ const COPY = {
     comingSoon: 'Coming soon',
     openMenu: 'Open menu',
     closeMenu: 'Close menu',
-    faqTitle: 'FAQ',
-    faqRealDataQ: 'Does the platform show demo data?',
-    faqRealDataA: 'No. Inside the app, it shows real data only, or empty states when data is unavailable.',
-    faqLandingQ: 'Are the numbers in the interface preview real?',
-    faqLandingA: 'No. The preview is illustrative and clearly labeled as not real user data.',
+    faqTitle: 'Frequently Asked Questions',
+    faqSubtitle: 'Short answers about THE SFM, how it works, data, reports, zakat, projects, and privacy.',
   },
   fr: {
     navFeatures: 'Fonctionnalités',
@@ -218,13 +213,64 @@ const COPY = {
     comingSoon: 'Bientôt disponible',
     openMenu: 'Ouvrir le menu',
     closeMenu: 'Fermer le menu',
-    faqTitle: 'FAQ',
-    faqRealDataQ: 'La plateforme affiche-t-elle des données de démonstration ?',
-    faqRealDataA: 'Non. Dans l’application, elle affiche uniquement des données réelles ou des états vides lorsque les données sont indisponibles.',
-    faqLandingQ: 'Les chiffres de l’aperçu sont-ils réels ?',
-    faqLandingA: 'Non. L’aperçu est illustratif et clairement marqué comme ne contenant pas de données utilisateur réelles.',
+    faqTitle: 'Questions fréquentes',
+    faqSubtitle: 'Des réponses courtes sur THE SFM, son fonctionnement, les données, les rapports, la zakat, les projets et la confidentialité.',
   },
 } satisfies Record<Lang, Record<string, string>>;
+
+const FAQ_ITEMS = {
+  ar: [
+    ['ما هو THE SFM؟', 'THE SFM هو منصة مالية ذكية تساعدك على تنظيم دخلك، مصروفاتك، مدخراتك، أهدافك، زكاتك، استثماراتك، مشاريعك، تقاريرك، وقراراتك المالية في مكان واحد.'],
+    ['هل THE SFM مجرد تطبيق مصروفات؟', 'لا. THE SFM ليس مجرد تطبيق لتسجيل المصروفات. هو مركز قيادة مالي يجمع بين المال الشخصي، المشاريع، الزكاة، الأعمال الخيرية، التقارير، المستندات، الإشعارات، ومساعد ذكي يعتمد على بياناتك الفعلية.'],
+    ['هل يستخدم الموقع بيانات وهمية؟', 'لا. داخل حساب المستخدم، يجب أن تعتمد التحليلات والتقارير والتنبيهات على بياناتك الحقيقية فقط. إذا لم تكن البيانات متوفرة، نعرض رسالة مثل “لا توجد بيانات” أو “بيانات غير كافية” بدلاً من أرقام تخمينية.'],
+    ['هل بياناتي المالية خاصة؟', 'نعم، بياناتك المالية خاصة بحسابك. THE SFM مصمم لعرض البيانات والتحليلات بناءً على المعلومات التي تضيفها أنت. لا يجب عرض بيانات مستخدم لغيره.'],
+    ['هل THE SFM يقدم استشارة مالية رسمية؟', 'لا. THE SFM أداة للتنظيم، التخطيط، والتحليل. لا يعتبر بديلاً عن مستشار مالي أو قانوني أو ضريبي أو شرعي مختص.'],
+    ['هل يمكنني إدارة الدخل والمصروفات؟', 'نعم. يمكنك إضافة مصادر الدخل، المصروفات، التصنيفات، الملاحظات، المرفقات، ومتابعة الملخصات والتقارير الشهرية بناءً على بياناتك.'],
+    ['هل يدعم الموقع الزكاة؟', 'نعم. يوجد قسم مخصص للزكاة يساعدك على حساب النصاب، تتبع الحول، إضافة الأصول، حفظ حسابات الزكاة، ومتابعة التذكيرات. الحسابات تقديرية لأغراض التنظيم وليست فتوى شرعية.'],
+    ['هل يدعم المشاريع التجارية؟', 'نعم. يمكنك إنشاء مشاريع، إضافة دراسة جدوى، نموذج مالي، مهام، مستندات، مؤشرات أداء، مستشار AI، وحتى إنشاء Pitch Deck للمشروع بناءً على البيانات المتوفرة.'],
+    ['ما هو Pitch Deck؟', 'Pitch Deck هو عرض استثماري مختصر للمشروع يستخدم لشرح الفكرة، المشكلة، الحل، نموذج الربح، الخطة المالية، المخاطر، والتمويل المطلوب. داخل THE SFM يتم إنشاؤه بناءً على بيانات مشروعك، ولا يتم اختراع معلومات ناقصة.'],
+    ['هل يدعم الموقع التقارير؟', 'نعم. يحتوي THE SFM على مركز تقارير يساعدك على إنشاء أو معاينة تقارير للدخل، المصروفات، المشاريع، الزكاة، الأعمال الخيرية، والاستثمارات حسب البيانات المتوفرة.'],
+    ['هل يوجد إشعارات ذكية؟', 'نعم. يمكن أن تظهر لك إشعارات وتنبيهات بناءً على بياناتك، مثل مهام متأخرة، زكاة قريبة، تقارير تحتاج بيانات، أو أهداف تحتاج متابعة.'],
+    ['هل أقدر أستخدم الموقع إذا ما عندي بيانات كثيرة؟', 'نعم. يمكنك البدء خطوة بخطوة. إذا لم تكن هناك بيانات كافية، سيعرض الموقع حالات فارغة أو إرشادات لإضافة البيانات بدلاً من عرض أرقام غير حقيقية.'],
+    ['هل يدعم الموقع اللغة الإنجليزية والفرنسية؟', 'نعم. الموقع يدعم العربية والإنجليزية والفرنسية، ويجب أن تتغير النصوص حسب اللغة المختارة.'],
+    ['هل THE SFM مناسب للأفراد فقط؟', 'لا. المنصة مناسبة للأفراد، العائلات، المستثمرين، رواد الأعمال، أصحاب المشاريع، والمستخدمين الذين يريدون تنظيم المال والمشاريع والتقارير في مكان واحد.'],
+    ['كيف أبدأ؟', 'ابدأ بتسجيل الدخول، ثم أكمل إعداد الحساب، أضف دخلك ومصروفاتك، وبعدها يمكنك تفعيل الأقسام المناسبة لك مثل الأهداف، الزكاة، المشاريع، التقارير، أو الاستثمارات.'],
+  ],
+  en: [
+    ['What is THE SFM?', 'THE SFM is an intelligent financial platform that helps you organize your income, expenses, savings, goals, zakat, investments, projects, reports, and financial decisions in one place.'],
+    ['Is THE SFM just an expense tracker?', 'No. THE SFM is more than an expense tracker. It is a financial command center that connects personal finance, projects, zakat, charity, reports, documents, notifications, and AI-assisted planning based on your real data.'],
+    ['Does the platform use fake data?', 'No. Inside user accounts, reports, insights, and notifications should rely only on the user’s real data. If data is missing, the platform should show “No data” or “Insufficient data” instead of guessed numbers.'],
+    ['Is my financial data private?', 'Yes. Your financial data belongs to your account. THE SFM is designed to show analysis based on the information you add, and users should not see other users’ data.'],
+    ['Does THE SFM provide official financial advice?', 'No. THE SFM is a tool for organization, planning, and analysis. It is not a replacement for a qualified financial, legal, tax, or religious advisor.'],
+    ['Can I manage income and expenses?', 'Yes. You can add income sources, expenses, categories, notes, attachments, summaries, and monthly reports based on your saved data.'],
+    ['Does THE SFM support zakat?', 'Yes. THE SFM includes a dedicated zakat area for nisab calculation, hawl tracking, assets, saved zakat calculations, and reminders. Zakat results are estimates for planning and are not religious rulings.'],
+    ['Does it support business projects?', 'Yes. You can create projects, add feasibility studies, financial models, tasks, documents, KPIs, AI project guidance, and generate a Pitch Deck based on available project data.'],
+    ['What is a Pitch Deck?', 'A Pitch Deck is a short investor-style presentation that explains the project idea, problem, solution, business model, financial plan, risks, and funding need. In THE SFM, it is generated from your project data without inventing missing information.'],
+    ['Does THE SFM support reports?', 'Yes. The Reports Center helps you preview or generate reports for income, expenses, projects, zakat, charity, and investments based on available data.'],
+    ['Are there smart notifications?', 'Yes. THE SFM can show notifications based on real data, such as overdue tasks, upcoming zakat dates, reports needing data, or goals that need attention.'],
+    ['Can I use THE SFM if I do not have much data yet?', 'Yes. You can start step by step. If there is not enough data, the platform will show empty states or guidance instead of fake numbers.'],
+    ['Does THE SFM support English and French?', 'Yes. THE SFM supports Arabic, English, and French, and the interface should update based on the selected language.'],
+    ['Is THE SFM only for individuals?', 'No. It is designed for individuals, families, investors, entrepreneurs, business owners, and users who want to organize money, projects, reports, and decisions in one place.'],
+    ['How do I start?', 'Log in, complete your account setup, add your income and expenses, then activate the sections you need such as goals, zakat, projects, reports, or investments.'],
+  ],
+  fr: [
+    ['Qu’est-ce que THE SFM ?', 'THE SFM est une plateforme financière intelligente qui vous aide à organiser vos revenus, dépenses, épargne, objectifs, zakat, investissements, projets, rapports et décisions financières au même endroit.'],
+    ['THE SFM est-il seulement une application de suivi des dépenses ?', 'Non. THE SFM est plus qu’un simple outil de suivi des dépenses. C’est un centre de commande financier qui relie finances personnelles, projets, zakat, charité, rapports, documents, notifications et planification assistée par IA à partir de vos données réelles.'],
+    ['La plateforme utilise-t-elle de fausses données ?', 'Non. Dans les comptes utilisateurs, les rapports, analyses et notifications doivent s’appuyer uniquement sur les données réelles de l’utilisateur. Si des données manquent, la plateforme doit afficher “Aucune donnée” ou “Données insuffisantes” au lieu de chiffres estimés.'],
+    ['Mes données financières sont-elles privées ?', 'Oui. Vos données financières appartiennent à votre compte. THE SFM est conçu pour afficher des analyses à partir des informations que vous ajoutez, et les utilisateurs ne doivent pas voir les données d’autres utilisateurs.'],
+    ['THE SFM fournit-il un conseil financier officiel ?', 'Non. THE SFM est un outil d’organisation, de planification et d’analyse. Il ne remplace pas un conseiller financier, juridique, fiscal ou religieux qualifié.'],
+    ['Puis-je gérer mes revenus et mes dépenses ?', 'Oui. Vous pouvez ajouter des sources de revenus, des dépenses, des catégories, des notes, des pièces jointes, des résumés et des rapports mensuels basés sur vos données enregistrées.'],
+    ['THE SFM prend-il en charge la zakat ?', 'Oui. THE SFM comprend un espace dédié à la zakat pour le calcul du nisab, le suivi du hawl, les actifs, les calculs enregistrés et les rappels. Les résultats de zakat sont des estimations de planification et ne constituent pas des avis religieux.'],
+    ['La plateforme prend-elle en charge les projets commerciaux ?', 'Oui. Vous pouvez créer des projets, ajouter des études de faisabilité, des modèles financiers, des tâches, des documents, des KPI, des conseils de projet par IA et générer un Pitch Deck à partir des données disponibles.'],
+    ['Qu’est-ce qu’un Pitch Deck ?', 'Un Pitch Deck est une courte présentation de type investisseur qui explique l’idée du projet, le problème, la solution, le modèle économique, le plan financier, les risques et le besoin de financement. Dans THE SFM, il est généré à partir des données de votre projet sans inventer les informations manquantes.'],
+    ['THE SFM prend-il en charge les rapports ?', 'Oui. Le Centre des rapports vous aide à prévisualiser ou générer des rapports pour les revenus, dépenses, projets, zakat, charité et investissements selon les données disponibles.'],
+    ['Existe-t-il des notifications intelligentes ?', 'Oui. THE SFM peut afficher des notifications basées sur des données réelles, comme des tâches en retard, des dates de zakat à venir, des rapports qui nécessitent des données ou des objectifs à suivre.'],
+    ['Puis-je utiliser THE SFM si je n’ai pas encore beaucoup de données ?', 'Oui. Vous pouvez commencer étape par étape. S’il n’y a pas assez de données, la plateforme affiche des états vides ou des indications au lieu de faux chiffres.'],
+    ['THE SFM prend-il en charge l’anglais et le français ?', 'Oui. THE SFM prend en charge l’arabe, l’anglais et le français, et l’interface doit se mettre à jour selon la langue sélectionnée.'],
+    ['THE SFM est-il uniquement destiné aux particuliers ?', 'Non. Il est conçu pour les particuliers, les familles, les investisseurs, les entrepreneurs, les propriétaires d’entreprise et les utilisateurs qui veulent organiser argent, projets, rapports et décisions au même endroit.'],
+    ['Comment commencer ?', 'Connectez-vous, complétez la configuration de votre compte, ajoutez vos revenus et dépenses, puis activez les sections dont vous avez besoin comme les objectifs, la zakat, les projets, les rapports ou les investissements.'],
+  ],
+} satisfies Record<Lang, [string, string][]>;
 
 const featureIcons = [Wallet, ReceiptText, PiggyBank, TrendingUp, Calculator, FolderKanban, HandHeart, FileText, BellRing, BriefcaseBusiness, Presentation];
 const featureKeys = [
@@ -257,12 +303,14 @@ export default function PublicLandingPage() {
   const { session, isGuest } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
+  const [openFaqIndex, setOpenFaqIndex] = useState(0);
   const text = COPY[(lang as Lang) || 'ar'];
   const appHref = session || isGuest ? '/dashboard' : '/login';
   const primaryLabel = session || isGuest ? text.openDashboard : text.start;
   const aboutLabel = lang === 'ar' ? 'من نحن' : lang === 'fr' ? 'À propos' : 'About';
   const features = useMemo(() => pick(featureKeys, lang as Lang), [lang]);
   const audiences = useMemo(() => pick(audienceKeys, lang as Lang), [lang]);
+  const faqItems = FAQ_ITEMS[(lang as Lang) || 'ar'];
 
   const navLinks = [
     { href: '/about', label: aboutLabel, section: 'about' },
@@ -447,16 +495,40 @@ export default function PublicLandingPage() {
         <div className="section-heading">
           <span>{text.navFaq}</span>
           <h2>{text.faqTitle}</h2>
+          <p>{text.faqSubtitle}</p>
         </div>
-        <div className="faq-grid">
-          <article>
-            <h3>{text.faqRealDataQ}</h3>
-            <p>{text.faqRealDataA}</p>
-          </article>
-          <article>
-            <h3>{text.faqLandingQ}</h3>
-            <p>{text.faqLandingA}</p>
-          </article>
+        <div className="faq-accordion">
+          {faqItems.map(([question, answer], index) => {
+            const isOpen = openFaqIndex === index;
+            const triggerId = `faq-trigger-${index}`;
+            const panelId = `faq-panel-${index}`;
+
+            return (
+              <article key={question} className={isOpen ? 'faq-item open' : 'faq-item'}>
+                <button
+                  id={triggerId}
+                  type="button"
+                  className="faq-question"
+                  aria-expanded={isOpen}
+                  aria-controls={panelId}
+                  onClick={() => setOpenFaqIndex(current => current === index ? -1 : index)}
+                >
+                  <span>{question}</span>
+                  <ChevronDown className="faq-icon" size={19} aria-hidden="true" />
+                </button>
+                <div
+                  id={panelId}
+                  className={isOpen ? 'faq-answer open' : 'faq-answer'}
+                  role="region"
+                  aria-labelledby={triggerId}
+                >
+                  <div className="faq-answer-inner">
+                    <p>{answer}</p>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
 
@@ -473,7 +545,7 @@ export default function PublicLandingPage() {
         </div>
         <FooterColumn title={text.footerProduct} links={[['/login', text.login], ['/dashboard', text.openDashboard], ['/reports-center', text.navTools]]} />
         <FooterColumn title={text.footerTools} links={[['/business-hub', text.businessHub], ['/zakat', text.zakat], ['/reports-center', text.reportsCenter]]} />
-        <FooterColumn title={text.footerCompany} links={[['/about', aboutLabel], ['#faq', text.navFaq]]} />
+        <FooterColumn title={text.footerCompany} links={[['/about', aboutLabel], ['/#faq', text.navFaq]]} />
         <FooterColumn title={text.footerAccount} links={[['/login', text.login], ['/setup', text.start]]} />
         <FooterColumn title={text.footerLegal} links={[['#', text.privacy], ['#', text.terms]]} />
       </footer>
@@ -821,13 +893,13 @@ const landingStyles = `
     color: var(--landing-heading);
     font-weight: 950;
   }
-  .trust-section p, .section-heading p, .ai-card p, .stories-section p, .final-cta p, .pricing-card p, .faq-grid p {
+  .trust-section p, .section-heading p, .ai-card p, .stories-section p, .final-cta p, .pricing-card p, .faq-answer p {
     margin: 8px 0 0;
     color: var(--landing-muted);
     line-height: 1.8;
     font-weight: 750;
   }
-  .trust-grid, .feature-grid, .audience-grid, .pricing-grid, .faq-grid {
+  .trust-grid, .feature-grid, .audience-grid, .pricing-grid, .faq-accordion {
     display: grid;
     gap: 14px;
   }
@@ -868,7 +940,7 @@ const landingStyles = `
   .feature-grid {
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   }
-  .feature-card, .pricing-card, .faq-grid article, .audience-grid article {
+  .feature-card, .pricing-card, .faq-item, .audience-grid article {
     min-width: 0;
     border-radius: 22px;
     background: #FFFFFF;
@@ -885,13 +957,13 @@ const landingStyles = `
     background: linear-gradient(135deg, rgba(29, 140, 255, 0.12), rgba(24, 212, 212, 0.14));
     border: 1px solid rgba(29, 140, 255, 0.14);
   }
-  .feature-card h3, .pricing-card h3, .faq-grid h3 {
+  .feature-card h3, .pricing-card h3 {
     margin: 16px 0 7px;
     color: var(--landing-heading);
     font-size: 18px;
     transition: color 180ms var(--ease);
   }
-  .feature-card:hover, .pricing-card:hover, .faq-grid article:hover, .audience-grid article:hover {
+  .feature-card:hover, .pricing-card:hover, .faq-item:hover, .audience-grid article:hover {
     border-color: rgba(24, 212, 212, 0.38);
     box-shadow: 0 18px 46px rgba(29, 140, 255, 0.13);
     transform: translateY(-2px);
@@ -967,8 +1039,88 @@ const landingStyles = `
     padding: 30px;
     text-align: center;
   }
-  .faq-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .faq-block {
+    scroll-margin-top: 105px;
+  }
+  .faq-accordion {
+    grid-template-columns: 1fr;
+    max-width: 980px;
+  }
+  .faq-item {
+    overflow: hidden;
+    padding: 0;
+  }
+  .faq-item.open {
+    border-color: rgba(24, 212, 212, 0.38);
+    background:
+      linear-gradient(135deg, rgba(29, 140, 255, 0.06), rgba(24, 212, 212, 0.08)),
+      #FFFFFF;
+    box-shadow: 0 18px 46px rgba(29, 140, 255, 0.13);
+  }
+  .faq-question {
+    width: 100%;
+    min-height: 64px;
+    border: 0;
+    background: transparent;
+    color: var(--landing-heading);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    font: 950 17px/1.5 Tajawal, Arial, sans-serif;
+    text-align: start;
+    cursor: pointer;
+    transition: color 180ms var(--ease), background 180ms var(--ease);
+  }
+  .faq-question:hover {
+    background: rgba(29, 140, 255, 0.055);
+    color: #0B76E0;
+  }
+  .faq-question:focus-visible {
+    outline: 3px solid rgba(24, 212, 212, 0.55);
+    outline-offset: -6px;
+  }
+  .faq-question span {
+    min-width: 0;
+  }
+  .faq-icon {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    padding: 7px;
+    border-radius: 999px;
+    color: #0B76E0;
+    background: rgba(29, 140, 255, 0.10);
+    border: 1px solid rgba(29, 140, 255, 0.16);
+    transition: transform 220ms var(--ease), background 180ms var(--ease), color 180ms var(--ease), border-color 180ms var(--ease);
+  }
+  .faq-item.open .faq-icon {
+    transform: rotate(180deg);
+    color: #FFFFFF;
+    background: linear-gradient(135deg, #1D8CFF, #18D4D4);
+    border-color: rgba(24, 212, 212, 0.35);
+  }
+  .faq-answer {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows 240ms var(--ease), opacity 180ms var(--ease);
+  }
+  .faq-answer.open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+  .faq-answer-inner {
+    overflow: hidden;
+  }
+  .faq-answer p {
+    margin: 0;
+    padding: 0 20px 20px;
+    color: #334155;
+    font-size: 15px;
+    line-height: 1.9;
+    font-weight: 750;
   }
   .final-cta {
     margin-top: 90px;
@@ -1080,7 +1232,7 @@ const landingStyles = `
     .trust-section, .ai-card, .landing-footer {
       grid-template-columns: 1fr;
     }
-    .audience-grid, .pricing-grid, .faq-grid {
+    .audience-grid, .pricing-grid, .faq-accordion {
       grid-template-columns: 1fr;
     }
   }
