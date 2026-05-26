@@ -1,45 +1,56 @@
 # THE SFM Site Structure
 
-This route map keeps the product organized around one clear purpose per page. Existing pages remain available; sidebar navigation now prioritizes the clean primary structure.
+This map documents the cleaned product organization. The public landing page stays separate from the authenticated app. App pages use grouped navigation, shared layout spacing, and real-data-only empty states.
 
-| Route | Page name | Purpose | Sidebar group | Related pages |
-| --- | --- | --- | --- | --- |
-| `/` | Dashboard / لوحة القيادة | Executive overview across real financial, project, report, and notification data. | الرئيسية | `/notifications`, `/reports-center`, `/setup` |
-| `/notifications` | Smart Notifications / الإشعارات | Unified real-data notification center. | الرئيسية | `/projects`, `/zakat`, `/reports-center` |
-| `/reports-center` | Reports Center / مركز التقارير | Main hub for report readiness, preview, and exports. | الرئيسية | `/reports`, `/income`, `/expenses`, `/projects` |
-| `/reports` | Reports / التقارير | Legacy report page and shortcut path to Reports Center. | Related, not primary sidebar | `/reports-center` |
-| `/income` | Income / الدخل | Income source management only. | المال الشخصي | `/reports-center`, `/notifications` |
-| `/expenses` | Expenses / المصروفات | Expense management only. | المال الشخصي | `/reports-center`, `/projects` |
-| `/savings` | Savings / المدخرات | Savings records and summaries. | المال الشخصي | `/zakat`, `/` |
-| `/goals` | Financial Goals / الأهداف المالية | Goal tracking and progress. | المال الشخصي | `/notifications`, `/reports-center` |
-| `/zakat` | Zakat / الزكاة | Zakat calculation, nisab, hawl, and saved history. | المال الشخصي | `/charity-projects`, `/reports-center`, `/notifications` |
-| `/invest` | Investments / الاستثمارات | Investment portfolio management. | الاستثمار والسوق | `/market-analysis`, `/zakat` |
-| `/market-analysis` | Market Analysis / تحليلات السوق | Market analysis and real source availability states. | الاستثمار والسوق | `/invest`, `/market-analysis#watchlist`, `/market-analysis#market-alerts` |
-| `/market-analysis#watchlist` | Watchlist / قائمة المتابعة | Saved market watchlist section. | الاستثمار والسوق | `/market-analysis` |
-| `/market-analysis#market-alerts` | Market Alerts / تنبيهات السوق | Saved market alerts section. | الاستثمار والسوق | `/market-analysis` |
-| `/projects` | My Projects / مشاريعي | Project list and entry point to project workspaces. | الأعمال والمشاريع | `/projects/[id]`, `/business-hub` |
-| `/projects/[id]` | Project Workspace / مساحة المشروع | Individual project workspace: overview, feasibility, financial model, tasks, documents, KPIs, advisor, and pitch deck tabs. | Related project route | `/projects`, `/business-hub`, `/reports-center` |
-| `/business-hub` | Business Hub / مركز الأعمال | Strategic project layer for readiness, funding, jurisdiction, documents, and funding directory. | الأعمال والمشاريع | `/projects`, `/business-hub#strategic-documents` |
-| `/business-hub#strategic-documents` | Strategic Documents / المستندات والعروض | Strategic document and pitch deck preparation area inside Business Hub. | الأعمال والمشاريع | `/projects/[id]`, `/reports-center` |
-| `/charity` | Charity / الأعمال الخيرية | Quick charity and donation logging only. | الأعمال الخيرية | `/charity-projects`, `/zakat` |
-| `/charity-projects` | Charity Projects / المشاريع الخيرية | Charity projects, contributors, beneficiaries, documents, impact, and charity reports. | الأعمال الخيرية | `/charity`, `/zakat`, `/reports-center` |
-| `/charity-projects#beneficiary-tracking` | Beneficiaries / المستفيدين | Beneficiary management section. | الأعمال الخيرية | `/charity-projects` |
-| `/charity-projects#charity-reports` | Charity Reports / تقارير الخير | Charity report generation/export section. | الأعمال الخيرية | `/reports-center` |
-| `/services/investment-firms` | Investment Firms / شركات الاستثمار | Service directory page. | الخدمات | `/business-hub` |
-| `/services/accounting-firms` | Accounting Firms / شركات المحاسبة | Service directory page. | الخدمات | `/reports-center` |
-| `/services/feasibility-firms` | Feasibility Firms / شركات دراسة الجدوى | Service directory page. | الخدمات | `/projects`, `/business-hub` |
-| `/services/advisory-firms` | Financial Advisory Firms / شركات الاستشارات المالية | Service directory page. | الخدمات | `/business-hub` |
-| `/profile` | Profile / الملف الشخصي | User profile and account preferences. | الحساب | `/settings` |
-| `/settings` | Settings / الإعدادات | Settings route; currently redirects into the profile/settings experience. | الحساب | `/profile` |
-| `/setup` | Account Setup / إعداد الحساب | Guided onboarding setup route. | Related account route | `/`, `/profile` |
-| `/ai` | Financial AI / الذكاء المالي | Supporting AI page retained for direct access; project-aware AI belongs in project workspaces and Business Hub. | Related, not primary sidebar | `/projects/[id]`, `/business-hub` |
+| Route | Arabic name | English name | French name | Purpose | Sidebar group | Related pages |
+| --- | --- | --- | --- | --- | --- | --- |
+| `/` | الصفحة العامة | Public Landing | Page publique | Public marketing page for visitors. | Public | `/login`, `/dashboard` |
+| `/dashboard` | لوحة القيادة | Executive Dashboard | Tableau de bord exécutif | Executive overview only, based on real user data. | الرئيسية | `/command-center`, `/today`, `/reports-center`, `/notifications` |
+| `/command-center` | مركز القيادة | Command Center | Centre de commande | Clean gateway to the main worlds of THE SFM. | الرئيسية | `/dashboard`, `/today`, `/site-map` |
+| `/today` | اليوم المالي | Financial Today | Aujourd’hui financier | Daily focus page for real due items and alerts. | الرئيسية | `/notifications`, `/income`, `/projects`, `/zakat` |
+| `/notifications` | الإشعارات الذكية | Smart Notifications | Notifications intelligentes | Unified notification center from stored and dynamic real-data alerts. | الرئيسية | `/today`, `/projects`, `/zakat`, `/reports-center` |
+| `/reports-center` | مركز التقارير | Reports Center | Centre des rapports | Report readiness, preview, and export hub. | الرئيسية | `/reports`, `/income`, `/expenses`, `/projects` |
+| `/reports` | التقارير | Reports | Rapports | Legacy reports page with a shortcut to Reports Center. | Related | `/reports-center` |
+| `/income` | الدخل | Income | Revenus | Income management only. | المال الشخصي | `/dashboard`, `/reports-center`, `/notifications` |
+| `/expenses` | المصروفات | Expenses | Dépenses | Expense management only. | المال الشخصي | `/dashboard`, `/reports-center` |
+| `/savings` | المدخرات | Savings | Épargne | Savings records and summaries. | المال الشخصي | `/zakat`, `/dashboard` |
+| `/goals` | الأهداف المالية | Financial Goals | Objectifs financiers | Goal tracking and progress. | المال الشخصي | `/dashboard`, `/notifications`, `/reports-center` |
+| `/zakat` | الزكاة | Zakat | Zakat | Zakat calculator, hawl, reminders, and saved history. | المال الشخصي | `/charity-projects`, `/reports-center`, `/today` |
+| `/invest` | الاستثمارات | Investments | Investissements | Investment portfolio management. | الاستثمار والسوق | `/market-analysis`, `/zakat` |
+| `/market-analysis` | تحليلات السوق | Market Analysis | Analyse du marché | Market analysis, watchlist, and market alerts. | الاستثمار والسوق | `/invest`, `/market-analysis#watchlist`, `/market-analysis#market-alerts` |
+| `/market-analysis#watchlist` | قائمة المتابعة | Watchlist | Liste de suivi | Watchlist section inside Market Analysis. | الاستثمار والسوق | `/market-analysis` |
+| `/market-analysis#market-alerts` | تنبيهات السوق | Market Alerts | Alertes de marché | Market alerts section inside Market Analysis. | الاستثمار والسوق | `/market-analysis` |
+| `/projects` | مشاريعي | My Projects | Mes projets | Project list and entry point to workspaces. | الأعمال والمشاريع | `/projects/[id]`, `/business-hub` |
+| `/projects/[id]` | مساحة المشروع | Project Workspace | Espace projet | Individual project workspace with tabs for detailed workflows. | Related | `/projects`, `/business-hub`, `/reports-center` |
+| `/business-hub` | مركز الأعمال | Business Hub | Centre d’affaires | Business readiness, funding, jurisdiction, documents, and funding directory. | الأعمال والمشاريع | `/projects`, `/reports-center` |
+| `/business-hub#strategic-documents` | المستندات | Documents | Documents | Strategic documents and pitch deck area inside Business Hub. | الأعمال والمشاريع | `/projects/[id]`, `/business-hub` |
+| `/charity` | الأعمال الخيرية | Charity | Charité | Quick charity and donation logging. | الزكاة والأعمال الخيرية | `/charity-projects`, `/zakat` |
+| `/charity-projects` | المشاريع الخيرية | Charity Projects | Projets caritatifs | Charity projects, beneficiaries, contributors, documents, impact, and reports. | الزكاة والأعمال الخيرية | `/charity`, `/zakat`, `/reports-center` |
+| `/charity-projects#beneficiary-tracking` | المستفيدين | Beneficiaries | Bénéficiaires | Beneficiary section inside Charity Projects. | الزكاة والأعمال الخيرية | `/charity-projects` |
+| `/charity-projects#charity-reports` | تقارير الخير | Charity Reports | Rapports caritatifs | Charity reports section inside Charity Projects. | الزكاة والأعمال الخيرية | `/reports-center` |
+| `/services/investment-firms` | شركات الاستثمار | Investment Firms | Sociétés d’investissement | Service directory page. | الخدمات | `/business-hub` |
+| `/services/accounting-firms` | شركات المحاسبة | Accounting Firms | Cabinets comptables | Service directory page. | الخدمات | `/reports-center` |
+| `/services/feasibility-firms` | شركات دراسة الجدوى | Feasibility Firms | Études de faisabilité | Service directory page. | الخدمات | `/projects`, `/business-hub` |
+| `/services/advisory-firms` | شركات الاستشارات المالية | Financial Advisory Firms | Conseil financier | Service directory page. | الخدمات | `/business-hub` |
+| `/profile` | الملف الشخصي | Profile | Profil | User profile and account information. | الحساب | `/settings`, `/security` |
+| `/settings` | الإعدادات | Settings | Paramètres | App experience preferences, including Simple/Professional view mode. | الحساب | `/profile`, `/security` |
+| `/security` | الأمان والخصوصية | Security & Privacy | Sécurité et confidentialité | Trust, privacy, and financial disclaimer information. | الحساب | `/profile`, `/settings` |
+| `/site-map` | خريطة THE SFM | THE SFM Map | Carte THE SFM | Route map and product orientation page. | Supporting | `/command-center`, `/settings` |
+| `/setup` | إعداد الحساب | Account Setup | Configuration du compte | Guided setup that saves only user-entered data. | Supporting | `/dashboard`, `/settings` |
+| `/ai` | مساعدي الذكي | AI Assistant | Assistant IA | AI entry point; advice must be based on real user data when available. | Supporting | `/command-center`, `/projects/[id]`, `/business-hub` |
 
-## Navigation Groups
+## Sidebar Groups
 
-- الرئيسية: dashboard, notifications, reports center.
-- المال الشخصي: income, expenses, savings, financial goals, zakat.
+- الرئيسية: dashboard, command center, financial today, notifications, reports center.
+- المال الشخصي: income, expenses, savings, goals, zakat.
 - الاستثمار والسوق: investments, market analysis, watchlist, market alerts.
-- الأعمال والمشاريع: projects, business hub, strategic documents, pitch decks.
-- الأعمال الخيرية: charity, charity projects, beneficiaries, charity reports.
+- الأعمال والمشاريع: projects, business hub, pitch decks, documents.
+- الزكاة والأعمال الخيرية: charity, charity projects, beneficiaries, charity reports.
 - الخدمات: investment, accounting, feasibility, and financial advisory firms.
-- الحساب: profile, settings, logout.
+- الحساب: profile, settings, security and privacy, logout.
+
+## Simple / Professional Mode
+
+- Simple mode keeps the core orientation and personal finance pages visible: Dashboard, Command Center, Financial Today, Notifications, Reports Center, Income, Expenses, Goals, Profile, and Logout.
+- Professional mode shows every page and advanced tool.
+- The preference is stored locally immediately and can persist to `public.profiles.view_mode` after the migration is applied.

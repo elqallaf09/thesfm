@@ -7,7 +7,9 @@ import {
   BriefcaseBusiness,
   Building2,
   Calculator,
+  CalendarDays,
   ChartPie,
+  Compass,
   FileSearch,
   FileText,
   Files,
@@ -21,6 +23,7 @@ import {
   Presentation,
   ReceiptText,
   Settings,
+  ShieldCheck,
   Star,
   Target,
   TrendingUp,
@@ -33,6 +36,7 @@ import { TR } from '@/lib/translations';
 export type TranslationKey = keyof typeof TR;
 
 export type NavigationAction = 'logout';
+export type NavigationViewMode = 'simple' | 'professional';
 
 export type NavigationItem = {
   id: string;
@@ -40,6 +44,7 @@ export type NavigationItem = {
   href?: string;
   labelKey: TranslationKey;
   action?: NavigationAction;
+  viewModes?: NavigationViewMode[];
 };
 
 export type NavigationGroup = {
@@ -55,19 +60,21 @@ export const NAV_GROUPS: NavigationGroup[] = [
     labelKey: 'nav_group_main',
     defaultOpen: true,
     items: [
-      { id: 'home', icon: LayoutDashboard, href: '/dashboard', labelKey: 'nav_home' },
-      { id: 'notif', icon: Bell, href: '/notifications', labelKey: 'nav_notif' },
-      { id: 'reports-center', icon: FileText, href: '/reports-center', labelKey: 'nav_reports_center' },
+      { id: 'home', icon: LayoutDashboard, href: '/dashboard', labelKey: 'nav_home', viewModes: ['simple', 'professional'] },
+      { id: 'command-center', icon: Compass, href: '/command-center', labelKey: 'nav_command_center', viewModes: ['simple', 'professional'] },
+      { id: 'today', icon: CalendarDays, href: '/today', labelKey: 'nav_today', viewModes: ['simple', 'professional'] },
+      { id: 'notif', icon: Bell, href: '/notifications', labelKey: 'nav_notif', viewModes: ['simple', 'professional'] },
+      { id: 'reports-center', icon: FileText, href: '/reports-center', labelKey: 'nav_reports_center', viewModes: ['simple', 'professional'] },
     ],
   },
   {
     id: 'personal-finance',
     labelKey: 'nav_group_personal_finance',
     items: [
-      { id: 'income', icon: Wallet, href: '/income', labelKey: 'nav_income' },
-      { id: 'expenses', icon: ReceiptText, href: '/expenses', labelKey: 'nav_expenses' },
+      { id: 'income', icon: Wallet, href: '/income', labelKey: 'nav_income', viewModes: ['simple', 'professional'] },
+      { id: 'expenses', icon: ReceiptText, href: '/expenses', labelKey: 'nav_expenses', viewModes: ['simple', 'professional'] },
       { id: 'savings', icon: PiggyBank, href: '/savings', labelKey: 'nav_savings' },
-      { id: 'goals', icon: Target, href: '/goals', labelKey: 'nav_goals' },
+      { id: 'goals', icon: Target, href: '/goals', labelKey: 'nav_goals', viewModes: ['simple', 'professional'] },
       { id: 'zakat', icon: Calculator, href: '/zakat', labelKey: 'nav_zakat' },
     ],
   },
@@ -87,8 +94,8 @@ export const NAV_GROUPS: NavigationGroup[] = [
     items: [
       { id: 'projects', icon: FolderKanban, href: '/projects', labelKey: 'nav_projects' },
       { id: 'business-hub', icon: BriefcaseBusiness, href: '/business-hub', labelKey: 'nav_business_hub' },
-      { id: 'documents', icon: Files, href: '/business-hub#strategic-documents', labelKey: 'nav_documents' },
       { id: 'pitch-decks', icon: Presentation, href: '/business-hub#strategic-documents', labelKey: 'nav_pitch_decks' },
+      { id: 'documents', icon: Files, href: '/business-hub#strategic-documents', labelKey: 'nav_documents' },
     ],
   },
   {
@@ -116,12 +123,23 @@ export const NAV_GROUPS: NavigationGroup[] = [
     labelKey: 'nav_group_account',
     defaultOpen: true,
     items: [
-      { id: 'profile', icon: UserRound, href: '/profile', labelKey: 'nav_profile' },
+      { id: 'profile', icon: UserRound, href: '/profile', labelKey: 'nav_profile', viewModes: ['simple', 'professional'] },
       { id: 'settings', icon: Settings, href: '/settings', labelKey: 'nav_settings' },
-      { id: 'logout', icon: LogOut, action: 'logout', labelKey: 'nav_logout' },
+      { id: 'security', icon: ShieldCheck, href: '/security', labelKey: 'nav_security' },
+      { id: 'logout', icon: LogOut, action: 'logout', labelKey: 'nav_logout', viewModes: ['simple', 'professional'] },
     ],
   },
 ];
+
+export function filterNavigationGroups(groups: NavigationGroup[], viewMode: NavigationViewMode) {
+  if (viewMode === 'professional') return groups;
+  return groups
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => item.action || item.viewModes?.includes('simple')),
+    }))
+    .filter(group => group.items.length > 0);
+}
 
 export function flattenNavigationItems(options: { includeActions?: boolean } = {}) {
   return NAV_GROUPS.flatMap(group => group.items).filter(item => options.includeActions || !item.action);

@@ -3,6 +3,8 @@ import type { NextRequest } from 'next/server';
 
 const protectedPrefixes = [
   '/dashboard',
+  '/command-center',
+  '/today',
   '/expenses',
   '/income',
   '/invest',
@@ -10,12 +12,19 @@ const protectedPrefixes = [
   '/education/investments',
   '/goals',
   '/reports',
+  '/reports-center',
   '/business-hub',
+  '/projects',
+  '/zakat',
   '/ai',
   '/charity',
+  '/charity-projects',
   '/settings',
+  '/site-map',
+  '/security',
   '/profile',
   '/notifications',
+  '/market-analysis',
   '/services/investment-firms',
   '/services/accounting-firms',
   '/services/feasibility-firms',
@@ -32,12 +41,6 @@ export function middleware(request: NextRequest) {
 
   response.headers.set('X-Frame-Options', 'ALLOWALL');
   response.headers.set('Content-Security-Policy', 'frame-ancestors *');
-
-  if (pathname === '/settings' || pathname.startsWith('/settings/')) {
-    const profileUrl = request.nextUrl.clone();
-    profileUrl.pathname = '/profile';
-    return NextResponse.redirect(profileUrl);
-  }
 
   if (!isProtected(pathname)) return response;
 

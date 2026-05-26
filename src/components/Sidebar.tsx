@@ -9,8 +9,11 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
+import { ViewModeSelector } from '@/components/ViewModeSelector';
+import { useViewMode } from '@/hooks/useViewMode';
 import { supabase } from '@/integrations/supabase/client';
 import {
+  filterNavigationGroups,
   findActiveNavigationGroup,
   isNavigationItemActive,
   NAV_GROUPS,
@@ -23,6 +26,7 @@ export function Sidebar() {
   const pathname = usePathname() || '/';
   const { t, dir } = useLanguage();
   const { signOut, user } = useAuth();
+  const { viewMode, setViewMode } = useViewMode();
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [hash, setHash] = useState('');
   const [closedGroups, setClosedGroups] = useState<Record<string, boolean>>({});
@@ -36,6 +40,7 @@ export function Sidebar() {
 
   const activeSource = normalizeNavigationSource(pathname, hash);
   const activeGroupId = useMemo(() => findActiveNavigationGroup(activeSource), [activeSource]);
+  const navGroups = useMemo(() => filterNavigationGroups(NAV_GROUPS, viewMode), [viewMode]);
 
   useEffect(() => {
     if (!activeGroupId) return;
@@ -109,7 +114,7 @@ export function Sidebar() {
         .sfm-shared-badge{min-width:22px;height:22px;border-radius:999px;background:var(--sfm-primary);color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;font-size:11px;font-weight:950}
         @media(max-width:1024px){.sfm-shared-sidebar{display:none}}
       `}</style>
-      <Link href="/" className="sfm-shared-brand">
+      <Link href="/dashboard" className="sfm-shared-brand">
         <Image
           src="/sfm-logo.png"
           alt="THE SFM"
@@ -128,9 +133,12 @@ export function Sidebar() {
       </div>
       <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(167,243,240,.08)' }}>
         <UserChip />
+        <div style={{ marginTop: 10 }}>
+          <ViewModeSelector value={viewMode} onChange={setViewMode} variant="dark" compact />
+        </div>
       </div>
       <nav className="sfm-shared-nav" aria-label={t('nav_mobile_menu')}>
-        {NAV_GROUPS.map(group => {
+        {navGroups.map(group => {
           const open = !closedGroups[group.id] && (group.defaultOpen || activeGroupId === group.id || closedGroups[group.id] === false);
           const groupId = `sfm-sidebar-group-${group.id}`;
           return (

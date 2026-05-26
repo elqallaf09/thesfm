@@ -5,9 +5,12 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChevronDown, X } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { ViewModeSelector } from '@/components/ViewModeSelector';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
+import { useViewMode } from '@/hooks/useViewMode';
 import {
+  filterNavigationGroups,
   findActiveNavigationGroup,
   flattenNavigationItems,
   isNavigationItemActive,
@@ -23,11 +26,13 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
   const router = useRouter();
   const { lang, dir, t } = useLanguage();
   const { signOut } = useAuth();
+  const { viewMode, setViewMode } = useViewMode();
   const [activeSource, setActiveSource] = useState(pathname);
   const [closedGroups, setClosedGroups] = useState<Record<string, boolean>>({});
   const previousLang = useRef(lang);
 
   const activeGroupId = useMemo(() => findActiveNavigationGroup(activeSource), [activeSource]);
+  const navGroups = useMemo(() => filterNavigationGroups(NAV_GROUPS, viewMode), [viewMode]);
 
   useEffect(() => {
     const nextPath = typeof window === 'undefined'
@@ -109,8 +114,12 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
           <LanguageSwitcher variant="dark" compact />
         </div>
 
+        <div className="sfm-mobile-view-mode">
+          <ViewModeSelector value={viewMode} onChange={setViewMode} variant="dark" compact />
+        </div>
+
         <nav className="sfm-mobile-nav" aria-label={menuLabel}>
-          {NAV_GROUPS.map(group => {
+          {navGroups.map(group => {
             const expanded = !closedGroups[group.id] && (group.defaultOpen || activeGroupId === group.id || closedGroups[group.id] === false);
             const groupId = `sfm-mobile-group-${group.id}`;
             return (
@@ -164,6 +173,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
         .sfm-mobile-logo{min-width:0;gap:10px}.sfm-mobile-logo img{object-fit:cover}.sfm-mobile-logo strong{display:block;color:var(--sfm-soft-cyan);font-size:17px;font-weight:900;letter-spacing:0}.sfm-mobile-logo span{display:block;color:rgba(248,251,255,.56);font-size:12px;font-weight:700;margin-top:2px}
         .sfm-mobile-close{flex:0 0 auto;width:42px;height:42px;border:1px solid rgba(167,243,240,.24);border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.08);color:#FFFFFF;cursor:pointer}
         .sfm-mobile-lang{justify-content:center;padding:14px 0;border-bottom:1px solid rgba(167,243,240,.1)}
+        .sfm-mobile-view-mode{padding:12px 0;border-bottom:1px solid rgba(167,243,240,.1)}
         .sfm-mobile-nav{display:grid;gap:8px;padding:12px 0 4px}
         .sfm-mobile-group{display:grid;gap:5px;border-bottom:1px solid rgba(167,243,240,.08);padding-bottom:7px}
         .sfm-mobile-group:last-child{border-bottom:0}
