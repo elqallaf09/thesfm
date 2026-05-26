@@ -78,6 +78,7 @@ const PROJECT_TEXT = {
     advisorTitle: 'SFM Project Advisor',
     advisorSub: 'مستشار مشاريع متخصص',
     connected: 'متصل',
+    send: 'إرسال',
   },
   en: {
     title: '🚀 My Projects',
@@ -99,6 +100,7 @@ const PROJECT_TEXT = {
     advisorTitle: 'SFM Project Advisor',
     advisorSub: 'Specialized project advisor',
     connected: 'Connected',
+    send: 'Send message',
   },
   fr: {
     title: '🚀 Mes projets',
@@ -120,6 +122,7 @@ const PROJECT_TEXT = {
     advisorTitle: 'SFM Project Advisor',
     advisorSub: 'Conseiller spécialisé en projets',
     connected: 'Connecté',
+    send: 'Envoyer le message',
   },
 } as const;
 
@@ -765,7 +768,15 @@ export default function ProjectsPage() {
               <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} placeholder="اسألني عن مشروعك..."
                 style={{ flex: 1, background: 'var(--sfm-card)', border: '1.5px solid rgba(167,243,240,.2)', borderRadius: '14px', padding: '11px 16px', fontFamily: 'Tajawal,sans-serif', fontSize: '14px', color: 'var(--sfm-foreground)', outline: 'none', transition: 'border-color .2s' }}
                 onFocus={e => e.currentTarget.style.borderColor = 'var(--sfm-soft-cyan)'} onBlur={e => e.currentTarget.style.borderColor = 'rgba(167,243,240,.2)'} />
-              <button className="pbtn pbtn-g" style={{ padding: '11px 18px', flexShrink: 0 }} onClick={sendMessage} disabled={chatLoading || !chatInput.trim()}><Send className="w-4 h-4" /></button>
+              <button
+                className="pbtn pbtn-g"
+                style={{ padding: '11px 18px', flexShrink: 0 }}
+                onClick={sendMessage}
+                disabled={chatLoading || !chatInput.trim()}
+                aria-label={pt.send || 'Send message'}
+              >
+                <Send className="w-4 h-4" />
+              </button>
             </div>
           </div>
           )}

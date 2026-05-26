@@ -124,7 +124,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     defaultOpen: true,
     items: [
       { id: 'profile', icon: UserRound, href: '/profile', labelKey: 'nav_profile', viewModes: ['simple', 'professional'] },
-      { id: 'settings', icon: Settings, href: '/settings', labelKey: 'nav_settings' },
+      { id: 'settings', icon: Settings, href: '/settings', labelKey: 'nav_settings', viewModes: ['simple', 'professional'] },
       { id: 'security', icon: ShieldCheck, href: '/security', labelKey: 'nav_security' },
       { id: 'logout', icon: LogOut, action: 'logout', labelKey: 'nav_logout', viewModes: ['simple', 'professional'] },
     ],

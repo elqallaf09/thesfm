@@ -130,9 +130,9 @@ const copy = {
 };
 
 const questions = {
-  ar: ['شلون أوفر 200 د.ك هذا الشهر؟', 'شنو أكثر تصنيف أصرف عليه؟', 'هل استثماري مناسب لدخلي؟', 'متى أوصل لهدفي؟', 'اعطني خطة 70/20/10'],
-  en: ['How can I save 200 this month?', 'Which category do I spend on most?', 'Is my investment suitable for my income?', 'When will I reach my goal?', 'Give me a 70/20/10 plan'],
-  fr: ['Comment économiser 200 ce mois-ci ?', 'Quelle catégorie coûte le plus ?', 'Mon investissement convient-il à mes revenus ?', 'Quand atteindrai-je mon objectif ?', 'Donnez-moi un plan 70/20/10'],
+  ar: ['كيف أحسن الادخار هذا الشهر؟', 'شنو أكثر تصنيف أصرف عليه؟', 'هل استثماري مناسب لدخلي؟', 'متى أوصل لهدفي؟', 'اعطني خطة من دخلي الحالي'],
+  en: ['How can I improve savings this month?', 'Which category do I spend on most?', 'Is my investment suitable for my income?', 'When will I reach my goal?', 'Create a plan from my current income'],
+  fr: ['Comment améliorer mon épargne ce mois-ci ?', 'Quelle catégorie coûte le plus ?', 'Mon investissement convient-il à mes revenus ?', 'Quand atteindrai-je mon objectif ?', 'Créez un plan à partir de mes revenus actuels'],
 };
 
 function tx(text: AiText, lang: Lang) {
@@ -393,84 +393,101 @@ export default function AiPage() {
               <button onClick={() => document.getElementById('ai-prediction')?.scrollIntoView({ behavior: 'smooth' })}><TrendingUp size={16} />{L('predict')}</button>
             </div>
           </div>
-          <div className="ai-score-ring" style={{ background: `conic-gradient(var(--sfm-soft-cyan) ${score * 3.6}deg, rgba(255,255,255,.14) 0deg)` }}>
-            <div>
-              <strong>{score}</strong>
-              <span>/100</span>
-              <b>{tx(copy[scoreStatus(score)], lang)}</b>
+          {hasCoreData && (
+            <div className="ai-score-ring" style={{ background: `conic-gradient(var(--sfm-soft-cyan) ${score * 3.6}deg, rgba(255,255,255,.14) 0deg)` }}>
+              <div>
+                <strong>{score}</strong>
+                <span>/100</span>
+                <b>{tx(copy[scoreStatus(score)], lang)}</b>
+              </div>
             </div>
-          </div>
+          )}
         </section>
 
         {!hasCoreData && (
           <EmptyState title={L('title')} text={L('addData')} />
         )}
 
-        <section className="ai-grid ai-score-breakdown">
-          <div className="ai-card span-5">
-            <SectionTitle icon={<ShieldAlert size={19} />} title={L('scoreBreakdown')} />
-            {scoreParts.map(part => <HealthBar key={part.key} title={part.title} score={part.score} reason={part.reason} />)}
-          </div>
-          <div className="ai-card span-7">
-            <SectionTitle icon={<Brain size={19} />} title={L('smartAlerts')} />
-            <div className="ai-insights">
-              {insights.map(item => <InsightCard key={item.title} item={item} lang={lang} />)}
-            </div>
-          </div>
-        </section>
-
-        <section className="ai-grid" id="ai-plan">
-          <div className="ai-card span-7">
-            <SectionTitle icon={<CalendarClock size={19} />} title={L('actionPlan')} />
-            <div className="ai-plan-grid">
-              {planItems.map(item => (
-                <div className="ai-plan-card" key={item.title}>
-                  <h3>{item.title}</h3>
-                  <div><span>{L('current')}</span><strong>{item.current}</strong></div>
-                  <div><span>{L('recommended')}</span><strong>{item.recommended}</strong></div>
-                  <div><span>{L('save')}</span><strong>{item.save}</strong></div>
+        {hasCoreData && (
+          <>
+            <section className="ai-grid ai-score-breakdown">
+              <div className="ai-card span-5">
+                <SectionTitle icon={<ShieldAlert size={19} />} title={L('scoreBreakdown')} />
+                {scoreParts.map(part => <HealthBar key={part.key} title={part.title} score={part.score} reason={part.reason} />)}
+              </div>
+              <div className="ai-card span-7">
+                <SectionTitle icon={<Brain size={19} />} title={L('smartAlerts')} />
+                <div className="ai-insights">
+                  {insights.map(item => <InsightCard key={item.title} item={item} lang={lang} />)}
                 </div>
-              ))}
-            </div>
-            <p className="ai-plan-summary">{L('planSummary').replace('{amount}', money(Math.round(reduceAmount + Math.max(0, recommendedSavings - totals.totalSavings))))}</p>
-          </div>
-          <div className="ai-card span-5">
+              </div>
+            </section>
+
+            <section className="ai-grid" id="ai-plan">
+              <div className="ai-card span-7">
+                <SectionTitle icon={<CalendarClock size={19} />} title={L('actionPlan')} />
+                <div className="ai-plan-grid">
+                  {planItems.map(item => (
+                    <div className="ai-plan-card" key={item.title}>
+                      <h3>{item.title}</h3>
+                      <div><span>{L('current')}</span><strong>{item.current}</strong></div>
+                      <div><span>{L('recommended')}</span><strong>{item.recommended}</strong></div>
+                      <div><span>{L('save')}</span><strong>{item.save}</strong></div>
+                    </div>
+                  ))}
+                </div>
+                <p className="ai-plan-summary">{L('planSummary').replace('{amount}', money(Math.round(reduceAmount + Math.max(0, recommendedSavings - totals.totalSavings))))}</p>
+              </div>
+              <div className="ai-card span-5">
+                <SectionTitle icon={<MessageCircle size={19} />} title={L('advisor')} />
+                <div className="ai-chips">
+                  {questions[lang].map(q => <button key={q} onClick={() => answerQuestion(q)}>{q}</button>)}
+                </div>
+                <div className="ai-chat-row">
+                  <input value={chatInput} onChange={event => setChatInput(event.target.value)} placeholder={L('chatPlaceholder')} onKeyDown={event => { if (event.key === 'Enter') answerQuestion(chatInput); }} />
+                  <button onClick={() => answerQuestion(chatInput)}><Send size={16} />{L('send')}</button>
+                </div>
+                {chatAnswer && <div className="ai-answer"><Bot size={18} /><p>{chatAnswer}</p></div>}
+              </div>
+            </section>
+
+            <section className="ai-card">
+              <SectionTitle icon={<BarChart3 size={19} />} title={L('health')} />
+              <div className="ai-health-grid">
+                {scoreParts.slice(0, 4).map(part => <HealthBar key={`health-${part.key}`} title={part.title} score={part.score} reason={part.reason} compact />)}
+              </div>
+            </section>
+
+            <section className="ai-grid">
+              <div className="ai-card span-6">
+                <SectionTitle icon={<LineChartIcon size={19} />} title={L('comparison')} />
+                <EmptyState title={L('comparison')} text={L('notEnough')} compact />
+              </div>
+              <div className="ai-card span-6" id="ai-prediction">
+                <SectionTitle icon={<TrendingUp size={19} />} title={L('nextMonth')} />
+                <div className="ai-prediction-grid">
+                  <Metric label={L('expectedIncome')} value={money(totals.totalIncome)} />
+                  <Metric label={L('expectedExpenses')} value={money(Math.round(predictedExpenses))} />
+                  <Metric label={L('expectedSavings')} value={money(Math.round(predictedSavings))} />
+                  <Metric label={L('expectedInvestment')} value={money(Math.round(recommendedInvestment))} />
+                  <Metric label={L('expectedScore')} value={`${predictedScore}/100`} />
+                </div>
+                <p className="ai-plan-summary">{predictionText(lang, money, predictedExpenses, recommendedExpenseLimit)}</p>
+              </div>
+            </section>
+          </>
+        )}
+
+        {!hasCoreData && (
+          <section className="ai-card">
             <SectionTitle icon={<MessageCircle size={19} />} title={L('advisor')} />
-            <div className="ai-chips">
-              {questions[lang].map(q => <button key={q} onClick={() => answerQuestion(q)}>{q}</button>)}
-            </div>
             <div className="ai-chat-row">
               <input value={chatInput} onChange={event => setChatInput(event.target.value)} placeholder={L('chatPlaceholder')} onKeyDown={event => { if (event.key === 'Enter') answerQuestion(chatInput); }} />
               <button onClick={() => answerQuestion(chatInput)}><Send size={16} />{L('send')}</button>
             </div>
             {chatAnswer && <div className="ai-answer"><Bot size={18} /><p>{chatAnswer}</p></div>}
-          </div>
-        </section>
-
-        <section className="ai-card">
-          <SectionTitle icon={<BarChart3 size={19} />} title={L('health')} />
-          <div className="ai-health-grid">
-            {scoreParts.slice(0, 4).map(part => <HealthBar key={`health-${part.key}`} title={part.title} score={part.score} reason={part.reason} compact />)}
-          </div>
-        </section>
-
-        <section className="ai-grid">
-          <div className="ai-card span-6">
-            <SectionTitle icon={<LineChartIcon size={19} />} title={L('comparison')} />
-            <EmptyState title={L('comparison')} text={L('notEnough')} compact />
-          </div>
-          <div className="ai-card span-6" id="ai-prediction">
-            <SectionTitle icon={<TrendingUp size={19} />} title={L('nextMonth')} />
-            <div className="ai-prediction-grid">
-              <Metric label={L('expectedIncome')} value={money(totals.totalIncome)} />
-              <Metric label={L('expectedExpenses')} value={money(Math.round(predictedExpenses))} />
-              <Metric label={L('expectedSavings')} value={money(Math.round(predictedSavings))} />
-              <Metric label={L('expectedInvestment')} value={money(Math.round(recommendedInvestment))} />
-              <Metric label={L('expectedScore')} value={`${predictedScore}/100`} />
-            </div>
-            <p className="ai-plan-summary">{predictionText(lang, money, predictedExpenses, recommendedExpenseLimit)}</p>
-          </div>
-        </section>
+          </section>
+        )}
 
         <section className="ai-card">
           <SectionTitle icon={<Target size={19} />} title={L('goals')} />
@@ -659,16 +676,32 @@ function buildMonthlyData(lang: Lang, totals: FinancialTotals, predictedExpenses
 
 function buildChatAnswer(question: string, lang: Lang, money: (n: number) => string, totals: FinancialTotals, topExpense: { name: string; value: number } | undefined, goal?: GoalRow) {
   const q = question.toLowerCase();
-  if (q.includes('200') || q.includes('وفر') || q.includes('save') || q.includes('économ')) {
-    const topCut = topExpense ? Math.min(200, Math.round(topExpense.value * 0.25)) : Math.min(200, Math.round(totals.totalExpenses * 0.1));
-    if (lang === 'en') return `To save ${money(200)}, reduce ${topExpense?.name || 'expenses'} by ${money(topCut)} and move ${money(200 - topCut)} from flexible spending to savings. Your current expenses are ${money(totals.totalExpenses)}.`;
-    if (lang === 'fr') return `Pour économiser ${money(200)}, réduisez ${topExpense?.name || 'les dépenses'} de ${money(topCut)} et transférez ${money(200 - topCut)} vers l'épargne. Vos dépenses actuelles sont ${money(totals.totalExpenses)}.`;
-    return `عشان توفر ${money(200)}، خفّض ${topExpense?.name || 'المصروفات'} بقيمة ${money(topCut)} وحوّل ${money(200 - topCut)} من الصرف المرن إلى الادخار. مصروفاتك الحالية ${money(totals.totalExpenses)}.`;
+  const hasFinancialData = totals.totalIncome > 0 || totals.totalExpenses > 0 || totals.totalSavings > 0 || totals.totalInvestments > 0;
+  if (!hasFinancialData) {
+    if (lang === 'en') return 'Add income, expenses, savings, or investments first so the advisor can answer from real data.';
+    if (lang === 'fr') return 'Ajoutez d’abord revenus, dépenses, épargne ou investissements pour que le conseiller réponde à partir de données réelles.';
+    return 'أضف الدخل أو المصروفات أو المدخرات أو الاستثمارات أولاً حتى يجيب المستشار من بيانات حقيقية.';
   }
-  if (q.includes('70') || q.includes('20') || q.includes('10')) {
-    if (lang === 'en') return `70/20/10 plan from income ${money(totals.totalIncome)}: expenses ${money(totals.totalIncome * 0.7)}, savings ${money(totals.totalIncome * 0.2)}, investments ${money(totals.totalIncome * 0.1)}. Current expenses are ${money(totals.totalExpenses)}.`;
-    if (lang === 'fr') return `Plan 70/20/10 sur ${money(totals.totalIncome)}: dépenses ${money(totals.totalIncome * 0.7)}, épargne ${money(totals.totalIncome * 0.2)}, investissement ${money(totals.totalIncome * 0.1)}. Dépenses actuelles: ${money(totals.totalExpenses)}.`;
-    return `خطة 70/20/10 على دخل ${money(totals.totalIncome)}: مصروفات ${money(totals.totalIncome * 0.7)}، ادخار ${money(totals.totalIncome * 0.2)}، استثمار ${money(totals.totalIncome * 0.1)}. مصروفاتك الحالية ${money(totals.totalExpenses)}.`;
+  if (q.includes('وفر') || q.includes('save') || q.includes('économ') || q.includes('savings') || q.includes('épargne') || q.includes('ادخار')) {
+    const target = Math.round(topExpense ? topExpense.value * 0.25 : totals.totalExpenses * 0.1);
+    if (target <= 0) {
+      if (lang === 'en') return 'Add expense records first so I can identify a real category to reduce.';
+      if (lang === 'fr') return 'Ajoutez d’abord des dépenses pour identifier une catégorie réelle à réduire.';
+      return 'أضف سجلات المصروفات أولاً حتى أحدد تصنيفاً حقيقياً يمكن تخفيضه.';
+    }
+    if (lang === 'en') return `Based on your current expenses, reduce ${topExpense?.name || 'expenses'} by ${money(target)} and move that amount to savings. Your current expenses are ${money(totals.totalExpenses)}.`;
+    if (lang === 'fr') return `Selon vos dépenses actuelles, réduisez ${topExpense?.name || 'les dépenses'} de ${money(target)} et transférez ce montant vers l’épargne. Vos dépenses actuelles sont ${money(totals.totalExpenses)}.`;
+    return `حسب مصروفاتك الحالية، خفّض ${topExpense?.name || 'المصروفات'} بقيمة ${money(target)} وحوّل هذا المبلغ إلى الادخار. مصروفاتك الحالية ${money(totals.totalExpenses)}.`;
+  }
+  if (q.includes('plan') || q.includes('خطة')) {
+    if (totals.totalIncome <= 0) {
+      if (lang === 'en') return 'Add income first so the plan can be calculated from your real monthly income.';
+      if (lang === 'fr') return 'Ajoutez d’abord vos revenus afin que le plan soit calculé à partir de vos revenus mensuels réels.';
+      return 'أضف الدخل أولاً حتى تُحسب الخطة من دخلك الشهري الحقيقي.';
+    }
+    if (lang === 'en') return `Plan from your current income ${money(totals.totalIncome)}: keep expenses near ${money(totals.totalIncome * 0.65)}, savings near ${money(totals.totalIncome * 0.2)}, and investments near ${money(totals.totalIncome * 0.1)}. Current expenses are ${money(totals.totalExpenses)}.`;
+    if (lang === 'fr') return `Plan à partir de vos revenus actuels ${money(totals.totalIncome)} : gardez les dépenses autour de ${money(totals.totalIncome * 0.65)}, l’épargne autour de ${money(totals.totalIncome * 0.2)} et les investissements autour de ${money(totals.totalIncome * 0.1)}. Dépenses actuelles : ${money(totals.totalExpenses)}.`;
+    return `خطة من دخلك الحالي ${money(totals.totalIncome)}: اجعل المصروفات حول ${money(totals.totalIncome * 0.65)}، والادخار حول ${money(totals.totalIncome * 0.2)}، والاستثمار حول ${money(totals.totalIncome * 0.1)}. مصروفاتك الحالية ${money(totals.totalExpenses)}.`;
   }
   if (q.includes('هدف') || q.includes('goal') || q.includes('objectif')) {
     if (!goal) return lang === 'en' ? 'Add a financial goal first so I can calculate the remaining amount and monthly requirement.' : lang === 'fr' ? "Ajoutez d'abord un objectif pour calculer le reste et l'effort mensuel." : 'أضف هدف مالي أولاً حتى أحسب المتبقي والمبلغ الشهري المطلوب.';
@@ -678,6 +711,11 @@ function buildChatAnswer(question: string, lang: Lang, money: (n: number) => str
     if (lang === 'en') return `${goal.name}: remaining ${money(remaining)}. ${months > 0 ? `You need ${money(Math.round(required))} monthly for ${months} months.` : `At ${money(goal.monthly)} monthly, estimated completion is ${goal.monthly > 0 ? Math.ceil(remaining / goal.monthly) : 0} months.`}`;
     if (lang === 'fr') return `${goal.name}: il reste ${money(remaining)}. ${months > 0 ? `Il faut ${money(Math.round(required))} par mois pendant ${months} mois.` : `Avec ${money(goal.monthly)} par mois, durée estimée: ${goal.monthly > 0 ? Math.ceil(remaining / goal.monthly) : 0} mois.`}`;
     return `${goal.name}: المتبقي ${money(remaining)}. ${months > 0 ? `تحتاج ${money(Math.round(required))} شهرياً لمدة ${months} شهر.` : `على مساهمة ${money(goal.monthly)} شهرياً، المدة المتوقعة ${goal.monthly > 0 ? Math.ceil(remaining / goal.monthly) : 0} شهر.`}`;
+  }
+  if (totals.totalIncome <= 0) {
+    if (lang === 'en') return `Based on your data, expenses are ${money(totals.totalExpenses)}. Add income to calculate ratios and recommended limits.`;
+    if (lang === 'fr') return `Selon vos données, les dépenses sont de ${money(totals.totalExpenses)}. Ajoutez vos revenus pour calculer les ratios et limites recommandées.`;
+    return `حسب بياناتك، المصروفات ${money(totals.totalExpenses)}. أضف الدخل لحساب النسب والحدود المقترحة.`;
   }
   if (lang === 'en') return `Based on your data: income ${money(totals.totalIncome)}, expenses ${money(totals.totalExpenses)}, savings ${money(totals.totalSavings)}, investments ${money(totals.totalInvestments)}. Start by limiting expenses to ${money(totals.totalIncome * 0.65)}.`;
   if (lang === 'fr') return `Selon vos données: revenus ${money(totals.totalIncome)}, dépenses ${money(totals.totalExpenses)}, épargne ${money(totals.totalSavings)}, investissements ${money(totals.totalInvestments)}. Commencez par limiter les dépenses à ${money(totals.totalIncome * 0.65)}.`;

@@ -150,11 +150,20 @@ function normalizeStored(row: StoredNotificationRow): SmartNotification {
   };
 }
 
+function formatLocalDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function toDateKey(value?: string | null) {
   if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
-  return date.toISOString().slice(0, 10);
+  const raw = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw.slice(0, 10);
+  return formatLocalDateKey(date);
 }
 
 function isActive(notice: SmartNotification) {
@@ -217,7 +226,7 @@ export default function FinancialTodayPage() {
     };
   }, [lang, user]);
 
-  const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const todayKey = useMemo(() => formatLocalDateKey(new Date()), []);
   const groups = useMemo(() => {
     const dueOrLate = (notice: SmartNotification) => notice.dueDate && toDateKey(notice.dueDate) <= todayKey;
     const dueToday = notifications.filter(notice => toDateKey(notice.dueDate) === todayKey);

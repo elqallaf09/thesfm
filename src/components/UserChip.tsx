@@ -140,11 +140,11 @@ export function UserChip({ displayName }: { displayName?: string }) {
         .sfm-user-chevron{color:rgba(255,255,255,.48);transition:transform .18s ease;flex:0 0 auto}
         .sfm-user-chip[aria-expanded="true"] .sfm-user-chevron{transform:rotate(180deg)}
         .sfm-user-menu{background:linear-gradient(180deg,var(--sfm-card),var(--sfm-light-card));border:1px solid rgba(167,243,240,.24);border-radius:16px;box-shadow:0 22px 55px rgba(3,18,37,.28);padding:7px;animation:sfmUserMenuIn .16s ease-out;font-family:Tajawal,Arial,sans-serif}
-        .sfm-user-menu-item{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:12px;background:transparent;color:#3B2618;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;text-align:start;transition:background .16s ease,color .16s ease,transform .16s ease}
-        .sfm-user-menu-item:hover,.sfm-user-menu-item:focus-visible{background:rgba(167,243,240,.18);color:var(--sfm-foreground);outline:none}
+        .sfm-user-menu-item{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:12px;background:transparent;color:var(--sfm-primary-dark);font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;text-align:start;transition:background .16s ease,color .16s ease,transform .16s ease}
+        .sfm-user-menu-item:hover,.sfm-user-menu-item:focus-visible{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}
         .sfm-user-menu-item:active{transform:translateY(1px)}
         .sfm-user-menu-item svg{color:var(--sfm-muted);flex:0 0 auto}
-        .sfm-user-menu-item.danger{color:#8B1E16}
+        .sfm-user-menu-item.danger{color:#B91C1C}
         .sfm-user-menu-item.danger:hover,.sfm-user-menu-item.danger:focus-visible{background:rgba(185,28,28,.10);color:#B91C1C}
         .sfm-user-menu-item.danger svg{color:#B91C1C}
         @keyframes sfmUserMenuIn{from{opacity:0;transform:translateY(-5px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}

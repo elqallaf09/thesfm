@@ -176,8 +176,8 @@ export default function MarketAnalysisPage() {
   const [notice, setNotice] = useState('');
   const [serviceState, setServiceState] = useState<MarketServiceState>('checking');
   const [alertType, setAlertType] = useState<AlertType>('above');
-  const [alertThreshold, setAlertThreshold] = useState('200');
-  const [whatIfAmount, setWhatIfAmount] = useState('1000');
+  const [alertThreshold, setAlertThreshold] = useState('');
+  const [whatIfAmount, setWhatIfAmount] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<MarketTab>('analyze');
   const [lastUpdated, setLastUpdated] = useState('');
@@ -548,6 +548,7 @@ export default function MarketAnalysisPage() {
   const exposure = portfolioMatch && portfolioTotal > 0 ? (portfolioMatch.currentValue / portfolioTotal) * 100 : 0;
   const concentrationRisk = exposure >= 35 ? t('market_concentration_high') : exposure >= 20 ? t('market_concentration_medium') : t('market_concentration_low');
   const whatIfValue = parseNumber(whatIfAmount);
+  const hasWhatIfAmount = whatIfValue > 0;
   const estimatedUnits = selected?.latestPrice ? whatIfValue / selected.latestPrice : 0;
   const decision = useMemo(() => {
     if (!selected) return null;
@@ -833,15 +834,15 @@ export default function MarketAnalysisPage() {
                 </div>
                 <label className="tool-input">
                   <span>{t('market_amount')}</span>
-                  <input value={whatIfAmount} inputMode="decimal" onChange={event => setWhatIfAmount(event.target.value)} />
+                  <input value={whatIfAmount} inputMode="decimal" onChange={event => setWhatIfAmount(event.target.value)} placeholder={t('market_amount')} />
                 </label>
                 <div className="scenario-grid">
-                  <MarketMetric label={t('market_estimated_units')} value={estimatedUnits.toFixed(4)} />
+                  <MarketMetric label={t('market_estimated_units')} value={hasWhatIfAmount ? estimatedUnits.toFixed(4) : '--'} />
                   {[5, -5, 10, -10].map(change => (
                     <MarketMetric
                       key={change}
                       label={change > 0 ? `${t('market_positive_scenario')} ${change}%` : `${t('market_negative_scenario')} ${change}%`}
-                      value={money((whatIfValue * change) / 100)}
+                      value={hasWhatIfAmount ? money((whatIfValue * change) / 100) : '--'}
                     />
                   ))}
                 </div>

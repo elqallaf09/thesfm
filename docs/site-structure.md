@@ -51,6 +51,6 @@ This map documents the cleaned product organization. The public landing page sta
 
 ## Simple / Professional Mode
 
-- Simple mode keeps the core orientation and personal finance pages visible: Dashboard, Command Center, Financial Today, Notifications, Reports Center, Income, Expenses, Goals, Profile, and Logout.
+- Simple mode keeps the core orientation and personal finance pages visible: Dashboard, Command Center, Financial Today, Notifications, Reports Center, Income, Expenses, Goals, Profile, Settings, and Logout.
 - Professional mode shows every page and advanced tool.
 - The preference is stored locally immediately and can persist to `public.profiles.view_mode` after the migration is applied.

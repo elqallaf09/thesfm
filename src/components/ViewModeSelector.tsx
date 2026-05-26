@@ -13,8 +13,8 @@ type ViewModeSelectorProps = {
 const COPY = {
   ar: {
     label: 'وضع العرض',
-    simple: 'بسيط',
-    professional: 'احترافي',
+    simple: 'الوضع البسيط',
+    professional: 'الوضع الاحترافي',
     simpleHint: 'يعرض الصفحات الأساسية فقط.',
     professionalHint: 'يعرض كل أدوات THE SFM.',
   },
@@ -145,4 +145,3 @@ export function ViewModeSelector({
 }
 
 export default ViewModeSelector;
-
