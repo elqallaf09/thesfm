@@ -31,6 +31,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useSmartTasks } from '@/hooks/useSmartTasks';
 import { supabase } from '@/integrations/supabase/client';
 import { loadUserDataTables, safeDivide, sumAmounts } from '@/lib/data/financeData';
 import { formatDate } from '@/lib/formatDate';
@@ -176,6 +177,9 @@ const TEXT = {
     lastGeneratedUnavailable: 'لا توجد تقارير محفوظة حالياً.',
     openReportsCenter: 'فتح مركز التقارير',
     smartNotifications: 'الإشعارات الذكية',
+    smartTasks: 'مركز المهام',
+    viewAllTasks: 'عرض كل المهام',
+    noTasks: 'لا توجد مهام حالياً.',
     unread: 'غير مقروءة',
     highPriority: 'عالية الأهمية',
     dueToday: 'مستحقة اليوم',
@@ -261,6 +265,9 @@ const TEXT = {
     lastGeneratedUnavailable: 'No saved reports yet.',
     openReportsCenter: 'Open Reports Center',
     smartNotifications: 'Smart Notifications',
+    smartTasks: 'Tasks Center',
+    viewAllTasks: 'View all tasks',
+    noTasks: 'No tasks right now.',
     unread: 'Unread',
     highPriority: 'High Priority',
     dueToday: 'Due Today',
@@ -346,6 +353,9 @@ const TEXT = {
     lastGeneratedUnavailable: 'Aucun rapport enregistré pour le moment.',
     openReportsCenter: 'Ouvrir le Centre des rapports',
     smartNotifications: 'Notifications intelligentes',
+    smartTasks: 'Centre des tâches',
+    viewAllTasks: 'Voir toutes les tâches',
+    noTasks: 'Aucune tâche pour le moment.',
     unread: 'Non lues',
     highPriority: 'Haute priorité',
     dueToday: 'À échéance aujourd’hui',
@@ -550,6 +560,7 @@ export default function ExecutiveDashboardPage() {
   const { lang, dir } = useLanguage();
   const locale: Lang = lang === 'en' || lang === 'fr' ? lang : 'ar';
   const text = TEXT[locale];
+  const { tasks: dashboardTasks, loading: tasksLoading } = useSmartTasks();
 
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [records, setRecords] = useState<DashboardRecords>(EMPTY_RECORDS);
@@ -799,6 +810,7 @@ export default function ExecutiveDashboardPage() {
   );
 
   const hasErrors = Object.keys(errors).length > 0;
+  const topOpenTasks = dashboardTasks.filter(task => task.status === 'open').slice(0, 3);
 
   if (loading || isLoadingData) {
     return (
@@ -829,6 +841,7 @@ export default function ExecutiveDashboardPage() {
             <p>{text.pageSubtitle}</p>
           </div>
           <div className="hero-actions">
+            <ActionLink href="/tasks">{text.viewAllTasks}</ActionLink>
             <ActionLink href="/reports-center">{text.openReportsCenter}</ActionLink>
             <ActionLink href="/notifications">{text.viewAllNotifications}</ActionLink>
           </div>
@@ -884,6 +897,24 @@ export default function ExecutiveDashboardPage() {
               </div>
             ) : (
               <EmptyState title={text.noUrgentActions} />
+            )}
+          </CardShell>
+
+          <CardShell title={text.smartTasks} icon={<ClipboardList size={20} />} action={<ActionLink href="/tasks">{text.viewAllTasks}</ActionLink>}>
+            {tasksLoading ? (
+              <EmptyState title={text.loading} />
+            ) : topOpenTasks.length === 0 ? (
+              <EmptyState title={text.noTasks} />
+            ) : (
+              <div className="task-list">
+                {topOpenTasks.map(task => (
+                  <Link href={task.actionUrl || '/tasks'} key={task.id}>
+                    <strong>{task.title}</strong>
+                    <span>{task.description || text.openPage}</span>
+                    {task.dueDate ? <em>{formatDate(task.dueDate, locale)}</em> : null}
+                  </Link>
+                ))}
+              </div>
             )}
           </CardShell>
 
@@ -1019,6 +1050,10 @@ export default function ExecutiveDashboardPage() {
         </section>
 
         <section className="quick-links" aria-label={text.openPage}>
+          <ActionLink href="/tasks">
+            <ClipboardList size={16} aria-hidden="true" />
+            {text.smartTasks}
+          </ActionLink>
           <ActionLink href="/savings">
             <PiggyBank size={16} aria-hidden="true" />
             {text.savings}
@@ -1408,6 +1443,12 @@ const dashboardStyles = `
     margin-top: 12px;
   }
 
+  .task-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .task-list a,
   .notification-list a {
     display: block;
     padding: 12px;
@@ -1418,16 +1459,22 @@ const dashboardStyles = `
     border: 1px solid rgba(29, 140, 255, 0.12);
   }
 
+  .task-list strong,
+  .task-list span,
+  .task-list em,
   .notification-list strong,
   .notification-list span {
     display: block;
     overflow-wrap: anywhere;
   }
 
+  .task-list span,
+  .task-list em,
   .notification-list span {
     margin-top: 4px;
     color: var(--sfm-muted);
     line-height: 1.55;
+    font-style: normal;
   }
 
   .quick-links {

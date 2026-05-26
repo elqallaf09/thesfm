@@ -8,6 +8,7 @@ This map documents the cleaned product organization. The public landing page sta
 | `/dashboard` | لوحة القيادة | Executive Dashboard | Tableau de bord exécutif | Executive overview only, based on real user data. | الرئيسية | `/command-center`, `/today`, `/reports-center`, `/notifications` |
 | `/command-center` | مركز القيادة | Command Center | Centre de commande | Clean gateway to the main worlds of THE SFM. | الرئيسية | `/dashboard`, `/today`, `/site-map` |
 | `/today` | اليوم المالي | Financial Today | Aujourd’hui financier | Daily focus page for real due items and alerts. | الرئيسية | `/notifications`, `/income`, `/projects`, `/zakat` |
+| `/tasks` | مركز المهام | Tasks Center | Centre des tâches | Unified action list generated from real setup gaps, due dates, reminders, reports, and project tasks. | الرئيسية | `/dashboard`, `/today`, `/command-center`, `/notifications` |
 | `/notifications` | الإشعارات الذكية | Smart Notifications | Notifications intelligentes | Unified notification center from stored and dynamic real-data alerts. | الرئيسية | `/today`, `/projects`, `/zakat`, `/reports-center` |
 | `/reports-center` | مركز التقارير | Reports Center | Centre des rapports | Report readiness, preview, and export hub. | الرئيسية | `/reports`, `/income`, `/expenses`, `/projects` |
 | `/reports` | التقارير | Reports | Rapports | Legacy reports page with a shortcut to Reports Center. | Related | `/reports-center` |
@@ -41,7 +42,7 @@ This map documents the cleaned product organization. The public landing page sta
 
 ## Sidebar Groups
 
-- الرئيسية: dashboard, command center, financial today, notifications, reports center.
+- الرئيسية: dashboard, command center, financial today, tasks center, notifications, reports center.
 - المال الشخصي: income, expenses, savings, goals, zakat.
 - الاستثمار والسوق: investments, market analysis, watchlist, market alerts.
 - الأعمال والمشاريع: projects, business hub, pitch decks, documents.
@@ -51,6 +52,6 @@ This map documents the cleaned product organization. The public landing page sta
 
 ## Simple / Professional Mode
 
-- Simple mode keeps the core orientation and personal finance pages visible: Dashboard, Command Center, Financial Today, Notifications, Reports Center, Income, Expenses, Goals, Profile, Settings, and Logout.
+- Simple mode keeps the core orientation and personal finance pages visible: Dashboard, Command Center, Financial Today, Tasks Center, Notifications, Reports Center, Income, Expenses, Goals, Profile, Settings, and Logout.
 - Professional mode shows every page and advanced tool.
 - The preference is stored locally immediately and can persist to `public.profiles.view_mode` after the migration is applied.

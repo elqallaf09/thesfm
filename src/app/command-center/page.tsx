@@ -7,6 +7,7 @@ import {
   Bell,
   Bot,
   BriefcaseBusiness,
+  ClipboardList,
   FileText,
   HeartHandshake,
   Landmark,
@@ -25,6 +26,7 @@ import { EmptyState } from '@/components/layout/EmptyState';
 import { AccountCompletionCard } from '@/components/account/AccountCompletionCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useSmartTasks } from '@/hooks/useSmartTasks';
 import { supabase } from '@/integrations/supabase/client';
 import { loadUserDataTables } from '@/lib/data/financeData';
 
@@ -78,6 +80,8 @@ const TEXT = {
     account: 'اكتمال الحساب',
     worlds: 'العوالم النشطة',
     today: 'إجراءات اليوم',
+    tasks: 'مركز المهام',
+    openTasks: 'مهام مفتوحة',
     noUrgent: 'لا توجد إجراءات مهمة اليوم.',
     personalFinance: 'مالي الشخصي',
     personalFinanceDesc: 'الدخل، المصروفات، الأهداف، والمدخرات في مساحة واحدة.',
@@ -105,6 +109,8 @@ const TEXT = {
     account: 'Account completion',
     worlds: 'Active worlds',
     today: 'Today’s actions',
+    tasks: 'Tasks Center',
+    openTasks: 'Open tasks',
     noUrgent: 'No important actions today.',
     personalFinance: 'Personal Finance',
     personalFinanceDesc: 'Income, expenses, goals, and savings in one clean area.',
@@ -132,6 +138,8 @@ const TEXT = {
     account: 'Complétion du compte',
     worlds: 'Univers actifs',
     today: 'Actions du jour',
+    tasks: 'Centre des tâches',
+    openTasks: 'Tâches ouvertes',
     noUrgent: 'Aucune action importante aujourd’hui.',
     personalFinance: 'Finances personnelles',
     personalFinanceDesc: 'Revenus, dépenses, objectifs et épargne dans un espace clair.',
@@ -164,6 +172,7 @@ export default function CommandCenterPage() {
   const { user } = useAuth();
   const { lang, dir } = useLanguage();
   const text = TEXT[(lang as Lang) || 'ar'];
+  const { tasks, loading: tasksLoading } = useSmartTasks();
   const [records, setRecords] = useState<Records>(EMPTY_RECORDS);
   const [loading, setLoading] = useState(true);
 
@@ -205,6 +214,7 @@ export default function CommandCenterPage() {
       highPriority,
     };
   }, [records]);
+  const openTaskCount = tasksLoading ? 0 : tasks.filter(task => task.status === 'open').length;
 
   const worlds = [
     {
@@ -265,7 +275,12 @@ export default function CommandCenterPage() {
           title={text.title}
           subtitle={text.subtitle}
           icon={<Landmark size={28} />}
-          actions={<Link className="sfm-primary-link" href="/today">{text.today}</Link>}
+          actions={(
+            <>
+              <Link className="sfm-secondary-link" href="/tasks">{text.tasks}</Link>
+              <Link className="sfm-primary-link" href="/today">{text.today}</Link>
+            </>
+          )}
         />
 
         {loading ? (
@@ -281,6 +296,9 @@ export default function CommandCenterPage() {
               </AppCard>
               <AppCard>
                 <Metric label={text.notifications} value={`${summary.highPriority}`} hint={summary.highPriority > 0 ? text.ready : text.noUrgent} icon={<Bell size={20} />} />
+              </AppCard>
+              <AppCard>
+                <Metric label={text.openTasks} value={tasksLoading ? '...' : `${openTaskCount}`} hint={openTaskCount > 0 ? text.ready : text.noUrgent} icon={<ClipboardList size={20} />} />
               </AppCard>
             </StatGrid>
 

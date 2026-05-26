@@ -30,6 +30,7 @@ const TEXT = {
     dashboardDesc: 'نظرة تنفيذية مختصرة على بياناتك الحقيقية.',
     commandDesc: 'بوابة منظمة إلى العوالم الرئيسية في التطبيق.',
     todayDesc: 'ما يحتاج انتباهك اليوم فقط.',
+    tasksDesc: 'مهام عملية من بياناتك الفعلية وما يحتاج إكمالاً أو مراجعة.',
     notificationsDesc: 'تنبيهات ذكية من بياناتك وتنبيهاتك الفعلية.',
     reportsDesc: 'جاهزية التقارير والملفات القابلة للتصدير.',
     incomeDesc: 'إدارة مصادر الدخل.',
@@ -64,6 +65,7 @@ const TEXT = {
     dashboardDesc: 'A concise executive overview of your real data.',
     commandDesc: 'A clean gateway into the main worlds of the app.',
     todayDesc: 'Only what needs attention today.',
+    tasksDesc: 'Actionable tasks from your real data and items needing completion or review.',
     notificationsDesc: 'Smart alerts from your real data and saved alerts.',
     reportsDesc: 'Report readiness and exportable files.',
     incomeDesc: 'Manage income sources.',
@@ -98,6 +100,7 @@ const TEXT = {
     dashboardDesc: 'Vue exécutive concise de vos données réelles.',
     commandDesc: 'Passerelle claire vers les principaux univers de l’application.',
     todayDesc: 'Seulement ce qui demande votre attention aujourd’hui.',
+    tasksDesc: 'Tâches actionnables issues de vos données réelles et des éléments à compléter.',
     notificationsDesc: 'Alertes intelligentes issues de vos données réelles.',
     reportsDesc: 'Préparation des rapports et fichiers exportables.',
     incomeDesc: 'Gérer les sources de revenus.',
@@ -123,6 +126,7 @@ const PURPOSE_KEY: Record<string, keyof typeof TEXT.ar> = {
   home: 'dashboardDesc',
   'command-center': 'commandDesc',
   today: 'todayDesc',
+  tasks: 'tasksDesc',
   notif: 'notificationsDesc',
   'reports-center': 'reportsDesc',
   income: 'incomeDesc',
@@ -308,4 +312,3 @@ export default function SiteMapPage() {
     </div>
   );
 }
-

@@ -67,6 +67,7 @@ export const TR: Record<string, TranslationEntry> = {
   nav_home:       { ar:'لوحة القيادة', en:'Executive Dashboard', fr:'Tableau de bord exécutif' },
   nav_command_center: { ar:'مركز القيادة', en:'Command Center', fr:'Centre de commande' },
   nav_today: { ar:'اليوم المالي', en:'Financial Today', fr:'Aujourd’hui financier' },
+  nav_tasks: { ar:'مركز المهام', en:'Tasks Center', fr:'Centre des tâches' },
   nav_expenses:   { ar:'المصاريف', en:'Expenses', fr:'Dépenses' },
   nav_income:     { ar:'الدخل', en:'Income', fr:'Revenus' },
   nav_invest:     { ar:'الاستثمارات', en:'Investments', fr:'Investissements' },

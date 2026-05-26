@@ -8,6 +8,7 @@ import {
   Bell,
   CalendarDays,
   CheckCircle2,
+  ClipboardList,
   Clock3,
   FileText,
   HandHeart,
@@ -25,6 +26,7 @@ import { AppCard } from '@/components/layout/AppCard';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useSmartTasks, type SmartTask } from '@/hooks/useSmartTasks';
 import { supabase } from '@/integrations/supabase/client';
 import { loadUserDataTables } from '@/lib/data/financeData';
 import { formatDate } from '@/lib/formatDate';
@@ -87,6 +89,8 @@ const TEXT = {
     zakatCharity: 'تذكيرات الزكاة والخير',
     reportsReady: 'تقارير جاهزة',
     highPriority: 'إشعارات عالية الأهمية',
+    tasks: 'مهام تحتاج إجراء',
+    noTasks: 'لا توجد مهام مهمة اليوم.',
     dueToday: 'مستحق اليوم',
     open: 'عرض',
     viewAll: 'عرض الكل',
@@ -105,6 +109,8 @@ const TEXT = {
     zakatCharity: 'Zakat & charity reminders',
     reportsReady: 'Reports ready',
     highPriority: 'High priority notifications',
+    tasks: 'Tasks needing action',
+    noTasks: 'No important tasks today.',
     dueToday: 'Due today',
     open: 'View',
     viewAll: 'View all',
@@ -123,6 +129,8 @@ const TEXT = {
     zakatCharity: 'Rappels zakat et charité',
     reportsReady: 'Rapports prêts',
     highPriority: 'Notifications haute priorité',
+    tasks: 'Tâches nécessitant une action',
+    noTasks: 'Aucune tâche importante aujourd’hui.',
     dueToday: 'À échéance aujourd’hui',
     open: 'Voir',
     viewAll: 'Tout afficher',
@@ -179,6 +187,7 @@ export default function FinancialTodayPage() {
   const { lang, dir } = useLanguage();
   const text = TEXT[(lang as Lang) || 'ar'];
   const locale: Lang = lang === 'en' || lang === 'fr' ? lang : 'ar';
+  const { tasks } = useSmartTasks();
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState<SmartNotification[]>([]);
 
@@ -249,9 +258,11 @@ export default function FinancialTodayPage() {
       topAction,
     };
   }, [notifications, todayKey]);
+  const taskFocus = useMemo(() => tasks.filter(task => task.status === 'open' && (task.priority === 'urgent' || (task.dueDate && toDateKey(task.dueDate) <= todayKey))).slice(0, 5), [tasks, todayKey]);
 
   const hasAnyAction = Boolean(
     groups.topAction
+      || taskFocus.length
       || groups.dueIncome.length
       || groups.pendingExpenses.length
       || groups.projectTasks.length
@@ -274,7 +285,12 @@ export default function FinancialTodayPage() {
           title={text.title}
           subtitle={text.subtitle}
           icon={<CalendarDays size={28} />}
-          actions={<Link className="sfm-primary-link" href="/notifications">{text.viewAll}</Link>}
+          actions={(
+            <>
+              <Link className="sfm-secondary-link" href="/tasks">{text.tasks}</Link>
+              <Link className="sfm-primary-link" href="/notifications">{text.viewAll}</Link>
+            </>
+          )}
         />
 
         {loading ? (
@@ -290,6 +306,7 @@ export default function FinancialTodayPage() {
             <StatGrid>
               <AppCard><TodayMetric label={text.dueToday} value={`${groups.dueToday.length}`} icon={<Clock3 size={20} />} /></AppCard>
               <AppCard><TodayMetric label={text.highPriority} value={`${groups.highPriority.length}`} icon={<AlertTriangle size={20} />} /></AppCard>
+              <AppCard><TodayMetric label={text.tasks} value={`${taskFocus.length}`} icon={<ClipboardList size={20} />} /></AppCard>
               <AppCard><TodayMetric label={text.reportsReady} value={`${groups.reportsReady.length}`} icon={<FileText size={20} />} /></AppCard>
             </StatGrid>
 
@@ -306,6 +323,7 @@ export default function FinancialTodayPage() {
             ) : null}
 
             <CardsGrid>
+              <TodayTaskSection title={text.tasks} icon={<ClipboardList size={20} />} items={taskFocus} empty={text.noTasks} actionLabel={text.open} locale={locale} />
               <TodaySection title={text.dueIncome} icon={<Wallet size={20} />} items={groups.dueIncome} empty={text.noActions} actionLabel={text.open} locale={locale} />
               <TodaySection title={text.pendingExpenses} icon={<ReceiptText size={20} />} items={groups.pendingExpenses} empty={text.noActions} actionLabel={text.open} locale={locale} />
               <TodaySection title={text.projectTasks} icon={<BriefcaseIcon />} items={groups.projectTasks} empty={text.noActions} actionLabel={text.open} locale={locale} />
@@ -334,7 +352,8 @@ export default function FinancialTodayPage() {
           align-items: center;
           gap: 10px;
         }
-        .sfm-primary-link {
+        .sfm-primary-link,
+        .sfm-secondary-link {
           min-height: 42px;
           display: inline-flex;
           align-items: center;
@@ -343,10 +362,17 @@ export default function FinancialTodayPage() {
           padding: 0 16px;
           text-decoration: none;
           font: 950 13px Tajawal, Arial, sans-serif;
+          white-space: normal;
+        }
+        .sfm-primary-link {
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
           color: #FFFFFF;
           box-shadow: 0 12px 24px rgba(29, 140, 255, .2);
-          white-space: normal;
+        }
+        .sfm-secondary-link {
+          border: 1px solid rgba(29, 140, 255, .18);
+          background: #FFFFFF;
+          color: var(--sfm-primary-dark);
         }
         .today-top-action {
           display: flex;
@@ -437,6 +463,126 @@ function TodayMetric({ label, value, icon }: { label: string; value: string; ico
         }
       `}</style>
     </div>
+  );
+}
+
+function TodayTaskSection({
+  title,
+  icon,
+  items,
+  empty,
+  actionLabel,
+  locale,
+}: {
+  title: string;
+  icon: ReactNode;
+  items: SmartTask[];
+  empty: string;
+  actionLabel: string;
+  locale: Lang;
+}) {
+  return (
+    <AppCard className="today-section-card">
+      <header>
+        <span aria-hidden="true">{icon}</span>
+        <h2>{title}</h2>
+      </header>
+      {items.length === 0 ? (
+        <p className="today-section-empty">{empty}</p>
+      ) : (
+        <div className="today-section-list">
+          {items.map(item => (
+            <Link key={item.id} href={item.actionUrl || '/tasks'}>
+              <div>
+                <strong>{item.title}</strong>
+                {item.description ? <p>{item.description}</p> : null}
+                {item.dueDate ? <em>{formatDate(item.dueDate, locale)}</em> : null}
+              </div>
+              <span>{actionLabel}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+      <style jsx>{`
+        :global(.today-section-card) {
+          display: grid;
+          gap: 14px;
+        }
+        header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+        }
+        header span {
+          width: 38px;
+          height: 38px;
+          display: grid;
+          place-items: center;
+          flex: 0 0 38px;
+          border-radius: 13px;
+          background: rgba(29, 140, 255, .10);
+          color: var(--sfm-primary);
+        }
+        header h2 {
+          margin: 0;
+          color: var(--sfm-primary-dark);
+          font-size: 18px;
+          min-width: 0;
+        }
+        .today-section-empty {
+          margin: 0;
+          color: var(--sfm-muted);
+          line-height: 1.65;
+        }
+        .today-section-list {
+          display: grid;
+          gap: 8px;
+        }
+        .today-section-list a {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 10px;
+          align-items: center;
+          min-width: 0;
+          padding: 10px;
+          border-radius: 14px;
+          border: 1px solid rgba(29, 140, 255, .12);
+          background: #F8FBFF;
+          color: var(--sfm-foreground);
+          text-decoration: none;
+        }
+        .today-section-list strong,
+        .today-section-list p,
+        .today-section-list em {
+          display: block;
+          margin: 0;
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+        .today-section-list strong {
+          color: var(--sfm-primary-dark);
+          font-size: 13px;
+        }
+        .today-section-list p,
+        .today-section-list em {
+          color: var(--sfm-muted);
+          font-size: 12px;
+          line-height: 1.5;
+          font-style: normal;
+        }
+        .today-section-list a > span {
+          color: var(--sfm-primary);
+          font-size: 12px;
+          font-weight: 950;
+        }
+        @media (max-width: 640px) {
+          .today-section-list a {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+    </AppCard>
   );
 }
 
