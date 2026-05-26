@@ -147,16 +147,18 @@ export function CurrencySelect({ value = 'KWD', onChange, lang, label, ariaLabel
       )}
       <style jsx>{`
         .currency-select-root{position:relative;display:grid;gap:7px;width:100%;min-width:0}
-        .currency-label{color:var(--sfm-midnight);font-size:13px;font-weight:500}
-        .currency-trigger{width:100%;min-height:46px;border:1px solid rgba(29,140,255,.18);border-radius:12px;background:var(--sfm-background);color:var(--sfm-midnight);padding:0 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;font:600 14px inherit;cursor:pointer;text-align:start}
+        .currency-label{color:var(--sfm-midnight);font-size:13px;font-weight:800}
+        .currency-trigger{width:100%;min-height:46px;border:1px solid rgba(29,140,255,.20);border-radius:12px;background:#FFFFFF;color:var(--sfm-midnight);padding:0 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;font:800 14px inherit;cursor:pointer;text-align:start;transition:border-color .18s ease,box-shadow .18s ease,background .18s ease,transform .18s ease}
         .currency-trigger span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .currency-trigger:focus-visible,.currency-search input:focus{outline:none;box-shadow:0 0 0 3px rgba(29,140,255,.18);border-color:var(--sfm-primary)}
-        .currency-popover{position:absolute;z-index:120;inset-block-start:calc(100% + 8px);inset-inline:0;background:var(--sfm-card);border:1px solid rgba(29,140,255,.2);border-radius:16px;padding:10px;box-shadow:0 18px 42px rgba(3,18,37,.16);max-height:min(360px,70dvh);display:grid;gap:8px}
+        .currency-trigger:hover{border-color:rgba(24,212,212,.40);background:var(--sfm-surface-hover);box-shadow:0 10px 24px rgba(3,18,37,.08);transform:translateY(-1px)}
+        .currency-trigger:focus-visible,.currency-search input:focus{outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.22);border-color:var(--sfm-primary)}
+        .currency-popover{position:absolute;z-index:120;inset-block-start:calc(100% + 8px);inset-inline:0;background:var(--sfm-card);border:1px solid rgba(29,140,255,.22);border-radius:16px;padding:10px;box-shadow:0 18px 42px rgba(3,18,37,.16);max-height:min(360px,70dvh);display:grid;gap:8px}
         .currency-search{height:42px;border:1px solid rgba(29,140,255,.16);border-radius:12px;background:var(--sfm-background);display:flex;align-items:center;gap:8px;padding:0 10px;color:var(--sfm-muted)}
-        .currency-search input{border:0;background:transparent;color:var(--sfm-midnight);width:100%;height:100%;font:500 14px inherit;min-width:0}
+        .currency-search input{border:0;background:transparent;color:var(--sfm-midnight);width:100%;height:100%;font:700 14px inherit;min-width:0}
         .currency-list{display:grid;gap:4px;overflow:auto;max-height:278px;padding-inline-end:2px}
-        .currency-list button{width:100%;border:0;border-radius:11px;background:transparent;color:var(--sfm-midnight);display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:8px;min-height:42px;padding:8px 10px;font:500 13px inherit;cursor:pointer;text-align:start}
-        .currency-list button.active,.currency-list button:hover{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover)}
+        .currency-list button{width:100%;border:1px solid transparent;border-radius:11px;background:transparent;color:var(--sfm-midnight);display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:8px;min-height:42px;padding:8px 10px;font:750 13px inherit;cursor:pointer;text-align:start;transition:background .18s ease,color .18s ease,border-color .18s ease,transform .18s ease}
+        .currency-list button.active,.currency-list button:hover,.currency-list button:focus-visible{background:rgba(29,140,255,.10);border-color:rgba(24,212,212,.24);color:var(--sfm-primary-hover);outline:0;transform:translateY(-1px)}
+        .currency-list button[aria-selected="true"]{background:linear-gradient(135deg,rgba(29,140,255,.14),rgba(24,212,212,.14));border-color:rgba(24,212,212,.32);box-shadow:inset 0 -2px 0 rgba(24,212,212,.55)}
         .currency-code{font-weight:800;color:var(--sfm-midnight)}.currency-symbol{color:var(--sfm-primary);font-weight:800}.currency-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .currency-empty{padding:18px;text-align:center;color:var(--sfm-muted);font-size:13px}
         @media(max-width:680px){.currency-popover{position:fixed;inset-inline:12px;inset-block:auto 12px;max-height:min(460px,76dvh)}}

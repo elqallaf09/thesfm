@@ -11,12 +11,13 @@ const buttonVariants = cva(
       variant: {
         default: "sfm-button-base sfm-button-primary",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.985]",
+          "sfm-button-base sfm-button-danger",
         outline:
           "sfm-button-base sfm-button-secondary",
         secondary:
           "sfm-button-base sfm-button-secondary",
         ghost: "sfm-button-base sfm-button-ghost",
+        success: "sfm-button-base sfm-button-success",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

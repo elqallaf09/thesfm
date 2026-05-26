@@ -48,10 +48,10 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
         .page-section-tabs button {
           flex: 0 0 auto;
           min-height: 42px;
-          border: 1px solid rgba(29, 140, 255, .18);
+          border: 1px solid rgba(29, 140, 255, .20);
           border-radius: 999px;
           background: var(--sfm-card);
-          color: var(--sfm-muted);
+          color: var(--sfm-muted-readable);
           padding: 0 14px;
           display: inline-flex;
           align-items: center;
@@ -59,7 +59,7 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
           gap: 8px;
           font: 950 12px Tajawal, Arial, sans-serif;
           cursor: pointer;
-          transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
+          transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
           white-space: nowrap;
         }
         .page-section-tabs button:hover,
@@ -67,13 +67,15 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
           border-color: rgba(24, 212, 212, .42);
           color: var(--sfm-primary-hover);
           outline: none;
-          box-shadow: 0 0 0 3px rgba(24, 212, 212, .12);
+          background: var(--sfm-surface-hover);
+          box-shadow: 0 0 0 3px rgba(24, 212, 212, .14), 0 10px 24px rgba(3, 18, 37, .08);
+          transform: translateY(-1px);
         }
         .page-section-tabs button.active {
-          background: linear-gradient(135deg, var(--sfm-primary-dark), var(--sfm-midnight));
-          color: var(--sfm-soft-cyan);
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          color: #FFFFFF;
           border-color: rgba(167, 243, 240, .24);
-          box-shadow: 0 10px 24px rgba(3, 18, 37, .12);
+          box-shadow: 0 12px 28px rgba(29, 140, 255, .22), inset 0 -2px 0 rgba(255, 255, 255, .18);
         }
         .page-section-tabs b {
           min-width: 24px;
@@ -85,12 +87,14 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
           line-height: 1;
         }
         .page-section-tabs button.active b {
-          background: rgba(167, 243, 240, .16);
-          color: var(--sfm-soft-cyan);
+          background: rgba(255, 255, 255, .18);
+          color: #FFFFFF;
         }
         .page-section-tabs button:disabled {
-          opacity: .52;
+          opacity: .62;
           cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
         }
       `}</style>
     </nav>

@@ -91,7 +91,7 @@ export function ViewModeSelector({
           line-height: 1.5;
         }
         .dark .sfm-view-mode-head p {
-          color: rgba(234, 246, 255, .62);
+          color: #A7C7E7;
         }
         .sfm-view-mode-options {
           display: grid;
@@ -114,15 +114,25 @@ export function ViewModeSelector({
           color: var(--sfm-primary-dark);
           cursor: pointer;
           font: 950 12px Tajawal, Arial, sans-serif;
-          transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+          transition: background .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
         }
         .dark .sfm-view-mode-options button {
-          color: rgba(234, 246, 255, .76);
+          color: #A7C7E7;
+        }
+        .sfm-view-mode-options button:hover {
+          background: rgba(29, 140, 255, .10);
+          color: var(--sfm-primary-dark);
+          transform: translateY(-1px);
+        }
+        .dark .sfm-view-mode-options button:hover {
+          background: rgba(29, 140, 255, .16);
+          color: #EAF6FF;
         }
         .sfm-view-mode-options button.active {
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
           color: #FFFFFF;
           box-shadow: 0 8px 18px rgba(29, 140, 255, .2);
+          transform: translateY(-1px);
         }
         .sfm-view-mode-options button:focus-visible {
           outline: none;
