@@ -29,18 +29,18 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
   const idx = Math.max(0, LANGS.findIndex(l => l.id === selected));
 
   const track = variant === 'dark' ? 'rgba(255,255,255,0.09)'
-    : variant === 'gold' ? 'rgba(167,243,240,0.14)'
+    : variant === 'gold' ? 'rgba(255,255,255,0.86)'
       : 'rgba(29,140,255,0.10)';
   const pill = variant === 'dark' ? 'rgba(255,255,255,0.90)'
-    : variant === 'gold' ? 'var(--sfm-card)'
+    : variant === 'gold' ? '#FFFFFF'
       : '#FFFFFF';
   const border = variant === 'dark' ? '1px solid rgba(255,255,255,0.12)'
-    : variant === 'gold' ? '1px solid rgba(167,243,240,0.28)'
+    : variant === 'gold' ? '1px solid rgba(29,140,255,0.25)'
       : '1.5px solid var(--sfm-border)';
-  const textActive = variant === 'dark' ? 'var(--sfm-foreground)' : 'var(--sfm-foreground)';
+  const textActive = '#061B33';
   const textIdle = variant === 'dark' ? 'rgba(255,255,255,0.56)'
-    : variant === 'gold' ? 'rgba(234,246,255,0.72)'
-      : 'var(--sfm-muted)';
+    : variant === 'gold' ? 'rgba(11,39,72,0.82)'
+      : '#0B2748';
 
   const h = isCompact ? '26px' : '30px';
   const px = isCompact ? '7px' : '10px';
@@ -48,8 +48,11 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
   const itemMinWidth = isCompact ? 38 : 48;
 
   return (
+    <>
     <div
       dir="ltr"
+      className="sfm-language-switcher"
+      data-variant={variant}
       title={selected === 'ar' ? 'تغيير اللغة' : selected === 'fr' ? 'Changer la langue' : 'Switch language'}
       style={{
         position: 'relative',
@@ -79,7 +82,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           borderRadius: '36px',
           boxShadow: variant === 'dark'
             ? '0 1px 6px rgba(0,0,0,0.25)'
-            : '0 1px 5px rgba(27,36,48,0.12)',
+            : '0 4px 14px rgba(3,18,37,0.12)',
           transform: `translateX(${idx * 100}%)`,
           transition: 'transform 0.22s cubic-bezier(0.4,0,0.2,1)',
           pointerEvents: 'none',
@@ -94,6 +97,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           onClick={() => handleChange(lang.id)}
           aria-label={lang.full}
           aria-pressed={selected === lang.id}
+          className="sfm-lang-option"
           style={{
             position: 'relative',
             zIndex: 2,
@@ -125,6 +129,19 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         </button>
       ))}
     </div>
+    <style jsx>{`
+      .sfm-language-switcher:not([data-variant='dark']) .sfm-lang-option:hover {
+        color: #061B33 !important;
+      }
+      .sfm-language-switcher[data-variant='dark'] .sfm-lang-option:hover {
+        color: #FFFFFF !important;
+      }
+      .sfm-lang-option:focus-visible {
+        outline: 2px solid #18D4D4;
+        outline-offset: 2px;
+      }
+    `}</style>
+    </>
   );
 }
 

@@ -169,7 +169,7 @@ function LoginContent() {
     <main className="login-shell" dir={dir}>
       <section className="login-card">
         <div className="language-row">
-          <LanguageSwitcher variant="gold" />
+          <LanguageSwitcher variant="gold" compact />
         </div>
 
         <div className="brand">
@@ -251,11 +251,201 @@ function LoginContent() {
       </section>
 
       <style jsx>{`
-        .login-shell{min-height:100vh;background:linear-gradient(180deg,var(--sfm-light-card),var(--sfm-card));display:grid;place-items:center;padding:24px;font-family:Tajawal,Arial,sans-serif;color:var(--sfm-foreground)}
-        .login-card{width:min(100%,440px);background:var(--sfm-card);border:1px solid rgba(167,243,240,.18);border-radius:26px;box-shadow:0 22px 70px rgba(3,18,37,.12);padding:24px}
-        .language-row{display:flex;justify-content:flex-end;margin-bottom:14px}
-        .brand{text-align:center;margin-bottom:22px}.mark{margin:0 auto 12px}.brand h1{font-size:26px;margin:0 0 8px;color:var(--sfm-foreground)}.brand p{font-size:13px;color:var(--sfm-muted);line-height:1.7;margin:0}
-        .form{display:grid;gap:14px}label span{display:block;font-size:13px;font-weight:800;color:var(--sfm-muted);margin-bottom:7px}.input-wrap{height:52px;border:1.5px solid rgba(167,243,240,.22);background:rgba(247,243,234,.7);border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 13px;color:var(--sfm-muted)}.input-wrap:focus-within{border-color:var(--sfm-soft-cyan);box-shadow:0 0 0 4px rgba(167,243,240,.14)}input{flex:1;border:0;background:transparent;outline:0;color:var(--sfm-foreground);font:700 14px Tajawal,Arial,sans-serif;min-width:0}.icon{border:0;background:transparent;color:var(--sfm-muted);display:grid;place-items:center;cursor:pointer}.primary{height:54px;border:0;border-radius:16px;background:linear-gradient(135deg,var(--sfm-foreground),var(--sfm-primary-dark),var(--sfm-soft-cyan));color:#fff;font:900 15px Tajawal,Arial,sans-serif;cursor:pointer;margin-top:4px;display:grid;place-items:center}.primary:disabled{opacity:.78;cursor:wait}.loading-label{display:inline-flex;align-items:center;justify-content:center;gap:9px}.spinner{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:spin .75s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.message{background:rgba(239,68,68,.08);color:#B91C1C;border:1px solid rgba(239,68,68,.18);border-radius:13px;padding:11px 13px;font-size:13px;font-weight:800}.message.ok{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.18);color:#15803D}.actions{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin-top:18px}.actions button{border:1px solid rgba(167,243,240,.2);background:#FFFFFF;color:var(--sfm-muted);border-radius:999px;padding:9px 13px;font:800 12px Tajawal,Arial,sans-serif;cursor:pointer}.actions button:disabled{opacity:.55;cursor:not-allowed}
+        .login-shell {
+          min-height: 100vh;
+          background:
+            radial-gradient(circle at 20% 10%, rgba(24, 212, 212, 0.16), transparent 30%),
+            linear-gradient(180deg, #EEF6FF 0%, #F8FBFF 58%, #FFFFFF 100%);
+          display: grid;
+          place-items: center;
+          padding: 24px;
+          font-family: Tajawal, Arial, sans-serif;
+          color: #0B172A;
+        }
+        .login-card {
+          width: min(100%, 440px);
+          background: rgba(255, 255, 255, 0.94);
+          border: 1px solid rgba(29, 140, 255, 0.16);
+          border-radius: 26px;
+          box-shadow: 0 22px 70px rgba(3, 18, 37, 0.14);
+          padding: 24px;
+          backdrop-filter: blur(18px);
+        }
+        .language-row {
+          display: flex;
+          justify-content: flex-end;
+          margin-bottom: 14px;
+        }
+        .brand {
+          text-align: center;
+          margin-bottom: 22px;
+        }
+        .mark {
+          margin: 0 auto 12px;
+        }
+        .brand h1 {
+          font-size: 26px;
+          margin: 0 0 8px;
+          color: #061B33;
+        }
+        .brand p {
+          font-size: 13px;
+          color: #475569;
+          line-height: 1.7;
+          margin: 0;
+        }
+        .form {
+          display: grid;
+          gap: 14px;
+        }
+        label span {
+          display: block;
+          font-size: 13px;
+          font-weight: 800;
+          color: #0B2748;
+          margin-bottom: 7px;
+        }
+        .input-wrap {
+          height: 52px;
+          border: 1.5px solid rgba(29, 140, 255, 0.22);
+          background: #FFFFFF;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 0 13px;
+          color: #1D8CFF;
+          transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+        .input-wrap:focus-within {
+          border-color: #1D8CFF;
+          background: #F8FBFF;
+          box-shadow: 0 0 0 4px rgba(29, 140, 255, 0.25);
+        }
+        input {
+          flex: 1;
+          border: 0;
+          background: transparent;
+          outline: 0;
+          color: #0B172A;
+          font: 700 14px Tajawal, Arial, sans-serif;
+          min-width: 0;
+        }
+        input::placeholder {
+          color: #64748B;
+          opacity: 1;
+        }
+        .icon {
+          border: 0;
+          background: transparent;
+          color: #0B2748;
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          border-radius: 999px;
+          padding: 4px;
+        }
+        .icon:hover {
+          color: #1D8CFF;
+        }
+        .icon:focus-visible,
+        .primary:focus-visible,
+        .actions button:focus-visible {
+          outline: 2px solid #18D4D4;
+          outline-offset: 3px;
+        }
+        .primary {
+          height: 54px;
+          border: 0;
+          border-radius: 16px;
+          background: linear-gradient(135deg, #061B33 0%, #1D8CFF 54%, #18D4D4 100%);
+          color: #FFFFFF;
+          font: 900 15px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+          margin-top: 4px;
+          display: grid;
+          place-items: center;
+          box-shadow: 0 14px 34px rgba(29, 140, 255, 0.28);
+        }
+        .primary:hover:not(:disabled) {
+          filter: saturate(1.08) brightness(1.02);
+        }
+        .primary:disabled {
+          opacity: 0.78;
+          cursor: wait;
+        }
+        .loading-label {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 9px;
+        }
+        .spinner {
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          border: 2px solid rgba(255, 255, 255, 0.35);
+          border-top-color: #FFFFFF;
+          animation: spin 0.75s linear infinite;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        .message {
+          background: rgba(239, 68, 68, 0.08);
+          color: #B91C1C;
+          border: 1px solid rgba(239, 68, 68, 0.18);
+          border-radius: 13px;
+          padding: 11px 13px;
+          font-size: 13px;
+          font-weight: 800;
+        }
+        .message.ok {
+          background: rgba(16, 185, 129, 0.1);
+          border-color: rgba(16, 185, 129, 0.24);
+          color: #047857;
+        }
+        .actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 9px;
+          justify-content: center;
+          margin-top: 18px;
+        }
+        .actions button {
+          border: 1px solid rgba(29, 140, 255, 0.22);
+          background: #FFFFFF;
+          color: #0B2748;
+          border-radius: 999px;
+          padding: 9px 13px;
+          font: 800 12px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+          transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+        }
+        .actions button:hover:not(:disabled) {
+          background: #EEF6FF;
+          border-color: rgba(29, 140, 255, 0.34);
+          color: #061B33;
+        }
+        .actions button:disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
+        }
+        @media (max-width: 480px) {
+          .login-shell {
+            padding: 16px;
+          }
+          .login-card {
+            padding: 20px;
+            border-radius: 22px;
+          }
+          .language-row {
+            justify-content: center;
+          }
+          .actions button {
+            flex: 1 1 100%;
+          }
+        }
       `}</style>
     </main>
   );
