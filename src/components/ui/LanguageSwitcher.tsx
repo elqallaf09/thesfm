@@ -28,18 +28,18 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
   const isCompact = compact || size === 'sm';
   const idx = Math.max(0, LANGS.findIndex(l => l.id === selected));
 
-  const track = variant === 'dark' ? 'rgba(255,255,255,0.09)'
-    : variant === 'gold' ? 'rgba(255,255,255,0.86)'
+  const track = variant === 'dark' ? 'rgba(255,255,255,0.13)'
+    : variant === 'gold' ? 'rgba(255,255,255,0.92)'
       : 'rgba(29,140,255,0.10)';
-  const pill = variant === 'dark' ? 'rgba(255,255,255,0.90)'
+  const pill = variant === 'dark' ? '#EAF6FF'
     : variant === 'gold' ? '#FFFFFF'
       : '#FFFFFF';
-  const border = variant === 'dark' ? '1px solid rgba(255,255,255,0.12)'
-    : variant === 'gold' ? '1px solid rgba(29,140,255,0.25)'
+  const border = variant === 'dark' ? '1px solid rgba(167,243,240,0.22)'
+    : variant === 'gold' ? '1px solid rgba(29,140,255,0.30)'
       : '1.5px solid var(--sfm-border)';
   const textActive = '#061B33';
-  const textIdle = variant === 'dark' ? 'rgba(255,255,255,0.56)'
-    : variant === 'gold' ? 'rgba(11,39,72,0.82)'
+  const textIdle = variant === 'dark' ? 'rgba(234,246,255,0.82)'
+    : variant === 'gold' ? '#0B2748'
       : '#0B2748';
 
   const h = isCompact ? '26px' : '30px';
@@ -53,6 +53,8 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
       dir="ltr"
       className="sfm-language-switcher"
       data-variant={variant}
+      role="group"
+      aria-label={selected === 'ar' ? 'تغيير اللغة' : selected === 'fr' ? 'Changer la langue' : 'Switch language'}
       title={selected === 'ar' ? 'تغيير اللغة' : selected === 'fr' ? 'Changer la langue' : 'Switch language'}
       style={{
         position: 'relative',
@@ -97,7 +99,8 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           onClick={() => handleChange(lang.id)}
           aria-label={lang.full}
           aria-pressed={selected === lang.id}
-          className="sfm-lang-option"
+          data-active={selected === lang.id ? 'true' : 'false'}
+          className={selected === lang.id ? 'sfm-lang-option active' : 'sfm-lang-option'}
           style={{
             position: 'relative',
             zIndex: 2,
@@ -110,13 +113,13 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
             borderRadius: '36px',
             cursor: 'pointer',
             fontSize: fs,
-            fontWeight: selected === lang.id ? '800' : '600',
+            fontWeight: selected === lang.id ? '900' : '800',
             color: selected === lang.id ? textActive : textIdle,
             fontFamily: lang.id === 'ar'
               ? "'Tajawal', sans-serif"
               : "-apple-system, 'Segoe UI', sans-serif",
             letterSpacing: 0,
-            transition: 'color 0.18s ease',
+            transition: 'color 0.18s ease, transform 0.18s ease, background-color 0.18s ease',
             whiteSpace: 'nowrap',
             display: 'flex',
             alignItems: 'center',
@@ -130,15 +133,36 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
       ))}
     </div>
     <style jsx>{`
+      .sfm-language-switcher {
+        box-shadow: 0 8px 22px rgba(3, 18, 37, 0.08);
+        transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+      }
+      .sfm-language-switcher:hover {
+        border-color: rgba(24, 212, 212, 0.42) !important;
+        box-shadow: 0 12px 28px rgba(29, 140, 255, 0.14);
+      }
+      .sfm-language-switcher .sfm-lang-option {
+        opacity: 1;
+      }
+      .sfm-language-switcher .sfm-lang-option:hover {
+        transform: translateY(-1px);
+      }
+      .sfm-language-switcher .sfm-lang-option:active {
+        transform: translateY(0) scale(0.97);
+      }
       .sfm-language-switcher:not([data-variant='dark']) .sfm-lang-option:hover {
         color: #061B33 !important;
       }
       .sfm-language-switcher[data-variant='dark'] .sfm-lang-option:hover {
-        color: #FFFFFF !important;
+        color: #EAF6FF !important;
+      }
+      .sfm-language-switcher .sfm-lang-option.active {
+        color: #061B33 !important;
       }
       .sfm-lang-option:focus-visible {
         outline: 2px solid #18D4D4;
-        outline-offset: 2px;
+        outline-offset: 3px;
+        box-shadow: 0 0 0 4px rgba(24, 212, 212, 0.24);
       }
     `}</style>
     </>

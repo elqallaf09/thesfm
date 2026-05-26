@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -256,6 +256,7 @@ export default function PublicLandingPage() {
   const { lang, dir } = useLanguage();
   const { session, isGuest } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('home');
   const text = COPY[(lang as Lang) || 'ar'];
   const appHref = session || isGuest ? '/dashboard' : '/login';
   const primaryLabel = session || isGuest ? text.openDashboard : text.start;
@@ -264,12 +265,34 @@ export default function PublicLandingPage() {
   const audiences = useMemo(() => pick(audienceKeys, lang as Lang), [lang]);
 
   const navLinks = [
-    { href: '/about', label: aboutLabel },
-    { href: '#features', label: text.navFeatures },
-    { href: '#tools', label: text.navTools },
-    { href: '#pricing', label: text.navPricing },
-    { href: '#faq', label: text.navFaq },
+    { href: '/about', label: aboutLabel, section: 'about' },
+    { href: '#features', label: text.navFeatures, section: 'features' },
+    { href: '#tools', label: text.navTools, section: 'tools' },
+    { href: '#pricing', label: text.navPricing, section: 'pricing' },
+    { href: '#faq', label: text.navFaq, section: 'faq' },
   ];
+
+  useEffect(() => {
+    const sections = ['features', 'tools', 'pricing', 'faq'];
+    const updateActiveSection = () => {
+      let current = 'home';
+      for (const section of sections) {
+        const element = document.getElementById(section);
+        if (element && element.getBoundingClientRect().top <= 140) {
+          current = section;
+        }
+      }
+      setActiveSection(current);
+    };
+
+    updateActiveSection();
+    window.addEventListener('scroll', updateActiveSection, { passive: true });
+    window.addEventListener('resize', updateActiveSection);
+    return () => {
+      window.removeEventListener('scroll', updateActiveSection);
+      window.removeEventListener('resize', updateActiveSection);
+    };
+  }, []);
 
   return (
     <main className="landing-page" dir={dir}>
@@ -280,18 +303,31 @@ export default function PublicLandingPage() {
         </Link>
 
         <div className={menuOpen ? 'landing-links open' : 'landing-links'}>
-          {navLinks.map(link => (
-            <a key={link.href} href={link.href} onClick={() => setMenuOpen(false)}>{link.label}</a>
-          ))}
+          {navLinks.map(link => {
+            const isActive = link.href === '/' || link.href.startsWith('#')
+              ? activeSection === link.section
+              : false;
+            return (
+              <a
+                key={link.href}
+                href={link.href}
+                className={isActive ? 'sfm-nav-link active' : 'sfm-nav-link'}
+                aria-current={isActive ? 'location' : undefined}
+                onClick={() => setMenuOpen(false)}
+              >
+                {link.label}
+              </a>
+            );
+          })}
         </div>
 
         <div className="landing-actions">
           <LanguageSwitcher variant="gold" compact />
-          <Link href="/login" className="nav-login">{text.login}</Link>
-          <Link href={appHref} className="nav-primary">{primaryLabel}</Link>
+          <Link href="/login" className="nav-login sfm-button-secondary">{text.login}</Link>
+          <Link href={appHref} className="nav-primary sfm-button-primary">{primaryLabel}</Link>
           <button
             type="button"
-            className="mobile-menu-button"
+            className="mobile-menu-button sfm-button-secondary"
             aria-label={menuOpen ? text.closeMenu : text.openMenu}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(value => !value)}
@@ -307,8 +343,8 @@ export default function PublicLandingPage() {
           <h1>{text.heroTitle}</h1>
           <p>{text.heroSubtitle}</p>
           <div className="hero-buttons">
-            <Link href={appHref} className="primary-cta">{primaryLabel}</Link>
-            <a href="#features" className="secondary-cta">{text.viewFeatures}</a>
+            <Link href={appHref} className="primary-cta sfm-button-primary">{primaryLabel}</Link>
+            <a href="#features" className="secondary-cta sfm-button-secondary">{text.viewFeatures}</a>
           </div>
         </div>
 
@@ -423,7 +459,7 @@ export default function PublicLandingPage() {
       <section className="final-cta">
         <h2>{text.finalTitle}</h2>
         <p>{text.finalSubtitle}</p>
-        <Link href={appHref}>{primaryLabel}</Link>
+        <Link href={appHref} className="sfm-button-primary">{primaryLabel}</Link>
       </section>
 
       <footer className="landing-footer">
@@ -483,9 +519,15 @@ function FooterColumn({ title, links }: { title: string; links: [string, string]
 
 const landingStyles = `
   .landing-page {
+    --landing-heading: var(--sfm-heading);
+    --landing-body: var(--sfm-body);
+    --landing-muted: var(--sfm-muted-readable);
+    --landing-dark-text: #EAF6FF;
+    --landing-dark-muted: rgba(234, 246, 255, 0.88);
+    --landing-border: rgba(29, 140, 255, 0.20);
     min-height: 100vh;
     overflow-x: hidden;
-    color: #0B172A;
+    color: var(--landing-body);
     background:
       radial-gradient(circle at 18% 8%, rgba(24, 212, 212, 0.18), transparent 26%),
       radial-gradient(circle at 85% 18%, rgba(29, 140, 255, 0.16), transparent 26%),
@@ -499,7 +541,7 @@ const landingStyles = `
     width: min(1180px, calc(100% - 32px));
     margin: 16px auto 0;
     min-height: 70px;
-    border: 1px solid rgba(29, 140, 255, 0.16);
+    border: 1px solid var(--landing-border);
     border-radius: 24px;
     background: rgba(255, 255, 255, 0.86);
     box-shadow: 0 18px 55px rgba(3, 18, 37, 0.1);
@@ -516,7 +558,7 @@ const landingStyles = `
   }
   .landing-brand {
     gap: 10px;
-    color: #061B33;
+    color: var(--landing-heading);
     text-decoration: none;
     font-weight: 950;
   }
@@ -533,27 +575,48 @@ const landingStyles = `
   .landing-links a, .nav-login {
     min-height: 38px;
     border-radius: 999px;
-    color: #0B2748;
+    color: var(--landing-body);
     text-decoration: none;
     font-weight: 900;
     font-size: 13px;
     padding: 8px 12px;
+    border: 1px solid transparent;
   }
   .landing-links a:hover, .nav-login:hover {
-    background: #EEF6FF;
+    background: var(--sfm-surface-hover);
+    color: var(--landing-heading);
+    border-color: rgba(29, 140, 255, 0.24);
+    box-shadow: 0 10px 26px rgba(3, 18, 37, 0.08);
+    transform: translateY(-1px);
+  }
+  .landing-links a.active,
+  .landing-links a[aria-current="location"] {
+    background: linear-gradient(135deg, rgba(29, 140, 255, 0.14), rgba(24, 212, 212, 0.18));
+    border-color: rgba(24, 212, 212, 0.42);
+    color: var(--landing-heading);
+    box-shadow: 0 10px 28px rgba(29, 140, 255, 0.16), inset 0 -2px 0 rgba(24, 212, 212, 0.78);
   }
   .landing-actions {
     gap: 8px;
     justify-content: flex-end;
   }
   .nav-primary, .primary-cta, .final-cta a {
-    border: 0;
+    border: 1px solid rgba(24, 212, 212, 0.24);
     border-radius: 999px;
     background: linear-gradient(135deg, #061B33, #1D8CFF 58%, #18D4D4);
     color: #FFFFFF;
     box-shadow: 0 14px 34px rgba(29, 140, 255, 0.26);
     text-decoration: none;
     font-weight: 950;
+    transition: transform 180ms var(--ease), box-shadow 180ms var(--ease), filter 180ms var(--ease), background 180ms var(--ease);
+  }
+  .nav-primary:hover, .primary-cta:hover, .final-cta a:hover {
+    filter: saturate(1.08) brightness(1.04);
+    transform: translateY(-2px);
+    box-shadow: 0 20px 52px rgba(29, 140, 255, 0.34);
+  }
+  .nav-primary:active, .primary-cta:active, .final-cta a:active {
+    transform: translateY(0) scale(0.985);
   }
   .nav-primary {
     min-height: 40px;
@@ -567,9 +630,9 @@ const landingStyles = `
     width: 40px;
     height: 40px;
     border-radius: 14px;
-    border: 1px solid rgba(29, 140, 255, 0.22);
+    border: 1px solid rgba(29, 140, 255, 0.26);
     background: #FFFFFF;
-    color: #061B33;
+    color: var(--landing-heading);
   }
   .hero-section {
     width: min(1180px, calc(100% - 32px));
@@ -600,7 +663,7 @@ const landingStyles = `
   }
   .hero-copy h1 {
     margin: 0;
-    color: #061B33;
+    color: var(--landing-heading);
     font-size: clamp(36px, 6vw, 68px);
     line-height: 1.04;
     font-weight: 950;
@@ -609,7 +672,7 @@ const landingStyles = `
   .hero-copy p {
     max-width: 700px;
     margin: 0;
-    color: #475569;
+    color: var(--landing-muted);
     font-size: 18px;
     line-height: 1.9;
     font-weight: 700;
@@ -627,11 +690,21 @@ const landingStyles = `
   }
   .secondary-cta {
     border-radius: 999px;
-    border: 1px solid rgba(29, 140, 255, 0.22);
+    border: 1px solid rgba(29, 140, 255, 0.26);
     background: #FFFFFF;
-    color: #061B33;
+    color: var(--landing-heading);
     text-decoration: none;
     font-weight: 950;
+  }
+  .secondary-cta:hover {
+    border-color: rgba(24, 212, 212, 0.44);
+    background: var(--sfm-surface-hover);
+    color: var(--landing-heading);
+    transform: translateY(-2px);
+    box-shadow: 0 16px 38px rgba(3, 18, 37, 0.12);
+  }
+  .secondary-cta:active {
+    transform: translateY(0) scale(0.985);
   }
   .product-preview {
     display: grid;
@@ -672,8 +745,9 @@ const landingStyles = `
   }
   .preview-top p {
     margin: 7px 0 0;
-    color: rgba(234, 246, 255, 0.74);
+    color: var(--landing-dark-muted);
     line-height: 1.7;
+    font-weight: 700;
   }
   .preview-grid {
     display: grid;
@@ -727,14 +801,14 @@ const landingStyles = `
   }
   .trust-section h2, .section-heading h2, .ai-card h2, .stories-section h2, .final-cta h2 {
     margin: 0;
-    color: #061B33;
+    color: var(--landing-heading);
     font-weight: 950;
   }
   .trust-section p, .section-heading p, .ai-card p, .stories-section p, .final-cta p, .pricing-card p, .faq-grid p {
     margin: 8px 0 0;
-    color: #64748B;
+    color: var(--landing-muted);
     line-height: 1.8;
-    font-weight: 700;
+    font-weight: 750;
   }
   .trust-grid, .feature-grid, .audience-grid, .pricing-grid, .faq-grid {
     display: grid;
@@ -764,7 +838,7 @@ const landingStyles = `
     margin-bottom: 24px;
   }
   .section-heading span, .ai-card span, .stories-section span {
-    color: #1D8CFF;
+    color: #0B76E0;
     font-size: 12px;
     font-weight: 950;
     text-transform: uppercase;
@@ -795,14 +869,15 @@ const landingStyles = `
   }
   .feature-card h3, .pricing-card h3, .faq-grid h3 {
     margin: 16px 0 7px;
-    color: #061B33;
+    color: var(--landing-heading);
     font-size: 18px;
   }
   .feature-card p {
     margin: 0;
-    color: #64748B;
+    color: var(--landing-muted);
     font-size: 13px;
     line-height: 1.7;
+    font-weight: 750;
   }
   .ai-section {
     padding-top: 90px;
@@ -824,7 +899,7 @@ const landingStyles = `
     color: #FFFFFF;
   }
   .ai-card p {
-    color: rgba(234, 246, 255, 0.76);
+    color: var(--landing-dark-muted);
   }
   .ai-example {
     margin-top: 16px;
@@ -849,14 +924,14 @@ const landingStyles = `
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .pricing-card strong {
-    color: #1D8CFF;
+    color: #0B76E0;
     font-size: 18px;
   }
   .stories-section {
     margin-top: 86px;
     border: 1px dashed rgba(29, 140, 255, 0.28);
     border-radius: 28px;
-    background: rgba(255, 255, 255, 0.78);
+    background: rgba(255, 255, 255, 0.9);
     padding: 30px;
     text-align: center;
   }
@@ -880,7 +955,7 @@ const landingStyles = `
   .final-cta p {
     max-width: 720px;
     margin: 12px auto 22px;
-    color: rgba(234, 246, 255, 0.78);
+    color: var(--landing-dark-muted);
   }
   .final-cta a {
     min-height: 50px;
@@ -900,7 +975,7 @@ const landingStyles = `
   .footer-brand {
     gap: 10px;
     align-self: start;
-    color: #061B33;
+    color: var(--landing-heading);
     font-weight: 950;
   }
   .footer-column {
@@ -908,15 +983,21 @@ const landingStyles = `
     gap: 8px;
   }
   .footer-column strong {
-    color: #061B33;
+    color: var(--landing-heading);
   }
   .footer-column a {
-    color: #64748B;
+    color: var(--landing-muted);
     text-decoration: none;
-    font-weight: 800;
+    font-weight: 850;
+    border-radius: 10px;
+    padding: 2px 0;
+    transition: color 180ms var(--ease), transform 180ms var(--ease), text-decoration-color 180ms var(--ease);
   }
   .footer-column a:hover {
-    color: #1D8CFF;
+    color: #0B76E0;
+    text-decoration: underline;
+    text-decoration-color: rgba(24, 212, 212, 0.72);
+    transform: translateX(-2px);
   }
   a:focus-visible, button:focus-visible {
     outline: 3px solid rgba(24, 212, 212, 0.7);
