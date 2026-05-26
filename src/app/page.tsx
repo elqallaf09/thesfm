@@ -319,6 +319,10 @@ export default function PublicLandingPage() {
               </a>
             );
           })}
+          <div className="mobile-menu-ctas">
+            <Link href="/login" className="sfm-button-secondary" onClick={() => setMenuOpen(false)}>{text.login}</Link>
+            <Link href={appHref} className="sfm-button-primary" onClick={() => setMenuOpen(false)}>{primaryLabel}</Link>
+          </div>
         </div>
 
         <div className="landing-actions">
@@ -523,7 +527,7 @@ const landingStyles = `
     --landing-body: var(--sfm-body);
     --landing-muted: var(--sfm-muted-readable);
     --landing-dark-text: #EAF6FF;
-    --landing-dark-muted: rgba(234, 246, 255, 0.88);
+    --landing-dark-muted: #A7C7E7;
     --landing-border: rgba(29, 140, 255, 0.20);
     min-height: 100vh;
     overflow-x: hidden;
@@ -572,6 +576,9 @@ const landingStyles = `
     justify-content: center;
     flex: 1;
   }
+  .mobile-menu-ctas {
+    display: none;
+  }
   .landing-links a, .nav-login {
     min-height: 38px;
     border-radius: 999px;
@@ -596,6 +603,15 @@ const landingStyles = `
     color: var(--landing-heading);
     box-shadow: 0 10px 28px rgba(29, 140, 255, 0.16), inset 0 -2px 0 rgba(24, 212, 212, 0.78);
   }
+  .landing-links a.active::after,
+  .landing-links a[aria-current="location"]::after {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: #18D4D4;
+    box-shadow: 0 0 12px rgba(24, 212, 212, 0.72);
+  }
   .landing-actions {
     gap: 8px;
     justify-content: flex-end;
@@ -603,9 +619,9 @@ const landingStyles = `
   .nav-primary, .primary-cta, .final-cta a {
     border: 1px solid rgba(24, 212, 212, 0.24);
     border-radius: 999px;
-    background: linear-gradient(135deg, #061B33, #1D8CFF 58%, #18D4D4);
+    background: linear-gradient(135deg, #1D8CFF 0%, #18D4D4 100%);
     color: #FFFFFF;
-    box-shadow: 0 14px 34px rgba(29, 140, 255, 0.26);
+    box-shadow: 0 10px 30px rgba(29, 140, 255, 0.22);
     text-decoration: none;
     font-weight: 950;
     transition: transform 180ms var(--ease), box-shadow 180ms var(--ease), filter 180ms var(--ease), background 180ms var(--ease);
@@ -613,10 +629,11 @@ const landingStyles = `
   .nav-primary:hover, .primary-cta:hover, .final-cta a:hover {
     filter: saturate(1.08) brightness(1.04);
     transform: translateY(-2px);
-    box-shadow: 0 20px 52px rgba(29, 140, 255, 0.34);
+    box-shadow: 0 16px 40px rgba(24, 212, 212, 0.30);
   }
   .nav-primary:active, .primary-cta:active, .final-cta a:active {
-    transform: translateY(0) scale(0.985);
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 8px 22px rgba(29, 140, 255, 0.18);
   }
   .nav-primary {
     min-height: 40px;
@@ -858,6 +875,7 @@ const landingStyles = `
     border: 1px solid rgba(29, 140, 255, 0.13);
     box-shadow: 0 14px 36px rgba(3, 18, 37, 0.07);
     padding: 18px;
+    transition: border-color 180ms var(--ease), box-shadow 180ms var(--ease), transform 180ms var(--ease), background-color 180ms var(--ease);
   }
   .feature-card div, .ai-icon {
     width: 46px;
@@ -871,6 +889,20 @@ const landingStyles = `
     margin: 16px 0 7px;
     color: var(--landing-heading);
     font-size: 18px;
+    transition: color 180ms var(--ease);
+  }
+  .feature-card:hover, .pricing-card:hover, .faq-grid article:hover, .audience-grid article:hover {
+    border-color: rgba(24, 212, 212, 0.38);
+    box-shadow: 0 18px 46px rgba(29, 140, 255, 0.13);
+    transform: translateY(-2px);
+  }
+  .feature-card:hover div {
+    border-color: rgba(24, 212, 212, 0.34);
+    background: linear-gradient(135deg, rgba(29, 140, 255, 0.18), rgba(24, 212, 212, 0.22));
+    box-shadow: 0 12px 28px rgba(24, 212, 212, 0.15);
+  }
+  .feature-card:hover h3, .pricing-card:hover h3 {
+    color: #0B76E0;
   }
   .feature-card p {
     margin: 0;
@@ -1022,6 +1054,17 @@ const landingStyles = `
     .landing-links a {
       background: #F8FBFF;
     }
+    .mobile-menu-ctas {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding-top: 8px;
+    }
+    .mobile-menu-ctas a {
+      min-height: 44px;
+      width: 100%;
+      padding: 11px 14px;
+    }
     .nav-login, .nav-primary {
       display: none;
     }
@@ -1063,6 +1106,9 @@ const landingStyles = `
     }
     .hero-buttons {
       display: grid;
+      grid-template-columns: 1fr;
+    }
+    .mobile-menu-ctas {
       grid-template-columns: 1fr;
     }
     .primary-cta, .secondary-cta {

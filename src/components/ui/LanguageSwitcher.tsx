@@ -145,6 +145,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         opacity: 1;
       }
       .sfm-language-switcher .sfm-lang-option:hover {
+        background: rgba(29, 140, 255, 0.08) !important;
         transform: translateY(-1px);
       }
       .sfm-language-switcher .sfm-lang-option:active {
@@ -157,6 +158,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         color: #EAF6FF !important;
       }
       .sfm-language-switcher .sfm-lang-option.active {
+        background: transparent !important;
         color: #061B33 !important;
       }
       .sfm-lang-option:focus-visible {

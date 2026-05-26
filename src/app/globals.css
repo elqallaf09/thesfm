@@ -249,7 +249,7 @@ main,section,article,aside,header,footer,nav,div{min-width:0}
 
 .sfm-button-primary {
   border: 1px solid rgba(24, 212, 212, 0.24);
-  background: linear-gradient(135deg, var(--sfm-primary-dark) 0%, var(--sfm-primary) 58%, var(--sfm-accent) 118%);
+  background: linear-gradient(135deg, var(--sfm-primary) 0%, var(--sfm-accent) 100%);
   color: #FFFFFF;
   box-shadow: var(--sfm-interactive-glow);
 }
@@ -282,10 +282,10 @@ main,section,article,aside,header,footer,nav,div{min-width:0}
 .sfm-button-primary:hover,
 .sfm-button-primary[data-state="active"],
 .sfm-button-primary[aria-current="page"] {
-  background: linear-gradient(135deg, var(--sfm-primary-active) 0%, var(--sfm-primary) 50%, var(--sfm-accent) 115%);
+  background: linear-gradient(135deg, #2A98FF 0%, #20E2E2 100%);
   color: #FFFFFF;
   box-shadow: 0 20px 52px rgba(29, 140, 255, 0.34), 0 0 0 1px rgba(167, 243, 240, 0.18) inset;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 .sfm-button-secondary:hover,
@@ -301,6 +301,7 @@ main,section,article,aside,header,footer,nav,div{min-width:0}
 
 .sfm-nav-link.active,
 .sfm-nav-link[aria-current="page"],
+.sfm-nav-link[aria-current="location"],
 .sfm-nav-link[aria-selected="true"],
 .sfm-chip.active,
 .sfm-chip[aria-pressed="true"],
