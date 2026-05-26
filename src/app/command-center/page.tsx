@@ -9,7 +9,6 @@ import {
   BriefcaseBusiness,
   ClipboardList,
   FileText,
-  Files,
   HeartHandshake,
   Landmark,
   Loader2,
@@ -217,8 +216,8 @@ export default function CommandCenterPage() {
       hasAny(records, ['investments', 'marketWatchlist']),
       hasAny(records, ['projects', 'projectTasks']),
       hasAny(records, ['zakatCalculations', 'zakatAssets', 'charityProjects']),
-      hasAny(records, ['projectDocuments', 'charityDocuments']),
       hasAny(records, ['income', 'expenses', 'projects', 'zakatCalculations', 'charityProjects']),
+      hasAny(records, ['income', 'expenses', 'projects', 'goals', 'investments']),
     ];
     const highPriority = records.notifications.filter(isHighPriority).length;
     return {
@@ -265,13 +264,6 @@ export default function CommandCenterPage() {
       ready: hasAny(records, ['income', 'expenses', 'projects', 'zakatCalculations', 'charityProjects']),
     },
     {
-      title: text.documents,
-      description: text.documentsDesc,
-      href: '/documents',
-      icon: Files,
-      ready: hasAny(records, ['projectDocuments', 'charityDocuments']),
-    },
-    {
       title: text.aiAssistant,
       description: text.aiAssistantDesc,
       href: '/ai',
@@ -283,7 +275,7 @@ export default function CommandCenterPage() {
   return (
     <div className="command-center-shell" dir={dir}>
       <Sidebar />
-      <DashboardPageShell ariaLabel={text.title} contentClassName="command-center-content">
+      <DashboardPageShell ariaLabel={text.title} className="command-center-main" contentClassName="command-center-content">
         <div className="sfm-page-topbar">
           <LanguageSwitcher />
           <UserChip />
@@ -309,7 +301,7 @@ export default function CommandCenterPage() {
           />
         ) : (
           <>
-            <StatGrid>
+            <StatGrid className="command-summary-grid">
               <AppCard>
                 <Metric label={text.worlds} value={`${summary.activeWorlds}/6`} hint={summary.activeWorlds > 0 ? text.ready : text.noData} icon={<Landmark size={20} />} />
               </AppCard>
@@ -321,9 +313,9 @@ export default function CommandCenterPage() {
               </AppCard>
             </StatGrid>
 
-            <AccountCompletionCard />
+            <AccountCompletionCard className="command-account-card" />
 
-            <CardsGrid>
+            <CardsGrid className="command-world-grid">
               {worlds.map(world => {
                 const Icon = world.icon;
                 return (
@@ -353,7 +345,16 @@ export default function CommandCenterPage() {
             radial-gradient(circle at 18% 12%, rgba(29, 140, 255, .10), transparent 34%),
             linear-gradient(160deg, var(--sfm-background), #F8FBFF 62%, #E7F1FF 100%);
         }
+        .command-center-main {
+          width: calc(100% - var(--sidebar-w, 230px)) !important;
+          max-width: none !important;
+          margin-inline-start: var(--sidebar-w, 230px) !important;
+          margin-inline-end: 0 !important;
+          padding-inline: 24px !important;
+        }
         .command-center-content {
+          width: 100%;
+          max-width: none;
           display: grid;
           gap: var(--sfm-section-gap);
         }
@@ -385,11 +386,29 @@ export default function CommandCenterPage() {
           background: #FFFFFF;
           color: var(--sfm-primary-dark);
         }
+        .command-summary-grid {
+          grid-template-columns: repeat(3, minmax(240px, 1fr)) !important;
+          align-items: stretch;
+        }
+        .command-summary-grid .sfm-app-card {
+          min-height: 132px;
+          display: grid;
+          align-items: center;
+        }
+        .command-account-card {
+          width: 100%;
+        }
+        .command-world-grid {
+          grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)) !important;
+          align-items: stretch;
+        }
         .command-world-card {
           display: grid;
           grid-template-columns: auto minmax(0, 1fr);
+          grid-template-rows: auto 1fr auto;
           gap: 14px;
           align-items: start;
+          min-height: 260px;
         }
         .command-world-icon {
           width: 48px;
@@ -434,6 +453,7 @@ export default function CommandCenterPage() {
         .command-world-card .sfm-secondary-link {
           grid-column: 1 / -1;
           justify-self: start;
+          align-self: end;
         }
         .spin {
           animation: spin 1s linear infinite;
@@ -441,12 +461,27 @@ export default function CommandCenterPage() {
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
+        @media (max-width: 1024px) {
+          .command-center-main {
+            width: 100% !important;
+            margin-inline: 0 !important;
+            padding-inline: 16px !important;
+          }
+          .command-summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+        }
         @media (max-width: 720px) {
           .sfm-page-topbar {
             display: none;
           }
+          .command-summary-grid,
+          .command-world-grid {
+            grid-template-columns: 1fr !important;
+          }
           .command-world-card {
             grid-template-columns: 1fr;
+            min-height: 0;
           }
           .command-world-card .sfm-secondary-link {
             width: 100%;
