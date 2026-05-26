@@ -1269,7 +1269,7 @@ tbody tr:hover td{background:var(--bg-muted)}
 
 :root {
   --sfm-sidebar-width: 230px;
-  --sfm-page-max: 1320px;
+  --sfm-page-max: none;
   --sfm-page-pad-x: 24px;
   --sfm-page-pad-y: 24px;
   --sfm-section-gap: 24px;
@@ -1321,7 +1321,7 @@ tbody tr:hover td{background:var(--bg-muted)}
   max-inline-size: var(--sfm-page-max);
   width: 100%;
   min-width: 0;
-  margin-inline: auto;
+  margin-inline: 0;
 }
 
 /* The executive dashboard is the app's command overview and should use the
