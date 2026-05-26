@@ -68,7 +68,7 @@ export default function SavingsEducationPage() {
 
       <div className="savings-wrap">
         <header className="savings-top">
-          <button type="button" className="savings-back" onClick={() => router.push('/')}>
+          <button type="button" className="savings-back" onClick={() => router.push('/dashboard')}>
             {L('العودة للرئيسية', 'Back Home', 'Retour accueil')}
           </button>
           <LanguageSwitcher variant="gold" compact />

@@ -276,7 +276,7 @@ export function AuthForm() {
         }, { onConflict: 'id' }).select().single();
         if (profileError) { setError(profileError.message); setLoading(false); return; }
       }
-      router.push('/');
+      router.push('/dashboard');
       router.refresh();
       return;
     }

@@ -131,7 +131,7 @@ export default function AdCampaignCalculatorPage() {
       `}</style>
       <div className="wrap">
         <div className="top">
-          <button className="home" onClick={() => router.push('/')}>← الرئيسية</button>
+          <button className="home" onClick={() => router.push('/dashboard')}>← الرئيسية</button>
           <LanguageSwitcher variant="gold" compact />
         </div>
         <div className="panel" style={{ marginBottom: 16 }}>

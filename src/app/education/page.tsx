@@ -17,7 +17,7 @@ export default function EducationPage() {
     <main className="edu-shell" dir="rtl">
       <section className="edu-page">
         <header>
-          <button onClick={() => router.push('/')}>← الرئيسية</button>
+          <button onClick={() => router.push('/dashboard')}>← الرئيسية</button>
           <LanguageSwitcher variant="gold" compact />
         </header>
         <section className="hero">

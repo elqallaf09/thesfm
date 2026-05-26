@@ -35,7 +35,7 @@ export function UnderDevelopment({ titleKey, descriptionKey }: UnderDevelopmentP
           </div>
 
           <div className="sfm-under-footer">
-            <Link href="/" className="sfm-under-link">
+            <Link href="/dashboard" className="sfm-under-link">
               {t('common_backToDashboard')}
               <ArrowRight size={16} className={isAr ? 'rtl-arrow' : ''} />
             </Link>

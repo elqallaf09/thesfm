@@ -33,7 +33,7 @@ function LoginContent() {
   const [message, setMessage] = useState<{ type: 'error' | 'ok'; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const nextPath = useMemo(() => searchParams.get('next') || '/', [searchParams]);
+  const nextPath = useMemo(() => searchParams.get('next') || '/dashboard', [searchParams]);
 
   useEffect(() => {
     if (session) router.replace(nextPath);
@@ -140,7 +140,7 @@ function LoginContent() {
     document.cookie = 'sfm_guest=; path=/; max-age=0; SameSite=Lax';
     localStorage.removeItem('sfm_guest_mode');
     setSubmitting(false);
-    router.replace('/');
+    router.replace('/dashboard');
     router.refresh();
   };
 
@@ -162,7 +162,7 @@ function LoginContent() {
 
   const enterGuestMode = () => {
     continueAsGuest();
-    router.replace('/');
+    router.replace('/dashboard');
   };
 
   return (

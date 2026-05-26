@@ -849,7 +849,7 @@ export default function SetupPage() {
               <ArrowRight size={16} />
               {text.start}
             </button>
-            <button type="button" className="ghost-btn" onClick={() => router.push('/')}>
+            <button type="button" className="ghost-btn" onClick={() => router.push('/dashboard')}>
               {text.skipNow}
             </button>
           </div>
@@ -1059,7 +1059,7 @@ export default function SetupPage() {
         <div className="finish-actions">
           {focus.zakat && <button type="button" onClick={() => router.push('/zakat')}>{text.openZakat}</button>}
           {focus.charity && <button type="button" onClick={() => router.push('/charity')}>{text.openCharity}</button>}
-          <button type="button" className="primary" onClick={() => router.push('/')}>{text.goDashboard}</button>
+          <button type="button" className="primary" onClick={() => router.push('/dashboard')}>{text.goDashboard}</button>
         </div>
       </section>
     );

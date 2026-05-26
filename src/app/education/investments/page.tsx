@@ -68,7 +68,7 @@ export default function InvestmentEducationPage() {
 
       <div className="investment-wrap">
         <header className="investment-top">
-          <button type="button" className="investment-secondary" onClick={() => router.push('/')} style={{ color: 'var(--sfm-primary-dark)', background: 'var(--sfm-card)', border: '1px solid rgba(29,140,255,.18)' }}>
+          <button type="button" className="investment-secondary" onClick={() => router.push('/dashboard')} style={{ color: 'var(--sfm-primary-dark)', background: 'var(--sfm-card)', border: '1px solid rgba(29,140,255,.18)' }}>
             {L('العودة للرئيسية', 'Back Home', 'Retour accueil')}
           </button>
           <LanguageSwitcher variant="gold" compact />

@@ -1307,7 +1307,7 @@ export default function ReportsCenterPage() {
     if (key === 'projects' || key === 'feasibility' || key === 'financialModels' || key === 'tasks' || key === 'milestones' || key === 'documents' || key === 'pitchDecks') {
       return { label: tr.openProject, href: '/projects' };
     }
-    return { label: tr.openModule, href: '/' };
+    return { label: tr.openModule, href: '/dashboard' };
   }, [tr]);
 
   const selectCategory = useCallback((category: Filters['category']) => {

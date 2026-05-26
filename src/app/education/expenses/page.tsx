@@ -94,7 +94,7 @@ export default function ExpensesPage() {
         <div style={S(0)}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <button onClick={() => router.push('/')} style={{ padding: '8px 16px', background: 'var(--sfm-card)', border: '1.5px solid rgba(167,243,240,.22)', borderRadius: '12px', cursor: 'pointer', color: 'var(--sfm-muted)', fontSize: '13px', fontWeight: '700', fontFamily: 'Tajawal,sans-serif' }}>← الرئيسية</button>
+              <button onClick={() => router.push('/dashboard')} style={{ padding: '8px 16px', background: 'var(--sfm-card)', border: '1.5px solid rgba(167,243,240,.22)', borderRadius: '12px', cursor: 'pointer', color: 'var(--sfm-muted)', fontSize: '13px', fontWeight: '700', fontFamily: 'Tajawal,sans-serif' }}>← الرئيسية</button>
               <div>
                 <h1 style={{ fontSize: 'clamp(20px,3vw,28px)', fontWeight: '900', color: 'var(--sfm-foreground)' }}>🛒 المصاريف</h1>
                 <p style={{ fontSize: '13px', color: 'var(--sfm-muted)', marginTop: '2px' }}>إدارة وتتبع مصاريفك الشهرية</p>

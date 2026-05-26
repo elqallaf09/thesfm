@@ -10,7 +10,7 @@ export default function GuestPage() {
 
   useEffect(() => {
     if (!session) continueAsGuest();
-    router.push('/');
+    router.push('/dashboard');
   }, [continueAsGuest, router, session]);
 
   return (

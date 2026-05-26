@@ -257,7 +257,7 @@ export default function CharityPage() {
           {/* ─── Header ─── */}
           <div style={{ ...S(0), display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '28px', flexWrap: 'wrap' }}>
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/dashboard')}
               style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 16px', background: 'var(--sfm-card)', border: '1.5px solid rgba(167,243,240,.22)', borderRadius: '12px', cursor: 'pointer', color: 'var(--sfm-muted)', fontSize: '13px', fontWeight: '700', fontFamily: 'Tajawal,sans-serif', flexShrink: 0 }}
             >{t('common_backToDashboard')}</button>
             <div style={{ flex: 1, minWidth: '220px' }}>

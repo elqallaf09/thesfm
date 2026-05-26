@@ -33,12 +33,12 @@ export function AppHeader() {
   );
 
   const title = activeItem ? t(activeItem.labelKey) : 'THE SFM';
-  const crumb = effectivePathname === '/' ? 'THE SFM' : `THE SFM / ${title}`;
+  const crumb = effectivePathname === '/dashboard' ? 'THE SFM' : `THE SFM / ${title}`;
 
   return (
     <>
       <header className="sfm-global-header" dir={dir}>
-        <Link href="/" className="sfm-global-brand" aria-label="THE SFM">
+        <Link href="/dashboard" className="sfm-global-brand" aria-label="THE SFM">
           <Image src="/sfm-logo.png" alt="THE SFM" width={34} height={34} priority className="sfm-brand-mark sfm-brand-mark--header" />
           <div>
             <strong>THE SFM</strong>

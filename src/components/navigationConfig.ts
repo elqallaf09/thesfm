@@ -55,7 +55,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     labelKey: 'nav_group_main',
     defaultOpen: true,
     items: [
-      { id: 'home', icon: LayoutDashboard, href: '/', labelKey: 'nav_home' },
+      { id: 'home', icon: LayoutDashboard, href: '/dashboard', labelKey: 'nav_home' },
       { id: 'notif', icon: Bell, href: '/notifications', labelKey: 'nav_notif' },
       { id: 'reports-center', icon: FileText, href: '/reports-center', labelKey: 'nav_reports_center' },
     ],
