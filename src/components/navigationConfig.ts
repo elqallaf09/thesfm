@@ -23,7 +23,6 @@ import {
   PiggyBank,
   Presentation,
   ReceiptText,
-  Settings,
   ShieldCheck,
   Star,
   Target,
@@ -67,6 +66,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'tasks', icon: ClipboardList, href: '/tasks', labelKey: 'nav_tasks', viewModes: ['simple', 'professional'] },
       { id: 'notif', icon: Bell, href: '/notifications', labelKey: 'nav_notif', viewModes: ['simple', 'professional'] },
       { id: 'reports-center', icon: FileText, href: '/reports-center', labelKey: 'nav_reports_center', viewModes: ['simple', 'professional'] },
+      { id: 'documents-center', icon: Files, href: '/documents', labelKey: 'nav_documents_center', viewModes: ['simple', 'professional'] },
     ],
   },
   {
@@ -97,7 +97,6 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'projects', icon: FolderKanban, href: '/projects', labelKey: 'nav_projects' },
       { id: 'business-hub', icon: BriefcaseBusiness, href: '/business-hub', labelKey: 'nav_business_hub' },
       { id: 'pitch-decks', icon: Presentation, href: '/business-hub#strategic-documents', labelKey: 'nav_pitch_decks' },
-      { id: 'documents', icon: Files, href: '/business-hub#strategic-documents', labelKey: 'nav_documents' },
     ],
   },
   {
@@ -126,8 +125,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     defaultOpen: true,
     items: [
       { id: 'profile', icon: UserRound, href: '/profile', labelKey: 'nav_profile', viewModes: ['simple', 'professional'] },
-      { id: 'settings', icon: Settings, href: '/settings', labelKey: 'nav_settings', viewModes: ['simple', 'professional'] },
-      { id: 'security', icon: ShieldCheck, href: '/security', labelKey: 'nav_security' },
+      { id: 'security', icon: ShieldCheck, href: '/security', labelKey: 'nav_security', viewModes: ['simple', 'professional'] },
       { id: 'logout', icon: LogOut, action: 'logout', labelKey: 'nav_logout', viewModes: ['simple', 'professional'] },
     ],
   },

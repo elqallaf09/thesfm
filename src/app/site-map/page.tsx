@@ -33,6 +33,7 @@ const TEXT = {
     tasksDesc: 'مهام عملية من بياناتك الفعلية وما يحتاج إكمالاً أو مراجعة.',
     notificationsDesc: 'تنبيهات ذكية من بياناتك وتنبيهاتك الفعلية.',
     reportsDesc: 'جاهزية التقارير والملفات القابلة للتصدير.',
+    documentsCenterDesc: 'مركز موحد لكل مستندات المستخدم من المشاريع والخير والإيصالات والتقارير.',
     incomeDesc: 'إدارة مصادر الدخل.',
     expensesDesc: 'إدارة المصروفات والفواتير.',
     savingsDesc: 'متابعة المدخرات.',
@@ -47,7 +48,6 @@ const TEXT = {
     charityProjectsDesc: 'المشاريع الخيرية والمستفيدون والمساهمون.',
     servicesDesc: 'أدلة خدمات مساعدة عند توفرها.',
     profileDesc: 'بيانات الحساب والملف الشخصي.',
-    settingsDesc: 'تفضيلات تجربة التطبيق ووضع العرض.',
     securityDesc: 'معلومات الأمان والخصوصية وإخلاء المسؤولية.',
   },
   en: {
@@ -68,6 +68,7 @@ const TEXT = {
     tasksDesc: 'Actionable tasks from your real data and items needing completion or review.',
     notificationsDesc: 'Smart alerts from your real data and saved alerts.',
     reportsDesc: 'Report readiness and exportable files.',
+    documentsCenterDesc: 'Unified center for user-owned project, charity, receipt, and report documents.',
     incomeDesc: 'Manage income sources.',
     expensesDesc: 'Manage expenses and receipts.',
     savingsDesc: 'Track savings.',
@@ -82,7 +83,6 @@ const TEXT = {
     charityProjectsDesc: 'Charity projects, beneficiaries, and contributors.',
     servicesDesc: 'Supporting service directories when available.',
     profileDesc: 'Account and profile information.',
-    settingsDesc: 'App experience preferences and view mode.',
     securityDesc: 'Security, privacy, and disclaimer information.',
   },
   fr: {
@@ -103,6 +103,7 @@ const TEXT = {
     tasksDesc: 'Tâches actionnables issues de vos données réelles et des éléments à compléter.',
     notificationsDesc: 'Alertes intelligentes issues de vos données réelles.',
     reportsDesc: 'Préparation des rapports et fichiers exportables.',
+    documentsCenterDesc: 'Centre unifié pour les documents projet, caritatifs, reçus et rapports de l’utilisateur.',
     incomeDesc: 'Gérer les sources de revenus.',
     expensesDesc: 'Gérer les dépenses et reçus.',
     savingsDesc: 'Suivre l’épargne.',
@@ -117,7 +118,6 @@ const TEXT = {
     charityProjectsDesc: 'Projets caritatifs, bénéficiaires et contributeurs.',
     servicesDesc: 'Répertoires de services d’aide lorsqu’ils sont disponibles.',
     profileDesc: 'Informations du compte et du profil.',
-    settingsDesc: 'Préférences d’expérience et mode d’affichage.',
     securityDesc: 'Informations de sécurité, confidentialité et avertissements.',
   },
 } as const;
@@ -127,6 +127,7 @@ const PURPOSE_KEY: Record<string, keyof typeof TEXT.ar> = {
   'command-center': 'commandDesc',
   today: 'todayDesc',
   tasks: 'tasksDesc',
+  'documents-center': 'documentsCenterDesc',
   notif: 'notificationsDesc',
   'reports-center': 'reportsDesc',
   income: 'incomeDesc',
@@ -151,7 +152,6 @@ const PURPOSE_KEY: Record<string, keyof typeof TEXT.ar> = {
   'feasibility-firms': 'servicesDesc',
   'advisory-firms': 'servicesDesc',
   profile: 'profileDesc',
-  settings: 'settingsDesc',
   security: 'securityDesc',
 };
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, LogOut, UserRound } from 'lucide-react';
+import { ChevronDown, LogOut, ShieldCheck, UserRound } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 
@@ -51,7 +51,7 @@ export function UserChip({ displayName }: { displayName?: string }) {
     const desiredLeft = dir === 'rtl' ? rect.right - MENU_WIDTH : rect.left;
     const left = clamp(desiredLeft, margin, window.innerWidth - MENU_WIDTH - margin);
     const spaceBelow = window.innerHeight - rect.bottom;
-    const menuHeight = 116;
+    const menuHeight = 164;
     const top = spaceBelow < menuHeight + 16
       ? Math.max(margin, rect.top - menuHeight - margin)
       : rect.bottom + margin;
@@ -94,6 +94,11 @@ export function UserChip({ displayName }: { displayName?: string }) {
     router.push('/profile');
   };
 
+  const goSecurity = () => {
+    setOpen(false);
+    router.push('/security');
+  };
+
   const handleSignOut = async () => {
     setOpen(false);
     await signOut();
@@ -118,6 +123,10 @@ export function UserChip({ displayName }: { displayName?: string }) {
       <button type="button" role="menuitem" className="sfm-user-menu-item" onClick={goProfile}>
         <UserRound size={17} />
         <span>{t('nav_profile')}</span>
+      </button>
+      <button type="button" role="menuitem" className="sfm-user-menu-item" onClick={goSecurity}>
+        <ShieldCheck size={17} />
+        <span>{t('nav_security')}</span>
       </button>
       <button type="button" role="menuitem" className="sfm-user-menu-item danger" onClick={handleSignOut}>
         <LogOut size={17} />

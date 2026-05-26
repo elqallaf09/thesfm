@@ -6,6 +6,7 @@ const protectedPrefixes = [
   '/command-center',
   '/today',
   '/tasks',
+  '/documents',
   '/expenses',
   '/income',
   '/invest',

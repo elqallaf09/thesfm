@@ -20,6 +20,35 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const usernameToEmail = (username: string) => `${username.trim().toLowerCase()}@smart-finance.local`;
 const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
+function getStoredGuestMode() {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage?.getItem('sfm_guest_mode') === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function setStoredGuestMode() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage?.setItem('sfm_guest_mode', 'true');
+    window.localStorage?.setItem('sfm_guest_started_at', new Date().toISOString());
+  } catch {
+    // Some embedded or privacy-restricted browsers can block localStorage.
+  }
+}
+
+function clearStoredGuestMode() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage?.removeItem('sfm_guest_mode');
+    window.localStorage?.removeItem('sfm_guest_started_at');
+  } catch {
+    // Keep auth state usable even when localStorage is unavailable.
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -34,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     supabase.auth.getSession().then(({ data }) => {
-      const guestMode = typeof window !== 'undefined' && localStorage.getItem('sfm_guest_mode') === 'true';
+      const guestMode = getStoredGuestMode();
       setSession(data.session);
       setUser(data.session?.user ?? null);
       setIsGuest(!data.session && guestMode);
@@ -45,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
-      const guestMode = typeof window !== 'undefined' && localStorage.getItem('sfm_guest_mode') === 'true';
+      const guestMode = getStoredGuestMode();
       setIsGuest(!nextSession && guestMode);
       syncCookies(nextSession, !nextSession && guestMode);
       setLoading(false);
@@ -60,10 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     isGuest,
     continueAsGuest: () => {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('sfm_guest_mode', 'true');
-        localStorage.setItem('sfm_guest_started_at', new Date().toISOString());
-      }
+      setStoredGuestMode();
       if (typeof document !== 'undefined') {
         document.cookie = `sfm_guest=true; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`;
         document.cookie = 'sfm_auth=; path=/; max-age=0; SameSite=Lax';
@@ -87,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           return { error: new Error(error.message) };
         }
-        if (typeof window !== 'undefined') localStorage.removeItem('sfm_guest_mode');
+        clearStoredGuestMode();
         if (typeof document !== 'undefined') {
           document.cookie = `sfm_auth=true; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
           document.cookie = 'sfm_guest=; path=/; max-age=0; SameSite=Lax';
@@ -151,10 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     signOut: async () => {
       await supabase.auth.signOut();
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('sfm_guest_mode');
-        localStorage.removeItem('sfm_guest_started_at');
-      }
+      clearStoredGuestMode();
       if (typeof document !== 'undefined') {
         document.cookie = 'sfm_auth=; path=/; max-age=0; SameSite=Lax';
         document.cookie = 'sfm_guest=; path=/; max-age=0; SameSite=Lax';

@@ -194,6 +194,7 @@ const TEXT = {
     openModule: 'فتح الوحدة',
     exportsDisabled: 'التصدير متاح فقط عند توفر بيانات حقيقية ضمن الفلاتر الحالية.',
     comingSoon: 'قريباً',
+    documentsCenter: 'مركز المستندات',
     openReportsCenter: 'فتح مركز التقارير',
     oldReportsHint: 'هذه صفحة التقارير المختصرة. استخدم مركز التقارير للتقارير المالية والمشاريع والزكاة والاستثمار.',
     monthlyFinancial: 'التقرير المالي الشهري',
@@ -285,6 +286,7 @@ const TEXT = {
     openModule: 'Open module',
     exportsDisabled: 'Export is available only when real data exists for the current filters.',
     comingSoon: 'Coming soon',
+    documentsCenter: 'Documents Center',
     openReportsCenter: 'Open Reports Center',
     oldReportsHint: 'This is the compact reports page. Use Reports Center for financial, project, zakat, and investment reports.',
     monthlyFinancial: 'Monthly Financial Report',
@@ -376,6 +378,7 @@ const TEXT = {
     openModule: 'Ouvrir le module',
     exportsDisabled: 'L’export est disponible uniquement lorsque des données réelles existent pour les filtres actuels.',
     comingSoon: 'Bientôt',
+    documentsCenter: 'Centre des documents',
     openReportsCenter: 'Ouvrir le Centre des rapports',
     oldReportsHint: 'Ceci est la page compacte des rapports. Utilisez le Centre des rapports pour les rapports financiers, projets, zakat et investissements.',
     monthlyFinancial: 'Rapport financier mensuel',
@@ -1397,9 +1400,14 @@ export default function ReportsCenterPage() {
               <span><CalendarDays size={16} /> {filters.year}</span>
             </div>
           </div>
-          <button type="button" disabled={!activeCanExport} aria-disabled={!activeCanExport} onClick={() => printReport(activeReport)} aria-label={tr.printPdf}>
-            <Printer size={18} /> {tr.printPdf}
-          </button>
+          <div className="hero-actions">
+            <button type="button" onClick={() => router.push('/documents')} aria-label={tr.documentsCenter}>
+              <FileText size={18} /> {tr.documentsCenter}
+            </button>
+            <button type="button" disabled={!activeCanExport} aria-disabled={!activeCanExport} onClick={() => printReport(activeReport)} aria-label={tr.printPdf}>
+              <Printer size={18} /> {tr.printPdf}
+            </button>
+          </div>
         </section>
 
         <nav className="category-tabs no-print" aria-label={tr.category}>
@@ -1656,6 +1664,7 @@ const pageStyles = `
   .hero-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(167,243,240,.22);background:rgba(167,243,240,.10);border-radius:999px;padding:8px 13px;color:var(--sfm-soft-cyan);font-size:12px;font-weight:950}
   .reports-hero h1{margin:18px 0 10px;font-size:clamp(34px,7vw,66px);line-height:1;font-weight:950;letter-spacing:0}.reports-hero p{margin:0;max-width:780px;color:rgba(234,246,255,.76);font-size:clamp(15px,2vw,19px);line-height:1.8;font-weight:800}
   .hero-stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.hero-stats span{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:7px 11px;color:rgba(234,246,255,.8);font-size:12px;font-weight:900}
+  .hero-actions{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
   .reports-hero button,.preview-actions button,.card-actions button{border:0;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;min-height:42px;padding:0 13px}
   .reports-hero button{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;white-space:nowrap}.reports-hero button:disabled{background:rgba(234,246,255,.2);color:rgba(234,246,255,.62);cursor:not-allowed}
   .category-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin}.category-tabs button{flex:0 0 auto;min-height:42px;border:1px solid rgba(29,140,255,.18);border-radius:999px;background:var(--sfm-card);color:var(--sfm-muted);padding:0 14px;display:inline-flex;align-items:center;gap:8px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}.category-tabs button span{min-width:24px;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:3px 7px}.category-tabs button.active,.category-tabs button:focus-visible{background:var(--sfm-primary-dark);color:var(--sfm-soft-cyan);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.14)}.category-tabs button.active span{background:rgba(167,243,240,.16);color:var(--sfm-soft-cyan)}

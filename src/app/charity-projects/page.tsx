@@ -302,6 +302,7 @@ const TEXT = {
     emptyReportExported: 'لا توجد بيانات كافية، سيتم تصدير تقرير فارغ.',
     documentVault: 'خزنة المستندات',
     documentVaultDesc: 'احفظ إيصالات التبرعات، شهادات الجمعيات، وتقارير المشاريع في مكان واحد.',
+    documentsCenter: 'مركز المستندات',
     uploadDocument: 'رفع مستند',
     documentTitle: 'عنوان المستند',
     documentCategory: 'التصنيف',
@@ -664,6 +665,7 @@ const TEXT = {
     emptyReportExported: 'Not enough data. An empty report will be exported.',
     documentVault: 'Document Vault',
     documentVaultDesc: 'Store donation receipts, charity certificates, and project reports in one place.',
+    documentsCenter: 'Documents Center',
     uploadDocument: 'Upload Document',
     documentTitle: 'Document title',
     documentCategory: 'Category',
@@ -1026,6 +1028,7 @@ const TEXT = {
     emptyReportExported: 'Données insuffisantes. Un rapport vide sera exporté.',
     documentVault: 'Coffre de documents',
     documentVaultDesc: 'Conservez les reçus de dons, les certificats d’associations et les rapports de projets au même endroit.',
+    documentsCenter: 'Centre des documents',
     uploadDocument: 'Téléverser un document',
     documentTitle: 'Titre du document',
     documentCategory: 'Catégorie',
@@ -2520,6 +2523,9 @@ export default function CharityProjectsPage() {
             </button>
             <a className="dark-btn" href="/zakat">
               <Calculator size={17} /> {tr.zakatCalculator}
+            </a>
+            <a className="dark-btn" href="/documents">
+              <FileText size={17} /> {tr.documentsCenter}
             </a>
             <LanguageSwitcher variant="dark" compact />
           </div>

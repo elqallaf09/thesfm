@@ -535,7 +535,7 @@ function SecuritySettings({ labels, onModal, onSignOutAll }: { labels: Record<st
 function PreferenceSettings({ lang, preferences, onChange, labels }: { lang: Lang; preferences: PreferencesState; onChange: (next: PreferencesState) => void; labels: Record<string, string> }) {
   const set = (patch: Partial<PreferencesState>) => onChange({ ...preferences, ...patch });
   return (
-    <Section title={labels.title} icon={<Palette size={19} />}>
+    <Section id="preferences" title={labels.title} icon={<Palette size={19} />}>
       <div className="pref-grid">
         <Choice label={labels.language} value={preferences.language} options={[['ar', 'العربية'], ['en', 'English'], ['fr', 'Français']]} onChange={value => set({ language: value as Lang })} />
         <Choice label={labels.theme} value={preferences.theme} options={[['light', labels.light], ['dark', labels.dark], ['system', labels.system]]} onChange={value => set({ theme: value as ThemeMode })} />
@@ -577,8 +577,8 @@ function DangerZone({ labels, onExport, onDelete }: { labels: Record<string, str
   return <Section title={labels.title} icon={<AlertTriangle size={19} />} className="danger-zone"><div className="section-actions"><button className="ghost-btn" onClick={onExport}><Download size={16} />{labels.exportData}</button><button className="danger-btn" onClick={onDelete}><Trash2 size={16} />{labels.deleteAccount}</button></div><p style={{ margin: '12px 0 0', color: '#B91C1C', fontWeight: 800 }}>{labels.deleteHint}</p></Section>;
 }
 
-function Section({ title, icon, children, className = '' }: { title: string; icon: ReactNode; children: ReactNode; className?: string }) {
-  return <section className={`profile-card profile-section ${className}`}><div className="section-head">{icon}<h2>{title}</h2></div>{children}</section>;
+function Section({ id, title, icon, children, className = '' }: { id?: string; title: string; icon: ReactNode; children: ReactNode; className?: string }) {
+  return <section id={id} className={`profile-card profile-section ${className}`}><div className="section-head">{icon}<h2>{title}</h2></div>{children}</section>;
 }
 
 function Field({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {

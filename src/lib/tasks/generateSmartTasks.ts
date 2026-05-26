@@ -607,7 +607,7 @@ export function generateSmartTasks({
       description: copy.currencyDescription,
       sourceModule: 'setup',
       priority: 'medium',
-      actionUrl: '/settings',
+      actionUrl: '/profile#preferences',
     });
   }
   if (profile?.onboarding_completed !== true) {

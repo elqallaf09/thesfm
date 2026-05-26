@@ -109,6 +109,7 @@ const TEXT = {
     financial: 'النموذج المالي',
     tasks: 'المهام',
     documents: 'المستندات',
+    documentsCenter: 'مركز المستندات',
     kpis: 'المؤشرات',
     ai: 'مستشار AI',
     pitchDeck: 'العرض الاستثماري',
@@ -265,6 +266,7 @@ const TEXT = {
     financial: 'Financial Model',
     tasks: 'Tasks',
     documents: 'Documents',
+    documentsCenter: 'Documents Center',
     kpis: 'KPIs',
     ai: 'AI Advisor',
     pitchDeck: 'Pitch Deck',
@@ -421,6 +423,7 @@ const TEXT = {
     financial: 'Modèle financier',
     tasks: 'Tâches',
     documents: 'Documents',
+    documentsCenter: 'Centre des documents',
     kpis: 'KPI',
     ai: 'Conseiller IA',
     pitchDeck: 'Pitch Deck',
@@ -1413,6 +1416,7 @@ function OverviewTab({
           <button type="button" onClick={() => setActiveTab('tasks')}>{tr.addTask}</button>
           <button type="button" onClick={() => setActiveTab('feasibility')}>{tr.generateFeasibility}</button>
           <button type="button" onClick={() => setActiveTab('financial')}>{tr.createFinancialModel}</button>
+          <button type="button" onClick={() => routerPush('/documents')}>{tr.documentsCenter}</button>
         </div>
       </article>
     </section>

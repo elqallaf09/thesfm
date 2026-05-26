@@ -26,13 +26,12 @@ const TEXT = {
     realData: 'تحليلات من بياناتك فقط',
     realDataDesc: 'لا نعرض أرقاماً وهمية أو توصيات مبنية على افتراضات غير موجودة.',
     deleteData: 'يمكنك حذف بياناتك',
-    deleteDataDesc: 'إعدادات الحساب تحتوي على مسارات إدارة البيانات عند توفرها.',
+    deleteDataDesc: 'تتوفر مسارات إدارة البيانات داخل الملف الشخصي عند دعمها في التطبيق.',
     securityInfo: 'معلومات الأمان',
     securityInfoDesc: 'نعمل على حماية بياناتك وفق أفضل الممارسات المتاحة داخل التطبيق.',
     disclaimer: 'إخلاء مسؤولية مالية',
     disclaimerDesc: 'THE SFM يساعدك على التنظيم والتحليل، ولا يعتبر بديلاً عن مستشار مالي أو قانوني مختص.',
     openProfile: 'فتح الملف الشخصي',
-    openSettings: 'فتح الإعدادات',
     openMap: 'فتح خريطة THE SFM',
   },
   en: {
@@ -46,13 +45,12 @@ const TEXT = {
     realData: 'Analysis from your data only',
     realDataDesc: 'We do not show fake numbers or recommendations based on missing assumptions.',
     deleteData: 'You can delete your data',
-    deleteDataDesc: 'Account settings include data-management paths where available.',
+    deleteDataDesc: 'Profile includes data-management paths where available.',
     securityInfo: 'Security information',
     securityInfoDesc: 'We work to protect your data using best practices available within the app.',
     disclaimer: 'Financial disclaimer',
     disclaimerDesc: 'THE SFM helps with organization and analysis, and is not a substitute for a qualified financial or legal advisor.',
     openProfile: 'Open Profile',
-    openSettings: 'Open Settings',
     openMap: 'Open THE SFM Map',
   },
   fr: {
@@ -66,13 +64,12 @@ const TEXT = {
     realData: 'Analyse basée uniquement sur vos données',
     realDataDesc: 'Nous n’affichons pas de chiffres fictifs ni de recommandations fondées sur des hypothèses manquantes.',
     deleteData: 'Vous pouvez supprimer vos données',
-    deleteDataDesc: 'Les paramètres du compte incluent les parcours de gestion des données lorsqu’ils sont disponibles.',
+    deleteDataDesc: 'Le profil inclut les parcours de gestion des données lorsqu’ils sont disponibles.',
     securityInfo: 'Informations de sécurité',
     securityInfoDesc: 'Nous travaillons à protéger vos données avec les meilleures pratiques disponibles dans l’application.',
     disclaimer: 'Avertissement financier',
     disclaimerDesc: 'THE SFM aide à organiser et analyser, mais ne remplace pas un conseiller financier ou juridique qualifié.',
     openProfile: 'Ouvrir le profil',
-    openSettings: 'Ouvrir les paramètres',
     openMap: 'Ouvrir la carte THE SFM',
   },
 } as const;
@@ -105,7 +102,6 @@ export default function SecurityPage() {
           actions={(
             <ActionRow>
               <Link className="sfm-primary-link" href="/profile">{text.openProfile}</Link>
-              <Link className="sfm-secondary-link" href="/settings">{text.openSettings}</Link>
             </ActionRow>
           )}
         />
@@ -220,4 +216,3 @@ export default function SecurityPage() {
     </div>
   );
 }
-

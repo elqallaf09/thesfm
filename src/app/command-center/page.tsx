@@ -9,6 +9,7 @@ import {
   BriefcaseBusiness,
   ClipboardList,
   FileText,
+  Files,
   HeartHandshake,
   Landmark,
   Loader2,
@@ -40,9 +41,11 @@ type CommandKey =
   | 'marketWatchlist'
   | 'projects'
   | 'projectTasks'
+  | 'projectDocuments'
   | 'zakatCalculations'
   | 'zakatAssets'
   | 'charityProjects'
+  | 'charityDocuments'
   | 'notifications';
 
 type Records = Record<CommandKey, any[]>;
@@ -56,9 +59,11 @@ const COMMAND_TABLES: Array<{ key: CommandKey; table: string; limit?: number }> 
   { key: 'marketWatchlist', table: 'market_watchlist' },
   { key: 'projects', table: 'projects' },
   { key: 'projectTasks', table: 'project_tasks' },
+  { key: 'projectDocuments', table: 'project_documents' },
   { key: 'zakatCalculations', table: 'zakat_calculations' },
   { key: 'zakatAssets', table: 'zakat_assets' },
   { key: 'charityProjects', table: 'charity_projects' },
+  { key: 'charityDocuments', table: 'charity_documents' },
   { key: 'notifications', table: 'notifications' },
 ];
 
@@ -93,6 +98,8 @@ const TEXT = {
     zakatCharityDesc: 'الزكاة، المشاريع الخيرية، والتذكيرات ذات الصلة.',
     reports: 'تقاريري',
     reportsDesc: 'مركز التقارير يعرض الجاهز وما يحتاج بيانات فقط.',
+    documents: 'مستنداتي',
+    documentsDesc: 'مركز واحد لكل مستندات المشاريع، الإيصالات، العروض، والتقارير المحفوظة.',
     aiAssistant: 'مساعدي الذكي',
     aiAssistantDesc: 'مدخل للمساعد الذكي ليعمل على بياناتك الفعلية عند توفرها.',
     notifications: 'إشعارات عالية الأهمية',
@@ -122,6 +129,8 @@ const TEXT = {
     zakatCharityDesc: 'Zakat, charity projects, and related reminders.',
     reports: 'Reports',
     reportsDesc: 'Reports Center shows what is ready and what needs data.',
+    documents: 'Documents',
+    documentsDesc: 'One center for project documents, receipts, decks, and saved reports.',
     aiAssistant: 'AI Assistant',
     aiAssistantDesc: 'Entry point for the assistant to work from your real data when available.',
     notifications: 'High priority notifications',
@@ -151,6 +160,8 @@ const TEXT = {
     zakatCharityDesc: 'Zakat, projets caritatifs et rappels associés.',
     reports: 'Rapports',
     reportsDesc: 'Le centre des rapports affiche ce qui est prêt et ce qui nécessite des données.',
+    documents: 'Documents',
+    documentsDesc: 'Un centre pour les documents de projet, reçus, pitch decks et rapports enregistrés.',
     aiAssistant: 'Assistant IA',
     aiAssistantDesc: 'Point d’entrée pour que l’assistant travaille à partir de vos données réelles.',
     notifications: 'Notifications haute priorité',
@@ -206,6 +217,7 @@ export default function CommandCenterPage() {
       hasAny(records, ['investments', 'marketWatchlist']),
       hasAny(records, ['projects', 'projectTasks']),
       hasAny(records, ['zakatCalculations', 'zakatAssets', 'charityProjects']),
+      hasAny(records, ['projectDocuments', 'charityDocuments']),
       hasAny(records, ['income', 'expenses', 'projects', 'zakatCalculations', 'charityProjects']),
     ];
     const highPriority = records.notifications.filter(isHighPriority).length;
@@ -253,6 +265,13 @@ export default function CommandCenterPage() {
       ready: hasAny(records, ['income', 'expenses', 'projects', 'zakatCalculations', 'charityProjects']),
     },
     {
+      title: text.documents,
+      description: text.documentsDesc,
+      href: '/documents',
+      icon: Files,
+      ready: hasAny(records, ['projectDocuments', 'charityDocuments']),
+    },
+    {
       title: text.aiAssistant,
       description: text.aiAssistantDesc,
       href: '/ai',
@@ -292,7 +311,7 @@ export default function CommandCenterPage() {
           <>
             <StatGrid>
               <AppCard>
-                <Metric label={text.worlds} value={`${summary.activeWorlds}/5`} hint={summary.activeWorlds > 0 ? text.ready : text.noData} icon={<Landmark size={20} />} />
+                <Metric label={text.worlds} value={`${summary.activeWorlds}/6`} hint={summary.activeWorlds > 0 ? text.ready : text.noData} icon={<Landmark size={20} />} />
               </AppCard>
               <AppCard>
                 <Metric label={text.notifications} value={`${summary.highPriority}`} hint={summary.highPriority > 0 ? text.ready : text.noUrgent} icon={<Bell size={20} />} />

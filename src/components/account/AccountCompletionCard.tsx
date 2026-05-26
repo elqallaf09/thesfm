@@ -80,7 +80,7 @@ const COPY = {
 
 const REQUIRED_ITEMS: Array<{ key: CompletionKey; href: string }> = [
   { key: 'profile', href: '/profile' },
-  { key: 'currency', href: '/settings' },
+  { key: 'currency', href: '/profile#preferences' },
   { key: 'income', href: '/income' },
   { key: 'expense', href: '/expenses' },
   { key: 'goal', href: '/goals' },
