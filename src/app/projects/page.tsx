@@ -7,10 +7,12 @@ import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
+import { PageTabs } from '@/components/layout/PageTabs';
 import { Loader2, Pencil, Trash2, Send, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 
 /* ─── Types ─── */
 type ProjectStatus = 'فكرة' | 'قيد التنفيذ' | 'نشط' | 'متوقف' | 'مكتمل';
+type ProjectsTab = 'all' | 'active' | 'late' | 'completed' | 'templates';
 interface ProjectForm {
   name: string; emoji: string; type: string; idea: string;
   capital: string; expectedProfit: string; currentProfit: string;
@@ -188,6 +190,7 @@ export default function ProjectsPage() {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<ProjectsTab>('all');
   const formRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -286,6 +289,25 @@ export default function ProjectsPage() {
   };
 
   /* Derived stats */
+  const statusKeys = Object.keys(STATUS_CONFIG) as ProjectStatus[];
+  const inProgressStatus = statusKeys[1];
+  const activeStatus = statusKeys[2];
+  const stoppedStatus = statusKeys[3];
+  const completedStatus = statusKeys[4];
+  const filteredProjects = projects.filter(project => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'active') return project.status === activeStatus || project.status === inProgressStatus;
+    if (activeTab === 'late') return project.status === stoppedStatus;
+    if (activeTab === 'completed') return project.status === completedStatus;
+    return false;
+  });
+  const projectTabs = [
+    { id: 'all', label: 'كل المشاريع', count: projects.length },
+    { id: 'active', label: 'النشطة', count: projects.filter(project => project.status === activeStatus || project.status === inProgressStatus).length },
+    { id: 'late', label: 'المتأخرة', count: projects.filter(project => project.status === stoppedStatus).length },
+    { id: 'completed', label: 'المكتملة', count: projects.filter(project => project.status === completedStatus).length },
+    { id: 'templates', label: 'القوالب' },
+  ];
   const totalCapital = projects.reduce((s, p) => s + fmt(p.capital), 0);
   const totalCurrentProfit = projects.reduce((s, p) => s + fmt(p.currentProfit), 0);
   const activeProjects = projects.filter(p => p.status === 'نشط').length;
@@ -371,6 +393,13 @@ export default function ProjectsPage() {
               </div>
             ))}
           </div>
+
+          <PageTabs
+            tabs={projectTabs}
+            active={activeTab}
+            onChange={id => setActiveTab(id as ProjectsTab)}
+            ariaLabel={pt.title}
+          />
 
           {/* Multi-step form */}
           {showForm && (
@@ -568,10 +597,17 @@ export default function ProjectsPage() {
             </div>
           )}
 
+          {projects.length > 0 && filteredProjects.length === 0 && activeTab !== 'all' && (
+            <div className="pc" style={{ ...S(90), padding: '34px', textAlign: 'center' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--sfm-foreground)', marginBottom: '8px' }}>لا توجد بيانات حتى الآن.</h3>
+              <p style={{ fontSize: '13px', color: 'var(--sfm-muted)', lineHeight: 1.7 }}>استخدم تبويب كل المشاريع أو أضف مشروعاً جديداً عند الحاجة.</p>
+            </div>
+          )}
+
           {/* Project cards */}
-          {projects.length > 0 && (
+          {filteredProjects.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', ...S(100) }}>
-              {projects.map(project => {
+              {filteredProjects.map(project => {
                 const sc = STATUS_CONFIG[project.status] ?? STATUS_CONFIG['فكرة'];
                 const cap = fmt(project.capital), curP = fmt(project.currentProfit), expP = fmt(project.expectedProfit);
                 const roi = (() => { const rev = fmt(project.monthlyRevenue), exp = fmt(project.monthlyExpenses); const p = rev - exp; return cap > 0 && p > 0 ? { months: Math.ceil(cap / p), yearly: ((p * 12 / cap) * 100).toFixed(1) } : null; })();
@@ -697,6 +733,7 @@ export default function ProjectsPage() {
           )}
 
           {/* AI Chat */}
+          {activeTab === 'all' && (
           <div id="ai-chat" className="pc" style={{ ...S(200), padding: 0, overflow: 'hidden' }}>
             <div style={{ background: 'linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark))', padding: '16px 22px', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ width: '38px', height: '38px', background: 'rgba(167,243,240,.18)', borderRadius: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', border: '1px solid rgba(167,243,240,.28)', flexShrink: 0 }}>🤖</div>
@@ -731,6 +768,7 @@ export default function ProjectsPage() {
               <button className="pbtn pbtn-g" style={{ padding: '11px 18px', flexShrink: 0 }} onClick={sendMessage} disabled={chatLoading || !chatInput.trim()}><Send className="w-4 h-4" /></button>
             </div>
           </div>
+          )}
 
       </DashboardPageShell>
     </div>

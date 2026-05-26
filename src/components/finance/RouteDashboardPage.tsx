@@ -43,6 +43,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { Sidebar } from '@/components/Sidebar';
+import { PageTabs } from '@/components/layout/PageTabs';
 import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
 import { getCurrency } from '@/lib/currencies';
@@ -50,6 +51,7 @@ import { CurrencySelect } from '@/components/CurrencySelect';
 import { calculateGoalProgress, parseMoney } from '@/lib/goalProgress';
 
 type PageKind = 'expenses' | 'income' | 'invest' | 'savings' | 'goals' | 'reports' | 'ai';
+type ExpensePageTab = 'overview' | 'records' | 'receipts' | 'categories' | 'analytics' | 'reports';
 type LangText = { ar: string; en: string; fr?: string };
 type TranslateFn = ReturnType<typeof useLanguage>['t'];
 type MoneyItem = { id: string; name: string; amount: number; created_at?: string | null };
@@ -789,6 +791,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [rowSort, setRowSort] = useState<'dateDesc' | 'dateAsc' | 'amountDesc' | 'amountAsc'>('dateDesc');
   const [rowRange, setRowRange] = useState<'all' | 'month' | 'last3' | 'year'>('all');
   const [visibleCount, setVisibleCount] = useState(30);
+  const [expenseTab, setExpenseTab] = useState<ExpensePageTab>('overview');
 
   useEffect(() => {
     let cancelled = false;
@@ -1791,6 +1794,14 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     });
     const monthlyTotal = monthlyExpenses.reduce((sum, item) => sum + item.amount, 0);
     const recurringTotal = data.expenses.filter(item => ['subscriptions', 'bills', 'loans'].includes(item.category || '')).reduce((sum, item) => sum + item.amount, 0);
+    const expenseTabs = [
+      { id: 'overview', label: pick({ ar: 'نظرة عامة', en: 'Overview', fr: 'Aperçu' }, lang) },
+      { id: 'records', label: pick({ ar: 'السجلات', en: 'Records', fr: 'Enregistrements' }, lang), count: data.expenses.length },
+      { id: 'receipts', label: pick({ ar: 'الإيصالات', en: 'Receipts', fr: 'Reçus' }, lang), count: data.expenses.filter(item => item.receipt_image_url || item.receipt_file_name).length },
+      { id: 'categories', label: pick({ ar: 'التصنيفات', en: 'Categories', fr: 'Catégories' }, lang) },
+      { id: 'analytics', label: pick({ ar: 'التحليلات', en: 'Analytics', fr: 'Analyses' }, lang) },
+      { id: 'reports', label: pick({ ar: 'التقارير', en: 'Reports', fr: 'Rapports' }, lang) },
+    ];
 
     return (
       <div className="sfm-shell expense-smart-shell" dir={dir}>
@@ -1834,6 +1845,14 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             ))}
           </section>
 
+          <PageTabs
+            tabs={expenseTabs}
+            active={expenseTab}
+            onChange={id => setExpenseTab(id as ExpensePageTab)}
+            ariaLabel={expenseText('smartTitle', lang)}
+          />
+
+          {expenseTab !== 'reports' ? (
           <section className="expense-dashboard-grid">
             <div className="panel expense-list-panel">
               <div className="panel-head">
@@ -1964,6 +1983,22 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               </section>
             </aside>
           </section>
+          ) : (
+            <section className="panel expense-report-shortcut">
+              <div className="panel-head compact">
+                <div>
+                  <p>{pick({ ar: 'مركز التقارير', en: 'Reports Center', fr: 'Centre des rapports' }, lang)}</p>
+                  <h3>{pick({ ar: 'تقارير المصروفات', en: 'Expense Reports', fr: 'Rapports de dépenses' }, lang)}</h3>
+                </div>
+                <Printer size={21} />
+              </div>
+              <p>{summaryText(kind, data, lang, currency)}</p>
+              <button type="button" className="primary-btn" onClick={() => router.push('/reports-center')}>
+                <Download size={16} />
+                {pick({ ar: 'فتح مركز التقارير', en: 'Open Reports Center', fr: 'Ouvrir le centre des rapports' }, lang)}
+              </button>
+            </section>
+          )}
 
           <button type="button" className="expense-floating-add" onClick={openCreateEntry} aria-label={expenseText('addExpense', lang)}>
             <Plus size={22} />

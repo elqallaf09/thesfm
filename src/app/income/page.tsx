@@ -5,6 +5,7 @@ import { AlertTriangle, BarChart3, BriefcaseBusiness, CalendarDays, CheckCircle2
 import { AppHeader } from '@/components/AppHeader';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { Sidebar } from '@/components/Sidebar';
+import { PageTabs } from '@/components/layout/PageTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +17,7 @@ type IncomeStatus = 'received' | 'pending' | 'expected' | 'late';
 type Frequency = 'monthly' | 'weekly' | 'yearly';
 type Lang = 'ar' | 'en' | 'fr';
 type IncomeFilter = 'all' | IncomeStatus | 'recurring' | 'one-time';
+type IncomePageTab = 'overview' | 'sources' | 'recurring' | 'analytics' | 'reports';
 
 type IncomeRow = {
   id: string;
@@ -365,6 +367,7 @@ export default function IncomePage() {
   const [toast, setToast] = useState('');
   const [insightOpen, setInsightOpen] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<IncomeFilter>('all');
+  const [activeTab, setActiveTab] = useState<IncomePageTab>('overview');
   const [exportOpen, setExportOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [attachmentError, setAttachmentError] = useState('');
@@ -474,6 +477,8 @@ export default function IncomePage() {
   const activeSources = viewRows.filter(row => row.workflowStatus !== 'late').length;
   const expectedNet = Math.max(selectedMonthIncomeTotal - selectedMonthExpenseTotal, 0);
   const recurringTotal = viewRows.filter(row => row.is_recurring).reduce((sum, row) => sum + toFiniteAmount(row.amount), 0);
+  const recurringRows = useMemo(() => viewRows.filter(row => row.is_recurring), [viewRows]);
+  const displayRows = activeTab === 'recurring' ? recurringRows : filteredRows;
   const recurringPercent = total > 0 ? Math.round((recurringTotal / total) * 100) : 0;
   const largestRow = viewRows.reduce<IncomeViewRow | null>((largest, row) => toFiniteAmount(row.amount) > toFiniteAmount(largest?.amount) ? row : largest, null);
   const concentrationPercent = total > 0 && largestRow ? Math.round((toFiniteAmount(largestRow.amount) / total) * 100) : 0;
@@ -565,6 +570,38 @@ export default function IncomePage() {
     return items.slice(0, 5);
   }, [concentrationPercent, lang, largestRow, lateRows.length, recurringPercent, viewRows]);
   const categorySuggestion = suggestIncomeType(form.name);
+  const incomeTabs = useMemo(() => {
+    const labels = {
+      ar: {
+        overview: 'نظرة عامة',
+        sources: 'المصادر',
+        recurring: 'المتكرر',
+        analytics: 'التحليلات',
+        reports: 'التقارير',
+      },
+      en: {
+        overview: 'Overview',
+        sources: 'Sources',
+        recurring: 'Recurring',
+        analytics: 'Analytics',
+        reports: 'Reports',
+      },
+      fr: {
+        overview: 'Aperçu',
+        sources: 'Sources',
+        recurring: 'Récurrent',
+        analytics: 'Analyses',
+        reports: 'Rapports',
+      },
+    }[lang as Lang];
+    return [
+      { id: 'overview', label: labels.overview },
+      { id: 'sources', label: labels.sources, count: viewRows.length },
+      { id: 'recurring', label: labels.recurring, count: recurringRows.length },
+      { id: 'analytics', label: labels.analytics },
+      { id: 'reports', label: labels.reports },
+    ];
+  }, [lang, recurringRows.length, viewRows.length]);
 
   const distribution = useMemo(() => {
     const colors = ['var(--sfm-midnight)', 'var(--sfm-primary)', 'var(--sfm-accent)', 'var(--sfm-soft-cyan)', '#7C4A12', '#047857', '#0C447C'];
@@ -1022,6 +1059,15 @@ export default function IncomePage() {
           <article><span><CircleDollarSign size={18} />{tr('expectedNet', lang)}</span><strong>{formatMoney(expectedNet, defaultCurrency || 'KWD', lang as Lang)}</strong><em>{selectedMonthIncomeTotal > 0 ? tr('calculatedFromRealData', lang) : tr('insufficientData', lang)}</em></article>
         </section>
 
+        <PageTabs
+          tabs={incomeTabs}
+          active={activeTab}
+          onChange={id => setActiveTab(id as IncomePageTab)}
+          ariaLabel={tr('title', lang)}
+        />
+
+        {activeTab === 'overview' && (
+          <>
         <section className="smart-grid">
           <article className="panel smart-score">
             <div className="panel-title"><Gauge size={18} /><h2>{tr('stabilityScore', lang)}</h2></div>
@@ -1042,7 +1088,7 @@ export default function IncomePage() {
         {lateRows.length > 0 && (
           <section className="late-card">
             <span><AlertTriangle size={18} />{tr('lateWarning', lang)}</span>
-            <button type="button" onClick={() => setStatusFilter('late')}>{tr('viewLateIncome', lang)}</button>
+            <button type="button" onClick={() => { setStatusFilter('late'); setActiveTab('sources'); }}>{tr('viewLateIncome', lang)}</button>
           </section>
         )}
 
@@ -1067,7 +1113,10 @@ export default function IncomePage() {
             ))}
           </div>
         </section>
+          </>
+        )}
 
+        {activeTab === 'analytics' && (
         <section className="chart-grid">
           <article className="panel">
             <div className="panel-title"><BarChart3 size={18} /><h2>{tr('distribution', lang)}</h2></div>
@@ -1086,12 +1135,27 @@ export default function IncomePage() {
             </svg>
           </article>
         </section>
+        )}
 
+        {activeTab === 'reports' && (
+          <section className="panel income-report-panel">
+            <div className="panel-title list-title">
+              <FileText size={18} /><h2>{tr('export', lang)}</h2>
+            </div>
+            <p>{tr('reportDisclaimer', lang)}</p>
+            <div className="income-report-actions">
+              <button type="button" className="primary-dark" onClick={exportPdf}><FileText size={15} />{tr('exportPdf', lang)}</button>
+              <button type="button" className="ghost-light" onClick={exportCsv}><FileDown size={15} />{tr('exportExcel', lang)}</button>
+            </div>
+          </section>
+        )}
+
+        {(activeTab === 'sources' || activeTab === 'recurring') && (
         <section className="panel">
           <div className="panel-title list-title">
             <ReceiptText size={18} /><h2>{tr('incomeList', lang)}</h2>
           </div>
-          <div className="income-filters" role="group" aria-label={tr('status', lang)}>
+          {activeTab === 'sources' && <div className="income-filters" role="group" aria-label={tr('status', lang)}>
             {[
               ['all', tr('all', lang)],
               ['received', statusLabel('received', lang)],
@@ -1105,9 +1169,9 @@ export default function IncomePage() {
                 {label}
               </button>
             ))}
-          </div>
+          </div>}
           <div className="income-list">
-            {loading ? <div className="empty">{tr('title', lang)}...</div> : filteredRows.length === 0 ? <div className="empty">{tr('noIncome', lang)}</div> : filteredRows.map(row => {
+            {loading ? <div className="empty">{tr('title', lang)}...</div> : displayRows.length === 0 ? <div className="empty">{tr('noIncome', lang)}</div> : displayRows.map(row => {
               const amount = Number(row.amount || 0);
               const pct = total > 0 ? Math.round((amount / total) * 100) : 0;
               return (
@@ -1144,6 +1208,7 @@ export default function IncomePage() {
             })}
           </div>
         </section>
+        )}
       </main>
 
       {modalOpen && (
@@ -1230,6 +1295,7 @@ export default function IncomePage() {
         .stat-grid,.smart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.stat-grid article,.panel{background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);border-radius:20px;padding:18px;box-shadow:0 10px 26px rgba(3,18,37,.05)}.stat-grid span{display:flex;gap:8px;align-items:center;color:var(--sfm-muted);font-size:13px}.stat-grid strong{display:block;margin-top:10px;font-size:26px;font-weight:600;color:var(--sfm-midnight)}.stat-grid em{display:inline-flex;margin-top:10px;border-radius:999px;background:#ECFDF5;color:#047857;padding:4px 9px;font-style:normal;font-size:12px}
         .smart-score strong,.smart-grid strong{display:block;color:var(--sfm-midnight);font-size:26px;font-weight:600}.smart-score span,.smart-grid p{color:var(--sfm-muted);font-size:13px;line-height:1.7;margin:8px 0 0}.smart-view{grid-column:span 1}.smart-view ul{margin:0;padding-inline-start:18px;color:var(--sfm-muted);line-height:1.8;font-size:13px}
         .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.panel-title{display:flex;align-items:center;gap:9px;margin-bottom:16px;color:var(--sfm-primary)}.panel-title h2{margin:0;font-size:18px;font-weight:600;color:var(--sfm-midnight)}.donut-wrap{display:grid;grid-template-columns:180px 1fr;gap:18px;align-items:center}.donut{width:170px;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;position:relative}.donut:after{content:"";position:absolute;inset:32px;background:var(--sfm-card);border-radius:50%}.donut span{position:relative;z-index:1;font-weight:600;color:var(--sfm-midnight)}.legend{display:grid;gap:10px}.legend div{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:13px}.legend i{width:10px;height:10px;border-radius:50%}.line-chart{width:100%;height:auto;min-height:170px;background:var(--sfm-light-card);border-radius:14px;padding:12px;overflow:visible}
+        .income-report-panel p{margin:0;color:var(--sfm-muted);line-height:1.8;font-weight:600}.income-report-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
         .late-card{display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);border:1px solid rgba(133,79,11,.16);border-radius:18px;padding:14px 16px}.late-card span{display:flex;align-items:center;gap:8px;font-weight:600}.late-card button,.upcoming-item button{border:1px solid rgba(133,79,11,.16);background:#fff7eb;color:var(--sfm-primary-hover);border-radius:12px;min-height:38px;padding:0 12px;display:inline-flex;align-items:center;gap:7px;font:600 12px inherit;cursor:pointer}.upcoming-panel{display:grid;gap:10px}.upcoming-list{display:grid;gap:9px}.upcoming-item{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;border:1px solid rgba(29,140,255,.14);border-radius:14px;padding:12px;background:var(--sfm-light-card)}.upcoming-item strong{display:block;color:var(--sfm-midnight);font-weight:600}.upcoming-item span{display:block;margin-top:4px;color:var(--sfm-muted);font-size:12px}.upcoming-item em,.income-filters button{font-style:normal;border-radius:999px;background:var(--sfm-background);color:var(--sfm-muted);padding:5px 10px;font-size:12px;white-space:nowrap}.upcoming-item .received{background:#ECFDF5;color:#047857}.upcoming-item .pending,.upcoming-item .expected{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover)}.upcoming-item .late{background:#FEF2F2;color:#B91C1C}.income-filters{display:flex;gap:8px;overflow-x:auto;padding:0 0 12px;margin-top:-4px;scrollbar-width:thin}.income-filters button{border:1px solid rgba(29,140,255,.14);cursor:pointer;font:600 12px inherit;background:var(--sfm-light-card)}.income-filters button.active{background:var(--sfm-midnight);color:#fff;border-color:var(--sfm-midnight)}
         .income-list{display:grid;gap:10px}.income-row{display:flex;justify-content:space-between;gap:14px;border:1px solid rgba(29,140,255,.14);border-radius:16px;padding:14px;background:var(--sfm-light-card)}.row-main{display:flex;gap:12px;min-width:0}.row-icon{width:44px;height:44px;border-radius:14px;background:rgba(29,140,255,.10);display:grid;place-items:center;font-size:21px}.row-main strong{display:block;font-size:15px;font-weight:600;color:var(--sfm-midnight)}.row-main span{display:block;margin-top:4px;color:var(--sfm-muted);font-size:12px}.row-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.row-meta em{font-style:normal;border-radius:999px;background:var(--sfm-background);color:var(--sfm-muted);padding:4px 8px;font-size:11px;display:inline-flex;align-items:center;gap:4px}.row-meta .received{background:#ECFDF5;color:#047857}.row-meta .pending,.row-meta .expected{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover)}.row-meta .late{background:#FEF2F2;color:#B91C1C}.row-side{display:flex;align-items:center;gap:12px}.row-side b{white-space:nowrap;color:var(--sfm-midnight)}.row-side div{display:flex;gap:6px}.row-side button,.modal-head button,.mini-pop button{width:36px;height:36px;border-radius:11px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);color:var(--sfm-midnight);display:grid;place-items:center;cursor:pointer}.empty{padding:24px;text-align:center;color:var(--sfm-muted);border:1px dashed rgba(29,140,255,.22);border-radius:14px;background:var(--sfm-light-card)}
         .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(36,24,13,.42);display:grid;place-items:center;padding:18px}.income-modal{width:min(760px,100%);max-height:min(92dvh,900px);overflow:auto;background:var(--sfm-card);border-radius:20px;border:1px solid rgba(29,140,255,.18);padding:20px}.modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}.modal-head p{margin:0;color:var(--sfm-primary);font-size:12px}.modal-head h2{margin:4px 0 0;font-size:24px;color:var(--sfm-midnight)}.income-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.income-form label{display:grid;gap:7px;color:var(--sfm-midnight);font-size:13px;font-weight:500}.income-form input,.income-form select,.income-form textarea{width:100%;border:1px solid rgba(29,140,255,.16);border-radius:12px;background:var(--sfm-background);color:var(--sfm-midnight);padding:0 12px;min-height:46px;font:500 14px inherit;outline:none}.income-form input[type=file]{padding:11px 12px}.income-form textarea{min-height:92px;padding-top:12px;resize:vertical}.income-form input:focus,.income-form select:focus,.income-form textarea:focus{border-color:var(--sfm-primary);box-shadow:0 0 0 3px rgba(29,140,255,.14);background:var(--sfm-card)}.wide,.form-actions,.form-error,.form-note,.attachment-field,.suggestion-pill{grid-column:1/-1}.suggestion-pill{display:flex;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.18);border-radius:12px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:10px 12px;font-size:13px}.suggestion-pill button{margin-inline-start:auto;border:0;border-radius:10px;background:var(--sfm-midnight);color:#fff;padding:7px 10px;font:600 12px inherit;cursor:pointer}.attachment-field{display:grid;gap:10px}.attachment-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.16);border-radius:12px;background:var(--sfm-background);color:var(--sfm-midnight);padding:9px 10px;font-size:13px}.attachment-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attachment-chip small{color:var(--sfm-muted);margin-inline-start:auto}.attachment-chip button{width:28px;height:28px;border-radius:9px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);color:var(--sfm-midnight);display:grid;place-items:center;cursor:pointer}.toggle-line{align-content:end}.toggle{height:46px;border-radius:12px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-background);color:var(--sfm-midnight);display:flex;align-items:center;gap:9px;padding:0 12px;cursor:pointer}.toggle span{width:20px;height:20px;border-radius:50%;background:#c9bea9}.toggle.on span{background:var(--sfm-primary)}.form-actions{display:flex;justify-content:flex-end;gap:10px}.form-error{background:#FEF2F2;color:#B91C1C;border-radius:12px;padding:10px 12px;font-size:13px}.form-note{background:#E6F1FB;color:#0C447C;border-radius:12px;padding:10px 12px;font-size:13px}

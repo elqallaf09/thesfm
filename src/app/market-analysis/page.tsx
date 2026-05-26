@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { Activity, AlertTriangle, BarChart3, Bell, Brain, Calculator, FileText, LineChart, Plus, Search, ShieldAlert, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { Sidebar } from '@/components/Sidebar';
+import { PageTabs } from '@/components/layout/PageTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +32,7 @@ type PortfolioInvestment = {
   type?: string | null;
   riskLevel?: string | null;
 };
+type MarketTab = 'analyze' | 'watchlist' | 'alerts' | 'comparison' | 'assetReport';
 
 const WATCHLIST_STORAGE_KEY = 'sfm_market_watchlist';
 const ALERTS_STORAGE_KEY = 'sfm_market_alerts';
@@ -154,7 +156,7 @@ function writeLocalList<T>(key: string, value: T[]) {
 }
 
 export default function MarketAnalysisPage() {
-  const { dir, t } = useLanguage();
+  const { dir, lang, t } = useLanguage();
   const { user, isGuest } = useAuth();
   const [query, setQuery] = useState(DEFAULT_MARKET_ASSET);
   const [assetType, setAssetType] = useState<MarketAssetType | 'all'>(DEFAULT_MARKET_TYPE);
@@ -177,6 +179,7 @@ export default function MarketAnalysisPage() {
   const [alertThreshold, setAlertThreshold] = useState('200');
   const [whatIfAmount, setWhatIfAmount] = useState('1000');
   const [reportOpen, setReportOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<MarketTab>('analyze');
   const [lastUpdated, setLastUpdated] = useState('');
 
   const requestAnalysis = useCallback(async (symbolInput: string, typeInput: MarketAssetType | 'all', selectedInput?: Partial<SelectedMarketAsset>) => {
@@ -584,6 +587,13 @@ export default function MarketAnalysisPage() {
     `${t('market_report_portfolio')}: ${portfolioMatch ? t('market_asset_in_portfolio') : t('market_asset_not_in_portfolio')}`,
     `${t('market_report_monitor')}: RSI ${selected.indicators.rsi}, SMA 20 ${money(selected.indicators.sma20)}, SMA 50 ${money(selected.indicators.sma50)}`,
   ] : [];
+  const marketTabs = useMemo(() => [
+    { id: 'analyze', label: lang === 'ar' ? 'التحليل' : lang === 'fr' ? 'Analyser' : 'Analyze' },
+    { id: 'watchlist', label: t('market_watchlist'), count: watchlist.length },
+    { id: 'alerts', label: t('market_price_alerts'), count: alerts.length },
+    { id: 'comparison', label: t('market_compare_assets'), count: compare.length },
+    { id: 'assetReport', label: t('market_ai_asset_report') },
+  ], [alerts.length, compare.length, lang, t, watchlist.length]);
 
   return (
     <div className="market-shell" dir={dir}>
@@ -680,10 +690,17 @@ export default function MarketAnalysisPage() {
           <MarketMetric label={t('market_last_updated')} value={selected ? lastUpdated || '--' : '--'} />
         </section>
 
+        <PageTabs
+          tabs={marketTabs}
+          active={activeTab}
+          onChange={id => setActiveTab(id as MarketTab)}
+          ariaLabel={t('market_title')}
+        />
+
         {notice && <div className="market-notice success">{notice}</div>}
         {error && <div className="market-notice">{error}</div>}
 
-        <section className="market-card-grid" aria-label={t('market_analysis_cards')}>
+        {activeTab === 'analyze' && <section className="market-card-grid" aria-label={t('market_analysis_cards')}>
           {loading ? (
             <div className="market-empty">{t('loading')}</div>
           ) : cards.length === 0 ? (
@@ -703,9 +720,9 @@ export default function MarketAnalysisPage() {
               </div>
             </article>
           ))}
-        </section>
+        </section>}
 
-        {selected ? (
+        {selected && activeTab === 'analyze' ? (
           <>
             <section className="market-decision-grid">
               <article className={`market-panel decision ${decision?.tone ?? ''}`}>
@@ -974,6 +991,149 @@ export default function MarketAnalysisPage() {
               </div>
             </section>
           </>
+        ) : selected ? (
+          <section className="market-panel market-focused-tab">
+            {activeTab === 'alerts' && (
+              <>
+                <div className="market-section-head">
+                  <Bell size={19} />
+                  <div>
+                    <span>{t('market_saved_alerts_only')}</span>
+                    <h2>{t('market_price_alerts')}</h2>
+                  </div>
+                </div>
+                <div className="alert-form">
+                  <select value={alertType} onChange={event => setAlertType(normalizeAlertType(event.target.value))}>
+                    <option value="above">{t('market_alert_above')}</option>
+                    <option value="below">{t('market_alert_below')}</option>
+                    <option value="change_exceeds">{t('market_alert_change')}</option>
+                    <option value="rsi_above">{t('market_alert_rsi_above')}</option>
+                    <option value="rsi_below">{t('market_alert_rsi_below')}</option>
+                  </select>
+                  <input value={alertThreshold} inputMode="decimal" onChange={event => setAlertThreshold(event.target.value)} disabled={alertType === 'rsi_above' || alertType === 'rsi_below'} />
+                  <button type="button" onClick={() => void saveAlert()}><Plus size={15} />{t('market_create_alert')}</button>
+                </div>
+                <div className="saved-alerts">
+                  {alerts.length === 0 ? <p className="market-muted">{t('market_no_data')}</p> : alerts.map((alert, index) => (
+                    <span key={`${alert.id ?? index}-${alert.symbol}`}>
+                      <b>{alert.symbol} - {t(`market_alert_type_${alert.alertType}`)} {alert.threshold}</b>
+                      <button type="button" aria-label={t('delete')} onClick={() => void removeAlert(alert, index)}><Trash2 size={13} /></button>
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {activeTab === 'watchlist' && (
+              <>
+                <div className="market-section-head">
+                  <Star size={19} />
+                  <div>
+                    <span>{watchlist.length === 0 ? t('market_search_examples') : watchlistHasSelected ? t('market_in_watchlist') : t('market_real_watchlist')}</span>
+                    <h2>{t('market_watchlist')}</h2>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="inline-action"
+                  disabled={watchlistHasSelected}
+                  onClick={() => void saveWatchlist({ symbol: selected.symbol, assetType: selected.assetType, name: localizedAssetName })}
+                >
+                  <Plus size={15} />{watchlistHasSelected ? t('market_in_watchlist') : t('market_add_to_watchlist')}
+                </button>
+                <div className="watchlist">
+                  {watchlist.length === 0 ? suggestedAssets.map(asset => (
+                    <button
+                      type="button"
+                      key={`${asset.symbol}-${asset.assetType}`}
+                      onClick={() => void requestAnalysis(asset.providerSymbol ?? asset.symbol, asset.assetType, {
+                        symbol: asset.symbol,
+                        providerSymbol: asset.providerSymbol ?? asset.symbol,
+                        name: asset.name,
+                        assetType: asset.assetType,
+                        exchange: asset.exchange,
+                      })}
+                    >
+                      {asset.symbol}
+                    </button>
+                  )) : watchlist.map(asset => (
+                    <span key={`${asset.id ?? asset.symbol}-${asset.assetType}`}>
+                      <button type="button" onClick={() => void requestAnalysis(asset.symbol, asset.assetType)}>{asset.symbol}</button>
+                      <button type="button" aria-label={t('delete')} onClick={() => void removeWatchlist(asset)}><Trash2 size={13} /></button>
+                    </span>
+                  ))}
+                </div>
+                <p className="market-muted">{t('market_watchlist_note')}</p>
+              </>
+            )}
+
+            {activeTab === 'comparison' && (
+              <>
+                <div className="market-section-head">
+                  <ShieldAlert size={19} />
+                  <div>
+                    <span>{t('market_risk_level')}</span>
+                    <h2>{t('market_compare_assets')}</h2>
+                  </div>
+                </div>
+                <div className="compare-bars">
+                  {compare.length === 0 ? <p className="market-muted">{t('market_no_data')}</p> : compare.map(asset => (
+                    <div key={asset.symbol}>
+                      <span>{asset.symbol}</span>
+                      <i style={{ width: `${Math.min(100, Math.abs(asset.changePercent) * 18 + 22)}%` }} />
+                      <b>{asset.changePercent >= 0 ? '+' : ''}{asset.changePercent.toFixed(1)}%</b>
+                    </div>
+                  ))}
+                </div>
+                <div className="compare-table">
+                  <div>
+                    <b>{t('market_symbol')}</b>
+                    <b>{t('market_current_price')}</b>
+                    <b>{t('market_daily_change')}</b>
+                    <b>RSI</b>
+                    <b>{t('market_risk_level')}</b>
+                    <b>{t('market_data_source')}</b>
+                  </div>
+                  {[selected, ...compare].filter((asset): asset is MarketAnalysis => Boolean(asset)).slice(0, 5).map(asset => {
+                    const view = asset as MarketViewAnalysis;
+                    return (
+                      <div key={`focused-table-${asset.symbol}`}>
+                        <span>{asset.symbol}</span>
+                        <span>{money(asset.latestPrice)}</span>
+                        <span className={asset.changePercent >= 0 ? 'up' : 'down'}>{percent(asset.changePercent)}</span>
+                        <span>{asset.indicators.rsi}</span>
+                        <span>{t(`market_risk_${asset.riskLevel}`)}</span>
+                        <span>{view.fallback ? t('market_no_data') : 'OpenBB'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="market-muted">{t('market_compare_note')}</p>
+              </>
+            )}
+
+            {activeTab === 'assetReport' && (
+              <>
+                <div className="market-section-head">
+                  <FileText size={19} />
+                  <div>
+                    <span>{t('market_ai_summary')}</span>
+                    <h2>{t('market_ai_asset_report')}</h2>
+                  </div>
+                </div>
+                <button type="button" className="report-button" onClick={() => setReportOpen(open => !open)}>
+                  <FileText size={16} />{t('market_generate_ai_report')}
+                </button>
+                {reportOpen && (
+                  <div className="asset-report">
+                    {reportLines.map(line => <p key={line}>{line}</p>)}
+                    <small>{t('market_disclaimer')}</small>
+                  </div>
+                )}
+                <p className="market-copy">{localizedSummary || t('market_ai_summary_text')}</p>
+              </>
+            )}
+          </section>
         ) : (
           <div className="market-empty">{t('market_no_data')}</div>
         )}

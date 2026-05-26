@@ -17,6 +17,7 @@ import {
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { PageTabs } from '@/components/layout/PageTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,6 +28,7 @@ import { zakatImportCandidates } from '@/lib/data/zakatData';
 type Lang = 'ar' | 'en' | 'fr';
 type AssetType = 'cash' | 'savings' | 'investment' | 'gold' | 'silver' | 'non_zakat';
 type NisabMethod = 'gold' | 'silver' | 'conservative';
+type ZakatTab = 'calculator' | 'assets' | 'history' | 'reminders' | 'reports';
 
 type MetalsPriceResponse = {
   success: boolean;
@@ -413,6 +415,7 @@ export default function ZakatPage() {
   const [assets, setAssets] = useState<ZakatAsset[]>([]);
   const [history, setHistory] = useState<ZakatCalculation[]>([]);
   const [message, setMessage] = useState('');
+  const [activeTab, setActiveTab] = useState<ZakatTab>('calculator');
   const [saving, setSaving] = useState(false);
   const [loadingMetals, setLoadingMetals] = useState(false);
   const [priceMode, setPriceMode] = useState<'automatic' | 'manual'>('manual');
@@ -558,6 +561,13 @@ export default function ZakatPage() {
     { icon: CalendarDays, label: tr.nextHawlDate, value: nextHawl ? dateLabel(nextHawl) : tr.noDueDate },
     { icon: FileText, label: tr.lastSaved, value: lastSaved ? money(toNum(lastSaved.zakat_due), lastSaved.currency) : tr.noSavedCalculation },
   ];
+  const zakatTabs = [
+    { id: 'calculator', label: lang === 'ar' ? 'الحاسبة' : lang === 'fr' ? 'Calculateur' : 'Calculator' },
+    { id: 'assets', label: lang === 'ar' ? 'الأصول والحول' : lang === 'fr' ? 'Actifs et hawl' : 'Assets & Hawl', count: assets.length },
+    { id: 'history', label: lang === 'ar' ? 'السجل' : lang === 'fr' ? 'Historique' : 'History', count: history.length },
+    { id: 'reminders', label: lang === 'ar' ? 'التذكيرات' : lang === 'fr' ? 'Rappels' : 'Reminders', count: assets.length },
+    { id: 'reports', label: lang === 'ar' ? 'التقارير' : lang === 'fr' ? 'Rapports' : 'Reports' },
+  ];
 
   const tValue = (key: string, fallback = key) => (tr as Record<string, string>)[key] ?? fallback;
   const nisabMethodLabel = (method: string) => method === 'gold' ? tr.goldBased : method === 'silver' ? tr.silverBased : tr.conservative;
@@ -649,8 +659,8 @@ export default function ZakatPage() {
             <p>{tr.subtitle}</p>
           </div>
           <div className="hero-actions">
-            <a className="gold-btn" href="#zakat-calculator"><Calculator size={17} /> {tr.calculator}</a>
-            <a className="dark-btn" href="#hawl-tracking"><CalendarDays size={17} /> {tr.hawlTracking}</a>
+            <button className="gold-btn" type="button" onClick={() => setActiveTab('calculator')}><Calculator size={17} /> {tr.calculator}</button>
+            <button className="dark-btn" type="button" onClick={() => setActiveTab('assets')}><CalendarDays size={17} /> {tr.hawlTracking}</button>
             <button className="dark-btn" type="button" onClick={saveZakatCalculation} disabled={!user || saving}>
               <Save size={17} /> {tr.saveCalculation}
             </button>
@@ -673,6 +683,14 @@ export default function ZakatPage() {
           })}
         </section>
 
+        <PageTabs
+          tabs={zakatTabs}
+          active={activeTab}
+          onChange={id => setActiveTab(id as ZakatTab)}
+          ariaLabel={tr.title}
+        />
+
+        {activeTab === 'calculator' && (
         <section id="zakat-calculator" className="zakat-main-grid">
           <article className="warm-card input-panel">
             <div className="section-head"><h2>{tr.zakatInputs}</h2><Coins size={22} /></div>
@@ -797,7 +815,9 @@ export default function ZakatPage() {
             <p className="disclaimer">{tr.metalsDisclaimer}</p>
           </article>
         </section>
+        )}
 
+        {(activeTab === 'assets' || activeTab === 'reminders') && (
         <section id="hawl-tracking" className="split-grid">
           <article className="warm-card">
             <div className="section-head"><h2>{tr.hawlTracking}</h2><CalendarDays size={22} /></div>
@@ -831,7 +851,9 @@ export default function ZakatPage() {
             )}
           </article>
         </section>
+        )}
 
+        {(activeTab === 'history' || activeTab === 'reports') && (
         <section className="warm-card">
           <div className="section-head">
             <h2>{tr.zakatHistory}</h2>
@@ -852,6 +874,7 @@ export default function ZakatPage() {
             </div>
           )}
         </section>
+        )}
       </DashboardPageShell>
 
       <style jsx>{`

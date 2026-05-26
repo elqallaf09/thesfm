@@ -7,6 +7,7 @@ import { BarChart3, Brain, Layers3, LineChart as LineChartIcon, PieChart as PieC
 import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { PageTabs } from '@/components/layout/PageTabs';
 import { InvestmentFormModal } from '@/components/invest/InvestmentFormModal';
 import { InvestmentList } from '@/components/invest/InvestmentList';
 import { InvestmentDetailDrawer } from '@/components/invest/InvestmentDetailDrawer';
@@ -23,6 +24,7 @@ const TYPES: InvestmentType[] = ['stocks', 'realEstate', 'fund', 'gold', 'cash',
 const RISKS: RiskLevel[] = ['low', 'medium', 'high'];
 const CHART_COLORS = ['var(--sfm-soft-cyan)', 'var(--sfm-muted)', 'var(--sfm-muted)', '#22C55E', '#3B82F6', 'var(--sfm-muted)', '#C8A96B', '#BFB5A8'];
 const RISK_SCORE: Record<RiskLevel, number> = { low: 1, medium: 2, high: 3 };
+type InvestTab = 'portfolio' | 'assets' | 'performance' | 'risk' | 'reports';
 
 export default function InvestPage() {
   const router = useRouter();
@@ -37,6 +39,7 @@ export default function InvestPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState('');
+  const [activeTab, setActiveTab] = useState<InvestTab>('portfolio');
   const insightsRef = useRef<HTMLDivElement | null>(null);
 
   const labels = useMemo(() => ({
@@ -98,6 +101,13 @@ export default function InvestPage() {
   const typeLabel = useCallback((type: InvestmentType) => t(`invest_types_${type}`), [t]);
   const riskLabel = useCallback((risk: RiskLevel) => t(`invest_risks_${risk}`), [t]);
   const L = useCallback((ar: string, en: string, fr: string) => lang === 'ar' ? ar : lang === 'fr' ? fr : en, [lang]);
+  const tabs = useMemo(() => [
+    { id: 'portfolio', label: L('المحفظة', 'Portfolio', 'Portefeuille') },
+    { id: 'assets', label: L('الأصول', 'Assets', 'Actifs'), count: items.length },
+    { id: 'performance', label: L('الأداء', 'Performance', 'Performance') },
+    { id: 'risk', label: L('المخاطر', 'Risk', 'Risque') },
+    { id: 'reports', label: L('التقارير', 'Reports', 'Rapports') },
+  ], [L, items.length]);
   const money = useCallback((amount: number) => formatCurrency(amount, currency, lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en'), [currency, lang]);
   const totalValue = useMemo(() => items.reduce((sum, item) => sum + item.currentValue, 0), [items]);
   const totalMonthly = useMemo(() => items.reduce((sum, item) => sum + item.monthlyContribution, 0), [items]);
@@ -269,7 +279,7 @@ export default function InvestPage() {
               {labels.addCta}
             </button>
             {items.length > 0 && (
-              <button type="button" className="invest-glass-btn" onClick={() => insightsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+              <button type="button" className="invest-glass-btn" onClick={() => { setActiveTab('risk'); window.setTimeout(() => insightsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }}>
                 <Brain size={17} />
                 {labels.aiCta}
               </button>
@@ -302,6 +312,14 @@ export default function InvestPage() {
               <SummaryCard icon={<LineChartIcon size={20} />} title={t('invest_summary_expectedReturn')} value={weightedReturn === null ? t('insufficientData') : pct(weightedReturn)} subtitle={weightedReturn === null ? t('invest_summary_defaultReturn') : t('invest_summary_notFinancialAdvice')} />
             </section>
 
+            <PageTabs
+              tabs={tabs}
+              active={activeTab}
+              onChange={id => setActiveTab(id as InvestTab)}
+              ariaLabel={labels.heroTitle}
+            />
+
+            {activeTab === 'portfolio' && (
             <section className="invest-panel invest-market-link">
               <div className="invest-section-head">
                 <LineChartIcon size={18} />
@@ -320,7 +338,9 @@ export default function InvestPage() {
                 <p>{L('أضف رمز الأصل لتحليل السوق. لا يتم عرض أسعار أو أرباح غير محققة بدون بيانات سوق حقيقية.','Add asset symbol for market analysis. No prices or unrealized gains are shown without real market data.','Ajoutez le symbole de l’actif pour l’analyse du marché. Aucun prix ni gain latent n’est affiché sans données de marché réelles.')}</p>
               )}
             </section>
+            )}
 
+            {activeTab === 'performance' && (
             <section className="invest-chart-grid">
               <ChartCard icon={<PieChartIcon size={18} />} title={t('invest_charts_distribution')}>
                 <ResponsiveContainer width="100%" height={260}>
@@ -359,7 +379,9 @@ export default function InvestPage() {
                 </ChartCard>
               )}
             </section>
+            )}
 
+            {(activeTab === 'risk' || activeTab === 'reports') && (
             <section className="invest-analysis-grid" ref={insightsRef}>
               <div className="invest-panel invest-insights">
                 <div className="invest-section-head">
@@ -399,7 +421,9 @@ export default function InvestPage() {
                 )}
               </div>
             </section>
+            )}
 
+            {activeTab === 'assets' && (
             <InvestmentList
               investments={items}
               labels={labels}
@@ -411,6 +435,7 @@ export default function InvestPage() {
               onEdit={openEdit}
               onDelete={setDeleteTarget}
             />
+            )}
           </>
         )}
 

@@ -25,6 +25,7 @@ import {
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { PageTabs } from '@/components/layout/PageTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,6 +37,7 @@ type ProjectCategory = 'ongoing' | 'sponsorship' | 'zakat' | 'sacrifice' | 'endo
 type AssetType = 'cash' | 'savings' | 'investment' | 'gold' | 'silver' | 'non_zakat';
 type OrganizationType = 'charity' | 'zakat_house' | 'humanitarian' | 'waqf' | 'mosque' | 'education' | 'relief' | 'other';
 type VerificationStatus = 'verified' | 'pending_review' | 'unverified' | 'rejected';
+type CharityProjectsTab = 'overview' | 'projects' | 'beneficiaries' | 'contributors' | 'documents' | 'impact' | 'reports';
 
 type CharityProject = {
   id: string;
@@ -1449,6 +1451,7 @@ export default function CharityProjectsPage() {
   const [incomeTotal, setIncomeTotal] = useState(0);
   const [expenseTotal, setExpenseTotal] = useState(0);
   const [message, setMessage] = useState('');
+  const [activeTab, setActiveTab] = useState<CharityProjectsTab>('overview');
   const [projectOpen, setProjectOpen] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
@@ -2491,6 +2494,15 @@ export default function CharityProjectsPage() {
     { icon: Coins, label: tr.estimatedZakat, value: money(toNum(latestEstimatedZakat)) },
     { icon: ShieldCheck, label: tr.nextZakat, value: nextDue ? dateLabel(nextDue) : tr.noDueDate },
   ];
+  const charityTabs = [
+    { id: 'overview', label: lang === 'ar' ? 'نظرة عامة' : lang === 'fr' ? 'Aperçu' : 'Overview' },
+    { id: 'projects', label: tr.projects, count: projects.length },
+    { id: 'beneficiaries', label: tr.beneficiaryTracking, count: beneficiaries.length },
+    { id: 'contributors', label: tr.contributors, count: contributors.length },
+    { id: 'documents', label: tr.documentVault, count: documents.length },
+    { id: 'impact', label: tr.impactDashboard },
+    { id: 'reports', label: lang === 'ar' ? 'التقارير' : lang === 'fr' ? 'Rapports' : 'Reports' },
+  ];
 
   return (
     <div className="charity-projects-page" dir={dir}>
@@ -2528,7 +2540,14 @@ export default function CharityProjectsPage() {
           })}
         </section>
 
-        <section className="warm-card hijri-calendar">
+        <PageTabs
+          tabs={charityTabs}
+          active={activeTab}
+          onChange={id => setActiveTab(id as CharityProjectsTab)}
+          ariaLabel={tr.title}
+        />
+
+        <section className="warm-card hijri-calendar" hidden={activeTab !== 'overview'}>
           <div className="section-head vault-head">
             <div>
               <small>{tr.hijriEstimated}</small>
@@ -2567,7 +2586,7 @@ export default function CharityProjectsPage() {
           <p className="nisab"><CalendarDays size={15} /> {tr.notificationNote}</p>
         </section>
 
-        <section className="warm-card">
+        <section className="warm-card" hidden={activeTab !== 'overview'}>
           <div className="section-head">
             <h2>{tr.upcomingReminders}</h2>
             <button className="mini-gold" type="button" onClick={() => {
@@ -2616,7 +2635,7 @@ export default function CharityProjectsPage() {
           )}
         </section>
 
-        <section className="main-grid">
+        <section className="main-grid" hidden={activeTab !== 'projects'}>
           <article className="warm-card span-7 zakat-shortcut-card">
             <div className="section-head">
               <div><small>{tr.zakat}</small><h2>{zakatShortcut.title}</h2></div>
@@ -2777,7 +2796,7 @@ export default function CharityProjectsPage() {
           </article>
         </section>
 
-        <section className="split-grid">
+        <section className="split-grid" hidden={activeTab !== 'projects'}>
           <article className="warm-card">
             <div className="section-head"><h2>{tr.templates}</h2><Gift size={22} /></div>
             <div className="template-grid">
@@ -2801,7 +2820,7 @@ export default function CharityProjectsPage() {
           </article>
         </section>
 
-        <section className="warm-card" id="charity-organization-directory">
+        <section className="warm-card" id="charity-organization-directory" hidden={activeTab !== 'projects'}>
           <div className="vault-head section-head">
             <div>
               <h2>{tr.organizationDirectory}</h2>
@@ -2876,7 +2895,7 @@ export default function CharityProjectsPage() {
           <p className="disclaimer">{tr.verificationDisclaimer}</p>
         </section>
 
-        <section className="warm-card" id="impact-dashboard">
+        <section className="warm-card" id="impact-dashboard" hidden={activeTab !== 'impact' && activeTab !== 'overview'}>
           <div className="vault-head section-head">
             <div>
               <h2>{tr.impactDashboard}</h2>
@@ -3003,7 +3022,7 @@ export default function CharityProjectsPage() {
           )}
         </section>
 
-        <section className="warm-card">
+        <section className="warm-card" hidden={activeTab !== 'projects'}>
           <div className="section-head"><h2>{tr.projects}</h2><button className="mini-gold" onClick={() => setProjectOpen(true)}>{tr.newProject}</button></div>
           {projects.length === 0 ? (
             <div className="empty-state">
@@ -3098,7 +3117,7 @@ export default function CharityProjectsPage() {
           )}
         </section>
 
-        <section id="family-collaboration" className="warm-card family-collaboration">
+        <section id="family-collaboration" className="warm-card family-collaboration" hidden={activeTab !== 'contributors'}>
           <div className="section-head vault-head">
             <div>
               <small>{tr.invitationsSoon}</small>
@@ -3171,7 +3190,7 @@ export default function CharityProjectsPage() {
           )}
         </section>
 
-        <section id="beneficiary-tracking" className="warm-card beneficiary-tracking">
+        <section id="beneficiary-tracking" className="warm-card beneficiary-tracking" hidden={activeTab !== 'beneficiaries'}>
           <div className="section-head vault-head">
             <div>
               <small>{tr.privacyNote}</small>
@@ -3245,7 +3264,7 @@ export default function CharityProjectsPage() {
           )}
         </section>
 
-        <section id="document-vault" className="warm-card document-vault">
+        <section id="document-vault" className="warm-card document-vault" hidden={activeTab !== 'documents'}>
           <div className="section-head vault-head">
             <div>
               <small>{tr.searchInsideSoon}</small>
@@ -3317,7 +3336,7 @@ export default function CharityProjectsPage() {
           )}
         </section>
 
-        <section className="split-grid">
+        <section className="split-grid" hidden={activeTab !== 'reports'}>
           <article className="warm-card">
             <div className="section-head"><h2>{tr.impact}</h2><AlertTriangle size={22} /></div>
             <label className="impact-input"><span>{tr.donationAmount}</span><input inputMode="decimal" value={impactDonation} onChange={e => setImpactDonation(e.target.value)} placeholder="0.000" /></label>

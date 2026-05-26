@@ -28,12 +28,14 @@ import {
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { PageTabs } from '@/components/layout/PageTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
 
 type Lang = 'ar' | 'en' | 'fr';
+type BusinessHubTab = 'readiness' | 'funding' | 'jurisdiction' | 'documents' | 'directory' | 'copilot';
 type ReadinessStatus = 'not_ready' | 'needs_improvement' | 'good' | 'ready_for_review';
 type InvestorItemStatus = 'complete' | 'missing' | 'needs_review';
 type UseOfFundsKey = 'product' | 'marketing' | 'operations' | 'hiring' | 'licensesLegal' | 'emergencyReserve' | 'other';
@@ -2126,6 +2128,7 @@ export default function BusinessHubPage() {
   const text = useMemo(() => ({ ...TEXT[locale], ...STRATEGIC_TEXT[locale], ...JURISDICTION_TEXT[locale], ...FUNDING_DIRECTORY_TEXT[locale] }), [locale]);
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [activeTab, setActiveTab] = useState<BusinessHubTab>('readiness');
   const [modules, setModules] = useState<ModuleRows>(EMPTY_MODULES);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [loadingModules, setLoadingModules] = useState(false);
@@ -2469,6 +2472,14 @@ export default function BusinessHubPage() {
 
   const projectUrl = selectedProject ? `/projects/${selectedProject.id}` : '/projects';
   const pitchDeckUrl = selectedProject ? `/projects/${selectedProject.id}?tab=pitchDeck` : '/projects';
+  const hubTabs = [
+    { id: 'readiness', label: text.businessReadiness },
+    { id: 'funding', label: text.fundingReadiness },
+    { id: 'jurisdiction', label: text.jurisdictionWizard },
+    { id: 'documents', label: text.strategicDocuments },
+    { id: 'directory', label: text.fundingDirectory },
+    { id: 'copilot', label: text.businessCopilot },
+  ];
 
   const wizardMissing = useMemo(() => {
     const items: string[] = [];
@@ -2749,6 +2760,13 @@ export default function BusinessHubPage() {
           </label>
         </section>
 
+        <PageTabs
+          tabs={hubTabs}
+          active={activeTab}
+          onChange={id => setActiveTab(id as BusinessHubTab)}
+          ariaLabel={text.title}
+        />
+
         {projects.length === 0 ? (
           <section className="empty-state">
             <Building2 size={34} />
@@ -2758,6 +2776,8 @@ export default function BusinessHubPage() {
           </section>
         ) : (
           <>
+            {activeTab === 'readiness' && (
+              <>
             <section className="readiness-head">
               <div>
                 <h2>{text.businessReadiness}</h2>
@@ -2777,7 +2797,10 @@ export default function BusinessHubPage() {
               <ReadinessCard title={text.financialModelReadiness} icon={<BarChart3 size={18} />} score={readiness?.financialModel ? 1 : 0} max={1} ready={Boolean(readiness?.financialModel)} lang={locale} text={text} suffix={readiness?.financialModel ? text.available : text.missing} />
               <ReadinessCard title={text.pitchDeckReadiness} icon={<Presentation size={18} />} score={readiness?.pitchDeck ? 1 : 0} max={1} ready={Boolean(readiness?.pitchDeck)} lang={locale} text={text} suffix={readiness?.pitchDeck ? text.available : text.missing} />
             </section>
+              </>
+            )}
 
+            {activeTab === 'funding' && (
             <section className="funding-module" id="funding-readiness-module">
               {selectedProject && readiness ? (
                 <>
@@ -2907,7 +2930,9 @@ export default function BusinessHubPage() {
                 </div>
               )}
             </section>
+            )}
 
+            {activeTab === 'directory' && (
             <section className="funding-directory-module" id="funding-directory-module">
               <div className="directory-header">
                 <div>
@@ -3062,7 +3087,9 @@ export default function BusinessHubPage() {
                 </aside>
               </div>
             </section>
+            )}
 
+            {activeTab === 'copilot' && (
             <section className="hub-grid two">
               <article className="warm-card">
                 <div className="card-title">
@@ -3083,9 +3110,11 @@ export default function BusinessHubPage() {
                 </div>
               </article>
             </section>
+            )}
           </>
         )}
 
+        {activeTab === 'jurisdiction' && (
         <section className="jurisdiction-module" id="jurisdiction-wizard-module">
           <div className="jurisdiction-header">
             <div>
@@ -3321,7 +3350,9 @@ export default function BusinessHubPage() {
             </article>
           </div>
         </section>
+        )}
 
+        {activeTab === 'documents' && (
         <section className="strategic-documents-module" id="strategic-documents">
           <div className="documents-header">
             <div>
@@ -3441,8 +3472,9 @@ export default function BusinessHubPage() {
             </article>
           )}
         </section>
+        )}
 
-        <section className="hub-grid two">
+        {activeTab === 'readiness' && <section className="hub-grid two">
           <article className="warm-card">
             <div className="card-title">
               <div>
@@ -3464,7 +3496,7 @@ export default function BusinessHubPage() {
               <p><span>{text.capitalRequired}</span><strong>{readiness?.capitalAmount !== null && readiness?.capitalAmount !== undefined ? formatMoney(readiness.capitalAmount, selectedCurrency, locale) : text.insufficient}</strong></p>
             </div>
           </article>
-        </section>
+        </section>}
       </main>
       <style>{styles}</style>
     </div>
