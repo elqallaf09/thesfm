@@ -53,6 +53,8 @@
   --sfm-background: #EEF6FF;
   --sfm-light-card: #F8FBFF;
   --sfm-card: #FFFFFF;
+  --sfm-card-elevated: #FFFFFF;
+  --sfm-input-bg: #FFFFFF;
   --sfm-foreground: #0B172A;
   --sfm-heading: #061B33;
   --sfm-body: #334155;
@@ -160,25 +162,30 @@
 
 .dark {
   --sfm-background: #031225;
-  --sfm-light-card: #071E3A;
+  --sfm-light-card: #061B33;
   --sfm-card: #0B2748;
+  --sfm-card-elevated: #0F335C;
+  --sfm-input-bg: #071E3A;
   --sfm-foreground: #EAF6FF;
-  --sfm-heading: #F8FBFF;
-  --sfm-body: #CFE5FA;
-  --sfm-muted: #A7C7E7;
-  --sfm-muted-readable: #CFE5FA;
+  --sfm-heading: #EAF6FF;
+  --sfm-body: #C7DBF5;
+  --sfm-muted: #8FB3D9;
+  --sfm-muted-readable: #C7DBF5;
   --sfm-border: rgba(167,243,240,0.16);
-  --sfm-border-strong: rgba(167,243,240,0.32);
-  --sfm-surface-hover: #0F3158;
+  --sfm-border-strong: rgba(24,212,212,0.30);
+  --sfm-surface-hover: #0F335C;
+  --sfm-focus-ring: rgba(24,212,212,0.36);
+  --sfm-focus-ring-strong: rgba(24,212,212,0.62);
   --sfm-interactive-shadow: 0 18px 44px rgba(0,0,0,0.28);
   --sfm-interactive-glow: 0 18px 44px rgba(24,212,212,0.18);
+  --sfm-hero-gradient: linear-gradient(135deg, #031225 0%, #061B33 45%, #0B3A66 100%);
   --sfm-page-gradient:
     radial-gradient(circle at 18% 12%, rgba(24, 212, 212, 0.12), transparent 34%),
     linear-gradient(160deg, #031225 0%, #061B33 56%, #071E3A 100%);
 
   --background: #031225;
   --foreground: #EAF6FF;
-  --card: #071E3A;
+  --card: #0B2748;
   --card-foreground: #EAF6FF;
   --primary: #1D8CFF;
   --primary-foreground: #FFFFFF;
@@ -186,28 +193,32 @@
   --secondary-foreground: #EAF6FF;
   --accent: #18D4D4;
   --accent-foreground: #031225;
-  --muted: #0B2748;
-  --muted-foreground: #A7F3F0;
-  --border: rgba(167,243,240,0.14);
+  --muted: #061B33;
+  --muted-foreground: #8FB3D9;
+  --border: rgba(167,243,240,0.16);
   --input: rgba(167,243,240,0.18);
   --ring: #18D4D4;
 
   --bg: #031225;
-  --bg-2: #071E3A;
+  --bg-2: #061B33;
   --bg-card: rgba(11,39,72,0.94);
-  --bg-input: #061B33;
+  --bg-input: #071E3A;
   --bg-muted: #071E3A;
-  --surface: #0B2748;
+  --surface: #0F335C;
 
   --text-1: #EAF6FF;
-  --text-2: #CFE5FA;
-  --text-3: #A7C7E7;
+  --text-2: #C7DBF5;
+  --text-3: #8FB3D9;
   --text-white: #FFFFFF;
-  --text-white-2: #CFE5FA;
-  --text-white-3: rgba(207,229,250,0.78);
+  --text-white-2: #C7DBF5;
+  --text-white-3: rgba(199,219,245,0.78);
 
   --border-2: rgba(167,243,240,0.30);
   --border-dark: rgba(167,243,240,0.18);
+  --green-bg: rgba(16,185,129,0.16);
+  --red-bg: rgba(239,68,68,0.16);
+  --amber-bg: rgba(245,158,11,0.16);
+  --blue-bg: rgba(29,140,255,0.16);
 }
 
 /* ── 2. Reset ── */
@@ -1996,6 +2007,444 @@ button:disabled,
 
 :where(.sfm-app-card, .report-card, .project-card, .document-card, .task-card, .notification-card, .program-card, .charity-card, .market-card, .income-card, .expense-card, .zakat-card):hover {
   border-color: rgba(24, 212, 212, 0.24) !important;
+}
+
+/* Dark mode readability layer: keep legacy page-local colors usable without
+   changing the business components that still reference old navy variables. */
+.dark body {
+  color: var(--sfm-foreground);
+  background: var(--sfm-page-gradient);
+}
+
+.dark :is(
+  .sfm-shell,
+  .sfm-dashboard-page-shell,
+  .sfm-under-shell,
+  .today-shell,
+  .security-shell,
+  .dashboard-shell,
+  .command-center-shell,
+  .profile-page,
+  .profile-shell,
+  .project-workspace,
+  .reports-center-shell,
+  .financial-theories-shell,
+  .setup-shell,
+  .setup-page,
+  .business-hub-shell,
+  .charity-projects-page,
+  .charity-projects-shell,
+  .notifications-shell,
+  .notif-shell,
+  .tasks-shell,
+  .documents-center-shell,
+  .documents-shell,
+  .investment-offers-shell,
+  .invest-shell,
+  .market-shell,
+  .income-shell,
+  .expense-smart-shell,
+  .site-map-shell,
+  .edu-shell,
+  .ai-page,
+  .zakat-page,
+  .zakat-shell
+) {
+  background: var(--sfm-page-gradient) !important;
+  color: var(--sfm-foreground) !important;
+}
+
+.dark :is(
+  .sfm-dashboard-page-content,
+  .dashboard-main,
+  .income-main,
+  .market-main,
+  .invest-main,
+  .profile-main,
+  .business-hub-main,
+  .reports-center-main,
+  .expense-smart-main,
+  .sfm-main,
+  .sfm-under-main,
+  .notif-page,
+  .documents-center-shell,
+  .financial-theories-shell,
+  .setup-page,
+  .site-map-shell,
+  .ai-main,
+  .zakat-page
+) :is(h1, h2, h3, h4, h5, strong, b, label) {
+  color: var(--sfm-heading) !important;
+}
+
+.dark :is(
+  .sfm-dashboard-page-content,
+  .dashboard-main,
+  .income-main,
+  .market-main,
+  .invest-main,
+  .profile-main,
+  .business-hub-main,
+  .reports-center-main,
+  .expense-smart-main,
+  .sfm-main,
+  .sfm-under-main,
+  .notif-page,
+  .documents-center-shell,
+  .financial-theories-shell,
+  .setup-page,
+  .site-map-shell,
+  .ai-main,
+  .zakat-page
+) :is(p, small, em, dd, li) {
+  color: var(--sfm-body) !important;
+}
+
+.dark :is(
+  .sfm-page-hero,
+  .dashboard-main .hero-card,
+  .reports-hero,
+  .business-hero,
+  .workspace-hero,
+  .market-hero,
+  .income-header,
+  .notif-hero,
+  .ai-hero,
+  .hero-card,
+  .hero,
+  .documents-header,
+  .funding-header,
+  .jurisdiction-header,
+  .directory-header,
+  .pitch-hero,
+  .ai-status-card
+) {
+  background:
+    radial-gradient(circle at 12% 10%, rgba(24, 212, 212, 0.24), transparent 30%),
+    var(--sfm-hero-gradient) !important;
+}
+
+.dark :is(
+  .sfm-app-card,
+  .sfm-card,
+  .warm-card,
+  .panel,
+  .profile-card,
+  .ai-card,
+  .report-card,
+  .preview-panel,
+  .history-panel,
+  .filters-panel,
+  .readiness-card,
+  .strategic-doc-card,
+  .program-card,
+  .jurisdiction-card,
+  .market-card,
+  .market-panel,
+  .income-card,
+  .expense-card,
+  .charity-card,
+  .zakat-card,
+  .state-card,
+  .task-card,
+  .notification-card,
+  .document-card,
+  .project-card,
+  .empty-state article,
+  .slide-stage,
+  .slide-list,
+  .slide-insights,
+  .edit-panel
+) {
+  background: var(--sfm-card) !important;
+  border-color: var(--sfm-border) !important;
+  color: var(--sfm-card-foreground) !important;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.26) !important;
+}
+
+.dark :is(
+  .sfm-app-card,
+  .sfm-card,
+  .warm-card,
+  .panel,
+  .profile-card,
+  .ai-card,
+  .report-card,
+  .preview-panel,
+  .history-panel,
+  .filters-panel,
+  .readiness-card,
+  .strategic-doc-card,
+  .program-card,
+  .jurisdiction-card,
+  .market-card,
+  .market-panel,
+  .income-card,
+  .expense-card,
+  .charity-card,
+  .zakat-card,
+  .state-card,
+  .task-card,
+  .notification-card,
+  .document-card,
+  .project-card,
+  .empty-state article
+) :is(h1, h2, h3, h4, h5, strong, b, dt, .sfm-card-title, .card-title) {
+  color: var(--sfm-heading) !important;
+}
+
+.dark :is(
+  .sfm-app-card,
+  .sfm-card,
+  .warm-card,
+  .panel,
+  .profile-card,
+  .ai-card,
+  .report-card,
+  .preview-panel,
+  .history-panel,
+  .filters-panel,
+  .readiness-card,
+  .strategic-doc-card,
+  .program-card,
+  .jurisdiction-card,
+  .market-card,
+  .market-panel,
+  .income-card,
+  .expense-card,
+  .charity-card,
+  .zakat-card,
+  .state-card,
+  .task-card,
+  .notification-card,
+  .document-card,
+  .project-card,
+  .empty-state article
+) :is(p, small, em, dd, li, .sfm-card-sub, .card-description) {
+  color: var(--sfm-body) !important;
+}
+
+.dark :is(.sfm-app-card, .sfm-card, .kpi-card, .summary-card, .metric, .hero-metrics div, .monthly-grid div, .receipt-detail-grid div) {
+  background: var(--sfm-card-elevated) !important;
+  border-color: var(--sfm-border) !important;
+}
+
+.dark :is(.sfm-button-secondary, .sfm-button-ghost, .ghost-btn, .ghost-form-btn, .secondary-btn, .outline-btn, .filter-chip, .category-chip, .tab-chip, .sfm-secondary-link) {
+  background: var(--sfm-card-elevated) !important;
+  border-color: var(--sfm-border) !important;
+  color: var(--sfm-foreground) !important;
+}
+
+.dark :is(.sfm-button-secondary, .sfm-button-ghost, .ghost-btn, .ghost-form-btn, .secondary-btn, .outline-btn, .filter-chip, .category-chip, .tab-chip, .sfm-secondary-link):not(:disabled):hover {
+  background: var(--sfm-surface-hover) !important;
+  border-color: var(--sfm-border-strong) !important;
+  color: #FFFFFF !important;
+}
+
+.dark :is(input, textarea, select, [role="combobox"]) {
+  background: var(--sfm-input-bg) !important;
+  border-color: var(--input) !important;
+  color: var(--sfm-foreground) !important;
+  -webkit-text-fill-color: var(--sfm-foreground) !important;
+}
+
+.dark :is(input, textarea, select)::placeholder {
+  color: var(--sfm-muted) !important;
+  -webkit-text-fill-color: var(--sfm-muted) !important;
+}
+
+.dark :is([data-radix-popper-content-wrapper] [role="listbox"], [role="menu"], .currency-menu) {
+  background: var(--sfm-card) !important;
+  border-color: var(--sfm-border) !important;
+  color: var(--sfm-foreground) !important;
+  box-shadow: 0 22px 58px rgba(0, 0, 0, 0.32) !important;
+}
+
+.dark :is([role="option"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]):is(:hover, :focus, [data-highlighted]) {
+  background: var(--sfm-surface-hover) !important;
+  color: #FFFFFF !important;
+}
+
+.dark :is([role="option"][data-state="checked"], [role="menuitemradio"][data-state="checked"], [role="menuitemcheckbox"][data-state="checked"]) {
+  background: rgba(24, 212, 212, 0.18) !important;
+  color: #EAF6FF !important;
+}
+
+.dark :is(.badge-green, .status-badge.done, .status-badge.completed, .priority-badge.low) {
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #86EFAC !important;
+}
+
+.dark :is(.badge-red, .status-badge.late, .priority-badge.high, .priority-badge.urgent) {
+  background: rgba(239, 68, 68, 0.16) !important;
+  color: #FCA5A5 !important;
+}
+
+.dark :is(.badge-amber, .priority-badge.medium, .status-badge.needs_review, .status-badge.in_progress) {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #FCD34D !important;
+}
+
+.dark :is(.badge-gold, .badge-ai, .status-badge.todo, .status-badge.planned, .phase-badge) {
+  background: rgba(29, 140, 255, 0.16) !important;
+  color: #A7D8FF !important;
+  border-color: rgba(24, 212, 212, 0.22) !important;
+}
+
+.dark :is(.sfm-empty-state, .preview-empty, .directory-empty, .funding-empty, .pitch-empty, .empty-state, .documents-empty) {
+  background: var(--sfm-light-card) !important;
+  border-color: rgba(167, 243, 240, 0.22) !important;
+  color: var(--sfm-body) !important;
+}
+
+.dark :is(.sfm-empty-state strong, .empty-state strong, .pitch-empty h2, .documents-empty h2) {
+  color: var(--sfm-heading) !important;
+}
+
+.dark :is(.today-section-list a, .package-item, .fund-row, .missing-item, .dd-row, .setting-row, .milestone-card, .task-column, .task-card, .metric, .monthly-grid div, .receipt-detail-grid div) {
+  background: var(--sfm-light-card) !important;
+  border-color: rgba(167, 243, 240, 0.14) !important;
+  color: var(--sfm-foreground) !important;
+}
+
+.dark :is(.today-section-list a, .package-item, .fund-row, .missing-item, .dd-row, .setting-row, .milestone-card, .task-card):hover {
+  background: var(--sfm-surface-hover) !important;
+  border-color: var(--sfm-border-strong) !important;
+}
+
+.dark :is(.sfm-topbar, .sfm-bottom-nav) {
+  background: rgba(6, 27, 51, 0.92) !important;
+  border-color: rgba(167, 243, 240, 0.16) !important;
+  color: var(--sfm-foreground) !important;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.22) !important;
+}
+
+.dark :is(.sfm-topbar-title, .sfm-user-name, .sfm-bottom-nav-item.active) {
+  color: var(--sfm-heading) !important;
+}
+
+.dark :is(.sfm-topbar-sub, .sfm-user-role, .sfm-bottom-nav-item) {
+  color: var(--sfm-muted) !important;
+}
+
+.dark :is(.card-actions button, .modal-actions button, .stage-heading button, .edit-actions button, .insight-item button, .report-actions-menu summary, .report-actions-menu button, .pitch-actions button:not(:first-child)) {
+  background: var(--sfm-light-card) !important;
+  border-color: rgba(167, 243, 240, 0.16) !important;
+  color: var(--sfm-foreground) !important;
+}
+
+.dark :is(.card-actions button, .modal-actions button, .stage-heading button, .edit-actions button, .insight-item button, .report-actions-menu summary, .report-actions-menu button, .pitch-actions button:not(:first-child)):not(:disabled):hover {
+  background: var(--sfm-surface-hover) !important;
+  border-color: var(--sfm-border-strong) !important;
+}
+
+.dark :is(.primary-card-action, .modal-actions .primary-modal-btn, .edit-actions .primary, .pitch-actions button:first-child) {
+  background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent)) !important;
+  color: #FFFFFF !important;
+  border-color: rgba(24, 212, 212, 0.24) !important;
+}
+
+.dark :is(button:disabled, [aria-disabled="true"], .card-actions button:disabled, .preview-actions button:disabled) {
+  background: rgba(111, 146, 184, 0.16) !important;
+  color: #8FB3D9 !important;
+  border-color: rgba(167, 243, 240, 0.12) !important;
+  opacity: 0.72 !important;
+}
+
+.dark :is(.report-actions-menu div, .currency-popover, .currency-options, .language-switcher-menu) {
+  background: var(--sfm-card) !important;
+  border-color: var(--sfm-border) !important;
+  color: var(--sfm-foreground) !important;
+  box-shadow: 0 22px 58px rgba(0, 0, 0, 0.32) !important;
+}
+
+.dark :is(.account-completion-card, .project-selector-card) {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(24, 212, 212, 0.14), transparent 28%),
+    var(--sfm-card) !important;
+  border-color: var(--sfm-border) !important;
+  color: var(--sfm-card-foreground) !important;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.28) !important;
+}
+
+.dark :is(
+  .account-completion-copy h2,
+  .account-completion-ring strong,
+  .account-completion-status strong,
+  .step-copy b,
+  .project-selector-main strong,
+  .option-copy strong,
+  .currency-label,
+  .currency-trigger-code,
+  .currency-code
+) {
+  color: var(--sfm-heading) !important;
+}
+
+.dark :is(
+  .account-completion-copy p,
+  .account-completion-score small,
+  .step-copy small,
+  .project-selector-main small,
+  .project-selector-meta em,
+  .option-copy small,
+  .currency-trigger-name,
+  .currency-name
+) {
+  color: var(--sfm-body) !important;
+}
+
+.dark :is(.account-completion-list a, .step-state, .step-action, .project-selector-actions a, .project-selector-actions span, .project-selector-list button, .option-badges em) {
+  background: var(--sfm-card-elevated) !important;
+  border-color: var(--sfm-border) !important;
+  color: var(--sfm-foreground) !important;
+}
+
+.dark :is(.account-completion-list a:hover, .account-completion-list a:focus-visible, .project-selector-list button:hover, .project-selector-list button:focus-visible, .project-selector-list button.active, .project-selector-list button.selected) {
+  background: var(--sfm-surface-hover) !important;
+  border-color: var(--sfm-border-strong) !important;
+}
+
+.dark :is(.account-completion-list a.done, .step-state.complete) {
+  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: rgba(16, 185, 129, 0.28) !important;
+  color: #86EFAC !important;
+}
+
+.dark :is(.step-state.missing) {
+  background: rgba(245, 158, 11, 0.16) !important;
+  border-color: rgba(245, 158, 11, 0.28) !important;
+  color: #FCD34D !important;
+}
+
+.dark :is(.currency-trigger, .currency-search, .currency-search input) {
+  background: var(--sfm-input-bg) !important;
+  border-color: var(--sfm-border) !important;
+  color: var(--sfm-foreground) !important;
+}
+
+.dark .currency-trigger:hover {
+  background: var(--sfm-surface-hover) !important;
+  border-color: var(--sfm-border-strong) !important;
+}
+
+.dark :is(.currency-list button, .project-selector-search input, .project-selector-empty) {
+  background: var(--sfm-light-card) !important;
+  border-color: var(--sfm-border) !important;
+  color: var(--sfm-foreground) !important;
+}
+
+.dark :is(.currency-list button.active, .currency-list button:hover, .currency-list button:focus-visible, .currency-list button[aria-selected="true"]) {
+  background: rgba(24, 212, 212, 0.16) !important;
+  border-color: var(--sfm-border-strong) !important;
+  color: #EAF6FF !important;
+}
+
+.dark :is(.project-selector-popover, .currency-popover) {
+  background: var(--sfm-card) !important;
+  border-color: var(--sfm-border) !important;
+  color: var(--sfm-foreground) !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34) !important;
 }
 
 @media (max-width: 1260px) {
