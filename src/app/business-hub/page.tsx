@@ -2122,6 +2122,18 @@ function buildDocumentDraft({
   };
 }
 
+function normalizeBusinessHubTab(value: string | null | undefined): BusinessHubTab | null {
+  const normalized = String(value ?? '').replace(/^#/, '').trim().toLowerCase();
+  if (!normalized) return null;
+  if (['readiness', 'business-readiness'].includes(normalized)) return 'readiness';
+  if (['funding', 'funding-readiness', 'use-of-funds'].includes(normalized)) return 'funding';
+  if (['jurisdiction', 'jurisdiction-wizard'].includes(normalized)) return 'jurisdiction';
+  if (['documents', 'strategic-documents', 'pitch-decks', 'investment-offers', 'investor-package'].includes(normalized)) return 'documents';
+  if (['directory', 'funding-directory'].includes(normalized)) return 'directory';
+  if (['copilot', 'business-copilot', 'ai'].includes(normalized)) return 'copilot';
+  return null;
+}
+
 export default function BusinessHubPage() {
   const { user, loading: authLoading } = useAuth();
   const { lang, dir } = useLanguage();
@@ -2150,6 +2162,13 @@ export default function BusinessHubPage() {
   const [fundingDirectoryMessage, setFundingDirectoryMessage] = useState('');
   const [selectedFundingProgramId, setSelectedFundingProgramId] = useState('');
   const [shortlistSavingId, setShortlistSavingId] = useState('');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const requestedTab = normalizeBusinessHubTab(params.get('tab')) ?? normalizeBusinessHubTab(window.location.hash);
+    if (requestedTab) setActiveTab(requestedTab);
+  }, []);
 
   const loadProjects = useCallback(async () => {
     if (!user) {

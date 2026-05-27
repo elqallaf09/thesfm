@@ -224,7 +224,7 @@ export function normalizeUnifiedDocuments(rows: UnifiedDocumentSourceRows): Unif
       category: documentType,
       relatedName: projectNames.get(projectId) || undefined,
       uploadedAt: dateValue(row?.updated_at, row?.created_at),
-      actionUrl: '/business-hub#strategic-documents',
+      actionUrl: projectId ? `/investment-offers?project=${projectId}` : '/investment-offers',
       notes: textValue(row?.readiness_status, row?.source) || undefined,
       canDelete: false,
     });

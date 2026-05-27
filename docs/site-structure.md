@@ -24,7 +24,7 @@ This map documents the cleaned product organization. The public landing page sta
 | `/projects` | مشاريعي | My Projects | Mes projets | Project list and entry point to workspaces. | الأعمال والمشاريع | `/projects/[id]`, `/business-hub` |
 | `/projects/[id]` | مساحة المشروع | Project Workspace | Espace projet | Individual project workspace with tabs for detailed workflows. | Related | `/projects`, `/business-hub`, `/reports-center` |
 | `/business-hub` | مركز الأعمال | Business Hub | Centre d’affaires | Business readiness, funding, jurisdiction, documents, and funding directory. | الأعمال والمشاريع | `/projects`, `/reports-center`, `/documents` |
-| `/business-hub#strategic-documents` | العروض الاستثمارية | Pitch Decks | Pitch decks | Strategic documents and pitch deck area inside Business Hub. | الأعمال والمشاريع | `/projects/[id]`, `/business-hub`, `/documents` |
+| `/investment-offers` | العروض الاستثمارية | Investment Offers | Offres d’investissement | Investor-ready materials hub for pitch decks, funding readiness, strategic documents, and use of funds based on real project data. | الأعمال والمشاريع | `/projects/[id]`, `/business-hub`, `/documents` |
 | `/charity` | الأعمال الخيرية | Charity | Charité | Quick charity and donation logging. | الزكاة والأعمال الخيرية | `/charity-projects`, `/zakat` |
 | `/charity-projects` | المشاريع الخيرية | Charity Projects | Projets caritatifs | Charity projects, beneficiaries, contributors, documents, impact, and reports. | الزكاة والأعمال الخيرية | `/charity`, `/zakat`, `/reports-center` |
 | `/charity-projects#beneficiary-tracking` | المستفيدين | Beneficiaries | Bénéficiaires | Beneficiary section inside Charity Projects. | الزكاة والأعمال الخيرية | `/charity-projects` |

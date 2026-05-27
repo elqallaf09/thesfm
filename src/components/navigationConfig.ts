@@ -91,7 +91,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     items: [
       { id: 'projects', icon: FolderKanban, href: '/projects', labelKey: 'nav_projects' },
       { id: 'business-hub', icon: BriefcaseBusiness, href: '/business-hub', labelKey: 'nav_business_hub' },
-      { id: 'pitch-decks', icon: Presentation, href: '/business-hub#strategic-documents', labelKey: 'nav_pitch_decks' },
+      { id: 'investment-offers', icon: Presentation, href: '/investment-offers', labelKey: 'nav_pitch_decks' },
     ],
   },
   {

@@ -16,6 +16,7 @@ const protectedPrefixes = [
   '/reports',
   '/reports-center',
   '/business-hub',
+  '/investment-offers',
   '/projects',
   '/zakat',
   '/ai',

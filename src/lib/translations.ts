@@ -88,7 +88,7 @@ export const TR: Record<string, TranslationEntry> = {
   nav_logout:     { ar:'تسجيل الخروج', en:'Logout', fr:'Déconnexion' },
   nav_savings:    { ar:'المدخرات', en:'Savings', fr:'Épargne' },
   nav_documents: { ar:'المستندات', en:'Documents', fr:'Documents' },
-  nav_pitch_decks: { ar:'العروض الاستثمارية', en:'Pitch Decks', fr:'Pitch decks' },
+  nav_pitch_decks: { ar:'العروض الاستثمارية', en:'Investment Offers', fr:'Offres d’investissement' },
   nav_beneficiaries: { ar:'المستفيدين', en:'Beneficiaries', fr:'Bénéficiaires' },
   nav_charity_reports: { ar:'تقارير الخير', en:'Charity Reports', fr:'Rapports caritatifs' },
   nav_education:  { ar:'التعليم المالي', en:'Financial Education', fr:'Éducation financière' },
