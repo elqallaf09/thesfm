@@ -25,7 +25,7 @@ import { useMemo, useState } from 'react';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { SUPPORT_EMAIL } from '@/lib/constants/contact';
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_MAILTO } from '@/lib/constants/contact';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -69,7 +69,7 @@ const COPY = {
     footerSupport: 'الدعم',
     contact: 'تواصل معنا',
     supportEmail: 'البريد الإلكتروني للدعم',
-    supportContactLine: 'للدعم والمساعدة، تواصل معنا عبر:',
+    supportContactLine: 'للتواصل أو الدعم:',
     reportsCenter: 'مركز التقارير',
     businessHub: 'مركز الأعمال',
     security: 'الأمان والخصوصية',
@@ -145,7 +145,7 @@ const COPY = {
     footerSupport: 'Support',
     contact: 'Contact Us',
     supportEmail: 'Support Email',
-    supportContactLine: 'For support, contact us at:',
+    supportContactLine: 'For contact or support:',
     reportsCenter: 'Reports Center',
     businessHub: 'Business Hub',
     security: 'Security & Privacy',
@@ -221,7 +221,7 @@ const COPY = {
     footerSupport: 'Support',
     contact: 'Contactez-nous',
     supportEmail: 'E-mail de support',
-    supportContactLine: 'Pour obtenir de l’aide, contactez-nous à :',
+    supportContactLine: 'Pour contact ou assistance :',
     reportsCenter: 'Centre des rapports',
     businessHub: 'Centre d’affaires',
     security: 'Sécurité et confidentialité',
@@ -419,13 +419,13 @@ export default function AboutPage() {
           <strong>THE SFM</strong>
           <p>
             {text.supportContactLine}{' '}
-            <Link href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</Link>
+            <Link href={SUPPORT_EMAIL_MAILTO}>{SUPPORT_EMAIL}</Link>
           </p>
         </div>
         <FooterColumn title={text.footerProduct} links={[['/', 'THE SFM'], ['/reports-center', text.reportsCenter], ['/business-hub', text.businessHub]]} />
         <FooterColumn title={text.footerCompany} links={[['/about', text.about], ['/security', text.security]]} />
         <FooterColumn title={text.footerAccount} links={[['/login', text.login], ['/dashboard', text.openDashboard]]} />
-        <FooterColumn title={text.footerSupport} links={[['/contact', text.contact], [`mailto:${SUPPORT_EMAIL}`, text.supportEmail]]} />
+        <FooterColumn title={text.footerSupport} links={[['/contact', text.contact], [SUPPORT_EMAIL_MAILTO, text.supportEmail]]} />
       </footer>
 
       <style jsx>{aboutStyles}</style>

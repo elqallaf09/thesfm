@@ -11,7 +11,7 @@ import { CardsGrid } from '@/components/layout/LayoutPrimitives';
 import { AppCard } from '@/components/layout/AppCard';
 import { ActionRow } from '@/components/layout/ActionRow';
 import { useLanguage } from '@/hooks/useLanguage';
-import { SUPPORT_EMAIL } from '@/lib/constants/contact';
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_MAILTO } from '@/lib/constants/contact';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -32,8 +32,8 @@ const TEXT = {
     securityInfoDesc: 'نعمل على حماية بياناتك وفق أفضل الممارسات المتاحة داخل التطبيق.',
     disclaimer: 'إخلاء مسؤولية مالية',
     disclaimerDesc: 'THE SFM يساعدك على التنظيم والتحليل، ولا يعتبر بديلاً عن مستشار مالي أو قانوني مختص.',
-    supportTitle: 'الدعم والمساعدة',
-    supportDesc: 'للدعم والمساعدة، تواصل معنا عبر:',
+    supportTitle: 'التواصل بخصوص الأمان والخصوصية',
+    supportDesc: 'إذا كان لديك سؤال متعلق بالحساب، الخصوصية، أو الأمان، يمكنك التواصل معنا عبر:',
     openProfile: 'فتح الملف الشخصي',
     openMap: 'فتح خريطة THE SFM',
   },
@@ -53,8 +53,8 @@ const TEXT = {
     securityInfoDesc: 'We work to protect your data using best practices available within the app.',
     disclaimer: 'Financial disclaimer',
     disclaimerDesc: 'THE SFM helps with organization and analysis, and is not a substitute for a qualified financial or legal advisor.',
-    supportTitle: 'Support and help',
-    supportDesc: 'For support, contact us at:',
+    supportTitle: 'Security and privacy contact',
+    supportDesc: 'If you have a question about your account, privacy, or security, you can contact us at:',
     openProfile: 'Open Profile',
     openMap: 'Open THE SFM Map',
   },
@@ -74,8 +74,8 @@ const TEXT = {
     securityInfoDesc: 'Nous travaillons à protéger vos données avec les meilleures pratiques disponibles dans l’application.',
     disclaimer: 'Avertissement financier',
     disclaimerDesc: 'THE SFM aide à organiser et analyser, mais ne remplace pas un conseiller financier ou juridique qualifié.',
-    supportTitle: 'Support et aide',
-    supportDesc: 'Pour obtenir de l’aide, contactez-nous à :',
+    supportTitle: 'Contact sécurité et confidentialité',
+    supportDesc: 'Si vous avez une question liée au compte, à la confidentialité ou à la sécurité, vous pouvez nous contacter à :',
     openProfile: 'Ouvrir le profil',
     openMap: 'Ouvrir la carte THE SFM',
   },
@@ -91,7 +91,7 @@ export default function SecurityPage() {
     { title: text.deleteData, body: text.deleteDataDesc, icon: Trash2 },
     { title: text.securityInfo, body: text.securityInfoDesc, icon: LockKeyhole },
     { title: text.disclaimer, body: text.disclaimerDesc, icon: FileWarning },
-    { title: text.supportTitle, body: text.supportDesc, icon: Mail, linkHref: `mailto:${SUPPORT_EMAIL}`, linkLabel: SUPPORT_EMAIL },
+    { title: text.supportTitle, body: text.supportDesc, icon: Mail, linkHref: SUPPORT_EMAIL_MAILTO, linkLabel: SUPPORT_EMAIL },
   ];
 
   return (

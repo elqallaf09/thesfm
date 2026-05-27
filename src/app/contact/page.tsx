@@ -17,7 +17,7 @@ import {
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { SUPPORT_EMAIL } from '@/lib/constants/contact';
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_MAILTO } from '@/lib/constants/contact';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -159,7 +159,7 @@ export default function ContactPage() {
       body: text.supportEmailReady,
       value: supportEmail,
       icon: Mail,
-      action: { href: `mailto:${supportEmail}`, label: supportEmail, external: false },
+      action: { href: SUPPORT_EMAIL_MAILTO, label: supportEmail, external: false },
     },
     {
       title: text.contactForm,
@@ -303,7 +303,7 @@ export default function ContactPage() {
           </div>
         </div>
         <div className="footer-links" aria-label={text.securityPrivacy}>
-          <Link href={`mailto:${supportEmail}`}>{supportEmail}</Link>
+          <Link href={SUPPORT_EMAIL_MAILTO}>{supportEmail}</Link>
           <Link href="/security">{text.securityPrivacy}</Link>
           <Link href="/privacy">{text.privacy}</Link>
           <Link href="/terms">{text.terms}</Link>
