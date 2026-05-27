@@ -22,6 +22,7 @@ import {
   ReceiptText,
   Save,
   Target,
+  Trash2,
   X,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
@@ -149,6 +150,10 @@ type ProjectIncomeForm = {
   notes: string;
   transferredToPersonalIncome: boolean;
 };
+
+type DeleteTarget =
+  | { type: 'income'; row: ProjectIncomeRow }
+  | { type: 'expense'; row: ProjectExpenseRow };
 
 const TEXT = {
   ar: {
@@ -367,6 +372,32 @@ const TEXT = {
     negative_cash: 'التدفق النقدي المتوقع سلبي',
     payback_too_long: 'فترة الاسترداد طويلة',
     behind_schedule: 'التقدم الفعلي أقل من المخطط',
+    edit: 'تعديل',
+    delete: 'حذف',
+    showMore: 'عرض المزيد',
+    showLess: 'عرض أقل',
+    recentActivity: 'النشاط الأخير',
+    nextSteps: 'الخطوات التالية',
+    projectStatus: 'حالة المشروع',
+    editProjectIncome: 'تعديل دخل المشروع',
+    editProjectExpense: 'تعديل مصروف المشروع',
+    deleteProjectIncome: 'حذف دخل المشروع',
+    deleteProjectExpense: 'حذف مصروف المشروع',
+    saveEdit: 'حفظ التعديل',
+    deleteFromProjectOnly: 'حذف من المشروع فقط',
+    deleteFromBothProjectAndPersonalRecords: 'حذف من المشروع والسجل الشخصي',
+    deleteProjectIncomeBody: 'هل تريد حذف دخل المشروع؟ سيتم حذف هذا الدخل من المشروع فقط.',
+    deleteProjectExpenseBody: 'هل تريد حذف مصروف المشروع؟ سيتم حذف هذا المصروف من المشروع فقط.',
+    linkedIncomeDeletePrompt: 'هذا الدخل مرتبط أيضاً بالدخل الشخصي. اختر ما تريد حذفه.',
+    linkedExpenseDeletePrompt: 'هذا المصروف مرتبط أيضاً بمصاريفك الشخصية. اختر ما تريد حذفه.',
+    projectIncomeUpdated: 'تم تحديث دخل المشروع.',
+    projectExpenseUpdated: 'تم تحديث مصروف المشروع.',
+    projectIncomeDeleted: 'تم حذف دخل المشروع.',
+    projectExpenseDeleted: 'تم حذف مصروف المشروع.',
+    projectIncomeDeleteError: 'تعذر حذف دخل المشروع حالياً.',
+    projectExpenseDeleteError: 'تعذر حذف مصروف المشروع حالياً.',
+    updateLinkedPersonalIncomeConfirm: 'هذا الدخل مرتبط بالدخل الشخصي. هل تريد إزالة النسخة الشخصية أيضاً؟',
+    updateLinkedPersonalExpenseConfirm: 'هذا المصروف مرتبط بالمصاريف الشخصية. هل تريد إزالة النسخة الشخصية أيضاً؟',
   },
   en: {
     workspace: 'Project Workspace',
@@ -584,6 +615,32 @@ const TEXT = {
     negative_cash: 'Negative projected cash balance',
     payback_too_long: 'Payback period too long',
     behind_schedule: 'Actual progress is behind schedule',
+    edit: 'Edit',
+    delete: 'Delete',
+    showMore: 'Show more',
+    showLess: 'Show less',
+    recentActivity: 'Recent Activity',
+    nextSteps: 'Next Steps',
+    projectStatus: 'Project Status',
+    editProjectIncome: 'Edit Project Income',
+    editProjectExpense: 'Edit Project Expense',
+    deleteProjectIncome: 'Delete Project Income',
+    deleteProjectExpense: 'Delete Project Expense',
+    saveEdit: 'Save Changes',
+    deleteFromProjectOnly: 'Delete from project only',
+    deleteFromBothProjectAndPersonalRecords: 'Delete from project and personal records',
+    deleteProjectIncomeBody: 'Do you want to delete this project income? This will delete it from the project only.',
+    deleteProjectExpenseBody: 'Do you want to delete this project expense? This will delete it from the project only.',
+    linkedIncomeDeletePrompt: 'This income is also linked to personal income. Choose what you want to delete.',
+    linkedExpenseDeletePrompt: 'This expense is also linked to personal expenses. Choose what you want to delete.',
+    projectIncomeUpdated: 'Project income updated.',
+    projectExpenseUpdated: 'Project expense updated.',
+    projectIncomeDeleted: 'Project income deleted.',
+    projectExpenseDeleted: 'Project expense deleted.',
+    projectIncomeDeleteError: 'Could not delete project income right now.',
+    projectExpenseDeleteError: 'Could not delete project expense right now.',
+    updateLinkedPersonalIncomeConfirm: 'This income is linked to personal income. Do you want to remove the personal copy too?',
+    updateLinkedPersonalExpenseConfirm: 'This expense is linked to personal expenses. Do you want to remove the personal copy too?',
   },
   fr: {
     workspace: 'Espace projet',
@@ -801,6 +858,32 @@ const TEXT = {
     negative_cash: 'Solde de trésorerie projeté négatif',
     payback_too_long: 'Période de récupération trop longue',
     behind_schedule: 'Progression réelle en retard',
+    edit: 'Modifier',
+    delete: 'Supprimer',
+    showMore: 'Afficher plus',
+    showLess: 'Afficher moins',
+    recentActivity: 'Activité récente',
+    nextSteps: 'Prochaines étapes',
+    projectStatus: 'Statut du projet',
+    editProjectIncome: 'Modifier le revenu du projet',
+    editProjectExpense: 'Modifier la dépense du projet',
+    deleteProjectIncome: 'Supprimer le revenu du projet',
+    deleteProjectExpense: 'Supprimer la dépense du projet',
+    saveEdit: 'Enregistrer les modifications',
+    deleteFromProjectOnly: 'Supprimer du projet uniquement',
+    deleteFromBothProjectAndPersonalRecords: 'Supprimer du projet et des dossiers personnels',
+    deleteProjectIncomeBody: 'Voulez-vous supprimer ce revenu du projet ? Il sera supprimé du projet uniquement.',
+    deleteProjectExpenseBody: 'Voulez-vous supprimer cette dépense du projet ? Elle sera supprimée du projet uniquement.',
+    linkedIncomeDeletePrompt: 'Ce revenu est aussi lié au revenu personnel. Choisissez ce que vous voulez supprimer.',
+    linkedExpenseDeletePrompt: 'Cette dépense est aussi liée aux dépenses personnelles. Choisissez ce que vous voulez supprimer.',
+    projectIncomeUpdated: 'Revenu du projet mis à jour.',
+    projectExpenseUpdated: 'Dépense du projet mise à jour.',
+    projectIncomeDeleted: 'Revenu du projet supprimé.',
+    projectExpenseDeleted: 'Dépense du projet supprimée.',
+    projectIncomeDeleteError: 'Impossible de supprimer le revenu du projet pour le moment.',
+    projectExpenseDeleteError: 'Impossible de supprimer la dépense du projet pour le moment.',
+    updateLinkedPersonalIncomeConfirm: 'Ce revenu est lié au revenu personnel. Voulez-vous aussi supprimer la copie personnelle ?',
+    updateLinkedPersonalExpenseConfirm: 'Cette dépense est liée aux dépenses personnelles. Voulez-vous aussi supprimer la copie personnelle ?',
   },
 } as const;
 
@@ -983,10 +1066,15 @@ export default function ProjectWorkspacePage() {
   const [projectExpenseSaving, setProjectExpenseSaving] = useState(false);
   const [projectExpenseError, setProjectExpenseError] = useState('');
   const [projectExpenseForm, setProjectExpenseForm] = useState<ProjectExpenseForm>(() => emptyProjectExpenseForm(userCurrency || 'KWD'));
+  const [editingProjectExpenseId, setEditingProjectExpenseId] = useState<string | null>(null);
   const [projectIncomeOpen, setProjectIncomeOpen] = useState(false);
   const [projectIncomeSaving, setProjectIncomeSaving] = useState(false);
   const [projectIncomeError, setProjectIncomeError] = useState('');
   const [projectIncomeForm, setProjectIncomeForm] = useState<ProjectIncomeForm>(() => emptyProjectIncomeForm(userCurrency || 'KWD'));
+  const [editingProjectIncomeId, setEditingProjectIncomeId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleteSaving, setDeleteSaving] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const money = useCallback((amount: number, currency = 'KWD') => formatMoney(amount, currency, lang as Lang), [lang]);
   const dateLabel = useCallback((value?: string | null) => {
@@ -1308,13 +1396,49 @@ export default function ProjectWorkspacePage() {
 
   const openProjectExpenseModal = () => {
     setProjectExpenseError('');
+    setEditingProjectExpenseId(null);
     setProjectExpenseForm(emptyProjectExpenseForm(projectCurrency));
+    setProjectExpenseOpen(true);
+  };
+
+  const openEditProjectExpenseModal = (expense: ProjectExpenseRow) => {
+    setProjectExpenseError('');
+    setEditingProjectExpenseId(expense.id);
+    setProjectExpenseForm({
+      title: expense.title ?? '',
+      amount: String(expense.amount ?? ''),
+      currency: expense.currency || projectCurrency,
+      expenseDate: String(expense.expense_date ?? '').slice(0, 10) || todayInputValue(),
+      category: expense.category || 'general',
+      paymentMethod: expense.payment_method || '',
+      notes: expense.notes || '',
+      receiptFile: null,
+      paidFromPersonalBudget: expense.paid_from_personal_budget === true,
+    });
     setProjectExpenseOpen(true);
   };
 
   const openProjectIncomeModal = () => {
     setProjectIncomeError('');
+    setEditingProjectIncomeId(null);
     setProjectIncomeForm(emptyProjectIncomeForm(projectCurrency));
+    setProjectIncomeOpen(true);
+  };
+
+  const openEditProjectIncomeModal = (income: ProjectIncomeRow) => {
+    setProjectIncomeError('');
+    setEditingProjectIncomeId(income.id);
+    setProjectIncomeForm({
+      title: income.title ?? '',
+      amount: String(income.amount ?? ''),
+      currency: income.currency || projectCurrency,
+      incomeDate: String(income.income_date ?? '').slice(0, 10) || todayInputValue(),
+      category: income.category || 'general',
+      source: income.source || '',
+      description: income.description || '',
+      notes: income.notes || '',
+      transferredToPersonalIncome: income.transferred_to_personal_income === true,
+    });
     setProjectIncomeOpen(true);
   };
 
@@ -1335,6 +1459,15 @@ export default function ProjectWorkspacePage() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [projectIncomeOpen]);
+
+  useEffect(() => {
+    if (!deleteTarget) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDeleteTarget(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [deleteTarget]);
 
   const uploadProjectExpenseReceipt = async (file: File, expenseId: string) => {
     if (!user || !file) return null;
@@ -1361,7 +1494,13 @@ export default function ProjectWorkspacePage() {
 
     setProjectExpenseSaving(true);
     setProjectExpenseError('');
-    const expenseId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`;
+    const existingExpense = editingProjectExpenseId ? projectExpenses.find(row => row.id === editingProjectExpenseId) ?? null : null;
+    const shouldRemoveLinkedPersonal = Boolean(existingExpense?.personal_expense_id && !projectExpenseForm.paidFromPersonalBudget);
+    if (shouldRemoveLinkedPersonal && !window.confirm(tr.updateLinkedPersonalExpenseConfirm)) {
+      setProjectExpenseSaving(false);
+      return;
+    }
+    const expenseId = editingProjectExpenseId ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`;
     const receiptUrl = projectExpenseForm.receiptFile ? await uploadProjectExpenseReceipt(projectExpenseForm.receiptFile, expenseId) : null;
     const payload = {
       id: expenseId,
@@ -1374,16 +1513,16 @@ export default function ProjectWorkspacePage() {
       category: projectExpenseForm.category || 'general',
       payment_method: projectExpenseForm.paymentMethod || null,
       notes: projectExpenseForm.notes.trim() || null,
-      receipt_url: receiptUrl,
+      receipt_url: receiptUrl ?? existingExpense?.receipt_url ?? null,
       paid_from_personal_budget: projectExpenseForm.paidFromPersonalBudget,
+      personal_expense_id: shouldRemoveLinkedPersonal ? null : existingExpense?.personal_expense_id ?? null,
       updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await (supabase as any)
-      .from('project_expenses')
-      .insert(payload)
-      .select('*')
-      .single();
+    const projectExpenseQuery = (supabase as any).from('project_expenses');
+    const { data, error } = editingProjectExpenseId
+      ? await projectExpenseQuery.update(payload).eq('id', editingProjectExpenseId).eq('user_id', user.id).select('*').single()
+      : await projectExpenseQuery.insert(payload).select('*').single();
 
     if (error) {
       setProjectExpenseSaving(false);
@@ -1415,25 +1554,43 @@ export default function ProjectWorkspacePage() {
         },
         updated_at: new Date().toISOString(),
       };
-      const personalInsert = await (supabase as any)
-        .from('expense_items')
-        .insert(personalPayload)
-        .select('id')
-        .single();
-      if (!personalInsert.error && personalInsert.data?.id) {
+      const personalResult = createdExpense.personal_expense_id
+        ? await (supabase as any)
+          .from('expense_items')
+          .update(personalPayload)
+          .eq('id', createdExpense.personal_expense_id)
+          .eq('user_id', user.id)
+          .select('id')
+          .single()
+        : await (supabase as any)
+          .from('expense_items')
+          .insert(personalPayload)
+          .select('id')
+          .single();
+      if (!personalResult.error && personalResult.data?.id) {
         await (supabase as any)
           .from('project_expenses')
-          .update({ personal_expense_id: personalInsert.data.id })
+          .update({ personal_expense_id: personalResult.data.id })
           .eq('id', createdExpense.id)
           .eq('user_id', user.id);
-        createdExpense = { ...createdExpense, personal_expense_id: personalInsert.data.id };
+        createdExpense = { ...createdExpense, personal_expense_id: personalResult.data.id };
       }
+    } else if (shouldRemoveLinkedPersonal && existingExpense?.personal_expense_id) {
+      await (supabase as any)
+        .from('expense_items')
+        .delete()
+        .eq('id', existingExpense.personal_expense_id)
+        .eq('user_id', user.id);
+      createdExpense = { ...createdExpense, personal_expense_id: null };
     }
 
-    setProjectExpenses(prev => [createdExpense, ...prev]);
-    setNotice(tr.projectExpenseSaved);
+    setProjectExpenses(prev => editingProjectExpenseId
+      ? prev.map(row => row.id === editingProjectExpenseId ? createdExpense : row)
+      : [createdExpense, ...prev]);
+    setNotice(editingProjectExpenseId ? tr.projectExpenseUpdated : tr.projectExpenseSaved);
     setProjectExpenseSaving(false);
     setProjectExpenseOpen(false);
+    setEditingProjectExpenseId(null);
     setProjectExpenseForm(emptyProjectExpenseForm(projectCurrency));
   };
 
@@ -1453,7 +1610,13 @@ export default function ProjectWorkspacePage() {
 
     setProjectIncomeSaving(true);
     setProjectIncomeError('');
-    const incomeId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`;
+    const existingIncome = editingProjectIncomeId ? projectIncome.find(row => row.id === editingProjectIncomeId) ?? null : null;
+    const shouldRemoveLinkedPersonal = Boolean(existingIncome?.personal_income_id && !projectIncomeForm.transferredToPersonalIncome);
+    if (shouldRemoveLinkedPersonal && !window.confirm(tr.updateLinkedPersonalIncomeConfirm)) {
+      setProjectIncomeSaving(false);
+      return;
+    }
+    const incomeId = editingProjectIncomeId ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`;
     const now = new Date().toISOString();
     const payload = {
       id: incomeId,
@@ -1468,14 +1631,14 @@ export default function ProjectWorkspacePage() {
       description: projectIncomeForm.description.trim() || null,
       notes: projectIncomeForm.notes.trim() || null,
       transferred_to_personal_income: projectIncomeForm.transferredToPersonalIncome,
+      personal_income_id: shouldRemoveLinkedPersonal ? null : existingIncome?.personal_income_id ?? null,
       updated_at: now,
     };
 
-    const { data, error } = await (supabase as any)
-      .from('project_income')
-      .insert(payload)
-      .select('*')
-      .single();
+    const projectIncomeQuery = (supabase as any).from('project_income');
+    const { data, error } = editingProjectIncomeId
+      ? await projectIncomeQuery.update(payload).eq('id', editingProjectIncomeId).eq('user_id', user.id).select('*').single()
+      : await projectIncomeQuery.insert(payload).select('*').single();
 
     if (error) {
       setProjectIncomeSaving(false);
@@ -1510,26 +1673,107 @@ export default function ProjectWorkspacePage() {
         transferred_to_personal_income: true,
         updated_at: now,
       };
-      const personalInsert = await (supabase as any)
-        .from('monthly_income_sources')
-        .insert(personalPayload)
-        .select('id')
-        .single();
-      if (!personalInsert.error && personalInsert.data?.id) {
+      const personalResult = createdIncome.personal_income_id
+        ? await (supabase as any)
+          .from('monthly_income_sources')
+          .update(personalPayload)
+          .eq('id', createdIncome.personal_income_id)
+          .eq('user_id', user.id)
+          .select('id')
+          .single()
+        : await (supabase as any)
+          .from('monthly_income_sources')
+          .insert(personalPayload)
+          .select('id')
+          .single();
+      if (!personalResult.error && personalResult.data?.id) {
         await (supabase as any)
           .from('project_income')
-          .update({ personal_income_id: personalInsert.data.id })
+          .update({ personal_income_id: personalResult.data.id })
           .eq('id', createdIncome.id)
           .eq('user_id', user.id);
-        createdIncome = { ...createdIncome, personal_income_id: personalInsert.data.id };
+        createdIncome = { ...createdIncome, personal_income_id: personalResult.data.id };
       }
+    } else if (shouldRemoveLinkedPersonal && existingIncome?.personal_income_id) {
+      await (supabase as any)
+        .from('monthly_income_sources')
+        .delete()
+        .eq('id', existingIncome.personal_income_id)
+        .eq('user_id', user.id);
+      createdIncome = { ...createdIncome, personal_income_id: null };
     }
 
-    setProjectIncome(prev => [createdIncome, ...prev]);
-    setNotice(tr.projectIncomeSaved);
+    setProjectIncome(prev => editingProjectIncomeId
+      ? prev.map(row => row.id === editingProjectIncomeId ? createdIncome : row)
+      : [createdIncome, ...prev]);
+    setNotice(editingProjectIncomeId ? tr.projectIncomeUpdated : tr.projectIncomeSaved);
     setProjectIncomeSaving(false);
     setProjectIncomeOpen(false);
+    setEditingProjectIncomeId(null);
     setProjectIncomeForm(emptyProjectIncomeForm(projectCurrency));
+  };
+
+  const requestDeleteProjectIncome = (row: ProjectIncomeRow) => {
+    setDeleteError('');
+    setDeleteTarget({ type: 'income', row });
+  };
+
+  const requestDeleteProjectExpense = (row: ProjectExpenseRow) => {
+    setDeleteError('');
+    setDeleteTarget({ type: 'expense', row });
+  };
+
+  const confirmDeleteTransaction = async (deleteLinkedPersonal: boolean) => {
+    if (!user || !deleteTarget) return;
+    setDeleteSaving(true);
+    setDeleteError('');
+
+    if (deleteTarget.type === 'income') {
+      const row = deleteTarget.row;
+      if (deleteLinkedPersonal && row.personal_income_id) {
+        await (supabase as any)
+          .from('monthly_income_sources')
+          .delete()
+          .eq('id', row.personal_income_id)
+          .eq('user_id', user.id);
+      }
+      const { error } = await (supabase as any)
+        .from('project_income')
+        .delete()
+        .eq('id', row.id)
+        .eq('user_id', user.id);
+      setDeleteSaving(false);
+      if (error) {
+        setDeleteError(tr.projectIncomeDeleteError);
+        return;
+      }
+      setProjectIncome(prev => prev.filter(item => item.id !== row.id));
+      setNotice(tr.projectIncomeDeleted);
+      setDeleteTarget(null);
+      return;
+    }
+
+    const row = deleteTarget.row;
+    if (deleteLinkedPersonal && row.personal_expense_id) {
+      await (supabase as any)
+        .from('expense_items')
+        .delete()
+        .eq('id', row.personal_expense_id)
+        .eq('user_id', user.id);
+    }
+    const { error } = await (supabase as any)
+      .from('project_expenses')
+      .delete()
+      .eq('id', row.id)
+      .eq('user_id', user.id);
+    setDeleteSaving(false);
+    if (error) {
+      setDeleteError(tr.projectExpenseDeleteError);
+      return;
+    }
+    setProjectExpenses(prev => prev.filter(item => item.id !== row.id));
+    setNotice(tr.projectExpenseDeleted);
+    setDeleteTarget(null);
   };
 
   const tabLabel = (tab: TabId) => {
@@ -1667,6 +1911,10 @@ export default function ProjectWorkspacePage() {
             projectExpenses={projectExpenses}
             openProjectIncomeModal={openProjectIncomeModal}
             openProjectExpenseModal={openProjectExpenseModal}
+            onEditProjectIncome={openEditProjectIncomeModal}
+            onEditProjectExpense={openEditProjectExpenseModal}
+            onDeleteProjectIncome={requestDeleteProjectIncome}
+            onDeleteProjectExpense={requestDeleteProjectExpense}
             money={(amount) => money(amount, projectCurrency)}
             dateLabel={dateLabel}
             setActiveTab={setActiveTab}
@@ -1860,7 +2108,7 @@ export default function ProjectWorkspacePage() {
             <div className="modal-header">
               <div>
                 <span>{tr.projectExpenses}</span>
-                <h2 id="project-expense-title">{tr.addExpense}</h2>
+                <h2 id="project-expense-title">{editingProjectExpenseId ? tr.editProjectExpense : tr.addExpense}</h2>
                 <p>{tr.doNotIncludeInPersonalBudget}</p>
               </div>
               <button type="button" className="icon-button" onClick={() => setProjectExpenseOpen(false)} aria-label={tr.cancel}>
@@ -1965,7 +2213,7 @@ export default function ProjectWorkspacePage() {
               <button type="button" className="secondary-action" onClick={() => setProjectExpenseOpen(false)}>{tr.cancel}</button>
               <button type="submit" className="primary-save" disabled={projectExpenseSaving}>
                 <Save size={16} />
-                {projectExpenseSaving ? tr.saveProjectExpense : tr.saveProjectExpense}
+                {projectExpenseSaving ? (editingProjectExpenseId ? tr.saveEdit : tr.saveProjectExpense) : (editingProjectExpenseId ? tr.saveEdit : tr.saveProjectExpense)}
               </button>
             </div>
           </form>
@@ -1978,7 +2226,7 @@ export default function ProjectWorkspacePage() {
             <div className="modal-header">
               <div>
                 <span>{tr.projectIncome}</span>
-                <h2 id="project-income-title">{tr.addIncome}</h2>
+                <h2 id="project-income-title">{editingProjectIncomeId ? tr.editProjectIncome : tr.addIncome}</h2>
                 <p>{tr.doNotIncludeInPersonalIncome}</p>
               </div>
               <button type="button" className="icon-button" onClick={() => setProjectIncomeOpen(false)} aria-label={tr.cancel}>
@@ -2082,10 +2330,38 @@ export default function ProjectWorkspacePage() {
               <button type="button" className="secondary-action" onClick={() => setProjectIncomeOpen(false)}>{tr.cancel}</button>
               <button type="submit" className="primary-save" disabled={projectIncomeSaving}>
                 <Save size={16} />
-                {projectIncomeSaving ? tr.saveProjectIncome : tr.saveProjectIncome}
+                {projectIncomeSaving ? (editingProjectIncomeId ? tr.saveEdit : tr.saveProjectIncome) : (editingProjectIncomeId ? tr.saveEdit : tr.saveProjectIncome)}
               </button>
             </div>
           </form>
+        </div>
+      ) : null}
+
+      {deleteTarget ? (
+        <div className="expense-modal-backdrop" role="presentation" onMouseDown={() => setDeleteTarget(null)}>
+          <section className="delete-modal" role="dialog" aria-modal="true" aria-labelledby="project-transaction-delete-title" onMouseDown={event => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <span>{deleteTarget.type === 'income' ? tr.projectIncome : tr.projectExpenses}</span>
+                <h2 id="project-transaction-delete-title">{deleteTarget.type === 'income' ? tr.deleteProjectIncome : tr.deleteProjectExpense}</h2>
+                <p>{deleteTarget.type === 'income' ? tr.deleteProjectIncomeBody : tr.deleteProjectExpenseBody}</p>
+                {(deleteTarget.type === 'income' && deleteTarget.row.personal_income_id) || (deleteTarget.type === 'expense' && deleteTarget.row.personal_expense_id) ? (
+                  <p className="delete-linked-note">{deleteTarget.type === 'income' ? tr.linkedIncomeDeletePrompt : tr.linkedExpenseDeletePrompt}</p>
+                ) : null}
+              </div>
+              <button type="button" className="icon-button" onClick={() => setDeleteTarget(null)} aria-label={tr.cancel}>
+                <X size={18} />
+              </button>
+            </div>
+            {deleteError ? <div className="modal-error" role="alert">{deleteError}</div> : null}
+            <div className="modal-actions">
+              <button type="button" className="secondary-action" onClick={() => setDeleteTarget(null)} disabled={deleteSaving}>{tr.cancel}</button>
+              <button type="button" className="danger-action" onClick={() => confirmDeleteTransaction(false)} disabled={deleteSaving}>{tr.deleteFromProjectOnly}</button>
+              {((deleteTarget.type === 'income' && deleteTarget.row.personal_income_id) || (deleteTarget.type === 'expense' && deleteTarget.row.personal_expense_id)) ? (
+                <button type="button" className="danger-action strong" onClick={() => confirmDeleteTransaction(true)} disabled={deleteSaving}>{tr.deleteFromBothProjectAndPersonalRecords}</button>
+              ) : null}
+            </div>
+          </section>
         </div>
       ) : null}
 
@@ -2093,6 +2369,42 @@ export default function ProjectWorkspacePage() {
         .project-workspace{min-height:100vh;background:var(--sfm-background);color:var(--sfm-primary-dark);font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}.project-workspace .sfm-dashboard-page-shell{width:auto;max-width:none;margin:0;margin-inline-start:var(--sidebar-w);margin-inline-end:0;padding:var(--sfm-page-pad-y,24px) var(--sfm-page-pad-x,24px) 60px;overflow-x:clip}.project-workspace .sfm-dashboard-page-content{width:100%;max-width:var(--sfm-page-max,1320px);margin:0 auto;min-width:0}.workspace-content{display:grid;gap:18px;min-width:0}.workspace-hero{position:relative;overflow:hidden;border-radius:24px;padding:26px;background:radial-gradient(circle at 14% 10%,rgba(167,243,240,.26),transparent 30%),linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark) 50%,var(--sfm-card-dark) 138%);color:var(--sfm-card);box-shadow:0 22px 55px rgba(3,18,37,.18);display:grid;gap:20px;min-width:0}.hero-copy span,.back-link{color:var(--sfm-soft-cyan);font-size:12px;font-weight:900}.back-link{display:inline-flex;align-items:center;gap:7px;text-decoration:none;margin-bottom:10px}.hero-copy h1{margin:8px 0;font-size:clamp(30px,5vw,48px);font-weight:950;line-height:1.08}.hero-copy p{margin:0;color:rgba(234,246,255,.76);line-height:1.8;max-width:820px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px}.hero-actions button{min-height:42px;border-radius:13px;border:1px solid rgba(167,243,240,.28);background:rgba(255,255,255,.10);color:var(--sfm-card);padding:0 14px;display:inline-flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.hero-actions button:first-child,.primary-save{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.hero-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.hero-metrics div{border:1px solid rgba(167,243,240,.18);background:rgba(234,246,255,.08);border-radius:16px;padding:12px;min-width:0}.hero-metrics small{display:block;color:var(--sfm-soft-cyan);font-weight:900}.hero-metrics strong{display:block;margin-top:5px;color:var(--sfm-card);overflow-wrap:anywhere}.workspace-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin}.workspace-tabs button{flex:0 0 auto;min-height:42px;border:1px solid rgba(29,140,255,.18);border-radius:999px;background:var(--sfm-card);color:var(--sfm-muted);padding:0 14px;display:flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.workspace-tabs button.active,.workspace-tabs button:focus-visible{background:var(--sfm-midnight);color:var(--sfm-soft-cyan);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}.overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:16px;align-items:start}.overview-grid>.warm-card{grid-column:auto;min-width:0}.warm-card{background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);border-radius:20px;padding:18px;box-shadow:0 14px 34px rgba(3,18,37,.07);min-width:0}.span-6{grid-column:auto}.card-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.card-title h2{margin:0;color:var(--sfm-midnight);font-size:19px}.card-title svg{color:var(--sfm-primary)}.details-list{display:grid;gap:10px;margin:0}.details-list div{display:grid;grid-template-columns:minmax(120px,.35fr) minmax(0,1fr);gap:12px;border-bottom:1px solid rgba(29,140,255,.1);padding-bottom:10px}.details-list dt,.metric small{color:var(--sfm-muted);font-weight:900}.details-list dd{margin:0;color:var(--sfm-primary-dark);font-weight:900;overflow-wrap:anywhere}.badge{display:inline-flex;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:5px 10px;font-size:12px}.badge.completed{background:#ECFDF5;color:#047857}.badge.paused{background:#FEF2F2;color:#B91C1C}.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.metric,.timeline-list .metric{border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:15px;padding:12px;min-width:0;writing-mode:horizontal-tb;text-orientation:mixed}.metric strong{display:block;margin-top:6px;color:var(--sfm-primary-dark);font-size:18px;overflow-wrap:anywhere}.progress-bar{height:10px;border-radius:999px;background:rgba(29,140,255,.10);overflow:hidden;margin-top:14px}.progress-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--sfm-soft-cyan),var(--sfm-primary))}.timeline-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.timeline-empty{margin:0;border:1px dashed rgba(29,140,255,.24);background:var(--sfm-light-card);color:var(--sfm-muted);border-radius:15px;padding:14px;line-height:1.7;font-weight:900;text-align:start}.risk-card,.quick-card{grid-column:auto}.overview-grid>.task-overview-card,.overview-grid>.kpi-overview-card{grid-column:1 / -1}.risk-badge{display:inline-flex;border-radius:999px;padding:8px 12px;font-weight:950;margin-bottom:10px}.risk-card.low .risk-badge{background:#ECFDF5;color:#047857}.risk-card.medium .risk-badge{background:#FFF7ED;color:#B45309}.risk-card.high .risk-badge{background:#FEF2F2;color:#B91C1C}.risk-card p,.ai-placeholder p{margin:0;color:var(--sfm-muted);line-height:1.7}.overview-link-btn{margin-top:14px;min-height:42px;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;padding:0 14px;font-weight:950;font-family:inherit;cursor:pointer}.overview-link-btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}.quick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.quick-grid button{min-height:44px;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:var(--sfm-light-card);color:var(--sfm-midnight);font-weight:900;font-family:inherit;cursor:pointer}.quick-grid button:hover,.quick-grid button:focus-visible{background:rgba(29,140,255,.10);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.14)}.feasibility-tab{display:grid;gap:16px;min-width:0}.feasibility-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:12px;align-items:stretch}.score-card{display:grid;align-content:start}.score-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}.score-number{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--sfm-primary) var(--score-angle, 270deg),rgba(29,140,255,.10) 0);position:relative;box-shadow:inset 0 0 0 12px var(--sfm-light-card)}.score-number strong{font-size:30px;color:var(--sfm-primary-dark)}.score-number span{font-size:12px;color:var(--sfm-muted);font-weight:900}.status-pill{display:inline-flex;border-radius:999px;padding:7px 11px;font-weight:950;font-size:12px}.status-pill.feasible{background:#ECFDF5;color:#047857}.status-pill.needs_review{background:#FFF7ED;color:#B45309}.status-pill.high_risk{background:#FEF2F2;color:#B91C1C}.score-row p{margin:10px 0 0;color:var(--sfm-muted);line-height:1.6}.notice{border:1px solid rgba(29,140,255,.2);background:var(--sfm-light-card);color:var(--sfm-midnight);border-radius:15px;padding:12px 14px;font-weight:900}.feasibility-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(290px,.85fr);gap:16px;align-items:start}.feasibility-sections{display:grid;gap:16px;min-width:0}.feasibility-side{display:grid;gap:16px;min-width:0;position:sticky;top:16px}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.section-heading small{display:inline-flex;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:5px 10px;font-weight:950}.section-heading h2{margin:8px 0 0;color:var(--sfm-midnight);font-size:20px}.section-heading svg{color:var(--sfm-primary)}.feasibility-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-field{display:grid;gap:7px;min-width:0}.form-field span{font-weight:900;color:var(--sfm-muted)}.form-field input,.form-field textarea,.form-field select{width:100%;min-width:0;border:1px solid rgba(29,140,255,.2);background:var(--sfm-card);color:var(--sfm-foreground);border-radius:13px;padding:11px 12px;font-family:inherit;font-weight:800;outline:none}.form-field textarea{resize:vertical;line-height:1.6}.form-field input:focus,.form-field textarea:focus,.form-field select:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.15)}.calculations-card{display:grid;gap:10px}.future-actions{display:grid;gap:10px}.future-actions button{min-height:44px;border-radius:13px;border:1px solid rgba(29,140,255,.18);font-family:inherit;font-weight:950;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}.future-actions button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}.primary-save:disabled{opacity:.66;cursor:not-allowed}.disabled-btn{background:var(--sfm-light-card);color:var(--sfm-muted);cursor:not-allowed}.disabled-btn span{border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:3px 8px;font-size:11px}.placeholder-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}.placeholder-card{min-height:280px;display:grid;place-items:center;text-align:center;align-content:center}.placeholder-card svg{color:var(--sfm-primary)}.placeholder-card h2{margin:12px 0 6px;color:var(--sfm-midnight)}.placeholder-card p{margin:0;max-width:620px;color:var(--sfm-muted);line-height:1.8}.placeholder-card span{margin-top:14px;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:7px 12px;font-weight:900}.state-card{border-radius:20px;background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);padding:24px;color:var(--sfm-midnight);font-weight:900}.empty-state{min-height:360px;display:grid;place-items:center;text-align:center}.empty-state article{background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);border-radius:22px;padding:28px;box-shadow:0 14px 34px rgba(3,18,37,.07)}.empty-state button{margin-top:16px;min-height:42px;border:0;border-radius:13px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;padding:0 16px;font-weight:900;font-family:inherit;cursor:pointer}@media(max-width:1180px){.hero-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.feasibility-layout{grid-template-columns:1fr}.feasibility-side{position:static}}@media(max-width:1024px){.project-workspace .sfm-dashboard-page-shell{margin-inline:0;padding:calc(74px + env(safe-area-inset-top)) 16px 44px}.project-workspace .sfm-dashboard-page-content{max-width:100%}}@media(max-width:760px){.workspace-hero{padding:22px}.hero-actions{display:grid;grid-template-columns:1fr}.hero-actions button{width:100%;justify-content:center}.hero-metrics,.metric-grid,.timeline-list,.quick-grid,.feasibility-summary-grid,.feasibility-form-grid{grid-template-columns:1fr}.details-list div{grid-template-columns:1fr}.warm-card{padding:16px}.overview-grid{grid-template-columns:1fr}.overview-grid>.warm-card{grid-column:1 / -1}.overview-link-btn{width:100%}.score-row{grid-template-columns:1fr}.score-number{width:92px;height:92px}.section-heading{align-items:flex-start}.placeholder-card{min-height:220px}}
       `}</style>
       <style jsx global>{`
+        .project-overview{display:grid;gap:16px;min-width:0}
+        .overview-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;align-items:stretch}
+        .overview-main-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.75fr);gap:16px;align-items:start;min-width:0}
+        .overview-main-column,.overview-side-column{display:grid;gap:16px;min-width:0}
+        .overview-side-column{position:sticky;top:16px}
+        .project-summary-card{display:grid;gap:12px}
+        .project-description{margin:0;color:var(--sfm-primary-dark);font-weight:850;line-height:1.8;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+        .project-description.expanded{display:block;overflow:visible}
+        .text-toggle{justify-self:start;min-height:34px;border:1px solid rgba(29,140,255,.18);border-radius:999px;background:rgba(29,140,255,.08);color:var(--sfm-primary-hover);padding:0 12px;font-family:inherit;font-weight:950;cursor:pointer}
+        .compact-details{grid-template-columns:repeat(2,minmax(0,1fr));display:grid}
+        .compact-details div{grid-template-columns:1fr;gap:4px}
+        .project-transactions-card{display:grid;gap:14px}
+        .transaction-list{display:grid;gap:10px}
+        .transaction-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:16px;padding:12px;min-width:0}
+        .transaction-main{display:grid;gap:4px;min-width:0}
+        .transaction-main strong{color:var(--sfm-midnight);font-weight:950;overflow-wrap:anywhere}
+        .transaction-main span{color:var(--sfm-muted);font-size:12px;font-weight:850}
+        .transaction-main small{justify-self:start;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:4px 8px;font-weight:950;font-size:11px}
+        .transaction-amount{color:var(--sfm-primary-dark);font-weight:950;white-space:nowrap}
+        .transaction-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+        .transaction-actions button{min-height:34px;border:1px solid rgba(29,140,255,.18);border-radius:11px;background:var(--sfm-card);color:var(--sfm-midnight);padding:0 10px;font-family:inherit;font-weight:950;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+        .transaction-actions button.danger,.danger-action{min-height:42px;border:1px solid rgba(220,38,38,.22);border-radius:13px;background:#FEF2F2;color:#B91C1C;padding:0 14px;font-family:inherit;font-weight:950;cursor:pointer}
+        .danger-action.strong{background:#B91C1C;color:#FFFFFF}
+        .activity-list{display:grid;gap:10px}
+        .activity-list div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:14px;padding:11px}
+        .activity-list span{color:var(--sfm-midnight);font-weight:950;overflow-wrap:anywhere}
+        .activity-list small{color:var(--sfm-muted);font-weight:850}
+        .activity-list strong{grid-row:1 / span 2;grid-column:2;color:var(--sfm-primary-dark);font-weight:950;white-space:nowrap;align-self:center}
+        .overview-side-column .quick-grid{grid-template-columns:1fr}
+        .overview-side-column .quick-grid button{justify-content:flex-start;padding:0 12px;display:flex;align-items:center;gap:8px;text-align:start}
+        .delete-modal{width:min(620px,100%);border:1px solid rgba(167,243,240,.22);border-radius:24px;background:var(--sfm-card);box-shadow:0 30px 80px rgba(3,18,37,.35);padding:22px;display:grid;gap:16px;color:var(--sfm-primary-dark)}
+        .delete-linked-note{border:1px solid rgba(245,158,11,.22);background:#FFFBEB;color:#92400E;border-radius:14px;padding:10px 12px;margin-top:10px!important;font-weight:900}
+        .dark .project-description,.dark .transaction-amount,.dark .activity-list strong{color:var(--foreground)}
+        .dark .transaction-row,.dark .activity-list div,.dark .delete-modal{background:var(--card);border-color:var(--border)}
+        .dark .transaction-main strong,.dark .activity-list span{color:var(--foreground)}
+        .dark .transaction-actions button{background:var(--sfm-card-elevated,#0F335C);color:var(--foreground);border-color:var(--border)}
         .project-workspace .overview-grid{grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));align-items:stretch}
         .project-workspace .project-income-card,.project-workspace .project-expenses-card,.project-workspace .missing-data-card{grid-column:1 / -1}
         .project-workspace .expense-list{display:grid;gap:10px;margin-top:12px}
@@ -2121,7 +2433,8 @@ export default function ProjectWorkspacePage() {
         .budget-checkbox small{color:var(--sfm-muted);line-height:1.6;font-weight:850}
         .modal-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
         .modal-actions .primary-save{min-height:44px;border:0;border-radius:13px;padding:0 16px;display:inline-flex;align-items:center;gap:8px;font-family:inherit;font-weight:950;cursor:pointer}
-        @media(max-width:760px){.expense-modal-backdrop{align-items:end;padding:12px}.expense-modal{border-radius:22px 22px 0 0;max-height:88vh}.project-expense-form-grid{grid-template-columns:1fr}.modal-actions{display:grid;grid-template-columns:1fr}.modal-actions button{width:100%}.project-workspace .expense-list div{grid-template-columns:1fr}.project-workspace .project-income-card,.project-workspace .project-expenses-card,.project-workspace .missing-data-card{grid-column:1 / -1}}
+        @media(max-width:1180px){.overview-main-layout{grid-template-columns:1fr}.overview-side-column{position:static}.compact-details{grid-template-columns:1fr 1fr}}
+        @media(max-width:760px){.overview-kpi-grid,.compact-details{grid-template-columns:1fr}.transaction-row,.activity-list div{grid-template-columns:1fr}.transaction-actions{justify-content:stretch}.transaction-actions button{flex:1;justify-content:center}.expense-modal-backdrop{align-items:end;padding:12px}.expense-modal,.delete-modal{border-radius:22px 22px 0 0;max-height:88vh;overflow:auto}.project-expense-form-grid{grid-template-columns:1fr}.modal-actions{display:grid;grid-template-columns:1fr}.modal-actions button{width:100%}.project-workspace .expense-list div{grid-template-columns:1fr}.project-workspace .project-income-card,.project-workspace .project-expenses-card,.project-workspace .missing-data-card{grid-column:1 / -1}}
       `}</style>
     </div>
   );
@@ -2141,6 +2454,10 @@ function OverviewTab({
   projectExpenses,
   openProjectIncomeModal,
   openProjectExpenseModal,
+  onEditProjectIncome,
+  onEditProjectExpense,
+  onDeleteProjectIncome,
+  onDeleteProjectExpense,
   money,
   dateLabel,
   setActiveTab,
@@ -2159,6 +2476,10 @@ function OverviewTab({
   projectExpenses: ProjectExpenseRow[];
   openProjectIncomeModal: () => void;
   openProjectExpenseModal: () => void;
+  onEditProjectIncome: (row: ProjectIncomeRow) => void;
+  onEditProjectExpense: (row: ProjectExpenseRow) => void;
+  onDeleteProjectIncome: (row: ProjectIncomeRow) => void;
+  onDeleteProjectExpense: (row: ProjectExpenseRow) => void;
   money: (value: number) => string;
   dateLabel: (value?: string | null) => string;
   setActiveTab: (tab: TabId) => void;
@@ -2173,168 +2494,238 @@ function OverviewTab({
   const actualVsPlanned = model.plannedExpenses > 0
     ? `${Math.round((model.actualProjectExpenses / model.plannedExpenses) * 100)}%`
     : tr.noData;
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const recentActivity = [...projectIncome.map(row => ({
+    id: `income-${row.id}`,
+    type: tr.projectIncome,
+    title: row.title || tr.projectIncome,
+    amount: toNum(row.amount),
+    date: row.income_date ?? row.created_at ?? null,
+  })), ...projectExpenses.map(row => ({
+    id: `expense-${row.id}`,
+    type: tr.projectExpenses,
+    title: row.title || tr.projectExpense,
+    amount: -toNum(row.amount),
+    date: row.expense_date ?? row.created_at ?? null,
+  }))]
+    .sort((a, b) => String(b.date ?? '').localeCompare(String(a.date ?? '')))
+    .slice(0, 5);
 
   return (
-    <section className="overview-grid">
-      <article className="warm-card span-6">
-        <CardTitle icon={<FolderKanban size={20} />} title={tr.projectSummary} />
-        <dl className="details-list">
-          <div><dt>{tr.projectName}</dt><dd>{projectTitle}</dd></div>
-          <div><dt>{tr.description}</dt><dd>{model.description || tr.noData}</dd></div>
-          <div><dt>{tr.projectType}</dt><dd>{typeLabel}</dd></div>
-          <div><dt>{tr.status}</dt><dd><span className={`badge ${model.statusKey}`}>{statusLabel}</span></dd></div>
-          <div><dt>{tr.priority}</dt><dd>{model.priority}</dd></div>
-          <div><dt>{tr.currentPhase}</dt><dd>{String(model.phase)}</dd></div>
-        </dl>
-      </article>
+    <section className="project-overview">
+      <div className="overview-kpi-grid">
+        <Metric label={tr.projectHealthScore} value={kpiSummary.score === null ? tr.noData : `${kpiSummary.score}/100`} />
+        <Metric label={tr.financialSnapshot} value={money(model.net)} />
+        <Metric label={tr.timelineSnapshot} value={model.daysRemaining === null ? tr.noData : String(model.daysRemaining)} />
+        <Metric label={tr.riskSnapshot} value={tr[model.risk as RiskLevel]} />
+        <Metric label={tr.projectProgress} value={`${taskSummary.progressPercent}%`} />
+        <Metric label={tr.documents} value={String(documentsCount)} />
+      </div>
 
-      <article className="warm-card span-6">
-        <CardTitle icon={<Coins size={20} />} title={tr.financialSnapshot} />
-        <div className="metric-grid">
-          <Metric label={tr.capital} value={money(model.capital)} />
-          <Metric label={tr.totalIncome} value={model.monthlyIncome > 0 ? money(model.monthlyIncome) : tr.noData} />
-          <Metric label={tr.totalExpenses} value={model.monthlyExpenses > 0 ? money(model.monthlyExpenses) : tr.noData} />
-          <Metric label={tr.netResult} value={money(model.net)} />
-          <Metric label={tr.remainingBudget} value={money(model.remainingBudget)} />
-          <Metric label={tr.targetProgress} value={`${model.progress.toFixed(0)}%`} />
-        </div>
-        <div className="progress-bar" aria-label={tr.targetProgress}>
-          <span style={{ width: `${model.progress}%` }} />
-        </div>
-      </article>
+      <div className="overview-main-layout">
+        <div className="overview-main-column">
+          <article className="warm-card project-summary-card">
+            <CardTitle icon={<FolderKanban size={20} />} title={tr.projectSummary} />
+            <p className={`project-description ${summaryExpanded ? 'expanded' : ''}`}>{model.description || tr.noData}</p>
+            {model.description ? (
+              <button type="button" className="text-toggle" onClick={() => setSummaryExpanded(value => !value)}>
+                {summaryExpanded ? tr.showLess : tr.showMore}
+              </button>
+            ) : null}
+            <dl className="details-list compact-details">
+              <div><dt>{tr.projectType}</dt><dd>{typeLabel}</dd></div>
+              <div><dt>{tr.status}</dt><dd><span className={`badge ${model.statusKey}`}>{statusLabel}</span></dd></div>
+              <div><dt>{tr.priority}</dt><dd>{model.priority}</dd></div>
+              <div><dt>{tr.currentPhase}</dt><dd>{String(model.phase)}</dd></div>
+              <div><dt>{tr.startDate}</dt><dd>{dateLabel(model.startDate)}</dd></div>
+              <div><dt>{tr.endDate}</dt><dd>{dateLabel(model.endDate)}</dd></div>
+            </dl>
+          </article>
 
-      <article className="warm-card">
-        <CardTitle icon={<CalendarDays size={20} />} title={tr.timelineSnapshot} />
-        {hasTimelineData ? (
-          <div className="timeline-list">
-            <Metric label={tr.startDate} value={dateLabel(model.startDate)} />
-            <Metric label={tr.endDate} value={dateLabel(model.endDate)} />
-            <Metric label={tr.daysRemaining} value={model.daysRemaining === null ? tr.noData : String(model.daysRemaining)} />
-            <Metric label={tr.duration} value={model.duration === null ? tr.noData : `${model.duration}`} />
-            <Metric label={tr.currentPhase} value={String(model.phase)} />
-          </div>
-        ) : (
-          <p className="timeline-empty">{tr.timelineInsufficient}</p>
-        )}
-      </article>
-
-      <article className={`warm-card risk-card ${model.risk}`}>
-        <CardTitle icon={<AlertTriangle size={20} />} title={tr.riskSnapshot} />
-        <div className="risk-badge">{tr[model.risk as RiskLevel]}</div>
-        <p>{riskText}</p>
-      </article>
-
-      <article className="warm-card task-overview-card">
-        <CardTitle icon={<ClipboardList size={20} />} title={tr.projectProgress} />
-        <div className="metric-grid">
-          <Metric label={tr.totalTasks} value={String(taskSummary.totalTasks)} />
-          <Metric label={tr.completedTasks} value={String(taskSummary.completedTasks)} />
-          <Metric label={tr.lateTasks} value={String(taskSummary.lateTasks)} />
-          <Metric label={tr.upcomingDeadlines} value={dateLabel(taskSummary.upcomingDeadline)} />
-          <Metric label={tr.nextMilestone} value={dateLabel(taskSummary.nextMilestone)} />
-          <Metric label={tr.estimatedTaskCosts} value={money(taskSummary.estimatedTaskCosts)} />
-          <Metric label={tr.documentsCount} value={String(documentsCount)} />
-        </div>
-        <div className="progress-bar" aria-label={tr.projectProgress}>
-          <span style={{ width: `${taskSummary.progressPercent}%` }} />
-        </div>
-      </article>
-
-      <article className={`warm-card kpi-overview-card ${kpiSummary.status}`}>
-        <CardTitle icon={<Gauge size={20} />} title={tr.projectHealthScore} />
-        <div className="metric-grid">
-          <Metric label={tr.projectHealthScore} value={kpiSummary.score === null ? tr.noData : `${kpiSummary.score}/100`} />
-          <Metric label={tr.status} value={tr[kpiSummary.status]} />
-          <Metric label={tr.projectProgress} value={kpiSummary.taskProgress === null ? tr.noData : `${kpiSummary.taskProgress}%`} />
-          <Metric label={tr.lateTasks} value={String(kpiSummary.lateTasks)} />
-          <Metric
-            label={tr.topRiskFlag}
-            value={kpiSummary.topRiskCode ? tr[kpiSummary.topRiskCode] : tr.noRiskFlags}
+          <ProjectTransactionSection
+            kind="income"
+            tr={tr}
+            rows={projectIncome}
+            model={model}
+            money={money}
+            dateLabel={dateLabel}
+            actualRatio={actualVsExpected}
+            onAdd={openProjectIncomeModal}
+            onEdit={onEditProjectIncome}
+            onDelete={onDeleteProjectIncome}
           />
-        </div>
-        <button type="button" className="overview-link-btn" onClick={() => setActiveTab('kpis')} aria-label={tr.openKpis}>
-          {tr.openKpis}
-        </button>
-      </article>
 
-      <article className="warm-card project-income-card">
-        <CardTitle icon={<Coins size={20} />} title={tr.projectIncome} />
-        {hasProjectIncome ? (
-          <>
+          <ProjectTransactionSection
+            kind="expense"
+            tr={tr}
+            rows={projectExpenses}
+            model={model}
+            money={money}
+            dateLabel={dateLabel}
+            actualRatio={actualVsPlanned}
+            onAdd={openProjectExpenseModal}
+            onEdit={onEditProjectExpense}
+            onDelete={onDeleteProjectExpense}
+          />
+
+          <article className="warm-card">
+            <CardTitle icon={<Coins size={20} />} title={tr.financialSnapshot} />
             <div className="metric-grid">
-              <Metric label={tr.totalProjectIncome} value={money(model.actualProjectIncome)} />
-              <Metric label={tr.projectIncomeThisMonth} value={money(model.monthlyProjectIncome)} />
-              <Metric label={tr.personalIncomeProjectIncome} value={money(model.personalIncomeProjectIncome)} />
-              <Metric label={tr.actualVsExpected} value={actualVsExpected} />
+              <Metric label={tr.capital} value={money(model.capital)} />
+              <Metric label={tr.totalIncome} value={model.actualProjectIncome > 0 ? money(model.actualProjectIncome) : tr.noData} />
+              <Metric label={tr.totalExpenses} value={model.actualProjectExpenses > 0 ? money(model.actualProjectExpenses) : tr.noData} />
+              <Metric label={tr.netResult} value={money(model.actualProjectIncome - model.actualProjectExpenses)} />
+              <Metric label={tr.remainingBudget} value={money(model.remainingBudget)} />
+              <Metric label={tr.targetProgress} value={`${model.progress.toFixed(0)}%`} />
             </div>
-            <div className="expense-list">
-              {projectIncome.slice(0, 4).map(income => (
-                <div key={income.id}>
-                  <span>{income.title || tr.projectIncome}</span>
-                  <strong>{money(toNum(income.amount))}</strong>
-                  {income.transferred_to_personal_income ? <small>{tr.projectIncome}</small> : null}
-                </div>
-              ))}
+            <div className="progress-bar" aria-label={tr.targetProgress}>
+              <span style={{ width: `${model.progress}%` }} />
             </div>
-          </>
-        ) : (
-          <div className="action-empty">
-            <p>{tr.noProjectIncomeYet}</p>
-            <button type="button" onClick={openProjectIncomeModal}>{tr.addIncome}</button>
-          </div>
-        )}
-      </article>
+          </article>
 
-      <article className="warm-card project-expenses-card">
-        <CardTitle icon={<ReceiptText size={20} />} title={tr.projectExpenses} />
-        {hasProjectExpenses ? (
-          <>
-            <div className="metric-grid">
-              <Metric label={tr.totalProjectExpenses} value={money(model.actualProjectExpenses)} />
-              <Metric label={tr.projectExpensesThisMonth} value={money(model.monthlyProjectExpenses)} />
-              <Metric label={tr.personalBudgetProjectExpenses} value={money(model.personalBudgetProjectExpenses)} />
-              <Metric label={tr.actualVsPlanned} value={actualVsPlanned} />
-            </div>
-            <div className="expense-list">
-              {projectExpenses.slice(0, 4).map(expense => (
-                <div key={expense.id}>
-                  <span>{expense.title || tr.projectExpense}</span>
-                  <strong>{money(toNum(expense.amount))}</strong>
-                  {expense.paid_from_personal_budget ? <small>{tr.projectExpense}</small> : null}
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="action-empty">
-            <p>{tr.noProjectExpensesYet}</p>
-            <button type="button" onClick={openProjectExpenseModal}>{tr.addExpense}</button>
-          </div>
-        )}
-      </article>
-
-      <article className="warm-card quick-card">
-        <CardTitle icon={<CheckCircle2 size={20} />} title={tr.quickActions} />
-        <div className="quick-grid">
-          <button type="button" onClick={openProjectExpenseModal}>{tr.addExpense}</button>
-          <button type="button" onClick={openProjectIncomeModal}>{tr.addIncome}</button>
-          <button type="button" onClick={() => setActiveTab('tasks')}>{tr.addTask}</button>
-          <button type="button" onClick={() => setActiveTab('feasibility')}>{tr.generateFeasibility}</button>
-          <button type="button" onClick={() => setActiveTab('financial')}>{tr.createFinancialModel}</button>
-          <button type="button" onClick={() => routerPush('/documents')}>{tr.documentsCenter}</button>
+          <article className="warm-card">
+            <CardTitle icon={<CheckCircle2 size={20} />} title={tr.recentActivity} />
+            {recentActivity.length ? (
+              <div className="activity-list">
+                {recentActivity.map(item => (
+                  <div key={item.id}>
+                    <span>{item.title}</span>
+                    <small>{item.type} · {dateLabel(item.date)}</small>
+                    <strong>{money(item.amount)}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="timeline-empty">{tr.noData}</p>
+            )}
+          </article>
         </div>
-      </article>
 
-      <article className="warm-card missing-data-card">
-        <CardTitle icon={<AlertTriangle size={20} />} title={tr.missingDataChecklist} />
-        <ul>
-          {!hasProjectExpenses ? <li>{tr.addProjectExpensesHint}</li> : null}
-          {kpiSummary.score === null ? <li>{tr.addFinancialModelHint}</li> : null}
-          {taskSummary.totalTasks === 0 ? <li>{tr.addTasksHint}</li> : null}
-          {hasProjectExpenses && kpiSummary.score !== null && taskSummary.totalTasks > 0 ? <li>{tr.noRiskFlags}</li> : null}
-        </ul>
-      </article>
+        <aside className="overview-side-column">
+          <article className="warm-card quick-card">
+            <CardTitle icon={<CheckCircle2 size={20} />} title={tr.quickActions} />
+            <div className="quick-grid">
+              <button type="button" onClick={openProjectExpenseModal}><ReceiptText size={16} /> {tr.addExpense}</button>
+              <button type="button" onClick={openProjectIncomeModal}><Coins size={16} /> {tr.addIncome}</button>
+              <button type="button" onClick={() => setActiveTab('tasks')}><ClipboardList size={16} /> {tr.addTask}</button>
+              <button type="button" onClick={() => setActiveTab('feasibility')}><FileText size={16} /> {tr.generateFeasibility}</button>
+              <button type="button" onClick={() => setActiveTab('financial')}><BarChart3 size={16} /> {tr.createFinancialModel}</button>
+              <button type="button" onClick={() => routerPush('/documents')}><FileText size={16} /> {tr.documentsCenter}</button>
+            </div>
+          </article>
+
+          <article className="warm-card missing-data-card">
+            <CardTitle icon={<AlertTriangle size={20} />} title={tr.missingDataChecklist} />
+            <ul>
+              {!hasProjectExpenses ? <li>{tr.addProjectExpensesHint}</li> : null}
+              {kpiSummary.score === null ? <li>{tr.addFinancialModelHint}</li> : null}
+              {taskSummary.totalTasks === 0 ? <li>{tr.addTasksHint}</li> : null}
+              {hasProjectExpenses && kpiSummary.score !== null && taskSummary.totalTasks > 0 ? <li>{tr.noRiskFlags}</li> : null}
+            </ul>
+          </article>
+
+          <article className="warm-card">
+            <CardTitle icon={<CalendarDays size={20} />} title={tr.nextSteps} />
+            {hasTimelineData ? (
+              <div className="timeline-list">
+                <Metric label={tr.nextMilestone} value={dateLabel(taskSummary.nextMilestone)} />
+                <Metric label={tr.upcomingDeadlines} value={dateLabel(taskSummary.upcomingDeadline)} />
+                <Metric label={tr.daysRemaining} value={model.daysRemaining === null ? tr.noData : String(model.daysRemaining)} />
+              </div>
+            ) : (
+              <p className="timeline-empty">{tr.timelineInsufficient}</p>
+            )}
+          </article>
+
+          <article className={`warm-card risk-card ${model.risk}`}>
+            <CardTitle icon={<AlertTriangle size={20} />} title={tr.projectStatus} />
+            <div className="risk-badge">{tr[model.risk as RiskLevel]}</div>
+            <p>{riskText}</p>
+          </article>
+        </aside>
+      </div>
     </section>
+  );
+}
+
+function ProjectTransactionSection({
+  kind,
+  tr,
+  rows,
+  model,
+  money,
+  dateLabel,
+  actualRatio,
+  onAdd,
+  onEdit,
+  onDelete,
+}: {
+  kind: 'income' | 'expense';
+  tr: Translation;
+  rows: ProjectIncomeRow[] | ProjectExpenseRow[];
+  model: any;
+  money: (value: number) => string;
+  dateLabel: (value?: string | null) => string;
+  actualRatio: string;
+  onAdd: () => void;
+  onEdit: (row: any) => void;
+  onDelete: (row: any) => void;
+}) {
+  const isIncome = kind === 'income';
+  const title = isIncome ? tr.projectIncome : tr.projectExpenses;
+  const emptyText = isIncome ? tr.noProjectIncomeYet : tr.noProjectExpensesYet;
+  const addText = isIncome ? tr.addIncome : tr.addExpense;
+  const Icon = isIncome ? Coins : ReceiptText;
+
+  return (
+    <article className="warm-card project-transactions-card">
+      <CardTitle icon={<Icon size={20} />} title={title} />
+      {rows.length ? (
+        <>
+          <div className="metric-grid">
+            <Metric label={isIncome ? tr.totalProjectIncome : tr.totalProjectExpenses} value={money(isIncome ? model.actualProjectIncome : model.actualProjectExpenses)} />
+            <Metric label={isIncome ? tr.projectIncomeThisMonth : tr.projectExpensesThisMonth} value={money(isIncome ? model.monthlyProjectIncome : model.monthlyProjectExpenses)} />
+            <Metric label={isIncome ? tr.personalIncomeProjectIncome : tr.personalBudgetProjectExpenses} value={money(isIncome ? model.personalIncomeProjectIncome : model.personalBudgetProjectExpenses)} />
+            <Metric label={isIncome ? tr.actualVsExpected : tr.actualVsPlanned} value={actualRatio} />
+          </div>
+          <div className="transaction-list">
+            {rows.slice(0, 6).map(row => {
+              const income = row as ProjectIncomeRow;
+              const expense = row as ProjectExpenseRow;
+              const date = isIncome ? income.income_date ?? income.created_at : expense.expense_date ?? expense.created_at;
+              const badge = isIncome
+                ? income.transferred_to_personal_income ? tr.transferredToPersonalIncome : ''
+                : expense.paid_from_personal_budget ? tr.paidFromPersonalBudget : '';
+              return (
+                <div className="transaction-row" key={row.id}>
+                  <div className="transaction-main">
+                    <strong>{row.title || title}</strong>
+                    <span>{dateLabel(date)} · {String(row.category || tr.general)}</span>
+                    {badge ? <small>{badge}</small> : null}
+                  </div>
+                  <div className="transaction-amount">{money(toNum(row.amount))}</div>
+                  <div className="transaction-actions">
+                    <button type="button" onClick={() => onEdit(row)} aria-label={`${tr.edit} ${row.title || title}`}>
+                      <Pencil size={15} />
+                      {tr.edit}
+                    </button>
+                    <button type="button" className="danger" onClick={() => onDelete(row)} aria-label={`${tr.delete} ${row.title || title}`}>
+                      <Trash2 size={15} />
+                      {tr.delete}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        <div className="action-empty">
+          <p>{emptyText}</p>
+          <button type="button" onClick={onAdd}>{addText}</button>
+        </div>
+      )}
+    </article>
   );
 }
 
