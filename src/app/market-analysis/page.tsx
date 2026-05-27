@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { MarketAnalysis, MarketAssetType, MarketResult, MarketSearchItem } from '@/lib/market/marketService';
 import { normalizeAssetType, validateSymbol } from '@/lib/market/marketService';
 
-type MarketServiceState = 'checking' | 'connected' | 'not_configured' | 'unavailable';
+type MarketServiceState = 'checking' | 'connected' | 'slow' | 'not_configured' | 'unavailable';
 type MarketViewAnalysis = MarketAnalysis & { source?: string; fallback?: boolean; fallbackReason?: string; openbbService?: MarketServiceState };
 type WatchlistItem = { id?: string; symbol: string; assetType: MarketAssetType; name?: string | null; createdAt?: string | null };
 type SavedAlert = { id?: string; symbol: string; assetType: MarketAssetType; alertType: AlertType; threshold: number; createdAt?: string | null };
@@ -38,6 +38,9 @@ const WATCHLIST_STORAGE_KEY = 'sfm_market_watchlist';
 const ALERTS_STORAGE_KEY = 'sfm_market_alerts';
 const DEFAULT_MARKET_ASSET = 'AAPL';
 const DEFAULT_MARKET_TYPE: MarketAssetType = 'stock';
+const MARKET_REQUEST_TIMEOUT_MS = 12000;
+const MARKET_SLOW_NOTICE_MS = 5000;
+const MARKET_TIMEFRAMES = ['1D', '1W', '1M', '6M', '1Y'] as const;
 const QUICK_MARKET_EXAMPLES: MarketSearchItem[] = [
   { symbol: 'AAPL', providerSymbol: 'AAPL', name: 'Apple Inc.', assetType: 'stock', exchange: 'NASDAQ' },
   { symbol: 'MSFT', providerSymbol: 'MSFT', name: 'Microsoft Corporation', assetType: 'stock', exchange: 'NASDAQ' },
@@ -51,9 +54,17 @@ const QUICK_MARKET_EXAMPLES: MarketSearchItem[] = [
   { symbol: 'EURUSD', providerSymbol: 'EURUSD=X', name: 'Euro / US Dollar', assetType: 'forex', exchange: 'FX' },
 ];
 
-function money(value: number) {
+function money(value: number, currency = 'USD') {
   const maximumFractionDigits = value > 1000 ? 0 : 2;
-  return `$${value.toLocaleString('en-US', { maximumFractionDigits })}`;
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits,
+    }).format(value);
+  } catch {
+    return `${currency} ${value.toLocaleString('en-US', { maximumFractionDigits })}`;
+  }
 }
 
 function sparkPath(points: MarketAnalysis['history']) {
@@ -170,6 +181,22 @@ function normalizeMarketTab(value: string | null | undefined): MarketTab | null 
   return null;
 }
 
+async function fetchJsonWithTimeout<T>(url: string, timeoutMs = MARKET_REQUEST_TIMEOUT_MS, allowErrorStatus = false): Promise<T> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok && !allowErrorStatus) {
+      const message = typeof json?.error === 'string' ? json.error : `HTTP ${response.status}`;
+      throw new Error(message);
+    }
+    return json as T;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 export default function MarketAnalysisPage() {
   const { dir, t } = useLanguage();
   const { user, isGuest } = useAuth();
@@ -187,9 +214,11 @@ export default function MarketAnalysisPage() {
   const [portfolio, setPortfolio] = useState<PortfolioInvestment[]>([]);
   const [compare, setCompare] = useState<MarketAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
+  const [slowLoading, setSlowLoading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [serviceState, setServiceState] = useState<MarketServiceState>('checking');
+  const [timeframe, setTimeframe] = useState<typeof MARKET_TIMEFRAMES[number]>('6M');
   const [alertType, setAlertType] = useState<AlertType>('above');
   const [alertThreshold, setAlertThreshold] = useState('');
   const [whatIfAmount, setWhatIfAmount] = useState('');
@@ -224,8 +253,10 @@ export default function MarketAnalysisPage() {
     }
 
     setLoading(true);
+    setSlowLoading(false);
     setError('');
     setNotice('');
+    const slowTimer = window.setTimeout(() => setSlowLoading(true), MARKET_SLOW_NOTICE_MS);
     const normalizedType = typeInput === 'all' ? DEFAULT_MARKET_TYPE : normalizeAssetType(typeInput);
     const selectedMeta: SelectedMarketAsset = {
       symbol: displaySymbol,
@@ -244,19 +275,21 @@ export default function MarketAnalysisPage() {
         displaySymbol: selectedMeta.symbol,
       });
       if (selectedMeta.name) params.set('name', selectedMeta.name);
-      const response = await fetch(`/api/market/analyze?${params.toString()}`);
-      const result = await response.json() as MarketResult & { openbbService?: MarketServiceState; source?: string; fallback?: boolean; fallbackReason?: string };
+      const result = await fetchJsonWithTimeout<MarketResult & { openbbService?: MarketServiceState; source?: string; fallback?: boolean; fallbackReason?: string }>(`/api/market/analyze?${params.toString()}`);
       if (process.env.NODE_ENV === 'development') {
         console.log('Market analysis source:', {
-          symbol,
+          symbol: displaySymbol,
           source: result.success ? result.source : null,
           fallback: result.success ? result.fallback : null,
           fallbackReason: result.success ? result.fallbackReason : null,
+          cached: result.success ? result.cached : null,
+          dataStatus: result.success ? result.dataStatus : result.dataStatus,
         });
       }
-      if (!response.ok || !result.success) throw new Error(!result.success ? result.error : t('market_analysis_unavailable'));
+      if (!result.success) throw new Error(result.error || t('market_analysis_unavailable'));
 
       if (hasUsableAnalysis(result)) {
+        setTimeframe('6M');
         setAnalysis({
           ...result,
           symbol: selectedMeta.symbol,
@@ -264,24 +297,61 @@ export default function MarketAnalysisPage() {
           name: selectedMeta.name ?? result.name,
           assetType: normalizedType,
         });
+        if (result.cached) setNotice(t('market_cached_data'));
       } else {
-        setAnalysis(null);
+        setAnalysis(current => current);
         setError(t('market_analysis_unavailable'));
       }
       setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
-      if (result.openbbService === 'not_configured' || result.openbbService === 'unavailable') {
+      if (result.openbbService === 'not_configured' || result.openbbService === 'unavailable' || result.openbbService === 'slow') {
         setServiceState(result.openbbService);
+      } else if (result.success) {
+        setServiceState(result.cached ? 'slow' : 'connected');
       }
     } catch (err) {
-      setAnalysis(null);
-      setError(err instanceof Error ? err.message : t('market_analysis_unavailable'));
+      setAnalysis(current => current);
+      const message = err instanceof Error && err.name === 'AbortError'
+        ? t('market_timeout_error')
+        : err instanceof Error
+          ? err.message
+          : t('market_analysis_unavailable');
+      setError(message);
       setNotice('');
       setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } finally {
+      window.clearTimeout(slowTimer);
+      setSlowLoading(false);
       setLoading(false);
     }
   }, [t]);
+
+  const loadHistory = useCallback(async (nextTimeframe: typeof MARKET_TIMEFRAMES[number]) => {
+    if (!analysis) return;
+    setTimeframe(nextTimeframe);
+    setNotice('');
+    const period = nextTimeframe.toLowerCase();
+    try {
+      const params = new URLSearchParams({
+        symbol: analysis.providerSymbol ?? analysis.symbol,
+        assetType: analysis.assetType,
+        period: period === '1d' ? '2d' : period,
+      });
+      const result = await fetchJsonWithTimeout<{ success?: boolean; history?: MarketAnalysis['history']; cached?: boolean; error?: string }>(`/api/market/history?${params.toString()}`);
+      if (!result.success || !Array.isArray(result.history) || result.history.length === 0) {
+        throw new Error(result.error || t('market_no_data_for_symbol'));
+      }
+      setAnalysis(current => current ? {
+        ...current,
+        history: result.history ?? current.history,
+        cached: current.cached || result.cached,
+        dataStatus: result.cached ? 'delayed' : current.dataStatus,
+      } : current);
+      if (result.cached) setNotice(t('market_cached_data'));
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : t('market_service_unavailable'));
+    }
+  }, [analysis, t]);
 
   useEffect(() => {
     const cleanQuery = query.trim();
@@ -298,16 +368,15 @@ export default function MarketAnalysisPage() {
       try {
         const params = new URLSearchParams({ q: cleanQuery });
         if (assetType !== 'all') params.set('assetType', assetType);
-        const response = await fetch(`/api/market/search?${params.toString()}`);
-        const data = await response.json() as { results?: MarketSearchItem[] };
+        const data = await fetchJsonWithTimeout<{ results?: MarketSearchItem[] }>(`/api/market/search?${params.toString()}`, 8000);
         if (cancelled) return;
         const results = (data.results ?? []).map(normalizeSearchItem).slice(0, 12);
         setSearchResults(results);
-        setSearchMessage(results.length === 0 ? t('market_no_search_results') : '');
+        setSearchMessage(results.length === 0 ? t('market_symbol_not_found') : '');
       } catch {
         if (!cancelled) {
           setSearchResults([]);
-          setSearchMessage(t('market_no_search_results'));
+          setSearchMessage(t('market_symbol_not_found'));
         }
       } finally {
         if (!cancelled) setSearchLoading(false);
@@ -324,33 +393,38 @@ export default function MarketAnalysisPage() {
     let cancelled = false;
     async function checkService() {
       try {
-        const response = await fetch('/api/market/health');
-        const health = await response.json() as { ok?: boolean; openbbService?: MarketServiceState };
+        const health = await fetchJsonWithTimeout<{ ok?: boolean; openbbService?: MarketServiceState }>('/api/market/health', 6500, true);
         if (!cancelled) {
-          setServiceState(health.ok ? 'connected' : health.openbbService ?? 'unavailable');
+          setServiceState(health.openbbService ?? (health.ok ? 'connected' : 'unavailable'));
+          if (health.ok) {
+            void requestAnalysis(DEFAULT_MARKET_ASSET, DEFAULT_MARKET_TYPE);
+          } else {
+            setLoading(false);
+            setError(health.openbbService === 'not_configured' ? t('market_service_not_configured') : t('market_service_unavailable'));
+          }
         }
       } catch {
-        if (!cancelled) setServiceState('unavailable');
-      } finally {
-        if (!cancelled) void requestAnalysis(DEFAULT_MARKET_ASSET, DEFAULT_MARKET_TYPE);
+        if (!cancelled) {
+          setServiceState('unavailable');
+          setLoading(false);
+          setError(t('market_service_unavailable'));
+        }
       }
     }
     void checkService();
     return () => {
       cancelled = true;
     };
-  }, [requestAnalysis]);
+  }, [requestAnalysis, t]);
 
   useEffect(() => {
     let cancelled = false;
     async function loadSupportingData() {
       try {
-        const [searchResponse, compareResponse] = await Promise.all([
-          fetch('/api/market/search'),
-          fetch('/api/market/compare?symbols=AAPL,MSFT,NVDA,BTC&assetType=stock'),
+        const [searchJson, compareJson] = await Promise.all([
+          fetchJsonWithTimeout<{ results?: MarketSearchItem[] }>('/api/market/search', 8000),
+          fetchJsonWithTimeout<{ results?: MarketResult[] }>('/api/market/compare?symbols=AAPL,MSFT,NVDA,BTC&assetType=stock', 12000, true),
         ]);
-        const searchJson = await searchResponse.json() as { results?: MarketSearchItem[] };
-        const compareJson = await compareResponse.json() as { results?: MarketResult[] };
         if (cancelled) return;
         const apiExamples = (searchJson.results ?? []).slice(0, 10);
         const mergedExamples = [...QUICK_MARKET_EXAMPLES, ...apiExamples]
@@ -550,11 +624,13 @@ export default function MarketAnalysisPage() {
   const selected = analysis;
   const serviceNotice = serviceState === 'connected'
     ? t('market_service_connected')
-    : serviceState === 'not_configured'
-      ? t('market_service_not_configured')
-      : serviceState === 'unavailable'
-        ? t('market_service_unavailable')
-        : t('loading');
+    : serviceState === 'slow'
+      ? t('market_service_slow')
+      : serviceState === 'not_configured'
+        ? t('market_service_not_configured')
+        : serviceState === 'unavailable'
+          ? t('market_service_unavailable')
+          : t('loading');
   const heroBadge = t('market_badge_live');
   const chartBadge = t('market_chart_live');
   const selectedDisplayName = selectedAsset.symbol === selected?.symbol ? selectedAsset.name : undefined;
@@ -581,6 +657,8 @@ export default function MarketAnalysisPage() {
   const whatIfValue = parseNumber(whatIfAmount);
   const hasWhatIfAmount = whatIfValue > 0;
   const estimatedUnits = selected?.latestPrice ? whatIfValue / selected.latestPrice : 0;
+  const loadingLabel = slowLoading ? t('market_slow_loading') : t('market_loading_data');
+  const selectedCurrency = selected?.currency ?? selected?.quote?.currency ?? 'USD';
   const decision = useMemo(() => {
     if (!selected) return null;
     const rsi = selected.indicators.rsi;
@@ -615,9 +693,9 @@ export default function MarketAnalysisPage() {
   const reportLines = selected ? [
     `${t('market_report_trend')}: ${t(`market_trend_${selected.trend}`)} ${percent(selected.changePercent)}`,
     `${t('market_report_risk')}: ${t(`market_risk_${selected.riskLevel}`)} - ${selected.indicators.volatility.toFixed(1)}%`,
-    `${t('market_report_levels')}: ${t('market_support_zone')} ${money(selected.levels.support)} / ${t('market_resistance_zone')} ${money(selected.levels.resistance)}`,
+    `${t('market_report_levels')}: ${t('market_support_zone')} ${money(selected.levels.support, selectedCurrency)} / ${t('market_resistance_zone')} ${money(selected.levels.resistance, selectedCurrency)}`,
     `${t('market_report_portfolio')}: ${portfolioMatch ? t('market_asset_in_portfolio') : t('market_asset_not_in_portfolio')}`,
-    `${t('market_report_monitor')}: RSI ${selected.indicators.rsi}, SMA 20 ${money(selected.indicators.sma20)}, SMA 50 ${money(selected.indicators.sma50)}`,
+    `${t('market_report_monitor')}: RSI ${selected.indicators.rsi}, SMA 20 ${money(selected.indicators.sma20, selectedCurrency)}, SMA 50 ${money(selected.indicators.sma50, selectedCurrency)}`,
   ] : [];
   const marketTabs = useMemo(() => [
     { id: 'analyze', label: t('market_analysis_tab') },
@@ -698,14 +776,14 @@ export default function MarketAnalysisPage() {
                   <option value="gold">{t('market_asset_gold')}</option>
                 </select>
               </label>
-              <button type="submit" disabled={loading}><Activity size={17} />{loading ? t('loading') : t('market_analyze_now')}</button>
+              <button type="submit" disabled={loading}><Activity size={17} />{loading ? loadingLabel : t('market_analyze_now')}</button>
             </form>
           </div>
           <div className="market-hero-card">
             <span>{t('market_selected_asset')}</span>
             <strong>{selected?.symbol ?? '--'}</strong>
             <p>{localizedAssetName ?? t('market_no_data')}</p>
-            {selected && <em>{money(selected.latestPrice)} · {t('market_badge_live')}</em>}
+            {selected && <em>{money(selected.latestPrice, selectedCurrency)} · {selected.cached ? t('market_cached_data') : t('market_badge_live')}</em>}
             {selected && <b className={`risk ${selected.riskLevel}`}>{t(`market_risk_${selected.riskLevel}`)}</b>}
           </div>
         </section>
@@ -717,7 +795,7 @@ export default function MarketAnalysisPage() {
 
         <section className="market-status-grid">
           <MarketMetric label={t('market_service_state')} value={serviceState === 'connected' ? t('market_connected_short') : serviceNotice} />
-          <MarketMetric label={t('market_data_source')} value={selected ? t('market_badge_live') : t('market_no_data')} />
+          <MarketMetric label={t('market_data_source')} value={selected ? (selected.cached ? t('market_cached_data') : t('market_badge_live')) : t('market_no_data')} />
           <MarketMetric label={t('market_selected_asset')} value={selected?.symbol ?? '--'} />
           <MarketMetric label={t('market_last_updated')} value={selected ? lastUpdated || '--' : '--'} />
         </section>
@@ -729,14 +807,22 @@ export default function MarketAnalysisPage() {
           ariaLabel={t('market_title')}
         />
 
-        {notice && <div className="market-notice success">{notice}</div>}
-        {error && <div className="market-notice">{error}</div>}
+        {notice && <div className="market-notice success" role="status">{notice}</div>}
+        {slowLoading && <div className="market-notice slow" role="status">{t('market_slow_loading')}</div>}
+        {error && (
+          <div className="market-notice" role="alert">
+            <span>{error}</span>
+            <button type="button" onClick={() => void requestAnalysis(selectedAsset.providerSymbol ?? selectedAsset.symbol, selectedAsset.assetType, selectedAsset)}>
+              {t('market_retry')}
+            </button>
+          </div>
+        )}
 
         {activeTab === 'analyze' && <section className="market-card-grid" aria-label={t('market_analysis_cards')}>
           {loading ? (
-            <div className="market-empty">{t('loading')}</div>
+            <div className="market-empty" role="status">{loadingLabel}</div>
           ) : cards.length === 0 ? (
-            <div className="market-empty">{t('market_no_data')}</div>
+            <div className="market-empty">{error || t('market_no_data_for_symbol')}</div>
           ) : cards.map(asset => (
             <article className="market-card" key={asset.symbol}>
               <div className="market-card-head">
@@ -746,7 +832,7 @@ export default function MarketAnalysisPage() {
                 </div>
                 <b className={`risk ${asset.riskLevel}`}>{t(`market_risk_${asset.riskLevel}`)}</b>
               </div>
-              <div className="market-price">{money(asset.latestPrice)}</div>
+              <div className="market-price">{money(asset.latestPrice, asset.currency ?? asset.quote?.currency ?? 'USD')}</div>
               <div className={asset.changePercent >= 0 ? 'change up' : 'change down'}>
                 {asset.changePercent >= 0 ? '+' : ''}{asset.changePercent.toFixed(2)}%
               </div>
@@ -756,21 +842,36 @@ export default function MarketAnalysisPage() {
 
         {selected && activeTab === 'analyze' ? (
           <>
+            <section className="market-stock-header">
+              <div>
+                <span className={`data-badge ${selected.dataStatus ?? 'live'}`}>
+                  {selected.cached ? t('market_cached_data') : t(`market_data_status_${selected.dataStatus ?? 'live'}`)}
+                </span>
+                <h2>{selected.symbol}</h2>
+                <p>{localizedAssetName ?? selected.name}</p>
+              </div>
+              <div className="stock-price-block">
+                <strong>{money(selected.latestPrice, selectedCurrency)}</strong>
+                <b className={selected.changePercent >= 0 ? 'change up' : 'change down'}>{percent(selected.changePercent)}</b>
+                <small>{t('market_last_updated')}: {lastUpdated || '--'} · {selectedCurrency}</small>
+              </div>
+            </section>
+
             <section className="market-decision-grid">
               <article className={`market-panel decision ${decision?.tone ?? ''}`}>
                 <div className="market-section-head">
                   <Brain size={19} />
                   <div>
-                    <span>{t('market_educational_only')}</span>
-                    <h2>{t('market_smart_decision_card')}</h2>
+                    <span>{selected.aiInsight?.provider === 'openai' ? t('market_educational_only') : t('market_ai_unavailable_with_data')}</span>
+                    <h2>{t('market_intelligent_vision')}</h2>
                   </div>
                 </div>
                 {decision && (
                   <div className="decision-body">
-                    <b>{decision.status}</b>
-                    <p>{decision.reason}</p>
-                    <small>{decision.warning}</small>
-                    <strong>{decision.action}</strong>
+                    <b>{selected.aiInsight?.trendStatus || decision.status}</b>
+                    <p>{selected.aiInsight?.summary || decision.reason}</p>
+                    <small>{selected.aiInsight?.riskNotes || decision.warning}</small>
+                    {(selected.aiInsight?.watchNext ?? [decision.action]).map(item => <strong key={item}>{item}</strong>)}
                   </div>
                 )}
               </article>
@@ -784,9 +885,9 @@ export default function MarketAnalysisPage() {
                   </div>
                 </div>
                 <div className="indicator-list">
-                  <MarketMetric label={t('market_purchase_price')} value={portfolioMatch ? money(purchasePrice) : '--'} />
-                  <MarketMetric label={t('market_current_price')} value={money(selected.latestPrice)} />
-                  <MarketMetric label={t('market_unrealized_pl')} value={portfolioMatch ? money(unrealized) : '--'} />
+                  <MarketMetric label={t('market_purchase_price')} value={portfolioMatch ? money(purchasePrice, selectedCurrency) : '--'} />
+                  <MarketMetric label={t('market_current_price')} value={money(selected.latestPrice, selectedCurrency)} />
+                  <MarketMetric label={t('market_unrealized_pl')} value={portfolioMatch ? money(unrealized, selectedCurrency) : '--'} />
                   <MarketMetric label={t('market_gain_loss_percent')} value={portfolioMatch ? percent(unrealizedPct) : '--'} />
                   <MarketMetric label={t('market_portfolio_exposure')} value={portfolioMatch ? `${exposure.toFixed(1)}%` : '--'} />
                   <MarketMetric label={t('market_concentration_risk')} value={portfolioMatch ? concentrationRisk : t('market_no_data')} />
@@ -803,6 +904,18 @@ export default function MarketAnalysisPage() {
                     <h2>{selected.symbol}</h2>
                   </div>
                 </div>
+                <div className="timeframe-row" role="group" aria-label={t('market_timeframe')}>
+                  {MARKET_TIMEFRAMES.map(item => (
+                    <button
+                      type="button"
+                      key={item}
+                      aria-pressed={timeframe === item}
+                      onClick={() => void loadHistory(item)}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
                 <svg viewBox="0 0 420 180" role="img" aria-label={t('market_price_chart')}>
                   <defs>
                     <linearGradient id="marketLineFill" x1="0" x2="0" y1="0" y2="1">
@@ -815,23 +928,23 @@ export default function MarketAnalysisPage() {
                   <text x="0" y="176" fill="var(--sfm-muted)" fontSize="11" fontWeight="800">{chartTicks(selected.history)[0]?.date ?? ''}</text>
                   <text x="205" y="176" textAnchor="middle" fill="var(--sfm-muted)" fontSize="11" fontWeight="800">{chartTicks(selected.history)[1]?.date ?? ''}</text>
                   <text x="420" y="176" textAnchor="end" fill="var(--sfm-muted)" fontSize="11" fontWeight="800">{chartTicks(selected.history)[2]?.date ?? ''}</text>
-                  <text x="0" y="15" fill="var(--sfm-muted)" fontSize="11" fontWeight="800">{money(Math.max(...selected.history.map(point => point.close)))}</text>
+                  <text x="0" y="15" fill="var(--sfm-muted)" fontSize="11" fontWeight="800">{money(Math.max(...selected.history.map(point => point.close)), selectedCurrency)}</text>
                   <text x="0" y="98" fill="var(--sfm-muted)" fontSize="11" fontWeight="800">{selected.symbol}</text>
-                  <text x="0" y="165" fill="var(--sfm-muted)" fontSize="11" fontWeight="800">{money(Math.min(...selected.history.map(point => point.close)))}</text>
+                  <text x="0" y="165" fill="var(--sfm-muted)" fontSize="11" fontWeight="800">{money(Math.min(...selected.history.map(point => point.close)), selectedCurrency)}</text>
                 </svg>
                 <div className="market-stat-row">
-                  <MarketMetric label={t('market_current_price')} value={money(selected.latestPrice)} />
+                  <MarketMetric label={t('market_current_price')} value={money(selected.latestPrice, selectedCurrency)} />
                   <MarketMetric label={t('market_daily_change')} value={`${selected.changePercent >= 0 ? '+' : ''}${selected.changePercent.toFixed(2)}%`} />
                   <MarketMetric label={t('market_trend')} value={t(`market_trend_${selected.trend}`)} icon={trendIcon} />
                 </div>
                 <div className="levels-strip">
-                  <span>{t('market_support_zone')} {money(selected.levels.support)} ({distancePercent(selected.levels.support, selected.latestPrice).toFixed(1)}%)</span>
+                  <span>{t('market_support_zone')} {money(selected.levels.support, selectedCurrency)} ({distancePercent(selected.levels.support, selected.latestPrice).toFixed(1)}%)</span>
                   <i>
                     <b style={{ insetInlineStart: '20%' }} />
                     <b className="current" style={{ insetInlineStart: '50%' }} />
                     <b style={{ insetInlineStart: '80%' }} />
                   </i>
-                  <span>{t('market_resistance_zone')} {money(selected.levels.resistance)} ({percent(distancePercent(selected.levels.resistance, selected.latestPrice))})</span>
+                  <span>{t('market_resistance_zone')} {money(selected.levels.resistance, selectedCurrency)} ({percent(distancePercent(selected.levels.resistance, selected.latestPrice))})</span>
                 </div>
               </div>
 
@@ -845,11 +958,29 @@ export default function MarketAnalysisPage() {
                 </div>
                 <div className="indicator-list">
                   <MarketMetric label="RSI" value={String(selected.indicators.rsi)} />
-                  <MarketMetric label="SMA 20" value={money(selected.indicators.sma20)} />
-                  <MarketMetric label="SMA 50" value={money(selected.indicators.sma50)} />
+                  <MarketMetric label="SMA 20" value={money(selected.indicators.sma20, selectedCurrency)} />
+                  <MarketMetric label="SMA 50" value={money(selected.indicators.sma50, selectedCurrency)} />
                   <MarketMetric label={t('market_risk_level')} value={`${selected.indicators.volatility.toFixed(1)}%`} />
-                  <MarketMetric label={t('market_support_zone')} value={money(selected.levels.support)} />
-                  <MarketMetric label={t('market_resistance_zone')} value={money(selected.levels.resistance)} />
+                  <MarketMetric label={t('market_support_zone')} value={money(selected.levels.support, selectedCurrency)} />
+                  <MarketMetric label={t('market_resistance_zone')} value={money(selected.levels.resistance, selectedCurrency)} />
+                </div>
+              </aside>
+
+              <aside className="market-panel">
+                <div className="market-section-head">
+                  <FileText size={19} />
+                  <div>
+                    <span>{t('market_live_data')}</span>
+                    <h2>{t('market_fundamental_snapshot')}</h2>
+                  </div>
+                </div>
+                <div className="indicator-list">
+                  <MarketMetric label={t('market_market_cap')} value={String(selected.fundamentals?.marketCap ?? t('market_data_unavailable'))} />
+                  <MarketMetric label={t('market_pe_ratio')} value={String(selected.fundamentals?.peRatio ?? t('market_data_unavailable'))} />
+                  <MarketMetric label={t('market_eps')} value={String(selected.fundamentals?.eps ?? t('market_data_unavailable'))} />
+                  <MarketMetric label={t('market_revenue')} value={String(selected.fundamentals?.revenue ?? t('market_data_unavailable'))} />
+                  <MarketMetric label={t('market_dividend')} value={String(selected.fundamentals?.dividend ?? t('market_data_unavailable'))} />
+                  <MarketMetric label={t('market_data_status')} value={t(`market_data_status_${selected.dataStatus ?? 'live'}`)} />
                 </div>
               </aside>
             </section>
@@ -873,7 +1004,7 @@ export default function MarketAnalysisPage() {
                     <MarketMetric
                       key={change}
                       label={change > 0 ? `${t('market_positive_scenario')} ${change}%` : `${t('market_negative_scenario')} ${change}%`}
-                      value={hasWhatIfAmount ? money((whatIfValue * change) / 100) : '--'}
+                      value={hasWhatIfAmount ? money((whatIfValue * change) / 100, selectedCurrency) : '--'}
                     />
                   ))}
                 </div>
@@ -1010,7 +1141,7 @@ export default function MarketAnalysisPage() {
                     return (
                       <div key={`table-${asset.symbol}`}>
                         <span>{asset.symbol}</span>
-                        <span>{money(asset.latestPrice)}</span>
+                        <span>{money(asset.latestPrice, asset.currency ?? asset.quote?.currency ?? 'USD')}</span>
                         <span className={asset.changePercent >= 0 ? 'up' : 'down'}>{percent(asset.changePercent)}</span>
                         <span>{asset.indicators.rsi}</span>
                         <span>{t(`market_risk_${asset.riskLevel}`)}</span>
@@ -1131,7 +1262,7 @@ export default function MarketAnalysisPage() {
                     return (
                       <div key={`focused-table-${asset.symbol}`}>
                         <span>{asset.symbol}</span>
-                        <span>{money(asset.latestPrice)}</span>
+                        <span>{money(asset.latestPrice, asset.currency ?? asset.quote?.currency ?? 'USD')}</span>
                         <span className={asset.changePercent >= 0 ? 'up' : 'down'}>{percent(asset.changePercent)}</span>
                         <span>{asset.indicators.rsi}</span>
                         <span>{t(`market_risk_${asset.riskLevel}`)}</span>
@@ -1188,14 +1319,15 @@ export default function MarketAnalysisPage() {
         .market-hero h1{margin:0 0 10px;font-size:clamp(30px,5vw,52px);line-height:1.02;font-weight:900}.market-hero p{max-width:760px;margin:0;color:rgba(255,255,255,.72);line-height:1.8;font-size:14px}
         .market-search-panel{margin-top:22px;display:grid;grid-template-columns:minmax(0,1fr) 180px auto;gap:10px;align-items:end}.market-search-panel label{display:grid;gap:7px}.market-search-panel label>span{font-size:12px;font-weight:900;color:var(--sfm-soft-cyan)}.market-search-field{position:relative}.market-search-panel label>div{height:48px;display:flex;align-items:center;gap:9px;border:1px solid rgba(29,140,255,.35);border-radius:15px;background:rgba(234,246,255,.94);padding:0 13px;color:var(--sfm-foreground);box-shadow:0 8px 22px rgba(3,18,37,.12)}.market-search-panel label>div:focus-within{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.22),0 10px 24px rgba(3,18,37,.14)}.market-search-panel label>div svg{color:var(--sfm-primary);flex-shrink:0}.market-search-panel input,.market-search-panel select{width:100%;height:48px;min-width:0;border:1px solid rgba(29,140,255,.35);border-radius:15px;background:var(--sfm-card);color:var(--sfm-foreground);padding:0 13px;font:800 13px Tajawal,Arial,sans-serif;outline:0}.market-search-panel input{border:0;background:transparent;padding:0;color:var(--sfm-foreground)}.market-search-panel input::placeholder{color:var(--sfm-muted);opacity:1}.market-search-panel select{cursor:pointer;box-shadow:0 8px 22px rgba(3,18,37,.12)}.market-search-panel select:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.22),0 10px 24px rgba(3,18,37,.14)}.market-search-panel select option{color:var(--sfm-foreground);background:var(--sfm-card)}.market-search-panel button{height:48px;border:0;border-radius:15px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:var(--sfm-primary-dark);padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;box-shadow:0 10px 24px rgba(3,18,37,.16)}.market-search-panel button svg{color:var(--sfm-primary-dark)}.market-search-panel button:disabled{opacity:.9;cursor:wait;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:var(--sfm-primary-dark)}.market-search-results{position:absolute;z-index:90;inset-inline:0;top:calc(100% + 12px);max-height:min(320px,48dvh);overflow-y:auto;background:var(--sfm-card);color:var(--sfm-foreground);border:1px solid rgba(29,140,255,.25);border-radius:14px;box-shadow:0 22px 60px rgba(3,18,37,.32);padding:10px;display:grid;gap:8px;overscroll-behavior:contain}.market-search-results strong{color:var(--sfm-primary-hover);font-size:12px;font-weight:900;padding:5px 7px}.market-search-results p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:900;line-height:1.7;padding:12px}.market-search-results button{height:auto;min-height:58px;width:100%;border:1px solid rgba(29,140,255,.14);background:var(--sfm-card);color:var(--sfm-foreground);border-radius:12px;padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:start;box-shadow:none}.market-search-results button:hover,.market-search-results button:focus-visible,.market-search-results button[aria-selected="true"]{background:rgba(29,140,255,.10);border-color:rgba(29,140,255,.32);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.18)}.market-search-results button span{display:grid;gap:4px;min-width:0}.market-search-results button b{font-size:15px;color:var(--sfm-foreground);letter-spacing:.02em;direction:ltr;unicode-bidi:isolate}.market-search-results button em{font-style:normal;color:var(--sfm-midnight);font-size:13px;line-height:1.45;white-space:normal;overflow-wrap:anywhere}.market-search-results button small{color:var(--sfm-primary-hover);background:rgba(29,140,255,.10);border:1px solid rgba(29,140,255,.18);border-radius:999px;padding:4px 8px;font-size:11px;font-weight:900;line-height:1.3;flex-shrink:0;white-space:nowrap}
         .market-hero-card{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);border-radius:20px;padding:18px;display:grid;gap:8px;backdrop-filter:blur(14px)}.market-hero-card span{font-size:12px;color:rgba(255,255,255,.62);font-weight:900}.market-hero-card strong{font-size:42px;color:var(--sfm-soft-cyan);line-height:1}.market-hero-card p{margin:0;font-size:13px}.market-hero-card em{font-style:normal;color:rgba(255,255,255,.78);font-size:12px;font-weight:900;line-height:1.5}.risk{justify-self:start;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:900}.risk.low{background:rgba(34,197,94,.14);color:#16A34A}.risk.medium{background:rgba(167,243,240,.18);color:var(--sfm-muted)}.risk.high{background:rgba(239,68,68,.12);color:#DC2626}
-        .market-card-grid,.market-status-grid,.market-decision-grid,.market-tools-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.market-status-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.market-decision-grid{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr)}.market-tools-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.market-card,.market-panel,.market-disclaimer,.market-notice{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:22px;box-shadow:0 6px 24px rgba(3,18,37,.06)}.market-card{padding:16px;display:grid;gap:10px}.market-card-head{display:flex;justify-content:space-between;gap:10px}.market-card-head strong{display:block;font-size:18px}.market-card-head span{display:block;color:var(--sfm-muted);font-size:12px;font-weight:800;margin-top:3px}.market-price{font-size:24px;font-weight:900;color:var(--sfm-foreground)}.change{font-size:13px;font-weight:900}.change.up,.up{color:#16A34A}.change.down,.down{color:#DC2626}.market-empty{grid-column:1/-1;padding:24px;text-align:center;color:var(--sfm-muted);font-weight:900;background:var(--sfm-card);border:1px dashed rgba(167,243,240,.24);border-radius:18px}.market-notice{padding:13px 15px;color:#B91C1C;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18);font-weight:900}.market-notice.success{color:#15803D;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.18)}
-        .market-service{display:flex;align-items:center;gap:9px;background:var(--sfm-card);border:1px solid rgba(167,243,240,.16);border-radius:18px;padding:12px 14px;color:var(--sfm-muted);font-weight:900;box-shadow:0 6px 24px rgba(3,18,37,.05)}.market-service.connected{color:#15803D;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.18)}.market-service.not_configured{color:var(--sfm-muted);background:rgba(167,243,240,.10)}.market-service.unavailable{color:#B91C1C;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18)}
-        .market-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px}.market-panel{padding:20px;min-width:0}.market-section-head{display:flex;align-items:flex-start;gap:11px;margin-bottom:16px;color:var(--sfm-soft-cyan)}.market-section-head span{display:block;color:var(--sfm-muted);font-size:11px;font-weight:900;margin-bottom:5px;line-height:1.4}.market-section-head h2{margin:0;color:var(--sfm-foreground);font-size:17px;font-weight:900;line-height:1.35}.market-chart svg{width:100%;height:auto;max-height:300px;display:block}.market-stat-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.metric{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:13px;display:grid;gap:7px;min-width:0;align-content:start}.metric span{font-size:11px;color:var(--sfm-muted);font-weight:900;line-height:1.45}.metric strong{font-size:15px;color:var(--sfm-foreground);display:flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere;line-height:1.45}.indicator-list,.scenario-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.decision-body{display:grid;gap:13px}.decision-body b{font-size:25px;font-weight:900;color:var(--sfm-foreground);line-height:1.25}.decision-body p,.decision-body small,.decision-body strong{margin:0;color:var(--sfm-muted);line-height:1.9;font-weight:800;overflow-wrap:anywhere}.decision-body small{font-size:12px;color:var(--sfm-muted)}.decision-body strong{color:var(--sfm-muted)}.decision.ok{border-color:rgba(34,197,94,.22)}.decision.warn{border-color:rgba(167,243,240,.28)}.decision.danger{border-color:rgba(239,68,68,.22)}.levels-strip{margin-top:16px;display:grid;gap:10px;color:var(--sfm-muted);font-size:12px;font-weight:900;line-height:1.6}.levels-strip i{position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,#22C55E,var(--sfm-soft-cyan),#EF4444);display:block}.levels-strip b{position:absolute;top:-4px;width:4px;height:18px;border-radius:999px;background:var(--sfm-foreground)}.levels-strip b.current{width:10px;height:10px;top:0;transform:translateX(-50%);background:#FFF;border:2px solid var(--sfm-foreground)}.tool-input,.alert-form{display:grid;gap:10px}.tool-input span{font-size:12px;font-weight:900;color:var(--sfm-muted);line-height:1.5}.tool-input input,.alert-form input,.alert-form select{width:100%;min-width:0;border:1px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);padding:12px 13px;font:900 13px Tajawal,Arial,sans-serif;outline:0;line-height:1.5}.alert-form{grid-template-columns:minmax(0,1fr) 110px auto;align-items:stretch}.alert-form button,.inline-action,.report-button{border:0;border-radius:14px;background:var(--sfm-foreground);color:var(--sfm-card);padding:12px 14px;font:900 12px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;line-height:1.45}.inline-action{margin-bottom:14px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.inline-action:disabled{opacity:.58;cursor:default}.saved-alerts,.asset-report{display:grid;gap:10px;margin-top:14px}.saved-alerts span,.asset-report p{margin:0;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:12px;padding:10px 11px;color:var(--sfm-muted);font-size:12px;font-weight:900;line-height:1.65}.saved-alerts span{display:flex;align-items:center;justify-content:space-between;gap:9px}.saved-alerts span b{min-width:0;overflow-wrap:anywhere}.saved-alerts button{border:0;background:transparent;color:var(--sfm-muted);cursor:pointer;display:inline-flex;padding:2px}.asset-report small{color:var(--sfm-muted);line-height:1.75;font-weight:800;display:block}
+        .market-card-grid,.market-status-grid,.market-decision-grid,.market-tools-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.market-status-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.market-decision-grid{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr)}.market-tools-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.market-card,.market-panel,.market-disclaimer,.market-notice,.market-stock-header{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:22px;box-shadow:0 6px 24px rgba(3,18,37,.06)}.market-card{padding:16px;display:grid;gap:10px}.market-card-head{display:flex;justify-content:space-between;gap:10px}.market-card-head strong{display:block;font-size:18px}.market-card-head span{display:block;color:var(--sfm-muted);font-size:12px;font-weight:800;margin-top:3px}.market-price{font-size:24px;font-weight:900;color:var(--sfm-foreground)}.change{font-size:13px;font-weight:900}.change.up,.up{color:#16A34A}.change.down,.down{color:#DC2626}.market-empty{grid-column:1/-1;padding:24px;text-align:center;color:var(--sfm-muted);font-weight:900;background:var(--sfm-card);border:1px dashed rgba(167,243,240,.24);border-radius:18px}.market-notice{padding:13px 15px;color:#B91C1C;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18);font-weight:900;display:flex;align-items:center;justify-content:space-between;gap:12px}.market-notice button{border:0;border-radius:999px;background:var(--sfm-foreground);color:var(--sfm-card);padding:8px 12px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}.market-notice.success{color:#15803D;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.18)}.market-notice.slow{color:#92400E;background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.22)}
+        .market-stock-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px}.market-stock-header h2{margin:8px 0 4px;color:var(--sfm-foreground);font-size:28px}.market-stock-header p{margin:0;color:var(--sfm-muted);font-weight:850}.stock-price-block{display:grid;justify-items:end;gap:5px;text-align:end}.stock-price-block strong{font-size:30px;color:var(--sfm-foreground);font-weight:950}.stock-price-block small{color:var(--sfm-muted);font-weight:850}.data-badge{display:inline-flex;width:max-content;border-radius:999px;border:1px solid rgba(29,140,255,.22);background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:5px 10px;font-size:11px;font-weight:950}.data-badge.delayed{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.22);color:#B45309}.data-badge.unavailable{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.22);color:#B91C1C}
+        .market-service{display:flex;align-items:center;gap:9px;background:var(--sfm-card);border:1px solid rgba(167,243,240,.16);border-radius:18px;padding:12px 14px;color:var(--sfm-muted);font-weight:900;box-shadow:0 6px 24px rgba(3,18,37,.05)}.market-service.connected{color:#15803D;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.18)}.market-service.slow,.market-service.not_configured{color:#92400E;background:rgba(245,158,11,.10);border-color:rgba(245,158,11,.20)}.market-service.unavailable{color:#B91C1C;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18)}
+        .market-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px}.market-chart{grid-row:span 2}.market-panel{padding:20px;min-width:0}.market-section-head{display:flex;align-items:flex-start;gap:11px;margin-bottom:16px;color:var(--sfm-soft-cyan)}.market-section-head span{display:block;color:var(--sfm-muted);font-size:11px;font-weight:900;margin-bottom:5px;line-height:1.4}.market-section-head h2{margin:0;color:var(--sfm-foreground);font-size:17px;font-weight:900;line-height:1.35}.market-chart svg{width:100%;height:auto;max-height:300px;display:block}.timeframe-row{display:flex;flex-wrap:wrap;gap:8px;margin:-4px 0 12px}.timeframe-row button{border:1px solid rgba(29,140,255,.18);background:var(--sfm-light-card);color:var(--sfm-foreground);border-radius:999px;padding:7px 11px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.timeframe-row button[aria-pressed="true"],.timeframe-row button:hover,.timeframe-row button:focus-visible{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));border-color:transparent;color:#FFFFFF;outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}.market-stat-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.metric{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:13px;display:grid;gap:7px;min-width:0;align-content:start}.metric span{font-size:11px;color:var(--sfm-muted);font-weight:900;line-height:1.45}.metric strong{font-size:15px;color:var(--sfm-foreground);display:flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere;line-height:1.45}.indicator-list,.scenario-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.decision-body{display:grid;gap:13px}.decision-body b{font-size:25px;font-weight:900;color:var(--sfm-foreground);line-height:1.25}.decision-body p,.decision-body small,.decision-body strong{margin:0;color:var(--sfm-muted);line-height:1.9;font-weight:800;overflow-wrap:anywhere}.decision-body small{font-size:12px;color:var(--sfm-muted)}.decision-body strong{color:var(--sfm-muted)}.decision.ok{border-color:rgba(34,197,94,.22)}.decision.warn{border-color:rgba(167,243,240,.28)}.decision.danger{border-color:rgba(239,68,68,.22)}.levels-strip{margin-top:16px;display:grid;gap:10px;color:var(--sfm-muted);font-size:12px;font-weight:900;line-height:1.6}.levels-strip i{position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,#22C55E,var(--sfm-soft-cyan),#EF4444);display:block}.levels-strip b{position:absolute;top:-4px;width:4px;height:18px;border-radius:999px;background:var(--sfm-foreground)}.levels-strip b.current{width:10px;height:10px;top:0;transform:translateX(-50%);background:#FFF;border:2px solid var(--sfm-foreground)}.tool-input,.alert-form{display:grid;gap:10px}.tool-input span{font-size:12px;font-weight:900;color:var(--sfm-muted);line-height:1.5}.tool-input input,.alert-form input,.alert-form select{width:100%;min-width:0;border:1px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);padding:12px 13px;font:900 13px Tajawal,Arial,sans-serif;outline:0;line-height:1.5}.alert-form{grid-template-columns:minmax(0,1fr) 110px auto;align-items:stretch}.alert-form button,.inline-action,.report-button{border:0;border-radius:14px;background:var(--sfm-foreground);color:var(--sfm-card);padding:12px 14px;font:900 12px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;line-height:1.45}.inline-action{margin-bottom:14px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.inline-action:disabled{opacity:.58;cursor:default}.saved-alerts,.asset-report{display:grid;gap:10px;margin-top:14px}.saved-alerts span,.asset-report p{margin:0;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:12px;padding:10px 11px;color:var(--sfm-muted);font-size:12px;font-weight:900;line-height:1.65}.saved-alerts span{display:flex;align-items:center;justify-content:space-between;gap:9px}.saved-alerts span b{min-width:0;overflow-wrap:anywhere}.saved-alerts button{border:0;background:transparent;color:var(--sfm-muted);cursor:pointer;display:inline-flex;padding:2px}.asset-report small{color:var(--sfm-muted);line-height:1.75;font-weight:800;display:block}
         .market-bottom-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.market-copy,.market-muted{margin:0;color:var(--sfm-muted);line-height:1.8;font-size:13px;font-weight:800}.market-muted{margin-top:12px;color:var(--sfm-muted);font-size:12px}.watchlist{display:flex;flex-wrap:wrap;gap:8px}.watchlist span,.watchlist>button{border-radius:999px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14);padding:7px 11px;color:var(--sfm-muted);font-weight:900;font-size:12px;display:inline-flex;align-items:center;gap:6px}.watchlist button{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:0}.compare-bars{display:grid;gap:10px}.compare-bars div{display:grid;grid-template-columns:46px minmax(0,1fr) 54px;gap:8px;align-items:center}.compare-bars span,.compare-bars b{font-size:12px;font-weight:900;color:var(--sfm-muted)}.compare-bars div i{height:9px;border-radius:999px;background:linear-gradient(90deg,var(--sfm-primary),var(--sfm-accent));display:block}.compare-table{margin-top:14px;overflow-x:auto;display:grid;gap:7px}.compare-table>div{display:grid;grid-template-columns:60px 90px 70px 52px 76px 80px;gap:7px;min-width:470px}.compare-table b,.compare-table span{font-size:11px;font-weight:900;color:var(--sfm-muted)}.compare-table b{color:var(--sfm-muted)}
         .market-disclaimer{display:flex;align-items:flex-start;gap:12px;padding:16px;color:var(--sfm-muted)}.market-disclaimer strong{display:block;color:var(--sfm-foreground);margin-bottom:4px}.market-disclaimer p{margin:0;color:var(--sfm-muted);font-size:13px;line-height:1.7;font-weight:800}
-        @media(max-width:1180px){.market-card-grid,.market-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.market-layout,.market-bottom-grid,.market-decision-grid,.market-tools-grid{grid-template-columns:1fr}.market-search-panel{grid-template-columns:1fr 1fr}}
+        @media(max-width:1180px){.market-card-grid,.market-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.market-layout,.market-bottom-grid,.market-decision-grid,.market-tools-grid{grid-template-columns:1fr}.market-chart{grid-row:auto}.market-search-panel{grid-template-columns:1fr 1fr}}
         @media(max-width:1024px){.market-main{margin-inline-start:0;padding:calc(88px + env(safe-area-inset-top)) 16px 18px;max-width:100%}}
-        @media(max-width:720px){.market-main{padding-inline:14px}.market-hero{grid-template-columns:1fr;padding:22px;border-radius:22px}.market-search-panel,.market-card-grid,.market-status-grid,.market-stat-row,.indicator-list,.scenario-grid,.alert-form{grid-template-columns:1fr}.market-search-panel button{width:100%}.market-search-results{max-height:min(300px,42dvh);top:calc(100% + 10px);border-radius:16px}.market-search-results button{min-height:68px;align-items:flex-start}.market-search-results button small{white-space:normal;text-align:end}.market-hero-card strong{font-size:36px}.market-panel,.market-card{border-radius:18px}.compare-bars div{grid-template-columns:42px minmax(0,1fr) 48px}}
+        @media(max-width:720px){.market-main{padding-inline:14px}.market-hero{grid-template-columns:1fr;padding:22px;border-radius:22px}.market-search-panel,.market-card-grid,.market-status-grid,.market-stat-row,.indicator-list,.scenario-grid,.alert-form{grid-template-columns:1fr}.market-search-panel button{width:100%}.market-search-results{max-height:min(300px,42dvh);top:calc(100% + 10px);border-radius:16px}.market-search-results button{min-height:68px;align-items:flex-start}.market-search-results button small{white-space:normal;text-align:end}.market-hero-card strong{font-size:36px}.market-stock-header{display:grid;gap:14px}.stock-price-block{justify-items:start;text-align:start}.market-panel,.market-card,.market-stock-header{border-radius:18px}.compare-bars div{grid-template-columns:42px minmax(0,1fr) 48px}}
       `}</style>
     </div>
   );

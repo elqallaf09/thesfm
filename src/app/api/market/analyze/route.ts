@@ -9,3 +9,12 @@ export async function GET(request: NextRequest) {
   });
   return NextResponse.json(result, { status: result.success ? 200 : 400 });
 }
+
+export async function POST(request: NextRequest) {
+  const body = await request.json().catch(() => ({}));
+  const result = await proxyAnalyze(body?.symbol, body?.assetType, {
+    displaySymbol: body?.displaySymbol ?? body?.symbol,
+    name: body?.name,
+  });
+  return NextResponse.json(result, { status: result.success ? 200 : 400 });
+}

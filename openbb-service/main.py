@@ -498,29 +498,6 @@ def calculate_analysis(symbol: str, asset_type: str, df: pd.DataFrame, source: s
     return response
 
 
-def mock_dataframe(symbol: str, days: int = 180) -> pd.DataFrame:
-    seed = sum(ord(char) for char in symbol)
-    base = 80 + (seed % 160)
-    dates = pd.date_range(end=pd.Timestamp.utcnow().normalize(), periods=days)
-    closes = [base + math.sin(index / 9) * 4 + index * 0.08 for index in range(days)]
-    return pd.DataFrame(
-        {
-            "date": dates,
-            "open": [value * 0.995 for value in closes],
-            "high": [value * 1.012 for value in closes],
-            "low": [value * 0.988 for value in closes],
-            "close": closes,
-            "volume": [1000000 + (seed * 1000) for _ in closes],
-        }
-    )
-
-
-def fallback_analysis(symbol: str, asset_type: str, reason: str = "OpenBB provider unavailable", provider_symbol: str | None = None) -> dict[str, Any]:
-    response = calculate_analysis(symbol, asset_type, mock_dataframe(symbol), source="mock", provider_symbol=provider_symbol or normalize_market_symbol(symbol, asset_type)["providerSymbol"])
-    response["fallbackReason"] = reason
-    return response
-
-
 def error_response(symbol: str, asset_type: str, message: str = "Unable to fetch market data") -> dict[str, Any]:
     return {"success": False, "error": message, "symbol": symbol, "assetType": asset_type}
 
@@ -548,7 +525,7 @@ async def market_analyze(symbol: str = Query(..., min_length=1), assetType: str 
         return calculate_analysis(clean, asset_type, df, provider_symbol=provider_symbol)
     except Exception as exc:
         log_openbb_failure(clean, asset_type, exc)
-        return fallback_analysis(clean, asset_type, f"OpenBB could not fetch real data for {normalized['providerSymbol']}: {safe_error_message(exc)}", normalized["providerSymbol"])
+        return error_response(clean, asset_type, f"OpenBB could not fetch real data for {normalized['providerSymbol']}: {safe_error_message(exc)}")
 
 
 @app.get("/market/history")
@@ -565,20 +542,12 @@ async def market_history(
     normalized = normalize_market_symbol(clean, asset_type)
     try:
         df, provider_symbol, _attempts = fetch_history_with_attempts(clean, asset_type, period)
-        source = "openbb"
-        fallback_reason = None
     except Exception as exc:
         log_openbb_failure(clean, asset_type, exc)
-        df = mock_dataframe(clean, period_to_days(period))
-        provider_symbol = normalized["providerSymbol"]
-        source = "mock"
-        fallback_reason = f"OpenBB could not fetch real data for {provider_symbol}: {safe_error_message(exc)}"
+        return error_response(clean, asset_type, f"OpenBB could not fetch real history for {normalized['providerSymbol']}: {safe_error_message(exc)}")
 
-    history = calculate_analysis(clean, asset_type, df, source=source, provider_symbol=provider_symbol)["history"]
-    response = {"success": True, "source": source, "fallback": source == "mock", "symbol": clean, "providerSymbol": provider_symbol, "assetType": asset_type, "period": period, "history": history}
-    if fallback_reason:
-        response["fallbackReason"] = fallback_reason
-    return response
+    history = calculate_analysis(clean, asset_type, df, source="openbb", provider_symbol=provider_symbol)["history"]
+    return {"success": True, "source": "openbb", "fallback": False, "symbol": clean, "providerSymbol": provider_symbol, "assetType": asset_type, "period": period, "history": history}
 
 
 @app.get("/market/compare")
@@ -595,7 +564,7 @@ async def market_compare(symbols: str = Query(..., min_length=1), assetType: str
             results.append(calculate_analysis(clean, asset_type, df, provider_symbol=provider_symbol))
         except Exception as exc:
             log_openbb_failure(clean, asset_type, exc)
-            results.append(fallback_analysis(clean, asset_type, f"OpenBB could not fetch real data for {normalized['providerSymbol']}: {safe_error_message(exc)}", normalized["providerSymbol"]))
+            results.append(error_response(clean, asset_type, f"OpenBB could not fetch real data for {normalized['providerSymbol']}: {safe_error_message(exc)}"))
     return {"success": True, "results": results}
 
 
@@ -664,7 +633,7 @@ async def debug_openbb(symbol: str = Query("AAPL", min_length=1), assetType: str
                 {"symbol": attempt, "success": False, "error": "See service logs"}
                 for attempt in normalized["attempts"]
             ],
-            "finalSource": "mock",
+            "finalSource": "error",
             "importOk": True,
             "fetchOk": False,
             "rowsReturned": 0,

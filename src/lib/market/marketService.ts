@@ -1,6 +1,16 @@
 export type MarketAssetType = 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity' | 'gold';
 export type MarketTrend = 'bullish' | 'neutral' | 'bearish';
 export type MarketRiskLevel = 'low' | 'medium' | 'high';
+export type MarketDataStatus = 'live' | 'delayed' | 'unavailable';
+export type MarketAiInsight = {
+  status: 'ready' | 'unavailable' | 'skipped';
+  provider?: 'openai' | 'rule-based';
+  summary?: string;
+  trendStatus?: string;
+  riskNotes?: string;
+  watchNext?: string[];
+  error?: string;
+};
 
 export type MarketHistoryPoint = {
   date: string;
@@ -9,12 +19,24 @@ export type MarketHistoryPoint = {
 
 export type MarketAnalysis = {
   success: true;
+  provider?: 'openbb';
+  dataStatus?: MarketDataStatus;
   symbol: string;
   providerSymbol?: string;
   name: string;
   assetType: MarketAssetType;
+  currency?: string;
   latestPrice: number;
   changePercent: number;
+  quote?: {
+    price: number;
+    change: number;
+    changePercent: number;
+    currency: string;
+    timestamp: string;
+  };
+  fundamentals?: Record<string, unknown>;
+  technicals?: Record<string, unknown>;
   trend: MarketTrend;
   riskLevel: MarketRiskLevel;
   indicators: {
@@ -32,14 +54,22 @@ export type MarketAnalysis = {
   source?: string;
   fallback?: boolean;
   fallbackReason?: string;
+  cached?: boolean;
+  cacheAgeSeconds?: number;
+  fetchedAt?: string;
+  warnings?: string[];
+  aiInsight?: MarketAiInsight;
 };
 
 export type MarketError = {
   success: false;
   error: string;
+  provider?: 'openbb';
+  dataStatus?: 'unavailable';
   source?: string;
   fallback?: false;
-  openbbService?: 'connected' | 'not_configured' | 'unavailable';
+  openbbService?: 'connected' | 'slow' | 'not_configured' | 'unavailable';
+  warnings?: string[];
 };
 
 export type MarketResult = MarketAnalysis | MarketError;
