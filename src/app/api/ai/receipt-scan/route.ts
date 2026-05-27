@@ -23,6 +23,7 @@ type AmountCandidate = {
 
 type ReceiptScanResult = {
   merchantName?: string;
+  description?: string;
   invoiceNumber?: string;
   totalAmount?: number;
   subtotal?: number;
@@ -43,6 +44,29 @@ type ReceiptScanResult = {
   rawText?: string;
   confidenceScore?: number;
   confidence?: number;
+};
+
+type ScanDebug = {
+  stage: 'upload' | 'provider' | 'ai' | 'parser' | 'ui';
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  providerConfigured: boolean;
+  rawTextLength?: number;
+  candidateCount?: number;
+  selectedAmount?: number;
+  confidence?: string;
+  errorSource?: string;
+  status?: number;
+  message?: string;
+};
+
+type ScanFileResult = {
+  fileName: string;
+  success: boolean;
+  data?: ReceiptScanResult;
+  error?: string;
+  debug: ScanDebug;
 };
 
 function errorResponse(error: string, status = 400) {
@@ -80,7 +104,7 @@ function parseSignedMoney(value: unknown) {
   const negative = /^\s*-/.test(normalized) || /\([^)]*\d[^)]*\)/.test(normalized);
   const cleaned = normalized
     .replace(/\{\{[^}]+}}/g, '')
-    .replace(/(?:KWD|KD|USD|SAR|AED|EUR|GBP|د\.?\s*ك|دك|ر\.?\s*س|د\.?\s*إ|\$|€|£)/gi, '')
+    .replace(/(?:KWD|KD|USD|SAR|AED|EUR|GBP|EGP|جنيه(?:ا|ات)?|د\.?\s*ك|دك|ر\.?\s*س|د\.?\s*إ|\$|€|£)/gi, '')
     .replace(/[^\d.,-]/g, '')
     .replace(/(?!^)-/g, '')
     .trim();
@@ -116,6 +140,7 @@ function parseMoney(value: unknown) {
 
 function normalizeCurrency(value?: unknown, context = '') {
   const text = `${typeof value === 'string' ? value : ''} ${context}`.toUpperCase();
+  if (/\bEGP\b|جنيه|جنيها|جنيهات/.test(text)) return 'EGP';
   if (/\bKWD\b|\bKD\b|د\.?\s*ك|دك/.test(text)) return 'KWD';
   if (/\bSAR\b|ر\.?\s*س/.test(text)) return 'SAR';
   if (/\bAED\b|د\.?\s*إ/.test(text)) return 'AED';
@@ -131,16 +156,16 @@ function normalizeCurrency(value?: unknown, context = '') {
 
 function classifyAmountLine(line: string): Pick<AmountCandidate, 'kind' | 'label' | 'confidence'> {
   const lower = line.toLowerCase();
-  if (/amount\s*due|balance\s*due|total\s*due|المستحق|المبلغ\s*المستحق/.test(lower)) {
+  if (/amount\s*due|balance\s*due|total\s*due|المستحق|مستحق\s*الدفع|المبلغ\s*المستحق|المطلوب\s*دفعه/.test(lower)) {
     return { kind: 'amount_due', label: 'Amount Due', confidence: 0.98 };
   }
-  if (/grand\s*total|final\s*total|المجموع\s*النهائي|الإجمالي\s*النهائي/.test(lower)) {
+  if (/grand\s*total|final\s*total|المجموع\s*الكلي|المجموع\s*النهائي|الإجمالي\s*الكلي|الإجمالي\s*النهائي|اجمالي\s*كلي|إجمالي\s*كلي/.test(lower)) {
     return { kind: 'grand_total', label: 'Grand Total', confidence: 0.97 };
   }
   if (/invoice\s*total|total\s*amount|إجمالي\s*الفاتورة/.test(lower)) {
     return { kind: 'invoice_total', label: 'Invoice Total', confidence: 0.96 };
   }
-  if (/subtotal|sub\s*total|المجموع\s*الفرعي|قبل\s*الضريبة/.test(lower)) {
+  if (/subtotal|sub\s*total|المجموع\s*الفرعي|الإجمالي\s*الفرعي|قبل\s*الضريبة/.test(lower)) {
     return { kind: 'subtotal', label: 'Subtotal', confidence: 0.68 };
   }
   if (/discount|coupon|خصم|الخصم/.test(lower)) {
@@ -149,7 +174,7 @@ function classifyAmountLine(line: string): Pick<AmountCandidate, 'kind' | 'label
   if (/\btax\b|vat|ضريبة|الضريبة/.test(lower)) {
     return { kind: 'tax', label: 'Tax', confidence: 0.48 };
   }
-  if (/\btotal\b|الإجمالي|المجموع|المبلغ/.test(lower)) {
+  if (/\btotal\b|الإجمالي|اجمالي|المجموع|المبلغ/.test(lower)) {
     return { kind: 'total', label: 'Total', confidence: 0.94 };
   }
   if (/labor|service|description|item|amount|خدمة|وصف|بند/.test(lower)) {
@@ -159,7 +184,7 @@ function classifyAmountLine(line: string): Pick<AmountCandidate, 'kind' | 'label
 }
 
 function amountTokensFromLine(line: string) {
-  const pattern = /(?:[$€£]|KWD|KD|USD|SAR|AED|EUR|GBP|د\.?\s*ك|دك|ر\.?\s*س|د\.?\s*إ)?\s*\(?-?\d[\d\s,]*(?:[.,]\d{1,3})?\)?/gi;
+  const pattern = /(?:[$€£]|KWD|KD|USD|SAR|AED|EUR|GBP|EGP|جنيه(?:ا|ات)?|د\.?\s*ك|دك|ر\.?\s*س|د\.?\s*إ)?\s*\(?-?\d[\d\s,]*(?:[.,]\d{1,3})?\)?/gi;
   return [...line.matchAll(pattern)]
     .map(match => {
       const token = match[0];
@@ -247,7 +272,7 @@ function extractAmountCandidates(rawText: string, data: Record<string, unknown>)
   lines.forEach((line, index) => {
     if (isTemplatePlaceholder(line)) return;
     const classified = classifyAmountLine(line);
-    const tokens = amountTokensFromLine(line).filter(token => !(token.isPercent && !/[€£$]|KWD|KD|USD|SAR|AED|EUR|GBP|د\.?\s*ك|ر\.?\s*س|د\.?\s*إ/i.test(token.token)));
+    const tokens = amountTokensFromLine(line).filter(token => !(token.isPercent && !/[€£$]|KWD|KD|USD|SAR|AED|EUR|GBP|EGP|جنيه|د\.?\s*ك|ر\.?\s*س|د\.?\s*إ/i.test(token.token)));
     if (!tokens.length) return;
 
     const lastNonPercent = [...tokens].reverse().find(token => !token.isPercent);
@@ -329,14 +354,20 @@ function parseInvoiceNumber(text: string) {
   return undefined;
 }
 
-function parseDescription(text: string, items: ReceiptItem[] = []) {
-  const itemName = items.find(item => cleanTextValue(item.name))?.name;
-  if (itemName && !isTemplatePlaceholder(itemName)) return cleanTextValue(itemName);
+function containsArabic(text: string) {
+  return /[\u0600-\u06FF]/.test(text);
+}
+
+function parseDescription(text: string, items: ReceiptItem[] = [], merchantName?: string) {
   const normalized = removeTemplatePlaceholders(text);
   const lines = normalized.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   const labor = lines.find(line => /labor|service|consulting|خدمة|عمل/i.test(line));
   if (labor) return /labor/i.test(labor) ? 'Invoice - Labor service' : cleanTextValue(labor);
-  if (/invoice|فاتورة/i.test(normalized)) return 'Invoice';
+  const isInvoice = /invoice|فاتورة/i.test(normalized);
+  if (merchantName && isInvoice) return containsArabic(merchantName) ? `${merchantName} - فاتورة` : `${merchantName} - Invoice`;
+  const itemName = items.find(item => cleanTextValue(item.name))?.name;
+  if (itemName && !isTemplatePlaceholder(itemName)) return cleanTextValue(itemName);
+  if (isInvoice) return containsArabic(normalized) ? 'فاتورة' : 'Invoice';
   return undefined;
 }
 
@@ -350,7 +381,7 @@ function parseMerchantName(text: string, items: ReceiptItem[] = []) {
     && !/\d/.test(line)
     && !/(invoice|date|payment|total|subtotal|tax|discount|bill\s*to|description|qty|unit\s*price|amount|الإجمالي|المجموع|التاريخ|الدفع|فاتورة|ضريبة|خصم)/i.test(line)
   );
-  return cleanTextValue(merchant) || parseDescription(text, items);
+  return cleanTextValue(merchant);
 }
 
 function normalizeDate(value: unknown, rawText?: string) {
@@ -377,6 +408,7 @@ function normalizeDate(value: unknown, rawText?: string) {
 function normalizeCategory(value: unknown, rawText?: string) {
   const text = `${String(value || '')} ${rawText || ''}`.toLowerCase();
   if (/restaurant|cafe|food|مطعم|قهوة|كافيه/.test(text)) return 'restaurants';
+  if (/flower|florist|wedding|event|bouquet|زهور|ورود|باقة|زفاف|استقبال|تزيين/.test(text)) return 'other';
   if (/bill|invoice|utility|فاتورة|كهرباء|ماء/.test(text)) return 'bills';
   if (/taxi|fuel|transport|uber|بنزين|مواصلات/.test(text)) return 'transport';
   if (/clinic|pharmacy|health|صيدلية|عيادة|صحة/.test(text)) return 'health';
@@ -447,14 +479,18 @@ function normalizeResult(value: unknown, fileName: string): ReceiptScanResult {
     || cleanTextValue(data.merchant)
     || cleanTextValue(data.storeName)
     || cleanTextValue(data.vendor)
-    || (rawText ? parseMerchantName(rawText, items) : undefined)
-    || parseDescription(rawText, items);
+    || (rawText ? parseMerchantName(rawText, items) : undefined);
+  const description = cleanTextValue(data.description)
+    || cleanTextValue(data.expenseDescription)
+    || (rawText ? parseDescription(rawText, items, merchant) : undefined)
+    || merchant;
 
   const result: ReceiptScanResult = {
     merchantName: merchant,
+    description,
     invoiceNumber: cleanTextValue(data.invoiceNumber) || (rawText ? parseInvoiceNumber(rawText) : undefined),
     totalAmount: selected?.amount && selected.amount > 0 ? Number(selected.amount.toFixed(3)) : undefined,
-    subtotal: parseMoney(data.subtotal) ?? (subtotalCandidate ? Math.abs(subtotalCandidate.amount) : undefined) ?? (rawText ? parseReceiptNumber(rawText, [/(?:subtotal|sub\s*total|المجموع\s*الفرعي|قبل\s*الضريبة)\s*[:：]?\s*([\d.,]+)/i]) : undefined),
+    subtotal: parseMoney(data.subtotal) ?? (subtotalCandidate ? Math.abs(subtotalCandidate.amount) : undefined) ?? (rawText ? parseReceiptNumber(rawText, [/(?:subtotal|sub\s*total|المجموع\s*الفرعي|الإجمالي\s*الفرعي|قبل\s*الضريبة)\s*[:：]?\s*([\d.,]+)/i]) : undefined),
     currency,
     taxAmount: parseMoney(data.taxAmount) ?? (taxCandidate ? Math.abs(taxCandidate.amount) : undefined),
     discountAmount: parseSignedMoney(data.discountAmount) ?? (discountCandidate ? discountCandidate.amount : undefined),
@@ -524,14 +560,15 @@ async function analyzeWithOpenAI(file: File, bytes: ArrayBuffer): Promise<Receip
             text: [
               'Extract receipt or invoice data as strict JSON only.',
               'Invoice parsing rule: the expense amount must be the final payable amount.',
-              'Priority: Grand Total, Total, Amount Due, Balance Due, Invoice Total; then bottom-most Total; then Subtotal + Tax minus/including Discount if no final total exists.',
+              'Priority: Grand Total, Total, Amount Due, Balance Due, Invoice Total, المجموع الكلي, الإجمالي, المبلغ الإجمالي, المطلوب دفعه; then bottom-most Total; then Subtotal + Tax minus/including Discount if no final total exists.',
               'Do not use line item amount, unit price, subtotal, tax, or discount as final total when a final total is visible.',
               'Return amountCandidates with labels for Total, Subtotal, line item amount, Tax, Discount, and computed total when visible.',
-              'Detect currency symbols: $=USD, KD/KWD/د.ك=KWD, SAR/ر.س=SAR, AED/د.إ=AED, €=EUR, £=GBP.',
+              'Detect currency symbols: $=USD, USD=USD, جنيه/EGP=EGP, KD/KWD/د.ك=KWD, SAR/ر.س=SAR, AED/د.إ=AED, €=EUR, £=GBP.',
               'Ignore template placeholders wrapped in {{...}}. Never return {{date}}, {{InvoiceNum}}, {{CompanyName}}, or {{BillToName}} as real values.',
               'If the date is a placeholder or unclear, use null for receiptDate.',
+              'Set description to a concise real expense description. For Arabic invoices with a merchant, use "merchant - فاتورة"; for labor invoices, use "Invoice - Labor service".',
               'For the sample pattern "Labor: 12 hours at $105/hr" with subtotal, discount, tax, and total, choose the final Total amount.',
-              'Use this schema: {"merchantName":"string|null","invoiceNumber":"string|null","subtotal":number|null,"totalAmount":number|null,"currency":"string|null","taxAmount":number|null,"discountAmount":number|null,"paidAmount":number|null,"changeAmount":number|null,"receiptDate":"YYYY-MM-DD|null","category":"restaurants|shopping|bills|transport|health|education|rent|loans|subscriptions|other","paymentMethod":"cash|knet|card|transfer|apple_pay|other","items":[{"name":"string","quantity":number|null,"unitPrice":number|null,"total":number}],"amountCandidates":[{"label":"string","amount":number,"currency":"string|null","confidence":number,"source":"string"}],"confidenceScore":number,"confidenceLevel":"high|medium|low","warnings":["string"],"rawText":"string"}.',
+              'Use this schema: {"merchantName":"string|null","description":"string|null","invoiceNumber":"string|null","subtotal":number|null,"totalAmount":number|null,"currency":"string|null","taxAmount":number|null,"discountAmount":number|null,"paidAmount":number|null,"changeAmount":number|null,"receiptDate":"YYYY-MM-DD|null","category":"restaurants|shopping|bills|transport|health|education|rent|loans|subscriptions|other","paymentMethod":"cash|knet|card|transfer|apple_pay|other","items":[{"name":"string","quantity":number|null,"unitPrice":number|null,"total":number}],"amountCandidates":[{"label":"string","amount":number,"currency":"string|null","confidence":number,"source":"string"}],"confidenceScore":number,"confidenceLevel":"high|medium|low","warnings":["string"],"rawText":"string"}.',
             ].join(' '),
           },
           {
@@ -549,6 +586,7 @@ async function analyzeWithOpenAI(file: File, bytes: ArrayBuffer): Promise<Receip
             additionalProperties: false,
             properties: {
               merchantName: { type: ['string', 'null'] },
+              description: { type: ['string', 'null'] },
               invoiceNumber: { type: ['string', 'null'] },
               subtotal: { type: ['number', 'null'] },
               totalAmount: { type: ['number', 'null'] },
@@ -594,29 +632,71 @@ async function analyzeWithOpenAI(file: File, bytes: ArrayBuffer): Promise<Receip
               warnings: { type: 'array', items: { type: 'string' } },
               rawText: { type: 'string' },
             },
-            required: ['merchantName', 'invoiceNumber', 'subtotal', 'totalAmount', 'currency', 'taxAmount', 'discountAmount', 'paidAmount', 'changeAmount', 'receiptDate', 'category', 'paymentMethod', 'items', 'amountCandidates', 'confidenceScore', 'confidenceLevel', 'warnings', 'rawText'],
+            required: ['merchantName', 'description', 'invoiceNumber', 'subtotal', 'totalAmount', 'currency', 'taxAmount', 'discountAmount', 'paidAmount', 'changeAmount', 'receiptDate', 'category', 'paymentMethod', 'items', 'amountCandidates', 'confidenceScore', 'confidenceLevel', 'warnings', 'rawText'],
           },
         },
       },
     }),
   });
 
-  if (!response.ok) return null;
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`OpenAI receipt scan failed (${response.status})${body ? `: ${body.slice(0, 240)}` : ''}`);
+  }
   const payload = await response.json() as Record<string, unknown>;
   const text = readOutputText(payload);
-  if (!text) return null;
+  if (!text) throw new Error('OpenAI receipt scan returned no output text');
   return normalizeResult(JSON.parse(text), file.name);
 }
 
-async function scanFile(file: File, receiptText?: string) {
+function buildDebug(file: File, stage: ScanDebug['stage'], patch: Partial<ScanDebug> = {}): ScanDebug {
+  return {
+    stage,
+    fileName: file.name,
+    fileType: file.type,
+    fileSize: file.size,
+    providerConfigured: Boolean(process.env.OPENAI_API_KEY),
+    ...patch,
+  };
+}
+
+function dataDebug(file: File, data: ReceiptScanResult, stage: ScanDebug['stage'] = 'parser', patch: Partial<ScanDebug> = {}): ScanDebug {
+  return buildDebug(file, stage, {
+    rawTextLength: data.rawText?.length || 0,
+    candidateCount: data.amountCandidates?.length || 0,
+    selectedAmount: data.totalAmount,
+    confidence: data.confidenceLevel,
+    ...patch,
+  });
+}
+
+function publicFields(data?: ReceiptScanResult) {
+  if (!data) return undefined;
+  return {
+    amount: data.totalAmount,
+    currency: data.currency,
+    date: data.receiptDate || data.date,
+    description: data.description || data.merchantName,
+    category: data.category,
+    tax: data.taxAmount,
+    subtotal: data.subtotal,
+    discount: data.discountAmount,
+    invoiceNumber: data.invoiceNumber,
+  };
+}
+
+function publicCandidates(data?: ReceiptScanResult) {
+  return { amounts: data?.amountCandidates ?? [] };
+}
+
+async function scanFile(file: File, receiptText?: string): Promise<ScanFileResult> {
   if (!SUPPORTED_TYPES.has(file.type)) {
-    return { fileName: file.name, success: false, error: 'Unsupported file type' };
+    return { fileName: file.name, success: false, error: 'Unsupported file type', debug: buildDebug(file, 'upload', { errorSource: 'unsupported_file_type' }) };
   }
   if (file.size > MAX_FILE_SIZE) {
-    return { fileName: file.name, success: false, error: 'File size is too large' };
+    return { fileName: file.name, success: false, error: 'File size is too large', debug: buildDebug(file, 'upload', { errorSource: 'file_too_large' }) };
   }
 
-  const bytes = await file.arrayBuffer();
   if (receiptText?.trim()) {
     const parsed = normalizeResult({ rawText: receiptText }, file.name);
     return {
@@ -624,22 +704,61 @@ async function scanFile(file: File, receiptText?: string) {
       success: Boolean(parsed.totalAmount),
       data: parsed,
       error: parsed.totalAmount ? undefined : 'Could not identify a final total. Please review the candidates or enter it manually.',
+      debug: dataDebug(file, parsed, 'parser', parsed.totalAmount ? {} : { errorSource: 'parser_no_final_total' }),
     };
   }
+
+  if (file.type === 'application/pdf') {
+    return {
+      fileName: file.name,
+      success: false,
+      data: undefined,
+      error: 'PDF receipt OCR is not configured yet. You can still enter the expense manually and save the attachment.',
+      debug: buildDebug(file, 'provider', { errorSource: 'pdf_ocr_not_configured' }),
+    };
+  }
+
+  if (!process.env.OPENAI_API_KEY) {
+    return {
+      fileName: file.name,
+      success: false,
+      data: undefined,
+      error: 'Receipt AI provider is not configured. You can still enter the expense manually and save the attachment.',
+      debug: buildDebug(file, 'provider', { errorSource: 'missing_OPENAI_API_KEY' }),
+    };
+  }
+
+  const bytes = await file.arrayBuffer();
 
   const aiResult = await analyzeWithOpenAI(file, bytes).catch(error => {
     if (process.env.NODE_ENV !== 'production') {
       console.error('Receipt AI scan failed:', { fileName: file.name, error });
     }
-    return null;
+    return { error };
   });
-  if (!aiResult) {
-    return { fileName: file.name, success: false, data: undefined, error: 'Could not read the receipt clearly. You can still enter the expense manually and save the attachment.' };
+  if (!aiResult || 'error' in aiResult) {
+    const message = aiResult && 'error' in aiResult && aiResult.error instanceof Error ? aiResult.error.message : 'AI provider returned no result';
+    return {
+      fileName: file.name,
+      success: false,
+      data: undefined,
+      error: 'Could not read the receipt clearly. You can still enter the expense manually and save the attachment.',
+      debug: buildDebug(file, 'ai', {
+        errorSource: 'ai_provider_failed',
+        message: process.env.NODE_ENV !== 'production' ? message : undefined,
+      }),
+    };
   }
   if (!aiResult.totalAmount) {
-    return { fileName: file.name, success: false, data: aiResult, error: 'Could not identify a final total. Please review the candidates or enter it manually.' };
+    return {
+      fileName: file.name,
+      success: false,
+      data: aiResult,
+      error: 'Could not identify a final total. Please review the candidates or enter it manually.',
+      debug: dataDebug(file, aiResult, 'parser', { errorSource: 'parser_no_final_total' }),
+    };
   }
-  return { fileName: file.name, success: true, data: aiResult };
+  return { fileName: file.name, success: true, data: aiResult, debug: dataDebug(file, aiResult, 'parser') };
 }
 
 export async function POST(request: NextRequest) {
@@ -649,10 +768,24 @@ export async function POST(request: NextRequest) {
     if (!files.length) return errorResponse('No receipt file uploaded');
     if (files.length > MAX_RECEIPTS) return errorResponse('You can upload up to 10 receipts at once', 413);
     const receiptText = formData.get('receiptText');
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('Receipt scan request started', {
+        providerConfigured: Boolean(process.env.OPENAI_API_KEY),
+        files: files.map(file => ({ name: file.name, type: file.type, size: file.size })),
+      });
+    }
     const results = await Promise.all(files.map(file => scanFile(file, typeof receiptText === 'string' ? receiptText : undefined)));
     if (files.length === 1) {
       const [result] = results;
-      return NextResponse.json({ success: result.success, data: result.data, error: result.error, results });
+      return NextResponse.json({
+        success: result.success,
+        data: result.data,
+        fields: publicFields(result.data),
+        candidates: publicCandidates(result.data),
+        error: result.error,
+        debug: result.debug,
+        results,
+      });
     }
     return NextResponse.json({ success: results.some(result => result.success), results });
   } catch (error) {

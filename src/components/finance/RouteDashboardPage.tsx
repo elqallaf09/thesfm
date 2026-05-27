@@ -145,6 +145,7 @@ type ReceiptAmountCandidate = {
 };
 type AiExtractedData = {
   merchantName?: string;
+  description?: string;
   invoiceNumber?: string;
   totalAmount?: number;
   subtotal?: number;
@@ -168,6 +169,34 @@ type AiExtractedData = {
   warnings?: string[];
   confidenceScore?: number;
   confidence?: number;
+};
+type ReceiptScanDebug = {
+  stage?: 'upload' | 'provider' | 'ai' | 'parser' | 'ui';
+  fileName?: string;
+  fileType?: string;
+  fileSize?: number;
+  providerConfigured?: boolean;
+  rawTextLength?: number;
+  candidateCount?: number;
+  selectedAmount?: number;
+  confidence?: string;
+  errorSource?: string;
+  status?: number;
+  message?: string;
+};
+type ReceiptScanApiResult = {
+  fileName: string;
+  success?: boolean;
+  data?: AiExtractedData;
+  error?: string;
+  debug?: ReceiptScanDebug;
+};
+type ReceiptScanApiPayload = {
+  success?: boolean;
+  error?: string;
+  data?: AiExtractedData;
+  debug?: ReceiptScanDebug;
+  results?: ReceiptScanApiResult[];
 };
 type SmartExpense = MoneyItem & {
   category?: string | null;
@@ -510,7 +539,7 @@ function normalizeReceiptNumber(value: unknown) {
     .replace(/[۰-۹]/g, digit => String(persian.indexOf(digit)))
     .replace(/\u066B/g, '.')
     .replace(/\u066C/g, ',')
-    .replace(/(?:KWD|KD|د\.?ك|د\s*ك)/gi, '')
+    .replace(/(?:KWD|KD|USD|SAR|AED|EUR|GBP|EGP|جنيه(?:ا|ات)?|د\.?ك|د\s*ك|ر\.?\s*س|د\.?\s*إ|\$|€|£)/gi, '')
     .replace(/[^\d.,-]/g, '')
     .trim();
   if (!normalized) return undefined;
@@ -623,7 +652,7 @@ function pendingReceiptFromResult(
     file,
     fileName: file.name,
     previewUrl,
-    name: data?.merchantName?.trim() || receiptFallbackName(lang),
+    name: data?.description?.trim() || data?.merchantName?.trim() || receiptFallbackName(lang),
     amount: amount ? String(amount) : '',
     currency: data?.currency || defaultCurrency,
     date: data ? normalizeReceiptDate(data) : todayInputDate(),
@@ -863,6 +892,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [expenseModalMode, setExpenseModalMode] = useState<ExpenseModalMode>('manual');
   const [receiptAnalyzing, setReceiptAnalyzing] = useState(false);
   const [receiptError, setReceiptError] = useState('');
+  const [receiptDebug, setReceiptDebug] = useState<ReceiptScanDebug | null>(null);
   const [receiptBatchProgress, setReceiptBatchProgress] = useState('');
   const [receiptFiles, setReceiptFiles] = useState<Array<{ file: File; previewUrl: string }>>([]);
   const [pendingReceiptExpenses, setPendingReceiptExpenses] = useState<PendingReceiptExpense[]>([]);
@@ -1065,6 +1095,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       setEntryMode('create');
       setExpenseModalMode('manual');
       setReceiptError('');
+      setReceiptDebug(null);
       setExpenseForm(emptyExpenseForm(currency || 'KWD'));
       setEntryOpen(true);
       return;
@@ -1078,6 +1109,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     setEntryMode('create');
     setExpenseModalMode('scan');
     setReceiptError('');
+    setReceiptDebug(null);
     setExpenseForm(emptyExpenseForm(currency || 'KWD'));
     setEntryOpen(true);
   }
@@ -1089,6 +1121,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       setEntryMode('edit');
       setExpenseModalMode('manual');
       setReceiptError('');
+      setReceiptDebug(null);
       setExpenseForm({
         id: expense.id,
         name: expense.name,
@@ -1135,6 +1168,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
   function handleExpenseFile(file: File | null) {
     setReceiptError('');
+    setReceiptDebug(null);
     if (!file) {
       setExpenseForm(prev => ({ ...prev, receiptFile: null, receiptPreview: '', receiptFileName: null, aiExtractedData: null, aiConfidenceScore: null }));
       setReceiptFiles([]);
@@ -1166,6 +1200,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
   function handleExpenseFiles(files: FileList | File[] | null) {
     setReceiptError('');
+    setReceiptDebug(null);
     setReceiptBatchProgress('');
     setPendingReceiptExpenses([]);
     const selected = Array.from(files || []);
@@ -1208,27 +1243,44 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     }
     setReceiptAnalyzing(true);
     setReceiptError('');
+    setReceiptDebug({
+      stage: 'upload',
+      fileName: expenseForm.receiptFile.name,
+      fileType: expenseForm.receiptFile.type,
+      fileSize: expenseForm.receiptFile.size,
+    });
     try {
       const form = new FormData();
       form.append('receipt', expenseForm.receiptFile);
       const response = await fetch('/api/ai/receipt-scan', { method: 'POST', body: form });
-      const payload = await response.json() as { success?: boolean; error?: string; data?: AiExtractedData };
+      const payload = await response.json() as ReceiptScanApiPayload;
+      setReceiptDebug(payload.debug || {
+        stage: response.ok ? 'parser' : 'ui',
+        fileName: expenseForm.receiptFile.name,
+        fileType: expenseForm.receiptFile.type,
+        fileSize: expenseForm.receiptFile.size,
+        status: response.status,
+        errorSource: payload.error,
+      });
       if (!response.ok || !payload.data) throw new Error(payload.error || expenseText('couldNotRead', lang));
       const extracted = payload.data;
       if (process.env.NODE_ENV !== 'production') {
         console.info('AI receipt result', {
           success: payload.success,
+          apiStatus: response.status,
+          rawTextLength: extracted.rawText?.length || 0,
           amount: extractedReceiptAmount(extracted),
           currency: extracted.currency,
           confidenceLevel: extracted.confidenceLevel,
-          candidates: extracted.amountCandidates?.length || 0,
+          candidates: extracted.amountCandidates || [],
+          debug: payload.debug,
         });
       }
       const amount = extractedReceiptAmount(extracted);
       const notes = receiptItemsNotes(extracted.items);
       setExpenseForm(prev => ({
         ...prev,
-        name: extracted.merchantName?.trim() || prev.name || receiptFallbackName(lang),
+        name: extracted.description?.trim() || extracted.merchantName?.trim() || prev.name || receiptFallbackName(lang),
         amount: amount ? String(amount) : prev.amount,
         currency: extracted.currency || prev.currency || currency || 'KWD',
         category: normalizeReceiptCategory(extracted.category) || prev.category || 'other',
@@ -1276,12 +1328,23 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       const form = new FormData();
       receiptFiles.forEach(({ file }) => form.append('receipt', file));
       const response = await fetch('/api/ai/receipt-scan', { method: 'POST', body: form });
-      const payload = await response.json() as {
-        success?: boolean;
-        error?: string;
-        data?: AiExtractedData;
-        results?: Array<{ fileName: string; success?: boolean; data?: AiExtractedData; error?: string }>;
-      };
+      const payload = await response.json() as ReceiptScanApiPayload;
+      setReceiptDebug(payload.debug || payload.results?.[0]?.debug || null);
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('AI receipt batch result', {
+          apiStatus: response.status,
+          success: payload.success,
+          results: payload.results?.map(result => ({
+            fileName: result.fileName,
+            success: result.success,
+            rawTextLength: result.data?.rawText?.length || 0,
+            candidates: result.data?.amountCandidates?.length || 0,
+            selectedAmount: result.data ? extractedReceiptAmount(result.data) : undefined,
+            confidence: result.data?.confidenceLevel,
+            errorSource: result.debug?.errorSource,
+          })),
+        });
+      }
       if (!response.ok) throw new Error(payload.error || expenseText('couldNotRead', lang));
       const results = payload.results?.length
         ? payload.results
@@ -2183,6 +2246,18 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                     </div>
                     {receiptBatchProgress && <div className="receipt-selected-count">{receiptBatchProgress}</div>}
                     {receiptError && <div className="receipt-error">{receiptError}</div>}
+                    {process.env.NODE_ENV !== 'production' && receiptDebug && (
+                      <div className="receipt-debug-panel" role="status">
+                        <strong>{pick({ ar: 'تشخيص التحليل', en: 'Scan debug', fr: 'Diagnostic du scan' }, lang)}</strong>
+                        <span>{pick({ ar: 'المرحلة', en: 'Stage', fr: 'Étape' }, lang)}: {receiptDebug.stage || '-'}</span>
+                        <span>{pick({ ar: 'المزوّد', en: 'Provider', fr: 'Fournisseur' }, lang)}: {receiptDebug.providerConfigured ? pick({ ar: 'مُعد', en: 'configured', fr: 'configuré' }, lang) : pick({ ar: 'غير مُعد', en: 'missing', fr: 'manquant' }, lang)}</span>
+                        <span>{pick({ ar: 'طول النص', en: 'Text length', fr: 'Longueur du texte' }, lang)}: {receiptDebug.rawTextLength ?? 0}</span>
+                        <span>{pick({ ar: 'المبالغ', en: 'Candidates', fr: 'Candidats' }, lang)}: {receiptDebug.candidateCount ?? 0}</span>
+                        <span>{pick({ ar: 'المبلغ المختار', en: 'Selected amount', fr: 'Montant choisi' }, lang)}: {receiptDebug.selectedAmount ?? '-'}</span>
+                        <span>{pick({ ar: 'الثقة', en: 'Confidence', fr: 'Confiance' }, lang)}: {receiptDebug.confidence || '-'}</span>
+                        {receiptDebug.errorSource && <span>{pick({ ar: 'مصدر الخطأ', en: 'Error source', fr: 'Source d’erreur' }, lang)}: {receiptDebug.errorSource}</span>}
+                      </div>
+                    )}
                     {!!pendingReceiptExpenses.length && (
                       <div className="receipt-batch-review">
                         <div className="receipt-batch-head">
@@ -2249,7 +2324,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                           </div>
                         )}
                         <dl>
-                          <dt>{expenseText('merchant', lang)}</dt><dd>{expenseForm.aiExtractedData.merchantName || expenseForm.name || '-'}</dd>
+                          <dt>{expenseText('merchant', lang)}</dt><dd>{expenseForm.aiExtractedData.description || expenseForm.aiExtractedData.merchantName || expenseForm.name || '-'}</dd>
                           <dt>{expenseText('amount', lang)}</dt><dd>{expenseForm.amount ? money(Number(expenseForm.amount), lang, expenseForm.currency || currency) : '-'}</dd>
                           <dt>{expenseText('currency', lang)}</dt><dd>{expenseForm.currency || expenseForm.aiExtractedData.currency || currency || 'KWD'}</dd>
                           <dt>{expenseText('date', lang)}</dt><dd>{expenseForm.date}</dd>
@@ -2309,7 +2384,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 <img className="receipt-detail-image" src={receiptDetails.receipt_image_url} alt={expenseText('originalImage', lang)} />
               )}
               <div className="receipt-detail-grid">
-                <div><span>{expenseText('merchant', lang)}</span><b>{receiptDetails.ai_extracted_data?.merchantName || receiptDetails.name}</b></div>
+                <div><span>{expenseText('merchant', lang)}</span><b>{receiptDetails.ai_extracted_data?.description || receiptDetails.ai_extracted_data?.merchantName || receiptDetails.name}</b></div>
                 <div><span>{expenseText('amount', lang)}</span><b>{money(receiptDetails.amount, lang, currency)}</b></div>
                 <div><span>{expenseText('date', lang)}</span><b>{receiptDetails.date || '-'}</b></div>
                 <div><span>{expenseText('category', lang)}</span><b>{categoryLabel(receiptDetails.category, lang)}</b></div>
@@ -3326,6 +3401,9 @@ const expenseSmartStyles = `
   .receipt-selected-count{margin-top:9px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.18);border-radius:13px;padding:9px 11px;color:var(--sfm-muted);font-size:12px;font-weight:900}
   .receipt-scan-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;margin-top:10px}
   .receipt-error{border:1px solid rgba(239,68,68,.18);background:rgba(239,68,68,.08);color:#B91C1C;border-radius:13px;padding:10px 12px;font-size:13px;font-weight:900;margin-top:10px}
+  .receipt-debug-panel{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;border:1px solid rgba(29,140,255,.18);background:rgba(29,140,255,.08);border-radius:13px;padding:10px 12px;color:var(--sfm-muted);font-size:12px;font-weight:800}
+  .receipt-debug-panel strong{color:var(--sfm-foreground);font-size:12px}
+  .receipt-debug-panel span{border-radius:999px;background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);padding:4px 7px;max-width:100%;overflow-wrap:anywhere}
   .receipt-batch-review{display:grid;gap:12px;margin-top:12px}
   .receipt-batch-head{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
   .receipt-review-card{border:1px solid rgba(167,243,240,.18);background:var(--sfm-card);border-radius:18px;padding:12px;display:grid;gap:10px}
