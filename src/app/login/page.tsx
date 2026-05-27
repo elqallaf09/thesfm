@@ -24,9 +24,12 @@ import { CurrencySelect } from '@/components/CurrencySelect';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { hashSecurityAnswer, isEmail } from '@/lib/authSecurity';
 
-type AuthMode = 'login' | 'register' | 'forgot' | 'reset';
+type AuthMode = 'login' | 'register' | 'forgot' | 'reset' | 'twoFactor';
 type Message = { type: 'error' | 'ok'; text: string } | null;
 type PasswordStrength = 'weak' | 'medium' | 'strong';
+type TwoFactorChallenge = {
+  email: string;
+};
 
 const COUNTRY_OPTIONS = [
   { value: 'Kuwait', ar: 'الكويت', en: 'Kuwait', fr: 'Koweït' },
@@ -129,6 +132,18 @@ const TEXT = {
     errorSecurityLocked: 'تم تجاوز عدد المحاولات. استخدم رابط البريد الإلكتروني لاحقاً.',
     checkEmail: 'تم إنشاء الحساب. تحقق من بريدك الإلكتروني لتأكيد الحساب إذا كان التحقق مفعلاً.',
     noReveal: 'لن نكشف ما إذا كان البريد مسجلاً لحماية الحسابات.',
+    twoFactorTitle: 'التحقق عبر البريد الإلكتروني',
+    twoFactorBody: 'أدخل رمز التحقق المرسل إلى بريدك الإلكتروني قبل الدخول إلى الحساب.',
+    twoFactorSent: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني.',
+    twoFactorSendError: 'تعذر إرسال رمز التحقق حالياً. حاول مرة أخرى.',
+    verificationCode: 'رمز التحقق',
+    verifyCode: 'تحقق',
+    verifyingCode: 'جاري التحقق...',
+    resendCode: 'إعادة إرسال الرمز',
+    invalidCode: 'رمز التحقق غير صحيح.',
+    codeExpired: 'انتهت صلاحية الرمز. اطلب رمزاً جديداً.',
+    codeInvalidOrExpired: 'رمز التحقق غير صحيح أو منتهي الصلاحية.',
+    twoFactorNoEmail: 'لا يمكن إكمال المصادقة الثنائية بدون بريد إلكتروني صالح.',
   },
   en: {
     title: 'Smart Financial Manager',
@@ -199,6 +214,18 @@ const TEXT = {
     errorSecurityLocked: 'Too many attempts. Use the email recovery link again later.',
     checkEmail: 'Account created. Check your email to verify the account if verification is enabled.',
     noReveal: 'We do not reveal whether an email is registered to protect accounts.',
+    twoFactorTitle: 'Email Two-Factor Authentication',
+    twoFactorBody: 'Enter the verification code sent to your email before account access.',
+    twoFactorSent: 'A verification code has been sent to your email.',
+    twoFactorSendError: 'Could not send the verification code right now. Please try again.',
+    verificationCode: 'Verification Code',
+    verifyCode: 'Verify',
+    verifyingCode: 'Verifying...',
+    resendCode: 'Resend Code',
+    invalidCode: 'The verification code is incorrect.',
+    codeExpired: 'The code has expired. Request a new code.',
+    codeInvalidOrExpired: 'The verification code is incorrect or expired.',
+    twoFactorNoEmail: 'Two-factor authentication requires a valid email address.',
   },
   fr: {
     title: 'Gestionnaire financier intelligent',
@@ -269,6 +296,18 @@ const TEXT = {
     errorSecurityLocked: 'Trop de tentatives. Réutilisez le lien email plus tard.',
     checkEmail: 'Compte créé. Vérifiez votre email si la confirmation est activée.',
     noReveal: 'Nous ne révélons pas si un email est enregistré afin de protéger les comptes.',
+    twoFactorTitle: 'Authentification à deux facteurs par e-mail',
+    twoFactorBody: 'Saisissez le code de vérification envoyé à votre e-mail avant l’accès au compte.',
+    twoFactorSent: 'Un code de vérification a été envoyé à votre e-mail.',
+    twoFactorSendError: 'Impossible d’envoyer le code de vérification pour le moment. Réessayez.',
+    verificationCode: 'Code de vérification',
+    verifyCode: 'Vérifier',
+    verifyingCode: 'Vérification...',
+    resendCode: 'Renvoyer le code',
+    invalidCode: 'Le code de vérification est incorrect.',
+    codeExpired: 'Le code a expiré. Demandez un nouveau code.',
+    codeInvalidOrExpired: 'Le code de vérification est incorrect ou expiré.',
+    twoFactorNoEmail: 'L’authentification à deux facteurs nécessite une adresse e-mail valide.',
   },
 } as const;
 
@@ -332,6 +371,8 @@ function LoginContent() {
   const [recoveryHash, setRecoveryHash] = useState<string | null>(null);
   const [recoveryAnswer, setRecoveryAnswer] = useState('');
   const [securityAttempts, setSecurityAttempts] = useState(0);
+  const [twoFactorChallenge, setTwoFactorChallenge] = useState<TwoFactorChallenge | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
 
   const nextPath = useMemo(() => searchParams.get('next') || '/dashboard', [searchParams]);
   const passwordStrength = useMemo(() => strengthFor(password), [password]);
@@ -357,8 +398,8 @@ function LoginContent() {
   }, [queryMode, router]);
 
   useEffect(() => {
-    if (session && mode !== 'reset') router.replace(nextPath);
-  }, [mode, nextPath, router, session]);
+    if (session && mode !== 'reset' && mode !== 'twoFactor' && !submitting && !twoFactorChallenge) router.replace(nextPath);
+  }, [mode, nextPath, router, session, submitting, twoFactorChallenge]);
 
   useEffect(() => {
     if (mode !== 'reset' || !user) return;
@@ -385,6 +426,8 @@ function LoginContent() {
     setPassword('');
     setConfirmPassword('');
     setRecoveryAnswer('');
+    setTwoFactorCode('');
+    if (nextMode !== 'twoFactor') setTwoFactorChallenge(null);
   }
 
   function validatePassword(value: string) {
@@ -407,12 +450,71 @@ function LoginContent() {
     return '';
   }
 
+  async function sendLoginTwoFactorCode(emailAddress: string) {
+    const { error } = await supabase.auth.signInWithOtp({
+      email: emailAddress,
+      options: { shouldCreateUser: false },
+    });
+    return error;
+  }
+
   async function handleLogin() {
     if (!username.trim() || !password.trim()) return text.errorEmpty;
     const { error } = await signIn(username.trim(), password);
     if (error) return text.errorLogin;
+    const { data: authData } = await supabase.auth.getUser();
+    const authUser = authData.user;
+    if (!authUser?.id) return text.errorLogin;
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email_2fa_enabled')
+      .eq('id', authUser.id)
+      .maybeSingle();
+
+    if (profile?.email_2fa_enabled) {
+      const authEmail = authUser.email?.trim().toLowerCase() || '';
+      if (!isEmail(authEmail) || authEmail.endsWith('@smart-finance.local')) {
+        await signOut();
+        return text.twoFactorNoEmail;
+      }
+
+      const otpError = await sendLoginTwoFactorCode(authEmail);
+      await signOut();
+      if (otpError) return text.twoFactorSendError;
+
+      setTwoFactorChallenge({ email: authEmail });
+      setTwoFactorCode('');
+      setMode('twoFactor');
+      setPassword('');
+      setMessage({ type: 'ok', text: text.twoFactorSent });
+      return '';
+    }
     router.replace(nextPath);
     return '';
+  }
+
+  async function handleTwoFactorLogin() {
+    if (!twoFactorChallenge) return text.errorLogin;
+    const code = twoFactorCode.trim();
+    if (code.length !== 6) return text.invalidCode;
+    const { error } = await supabase.auth.verifyOtp({
+      email: twoFactorChallenge.email,
+      token: code,
+      type: 'email',
+    });
+    if (error) return error.message.toLowerCase().includes('expired') ? text.codeExpired : text.codeInvalidOrExpired;
+    router.replace(nextPath);
+    return '';
+  }
+
+  async function resendTwoFactorCode() {
+    if (!twoFactorChallenge) return;
+    setSubmitting(true);
+    setMessage(null);
+    const error = await sendLoginTwoFactorCode(twoFactorChallenge.email);
+    setSubmitting(false);
+    setMessage(error ? { type: 'error', text: text.twoFactorSendError } : { type: 'ok', text: text.twoFactorSent });
   }
 
   async function handleRegister() {
@@ -533,6 +635,7 @@ function LoginContent() {
         mode === 'login' ? await handleLogin()
         : mode === 'register' ? await handleRegister()
         : mode === 'forgot' ? await handleForgotPassword()
+        : mode === 'twoFactor' ? await handleTwoFactorLogin()
         : await handleResetPassword();
       if (error) setMessage({ type: 'error', text: error });
     } catch (error: any) {
@@ -547,7 +650,7 @@ function LoginContent() {
     router.replace('/dashboard');
   }
 
-  const cardTitle = mode === 'register' ? text.create : mode === 'forgot' ? text.forgot : mode === 'reset' ? text.reset : text.login;
+  const cardTitle = mode === 'register' ? text.create : mode === 'forgot' ? text.forgot : mode === 'reset' ? text.reset : mode === 'twoFactor' ? text.twoFactorTitle : text.login;
   const isRegister = mode === 'register';
 
   return (
@@ -560,7 +663,7 @@ function LoginContent() {
         <div className="brand">
           <Image src="/sfm-logo.png" alt="THE SFM" width={88} height={88} priority className="mark sfm-brand-mark sfm-brand-mark--auth" />
           <h1 id="auth-title">{cardTitle}</h1>
-          <p>{mode === 'forgot' ? text.sendResetBody : mode === 'reset' ? text.noReveal : text.subtitle}</p>
+          <p>{mode === 'forgot' ? text.sendResetBody : mode === 'reset' ? text.noReveal : mode === 'twoFactor' ? text.twoFactorBody : text.subtitle}</p>
         </div>
 
         {isRegister && (
@@ -593,6 +696,25 @@ function LoginContent() {
             <AuthField label={text.email} icon={<Mail size={18} />} required>
               <input value={forgotEmail} onChange={event => setForgotEmail(event.target.value)} placeholder={text.emailPlaceholder} type="email" autoComplete="email" dir="ltr" />
             </AuthField>
+          )}
+
+          {mode === 'twoFactor' && (
+            <>
+              <div className="security-note">
+                <ShieldCheck size={18} aria-hidden="true" />
+                <span>{text.twoFactorBody}</span>
+              </div>
+              <AuthField label={text.verificationCode} icon={<KeyRound size={18} />} required>
+                <input
+                  value={twoFactorCode}
+                  onChange={event => setTwoFactorCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  dir="ltr"
+                  autoFocus
+                />
+              </AuthField>
+            </>
           )}
 
           {mode === 'reset' && (
@@ -727,16 +849,17 @@ function LoginContent() {
             )}
             <button className="primary" disabled={submitting}>
               {submitting ? (
-                <span className="loading-label"><span className="spinner" />{mode === 'login' ? text.signingIn : mode === 'register' ? text.saving : text.sendReset}</span>
-              ) : mode === 'login' ? text.signIn : mode === 'register' ? (signupStep === 1 ? text.continue : text.createAccount) : mode === 'forgot' ? text.sendReset : text.reset}
+                <span className="loading-label"><span className="spinner" />{mode === 'login' ? text.signingIn : mode === 'register' ? text.saving : mode === 'twoFactor' ? text.verifyingCode : text.sendReset}</span>
+              ) : mode === 'login' ? text.signIn : mode === 'register' ? (signupStep === 1 ? text.continue : text.createAccount) : mode === 'forgot' ? text.sendReset : mode === 'twoFactor' ? text.verifyCode : text.reset}
             </button>
           </div>
         </form>
 
         <div className="actions">
+          {mode === 'twoFactor' && <button type="button" disabled={submitting} onClick={() => void resendTwoFactorCode()}>{text.resendCode}</button>}
           {mode !== 'login' && <button type="button" disabled={submitting} onClick={() => setAuthMode('login')}>{text.switchLogin}</button>}
-          {mode !== 'register' && <button type="button" disabled={submitting} onClick={() => setAuthMode('register')}>{text.switchCreate}</button>}
-          {mode !== 'forgot' && mode !== 'reset' && <button type="button" disabled={submitting} onClick={() => setAuthMode('forgot')}>{text.forgotLink}</button>}
+          {mode !== 'register' && mode !== 'twoFactor' && <button type="button" disabled={submitting} onClick={() => setAuthMode('register')}>{text.switchCreate}</button>}
+          {mode !== 'forgot' && mode !== 'reset' && mode !== 'twoFactor' && <button type="button" disabled={submitting} onClick={() => setAuthMode('forgot')}>{text.forgotLink}</button>}
           {mode === 'login' && <button type="button" disabled={submitting} onClick={enterGuestMode}>{text.guest}</button>}
         </div>
       </section>

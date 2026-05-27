@@ -32,6 +32,8 @@ export type Database = {
           security_answer_3: string | null
           phone_country_code: string | null
           phone_number: string | null
+          email_2fa_enabled: boolean
+          email_2fa_enabled_at: string | null
           view_mode: string | null
           created_at: string | null
           updated_at: string | null
@@ -55,6 +57,8 @@ export type Database = {
           security_answer_3?: string | null
           phone_country_code?: string | null
           phone_number?: string | null
+          email_2fa_enabled?: boolean
+          email_2fa_enabled_at?: string | null
           view_mode?: string | null
           created_at?: string | null
           updated_at?: string | null
@@ -78,6 +82,8 @@ export type Database = {
           security_answer_3?: string | null
           phone_country_code?: string | null
           phone_number?: string | null
+          email_2fa_enabled?: boolean
+          email_2fa_enabled_at?: string | null
           view_mode?: string | null
           created_at?: string | null
           updated_at?: string | null

@@ -46,6 +46,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { notifyCurrentUserProfileChanged } from '@/hooks/useCurrentUserProfile';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
+import { isEmail } from '@/lib/authSecurity';
 import { useCurrency } from '@/lib/useCurrency';
 
 type Lang = 'ar' | 'en' | 'fr';
@@ -83,6 +84,17 @@ type EmailChangeState = {
   newEmail: string;
   confirmEmail: string;
   currentPassword: string;
+};
+
+type EmailTwoFactorState = {
+  enabled: boolean;
+  enabledAt: string;
+  code: string;
+  mode: 'idle' | 'enable' | 'disable';
+  step: 'overview' | 'code';
+  loading: boolean;
+  message: string;
+  error: string;
 };
 
 const STORE_KEY = 'sfm_settings';
@@ -162,6 +174,33 @@ const txt = {
   passwordShort: { ar: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل', en: 'Password must be at least 8 characters', fr: 'Le mot de passe doit contenir au moins 8 caractères' },
   passwordChanged: { ar: 'تم تغيير كلمة المرور', en: 'Password changed', fr: 'Mot de passe modifié' },
   twoFactorHint: { ar: 'المصادقة الثنائية تحتاج ربطها بنظام المصادقة.', en: 'Two-factor authentication needs to be connected to the auth system.', fr: "L'authentification à deux facteurs doit être reliée au système d'authentification." },
+  twoFactorTitle: { ar: 'المصادقة الثنائية', en: 'Two-Factor Authentication', fr: 'Authentification à deux facteurs' },
+  emailTwoFactor: { ar: 'التحقق عبر البريد الإلكتروني', en: 'Email Two-Factor Authentication', fr: 'Authentification à deux facteurs par e-mail' },
+  emailTwoFactorDescription: { ar: 'عند تسجيل الدخول، سنرسل رمز تحقق إلى بريدك الإلكتروني قبل الدخول إلى الحساب.', en: 'When you sign in, we will send a verification code to your email before account access.', fr: 'Lors de la connexion, nous enverrons un code de vérification à votre e-mail avant l’accès au compte.' },
+  emailTwoFactorSetup: { ar: 'فعّل التحقق عبر البريد الإلكتروني لحماية حسابك بطبقة إضافية.', en: 'Enable email verification to protect your account with an extra layer.', fr: 'Activez la vérification par e-mail pour protéger votre compte avec une couche supplémentaire.' },
+  emailTwoFactorSecurity: { ar: 'المصادقة الثنائية تضيف طبقة حماية إضافية. حتى إذا عرف شخص كلمة المرور، سيحتاج رمز التحقق المرسل إلى بريدك.', en: 'Two-factor authentication adds an extra protection layer. Even if someone knows your password, they will need the code sent to your email.', fr: 'L’authentification à deux facteurs ajoute une couche de protection. Même si quelqu’un connaît votre mot de passe, il lui faudra le code envoyé à votre e-mail.' },
+  enableEmailTwoFactor: { ar: 'تفعيل التحقق عبر البريد', en: 'Enable Email Verification', fr: 'Activer la vérification par e-mail' },
+  disableEmailTwoFactor: { ar: 'إيقاف التحقق عبر البريد الإلكتروني', en: 'Disable Email Verification', fr: 'Désactiver la vérification par e-mail' },
+  twoFactorEnabled: { ar: 'مفعل', en: 'Enabled', fr: 'Activé' },
+  twoFactorDisabled: { ar: 'غير مفعل', en: 'Disabled', fr: 'Désactivé' },
+  twoFactorLoading: { ar: 'جاري تحميل المصادقة الثنائية...', en: 'Loading two-factor authentication...', fr: 'Chargement de l’authentification à deux facteurs...' },
+  twoFactorLoadError: { ar: 'تعذر تحميل إعدادات المصادقة الثنائية حالياً.', en: 'Could not load two-factor authentication settings right now.', fr: 'Impossible de charger les paramètres d’authentification à deux facteurs pour le moment.' },
+  twoFactorNoEmail: { ar: 'لا يمكن تفعيل المصادقة الثنائية بدون بريد إلكتروني صالح.', en: 'Two-factor authentication requires a valid email address.', fr: 'L’authentification à deux facteurs nécessite une adresse e-mail valide.' },
+  twoFactorEmailUnverified: { ar: 'لا يمكن تفعيل المصادقة الثنائية قبل تأكيد البريد الإلكتروني.', en: 'Confirm your email before enabling two-factor authentication.', fr: 'Confirmez votre e-mail avant d’activer l’authentification à deux facteurs.' },
+  verificationCode: { ar: 'رمز التحقق', en: 'Verification Code', fr: 'Code de vérification' },
+  verifyCode: { ar: 'تحقق', en: 'Verify', fr: 'Vérifier' },
+  enterEmailTwoFactorCode: { ar: 'أدخل رمز التحقق المرسل إلى بريدك الإلكتروني.', en: 'Enter the code sent to your email.', fr: 'Saisissez le code envoyé à votre e-mail.' },
+  sendCode: { ar: 'إرسال الرمز', en: 'Send Code', fr: 'Envoyer le code' },
+  resendCode: { ar: 'إعادة إرسال الرمز', en: 'Resend Code', fr: 'Renvoyer le code' },
+  sendingCode: { ar: 'جاري إرسال الرمز...', en: 'Sending code...', fr: 'Envoi du code...' },
+  verifyingCode: { ar: 'جاري التحقق...', en: 'Verifying...', fr: 'Vérification...' },
+  codeSent: { ar: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني.', en: 'A verification code has been sent to your email.', fr: 'Un code de vérification a été envoyé à votre e-mail.' },
+  invalidCode: { ar: 'رمز التحقق غير صحيح.', en: 'The verification code is incorrect.', fr: 'Le code de vérification est incorrect.' },
+  codeExpired: { ar: 'انتهت صلاحية الرمز. اطلب رمزاً جديداً.', en: 'The code has expired. Request a new code.', fr: 'Le code a expiré. Demandez un nouveau code.' },
+  codeInvalidOrExpired: { ar: 'رمز التحقق غير صحيح أو منتهي الصلاحية.', en: 'The verification code is incorrect or expired.', fr: 'Le code de vérification est incorrect ou expiré.' },
+  emailTwoFactorEnabledSuccess: { ar: 'تم تفعيل التحقق عبر البريد الإلكتروني بنجاح.', en: 'Email two-factor authentication was enabled successfully.', fr: 'L’authentification à deux facteurs par e-mail a été activée.' },
+  emailTwoFactorDisabledSuccess: { ar: 'تم إيقاف التحقق عبر البريد الإلكتروني.', en: 'Email two-factor authentication was disabled.', fr: 'L’authentification à deux facteurs par e-mail a été désactivée.' },
+  lastEnabled: { ar: 'آخر تفعيل', en: 'Last enabled', fr: 'Dernière activation' },
   devicesHint: { ar: 'إدارة الأجهزة تحتاج ربط سجل الجلسات في نظام المصادقة.', en: 'Device management needs session history from the auth system.', fr: 'La gestion des appareils nécessite l’historique des sessions.' },
   language: { ar: 'اللغة', en: 'Language', fr: 'Langue' },
   theme: { ar: 'المظهر', en: 'Theme', fr: 'Thème' },
@@ -273,12 +312,28 @@ export default function ProfilePage() {
   const [changingEmail, setChangingEmail] = useState(false);
   const [showEmailPassword, setShowEmailPassword] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
+  const [emailTwoFactor, setEmailTwoFactor] = useState<EmailTwoFactorState>({
+    enabled: false,
+    enabledAt: '',
+    code: '',
+    mode: 'idle',
+    step: 'overview',
+    loading: true,
+    message: '',
+    error: '',
+  });
   const [deleteWord, setDeleteWord] = useState('');
 
   const L = (key: keyof typeof txt) => T(key, lang);
   const authUser = user as (typeof user & { new_email?: string | null; email_change_sent_at?: string | null }) | null;
   const currentAuthEmail = user?.email || profile.email;
   const emailVerified = Boolean(user?.email_confirmed_at || user?.confirmed_at);
+  const canUseEmailTwoFactor = Boolean(
+    user?.email &&
+    isEmail(user.email) &&
+    !user.email.toLowerCase().endsWith('@smart-finance.local') &&
+    emailVerified,
+  );
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
@@ -313,6 +368,13 @@ export default function ProfilePage() {
         void supabase.from('profiles').update({ email: user.email }).eq('id', user.id);
       }
       setPendingEmail(String((user as { new_email?: string | null }).new_email || ''));
+      setEmailTwoFactor(prev => ({
+        ...prev,
+        enabled: Boolean(data?.email_2fa_enabled),
+        enabledAt: String(data?.email_2fa_enabled_at || ''),
+        loading: false,
+        error: '',
+      }));
       setProfile({
         displayName: String(data?.display_name || user.user_metadata?.display_name || ''),
         username: String(data?.username || user.email?.split('@')[0] || ''),
@@ -471,6 +533,97 @@ export default function ProfilePage() {
     setModal('email');
   }
 
+  function openTwoFactorModal() {
+    setEmailTwoFactor(prev => ({
+      ...prev,
+      code: '',
+      mode: 'idle',
+      step: 'overview',
+      message: '',
+      error: '',
+      loading: false,
+    }));
+    setModal('twoFactor');
+  }
+
+  async function sendEmailTwoFactorCode(mode: 'enable' | 'disable') {
+    if (!user?.email || !isEmail(user.email) || user.email.toLowerCase().endsWith('@smart-finance.local')) {
+      setEmailTwoFactor(prev => ({ ...prev, error: L('twoFactorNoEmail'), message: '' }));
+      return;
+    }
+    if (!emailVerified) {
+      setEmailTwoFactor(prev => ({ ...prev, error: L('twoFactorEmailUnverified'), message: '' }));
+      return;
+    }
+
+    setEmailTwoFactor(prev => ({ ...prev, loading: true, mode, error: '', message: '' }));
+    const { error } = await supabase.auth.signInWithOtp({
+      email: user.email,
+      options: { shouldCreateUser: false },
+    });
+
+    setEmailTwoFactor(prev => ({
+      ...prev,
+      loading: false,
+      step: error ? prev.step : 'code',
+      mode: error ? prev.mode : mode,
+      code: '',
+      message: error ? '' : L('codeSent'),
+      error: error ? L('twoFactorLoadError') : '',
+    }));
+  }
+
+  async function verifyEmailTwoFactorCode() {
+    if (!user?.email || !emailTwoFactor.code.trim()) return;
+    const action = emailTwoFactor.mode;
+    if (action !== 'enable' && action !== 'disable') return;
+
+    setEmailTwoFactor(prev => ({ ...prev, loading: true, error: '', message: '' }));
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email: user.email,
+      token: emailTwoFactor.code.trim(),
+      type: 'email',
+    });
+
+    if (verifyError) {
+      setEmailTwoFactor(prev => ({
+        ...prev,
+        loading: false,
+        error: verifyError.message.toLowerCase().includes('expired') ? L('codeExpired') : L('codeInvalidOrExpired'),
+      }));
+      return;
+    }
+
+    const enabled = action === 'enable';
+    const enabledAt = enabled ? new Date().toISOString() : null;
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        email_2fa_enabled: enabled,
+        email_2fa_enabled_at: enabledAt,
+      })
+      .eq('id', user.id);
+
+    if (profileError) {
+      setEmailTwoFactor(prev => ({ ...prev, loading: false, error: L('twoFactorLoadError') }));
+      return;
+    }
+
+    setEmailTwoFactor(prev => ({
+      ...prev,
+      enabled,
+      enabledAt: enabledAt || '',
+      code: '',
+      mode: 'idle',
+      step: 'overview',
+      loading: false,
+      message: '',
+      error: '',
+    }));
+    setModal(null);
+    showToast(enabled ? L('emailTwoFactorEnabledSuccess') : L('emailTwoFactorDisabledSuccess'));
+  }
+
   function exportData() {
     const blob = new Blob([JSON.stringify({ profile, preferences, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -525,13 +678,16 @@ export default function ProfilePage() {
         <SecuritySettings
           labels={{
             title: L('security'), emailAddress: L('emailAddress'), changeEmail: L('changeEmail'), emailVerified: L('emailVerified'), emailNotVerified: L('emailNotVerified'), pendingConfirmation: L('pendingConfirmation'),
-            changePassword: L('changePassword'), twoFactor: L('twoFactor'), devices: L('connectedDevices'), lastLogin: L('lastLogin'), signOutAll: L('signOutAll'), open: L('open'), enable: L('enable'), view: L('view'), execute: L('execute'), today: L('today'),
+            changePassword: L('changePassword'), twoFactor: L('twoFactorTitle'), emailTwoFactor: L('emailTwoFactor'), twoFactorEnabled: L('twoFactorEnabled'), twoFactorDisabled: L('twoFactorDisabled'), lastEnabled: L('lastEnabled'), devices: L('connectedDevices'), lastLogin: L('lastLogin'), signOutAll: L('signOutAll'), open: L('open'), enable: L('enable'), view: L('view'), execute: L('execute'), today: L('today'), disable: L('disableEmailTwoFactor'),
           }}
           currentEmail={currentAuthEmail}
           pendingEmail={pendingEmail || String(authUser?.new_email || '')}
           emailVerified={emailVerified}
+          emailTwoFactorEnabled={emailTwoFactor.enabled}
+          emailTwoFactorEnabledAt={emailTwoFactor.enabledAt}
           onModal={setModal}
           onChangeEmail={openEmailModal}
+          onTwoFactor={openTwoFactorModal}
           onSignOutAll={() => void signOutEverywhere()}
         />
 
@@ -592,8 +748,72 @@ export default function ProfilePage() {
         </div>
       </ConfirmationModal>
 
-      <ConfirmationModal open={modal === 'twoFactor'} title={L('twoFactor')} onClose={() => setModal(null)}>
-        <InfoBox icon={<ShieldCheck />} text={L('twoFactorHint')} />
+      <ConfirmationModal open={modal === 'twoFactor'} title={L('twoFactorTitle')} onClose={() => setModal(null)}>
+        <div className="modal-fields">
+          <InfoBox icon={<ShieldCheck />} text={L('emailTwoFactorSecurity')} />
+          <div className="two-factor-panel">
+            <div className="two-factor-row">
+              <span className="stat-icon"><Mail size={18} /></span>
+              <div>
+                <strong>{L('emailTwoFactor')}</strong>
+                <p>{L('emailTwoFactorDescription')}</p>
+                <span className={emailTwoFactor.enabled ? 'status-pill on' : 'status-pill'}>
+                  {emailTwoFactor.enabled ? L('twoFactorEnabled') : L('twoFactorDisabled')}
+                </span>
+              </div>
+            </div>
+
+            {!canUseEmailTwoFactor && (
+              <div className="message-inline danger">
+                {currentAuthEmail ? L('twoFactorEmailUnverified') : L('twoFactorNoEmail')}
+              </div>
+            )}
+
+            {emailTwoFactor.step === 'overview' && canUseEmailTwoFactor && (
+              <>
+                <p className="two-factor-copy">{L('emailTwoFactorSetup')}</p>
+                <button
+                  className={emailTwoFactor.enabled ? 'danger-btn' : 'gold-btn'}
+                  onClick={() => void sendEmailTwoFactorCode(emailTwoFactor.enabled ? 'disable' : 'enable')}
+                  disabled={emailTwoFactor.loading}
+                >
+                  <ShieldCheck size={16} />
+                  {emailTwoFactor.loading ? L('sendingCode') : emailTwoFactor.enabled ? L('disableEmailTwoFactor') : L('enableEmailTwoFactor')}
+                </button>
+              </>
+            )}
+
+            {emailTwoFactor.step === 'code' && (
+              <>
+                <Field icon={<KeyRound size={16} />} label={L('verificationCode')}>
+                  <input
+                    value={emailTwoFactor.code}
+                    onChange={event => setEmailTwoFactor(prev => ({ ...prev, code: event.target.value.replace(/\D/g, '').slice(0, 6) }))}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    autoFocus
+                    aria-label={L('verificationCode')}
+                    dir="ltr"
+                  />
+                </Field>
+                <p className="two-factor-copy">{L('enterEmailTwoFactorCode')}</p>
+                <div className="section-actions">
+                  <button className="gold-btn" onClick={() => void verifyEmailTwoFactorCode()} disabled={emailTwoFactor.loading || emailTwoFactor.code.length !== 6}>
+                    <CheckCircle2 size={16} />
+                    {emailTwoFactor.loading ? L('verifyingCode') : L('verifyCode')}
+                  </button>
+                  <button className="ghost-btn" onClick={() => void sendEmailTwoFactorCode(emailTwoFactor.mode === 'disable' ? 'disable' : 'enable')} disabled={emailTwoFactor.loading}>
+                    <Mail size={16} />
+                    {L('resendCode')}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {emailTwoFactor.message && <div className="message-inline">{emailTwoFactor.message}</div>}
+            {emailTwoFactor.error && <div className="message-inline danger">{emailTwoFactor.error}</div>}
+          </div>
+        </div>
       </ConfirmationModal>
 
       <ConfirmationModal open={modal === 'devices'} title={L('connectedDevices')} onClose={() => setModal(null)}>
@@ -617,7 +837,7 @@ export default function ProfilePage() {
         .profile-card{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:24px;box-shadow:0 4px 22px rgba(3,18,37,.06);padding:20px}.profile-layout{display:grid;grid-template-columns:360px 1fr;gap:16px;margin-bottom:16px}.hero-card{background:linear-gradient(145deg,var(--sfm-deep-navy),var(--sfm-primary-dark));color:var(--sfm-card);border:1px solid rgba(167,243,240,.2);border-radius:26px;padding:24px;box-shadow:0 18px 55px rgba(3,18,37,.16)}.avatar{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;font-size:28px;font-weight:900;border:4px solid rgba(255,255,255,.12)}.premium-pill{display:inline-flex;align-items:center;gap:7px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);border:1px solid rgba(167,243,240,.22);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900}.hero-actions,.section-actions{display:flex;gap:8px;flex-wrap:wrap}.ghost-btn,.gold-btn,.danger-btn{height:42px;border-radius:14px;border:0;padding:0 15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;text-decoration:none;transition:.2s}.gold-btn{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 10px 24px rgba(167,243,240,.2)}.ghost-btn{background:var(--sfm-light-card);color:var(--sfm-muted);border:1px solid rgba(167,243,240,.18)}.danger-btn{background:#B91C1C;color:#fff}.danger-btn:disabled,.gold-btn:disabled{opacity:.55;cursor:not-allowed;filter:saturate(.75)}.dark-ghost{background:rgba(255,255,255,.08);color:var(--sfm-card);border:1px solid rgba(255,255,255,.14)}
         .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;height:100%}.stat-card{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:20px;padding:16px;display:grid;gap:9px;min-height:150px}.stat-icon{width:40px;height:40px;border-radius:14px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.stat-card span,.field label,.mini-label{font-size:12px;color:var(--sfm-muted);font-weight:900}.stat-card strong{font-size:22px}.section-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}.section-head h2{margin:0;font-size:18px;font-weight:900}.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.field{display:grid;gap:7px}.input-wrap{height:52px;border:1.5px solid rgba(167,243,240,.2);border-radius:15px;background:var(--sfm-light-card);display:flex;align-items:center;gap:9px;padding:0 12px;color:var(--sfm-muted)}.input-wrap input,.input-wrap select{border:0;outline:0;background:transparent;width:100%;height:100%;font:800 14px Tajawal,Arial,sans-serif;color:var(--sfm-foreground)}.input-wrap input[readonly]{opacity:.65}.field-icon-btn{border:0;background:transparent;color:var(--sfm-muted);display:grid;place-items:center;border-radius:999px;padding:5px;cursor:pointer}.field-icon-btn:hover,.field-icon-btn:focus-visible{color:var(--sfm-primary);outline:2px solid rgba(24,212,212,.24);outline-offset:2px}.profile-section{margin-bottom:16px}.setting-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid rgba(167,243,240,.1)}.setting-row:last-child{border-bottom:0}.setting-row p{margin:4px 0 0;color:var(--sfm-muted);font-size:12px;font-weight:700;overflow-wrap:anywhere}.toggle{width:48px;height:28px;border-radius:999px;border:0;background:#CBD5E1;padding:3px;cursor:pointer}.toggle i{display:block;width:22px;height:22px;border-radius:50%;background:white;transition:.2s}.toggle.on{background:var(--sfm-accent)}.toggle.on i{transform:translateX(-20px)}[dir="ltr"] .toggle.on i{transform:translateX(20px)}
         .pref-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.segmented{display:flex;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14);border-radius:14px;padding:4px;gap:4px}.segmented button{flex:1;border:0;border-radius:11px;background:transparent;height:38px;font:900 12px Tajawal,Arial,sans-serif;color:var(--sfm-muted);cursor:pointer}.segmented button.active{background:var(--sfm-card);color:var(--sfm-foreground);box-shadow:0 3px 12px rgba(3,18,37,.08)}.premium-grid,.activity-list{display:grid;gap:10px}.premium-grid{grid-template-columns:repeat(4,1fr)}.feature-card{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:14px;font-weight:900;color:var(--sfm-muted);display:flex;align-items:center;gap:9px}.plan-card{background:linear-gradient(135deg,var(--sfm-foreground),var(--sfm-primary-dark));color:var(--sfm-card);border-radius:20px;padding:18px;display:grid;gap:8px}.activity-item{display:flex;align-items:center;gap:12px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.1);border-radius:15px;padding:12px}.activity-item svg{color:var(--sfm-soft-cyan)}.danger-zone{border-color:rgba(185,28,28,.18);background:linear-gradient(135deg,var(--sfm-card),#FFF7F4)}.profile-toast{position:fixed;z-index:50;inset-inline-start:24px;inset-inline-end:auto;bottom:24px;width:max-content;max-width:min(420px,calc(100vw - 48px));display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;background:var(--sfm-primary-dark);color:#EAF6FF;border:1px solid rgba(24,212,212,.28);border-radius:18px;padding:12px 14px;font-weight:900;line-height:1.55;box-shadow:0 18px 45px rgba(3,18,37,.22),0 0 0 1px rgba(255,255,255,.04);animation:toastSlideUp .22s ease-out}.profile-toast p{margin:0;min-width:0;overflow-wrap:anywhere}.profile-toast-icon{width:30px;height:30px;border-radius:999px;display:grid;place-items:center;background:rgba(24,212,212,.14);color:var(--sfm-soft-cyan);box-shadow:0 0 18px rgba(24,212,212,.18)}.profile-toast button{width:30px;height:30px;border:0;border-radius:999px;background:rgba(255,255,255,.08);color:#EAF6FF;display:grid;place-items:center;cursor:pointer;transition:.18s ease}.profile-toast button:hover,.profile-toast button:focus-visible{background:rgba(24,212,212,.18);color:#FFFFFF;outline:2px solid rgba(24,212,212,.34);outline-offset:2px}@keyframes toastSlideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-        .modal-overlay{position:fixed;inset:0;z-index:90;background:rgba(17,17,17,.45);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px}.modal-card{width:min(520px,100%);max-height:calc(100dvh - 36px);overflow:auto;background:var(--sfm-card);border:1px solid rgba(167,243,240,.18);border-radius:24px;padding:22px;box-shadow:0 24px 80px rgba(3,18,37,.28)}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.modal-head h3{margin:0;font-size:19px}.modal-fields{display:grid;gap:12px}.info-box{display:flex;gap:10px;align-items:flex-start;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:14px;color:var(--sfm-muted);line-height:1.7;font-weight:800}.info-box.danger{background:#FEF2F2;border-color:#FCA5A5;color:#B91C1C}.profile-loading{min-height:100vh;display:grid;place-items:center;background:var(--sfm-light-card);color:var(--sfm-muted);font-size:34px}
+        .modal-overlay{position:fixed;inset:0;z-index:90;background:rgba(17,17,17,.45);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px}.modal-card{width:min(520px,100%);max-height:calc(100dvh - 36px);overflow:auto;background:var(--sfm-card);border:1px solid rgba(167,243,240,.18);border-radius:24px;padding:22px;box-shadow:0 24px 80px rgba(3,18,37,.28)}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.modal-head h3{margin:0;font-size:19px}.modal-fields{display:grid;gap:12px}.info-box{display:flex;gap:10px;align-items:flex-start;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:14px;color:var(--sfm-muted);line-height:1.7;font-weight:800}.info-box.danger{background:#FEF2F2;border-color:#FCA5A5;color:#B91C1C}.two-factor-panel{display:grid;gap:14px;border:1px solid rgba(24,212,212,.18);background:var(--sfm-light-card);border-radius:18px;padding:14px}.two-factor-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start}.two-factor-row strong{display:block;color:var(--sfm-foreground);font-size:15px}.two-factor-row p,.two-factor-copy{margin:4px 0 0;color:var(--sfm-muted);font-size:13px;font-weight:800;line-height:1.7}.status-pill{display:inline-flex;width:max-content;margin-top:9px;border-radius:999px;border:1px solid rgba(100,116,139,.20);background:rgba(100,116,139,.10);color:var(--sfm-muted);padding:5px 10px;font-weight:950;font-size:12px}.status-pill.on{background:rgba(16,185,129,.14);border-color:rgba(16,185,129,.25);color:#047857}.message-inline{border:1px solid rgba(16,185,129,.22);background:rgba(16,185,129,.10);color:#047857;border-radius:14px;padding:10px 12px;font-size:13px;font-weight:900;line-height:1.6}.message-inline.danger{background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.24);color:#B91C1C}.profile-loading{min-height:100vh;display:grid;place-items:center;background:var(--sfm-light-card);color:var(--sfm-muted);font-size:34px}
         @media(max-width:1180px){.profile-main{margin-inline-start:0}.profile-layout{grid-template-columns:1fr}.stats-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:720px){.profile-main{padding:14px}.profile-top{display:grid}.stats-grid,.form-grid,.pref-grid,.premium-grid{grid-template-columns:1fr}.hero-actions .ghost-btn,.hero-actions .gold-btn,.section-actions .ghost-btn,.section-actions .gold-btn,.section-actions .danger-btn,.modal-fields .gold-btn{width:100%}.setting-row{align-items:flex-start;flex-direction:column}.modal-overlay{place-items:end center;padding:10px}.modal-card{width:100%;border-radius:22px;max-height:calc(100dvh - 20px)}.profile-toast{inset-inline:16px;bottom:16px;width:auto;max-width:none}}
       `}</style>
     </div>
@@ -690,18 +910,29 @@ function SecuritySettings({
   currentEmail,
   pendingEmail,
   emailVerified,
+  emailTwoFactorEnabled,
+  emailTwoFactorEnabledAt,
   onModal,
   onChangeEmail,
+  onTwoFactor,
   onSignOutAll,
 }: {
   labels: Record<string, string>;
   currentEmail: string;
   pendingEmail: string;
   emailVerified: boolean;
+  emailTwoFactorEnabled: boolean;
+  emailTwoFactorEnabledAt: string;
   onModal: (modal: ModalKind) => void;
   onChangeEmail: () => void;
+  onTwoFactor: () => void;
   onSignOutAll: () => void;
 }) {
+  const twoFactorStatus = [
+    `${labels.emailTwoFactor}: ${emailTwoFactorEnabled ? labels.twoFactorEnabled : labels.twoFactorDisabled}`,
+    emailTwoFactorEnabledAt ? `${labels.lastEnabled}: ${new Date(emailTwoFactorEnabledAt).toLocaleDateString()}` : '',
+  ].filter(Boolean).join(' · ');
+
   return (
     <Section title={labels.title} icon={<ShieldCheck size={19} />}>
       <SettingRow
@@ -712,7 +943,13 @@ function SecuritySettings({
         onClick={onChangeEmail}
       />
       <SettingRow icon={<KeyRound />} title={labels.changePassword} action={labels.open} onClick={() => onModal('password')} />
-      <SettingRow icon={<ShieldCheck />} title={labels.twoFactor} action={labels.enable} onClick={() => onModal('twoFactor')} />
+      <SettingRow
+        icon={<ShieldCheck />}
+        title={labels.twoFactor}
+        subtitle={twoFactorStatus}
+        action={emailTwoFactorEnabled ? labels.disable : labels.enable}
+        onClick={onTwoFactor}
+      />
       <SettingRow icon={<Smartphone />} title={labels.devices} action={labels.view} onClick={() => onModal('devices')} />
       <SettingRow icon={<Activity />} title={labels.lastLogin} subtitle={labels.today} action={labels.view} onClick={() => onModal('devices')} />
       <SettingRow icon={<LogOut />} title={labels.signOutAll} action={labels.execute} onClick={onSignOutAll} />
