@@ -829,13 +829,37 @@ export default function ExecutiveDashboardPage() {
 
   const hasErrors = Object.keys(errors).length > 0;
   const topOpenTasks = dashboardTasks.filter(task => task.status === 'open').slice(0, 3);
+  const sourceUnavailable = (...keys: DashboardKey[]) => keys.some((key) => Boolean(errors[key]));
   const hasAssetData = records.savings.length > 0 || records.investments.length > 0 || records.goals.length > 0;
   const totalAssets = summary.savingsTotal + summary.investmentsTotal + summary.totalGoalBalance;
+  const reportKpiSources: DashboardKey[] = [
+    'income',
+    'expenses',
+    'savings',
+    'goals',
+    'investments',
+    'projects',
+    'projectFinancialModels',
+    'zakatCalculations',
+    'charityDonations',
+  ];
   const heroKpis = [
-    { label: text.totalAssets, value: hasAssetData ? money(totalAssets) : text.insufficientData },
-    { label: text.activeProjects, value: `${summary.activeProjects}` },
-    { label: text.todayAlerts, value: `${summary.dueTodayNotifications}` },
-    { label: text.readyReports, value: `${summary.readyReports}` },
+    {
+      label: text.totalAssets,
+      value: !sourceUnavailable('savings', 'investments', 'goals') && hasAssetData ? money(totalAssets) : text.insufficientData,
+    },
+    {
+      label: text.activeProjects,
+      value: sourceUnavailable('projects') ? text.insufficientData : `${summary.activeProjects}`,
+    },
+    {
+      label: text.todayAlerts,
+      value: sourceUnavailable('notifications') ? text.insufficientData : `${summary.dueTodayNotifications}`,
+    },
+    {
+      label: text.readyReports,
+      value: sourceUnavailable(...reportKpiSources) ? text.insufficientData : `${summary.readyReports}`,
+    },
   ];
 
   if (loading || isLoadingData) {
