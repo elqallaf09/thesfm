@@ -33,7 +33,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useSmartTasks } from '@/hooks/useSmartTasks';
 import { supabase } from '@/integrations/supabase/client';
-import { loadUserDataTables, safeDivide, sumAmounts } from '@/lib/data/financeData';
+import { loadUserDataTables, personalExpenseRows, safeDivide, sumAmounts } from '@/lib/data/financeData';
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
 
@@ -596,7 +596,12 @@ export default function ExecutiveDashboardPage() {
     }
 
     if (dataResult.status === 'fulfilled') {
-      setRecords({ ...EMPTY_RECORDS, ...dataResult.value.records });
+      const nextRecords = {
+        ...EMPTY_RECORDS,
+        ...dataResult.value.records,
+        expenses: personalExpenseRows(dataResult.value.records.expenses ?? []),
+      };
+      setRecords(nextRecords);
       setErrors(dataResult.value.errors);
     } else {
       setRecords(EMPTY_RECORDS);

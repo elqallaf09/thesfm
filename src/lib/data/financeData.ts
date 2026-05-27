@@ -2,6 +2,7 @@ export type SfmDataKey =
   | 'profiles'
   | 'income'
   | 'expenses'
+  | 'projectExpenses'
   | 'savings'
   | 'goals'
   | 'investments'
@@ -53,6 +54,7 @@ export const CORE_FINANCE_TABLES: SfmDataTable[] = [
 export const REPORT_DATA_TABLES: SfmDataTable[] = [
   { key: 'income', table: 'monthly_income_sources' },
   { key: 'expenses', table: 'expense_items' },
+  { key: 'projectExpenses', table: 'project_expenses' },
   { key: 'savings', table: 'savings_items' },
   { key: 'goals', table: 'financial_goals' },
   { key: 'investments', table: 'investment_items' },
@@ -126,6 +128,55 @@ export function sumAmounts(rows: any[] = [], keys: string[] = ['amount']) {
   }, 0);
 }
 
+function recordObject(value: unknown): Record<string, any> {
+  if (!value) return {};
+  if (typeof value === 'object' && !Array.isArray(value)) return value as Record<string, any>;
+  if (typeof value !== 'string') return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export function expenseProjectId(row: any) {
+  const enhanced = recordObject(row?.enhanced);
+  const enhancedProject = recordObject(enhanced.project);
+  return String(
+    row?.project_id ??
+    row?.related_project_id ??
+    enhanced.project_id ??
+    enhanced.projectId ??
+    enhanced.linked_project_id ??
+    enhancedProject.id ??
+    ''
+  ).trim();
+}
+
+export function expensePaidFromPersonalBudget(row: any) {
+  const enhanced = recordObject(row?.enhanced);
+  return row?.paid_from_personal_budget === true ||
+    enhanced.paid_from_personal_budget === true ||
+    enhanced.include_in_personal_budget === true ||
+    enhanced.paidFromPersonalBudget === true;
+}
+
+export function isPersonalExpenseRow(row: any) {
+  const projectId = expenseProjectId(row);
+  if (!projectId) return true;
+  return expensePaidFromPersonalBudget(row);
+}
+
+export function personalExpenseRows<T = any>(rows: T[] = []) {
+  return rows.filter(row => isPersonalExpenseRow(row));
+}
+
+export function projectExpenseRows<T = any>(rows: T[] = [], projectId?: string | null) {
+  if (!projectId) return [];
+  return rows.filter(row => expenseProjectId(row) === projectId);
+}
+
 export function currentMonthRange(date = new Date()) {
   const start = new Date(date.getFullYear(), date.getMonth(), 1);
   const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
@@ -171,8 +222,9 @@ export async function loadUserDataTables<K extends string>(
 }
 
 export function buildFinanceOverview(records: Partial<SfmRecords>) {
+  const personalExpenses = personalExpenseRows(records.expenses ?? []);
   const incomeTotal = sumAmounts(records.income ?? [], ['amount']);
-  const expenseTotal = sumAmounts(records.expenses ?? [], ['amount']);
+  const expenseTotal = sumAmounts(personalExpenses, ['amount']);
   const savingsTotal = sumAmounts(records.savings ?? [], ['amount', 'current_value']);
   const investmentTotal = sumAmounts(records.investments ?? [], ['current_value', 'amount']);
   const charityTotal = sumAmounts(records.charityDonations ?? [], ['amount', 'donation_amount'])
@@ -190,7 +242,7 @@ export function buildFinanceOverview(records: Partial<SfmRecords>) {
     netBalance,
     expenseRatio: safeDivide(expenseTotal, incomeTotal),
     hasIncome: (records.income?.length ?? 0) > 0,
-    hasExpenses: (records.expenses?.length ?? 0) > 0,
+    hasExpenses: personalExpenses.length > 0,
     hasSavings: (records.savings?.length ?? 0) > 0,
     hasInvestments: (records.investments?.length ?? 0) > 0,
     hasGoals: (records.goals?.length ?? 0) > 0,

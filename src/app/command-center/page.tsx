@@ -28,7 +28,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useSmartTasks } from '@/hooks/useSmartTasks';
 import { supabase } from '@/integrations/supabase/client';
-import { loadUserDataTables } from '@/lib/data/financeData';
+import { loadUserDataTables, personalExpenseRows } from '@/lib/data/financeData';
 
 type Lang = 'ar' | 'en' | 'fr';
 type CommandKey =
@@ -199,7 +199,10 @@ export default function CommandCenterPage() {
       setLoading(true);
       const result = await loadUserDataTables(supabase as any, user.id, COMMAND_TABLES);
       if (!cancelled) {
-        setRecords(result.records as Records);
+        setRecords({
+          ...(result.records as Records),
+          expenses: personalExpenseRows(result.records.expenses ?? []),
+        });
         setLoading(false);
       }
     }

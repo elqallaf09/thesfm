@@ -28,7 +28,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useSmartTasks, type SmartTask } from '@/hooks/useSmartTasks';
 import { supabase } from '@/integrations/supabase/client';
-import { loadUserDataTables } from '@/lib/data/financeData';
+import { loadUserDataTables, personalExpenseRows } from '@/lib/data/financeData';
 import { formatDate } from '@/lib/formatDate';
 import {
   generateSmartNotifications,
@@ -218,7 +218,11 @@ export default function FinancialTodayPage() {
         stored = [];
       }
 
-      const dynamic = generateSmartNotifications(sourceResult.records as NotificationSourceData, lang as Lang);
+      const notificationRecords = {
+        ...sourceResult.records,
+        expenses: personalExpenseRows(sourceResult.records.expenses ?? []),
+      } as NotificationSourceData;
+      const dynamic = generateSmartNotifications(notificationRecords, lang as Lang);
       const merged = new Map<string, SmartNotification>();
       stored.map(normalizeStored).forEach(notice => merged.set(`stored:${notice.id}`, notice));
       dynamic.forEach(notice => merged.set(`dynamic:${notice.id}`, notice));

@@ -58,6 +58,8 @@ export type ProjectKpiProject = {
 type ActualExpenseRow = {
   id: string;
   amount: string | number | null;
+  project_id?: string | null;
+  expense_date?: string | null;
   enhanced?: Record<string, unknown> | null;
   created_at?: string | null;
 };
@@ -522,12 +524,13 @@ export function ProjectKpisTab({
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [financialRes, feasibilityRes, taskRes, milestoneRes, documentRes, expenseRes] = await Promise.all([
+    const [financialRes, feasibilityRes, taskRes, milestoneRes, documentRes, projectExpenseRes, legacyExpenseRes] = await Promise.all([
       (supabase as any).from('project_financial_models').select('*').eq('user_id', userId).eq('project_id', projectId).maybeSingle(),
       (supabase as any).from('project_feasibility_studies').select('*').eq('user_id', userId).eq('project_id', projectId).maybeSingle(),
       (supabase as any).from('project_tasks').select('*').eq('user_id', userId).eq('project_id', projectId),
       (supabase as any).from('project_milestones').select('*').eq('user_id', userId).eq('project_id', projectId),
       (supabase as any).from('project_documents').select('id').eq('user_id', userId).eq('project_id', projectId),
+      (supabase as any).from('project_expenses').select('id, amount, project_id, expense_date, created_at').eq('user_id', userId).eq('project_id', projectId),
       (supabase as any).from('expense_items').select('id, amount, enhanced, created_at').eq('user_id', userId),
     ]);
     setFinancialModel(financialRes.error ? null : financialRes.data as ProjectFinancialModelKpiRow | null);
@@ -535,7 +538,9 @@ export function ProjectKpisTab({
     setTasks(taskRes.error ? [] : (taskRes.data ?? []) as ProjectTaskRow[]);
     setMilestones(milestoneRes.error ? [] : (milestoneRes.data ?? []) as ProjectMilestoneRow[]);
     setDocumentsCount(documentRes.error ? 0 : (documentRes.data ?? []).length);
-    setLinkedExpenses(expenseRes.error ? [] : actualProjectExpenseRows((expenseRes.data ?? []) as ActualExpenseRow[], projectId));
+    const projectExpenseRows = projectExpenseRes.error ? [] : (projectExpenseRes.data ?? []) as ActualExpenseRow[];
+    const legacyExpenseRows = legacyExpenseRes.error ? [] : actualProjectExpenseRows((legacyExpenseRes.data ?? []) as ActualExpenseRow[], projectId);
+    setLinkedExpenses([...projectExpenseRows, ...legacyExpenseRows]);
     setLoading(false);
   }, [projectId, userId]);
 

@@ -28,6 +28,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { loadUserDataTables } from '@/lib/data/reportsData';
+import { personalExpenseRows } from '@/lib/data/financeData';
 
 type Lang = 'ar' | 'en' | 'fr';
 type ReportStatus = 'ready' | 'needs_data' | 'unavailable' | 'error';
@@ -36,6 +37,7 @@ type ReportView = 'all' | 'ready' | 'needs_data' | ReportCategory;
 type TableKey =
   | 'income'
   | 'expenses'
+  | 'projectExpenses'
   | 'savings'
   | 'goals'
   | 'investments'
@@ -103,6 +105,7 @@ type MissingAction = { label: string; href: string };
 const TABLES: Array<{ key: TableKey; table: string; userScoped: boolean }> = [
   { key: 'income', table: 'monthly_income_sources', userScoped: true },
   { key: 'expenses', table: 'expense_items', userScoped: true },
+  { key: 'projectExpenses', table: 'project_expenses', userScoped: true },
   { key: 'savings', table: 'savings_items', userScoped: true },
   { key: 'goals', table: 'financial_goals', userScoped: true },
   { key: 'investments', table: 'investment_items', userScoped: true },
@@ -566,8 +569,9 @@ const REPORTS: ReportDefinition[] = [
     category: 'projects',
     title: { ar: TEXT.ar.financialModelReport, en: TEXT.en.financialModelReport, fr: TEXT.fr.financialModelReport },
     description: { ar: 'تقرير النماذج المالية المحفوظة للمشاريع.', en: 'Report of saved project financial models.', fr: 'Rapport des modèles financiers enregistrés.' },
-    sources: { ar: ['project_financial_models'], en: ['project_financial_models'], fr: ['project_financial_models'] },
-    required: ['financialModels'],
+    sources: { ar: ['project_financial_models', 'project_expenses'], en: ['project_financial_models', 'project_expenses'], fr: ['project_financial_models', 'project_expenses'] },
+    required: ['projects'],
+    optional: ['financialModels', 'projectExpenses'],
     route: '/projects',
     exportable: true,
   },
@@ -890,6 +894,7 @@ const SOURCE_LABELS: Record<Lang, Record<string, string>> = {
     projects: 'المشاريع',
     project_feasibility_studies: 'دراسات الجدوى',
     project_financial_models: 'النماذج المالية',
+    project_expenses: 'مصروفات المشروع',
     project_tasks: 'مهام المشروع',
     project_milestones: 'معالم المشروع',
     project_documents: 'مستندات المشروع',
@@ -914,6 +919,7 @@ const SOURCE_LABELS: Record<Lang, Record<string, string>> = {
     projects: 'Projects',
     project_feasibility_studies: 'Feasibility studies',
     project_financial_models: 'Financial models',
+    project_expenses: 'Project expenses',
     project_tasks: 'Project tasks',
     project_milestones: 'Project milestones',
     project_documents: 'Project documents',
@@ -938,6 +944,7 @@ const SOURCE_LABELS: Record<Lang, Record<string, string>> = {
     projects: 'Projets',
     project_feasibility_studies: 'Études de faisabilité',
     project_financial_models: 'Modèles financiers',
+    project_expenses: 'Dépenses de projet',
     project_tasks: 'Tâches du projet',
     project_milestones: 'Jalons du projet',
     project_documents: 'Documents du projet',
@@ -1043,6 +1050,11 @@ function reportStatus(report: ReportDefinition, records: RecordsState, loadError
       ? 'ready'
       : 'needs_data';
   }
+  if (report.id === 'project-financial') {
+    return records.projects.length > 0 && (records.financialModels.length > 0 || records.projectExpenses.length > 0)
+      ? 'ready'
+      : 'needs_data';
+  }
   return report.required.every(key => records[key]?.length > 0) ? 'ready' : 'needs_data';
 }
 
@@ -1063,6 +1075,11 @@ function missingDataKeys(report: ReportDefinition, records: RecordsState) {
   if (report.id === 'project-kpis') {
     if (!records.projects.length) return ['projects'];
     const supportKeys: TableKey[] = ['tasks', 'financialModels', 'documents', 'milestones'];
+    return supportKeys.some(key => records[key]?.length > 0) ? [] : supportKeys;
+  }
+  if (report.id === 'project-financial') {
+    if (!records.projects.length) return ['projects'];
+    const supportKeys: TableKey[] = ['financialModels', 'projectExpenses'];
     return supportKeys.some(key => records[key]?.length > 0) ? [] : supportKeys;
   }
   return report.required.filter(key => !records[key]?.length);
@@ -1179,9 +1196,10 @@ function reportRows(report: ReportDefinition, records: RecordsState, filters: Fi
   }
 
   if (report.id === 'project-financial') {
-    return filteredRows(records.financialModels, filters).map(row => {
+    const modelRows = filteredRows(records.financialModels, filters).map(row => {
       const kpis = row.kpis && typeof row.kpis === 'object' ? row.kpis : {};
       return {
+        source: sourceLabel('project_financial_models', lang),
         project_id: row.project_id,
         total_revenue: numberValue(kpis.totalRevenue ?? kpis.total_revenue),
         total_profit: numberValue(kpis.totalProfit ?? kpis.total_profit),
@@ -1190,6 +1208,17 @@ function reportRows(report: ReportDefinition, records: RecordsState, filters: Fi
         updated_at: row.updated_at || row.created_at || '',
       };
     });
+    const expenseRows = filteredRows(records.projectExpenses, filters).map(row => ({
+      source: sourceLabel('project_expenses', lang),
+      project_id: row.project_id,
+      date: row.expense_date || row.created_at || '',
+      title: firstText(row, ['title', 'name'], entity.expense),
+      category: firstText(row, ['category']),
+      amount: numberValue(row.amount),
+      currency: row.currency || filters.currency,
+      paid_from_personal_budget: row.paid_from_personal_budget === true,
+    }));
+    return [...modelRows, ...expenseRows];
   }
 
   if (report.id === 'project-kpis') {
@@ -1340,7 +1369,10 @@ export default function ReportsCenterPage() {
       const result = await loadUserDataTables(supabase as any, user.id, TABLES);
 
       if (!cancelled) {
-        setRecords(result.records as RecordsState);
+        setRecords({
+          ...(result.records as RecordsState),
+          expenses: personalExpenseRows(result.records.expenses ?? []),
+        });
         setLoadErrors(result.errors as Partial<Record<TableKey, string>>);
         setIsLoading(false);
       }

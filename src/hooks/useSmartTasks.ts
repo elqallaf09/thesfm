@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
-import { loadUserDataTables } from '@/lib/data/financeData';
+import { loadUserDataTables, personalExpenseRows } from '@/lib/data/financeData';
 import {
   compareSmartTasks,
   generateSmartTasks,
@@ -113,7 +113,10 @@ export function useSmartTasks() {
     }
 
     if (dataResult.status === 'fulfilled') {
-      setRecords(dataResult.value.records as SmartTaskSourceData);
+      setRecords({
+        ...(dataResult.value.records as SmartTaskSourceData),
+        expenses: personalExpenseRows(dataResult.value.records.expenses ?? []),
+      });
       setErrors(dataResult.value.errors);
     } else {
       setRecords({});

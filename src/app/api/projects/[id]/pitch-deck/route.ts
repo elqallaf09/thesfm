@@ -615,21 +615,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (projectRes.error) return NextResponse.json({ success: false, error: 'Could not load project' }, { status: 500 });
   if (!projectRes.data) return NextResponse.json({ success: false, error: 'Project not found' }, { status: 404 });
 
-  const [feasibilityRes, financialRes, taskRes, milestoneRes, documentRes, deckRes, expenseRes, incomeRes] = await Promise.all([
+  const [feasibilityRes, financialRes, taskRes, milestoneRes, documentRes, deckRes, projectExpenseRes, legacyExpenseRes, incomeRes] = await Promise.all([
     (supabase as any).from('project_feasibility_studies').select('*').eq('user_id', user.id).eq('project_id', id).maybeSingle(),
     (supabase as any).from('project_financial_models').select('*').eq('user_id', user.id).eq('project_id', id).maybeSingle(),
     (supabase as any).from('project_tasks').select('*').eq('user_id', user.id).eq('project_id', id),
     (supabase as any).from('project_milestones').select('*').eq('user_id', user.id).eq('project_id', id),
     (supabase as any).from('project_documents').select('id,title,category,file_name,file_type,file_size,uploaded_at').eq('user_id', user.id).eq('project_id', id),
     (supabase as any).from('project_pitch_decks').select('*').eq('user_id', user.id).eq('project_id', id).eq('language', language).maybeSingle(),
+    (supabase as any).from('project_expenses').select('id,title,amount,expense_date,created_at').eq('user_id', user.id).eq('project_id', id),
     (supabase as any).from('expense_items').select('id,name,amount,created_at,enhanced').eq('user_id', user.id),
     (supabase as any).from('monthly_income_sources').select('amount').eq('user_id', user.id),
   ]);
 
-  const expenses = (expenseRes.error ? [] : expenseRes.data ?? []).filter((item: any) => {
+  const legacyExpenses = (legacyExpenseRes.error ? [] : legacyExpenseRes.data ?? []).filter((item: any) => {
     const enhanced = parseRecord(item.enhanced);
     return enhanced.project_id === id || enhanced.projectId === id || enhanced.linked_project_id === id || enhanced.project?.id === id;
   });
+  const expenses = [
+    ...(projectExpenseRes.error ? [] : projectExpenseRes.data ?? []),
+    ...legacyExpenses,
+  ];
 
   const context = {
     project: projectRes.data,

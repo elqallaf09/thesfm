@@ -50,6 +50,7 @@ import { formatCurrency } from '@/lib/format';
 import { getCurrency } from '@/lib/currencies';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { calculateGoalProgress, parseMoney } from '@/lib/goalProgress';
+import { personalExpenseRows } from '@/lib/data/financeData';
 
 type PageKind = 'expenses' | 'income' | 'invest' | 'savings' | 'goals' | 'reports' | 'ai';
 type ExpensePageTab = 'overview' | 'records' | 'receipts' | 'categories' | 'analytics' | 'reports';
@@ -159,6 +160,10 @@ type SmartExpense = MoneyItem & {
   ai_extracted_data?: AiExtractedData | null;
   ai_confidence_score?: number | null;
   updated_at?: string | null;
+  project_id?: string | null;
+  related_project_id?: string | null;
+  project_expense_id?: string | null;
+  paid_from_personal_budget?: boolean | null;
 };
 type ExpenseFormState = {
   id?: string;
@@ -845,7 +850,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
       setSnapshot({
         income: income.data.map(item => ({ ...item, name: item.label || item.category || item.name || 'Income' })),
-        expenses: expenses.data,
+        expenses: personalExpenseRows(expenses.data),
         savings: savings.data,
         investments: investments.data,
         goals: goals.data.map(goalFromRow),
