@@ -12,23 +12,23 @@ type ViewModeSelectorProps = {
 
 const COPY = {
   ar: {
-    label: 'وضع العرض',
-    simple: 'الوضع البسيط',
-    professional: 'الوضع الاحترافي',
+    label: 'طريقة العرض',
+    simple: 'العرض الأساسي',
+    professional: 'العرض المتقدم',
     simpleHint: 'يعرض الصفحات الأساسية فقط.',
     professionalHint: 'يعرض كل أدوات THE SFM.',
   },
   en: {
-    label: 'View Mode',
-    simple: 'Simple',
-    professional: 'Professional',
+    label: 'View Style',
+    simple: 'Basic View',
+    professional: 'Advanced View',
     simpleHint: 'Shows only core pages.',
     professionalHint: 'Shows every THE SFM tool.',
   },
   fr: {
     label: 'Mode d’affichage',
-    simple: 'Simple',
-    professional: 'Professionnel',
+    simple: 'Vue de base',
+    professional: 'Vue avancée',
     simpleHint: 'Affiche seulement les pages essentielles.',
     professionalHint: 'Affiche tous les outils THE SFM.',
   },
