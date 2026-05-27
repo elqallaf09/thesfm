@@ -6,10 +6,12 @@ import { useRouter } from 'next/navigation';
 import { BarChart3, Brain, Layers3, LineChart as LineChartIcon, PieChart as PieChartIcon, Plus, ShieldAlert, TrendingUp, WalletCards } from 'lucide-react';
 import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Sidebar } from '@/components/Sidebar';
+import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { InvestmentFormModal } from '@/components/invest/InvestmentFormModal';
 import { InvestmentList } from '@/components/invest/InvestmentList';
+import { InvestmentRow } from '@/components/invest/InvestmentRow';
 import { InvestmentDetailDrawer } from '@/components/invest/InvestmentDetailDrawer';
 import { ConfirmDeleteModal } from '@/components/invest/ConfirmDeleteModal';
 import { EmptyState } from '@/components/invest/EmptyState';
@@ -22,7 +24,7 @@ import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/t
 
 const TYPES: InvestmentType[] = ['stocks', 'realEstate', 'fund', 'gold', 'cash', 'crypto', 'project', 'other'];
 const RISKS: RiskLevel[] = ['low', 'medium', 'high'];
-const CHART_COLORS = ['var(--sfm-soft-cyan)', 'var(--sfm-muted)', 'var(--sfm-muted)', '#22C55E', '#3B82F6', 'var(--sfm-muted)', '#C8A96B', '#BFB5A8'];
+const CHART_COLORS = ['#1D8CFF', '#18D4D4', '#10B981', '#F59E0B', '#6366F1', '#0B3A66', '#14B8A6', '#94A3B8'];
 const RISK_SCORE: Record<RiskLevel, number> = { low: 1, medium: 2, high: 3 };
 type InvestTab = 'portfolio' | 'assets' | 'performance' | 'risk' | 'reports';
 
@@ -162,6 +164,9 @@ export default function InvestPage() {
   const marketLinkedInvestments = useMemo(() => items
     .map(item => ({ investment: item, symbol: investmentSymbol(item) }))
     .filter(item => item.symbol), [items]);
+  const portfolioPreview = useMemo(() => [...items]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 5), [items]);
   const insights = useMemo(() => {
     if (items.length === 0) return [];
     if (items.length === 1) return [t('invest_insights_addMoreForDiversification')];
@@ -257,7 +262,11 @@ export default function InvestPage() {
   return (
     <div className="invest-shell" dir={dir}>
       <Sidebar />
-      <main className="invest-main">
+      <DashboardPageShell
+        ariaLabel={labels.heroTitle}
+        className="invest-main"
+        contentClassName="invest-content"
+      >
         <header className="invest-topbar">
           <div>
             <span>{labels.activeBadge}</span>
@@ -320,6 +329,35 @@ export default function InvestPage() {
             />
 
             {activeTab === 'portfolio' && (
+            <section className="invest-portfolio-grid">
+            <section className="invest-panel invest-preview-panel">
+              <div className="invest-section-head invest-section-head--split">
+                <div>
+                  <span>{L('نظرة سريعة', 'Portfolio Preview', 'Aperçu du portefeuille')}</span>
+                  <h2>{L('آخر الأصول المسجلة', 'Latest recorded assets', 'Derniers actifs enregistrés')}</h2>
+                </div>
+                <button type="button" className="invest-secondary-btn" onClick={() => setActiveTab('assets')}>
+                  {L('عرض كل الأصول', 'View all assets', 'Voir tous les actifs')}
+                </button>
+              </div>
+              <div className="invest-list invest-list--preview">
+                {portfolioPreview.map(item => (
+                  <InvestmentRow
+                    key={item.id}
+                    investment={item}
+                    portfolioPercent={totalValue > 0 ? (item.currentValue / totalValue) * 100 : 0}
+                    labels={labels}
+                    typeLabel={typeLabel}
+                    riskLabel={riskLabel}
+                    formatMoney={money}
+                    onDetails={setDetails}
+                    onEdit={openEdit}
+                    onDelete={setDeleteTarget}
+                  />
+                ))}
+              </div>
+            </section>
+
             <section className="invest-panel invest-market-link">
               <div className="invest-section-head">
                 <LineChartIcon size={18} />
@@ -337,6 +375,7 @@ export default function InvestPage() {
               ) : (
                 <p>{L('أضف رمز الأصل لتحليل السوق. لا يتم عرض أسعار أو أرباح غير محققة بدون بيانات سوق حقيقية.','Add asset symbol for market analysis. No prices or unrealized gains are shown without real market data.','Ajoutez le symbole de l’actif pour l’analyse du marché. Aucun prix ni gain latent n’est affiché sans données de marché réelles.')}</p>
               )}
+            </section>
             </section>
             )}
 
@@ -381,7 +420,7 @@ export default function InvestPage() {
             </section>
             )}
 
-            {(activeTab === 'risk' || activeTab === 'reports') && (
+            {activeTab === 'risk' && (
             <section className="invest-analysis-grid" ref={insightsRef}>
               <div className="invest-panel invest-insights">
                 <div className="invest-section-head">
@@ -420,6 +459,26 @@ export default function InvestPage() {
                   <div className="invest-empty-chart">{t('invest_summary_defaultReturn')}</div>
                 )}
               </div>
+            </section>
+            )}
+
+            {activeTab === 'reports' && (
+            <section className="invest-panel invest-report-card">
+              <div className="invest-section-head invest-section-head--split">
+                <div>
+                  <span>{L('التقارير', 'Reports', 'Rapports')}</span>
+                  <h2>{L('تقرير الاستثمار', 'Investment report', 'Rapport d’investissement')}</h2>
+                </div>
+                <PieChartIcon size={20} />
+              </div>
+              <p>{items.length > 0
+                ? L('توجه إلى مركز التقارير لمعاينة تقرير الاستثمار بناءً على بياناتك المسجلة.', 'Open the Reports Center to preview the investment report from your saved data.', 'Ouvrez le centre des rapports pour prévisualiser le rapport d’investissement à partir de vos données enregistrées.')
+                : L('لا توجد بيانات استثمار كافية لإعداد تقرير.', 'There is not enough investment data to prepare a report.', 'Les données d’investissement sont insuffisantes pour préparer un rapport.')
+              }</p>
+              <button type="button" className="invest-primary-btn" onClick={() => router.push('/reports-center')}>
+                <BarChart3 size={16} />
+                {L('فتح مركز التقارير', 'Open Reports Center', 'Ouvrir le centre des rapports')}
+              </button>
             </section>
             )}
 
@@ -478,33 +537,34 @@ export default function InvestPage() {
         />
 
         {toast && <div className="invest-toast">{toast}</div>}
-      </main>
+      </DashboardPageShell>
 
       <style jsx global>{`
         .invest-shell{min-height:100vh;background:var(--sfm-light-card);color:var(--sfm-foreground);display:flex;font-family:Tajawal,Arial,sans-serif}
-        .invest-main{flex:1;width:100%;max-width:1280px;margin:0 auto;padding:22px;margin-inline-start:230px}
-        .invest-topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+        .invest-main{width:auto!important;max-width:none!important;margin:0!important;margin-inline-start:var(--sidebar-w)!important;margin-inline-end:0!important;padding:24px!important;overflow-x:clip!important}
+        .invest-content{display:grid;gap:16px;width:100%;max-width:none!important;max-inline-size:none!important;min-width:0;margin:0}
+        .invest-topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:0;min-width:0}
         .invest-topbar span{font-size:12px;color:var(--sfm-muted);font-weight:900}.invest-topbar h1{font-size:25px;margin:4px 0 0;font-weight:900;color:var(--sfm-foreground)}
-        .invest-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--sfm-foreground) 0%,var(--sfm-primary-dark) 58%,var(--sfm-soft-cyan) 140%);border:1px solid rgba(167,243,240,.22);border-radius:26px;padding:28px;display:flex;align-items:flex-end;justify-content:space-between;gap:18px;color:var(--sfm-card);box-shadow:0 20px 55px rgba(3,18,37,.16);margin-bottom:18px}
+        .invest-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--sfm-foreground) 0%,var(--sfm-primary-dark) 58%,var(--sfm-soft-cyan) 140%);border:1px solid rgba(167,243,240,.22);border-radius:26px;padding:28px;display:flex;align-items:flex-end;justify-content:space-between;gap:18px;color:var(--sfm-card);box-shadow:0 20px 55px rgba(3,18,37,.16);min-width:0;max-width:100%}
         .invest-hero:before{content:"";position:absolute;inset-inline-end:-80px;top:-90px;width:240px;height:240px;border-radius:50%;background:rgba(167,243,240,.12);filter:blur(18px)}
-        .invest-hero-content{position:relative;z-index:1}.invest-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.14);color:#86EFAC;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:900;margin-bottom:14px}.invest-badge span{width:7px;height:7px;border-radius:50%;background:#22C55E;animation:pulse 1.6s infinite}
+        .invest-hero-content{position:relative;z-index:1;min-width:0}.invest-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.14);color:#86EFAC;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:900;margin-bottom:14px}.invest-badge span{width:7px;height:7px;border-radius:50%;background:#22C55E;animation:pulse 1.6s infinite}
         .invest-hero h2{font-size:34px;line-height:1.05;margin:0 0 10px;font-weight:900}.invest-hero p{max-width:680px;margin:0 0 18px;color:rgba(255,255,255,.72);line-height:1.8;font-size:14px}
         .invest-hero-total{position:relative;z-index:1;min-width:230px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:18px;display:grid;gap:7px;backdrop-filter:blur(12px)}.invest-hero-total svg{color:var(--sfm-soft-cyan)}.invest-hero-total span{color:rgba(255,255,255,.68);font-size:12px;font-weight:800}.invest-hero-total strong{font-size:23px;color:var(--sfm-soft-cyan)}
         .invest-primary-btn,.invest-secondary-btn,.invest-danger-btn,.invest-glass-btn{height:43px;border-radius:14px;border:0;padding:0 17px;font:900 13px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:all .2s}.invest-primary-btn{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 10px 24px rgba(167,243,240,.22)}.invest-primary-btn:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(167,243,240,.28)}.invest-secondary-btn{background:var(--sfm-card);color:var(--sfm-muted);border:1px solid rgba(167,243,240,.22)}.invest-danger-btn{background:#B91C1C;color:#fff}.invest-glass-btn{margin-inline-start:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:var(--sfm-card)}.invest-glass-btn:hover{background:rgba(255,255,255,.18)}.invest-primary-btn:disabled,.invest-secondary-btn:disabled,.invest-danger-btn:disabled{opacity:.6;cursor:wait}
-        .invest-panel,.invest-empty{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:22px;box-shadow:0 4px 22px rgba(3,18,37,.06)}
-        .invest-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px}.invest-summary-card{min-height:132px;padding:16px;display:grid;gap:8px}.invest-summary-card .icon{width:38px;height:38px;border-radius:13px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.invest-summary-card span{font-size:11px;font-weight:900;color:var(--sfm-muted)}.invest-summary-card strong{font-size:18px;color:var(--sfm-foreground)}.invest-summary-card p{margin:0;color:var(--sfm-muted);font-size:11px;font-weight:800;line-height:1.6}
-        .invest-chart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}.invest-chart-card{padding:17px;min-height:330px}.invest-section-head{display:flex;align-items:center;gap:9px;margin-bottom:14px;color:var(--sfm-muted)}.invest-section-head h2{margin:0;color:var(--sfm-foreground);font-size:16px;font-weight:900}
-        .invest-market-link{padding:17px;margin-bottom:14px}.invest-market-link p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:900;line-height:1.7}.invest-market-chips{display:flex;flex-wrap:wrap;gap:9px}.invest-market-chips button{min-height:44px;border:1px solid rgba(167,243,240,.16);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-foreground);padding:8px 12px;display:flex;align-items:center;gap:8px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.invest-market-chips button strong{direction:ltr;color:var(--sfm-muted)}.invest-market-chips button span{color:var(--sfm-muted)}
-        .invest-analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}.invest-insights,.invest-projections{padding:18px}.invest-insight-list{display:grid;gap:10px}.invest-insight-item{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:15px;padding:12px}.invest-insight-item span{width:30px;height:30px;border-radius:11px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));display:grid;place-items:center;color:var(--sfm-foreground);font-size:12px;font-weight:900}.invest-insight-item p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:800;line-height:1.7}.invest-empty-chart{min-height:220px;display:grid;place-items:center;text-align:center;color:var(--sfm-muted);font-size:13px;font-weight:900;line-height:1.7;background:var(--sfm-light-card);border:1px dashed rgba(167,243,240,.24);border-radius:18px;padding:18px}
+        .invest-panel,.invest-empty{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:22px;box-shadow:0 4px 22px rgba(3,18,37,.06);min-width:0}
+        .invest-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;min-width:0;max-width:100%}.invest-summary-card{min-height:132px;padding:16px;display:grid;gap:8px;align-content:start}.invest-summary-card .icon{width:38px;height:38px;border-radius:13px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.invest-summary-card span{font-size:11px;font-weight:900;color:var(--sfm-muted)}.invest-summary-card strong{font-size:18px;color:var(--sfm-foreground);overflow-wrap:anywhere}.invest-summary-card p{margin:0;color:var(--sfm-muted);font-size:11px;font-weight:800;line-height:1.6}
+        .invest-chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}.invest-chart-card{padding:17px;min-height:330px}.invest-section-head{display:flex;align-items:center;gap:9px;margin-bottom:14px;color:var(--sfm-muted);min-width:0}.invest-section-head h2{margin:0;color:var(--sfm-foreground);font-size:16px;font-weight:900}.invest-section-head span{display:block;margin-bottom:4px;color:var(--sfm-muted);font-size:11px;font-weight:900}.invest-section-head--split{justify-content:space-between;align-items:flex-start;gap:14px}
+        .invest-portfolio-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:14px;align-items:start;min-width:0;max-width:100%}.invest-preview-panel{padding:17px}.invest-list--preview{padding:0}.invest-list--preview .invest-row:last-child{padding-bottom:0}.invest-market-link{padding:17px}.invest-market-link p,.invest-report-card p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:900;line-height:1.7}.invest-market-chips{display:flex;flex-wrap:wrap;gap:9px}.invest-market-chips button{min-height:44px;border:1px solid rgba(167,243,240,.16);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-foreground);padding:8px 12px;display:flex;align-items:center;gap:8px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.invest-market-chips button strong{direction:ltr;color:var(--sfm-muted)}.invest-market-chips button span{color:var(--sfm-muted)}
+        .invest-analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.invest-insights,.invest-projections,.invest-report-card{padding:18px}.invest-report-card{display:grid;gap:12px;align-content:start}.invest-insight-list{display:grid;gap:10px}.invest-insight-item{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:15px;padding:12px}.invest-insight-item span{width:30px;height:30px;border-radius:11px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));display:grid;place-items:center;color:var(--sfm-foreground);font-size:12px;font-weight:900}.invest-insight-item p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:800;line-height:1.7}.invest-empty-chart{min-height:220px;display:grid;place-items:center;text-align:center;color:var(--sfm-muted);font-size:13px;font-weight:900;line-height:1.7;background:var(--sfm-light-card);border:1px dashed rgba(167,243,240,.24);border-radius:18px;padding:18px}
         .invest-projection-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.invest-projection-grid div{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:15px;padding:12px;display:grid;gap:6px}.invest-projection-grid span{color:var(--sfm-muted);font-size:11px;font-weight:900}.invest-projection-grid strong{font-size:15px;color:var(--sfm-foreground)}.invest-projection-grid small{font-size:11px;color:var(--sfm-muted);font-weight:800}.invest-disclaimer{margin:12px 0 0;color:var(--sfm-muted);font-size:11px;font-weight:900}
         .invest-empty{min-height:280px;padding:42px 20px;text-align:center;display:grid;place-items:center;align-content:center;gap:12px}.invest-empty-icon{width:68px;height:68px;border-radius:22px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.invest-empty h3{margin:0;font-size:20px}.invest-empty p{max-width:520px;margin:0;color:var(--sfm-muted);line-height:1.8;font-size:14px}
-        .invest-controls{display:grid;grid-template-columns:1fr 220px 220px;gap:10px;padding:16px;border-bottom:1px solid rgba(167,243,240,.1)}.invest-controls input,.invest-controls select,.invest-field input,.invest-field select,.invest-field textarea{height:48px;border:1.5px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-foreground);padding:0 13px;font:800 13px Tajawal,Arial,sans-serif;outline:0}.invest-controls input:focus,.invest-controls select:focus,.invest-field input:focus,.invest-field select:focus,.invest-field textarea:focus{border-color:var(--sfm-soft-cyan);background:var(--sfm-card);box-shadow:0 0 0 4px rgba(167,243,240,.12)}
-        .invest-list{display:grid;gap:0;padding:4px 16px 16px}.invest-row{padding:16px 0;border-bottom:1px solid rgba(167,243,240,.1);display:grid;gap:11px}.invest-row:last-child{border-bottom:0}.invest-row-main{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.invest-row-main h3{margin:0 0 5px;font-size:16px;font-weight:900}.invest-row-main p{margin:0;color:#8B7A6D;font-size:12px;font-weight:800}.invest-row-main strong{font-size:16px;color:var(--sfm-soft-cyan);white-space:nowrap}.invest-row-meta{display:flex;flex-wrap:wrap;gap:8px}.invest-row-meta span{font-size:12px;font-weight:800;color:var(--sfm-muted);background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:999px;padding:6px 10px}.invest-row-actions{display:flex;gap:7px;flex-wrap:wrap}.invest-row-actions button{height:34px;border-radius:11px;border:1px solid rgba(167,243,240,.16);background:var(--sfm-card);color:var(--sfm-muted);padding:0 10px;font:900 12px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;gap:6px;cursor:pointer}.invest-row-actions button:hover{background:rgba(167,243,240,.09);color:var(--sfm-muted)}.invest-row-actions button.danger:hover{background:rgba(185,28,28,.08);color:#B91C1C}
+        .invest-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,220px) minmax(160px,220px);gap:10px;padding:14px;border-bottom:1px solid rgba(167,243,240,.1);min-width:0}.invest-controls input,.invest-controls select,.invest-field input,.invest-field select,.invest-field textarea{height:48px;min-width:0;width:100%;border:1.5px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-foreground);padding:0 13px;font:800 13px Tajawal,Arial,sans-serif;outline:0}.invest-controls input:focus,.invest-controls select:focus,.invest-field input:focus,.invest-field select:focus,.invest-field textarea:focus{border-color:var(--sfm-soft-cyan);background:var(--sfm-card);box-shadow:0 0 0 4px rgba(167,243,240,.12)}
+        .invest-list{display:grid;gap:0;padding:0 14px 14px;min-width:0}.invest-row{padding:13px 0;border-bottom:1px solid rgba(167,243,240,.1);display:grid;gap:9px;min-width:0}.invest-row:last-child{border-bottom:0}.invest-row-main{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}.invest-row-main>div{min-width:0}.invest-row-main h3{margin:0 0 5px;font-size:15px;font-weight:900;overflow-wrap:anywhere}.invest-row-main p{margin:0;color:#475569;font-size:12px;font-weight:800;overflow-wrap:anywhere}.invest-row-main strong{font-size:15px;color:var(--sfm-soft-cyan);white-space:nowrap}.invest-row-meta{display:flex;flex-wrap:wrap;gap:7px;min-width:0}.invest-row-meta span{font-size:11px;font-weight:800;color:var(--sfm-muted);background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:999px;padding:5px 9px;overflow-wrap:anywhere}.invest-row-actions{display:flex;gap:7px;flex-wrap:wrap}.invest-row-actions button{height:34px;border-radius:11px;border:1px solid rgba(167,243,240,.16);background:var(--sfm-card);color:var(--sfm-muted);padding:0 10px;font:900 12px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;gap:6px;cursor:pointer}.invest-row-actions button:hover{background:rgba(167,243,240,.09);color:var(--sfm-muted)}.invest-row-actions button.danger:hover{background:rgba(185,28,28,.08);color:#B91C1C}
         .invest-overlay{position:fixed;inset:0;z-index:80;background:rgba(17,17,17,.42);backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;padding:18px}.invest-modal{width:min(720px,100%);max-height:92vh;overflow:auto;background:var(--sfm-card);border:1px solid rgba(167,243,240,.18);border-radius:26px;box-shadow:0 28px 90px rgba(3,18,37,.3)}.invest-modal-head{position:sticky;top:0;background:rgba(248,251,255,.92);backdrop-filter:blur(10px);border-bottom:1px solid rgba(167,243,240,.12);padding:18px 20px;display:flex;justify-content:space-between;align-items:center}.invest-modal-head h2{margin:0;font-size:21px}.invest-icon-btn{width:38px;height:38px;border-radius:12px;border:1px solid rgba(167,243,240,.18);background:var(--sfm-card);color:var(--sfm-muted);display:grid;place-items:center;cursor:pointer}.invest-form{padding:20px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.invest-field{display:grid;gap:7px}.invest-field>span{font-size:12px;font-weight:900;color:var(--sfm-muted)}.invest-field b{color:#B91C1C;margin-inline-start:3px}.invest-field textarea{height:auto;min-height:88px;padding-top:12px;resize:vertical}.invest-field small{font-size:11px;color:#B91C1C;font-weight:800}.span-2{grid-column:1/-1}.invest-form-actions{display:flex;justify-content:flex-end;gap:10px}.invest-form-actions.center{justify-content:center}
         .invest-confirm{position:relative;width:min(430px,100%);background:var(--sfm-card);border-radius:24px;border:1px solid rgba(167,243,240,.18);box-shadow:0 24px 75px rgba(3,18,37,.28);padding:26px;text-align:center}.invest-close{position:absolute;top:14px;inset-inline-end:14px}.invest-confirm-icon{width:62px;height:62px;margin:0 auto 12px;border-radius:20px;background:rgba(185,28,28,.08);color:#B91C1C;display:grid;place-items:center}.invest-confirm h3{margin:0 0 8px}.invest-confirm p{margin:0 0 18px;color:var(--sfm-muted);line-height:1.8;font-weight:800}
         .invest-drawer{width:min(460px,100%);max-height:92vh;overflow:auto;background:var(--sfm-card);border:1px solid rgba(167,243,240,.18);border-radius:24px;padding:20px;box-shadow:0 28px 90px rgba(3,18,37,.3)}.invest-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.invest-drawer-title{display:flex;align-items:center;gap:12px}.invest-drawer-title>span{width:42px;height:42px;border-radius:14px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.invest-drawer-title p{margin:0 0 4px;color:var(--sfm-muted);font-size:12px;font-weight:900}.invest-drawer-title h3{margin:0;font-size:19px}.invest-detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.invest-detail-grid div,.invest-notes-box{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:15px;padding:12px}.invest-detail-grid span,.invest-notes-box strong{display:block;color:var(--sfm-muted);font-size:11px;font-weight:900;margin-bottom:6px}.invest-detail-grid strong,.invest-notes-box p{margin:0;color:var(--sfm-foreground);font-size:13px;font-weight:800;line-height:1.7}.invest-notes-box{margin-top:10px}
         .invest-toast{position:fixed;z-index:100;inset-inline-end:22px;bottom:22px;background:var(--sfm-foreground);color:var(--sfm-soft-cyan);border:1px solid rgba(167,243,240,.28);border-radius:16px;padding:13px 16px;font:900 13px Tajawal,Arial,sans-serif;box-shadow:0 18px 45px rgba(3,18,37,.2)}.invest-notice{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18);color:#B91C1C;border-radius:15px;padding:12px 14px;margin-bottom:14px;font-weight:800}.invest-loading{padding:34px;text-align:center;color:var(--sfm-muted);font-weight:900}
-        @keyframes pulse{50%{opacity:.45}}@media(max-width:1180px){.invest-summary-grid{grid-template-columns:repeat(3,1fr)}.invest-chart-grid{grid-template-columns:1fr 1fr}.invest-analysis-grid{grid-template-columns:1fr}}@media(max-width:1024px){.invest-main{margin-inline-start:0}}@media(max-width:760px){.invest-main{padding:14px}.invest-hero{display:grid;padding:22px}.invest-hero h2{font-size:28px}.invest-hero-total{min-width:0}.invest-summary-grid,.invest-chart-grid,.invest-projection-grid{grid-template-columns:1fr}.invest-controls{grid-template-columns:1fr}.invest-form{grid-template-columns:1fr}.span-2{grid-column:auto}.invest-row-main{display:grid}.invest-row-main strong{white-space:normal}.invest-row-actions button{flex:1}.invest-detail-grid{grid-template-columns:1fr}.invest-overlay{align-items:flex-end;padding:0}.invest-modal,.invest-drawer{border-radius:24px 24px 0 0;max-height:95vh}.invest-confirm{margin:16px}}
+        @keyframes pulse{50%{opacity:.45}}@media(max-width:1180px){.invest-chart-grid{grid-template-columns:1fr 1fr}.invest-analysis-grid,.invest-portfolio-grid{grid-template-columns:1fr}}@media(max-width:1024px){.invest-main{width:100%!important;margin-inline-start:0!important;margin-inline-end:0!important;padding:calc(78px + env(safe-area-inset-top)) 16px 52px!important}}@media(max-width:760px){.invest-content{gap:14px}.invest-topbar{align-items:flex-start}.invest-hero{display:grid;padding:22px}.invest-hero h2{font-size:28px}.invest-hero-total{min-width:0}.invest-hero-content .invest-primary-btn,.invest-hero-content .invest-glass-btn{width:100%;margin-inline-start:0;margin-top:8px}.invest-summary-grid,.invest-chart-grid,.invest-projection-grid{grid-template-columns:1fr}.invest-controls{grid-template-columns:1fr}.invest-form{grid-template-columns:1fr}.span-2{grid-column:auto}.invest-section-head--split{display:grid}.invest-section-head--split .invest-secondary-btn{width:100%}.invest-row-main{display:grid}.invest-row-main strong{white-space:normal;overflow-wrap:anywhere}.invest-row-actions button{flex:1}.invest-detail-grid{grid-template-columns:1fr}.invest-overlay{align-items:flex-end;padding:0}.invest-modal,.invest-drawer{border-radius:24px 24px 0 0;max-height:95vh}.invest-confirm{margin:16px}}
       `}</style>
     </div>
   );

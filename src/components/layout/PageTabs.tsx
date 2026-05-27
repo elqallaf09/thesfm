@@ -17,15 +17,16 @@ type PageTabsProps = {
 
 export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: PageTabsProps) {
   return (
-    <nav className={`page-section-tabs ${className}`} aria-label={ariaLabel}>
+    <nav className={`page-section-tabs ${className}`} aria-label={ariaLabel} role="tablist">
       {tabs.map(tab => {
         const isActive = active === tab.id;
         return (
           <button
             key={tab.id}
             type="button"
+            role="tab"
             className={isActive ? 'active' : ''}
-            aria-pressed={isActive}
+            aria-selected={isActive}
             aria-disabled={tab.disabled || undefined}
             disabled={tab.disabled}
             onClick={() => onChange(tab.id)}
