@@ -146,6 +146,7 @@ type ReceiptAmountCandidate = {
 type AiExtractedData = {
   merchantName?: string;
   description?: string;
+  provider?: 'google-document-ai' | 'openai-vision' | 'manual';
   invoiceNumber?: string;
   totalAmount?: number;
   subtotal?: number;
@@ -171,11 +172,14 @@ type AiExtractedData = {
   confidence?: number;
 };
 type ReceiptScanDebug = {
-  stage?: 'upload' | 'provider' | 'ai' | 'parser' | 'ui';
+  stage?: 'upload' | 'provider' | 'ai' | 'parser' | 'ui' | 'google' | 'openai';
   fileName?: string;
   fileType?: string;
   fileSize?: number;
   providerConfigured?: boolean;
+  googleConfigured?: boolean;
+  openaiConfigured?: boolean;
+  provider?: 'google-document-ai' | 'openai-vision' | 'manual';
   rawTextLength?: number;
   candidateCount?: number;
   selectedAmount?: number;
@@ -187,12 +191,16 @@ type ReceiptScanDebug = {
 type ReceiptScanApiResult = {
   fileName: string;
   success?: boolean;
+  provider?: 'google-document-ai' | 'openai-vision' | 'manual';
+  confidence?: 'high' | 'medium' | 'low';
   data?: AiExtractedData;
   error?: string;
   debug?: ReceiptScanDebug;
 };
 type ReceiptScanApiPayload = {
   success?: boolean;
+  provider?: 'google-document-ai' | 'openai-vision' | 'manual';
+  confidence?: 'high' | 'medium' | 'low';
   error?: string;
   data?: AiExtractedData;
   debug?: ReceiptScanDebug;
@@ -404,6 +412,16 @@ const expenseUi = {
   merchant: { ar: 'المتجر', en: 'Merchant', fr: 'Commercant' },
   suggestedCategory: { ar: 'التصنيف المقترح', en: 'Suggested category', fr: 'Categorie suggeree' },
   confidence: { ar: 'الثقة', en: 'Confidence', fr: 'Confiance' },
+  providerUsed: { ar: 'المزوّد', en: 'Provider', fr: 'Fournisseur' },
+  googleProvider: { ar: 'Google Document AI', en: 'Google Document AI', fr: 'Google Document AI' },
+  openaiProvider: { ar: 'OpenAI Vision', en: 'OpenAI Vision', fr: 'OpenAI Vision' },
+  manualProvider: { ar: 'إدخال يدوي', en: 'Manual entry', fr: 'Saisie manuelle' },
+  highConfidence: { ar: 'ثقة عالية', en: 'High confidence', fr: 'Confiance élevée' },
+  mediumConfidenceLabel: { ar: 'ثقة متوسطة', en: 'Medium confidence', fr: 'Confiance moyenne' },
+  lowConfidenceLabel: { ar: 'ثقة منخفضة', en: 'Low confidence', fr: 'Confiance faible' },
+  providerUnavailable: { ar: 'تعذر الاتصال بخدمة قراءة الفواتير. يمكنك إدخال البيانات يدوياً وسيتم حفظ الصورة كمرفق.', en: 'Receipt scanning provider is unavailable. You can enter the details manually and save the attachment.', fr: 'Le service de scan est indisponible. Vous pouvez saisir les données manuellement et enregistrer la pièce jointe.' },
+  uploadFailed: { ar: 'تعذر رفع الصورة.', en: 'Could not upload the image.', fr: 'Impossible de téléverser l’image.' },
+  noClearAmount: { ar: 'لم يتم العثور على مبلغ واضح.', en: 'No clear amount was found.', fr: 'Aucun montant clair n’a été trouvé.' },
   ready: { ar: 'جاهز للإضافة', en: 'Ready to add', fr: 'Prêt à ajouter' },
   needsReview: { ar: 'يحتاج مراجعة', en: 'Needs review', fr: 'À vérifier' },
   failed: { ar: 'فشل التحليل', en: 'Failed', fr: 'Échec' },
@@ -580,6 +598,28 @@ function receiptCandidateLabel(candidate: ReceiptAmountCandidate, lang: string) 
     computed: { ar: 'إجمالي محسوب', en: 'Computed total', fr: 'Total calculé' },
   };
   return labels[kind] ? pick(labels[kind], lang) : fallback;
+}
+
+function receiptProviderLabel(provider: AiExtractedData['provider'] | undefined, lang: string) {
+  if (provider === 'google-document-ai') return expenseText('googleProvider', lang);
+  if (provider === 'openai-vision') return expenseText('openaiProvider', lang);
+  if (provider === 'manual') return expenseText('manualProvider', lang);
+  return '-';
+}
+
+function receiptConfidenceLabel(level: AiExtractedData['confidenceLevel'] | undefined, lang: string) {
+  if (level === 'high') return expenseText('highConfidence', lang);
+  if (level === 'medium') return expenseText('mediumConfidenceLabel', lang);
+  if (level === 'low') return expenseText('lowConfidenceLabel', lang);
+  return '-';
+}
+
+function receiptScanErrorText(errorSource: string | undefined, lang: string, fallback: string) {
+  if (!errorSource) return fallback;
+  if (/missing_google_and_openai|provider|not_configured|unavailable/.test(errorSource)) return expenseText('providerUnavailable', lang);
+  if (/unsupported_file_type|file_too_large|upload/.test(errorSource)) return expenseText('uploadFailed', lang);
+  if (/parser_no_final_total|no_clear_total/.test(errorSource)) return expenseText('noClearAmount', lang);
+  return fallback;
 }
 
 function normalizeReceiptDate(data: AiExtractedData) {
@@ -1252,7 +1292,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     try {
       const form = new FormData();
       form.append('receipt', expenseForm.receiptFile);
-      const response = await fetch('/api/ai/receipt-scan', { method: 'POST', body: form });
+      const response = await fetch('/api/receipts/scan', { method: 'POST', body: form });
       const payload = await response.json() as ReceiptScanApiPayload;
       setReceiptDebug(payload.debug || {
         stage: response.ok ? 'parser' : 'ui',
@@ -1260,13 +1300,16 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         fileType: expenseForm.receiptFile.type,
         fileSize: expenseForm.receiptFile.size,
         status: response.status,
-        errorSource: payload.error,
+        errorSource: payload.debug?.errorSource || payload.error,
       });
-      if (!response.ok || !payload.data) throw new Error(payload.error || expenseText('couldNotRead', lang));
-      const extracted = payload.data;
+      if (!response.ok || !payload.data) {
+        throw new Error(receiptScanErrorText(payload.debug?.errorSource, lang, payload.error || expenseText('couldNotRead', lang)));
+      }
+      const extracted = { ...payload.data, provider: payload.provider || payload.data.provider };
       if (process.env.NODE_ENV !== 'production') {
         console.info('AI receipt result', {
           success: payload.success,
+          provider: payload.provider,
           apiStatus: response.status,
           rawTextLength: extracted.rawText?.length || 0,
           amount: extractedReceiptAmount(extracted),
@@ -1327,7 +1370,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     try {
       const form = new FormData();
       receiptFiles.forEach(({ file }) => form.append('receipt', file));
-      const response = await fetch('/api/ai/receipt-scan', { method: 'POST', body: form });
+      const response = await fetch('/api/receipts/scan', { method: 'POST', body: form });
       const payload = await response.json() as ReceiptScanApiPayload;
       setReceiptDebug(payload.debug || payload.results?.[0]?.debug || null);
       if (process.env.NODE_ENV !== 'production') {
@@ -1349,7 +1392,11 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       const results = payload.results?.length
         ? payload.results
         : [{ fileName: receiptFiles[0].file.name, success: payload.success, data: payload.data, error: payload.error }];
-      const pending = receiptFiles.map((entry, index) => pendingReceiptFromResult(entry.file, entry.previewUrl, results[index] || { success: false, error: expenseText('couldNotRead', lang) }, lang, currency || 'KWD'));
+      const normalizedResults = results.map(result => ({
+        ...result,
+        data: result.data ? { ...result.data, provider: result.provider || result.data.provider } : result.data,
+      }));
+      const pending = receiptFiles.map((entry, index) => pendingReceiptFromResult(entry.file, entry.previewUrl, normalizedResults[index] || { success: false, error: expenseText('couldNotRead', lang) }, lang, currency || 'KWD'));
       setPendingReceiptExpenses(pending);
       const firstReady = pending.find(item => item.amount) || pending[0];
       if (firstReady) {
@@ -2250,7 +2297,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                       <div className="receipt-debug-panel" role="status">
                         <strong>{pick({ ar: 'تشخيص التحليل', en: 'Scan debug', fr: 'Diagnostic du scan' }, lang)}</strong>
                         <span>{pick({ ar: 'المرحلة', en: 'Stage', fr: 'Étape' }, lang)}: {receiptDebug.stage || '-'}</span>
-                        <span>{pick({ ar: 'المزوّد', en: 'Provider', fr: 'Fournisseur' }, lang)}: {receiptDebug.providerConfigured ? pick({ ar: 'مُعد', en: 'configured', fr: 'configuré' }, lang) : pick({ ar: 'غير مُعد', en: 'missing', fr: 'manquant' }, lang)}</span>
+                        <span>{expenseText('providerUsed', lang)}: {receiptProviderLabel(receiptDebug.provider, lang)}</span>
+                        <span>{pick({ ar: 'المزوّد', en: 'Provider', fr: 'Fournisseur' }, lang)}: {(receiptDebug.providerConfigured || receiptDebug.googleConfigured || receiptDebug.openaiConfigured) ? pick({ ar: 'مُعد', en: 'configured', fr: 'configuré' }, lang) : pick({ ar: 'غير مُعد', en: 'missing', fr: 'manquant' }, lang)}</span>
                         <span>{pick({ ar: 'طول النص', en: 'Text length', fr: 'Longueur du texte' }, lang)}: {receiptDebug.rawTextLength ?? 0}</span>
                         <span>{pick({ ar: 'المبالغ', en: 'Candidates', fr: 'Candidats' }, lang)}: {receiptDebug.candidateCount ?? 0}</span>
                         <span>{pick({ ar: 'المبلغ المختار', en: 'Selected amount', fr: 'Montant choisi' }, lang)}: {receiptDebug.selectedAmount ?? '-'}</span>
@@ -2297,7 +2345,13 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                     )}
                     {expenseForm.aiExtractedData && (
                       <div className="ai-result-card">
-                        <div><CheckCircle2 size={18} /><strong>{expenseText('scanReviewTitle', lang)}</strong><span className="extracted-field-badge">{expenseText('extractedBadge', lang)}</span></div>
+                        <div>
+                          <CheckCircle2 size={18} />
+                          <strong>{expenseText('scanReviewTitle', lang)}</strong>
+                          <span className="extracted-field-badge">{expenseText('extractedBadge', lang)}</span>
+                          <span className="extracted-field-badge">{receiptProviderLabel(expenseForm.aiExtractedData.provider, lang)}</span>
+                          <span className="extracted-field-badge">{receiptConfidenceLabel(expenseForm.aiExtractedData.confidenceLevel, lang)}</span>
+                        </div>
                         <p>{receiptConfidenceMessage(expenseForm.aiExtractedData, lang) || expenseText('review', lang)}</p>
                         {!!validReceiptCandidates(expenseForm.aiExtractedData).length && (
                           <div className="receipt-candidate-panel" aria-label={expenseText('amountCandidates', lang)}>
@@ -2327,6 +2381,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                           <dt>{expenseText('merchant', lang)}</dt><dd>{expenseForm.aiExtractedData.description || expenseForm.aiExtractedData.merchantName || expenseForm.name || '-'}</dd>
                           <dt>{expenseText('amount', lang)}</dt><dd>{expenseForm.amount ? money(Number(expenseForm.amount), lang, expenseForm.currency || currency) : '-'}</dd>
                           <dt>{expenseText('currency', lang)}</dt><dd>{expenseForm.currency || expenseForm.aiExtractedData.currency || currency || 'KWD'}</dd>
+                          <dt>{expenseText('providerUsed', lang)}</dt><dd>{receiptProviderLabel(expenseForm.aiExtractedData.provider, lang)}</dd>
                           <dt>{expenseText('date', lang)}</dt><dd>{expenseForm.date}</dd>
                           <dt>{expenseText('suggestedCategory', lang)}</dt><dd>{categoryLabel(expenseForm.category, lang)}</dd>
                           <dt>{expenseText('tax', lang)}</dt><dd>{expenseForm.aiExtractedData.taxAmount ? money(expenseForm.aiExtractedData.taxAmount, lang, expenseForm.currency || currency) : '-'}</dd>
