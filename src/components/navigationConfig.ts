@@ -8,6 +8,7 @@ import {
   Calculator,
   CalendarDays,
   ChartPie,
+  CircleHelp,
   ClipboardList,
   Compass,
   FileSearch,
@@ -16,9 +17,11 @@ import {
   FolderKanban,
   HandHeart,
   HeartHandshake,
+  Info,
   LayoutDashboard,
   LineChart,
   LogOut,
+  Mail,
   PiggyBank,
   Presentation,
   ReceiptText,
@@ -125,6 +128,12 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'logout', icon: LogOut, action: 'logout', labelKey: 'nav_logout', viewModes: ['simple', 'professional'] },
     ],
   },
+];
+
+export const SUPPORT_LINKS: NavigationItem[] = [
+  { id: 'support-about', icon: Info, href: '/about', labelKey: 'nav_support_about', viewModes: ['simple', 'professional'] },
+  { id: 'support-faq', icon: CircleHelp, href: '/#faq', labelKey: 'nav_support_faq', viewModes: ['simple', 'professional'] },
+  { id: 'support-contact', icon: Mail, href: '/contact', labelKey: 'nav_support_contact', viewModes: ['simple', 'professional'] },
 ];
 
 export function filterNavigationGroups(groups: NavigationGroup[], viewMode: NavigationViewMode) {

@@ -16,6 +16,7 @@ import {
   isNavigationItemActive,
   NAV_GROUPS,
   normalizeNavigationSource,
+  SUPPORT_LINKS,
   type NavigationItem,
 } from '@/components/navigationConfig';
 
@@ -158,6 +159,27 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
             );
           })}
         </nav>
+        <section className="sfm-mobile-support" aria-label={t('nav_group_support')}>
+          <span className="sfm-mobile-support-title">{t('nav_group_support')}</span>
+          <div className="sfm-mobile-support-links">
+            {SUPPORT_LINKS.map(item => {
+              const Icon = item.icon;
+              const active = isNavigationItemActive(activeSource, item.href);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={active ? 'active' : ''}
+                  aria-current={active ? 'page' : undefined}
+                  onClick={() => go(item)}
+                >
+                  <span className="sfm-mobile-support-icon"><Icon size={15} /></span>
+                  <span>{t(item.labelKey)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
       </aside>
 
       <style jsx global>{`
@@ -189,6 +211,13 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
         .sfm-mobile-nav .sfm-mobile-group-items button.active{border-color:rgba(167,243,240,.24);background:linear-gradient(135deg,rgba(29,140,255,.28),rgba(24,212,212,.16));color:#EAF6FF;box-shadow:inset 0 0 0 1px rgba(167,243,240,.12),0 10px 26px rgba(29,140,255,.16)}
         .sfm-mobile-nav .sfm-mobile-group-items button.active::before{content:"";position:absolute;inset-inline-start:5px;top:50%;width:5px;height:24px;border-radius:999px;background:var(--sfm-accent);box-shadow:0 0 14px rgba(24,212,212,.72);transform:translateY(-50%)}.sfm-mobile-nav button:active{transform:scale(.99)}
         .sfm-mobile-nav-icon{width:26px;height:26px;flex:0 0 26px;display:grid;place-items:center;border-radius:10px;background:rgba(255,255,255,.08);color:#A7C7E7;transition:background .18s ease,color .18s ease}.sfm-mobile-nav button:hover .sfm-mobile-nav-icon,.sfm-mobile-nav button.active .sfm-mobile-nav-icon{background:rgba(167,243,240,.2);color:var(--sfm-soft-cyan)}
+        .sfm-mobile-support{margin-top:auto;padding-top:12px;border-top:1px solid rgba(167,243,240,.12);display:grid;gap:8px}
+        .sfm-mobile-support-title{color:#A7C7E7;font:950 11px Tajawal,Arial,sans-serif;padding-inline:4px}
+        .sfm-mobile-support-links{display:grid;gap:5px}
+        .sfm-mobile-support-links button{position:relative;width:100%;min-height:38px;border:1px solid transparent;border-radius:12px;background:transparent;color:#A7C7E7;display:flex;align-items:center;gap:9px;padding:7px 10px;text-align:start;font:850 12.5px Tajawal,Arial,sans-serif;cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+        .sfm-mobile-support-links button:hover,.sfm-mobile-support-links button:focus-visible{background:rgba(29,140,255,.14);border-color:rgba(167,243,240,.18);color:#EAF6FF;outline:0;box-shadow:0 0 0 2px rgba(24,212,212,.14);transform:translateY(-1px)}
+        .sfm-mobile-support-links button.active{background:rgba(29,140,255,.18);border-color:rgba(24,212,212,.24);color:#EAF6FF}
+        .sfm-mobile-support-icon{width:22px;height:22px;display:grid;place-items:center;border-radius:9px;background:rgba(255,255,255,.07);color:var(--sfm-soft-cyan);flex:0 0 22px}
       `}</style>
     </div>
   );

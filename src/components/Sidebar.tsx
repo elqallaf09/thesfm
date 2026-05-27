@@ -18,6 +18,7 @@ import {
   isNavigationItemActive,
   NAV_GROUPS,
   normalizeNavigationSource,
+  SUPPORT_LINKS,
   type NavigationItem,
 } from '@/components/navigationConfig';
 
@@ -114,6 +115,13 @@ export function Sidebar() {
         .sfm-shared-item:hover .sfm-shared-icon,.sfm-shared-item.active .sfm-shared-icon{color:var(--sfm-soft-cyan);transform:scale(1.06)}
         .sfm-shared-label{min-width:0;flex:1;overflow-wrap:anywhere}
         .sfm-shared-badge{min-width:22px;height:22px;border-radius:999px;background:var(--sfm-primary);color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;font-size:11px;font-weight:950}
+        .sfm-shared-support{margin:0 8px 10px;padding:10px 8px 12px;border-top:1px solid rgba(167,243,240,.10);display:grid;gap:5px}
+        .sfm-shared-support-title{padding:0 4px 3px;color:#A7C7E7;font:950 10.5px Tajawal,Arial,sans-serif;letter-spacing:.02em}
+        .sfm-shared-support-item{position:relative;width:100%;min-height:34px;border:1px solid transparent;border-radius:10px;background:transparent;color:#A7C7E7;display:flex;align-items:center;gap:8px;padding:6px 8px;text-align:start;font:850 11.5px Tajawal,Arial,sans-serif;cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+        .sfm-shared-support-item:hover,.sfm-shared-support-item:focus-visible{background:rgba(29,140,255,.12);color:#EAF6FF;border-color:rgba(167,243,240,.16);outline:0;box-shadow:0 0 0 2px rgba(24,212,212,.14);transform:translateY(-1px)}
+        .sfm-shared-support-item.active{background:rgba(29,140,255,.16);color:#EAF6FF;border-color:rgba(24,212,212,.24)}
+        .sfm-shared-support-icon{width:18px;height:18px;display:grid;place-items:center;flex:0 0 18px;color:var(--sfm-soft-cyan)}
+        .sfm-shared-support-label{min-width:0;overflow-wrap:anywhere}
         @media(max-width:1024px){.sfm-shared-sidebar{display:none}}
       `}</style>
       <Link href="/dashboard" className="sfm-shared-brand">
@@ -182,6 +190,25 @@ export function Sidebar() {
           );
         })}
       </nav>
+      <section className="sfm-shared-support" aria-label={t('nav_group_support')}>
+        <span className="sfm-shared-support-title">{t('nav_group_support')}</span>
+        {SUPPORT_LINKS.map(item => {
+          const active = isNavigationItemActive(activeSource, item.href);
+          const SupportIcon = item.icon;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => handleItem(item)}
+              className={`sfm-shared-support-item${active ? ' active' : ''}`}
+              aria-current={active ? 'page' : undefined}
+            >
+              <span className="sfm-shared-support-icon"><SupportIcon size={15} /></span>
+              <span className="sfm-shared-support-label">{t(item.labelKey)}</span>
+            </button>
+          );
+        })}
+      </section>
     </aside>
   );
 }

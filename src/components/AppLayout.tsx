@@ -6,7 +6,7 @@ import { AppHeader } from '@/components/AppHeader';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname() || '/';
-  const isPublicPage = pathname === '/' || pathname === '/login';
+  const isPublicPage = pathname === '/' || pathname === '/login' || pathname === '/about' || pathname === '/contact';
 
   return (
     <div className={isPublicPage ? 'sfm-app-layout sfm-app-layout-public' : 'sfm-app-layout'}>
