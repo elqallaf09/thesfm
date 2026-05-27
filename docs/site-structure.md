@@ -18,7 +18,7 @@ This map documents the cleaned product organization. The public landing page sta
 | `/expenses` | المصروفات | Expenses | Dépenses | Expense management only. | المال الشخصي | `/dashboard`, `/reports-center` |
 | `/savings` | المدخرات | Savings | Épargne | Savings records and summaries. | المال الشخصي | `/zakat`, `/dashboard` |
 | `/goals` | الأهداف المالية | Financial Goals | Objectifs financiers | Goal tracking and progress. | المال الشخصي | `/dashboard`, `/notifications`, `/reports-center` |
-| `/zakat` | الزكاة | Zakat | Zakat | Zakat calculator, hawl, reminders, and saved history. | المال الشخصي | `/charity-projects`, `/reports-center`, `/today` |
+| `/zakat` | الزكاة | Zakat | Zakat | Zakat calculator, hawl, reminders, and saved history. | الزكاة والأعمال الخيرية | `/charity-projects`, `/reports-center`, `/today` |
 | `/invest` | الاستثمارات | Investments | Investissements | Investment portfolio management. | الاستثمار والسوق | `/market-analysis`, `/zakat` |
 | `/market-analysis` | تحليلات السوق | Market Analysis | Analyse du marché | Market analysis with internal tabs for analysis, watchlist, price alerts, comparison, and asset reports. | الاستثمار والسوق | `/invest`, `/market-analysis?tab=watchlist`, `/market-analysis?tab=alerts` |
 | `/projects` | مشاريعي | My Projects | Mes projets | Project list and entry point to workspaces. | الأعمال والمشاريع | `/projects/[id]`, `/business-hub` |
@@ -43,10 +43,10 @@ This map documents the cleaned product organization. The public landing page sta
 ## Sidebar Groups
 
 - الرئيسية: dashboard, command center, financial today, tasks center, documents center, notifications, reports center.
-- المال الشخصي: income, expenses, savings, goals, zakat.
+- المال الشخصي: income, expenses, savings, goals.
 - الاستثمار والسوق: investments and market analysis. Watchlist and price alerts live inside Market Analysis tabs.
 - الأعمال والمشاريع: projects, business hub, pitch decks.
-- الزكاة والأعمال الخيرية: charity, charity projects, beneficiaries, charity reports.
+- الزكاة والأعمال الخيرية: zakat, charity, charity projects, beneficiaries, charity reports.
 - الخدمات: investment, accounting, feasibility, and financial advisory firms.
 - الحساب: profile, security and privacy, logout.
 
