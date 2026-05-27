@@ -55,13 +55,14 @@ export default function RootLayout({
         />
       </head>
       <body className={`${cairo.variable} font-cairo antialiased`}>
-        <Toaster />
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
-          enableSystem={false}
+          storageKey="the-sfm-theme"
+          enableSystem
           disableTransitionOnChange
         >
+          <Toaster />
           <AuthProvider>
             <LanguageProvider>
               <CurrencyProvider>

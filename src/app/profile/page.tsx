@@ -87,6 +87,7 @@ type EmailChangeState = {
 
 const STORE_KEY = 'sfm_settings';
 const PROFILE_EXTRA_KEY = 'sfm_profile_extras';
+const THEME_STORE_KEY = 'the-sfm-theme';
 
 const txt = {
   title: { ar: 'الملف الشخصي', en: 'Profile', fr: 'Profil' },
@@ -195,6 +196,7 @@ const txt = {
   addedGoal: { ar: 'تم إضافة هدف مالي', en: 'Financial goal added', fr: 'Objectif financier ajouté' },
   addedInvestment: { ar: 'تم إضافة استثمار', en: 'Investment added', fr: 'Investissement ajouté' },
   changedLanguage: { ar: 'تم تغيير اللغة', en: 'Language changed', fr: 'Langue modifiée' },
+  themeChanged: { ar: 'تم تغيير المظهر بنجاح.', en: 'Appearance updated successfully.', fr: 'Apparence mise à jour avec succès.' },
   exportedReport: { ar: 'تم تصدير تقرير', en: 'Report exported', fr: 'Rapport exporté' },
   today: { ar: 'اليوم', en: 'Today', fr: "Aujourd'hui" },
   noActivity: { ar: 'لا يوجد نشاط حساب بعد', en: 'No account activity yet', fr: 'Aucune activité du compte' },
@@ -229,11 +231,15 @@ function writeStored<T>(key: string, value: T) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+function normalizeThemeMode(value: unknown): ThemeMode | undefined {
+  return value === 'light' || value === 'dark' || value === 'system' ? value : undefined;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
   const { lang, setLang, dir } = useLanguage();
-  const { setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { currency, setCurrency } = useCurrency();
   const [profile, setProfile] = useState<ProfileState>({
     displayName: '',
@@ -280,14 +286,21 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const stored = readStored<Partial<PreferencesState>>(STORE_KEY, {});
+    const storedTheme =
+      normalizeThemeMode(stored.theme) ||
+      normalizeThemeMode(typeof window !== 'undefined' ? localStorage.getItem(THEME_STORE_KEY) : null) ||
+      normalizeThemeMode(typeof window !== 'undefined' ? localStorage.getItem('theme') : null) ||
+      normalizeThemeMode(theme);
     setPreferences(prev => ({
       ...prev,
       ...stored,
       language: lang,
+      theme: storedTheme || prev.theme,
       currency: stored.currency || currency,
       cycleStart: stored.cycleStart || prev.cycleStart,
     }));
-  }, [currency, lang]);
+    if (storedTheme && storedTheme !== theme) setTheme(storedTheme);
+  }, [currency, lang, setTheme, theme]);
 
   useEffect(() => {
     async function load() {
@@ -341,13 +354,15 @@ export default function ProfilePage() {
   }
 
   function persistPreferences(next: PreferencesState) {
+    const themeChanged = next.theme !== preferences.theme;
     setPreferences(next);
     setLang(next.language);
     setCurrency(next.currency);
     setTheme(next.theme);
+    if (typeof window !== 'undefined') localStorage.setItem(THEME_STORE_KEY, next.theme);
     writeStored(STORE_KEY, next);
     if (typeof document !== 'undefined') document.documentElement.classList.toggle('sfm-luxury', next.luxury);
-    showToast(L('saved'));
+    showToast(themeChanged ? L('themeChanged') : L('saved'));
   }
 
   async function saveProfile() {
