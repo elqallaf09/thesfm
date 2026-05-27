@@ -31,6 +31,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
+import { personalExpenseRows } from '@/lib/data/financeData';
 
 type Lang = 'ar' | 'en' | 'fr';
 type ProjectStatus = 'planning' | 'fundraising' | 'in_progress' | 'completed' | 'paused';
@@ -1686,7 +1687,7 @@ export default function CharityProjectsPage() {
         db.from('charity_project_impact_metrics').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('expense_items').select('id,name,amount,created_at').eq('user_id', user.id).like('name', 'خيرية:%'),
         db.from('monthly_income_sources').select('*').eq('user_id', user.id),
-        db.from('expense_items').select('amount').eq('user_id', user.id),
+        db.from('expense_items').select('*').eq('user_id', user.id),
       ]);
       const loadedProjects = !projectRes.error ? (projectRes.data ?? []) as CharityProject[] : [];
       const loadedAssets = !assetRes.error ? (assetRes.data ?? []) as ZakatAsset[] : [];
@@ -1725,7 +1726,7 @@ export default function CharityProjectsPage() {
         setIncomeThisYear(rows.filter((row: any) => isYear(recordDate(row), currentYear)).reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
         setIncomeThisMonth(rows.filter((row: any) => isCurrentMonth(recordDate(row))).reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
       }
-      if (!expenseRes.error) setExpenseTotal((expenseRes.data ?? []).reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
+      if (!expenseRes.error) setExpenseTotal(personalExpenseRows(expenseRes.data ?? []).reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
     } catch {
       setMessage(tr.error);
     }

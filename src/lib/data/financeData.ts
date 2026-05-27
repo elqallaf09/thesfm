@@ -154,17 +154,44 @@ export function expenseProjectId(row: any) {
   ).trim();
 }
 
+export function expenseProjectExpenseId(row: any) {
+  const enhanced = recordObject(row?.enhanced);
+  return String(
+    row?.project_expense_id ??
+    row?.linked_project_expense_id ??
+    enhanced.project_expense_id ??
+    enhanced.projectExpenseId ??
+    enhanced.linked_project_expense_id ??
+    ''
+  ).trim();
+}
+
+export function isProjectLinkedExpenseRow(row: any) {
+  const enhanced = recordObject(row?.enhanced);
+  const category = String(row?.category ?? enhanced.category ?? '').trim().toLowerCase();
+  const source = String(enhanced.source ?? enhanced.kind ?? enhanced.type ?? '').trim().toLowerCase();
+  return Boolean(
+    expenseProjectId(row) ||
+    expenseProjectExpenseId(row) ||
+    category === 'project_expense' ||
+    source === 'project_expense'
+  );
+}
+
 export function expensePaidFromPersonalBudget(row: any) {
   const enhanced = recordObject(row?.enhanced);
   return row?.paid_from_personal_budget === true ||
+    row?.paid_from_personal_budget === 'true' ||
     enhanced.paid_from_personal_budget === true ||
+    enhanced.paid_from_personal_budget === 'true' ||
     enhanced.include_in_personal_budget === true ||
+    enhanced.include_in_personal_budget === 'true' ||
+    enhanced.paidFromPersonalBudget === 'true' ||
     enhanced.paidFromPersonalBudget === true;
 }
 
 export function isPersonalExpenseRow(row: any) {
-  const projectId = expenseProjectId(row);
-  if (!projectId) return true;
+  if (!isProjectLinkedExpenseRow(row)) return true;
   return expensePaidFromPersonalBudget(row);
 }
 

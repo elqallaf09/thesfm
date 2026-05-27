@@ -390,6 +390,8 @@ function feasibilityIncomplete(study: ProjectFeasibilityKpiRow | null | undefine
 function actualProjectExpenseRows(rows: ActualExpenseRow[], projectId: string) {
   return rows.filter(row => {
     const enhanced = parseRecord(row.enhanced);
+    const linkedProjectExpenseId = String(enhanced.project_expense_id ?? enhanced.projectExpenseId ?? '').trim();
+    if (linkedProjectExpenseId) return false;
     return [enhanced.project_id, enhanced.projectId, parseRecord(enhanced.project).id, enhanced.linked_project_id].some(value => value === projectId);
   });
 }

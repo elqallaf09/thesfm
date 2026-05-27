@@ -612,6 +612,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const legacyProjectExpenses = (legacyExpenseRes.error ? [] : legacyExpenseRes.data ?? []).filter((item: any) => {
     const enhanced = parseRecord(item.enhanced);
+    const linkedProjectExpenseId = String(enhanced.project_expense_id ?? enhanced.projectExpenseId ?? '').trim();
+    if (linkedProjectExpenseId) return false;
     return enhanced.project_id === id || enhanced.projectId === id || enhanced.linked_project_id === id || enhanced.project?.id === id;
   });
   const projectExpenses = [

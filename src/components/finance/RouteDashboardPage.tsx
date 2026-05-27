@@ -50,7 +50,7 @@ import { formatCurrency } from '@/lib/format';
 import { getCurrency } from '@/lib/currencies';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { calculateGoalProgress, parseMoney } from '@/lib/goalProgress';
-import { personalExpenseRows } from '@/lib/data/financeData';
+import { isProjectLinkedExpenseRow, personalExpenseRows } from '@/lib/data/financeData';
 
 type PageKind = 'expenses' | 'income' | 'invest' | 'savings' | 'goals' | 'reports' | 'ai';
 type ExpensePageTab = 'overview' | 'records' | 'receipts' | 'categories' | 'analytics' | 'reports';
@@ -452,6 +452,10 @@ function categoryLabel(category: string | null | undefined, lang: string) {
 
 function paymentLabel(paymentMethod: string | null | undefined, lang: string) {
   return pick(PAYMENT_METHODS.find(item => item.id === paymentMethod)?.label ?? PAYMENT_METHODS.at(-1)!.label, lang);
+}
+
+function projectExpenseLabel(lang: string) {
+  return pick({ ar: 'مصروف مشروع', en: 'Project Expense', fr: 'Dépense de projet' }, lang);
 }
 
 function normalizeReceiptNumber(value: unknown) {
@@ -1912,6 +1916,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                     {visibleExpenses.map(item => {
                       const hasReceipt = Boolean(item.receipt_image_url || item.receipt_file_name);
                       const aiAdded = Boolean(item.ai_extracted_data || item.ai_confidence_score);
+                      const projectLinked = isProjectLinkedExpenseRow(item);
                       return (
                         <article className="expense-card-row" key={item.id}>
                           <div className="expense-row-main">
@@ -1920,6 +1925,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                               <strong>{item.name.replace(/^خيرية:\d{4}-\d{2}:/, '')}</strong>
                               <span>{item.date || (item.created_at ? new Date(item.created_at).toISOString().slice(0, 10) : '')} · {paymentLabel(item.payment_method, lang)}</span>
                               <div className="expense-badges">
+                                {projectLinked && <em className="project">{projectExpenseLabel(lang)}</em>}
                                 <em>{categoryLabel(item.category, lang)}</em>
                                 <em className={hasReceipt ? 'ok' : ''}>{hasReceipt ? expenseText('hasReceipt', lang) : expenseText('noReceipt', lang)}</em>
                                 {aiAdded && <em className="ai">{expenseText('aiAdded', lang)}</em>}
@@ -3120,6 +3126,7 @@ const expenseSmartStyles = `
   .expense-row-main span{display:block;max-width:100%;overflow-wrap:anywhere;margin-top:4px;color:var(--sfm-muted);font-size:12px;font-weight:800}
   .expense-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;min-width:0;max-width:100%}
   .expense-badges em{max-width:100%;overflow-wrap:anywhere;font-style:normal;border-radius:999px;padding:5px 9px;background:#F2EBDD;color:var(--sfm-muted);border:1px solid rgba(167,243,240,.14);font-size:11px;font-weight:900}
+  .expense-badges em.project{background:rgba(29,140,255,.12);color:var(--sfm-primary);border-color:rgba(29,140,255,.22)}
   .expense-badges em.ok{background:rgba(34,197,94,.1);color:#15803D;border-color:rgba(34,197,94,.18)}
   .expense-badges em.ai{background:rgba(167,243,240,.16);color:var(--sfm-muted);border-color:rgba(167,243,240,.25)}
   .expense-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex:0 1 auto;min-width:0;max-width:100%;flex-wrap:wrap}

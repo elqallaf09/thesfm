@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import type { CSSProperties, KeyboardEvent } from 'react';
 import { Check, ChevronDown, Globe2 } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { Lang } from '@/lib/translations';
@@ -26,10 +26,18 @@ const SWITCHER_LABEL: Record<Lang, string> = {
   fr: 'Choisir la langue',
 };
 
+const MENU_WIDTH = 204;
+const VIEWPORT_GUTTER = 12;
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
 export function LanguageSwitcher({ value, onChange, variant = 'light', compact = false, size = 'md' }: Props) {
   const id = useId();
   const language = useLanguage();
   const [open, setOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
   const rootRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -39,8 +47,29 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
   const handleChange = onChange ?? language.setLang;
   const isCompact = compact || size === 'sm';
 
+  const updateMenuPosition = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const maxWidth = Math.max(160, window.innerWidth - VIEWPORT_GUTTER * 2);
+    const width = Math.min(Math.max(rect.width, MENU_WIDTH), maxWidth);
+    const alignRight = document.documentElement.dir === 'rtl';
+    const preferredLeft = alignRight ? rect.right - width : rect.left;
+    const maxLeft = Math.max(VIEWPORT_GUTTER, window.innerWidth - width - VIEWPORT_GUTTER);
+    const left = clamp(preferredLeft, VIEWPORT_GUTTER, maxLeft);
+
+    setMenuStyle({
+      top: Math.round(rect.bottom + 8),
+      left: Math.round(left),
+      width: Math.round(width),
+    });
+  }, []);
+
   useEffect(() => {
     if (!open) return;
+    updateMenuPosition();
 
     const onPointerDown = (event: PointerEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
@@ -51,14 +80,19 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         triggerRef.current?.focus();
       }
     };
+    const onViewportChange = () => updateMenuPosition();
 
     document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('scroll', onViewportChange, true);
     return () => {
       document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', onViewportChange);
+      window.removeEventListener('scroll', onViewportChange, true);
     };
-  }, [open]);
+  }, [open, updateMenuPosition]);
 
   useEffect(() => {
     if (!open) return;
@@ -74,6 +108,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
   function handleTriggerKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
+      updateMenuPosition();
       setOpen(true);
     }
   }
@@ -104,7 +139,10 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={`${id}-menu`}
-        onClick={() => setOpen(value => !value)}
+        onClick={() => {
+          if (!open) updateMenuPosition();
+          setOpen(value => !value);
+        }}
         onKeyDown={handleTriggerKeyDown}
       >
         <Globe2 size={16} aria-hidden="true" />
@@ -113,7 +151,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
       </button>
 
       {open && (
-        <div id={`${id}-menu`} className="sfm-language-menu" role="listbox" aria-label={SWITCHER_LABEL[selected]}>
+        <div id={`${id}-menu`} className="sfm-language-menu" role="listbox" aria-label={SWITCHER_LABEL[selected]} style={menuStyle}>
           {LANGS.map((item, index) => {
             const active = item.id === selected;
             return (
@@ -168,7 +206,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           white-space: nowrap;
         }
         .sfm-language-dropdown[data-compact='true'] .sfm-language-trigger {
-          min-width: 88px;
+          min-width: 112px;
           min-height: 36px;
           padding-inline: 11px;
           font-size: 12px;
@@ -204,11 +242,8 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           transform: rotate(180deg);
         }
         .sfm-language-menu {
-          position: absolute;
-          inset-block-start: calc(100% + 8px);
-          inset-inline-start: 0;
-          width: max(100%, 190px);
-          max-width: min(240px, calc(100vw - 24px));
+          position: fixed;
+          max-width: calc(100vw - 24px);
           border-radius: 18px;
           border: 1px solid rgba(29,140,255,.20);
           background: #FFFFFF;
@@ -217,11 +252,8 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           box-shadow: 0 20px 50px rgba(3,18,37,.18);
           display: grid;
           gap: 4px;
+          z-index: 220;
           animation: sfmLangMenuIn .16s ease-out;
-        }
-        [dir='rtl'] .sfm-language-menu {
-          inset-inline-start: auto;
-          inset-inline-end: 0;
         }
         .sfm-language-dropdown[data-variant='dark'] .sfm-language-menu {
           background: #061B33;
@@ -283,7 +315,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
             min-height: 40px;
           }
           .sfm-language-menu {
-            width: max(100%, 178px);
+            min-width: 178px;
           }
         }
       `}</style>

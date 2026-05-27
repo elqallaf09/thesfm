@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
+import { personalExpenseRows } from '@/lib/data/financeData';
 import { useCurrency } from '@/lib/useCurrency';
 
 type IncomeType = 'salary' | 'side' | 'investment' | 'bonus' | 'gift' | 'rent' | 'other';
@@ -58,6 +59,12 @@ type ExpenseRow = {
   amount?: number | string | null;
   date?: string | null;
   created_at?: string | null;
+  category?: string | null;
+  project_id?: string | null;
+  related_project_id?: string | null;
+  project_expense_id?: string | null;
+  paid_from_personal_budget?: boolean | string | null;
+  enhanced?: Record<string, unknown> | null;
 };
 
 type IncomeForm = {
@@ -403,7 +410,7 @@ export default function IncomePage() {
         .order('created_at', { ascending: false }),
       supabase
         .from('expense_items')
-        .select('id, amount, date, created_at')
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false }),
     ]);
@@ -417,7 +424,7 @@ export default function IncomePage() {
       setExpenseRows([]);
       setInsightLoadError(true);
     } else {
-      setExpenseRows((expenseResult.data ?? []) as ExpenseRow[]);
+      setExpenseRows(personalExpenseRows((expenseResult.data ?? []) as ExpenseRow[]));
     }
     setLoading(false);
   }, [isGuest, user]);
