@@ -319,7 +319,7 @@ const expenseUi = {
   manualTab: { ar: 'إدخال يدوي', en: 'Manual Entry', fr: 'Saisie manuelle' },
   scanTab: { ar: 'رفع فاتورة بالذكاء الاصطناعي', en: 'AI Receipt Scan', fr: 'Scan IA de facture' },
   addExpense: { ar: 'إضافة مصروف', en: 'Add expense', fr: 'Ajouter une depense' },
-  uploadReceipt: { ar: 'رفع فاتورة', en: 'Upload receipt', fr: 'Telecharger une facture' },
+  uploadReceipt: { ar: 'رفع صورة الفاتورة', en: 'Upload Receipt Image', fr: 'Téléverser l’image du reçu' },
   uploadOneReceipt: { ar: 'رفع فاتورة واحدة', en: 'Upload one receipt', fr: 'Importer une facture' },
   uploadMultipleReceipts: { ar: 'رفع عدة فواتير', en: 'Upload multiple receipts', fr: 'Importer plusieurs factures' },
   chooseImages: { ar: 'اختر الصور أو اسحبها هنا', en: 'Choose images or drag them here', fr: 'Choisissez des images ou glissez-les ici' },
@@ -332,9 +332,14 @@ const expenseUi = {
   date: { ar: 'التاريخ', en: 'Date', fr: 'Date' },
   paymentMethod: { ar: 'طريقة الدفع', en: 'Payment method', fr: 'Mode de paiement' },
   notes: { ar: 'ملاحظات', en: 'Notes', fr: 'Notes' },
-  attachReceipt: { ar: 'إرفاق صورة الفاتورة', en: 'Attach receipt image', fr: 'Joindre l image de facture' },
-  uploadTitle: { ar: 'ارفع صورة الفاتورة', en: 'Upload receipt image', fr: 'Telecharger l image de la facture' },
-  uploadHint: { ar: 'اسحب الصورة هنا أو اختر من الجهاز', en: 'Drag image here or choose from device', fr: 'Glissez l image ici ou choisissez un fichier' },
+  attachReceipt: { ar: 'رفع صورة الفاتورة', en: 'Upload Receipt Image', fr: 'Téléverser l’image du reçu' },
+  uploadTitle: { ar: 'رفع صورة الفاتورة', en: 'Upload Receipt Image', fr: 'Téléverser l’image du reçu' },
+  uploadHint: { ar: 'اسحب الصورة هنا أو اختر من الجهاز', en: 'Drag image here or choose from device', fr: 'Glissez l’image ici ou choisissez un fichier' },
+  uploadOptionalHint: {
+    ar: 'يمكنك رفع صورة الفاتورة اختياريًا لاستخراج البيانات أو حفظها مع المصروف.',
+    en: 'You can optionally upload a receipt image to extract data or attach it to the expense.',
+    fr: 'Vous pouvez téléverser une image du reçu de manière facultative pour extraire les données ou l’ajouter à la dépense.',
+  },
   analyze: { ar: 'تحليل الفاتورة بالذكاء الاصطناعي', en: 'Analyze receipt with AI', fr: 'Analyser la facture avec l IA' },
   analyzeAll: { ar: 'تحليل كل الفواتير', en: 'Analyze all receipts', fr: 'Analyser toutes les factures' },
   reading: { ar: 'جاري قراءة الفاتورة...', en: 'Reading receipt...', fr: 'Lecture de la facture...' },
@@ -1836,7 +1841,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               <p>{expenseText('smartSubtitle', lang)}</p>
             </div>
             <div className="expense-hero-actions">
-              <button type="button" className="ghost-btn" onClick={openReceiptScan}>
+              <button type="button" className="ghost-btn receipt-upload-action" onClick={openReceiptScan} aria-label={expenseText('uploadReceipt', lang)}>
                 <Camera size={17} />
                 {expenseText('uploadReceipt', lang)}
               </button>
@@ -2048,8 +2053,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               <form className="entry-form expense-form-grid" onSubmit={saveExpense}>
                 {expenseModalMode === 'scan' && (
                   <div className="receipt-scan-area">
-                    <label className="receipt-drop">
-                      <input type="file" accept="image/*,.pdf,application/pdf" multiple onChange={event => handleExpenseFiles(event.target.files)} />
+                    <label className="receipt-drop" aria-label={expenseText('uploadReceipt', lang)}>
+                      <input type="file" accept="image/*,.pdf,application/pdf" multiple aria-label={expenseText('uploadReceipt', lang)} onChange={event => handleExpenseFiles(event.target.files)} />
                       {receiptFiles.length ? (
                         <div className="receipt-preview-grid">
                           {receiptFiles.map(({ file, previewUrl }) => (
@@ -2063,7 +2068,12 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                           ))}
                         </div>
                       ) : (
-                        <span><Upload size={26} />{expenseText('uploadMultipleReceipts', lang)}<small>{expenseText('chooseImages', lang)}</small></span>
+                        <span className="receipt-drop-copy">
+                          <Upload size={30} />
+                          <strong>{expenseText('uploadTitle', lang)}</strong>
+                          <small>{expenseText('uploadOptionalHint', lang)}</small>
+                          <small>{expenseText('chooseImages', lang)}</small>
+                        </span>
                       )}
                     </label>
                     {!!receiptFiles.length && (
@@ -2147,7 +2157,15 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 <label><span>{expenseText('category', lang)}</span><select value={expenseForm.category} onChange={event => setExpenseForm(prev => ({ ...prev, category: event.target.value }))}>{EXPENSE_CATEGORIES.map(item => <option key={item.id} value={item.id}>{pick(item.label, lang)}</option>)}</select></label>
                 <label><span>{expenseText('date', lang)}</span><input type="date" value={expenseForm.date} onChange={event => setExpenseForm(prev => ({ ...prev, date: event.target.value }))} /></label>
                 <label><span>{expenseText('paymentMethod', lang)}</span><select value={expenseForm.paymentMethod} onChange={event => setExpenseForm(prev => ({ ...prev, paymentMethod: event.target.value }))}>{PAYMENT_METHODS.map(item => <option key={item.id} value={item.id}>{pick(item.label, lang)}</option>)}</select></label>
-                <label><span>{expenseText('attachReceipt', lang)}</span><input type="file" accept="image/*,application/pdf" capture="environment" onChange={event => handleExpenseFile(event.target.files?.[0] || null)} /></label>
+                <label className="receipt-attach-card">
+                  <input type="file" accept="image/*,application/pdf" capture="environment" aria-label={expenseText('attachReceipt', lang)} onChange={event => handleExpenseFile(event.target.files?.[0] || null)} />
+                  <span className="receipt-attach-icon"><Upload size={20} /></span>
+                  <span className="receipt-attach-copy">
+                    <strong>{expenseText('attachReceipt', lang)}</strong>
+                    <small>{expenseText('uploadOptionalHint', lang)}</small>
+                    {expenseForm.receiptFileName && <em>{expenseForm.receiptFileName}</em>}
+                  </span>
+                </label>
                 <label className="expense-notes"><span>{expenseText('notes', lang)}</span><textarea value={expenseForm.notes} onChange={event => setExpenseForm(prev => ({ ...prev, notes: event.target.value }))} /></label>
 
                 <div className="entry-actions expense-actions">
@@ -3117,6 +3135,7 @@ const expenseSmartStyles = `
   .expense-hero h1{font-size:34px;line-height:1.08;margin:0 0 9px;font-weight:900}
   .expense-hero p{max-width:720px;margin:0;color:rgba(255,255,255,.7);font-size:14px;line-height:1.8;font-weight:700}
   .expense-hero-actions{display:flex;gap:10px;flex-wrap:wrap}
+  .receipt-upload-action{min-width:190px;justify-content:center;overflow:visible;text-overflow:clip}
   .expense-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:0;min-width:0;max-width:100%}
   .expense-dashboard-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:16px;align-items:start;min-width:0;max-width:100%}
   .expense-side-stack{display:grid;gap:16px;min-width:0;max-width:100%}
@@ -3152,7 +3171,7 @@ const expenseSmartStyles = `
   .expense-floating-add{display:none}
   .expense-smart-modal{width:min(920px,100%);max-height:min(92vh,980px);overflow:auto;padding:22px}
   .expense-modal-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14);border-radius:16px;padding:5px;margin-bottom:16px}
-  .expense-modal-tabs button{height:42px;border:0;border-radius:12px;background:transparent;color:var(--sfm-muted);font:900 13px Tajawal,Arial,sans-serif;cursor:pointer}
+  .expense-modal-tabs button{min-height:42px;border:0;border-radius:12px;background:transparent;color:var(--sfm-muted);font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;white-space:normal;line-height:1.35;padding:8px 10px}
   .expense-modal-tabs button.active{background:var(--sfm-foreground);color:var(--sfm-soft-cyan);box-shadow:0 8px 22px rgba(3,18,37,.14)}
   .expense-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .expense-form-grid select,.expense-form-grid textarea{border:1.5px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);padding:0 13px;color:var(--sfm-foreground);font:800 14px Tajawal,Arial,sans-serif;outline:0}
@@ -3160,11 +3179,26 @@ const expenseSmartStyles = `
   .expense-form-grid textarea{min-height:92px;padding-top:12px;resize:vertical}
   .expense-form-grid select:focus,.expense-form-grid textarea:focus{border-color:var(--sfm-soft-cyan);box-shadow:0 0 0 4px rgba(167,243,240,.12);background:var(--sfm-card)}
   .receipt-scan-area,.expense-notes,.expense-actions{grid-column:1/-1}
-  .receipt-drop{min-height:220px;border:1.5px dashed rgba(167,243,240,.34);border-radius:20px;background:linear-gradient(180deg,var(--sfm-card),#FFF6E8);display:grid!important;place-items:center;text-align:center;cursor:pointer;overflow:hidden}
-  .receipt-drop input{display:none}
+  .receipt-drop{position:relative;min-height:220px;border:1.5px dashed rgba(167,243,240,.34);border-radius:20px;background:linear-gradient(180deg,var(--sfm-card),var(--sfm-light-card));display:grid!important;place-items:center;text-align:center;cursor:pointer;overflow:visible;padding:18px;transition:all .18s ease}
+  .receipt-drop:hover{border-color:rgba(24,212,212,.55);background:rgba(167,243,240,.08);box-shadow:0 14px 34px rgba(3,18,37,.08)}
+  .receipt-drop:focus-within{border-color:var(--sfm-soft-cyan);box-shadow:0 0 0 4px rgba(167,243,240,.16)}
+  .receipt-drop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2}
   .receipt-drop img{width:100%;max-height:320px;object-fit:contain;border-radius:16px}
   .receipt-drop span{display:grid;place-items:center;gap:8px;color:var(--sfm-muted);font-weight:900}
+  .receipt-drop .receipt-drop-copy{max-width:min(640px,100%);color:var(--sfm-foreground)}
+  .receipt-drop-copy svg{color:var(--sfm-soft-cyan)}
+  .receipt-drop-copy strong{display:block;font-size:17px;font-weight:900;color:var(--sfm-foreground);white-space:normal;overflow-wrap:anywhere}
   .receipt-drop small{display:block;color:var(--sfm-muted);font-size:12px;font-weight:800}
+  .receipt-drop-copy small{max-width:560px;line-height:1.7;white-space:normal;overflow-wrap:anywhere}
+  .receipt-attach-card{grid-column:1/-1;position:relative;display:flex!important;align-items:center;gap:14px;min-width:0;min-height:104px;border:1.5px solid rgba(167,243,240,.28);border-radius:18px;background:linear-gradient(135deg,var(--sfm-card),var(--sfm-light-card));padding:16px 18px!important;cursor:pointer;color:var(--sfm-foreground);box-shadow:0 8px 24px rgba(3,18,37,.06);transition:all .18s ease}
+  .receipt-attach-card:hover{border-color:rgba(24,212,212,.55);background:rgba(167,243,240,.08);box-shadow:0 14px 32px rgba(3,18,37,.09);transform:translateY(-1px)}
+  .receipt-attach-card:focus-within{border-color:var(--sfm-soft-cyan);box-shadow:0 0 0 4px rgba(167,243,240,.16)}
+  .receipt-attach-card input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2}
+  .receipt-attach-icon{width:46px;height:46px;flex:0 0 46px;border-radius:15px;background:rgba(167,243,240,.16);color:var(--sfm-soft-cyan);display:grid;place-items:center}
+  .receipt-attach-copy{display:grid!important;gap:5px;min-width:0;color:var(--sfm-muted)}
+  .receipt-attach-copy strong{font-size:15px;font-weight:900;color:var(--sfm-foreground);line-height:1.35;white-space:normal;overflow-wrap:anywhere}
+  .receipt-attach-copy small{font-size:12px;line-height:1.7;color:var(--sfm-muted);font-weight:800;white-space:normal;overflow-wrap:anywhere}
+  .receipt-attach-copy em{width:fit-content;max-width:100%;font-style:normal;border-radius:999px;background:rgba(167,243,240,.14);border:1px solid rgba(167,243,240,.22);padding:5px 9px;color:var(--sfm-foreground);font-size:11px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .receipt-preview-grid{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;padding:12px}
   .receipt-preview-grid>div{min-width:0;background:var(--sfm-card);border:1px solid rgba(167,243,240,.16);border-radius:16px;padding:8px;display:grid;gap:7px;place-items:center}
   .receipt-preview-grid img{width:100%;height:112px;max-height:112px;object-fit:contain;border-radius:12px}
