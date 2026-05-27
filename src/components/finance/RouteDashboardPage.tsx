@@ -43,6 +43,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { Sidebar } from '@/components/Sidebar';
+import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
@@ -1806,7 +1807,11 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     return (
       <div className="sfm-shell expense-smart-shell" dir={dir}>
         <Sidebar />
-        <main className="sfm-main expense-smart-main">
+        <DashboardPageShell
+          ariaLabel={expenseText('smartTitle', lang)}
+          className="expense-smart-main"
+          contentClassName="expense-smart-content"
+        >
           <section className="expense-hero">
             <div>
               <span className="eyebrow"><Sparkles size={14} /> {expenseText('aiInsights', lang)}</span>
@@ -2003,7 +2008,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           <button type="button" className="expense-floating-add" onClick={openCreateEntry} aria-label={expenseText('addExpense', lang)}>
             <Plus size={22} />
           </button>
-        </main>
+        </DashboardPageShell>
 
         {entryOpen && (
           <div className="entry-overlay expense-modal-overlay" role="presentation" onMouseDown={() => setEntryOpen(false)}>
@@ -3086,29 +3091,35 @@ const baseStyles = `
 `;
 
 const expenseSmartStyles = `
-  .expense-smart-main{max-width:1360px;padding:22px 24px 36px}
+  .expense-smart-main{width:auto!important;max-width:none!important;margin:0!important;margin-inline-start:var(--sidebar-w)!important;margin-inline-end:0!important;padding:22px 24px 36px!important;overflow-x:clip!important}
+  .expense-smart-content{display:grid;gap:16px;width:100%;max-width:none!important;max-inline-size:none!important;min-width:0;margin:0}
   .expense-hero{background:linear-gradient(135deg,var(--sfm-foreground) 0%,var(--sfm-primary-dark) 60%,var(--sfm-soft-cyan) 150%);color:var(--sfm-card);border-radius:26px;padding:28px;display:flex;align-items:flex-end;justify-content:space-between;gap:18px;box-shadow:0 20px 50px rgba(3,18,37,.18);margin-bottom:16px}
   .expense-hero .eyebrow{display:inline-flex;align-items:center;gap:7px}
   .expense-hero h1{font-size:34px;line-height:1.08;margin:0 0 9px;font-weight:900}
   .expense-hero p{max-width:720px;margin:0;color:rgba(255,255,255,.7);font-size:14px;line-height:1.8;font-weight:700}
   .expense-hero-actions{display:flex;gap:10px;flex-wrap:wrap}
-  .expense-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
-  .expense-dashboard-grid{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(320px,.75fr);gap:16px;align-items:start}
-  .expense-side-stack{display:grid;gap:16px}
-  .expense-list-panel{min-width:0}
-  .expense-card-list{display:grid;gap:10px}
-  .expense-card-row{display:flex;justify-content:space-between;gap:14px;padding:15px;border:1px solid rgba(167,243,240,.13);border-radius:18px;background:linear-gradient(180deg,var(--sfm-card),#FFF9EF);box-shadow:0 8px 26px rgba(3,18,37,.06)}
-  .expense-row-main{display:flex;align-items:flex-start;gap:12px;min-width:0}
+  .expense-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:0;min-width:0;max-width:100%}
+  .expense-dashboard-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:16px;align-items:start;min-width:0;max-width:100%}
+  .expense-side-stack{display:grid;gap:16px;min-width:0;max-width:100%}
+  .expense-list-panel{min-width:0;max-width:100%;overflow:hidden}
+  .expense-list-panel .row-controls{min-width:0;max-width:100%;overflow:hidden}
+  .expense-list-panel .row-search{flex:1 1 220px;min-width:0;max-width:100%}
+  .expense-list-panel .row-select{flex:0 1 180px;min-width:0;max-width:100%}
+  .expense-list-panel .row-count{overflow-wrap:anywhere}
+  .expense-card-list{display:grid;gap:10px;min-width:0;max-width:100%}
+  .expense-card-row{display:flex;justify-content:space-between;gap:14px;min-width:0;max-width:100%;overflow:hidden;padding:15px;border:1px solid rgba(167,243,240,.13);border-radius:18px;background:linear-gradient(180deg,var(--sfm-card),#FFF9EF);box-shadow:0 8px 26px rgba(3,18,37,.06)}
+  .expense-row-main{display:flex;align-items:flex-start;gap:12px;min-width:0;max-width:100%}
   .expense-row-icon{width:42px;height:42px;flex:0 0 42px;border-radius:14px;background:rgba(167,243,240,.13);color:var(--sfm-muted);display:grid;place-items:center}
-  .expense-row-main strong{display:block;font-size:15px;font-weight:900;color:var(--sfm-foreground);line-height:1.35}
-  .expense-row-main span{display:block;margin-top:4px;color:var(--sfm-muted);font-size:12px;font-weight:800}
-  .expense-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
-  .expense-badges em{font-style:normal;border-radius:999px;padding:5px 9px;background:#F2EBDD;color:var(--sfm-muted);border:1px solid rgba(167,243,240,.14);font-size:11px;font-weight:900}
+  .expense-row-main>div:last-child{min-width:0;max-width:100%}
+  .expense-row-main strong{display:block;max-width:100%;overflow-wrap:anywhere;word-break:break-word;font-size:15px;font-weight:900;color:var(--sfm-foreground);line-height:1.35}
+  .expense-row-main span{display:block;max-width:100%;overflow-wrap:anywhere;margin-top:4px;color:var(--sfm-muted);font-size:12px;font-weight:800}
+  .expense-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;min-width:0;max-width:100%}
+  .expense-badges em{max-width:100%;overflow-wrap:anywhere;font-style:normal;border-radius:999px;padding:5px 9px;background:#F2EBDD;color:var(--sfm-muted);border:1px solid rgba(167,243,240,.14);font-size:11px;font-weight:900}
   .expense-badges em.ok{background:rgba(34,197,94,.1);color:#15803D;border-color:rgba(34,197,94,.18)}
   .expense-badges em.ai{background:rgba(167,243,240,.16);color:var(--sfm-muted);border-color:rgba(167,243,240,.25)}
-  .expense-row-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}
-  .expense-row-actions>b{font-size:16px;color:var(--sfm-foreground);font-weight:900;white-space:nowrap}
-  .expense-row-actions>div{display:flex;gap:6px}
+  .expense-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex:0 1 auto;min-width:0;max-width:100%;flex-wrap:wrap}
+  .expense-row-actions>b{max-width:100%;font-size:16px;color:var(--sfm-foreground);font-weight:900;white-space:nowrap}
+  .expense-row-actions>div{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
   .expense-empty{text-align:center;border:1.5px dashed rgba(167,243,240,.26);border-radius:22px;padding:34px 20px;background:var(--sfm-card)}
   .expense-empty>div:first-child{width:66px;height:66px;margin:0 auto 14px;border-radius:20px;background:rgba(167,243,240,.13);color:var(--sfm-muted);display:grid;place-items:center}
   .expense-empty h3{margin:0 0 8px;font-size:20px;font-weight:900}
@@ -3169,7 +3180,7 @@ const expenseSmartStyles = `
   .receipt-items{display:grid;gap:8px;margin-bottom:12px}
   .receipt-items>strong{color:var(--sfm-foreground);font-size:14px}
   .receipt-items span{display:flex;justify-content:space-between;gap:10px;background:var(--sfm-light-card);border-radius:12px;padding:9px 11px;color:var(--sfm-muted);font-weight:800}
-  @media(max-width:1180px){.expense-dashboard-grid{grid-template-columns:1fr}.expense-kpi-grid{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:920px){.expense-smart-main{margin-inline-start:0;padding:16px}.expense-hero{display:grid}.expense-hero-actions .primary-btn,.expense-hero-actions .ghost-btn{width:auto}.expense-side-stack{grid-template-columns:1fr}.expense-floating-add{position:fixed;display:grid;place-items:center;z-index:70;inset-inline-end:18px;bottom:18px;width:56px;height:56px;border-radius:18px;border:0;background:var(--sfm-soft-cyan);color:var(--sfm-foreground);box-shadow:0 18px 40px rgba(3,18,37,.28)}}
-  @media(max-width:640px){.expense-hero{padding:22px}.expense-hero h1{font-size:27px}.expense-kpi-grid,.expense-form-grid,.receipt-detail-grid,.monthly-grid{grid-template-columns:1fr}.expense-card-row{display:grid}.expense-row-actions{justify-content:space-between}.expense-row-actions>div{flex-wrap:wrap;justify-content:flex-end}.expense-modal-overlay{align-items:end;padding:10px}.expense-smart-modal{border-radius:22px 22px 0 0;max-height:94dvh;overflow-y:auto;max-width:100%;overflow-x:hidden}.expense-modal-tabs{grid-template-columns:1fr}.receipt-scan-actions,.expense-actions,.receipt-batch-head{display:grid;grid-template-columns:1fr}.ai-result-card dl{grid-template-columns:1fr}.expense-hero-actions{display:grid}.expense-hero-actions .primary-btn,.expense-hero-actions .ghost-btn{width:100%;justify-content:center}.receipt-preview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.receipt-review-body{grid-template-columns:1fr}.receipt-review-body>img{width:100%;height:150px}.receipt-review-fields{grid-template-columns:1fr}}
+  @media(max-width:1180px){.expense-dashboard-grid{grid-template-columns:1fr}.expense-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:920px){.expense-smart-main{width:100%!important;margin-inline-start:0!important;margin-inline-end:0!important;padding:calc(78px + env(safe-area-inset-top)) 16px 52px!important}.expense-smart-content{gap:14px}.expense-hero{display:grid}.expense-hero-actions .primary-btn,.expense-hero-actions .ghost-btn{width:auto}.expense-side-stack{grid-template-columns:1fr}.expense-floating-add{position:fixed;display:grid;place-items:center;z-index:70;inset-inline-end:18px;bottom:18px;width:56px;height:56px;border-radius:18px;border:0;background:var(--sfm-soft-cyan);color:var(--sfm-foreground);box-shadow:0 18px 40px rgba(3,18,37,.28)}}
+  @media(max-width:640px){.expense-hero{padding:22px}.expense-hero h1{font-size:27px}.expense-kpi-grid,.expense-form-grid,.receipt-detail-grid,.monthly-grid{grid-template-columns:1fr}.expense-list-panel .row-controls{display:grid;grid-template-columns:1fr}.expense-list-panel .row-select{width:100%}.expense-card-row{display:grid}.expense-row-actions{justify-content:space-between}.expense-row-actions>b{white-space:normal;overflow-wrap:anywhere}.expense-row-actions>div{flex-wrap:wrap;justify-content:flex-end}.expense-modal-overlay{align-items:end;padding:10px}.expense-smart-modal{border-radius:22px 22px 0 0;max-height:94dvh;overflow-y:auto;max-width:100%;overflow-x:hidden}.expense-modal-tabs{grid-template-columns:1fr}.receipt-scan-actions,.expense-actions,.receipt-batch-head{display:grid;grid-template-columns:1fr}.ai-result-card dl{grid-template-columns:1fr}.expense-hero-actions{display:grid}.expense-hero-actions .primary-btn,.expense-hero-actions .ghost-btn{width:100%;justify-content:center}.receipt-preview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.receipt-review-body{grid-template-columns:1fr}.receipt-review-body>img{width:100%;height:150px}.receipt-review-fields{grid-template-columns:1fr}}
 `;

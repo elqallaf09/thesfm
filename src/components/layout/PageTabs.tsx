@@ -38,15 +38,22 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
       <style jsx>{`
         .page-section-tabs {
           display: flex;
+          flex-wrap: wrap;
           gap: 8px;
           max-width: 100%;
-          overflow-x: auto;
+          min-width: 0;
+          overflow-x: visible;
+          overflow-y: visible;
           padding: 2px 2px 10px;
-          scrollbar-width: thin;
+          scrollbar-width: none;
           -webkit-overflow-scrolling: touch;
+        }
+        .page-section-tabs::-webkit-scrollbar {
+          display: none;
         }
         .page-section-tabs button {
           flex: 0 0 auto;
+          max-width: 100%;
           min-height: 42px;
           border: 1px solid rgba(29, 140, 255, .20);
           border-radius: 999px;
@@ -61,6 +68,11 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
           cursor: pointer;
           transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
           white-space: nowrap;
+        }
+        .page-section-tabs button span {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .page-section-tabs button:hover,
         .page-section-tabs button:focus-visible {
@@ -95,6 +107,18 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
           cursor: not-allowed;
           transform: none;
           box-shadow: none;
+        }
+        @media (max-width: 720px) {
+          .page-section-tabs {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            overscroll-behavior-inline: contain;
+            padding-bottom: 8px;
+          }
+          .page-section-tabs button {
+            max-width: min(76vw, 280px);
+          }
         }
       `}</style>
     </nav>
