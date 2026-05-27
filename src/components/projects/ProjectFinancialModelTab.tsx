@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { BarChart3, Bot, Download, Plus, Save, Trash2, WalletCards } from 'lucide-react';
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { BarChart3, Bot, Download, Eye, Plus, Save, Trash2, WalletCards, X } from 'lucide-react';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
@@ -60,6 +60,7 @@ type Kpis = {
   burnRate: number | null;
   runway: number | null;
   totalRevenue: number;
+  totalCosts: number;
   totalProfit: number;
 };
 
@@ -86,6 +87,15 @@ const TEXT = {
     revenueModel: 'نموذج الإيرادات',
     costModel: 'نموذج التكاليف',
     forecast: 'التوقعات المالية',
+    totalProjectedRevenue: 'إجمالي الإيرادات المتوقعة',
+    totalProjectedCosts: 'إجمالي التكاليف المتوقعة',
+    projectedNetProfit: 'صافي الربح المتوقع',
+    breakEvenPoint: 'نقطة التعادل',
+    profitMargin: 'هامش الربح',
+    cashFlowStatus: 'حالة التدفق النقدي',
+    cashFlowPositive: 'مستقر',
+    cashFlowNeedsReview: 'يحتاج مراجعة',
+    noData: 'بيانات غير كافية',
     kpis: 'المؤشرات المالية',
     scenarios: 'السيناريوهات',
     currency: 'العملة',
@@ -123,6 +133,9 @@ const TEXT = {
     netProfit: 'صافي الربح',
     cashBalance: 'الرصيد النقدي',
     cumulativeCashFlow: 'التدفق النقدي التراكمي',
+    fixedCosts: 'التكاليف الثابتة',
+    variableCosts: 'التكاليف المتغيرة',
+    totalCosts: 'إجمالي التكاليف',
     roi: 'العائد على الاستثمار ROI',
     paybackPeriod: 'فترة الاسترداد',
     breakEven: 'نقطة التعادل',
@@ -133,7 +146,7 @@ const TEXT = {
     totalRevenue: 'إجمالي الإيرادات',
     totalProfit: 'إجمالي الربح',
     conservative: 'متحفظ',
-    base: 'أساسي',
+    base: 'واقعي',
     optimistic: 'متفائل',
     low: 'منخفض',
     medium: 'متوسط',
@@ -148,9 +161,42 @@ const TEXT = {
     aiBody: 'سيتم تفعيل تحليل النموذج المالي بالذكاء الاصطناعي في مرحلة لاحقة.',
     na: 'غير متاح',
     remove: 'حذف',
+    close: 'إغلاق',
     charts: 'الرسوم المالية',
     revenueVsCosts: 'الإيرادات مقابل التكاليف',
     cashOverTime: 'الرصيد النقدي عبر الوقت',
+    revenueOverTime: 'الإيرادات عبر الوقت',
+    costsOverTime: 'التكاليف عبر الوقت',
+    netProfitOverTime: 'صافي الربح عبر الوقت',
+    cashFlowTrend: 'التدفق النقدي',
+    noChartData: 'لا توجد بيانات كافية لعرض الرسم البياني.',
+    projectionsPreviewTitle: 'معاينة التوقعات المالية',
+    projectionsPreviewSubtitle: 'عرض مختصر لأول أشهر المشروع. يمكنك فتح الجدول الكامل عند الحاجة.',
+    showFullTable: 'عرض الجدول الكامل',
+    fullTableTitle: 'الجدول الكامل للتوقعات المالية',
+    exportPdf: 'تصدير PDF',
+    previewCount: (shown: number, total: number) => `يعرض أول ${shown} أشهر من أصل ${total} شهر.`,
+    monthly: 'شهري',
+    quarterly: 'ربع سنوي',
+    yearly: 'سنوي',
+    realistic: 'واقعي',
+    aiInsightTitle: 'رؤية مالية ذكية',
+    aiInsightMissing: 'أضف الإيرادات والتكاليف لعرض تحليل مالي أدق.',
+    insightBreakEven: (month: string) => `نقطة التعادل المتوقعة في الشهر ${month}.`,
+    insightNoBreakEven: 'لم تظهر نقطة تعادل ضمن مدة التوقع الحالية.',
+    insightProfitPositive: 'الربح المتوقع موجب بناءً على المدخلات الحالية.',
+    insightProfitNegative: 'الربح المتوقع سالب ويحتاج مراجعة للإيرادات أو التكاليف.',
+    insightLargestCost: (name: string) => `أكبر بند تكلفة: ${name}.`,
+    insightCashPositive: 'التدفق النقدي النهائي مستقر بناءً على الرصيد المتوقع.',
+    insightCashNeedsReview: 'التدفق النقدي النهائي يحتاج مراجعة لأنه ينتهي برصيد سلبي.',
+    emptyForecastTitle: 'لا توجد توقعات مالية بعد.',
+    emptyForecastBody: 'أضف الافتراضات والإيرادات والتكاليف لإنشاء التوقعات.',
+    completeFinancialModel: 'إكمال النموذج المالي',
+    actualVsPlanned: 'الفعلي مقابل المخطط',
+    actualIncome: 'الدخل الفعلي',
+    actualExpenses: 'المصروفات الفعلية',
+    projectedRevenue: 'الإيرادات المتوقعة',
+    projectedCosts: 'التكاليف المتوقعة',
     scenarioComparison: 'مقارنة السيناريوهات',
   },
   en: {
@@ -159,6 +205,15 @@ const TEXT = {
     revenueModel: 'Revenue Model',
     costModel: 'Cost Model',
     forecast: 'Forecast',
+    totalProjectedRevenue: 'Total Projected Revenue',
+    totalProjectedCosts: 'Total Projected Costs',
+    projectedNetProfit: 'Projected Net Profit',
+    breakEvenPoint: 'Break-even Point',
+    profitMargin: 'Profit Margin',
+    cashFlowStatus: 'Cash Flow Status',
+    cashFlowPositive: 'Stable',
+    cashFlowNeedsReview: 'Needs review',
+    noData: 'Insufficient data',
     kpis: 'KPIs',
     scenarios: 'Scenarios',
     currency: 'Currency',
@@ -196,6 +251,9 @@ const TEXT = {
     netProfit: 'Net profit',
     cashBalance: 'Cash balance',
     cumulativeCashFlow: 'Cumulative cash flow',
+    fixedCosts: 'Fixed costs',
+    variableCosts: 'Variable costs',
+    totalCosts: 'Total costs',
     roi: 'ROI',
     paybackPeriod: 'Payback period',
     breakEven: 'Break-even',
@@ -206,7 +264,7 @@ const TEXT = {
     totalRevenue: 'Total revenue',
     totalProfit: 'Total profit',
     conservative: 'Conservative',
-    base: 'Base',
+    base: 'Realistic',
     optimistic: 'Optimistic',
     low: 'Low',
     medium: 'Medium',
@@ -221,9 +279,42 @@ const TEXT = {
     aiBody: 'AI analysis for the financial model will be enabled in a later phase.',
     na: 'N/A',
     remove: 'Remove',
+    close: 'Close',
     charts: 'Financial Charts',
     revenueVsCosts: 'Revenue vs Costs',
     cashOverTime: 'Cash balance over time',
+    revenueOverTime: 'Revenue over time',
+    costsOverTime: 'Costs over time',
+    netProfitOverTime: 'Net profit over time',
+    cashFlowTrend: 'Cash flow trend',
+    noChartData: 'There is not enough data to show this chart.',
+    projectionsPreviewTitle: 'Financial projections preview',
+    projectionsPreviewSubtitle: 'A compact view of the first project months. Open the full table when needed.',
+    showFullTable: 'Show full table',
+    fullTableTitle: 'Full financial projections table',
+    exportPdf: 'Export PDF',
+    previewCount: (shown: number, total: number) => `Showing the first ${shown} months out of ${total}.`,
+    monthly: 'Monthly',
+    quarterly: 'Quarterly',
+    yearly: 'Yearly',
+    realistic: 'Realistic',
+    aiInsightTitle: 'Smart financial insight',
+    aiInsightMissing: 'Add revenue and costs to show a more accurate financial analysis.',
+    insightBreakEven: (month: string) => `Expected break-even is month ${month}.`,
+    insightNoBreakEven: 'No break-even point appears within the current forecast period.',
+    insightProfitPositive: 'Projected profit is positive based on the current inputs.',
+    insightProfitNegative: 'Projected profit is negative and revenue or costs need review.',
+    insightLargestCost: (name: string) => `Largest cost item: ${name}.`,
+    insightCashPositive: 'Ending cash flow is stable based on the projected balance.',
+    insightCashNeedsReview: 'Ending cash flow needs review because the projected balance is negative.',
+    emptyForecastTitle: 'No financial projections yet.',
+    emptyForecastBody: 'Add assumptions, revenue, and costs to generate projections.',
+    completeFinancialModel: 'Complete financial model',
+    actualVsPlanned: 'Actual vs planned',
+    actualIncome: 'Actual income',
+    actualExpenses: 'Actual expenses',
+    projectedRevenue: 'Projected revenue',
+    projectedCosts: 'Projected costs',
     scenarioComparison: 'Scenario comparison',
   },
   fr: {
@@ -232,6 +323,15 @@ const TEXT = {
     revenueModel: 'Modèle de revenus',
     costModel: 'Modèle de coûts',
     forecast: 'Prévisions financières',
+    totalProjectedRevenue: 'Total des revenus projetés',
+    totalProjectedCosts: 'Total des coûts projetés',
+    projectedNetProfit: 'Bénéfice net projeté',
+    breakEvenPoint: 'Point mort',
+    profitMargin: 'Marge bénéficiaire',
+    cashFlowStatus: 'État du flux de trésorerie',
+    cashFlowPositive: 'Stable',
+    cashFlowNeedsReview: 'À revoir',
+    noData: 'Données insuffisantes',
     kpis: 'Indicateurs financiers',
     scenarios: 'Scénarios',
     currency: 'Devise',
@@ -269,6 +369,9 @@ const TEXT = {
     netProfit: 'Bénéfice net',
     cashBalance: 'Solde de trésorerie',
     cumulativeCashFlow: 'Flux de trésorerie cumulé',
+    fixedCosts: 'Coûts fixes',
+    variableCosts: 'Coûts variables',
+    totalCosts: 'Total des coûts',
     roi: 'ROI',
     paybackPeriod: 'Période de récupération',
     breakEven: 'Point mort',
@@ -279,7 +382,7 @@ const TEXT = {
     totalRevenue: 'Total des revenus',
     totalProfit: 'Bénéfice total',
     conservative: 'Prudent',
-    base: 'Base',
+    base: 'Réaliste',
     optimistic: 'Optimiste',
     low: 'Faible',
     medium: 'Moyen',
@@ -294,12 +397,48 @@ const TEXT = {
     aiBody: 'L’analyse IA du modèle financier sera activée dans une phase ultérieure.',
     na: 'N/A',
     remove: 'Supprimer',
+    close: 'Fermer',
     charts: 'Graphiques financiers',
     revenueVsCosts: 'Revenus vs coûts',
     cashOverTime: 'Solde de trésorerie dans le temps',
+    revenueOverTime: 'Revenus dans le temps',
+    costsOverTime: 'Coûts dans le temps',
+    netProfitOverTime: 'Bénéfice net dans le temps',
+    cashFlowTrend: 'Tendance du flux de trésorerie',
+    noChartData: 'Données insuffisantes pour afficher le graphique.',
+    projectionsPreviewTitle: 'Aperçu des prévisions financières',
+    projectionsPreviewSubtitle: 'Vue compacte des premiers mois du projet. Ouvrez le tableau complet si nécessaire.',
+    showFullTable: 'Afficher le tableau complet',
+    fullTableTitle: 'Tableau complet des prévisions financières',
+    exportPdf: 'Exporter PDF',
+    previewCount: (shown: number, total: number) => `Affiche les ${shown} premiers mois sur ${total}.`,
+    monthly: 'Mensuel',
+    quarterly: 'Trimestriel',
+    yearly: 'Annuel',
+    realistic: 'Réaliste',
+    aiInsightTitle: 'Vision financière intelligente',
+    aiInsightMissing: 'Ajoutez les revenus et les coûts pour afficher une analyse financière plus précise.',
+    insightBreakEven: (month: string) => `Le point mort attendu est au mois ${month}.`,
+    insightNoBreakEven: 'Aucun point mort n’apparaît dans la période de prévision actuelle.',
+    insightProfitPositive: 'Le bénéfice projeté est positif selon les données actuelles.',
+    insightProfitNegative: 'Le bénéfice projeté est négatif et les revenus ou coûts doivent être revus.',
+    insightLargestCost: (name: string) => `Poste de coût le plus élevé : ${name}.`,
+    insightCashPositive: 'Le flux de trésorerie final est stable selon le solde projeté.',
+    insightCashNeedsReview: 'Le flux de trésorerie final doit être revu car le solde projeté est négatif.',
+    emptyForecastTitle: 'Aucune prévision financière pour le moment.',
+    emptyForecastBody: 'Ajoutez les hypothèses, revenus et coûts pour générer les prévisions.',
+    completeFinancialModel: 'Compléter le modèle financier',
+    actualVsPlanned: 'Réel vs planifié',
+    actualIncome: 'Revenus réels',
+    actualExpenses: 'Dépenses réelles',
+    projectedRevenue: 'Revenus projetés',
+    projectedCosts: 'Coûts projetés',
     scenarioComparison: 'Comparaison des scénarios',
   },
 } as const;
+
+type FinancialCopy = (typeof TEXT)[Lang];
+type ProjectionViewMode = 'monthly' | 'quarterly' | 'yearly';
 
 const periodOptions = [
   { value: '12', key: 'months12' },
@@ -390,6 +529,7 @@ function calculateModel(
   }
 
   const totalRevenue = forecast.reduce((sum, row) => sum + row.revenue, 0);
+  const totalCosts = forecast.reduce((sum, row) => sum + row.totalCosts, 0);
   const totalProfit = forecast.reduce((sum, row) => sum + row.netProfit, 0);
   const totalGrossProfit = forecast.reduce((sum, row) => sum + row.grossProfit, 0);
   const negativeMonths = forecast.filter(row => row.netProfit < 0);
@@ -405,6 +545,7 @@ function calculateModel(
     burnRate,
     runway: burnRate && burnRate > 0 ? openingCash / burnRate : null,
     totalRevenue,
+    totalCosts,
     totalProfit,
   };
   return { forecast, kpis };
@@ -450,6 +591,9 @@ export function ProjectFinancialModelTab({
   const [costItems, setCostItems] = useState<CostItem[]>(() => [defaultCostItem()]);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
+  const [fullTableOpen, setFullTableOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ProjectionViewMode>('monthly');
+  const [activeScenario, setActiveScenario] = useState<ScenarioId>('base');
 
   const money = useCallback((amount: number) => formatMoney(Number.isFinite(amount) ? amount : 0, assumptions.currency || 'KWD', locale), [assumptions.currency, locale]);
   const pct = useCallback((value: number | null) => {
@@ -462,6 +606,28 @@ export function ProjectFinancialModelTab({
   }, [locale, t.na]);
 
   const { forecast, kpis } = useMemo(() => calculateModel(assumptions, revenueStreams, costItems), [assumptions, revenueStreams, costItems]);
+  const hasProjectionInput = useMemo(() => (
+    revenueStreams.some(stream => toNum(stream.startingRevenue) > 0)
+    || costItems.some(item => toNum(item.monthlyCost) > 0)
+  ), [costItems, revenueStreams]);
+  const hasProjectionData = hasProjectionInput && forecast.length > 0;
+  const previewRows = useMemo(() => forecast.slice(0, 6), [forecast]);
+  const finalCashBalance = forecast[forecast.length - 1]?.cashBalance ?? 0;
+  const largestCostItem = useMemo(() => {
+    return costItems
+      .map(item => ({ name: item.name.trim() || t.costItem, amount: toNum(item.monthlyCost) }))
+      .filter(item => item.amount > 0)
+      .sort((a, b) => b.amount - a.amount)[0] ?? null;
+  }, [costItems, t.costItem]);
+  const insightItems = useMemo(() => {
+    if (!hasProjectionData) return [t.aiInsightMissing];
+    return [
+      kpis.breakEvenMonth ? t.insightBreakEven(monthValue(kpis.breakEvenMonth)) : t.insightNoBreakEven,
+      kpis.totalProfit >= 0 ? t.insightProfitPositive : t.insightProfitNegative,
+      largestCostItem ? t.insightLargestCost(largestCostItem.name) : '',
+      finalCashBalance >= 0 ? t.insightCashPositive : t.insightCashNeedsReview,
+    ].filter(Boolean);
+  }, [finalCashBalance, hasProjectionData, kpis.breakEvenMonth, kpis.totalProfit, largestCostItem, monthValue, t]);
   const hasActuals = actualIncome > 0 || actualExpenses > 0;
   const actualIncomeRatio = kpis.totalRevenue > 0 && actualIncome > 0 ? (actualIncome / kpis.totalRevenue) * 100 : null;
   const actualExpenseRatio = kpis.totalCosts > 0 && actualExpenses > 0 ? (actualExpenses / kpis.totalCosts) * 100 : null;
@@ -484,7 +650,9 @@ export function ProjectFinancialModelTab({
     month: row.month,
     revenue: Math.round(row.revenue),
     costs: Math.round(row.totalCosts),
+    netProfit: Math.round(row.netProfit),
     cash: Math.round(row.cashBalance),
+    cashFlow: Math.round(row.cumulativeCashFlow),
   })), [forecast]);
 
   useEffect(() => {
@@ -506,6 +674,15 @@ export function ProjectFinancialModelTab({
     loadModel();
     return () => { mounted = false; };
   }, [projectId, userId]);
+
+  useEffect(() => {
+    if (!fullTableOpen) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFullTableOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fullTableOpen]);
 
   const updateAssumption = (field: keyof Assumptions, value: string) => {
     setNotice('');
@@ -554,12 +731,12 @@ export function ProjectFinancialModelTab({
   return (
     <section className="financial-model-tab" role="tabpanel" aria-label={t.financialModel}>
       <div className="financial-summary-grid">
-        <MetricCard title={t.totalRevenue} value={money(kpis.totalRevenue)} />
-        <MetricCard title={t.totalProfit} value={money(kpis.totalProfit)} />
-        <MetricCard title={t.roi} value={pct(kpis.roi)} />
-        <MetricCard title={t.paybackPeriod} value={monthValue(kpis.paybackPeriod)} />
-        <MetricCard title={t.breakEven} value={monthValue(kpis.breakEvenMonth)} />
-        <MetricCard title={t.runway} value={monthValue(kpis.runway)} />
+        <MetricCard title={t.totalProjectedRevenue} value={hasProjectionData ? money(kpis.totalRevenue) : t.noData} />
+        <MetricCard title={t.totalProjectedCosts} value={hasProjectionData ? money(kpis.totalCosts) : t.noData} />
+        <MetricCard title={t.projectedNetProfit} value={hasProjectionData ? money(kpis.totalProfit) : t.noData} />
+        <MetricCard title={t.breakEvenPoint} value={hasProjectionData ? monthValue(kpis.breakEvenMonth) : t.noData} />
+        <MetricCard title={t.profitMargin} value={hasProjectionData ? pct(kpis.netMargin) : t.noData} />
+        <MetricCard title={t.cashFlowStatus} value={hasProjectionData ? (finalCashBalance >= 0 ? t.cashFlowPositive : t.cashFlowNeedsReview) : t.noData} />
       </div>
 
       {notice ? <div className="financial-notice" role="status">{notice}</div> : null}
@@ -575,7 +752,7 @@ export function ProjectFinancialModelTab({
 
       <div className="financial-layout">
         <div className="financial-main">
-          <article className="financial-card">
+          <article className="financial-card" id="financial-assumptions">
             <SectionTitle icon={<WalletCards size={20} />} title={t.assumptions} />
             <div className="financial-form-grid">
               <CurrencySelect value={assumptions.currency} onChange={code => updateAssumption('currency', code)} lang={locale} label={t.currency} ariaLabel={t.currency} />
@@ -644,67 +821,97 @@ export function ProjectFinancialModelTab({
 
           <article className="financial-card">
             <SectionTitle icon={<BarChart3 size={20} />} title={t.charts} />
-            <div className="chart-grid">
-              <ChartBox title={t.revenueVsCosts}>
-                <ResponsiveContainer width="100%" height={240}>
-                  <LineChart data={chartData}>
-                    <CartesianGrid stroke="rgba(29,140,255,.16)" />
-                    <XAxis dataKey="month" tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} />
-                    <YAxis tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} width={46} />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="revenue" name={t.revenue} stroke="var(--sfm-primary)" strokeWidth={3} dot={false} />
-                    <Line type="monotone" dataKey="costs" name={t.costs} stroke="#7A3E1D" strokeWidth={3} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
+            <div className="chart-grid financial-chart-grid">
+              <ChartBox title={t.revenueOverTime}>
+                {hasProjectionData ? (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={chartData}>
+                      <CartesianGrid stroke="rgba(29,140,255,.16)" />
+                      <XAxis dataKey="month" tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} />
+                      <YAxis tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} width={46} />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="revenue" name={t.revenue} stroke="var(--sfm-primary)" strokeWidth={3} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : <EmptyChart text={t.noChartData} />}
               </ChartBox>
-              <ChartBox title={t.cashOverTime}>
-                <ResponsiveContainer width="100%" height={240}>
-                  <LineChart data={chartData}>
-                    <CartesianGrid stroke="rgba(29,140,255,.16)" />
-                    <XAxis dataKey="month" tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} />
-                    <YAxis tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} width={46} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="cash" name={t.cashBalance} stroke="#1F7A4D" strokeWidth={3} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
+              <ChartBox title={t.costsOverTime}>
+                {hasProjectionData ? (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={chartData}>
+                      <CartesianGrid stroke="rgba(29,140,255,.16)" />
+                      <XAxis dataKey="month" tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} />
+                      <YAxis tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} width={46} />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="costs" name={t.costs} stroke="#F59E0B" strokeWidth={3} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : <EmptyChart text={t.noChartData} />}
+              </ChartBox>
+              <ChartBox title={t.netProfitOverTime}>
+                {hasProjectionData ? (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={chartData}>
+                      <CartesianGrid stroke="rgba(29,140,255,.16)" />
+                      <XAxis dataKey="month" tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} />
+                      <YAxis tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} width={46} />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="netProfit" name={t.netProfit} stroke="#10B981" strokeWidth={3} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : <EmptyChart text={t.noChartData} />}
+              </ChartBox>
+              <ChartBox title={t.cashFlowTrend}>
+                {hasProjectionData ? (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={chartData}>
+                      <CartesianGrid stroke="rgba(29,140,255,.16)" />
+                      <XAxis dataKey="month" tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} />
+                      <YAxis tick={{ fill: 'var(--sfm-muted)', fontSize: 12 }} width={46} />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="cashFlow" name={t.cumulativeCashFlow} stroke="var(--sfm-accent)" strokeWidth={3} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : <EmptyChart text={t.noChartData} />}
               </ChartBox>
             </div>
           </article>
 
-          <article className="financial-card">
-            <SectionTitle icon={<BarChart3 size={20} />} title={t.forecast} />
-            <div className="forecast-table-wrap">
-              <table className="forecast-table">
-                <thead>
-                  <tr>
-                    <th>{t.month}</th>
-                    <th>{t.revenue}</th>
-                    <th>{t.cogs}</th>
-                    <th>{t.grossProfit}</th>
-                    <th>{t.operatingExpenses}</th>
-                    <th>{t.netProfit}</th>
-                    <th>{t.cashBalance}</th>
-                    <th>{t.cumulativeCashFlow}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {forecast.map(row => (
-                    <tr key={row.month}>
-                      <td>{row.month}</td>
-                      <td>{money(row.revenue)}</td>
-                      <td>{money(row.cogs)}</td>
-                      <td>{money(row.grossProfit)}</td>
-                      <td>{money(row.operatingExpenses)}</td>
-                      <td>{money(row.netProfit)}</td>
-                      <td>{money(row.cashBalance)}</td>
-                      <td>{money(row.cumulativeCashFlow)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <article className="financial-card forecast-preview-card">
+            <div className="forecast-preview-head">
+              <div>
+                <SectionTitle icon={<BarChart3 size={20} />} title={t.projectionsPreviewTitle} />
+                <p>{t.projectionsPreviewSubtitle}</p>
+              </div>
+              <div className="projection-actions">
+                <button type="button" className="projection-primary" onClick={() => setFullTableOpen(true)} disabled={!hasProjectionData} aria-label={t.showFullTable}>
+                  <Eye size={16} />
+                  {t.showFullTable}
+                </button>
+                <button type="button" className="projection-disabled" disabled aria-disabled="true">
+                  <Download size={16} />
+                  {t.exportExcel}
+                  <span>{t.comingSoon}</span>
+                </button>
+                <button type="button" className="projection-disabled" disabled aria-disabled="true">
+                  <Download size={16} />
+                  {t.exportPdf}
+                  <span>{t.comingSoon}</span>
+                </button>
+              </div>
             </div>
+            <ViewToggleRow text={t} value={viewMode} onChange={setViewMode} />
+            {hasProjectionData ? (
+              <>
+                <ProjectionTable rows={previewRows} text={t} money={money} variant="preview" />
+                {forecast.length > previewRows.length ? <p className="forecast-preview-note">{t.previewCount(previewRows.length, forecast.length)}</p> : null}
+              </>
+            ) : (
+              <EmptyForecastState text={t} onAction={() => document.getElementById('financial-assumptions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
+            )}
           </article>
+
+          <FinancialInsightCard text={t} insights={insightItems} />
         </div>
 
         <aside className="financial-side">
@@ -720,10 +927,23 @@ export function ProjectFinancialModelTab({
 
           <article className="financial-card">
             <SectionTitle icon={<BarChart3 size={20} />} title={t.scenarios} />
+            <div className="scenario-toggle-row" role="group" aria-label={t.scenarios}>
+              {scenarios.map(scenario => (
+                <button
+                  key={scenario.id}
+                  type="button"
+                  aria-pressed={activeScenario === scenario.id}
+                  className={activeScenario === scenario.id ? 'active' : ''}
+                  onClick={() => setActiveScenario(scenario.id)}
+                >
+                  {t[scenario.id]}
+                </button>
+              ))}
+            </div>
             <p className="scenario-note">{t.scenarioDisclaimer}</p>
             <div className="scenario-list">
               {scenarios.map(scenario => (
-                <div className={`scenario-card ${scenario.risk}`} key={scenario.id}>
+                <div className={`scenario-card ${scenario.risk} ${activeScenario === scenario.id ? 'active' : ''}`} key={scenario.id}>
                   <div>
                     <strong>{t[scenario.id]}</strong>
                     <span>{t[scenario.risk]}</span>
@@ -748,11 +968,6 @@ export function ProjectFinancialModelTab({
             </ChartBox>
           </article>
 
-          <article className="financial-card ai-card">
-            <SectionTitle icon={<Bot size={20} />} title={t.aiTitle} />
-            <p>{t.aiBody}</p>
-          </article>
-
           <article className="financial-card financial-actions">
             <button type="button" className="primary-financial-btn" onClick={saveModel} disabled={saving} aria-label={t.saveFinancialModel}>
               <Save size={16} />
@@ -766,6 +981,15 @@ export function ProjectFinancialModelTab({
           </article>
         </aside>
       </div>
+
+      {fullTableOpen ? (
+        <FullProjectionsModal
+          rows={forecast}
+          text={t}
+          money={money}
+          onClose={() => setFullTableOpen(false)}
+        />
+      ) : null}
 
       <style jsx global>{`
         .financial-model-tab{display:grid;gap:16px;min-width:0}
@@ -796,13 +1020,39 @@ export function ProjectFinancialModelTab({
         .chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
         .chart-box{border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:16px;padding:12px;min-width:0}
         .chart-box h3{margin:0 0 10px;color:var(--sfm-midnight);font-size:15px}
-        .forecast-table-wrap{overflow-x:auto;border:1px solid rgba(29,140,255,.12);border-radius:16px}
-        .forecast-table{width:100%;min-width:980px;border-collapse:collapse;background:var(--sfm-light-card)}
+        .financial-empty-chart{min-height:220px;display:grid;place-items:center;text-align:center;border:1px dashed rgba(29,140,255,.22);border-radius:14px;color:var(--sfm-muted);font-weight:900;line-height:1.7;padding:18px}
+        .forecast-preview-card{display:grid;gap:14px}
+        .forecast-preview-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+        .forecast-preview-head .section-title{margin-bottom:6px}
+        .forecast-preview-head p,.forecast-preview-note{margin:0;color:var(--sfm-muted);font-weight:850;line-height:1.7}
+        .projection-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;min-width:260px}
+        .projection-actions button,.financial-modal-actions button{min-height:40px;border-radius:12px;border:1px solid rgba(29,140,255,.18);padding:0 12px;font-family:inherit;font-weight:950;display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:pointer}
+        .projection-primary{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 12px 24px rgba(29,140,255,.18)}
+        .projection-primary:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
+        .projection-disabled{background:var(--sfm-light-card);color:var(--sfm-muted);cursor:not-allowed}
+        .projection-disabled span{border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:3px 8px;font-size:11px}
+        .projection-view-toggle,.scenario-toggle-row{display:flex;flex-wrap:wrap;gap:8px}
+        .projection-view-toggle button,.scenario-toggle-row button{min-height:36px;border:1px solid rgba(29,140,255,.18);border-radius:999px;background:var(--sfm-card);color:var(--sfm-muted);padding:0 12px;font-family:inherit;font-weight:950;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+        .projection-view-toggle button.active,.scenario-toggle-row button.active{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;border-color:transparent;box-shadow:0 10px 22px rgba(24,212,212,.18)}
+        .projection-view-toggle button:disabled{cursor:not-allowed;opacity:.72}
+        .projection-view-toggle button span{border-radius:999px;background:rgba(255,255,255,.20);padding:2px 7px;font-size:10px}
+        .forecast-table-wrap{overflow:auto;border:1px solid rgba(29,140,255,.12);border-radius:16px;max-width:100%}
+        .forecast-table-wrap.compact{max-height:420px}
+        .forecast-table-wrap.full{max-height:min(62vh,680px)}
+        .forecast-table{width:100%;min-width:980px;border-collapse:separate;border-spacing:0;background:var(--sfm-light-card)}
         .forecast-table th,.forecast-table td{padding:11px 12px;border-bottom:1px solid rgba(29,140,255,.1);text-align:start;white-space:nowrap;color:var(--sfm-midnight)}
-        .forecast-table th{font-size:12px;color:var(--sfm-muted);background:rgba(29,140,255,.10)}
+        .forecast-table th{position:sticky;top:0;z-index:1;font-size:12px;color:var(--sfm-muted);background:rgba(29,140,255,.12);backdrop-filter:blur(8px)}
+        .forecast-table tbody tr:hover td{background:rgba(29,140,255,.06)}
+        .financial-empty-forecast{display:grid;gap:9px;place-items:center;text-align:center;border:1px dashed rgba(29,140,255,.26);border-radius:18px;background:var(--sfm-light-card);padding:28px;min-height:220px}
+        .financial-empty-forecast strong{color:var(--sfm-midnight);font-size:18px}
+        .financial-empty-forecast p{margin:0;color:var(--sfm-muted);line-height:1.8;font-weight:850}
+        .financial-empty-forecast button{min-height:42px;border:0;border-radius:13px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;padding:0 16px;font-family:inherit;font-weight:950;cursor:pointer}
+        .financial-insight-card ul{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+        .financial-insight-card li{border:1px solid rgba(24,212,212,.18);background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(24,212,212,.06));border-radius:14px;padding:12px;color:var(--sfm-primary-dark);font-weight:900;line-height:1.7}
         .side-metrics,.scenario-list,.financial-actions{display:grid;gap:10px}
         .scenario-note{margin:0 0 12px;color:var(--sfm-muted);line-height:1.7}
         .scenario-card{border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:16px;padding:12px;display:grid;gap:7px}
+        .scenario-card.active{border-color:rgba(24,212,212,.35);box-shadow:0 12px 26px rgba(24,212,212,.12)}
         .scenario-card div{display:flex;justify-content:space-between;gap:10px;align-items:center}
         .scenario-card strong{color:var(--sfm-midnight)}.scenario-card small{color:var(--sfm-muted);font-weight:800}
         .scenario-card span{border-radius:999px;padding:4px 9px;font-size:11px;font-weight:950}
@@ -814,8 +1064,20 @@ export function ProjectFinancialModelTab({
         .disabled-financial-btn{background:var(--sfm-light-card);color:var(--sfm-muted);cursor:not-allowed}
         .disabled-financial-btn span{border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:3px 8px;font-size:11px}
         .financial-notice{border:1px solid rgba(29,140,255,.2);background:var(--sfm-light-card);color:var(--sfm-midnight);border-radius:15px;padding:12px 14px;font-weight:900}
+        .financial-modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(3,18,37,.58);backdrop-filter:blur(8px);display:grid;place-items:center;padding:24px}
+        .financial-modal{width:min(1180px,calc(100vw - 32px));max-height:calc(100vh - 48px);overflow:hidden;display:grid;gap:14px;background:var(--sfm-card);border:1px solid rgba(167,243,240,.22);border-radius:24px;padding:18px;box-shadow:0 28px 80px rgba(3,18,37,.30);color:var(--sfm-midnight)}
+        .financial-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+        .financial-modal-head h2{margin:0;color:var(--sfm-midnight);font-size:22px}
+        .financial-modal-head p{margin:6px 0 0;color:var(--sfm-muted);font-weight:850}
+        .financial-modal-close{width:40px;height:40px;border:1px solid rgba(29,140,255,.18);border-radius:12px;background:var(--sfm-light-card);color:var(--sfm-midnight);display:grid;place-items:center;cursor:pointer}
+        .financial-modal-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+        .dark .financial-card,.dark .financial-metric,.dark .financial-modal{background:var(--card);border-color:var(--border);box-shadow:0 16px 36px rgba(0,0,0,.22)}
+        .dark .financial-metric,.dark .model-row,.dark .chart-box,.dark .forecast-table,.dark .financial-empty-chart,.dark .financial-empty-forecast,.dark .projection-disabled,.dark .disabled-financial-btn,.dark .financial-modal-close{background:var(--sfm-card-elevated, #0F335C)}
+        .dark .section-title h2,.dark .section-header h2,.dark .financial-metric strong,.dark .row-heading strong,.dark .chart-box h3,.dark .forecast-table td,.dark .financial-empty-forecast strong,.dark .financial-modal-head h2,.dark .scenario-card strong,.dark .financial-insight-card li{color:var(--foreground)}
+        .dark .forecast-table th{background:rgba(24,212,212,.14);color:var(--sfm-muted)}
+        .dark .forecast-table tbody tr:hover td{background:rgba(24,212,212,.08)}
         @media(max-width:1280px){.financial-summary-grid,.financial-actuals-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.financial-layout{grid-template-columns:1fr}.financial-side{position:static}.chart-grid{grid-template-columns:1fr}}
-        @media(max-width:760px){.financial-summary-grid,.financial-actuals-grid,.financial-form-grid,.model-row{grid-template-columns:1fr}.financial-card,.financial-metric{padding:16px}.section-header{align-items:flex-start;flex-direction:column}.section-header button{width:100%;justify-content:center}}
+        @media(max-width:760px){.financial-summary-grid,.financial-actuals-grid,.financial-form-grid,.model-row{grid-template-columns:1fr}.financial-card,.financial-metric{padding:16px}.section-header,.forecast-preview-head,.financial-modal-head{align-items:flex-start;flex-direction:column}.section-header button,.projection-actions,.projection-actions button,.financial-modal-actions,.financial-modal-actions button{width:100%;justify-content:center;min-width:0}.financial-modal-backdrop{align-items:end;padding:0}.financial-modal{width:100%;max-height:94vh;border-radius:24px 24px 0 0}.forecast-table{min-width:860px}}
       `}</style>
     </section>
   );
@@ -862,6 +1124,158 @@ function TextField({ id, label, value, multiline = false, onChange }: { id: stri
 
 function ChartBox({ title, children }: { title: string; children: React.ReactNode }) {
   return <div className="chart-box"><h3>{title}</h3>{children}</div>;
+}
+
+function EmptyChart({ text }: { text: string }) {
+  return <div className="financial-empty-chart" role="status">{text}</div>;
+}
+
+function ViewToggleRow({
+  text,
+  value,
+  onChange,
+}: {
+  text: FinancialCopy;
+  value: ProjectionViewMode;
+  onChange: (value: ProjectionViewMode) => void;
+}) {
+  const options: Array<{ id: ProjectionViewMode; label: string; enabled: boolean }> = [
+    { id: 'monthly', label: text.monthly, enabled: true },
+    { id: 'quarterly', label: text.quarterly, enabled: false },
+    { id: 'yearly', label: text.yearly, enabled: false },
+  ];
+
+  return (
+    <div className="projection-view-toggle" role="group" aria-label={text.forecast}>
+      {options.map(option => (
+        <button
+          key={option.id}
+          type="button"
+          aria-pressed={value === option.id}
+          disabled={!option.enabled}
+          className={value === option.id ? 'active' : ''}
+          onClick={() => option.enabled && onChange(option.id)}
+        >
+          {option.label}
+          {!option.enabled ? <span>{text.comingSoon}</span> : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ProjectionTable({
+  rows,
+  text,
+  money,
+  variant = 'full',
+}: {
+  rows: ForecastRow[];
+  text: FinancialCopy;
+  money: (amount: number) => string;
+  variant?: 'preview' | 'full';
+}) {
+  const showGrossProfit = variant === 'full';
+
+  return (
+    <div className={`forecast-table-wrap ${variant === 'preview' ? 'compact' : 'full'}`}>
+      <table className="forecast-table">
+        <caption className="sr-only">{variant === 'preview' ? text.projectionsPreviewTitle : text.fullTableTitle}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{text.month}</th>
+            <th scope="col">{text.revenue}</th>
+            <th scope="col">{text.fixedCosts}</th>
+            <th scope="col">{text.variableCosts}</th>
+            <th scope="col">{text.totalCosts}</th>
+            {showGrossProfit ? <th scope="col">{text.grossProfit}</th> : null}
+            <th scope="col">{text.netProfit}</th>
+            <th scope="col">{text.cashBalance}</th>
+            <th scope="col">{text.cumulativeCashFlow}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(row => (
+            <tr key={row.month}>
+              <td>{row.month}</td>
+              <td>{money(row.revenue)}</td>
+              <td>{money(row.operatingExpenses)}</td>
+              <td>{money(row.cogs)}</td>
+              <td>{money(row.totalCosts)}</td>
+              {showGrossProfit ? <td>{money(row.grossProfit)}</td> : null}
+              <td>{money(row.netProfit)}</td>
+              <td>{money(row.cashBalance)}</td>
+              <td>{money(row.cumulativeCashFlow)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function EmptyForecastState({ text, onAction }: { text: FinancialCopy; onAction: () => void }) {
+  return (
+    <div className="financial-empty-forecast" role="status">
+      <strong>{text.emptyForecastTitle}</strong>
+      <p>{text.emptyForecastBody}</p>
+      <button type="button" onClick={onAction}>{text.completeFinancialModel}</button>
+    </div>
+  );
+}
+
+function FinancialInsightCard({ text, insights }: { text: FinancialCopy; insights: string[] }) {
+  return (
+    <article className="financial-card ai-card financial-insight-card">
+      <SectionTitle icon={<Bot size={20} />} title={text.aiInsightTitle} />
+      <ul>
+        {insights.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}
+      </ul>
+    </article>
+  );
+}
+
+function FullProjectionsModal({
+  rows,
+  text,
+  money,
+  onClose,
+}: {
+  rows: ForecastRow[];
+  text: FinancialCopy;
+  money: (amount: number) => string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="financial-modal-backdrop" role="presentation" onMouseDown={event => {
+      if (event.currentTarget === event.target) onClose();
+    }}>
+      <section className="financial-modal" role="dialog" aria-modal="true" aria-labelledby="financial-full-table-title">
+        <div className="financial-modal-head">
+          <div>
+            <h2 id="financial-full-table-title">{text.fullTableTitle}</h2>
+            <p>{text.previewCount(rows.length, rows.length)}</p>
+          </div>
+          <button type="button" className="financial-modal-close" onClick={onClose} aria-label={text.close}>
+            <X size={18} />
+          </button>
+        </div>
+        <div className="financial-modal-actions">
+          <button type="button" className="projection-disabled" disabled aria-disabled="true">
+            <Download size={16} />
+            {text.exportExcel}
+            <span>{text.comingSoon}</span>
+          </button>
+          <button type="button" className="projection-disabled" disabled aria-disabled="true">
+            <Download size={16} />
+            {text.exportPdf}
+            <span>{text.comingSoon}</span>
+          </button>
+        </div>
+        <ProjectionTable rows={rows} text={text} money={money} variant="full" />
+      </section>
+    </div>
+  );
 }
 
 function GaugeIcon() {
