@@ -757,12 +757,10 @@ export default function FinancialTheoriesPage() {
         </section>
       </DashboardPageShell>
 
-      <style jsx>{`
+      <style jsx global>{`
         .financial-theories-shell {
           min-height: 100vh;
-          background:
-            radial-gradient(circle at 12% 8%, rgba(29, 140, 255, .10), transparent 32%),
-            linear-gradient(160deg, var(--sfm-background) 0%, #F8FBFF 58%, #E7F1FF 100%);
+          background: var(--sfm-page-gradient);
           color: var(--sfm-foreground);
           overflow-x: clip;
           scroll-behavior: smooth;
@@ -770,11 +768,11 @@ export default function FinancialTheoriesPage() {
 
         .financial-theories-content {
           display: grid;
-          gap: 14px;
+          gap: 20px;
           min-width: 0;
         }
 
-        :global(.financial-theories-hero) {
+        .financial-theories-hero {
           position: relative;
           overflow: hidden;
           min-height: 220px;
@@ -782,7 +780,7 @@ export default function FinancialTheoriesPage() {
           align-items: center !important;
         }
 
-        :global(.financial-theories-hero)::before {
+        .financial-theories-hero::before {
           content: '';
           position: absolute;
           inset: 18px 22px auto auto;
@@ -860,7 +858,7 @@ export default function FinancialTheoriesPage() {
         .learning-overview {
           display: grid;
           grid-template-columns: minmax(250px, .42fr) minmax(0, 1fr);
-          gap: 12px;
+          gap: 16px;
           align-items: stretch;
           min-width: 0;
         }
@@ -875,9 +873,11 @@ export default function FinancialTheoriesPage() {
           display: grid;
           grid-template-columns: auto minmax(0, 1fr);
           align-items: center;
-          gap: 10px;
-          min-height: 74px;
-          padding: 12px !important;
+          gap: 12px;
+          min-height: 86px;
+          padding: 14px !important;
+          border: 1px solid var(--sfm-border) !important;
+          background: var(--sfm-card) !important;
         }
 
         .theory-stat-card > span,
@@ -900,8 +900,8 @@ export default function FinancialTheoriesPage() {
 
         .theory-stat-card strong {
           display: block;
-          color: var(--sfm-midnight);
-          font-size: 23px;
+          color: var(--sfm-heading);
+          font-size: 25px;
           line-height: 1;
         }
 
@@ -916,12 +916,13 @@ export default function FinancialTheoriesPage() {
         .why-card {
           display: grid;
           grid-template-columns: auto minmax(0, 1fr) minmax(260px, .72fr);
-          gap: 14px;
+          gap: 16px;
           align-items: center;
-          padding: 16px !important;
+          padding: 18px !important;
           background:
             radial-gradient(circle at 0% 0%, rgba(24, 212, 212, .16), transparent 30%),
             var(--sfm-card) !important;
+          border: 1px solid var(--sfm-border) !important;
         }
 
         .why-icon {
@@ -941,7 +942,7 @@ export default function FinancialTheoriesPage() {
         .theory-section-head h2,
         .theories-cta h2 {
           margin: 6px 0;
-          color: var(--sfm-midnight);
+          color: var(--sfm-heading);
           font-size: clamp(22px, 2.6vw, 30px);
           line-height: 1.15;
         }
@@ -971,8 +972,8 @@ export default function FinancialTheoriesPage() {
           border: 1px solid rgba(24, 212, 212, .16);
           border-radius: 13px;
           background: rgba(24, 212, 212, .07);
-          padding: 8px 10px;
-          color: var(--sfm-primary-dark);
+          padding: 10px 12px;
+          color: var(--sfm-heading);
           font-weight: 900;
         }
 
@@ -982,17 +983,17 @@ export default function FinancialTheoriesPage() {
 
         .theory-section {
           display: grid;
-          gap: 12px;
+          gap: 16px;
           min-width: 0;
           scroll-margin-top: 22px;
         }
 
         .section-panel {
-          border: 1px solid rgba(29, 140, 255, .12);
+          border: 1px solid var(--sfm-border);
           border-radius: 26px;
-          background: rgba(255, 255, 255, .55);
+          background: var(--sfm-card);
           box-shadow: 0 14px 34px rgba(3, 18, 37, .045);
-          padding: 16px;
+          padding: 20px;
         }
 
         .theory-section-head {
@@ -1003,13 +1004,13 @@ export default function FinancialTheoriesPage() {
         .theory-controls {
           display: grid;
           grid-template-columns: minmax(240px, .36fr) minmax(0, 1fr);
-          gap: 10px;
+          gap: 12px;
           align-items: center;
           min-width: 0;
-          border: 1px solid rgba(29, 140, 255, .13);
+          border: 1px solid var(--sfm-border);
           border-radius: 18px;
-          background: rgba(255, 255, 255, .72);
-          padding: 10px;
+          background: var(--sfm-card);
+          padding: 12px;
           box-shadow: 0 12px 30px rgba(3, 18, 37, .05);
         }
 
@@ -1020,9 +1021,9 @@ export default function FinancialTheoriesPage() {
           grid-template-columns: auto minmax(0, 1fr);
           gap: 10px;
           align-items: center;
-          border: 1px solid rgba(29, 140, 255, .18);
+          border: 1px solid var(--sfm-border);
           border-radius: 14px;
-          background: #FFFFFF;
+          background: var(--sfm-input-bg);
           color: var(--sfm-primary-hover);
           padding: 0 14px;
         }
@@ -1033,7 +1034,7 @@ export default function FinancialTheoriesPage() {
           border: 0;
           outline: 0;
           background: transparent;
-          color: var(--sfm-midnight);
+          color: var(--sfm-foreground);
           font: 900 14px Tajawal, Arial, sans-serif;
         }
 
@@ -1054,36 +1055,38 @@ export default function FinancialTheoriesPage() {
           border: 0;
         }
 
-        :global(.financial-theory-tabs) {
+        .financial-theory-tabs {
           padding-bottom: 0 !important;
         }
 
         .theory-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-          gap: 12px;
-          align-items: start;
+          gap: 18px;
+          align-items: stretch;
           min-width: 0;
         }
 
         .theory-card {
           position: relative;
           display: grid;
-          gap: 10px;
+          grid-template-rows: auto auto auto auto 1fr auto;
+          gap: 12px;
           min-width: 0;
-          padding: 14px;
-          border-radius: 18px;
-          border: 1px solid rgba(29, 140, 255, .14);
+          min-height: 100%;
+          padding: 18px;
+          border-radius: 20px;
+          border: 1px solid var(--sfm-border);
           background: var(--sfm-card);
-          box-shadow: 0 10px 26px rgba(3, 18, 37, .055);
+          box-shadow: 0 14px 32px rgba(3, 18, 37, .065);
           overflow: hidden;
-          transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+          transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
         }
 
         .theory-card:hover,
         .theory-card.expanded {
           border-color: rgba(24, 212, 212, .35);
-          box-shadow: 0 18px 42px rgba(3, 18, 37, .10);
+          box-shadow: var(--sfm-interactive-glow);
           transform: translateY(-2px);
         }
 
@@ -1131,16 +1134,16 @@ export default function FinancialTheoriesPage() {
 
         .theory-card h3 {
           margin: 8px 0 0;
-          color: var(--sfm-midnight);
-          font-size: 17px;
+          color: var(--sfm-heading);
+          font-size: 19px;
           line-height: 1.3;
         }
 
         .theory-short {
           margin: 0;
-          color: var(--sfm-muted-readable);
+          color: var(--sfm-body);
           line-height: 1.62;
-          font-weight: 780;
+          font-weight: 800;
         }
 
         .theory-meta-row {
@@ -1165,7 +1168,7 @@ export default function FinancialTheoriesPage() {
         .theory-meta-row strong,
         .theory-tool-pill strong {
           display: block;
-          color: var(--sfm-primary-dark);
+          color: var(--sfm-heading);
           line-height: 1.5;
           overflow-wrap: anywhere;
         }
@@ -1198,6 +1201,7 @@ export default function FinancialTheoriesPage() {
           flex-wrap: wrap;
           gap: 8px;
           min-width: 0;
+          align-self: end;
         }
 
         .theory-actions button,
@@ -1231,9 +1235,9 @@ export default function FinancialTheoriesPage() {
         }
 
         .theory-actions a {
-          border: 1px solid rgba(29, 140, 255, .18);
+          border: 1px solid var(--sfm-border);
           background: var(--sfm-light-card);
-          color: var(--sfm-midnight);
+          color: var(--sfm-heading);
         }
 
         .coming-soon-pill {
@@ -1268,14 +1272,14 @@ export default function FinancialTheoriesPage() {
 
         .detail-block h4 {
           margin: 0;
-          color: var(--sfm-midnight);
+          color: var(--sfm-heading);
           font-size: 15px;
         }
 
         .detail-block p,
         .detail-block li {
           margin: 0;
-          color: var(--sfm-muted-readable);
+          color: var(--sfm-body);
           line-height: 1.72;
           font-weight: 760;
         }
@@ -1297,7 +1301,7 @@ export default function FinancialTheoriesPage() {
         .detail-block td {
           border: 1px solid rgba(29, 140, 255, .12);
           background: var(--sfm-light-card);
-          color: var(--sfm-primary-dark);
+          color: var(--sfm-heading);
           padding: 10px 12px;
           text-align: start;
           line-height: 1.55;
@@ -1326,8 +1330,8 @@ export default function FinancialTheoriesPage() {
         .examples-grid,
         .tools-grid {
           align-items: stretch;
-          grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)) !important;
-          gap: 12px !important;
+          grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)) !important;
+          gap: 16px !important;
         }
 
         .featured-theory-card,
@@ -1335,9 +1339,12 @@ export default function FinancialTheoriesPage() {
         .practical-example-card {
           display: grid;
           align-content: start;
-          gap: 9px;
+          gap: 11px;
           min-width: 0;
-          padding: 14px !important;
+          min-height: 100%;
+          padding: 16px !important;
+          border: 1px solid var(--sfm-border) !important;
+          background: var(--sfm-card) !important;
         }
 
         .featured-index {
@@ -1356,8 +1363,8 @@ export default function FinancialTheoriesPage() {
         .smart-tool-card h3,
         .practical-example-card h3 {
           margin: 0;
-          color: var(--sfm-midnight);
-          font-size: 16px;
+          color: var(--sfm-heading);
+          font-size: 18px;
           line-height: 1.35;
         }
 
@@ -1365,9 +1372,9 @@ export default function FinancialTheoriesPage() {
         .smart-tool-card p,
         .practical-example-card p {
           margin: 0;
-          color: var(--sfm-muted-readable);
+          color: var(--sfm-body);
           line-height: 1.6;
-          font-weight: 780;
+          font-weight: 800;
         }
 
         .featured-tool {
@@ -1381,7 +1388,7 @@ export default function FinancialTheoriesPage() {
         }
 
         .featured-tool strong {
-          color: var(--sfm-primary-dark);
+          color: var(--sfm-heading);
           line-height: 1.45;
         }
 
@@ -1407,7 +1414,7 @@ export default function FinancialTheoriesPage() {
 
         .practical-example-card strong {
           margin-top: auto;
-          color: var(--sfm-primary-dark);
+          color: var(--sfm-heading);
           line-height: 1.55;
           font-size: 13px;
         }
@@ -1425,7 +1432,7 @@ export default function FinancialTheoriesPage() {
           border-radius: 14px;
         }
 
-        .status {
+        .financial-theories-shell .status {
           min-height: 26px;
           display: inline-flex;
           align-items: center;
@@ -1435,13 +1442,13 @@ export default function FinancialTheoriesPage() {
           font-weight: 950;
         }
 
-        .status.available {
+        .financial-theories-shell .status.available {
           background: rgba(22, 163, 74, .1);
           color: #15803D;
           border: 1px solid rgba(22, 163, 74, .18);
         }
 
-        .status.soon {
+        .financial-theories-shell .status.soon {
           background: rgba(245, 158, 11, .11);
           color: #B45309;
           border: 1px solid rgba(245, 158, 11, .18);
@@ -1454,9 +1461,9 @@ export default function FinancialTheoriesPage() {
         }
 
         .smart-tool-card a {
-          border: 1px solid rgba(29, 140, 255, .18);
+          border: 1px solid var(--sfm-border);
           background: var(--sfm-light-card);
-          color: var(--sfm-midnight);
+          color: var(--sfm-heading);
         }
 
         .smart-tool-card button {
@@ -1469,15 +1476,16 @@ export default function FinancialTheoriesPage() {
         .theories-cta {
           display: grid;
           grid-template-columns: minmax(0, 1fr) auto;
-          gap: 16px;
+          gap: 20px;
           align-items: center;
-          border-radius: 24px;
-          padding: 22px;
+          border-radius: 26px;
+          padding: 28px;
           color: #EAF6FF;
           background:
             radial-gradient(circle at 14% 14%, rgba(24, 212, 212, .22), transparent 30%),
             linear-gradient(135deg, #031225, #061B33 56%, #0B2748);
-          box-shadow: 0 24px 70px rgba(3, 18, 37, .18);
+          border: 1px solid rgba(167, 243, 240, .18);
+          box-shadow: 0 24px 70px rgba(3, 18, 37, .22);
         }
 
         .theories-cta span {
@@ -1488,10 +1496,14 @@ export default function FinancialTheoriesPage() {
 
         .theories-cta h2 {
           color: #FFFFFF;
+          margin: 8px 0;
         }
 
         .theories-cta p {
           color: #D9ECFF;
+          font-size: 15px;
+          font-weight: 850;
+          max-width: 760px;
         }
 
         .cta-actions {
@@ -1502,14 +1514,55 @@ export default function FinancialTheoriesPage() {
         }
 
         .cta-actions a {
+          min-height: 46px;
+          border-color: rgba(167, 243, 240, .36);
+          background: rgba(255, 255, 255, .10);
           color: #EAF6FF;
+          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04);
         }
 
-        a:focus-visible,
-        button:focus-visible,
-        input:focus-visible {
+        .cta-actions a:first-child {
+          border-color: transparent;
+          color: #FFFFFF;
+        }
+
+        .financial-theories-shell a:focus-visible,
+        .financial-theories-shell button:focus-visible,
+        .financial-theories-shell input:focus-visible {
           outline: 3px solid rgba(24, 212, 212, .56);
           outline-offset: 3px;
+        }
+
+        .dark .financial-theories-shell .section-panel,
+        .dark .financial-theories-shell .theory-controls,
+        .dark .financial-theories-shell .theory-card,
+        .dark .financial-theories-shell .theory-stat-card,
+        .dark .financial-theories-shell .why-card,
+        .dark .financial-theories-shell .featured-theory-card,
+        .dark .financial-theories-shell .smart-tool-card,
+        .dark .financial-theories-shell .practical-example-card {
+          border-color: var(--sfm-border);
+          background: var(--sfm-card) !important;
+          box-shadow: 0 18px 44px rgba(0, 0, 0, .22);
+        }
+
+        .dark .financial-theories-shell .theory-search,
+        .dark .financial-theories-shell .detail-block th,
+        .dark .financial-theories-shell .detail-block td {
+          background: var(--sfm-input-bg);
+        }
+
+        .dark .financial-theories-shell .status.available {
+          background: rgba(16, 185, 129, .16);
+          color: #86EFAC;
+          border-color: rgba(16, 185, 129, .28);
+        }
+
+        .dark .financial-theories-shell .status.soon,
+        .dark .financial-theories-shell .coming-soon-pill {
+          background: rgba(245, 158, 11, .16);
+          color: #FCD34D;
+          border-color: rgba(245, 158, 11, .28);
         }
 
         @media (min-width: 1320px) {
@@ -1535,12 +1588,12 @@ export default function FinancialTheoriesPage() {
             gap: 16px;
           }
 
-          :global(.financial-theories-hero) {
+          .financial-theories-hero {
             min-height: auto;
             padding: 22px !important;
           }
 
-          :global(.financial-theories-hero)::before {
+          .financial-theories-hero::before {
             width: 80%;
             opacity: .24;
           }
