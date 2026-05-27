@@ -123,10 +123,10 @@ export default function AddIncomePage() {
         .form-select { width: 100%; padding: 14px 16px; border: 1.5px solid rgba(167,243,240,.25); border-radius: 14px; font-size: 15px; font-family: 'Tajawal', sans-serif; background: var(--sfm-card); color: var(--sfm-foreground); transition: all .2s; outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%231D8CFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: left 14px center; }
         .form-select:focus { border-color: var(--sfm-soft-cyan); box-shadow: 0 0 0 3px rgba(167,243,240,.12); }
         .amount-section { background: linear-gradient(135deg, rgba(34,197,94,.06), rgba(34,197,94,.03)); border: 1.5px solid rgba(34,197,94,.15); border-radius: 18px; padding: 20px; margin-bottom: 20px; }
-        .amount-input-wrapper { display: flex; gap: 10px; align-items: center; }
-        .amount-input { flex: 1; padding: 16px; border: 1.5px solid rgba(34,197,94,.3); border-radius: 14px; font-size: 20px; font-weight: 700; font-family: 'Tajawal', sans-serif; background: var(--sfm-card); color: var(--sfm-foreground); transition: all .2s; outline: none; text-align: center; }
+        .amount-input-wrapper { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, 200px); gap: 12px; align-items: end; }
+        .amount-input { width: 100%; min-width: 0; padding: 16px; border: 1.5px solid rgba(34,197,94,.3); border-radius: 14px; font-size: 20px; font-weight: 700; font-family: 'Tajawal', sans-serif; background: var(--sfm-card); color: var(--sfm-foreground); transition: all .2s; outline: none; text-align: center; }
         .amount-input:focus { border-color: #22C55E; box-shadow: 0 0 0 3px rgba(34,197,94,.12); }
-        .currency-select { width: 130px; padding: 14px 12px; border: 1.5px solid rgba(167,243,240,.25); border-radius: 14px; font-size: 14px; font-weight: 700; font-family: 'Tajawal', sans-serif; background: var(--sfm-card); color: var(--sfm-foreground); transition: all .2s; outline: none; cursor: pointer; }
+        .currency-select { width: 100%; min-width: 170px; padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; outline: none; }
         .converted-display { margin-top: 12px; padding: 12px 16px; background: rgba(34,197,94,.08); border-radius: 12px; display: flex; align-items: center; justify-content: space-between; }
         .converted-label { font-size: 12px; color: var(--sfm-muted); font-weight: 500; }
         .converted-value { font-size: 16px; font-weight: 800; color: #22C55E; font-family: 'Tajawal', sans-serif; }
@@ -151,6 +151,12 @@ export default function AddIncomePage() {
         .back-btn:hover { background: rgba(167,243,240,.08); }
         .header-title { font-size: 20px; font-weight: 800; color: var(--sfm-foreground); }
         .currency-info { font-size: 11px; color: var(--sfm-muted); margin-top: 6px; }
+        @media (max-width: 640px) {
+          .page-container { padding: 16px; }
+          .form-card { padding: 22px; }
+          .amount-input-wrapper { grid-template-columns: 1fr; }
+          .currency-select { min-width: 0; }
+        }
       `}</style>
 
       <div className="page-container" dir={dir}>
@@ -209,7 +215,7 @@ export default function AddIncomePage() {
                     required
                   />
                   <div className="currency-select">
-                    <CurrencySelect value={currency} onChange={setCurrency} lang={lang} ariaLabel={isAr ? 'العملة' : isFr ? 'Devise' : 'Currency'} />
+                    <CurrencySelect value={currency} onChange={setCurrency} lang={lang} label={isAr ? 'العملة' : isFr ? 'Devise' : 'Currency'} ariaLabel={isAr ? 'العملة' : isFr ? 'Devise' : 'Currency'} />
                   </div>
                 </div>
                 {amount && currency !== 'KWD' && <div className="converted-display"><span className="converted-label">{isAr ? 'التحويل إلى الدينار الكويتي غير مفعّل حالياً.' : isFr ? 'La conversion vers le KWD n’est pas encore activée.' : 'Conversion to KWD is not enabled yet.'}</span></div>}

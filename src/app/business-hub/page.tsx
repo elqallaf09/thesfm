@@ -27,6 +27,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
+import { CurrencySelect } from '@/components/CurrencySelect';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { ProjectSelector } from '@/components/projects/ProjectSelector';
@@ -2867,10 +2868,15 @@ export default function BusinessHubPage() {
                           <span>{text.fundingNeeded}</span>
                           <input value={fundingForm.fundingNeeded} onChange={event => setFundingForm(prev => ({ ...prev, fundingNeeded: event.target.value }))} inputMode="decimal" placeholder="0" aria-label={text.fundingNeeded} />
                         </label>
-                        <label className="field">
-                          <span>{text.currency}</span>
-                          <input value={fundingForm.currency} onChange={event => setFundingForm(prev => ({ ...prev, currency: event.target.value.toUpperCase() }))} maxLength={8} aria-label={text.currency} />
-                        </label>
+                        <div className="field">
+                          <CurrencySelect
+                            value={fundingForm.currency || selectedCurrency || 'KWD'}
+                            onChange={code => setFundingForm(prev => ({ ...prev, currency: code }))}
+                            lang={locale}
+                            label={text.currency}
+                            ariaLabel={text.currency}
+                          />
+                        </div>
                         <SelectField label={text.targetFundingType} value={fundingForm.fundingType} onChange={value => setFundingForm(prev => ({ ...prev, fundingType: value }))} options={FUNDING_TYPES.map(item => ({ value: item.value, label: text[item.labelKey] }))} placeholder={text.choose} />
                       </div>
                       <div className="funds-table">
