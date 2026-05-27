@@ -98,6 +98,8 @@ export const TR: Record<string, TranslationEntry> = {
   nav_charity_reports: { ar:'تقارير الخير', en:'Charity Reports', fr:'Rapports caritatifs' },
   nav_education:  { ar:'التعليم المالي', en:'Financial Education', fr:'Éducation financière' },
   financial_theories_title: { ar:'النظريات المالية', en:'Financial Theories', fr:'Théories financières' },
+  financial_theories_card_title: { ar:'النظريات المالية', en:'Financial Theories', fr:'Théories financières' },
+  financial_theories_card_description: { ar:'تعلّم أهم قواعد إدارة المال والادخار والاستثمار بطريقة عملية.', en:'Learn the key principles of money management, saving, and investing in a practical way.', fr:'Apprenez les principes clés de la gestion de l’argent, de l’épargne et de l’investissement de manière pratique.' },
   financial_theories_library: { ar:'مكتبة مالية ذكية', en:'Smart Financial Library', fr:'Bibliothèque financière intelligente' },
   financial_theories_start_learning: { ar:'ابدأ التعلّم', en:'Start Learning', fr:'Commencer' },
   financial_theories_smart_tools: { ar:'أدوات وحاسبات ذكية', en:'Smart Tools', fr:'Outils intelligents' },

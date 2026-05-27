@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   BellRing,
+  BookOpen,
   Bot,
   BriefcaseBusiness,
   Calculator,
@@ -272,19 +273,28 @@ const FAQ_ITEMS = {
   ],
 } satisfies Record<Lang, [string, string][]>;
 
-const featureIcons = [Wallet, ReceiptText, PiggyBank, TrendingUp, Calculator, FolderKanban, HandHeart, FileText, BellRing, BriefcaseBusiness, Presentation];
-const featureKeys = [
-  ['إدارة الدخل', 'Income management', 'Gestion des revenus'],
-  ['تتبع المصروفات', 'Expense tracking', 'Suivi des dépenses'],
-  ['المدخرات والأهداف', 'Savings and goals', 'Épargne et objectifs'],
-  ['الاستثمارات وتحليلات السوق', 'Investments and market analysis', 'Investissements et analyse de marché'],
-  ['الزكاة', 'Zakat', 'Zakat'],
-  ['المشاريع التجارية', 'Business projects', 'Projets commerciaux'],
-  ['المشاريع الخيرية', 'Charity projects', 'Projets caritatifs'],
-  ['التقارير', 'Reports', 'Rapports'],
-  ['الإشعارات الذكية', 'Smart notifications', 'Notifications intelligentes'],
-  ['مركز الأعمال', 'Business Hub', 'Centre d’affaires'],
-  ['Pitch Deck', 'Pitch Deck', 'Pitch Deck'],
+const featureItems = [
+  { icon: Wallet, title: ['إدارة الدخل', 'Income management', 'Gestion des revenus'] },
+  { icon: ReceiptText, title: ['تتبع المصروفات', 'Expense tracking', 'Suivi des dépenses'] },
+  { icon: PiggyBank, title: ['المدخرات والأهداف', 'Savings and goals', 'Épargne et objectifs'] },
+  { icon: TrendingUp, title: ['الاستثمارات وتحليلات السوق', 'Investments and market analysis', 'Investissements et analyse de marché'] },
+  { icon: Calculator, title: ['الزكاة', 'Zakat', 'Zakat'] },
+  { icon: FolderKanban, title: ['المشاريع التجارية', 'Business projects', 'Projets commerciaux'] },
+  { icon: HandHeart, title: ['المشاريع الخيرية', 'Charity projects', 'Projets caritatifs'] },
+  { icon: FileText, title: ['التقارير', 'Reports', 'Rapports'] },
+  { icon: BellRing, title: ['الإشعارات الذكية', 'Smart notifications', 'Notifications intelligentes'] },
+  { icon: BriefcaseBusiness, title: ['مركز الأعمال', 'Business Hub', 'Centre d’affaires'] },
+  { icon: Presentation, title: ['Pitch Deck', 'Pitch Deck', 'Pitch Deck'] },
+  {
+    icon: BookOpen,
+    href: '/financial-theories',
+    title: ['النظريات المالية', 'Financial Theories', 'Théories financières'],
+    description: [
+      'تعلّم أهم قواعد إدارة المال والادخار والاستثمار بطريقة عملية.',
+      'Learn the key principles of money management, saving, and investing in a practical way.',
+      'Apprenez les principes clés de la gestion de l’argent, de l’épargne et de l’investissement de manière pratique.',
+    ],
+  },
 ] as const;
 
 const audienceKeys = [
@@ -298,6 +308,11 @@ function pick(list: readonly [string, string, string][], lang: Lang) {
   return list.map(item => item[index]);
 }
 
+function pickOne(item: readonly [string, string, string], lang: Lang) {
+  const index = lang === 'ar' ? 0 : lang === 'fr' ? 2 : 1;
+  return item[index];
+}
+
 export default function PublicLandingPage() {
   const { lang, dir } = useLanguage();
   const { session, isGuest } = useAuth();
@@ -308,7 +323,11 @@ export default function PublicLandingPage() {
   const appHref = session || isGuest ? '/dashboard' : '/login';
   const primaryLabel = session || isGuest ? text.openDashboard : text.start;
   const aboutLabel = lang === 'ar' ? 'من نحن' : lang === 'fr' ? 'À propos' : 'About';
-  const features = useMemo(() => pick(featureKeys, lang as Lang), [lang]);
+  const features = useMemo(() => featureItems.map(item => ({
+    ...item,
+    titleText: pickOne(item.title, lang as Lang),
+    descriptionText: item.description ? pickOne(item.description, lang as Lang) : text.previewStatus,
+  })), [lang, text.previewStatus]);
   const audiences = useMemo(() => pick(audienceKeys, lang as Lang), [lang]);
   const faqItems = FAQ_ITEMS[(lang as Lang) || 'ar'];
 
@@ -425,13 +444,23 @@ export default function PublicLandingPage() {
           <p>{text.featuresSubtitle}</p>
         </div>
         <div id="tools" className="feature-grid">
-          {features.map((feature, index) => {
-            const Icon = featureIcons[index] ?? Zap;
-            return (
-              <article key={feature} className="feature-card">
+          {features.map(feature => {
+            const Icon = feature.icon ?? Zap;
+            const content = (
+              <>
                 <div><Icon size={22} /></div>
-                <h3>{feature}</h3>
-                <p>{text.previewStatus}</p>
+                <h3>{feature.titleText}</h3>
+                <p>{feature.descriptionText}</p>
+              </>
+            );
+
+            return feature.href ? (
+              <Link key={feature.titleText} href={feature.href} className="feature-card" aria-label={feature.titleText}>
+                {content}
+              </Link>
+            ) : (
+              <article key={feature.titleText} className="feature-card">
+                {content}
               </article>
             );
           })}
@@ -949,6 +978,14 @@ const landingStyles = `
     padding: 18px;
     transition: border-color 180ms var(--ease), box-shadow 180ms var(--ease), transform 180ms var(--ease), background-color 180ms var(--ease);
   }
+  .feature-card {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+  }
+  a.feature-card {
+    cursor: pointer;
+  }
   .feature-card div, .ai-icon {
     width: 46px;
     height: 46px;
@@ -963,17 +1000,21 @@ const landingStyles = `
     font-size: 18px;
     transition: color 180ms var(--ease);
   }
-  .feature-card:hover, .pricing-card:hover, .faq-item:hover, .audience-grid article:hover {
+  .feature-card:hover, .feature-card:focus-visible, .pricing-card:hover, .faq-item:hover, .audience-grid article:hover {
     border-color: rgba(24, 212, 212, 0.38);
     box-shadow: 0 18px 46px rgba(29, 140, 255, 0.13);
     transform: translateY(-2px);
   }
-  .feature-card:hover div {
+  .feature-card:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(24, 212, 212, 0.35), 0 18px 46px rgba(29, 140, 255, 0.13);
+  }
+  .feature-card:hover div, .feature-card:focus-visible div {
     border-color: rgba(24, 212, 212, 0.34);
     background: linear-gradient(135deg, rgba(29, 140, 255, 0.18), rgba(24, 212, 212, 0.22));
     box-shadow: 0 12px 28px rgba(24, 212, 212, 0.15);
   }
-  .feature-card:hover h3, .pricing-card:hover h3 {
+  .feature-card:hover h3, .feature-card:focus-visible h3, .pricing-card:hover h3 {
     color: #0B76E0;
   }
   .feature-card p {
