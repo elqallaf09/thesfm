@@ -3,14 +3,12 @@ import {
   validateSymbol,
   type MarketAnalysis,
   type MarketAssetType,
-  type MarketAiInsight,
   type MarketResult,
 } from '@/lib/market/marketService';
 import symbolDirectory from '../../../openbb-service/data/symbols.json';
 
 const OPENBB_TIMEOUT_MS = 12000;
 const OPENBB_HEALTH_TIMEOUT_MS = 5000;
-const OPENAI_TIMEOUT_MS = 25000;
 const QUOTE_CACHE_MS = 60 * 1000;
 const HISTORY_CACHE_MS = 10 * 60 * 1000;
 const SEARCH_CACHE_MS = 5 * 60 * 1000;
@@ -206,91 +204,6 @@ function isRealProviderPayload(data: Record<string, any>) {
   return data.success === true && data.fallback !== true && String(data.source ?? 'openbb').toLowerCase() === 'openbb';
 }
 
-function deriveRuleBasedInsight(analysis: MarketAnalysis): MarketAiInsight {
-  const direction = analysis.trend === 'bullish' ? 'positive' : analysis.trend === 'bearish' ? 'negative' : 'mixed';
-  const riskNote = analysis.riskLevel === 'high'
-    ? 'Volatility is elevated, so position sizing and risk controls matter.'
-    : analysis.riskLevel === 'medium'
-      ? 'Volatility is moderate; compare trend, levels, and portfolio exposure.'
-      : 'Volatility is currently lower relative to the available history.';
-
-  return {
-    status: 'ready',
-    provider: 'rule-based',
-    summary: `${analysis.symbol} shows a ${direction} educational read from real OpenBB data. Current movement is ${analysis.changePercent.toFixed(2)}% with RSI ${analysis.indicators.rsi}.`,
-    trendStatus: analysis.trend,
-    riskNotes: riskNote,
-    watchNext: [
-      `Support near ${analysis.levels.support.toFixed(2)}`,
-      `Resistance near ${analysis.levels.resistance.toFixed(2)}`,
-      `RSI at ${analysis.indicators.rsi}`,
-    ],
-  };
-}
-
-async function buildOpenAiInsight(analysis: MarketAnalysis): Promise<MarketAiInsight> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return { status: 'unavailable', provider: 'openai', error: 'OPENAI_API_KEY is not configured' };
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: process.env.OPENAI_MARKET_MODEL || 'gpt-4o-mini',
-        temperature: 0.2,
-        response_format: { type: 'json_object' },
-        messages: [
-          {
-            role: 'system',
-            content: 'Analyze market data for education only. Use only the provided JSON. Do not invent prices, fundamentals, news, or recommendations. Return strict JSON with summary, trendStatus, riskNotes, and watchNext array. Include no buy/sell advice.',
-          },
-          {
-            role: 'user',
-            content: JSON.stringify({
-              symbol: analysis.symbol,
-              currency: analysis.currency,
-              quote: analysis.quote,
-              trend: analysis.trend,
-              riskLevel: analysis.riskLevel,
-              indicators: analysis.indicators,
-              levels: analysis.levels,
-              historyTail: analysis.history.slice(-20),
-            }),
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) return { status: 'unavailable', provider: 'openai', error: `OpenAI returned ${response.status}` };
-    const payload = await response.json();
-    const content = payload?.choices?.[0]?.message?.content;
-    const parsed = typeof content === 'string' ? JSON.parse(content) : {};
-    return {
-      status: 'ready',
-      provider: 'openai',
-      summary: typeof parsed.summary === 'string' ? parsed.summary : undefined,
-      trendStatus: typeof parsed.trendStatus === 'string' ? parsed.trendStatus : undefined,
-      riskNotes: typeof parsed.riskNotes === 'string' ? parsed.riskNotes : undefined,
-      watchNext: Array.isArray(parsed.watchNext) ? parsed.watchNext.map(String).slice(0, 4) : undefined,
-    };
-  } catch (error) {
-    return {
-      status: 'unavailable',
-      provider: 'openai',
-      error: error instanceof Error && error.name === 'AbortError' ? 'AI analysis timed out' : 'AI analysis unavailable',
-    };
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType, meta?: { fromCache?: boolean; cacheAgeSeconds?: number }): MarketAnalysis | null {
   const data = raw && typeof raw === 'object' ? raw as Record<string, any> : {};
   if (!isRealProviderPayload(data)) return null;
@@ -401,14 +314,6 @@ export async function proxyAnalyze(
         openbbService: 'connected',
         warnings: ['AI analysis was skipped because real market data is unavailable.'],
       };
-    }
-    const aiInsight = await buildOpenAiInsight(enriched);
-    enriched.aiInsight = aiInsight.status === 'ready' ? aiInsight : deriveRuleBasedInsight(enriched);
-    if (aiInsight.status !== 'ready') {
-      enriched.warnings = [
-        ...(enriched.warnings ?? []),
-        'AI provider unavailable; rule-based educational insight is shown from real market data.',
-      ];
     }
     return {
       ...enriched,

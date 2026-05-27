@@ -4,7 +4,7 @@ export type MarketRiskLevel = 'low' | 'medium' | 'high';
 export type MarketDataStatus = 'live' | 'delayed' | 'unavailable';
 export type MarketAiInsight = {
   status: 'ready' | 'unavailable' | 'skipped';
-  provider?: 'openai' | 'rule-based';
+  provider?: 'anthropic' | 'rule-based';
   summary?: string;
   trendStatus?: string;
   riskNotes?: string;
