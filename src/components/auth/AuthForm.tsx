@@ -184,7 +184,7 @@ export function AuthForm() {
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: typeof window !== 'undefined'
-        ? `${window.location.origin}/?reset=true`
+        ? `${window.location.origin}/reset-password`
         : undefined,
     });
 

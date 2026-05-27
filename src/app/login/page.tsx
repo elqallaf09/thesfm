@@ -93,7 +93,8 @@ const TEXT = {
     saving: 'جاري إنشاء الحساب...',
     sendReset: 'إرسال رابط الاستعادة',
     sendResetBody: 'أدخل بريدك الإلكتروني لإرسال رابط استعادة كلمة المرور.',
-    resetSent: 'إذا كان البريد مسجلاً، سيتم إرسال رابط الاستعادة.',
+    resetSent: 'إذا كان البريد مسجلاً، سيتم إرسال رابط استعادة كلمة المرور.',
+    resetSendError: 'تعذر إرسال رابط الاستعادة حالياً. حاول مرة أخرى.',
     resetSuccess: 'تم تغيير كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.',
     switchCreate: 'إنشاء حساب جديد',
     switchLogin: 'لدي حساب بالفعل',
@@ -162,7 +163,8 @@ const TEXT = {
     saving: 'Creating account...',
     sendReset: 'Send reset link',
     sendResetBody: 'Enter your email to send a password recovery link.',
-    resetSent: 'If the email is registered, a recovery link will be sent.',
+    resetSent: 'If the email is registered, a password reset link will be sent.',
+    resetSendError: 'Could not send the reset link right now. Please try again.',
     resetSuccess: 'Password changed successfully. You can sign in now.',
     switchCreate: 'Create new account',
     switchLogin: 'I already have an account',
@@ -231,7 +233,8 @@ const TEXT = {
     saving: 'Création du compte...',
     sendReset: 'Envoyer le lien',
     sendResetBody: 'Entrez votre email pour envoyer un lien de récupération du mot de passe.',
-    resetSent: 'Si l’email est enregistré, un lien de récupération sera envoyé.',
+    resetSent: 'Si l’e-mail est enregistré, un lien de réinitialisation sera envoyé.',
+    resetSendError: 'Impossible d’envoyer le lien de réinitialisation pour le moment. Réessayez.',
     resetSuccess: 'Mot de passe changé avec succès. Vous pouvez vous connecter.',
     switchCreate: 'Créer un nouveau compte',
     switchLogin: 'J’ai déjà un compte',
@@ -305,7 +308,9 @@ function LoginContent() {
   const questionOptions = QUESTION_OPTIONS[lang];
 
   const queryMode = searchParams.get('mode');
-  const initialMode: AuthMode = queryMode === 'register' || queryMode === 'forgot' || queryMode === 'reset' ? queryMode : 'login';
+  const initialMode: AuthMode = queryMode === 'register' || queryMode === 'forgot' || queryMode === 'forgot-password'
+    ? (queryMode === 'forgot-password' ? 'forgot' : queryMode)
+    : 'login';
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [signupStep, setSignupStep] = useState<1 | 2>(1);
   const [username, setUsername] = useState('');
@@ -333,18 +338,23 @@ function LoginContent() {
   const passwordScore = useMemo(() => scorePassword(password), [password]);
 
   useEffect(() => {
-    if (queryMode === 'register' || queryMode === 'forgot' || queryMode === 'reset') setMode(queryMode);
+    if (queryMode === 'register' || queryMode === 'forgot' || queryMode === 'forgot-password') {
+      setMode(queryMode === 'forgot-password' ? 'forgot' : queryMode);
+    }
   }, [queryMode]);
 
   useEffect(() => {
     const hash = typeof window !== 'undefined' ? window.location.hash : '';
     const search = typeof window !== 'undefined' ? window.location.search : '';
-    if (hash.includes('type=recovery') || search.includes('type=recovery')) setMode('reset');
+    if (queryMode === 'reset' || hash.includes('type=recovery') || search.includes('type=recovery')) {
+      router.replace(`/reset-password${hash || ''}`);
+      return;
+    }
     const { data: { subscription } } = supabase.auth.onAuthStateChange(event => {
-      if (event === 'PASSWORD_RECOVERY') setMode('reset');
+      if (event === 'PASSWORD_RECOVERY') router.replace('/reset-password');
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [queryMode, router]);
 
   useEffect(() => {
     if (session && mode !== 'reset') router.replace(nextPath);
@@ -478,9 +488,10 @@ function LoginContent() {
 
   async function handleForgotPassword() {
     if (!isEmail(forgotEmail)) return text.errorEmail;
-    await supabase.auth.resetPasswordForEmail(forgotEmail.trim().toLowerCase(), {
-      redirectTo: `${window.location.origin}/login?mode=reset`,
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim().toLowerCase(), {
+      redirectTo: `${window.location.origin}/reset-password`,
     });
+    if (error) return text.resetSendError;
     setMessage({ type: 'ok', text: text.resetSent });
     return '';
   }
