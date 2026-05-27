@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCurrentUserProfile } from '@/hooks/useCurrentUserProfile';
 import { useLanguage } from '@/hooks/useLanguage';
 
-const MENU_WIDTH = 268;
+const MENU_WIDTH = 296;
 
 type MenuPosition = {
   left: number;
@@ -36,12 +36,12 @@ export function UserChip({ displayName }: { displayName?: string }) {
     ? t('loading')
     : displayName || currentUser.displayName || (currentUser.isGuest ? t('guest_mode') : t('common_user'));
   const email = currentUser.email;
-  const initials = currentUser.avatarInitial || name
+  const initials = (currentUser.avatarInitial || name
     .split(/\s+/)
     .map((word: string) => word[0] || '')
     .slice(0, 2)
     .join('')
-    .toUpperCase() || '??';
+    .toUpperCase() || 'S').slice(0, 1);
 
   const updatePosition = useCallback(() => {
     const button = buttonRef.current;
@@ -52,7 +52,7 @@ export function UserChip({ displayName }: { displayName?: string }) {
     const desiredLeft = dir === 'rtl' ? rect.right - MENU_WIDTH : rect.left;
     const left = clamp(desiredLeft, margin, window.innerWidth - MENU_WIDTH - margin);
     const spaceBelow = window.innerHeight - rect.bottom;
-    const menuHeight = 228;
+    const menuHeight = 260;
     const top = spaceBelow < menuHeight + 16
       ? Math.max(margin, rect.top - menuHeight - margin)
       : rect.bottom + margin;
@@ -147,23 +147,26 @@ export function UserChip({ displayName }: { displayName?: string }) {
   return (
     <>
       <style>{`
-        .sfm-user-chip-wrap{position:relative;font-family:Tajawal,Arial,sans-serif;width:100%}
-        .sfm-user-chip{display:flex;align-items:center;gap:8px;width:100%;min-height:48px;padding:7px 10px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid rgba(167,243,240,.22);cursor:pointer;color:var(--sfm-soft-cyan);text-align:start;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;font-family:Tajawal,Arial,sans-serif}
-        .sfm-user-chip:hover,.sfm-user-chip[aria-expanded="true"]{background:rgba(167,243,240,.14);border-color:rgba(167,243,240,.45);box-shadow:0 8px 22px rgba(0,0,0,.16)}
+        .sfm-user-chip-wrap{position:relative;display:inline-flex;width:auto;max-width:min(190px,100%);min-width:0;flex:0 1 auto;font-family:Tajawal,Arial,sans-serif;vertical-align:top}
+        .sfm-user-chip{display:inline-flex;align-items:center;gap:8px;width:auto;max-width:100%;min-width:0;min-height:40px;padding:6px 9px 6px 7px;border-radius:999px;background:rgba(255,255,255,.88);border:1px solid rgba(29,140,255,.18);cursor:pointer;color:#061B33;text-align:start;box-shadow:0 8px 22px rgba(3,18,37,.08);transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;color-scheme:light;font-family:Tajawal,Arial,sans-serif}
+        .sfm-user-chip:hover,.sfm-user-chip[aria-expanded="true"]{background:#FFFFFF;border-color:rgba(24,212,212,.46);box-shadow:0 12px 28px rgba(29,140,255,.16)}
+        .sfm-user-chip:focus-visible{outline:none;border-color:rgba(24,212,212,.72);box-shadow:0 0 0 4px rgba(24,212,212,.20),0 12px 28px rgba(29,140,255,.14)}
         .sfm-user-chip:active{transform:translateY(1px)}
-        .sfm-user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#FFFFFF;flex:0 0 auto}
-        .sfm-user-identity{flex:1;min-width:0;display:grid;gap:1px}
-        .sfm-user-name{min-width:0;font-size:12px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#EAF6FF}
-        .sfm-user-email{min-width:0;font-size:10px;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#A7C7E7;direction:ltr;text-align:start}
-        .sfm-user-guest{font-size:10px;padding:2px 7px;border-radius:999px;background:rgba(167,243,240,.18);color:var(--sfm-soft-cyan);white-space:nowrap}
-        .sfm-user-chevron{color:rgba(255,255,255,.48);transition:transform .18s ease;flex:0 0 auto}
+        .sfm-user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:950;color:#FFFFFF;flex:0 0 auto;box-shadow:0 8px 18px rgba(29,140,255,.24)}
+        .sfm-user-identity{flex:1 1 auto;min-width:0;max-width:118px;display:block}
+        .sfm-user-name{display:block;min-width:0;font-size:12.5px;font-weight:950;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#061B33}
+        .sfm-user-chevron{color:#64748B;transition:transform .18s ease,color .18s ease;flex:0 0 auto}
         .sfm-user-chip[aria-expanded="true"] .sfm-user-chevron{transform:rotate(180deg)}
+        .dark .sfm-user-chip,.sfm-shared-sidebar .sfm-user-chip,.sfm-mobile-panel .sfm-user-chip{background:rgba(255,255,255,.08);border-color:rgba(167,243,240,.22);color:#EAF6FF;box-shadow:none;color-scheme:dark}
+        .dark .sfm-user-chip:hover,.dark .sfm-user-chip[aria-expanded="true"],.sfm-shared-sidebar .sfm-user-chip:hover,.sfm-shared-sidebar .sfm-user-chip[aria-expanded="true"],.sfm-mobile-panel .sfm-user-chip:hover,.sfm-mobile-panel .sfm-user-chip[aria-expanded="true"]{background:rgba(167,243,240,.14);border-color:rgba(167,243,240,.45);box-shadow:0 8px 22px rgba(0,0,0,.16)}
+        .dark .sfm-user-name,.sfm-shared-sidebar .sfm-user-name,.sfm-mobile-panel .sfm-user-name{color:#EAF6FF}
+        .dark .sfm-user-chevron,.sfm-shared-sidebar .sfm-user-chevron,.sfm-mobile-panel .sfm-user-chevron{color:rgba(234,246,255,.62)}
         .sfm-user-menu{background:linear-gradient(180deg,var(--sfm-card),var(--sfm-light-card));border:1px solid rgba(167,243,240,.24);border-radius:16px;box-shadow:0 22px 55px rgba(3,18,37,.28);padding:7px;animation:sfmUserMenuIn .16s ease-out;font-family:Tajawal,Arial,sans-serif}
         .sfm-user-menu-head{display:flex;align-items:center;gap:10px;padding:9px 10px 10px;margin-bottom:5px;border-radius:13px;background:rgba(29,140,255,.10);border:1px solid rgba(24,212,212,.18);min-width:0}
         .sfm-user-avatar-lg{width:34px;height:34px;font-size:12px;color:#FFFFFF}
         .sfm-user-menu-copy{display:grid;gap:2px;min-width:0}
-        .sfm-user-menu-copy strong{min-width:0;color:var(--sfm-foreground);font:950 13px Tajawal,Arial,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .sfm-user-menu-copy small{min-width:0;color:var(--sfm-muted);font:800 11px Tajawal,Arial,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .sfm-user-menu-copy strong{min-width:0;color:var(--sfm-foreground);font:950 13px Tajawal,Arial,sans-serif;line-height:1.35;overflow-wrap:anywhere}
+        .sfm-user-menu-copy small{min-width:0;color:var(--sfm-muted);font:800 11px Tajawal,Arial,sans-serif;line-height:1.35;overflow-wrap:anywhere}
         .sfm-user-menu-item{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:12px;background:transparent;color:var(--sfm-foreground);font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;text-align:start;transition:background .16s ease,color .16s ease,transform .16s ease}
         .sfm-user-menu-item:hover,.sfm-user-menu-item:focus-visible{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}
         .sfm-user-menu-item:active{transform:translateY(1px)}
@@ -172,7 +175,7 @@ export function UserChip({ displayName }: { displayName?: string }) {
         .sfm-user-menu-item.danger:hover,.sfm-user-menu-item.danger:focus-visible{background:rgba(185,28,28,.10);color:#B91C1C}
         .sfm-user-menu-item.danger svg{color:#B91C1C}
         @keyframes sfmUserMenuIn{from{opacity:0;transform:translateY(-5px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
-        @media(max-width:640px){.sfm-user-menu{border-radius:18px}.sfm-user-menu-item{min-height:48px;font-size:14px}}
+        @media(max-width:640px){.sfm-user-chip-wrap{max-width:128px}.sfm-mobile-user .sfm-user-chip-wrap{max-width:min(190px,100%)}.sfm-user-chip{min-height:38px;padding:5px 8px 5px 6px}.sfm-user-avatar{width:26px;height:26px;font-size:10px}.sfm-user-identity{max-width:72px}.sfm-user-name{font-size:12px}.sfm-user-menu{border-radius:18px;max-width:calc(100vw - 24px)}.sfm-user-menu-item{min-height:48px;font-size:14px}}
       `}</style>
       <div className="sfm-user-chip-wrap">
         <button
@@ -182,13 +185,12 @@ export function UserChip({ displayName }: { displayName?: string }) {
           onClick={() => setOpen(value => !value)}
           aria-haspopup="menu"
           aria-expanded={open}
+          aria-label={name}
         >
           <span className="sfm-user-avatar">{initials}</span>
           <span className="sfm-user-identity">
             <span className="sfm-user-name">{name}</span>
-            {!currentUser.isGuest && email ? <span className="sfm-user-email">{email}</span> : null}
           </span>
-          {currentUser.isGuest && <span className="sfm-user-guest">{t('guest_mode')}</span>}
           <ChevronDown className="sfm-user-chevron" size={15} />
         </button>
       </div>
