@@ -33,7 +33,7 @@ import {
   type SmartNotificationType,
 } from '@/lib/notifications/generateNotifications';
 import { loadUserDataTables } from '@/lib/data/notificationsData';
-import { personalExpenseRows } from '@/lib/data/financeData';
+import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { formatDate } from '@/lib/formatDate';
 
 type Lang = NotificationLang;
@@ -421,6 +421,7 @@ export function NotificationsPage() {
       const sourceResult = await loadUserDataTables(db, user.id, SOURCE_TABLES);
       const nextSourceData = {
         ...(sourceResult.records as NotificationSourceData),
+        income: personalIncomeRows(sourceResult.records.income ?? []),
         expenses: personalExpenseRows(sourceResult.records.expenses ?? []),
       };
       Object.values(sourceResult.errors).forEach(message => {

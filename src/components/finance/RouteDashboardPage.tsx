@@ -50,14 +50,22 @@ import { formatCurrency } from '@/lib/format';
 import { getCurrency } from '@/lib/currencies';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { calculateGoalProgress, parseMoney } from '@/lib/goalProgress';
-import { isProjectLinkedExpenseRow, personalExpenseRows } from '@/lib/data/financeData';
+import { isProjectLinkedExpenseRow, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 
 type PageKind = 'expenses' | 'income' | 'invest' | 'savings' | 'goals' | 'reports' | 'ai';
 type ExpensePageTab = 'overview' | 'records' | 'receipts' | 'categories' | 'analytics' | 'reports';
 type LangText = { ar: string; en: string; fr?: string };
 type TranslateFn = ReturnType<typeof useLanguage>['t'];
 type MoneyItem = { id: string; name: string; amount: number; created_at?: string | null };
-type IncomeSource = MoneyItem & { label?: string | null; category?: string | null };
+type IncomeSource = MoneyItem & {
+  label?: string | null;
+  category?: string | null;
+  project_id?: string | null;
+  related_project_id?: string | null;
+  project_income_id?: string | null;
+  transferred_to_personal_income?: boolean | string | null;
+  enhanced?: Record<string, unknown> | null;
+};
 type EntryKind = Extract<PageKind, 'expenses' | 'income' | 'invest' | 'savings'>;
 type EntryFormState = { id?: string; name: string; amount: string; category: string };
 type EntryRow = { id: string; title: string; subtitle: string; value: string; item?: MoneyItem | IncomeSource };
@@ -843,7 +851,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         return legacy.error ? currentSchema : legacy;
       };
       const [income, expenses, savings, investments, goals] = await Promise.all([
-        safeQuery<IncomeSource>(supabase.from('monthly_income_sources').select('id, label, category, amount').eq('user_id', user.id) as unknown as QueryResult<IncomeSource>, queryMeta('monthly_income_sources', 'monthly_income_sources')),
+        safeQuery<IncomeSource>(supabase.from('monthly_income_sources').select('*').eq('user_id', user.id) as unknown as QueryResult<IncomeSource>, queryMeta('monthly_income_sources', 'monthly_income_sources')),
         expensesQuery(),
         safeQuery<MoneyItem>(supabase.from('savings_items').select('id, name, amount, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('savings_items', 'savings_items')),
         safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('investment_items', 'investment_items')),
@@ -853,7 +861,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       if (cancelled) return;
 
       setSnapshot({
-        income: income.data.map(item => ({ ...item, name: item.label || item.category || item.name || 'Income' })),
+        income: personalIncomeRows(income.data).map(item => ({ ...item, name: item.label || item.category || item.name || 'Income' })),
         expenses: personalExpenseRows(expenses.data),
         savings: savings.data,
         investments: investments.data,

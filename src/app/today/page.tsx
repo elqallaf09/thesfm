@@ -28,7 +28,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useSmartTasks, type SmartTask } from '@/hooks/useSmartTasks';
 import { supabase } from '@/integrations/supabase/client';
-import { loadUserDataTables, personalExpenseRows } from '@/lib/data/financeData';
+import { loadUserDataTables, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { formatDate } from '@/lib/formatDate';
 import {
   generateSmartNotifications,
@@ -220,6 +220,7 @@ export default function FinancialTodayPage() {
 
       const notificationRecords = {
         ...sourceResult.records,
+        income: personalIncomeRows(sourceResult.records.income ?? []),
         expenses: personalExpenseRows(sourceResult.records.expenses ?? []),
       } as NotificationSourceData;
       const dynamic = generateSmartNotifications(notificationRecords, lang as Lang);

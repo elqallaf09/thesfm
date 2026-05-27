@@ -422,12 +422,16 @@ export function ProjectFinancialModelTab({
   projectId,
   initialCapital = 0,
   defaultCurrency = 'KWD',
+  actualIncome = 0,
+  actualExpenses = 0,
   lang = 'ar',
 }: {
   userId: string;
   projectId: string;
   initialCapital?: number;
   defaultCurrency?: string;
+  actualIncome?: number;
+  actualExpenses?: number;
   lang?: string;
 }) {
   const locale = (lang === 'en' || lang === 'fr' || lang === 'ar' ? lang : 'ar') as Lang;
@@ -458,6 +462,9 @@ export function ProjectFinancialModelTab({
   }, [locale, t.na]);
 
   const { forecast, kpis } = useMemo(() => calculateModel(assumptions, revenueStreams, costItems), [assumptions, revenueStreams, costItems]);
+  const hasActuals = actualIncome > 0 || actualExpenses > 0;
+  const actualIncomeRatio = kpis.totalRevenue > 0 && actualIncome > 0 ? (actualIncome / kpis.totalRevenue) * 100 : null;
+  const actualExpenseRatio = kpis.totalCosts > 0 && actualExpenses > 0 ? (actualExpenses / kpis.totalCosts) * 100 : null;
   const period = toNum(assumptions.forecastPeriod) || 36;
   const scenarios = useMemo<ScenarioResult[]>(() => {
     return (Object.keys(scenarioConfig) as ScenarioId[]).map(id => {
@@ -556,6 +563,15 @@ export function ProjectFinancialModelTab({
       </div>
 
       {notice ? <div className="financial-notice" role="status">{notice}</div> : null}
+
+      {hasActuals ? (
+        <div className="financial-actuals-grid" aria-label={t.actualVsPlanned}>
+          <MetricCard title={t.actualIncome} value={money(actualIncome)} />
+          <MetricCard title={t.actualExpenses} value={money(actualExpenses)} />
+          <MetricCard title={`${t.projectedRevenue} / ${t.actualIncome}`} value={pct(actualIncomeRatio)} />
+          <MetricCard title={`${t.projectedCosts} / ${t.actualExpenses}`} value={pct(actualExpenseRatio)} />
+        </div>
+      ) : null}
 
       <div className="financial-layout">
         <div className="financial-main">
@@ -753,7 +769,8 @@ export function ProjectFinancialModelTab({
 
       <style jsx global>{`
         .financial-model-tab{display:grid;gap:16px;min-width:0}
-        .financial-summary-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+        .financial-summary-grid,.financial-actuals-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+        .financial-actuals-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
         .financial-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,.9fr);gap:16px;align-items:start}
         .financial-main,.financial-side{display:grid;gap:16px;min-width:0}
         .financial-side{position:sticky;top:16px}
@@ -797,8 +814,8 @@ export function ProjectFinancialModelTab({
         .disabled-financial-btn{background:var(--sfm-light-card);color:var(--sfm-muted);cursor:not-allowed}
         .disabled-financial-btn span{border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:3px 8px;font-size:11px}
         .financial-notice{border:1px solid rgba(29,140,255,.2);background:var(--sfm-light-card);color:var(--sfm-midnight);border-radius:15px;padding:12px 14px;font-weight:900}
-        @media(max-width:1280px){.financial-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.financial-layout{grid-template-columns:1fr}.financial-side{position:static}.chart-grid{grid-template-columns:1fr}}
-        @media(max-width:760px){.financial-summary-grid,.financial-form-grid,.model-row{grid-template-columns:1fr}.financial-card,.financial-metric{padding:16px}.section-header{align-items:flex-start;flex-direction:column}.section-header button{width:100%;justify-content:center}}
+        @media(max-width:1280px){.financial-summary-grid,.financial-actuals-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.financial-layout{grid-template-columns:1fr}.financial-side{position:static}.chart-grid{grid-template-columns:1fr}}
+        @media(max-width:760px){.financial-summary-grid,.financial-actuals-grid,.financial-form-grid,.model-row{grid-template-columns:1fr}.financial-card,.financial-metric{padding:16px}.section-header{align-items:flex-start;flex-direction:column}.section-header button{width:100%;justify-content:center}}
       `}</style>
     </section>
   );

@@ -120,6 +120,36 @@ type ProjectExpenseForm = {
   paidFromPersonalBudget: boolean;
 };
 
+type ProjectIncomeRow = {
+  id: string;
+  user_id?: string | null;
+  project_id?: string | null;
+  title: string | null;
+  amount: number | string | null;
+  currency: string | null;
+  income_date: string | null;
+  category: string | null;
+  source: string | null;
+  description: string | null;
+  notes: string | null;
+  transferred_to_personal_income?: boolean | null;
+  personal_income_id?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+type ProjectIncomeForm = {
+  title: string;
+  amount: string;
+  currency: string;
+  incomeDate: string;
+  category: string;
+  source: string;
+  description: string;
+  notes: string;
+  transferredToPersonalIncome: boolean;
+};
+
 const TEXT = {
   ar: {
     workspace: 'مساحة المشروع',
@@ -171,6 +201,28 @@ const TEXT = {
     addFinancialModelHint: 'أضف النموذج المالي لحساب جاهزية المشروع.',
     addTasksHint: 'أضف المهام لعرض تقدم المشروع.',
     addIncome: 'إضافة دخل للمشروع',
+    projectIncome: 'دخل المشروع',
+    incomeName: 'اسم الدخل',
+    incomeSource: 'المصدر / التصنيف',
+    source: 'المصدر',
+    transferredToPersonalIncome: 'تم تحويله إلى دخلي الشخصي',
+    doNotIncludeInPersonalIncome: 'لا يؤثر هذا الدخل على دخلك الشخصي إلا إذا اخترت ذلك.',
+    includeInPersonalIncome: 'سيظهر هذا الدخل أيضاً في صفحة الدخل الشخصي بعلامة دخل مشروع.',
+    totalProjectIncome: 'إجمالي دخل المشروع',
+    projectIncomeThisMonth: 'دخل هذا الشهر',
+    personalIncomeProjectIncome: 'الدخل المحوّل للدخل الشخصي',
+    noProjectIncomeYet: 'لا توجد إيرادات مسجلة لهذا المشروع.',
+    actualVsExpected: 'الفعلي مقابل المتوقع',
+    saveProjectIncome: 'حفظ دخل المشروع',
+    projectIncomeSaved: 'تم حفظ دخل المشروع.',
+    projectIncomeSaveError: 'تعذر حفظ دخل المشروع حالياً.',
+    requiredIncomeName: 'أدخل اسم الدخل.',
+    requiredIncomeAmount: 'أدخل مبلغاً صحيحاً.',
+    salesIncome: 'مبيعات',
+    servicesIncome: 'خدمات',
+    rentalIncome: 'إيجار',
+    investmentIncome: 'استثمار',
+    otherIncomeSource: 'مصدر آخر',
     analyzeProject: 'تحليل المشروع',
     chooseJurisdiction: 'اختيار دولة التأسيس',
     back: 'العودة إلى مشاريعي',
@@ -366,6 +418,28 @@ const TEXT = {
     addFinancialModelHint: 'Add the financial model to calculate project readiness.',
     addTasksHint: 'Add tasks to show project progress.',
     addIncome: 'Add Project Income',
+    projectIncome: 'Project Income',
+    incomeName: 'Income name',
+    incomeSource: 'Source / category',
+    source: 'Source',
+    transferredToPersonalIncome: 'Transferred to personal income',
+    doNotIncludeInPersonalIncome: 'This income does not affect your personal income unless you choose it.',
+    includeInPersonalIncome: 'This income will also appear on the personal income page with a Project Income label.',
+    totalProjectIncome: 'Total Project Income',
+    projectIncomeThisMonth: 'Project income this month',
+    personalIncomeProjectIncome: 'Transferred to personal income',
+    noProjectIncomeYet: 'No income is recorded for this project yet.',
+    actualVsExpected: 'Actual vs Expected',
+    saveProjectIncome: 'Save Project Income',
+    projectIncomeSaved: 'Project income saved.',
+    projectIncomeSaveError: 'Could not save project income right now.',
+    requiredIncomeName: 'Enter income name.',
+    requiredIncomeAmount: 'Enter a valid amount.',
+    salesIncome: 'Sales',
+    servicesIncome: 'Services',
+    rentalIncome: 'Rental',
+    investmentIncome: 'Investment',
+    otherIncomeSource: 'Other source',
     analyzeProject: 'Analyze Project',
     chooseJurisdiction: 'Choose Jurisdiction',
     back: 'Back to My Projects',
@@ -561,6 +635,28 @@ const TEXT = {
     addFinancialModelHint: 'Ajoutez le modèle financier pour calculer la préparation du projet.',
     addTasksHint: 'Ajoutez des tâches pour afficher l’avancement du projet.',
     addIncome: 'Ajouter un revenu',
+    projectIncome: 'Revenu du projet',
+    incomeName: 'Nom du revenu',
+    incomeSource: 'Source / catégorie',
+    source: 'Source',
+    transferredToPersonalIncome: 'Transféré vers mon revenu personnel',
+    doNotIncludeInPersonalIncome: 'Ce revenu n’affecte pas votre revenu personnel sauf si vous le choisissez.',
+    includeInPersonalIncome: 'Ce revenu apparaîtra aussi sur la page des revenus personnels avec une étiquette Revenu de projet.',
+    totalProjectIncome: 'Total des revenus du projet',
+    projectIncomeThisMonth: 'Revenus du projet ce mois-ci',
+    personalIncomeProjectIncome: 'Transféré vers le revenu personnel',
+    noProjectIncomeYet: 'Aucun revenu enregistré pour ce projet.',
+    actualVsExpected: 'Réel vs attendu',
+    saveProjectIncome: 'Enregistrer le revenu du projet',
+    projectIncomeSaved: 'Revenu du projet enregistré.',
+    projectIncomeSaveError: 'Impossible d’enregistrer le revenu du projet pour le moment.',
+    requiredIncomeName: 'Saisissez le nom du revenu.',
+    requiredIncomeAmount: 'Saisissez un montant valide.',
+    salesIncome: 'Ventes',
+    servicesIncome: 'Services',
+    rentalIncome: 'Location',
+    investmentIncome: 'Investissement',
+    otherIncomeSource: 'Autre source',
     analyzeProject: 'Analyser le projet',
     chooseJurisdiction: 'Choisir la juridiction',
     back: 'Retour à mes projets',
@@ -772,6 +868,20 @@ function emptyProjectExpenseForm(currency = 'KWD'): ProjectExpenseForm {
   };
 }
 
+function emptyProjectIncomeForm(currency = 'KWD'): ProjectIncomeForm {
+  return {
+    title: '',
+    amount: '',
+    currency,
+    incomeDate: todayInputValue(),
+    category: 'general',
+    source: '',
+    description: '',
+    notes: '',
+    transferredToPersonalIncome: false,
+  };
+}
+
 function normalizeStatus(raw: unknown): 'idea' | 'study' | 'setup' | 'launch' | 'growth' | 'paused' | 'completed' {
   const value = String(raw ?? '').trim().toLowerCase();
   if (['completed', 'complete', 'مكتمل', 'terminé'].includes(value)) return 'completed';
@@ -852,6 +962,7 @@ export default function ProjectWorkspacePage() {
   const { currency: userCurrency } = useCurrency();
   const tr = (TEXT[lang as Lang] ?? TEXT.ar) as Translation;
   const [project, setProject] = useState<ProjectRow | null>(null);
+  const [projectIncome, setProjectIncome] = useState<ProjectIncomeRow[]>([]);
   const [projectExpenses, setProjectExpenses] = useState<ProjectExpenseRow[]>([]);
   const [savings, setSavings] = useState(0);
   const [loadingProject, setLoadingProject] = useState(true);
@@ -872,6 +983,10 @@ export default function ProjectWorkspacePage() {
   const [projectExpenseSaving, setProjectExpenseSaving] = useState(false);
   const [projectExpenseError, setProjectExpenseError] = useState('');
   const [projectExpenseForm, setProjectExpenseForm] = useState<ProjectExpenseForm>(() => emptyProjectExpenseForm(userCurrency || 'KWD'));
+  const [projectIncomeOpen, setProjectIncomeOpen] = useState(false);
+  const [projectIncomeSaving, setProjectIncomeSaving] = useState(false);
+  const [projectIncomeError, setProjectIncomeError] = useState('');
+  const [projectIncomeForm, setProjectIncomeForm] = useState<ProjectIncomeForm>(() => emptyProjectIncomeForm(userCurrency || 'KWD'));
 
   const money = useCallback((amount: number, currency = 'KWD') => formatMoney(amount, currency, lang as Lang), [lang]);
   const dateLabel = useCallback((value?: string | null) => {
@@ -987,7 +1102,7 @@ export default function ProjectWorkspacePage() {
   const loadProject = useCallback(async () => {
     if (!user || !id) return;
     setLoadingProject(true);
-    const [projectRes, savingsRes, feasibilityRes, taskRes, milestoneRes, documentsRes, financialRes, projectExpensesRes] = await Promise.all([
+    const [projectRes, savingsRes, feasibilityRes, taskRes, milestoneRes, documentsRes, financialRes, projectIncomeRes, projectExpensesRes] = await Promise.all([
       supabase.from('projects').select('*').eq('user_id', user.id).eq('id', id).maybeSingle(),
       supabase.from('savings_items').select('amount').eq('user_id', user.id),
       (supabase as any)
@@ -1018,6 +1133,12 @@ export default function ProjectWorkspacePage() {
         .eq('project_id', id)
         .maybeSingle(),
       (supabase as any)
+        .from('project_income')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('project_id', id)
+        .order('income_date', { ascending: false }),
+      (supabase as any)
         .from('project_expenses')
         .select('*')
         .eq('user_id', user.id)
@@ -1029,8 +1150,10 @@ export default function ProjectWorkspacePage() {
     const loadedMilestones = milestoneRes.error ? [] : (milestoneRes.data ?? []) as ProjectMilestoneRow[];
     const loadedDocumentsCount = documentsRes.error ? 0 : (documentsRes.data ?? []).length;
     const loadedFeasibility = !feasibilityRes.error && feasibilityRes.data ? feasibilityRes.data as FeasibilityStudyRow : null;
+    const loadedProjectIncome = projectIncomeRes.error ? [] : (projectIncomeRes.data ?? []) as ProjectIncomeRow[];
     const loadedProjectExpenses = projectExpensesRes.error ? [] : (projectExpensesRes.data ?? []) as ProjectExpenseRow[];
     setProject(loadedProject);
+    setProjectIncome(loadedProjectIncome);
     setProjectExpenses(loadedProjectExpenses);
     if (!savingsRes.error) {
       setSavings(((savingsRes.data ?? []) as SavingsRow[]).reduce((sum, row) => sum + toNum(row.amount), 0));
@@ -1051,6 +1174,7 @@ export default function ProjectWorkspacePage() {
       tasks: loadedTasks,
       milestones: loadedMilestones,
       documentsCount: loadedDocumentsCount,
+      actualIncome: loadedProjectIncome.reduce((sum, row) => sum + toNum(row.amount), 0),
       actualExpenses: loadedProjectExpenses.reduce((sum, row) => sum + toNum(row.amount), 0),
     }));
     setLoadingProject(false);
@@ -1069,16 +1193,24 @@ export default function ProjectWorkspacePage() {
   const model = useMemo(() => {
     const notes = parseNotes(project?.notes);
     const capital = toNum(notes.capital ?? notes.capital_amount ?? project?.budget);
-    const monthlyIncome = toNum(notes.monthlyRevenue ?? notes.monthly_revenue ?? notes.total_income);
+    const plannedIncome = toNum(notes.monthlyRevenue ?? notes.monthly_revenue ?? notes.total_income);
     const plannedExpenses = toNum(notes.monthlyExpenses ?? notes.monthly_expenses ?? notes.total_expenses);
+    const actualProjectIncome = projectIncome.reduce((sum, row) => sum + toNum(row.amount), 0);
     const actualProjectExpenses = projectExpenses.reduce((sum, row) => sum + toNum(row.amount), 0);
     const currentMonthKey = new Date().toISOString().slice(0, 7);
+    const monthlyProjectIncome = projectIncome
+      .filter(row => String(row.income_date ?? row.created_at ?? '').slice(0, 7) === currentMonthKey)
+      .reduce((sum, row) => sum + toNum(row.amount), 0);
+    const personalIncomeProjectIncome = projectIncome
+      .filter(row => row.transferred_to_personal_income === true)
+      .reduce((sum, row) => sum + toNum(row.amount), 0);
     const monthlyProjectExpenses = projectExpenses
       .filter(row => String(row.expense_date ?? row.created_at ?? '').slice(0, 7) === currentMonthKey)
       .reduce((sum, row) => sum + toNum(row.amount), 0);
     const personalBudgetProjectExpenses = projectExpenses
       .filter(row => row.paid_from_personal_budget === true)
       .reduce((sum, row) => sum + toNum(row.amount), 0);
+    const monthlyIncome = actualProjectIncome > 0 ? actualProjectIncome : plannedIncome;
     const monthlyExpenses = actualProjectExpenses > 0 ? actualProjectExpenses : plannedExpenses;
     const currentProfit = toNum(notes.currentProfit ?? notes.current_profit);
     const target = toNum(notes.target_amount ?? notes.targetAmount ?? notes.expectedProfit ?? notes.expected_profit);
@@ -1106,6 +1238,10 @@ export default function ProjectWorkspacePage() {
       notes,
       capital,
       monthlyIncome,
+      plannedIncome,
+      actualProjectIncome,
+      monthlyProjectIncome,
+      personalIncomeProjectIncome,
       monthlyExpenses,
       plannedExpenses,
       actualProjectExpenses,
@@ -1127,7 +1263,7 @@ export default function ProjectWorkspacePage() {
       priority: notes.priority || (risk === 'high' ? tr.high : risk === 'medium' ? tr.medium : tr.low),
       description: notes.idea || notes.description || notes.notes || '',
     };
-  }, [project, projectExpenses, savings, tr.high, tr.low, tr.medium, tr.noData]);
+  }, [project, projectExpenses, projectIncome, savings, tr.high, tr.low, tr.medium, tr.noData]);
 
   const updateFeasibility = (section: FeasibilitySection, field: string, value: string) => {
     setNotice('');
@@ -1176,6 +1312,12 @@ export default function ProjectWorkspacePage() {
     setProjectExpenseOpen(true);
   };
 
+  const openProjectIncomeModal = () => {
+    setProjectIncomeError('');
+    setProjectIncomeForm(emptyProjectIncomeForm(projectCurrency));
+    setProjectIncomeOpen(true);
+  };
+
   useEffect(() => {
     if (!projectExpenseOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -1184,6 +1326,15 @@ export default function ProjectWorkspacePage() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [projectExpenseOpen]);
+
+  useEffect(() => {
+    if (!projectIncomeOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setProjectIncomeOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [projectIncomeOpen]);
 
   const uploadProjectExpenseReceipt = async (file: File, expenseId: string) => {
     if (!user || !file) return null;
@@ -1286,6 +1437,101 @@ export default function ProjectWorkspacePage() {
     setProjectExpenseForm(emptyProjectExpenseForm(projectCurrency));
   };
 
+  const saveProjectIncome = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user || !project) return;
+    const title = projectIncomeForm.title.trim();
+    const amount = toNum(projectIncomeForm.amount);
+    if (!title) {
+      setProjectIncomeError(tr.requiredIncomeName);
+      return;
+    }
+    if (amount <= 0) {
+      setProjectIncomeError(tr.requiredIncomeAmount);
+      return;
+    }
+
+    setProjectIncomeSaving(true);
+    setProjectIncomeError('');
+    const incomeId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`;
+    const now = new Date().toISOString();
+    const payload = {
+      id: incomeId,
+      user_id: user.id,
+      project_id: project.id,
+      title,
+      amount,
+      currency: projectIncomeForm.currency || projectCurrency,
+      income_date: projectIncomeForm.incomeDate || todayInputValue(),
+      category: projectIncomeForm.category || 'general',
+      source: projectIncomeForm.source.trim() || null,
+      description: projectIncomeForm.description.trim() || null,
+      notes: projectIncomeForm.notes.trim() || null,
+      transferred_to_personal_income: projectIncomeForm.transferredToPersonalIncome,
+      updated_at: now,
+    };
+
+    const { data, error } = await (supabase as any)
+      .from('project_income')
+      .insert(payload)
+      .select('*')
+      .single();
+
+    if (error) {
+      setProjectIncomeSaving(false);
+      setProjectIncomeError(tr.projectIncomeSaveError);
+      return;
+    }
+
+    let createdIncome = data as ProjectIncomeRow;
+    if (projectIncomeForm.transferredToPersonalIncome) {
+      const personalPayload = {
+        user_id: user.id,
+        label: `${tr.projectIncome}: ${title}`,
+        category: 'project_income',
+        amount,
+        amount_kwd: payload.currency === 'KWD' ? amount : null,
+        exchange_rate: null,
+        income_type: 'other',
+        status: 'received',
+        received_date: payload.income_date,
+        currency: payload.currency,
+        source_name: payload.source || project.name || tr.projectIncome,
+        notes: payload.notes,
+        is_recurring: false,
+        frequency: null,
+        recurrence_start_date: null,
+        recurrence_end_date: null,
+        parent_recurring_income_id: null,
+        generated_for_date: null,
+        confirmed_at: now,
+        project_id: project.id,
+        project_income_id: createdIncome.id,
+        transferred_to_personal_income: true,
+        updated_at: now,
+      };
+      const personalInsert = await (supabase as any)
+        .from('monthly_income_sources')
+        .insert(personalPayload)
+        .select('id')
+        .single();
+      if (!personalInsert.error && personalInsert.data?.id) {
+        await (supabase as any)
+          .from('project_income')
+          .update({ personal_income_id: personalInsert.data.id })
+          .eq('id', createdIncome.id)
+          .eq('user_id', user.id);
+        createdIncome = { ...createdIncome, personal_income_id: personalInsert.data.id };
+      }
+    }
+
+    setProjectIncome(prev => [createdIncome, ...prev]);
+    setNotice(tr.projectIncomeSaved);
+    setProjectIncomeSaving(false);
+    setProjectIncomeOpen(false);
+    setProjectIncomeForm(emptyProjectIncomeForm(projectCurrency));
+  };
+
   const tabLabel = (tab: TabId) => {
     if (tab === 'financial') return tr.financial;
     return tr[tab];
@@ -1365,7 +1611,7 @@ export default function ProjectWorkspacePage() {
           <div className="hero-actions">
             <button type="button" onClick={() => router.push('/projects')}><Pencil size={16} /> {tr.editProject}</button>
             <button type="button" onClick={openProjectExpenseModal}><Plus size={16} /> {tr.addExpense}</button>
-            <button type="button" onClick={() => router.push('/income/add')}><Plus size={16} /> {tr.addIncome}</button>
+            <button type="button" onClick={openProjectIncomeModal}><Plus size={16} /> {tr.addIncome}</button>
             <button type="button" onClick={() => setActiveTab('ai')}><Bot size={16} /> {tr.analyzeProject}</button>
             <button type="button" onClick={() => router.push(`/business-hub?project=${project.id}#jurisdiction-wizard-module`)}><Globe2 size={16} /> {tr.chooseJurisdiction}</button>
             <LanguageSwitcher variant="dark" compact />
@@ -1417,7 +1663,9 @@ export default function ProjectWorkspacePage() {
             taskSummary={taskSummary}
             documentsCount={documentsCount}
             kpiSummary={kpiSummary}
+            projectIncome={projectIncome}
             projectExpenses={projectExpenses}
+            openProjectIncomeModal={openProjectIncomeModal}
             openProjectExpenseModal={openProjectExpenseModal}
             money={(amount) => money(amount, projectCurrency)}
             dateLabel={dateLabel}
@@ -1548,6 +1796,8 @@ export default function ProjectWorkspacePage() {
             projectId={project.id}
             initialCapital={model.capital}
             defaultCurrency={projectCurrency}
+            actualIncome={model.actualProjectIncome}
+            actualExpenses={model.actualProjectExpenses}
             lang={lang}
           />
         ) : activeTab === 'tasks' ? (
@@ -1722,12 +1972,129 @@ export default function ProjectWorkspacePage() {
         </div>
       ) : null}
 
+      {projectIncomeOpen ? (
+        <div className="expense-modal-backdrop" role="presentation" onMouseDown={() => setProjectIncomeOpen(false)}>
+          <form className="expense-modal" role="dialog" aria-modal="true" aria-labelledby="project-income-title" onSubmit={saveProjectIncome} onMouseDown={event => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <span>{tr.projectIncome}</span>
+                <h2 id="project-income-title">{tr.addIncome}</h2>
+                <p>{tr.doNotIncludeInPersonalIncome}</p>
+              </div>
+              <button type="button" className="icon-button" onClick={() => setProjectIncomeOpen(false)} aria-label={tr.cancel}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {projectIncomeError ? <div className="modal-error" role="alert">{projectIncomeError}</div> : null}
+
+            <div className="project-expense-form-grid">
+              <label className="form-field wide">
+                <span>{tr.incomeName}</span>
+                <input
+                  value={projectIncomeForm.title}
+                  onChange={event => setProjectIncomeForm(prev => ({ ...prev, title: event.target.value }))}
+                  placeholder={tr.incomeName}
+                  required
+                />
+              </label>
+
+              <label className="form-field">
+                <span>{tr.amount}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  value={projectIncomeForm.amount}
+                  onChange={event => setProjectIncomeForm(prev => ({ ...prev, amount: event.target.value }))}
+                  required
+                />
+              </label>
+
+              <div className="form-field">
+                <span>{tr.currency}</span>
+                <CurrencySelect
+                  value={projectIncomeForm.currency}
+                  onChange={value => setProjectIncomeForm(prev => ({ ...prev, currency: value }))}
+                  lang={lang as Lang}
+                />
+              </div>
+
+              <label className="form-field">
+                <span>{tr.date}</span>
+                <input
+                  type="date"
+                  value={projectIncomeForm.incomeDate}
+                  onChange={event => setProjectIncomeForm(prev => ({ ...prev, incomeDate: event.target.value }))}
+                />
+              </label>
+
+              <label className="form-field">
+                <span>{tr.incomeSource}</span>
+                <select value={projectIncomeForm.category} onChange={event => setProjectIncomeForm(prev => ({ ...prev, category: event.target.value }))}>
+                  {['general', 'salesIncome', 'servicesIncome', 'rentalIncome', 'investmentIncome', 'otherIncomeSource'].map(item => (
+                    <option key={item} value={item}>{tr[item as keyof Translation] as string}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="form-field">
+                <span>{tr.source}</span>
+                <input
+                  value={projectIncomeForm.source}
+                  onChange={event => setProjectIncomeForm(prev => ({ ...prev, source: event.target.value }))}
+                  placeholder={tr.source}
+                />
+              </label>
+
+              <label className="form-field wide">
+                <span>{tr.description}</span>
+                <textarea
+                  rows={3}
+                  value={projectIncomeForm.description}
+                  onChange={event => setProjectIncomeForm(prev => ({ ...prev, description: event.target.value }))}
+                />
+              </label>
+
+              <label className="form-field wide">
+                <span>{tr.notes}</span>
+                <textarea
+                  rows={3}
+                  value={projectIncomeForm.notes}
+                  onChange={event => setProjectIncomeForm(prev => ({ ...prev, notes: event.target.value }))}
+                />
+              </label>
+
+              <label className="budget-checkbox wide">
+                <input
+                  type="checkbox"
+                  checked={projectIncomeForm.transferredToPersonalIncome}
+                  onChange={event => setProjectIncomeForm(prev => ({ ...prev, transferredToPersonalIncome: event.target.checked }))}
+                />
+                <span>
+                  <strong>{tr.transferredToPersonalIncome}</strong>
+                  <small>{projectIncomeForm.transferredToPersonalIncome ? tr.includeInPersonalIncome : tr.doNotIncludeInPersonalIncome}</small>
+                </span>
+              </label>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="secondary-action" onClick={() => setProjectIncomeOpen(false)}>{tr.cancel}</button>
+              <button type="submit" className="primary-save" disabled={projectIncomeSaving}>
+                <Save size={16} />
+                {projectIncomeSaving ? tr.saveProjectIncome : tr.saveProjectIncome}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
       <style jsx global>{`
         .project-workspace{min-height:100vh;background:var(--sfm-background);color:var(--sfm-primary-dark);font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}.project-workspace .sfm-dashboard-page-shell{width:auto;max-width:none;margin:0;margin-inline-start:var(--sidebar-w);margin-inline-end:0;padding:var(--sfm-page-pad-y,24px) var(--sfm-page-pad-x,24px) 60px;overflow-x:clip}.project-workspace .sfm-dashboard-page-content{width:100%;max-width:var(--sfm-page-max,1320px);margin:0 auto;min-width:0}.workspace-content{display:grid;gap:18px;min-width:0}.workspace-hero{position:relative;overflow:hidden;border-radius:24px;padding:26px;background:radial-gradient(circle at 14% 10%,rgba(167,243,240,.26),transparent 30%),linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark) 50%,var(--sfm-card-dark) 138%);color:var(--sfm-card);box-shadow:0 22px 55px rgba(3,18,37,.18);display:grid;gap:20px;min-width:0}.hero-copy span,.back-link{color:var(--sfm-soft-cyan);font-size:12px;font-weight:900}.back-link{display:inline-flex;align-items:center;gap:7px;text-decoration:none;margin-bottom:10px}.hero-copy h1{margin:8px 0;font-size:clamp(30px,5vw,48px);font-weight:950;line-height:1.08}.hero-copy p{margin:0;color:rgba(234,246,255,.76);line-height:1.8;max-width:820px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px}.hero-actions button{min-height:42px;border-radius:13px;border:1px solid rgba(167,243,240,.28);background:rgba(255,255,255,.10);color:var(--sfm-card);padding:0 14px;display:inline-flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.hero-actions button:first-child,.primary-save{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.hero-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.hero-metrics div{border:1px solid rgba(167,243,240,.18);background:rgba(234,246,255,.08);border-radius:16px;padding:12px;min-width:0}.hero-metrics small{display:block;color:var(--sfm-soft-cyan);font-weight:900}.hero-metrics strong{display:block;margin-top:5px;color:var(--sfm-card);overflow-wrap:anywhere}.workspace-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin}.workspace-tabs button{flex:0 0 auto;min-height:42px;border:1px solid rgba(29,140,255,.18);border-radius:999px;background:var(--sfm-card);color:var(--sfm-muted);padding:0 14px;display:flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.workspace-tabs button.active,.workspace-tabs button:focus-visible{background:var(--sfm-midnight);color:var(--sfm-soft-cyan);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}.overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:16px;align-items:start}.overview-grid>.warm-card{grid-column:auto;min-width:0}.warm-card{background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);border-radius:20px;padding:18px;box-shadow:0 14px 34px rgba(3,18,37,.07);min-width:0}.span-6{grid-column:auto}.card-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.card-title h2{margin:0;color:var(--sfm-midnight);font-size:19px}.card-title svg{color:var(--sfm-primary)}.details-list{display:grid;gap:10px;margin:0}.details-list div{display:grid;grid-template-columns:minmax(120px,.35fr) minmax(0,1fr);gap:12px;border-bottom:1px solid rgba(29,140,255,.1);padding-bottom:10px}.details-list dt,.metric small{color:var(--sfm-muted);font-weight:900}.details-list dd{margin:0;color:var(--sfm-primary-dark);font-weight:900;overflow-wrap:anywhere}.badge{display:inline-flex;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:5px 10px;font-size:12px}.badge.completed{background:#ECFDF5;color:#047857}.badge.paused{background:#FEF2F2;color:#B91C1C}.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.metric,.timeline-list .metric{border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:15px;padding:12px;min-width:0;writing-mode:horizontal-tb;text-orientation:mixed}.metric strong{display:block;margin-top:6px;color:var(--sfm-primary-dark);font-size:18px;overflow-wrap:anywhere}.progress-bar{height:10px;border-radius:999px;background:rgba(29,140,255,.10);overflow:hidden;margin-top:14px}.progress-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--sfm-soft-cyan),var(--sfm-primary))}.timeline-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.timeline-empty{margin:0;border:1px dashed rgba(29,140,255,.24);background:var(--sfm-light-card);color:var(--sfm-muted);border-radius:15px;padding:14px;line-height:1.7;font-weight:900;text-align:start}.risk-card,.quick-card{grid-column:auto}.overview-grid>.task-overview-card,.overview-grid>.kpi-overview-card{grid-column:1 / -1}.risk-badge{display:inline-flex;border-radius:999px;padding:8px 12px;font-weight:950;margin-bottom:10px}.risk-card.low .risk-badge{background:#ECFDF5;color:#047857}.risk-card.medium .risk-badge{background:#FFF7ED;color:#B45309}.risk-card.high .risk-badge{background:#FEF2F2;color:#B91C1C}.risk-card p,.ai-placeholder p{margin:0;color:var(--sfm-muted);line-height:1.7}.overview-link-btn{margin-top:14px;min-height:42px;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;padding:0 14px;font-weight:950;font-family:inherit;cursor:pointer}.overview-link-btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}.quick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.quick-grid button{min-height:44px;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:var(--sfm-light-card);color:var(--sfm-midnight);font-weight:900;font-family:inherit;cursor:pointer}.quick-grid button:hover,.quick-grid button:focus-visible{background:rgba(29,140,255,.10);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.14)}.feasibility-tab{display:grid;gap:16px;min-width:0}.feasibility-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:12px;align-items:stretch}.score-card{display:grid;align-content:start}.score-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}.score-number{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--sfm-primary) var(--score-angle, 270deg),rgba(29,140,255,.10) 0);position:relative;box-shadow:inset 0 0 0 12px var(--sfm-light-card)}.score-number strong{font-size:30px;color:var(--sfm-primary-dark)}.score-number span{font-size:12px;color:var(--sfm-muted);font-weight:900}.status-pill{display:inline-flex;border-radius:999px;padding:7px 11px;font-weight:950;font-size:12px}.status-pill.feasible{background:#ECFDF5;color:#047857}.status-pill.needs_review{background:#FFF7ED;color:#B45309}.status-pill.high_risk{background:#FEF2F2;color:#B91C1C}.score-row p{margin:10px 0 0;color:var(--sfm-muted);line-height:1.6}.notice{border:1px solid rgba(29,140,255,.2);background:var(--sfm-light-card);color:var(--sfm-midnight);border-radius:15px;padding:12px 14px;font-weight:900}.feasibility-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(290px,.85fr);gap:16px;align-items:start}.feasibility-sections{display:grid;gap:16px;min-width:0}.feasibility-side{display:grid;gap:16px;min-width:0;position:sticky;top:16px}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.section-heading small{display:inline-flex;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:5px 10px;font-weight:950}.section-heading h2{margin:8px 0 0;color:var(--sfm-midnight);font-size:20px}.section-heading svg{color:var(--sfm-primary)}.feasibility-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-field{display:grid;gap:7px;min-width:0}.form-field span{font-weight:900;color:var(--sfm-muted)}.form-field input,.form-field textarea,.form-field select{width:100%;min-width:0;border:1px solid rgba(29,140,255,.2);background:var(--sfm-card);color:var(--sfm-foreground);border-radius:13px;padding:11px 12px;font-family:inherit;font-weight:800;outline:none}.form-field textarea{resize:vertical;line-height:1.6}.form-field input:focus,.form-field textarea:focus,.form-field select:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.15)}.calculations-card{display:grid;gap:10px}.future-actions{display:grid;gap:10px}.future-actions button{min-height:44px;border-radius:13px;border:1px solid rgba(29,140,255,.18);font-family:inherit;font-weight:950;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}.future-actions button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}.primary-save:disabled{opacity:.66;cursor:not-allowed}.disabled-btn{background:var(--sfm-light-card);color:var(--sfm-muted);cursor:not-allowed}.disabled-btn span{border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:3px 8px;font-size:11px}.placeholder-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}.placeholder-card{min-height:280px;display:grid;place-items:center;text-align:center;align-content:center}.placeholder-card svg{color:var(--sfm-primary)}.placeholder-card h2{margin:12px 0 6px;color:var(--sfm-midnight)}.placeholder-card p{margin:0;max-width:620px;color:var(--sfm-muted);line-height:1.8}.placeholder-card span{margin-top:14px;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:7px 12px;font-weight:900}.state-card{border-radius:20px;background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);padding:24px;color:var(--sfm-midnight);font-weight:900}.empty-state{min-height:360px;display:grid;place-items:center;text-align:center}.empty-state article{background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);border-radius:22px;padding:28px;box-shadow:0 14px 34px rgba(3,18,37,.07)}.empty-state button{margin-top:16px;min-height:42px;border:0;border-radius:13px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;padding:0 16px;font-weight:900;font-family:inherit;cursor:pointer}@media(max-width:1180px){.hero-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.feasibility-layout{grid-template-columns:1fr}.feasibility-side{position:static}}@media(max-width:1024px){.project-workspace .sfm-dashboard-page-shell{margin-inline:0;padding:calc(74px + env(safe-area-inset-top)) 16px 44px}.project-workspace .sfm-dashboard-page-content{max-width:100%}}@media(max-width:760px){.workspace-hero{padding:22px}.hero-actions{display:grid;grid-template-columns:1fr}.hero-actions button{width:100%;justify-content:center}.hero-metrics,.metric-grid,.timeline-list,.quick-grid,.feasibility-summary-grid,.feasibility-form-grid{grid-template-columns:1fr}.details-list div{grid-template-columns:1fr}.warm-card{padding:16px}.overview-grid{grid-template-columns:1fr}.overview-grid>.warm-card{grid-column:1 / -1}.overview-link-btn{width:100%}.score-row{grid-template-columns:1fr}.score-number{width:92px;height:92px}.section-heading{align-items:flex-start}.placeholder-card{min-height:220px}}
       `}</style>
       <style jsx global>{`
         .project-workspace .overview-grid{grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));align-items:stretch}
-        .project-workspace .project-expenses-card,.project-workspace .missing-data-card{grid-column:1 / -1}
+        .project-workspace .project-income-card,.project-workspace .project-expenses-card,.project-workspace .missing-data-card{grid-column:1 / -1}
         .project-workspace .expense-list{display:grid;gap:10px;margin-top:12px}
         .project-workspace .expense-list div{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:14px;padding:10px}
         .project-workspace .expense-list span{font-weight:900;color:var(--sfm-midnight);overflow-wrap:anywhere}
@@ -1754,7 +2121,7 @@ export default function ProjectWorkspacePage() {
         .budget-checkbox small{color:var(--sfm-muted);line-height:1.6;font-weight:850}
         .modal-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
         .modal-actions .primary-save{min-height:44px;border:0;border-radius:13px;padding:0 16px;display:inline-flex;align-items:center;gap:8px;font-family:inherit;font-weight:950;cursor:pointer}
-        @media(max-width:760px){.expense-modal-backdrop{align-items:end;padding:12px}.expense-modal{border-radius:22px 22px 0 0;max-height:88vh}.project-expense-form-grid{grid-template-columns:1fr}.modal-actions{display:grid;grid-template-columns:1fr}.modal-actions button{width:100%}.project-workspace .expense-list div{grid-template-columns:1fr}.project-workspace .project-expenses-card,.project-workspace .missing-data-card{grid-column:1 / -1}}
+        @media(max-width:760px){.expense-modal-backdrop{align-items:end;padding:12px}.expense-modal{border-radius:22px 22px 0 0;max-height:88vh}.project-expense-form-grid{grid-template-columns:1fr}.modal-actions{display:grid;grid-template-columns:1fr}.modal-actions button{width:100%}.project-workspace .expense-list div{grid-template-columns:1fr}.project-workspace .project-income-card,.project-workspace .project-expenses-card,.project-workspace .missing-data-card{grid-column:1 / -1}}
       `}</style>
     </div>
   );
@@ -1770,7 +2137,9 @@ function OverviewTab({
   taskSummary,
   documentsCount,
   kpiSummary,
+  projectIncome,
   projectExpenses,
+  openProjectIncomeModal,
   openProjectExpenseModal,
   money,
   dateLabel,
@@ -1786,7 +2155,9 @@ function OverviewTab({
   taskSummary: ProjectTasksSummary;
   documentsCount: number;
   kpiSummary: ProjectKpiSummary;
+  projectIncome: ProjectIncomeRow[];
   projectExpenses: ProjectExpenseRow[];
+  openProjectIncomeModal: () => void;
   openProjectExpenseModal: () => void;
   money: (value: number) => string;
   dateLabel: (value?: string | null) => string;
@@ -1794,7 +2165,11 @@ function OverviewTab({
   routerPush: (href: string) => void;
 }) {
   const hasTimelineData = Boolean(model.startDate || model.endDate || model.daysRemaining !== null || model.duration !== null);
+  const hasProjectIncome = projectIncome.length > 0;
   const hasProjectExpenses = projectExpenses.length > 0;
+  const actualVsExpected = model.plannedIncome > 0
+    ? `${Math.round((model.actualProjectIncome / model.plannedIncome) * 100)}%`
+    : tr.noData;
   const actualVsPlanned = model.plannedExpenses > 0
     ? `${Math.round((model.actualProjectExpenses / model.plannedExpenses) * 100)}%`
     : tr.noData;
@@ -1882,6 +2257,34 @@ function OverviewTab({
         </button>
       </article>
 
+      <article className="warm-card project-income-card">
+        <CardTitle icon={<Coins size={20} />} title={tr.projectIncome} />
+        {hasProjectIncome ? (
+          <>
+            <div className="metric-grid">
+              <Metric label={tr.totalProjectIncome} value={money(model.actualProjectIncome)} />
+              <Metric label={tr.projectIncomeThisMonth} value={money(model.monthlyProjectIncome)} />
+              <Metric label={tr.personalIncomeProjectIncome} value={money(model.personalIncomeProjectIncome)} />
+              <Metric label={tr.actualVsExpected} value={actualVsExpected} />
+            </div>
+            <div className="expense-list">
+              {projectIncome.slice(0, 4).map(income => (
+                <div key={income.id}>
+                  <span>{income.title || tr.projectIncome}</span>
+                  <strong>{money(toNum(income.amount))}</strong>
+                  {income.transferred_to_personal_income ? <small>{tr.projectIncome}</small> : null}
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="action-empty">
+            <p>{tr.noProjectIncomeYet}</p>
+            <button type="button" onClick={openProjectIncomeModal}>{tr.addIncome}</button>
+          </div>
+        )}
+      </article>
+
       <article className="warm-card project-expenses-card">
         <CardTitle icon={<ReceiptText size={20} />} title={tr.projectExpenses} />
         {hasProjectExpenses ? (
@@ -1914,7 +2317,7 @@ function OverviewTab({
         <CardTitle icon={<CheckCircle2 size={20} />} title={tr.quickActions} />
         <div className="quick-grid">
           <button type="button" onClick={openProjectExpenseModal}>{tr.addExpense}</button>
-          <button type="button" onClick={() => routerPush('/income/add')}>{tr.addIncome}</button>
+          <button type="button" onClick={openProjectIncomeModal}>{tr.addIncome}</button>
           <button type="button" onClick={() => setActiveTab('tasks')}>{tr.addTask}</button>
           <button type="button" onClick={() => setActiveTab('feasibility')}>{tr.generateFeasibility}</button>
           <button type="button" onClick={() => setActiveTab('financial')}>{tr.createFinancialModel}</button>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { personalIncomeRows } from '@/lib/data/financeData';
 
 type Lang = 'ar' | 'en' | 'fr';
 type AdvisorMode = 'summary' | 'risks' | 'actions' | 'plan90' | 'report' | 'chat';
@@ -595,6 +596,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     milestoneRes,
     documentRes,
     savingsRes,
+    projectIncomeRes,
     projectExpenseRes,
     legacyExpenseRes,
     incomeRes,
@@ -605,9 +607,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     (supabase as any).from('project_milestones').select('*').eq('user_id', user.id).eq('project_id', id),
     (supabase as any).from('project_documents').select('id,title,category,file_name,file_type,file_size,uploaded_at').eq('user_id', user.id).eq('project_id', id),
     supabase.from('savings_items').select('amount').eq('user_id', user.id),
+    (supabase as any).from('project_income').select('id,title,amount,income_date,created_at').eq('user_id', user.id).eq('project_id', id),
     (supabase as any).from('project_expenses').select('id,title,amount,expense_date,created_at').eq('user_id', user.id).eq('project_id', id),
     (supabase as any).from('expense_items').select('id,name,amount,created_at,enhanced').eq('user_id', user.id),
-    (supabase as any).from('monthly_income_sources').select('amount').eq('user_id', user.id),
+    (supabase as any).from('monthly_income_sources').select('*').eq('user_id', user.id),
   ]);
 
   const legacyProjectExpenses = (legacyExpenseRes.error ? [] : legacyExpenseRes.data ?? []).filter((item: any) => {
@@ -630,8 +633,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     documents: documentRes.error ? [] : documentRes.data ?? [],
     documentsCount: documentRes.error ? 0 : (documentRes.data ?? []).length,
     savingsTotal: savingsRes.error ? 0 : (savingsRes.data ?? []).reduce((sum: number, row: any) => sum + toNum(row.amount), 0),
+    projectIncome: projectIncomeRes.error ? [] : projectIncomeRes.data ?? [],
+    linkedIncomeTotal: projectIncomeRes.error ? 0 : (projectIncomeRes.data ?? []).reduce((sum: number, row: any) => sum + toNum(row.amount), 0),
     linkedExpenseTotal: projectExpenses.reduce((sum: number, row: any) => sum + toNum(row.amount), 0),
-    incomeTotal: incomeRes.error ? null : (incomeRes.data ?? []).reduce((sum: number, row: any) => sum + toNum(row.amount), 0),
+    incomeTotal: incomeRes.error ? null : personalIncomeRows(incomeRes.data ?? []).reduce((sum: number, row: any) => sum + toNum(row.amount), 0),
     kpiAvailable: !financialRes.error && !!financialRes.data,
   };
 

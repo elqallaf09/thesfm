@@ -31,7 +31,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
-import { personalExpenseRows } from '@/lib/data/financeData';
+import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 
 type Lang = 'ar' | 'en' | 'fr';
 type ProjectStatus = 'planning' | 'fundraising' | 'in_progress' | 'completed' | 'paused';
@@ -1720,7 +1720,7 @@ export default function CharityProjectsPage() {
         if (!refreshed.error) setReminders((refreshed.data ?? []) as CharityReminder[]);
       }
       if (!incomeRes.error) {
-        const rows = incomeRes.data ?? [];
+        const rows = personalIncomeRows(incomeRes.data ?? []);
         const currentYear = new Date().getFullYear();
         setIncomeTotal(rows.reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
         setIncomeThisYear(rows.filter((row: any) => isYear(recordDate(row), currentYear)).reduce((sum: number, row: any) => sum + toNum(row.amount), 0));

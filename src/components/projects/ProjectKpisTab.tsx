@@ -64,6 +64,14 @@ type ActualExpenseRow = {
   created_at?: string | null;
 };
 
+type ActualIncomeRow = {
+  id: string;
+  amount: string | number | null;
+  project_id?: string | null;
+  income_date?: string | null;
+  created_at?: string | null;
+};
+
 type FinancialKpis = {
   roi: number | null;
   paybackPeriod: number | null;
@@ -438,6 +446,7 @@ export function buildProjectKpiSummary({
   feasibilityStudy,
   tasks,
   documentsCount,
+  actualIncome = 0,
   actualExpenses = 0,
 }: {
   project: ProjectKpiProject | null;
@@ -446,6 +455,7 @@ export function buildProjectKpiSummary({
   tasks: ProjectTaskRow[];
   milestones?: ProjectMilestoneRow[];
   documentsCount: number;
+  actualIncome?: number;
   actualExpenses?: number;
 }): ProjectKpiSummary {
   const financial = getFinancialKpis(financialModel);
@@ -460,7 +470,7 @@ export function buildProjectKpiSummary({
     (feasibility !== null ? (feasibility / 100) * 15 : 0) +
     (documentsCount > 0 ? 10 : 0);
   const rounded = Math.round(clampPercent(score));
-  const hasAnyData = hasFinancialModel(financialModel) || feasibility !== null || tasks.length > 0 || documentsCount > 0;
+  const hasAnyData = hasFinancialModel(financialModel) || feasibility !== null || tasks.length > 0 || documentsCount > 0 || actualIncome > 0 || actualExpenses > 0;
   const status: ProjectKpiStatus = !hasAnyData
     ? 'insufficient'
     : rounded >= 80
@@ -507,6 +517,7 @@ export function ProjectKpisTab({
   const [tasks, setTasks] = useState<ProjectTaskRow[]>([]);
   const [milestones, setMilestones] = useState<ProjectMilestoneRow[]>([]);
   const [documentsCount, setDocumentsCount] = useState(0);
+  const [linkedIncome, setLinkedIncome] = useState<ActualIncomeRow[]>([]);
   const [linkedExpenses, setLinkedExpenses] = useState<ActualExpenseRow[]>([]);
 
   const money = useCallback((amount: number | null) => {
@@ -526,12 +537,13 @@ export function ProjectKpisTab({
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [financialRes, feasibilityRes, taskRes, milestoneRes, documentRes, projectExpenseRes, legacyExpenseRes] = await Promise.all([
+    const [financialRes, feasibilityRes, taskRes, milestoneRes, documentRes, projectIncomeRes, projectExpenseRes, legacyExpenseRes] = await Promise.all([
       (supabase as any).from('project_financial_models').select('*').eq('user_id', userId).eq('project_id', projectId).maybeSingle(),
       (supabase as any).from('project_feasibility_studies').select('*').eq('user_id', userId).eq('project_id', projectId).maybeSingle(),
       (supabase as any).from('project_tasks').select('*').eq('user_id', userId).eq('project_id', projectId),
       (supabase as any).from('project_milestones').select('*').eq('user_id', userId).eq('project_id', projectId),
       (supabase as any).from('project_documents').select('id').eq('user_id', userId).eq('project_id', projectId),
+      (supabase as any).from('project_income').select('id, amount, project_id, income_date, created_at').eq('user_id', userId).eq('project_id', projectId),
       (supabase as any).from('project_expenses').select('id, amount, project_id, expense_date, created_at').eq('user_id', userId).eq('project_id', projectId),
       (supabase as any).from('expense_items').select('id, amount, enhanced, created_at').eq('user_id', userId),
     ]);
@@ -540,6 +552,7 @@ export function ProjectKpisTab({
     setTasks(taskRes.error ? [] : (taskRes.data ?? []) as ProjectTaskRow[]);
     setMilestones(milestoneRes.error ? [] : (milestoneRes.data ?? []) as ProjectMilestoneRow[]);
     setDocumentsCount(documentRes.error ? 0 : (documentRes.data ?? []).length);
+    setLinkedIncome(projectIncomeRes.error ? [] : (projectIncomeRes.data ?? []) as ActualIncomeRow[]);
     const projectExpenseRows = projectExpenseRes.error ? [] : (projectExpenseRes.data ?? []) as ActualExpenseRow[];
     const legacyExpenseRows = legacyExpenseRes.error ? [] : actualProjectExpenseRows((legacyExpenseRes.data ?? []) as ActualExpenseRow[], projectId);
     setLinkedExpenses([...projectExpenseRows, ...legacyExpenseRows]);
@@ -550,6 +563,7 @@ export function ProjectKpisTab({
     loadData();
   }, [loadData]);
 
+  const actualIncomeTotal = useMemo(() => linkedIncome.reduce((sum, row) => sum + toNum(row.amount), 0), [linkedIncome]);
   const actualExpenseTotal = useMemo(() => linkedExpenses.reduce((sum, row) => sum + toNum(row.amount), 0), [linkedExpenses]);
   const financial = useMemo(() => getFinancialKpis(financialModel), [financialModel]);
   const summary = useMemo(() => buildProjectKpiSummary({
@@ -559,8 +573,9 @@ export function ProjectKpisTab({
     tasks,
     milestones,
     documentsCount,
+    actualIncome: actualIncomeTotal,
     actualExpenses: actualExpenseTotal,
-  }), [actualExpenseTotal, documentsCount, feasibilityStudy, financialModel, milestones, project, tasks]);
+  }), [actualExpenseTotal, actualIncomeTotal, documentsCount, feasibilityStudy, financialModel, milestones, project, tasks]);
   const riskFlags = useMemo(() => buildRiskFlags({
     project,
     financialModel,
@@ -580,8 +595,9 @@ export function ProjectKpisTab({
     return due && due >= todayStart() && !isTaskDone(task) && !isTaskCancelled(task);
   }).length;
   const plannedBudget = projectDates(project).budget;
+  const hasActualIncomeData = linkedIncome.length > 0;
   const hasActualExpenseData = linkedExpenses.length > 0;
-  const hasAnyKpiData = hasFinancialModel(financialModel) || tasks.length > 0 || milestones.length > 0 || documentsCount > 0 || feasibilityScore(feasibilityStudy) !== null;
+  const hasAnyKpiData = hasFinancialModel(financialModel) || tasks.length > 0 || milestones.length > 0 || documentsCount > 0 || feasibilityScore(feasibilityStudy) !== null || hasActualIncomeData || hasActualExpenseData;
 
   useEffect(() => {
     onSummaryChange?.(summary);
@@ -647,11 +663,11 @@ export function ProjectKpisTab({
 
         <article className="kpi-card">
           <SectionTitle title={t.actualVsPlanned} icon={<Target size={20} />} />
-          {!hasActualExpenseData ? <p className="kpi-hint">{t.actualVsPlannedHint}</p> : null}
+          {!hasActualExpenseData && !hasActualIncomeData ? <p className="kpi-hint">{t.actualVsPlannedHint}</p> : null}
           <div className="actual-grid">
             <ComparisonItem label={t.plannedBudget} planned={money(plannedBudget > 0 ? plannedBudget : null)} actual={hasActualExpenseData ? money(actualExpenseTotal) : t.na} actualLabel={t.actualCost} />
             <ComparisonItem label={t.plannedTimeline} planned={percent(timelineProgressValue)} actual={percent(actualProgressValue)} actualLabel={t.actualProgress} />
-            <ComparisonItem label={t.projectedRevenue} planned={money(financial.totalRevenue)} actual={t.na} actualLabel={t.actualIncome} />
+            <ComparisonItem label={t.projectedRevenue} planned={money(financial.totalRevenue)} actual={hasActualIncomeData ? money(actualIncomeTotal) : t.na} actualLabel={t.actualIncome} />
             <ComparisonItem label={t.projectedCosts} planned={money(financial.totalCosts)} actual={hasActualExpenseData ? money(actualExpenseTotal) : t.na} actualLabel={t.actualExpenses} />
           </div>
         </article>

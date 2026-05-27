@@ -28,7 +28,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useSmartTasks } from '@/hooks/useSmartTasks';
 import { supabase } from '@/integrations/supabase/client';
-import { loadUserDataTables, personalExpenseRows } from '@/lib/data/financeData';
+import { loadUserDataTables, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 
 type Lang = 'ar' | 'en' | 'fr';
 type CommandKey =
@@ -201,6 +201,7 @@ export default function CommandCenterPage() {
       if (!cancelled) {
         setRecords({
           ...(result.records as Records),
+          income: personalIncomeRows(result.records.income ?? []),
           expenses: personalExpenseRows(result.records.expenses ?? []),
         });
         setLoading(false);

@@ -2,6 +2,7 @@ export type SfmDataKey =
   | 'profiles'
   | 'income'
   | 'expenses'
+  | 'projectIncome'
   | 'projectExpenses'
   | 'savings'
   | 'goals'
@@ -54,6 +55,7 @@ export const CORE_FINANCE_TABLES: SfmDataTable[] = [
 export const REPORT_DATA_TABLES: SfmDataTable[] = [
   { key: 'income', table: 'monthly_income_sources' },
   { key: 'expenses', table: 'expense_items' },
+  { key: 'projectIncome', table: 'project_income' },
   { key: 'projectExpenses', table: 'project_expenses' },
   { key: 'savings', table: 'savings_items' },
   { key: 'goals', table: 'financial_goals' },
@@ -138,6 +140,70 @@ function recordObject(value: unknown): Record<string, any> {
   } catch {
     return {};
   }
+}
+
+export function incomeProjectId(row: any) {
+  const enhanced = recordObject(row?.enhanced);
+  const enhancedProject = recordObject(enhanced.project);
+  return String(
+    row?.project_id ??
+    row?.related_project_id ??
+    enhanced.project_id ??
+    enhanced.projectId ??
+    enhanced.linked_project_id ??
+    enhancedProject.id ??
+    ''
+  ).trim();
+}
+
+export function incomeProjectIncomeId(row: any) {
+  const enhanced = recordObject(row?.enhanced);
+  return String(
+    row?.project_income_id ??
+    row?.linked_project_income_id ??
+    enhanced.project_income_id ??
+    enhanced.projectIncomeId ??
+    enhanced.linked_project_income_id ??
+    ''
+  ).trim();
+}
+
+export function isProjectLinkedIncomeRow(row: any) {
+  const enhanced = recordObject(row?.enhanced);
+  const category = String(row?.category ?? row?.income_type ?? enhanced.category ?? '').trim().toLowerCase();
+  const source = String(enhanced.source ?? enhanced.kind ?? enhanced.type ?? '').trim().toLowerCase();
+  return Boolean(
+    incomeProjectId(row) ||
+    incomeProjectIncomeId(row) ||
+    category === 'project_income' ||
+    source === 'project_income'
+  );
+}
+
+export function incomeTransferredToPersonalIncome(row: any) {
+  const enhanced = recordObject(row?.enhanced);
+  return row?.transferred_to_personal_income === true ||
+    row?.transferred_to_personal_income === 'true' ||
+    enhanced.transferred_to_personal_income === true ||
+    enhanced.transferred_to_personal_income === 'true' ||
+    enhanced.include_in_personal_income === true ||
+    enhanced.include_in_personal_income === 'true' ||
+    enhanced.transferredToPersonalIncome === true ||
+    enhanced.transferredToPersonalIncome === 'true';
+}
+
+export function isPersonalIncomeRow(row: any) {
+  if (!isProjectLinkedIncomeRow(row)) return true;
+  return incomeTransferredToPersonalIncome(row);
+}
+
+export function personalIncomeRows<T = any>(rows: T[] = []) {
+  return rows.filter(row => isPersonalIncomeRow(row));
+}
+
+export function projectIncomeRows<T = any>(rows: T[] = [], projectId?: string | null) {
+  if (!projectId) return [];
+  return rows.filter(row => incomeProjectId(row) === projectId);
 }
 
 export function expenseProjectId(row: any) {
@@ -249,8 +315,9 @@ export async function loadUserDataTables<K extends string>(
 }
 
 export function buildFinanceOverview(records: Partial<SfmRecords>) {
+  const personalIncome = personalIncomeRows(records.income ?? []);
   const personalExpenses = personalExpenseRows(records.expenses ?? []);
-  const incomeTotal = sumAmounts(records.income ?? [], ['amount']);
+  const incomeTotal = sumAmounts(personalIncome, ['amount']);
   const expenseTotal = sumAmounts(personalExpenses, ['amount']);
   const savingsTotal = sumAmounts(records.savings ?? [], ['amount', 'current_value']);
   const investmentTotal = sumAmounts(records.investments ?? [], ['current_value', 'amount']);
@@ -268,7 +335,7 @@ export function buildFinanceOverview(records: Partial<SfmRecords>) {
     zakatDue,
     netBalance,
     expenseRatio: safeDivide(expenseTotal, incomeTotal),
-    hasIncome: (records.income?.length ?? 0) > 0,
+    hasIncome: personalIncome.length > 0,
     hasExpenses: personalExpenses.length > 0,
     hasSavings: (records.savings?.length ?? 0) > 0,
     hasInvestments: (records.investments?.length ?? 0) > 0,

@@ -43,7 +43,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
-import { personalExpenseRows } from '@/lib/data/financeData';
+import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { formatCurrency } from '@/lib/format';
 import { useCurrency } from '@/lib/useCurrency';
 
@@ -242,7 +242,7 @@ export default function AiPage() {
       ]);
 
       if (cancelled) return;
-      setIncome((incomeRes.data ?? []).map(row => ({
+      setIncome(personalIncomeRows(incomeRes.data ?? []).map(row => ({
         id: text(row.id),
         label: text(row.label || row.name),
         category: text(row.category),
