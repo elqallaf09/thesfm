@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowUpRight,
@@ -15,22 +15,27 @@ import {
   Layers3,
   Lightbulb,
   PiggyBank,
+  RotateCcw,
   Search,
   ShieldAlert,
   Sparkles,
   Target,
   WalletCards,
+  X,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
+import { CurrencySelect } from '@/components/CurrencySelect';
 import { PageHero } from '@/components/layout/PageHero';
 import { AppCard } from '@/components/layout/AppCard';
 import { CardsGrid, StatGrid } from '@/components/layout/LayoutPrimitives';
 import { PageTabs, type PageTabItem } from '@/components/layout/PageTabs';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useCurrency } from '@/lib/useCurrency';
+import { formatMoney } from '@/lib/formatMoney';
 import {
   FEATURED_FINANCIAL_THEORIES,
   FINANCIAL_THEORIES,
@@ -105,6 +110,41 @@ const UI_COPY: Record<FinancialTheoryLang, Record<string, string>> = {
     openGoals: 'فتح الأهداف المالية',
     openTools: 'فتح أدوات وحاسبات',
     educationNote: 'هذه صفحة تعليمية وليست استشارة مالية شخصية.',
+    calculatorTitle: 'الحاسبة الذكية',
+    calculatorIntro: 'أدخل أرقامك الحقيقية فقط. لا يتم حفظ أي نتيجة تلقائياً.',
+    close: 'إغلاق',
+    reset: 'إعادة ضبط',
+    result: 'النتيجة',
+    currency: 'العملة',
+    monthlyIncome: 'الدخل الشهري',
+    monthlyExpenses: 'المصروف الشهري',
+    currentSavings: 'المدخرات الحالية',
+    needs: 'الاحتياجات',
+    wants: 'الرغبات',
+    savingsInvestingDebt: 'الادخار والاستثمار وسداد الديون',
+    percentagesTotal: 'مجموع النسب',
+    percentagesMustTotal: 'النسب يجب أن يكون مجموعها 100%.',
+    incomeMustBePositive: 'الدخل الشهري يجب أن يكون أكبر من صفر.',
+    amountMustBePositive: 'أدخل مبلغاً أكبر من صفر.',
+    minimumEmergencyFund: 'الحد الأدنى لصندوق الطوارئ',
+    recommendedAmount: 'المبلغ الموصى به',
+    remainingAmount: 'المتبقي للوصول للهدف',
+    emergencyComplete: 'صندوق الطوارئ مكتمل أو أعلى من المطلوب.',
+    monthsCount: 'عدد الأشهر',
+    customMonths: 'عدد أشهر مخصص',
+    threeMonths: '3 أشهر',
+    sixMonths: '6 أشهر',
+    twelveMonths: '12 شهر',
+    custom: 'مخصص',
+    debtAmount: 'إجمالي الدين',
+    monthlyPayment: 'الدفعة الشهرية',
+    annualInterestRate: 'معدل الفائدة السنوي',
+    estimatedMonths: 'عدد الأشهر التقريبي',
+    totalPaid: 'إجمالي المدفوع',
+    estimatedInterest: 'الفائدة التقديرية',
+    approximateEndDate: 'تاريخ الانتهاء التقريبي',
+    debtPaymentTooLow: 'الدفعة الشهرية غير كافية لتقليل الدين مع معدل الفائدة المدخل.',
+    simplifiedEstimateNote: 'هذا تقدير مبسط ولا يشمل جميع الرسوم أو الشروط البنكية.',
   },
   en: {
     title: 'Financial Theories',
@@ -154,6 +194,41 @@ const UI_COPY: Record<FinancialTheoryLang, Record<string, string>> = {
     openGoals: 'Open Financial Goals',
     openTools: 'Open Tools',
     educationNote: 'This page is educational and is not personal financial advice.',
+    calculatorTitle: 'Smart calculator',
+    calculatorIntro: 'Enter your real numbers only. Results are not saved automatically.',
+    close: 'Close',
+    reset: 'Reset',
+    result: 'Result',
+    currency: 'Currency',
+    monthlyIncome: 'Monthly Income',
+    monthlyExpenses: 'Monthly Expenses',
+    currentSavings: 'Current Savings',
+    needs: 'Needs',
+    wants: 'Wants',
+    savingsInvestingDebt: 'Saving, investing, and debt repayment',
+    percentagesTotal: 'Percentage total',
+    percentagesMustTotal: 'Percentages must total 100%.',
+    incomeMustBePositive: 'Monthly income must be greater than zero.',
+    amountMustBePositive: 'Enter an amount greater than zero.',
+    minimumEmergencyFund: 'Minimum emergency fund',
+    recommendedAmount: 'Recommended amount',
+    remainingAmount: 'Remaining amount',
+    emergencyComplete: 'Your emergency fund is complete or above the target.',
+    monthsCount: 'Number of months',
+    customMonths: 'Custom number of months',
+    threeMonths: '3 months',
+    sixMonths: '6 months',
+    twelveMonths: '12 months',
+    custom: 'Custom',
+    debtAmount: 'Debt Amount',
+    monthlyPayment: 'Monthly Payment',
+    annualInterestRate: 'Annual Interest Rate',
+    estimatedMonths: 'Estimated months',
+    totalPaid: 'Total paid',
+    estimatedInterest: 'Estimated interest',
+    approximateEndDate: 'Approximate end date',
+    debtPaymentTooLow: 'The monthly payment is not enough to reduce the debt with this interest rate.',
+    simplifiedEstimateNote: 'This is a simple estimate and does not include all fees or bank terms.',
   },
   fr: {
     title: 'Théories financières',
@@ -203,6 +278,41 @@ const UI_COPY: Record<FinancialTheoryLang, Record<string, string>> = {
     openGoals: 'Ouvrir les objectifs',
     openTools: 'Ouvrir les outils',
     educationNote: 'Cette page est éducative et ne constitue pas un conseil financier personnel.',
+    calculatorTitle: 'Calculateur intelligent',
+    calculatorIntro: 'Saisissez uniquement vos vrais chiffres. Les résultats ne sont pas enregistrés automatiquement.',
+    close: 'Fermer',
+    reset: 'Réinitialiser',
+    result: 'Résultat',
+    currency: 'Devise',
+    monthlyIncome: 'Revenu mensuel',
+    monthlyExpenses: 'Dépenses mensuelles',
+    currentSavings: 'Épargne actuelle',
+    needs: 'Besoins',
+    wants: 'Envies',
+    savingsInvestingDebt: 'Épargne, investissement et remboursement de dette',
+    percentagesTotal: 'Total des pourcentages',
+    percentagesMustTotal: 'Les pourcentages doivent totaliser 100 %.',
+    incomeMustBePositive: 'Le revenu mensuel doit être supérieur à zéro.',
+    amountMustBePositive: 'Saisissez un montant supérieur à zéro.',
+    minimumEmergencyFund: 'Fonds d’urgence minimum',
+    recommendedAmount: 'Montant recommandé',
+    remainingAmount: 'Montant restant',
+    emergencyComplete: 'Votre fonds d’urgence est complet ou supérieur à l’objectif.',
+    monthsCount: 'Nombre de mois',
+    customMonths: 'Nombre de mois personnalisé',
+    threeMonths: '3 mois',
+    sixMonths: '6 mois',
+    twelveMonths: '12 mois',
+    custom: 'Personnalisé',
+    debtAmount: 'Montant de la dette',
+    monthlyPayment: 'Paiement mensuel',
+    annualInterestRate: 'Taux d’intérêt annuel',
+    estimatedMonths: 'Mois estimés',
+    totalPaid: 'Total payé',
+    estimatedInterest: 'Intérêt estimé',
+    approximateEndDate: 'Date de fin approximative',
+    debtPaymentTooLow: 'Le paiement mensuel ne suffit pas à réduire la dette avec ce taux.',
+    simplifiedEstimateNote: 'Il s’agit d’une estimation simple qui n’inclut pas tous les frais ou conditions bancaires.',
   },
 };
 
@@ -367,6 +477,241 @@ function applyCopy(lang: FinancialTheoryLang, tool: string) {
   return `استخدم ${tool} كمساحة عملية لتطبيق هذه الفكرة عندما تكون بياناتك الحقيقية متوفرة.`;
 }
 
+type CalculatorId = 'salary-split' | 'emergency-fund' | 'debt-plan';
+
+const ACTIVE_CALCULATORS = new Set<string>(['salary-split', 'emergency-fund', 'debt-plan']);
+
+function isCalculatorId(value: string): value is CalculatorId {
+  return ACTIVE_CALCULATORS.has(value);
+}
+
+function asNumber(value: string) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatCalculatorDate(months: number, lang: FinancialTheoryLang) {
+  const date = new Date();
+  date.setMonth(date.getMonth() + Math.max(0, months));
+  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(date);
+}
+
+function CalculatorField({
+  label,
+  value,
+  onChange,
+  min = 0,
+  step = '0.01',
+  suffix,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  min?: number;
+  step?: string;
+  suffix?: string;
+}) {
+  return (
+    <label className="calculator-field">
+      <span>{label}</span>
+      <span className="calculator-input-wrap">
+        <input
+          type="number"
+          inputMode="decimal"
+          min={min}
+          step={step}
+          value={value}
+          onChange={event => onChange(event.target.value)}
+        />
+        {suffix ? <em>{suffix}</em> : null}
+      </span>
+    </label>
+  );
+}
+
+function ResultCard({ label, value, tone = 'default' }: { label: string; value: string; tone?: 'default' | 'strong' | 'warning' }) {
+  return (
+    <div className={`calculator-result-card ${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function SmartCalculatorPanel({
+  activeId,
+  title,
+  lang,
+  text,
+  defaultCurrency,
+  onClose,
+}: {
+  activeId: CalculatorId;
+  title: string;
+  lang: FinancialTheoryLang;
+  text: Record<string, string>;
+  defaultCurrency: string;
+  onClose: () => void;
+}) {
+  const [salary, setSalary] = useState({ income: '', needs: '50', wants: '30', savings: '20', currency: defaultCurrency });
+  const [emergency, setEmergency] = useState({ expenses: '', months: '6', customMonths: '', savings: '', currency: defaultCurrency });
+  const [debt, setDebt] = useState({ amount: '', payment: '', interest: '', currency: defaultCurrency });
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  function money(amount: number, currency: string) {
+    return formatMoney(Number.isFinite(amount) ? amount : 0, currency || 'KWD', lang);
+  }
+
+  function reset() {
+    if (activeId === 'salary-split') setSalary({ income: '', needs: '50', wants: '30', savings: '20', currency: defaultCurrency });
+    if (activeId === 'emergency-fund') setEmergency({ expenses: '', months: '6', customMonths: '', savings: '', currency: defaultCurrency });
+    if (activeId === 'debt-plan') setDebt({ amount: '', payment: '', interest: '', currency: defaultCurrency });
+  }
+
+  const salaryIncome = asNumber(salary.income);
+  const needsPercent = asNumber(salary.needs);
+  const wantsPercent = asNumber(salary.wants);
+  const savingsPercent = asNumber(salary.savings);
+  const percentageTotal = needsPercent + wantsPercent + savingsPercent;
+  const salaryValid = salaryIncome > 0 && percentageTotal === 100;
+
+  const emergencyExpenses = asNumber(emergency.expenses);
+  const selectedEmergencyMonths = emergency.months === 'custom' ? asNumber(emergency.customMonths) : asNumber(emergency.months);
+  const currentEmergencySavings = asNumber(emergency.savings);
+  const minimumEmergencyTarget = emergencyExpenses * 3;
+  const recommendedEmergencyTarget = emergencyExpenses * selectedEmergencyMonths;
+  const emergencyRemaining = Math.max(0, recommendedEmergencyTarget - currentEmergencySavings);
+  const emergencyValid = emergencyExpenses > 0 && selectedEmergencyMonths > 0;
+
+  const debtAmount = asNumber(debt.amount);
+  const monthlyPayment = asNumber(debt.payment);
+  const annualRate = asNumber(debt.interest);
+  const monthlyRate = annualRate > 0 ? annualRate / 100 / 12 : 0;
+  const debtCanReduce = monthlyRate === 0 || monthlyPayment > debtAmount * monthlyRate;
+  const debtValid = debtAmount > 0 && monthlyPayment > 0 && debtCanReduce;
+  const estimatedMonths = debtValid
+    ? monthlyRate > 0
+      ? Math.ceil(-Math.log(1 - (debtAmount * monthlyRate) / monthlyPayment) / Math.log(1 + monthlyRate))
+      : Math.ceil(debtAmount / monthlyPayment)
+    : 0;
+  const totalPaid = estimatedMonths > 0 ? estimatedMonths * monthlyPayment : 0;
+  const estimatedInterest = Math.max(0, totalPaid - debtAmount);
+
+  return (
+    <section className="calculator-panel" aria-labelledby="smart-calculator-title">
+      <div className="calculator-panel-head">
+        <div>
+          <span>{text.calculatorTitle}</span>
+          <h3 id="smart-calculator-title">{title}</h3>
+          <p>{text.calculatorIntro}</p>
+        </div>
+        <button type="button" className="calculator-close" onClick={onClose} aria-label={text.close}>
+          <X size={18} aria-hidden="true" />
+        </button>
+      </div>
+
+      {activeId === 'salary-split' ? (
+        <div className="calculator-layout">
+          <div className="calculator-form-grid">
+            <CalculatorField label={text.monthlyIncome} value={salary.income} onChange={value => setSalary(prev => ({ ...prev, income: value }))} />
+            <CurrencySelect value={salary.currency} onChange={currency => setSalary(prev => ({ ...prev, currency }))} lang={lang} label={text.currency} ariaLabel={text.currency} />
+            <CalculatorField label={text.needs} value={salary.needs} onChange={value => setSalary(prev => ({ ...prev, needs: value }))} step="1" suffix="%" />
+            <CalculatorField label={text.wants} value={salary.wants} onChange={value => setSalary(prev => ({ ...prev, wants: value }))} step="1" suffix="%" />
+            <CalculatorField label={text.savingsInvestingDebt} value={salary.savings} onChange={value => setSalary(prev => ({ ...prev, savings: value }))} step="1" suffix="%" />
+            <div className={`calculator-total ${percentageTotal === 100 ? 'ok' : 'error'}`}>
+              <span>{text.percentagesTotal}</span>
+              <strong>{percentageTotal}%</strong>
+            </div>
+          </div>
+          <div className="calculator-results" role="status" aria-live="polite">
+            {salaryIncome <= 0 ? <p className="calculator-error">{text.incomeMustBePositive}</p> : null}
+            {salaryIncome > 0 && percentageTotal !== 100 ? <p className="calculator-error">{text.percentagesMustTotal}</p> : null}
+            {salaryValid ? (
+              <>
+                <ResultCard label={text.needs} value={money(salaryIncome * needsPercent / 100, salary.currency)} tone="strong" />
+                <ResultCard label={text.wants} value={money(salaryIncome * wantsPercent / 100, salary.currency)} />
+                <ResultCard label={text.savingsInvestingDebt} value={money(salaryIncome * savingsPercent / 100, salary.currency)} />
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {activeId === 'emergency-fund' ? (
+        <div className="calculator-layout">
+          <div className="calculator-form-grid">
+            <CalculatorField label={text.monthlyExpenses} value={emergency.expenses} onChange={value => setEmergency(prev => ({ ...prev, expenses: value }))} />
+            <CurrencySelect value={emergency.currency} onChange={currency => setEmergency(prev => ({ ...prev, currency }))} lang={lang} label={text.currency} ariaLabel={text.currency} />
+            <label className="calculator-field">
+              <span>{text.monthsCount}</span>
+              <select value={emergency.months} onChange={event => setEmergency(prev => ({ ...prev, months: event.target.value }))}>
+                <option value="3">{text.threeMonths}</option>
+                <option value="6">{text.sixMonths}</option>
+                <option value="12">{text.twelveMonths}</option>
+                <option value="custom">{text.custom}</option>
+              </select>
+            </label>
+            {emergency.months === 'custom' ? (
+              <CalculatorField label={text.customMonths} value={emergency.customMonths} onChange={value => setEmergency(prev => ({ ...prev, customMonths: value }))} step="1" />
+            ) : null}
+            <CalculatorField label={text.currentSavings} value={emergency.savings} onChange={value => setEmergency(prev => ({ ...prev, savings: value }))} />
+          </div>
+          <div className="calculator-results" role="status" aria-live="polite">
+            {!emergencyValid ? <p className="calculator-error">{text.amountMustBePositive}</p> : null}
+            {emergencyValid ? (
+              <>
+                <ResultCard label={text.minimumEmergencyFund} value={money(minimumEmergencyTarget, emergency.currency)} />
+                <ResultCard label={text.recommendedAmount} value={money(recommendedEmergencyTarget, emergency.currency)} tone="strong" />
+                <ResultCard label={text.remainingAmount} value={money(emergencyRemaining, emergency.currency)} tone={emergencyRemaining === 0 ? 'strong' : 'warning'} />
+                {currentEmergencySavings >= recommendedEmergencyTarget && currentEmergencySavings > 0 ? <p className="calculator-success">{text.emergencyComplete}</p> : null}
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {activeId === 'debt-plan' ? (
+        <div className="calculator-layout">
+          <div className="calculator-form-grid">
+            <CalculatorField label={text.debtAmount} value={debt.amount} onChange={value => setDebt(prev => ({ ...prev, amount: value }))} />
+            <CalculatorField label={text.monthlyPayment} value={debt.payment} onChange={value => setDebt(prev => ({ ...prev, payment: value }))} />
+            <CurrencySelect value={debt.currency} onChange={currency => setDebt(prev => ({ ...prev, currency }))} lang={lang} label={text.currency} ariaLabel={text.currency} />
+            <CalculatorField label={text.annualInterestRate} value={debt.interest} onChange={value => setDebt(prev => ({ ...prev, interest: value }))} suffix="%" />
+          </div>
+          <div className="calculator-results" role="status" aria-live="polite">
+            {debtAmount <= 0 || monthlyPayment <= 0 ? <p className="calculator-error">{text.amountMustBePositive}</p> : null}
+            {debtAmount > 0 && monthlyPayment > 0 && !debtCanReduce ? <p className="calculator-error">{text.debtPaymentTooLow}</p> : null}
+            {debtValid ? (
+              <>
+                <ResultCard label={text.estimatedMonths} value={`${estimatedMonths}`} tone="strong" />
+                <ResultCard label={text.totalPaid} value={money(totalPaid, debt.currency)} />
+                {annualRate > 0 ? <ResultCard label={text.estimatedInterest} value={money(estimatedInterest, debt.currency)} /> : null}
+                <ResultCard label={text.approximateEndDate} value={formatCalculatorDate(estimatedMonths, lang)} />
+                <p className="calculator-note">{text.simplifiedEstimateNote}</p>
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="calculator-actions">
+        <button type="button" onClick={reset}>
+          <RotateCcw size={16} aria-hidden="true" />
+          {text.reset}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function TheoryCard({
   theory,
   lang,
@@ -475,11 +820,14 @@ function TheoryCard({
 
 export default function FinancialTheoriesPage() {
   const { lang, dir } = useLanguage();
+  const { currency: userCurrency } = useCurrency();
   const locale = localeFrom(lang);
   const text = UI_COPY[locale];
   const [activeCategory, setActiveCategory] = useState<FinancialTheoryCategoryId>('all');
   const [query, setQuery] = useState('');
   const [openTheory, setOpenTheory] = useState<string | null>(null);
+  const [activeCalculator, setActiveCalculator] = useState<CalculatorId | null>(null);
+  const defaultCurrency = userCurrency || 'KWD';
 
   const categoryTabs: PageTabItem[] = useMemo(() => (
     FINANCIAL_THEORY_CATEGORIES.map(category => ({
@@ -716,7 +1064,8 @@ export default function FinancialTheoriesPage() {
             {FINANCIAL_THEORY_TOOLS.map((tool, index) => {
               const Icon = [Calculator, Landmark, ShieldAlert, Target, Gauge][index] ?? Calculator;
               const title = getFinancialTheoryText(tool.title, locale);
-              const available = Boolean(tool.href);
+              const calculatorAvailable = isCalculatorId(tool.id);
+              const available = calculatorAvailable || Boolean(tool.href);
               return (
                 <AppCard key={tool.id} className="smart-tool-card">
                   <div className="smart-tool-top">
@@ -727,7 +1076,20 @@ export default function FinancialTheoriesPage() {
                   </div>
                   <h3>{title}</h3>
                   <p>{getFinancialTheoryText(tool.description, locale)}</p>
-                  {tool.href ? (
+                  {calculatorAvailable ? (
+                    <button
+                      type="button"
+                      className="smart-tool-action"
+                      aria-label={`${text.useNow}: ${title}`}
+                      onClick={() => {
+                        setActiveCalculator(tool.id);
+                        window.setTimeout(() => document.getElementById('active-smart-calculator')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+                      }}
+                    >
+                      {text.useNow}
+                      <ArrowUpRight size={15} aria-hidden="true" />
+                    </button>
+                  ) : tool.href ? (
                     <Link href={tool.href} aria-label={`${text.useNow}: ${title}`}>
                       {text.useNow}
                       <ArrowUpRight size={15} aria-hidden="true" />
@@ -741,6 +1103,19 @@ export default function FinancialTheoriesPage() {
               );
             })}
           </CardsGrid>
+
+          {activeCalculator ? (
+            <div id="active-smart-calculator">
+              <SmartCalculatorPanel
+                activeId={activeCalculator}
+                title={getFinancialTheoryText(FINANCIAL_THEORY_TOOLS.find(tool => tool.id === activeCalculator)?.title ?? FINANCIAL_THEORY_TOOLS[0].title, locale)}
+                lang={locale}
+                text={text}
+                defaultCurrency={defaultCurrency}
+                onClose={() => setActiveCalculator(null)}
+              />
+            </div>
+          ) : null}
         </section>
 
         <section className="theories-cta" aria-labelledby="financial-theories-cta-title">
@@ -1473,6 +1848,238 @@ export default function FinancialTheoriesPage() {
           cursor: not-allowed;
         }
 
+        .smart-tool-card button.smart-tool-action {
+          border: 0;
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          color: #FFFFFF;
+          cursor: pointer;
+          box-shadow: 0 12px 26px rgba(29, 140, 255, .18);
+        }
+
+        .calculator-panel {
+          display: grid;
+          gap: 18px;
+          min-width: 0;
+          border: 1px solid rgba(24, 212, 212, .22);
+          border-radius: 22px;
+          background:
+            radial-gradient(circle at 10% 0%, rgba(24, 212, 212, .12), transparent 32%),
+            var(--sfm-light-card);
+          padding: 18px;
+          box-shadow: 0 18px 44px rgba(3, 18, 37, .08);
+          scroll-margin-top: 20px;
+        }
+
+        .calculator-panel-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 14px;
+          min-width: 0;
+        }
+
+        .calculator-panel-head span {
+          color: var(--sfm-primary-hover);
+          font-size: 12px;
+          font-weight: 950;
+        }
+
+        .calculator-panel-head h3 {
+          margin: 5px 0;
+          color: var(--sfm-heading);
+          font-size: 22px;
+          line-height: 1.25;
+        }
+
+        .calculator-panel-head p,
+        .calculator-note {
+          margin: 0;
+          color: var(--sfm-muted-readable);
+          line-height: 1.65;
+          font-weight: 820;
+        }
+
+        .calculator-close {
+          width: 40px;
+          height: 40px;
+          border: 1px solid var(--sfm-border);
+          border-radius: 13px;
+          background: var(--sfm-card);
+          color: var(--sfm-heading);
+          cursor: pointer;
+          display: grid;
+          place-items: center;
+        }
+
+        .calculator-layout {
+          display: grid;
+          grid-template-columns: minmax(0, 1.1fr) minmax(280px, .72fr);
+          gap: 16px;
+          align-items: start;
+          min-width: 0;
+        }
+
+        .calculator-form-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+          min-width: 0;
+        }
+
+        .calculator-field {
+          display: grid;
+          gap: 7px;
+          min-width: 0;
+        }
+
+        .calculator-field > span,
+        .calculator-total span {
+          color: var(--sfm-muted-readable);
+          font-size: 12px;
+          font-weight: 950;
+        }
+
+        .calculator-input-wrap {
+          position: relative;
+          display: block;
+          min-width: 0;
+        }
+
+        .calculator-field input,
+        .calculator-field select {
+          width: 100%;
+          min-height: 50px;
+          border: 1px solid rgba(29, 140, 255, .20);
+          border-radius: 14px;
+          background: var(--sfm-input-bg);
+          color: var(--sfm-foreground);
+          padding: 0 12px;
+          font: 900 14px Tajawal, Arial, sans-serif;
+          outline: none;
+        }
+
+        .calculator-input-wrap input {
+          padding-inline-end: 46px;
+        }
+
+        .calculator-input-wrap em {
+          position: absolute;
+          inset-inline-end: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: var(--sfm-primary-hover);
+          font-style: normal;
+          font-weight: 950;
+          pointer-events: none;
+        }
+
+        .calculator-total {
+          min-height: 50px;
+          display: grid;
+          align-content: center;
+          gap: 4px;
+          border-radius: 14px;
+          border: 1px solid rgba(29, 140, 255, .16);
+          background: var(--sfm-card);
+          padding: 9px 12px;
+        }
+
+        .calculator-total strong {
+          color: var(--sfm-heading);
+          font-size: 18px;
+        }
+
+        .calculator-total.ok {
+          border-color: rgba(16, 185, 129, .28);
+          background: rgba(16, 185, 129, .08);
+        }
+
+        .calculator-total.error {
+          border-color: rgba(239, 68, 68, .24);
+          background: rgba(239, 68, 68, .08);
+        }
+
+        .calculator-results {
+          display: grid;
+          gap: 10px;
+          min-width: 0;
+        }
+
+        .calculator-result-card {
+          border: 1px solid var(--sfm-border);
+          border-radius: 16px;
+          background: var(--sfm-card);
+          padding: 12px;
+          display: grid;
+          gap: 5px;
+          min-width: 0;
+        }
+
+        .calculator-result-card span {
+          color: var(--sfm-muted);
+          font-size: 12px;
+          font-weight: 950;
+        }
+
+        .calculator-result-card strong {
+          color: var(--sfm-heading);
+          font-size: clamp(18px, 2vw, 24px);
+          line-height: 1.2;
+          overflow-wrap: anywhere;
+        }
+
+        .calculator-result-card.strong {
+          border-color: rgba(24, 212, 212, .28);
+          background: linear-gradient(135deg, rgba(29, 140, 255, .10), rgba(24, 212, 212, .10));
+        }
+
+        .calculator-result-card.warning {
+          border-color: rgba(245, 158, 11, .24);
+          background: rgba(245, 158, 11, .08);
+        }
+
+        .calculator-error,
+        .calculator-success {
+          margin: 0;
+          border-radius: 14px;
+          padding: 11px 12px;
+          line-height: 1.65;
+          font-weight: 920;
+        }
+
+        .calculator-error {
+          border: 1px solid rgba(239, 68, 68, .18);
+          background: rgba(239, 68, 68, .08);
+          color: #B91C1C;
+        }
+
+        .calculator-success {
+          border: 1px solid rgba(16, 185, 129, .20);
+          background: rgba(16, 185, 129, .10);
+          color: #047857;
+        }
+
+        .calculator-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 9px;
+        }
+
+        .calculator-actions button {
+          min-height: 40px;
+          border-radius: 13px;
+          border: 1px solid var(--sfm-border);
+          background: var(--sfm-card);
+          color: var(--sfm-heading);
+          padding: 0 13px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          font: 950 13px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+        }
+
         .theories-cta {
           display: grid;
           grid-template-columns: minmax(0, 1fr) auto;
@@ -1528,7 +2135,8 @@ export default function FinancialTheoriesPage() {
 
         .financial-theories-shell a:focus-visible,
         .financial-theories-shell button:focus-visible,
-        .financial-theories-shell input:focus-visible {
+        .financial-theories-shell input:focus-visible,
+        .financial-theories-shell select:focus-visible {
           outline: 3px solid rgba(24, 212, 212, .56);
           outline-offset: 3px;
         }
@@ -1548,8 +2156,27 @@ export default function FinancialTheoriesPage() {
 
         .dark .financial-theories-shell .theory-search,
         .dark .financial-theories-shell .detail-block th,
-        .dark .financial-theories-shell .detail-block td {
+        .dark .financial-theories-shell .detail-block td,
+        .dark .financial-theories-shell .calculator-field input,
+        .dark .financial-theories-shell .calculator-field select {
           background: var(--sfm-input-bg);
+        }
+
+        .dark .financial-theories-shell .calculator-panel,
+        .dark .financial-theories-shell .calculator-result-card,
+        .dark .financial-theories-shell .calculator-total,
+        .dark .financial-theories-shell .calculator-actions button,
+        .dark .financial-theories-shell .calculator-close {
+          border-color: var(--sfm-border);
+          background: var(--sfm-card);
+        }
+
+        .dark .financial-theories-shell .calculator-error {
+          color: #FCA5A5;
+        }
+
+        .dark .financial-theories-shell .calculator-success {
+          color: #86EFAC;
         }
 
         .dark .financial-theories-shell .status.available {
@@ -1605,6 +2232,7 @@ export default function FinancialTheoriesPage() {
           .coming-soon-pill,
           .smart-tool-card a,
           .smart-tool-card button,
+          .calculator-actions button,
           .featured-theory-card button,
           .cta-actions a {
             width: 100%;
@@ -1615,6 +2243,26 @@ export default function FinancialTheoriesPage() {
           }
 
           .theory-controls {
+            grid-template-columns: 1fr;
+          }
+
+          .calculator-panel {
+            padding: 14px;
+            border-radius: 20px;
+          }
+
+          .calculator-panel-head,
+          .calculator-actions {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          .calculator-close {
+            align-self: flex-end;
+          }
+
+          .calculator-layout,
+          .calculator-form-grid {
             grid-template-columns: 1fr;
           }
 
