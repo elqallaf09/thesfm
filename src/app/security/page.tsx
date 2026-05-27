@@ -123,7 +123,9 @@ export default function SecurityPage() {
                 <h2>{card.title}</h2>
                 <p>{card.body}</p>
                 {card.linkHref && card.linkLabel ? (
-                  <Link className="security-mail-link" href={card.linkHref}>{card.linkLabel}</Link>
+                  card.linkHref.startsWith('mailto:')
+                    ? <a className="security-mail-link" href={card.linkHref}>{card.linkLabel}</a>
+                    : <Link className="security-mail-link" href={card.linkHref}>{card.linkLabel}</Link>
                 ) : null}
               </AppCard>
             );

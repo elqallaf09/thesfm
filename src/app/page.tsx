@@ -631,7 +631,9 @@ function FooterColumn({ title, links }: { title: string; links: [string, string]
   return (
     <div className="footer-column">
       <strong>{title}</strong>
-      {links.map(([href, label]) => <Link key={`${title}-${href}-${label}`} href={href}>{label}</Link>)}
+      {links.map(([href, label]) => href.startsWith('mailto:')
+        ? <a key={`${title}-${href}-${label}`} href={href}>{label}</a>
+        : <Link key={`${title}-${href}-${label}`} href={href}>{label}</Link>)}
     </div>
   );
 }
@@ -643,7 +645,7 @@ function SupportEmailAnswer({ answer }: { answer: string }) {
   return (
     <>
       {before}
-      <Link href={SUPPORT_EMAIL_MAILTO}>{SUPPORT_EMAIL}</Link>
+      <a href={SUPPORT_EMAIL_MAILTO}>{SUPPORT_EMAIL}</a>
       {after}
     </>
   );

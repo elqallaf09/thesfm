@@ -1,5 +1,6 @@
 'use client';
 
+import type { FormEvent } from 'react';
 import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -37,20 +38,25 @@ const COPY = {
     supportEmailFallback: SUPPORT_EMAIL,
     supportEmailHint: 'للدعم والمساعدة، تواصل معنا عبر:',
     contactForm: 'نموذج التواصل',
-    contactFormBody: 'نموذج التواصل سيتم تفعيله قريباً. حالياً يمكنك استخدام الأسئلة الشائعة أو صفحة الأمان والخصوصية.',
+    contactFormBody: 'أرسل لنا سؤالك مباشرة وسنراجعه عبر البريد الإلكتروني الرسمي.',
     privacyNotice: 'تنبيه الخصوصية',
     privacyNoticeBody: 'لا تشارك كلمة المرور أو أي بيانات حساسة في أي رسالة دعم. فريق THE SFM لا يطلب كلمة المرور خارج صفحة تسجيل الدخول.',
     openFaq: 'الأسئلة الشائعة',
     securityPrivacy: 'الأمان والخصوصية',
     formTitle: 'نموذج التواصل',
-    formSubtitle: 'قيد التجهيز حالياً. لن يتم إرسال أي رسالة من هذا النموذج إلى أن يتم ربط خدمة الدعم.',
+    formSubtitle: 'اكتب رسالتك وسنرسلها بأمان إلى فريق الدعم عبر البريد الإلكتروني الرسمي.',
     name: 'الاسم',
     email: 'البريد الإلكتروني',
     subject: 'الموضوع',
     message: 'الرسالة',
     sendMessage: 'إرسال الرسالة',
-    comingSoon: 'قريباً',
-    formUnavailable: 'نموذج التواصل قيد التجهيز.',
+    sending: 'جاري الإرسال...',
+    messageSent: 'تم إرسال رسالتك بنجاح. سنراجعها ونرد عليك عبر البريد الإلكتروني.',
+    messageFailed: 'تعذر إرسال الرسالة حالياً. حاول مرة أخرى أو راسلنا مباشرة عبر support@the-sfm.com.',
+    smtpMissing: 'نموذج التواصل يحتاج إعداد البريد من الخادم. يمكنك التواصل مباشرة عبر support@the-sfm.com.',
+    invalidEmail: 'الرجاء إدخال بريد إلكتروني صحيح.',
+    messageRequired: 'الرسالة مطلوبة ويجب أن تكون 10 أحرف على الأقل.',
+    requiredField: 'هذا الحقل مطلوب.',
     noFakeSupport: 'لا توجد أرقام هاتف أو عناوين مكتبية غير مؤكدة على هذه الصفحة.',
     publicOnly: 'هذه الصفحة مخصصة للاستفسارات العامة، وليست قناة لإرسال بيانات مالية حساسة.',
     footerNote: 'THE SFM يساعدك على تنظيم المال والمشاريع بناءً على بياناتك الحقيقية فقط.',
@@ -75,20 +81,25 @@ const COPY = {
     supportEmailFallback: SUPPORT_EMAIL,
     supportEmailHint: 'For support, contact us at:',
     contactForm: 'Contact Form',
-    contactFormBody: 'The contact form will be enabled soon. For now, you can use the FAQ or Security & Privacy page.',
+    contactFormBody: 'Send your question directly and we will review it through the official support email.',
     privacyNotice: 'Privacy Notice',
     privacyNoticeBody: 'Do not share your password or sensitive information in any support message. THE SFM team does not ask for passwords outside the login page.',
     openFaq: 'FAQ',
     securityPrivacy: 'Security & Privacy',
     formTitle: 'Contact Form',
-    formSubtitle: 'This is being prepared. No message will be sent from this form until support delivery is connected.',
+    formSubtitle: 'Write your message and we will send it securely to the support team through the official email.',
     name: 'Name',
     email: 'Email',
     subject: 'Subject',
     message: 'Message',
     sendMessage: 'Send Message',
-    comingSoon: 'Coming Soon',
-    formUnavailable: 'The contact form is being prepared.',
+    sending: 'Sending...',
+    messageSent: 'Your message has been sent successfully. We will review it and reply by email.',
+    messageFailed: 'Could not send the message right now. Please try again or email us directly at support@the-sfm.com.',
+    smtpMissing: 'The contact form needs server email setup. You can contact us directly at support@the-sfm.com.',
+    invalidEmail: 'Please enter a valid email address.',
+    messageRequired: 'Message is required and must be at least 10 characters.',
+    requiredField: 'This field is required.',
     noFakeSupport: 'This page does not list unverified phone numbers or office addresses.',
     publicOnly: 'This page is for general questions, not for sending sensitive financial data.',
     footerNote: 'THE SFM helps you organize money and projects using your real data only.',
@@ -113,20 +124,25 @@ const COPY = {
     supportEmailFallback: SUPPORT_EMAIL,
     supportEmailHint: 'Pour obtenir de l’aide, contactez-nous à :',
     contactForm: 'Formulaire de contact',
-    contactFormBody: 'Le formulaire de contact sera bientôt activé. Pour le moment, vous pouvez utiliser la FAQ ou la page Sécurité et confidentialité.',
+    contactFormBody: 'Envoyez-nous votre question directement et nous l’examinerons via l’e-mail officiel du support.',
     privacyNotice: 'Avis de confidentialité',
     privacyNoticeBody: 'Ne partagez pas votre mot de passe ni d’informations sensibles dans un message de support. L’équipe THE SFM ne demande pas de mot de passe en dehors de la page de connexion.',
     openFaq: 'FAQ',
     securityPrivacy: 'Sécurité et confidentialité',
     formTitle: 'Formulaire de contact',
-    formSubtitle: 'Il est en cours de préparation. Aucun message ne sera envoyé depuis ce formulaire tant que le service de support n’est pas connecté.',
+    formSubtitle: 'Écrivez votre message et nous l’enverrons en toute sécurité à l’équipe support via l’e-mail officiel.',
     name: 'Nom',
     email: 'E-mail',
     subject: 'Objet',
     message: 'Message',
     sendMessage: 'Envoyer le message',
-    comingSoon: 'Bientôt',
-    formUnavailable: 'Le formulaire de contact est en préparation.',
+    sending: 'Envoi...',
+    messageSent: 'Votre message a été envoyé avec succès. Nous l’examinerons et vous répondrons par e-mail.',
+    messageFailed: 'Impossible d’envoyer le message actuellement. Réessayez ou contactez-nous directement à support@the-sfm.com.',
+    smtpMissing: 'Le formulaire de contact nécessite la configuration e-mail du serveur. Vous pouvez nous contacter directement à support@the-sfm.com.',
+    invalidEmail: 'Veuillez saisir une adresse e-mail valide.',
+    messageRequired: 'Le message est requis et doit contenir au moins 10 caractères.',
+    requiredField: 'Ce champ est requis.',
     noFakeSupport: 'Cette page ne contient pas de numéros de téléphone ou d’adresses de bureau non vérifiés.',
     publicOnly: 'Cette page est destinée aux questions générales, pas à l’envoi de données financières sensibles.',
     footerNote: 'THE SFM vous aide à organiser votre argent et vos projets uniquement avec vos données réelles.',
@@ -142,6 +158,9 @@ export default function ContactPage() {
   const { dir, lang } = useLanguage();
   const { session, isGuest } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '', website: '' });
+  const [sending, setSending] = useState(false);
+  const [formStatus, setFormStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const locale = (['ar', 'en', 'fr'].includes(lang) ? lang : 'ar') as Lang;
   const text = COPY[locale];
   const appHref = session || isGuest ? '/dashboard' : '/login';
@@ -152,6 +171,57 @@ export default function ContactPage() {
     { href: '/about', label: text.about },
     { href: '/#faq', label: text.faq },
   ];
+
+  function contactErrorMessage(code?: string) {
+    if (code === 'invalid_email') return text.invalidEmail;
+    if (code === 'message_required') return text.messageRequired;
+    if (code === 'smtp_not_configured') return text.smtpMissing;
+    return text.messageFailed;
+  }
+
+  function validateForm() {
+    if (!form.name.trim() || !form.subject.trim()) return text.requiredField;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return text.invalidEmail;
+    if (form.message.trim().length < 10) return text.messageRequired;
+    return '';
+  }
+
+  async function submitContact(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (sending) return;
+
+    const validationError = validateForm();
+    if (validationError) {
+      setFormStatus({ type: 'error', message: validationError });
+      return;
+    }
+
+    setSending(true);
+    setFormStatus(null);
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          subject: form.subject,
+          message: form.message,
+          website: form.website,
+        }),
+      });
+      const payload = await response.json().catch(() => ({})) as { success?: boolean; code?: string; error?: string };
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.code || 'send_failed');
+      }
+      setForm({ name: '', email: '', subject: '', message: '', website: '' });
+      setFormStatus({ type: 'success', message: text.messageSent });
+    } catch (error) {
+      setFormStatus({ type: 'error', message: contactErrorMessage(error instanceof Error ? error.message : undefined) });
+    } finally {
+      setSending(false);
+    }
+  }
 
   const contactCards = useMemo(() => [
     {
@@ -164,9 +234,9 @@ export default function ContactPage() {
     {
       title: text.contactForm,
       body: text.contactFormBody,
-      value: text.comingSoon,
+      value: text.sendMessage,
       icon: MessageSquareText,
-      action: { href: '/#faq', label: text.openFaq, external: false },
+      action: { href: '#contact-form', label: text.sendMessage, external: false },
     },
     {
       title: text.privacyNotice,
@@ -245,50 +315,119 @@ export default function ContactPage() {
               </div>
               <h2>{card.title}</h2>
               <p>{card.body}</p>
-              <strong>{card.value}</strong>
+              {card.action?.href === SUPPORT_EMAIL_MAILTO ? (
+                <a href={SUPPORT_EMAIL_MAILTO} className="support-email-link">{card.value}</a>
+              ) : (
+                <strong>{card.value}</strong>
+              )}
               {card.action && (
-                <Link href={card.action.href} className="card-action" aria-label={card.action.label}>
-                  {card.action.label}
-                  <ArrowUpRight size={16} aria-hidden="true" />
-                </Link>
+                card.action.href.startsWith('mailto:') ? (
+                  <a href={card.action.href} className="card-action" aria-label={card.action.label}>
+                    {card.action.label}
+                    <ArrowUpRight size={16} aria-hidden="true" />
+                  </a>
+                ) : (
+                  <Link href={card.action.href} className="card-action" aria-label={card.action.label}>
+                    {card.action.label}
+                    <ArrowUpRight size={16} aria-hidden="true" />
+                  </Link>
+                )
               )}
             </article>
           );
         })}
       </section>
 
-      <section className="contact-form-section" aria-labelledby="contact-form-title">
+      <section className="contact-form-section" id="contact-form" aria-labelledby="contact-form-title">
         <div className="form-copy">
           <span>
             <CheckCircle2 size={16} aria-hidden="true" />
-            {text.comingSoon}
+            {text.contactForm}
           </span>
           <h2 id="contact-form-title">{text.formTitle}</h2>
           <p>{text.formSubtitle}</p>
         </div>
-        <form className="contact-form-preview" aria-describedby="contact-form-note">
+        <form className="contact-form-preview" aria-describedby={formStatus ? 'contact-form-status' : undefined} onSubmit={submitContact}>
+          <label className="contact-honeypot" aria-hidden="true">
+            Website
+            <input
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              value={form.website}
+              onChange={event => setForm(previous => ({ ...previous, website: event.target.value }))}
+            />
+          </label>
           <div className="form-grid">
             <label>
               <span>{text.name}</span>
-              <input type="text" disabled placeholder={text.name} />
+              <input
+                id="contact-name"
+                type="text"
+                required
+                autoComplete="name"
+                placeholder={text.name}
+                value={form.name}
+                onChange={event => setForm(previous => ({ ...previous, name: event.target.value }))}
+              />
             </label>
             <label>
               <span>{text.email}</span>
-              <input type="email" disabled placeholder={text.email} />
+              <input
+                id="contact-email"
+                type="email"
+                required
+                autoComplete="email"
+                placeholder={text.email}
+                value={form.email}
+                onChange={event => setForm(previous => ({ ...previous, email: event.target.value }))}
+              />
             </label>
           </div>
           <label>
             <span>{text.subject}</span>
-            <input type="text" disabled placeholder={text.subject} />
+            <input
+              id="contact-subject"
+              type="text"
+              required
+              maxLength={120}
+              placeholder={text.subject}
+              value={form.subject}
+              onChange={event => setForm(previous => ({ ...previous, subject: event.target.value }))}
+            />
           </label>
           <label>
             <span>{text.message}</span>
-            <textarea disabled placeholder={text.message} rows={4} />
+            <textarea
+              id="contact-message"
+              required
+              minLength={10}
+              maxLength={3000}
+              placeholder={text.message}
+              rows={5}
+              value={form.message}
+              onChange={event => setForm(previous => ({ ...previous, message: event.target.value }))}
+            />
           </label>
+          {formStatus && (
+            <p
+              id="contact-form-status"
+              className={`form-status ${formStatus.type}`}
+              role={formStatus.type === 'error' ? 'alert' : 'status'}
+            >
+              {formStatus.message}
+              {formStatus.type === 'error' && (
+                <>
+                  {' '}
+                  <a href={SUPPORT_EMAIL_MAILTO}>{SUPPORT_EMAIL}</a>
+                </>
+              )}
+            </p>
+          )}
           <div className="form-actions">
-            <p id="contact-form-note">{text.formUnavailable}</p>
-            <button type="button" disabled aria-label={text.sendMessage}>
-              {text.sendMessage}
+            <p id="contact-form-note">{text.publicOnly}</p>
+            <button type="submit" disabled={sending} aria-label={text.sendMessage}>
+              {sending ? text.sending : text.sendMessage}
             </button>
           </div>
         </form>
@@ -303,7 +442,7 @@ export default function ContactPage() {
           </div>
         </div>
         <div className="footer-links" aria-label={text.securityPrivacy}>
-          <Link href={SUPPORT_EMAIL_MAILTO}>{supportEmail}</Link>
+          <a href={SUPPORT_EMAIL_MAILTO}>{supportEmail}</a>
           <Link href="/security">{text.securityPrivacy}</Link>
           <Link href="/privacy">{text.privacy}</Link>
           <Link href="/terms">{text.terms}</Link>
@@ -581,6 +720,26 @@ const contactStyles = `
     line-height: 1.55;
     font-weight: 950;
   }
+  .support-email-link,
+  .inline-email-link,
+  .form-status a {
+    width: fit-content;
+    color: #0B76E0;
+    overflow-wrap: anywhere;
+    font-size: 15px;
+    line-height: 1.55;
+    font-weight: 950;
+    text-decoration: underline;
+    text-decoration-color: rgba(24, 212, 212, 0.55);
+    text-underline-offset: 4px;
+    transition: color 180ms ease, text-decoration-color 180ms ease;
+  }
+  .support-email-link:hover,
+  .inline-email-link:hover,
+  .form-status a:hover {
+    color: #061B33;
+    text-decoration-color: #18D4D4;
+  }
   .contact-card .card-action {
     width: fit-content;
     min-height: 42px;
@@ -636,6 +795,13 @@ const contactStyles = `
     display: grid;
     gap: 12px;
   }
+  .contact-honeypot {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
   .form-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -661,6 +827,13 @@ const contactStyles = `
     font: 800 14px Tajawal, Arial, sans-serif;
     resize: vertical;
   }
+  .contact-form-preview input:focus,
+  .contact-form-preview textarea:focus {
+    outline: none;
+    border-color: rgba(24, 212, 212, 0.58);
+    box-shadow: 0 0 0 4px rgba(24, 212, 212, 0.14);
+    background: #FFFFFF;
+  }
   .contact-form-preview input:disabled,
   .contact-form-preview textarea:disabled,
   .contact-form-preview button:disabled {
@@ -676,12 +849,37 @@ const contactStyles = `
   }
   .contact-form-preview button {
     min-height: 44px;
-    border: 1px solid rgba(29, 140, 255, 0.18);
+    border: 1px solid rgba(24, 212, 212, 0.26);
     border-radius: 999px;
-    background: #E2E8F0;
-    color: #475569;
+    background: linear-gradient(135deg, #1D8CFF 0%, #18D4D4 100%);
+    color: #FFFFFF;
+    box-shadow: 0 10px 30px rgba(29, 140, 255, 0.20);
     padding: 10px 16px;
+    cursor: pointer;
     font: 950 13px Tajawal, Arial, sans-serif;
+    transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+  }
+  .contact-form-preview button:hover:not(:disabled) {
+    filter: saturate(1.08) brightness(1.04);
+    transform: translateY(-1px);
+    box-shadow: 0 14px 34px rgba(24, 212, 212, 0.24);
+  }
+  .form-status {
+    border-radius: 16px;
+    padding: 12px 14px;
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1.7;
+  }
+  .form-status.success {
+    border: 1px solid rgba(16, 185, 129, 0.20);
+    background: #ECFDF5;
+    color: #047857;
+  }
+  .form-status.error {
+    border: 1px solid rgba(239, 68, 68, 0.18);
+    background: #FEF2F2;
+    color: #B91C1C;
   }
   .contact-footer {
     margin-top: 38px;
