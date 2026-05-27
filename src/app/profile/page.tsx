@@ -17,6 +17,7 @@ import {
   Database,
   Download,
   Eye,
+  EyeOff,
   Globe2,
   KeyRound,
   Languages,
@@ -48,7 +49,7 @@ import { useCurrency } from '@/lib/useCurrency';
 
 type Lang = 'ar' | 'en' | 'fr';
 type ThemeMode = 'light' | 'dark' | 'system';
-type ModalKind = 'password' | 'twoFactor' | 'devices' | 'delete' | 'subscription' | null;
+type ModalKind = 'password' | 'email' | 'twoFactor' | 'devices' | 'delete' | 'subscription' | null;
 type TextMap = Record<Lang, string>;
 
 type ProfileState = {
@@ -74,6 +75,13 @@ type PreferencesState = {
   expenses: boolean;
   investments: boolean;
   ai: boolean;
+};
+
+type EmailChangeState = {
+  currentEmail: string;
+  newEmail: string;
+  confirmEmail: string;
+  currentPassword: string;
 };
 
 const STORE_KEY = 'sfm_settings';
@@ -106,6 +114,26 @@ const txt = {
   fullName: { ar: 'الاسم الكامل', en: 'Full name', fr: 'Nom complet' },
   username: { ar: 'اسم المستخدم', en: 'Username', fr: "Nom d'utilisateur" },
   email: { ar: 'البريد الإلكتروني', en: 'Email', fr: 'E-mail' },
+  emailAddress: { ar: 'البريد الإلكتروني', en: 'Email Address', fr: 'Adresse e-mail' },
+  changeEmail: { ar: 'تغيير البريد الإلكتروني', en: 'Change Email', fr: 'Changer l’e-mail' },
+  currentEmail: { ar: 'البريد الحالي', en: 'Current Email', fr: 'E-mail actuel' },
+  newEmail: { ar: 'البريد الإلكتروني الجديد', en: 'New Email', fr: 'Nouvel e-mail' },
+  confirmNewEmail: { ar: 'تأكيد البريد الإلكتروني الجديد', en: 'Confirm New Email', fr: 'Confirmer le nouvel e-mail' },
+  sendConfirmationLink: { ar: 'إرسال رابط التأكيد', en: 'Send Confirmation Link', fr: 'Envoyer le lien de confirmation' },
+  sendingConfirmationLink: { ar: 'جاري إرسال رابط التأكيد...', en: 'Sending confirmation link...', fr: 'Envoi du lien de confirmation...' },
+  pendingConfirmation: { ar: 'البريد الجديد بانتظار التأكيد', en: 'New email pending confirmation', fr: 'Nouvel e-mail en attente de confirmation' },
+  emailVerified: { ar: 'تم التحقق من البريد', en: 'Email verified', fr: 'E-mail vérifié' },
+  emailNotVerified: { ar: 'البريد غير مؤكد', en: 'Email not verified', fr: 'E-mail non vérifié' },
+  emailSecurityNote: { ar: 'لأمان حسابك، سنطلب كلمة المرور الحالية ونرسل رابط تأكيد إلى البريد الجديد.', en: 'For your security, we will ask for your current password and send a confirmation link to the new email address.', fr: 'Pour votre sécurité, nous demanderons votre mot de passe actuel et enverrons un lien de confirmation à la nouvelle adresse e-mail.' },
+  invalidEmail: { ar: 'الرجاء إدخال بريد إلكتروني صحيح.', en: 'Please enter a valid email address.', fr: 'Veuillez saisir une adresse e-mail valide.' },
+  emailMismatch: { ar: 'البريدان غير متطابقين.', en: 'Email addresses do not match.', fr: 'Les adresses e-mail ne correspondent pas.' },
+  sameEmail: { ar: 'البريد الجديد يجب أن يكون مختلفاً عن البريد الحالي.', en: 'The new email must be different from the current email.', fr: 'Le nouvel e-mail doit être différent de l’e-mail actuel.' },
+  currentPasswordRequired: { ar: 'الرجاء إدخال كلمة المرور الحالية.', en: 'Please enter your current password.', fr: 'Veuillez saisir votre mot de passe actuel.' },
+  wrongCurrentPassword: { ar: 'كلمة المرور الحالية غير صحيحة.', en: 'Current password is incorrect.', fr: 'Le mot de passe actuel est incorrect.' },
+  emailChangeSent: { ar: 'تم إرسال رابط تأكيد إلى البريد الإلكتروني الجديد. افتح بريدك وأكد التغيير لإكمال العملية.', en: 'A confirmation link has been sent to the new email address. Open your email and confirm the change to complete the process.', fr: 'Un lien de confirmation a été envoyé à la nouvelle adresse e-mail. Ouvrez votre e-mail et confirmez le changement.' },
+  confirmationEmailSent: { ar: 'تم إرسال رابط التأكيد.', en: 'Confirmation email sent.', fr: 'E-mail de confirmation envoyé.' },
+  emailChangeError: { ar: 'تعذر تغيير البريد الإلكتروني حالياً. حاول مرة أخرى.', en: 'Could not change email right now. Please try again.', fr: 'Impossible de changer l’e-mail pour le moment. Réessayez.' },
+  emailUseError: { ar: 'تعذر استخدام هذا البريد الإلكتروني. جرّب بريداً آخر أو حاول لاحقاً.', en: 'Could not use this email. Try another email or try again later.', fr: 'Impossible d’utiliser cet e-mail. Essayez une autre adresse ou réessayez plus tard.' },
   phone: { ar: 'رقم الهاتف', en: 'Phone number', fr: 'Téléphone' },
   phoneCode: { ar: 'رمز الدولة', en: 'Country code', fr: 'Indicatif' },
   age: { ar: 'العمر', en: 'Age', fr: 'Âge' },
@@ -234,9 +262,16 @@ export default function ProfilePage() {
   const [toast, setToast] = useState('');
   const [modal, setModal] = useState<ModalKind>(null);
   const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' });
+  const [emailChange, setEmailChange] = useState<EmailChangeState>({ currentEmail: '', newEmail: '', confirmEmail: '', currentPassword: '' });
+  const [changingEmail, setChangingEmail] = useState(false);
+  const [showEmailPassword, setShowEmailPassword] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
   const [deleteWord, setDeleteWord] = useState('');
 
   const L = (key: keyof typeof txt) => T(key, lang);
+  const authUser = user as (typeof user & { new_email?: string | null; email_change_sent_at?: string | null }) | null;
+  const currentAuthEmail = user?.email || profile.email;
+  const emailVerified = Boolean(user?.email_confirmed_at || user?.confirmed_at);
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
@@ -259,10 +294,15 @@ export default function ProfilePage() {
       const extras = readStored<Record<string, Partial<ProfileState>>>(PROFILE_EXTRA_KEY, {});
       const { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
       const extra = extras[user.id] || {};
+      const authEmail = user.email || String(data?.email || '');
+      if (user.email && data?.email !== user.email) {
+        void supabase.from('profiles').update({ email: user.email }).eq('id', user.id);
+      }
+      setPendingEmail(String((user as { new_email?: string | null }).new_email || ''));
       setProfile({
         displayName: String(data?.display_name || user.user_metadata?.display_name || ''),
         username: String(data?.username || user.email?.split('@')[0] || ''),
-        email: String(data?.email || user.email || ''),
+        email: authEmail,
         phoneCode: String(data?.phone_country_code || extra.phoneCode || '+965'),
         phone: String(data?.phone_number || extra.phone || ''),
         age: data?.age ? String(data.age) : String(extra.age || ''),
@@ -316,7 +356,7 @@ export default function ProfilePage() {
       id: user.id,
       display_name: profile.displayName.trim(),
       username: profile.username.trim(),
-      email: profile.email || user.email,
+      email: user.email || profile.email,
       age: profile.age ? Number(profile.age) : null,
       gender: profile.gender || null,
       profession: profile.profession || null,
@@ -342,10 +382,55 @@ export default function ProfilePage() {
     }
   }
 
+  async function changeEmail() {
+    if (!user) return;
+    const currentEmail = (currentAuthEmail || '').trim().toLowerCase();
+    const newEmail = emailChange.newEmail.trim().toLowerCase();
+    const confirmEmail = emailChange.confirmEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) return showToast(L('invalidEmail'));
+    if (newEmail !== confirmEmail) return showToast(L('emailMismatch'));
+    if (newEmail === currentEmail) return showToast(L('sameEmail'));
+    if (!emailChange.currentPassword) return showToast(L('currentPasswordRequired'));
+    if (!currentEmail) return showToast(L('emailChangeError'));
+
+    setChangingEmail(true);
+    const { error: passwordError } = await supabase.auth.signInWithPassword({
+      email: currentEmail,
+      password: emailChange.currentPassword,
+    });
+    if (passwordError) {
+      setChangingEmail(false);
+      showToast(L('wrongCurrentPassword'));
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser(
+      { email: newEmail },
+      { emailRedirectTo: `${window.location.origin}/profile` },
+    );
+    setChangingEmail(false);
+    if (error) {
+      showToast(L('emailUseError'));
+      return;
+    }
+    setPendingEmail(newEmail);
+    setEmailChange({ currentEmail, newEmail: '', confirmEmail: '', currentPassword: '' });
+    setShowEmailPassword(false);
+    setModal(null);
+    showToast(L('emailChangeSent'));
+  }
+
   async function signOutEverywhere() {
     await supabase.auth.signOut({ scope: 'global' });
     await signOut();
     router.push('/login');
+  }
+
+  function openEmailModal() {
+    const currentEmail = currentAuthEmail || '';
+    setEmailChange({ currentEmail, newEmail: '', confirmEmail: '', currentPassword: '' });
+    setShowEmailPassword(false);
+    setModal('email');
   }
 
   function exportData() {
@@ -400,7 +485,18 @@ export default function ProfilePage() {
           title: L('personalInfo'), fullName: L('fullName'), username: L('username'), email: L('email'), phone: L('phone'), phoneCode: L('phoneCode'), age: L('age'), gender: L('gender'), male: L('male'), female: L('female'), country: L('country'), city: L('city'), profession: L('profession'), currency: L('preferredCurrency'), language: L('preferredLanguage'), save: L('savePersonal'),
         }} onSave={() => void saveProfile()} />
 
-        <SecuritySettings labels={{ title: L('security'), changePassword: L('changePassword'), twoFactor: L('twoFactor'), devices: L('connectedDevices'), lastLogin: L('lastLogin'), signOutAll: L('signOutAll'), open: L('open'), enable: L('enable'), view: L('view'), execute: L('execute'), today: L('today') }} onModal={setModal} onSignOutAll={() => void signOutEverywhere()} />
+        <SecuritySettings
+          labels={{
+            title: L('security'), emailAddress: L('emailAddress'), changeEmail: L('changeEmail'), emailVerified: L('emailVerified'), emailNotVerified: L('emailNotVerified'), pendingConfirmation: L('pendingConfirmation'),
+            changePassword: L('changePassword'), twoFactor: L('twoFactor'), devices: L('connectedDevices'), lastLogin: L('lastLogin'), signOutAll: L('signOutAll'), open: L('open'), enable: L('enable'), view: L('view'), execute: L('execute'), today: L('today'),
+          }}
+          currentEmail={currentAuthEmail}
+          pendingEmail={pendingEmail || String(authUser?.new_email || '')}
+          emailVerified={emailVerified}
+          onModal={setModal}
+          onChangeEmail={openEmailModal}
+          onSignOutAll={() => void signOutEverywhere()}
+        />
 
         <PreferenceSettings lang={lang} preferences={preferences} onChange={persistPreferences} labels={{
           title: L('preferences'), language: L('language'), theme: L('theme'), light: L('light'), dark: L('dark'), system: L('system'), currency: L('currency'), cycleStart: L('cycleStart'), luxury: L('luxury'), notifications: L('notifications'), reports: L('reports'), expenseAlerts: L('expenseAlerts'), investmentAlerts: L('investmentAlerts'), aiAlerts: L('aiAlerts'),
@@ -426,6 +522,29 @@ export default function ProfilePage() {
         </div>
       </ConfirmationModal>
 
+      <ConfirmationModal open={modal === 'email'} title={L('changeEmail')} onClose={() => setModal(null)}>
+        <div className="modal-fields">
+          <InfoBox icon={<ShieldCheck />} text={L('emailSecurityNote')} />
+          <Field icon={<Mail size={16} />} label={L('currentEmail')}><input value={emailChange.currentEmail || currentAuthEmail} readOnly dir="ltr" /></Field>
+          <Field icon={<Mail size={16} />} label={L('newEmail')}><input type="email" value={emailChange.newEmail} onChange={event => setEmailChange(prev => ({ ...prev, newEmail: event.target.value }))} dir="ltr" autoComplete="email" /></Field>
+          <Field icon={<Mail size={16} />} label={L('confirmNewEmail')}><input type="email" value={emailChange.confirmEmail} onChange={event => setEmailChange(prev => ({ ...prev, confirmEmail: event.target.value }))} dir="ltr" autoComplete="email" /></Field>
+          <Field icon={<KeyRound size={16} />} label={L('currentPassword')}>
+            <input
+              type={showEmailPassword ? 'text' : 'password'}
+              value={emailChange.currentPassword}
+              onChange={event => setEmailChange(prev => ({ ...prev, currentPassword: event.target.value }))}
+              autoComplete="current-password"
+            />
+            <button type="button" className="field-icon-btn" onClick={() => setShowEmailPassword(value => !value)} aria-label={showEmailPassword ? L('close') : L('view')}>
+              {showEmailPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </Field>
+          <button className="gold-btn" onClick={() => void changeEmail()} disabled={changingEmail}>
+            <Save size={16} />{changingEmail ? L('sendingConfirmationLink') : L('sendConfirmationLink')}
+          </button>
+        </div>
+      </ConfirmationModal>
+
       <ConfirmationModal open={modal === 'twoFactor'} title={L('twoFactor')} onClose={() => setModal(null)}>
         <InfoBox icon={<ShieldCheck />} text={L('twoFactorHint')} />
       </ConfirmationModal>
@@ -448,11 +567,11 @@ export default function ProfilePage() {
 
       <style jsx global>{`
         .profile-page{min-height:100vh;background:var(--sfm-light-card);color:var(--sfm-deep-navy);display:flex;font-family:Tajawal,Arial,sans-serif}.profile-main{flex:1;width:100%;max-width:1280px;margin:0 auto;padding:24px;margin-inline-start:230px}.profile-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px}.profile-top span{color:var(--sfm-muted);font-size:12px;font-weight:900}.profile-top h1{font-size:30px;margin:4px 0 6px;font-weight:900}.profile-top p{margin:0;color:var(--sfm-muted);font-weight:700}
-        .profile-card{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:24px;box-shadow:0 4px 22px rgba(3,18,37,.06);padding:20px}.profile-layout{display:grid;grid-template-columns:360px 1fr;gap:16px;margin-bottom:16px}.hero-card{background:linear-gradient(145deg,var(--sfm-deep-navy),var(--sfm-primary-dark));color:var(--sfm-card);border:1px solid rgba(167,243,240,.2);border-radius:26px;padding:24px;box-shadow:0 18px 55px rgba(3,18,37,.16)}.avatar{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;font-size:28px;font-weight:900;border:4px solid rgba(255,255,255,.12)}.premium-pill{display:inline-flex;align-items:center;gap:7px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);border:1px solid rgba(167,243,240,.22);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900}.hero-actions,.section-actions{display:flex;gap:8px;flex-wrap:wrap}.ghost-btn,.gold-btn,.danger-btn{height:42px;border-radius:14px;border:0;padding:0 15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;text-decoration:none;transition:.2s}.gold-btn{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 10px 24px rgba(167,243,240,.2)}.ghost-btn{background:var(--sfm-light-card);color:var(--sfm-muted);border:1px solid rgba(167,243,240,.18)}.danger-btn{background:#B91C1C;color:#fff}.danger-btn:disabled{opacity:.45;cursor:not-allowed}.dark-ghost{background:rgba(255,255,255,.08);color:var(--sfm-card);border:1px solid rgba(255,255,255,.14)}
-        .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;height:100%}.stat-card{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:20px;padding:16px;display:grid;gap:9px;min-height:150px}.stat-icon{width:40px;height:40px;border-radius:14px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.stat-card span,.field label,.mini-label{font-size:12px;color:var(--sfm-muted);font-weight:900}.stat-card strong{font-size:22px}.section-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}.section-head h2{margin:0;font-size:18px;font-weight:900}.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.field{display:grid;gap:7px}.input-wrap{height:52px;border:1.5px solid rgba(167,243,240,.2);border-radius:15px;background:var(--sfm-light-card);display:flex;align-items:center;gap:9px;padding:0 12px;color:var(--sfm-muted)}.input-wrap input,.input-wrap select{border:0;outline:0;background:transparent;width:100%;height:100%;font:800 14px Tajawal,Arial,sans-serif;color:var(--sfm-foreground)}.input-wrap input[readonly]{opacity:.65}.profile-section{margin-bottom:16px}.setting-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid rgba(167,243,240,.1)}.setting-row:last-child{border-bottom:0}.setting-row p{margin:4px 0 0;color:var(--sfm-muted);font-size:12px;font-weight:700}.toggle{width:48px;height:28px;border-radius:999px;border:0;background:#CBD5E1;padding:3px;cursor:pointer}.toggle i{display:block;width:22px;height:22px;border-radius:50%;background:white;transition:.2s}.toggle.on{background:var(--sfm-accent)}.toggle.on i{transform:translateX(-20px)}[dir="ltr"] .toggle.on i{transform:translateX(20px)}
+        .profile-card{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:24px;box-shadow:0 4px 22px rgba(3,18,37,.06);padding:20px}.profile-layout{display:grid;grid-template-columns:360px 1fr;gap:16px;margin-bottom:16px}.hero-card{background:linear-gradient(145deg,var(--sfm-deep-navy),var(--sfm-primary-dark));color:var(--sfm-card);border:1px solid rgba(167,243,240,.2);border-radius:26px;padding:24px;box-shadow:0 18px 55px rgba(3,18,37,.16)}.avatar{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;font-size:28px;font-weight:900;border:4px solid rgba(255,255,255,.12)}.premium-pill{display:inline-flex;align-items:center;gap:7px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);border:1px solid rgba(167,243,240,.22);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900}.hero-actions,.section-actions{display:flex;gap:8px;flex-wrap:wrap}.ghost-btn,.gold-btn,.danger-btn{height:42px;border-radius:14px;border:0;padding:0 15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;text-decoration:none;transition:.2s}.gold-btn{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 10px 24px rgba(167,243,240,.2)}.ghost-btn{background:var(--sfm-light-card);color:var(--sfm-muted);border:1px solid rgba(167,243,240,.18)}.danger-btn{background:#B91C1C;color:#fff}.danger-btn:disabled,.gold-btn:disabled{opacity:.55;cursor:not-allowed;filter:saturate(.75)}.dark-ghost{background:rgba(255,255,255,.08);color:var(--sfm-card);border:1px solid rgba(255,255,255,.14)}
+        .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;height:100%}.stat-card{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:20px;padding:16px;display:grid;gap:9px;min-height:150px}.stat-icon{width:40px;height:40px;border-radius:14px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.stat-card span,.field label,.mini-label{font-size:12px;color:var(--sfm-muted);font-weight:900}.stat-card strong{font-size:22px}.section-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}.section-head h2{margin:0;font-size:18px;font-weight:900}.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.field{display:grid;gap:7px}.input-wrap{height:52px;border:1.5px solid rgba(167,243,240,.2);border-radius:15px;background:var(--sfm-light-card);display:flex;align-items:center;gap:9px;padding:0 12px;color:var(--sfm-muted)}.input-wrap input,.input-wrap select{border:0;outline:0;background:transparent;width:100%;height:100%;font:800 14px Tajawal,Arial,sans-serif;color:var(--sfm-foreground)}.input-wrap input[readonly]{opacity:.65}.field-icon-btn{border:0;background:transparent;color:var(--sfm-muted);display:grid;place-items:center;border-radius:999px;padding:5px;cursor:pointer}.field-icon-btn:hover,.field-icon-btn:focus-visible{color:var(--sfm-primary);outline:2px solid rgba(24,212,212,.24);outline-offset:2px}.profile-section{margin-bottom:16px}.setting-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid rgba(167,243,240,.1)}.setting-row:last-child{border-bottom:0}.setting-row p{margin:4px 0 0;color:var(--sfm-muted);font-size:12px;font-weight:700;overflow-wrap:anywhere}.toggle{width:48px;height:28px;border-radius:999px;border:0;background:#CBD5E1;padding:3px;cursor:pointer}.toggle i{display:block;width:22px;height:22px;border-radius:50%;background:white;transition:.2s}.toggle.on{background:var(--sfm-accent)}.toggle.on i{transform:translateX(-20px)}[dir="ltr"] .toggle.on i{transform:translateX(20px)}
         .pref-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.segmented{display:flex;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14);border-radius:14px;padding:4px;gap:4px}.segmented button{flex:1;border:0;border-radius:11px;background:transparent;height:38px;font:900 12px Tajawal,Arial,sans-serif;color:var(--sfm-muted);cursor:pointer}.segmented button.active{background:var(--sfm-card);color:var(--sfm-foreground);box-shadow:0 3px 12px rgba(3,18,37,.08)}.premium-grid,.activity-list{display:grid;gap:10px}.premium-grid{grid-template-columns:repeat(4,1fr)}.feature-card{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:14px;font-weight:900;color:var(--sfm-muted);display:flex;align-items:center;gap:9px}.plan-card{background:linear-gradient(135deg,var(--sfm-foreground),var(--sfm-primary-dark));color:var(--sfm-card);border-radius:20px;padding:18px;display:grid;gap:8px}.activity-item{display:flex;align-items:center;gap:12px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.1);border-radius:15px;padding:12px}.activity-item svg{color:var(--sfm-soft-cyan)}.danger-zone{border-color:rgba(185,28,28,.18);background:linear-gradient(135deg,var(--sfm-card),#FFF7F4)}.profile-toast{position:fixed;z-index:100;inset-inline-end:22px;bottom:22px;background:var(--sfm-foreground);color:var(--sfm-soft-cyan);border:1px solid rgba(167,243,240,.28);border-radius:16px;padding:13px 16px;font-weight:900;box-shadow:0 18px 45px rgba(3,18,37,.2)}
-        .modal-overlay{position:fixed;inset:0;z-index:90;background:rgba(17,17,17,.45);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px}.modal-card{width:min(520px,100%);background:var(--sfm-card);border:1px solid rgba(167,243,240,.18);border-radius:24px;padding:22px;box-shadow:0 24px 80px rgba(3,18,37,.28)}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.modal-head h3{margin:0;font-size:19px}.modal-fields{display:grid;gap:12px}.info-box{display:flex;gap:10px;align-items:flex-start;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:14px;color:var(--sfm-muted);line-height:1.7;font-weight:800}.info-box.danger{background:#FEF2F2;border-color:#FCA5A5;color:#B91C1C}.profile-loading{min-height:100vh;display:grid;place-items:center;background:var(--sfm-light-card);color:var(--sfm-muted);font-size:34px}
-        @media(max-width:1180px){.profile-main{margin-inline-start:0}.profile-layout{grid-template-columns:1fr}.stats-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:720px){.profile-main{padding:14px}.profile-top{display:grid}.stats-grid,.form-grid,.pref-grid,.premium-grid{grid-template-columns:1fr}.hero-actions .ghost-btn,.hero-actions .gold-btn,.section-actions .ghost-btn,.section-actions .gold-btn,.section-actions .danger-btn{width:100%}.setting-row{align-items:flex-start;flex-direction:column}}
+        .modal-overlay{position:fixed;inset:0;z-index:90;background:rgba(17,17,17,.45);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px}.modal-card{width:min(520px,100%);max-height:calc(100dvh - 36px);overflow:auto;background:var(--sfm-card);border:1px solid rgba(167,243,240,.18);border-radius:24px;padding:22px;box-shadow:0 24px 80px rgba(3,18,37,.28)}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.modal-head h3{margin:0;font-size:19px}.modal-fields{display:grid;gap:12px}.info-box{display:flex;gap:10px;align-items:flex-start;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:14px;color:var(--sfm-muted);line-height:1.7;font-weight:800}.info-box.danger{background:#FEF2F2;border-color:#FCA5A5;color:#B91C1C}.profile-loading{min-height:100vh;display:grid;place-items:center;background:var(--sfm-light-card);color:var(--sfm-muted);font-size:34px}
+        @media(max-width:1180px){.profile-main{margin-inline-start:0}.profile-layout{grid-template-columns:1fr}.stats-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:720px){.profile-main{padding:14px}.profile-top{display:grid}.stats-grid,.form-grid,.pref-grid,.premium-grid{grid-template-columns:1fr}.hero-actions .ghost-btn,.hero-actions .gold-btn,.section-actions .ghost-btn,.section-actions .gold-btn,.section-actions .danger-btn,.modal-fields .gold-btn{width:100%}.setting-row{align-items:flex-start;flex-direction:column}.modal-overlay{place-items:end center;padding:10px}.modal-card{width:100%;border-radius:22px;max-height:calc(100dvh - 20px)}}
       `}</style>
     </div>
   );
@@ -520,9 +639,32 @@ function PersonalInfoForm({ lang, profile, setProfile, preferences, setPreferenc
   );
 }
 
-function SecuritySettings({ labels, onModal, onSignOutAll }: { labels: Record<string, string>; onModal: (modal: ModalKind) => void; onSignOutAll: () => void }) {
+function SecuritySettings({
+  labels,
+  currentEmail,
+  pendingEmail,
+  emailVerified,
+  onModal,
+  onChangeEmail,
+  onSignOutAll,
+}: {
+  labels: Record<string, string>;
+  currentEmail: string;
+  pendingEmail: string;
+  emailVerified: boolean;
+  onModal: (modal: ModalKind) => void;
+  onChangeEmail: () => void;
+  onSignOutAll: () => void;
+}) {
   return (
     <Section title={labels.title} icon={<ShieldCheck size={19} />}>
+      <SettingRow
+        icon={<Mail />}
+        title={labels.emailAddress}
+        subtitle={[currentEmail, emailVerified ? labels.emailVerified : labels.emailNotVerified, pendingEmail ? `${labels.pendingConfirmation}: ${pendingEmail}` : ''].filter(Boolean).join(' · ')}
+        action={labels.changeEmail}
+        onClick={onChangeEmail}
+      />
       <SettingRow icon={<KeyRound />} title={labels.changePassword} action={labels.open} onClick={() => onModal('password')} />
       <SettingRow icon={<ShieldCheck />} title={labels.twoFactor} action={labels.enable} onClick={() => onModal('twoFactor')} />
       <SettingRow icon={<Smartphone />} title={labels.devices} action={labels.view} onClick={() => onModal('devices')} />
@@ -598,6 +740,15 @@ function Choice({ label, value, options, onChange }: { label: string; value: str
 }
 
 function ConfirmationModal({ open, title, children, onClose }: { open: boolean; title: string; children: ReactNode; onClose: () => void }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose, open]);
+
   if (!open) return null;
   return <div className="modal-overlay"><div className="modal-card"><div className="modal-head"><h3>{title}</h3><button className="ghost-btn" onClick={onClose}>×</button></div>{children}</div></div>;
 }
