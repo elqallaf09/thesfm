@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { hashSecurityAnswer } from '@/lib/authSecurity';
 
 const SECURITY_QUESTIONS = [
   { id: 'pet_name', questionAr: 'ما اسم حيوانك الأليف؟', questionEn: 'What is your pet name?', questionFr: "Comment s'appelle votre animal de compagnie?" },
@@ -155,13 +156,15 @@ export function AuthForm() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('email, security_answer')
+        .select('email, security_answer_hash')
         .eq('username', resetUsername.trim().toLowerCase())
         .maybeSingle();
 
       if (!profile) { setError(t.errorOccurred); setLoading(false); return; }
 
-      const correct = (profile.security_answer || '').toLowerCase().trim() === securityAnswer.trim().toLowerCase();
+      const correct = profile.security_answer_hash
+        ? await hashSecurityAnswer(securityAnswer, profile.email || resetUsername.trim().toLowerCase()) === profile.security_answer_hash
+        : false;
       if (!correct) {
         setError(isArabic ? 'إجابة خاطئة. حاول مرة أخرى.' : 'Wrong answer. Try again.');
         setLoading(false); return;
@@ -260,6 +263,7 @@ export function AuthForm() {
       // Save extra profile data
       const { data: { user: newUser } } = await supabase.auth.getUser();
       if (newUser) {
+        const securityAnswerHash = await hashSecurityAnswer(securityAnswer, email.trim().toLowerCase());
         const { error: profileError } = await supabase.from('profiles').upsert({
           id: newUser.id,
           display_name: `${firstName.trim()} ${lastName.trim()}`,
@@ -268,11 +272,12 @@ export function AuthForm() {
           age: parseInt(age, 10) || null,
           gender: gender || null,
           security_question: securityQuestion || null,
-          security_answer: securityAnswer || null,
+          security_answer: null,
+          security_answer_hash: securityAnswerHash,
           security_question_2: securityQuestion2,
-          security_answer_2: securityAnswer2,
+          security_answer_2: null,
           security_question_3: securityQuestion3 || null,
-          security_answer_3: securityAnswer3 || null,
+          security_answer_3: null,
         }, { onConflict: 'id' }).select().single();
         if (profileError) { setError(profileError.message); setLoading(false); return; }
       }

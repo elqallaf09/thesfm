@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
+import { hashSecurityAnswer, isEmail, usernameToEmail } from '@/lib/authSecurity';
 
 interface AuthContextValue {
   user: User | null;
@@ -16,9 +17,6 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-const usernameToEmail = (username: string) => `${username.trim().toLowerCase()}@smart-finance.local`;
-const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
 function getStoredGuestMode() {
   if (typeof window === 'undefined') return false;
@@ -102,8 +100,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         if (supabaseConfigError) return { error: new Error(supabaseConfigError) };
         const identifier = username.trim();
+        let email = isEmail(identifier) ? identifier.toLowerCase() : usernameToEmail(identifier);
+        if (!isEmail(identifier)) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('username', identifier.toLowerCase())
+            .maybeSingle();
+          if (profile?.email && isEmail(profile.email)) email = profile.email.toLowerCase();
+        }
         const { data, error } = await supabase.auth.signInWithPassword({
-          email: isEmail(identifier) ? identifier : usernameToEmail(identifier),
+          email,
           password,
         });
 
@@ -134,6 +141,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!isEmail(cleanEmail)) return { error: new Error('Invalid email format') };
         if (password.length < 6) return { error: new Error('Password must be at least 6 characters') };
 
+        const answerHash = securityQuestion && securityAnswer
+          ? await hashSecurityAnswer(securityAnswer, cleanEmail)
+          : null;
+
         const { data: signUpData, error } = await supabase.auth.signUp({
           email: cleanEmail,
           password,
@@ -146,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               age: parseInt(age, 10) || null,
               gender: gender || null,
               security_question: securityQuestion || null,
-              security_answer: securityAnswer || null,
+              security_answer_hash: answerHash,
             },
           },
         });
@@ -165,7 +176,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             age: parseInt(age, 10) || null,
             gender: gender || null,
             security_question: securityQuestion || null,
-            security_answer: securityAnswer || null,
+            security_answer: null,
+            security_answer_hash: answerHash,
           }, { onConflict: 'id' }).select().single();
           if (profileError) return { error: new Error(profileError.message) };
         }

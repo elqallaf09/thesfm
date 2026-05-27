@@ -576,7 +576,7 @@ export default function PublicLandingPage() {
         <FooterColumn title={text.footerTools} links={[['/business-hub', text.businessHub], ['/zakat', text.zakat], ['/reports-center', text.reportsCenter]]} />
         <FooterColumn title={text.footerCompany} links={[['/about', aboutLabel], ['/#faq', text.navFaq]]} />
         <FooterColumn title={text.footerAccount} links={[['/login', text.login], ['/setup', text.start]]} />
-        <FooterColumn title={text.footerLegal} links={[['#', text.privacy], ['#', text.terms]]} />
+        <FooterColumn title={text.footerLegal} links={[['/privacy', text.privacy], ['/terms', text.terms]]} />
       </footer>
 
       <style jsx>{landingStyles}</style>

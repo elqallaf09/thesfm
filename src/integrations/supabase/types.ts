@@ -18,10 +18,13 @@ export type Database = {
           username: string
           display_name: string | null
           email: string | null
+          country: string | null
+          default_currency: string | null
           age: number | null
           gender: string | null
           profession: string | null
           security_question: string | null
+          security_answer_hash: string | null
           security_answer: string | null
           security_question_2: string | null
           security_answer_2: string | null
@@ -38,10 +41,13 @@ export type Database = {
           username: string
           display_name?: string | null
           email?: string | null
+          country?: string | null
+          default_currency?: string | null
           age?: number | null
           gender?: string | null
           profession?: string | null
           security_question?: string | null
+          security_answer_hash?: string | null
           security_answer?: string | null
           security_question_2?: string | null
           security_answer_2?: string | null
@@ -58,10 +64,13 @@ export type Database = {
           username?: string
           display_name?: string | null
           email?: string | null
+          country?: string | null
+          default_currency?: string | null
           age?: number | null
           gender?: string | null
           profession?: string | null
           security_question?: string | null
+          security_answer_hash?: string | null
           security_answer?: string | null
           security_question_2?: string | null
           security_answer_2?: string | null
