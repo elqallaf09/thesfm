@@ -79,6 +79,7 @@ export const TR: Record<string, TranslationEntry> = {
   nav_goals:      { ar:'الأهداف المالية', en:'Financial Goals', fr:'Objectifs financiers' },
   nav_projects:   { ar:'مشاريعي', en:'My Projects', fr:'Mes projets' },
   nav_business_hub: { ar:'مركز الأعمال', en:'Business Hub', fr:'Centre d’affaires' },
+  nav_business_operations: { ar:'إدارة الأعمال', en:'Business Operations', fr:'Opérations commerciales' },
   nav_charity:    { ar:'الأعمال الخيرية', en:'Charity', fr:'Charité' },
   nav_charity_projects: { ar:'المشاريع الخيرية', en:'Charity Projects', fr:'Projets caritatifs' },
   nav_zakat:      { ar:'الزكاة', en:'Zakat', fr:'Zakat' },
