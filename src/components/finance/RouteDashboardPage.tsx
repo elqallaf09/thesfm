@@ -630,7 +630,7 @@ function receiptConfidenceLabel(level: AiExtractedData['confidenceLevel'] | unde
 
 function receiptScanErrorText(errorSource: string | undefined, lang: string, fallback: string) {
   if (!errorSource) return fallback;
-  if (/missing_google_and_openai|provider|not_configured|unavailable|all_providers_unavailable|provider_unavailable/.test(errorSource)) {
+  if (/missing_google_|invalid_google_|google_client_init_failed|google_document_ai_request_failed|openai_key_missing|missing_google_and_openai|provider|not_configured|unavailable|all_providers_unavailable|provider_unavailable/.test(errorSource)) {
     return `${expenseText('providerUnavailableTitle', lang)} ${expenseText('providerUnavailable', lang)}`;
   }
   if (/unsupported_file_type|file_too_large|upload/.test(errorSource)) return expenseText('uploadFailed', lang);
@@ -639,7 +639,59 @@ function receiptScanErrorText(errorSource: string | undefined, lang: string, fal
 }
 
 function isReceiptProviderUnavailable(errorSource?: string, code?: string, message?: string) {
-  return /missing_google_and_openai|provider|not_configured|unavailable|all_providers_unavailable|provider_unavailable/i.test(`${errorSource || ''} ${code || ''} ${message || ''}`);
+  return /missing_google_|invalid_google_|google_client_init_failed|google_document_ai_request_failed|openai_key_missing|missing_google_and_openai|provider|not_configured|unavailable|all_providers_unavailable|provider_unavailable/i.test(`${errorSource || ''} ${code || ''} ${message || ''}`);
+}
+
+function receiptProviderDevDetail(errorSource: string | undefined, lang: string) {
+  if (process.env.NODE_ENV === 'production' || !errorSource) return '';
+  const details: Record<string, Record<string, string>> = {
+    missing_google_project_id: {
+      ar: 'GOOGLE_CLOUD_PROJECT_ID غير موجود في الخادم.',
+      en: 'GOOGLE_CLOUD_PROJECT_ID is missing on the server.',
+      fr: 'GOOGLE_CLOUD_PROJECT_ID est absent côté serveur.',
+    },
+    missing_google_location: {
+      ar: 'GOOGLE_DOCUMENT_AI_LOCATION غير موجود في الخادم.',
+      en: 'GOOGLE_DOCUMENT_AI_LOCATION is missing on the server.',
+      fr: 'GOOGLE_DOCUMENT_AI_LOCATION est absent côté serveur.',
+    },
+    missing_google_processor_id: {
+      ar: 'GOOGLE_DOCUMENT_AI_PROCESSOR_ID غير موجود في الخادم.',
+      en: 'GOOGLE_DOCUMENT_AI_PROCESSOR_ID is missing on the server.',
+      fr: 'GOOGLE_DOCUMENT_AI_PROCESSOR_ID est absent côté serveur.',
+    },
+    missing_google_credentials_json: {
+      ar: 'GOOGLE_APPLICATION_CREDENTIALS_JSON غير موجود في الخادم.',
+      en: 'GOOGLE_APPLICATION_CREDENTIALS_JSON is missing on the server.',
+      fr: 'GOOGLE_APPLICATION_CREDENTIALS_JSON est absent côté serveur.',
+    },
+    invalid_google_credentials_json: {
+      ar: 'GOOGLE_APPLICATION_CREDENTIALS_JSON غير صالح أو لا يحتوي على client_email / private_key / project_id.',
+      en: 'GOOGLE_APPLICATION_CREDENTIALS_JSON is invalid or missing client_email / private_key / project_id.',
+      fr: 'GOOGLE_APPLICATION_CREDENTIALS_JSON est invalide ou ne contient pas client_email / private_key / project_id.',
+    },
+    google_client_init_failed: {
+      ar: 'تعذر تهيئة عميل Google. تحقق من private_key وتنسيق \\n في Vercel.',
+      en: 'Google client initialization failed. Check private_key and escaped \\n formatting in Vercel.',
+      fr: 'L’initialisation du client Google a échoué. Vérifiez private_key et le format \\n dans Vercel.',
+    },
+    google_document_ai_request_failed: {
+      ar: 'تعذر الاتصال بمعالج Google Document AI. تحقق من الموقع والمعالج والصلاحيات.',
+      en: 'Google Document AI request failed. Check location, processor ID, and IAM permissions.',
+      fr: 'La requête Google Document AI a échoué. Vérifiez la région, le processeur et les permissions IAM.',
+    },
+    openai_key_missing: {
+      ar: 'OPENAI_API_KEY غير موجود في الخادم.',
+      en: 'OPENAI_API_KEY is missing on the server.',
+      fr: 'OPENAI_API_KEY est absent côté serveur.',
+    },
+    all_providers_unavailable: {
+      ar: 'لا يوجد مزود OCR مفعّل في الخادم.',
+      en: 'No OCR provider is configured on the server.',
+      fr: 'Aucun fournisseur OCR n’est configuré côté serveur.',
+    },
+  };
+  return details[errorSource]?.[lang] || details[errorSource]?.ar || '';
 }
 
 function selectedReceiptsLabel(count: number, lang: string) {
@@ -1322,7 +1374,11 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       form.append('receipt', expenseForm.receiptFile);
       const response = await fetch('/api/receipts/scan', { method: 'POST', body: form });
       const payload = await response.json() as ReceiptScanApiPayload;
-      setReceiptDebug(payload.debug || {
+      setReceiptDebug(payload.debug ? {
+        ...payload.debug,
+        errorSource: payload.debug.errorSource || payload.code || payload.error,
+        message: payload.debug.message || payload.error,
+      } : {
         stage: response.ok ? 'parser' : 'ui',
         fileName: expenseForm.receiptFile.name,
         fileType: expenseForm.receiptFile.type,
@@ -1331,7 +1387,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         errorSource: payload.code || payload.debug?.errorSource || payload.error,
       });
       if (!response.ok || !payload.data) {
-        throw new Error(receiptScanErrorText(payload.code || payload.debug?.errorSource, lang, payload.error || expenseText('couldNotRead', lang)));
+        throw new Error(receiptScanErrorText(payload.debug?.errorSource || payload.code, lang, payload.error || expenseText('couldNotRead', lang)));
       }
       const extracted = { ...payload.data, provider: payload.provider || payload.data.provider };
       if (process.env.NODE_ENV !== 'production') {
@@ -1400,7 +1456,12 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       receiptFiles.forEach(({ file }) => form.append('receipt', file));
       const response = await fetch('/api/receipts/scan', { method: 'POST', body: form });
       const payload = await response.json() as ReceiptScanApiPayload;
-      setReceiptDebug(payload.debug || payload.results?.[0]?.debug || null);
+      const batchDebug = payload.debug || payload.results?.[0]?.debug || null;
+      setReceiptDebug(batchDebug ? {
+        ...batchDebug,
+        errorSource: batchDebug.errorSource || payload.results?.[0]?.code || payload.code || payload.error,
+        message: batchDebug.message || payload.error || payload.results?.[0]?.error,
+      } : null);
       if (process.env.NODE_ENV !== 'production') {
         console.info('AI receipt batch result', {
           apiStatus: response.status,
@@ -1416,7 +1477,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           })),
         });
       }
-      if (!response.ok) throw new Error(receiptScanErrorText(payload.code || payload.debug?.errorSource, lang, payload.error || expenseText('couldNotRead', lang)));
+      if (!response.ok) throw new Error(receiptScanErrorText(payload.debug?.errorSource || payload.code, lang, payload.error || expenseText('couldNotRead', lang)));
       const results = payload.results?.length
         ? payload.results
         : [{ fileName: receiptFiles[0].file.name, success: payload.success, data: payload.data, error: payload.error }];
@@ -2334,6 +2395,9 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                           <>
                             <strong>{expenseText('providerUnavailableTitle', lang)}</strong>
                             <span>{expenseText('providerUnavailable', lang)}</span>
+                            {receiptProviderDevDetail(receiptDebug?.errorSource, lang) && (
+                              <small>{receiptProviderDevDetail(receiptDebug?.errorSource, lang)}</small>
+                            )}
                           </>
                         ) : (
                           <>
