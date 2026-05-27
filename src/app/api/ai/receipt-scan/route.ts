@@ -12,6 +12,15 @@ type ReceiptItem = {
   total?: number;
 };
 
+type AmountCandidate = {
+  label: string;
+  kind: 'amount_due' | 'grand_total' | 'invoice_total' | 'total' | 'subtotal' | 'tax' | 'discount' | 'line_item' | 'computed' | 'other';
+  amount: number;
+  currency?: string;
+  confidence: number;
+  source?: string;
+};
+
 type ReceiptScanResult = {
   merchantName?: string;
   invoiceNumber?: string;
@@ -19,6 +28,7 @@ type ReceiptScanResult = {
   subtotal?: number;
   currency?: string;
   taxAmount?: number;
+  discountAmount?: number;
   paidAmount?: number;
   changeAmount?: number;
   receiptDate?: string;
@@ -26,6 +36,10 @@ type ReceiptScanResult = {
   category?: string;
   paymentMethod?: string;
   items?: ReceiptItem[];
+  amountCandidates?: AmountCandidate[];
+  selectedAmountLabel?: string;
+  confidenceLevel?: 'high' | 'medium' | 'low';
+  warnings?: string[];
   rawText?: string;
   confidenceScore?: number;
   confidence?: number;
@@ -45,39 +59,257 @@ function normalizeArabicNumbers(value: string) {
     .replace(/\u066C/g, ',');
 }
 
-function parseMoney(value: unknown) {
-  if (typeof value === 'number' && Number.isFinite(value) && value > 0) return Number(value.toFixed(3));
-  if (typeof value !== 'string') return undefined;
-  const normalized = normalizeArabicNumbers(value)
-    .replace(/(?:KWD|KD|د\.?ك|د\s*ك)/gi, '')
-    .replace(/[^\d.,-]/g, '')
-    .trim();
-  if (!normalized) return undefined;
-  const decimal = normalized.includes('.') ? normalized.replace(/,/g, '') : normalized.replace(',', '.');
-  const amount = Number(decimal);
-  return Number.isFinite(amount) && amount > 0 ? Number(amount.toFixed(3)) : undefined;
+function isTemplatePlaceholder(value: unknown) {
+  return typeof value === 'string' && /^\s*\{\{[^}]+}}\s*$/.test(value);
 }
 
-function parseReceiptTotal(text: string) {
-  const normalized = normalizeArabicNumbers(text);
-  const patterns = [
-    /(?:الإجمالي\s*النهائي|إجمالي\s*الفاتورة|المجموع\s*النهائي|الصافي\s*المستحق|الصافي)\s*[:：]?\s*(?:KWD|KD|د\.?ك|د\s*ك)?\s*([\d.,]+)/i,
-    /(?:Grand\s*Total|Total\s*Amount|Amount\s*Due|Total\s*Due|Net\s*Total|Final\s*Total)\s*[:：]?\s*(?:KWD|KD)?\s*([\d.,]+)/i,
-    /(?:Total\s*final|Montant\s*total|Total\s*à\s*payer)\s*[:：]?\s*(?:KWD|KD)?\s*([\d.,]+)/i,
-    /(?:الإجمالي|المجموع|الصافي)\s*[:：]?\s*(?:KWD|KD|د\.?ك|د\s*ك)?\s*([\d.,]+)/i,
-    /(?:KWD|KD)\s*([\d.,]+)\s*(?:Grand\s*Total|Total)?/i,
-    /([\d.,]+)\s*(?:د\.?ك|د\s*ك)\s*(?:الإجمالي|المجموع|Total)?/i,
-  ];
-  for (const pattern of patterns) {
-    const match = normalized.match(pattern);
-    const amount = parseMoney(match?.[1]);
-    if (amount) return amount;
+function removeTemplatePlaceholders(value: string) {
+  return value.replace(/\{\{[^}]+}}/g, ' ');
+}
+
+function cleanTextValue(value: unknown) {
+  if (typeof value !== 'string') return undefined;
+  const cleaned = removeTemplatePlaceholders(value).replace(/\s+/g, ' ').trim();
+  return cleaned && !isTemplatePlaceholder(cleaned) ? cleaned : undefined;
+}
+
+function parseSignedMoney(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) return Number(value.toFixed(3));
+  if (typeof value !== 'string') return undefined;
+  const normalized = normalizeArabicNumbers(value);
+  const negative = /^\s*-/.test(normalized) || /\([^)]*\d[^)]*\)/.test(normalized);
+  const cleaned = normalized
+    .replace(/\{\{[^}]+}}/g, '')
+    .replace(/(?:KWD|KD|USD|SAR|AED|EUR|GBP|د\.?\s*ك|دك|ر\.?\s*س|د\.?\s*إ|\$|€|£)/gi, '')
+    .replace(/[^\d.,-]/g, '')
+    .replace(/(?!^)-/g, '')
+    .trim();
+  if (!cleaned || !/\d/.test(cleaned)) return undefined;
+
+  const withoutSign = cleaned.replace(/^-/, '');
+  const lastDot = withoutSign.lastIndexOf('.');
+  const lastComma = withoutSign.lastIndexOf(',');
+  let decimal = withoutSign;
+
+  if (lastDot >= 0 && lastComma >= 0) {
+    const decimalSeparator = lastDot > lastComma ? '.' : ',';
+    const groupSeparator = decimalSeparator === '.' ? ',' : '.';
+    decimal = withoutSign.replaceAll(groupSeparator, '').replace(decimalSeparator, '.');
+  } else if (lastComma >= 0) {
+    const decimals = withoutSign.length - lastComma - 1;
+    decimal = decimals > 0 && decimals <= 3
+      ? withoutSign.replace(',', '.')
+      : withoutSign.replaceAll(',', '');
+  } else {
+    decimal = withoutSign.replaceAll(',', '');
+  }
+
+  const amount = Number(decimal.replace(/\s/g, ''));
+  if (!Number.isFinite(amount)) return undefined;
+  return Number((negative ? -Math.abs(amount) : amount).toFixed(3));
+}
+
+function parseMoney(value: unknown) {
+  const amount = parseSignedMoney(value);
+  return typeof amount === 'number' && amount > 0 ? Number(amount.toFixed(3)) : undefined;
+}
+
+function normalizeCurrency(value?: unknown, context = '') {
+  const text = `${typeof value === 'string' ? value : ''} ${context}`.toUpperCase();
+  if (/\bKWD\b|\bKD\b|د\.?\s*ك|دك/.test(text)) return 'KWD';
+  if (/\bSAR\b|ر\.?\s*س/.test(text)) return 'SAR';
+  if (/\bAED\b|د\.?\s*إ/.test(text)) return 'AED';
+  if (/\bEUR\b|€/.test(text)) return 'EUR';
+  if (/\bGBP\b|£/.test(text)) return 'GBP';
+  if (/\bUSD\b|US\s*DOLLAR|\$/.test(text)) return 'USD';
+  if (typeof value === 'string') {
+    const upper = value.trim().toUpperCase();
+    if (/^[A-Z]{3}$/.test(upper)) return upper;
   }
   return undefined;
 }
 
+function classifyAmountLine(line: string): Pick<AmountCandidate, 'kind' | 'label' | 'confidence'> {
+  const lower = line.toLowerCase();
+  if (/amount\s*due|balance\s*due|total\s*due|المستحق|المبلغ\s*المستحق/.test(lower)) {
+    return { kind: 'amount_due', label: 'Amount Due', confidence: 0.98 };
+  }
+  if (/grand\s*total|final\s*total|المجموع\s*النهائي|الإجمالي\s*النهائي/.test(lower)) {
+    return { kind: 'grand_total', label: 'Grand Total', confidence: 0.97 };
+  }
+  if (/invoice\s*total|total\s*amount|إجمالي\s*الفاتورة/.test(lower)) {
+    return { kind: 'invoice_total', label: 'Invoice Total', confidence: 0.96 };
+  }
+  if (/subtotal|sub\s*total|المجموع\s*الفرعي|قبل\s*الضريبة/.test(lower)) {
+    return { kind: 'subtotal', label: 'Subtotal', confidence: 0.68 };
+  }
+  if (/discount|coupon|خصم|الخصم/.test(lower)) {
+    return { kind: 'discount', label: 'Discount', confidence: 0.52 };
+  }
+  if (/\btax\b|vat|ضريبة|الضريبة/.test(lower)) {
+    return { kind: 'tax', label: 'Tax', confidence: 0.48 };
+  }
+  if (/\btotal\b|الإجمالي|المجموع|المبلغ/.test(lower)) {
+    return { kind: 'total', label: 'Total', confidence: 0.94 };
+  }
+  if (/labor|service|description|item|amount|خدمة|وصف|بند/.test(lower)) {
+    return { kind: 'line_item', label: 'Line item', confidence: 0.38 };
+  }
+  return { kind: 'other', label: 'Amount', confidence: 0.28 };
+}
+
+function amountTokensFromLine(line: string) {
+  const pattern = /(?:[$€£]|KWD|KD|USD|SAR|AED|EUR|GBP|د\.?\s*ك|دك|ر\.?\s*س|د\.?\s*إ)?\s*\(?-?\d[\d\s,]*(?:[.,]\d{1,3})?\)?/gi;
+  return [...line.matchAll(pattern)]
+    .map(match => {
+      const token = match[0];
+      const amount = parseSignedMoney(token);
+      const after = line.slice((match.index || 0) + token.length, (match.index || 0) + token.length + 2);
+      const isPercent = after.includes('%');
+      return amount === undefined ? null : { token, amount, isPercent };
+    })
+    .filter((token): token is { token: string; amount: number; isPercent: boolean } => Boolean(token));
+}
+
+function pushCandidate(candidates: AmountCandidate[], candidate: AmountCandidate) {
+  if (!Number.isFinite(candidate.amount) || candidate.amount === 0) return;
+  const duplicate = candidates.find(existing =>
+    existing.kind === candidate.kind && Math.abs(Math.abs(existing.amount) - Math.abs(candidate.amount)) < 0.01
+  );
+  if (duplicate) {
+    duplicate.confidence = Math.max(duplicate.confidence, candidate.confidence);
+    duplicate.currency ||= candidate.currency;
+    duplicate.source ||= candidate.source;
+    return;
+  }
+  candidates.push({
+    ...candidate,
+    amount: Number(candidate.amount.toFixed(3)),
+    confidence: Math.max(0, Math.min(1, candidate.confidence)),
+  });
+}
+
+function candidatesFromStructuredData(data: Record<string, unknown>, rawText: string) {
+  const candidates: AmountCandidate[] = [];
+  const structured = Array.isArray(data.amountCandidates) ? data.amountCandidates : [];
+  for (const item of structured) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    const amount = parseSignedMoney(row.amount);
+    if (amount === undefined) continue;
+    const line = cleanTextValue(row.label) || cleanTextValue(row.source) || 'Amount';
+    const classified = classifyAmountLine(line);
+    pushCandidate(candidates, {
+      label: cleanTextValue(row.label) || classified.label,
+      kind: classified.kind,
+      amount,
+      currency: normalizeCurrency(row.currency, `${line} ${rawText}`),
+      confidence: Number(row.confidence) || classified.confidence,
+      source: cleanTextValue(row.source) || line,
+    });
+  }
+
+  const fieldMap: Array<[keyof ReceiptScanResult | 'finalTotal' | 'grandTotal' | 'amountDue' | 'total' | 'amount', AmountCandidate['kind'], string, number]> = [
+    ['amountDue', 'amount_due', 'Amount Due', 0.96],
+    ['grandTotal', 'grand_total', 'Grand Total', 0.96],
+    ['finalTotal', 'grand_total', 'Final Total', 0.95],
+    ['totalAmount', 'total', 'Total', 0.92],
+    ['total', 'total', 'Total', 0.9],
+    ['amount', 'other', 'Amount', 0.55],
+    ['subtotal', 'subtotal', 'Subtotal', 0.64],
+    ['taxAmount', 'tax', 'Tax', 0.48],
+    ['discountAmount', 'discount', 'Discount', 0.5],
+  ];
+  for (const [key, kind, label, confidence] of fieldMap) {
+    const amount = kind === 'discount' ? parseSignedMoney(data[key]) : parseMoney(data[key]);
+    if (amount !== undefined) {
+      pushCandidate(candidates, {
+        label,
+        kind,
+        amount: kind === 'discount' ? -Math.abs(amount) : amount,
+        currency: normalizeCurrency(data.currency, rawText),
+        confidence,
+        source: label,
+      });
+    }
+  }
+  return candidates;
+}
+
+function extractAmountCandidates(rawText: string, data: Record<string, unknown>) {
+  const normalized = normalizeArabicNumbers(removeTemplatePlaceholders(rawText || ''));
+  const lines = normalized
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+  const candidates = candidatesFromStructuredData(data, normalized);
+
+  lines.forEach((line, index) => {
+    if (isTemplatePlaceholder(line)) return;
+    const classified = classifyAmountLine(line);
+    const tokens = amountTokensFromLine(line).filter(token => !(token.isPercent && !/[€£$]|KWD|KD|USD|SAR|AED|EUR|GBP|د\.?\s*ك|ر\.?\s*س|د\.?\s*إ/i.test(token.token)));
+    if (!tokens.length) return;
+
+    const lastNonPercent = [...tokens].reverse().find(token => !token.isPercent);
+    const chosen = classified.kind === 'line_item' || classified.kind === 'other'
+      ? tokens[tokens.length - 1]
+      : lastNonPercent || tokens[tokens.length - 1];
+    if (!chosen) return;
+
+    const bottomBoost = lines.length > 1 ? Math.max(0, (index / (lines.length - 1)) * 0.04) : 0;
+    const amount = classified.kind === 'discount' ? -Math.abs(chosen.amount) : Math.abs(chosen.amount);
+    pushCandidate(candidates, {
+      ...classified,
+      amount,
+      currency: normalizeCurrency(chosen.token, line),
+      confidence: classified.confidence + bottomBoost,
+      source: line,
+    });
+  });
+
+  const subtotal = candidates.find(candidate => candidate.kind === 'subtotal')?.amount;
+  const tax = candidates.find(candidate => candidate.kind === 'tax')?.amount;
+  const discount = candidates.find(candidate => candidate.kind === 'discount')?.amount;
+  const lineItem = candidates.find(candidate => candidate.kind === 'line_item')?.amount;
+
+  if (subtotal && tax && !candidates.some(candidate => ['total', 'amount_due', 'grand_total', 'invoice_total'].includes(candidate.kind))) {
+    pushCandidate(candidates, {
+      label: 'Computed total',
+      kind: 'computed',
+      amount: Math.abs(subtotal) + Math.abs(tax),
+      currency: candidates.find(candidate => candidate.currency)?.currency,
+      confidence: 0.76,
+      source: 'subtotal + tax',
+    });
+  } else if (lineItem && tax && discount && !candidates.some(candidate => ['total', 'amount_due', 'grand_total', 'invoice_total'].includes(candidate.kind))) {
+    pushCandidate(candidates, {
+      label: 'Computed total',
+      kind: 'computed',
+      amount: Math.abs(lineItem) + discount + Math.abs(tax),
+      currency: candidates.find(candidate => candidate.currency)?.currency,
+      confidence: 0.72,
+      source: 'line item - discount + tax',
+    });
+  }
+
+  return candidates.sort((a, b) => b.confidence - a.confidence);
+}
+
+function selectBestAmount(candidates: AmountCandidate[]) {
+  const preferredKinds = new Set(['amount_due', 'grand_total', 'invoice_total', 'total', 'computed']);
+  const preferred = candidates
+    .filter(candidate => preferredKinds.has(candidate.kind) && candidate.amount > 0)
+    .sort((a, b) => b.confidence - a.confidence);
+  if (preferred[0]) return preferred[0];
+
+  const fallback = candidates
+    .filter(candidate => !['tax', 'discount'].includes(candidate.kind) && candidate.amount > 0)
+    .sort((a, b) => b.confidence - a.confidence || b.amount - a.amount);
+  return fallback[0];
+}
+
 function parseReceiptNumber(text: string, patterns: RegExp[]) {
-  const normalized = normalizeArabicNumbers(text);
+  const normalized = normalizeArabicNumbers(removeTemplatePlaceholders(text));
   for (const pattern of patterns) {
     const amount = parseMoney(normalized.match(pattern)?.[1]);
     if (amount) return amount;
@@ -86,21 +318,45 @@ function parseReceiptNumber(text: string, patterns: RegExp[]) {
 }
 
 function parseInvoiceNumber(text: string) {
-  const normalized = normalizeArabicNumbers(text);
-  return normalized.match(/(?:invoice|inv|فاتورة|رقم\s*الفاتورة)\s*[-#:：]?\s*([A-Z0-9-]+)/i)?.[1];
+  const normalized = normalizeArabicNumbers(removeTemplatePlaceholders(text));
+  const lines = normalized.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  for (const line of lines) {
+    if (!/(invoice\s*(?:number|no|#)|inv\s*(?:no|#)|رقم\s*الفاتورة)/i.test(line)) continue;
+    const match = line.match(/(?:invoice\s*(?:number|no|#)|inv\s*(?:no|#)|رقم\s*الفاتورة)\s*[-#:：]?\s*([A-Z0-9][A-Z0-9-]{1,})/i)?.[1];
+    const value = cleanTextValue(match);
+    if (value && !/^invoice$/i.test(value)) return value;
+  }
+  return undefined;
 }
 
-function parseMerchantName(text: string) {
-  const lines = text
+function parseDescription(text: string, items: ReceiptItem[] = []) {
+  const itemName = items.find(item => cleanTextValue(item.name))?.name;
+  if (itemName && !isTemplatePlaceholder(itemName)) return cleanTextValue(itemName);
+  const normalized = removeTemplatePlaceholders(text);
+  const lines = normalized.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const labor = lines.find(line => /labor|service|consulting|خدمة|عمل/i.test(line));
+  if (labor) return /labor/i.test(labor) ? 'Invoice - Labor service' : cleanTextValue(labor);
+  if (/invoice|فاتورة/i.test(normalized)) return 'Invoice';
+  return undefined;
+}
+
+function parseMerchantName(text: string, items: ReceiptItem[] = []) {
+  const lines = removeTemplatePlaceholders(text)
     .split(/\r?\n/)
     .map(line => line.trim())
     .filter(Boolean);
-  return lines.find(line => !/(invoice|inv-|date|payment|total|الإجمالي|المجموع|التاريخ|الدفع|فاتورة)/i.test(line));
+  const merchant = lines.find(line =>
+    !isTemplatePlaceholder(line)
+    && !/\d/.test(line)
+    && !/(invoice|date|payment|total|subtotal|tax|discount|bill\s*to|description|qty|unit\s*price|amount|الإجمالي|المجموع|التاريخ|الدفع|فاتورة|ضريبة|خصم)/i.test(line)
+  );
+  return cleanTextValue(merchant) || parseDescription(text, items);
 }
 
 function normalizeDate(value: unknown, rawText?: string) {
+  if (isTemplatePlaceholder(value)) return undefined;
   if (typeof value === 'string') {
-    const normalized = normalizeArabicNumbers(value.trim());
+    const normalized = normalizeArabicNumbers(removeTemplatePlaceholders(value).trim());
     if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return normalized;
     const match = normalized.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
     if (match) {
@@ -109,7 +365,7 @@ function normalizeDate(value: unknown, rawText?: string) {
     }
   }
   if (rawText) {
-    const match = normalizeArabicNumbers(rawText).match(/(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+    const match = normalizeArabicNumbers(removeTemplatePlaceholders(rawText)).match(/(?:invoice\s*date|date|التاريخ)\s*[:：]?\s*(\d{1,2})[/-](\d{1,2})[/-](\d{4})/i);
     if (match) {
       const [, day, month, year] = match;
       return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
@@ -151,7 +407,7 @@ function normalizeItems(value: unknown) {
       const total = parseMoney(item?.total) ?? parseMoney(item?.price) ?? 0;
       const unitPrice = parseMoney(item?.unitPrice);
       return {
-        name: String(item?.name || 'Item'),
+        name: cleanTextValue(item?.name) || 'Item',
         quantity: Number(item?.quantity) || undefined,
         unitPrice,
         price: total,
@@ -162,44 +418,74 @@ function normalizeItems(value: unknown) {
     .slice(0, 20);
 }
 
-function getFirstAmount(data: Record<string, unknown>, rawText?: string) {
-  const keys = ['totalAmount', 'finalTotal', 'grandTotal', 'total_amount', 'amountDue', 'netTotal', 'total', 'amount'];
-  for (const key of keys) {
-    const amount = parseMoney(data[key]);
-    if (amount) return amount;
-  }
-  return rawText ? parseReceiptTotal(rawText) : undefined;
+function confidenceLevel(score: number, selected?: AmountCandidate): ReceiptScanResult['confidenceLevel'] {
+  if (score >= 0.82 && selected && ['amount_due', 'grand_total', 'invoice_total', 'total'].includes(selected.kind)) return 'high';
+  if (score >= 0.58 || selected?.kind === 'computed') return 'medium';
+  return 'low';
 }
 
 function normalizeResult(value: unknown, fileName: string): ReceiptScanResult {
   const data = value && typeof value === 'object' ? value as Record<string, unknown> : {};
   const rawText = typeof data.rawText === 'string' ? data.rawText : typeof data.text === 'string' ? data.text : '';
-  const totalAmount = getFirstAmount(data, rawText);
-  const taxAmount = parseMoney(data.taxAmount);
-  const subtotal = parseMoney(data.subtotal) ?? (rawText ? parseReceiptNumber(rawText, [/(?:subtotal|sub\s*total|المجموع\s*الفرعي|قبل\s*الضريبة)\s*[:：]?\s*([\d.,]+)/i]) : undefined);
-  const paidAmount = parseMoney(data.paidAmount) ?? (rawText ? parseReceiptNumber(rawText, [/(?:paid|paid\s*amount|amount\s*paid|المدفوع|المبلغ\s*المدفوع)\s*[:：]?\s*([\d.,]+)/i]) : undefined);
-  const changeAmount = parseMoney(data.changeAmount) ?? (rawText ? parseReceiptNumber(rawText, [/(?:change|balance|الباقي|المتبقي)\s*[:：]?\s*([\d.,]+)/i]) : undefined);
+  const items = normalizeItems(data.items);
+  const candidates = extractAmountCandidates(rawText || JSON.stringify(data), data);
+  const selected = selectBestAmount(candidates);
+  const taxCandidate = candidates.find(candidate => candidate.kind === 'tax');
+  const discountCandidate = candidates.find(candidate => candidate.kind === 'discount');
+  const subtotalCandidate = candidates.find(candidate => candidate.kind === 'subtotal');
   const confidenceScore = Number(data.confidenceScore ?? data.confidence);
-  const merchant = data.merchantName ?? data.merchant ?? data.storeName ?? data.vendor ?? (rawText ? parseMerchantName(rawText) : undefined);
+  const score = Number.isFinite(confidenceScore)
+    ? Math.max(0, Math.min(1, confidenceScore))
+    : selected?.confidence ?? 0.36;
+  const currency = normalizeCurrency(data.currency, `${selected?.source || ''} ${rawText}`) || selected?.currency;
+  const receiptDate = normalizeDate(data.receiptDate ?? data.date, rawText);
+  const warnings: string[] = Array.isArray(data.warnings) ? data.warnings.filter((item): item is string => typeof item === 'string') : [];
+  if (!receiptDate) warnings.push('No clear invoice date found.');
+  if (!currency) warnings.push('Currency was not detected from the receipt.');
 
-  return {
-    merchantName: typeof merchant === 'string' && merchant.trim() ? merchant.trim() : undefined,
-    invoiceNumber: typeof data.invoiceNumber === 'string' ? data.invoiceNumber : rawText ? parseInvoiceNumber(rawText) : undefined,
-    totalAmount,
-    subtotal,
-    currency: typeof data.currency === 'string' ? data.currency : 'KWD',
-    taxAmount,
-    paidAmount,
-    changeAmount,
-    receiptDate: normalizeDate(data.receiptDate ?? data.date, rawText),
-    date: normalizeDate(data.receiptDate ?? data.date, rawText),
+  const merchant = cleanTextValue(data.merchantName)
+    || cleanTextValue(data.merchant)
+    || cleanTextValue(data.storeName)
+    || cleanTextValue(data.vendor)
+    || (rawText ? parseMerchantName(rawText, items) : undefined)
+    || parseDescription(rawText, items);
+
+  const result: ReceiptScanResult = {
+    merchantName: merchant,
+    invoiceNumber: cleanTextValue(data.invoiceNumber) || (rawText ? parseInvoiceNumber(rawText) : undefined),
+    totalAmount: selected?.amount && selected.amount > 0 ? Number(selected.amount.toFixed(3)) : undefined,
+    subtotal: parseMoney(data.subtotal) ?? (subtotalCandidate ? Math.abs(subtotalCandidate.amount) : undefined) ?? (rawText ? parseReceiptNumber(rawText, [/(?:subtotal|sub\s*total|المجموع\s*الفرعي|قبل\s*الضريبة)\s*[:：]?\s*([\d.,]+)/i]) : undefined),
+    currency,
+    taxAmount: parseMoney(data.taxAmount) ?? (taxCandidate ? Math.abs(taxCandidate.amount) : undefined),
+    discountAmount: parseSignedMoney(data.discountAmount) ?? (discountCandidate ? discountCandidate.amount : undefined),
+    paidAmount: parseMoney(data.paidAmount),
+    changeAmount: parseMoney(data.changeAmount),
+    receiptDate,
+    date: receiptDate,
     category: normalizeCategory(data.category, rawText),
     paymentMethod: normalizePayment(data.paymentMethod, rawText),
-    items: normalizeItems(data.items),
+    items,
+    amountCandidates: candidates.slice(0, 10),
+    selectedAmountLabel: selected?.label,
+    confidenceLevel: confidenceLevel(score, selected),
+    warnings,
     rawText: rawText || undefined,
-    confidenceScore: Number.isFinite(confidenceScore) ? Math.max(0, Math.min(1, confidenceScore)) : totalAmount ? 0.84 : 0.48,
-    confidence: Number.isFinite(confidenceScore) ? Math.max(0, Math.min(1, confidenceScore)) : totalAmount ? 0.84 : 0.48,
+    confidenceScore: selected ? Math.max(score, selected.confidence) : score,
+    confidence: selected ? Math.max(score, selected.confidence) : score,
   };
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.info('Receipt scan debug', {
+      fileName,
+      rawTextLength: rawText.length,
+      candidateCount: result.amountCandidates?.length || 0,
+      selectedAmount: result.totalAmount,
+      selectedAmountLabel: result.selectedAmountLabel,
+      confidenceLevel: result.confidenceLevel,
+    });
+  }
+
+  return result;
 }
 
 function readOutputText(payload: Record<string, unknown>) {
@@ -236,11 +522,16 @@ async function analyzeWithOpenAI(file: File, bytes: ArrayBuffer): Promise<Receip
           {
             type: 'input_text',
             text: [
-              'Extract receipt data as strict JSON only.',
-              'Prioritize the final payable receipt total, not subtotal, tax, paid amount, or change.',
-              'Total labels include: الإجمالي النهائي, المجموع النهائي, Grand Total, Total Amount, Net Total, Amount Due, Total, الإجمالي.',
-              'Convert Arabic/Persian digits to normal decimal numbers.',
-              'Use this schema: {"merchantName":"string","invoiceNumber":"string|null","subtotal":number|null,"totalAmount":number,"currency":"KWD","taxAmount":number|null,"paidAmount":number|null,"changeAmount":number|null,"receiptDate":"YYYY-MM-DD","category":"restaurants|shopping|bills|transport|health|education|rent|loans|subscriptions|other","paymentMethod":"cash|knet|card|transfer|apple_pay|other","items":[{"name":"string","quantity":number|null,"unitPrice":number|null,"total":number}],"confidenceScore":number,"rawText":"string"}.',
+              'Extract receipt or invoice data as strict JSON only.',
+              'Invoice parsing rule: the expense amount must be the final payable amount.',
+              'Priority: Grand Total, Total, Amount Due, Balance Due, Invoice Total; then bottom-most Total; then Subtotal + Tax minus/including Discount if no final total exists.',
+              'Do not use line item amount, unit price, subtotal, tax, or discount as final total when a final total is visible.',
+              'Return amountCandidates with labels for Total, Subtotal, line item amount, Tax, Discount, and computed total when visible.',
+              'Detect currency symbols: $=USD, KD/KWD/د.ك=KWD, SAR/ر.س=SAR, AED/د.إ=AED, €=EUR, £=GBP.',
+              'Ignore template placeholders wrapped in {{...}}. Never return {{date}}, {{InvoiceNum}}, {{CompanyName}}, or {{BillToName}} as real values.',
+              'If the date is a placeholder or unclear, use null for receiptDate.',
+              'For the sample pattern "Labor: 12 hours at $105/hr" with subtotal, discount, tax, and total, choose the final Total amount.',
+              'Use this schema: {"merchantName":"string|null","invoiceNumber":"string|null","subtotal":number|null,"totalAmount":number|null,"currency":"string|null","taxAmount":number|null,"discountAmount":number|null,"paidAmount":number|null,"changeAmount":number|null,"receiptDate":"YYYY-MM-DD|null","category":"restaurants|shopping|bills|transport|health|education|rent|loans|subscriptions|other","paymentMethod":"cash|knet|card|transfer|apple_pay|other","items":[{"name":"string","quantity":number|null,"unitPrice":number|null,"total":number}],"amountCandidates":[{"label":"string","amount":number,"currency":"string|null","confidence":number,"source":"string"}],"confidenceScore":number,"confidenceLevel":"high|medium|low","warnings":["string"],"rawText":"string"}.',
             ].join(' '),
           },
           {
@@ -257,15 +548,16 @@ async function analyzeWithOpenAI(file: File, bytes: ArrayBuffer): Promise<Receip
             type: 'object',
             additionalProperties: false,
             properties: {
-              merchantName: { type: 'string' },
+              merchantName: { type: ['string', 'null'] },
               invoiceNumber: { type: ['string', 'null'] },
               subtotal: { type: ['number', 'null'] },
-              totalAmount: { type: 'number' },
-              currency: { type: 'string' },
+              totalAmount: { type: ['number', 'null'] },
+              currency: { type: ['string', 'null'] },
               taxAmount: { type: ['number', 'null'] },
+              discountAmount: { type: ['number', 'null'] },
               paidAmount: { type: ['number', 'null'] },
               changeAmount: { type: ['number', 'null'] },
-              receiptDate: { type: 'string' },
+              receiptDate: { type: ['string', 'null'] },
               category: { type: 'string' },
               paymentMethod: { type: 'string' },
               items: {
@@ -282,10 +574,27 @@ async function analyzeWithOpenAI(file: File, bytes: ArrayBuffer): Promise<Receip
                   required: ['name', 'quantity', 'unitPrice', 'total'],
                 },
               },
+              amountCandidates: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    label: { type: 'string' },
+                    amount: { type: 'number' },
+                    currency: { type: ['string', 'null'] },
+                    confidence: { type: 'number' },
+                    source: { type: 'string' },
+                  },
+                  required: ['label', 'amount', 'currency', 'confidence', 'source'],
+                },
+              },
               confidenceScore: { type: 'number' },
+              confidenceLevel: { type: 'string' },
+              warnings: { type: 'array', items: { type: 'string' } },
               rawText: { type: 'string' },
             },
-            required: ['merchantName', 'invoiceNumber', 'subtotal', 'totalAmount', 'currency', 'taxAmount', 'paidAmount', 'changeAmount', 'receiptDate', 'category', 'paymentMethod', 'items', 'confidenceScore', 'rawText'],
+            required: ['merchantName', 'invoiceNumber', 'subtotal', 'totalAmount', 'currency', 'taxAmount', 'discountAmount', 'paidAmount', 'changeAmount', 'receiptDate', 'category', 'paymentMethod', 'items', 'amountCandidates', 'confidenceScore', 'confidenceLevel', 'warnings', 'rawText'],
           },
         },
       },
@@ -310,15 +619,25 @@ async function scanFile(file: File, receiptText?: string) {
   const bytes = await file.arrayBuffer();
   if (receiptText?.trim()) {
     const parsed = normalizeResult({ rawText: receiptText }, file.name);
-    return { fileName: file.name, success: Boolean(parsed.totalAmount), data: parsed, error: parsed.totalAmount ? undefined : 'Could not read receipt amount clearly' };
+    return {
+      fileName: file.name,
+      success: Boolean(parsed.totalAmount),
+      data: parsed,
+      error: parsed.totalAmount ? undefined : 'Could not identify a final total. Please review the candidates or enter it manually.',
+    };
   }
 
   const aiResult = await analyzeWithOpenAI(file, bytes).catch(error => {
-    console.error('Receipt AI scan failed:', { fileName: file.name, error });
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Receipt AI scan failed:', { fileName: file.name, error });
+    }
     return null;
   });
-  if (!aiResult?.totalAmount) {
-    return { fileName: file.name, success: false, data: undefined, error: 'Could not read receipt amount clearly' };
+  if (!aiResult) {
+    return { fileName: file.name, success: false, data: undefined, error: 'Could not read the receipt clearly. You can still enter the expense manually and save the attachment.' };
+  }
+  if (!aiResult.totalAmount) {
+    return { fileName: file.name, success: false, data: aiResult, error: 'Could not identify a final total. Please review the candidates or enter it manually.' };
   }
   return { fileName: file.name, success: true, data: aiResult };
 }

@@ -135,6 +135,14 @@ type DataResult<T> = {
   source: 'database' | 'fallback';
 };
 type ReceiptItem = { name: string; price?: number; quantity?: number; unitPrice?: number; total?: number };
+type ReceiptAmountCandidate = {
+  label: string;
+  kind?: string;
+  amount: number;
+  currency?: string;
+  confidence?: number;
+  source?: string;
+};
 type AiExtractedData = {
   merchantName?: string;
   invoiceNumber?: string;
@@ -145,6 +153,7 @@ type AiExtractedData = {
   finalTotal?: number;
   currency?: string;
   taxAmount?: number;
+  discountAmount?: number;
   paidAmount?: number;
   changeAmount?: number;
   receiptDate?: string;
@@ -153,6 +162,10 @@ type AiExtractedData = {
   paymentMethod?: string;
   rawText?: string;
   items?: ReceiptItem[];
+  amountCandidates?: ReceiptAmountCandidate[];
+  selectedAmountLabel?: string;
+  confidenceLevel?: 'high' | 'medium' | 'low';
+  warnings?: string[];
   confidenceScore?: number;
   confidence?: number;
 };
@@ -177,6 +190,7 @@ type ExpenseFormState = {
   id?: string;
   name: string;
   amount: string;
+  currency: string;
   category: string;
   date: string;
   paymentMethod: string;
@@ -198,6 +212,7 @@ type PendingReceiptExpense = {
   previewUrl: string;
   name: string;
   amount: string;
+  currency: string;
   date: string;
   category: string;
   paymentMethod: string;
@@ -236,9 +251,10 @@ const emptyEntryForm: EntryFormState = { name: '', amount: '', category: 'genera
 function todayInputDate() {
   return new Date().toISOString().slice(0, 10);
 }
-const emptyExpenseForm = (): ExpenseFormState => ({
+const emptyExpenseForm = (defaultCurrency = 'KWD'): ExpenseFormState => ({
   name: '',
   amount: '',
+  currency: defaultCurrency,
   category: 'other',
   date: todayInputDate(),
   paymentMethod: 'cash',
@@ -363,6 +379,19 @@ const expenseUi = {
   needsReview: { ar: 'يحتاج مراجعة', en: 'Needs review', fr: 'À vérifier' },
   failed: { ar: 'فشل التحليل', en: 'Failed', fr: 'Échec' },
   amountNotDetected: { ar: 'لم نتمكن من قراءة مبلغ هذه الفاتورة. الرجاء إدخاله يدويًا أو رفع صورة أوضح.', en: 'We could not read this receipt amount. Please enter it manually or upload a clearer image.', fr: 'Nous n’avons pas pu lire le montant de cette facture. Veuillez le saisir manuellement ou importer une image plus claire.' },
+  scanReviewTitle: { ar: 'مراجعة بيانات الفاتورة', en: 'Review invoice data', fr: 'Vérifier les données du reçu' },
+  extractedBadge: { ar: 'مستخرج من الفاتورة', en: 'Extracted from receipt', fr: 'Extrait du reçu' },
+  amountCandidates: { ar: 'المبالغ المقترحة', en: 'Amount candidates', fr: 'Montants proposés' },
+  chooseAmount: { ar: 'اختر المبلغ الصحيح', en: 'Choose the correct amount', fr: 'Choisissez le bon montant' },
+  mediumConfidence: { ar: 'راجع البيانات قبل الحفظ.', en: 'Review the data before saving.', fr: 'Vérifiez les données avant l’enregistrement.' },
+  lowConfidence: { ar: 'لم نتمكن من تحديد كل البيانات بثقة. راجع النتائج أو أدخلها يدوياً.', en: 'We could not identify every field confidently. Review the results or enter them manually.', fr: 'Nous n’avons pas pu identifier toutes les données avec certitude. Vérifiez les résultats ou saisissez-les manuellement.' },
+  saveManual: { ar: 'حفظ يدوي', en: 'Save manually', fr: 'Enregistrer manuellement' },
+  saveWithAttachment: { ar: 'حفظ مع المرفق', en: 'Save with attachment', fr: 'Enregistrer avec la pièce jointe' },
+  currency: { ar: 'العملة', en: 'Currency', fr: 'Devise' },
+  tax: { ar: 'الضريبة', en: 'Tax', fr: 'Taxe' },
+  discount: { ar: 'الخصم', en: 'Discount', fr: 'Remise' },
+  invoiceNumber: { ar: 'رقم الفاتورة', en: 'Invoice number', fr: 'Numéro de facture' },
+  currencyFallback: { ar: 'لم يتم تحديد العملة من الفاتورة، تم استخدام عملتك الافتراضية.', en: 'Currency was not detected from the receipt, so your default currency was used.', fr: 'La devise n’a pas été détectée sur le reçu, votre devise par défaut a donc été utilisée.' },
   selectAll: { ar: 'تحديد الكل', en: 'Select all', fr: 'Tout sélectionner' },
   uploadLimit: { ar: 'يمكنك رفع 10 فواتير كحد أقصى في المرة الواحدة.', en: 'You can upload up to 10 receipts at once.', fr: 'Vous pouvez importer jusqu’à 10 factures à la fois.' },
   batchSaveResult: { ar: 'تمت إضافة {successCount} مصروفات بنجاح. فشل {failedCount}.', en: '{successCount} expenses added successfully. {failedCount} failed.', fr: '{successCount} dépenses ajoutées avec succès. {failedCount} ont échoué.' },
@@ -491,9 +520,37 @@ function normalizeReceiptNumber(value: unknown) {
 
 function extractedReceiptAmount(data: AiExtractedData) {
   return normalizeReceiptNumber(data.totalAmount)
+    ?? data.amountCandidates?.find(candidate => ['amount_due', 'grand_total', 'invoice_total', 'total', 'computed'].includes(candidate.kind || '') && normalizeReceiptNumber(candidate.amount))?.amount
     ?? normalizeReceiptNumber(data.amount)
     ?? normalizeReceiptNumber(data.total)
     ?? normalizeReceiptNumber(data.finalTotal);
+}
+
+function validReceiptCandidates(data: AiExtractedData | null | undefined) {
+  return (data?.amountCandidates || [])
+    .filter(candidate => typeof candidate.amount === 'number' && Number.isFinite(candidate.amount) && candidate.amount !== 0)
+    .slice(0, 8);
+}
+
+function receiptCandidateAmount(candidate: ReceiptAmountCandidate) {
+  return typeof candidate.amount === 'number' && Number.isFinite(candidate.amount) ? Math.abs(candidate.amount) : 0;
+}
+
+function receiptCandidateLabel(candidate: ReceiptAmountCandidate, lang: string) {
+  const kind = candidate.kind || '';
+  const fallback = candidate.label || pick({ ar: 'مبلغ', en: 'Amount', fr: 'Montant' }, lang);
+  const labels: Record<string, LangText> = {
+    amount_due: { ar: 'المبلغ المستحق', en: 'Amount Due', fr: 'Montant dû' },
+    grand_total: { ar: 'الإجمالي النهائي', en: 'Grand Total', fr: 'Total général' },
+    invoice_total: { ar: 'إجمالي الفاتورة', en: 'Invoice Total', fr: 'Total de la facture' },
+    total: { ar: 'الإجمالي', en: 'Total', fr: 'Total' },
+    subtotal: { ar: 'المجموع الفرعي', en: 'Subtotal', fr: 'Sous-total' },
+    tax: { ar: 'الضريبة', en: 'Tax', fr: 'Taxe' },
+    discount: { ar: 'الخصم', en: 'Discount', fr: 'Remise' },
+    line_item: { ar: 'بند في الفاتورة', en: 'Line item', fr: 'Ligne' },
+    computed: { ar: 'إجمالي محسوب', en: 'Computed total', fr: 'Total calculé' },
+  };
+  return labels[kind] ? pick(labels[kind], lang) : fallback;
 }
 
 function normalizeReceiptDate(data: AiExtractedData) {
@@ -553,11 +610,12 @@ function pendingReceiptFromResult(
   previewUrl: string,
   result: { success?: boolean; data?: AiExtractedData; error?: string },
   lang: string,
+  defaultCurrency = 'KWD',
 ): PendingReceiptExpense {
   const data = result.data ?? null;
   const amount = data ? extractedReceiptAmount(data) : undefined;
   const confidence = data?.confidenceScore ?? data?.confidence ?? (amount ? 0.84 : 0.3);
-  const status: PendingReceiptExpense['status'] = !result.success || !amount ? 'failed' : confidence < 0.7 ? 'review' : 'ready';
+  const status: PendingReceiptExpense['status'] = !amount ? 'failed' : data?.confidenceLevel === 'low' || confidence < 0.58 ? 'review' : confidence < 0.82 || data?.confidenceLevel === 'medium' ? 'review' : 'ready';
   return {
     id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${file.name}`,
     selected: Boolean(amount) && confidence >= 0.7,
@@ -567,6 +625,7 @@ function pendingReceiptFromResult(
     previewUrl,
     name: data?.merchantName?.trim() || receiptFallbackName(lang),
     amount: amount ? String(amount) : '',
+    currency: data?.currency || defaultCurrency,
     date: data ? normalizeReceiptDate(data) : todayInputDate(),
     category: normalizeReceiptCategory(data?.category),
     paymentMethod: normalizeReceiptPayment(data?.paymentMethod),
@@ -575,6 +634,12 @@ function pendingReceiptFromResult(
     aiExtractedData: data,
     error: result.error || (!amount ? expenseText('amountNotDetected', lang) : null),
   };
+}
+
+function receiptConfidenceMessage(data: AiExtractedData, lang: string) {
+  if (data.confidenceLevel === 'low') return expenseText('lowConfidence', lang);
+  if (data.confidenceLevel === 'medium') return expenseText('mediumConfidence', lang);
+  return '';
 }
 
 function dataErrorCopy(error: DataLoadError | null, lang: string) {
@@ -1000,7 +1065,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       setEntryMode('create');
       setExpenseModalMode('manual');
       setReceiptError('');
-      setExpenseForm(emptyExpenseForm());
+      setExpenseForm(emptyExpenseForm(currency || 'KWD'));
       setEntryOpen(true);
       return;
     }
@@ -1013,7 +1078,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     setEntryMode('create');
     setExpenseModalMode('scan');
     setReceiptError('');
-    setExpenseForm(emptyExpenseForm());
+    setExpenseForm(emptyExpenseForm(currency || 'KWD'));
     setEntryOpen(true);
   }
 
@@ -1028,6 +1093,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         id: expense.id,
         name: expense.name,
         amount: String(expense.amount ?? ''),
+        currency: expense.currency || currency || 'KWD',
         category: expense.category || 'other',
         date: expense.date || (expense.created_at ? expense.created_at.slice(0, 10) : todayInputDate()),
         paymentMethod: expense.payment_method || 'cash',
@@ -1075,7 +1141,9 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       setPendingReceiptExpenses([]);
       return;
     }
-    console.log('Receipt image selected:', file);
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('Receipt image selected', { name: file.name, type: file.type, size: file.size });
+    }
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     if (!allowed.includes(file.type)) {
       setReceiptError(expenseText('fileUnsupported', lang));
@@ -1143,18 +1211,26 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     try {
       const form = new FormData();
       form.append('receipt', expenseForm.receiptFile);
-      console.log('Sending receipt to AI scan API...');
       const response = await fetch('/api/ai/receipt-scan', { method: 'POST', body: form });
       const payload = await response.json() as { success?: boolean; error?: string; data?: AiExtractedData };
       if (!response.ok || !payload.data) throw new Error(payload.error || expenseText('couldNotRead', lang));
       const extracted = payload.data;
-      console.log('AI receipt result:', payload);
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('AI receipt result', {
+          success: payload.success,
+          amount: extractedReceiptAmount(extracted),
+          currency: extracted.currency,
+          confidenceLevel: extracted.confidenceLevel,
+          candidates: extracted.amountCandidates?.length || 0,
+        });
+      }
       const amount = extractedReceiptAmount(extracted);
       const notes = receiptItemsNotes(extracted.items);
       setExpenseForm(prev => ({
         ...prev,
         name: extracted.merchantName?.trim() || prev.name || receiptFallbackName(lang),
         amount: amount ? String(amount) : prev.amount,
+        currency: extracted.currency || prev.currency || currency || 'KWD',
         category: normalizeReceiptCategory(extracted.category) || prev.category || 'other',
         date: normalizeReceiptDate(extracted) || prev.date,
         paymentMethod: normalizeReceiptPayment(extracted.paymentMethod) || prev.paymentMethod || 'other',
@@ -1162,18 +1238,30 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         aiExtractedData: extracted,
         aiConfidenceScore: extracted.confidenceScore ?? extracted.confidence ?? (amount ? 0.84 : 0.48),
       }));
-      if (!amount) {
-        setReceiptError(pick({
-          ar: 'لم نتمكن من قراءة مبلغ الفاتورة. الرجاء إدخال المبلغ يدويًا أو رفع صورة أوضح.',
-          en: 'We could not read the receipt amount. Please enter it manually or upload a clearer image.',
-          fr: 'Nous n’avons pas pu lire le montant de la facture. Veuillez le saisir manuellement ou importer une image plus claire.',
-        }, lang));
-      }
+      if (!amount || extracted.confidenceLevel === 'low') setReceiptError(expenseText('lowConfidence', lang));
+      else if (extracted.confidenceLevel === 'medium') setReceiptError(expenseText('mediumConfidence', lang));
+      else if (!extracted.currency) setReceiptError(expenseText('currencyFallback', lang));
     } catch (err) {
       setReceiptError(err instanceof Error ? err.message : expenseText('couldNotRead', lang));
     } finally {
       setReceiptAnalyzing(false);
     }
+  }
+
+  function applyReceiptCandidate(candidate: ReceiptAmountCandidate) {
+    const amount = receiptCandidateAmount(candidate);
+    if (!amount) return;
+    setExpenseForm(prev => ({
+      ...prev,
+      amount: String(amount),
+      currency: candidate.currency || prev.currency || currency || 'KWD',
+      aiExtractedData: prev.aiExtractedData ? {
+        ...prev.aiExtractedData,
+        totalAmount: amount,
+        currency: candidate.currency || prev.aiExtractedData.currency || prev.currency || currency || 'KWD',
+        selectedAmountLabel: candidate.label,
+      } : prev.aiExtractedData,
+    }));
   }
 
   async function analyzeAllReceipts() {
@@ -1198,7 +1286,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       const results = payload.results?.length
         ? payload.results
         : [{ fileName: receiptFiles[0].file.name, success: payload.success, data: payload.data, error: payload.error }];
-      const pending = receiptFiles.map((entry, index) => pendingReceiptFromResult(entry.file, entry.previewUrl, results[index] || { success: false, error: expenseText('couldNotRead', lang) }, lang));
+      const pending = receiptFiles.map((entry, index) => pendingReceiptFromResult(entry.file, entry.previewUrl, results[index] || { success: false, error: expenseText('couldNotRead', lang) }, lang, currency || 'KWD'));
       setPendingReceiptExpenses(pending);
       const firstReady = pending.find(item => item.amount) || pending[0];
       if (firstReady) {
@@ -1206,6 +1294,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           ...prev,
           name: firstReady.name,
           amount: firstReady.amount,
+          currency: firstReady.currency || prev.currency || currency || 'KWD',
           category: firstReady.category,
           date: firstReady.date,
           paymentMethod: firstReady.paymentMethod,
@@ -1369,7 +1458,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         amount,
         category: expenseForm.category,
         date: expenseForm.date,
-        currency: currency || 'KWD',
+        currency: expenseForm.currency || currency || 'KWD',
         payment_method: expenseForm.paymentMethod,
         notes: expenseForm.notes,
         receipt_image_url: uploaded.receiptImageUrl,
@@ -1390,7 +1479,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           user_id: user.id,
           name,
           amount,
-          currency: currency || 'KWD',
+          currency: expenseForm.currency || currency || 'KWD',
           category: expenseForm.category,
           date: expenseForm.date,
           payment_method: expenseForm.paymentMethod,
@@ -1411,7 +1500,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
       applyEntryToSnapshot('expenses', item, mode);
       setEntryOpen(false);
-      setExpenseForm(emptyExpenseForm());
+      setExpenseForm(emptyExpenseForm(currency || 'KWD'));
       showEntryMessage('ok', mode === 'create' ? expenseText('saveSuccess', lang) : t('updateSuccess'));
     } catch (err) {
       console.error('Expense save failed:', {
@@ -1448,7 +1537,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           amount: parseMoney(receipt.amount),
           category: receipt.category,
           date: receipt.date,
-          currency: currency || 'KWD',
+          currency: receipt.currency || currency || 'KWD',
           payment_method: receipt.paymentMethod,
           notes: receipt.notes,
           receipt_image_url: uploaded.receiptImageUrl,
@@ -1467,7 +1556,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             user_id: user.id,
             name: item.name,
             amount: item.amount,
-            currency: currency || 'KWD',
+            currency: receipt.currency || currency || 'KWD',
             category: item.category,
             date: item.date,
             payment_method: item.payment_method,
@@ -1495,7 +1584,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     savedItems.reverse().forEach(item => applyEntryToSnapshot('expenses', item, 'create'));
     setPendingReceiptExpenses([]);
     setReceiptFiles([]);
-    setExpenseForm(emptyExpenseForm());
+    setExpenseForm(emptyExpenseForm(currency || 'KWD'));
     setEntryOpen(false);
     showEntryMessage('ok', textWithCount(expenseText('batchSaveResult', lang), { successCount, failedCount }));
     setEntrySaving(false);
@@ -2133,13 +2222,41 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                     )}
                     {expenseForm.aiExtractedData && (
                       <div className="ai-result-card">
-                        <div><CheckCircle2 size={18} /><strong>{expenseText('extracted', lang)}</strong></div>
-                        <p>{expenseText('review', lang)}</p>
+                        <div><CheckCircle2 size={18} /><strong>{expenseText('scanReviewTitle', lang)}</strong><span className="extracted-field-badge">{expenseText('extractedBadge', lang)}</span></div>
+                        <p>{receiptConfidenceMessage(expenseForm.aiExtractedData, lang) || expenseText('review', lang)}</p>
+                        {!!validReceiptCandidates(expenseForm.aiExtractedData).length && (
+                          <div className="receipt-candidate-panel" aria-label={expenseText('amountCandidates', lang)}>
+                            <strong>{expenseText('chooseAmount', lang)}</strong>
+                            <div>
+                              {validReceiptCandidates(expenseForm.aiExtractedData).map(candidate => {
+                                const amount = receiptCandidateAmount(candidate);
+                                const currentAmount = parseMoney(expenseForm.amount);
+                                const active = amount > 0 && Boolean(currentAmount) && Math.abs(amount - currentAmount) < 0.01;
+                                const formattedAmount = `${candidate.amount < 0 ? '-' : ''}${money(amount, lang, candidate.currency || expenseForm.currency || currency || 'KWD')}`;
+                                return (
+                                  <button
+                                    key={`${candidate.kind || candidate.label}-${candidate.amount}-${candidate.source || ''}`}
+                                    type="button"
+                                    className={active ? 'active' : ''}
+                                    onClick={() => applyReceiptCandidate(candidate)}
+                                  >
+                                    <span>{receiptCandidateLabel(candidate, lang)}</span>
+                                    <b>{formattedAmount}</b>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                         <dl>
                           <dt>{expenseText('merchant', lang)}</dt><dd>{expenseForm.aiExtractedData.merchantName || expenseForm.name || '-'}</dd>
-                          <dt>{expenseText('amount', lang)}</dt><dd>{expenseForm.amount ? money(Number(expenseForm.amount), lang, currency) : '-'}</dd>
+                          <dt>{expenseText('amount', lang)}</dt><dd>{expenseForm.amount ? money(Number(expenseForm.amount), lang, expenseForm.currency || currency) : '-'}</dd>
+                          <dt>{expenseText('currency', lang)}</dt><dd>{expenseForm.currency || expenseForm.aiExtractedData.currency || currency || 'KWD'}</dd>
                           <dt>{expenseText('date', lang)}</dt><dd>{expenseForm.date}</dd>
                           <dt>{expenseText('suggestedCategory', lang)}</dt><dd>{categoryLabel(expenseForm.category, lang)}</dd>
+                          <dt>{expenseText('tax', lang)}</dt><dd>{expenseForm.aiExtractedData.taxAmount ? money(expenseForm.aiExtractedData.taxAmount, lang, expenseForm.currency || currency) : '-'}</dd>
+                          <dt>{expenseText('discount', lang)}</dt><dd>{expenseForm.aiExtractedData.discountAmount ? money(Math.abs(expenseForm.aiExtractedData.discountAmount), lang, expenseForm.currency || currency) : '-'}</dd>
+                          <dt>{expenseText('invoiceNumber', lang)}</dt><dd>{expenseForm.aiExtractedData.invoiceNumber || '-'}</dd>
                           <dt>{expenseText('confidence', lang)}</dt><dd>{Math.round((expenseForm.aiConfidenceScore || expenseForm.aiExtractedData.confidenceScore || 0.82) * 100)}%</dd>
                         </dl>
                         <div className="receipt-scan-actions">
@@ -2154,6 +2271,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
                 <label><span>{expenseText('name', lang)}</span><input value={expenseForm.name} onChange={event => setExpenseForm(prev => ({ ...prev, name: event.target.value }))} autoFocus /></label>
                 <label><span>{expenseText('amount', lang)}</span><input inputMode="decimal" value={expenseForm.amount} onChange={event => setExpenseForm(prev => ({ ...prev, amount: event.target.value }))} /></label>
+                <label><span>{expenseText('currency', lang)}</span><CurrencySelect value={expenseForm.currency || currency || 'KWD'} onChange={code => setExpenseForm(prev => ({ ...prev, currency: code }))} lang={lang} ariaLabel={expenseText('currency', lang)} /></label>
                 <label><span>{expenseText('category', lang)}</span><select value={expenseForm.category} onChange={event => setExpenseForm(prev => ({ ...prev, category: event.target.value }))}>{EXPENSE_CATEGORIES.map(item => <option key={item.id} value={item.id}>{pick(item.label, lang)}</option>)}</select></label>
                 <label><span>{expenseText('date', lang)}</span><input type="date" value={expenseForm.date} onChange={event => setExpenseForm(prev => ({ ...prev, date: event.target.value }))} /></label>
                 <label><span>{expenseText('paymentMethod', lang)}</span><select value={expenseForm.paymentMethod} onChange={event => setExpenseForm(prev => ({ ...prev, paymentMethod: event.target.value }))}>{PAYMENT_METHODS.map(item => <option key={item.id} value={item.id}>{pick(item.label, lang)}</option>)}</select></label>
@@ -2170,7 +2288,9 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
                 <div className="entry-actions expense-actions">
                   <button type="button" className="ghost-form-btn" onClick={() => setEntryOpen(false)} disabled={entrySaving}>{t('cancel')}</button>
-                  <button type="submit" className="primary-form-btn" disabled={entrySaving}>{entrySaving ? t('saving') : expenseText('confirmAdd', lang)}</button>
+                  <button type="submit" className="primary-form-btn" disabled={entrySaving}>
+                    {entrySaving ? t('saving') : expenseModalMode === 'scan' ? expenseText(expenseForm.receiptFile || expenseForm.receiptImageUrl ? 'saveWithAttachment' : 'saveManual', lang) : expenseText('confirmAdd', lang)}
+                  </button>
                 </div>
               </form>
             </div>
@@ -3219,8 +3339,17 @@ const expenseSmartStyles = `
   .receipt-review-fields input,.receipt-review-fields select{width:100%;min-width:0;border:1px solid rgba(167,243,240,.22);border-radius:11px;padding:9px;background:#fff;color:var(--sfm-foreground);font-family:Tajawal,Arial,sans-serif}
   .receipt-review-meta{display:flex;gap:8px;flex-wrap:wrap;color:var(--sfm-muted);font-size:12px;font-weight:900}
   .ai-result-card{margin-top:12px;border:1px solid rgba(167,243,240,.24);border-radius:18px;background:linear-gradient(180deg,var(--sfm-card),var(--sfm-light-card));padding:15px}
-  .ai-result-card>div:first-child{display:flex;align-items:center;gap:8px;color:#15803D}
+  .ai-result-card>div:first-child{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:#15803D}
+  .extracted-field-badge{border-radius:999px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.2);color:#15803D;padding:4px 8px;font-size:11px;font-weight:900}
   .ai-result-card p{margin:8px 0 12px;color:var(--sfm-muted);font-weight:800}
+  .receipt-candidate-panel{display:grid;gap:9px;margin:12px 0;padding:12px;border:1px solid rgba(167,243,240,.2);border-radius:15px;background:rgba(167,243,240,.08)}
+  .receipt-candidate-panel>strong{font-size:13px;color:var(--sfm-foreground)}
+  .receipt-candidate-panel>div{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+  .receipt-candidate-panel button{min-width:0;border:1px solid rgba(167,243,240,.2);border-radius:13px;background:var(--sfm-card);padding:9px 10px;display:grid;gap:4px;text-align:start;cursor:pointer;color:var(--sfm-foreground);font-family:Tajawal,Arial,sans-serif;transition:all .18s ease}
+  .receipt-candidate-panel button:hover,.receipt-candidate-panel button:focus-visible{border-color:rgba(24,212,212,.55);box-shadow:0 0 0 3px rgba(167,243,240,.14);outline:none}
+  .receipt-candidate-panel button.active{background:rgba(167,243,240,.18);border-color:rgba(24,212,212,.65)}
+  .receipt-candidate-panel button span{font-size:11px;color:var(--sfm-muted);font-weight:900}
+  .receipt-candidate-panel button b{font-size:14px;color:var(--sfm-foreground);overflow-wrap:anywhere}
   .ai-result-card dl{display:grid;grid-template-columns:150px 1fr;gap:8px 12px;margin:0}
   .ai-result-card dt{color:var(--sfm-muted);font-weight:900;font-size:12px}
   .ai-result-card dd{margin:0;color:var(--sfm-foreground);font-weight:900}
