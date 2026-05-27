@@ -15,6 +15,7 @@ import {
   Layers3,
   Lightbulb,
   PiggyBank,
+  Search,
   ShieldAlert,
   Sparkles,
   Target,
@@ -34,14 +35,12 @@ import {
   FEATURED_FINANCIAL_THEORIES,
   FINANCIAL_THEORIES,
   FINANCIAL_THEORY_CATEGORIES,
-  FINANCIAL_THEORY_EXAMPLES,
-  FINANCIAL_THEORY_PAGE_TEXT,
-  FINANCIAL_THEORY_STATS,
   FINANCIAL_THEORY_TOOLS,
   getFinancialTheoryText,
   type FinancialTheory,
   type FinancialTheoryCategoryId,
   type FinancialTheoryLang,
+  type LocalizedText,
 } from '@/lib/financial-theories';
 
 const THEORY_ICONS = [
@@ -57,36 +56,330 @@ const THEORY_ICONS = [
   Calculator,
 ];
 
+const UI_COPY: Record<FinancialTheoryLang, Record<string, string>> = {
+  ar: {
+    title: 'النظريات المالية',
+    subtitle: 'تعلّم أهم المفاهيم المالية بطريقة واضحة، ثم طبّقها على دخلك، مصروفاتك، ادخارك، استثماراتك، وقراراتك داخل THE SFM.',
+    badge: 'مكتبة مالية ذكية',
+    startNow: 'ابدأ الآن',
+    exploreTools: 'استكشف الأدوات الذكية',
+    showBest: 'عرض أفضل النظريات',
+    searchPlaceholder: 'ابحث عن نظرية مالية...',
+    searchLabel: 'بحث في النظريات المالية',
+    categories: 'التصنيفات',
+    theoryLibrary: 'مكتبة النظريات المالية',
+    theoryLibrarySubtitle: 'اختر تصنيفاً أو ابحث عن مفهوم، ثم افتح النظرية التي تريد فهمها بدون إطالة الصفحة.',
+    whyTitle: 'ليش تحتاج تفهم النظريات المالية؟',
+    whyBody: 'النظريات المالية تساعدك على اتخاذ قرارات أفضل، فهم مخاطر الديون والاستثمار، تنظيم الدخل والمصروفات، وبناء خطة مالية أوضح.',
+    whyPoint1: 'تنظيم دخلك ومصروفاتك',
+    whyPoint2: 'تقليل القرارات العشوائية',
+    whyPoint3: 'ربط المعرفة بالأدوات داخل THE SFM',
+    readTheory: 'عرض النظرية',
+    hideTheory: 'إخفاء النظرية',
+    keyTakeaway: 'الخلاصة',
+    educationalExample: 'مثال تعليمي',
+    examples: 'أمثلة',
+    details: 'الشرح',
+    relatedSfmTool: 'الأداة المرتبطة في THE SFM',
+    applyInSfm: 'كيف تطبقها داخل THE SFM',
+    openTool: 'فتح الأداة',
+    useNow: 'استخدم الآن',
+    available: 'متاح',
+    comingSoon: 'قريباً',
+    bestTitle: 'أفضل النظريات داخل THE SFM',
+    bestSubtitle: 'هذه النظريات هي الأقرب لأدوات المنصة وتساعدك على تحويل المعرفة إلى خطوات عملية.',
+    applyInsideSfm: 'تطبيق داخل SFM',
+    practicalTitle: 'أمثلة عملية',
+    practicalSubtitle: 'أمثلة تعليمية فقط لفهم الفكرة. لا تعرض بيانات مستخدم ولا نتائج من حسابك.',
+    scenario: 'الموقف',
+    lesson: 'الدرس',
+    relatedTheory: 'النظرية المرتبطة',
+    smartToolsTitle: 'أدوات وحاسبات ذكية',
+    smartToolsSubtitle: 'أدوات عملية مرتبطة بالنظريات المالية لمساعدتك على اتخاذ قرارات أفضل.',
+    status: 'الحالة',
+    noResults: 'لا توجد نظريات مطابقة.',
+    noResultsDescription: 'جرّب بحثاً آخر أو اختر تصنيفاً مختلفاً.',
+    ctaTitle: 'ابدأ بتطبيق النظريات على وضعك المالي',
+    ctaSubtitle: 'حوّل المعرفة إلى خطوات عملية داخل THE SFM من خلال الدخل، المصروفات، الأهداف، والاستثمارات.',
+    openDashboard: 'فتح لوحة القيادة',
+    openGoals: 'فتح الأهداف المالية',
+    openTools: 'فتح أدوات وحاسبات',
+    educationNote: 'هذه صفحة تعليمية وليست استشارة مالية شخصية.',
+  },
+  en: {
+    title: 'Financial Theories',
+    subtitle: 'Learn the key financial concepts clearly, then apply them to your income, expenses, savings, investments, and decisions inside THE SFM.',
+    badge: 'Smart Financial Library',
+    startNow: 'Start Now',
+    exploreTools: 'Explore Smart Tools',
+    showBest: 'View Best Theories',
+    searchPlaceholder: 'Search financial theories...',
+    searchLabel: 'Search financial theories',
+    categories: 'Categories',
+    theoryLibrary: 'Financial Theory Library',
+    theoryLibrarySubtitle: 'Choose a category or search for a concept, then open only the theory you want to study.',
+    whyTitle: 'Why should you understand financial theories?',
+    whyBody: 'Financial theories help you make better decisions, understand debt and investment risk, organize income and expenses, and build a clearer financial plan.',
+    whyPoint1: 'Organize income and expenses',
+    whyPoint2: 'Reduce random decisions',
+    whyPoint3: 'Connect learning to THE SFM tools',
+    readTheory: 'Read Theory',
+    hideTheory: 'Hide Theory',
+    keyTakeaway: 'Key Takeaway',
+    educationalExample: 'Educational Example',
+    examples: 'Examples',
+    details: 'Explanation',
+    relatedSfmTool: 'Related SFM Tool',
+    applyInSfm: 'How to apply it in THE SFM',
+    openTool: 'Open Tool',
+    useNow: 'Use Now',
+    available: 'Available',
+    comingSoon: 'Coming Soon',
+    bestTitle: 'Best Theories inside THE SFM',
+    bestSubtitle: 'These theories map most closely to THE SFM tools and help turn learning into practical steps.',
+    applyInsideSfm: 'Apply inside SFM',
+    practicalTitle: 'Practical Examples',
+    practicalSubtitle: 'Educational examples only. They do not show user data or results from your account.',
+    scenario: 'Scenario',
+    lesson: 'Lesson',
+    relatedTheory: 'Related Theory',
+    smartToolsTitle: 'Smart Tools and Calculators',
+    smartToolsSubtitle: 'Practical tools connected to financial theories to help you make clearer decisions.',
+    status: 'Status',
+    noResults: 'No matching theories.',
+    noResultsDescription: 'Try another search or choose a different category.',
+    ctaTitle: 'Start applying theories to your financial life',
+    ctaSubtitle: 'Turn learning into practical steps inside THE SFM through income, expenses, goals, and investments.',
+    openDashboard: 'Open Dashboard',
+    openGoals: 'Open Financial Goals',
+    openTools: 'Open Tools',
+    educationNote: 'This page is educational and is not personal financial advice.',
+  },
+  fr: {
+    title: 'Théories financières',
+    subtitle: 'Apprenez clairement les concepts financiers clés, puis appliquez-les à vos revenus, dépenses, épargne, investissements et décisions dans THE SFM.',
+    badge: 'Bibliothèque financière intelligente',
+    startNow: 'Commencer',
+    exploreTools: 'Explorer les outils',
+    showBest: 'Voir les meilleures théories',
+    searchPlaceholder: 'Rechercher une théorie financière...',
+    searchLabel: 'Rechercher des théories financières',
+    categories: 'Catégories',
+    theoryLibrary: 'Bibliothèque des théories financières',
+    theoryLibrarySubtitle: 'Choisissez une catégorie ou recherchez un concept, puis ouvrez seulement la théorie à étudier.',
+    whyTitle: 'Pourquoi comprendre les théories financières ?',
+    whyBody: 'Les théories financières aident à prendre de meilleures décisions, comprendre les risques, organiser revenus et dépenses, et bâtir un plan plus clair.',
+    whyPoint1: 'Organiser revenus et dépenses',
+    whyPoint2: 'Réduire les décisions aléatoires',
+    whyPoint3: 'Relier l’apprentissage aux outils THE SFM',
+    readTheory: 'Lire la théorie',
+    hideTheory: 'Masquer',
+    keyTakeaway: 'À retenir',
+    educationalExample: 'Exemple éducatif',
+    examples: 'Exemples',
+    details: 'Explication',
+    relatedSfmTool: 'Outil SFM lié',
+    applyInSfm: 'Comment l’appliquer dans THE SFM',
+    openTool: 'Ouvrir l’outil',
+    useNow: 'Utiliser',
+    available: 'Disponible',
+    comingSoon: 'Bientôt',
+    bestTitle: 'Meilleures théories dans THE SFM',
+    bestSubtitle: 'Ces théories sont les plus proches des outils THE SFM et transforment l’apprentissage en actions.',
+    applyInsideSfm: 'Appliquer dans SFM',
+    practicalTitle: 'Exemples pratiques',
+    practicalSubtitle: 'Exemples éducatifs uniquement. Ils ne montrent pas de données utilisateur ni de résultats de votre compte.',
+    scenario: 'Situation',
+    lesson: 'Leçon',
+    relatedTheory: 'Théorie liée',
+    smartToolsTitle: 'Outils et calculateurs intelligents',
+    smartToolsSubtitle: 'Des outils pratiques liés aux théories financières pour prendre des décisions plus claires.',
+    status: 'Statut',
+    noResults: 'Aucune théorie correspondante.',
+    noResultsDescription: 'Essayez une autre recherche ou choisissez une catégorie différente.',
+    ctaTitle: 'Commencez à appliquer les théories à votre situation financière',
+    ctaSubtitle: 'Transformez l’apprentissage en étapes pratiques dans THE SFM avec revenus, dépenses, objectifs et investissements.',
+    openDashboard: 'Ouvrir le tableau',
+    openGoals: 'Ouvrir les objectifs',
+    openTools: 'Ouvrir les outils',
+    educationNote: 'Cette page est éducative et ne constitue pas un conseil financier personnel.',
+  },
+};
+
+const SUMMARY_STATS: Array<{ label: LocalizedText; value: string; icon: typeof BookOpen }> = [
+  {
+    value: '15',
+    label: { ar: 'نظرية مالية', en: 'Financial Theories', fr: 'Théories financières' },
+    icon: BookOpen,
+  },
+  {
+    value: '8',
+    label: { ar: 'نظريات أساسية', en: 'Core Theories', fr: 'Théories clés' },
+    icon: Sparkles,
+  },
+  {
+    value: '5',
+    label: { ar: 'أدوات ذكية', en: 'Smart Tools', fr: 'Outils intelligents' },
+    icon: Calculator,
+  },
+  {
+    value: '6',
+    label: { ar: 'أمثلة عملية', en: 'Practical Examples', fr: 'Exemples pratiques' },
+    icon: Lightbulb,
+  },
+];
+
+const PRACTICAL_EXAMPLES: Array<{
+  title: LocalizedText;
+  scenario: LocalizedText;
+  lesson: LocalizedText;
+  theoryId: string;
+}> = [
+  {
+    theoryId: 'personal-budgeting',
+    title: {
+      ar: 'تقسيم الراتب بدون عشوائية',
+      en: 'Split salary without randomness',
+      fr: 'Répartir le salaire sans hasard',
+    },
+    scenario: {
+      ar: 'بدل أن يبدأ الشهر بدون خطة، يتم تقسيم الدخل إلى احتياجات، رغبات، وادخار قبل الصرف.',
+      en: 'Instead of starting the month without a plan, income is split into needs, wants, and saving before spending.',
+      fr: 'Au lieu de commencer le mois sans plan, le revenu est réparti en besoins, envies et épargne avant de dépenser.',
+    },
+    lesson: {
+      ar: 'الميزانية تحول الراتب إلى خطة واضحة.',
+      en: 'Budgeting turns salary into a clear plan.',
+      fr: 'Le budget transforme le salaire en plan clair.',
+    },
+  },
+  {
+    theoryId: 'smart-goals',
+    title: {
+      ar: 'هدف مالي يتحول إلى خطة',
+      en: 'A financial goal becomes a plan',
+      fr: 'Un objectif financier devient un plan',
+    },
+    scenario: {
+      ar: 'بدل عبارة عامة مثل “أبي أوفر”، يتم تحديد مبلغ ومدة وخطوة شهرية.',
+      en: 'Instead of “I want to save,” define an amount, deadline, and monthly action.',
+      fr: 'Au lieu de “je veux économiser”, définissez un montant, un délai et une action mensuelle.',
+    },
+    lesson: {
+      ar: 'الهدف بدون رقم ومدة يبقى أمنية.',
+      en: 'A goal without amount and time remains a wish.',
+      fr: 'Un objectif sans montant ni délai reste un souhait.',
+    },
+  },
+  {
+    theoryId: 'opportunity-cost',
+    title: {
+      ar: 'قرار شراء له تكلفة فرصة',
+      en: 'A purchase has opportunity cost',
+      fr: 'Un achat a un coût d’opportunité',
+    },
+    scenario: {
+      ar: 'أي مبلغ يصرف على رغبة اليوم قد يكون فرصة ضائعة لهدف أو ادخار أو استثمار.',
+      en: 'Money spent on a want today may be a missed chance for a goal, saving, or investment.',
+      fr: 'L’argent dépensé aujourd’hui pour une envie peut être une occasion manquée pour un objectif, une épargne ou un investissement.',
+    },
+    lesson: {
+      ar: 'اسأل: شنو الخيار الثاني الأفضل لهذا المبلغ؟',
+      en: 'Ask: what is the next best use of this money?',
+      fr: 'Demandez : quelle est la meilleure autre utilisation de cet argent ?',
+    },
+  },
+  {
+    theoryId: 'emergency-fund',
+    title: {
+      ar: 'صندوق طوارئ محسوب',
+      en: 'A calculated emergency fund',
+      fr: 'Un fonds d’urgence calculé',
+    },
+    scenario: {
+      ar: 'يتم تقدير صندوق الطوارئ بناءً على مصروفات شهرية معروفة، وليس رقماً عشوائياً.',
+      en: 'The emergency fund is estimated from known monthly expenses, not a random number.',
+      fr: 'Le fonds d’urgence est estimé à partir de dépenses mensuelles connues, pas d’un chiffre aléatoire.',
+    },
+    lesson: {
+      ar: 'الاحتياط المالي يحمي الخطة من المفاجآت.',
+      en: 'A reserve protects the plan from surprises.',
+      fr: 'Une réserve protège le plan contre les imprévus.',
+    },
+  },
+  {
+    theoryId: 'reduce-bad-debt',
+    title: {
+      ar: 'تقليل دين سيئ',
+      en: 'Reduce harmful debt',
+      fr: 'Réduire une mauvaise dette',
+    },
+    scenario: {
+      ar: 'قبل الدخول في دين جديد، تتم مقارنة فائدته بضغطه على الميزانية الشهرية.',
+      en: 'Before taking new debt, compare its benefit with its pressure on the monthly budget.',
+      fr: 'Avant une nouvelle dette, comparez son bénéfice à sa pression sur le budget mensuel.',
+    },
+    lesson: {
+      ar: 'الدين الجيد يحتاج خطة سداد واضحة.',
+      en: 'Useful debt still needs a clear repayment plan.',
+      fr: 'Même une dette utile demande un plan de remboursement clair.',
+    },
+  },
+  {
+    theoryId: 'long-term-investing',
+    title: {
+      ar: 'استثمار طويل المدى',
+      en: 'Long-term investing',
+      fr: 'Investissement à long terme',
+    },
+    scenario: {
+      ar: 'بدل محاولة توقيت السوق، يتم التركيز على الصبر، التوزيع، والاستمرار.',
+      en: 'Instead of timing the market, focus on patience, diversification, and consistency.',
+      fr: 'Au lieu de prévoir le marché, concentrez-vous sur patience, diversification et régularité.',
+    },
+    lesson: {
+      ar: 'الاستثمار الحقيقي يحتاج وقت وانضباط.',
+      en: 'Real investing needs time and discipline.',
+      fr: 'Un vrai investissement demande du temps et de la discipline.',
+    },
+  },
+];
+
 function localeFrom(value: string): FinancialTheoryLang {
   return value === 'en' || value === 'fr' ? value : 'ar';
 }
 
-function applyCopy(lang: FinancialTheoryLang, tool: string) {
-  if (lang === 'en') {
-    return `Use ${tool} to turn the idea into a practical step in your account when your real data is available.`;
-  }
-  if (lang === 'fr') {
-    return `Utilisez ${tool} pour transformer l’idée en étape pratique dans votre compte lorsque vos données réelles sont disponibles.`;
-  }
-  return `استخدم ${tool} لتحويل الفكرة إلى خطوة عملية داخل حسابك، عند توفر بياناتك الفعلية.`;
+function normalize(value: string) {
+  return value.trim().toLocaleLowerCase();
 }
 
 function relatedTheory(id: string) {
   return FINANCIAL_THEORIES.find(theory => theory.id === id);
 }
 
+function applyCopy(lang: FinancialTheoryLang, tool: string) {
+  if (lang === 'en') {
+    return `Use ${tool} as the practical workspace for this idea when your real data is available.`;
+  }
+  if (lang === 'fr') {
+    return `Utilisez ${tool} comme espace pratique pour cette idée lorsque vos données réelles sont disponibles.`;
+  }
+  return `استخدم ${tool} كمساحة عملية لتطبيق هذه الفكرة عندما تكون بياناتك الحقيقية متوفرة.`;
+}
+
 function TheoryCard({
   theory,
   lang,
+  text,
   isOpen,
   onToggle,
 }: {
   theory: FinancialTheory;
   lang: FinancialTheoryLang;
+  text: Record<string, string>;
   isOpen: boolean;
   onToggle: () => void;
 }) {
-  const text = FINANCIAL_THEORY_PAGE_TEXT[lang];
   const Icon = THEORY_ICONS[(theory.number - 1) % THEORY_ICONS.length];
   const title = getFinancialTheoryText(theory.title, lang);
   const short = getFinancialTheoryText(theory.short, lang);
@@ -111,11 +404,14 @@ function TheoryCard({
 
       <p className="theory-short">{short}</p>
 
-      <div className="theory-takeaway">
-        <CheckCircle2 size={17} aria-hidden="true" />
+      <div className="theory-meta-row">
         <div>
           <span>{text.keyTakeaway}</span>
           <strong>{takeaway}</strong>
+        </div>
+        <div>
+          <span>{text.relatedSfmTool}</span>
+          <strong>{tool}</strong>
         </div>
       </div>
 
@@ -126,28 +422,28 @@ function TheoryCard({
           aria-controls={detailId}
           onClick={onToggle}
         >
-          {isOpen ? text.hideDetails : text.readMore}
+          {isOpen ? text.hideTheory : text.readTheory}
           <ChevronDown size={16} aria-hidden="true" />
         </button>
         {theory.sfmToolHref ? (
           <Link href={theory.sfmToolHref} aria-label={`${text.openTool}: ${tool}`}>
-            {tool}
+            {text.openTool}
             <ArrowUpRight size={15} aria-hidden="true" />
           </Link>
         ) : (
-          <span className="coming-soon-pill">{tool} · {text.comingSoon}</span>
+          <span className="coming-soon-pill">{text.comingSoon}</span>
         )}
       </div>
 
       <div id={detailId} className="theory-details" hidden={!isOpen}>
         <div className="detail-block">
-          <h4>{title}</h4>
+          <h4>{text.details}</h4>
           {theory.details[lang].map(line => <p key={line}>{line}</p>)}
         </div>
 
         {examples.length > 0 ? (
           <div className="detail-block">
-            <h4>{text.example}</h4>
+            <h4>{text.educationalExample}</h4>
             <ul>
               {examples.map(example => <li key={example}>{example}</li>)}
             </ul>
@@ -155,7 +451,7 @@ function TheoryCard({
         ) : null}
 
         {rows.length > 0 ? (
-          <div className="detail-block">
+          <div className="detail-block table-block">
             <table>
               <tbody>
                 {rows.map(row => (
@@ -181,9 +477,10 @@ function TheoryCard({
 export default function FinancialTheoriesPage() {
   const { lang, dir } = useLanguage();
   const locale = localeFrom(lang);
-  const text = FINANCIAL_THEORY_PAGE_TEXT[locale];
+  const text = UI_COPY[locale];
   const [activeCategory, setActiveCategory] = useState<FinancialTheoryCategoryId>('all');
-  const [openTheory, setOpenTheory] = useState<string | null>('personal-budgeting');
+  const [query, setQuery] = useState('');
+  const [openTheory, setOpenTheory] = useState<string | null>(null);
 
   const categoryTabs: PageTabItem[] = useMemo(() => (
     FINANCIAL_THEORY_CATEGORIES.map(category => ({
@@ -195,11 +492,24 @@ export default function FinancialTheoriesPage() {
     }))
   ), [locale]);
 
-  const filteredTheories = useMemo(() => (
-    activeCategory === 'all'
-      ? FINANCIAL_THEORIES
-      : FINANCIAL_THEORIES.filter(theory => theory.category === activeCategory)
-  ), [activeCategory]);
+  const filteredTheories = useMemo(() => {
+    const normalizedQuery = normalize(query);
+    return FINANCIAL_THEORIES.filter(theory => {
+      const matchesCategory = activeCategory === 'all' || theory.category === activeCategory;
+      if (!matchesCategory) return false;
+      if (!normalizedQuery) return true;
+      const haystack = [
+        theory.number.toString(),
+        getFinancialTheoryText(theory.title, locale),
+        getFinancialTheoryText(theory.short, locale),
+        getFinancialTheoryText(theory.keyTakeaway, locale),
+        getFinancialTheoryText(theory.sfmTool, locale),
+        ...theory.details[locale],
+        ...(theory.examples?.[locale] ?? []),
+      ].join(' ');
+      return normalize(haystack).includes(normalizedQuery);
+    });
+  }, [activeCategory, locale, query]);
 
   const featuredTheories = useMemo(() => (
     FEATURED_FINANCIAL_THEORIES
@@ -207,7 +517,7 @@ export default function FinancialTheoriesPage() {
         const theory = relatedTheory(item.theoryId);
         return theory ? { theory, why: item.why } : null;
       })
-      .filter(Boolean) as Array<{ theory: FinancialTheory; why: typeof FEATURED_FINANCIAL_THEORIES[number]['why'] }>
+      .filter(Boolean) as Array<{ theory: FinancialTheory; why: LocalizedText }>
   ), []);
 
   return (
@@ -225,65 +535,81 @@ export default function FinancialTheoriesPage() {
           title={text.title}
           subtitle={text.subtitle}
           icon={<GraduationCap size={30} />}
-          status={(
-            <div className="hero-stat-chips">
-              {FINANCIAL_THEORY_STATS.map(stat => (
-                <span key={getFinancialTheoryText(stat.label, locale)}>
-                  {getFinancialTheoryText(stat.label, locale)}
-                </span>
-              ))}
-            </div>
-          )}
+          status={<span className="hero-note">{text.educationNote}</span>}
           actions={(
             <>
-              <a className="theory-primary-link" href="#theory-library">{text.startLearning}</a>
+              <a className="theory-primary-link" href="#theory-library">{text.startNow}</a>
               <a className="theory-secondary-link" href="#smart-tools">{text.exploreTools}</a>
+              <a className="theory-secondary-link" href="#featured-theories">{text.showBest}</a>
             </>
           )}
         />
 
-        <StatGrid>
-          {FINANCIAL_THEORY_STATS.map((stat, index) => {
-            const Icon = [BookOpen, Sparkles, Calculator, Lightbulb][index] ?? BookOpen;
+        <StatGrid className="learning-stats-grid">
+          {SUMMARY_STATS.map(stat => {
+            const Icon = stat.icon;
             return (
               <AppCard key={getFinancialTheoryText(stat.label, locale)} className="theory-stat-card">
                 <span aria-hidden="true"><Icon size={20} /></span>
-                <strong>{getFinancialTheoryText(stat.label, locale)}</strong>
+                <div>
+                  <strong>{stat.value}</strong>
+                  <p>{getFinancialTheoryText(stat.label, locale)}</p>
+                </div>
               </AppCard>
             );
           })}
         </StatGrid>
 
-        <AppCard className="theory-intro-card">
-          <div className="intro-icon" aria-hidden="true"><Brain size={26} /></div>
-          <div>
+        <AppCard className="why-card">
+          <div className="why-icon" aria-hidden="true"><Brain size={26} /></div>
+          <div className="why-copy">
             <span>{text.educationNote}</span>
-            <h2>{text.introTitle}</h2>
-            <p>{text.introBody}</p>
+            <h2>{text.whyTitle}</h2>
+            <p>{text.whyBody}</p>
           </div>
+          <ul className="why-list">
+            {[text.whyPoint1, text.whyPoint2, text.whyPoint3].map(point => (
+              <li key={point}>
+                <CheckCircle2 size={17} aria-hidden="true" />
+                <span>{point}</span>
+              </li>
+            ))}
+          </ul>
         </AppCard>
 
-        <section id="theory-library" className="theory-section" aria-labelledby="theory-library-title">
+        <section id="theory-library" className="theory-section library-section" aria-labelledby="theory-library-title">
           <div className="theory-section-head">
             <span>{text.categories}</span>
             <h2 id="theory-library-title">{text.theoryLibrary}</h2>
             <p>{text.theoryLibrarySubtitle}</p>
           </div>
 
-          <PageTabs
-            tabs={categoryTabs}
-            active={activeCategory}
-            onChange={id => {
-              const next = id as FinancialTheoryCategoryId;
-              setActiveCategory(next);
-              const first = next === 'all'
-                ? FINANCIAL_THEORIES[0]
-                : FINANCIAL_THEORIES.find(theory => theory.category === next);
-              setOpenTheory(first?.id ?? null);
-            }}
-            ariaLabel={text.categories}
-            className="financial-theory-tabs"
-          />
+          <div className="theory-controls">
+            <label className="theory-search">
+              <Search size={18} aria-hidden="true" />
+              <span className="sr-only">{text.searchLabel}</span>
+              <input
+                type="search"
+                value={query}
+                placeholder={text.searchPlaceholder}
+                onChange={event => {
+                  setQuery(event.target.value);
+                  setOpenTheory(null);
+                }}
+              />
+            </label>
+
+            <PageTabs
+              tabs={categoryTabs}
+              active={activeCategory}
+              onChange={id => {
+                setActiveCategory(id as FinancialTheoryCategoryId);
+                setOpenTheory(null);
+              }}
+              ariaLabel={text.categories}
+              className="financial-theory-tabs"
+            />
+          </div>
 
           {filteredTheories.length > 0 ? (
             <div className="theory-grid">
@@ -292,6 +618,7 @@ export default function FinancialTheoriesPage() {
                   key={theory.id}
                   theory={theory}
                   lang={locale}
+                  text={text}
                   isOpen={openTheory === theory.id}
                   onToggle={() => setOpenTheory(current => current === theory.id ? null : theory.id)}
                 />
@@ -300,17 +627,17 @@ export default function FinancialTheoriesPage() {
           ) : (
             <EmptyState
               icon={<BookOpen size={28} />}
-              title={text.noTheories}
-              description={text.theoryLibrarySubtitle}
+              title={text.noResults}
+              description={text.noResultsDescription}
             />
           )}
         </section>
 
-        <section className="theory-section featured-section" aria-labelledby="featured-theories-title">
+        <section id="featured-theories" className="theory-section featured-section" aria-labelledby="featured-theories-title">
           <div className="theory-section-head">
             <span>{text.relatedSfmTool}</span>
-            <h2 id="featured-theories-title">{text.featuredTitle}</h2>
-            <p>{text.featuredSubtitle}</p>
+            <h2 id="featured-theories-title">{text.bestTitle}</h2>
+            <p>{text.bestSubtitle}</p>
           </div>
 
           <CardsGrid className="featured-theory-grid">
@@ -321,14 +648,22 @@ export default function FinancialTheoriesPage() {
                   <span className="featured-index">{String(theory.number).padStart(2, '0')}</span>
                   <h3>{getFinancialTheoryText(theory.title, locale)}</h3>
                   <p>{getFinancialTheoryText(why, locale)}</p>
-                  <div>
+                  <div className="featured-tool">
                     <small>{text.relatedSfmTool}</small>
-                    {theory.sfmToolHref ? (
-                      <Link href={theory.sfmToolHref}>{tool}</Link>
-                    ) : (
-                      <strong>{tool} · {text.comingSoon}</strong>
-                    )}
+                    <strong>{tool}</strong>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveCategory('all');
+                      setQuery('');
+                      setOpenTheory(theory.id);
+                      document.getElementById('theory-library')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                    aria-label={`${text.readTheory}: ${getFinancialTheoryText(theory.title, locale)}`}
+                  >
+                    {text.readTheory}
+                  </button>
                 </AppCard>
               );
             })}
@@ -342,14 +677,30 @@ export default function FinancialTheoriesPage() {
             <p>{text.practicalSubtitle}</p>
           </div>
 
-          <CardsGrid>
-            {FINANCIAL_THEORY_EXAMPLES.map(example => (
-              <AppCard key={getFinancialTheoryText(example.title, locale)} className="practical-example-card">
-                <span aria-hidden="true"><Lightbulb size={20} /></span>
-                <h3>{getFinancialTheoryText(example.title, locale)}</h3>
-                <p>{getFinancialTheoryText(example.body, locale)}</p>
-              </AppCard>
-            ))}
+          <CardsGrid className="examples-grid">
+            {PRACTICAL_EXAMPLES.map(example => {
+              const theory = relatedTheory(example.theoryId);
+              return (
+                <AppCard key={getFinancialTheoryText(example.title, locale)} className="practical-example-card">
+                  <span className="example-label">
+                    <Lightbulb size={16} aria-hidden="true" />
+                    {text.educationalExample}
+                  </span>
+                  <h3>{getFinancialTheoryText(example.title, locale)}</h3>
+                  <div>
+                    <small>{text.scenario}</small>
+                    <p>{getFinancialTheoryText(example.scenario, locale)}</p>
+                  </div>
+                  <div>
+                    <small>{text.lesson}</small>
+                    <p>{getFinancialTheoryText(example.lesson, locale)}</p>
+                  </div>
+                  {theory ? (
+                    <strong>{text.relatedTheory}: {getFinancialTheoryText(theory.title, locale)}</strong>
+                  ) : null}
+                </AppCard>
+              );
+            })}
           </CardsGrid>
         </section>
 
@@ -364,23 +715,44 @@ export default function FinancialTheoriesPage() {
             {FINANCIAL_THEORY_TOOLS.map((tool, index) => {
               const Icon = [Calculator, Landmark, ShieldAlert, Target, Gauge][index] ?? Calculator;
               const title = getFinancialTheoryText(tool.title, locale);
+              const available = Boolean(tool.href);
               return (
                 <AppCard key={tool.id} className="smart-tool-card">
-                  <div className="smart-tool-icon" aria-hidden="true"><Icon size={22} /></div>
+                  <div className="smart-tool-top">
+                    <div className="smart-tool-icon" aria-hidden="true"><Icon size={22} /></div>
+                    <span className={available ? 'status available' : 'status soon'}>
+                      {available ? text.available : text.comingSoon}
+                    </span>
+                  </div>
                   <h3>{title}</h3>
                   <p>{getFinancialTheoryText(tool.description, locale)}</p>
                   {tool.href ? (
-                    <Link href={tool.href} aria-label={`${text.openTool}: ${title}`}>
-                      {getFinancialTheoryText(tool.cta, locale)}
+                    <Link href={tool.href} aria-label={`${text.useNow}: ${title}`}>
+                      {text.useNow}
                       <ArrowUpRight size={15} aria-hidden="true" />
                     </Link>
                   ) : (
-                    <span>{getFinancialTheoryText(tool.cta, locale)} · {text.comingSoon}</span>
+                    <button type="button" disabled aria-label={`${title}: ${text.comingSoon}`}>
+                      {text.comingSoon}
+                    </button>
                   )}
                 </AppCard>
               );
             })}
           </CardsGrid>
+        </section>
+
+        <section className="theories-cta" aria-labelledby="financial-theories-cta-title">
+          <div>
+            <span>{text.badge}</span>
+            <h2 id="financial-theories-cta-title">{text.ctaTitle}</h2>
+            <p>{text.ctaSubtitle}</p>
+          </div>
+          <div className="cta-actions">
+            <Link href="/dashboard">{text.openDashboard}</Link>
+            <Link href="/goals">{text.openGoals}</Link>
+            <a href="#smart-tools">{text.openTools}</a>
+          </div>
         </section>
       </DashboardPageShell>
 
@@ -397,67 +769,56 @@ export default function FinancialTheoriesPage() {
 
         .financial-theories-content {
           display: grid;
-          gap: 20px;
+          gap: 18px;
           min-width: 0;
         }
 
         :global(.financial-theories-hero) {
           position: relative;
+          overflow: hidden;
+          min-height: 270px;
         }
 
-        :global(.financial-theories-hero)::after {
+        :global(.financial-theories-hero)::before {
           content: '';
           position: absolute;
-          inset: auto -10% -42% 16%;
-          width: min(620px, 80%);
-          height: 260px;
-          border-radius: 50%;
+          inset: 18px 22px auto auto;
+          width: min(430px, 48%);
+          height: 170px;
+          opacity: .5;
+          border-radius: 999px;
           background:
             repeating-linear-gradient(
-              155deg,
-              rgba(167, 243, 240, .18) 0 2px,
+              150deg,
+              rgba(167, 243, 240, .2) 0 2px,
               transparent 2px 22px
             );
-          opacity: .72;
-          transform: rotate(-6deg);
+          transform: rotate(-7deg);
           pointer-events: none;
         }
 
-        .hero-stat-chips,
-        .theory-actions,
-        .theory-section-head,
-        .featured-theory-card,
-        .smart-tool-card,
-        .practical-example-card {
-          min-width: 0;
-        }
-
-        .hero-stat-chips {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 7px;
-          max-width: 420px;
-        }
-
-        .hero-stat-chips span {
+        .hero-note {
           display: inline-flex;
-          align-items: center;
-          min-height: 30px;
-          border-radius: 999px;
-          border: 1px solid rgba(167, 243, 240, .22);
-          background: rgba(234, 246, 255, .10);
-          color: #A7F3F0;
-          padding: 0 10px;
-          font-size: 11px;
-          font-weight: 950;
-          white-space: nowrap;
+          max-width: 360px;
+          border-radius: 16px;
+          border: 1px solid rgba(167, 243, 240, .18);
+          background: rgba(255, 255, 255, .08);
+          color: #D9ECFF;
+          padding: 10px 12px;
+          line-height: 1.65;
+          font-size: 12px;
+          font-weight: 900;
         }
 
         .theory-primary-link,
-        .theory-secondary-link {
-          min-height: 44px;
+        .theory-secondary-link,
+        .featured-theory-card button,
+        .smart-tool-card a,
+        .smart-tool-card button,
+        .cta-actions a {
+          min-height: 42px;
           border-radius: 14px;
-          padding: 0 16px;
+          padding: 0 14px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -468,28 +829,33 @@ export default function FinancialTheoriesPage() {
           white-space: nowrap;
         }
 
-        .theory-primary-link {
+        .theory-primary-link,
+        .featured-theory-card button,
+        .cta-actions a:first-child {
           border: 0;
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
           color: #FFFFFF;
           box-shadow: 0 16px 38px rgba(24, 212, 212, .24);
         }
 
-        .theory-secondary-link {
+        .theory-secondary-link,
+        .cta-actions a {
           border: 1px solid rgba(167, 243, 240, .25);
           background: rgba(255, 255, 255, .09);
           color: #EAF6FF;
         }
 
         .theory-primary-link:hover,
-        .theory-secondary-link:hover {
+        .theory-secondary-link:hover,
+        .featured-theory-card button:hover,
+        .smart-tool-card a:hover,
+        .cta-actions a:hover {
           transform: translateY(-2px);
           box-shadow: 0 18px 44px rgba(24, 212, 212, .24);
         }
 
-        .theory-primary-link:active,
-        .theory-secondary-link:active {
-          transform: translateY(0) scale(.985);
+        .learning-stats-grid {
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         }
 
         .theory-stat-card {
@@ -497,14 +863,14 @@ export default function FinancialTheoriesPage() {
           grid-template-columns: auto minmax(0, 1fr);
           align-items: center;
           gap: 12px;
-          min-height: 88px;
+          min-height: 92px;
+          padding: 16px !important;
         }
 
-        .theory-stat-card span,
-        .intro-icon,
+        .theory-stat-card > span,
+        .why-icon,
         .theory-icon,
-        .smart-tool-icon,
-        .practical-example-card span {
+        .smart-tool-icon {
           display: grid;
           place-items: center;
           border-radius: 16px;
@@ -513,53 +879,88 @@ export default function FinancialTheoriesPage() {
           border: 1px solid rgba(29, 140, 255, .13);
         }
 
-        .theory-stat-card span {
-          width: 44px;
-          height: 44px;
+        .theory-stat-card > span {
+          width: 46px;
+          height: 46px;
         }
 
         .theory-stat-card strong {
+          display: block;
           color: var(--sfm-midnight);
-          font-size: 15px;
-          line-height: 1.45;
+          font-size: 28px;
+          line-height: 1;
         }
 
-        .theory-intro-card {
+        .theory-stat-card p {
+          margin: 5px 0 0;
+          color: var(--sfm-muted-readable);
+          font-weight: 900;
+          line-height: 1.35;
+        }
+
+        .why-card {
           display: grid;
-          grid-template-columns: auto minmax(0, 1fr);
+          grid-template-columns: auto minmax(0, 1fr) minmax(260px, .72fr);
           gap: 16px;
-          align-items: start;
+          align-items: center;
           background:
             radial-gradient(circle at 0% 0%, rgba(24, 212, 212, .16), transparent 30%),
             var(--sfm-card) !important;
         }
 
-        .intro-icon {
+        .why-icon {
           width: 58px;
           height: 58px;
         }
 
-        .theory-intro-card span,
+        .why-copy span,
         .theory-section-head span {
           color: var(--sfm-primary-hover);
           font-size: 12px;
           font-weight: 950;
         }
 
-        .theory-intro-card h2,
-        .theory-section-head h2 {
+        .why-copy h2,
+        .theory-section-head h2,
+        .theories-cta h2 {
           margin: 6px 0;
           color: var(--sfm-midnight);
           font-size: clamp(24px, 3vw, 34px);
           line-height: 1.15;
         }
 
-        .theory-intro-card p,
-        .theory-section-head p {
+        .why-copy p,
+        .theory-section-head p,
+        .theories-cta p {
           margin: 0;
           color: var(--sfm-muted-readable);
           line-height: 1.8;
           font-weight: 780;
+        }
+
+        .why-list {
+          margin: 0;
+          padding: 0;
+          display: grid;
+          gap: 10px;
+          list-style: none;
+        }
+
+        .why-list li {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          gap: 9px;
+          align-items: center;
+          border: 1px solid rgba(24, 212, 212, .16);
+          border-radius: 15px;
+          background: rgba(24, 212, 212, .07);
+          padding: 10px 12px;
+          color: var(--sfm-primary-dark);
+          font-weight: 900;
+        }
+
+        .why-list svg {
+          color: var(--sfm-success);
         }
 
         .theory-section {
@@ -571,16 +972,69 @@ export default function FinancialTheoriesPage() {
 
         .theory-section-head {
           max-width: 860px;
+          min-width: 0;
+        }
+
+        .theory-controls {
+          display: grid;
+          gap: 10px;
+          min-width: 0;
+          border: 1px solid rgba(29, 140, 255, .13);
+          border-radius: 22px;
+          background: rgba(255, 255, 255, .72);
+          padding: 12px;
+          box-shadow: 0 12px 30px rgba(3, 18, 37, .05);
+        }
+
+        .theory-search {
+          min-width: 0;
+          min-height: 48px;
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          gap: 10px;
+          align-items: center;
+          border: 1px solid rgba(29, 140, 255, .18);
+          border-radius: 16px;
+          background: #FFFFFF;
+          color: var(--sfm-primary-hover);
+          padding: 0 14px;
+        }
+
+        .theory-search input {
+          min-width: 0;
+          width: 100%;
+          border: 0;
+          outline: 0;
+          background: transparent;
+          color: var(--sfm-midnight);
+          font: 900 14px Tajawal, Arial, sans-serif;
+        }
+
+        .theory-search input::placeholder {
+          color: var(--sfm-muted);
+          opacity: .9;
+        }
+
+        .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
         }
 
         :global(.financial-theory-tabs) {
-          margin-bottom: 2px;
+          padding-bottom: 0 !important;
         }
 
         .theory-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
-          gap: 16px;
+          grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+          gap: 14px;
           align-items: start;
           min-width: 0;
         }
@@ -588,20 +1042,20 @@ export default function FinancialTheoriesPage() {
         .theory-card {
           position: relative;
           display: grid;
-          gap: 14px;
+          gap: 12px;
           min-width: 0;
-          padding: 18px;
+          padding: 16px;
           border-radius: 22px;
           border: 1px solid rgba(29, 140, 255, .14);
           background: var(--sfm-card);
-          box-shadow: 0 14px 34px rgba(3, 18, 37, .07);
+          box-shadow: 0 12px 30px rgba(3, 18, 37, .065);
           overflow: hidden;
           transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
         }
 
         .theory-card:hover,
         .theory-card.expanded {
-          border-color: rgba(24, 212, 212, .32);
+          border-color: rgba(24, 212, 212, .35);
           box-shadow: 0 18px 42px rgba(3, 18, 37, .10);
           transform: translateY(-2px);
         }
@@ -609,7 +1063,7 @@ export default function FinancialTheoriesPage() {
         .theory-card-head {
           display: grid;
           grid-template-columns: auto auto minmax(0, 1fr);
-          gap: 11px;
+          gap: 10px;
           align-items: start;
           min-width: 0;
         }
@@ -650,35 +1104,35 @@ export default function FinancialTheoriesPage() {
         .theory-card h3 {
           margin: 8px 0 0;
           color: var(--sfm-midnight);
-          font-size: 20px;
+          font-size: 18px;
           line-height: 1.3;
         }
 
         .theory-short {
           margin: 0;
           color: var(--sfm-muted-readable);
-          line-height: 1.75;
-          font-weight: 800;
+          line-height: 1.7;
+          font-weight: 780;
         }
 
-        .theory-takeaway {
+        .theory-meta-row {
           display: grid;
-          grid-template-columns: auto minmax(0, 1fr);
-          gap: 9px;
-          align-items: start;
-          border: 1px solid rgba(24, 212, 212, .16);
-          border-radius: 16px;
-          background: rgba(24, 212, 212, .07);
-          padding: 12px;
+          grid-template-columns: 1fr;
+          gap: 8px;
           min-width: 0;
         }
 
-        .theory-takeaway svg {
-          color: var(--sfm-success);
-          margin-top: 2px;
+        .theory-meta-row div {
+          border: 1px solid rgba(24, 212, 212, .14);
+          border-radius: 15px;
+          background: rgba(24, 212, 212, .065);
+          padding: 10px 11px;
+          min-width: 0;
         }
 
-        .theory-takeaway span {
+        .theory-meta-row span,
+        .featured-tool small,
+        .practical-example-card small {
           display: block;
           color: var(--sfm-muted);
           font-size: 11px;
@@ -686,26 +1140,23 @@ export default function FinancialTheoriesPage() {
           margin-bottom: 3px;
         }
 
-        .theory-takeaway strong {
+        .theory-meta-row strong {
           display: block;
           color: var(--sfm-primary-dark);
-          line-height: 1.55;
+          line-height: 1.5;
           overflow-wrap: anywhere;
         }
 
         .theory-actions {
           display: flex;
           flex-wrap: wrap;
-          gap: 9px;
+          gap: 8px;
+          min-width: 0;
         }
 
         .theory-actions button,
         .theory-actions a,
-        .coming-soon-pill,
-        .smart-tool-card a,
-        .smart-tool-card span,
-        .featured-theory-card a,
-        .featured-theory-card strong {
+        .coming-soon-pill {
           min-height: 38px;
           border-radius: 13px;
           display: inline-flex;
@@ -733,26 +1184,20 @@ export default function FinancialTheoriesPage() {
           transform: rotate(180deg);
         }
 
-        .theory-actions a,
-        .featured-theory-card a,
-        .smart-tool-card a {
+        .theory-actions a {
           border: 1px solid rgba(29, 140, 255, .18);
           background: var(--sfm-light-card);
           color: var(--sfm-midnight);
         }
 
-        .coming-soon-pill,
-        .smart-tool-card span,
-        .featured-theory-card strong {
+        .coming-soon-pill {
           border: 1px dashed rgba(29, 140, 255, .22);
           background: rgba(29, 140, 255, .07);
           color: var(--sfm-primary-hover);
         }
 
         .theory-actions button:hover,
-        .theory-actions a:hover,
-        .featured-theory-card a:hover,
-        .smart-tool-card a:hover {
+        .theory-actions a:hover {
           transform: translateY(-1px);
           border-color: rgba(24, 212, 212, .34);
           box-shadow: 0 10px 28px rgba(3, 18, 37, .08);
@@ -785,7 +1230,7 @@ export default function FinancialTheoriesPage() {
         .detail-block li {
           margin: 0;
           color: var(--sfm-muted-readable);
-          line-height: 1.75;
+          line-height: 1.72;
           font-weight: 760;
         }
 
@@ -832,6 +1277,7 @@ export default function FinancialTheoriesPage() {
         }
 
         .featured-theory-grid,
+        .examples-grid,
         .tools-grid {
           align-items: stretch;
         }
@@ -842,6 +1288,7 @@ export default function FinancialTheoriesPage() {
           display: grid;
           align-content: start;
           gap: 10px;
+          min-width: 0;
         }
 
         .featured-index {
@@ -874,36 +1321,161 @@ export default function FinancialTheoriesPage() {
           font-weight: 780;
         }
 
-        .featured-theory-card div {
+        .featured-tool {
           display: grid;
-          gap: 7px;
+          gap: 4px;
           margin-top: auto;
+          border-radius: 15px;
+          border: 1px solid rgba(29, 140, 255, .12);
+          background: rgba(29, 140, 255, .06);
+          padding: 10px;
         }
 
-        .featured-theory-card small {
-          color: var(--sfm-muted);
+        .featured-tool strong {
+          color: var(--sfm-primary-dark);
+          line-height: 1.45;
+        }
+
+        .featured-theory-card button {
+          width: fit-content;
+          cursor: pointer;
+        }
+
+        .example-label {
+          width: fit-content;
+          min-height: 30px;
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          border-radius: 999px;
+          border: 1px solid rgba(24, 212, 212, .18);
+          background: rgba(24, 212, 212, .09);
+          color: var(--sfm-primary-hover);
+          padding: 0 10px;
+          font-size: 11px;
           font-weight: 950;
         }
 
-        .practical-example-card span,
+        .practical-example-card strong {
+          margin-top: auto;
+          color: var(--sfm-primary-dark);
+          line-height: 1.55;
+          font-size: 13px;
+        }
+
+        .smart-tool-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+
         .smart-tool-icon {
           width: 46px;
           height: 46px;
         }
 
-        .tools-section {
-          padding-bottom: 12px;
+        .status {
+          min-height: 28px;
+          display: inline-flex;
+          align-items: center;
+          border-radius: 999px;
+          padding: 0 10px;
+          font-size: 11px;
+          font-weight: 950;
+        }
+
+        .status.available {
+          background: rgba(22, 163, 74, .1);
+          color: #15803D;
+          border: 1px solid rgba(22, 163, 74, .18);
+        }
+
+        .status.soon {
+          background: rgba(245, 158, 11, .11);
+          color: #B45309;
+          border: 1px solid rgba(245, 158, 11, .18);
         }
 
         .smart-tool-card a,
-        .smart-tool-card span {
+        .smart-tool-card button {
           width: fit-content;
           margin-top: auto;
         }
 
+        .smart-tool-card a {
+          border: 1px solid rgba(29, 140, 255, .18);
+          background: var(--sfm-light-card);
+          color: var(--sfm-midnight);
+        }
+
+        .smart-tool-card button {
+          border: 1px dashed rgba(29, 140, 255, .22);
+          background: rgba(29, 140, 255, .07);
+          color: var(--sfm-primary-hover);
+          cursor: not-allowed;
+        }
+
+        .theories-cta {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 18px;
+          align-items: center;
+          border-radius: 28px;
+          padding: 26px;
+          color: #EAF6FF;
+          background:
+            radial-gradient(circle at 14% 14%, rgba(24, 212, 212, .22), transparent 30%),
+            linear-gradient(135deg, #031225, #061B33 56%, #0B2748);
+          box-shadow: 0 24px 70px rgba(3, 18, 37, .18);
+        }
+
+        .theories-cta span {
+          color: #A7F3F0;
+          font-size: 12px;
+          font-weight: 950;
+        }
+
+        .theories-cta h2 {
+          color: #FFFFFF;
+        }
+
+        .theories-cta p {
+          color: #D9ECFF;
+        }
+
+        .cta-actions {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+          gap: 9px;
+        }
+
+        .cta-actions a {
+          color: #EAF6FF;
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible {
+          outline: 3px solid rgba(24, 212, 212, .56);
+          outline-offset: 3px;
+        }
+
+        @media (min-width: 1320px) {
+          .theory-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+        }
+
         @media (max-width: 1024px) {
-          .hero-stat-chips {
-            max-width: 100%;
+          .why-card,
+          .theories-cta {
+            grid-template-columns: 1fr;
+          }
+
+          .cta-actions {
+            justify-content: flex-start;
           }
         }
 
@@ -912,30 +1484,33 @@ export default function FinancialTheoriesPage() {
             gap: 16px;
           }
 
+          :global(.financial-theories-hero) {
+            min-height: auto;
+          }
+
+          :global(.financial-theories-hero)::before {
+            width: 80%;
+            opacity: .24;
+          }
+
           .theory-primary-link,
           .theory-secondary-link,
           .theory-actions button,
           .theory-actions a,
           .coming-soon-pill,
           .smart-tool-card a,
-          .smart-tool-card span {
+          .smart-tool-card button,
+          .featured-theory-card button,
+          .cta-actions a {
             width: 100%;
           }
 
-          .hero-stat-chips span {
-            white-space: normal;
-          }
-
-          .theory-intro-card,
           .theory-card-head {
-            grid-template-columns: 1fr;
+            grid-template-columns: auto minmax(0, 1fr);
           }
 
-          .theory-number,
-          .theory-icon,
-          .intro-icon {
-            width: 48px;
-            height: 48px;
+          .theory-icon {
+            display: none;
           }
 
           .theory-grid {
@@ -955,6 +1530,10 @@ export default function FinancialTheoriesPage() {
             display: grid;
             gap: 4px;
             margin-bottom: 8px;
+          }
+
+          .smart-tool-top {
+            align-items: flex-start;
           }
         }
       `}</style>
