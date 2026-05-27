@@ -3,6 +3,7 @@
 import type { ComponentType } from 'react';
 import {
   Bell,
+  BookOpen,
   BriefcaseBusiness,
   Building2,
   Calculator,
@@ -64,6 +65,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'home', icon: LayoutDashboard, href: '/dashboard', labelKey: 'nav_home', viewModes: ['simple', 'professional'] },
       { id: 'command-center', icon: Compass, href: '/command-center', labelKey: 'nav_command_center', viewModes: ['simple', 'professional'] },
       { id: 'today', icon: CalendarDays, href: '/today', labelKey: 'nav_today', viewModes: ['simple', 'professional'] },
+      { id: 'financial-theories', icon: BookOpen, href: '/financial-theories', labelKey: 'nav_financial_theories', viewModes: ['simple', 'professional'] },
       { id: 'tasks', icon: ClipboardList, href: '/tasks', labelKey: 'nav_tasks', viewModes: ['simple', 'professional'] },
       { id: 'notif', icon: Bell, href: '/notifications', labelKey: 'nav_notif', viewModes: ['simple', 'professional'] },
       { id: 'reports-center', icon: FileText, href: '/reports-center', labelKey: 'nav_reports_center', viewModes: ['simple', 'professional'] },
