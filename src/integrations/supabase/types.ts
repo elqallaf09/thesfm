@@ -19,10 +19,12 @@ export type Database = {
           display_name: string | null
           email: string | null
           country: string | null
+          city: string | null
           default_currency: string | null
           age: number | null
           gender: string | null
           profession: string | null
+          profession_other: string | null
           security_question: string | null
           security_answer_hash: string | null
           security_answer: string | null
@@ -44,10 +46,12 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           country?: string | null
+          city?: string | null
           default_currency?: string | null
           age?: number | null
           gender?: string | null
           profession?: string | null
+          profession_other?: string | null
           security_question?: string | null
           security_answer_hash?: string | null
           security_answer?: string | null
@@ -69,10 +73,12 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           country?: string | null
+          city?: string | null
           default_currency?: string | null
           age?: number | null
           gender?: string | null
           profession?: string | null
+          profession_other?: string | null
           security_question?: string | null
           security_answer_hash?: string | null
           security_answer?: string | null

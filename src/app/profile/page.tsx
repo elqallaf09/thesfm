@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
@@ -65,6 +65,7 @@ type ProfileState = {
   country: string;
   city: string;
   profession: string;
+  professionOther: string;
 };
 
 type PreferencesState = {
@@ -154,11 +155,25 @@ const txt = {
   gender: { ar: 'الجنس', en: 'Gender', fr: 'Genre' },
   male: { ar: 'ذكر', en: 'Male', fr: 'Homme' },
   female: { ar: 'أنثى', en: 'Female', fr: 'Femme' },
+  preferNotToSay: { ar: 'أفضل عدم الإفصاح', en: 'Prefer not to say', fr: 'Préfère ne pas répondre' },
   country: { ar: 'الدولة', en: 'Country', fr: 'Pays' },
   city: { ar: 'المدينة', en: 'City', fr: 'Ville' },
   profession: { ar: 'المهنة', en: 'Profession', fr: 'Profession' },
   preferredCurrency: { ar: 'العملة المفضلة', en: 'Preferred currency', fr: 'Devise préférée' },
   preferredLanguage: { ar: 'اللغة المفضلة', en: 'Preferred language', fr: 'Langue préférée' },
+  selectGender: { ar: 'اختر الجنس', en: 'Select gender', fr: 'Sélectionner le genre' },
+  selectProfession: { ar: 'اختر المهنة', en: 'Select profession', fr: 'Sélectionner la profession' },
+  selectCountry: { ar: 'اختر الدولة', en: 'Select country', fr: 'Sélectionner le pays' },
+  selectCity: { ar: 'اختر المدينة', en: 'Select city', fr: 'Sélectionner la ville' },
+  enterPhone: { ar: 'أدخل رقم الهاتف', en: 'Enter phone number', fr: 'Saisir le numéro de téléphone' },
+  phoneExample: { ar: 'مثال: 99999999', en: 'Example: 99999999', fr: 'Exemple : 99999999' },
+  enterAge: { ar: 'أدخل العمر', en: 'Enter age', fr: "Saisir l'âge" },
+  selectCurrency: { ar: 'اختر العملة', en: 'Select currency', fr: 'Sélectionner la devise' },
+  other: { ar: 'أخرى', en: 'Other', fr: 'Autre' },
+  enterProfession: { ar: 'اكتب المهنة', en: 'Enter profession', fr: 'Saisir la profession' },
+  profileSaved: { ar: 'تم حفظ المعلومات الشخصية بنجاح.', en: 'Personal information saved successfully.', fr: 'Informations personnelles enregistrées avec succès.' },
+  invalidAge: { ar: 'الرجاء إدخال عمر صحيح.', en: 'Please enter a valid age.', fr: 'Veuillez saisir un âge valide.' },
+  invalidPhone: { ar: 'الرجاء إدخال رقم هاتف صحيح.', en: 'Please enter a valid phone number.', fr: 'Veuillez saisir un numéro de téléphone valide.' },
   savePersonal: { ar: 'حفظ المعلومات الشخصية', en: 'Save personal information', fr: 'Enregistrer les informations' },
   saved: { ar: 'تم الحفظ بنجاح', en: 'Saved successfully', fr: 'Enregistré avec succès' },
   saveError: { ar: 'تعذر الحفظ. حاول مرة أخرى.', en: 'Could not save. Try again.', fr: "Impossible d'enregistrer. Réessayez." },
@@ -249,10 +264,116 @@ const txt = {
   prioritySupport: { ar: 'دعم أولوية', en: 'Priority support', fr: 'Support prioritaire' },
 };
 
-const countries = ['Kuwait', 'Saudi Arabia', 'United Arab Emirates', 'Bahrain', 'Qatar', 'Oman', 'France', 'United States'];
-const phoneCodes = ['+965', '+966', '+971', '+973', '+974', '+968', '+33', '+1'];
+type ProfileOption = {
+  value: string;
+  labels: TextMap;
+  search?: string;
+  phoneCode?: string;
+};
+
+const genderOptions: ProfileOption[] = [
+  { value: 'male', labels: { ar: 'ذكر', en: 'Male', fr: 'Homme' } },
+  { value: 'female', labels: { ar: 'أنثى', en: 'Female', fr: 'Femme' } },
+  { value: 'prefer_not_to_say', labels: { ar: 'أفضل عدم الإفصاح', en: 'Prefer not to say', fr: 'Préfère ne pas répondre' } },
+];
+
+const professionOptions: ProfileOption[] = [
+  { value: 'student', labels: { ar: 'طالب', en: 'Student', fr: 'Étudiant' } },
+  { value: 'government_employee', labels: { ar: 'موظف حكومي', en: 'Government employee', fr: 'Employé du secteur public' } },
+  { value: 'private_employee', labels: { ar: 'موظف قطاع خاص', en: 'Private sector employee', fr: 'Employé du secteur privé' } },
+  { value: 'business_owner', labels: { ar: 'صاحب عمل', en: 'Business owner', fr: "Chef d'entreprise" } },
+  { value: 'entrepreneur', labels: { ar: 'رائد أعمال', en: 'Entrepreneur', fr: 'Entrepreneur' } },
+  { value: 'investor', labels: { ar: 'مستثمر', en: 'Investor', fr: 'Investisseur' } },
+  { value: 'accountant', labels: { ar: 'محاسب', en: 'Accountant', fr: 'Comptable' } },
+  { value: 'financial_advisor', labels: { ar: 'مستشار مالي', en: 'Financial advisor', fr: 'Conseiller financier' } },
+  { value: 'engineer', labels: { ar: 'مهندس', en: 'Engineer', fr: 'Ingénieur' } },
+  { value: 'doctor', labels: { ar: 'طبيب', en: 'Doctor', fr: 'Médecin' } },
+  { value: 'teacher', labels: { ar: 'معلم', en: 'Teacher', fr: 'Enseignant' } },
+  { value: 'freelancer', labels: { ar: 'مستقل / فريلانسر', en: 'Freelancer', fr: 'Indépendant / freelance' } },
+  { value: 'retired', labels: { ar: 'متقاعد', en: 'Retired', fr: 'Retraité' } },
+  { value: 'unemployed', labels: { ar: 'غير موظف', en: 'Unemployed', fr: 'Sans emploi' } },
+  { value: 'other', labels: { ar: 'أخرى', en: 'Other', fr: 'Autre' } },
+];
+
+const countryOptions: ProfileOption[] = [
+  { value: 'KW', labels: { ar: 'الكويت', en: 'Kuwait', fr: 'Koweït' }, search: 'kuwait الكويت', phoneCode: '+965' },
+  { value: 'SA', labels: { ar: 'السعودية', en: 'Saudi Arabia', fr: 'Arabie saoudite' }, search: 'saudi السعودية', phoneCode: '+966' },
+  { value: 'AE', labels: { ar: 'الإمارات', en: 'UAE', fr: 'Émirats arabes unis' }, search: 'uae united arab emirates الإمارات', phoneCode: '+971' },
+  { value: 'QA', labels: { ar: 'قطر', en: 'Qatar', fr: 'Qatar' }, search: 'qatar قطر', phoneCode: '+974' },
+  { value: 'BH', labels: { ar: 'البحرين', en: 'Bahrain', fr: 'Bahreïn' }, search: 'bahrain البحرين', phoneCode: '+973' },
+  { value: 'OM', labels: { ar: 'عُمان', en: 'Oman', fr: 'Oman' }, search: 'oman عمان عُمان', phoneCode: '+968' },
+  { value: 'OTHER', labels: { ar: 'أخرى', en: 'Other', fr: 'Autre' }, search: 'other أخرى autre' },
+];
+
+const kuwaitCityOptions: ProfileOption[] = [
+  { value: 'kuwait_city', labels: { ar: 'مدينة الكويت', en: 'Kuwait City', fr: 'Koweït Ville' } },
+  { value: 'hawalli', labels: { ar: 'حولي', en: 'Hawalli', fr: 'Hawalli' } },
+  { value: 'salmiya', labels: { ar: 'السالمية', en: 'Salmiya', fr: 'Salmiya' } },
+  { value: 'jahra', labels: { ar: 'الجهراء', en: 'Jahra', fr: 'Jahra' } },
+  { value: 'farwaniya', labels: { ar: 'الفروانية', en: 'Farwaniya', fr: 'Farwaniya' } },
+  { value: 'ahmadi', labels: { ar: 'الأحمدي', en: 'Ahmadi', fr: 'Ahmadi' } },
+  { value: 'mubarak_alkabeer', labels: { ar: 'مبارك الكبير', en: 'Mubarak Al-Kabeer', fr: 'Moubarak Al-Kabeer' } },
+  { value: 'other', labels: { ar: 'أخرى', en: 'Other', fr: 'Autre' } },
+];
+
+const countryAlias: Record<string, string> = {
+  kw: 'KW',
+  kuwait: 'KW',
+  'دولة الكويت': 'KW',
+  الكويت: 'KW',
+  sa: 'SA',
+  'saudi arabia': 'SA',
+  السعودية: 'SA',
+  ksa: 'SA',
+  ae: 'AE',
+  'united arab emirates': 'AE',
+  uae: 'AE',
+  الإمارات: 'AE',
+  emirates: 'AE',
+  qa: 'QA',
+  qatar: 'QA',
+  قطر: 'QA',
+  bh: 'BH',
+  bahrain: 'BH',
+  البحرين: 'BH',
+  om: 'OM',
+  oman: 'OM',
+  عُمان: 'OM',
+  عمان: 'OM',
+  other: 'OTHER',
+  أخرى: 'OTHER',
+};
+
+const phoneCodes = ['+965', '+966', '+971', '+974', '+973', '+968', '+33', '+1'];
 function T(key: keyof typeof txt, lang: Lang) {
   return txt[key][lang] || txt[key].ar;
+}
+
+function optionLabel(option: ProfileOption | undefined, lang: Lang) {
+  return option?.labels[lang] || option?.labels.en || option?.labels.ar || '';
+}
+
+function normalizeCountry(value: unknown) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const direct = countryOptions.find(option => option.value === raw);
+  if (direct) return direct.value;
+  return countryAlias[raw.toLowerCase()] || raw;
+}
+
+function phoneCodeForCountry(country: string) {
+  return countryOptions.find(option => option.value === normalizeCountry(country))?.phoneCode || '';
+}
+
+function normalizeStoredCity(value: unknown) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  return kuwaitCityOptions.find(option => option.value === raw || option.labels.en.toLowerCase() === raw.toLowerCase() || option.labels.ar === raw)?.value || raw;
+}
+
+function cleanOptional(value: string) {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
 }
 
 function readStored<T>(key: string, fallback: T): T {
@@ -288,9 +409,10 @@ export default function ProfilePage() {
     phone: '',
     age: '',
     gender: '',
-    country: 'Kuwait',
+    country: '',
     city: '',
     profession: '',
+    professionOther: '',
   });
   const [preferences, setPreferences] = useState<PreferencesState>({
     language: lang,
@@ -367,6 +489,8 @@ export default function ProfilePage() {
       if (user.email && data?.email !== user.email) {
         void supabase.from('profiles').update({ email: user.email }).eq('id', user.id);
       }
+      const normalizedCountry = normalizeCountry(data?.country || extra.country || '');
+      const phoneCode = String(data?.phone_country_code || extra.phoneCode || phoneCodeForCountry(normalizedCountry) || '+965');
       setPendingEmail(String((user as { new_email?: string | null }).new_email || ''));
       setEmailTwoFactor(prev => ({
         ...prev,
@@ -379,14 +503,18 @@ export default function ProfilePage() {
         displayName: String(data?.display_name || user.user_metadata?.display_name || ''),
         username: String(data?.username || user.email?.split('@')[0] || ''),
         email: authEmail,
-        phoneCode: String(data?.phone_country_code || extra.phoneCode || '+965'),
+        phoneCode,
         phone: String(data?.phone_number || extra.phone || ''),
         age: data?.age ? String(data.age) : String(extra.age || ''),
         gender: String(data?.gender || extra.gender || ''),
         profession: String(data?.profession || extra.profession || ''),
-        country: String(extra.country || 'Kuwait'),
-        city: String(extra.city || ''),
+        professionOther: String(data?.profession_other || extra.professionOther || ''),
+        country: normalizedCountry,
+        city: normalizeStoredCity(data?.city || extra.city || ''),
       });
+      if (data?.default_currency) {
+        setPreferences(prev => ({ ...prev, currency: String(data.default_currency) }));
+      }
       const [goalRes, investRes] = await Promise.all([
         supabase.from('financial_goals').select('id').eq('user_id', user.id),
         supabase.from('investment_items').select('id').eq('user_id', user.id),
@@ -432,19 +560,35 @@ export default function ProfilePage() {
     setSaving(true);
     const displayName = profile.displayName.trim();
     const username = profile.username.trim();
+    const ageValue = profile.age.trim() ? Number(profile.age) : null;
+    const phoneValue = profile.phone.trim();
+    if (ageValue !== null && (!Number.isFinite(ageValue) || ageValue < 13 || ageValue > 100)) {
+      setSaving(false);
+      showToast(L('invalidAge'));
+      return;
+    }
+    if (phoneValue && !/^[0-9+\-\s()]{5,20}$/.test(phoneValue)) {
+      setSaving(false);
+      showToast(L('invalidPhone'));
+      return;
+    }
     const { error } = await supabase.from('profiles').upsert({
       id: user.id,
       display_name: displayName,
       username,
       email: user.email || profile.email,
-      age: profile.age ? Number(profile.age) : null,
-      gender: profile.gender || null,
-      profession: profile.profession || null,
+      age: ageValue,
+      gender: cleanOptional(profile.gender),
+      profession: cleanOptional(profile.profession),
+      profession_other: profile.profession === 'other' ? cleanOptional(profile.professionOther) : null,
+      country: cleanOptional(profile.country),
+      city: cleanOptional(profile.city),
+      default_currency: preferences.currency || 'KWD',
       phone_country_code: profile.phoneCode,
-      phone_number: profile.phone || null,
+      phone_number: cleanOptional(profile.phone),
     }, { onConflict: 'id' });
     const extras = readStored<Record<string, Partial<ProfileState>>>(PROFILE_EXTRA_KEY, {});
-    writeStored(PROFILE_EXTRA_KEY, { ...extras, [user.id]: { country: profile.country, city: profile.city } });
+    writeStored(PROFILE_EXTRA_KEY, { ...extras, [user.id]: { country: profile.country, city: profile.city, professionOther: profile.professionOther } });
     if (!error) {
       const { data: authData } = await supabase.auth.updateUser({
         data: {
@@ -466,7 +610,7 @@ export default function ProfilePage() {
       router.refresh();
     }
     setSaving(false);
-    showToast(error ? L('saveError') : L('saved'));
+    showToast(error ? L('saveError') : L('profileSaved'));
   }
 
   async function changePassword() {
@@ -672,7 +816,7 @@ export default function ProfilePage() {
         </section>
 
         <PersonalInfoForm lang={lang} profile={profile} setProfile={setProfile} preferences={preferences} setPreferences={next => persistPreferences(next)} saving={saving} labels={{
-          title: L('personalInfo'), fullName: L('fullName'), username: L('username'), email: L('email'), phone: L('phone'), phoneCode: L('phoneCode'), age: L('age'), gender: L('gender'), male: L('male'), female: L('female'), country: L('country'), city: L('city'), profession: L('profession'), currency: L('preferredCurrency'), language: L('preferredLanguage'), save: L('savePersonal'),
+          title: L('personalInfo'), fullName: L('fullName'), username: L('username'), email: L('email'), phone: L('phone'), phoneCode: L('phoneCode'), age: L('age'), gender: L('gender'), male: L('male'), female: L('female'), preferNotToSay: L('preferNotToSay'), country: L('country'), city: L('city'), profession: L('profession'), currency: L('preferredCurrency'), language: L('preferredLanguage'), save: L('savePersonal'), selectGender: L('selectGender'), selectProfession: L('selectProfession'), selectCountry: L('selectCountry'), selectCity: L('selectCity'), enterPhone: L('enterPhone'), phoneExample: L('phoneExample'), enterAge: L('enterAge'), selectCurrency: L('selectCurrency'), other: L('other'), enterProfession: L('enterProfession'),
         }} onSave={() => void saveProfile()} />
 
         <SecuritySettings
@@ -835,8 +979,8 @@ export default function ProfilePage() {
       <style jsx global>{`
         .profile-page{min-height:100vh;background:var(--sfm-light-card);color:var(--sfm-deep-navy);display:flex;font-family:Tajawal,Arial,sans-serif}.profile-main{flex:1;width:100%;max-width:1280px;margin:0 auto;padding:24px;margin-inline-start:230px}.profile-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px}.profile-top span{color:var(--sfm-muted);font-size:12px;font-weight:900}.profile-top h1{font-size:30px;margin:4px 0 6px;font-weight:900}.profile-top p{margin:0;color:var(--sfm-muted);font-weight:700}
         .profile-card{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:24px;box-shadow:0 4px 22px rgba(3,18,37,.06);padding:20px}.profile-layout{display:grid;grid-template-columns:360px 1fr;gap:16px;margin-bottom:16px}.hero-card{background:linear-gradient(145deg,var(--sfm-deep-navy),var(--sfm-primary-dark));color:var(--sfm-card);border:1px solid rgba(167,243,240,.2);border-radius:26px;padding:24px;box-shadow:0 18px 55px rgba(3,18,37,.16)}.avatar{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;font-size:28px;font-weight:900;border:4px solid rgba(255,255,255,.12)}.premium-pill{display:inline-flex;align-items:center;gap:7px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);border:1px solid rgba(167,243,240,.22);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900}.hero-actions,.section-actions{display:flex;gap:8px;flex-wrap:wrap}.ghost-btn,.gold-btn,.danger-btn{height:42px;border-radius:14px;border:0;padding:0 15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;text-decoration:none;transition:.2s}.gold-btn{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 10px 24px rgba(167,243,240,.2)}.ghost-btn{background:var(--sfm-light-card);color:var(--sfm-muted);border:1px solid rgba(167,243,240,.18)}.danger-btn{background:#B91C1C;color:#fff}.danger-btn:disabled,.gold-btn:disabled{opacity:.55;cursor:not-allowed;filter:saturate(.75)}.dark-ghost{background:rgba(255,255,255,.08);color:var(--sfm-card);border:1px solid rgba(255,255,255,.14)}
-        .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;height:100%}.stat-card{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:20px;padding:16px;display:grid;gap:9px;min-height:150px}.stat-icon{width:40px;height:40px;border-radius:14px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.stat-card span,.field label,.mini-label{font-size:12px;color:var(--sfm-muted);font-weight:900}.stat-card strong{font-size:22px}.section-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}.section-head h2{margin:0;font-size:18px;font-weight:900}.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.field{display:grid;gap:7px}.input-wrap{height:52px;border:1.5px solid rgba(167,243,240,.2);border-radius:15px;background:var(--sfm-light-card);display:flex;align-items:center;gap:9px;padding:0 12px;color:var(--sfm-muted)}.input-wrap input,.input-wrap select{border:0;outline:0;background:transparent;width:100%;height:100%;font:800 14px Tajawal,Arial,sans-serif;color:var(--sfm-foreground)}.input-wrap input[readonly]{opacity:.65}.field-icon-btn{border:0;background:transparent;color:var(--sfm-muted);display:grid;place-items:center;border-radius:999px;padding:5px;cursor:pointer}.field-icon-btn:hover,.field-icon-btn:focus-visible{color:var(--sfm-primary);outline:2px solid rgba(24,212,212,.24);outline-offset:2px}.profile-section{margin-bottom:16px}.setting-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid rgba(167,243,240,.1)}.setting-row:last-child{border-bottom:0}.setting-row p{margin:4px 0 0;color:var(--sfm-muted);font-size:12px;font-weight:700;overflow-wrap:anywhere}.toggle{width:48px;height:28px;border-radius:999px;border:0;background:#CBD5E1;padding:3px;cursor:pointer}.toggle i{display:block;width:22px;height:22px;border-radius:50%;background:white;transition:.2s}.toggle.on{background:var(--sfm-accent)}.toggle.on i{transform:translateX(-20px)}[dir="ltr"] .toggle.on i{transform:translateX(20px)}
-        .pref-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.segmented{display:flex;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14);border-radius:14px;padding:4px;gap:4px}.segmented button{flex:1;border:0;border-radius:11px;background:transparent;height:38px;font:900 12px Tajawal,Arial,sans-serif;color:var(--sfm-muted);cursor:pointer}.segmented button.active{background:var(--sfm-card);color:var(--sfm-foreground);box-shadow:0 3px 12px rgba(3,18,37,.08)}.premium-grid,.activity-list{display:grid;gap:10px}.premium-grid{grid-template-columns:repeat(4,1fr)}.feature-card{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:14px;font-weight:900;color:var(--sfm-muted);display:flex;align-items:center;gap:9px}.plan-card{background:linear-gradient(135deg,var(--sfm-foreground),var(--sfm-primary-dark));color:var(--sfm-card);border-radius:20px;padding:18px;display:grid;gap:8px}.activity-item{display:flex;align-items:center;gap:12px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.1);border-radius:15px;padding:12px}.activity-item svg{color:var(--sfm-soft-cyan)}.danger-zone{border-color:rgba(185,28,28,.18);background:linear-gradient(135deg,var(--sfm-card),#FFF7F4)}.profile-toast{position:fixed;z-index:50;inset-inline-start:24px;inset-inline-end:auto;bottom:24px;width:max-content;max-width:min(420px,calc(100vw - 48px));display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;background:var(--sfm-primary-dark);color:#EAF6FF;border:1px solid rgba(24,212,212,.28);border-radius:18px;padding:12px 14px;font-weight:900;line-height:1.55;box-shadow:0 18px 45px rgba(3,18,37,.22),0 0 0 1px rgba(255,255,255,.04);animation:toastSlideUp .22s ease-out}.profile-toast p{margin:0;min-width:0;overflow-wrap:anywhere}.profile-toast-icon{width:30px;height:30px;border-radius:999px;display:grid;place-items:center;background:rgba(24,212,212,.14);color:var(--sfm-soft-cyan);box-shadow:0 0 18px rgba(24,212,212,.18)}.profile-toast button{width:30px;height:30px;border:0;border-radius:999px;background:rgba(255,255,255,.08);color:#EAF6FF;display:grid;place-items:center;cursor:pointer;transition:.18s ease}.profile-toast button:hover,.profile-toast button:focus-visible{background:rgba(24,212,212,.18);color:#FFFFFF;outline:2px solid rgba(24,212,212,.34);outline-offset:2px}@keyframes toastSlideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;height:100%}.stat-card{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:20px;padding:16px;display:grid;gap:9px;min-height:150px}.stat-icon{width:40px;height:40px;border-radius:14px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.stat-card span,.field label,.mini-label{font-size:12px;color:var(--sfm-muted);font-weight:900}.stat-card strong{font-size:22px}.section-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}.section-head h2{margin:0;font-size:18px;font-weight:900}.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.field{display:grid;gap:7px}.input-wrap{height:52px;border:1.5px solid rgba(167,243,240,.2);border-radius:15px;background:var(--sfm-light-card);display:flex;align-items:center;gap:9px;padding:0 12px;color:var(--sfm-muted);transition:border-color .18s ease,box-shadow .18s ease,background .18s ease}.input-wrap:focus-within{border-color:rgba(24,212,212,.58);box-shadow:0 0 0 4px rgba(24,212,212,.10)}.input-wrap input,.input-wrap select{border:0;outline:0;background:transparent;width:100%;height:100%;font:800 14px Tajawal,Arial,sans-serif;color:var(--sfm-foreground);min-width:0}.input-wrap input::placeholder{color:var(--sfm-muted);opacity:.9}.input-wrap input[readonly]{opacity:.65}.profile-combobox{position:relative}.profile-combobox input{cursor:pointer}.profile-combobox.open{border-color:rgba(24,212,212,.58);box-shadow:0 0 0 4px rgba(24,212,212,.10)}.profile-combobox-chevron{flex:0 0 auto;color:var(--sfm-muted);transition:.18s ease}.profile-combobox-chevron.open{transform:rotate(180deg);color:var(--sfm-primary)}.profile-combobox-menu{position:absolute;z-index:70;inset-inline:0;top:calc(100% + 8px);max-height:280px;overflow:auto;background:var(--sfm-card);border:1px solid rgba(24,212,212,.22);border-radius:16px;padding:6px;box-shadow:0 18px 42px rgba(3,18,37,.18)}.profile-combobox-menu button{width:100%;border:0;background:transparent;color:var(--sfm-foreground);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;font:900 13px Tajawal,Arial,sans-serif;text-align:inherit;cursor:pointer}.profile-combobox-menu button:hover,.profile-combobox-menu button.active{background:rgba(24,212,212,.10)}.profile-combobox-menu button.selected{background:rgba(24,212,212,.14);color:var(--sfm-primary-dark)}.profile-combobox-menu button svg{color:var(--sfm-accent);flex:0 0 auto}.field-icon-btn{border:0;background:transparent;color:var(--sfm-muted);display:grid;place-items:center;border-radius:999px;padding:5px;cursor:pointer}.field-icon-btn:hover,.field-icon-btn:focus-visible{color:var(--sfm-primary);outline:2px solid rgba(24,212,212,.24);outline-offset:2px}.profile-section{margin-bottom:16px}.setting-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid rgba(167,243,240,.1)}.setting-row:last-child{border-bottom:0}.setting-row p{margin:4px 0 0;color:var(--sfm-muted);font-size:12px;font-weight:700;overflow-wrap:anywhere}.toggle{width:48px;height:28px;border-radius:999px;border:0;background:#CBD5E1;padding:3px;cursor:pointer}.toggle i{display:block;width:22px;height:22px;border-radius:50%;background:white;transition:.2s}.toggle.on{background:var(--sfm-accent)}.toggle.on i{transform:translateX(-20px)}[dir="ltr"] .toggle.on i{transform:translateX(20px)}
+        .pref-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.segmented{display:flex;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14);border-radius:14px;padding:4px;gap:4px}.segmented button{flex:1;border:0;border-radius:11px;background:transparent;height:38px;font:900 12px Tajawal,Arial,sans-serif;color:var(--sfm-muted);cursor:pointer}.segmented button.active{background:var(--sfm-card);color:var(--sfm-foreground);box-shadow:0 3px 12px rgba(3,18,37,.08)}.dark .profile-combobox-menu button.selected{color:var(--sfm-soft-cyan)}.premium-grid,.activity-list{display:grid;gap:10px}.premium-grid{grid-template-columns:repeat(4,1fr)}.feature-card{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:14px;font-weight:900;color:var(--sfm-muted);display:flex;align-items:center;gap:9px}.plan-card{background:linear-gradient(135deg,var(--sfm-foreground),var(--sfm-primary-dark));color:var(--sfm-card);border-radius:20px;padding:18px;display:grid;gap:8px}.activity-item{display:flex;align-items:center;gap:12px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.1);border-radius:15px;padding:12px}.activity-item svg{color:var(--sfm-soft-cyan)}.danger-zone{border-color:rgba(185,28,28,.18);background:linear-gradient(135deg,var(--sfm-card),#FFF7F4)}.profile-toast{position:fixed;z-index:50;inset-inline-start:24px;inset-inline-end:auto;bottom:24px;width:max-content;max-width:min(420px,calc(100vw - 48px));display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;background:var(--sfm-primary-dark);color:#EAF6FF;border:1px solid rgba(24,212,212,.28);border-radius:18px;padding:12px 14px;font-weight:900;line-height:1.55;box-shadow:0 18px 45px rgba(3,18,37,.22),0 0 0 1px rgba(255,255,255,.04);animation:toastSlideUp .22s ease-out}.profile-toast p{margin:0;min-width:0;overflow-wrap:anywhere}.profile-toast-icon{width:30px;height:30px;border-radius:999px;display:grid;place-items:center;background:rgba(24,212,212,.14);color:var(--sfm-soft-cyan);box-shadow:0 0 18px rgba(24,212,212,.18)}.profile-toast button{width:30px;height:30px;border:0;border-radius:999px;background:rgba(255,255,255,.08);color:#EAF6FF;display:grid;place-items:center;cursor:pointer;transition:.18s ease}.profile-toast button:hover,.profile-toast button:focus-visible{background:rgba(24,212,212,.18);color:#FFFFFF;outline:2px solid rgba(24,212,212,.34);outline-offset:2px}@keyframes toastSlideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         .modal-overlay{position:fixed;inset:0;z-index:90;background:rgba(17,17,17,.45);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px}.modal-card{width:min(520px,100%);max-height:calc(100dvh - 36px);overflow:auto;background:var(--sfm-card);border:1px solid rgba(167,243,240,.18);border-radius:24px;padding:22px;box-shadow:0 24px 80px rgba(3,18,37,.28)}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.modal-head h3{margin:0;font-size:19px}.modal-fields{display:grid;gap:12px}.info-box{display:flex;gap:10px;align-items:flex-start;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:14px;color:var(--sfm-muted);line-height:1.7;font-weight:800}.info-box.danger{background:#FEF2F2;border-color:#FCA5A5;color:#B91C1C}.two-factor-panel{display:grid;gap:14px;border:1px solid rgba(24,212,212,.18);background:var(--sfm-light-card);border-radius:18px;padding:14px}.two-factor-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start}.two-factor-row strong{display:block;color:var(--sfm-foreground);font-size:15px}.two-factor-row p,.two-factor-copy{margin:4px 0 0;color:var(--sfm-muted);font-size:13px;font-weight:800;line-height:1.7}.status-pill{display:inline-flex;width:max-content;margin-top:9px;border-radius:999px;border:1px solid rgba(100,116,139,.20);background:rgba(100,116,139,.10);color:var(--sfm-muted);padding:5px 10px;font-weight:950;font-size:12px}.status-pill.on{background:rgba(16,185,129,.14);border-color:rgba(16,185,129,.25);color:#047857}.message-inline{border:1px solid rgba(16,185,129,.22);background:rgba(16,185,129,.10);color:#047857;border-radius:14px;padding:10px 12px;font-size:13px;font-weight:900;line-height:1.6}.message-inline.danger{background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.24);color:#B91C1C}.profile-loading{min-height:100vh;display:grid;place-items:center;background:var(--sfm-light-card);color:var(--sfm-muted);font-size:34px}
         @media(max-width:1180px){.profile-main{margin-inline-start:0}.profile-layout{grid-template-columns:1fr}.stats-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:720px){.profile-main{padding:14px}.profile-top{display:grid}.stats-grid,.form-grid,.pref-grid,.premium-grid{grid-template-columns:1fr}.hero-actions .ghost-btn,.hero-actions .gold-btn,.section-actions .ghost-btn,.section-actions .gold-btn,.section-actions .danger-btn,.modal-fields .gold-btn{width:100%}.setting-row{align-items:flex-start;flex-direction:column}.modal-overlay{place-items:end center;padding:10px}.modal-card{width:100%;border-radius:22px;max-height:calc(100dvh - 20px)}.profile-toast{inset-inline:16px;bottom:16px;width:auto;max-width:none}}
       `}</style>
@@ -885,23 +1029,204 @@ function ProfileStatsCards({ labels, stats }: { labels: Record<string, string>; 
 
 function PersonalInfoForm({ lang, profile, setProfile, preferences, setPreferences, saving, labels, onSave }: { lang: Lang; profile: ProfileState; setProfile: (next: ProfileState) => void; preferences: PreferencesState; setPreferences: (next: PreferencesState) => void; saving: boolean; labels: Record<string, string>; onSave: () => void }) {
   const update = (key: keyof ProfileState, value: string) => setProfile({ ...profile, [key]: value });
+  const updateCountry = (value: string) => {
+    const nextPhoneCode = phoneCodeForCountry(value) || profile.phoneCode || '+965';
+    setProfile({
+      ...profile,
+      country: value,
+      phoneCode: nextPhoneCode,
+      city: value === 'KW' ? profile.city : '',
+    });
+  };
+  const selectedCountry = normalizeCountry(profile.country);
+  const isKuwait = selectedCountry === 'KW';
   return (
     <Section title={labels.title} icon={<User size={19} />}>
       <div className="form-grid">
-        <Field icon={<User size={16} />} label={labels.fullName}><input value={profile.displayName} onChange={event => update('displayName', event.target.value)} /></Field>
-        <Field icon={<BadgeCheck size={16} />} label={labels.username}><input value={profile.username} onChange={event => update('username', event.target.value)} /></Field>
-        <Field icon={<Mail size={16} />} label={labels.email}><input value={profile.email} readOnly /></Field>
-        <Field icon={<Phone size={16} />} label={labels.phone}><input value={profile.phone} onChange={event => update('phone', event.target.value)} /></Field>
+        <Field icon={<User size={16} />} label={labels.fullName}><input value={profile.displayName} onChange={event => update('displayName', event.target.value)} placeholder={labels.fullName} /></Field>
+        <Field icon={<BadgeCheck size={16} />} label={labels.username}><input value={profile.username} onChange={event => update('username', event.target.value)} placeholder={labels.username} /></Field>
+        <Field icon={<Mail size={16} />} label={labels.email}><input value={profile.email} readOnly dir="ltr" /></Field>
+        <Field icon={<Phone size={16} />} label={labels.phone}><input value={profile.phone} onChange={event => update('phone', event.target.value)} placeholder={isKuwait ? labels.phoneExample : labels.enterPhone} inputMode="tel" dir="ltr" /></Field>
         <Field icon={<Globe2 size={16} />} label={labels.phoneCode}><select value={profile.phoneCode} onChange={event => update('phoneCode', event.target.value)}>{phoneCodes.map(code => <option key={code}>{code}</option>)}</select></Field>
-        <Field icon={<CalendarDays size={16} />} label={labels.age}><input type="number" value={profile.age} onChange={event => update('age', event.target.value)} /></Field>
-        <Field icon={<User size={16} />} label={labels.gender}><select value={profile.gender} onChange={event => update('gender', event.target.value)}><option value="" /><option value="male">{labels.male}</option><option value="female">{labels.female}</option></select></Field>
-        <Field icon={<MapPin size={16} />} label={labels.country}><select value={profile.country} onChange={event => update('country', event.target.value)}>{countries.map(country => <option key={country}>{country}</option>)}</select></Field>
-        <Field icon={<MapPin size={16} />} label={labels.city}><input value={profile.city} onChange={event => update('city', event.target.value)} /></Field>
-        <Field icon={<WalletCards size={16} />} label={labels.profession}><input value={profile.profession} onChange={event => update('profession', event.target.value)} /></Field>
-        <Field icon={<WalletCards size={16} />} label={labels.currency}><CurrencySelect value={preferences.currency} onChange={code => setPreferences({ ...preferences, currency: code })} lang={lang} ariaLabel={labels.currency} /></Field>
+        <Field icon={<CalendarDays size={16} />} label={labels.age}><input type="number" min={13} max={100} value={profile.age} onChange={event => update('age', event.target.value)} placeholder={labels.enterAge} inputMode="numeric" /></Field>
+        <Field icon={<User size={16} />} label={labels.gender}>
+          <select value={profile.gender} onChange={event => update('gender', event.target.value)} aria-label={labels.selectGender}>
+            <option value="">{labels.selectGender}</option>
+            {genderOptions.map(option => <option key={option.value} value={option.value}>{optionLabel(option, lang)}</option>)}
+          </select>
+        </Field>
+        <SearchableProfileSelect
+          icon={<MapPin size={16} />}
+          label={labels.country}
+          placeholder={labels.selectCountry}
+          value={selectedCountry}
+          options={countryOptions}
+          lang={lang}
+          onChange={updateCountry}
+        />
+        {isKuwait ? (
+          <Field icon={<MapPin size={16} />} label={labels.city}>
+            <select value={profile.city} onChange={event => update('city', event.target.value)} aria-label={labels.selectCity}>
+              <option value="">{labels.selectCity}</option>
+              {kuwaitCityOptions.map(option => <option key={option.value} value={option.value}>{optionLabel(option, lang)}</option>)}
+            </select>
+          </Field>
+        ) : (
+          <Field icon={<MapPin size={16} />} label={labels.city}><input value={profile.city} onChange={event => update('city', event.target.value)} placeholder={labels.selectCity} /></Field>
+        )}
+        <SearchableProfileSelect
+          icon={<WalletCards size={16} />}
+          label={labels.profession}
+          placeholder={labels.selectProfession}
+          value={profile.profession}
+          options={professionOptions}
+          lang={lang}
+          onChange={value => {
+            setProfile({
+              ...profile,
+              profession: value,
+              professionOther: value === 'other' ? profile.professionOther : '',
+            });
+          }}
+        />
+        {profile.profession === 'other' && (
+          <Field icon={<WalletCards size={16} />} label={labels.other}><input value={profile.professionOther} onChange={event => update('professionOther', event.target.value)} placeholder={labels.enterProfession} /></Field>
+        )}
+        <Field icon={<WalletCards size={16} />} label={labels.currency}><CurrencySelect value={preferences.currency || 'KWD'} onChange={code => setPreferences({ ...preferences, currency: code })} lang={lang} ariaLabel={labels.selectCurrency} /></Field>
       </div>
       <div style={{ marginTop: 16 }}><button className="gold-btn" onClick={onSave} disabled={saving}><Save size={16} />{saving ? '...' : labels.save}</button></div>
     </Section>
+  );
+}
+
+function SearchableProfileSelect({
+  icon,
+  label,
+  placeholder,
+  value,
+  options,
+  lang,
+  onChange,
+}: {
+  icon: ReactNode;
+  label: string;
+  placeholder: string;
+  value: string;
+  options: ProfileOption[];
+  lang: Lang;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected = options.find(option => option.value === value);
+  const displayValue = selected ? optionLabel(selected, lang) : '';
+  const filtered = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return options;
+    return options.filter(option => {
+      const haystack = `${option.value} ${option.search || ''} ${option.labels.ar} ${option.labels.en} ${option.labels.fr}`.toLowerCase();
+      return haystack.includes(term);
+    });
+  }, [options, query]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointer = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handlePointer);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handlePointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (activeIndex >= filtered.length) setActiveIndex(0);
+  }, [activeIndex, filtered.length]);
+
+  useEffect(() => {
+    if (!open) setQuery('');
+  }, [open]);
+
+  function selectOption(option: ProfileOption) {
+    onChange(option.value);
+    setQuery('');
+    setOpen(false);
+  }
+
+  return (
+    <div className="field profile-select-field" ref={rootRef}>
+      <label>{label}</label>
+      <div className={`input-wrap profile-combobox ${open ? 'open' : ''}`}>
+        {icon}
+        <input
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={`${label}-profile-options`}
+          aria-autocomplete="list"
+          value={open ? query : displayValue}
+          onFocus={() => setOpen(true)}
+          onClick={() => setOpen(true)}
+          onChange={event => {
+            setQuery(event.target.value);
+            setOpen(true);
+            setActiveIndex(0);
+          }}
+          onKeyDown={event => {
+            if (event.key === 'ArrowDown') {
+              event.preventDefault();
+              setOpen(true);
+              setActiveIndex(index => Math.min(index + 1, Math.max(filtered.length - 1, 0)));
+            } else if (event.key === 'ArrowUp') {
+              event.preventDefault();
+              setActiveIndex(index => Math.max(index - 1, 0));
+            } else if (event.key === 'Enter' && open && filtered[activeIndex]) {
+              event.preventDefault();
+              selectOption(filtered[activeIndex]);
+            }
+          }}
+          placeholder={placeholder}
+        />
+        <ChevronDownIcon open={open} />
+        {open && (
+          <div className="profile-combobox-menu" id={`${label}-profile-options`} role="listbox">
+            {filtered.map((option, index) => {
+              const selectedOption = option.value === value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`${selectedOption ? 'selected' : ''} ${index === activeIndex ? 'active' : ''}`}
+                  role="option"
+                  aria-selected={selectedOption}
+                  onMouseDown={event => event.preventDefault()}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onClick={() => selectOption(option)}
+                >
+                  <span>{optionLabel(option, lang)}</span>
+                  {selectedOption && <CheckCircle2 size={15} aria-hidden="true" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ChevronDownIcon({ open }: { open: boolean }) {
+  return (
+    <svg className={open ? 'profile-combobox-chevron open' : 'profile-combobox-chevron'} width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
