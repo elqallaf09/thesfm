@@ -30,6 +30,7 @@ import {
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { SUPPORT_EMAIL } from '@/lib/constants/contact';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -81,6 +82,9 @@ const COPY = {
     footerCompany: 'الشركة',
     footerAccount: 'الحساب',
     footerLegal: 'قانوني',
+    footerSupport: 'الدعم',
+    supportEmailLabel: 'البريد الإلكتروني للدعم',
+    supportContactLine: 'للدعم والمساعدة، تواصل معنا عبر:',
     businessHub: 'مركز الأعمال',
     reportsCenter: 'مركز التقارير',
     zakat: 'الزكاة',
@@ -142,6 +146,9 @@ const COPY = {
     footerCompany: 'Company',
     footerAccount: 'Account',
     footerLegal: 'Legal',
+    footerSupport: 'Support',
+    supportEmailLabel: 'Support Email',
+    supportContactLine: 'For support, contact us at:',
     businessHub: 'Business Hub',
     reportsCenter: 'Reports Center',
     zakat: 'Zakat',
@@ -203,6 +210,9 @@ const COPY = {
     footerCompany: 'Entreprise',
     footerAccount: 'Compte',
     footerLegal: 'Légal',
+    footerSupport: 'Support',
+    supportEmailLabel: 'E-mail de support',
+    supportContactLine: 'Pour obtenir de l’aide, contactez-nous à :',
     businessHub: 'Centre d’affaires',
     reportsCenter: 'Centre des rapports',
     zakat: 'Zakat',
@@ -236,6 +246,7 @@ const FAQ_ITEMS = {
     ['هل يدعم الموقع اللغة الإنجليزية والفرنسية؟', 'نعم. الموقع يدعم العربية والإنجليزية والفرنسية، ويجب أن تتغير النصوص حسب اللغة المختارة.'],
     ['هل THE SFM مناسب للأفراد فقط؟', 'لا. المنصة مناسبة للأفراد، العائلات، المستثمرين، رواد الأعمال، أصحاب المشاريع، والمستخدمين الذين يريدون تنظيم المال والمشاريع والتقارير في مكان واحد.'],
     ['كيف أبدأ؟', 'ابدأ بتسجيل الدخول، ثم أكمل إعداد الحساب، أضف دخلك ومصروفاتك، وبعدها يمكنك تفعيل الأقسام المناسبة لك مثل الأهداف، الزكاة، المشاريع، التقارير، أو الاستثمارات.'],
+    ['كيف أتواصل مع الدعم؟', `للدعم والمساعدة، تواصل معنا عبر: ${SUPPORT_EMAIL}`],
   ],
   en: [
     ['What is THE SFM?', 'THE SFM is an intelligent financial platform that helps you organize your income, expenses, savings, goals, zakat, investments, projects, reports, and financial decisions in one place.'],
@@ -253,6 +264,7 @@ const FAQ_ITEMS = {
     ['Does THE SFM support English and French?', 'Yes. THE SFM supports Arabic, English, and French, and the interface should update based on the selected language.'],
     ['Is THE SFM only for individuals?', 'No. It is designed for individuals, families, investors, entrepreneurs, business owners, and users who want to organize money, projects, reports, and decisions in one place.'],
     ['How do I start?', 'Log in, complete your account setup, add your income and expenses, then activate the sections you need such as goals, zakat, projects, reports, or investments.'],
+    ['How can I contact support?', `For support, contact us at: ${SUPPORT_EMAIL}`],
   ],
   fr: [
     ['Qu’est-ce que THE SFM ?', 'THE SFM est une plateforme financière intelligente qui vous aide à organiser vos revenus, dépenses, épargne, objectifs, zakat, investissements, projets, rapports et décisions financières au même endroit.'],
@@ -270,6 +282,7 @@ const FAQ_ITEMS = {
     ['THE SFM prend-il en charge l’anglais et le français ?', 'Oui. THE SFM prend en charge l’arabe, l’anglais et le français, et l’interface doit se mettre à jour selon la langue sélectionnée.'],
     ['THE SFM est-il uniquement destiné aux particuliers ?', 'Non. Il est conçu pour les particuliers, les familles, les investisseurs, les entrepreneurs, les propriétaires d’entreprise et les utilisateurs qui veulent organiser argent, projets, rapports et décisions au même endroit.'],
     ['Comment commencer ?', 'Connectez-vous, complétez la configuration de votre compte, ajoutez vos revenus et dépenses, puis activez les sections dont vous avez besoin comme les objectifs, la zakat, les projets, les rapports ou les investissements.'],
+    ['Comment contacter le support ?', `Pour obtenir de l’aide, contactez-nous à : ${SUPPORT_EMAIL}`],
   ],
 } satisfies Record<Lang, [string, string][]>;
 
@@ -577,6 +590,7 @@ export default function PublicLandingPage() {
         <FooterColumn title={text.footerCompany} links={[['/about', aboutLabel], ['/#faq', text.navFaq]]} />
         <FooterColumn title={text.footerAccount} links={[['/login', text.login], ['/setup', text.start]]} />
         <FooterColumn title={text.footerLegal} links={[['/privacy', text.privacy], ['/terms', text.terms]]} />
+        <FooterColumn title={text.footerSupport} links={[['/contact', text.supportEmailLabel], [`mailto:${SUPPORT_EMAIL}`, SUPPORT_EMAIL]]} />
       </footer>
 
       <style jsx>{landingStyles}</style>
@@ -1194,7 +1208,7 @@ const landingStyles = `
     margin-top: 70px;
     padding: 34px 0 44px;
     display: grid;
-    grid-template-columns: 1.3fr repeat(5, minmax(0, 1fr));
+    grid-template-columns: 1.25fr repeat(6, minmax(0, 1fr));
     gap: 18px;
   }
   .footer-brand {

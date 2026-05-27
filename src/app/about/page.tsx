@@ -25,6 +25,7 @@ import { useMemo, useState } from 'react';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { SUPPORT_EMAIL } from '@/lib/constants/contact';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -65,6 +66,10 @@ const COPY = {
     footerProduct: 'المنتج',
     footerCompany: 'الشركة',
     footerAccount: 'الحساب',
+    footerSupport: 'الدعم',
+    contact: 'تواصل معنا',
+    supportEmail: 'البريد الإلكتروني للدعم',
+    supportContactLine: 'للدعم والمساعدة، تواصل معنا عبر:',
     reportsCenter: 'مركز التقارير',
     businessHub: 'مركز الأعمال',
     security: 'الأمان والخصوصية',
@@ -137,6 +142,10 @@ const COPY = {
     footerProduct: 'Product',
     footerCompany: 'Company',
     footerAccount: 'Account',
+    footerSupport: 'Support',
+    contact: 'Contact Us',
+    supportEmail: 'Support Email',
+    supportContactLine: 'For support, contact us at:',
     reportsCenter: 'Reports Center',
     businessHub: 'Business Hub',
     security: 'Security & Privacy',
@@ -209,6 +218,10 @@ const COPY = {
     footerProduct: 'Produit',
     footerCompany: 'Entreprise',
     footerAccount: 'Compte',
+    footerSupport: 'Support',
+    contact: 'Contactez-nous',
+    supportEmail: 'E-mail de support',
+    supportContactLine: 'Pour obtenir de l’aide, contactez-nous à :',
     reportsCenter: 'Centre des rapports',
     businessHub: 'Centre d’affaires',
     security: 'Sécurité et confidentialité',
@@ -404,10 +417,15 @@ export default function AboutPage() {
         <div className="footer-brand">
           <Image src="/sfm-logo.png" alt="THE SFM" width={42} height={42} className="about-logo" />
           <strong>THE SFM</strong>
+          <p>
+            {text.supportContactLine}{' '}
+            <Link href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</Link>
+          </p>
         </div>
         <FooterColumn title={text.footerProduct} links={[['/', 'THE SFM'], ['/reports-center', text.reportsCenter], ['/business-hub', text.businessHub]]} />
         <FooterColumn title={text.footerCompany} links={[['/about', text.about], ['/security', text.security]]} />
         <FooterColumn title={text.footerAccount} links={[['/login', text.login], ['/dashboard', text.openDashboard]]} />
+        <FooterColumn title={text.footerSupport} links={[['/contact', text.contact], [`mailto:${SUPPORT_EMAIL}`, text.supportEmail]]} />
       </footer>
 
       <style jsx>{aboutStyles}</style>
@@ -831,7 +849,7 @@ const aboutStyles = `
     margin-top: 70px;
     padding: 34px 0 44px;
     display: grid;
-    grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1.35fr repeat(4, minmax(0, 1fr));
     gap: 18px;
   }
   .footer-brand {
@@ -839,6 +857,19 @@ const aboutStyles = `
     align-self: start;
     color: #061B33;
     font-weight: 950;
+    flex-wrap: wrap;
+  }
+  .footer-brand p {
+    flex-basis: 100%;
+    margin: 4px 0 0;
+    color: #475569;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .footer-brand p a {
+    color: #1D8CFF;
+    font-weight: 950;
+    text-decoration: none;
   }
   .footer-column {
     display: grid;

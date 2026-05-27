@@ -17,6 +17,7 @@ import {
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { SUPPORT_EMAIL } from '@/lib/constants/contact';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -32,9 +33,9 @@ const COPY = {
     heroTitle: 'تواصل معنا',
     heroSubtitle: 'نحن هنا لمساعدتك في الأسئلة العامة عن THE SFM، الحساب، الخصوصية، أو طريقة استخدام المنصة.',
     supportEmail: 'البريد الإلكتروني للدعم',
-    supportEmailReady: 'يمكنك استخدام البريد التالي للتواصل مع الدعم عند الحاجة.',
-    supportEmailFallback: 'لم يتم إعداد بريد دعم عام حتى الآن.',
-    supportEmailHint: 'إذا كان بريد الدعم مفعلاً، سيظهر هنا كخيار مباشر للتواصل.',
+    supportEmailReady: 'للدعم والمساعدة، تواصل معنا عبر:',
+    supportEmailFallback: SUPPORT_EMAIL,
+    supportEmailHint: 'للدعم والمساعدة، تواصل معنا عبر:',
     contactForm: 'نموذج التواصل',
     contactFormBody: 'نموذج التواصل سيتم تفعيله قريباً. حالياً يمكنك استخدام الأسئلة الشائعة أو صفحة الأمان والخصوصية.',
     privacyNotice: 'تنبيه الخصوصية',
@@ -70,9 +71,9 @@ const COPY = {
     heroTitle: 'Contact Us',
     heroSubtitle: 'We are here to help with general questions about THE SFM, your account, privacy, or how to use the platform.',
     supportEmail: 'Support Email',
-    supportEmailReady: 'You can use the following email address to contact support when needed.',
-    supportEmailFallback: 'A public support email has not been configured yet.',
-    supportEmailHint: 'If support email is enabled, it will appear here as a direct contact option.',
+    supportEmailReady: 'For support, contact us at:',
+    supportEmailFallback: SUPPORT_EMAIL,
+    supportEmailHint: 'For support, contact us at:',
     contactForm: 'Contact Form',
     contactFormBody: 'The contact form will be enabled soon. For now, you can use the FAQ or Security & Privacy page.',
     privacyNotice: 'Privacy Notice',
@@ -108,9 +109,9 @@ const COPY = {
     heroTitle: 'Contactez-nous',
     heroSubtitle: 'Nous sommes là pour vous aider avec les questions générales sur THE SFM, votre compte, la confidentialité ou l’utilisation de la plateforme.',
     supportEmail: 'E-mail de support',
-    supportEmailReady: 'Vous pouvez utiliser l’adresse suivante pour contacter le support si nécessaire.',
-    supportEmailFallback: 'Aucun e-mail de support public n’a encore été configuré.',
-    supportEmailHint: 'Si l’e-mail de support est activé, il apparaîtra ici comme option de contact directe.',
+    supportEmailReady: 'Pour obtenir de l’aide, contactez-nous à :',
+    supportEmailFallback: SUPPORT_EMAIL,
+    supportEmailHint: 'Pour obtenir de l’aide, contactez-nous à :',
     contactForm: 'Formulaire de contact',
     contactFormBody: 'Le formulaire de contact sera bientôt activé. Pour le moment, vous pouvez utiliser la FAQ ou la page Sécurité et confidentialité.',
     privacyNotice: 'Avis de confidentialité',
@@ -145,7 +146,7 @@ export default function ContactPage() {
   const text = COPY[locale];
   const appHref = session || isGuest ? '/dashboard' : '/login';
   const primaryLabel = session || isGuest ? text.openDashboard : text.getStarted;
-  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim() ?? '';
+  const supportEmail = SUPPORT_EMAIL;
 
   const navLinks = [
     { href: '/about', label: text.about },
@@ -155,12 +156,10 @@ export default function ContactPage() {
   const contactCards = useMemo(() => [
     {
       title: text.supportEmail,
-      body: supportEmail ? text.supportEmailReady : text.supportEmailHint,
-      value: supportEmail || text.supportEmailFallback,
+      body: text.supportEmailReady,
+      value: supportEmail,
       icon: Mail,
-      action: supportEmail
-        ? { href: `mailto:${supportEmail}`, label: supportEmail, external: false }
-        : undefined,
+      action: { href: `mailto:${supportEmail}`, label: supportEmail, external: false },
     },
     {
       title: text.contactForm,
@@ -304,6 +303,7 @@ export default function ContactPage() {
           </div>
         </div>
         <div className="footer-links" aria-label={text.securityPrivacy}>
+          <Link href={`mailto:${supportEmail}`}>{supportEmail}</Link>
           <Link href="/security">{text.securityPrivacy}</Link>
           <Link href="/privacy">{text.privacy}</Link>
           <Link href="/terms">{text.terms}</Link>

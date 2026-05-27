@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Database, EyeOff, FileWarning, LockKeyhole, ShieldCheck, Trash2 } from 'lucide-react';
+import { Database, EyeOff, FileWarning, LockKeyhole, Mail, ShieldCheck, Trash2, type LucideIcon } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
@@ -11,6 +11,7 @@ import { CardsGrid } from '@/components/layout/LayoutPrimitives';
 import { AppCard } from '@/components/layout/AppCard';
 import { ActionRow } from '@/components/layout/ActionRow';
 import { useLanguage } from '@/hooks/useLanguage';
+import { SUPPORT_EMAIL } from '@/lib/constants/contact';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -31,6 +32,8 @@ const TEXT = {
     securityInfoDesc: 'نعمل على حماية بياناتك وفق أفضل الممارسات المتاحة داخل التطبيق.',
     disclaimer: 'إخلاء مسؤولية مالية',
     disclaimerDesc: 'THE SFM يساعدك على التنظيم والتحليل، ولا يعتبر بديلاً عن مستشار مالي أو قانوني مختص.',
+    supportTitle: 'الدعم والمساعدة',
+    supportDesc: 'للدعم والمساعدة، تواصل معنا عبر:',
     openProfile: 'فتح الملف الشخصي',
     openMap: 'فتح خريطة THE SFM',
   },
@@ -50,6 +53,8 @@ const TEXT = {
     securityInfoDesc: 'We work to protect your data using best practices available within the app.',
     disclaimer: 'Financial disclaimer',
     disclaimerDesc: 'THE SFM helps with organization and analysis, and is not a substitute for a qualified financial or legal advisor.',
+    supportTitle: 'Support and help',
+    supportDesc: 'For support, contact us at:',
     openProfile: 'Open Profile',
     openMap: 'Open THE SFM Map',
   },
@@ -69,6 +74,8 @@ const TEXT = {
     securityInfoDesc: 'Nous travaillons à protéger vos données avec les meilleures pratiques disponibles dans l’application.',
     disclaimer: 'Avertissement financier',
     disclaimerDesc: 'THE SFM aide à organiser et analyser, mais ne remplace pas un conseiller financier ou juridique qualifié.',
+    supportTitle: 'Support et aide',
+    supportDesc: 'Pour obtenir de l’aide, contactez-nous à :',
     openProfile: 'Ouvrir le profil',
     openMap: 'Ouvrir la carte THE SFM',
   },
@@ -77,13 +84,14 @@ const TEXT = {
 export default function SecurityPage() {
   const { lang, dir } = useLanguage();
   const text = TEXT[(lang as Lang) || 'ar'];
-  const cards = [
+  const cards: Array<{ title: string; body: string; icon: LucideIcon; linkHref?: string; linkLabel?: string }> = [
     { title: text.privateData, body: text.privateDataDesc, icon: ShieldCheck },
     { title: text.noSale, body: text.noSaleDesc, icon: EyeOff },
     { title: text.realData, body: text.realDataDesc, icon: Database },
     { title: text.deleteData, body: text.deleteDataDesc, icon: Trash2 },
     { title: text.securityInfo, body: text.securityInfoDesc, icon: LockKeyhole },
     { title: text.disclaimer, body: text.disclaimerDesc, icon: FileWarning },
+    { title: text.supportTitle, body: text.supportDesc, icon: Mail, linkHref: `mailto:${SUPPORT_EMAIL}`, linkLabel: SUPPORT_EMAIL },
   ];
 
   return (
@@ -114,6 +122,9 @@ export default function SecurityPage() {
                 <span aria-hidden="true"><Icon size={22} /></span>
                 <h2>{card.title}</h2>
                 <p>{card.body}</p>
+                {card.linkHref && card.linkLabel ? (
+                  <Link className="security-mail-link" href={card.linkHref}>{card.linkLabel}</Link>
+                ) : null}
               </AppCard>
             );
           })}
@@ -191,6 +202,29 @@ export default function SecurityPage() {
           margin: 0;
           color: var(--sfm-muted);
           line-height: 1.7;
+        }
+        .security-mail-link {
+          width: max-content;
+          max-width: 100%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 999px;
+          border: 1px solid rgba(29, 140, 255, .18);
+          background: rgba(29, 140, 255, .08);
+          color: var(--sfm-primary-hover);
+          padding: 8px 12px;
+          text-decoration: none;
+          font: 950 13px Tajawal, Arial, sans-serif;
+          overflow-wrap: anywhere;
+        }
+        .security-mail-link:hover,
+        .security-mail-link:focus-visible {
+          border-color: rgba(24, 212, 212, .34);
+          background: rgba(24, 212, 212, .12);
+          color: var(--sfm-primary-dark);
+          outline: 0;
+          box-shadow: 0 0 0 3px rgba(24, 212, 212, .16);
         }
         .security-map-card {
           display: flex;
