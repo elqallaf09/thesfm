@@ -29,6 +29,7 @@ import {
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { PageTabs } from '@/components/layout/PageTabs';
+import { ProjectSelector } from '@/components/projects/ProjectSelector';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
@@ -2748,16 +2749,14 @@ export default function BusinessHubPage() {
             <h2>{text.selectProject}</h2>
             <p>{text.selectProjectHint}</p>
           </div>
-          <label>
-            <span>{text.selectProject}</span>
-            <select value={selectedProjectId} onChange={event => setSelectedProjectId(event.target.value)} disabled={!projects.length} aria-label={text.selectProject}>
-              {projects.length === 0 ? (
-                <option value="">{text.addProjectFirst}</option>
-              ) : projects.map(project => (
-                <option key={project.id} value={project.id}>{firstText(project, ['name', 'project_name', 'title'], project.id)}</option>
-              ))}
-            </select>
-          </label>
+          <ProjectSelector
+            projects={projects}
+            selectedProjectId={selectedProjectId}
+            onChange={setSelectedProjectId}
+            readinessScore={readiness?.score ?? null}
+            label={text.selectedProject}
+            hint={text.selectProjectHint}
+          />
         </section>
 
         <PageTabs
@@ -3146,14 +3145,17 @@ export default function BusinessHubPage() {
 
               {wizardStep === 0 && (
                 <div className="wizard-form">
-                  <label className="field">
-                    <span>{text.selectProjectStep}</span>
-                    <select value={selectedProjectId} onChange={event => setSelectedProjectId(event.target.value)} disabled={!projects.length} aria-label={text.selectProjectStep}>
-                      {projects.length === 0 ? <option value="">{text.addProjectFirst}</option> : projects.map(project => (
-                        <option key={project.id} value={project.id}>{firstText(project, ['name', 'project_name', 'title'], project.id)}</option>
-                      ))}
-                    </select>
-                  </label>
+                  <div className="wizard-project-selector">
+                    <ProjectSelector
+                      projects={projects}
+                      selectedProjectId={selectedProjectId}
+                      onChange={setSelectedProjectId}
+                      readinessScore={readiness?.score ?? null}
+                      label={text.selectProjectStep}
+                      hint={text.selectProjectHint}
+                      compact
+                    />
+                  </div>
                   <SelectField label={text.primaryMarket} value={wizard.targetMarket} onChange={value => updateWizard('targetMarket', value)} options={COUNTRIES.map(item => ({ value: item.value, label: item.label[locale] }))} placeholder={text.choose} />
                   {projects.length === 0 && <div className="planner-warning"><AlertTriangle size={15} /> {text.addProjectFirst}</div>}
                 </div>
@@ -3619,7 +3621,7 @@ const styles = `
   .hub-grid{display:grid;gap:16px;min-width:0}.hub-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.wizard-layout{grid-template-columns:minmax(0,1.25fr) minmax(320px,.75fr);align-items:start}.warm-card{padding:18px}.card-title{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}.card-title svg{color:var(--sfm-primary);flex:0 0 auto}
   .check-list,.document-grid,.module-links{display:grid;gap:10px}.check-row,.document-link{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:15px;padding:11px;text-decoration:none;color:var(--sfm-primary-dark);min-width:0}.check-row strong,.document-link span{min-width:0;font-weight:950;overflow-wrap:anywhere}.check-row small,.document-link small{color:var(--sfm-muted);font-size:11px;font-weight:950}.done,.todo{width:28px;height:28px;border-radius:11px;display:grid;place-items:center}.done{background:#ECFDF5;color:#047857}.todo{background:#FEF2F2;color:#B91C1C}.document-link.disabled{opacity:.68;cursor:not-allowed}
   .copilot-panel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:16px;padding:14px}.copilot-panel span{display:block;color:var(--sfm-muted);font-size:12px;font-weight:950}.copilot-panel strong{display:block;margin-top:5px;color:var(--sfm-primary-dark);overflow-wrap:anywhere}
-  .wizard-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.wizard-output{position:sticky;top:18px}.jurisdiction-summary{display:grid;gap:8px;margin:12px 0}.jurisdiction-summary p{margin:0;display:grid;grid-template-columns:minmax(120px,.42fr) minmax(0,1fr);gap:10px;border-bottom:1px solid rgba(29,140,255,.1);padding-bottom:8px}.jurisdiction-summary b{color:var(--sfm-muted)}.jurisdiction-summary span{font-weight:950;color:var(--sfm-primary-dark)}.plain-list,.missing-box ul{margin:12px 0 0;padding-inline-start:18px;color:var(--sfm-muted);line-height:1.8;font-weight:850}.missing-box{margin-top:12px;border:1px dashed rgba(29,140,255,.24);background:var(--sfm-light-card);border-radius:15px;padding:12px}.missing-box strong{color:var(--sfm-primary-hover)}.trusted-note{margin:12px 0 0;color:var(--sfm-muted);font-weight:900;line-height:1.7}
+  .wizard-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.wizard-project-selector{grid-column:1 / -1;min-width:0}.wizard-output{position:sticky;top:18px}.jurisdiction-summary{display:grid;gap:8px;margin:12px 0}.jurisdiction-summary p{margin:0;display:grid;grid-template-columns:minmax(120px,.42fr) minmax(0,1fr);gap:10px;border-bottom:1px solid rgba(29,140,255,.1);padding-bottom:8px}.jurisdiction-summary b{color:var(--sfm-muted)}.jurisdiction-summary span{font-weight:950;color:var(--sfm-primary-dark)}.plain-list,.missing-box ul{margin:12px 0 0;padding-inline-start:18px;color:var(--sfm-muted);line-height:1.8;font-weight:850}.missing-box{margin-top:12px;border:1px dashed rgba(29,140,255,.24);background:var(--sfm-light-card);border-radius:15px;padding:12px}.missing-box strong{color:var(--sfm-primary-hover)}.trusted-note{margin:12px 0 0;color:var(--sfm-muted);font-weight:900;line-height:1.7}
   .module-links{grid-template-columns:repeat(2,minmax(0,1fr))}.module-links a{background:var(--sfm-light-card);color:var(--sfm-midnight);border:1px solid rgba(29,140,255,.14);min-height:46px}.mini-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.mini-metrics p{margin:0;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:15px;padding:12px;min-width:0}.mini-metrics span{display:block;color:var(--sfm-muted);font-size:12px;font-weight:950}.mini-metrics strong{display:block;margin-top:5px;color:var(--sfm-primary-dark);overflow-wrap:anywhere}
   a:focus-visible,button:focus-visible,select:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.18)}
   @media(max-width:1260px){.readiness-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.hub-grid.two,.wizard-layout,.funding-layout,.documents-layout,.jurisdiction-layout,.directory-layout{grid-template-columns:1fr}.wizard-output,.funding-side,.documents-side,.directory-side{position:static}.directory-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
