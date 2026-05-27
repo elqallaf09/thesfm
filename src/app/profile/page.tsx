@@ -20,7 +20,6 @@ import {
   EyeOff,
   Globe2,
   KeyRound,
-  Languages,
   Lock,
   LogOut,
   Mail,
@@ -477,7 +476,6 @@ export default function ProfilePage() {
               <p>{L('subtitle')}</p>
             </div>
           </div>
-          <LanguageSwitcher variant="gold" compact />
         </header>
 
         <section className="profile-layout">
@@ -658,7 +656,6 @@ function PersonalInfoForm({ lang, profile, setProfile, preferences, setPreferenc
         <Field icon={<MapPin size={16} />} label={labels.city}><input value={profile.city} onChange={event => update('city', event.target.value)} /></Field>
         <Field icon={<WalletCards size={16} />} label={labels.profession}><input value={profile.profession} onChange={event => update('profession', event.target.value)} /></Field>
         <Field icon={<WalletCards size={16} />} label={labels.currency}><CurrencySelect value={preferences.currency} onChange={code => setPreferences({ ...preferences, currency: code })} lang={lang} ariaLabel={labels.currency} /></Field>
-        <Field icon={<Languages size={16} />} label={labels.language}><select value={preferences.language} onChange={event => setPreferences({ ...preferences, language: event.target.value as Lang })}><option value="ar">العربية</option><option value="en">English</option><option value="fr">Français</option></select></Field>
       </div>
       <div style={{ marginTop: 16 }}><button className="gold-btn" onClick={onSave} disabled={saving}><Save size={16} />{saving ? '...' : labels.save}</button></div>
     </Section>
@@ -705,7 +702,10 @@ function PreferenceSettings({ lang, preferences, onChange, labels }: { lang: Lan
   return (
     <Section id="preferences" title={labels.title} icon={<Palette size={19} />}>
       <div className="pref-grid">
-        <Choice label={labels.language} value={preferences.language} options={[['ar', 'العربية'], ['en', 'English'], ['fr', 'Français']]} onChange={value => set({ language: value as Lang })} />
+        <div>
+          <div className="mini-label" style={{ marginBottom: 7 }}>{labels.language}</div>
+          <LanguageSwitcher value={preferences.language} onChange={value => set({ language: value })} variant="gold" />
+        </div>
         <Choice label={labels.theme} value={preferences.theme} options={[['light', labels.light], ['dark', labels.dark], ['system', labels.system]]} onChange={value => set({ theme: value as ThemeMode })} />
         <div><div className="mini-label" style={{ marginBottom: 7 }}>{labels.currency}</div><CurrencySelect value={preferences.currency} onChange={value => set({ currency: value })} lang={lang} ariaLabel={labels.currency} /></div>
         <Field icon={<CalendarDays size={16} />} label={labels.cycleStart}><input type="date" value={preferences.cycleStart} onChange={event => set({ cycleStart: event.target.value })} /></Field>

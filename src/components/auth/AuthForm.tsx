@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { hashSecurityAnswer } from '@/lib/authSecurity';
@@ -303,16 +304,9 @@ export function AuthForm() {
   return (
     <div className="auth-scene" dir={isArabic ? 'rtl' : 'ltr'}>
 
-      {/* ── Premium 3-lang pill (top corner) ── */}
+      {/* Language selector */}
       <div style={{position:'absolute',top:'16px',left:'16px',zIndex:10}}>
-        <div dir="ltr" style={{display:'inline-flex',alignItems:'center',background:'#EFEDE7',borderRadius:'40px',padding:'3px',border:'1.5px solid var(--sfm-border)',position:'relative',minWidth:'126px'}}>
-          <span style={{position:'absolute',top:'3px',left:`calc(3px + ${(['ar','en','fr'] as const).indexOf(language)} * 33.33%)`,width:'calc(33.33%)',height:'calc(100% - 6px)',background:'#FFFFFF',borderRadius:'36px',boxShadow:'0 1px 6px rgba(27,36,48,0.13)',transition:'left 0.22s cubic-bezier(0.4,0,0.2,1)',pointerEvents:'none',zIndex:1}}/>
-          {([{id:'ar',label:'عربي'},{id:'en',label:'EN'},{id:'fr',label:'FR'}] as {id:'ar'|'en'|'fr',label:string}[]).map(lang => (
-            <button key={lang.id} onClick={() => setLanguage(lang.id)} style={{position:'relative',zIndex:2,flex:1,height:'28px',padding:'0 4px',background:'transparent',border:'none',borderRadius:'36px',cursor:'pointer',fontSize:'11.5px',fontWeight:language===lang.id?'700':'500',color:language===lang.id?'var(--sfm-foreground)':'var(--sfm-muted)',fontFamily:lang.id==='ar'?"'Tajawal',sans-serif":"-apple-system,sans-serif",transition:'color 0.18s ease',whiteSpace:'nowrap'}}>
-              {lang.label}
-            </button>
-          ))}
-        </div>
+        <LanguageSwitcher value={language} onChange={setLanguage} variant="gold" compact />
       </div>
 
       {/* ── Card ── */}

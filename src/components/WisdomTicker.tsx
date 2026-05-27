@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Languages } from 'lucide-react';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 
 // نصائح من كتب مالية وفكرية وتسويقية عالمية
 const BOOK_TIPS = [
@@ -146,20 +145,9 @@ export function WisdomTicker({ language, onLanguageChange, showLanguageSelector 
 
         {/* اختيار اللغة */}
         {showLanguageSelector && onLanguageChange && (
-          <Select value={language} onValueChange={(v) => onLanguageChange(v as 'ar' | 'en' | 'fr')}>
-            <SelectTrigger
-              className="order-1 sm:order-2 w-[140px] shrink-0"
-              style={{ background: 'rgba(255,253,245,0.92)', borderColor: 'rgba(29,140,255,0.4)', color: '#7a5c1a' }}
-            >
-              <Languages className="h-4 w-4 me-2" style={{ color: '#c4a35a' }} />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ar">العربية</SelectItem>
-              <SelectItem value="en">English</SelectItem>
-              <SelectItem value="fr">Français</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="order-1 sm:order-2 shrink-0">
+            <LanguageSwitcher value={language} onChange={onLanguageChange} variant="gold" compact />
+          </div>
         )}
       </div>
     </>
