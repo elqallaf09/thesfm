@@ -1,7 +1,7 @@
 'use client';
 
 import type { CSSProperties } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
@@ -193,6 +193,7 @@ type ReceiptScanApiResult = {
   success?: boolean;
   provider?: 'google-document-ai' | 'openai-vision' | 'manual';
   confidence?: 'high' | 'medium' | 'low';
+  code?: string;
   data?: AiExtractedData;
   error?: string;
   debug?: ReceiptScanDebug;
@@ -201,6 +202,7 @@ type ReceiptScanApiPayload = {
   success?: boolean;
   provider?: 'google-document-ai' | 'openai-vision' | 'manual';
   confidence?: 'high' | 'medium' | 'low';
+  code?: string;
   error?: string;
   data?: AiExtractedData;
   debug?: ReceiptScanDebug;
@@ -376,6 +378,7 @@ const expenseUi = {
   uploadOneReceipt: { ar: 'رفع فاتورة واحدة', en: 'Upload one receipt', fr: 'Importer une facture' },
   uploadMultipleReceipts: { ar: 'رفع عدة فواتير', en: 'Upload multiple receipts', fr: 'Importer plusieurs factures' },
   chooseImages: { ar: 'اختر الصور أو اسحبها هنا', en: 'Choose images or drag them here', fr: 'Choisissez des images ou glissez-les ici' },
+  selectedOneReceipt: { ar: 'تم اختيار فاتورة واحدة', en: 'One receipt selected', fr: 'Une facture sélectionnée' },
   selectedReceipts: { ar: 'تم اختيار {count} فواتير', en: '{count} receipts selected', fr: '{count} factures sélectionnées' },
   smartTitle: { ar: 'إدارة المصروفات الذكية', en: 'Smart expense management', fr: 'Gestion intelligente des depenses' },
   smartSubtitle: { ar: 'سجل مصروفاتك يدويًا أو ارفع فاتورة ليقرأها الذكاء الاصطناعي ثم راجعها قبل الإضافة.', en: 'Add expenses manually or upload a receipt for AI extraction, then review before saving.', fr: 'Ajoutez manuellement ou telechargez une facture pour extraction IA, puis verifiez avant enregistrement.' },
@@ -419,7 +422,18 @@ const expenseUi = {
   highConfidence: { ar: 'ثقة عالية', en: 'High confidence', fr: 'Confiance élevée' },
   mediumConfidenceLabel: { ar: 'ثقة متوسطة', en: 'Medium confidence', fr: 'Confiance moyenne' },
   lowConfidenceLabel: { ar: 'ثقة منخفضة', en: 'Low confidence', fr: 'Confiance faible' },
-  providerUnavailable: { ar: 'تعذر الاتصال بخدمة قراءة الفواتير. يمكنك إدخال البيانات يدوياً وسيتم حفظ الصورة كمرفق.', en: 'Receipt scanning provider is unavailable. You can enter the details manually and save the attachment.', fr: 'Le service de scan est indisponible. Vous pouvez saisir les données manuellement et enregistrer la pièce jointe.' },
+  providerUnavailableTitle: { ar: 'خدمة قراءة الفواتير غير مفعلة حالياً.', en: 'Invoice scanning provider is not configured.', fr: 'Le service de lecture des factures n’est pas configuré.' },
+  providerUnavailable: {
+    ar: 'يمكنك إدخال بيانات المصروف يدوياً، وسيتم حفظ صورة الفاتورة كمرفق.',
+    en: 'You can enter the expense manually and save the receipt as an attachment.',
+    fr: 'Vous pouvez saisir la dépense manuellement et enregistrer le reçu en pièce jointe.',
+  },
+  scanFailedTitle: { ar: 'تعذر قراءة الفاتورة تلقائياً', en: 'Could not read the invoice automatically', fr: 'Impossible de lire la facture automatiquement' },
+  scanFailedManualHint: {
+    ar: 'يمكنك إدخال البيانات يدوياً، وسيتم حفظ الصورة كمرفق.',
+    en: 'You can enter the details manually, and the image will be saved as an attachment.',
+    fr: 'Vous pouvez saisir les données manuellement, et l’image sera enregistrée en pièce jointe.',
+  },
   uploadFailed: { ar: 'تعذر رفع الصورة.', en: 'Could not upload the image.', fr: 'Impossible de téléverser l’image.' },
   noClearAmount: { ar: 'لم يتم العثور على مبلغ واضح.', en: 'No clear amount was found.', fr: 'Aucun montant clair n’a été trouvé.' },
   ready: { ar: 'جاهز للإضافة', en: 'Ready to add', fr: 'Prêt à ajouter' },
@@ -616,10 +630,21 @@ function receiptConfidenceLabel(level: AiExtractedData['confidenceLevel'] | unde
 
 function receiptScanErrorText(errorSource: string | undefined, lang: string, fallback: string) {
   if (!errorSource) return fallback;
-  if (/missing_google_and_openai|provider|not_configured|unavailable/.test(errorSource)) return expenseText('providerUnavailable', lang);
+  if (/missing_google_and_openai|provider|not_configured|unavailable|all_providers_unavailable|provider_unavailable/.test(errorSource)) {
+    return `${expenseText('providerUnavailableTitle', lang)} ${expenseText('providerUnavailable', lang)}`;
+  }
   if (/unsupported_file_type|file_too_large|upload/.test(errorSource)) return expenseText('uploadFailed', lang);
   if (/parser_no_final_total|no_clear_total/.test(errorSource)) return expenseText('noClearAmount', lang);
   return fallback;
+}
+
+function isReceiptProviderUnavailable(errorSource?: string, code?: string, message?: string) {
+  return /missing_google_and_openai|provider|not_configured|unavailable|all_providers_unavailable|provider_unavailable/i.test(`${errorSource || ''} ${code || ''} ${message || ''}`);
+}
+
+function selectedReceiptsLabel(count: number, lang: string) {
+  if (count === 1) return expenseText('selectedOneReceipt', lang);
+  return textWithCount(expenseText('selectedReceipts', lang), { count });
 }
 
 function normalizeReceiptDate(data: AiExtractedData) {
@@ -937,6 +962,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [receiptFiles, setReceiptFiles] = useState<Array<{ file: File; previewUrl: string }>>([]);
   const [pendingReceiptExpenses, setPendingReceiptExpenses] = useState<PendingReceiptExpense[]>([]);
   const [receiptDetails, setReceiptDetails] = useState<SmartExpense | null>(null);
+  const receiptInputRef = useRef<HTMLInputElement | null>(null);
   const [entrySaving, setEntrySaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<(MoneyItem | IncomeSource) | null>(null);
   const [entryMessage, setEntryMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
@@ -1210,9 +1236,11 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     setReceiptError('');
     setReceiptDebug(null);
     if (!file) {
+      if (receiptInputRef.current) receiptInputRef.current.value = '';
       setExpenseForm(prev => ({ ...prev, receiptFile: null, receiptPreview: '', receiptFileName: null, aiExtractedData: null, aiConfidenceScore: null }));
       setReceiptFiles([]);
       setPendingReceiptExpenses([]);
+      setReceiptBatchProgress('');
       return;
     }
     if (process.env.NODE_ENV !== 'production') {
@@ -1300,10 +1328,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         fileType: expenseForm.receiptFile.type,
         fileSize: expenseForm.receiptFile.size,
         status: response.status,
-        errorSource: payload.debug?.errorSource || payload.error,
+        errorSource: payload.code || payload.debug?.errorSource || payload.error,
       });
       if (!response.ok || !payload.data) {
-        throw new Error(receiptScanErrorText(payload.debug?.errorSource, lang, payload.error || expenseText('couldNotRead', lang)));
+        throw new Error(receiptScanErrorText(payload.code || payload.debug?.errorSource, lang, payload.error || expenseText('couldNotRead', lang)));
       }
       const extracted = { ...payload.data, provider: payload.provider || payload.data.provider };
       if (process.env.NODE_ENV !== 'production') {
@@ -1388,7 +1416,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           })),
         });
       }
-      if (!response.ok) throw new Error(payload.error || expenseText('couldNotRead', lang));
+      if (!response.ok) throw new Error(receiptScanErrorText(payload.code || payload.debug?.errorSource, lang, payload.error || expenseText('couldNotRead', lang)));
       const results = payload.results?.length
         ? payload.results
         : [{ fileName: receiptFiles[0].file.name, success: payload.success, data: payload.data, error: payload.error }];
@@ -2253,7 +2281,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 {expenseModalMode === 'scan' && (
                   <div className="receipt-scan-area">
                     <label className="receipt-drop" aria-label={expenseText('uploadReceipt', lang)}>
-                      <input type="file" accept="image/*,.pdf,application/pdf" multiple aria-label={expenseText('uploadReceipt', lang)} onChange={event => handleExpenseFiles(event.target.files)} />
+                      <input ref={receiptInputRef} type="file" accept="image/*,.pdf,application/pdf" multiple aria-label={expenseText('uploadReceipt', lang)} onChange={event => handleExpenseFiles(event.target.files)} />
                       {receiptFiles.length ? (
                         <div className="receipt-preview-grid">
                           {receiptFiles.map(({ file, previewUrl }) => (
@@ -2277,22 +2305,45 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                     </label>
                     {!!receiptFiles.length && (
                       <div className="receipt-selected-count">
-                        {textWithCount(expenseText('selectedReceipts', lang), { count: receiptFiles.length })}
+                        {selectedReceiptsLabel(receiptFiles.length, lang)}
                       </div>
                     )}
                     <div className="receipt-scan-actions">
-                      <button type="button" className="ghost-form-btn" onClick={() => handleExpenseFile(null)}>{expenseText('changeImage', lang)}</button>
-                      <button type="button" className="ghost-form-btn" onClick={() => void analyzeReceipt()} disabled={receiptAnalyzing || !expenseForm.receiptFile || receiptFiles.length > 1}>
-                        {receiptAnalyzing ? <RefreshCw size={15} className="spin-icon" /> : <Sparkles size={15} />}
-                        {receiptAnalyzing ? expenseText('reading', lang) : expenseText('analyze', lang)}
-                      </button>
-                      <button type="button" className="primary-form-btn" onClick={() => void analyzeAllReceipts()} disabled={receiptAnalyzing || !receiptFiles.length}>
-                        {receiptAnalyzing ? <RefreshCw size={15} className="spin-icon" /> : <Sparkles size={15} />}
-                        {receiptAnalyzing ? expenseText('readingAll', lang) : expenseText('analyzeAll', lang)}
-                      </button>
+                      {!!receiptFiles.length && (
+                        <>
+                          <button type="button" className="ghost-form-btn" onClick={() => receiptInputRef.current?.click()}>{expenseText('changeImage', lang)}</button>
+                          <button type="button" className="ghost-form-btn danger-soft" onClick={() => handleExpenseFile(null)}>{expenseText('removeReceipt', lang)}</button>
+                        </>
+                      )}
+                      {receiptFiles.length <= 1 ? (
+                        <button type="button" className="primary-form-btn" onClick={() => void analyzeReceipt()} disabled={receiptAnalyzing || !expenseForm.receiptFile}>
+                          {receiptAnalyzing ? <RefreshCw size={15} className="spin-icon" /> : <Sparkles size={15} />}
+                          {receiptAnalyzing ? expenseText('reading', lang) : expenseText('analyze', lang)}
+                        </button>
+                      ) : (
+                        <button type="button" className="primary-form-btn" onClick={() => void analyzeAllReceipts()} disabled={receiptAnalyzing || !receiptFiles.length}>
+                          {receiptAnalyzing ? <RefreshCw size={15} className="spin-icon" /> : <Sparkles size={15} />}
+                          {receiptAnalyzing ? expenseText('readingAll', lang) : expenseText('analyzeAll', lang)}
+                        </button>
+                      )}
                     </div>
                     {receiptBatchProgress && <div className="receipt-selected-count">{receiptBatchProgress}</div>}
-                    {receiptError && <div className="receipt-error">{receiptError}</div>}
+                    {receiptError && (
+                      <div className={`receipt-error ${isReceiptProviderUnavailable(receiptDebug?.errorSource, undefined, receiptError) ? 'provider-unavailable' : ''}`} role={isReceiptProviderUnavailable(receiptDebug?.errorSource, undefined, receiptError) ? 'status' : 'alert'}>
+                        {isReceiptProviderUnavailable(receiptDebug?.errorSource, undefined, receiptError) ? (
+                          <>
+                            <strong>{expenseText('providerUnavailableTitle', lang)}</strong>
+                            <span>{expenseText('providerUnavailable', lang)}</span>
+                          </>
+                        ) : (
+                          <>
+                            <strong>{expenseText('scanFailedTitle', lang)}</strong>
+                            <span>{receiptError}</span>
+                            <small>{expenseText('scanFailedManualHint', lang)}</small>
+                          </>
+                        )}
+                      </div>
+                    )}
                     {process.env.NODE_ENV !== 'production' && receiptDebug && (
                       <div className="receipt-debug-panel" role="status">
                         <strong>{pick({ ar: 'تشخيص التحليل', en: 'Scan debug', fr: 'Diagnostic du scan' }, lang)}</strong>
@@ -2405,15 +2456,17 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 <label><span>{expenseText('category', lang)}</span><select value={expenseForm.category} onChange={event => setExpenseForm(prev => ({ ...prev, category: event.target.value }))}>{EXPENSE_CATEGORIES.map(item => <option key={item.id} value={item.id}>{pick(item.label, lang)}</option>)}</select></label>
                 <label><span>{expenseText('date', lang)}</span><input type="date" value={expenseForm.date} onChange={event => setExpenseForm(prev => ({ ...prev, date: event.target.value }))} /></label>
                 <label><span>{expenseText('paymentMethod', lang)}</span><select value={expenseForm.paymentMethod} onChange={event => setExpenseForm(prev => ({ ...prev, paymentMethod: event.target.value }))}>{PAYMENT_METHODS.map(item => <option key={item.id} value={item.id}>{pick(item.label, lang)}</option>)}</select></label>
-                <label className="receipt-attach-card">
-                  <input type="file" accept="image/*,application/pdf" capture="environment" aria-label={expenseText('attachReceipt', lang)} onChange={event => handleExpenseFile(event.target.files?.[0] || null)} />
-                  <span className="receipt-attach-icon"><Upload size={20} /></span>
-                  <span className="receipt-attach-copy">
-                    <strong>{expenseText('attachReceipt', lang)}</strong>
-                    <small>{expenseText('uploadOptionalHint', lang)}</small>
-                    {expenseForm.receiptFileName && <em>{expenseForm.receiptFileName}</em>}
-                  </span>
-                </label>
+                {expenseModalMode === 'manual' && (
+                  <label className="receipt-attach-card">
+                    <input type="file" accept="image/*,application/pdf" capture="environment" aria-label={expenseText('attachReceipt', lang)} onChange={event => handleExpenseFile(event.target.files?.[0] || null)} />
+                    <span className="receipt-attach-icon"><Upload size={20} /></span>
+                    <span className="receipt-attach-copy">
+                      <strong>{expenseText('attachReceipt', lang)}</strong>
+                      <small>{expenseText('uploadOptionalHint', lang)}</small>
+                      {expenseForm.receiptFileName && <em>{expenseForm.receiptFileName}</em>}
+                    </span>
+                  </label>
+                )}
                 <label className="expense-notes"><span>{expenseText('notes', lang)}</span><textarea value={expenseForm.notes} onChange={event => setExpenseForm(prev => ({ ...prev, notes: event.target.value }))} /></label>
 
                 <div className="entry-actions expense-actions">
@@ -3455,7 +3508,11 @@ const expenseSmartStyles = `
   .receipt-preview-grid small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .receipt-selected-count{margin-top:9px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.18);border-radius:13px;padding:9px 11px;color:var(--sfm-muted);font-size:12px;font-weight:900}
   .receipt-scan-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;margin-top:10px}
-  .receipt-error{border:1px solid rgba(239,68,68,.18);background:rgba(239,68,68,.08);color:#B91C1C;border-radius:13px;padding:10px 12px;font-size:13px;font-weight:900;margin-top:10px}
+  .receipt-error{display:grid;gap:5px;border:1px solid rgba(245,158,11,.26);background:rgba(245,158,11,.10);color:#92400E;border-radius:15px;padding:12px 14px;font-size:13px;font-weight:850;margin-top:10px;line-height:1.65}
+  .receipt-error strong{display:block;color:var(--sfm-foreground);font-size:14px;font-weight:950}
+  .receipt-error span,.receipt-error small{display:block;color:inherit}
+  .receipt-error.provider-unavailable{border-color:rgba(29,140,255,.24);background:rgba(29,140,255,.08);color:var(--sfm-muted)}
+  .ghost-form-btn.danger-soft{color:#B91C1C;border-color:rgba(239,68,68,.22);background:rgba(239,68,68,.06)}
   .receipt-debug-panel{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;border:1px solid rgba(29,140,255,.18);background:rgba(29,140,255,.08);border-radius:13px;padding:10px 12px;color:var(--sfm-muted);font-size:12px;font-weight:800}
   .receipt-debug-panel strong{color:var(--sfm-foreground);font-size:12px}
   .receipt-debug-panel span{border-radius:999px;background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);padding:4px 7px;max-width:100%;overflow-wrap:anywhere}

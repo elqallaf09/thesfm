@@ -11,6 +11,14 @@ const GOOGLE_TOKEN_AUDIENCE = 'https://oauth2.googleapis.com/token';
 
 type ScanProvider = 'google-document-ai' | 'openai-vision' | 'manual';
 type ConfidenceLevel = 'high' | 'medium' | 'low';
+type ScanErrorCode =
+  | 'provider_unavailable'
+  | 'all_providers_unavailable'
+  | 'upload_failed'
+  | 'file_too_large'
+  | 'unsupported_file_type'
+  | 'no_clear_total'
+  | 'scan_failed';
 
 type LineItem = {
   description?: string;
@@ -98,6 +106,7 @@ type ScanFileResult = {
   success: boolean;
   provider: ScanProvider;
   confidence: ConfidenceLevel;
+  code?: ScanErrorCode;
   fields: ScanFields;
   candidates: { amounts: AmountCandidate[] };
   warnings: string[];
@@ -135,11 +144,12 @@ type GoogleDocumentEntity = {
 
 let cachedGoogleToken: { token: string; expiresAt: number } | null = null;
 
-function errorResponse(error: string, status = 400, debug?: Partial<ScanDebug>) {
+function errorResponse(error: string, status = 400, debug?: Partial<ScanDebug>, code: ScanErrorCode = 'scan_failed', provider: ScanProvider = 'manual') {
   return NextResponse.json({
     success: false,
-    provider: 'manual',
+    provider,
     confidence: 'low',
+    code,
     fields: {},
     candidates: { amounts: [] },
     warnings: [error],
@@ -995,16 +1005,36 @@ function withFileDebug(result: ScanFileResult, file: File, patch: Partial<ScanDe
   };
 }
 
+function scanErrorCode(errorSource: string): ScanErrorCode {
+  if (errorSource === 'missing_google_and_openai') return 'all_providers_unavailable';
+  if (/unsupported_file_type/.test(errorSource)) return 'unsupported_file_type';
+  if (/file_too_large/.test(errorSource)) return 'file_too_large';
+  if (/no_clear_total|parser_no_final_total/.test(errorSource)) return 'no_clear_total';
+  if (/provider|google_missing|providers_failed|not_configured|unavailable/.test(errorSource)) return 'provider_unavailable';
+  return 'scan_failed';
+}
+
+function scanErrorMessage(code: ScanErrorCode, fallback: string) {
+  if (code === 'all_providers_unavailable') return 'No receipt scanning provider is configured';
+  if (code === 'provider_unavailable') return 'Google Document AI is not configured';
+  if (code === 'unsupported_file_type') return 'Unsupported file type';
+  if (code === 'file_too_large') return 'File size is too large';
+  if (code === 'no_clear_total') return 'No clear total was found';
+  return fallback;
+}
+
 function providerFailureResult(file: File, warnings: string[], errorSource: string): ScanFileResult {
+  const code = scanErrorCode(errorSource);
   return {
     fileName: file.name,
     success: false,
     provider: 'manual',
     confidence: 'low',
+    code,
     fields: {},
     candidates: { amounts: [] },
     warnings,
-    error: 'Provider unavailable. You can still enter the expense manually and save the attachment.',
+    error: scanErrorMessage(code, 'Provider unavailable. You can still enter the expense manually and save the attachment.'),
     debug: buildDebug(file, 'provider', { provider: 'manual', errorSource }),
   };
 }
@@ -1077,10 +1107,34 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const files = [...formData.getAll('receipt'), ...formData.getAll('receipts')].filter((file): file is File => file instanceof File);
-    if (!files.length) return errorResponse('No receipt file uploaded');
-    if (files.length > MAX_RECEIPTS) return errorResponse('You can upload up to 10 receipts at once', 413);
+    if (!files.length) return errorResponse('No receipt file uploaded', 400, undefined, 'upload_failed');
+    if (files.length > MAX_RECEIPTS) return errorResponse('You can upload up to 10 receipts at once', 413, undefined, 'upload_failed');
 
     const receiptText = formData.get('receiptText');
+    if (!googleConfigured() && !openaiConfigured() && typeof receiptText !== 'string') {
+      return NextResponse.json({
+        success: false,
+        provider: 'manual',
+        confidence: 'low',
+        code: 'all_providers_unavailable',
+        fields: {},
+        candidates: { amounts: [] },
+        warnings: ['Google Document AI is not configured.', 'OpenAI Vision fallback is not configured.'],
+        error: 'No receipt scanning provider is configured',
+        debug: {
+          stage: 'provider',
+          fileName: files[0]?.name || '',
+          fileType: files[0]?.type || '',
+          fileSize: files[0]?.size || 0,
+          googleConfigured: false,
+          openaiConfigured: false,
+          provider: 'manual',
+          errorSource: 'missing_google_and_openai',
+          message: 'No receipt scanning provider is configured',
+        },
+      }, { status: 503 });
+    }
+
     if (process.env.NODE_ENV !== 'production') {
       console.info('Receipt scan request started', {
         googleConfigured: googleConfigured(),
@@ -1096,6 +1150,7 @@ export async function POST(request: NextRequest) {
         success: result.success,
         provider: result.provider,
         confidence: result.confidence,
+        code: result.code,
         fields: result.fields,
         candidates: result.candidates,
         warnings: result.warnings,
@@ -1111,6 +1166,7 @@ export async function POST(request: NextRequest) {
       success: results.some(result => result.success),
       provider: results.find(result => result.success)?.provider || 'manual',
       confidence: results.some(result => result.confidence === 'high') ? 'high' : results.some(result => result.confidence === 'medium') ? 'medium' : 'low',
+      code: results.find(result => result.code)?.code,
       fields: {},
       candidates: { amounts: [] },
       warnings: results.flatMap(result => result.warnings),
