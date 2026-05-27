@@ -111,6 +111,10 @@ const TEXT = {
   ar: {
     pageTitle: 'لوحة القيادة التنفيذية',
     pageSubtitle: 'نظرة شاملة على أموالك، مشاريعك، استثماراتك، زكاتك، وتنبيهاتك في مكان واحد.',
+    updatedNow: 'محدث الآن',
+    lastUpdatedNow: 'آخر تحديث: الآن',
+    totalAssets: 'إجمالي الأصول',
+    todayAlerts: 'تنبيهات اليوم',
     totalIncome: 'إجمالي الدخل',
     totalExpenses: 'إجمالي المصروفات',
     netBalance: 'صافي الرصيد',
@@ -199,6 +203,10 @@ const TEXT = {
   en: {
     pageTitle: 'Executive Dashboard',
     pageSubtitle: 'A complete overview of your finances, projects, investments, zakat, and alerts in one place.',
+    updatedNow: 'Updated now',
+    lastUpdatedNow: 'Last updated: now',
+    totalAssets: 'Total assets',
+    todayAlerts: 'Today alerts',
     totalIncome: 'Total Income',
     totalExpenses: 'Total Expenses',
     netBalance: 'Net Balance',
@@ -287,6 +295,10 @@ const TEXT = {
   fr: {
     pageTitle: 'Tableau de bord exécutif',
     pageSubtitle: 'Une vue complète de vos finances, projets, investissements, zakat et alertes en un seul endroit.',
+    updatedNow: 'Mis à jour',
+    lastUpdatedNow: 'Dernière mise à jour : maintenant',
+    totalAssets: 'Actifs totaux',
+    todayAlerts: 'Alertes du jour',
     totalIncome: 'Revenus totaux',
     totalExpenses: 'Dépenses totales',
     netBalance: 'Solde net',
@@ -817,6 +829,14 @@ export default function ExecutiveDashboardPage() {
 
   const hasErrors = Object.keys(errors).length > 0;
   const topOpenTasks = dashboardTasks.filter(task => task.status === 'open').slice(0, 3);
+  const hasAssetData = records.savings.length > 0 || records.investments.length > 0 || records.goals.length > 0;
+  const totalAssets = summary.savingsTotal + summary.investmentsTotal + summary.totalGoalBalance;
+  const heroKpis = [
+    { label: text.totalAssets, value: hasAssetData ? money(totalAssets) : text.insufficientData },
+    { label: text.activeProjects, value: `${summary.activeProjects}` },
+    { label: text.todayAlerts, value: `${summary.dueTodayNotifications}` },
+    { label: text.readyReports, value: `${summary.readyReports}` },
+  ];
 
   if (loading || isLoadingData) {
     return (
@@ -840,16 +860,40 @@ export default function ExecutiveDashboardPage() {
           <UserChip />
         </div>
 
-        <section className="hero-card">
-          <div>
-            <span className="hero-kicker">THE SFM</span>
-            <h1>{text.pageTitle}</h1>
-            <p>{text.pageSubtitle}</p>
+        <section className="hero-card" aria-labelledby="dashboard-hero-title">
+          <div className="hero-visual" aria-hidden="true">
+            <span className="hero-grid-plane" />
+            <span className="hero-chart-line hero-chart-line-one" />
+            <span className="hero-chart-line hero-chart-line-two" />
+            <span className="hero-glow-dot hero-glow-dot-one" />
+            <span className="hero-glow-dot hero-glow-dot-two" />
           </div>
-          <div className="hero-actions">
-            <ActionLink href="/tasks">{text.viewAllTasks}</ActionLink>
-            <ActionLink href="/reports-center">{text.openReportsCenter}</ActionLink>
-            <ActionLink href="/notifications">{text.viewAllNotifications}</ActionLink>
+
+          <div className="hero-content">
+            <span className="hero-kicker">
+              <Zap size={14} aria-hidden="true" />
+              {text.updatedNow}
+            </span>
+            <h1 id="dashboard-hero-title">{text.pageTitle}</h1>
+            <p>{text.pageSubtitle}</p>
+            <span className="hero-status">{text.lastUpdatedNow}</span>
+          </div>
+
+          <div className="hero-side">
+            <div className="hero-actions">
+              <ActionLink href="/tasks">{text.viewAllTasks}</ActionLink>
+              <ActionLink href="/reports-center">{text.openReportsCenter}</ActionLink>
+              <ActionLink href="/notifications">{text.viewAllNotifications}</ActionLink>
+            </div>
+
+            <div className="hero-kpi-grid" aria-label={text.pageTitle}>
+              {heroKpis.map((item) => (
+                <article className="hero-kpi-card" key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -1141,41 +1185,243 @@ const dashboardStyles = `
   }
 
   .hero-card {
-    display: flex;
-    justify-content: space-between;
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.72fr);
     gap: 24px;
-    align-items: flex-end;
-    padding: 34px;
-    border-radius: 24px;
+    align-items: end;
+    min-height: 320px;
+    padding: 32px;
+    border-radius: 30px;
     background:
-      radial-gradient(circle at 12% 10%, rgba(24, 212, 212, 0.20), transparent 32%),
-      linear-gradient(135deg, var(--sfm-deep-navy), var(--sfm-primary-dark) 56%, var(--sfm-card-dark));
+      radial-gradient(circle at 18% 18%, rgba(24, 212, 212, 0.34), transparent 28%),
+      radial-gradient(circle at 82% 6%, rgba(29, 140, 255, 0.26), transparent 30%),
+      linear-gradient(135deg, #031225 0%, #061B33 48%, #0B5F66 140%);
     color: #EAF6FF;
     border: 1px solid rgba(24, 212, 212, 0.32);
-    box-shadow: 0 24px 60px rgba(3, 18, 37, 0.18);
+    box-shadow: 0 28px 80px rgba(3, 18, 37, 0.22);
     overflow: hidden;
   }
 
+  .hero-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    opacity: 0.42;
+    background-image:
+      linear-gradient(rgba(167, 243, 240, 0.13) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(167, 243, 240, 0.10) 1px, transparent 1px);
+    background-size: 46px 46px;
+    mask-image: linear-gradient(110deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.96) 46%, rgba(0, 0, 0, 0.18));
+  }
+
+  .hero-card::after {
+    content: '';
+    position: absolute;
+    inset-inline: 8%;
+    bottom: -62px;
+    height: 132px;
+    z-index: -1;
+    background: radial-gradient(ellipse at center, rgba(24, 212, 212, 0.28), transparent 68%);
+    filter: blur(12px);
+  }
+
+  .hero-content,
+  .hero-side {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+  }
+
+  .hero-content {
+    max-width: 790px;
+  }
+
+  .hero-side {
+    display: grid;
+    gap: 18px;
+  }
+
+  .hero-visual {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .hero-grid-plane {
+    position: absolute;
+    inset-inline-start: 42%;
+    top: 30px;
+    width: 54%;
+    height: 72%;
+    border-radius: 28px;
+    border: 1px solid rgba(167, 243, 240, 0.16);
+    background:
+      linear-gradient(rgba(234, 246, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(234, 246, 255, 0.08) 1px, transparent 1px);
+    background-size: 34px 34px;
+    transform: perspective(760px) rotateX(58deg) rotateZ(-8deg);
+    transform-origin: center;
+    opacity: 0.52;
+  }
+
+  .hero-chart-line {
+    position: absolute;
+    height: 3px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent, rgba(24, 212, 212, 0.92), rgba(29, 140, 255, 0.58), transparent);
+    box-shadow: 0 0 24px rgba(24, 212, 212, 0.48);
+    transform: rotate(-8deg);
+  }
+
+  .hero-chart-line-one {
+    inset-inline-end: 7%;
+    top: 31%;
+    width: 42%;
+  }
+
+  .hero-chart-line-two {
+    inset-inline-end: 15%;
+    top: 55%;
+    width: 30%;
+    opacity: 0.72;
+    transform: rotate(8deg);
+  }
+
+  .hero-glow-dot {
+    position: absolute;
+    width: 108px;
+    height: 108px;
+    border-radius: 999px;
+    background: rgba(24, 212, 212, 0.18);
+    filter: blur(10px);
+    border: 1px solid rgba(167, 243, 240, 0.2);
+  }
+
+  .hero-glow-dot-one {
+    inset-inline-end: 18%;
+    top: 16%;
+  }
+
+  .hero-glow-dot-two {
+    inset-inline-end: 3%;
+    bottom: 18%;
+    width: 76px;
+    height: 76px;
+    background: rgba(29, 140, 255, 0.18);
+  }
+
   .hero-kicker {
-    color: var(--sfm-soft-cyan);
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(234, 246, 255, 0.12);
+    color: #A7F3F0;
     font-weight: 800;
     letter-spacing: 0;
-    font-size: 0.78rem;
+    font-size: 0.82rem;
+    border: 1px solid rgba(167, 243, 240, 0.24);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(14px);
   }
 
   .hero-card h1 {
-    margin: 10px 0 12px;
-    font-size: clamp(2rem, 4vw, 3.2rem);
+    margin: 16px 0 12px;
+    font-size: clamp(2.2rem, 4.4vw, 4rem);
     line-height: 1.08;
     letter-spacing: 0;
+    color: #FFFFFF;
+    text-shadow: 0 14px 40px rgba(3, 18, 37, 0.26);
   }
 
   .hero-card p {
-    max-width: 740px;
+    max-width: 760px;
     margin: 0;
-    color: rgba(234, 246, 255, 0.78);
-    font-size: 1.04rem;
+    color: rgba(234, 246, 255, 0.84);
+    font-size: 1.08rem;
     line-height: 1.8;
+  }
+
+  .hero-status {
+    width: fit-content;
+    display: inline-flex;
+    margin-top: 18px;
+    padding: 7px 11px;
+    border-radius: 999px;
+    color: rgba(234, 246, 255, 0.88);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(167, 243, 240, 0.18);
+    font-size: 0.86rem;
+    font-weight: 700;
+  }
+
+  .hero-card .hero-actions {
+    justify-content: flex-end;
+  }
+
+  .hero-card .action-link {
+    background: rgba(234, 246, 255, 0.12);
+    color: #EAF6FF;
+    border-color: rgba(167, 243, 240, 0.24);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(14px);
+  }
+
+  .hero-card .hero-actions .action-link:first-child {
+    color: #031225;
+    background: linear-gradient(135deg, #A7F3F0, #18D4D4 52%, #1D8CFF);
+    border-color: rgba(234, 246, 255, 0.46);
+  }
+
+  .hero-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .hero-kpi-card {
+    min-width: 0;
+    padding: 14px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(234, 246, 255, 0.14), rgba(234, 246, 255, 0.07));
+    border: 1px solid rgba(167, 243, 240, 0.22);
+    box-shadow: 0 18px 38px rgba(3, 18, 37, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(16px);
+    transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+
+  .hero-kpi-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(24, 212, 212, 0.48);
+    box-shadow: 0 22px 44px rgba(3, 18, 37, 0.2), 0 0 24px rgba(24, 212, 212, 0.12);
+  }
+
+  .hero-kpi-card span,
+  .hero-kpi-card strong {
+    display: block;
+    min-width: 0;
+  }
+
+  .hero-kpi-card span {
+    color: rgba(199, 219, 245, 0.88);
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1.45;
+  }
+
+  .hero-kpi-card strong {
+    margin-top: 8px;
+    color: #FFFFFF;
+    font-size: clamp(1rem, 2vw, 1.28rem);
+    line-height: 1.25;
+    overflow-wrap: anywhere;
   }
 
   .hero-actions,
@@ -1510,7 +1756,22 @@ const dashboardStyles = `
       padding: 86px 16px 36px !important;
     }
 
-    .hero-card,
+    .hero-card {
+      grid-template-columns: 1fr;
+      min-height: auto;
+      align-items: stretch;
+    }
+
+    .hero-card .hero-actions {
+      justify-content: flex-start;
+    }
+
+    .hero-grid-plane {
+      inset-inline-start: 18%;
+      width: 82%;
+      opacity: 0.36;
+    }
+
     .setup-card {
       flex-direction: column;
       align-items: stretch;
@@ -1524,7 +1785,25 @@ const dashboardStyles = `
 
     .hero-card {
       padding: 24px 20px;
-      border-radius: 20px;
+      border-radius: 22px;
+      gap: 18px;
+    }
+
+    .hero-card h1 {
+      font-size: clamp(2rem, 12vw, 2.8rem);
+    }
+
+    .hero-card p {
+      font-size: 0.98rem;
+    }
+
+    .hero-kpi-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .hero-glow-dot,
+    .hero-chart-line {
+      opacity: 0.58;
     }
 
     .metrics-grid,
