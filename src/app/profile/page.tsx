@@ -43,6 +43,7 @@ import { CurrencySelect } from '@/components/CurrencySelect';
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
+import { notifyCurrentUserProfileChanged } from '@/hooks/useCurrentUserProfile';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/lib/useCurrency';
@@ -367,10 +368,12 @@ export default function ProfilePage() {
   async function saveProfile() {
     if (!user) return;
     setSaving(true);
+    const displayName = profile.displayName.trim();
+    const username = profile.username.trim();
     const { error } = await supabase.from('profiles').upsert({
       id: user.id,
-      display_name: profile.displayName.trim(),
-      username: profile.username.trim(),
+      display_name: displayName,
+      username,
       email: user.email || profile.email,
       age: profile.age ? Number(profile.age) : null,
       gender: profile.gender || null,
@@ -380,6 +383,26 @@ export default function ProfilePage() {
     }, { onConflict: 'id' });
     const extras = readStored<Record<string, Partial<ProfileState>>>(PROFILE_EXTRA_KEY, {});
     writeStored(PROFILE_EXTRA_KEY, { ...extras, [user.id]: { country: profile.country, city: profile.city } });
+    if (!error) {
+      const { data: authData } = await supabase.auth.updateUser({
+        data: {
+          display_name: displayName,
+          full_name: displayName,
+          username,
+        },
+      });
+      const authEmail = authData.user?.email || user.email || profile.email;
+      notifyCurrentUserProfileChanged({
+        userId: user.id,
+        authEmail,
+        profile: {
+          display_name: displayName,
+          username,
+          email: authEmail,
+        },
+      });
+      router.refresh();
+    }
     setSaving(false);
     showToast(error ? L('saveError') : L('saved'));
   }

@@ -11,6 +11,7 @@ export type Lang = 'ar' | 'en' | 'fr';
 type TranslationEntry = Partial<Record<Lang, string>> & { ar: string; en: string };
 
 export const TR: Record<string, TranslationEntry> = {
+  common_user: { ar:'مستخدم', en:'User', fr:'Utilisateur' },
 
   /* ── Common / UI ── */
   back:        { ar:'← رجوع', en:'← Back', fr:'← Retour' },

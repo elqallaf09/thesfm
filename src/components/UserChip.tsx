@@ -5,9 +5,10 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, LogOut, ShieldCheck, UserRound } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useCurrentUserProfile } from '@/hooks/useCurrentUserProfile';
 import { useLanguage } from '@/hooks/useLanguage';
 
-const MENU_WIDTH = 210;
+const MENU_WIDTH = 268;
 
 type MenuPosition = {
   left: number;
@@ -17,7 +18,8 @@ type MenuPosition = {
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 export function UserChip({ displayName }: { displayName?: string }) {
-  const { user, isGuest, signOut } = useAuth();
+  const { signOut } = useAuth();
+  const currentUser = useCurrentUserProfile();
   const { t, dir } = useLanguage();
   const router = useRouter();
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -30,12 +32,11 @@ export function UserChip({ displayName }: { displayName?: string }) {
     setMounted(true);
   }, []);
 
-  const name = displayName
-    || user?.user_metadata?.display_name
-    || user?.email?.replace('@smart-finance.local', '')
-    || (isGuest ? t('guest_mode') : 'SFM');
-
-  const initials = name
+  const name = currentUser.isLoading
+    ? t('loading')
+    : displayName || currentUser.displayName || (currentUser.isGuest ? t('guest_mode') : t('common_user'));
+  const email = currentUser.email;
+  const initials = currentUser.avatarInitial || name
     .split(/\s+/)
     .map((word: string) => word[0] || '')
     .slice(0, 2)
@@ -51,7 +52,7 @@ export function UserChip({ displayName }: { displayName?: string }) {
     const desiredLeft = dir === 'rtl' ? rect.right - MENU_WIDTH : rect.left;
     const left = clamp(desiredLeft, margin, window.innerWidth - MENU_WIDTH - margin);
     const spaceBelow = window.innerHeight - rect.bottom;
-    const menuHeight = 164;
+    const menuHeight = 228;
     const top = spaceBelow < menuHeight + 16
       ? Math.max(margin, rect.top - menuHeight - margin)
       : rect.bottom + margin;
@@ -116,10 +117,17 @@ export function UserChip({ displayName }: { displayName?: string }) {
         left: position.left,
         top: position.top,
         width: MENU_WIDTH,
-        zIndex: 1000,
+        zIndex: 10020,
       }}
       role="menu"
     >
+      <div className="sfm-user-menu-head" role="none">
+        <span className="sfm-user-avatar sfm-user-avatar-lg" aria-hidden="true">{initials}</span>
+        <span className="sfm-user-menu-copy">
+          <strong>{name}</strong>
+          <small dir="ltr">{currentUser.isGuest ? t('guest_mode') : email || t('common_user')}</small>
+        </span>
+      </div>
       <button type="button" role="menuitem" className="sfm-user-menu-item" onClick={goProfile}>
         <UserRound size={17} />
         <span>{t('nav_profile')}</span>
@@ -140,16 +148,23 @@ export function UserChip({ displayName }: { displayName?: string }) {
     <>
       <style>{`
         .sfm-user-chip-wrap{position:relative;font-family:Tajawal,Arial,sans-serif;width:100%}
-        .sfm-user-chip{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;padding:6px 10px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid rgba(167,243,240,.22);cursor:pointer;color:var(--sfm-soft-cyan);text-align:start;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;font-family:Tajawal,Arial,sans-serif}
+        .sfm-user-chip{display:flex;align-items:center;gap:8px;width:100%;min-height:48px;padding:7px 10px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid rgba(167,243,240,.22);cursor:pointer;color:var(--sfm-soft-cyan);text-align:start;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;font-family:Tajawal,Arial,sans-serif}
         .sfm-user-chip:hover,.sfm-user-chip[aria-expanded="true"]{background:rgba(167,243,240,.14);border-color:rgba(167,243,240,.45);box-shadow:0 8px 22px rgba(0,0,0,.16)}
         .sfm-user-chip:active{transform:translateY(1px)}
-        .sfm-user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:var(--sfm-foreground);flex:0 0 auto}
-        .sfm-user-name{flex:1;min-width:0;font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .sfm-user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#FFFFFF;flex:0 0 auto}
+        .sfm-user-identity{flex:1;min-width:0;display:grid;gap:1px}
+        .sfm-user-name{min-width:0;font-size:12px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#EAF6FF}
+        .sfm-user-email{min-width:0;font-size:10px;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#A7C7E7;direction:ltr;text-align:start}
         .sfm-user-guest{font-size:10px;padding:2px 7px;border-radius:999px;background:rgba(167,243,240,.18);color:var(--sfm-soft-cyan);white-space:nowrap}
         .sfm-user-chevron{color:rgba(255,255,255,.48);transition:transform .18s ease;flex:0 0 auto}
         .sfm-user-chip[aria-expanded="true"] .sfm-user-chevron{transform:rotate(180deg)}
         .sfm-user-menu{background:linear-gradient(180deg,var(--sfm-card),var(--sfm-light-card));border:1px solid rgba(167,243,240,.24);border-radius:16px;box-shadow:0 22px 55px rgba(3,18,37,.28);padding:7px;animation:sfmUserMenuIn .16s ease-out;font-family:Tajawal,Arial,sans-serif}
-        .sfm-user-menu-item{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:12px;background:transparent;color:var(--sfm-primary-dark);font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;text-align:start;transition:background .16s ease,color .16s ease,transform .16s ease}
+        .sfm-user-menu-head{display:flex;align-items:center;gap:10px;padding:9px 10px 10px;margin-bottom:5px;border-radius:13px;background:rgba(29,140,255,.10);border:1px solid rgba(24,212,212,.18);min-width:0}
+        .sfm-user-avatar-lg{width:34px;height:34px;font-size:12px;color:#FFFFFF}
+        .sfm-user-menu-copy{display:grid;gap:2px;min-width:0}
+        .sfm-user-menu-copy strong{min-width:0;color:var(--sfm-foreground);font:950 13px Tajawal,Arial,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .sfm-user-menu-copy small{min-width:0;color:var(--sfm-muted);font:800 11px Tajawal,Arial,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .sfm-user-menu-item{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:12px;background:transparent;color:var(--sfm-foreground);font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;text-align:start;transition:background .16s ease,color .16s ease,transform .16s ease}
         .sfm-user-menu-item:hover,.sfm-user-menu-item:focus-visible{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}
         .sfm-user-menu-item:active{transform:translateY(1px)}
         .sfm-user-menu-item svg{color:var(--sfm-muted);flex:0 0 auto}
@@ -169,8 +184,11 @@ export function UserChip({ displayName }: { displayName?: string }) {
           aria-expanded={open}
         >
           <span className="sfm-user-avatar">{initials}</span>
-          <span className="sfm-user-name">{name}</span>
-          {isGuest && <span className="sfm-user-guest">{t('guest_mode')}</span>}
+          <span className="sfm-user-identity">
+            <span className="sfm-user-name">{name}</span>
+            {!currentUser.isGuest && email ? <span className="sfm-user-email">{email}</span> : null}
+          </span>
+          {currentUser.isGuest && <span className="sfm-user-guest">{t('guest_mode')}</span>}
           <ChevronDown className="sfm-user-chevron" size={15} />
         </button>
       </div>
