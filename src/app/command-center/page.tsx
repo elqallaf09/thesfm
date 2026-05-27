@@ -7,11 +7,13 @@ import {
   Bell,
   Bot,
   BriefcaseBusiness,
+  ChevronRight,
   ClipboardList,
   FileText,
   HeartHandshake,
   Landmark,
   Loader2,
+  Sparkles,
   TrendingUp,
   Wallet,
 } from 'lucide-react';
@@ -19,7 +21,6 @@ import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
-import { PageHero } from '@/components/layout/PageHero';
 import { CardsGrid, StatGrid } from '@/components/layout/LayoutPrimitives';
 import { AppCard } from '@/components/layout/AppCard';
 import { EmptyState } from '@/components/layout/EmptyState';
@@ -74,95 +75,101 @@ const EMPTY_RECORDS = COMMAND_TABLES.reduce((acc, item) => {
 const TEXT = {
   ar: {
     title: 'مركز القيادة',
-    subtitle: 'بوابة هادئة تنقلك إلى العوالم الأساسية داخل THE SFM بدون ازدحام.',
-    eyebrow: 'تنظيم المنتج',
+    subtitle: 'بوابتك السريعة للوصول إلى أهم أدوات THE SFM بدون ازدحام.',
+    eyebrow: 'بوابة تنفيذية',
     loading: 'جارٍ تحميل مركز القيادة...',
-    noData: 'ابدأ بإضافة بياناتك.',
-    ready: 'توجد بيانات حقيقية',
-    needsData: 'يحتاج بيانات',
+    noData: 'لا توجد بيانات بعد',
+    ready: 'متاح',
     open: 'فتح',
     account: 'اكتمال الحساب',
-    worlds: 'العوالم النشطة',
+    worlds: 'الوحدات النشطة',
     today: 'إجراءات اليوم',
     tasks: 'مركز المهام',
     openTasks: 'مهام مفتوحة',
     noUrgent: 'لا توجد إجراءات مهمة اليوم.',
+    actionHubTitle: 'ماذا تريد أن تفعل الآن؟',
+    actionHubSubtitle: 'اختر المجال الذي تريد العمل عليه، وسنوجهك للصفحة المناسبة.',
+    topActionToday: 'أهم إجراء اليوم',
+    openFinancialToday: 'فتح اليوم المالي',
+    quickLinks: 'روابط سريعة',
     personalFinance: 'مالي الشخصي',
-    personalFinanceDesc: 'الدخل، المصروفات، الأهداف، والمدخرات في مساحة واحدة.',
-    investments: 'استثماراتي',
-    investmentsDesc: 'المحفظة، الأصول، وقائمة المتابعة عند توفر بياناتك.',
+    personalFinanceDesc: 'الدخل، المصروفات، الأهداف، والمدخرات في مكان واحد.',
+    investments: 'استثماري',
+    investmentsDesc: 'تابع محفظتك، السوق، والتنبيهات الاستثمارية.',
     projects: 'مشاريعي',
-    projectsDesc: 'إدارة مشاريعك والدخول إلى مساحات العمل التفصيلية.',
+    projectsDesc: 'إدارة المشاريع، التكاليف، الدخل، والمهام.',
     zakatCharity: 'زكاتي وخيري',
-    zakatCharityDesc: 'الزكاة، المشاريع الخيرية، والتذكيرات ذات الصلة.',
+    zakatCharityDesc: 'الزكاة، الأعمال الخيرية، والمشاريع الخيرية.',
     reports: 'تقاريري',
-    reportsDesc: 'مركز التقارير يعرض الجاهز وما يحتاج بيانات فقط.',
-    documents: 'مستنداتي',
-    documentsDesc: 'مركز واحد لكل مستندات المشاريع، الإيصالات، العروض، والتقارير المحفوظة.',
+    reportsDesc: 'مركز التقارير يعرض جاهزية وتقارير بياناتك.',
     aiAssistant: 'مساعدي الذكي',
-    aiAssistantDesc: 'مدخل للمساعد الذكي ليعمل على بياناتك الفعلية عند توفرها.',
+    aiAssistantDesc: 'مساعد ذكي يعمل على بياناتك المتاحة عند توفرها.',
     notifications: 'إشعارات عالية الأهمية',
   },
   en: {
     title: 'Command Center',
-    subtitle: 'A calm gateway into the core worlds of THE SFM without clutter.',
-    eyebrow: 'Product organization',
+    subtitle: 'Your fast gateway to the most important THE SFM tools without clutter.',
+    eyebrow: 'Executive gateway',
     loading: 'Loading Command Center...',
-    noData: 'Start by adding your data.',
-    ready: 'Real data available',
-    needsData: 'Needs data',
+    noData: 'No data yet',
+    ready: 'Available',
     open: 'Open',
-    account: 'Account completion',
-    worlds: 'Active worlds',
-    today: 'Today’s actions',
+    account: 'Account Completion',
+    worlds: 'Active Modules',
+    today: 'Today Actions',
     tasks: 'Tasks Center',
-    openTasks: 'Open tasks',
+    openTasks: 'Open Tasks',
     noUrgent: 'No important actions today.',
+    actionHubTitle: 'What do you want to do now?',
+    actionHubSubtitle: 'Choose the area you want to work on and we will take you to the right page.',
+    topActionToday: 'Top Action Today',
+    openFinancialToday: 'Open Financial Today',
+    quickLinks: 'Quick Links',
     personalFinance: 'Personal Finance',
-    personalFinanceDesc: 'Income, expenses, goals, and savings in one clean area.',
+    personalFinanceDesc: 'Income, expenses, goals, and savings in one place.',
     investments: 'Investments',
-    investmentsDesc: 'Portfolio, assets, and watchlist when your data exists.',
+    investmentsDesc: 'Track your portfolio, market, and investment alerts.',
     projects: 'Projects',
-    projectsDesc: 'Manage projects and open detailed workspaces.',
+    projectsDesc: 'Manage projects, costs, income, and tasks.',
     zakatCharity: 'Zakat & Charity',
-    zakatCharityDesc: 'Zakat, charity projects, and related reminders.',
+    zakatCharityDesc: 'Zakat, charitable work, and charity projects.',
     reports: 'Reports',
-    reportsDesc: 'Reports Center shows what is ready and what needs data.',
-    documents: 'Documents',
-    documentsDesc: 'One center for project documents, receipts, decks, and saved reports.',
+    reportsDesc: 'Reports Center shows your data readiness and reports.',
     aiAssistant: 'AI Assistant',
-    aiAssistantDesc: 'Entry point for the assistant to work from your real data when available.',
-    notifications: 'High priority notifications',
+    aiAssistantDesc: 'A smart assistant that works from your available data when it exists.',
+    notifications: 'High Priority Notifications',
   },
   fr: {
     title: 'Centre de commande',
-    subtitle: 'Une passerelle claire vers les univers principaux de THE SFM, sans surcharge.',
-    eyebrow: 'Organisation produit',
+    subtitle: 'Votre passerelle rapide vers les outils les plus importants de THE SFM, sans surcharge.',
+    eyebrow: 'Passerelle exécutive',
     loading: 'Chargement du centre de commande...',
-    noData: 'Commencez par ajouter vos données.',
-    ready: 'Données réelles disponibles',
-    needsData: 'Données requises',
+    noData: 'Aucune donnée pour le moment',
+    ready: 'Disponible',
     open: 'Ouvrir',
     account: 'Complétion du compte',
-    worlds: 'Univers actifs',
+    worlds: 'Modules actifs',
     today: 'Actions du jour',
     tasks: 'Centre des tâches',
     openTasks: 'Tâches ouvertes',
     noUrgent: 'Aucune action importante aujourd’hui.',
+    actionHubTitle: 'Que voulez-vous faire maintenant ?',
+    actionHubSubtitle: 'Choisissez le domaine sur lequel vous voulez travailler et nous vous dirigerons vers la bonne page.',
+    topActionToday: 'Action prioritaire du jour',
+    openFinancialToday: 'Ouvrir le jour financier',
+    quickLinks: 'Liens rapides',
     personalFinance: 'Finances personnelles',
-    personalFinanceDesc: 'Revenus, dépenses, objectifs et épargne dans un espace clair.',
+    personalFinanceDesc: 'Revenus, dépenses, objectifs et épargne au même endroit.',
     investments: 'Investissements',
-    investmentsDesc: 'Portefeuille, actifs et liste de suivi lorsque vos données existent.',
+    investmentsDesc: 'Suivez votre portefeuille, le marché et les alertes d’investissement.',
     projects: 'Projets',
-    projectsDesc: 'Gérez vos projets et ouvrez les espaces de travail détaillés.',
+    projectsDesc: 'Gérez les projets, coûts, revenus et tâches.',
     zakatCharity: 'Zakat et charité',
-    zakatCharityDesc: 'Zakat, projets caritatifs et rappels associés.',
+    zakatCharityDesc: 'Zakat, actions caritatives et projets de charité.',
     reports: 'Rapports',
-    reportsDesc: 'Le centre des rapports affiche ce qui est prêt et ce qui nécessite des données.',
-    documents: 'Documents',
-    documentsDesc: 'Un centre pour les documents de projet, reçus, pitch decks et rapports enregistrés.',
+    reportsDesc: 'Le centre des rapports affiche la préparation de vos données et vos rapports.',
     aiAssistant: 'Assistant IA',
-    aiAssistantDesc: 'Point d’entrée pour que l’assistant travaille à partir de vos données réelles.',
+    aiAssistantDesc: 'Un assistant intelligent qui travaille avec vos données disponibles lorsqu’elles existent.',
     notifications: 'Notifications haute priorité',
   },
 } as const;
@@ -175,7 +182,7 @@ function isHighPriority(row: any) {
   const status = String(row?.status ?? '').toLowerCase();
   if (status === 'archived') return false;
   const severity = String(row?.severity ?? row?.priority ?? '').toLowerCase();
-  return ['danger', 'warning', 'high'].includes(severity);
+  return ['danger', 'warning', 'high', 'urgent'].includes(severity);
 }
 
 export default function CommandCenterPage() {
@@ -215,7 +222,7 @@ export default function CommandCenterPage() {
   }, [user]);
 
   const summary = useMemo(() => {
-    const worlds = [
+    const modules = [
       hasAny(records, ['income', 'expenses', 'savings', 'goals']),
       hasAny(records, ['investments', 'marketWatchlist']),
       hasAny(records, ['projects', 'projectTasks']),
@@ -225,55 +232,92 @@ export default function CommandCenterPage() {
     ];
     const highPriority = records.notifications.filter(isHighPriority).length;
     return {
-      activeWorlds: worlds.filter(Boolean).length,
+      activeModules: modules.filter(Boolean).length,
       highPriority,
     };
   }, [records]);
-  const openTaskCount = tasksLoading ? 0 : tasks.filter(task => task.status === 'open').length;
 
-  const worlds = [
+  const openTaskCount = tasksLoading
+    ? 0
+    : tasks.filter(task => String(task?.status ?? 'open').toLowerCase() === 'open').length;
+
+  const todayPriority = useMemo(() => {
+    if (!tasksLoading) {
+      const openTasks = tasks.filter(task => String(task?.status ?? 'open').toLowerCase() === 'open');
+      const urgentTask = openTasks.find(task => {
+        const priority = String(task?.priority ?? task?.severity ?? '').toLowerCase();
+        return ['urgent', 'high', 'danger'].includes(priority);
+      }) ?? openTasks[0];
+
+      if (urgentTask) {
+        return {
+          title: String(urgentTask.title ?? text.openTasks),
+          description: String(urgentTask.description ?? urgentTask.notes ?? ''),
+          href: '/tasks',
+          cta: text.tasks,
+          icon: <ClipboardList size={22} />,
+        };
+      }
+    }
+
+    const urgentNotification = records.notifications.find(isHighPriority);
+    if (urgentNotification) {
+      return {
+        title: String(urgentNotification.title ?? text.notifications),
+        description: String(urgentNotification.message ?? urgentNotification.description ?? ''),
+        href: '/notifications',
+        cta: text.notifications,
+        icon: <Bell size={22} />,
+      };
+    }
+
+    return null;
+  }, [records.notifications, tasks, tasksLoading, text.notifications, text.openTasks, text.tasks]);
+
+  const actionCards = [
     {
       title: text.personalFinance,
       description: text.personalFinanceDesc,
-      href: '/income',
+      href: '/dashboard',
       icon: Wallet,
-      ready: hasAny(records, ['income', 'expenses', 'savings', 'goals']),
+      featured: true,
     },
     {
       title: text.investments,
       description: text.investmentsDesc,
       href: '/invest',
       icon: TrendingUp,
-      ready: hasAny(records, ['investments', 'marketWatchlist']),
     },
     {
       title: text.projects,
       description: text.projectsDesc,
       href: '/projects',
       icon: BriefcaseBusiness,
-      ready: hasAny(records, ['projects', 'projectTasks']),
     },
     {
       title: text.zakatCharity,
       description: text.zakatCharityDesc,
       href: '/zakat',
       icon: HeartHandshake,
-      ready: hasAny(records, ['zakatCalculations', 'zakatAssets', 'charityProjects']),
     },
     {
       title: text.reports,
       description: text.reportsDesc,
       href: '/reports-center',
       icon: FileText,
-      ready: hasAny(records, ['income', 'expenses', 'projects', 'zakatCalculations', 'charityProjects']),
     },
     {
       title: text.aiAssistant,
       description: text.aiAssistantDesc,
       href: '/ai',
       icon: Bot,
-      ready: hasAny(records, ['income', 'expenses', 'projects', 'goals', 'investments']),
     },
+  ];
+
+  const quickLinks = [
+    { label: text.openFinancialToday, href: '/today' },
+    { label: text.tasks, href: '/tasks' },
+    { label: text.notifications, href: '/notifications' },
   ];
 
   return (
@@ -285,18 +329,21 @@ export default function CommandCenterPage() {
           <UserChip />
         </div>
 
-        <PageHero
-          eyebrow={text.eyebrow}
-          title={text.title}
-          subtitle={text.subtitle}
-          icon={<Landmark size={28} />}
-          actions={(
-            <>
-              <Link className="sfm-secondary-link" href="/tasks">{text.tasks}</Link>
-              <Link className="sfm-primary-link" href="/today">{text.today}</Link>
-            </>
-          )}
-        />
+        <section className="command-hero" aria-labelledby="command-center-title">
+          <div className="command-hero-copy">
+            <span>{text.eyebrow}</span>
+            <h1 id="command-center-title">{text.title}</h1>
+            <p>{text.subtitle}</p>
+            <div className="command-hero-actions">
+              <Link className="sfm-secondary-link hero-link" href="/tasks" aria-label={text.tasks}>{text.tasks}</Link>
+              <Link className="sfm-primary-link hero-link" href="/today" aria-label={text.today}>{text.today}</Link>
+            </div>
+          </div>
+          <div className="command-hero-mark" aria-hidden="true">
+            <Landmark size={44} />
+            <Sparkles size={22} className="command-hero-spark" />
+          </div>
+        </section>
 
         {loading ? (
           <EmptyState
@@ -307,7 +354,7 @@ export default function CommandCenterPage() {
           <>
             <StatGrid className="command-summary-grid">
               <AppCard>
-                <Metric label={text.worlds} value={`${summary.activeWorlds}/6`} hint={summary.activeWorlds > 0 ? text.ready : text.noData} icon={<Landmark size={20} />} />
+                <Metric label={text.worlds} value={`${summary.activeModules}/6`} hint={summary.activeModules > 0 ? text.ready : text.noData} icon={<Landmark size={20} />} />
               </AppCard>
               <AppCard>
                 <Metric label={text.notifications} value={`${summary.highPriority}`} hint={summary.highPriority > 0 ? text.ready : text.noUrgent} icon={<Bell size={20} />} />
@@ -317,27 +364,60 @@ export default function CommandCenterPage() {
               </AppCard>
             </StatGrid>
 
-            <AccountCompletionCard className="command-account-card" />
+            <AccountCompletionCard compact className="command-account-card" />
 
-            <CardsGrid className="command-world-grid">
-              {worlds.map(world => {
-                const Icon = world.icon;
-                return (
-                  <AppCard key={world.title} className="command-world-card">
-                    <div className="command-world-icon" aria-hidden="true"><Icon size={24} /></div>
-                    <div className="command-world-copy">
-                      <span className={world.ready ? 'ready' : 'needs-data'}>{world.ready ? text.ready : text.needsData}</span>
-                      <h2>{world.title}</h2>
-                      <p>{world.description}</p>
-                      {!world.ready ? <strong>{text.noData}</strong> : null}
-                    </div>
-                    <Link className="sfm-secondary-link" href={world.href} aria-label={`${text.open} ${world.title}`}>
-                      {text.open}
+            <section className="command-section" aria-labelledby="command-action-hub-title">
+              <div className="command-section-head">
+                <h2 id="command-action-hub-title">{text.actionHubTitle}</h2>
+                <p>{text.actionHubSubtitle}</p>
+              </div>
+              <CardsGrid className="command-action-grid">
+                {actionCards.map(card => {
+                  const Icon = card.icon;
+                  return (
+                    <AppCard key={card.title} className={`command-action-card ${card.featured ? 'featured' : ''}`.trim()}>
+                      <div className="command-action-icon" aria-hidden="true"><Icon size={24} /></div>
+                      <div className="command-action-copy">
+                        <h3>{card.title}</h3>
+                        <p>{card.description}</p>
+                      </div>
+                      <Link className="command-action-link" href={card.href} aria-label={`${text.open} ${card.title}`}>
+                        <span>{text.open}</span>
+                        <ChevronRight size={16} aria-hidden="true" />
+                      </Link>
+                    </AppCard>
+                  );
+                })}
+              </CardsGrid>
+            </section>
+
+            <section className="command-lower-grid" aria-label={text.topActionToday}>
+              <AppCard className="command-priority-card">
+                <div className="command-priority-head">
+                  <span aria-hidden="true">{todayPriority?.icon ?? <ClipboardList size={22} />}</span>
+                  <div>
+                    <p>{text.topActionToday}</p>
+                    <h2>{todayPriority?.title ?? text.noUrgent}</h2>
+                  </div>
+                </div>
+                {todayPriority?.description ? <p className="command-priority-description">{todayPriority.description}</p> : null}
+                <Link className="sfm-primary-link" href={todayPriority?.href ?? '/today'}>
+                  {todayPriority?.cta ?? text.openFinancialToday}
+                </Link>
+              </AppCard>
+
+              <AppCard className="command-quick-card">
+                <h2>{text.quickLinks}</h2>
+                <div className="command-quick-links">
+                  {quickLinks.map(link => (
+                    <Link key={link.href} href={link.href}>
+                      <span>{link.label}</span>
+                      <ChevronRight size={16} aria-hidden="true" />
                     </Link>
-                  </AppCard>
-                );
-              })}
-            </CardsGrid>
+                  ))}
+                </div>
+              </AppCard>
+            </section>
           </>
         )}
       </DashboardPageShell>
@@ -349,6 +429,11 @@ export default function CommandCenterPage() {
             radial-gradient(circle at 18% 12%, rgba(29, 140, 255, .10), transparent 34%),
             linear-gradient(160deg, var(--sfm-background), #F8FBFF 62%, #E7F1FF 100%);
         }
+        .dark .command-center-shell {
+          background:
+            radial-gradient(circle at 18% 12%, rgba(24, 212, 212, .10), transparent 34%),
+            linear-gradient(160deg, var(--sfm-background), #061B33 62%, #031225 100%);
+        }
         .command-center-main {
           width: calc(100% - var(--sidebar-w, 230px)) !important;
           max-width: none !important;
@@ -358,63 +443,192 @@ export default function CommandCenterPage() {
         }
         .command-center-content {
           width: 100%;
-          max-width: none;
+          max-width: 1180px;
+          margin-inline: auto;
           display: grid;
-          gap: var(--sfm-section-gap);
+          gap: 24px;
         }
         .sfm-page-topbar {
           display: flex;
           justify-content: flex-end;
           align-items: center;
           gap: 10px;
+          min-width: 0;
+        }
+        .command-hero {
+          position: relative;
+          overflow: hidden;
+          min-height: 236px;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 24px;
+          padding: clamp(24px, 4vw, 40px);
+          border: 1px solid rgba(167, 243, 240, .18);
+          border-radius: 28px;
+          background:
+            radial-gradient(circle at 18% 18%, rgba(24, 212, 212, .20), transparent 30%),
+            linear-gradient(135deg, #031225 0%, #061B33 52%, #0B3A66 100%);
+          box-shadow: 0 24px 60px rgba(3, 18, 37, .18);
+          color: #EAF6FF;
+        }
+        .command-hero::after {
+          content: '';
+          position: absolute;
+          inset: auto -80px -120px auto;
+          width: 280px;
+          height: 280px;
+          border-radius: 999px;
+          background: rgba(24, 212, 212, .12);
+          filter: blur(8px);
+        }
+        .command-hero-copy {
+          position: relative;
+          z-index: 1;
+          min-width: 0;
+          display: grid;
+          gap: 12px;
+        }
+        .command-hero-copy > span {
+          width: fit-content;
+          border-radius: 999px;
+          padding: 6px 11px;
+          background: rgba(24, 212, 212, .14);
+          border: 1px solid rgba(167, 243, 240, .22);
+          color: #A7F3F0;
+          font: 950 12px Tajawal, Arial, sans-serif;
+        }
+        .command-hero h1 {
+          margin: 0;
+          color: #FFFFFF;
+          font: 950 clamp(34px, 5vw, 56px)/1.05 Tajawal, Arial, sans-serif;
+          letter-spacing: 0;
+        }
+        .command-hero p {
+          max-width: 680px;
+          margin: 0;
+          color: #C7DBF5;
+          font: 800 clamp(15px, 1.7vw, 18px)/1.8 Tajawal, Arial, sans-serif;
+        }
+        .command-hero-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          padding-top: 6px;
+        }
+        .command-hero-mark {
+          position: relative;
+          z-index: 1;
+          width: clamp(112px, 14vw, 150px);
+          height: clamp(112px, 14vw, 150px);
+          display: grid;
+          place-items: center;
+          border-radius: 32px;
+          border: 1px solid rgba(167, 243, 240, .22);
+          background: rgba(255, 255, 255, .08);
+          color: #A7F3F0;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 20px 44px rgba(0, 0, 0, .16);
+        }
+        .command-hero-spark {
+          position: absolute;
+          inset-block-start: 22px;
+          inset-inline-end: 24px;
+          color: #18D4D4;
         }
         .sfm-primary-link,
-        .sfm-secondary-link {
+        .sfm-secondary-link,
+        .command-action-link {
           min-height: 42px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
+          gap: 8px;
           border-radius: 999px;
           padding: 0 16px;
           text-decoration: none;
           font: 950 13px Tajawal, Arial, sans-serif;
-          white-space: normal;
+          white-space: nowrap;
+          transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
         }
         .sfm-primary-link {
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
           color: #FFFFFF;
-          box-shadow: 0 12px 24px rgba(29, 140, 255, .2);
+          box-shadow: 0 12px 24px rgba(29, 140, 255, .22);
         }
         .sfm-secondary-link {
-          border: 1px solid rgba(29, 140, 255, .18);
-          background: #FFFFFF;
-          color: var(--sfm-primary-dark);
+          border: 1px solid rgba(167, 243, 240, .24);
+          background: rgba(255, 255, 255, .10);
+          color: #EAF6FF;
+        }
+        .sfm-primary-link:hover,
+        .sfm-primary-link:focus-visible,
+        .sfm-secondary-link:hover,
+        .sfm-secondary-link:focus-visible,
+        .command-action-link:hover,
+        .command-action-link:focus-visible {
+          transform: translateY(-1px);
+          box-shadow: 0 0 0 4px rgba(24, 212, 212, .12), 0 16px 28px rgba(29, 140, 255, .16);
+          outline: none;
         }
         .command-summary-grid {
-          grid-template-columns: repeat(3, minmax(240px, 1fr)) !important;
+          grid-template-columns: repeat(3, minmax(220px, 1fr)) !important;
           align-items: stretch;
+          gap: 16px !important;
         }
         .command-summary-grid .sfm-app-card {
-          min-height: 132px;
+          min-height: 116px;
           display: grid;
           align-items: center;
         }
         .command-account-card {
           width: 100%;
         }
-        .command-world-grid {
+        .command-section {
+          display: grid;
+          gap: 16px;
+          min-width: 0;
+        }
+        .command-section-head {
+          display: grid;
+          gap: 6px;
+          min-width: 0;
+        }
+        .command-section-head h2 {
+          margin: 0;
+          color: var(--sfm-foreground);
+          font: 950 clamp(24px, 3vw, 34px)/1.2 Tajawal, Arial, sans-serif;
+        }
+        .command-section-head p {
+          margin: 0;
+          max-width: 720px;
+          color: var(--sfm-muted);
+          font: 800 15px/1.7 Tajawal, Arial, sans-serif;
+        }
+        .command-action-grid {
           grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)) !important;
           align-items: stretch;
+          gap: 16px !important;
         }
-        .command-world-card {
+        .command-action-card {
           display: grid;
-          grid-template-columns: auto minmax(0, 1fr);
           grid-template-rows: auto 1fr auto;
-          gap: 14px;
-          align-items: start;
-          min-height: 260px;
+          gap: 16px;
+          min-height: 230px;
+          border-color: rgba(29, 140, 255, .15) !important;
+          transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
         }
-        .command-world-icon {
+        .command-action-card:hover,
+        .command-action-card:focus-within {
+          transform: translateY(-2px);
+          border-color: rgba(24, 212, 212, .36) !important;
+          box-shadow: 0 20px 44px rgba(3, 18, 37, .10);
+        }
+        .command-action-card.featured {
+          background:
+            radial-gradient(circle at 12% 10%, rgba(24, 212, 212, .12), transparent 34%),
+            var(--sfm-card) !important;
+        }
+        .command-action-icon {
           width: 48px;
           height: 48px;
           display: grid;
@@ -422,42 +636,127 @@ export default function CommandCenterPage() {
           border-radius: 16px;
           background: rgba(29, 140, 255, .10);
           color: var(--sfm-primary);
+          box-shadow: inset 0 0 0 1px rgba(29, 140, 255, .08);
         }
-        .command-world-copy {
+        .command-action-card.featured .command-action-icon {
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          color: #FFFFFF;
+          box-shadow: 0 14px 26px rgba(29, 140, 255, .18);
+        }
+        .command-action-copy {
+          display: grid;
+          align-content: start;
+          gap: 8px;
+          min-width: 0;
+        }
+        .command-action-copy h3 {
+          margin: 0;
+          color: var(--sfm-foreground);
+          font: 950 21px/1.3 Tajawal, Arial, sans-serif;
+        }
+        .command-action-copy p {
+          margin: 0;
+          color: var(--sfm-muted);
+          font: 800 14px/1.7 Tajawal, Arial, sans-serif;
+        }
+        .command-action-link {
+          justify-self: start;
+          border: 1px solid rgba(29, 140, 255, .20);
+          background: var(--sfm-card);
+          color: var(--sfm-primary);
+        }
+        .command-lower-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.45fr) minmax(280px, .55fr);
+          gap: 16px;
+          align-items: stretch;
+          min-width: 0;
+        }
+        .command-priority-card,
+        .command-quick-card {
+          min-height: 210px;
+          display: grid;
+          gap: 16px;
+          align-content: start;
+        }
+        .command-priority-head {
+          display: flex;
+          gap: 13px;
+          align-items: flex-start;
+          min-width: 0;
+        }
+        .command-priority-head > span {
+          width: 48px;
+          height: 48px;
+          display: grid;
+          place-items: center;
+          flex: 0 0 48px;
+          border-radius: 16px;
+          background: rgba(24, 212, 212, .12);
+          color: var(--sfm-primary);
+        }
+        .command-priority-head div {
           min-width: 0;
           display: grid;
-          gap: 7px;
+          gap: 5px;
         }
-        .command-world-copy span {
-          width: fit-content;
-          border-radius: 999px;
-          padding: 4px 9px;
-          font-size: 11px;
-          font-weight: 950;
-        }
-        .command-world-copy span.ready {
-          background: rgba(16, 185, 129, .12);
-          color: #047857;
-        }
-        .command-world-copy span.needs-data {
-          background: rgba(100, 116, 139, .12);
-          color: var(--sfm-muted);
-        }
-        .command-world-copy h2 {
+        .command-priority-head p {
           margin: 0;
-          color: var(--sfm-primary-dark);
-          font-size: 20px;
+          color: var(--sfm-primary);
+          font: 950 12px/1.4 Tajawal, Arial, sans-serif;
         }
-        .command-world-copy p,
-        .command-world-copy strong {
+        .command-priority-head h2,
+        .command-quick-card h2 {
+          margin: 0;
+          color: var(--sfm-foreground);
+          font: 950 22px/1.35 Tajawal, Arial, sans-serif;
+        }
+        .command-priority-description {
           margin: 0;
           color: var(--sfm-muted);
-          line-height: 1.65;
+          font: 800 14px/1.7 Tajawal, Arial, sans-serif;
         }
-        .command-world-card .sfm-secondary-link {
-          grid-column: 1 / -1;
+        .command-priority-card .sfm-primary-link {
           justify-self: start;
           align-self: end;
+        }
+        .command-quick-links {
+          display: grid;
+          gap: 9px;
+        }
+        .command-quick-links a {
+          min-height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 0 13px;
+          border-radius: 14px;
+          border: 1px solid rgba(29, 140, 255, .14);
+          background: rgba(29, 140, 255, .06);
+          color: var(--sfm-foreground);
+          text-decoration: none;
+          font: 900 13px Tajawal, Arial, sans-serif;
+          transition: border-color .18s ease, background .18s ease, transform .18s ease;
+        }
+        .command-quick-links a:hover,
+        .command-quick-links a:focus-visible {
+          border-color: rgba(24, 212, 212, .34);
+          background: rgba(24, 212, 212, .10);
+          transform: translateY(-1px);
+          outline: none;
+        }
+        .dark .command-summary-grid .sfm-app-card,
+        .dark .command-action-card,
+        .dark .command-priority-card,
+        .dark .command-quick-card {
+          border-color: rgba(167, 243, 240, .16) !important;
+        }
+        .dark .command-action-link,
+        .dark .command-quick-links a {
+          background: rgba(15, 51, 92, .72);
+          border-color: rgba(167, 243, 240, .16);
+          color: #EAF6FF;
         }
         .spin {
           animation: spin 1s linear infinite;
@@ -474,21 +773,38 @@ export default function CommandCenterPage() {
           .command-summary-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           }
+          .command-lower-grid {
+            grid-template-columns: 1fr;
+          }
         }
         @media (max-width: 720px) {
           .sfm-page-topbar {
             display: none;
           }
-          .command-summary-grid,
-          .command-world-grid {
-            grid-template-columns: 1fr !important;
+          .command-center-content {
+            gap: 18px;
           }
-          .command-world-card {
-            grid-template-columns: 1fr;
+          .command-hero {
             min-height: 0;
+            grid-template-columns: 1fr;
+            padding: 22px;
+            border-radius: 22px;
           }
-          .command-world-card .sfm-secondary-link {
+          .command-hero-mark {
+            width: 86px;
+            height: 86px;
+            border-radius: 24px;
+            order: -1;
+          }
+          .command-hero-actions,
+          .command-hero-actions a,
+          .command-priority-card .sfm-primary-link,
+          .command-action-link {
             width: 100%;
+          }
+          .command-summary-grid,
+          .command-action-grid {
+            grid-template-columns: 1fr !important;
           }
         }
       `}</style>
@@ -539,7 +855,7 @@ function Metric({ label, value, hint, icon }: { label: string; value: string; hi
           font-weight: 900;
         }
         .command-metric strong {
-          color: var(--sfm-primary-dark);
+          color: var(--sfm-foreground);
           font-size: 24px;
           line-height: 1.1;
         }
