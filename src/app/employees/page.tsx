@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Edit3, Grid2X2, Loader2, Plus, Search, Table2, Trash2, UsersRound } from 'lucide-react';
+import { ArrowLeft, Edit3, FileDown, FileText, Grid2X2, Loader2, Plus, Search, Table2, Trash2, UsersRound } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
@@ -10,9 +10,11 @@ import { EmptyState } from '@/components/layout/EmptyState';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { useAuth } from '@/hooks/useAuth';
+import { useBusinessRole } from '@/hooks/useBusinessRole';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
-import { BUSINESS_TEXT, EMPLOYEE_STATUS_OPTIONS, employeeStatusLabel, normalizeBusinessLang, numericValue, type EmployeeStatus } from '@/lib/businessOperations';
+import { BUSINESS_TEXT, EMPLOYEE_STATUS_OPTIONS, businessRoleLabel, employeeStatusLabel, normalizeBusinessLang, numericValue, type EmployeeStatus } from '@/lib/businessOperations';
+import { daysBetweenCalendar, downloadCsv, downloadXlsx, employeeExportColumns, nextPayrollDate, printPdf } from '@/lib/businessReports';
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
 
@@ -26,6 +28,7 @@ type EmployeeRow = {
   bonus: number | string | null;
   status: EmployeeStatus | string | null;
   join_date: string | null;
+  payroll_due_day: number | string | null;
   notes: string | null;
 };
 
@@ -37,6 +40,7 @@ type EmployeeForm = {
   bonus: string;
   status: EmployeeStatus;
   join_date: string;
+  payroll_due_day: string;
   notes: string;
 };
 
@@ -49,6 +53,7 @@ function createEmptyEmployeeForm(): EmployeeForm {
     bonus: '',
     status: 'active',
     join_date: '',
+    payroll_due_day: '25',
     notes: '',
   };
 }
@@ -58,6 +63,7 @@ export default function EmployeesPage() {
   const { lang, dir } = useLanguage();
   const locale = normalizeBusinessLang(lang);
   const text = BUSINESS_TEXT[locale];
+  const { role, loading: roleLoading, permissions } = useBusinessRole(user?.id);
   const [rows, setRows] = useState<EmployeeRow[]>([]);
   const [defaultCurrency, setDefaultCurrency] = useState('KWD');
   const [loading, setLoading] = useState(true);
@@ -73,8 +79,47 @@ export default function EmployeesPage() {
   const [form, setForm] = useState<EmployeeForm>(() => createEmptyEmployeeForm());
   const [formError, setFormError] = useState('');
 
+  const syncPayrollNotifications = useCallback(async (employeeRows: EmployeeRow[]) => {
+    if (!user) return;
+    const activeRows = employeeRows.filter((row) => row.status === 'active' || !row.status);
+    const dueDays = Array.from(new Set(activeRows.map((row) => Number(row.payroll_due_day ?? 25)).filter((day) => day >= 1 && day <= 31)));
+    if (!dueDays.length) return;
+    const db = supabase as any;
+    const todayDate = new Date();
+    for (const day of dueDays) {
+      const dueDate = nextPayrollDate(day, todayDate);
+      const daysUntil = daysBetweenCalendar(todayDate, dueDate);
+      if (![7, 3, 0].includes(daysUntil)) continue;
+      const dueDateKey = dueDate.toISOString().slice(0, 10);
+      const existing = await db
+        .from('notifications')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('source_module', 'business_payroll')
+        .eq('type', 'payroll_due')
+        .eq('due_date', dueDateKey)
+        .limit(1);
+      if (!existing.error && (existing.data ?? []).length > 0) continue;
+      const message = daysUntil === 7 ? text.payrollReminder7 : daysUntil === 3 ? text.payrollReminder3 : text.payrollReminderToday;
+      await db.from('notifications').insert({
+        user_id: user.id,
+        type: 'payroll_due',
+        title: text.payrollDue,
+        message,
+        read: false,
+        link: '/employees',
+        action_url: '/employees',
+        severity: daysUntil === 0 ? 'warning' : 'info',
+        status: 'unread',
+        source_module: 'business_payroll',
+        due_date: dueDateKey,
+        metadata: { payroll_due_day: day, days_until: daysUntil },
+      });
+    }
+  }, [text.payrollDue, text.payrollReminder3, text.payrollReminder7, text.payrollReminderToday, user]);
+
   const loadEmployees = useCallback(async () => {
-    if (!user) {
+    if (!user || !permissions.canViewEmployees) {
       setRows([]);
       setLoading(false);
       return;
@@ -95,14 +140,16 @@ export default function EmployeesPage() {
       setError(text.loadError);
       setRows([]);
     } else {
-      setRows((employeesResult.data ?? []) as EmployeeRow[]);
+      const loadedRows = (employeesResult.data ?? []) as EmployeeRow[];
+      setRows(loadedRows);
+      void syncPayrollNotifications(loadedRows);
     }
     setLoading(false);
-  }, [text.loadError, user]);
+  }, [permissions.canViewEmployees, syncPayrollNotifications, text.loadError, user]);
 
   useEffect(() => {
-    if (!authLoading) void loadEmployees();
-  }, [authLoading, loadEmployees]);
+    if (!authLoading && !roleLoading) void loadEmployees();
+  }, [authLoading, loadEmployees, roleLoading]);
 
   const departments = useMemo(() => {
     return Array.from(new Set(rows.map((row) => row.department?.trim()).filter((value): value is string => Boolean(value)))).sort();
@@ -122,13 +169,20 @@ export default function EmployeesPage() {
 
   const summary = useMemo(() => {
     const activeRows = rows.filter((row) => row.status === 'active' || !row.status);
-    const payroll = activeRows.reduce((total, row) => total + numericValue(row.salary) + numericValue(row.bonus), 0);
+    const payroll = activeRows.reduce((total, row) => total + numericValue(row.salary), 0);
+    const allowances = activeRows.reduce((total, row) => total + numericValue(row.bonus), 0);
     const salaryTotal = rows.reduce((total, row) => total + numericValue(row.salary), 0);
+    const nearestDate = activeRows
+      .map((row) => nextPayrollDate(Number(row.payroll_due_day ?? 25)))
+      .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
     return {
       payroll,
+      allowances,
+      monthlyCost: payroll + allowances,
       total: rows.length,
       active: activeRows.length,
       averageSalary: rows.length ? salaryTotal / rows.length : 0,
+      nearestDate,
     };
   }, [rows]);
 
@@ -149,6 +203,7 @@ export default function EmployeesPage() {
       bonus: String(row.bonus ?? ''),
       status: EMPLOYEE_STATUS_OPTIONS.includes(row.status as EmployeeStatus) ? row.status as EmployeeStatus : 'active',
       join_date: row.join_date ?? '',
+      payroll_due_day: String(row.payroll_due_day ?? 25),
       notes: row.notes ?? '',
     });
     setFormError('');
@@ -164,7 +219,7 @@ export default function EmployeesPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!user) return;
+    if (!user || !permissions.canWriteEmployees) return;
     const salary = numericValue(form.salary);
     const bonus = numericValue(form.bonus);
     if (!form.employee_name.trim()) {
@@ -188,6 +243,7 @@ export default function EmployeesPage() {
       bonus,
       status: form.status,
       join_date: form.join_date || null,
+      payroll_due_day: Math.max(1, Math.min(numericValue(form.payroll_due_day) || 25, 31)),
       notes: form.notes.trim() || null,
     };
 
@@ -208,7 +264,7 @@ export default function EmployeesPage() {
   }
 
   async function deleteEmployee(row: EmployeeRow) {
-    if (!user || !window.confirm(text.confirmDeleteEmployee)) return;
+    if (!user || !permissions.canDeleteEmployees || !window.confirm(text.confirmDeleteEmployee)) return;
     setNotice('');
     const db = supabase as any;
     const result = await db.from('business_employees').delete().eq('id', row.id).eq('user_id', user.id);
@@ -220,7 +276,33 @@ export default function EmployeesPage() {
     await loadEmployees();
   }
 
-  if (authLoading || loading) {
+  function exportRows(format: 'pdf' | 'xlsx' | 'csv') {
+    if (!permissions.canExport) {
+      setError(text.permissionDenied);
+      return;
+    }
+    if (!filteredRows.length) {
+      setNotice(text.noDataToExport);
+      return;
+    }
+    const columns = employeeExportColumns(locale, defaultCurrency);
+    const filters = [
+      { label: text.status, value: statusFilter === 'all' ? text.allStatuses : employeeStatusLabel(statusFilter, locale) },
+      { label: text.department, value: departmentFilter === 'all' ? text.allDepartments : departmentFilter },
+      { label: text.role, value: businessRoleLabel(role, locale) },
+    ];
+    const totals = [
+      { label: text.totalMonthlyPayroll, value: formatMoney(summary.payroll, defaultCurrency, locale) },
+      { label: text.totalAllowances, value: formatMoney(summary.allowances, defaultCurrency, locale) },
+      { label: text.totalMonthlyCost, value: formatMoney(summary.monthlyCost, defaultCurrency, locale) },
+      { label: text.activeEmployees, value: String(summary.active) },
+    ];
+    if (format === 'csv') downloadCsv('the-sfm-payroll.csv', filteredRows, columns);
+    if (format === 'xlsx') void downloadXlsx('the-sfm-payroll.xlsx', filteredRows, columns, text.employees);
+    if (format === 'pdf') printPdf({ title: text.employees, lang: locale, columns, rows: filteredRows, totals, filters });
+  }
+
+  if (authLoading || loading || roleLoading) {
     return (
       <div className="business-ops-page" dir={dir}>
         <Sidebar />
@@ -254,17 +336,36 @@ export default function EmployeesPage() {
           title={text.employees}
           subtitle={text.employeesDescription}
           icon={<UsersRound size={32} />}
-          actions={<button className="business-primary-btn" type="button" onClick={openCreate}><Plus size={16} />{text.addEmployee}</button>}
+          actions={
+            <div className="business-hero-actions">
+              {permissions.canWriteEmployees ? <button className="business-primary-btn" type="button" onClick={openCreate}><Plus size={16} />{text.addEmployee}</button> : null}
+              {permissions.canExport ? (
+                <>
+                  <button className="business-ghost-btn" type="button" onClick={() => exportRows('pdf')}><FileText size={16} />{text.exportPdf}</button>
+                  <button className="business-ghost-btn" type="button" onClick={() => exportRows('xlsx')}><FileDown size={16} />{text.exportExcel}</button>
+                  <button className="business-ghost-btn" type="button" onClick={() => exportRows('csv')}><FileDown size={16} />{text.exportCsv}</button>
+                </>
+              ) : null}
+            </div>
+          }
         />
+
+        {!permissions.canViewEmployees ? (
+          <EmptyState title={text.permissionDenied} description={businessRoleLabel(role, locale)} icon={<UsersRound size={26} />} />
+        ) : (
+          <>
 
         {error ? <div className="business-alert" role="alert">{error}</div> : null}
         {notice ? <div className="business-notice" role="status">{notice}</div> : null}
 
         <section className="business-stat-grid" aria-label={text.employees}>
-          <article><span>{text.totalMonthlyPayroll}</span><strong>{formatMoney(summary.payroll, defaultCurrency, locale)}</strong></article>
+          <article><span>{text.totalMonthlyPayroll}</span><strong>{permissions.canViewPayrollTotals ? formatMoney(summary.payroll, defaultCurrency, locale) : text.permissionDenied}</strong></article>
+          <article><span>{text.totalAllowances}</span><strong>{permissions.canViewPayrollTotals ? formatMoney(summary.allowances, defaultCurrency, locale) : text.permissionDenied}</strong></article>
+          <article><span>{text.totalMonthlyCost}</span><strong>{permissions.canViewPayrollTotals ? formatMoney(summary.monthlyCost, defaultCurrency, locale) : text.permissionDenied}</strong></article>
           <article><span>{text.totalEmployees}</span><strong>{summary.total.toLocaleString(locale === 'ar' ? 'ar-KW' : locale)}</strong></article>
           <article><span>{text.activeEmployees}</span><strong>{summary.active.toLocaleString(locale === 'ar' ? 'ar-KW' : locale)}</strong></article>
           <article><span>{text.averageSalary}</span><strong>{formatMoney(summary.averageSalary, defaultCurrency, locale)}</strong></article>
+          <article><span>{text.nearestPayrollDate}</span><strong>{summary.nearestDate ? formatDate(summary.nearestDate, locale) : text.noDataYet}</strong></article>
         </section>
 
         <section className="business-toolbar employee-toolbar" aria-label={text.search}>
@@ -286,7 +387,7 @@ export default function EmployeesPage() {
           </div>
         </section>
 
-        {formOpen ? (
+        {formOpen && permissions.canWriteEmployees ? (
           <section className="business-form-card" aria-label={editing ? text.editEmployee : text.addEmployee}>
             <div className="business-section-heading">
               <h2>{editing ? text.editEmployee : text.addEmployee}</h2>
@@ -324,6 +425,10 @@ export default function EmployeesPage() {
                 <span>{text.joinDate}</span>
                 <input type="date" value={form.join_date} onChange={(event) => setForm({ ...form, join_date: event.target.value })} />
               </label>
+              <label>
+                <span>{text.payrollDueDay}</span>
+                <input type="number" min="1" max="31" step="1" value={form.payroll_due_day} onChange={(event) => setForm({ ...form, payroll_due_day: event.target.value })} />
+              </label>
               <label className="business-full-field">
                 <span>{text.notes}</span>
                 <textarea rows={3} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
@@ -341,7 +446,7 @@ export default function EmployeesPage() {
             title={text.noEmployeesYet}
             description={text.employeeEmptyBody}
             icon={<UsersRound size={26} />}
-            actions={<button className="business-primary-btn" type="button" onClick={openCreate}><Plus size={16} />{text.addEmployee}</button>}
+            actions={permissions.canWriteEmployees ? <button className="business-primary-btn" type="button" onClick={openCreate}><Plus size={16} />{text.addEmployee}</button> : null}
           />
         ) : view === 'grid' ? (
           <section className="employee-card-grid" aria-label={text.employees}>
@@ -359,10 +464,11 @@ export default function EmployeesPage() {
                   <div><dt>{text.salary}</dt><dd>{formatMoney(numericValue(row.salary), defaultCurrency, locale)}</dd></div>
                   <div><dt>{text.bonus}</dt><dd>{formatMoney(numericValue(row.bonus), defaultCurrency, locale)}</dd></div>
                   <div><dt>{text.joinDate}</dt><dd>{row.join_date ? formatDate(row.join_date, locale) : '-'}</dd></div>
+                  <div><dt>{text.payrollDueDay}</dt><dd>{row.payroll_due_day || 25}</dd></div>
                 </dl>
                 <div className="business-row-actions">
-                  <button type="button" onClick={() => openEdit(row)} aria-label={text.edit}><Edit3 size={15} />{text.edit}</button>
-                  <button type="button" className="danger" onClick={() => void deleteEmployee(row)} aria-label={text.delete}><Trash2 size={15} />{text.delete}</button>
+                  {permissions.canWriteEmployees ? <button type="button" onClick={() => openEdit(row)} aria-label={text.edit}><Edit3 size={15} />{text.edit}</button> : null}
+                  {permissions.canDeleteEmployees ? <button type="button" className="danger" onClick={() => void deleteEmployee(row)} aria-label={text.delete}><Trash2 size={15} />{text.delete}</button> : null}
                 </div>
               </article>
             ))}
@@ -380,6 +486,7 @@ export default function EmployeesPage() {
                     <th>{text.bonus}</th>
                     <th>{text.status}</th>
                     <th>{text.joinDate}</th>
+                    <th>{text.payrollDueDay}</th>
                     <th>{text.edit}</th>
                   </tr>
                 </thead>
@@ -393,10 +500,11 @@ export default function EmployeesPage() {
                       <td>{formatMoney(numericValue(row.bonus), defaultCurrency, locale)}</td>
                       <td><span className={`business-status status-${row.status || 'active'}`}>{employeeStatusLabel(row.status, locale)}</span></td>
                       <td>{row.join_date ? formatDate(row.join_date, locale) : '-'}</td>
+                      <td>{row.payroll_due_day || 25}</td>
                       <td>
                         <div className="business-row-actions">
-                          <button type="button" onClick={() => openEdit(row)} aria-label={text.edit}><Edit3 size={15} />{text.edit}</button>
-                          <button type="button" className="danger" onClick={() => void deleteEmployee(row)} aria-label={text.delete}><Trash2 size={15} />{text.delete}</button>
+                          {permissions.canWriteEmployees ? <button type="button" onClick={() => openEdit(row)} aria-label={text.edit}><Edit3 size={15} />{text.edit}</button> : null}
+                          {permissions.canDeleteEmployees ? <button type="button" className="danger" onClick={() => void deleteEmployee(row)} aria-label={text.delete}><Trash2 size={15} />{text.delete}</button> : null}
                         </div>
                       </td>
                     </tr>
@@ -405,6 +513,8 @@ export default function EmployeesPage() {
               </table>
             </div>
           </section>
+        )}
+          </>
         )}
       </DashboardPageShell>
       <style jsx global>{employeeStyles}</style>
@@ -422,6 +532,7 @@ const employeeStyles = `
   .business-spin{color:var(--sfm-primary);animation:business-spin .9s linear infinite}@keyframes business-spin{to{transform:rotate(360deg)}}
   .business-alert,.business-form-error{border:1px solid rgba(239,68,68,.24);background:rgba(239,68,68,.10);color:#B91C1C;border-radius:16px;padding:12px 14px;font-weight:850}
   .business-notice{border:1px solid rgba(16,185,129,.24);background:rgba(16,185,129,.10);color:#047857;border-radius:16px;padding:12px 14px;font-weight:850}
+  .business-hero-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
   .business-primary-btn,.business-ghost-btn{min-height:42px;border-radius:14px;padding:0 15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-weight:950;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
   .business-primary-btn{border:1px solid rgba(167,243,240,.34);background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#fff;box-shadow:0 14px 30px rgba(29,140,255,.18)}
   .business-ghost-btn{border:1px solid rgba(29,140,255,.18);background:var(--sfm-card);color:var(--sfm-primary)}
@@ -470,5 +581,5 @@ const employeeStyles = `
   .business-row-actions button:focus-visible{outline:2px solid rgba(24,212,212,.22);outline-offset:2px}
   .dark .business-alert,.dark .business-form-error{color:#FCA5A5}.dark .business-notice{color:#86EFAC}.dark .business-status{color:#86EFAC}.dark .status-on_leave{color:#FCD34D}.dark .status-inactive{color:#FCA5A5}
   @media(max-width:980px){.business-toolbar{grid-template-columns:1fr 1fr}.business-view-toggle{grid-column:1 / -1}.business-view-toggle button{flex:1;justify-content:center}}
-  @media(max-width:760px){.business-topbar{justify-content:space-between;align-items:flex-start}.business-toolbar,.business-form-grid,.employee-card dl{grid-template-columns:1fr}.business-primary-btn,.business-ghost-btn,.business-form-actions{width:100%}.business-form-actions{display:grid}.business-table-card{border-radius:18px}table{min-width:780px}.employee-card-head{display:grid}}
+  @media(max-width:760px){.business-topbar{justify-content:space-between;align-items:flex-start}.business-toolbar,.business-form-grid,.employee-card dl{grid-template-columns:1fr}.business-hero-actions,.business-primary-btn,.business-ghost-btn,.business-form-actions{width:100%}.business-form-actions{display:grid}.business-table-card{border-radius:18px}table{min-width:780px}.employee-card-head{display:grid}}
 `;

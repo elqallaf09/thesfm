@@ -2,7 +2,8 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Edit3, Loader2, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
+import { ArrowLeft, BarChart3, Edit3, FileDown, FileText, Loader2, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
@@ -11,9 +12,11 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { useAuth } from '@/hooks/useAuth';
+import { useBusinessRole } from '@/hooks/useBusinessRole';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
-import { BUSINESS_TEXT, SALE_STATUS_OPTIONS, normalizeBusinessLang, numericValue, saleStatusLabel, type SaleStatus } from '@/lib/businessOperations';
+import { BUSINESS_TEXT, SALE_STATUS_OPTIONS, businessRoleLabel, normalizeBusinessLang, numericValue, saleStatusLabel, type SaleStatus } from '@/lib/businessOperations';
+import { aggregateBy, downloadCsv, downloadXlsx, isInDateRange, monthLabel, printPdf, saleExportColumns } from '@/lib/businessReports';
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
 
@@ -61,6 +64,7 @@ export default function SalesPage() {
   const { lang, dir } = useLanguage();
   const locale = normalizeBusinessLang(lang);
   const text = BUSINESS_TEXT[locale];
+  const { role, loading: roleLoading, permissions } = useBusinessRole(user?.id);
   const [rows, setRows] = useState<SaleRow[]>([]);
   const [defaultCurrency, setDefaultCurrency] = useState('KWD');
   const [loading, setLoading] = useState(true);
@@ -69,13 +73,15 @@ export default function SalesPage() {
   const [notice, setNotice] = useState('');
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | SaleStatus>('all');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SaleRow | null>(null);
   const [form, setForm] = useState<SaleForm>(() => createEmptyForm());
   const [formError, setFormError] = useState('');
 
   const loadSales = useCallback(async () => {
-    if (!user) {
+    if (!user || !permissions.canViewSales) {
       setRows([]);
       setLoading(false);
       return;
@@ -99,11 +105,11 @@ export default function SalesPage() {
       setRows((salesResult.data ?? []) as SaleRow[]);
     }
     setLoading(false);
-  }, [text.loadError, user]);
+  }, [permissions.canViewSales, text.loadError, user]);
 
   useEffect(() => {
-    if (!authLoading) void loadSales();
-  }, [authLoading, loadSales]);
+    if (!authLoading && !roleLoading) void loadSales();
+  }, [authLoading, loadSales, roleLoading]);
 
   useEffect(() => {
     setForm((current) => ({ ...current, currency: current.currency || defaultCurrency }));
@@ -114,21 +120,44 @@ export default function SalesPage() {
     return rows.filter((row) => {
       const matchesStatus = statusFilter === 'all' || row.status === statusFilter;
       if (!matchesStatus) return false;
+      if (!isInDateRange(row.sale_date, fromDate, toDate)) return false;
       if (!needle) return true;
       return [row.customer_name, row.invoice_number, row.product_or_service, row.notes]
         .some((value) => String(value ?? '').toLowerCase().includes(needle));
     });
-  }, [query, rows, statusFilter]);
+  }, [fromDate, query, rows, statusFilter, toDate]);
 
   const summary = useMemo(() => {
-    const completed = rows.filter((row) => row.status === 'completed');
+    const completed = filteredRows.filter((row) => row.status === 'completed');
     return {
       totalSales: completed.reduce((total, row) => total + numericValue(row.amount), 0),
       completed: completed.length,
-      pending: rows.filter((row) => row.status === 'pending' || !row.status).length,
-      canceled: rows.filter((row) => row.status === 'canceled').length,
+      pending: filteredRows.filter((row) => row.status === 'pending' || !row.status).length,
+      canceled: filteredRows.filter((row) => row.status === 'canceled').length,
     };
-  }, [rows]);
+  }, [filteredRows]);
+
+  const chartData = useMemo(() => {
+    const activeSalesRows = filteredRows.filter((row) => row.status !== 'canceled');
+    const monthly = aggregateBy(
+      activeSalesRows,
+      (row) => String(row.sale_date ?? '').slice(0, 7) || text.noDataYet,
+      (row) => numericValue(row.amount)
+    ).sort((a, b) => a.name.localeCompare(b.name)).map((item) => ({ ...item, label: /^\d{4}-\d{2}$/.test(item.name) ? monthLabel(item.name, locale) : item.name }));
+    const yearly = aggregateBy(
+      activeSalesRows,
+      (row) => String(row.sale_date ?? '').slice(0, 4) || text.noDataYet,
+      (row) => numericValue(row.amount)
+    ).sort((a, b) => a.name.localeCompare(b.name));
+    const status = aggregateBy(filteredRows, (row) => saleStatusLabel(row.status, locale), (row) => numericValue(row.amount));
+    const products = aggregateBy(activeSalesRows, (row) => row.product_or_service || text.noDataYet, (row) => numericValue(row.amount))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+    const customers = aggregateBy(activeSalesRows, (row) => row.customer_name || text.noDataYet, (row) => numericValue(row.amount))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+    return { monthly, yearly, status, products, customers };
+  }, [filteredRows, locale, text.noDataYet]);
 
   function openCreate() {
     setEditing(null);
@@ -162,7 +191,7 @@ export default function SalesPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!user) return;
+    if (!user || !permissions.canWriteSales) return;
     const amount = numericValue(form.amount);
     if (!form.customer_name.trim()) {
       setFormError(text.requiredField);
@@ -205,7 +234,7 @@ export default function SalesPage() {
   }
 
   async function deleteSale(row: SaleRow) {
-    if (!user || !window.confirm(text.confirmDeleteSale)) return;
+    if (!user || !permissions.canDeleteSales || !window.confirm(text.confirmDeleteSale)) return;
     setNotice('');
     const db = supabase as any;
     const result = await db.from('business_sales').delete().eq('id', row.id).eq('user_id', user.id);
@@ -217,7 +246,34 @@ export default function SalesPage() {
     await loadSales();
   }
 
-  if (authLoading || loading) {
+  function exportRows(format: 'pdf' | 'xlsx' | 'csv') {
+    if (!permissions.canExport) {
+      setError(text.permissionDenied);
+      return;
+    }
+    if (!filteredRows.length) {
+      setNotice(text.noDataToExport);
+      return;
+    }
+    const columns = saleExportColumns(locale, defaultCurrency);
+    const dateRange = fromDate || toDate ? `${fromDate || text.allDates} - ${toDate || text.allDates}` : text.allDates;
+    const filters = [
+      { label: text.status, value: statusFilter === 'all' ? text.allStatuses : saleStatusLabel(statusFilter, locale) },
+      { label: text.dateRange, value: dateRange },
+      { label: text.role, value: businessRoleLabel(role, locale) },
+    ];
+    const totals = [
+      { label: text.totalSales, value: formatMoney(summary.totalSales, defaultCurrency, locale) },
+      { label: text.completedSales, value: String(summary.completed) },
+      { label: text.pendingSales, value: String(summary.pending) },
+      { label: text.canceledSales, value: String(summary.canceled) },
+    ];
+    if (format === 'csv') downloadCsv('the-sfm-sales.csv', filteredRows, columns);
+    if (format === 'xlsx') void downloadXlsx('the-sfm-sales.xlsx', filteredRows, columns, text.sales);
+    if (format === 'pdf') printPdf({ title: text.sales, lang: locale, columns, rows: filteredRows, totals, filters });
+  }
+
+  if (authLoading || loading || roleLoading) {
     return (
       <div className="business-ops-page" dir={dir}>
         <Sidebar />
@@ -251,8 +307,24 @@ export default function SalesPage() {
           title={text.sales}
           subtitle={text.salesDescription}
           icon={<ShoppingCart size={32} />}
-          actions={<button className="business-primary-btn" type="button" onClick={openCreate}><Plus size={16} />{text.addSale}</button>}
+          actions={
+            <div className="business-hero-actions">
+              {permissions.canWriteSales ? <button className="business-primary-btn" type="button" onClick={openCreate}><Plus size={16} />{text.addSale}</button> : null}
+              {permissions.canExport ? (
+                <>
+                  <button className="business-ghost-btn" type="button" onClick={() => exportRows('pdf')}><FileText size={16} />{text.exportPdf}</button>
+                  <button className="business-ghost-btn" type="button" onClick={() => exportRows('xlsx')}><FileDown size={16} />{text.exportExcel}</button>
+                  <button className="business-ghost-btn" type="button" onClick={() => exportRows('csv')}><FileDown size={16} />{text.exportCsv}</button>
+                </>
+              ) : null}
+            </div>
+          }
         />
+
+        {!permissions.canViewSales ? (
+          <EmptyState title={text.permissionDenied} description={businessRoleLabel(role, locale)} icon={<ShoppingCart size={26} />} />
+        ) : (
+          <>
 
         {error ? <div className="business-alert" role="alert">{error}</div> : null}
         {notice ? <div className="business-notice" role="status">{notice}</div> : null}
@@ -273,9 +345,25 @@ export default function SalesPage() {
             <option value="all">{text.allStatuses}</option>
             {SALE_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{saleStatusLabel(status, locale)}</option>)}
           </select>
+          <label className="business-date-filter">
+            <span>{text.fromDate}</span>
+            <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
+          </label>
+          <label className="business-date-filter">
+            <span>{text.toDate}</span>
+            <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
+          </label>
         </section>
 
-        {formOpen ? (
+        <section className="business-chart-grid" aria-label={text.monthlySales}>
+          <ChartCard title={text.monthlySales} data={chartData.monthly} currency={defaultCurrency} lang={locale} />
+          <ChartCard title={text.yearlySales} data={chartData.yearly} currency={defaultCurrency} lang={locale} />
+          <ChartCard title={text.salesByStatus} data={chartData.status} currency={defaultCurrency} lang={locale} variant="pie" />
+          <ChartCard title={text.topProducts} data={chartData.products} currency={defaultCurrency} lang={locale} />
+          <ChartCard title={text.salesByCustomer} data={chartData.customers} currency={defaultCurrency} lang={locale} />
+        </section>
+
+        {formOpen && permissions.canWriteSales ? (
           <section className="business-form-card" aria-label={editing ? text.editSale : text.addSale}>
             <div className="business-section-heading">
               <h2>{editing ? text.editSale : text.addSale}</h2>
@@ -327,7 +415,7 @@ export default function SalesPage() {
             title={text.noSalesYet}
             description={text.saleEmptyBody}
             icon={<ShoppingCart size={26} />}
-            actions={<button className="business-primary-btn" type="button" onClick={openCreate}><Plus size={16} />{text.addSale}</button>}
+            actions={permissions.canWriteSales ? <button className="business-primary-btn" type="button" onClick={openCreate}><Plus size={16} />{text.addSale}</button> : null}
           />
         ) : (
           <section className="business-table-card" aria-label={text.sales}>
@@ -355,8 +443,8 @@ export default function SalesPage() {
                       <td>{row.sale_date ? formatDate(row.sale_date, locale) : '-'}</td>
                       <td>
                         <div className="business-row-actions">
-                          <button type="button" onClick={() => openEdit(row)} aria-label={text.edit}><Edit3 size={15} />{text.edit}</button>
-                          <button type="button" className="danger" onClick={() => void deleteSale(row)} aria-label={text.delete}><Trash2 size={15} />{text.delete}</button>
+                          {permissions.canWriteSales ? <button type="button" onClick={() => openEdit(row)} aria-label={text.edit}><Edit3 size={15} />{text.edit}</button> : null}
+                          {permissions.canDeleteSales ? <button type="button" className="danger" onClick={() => void deleteSale(row)} aria-label={text.delete}><Trash2 size={15} />{text.delete}</button> : null}
                         </div>
                       </td>
                     </tr>
@@ -366,9 +454,47 @@ export default function SalesPage() {
             </div>
           </section>
         )}
+          </>
+        )}
       </DashboardPageShell>
       <style jsx global>{salesStyles}</style>
     </div>
+  );
+}
+
+function ChartCard({ title, data, currency, lang, variant = 'bar' }: { title: string; data: Array<{ name: string; value: number; label?: string }>; currency: string; lang: 'ar' | 'en' | 'fr'; variant?: 'bar' | 'pie' }) {
+  const text = BUSINESS_TEXT[lang];
+  const hasData = data.some((item) => item.value > 0);
+  const colors = ['#1D8CFF', '#18D4D4', '#10B981', '#F59E0B', '#8B5CF6'];
+  const chartRows = data.map((item) => ({ ...item, label: item.label ?? item.name }));
+  return (
+    <article className="business-chart-card">
+      <div className="business-section-heading">
+        <h2><BarChart3 size={18} aria-hidden="true" />{title}</h2>
+      </div>
+      {!hasData ? (
+        <p className="business-chart-empty">{text.insufficientChartData}</p>
+      ) : (
+        <ResponsiveContainer width="100%" height={220}>
+          {variant === 'pie' ? (
+            <PieChart>
+              <Pie data={chartRows} dataKey="value" nameKey="name" innerRadius={48} outerRadius={82} paddingAngle={3}>
+                {chartRows.map((_, index) => <Cell key={index} fill={colors[index % colors.length]} />)}
+              </Pie>
+              <Tooltip formatter={(value) => formatMoney(Number(value), currency, lang)} />
+            </PieChart>
+          ) : (
+            <BarChart data={chartRows}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+              <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(value) => formatMoney(Number(value), currency, lang)} />
+              <Bar dataKey="value" fill="#1D8CFF" radius={[10, 10, 0, 0]} />
+            </BarChart>
+          )}
+        </ResponsiveContainer>
+      )}
+    </article>
   );
 }
 
@@ -382,6 +508,7 @@ const salesStyles = `
   .business-spin{color:var(--sfm-primary);animation:business-spin .9s linear infinite}@keyframes business-spin{to{transform:rotate(360deg)}}
   .business-alert,.business-form-error{border:1px solid rgba(239,68,68,.24);background:rgba(239,68,68,.10);color:#B91C1C;border-radius:16px;padding:12px 14px;font-weight:850}
   .business-notice{border:1px solid rgba(16,185,129,.24);background:rgba(16,185,129,.10);color:#047857;border-radius:16px;padding:12px 14px;font-weight:850}
+  .business-hero-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
   .business-primary-btn,.business-ghost-btn{min-height:42px;border-radius:14px;padding:0 15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-weight:950;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
   .business-primary-btn{border:1px solid rgba(167,243,240,.34);background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#fff;box-shadow:0 14px 30px rgba(29,140,255,.18)}
   .business-ghost-btn{border:1px solid rgba(29,140,255,.18);background:var(--sfm-card);color:var(--sfm-primary)}
@@ -392,11 +519,16 @@ const salesStyles = `
   .business-stat-grid article{padding:16px;min-width:0}
   .business-stat-grid span{display:block;color:var(--sfm-muted);font-size:.88rem;font-weight:850}
   .business-stat-grid strong{display:block;margin-top:8px;color:var(--sfm-foreground);font-size:1.25rem;overflow-wrap:anywhere}
-  .business-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,240px);gap:12px;align-items:center}
+  .business-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(170px,220px) minmax(150px,190px) minmax(150px,190px);gap:12px;align-items:center}
   .business-search{min-height:48px;border:1px solid rgba(29,140,255,.18);background:var(--sfm-card);border-radius:16px;display:flex;align-items:center;gap:10px;padding:0 12px;color:var(--sfm-muted)}
-  .business-search input,.business-toolbar select,.business-form-grid input,.business-form-grid select,.business-form-grid textarea{width:100%;min-width:0;border:1px solid rgba(29,140,255,.18);background:var(--sfm-card);color:var(--sfm-foreground);border-radius:14px;padding:11px 12px;font-family:inherit;font-weight:800;outline:none}
+  .business-search input,.business-toolbar select,.business-date-filter input,.business-form-grid input,.business-form-grid select,.business-form-grid textarea{width:100%;min-width:0;border:1px solid rgba(29,140,255,.18);background:var(--sfm-card);color:var(--sfm-foreground);border-radius:14px;padding:11px 12px;font-family:inherit;font-weight:800;outline:none}
   .business-search input{border:0;background:transparent;height:46px;padding:0}
-  .business-search input:focus,.business-toolbar select:focus,.business-form-grid input:focus,.business-form-grid select:focus,.business-form-grid textarea:focus{box-shadow:0 0 0 3px rgba(24,212,212,.16);border-color:var(--sfm-accent)}
+  .business-date-filter{display:grid;gap:6px}.business-date-filter span{color:var(--sfm-muted);font-size:.78rem;font-weight:900}
+  .business-search input:focus,.business-toolbar select:focus,.business-date-filter input:focus,.business-form-grid input:focus,.business-form-grid select:focus,.business-form-grid textarea:focus{box-shadow:0 0 0 3px rgba(24,212,212,.16);border-color:var(--sfm-accent)}
+  .business-chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px}
+  .business-chart-card{min-width:0;border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);border-radius:22px;padding:16px;box-shadow:0 16px 38px rgba(3,18,37,.07)}
+  .business-chart-card .business-section-heading h2{display:flex;align-items:center;gap:8px;font-size:1rem}
+  .business-chart-empty{min-height:220px;margin:0;display:grid;place-items:center;text-align:center;color:var(--sfm-muted);font-weight:850;border:1px dashed rgba(29,140,255,.22);border-radius:16px;background:var(--sfm-light-card);padding:18px}
   .business-form-card{padding:18px}
   .business-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
   .business-section-heading h2{margin:0;color:var(--sfm-foreground)}
@@ -419,5 +551,6 @@ const salesStyles = `
   .business-row-actions button.danger{color:#DC2626;border-color:rgba(239,68,68,.20)}
   .business-row-actions button:focus-visible{outline:2px solid rgba(24,212,212,.22);outline-offset:2px}
   .dark .business-alert,.dark .business-form-error{color:#FCA5A5}.dark .business-notice{color:#86EFAC}.dark .status-completed{color:#86EFAC}.dark .status-canceled{color:#FCA5A5}
-  @media(max-width:760px){.business-topbar{justify-content:space-between;align-items:flex-start}.business-toolbar,.business-form-grid{grid-template-columns:1fr}.business-primary-btn,.business-ghost-btn,.business-form-actions{width:100%}.business-form-actions{display:grid}.business-table-card{border-radius:18px}table{min-width:720px}}
+  @media(max-width:980px){.business-toolbar{grid-template-columns:1fr 1fr}.business-search{grid-column:1 / -1}}
+  @media(max-width:760px){.business-topbar{justify-content:space-between;align-items:flex-start}.business-toolbar,.business-form-grid{grid-template-columns:1fr}.business-search{grid-column:auto}.business-hero-actions,.business-primary-btn,.business-ghost-btn,.business-form-actions{width:100%}.business-form-actions{display:grid}.business-table-card{border-radius:18px}table{min-width:720px}}
 `;
