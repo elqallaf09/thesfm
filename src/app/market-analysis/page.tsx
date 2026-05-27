@@ -155,8 +155,23 @@ function writeLocalList<T>(key: string, value: T[]) {
   if (typeof window !== 'undefined') localStorage.setItem(key, JSON.stringify(value));
 }
 
+function normalizeMarketTab(value: string | null | undefined): MarketTab | null {
+  const normalized = String(value ?? '')
+    .trim()
+    .replace(/^#/, '')
+    .replace(/_/g, '-')
+    .toLowerCase();
+
+  if (normalized === 'analysis' || normalized === 'analyze') return 'analyze';
+  if (normalized === 'watchlist' || normalized === 'market-watchlist') return 'watchlist';
+  if (normalized === 'alerts' || normalized === 'market-alerts' || normalized === 'price-alerts') return 'alerts';
+  if (normalized === 'comparison' || normalized === 'compare') return 'comparison';
+  if (normalized === 'asset-report' || normalized === 'assetreport' || normalized === 'report') return 'assetReport';
+  return null;
+}
+
 export default function MarketAnalysisPage() {
-  const { dir, lang, t } = useLanguage();
+  const { dir, t } = useLanguage();
   const { user, isGuest } = useAuth();
   const [query, setQuery] = useState(DEFAULT_MARKET_ASSET);
   const [assetType, setAssetType] = useState<MarketAssetType | 'all'>(DEFAULT_MARKET_TYPE);
@@ -181,6 +196,22 @@ export default function MarketAnalysisPage() {
   const [reportOpen, setReportOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<MarketTab>('analyze');
   const [lastUpdated, setLastUpdated] = useState('');
+
+  useEffect(() => {
+    const syncTabFromRoute = () => {
+      const params = new URLSearchParams(window.location.search);
+      const routeTab = normalizeMarketTab(params.get('tab')) ?? normalizeMarketTab(window.location.hash);
+      if (routeTab) setActiveTab(routeTab);
+    };
+
+    syncTabFromRoute();
+    window.addEventListener('hashchange', syncTabFromRoute);
+    window.addEventListener('popstate', syncTabFromRoute);
+    return () => {
+      window.removeEventListener('hashchange', syncTabFromRoute);
+      window.removeEventListener('popstate', syncTabFromRoute);
+    };
+  }, []);
 
   const requestAnalysis = useCallback(async (symbolInput: string, typeInput: MarketAssetType | 'all', selectedInput?: Partial<SelectedMarketAsset>) => {
     const displaySymbol = validateSymbol(selectedInput?.symbol ?? symbolInput);
@@ -589,12 +620,12 @@ export default function MarketAnalysisPage() {
     `${t('market_report_monitor')}: RSI ${selected.indicators.rsi}, SMA 20 ${money(selected.indicators.sma20)}, SMA 50 ${money(selected.indicators.sma50)}`,
   ] : [];
   const marketTabs = useMemo(() => [
-    { id: 'analyze', label: lang === 'ar' ? 'التحليل' : lang === 'fr' ? 'Analyser' : 'Analyze' },
+    { id: 'analyze', label: t('market_analysis_tab') },
     { id: 'watchlist', label: t('market_watchlist'), count: watchlist.length },
     { id: 'alerts', label: t('market_price_alerts'), count: alerts.length },
     { id: 'comparison', label: t('market_compare_assets'), count: compare.length },
     { id: 'assetReport', label: t('market_ai_asset_report') },
-  ], [alerts.length, compare.length, lang, t, watchlist.length]);
+  ], [alerts.length, compare.length, t, watchlist.length]);
 
   return (
     <div className="market-shell" dir={dir}>

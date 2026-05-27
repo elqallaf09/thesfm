@@ -3,7 +3,6 @@
 import type { ComponentType } from 'react';
 import {
   Bell,
-  BellRing,
   BriefcaseBusiness,
   Building2,
   Calculator,
@@ -24,7 +23,6 @@ import {
   Presentation,
   ReceiptText,
   ShieldCheck,
-  Star,
   Target,
   TrendingUp,
   UserRound,
@@ -86,8 +84,6 @@ export const NAV_GROUPS: NavigationGroup[] = [
     items: [
       { id: 'invest', icon: TrendingUp, href: '/invest', labelKey: 'nav_invest' },
       { id: 'market-analysis', icon: LineChart, href: '/market-analysis', labelKey: 'nav_market_analysis' },
-      { id: 'watchlist', icon: Star, href: '/market-analysis#watchlist', labelKey: 'nav_watchlist' },
-      { id: 'market-alerts', icon: BellRing, href: '/market-analysis#market-alerts', labelKey: 'nav_market_alerts' },
     ],
   },
   {
