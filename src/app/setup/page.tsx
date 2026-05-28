@@ -626,6 +626,24 @@ export default function SetupPage() {
           firstGoalCompletionDate: '',
         });
         setStep(8);
+      } else if (nextExisting.profile?.onboarding_completed !== true) {
+        const hasAnyExistingData = Boolean(
+          nextExisting.profile?.default_currency ||
+          nextExisting.profile?.preferred_currency ||
+          nextExisting.income.length ||
+          nextExisting.expenses.length ||
+          nextExisting.goals.length ||
+          nextExisting.savings.length ||
+          nextExisting.investments.length ||
+          nextExisting.projects.length,
+        );
+        if (hasAnyExistingData) {
+          const hasIncome = nextExisting.income.some(row => amountFrom(row.amount) > 0);
+          const hasExpenses = nextExisting.expenses.some(row => amountFrom(row.amount) > 0);
+          const hasGoals = nextExisting.goals.length > 0;
+          const firstMissing = !currency ? 1 : !hasIncome ? 2 : !hasExpenses ? 3 : !hasGoals ? 4 : 8;
+          setStep(firstMissing as Step);
+        }
       }
       setExistingLoading(false);
     }
