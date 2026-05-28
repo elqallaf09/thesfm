@@ -30,6 +30,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { loadUserDataTables } from '@/lib/data/reportsData';
 import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
+import { formatDate, formatNumber } from '@/lib/locale';
 
 type Lang = 'ar' | 'en' | 'fr';
 type ReportStatus = 'ready' | 'needs_data' | 'unavailable' | 'error';
@@ -994,6 +995,24 @@ function numberValue(value: unknown) {
   return Number.isFinite(number) ? number : 0;
 }
 
+function nullableNumber(value: unknown) {
+  if (value === undefined || value === null) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().replace(/,/g, '');
+  if (!normalized) return null;
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : null;
+}
+
+function firstNumber(values: unknown[]) {
+  for (const value of values) {
+    const number = nullableNumber(value);
+    if (number !== null) return number;
+  }
+  return null;
+}
+
 function firstText(row: any, keys: string[], defaultText = '') {
   for (const key of keys) {
     const value = row?.[key];
@@ -1010,6 +1029,18 @@ const NO_GOAL_NOTES: Record<Lang, string> = {
   ar: 'لا توجد ملاحظات',
   en: 'No notes',
   fr: 'Aucune note',
+};
+
+const NOT_SPECIFIED: Record<Lang, string> = {
+  ar: 'غير محدد',
+  en: 'Not specified',
+  fr: 'Non spécifié',
+};
+
+const MONTHS_LABEL: Record<Lang, string> = {
+  ar: 'شهر',
+  en: 'months',
+  fr: 'mois',
 };
 
 function parseMaybeObject(value: unknown): Record<string, unknown> | null {
@@ -1043,6 +1074,32 @@ function formatReportCurrency(value: unknown, fallback: unknown, lang: Lang) {
   return normalized;
 }
 
+function currencyCode(value: unknown, fallback: unknown) {
+  return (cleanReportText(value) || cleanReportText(fallback) || 'KWD').toUpperCase();
+}
+
+function moneyOrMissing(value: unknown, currency: string, lang: Lang) {
+  const number = nullableNumber(value);
+  if (number === null) return NOT_SPECIFIED[lang];
+  const amount = number.toFixed(3);
+  if (lang === 'en') return `${currency} ${amount}`;
+  return `${amount} ${formatReportCurrency(currency, currency, lang)}`;
+}
+
+function dateOrMissing(value: unknown, lang: Lang) {
+  return value ? (formatDate(value, lang) || NOT_SPECIFIED[lang]) : NOT_SPECIFIED[lang];
+}
+
+function textOrMissing(value: unknown, lang: Lang) {
+  return cleanReportText(value) || NOT_SPECIFIED[lang];
+}
+
+function periodOrMissing(value: unknown, lang: Lang) {
+  const number = nullableNumber(value);
+  if (number === null) return NOT_SPECIFIED[lang];
+  return `${formatNumber(number, lang, { maximumFractionDigits: 1 })} ${MONTHS_LABEL[lang]}`;
+}
+
 function formatGoalNotes(goal: any, lang: Lang) {
   const metadata = parseMaybeObject(goal?.notes);
   const description =
@@ -1070,6 +1127,63 @@ function normalizeReportCellValue(value: unknown, lang: Lang) {
   }
   if (typeof value === 'object') return '';
   return String(value);
+}
+
+function normalizeProjectForReport(project: any, lang: Lang, filters: Filters) {
+  const notes = parseMaybeObject(project?.notes) ?? {};
+  const analysis = parseMaybeObject(notes.analysis) ?? parseMaybeObject(project?.analysis) ?? {};
+  const kpis = parseMaybeObject(notes.kpis) ?? parseMaybeObject(project?.kpis) ?? {};
+  const currency = currencyCode(project?.currency ?? notes.currency, filters.currency);
+  const capital = firstNumber([
+    project?.capital,
+    project?.capital_amount,
+    project?.initialCapital,
+    project?.initial_capital,
+    project?.projectCapital,
+    project?.project_capital,
+    project?.budget,
+    project?.investmentAmount,
+    project?.investment_amount,
+    notes.capital,
+    notes.capital_amount,
+    notes.initialCapital,
+    notes.initial_capital,
+    notes.projectCapital,
+    notes.project_capital,
+    notes.budget,
+    notes.investmentAmount,
+    notes.investment_amount,
+  ]);
+  const targetAmount = firstNumber([project?.target_amount, project?.targetAmount, notes.target_amount, notes.targetAmount]);
+  const goalText = cleanReportText(project?.goal) || cleanReportText(notes.goal) || cleanReportText(project?.target) || cleanReportText(notes.target);
+  const monthlyRevenue = firstNumber([project?.monthlyRevenue, project?.monthly_revenue, notes.monthlyRevenue, notes.monthly_revenue]);
+  const monthlyExpenses = firstNumber([project?.monthlyExpenses, project?.monthly_expenses, notes.monthlyExpenses, notes.monthly_expenses]);
+  const monthlyProfit = monthlyRevenue !== null && monthlyExpenses !== null ? monthlyRevenue - monthlyExpenses : null;
+  const payback = firstNumber([
+    project?.paybackPeriod,
+    project?.payback_period,
+    project?.paybackMonths,
+    project?.payback_months,
+    notes.paybackPeriod,
+    notes.payback_period,
+    notes.paybackMonths,
+    notes.payback_months,
+    analysis.paybackPeriod,
+    analysis.payback_period,
+    kpis.paybackPeriod,
+    kpis.payback_period,
+  ]) ?? (capital !== null && monthlyProfit !== null && monthlyProfit > 0 ? Math.ceil(capital / monthlyProfit) : null);
+
+  return {
+    project: firstText(project, ['name', 'project_name'], ENTITY_LABELS[lang].project),
+    category: textOrMissing(project?.category ?? project?.type ?? notes.category ?? notes.type, lang),
+    status: textOrMissing(project?.status ?? notes.status, lang),
+    capital: moneyOrMissing(capital, currency, lang),
+    target: targetAmount !== null ? moneyOrMissing(targetAmount, currency, lang) : textOrMissing(goalText, lang),
+    currency: formatReportCurrency(currency, filters.currency, lang),
+    start_date: dateOrMissing(project?.start_date ?? project?.startDate ?? notes.start_date ?? notes.startDate ?? project?.timeline ?? notes.startTimeline, lang),
+    payback_period: periodOrMissing(payback, lang),
+  };
 }
 
 function dateInFilters(row: any, filters: Filters) {
@@ -1255,16 +1369,7 @@ function reportRows(report: ReportDefinition, records: RecordsState, filters: Fi
   }
 
   if (report.id === 'project-business') {
-    return filteredRows(records.projects, filters).map(row => ({
-      project: firstText(row, ['name', 'project_name'], entity.project),
-      category: firstText(row, ['category', 'type']),
-      status: firstText(row, ['status']),
-      capital: numberValue(row.capital_amount ?? row.capital),
-      target: numberValue(row.target_amount),
-      currency: row.currency || filters.currency,
-      start_date: row.start_date || '',
-      end_date: row.end_date || '',
-    }));
+    return filteredRows(records.projects, filters).map(row => normalizeProjectForReport(row, lang, filters));
   }
 
   if (report.id === 'project-feasibility') {
