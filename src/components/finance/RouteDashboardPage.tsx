@@ -646,6 +646,7 @@ function receiptConfidenceLabel(level: AiExtractedData['confidenceLevel'] | unde
 function normalizeReceiptScanCode(errorSource: string | undefined) {
   if (!errorSource) return '';
   if (/google_credentials_json_invalid|invalid_google_credentials_json/.test(errorSource)) return 'google_credentials_json_invalid';
+  if (/google_credentials_private_key_missing/.test(errorSource)) return 'google_credentials_private_key_missing';
   if (/google_credentials_private_key_invalid/.test(errorSource)) return 'google_credentials_private_key_invalid';
   if (/google_client_init_failed/.test(errorSource)) return 'google_client_init_failed';
   if (/google_processor_path_invalid/.test(errorSource)) return 'google_processor_path_invalid';
@@ -696,6 +697,11 @@ function receiptScanSpecificErrorText(errorSource: string | undefined, lang: str
       en: 'The Google private key is invalid. Check private_key and newline formatting in Vercel.',
       fr: 'La clé privée Google est invalide. Vérifiez private_key et les retours à la ligne dans Vercel.',
     },
+    google_credentials_private_key_missing: {
+      ar: 'مفتاح Google Service Account الخاص غير موجود.',
+      en: 'The Google service account private_key is missing.',
+      fr: 'La clé privée du compte de service Google est absente.',
+    },
     google_client_init_failed: {
       ar: 'تعذر تهيئة عميل Google Document AI. تحقق من صلاحيات حساب الخدمة.',
       en: 'Could not initialize Google Document AI. Check the service account permissions.',
@@ -707,9 +713,9 @@ function receiptScanSpecificErrorText(errorSource: string | undefined, lang: str
       fr: 'Le chemin du processeur Google Document AI est invalide. Vérifiez le projet, la région et l’identifiant.',
     },
     google_permission_denied: {
-      ar: 'تعذر الاتصال بخدمة قراءة الفواتير.',
-      en: 'Could not connect to the invoice reading service.',
-      fr: 'Impossible de contacter le service de lecture des factures.',
+      ar: 'حساب الخدمة لا يملك صلاحية Document AI. تحقق من IAM في Google Cloud.',
+      en: 'The service account does not have Document AI permission. Check IAM in Google Cloud.',
+      fr: 'Le compte de service n’a pas l’autorisation Document AI. Vérifiez IAM dans Google Cloud.',
     },
     google_processor_not_found: {
       ar: 'لم يتم العثور على معالج الفواتير. تحقق من Processor ID والموقع.',
@@ -732,9 +738,9 @@ function receiptScanSpecificErrorText(errorSource: string | undefined, lang: str
       fr: 'Les identifiants du compte de service sont invalides.',
     },
     google_invalid_argument: {
-      ar: 'تعذر إرسال الطلب إلى Google Document AI. تحقق من نوع الملف أو محتوى الطلب.',
-      en: 'Google Document AI rejected the request. Check the file type or request body.',
-      fr: 'Google Document AI a rejeté la requête. Vérifiez le type de fichier ou le corps de la requête.',
+      ar: 'نوع الملف أو طلب المعالجة غير صالح.',
+      en: 'The file type or processing request is invalid.',
+      fr: 'Le type de fichier ou la requête de traitement est invalide.',
     },
     google_unsupported_file_type: {
       ar: 'نوع الملف غير مدعوم. جرّب صورة PNG أو JPG أو PDF.',
@@ -752,9 +758,9 @@ function receiptScanSpecificErrorText(errorSource: string | undefined, lang: str
       fr: 'Impossible de contacter le service de lecture des factures.',
     },
     google_process_document_failed: {
-      ar: 'تعذر الاتصال بخدمة قراءة الفواتير.',
-      en: 'Could not connect to the invoice reading service.',
-      fr: 'Impossible de contacter le service de lecture des factures.',
+      ar: 'تعذر الاتصال بمعالج Google Document AI. تحقق من الموقع والمعالج والصلاحيات.',
+      en: 'Google Document AI request failed. Check location, processor ID, and IAM permissions.',
+      fr: 'La requête Google Document AI a échoué. Vérifiez la région, le processeur et les permissions IAM.',
     },
     openai_env_missing: {
       ar: 'مفتاح OpenAI الاحتياطي غير موجود، ولم تنجح قراءة Google.',
@@ -819,6 +825,11 @@ function receiptProviderDevDetail(errorSource: string | undefined, lang: string)
       ar: 'private_key داخل GOOGLE_APPLICATION_CREDENTIALS_JSON غير صالح. تحقق من تحويل \\n إلى أسطر جديدة.',
       en: 'private_key inside GOOGLE_APPLICATION_CREDENTIALS_JSON is invalid. Check escaped \\n newline handling.',
       fr: 'private_key dans GOOGLE_APPLICATION_CREDENTIALS_JSON est invalide. Vérifiez la gestion des \\n.',
+    },
+    google_credentials_private_key_missing: {
+      ar: 'private_key غير موجود داخل GOOGLE_APPLICATION_CREDENTIALS_JSON.',
+      en: 'private_key is missing inside GOOGLE_APPLICATION_CREDENTIALS_JSON.',
+      fr: 'private_key est absent de GOOGLE_APPLICATION_CREDENTIALS_JSON.',
     },
     google_processor_path_invalid: {
       ar: 'تعذر بناء المسار projects/{projectId}/locations/{location}/processors/{processorId}.',

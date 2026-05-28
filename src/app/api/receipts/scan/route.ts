@@ -43,6 +43,7 @@ type ScanErrorCode =
   | 'scan_success'
   | 'google_env_missing'
   | 'google_credentials_json_invalid'
+  | 'google_credentials_private_key_missing'
   | 'google_credentials_private_key_invalid'
   | 'google_client_init_failed'
   | 'google_processor_path_invalid'
@@ -1170,6 +1171,12 @@ async function scanWithGoogleDocumentAI(file: File, bytes: ArrayBuffer): Promise
   const processorPath = config.processorPath;
   const endpoint = `https://${config.location}-documentai.googleapis.com/v1/${processorPath}:process`;
   console.info('Google Document AI process request', {
+    env: {
+      hasProjectId: Boolean(config.projectId),
+      hasLocation: Boolean(config.location),
+      hasProcessorId: Boolean(config.processorId),
+      hasCredentialsJson: Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON?.trim()),
+    },
     projectIdPresent: Boolean(config.projectId),
     location: config.location,
     processorIdPresent: Boolean(config.processorId),
@@ -1192,7 +1199,14 @@ async function scanWithGoogleDocumentAI(file: File, bytes: ArrayBuffer): Promise
         },
       }),
     });
-  } catch {
+  } catch (error) {
+    console.error('Google Document AI fetch failed', {
+      processorPath,
+      location: config.location,
+      file: { name: file.name, mimeType, size: file.size },
+      errorName: error instanceof Error ? error.name : 'unknown',
+      errorMessage: error instanceof Error ? error.message : 'google_request_failed',
+    });
     throw new ReceiptScanProviderError('google_request_failed');
   }
   if (!response.ok) {
@@ -1388,6 +1402,7 @@ function scanErrorCode(errorSource: string): ScanErrorCode {
   if (errorSource === 'missing_google_and_openai' || errorSource === 'all_providers_unavailable' || errorSource === 'no_provider_configured') return 'no_provider_configured';
   if (/missing_google_|google_env_missing|provider_unavailable/.test(errorSource)) return 'google_env_missing';
   if (/invalid_google_credentials_json|google_credentials_json_invalid/.test(errorSource)) return 'google_credentials_json_invalid';
+  if (/google_credentials_private_key_missing/.test(errorSource)) return 'google_credentials_private_key_missing';
   if (/google_credentials_private_key_invalid/.test(errorSource)) return 'google_credentials_private_key_invalid';
   if (errorSource === 'google_client_init_failed') return 'google_client_init_failed';
   if (errorSource === 'google_processor_path_invalid') return 'google_processor_path_invalid';
@@ -1417,6 +1432,7 @@ function scanErrorMessage(code: ScanErrorCode, fallback: string) {
   if (code === 'all_providers_unavailable' || code === 'no_provider_configured') return safeProviderErrorMessage('no_provider_configured');
   if (code === 'google_env_missing') return safeProviderErrorMessage('google_env_missing');
   if (code === 'google_credentials_json_invalid') return safeProviderErrorMessage('google_credentials_json_invalid');
+  if (code === 'google_credentials_private_key_missing') return safeProviderErrorMessage('google_credentials_private_key_missing');
   if (code === 'google_credentials_private_key_invalid') return safeProviderErrorMessage('google_credentials_private_key_invalid');
   if (code === 'google_client_init_failed') return safeProviderErrorMessage('google_client_init_failed');
   if (code === 'google_processor_path_invalid') return safeProviderErrorMessage('google_processor_path_invalid');

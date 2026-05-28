@@ -3,6 +3,7 @@ import { createPrivateKey, createSign } from 'node:crypto';
 export type ReceiptProviderErrorCode =
   | 'google_env_missing'
   | 'google_credentials_json_invalid'
+  | 'google_credentials_private_key_missing'
   | 'google_credentials_private_key_invalid'
   | 'google_client_init_failed'
   | 'google_processor_path_invalid'
@@ -100,7 +101,7 @@ export function parseGoogleCredentialsJson(raw?: string): {
         return { credentials, jsonParses: true, valid: false, privateKeyValid: false, error: 'google_credentials_json_invalid' };
       }
       if (!credentials.private_key) {
-        return { credentials, jsonParses: true, valid: false, privateKeyValid: false, error: 'google_credentials_private_key_invalid' };
+        return { credentials, jsonParses: true, valid: false, privateKeyValid: false, error: 'google_credentials_private_key_missing' };
       }
       try {
         createPrivateKey(credentials.private_key);
@@ -131,7 +132,7 @@ export function buildGoogleProcessorPath(projectId: string, location: string, pr
 }
 
 export function getReceiptProviderStatus(): ReceiptProviderStatus {
-  const projectId = cleanEnv(process.env.GOOGLE_CLOUD_PROJECT_ID);
+  const projectId = cleanEnv(process.env.GOOGLE_CLOUD_PROJECT_ID_OR_NUMBER) || cleanEnv(process.env.GOOGLE_CLOUD_PROJECT_ID);
   const location = cleanEnv(process.env.GOOGLE_DOCUMENT_AI_LOCATION);
   const processorId = cleanEnv(process.env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID);
   const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
@@ -173,7 +174,7 @@ export function getReceiptProviderStatus(): ReceiptProviderStatus {
 export function getGoogleReceiptConfig(): { config: GoogleReceiptConfig | null; error?: ReceiptProviderErrorCode } {
   const status = getReceiptProviderStatus();
   const parsed = parseGoogleCredentialsJson(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
-  const projectId = cleanEnv(process.env.GOOGLE_CLOUD_PROJECT_ID);
+  const projectId = cleanEnv(process.env.GOOGLE_CLOUD_PROJECT_ID_OR_NUMBER) || cleanEnv(process.env.GOOGLE_CLOUD_PROJECT_ID);
   const location = cleanEnv(process.env.GOOGLE_DOCUMENT_AI_LOCATION);
   const processorId = cleanEnv(process.env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID);
   const processorPath = buildGoogleProcessorPath(projectId, location, processorId);
@@ -200,7 +201,7 @@ export async function getGoogleAccessToken(credentials: GoogleReceiptCredentials
   }
 
   if (!credentials.client_email || !credentials.private_key) {
-    throw new ReceiptProviderDiagnosticError('google_credentials_json_invalid');
+    throw new ReceiptProviderDiagnosticError(credentials.client_email ? 'google_credentials_private_key_missing' : 'google_credentials_json_invalid');
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -278,22 +279,24 @@ export function maskGoogleClientEmail(email?: string) {
 
 export function classifyGoogleDocumentAiError(status?: number, reason?: string, message?: string): ReceiptProviderErrorCode {
   const safeReason = `${reason || ''} ${message || ''}`.toLowerCase();
-  if (status === 401 || /unauthenticated|invalid[_\s-]*credentials|invalid_grant|invalid jwt/.test(safeReason)) return 'google_invalid_credentials';
+  if (status === 16 || status === 401 || /unauthenticated|invalid[_\s-]*credentials|invalid_grant|invalid jwt/.test(safeReason)) return 'google_invalid_credentials';
   if (/api has not been used|api.*disabled|service disabled|accessNotConfigured/i.test(`${reason || ''} ${message || ''}`)) return 'google_api_not_enabled';
-  if (status === 403 || /permission[_\s-]*denied|iam|forbidden/.test(safeReason)) return 'google_permission_denied';
-  if (status === 404 || /not[_\s-]*found|processor.*not found/.test(safeReason)) return 'google_processor_not_found';
+  if (status === 7 || status === 403 || /permission[_\s-]*denied|iam|forbidden/.test(safeReason)) return 'google_permission_denied';
+  if (status === 5 || status === 404 || /not[_\s-]*found|processor.*not found/.test(safeReason)) return 'google_processor_not_found';
   if (/location|regional endpoint|invalid.*region/.test(safeReason)) return 'google_invalid_location';
   if (/mime|unsupported.*file|unsupported.*content|content type/.test(safeReason)) return 'google_unsupported_file_type';
-  if (status === 400 || /invalid[_\s-]*argument|bad request/.test(safeReason)) return 'google_invalid_argument';
-  if (status === 429 || /quota|resource[_\s-]*exhausted|rate limit/.test(safeReason)) return 'google_quota_exceeded';
+  if (status === 3 || status === 400 || /invalid[_\s-]*argument|bad request/.test(safeReason)) return 'google_invalid_argument';
+  if (status === 8 || status === 429 || /quota|resource[_\s-]*exhausted|rate limit/.test(safeReason)) return 'google_quota_exceeded';
   return 'google_request_failed';
 }
 
 export async function readGoogleErrorResponse(response: Response): Promise<{ code: ReceiptProviderErrorCode; status: number; reason?: string; message?: string }> {
   let reason: string | undefined;
   let message: string | undefined;
+  let googleCode: number | undefined;
   try {
     const body = await response.json() as GoogleErrorBody;
+    googleCode = body.error?.code;
     reason = body.error?.status || body.error?.details?.find(detail => detail.reason)?.reason;
     message = body.error?.message;
   } catch {
@@ -301,7 +304,7 @@ export async function readGoogleErrorResponse(response: Response): Promise<{ cod
     message = undefined;
   }
   return {
-    code: classifyGoogleDocumentAiError(response.status, reason, message),
+    code: classifyGoogleDocumentAiError(googleCode || response.status, reason, message),
     status: response.status,
     reason,
     message,
@@ -375,11 +378,12 @@ export function safeProviderErrorMessage(code: ReceiptProviderErrorCode) {
   const messages: Record<ReceiptProviderErrorCode, string> = {
     google_env_missing: 'One or more Google Document AI environment variables are missing.',
     google_credentials_json_invalid: 'Google service account JSON could not be parsed or is missing required identity fields.',
+    google_credentials_private_key_missing: 'Google service account private_key is missing.',
     google_credentials_private_key_invalid: 'Google service account private_key is missing or invalid.',
     google_client_init_failed: 'Google Document AI client initialization failed.',
     google_processor_path_invalid: 'Google Document AI processor path could not be built.',
-    google_process_document_failed: 'Could not connect to the invoice reading service.',
-    google_permission_denied: 'Could not connect to the invoice reading service.',
+    google_process_document_failed: 'Google Document AI request failed.',
+    google_permission_denied: 'Google service account does not have permission to use Document AI.',
     google_processor_not_found: 'Google Document AI processor was not found. Check processor ID and location.',
     google_invalid_location: 'Google Document AI processor location is invalid.',
     google_api_not_enabled: 'Google Document AI API is not enabled for this project.',
@@ -387,7 +391,7 @@ export function safeProviderErrorMessage(code: ReceiptProviderErrorCode) {
     google_invalid_argument: 'Google Document AI rejected the request body.',
     google_unsupported_file_type: 'Google Document AI does not support this file type.',
     google_quota_exceeded: 'Google Document AI quota was exceeded.',
-    google_request_failed: 'Could not connect to the invoice reading service.',
+    google_request_failed: 'Could not connect to Google Document AI.',
     openai_env_missing: 'OpenAI API key is missing.',
     openai_fallback_failed: 'OpenAI Vision fallback failed.',
     no_provider_configured: 'No receipt scanning provider is configured.',
