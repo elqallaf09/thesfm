@@ -73,23 +73,33 @@ type LocalDynamicState = {
 };
 
 type SourceKey = keyof NotificationSourceData;
+type NotificationSourceId = 'stored' | 'income' | 'expense' | 'goal' | 'market' | 'project' | 'zakat' | 'charity';
+type SourceConfig = { key: SourceKey; table: string; source: NotificationSourceId };
+type SourceDiagnostic = {
+  ok: boolean;
+  count: number;
+  tables: string[];
+  failedTables: string[];
+  errorCodes: string[];
+  errorDetails: Partial<Record<string, string>>;
+};
 
-const SOURCE_TABLES: Array<{ key: SourceKey; table: string }> = [
-  { key: 'income', table: 'monthly_income_sources' },
-  { key: 'expenses', table: 'expense_items' },
-  { key: 'goals', table: 'financial_goals' },
-  { key: 'marketPriceAlerts', table: 'market_price_alerts' },
-  { key: 'projects', table: 'projects' },
-  { key: 'feasibilityStudies', table: 'project_feasibility_studies' },
-  { key: 'financialModels', table: 'project_financial_models' },
-  { key: 'projectTasks', table: 'project_tasks' },
-  { key: 'projectMilestones', table: 'project_milestones' },
-  { key: 'projectDocuments', table: 'project_documents' },
-  { key: 'zakatAssets', table: 'zakat_assets' },
-  { key: 'charityProjects', table: 'charity_projects' },
-  { key: 'charityReminders', table: 'charity_reminders' },
-  { key: 'charityBeneficiaries', table: 'charity_beneficiaries' },
-  { key: 'charityContributors', table: 'charity_project_contributors' },
+const SOURCE_TABLES: SourceConfig[] = [
+  { key: 'income', table: 'monthly_income_sources', source: 'income' },
+  { key: 'expenses', table: 'expense_items', source: 'expense' },
+  { key: 'goals', table: 'financial_goals', source: 'goal' },
+  { key: 'marketPriceAlerts', table: 'market_price_alerts', source: 'market' },
+  { key: 'projects', table: 'projects', source: 'project' },
+  { key: 'feasibilityStudies', table: 'project_feasibility_studies', source: 'project' },
+  { key: 'financialModels', table: 'project_financial_models', source: 'project' },
+  { key: 'projectTasks', table: 'project_tasks', source: 'project' },
+  { key: 'projectMilestones', table: 'project_milestones', source: 'project' },
+  { key: 'projectDocuments', table: 'project_documents', source: 'project' },
+  { key: 'zakatAssets', table: 'zakat_assets', source: 'zakat' },
+  { key: 'charityProjects', table: 'charity_projects', source: 'charity' },
+  { key: 'charityReminders', table: 'charity_reminders', source: 'charity' },
+  { key: 'charityBeneficiaries', table: 'charity_beneficiaries', source: 'charity' },
+  { key: 'charityContributors', table: 'charity_project_contributors', source: 'charity' },
 ];
 
 const TEXT = {
@@ -128,7 +138,21 @@ const TEXT = {
     dynamicSource: 'محسوب',
     loading: 'جاري تحميل الإشعارات...',
     signIn: 'سجّل الدخول لعرض إشعاراتك.',
-    loadError: 'تعذر تحميل بعض مصادر الإشعارات حالياً.',
+    loadError: 'تعذر تحميل بعض مصادر الإشعارات:',
+    retry: 'إعادة المحاولة',
+    sourceStored: 'الإشعارات المحفوظة',
+    sourceIncome: 'الدخل',
+    sourceExpense: 'المصروفات',
+    sourceGoal: 'الأهداف',
+    sourceMarket: 'السوق',
+    sourceProject: 'المشاريع',
+    sourceZakat: 'الزكاة',
+    sourceCharity: 'الأعمال الخيرية',
+    actionFailed: 'تعذر تنفيذ الإجراء حالياً.',
+    readFailed: 'تعذر تحديث حالة القراءة.',
+    archiveFailed: 'تعذر أرشفة الإشعار.',
+    deleteFailed: 'تعذر حذف الإشعار.',
+    confirmDelete: 'هل تريد حذف هذا الإشعار؟',
     low: 'منخفض',
     info: 'معلومة',
     success: 'نجاح',
@@ -170,7 +194,21 @@ const TEXT = {
     dynamicSource: 'Computed',
     loading: 'Loading notifications...',
     signIn: 'Sign in to view your notifications.',
-    loadError: 'Could not load some notification sources right now.',
+    loadError: 'Could not load some notification sources:',
+    retry: 'Retry',
+    sourceStored: 'Stored notifications',
+    sourceIncome: 'Income',
+    sourceExpense: 'Expenses',
+    sourceGoal: 'Goals',
+    sourceMarket: 'Market',
+    sourceProject: 'Projects',
+    sourceZakat: 'Zakat',
+    sourceCharity: 'Charity',
+    actionFailed: 'Could not complete the action right now.',
+    readFailed: 'Could not update the read status.',
+    archiveFailed: 'Could not archive the notification.',
+    deleteFailed: 'Could not delete the notification.',
+    confirmDelete: 'Delete this notification?',
     low: 'Low',
     info: 'Info',
     success: 'Success',
@@ -212,7 +250,21 @@ const TEXT = {
     dynamicSource: 'Calculée',
     loading: 'Chargement des notifications...',
     signIn: 'Connectez-vous pour voir vos notifications.',
-    loadError: 'Impossible de charger certaines sources de notifications pour le moment.',
+    loadError: 'Impossible de charger certaines sources de notifications :',
+    retry: 'Réessayer',
+    sourceStored: 'Notifications enregistrées',
+    sourceIncome: 'Revenus',
+    sourceExpense: 'Dépenses',
+    sourceGoal: 'Objectifs',
+    sourceMarket: 'Marché',
+    sourceProject: 'Projets',
+    sourceZakat: 'Zakat',
+    sourceCharity: 'Charité',
+    actionFailed: 'Impossible de terminer cette action pour le moment.',
+    readFailed: 'Impossible de mettre à jour le statut de lecture.',
+    archiveFailed: 'Impossible d’archiver la notification.',
+    deleteFailed: 'Impossible de supprimer la notification.',
+    confirmDelete: 'Supprimer cette notification ?',
     low: 'Faible',
     info: 'Info',
     success: 'Succès',
@@ -304,6 +356,76 @@ function sourceLabel(type: SmartNotificationType, lang: Lang) {
   return tr.general;
 }
 
+function sourceDiagnosticLabel(source: NotificationSourceId, lang: Lang) {
+  const tr = TEXT[lang];
+  const labels: Record<NotificationSourceId, string> = {
+    stored: tr.sourceStored,
+    income: tr.sourceIncome,
+    expense: tr.sourceExpense,
+    goal: tr.sourceGoal,
+    market: tr.sourceMarket,
+    project: tr.sourceProject,
+    zakat: tr.sourceZakat,
+    charity: tr.sourceCharity,
+  };
+  return labels[source];
+}
+
+function safeErrorCode(message: string | undefined) {
+  const text = String(message ?? '').toLowerCase();
+  if (text.includes('permission denied') || text.includes('row-level security') || text.includes('rls')) return 'permission_denied';
+  if (text.includes('does not exist') || text.includes('relation') || text.includes('not found')) return 'relation_missing';
+  if (text.includes('column') || text.includes('schema cache')) return 'column_missing';
+  if (text.includes('timeout') || text.includes('timed out')) return 'timeout';
+  if (text.includes('invalid')) return 'invalid_filter';
+  return 'load_failed';
+}
+
+function emptySourceDiagnostics(): Record<NotificationSourceId, SourceDiagnostic> {
+  return {
+    stored: { ok: true, count: 0, tables: ['notifications'], failedTables: [], errorCodes: [], errorDetails: {} },
+    income: { ok: true, count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {} },
+    expense: { ok: true, count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {} },
+    goal: { ok: true, count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {} },
+    market: { ok: true, count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {} },
+    project: { ok: true, count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {} },
+    zakat: { ok: true, count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {} },
+    charity: { ok: true, count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {} },
+  };
+}
+
+function buildSourceDiagnostics(
+  records: Partial<Record<SourceKey, any[]>>,
+  sourceErrors: Partial<Record<SourceKey, string>>,
+  storedCount: number,
+  storedError?: string,
+) {
+  const diagnostics = emptySourceDiagnostics();
+  diagnostics.stored.count = storedCount;
+  if (storedError) {
+    diagnostics.stored.ok = false;
+    diagnostics.stored.failedTables = ['notifications'];
+    diagnostics.stored.errorCodes = [safeErrorCode(storedError)];
+    diagnostics.stored.errorDetails = { notifications: storedError };
+  }
+
+  SOURCE_TABLES.forEach(item => {
+    const diagnostic = diagnostics[item.source];
+    diagnostic.tables.push(item.table);
+    diagnostic.count += records[item.key]?.length ?? 0;
+    const error = sourceErrors[item.key];
+    if (error) {
+      diagnostic.ok = false;
+      diagnostic.failedTables.push(item.table);
+      diagnostic.errorDetails[item.table] = error;
+      const code = safeErrorCode(error);
+      if (!diagnostic.errorCodes.includes(code)) diagnostic.errorCodes.push(code);
+    }
+  });
+
+  return diagnostics;
+}
+
 function severityLabel(severity: SmartNotificationSeverity, lang: Lang) {
   const tr = TEXT[lang];
   return tr[severity] ?? tr.info;
@@ -389,7 +511,9 @@ export function NotificationsPage() {
   const [filter, setFilter] = useState<NotificationFilter>('all');
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [loadErrors, setLoadErrors] = useState<string[]>([]);
+  const [sourceDiagnostics, setSourceDiagnostics] = useState<Record<NotificationSourceId, SourceDiagnostic>>(emptySourceDiagnostics);
+  const [reloadToken, setReloadToken] = useState(0);
+  const [toastMessage, setToastMessage] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -403,20 +527,20 @@ export function NotificationsPage() {
       if (!user) {
         setStoredNotifications([]);
         setSourceData({});
+        setSourceDiagnostics(emptySourceDiagnostics());
         setIsLoading(false);
         return;
       }
 
       setIsLoading(true);
       const db = supabase as any;
-      const nextErrors: string[] = [];
 
       const storedFields = 'id,type,title,message,read,link,created_at,severity,source_module,source_id,action_url,status,due_date,read_at,metadata';
       let storedResult = await db.from('notifications').select(storedFields).eq('user_id', user.id).order('created_at', { ascending: false });
       if (storedResult.error) {
         storedResult = await db.from('notifications').select('id,type,title,message,read,link,created_at').eq('user_id', user.id).order('created_at', { ascending: false });
       }
-      if (storedResult.error) nextErrors.push(storedResult.error.message);
+      const storedError = storedResult.error?.message;
 
       const sourceResult = await loadUserDataTables(db, user.id, SOURCE_TABLES);
       const nextSourceData = {
@@ -424,14 +548,29 @@ export function NotificationsPage() {
         income: personalIncomeRows(sourceResult.records.income ?? []),
         expenses: personalExpenseRows(sourceResult.records.expenses ?? []),
       };
-      Object.values(sourceResult.errors).forEach(message => {
-        if (message) nextErrors.push(message);
-      });
+      const nextDiagnostics = buildSourceDiagnostics(
+        sourceResult.records as Partial<Record<SourceKey, any[]>>,
+        sourceResult.errors as Partial<Record<SourceKey, string>>,
+        storedResult.data?.length ?? 0,
+        storedError,
+      );
+
+      if (process.env.NODE_ENV !== 'production') {
+        const failed = Object.entries(nextDiagnostics)
+          .filter(([, diagnostic]) => !diagnostic.ok)
+          .map(([source, diagnostic]) => ({
+            source,
+            failedTables: diagnostic.failedTables,
+            errorCodes: diagnostic.errorCodes,
+            errorDetails: diagnostic.errorDetails,
+          }));
+        if (failed.length > 0) console.warn('Smart Notifications source load errors', failed);
+      }
 
       if (!cancelled) {
         setStoredNotifications(((storedResult.data ?? []) as StoredNotificationRow[]).map(normalizeStored));
         setSourceData(nextSourceData);
-        setLoadErrors(nextErrors);
+        setSourceDiagnostics(nextDiagnostics);
         setIsLoading(false);
       }
     }
@@ -439,7 +578,7 @@ export function NotificationsPage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, user]);
+  }, [authLoading, reloadToken, user]);
 
   const dynamicNotifications = useMemo(() => {
     return generateSmartNotifications(sourceData, activeLang)
@@ -460,6 +599,20 @@ export function NotificationsPage() {
   }, [dynamicNotifications, storedNotifications]);
 
   const visibleNotifications = useMemo(() => notifications.filter(notice => filterNotification(notice, filter, query)), [filter, notifications, query]);
+  const failedSourceEntries = useMemo(() => {
+    return (Object.entries(sourceDiagnostics) as Array<[NotificationSourceId, SourceDiagnostic]>)
+      .filter(([, diagnostic]) => !diagnostic.ok);
+  }, [sourceDiagnostics]);
+  const failedSourceNames = useMemo(
+    () => failedSourceEntries.map(([source]) => sourceDiagnosticLabel(source, activeLang)),
+    [activeLang, failedSourceEntries],
+  );
+  const filterCounts = useMemo(() => {
+    return FILTERS.reduce<Record<NotificationFilter, number>>((acc, item) => {
+      acc[item.id] = notifications.filter(notice => filterNotification(notice, item.id, '')).length;
+      return acc;
+    }, {} as Record<NotificationFilter, number>);
+  }, [notifications]);
 
   const grouped = useMemo(() => {
     const order = [tr.unread, tr.today, tr.thisWeek, tr.upcoming, tr.archived];
@@ -487,6 +640,11 @@ export function NotificationsPage() {
     };
   }, [notifications]);
 
+  const showToast = useCallback((message: string) => {
+    setToastMessage(message);
+    window.setTimeout(() => setToastMessage(''), 2600);
+  }, []);
+
   const updateDynamicState = useCallback((updater: (state: LocalDynamicState) => LocalDynamicState) => {
     if (!user) return;
     setDynamicState(current => {
@@ -504,9 +662,16 @@ export function NotificationsPage() {
     const db = supabase as any;
     const payload = { read: true, status: 'read', read_at: new Date().toISOString() };
     const { error } = await db.from('notifications').update(payload).eq('id', notice.id);
-    if (error) await db.from('notifications').update({ read: true }).eq('id', notice.id);
+    if (error) {
+      const fallback = await db.from('notifications').update({ read: true }).eq('id', notice.id);
+      if (fallback.error) {
+        console.warn('Smart Notifications action failed', { action: 'markAsRead', notificationId: notice.id, errorCode: safeErrorCode(fallback.error.message) });
+        showToast(`${tr.readFailed} ${fallback.error.message}`);
+        return;
+      }
+    }
     setStoredNotifications(current => current.map(item => item.id === notice.id ? { ...item, status: 'read' } : item));
-  }, [updateDynamicState]);
+  }, [showToast, tr.readFailed, updateDynamicState]);
 
   const archiveNotice = useCallback(async (notice: SmartNotification) => {
     if (notice.isDynamic) {
@@ -515,19 +680,29 @@ export function NotificationsPage() {
     }
     const db = supabase as any;
     const { error } = await db.from('notifications').update({ status: 'archived', read: true, read_at: new Date().toISOString() }).eq('id', notice.id);
-    if (error) await db.from('notifications').update({ read: true }).eq('id', notice.id);
+    if (error) {
+      console.warn('Smart Notifications action failed', { action: 'archive', notificationId: notice.id, errorCode: safeErrorCode(error.message) });
+      showToast(`${tr.archiveFailed} ${error.message}`);
+      return;
+    }
     setStoredNotifications(current => current.map(item => item.id === notice.id ? { ...item, status: 'archived' } : item));
-  }, [updateDynamicState]);
+  }, [showToast, tr.archiveFailed, updateDynamicState]);
 
   const deleteNotice = useCallback(async (notice: SmartNotification) => {
+    if (typeof window !== 'undefined' && !window.confirm(tr.confirmDelete)) return;
     if (notice.isDynamic) {
       updateDynamicState(state => ({ read: state.read.filter(id => id !== notice.id), archived: Array.from(new Set([...state.archived, notice.id])) }));
       return;
     }
     const db = supabase as any;
-    await db.from('notifications').delete().eq('id', notice.id);
+    const { error } = await db.from('notifications').delete().eq('id', notice.id);
+    if (error) {
+      console.warn('Smart Notifications action failed', { action: 'delete', notificationId: notice.id, errorCode: safeErrorCode(error.message) });
+      showToast(`${tr.deleteFailed} ${error.message}`);
+      return;
+    }
     setStoredNotifications(current => current.filter(item => item.id !== notice.id));
-  }, [updateDynamicState]);
+  }, [showToast, tr.confirmDelete, tr.deleteFailed, updateDynamicState]);
 
   const markAllAsRead = useCallback(async () => {
     const targets = visibleNotifications.filter(notice => notice.status === 'unread');
@@ -535,11 +710,16 @@ export function NotificationsPage() {
     const dynamicIds = targets.filter(notice => notice.isDynamic).map(notice => notice.id);
     if (storedIds.length) {
       const db = supabase as any;
-      await db.from('notifications').update({ read: true, status: 'read', read_at: new Date().toISOString() }).in('id', storedIds);
+      const { error } = await db.from('notifications').update({ read: true, status: 'read', read_at: new Date().toISOString() }).in('id', storedIds);
+      if (error) {
+        console.warn('Smart Notifications action failed', { action: 'markAllAsRead', count: storedIds.length, errorCode: safeErrorCode(error.message) });
+        showToast(`${tr.readFailed} ${error.message}`);
+        return;
+      }
       setStoredNotifications(current => current.map(item => storedIds.includes(item.id) ? { ...item, status: 'read' } : item));
     }
     if (dynamicIds.length) updateDynamicState(state => ({ ...state, read: Array.from(new Set([...state.read, ...dynamicIds])) }));
-  }, [updateDynamicState, visibleNotifications]);
+  }, [showToast, tr.readFailed, updateDynamicState, visibleNotifications]);
 
   const archiveAll = useCallback(async () => {
     const targets = visibleNotifications.filter(notice => notice.status !== 'archived');
@@ -547,11 +727,16 @@ export function NotificationsPage() {
     const dynamicIds = targets.filter(notice => notice.isDynamic).map(notice => notice.id);
     if (storedIds.length) {
       const db = supabase as any;
-      await db.from('notifications').update({ status: 'archived', read: true, read_at: new Date().toISOString() }).in('id', storedIds);
+      const { error } = await db.from('notifications').update({ status: 'archived', read: true, read_at: new Date().toISOString() }).in('id', storedIds);
+      if (error) {
+        console.warn('Smart Notifications action failed', { action: 'archiveAll', count: storedIds.length, errorCode: safeErrorCode(error.message) });
+        showToast(`${tr.archiveFailed} ${error.message}`);
+        return;
+      }
       setStoredNotifications(current => current.map(item => storedIds.includes(item.id) ? { ...item, status: 'archived' } : item));
     }
     if (dynamicIds.length) updateDynamicState(state => ({ ...state, archived: Array.from(new Set([...state.archived, ...dynamicIds])) }));
-  }, [updateDynamicState, visibleNotifications]);
+  }, [showToast, tr.archiveFailed, updateDynamicState, visibleNotifications]);
 
   if (authLoading || isLoading) {
     return (
@@ -615,7 +800,22 @@ export function NotificationsPage() {
           <SummaryCard label={tr.thisWeek} value={summary.thisWeek} icon={<Clock3 size={18} />} />
         </section>
 
-        {loadErrors.length > 0 && <div className="load-warning">{tr.loadError}</div>}
+        {failedSourceEntries.length > 0 && (
+          <div className="load-warning" role="status">
+            <div>
+              <strong>{tr.loadError}</strong>
+              <span>{failedSourceNames.join('، ')}</span>
+              {process.env.NODE_ENV !== 'production' && (
+                <small>
+                  {failedSourceEntries.map(([source, diagnostic]) => `${source}: ${diagnostic.errorCodes.join('|') || 'load_failed'} (${diagnostic.failedTables.join(', ')})`).join(' / ')}
+                </small>
+              )}
+            </div>
+            <button type="button" onClick={() => setReloadToken(token => token + 1)}>{tr.retry}</button>
+          </div>
+        )}
+
+        {toastMessage && <div className="action-toast" role="alert">{toastMessage}</div>}
 
         <section className="toolbar">
           <label className="search-field">
@@ -625,7 +825,7 @@ export function NotificationsPage() {
           <div className="filters" role="group" aria-label={tr.title}>
             {FILTERS.map(item => (
               <button key={item.id} type="button" className={filter === item.id ? 'active' : ''} onClick={() => setFilter(item.id)} aria-pressed={filter === item.id}>
-                {tr[item.label]}
+                {tr[item.label]} <span>{filterCounts[item.id]}</span>
               </button>
             ))}
           </div>
@@ -717,10 +917,11 @@ const styles = `
   .hero h1{margin:18px 0 10px;font-size:clamp(34px,7vw,62px);line-height:1;font-weight:950}.hero p{margin:0;max-width:780px;color:rgba(234,246,255,.76);font-size:clamp(15px,2vw,18px);line-height:1.8;font-weight:800}
   .hero-actions{display:flex;gap:8px;flex-wrap:wrap}.hero-actions button,.actions button{border:0;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;min-height:40px;padding:0 12px}.hero-actions button{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.hero-actions button+button{background:rgba(234,246,255,.12);color:var(--sfm-card);border:1px solid rgba(167,243,240,.18)}
   .summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;min-width:0}.summary-card{background:var(--sfm-card);border:1px solid rgba(29,140,255,.14);border-radius:20px;padding:16px;display:flex;align-items:center;gap:12px;box-shadow:0 14px 38px rgba(3,18,37,.06);min-width:0}.summary-card>span{width:42px;height:42px;border-radius:15px;display:grid;place-items:center;background:rgba(29,140,255,.10);color:var(--sfm-primary);flex:0 0 auto}.summary-card strong{display:block;font-size:26px;color:var(--sfm-primary-dark)}.summary-card small{display:block;color:var(--sfm-muted);font-weight:900;line-height:1.45;overflow-wrap:anywhere}
-  .load-warning{background:#FFF7ED;border:1px solid rgba(154,94,13,.18);color:#7A4B09;border-radius:15px;padding:12px 14px;font-weight:900}
+  .load-warning{background:#FFF7ED;border:1px solid rgba(154,94,13,.18);color:#7A4B09;border-radius:15px;padding:12px 14px;font-weight:900;display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}.load-warning div{display:grid;gap:4px;min-width:0}.load-warning strong,.load-warning span,.load-warning small{overflow-wrap:anywhere}.load-warning small{font-size:11px;color:#9A5E0D;font-weight:800}.load-warning button{border:1px solid rgba(154,94,13,.24);background:#FFFFFF;color:#7A4B09;border-radius:12px;min-height:36px;padding:0 12px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}
+  .action-toast{position:fixed;inset:auto 24px 24px auto;z-index:60;max-width:min(420px,calc(100vw - 32px));background:#111827;color:#FFFFFF;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:12px 14px;box-shadow:0 18px 50px rgba(3,18,37,.24);font-weight:900;line-height:1.5}
   .toolbar{background:var(--sfm-card);border:1px solid rgba(29,140,255,.14);border-radius:22px;padding:14px;display:grid;gap:12px;box-shadow:0 14px 38px rgba(3,18,37,.06);min-width:0;overflow:hidden}
   .search-field{display:flex;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.18);background:var(--sfm-light-card);border-radius:15px;padding:0 12px;min-height:44px;color:var(--sfm-primary);min-width:0}.search-field input{width:100%;min-width:0;border:0;background:transparent;outline:0;color:var(--sfm-primary-dark);font:900 13px Tajawal,Arial,sans-serif}
-  .filters{display:flex;gap:8px;overflow-x:auto;max-width:100%;padding-bottom:2px;scrollbar-width:thin;overscroll-behavior-inline:contain}.filters button{flex:0 0 auto;border:1px solid rgba(29,140,255,.18);background:var(--sfm-light-card);color:var(--sfm-muted);border-radius:999px;min-height:38px;padding:0 12px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}.filters button.active,.filters button:focus-visible{background:var(--sfm-primary-dark);color:var(--sfm-soft-cyan);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.14)}
+  .filters{display:flex;gap:8px;overflow-x:auto;max-width:100%;padding-bottom:2px;scrollbar-width:thin;overscroll-behavior-inline:contain}.filters button{flex:0 0 auto;border:1px solid rgba(29,140,255,.18);background:var(--sfm-light-card);color:var(--sfm-muted);border-radius:999px;min-height:38px;padding:0 12px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:7px}.filters button span{min-width:22px;height:22px;border-radius:999px;display:inline-grid;place-items:center;background:rgba(29,140,255,.10);color:inherit;font-size:11px;padding:0 6px}.filters button.active,.filters button:focus-visible{background:var(--sfm-primary-dark);color:var(--sfm-soft-cyan);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.14)}
   .notification-list{display:grid;gap:18px;min-width:0}.group{display:grid;gap:10px;min-width:0}.group h2{margin:0;color:var(--sfm-midnight);font-size:20px;font-weight:950}.cards{display:grid;gap:10px;min-width:0}
   .notice-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;background:var(--sfm-card);border:1px solid rgba(29,140,255,.14);border-radius:20px;padding:15px;box-shadow:0 14px 38px rgba(3,18,37,.06);min-width:0;max-width:100%;overflow:hidden}.notice-card.unread{border-color:rgba(29,140,255,.28);background:var(--sfm-light-card)}.notice-card.archived{opacity:.72;background:var(--sfm-light-card)}
   .notice-icon{width:44px;height:44px;border-radius:15px;display:grid;place-items:center;flex:0 0 auto}.notice-content{min-width:0;display:grid;gap:10px}.notice-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start;min-width:0}.notice-head h3{margin:0 0 5px;color:var(--sfm-primary-dark);font-size:16px;font-weight:950;line-height:1.35;overflow-wrap:anywhere}.notice-head p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:800;line-height:1.65;overflow-wrap:anywhere;text-align:start}
@@ -730,5 +931,5 @@ const styles = `
   button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.18)}
   @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{grid-template-columns:1fr}.hero-actions button{flex:1 1 180px}}
   @media(max-width:1024px){.notif-page{width:100%;max-width:100%;margin:0;padding:calc(74px + env(safe-area-inset-top)) 16px 44px}}
-  @media(max-width:680px){.summary-grid{grid-template-columns:1fr}.notice-card{grid-template-columns:1fr}.notice-head{grid-template-columns:1fr}.severity{justify-self:start}.hero{border-radius:22px}.hero-actions{display:grid}.hero-actions button{width:100%}.actions button{flex:1 1 130px}.topbar{align-items:flex-start}}
+  @media(max-width:680px){.summary-grid{grid-template-columns:1fr}.notice-card{grid-template-columns:1fr}.notice-head{grid-template-columns:1fr}.severity{justify-self:start}.hero{border-radius:22px}.hero-actions{display:grid}.hero-actions button{width:100%}.actions button{flex:1 1 130px}.topbar{align-items:flex-start}.load-warning{display:grid}.load-warning button{width:100%}.action-toast{inset:auto 16px 16px 16px}}
 `;
