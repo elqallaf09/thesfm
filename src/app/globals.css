@@ -172,7 +172,7 @@
   --sfm-muted: #8FB3D9;
   --sfm-muted-readable: #C7DBF5;
   --sfm-border: rgba(167,243,240,0.16);
-  --sfm-border-strong: rgba(24,212,212,0.30);
+  --sfm-border-strong: rgba(24,212,212,0.32);
   --sfm-surface-hover: #0F335C;
   --sfm-focus-ring: rgba(24,212,212,0.36);
   --sfm-focus-ring-strong: rgba(24,212,212,0.62);
@@ -2229,15 +2229,22 @@ button:disabled,
   border-color: var(--sfm-border) !important;
 }
 
+.dark :is(.sfm-button-primary, .gold-btn, .mini-gold, .primary-wide, .primary-form-btn, .primary-save, .overview-link-btn) {
+  background: linear-gradient(135deg, #1D8CFF, #18D4D4) !important;
+  color: #FFFFFF !important;
+  border-color: rgba(24, 212, 212, 0.28) !important;
+  box-shadow: 0 16px 38px rgba(29, 140, 255, 0.22) !important;
+}
+
 .dark :is(.sfm-button-secondary, .sfm-button-ghost, .ghost-btn, .ghost-form-btn, .secondary-btn, .outline-btn, .filter-chip, .category-chip, .tab-chip, .sfm-secondary-link) {
-  background: var(--sfm-card-elevated) !important;
-  border-color: var(--sfm-border) !important;
-  color: var(--sfm-foreground) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(167, 243, 240, 0.24) !important;
+  color: #EAF6FF !important;
 }
 
 .dark :is(.sfm-button-secondary, .sfm-button-ghost, .ghost-btn, .ghost-form-btn, .secondary-btn, .outline-btn, .filter-chip, .category-chip, .tab-chip, .sfm-secondary-link):not(:disabled):hover {
-  background: var(--sfm-surface-hover) !important;
-  border-color: var(--sfm-border-strong) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(24, 212, 212, 0.38) !important;
   color: #FFFFFF !important;
 }
 
@@ -2275,8 +2282,20 @@ button:disabled,
   color: #86EFAC !important;
 }
 
+.dark .sfm-status-success {
+  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: rgba(16, 185, 129, 0.28) !important;
+  color: #86EFAC !important;
+}
+
 .dark :is(.badge-red, .status-badge.late, .priority-badge.high, .priority-badge.urgent) {
   background: rgba(239, 68, 68, 0.16) !important;
+  color: #FCA5A5 !important;
+}
+
+.dark .sfm-status-error {
+  background: rgba(239, 68, 68, 0.16) !important;
+  border-color: rgba(239, 68, 68, 0.28) !important;
   color: #FCA5A5 !important;
 }
 
