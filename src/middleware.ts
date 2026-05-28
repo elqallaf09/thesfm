@@ -98,7 +98,7 @@ async function onboardingCompleted(session: SessionCheck) {
 
   try {
     const url = new URL(`${session.supabaseUrl}/rest/v1/profiles`);
-    url.searchParams.set('select', 'onboarding_completed');
+    url.searchParams.set('select', 'onboarding_completed,onboarding_skipped');
     url.searchParams.set('id', `eq.${session.userId}`);
     url.searchParams.set('limit', '1');
     const response = await fetch(url, {
@@ -110,8 +110,8 @@ async function onboardingCompleted(session: SessionCheck) {
       cache: 'no-store',
     });
     if (!response.ok) return true;
-    const rows = await response.json() as Array<{ onboarding_completed?: boolean | null }>;
-    return rows[0]?.onboarding_completed === true;
+    const rows = await response.json() as Array<{ onboarding_completed?: boolean | null; onboarding_skipped?: boolean | null }>;
+    return rows[0]?.onboarding_completed === true || rows[0]?.onboarding_skipped === true;
   } catch {
     return true;
   }

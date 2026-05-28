@@ -42,6 +42,26 @@ type SetupSummary = {
   firstGoalCompletionDate: string;
 };
 
+type ExistingSetupData = {
+  profile: any | null;
+  income: any[];
+  expenses: any[];
+  goals: any[];
+  savings: any[];
+  investments: any[];
+  projects: any[];
+};
+
+const EMPTY_EXISTING_DATA: ExistingSetupData = {
+  profile: null,
+  income: [],
+  expenses: [],
+  goals: [],
+  savings: [],
+  investments: [],
+  projects: [],
+};
+
 const COPY = {
   ar: {
     pageName: 'إعداد الحساب',
@@ -49,8 +69,17 @@ const COPY = {
     title: 'مرحباً بك في THE SFM',
     subtitle: 'سنساعدك على إعداد مديرك المالي الذكي خلال دقائق، بناءً على بياناتك الحقيقية فقط.',
     realData: 'لا يتم إنشاء أي بيانات تجريبية. يتم حفظ ما تدخله فقط.',
-    start: 'ابدأ الإعداد',
-    skipNow: 'تخطي الآن',
+    start: 'ابدأ الآن',
+    skipNow: 'تخطي الإعداد',
+    useExisting: 'استخدام البيانات الحالية',
+    editData: 'تعديل البيانات',
+    existingIncomeFound: 'تم العثور على دخلك الشهري الحالي',
+    existingIncomeHint: 'يمكنك استخدام هذه البيانات أو تعديلها.',
+    existingExpensesFound: 'تم العثور على مصروفاتك الحالية',
+    existingGoalsFound: 'تم العثور على أهدافك المالية الحالية',
+    existingDataHint: 'يمكنك استخدام البيانات الحالية أو تعديلها قبل المتابعة.',
+    insufficientData: 'لم يتم العثور على بيانات كافية',
+    builtFromExisting: 'تم بناء خطتك المالية الأولية بناءً على بياناتك الحالية',
     next: 'التالي',
     back: 'السابق',
     finish: 'إنهاء الإعداد',
@@ -154,8 +183,17 @@ const COPY = {
     title: 'Welcome to THE SFM',
     subtitle: 'We’ll help you set up your smart financial manager in a few minutes, based only on your real data.',
     realData: 'No demo data is created. Only what you enter will be saved.',
-    start: 'Start Setup',
-    skipNow: 'Skip Now',
+    start: 'Start now',
+    skipNow: 'Skip setup',
+    useExisting: 'Use existing data',
+    editData: 'Edit data',
+    existingIncomeFound: 'We found your current monthly income',
+    existingIncomeHint: 'You can use this data or edit it.',
+    existingExpensesFound: 'We found your current expenses',
+    existingGoalsFound: 'We found your current financial goals',
+    existingDataHint: 'You can use the existing data or edit it before continuing.',
+    insufficientData: 'Not enough data found',
+    builtFromExisting: 'Your initial financial plan has been built from your existing data',
     next: 'Next',
     back: 'Back',
     finish: 'Finish Setup',
@@ -259,8 +297,17 @@ const COPY = {
     title: 'Bienvenue sur THE SFM',
     subtitle: 'Nous allons vous aider à configurer votre gestionnaire financier intelligent en quelques minutes, uniquement avec vos données réelles.',
     realData: 'Aucune donnée de démonstration n’est créée. Seules les données saisies seront enregistrées.',
-    start: 'Commencer',
-    skipNow: 'Ignorer maintenant',
+    start: 'Commencer maintenant',
+    skipNow: 'Ignorer la configuration',
+    useExisting: 'Utiliser les données existantes',
+    editData: 'Modifier les données',
+    existingIncomeFound: 'Nous avons trouvé votre revenu mensuel actuel',
+    existingIncomeHint: 'Vous pouvez utiliser ces données ou les modifier.',
+    existingExpensesFound: 'Nous avons trouvé vos dépenses actuelles',
+    existingGoalsFound: 'Nous avons trouvé vos objectifs financiers actuels',
+    existingDataHint: 'Vous pouvez utiliser les données existantes ou les modifier avant de continuer.',
+    insufficientData: 'Données insuffisantes',
+    builtFromExisting: 'Votre plan financier initial a été construit à partir de vos données existantes',
     next: 'Suivant',
     back: 'Retour',
     finish: 'Terminer la configuration',
@@ -406,6 +453,23 @@ function dateAfterMonths(months: number) {
   return date.toISOString().slice(0, 10);
 }
 
+function amountFrom(value: unknown) {
+  const number = Number(value ?? 0);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function rowCurrency(row: any, fallback = 'KWD') {
+  return String(row?.currency || row?.notes?.currency || fallback || 'KWD');
+}
+
+function firstExistingIncome(rows: any[]) {
+  return rows.find(row => amountFrom(row?.amount) > 0) ?? rows[0] ?? null;
+}
+
+function goalName(row: any) {
+  return String(row?.goal || row?.name || row?.title || '').trim();
+}
+
 function safeLang(value: string): Lang {
   return value === 'en' || value === 'fr' || value === 'ar' ? value : 'ar';
 }
@@ -425,6 +489,10 @@ export default function SetupPage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [summary, setSummary] = useState<SetupSummary | null>(null);
+  const [existingData, setExistingData] = useState<ExistingSetupData>(EMPTY_EXISTING_DATA);
+  const [existingLoading, setExistingLoading] = useState(true);
+  const [prefilledFromExisting, setPrefilledFromExisting] = useState(false);
+  const [editingExisting, setEditingExisting] = useState<Record<number, boolean>>({});
 
   const [defaultCurrency, setDefaultCurrency] = useState('KWD');
   const [incomeEnabled, setIncomeEnabled] = useState(false);
@@ -477,20 +545,127 @@ export default function SetupPage() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    async function loadProfileDefaults() {
-      const { data } = await db.from('profiles').select('*').eq('id', user.id).maybeSingle();
+    async function loadExistingSetupData() {
+      setExistingLoading(true);
+      const [profileRes, incomeRes, expensesRes, goalsRes, savingsRes, investmentsRes, projectsRes] = await Promise.all([
+        db.from('profiles').select('*').eq('id', user.id).maybeSingle(),
+        db.from('monthly_income_sources').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+        db.from('expense_items').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(100),
+        db.from('financial_goals').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+        db.from('savings_items').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+        db.from('investment_items').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+        db.from('projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+      ]);
       if (cancelled) return;
-      const currency = data?.default_currency || data?.preferred_currency || 'KWD';
+      const nextExisting: ExistingSetupData = {
+        profile: profileRes.data ?? null,
+        income: incomeRes.data ?? [],
+        expenses: expensesRes.data ?? [],
+        goals: goalsRes.data ?? [],
+        savings: savingsRes.data ?? [],
+        investments: investmentsRes.data ?? [],
+        projects: projectsRes.data ?? [],
+      };
+      setExistingData(nextExisting);
+      if (nextExisting.profile?.onboarding_skipped === true) {
+        router.replace('/dashboard');
+        return;
+      }
+      const currency = nextExisting.profile?.default_currency || nextExisting.profile?.preferred_currency || rowCurrency(firstExistingIncome(nextExisting.income), 'KWD');
       setDefaultCurrency(currency);
       setIncome(prev => ({ ...prev, currency }));
       setSavings(prev => ({ ...prev, currency }));
       setInvestment(prev => ({ ...prev, currency }));
+      if (!prefilledFromExisting) {
+        const existingIncome = firstExistingIncome(nextExisting.income);
+        if (existingIncome) {
+          setIncome({
+            name: String(existingIncome.source_name || existingIncome.label || existingIncome.name || ''),
+            amount: String(existingIncome.amount ?? ''),
+            currency: rowCurrency(existingIncome, currency),
+            incomeType: String(existingIncome.income_type || existingIncome.category || 'salary'),
+            receivedDate: String(existingIncome.received_date || existingIncome.recurrence_start_date || today()).slice(0, 10),
+            recurring: existingIncome.is_recurring !== false,
+          });
+        }
+        const existingGoal = nextExisting.goals[0];
+        if (existingGoal) {
+          let notes: any = {};
+          try {
+            notes = typeof existingGoal.notes === 'string' ? JSON.parse(existingGoal.notes) : existingGoal.notes || {};
+          } catch {
+            notes = {};
+          }
+          setGoal({
+            name: goalName(existingGoal),
+            targetAmount: String(existingGoal.amount ?? existingGoal.target_amount ?? ''),
+            currentAmount: String(existingGoal.current_amount ?? notes.currentAmount ?? 0),
+            targetDate: String(notes.deadline || existingGoal.target_date || '').slice(0, 10),
+            priority: String(notes.priority || 'medium'),
+          });
+        }
+        setPrefilledFromExisting(true);
+      }
+      const hasRequiredExistingData = Boolean(currency) && nextExisting.income.some(row => amountFrom(row.amount) > 0) && nextExisting.expenses.some(row => amountFrom(row.amount) > 0) && nextExisting.goals.length > 0;
+      if (hasRequiredExistingData && nextExisting.profile?.onboarding_completed !== true) {
+        const incomeTotal = nextExisting.income.reduce((total, row) => total + amountFrom(row.amount), 0);
+        const expenseTotal = nextExisting.expenses.reduce((total, row) => total + amountFrom(row.amount), 0);
+        const expectedRemaining = Math.max(0, incomeTotal - expenseTotal);
+        const recommendedSavingPercent = incomeTotal > 0 && expectedRemaining > 0 ? Math.min(20, Math.max(10, Math.round((expectedRemaining / incomeTotal) * 50))) : 0;
+        const monthlySavingSuggestion = incomeTotal > 0 ? Math.min(expectedRemaining, Math.round(incomeTotal * (recommendedSavingPercent / 100))) : 0;
+        setSummary({
+          income: nextExisting.income.length,
+          expenses: nextExisting.expenses.length,
+          goals: nextExisting.goals.length,
+          savings: nextExisting.savings.length,
+          investments: nextExisting.investments.length,
+          projects: nextExisting.projects.length,
+          expectedRemaining,
+          recommendedSavingPercent,
+          monthlySavingSuggestion,
+          firstGoalCompletionDate: '',
+        });
+        setStep(8);
+      }
+      setExistingLoading(false);
     }
-    void loadProfileDefaults();
+    void loadExistingSetupData();
     return () => { cancelled = true; };
-  }, [db, user]);
+  }, [db, prefilledFromExisting, router, user]);
 
-  const progress = useMemo(() => Math.round(((step + 1) / text.steps.length) * 100), [step, text.steps.length]);
+  const stepStatuses = useMemo(() => {
+    const hasCurrency = Boolean(defaultCurrency || existingData.profile?.default_currency || existingData.profile?.preferred_currency);
+    const hasIncome = existingData.income.some(row => amountFrom(row.amount) > 0) || (incomeEnabled && toAmount(income.amount) > 0);
+    const hasExpenses = existingData.expenses.some(row => amountFrom(row.amount) > 0) || (expensesEnabled && Object.values(expenses).some(value => toAmount(value) > 0));
+    const hasGoals = existingData.goals.length > 0 || (goalEnabled && goal.name.trim() && toAmount(goal.targetAmount) > 0);
+    const hasSavings = existingData.savings.length > 0 || existingData.investments.length > 0 || savingsEnabled || investmentsEnabled;
+    const hasFocus = Boolean(existingData.profile?.financial_focus) || focus.zakat || focus.charity;
+    const hasProjects = existingData.projects.length > 0 || projectEnabled;
+    return {
+      0: step === 0 ? 'current' : 'completed',
+      1: hasCurrency ? 'completed' : step === 1 ? 'current' : 'missing',
+      2: hasIncome ? 'completed' : step === 2 ? 'current' : 'missing',
+      3: hasExpenses ? 'completed' : step === 3 ? 'current' : 'missing',
+      4: hasGoals ? 'completed' : step === 4 ? 'current' : 'missing',
+      5: hasSavings ? 'completed' : step === 5 ? 'current' : 'optional',
+      6: hasFocus ? 'completed' : step === 6 ? 'current' : 'optional',
+      7: hasProjects ? 'completed' : step === 7 ? 'current' : 'optional',
+      8: step === 8 ? 'current' : 'missing',
+    } as Record<Step, 'completed' | 'current' | 'optional' | 'missing' | 'skipped'>;
+  }, [defaultCurrency, existingData, expenses, expensesEnabled, focus, goal.name, goal.targetAmount, goalEnabled, income.amount, incomeEnabled, investmentsEnabled, projectEnabled, savingsEnabled, step]);
+
+  const nextIncompleteStep = useMemo(() => {
+    for (const candidate of [1, 2, 3, 4] as Step[]) {
+      if (stepStatuses[candidate] !== 'completed') return candidate;
+    }
+    return 8 as Step;
+  }, [stepStatuses]);
+
+  const progress = useMemo(() => {
+    if (step === 8) return 100;
+    const completed = ([1, 2, 3, 4, 5, 6, 7] as Step[]).filter(item => stepStatuses[item] === 'completed' || stepStatuses[item] === 'skipped').length;
+    return Math.max(12, Math.round((completed / 7) * 100));
+  }, [step, stepStatuses]);
 
   function setCurrencyEverywhere(code: string) {
     setDefaultCurrency(code);
@@ -563,6 +738,114 @@ export default function SetupPage() {
     return true;
   }
 
+  function existingIncomeTotal() {
+    return existingData.income.reduce((total, row) => total + amountFrom(row.amount), 0);
+  }
+
+  function existingExpensesTotal() {
+    return existingData.expenses.reduce((total, row) => total + amountFrom(row.amount), 0);
+  }
+
+  function buildSetupSummary(countOverrides?: Partial<SetupSummary>): SetupSummary {
+    const incomeAmount = incomeEnabled && (editingExisting[2] || existingData.income.length === 0) ? toAmount(income.amount) : existingIncomeTotal();
+    const essentialExpenseTotal = expensesEnabled && (editingExisting[3] || existingData.expenses.length === 0)
+      ? Object.values(expenses).reduce((total, value) => total + Math.max(0, toAmount(value) || 0), 0)
+      : existingExpensesTotal();
+    const expectedRemaining = Math.max(0, incomeAmount - essentialExpenseTotal);
+    const recommendedSavingPercent = incomeAmount > 0 && expectedRemaining > 0 ? Math.min(20, Math.max(10, Math.round((expectedRemaining / incomeAmount) * 50))) : 0;
+    const monthlySavingSuggestion = incomeAmount > 0 ? Math.min(expectedRemaining, Math.round(incomeAmount * (recommendedSavingPercent / 100))) : 0;
+    const existingGoal = existingData.goals[0];
+    const existingGoalAmount = amountFrom(existingGoal?.amount ?? existingGoal?.target_amount);
+    const existingGoalCurrent = amountFrom(existingGoal?.current_amount);
+    const goalRemaining = goalEnabled && (editingExisting[4] || existingData.goals.length === 0)
+      ? Math.max(0, toAmount(goal.targetAmount) - toAmount(goal.currentAmount))
+      : Math.max(0, existingGoalAmount - existingGoalCurrent);
+    const firstGoalCompletionDate = goalRemaining > 0 && monthlySavingSuggestion > 0 ? dateAfterMonths(goalRemaining / monthlySavingSuggestion) : '';
+    return {
+      income: existingData.income.length,
+      expenses: existingData.expenses.length,
+      goals: existingData.goals.length,
+      savings: existingData.savings.length,
+      investments: existingData.investments.length,
+      projects: existingData.projects.length,
+      expectedRemaining,
+      recommendedSavingPercent,
+      monthlySavingSuggestion,
+      firstGoalCompletionDate,
+      ...countOverrides,
+    };
+  }
+
+  function nextStepAfter(current: Step) {
+    for (let candidate = current + 1; candidate <= 7; candidate += 1) {
+      const typed = candidate as Step;
+      if (stepStatuses[typed] !== 'completed') return typed;
+    }
+    return 8 as Step;
+  }
+
+  function confirmExistingStep(stepId: Step) {
+    setEditingExisting(prev => ({ ...prev, [stepId]: false }));
+    if (stepId === 2) setIncomeEnabled(false);
+    if (stepId === 3) setExpensesEnabled(false);
+    if (stepId === 4) setGoalEnabled(false);
+    setStep(nextStepAfter(stepId));
+  }
+
+  async function skipSetup() {
+    if (!user) return;
+    setSaving(true);
+    setError('');
+    try {
+      const username = String(user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`);
+      const { error: profileError } = await db.from('profiles').upsert({
+        id: user.id,
+        username,
+        email: user.email ?? null,
+        default_currency: defaultCurrency,
+        preferred_currency: defaultCurrency,
+        onboarding_skipped: true,
+        onboarding_skipped_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' });
+      if (profileError) throw profileError;
+      router.replace('/dashboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : text.errorRequired);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function completeAndGoDashboard() {
+    if (!user) return;
+    setSaving(true);
+    setError('');
+    try {
+      const username = String(user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`);
+      const focusValues = [focus.zakat ? 'zakat' : '', focus.charity ? 'charity' : ''].filter(Boolean).join(',');
+      const { error: profileError } = await db.from('profiles').upsert({
+        id: user.id,
+        username,
+        email: user.email ?? null,
+        default_currency: defaultCurrency,
+        preferred_currency: defaultCurrency,
+        financial_focus: focusValues || existingData.profile?.financial_focus || null,
+        monthly_income_target: buildSetupSummary().expectedRemaining + existingExpensesTotal(),
+        essential_expenses: existingExpensesTotal(),
+        onboarding_completed: true,
+        onboarding_completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' });
+      if (profileError) throw profileError;
+      router.replace('/dashboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : text.errorRequired);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function insertWithFallback(
     table: string,
     payload: Record<string, unknown> | Array<Record<string, unknown>>,
@@ -588,27 +871,11 @@ export default function SetupPage() {
 
     setSaving(true);
     setError('');
-    const incomeAmount = incomeEnabled ? toAmount(income.amount) : 0;
-    const essentialExpenseTotal = expensesEnabled
+    const counts: SetupSummary = buildSetupSummary();
+    const incomeAmount = counts.income > 0 && !editingExisting[2] ? existingIncomeTotal() : (incomeEnabled ? toAmount(income.amount) : 0);
+    const essentialExpenseTotal = counts.expenses > 0 && !editingExisting[3] ? existingExpensesTotal() : (expensesEnabled
       ? Object.values(expenses).reduce((total, value) => total + Math.max(0, toAmount(value) || 0), 0)
-      : 0;
-    const expectedRemaining = Math.max(0, incomeAmount - essentialExpenseTotal);
-    const recommendedSavingPercent = incomeAmount > 0 && expectedRemaining > 0 ? Math.min(20, Math.max(10, Math.round((expectedRemaining / incomeAmount) * 50))) : 0;
-    const monthlySavingSuggestion = incomeAmount > 0 ? Math.min(expectedRemaining, Math.round(incomeAmount * (recommendedSavingPercent / 100))) : 0;
-    const goalRemaining = goalEnabled ? Math.max(0, toAmount(goal.targetAmount) - toAmount(goal.currentAmount)) : 0;
-    const firstGoalCompletionDate = goalRemaining > 0 && monthlySavingSuggestion > 0 ? dateAfterMonths(goalRemaining / monthlySavingSuggestion) : '';
-    const counts: SetupSummary = {
-      income: 0,
-      expenses: 0,
-      goals: 0,
-      savings: 0,
-      investments: 0,
-      projects: 0,
-      expectedRemaining,
-      recommendedSavingPercent,
-      monthlySavingSuggestion,
-      firstGoalCompletionDate,
-    };
+      : 0);
     const focusValues = [focus.zakat ? 'zakat' : '', focus.charity ? 'charity' : ''].filter(Boolean).join(',');
 
     try {
@@ -632,7 +899,7 @@ export default function SetupPage() {
       if (profileError) throw profileError;
       setGlobalCurrency(defaultCurrency);
 
-      if (incomeEnabled) {
+      if (incomeEnabled && (editingExisting[2] || existingData.income.length === 0)) {
         const amount = toAmount(income.amount);
         const payload = {
           user_id: user.id,
@@ -653,16 +920,22 @@ export default function SetupPage() {
           recurrence_end_date: null,
           confirmed_at: new Date().toISOString(),
         };
-        await insertWithFallback('monthly_income_sources', payload, {
-          user_id: user.id,
-          label: income.name.trim(),
-          category: income.incomeType,
-          amount,
-        });
+        const existingIncome = firstExistingIncome(existingData.income);
+        if (editingExisting[2] && existingIncome?.id) {
+          const { error: updateError } = await db.from('monthly_income_sources').update(payload).eq('id', existingIncome.id).eq('user_id', user.id);
+          if (updateError) throw updateError;
+        } else {
+          await insertWithFallback('monthly_income_sources', payload, {
+            user_id: user.id,
+            label: income.name.trim(),
+            category: income.incomeType,
+            amount,
+          });
+        }
         counts.income = 1;
       }
 
-      if (expensesEnabled) {
+      if (expensesEnabled && (editingExisting[3] || existingData.expenses.length === 0)) {
         const expenseEntries = [
           ['rent', text.rent],
           ['food', text.food],
@@ -692,7 +965,7 @@ export default function SetupPage() {
         }
       }
 
-      if (goalEnabled) {
+      if (goalEnabled && (editingExisting[4] || existingData.goals.length === 0)) {
         const target = toAmount(goal.targetAmount);
         const current = toAmount(goal.currentAmount);
         const duration = monthsUntil(goal.targetDate);
@@ -705,7 +978,8 @@ export default function SetupPage() {
           description: null,
           source: 'account_setup',
         });
-        await insertWithFallback('financial_goals', {
+        const existingGoal = existingData.goals[0];
+        const goalPayload = {
           user_id: user.id,
           goal: goal.name.trim(),
           amount: target,
@@ -713,14 +987,20 @@ export default function SetupPage() {
           duration: duration ? String(duration) : null,
           duration_unit: duration ? 'month' : null,
           notes,
-        }, {
-          user_id: user.id,
-          goal: goal.name.trim(),
-          amount: target,
-          duration: duration ? String(duration) : null,
-          duration_unit: duration ? 'month' : null,
-          notes,
-        });
+        };
+        if (editingExisting[4] && existingGoal?.id) {
+          const { error: updateError } = await db.from('financial_goals').update(goalPayload).eq('id', existingGoal.id).eq('user_id', user.id);
+          if (updateError) throw updateError;
+        } else {
+          await insertWithFallback('financial_goals', goalPayload, {
+            user_id: user.id,
+            goal: goal.name.trim(),
+            amount: target,
+            duration: duration ? String(duration) : null,
+            duration_unit: duration ? 'month' : null,
+            notes,
+          });
+        }
         counts.goals = 1;
       }
 
@@ -793,10 +1073,14 @@ export default function SetupPage() {
       void finishSetup();
       return;
     }
-    setStep(current => Math.min(8, current + 1) as Step);
+    const next = nextStepAfter(step);
+    if (next === 8) {
+      setSummary(buildSetupSummary());
+    }
+    setStep(next);
   }
 
-  if (!mounted || authLoading) {
+  if (!mounted || authLoading || (user && existingLoading)) {
     return (
       <main className="setup-loading" dir={dir}>
         <Loader2 className="spin" size={34} />
@@ -846,6 +1130,7 @@ export default function SetupPage() {
           <Stepper
             step={step}
             steps={text.steps}
+            statuses={stepStatuses}
             ariaLabel={text.pageName}
             labels={{
               completed: text.completedStep,
@@ -869,7 +1154,8 @@ export default function SetupPage() {
                 <ul>
                   {text.steps.slice(1, 8).map((item, index) => {
                     const stepIndex = index + 1;
-                    const state = step > stepIndex ? 'done' : step === stepIndex ? 'active' : 'upcoming';
+                    const status = stepStatuses[stepIndex as Step];
+                    const state = status === 'completed' ? 'done' : step === stepIndex ? 'active' : 'upcoming';
                     const stateLabel = state === 'done' ? text.completedStep : state === 'active' ? text.currentStep : text.upcomingStep;
                     return (
                       <li key={item} className={state}>
@@ -931,6 +1217,7 @@ export default function SetupPage() {
         .step-panel{display:grid;gap:16px;min-width:0}
         .step-heading{display:flex;align-items:flex-start;gap:13px}.step-heading svg{color:var(--sfm-primary);flex:0 0 auto}.step-heading h2{margin:0;color:var(--sfm-primary-dark);font-size:clamp(24px,3vw,32px);line-height:1.22}.step-heading p{margin:7px 0 0;color:var(--sfm-muted-readable);line-height:1.8;font-weight:820;font-size:15px}
         .choice-row{display:flex;gap:10px;flex-wrap:wrap}.choice-btn,.toggle-card{min-height:48px;border:1px solid rgba(29,140,255,.18);border-radius:15px;background:var(--sfm-light-card);color:var(--sfm-midnight);padding:0 16px;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease}.choice-btn:hover,.toggle-card:hover{transform:translateY(-1px);border-color:rgba(24,212,212,.34);box-shadow:0 10px 26px rgba(3,18,37,.08)}.choice-btn:focus-visible,.toggle-card:focus-visible,.focus-card:focus-visible{outline:3px solid rgba(24,212,212,.32);outline-offset:3px}.choice-btn.active,.toggle-card.active{background:var(--sfm-primary-dark);color:var(--sfm-soft-cyan);border-color:rgba(167,243,240,.28)}
+        .welcome-actions{margin-top:4px}.existing-data-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:13px;align-items:start;border:1px solid rgba(16,185,129,.22);background:linear-gradient(180deg,#F0FDF4,#FFFFFF);border-radius:18px;padding:16px;box-shadow:0 12px 30px rgba(3,18,37,.06)}.existing-data-card>svg{color:#059669;margin-top:3px}.existing-data-card h3{margin:0;color:var(--sfm-primary-dark);font-size:16px;font-weight:950}.existing-data-card strong{display:block;margin-top:6px;color:#047857;font-size:24px;font-weight:950;overflow-wrap:anywhere}.existing-data-card p{margin:6px 0 0;color:var(--sfm-muted-readable);font-weight:850;line-height:1.65}.existing-actions{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap}.existing-actions .primary-btn,.existing-actions .ghost-btn{min-height:44px}
         .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
         .form-field{display:grid;gap:7px;min-width:0}.form-field.full{grid-column:1/-1}.form-field span{font-weight:950;color:var(--sfm-muted);font-size:13px}.form-field input,.form-field select{width:100%;min-height:46px;border:1px solid rgba(29,140,255,.2);background:var(--sfm-light-card);color:var(--sfm-primary-dark);border-radius:13px;padding:0 12px;font:900 14px Tajawal,Arial,sans-serif;outline:none}.form-field input:focus,.form-field select:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.15);background:var(--sfm-card)}
         .checkbox-line{display:flex;align-items:center;gap:9px;background:var(--sfm-light-card);border:1px solid rgba(29,140,255,.12);border-radius:13px;padding:12px;font-weight:900;color:var(--sfm-muted)}.checkbox-line input{width:18px;height:18px;accent-color:var(--sfm-primary)}
@@ -956,12 +1243,15 @@ export default function SetupPage() {
               <p>{text.subtitle}</p>
             </div>
           </div>
-          <div className="choice-row">
-            <button type="button" className="primary-btn" onClick={() => setStep(1)}>
+          <div className="choice-row welcome-actions">
+            <button type="button" className="primary-btn" onClick={() => {
+              setSummary(buildSetupSummary());
+              setStep(nextIncompleteStep);
+            }}>
               <ArrowRight size={16} />
               {text.start}
             </button>
-            <button type="button" className="ghost-btn" onClick={() => router.push('/dashboard')}>
+            <button type="button" className="ghost-btn" onClick={skipSetup} disabled={saving}>
               {text.skipNow}
             </button>
           </div>
@@ -985,6 +1275,8 @@ export default function SetupPage() {
     }
 
     if (step === 2) {
+      const existingIncome = firstExistingIncome(existingData.income);
+      const showExistingIncome = existingIncome && !editingExisting[2];
       return (
         <section className="step-panel">
           <div className="step-heading">
@@ -994,8 +1286,20 @@ export default function SetupPage() {
               <p>{text.incomeBody}</p>
             </div>
           </div>
-          <ToggleRow active={incomeEnabled} setActive={setIncomeEnabled} yes={text.yes} no={text.skip} />
-          {incomeEnabled && (
+          {showExistingIncome ? (
+            <ExistingDataCard
+              title={text.existingIncomeFound}
+              value={formatCurrency(amountFrom(existingIncome.amount), rowCurrency(existingIncome, defaultCurrency), lang)}
+              hint={text.existingIncomeHint}
+              confirmLabel={text.useExisting}
+              editLabel={text.editData}
+              onConfirm={() => confirmExistingStep(2)}
+              onEdit={() => { setEditingExisting(prev => ({ ...prev, 2: true })); setIncomeEnabled(true); }}
+            />
+          ) : (
+            <ToggleRow active={incomeEnabled} setActive={setIncomeEnabled} yes={text.yes} no={text.skip} />
+          )}
+          {incomeEnabled && (!showExistingIncome || editingExisting[2]) && (
             <div className="form-grid">
               <Field id="income-name" label={text.incomeName} value={income.name} placeholder={text.incomeNamePh} onChange={value => setIncome(prev => ({ ...prev, name: value }))} />
               <Field id="income-amount" label={text.incomeAmount} value={income.amount} type="number" onChange={value => setIncome(prev => ({ ...prev, amount: value }))} />
@@ -1015,6 +1319,8 @@ export default function SetupPage() {
     }
 
     if (step === 3) {
+      const existingExpenseTotal = existingExpensesTotal();
+      const showExistingExpenses = existingData.expenses.length > 0 && !editingExisting[3];
       const items = [
         ['rent', text.rent],
         ['food', text.food],
@@ -1032,8 +1338,20 @@ export default function SetupPage() {
               <p>{text.expensesBody}</p>
             </div>
           </div>
-          <ToggleRow active={expensesEnabled} setActive={setExpensesEnabled} yes={text.yes} no={text.skip} />
-          {expensesEnabled && (
+          {showExistingExpenses ? (
+            <ExistingDataCard
+              title={text.existingExpensesFound}
+              value={formatCurrency(existingExpenseTotal, defaultCurrency, lang)}
+              hint={text.existingDataHint}
+              confirmLabel={text.useExisting}
+              editLabel={text.editData}
+              onConfirm={() => confirmExistingStep(3)}
+              onEdit={() => { setEditingExisting(prev => ({ ...prev, 3: true })); setExpensesEnabled(true); }}
+            />
+          ) : (
+            <ToggleRow active={expensesEnabled} setActive={setExpensesEnabled} yes={text.yes} no={text.skip} />
+          )}
+          {expensesEnabled && (!showExistingExpenses || editingExisting[3]) && (
             <div className="expense-grid">
               {items.map(([key, label]) => (
                 <Field key={key} id={`expense-${key}`} label={label} value={expenses[key]} type="number" onChange={value => setExpenses(prev => ({ ...prev, [key]: value }))} />
@@ -1045,6 +1363,8 @@ export default function SetupPage() {
     }
 
     if (step === 4) {
+      const existingGoal = existingData.goals[0];
+      const showExistingGoal = existingGoal && !editingExisting[4];
       return (
         <section className="step-panel">
           <div className="step-heading">
@@ -1054,8 +1374,20 @@ export default function SetupPage() {
               <p>{text.realData}</p>
             </div>
           </div>
-          <ToggleRow active={goalEnabled} setActive={setGoalEnabled} yes={text.yes} no={text.skip} />
-          {goalEnabled && (
+          {showExistingGoal ? (
+            <ExistingDataCard
+              title={text.existingGoalsFound}
+              value={goalName(existingGoal) || formatCurrency(amountFrom(existingGoal.amount), defaultCurrency, lang)}
+              hint={text.existingDataHint}
+              confirmLabel={text.useExisting}
+              editLabel={text.editData}
+              onConfirm={() => confirmExistingStep(4)}
+              onEdit={() => { setEditingExisting(prev => ({ ...prev, 4: true })); setGoalEnabled(true); }}
+            />
+          ) : (
+            <ToggleRow active={goalEnabled} setActive={setGoalEnabled} yes={text.yes} no={text.skip} />
+          )}
+          {goalEnabled && (!showExistingGoal || editingExisting[4]) && (
             <div className="form-grid">
               <Field id="goal-name" label={text.goalName} value={goal.name} placeholder={text.goalNamePh} onChange={value => setGoal(prev => ({ ...prev, name: value }))} />
               <Field id="goal-target" label={text.targetAmount} value={goal.targetAmount} type="number" onChange={value => setGoal(prev => ({ ...prev, targetAmount: value }))} />
@@ -1155,7 +1487,7 @@ export default function SetupPage() {
         <div className="step-heading">
           <CheckCircle2 size={30} />
           <div>
-            <h2 id="setup-step-title">{text.initialPlanBuilt}</h2>
+            <h2 id="setup-step-title">{summary ? text.initialPlanBuilt : text.builtFromExisting}</h2>
             <p>{text.savedSub}</p>
           </div>
         </div>
@@ -1181,7 +1513,7 @@ export default function SetupPage() {
         <div className="finish-actions">
           {focus.zakat && <button type="button" onClick={() => router.push('/zakat')}>{text.openZakat}</button>}
           {focus.charity && <button type="button" onClick={() => router.push('/charity')}>{text.openCharity}</button>}
-          <button type="button" className="primary" onClick={() => router.push('/dashboard')}>{text.goDashboard}</button>
+          <button type="button" className="primary" onClick={completeAndGoDashboard} disabled={saving}>{saving ? text.saving : text.goDashboard}</button>
         </div>
       </section>
     );
@@ -1191,18 +1523,21 @@ export default function SetupPage() {
 function Stepper({
   step,
   steps,
+  statuses,
   ariaLabel,
   labels,
 }: {
   step: number;
   steps: readonly string[];
+  statuses: Record<Step, 'completed' | 'current' | 'optional' | 'missing' | 'skipped'>;
   ariaLabel: string;
   labels: { completed: string; current: string; upcoming: string };
 }) {
   return (
     <ol className="setup-stepper" aria-label={ariaLabel}>
       {steps.map((item, index) => {
-        const state = index === step ? 'active' : index < step ? 'done' : 'upcoming';
+        const status = statuses[index as Step];
+        const state = status === 'completed' ? 'done' : index === step ? 'active' : 'upcoming';
         const stateLabel = state === 'done' ? labels.completed : state === 'active' ? labels.current : labels.upcoming;
         return (
           <li key={item} className={state} aria-current={index === step ? 'step' : undefined}>
@@ -1236,6 +1571,39 @@ function ToggleRow({ active, setActive, yes, no }: { active: boolean; setActive:
       <button type="button" className={active ? 'choice-btn active' : 'choice-btn'} onClick={() => setActive(true)}>{yes}</button>
       <button type="button" className={!active ? 'choice-btn active' : 'choice-btn'} onClick={() => setActive(false)}>{no}</button>
     </div>
+  );
+}
+
+function ExistingDataCard({
+  title,
+  value,
+  hint,
+  confirmLabel,
+  editLabel,
+  onConfirm,
+  onEdit,
+}: {
+  title: string;
+  value: string;
+  hint: string;
+  confirmLabel: string;
+  editLabel: string;
+  onConfirm: () => void;
+  onEdit: () => void;
+}) {
+  return (
+    <article className="existing-data-card">
+      <CheckCircle2 size={22} aria-hidden="true" />
+      <div>
+        <h3>{title}</h3>
+        <strong>{value}</strong>
+        <p>{hint}</p>
+      </div>
+      <div className="existing-actions">
+        <button type="button" className="primary-btn" onClick={onConfirm}>{confirmLabel}</button>
+        <button type="button" className="ghost-btn" onClick={onEdit}>{editLabel}</button>
+      </div>
+    </article>
   );
 }
 
