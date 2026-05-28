@@ -187,6 +187,8 @@ type ReceiptScanDebug = {
   errorSource?: string;
   status?: number;
   message?: string;
+  providerStatusCode?: number;
+  providerReason?: string;
 };
 type ReceiptScanApiResult = {
   fileName: string;
@@ -813,6 +815,16 @@ function receiptProviderDevDetail(errorSource: string | undefined, lang: string)
     },
   };
   return details[code]?.[lang] || details[code]?.ar || details[errorSource]?.[lang] || details[errorSource]?.ar || '';
+}
+
+function receiptProviderDebugDetail(debug: ReceiptScanDebug | null, lang: string) {
+  const base = receiptProviderDevDetail(debug?.errorSource, lang);
+  if (process.env.NODE_ENV === 'production' || !debug) return base;
+  const parts = [
+    debug.providerStatusCode ? `HTTP ${debug.providerStatusCode}` : '',
+    debug.providerReason || '',
+  ].filter(Boolean).join(' - ');
+  return [base, parts].filter(Boolean).join(' ');
 }
 
 function selectedReceiptsLabel(count: number, lang: string) {
@@ -2516,8 +2528,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                           <>
                             <strong>{expenseText('providerUnavailableTitle', lang)}</strong>
                             <span>{expenseText('providerUnavailable', lang)}</span>
-                            {receiptProviderDevDetail(receiptDebug?.errorSource, lang) && (
-                              <small>{receiptProviderDevDetail(receiptDebug?.errorSource, lang)}</small>
+                            {receiptProviderDebugDetail(receiptDebug, lang) && (
+                              <small>{receiptProviderDebugDetail(receiptDebug, lang)}</small>
                             )}
                           </>
                         ) : (

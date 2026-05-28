@@ -118,6 +118,8 @@ type ScanDebug = {
   confidence?: ConfidenceLevel;
   errorSource?: string;
   message?: string;
+  providerStatusCode?: number;
+  providerReason?: string;
 };
 
 type ScanFileResult = {
@@ -156,6 +158,35 @@ type GoogleDocumentEntity = {
 };
 
 let cachedGoogleToken: { token: string; expiresAt: number } | null = null;
+
+class ReceiptScanProviderError extends Error {
+  code: ReceiptProviderErrorCode;
+  providerStatusCode?: number;
+  providerReason?: string;
+
+  constructor(code: ReceiptProviderErrorCode, providerStatusCode?: number, providerReason?: string) {
+    super(code);
+    this.name = 'ReceiptScanProviderError';
+    this.code = code;
+    this.providerStatusCode = providerStatusCode;
+    this.providerReason = providerReason;
+  }
+}
+
+function providerErrorDetails(error: unknown) {
+  if (error instanceof ReceiptScanProviderError) {
+    return {
+      message: error.code,
+      providerStatusCode: error.providerStatusCode,
+      providerReason: error.providerReason,
+    };
+  }
+  return {
+    message: error instanceof Error ? error.message : 'scan_failed',
+    providerStatusCode: undefined,
+    providerReason: undefined,
+  };
+}
 
 function errorResponse(error: string, status = 400, debug?: Partial<ScanDebug>, code: ScanErrorCode = 'scan_failed', provider: ScanProvider = 'manual') {
   return NextResponse.json({
@@ -669,7 +700,7 @@ async function getGoogleAccessToken(credentials: GoogleReceiptCredentials) {
   }
 
   if (!credentials.client_email || !credentials.private_key) {
-    throw new Error('google_credentials_json_invalid');
+    throw new ReceiptScanProviderError('google_credentials_json_invalid');
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -690,7 +721,7 @@ async function getGoogleAccessToken(credentials: GoogleReceiptCredentials) {
     const signature = signer.sign(credentials.private_key).toString('base64url');
     assertion = `${unsigned}.${signature}`;
   } catch {
-    throw new Error('google_credentials_private_key_invalid');
+    throw new ReceiptScanProviderError('google_credentials_private_key_invalid');
   }
 
   let response: Response;
@@ -704,11 +735,11 @@ async function getGoogleAccessToken(credentials: GoogleReceiptCredentials) {
       }),
     });
   } catch {
-    throw new Error('google_client_init_failed');
+    throw new ReceiptScanProviderError('google_client_init_failed');
   }
-  if (!response.ok) throw new Error('google_client_init_failed');
+  if (!response.ok) throw new ReceiptScanProviderError('google_client_init_failed', response.status);
   const token = await response.json() as { access_token?: string; expires_in?: number };
-  if (!token.access_token) throw new Error('google_client_init_failed');
+  if (!token.access_token) throw new ReceiptScanProviderError('google_client_init_failed');
   cachedGoogleToken = {
     token: token.access_token,
     expiresAt: Date.now() + Math.max(60, token.expires_in || 3600) * 1000,
@@ -833,7 +864,7 @@ function googleEntityData(document: { text?: string; entities?: GoogleDocumentEn
 async function scanWithGoogleDocumentAI(file: File, bytes: ArrayBuffer): Promise<ProviderExtraction> {
   const { config, error } = getGoogleReceiptConfig();
   if (!config) {
-    throw new Error(error || 'google_env_missing');
+    throw new ReceiptScanProviderError(error || 'google_env_missing');
   }
   const token = await getGoogleAccessToken(config.credentials);
   const endpoint = `https://${config.location}-documentai.googleapis.com/v1/projects/${config.projectId}/locations/${config.location}/processors/${config.processorId}:process`;
@@ -853,9 +884,18 @@ async function scanWithGoogleDocumentAI(file: File, bytes: ArrayBuffer): Promise
       }),
     });
   } catch {
-    throw new Error('google_process_document_failed');
+    throw new ReceiptScanProviderError('google_process_document_failed');
   }
-  if (!response.ok) throw new Error('google_process_document_failed');
+  if (!response.ok) {
+    let providerReason: string | undefined;
+    try {
+      const body = await response.json() as { error?: { status?: string; code?: number } };
+      providerReason = body.error?.status || (body.error?.code ? `HTTP_${body.error.code}` : undefined);
+    } catch {
+      providerReason = undefined;
+    }
+    throw new ReceiptScanProviderError('google_process_document_failed', response.status, providerReason);
+  }
   const payload = await response.json() as { document?: { text?: string; entities?: GoogleDocumentEntity[] } };
   const normalized = googleEntityData(payload.document || {});
   return {
@@ -885,8 +925,8 @@ function readOutputText(payload: Record<string, unknown>) {
 
 async function scanWithOpenAIVision(file: File, bytes: ArrayBuffer): Promise<ProviderExtraction> {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('openai_env_missing');
-  if (file.type === 'application/pdf') throw new Error('openai_fallback_failed');
+  if (!apiKey) throw new ReceiptScanProviderError('openai_env_missing');
+  if (file.type === 'application/pdf') throw new ReceiptScanProviderError('openai_fallback_failed', undefined, 'PDF_NOT_SUPPORTED');
 
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -975,15 +1015,24 @@ async function scanWithOpenAIVision(file: File, bytes: ArrayBuffer): Promise<Pro
       },
     }),
   });
-  if (!response.ok) throw new Error('openai_fallback_failed');
+  if (!response.ok) {
+    let providerReason: string | undefined;
+    try {
+      const body = await response.json() as { error?: { type?: string; code?: string } };
+      providerReason = body.error?.code || body.error?.type;
+    } catch {
+      providerReason = undefined;
+    }
+    throw new ReceiptScanProviderError('openai_fallback_failed', response.status, providerReason);
+  }
   const payload = await response.json() as Record<string, unknown>;
   const text = readOutputText(payload);
-  if (!text) throw new Error('openai_fallback_failed');
+  if (!text) throw new ReceiptScanProviderError('openai_fallback_failed', undefined, 'EMPTY_RESPONSE');
   let parsed: Record<string, unknown>;
   try {
     parsed = JSON.parse(text) as Record<string, unknown>;
   } catch {
-    throw new Error('openai_fallback_failed');
+    throw new ReceiptScanProviderError('openai_fallback_failed', undefined, 'INVALID_JSON_OUTPUT');
   }
   return {
     provider: 'openai-vision',
@@ -1056,6 +1105,12 @@ function scanErrorMessage(code: ScanErrorCode, fallback: string) {
 
 function providerFailureResult(file: File, warnings: string[], errorSource: string): ScanFileResult {
   const code = scanErrorCode(errorSource);
+  const detail = warnings
+    .map(warning => {
+      const [, statusCode, reason] = warning.match(/^(?:google_process_document_failed|openai_fallback_failed|google_client_init_failed):(\d+)?(?::([A-Z0-9_.$-]+))?$/i) || [];
+      return { statusCode: statusCode ? Number(statusCode) : undefined, reason };
+    })
+    .find(item => item.statusCode || item.reason);
   return {
     fileName: file.name,
     success: false,
@@ -1066,7 +1121,12 @@ function providerFailureResult(file: File, warnings: string[], errorSource: stri
     candidates: { amounts: [] },
     warnings,
     error: scanErrorMessage(code, 'Receipt scanning failed. You can still enter the expense manually and save the attachment.'),
-    debug: buildDebug(file, 'provider', { provider: 'manual', errorSource }),
+    debug: buildDebug(file, 'provider', {
+      provider: 'manual',
+      errorSource,
+      providerStatusCode: detail?.statusCode,
+      providerReason: detail?.reason,
+    }),
   };
 }
 
@@ -1118,10 +1178,20 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
     try {
       googleResult = withFileDebug(normalizeExtraction(await scanWithGoogleDocumentAI(file, bytes), file.name), file, { provider: 'google-document-ai' });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'google_document_ai_failed';
+      const detail = providerErrorDetails(error);
+      const message = [
+        detail.message,
+        detail.providerStatusCode ? String(detail.providerStatusCode) : undefined,
+        detail.providerReason,
+      ].filter(Boolean).join(':');
       warnings.push(message);
       if (process.env.NODE_ENV !== 'production') {
-        console.error('Google Document AI receipt scan failed:', { fileName: file.name, error: message });
+        console.error('Google Document AI receipt scan failed:', {
+          fileName: file.name,
+          errorCode: detail.message,
+          providerStatusCode: detail.providerStatusCode,
+          providerReason: detail.providerReason,
+        });
       }
     }
   } else {
@@ -1135,10 +1205,20 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
         openai.warnings = [...warnings, ...openai.warnings];
         return openai;
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'openai_fallback_failed';
+        const detail = providerErrorDetails(error);
+        const message = [
+          detail.message,
+          detail.providerStatusCode ? String(detail.providerStatusCode) : undefined,
+          detail.providerReason,
+        ].filter(Boolean).join(':');
         warnings.push(message);
         if (process.env.NODE_ENV !== 'production') {
-          console.error('OpenAI Vision receipt scan failed:', { fileName: file.name, error: message });
+          console.error('OpenAI Vision receipt scan failed:', {
+            fileName: file.name,
+            errorCode: detail.message,
+            providerStatusCode: detail.providerStatusCode,
+            providerReason: detail.providerReason,
+          });
         }
       }
     } else {
@@ -1155,7 +1235,7 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
     ? 'no_provider_configured'
     : !providerStatus.google.configured
       ? googleUnavailableCode
-      : warnings.find(warning => scanErrorCode(warning) !== 'scan_failed' && scanErrorCode(warning) !== 'openai_env_missing')
+      : warnings.find(warning => scanErrorCode(warning) !== 'scan_failed' && scanErrorCode(warning) !== 'openai_env_missing')?.split(':')[0]
         || (!providerStatus.openai.configured ? 'openai_env_missing' : 'google_process_document_failed');
   return providerFailureResult(file, warnings, errorSource);
 }
