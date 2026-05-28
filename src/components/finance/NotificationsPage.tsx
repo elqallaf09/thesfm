@@ -74,14 +74,17 @@ type LocalDynamicState = {
 
 type SourceKey = keyof NotificationSourceData;
 type NotificationSourceId = 'stored' | 'income' | 'expense' | 'goal' | 'market' | 'project' | 'zakat' | 'charity';
+type SourceStatus = 'ok_with_data' | 'ok_empty' | 'failed';
 type SourceConfig = { key: SourceKey; table: string; source: NotificationSourceId };
 type SourceDiagnostic = {
   ok: boolean;
+  status: SourceStatus;
   count: number;
   tables: string[];
   failedTables: string[];
   errorCodes: string[];
   errorDetails: Partial<Record<string, string>>;
+  message?: string;
 };
 
 const SOURCE_TABLES: SourceConfig[] = [
@@ -116,6 +119,10 @@ const TEXT = {
     dueToday: 'مستحقة اليوم',
     noNotifications: 'لا توجد إشعارات حالياً.',
     stable: 'كل شيء يبدو مستقراً.',
+    zakatEmpty: 'لا توجد إشعارات للزكاة حالياً.',
+    zakatEmptyHelper: 'عند إضافة أصول أو حسابات زكاة، ستظهر الإشعارات هنا.',
+    charityEmpty: 'لا توجد إشعارات للأعمال الخيرية حالياً.',
+    charityEmptyHelper: 'عند إضافة مشاريع خيرية أو مستفيدين أو تذكيرات، ستظهر الإشعارات هنا.',
     search: 'بحث في الإشعارات',
     all: 'الكل',
     income: 'الدخل',
@@ -172,6 +179,10 @@ const TEXT = {
     dueToday: 'Due Today',
     noNotifications: 'No notifications right now.',
     stable: 'Everything looks stable.',
+    zakatEmpty: 'No Zakat notifications right now.',
+    zakatEmptyHelper: 'When you add Zakat assets or calculations, notifications will appear here.',
+    charityEmpty: 'No Charity notifications right now.',
+    charityEmptyHelper: 'When you add charity projects, beneficiaries, or reminders, notifications will appear here.',
     search: 'Search notifications',
     all: 'All',
     income: 'Income',
@@ -228,6 +239,10 @@ const TEXT = {
     dueToday: 'À échéance aujourd’hui',
     noNotifications: 'Aucune notification pour le moment.',
     stable: 'Tout semble stable.',
+    zakatEmpty: 'Aucune notification de zakat pour le moment.',
+    zakatEmptyHelper: 'Lorsque vous ajoutez des actifs ou calculs de zakat, les notifications apparaîtront ici.',
+    charityEmpty: 'Aucune notification de charité pour le moment.',
+    charityEmptyHelper: 'Lorsque vous ajoutez des projets caritatifs, bénéficiaires ou rappels, les notifications apparaîtront ici.',
     search: 'Rechercher des notifications',
     all: 'Tous',
     income: 'Revenus',
@@ -383,14 +398,14 @@ function safeErrorCode(message: string | undefined) {
 
 function emptySourceDiagnostics(): Record<NotificationSourceId, SourceDiagnostic> {
   return {
-    stored: { ok: true, count: 0, tables: ['notifications'], failedTables: [], errorCodes: [], errorDetails: {} },
-    income: { ok: true, count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {} },
-    expense: { ok: true, count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {} },
-    goal: { ok: true, count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {} },
-    market: { ok: true, count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {} },
-    project: { ok: true, count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {} },
-    zakat: { ok: true, count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {} },
-    charity: { ok: true, count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {} },
+    stored: { ok: true, status: 'ok_empty', count: 0, tables: ['notifications'], failedTables: [], errorCodes: [], errorDetails: {}, message: 'No data yet' },
+    income: { ok: true, status: 'ok_empty', count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {}, message: 'No data yet' },
+    expense: { ok: true, status: 'ok_empty', count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {}, message: 'No data yet' },
+    goal: { ok: true, status: 'ok_empty', count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {}, message: 'No data yet' },
+    market: { ok: true, status: 'ok_empty', count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {}, message: 'No data yet' },
+    project: { ok: true, status: 'ok_empty', count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {}, message: 'No data yet' },
+    zakat: { ok: true, status: 'ok_empty', count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {}, message: 'No zakat data yet' },
+    charity: { ok: true, status: 'ok_empty', count: 0, tables: [], failedTables: [], errorCodes: [], errorDetails: {}, message: 'No charity data yet' },
   };
 }
 
@@ -420,6 +435,24 @@ function buildSourceDiagnostics(
       diagnostic.errorDetails[item.table] = error;
       const code = safeErrorCode(error);
       if (!diagnostic.errorCodes.includes(code)) diagnostic.errorCodes.push(code);
+    }
+  });
+
+  (Object.keys(diagnostics) as NotificationSourceId[]).forEach(source => {
+    const diagnostic = diagnostics[source];
+    if (!diagnostic.ok) {
+      diagnostic.status = 'failed';
+      diagnostic.message = `${source} source failed to load`;
+    } else if (diagnostic.count > 0) {
+      diagnostic.status = 'ok_with_data';
+      diagnostic.message = undefined;
+    } else {
+      diagnostic.status = 'ok_empty';
+      diagnostic.message = source === 'zakat'
+        ? 'No zakat data yet'
+        : source === 'charity'
+          ? 'No charity data yet'
+          : 'No data yet';
     }
   });
 
@@ -601,7 +634,7 @@ export function NotificationsPage() {
   const visibleNotifications = useMemo(() => notifications.filter(notice => filterNotification(notice, filter, query)), [filter, notifications, query]);
   const failedSourceEntries = useMemo(() => {
     return (Object.entries(sourceDiagnostics) as Array<[NotificationSourceId, SourceDiagnostic]>)
-      .filter(([, diagnostic]) => !diagnostic.ok);
+      .filter(([, diagnostic]) => diagnostic.status === 'failed');
   }, [sourceDiagnostics]);
   const failedSourceNames = useMemo(
     () => failedSourceEntries.map(([source]) => sourceDiagnosticLabel(source, activeLang)),
@@ -613,6 +646,7 @@ export function NotificationsPage() {
       return acc;
     }, {} as Record<NotificationFilter, number>);
   }, [notifications]);
+  const activeEmptySource = filter === 'zakat' || filter === 'charity' ? sourceDiagnostics[filter] : null;
 
   const grouped = useMemo(() => {
     const order = [tr.unread, tr.today, tr.thisWeek, tr.upcoming, tr.archived];
@@ -835,8 +869,8 @@ export function NotificationsPage() {
           {grouped.length === 0 ? (
             <div className="empty">
               <Bell size={42} />
-              <strong>{tr.noNotifications}</strong>
-              <p>{tr.stable}</p>
+              <strong>{activeEmptySource?.status === 'ok_empty' && filter === 'zakat' ? tr.zakatEmpty : activeEmptySource?.status === 'ok_empty' && filter === 'charity' ? tr.charityEmpty : tr.noNotifications}</strong>
+              <p>{activeEmptySource?.status === 'ok_empty' && filter === 'zakat' ? tr.zakatEmptyHelper : activeEmptySource?.status === 'ok_empty' && filter === 'charity' ? tr.charityEmptyHelper : tr.stable}</p>
             </div>
           ) : grouped.map(([label, items]) => (
             <div key={label} className="group">
