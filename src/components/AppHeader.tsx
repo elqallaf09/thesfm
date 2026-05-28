@@ -8,6 +8,7 @@ import { usePathname } from 'next/navigation';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 import { MobileMenu } from '@/components/MobileMenu';
+import { CommandMenuButton } from '@/components/CommandMenu';
 import { flattenNavigationItems, isNavigationItemActive } from '@/components/navigationConfig';
 
 export function AppHeader() {
@@ -47,6 +48,7 @@ export function AppHeader() {
         </Link>
 
         <div className="sfm-global-actions">
+          <CommandMenuButton compact />
           <LanguageSwitcher variant="gold" compact />
           <button
             type="button"

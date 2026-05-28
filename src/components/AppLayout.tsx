@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
+import { CommandMenu } from '@/components/CommandMenu';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname() || '/';
@@ -11,6 +12,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className={isPublicPage ? 'sfm-app-layout sfm-app-layout-public' : 'sfm-app-layout'}>
       {!isPublicPage && <AppHeader />}
+      {!isPublicPage && <CommandMenu />}
       <div id="main-content">{children}</div>
       <style jsx global>{`
         @media (max-width: 1024px) {

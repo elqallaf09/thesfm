@@ -27,6 +27,18 @@ export const TR: Record<string, TranslationEntry> = {
   add:         { ar:'إضافة',             en:'Add', fr:'Ajouter' },
 
   search:      { ar:'بحث...',            en:'Search...', fr:'Rechercher...' },
+  command_open: { ar:'بحث سريع', en:'Quick search', fr:'Recherche rapide' },
+  command_shortcut: { ar:'Ctrl K', en:'Ctrl K', fr:'Ctrl K' },
+  command_title: { ar:'ابحث في THE SFM', en:'Search THE SFM', fr:'Rechercher dans THE SFM' },
+  command_placeholder: { ar:'ابحث عن صفحة، هدف، مصروف، قرار...', en:'Search pages, goals, expenses, decisions...', fr:'Rechercher pages, objectifs, dépenses, décisions...' },
+  command_pages: { ar:'الصفحات', en:'Pages', fr:'Pages' },
+  command_goals: { ar:'الأهداف', en:'Goals', fr:'Objectifs' },
+  command_reports: { ar:'التقارير', en:'Reports', fr:'Rapports' },
+  command_decisions: { ar:'القرارات', en:'Decisions', fr:'Décisions' },
+  command_settings: { ar:'الإعدادات والدعم', en:'Settings & support', fr:'Paramètres et support' },
+  command_records: { ar:'البيانات المالية', en:'Financial records', fr:'Données financières' },
+  command_no_results: { ar:'لا توجد نتائج مطابقة', en:'No matching results', fr:'Aucun résultat correspondant' },
+  command_open_action: { ar:'فتح', en:'Open', fr:'Ouvrir' },
   loading:     { ar:'جارٍ التحميل...', en:'Loading...', fr:'Chargement...' },
   error:       { ar:'حدث خطأ', en:'An error occurred', fr:'Une erreur est survenue' },
 

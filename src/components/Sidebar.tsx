@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { ViewModeSelector } from '@/components/ViewModeSelector';
+import { CommandMenuButton } from '@/components/CommandMenu';
 import { useViewMode } from '@/hooks/useViewMode';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -142,6 +143,8 @@ export function Sidebar() {
         <LanguageSwitcher variant="dark" compact />
       </div>
       <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(167,243,240,.08)' }}>
+        <CommandMenuButton dark />
+        <div style={{ height: 10 }} />
         <UserChip />
         <div style={{ marginTop: 10 }}>
           <ViewModeSelector value={viewMode} onChange={setViewMode} variant="dark" compact />
