@@ -45,6 +45,17 @@ Required Vercel environment variable:
 OPENBB_SERVICE_URL=https://the-sfm-openbb-service.onrender.com
 ```
 
+Render deployment settings for the OpenBB service:
+
+- Branch: `main`
+- Auto Deploy: On
+- Root Directory: `openbb-service`
+- Runtime: `Docker`
+- Dockerfile Path: `Dockerfile`
+- Health Check Path: `/health`
+
+The repository also includes a root-level `render.yaml` blueprint with these settings. If Render reports that `openbb-service` does not exist, verify the Render service is connected to this repository and the `main` branch, because `openbb-service` is a tracked top-level folder in this repo.
+
 Setup:
 
 1. Open the Vercel Project.

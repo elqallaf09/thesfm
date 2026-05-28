@@ -28,22 +28,31 @@ On Windows PowerShell, activate the virtual environment with:
 
 ## Render Deployment
 
+This repository includes a root-level `render.yaml` blueprint for this service.
+
+Blueprint settings:
+
+- Branch: `main`
+- Auto Deploy: On (`autoDeployTrigger: commit`)
+- Root Directory: `openbb-service`
+- Runtime: `Docker`
+- Dockerfile Path: `Dockerfile`
+- Docker Context: `.`
+- Health Check Path: `/health`
+
+If configuring the service manually in the Render dashboard, use the same values above. With `Root Directory` set to `openbb-service`, the Dockerfile path is relative to that directory, so use `Dockerfile` or leave it blank. Do not use `openbb-service/Dockerfile` after setting the root directory.
+
 1. Go to https://render.com
-2. New + -> Web Service
+2. New + -> Blueprint, or New + -> Web Service for manual setup
 3. Connect GitHub repository
-4. Choose the same repository
-5. Set:
-   - Name: `the-sfm-openbb-service`
-   - Root Directory: `openbb-service`
-   - Environment: `Docker`
-   - Dockerfile Path: `openbb-service/Dockerfile`
-6. Deploy
-7. After deployment, test:
+4. Choose the same repository and branch `main`
+5. Deploy
+6. After deployment, test:
    - `https://YOUR-SERVICE-NAME.onrender.com/health`
-8. Copy the Render URL
-9. Add it to Vercel environment variables:
+7. Copy the Render URL
+8. Add it to Vercel environment variables:
    - `OPENBB_SERVICE_URL=https://YOUR-SERVICE-NAME.onrender.com`
-10. Redeploy THE SFM on Vercel.
+9. Redeploy THE SFM on Vercel.
 
 ## Vercel Environment Variable
 

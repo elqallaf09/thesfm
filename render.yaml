@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: the-sfm-openbb-service
+    runtime: docker
+    branch: main
+    rootDir: openbb-service
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    autoDeployTrigger: commit
+    healthCheckPath: /health
