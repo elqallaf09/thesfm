@@ -35,16 +35,15 @@ const COPY = {
     heroSubtitle: 'نحن هنا لمساعدتك في الأسئلة العامة عن THE SFM، الحساب، الخصوصية، أو طريقة استخدام المنصة.',
     supportEmail: 'البريد الإلكتروني للدعم',
     supportEmailReady: 'للدعم والمساعدة، تواصل معنا عبر:',
-    supportEmailFallback: SUPPORT_EMAIL,
     supportEmailHint: 'للدعم والمساعدة، تواصل معنا عبر:',
     contactForm: 'نموذج التواصل',
-    contactFormBody: 'أرسل لنا سؤالك مباشرة وسنراجعه عبر البريد الإلكتروني الرسمي.',
+    contactFormBody: 'اكتب رسالتك وسنراجعها ونرد عليك عبر البريد الإلكتروني.',
     privacyNotice: 'تنبيه الخصوصية',
     privacyNoticeBody: 'لا تشارك كلمة المرور أو أي بيانات حساسة في أي رسالة دعم. فريق THE SFM لا يطلب كلمة المرور خارج صفحة تسجيل الدخول.',
     openFaq: 'الأسئلة الشائعة',
     securityPrivacy: 'الأمان والخصوصية',
     formTitle: 'نموذج التواصل',
-    formSubtitle: 'اكتب رسالتك وسنرسلها بأمان إلى فريق الدعم عبر البريد الإلكتروني الرسمي.',
+    formSubtitle: 'اكتب رسالتك وسنراجعها ونرد عليك عبر البريد الإلكتروني.',
     name: 'الاسم',
     email: 'البريد الإلكتروني',
     subject: 'الموضوع',
@@ -52,8 +51,8 @@ const COPY = {
     sendMessage: 'إرسال الرسالة',
     sending: 'جاري الإرسال...',
     messageSent: 'تم إرسال رسالتك بنجاح. سنراجعها ونرد عليك عبر البريد الإلكتروني.',
-    messageFailed: 'تعذر إرسال الرسالة حالياً. حاول مرة أخرى أو راسلنا مباشرة عبر support@the-sfm.com.',
-    smtpMissing: 'نموذج التواصل يحتاج إعداد البريد من الخادم. يمكنك التواصل مباشرة عبر support@the-sfm.com.',
+    messageFailed: 'تعذر إرسال الرسالة حالياً. يمكنك مراسلتنا مباشرة عبر',
+    smtpMissing: 'تعذر إرسال الرسالة حالياً. يمكنك مراسلتنا مباشرة عبر',
     invalidEmail: 'الرجاء إدخال بريد إلكتروني صحيح.',
     messageRequired: 'الرسالة مطلوبة ويجب أن تكون 10 أحرف على الأقل.',
     requiredField: 'هذا الحقل مطلوب.',
@@ -78,16 +77,15 @@ const COPY = {
     heroSubtitle: 'We are here to help with general questions about THE SFM, your account, privacy, or how to use the platform.',
     supportEmail: 'Support Email',
     supportEmailReady: 'For support, contact us at:',
-    supportEmailFallback: SUPPORT_EMAIL,
     supportEmailHint: 'For support, contact us at:',
     contactForm: 'Contact Form',
-    contactFormBody: 'Send your question directly and we will review it through the official support email.',
+    contactFormBody: 'Write your message and we will review it and reply by email.',
     privacyNotice: 'Privacy Notice',
     privacyNoticeBody: 'Do not share your password or sensitive information in any support message. THE SFM team does not ask for passwords outside the login page.',
     openFaq: 'FAQ',
     securityPrivacy: 'Security & Privacy',
     formTitle: 'Contact Form',
-    formSubtitle: 'Write your message and we will send it securely to the support team through the official email.',
+    formSubtitle: 'Write your message and we will review it and reply by email.',
     name: 'Name',
     email: 'Email',
     subject: 'Subject',
@@ -95,8 +93,8 @@ const COPY = {
     sendMessage: 'Send Message',
     sending: 'Sending...',
     messageSent: 'Your message has been sent successfully. We will review it and reply by email.',
-    messageFailed: 'Could not send the message right now. Please try again or email us directly at support@the-sfm.com.',
-    smtpMissing: 'The contact form needs server email setup. You can contact us directly at support@the-sfm.com.',
+    messageFailed: 'Could not send the message right now. You can email us directly at',
+    smtpMissing: 'Could not send the message right now. You can email us directly at',
     invalidEmail: 'Please enter a valid email address.',
     messageRequired: 'Message is required and must be at least 10 characters.',
     requiredField: 'This field is required.',
@@ -121,16 +119,15 @@ const COPY = {
     heroSubtitle: 'Nous sommes là pour vous aider avec les questions générales sur THE SFM, votre compte, la confidentialité ou l’utilisation de la plateforme.',
     supportEmail: 'E-mail de support',
     supportEmailReady: 'Pour obtenir de l’aide, contactez-nous à :',
-    supportEmailFallback: SUPPORT_EMAIL,
     supportEmailHint: 'Pour obtenir de l’aide, contactez-nous à :',
     contactForm: 'Formulaire de contact',
-    contactFormBody: 'Envoyez-nous votre question directement et nous l’examinerons via l’e-mail officiel du support.',
+    contactFormBody: 'Écrivez votre message, nous l’examinerons et vous répondrons par e-mail.',
     privacyNotice: 'Avis de confidentialité',
     privacyNoticeBody: 'Ne partagez pas votre mot de passe ni d’informations sensibles dans un message de support. L’équipe THE SFM ne demande pas de mot de passe en dehors de la page de connexion.',
     openFaq: 'FAQ',
     securityPrivacy: 'Sécurité et confidentialité',
     formTitle: 'Formulaire de contact',
-    formSubtitle: 'Écrivez votre message et nous l’enverrons en toute sécurité à l’équipe support via l’e-mail officiel.',
+    formSubtitle: 'Écrivez votre message, nous l’examinerons et vous répondrons par e-mail.',
     name: 'Nom',
     email: 'E-mail',
     subject: 'Objet',
@@ -138,8 +135,8 @@ const COPY = {
     sendMessage: 'Envoyer le message',
     sending: 'Envoi...',
     messageSent: 'Votre message a été envoyé avec succès. Nous l’examinerons et vous répondrons par e-mail.',
-    messageFailed: 'Impossible d’envoyer le message actuellement. Réessayez ou contactez-nous directement à support@the-sfm.com.',
-    smtpMissing: 'Le formulaire de contact nécessite la configuration e-mail du serveur. Vous pouvez nous contacter directement à support@the-sfm.com.',
+    messageFailed: 'Impossible d’envoyer le message actuellement. Vous pouvez nous écrire directement à',
+    smtpMissing: 'Impossible d’envoyer le message actuellement. Vous pouvez nous écrire directement à',
     invalidEmail: 'Veuillez saisir une adresse e-mail valide.',
     messageRequired: 'Le message est requis et doit contenir au moins 10 caractères.',
     requiredField: 'Ce champ est requis.',
@@ -160,7 +157,7 @@ export default function ContactPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '', website: '' });
   const [sending, setSending] = useState(false);
-  const [formStatus, setFormStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [formStatus, setFormStatus] = useState<{ type: 'success' | 'error'; message: string; showEmailFallback?: boolean } | null>(null);
   const locale = (['ar', 'en', 'fr'].includes(lang) ? lang : 'ar') as Lang;
   const text = COPY[locale];
   const appHref = session || isGuest ? '/dashboard' : '/login';
@@ -173,10 +170,10 @@ export default function ContactPage() {
   ];
 
   function contactErrorMessage(code?: string) {
-    if (code === 'invalid_email') return text.invalidEmail;
-    if (code === 'message_required') return text.messageRequired;
-    if (code === 'smtp_not_configured') return text.smtpMissing;
-    return text.messageFailed;
+    if (code === 'invalid_email') return { message: text.invalidEmail, showEmailFallback: false };
+    if (code === 'message_required') return { message: text.messageRequired, showEmailFallback: false };
+    if (code === 'smtp_not_configured') return { message: text.smtpMissing, showEmailFallback: true };
+    return { message: text.messageFailed, showEmailFallback: true };
   }
 
   function validateForm() {
@@ -217,7 +214,8 @@ export default function ContactPage() {
       setForm({ name: '', email: '', subject: '', message: '', website: '' });
       setFormStatus({ type: 'success', message: text.messageSent });
     } catch (error) {
-      setFormStatus({ type: 'error', message: contactErrorMessage(error instanceof Error ? error.message : undefined) });
+      const contactError = contactErrorMessage(error instanceof Error ? error.message : undefined);
+      setFormStatus({ type: 'error', ...contactError });
     } finally {
       setSending(false);
     }
@@ -229,19 +227,16 @@ export default function ContactPage() {
       body: text.supportEmailReady,
       value: supportEmail,
       icon: Mail,
-      action: { href: SUPPORT_EMAIL_MAILTO, label: supportEmail, external: false },
     },
     {
       title: text.contactForm,
       body: text.contactFormBody,
-      value: text.sendMessage,
       icon: MessageSquareText,
       action: { href: '#contact-form', label: text.sendMessage, external: false },
     },
     {
       title: text.privacyNotice,
       body: text.privacyNoticeBody,
-      value: text.securityPrivacy,
       icon: ShieldCheck,
       action: { href: '/security', label: text.securityPrivacy, external: false },
     },
@@ -315,11 +310,11 @@ export default function ContactPage() {
               </div>
               <h2>{card.title}</h2>
               <p>{card.body}</p>
-              {card.action?.href === SUPPORT_EMAIL_MAILTO ? (
+              {card.value === supportEmail ? (
                 <a href={SUPPORT_EMAIL_MAILTO} className="support-email-link">{card.value}</a>
-              ) : (
+              ) : card.value ? (
                 <strong>{card.value}</strong>
-              )}
+              ) : null}
               {card.action && (
                 card.action.href.startsWith('mailto:') ? (
                   <a href={card.action.href} className="card-action" aria-label={card.action.label}>
@@ -416,10 +411,10 @@ export default function ContactPage() {
               role={formStatus.type === 'error' ? 'alert' : 'status'}
             >
               {formStatus.message}
-              {formStatus.type === 'error' && (
+              {formStatus.type === 'error' && formStatus.showEmailFallback && (
                 <>
                   {' '}
-                  <a href={SUPPORT_EMAIL_MAILTO}>{SUPPORT_EMAIL}</a>
+                  <a href={SUPPORT_EMAIL_MAILTO}>{SUPPORT_EMAIL}</a>.
                 </>
               )}
             </p>
@@ -442,7 +437,6 @@ export default function ContactPage() {
           </div>
         </div>
         <div className="footer-links" aria-label={text.securityPrivacy}>
-          <a href={SUPPORT_EMAIL_MAILTO}>{supportEmail}</a>
           <Link href="/security">{text.securityPrivacy}</Link>
           <Link href="/privacy">{text.privacy}</Link>
           <Link href="/terms">{text.terms}</Link>
