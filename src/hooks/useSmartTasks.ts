@@ -17,13 +17,16 @@ import {
 
 type SmartTaskTableKey = keyof SmartTaskSourceData;
 export type SmartTaskSourceId = 'personal' | 'projects' | 'zakatCharity' | 'market' | 'notifications';
+export type SmartTaskSourceStatus = 'ok_with_data' | 'ok_empty' | 'failed';
 export type SmartTaskSourceDiagnostic = {
   ok: boolean;
+  status: SmartTaskSourceStatus;
   count: number;
   tables: SmartTaskTableKey[];
   failedTables: SmartTaskTableKey[];
   errorCodes: string[];
   errorDetails: Partial<Record<SmartTaskTableKey, string>>;
+  message?: string;
 };
 
 const SMART_TASK_TABLES: Array<{ key: SmartTaskTableKey; table: string; source: SmartTaskSourceId; limit?: number }> = [
@@ -98,6 +101,7 @@ function buildSourceDiagnostics(
 ) {
   const diagnostics = Object.fromEntries(SOURCE_IDS.map(source => [source, {
     ok: true,
+    status: 'ok_empty' as SmartTaskSourceStatus,
     count: 0,
     tables: [] as SmartTaskTableKey[],
     failedTables: [] as SmartTaskTableKey[],
@@ -116,6 +120,21 @@ function buildSourceDiagnostics(
       diagnostic.errorDetails[item.key] = error;
       const code = safeErrorCode(error);
       if (!diagnostic.errorCodes.includes(code)) diagnostic.errorCodes.push(code);
+    }
+  });
+
+  SOURCE_IDS.forEach(source => {
+    const diagnostic = diagnostics[source];
+    if (!diagnostic.ok) {
+      diagnostic.status = 'failed';
+      diagnostic.message = `${source} source failed to load`;
+    } else if (diagnostic.count > 0) {
+      diagnostic.status = 'ok_with_data';
+    } else {
+      diagnostic.status = 'ok_empty';
+      diagnostic.message = source === 'zakatCharity'
+        ? 'No zakat or charity data yet'
+        : 'No data yet';
     }
   });
 

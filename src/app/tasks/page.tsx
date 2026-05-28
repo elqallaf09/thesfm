@@ -44,6 +44,7 @@ const TEXT = {
     subtitle: 'كل ما تحتاج تنفيذه في THE SFM، مرتب حسب الأولوية ومن بياناتك الفعلية.',
     eyebrow: 'شنو المطلوب مني الحين؟',
     loading: 'جاري تحميل المهام...',
+    loadWarningSingle: 'تعذر تحميل مصدر المهام:',
     loadWarning: 'تعذر تحميل بعض مصادر المهام:',
     retry: 'إعادة المحاولة',
     urgent: 'عاجلة',
@@ -67,6 +68,11 @@ const TEXT = {
     noTasks: 'لا توجد مهام حالياً.',
     noTasksBody: 'كل شيء يبدو منظماً.',
     noFilterTasks: 'لا توجد مهام في هذا القسم.',
+    zakatCharityEmpty: 'لا توجد مهام للزكاة أو الأعمال الخيرية لأنك لم تضف بيانات لهذا القسم بعد.',
+    zakatCharityEmptyShort: 'لا توجد بيانات زكاة أو أعمال خيرية حالياً.',
+    zakatCharityEmptyHelper: 'أضف بيانات الزكاة أو الأعمال الخيرية لظهور المهام والتذكيرات هنا.',
+    openZakat: 'فتح الزكاة',
+    openCharity: 'فتح الأعمال الخيرية',
     today: 'اليوم المالي',
     dashboard: 'لوحة القيادة',
     setup: 'الإعداد',
@@ -91,6 +97,7 @@ const TEXT = {
     subtitle: 'Everything you need to do in THE SFM, organized by priority and based on your real data.',
     eyebrow: 'What should I do now?',
     loading: 'Loading tasks...',
+    loadWarningSingle: 'Could not load task source:',
     loadWarning: 'Some task sources could not be loaded:',
     retry: 'Retry',
     urgent: 'Urgent',
@@ -114,6 +121,11 @@ const TEXT = {
     noTasks: 'No tasks right now.',
     noTasksBody: 'Everything looks organized.',
     noFilterTasks: 'No tasks in this section.',
+    zakatCharityEmpty: 'No Zakat or Charity tasks because no data has been added yet.',
+    zakatCharityEmptyShort: 'No Zakat or Charity data right now.',
+    zakatCharityEmptyHelper: 'Add Zakat or Charity data to show tasks and reminders here.',
+    openZakat: 'Open Zakat',
+    openCharity: 'Open Charity',
     today: 'Financial Today',
     dashboard: 'Dashboard',
     setup: 'Setup',
@@ -138,6 +150,7 @@ const TEXT = {
     subtitle: 'Tout ce que vous devez faire dans THE SFM, classé par priorité et basé sur vos données réelles.',
     eyebrow: 'Que dois-je faire maintenant ?',
     loading: 'Chargement des tâches...',
+    loadWarningSingle: 'Impossible de charger la source de tâches :',
     loadWarning: 'Certaines sources de tâches n’ont pas pu être chargées :',
     retry: 'Réessayer',
     urgent: 'Urgent',
@@ -161,6 +174,11 @@ const TEXT = {
     noTasks: 'Aucune tâche pour le moment.',
     noTasksBody: 'Tout semble organisé.',
     noFilterTasks: 'Aucune tâche dans cette section.',
+    zakatCharityEmpty: 'Aucune tâche de zakat ou de charité, car aucune donnée n’a encore été ajoutée.',
+    zakatCharityEmptyShort: 'Aucune donnée de zakat ou de charité pour le moment.',
+    zakatCharityEmptyHelper: 'Ajoutez des données de zakat ou de charité pour afficher les tâches et rappels ici.',
+    openZakat: 'Ouvrir la zakat',
+    openCharity: 'Ouvrir la charité',
     today: 'Aujourd’hui financier',
     dashboard: 'Tableau de bord',
     setup: 'Configuration',
@@ -216,7 +234,7 @@ function sourceDiagnosticLabel(source: SmartTaskSourceId, text: typeof TEXT.ar) 
 
 function failedSourceEntries(sourceDiagnostics: Record<SmartTaskSourceId, SmartTaskSourceDiagnostic>) {
   return (Object.entries(sourceDiagnostics) as Array<[SmartTaskSourceId, SmartTaskSourceDiagnostic]>)
-    .filter(([, diagnostic]) => !diagnostic.ok);
+    .filter(([, diagnostic]) => diagnostic.status === 'failed');
 }
 
 function sourceNameSeparator(locale: Lang) {
@@ -247,6 +265,7 @@ export default function TasksCenterPage() {
   const { tasks, loading, sourceDiagnostics, reload, setTaskStatus } = useSmartTasks();
   const [activeFilter, setActiveFilter] = useState<FilterId>('all');
   const [query, setQuery] = useState('');
+  const zakatCharityStatus = sourceDiagnostics.zakatCharity?.status ?? 'ok_empty';
 
   const openTasks = useMemo(() => tasks.filter(task => task.status === 'open'), [tasks]);
   const completedTasks = useMemo(() => tasks.filter(task => task.status === 'done'), [tasks]);
@@ -307,7 +326,7 @@ export default function TasksCenterPage() {
           <div className="tasks-warning" role="status">
             <div className="tasks-warning-main">
               <AlertTriangle size={18} aria-hidden="true" />
-              <span>{text.loadWarning} {failedSourceNames.join(sourceNameSeparator(locale))}</span>
+              <span>{failedSourceNames.length === 1 ? text.loadWarningSingle : text.loadWarning} {failedSourceNames.join(sourceNameSeparator(locale))}</span>
             </div>
             {process.env.NODE_ENV === 'development' ? (
               <small>
@@ -346,7 +365,19 @@ export default function TasksCenterPage() {
             {openTasks.length === 0 && completedTasks.length === 0 ? (
               <EmptyState icon={<CircleCheck size={28} />} title={text.noTasks} description={text.noTasksBody} />
             ) : visibleTasks.length === 0 ? (
-              <EmptyState icon={<ClipboardList size={28} />} title={text.noFilterTasks} />
+              <EmptyState
+                icon={<ClipboardList size={28} />}
+                title={text.noFilterTasks}
+                description={activeFilter === 'zakatCharity' && zakatCharityStatus === 'ok_empty'
+                  ? `${text.zakatCharityEmpty} ${text.zakatCharityEmptyHelper}`
+                  : undefined}
+                actions={activeFilter === 'zakatCharity' && zakatCharityStatus === 'ok_empty' ? (
+                  <>
+                    <Link className="sfm-secondary-link" href="/zakat">{text.openZakat}</Link>
+                    <Link className="sfm-secondary-link" href="/charity-projects">{text.openCharity}</Link>
+                  </>
+                ) : undefined}
+              />
             ) : (
               <div className="tasks-list">
                 {visibleTasks.map(task => (
