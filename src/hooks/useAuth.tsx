@@ -11,7 +11,13 @@ interface AuthContextValue {
   loading: boolean;
   isGuest: boolean;
   continueAsGuest: () => void;
-  signIn: (username: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (username: string, password: string) => Promise<{
+    error: Error | null;
+    user?: User | null;
+    session?: Session | null;
+    email?: string;
+    code?: 'username_not_found' | 'invalid_credentials' | 'auth_error';
+  }>;
   signUp: (username: string, password: string, email: string, age: string, gender?: string, securityQuestion?: string, securityAnswer?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -100,14 +106,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         if (supabaseConfigError) return { error: new Error(supabaseConfigError) };
         const identifier = username.trim();
-        let email = isEmail(identifier) ? identifier.toLowerCase() : usernameToEmail(identifier);
-        if (!isEmail(identifier)) {
+        const identifierIsEmail = isEmail(identifier);
+        const normalizedUsername = identifier.toLowerCase();
+        let email = identifierIsEmail ? identifier.toLowerCase() : usernameToEmail(identifier);
+        if (!identifierIsEmail) {
           const { data: profile } = await supabase
             .from('profiles')
             .select('email')
-            .eq('username', identifier.toLowerCase())
+            .eq('username', normalizedUsername)
             .maybeSingle();
           if (profile?.email && isEmail(profile.email)) email = profile.email.toLowerCase();
+
+          if (!profile) {
+            try {
+              const response = await fetch('/api/auth/resolve-username', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: normalizedUsername }),
+              });
+              if (response.ok) {
+                const resolved = await response.json() as { success?: boolean; exists?: boolean; email?: string };
+                if (resolved.success) {
+                  if (!resolved.exists) {
+                    return { error: new Error('Username not found'), code: 'username_not_found' };
+                  }
+                  if (resolved.email && isEmail(resolved.email)) email = resolved.email.toLowerCase();
+                }
+              }
+            } catch {
+              // Keep login usable when the optional server-side username resolver is unavailable.
+            }
+          }
         }
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -118,17 +147,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (error.message === 'Email not confirmed') {
             return { error: new Error('الحساب جاهز الآن. أعد الضغط على تسجيل الدخول.') };
           }
-          return { error: new Error(error.message) };
+          const invalidCredentials = /invalid login credentials/i.test(error.message);
+          const code = invalidCredentials ? 'invalid_credentials' : 'auth_error';
+          return { error: new Error(error.message), code };
         }
+        const signedInSession = data.session;
+        const signedInUser = data.user ?? signedInSession?.user ?? null;
         clearStoredGuestMode();
         if (typeof document !== 'undefined') {
           document.cookie = `sfm_auth=true; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
           document.cookie = 'sfm_guest=; path=/; max-age=0; SameSite=Lax';
         }
-        setSession(data.session);
-        setUser(data.session?.user ?? null);
+        setSession(signedInSession);
+        setUser(signedInUser);
         setIsGuest(false);
-        return { error: null };
+        return { error: null, session: signedInSession, user: signedInUser, email };
       } catch (err: any) {
         return { error: new Error(err.message || 'فشل الاتصال بالخادم') };
       }

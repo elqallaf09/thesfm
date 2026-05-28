@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AtSign,
@@ -127,6 +128,10 @@ const TEXT = {
     errorExists: 'اسم المستخدم مستخدم بالفعل.',
     errorRegister: 'تعذر إنشاء الحساب. حاول مرة أخرى.',
     errorLogin: 'اسم المستخدم أو كلمة المرور غير صحيحة.',
+    errorUsernameNotFound: 'اسم المستخدم غير موجود',
+    errorInvalidCredentials: 'بيانات الدخول غير صحيحة.',
+    profileSetupNeeded: 'تم تسجيل الدخول، يرجى إكمال إعداد الحساب.',
+    errorLoginGeneric: 'تعذر تسجيل الدخول حالياً. حاول مرة أخرى.',
     errorSecurityPair: 'أكمل سؤال الأمان وإجابته أو اتركهما فارغين.',
     errorSecurityAnswer: 'إجابة سؤال الأمان غير صحيحة.',
     errorSecurityLocked: 'تم تجاوز عدد المحاولات. استخدم رابط البريد الإلكتروني لاحقاً.',
@@ -209,6 +214,10 @@ const TEXT = {
     errorExists: 'This username is already taken.',
     errorRegister: 'Could not create the account. Try again.',
     errorLogin: 'Username or password is incorrect.',
+    errorUsernameNotFound: 'Username not found.',
+    errorInvalidCredentials: 'Invalid login credentials.',
+    profileSetupNeeded: 'Signed in. Please complete account setup.',
+    errorLoginGeneric: 'Could not sign in right now. Please try again.',
     errorSecurityPair: 'Complete both security question and answer, or leave both blank.',
     errorSecurityAnswer: 'The security answer is incorrect.',
     errorSecurityLocked: 'Too many attempts. Use the email recovery link again later.',
@@ -291,6 +300,10 @@ const TEXT = {
     errorExists: 'Ce nom d’utilisateur est déjà utilisé.',
     errorRegister: 'Impossible de créer le compte. Réessayez.',
     errorLogin: 'Nom d’utilisateur ou mot de passe incorrect.',
+    errorUsernameNotFound: 'Nom d’utilisateur introuvable.',
+    errorInvalidCredentials: 'Identifiants invalides.',
+    profileSetupNeeded: 'Connexion réussie. Veuillez terminer la configuration du compte.',
+    errorLoginGeneric: 'Connexion impossible pour le moment. Réessayez.',
     errorSecurityPair: 'Complétez la question et la réponse de sécurité, ou laissez les deux vides.',
     errorSecurityAnswer: 'La réponse de sécurité est incorrecte.',
     errorSecurityLocked: 'Trop de tentatives. Réutilisez le lien email plus tard.',
@@ -458,19 +471,55 @@ function LoginContent() {
     return error;
   }
 
-  async function handleLogin() {
-    if (!username.trim() || !password.trim()) return text.errorEmpty;
-    const { error } = await signIn(username.trim(), password);
-    if (error) return text.errorLogin;
-    const { data: authData } = await supabase.auth.getUser();
-    const authUser = authData.user;
-    if (!authUser?.id) return text.errorLogin;
-
-    const { data: profile } = await supabase
+  async function getOrCreateLoginProfile(authUser: User, loginIdentifier: string) {
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('email_2fa_enabled')
+      .select('id, email_2fa_enabled')
       .eq('id', authUser.id)
       .maybeSingle();
+
+    if (profileError) throw new Error(text.errorLoginGeneric);
+    if (profile) return profile;
+
+    const usernameFromLogin = !isEmail(loginIdentifier)
+      ? loginIdentifier.trim().toLowerCase()
+      : typeof authUser.user_metadata?.username === 'string'
+        ? authUser.user_metadata.username.trim().toLowerCase()
+        : null;
+
+    const { data: createdProfile, error: createError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: authUser.id,
+        email: authUser.email || null,
+        username: usernameFromLogin || null,
+        display_name: typeof authUser.user_metadata?.full_name === 'string'
+          ? authUser.user_metadata.full_name
+          : typeof authUser.user_metadata?.display_name === 'string'
+            ? authUser.user_metadata.display_name
+            : usernameFromLogin,
+        created_at: new Date().toISOString(),
+      }, { onConflict: 'id' })
+      .select('id, email_2fa_enabled')
+      .single();
+
+    if (createError) throw new Error(text.profileSetupNeeded);
+    return createdProfile;
+  }
+
+  async function handleLogin() {
+    const loginIdentifier = username.trim();
+    if (!loginIdentifier || !password.trim()) return text.errorEmpty;
+    const result = await signIn(loginIdentifier, password);
+    if (result.error) {
+      if (result.code === 'username_not_found') return text.errorUsernameNotFound;
+      if (result.code === 'invalid_credentials') return text.errorInvalidCredentials;
+      return text.errorLoginGeneric;
+    }
+    const authUser = result.user ?? result.session?.user ?? null;
+    if (!authUser?.id) return text.errorLoginGeneric;
+
+    const profile = await getOrCreateLoginProfile(authUser, loginIdentifier);
 
     if (profile?.email_2fa_enabled) {
       const authEmail = authUser.email?.trim().toLowerCase() || '';
@@ -490,6 +539,7 @@ function LoginContent() {
       setMessage({ type: 'ok', text: text.twoFactorSent });
       return '';
     }
+    router.refresh();
     router.replace(nextPath);
     return '';
   }
@@ -498,12 +548,18 @@ function LoginContent() {
     if (!twoFactorChallenge) return text.errorLogin;
     const code = twoFactorCode.trim();
     if (code.length !== 6) return text.invalidCode;
-    const { error } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       email: twoFactorChallenge.email,
       token: code,
       type: 'email',
     });
     if (error) return error.message.toLowerCase().includes('expired') ? text.codeExpired : text.codeInvalidOrExpired;
+    if (!data.session?.user) return text.errorLoginGeneric;
+    if (typeof document !== 'undefined') {
+      document.cookie = `sfm_auth=true; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+      document.cookie = 'sfm_guest=; path=/; max-age=0; SameSite=Lax';
+    }
+    router.refresh();
     router.replace(nextPath);
     return '';
   }
