@@ -1,13 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { ExternalLink, MapPinned } from 'lucide-react';
+import { ArrowUpRight, ChevronLeft, LayoutDashboard, MapPinned, ReceiptText, Target, Wallet } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
-import { CardsGrid } from '@/components/layout/LayoutPrimitives';
 import { AppCard } from '@/components/layout/AppCard';
 import { NAV_GROUPS } from '@/components/navigationConfig';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -20,6 +19,10 @@ const TEXT = {
     subtitle: 'دليل مختصر يوضح أين تجد كل جزء من المنصة وما الغرض منه.',
     eyebrow: 'تنظيم المنصة',
     open: 'فتح',
+    featuredTitle: 'الصفحات الأكثر استخداماً',
+    featuredSubtitle: 'وصول سريع إلى أهم مساحات العمل اليومية في THE SFM.',
+    linkCount: '{count} صفحة',
+    noPages: 'لا توجد صفحات حالياً',
     purpose: 'الغرض',
     related: 'صفحات مرتبطة',
     extra: 'صفحات مساعدة',
@@ -56,6 +59,10 @@ const TEXT = {
     subtitle: 'A short guide to where each part of the platform lives and what it does.',
     eyebrow: 'Platform organization',
     open: 'Open',
+    featuredTitle: 'Most used pages',
+    featuredSubtitle: 'Quick access to the core daily workspaces in THE SFM.',
+    linkCount: '{count} pages',
+    noPages: 'No pages right now',
     purpose: 'Purpose',
     related: 'Related pages',
     extra: 'Supporting pages',
@@ -92,6 +99,10 @@ const TEXT = {
     subtitle: 'Un guide court pour comprendre où se trouve chaque partie de la plateforme.',
     eyebrow: 'Organisation de la plateforme',
     open: 'Ouvrir',
+    featuredTitle: 'Pages les plus utilisées',
+    featuredSubtitle: 'Accès rapide aux principaux espaces quotidiens de THE SFM.',
+    linkCount: '{count} pages',
+    noPages: 'Aucune page pour le moment',
     purpose: 'Objectif',
     related: 'Pages liées',
     extra: 'Pages d’aide',
@@ -156,6 +167,17 @@ const PURPOSE_KEY: Record<string, keyof typeof TEXT.ar> = {
   security: 'securityDesc',
 };
 
+const FEATURED_ITEMS = [
+  { id: 'home', href: '/dashboard', icon: LayoutDashboard, labelKey: 'nav_home', purposeKey: 'dashboardDesc' as const },
+  { id: 'income', href: '/income', icon: Wallet, labelKey: 'nav_income', purposeKey: 'incomeDesc' as const },
+  { id: 'expenses', href: '/expenses', icon: ReceiptText, labelKey: 'nav_expenses', purposeKey: 'expensesDesc' as const },
+  { id: 'goals', href: '/goals', icon: Target, labelKey: 'nav_goals', purposeKey: 'goalsDesc' as const },
+] as const;
+
+function countText(template: string, count: number) {
+  return template.replace('{count}', String(count));
+}
+
 export default function SiteMapPage() {
   const { lang, dir, t } = useLanguage();
   const text = TEXT[(lang as Lang) || 'ar'];
@@ -181,58 +203,115 @@ export default function SiteMapPage() {
           icon={<MapPinned size={28} />}
         />
 
-        <CardsGrid>
+        <section className="site-map-featured" aria-labelledby="site-map-featured-title">
+          <div className="site-map-section-head">
+            <div>
+              <p>{text.eyebrow}</p>
+              <h2 id="site-map-featured-title">{text.featuredTitle}</h2>
+              <span>{text.featuredSubtitle}</span>
+            </div>
+          </div>
+          <div className="site-map-featured-grid">
+            {FEATURED_ITEMS.map(item => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.id}
+                  className="site-map-feature-card"
+                  href={item.href}
+                  aria-label={`${text.open}: ${t(item.labelKey)}`}
+                >
+                  <span className="featured-icon" aria-hidden="true"><Icon size={24} /></span>
+                  <div>
+                    <strong>{t(item.labelKey)}</strong>
+                    <p>{text[item.purposeKey]}</p>
+                  </div>
+                  <em>{text.open}<ArrowUpRight size={15} /></em>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="site-map-grid" aria-label={text.title}>
           {NAV_GROUPS.map(group => (
             <AppCard key={group.id} className="site-map-group">
-              <h2>{t(group.labelKey)}</h2>
+              <div className="site-map-group-head">
+                <span className="site-map-group-icon" aria-hidden="true">
+                  {(() => {
+                    const GroupIcon = group.items.find(item => item.href)?.icon ?? MapPinned;
+                    return <GroupIcon size={20} />;
+                  })()}
+                </span>
+                <div>
+                  <h2>{t(group.labelKey)}</h2>
+                  <small>{countText(text.linkCount, group.items.filter(item => item.href).length)}</small>
+                </div>
+              </div>
               <div className="site-map-routes">
-                {group.items.filter(item => item.href).map(item => {
+                {group.items.filter(item => item.href).length ? group.items.filter(item => item.href).map(item => {
                   const purposeKey = PURPOSE_KEY[item.id] ?? 'siteMapDesc';
                   const Icon = item.icon;
                   return (
-                    <Link key={item.id} href={item.href ?? '/dashboard'}>
+                    <Link
+                      className="site-map-route-card"
+                      key={item.id}
+                      href={item.href ?? '/dashboard'}
+                      aria-label={`${text.open}: ${t(item.labelKey)}`}
+                    >
                       <span className="route-icon" aria-hidden="true"><Icon size={18} /></span>
                       <div>
                         <strong>{t(item.labelKey)}</strong>
                         <p>{text[purposeKey]}</p>
                       </div>
-                      <em>{text.open}<ExternalLink size={13} /></em>
+                      <em>{text.open}<ChevronLeft size={14} /></em>
                     </Link>
                   );
-                })}
+                }) : (
+                  <div className="site-map-empty">
+                    <MapPinned size={20} aria-hidden="true" />
+                    <span>{text.noPages}</span>
+                  </div>
+                )}
               </div>
             </AppCard>
           ))}
           <AppCard className="site-map-group">
-            <h2>{text.extra}</h2>
+            <div className="site-map-group-head">
+              <span className="site-map-group-icon" aria-hidden="true"><MapPinned size={20} /></span>
+              <div>
+                <h2>{text.extra}</h2>
+                <small>{countText(text.linkCount, 3)}</small>
+              </div>
+            </div>
             <div className="site-map-routes">
-              <Link href="/about">
+              <Link className="site-map-route-card" href="/about" aria-label={`${text.open}: ${aboutTitle}`}>
                 <span className="route-icon" aria-hidden="true"><MapPinned size={18} /></span>
                 <div>
                   <strong>{aboutTitle}</strong>
                   <p>{aboutDesc}</p>
                 </div>
-                <em>{text.open}<ExternalLink size={13} /></em>
+                <em>{text.open}<ChevronLeft size={14} /></em>
               </Link>
-              <Link href="/site-map">
+              <Link className="site-map-route-card" href="/site-map" aria-label={`${text.open}: ${text.siteMap}`}>
                 <span className="route-icon" aria-hidden="true"><MapPinned size={18} /></span>
                 <div>
                   <strong>{text.siteMap}</strong>
                   <p>{text.siteMapDesc}</p>
                 </div>
-                <em>{text.open}<ExternalLink size={13} /></em>
+                <em>{text.open}<ChevronLeft size={14} /></em>
               </Link>
-              <Link href="/setup">
+              <Link className="site-map-route-card" href="/setup" aria-label={`${text.open}: ${text.setup}`}>
                 <span className="route-icon" aria-hidden="true"><MapPinned size={18} /></span>
                 <div>
                   <strong>{text.setup}</strong>
                   <p>{text.setupDesc}</p>
                 </div>
-                <em>{text.open}<ExternalLink size={13} /></em>
+                <em>{text.open}<ChevronLeft size={14} /></em>
               </Link>
             </div>
           </AppCard>
-        </CardsGrid>
+        </section>
       </DashboardPageShell>
 
       <style jsx global>{`
@@ -244,7 +323,7 @@ export default function SiteMapPage() {
         }
         .site-map-content {
           display: grid;
-          gap: var(--sfm-section-gap);
+          gap: 22px;
         }
         .sfm-page-topbar {
           display: flex;
@@ -252,40 +331,201 @@ export default function SiteMapPage() {
           align-items: center;
           gap: 10px;
         }
+        .site-map-featured,
         .site-map-group {
           display: grid;
+          gap: 16px;
+          border: 1px solid rgba(226, 238, 248, 0.92);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 252, 255, 0.78)),
+            radial-gradient(circle at 0 0, rgba(24, 212, 212, 0.10), transparent 42%);
+          box-shadow: 0 18px 44px rgba(15, 37, 64, 0.08);
+          backdrop-filter: blur(12px);
+        }
+        .site-map-featured {
+          border-radius: 28px;
+          padding: 22px;
+        }
+        .site-map-section-head {
+          display: flex;
+          align-items: end;
+          justify-content: space-between;
+          gap: 16px;
+        }
+        .site-map-section-head p,
+        .site-map-section-head h2,
+        .site-map-section-head span {
+          margin: 0;
+        }
+        .site-map-section-head p {
+          color: var(--sfm-primary);
+          font-size: 12px;
+          font-weight: 950;
+          letter-spacing: 0;
+        }
+        .site-map-section-head h2 {
+          margin-top: 5px;
+          color: #0B1F38;
+          font-size: clamp(22px, 3vw, 30px);
+          font-weight: 950;
+        }
+        .site-map-section-head span {
+          display: block;
+          margin-top: 7px;
+          color: #5E738B;
+          line-height: 1.7;
+          font-weight: 750;
+        }
+        .site-map-featured-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 14px;
+        }
+        .site-map-feature-card {
+          min-width: 0;
+          min-height: 170px;
+          display: grid;
+          align-content: space-between;
+          gap: 14px;
+          padding: 18px;
+          border: 1px solid rgba(226, 238, 248, 0.96);
+          border-radius: 22px;
+          background: rgba(255, 255, 255, 0.88);
+          color: inherit;
+          text-decoration: none;
+          box-shadow: 0 14px 30px rgba(15, 37, 64, 0.07);
+          transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+        }
+        .site-map-feature-card:hover,
+        .site-map-feature-card:focus-visible {
+          transform: translateY(-4px);
+          border-color: rgba(24, 212, 212, 0.55);
+          background: #FFFFFF;
+          box-shadow: 0 22px 46px rgba(15, 37, 64, 0.12);
+          outline: none;
+        }
+        .featured-icon {
+          width: 52px;
+          height: 52px;
+          display: grid;
+          place-items: center;
+          border-radius: 18px;
+          color: #EAF6FF;
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          box-shadow: 0 16px 32px rgba(29, 140, 255, 0.18);
+        }
+        .site-map-feature-card strong {
+          display: block;
+          color: #0B1F38;
+          font-size: 1.04rem;
+          font-weight: 950;
+        }
+        .site-map-feature-card p {
+          margin: 8px 0 0;
+          color: #5E738B;
+          line-height: 1.65;
+          font-size: 0.9rem;
+          font-weight: 700;
+        }
+        .site-map-feature-card em {
+          display: inline-flex;
+          width: fit-content;
+          align-items: center;
+          gap: 6px;
+          color: var(--sfm-primary);
+          font-style: normal;
+          font-weight: 950;
+        }
+        .site-map-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+          gap: 16px;
+          align-items: start;
+        }
+        .site-map-group {
+          align-content: start;
+          border-radius: 26px;
+          padding: 18px;
+        }
+        .site-map-group-head {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          align-items: center;
+          gap: 12px;
+          padding-bottom: 4px;
+        }
+        .site-map-group-icon {
+          width: 44px;
+          height: 44px;
+          display: grid;
+          place-items: center;
+          border-radius: 16px;
+          color: var(--sfm-primary);
+          background: rgba(29, 140, 255, 0.10);
+          border: 1px solid rgba(29, 140, 255, 0.10);
         }
         .site-map-group h2 {
           margin: 0;
-          color: var(--sfm-primary-dark);
-          font-size: 20px;
+          color: #0B1F38;
+          font-size: 1.1rem;
+          font-weight: 950;
+        }
+        .site-map-group small {
+          display: inline-flex;
+          margin-top: 6px;
+          padding: 4px 9px;
+          border-radius: 999px;
+          background: rgba(24, 212, 212, 0.10);
+          color: var(--sfm-primary);
+          font-size: 11px;
+          font-weight: 950;
         }
         .site-map-routes {
           display: grid;
-          gap: 8px;
+          gap: 10px;
         }
-        .site-map-routes a {
+        .site-map-route-card {
           display: grid;
           grid-template-columns: auto minmax(0, 1fr) auto;
-          gap: 10px;
+          gap: 12px;
           align-items: center;
           min-width: 0;
-          padding: 10px;
-          border-radius: 14px;
-          border: 1px solid rgba(29, 140, 255, .12);
-          background: #F8FBFF;
-          color: var(--sfm-foreground);
+          padding: 13px;
+          border-radius: 18px;
+          border: 1px solid rgba(226, 238, 248, 0.94);
+          background: rgba(255, 255, 255, 0.82);
+          color: #0B1F38;
           text-decoration: none;
+          box-shadow: 0 8px 22px rgba(15, 37, 64, 0.045);
+          transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .site-map-route-card:hover,
+        .site-map-route-card:focus-visible {
+          transform: translateY(-3px);
+          border-color: rgba(24, 212, 212, 0.58);
+          background: #FFFFFF;
+          box-shadow: 0 16px 34px rgba(15, 37, 64, 0.10);
+          outline: none;
+        }
+        .site-map-route-card:hover .route-icon,
+        .site-map-route-card:focus-visible .route-icon {
+          color: #EAF6FF;
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          box-shadow: 0 12px 24px rgba(29, 140, 255, 0.18);
+        }
+        .site-map-route-card:hover em,
+        .site-map-route-card:focus-visible em {
+          color: var(--sfm-accent);
         }
         .route-icon {
-          width: 36px;
-          height: 36px;
+          width: 42px;
+          height: 42px;
           display: grid;
           place-items: center;
-          border-radius: 12px;
+          border-radius: 15px;
           background: rgba(29, 140, 255, .10);
           color: var(--sfm-primary);
+          transition: all 0.2s ease;
         }
         .site-map-routes strong,
         .site-map-routes p {
@@ -295,13 +535,16 @@ export default function SiteMapPage() {
           overflow-wrap: anywhere;
         }
         .site-map-routes strong {
-          color: var(--sfm-primary-dark);
-          font-size: 14px;
+          color: #0B1F38;
+          font-size: 0.93rem;
+          font-weight: 950;
         }
         .site-map-routes p {
-          color: var(--sfm-muted);
-          font-size: 12px;
-          line-height: 1.5;
+          color: #5E738B;
+          font-size: 0.8rem;
+          line-height: 1.55;
+          font-weight: 700;
+          margin-top: 3px;
         }
         .site-map-routes em {
           display: inline-flex;
@@ -311,16 +554,44 @@ export default function SiteMapPage() {
           font-size: 12px;
           font-style: normal;
           font-weight: 950;
+          transition: color 0.2s ease;
+        }
+        [dir="ltr"] .site-map-routes em svg {
+          transform: rotate(180deg);
+        }
+        .site-map-empty {
+          min-height: 110px;
+          display: grid;
+          place-items: center;
+          gap: 8px;
+          border: 1px dashed rgba(29, 140, 255, 0.22);
+          border-radius: 18px;
+          background: rgba(248, 251, 255, 0.72);
+          color: #5E738B;
+          font-weight: 900;
         }
         @media (max-width: 720px) {
           .sfm-page-topbar {
             display: none;
           }
-          .site-map-routes a {
+          .site-map-featured {
+            padding: 16px;
+            border-radius: 22px;
+          }
+          .site-map-featured-grid,
+          .site-map-grid {
+            grid-template-columns: 1fr;
+          }
+          .site-map-route-card {
             grid-template-columns: auto minmax(0, 1fr);
           }
           .site-map-routes em {
             grid-column: 2;
+          }
+        }
+        @media (min-width: 721px) and (max-width: 1080px) {
+          .site-map-featured-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
         }
       `}</style>
