@@ -303,9 +303,9 @@ const featureItems = [
     href: '/financial-theories',
     title: ['النظريات المالية', 'Financial Theories', 'Théories financières'],
     description: [
-      'تعلّم أهم قواعد إدارة المال والادخار والاستثمار بطريقة عملية.',
-      'Learn the key principles of money management, saving, and investing in a practical way.',
-      'Apprenez les principes clés de la gestion de l’argent, de l’épargne et de l’investissement de manière pratique.',
+      'مكتبة تعليمية تشرح أهم قواعد إدارة المال، الادخار، الاستثمار، الديون، والحرية المالية مع أدوات وحاسبات عملية.',
+      'An educational library that explains key principles of money management, saving, investing, debt, and financial freedom with practical tools and calculators.',
+      'Une bibliothèque éducative qui explique les principes clés de la gestion de l’argent, de l’épargne, de l’investissement, des dettes et de la liberté financière avec des outils et calculateurs pratiques.',
     ],
   },
 ] as const;
@@ -996,7 +996,7 @@ const landingStyles = `
     line-height: 1.15;
   }
   .feature-grid {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   }
   .feature-card, .pricing-card, .faq-item, .audience-grid article {
     min-width: 0;
