@@ -34,8 +34,11 @@ import { CardsGrid, StatGrid } from '@/components/layout/LayoutPrimitives';
 import { PageTabs, type PageTabItem } from '@/components/layout/PageTabs';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useAuth } from '@/hooks/useAuth';
 import { useCurrency } from '@/lib/useCurrency';
 import { formatMoney } from '@/lib/formatMoney';
+import { supabase } from '@/integrations/supabase/client';
+import { loadUserDataTables, personalExpenseRows, personalIncomeRows, sumAmounts } from '@/lib/data/financeData';
 import {
   FEATURED_FINANCIAL_THEORIES,
   FINANCIAL_THEORIES,
@@ -145,6 +148,38 @@ const UI_COPY: Record<FinancialTheoryLang, Record<string, string>> = {
     approximateEndDate: 'تاريخ الانتهاء التقريبي',
     debtPaymentTooLow: 'الدفعة الشهرية غير كافية لتقليل الدين مع معدل الفائدة المدخل.',
     simplifiedEstimateNote: 'هذا تقدير مبسط ولا يشمل جميع الرسوم أو الشروط البنكية.',
+    goalName: 'اسم الهدف',
+    targetAmount: 'المبلغ المطلوب',
+    currentAmount: 'المبلغ الحالي',
+    targetDate: 'التاريخ المستهدف',
+    monthsRemaining: 'عدد الأشهر المتبقية',
+    monthlyRequired: 'المبلغ المطلوب شهرياً',
+    targetDateFuture: 'التاريخ المستهدف يجب أن يكون في المستقبل.',
+    goalLooksRealistic: 'الهدف يبدو واقعياً إذا كان هذا المبلغ الشهري مناسباً لميزانيتك.',
+    goalNeedsAdjustment: 'الهدف يحتاج مراجعة. جرّب تمديد المدة أو تعديل المبلغ.',
+    goalComplete: 'هذا الهدف مكتمل أو أعلى من المطلوب.',
+    useCurrentData: 'استخدام بياناتي الحالية',
+    manualEntry: 'إدخال يدوي',
+    notEnoughData: 'لا توجد بيانات كافية. أدخل القيم يدوياً أو أضف بياناتك في صفحات الدخل والمصروفات.',
+    dataLoading: 'جاري تحميل بياناتك...',
+    monthlyDebts: 'الديون الشهرية',
+    expenseIncomeRatio: 'نسبة المصروفات إلى الدخل',
+    savingsRatio: 'نسبة الادخار',
+    monthlyCashFlow: 'صافي التدفق الشهري',
+    emergencyFundStatus: 'حالة صندوق الطوارئ',
+    financialHealthScore: 'درجة الصحة المالية',
+    strengths: 'نقاط القوة',
+    reviewPoints: 'نقاط تحتاج مراجعة',
+    suggestedSteps: 'خطوات مقترحة',
+    highExpensesAlert: 'المصروفات عالية مقارنة بالدخل.',
+    positiveCashFlow: 'التدفق الشهري موجب.',
+    balancedExpenses: 'نسبة المصروفات ضمن نطاق جيد.',
+    savingsPresent: 'توجد مدخرات مسجلة.',
+    expensesNeedReview: 'راجع المصروفات وحاول خفض البنود غير الأساسية.',
+    emergencyNeedsReview: 'صندوق الطوارئ أقل من 3 أشهر من المصروفات.',
+    increaseSavingsStep: 'ارفع الادخار تدريجياً حتى يصل إلى 10% - 20% من الدخل.',
+    keepTrackingStep: 'استمر في تحديث الدخل والمصروفات شهرياً.',
+    monthsCovered: 'أشهر مغطاة',
   },
   en: {
     title: 'Financial Theories',
@@ -229,6 +264,38 @@ const UI_COPY: Record<FinancialTheoryLang, Record<string, string>> = {
     approximateEndDate: 'Approximate end date',
     debtPaymentTooLow: 'The monthly payment is not enough to reduce the debt with this interest rate.',
     simplifiedEstimateNote: 'This is a simple estimate and does not include all fees or bank terms.',
+    goalName: 'Goal name',
+    targetAmount: 'Target amount',
+    currentAmount: 'Current amount',
+    targetDate: 'Target date',
+    monthsRemaining: 'Months remaining',
+    monthlyRequired: 'Monthly required amount',
+    targetDateFuture: 'Target date must be in the future.',
+    goalLooksRealistic: 'The goal looks realistic if this monthly amount fits your budget.',
+    goalNeedsAdjustment: 'This goal needs review. Try extending the timeline or adjusting the amount.',
+    goalComplete: 'This goal is complete or above the target.',
+    useCurrentData: 'Use my current data',
+    manualEntry: 'Manual entry',
+    notEnoughData: 'There is not enough data. Enter values manually or add your income and expenses data.',
+    dataLoading: 'Loading your data...',
+    monthlyDebts: 'Monthly debts',
+    expenseIncomeRatio: 'Expense-to-income ratio',
+    savingsRatio: 'Savings ratio',
+    monthlyCashFlow: 'Net monthly cash flow',
+    emergencyFundStatus: 'Emergency fund status',
+    financialHealthScore: 'Financial health score',
+    strengths: 'Strengths',
+    reviewPoints: 'Points to review',
+    suggestedSteps: 'Suggested steps',
+    highExpensesAlert: 'Expenses are high compared with income.',
+    positiveCashFlow: 'Monthly cash flow is positive.',
+    balancedExpenses: 'Expense ratio is in a good range.',
+    savingsPresent: 'Savings are recorded.',
+    expensesNeedReview: 'Review expenses and reduce non-essential categories.',
+    emergencyNeedsReview: 'Emergency fund is below 3 months of expenses.',
+    increaseSavingsStep: 'Increase savings gradually toward 10% - 20% of income.',
+    keepTrackingStep: 'Keep updating income and expenses monthly.',
+    monthsCovered: 'Months covered',
   },
   fr: {
     title: 'Théories financières',
@@ -313,6 +380,38 @@ const UI_COPY: Record<FinancialTheoryLang, Record<string, string>> = {
     approximateEndDate: 'Date de fin approximative',
     debtPaymentTooLow: 'Le paiement mensuel ne suffit pas à réduire la dette avec ce taux.',
     simplifiedEstimateNote: 'Il s’agit d’une estimation simple qui n’inclut pas tous les frais ou conditions bancaires.',
+    goalName: 'Nom de l’objectif',
+    targetAmount: 'Montant cible',
+    currentAmount: 'Montant actuel',
+    targetDate: 'Date cible',
+    monthsRemaining: 'Mois restants',
+    monthlyRequired: 'Montant mensuel requis',
+    targetDateFuture: 'La date cible doit être dans le futur.',
+    goalLooksRealistic: 'L’objectif semble réaliste si ce montant mensuel convient à votre budget.',
+    goalNeedsAdjustment: 'Cet objectif doit être revu. Essayez de prolonger le délai ou d’ajuster le montant.',
+    goalComplete: 'Cet objectif est atteint ou supérieur à la cible.',
+    useCurrentData: 'Utiliser mes données actuelles',
+    manualEntry: 'Saisie manuelle',
+    notEnoughData: 'Données insuffisantes. Saisissez les valeurs manuellement ou ajoutez revenus et dépenses.',
+    dataLoading: 'Chargement de vos données...',
+    monthlyDebts: 'Dettes mensuelles',
+    expenseIncomeRatio: 'Ratio dépenses / revenus',
+    savingsRatio: 'Taux d’épargne',
+    monthlyCashFlow: 'Flux mensuel net',
+    emergencyFundStatus: 'État du fonds d’urgence',
+    financialHealthScore: 'Score de santé financière',
+    strengths: 'Points forts',
+    reviewPoints: 'Points à revoir',
+    suggestedSteps: 'Étapes suggérées',
+    highExpensesAlert: 'Les dépenses sont élevées par rapport aux revenus.',
+    positiveCashFlow: 'Le flux mensuel est positif.',
+    balancedExpenses: 'Le ratio de dépenses est dans une bonne zone.',
+    savingsPresent: 'Une épargne est enregistrée.',
+    expensesNeedReview: 'Revoyez les dépenses et réduisez les catégories non essentielles.',
+    emergencyNeedsReview: 'Le fonds d’urgence couvre moins de 3 mois de dépenses.',
+    increaseSavingsStep: 'Augmentez progressivement l’épargne vers 10 % - 20 % du revenu.',
+    keepTrackingStep: 'Continuez à mettre à jour revenus et dépenses chaque mois.',
+    monthsCovered: 'Mois couverts',
   },
 };
 
@@ -477,12 +576,54 @@ function applyCopy(lang: FinancialTheoryLang, tool: string) {
   return `استخدم ${tool} كمساحة عملية لتطبيق هذه الفكرة عندما تكون بياناتك الحقيقية متوفرة.`;
 }
 
-type CalculatorId = 'salary-split' | 'emergency-fund' | 'debt-plan';
+type CalculatorId = 'salary-split' | 'emergency-fund' | 'debt-plan' | 'goal-plan' | 'financial-health';
 
-const ACTIVE_CALCULATORS = new Set<string>(['salary-split', 'emergency-fund', 'debt-plan']);
+type FinancialHealthSnapshot = {
+  income: number;
+  expenses: number;
+  savings: number;
+  debts: number;
+  hasIncome: boolean;
+  hasExpenses: boolean;
+  hasSavings: boolean;
+  isLoading: boolean;
+  error: string | null;
+};
+
+const ACTIVE_CALCULATORS = new Set<string>(['salary-split', 'emergency-fund', 'debt-plan', 'goal-plan', 'financial-health']);
+const HEALTH_DATA_TABLES = [
+  { key: 'income', table: 'monthly_income_sources' },
+  { key: 'expenses', table: 'expense_items' },
+  { key: 'savings', table: 'savings_items' },
+];
+
+const EMPTY_HEALTH_SNAPSHOT: FinancialHealthSnapshot = {
+  income: 0,
+  expenses: 0,
+  savings: 0,
+  debts: 0,
+  hasIncome: false,
+  hasExpenses: false,
+  hasSavings: false,
+  isLoading: false,
+  error: null,
+};
+
+const THEORY_CALCULATOR_MAP: Record<string, CalculatorId> = {
+  'personal-budgeting': 'salary-split',
+  'emergency-fund': 'emergency-fund',
+  'reduce-bad-debt': 'debt-plan',
+  'smart-goals': 'goal-plan',
+  liquidity: 'financial-health',
+  'financial-freedom': 'financial-health',
+};
 
 function isCalculatorId(value: string): value is CalculatorId {
   return ACTIVE_CALCULATORS.has(value);
+}
+
+function calculatorForTheory(theory: FinancialTheory): CalculatorId | null {
+  return THEORY_CALCULATOR_MAP[theory.id] ?? null;
 }
 
 function asNumber(value: string) {
@@ -495,6 +636,44 @@ function formatCalculatorDate(months: number, lang: FinancialTheoryLang) {
   date.setMonth(date.getMonth() + Math.max(0, months));
   const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
   return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(date);
+}
+
+function monthsUntil(targetDate: string) {
+  if (!targetDate) return 0;
+  const target = new Date(`${targetDate}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = target.getTime() - today.getTime();
+  if (!Number.isFinite(diff) || diff <= 0) return 0;
+  return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24 * 30.4375)));
+}
+
+function formatPercent(value: number, lang: FinancialTheoryLang) {
+  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(Number.isFinite(value) ? value : 0) + '%';
+}
+
+function ratioPercent(numerator: number, denominator: number) {
+  return denominator > 0 ? (numerator / denominator) * 100 : 0;
+}
+
+function clampScore(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function financialHealthScore(income: number, expenses: number, savings: number, debts: number) {
+  if (income <= 0) return 0;
+  const expenseRatio = (expenses + debts) / income;
+  const savingsRatio = savings / income;
+  const netCashFlow = income - expenses - debts;
+  const emergencyMonths = expenses > 0 ? savings / expenses : 0;
+  return clampScore(
+    25 +
+    (expenseRatio <= 0.6 ? 25 : expenseRatio <= 0.8 ? 15 : 5) +
+    (savingsRatio >= 0.2 ? 20 : savingsRatio >= 0.1 ? 12 : savingsRatio > 0 ? 6 : 0) +
+    (netCashFlow > 0 ? 20 : 0) +
+    (emergencyMonths >= 3 ? 10 : emergencyMonths >= 1 ? 5 : 0)
+  );
 }
 
 function CalculatorField({
@@ -545,6 +724,7 @@ function SmartCalculatorPanel({
   lang,
   text,
   defaultCurrency,
+  healthSnapshot,
   onClose,
 }: {
   activeId: CalculatorId;
@@ -552,11 +732,14 @@ function SmartCalculatorPanel({
   lang: FinancialTheoryLang;
   text: Record<string, string>;
   defaultCurrency: string;
+  healthSnapshot: FinancialHealthSnapshot;
   onClose: () => void;
 }) {
   const [salary, setSalary] = useState({ income: '', needs: '50', wants: '30', savings: '20', currency: defaultCurrency });
   const [emergency, setEmergency] = useState({ expenses: '', months: '6', customMonths: '', savings: '', currency: defaultCurrency });
   const [debt, setDebt] = useState({ amount: '', payment: '', interest: '', currency: defaultCurrency });
+  const [goal, setGoal] = useState({ name: '', target: '', current: '', targetDate: '', currency: defaultCurrency });
+  const [health, setHealth] = useState({ income: '', expenses: '', savings: '', debts: '', currency: defaultCurrency });
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -574,6 +757,19 @@ function SmartCalculatorPanel({
     if (activeId === 'salary-split') setSalary({ income: '', needs: '50', wants: '30', savings: '20', currency: defaultCurrency });
     if (activeId === 'emergency-fund') setEmergency({ expenses: '', months: '6', customMonths: '', savings: '', currency: defaultCurrency });
     if (activeId === 'debt-plan') setDebt({ amount: '', payment: '', interest: '', currency: defaultCurrency });
+    if (activeId === 'goal-plan') setGoal({ name: '', target: '', current: '', targetDate: '', currency: defaultCurrency });
+    if (activeId === 'financial-health') setHealth({ income: '', expenses: '', savings: '', debts: '', currency: defaultCurrency });
+  }
+
+  function useCurrentHealthData() {
+    if (!healthSnapshot.hasIncome || !healthSnapshot.hasExpenses) return;
+    setHealth({
+      income: String(Math.round(healthSnapshot.income * 100) / 100),
+      expenses: String(Math.round(healthSnapshot.expenses * 100) / 100),
+      savings: String(Math.round(healthSnapshot.savings * 100) / 100),
+      debts: String(Math.round(healthSnapshot.debts * 100) / 100),
+      currency: defaultCurrency,
+    });
   }
 
   const salaryIncome = asNumber(salary.income);
@@ -604,6 +800,40 @@ function SmartCalculatorPanel({
     : 0;
   const totalPaid = estimatedMonths > 0 ? estimatedMonths * monthlyPayment : 0;
   const estimatedInterest = Math.max(0, totalPaid - debtAmount);
+
+  const goalTarget = asNumber(goal.target);
+  const goalCurrent = asNumber(goal.current);
+  const goalRemaining = Math.max(0, goalTarget - goalCurrent);
+  const goalMonths = monthsUntil(goal.targetDate);
+  const goalDateValid = Boolean(goal.targetDate) && goalMonths > 0;
+  const goalValid = goalTarget > 0 && goalDateValid;
+  const goalMonthlyRequired = goalValid ? goalRemaining / goalMonths : 0;
+  const goalLooksRealistic = goalTarget > 0 && goalMonthlyRequired <= goalTarget * 0.2;
+
+  const healthIncome = asNumber(health.income);
+  const healthExpenses = asNumber(health.expenses);
+  const healthSavings = asNumber(health.savings);
+  const healthDebts = asNumber(health.debts);
+  const healthHasManualData = healthIncome > 0 && healthExpenses >= 0;
+  const healthExpenseRatio = ratioPercent(healthExpenses + healthDebts, healthIncome);
+  const healthSavingsRatio = ratioPercent(healthSavings, healthIncome);
+  const healthCashFlow = healthIncome - healthExpenses - healthDebts;
+  const healthEmergencyMonths = healthExpenses > 0 ? healthSavings / healthExpenses : 0;
+  const healthScore = financialHealthScore(healthIncome, healthExpenses, healthSavings, healthDebts);
+  const healthStrengths = [
+    healthCashFlow > 0 ? text.positiveCashFlow : null,
+    healthExpenseRatio <= 60 && healthIncome > 0 ? text.balancedExpenses : null,
+    healthSavings > 0 ? text.savingsPresent : null,
+  ].filter(Boolean) as string[];
+  const healthReviewPoints = [
+    healthExpenseRatio > 80 ? text.highExpensesAlert : null,
+    healthEmergencyMonths < 3 ? text.emergencyNeedsReview : null,
+  ].filter(Boolean) as string[];
+  const healthSteps = [
+    healthExpenseRatio > 60 ? text.expensesNeedReview : null,
+    healthSavingsRatio < 20 ? text.increaseSavingsStep : null,
+    text.keepTrackingStep,
+  ].filter(Boolean) as string[];
 
   return (
     <section className="calculator-panel" aria-labelledby="smart-calculator-title">
@@ -702,6 +932,91 @@ function SmartCalculatorPanel({
         </div>
       ) : null}
 
+      {activeId === 'goal-plan' ? (
+        <div className="calculator-layout">
+          <div className="calculator-form-grid">
+            <label className="calculator-field">
+              <span>{text.goalName}</span>
+              <input value={goal.name} onChange={event => setGoal(prev => ({ ...prev, name: event.target.value }))} />
+            </label>
+            <CurrencySelect value={goal.currency} onChange={currency => setGoal(prev => ({ ...prev, currency }))} lang={lang} label={text.currency} ariaLabel={text.currency} />
+            <CalculatorField label={text.targetAmount} value={goal.target} onChange={value => setGoal(prev => ({ ...prev, target: value }))} />
+            <CalculatorField label={text.currentAmount} value={goal.current} onChange={value => setGoal(prev => ({ ...prev, current: value }))} />
+            <label className="calculator-field">
+              <span>{text.targetDate}</span>
+              <input type="date" value={goal.targetDate} onChange={event => setGoal(prev => ({ ...prev, targetDate: event.target.value }))} />
+            </label>
+          </div>
+          <div className="calculator-results" role="status" aria-live="polite">
+            {goalTarget <= 0 ? <p className="calculator-error">{text.amountMustBePositive}</p> : null}
+            {goalTarget > 0 && !goalDateValid ? <p className="calculator-error">{text.targetDateFuture}</p> : null}
+            {goalValid ? (
+              <>
+                <ResultCard label={text.remainingAmount} value={money(goalRemaining, goal.currency)} tone={goalRemaining === 0 ? 'strong' : 'default'} />
+                <ResultCard label={text.monthsRemaining} value={`${goalMonths}`} />
+                <ResultCard label={text.monthlyRequired} value={money(goalMonthlyRequired, goal.currency)} tone="strong" />
+                {goalRemaining === 0 ? (
+                  <p className="calculator-success">{text.goalComplete}</p>
+                ) : (
+                  <p className={goalLooksRealistic ? 'calculator-success' : 'calculator-error'}>
+                    {goalLooksRealistic ? text.goalLooksRealistic : text.goalNeedsAdjustment}
+                  </p>
+                )}
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {activeId === 'financial-health' ? (
+        <div className="calculator-layout">
+          <div className="calculator-form-grid">
+            <div className="calculator-mode-actions">
+              <button
+                type="button"
+                onClick={useCurrentHealthData}
+                disabled={healthSnapshot.isLoading || !healthSnapshot.hasIncome || !healthSnapshot.hasExpenses}
+              >
+                {healthSnapshot.isLoading ? text.dataLoading : text.useCurrentData}
+              </button>
+              <span>{text.manualEntry}</span>
+            </div>
+            {(!healthSnapshot.hasIncome || !healthSnapshot.hasExpenses) && !healthSnapshot.isLoading ? (
+              <p className="calculator-error calculator-wide">{text.notEnoughData}</p>
+            ) : null}
+            <CalculatorField label={text.monthlyIncome} value={health.income} onChange={value => setHealth(prev => ({ ...prev, income: value }))} />
+            <CalculatorField label={text.monthlyExpenses} value={health.expenses} onChange={value => setHealth(prev => ({ ...prev, expenses: value }))} />
+            <CalculatorField label={text.currentSavings} value={health.savings} onChange={value => setHealth(prev => ({ ...prev, savings: value }))} />
+            <CalculatorField label={text.monthlyDebts} value={health.debts} onChange={value => setHealth(prev => ({ ...prev, debts: value }))} />
+            <CurrencySelect value={health.currency} onChange={currency => setHealth(prev => ({ ...prev, currency }))} lang={lang} label={text.currency} ariaLabel={text.currency} />
+          </div>
+          <div className="calculator-results" role="status" aria-live="polite">
+            {!healthHasManualData ? <p className="calculator-error">{text.incomeMustBePositive}</p> : null}
+            {healthHasManualData ? (
+              <>
+                <ResultCard label={text.financialHealthScore} value={`${healthScore}/100`} tone="strong" />
+                <ResultCard label={text.expenseIncomeRatio} value={formatPercent(healthExpenseRatio, lang)} tone={healthExpenseRatio > 80 ? 'warning' : 'default'} />
+                <ResultCard label={text.savingsRatio} value={formatPercent(healthSavingsRatio, lang)} />
+                <ResultCard label={text.monthlyCashFlow} value={money(healthCashFlow, health.currency)} tone={healthCashFlow >= 0 ? 'strong' : 'warning'} />
+                <ResultCard label={text.emergencyFundStatus} value={`${healthEmergencyMonths.toFixed(1)} ${text.monthsCovered}`} tone={healthEmergencyMonths >= 3 ? 'strong' : 'warning'} />
+                <div className="calculator-list-card">
+                  <strong>{text.strengths}</strong>
+                  <ul>{(healthStrengths.length ? healthStrengths : [text.keepTrackingStep]).map(item => <li key={item}>{item}</li>)}</ul>
+                </div>
+                <div className="calculator-list-card">
+                  <strong>{text.reviewPoints}</strong>
+                  <ul>{(healthReviewPoints.length ? healthReviewPoints : [text.positiveCashFlow]).map(item => <li key={item}>{item}</li>)}</ul>
+                </div>
+                <div className="calculator-list-card">
+                  <strong>{text.suggestedSteps}</strong>
+                  <ul>{healthSteps.map(item => <li key={item}>{item}</li>)}</ul>
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       <div className="calculator-actions">
         <button type="button" onClick={reset}>
           <RotateCcw size={16} aria-hidden="true" />
@@ -718,12 +1033,14 @@ function TheoryCard({
   text,
   isOpen,
   onToggle,
+  onOpenRelatedTool,
 }: {
   theory: FinancialTheory;
   lang: FinancialTheoryLang;
   text: Record<string, string>;
   isOpen: boolean;
   onToggle: () => void;
+  onOpenRelatedTool: () => void;
 }) {
   const Icon = THEORY_ICONS[(theory.number - 1) % THEORY_ICONS.length];
   const title = getFinancialTheoryText(theory.title, lang);
@@ -775,7 +1092,15 @@ function TheoryCard({
             <ArrowUpRight size={15} aria-hidden="true" />
           </Link>
         ) : (
-          <span className="coming-soon-pill">{text.comingSoon}</span>
+          <button
+            type="button"
+            className="theory-secondary-action"
+            onClick={onOpenRelatedTool}
+            aria-label={`${text.openTool}: ${tool}`}
+          >
+            {text.openTool}
+            <ArrowUpRight size={15} aria-hidden="true" />
+          </button>
         )}
       </div>
 
@@ -820,6 +1145,7 @@ function TheoryCard({
 
 export default function FinancialTheoriesPage() {
   const { lang, dir } = useLanguage();
+  const { user } = useAuth();
   const { currency: userCurrency } = useCurrency();
   const locale = localeFrom(lang);
   const text = UI_COPY[locale];
@@ -827,7 +1153,54 @@ export default function FinancialTheoriesPage() {
   const [query, setQuery] = useState('');
   const [openTheory, setOpenTheory] = useState<string | null>(null);
   const [activeCalculator, setActiveCalculator] = useState<CalculatorId | null>(null);
+  const [healthSnapshot, setHealthSnapshot] = useState<FinancialHealthSnapshot>(EMPTY_HEALTH_SNAPSHOT);
   const defaultCurrency = userCurrency || 'KWD';
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadHealthSnapshot() {
+      if (!user?.id) {
+        setHealthSnapshot(EMPTY_HEALTH_SNAPSHOT);
+        return;
+      }
+      setHealthSnapshot(prev => ({ ...prev, isLoading: true, error: null }));
+      const result = await loadUserDataTables(supabase, user.id, HEALTH_DATA_TABLES);
+      if (!isMounted) return;
+      const incomeRows = personalIncomeRows(result.records.income ?? []);
+      const expenseRows = personalExpenseRows(result.records.expenses ?? []);
+      const savingsRows = result.records.savings ?? [];
+      setHealthSnapshot({
+        income: sumAmounts(incomeRows, ['amount']),
+        expenses: sumAmounts(expenseRows, ['amount']),
+        savings: sumAmounts(savingsRows, ['current_amount', 'balance', 'current_value', 'amount']),
+        debts: 0,
+        hasIncome: incomeRows.length > 0,
+        hasExpenses: expenseRows.length > 0,
+        hasSavings: savingsRows.length > 0,
+        isLoading: false,
+        error: Object.values(result.errors).find(Boolean) ?? null,
+      });
+    }
+    void loadHealthSnapshot();
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id]);
+
+  function openCalculator(calculatorId: CalculatorId) {
+    setActiveCalculator(calculatorId);
+    window.setTimeout(() => document.getElementById('active-smart-calculator')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+  }
+
+  function openRelatedTheoryTool(theory: FinancialTheory) {
+    const calculatorId = calculatorForTheory(theory);
+    if (calculatorId) {
+      openCalculator(calculatorId);
+      return;
+    }
+    setOpenTheory(theory.id);
+    window.setTimeout(() => document.getElementById(`theory-details-${theory.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 0);
+  }
 
   const categoryTabs: PageTabItem[] = useMemo(() => (
     FINANCIAL_THEORY_CATEGORIES.map(category => ({
@@ -970,6 +1343,7 @@ export default function FinancialTheoriesPage() {
                   text={text}
                   isOpen={openTheory === theory.id}
                   onToggle={() => setOpenTheory(current => current === theory.id ? null : theory.id)}
+                  onOpenRelatedTool={() => openRelatedTheoryTool(theory)}
                 />
               ))}
             </div>
@@ -1064,35 +1438,25 @@ export default function FinancialTheoriesPage() {
             {FINANCIAL_THEORY_TOOLS.map((tool, index) => {
               const Icon = [Calculator, Landmark, ShieldAlert, Target, Gauge][index] ?? Calculator;
               const title = getFinancialTheoryText(tool.title, locale);
-              const calculatorAvailable = isCalculatorId(tool.id);
+              const calculatorId = isCalculatorId(tool.id) ? tool.id : null;
+              if (!calculatorId) return null;
               return (
                 <AppCard key={tool.id} className="smart-tool-card">
                   <div className="smart-tool-top">
                     <div className="smart-tool-icon" aria-hidden="true"><Icon size={22} /></div>
-                    <span className={calculatorAvailable ? 'status available' : 'status soon'}>
-                      {calculatorAvailable ? text.available : text.comingSoon}
-                    </span>
+                    <span className="status available">{text.available}</span>
                   </div>
                   <h3>{title}</h3>
                   <p>{getFinancialTheoryText(tool.description, locale)}</p>
-                  {calculatorAvailable ? (
-                    <button
-                      type="button"
-                      className="smart-tool-action"
-                      aria-label={`${text.useNow}: ${title}`}
-                      onClick={() => {
-                        setActiveCalculator(tool.id);
-                        window.setTimeout(() => document.getElementById('active-smart-calculator')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
-                      }}
-                    >
-                      {text.useNow}
-                      <ArrowUpRight size={15} aria-hidden="true" />
-                    </button>
-                  ) : (
-                    <button type="button" disabled aria-label={`${title}: ${text.comingSoon}`}>
-                      {text.comingSoon}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="smart-tool-action"
+                    aria-label={`${text.useNow}: ${title}`}
+                    onClick={() => openCalculator(calculatorId)}
+                  >
+                    {text.useNow}
+                    <ArrowUpRight size={15} aria-hidden="true" />
+                  </button>
                 </AppCard>
               );
             })}
@@ -1106,6 +1470,7 @@ export default function FinancialTheoriesPage() {
                 lang={locale}
                 text={text}
                 defaultCurrency={defaultCurrency}
+                healthSnapshot={healthSnapshot}
                 onClose={() => setActiveCalculator(null)}
               />
             </div>
@@ -1575,8 +1940,7 @@ export default function FinancialTheoriesPage() {
         }
 
         .theory-actions button,
-        .theory-actions a,
-        .coming-soon-pill {
+        .theory-actions a {
           min-height: 36px;
           border-radius: 12px;
           display: inline-flex;
@@ -1600,7 +1964,7 @@ export default function FinancialTheoriesPage() {
           transition: transform .18s ease;
         }
 
-        .theory-card.expanded .theory-actions button svg {
+        .theory-card.expanded .theory-actions button[aria-expanded="true"] svg {
           transform: rotate(180deg);
         }
 
@@ -1608,12 +1972,6 @@ export default function FinancialTheoriesPage() {
           border: 1px solid var(--sfm-border);
           background: var(--sfm-light-card);
           color: var(--sfm-heading);
-        }
-
-        .coming-soon-pill {
-          border: 1px dashed rgba(29, 140, 255, .22);
-          background: rgba(29, 140, 255, .07);
-          color: var(--sfm-primary-hover);
         }
 
         .theory-actions button:hover,
@@ -1818,12 +2176,6 @@ export default function FinancialTheoriesPage() {
           border: 1px solid rgba(22, 163, 74, .18);
         }
 
-        .financial-theories-shell .status.soon {
-          background: rgba(245, 158, 11, .11);
-          color: #B45309;
-          border: 1px solid rgba(245, 158, 11, .18);
-        }
-
         .smart-tool-card a,
         .smart-tool-card button {
           width: fit-content;
@@ -1919,6 +2271,38 @@ export default function FinancialTheoriesPage() {
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 12px;
           min-width: 0;
+        }
+
+        .calculator-mode-actions {
+          grid-column: 1 / -1;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 9px;
+          min-width: 0;
+        }
+
+        .calculator-mode-actions button {
+          min-height: 40px;
+          border: 0;
+          border-radius: 13px;
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          color: #FFFFFF;
+          padding: 0 13px;
+          font: 950 13px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+        }
+
+        .calculator-mode-actions button:disabled {
+          cursor: not-allowed;
+          opacity: .58;
+          filter: grayscale(.15);
+        }
+
+        .calculator-mode-actions span {
+          color: var(--sfm-muted-readable);
+          font-size: 12px;
+          font-weight: 950;
         }
 
         .calculator-field {
@@ -2048,10 +2432,41 @@ export default function FinancialTheoriesPage() {
           color: #B91C1C;
         }
 
+        .calculator-wide {
+          grid-column: 1 / -1;
+        }
+
         .calculator-success {
           border: 1px solid rgba(16, 185, 129, .20);
           background: rgba(16, 185, 129, .10);
           color: #047857;
+        }
+
+        .calculator-list-card {
+          border: 1px solid var(--sfm-border);
+          border-radius: 16px;
+          background: var(--sfm-card);
+          padding: 12px;
+          display: grid;
+          gap: 8px;
+        }
+
+        .calculator-list-card strong {
+          color: var(--sfm-heading);
+          font-size: 14px;
+        }
+
+        .calculator-list-card ul {
+          margin: 0;
+          padding-inline-start: 18px;
+          display: grid;
+          gap: 6px;
+        }
+
+        .calculator-list-card li {
+          color: var(--sfm-body);
+          line-height: 1.55;
+          font-weight: 820;
         }
 
         .calculator-actions {
@@ -2159,6 +2574,7 @@ export default function FinancialTheoriesPage() {
 
         .dark .financial-theories-shell .calculator-panel,
         .dark .financial-theories-shell .calculator-result-card,
+        .dark .financial-theories-shell .calculator-list-card,
         .dark .financial-theories-shell .calculator-total,
         .dark .financial-theories-shell .calculator-actions button,
         .dark .financial-theories-shell .calculator-close {
@@ -2178,13 +2594,6 @@ export default function FinancialTheoriesPage() {
           background: rgba(16, 185, 129, .16);
           color: #86EFAC;
           border-color: rgba(16, 185, 129, .28);
-        }
-
-        .dark .financial-theories-shell .status.soon,
-        .dark .financial-theories-shell .coming-soon-pill {
-          background: rgba(245, 158, 11, .16);
-          color: #FCD34D;
-          border-color: rgba(245, 158, 11, .28);
         }
 
         @media (min-width: 1320px) {
@@ -2224,10 +2633,10 @@ export default function FinancialTheoriesPage() {
           .theory-secondary-link,
           .theory-actions button,
           .theory-actions a,
-          .coming-soon-pill,
           .smart-tool-card a,
           .smart-tool-card button,
           .calculator-actions button,
+          .calculator-mode-actions button,
           .featured-theory-card button,
           .cta-actions a {
             width: 100%;
