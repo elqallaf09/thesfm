@@ -23,6 +23,7 @@ import {
   LineChart,
   LogOut,
   Mail,
+  Map,
   PiggyBank,
   Presentation,
   ReceiptText,
@@ -136,6 +137,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
 export const SUPPORT_LINKS: NavigationItem[] = [
   { id: 'support-about', icon: Info, href: '/about', labelKey: 'nav_support_about', viewModes: ['simple', 'professional'] },
   { id: 'support-faq', icon: CircleHelp, href: '/#faq', labelKey: 'nav_support_faq', viewModes: ['simple', 'professional'] },
+  { id: 'support-site-map', icon: Map, href: '/site-map', labelKey: 'nav_support_site_map', viewModes: ['simple', 'professional'] },
   { id: 'support-contact', icon: Mail, href: '/contact', labelKey: 'nav_support_contact', viewModes: ['simple', 'professional'] },
 ];
 

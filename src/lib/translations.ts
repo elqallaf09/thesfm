@@ -95,6 +95,7 @@ export const TR: Record<string, TranslationEntry> = {
   nav_pitch_decks: { ar:'العروض الاستثمارية', en:'Investment Offers', fr:'Offres d’investissement' },
   nav_support_about: { ar:'من نحن', en:'About', fr:'À propos' },
   nav_support_faq: { ar:'الأسئلة الشائعة', en:'FAQ', fr:'FAQ' },
+  nav_support_site_map: { ar:'خريطة الموقع', en:'Site Map', fr:'Plan du site' },
   nav_support_contact: { ar:'تواصل معنا', en:'Contact Us', fr:'Contactez-nous' },
   nav_beneficiaries: { ar:'المستفيدين', en:'Beneficiaries', fr:'Bénéficiaires' },
   nav_charity_reports: { ar:'تقارير الخير', en:'Charity Reports', fr:'Rapports caritatifs' },
