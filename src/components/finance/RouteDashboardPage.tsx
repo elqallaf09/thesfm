@@ -9,7 +9,6 @@ import {
   Bot,
   Bell as BellIcon,
   Calendar,
-  Camera,
   CheckCircle2,
   ChartPie,
   CreditCard,
@@ -1455,15 +1454,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     setEntryOpen(true);
   }
 
-  function openReceiptScan() {
-    setEntryMode('create');
-    setExpenseModalMode('scan');
-    setReceiptError('');
-    setReceiptDebug(null);
-    setExpenseForm(emptyExpenseForm(currency || 'KWD'));
-    setEntryOpen(true);
-  }
-
   function openEditEntry(item: MoneyItem | IncomeSource) {
     if (!editableKind(kind)) return;
     if (kind === 'expenses') {
@@ -2361,10 +2351,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               <p>{expenseText('smartSubtitle', lang)}</p>
             </div>
             <div className="expense-hero-actions">
-              <button type="button" className="ghost-btn receipt-upload-action" onClick={openReceiptScan} aria-label={expenseText('uploadReceipt', lang)}>
-                <Camera size={17} />
-                {expenseText('uploadReceipt', lang)}
-              </button>
               <button type="button" className="primary-btn" onClick={openCreateEntry}>
                 <Plus size={17} />
                 {expenseText('addExpense', lang)}
@@ -2433,7 +2419,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                   <p>{expenseText('emptyBody', lang)}</p>
                   <div>
                     <button type="button" className="primary-btn" onClick={openCreateEntry}>{expenseText('addExpense', lang)}</button>
-                    <button type="button" className="ghost-form-btn" onClick={openReceiptScan}>{expenseText('uploadReceipt', lang)}</button>
                   </div>
                 </div>
               ) : (
@@ -3734,7 +3719,6 @@ const expenseSmartStyles = `
   .expense-hero h1{font-size:34px;line-height:1.08;margin:0 0 9px;font-weight:900}
   .expense-hero p{max-width:720px;margin:0;color:rgba(255,255,255,.7);font-size:14px;line-height:1.8;font-weight:700}
   .expense-hero-actions{display:flex;gap:10px;flex-wrap:wrap}
-  .receipt-upload-action{min-width:190px;justify-content:center;overflow:visible;text-overflow:clip}
   .expense-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:0;min-width:0;max-width:100%}
   .expense-dashboard-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:16px;align-items:start;min-width:0;max-width:100%}
   .expense-side-stack{display:grid;gap:16px;min-width:0;max-width:100%}
