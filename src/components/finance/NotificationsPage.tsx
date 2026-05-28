@@ -88,6 +88,11 @@ type SourceDiagnostic = {
 };
 type SourceErrorDetails = Partial<Record<SourceKey, string>>;
 
+const OPTIONAL_EMPTY_SOURCE_KEYS: Partial<Record<NotificationSourceId, SourceKey[]>> = {
+  zakat: ['zakatAssets'],
+  charity: ['charityProjects', 'charityReminders', 'charityBeneficiaries', 'charityContributors'],
+};
+
 const SOURCE_TABLES: SourceConfig[] = [
   { key: 'income', table: 'monthly_income_sources', source: 'income' },
   { key: 'expenses', table: 'expense_items', source: 'expense' },
@@ -397,6 +402,10 @@ function safeErrorCode(message: string | undefined) {
   return 'load_failed';
 }
 
+function isOptionalMissingTableError(message: string | undefined) {
+  return safeErrorCode(message) === 'relation_missing';
+}
+
 function emptySourceDiagnostics(): Record<NotificationSourceId, SourceDiagnostic> {
   return {
     stored: { ok: true, status: 'ok_empty', count: 0, tables: ['notifications'], failedTables: [], errorCodes: [], errorDetails: {}, message: 'No data yet' },
@@ -439,29 +448,30 @@ function buildSourceDiagnostics(
     }
   });
 
-  const charityDataCount = (records.charityProjects?.length ?? 0)
-    + (records.charityReminders?.length ?? 0)
-    + (records.charityBeneficiaries?.length ?? 0)
-    + (records.charityContributors?.length ?? 0);
-  const charityErrors = SOURCE_TABLES
-    .filter(item => item.source === 'charity')
-    .filter(item => sourceErrors[item.key]);
-  const charityPrimaryLoadedEmpty = !sourceErrors.charityProjects
-    && !sourceErrors.charityReminders
-    && !sourceErrors.charityBeneficiaries
-    && (records.charityProjects?.length ?? 0) === 0
-    && (records.charityReminders?.length ?? 0) === 0
-    && (records.charityBeneficiaries?.length ?? 0) === 0;
+  (['zakat', 'charity'] as NotificationSourceId[]).forEach(source => {
+    const keys = OPTIONAL_EMPTY_SOURCE_KEYS[source] ?? [];
+    const dataCount = keys.reduce((sum, key) => sum + (records[key]?.length ?? 0), 0);
+    const errorEntries = keys
+      .map(key => [key, sourceErrors[key]] as const)
+      .filter((entry): entry is readonly [SourceKey, string] => Boolean(entry[1]));
+    const onlyOptionalMissingTables = errorEntries.length > 0 && errorEntries.every(([, error]) => isOptionalMissingTableError(error));
 
-  if (charityDataCount === 0 && charityPrimaryLoadedEmpty && charityErrors.length > 0) {
-    const charity = diagnostics.charity;
-    charity.ok = true;
-    charity.status = 'ok_empty';
-    charity.failedTables = [];
-    charity.errorCodes = [];
-    charity.errorDetails = {};
-    charity.message = 'No charity data yet';
-  }
+    if (dataCount === 0 && onlyOptionalMissingTables) {
+      const diagnostic = diagnostics[source];
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`Optional ${source} notification table not found`, {
+          source,
+          tables: errorEntries.map(([key]) => SOURCE_TABLES.find(item => item.key === key)?.table ?? key),
+        });
+      }
+      diagnostic.ok = true;
+      diagnostic.status = 'ok_empty';
+      diagnostic.failedTables = [];
+      diagnostic.errorCodes = [];
+      diagnostic.errorDetails = {};
+      diagnostic.message = source === 'zakat' ? 'No zakat data yet' : 'No charity data yet';
+    }
+  });
 
   (Object.keys(diagnostics) as NotificationSourceId[]).forEach(source => {
     const diagnostic = diagnostics[source];
@@ -616,12 +626,13 @@ export function NotificationsPage() {
       if (process.env.NODE_ENV !== 'production') {
         (['zakat', 'charity'] as NotificationSourceId[]).forEach(source => {
           const diagnostic = nextDiagnostics[source];
-          console.log('notification source status', {
+          console.log('notifications source result', {
             source,
             status: diagnostic.status,
             count: diagnostic.count,
             hasError: Object.keys(diagnostic.errorDetails).length > 0,
             errorCode: diagnostic.errorCodes[0],
+            errorMessage: Object.values(diagnostic.errorDetails)[0],
           });
         });
         const failed = Object.entries(nextDiagnostics)
