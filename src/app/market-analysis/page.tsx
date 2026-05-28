@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { MarketAiInsight, MarketAnalysis, MarketAssetType, MarketResult, MarketSearchItem } from '@/lib/market/marketService';
 import { normalizeAssetType, validateSymbol } from '@/lib/market/marketService';
 
-type MarketServiceState = 'checking' | 'connected' | 'slow' | 'not_configured' | 'unavailable';
+type MarketServiceState = 'checking' | 'connected' | 'degraded' | 'slow' | 'not_configured' | 'unavailable';
 type MarketViewAnalysis = MarketAnalysis & { source?: string; fallback?: boolean; fallbackReason?: string; openbbService?: MarketServiceState };
 type WatchlistItem = { id?: string; symbol: string; assetType: MarketAssetType; name?: string | null; createdAt?: string | null };
 type SavedAlert = { id?: string; symbol: string; assetType: MarketAssetType; alertType: AlertType; threshold: number; createdAt?: string | null };
@@ -179,6 +179,31 @@ async function fetchJsonWithTimeout<T>(url: string, timeoutMs = MARKET_REQUEST_T
   }
 }
 
+function marketErrorText(code: string | undefined, fallback: string, t: (key: string) => string) {
+  if (!code) return fallback;
+  const map: Record<string, string> = {
+    openbb_unreachable: t('market_service_unavailable'),
+    openbb_timeout: t('market_timeout_error'),
+    symbol_not_found: t('market_symbol_not_found'),
+    invalid_symbol: t('market_select_asset_to_start'),
+    provider_no_data: t('market_no_data_for_symbol'),
+    provider_error: t('market_service_unavailable'),
+    response_mapping_failed: t('market_provider_no_real_data'),
+    ai_skipped_no_market_data: t('market_no_real_data_ai'),
+  };
+  return map[code] || fallback;
+}
+
+function normalizeProviderSymbolForRequest(value: string | undefined | null) {
+  const symbol = validateSymbol(value);
+  if (!symbol) return null;
+  return validateSymbol(symbol.includes(':') ? symbol.split(':').pop() || symbol : symbol);
+}
+
+function delay(ms: number) {
+  return new Promise(resolve => window.setTimeout(resolve, ms));
+}
+
 export default function MarketAnalysisPage() {
   const { dir, t } = useLanguage();
   const { user, isGuest } = useAuth();
@@ -243,6 +268,11 @@ export default function MarketAnalysisPage() {
   }, []);
 
   const requestAiInsight = useCallback(async (marketData: MarketAnalysis) => {
+    if (!hasUsableAnalysis(marketData)) {
+      setAiInsight({ status: 'skipped', error: t('market_no_real_data_ai') });
+      setAiError(t('market_no_real_data_ai'));
+      return;
+    }
     setAiLoading(true);
     setAiError('');
     setAiInsight(null);
@@ -268,7 +298,7 @@ export default function MarketAnalysisPage() {
 
   const requestAnalysis = useCallback(async (symbolInput: string, typeInput: MarketAssetType | 'all', selectedInput?: Partial<SelectedMarketAsset>) => {
     const displaySymbol = validateSymbol(selectedInput?.symbol ?? symbolInput);
-    const requestSymbol = validateSymbol(selectedInput?.providerSymbol ?? symbolInput);
+    const requestSymbol = normalizeProviderSymbolForRequest(String(selectedInput?.providerSymbol ?? symbolInput));
     if (!requestSymbol || !displaySymbol) {
       setError(t('market_select_asset_to_start'));
       setAnalysis(null);
@@ -281,10 +311,13 @@ export default function MarketAnalysisPage() {
     setLoading(true);
     setSlowLoading(false);
     setError('');
-    setNotice('');
+    setNotice(t('market_progress_connecting'));
     setAiInsight(null);
     setAiError('');
-    const slowTimer = window.setTimeout(() => setSlowLoading(true), MARKET_SLOW_NOTICE_MS);
+    const slowTimer = window.setTimeout(() => {
+      setSlowLoading(true);
+      setNotice(t('market_service_waking'));
+    }, MARKET_SLOW_NOTICE_MS);
     const normalizedType = typeInput === 'all' ? DEFAULT_MARKET_TYPE : normalizeAssetType(typeInput);
     const selectedMeta: SelectedMarketAsset = {
       symbol: displaySymbol,
@@ -303,7 +336,31 @@ export default function MarketAnalysisPage() {
         displaySymbol: selectedMeta.symbol,
       });
       if (selectedMeta.name) params.set('name', selectedMeta.name);
-      const result = await fetchJsonWithTimeout<MarketResult & { openbbService?: MarketServiceState; source?: string; fallback?: boolean; fallbackReason?: string }>(`/api/market/analyze?${params.toString()}`);
+      let result: MarketResult & { code?: string; openbbService?: MarketServiceState; source?: string; fallback?: boolean; fallbackReason?: string } | null = null;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          setNotice(attempt === 0 ? t('market_progress_loading_symbol') : t('market_service_waking'));
+          result = await fetchJsonWithTimeout<MarketResult & { code?: string; openbbService?: MarketServiceState; source?: string; fallback?: boolean; fallbackReason?: string }>(`/api/market/analyze?${params.toString()}`, MARKET_REQUEST_TIMEOUT_MS, true);
+          const retryableCode = !result.success && ['openbb_timeout', 'openbb_unreachable', 'provider_error'].includes(result.code || '');
+          if (retryableCode && attempt === 0) {
+            setSlowLoading(true);
+            setNotice(t('market_service_waking'));
+            await delay(5000);
+            continue;
+          }
+          break;
+        } catch (fetchErr) {
+          const timedOut = fetchErr instanceof Error && fetchErr.name === 'AbortError';
+          if (timedOut && attempt === 0) {
+            setSlowLoading(true);
+            setNotice(t('market_service_waking'));
+            await delay(5000);
+            continue;
+          }
+          throw fetchErr;
+        }
+      }
+      if (!result) throw new Error(t('market_analysis_unavailable'));
       if (process.env.NODE_ENV === 'development') {
         console.log('Market analysis source:', {
           symbol: displaySymbol,
@@ -314,9 +371,15 @@ export default function MarketAnalysisPage() {
           dataStatus: result.success ? result.dataStatus : result.dataStatus,
         });
       }
-      if (!result.success) throw new Error(result.error || t('market_analysis_unavailable'));
+      if (!result.success) {
+        setServiceState(result.openbbService === 'degraded' || result.openbbService === 'slow' ? 'degraded' : result.openbbService === 'not_configured' ? 'not_configured' : 'unavailable');
+        setAiInsight({ status: 'skipped', error: t('market_no_real_data_ai') });
+        setAiError(t('market_no_real_data_ai'));
+        throw new Error(marketErrorText(result.code, result.error || t('market_analysis_unavailable'), t));
+      }
 
       if (hasUsableAnalysis(result)) {
+        setNotice(t('market_progress_preparing_analysis'));
         setTimeframe('6M');
         const nextAnalysis = {
           ...result,
@@ -334,10 +397,10 @@ export default function MarketAnalysisPage() {
       }
       setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
-      if (result.openbbService === 'not_configured' || result.openbbService === 'unavailable' || result.openbbService === 'slow') {
-        setServiceState(result.openbbService);
+      if (result.openbbService === 'not_configured' || result.openbbService === 'unavailable' || result.openbbService === 'slow' || result.openbbService === 'degraded') {
+        setServiceState(result.openbbService === 'slow' ? 'degraded' : result.openbbService);
       } else if (result.success) {
-        setServiceState(result.cached ? 'slow' : 'connected');
+        setServiceState('connected');
       }
     } catch (err) {
       setAnalysis(current => current);
@@ -347,7 +410,7 @@ export default function MarketAnalysisPage() {
           ? err.message
           : t('market_analysis_unavailable');
       setError(message);
-      setNotice('');
+      if (message === t('market_timeout_error')) setNotice(t('market_service_waking'));
       setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } finally {
       window.clearTimeout(slowTimer);
@@ -423,14 +486,14 @@ export default function MarketAnalysisPage() {
     let cancelled = false;
     async function checkService() {
       try {
-        const health = await fetchJsonWithTimeout<{ ok?: boolean; openbbService?: MarketServiceState }>('/api/market/health', 6500, true);
+        const health = await fetchJsonWithTimeout<{ ok?: boolean; openbbService?: MarketServiceState; code?: string }>('/api/market/health', MARKET_REQUEST_TIMEOUT_MS, true);
         if (!cancelled) {
-          setServiceState(health.openbbService ?? (health.ok ? 'connected' : 'unavailable'));
+          setServiceState(health.openbbService === 'slow' ? 'degraded' : health.openbbService ?? (health.ok ? 'connected' : 'unavailable'));
           if (health.ok) {
             void requestAnalysis(DEFAULT_MARKET_ASSET, DEFAULT_MARKET_TYPE);
           } else {
             setLoading(false);
-            setError(health.openbbService === 'not_configured' ? t('market_service_not_configured') : t('market_service_unavailable'));
+            setError(health.openbbService === 'not_configured' ? t('market_service_not_configured') : health.openbbService === 'degraded' ? t('market_service_degraded') : marketErrorText(health.code, t('market_service_unavailable'), t));
           }
         }
       } catch {
@@ -654,8 +717,8 @@ export default function MarketAnalysisPage() {
   const selected = analysis;
   const serviceNotice = serviceState === 'connected'
     ? t('market_service_connected')
-    : serviceState === 'slow'
-      ? t('market_service_slow')
+    : serviceState === 'slow' || serviceState === 'degraded'
+      ? t('market_service_degraded')
       : serviceState === 'not_configured'
         ? t('market_service_not_configured')
         : serviceState === 'unavailable'
@@ -686,7 +749,7 @@ export default function MarketAnalysisPage() {
   const whatIfValue = parseNumber(whatIfAmount);
   const hasWhatIfAmount = whatIfValue > 0;
   const estimatedUnits = selected?.latestPrice ? whatIfValue / selected.latestPrice : 0;
-  const loadingLabel = slowLoading ? t('market_slow_loading') : t('market_loading_data');
+  const loadingLabel = slowLoading ? t('market_service_waking') : notice || t('market_loading_data');
   const selectedCurrency = selected?.currency ?? selected?.quote?.currency ?? 'USD';
   const calculatedRiskScore = selected
     ? Math.min(100, Math.max(0, Math.round(

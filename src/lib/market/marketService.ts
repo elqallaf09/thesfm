@@ -63,12 +63,13 @@ export type MarketAnalysis = {
 
 export type MarketError = {
   success: false;
+  code?: string;
   error: string;
   provider?: 'openbb';
   dataStatus?: 'unavailable';
   source?: string;
   fallback?: false;
-  openbbService?: 'connected' | 'slow' | 'not_configured' | 'unavailable';
+  openbbService?: 'connected' | 'degraded' | 'slow' | 'not_configured' | 'unavailable';
   warnings?: string[];
 };
 

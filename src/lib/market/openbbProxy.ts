@@ -8,16 +8,16 @@ import {
 import symbolDirectory from '../../../openbb-service/data/symbols.json';
 
 const OPENBB_TIMEOUT_MS = 12000;
-const OPENBB_HEALTH_TIMEOUT_MS = 5000;
+const OPENBB_HEALTH_TIMEOUT_MS = 12000;
 const QUOTE_CACHE_MS = 60 * 1000;
 const HISTORY_CACHE_MS = 10 * 60 * 1000;
 const SEARCH_CACHE_MS = 5 * 60 * 1000;
 
-type ProxyState = 'connected' | 'slow' | 'not_configured' | 'unavailable';
+type ProxyState = 'connected' | 'degraded' | 'slow' | 'not_configured' | 'unavailable';
 type FetchOpenBBResult =
   | { configured: false; elapsedMs: number; fromCache?: false }
   | { configured: true; available: true; data: any; elapsedMs: number; fromCache: boolean; cacheAgeSeconds?: number; status: number }
-  | { configured: true; available: false; elapsedMs: number; fromCache?: false; status?: number; timedOut?: boolean; error?: string };
+  | { configured: true; available: false; elapsedMs: number; fromCache?: false; status?: number; timedOut?: boolean; error?: string; code?: string };
 
 const responseCache = new Map<string, { expiresAt: number; createdAt: number; data: any }>();
 let lastSuccessfulRequestAt: string | null = null;
@@ -59,7 +59,7 @@ export function marketServiceSlow(responseTimeMs: number) {
   return {
     ok: true,
     marketService: 'openbb',
-    openbbService: 'slow' as ProxyState,
+    openbbService: 'degraded' as ProxyState,
     serviceUrlConfigured: true,
     responseTimeMs,
     lastSuccessfulRequestAt,
@@ -115,23 +115,73 @@ async function fetchOpenBB(path: string, params?: URLSearchParams, options?: { t
   try {
     const response = await fetchWithTimeout(url.toString(), options?.timeoutMs);
     const elapsedMs = Date.now() - startedAt;
-    if (!response.ok) return { configured: true as const, available: false as const, elapsedMs, status: response.status };
+    if (!response.ok) {
+      console.warn('OpenBB request failed', { path, url: url.pathname, status: response.status, elapsedMs, code: 'provider_error' });
+      return { configured: true as const, available: false as const, elapsedMs, status: response.status, code: 'provider_error' };
+    }
     const data = await response.json();
     lastSuccessfulRequestAt = new Date().toISOString();
     if (ttlMs > 0) {
       const now = Date.now();
       responseCache.set(cacheKey, { expiresAt: now + ttlMs, createdAt: now, data });
     }
+    console.info('OpenBB request completed', {
+      path,
+      symbol: url.searchParams.get('symbol') || url.searchParams.get('symbols'),
+      status: response.status,
+      elapsedMs,
+      success: data?.success === true,
+      hasQuote: Boolean(data?.latestPrice || data?.quote?.price),
+      hasHistory: Array.isArray(data?.history) ? data.history.length > 0 : Array.isArray(data?.results) ? data.results.some((item: any) => Array.isArray(item?.history) && item.history.length > 0) : false,
+    });
     return { configured: true as const, available: true as const, data, elapsedMs, fromCache: false, status: response.status };
   } catch (error) {
+    const timedOut = error instanceof Error && error.name === 'AbortError';
+    console.warn('OpenBB request exception', { path, url: url.pathname, elapsedMs: Date.now() - startedAt, code: timedOut ? 'openbb_timeout' : 'openbb_unreachable' });
     return {
       configured: true as const,
       available: false as const,
       elapsedMs: Date.now() - startedAt,
-      timedOut: error instanceof Error && error.name === 'AbortError',
+      timedOut,
+      code: timedOut ? 'openbb_timeout' : 'openbb_unreachable',
       error: error instanceof Error ? error.message : 'OpenBB request failed',
     };
   }
+}
+
+function normalizeProviderSymbol(symbolInput: unknown) {
+  const validated = validateSymbol(symbolInput);
+  if (!validated) return null;
+  const withoutExchange = validated.includes(':') ? validated.split(':').pop() || validated : validated;
+  return validateSymbol(withoutExchange);
+}
+
+function errorMessageForCode(code: string) {
+  const messages: Record<string, string> = {
+    openbb_unreachable: 'Market data service is unavailable.',
+    openbb_timeout: 'Market data request timed out.',
+    symbol_not_found: 'Symbol not found.',
+    invalid_symbol: 'Invalid symbol.',
+    provider_no_data: 'Market provider returned no usable data.',
+    provider_error: 'Market provider returned an error.',
+    response_mapping_failed: 'Market provider response could not be mapped.',
+    ai_skipped_no_market_data: 'AI analysis was skipped because real market data is unavailable.',
+  };
+  return messages[code] || 'Market data provider is unavailable.';
+}
+
+function marketError(code: string, patch: Partial<MarketResult> & { openbbService?: ProxyState } = {}): MarketResult & { code: string; openbbService?: ProxyState } {
+  return {
+    success: false,
+    code,
+    error: errorMessageForCode(code),
+    provider: 'openbb',
+    dataStatus: 'unavailable',
+    source: 'openbb',
+    fallback: false,
+    warnings: ['AI analysis was skipped because real market data is unavailable.'],
+    ...patch,
+  } as MarketResult & { code: string; openbbService?: ProxyState };
 }
 
 function scoreDirectoryItem(item: Record<string, any>, query: string) {
@@ -211,7 +261,8 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
   const closes = history
     .map(point => Number(point?.close))
     .filter(value => Number.isFinite(value));
-  const latestPrice = Number(data.latestPrice ?? closes.at(-1) ?? 0);
+  const explicitQuotePrice = Number(data.quote?.price ?? data.latestPrice);
+  const latestPrice = Number(Number.isFinite(explicitQuotePrice) ? explicitQuotePrice : closes.at(-1) ?? 0);
   if (!Number.isFinite(latestPrice) || latestPrice <= 0 || closes.length === 0) return null;
 
   const firstClose = closes[0] || latestPrice;
@@ -270,16 +321,44 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
     cached: Boolean(meta?.fromCache),
     cacheAgeSeconds: meta?.cacheAgeSeconds,
     fetchedAt: new Date().toISOString(),
-    warnings: meta?.fromCache ? ['Cached market data was used.'] : [],
+    warnings: [
+      ...(Number.isFinite(Number(data.quote?.price)) ? [] : ['Live quote was unavailable; latest history close was used.']),
+      ...(meta?.fromCache ? ['Cached market data was used.'] : []),
+    ],
   };
 }
 
 export async function proxyHealth() {
   const result = await fetchOpenBB('/health', undefined, { timeoutMs: OPENBB_HEALTH_TIMEOUT_MS, cacheTtlMs: 0 });
   if (!result.configured) return marketServiceNotConfigured();
-  if (!result.available) return marketServiceUnavailable();
-  if (result.elapsedMs > 3500) return marketServiceSlow(result.elapsedMs);
-  return { ...marketServiceConnected(), responseTimeMs: result.elapsedMs };
+  if (!result.available) {
+    return {
+      ...marketServiceUnavailable(),
+      code: result.code || (result.timedOut ? 'openbb_timeout' : 'openbb_unreachable'),
+      responseTimeMs: result.elapsedMs,
+      lastSuccessfulRequestAt,
+    };
+  }
+  const probe = await proxyAnalyze('AAPL', 'stock', { displaySymbol: 'AAPL', name: 'Apple Inc.' });
+  if (probe.success) {
+    return {
+      ...marketServiceConnected(),
+      responseTimeMs: result.elapsedMs,
+      probeSymbol: 'AAPL',
+      probeDataStatus: probe.dataStatus,
+    };
+  }
+  return {
+    ok: false,
+    marketService: 'openbb',
+    openbbService: 'degraded' as ProxyState,
+    serviceUrlConfigured: true,
+    responseTimeMs: result.elapsedMs,
+    probeSymbol: 'AAPL',
+    code: 'code' in probe ? probe.code : 'provider_no_data',
+    message: 'OpenBB health works, but real market data is unavailable.',
+    lastSuccessfulRequestAt,
+  };
 }
 
 export async function proxyAnalyze(
@@ -287,14 +366,20 @@ export async function proxyAnalyze(
   assetTypeInput: unknown,
   metaInput?: { displaySymbol?: unknown; name?: unknown },
 ): Promise<MarketResult & { displaySymbol?: string; source?: string; fallback?: boolean; openbbService?: ProxyState }> {
-  const providerSymbol = validateSymbol(symbolInput);
-  if (!providerSymbol) return { success: false, error: 'Invalid symbol', provider: 'openbb', dataStatus: 'unavailable' };
+  const providerSymbol = normalizeProviderSymbol(symbolInput);
+  if (!providerSymbol) return marketError('invalid_symbol', { openbbService: 'unavailable' });
 
   const assetType = normalizeAssetType(assetTypeInput);
   const displaySymbol = validateSymbol(metaInput?.displaySymbol) ?? providerSymbol;
   const friendlyName = typeof metaInput?.name === 'string' ? metaInput.name.trim().slice(0, 120) : '';
   const params = new URLSearchParams({ symbol: providerSymbol, assetType });
-  const result = await fetchOpenBB('/market/analyze', params);
+  const result = await fetchOpenBB('/market/analyze', params, { timeoutMs: OPENBB_TIMEOUT_MS });
+  const startedLog = {
+    requestedSymbol: String(symbolInput ?? ''),
+    normalizedSymbol: providerSymbol,
+    path: '/market/analyze',
+    assetType,
+  };
 
   if (result.configured && result.available && result.data?.success) {
     const enriched = enrichAnalysis(result.data, displaySymbol, assetType, {
@@ -302,18 +387,9 @@ export async function proxyAnalyze(
       cacheAgeSeconds: result.cacheAgeSeconds,
     });
     if (!enriched) {
-      return {
-        success: false,
-        error: result.data?.fallback === true || result.data?.source === 'mock'
-          ? 'OpenBB did not return real market data for this asset.'
-          : 'Real market provider did not return enough data for this asset.',
-        provider: 'openbb',
-        dataStatus: 'unavailable',
-        source: 'openbb',
-        fallback: false,
-        openbbService: 'connected',
-        warnings: ['AI analysis was skipped because real market data is unavailable.'],
-      };
+      const code = result.data?.fallback === true || result.data?.source === 'mock' ? 'provider_no_data' : 'response_mapping_failed';
+      console.warn('OpenBB analyze mapping failed', { ...startedLog, status: result.status, elapsedMs: result.elapsedMs, code });
+      return marketError(code, { openbbService: 'degraded' });
     }
     return {
       ...enriched,
@@ -324,31 +400,31 @@ export async function proxyAnalyze(
     };
   }
 
-  return {
-    success: false,
-    error: result.configured ? 'Market data provider is unavailable.' : 'Market data provider is not configured.',
-    provider: 'openbb',
-    dataStatus: 'unavailable',
-    source: 'openbb',
-    fallback: false,
-    openbbService: result.configured ? 'unavailable' : 'not_configured',
-    warnings: ['AI analysis was skipped because real market data is unavailable.'],
-  };
+  const code = !result.configured
+    ? 'openbb_unreachable'
+    : !result.available
+      ? result.code || (result.timedOut ? 'openbb_timeout' : 'openbb_unreachable')
+      : result.data?.success === false
+        ? (/invalid/i.test(String(result.data.error || '')) ? 'invalid_symbol' : /not found/i.test(String(result.data.error || '')) ? 'symbol_not_found' : 'provider_no_data')
+        : 'provider_no_data';
+  console.warn('OpenBB analyze failed', { ...startedLog, status: result.status, elapsedMs: result.elapsedMs, code });
+  return marketError(code, { openbbService: result.configured ? (code === 'provider_no_data' || code === 'symbol_not_found' ? 'degraded' : 'unavailable') : 'not_configured' });
 }
 
 export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown, periodInput: unknown) {
-  const symbol = validateSymbol(symbolInput);
-  if (!symbol) return { success: false, error: 'Invalid symbol' };
+  const symbol = normalizeProviderSymbol(symbolInput);
+  if (!symbol) return { success: false, code: 'invalid_symbol', error: errorMessageForCode('invalid_symbol') };
 
   const assetType = normalizeAssetType(assetTypeInput);
   const period = String(periodInput ?? '6m');
-  const result = await fetchOpenBB('/market/history', new URLSearchParams({ symbol, assetType, period }));
+  const result = await fetchOpenBB('/market/history', new URLSearchParams({ symbol, assetType, period }), { timeoutMs: OPENBB_TIMEOUT_MS });
   if (result.configured && result.available && result.data?.success && result.data?.fallback !== true && result.data?.source !== 'mock') {
     return { ...result.data, cached: result.fromCache, cacheAgeSeconds: result.cacheAgeSeconds };
   }
 
   return {
     success: false,
+    code: result.configured ? result.code || (result.timedOut ? 'openbb_timeout' : 'provider_no_data') : 'openbb_unreachable',
     source: 'openbb',
     fallback: false,
     openbbService: result.configured ? 'unavailable' : 'not_configured',
