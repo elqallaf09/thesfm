@@ -44,6 +44,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
+import { calculateFinancialAnalysis } from '@/lib/financialAnalysis';
 import { formatCurrency } from '@/lib/format';
 import { useCurrency } from '@/lib/useCurrency';
 
@@ -85,6 +86,13 @@ const copy = {
   monthlyPlan: { ar: 'اعطني خطة شهرية', en: 'Give me a monthly plan', fr: 'Me donner un plan mensuel' },
   predict: { ar: 'توقع الشهر القادم', en: 'Predict next month', fr: 'Prévoir le mois prochain' },
   addData: { ar: 'أضف الدخل والمصروفات أولاً حتى يظهر التحليل الذكي بالأرقام.', en: 'Add income and expenses first to unlock number-based AI analysis.', fr: "Ajoutez d'abord revenus et dépenses pour activer l'analyse chiffrée." },
+  numbersFirst: { ar: 'الأرقام أولاً', en: 'Numbers first', fr: 'Les chiffres d’abord' },
+  remainingSalary: { ar: 'باقي الراتب', en: 'Remaining salary', fr: 'Salaire restant' },
+  currentSavingPercentage: { ar: 'نسبة الادخار الحالية', en: 'Current saving percentage', fr: 'Taux d’épargne actuel' },
+  recommendedSavingPercentage: { ar: 'نسبة الادخار المقترحة', en: 'Recommended saving percentage', fr: 'Taux d’épargne recommandé' },
+  monthlySavingSuggestion: { ar: 'اقتراح الادخار الشهري', en: 'Monthly saving suggestion', fr: 'Suggestion d’épargne mensuelle' },
+  expenseReductionTarget: { ar: 'مبلغ التخفيض المقترح', en: 'Suggested expense reduction', fr: 'Réduction proposée' },
+  disclaimer: { ar: 'هذا إرشاد تعليمي مبني على بياناتك المسجلة، وليس استشارة مالية أو قانونية أو شرعية مرخصة.', en: 'This is educational guidance based on your recorded data, not licensed financial, legal, or sharia advice.', fr: 'Ces indications sont éducatives et basées sur vos données enregistrées, et ne constituent pas un conseil financier, juridique ou religieux agréé.' },
   scoreBreakdown: { ar: 'تفصيل الدرجة الذكية', en: 'Smart Score Breakdown', fr: 'Détail du score intelligent' },
   smartAlerts: { ar: 'أهم التنبيهات الذكية', en: 'Smart Alerts', fr: 'Alertes intelligentes' },
   actionPlan: { ar: 'خطة الذكاء الاصطناعي لهذا الشهر', en: 'AI Action Plan for This Month', fr: "Plan d'action IA pour ce mois" },
@@ -344,6 +352,20 @@ export default function AiPage() {
   const insights = useMemo(() => buildInsights(lang, money, totals, topExpense, score, goals.length), [goals.length, lang, money, score, topExpense, totals]);
   const planItems = useMemo(() => buildPlan(lang, money, topExpense, totals, recommendedSavings, recommendedInvestment), [lang, money, recommendedInvestment, recommendedSavings, topExpense, totals]);
   const monthlyData = useMemo(() => buildMonthlyData(lang, totals, predictedExpenses, predictedSavings, recommendedInvestment), [lang, predictedExpenses, predictedSavings, recommendedInvestment, totals]);
+  const calculatedAnalysis = useMemo(() => calculateFinancialAnalysis({
+    income: income.map(row => ({ name: row.label, category: row.category, amount: row.amount })),
+    expenses: expenses.map(row => ({ name: row.name, amount: row.amount })),
+    savings: savings.map(row => ({ name: row.name, amount: row.amount })),
+    investments: investments.map(row => ({ name: row.name, amount: row.amount })),
+    goals: goals.map(goal => ({
+      id: goal.id,
+      name: goal.name,
+      target: goal.target,
+      current: goal.current,
+      monthly: goal.monthly,
+      deadline: goal.deadline,
+    })),
+  }), [expenses, goals, income, investments, savings]);
 
   function showToast(message: string) {
     setToast(message);
@@ -411,6 +433,19 @@ export default function AiPage() {
 
         {hasCoreData && (
           <>
+            <section className="ai-card">
+              <SectionTitle icon={<BarChart3 size={19} />} title={L('numbersFirst')} />
+              <div className="ai-prediction-grid">
+                <Metric label={L('income')} value={money(calculatedAnalysis.monthlyIncome)} />
+                <Metric label={L('expenses')} value={money(calculatedAnalysis.totalMonthlyExpenses)} />
+                <Metric label={L('remainingSalary')} value={money(calculatedAnalysis.remainingSalary)} />
+                <Metric label={L('currentSavingPercentage')} value={`${Math.round(calculatedAnalysis.currentSavingPercentage)}%`} />
+                <Metric label={L('recommendedSavingPercentage')} value={`${Math.round(calculatedAnalysis.recommendedSavingPercentage)}%`} />
+                <Metric label={L('monthlySavingSuggestion')} value={money(Math.round(calculatedAnalysis.recommendedMonthlySaving))} />
+                <Metric label={L('expenseReductionTarget')} value={money(Math.round(calculatedAnalysis.expenseReductionTarget))} />
+              </div>
+              <p className="ai-disclaimer">{L('disclaimer')}</p>
+            </section>
             <section className="ai-grid ai-score-breakdown">
               <div className="ai-card span-5">
                 <SectionTitle icon={<ShieldAlert size={19} />} title={L('scoreBreakdown')} />
@@ -561,7 +596,7 @@ export default function AiPage() {
         .ai-insights,.ai-plan-grid,.ai-goals-grid,.ai-chart-grid,.ai-prediction-grid{display:grid;gap:12px}.ai-insights{grid-template-columns:repeat(2,1fr)}.ai-insight-card{border-radius:18px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.13);padding:14px}.ai-insight-top{display:flex;justify-content:space-between;gap:10px}.ai-insight-card h3{margin:0;font-size:15px}.ai-pill{border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900}.ai-pill.good{background:#DCFCE7;color:#166534}.ai-pill.warning{background:#FEF3C7;color:#92400E}.ai-pill.danger{background:#FEE2E2;color:#B91C1C}.ai-insight-card b{display:block;color:var(--sfm-soft-cyan);margin:10px 0 5px}.ai-insight-card p{margin:0 0 8px;color:var(--sfm-muted);font-size:13px;line-height:1.7}.ai-action{color:var(--sfm-foreground)!important;font-weight:900}
         .ai-plan-grid{grid-template-columns:repeat(4,1fr)}.ai-plan-card,.ai-metric,.ai-goal-card,.ai-chart-box{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:18px;padding:14px}.ai-plan-card h3{margin:0 0 10px}.ai-plan-card div{display:flex;justify-content:space-between;font-size:12px;margin-top:6px}.ai-plan-card span,.ai-metric span{color:var(--sfm-muted);font-weight:900}.ai-plan-card strong,.ai-metric strong{color:var(--sfm-foreground)}.ai-plan-summary{background:rgba(167,243,240,.1);border:1px solid rgba(167,243,240,.15);border-radius:15px;padding:12px;margin:14px 0 0;color:var(--sfm-muted);font-weight:900;line-height:1.7}
         .ai-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}.ai-chips button{border:1px solid rgba(167,243,240,.15);background:var(--sfm-light-card);color:var(--sfm-muted);border-radius:999px;padding:8px 11px;font:800 12px Tajawal,Arial,sans-serif;cursor:pointer}.ai-chat-row{display:grid;grid-template-columns:1fr auto;gap:8px}.ai-chat-row input{height:46px;border:1.5px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);padding:0 12px;outline:0;font:800 13px Tajawal,Arial,sans-serif}.ai-answer{margin-top:12px;display:flex;gap:9px;background:var(--sfm-foreground);color:var(--sfm-light-card);border-radius:16px;padding:12px}.ai-answer svg{color:var(--sfm-soft-cyan);flex:0 0 auto}.ai-answer p{margin:0;line-height:1.8;font-size:13px}
-        .ai-prediction-grid{grid-template-columns:repeat(5,1fr)}.ai-metric{display:grid;gap:6px}.ai-metric strong{font-size:16px}.ai-goals-grid{grid-template-columns:repeat(2,1fr)}.ai-goal-card h3{margin:0 0 10px}.ai-goal-card p{margin:6px 0;color:var(--sfm-muted);font-size:13px;line-height:1.7}.ai-chart-grid{grid-template-columns:repeat(3,1fr)}.ai-chart-box h3{margin:0 0 8px;font-size:14px}.ai-actions{display:flex;flex-wrap:wrap;gap:9px}.ai-actions a,.ai-actions button{background:var(--sfm-light-card);color:var(--sfm-muted);border:1px solid rgba(167,243,240,.16)}.ai-actions a:hover,.ai-actions button:hover,.ai-chips button:hover{background:rgba(167,243,240,.14)}
+        .ai-prediction-grid{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}.ai-metric{display:grid;gap:6px}.ai-metric strong{font-size:16px}.ai-disclaimer{margin:14px 0 0;border:1px solid rgba(29,140,255,.16);background:var(--sfm-light-card);border-radius:14px;padding:11px 12px;color:var(--sfm-muted);font-size:12.5px;font-weight:900;line-height:1.7}.ai-goals-grid{grid-template-columns:repeat(2,1fr)}.ai-goal-card h3{margin:0 0 10px}.ai-goal-card p{margin:6px 0;color:var(--sfm-muted);font-size:13px;line-height:1.7}.ai-chart-grid{grid-template-columns:repeat(3,1fr)}.ai-chart-box h3{margin:0 0 8px;font-size:14px}.ai-actions{display:flex;flex-wrap:wrap;gap:9px}.ai-actions a,.ai-actions button{background:var(--sfm-light-card);color:var(--sfm-muted);border:1px solid rgba(167,243,240,.16)}.ai-actions a:hover,.ai-actions button:hover,.ai-chips button:hover{background:rgba(167,243,240,.14)}
         .ai-empty{text-align:center;padding:28px 16px;color:var(--sfm-muted)}.ai-empty h3{margin:0 0 8px;color:var(--sfm-foreground)}.ai-empty p{margin:0;line-height:1.7}.ai-toast{position:fixed;z-index:100;inset-inline-end:22px;bottom:22px;background:var(--sfm-foreground);color:var(--sfm-soft-cyan);border:1px solid rgba(167,243,240,.28);border-radius:16px;padding:13px 16px;font:900 13px Tajawal,Arial,sans-serif;box-shadow:0 18px 45px rgba(3,18,37,.2)}.ai-loading{height:180px;display:grid;place-items:center;color:var(--sfm-muted);font-size:32px}
         @media(max-width:1180px){.ai-main{margin-inline-start:0}.ai-hero{grid-template-columns:1fr}.ai-score-ring{justify-self:start}.span-5,.span-6,.span-7{grid-column:span 12}.ai-plan-grid,.ai-chart-grid,.ai-prediction-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:720px){.ai-main{padding:14px}.ai-hero{padding:22px}.ai-hero h2{font-size:30px}.ai-score-ring{width:160px;height:160px}.ai-insights,.ai-plan-grid,.ai-health-grid,.ai-goals-grid,.ai-chart-grid,.ai-prediction-grid{grid-template-columns:1fr}.ai-chat-row{grid-template-columns:1fr}.ai-hero-actions button,.ai-actions a,.ai-actions button{width:100%}}
       `}</style>
