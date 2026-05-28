@@ -1,6 +1,12 @@
 import { createSign } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { getGoogleReceiptConfig, getReceiptProviderStatus, type GoogleReceiptCredentials } from '@/lib/server/receiptProviderConfig';
+import {
+  getGoogleReceiptConfig,
+  getReceiptProviderStatus,
+  safeProviderErrorMessage,
+  type GoogleReceiptCredentials,
+  type ReceiptProviderErrorCode,
+} from '@/lib/server/receiptProviderConfig';
 
 export const runtime = 'nodejs';
 
@@ -13,19 +19,23 @@ const GOOGLE_TOKEN_AUDIENCE = 'https://oauth2.googleapis.com/token';
 type ScanProvider = 'google-document-ai' | 'openai-vision' | 'manual';
 type ConfidenceLevel = 'high' | 'medium' | 'low';
 type ScanErrorCode =
+  | 'scan_success'
+  | 'google_env_missing'
+  | 'google_credentials_json_invalid'
+  | 'google_credentials_private_key_invalid'
+  | 'google_client_init_failed'
+  | 'google_processor_path_invalid'
+  | 'google_process_document_failed'
+  | 'openai_env_missing'
+  | 'openai_fallback_failed'
+  | 'no_provider_configured'
   | 'provider_unavailable'
   | 'all_providers_unavailable'
-  | 'missing_google_project_id'
-  | 'missing_google_location'
-  | 'missing_google_processor_id'
-  | 'missing_google_credentials_json'
-  | 'invalid_google_credentials_json'
-  | 'google_client_init_failed'
-  | 'google_document_ai_request_failed'
-  | 'openai_key_missing'
   | 'upload_failed'
+  | 'file_missing'
   | 'file_too_large'
   | 'unsupported_file_type'
+  | 'file_type_unsupported'
   | 'no_clear_total'
   | 'scan_failed';
 
@@ -629,6 +639,7 @@ function normalizeExtraction(extraction: ProviderExtraction, fileName: string): 
     success: Boolean(fields.total),
     provider: extraction.provider,
     confidence,
+    code: fields.total ? 'scan_success' : 'no_clear_total',
     fields,
     candidates: { amounts: data.amountCandidates || [] },
     warnings,
@@ -658,7 +669,7 @@ async function getGoogleAccessToken(credentials: GoogleReceiptCredentials) {
   }
 
   if (!credentials.client_email || !credentials.private_key) {
-    throw new Error('invalid_google_credentials_json');
+    throw new Error('google_credentials_json_invalid');
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -679,7 +690,7 @@ async function getGoogleAccessToken(credentials: GoogleReceiptCredentials) {
     const signature = signer.sign(credentials.private_key).toString('base64url');
     assertion = `${unsigned}.${signature}`;
   } catch {
-    throw new Error('google_client_init_failed');
+    throw new Error('google_credentials_private_key_invalid');
   }
 
   let response: Response;
@@ -822,7 +833,7 @@ function googleEntityData(document: { text?: string; entities?: GoogleDocumentEn
 async function scanWithGoogleDocumentAI(file: File, bytes: ArrayBuffer): Promise<ProviderExtraction> {
   const { config, error } = getGoogleReceiptConfig();
   if (!config) {
-    throw new Error(error || 'provider_unavailable');
+    throw new Error(error || 'google_env_missing');
   }
   const token = await getGoogleAccessToken(config.credentials);
   const endpoint = `https://${config.location}-documentai.googleapis.com/v1/projects/${config.projectId}/locations/${config.location}/processors/${config.processorId}:process`;
@@ -842,9 +853,9 @@ async function scanWithGoogleDocumentAI(file: File, bytes: ArrayBuffer): Promise
       }),
     });
   } catch {
-    throw new Error('google_document_ai_request_failed');
+    throw new Error('google_process_document_failed');
   }
-  if (!response.ok) throw new Error('google_document_ai_request_failed');
+  if (!response.ok) throw new Error('google_process_document_failed');
   const payload = await response.json() as { document?: { text?: string; entities?: GoogleDocumentEntity[] } };
   const normalized = googleEntityData(payload.document || {});
   return {
@@ -874,8 +885,8 @@ function readOutputText(payload: Record<string, unknown>) {
 
 async function scanWithOpenAIVision(file: File, bytes: ArrayBuffer): Promise<ProviderExtraction> {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('openai_vision_not_configured');
-  if (file.type === 'application/pdf') throw new Error('openai_pdf_not_supported');
+  if (!apiKey) throw new Error('openai_env_missing');
+  if (file.type === 'application/pdf') throw new Error('openai_fallback_failed');
 
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -964,11 +975,16 @@ async function scanWithOpenAIVision(file: File, bytes: ArrayBuffer): Promise<Pro
       },
     }),
   });
-  if (!response.ok) throw new Error(`openai_vision_failed_${response.status}`);
+  if (!response.ok) throw new Error('openai_fallback_failed');
   const payload = await response.json() as Record<string, unknown>;
   const text = readOutputText(payload);
-  if (!text) throw new Error('openai_vision_empty_response');
-  const parsed = JSON.parse(text) as Record<string, unknown>;
+  if (!text) throw new Error('openai_fallback_failed');
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error('openai_fallback_failed');
+  }
   return {
     provider: 'openai-vision',
     rawText: typeof parsed.rawText === 'string' ? parsed.rawText : '',
@@ -1000,34 +1016,39 @@ function withFileDebug(result: ScanFileResult, file: File, patch: Partial<ScanDe
 }
 
 function scanErrorCode(errorSource: string): ScanErrorCode {
-  if (errorSource === 'missing_google_and_openai' || errorSource === 'all_providers_unavailable') return 'all_providers_unavailable';
-  if (errorSource === 'missing_google_project_id') return 'missing_google_project_id';
-  if (errorSource === 'missing_google_location') return 'missing_google_location';
-  if (errorSource === 'missing_google_processor_id') return 'missing_google_processor_id';
-  if (errorSource === 'missing_google_credentials_json') return 'missing_google_credentials_json';
-  if (errorSource === 'invalid_google_credentials_json') return 'invalid_google_credentials_json';
+  if (errorSource === 'scan_success') return 'scan_success';
+  if (errorSource === 'missing_google_and_openai' || errorSource === 'all_providers_unavailable' || errorSource === 'no_provider_configured') return 'no_provider_configured';
+  if (/missing_google_|google_env_missing|provider_unavailable/.test(errorSource)) return 'google_env_missing';
+  if (/invalid_google_credentials_json|google_credentials_json_invalid/.test(errorSource)) return 'google_credentials_json_invalid';
+  if (/google_credentials_private_key_invalid/.test(errorSource)) return 'google_credentials_private_key_invalid';
   if (errorSource === 'google_client_init_failed') return 'google_client_init_failed';
-  if (errorSource === 'google_document_ai_request_failed') return 'google_document_ai_request_failed';
-  if (errorSource === 'openai_key_missing') return 'openai_key_missing';
-  if (/unsupported_file_type/.test(errorSource)) return 'unsupported_file_type';
+  if (errorSource === 'google_processor_path_invalid') return 'google_processor_path_invalid';
+  if (/google_document_ai_request_failed|google_process_document_failed/.test(errorSource)) return 'google_process_document_failed';
+  if (/openai_key_missing|openai_env_missing|openai_vision_not_configured/.test(errorSource)) return 'openai_env_missing';
+  if (/openai_fallback_failed|openai_vision_failed|openai_pdf_not_supported|openai_vision_empty_response/.test(errorSource)) return 'openai_fallback_failed';
+  if (/unsupported_file_type|file_type_unsupported/.test(errorSource)) return 'file_type_unsupported';
   if (/file_too_large/.test(errorSource)) return 'file_too_large';
+  if (/file_missing/.test(errorSource)) return 'file_missing';
   if (/no_clear_total|parser_no_final_total/.test(errorSource)) return 'no_clear_total';
-  if (/provider|google_missing|providers_failed|not_configured|unavailable/.test(errorSource)) return 'provider_unavailable';
+  if (/provider|google_missing|providers_failed|not_configured|unavailable/.test(errorSource)) return 'no_provider_configured';
   return 'scan_failed';
 }
 
 function scanErrorMessage(code: ScanErrorCode, fallback: string) {
-  if (code === 'all_providers_unavailable') return 'No receipt scanning provider is configured';
-  if (code === 'missing_google_project_id') return 'GOOGLE_CLOUD_PROJECT_ID is missing';
-  if (code === 'missing_google_location') return 'GOOGLE_DOCUMENT_AI_LOCATION is missing';
-  if (code === 'missing_google_processor_id') return 'GOOGLE_DOCUMENT_AI_PROCESSOR_ID is missing';
-  if (code === 'missing_google_credentials_json') return 'GOOGLE_APPLICATION_CREDENTIALS_JSON is missing';
-  if (code === 'invalid_google_credentials_json') return 'GOOGLE_APPLICATION_CREDENTIALS_JSON is invalid';
-  if (code === 'google_client_init_failed') return 'Google Document AI client initialization failed';
-  if (code === 'google_document_ai_request_failed') return 'Google Document AI request failed';
-  if (code === 'openai_key_missing') return 'OPENAI_API_KEY is missing';
-  if (code === 'provider_unavailable') return 'Google Document AI is not configured';
+  if (code === 'scan_success') return 'Receipt scan completed';
+  if (code === 'all_providers_unavailable' || code === 'no_provider_configured') return safeProviderErrorMessage('no_provider_configured');
+  if (code === 'google_env_missing') return safeProviderErrorMessage('google_env_missing');
+  if (code === 'google_credentials_json_invalid') return safeProviderErrorMessage('google_credentials_json_invalid');
+  if (code === 'google_credentials_private_key_invalid') return safeProviderErrorMessage('google_credentials_private_key_invalid');
+  if (code === 'google_client_init_failed') return safeProviderErrorMessage('google_client_init_failed');
+  if (code === 'google_processor_path_invalid') return safeProviderErrorMessage('google_processor_path_invalid');
+  if (code === 'google_process_document_failed') return safeProviderErrorMessage('google_process_document_failed');
+  if (code === 'openai_env_missing') return safeProviderErrorMessage('openai_env_missing');
+  if (code === 'openai_fallback_failed') return safeProviderErrorMessage('openai_fallback_failed');
+  if (code === 'provider_unavailable') return safeProviderErrorMessage('no_provider_configured');
+  if (code === 'file_missing') return 'No receipt file uploaded';
   if (code === 'unsupported_file_type') return 'Unsupported file type';
+  if (code === 'file_type_unsupported') return 'Unsupported file type';
   if (code === 'file_too_large') return 'File size is too large';
   if (code === 'no_clear_total') return 'No clear total was found';
   return fallback;
@@ -1044,17 +1065,17 @@ function providerFailureResult(file: File, warnings: string[], errorSource: stri
     fields: {},
     candidates: { amounts: [] },
     warnings,
-    error: scanErrorMessage(code, 'Provider unavailable. You can still enter the expense manually and save the attachment.'),
+    error: scanErrorMessage(code, 'Receipt scanning failed. You can still enter the expense manually and save the attachment.'),
     debug: buildDebug(file, 'provider', { provider: 'manual', errorSource }),
   };
 }
 
 async function scanFile(file: File, receiptText?: string): Promise<ScanFileResult> {
   if (!SUPPORTED_TYPES.has(file.type)) {
-    return providerFailureResult(file, ['Unsupported file type.'], 'unsupported_file_type');
+    return providerFailureResult(file, ['file_type_unsupported'], 'file_type_unsupported');
   }
   if (file.size > MAX_FILE_SIZE) {
-    return providerFailureResult(file, ['File size is too large.'], 'file_too_large');
+    return providerFailureResult(file, ['file_too_large'], 'file_too_large');
   }
 
   if (receiptText?.trim()) {
@@ -1073,7 +1094,25 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
   const warnings: string[] = [];
   let googleResult: ScanFileResult | null = null;
   const providerStatus = getReceiptProviderStatus();
-  const googleUnavailableCode = providerStatus.google.error || 'provider_unavailable';
+  const googleUnavailableCode: ReceiptProviderErrorCode = providerStatus.google.error || 'google_env_missing';
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.info('Receipt scan provider trace', {
+      providerSelected: providerStatus.google.configured ? 'google-document-ai' : providerStatus.openai.configured ? 'openai-vision' : 'manual',
+      envPresence: {
+        hasGoogleProjectId: providerStatus.google.hasProjectId,
+        hasGoogleLocation: providerStatus.google.hasLocation,
+        hasGoogleProcessorId: providerStatus.google.hasProcessorId,
+        hasGoogleCredentialsJson: providerStatus.google.hasCredentialsJson,
+        hasOpenAiKey: providerStatus.openai.hasApiKey,
+      },
+      file: { name: file.name, type: file.type, size: file.size },
+      googleClientInit: providerStatus.google.clientInitValid,
+      processorLocation: process.env.GOOGLE_DOCUMENT_AI_LOCATION || null,
+      processorIdPresent: providerStatus.google.hasProcessorId,
+      errorCode: providerStatus.google.error,
+    });
+  }
 
   if (providerStatus.google.configured) {
     try {
@@ -1096,14 +1135,14 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
         openai.warnings = [...warnings, ...openai.warnings];
         return openai;
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'openai_vision_failed';
+        const message = error instanceof Error ? error.message : 'openai_fallback_failed';
         warnings.push(message);
         if (process.env.NODE_ENV !== 'production') {
           console.error('OpenAI Vision receipt scan failed:', { fileName: file.name, error: message });
         }
       }
     } else {
-      warnings.push('openai_key_missing');
+      warnings.push('openai_env_missing');
     }
   }
 
@@ -1113,11 +1152,11 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
   }
 
   const errorSource = !providerStatus.google.configured && !providerStatus.openai.configured
-    ? 'all_providers_unavailable'
+    ? 'no_provider_configured'
     : !providerStatus.google.configured
       ? googleUnavailableCode
-      : warnings.find(warning => scanErrorCode(warning) !== 'scan_failed' && scanErrorCode(warning) !== 'openai_key_missing')
-        || (!providerStatus.openai.configured ? 'openai_key_missing' : 'google_document_ai_request_failed');
+      : warnings.find(warning => scanErrorCode(warning) !== 'scan_failed' && scanErrorCode(warning) !== 'openai_env_missing')
+        || (!providerStatus.openai.configured ? 'openai_env_missing' : 'google_process_document_failed');
   return providerFailureResult(file, warnings, errorSource);
 }
 
@@ -1125,23 +1164,23 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const files = [...formData.getAll('receipt'), ...formData.getAll('receipts')].filter((file): file is File => file instanceof File);
-    if (!files.length) return errorResponse('No receipt file uploaded', 400, undefined, 'upload_failed');
+    if (!files.length) return errorResponse('No receipt file uploaded', 400, undefined, 'file_missing');
     if (files.length > MAX_RECEIPTS) return errorResponse('You can upload up to 10 receipts at once', 413, undefined, 'upload_failed');
 
     const receiptText = formData.get('receiptText');
     const hasReceiptText = typeof receiptText === 'string' && receiptText.trim().length > 0;
     const providerStatus = getReceiptProviderStatus();
     if (!providerStatus.google.configured && !providerStatus.openai.configured && !hasReceiptText) {
-      const googleError = providerStatus.google.error || 'provider_unavailable';
+      const googleError = providerStatus.google.error || 'google_env_missing';
       return NextResponse.json({
         success: false,
         provider: 'manual',
         confidence: 'low',
-        code: 'all_providers_unavailable',
+        code: 'no_provider_configured',
         fields: {},
         candidates: { amounts: [] },
-        warnings: [googleError, 'openai_key_missing'],
-        error: 'No receipt scanning provider is configured',
+        warnings: [googleError, 'openai_env_missing'],
+        error: safeProviderErrorMessage('no_provider_configured'),
         debug: {
           stage: 'provider',
           fileName: files[0]?.name || '',

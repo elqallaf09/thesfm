@@ -1,10 +1,29 @@
 import { createPrivateKey } from 'node:crypto';
 
+export type ReceiptProviderErrorCode =
+  | 'google_env_missing'
+  | 'google_credentials_json_invalid'
+  | 'google_credentials_private_key_invalid'
+  | 'google_client_init_failed'
+  | 'google_processor_path_invalid'
+  | 'google_process_document_failed'
+  | 'openai_env_missing'
+  | 'openai_fallback_failed'
+  | 'no_provider_configured';
+
 export type GoogleReceiptCredentials = {
   client_email?: string;
   private_key?: string;
   project_id?: string;
   token_uri?: string;
+};
+
+export type GoogleReceiptConfig = {
+  projectId: string;
+  location: string;
+  processorId: string;
+  processorPath: string;
+  credentials: GoogleReceiptCredentials;
 };
 
 export type ReceiptProviderStatus = {
@@ -17,7 +36,8 @@ export type ReceiptProviderStatus = {
     credentialsJsonValid: boolean;
     projectIdMatchesCredentials: boolean;
     clientInitValid: boolean;
-    error?: string;
+    processorPathBuilt: boolean;
+    error?: ReceiptProviderErrorCode;
   };
   openai: {
     configured: boolean;
@@ -37,11 +57,13 @@ function repairRawGoogleJson(raw: string) {
 
 export function parseGoogleCredentialsJson(raw?: string): {
   credentials?: GoogleReceiptCredentials;
+  jsonParses: boolean;
   valid: boolean;
-  error?: string;
+  privateKeyValid: boolean;
+  error?: ReceiptProviderErrorCode;
 } {
   if (!raw?.trim()) {
-    return { valid: false, error: 'missing_google_credentials_json' };
+    return { jsonParses: false, valid: false, privateKeyValid: false, error: 'google_env_missing' };
   }
 
   for (const candidate of [raw, repairRawGoogleJson(raw)]) {
@@ -51,64 +73,71 @@ export function parseGoogleCredentialsJson(raw?: string): {
         ...parsed,
         private_key: normalizeGooglePrivateKey(parsed.private_key),
       };
-      if (!credentials.client_email || !credentials.private_key || !credentials.project_id) {
-        return { credentials, valid: false, error: 'invalid_google_credentials_json' };
+      if (!credentials.client_email || !credentials.project_id) {
+        return { credentials, jsonParses: true, valid: false, privateKeyValid: false, error: 'google_credentials_json_invalid' };
       }
-      return { credentials, valid: true };
+      if (!credentials.private_key) {
+        return { credentials, jsonParses: true, valid: false, privateKeyValid: false, error: 'google_credentials_private_key_invalid' };
+      }
+      try {
+        createPrivateKey(credentials.private_key);
+      } catch {
+        return { credentials, jsonParses: true, valid: false, privateKeyValid: false, error: 'google_credentials_private_key_invalid' };
+      }
+      return { credentials, jsonParses: true, valid: true, privateKeyValid: true };
     } catch {
       // Try the repaired candidate before returning a safe diagnostic.
     }
   }
 
-  return { valid: false, error: 'invalid_google_credentials_json' };
+  return { jsonParses: false, valid: false, privateKeyValid: false, error: 'google_credentials_json_invalid' };
+}
+
+function cleanEnv(value?: string) {
+  return value?.trim() || '';
+}
+
+function isSafePathPart(value: string) {
+  return /^[A-Za-z0-9_-]+$/.test(value);
+}
+
+export function buildGoogleProcessorPath(projectId: string, location: string, processorId: string) {
+  if (!projectId || !location || !processorId) return undefined;
+  if (!isSafePathPart(projectId) || !isSafePathPart(location) || !isSafePathPart(processorId)) return undefined;
+  return `projects/${projectId}/locations/${location}/processors/${processorId}`;
 }
 
 export function getReceiptProviderStatus(): ReceiptProviderStatus {
-  const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID?.trim();
-  const location = process.env.GOOGLE_DOCUMENT_AI_LOCATION?.trim();
-  const processorId = process.env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID?.trim();
+  const projectId = cleanEnv(process.env.GOOGLE_CLOUD_PROJECT_ID);
+  const location = cleanEnv(process.env.GOOGLE_DOCUMENT_AI_LOCATION);
+  const processorId = cleanEnv(process.env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID);
   const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
   const parsed = parseGoogleCredentialsJson(credentialsJson);
   const hasProjectId = Boolean(projectId);
   const hasLocation = Boolean(location);
   const hasProcessorId = Boolean(processorId);
   const hasCredentialsJson = Boolean(credentialsJson?.trim());
-  let clientInitValid = false;
-
-  if (parsed.valid && parsed.credentials?.private_key) {
-    try {
-      createPrivateKey(parsed.credentials.private_key);
-      clientInitValid = true;
-    } catch {
-      clientInitValid = false;
-    }
-  }
-
+  const processorPath = buildGoogleProcessorPath(projectId, location, processorId);
   const projectIdMatchesCredentials = Boolean(projectId && parsed.credentials?.project_id && projectId === parsed.credentials.project_id);
-  const error = !hasProjectId
-    ? 'missing_google_project_id'
-    : !hasLocation
-      ? 'missing_google_location'
-      : !hasProcessorId
-        ? 'missing_google_processor_id'
-        : !hasCredentialsJson
-          ? 'missing_google_credentials_json'
-          : !parsed.valid
-            ? parsed.error || 'invalid_google_credentials_json'
-            : !clientInitValid
-              ? 'google_client_init_failed'
-              : undefined;
+  const error: ReceiptProviderErrorCode | undefined = !hasProjectId || !hasLocation || !hasProcessorId || !hasCredentialsJson
+    ? 'google_env_missing'
+    : parsed.error
+      ? parsed.error
+      : !processorPath
+        ? 'google_processor_path_invalid'
+        : undefined;
 
   return {
     google: {
-      configured: Boolean(hasProjectId && hasLocation && hasProcessorId && hasCredentialsJson && parsed.valid && clientInitValid),
+      configured: Boolean(hasProjectId && hasLocation && hasProcessorId && hasCredentialsJson && parsed.valid && processorPath),
       hasProjectId,
       hasLocation,
       hasProcessorId,
       hasCredentialsJson,
       credentialsJsonValid: parsed.valid,
       projectIdMatchesCredentials,
-      clientInitValid,
+      clientInitValid: parsed.privateKeyValid,
+      processorPathBuilt: Boolean(processorPath),
       ...(error ? { error } : {}),
     },
     openai: {
@@ -118,22 +147,58 @@ export function getReceiptProviderStatus(): ReceiptProviderStatus {
   };
 }
 
-export function getGoogleReceiptConfig() {
+export function getGoogleReceiptConfig(): { config: GoogleReceiptConfig | null; error?: ReceiptProviderErrorCode } {
   const status = getReceiptProviderStatus();
   const parsed = parseGoogleCredentialsJson(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
-  if (!status.google.configured || !parsed.credentials) {
+  const projectId = cleanEnv(process.env.GOOGLE_CLOUD_PROJECT_ID);
+  const location = cleanEnv(process.env.GOOGLE_DOCUMENT_AI_LOCATION);
+  const processorId = cleanEnv(process.env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID);
+  const processorPath = buildGoogleProcessorPath(projectId, location, processorId);
+  if (!status.google.configured || !parsed.credentials || !processorPath) {
     return {
       config: null,
-      error: status.google.error || 'provider_unavailable',
+      error: status.google.error || 'google_env_missing',
     };
   }
   return {
     config: {
-      projectId: process.env.GOOGLE_CLOUD_PROJECT_ID?.trim() || '',
-      location: process.env.GOOGLE_DOCUMENT_AI_LOCATION?.trim() || '',
-      processorId: process.env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID?.trim() || '',
+      projectId,
+      location,
+      processorId,
+      processorPath,
       credentials: parsed.credentials,
     },
-    error: undefined,
   };
+}
+
+export function getGoogleClientDiagnostic() {
+  const { config, error } = getGoogleReceiptConfig();
+  if (!config) {
+    return {
+      initialized: false,
+      processorPathBuilt: false,
+      errorCode: error || 'google_env_missing',
+      errorMessage: safeProviderErrorMessage(error || 'google_env_missing'),
+    };
+  }
+
+  return {
+    initialized: true,
+    processorPathBuilt: Boolean(config.processorPath),
+  };
+}
+
+export function safeProviderErrorMessage(code: ReceiptProviderErrorCode) {
+  const messages: Record<ReceiptProviderErrorCode, string> = {
+    google_env_missing: 'One or more Google Document AI environment variables are missing.',
+    google_credentials_json_invalid: 'Google service account JSON could not be parsed or is missing required identity fields.',
+    google_credentials_private_key_invalid: 'Google service account private_key is missing or invalid.',
+    google_client_init_failed: 'Google Document AI client initialization failed.',
+    google_processor_path_invalid: 'Google Document AI processor path could not be built.',
+    google_process_document_failed: 'Google Document AI process request failed.',
+    openai_env_missing: 'OpenAI API key is missing.',
+    openai_fallback_failed: 'OpenAI Vision fallback failed.',
+    no_provider_configured: 'No receipt scanning provider is configured.',
+  };
+  return messages[code];
 }

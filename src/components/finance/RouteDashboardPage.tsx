@@ -628,9 +628,89 @@ function receiptConfidenceLabel(level: AiExtractedData['confidenceLevel'] | unde
   return '-';
 }
 
+function normalizeReceiptScanCode(errorSource: string | undefined) {
+  if (!errorSource) return '';
+  if (/google_credentials_json_invalid|invalid_google_credentials_json/.test(errorSource)) return 'google_credentials_json_invalid';
+  if (/google_credentials_private_key_invalid/.test(errorSource)) return 'google_credentials_private_key_invalid';
+  if (/google_client_init_failed/.test(errorSource)) return 'google_client_init_failed';
+  if (/google_processor_path_invalid/.test(errorSource)) return 'google_processor_path_invalid';
+  if (/google_process_document_failed|google_document_ai_request_failed/.test(errorSource)) return 'google_process_document_failed';
+  if (/openai_env_missing|openai_key_missing/.test(errorSource)) return 'openai_env_missing';
+  if (/openai_fallback_failed|openai_vision_failed|openai_pdf_not_supported|openai_vision_empty_response/.test(errorSource)) return 'openai_fallback_failed';
+  if (/file_type_unsupported|unsupported_file_type/.test(errorSource)) return 'file_type_unsupported';
+  if (/file_missing/.test(errorSource)) return 'file_missing';
+  if (/google_env_missing|missing_google_/.test(errorSource)) return 'google_env_missing';
+  if (/no_provider_configured|all_providers_unavailable|missing_google_and_openai|provider_unavailable/.test(errorSource)) return 'no_provider_configured';
+  return errorSource;
+}
+
+function receiptScanSpecificErrorText(errorSource: string | undefined, lang: string) {
+  const code = normalizeReceiptScanCode(errorSource);
+  const messages: Record<string, LangText> = {
+    google_env_missing: {
+      ar: 'خدمة قراءة الفواتير غير مفعلة لأن متغيرات البيئة ناقصة أو غير صحيحة.',
+      en: 'Invoice scanning is not active because required environment variables are missing or invalid.',
+      fr: 'La lecture des factures n’est pas active car des variables d’environnement sont absentes ou invalides.',
+    },
+    google_credentials_json_invalid: {
+      ar: 'إعدادات Google Document AI غير صالحة. تحقق من JSON الخاص بحساب الخدمة.',
+      en: 'Google Document AI credentials are invalid. Check the service account JSON.',
+      fr: 'Les identifiants Google Document AI sont invalides. Vérifiez le JSON du compte de service.',
+    },
+    google_credentials_private_key_invalid: {
+      ar: 'مفتاح Google الخاص غير صالح. تحقق من private_key وتنسيق الأسطر الجديدة في Vercel.',
+      en: 'The Google private key is invalid. Check private_key and newline formatting in Vercel.',
+      fr: 'La clé privée Google est invalide. Vérifiez private_key et les retours à la ligne dans Vercel.',
+    },
+    google_client_init_failed: {
+      ar: 'تعذر تهيئة عميل Google Document AI. تحقق من صلاحيات حساب الخدمة.',
+      en: 'Could not initialize Google Document AI. Check the service account permissions.',
+      fr: 'Impossible d’initialiser Google Document AI. Vérifiez les permissions du compte de service.',
+    },
+    google_processor_path_invalid: {
+      ar: 'مسار معالج Google Document AI غير صحيح. تحقق من المشروع والموقع ومعرّف المعالج.',
+      en: 'The Google Document AI processor path is invalid. Check project, location, and processor ID.',
+      fr: 'Le chemin du processeur Google Document AI est invalide. Vérifiez le projet, la région et l’identifiant.',
+    },
+    google_process_document_failed: {
+      ar: 'تعذر الاتصال بخدمة Google Document AI. تحقق من صلاحيات المعالج أو الموقع.',
+      en: 'Google Document AI could not process the file. Check processor permissions or location.',
+      fr: 'Google Document AI n’a pas pu traiter le fichier. Vérifiez les permissions du processeur ou la région.',
+    },
+    openai_env_missing: {
+      ar: 'مفتاح OpenAI الاحتياطي غير موجود، ولم تنجح قراءة Google.',
+      en: 'OpenAI fallback key is missing, and Google scanning did not complete.',
+      fr: 'La clé OpenAI de secours est absente et la lecture Google n’a pas abouti.',
+    },
+    openai_fallback_failed: {
+      ar: 'فشل مزود OpenAI الاحتياطي في قراءة الفاتورة.',
+      en: 'The OpenAI fallback provider could not read the invoice.',
+      fr: 'Le fournisseur de secours OpenAI n’a pas pu lire la facture.',
+    },
+    file_type_unsupported: {
+      ar: 'نوع الملف غير مدعوم.',
+      en: 'This file type is not supported.',
+      fr: 'Ce type de fichier n’est pas pris en charge.',
+    },
+    file_missing: {
+      ar: 'لم يتم إرسال ملف فاتورة للتحليل.',
+      en: 'No receipt file was sent for scanning.',
+      fr: 'Aucun fichier de reçu n’a été envoyé pour analyse.',
+    },
+    no_provider_configured: {
+      ar: 'خدمة قراءة الفواتير غير مفعلة حالياً.',
+      en: 'Invoice scanning provider is not configured.',
+      fr: 'Le service de lecture des factures n’est pas configuré.',
+    },
+  };
+  return messages[code] ? pick(messages[code], lang) : '';
+}
+
 function receiptScanErrorText(errorSource: string | undefined, lang: string, fallback: string) {
   if (!errorSource) return fallback;
-  if (/missing_google_|invalid_google_|google_client_init_failed|google_document_ai_request_failed|openai_key_missing|missing_google_and_openai|provider|not_configured|unavailable|all_providers_unavailable|provider_unavailable/.test(errorSource)) {
+  const specific = receiptScanSpecificErrorText(errorSource, lang);
+  if (specific) return specific;
+  if (/no_provider_configured|missing_google_and_openai|provider|not_configured|unavailable|all_providers_unavailable|provider_unavailable/.test(errorSource)) {
     return `${expenseText('providerUnavailableTitle', lang)} ${expenseText('providerUnavailable', lang)}`;
   }
   if (/unsupported_file_type|file_too_large|upload/.test(errorSource)) return expenseText('uploadFailed', lang);
@@ -639,12 +719,53 @@ function receiptScanErrorText(errorSource: string | undefined, lang: string, fal
 }
 
 function isReceiptProviderUnavailable(errorSource?: string, code?: string, message?: string) {
-  return /missing_google_|invalid_google_|google_client_init_failed|google_document_ai_request_failed|openai_key_missing|missing_google_and_openai|provider|not_configured|unavailable|all_providers_unavailable|provider_unavailable/i.test(`${errorSource || ''} ${code || ''} ${message || ''}`);
+  return /no_provider_configured|missing_google_and_openai|all_providers_unavailable|provider_unavailable/i.test(`${errorSource || ''} ${code || ''} ${message || ''}`);
 }
 
 function receiptProviderDevDetail(errorSource: string | undefined, lang: string) {
   if (process.env.NODE_ENV === 'production' || !errorSource) return '';
+  const code = normalizeReceiptScanCode(errorSource);
   const details: Record<string, Record<string, string>> = {
+    google_env_missing: {
+      ar: 'تحقق من GOOGLE_CLOUD_PROJECT_ID و GOOGLE_DOCUMENT_AI_LOCATION و GOOGLE_DOCUMENT_AI_PROCESSOR_ID و GOOGLE_APPLICATION_CREDENTIALS_JSON في الخادم.',
+      en: 'Check GOOGLE_CLOUD_PROJECT_ID, GOOGLE_DOCUMENT_AI_LOCATION, GOOGLE_DOCUMENT_AI_PROCESSOR_ID, and GOOGLE_APPLICATION_CREDENTIALS_JSON on the server.',
+      fr: 'Vérifiez GOOGLE_CLOUD_PROJECT_ID, GOOGLE_DOCUMENT_AI_LOCATION, GOOGLE_DOCUMENT_AI_PROCESSOR_ID et GOOGLE_APPLICATION_CREDENTIALS_JSON côté serveur.',
+    },
+    google_credentials_json_invalid: {
+      ar: 'GOOGLE_APPLICATION_CREDENTIALS_JSON لا يمكن قراءته كـ JSON صالح أو تنقصه client_email / project_id.',
+      en: 'GOOGLE_APPLICATION_CREDENTIALS_JSON cannot be parsed as valid JSON or is missing client_email / project_id.',
+      fr: 'GOOGLE_APPLICATION_CREDENTIALS_JSON ne peut pas être lu comme JSON valide ou manque client_email / project_id.',
+    },
+    google_credentials_private_key_invalid: {
+      ar: 'private_key داخل GOOGLE_APPLICATION_CREDENTIALS_JSON غير صالح. تحقق من تحويل \\n إلى أسطر جديدة.',
+      en: 'private_key inside GOOGLE_APPLICATION_CREDENTIALS_JSON is invalid. Check escaped \\n newline handling.',
+      fr: 'private_key dans GOOGLE_APPLICATION_CREDENTIALS_JSON est invalide. Vérifiez la gestion des \\n.',
+    },
+    google_processor_path_invalid: {
+      ar: 'تعذر بناء المسار projects/{projectId}/locations/{location}/processors/{processorId}.',
+      en: 'Could not build projects/{projectId}/locations/{location}/processors/{processorId}.',
+      fr: 'Impossible de construire projects/{projectId}/locations/{location}/processors/{processorId}.',
+    },
+    google_process_document_failed: {
+      ar: 'فشل طلب processors:process من Google. تحقق من IAM، الموقع، ومعرّف المعالج.',
+      en: 'Google processors:process failed. Check IAM, location, and processor ID.',
+      fr: 'La requête Google processors:process a échoué. Vérifiez IAM, la région et le processeur.',
+    },
+    openai_env_missing: {
+      ar: 'OPENAI_API_KEY غير موجود في الخادم، لذلك لا يوجد مزود احتياطي بعد فشل Google.',
+      en: 'OPENAI_API_KEY is missing on the server, so there is no fallback after Google fails.',
+      fr: 'OPENAI_API_KEY est absent côté serveur, donc aucun secours après l’échec de Google.',
+    },
+    openai_fallback_failed: {
+      ar: 'فشل مزود OpenAI الاحتياطي بعد محاولة Google.',
+      en: 'OpenAI fallback failed after Google was attempted.',
+      fr: 'Le secours OpenAI a échoué après la tentative Google.',
+    },
+    no_provider_configured: {
+      ar: 'لا يوجد مزود OCR مفعّل في الخادم.',
+      en: 'No OCR provider is configured on the server.',
+      fr: 'Aucun fournisseur OCR n’est configuré côté serveur.',
+    },
     missing_google_project_id: {
       ar: 'GOOGLE_CLOUD_PROJECT_ID غير موجود في الخادم.',
       en: 'GOOGLE_CLOUD_PROJECT_ID is missing on the server.',
@@ -691,7 +812,7 @@ function receiptProviderDevDetail(errorSource: string | undefined, lang: string)
       fr: 'Aucun fournisseur OCR n’est configuré côté serveur.',
     },
   };
-  return details[errorSource]?.[lang] || details[errorSource]?.ar || '';
+  return details[code]?.[lang] || details[code]?.ar || details[errorSource]?.[lang] || details[errorSource]?.ar || '';
 }
 
 function selectedReceiptsLabel(count: number, lang: string) {
