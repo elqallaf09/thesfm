@@ -80,6 +80,7 @@ export const TR: Record<string, TranslationEntry> = {
   nav_close_menu: { ar:'إغلاق القائمة', en:'Close navigation', fr:'Fermer la navigation' },
   nav_home:       { ar:'لوحة القيادة', en:'Executive Dashboard', fr:'Tableau de bord exécutif' },
   nav_command_center: { ar:'مركز القيادة', en:'Command Center', fr:'Centre de commande' },
+  nav_decisions: { ar:'مركز القرارات', en:'Decisions Center', fr:'Centre des décisions' },
   nav_today: { ar:'اليوم المالي', en:'Financial Today', fr:'Aujourd’hui financier' },
   nav_financial_theories: { ar:'النظريات المالية', en:'Financial Theories', fr:'Théories financières' },
   nav_tasks: { ar:'مركز المهام', en:'Tasks Center', fr:'Centre des tâches' },

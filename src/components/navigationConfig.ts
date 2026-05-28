@@ -19,6 +19,7 @@ import {
   HandHeart,
   HeartHandshake,
   Info,
+  Landmark,
   LayoutDashboard,
   LineChart,
   LogOut,
@@ -65,6 +66,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     items: [
       { id: 'home', icon: LayoutDashboard, href: '/dashboard', labelKey: 'nav_home', viewModes: ['simple', 'professional'] },
       { id: 'command-center', icon: Compass, href: '/command-center', labelKey: 'nav_command_center', viewModes: ['simple', 'professional'] },
+      { id: 'decisions', icon: Landmark, href: '/decisions', labelKey: 'nav_decisions', viewModes: ['simple', 'professional'] },
       { id: 'today', icon: CalendarDays, href: '/today', labelKey: 'nav_today', viewModes: ['simple', 'professional'] },
       { id: 'financial-theories', icon: BookOpen, href: '/financial-theories', labelKey: 'nav_financial_theories', viewModes: ['simple', 'professional'] },
       { id: 'tasks', icon: ClipboardList, href: '/tasks', labelKey: 'nav_tasks', viewModes: ['simple', 'professional'] },

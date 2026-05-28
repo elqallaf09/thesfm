@@ -231,7 +231,7 @@ export function CommandMenu() {
         group: 'decisions' as const,
         title: itemTitle(row, ['title'], t('command_decisions')),
         description: row?.decision_type ? String(row.decision_type) : t('command_decisions'),
-        href: `/command-center?decision=${encodeURIComponent(String(row.id))}`,
+        href: `/decisions?decision=${encodeURIComponent(String(row.id))}`,
         keywords: ['decision', 'قرار', t('command_decisions'), itemTitle(row, ['title'], '')],
         icon: Landmark,
       })),
@@ -419,4 +419,3 @@ export function CommandMenu() {
     </CommandDialog>
   );
 }
-
