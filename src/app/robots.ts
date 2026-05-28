@@ -7,6 +7,7 @@ const privateRoutes = [
   '/alerts',
   '/dashboard',
   '/command-center',
+  '/decisions',
   '/today',
   '/tasks',
   '/notifications',
