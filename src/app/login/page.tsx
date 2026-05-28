@@ -129,6 +129,7 @@ const TEXT = {
     errorRegister: 'تعذر إنشاء الحساب. حاول مرة أخرى.',
     errorLogin: 'اسم المستخدم أو كلمة المرور غير صحيحة.',
     errorUsernameNotFound: 'اسم المستخدم غير موجود',
+    errorProfileEmailMissing: 'لا يوجد بريد إلكتروني مرتبط بهذا المستخدم',
     errorInvalidCredentials: 'بيانات الدخول غير صحيحة.',
     profileSetupNeeded: 'تم تسجيل الدخول، يرجى إكمال إعداد الحساب.',
     errorLoginGeneric: 'تعذر تسجيل الدخول حالياً. حاول مرة أخرى.',
@@ -215,6 +216,7 @@ const TEXT = {
     errorRegister: 'Could not create the account. Try again.',
     errorLogin: 'Username or password is incorrect.',
     errorUsernameNotFound: 'Username not found.',
+    errorProfileEmailMissing: 'No email address is linked to this user.',
     errorInvalidCredentials: 'Invalid login credentials.',
     profileSetupNeeded: 'Signed in. Please complete account setup.',
     errorLoginGeneric: 'Could not sign in right now. Please try again.',
@@ -301,6 +303,7 @@ const TEXT = {
     errorRegister: 'Impossible de créer le compte. Réessayez.',
     errorLogin: 'Nom d’utilisateur ou mot de passe incorrect.',
     errorUsernameNotFound: 'Nom d’utilisateur introuvable.',
+    errorProfileEmailMissing: 'Aucune adresse email n’est liée à cet utilisateur.',
     errorInvalidCredentials: 'Identifiants invalides.',
     profileSetupNeeded: 'Connexion réussie. Veuillez terminer la configuration du compte.',
     errorLoginGeneric: 'Connexion impossible pour le moment. Réessayez.',
@@ -513,6 +516,8 @@ function LoginContent() {
     const result = await signIn(loginIdentifier, password);
     if (result.error) {
       if (result.code === 'username_not_found') return text.errorUsernameNotFound;
+      if (result.code === 'profile_email_missing') return text.errorProfileEmailMissing;
+      if (result.code === 'profile_missing') return text.profileSetupNeeded;
       if (result.code === 'invalid_credentials') return text.errorInvalidCredentials;
       return text.errorLoginGeneric;
     }

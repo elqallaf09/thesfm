@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
-import { hashSecurityAnswer, isEmail, usernameToEmail } from '@/lib/authSecurity';
+import { hashSecurityAnswer, isEmail } from '@/lib/authSecurity';
 
 interface AuthContextValue {
   user: User | null;
@@ -16,7 +16,7 @@ interface AuthContextValue {
     user?: User | null;
     session?: Session | null;
     email?: string;
-    code?: 'username_not_found' | 'invalid_credentials' | 'auth_error';
+    code?: 'username_not_found' | 'profile_email_missing' | 'profile_missing' | 'invalid_credentials' | 'auth_error';
   }>;
   signUp: (username: string, password: string, email: string, age: string, gender?: string, securityQuestion?: string, securityAnswer?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -51,6 +51,18 @@ function clearStoredGuestMode() {
   } catch {
     // Keep auth state usable even when localStorage is unavailable.
   }
+}
+
+function isConfirmedAuthEmail(user: User | null) {
+  return Boolean(user?.email && (user.email_confirmed_at || user.confirmed_at));
+}
+
+function normalizeLoginEmail(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function normalizeUsername(value: string) {
+  return value.trim().toLowerCase();
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -106,38 +118,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         if (supabaseConfigError) return { error: new Error(supabaseConfigError) };
         const identifier = username.trim();
-        const identifierIsEmail = isEmail(identifier);
-        const normalizedUsername = identifier.toLowerCase();
-        let email = identifierIsEmail ? identifier.toLowerCase() : usernameToEmail(identifier);
+        const identifierIsEmail = identifier.includes('@');
+        const normalizedUsername = normalizeUsername(identifier);
+        let email = identifierIsEmail ? normalizeLoginEmail(identifier) : '';
         if (!identifierIsEmail) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('email')
-            .eq('username', normalizedUsername)
+            .select('id, username, email')
+            .ilike('username', normalizedUsername)
             .maybeSingle();
-          if (profile?.email && isEmail(profile.email)) email = profile.email.toLowerCase();
 
-          if (!profile) {
+          if (profile) {
+            if (!profile.email || !isEmail(profile.email)) {
+              return { error: new Error('Profile email missing'), code: 'profile_email_missing' };
+            }
+            email = normalizeLoginEmail(profile.email);
+          } else {
             try {
               const response = await fetch('/api/auth/resolve-username', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: normalizedUsername }),
               });
-              if (response.ok) {
-                const resolved = await response.json() as { success?: boolean; exists?: boolean; email?: string };
-                if (resolved.success) {
-                  if (!resolved.exists) {
-                    return { error: new Error('Username not found'), code: 'username_not_found' };
-                  }
-                  if (resolved.email && isEmail(resolved.email)) email = resolved.email.toLowerCase();
-                }
+              if (!response.ok) {
+                return { error: new Error('Username lookup failed'), code: 'auth_error' };
               }
+              const resolved = await response.json() as { success?: boolean; exists?: boolean; email?: string };
+              if (!resolved.success) {
+                return { error: new Error('Username lookup failed'), code: 'auth_error' };
+              }
+              if (!resolved.exists) {
+                return { error: new Error('Username not found'), code: 'username_not_found' };
+              }
+              if (!resolved.email || !isEmail(resolved.email)) {
+                return { error: new Error('Profile email missing'), code: 'profile_email_missing' };
+              }
+              email = normalizeLoginEmail(resolved.email);
             } catch {
-              // Keep login usable when the optional server-side username resolver is unavailable.
+              return { error: new Error('Username lookup failed'), code: 'auth_error' };
             }
           }
         }
+
+        if (!email) {
+          return { error: new Error('Username not found'), code: 'username_not_found' };
+        }
+
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -153,6 +179,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         const signedInSession = data.session;
         const signedInUser = data.user ?? signedInSession?.user ?? null;
+        if (!signedInUser?.id) return { error: new Error('Profile missing'), code: 'profile_missing' };
+
+        const { data: profileAfterLogin, error: profileAfterLoginError } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .eq('id', signedInUser.id)
+          .maybeSingle();
+
+        if (profileAfterLoginError) return { error: new Error(profileAfterLoginError.message), code: 'auth_error' };
+        if (!profileAfterLogin) return { error: new Error('Profile missing'), code: 'profile_missing' };
+
+        const confirmedEmail = isConfirmedAuthEmail(signedInUser) ? signedInUser.email?.trim().toLowerCase() : null;
+        const profileEmail = profileAfterLogin.email?.trim().toLowerCase() || null;
+        if (confirmedEmail && profileEmail !== confirmedEmail) {
+          await supabase
+            .from('profiles')
+            .update({ email: confirmedEmail })
+            .eq('id', signedInUser.id);
+        }
+
         clearStoredGuestMode();
         if (typeof document !== 'undefined') {
           document.cookie = `sfm_auth=true; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;

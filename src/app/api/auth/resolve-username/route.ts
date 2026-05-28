@@ -5,7 +5,7 @@ import { isEmail } from '@/lib/authSecurity';
 export const runtime = 'nodejs';
 
 type ResolveUsernameResponse =
-  | { success: true; exists: boolean; email?: string }
+  | { success: true; exists: boolean; id?: string; username?: string; email?: string }
   | { success: false; code: 'invalid_username' | 'resolver_unavailable' | 'lookup_failed' };
 
 function json(body: ResolveUsernameResponse, init?: ResponseInit) {
@@ -48,15 +48,22 @@ export async function POST(request: Request) {
 
     const { data, error } = await admin
       .from('profiles')
-      .select('email')
-      .eq('username', username)
+      .select('id, username, email')
+      .ilike('username', username)
+      .limit(1)
       .maybeSingle();
 
     if (error) return json({ success: false, code: 'lookup_failed' });
     if (!data) return json({ success: true, exists: false });
 
     const email = typeof data.email === 'string' && isEmail(data.email) ? data.email.trim().toLowerCase() : undefined;
-    return json({ success: true, exists: true, ...(email ? { email } : {}) });
+    return json({
+      success: true,
+      exists: true,
+      id: data.id,
+      username: data.username,
+      ...(email ? { email } : {}),
+    });
   } catch {
     return json({ success: false, code: 'lookup_failed' });
   }
