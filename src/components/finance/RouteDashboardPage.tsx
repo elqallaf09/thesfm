@@ -447,6 +447,8 @@ const expenseUi = {
   chooseAmount: { ar: 'اختر المبلغ الصحيح', en: 'Choose the correct amount', fr: 'Choisissez le bon montant' },
   mediumConfidence: { ar: 'راجع البيانات قبل الحفظ.', en: 'Review the data before saving.', fr: 'Vérifiez les données avant l’enregistrement.' },
   lowConfidence: { ar: 'لم نتمكن من تحديد كل البيانات بثقة. راجع النتائج أو أدخلها يدوياً.', en: 'We could not identify every field confidently. Review the results or enter them manually.', fr: 'Nous n’avons pas pu identifier toutes les données avec certitude. Vérifiez les résultats ou saisissez-les manuellement.' },
+  partialExtraction: { ar: 'تم استخراج بعض البيانات. راجع القيم قبل الحفظ.', en: 'Some data was extracted. Review the values before saving.', fr: 'Certaines données ont été extraites. Vérifiez les valeurs avant l’enregistrement.' },
+  partialCurrencyNoAmount: { ar: 'تم تحديد العملة من الفاتورة، لكن لم يتم تحديد المبلغ بثقة. اختر المبلغ الصحيح أو أدخله يدوياً.', en: 'Currency was detected, but the amount was not identified confidently. Choose the correct amount or enter it manually.', fr: 'La devise a été détectée, mais le montant n’a pas été identifié avec certitude. Choisissez le bon montant ou saisissez-le manuellement.' },
   saveManual: { ar: 'حفظ يدوي', en: 'Save manually', fr: 'Enregistrer manuellement' },
   saveWithAttachment: { ar: 'حفظ مع المرفق', en: 'Save with attachment', fr: 'Enregistrer avec la pièce jointe' },
   currency: { ar: 'العملة', en: 'Currency', fr: 'Devise' },
@@ -992,7 +994,10 @@ function pendingReceiptFromResult(
   const data = result.data ?? null;
   const amount = data ? extractedReceiptAmount(data) : undefined;
   const confidence = data?.confidenceScore ?? data?.confidence ?? (amount ? 0.84 : 0.3);
-  const status: PendingReceiptExpense['status'] = !amount ? 'failed' : data?.confidenceLevel === 'low' || confidence < 0.58 ? 'review' : confidence < 0.82 || data?.confidenceLevel === 'medium' ? 'review' : 'ready';
+  const hasPartialData = Boolean(data && (data.currency || data.description || data.merchantName || data.amountCandidates?.length || data.rawText));
+  const status: PendingReceiptExpense['status'] = !amount
+    ? hasPartialData ? 'review' : 'failed'
+    : data?.confidenceLevel === 'low' || confidence < 0.58 ? 'review' : confidence < 0.82 || data?.confidenceLevel === 'medium' ? 'review' : 'ready';
   return {
     id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${file.name}`,
     selected: Boolean(amount) && confidence >= 0.7,
@@ -1009,7 +1014,7 @@ function pendingReceiptFromResult(
     notes: receiptItemsNotes(data?.items),
     aiConfidenceScore: confidence,
     aiExtractedData: data,
-    error: result.error || (!amount ? expenseText('amountNotDetected', lang) : null),
+    error: result.error || (!amount ? hasPartialData ? expenseText('partialCurrencyNoAmount', lang) : expenseText('amountNotDetected', lang) : null),
   };
 }
 
@@ -1639,9 +1644,11 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         aiExtractedData: extracted,
         aiConfidenceScore: extracted.confidenceScore ?? extracted.confidence ?? (amount ? 0.84 : 0.48),
       }));
-      if (!amount || extracted.confidenceLevel === 'low') setReceiptError(expenseText('lowConfidence', lang));
+      if (!amount && extracted.currency) setReceiptError(expenseText('partialCurrencyNoAmount', lang));
+      else if (!amount || extracted.confidenceLevel === 'low') setReceiptError(expenseText('lowConfidence', lang));
       else if (extracted.confidenceLevel === 'medium') setReceiptError(expenseText('mediumConfidence', lang));
       else if (!extracted.currency) setReceiptError(expenseText('currencyFallback', lang));
+      else if ((extracted.warnings || []).length) setReceiptError(expenseText('partialExtraction', lang));
     } catch (err) {
       setReceiptError(err instanceof Error ? err.message : expenseText('couldNotRead', lang));
     } finally {

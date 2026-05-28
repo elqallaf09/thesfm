@@ -160,6 +160,7 @@ type GoogleDocumentEntity = {
   type?: string;
   mentionText?: string;
   confidence?: number;
+  pageAnchor?: unknown;
   normalizedValue?: {
     text?: string;
     moneyValue?: {
@@ -456,22 +457,49 @@ function extractAmountCandidates(rawText: string, data: Record<string, unknown>)
     if (isTemplatePlaceholder(line)) return;
     const classified = classifyAmountLine(line);
     const tokens = amountTokensFromLine(line).filter(token => !(token.isPercent && !/[€£$]|KWD|KD|USD|SAR|AED|EUR|GBP|EGP|جنيه|د\.?\s*ك|ر\.?\s*س|د\.?\s*إ/i.test(token.token)));
-    if (!tokens.length) return;
+    if (!tokens.length) {
+      if (!['amount_due', 'grand_total', 'invoice_total', 'total', 'subtotal', 'tax', 'discount'].includes(classified.kind || '')) return;
+      const nextValueLine = lines.slice(index + 1, index + 3).find(nextLine => amountTokensFromLine(nextLine).some(token => !token.isPercent));
+      if (!nextValueLine) return;
+      const nextTokens = amountTokensFromLine(nextValueLine).filter(token => !token.isPercent);
+      const chosen = [...nextTokens].reverse()[0];
+      if (!chosen) return;
+      pushCandidate(candidates, {
+        ...classified,
+        amount: classified.kind === 'discount' ? -Math.abs(chosen.amount) : Math.abs(chosen.amount),
+        currency: normalizeCurrency(chosen.token, `${line} ${nextValueLine}`),
+        confidence: Math.min(0.99, classified.confidence + 0.04),
+        source: `${line} ${nextValueLine}`,
+      });
+      return;
+    }
+
+    const previousLabelLine = classified.kind === 'other' || classified.kind === 'line_item'
+      ? lines
+        .slice(Math.max(0, index - 2), index)
+        .reverse()
+        .find(previousLine => {
+          const previous = classifyAmountLine(previousLine);
+          return ['amount_due', 'grand_total', 'invoice_total', 'total', 'subtotal', 'tax', 'discount'].includes(previous.kind || '')
+            && !amountTokensFromLine(previousLine).length;
+        })
+      : undefined;
+    const effective = previousLabelLine ? classifyAmountLine(previousLabelLine) : classified;
 
     const lastNonPercent = [...tokens].reverse().find(token => !token.isPercent);
-    const chosen = classified.kind === 'line_item' || classified.kind === 'other'
+    const chosen = effective.kind === 'line_item' || effective.kind === 'other'
       ? tokens[tokens.length - 1]
       : lastNonPercent || tokens[tokens.length - 1];
     if (!chosen) return;
 
     const bottomBoost = lines.length > 1 ? Math.max(0, (index / (lines.length - 1)) * 0.04) : 0;
-    const amount = classified.kind === 'discount' ? -Math.abs(chosen.amount) : Math.abs(chosen.amount);
+    const amount = effective.kind === 'discount' ? -Math.abs(chosen.amount) : Math.abs(chosen.amount);
     pushCandidate(candidates, {
-      ...classified,
+      ...effective,
       amount,
-      currency: normalizeCurrency(chosen.token, line),
-      confidence: classified.confidence + bottomBoost,
-      source: line,
+      currency: normalizeCurrency(chosen.token, `${previousLabelLine || ''} ${line}`),
+      confidence: effective.confidence + bottomBoost + (previousLabelLine ? 0.04 : 0),
+      source: previousLabelLine ? `${previousLabelLine} ${line}` : line,
     });
   });
 
@@ -662,6 +690,23 @@ function normalizeExtraction(extraction: ProviderExtraction, fileName: string): 
     paymentMethod: normalizePayment(extraction.data.paymentMethod, rawText),
     lineItems,
   };
+  const hasUsefulPartialData = Boolean(
+    fields.total
+    || fields.currency
+    || fields.description
+    || fields.merchantName
+    || fields.invoiceNumber
+    || fields.subtotal
+    || fields.tax
+    || fields.discount
+    || candidates.length
+    || rawText.trim(),
+  );
+  if (!fields.total && hasUsefulPartialData) {
+    warnings.push(fields.currency
+      ? 'Currency was detected, but no total amount was identified with confidence.'
+      : 'Some invoice data was extracted, but no total amount was identified with confidence.');
+  }
   const data: ScanData = {
     merchantName: fields.merchantName,
     description: fields.description,
@@ -694,7 +739,7 @@ function normalizeExtraction(extraction: ProviderExtraction, fileName: string): 
 
   return {
     fileName,
-    success: Boolean(fields.total),
+    success: hasUsefulPartialData,
     provider: extraction.provider,
     confidence,
     code: fields.total ? 'scan_success' : 'no_clear_total',
@@ -753,33 +798,123 @@ function entityDate(entity?: GoogleDocumentEntity) {
   return normalizeDate(entityText(entity) || entity?.mentionText);
 }
 
-function findEntity(entities: GoogleDocumentEntity[], pattern: RegExp) {
+function googleEntityType(entity?: GoogleDocumentEntity) {
+  return String(entity?.type || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[-\s]+/g, '_');
+}
+
+function flattenGoogleEntities(entities: GoogleDocumentEntity[], parentType = ''): GoogleDocumentEntity[] {
+  const flattened: GoogleDocumentEntity[] = [];
+  for (const entity of entities) {
+    const ownType = String(entity.type || '').trim();
+    const inheritedType = parentType && ownType && !ownType.includes('/') ? `${parentType}/${ownType}` : ownType;
+    const normalizedEntity = inheritedType ? { ...entity, type: inheritedType } : entity;
+    flattened.push(normalizedEntity);
+    if (Array.isArray(entity.properties)) {
+      flattened.push(...flattenGoogleEntities(entity.properties, googleEntityType(normalizedEntity)));
+    }
+  }
+  return flattened;
+}
+
+function bestGoogleEntity(entities: GoogleDocumentEntity[]) {
   return entities
-    .filter(entity => pattern.test(String(entity.type || '').toLowerCase()))
+    .filter(Boolean)
     .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
 }
 
-function googleEntityData(document: { text?: string; entities?: GoogleDocumentEntity[] }) {
-  const entities = document.entities || [];
-  const supplier = findEntity(entities, /supplier.*name|vendor.*name|merchant.*name|store.*name/);
-  const invoiceId = findEntity(entities, /invoice.*id|invoice.*number|invoice_id/);
-  const invoiceDate = findEntity(entities, /invoice.*date|due_date|date/);
-  const total = findEntity(entities, /total.*amount|invoice.*total|amount_due|balance_due|grand_total|total/);
-  const subtotal = findEntity(entities, /subtotal|net_amount|total_net_amount/);
-  const tax = findEntity(entities, /tax|vat/);
-  const discount = findEntity(entities, /discount|coupon/);
-  const totalMoney = entityMoney(total);
-  const subtotalMoney = entityMoney(subtotal);
-  const taxMoney = entityMoney(tax);
-  const discountMoney = entityMoney(discount);
-  const lineItems: LineItem[] = entities
-    .filter(entity => /line.*item|line_item|item/.test(String(entity.type || '').toLowerCase()) && Array.isArray(entity.properties))
+function findGoogleEntity(
+  entities: GoogleDocumentEntity[],
+  exactTypes: string[],
+  patterns: RegExp[] = [],
+  options: { excludeLineItems?: boolean } = {},
+) {
+  const pool = options.excludeLineItems
+    ? entities.filter(entity => !googleEntityType(entity).includes('line_item'))
+    : entities;
+
+  for (const exactType of exactTypes.map(type => type.toLowerCase().replace(/[-\s]+/g, '_'))) {
+    const matches = pool.filter(entity => {
+      const type = googleEntityType(entity);
+      const collapsedType = type.replace(/\//g, '_');
+      return type === exactType || type.endsWith(`/${exactType}`) || collapsedType === exactType;
+    });
+    const match = bestGoogleEntity(matches);
+    if (match) return match;
+  }
+
+  return bestGoogleEntity(pool.filter(entity => patterns.some(pattern => pattern.test(googleEntityType(entity)))));
+}
+
+function googleAmountKind(entity?: GoogleDocumentEntity): AmountCandidate['kind'] {
+  const type = googleEntityType(entity);
+  if (/tax|vat/.test(type)) return 'tax';
+  if (/discount|coupon|deduction/.test(type)) return 'discount';
+  if (/subtotal|sub_total|net_amount|total_net_amount/.test(type)) return 'subtotal';
+  if (/amount_due|balance_due|total_due|due_amount/.test(type)) return 'amount_due';
+  if (/grand_total|final_total/.test(type)) return 'grand_total';
+  if (/invoice_total|total_amount/.test(type)) return 'invoice_total';
+  if (/(^|\/)total$/.test(type)) return 'total';
+  if (/line_item.*amount|line_item.*total/.test(type)) return 'line_item';
+  return 'other';
+}
+
+function googleAmountLabel(kind: AmountCandidate['kind'], entity?: GoogleDocumentEntity) {
+  if (kind === 'amount_due') return 'Amount Due';
+  if (kind === 'grand_total') return 'Grand Total';
+  if (kind === 'invoice_total') return 'Invoice Total';
+  if (kind === 'total') return 'Total';
+  if (kind === 'subtotal') return 'Subtotal';
+  if (kind === 'tax') return 'Tax';
+  if (kind === 'discount') return 'Discount';
+  if (kind === 'line_item') return 'Line item';
+  return cleanTextValue(entity?.type) || 'Amount';
+}
+
+function googleEntityDebugValue(entity: GoogleDocumentEntity) {
+  const normalizedValue = entity.normalizedValue;
+  if (!normalizedValue) return undefined;
+  return {
+    text: cleanTextValue(normalizedValue.text),
+    moneyValue: normalizedValue.moneyValue ? {
+      currencyCode: normalizedValue.moneyValue.currencyCode,
+      units: normalizedValue.moneyValue.units,
+      nanos: normalizedValue.moneyValue.nanos,
+    } : undefined,
+    dateValue: normalizedValue.dateValue,
+  };
+}
+
+function logGoogleEntitySummary(entities: GoogleDocumentEntity[]) {
+  if (process.env.NODE_ENV === 'production') return;
+  const flattened = flattenGoogleEntities(entities);
+  console.info('Google Document AI invoice entities', flattened.slice(0, 80).map(entity => ({
+    type: entity.type,
+    mentionText: entity.mentionText,
+    normalizedValue: googleEntityDebugValue(entity),
+    confidence: entity.confidence,
+    pageAnchor: Boolean(entity.pageAnchor),
+  })));
+}
+
+function googleLineItems(entities: GoogleDocumentEntity[]) {
+  return entities
+    .filter(entity => googleEntityType(entity).includes('line_item') && Array.isArray(entity.properties))
     .map(entity => {
-      const props = entity.properties || [];
-      const description = entityText(findEntity(props, /description|item.*name|name/));
-      const quantity = Number(entityText(findEntity(props, /quantity|qty/))) || undefined;
-      const unit = entityMoney(findEntity(props, /unit.*price|price/));
-      const amount = entityMoney(findEntity(props, /amount|total/));
+      const props = flattenGoogleEntities(entity.properties || [], googleEntityType(entity));
+      const description = entityText(findGoogleEntity(props, [
+        'line_item/description',
+        'description',
+        'product_service',
+        'product_service_description',
+        'item_name',
+        'name',
+      ], [/description|product.*service|item.*name|name/]));
+      const quantity = parseMoney(entityText(findGoogleEntity(props, ['line_item/quantity', 'quantity', 'qty'], [/quantity|qty/])));
+      const unit = entityMoney(findGoogleEntity(props, ['line_item/unit_price', 'unit_price', 'price'], [/unit.*price|price/]));
+      const amount = entityMoney(findGoogleEntity(props, ['line_item/amount', 'line_item/total', 'amount', 'total'], [/amount|total/]));
       return {
         description,
         quantity,
@@ -788,39 +923,124 @@ function googleEntityData(document: { text?: string; entities?: GoogleDocumentEn
       };
     })
     .filter(item => item.description || item.amount);
+}
+
+function googleEntityData(document: { text?: string; entities?: GoogleDocumentEntity[] }) {
+  const entities = document.entities || [];
+  logGoogleEntitySummary(entities);
+  const flattened = flattenGoogleEntities(entities);
+  const entityTextBlock = flattened
+    .map(entity => [entity.type, entityText(entity), entity.mentionText].filter(Boolean).join(' '))
+    .filter(Boolean)
+    .join('\n');
+  const rawText = [document.text, entityTextBlock].filter(Boolean).join('\n');
+  const supplier = findGoogleEntity(flattened, [
+    'supplier_name',
+    'vendor_name',
+    'merchant_name',
+    'store_name',
+    'seller_name',
+  ], [/supplier.*name|vendor.*name|merchant.*name|store.*name|seller.*name/], { excludeLineItems: true });
+  const invoiceId = findGoogleEntity(flattened, [
+    'invoice_id',
+    'invoice_number',
+    'invoice_no',
+    'invoice_num',
+  ], [/invoice.*(id|number|no|num)/], { excludeLineItems: true });
+  const invoiceDate = findGoogleEntity(flattened, [
+    'invoice_date',
+    'date',
+  ], [/invoice.*date|(^|\/)date$/], { excludeLineItems: true });
+  const total = findGoogleEntity(flattened, [
+    'amount_due',
+    'balance_due',
+    'grand_total',
+    'invoice_total',
+    'total_amount',
+    'total_due',
+    'total',
+  ], [/(^|\/)(amount_due|balance_due|grand_total|invoice_total|total_amount|total_due|total)$/], { excludeLineItems: true });
+  const subtotal = findGoogleEntity(flattened, [
+    'subtotal',
+    'sub_total',
+    'net_amount',
+    'total_net_amount',
+  ], [/subtotal|sub_total|net_amount|total_net_amount/], { excludeLineItems: true });
+  const tax = findGoogleEntity(flattened, [
+    'total_tax_amount',
+    'tax_amount',
+    'vat',
+    'tax',
+  ], [/tax|vat/], { excludeLineItems: true });
+  const discount = findGoogleEntity(flattened, [
+    'discount_amount',
+    'discount',
+    'coupon',
+  ], [/discount|coupon/], { excludeLineItems: true });
+  const currencyEntity = findGoogleEntity(flattened, [
+    'currency',
+    'currency_code',
+    'invoice_currency',
+    'document_currency',
+  ], [/currency/], { excludeLineItems: true });
+  const totalMoney = entityMoney(total);
+  const subtotalMoney = entityMoney(subtotal);
+  const taxMoney = entityMoney(tax);
+  const discountMoney = entityMoney(discount);
+  const lineItems = googleLineItems(entities);
 
   const amountCandidates: AmountCandidate[] = [];
-  for (const [label, kind, entity] of [
-    ['Total', 'total', total],
-    ['Subtotal', 'subtotal', subtotal],
-    ['Tax', 'tax', tax],
-    ['Discount', 'discount', discount],
-  ] as const) {
+  for (const entity of flattened) {
+    const kind = googleAmountKind(entity);
+    if (kind === 'other') continue;
     const money = entityMoney(entity);
     if (money?.amount) {
+      const candidateKind: NonNullable<AmountCandidate['kind']> = kind || 'other';
+      const confidenceByKind = {
+        amount_due: 0.98,
+        grand_total: 0.97,
+        invoice_total: 0.96,
+        total: 0.94,
+        subtotal: 0.7,
+        tax: 0.5,
+        discount: 0.52,
+        line_item: 0.42,
+        computed: 0.7,
+        other: 0.3,
+      } as Record<NonNullable<AmountCandidate['kind']>, number>;
       pushCandidate(amountCandidates, {
-        label,
-        kind,
-        amount: kind === 'discount' ? -Math.abs(money.amount) : money.amount,
-        currency: money.currency,
-        confidence: entity?.confidence || 0.7,
-        source: entity?.type || label,
+        label: googleAmountLabel(candidateKind, entity),
+        kind: candidateKind,
+        amount: candidateKind === 'discount' ? -Math.abs(money.amount) : money.amount,
+        currency: money.currency || normalizeCurrency(entityText(entity), rawText),
+        confidence: Math.max(entity.confidence || 0, confidenceByKind[candidateKind]),
+        source: [entity.type, entityText(entity)].filter(Boolean).join(': '),
       });
     }
   }
 
-  const rawText = document.text || '';
+  const merchantName = entityText(supplier) || parseMerchantName(rawText);
+  const selectedTotal = selectBestAmount(amountCandidates);
+  const selectedFinalTotal = selectedTotal && ['amount_due', 'grand_total', 'invoice_total', 'total', 'computed'].includes(selectedTotal.kind || '')
+    ? selectedTotal
+    : undefined;
   return {
     rawText,
     data: {
-      merchantName: entityText(supplier),
+      merchantName,
       invoiceNumber: entityText(invoiceId),
       date: entityDate(invoiceDate),
       subtotal: subtotalMoney?.amount,
       taxAmount: taxMoney?.amount,
       discountAmount: discountMoney?.amount,
-      totalAmount: totalMoney?.amount,
-      currency: totalMoney?.currency || subtotalMoney?.currency || taxMoney?.currency || normalizeCurrency(undefined, rawText),
+      totalAmount: totalMoney?.amount || selectedFinalTotal?.value,
+      currency: totalMoney?.currency
+        || selectedFinalTotal?.currency
+        || subtotalMoney?.currency
+        || taxMoney?.currency
+        || normalizeCurrency(entityText(currencyEntity), rawText)
+        || normalizeCurrency(undefined, rawText),
+      description: parseDescription(rawText, lineItems, merchantName),
       lineItems,
       amountCandidates,
       rawText,
