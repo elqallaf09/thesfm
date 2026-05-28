@@ -86,6 +86,7 @@ type SourceDiagnostic = {
   errorDetails: Partial<Record<string, string>>;
   message?: string;
 };
+type SourceErrorDetails = Partial<Record<SourceKey, string>>;
 
 const SOURCE_TABLES: SourceConfig[] = [
   { key: 'income', table: 'monthly_income_sources', source: 'income' },
@@ -411,7 +412,7 @@ function emptySourceDiagnostics(): Record<NotificationSourceId, SourceDiagnostic
 
 function buildSourceDiagnostics(
   records: Partial<Record<SourceKey, any[]>>,
-  sourceErrors: Partial<Record<SourceKey, string>>,
+  sourceErrors: SourceErrorDetails,
   storedCount: number,
   storedError?: string,
 ) {
@@ -437,6 +438,30 @@ function buildSourceDiagnostics(
       if (!diagnostic.errorCodes.includes(code)) diagnostic.errorCodes.push(code);
     }
   });
+
+  const charityDataCount = (records.charityProjects?.length ?? 0)
+    + (records.charityReminders?.length ?? 0)
+    + (records.charityBeneficiaries?.length ?? 0)
+    + (records.charityContributors?.length ?? 0);
+  const charityErrors = SOURCE_TABLES
+    .filter(item => item.source === 'charity')
+    .filter(item => sourceErrors[item.key]);
+  const charityPrimaryLoadedEmpty = !sourceErrors.charityProjects
+    && !sourceErrors.charityReminders
+    && !sourceErrors.charityBeneficiaries
+    && (records.charityProjects?.length ?? 0) === 0
+    && (records.charityReminders?.length ?? 0) === 0
+    && (records.charityBeneficiaries?.length ?? 0) === 0;
+
+  if (charityDataCount === 0 && charityPrimaryLoadedEmpty && charityErrors.length > 0) {
+    const charity = diagnostics.charity;
+    charity.ok = true;
+    charity.status = 'ok_empty';
+    charity.failedTables = [];
+    charity.errorCodes = [];
+    charity.errorDetails = {};
+    charity.message = 'No charity data yet';
+  }
 
   (Object.keys(diagnostics) as NotificationSourceId[]).forEach(source => {
     const diagnostic = diagnostics[source];
@@ -589,6 +614,16 @@ export function NotificationsPage() {
       );
 
       if (process.env.NODE_ENV !== 'production') {
+        (['zakat', 'charity'] as NotificationSourceId[]).forEach(source => {
+          const diagnostic = nextDiagnostics[source];
+          console.log('notification source status', {
+            source,
+            status: diagnostic.status,
+            count: diagnostic.count,
+            hasError: Object.keys(diagnostic.errorDetails).length > 0,
+            errorCode: diagnostic.errorCodes[0],
+          });
+        });
         const failed = Object.entries(nextDiagnostics)
           .filter(([, diagnostic]) => !diagnostic.ok)
           .map(([source, diagnostic]) => ({
