@@ -395,7 +395,7 @@ function sourceDiagnosticLabel(source: NotificationSourceId, lang: Lang) {
 function safeErrorCode(message: string | undefined) {
   const text = String(message ?? '').toLowerCase();
   if (text.includes('permission denied') || text.includes('row-level security') || text.includes('rls')) return 'permission_denied';
-  if (text.includes('does not exist') || text.includes('relation') || text.includes('not found')) return 'relation_missing';
+  if (text.includes('does not exist') || text.includes('relation') || text.includes('not found') || text.includes('not find') || text.includes('could not find') || text.includes('schema cache')) return 'relation_missing';
   if (text.includes('column') || text.includes('schema cache')) return 'column_missing';
   if (text.includes('timeout') || text.includes('timed out')) return 'timeout';
   if (text.includes('invalid')) return 'invalid_filter';
@@ -459,7 +459,8 @@ function buildSourceDiagnostics(
     if (dataCount === 0 && onlyOptionalMissingTables) {
       const diagnostic = diagnostics[source];
       if (process.env.NODE_ENV !== 'production') {
-        console.log(`Optional ${source} notification table not found`, {
+        console.log(`Optional source table missing: ${source}`, {
+          page: 'notifications',
           source,
           tables: errorEntries.map(([key]) => SOURCE_TABLES.find(item => item.key === key)?.table ?? key),
         });
@@ -626,7 +627,8 @@ export function NotificationsPage() {
       if (process.env.NODE_ENV !== 'production') {
         (['zakat', 'charity'] as NotificationSourceId[]).forEach(source => {
           const diagnostic = nextDiagnostics[source];
-          console.log('notifications source result', {
+          console.log('source status', {
+            page: 'notifications',
             source,
             status: diagnostic.status,
             count: diagnostic.count,

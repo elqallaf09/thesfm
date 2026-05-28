@@ -58,6 +58,16 @@ const SMART_TASK_TABLES: Array<{ key: SmartTaskTableKey; table: string; source: 
 ];
 
 const SOURCE_IDS: SmartTaskSourceId[] = ['personal', 'projects', 'zakatCharity', 'market', 'notifications'];
+const OPTIONAL_ZAKAT_CHARITY_KEYS: SmartTaskTableKey[] = [
+  'zakatCalculations',
+  'zakatAssets',
+  'charityProjects',
+  'charityReminders',
+  'charityBeneficiaries',
+  'charityContributors',
+  'charityCommitments',
+  'charityDocuments',
+];
 
 type TaskOverride = {
   status: SmartTaskStatus;
@@ -89,10 +99,14 @@ function writeOverrides(key: string, value: Record<string, TaskOverride>) {
 
 function safeErrorCode(message: string) {
   if (/permission denied|42501|not authorized|unauthorized/i.test(message)) return 'permission_denied';
-  if (/relation .* does not exist|does not exist|42P01|schema cache|not find/i.test(message)) return 'relation_missing';
+  if (/relation .* does not exist|does not exist|42P01|schema cache|not find|not found|could not find/i.test(message)) return 'relation_missing';
   if (/column .* does not exist|42703/i.test(message)) return 'column_missing';
   if (/timeout|timed out|abort/i.test(message)) return 'timeout';
   return 'load_failed';
+}
+
+function isOptionalMissingTableError(message: string | undefined) {
+  return Boolean(message) && safeErrorCode(message || '') === 'relation_missing';
 }
 
 function buildSourceDiagnostics(
@@ -122,6 +136,30 @@ function buildSourceDiagnostics(
       if (!diagnostic.errorCodes.includes(code)) diagnostic.errorCodes.push(code);
     }
   });
+
+  const zakatCharityDataCount = OPTIONAL_ZAKAT_CHARITY_KEYS.reduce((sum, key) => sum + (records[key]?.length ?? 0), 0);
+  const zakatCharityErrors = OPTIONAL_ZAKAT_CHARITY_KEYS
+    .map(key => [key, errors[key]] as const)
+    .filter((entry): entry is readonly [SmartTaskTableKey, string] => Boolean(entry[1]));
+  const onlyOptionalMissingTables = zakatCharityErrors.length > 0
+    && zakatCharityErrors.every(([, error]) => isOptionalMissingTableError(error));
+
+  if (zakatCharityDataCount === 0 && onlyOptionalMissingTables) {
+    const diagnostic = diagnostics.zakatCharity;
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Optional source table missing: zakat/charity', {
+        page: 'tasks',
+        source: 'zakat_charity',
+        tables: zakatCharityErrors.map(([key]) => SMART_TASK_TABLES.find(item => item.key === key)?.table ?? key),
+      });
+    }
+    diagnostic.ok = true;
+    diagnostic.status = 'ok_empty';
+    diagnostic.failedTables = [];
+    diagnostic.errorCodes = [];
+    diagnostic.errorDetails = {};
+    diagnostic.message = 'No zakat or charity data yet';
+  }
 
   SOURCE_IDS.forEach(source => {
     const diagnostic = diagnostics[source];
@@ -190,9 +228,22 @@ export function useSmartTasks() {
       };
       setRecords(nextRecords);
       setErrors(dataResult.value.errors);
-      setSourceDiagnostics(buildSourceDiagnostics(nextRecords, dataResult.value.errors));
+      const nextDiagnostics = buildSourceDiagnostics(nextRecords, dataResult.value.errors);
+      setSourceDiagnostics(nextDiagnostics);
+      if (process.env.NODE_ENV === 'development') {
+        const diagnostic = nextDiagnostics.zakatCharity;
+        console.log('source status', {
+          page: 'tasks',
+          source: 'zakat_charity',
+          status: diagnostic.status,
+          count: diagnostic.count,
+          hasError: Object.keys(diagnostic.errorDetails).length > 0,
+          errorCode: diagnostic.errorCodes[0],
+          errorMessage: Object.values(diagnostic.errorDetails)[0],
+        });
+      }
       if (process.env.NODE_ENV === 'development' && Object.keys(dataResult.value.errors).length > 0) {
-        console.warn('Task Center source load errors', buildSourceDiagnostics(nextRecords, dataResult.value.errors));
+        console.warn('Task Center source load errors', nextDiagnostics);
       }
     } else {
       setRecords({});
