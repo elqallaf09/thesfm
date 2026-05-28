@@ -59,6 +59,7 @@ type ScanErrorCode =
   | 'google_request_failed'
   | 'openai_env_missing'
   | 'openai_fallback_failed'
+  | 'OCR_NOT_CONFIGURED'
   | 'no_provider_configured'
   | 'provider_unavailable'
   | 'all_providers_unavailable'
@@ -1620,13 +1621,14 @@ export async function POST(request: NextRequest) {
       const googleError = providerStatus.google.error || 'google_env_missing';
       return NextResponse.json({
         success: false,
+        reason: 'OCR_NOT_CONFIGURED',
         provider: 'manual',
         confidence: 'low',
-        code: 'no_provider_configured',
+        code: 'OCR_NOT_CONFIGURED',
         fields: {},
         candidates: { amounts: [] },
         warnings: [googleError, 'openai_env_missing'],
-        error: safeProviderErrorMessage('no_provider_configured'),
+        error: 'خدمة قراءة الفواتير غير مفعلة حالياً. يمكنك إدخال البيانات يدوياً.',
         debug: {
           stage: 'provider',
           fileName: files[0]?.name || '',
@@ -1635,7 +1637,7 @@ export async function POST(request: NextRequest) {
           googleConfigured: providerStatus.google.configured,
           openaiConfigured: providerStatus.openai.configured,
           provider: 'manual',
-          errorSource: googleError,
+          errorSource: 'OCR_NOT_CONFIGURED',
           message: googleError,
         },
       }, { status: 503 });

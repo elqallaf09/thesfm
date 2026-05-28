@@ -645,6 +645,7 @@ function receiptConfidenceLabel(level: AiExtractedData['confidenceLevel'] | unde
 
 function normalizeReceiptScanCode(errorSource: string | undefined) {
   if (!errorSource) return '';
+  if (/OCR_NOT_CONFIGURED/.test(errorSource)) return 'no_provider_configured';
   if (/google_credentials_json_invalid|invalid_google_credentials_json/.test(errorSource)) return 'google_credentials_json_invalid';
   if (/google_credentials_private_key_missing/.test(errorSource)) return 'google_credentials_private_key_missing';
   if (/google_credentials_private_key_invalid/.test(errorSource)) return 'google_credentials_private_key_invalid';
@@ -804,7 +805,7 @@ function receiptScanErrorText(errorSource: string | undefined, lang: string, fal
 }
 
 function isReceiptProviderUnavailable(errorSource?: string, code?: string, message?: string) {
-  return /no_provider_configured|missing_google_and_openai|all_providers_unavailable|provider_unavailable/i.test(`${errorSource || ''} ${code || ''} ${message || ''}`);
+  return /OCR_NOT_CONFIGURED|no_provider_configured|missing_google_and_openai|all_providers_unavailable|provider_unavailable|google_env_missing|openai_env_missing/i.test(`${errorSource || ''} ${code || ''} ${message || ''}`);
 }
 
 function receiptProviderDevDetail(errorSource: string | undefined, lang: string) {
@@ -963,6 +964,17 @@ function receiptProviderDebugDetail(debug: ReceiptScanDebug | null, lang: string
 function selectedReceiptsLabel(count: number, lang: string) {
   if (count === 1) return expenseText('selectedOneReceipt', lang);
   return textWithCount(expenseText('selectedReceipts', lang), { count });
+}
+
+function inferClientReceiptMimeType(file: File) {
+  const type = file.type?.toLowerCase();
+  if (type) return type;
+  const name = file.name.toLowerCase();
+  if (/\.(jpe?g)$/.test(name)) return 'image/jpeg';
+  if (/\.png$/.test(name)) return 'image/png';
+  if (/\.webp$/.test(name)) return 'image/webp';
+  if (/\.pdf$/.test(name)) return 'application/pdf';
+  return '';
 }
 
 function normalizeReceiptDate(data: AiExtractedData) {
@@ -1559,7 +1571,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       console.info('Receipt image selected', { name: file.name, type: file.type, size: file.size });
     }
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-    if (!allowed.includes(file.type)) {
+    if (!allowed.includes(inferClientReceiptMimeType(file))) {
       setReceiptError(expenseText('fileUnsupported', lang));
       return;
     }
@@ -1567,7 +1579,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       setReceiptError(expenseText('fileLarge', lang));
       return;
     }
-    const preview = file.type === 'application/pdf' ? '' : URL.createObjectURL(file);
+    const mimeType = inferClientReceiptMimeType(file);
+    const preview = mimeType === 'application/pdf' ? '' : URL.createObjectURL(file);
     setExpenseForm(prev => ({
       ...prev,
       receiptFile: file,
@@ -1593,7 +1606,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       return;
     }
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-    const invalid = selected.find(file => !allowed.includes(file.type));
+    const invalid = selected.find(file => !allowed.includes(inferClientReceiptMimeType(file)));
     if (invalid) {
       setReceiptError(expenseText('fileUnsupported', lang));
       return;
@@ -1603,7 +1616,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       setReceiptError(expenseText('fileLarge', lang));
       return;
     }
-    const entries = selected.map(file => ({ file, previewUrl: file.type === 'application/pdf' ? '' : URL.createObjectURL(file) }));
+    const entries = selected.map(file => ({ file, previewUrl: inferClientReceiptMimeType(file) === 'application/pdf' ? '' : URL.createObjectURL(file) }));
     setReceiptFiles(entries);
     const first = entries[0];
     setExpenseForm(prev => ({

@@ -15,6 +15,7 @@ const protectedPrefixes = [
   '/goals',
   '/reports',
   '/reports-center',
+  '/business',
   '/business-hub',
   '/business-operations',
   '/employees',

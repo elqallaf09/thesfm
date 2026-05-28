@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { BarChart3, BriefcaseBusiness, FileDown, FileText, Loader2, ReceiptText, ShoppingCart, Truck, UserRound, UsersRound } from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, FileDown, FileText, Loader2, Plus, ReceiptText, ShoppingCart, Truck, UserRound, UsersRound } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
@@ -118,15 +118,15 @@ export default function BusinessOperationsPage() {
     const activeSales = salesRows.filter((row) => row.status !== 'canceled');
     const monthly = aggregateBy(
       activeSales,
-      (row) => String(row.sale_date ?? '').slice(0, 7) || text.noDataYet,
+      (row) => String(row.sale_date ?? '').slice(0, 7) || text.unclassified,
       (row) => numericValue(row.amount)
     ).sort((a, b) => a.name.localeCompare(b.name)).map((item) => ({ ...item, label: /^\d{4}-\d{2}$/.test(item.name) ? monthLabel(item.name, locale) : item.name }));
     const status = aggregateBy(salesRows, (row) => saleStatusLabel(row.status, locale), (row) => numericValue(row.amount));
-    const products = aggregateBy(activeSales, (row) => row.product_or_service || text.noDataYet, (row) => numericValue(row.amount))
+    const products = aggregateBy(activeSales, (row) => row.product_or_service || text.unclassified, (row) => numericValue(row.amount))
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
     return { monthly, status, products };
-  }, [locale, salesRows, text.noDataYet]);
+  }, [locale, salesRows, text.unclassified]);
 
   function summaryRows(): SummaryRow[] {
     return [
@@ -135,7 +135,7 @@ export default function BusinessOperationsPage() {
       { metric: text.totalEmployees, value: permissions.canViewEmployees ? String(summary.employeeCount) : text.permissionDenied },
       { metric: text.activeEmployees, value: permissions.canViewEmployees ? String(summary.activeEmployees) : text.permissionDenied },
       { metric: text.totalMonthlyCost, value: permissions.canViewPayrollTotals ? formatMoney(summary.payroll, defaultCurrency, locale) : text.permissionDenied },
-      { metric: text.nearestPayrollDate, value: summary.nearestPayroll ? formatDate(summary.nearestPayroll, locale) : text.noDataYet },
+      { metric: text.nearestPayrollDate, value: summary.nearestPayroll ? formatDate(summary.nearestPayroll, locale) : text.noPayrollDate },
     ];
   }
 
@@ -180,10 +180,10 @@ export default function BusinessOperationsPage() {
       allowed: permissions.canViewEmployees,
       count: summary.employeeCount,
     },
-    { title: text.customers, description: text.noDataYet, icon: UserRound, active: false, allowed: false },
-    { title: text.invoices, description: text.noDataYet, icon: FileText, active: false, allowed: false },
-    { title: text.suppliers, description: text.noDataYet, icon: Truck, active: false, allowed: false },
-    { title: text.operatingExpenses, description: text.noDataYet, icon: ReceiptText, active: false, allowed: false },
+    { title: text.customers, description: text.customersDescription, icon: UserRound, active: false, allowed: false, count: 0 },
+    { title: text.invoices, description: text.invoicesDescription, icon: FileText, active: false, allowed: false, count: 0 },
+    { title: text.suppliers, description: text.suppliersDescription, icon: Truck, active: false, allowed: false, count: 0 },
+    { title: text.operatingExpenses, description: text.operatingExpensesDescription, icon: ReceiptText, active: false, allowed: false, count: 0 },
   ], [permissions.canViewEmployees, permissions.canViewSales, summary.employeeCount, summary.salesCount, text]);
 
   if (authLoading || loading || roleLoading) {
@@ -248,17 +248,17 @@ export default function BusinessOperationsPage() {
                 </div>
                 {card.active && card.allowed ? (
                   <div className="business-card-foot">
-                    <span>{card.count && card.count > 0 ? card.count.toLocaleString(locale === 'ar' ? 'ar-KW' : locale) : text.noDataYet}</span>
+                    <span>{text.itemCount.replace('{count}', String(card.count ?? 0))}</span>
                     <strong>{card.action}</strong>
                   </div>
                 ) : card.active ? (
                   <div className="business-card-foot muted">
-                    <span>{text.noDataYet}</span>
+                    <span>{text.itemCount.replace('{count}', String(card.count ?? 0))}</span>
                     <strong>{text.permissionDenied}</strong>
                   </div>
                 ) : (
                   <div className="business-card-foot muted">
-                    <span>{text.noDataYet}</span>
+                    <span>{text.itemCount.replace('{count}', String(card.count ?? 0))}</span>
                     <strong>{text.comingSoon}</strong>
                   </div>
                 )}
@@ -286,7 +286,7 @@ export default function BusinessOperationsPage() {
         {summary.salesCount === 0 && summary.employeeCount === 0 && !error ? (
           <EmptyState
             title={text.noDataYet}
-            description={text.businessOperationsSubtitle}
+            description={text.emptyDashboardBody}
             icon={<BriefcaseBusiness size={26} />}
           />
         ) : null}
@@ -307,7 +307,15 @@ function HubChartCard({ title, data, currency, lang, variant = 'bar' }: { title:
         <h2><BarChart3 size={18} aria-hidden="true" />{title}</h2>
       </div>
       {!hasData ? (
-        <p className="business-chart-empty">{text.insufficientChartData}</p>
+        <div className="business-chart-empty">
+          <span className="business-chart-empty-icon" aria-hidden="true"><BarChart3 size={24} /></span>
+          <strong>{text.insufficientChartData}</strong>
+          <p>{text.chartEmptyBody}</p>
+          <Link className="business-chart-empty-action" href="/sales">
+            <Plus size={15} aria-hidden="true" />
+            {text.addSale}
+          </Link>
+        </div>
       ) : (
         <ResponsiveContainer width="100%" height={220}>
           {variant === 'pie' ? (
@@ -568,6 +576,7 @@ const businessOperationsStyles = `
     min-height: 220px;
     margin: 0;
     display: grid;
+    align-content: center;
     place-items: center;
     text-align: center;
     color: var(--sfm-muted);
@@ -575,7 +584,50 @@ const businessOperationsStyles = `
     border: 1px dashed rgba(29, 140, 255, 0.22);
     border-radius: 16px;
     background: var(--sfm-light-card);
-    padding: 18px;
+    padding: 22px;
+    gap: 9px;
+  }
+
+  .business-chart-empty-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: grid;
+    place-items: center;
+    color: #EAF6FF;
+    background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+    box-shadow: 0 14px 30px rgba(29, 140, 255, 0.18);
+  }
+
+  .business-chart-empty strong {
+    color: var(--sfm-foreground);
+    font-size: 1rem;
+  }
+
+  .business-chart-empty p {
+    margin: 0;
+    max-width: 320px;
+    line-height: 1.7;
+  }
+
+  .business-chart-empty-action {
+    min-height: 38px;
+    margin-top: 4px;
+    padding: 0 14px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+    text-decoration: none;
+    font-weight: 950;
+    box-shadow: 0 12px 24px rgba(29, 140, 255, 0.20);
+  }
+
+  .business-chart-empty-action:focus-visible {
+    outline: 2px solid rgba(24, 212, 212, 0.42);
+    outline-offset: 3px;
   }
 
   .dark .business-alert {
