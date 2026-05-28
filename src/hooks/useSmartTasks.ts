@@ -16,34 +16,45 @@ import {
 } from '@/lib/tasks/generateSmartTasks';
 
 type SmartTaskTableKey = keyof SmartTaskSourceData;
+export type SmartTaskSourceId = 'personal' | 'projects' | 'zakatCharity' | 'market' | 'notifications';
+export type SmartTaskSourceDiagnostic = {
+  ok: boolean;
+  count: number;
+  tables: SmartTaskTableKey[];
+  failedTables: SmartTaskTableKey[];
+  errorCodes: string[];
+  errorDetails: Partial<Record<SmartTaskTableKey, string>>;
+};
 
-const SMART_TASK_TABLES: Array<{ key: SmartTaskTableKey; table: string; limit?: number }> = [
-  { key: 'income', table: 'monthly_income_sources', limit: 1000 },
-  { key: 'expenses', table: 'expense_items', limit: 1000 },
-  { key: 'goals', table: 'financial_goals', limit: 1000 },
-  { key: 'savings', table: 'savings_items', limit: 1000 },
-  { key: 'investments', table: 'investment_items', limit: 1000 },
-  { key: 'marketWatchlist', table: 'market_watchlist', limit: 1000 },
-  { key: 'marketPriceAlerts', table: 'market_price_alerts', limit: 1000 },
-  { key: 'projects', table: 'projects', limit: 1000 },
-  { key: 'feasibilityStudies', table: 'project_feasibility_studies', limit: 1000 },
-  { key: 'financialModels', table: 'project_financial_models', limit: 1000 },
-  { key: 'projectTasks', table: 'project_tasks', limit: 1000 },
-  { key: 'projectMilestones', table: 'project_milestones', limit: 1000 },
-  { key: 'projectDocuments', table: 'project_documents', limit: 1000 },
-  { key: 'pitchDecks', table: 'project_pitch_decks', limit: 1000 },
-  { key: 'fundingReadiness', table: 'project_funding_readiness', limit: 1000 },
-  { key: 'jurisdictionAssessments', table: 'project_jurisdiction_assessments', limit: 1000 },
-  { key: 'zakatCalculations', table: 'zakat_calculations', limit: 1000 },
-  { key: 'zakatAssets', table: 'zakat_assets', limit: 1000 },
-  { key: 'charityProjects', table: 'charity_projects', limit: 1000 },
-  { key: 'charityReminders', table: 'charity_reminders', limit: 1000 },
-  { key: 'charityBeneficiaries', table: 'charity_beneficiaries', limit: 1000 },
-  { key: 'charityContributors', table: 'charity_project_contributors', limit: 1000 },
-  { key: 'charityCommitments', table: 'charity_commitments', limit: 1000 },
-  { key: 'charityDocuments', table: 'charity_documents', limit: 1000 },
-  { key: 'notifications', table: 'notifications', limit: 1000 },
+const SMART_TASK_TABLES: Array<{ key: SmartTaskTableKey; table: string; source: SmartTaskSourceId; limit?: number }> = [
+  { key: 'income', table: 'monthly_income_sources', source: 'personal', limit: 1000 },
+  { key: 'expenses', table: 'expense_items', source: 'personal', limit: 1000 },
+  { key: 'goals', table: 'financial_goals', source: 'personal', limit: 1000 },
+  { key: 'savings', table: 'savings_items', source: 'personal', limit: 1000 },
+  { key: 'investments', table: 'investment_items', source: 'market', limit: 1000 },
+  { key: 'marketWatchlist', table: 'market_watchlist', source: 'market', limit: 1000 },
+  { key: 'marketPriceAlerts', table: 'market_price_alerts', source: 'market', limit: 1000 },
+  { key: 'projects', table: 'projects', source: 'projects', limit: 1000 },
+  { key: 'feasibilityStudies', table: 'project_feasibility_studies', source: 'projects', limit: 1000 },
+  { key: 'financialModels', table: 'project_financial_models', source: 'projects', limit: 1000 },
+  { key: 'projectTasks', table: 'project_tasks', source: 'projects', limit: 1000 },
+  { key: 'projectMilestones', table: 'project_milestones', source: 'projects', limit: 1000 },
+  { key: 'projectDocuments', table: 'project_documents', source: 'projects', limit: 1000 },
+  { key: 'pitchDecks', table: 'project_pitch_decks', source: 'projects', limit: 1000 },
+  { key: 'fundingReadiness', table: 'project_funding_readiness', source: 'projects', limit: 1000 },
+  { key: 'jurisdictionAssessments', table: 'project_jurisdiction_assessments', source: 'projects', limit: 1000 },
+  { key: 'zakatCalculations', table: 'zakat_calculations', source: 'zakatCharity', limit: 1000 },
+  { key: 'zakatAssets', table: 'zakat_assets', source: 'zakatCharity', limit: 1000 },
+  { key: 'charityProjects', table: 'charity_projects', source: 'zakatCharity', limit: 1000 },
+  { key: 'charityReminders', table: 'charity_reminders', source: 'zakatCharity', limit: 1000 },
+  { key: 'charityBeneficiaries', table: 'charity_beneficiaries', source: 'zakatCharity', limit: 1000 },
+  { key: 'charityContributors', table: 'charity_project_contributors', source: 'zakatCharity', limit: 1000 },
+  { key: 'charityCommitments', table: 'charity_commitments', source: 'zakatCharity', limit: 1000 },
+  { key: 'charityDocuments', table: 'charity_documents', source: 'zakatCharity', limit: 1000 },
+  { key: 'notifications', table: 'notifications', source: 'notifications', limit: 1000 },
 ];
+
+const SOURCE_IDS: SmartTaskSourceId[] = ['personal', 'projects', 'zakatCharity', 'market', 'notifications'];
 
 type TaskOverride = {
   status: SmartTaskStatus;
@@ -73,6 +84,44 @@ function writeOverrides(key: string, value: Record<string, TaskOverride>) {
   window.localStorage.setItem(key, JSON.stringify(value));
 }
 
+function safeErrorCode(message: string) {
+  if (/permission denied|42501|not authorized|unauthorized/i.test(message)) return 'permission_denied';
+  if (/relation .* does not exist|does not exist|42P01|schema cache|not find/i.test(message)) return 'relation_missing';
+  if (/column .* does not exist|42703/i.test(message)) return 'column_missing';
+  if (/timeout|timed out|abort/i.test(message)) return 'timeout';
+  return 'load_failed';
+}
+
+function buildSourceDiagnostics(
+  records: SmartTaskSourceData,
+  errors: Partial<Record<SmartTaskTableKey, string>>,
+) {
+  const diagnostics = Object.fromEntries(SOURCE_IDS.map(source => [source, {
+    ok: true,
+    count: 0,
+    tables: [] as SmartTaskTableKey[],
+    failedTables: [] as SmartTaskTableKey[],
+    errorCodes: [] as string[],
+    errorDetails: {} as Partial<Record<SmartTaskTableKey, string>>,
+  }])) as Record<SmartTaskSourceId, SmartTaskSourceDiagnostic>;
+
+  SMART_TASK_TABLES.forEach(item => {
+    const diagnostic = diagnostics[item.source];
+    diagnostic.tables.push(item.key);
+    diagnostic.count += records[item.key]?.length ?? 0;
+    const error = errors[item.key];
+    if (error) {
+      diagnostic.ok = false;
+      diagnostic.failedTables.push(item.key);
+      diagnostic.errorDetails[item.key] = error;
+      const code = safeErrorCode(error);
+      if (!diagnostic.errorCodes.includes(code)) diagnostic.errorCodes.push(code);
+    }
+  });
+
+  return diagnostics;
+}
+
 export function useSmartTasks() {
   const { user, loading: authLoading } = useAuth();
   const { lang } = useLanguage();
@@ -80,6 +129,7 @@ export function useSmartTasks() {
   const [profile, setProfile] = useState<SmartTaskProfile | null>(null);
   const [records, setRecords] = useState<SmartTaskSourceData>({});
   const [errors, setErrors] = useState<Partial<Record<SmartTaskTableKey, string>>>({});
+  const [sourceDiagnostics, setSourceDiagnostics] = useState<Record<SmartTaskSourceId, SmartTaskSourceDiagnostic>>(() => buildSourceDiagnostics({}, {}));
   const [loading, setLoading] = useState(true);
   const [overrides, setOverrides] = useState<Record<string, TaskOverride>>({});
 
@@ -95,6 +145,7 @@ export function useSmartTasks() {
       setProfile(null);
       setRecords({});
       setErrors({});
+      setSourceDiagnostics(buildSourceDiagnostics({}, {}));
       setLoading(false);
       return;
     }
@@ -113,15 +164,21 @@ export function useSmartTasks() {
     }
 
     if (dataResult.status === 'fulfilled') {
-      setRecords({
+      const nextRecords = {
         ...(dataResult.value.records as SmartTaskSourceData),
         income: personalIncomeRows(dataResult.value.records.income ?? []),
         expenses: personalExpenseRows(dataResult.value.records.expenses ?? []),
-      });
+      };
+      setRecords(nextRecords);
       setErrors(dataResult.value.errors);
+      setSourceDiagnostics(buildSourceDiagnostics(nextRecords, dataResult.value.errors));
+      if (process.env.NODE_ENV === 'development' && Object.keys(dataResult.value.errors).length > 0) {
+        console.warn('Task Center source load errors', buildSourceDiagnostics(nextRecords, dataResult.value.errors));
+      }
     } else {
       setRecords({});
       setErrors({ income: 'load_failed' });
+      setSourceDiagnostics(buildSourceDiagnostics({}, { income: 'load_failed' }));
     }
     setLoading(false);
   }, [authLoading, user]);
@@ -165,6 +222,7 @@ export function useSmartTasks() {
     rawTasks: generatedTasks,
     loading: authLoading || loading,
     errors,
+    sourceDiagnostics,
     reload: loadTasks,
     setTaskStatus,
     resetTaskStatus,

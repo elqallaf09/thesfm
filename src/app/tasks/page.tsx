@@ -31,7 +31,7 @@ import { EmptyState } from '@/components/layout/EmptyState';
 import { StatGrid } from '@/components/layout/LayoutPrimitives';
 import { PageTabs, type PageTabItem } from '@/components/layout/PageTabs';
 import { useLanguage } from '@/hooks/useLanguage';
-import { useSmartTasks, type SmartTask } from '@/hooks/useSmartTasks';
+import { useSmartTasks, type SmartTask, type SmartTaskSourceDiagnostic, type SmartTaskSourceId } from '@/hooks/useSmartTasks';
 import { compareSmartTasks, isTaskDueThisWeek } from '@/lib/tasks/generateSmartTasks';
 import { formatDate } from '@/lib/formatDate';
 
@@ -44,7 +44,8 @@ const TEXT = {
     subtitle: 'كل ما تحتاج تنفيذه في THE SFM، مرتب حسب الأولوية ومن بياناتك الفعلية.',
     eyebrow: 'شنو المطلوب مني الحين؟',
     loading: 'جاري تحميل المهام...',
-    loadWarning: 'تعذر تحميل بعض مصادر المهام حالياً.',
+    loadWarning: 'تعذر تحميل بعض مصادر المهام:',
+    retry: 'إعادة المحاولة',
     urgent: 'عاجلة',
     high: 'عالية الأهمية',
     medium: 'متوسطة',
@@ -79,13 +80,19 @@ const TEXT = {
     charity: 'الأعمال الخيرية',
     report: 'التقارير',
     notification: 'الإشعارات',
+    sourcePersonal: 'المال الشخصي',
+    sourceProjects: 'المشاريع',
+    sourceZakatCharity: 'الزكاة والخير',
+    sourceMarket: 'السوق',
+    sourceNotifications: 'الإشعارات',
   },
   en: {
     title: 'Tasks Center',
     subtitle: 'Everything you need to do in THE SFM, organized by priority and based on your real data.',
     eyebrow: 'What should I do now?',
     loading: 'Loading tasks...',
-    loadWarning: 'Some task sources could not be loaded right now.',
+    loadWarning: 'Some task sources could not be loaded:',
+    retry: 'Retry',
     urgent: 'Urgent',
     high: 'High Priority',
     medium: 'Medium',
@@ -120,13 +127,19 @@ const TEXT = {
     charity: 'Charity',
     report: 'Reports',
     notification: 'Notifications',
+    sourcePersonal: 'Personal finance',
+    sourceProjects: 'Projects',
+    sourceZakatCharity: 'Zakat & charity',
+    sourceMarket: 'Market',
+    sourceNotifications: 'Notifications',
   },
   fr: {
     title: 'Centre des tâches',
     subtitle: 'Tout ce que vous devez faire dans THE SFM, classé par priorité et basé sur vos données réelles.',
     eyebrow: 'Que dois-je faire maintenant ?',
     loading: 'Chargement des tâches...',
-    loadWarning: 'Certaines sources de tâches n’ont pas pu être chargées.',
+    loadWarning: 'Certaines sources de tâches n’ont pas pu être chargées :',
+    retry: 'Réessayer',
     urgent: 'Urgent',
     high: 'Haute priorité',
     medium: 'Moyenne',
@@ -161,6 +174,11 @@ const TEXT = {
     charity: 'Charité',
     report: 'Rapports',
     notification: 'Notifications',
+    sourcePersonal: 'Finances personnelles',
+    sourceProjects: 'Projets',
+    sourceZakatCharity: 'Zakat et charité',
+    sourceMarket: 'Marché',
+    sourceNotifications: 'Notifications',
   },
 } as const;
 
@@ -185,6 +203,26 @@ function taskIcon(source: string) {
   return <ClipboardList size={20} />;
 }
 
+function sourceDiagnosticLabel(source: SmartTaskSourceId, text: typeof TEXT.ar) {
+  const labels: Record<SmartTaskSourceId, string> = {
+    personal: text.sourcePersonal,
+    projects: text.sourceProjects,
+    zakatCharity: text.sourceZakatCharity,
+    market: text.sourceMarket,
+    notifications: text.sourceNotifications,
+  };
+  return labels[source];
+}
+
+function failedSourceEntries(sourceDiagnostics: Record<SmartTaskSourceId, SmartTaskSourceDiagnostic>) {
+  return (Object.entries(sourceDiagnostics) as Array<[SmartTaskSourceId, SmartTaskSourceDiagnostic]>)
+    .filter(([, diagnostic]) => !diagnostic.ok);
+}
+
+function sourceNameSeparator(locale: Lang) {
+  return locale === 'ar' ? '، ' : ', ';
+}
+
 function filterTask(task: SmartTask, filter: FilterId, query: string) {
   if (filter !== 'completed' && task.status !== 'open') return false;
   if (filter === 'completed' && task.status !== 'done') return false;
@@ -206,7 +244,7 @@ export default function TasksCenterPage() {
   const { lang, dir } = useLanguage();
   const locale: Lang = lang === 'en' || lang === 'fr' ? lang : 'ar';
   const text = TEXT[locale];
-  const { tasks, loading, errors, setTaskStatus } = useSmartTasks();
+  const { tasks, loading, sourceDiagnostics, reload, setTaskStatus } = useSmartTasks();
   const [activeFilter, setActiveFilter] = useState<FilterId>('all');
   const [query, setQuery] = useState('');
 
@@ -236,7 +274,12 @@ export default function TasksCenterPage() {
     [activeFilter, query, tasks],
   );
 
-  const hasLoadWarning = Object.keys(errors).length > 0;
+  const failedSources = useMemo(() => failedSourceEntries(sourceDiagnostics), [sourceDiagnostics]);
+  const hasLoadWarning = failedSources.length > 0;
+  const failedSourceNames = useMemo(
+    () => failedSources.map(([source]) => sourceDiagnosticLabel(source, text)),
+    [failedSources, text],
+  );
 
   return (
     <div className="tasks-shell" dir={dir}>
@@ -262,8 +305,16 @@ export default function TasksCenterPage() {
 
         {hasLoadWarning ? (
           <div className="tasks-warning" role="status">
-            <AlertTriangle size={18} aria-hidden="true" />
-            <span>{text.loadWarning}</span>
+            <div className="tasks-warning-main">
+              <AlertTriangle size={18} aria-hidden="true" />
+              <span>{text.loadWarning} {failedSourceNames.join(sourceNameSeparator(locale))}</span>
+            </div>
+            {process.env.NODE_ENV === 'development' ? (
+              <small>
+                {failedSources.map(([source, diagnostic]) => `${source}: ${diagnostic.errorCodes.join(', ') || 'load_failed'} (${diagnostic.failedTables.join(', ')})`).join(' | ')}
+              </small>
+            ) : null}
+            <button type="button" onClick={() => void reload()}>{text.retry}</button>
           </div>
         ) : null}
 
@@ -354,8 +405,7 @@ export default function TasksCenterPage() {
           color: var(--sfm-primary-dark);
         }
         .tasks-warning {
-          display: flex;
-          align-items: center;
+          display: grid;
           gap: 10px;
           min-width: 0;
           padding: 12px 14px;
@@ -364,6 +414,32 @@ export default function TasksCenterPage() {
           background: rgba(245, 158, 11, .10);
           color: #92400E;
           font-weight: 850;
+        }
+        .tasks-warning-main {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+        }
+        .tasks-warning span,
+        .tasks-warning small {
+          overflow-wrap: anywhere;
+        }
+        .tasks-warning small {
+          color: #B45309;
+          font-size: 11px;
+          line-height: 1.6;
+        }
+        .tasks-warning button {
+          width: fit-content;
+          min-height: 34px;
+          border: 1px solid rgba(245, 158, 11, .28);
+          border-radius: 12px;
+          background: #FFFFFF;
+          color: #92400E;
+          padding: 0 12px;
+          cursor: pointer;
+          font: 900 12px Tajawal, Arial, sans-serif;
         }
         .tasks-toolbar {
           display: grid;
@@ -423,6 +499,9 @@ export default function TasksCenterPage() {
             width: 100%;
           }
           .sfm-page-hero-actions > * {
+            width: 100%;
+          }
+          .tasks-warning button {
             width: 100%;
           }
         }
