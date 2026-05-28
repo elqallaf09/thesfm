@@ -636,6 +636,15 @@ function normalizeReceiptScanCode(errorSource: string | undefined) {
   if (/google_credentials_private_key_invalid/.test(errorSource)) return 'google_credentials_private_key_invalid';
   if (/google_client_init_failed/.test(errorSource)) return 'google_client_init_failed';
   if (/google_processor_path_invalid/.test(errorSource)) return 'google_processor_path_invalid';
+  if (/google_permission_denied/.test(errorSource)) return 'google_permission_denied';
+  if (/google_processor_not_found/.test(errorSource)) return 'google_processor_not_found';
+  if (/google_invalid_location/.test(errorSource)) return 'google_invalid_location';
+  if (/google_api_not_enabled/.test(errorSource)) return 'google_api_not_enabled';
+  if (/google_invalid_credentials/.test(errorSource)) return 'google_invalid_credentials';
+  if (/google_invalid_argument/.test(errorSource)) return 'google_invalid_argument';
+  if (/google_unsupported_file_type/.test(errorSource)) return 'google_unsupported_file_type';
+  if (/google_quota_exceeded/.test(errorSource)) return 'google_quota_exceeded';
+  if (/google_request_failed/.test(errorSource)) return 'google_request_failed';
   if (/google_process_document_failed|google_document_ai_request_failed/.test(errorSource)) return 'google_process_document_failed';
   if (/openai_env_missing|openai_key_missing/.test(errorSource)) return 'openai_env_missing';
   if (/openai_fallback_failed|openai_vision_failed|openai_pdf_not_supported|openai_vision_empty_response/.test(errorSource)) return 'openai_fallback_failed';
@@ -673,6 +682,51 @@ function receiptScanSpecificErrorText(errorSource: string | undefined, lang: str
       ar: 'مسار معالج Google Document AI غير صحيح. تحقق من المشروع والموقع ومعرّف المعالج.',
       en: 'The Google Document AI processor path is invalid. Check project, location, and processor ID.',
       fr: 'Le chemin du processeur Google Document AI est invalide. Vérifiez le projet, la région et l’identifiant.',
+    },
+    google_permission_denied: {
+      ar: 'حساب الخدمة لا يملك صلاحية استخدام Document AI.',
+      en: 'The service account does not have permission to use Document AI.',
+      fr: 'Le compte de service n’a pas l’autorisation d’utiliser Document AI.',
+    },
+    google_processor_not_found: {
+      ar: 'لم يتم العثور على معالج الفواتير. تحقق من Processor ID والموقع.',
+      en: 'The invoice processor was not found. Check the Processor ID and location.',
+      fr: 'Le processeur de factures est introuvable. Vérifiez l’identifiant et la région.',
+    },
+    google_invalid_location: {
+      ar: 'موقع المعالج غير صحيح. تحقق من GOOGLE_DOCUMENT_AI_LOCATION.',
+      en: 'The processor location is invalid. Check GOOGLE_DOCUMENT_AI_LOCATION.',
+      fr: 'La région du processeur est invalide. Vérifiez GOOGLE_DOCUMENT_AI_LOCATION.',
+    },
+    google_api_not_enabled: {
+      ar: 'خدمة Document AI API غير مفعلة في Google Cloud.',
+      en: 'The Document AI API is not enabled in Google Cloud.',
+      fr: 'L’API Document AI n’est pas activée dans Google Cloud.',
+    },
+    google_invalid_credentials: {
+      ar: 'بيانات حساب الخدمة غير صحيحة.',
+      en: 'The service account credentials are invalid.',
+      fr: 'Les identifiants du compte de service sont invalides.',
+    },
+    google_invalid_argument: {
+      ar: 'تعذر إرسال الطلب إلى Google Document AI. تحقق من نوع الملف أو محتوى الطلب.',
+      en: 'Google Document AI rejected the request. Check the file type or request body.',
+      fr: 'Google Document AI a rejeté la requête. Vérifiez le type de fichier ou le corps de la requête.',
+    },
+    google_unsupported_file_type: {
+      ar: 'نوع الملف غير مدعوم. جرّب صورة PNG أو JPG أو PDF.',
+      en: 'This file type is not supported. Try PNG, JPG, or PDF.',
+      fr: 'Ce type de fichier n’est pas pris en charge. Essayez PNG, JPG ou PDF.',
+    },
+    google_quota_exceeded: {
+      ar: 'تم تجاوز حد استخدام خدمة Document AI.',
+      en: 'The Document AI quota has been exceeded.',
+      fr: 'Le quota Document AI a été dépassé.',
+    },
+    google_request_failed: {
+      ar: 'تعذر معالجة الفاتورة حالياً.',
+      en: 'The invoice could not be processed right now.',
+      fr: 'La facture ne peut pas être traitée pour le moment.',
     },
     google_process_document_failed: {
       ar: 'تعذر الاتصال بخدمة Google Document AI. تحقق من صلاحيات المعالج أو الموقع.',
@@ -752,6 +806,51 @@ function receiptProviderDevDetail(errorSource: string | undefined, lang: string)
       ar: 'فشل طلب processors:process من Google. تحقق من IAM، الموقع، ومعرّف المعالج.',
       en: 'Google processors:process failed. Check IAM, location, and processor ID.',
       fr: 'La requête Google processors:process a échoué. Vérifiez IAM, la région et le processeur.',
+    },
+    google_permission_denied: {
+      ar: 'Google أعاد PERMISSION_DENIED. أضف صلاحية Document AI على المعالج/المشروع لحساب الخدمة.',
+      en: 'Google returned PERMISSION_DENIED. Grant Document AI access to the service account on the processor/project.',
+      fr: 'Google a renvoyé PERMISSION_DENIED. Accordez l’accès Document AI au compte de service.',
+    },
+    google_processor_not_found: {
+      ar: 'Google أعاد NOT_FOUND. تحقق أن Processor ID هو المعرّف وليس الاسم، وأن الموقع مطابق لموقع المعالج.',
+      en: 'Google returned NOT_FOUND. Verify the Processor ID is the ID, not display name, and the location matches the processor.',
+      fr: 'Google a renvoyé NOT_FOUND. Vérifiez l’identifiant du processeur et sa région.',
+    },
+    google_invalid_location: {
+      ar: 'الموقع المستخدم لا يطابق موقع المعالج. أمثلة شائعة: us أو eu.',
+      en: 'The configured location does not match the processor location. Common values are us or eu.',
+      fr: 'La région configurée ne correspond pas au processeur. Valeurs courantes : us ou eu.',
+    },
+    google_api_not_enabled: {
+      ar: 'فعّل Document AI API في نفس مشروع Google Cloud المستخدم في GOOGLE_CLOUD_PROJECT_ID.',
+      en: 'Enable the Document AI API in the same Google Cloud project used by GOOGLE_CLOUD_PROJECT_ID.',
+      fr: 'Activez l’API Document AI dans le même projet Google Cloud.',
+    },
+    google_invalid_credentials: {
+      ar: 'تحقق أن GOOGLE_APPLICATION_CREDENTIALS_JSON لحساب خدمة صالح ولم يتم نسخه ناقصاً.',
+      en: 'Check that GOOGLE_APPLICATION_CREDENTIALS_JSON contains a valid, complete service account.',
+      fr: 'Vérifiez que GOOGLE_APPLICATION_CREDENTIALS_JSON contient un compte de service valide.',
+    },
+    google_invalid_argument: {
+      ar: 'Google رفض الطلب. تحقق من MIME type والملف المرفوع.',
+      en: 'Google rejected the request. Check the MIME type and uploaded file.',
+      fr: 'Google a rejeté la requête. Vérifiez le type MIME et le fichier.',
+    },
+    google_unsupported_file_type: {
+      ar: 'ارفع PNG أو JPG أو PDF فقط.',
+      en: 'Upload PNG, JPG, or PDF only.',
+      fr: 'Téléversez uniquement PNG, JPG ou PDF.',
+    },
+    google_quota_exceeded: {
+      ar: 'راجع حصص Document AI أو الفوترة في Google Cloud.',
+      en: 'Check Document AI quota or billing in Google Cloud.',
+      fr: 'Vérifiez le quota ou la facturation Document AI dans Google Cloud.',
+    },
+    google_request_failed: {
+      ar: 'تعذر إرسال الطلب إلى Google. راجع سجلات الخادم للشبكة أو الاستجابة.',
+      en: 'The request could not reach Google. Check server logs for network/response details.',
+      fr: 'La requête n’a pas pu atteindre Google. Vérifiez les journaux serveur.',
     },
     openai_env_missing: {
       ar: 'OPENAI_API_KEY غير موجود في الخادم، لذلك لا يوجد مزود احتياطي بعد فشل Google.',

@@ -16,7 +16,8 @@ export async function GET(request: NextRequest) {
 
   const status = getReceiptProviderStatus();
   const parsedCredentials = parseGoogleCredentialsJson(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
-  const googleClient = getGoogleClientDiagnostic();
+  const test = request.nextUrl.searchParams.get('test') === 'google-metadata' ? 'google-metadata' : undefined;
+  const googleClient = await getGoogleClientDiagnostic(test);
 
   return NextResponse.json({
     runtime: 'nodejs',
@@ -37,9 +38,24 @@ export async function GET(request: NextRequest) {
     googleClient: {
       initialized: googleClient.initialized,
       processorPathBuilt: googleClient.processorPathBuilt,
+      ...('processorPath' in googleClient && googleClient.processorPath ? {
+        processorPath: googleClient.processorPath,
+      } : {}),
+      ...('serviceAccount' in googleClient && googleClient.serviceAccount ? {
+        serviceAccount: googleClient.serviceAccount,
+      } : {}),
+      ...('canReadProcessor' in googleClient ? {
+        canReadProcessor: googleClient.canReadProcessor,
+      } : {}),
       ...('errorCode' in googleClient && googleClient.errorCode ? {
         errorCode: googleClient.errorCode,
         errorMessage: googleClient.errorMessage,
+      } : {}),
+      ...('googleStatus' in googleClient && googleClient.googleStatus ? {
+        googleStatus: googleClient.googleStatus,
+      } : {}),
+      ...('googleReason' in googleClient && googleClient.googleReason ? {
+        googleReason: googleClient.googleReason,
       } : {}),
     },
     openai: {

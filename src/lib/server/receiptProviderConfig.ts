@@ -1,4 +1,4 @@
-import { createPrivateKey } from 'node:crypto';
+import { createPrivateKey, createSign } from 'node:crypto';
 
 export type ReceiptProviderErrorCode =
   | 'google_env_missing'
@@ -7,6 +7,15 @@ export type ReceiptProviderErrorCode =
   | 'google_client_init_failed'
   | 'google_processor_path_invalid'
   | 'google_process_document_failed'
+  | 'google_permission_denied'
+  | 'google_processor_not_found'
+  | 'google_invalid_location'
+  | 'google_api_not_enabled'
+  | 'google_invalid_credentials'
+  | 'google_invalid_argument'
+  | 'google_unsupported_file_type'
+  | 'google_quota_exceeded'
+  | 'google_request_failed'
   | 'openai_env_missing'
   | 'openai_fallback_failed'
   | 'no_provider_configured';
@@ -25,6 +34,20 @@ export type GoogleReceiptConfig = {
   processorPath: string;
   credentials: GoogleReceiptCredentials;
 };
+
+type GoogleErrorBody = {
+  error?: {
+    code?: number;
+    status?: string;
+    message?: string;
+    details?: Array<{ reason?: string; domain?: string; metadata?: Record<string, string> }>;
+  };
+};
+
+const GOOGLE_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
+const GOOGLE_TOKEN_AUDIENCE = 'https://oauth2.googleapis.com/token';
+
+let cachedGoogleToken: { token: string; expiresAt: number } | null = null;
 
 export type ReceiptProviderStatus = {
   google: {
@@ -144,7 +167,7 @@ export function getReceiptProviderStatus(): ReceiptProviderStatus {
       configured: Boolean(process.env.OPENAI_API_KEY),
       hasApiKey: Boolean(process.env.OPENAI_API_KEY),
     },
-  };
+  }
 }
 
 export function getGoogleReceiptConfig(): { config: GoogleReceiptConfig | null; error?: ReceiptProviderErrorCode } {
@@ -171,7 +194,121 @@ export function getGoogleReceiptConfig(): { config: GoogleReceiptConfig | null; 
   };
 }
 
-export function getGoogleClientDiagnostic() {
+export async function getGoogleAccessToken(credentials: GoogleReceiptCredentials) {
+  if (cachedGoogleToken && cachedGoogleToken.expiresAt > Date.now() + 60_000) {
+    return cachedGoogleToken.token;
+  }
+
+  if (!credentials.client_email || !credentials.private_key) {
+    throw new ReceiptProviderDiagnosticError('google_credentials_json_invalid');
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({
+    iss: credentials.client_email,
+    scope: GOOGLE_SCOPE,
+    aud: GOOGLE_TOKEN_AUDIENCE,
+    exp: now + 3600,
+    iat: now,
+  })).toString('base64url');
+  const unsigned = `${header}.${payload}`;
+  let assertion: string;
+  try {
+    const signer = createSign('RSA-SHA256');
+    signer.update(unsigned);
+    signer.end();
+    const signature = signer.sign(credentials.private_key).toString('base64url');
+    assertion = `${unsigned}.${signature}`;
+  } catch {
+    throw new ReceiptProviderDiagnosticError('google_credentials_private_key_invalid');
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(credentials.token_uri || GOOGLE_TOKEN_AUDIENCE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion,
+      }),
+    });
+  } catch {
+    throw new ReceiptProviderDiagnosticError('google_client_init_failed');
+  }
+
+  if (!response.ok) {
+    const code = response.status === 401 || response.status === 403
+      ? 'google_invalid_credentials'
+      : 'google_client_init_failed';
+    throw new ReceiptProviderDiagnosticError(code, response.status);
+  }
+
+  const token = await response.json() as { access_token?: string; expires_in?: number };
+  if (!token.access_token) throw new ReceiptProviderDiagnosticError('google_client_init_failed');
+  cachedGoogleToken = {
+    token: token.access_token,
+    expiresAt: Date.now() + Math.max(60, token.expires_in || 3600) * 1000,
+  };
+  return token.access_token;
+}
+
+export class ReceiptProviderDiagnosticError extends Error {
+  code: ReceiptProviderErrorCode;
+  status?: number;
+  reason?: string;
+
+  constructor(code: ReceiptProviderErrorCode, status?: number, reason?: string) {
+    super(code);
+    this.name = 'ReceiptProviderDiagnosticError';
+    this.code = code;
+    this.status = status;
+    this.reason = reason;
+  }
+}
+
+export function maskGoogleClientEmail(email?: string) {
+  if (!email) return undefined;
+  const [name, domain] = email.split('@');
+  if (!domain) return 'invalid-email';
+  const prefix = name.length <= 4 ? `${name.slice(0, 1)}***` : `${name.slice(0, 3)}***${name.slice(-1)}`;
+  return `${prefix}@${domain}`;
+}
+
+export function classifyGoogleDocumentAiError(status?: number, reason?: string, message?: string): ReceiptProviderErrorCode {
+  const safeReason = `${reason || ''} ${message || ''}`.toLowerCase();
+  if (status === 401 || /unauthenticated|invalid[_\s-]*credentials|invalid_grant|invalid jwt/.test(safeReason)) return 'google_invalid_credentials';
+  if (/api has not been used|api.*disabled|service disabled|accessNotConfigured/i.test(`${reason || ''} ${message || ''}`)) return 'google_api_not_enabled';
+  if (status === 403 || /permission[_\s-]*denied|iam|forbidden/.test(safeReason)) return 'google_permission_denied';
+  if (status === 404 || /not[_\s-]*found|processor.*not found/.test(safeReason)) return 'google_processor_not_found';
+  if (/location|regional endpoint|invalid.*region/.test(safeReason)) return 'google_invalid_location';
+  if (/mime|unsupported.*file|unsupported.*content|content type/.test(safeReason)) return 'google_unsupported_file_type';
+  if (status === 400 || /invalid[_\s-]*argument|bad request/.test(safeReason)) return 'google_invalid_argument';
+  if (status === 429 || /quota|resource[_\s-]*exhausted|rate limit/.test(safeReason)) return 'google_quota_exceeded';
+  return 'google_request_failed';
+}
+
+export async function readGoogleErrorResponse(response: Response): Promise<{ code: ReceiptProviderErrorCode; status: number; reason?: string; message?: string }> {
+  let reason: string | undefined;
+  let message: string | undefined;
+  try {
+    const body = await response.json() as GoogleErrorBody;
+    reason = body.error?.status || body.error?.details?.find(detail => detail.reason)?.reason;
+    message = body.error?.message;
+  } catch {
+    reason = undefined;
+    message = undefined;
+  }
+  return {
+    code: classifyGoogleDocumentAiError(response.status, reason, message),
+    status: response.status,
+    reason,
+    message,
+  };
+}
+
+export async function getGoogleClientDiagnostic(test?: 'google-metadata') {
   const { config, error } = getGoogleReceiptConfig();
   if (!config) {
     return {
@@ -182,9 +319,55 @@ export function getGoogleClientDiagnostic() {
     };
   }
 
-  return {
+  const base = {
     initialized: true,
     processorPathBuilt: Boolean(config.processorPath),
+    processorPath: config.processorPath,
+    serviceAccount: maskGoogleClientEmail(config.credentials.client_email),
+  };
+
+  if (test !== 'google-metadata') {
+    return base;
+  }
+
+  try {
+    const token = await getGoogleAccessToken(config.credentials);
+    const endpoint = `https://${config.location}-documentai.googleapis.com/v1/${config.processorPath}`;
+    const response = await fetch(endpoint, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const detail = await readGoogleErrorResponse(response);
+      return {
+        ...base,
+        canReadProcessor: false,
+        errorCode: detail.code,
+        errorMessage: safeProviderErrorMessage(detail.code),
+        googleStatus: detail.status,
+        googleReason: detail.reason,
+      };
+    }
+    return {
+      ...base,
+      canReadProcessor: true,
+    };
+  } catch (error) {
+    if (error instanceof ReceiptProviderDiagnosticError) {
+      return {
+        ...base,
+        canReadProcessor: false,
+        errorCode: error.code,
+        errorMessage: safeProviderErrorMessage(error.code),
+        googleStatus: error.status,
+        googleReason: error.reason,
+      };
+    }
+    return {
+      ...base,
+      canReadProcessor: false,
+      errorCode: 'google_request_failed' as const,
+      errorMessage: safeProviderErrorMessage('google_request_failed'),
+    };
   };
 }
 
@@ -196,6 +379,15 @@ export function safeProviderErrorMessage(code: ReceiptProviderErrorCode) {
     google_client_init_failed: 'Google Document AI client initialization failed.',
     google_processor_path_invalid: 'Google Document AI processor path could not be built.',
     google_process_document_failed: 'Google Document AI process request failed.',
+    google_permission_denied: 'Google service account does not have permission to use Document AI.',
+    google_processor_not_found: 'Google Document AI processor was not found. Check processor ID and location.',
+    google_invalid_location: 'Google Document AI processor location is invalid.',
+    google_api_not_enabled: 'Google Document AI API is not enabled for this project.',
+    google_invalid_credentials: 'Google service account credentials are invalid.',
+    google_invalid_argument: 'Google Document AI rejected the request body.',
+    google_unsupported_file_type: 'Google Document AI does not support this file type.',
+    google_quota_exceeded: 'Google Document AI quota was exceeded.',
+    google_request_failed: 'Google Document AI request failed.',
     openai_env_missing: 'OpenAI API key is missing.',
     openai_fallback_failed: 'OpenAI Vision fallback failed.',
     no_provider_configured: 'No receipt scanning provider is configured.',
