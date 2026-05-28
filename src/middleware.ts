@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 
 const protectedPrefixes = [
   '/dashboard',
+  '/onboarding',
   '/command-center',
   '/today',
   '/tasks',
@@ -54,12 +55,20 @@ function redirectToLogin(request: NextRequest) {
   return NextResponse.redirect(loginUrl);
 }
 
-async function hasValidSupabaseSession(request: NextRequest) {
+type SessionCheck = {
+  hasSession: boolean;
+  userId?: string;
+  token?: string;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+};
+
+async function getSupabaseSession(request: NextRequest): Promise<SessionCheck> {
   const token = request.cookies.get('sfm_access_token')?.value;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!token || !supabaseUrl || !supabaseAnonKey) return false;
+  if (!token || !supabaseUrl || !supabaseAnonKey) return { hasSession: false };
 
   try {
     const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
@@ -69,11 +78,41 @@ async function hasValidSupabaseSession(request: NextRequest) {
       },
       cache: 'no-store',
     });
-    if (!response.ok) return false;
+    if (!response.ok) return { hasSession: false };
     const user = await response.json() as { id?: string };
-    return Boolean(user.id);
+    return {
+      hasSession: Boolean(user.id),
+      userId: user.id,
+      token,
+      supabaseUrl,
+      supabaseAnonKey,
+    };
   } catch {
-    return false;
+    return { hasSession: false };
+  }
+}
+
+async function onboardingCompleted(session: SessionCheck) {
+  if (!session.userId || !session.token || !session.supabaseUrl || !session.supabaseAnonKey) return true;
+
+  try {
+    const url = new URL(`${session.supabaseUrl}/rest/v1/profiles`);
+    url.searchParams.set('select', 'onboarding_completed');
+    url.searchParams.set('id', `eq.${session.userId}`);
+    url.searchParams.set('limit', '1');
+    const response = await fetch(url, {
+      headers: {
+        apikey: session.supabaseAnonKey,
+        Authorization: `Bearer ${session.token}`,
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+    });
+    if (!response.ok) return true;
+    const rows = await response.json() as Array<{ onboarding_completed?: boolean | null }>;
+    return rows[0]?.onboarding_completed === true;
+  } catch {
+    return true;
   }
 }
 
@@ -84,7 +123,8 @@ export async function middleware(request: NextRequest) {
   response.headers.set('X-Frame-Options', 'ALLOWALL');
   response.headers.set('Content-Security-Policy', 'frame-ancestors *');
 
-  const hasSession = await hasValidSupabaseSession(request);
+  const session = await getSupabaseSession(request);
+  const hasSession = session.hasSession;
 
   if (authPages.includes(pathname) && hasSession) {
     const dashboardUrl = request.nextUrl.clone();
@@ -94,7 +134,15 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!isProtected(pathname)) return response;
-  if (hasSession) return response;
+  if (hasSession) {
+    if (pathname === '/dashboard' && !(await onboardingCompleted(session))) {
+      const onboardingUrl = request.nextUrl.clone();
+      onboardingUrl.pathname = '/onboarding';
+      onboardingUrl.search = '';
+      return NextResponse.redirect(onboardingUrl);
+    }
+    return response;
+  }
 
   return redirectToLogin(request);
 }

@@ -729,7 +729,7 @@ export default function ExecutiveDashboardPage() {
         id: 'setup',
         title: text.completeSetupTitle,
         message: text.completeSetupText,
-        href: '/setup',
+        href: '/onboarding',
         severity: 'warning',
       });
     }
@@ -936,7 +936,7 @@ export default function ExecutiveDashboardPage() {
               <h2>{text.completeSetupTitle}</h2>
               <p>{text.completeSetupText}</p>
             </div>
-            <ActionLink href="/setup">{text.completeSetup}</ActionLink>
+            <ActionLink href="/onboarding">{text.completeSetup}</ActionLink>
           </section>
         ) : null}
 

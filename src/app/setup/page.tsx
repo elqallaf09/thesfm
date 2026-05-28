@@ -23,6 +23,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
+import { formatCurrency, formatDate, formatPercent } from '@/lib/format';
 import { useCurrency } from '@/lib/useCurrency';
 
 type Lang = 'ar' | 'en' | 'fr';
@@ -35,6 +36,10 @@ type SetupSummary = {
   savings: number;
   investments: number;
   projects: number;
+  expectedRemaining: number;
+  recommendedSavingPercent: number;
+  monthlySavingSuggestion: number;
+  firstGoalCompletionDate: string;
 };
 
 const COPY = {
@@ -71,6 +76,12 @@ const COPY = {
     errorDate: 'أدخل تاريخاً صحيحاً.',
     saved: 'تم إعداد حسابك بنجاح',
     savedSub: 'تم حفظ البيانات التي أدخلتها فقط. الخطوات التي تخطيتها بقيت فارغة.',
+    initialPlanBuilt: 'تم بناء خطتك المالية الأولية',
+    expectedRemaining: 'باقي من راتبك المتوقع',
+    recommendedSavingPercent: 'أفضل نسبة ادخار لك',
+    monthlySavingSuggestion: 'اقتراح الادخار الشهري',
+    firstGoalCompletion: 'موعد إنجاز الهدف الأول المتوقع',
+    notEnoughForEstimate: 'بيانات غير كافية للتقدير',
     steps: [
       'مرحباً بك',
       'العملة الافتراضية',
@@ -170,6 +181,12 @@ const COPY = {
     errorDate: 'Enter a valid date.',
     saved: 'Your account is set up',
     savedSub: 'Only the data you entered was saved. Skipped steps stayed empty.',
+    initialPlanBuilt: 'Your initial financial plan has been built',
+    expectedRemaining: 'Expected remaining salary',
+    recommendedSavingPercent: 'Recommended saving percentage',
+    monthlySavingSuggestion: 'Monthly saving suggestion',
+    firstGoalCompletion: 'Estimated first goal completion',
+    notEnoughForEstimate: 'Not enough data to estimate',
     steps: [
       'Welcome',
       'Default currency',
@@ -269,6 +286,12 @@ const COPY = {
     errorDate: 'Saisissez une date valide.',
     saved: 'Votre compte est configuré',
     savedSub: 'Seules les données saisies ont été enregistrées. Les étapes ignorées sont restées vides.',
+    initialPlanBuilt: 'Votre plan financier initial a été créé',
+    expectedRemaining: 'Salaire restant estimé',
+    recommendedSavingPercent: 'Pourcentage d’épargne recommandé',
+    monthlySavingSuggestion: 'Suggestion d’épargne mensuelle',
+    firstGoalCompletion: 'Date estimée du premier objectif',
+    notEnoughForEstimate: 'Données insuffisantes pour estimer',
     steps: [
       'Bienvenue',
       'Devise par défaut',
@@ -375,6 +398,12 @@ function monthsUntil(date: string) {
   if (Number.isNaN(target.getTime())) return null;
   const now = new Date();
   return Math.max(1, Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30.4375)));
+}
+
+function dateAfterMonths(months: number) {
+  const date = new Date();
+  date.setMonth(date.getMonth() + Math.max(0, Math.ceil(months)));
+  return date.toISOString().slice(0, 10);
 }
 
 function safeLang(value: string): Lang {
@@ -559,7 +588,27 @@ export default function SetupPage() {
 
     setSaving(true);
     setError('');
-    const counts: SetupSummary = { income: 0, expenses: 0, goals: 0, savings: 0, investments: 0, projects: 0 };
+    const incomeAmount = incomeEnabled ? toAmount(income.amount) : 0;
+    const essentialExpenseTotal = expensesEnabled
+      ? Object.values(expenses).reduce((total, value) => total + Math.max(0, toAmount(value) || 0), 0)
+      : 0;
+    const expectedRemaining = Math.max(0, incomeAmount - essentialExpenseTotal);
+    const recommendedSavingPercent = incomeAmount > 0 && expectedRemaining > 0 ? Math.min(20, Math.max(10, Math.round((expectedRemaining / incomeAmount) * 50))) : 0;
+    const monthlySavingSuggestion = incomeAmount > 0 ? Math.min(expectedRemaining, Math.round(incomeAmount * (recommendedSavingPercent / 100))) : 0;
+    const goalRemaining = goalEnabled ? Math.max(0, toAmount(goal.targetAmount) - toAmount(goal.currentAmount)) : 0;
+    const firstGoalCompletionDate = goalRemaining > 0 && monthlySavingSuggestion > 0 ? dateAfterMonths(goalRemaining / monthlySavingSuggestion) : '';
+    const counts: SetupSummary = {
+      income: 0,
+      expenses: 0,
+      goals: 0,
+      savings: 0,
+      investments: 0,
+      projects: 0,
+      expectedRemaining,
+      recommendedSavingPercent,
+      monthlySavingSuggestion,
+      firstGoalCompletionDate,
+    };
     const focusValues = [focus.zakat ? 'zakat' : '', focus.charity ? 'charity' : ''].filter(Boolean).join(',');
 
     try {
@@ -571,8 +620,13 @@ export default function SetupPage() {
         default_currency: defaultCurrency,
         preferred_currency: defaultCurrency,
         financial_focus: focusValues || null,
-        monthly_income_target: incomeEnabled ? toAmount(income.amount) : 0,
+        monthly_income_target: incomeAmount,
+        essential_expenses: essentialExpenseTotal,
+        first_goal_name: goalEnabled ? goal.name.trim() || null : null,
+        first_goal_amount: goalEnabled ? toAmount(goal.targetAmount) : 0,
+        first_goal_deadline: goalEnabled && goal.targetDate ? goal.targetDate : null,
         onboarding_completed: true,
+        onboarding_completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
       if (profileError) throw profileError;
@@ -1101,12 +1155,22 @@ export default function SetupPage() {
         <div className="step-heading">
           <CheckCircle2 size={30} />
           <div>
-            <h2 id="setup-step-title">{text.saved}</h2>
+            <h2 id="setup-step-title">{text.initialPlanBuilt}</h2>
             <p>{text.savedSub}</p>
           </div>
         </div>
         <div className="summary-grid">
           <Summary label={text.summaryCurrency} value={defaultCurrency} />
+          <Summary label={text.expectedRemaining} value={formatCurrency(summary?.expectedRemaining ?? 0, defaultCurrency, lang)} />
+          <Summary
+            label={text.recommendedSavingPercent}
+            value={summary?.recommendedSavingPercent ? formatPercent(summary.recommendedSavingPercent / 100, lang) : text.notEnoughForEstimate}
+          />
+          <Summary label={text.monthlySavingSuggestion} value={formatCurrency(summary?.monthlySavingSuggestion ?? 0, defaultCurrency, lang)} />
+          <Summary
+            label={text.firstGoalCompletion}
+            value={summary?.firstGoalCompletionDate ? formatDate(summary.firstGoalCompletionDate, lang) : text.notEnoughForEstimate}
+          />
           <Summary label={text.addedIncome} value={summary?.income ?? 0} />
           <Summary label={text.addedExpenses} value={summary?.expenses ?? 0} />
           <Summary label={text.addedGoals} value={summary?.goals ?? 0} />
