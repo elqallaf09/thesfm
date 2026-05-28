@@ -14,6 +14,17 @@ export const runtime = 'nodejs';
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_RECEIPTS = 10;
 const SUPPORTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+// Flip this with a real subscription check when receipt scanning becomes a paid feature.
+const RECEIPT_SCANNING_REQUIRES_PAID_PLAN = false;
+
+function isAllowed(request: NextRequest) {
+  if (process.env.NODE_ENV !== 'production') return true;
+  return request.cookies.get('sfm_auth')?.value === 'true';
+}
+
+function receiptScanningPlanGateEnabled() {
+  return RECEIPT_SCANNING_REQUIRES_PAID_PLAN;
+}
 
 function inferReceiptMimeType(file: File) {
   const explicitType = file.type?.trim().toLowerCase();
@@ -50,6 +61,7 @@ type ScanErrorCode =
   | 'no_provider_configured'
   | 'provider_unavailable'
   | 'all_providers_unavailable'
+  | 'plan_blocked'
   | 'upload_failed'
   | 'file_missing'
   | 'file_too_large'
@@ -1372,6 +1384,7 @@ function scanErrorCode(errorSource: string): ScanErrorCode {
   const sourceCode = errorSource.split(':')[0] || errorSource;
   errorSource = sourceCode;
   if (errorSource === 'scan_success') return 'scan_success';
+  if (/plan|subscription|paid|premium|business/.test(errorSource)) return 'plan_blocked';
   if (errorSource === 'missing_google_and_openai' || errorSource === 'all_providers_unavailable' || errorSource === 'no_provider_configured') return 'no_provider_configured';
   if (/missing_google_|google_env_missing|provider_unavailable/.test(errorSource)) return 'google_env_missing';
   if (/invalid_google_credentials_json|google_credentials_json_invalid/.test(errorSource)) return 'google_credentials_json_invalid';
@@ -1400,6 +1413,7 @@ function scanErrorCode(errorSource: string): ScanErrorCode {
 
 function scanErrorMessage(code: ScanErrorCode, fallback: string) {
   if (code === 'scan_success') return 'Receipt scan completed';
+  if (code === 'plan_blocked') return 'Receipt scanning requires a paid plan.';
   if (code === 'all_providers_unavailable' || code === 'no_provider_configured') return safeProviderErrorMessage('no_provider_configured');
   if (code === 'google_env_missing') return safeProviderErrorMessage('google_env_missing');
   if (code === 'google_credentials_json_invalid') return safeProviderErrorMessage('google_credentials_json_invalid');
@@ -1423,7 +1437,7 @@ function scanErrorMessage(code: ScanErrorCode, fallback: string) {
   if (code === 'unsupported_file_type') return 'Unsupported file type';
   if (code === 'file_type_unsupported') return 'Unsupported file type';
   if (code === 'file_too_large') return 'File size is too large';
-  if (code === 'no_clear_total') return 'No clear total was found';
+  if (code === 'no_clear_total') return 'Not enough invoice data was found. You can enter the details manually and save the image as an attachment.';
   return fallback;
 }
 
@@ -1573,6 +1587,11 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isAllowed(request)) return errorResponse('Unauthorized', 401, undefined, 'scan_failed');
+    if (receiptScanningPlanGateEnabled()) {
+      return errorResponse('Receipt scanning requires a paid plan.', 403, { stage: 'provider', errorSource: 'plan_blocked' }, 'plan_blocked');
+    }
+
     const formData = await request.formData();
     const files = [...formData.getAll('receipt'), ...formData.getAll('receipts')].filter((file): file is File => file instanceof File);
     if (!files.length) return errorResponse('No receipt file uploaded', 400, undefined, 'file_missing');

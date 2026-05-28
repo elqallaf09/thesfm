@@ -437,7 +437,11 @@ const expenseUi = {
     fr: 'Vous pouvez saisir les données manuellement, et l’image sera enregistrée en pièce jointe.',
   },
   uploadFailed: { ar: 'تعذر رفع الصورة.', en: 'Could not upload the image.', fr: 'Impossible de téléverser l’image.' },
-  noClearAmount: { ar: 'لم يتم العثور على مبلغ إجمالي واضح في الفاتورة.', en: 'No clear invoice total was found.', fr: 'Aucun total clair n’a été trouvé sur la facture.' },
+  noClearAmount: {
+    ar: 'لم يتم العثور على بيانات كافية في الفاتورة. يمكنك إدخال البيانات يدوياً وسيتم حفظ الصورة كمرفق.',
+    en: 'Not enough invoice data was found. You can enter the details manually and save the image as an attachment.',
+    fr: 'Les données extraites de la facture sont insuffisantes. Vous pouvez saisir les informations manuellement et enregistrer l’image en pièce jointe.',
+  },
   ready: { ar: 'جاهز للإضافة', en: 'Ready to add', fr: 'Prêt à ajouter' },
   needsReview: { ar: 'يحتاج مراجعة', en: 'Needs review', fr: 'À vérifier' },
   failed: { ar: 'فشل التحليل', en: 'Failed', fr: 'Échec' },
@@ -538,6 +542,13 @@ function pick(text: LangText, langOrIsAr: string | boolean) {
 
 function expenseText(key: keyof typeof expenseUi, lang: string) {
   return pick(expenseUi[key], lang);
+}
+
+// Flip this with a real subscription check when receipt scanning becomes a paid feature.
+const RECEIPT_SCANNING_REQUIRES_PAID_PLAN = false;
+
+function receiptScanningPlanGateEnabled() {
+  return RECEIPT_SCANNING_REQUIRES_PAID_PLAN;
 }
 
 const EXPENSE_OPTIONAL_SAVE_COLUMNS = [
@@ -648,6 +659,7 @@ function normalizeReceiptScanCode(errorSource: string | undefined) {
   if (/google_quota_exceeded/.test(errorSource)) return 'google_quota_exceeded';
   if (/google_request_failed/.test(errorSource)) return 'google_request_failed';
   if (/google_process_document_failed|google_document_ai_request_failed/.test(errorSource)) return 'google_process_document_failed';
+  if (/plan|subscription|paid|premium|business/.test(errorSource)) return 'plan_blocked';
   if (/openai_env_missing|openai_key_missing/.test(errorSource)) return 'openai_env_missing';
   if (/openai_fallback_failed|openai_vision_failed|openai_pdf_not_supported|openai_vision_empty_response/.test(errorSource)) return 'openai_fallback_failed';
   if (/file_type_unsupported|unsupported_file_type/.test(errorSource)) return 'file_type_unsupported';
@@ -659,6 +671,15 @@ function normalizeReceiptScanCode(errorSource: string | undefined) {
 
 function receiptScanSpecificErrorText(errorSource: string | undefined, lang: string) {
   const code = normalizeReceiptScanCode(errorSource);
+  if (code === 'plan_blocked') {
+    return receiptScanningPlanGateEnabled()
+      ? expenseText('planBlocked', lang)
+      : pick({
+        ar: 'تعذر الاتصال بخدمة قراءة الفواتير.',
+        en: 'Could not connect to the invoice reading service.',
+        fr: 'Impossible de contacter le service de lecture des factures.',
+      }, lang);
+  }
   const messages: Record<string, LangText> = {
     google_env_missing: {
       ar: 'خدمة قراءة الفواتير غير مفعلة لأن متغيرات البيئة ناقصة أو غير صحيحة.',
@@ -686,9 +707,9 @@ function receiptScanSpecificErrorText(errorSource: string | undefined, lang: str
       fr: 'Le chemin du processeur Google Document AI est invalide. Vérifiez le projet, la région et l’identifiant.',
     },
     google_permission_denied: {
-      ar: 'حساب الخدمة لا يملك صلاحية استخدام Document AI.',
-      en: 'The service account does not have permission to use Document AI.',
-      fr: 'Le compte de service n’a pas l’autorisation d’utiliser Document AI.',
+      ar: 'تعذر الاتصال بخدمة قراءة الفواتير.',
+      en: 'Could not connect to the invoice reading service.',
+      fr: 'Impossible de contacter le service de lecture des factures.',
     },
     google_processor_not_found: {
       ar: 'لم يتم العثور على معالج الفواتير. تحقق من Processor ID والموقع.',
@@ -727,13 +748,13 @@ function receiptScanSpecificErrorText(errorSource: string | undefined, lang: str
     },
     google_request_failed: {
       ar: 'تعذر الاتصال بخدمة قراءة الفواتير.',
-      en: 'The invoice could not be processed right now.',
-      fr: 'La facture ne peut pas être traitée pour le moment.',
+      en: 'Could not connect to the invoice reading service.',
+      fr: 'Impossible de contacter le service de lecture des factures.',
     },
     google_process_document_failed: {
       ar: 'تعذر الاتصال بخدمة قراءة الفواتير.',
-      en: 'Google Document AI could not process the file. Check processor permissions or location.',
-      fr: 'Google Document AI n’a pas pu traiter le fichier. Vérifiez les permissions du processeur ou la région.',
+      en: 'Could not connect to the invoice reading service.',
+      fr: 'Impossible de contacter le service de lecture des factures.',
     },
     openai_env_missing: {
       ar: 'مفتاح OpenAI الاحتياطي غير موجود، ولم تنجح قراءة Google.',
