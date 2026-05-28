@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   AlertTriangle,
   ArrowRight,
@@ -26,9 +27,6 @@ import {
   Zap,
 } from 'lucide-react';
 
-import { Sidebar } from '@/components/Sidebar';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useSmartTasks } from '@/hooks/useSmartTasks';
@@ -36,6 +34,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { loadUserDataTables, personalExpenseRows, personalIncomeRows, safeDivide, sumAmounts } from '@/lib/data/financeData';
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
+
+const Sidebar = dynamic(() => import('@/components/Sidebar').then(mod => mod.Sidebar), { ssr: false });
+const LanguageSwitcher = dynamic(() => import('@/components/ui/LanguageSwitcher').then(mod => mod.LanguageSwitcher), { ssr: false });
+const UserChip = dynamic(() => import('@/components/UserChip').then(mod => mod.UserChip), { ssr: false });
 
 type Lang = 'ar' | 'en' | 'fr';
 

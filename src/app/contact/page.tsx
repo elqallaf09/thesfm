@@ -153,15 +153,15 @@ const COPY = {
 
 export default function ContactPage() {
   const { dir, lang } = useLanguage();
-  const { session, isGuest } = useAuth();
+  const { session } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '', website: '' });
   const [sending, setSending] = useState(false);
   const [formStatus, setFormStatus] = useState<{ type: 'success' | 'error'; message: string; showEmailFallback?: boolean } | null>(null);
   const locale = (['ar', 'en', 'fr'].includes(lang) ? lang : 'ar') as Lang;
   const text = COPY[locale];
-  const appHref = session || isGuest ? '/dashboard' : '/login';
-  const primaryLabel = session || isGuest ? text.openDashboard : text.getStarted;
+  const appHref = session ? '/dashboard' : '/login';
+  const primaryLabel = session ? text.openDashboard : text.getStarted;
   const supportEmail = SUPPORT_EMAIL;
 
   const navLinks = [
@@ -252,14 +252,11 @@ export default function ContactPage() {
 
         <div className={menuOpen ? 'contact-links open' : 'contact-links'}>
           {navLinks.map(link => (
-            <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)}>
+            <Link key={link.href} href={link.href} aria-current={link.href === '/contact' ? 'page' : undefined} onClick={() => setMenuOpen(false)}>
               {link.label}
             </Link>
           ))}
           <div className="mobile-menu-ctas">
-            <Link href="/login" className="nav-login-mobile" onClick={() => setMenuOpen(false)}>
-              {text.login}
-            </Link>
             <Link href={appHref} className="nav-primary-mobile" onClick={() => setMenuOpen(false)}>
               {primaryLabel}
             </Link>
@@ -268,7 +265,6 @@ export default function ContactPage() {
 
         <div className="contact-actions">
           <LanguageSwitcher variant="gold" compact />
-          <Link href="/login" className="nav-login">{text.login}</Link>
           <Link href={appHref} className="nav-primary">{primaryLabel}</Link>
           <button
             type="button"
@@ -461,8 +457,8 @@ const contactStyles = `
   }
   .contact-nav {
     position: sticky;
-    top: 0;
-    z-index: 50;
+    top: 12px;
+    z-index: 150;
     width: min(1180px, calc(100% - 32px));
     min-height: 70px;
     margin: 16px auto 0;
@@ -473,8 +469,8 @@ const contactStyles = `
     gap: 16px;
     border: 1px solid rgba(29, 140, 255, 0.18);
     border-radius: 24px;
-    background: rgba(255, 255, 255, 0.88);
-    box-shadow: 0 18px 55px rgba(3, 18, 37, 0.1);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 16px 44px rgba(3, 18, 37, 0.12);
     backdrop-filter: blur(18px);
   }
   .contact-brand,
@@ -939,7 +935,7 @@ const contactStyles = `
     }
     .mobile-menu-ctas {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: 1fr;
       gap: 10px;
       padding-top: 8px;
     }

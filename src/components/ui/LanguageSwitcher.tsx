@@ -169,7 +169,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
                 onKeyDown={event => handleItemKeyDown(event, index)}
               >
                 <span>{item.label}</span>
-                <Check className="sfm-language-check" size={16} aria-hidden="true" />
+                {active ? <Check className="sfm-language-check" size={16} aria-hidden="true" /> : <span className="sfm-language-check-placeholder" aria-hidden="true" />}
               </button>
             );
           })}
@@ -296,12 +296,13 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           background: rgba(24,212,212,.16);
         }
         .sfm-language-check {
-          opacity: 0;
           color: #18D4D4;
           flex: 0 0 auto;
         }
-        .sfm-language-option.active .sfm-language-check {
-          opacity: 1;
+        .sfm-language-check-placeholder {
+          width: 16px;
+          height: 16px;
+          flex: 0 0 auto;
         }
         @keyframes sfmLangMenuIn {
           from { opacity: 0; transform: translateY(-4px) scale(.98); }

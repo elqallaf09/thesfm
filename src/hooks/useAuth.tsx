@@ -74,7 +74,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const syncCookies = (nextSession: Session | null, guestMode: boolean) => {
       if (typeof document === 'undefined') return;
+      const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
       document.cookie = `sfm_auth=${nextSession ? 'true' : ''}; path=/; max-age=${nextSession ? 60 * 60 * 24 * 30 : 0}; SameSite=Lax`;
+      document.cookie = `sfm_access_token=${nextSession?.access_token ?? ''}; path=/; max-age=${nextSession?.access_token ? 60 * 60 * 24 * 7 : 0}; SameSite=Lax${secureFlag}`;
       document.cookie = `sfm_guest=${guestMode ? 'true' : ''}; path=/; max-age=${guestMode ? 60 * 60 * 24 : 0}; SameSite=Lax`;
     };
 
@@ -109,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof document !== 'undefined') {
         document.cookie = `sfm_guest=true; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`;
         document.cookie = 'sfm_auth=; path=/; max-age=0; SameSite=Lax';
+        document.cookie = 'sfm_access_token=; path=/; max-age=0; SameSite=Lax';
       }
       setSession(null);
       setUser(null);

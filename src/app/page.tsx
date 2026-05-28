@@ -56,12 +56,14 @@ const COPY = {
     previewExpenses: 'المصروفات',
     previewProjects: 'المشاريع',
     previewZakat: 'الزكاة',
-    previewStatus: 'جاهز عند إضافة البيانات',
+    previewStatus: 'يعتمد على بياناتك الفعلية',
     previewMissing: 'تظهر بيانات غير كافية عند نقص المدخلات',
     trustRealData: 'بياناتك الحقيقية فقط',
     trustModules: 'المال والمشاريع في مساحة واحدة',
     trustLanguages: 'واجهة عربية وإنجليزية وفرنسية',
     trustGuardrails: 'حماية من الأرقام والتوقعات غير المدعومة',
+    howTitle: 'كيف يعمل THE SFM؟',
+    howSubtitle: 'ابدأ من الحساب والبيانات الحقيقية، ثم فعّل الأقسام التي تحتاجها حتى تظهر التحليلات عندما تصبح المدخلات كافية.',
     featuresTitle: 'كل أدواتك المالية في مكان واحد',
     featuresSubtitle: 'صممت THE SFM لتجميع المتابعة اليومية، التقارير، المشاريع، والزكاة بدون خلط البيانات الحقيقية مع بيانات تجريبية.',
     aiTitle: 'مساعد مالي ذكي يحترم بياناتك',
@@ -73,6 +75,7 @@ const COPY = {
     pricingTitle: 'الأسعار',
     pricingSubtitle: 'تفاصيل الأسعار قريباً',
     pricingNote: 'لن نعرض أسعاراً نهائية قبل اعتمادها.',
+    pricingHidden: 'السعر سيُعلن لاحقاً',
     testimonialsTitle: 'قصص العملاء قريباً',
     testimonialsSubtitle: 'لن نعرض أسماء أو مراجعات غير حقيقية.',
     finalTitle: 'ابدأ بإدارة أموالك ومشاريعك من مكان واحد',
@@ -105,7 +108,7 @@ const COPY = {
     navPricing: 'Pricing',
     navFaq: 'FAQ',
     login: 'Sign in',
-    start: 'Start now',
+    start: 'Get Started',
     openDashboard: 'Open Dashboard',
     heroKicker: 'THE SFM',
     heroTitle: 'The smart financial platform for your money and projects',
@@ -120,12 +123,14 @@ const COPY = {
     previewExpenses: 'Expenses',
     previewProjects: 'Projects',
     previewZakat: 'Zakat',
-    previewStatus: 'Ready when data is added',
+    previewStatus: 'Based on your saved data',
     previewMissing: 'Insufficient data appears when inputs are missing',
     trustRealData: 'Real user data only',
     trustModules: 'Money and projects in one workspace',
     trustLanguages: 'Arabic, English, and French interface',
     trustGuardrails: 'Guardrails against unsupported numbers and forecasts',
+    howTitle: 'How does THE SFM work?',
+    howSubtitle: 'Start with an account and real data, then activate the sections you need so analysis appears when inputs are sufficient.',
     featuresTitle: 'Your financial tools in one place',
     featuresSubtitle: 'THE SFM brings daily tracking, reports, projects, and zakat together without mixing real data with demo data.',
     aiTitle: 'An AI financial assistant that respects your data',
@@ -137,6 +142,7 @@ const COPY = {
     pricingTitle: 'Pricing',
     pricingSubtitle: 'Pricing details coming soon',
     pricingNote: 'We will not show final prices before they are approved.',
+    pricingHidden: 'Price to be announced',
     testimonialsTitle: 'Customer stories coming soon',
     testimonialsSubtitle: 'We will not display fictional names or reviews.',
     finalTitle: 'Start managing money and projects from one place',
@@ -184,12 +190,14 @@ const COPY = {
     previewExpenses: 'Dépenses',
     previewProjects: 'Projets',
     previewZakat: 'Zakat',
-    previewStatus: 'Prêt après ajout des données',
+    previewStatus: 'Basé sur vos données enregistrées',
     previewMissing: 'Les données insuffisantes sont signalées quand il manque des entrées',
     trustRealData: 'Données réelles uniquement',
     trustModules: 'Finances et projets dans un seul espace',
     trustLanguages: 'Interface arabe, anglaise et française',
     trustGuardrails: 'Garde-fous contre les chiffres et prévisions non étayés',
+    howTitle: 'Comment fonctionne THE SFM ?',
+    howSubtitle: 'Commencez avec un compte et des données réelles, puis activez les sections utiles afin que les analyses apparaissent quand les données sont suffisantes.',
     featuresTitle: 'Vos outils financiers au même endroit',
     featuresSubtitle: 'THE SFM réunit suivi quotidien, rapports, projets et zakat sans mélanger données réelles et données de démonstration.',
     aiTitle: 'Un assistant financier IA qui respecte vos données',
@@ -201,6 +209,7 @@ const COPY = {
     pricingTitle: 'Prix',
     pricingSubtitle: 'Détails des prix bientôt disponibles',
     pricingNote: 'Nous n’afficherons pas de prix définitifs avant leur validation.',
+    pricingHidden: 'Prix à annoncer',
     testimonialsTitle: 'Témoignages clients bientôt disponibles',
     testimonialsSubtitle: 'Nous n’afficherons pas de noms ou avis fictifs.',
     finalTitle: 'Gérez votre argent et vos projets depuis un seul endroit',
@@ -287,17 +296,105 @@ const FAQ_ITEMS = {
 } satisfies Record<Lang, [string, string][]>;
 
 const featureItems = [
-  { icon: Wallet, title: ['إدارة الدخل', 'Income management', 'Gestion des revenus'] },
-  { icon: ReceiptText, title: ['تتبع المصروفات', 'Expense tracking', 'Suivi des dépenses'] },
-  { icon: PiggyBank, title: ['المدخرات والأهداف', 'Savings and goals', 'Épargne et objectifs'] },
-  { icon: TrendingUp, title: ['الاستثمارات وتحليلات السوق', 'Investments and market analysis', 'Investissements et analyse de marché'] },
-  { icon: Calculator, title: ['الزكاة', 'Zakat', 'Zakat'] },
-  { icon: FolderKanban, title: ['المشاريع التجارية', 'Business projects', 'Projets commerciaux'] },
-  { icon: HandHeart, title: ['المشاريع الخيرية', 'Charity projects', 'Projets caritatifs'] },
-  { icon: FileText, title: ['التقارير', 'Reports', 'Rapports'] },
-  { icon: BellRing, title: ['الإشعارات الذكية', 'Smart notifications', 'Notifications intelligentes'] },
-  { icon: BriefcaseBusiness, title: ['مركز الأعمال', 'Business Hub', 'Centre d’affaires'] },
-  { icon: Presentation, title: ['Pitch Deck', 'Pitch Deck', 'Pitch Deck'] },
+  {
+    icon: Wallet,
+    title: ['إدارة الدخل', 'Income management', 'Gestion des revenus'],
+    description: [
+      'تتبّع مصادر دخلك وصنّفها وراقب ملخصاتك الشهرية.',
+      'Track income sources, categorize them, and review monthly summaries.',
+      'Suivez vos sources de revenus, classez-les et consultez vos synthèses mensuelles.',
+    ],
+  },
+  {
+    icon: ReceiptText,
+    title: ['تتبع المصروفات', 'Expense tracking', 'Suivi des dépenses'],
+    description: [
+      'سجّل مصروفاتك بالتصنيفات والملاحظات والمرفقات.',
+      'Record expenses with categories, notes, and attachments.',
+      'Enregistrez vos dépenses avec catégories, notes et pièces jointes.',
+    ],
+  },
+  {
+    icon: PiggyBank,
+    title: ['المدخرات والأهداف', 'Savings and goals', 'Épargne et objectifs'],
+    description: [
+      'حدّد أهدافك المالية وتابع تقدمك نحوها.',
+      'Set financial goals and track progress toward them.',
+      'Définissez vos objectifs financiers et suivez votre progression.',
+    ],
+  },
+  {
+    icon: TrendingUp,
+    title: ['الاستثمارات وتحليلات السوق', 'Investments and market analysis', 'Investissements et analyse de marché'],
+    description: [
+      'راقب استثماراتك وتحليلات السوق وقائمة المتابعة.',
+      'Monitor investments, market analysis, and your watchlist.',
+      'Surveillez vos investissements, l’analyse de marché et votre liste de suivi.',
+    ],
+  },
+  {
+    icon: Calculator,
+    title: ['الزكاة', 'Zakat', 'Zakat'],
+    description: [
+      'احسب النصاب، تتبّع الحول، وأضف أصولك.',
+      'Calculate nisab, track hawl, and add your assets.',
+      'Calculez le nisab, suivez le hawl et ajoutez vos actifs.',
+    ],
+  },
+  {
+    icon: FolderKanban,
+    title: ['المشاريع التجارية', 'Business projects', 'Projets commerciaux'],
+    description: [
+      'أنشئ دراسة جدوى، نموذجاً مالياً، مهاماً، وPitch Deck.',
+      'Create feasibility studies, financial models, tasks, and pitch decks.',
+      'Créez des études de faisabilité, modèles financiers, tâches et pitch decks.',
+    ],
+  },
+  {
+    icon: HandHeart,
+    title: ['المشاريع الخيرية', 'Charity projects', 'Projets caritatifs'],
+    description: [
+      'نظّم تبرعاتك ومستفيديك وتقاريرك الخيرية.',
+      'Organize donations, beneficiaries, and charity reports.',
+      'Organisez dons, bénéficiaires et rapports caritatifs.',
+    ],
+  },
+  {
+    icon: FileText,
+    title: ['التقارير', 'Reports', 'Rapports'],
+    description: [
+      'أنشئ تقارير للدخل والمصروفات والمشاريع والزكاة.',
+      'Create reports for income, expenses, projects, and zakat.',
+      'Créez des rapports pour revenus, dépenses, projets et zakat.',
+    ],
+  },
+  {
+    icon: BellRing,
+    title: ['الإشعارات الذكية', 'Smart notifications', 'Notifications intelligentes'],
+    description: [
+      'تنبيهات للمهام المتأخرة والزكاة القريبة والأهداف.',
+      'Alerts for overdue tasks, upcoming zakat, and goals.',
+      'Alertes pour tâches en retard, zakat à venir et objectifs.',
+    ],
+  },
+  {
+    icon: BriefcaseBusiness,
+    title: ['مركز الأعمال', 'Business Hub', 'Centre d’affaires'],
+    description: [
+      'أدِر مشاريعك ومستنداتك ومؤشرات أدائك في مكان واحد.',
+      'Manage projects, documents, and performance indicators in one place.',
+      'Gérez projets, documents et indicateurs de performance au même endroit.',
+    ],
+  },
+  {
+    icon: Presentation,
+    title: ['Pitch Deck', 'Pitch Deck', 'Pitch Deck'],
+    description: [
+      'اعرض مشروعك للمستثمرين بناءً على بيانات مشروعك الفعلية.',
+      'Present your project to investors using your actual project data.',
+      'Présentez votre projet aux investisseurs à partir de vos données réelles.',
+    ],
+  },
   {
     icon: BookOpen,
     href: '/financial-theories',
@@ -310,10 +407,82 @@ const featureItems = [
   },
 ] as const;
 
-const audienceKeys = [
-  ['الأفراد', 'Individuals', 'Particuliers'],
-  ['رواد الأعمال', 'Founders', 'Fondateurs'],
-  ['العائلات والفرق الصغيرة', 'Families and small teams', 'Familles et petites équipes'],
+const audienceItems = [
+  {
+    title: ['الأفراد', 'Individuals', 'Particuliers'],
+    description: [
+      'لتنظيم الدخل والمصروفات والمدخرات والأهداف.',
+      'For organizing income, expenses, savings, and goals.',
+      'Pour organiser revenus, dépenses, épargne et objectifs.',
+    ],
+  },
+  {
+    title: ['رواد الأعمال', 'Founders', 'Fondateurs'],
+    description: [
+      'لإدارة المشاريع ودراسات الجدوى والـ Pitch Deck.',
+      'For managing projects, feasibility studies, and pitch decks.',
+      'Pour gérer projets, études de faisabilité et pitch decks.',
+    ],
+  },
+  {
+    title: ['العائلات والفرق الصغيرة', 'Families and small teams', 'Familles et petites équipes'],
+    description: [
+      'لتخطيط الميزانية والزكاة والقرارات المشتركة.',
+      'For planning budgets, zakat, and shared decisions.',
+      'Pour planifier budgets, zakat et décisions partagées.',
+    ],
+  },
+] as const;
+
+const howSteps = [
+  {
+    icon: CheckCircle2,
+    title: ['سجّل الدخول وأنشئ حسابك.', 'Sign in and create your account.', 'Connectez-vous et créez votre compte.'],
+  },
+  {
+    icon: Wallet,
+    title: ['أضف بياناتك الحقيقية مثل الدخل والمصروفات.', 'Add your real data, such as income and expenses.', 'Ajoutez vos données réelles, comme revenus et dépenses.'],
+  },
+  {
+    icon: FolderKanban,
+    title: ['فعّل الأقسام المناسبة لك مثل الأهداف والزكاة والمشاريع والتقارير.', 'Activate the sections you need, such as goals, zakat, projects, and reports.', 'Activez les sections utiles, comme objectifs, zakat, projets et rapports.'],
+  },
+  {
+    icon: LineChart,
+    title: ['احصل على التحليلات والتقارير عند توفر بيانات كافية.', 'Get analysis and reports when enough data is available.', 'Obtenez analyses et rapports lorsque les données sont suffisantes.'],
+  },
+] as const;
+
+const pricingFeatureSets = [
+  {
+    key: 'planFree',
+    features: [
+      ['إدارة الدخل والمصروفات الأساسية', 'Basic income and expense management', 'Gestion de base des revenus et dépenses'],
+      ['الأهداف والمدخرات الشخصية', 'Personal goals and savings', 'Objectifs et épargne personnels'],
+      ['تقارير أساسية من بياناتك', 'Basic reports from your data', 'Rapports de base à partir de vos données'],
+      ['الزكاة والحسابات الأساسية', 'Zakat and basic calculations', 'Zakat et calculs de base'],
+    ],
+  },
+  {
+    key: 'planPro',
+    features: [
+      ['كل ميزات الخطة المجانية', 'Everything in Free', 'Tout ce qui est inclus dans Gratuit'],
+      ['تحليلات الاستثمار وقوائم المتابعة', 'Investment analysis and watchlists', 'Analyse d’investissement et listes de suivi'],
+      ['التقارير والإشعارات الذكية', 'Reports and smart notifications', 'Rapports et notifications intelligentes'],
+      ['المساعد الذكي عند توفر بيانات كافية', 'AI assistant when enough data is available', 'Assistant IA lorsque les données sont suffisantes'],
+      ['المكتبة التعليمية والحاسبات العملية', 'Educational library and practical calculators', 'Bibliothèque éducative et calculateurs pratiques'],
+    ],
+  },
+  {
+    key: 'planBusiness',
+    features: [
+      ['كل ميزات الخطة الاحترافية', 'Everything in Professional', 'Tout ce qui est inclus dans Professionnel'],
+      ['المشاريع التجارية ودراسات الجدوى', 'Business projects and feasibility studies', 'Projets commerciaux et études de faisabilité'],
+      ['النماذج المالية وPitch Deck', 'Financial models and pitch decks', 'Modèles financiers et pitch decks'],
+      ['مركز الأعمال والمستندات والقرارات', 'Business Hub, documents, and decisions', 'Centre d’affaires, documents et décisions'],
+      ['دعم أنسب للفرق واحتياجات الشركات', 'Support better suited for teams and business needs', 'Support mieux adapté aux équipes et besoins d’entreprise'],
+    ],
+  },
 ] as const;
 
 function pick(list: readonly [string, string, string][], lang: Lang) {
@@ -328,21 +497,59 @@ function pickOne(item: readonly [string, string, string], lang: Lang) {
 
 export default function PublicLandingPage() {
   const { lang, dir } = useLanguage();
-  const { session, isGuest } = useAuth();
+  const { session } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
   const text = COPY[(lang as Lang) || 'ar'];
-  const appHref = session || isGuest ? '/dashboard' : '/login';
-  const primaryLabel = session || isGuest ? text.openDashboard : text.start;
+  const appHref = session ? '/dashboard' : '/login';
+  const primaryLabel = session ? text.openDashboard : text.start;
   const aboutLabel = lang === 'ar' ? 'من نحن' : lang === 'fr' ? 'À propos' : 'About';
   const features = useMemo(() => featureItems.map(item => ({
     ...item,
     titleText: pickOne(item.title, lang as Lang),
-    descriptionText: item.description ? pickOne(item.description, lang as Lang) : text.previewStatus,
-  })), [lang, text.previewStatus]);
-  const audiences = useMemo(() => pick(audienceKeys, lang as Lang), [lang]);
+    descriptionText: pickOne(item.description, lang as Lang),
+  })), [lang]);
+  const steps = useMemo(() => howSteps.map((item, index) => ({
+    ...item,
+    number: index + 1,
+    titleText: pickOne(item.title, lang as Lang),
+  })), [lang]);
+  const pricingPlans = useMemo(() => pricingFeatureSets.map(plan => ({
+    title: text[plan.key],
+    features: pick(plan.features, lang as Lang),
+  })), [lang, text]);
+  const audiences = useMemo(() => audienceItems.map(item => ({
+    title: pickOne(item.title, lang as Lang),
+    description: pickOne(item.description, lang as Lang),
+  })), [lang]);
   const faqItems = FAQ_ITEMS[(lang as Lang) || 'ar'];
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': 'https://www.the-sfm.com/#organization',
+        name: 'THE SFM',
+        url: 'https://www.the-sfm.com',
+        logo: 'https://www.the-sfm.com/sfm-logo.png',
+        contactPoint: {
+          '@type': 'ContactPoint',
+          email: SUPPORT_EMAIL,
+          contactType: 'customer support',
+          availableLanguage: ['Arabic', 'English', 'French'],
+        },
+      },
+      {
+        '@type': 'WebSite',
+        '@id': 'https://www.the-sfm.com/#website',
+        name: 'THE SFM',
+        url: 'https://www.the-sfm.com',
+        inLanguage: ['ar', 'en', 'fr'],
+        publisher: { '@id': 'https://www.the-sfm.com/#organization' },
+      },
+    ],
+  };
 
   const navLinks = [
     { href: '/about', label: aboutLabel, section: 'about' },
@@ -376,6 +583,7 @@ export default function PublicLandingPage() {
 
   return (
     <main className="landing-page" dir={dir}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <nav className="landing-nav" aria-label="THE SFM">
         <Link href="/" className="landing-brand" aria-label="THE SFM">
           <Image src="/sfm-logo.png" alt="THE SFM" width={46} height={46} priority className="landing-logo" />
@@ -400,14 +608,12 @@ export default function PublicLandingPage() {
             );
           })}
           <div className="mobile-menu-ctas">
-            <Link href="/login" className="sfm-button-secondary" onClick={() => setMenuOpen(false)}>{text.login}</Link>
             <Link href={appHref} className="sfm-button-primary" onClick={() => setMenuOpen(false)}>{primaryLabel}</Link>
           </div>
         </div>
 
         <div className="landing-actions">
           <LanguageSwitcher variant="gold" compact />
-          <Link href="/login" className="nav-login sfm-button-secondary">{text.login}</Link>
           <Link href={appHref} className="nav-primary sfm-button-primary">{primaryLabel}</Link>
           <button
             type="button"
@@ -447,6 +653,26 @@ export default function PublicLandingPage() {
               <span>{item}</span>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="how-section" aria-labelledby="how-title">
+        <div className="section-heading">
+          <span>{text.heroKicker}</span>
+          <h2 id="how-title">{text.howTitle}</h2>
+          <p>{text.howSubtitle}</p>
+        </div>
+        <div className="how-grid">
+          {steps.map(step => {
+            const Icon = step.icon;
+            return (
+              <article key={step.number} className="how-card">
+                <div className="how-number">{step.number}</div>
+                <div className="how-icon"><Icon size={22} /></div>
+                <p>{step.titleText}</p>
+              </article>
+            );
+          })}
         </div>
       </section>
 
@@ -500,9 +726,10 @@ export default function PublicLandingPage() {
         </div>
         <div className="audience-grid">
           {audiences.map(item => (
-            <article key={item}>
+            <article key={item.title}>
               <ShieldCheck size={20} />
-              <strong>{item}</strong>
+              <strong>{item.title}</strong>
+              <p>{item.description}</p>
             </article>
           ))}
         </div>
@@ -515,21 +742,18 @@ export default function PublicLandingPage() {
           <p>{text.pricingSubtitle}</p>
         </div>
         <div className="pricing-grid">
-          {[text.planFree, text.planPro, text.planBusiness].map(plan => (
-            <article key={plan} className="pricing-card">
-              <h3>{plan}</h3>
-              <strong>{text.pricingSubtitle}</strong>
+          {pricingPlans.map(plan => (
+            <article key={plan.title} className="pricing-card">
+              <h3>{plan.title}</h3>
+              <strong>{text.pricingHidden}</strong>
               <p>{text.pricingNote}</p>
+              <ul>
+                {plan.features.map(feature => (
+                  <li key={feature}><CheckCircle2 size={16} />{feature}</li>
+                ))}
+              </ul>
             </article>
           ))}
-        </div>
-      </section>
-
-      <section className="stories-section">
-        <div>
-          <span>{text.comingSoon}</span>
-          <h2>{text.testimonialsTitle}</h2>
-          <p>{text.testimonialsSubtitle}</p>
         </div>
       </section>
 
@@ -585,10 +809,10 @@ export default function PublicLandingPage() {
           <Image src="/sfm-logo.png" alt="THE SFM" width={42} height={42} className="landing-logo" />
           <strong>THE SFM</strong>
         </div>
-        <FooterColumn title={text.footerProduct} links={[['/login', text.login], ['/dashboard', text.openDashboard], ['/reports-center', text.navTools]]} />
+        <FooterColumn title={text.footerProduct} links={[['/', 'THE SFM'], ['/dashboard', text.openDashboard], ['/reports-center', text.reportsCenter]]} />
         <FooterColumn title={text.footerTools} links={[['/business-hub', text.businessHub], ['/zakat', text.zakat], ['/reports-center', text.reportsCenter]]} />
         <FooterColumn title={text.footerCompany} links={[['/about', aboutLabel], ['/#faq', text.navFaq]]} />
-        <FooterColumn title={text.footerAccount} links={[['/login', text.login], ['/setup', text.start]]} />
+        <FooterColumn title={text.footerAccount} links={[[appHref, primaryLabel], ['/login', text.login]]} />
         <FooterColumn title={text.footerLegal} links={[['/privacy', text.privacy], ['/terms', text.terms]]} />
         <FooterColumn title={text.footerSupport} links={[[SUPPORT_EMAIL_MAILTO, `${text.supportEmailLabel} ${SUPPORT_EMAIL}`]]} />
       </footer>
@@ -660,7 +884,7 @@ const landingStyles = `
     --landing-dark-muted: #A7C7E7;
     --landing-border: rgba(29, 140, 255, 0.20);
     min-height: 100vh;
-    overflow-x: hidden;
+    overflow-x: clip;
     color: var(--landing-body);
     background:
       radial-gradient(circle at 18% 8%, rgba(24, 212, 212, 0.18), transparent 26%),
@@ -670,15 +894,15 @@ const landingStyles = `
   }
   .landing-nav {
     position: sticky;
-    top: 0;
-    z-index: 50;
+    top: 12px;
+    z-index: 150;
     width: min(1180px, calc(100% - 32px));
     margin: 16px auto 0;
     min-height: 70px;
     border: 1px solid var(--landing-border);
     border-radius: 24px;
-    background: rgba(255, 255, 255, 0.86);
-    box-shadow: 0 18px 55px rgba(3, 18, 37, 0.1);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 16px 44px rgba(3, 18, 37, 0.12);
     backdrop-filter: blur(18px);
     display: flex;
     align-items: center;
@@ -931,7 +1155,7 @@ const landingStyles = `
     gap: 10px;
     font-weight: 900;
   }
-  .trust-section, .section-block, .ai-section, .stories-section, .final-cta, .landing-footer {
+  .trust-section, .how-section, .section-block, .ai-section, .final-cta, .landing-footer {
     width: min(1180px, calc(100% - 32px));
     margin: 0 auto;
   }
@@ -946,18 +1170,18 @@ const landingStyles = `
     box-shadow: 0 18px 46px rgba(3, 18, 37, 0.08);
     padding: 22px;
   }
-  .trust-section h2, .section-heading h2, .ai-card h2, .stories-section h2, .final-cta h2 {
+  .trust-section h2, .section-heading h2, .ai-card h2, .final-cta h2 {
     margin: 0;
     color: var(--landing-heading);
     font-weight: 950;
   }
-  .trust-section p, .section-heading p, .ai-card p, .stories-section p, .final-cta p, .pricing-card p, .faq-answer p {
+  .trust-section p, .section-heading p, .ai-card p, .final-cta p, .pricing-card p, .faq-answer p {
     margin: 8px 0 0;
     color: var(--landing-muted);
     line-height: 1.8;
     font-weight: 750;
   }
-  .trust-grid, .feature-grid, .audience-grid, .pricing-grid, .faq-accordion {
+  .trust-grid, .how-grid, .feature-grid, .audience-grid, .pricing-grid, .faq-accordion {
     display: grid;
     gap: 14px;
   }
@@ -977,20 +1201,64 @@ const landingStyles = `
   .trust-card svg, .feature-card svg, .audience-grid svg {
     color: #18D4D4;
   }
+  .how-section {
+    padding-top: 56px;
+  }
+  .how-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .how-card {
+    position: relative;
+    min-width: 0;
+    border-radius: 22px;
+    background: #FFFFFF;
+    border: 1px solid rgba(29, 140, 255, 0.13);
+    box-shadow: 0 14px 36px rgba(3, 18, 37, 0.07);
+    padding: 18px;
+    display: grid;
+    gap: 14px;
+    align-content: start;
+  }
+  .how-number {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #1D8CFF, #18D4D4);
+    color: #FFFFFF;
+    font-weight: 950;
+  }
+  .how-icon {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(29, 140, 255, 0.12), rgba(24, 212, 212, 0.14));
+    border: 1px solid rgba(29, 140, 255, 0.14);
+    color: #18D4D4;
+  }
+  .how-card p {
+    margin: 0;
+    color: var(--landing-heading);
+    line-height: 1.75;
+    font-weight: 900;
+  }
   .section-block {
-    padding: 88px 0 0;
+    padding: 64px 0 0;
   }
   .section-heading {
     max-width: 760px;
     margin-bottom: 24px;
   }
-  .section-heading span, .ai-card span, .stories-section span {
+  .section-heading span, .ai-card span {
     color: #0B76E0;
     font-size: 12px;
     font-weight: 950;
     text-transform: uppercase;
   }
-  .section-heading h2, .ai-card h2, .stories-section h2, .final-cta h2 {
+  .section-heading h2, .ai-card h2, .final-cta h2 {
     margin-top: 8px;
     font-size: clamp(28px, 4vw, 44px);
     line-height: 1.15;
@@ -1054,7 +1322,7 @@ const landingStyles = `
     font-weight: 750;
   }
   .ai-section {
-    padding-top: 90px;
+    padding-top: 64px;
   }
   .ai-card {
     border-radius: 32px;
@@ -1086,13 +1354,22 @@ const landingStyles = `
     font-weight: 900;
   }
   .compact {
-    padding-top: 82px;
+    padding-top: 64px;
   }
   .audience-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .audience-grid article {
+    align-items: flex-start;
     gap: 10px;
+    flex-direction: column;
+  }
+  .audience-grid article p {
+    margin: 0;
+    color: var(--landing-muted);
+    line-height: 1.7;
+    font-size: 13px;
+    font-weight: 750;
   }
   .pricing-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1101,13 +1378,26 @@ const landingStyles = `
     color: #0B76E0;
     font-size: 18px;
   }
-  .stories-section {
-    margin-top: 86px;
-    border: 1px dashed rgba(29, 140, 255, 0.28);
-    border-radius: 28px;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 30px;
-    text-align: center;
+  .pricing-card ul {
+    list-style: none;
+    margin: 18px 0 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+  }
+  .pricing-card li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    color: #334155;
+    font-size: 14px;
+    line-height: 1.7;
+    font-weight: 850;
+  }
+  .pricing-card li svg {
+    flex: 0 0 auto;
+    margin-top: 4px;
+    color: #18D4D4;
   }
   .faq-block {
     scroll-margin-top: 105px;
@@ -1204,7 +1494,7 @@ const landingStyles = `
     text-decoration: underline;
   }
   .final-cta {
-    margin-top: 90px;
+    margin-top: 70px;
     border-radius: 34px;
     text-align: center;
     padding: 46px 24px;
@@ -1289,7 +1579,7 @@ const landingStyles = `
     }
     .mobile-menu-ctas {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: 1fr;
       gap: 10px;
       padding-top: 8px;
     }
@@ -1313,12 +1603,12 @@ const landingStyles = `
     .trust-section, .ai-card, .landing-footer {
       grid-template-columns: 1fr;
     }
-    .audience-grid, .pricing-grid, .faq-accordion {
+    .how-grid, .audience-grid, .pricing-grid, .faq-accordion {
       grid-template-columns: 1fr;
     }
   }
   @media (max-width: 620px) {
-    .landing-nav, .hero-section, .trust-section, .section-block, .ai-section, .stories-section, .final-cta, .landing-footer {
+    .landing-nav, .hero-section, .trust-section, .how-section, .section-block, .ai-section, .final-cta, .landing-footer {
       width: min(100% - 24px, 1180px);
     }
     .landing-nav {
@@ -1354,7 +1644,7 @@ const landingStyles = `
     .preview-grid, .trust-grid {
       grid-template-columns: 1fr;
     }
-    .section-block, .ai-section {
+    .how-section, .section-block, .ai-section {
       padding-top: 64px;
     }
     .ai-card {

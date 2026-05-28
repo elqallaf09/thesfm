@@ -7,6 +7,7 @@ import { AuthProvider } from '@/hooks/useAuth';
 import { LanguageProvider } from '@/components/LanguageProvider';
 import { CurrencyProvider } from '@/lib/useCurrency';
 import { AppLayout } from '@/components/AppLayout';
+import { pageMetadata } from '@/lib/seo';
 import './globals.css';
 
 const cairo = Cairo({
@@ -16,30 +17,23 @@ const cairo = Cairo({
   display: 'swap',
 });
 
-const description = 'إدارة راتبك بذكاء - قسّم راتبك إلى مصروفات ومدخرات واستثمار';
-
-export const metadata: Metadata = {
-  metadataBase: new URL('https://www.the-sfm.com'),
-  title: 'THE SFM',
-  description,
-  icons: {
-    icon: [
-      { url: '/icons/favicon-16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-    ],
-    apple: '/icons/apple-touch-icon.png',
-  },
-  openGraph: {
-    title: 'THE SFM',
-    description,
-    images: [{ url: '/icons/og-image.png', width: 1200, height: 630 }],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    images: ['/icons/og-image.png'],
-  },
-};
+export function generateMetadata(): Metadata {
+  return {
+    ...pageMetadata({
+    title: 'THE SFM — منصة مالية ذكية لإدارة أموالك ومشاريعك',
+    path: '/',
+    }),
+    metadataBase: new URL('https://www.the-sfm.com'),
+    icons: {
+      icon: [
+        { url: '/icons/favicon-16.png', sizes: '16x16', type: 'image/png' },
+        { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
+        { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      ],
+      apple: '/icons/apple-touch-icon.png',
+    },
+  };
+}
 
 export default function RootLayout({
   children,
@@ -55,6 +49,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${cairo.variable} font-cairo antialiased`}>
+        <a className="sfm-skip-link" href="#main-content">تخطّي إلى المحتوى</a>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

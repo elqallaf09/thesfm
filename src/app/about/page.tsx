@@ -262,12 +262,12 @@ const COPY = {
 
 export default function AboutPage() {
   const { lang, dir } = useLanguage();
-  const { session, isGuest } = useAuth();
+  const { session } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const locale = (['ar', 'en', 'fr'].includes(lang) ? lang : 'ar') as Lang;
   const text = COPY[locale];
-  const appHref = session || isGuest ? '/dashboard' : '/login';
-  const primaryLabel = session || isGuest ? text.openDashboard : text.getStarted;
+  const appHref = session ? '/dashboard' : '/login';
+  const primaryLabel = session ? text.openDashboard : text.getStarted;
 
   const audiences = useMemo(() => [
     { title: text.individuals, body: text.individualsText, icon: Wallet },
@@ -312,13 +312,12 @@ export default function AboutPage() {
 
         <div className={menuOpen ? 'about-links open' : 'about-links'}>
           {navLinks.map(link => (
-            <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)}>{link.label}</Link>
+            <Link key={link.href} href={link.href} aria-current={link.href === '#mission' ? 'page' : undefined} onClick={() => setMenuOpen(false)}>{link.label}</Link>
           ))}
         </div>
 
         <div className="about-actions">
           <LanguageSwitcher variant="gold" compact />
-          <Link href="/login" className="nav-login">{text.login}</Link>
           <Link href={appHref} className="nav-primary">{primaryLabel}</Link>
           <button
             type="button"
@@ -354,9 +353,8 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section id="mission" className="statement-grid">
+      <section id="mission" className="statement-grid single">
         <InfoCard title={text.missionTitle} body={text.missionText} icon={<Target size={24} />} featured />
-        <InfoCard title={text.whatTitle} body={text.whatText} icon={<BriefcaseBusiness size={24} />} />
       </section>
 
       <section className="section-block" aria-labelledby="who-title">
@@ -486,8 +484,8 @@ const aboutStyles = `
   }
   .about-nav {
     position: sticky;
-    top: 0;
-    z-index: 50;
+    top: 12px;
+    z-index: 150;
     width: min(1180px, calc(100% - 32px));
     min-height: 70px;
     margin: 16px auto 0;
@@ -498,8 +496,8 @@ const aboutStyles = `
     gap: 16px;
     border: 1px solid rgba(29, 140, 255, 0.16);
     border-radius: 24px;
-    background: rgba(255, 255, 255, 0.88);
-    box-shadow: 0 18px 55px rgba(3, 18, 37, 0.1);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 16px 44px rgba(3, 18, 37, 0.12);
     backdrop-filter: blur(18px);
   }
   .about-brand, .about-links, .about-actions, .hero-actions, .hero-badge, .trust-band span, .cta-actions, .footer-brand {
@@ -673,6 +671,9 @@ const aboutStyles = `
     display: grid;
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
     gap: 16px;
+  }
+  .statement-grid.single {
+    grid-template-columns: minmax(0, 1fr);
   }
   .info-card, .icon-card, .value-card, .trust-card {
     min-width: 0;
