@@ -1006,6 +1006,72 @@ function firstDate(row: any) {
   return firstText(row, ['received_date', 'generated_for_date', 'expense_date', 'donation_date', 'calculation_date', 'start_date', 'created_at', 'uploaded_at']);
 }
 
+const NO_GOAL_NOTES: Record<Lang, string> = {
+  ar: 'لا توجد ملاحظات',
+  en: 'No notes',
+  fr: 'Aucune note',
+};
+
+function parseMaybeObject(value: unknown): Record<string, unknown> | null {
+  if (!value) return null;
+  if (typeof value === 'object' && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (typeof value !== 'string') return null;
+
+  const trimmed = value.trim();
+  if (!trimmed || !/^[{[]/.test(trimmed)) return null;
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+}
+
+function cleanReportText(value: unknown) {
+  if (typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (parseMaybeObject(trimmed)) return '';
+  return trimmed;
+}
+
+function formatReportCurrency(value: unknown, fallback: unknown, lang: Lang) {
+  const code = cleanReportText(value) || cleanReportText(fallback) || 'KWD';
+  const normalized = code.toUpperCase();
+  if (lang === 'ar' && normalized === 'KWD') return 'د.ك';
+  return normalized;
+}
+
+function formatGoalNotes(goal: any, lang: Lang) {
+  const metadata = parseMaybeObject(goal?.notes);
+  const description =
+    cleanReportText(goal?.description) ||
+    cleanReportText(goal?.goal_description) ||
+    cleanReportText(goal?.details) ||
+    cleanReportText(metadata?.description) ||
+    cleanReportText(metadata?.notes) ||
+    cleanReportText(goal?.notes);
+
+  return description || NO_GOAL_NOTES[lang];
+}
+
+function normalizeReportCellValue(value: unknown, lang: Lang) {
+  if (value === undefined || value === null || value === '') return '';
+  const metadata = parseMaybeObject(value);
+  if (metadata) {
+    return (
+      cleanReportText(metadata.description) ||
+      cleanReportText(metadata.notes) ||
+      cleanReportText(metadata.name) ||
+      cleanReportText(metadata.title) ||
+      ''
+    );
+  }
+  if (typeof value === 'object') return '';
+  return String(value);
+}
+
 function dateInFilters(row: any, filters: Filters) {
   const raw = firstDate(row);
   if (!raw) return true;
@@ -1029,8 +1095,8 @@ function filteredRows(rows: any[], filters: Filters) {
   return rows.filter(row => dateInFilters(row, filters) && projectMatches(row, filters));
 }
 
-function csvCell(value: unknown) {
-  const text = String(value ?? '').replace(/\r?\n/g, ' ');
+function csvCell(value: unknown, lang: Lang) {
+  const text = normalizeReportCellValue(value, lang).replace(/\r?\n/g, ' ');
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
@@ -1039,8 +1105,8 @@ function downloadCsv(filename: string, rows: Record<string, unknown>[], lang: La
     Object.keys(row).forEach(key => set.add(key));
     return set;
   }, new Set<string>()));
-  const body = rows.map(row => headers.map(header => csvCell(row[header])).join(','));
-  const localizedHeaders = headers.map(header => csvCell(columnLabel(header, lang))).join(',');
+  const body = rows.map(row => headers.map(header => csvCell(row[header], lang)).join(','));
+  const localizedHeaders = headers.map(header => csvCell(columnLabel(header, lang), lang)).join(',');
   const blob = new Blob([`\uFEFF${localizedHeaders}\r\n${body.join('\r\n')}\r\n`], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -1163,8 +1229,8 @@ function reportRows(report: ReportDefinition, records: RecordsState, filters: Fi
       name: firstText(row, ['name', 'goal'], entity.goal),
       target_amount: numberValue(row.target_amount ?? row.amount),
       current_amount: numberValue(row.current_amount ?? row.saved_amount),
-      currency: row.currency || filters.currency,
-      notes: row.notes || '',
+      currency: formatReportCurrency(row.currency ?? parseMaybeObject(row.notes)?.currency, filters.currency, lang),
+      notes: formatGoalNotes(row, lang),
     }));
   }
 
@@ -1858,7 +1924,7 @@ export default function ReportsCenterPage() {
                     <tbody>
                       {activeRows.slice(0, 60).map((row, index) => (
                         <tr key={index}>
-                          {Object.keys(activeRows[0]).map(key => <td key={key}>{String(row[key] ?? '')}</td>)}
+                          {Object.keys(activeRows[0]).map(key => <td key={key}>{normalizeReportCellValue(row[key], lang as Lang)}</td>)}
                         </tr>
                       ))}
                     </tbody>
@@ -1941,7 +2007,7 @@ const pageStyles = `
   .card-meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--sfm-muted);font-size:11px;font-weight:900}.requirements-compact{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:rgba(154,94,13,.08);border:1px solid rgba(154,94,13,.14);border-radius:13px;padding:10px}.requirements-compact div{min-width:0;display:grid;gap:3px}.requirements-compact strong{color:#7A4B09;font-size:12px}.requirements-compact span{color:#7A4B09;font-size:11px;font-weight:850;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.requirements-compact button,.missing-actions button{border:1px solid rgba(29,140,255,.18);border-radius:999px;background:var(--sfm-card);color:var(--sfm-primary-hover);padding:7px 10px;font:950 11px Tajawal,Arial,sans-serif;cursor:pointer}.missing-actions{display:flex;flex-wrap:wrap;gap:6px}
   .card-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;min-width:0;align-items:center}.card-actions button,.report-actions-menu summary{border:0;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;min-height:42px;padding:0 13px}.primary-card-action{background:var(--sfm-primary-dark)!important;color:var(--sfm-card)!important;min-width:0;white-space:normal}.report-actions-menu{position:relative;justify-self:end}.report-actions-menu summary{list-style:none;border:1px solid rgba(29,140,255,.18);background:#FFFFFF;color:var(--sfm-primary-dark)}.report-actions-menu summary::-webkit-details-marker{display:none}.report-actions-menu div{position:absolute;inset-block-start:calc(100% + 8px);inset-inline-end:0;z-index:20;min-width:220px;display:grid;gap:6px;background:#FFFFFF;border:1px solid rgba(29,140,255,.16);border-radius:16px;box-shadow:0 18px 48px rgba(3,18,37,.18);padding:8px}.report-actions-menu button{width:100%;justify-content:flex-start;background:#FFFFFF;color:var(--sfm-primary-dark);border:1px solid rgba(29,140,255,.10);white-space:normal}.report-actions-menu button:hover{background:rgba(29,140,255,.08)}.card-actions button:disabled,.preview-actions button:disabled,.report-actions-menu button:disabled{opacity:1;background:#EEF2F7!important;color:#64748B!important;border:1px solid rgba(100,116,139,.18);cursor:not-allowed}
   .preview-panel{padding:18px;position:sticky;top:18px}.print-report-brand{display:flex;align-items:center;gap:12px;border:1px solid rgba(29,140,255,.12);background:linear-gradient(180deg,#FFFFFF,var(--sfm-light-card));border-radius:16px;padding:12px;margin-bottom:14px}.print-report-brand img{width:42px;height:42px;border-radius:12px;object-fit:cover}.print-report-brand strong{display:block;color:var(--sfm-primary-dark);font-size:18px;font-weight:950}.print-report-brand span{display:block;color:var(--sfm-muted);font-size:12px;font-weight:900}.preview-head{display:flex;justify-content:space-between;gap:12px;align-items:start;border-bottom:1px solid rgba(29,140,255,.12);padding-bottom:12px}.preview-head span:first-child{font-size:12px;color:var(--sfm-primary);font-weight:950}.preview-head h2{margin:5px 0 0;color:var(--sfm-primary-dark);font-size:24px;line-height:1.2}.preview-meta{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.preview-meta span{background:var(--sfm-light-card);border:1px solid rgba(29,140,255,.12);border-radius:999px;padding:6px 9px;font-size:11px;font-weight:900;color:var(--sfm-muted)}.ready-copy{margin:0 0 12px;color:#047857;background:#ECFDF5;border:1px solid rgba(39,80,10,.12);border-radius:13px;padding:10px;font-size:13px;font-weight:900}
-  .preview-table-wrap{max-width:100%;max-height:540px;overflow:auto;border:1px solid rgba(29,140,255,.14);border-radius:14px}.preview-table-wrap table{width:100%;border-collapse:collapse;background:var(--sfm-card);min-width:560px}.preview-table-wrap th,.preview-table-wrap td{padding:10px;border-bottom:1px solid rgba(29,140,255,.1);text-align:start;font-size:12px;white-space:nowrap}.preview-table-wrap th{color:var(--sfm-primary);background:rgba(29,140,255,.10);font-weight:950}.preview-table-wrap td{color:var(--sfm-midnight);font-weight:800}
+  .preview-table-wrap{max-width:100%;max-height:540px;overflow:auto;border:1px solid rgba(29,140,255,.14);border-radius:14px}.preview-table-wrap table{width:100%;border-collapse:collapse;background:var(--sfm-card);min-width:560px;table-layout:auto}.preview-table-wrap th,.preview-table-wrap td{padding:10px;border-bottom:1px solid rgba(29,140,255,.1);text-align:start;font-size:12px}.preview-table-wrap th{color:var(--sfm-primary);background:rgba(29,140,255,.10);font-weight:950;white-space:nowrap}.preview-table-wrap td{color:var(--sfm-midnight);font-weight:800;white-space:normal;vertical-align:top;overflow-wrap:anywhere;max-width:280px}
   .preview-empty{min-height:260px;display:grid;place-items:center;text-align:center;align-content:center;gap:9px;background:var(--sfm-light-card);border:1px dashed rgba(29,140,255,.26);border-radius:18px;color:var(--sfm-primary);padding:18px}.preview-empty strong{color:var(--sfm-primary-dark);font-size:18px}.preview-empty p{margin:0;color:var(--sfm-muted);line-height:1.7;font-weight:900}.preview-requirements{width:100%;display:grid;gap:8px;text-align:start;background:var(--sfm-card);border:1px solid rgba(29,140,255,.14);border-radius:14px;padding:12px}.preview-requirements>strong{font-size:12px;color:var(--sfm-primary)}.preview-requirements ul{margin:0;padding-inline-start:20px;color:#7A4B09;font-weight:950}
   .preview-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.preview-actions button{background:var(--sfm-primary-dark);color:var(--sfm-card)}.preview-actions button+button{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.print-footer{display:none;margin-top:18px;border-top:1px solid rgba(29,140,255,.16);padding-top:10px;color:var(--sfm-muted);font-size:11px;font-weight:900;text-align:center}
   .history-panel p{margin:0;color:var(--sfm-muted);line-height:1.7;font-weight:800}.toast{position:fixed;inset:auto 24px 24px auto;z-index:80;background:var(--sfm-primary-dark);color:var(--sfm-card);border:1px solid rgba(29,140,255,.3);border-radius:16px;padding:12px 14px;font-weight:950;box-shadow:0 18px 50px rgba(3,18,37,.28)}
