@@ -256,7 +256,7 @@ const UI_COPY: Record<FinancialTheoryLang, Record<string, string>> = {
     relatedSfmTool: 'Outil SFM lié',
     applyInSfm: 'Comment l’appliquer dans THE SFM',
     openTool: 'Ouvrir l’outil',
-    useNow: 'Utiliser',
+    useNow: 'Utiliser maintenant',
     available: 'Disponible',
     comingSoon: 'Bientôt',
     bestTitle: 'Meilleures théories dans THE SFM',
@@ -1065,13 +1065,12 @@ export default function FinancialTheoriesPage() {
               const Icon = [Calculator, Landmark, ShieldAlert, Target, Gauge][index] ?? Calculator;
               const title = getFinancialTheoryText(tool.title, locale);
               const calculatorAvailable = isCalculatorId(tool.id);
-              const available = calculatorAvailable || Boolean(tool.href);
               return (
                 <AppCard key={tool.id} className="smart-tool-card">
                   <div className="smart-tool-top">
                     <div className="smart-tool-icon" aria-hidden="true"><Icon size={22} /></div>
-                    <span className={available ? 'status available' : 'status soon'}>
-                      {available ? text.available : text.comingSoon}
+                    <span className={calculatorAvailable ? 'status available' : 'status soon'}>
+                      {calculatorAvailable ? text.available : text.comingSoon}
                     </span>
                   </div>
                   <h3>{title}</h3>
@@ -1089,11 +1088,6 @@ export default function FinancialTheoriesPage() {
                       {text.useNow}
                       <ArrowUpRight size={15} aria-hidden="true" />
                     </button>
-                  ) : tool.href ? (
-                    <Link href={tool.href} aria-label={`${text.useNow}: ${title}`}>
-                      {text.useNow}
-                      <ArrowUpRight size={15} aria-hidden="true" />
-                    </Link>
                   ) : (
                     <button type="button" disabled aria-label={`${title}: ${text.comingSoon}`}>
                       {text.comingSoon}
@@ -1225,6 +1219,7 @@ export default function FinancialTheoriesPage() {
         .theory-secondary-link:hover,
         .featured-theory-card button:hover,
         .smart-tool-card a:hover,
+        .smart-tool-card button.smart-tool-action:hover,
         .cta-actions a:hover {
           transform: translateY(-2px);
           box-shadow: 0 18px 44px rgba(24, 212, 212, .24);
