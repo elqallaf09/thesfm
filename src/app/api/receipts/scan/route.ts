@@ -321,6 +321,13 @@ function parseMoney(value: unknown) {
 
 function normalizeCurrency(value?: unknown, context = '') {
   const text = `${typeof value === 'string' ? value : ''} ${context}`.toUpperCase();
+  if (/\u062c\u0646\u064a\u0647|\bEGP\b/.test(text)) return 'EGP';
+  if (/\u062f\.?\s*\u0643|\bKWD\b|\bKD\b/.test(text)) return 'KWD';
+  if (/\u0631\.?\s*\u0633|\bSAR\b/.test(text)) return 'SAR';
+  if (/\u062f\.?\s*\u0625|\bAED\b/.test(text)) return 'AED';
+  if (/\u20ac|\bEUR\b/.test(text)) return 'EUR';
+  if (/\u00a3|\bGBP\b/.test(text)) return 'GBP';
+  if (/\$|\bUSD\b|US\s*DOLLAR/.test(text)) return 'USD';
   if (/\bEGP\b|جنيه|جنيها|جنيهات/.test(text)) return 'EGP';
   if (/\bKWD\b|\bKD\b|د\.?\s*ك|دك/.test(text)) return 'KWD';
   if (/\bSAR\b|ر\.?\s*س/.test(text)) return 'SAR';
@@ -370,7 +377,7 @@ function pushCandidate(candidates: AmountCandidate[], candidate: Omit<AmountCand
     existing.kind === candidate.kind && Math.abs(Math.abs(existing.value) - Math.abs(candidate.amount)) < 0.01
   );
   if (duplicate) {
-    duplicate.confidence = Math.max(duplicate.confidence, candidate.confidence);
+    duplicate.confidence = Math.max(0, Math.min(1, Math.max(duplicate.confidence, candidate.confidence)));
     duplicate.currency ||= candidate.currency;
     duplicate.source ||= candidate.source;
     return;
@@ -419,14 +426,32 @@ function candidatesFromStructuredData(data: Record<string, unknown>, rawText: st
 
   const fieldMap: Array<[string, AmountCandidate['kind'], string, number]> = [
     ['amountDue', 'amount_due', 'Amount Due', 0.96],
+    ['amount_due', 'amount_due', 'Amount Due', 0.96],
+    ['balanceDue', 'amount_due', 'Balance Due', 0.96],
+    ['balance_due', 'amount_due', 'Balance Due', 0.96],
     ['grandTotal', 'grand_total', 'Grand Total', 0.96],
+    ['grand_total', 'grand_total', 'Grand Total', 0.96],
     ['finalTotal', 'grand_total', 'Final Total', 0.95],
+    ['final_total', 'grand_total', 'Final Total', 0.95],
+    ['invoiceTotal', 'invoice_total', 'Invoice Total', 0.96],
+    ['invoice_total', 'invoice_total', 'Invoice Total', 0.96],
+    ['invoiceAmount', 'invoice_total', 'Invoice Amount', 0.95],
+    ['invoice_amount', 'invoice_total', 'Invoice Amount', 0.95],
     ['totalAmount', 'total', 'Total', 0.92],
+    ['total_amount', 'total', 'Total', 0.92],
     ['total', 'total', 'Total', 0.9],
     ['subtotal', 'subtotal', 'Subtotal', 0.64],
+    ['subTotal', 'subtotal', 'Subtotal', 0.64],
+    ['sub_total', 'subtotal', 'Subtotal', 0.64],
+    ['netAmount', 'subtotal', 'Net Amount', 0.64],
+    ['net_amount', 'subtotal', 'Net Amount', 0.64],
     ['taxAmount', 'tax', 'Tax', 0.48],
+    ['tax_amount', 'tax', 'Tax', 0.48],
+    ['totalTaxAmount', 'tax', 'Tax', 0.5],
+    ['total_tax_amount', 'tax', 'Tax', 0.5],
     ['tax', 'tax', 'Tax', 0.48],
     ['discountAmount', 'discount', 'Discount', 0.5],
+    ['discount_amount', 'discount', 'Discount', 0.5],
     ['discount', 'discount', 'Discount', 0.5],
   ];
   for (const [key, kind, label, confidence] of fieldMap) {
@@ -445,6 +470,47 @@ function candidatesFromStructuredData(data: Record<string, unknown>, rawText: st
   return candidates;
 }
 
+const TOTAL_KEYWORD_RULES: Array<{ kind: NonNullable<AmountCandidate['kind']>; label: string; confidence: number; pattern: RegExp }> = [
+  { kind: 'grand_total', label: 'Grand Total', confidence: 0.99, pattern: /\u0627\u0644\u0645\u062c\u0645\u0648\u0639\s+\u0627\u0644\u0643\u0644\u064a|grand\s+total/i },
+  { kind: 'total', label: 'Total', confidence: 0.98, pattern: /\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a(?!\s+\u0627\u0644\u0641\u0631\u0639\u064a)|\u0625\u062c\u0645\u0627\u0644\u064a(?!\s+\u0641\u0631\u0639\u064a)|\btotal\b/i },
+  { kind: 'invoice_total', label: 'Invoice Total', confidence: 0.97, pattern: /\u0627\u0644\u0645\u0628\u0644\u063a\s+\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a|invoice\s+total/i },
+  { kind: 'total', label: 'Total', confidence: 0.96, pattern: /\u0627\u0644\u0645\u062c\u0645\u0648\u0639(?!\s+\u0627\u0644\u0641\u0631\u0639\u064a)/i },
+  { kind: 'amount_due', label: 'Amount Due', confidence: 0.98, pattern: /\u0627\u0644\u0645\u0637\u0644\u0648\u0628\s+\u062f\u0641\u0639\u0647|amount\s+due|balance\s+due/i },
+  { kind: 'subtotal', label: 'Subtotal', confidence: 0.66, pattern: /subtotal|sub\s+total|\u0627\u0644\u0645\u062c\u0645\u0648\u0639\s+\u0627\u0644\u0641\u0631\u0639\u064a|\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a\s+\u0627\u0644\u0641\u0631\u0639\u064a/i },
+  { kind: 'tax', label: 'Tax', confidence: 0.5, pattern: /\btax\b|vat|\u0636\u0631\u064a\u0628\u0629|\u0627\u0644\u0636\u0631\u064a\u0628\u0629/i },
+  { kind: 'discount', label: 'Discount', confidence: 0.48, pattern: /discount|\u062e\u0635\u0645|\u0627\u0644\u062e\u0635\u0645/i },
+];
+
+function rawTextPriorityCandidates(rawText: string) {
+  const candidates: AmountCandidate[] = [];
+  const lines = normalizeArabicNumbers(removeTemplatePlaceholders(rawText || ''))
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  lines.forEach((line, index) => {
+    const rule = TOTAL_KEYWORD_RULES.find(item => item.pattern.test(line));
+    if (!rule) return;
+    const valueLine = amountTokensFromLine(line).some(token => !token.isPercent)
+      ? line
+      : lines.slice(index + 1, index + 3).find(nextLine => amountTokensFromLine(nextLine).some(token => !token.isPercent));
+    if (!valueLine) return;
+    const tokens = amountTokensFromLine(valueLine).filter(token => !token.isPercent);
+    const chosen = [...tokens].reverse()[0];
+    if (!chosen) return;
+    pushCandidate(candidates, {
+      label: rule.label,
+      kind: rule.kind,
+      amount: rule.kind === 'discount' ? -Math.abs(chosen.amount) : Math.abs(chosen.amount),
+      currency: normalizeCurrency(chosen.token, `${line} ${valueLine} ${rawText}`),
+      confidence: valueLine === line ? rule.confidence : Math.min(0.99, rule.confidence + 0.01),
+      source: valueLine === line ? line : `${line} ${valueLine}`,
+    });
+  });
+
+  return candidates;
+}
+
 function extractAmountCandidates(rawText: string, data: Record<string, unknown>) {
   const normalized = normalizeArabicNumbers(removeTemplatePlaceholders(rawText || ''));
   const lines = normalized
@@ -452,6 +518,9 @@ function extractAmountCandidates(rawText: string, data: Record<string, unknown>)
     .map(line => line.trim())
     .filter(Boolean);
   const candidates = candidatesFromStructuredData(data, normalized);
+  for (const candidate of rawTextPriorityCandidates(normalized)) {
+    pushCandidate(candidates, candidate);
+  }
 
   lines.forEach((line, index) => {
     if (isTemplatePlaceholder(line)) return;
@@ -925,7 +994,7 @@ function googleLineItems(entities: GoogleDocumentEntity[]) {
     .filter(item => item.description || item.amount);
 }
 
-function googleEntityData(document: { text?: string; entities?: GoogleDocumentEntity[] }) {
+function normalizeGoogleInvoiceEntities(document: { text?: string; entities?: GoogleDocumentEntity[] }) {
   const entities = document.entities || [];
   logGoogleEntitySummary(entities);
   const flattened = flattenGoogleEntities(entities);
@@ -940,6 +1009,7 @@ function googleEntityData(document: { text?: string; entities?: GoogleDocumentEn
     'merchant_name',
     'store_name',
     'seller_name',
+    'receiver_name',
   ], [/supplier.*name|vendor.*name|merchant.*name|store.*name|seller.*name/], { excludeLineItems: true });
   const invoiceId = findGoogleEntity(flattened, [
     'invoice_id',
@@ -952,14 +1022,15 @@ function googleEntityData(document: { text?: string; entities?: GoogleDocumentEn
     'date',
   ], [/invoice.*date|(^|\/)date$/], { excludeLineItems: true });
   const total = findGoogleEntity(flattened, [
+    'total_amount',
+    'invoice_total',
     'amount_due',
     'balance_due',
+    'invoice_amount',
     'grand_total',
-    'invoice_total',
-    'total_amount',
     'total_due',
     'total',
-  ], [/(^|\/)(amount_due|balance_due|grand_total|invoice_total|total_amount|total_due|total)$/], { excludeLineItems: true });
+  ], [/(^|\/)(total_amount|invoice_total|amount_due|balance_due|invoice_amount|grand_total|total_due|total)$/], { excludeLineItems: true });
   const subtotal = findGoogleEntity(flattened, [
     'subtotal',
     'sub_total',
@@ -1025,31 +1096,50 @@ function googleEntityData(document: { text?: string; entities?: GoogleDocumentEn
     ? selectedTotal
     : undefined;
   return {
+    merchantName,
+    invoiceNumber: entityText(invoiceId),
+    date: entityDate(invoiceDate),
+    subtotal: subtotalMoney?.amount,
+    tax: taxMoney?.amount,
+    discount: discountMoney?.amount,
+    total: totalMoney?.amount || selectedFinalTotal?.value,
+    currency: totalMoney?.currency
+      || selectedFinalTotal?.currency
+      || subtotalMoney?.currency
+      || taxMoney?.currency
+      || normalizeCurrency(entityText(currencyEntity), rawText)
+      || normalizeCurrency(undefined, rawText),
+    description: parseDescription(rawText, lineItems, merchantName),
+    lineItems,
+    candidates: amountCandidates,
     rawText,
+  };
+}
+
+function googleEntityData(document: { text?: string; entities?: GoogleDocumentEntity[] }) {
+  const normalized = normalizeGoogleInvoiceEntities(document);
+  return {
+    rawText: normalized.rawText,
     data: {
-      merchantName,
-      invoiceNumber: entityText(invoiceId),
-      date: entityDate(invoiceDate),
-      subtotal: subtotalMoney?.amount,
-      taxAmount: taxMoney?.amount,
-      discountAmount: discountMoney?.amount,
-      totalAmount: totalMoney?.amount || selectedFinalTotal?.value,
-      currency: totalMoney?.currency
-        || selectedFinalTotal?.currency
-        || subtotalMoney?.currency
-        || taxMoney?.currency
-        || normalizeCurrency(entityText(currencyEntity), rawText)
-        || normalizeCurrency(undefined, rawText),
-      description: parseDescription(rawText, lineItems, merchantName),
-      lineItems,
-      amountCandidates,
-      rawText,
+      merchantName: normalized.merchantName,
+      invoiceNumber: normalized.invoiceNumber,
+      date: normalized.date,
+      subtotal: normalized.subtotal,
+      taxAmount: normalized.tax,
+      discountAmount: normalized.discount,
+      totalAmount: normalized.total,
+      currency: normalized.currency,
+      description: normalized.description,
+      lineItems: normalized.lineItems,
+      amountCandidates: normalized.candidates,
+      rawText: normalized.rawText,
     },
     confidence: Math.max(
-      supplier?.confidence || 0,
-      invoiceId?.confidence || 0,
-      invoiceDate?.confidence || 0,
-      total?.confidence || 0,
+      normalized.merchantName ? 0.55 : 0,
+      normalized.invoiceNumber ? 0.55 : 0,
+      normalized.date ? 0.55 : 0,
+      normalized.total ? 0.82 : 0,
+      normalized.candidates.length ? 0.58 : 0,
       0.45,
     ),
   };
