@@ -219,8 +219,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         if (supabaseConfigError) return { error: new Error(supabaseConfigError) };
         const cleanEmail = email.trim().toLowerCase();
+        const cleanPassword = password.trim();
         if (!isEmail(cleanEmail)) return { error: new Error('Invalid email format') };
-        if (password.length < 6) return { error: new Error('Password must be at least 6 characters') };
+        if (cleanPassword.length < 6) return { error: new Error('Password must be at least 6 characters') };
 
         const answerHash = securityQuestion && securityAnswer
           ? await hashSecurityAnswer(securityAnswer, cleanEmail)
@@ -228,7 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const { data: signUpData, error } = await supabase.auth.signUp({
           email: cleanEmail,
-          password,
+          password: cleanPassword,
           options: {
             emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
             data: {
@@ -244,7 +245,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (error) {
-          return { error: new Error(error.message) };
+          const lowerMessage = error.message.toLowerCase();
+          const friendlyPasswordError =
+            lowerMessage.includes('password should contain') ||
+            lowerMessage.includes('password must contain') ||
+            lowerMessage.includes('password should be') ||
+            lowerMessage.includes('password must be');
+          return { error: new Error(friendlyPasswordError ? 'Password must be at least 6 characters' : error.message) };
         }
 
         const user = signUpData.user ?? (await supabase.auth.getUser()).data.user;

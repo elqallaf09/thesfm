@@ -31,6 +31,7 @@ type PasswordStrength = 'weak' | 'medium' | 'strong';
 type TwoFactorChallenge = {
   email: string;
 };
+const MIN_PASSWORD_LENGTH = 6;
 
 function syncLoggedInCookies(session: Session | null) {
   if (typeof document === 'undefined') return;
@@ -126,7 +127,7 @@ const TEXT = {
     weak: 'ضعيفة',
     medium: 'متوسطة',
     strong: 'قوية',
-    recommended: 'الرمز الخاص يقوي كلمة المرور.',
+    recommended: 'استخدم كلمة مرور أطول لزيادة الأمان.',
     optional: 'اختياري',
     required: 'مطلوب',
     emailPlaceholder: 'name@example.com',
@@ -140,8 +141,8 @@ const TEXT = {
     errorEmpty: 'أكمل كل الحقول المطلوبة.',
     errorUsername: 'اسم المستخدم يجب أن يكون 3 أحرف على الأقل.',
     errorEmail: 'الرجاء إدخال بريد إلكتروني صحيح.',
-    errorPasswordLength: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل.',
-    errorPasswordContent: 'كلمة المرور يجب أن تحتوي على حرف ورقم على الأقل.',
+    errorPasswordLength: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.',
+    errorPasswordContent: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.',
     errorMismatch: 'كلمتا المرور غير متطابقتين.',
     errorTerms: 'يجب الموافقة على الشروط وسياسة الخصوصية للمتابعة.',
     errorExists: 'اسم المستخدم مستخدم بالفعل.',
@@ -213,7 +214,7 @@ const TEXT = {
     weak: 'Weak',
     medium: 'Medium',
     strong: 'Strong',
-    recommended: 'A symbol makes the password stronger.',
+    recommended: 'A longer password improves security.',
     optional: 'Optional',
     required: 'Required',
     emailPlaceholder: 'name@example.com',
@@ -227,8 +228,8 @@ const TEXT = {
     errorEmpty: 'Complete all required fields.',
     errorUsername: 'Username must be at least 3 characters.',
     errorEmail: 'Please enter a valid email address.',
-    errorPasswordLength: 'Password must be at least 8 characters.',
-    errorPasswordContent: 'Password must contain at least one letter and one number.',
+    errorPasswordLength: 'Password must be at least 6 characters.',
+    errorPasswordContent: 'Password must be at least 6 characters.',
     errorMismatch: 'Passwords do not match.',
     errorTerms: 'You must agree to the Terms and Privacy Policy to continue.',
     errorExists: 'This username is already taken.',
@@ -300,7 +301,7 @@ const TEXT = {
     weak: 'Faible',
     medium: 'Moyen',
     strong: 'Fort',
-    recommended: 'Un symbole rend le mot de passe plus fort.',
+    recommended: 'Un mot de passe plus long améliore la sécurité.',
     optional: 'Facultatif',
     required: 'Requis',
     emailPlaceholder: 'nom@example.com',
@@ -314,8 +315,8 @@ const TEXT = {
     errorEmpty: 'Complétez tous les champs requis.',
     errorUsername: 'Le nom d’utilisateur doit contenir au moins 3 caractères.',
     errorEmail: 'Veuillez entrer une adresse email valide.',
-    errorPasswordLength: 'Le mot de passe doit contenir au moins 8 caractères.',
-    errorPasswordContent: 'Le mot de passe doit contenir au moins une lettre et un chiffre.',
+    errorPasswordLength: 'Le mot de passe doit contenir au moins 6 caractères.',
+    errorPasswordContent: 'Le mot de passe doit contenir au moins 6 caractères.',
     errorMismatch: 'Les mots de passe ne correspondent pas.',
     errorTerms: 'Vous devez accepter les conditions et la politique de confidentialité pour continuer.',
     errorExists: 'Ce nom d’utilisateur est déjà utilisé.',
@@ -357,11 +358,12 @@ export default function LoginPage() {
 }
 
 function scorePassword(password: string) {
+  const clean = password.trim();
   const checks = [
-    password.length >= 8,
-    /[A-Za-z]/.test(password),
-    /\d/.test(password),
-    /[^A-Za-z0-9]/.test(password),
+    clean.length >= MIN_PASSWORD_LENGTH,
+    clean.length >= 8,
+    clean.length >= 10,
+    clean.length >= 12,
   ];
   return checks.filter(Boolean).length;
 }
@@ -483,9 +485,22 @@ function LoginContent() {
   }
 
   function validatePassword(value: string) {
-    if (value.length < 8) return text.errorPasswordLength;
-    if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) return text.errorPasswordContent;
+    if (value.trim().length < MIN_PASSWORD_LENGTH) return text.errorPasswordLength;
     return '';
+  }
+
+  function friendlyAuthError(message?: string | null) {
+    const lowerMessage = String(message || '').toLowerCase();
+    const isPasswordPolicyError =
+      lowerMessage.includes('password should contain') ||
+      lowerMessage.includes('password must contain') ||
+      lowerMessage.includes('password should be') ||
+      lowerMessage.includes('password must be') ||
+      lowerMessage.includes('at least 6') ||
+      lowerMessage.includes('at least six');
+
+    if (isPasswordPolicyError) return text.errorPasswordLength;
+    return message || text.errorRegister;
   }
 
   function resolvedSecurityQuestion() {
@@ -498,7 +513,7 @@ function LoginContent() {
     if (!isEmail(email)) return text.errorEmail;
     const passwordError = validatePassword(password);
     if (passwordError) return passwordError;
-    if (password !== confirmPassword) return text.errorMismatch;
+    if (password.trim() !== confirmPassword.trim()) return text.errorMismatch;
     return '';
   }
 
@@ -650,6 +665,7 @@ function LoginContent() {
 
     const cleanUsername = username.trim().toLowerCase();
     const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
     const { data: existing } = await supabase.from('profiles').select('id').eq('username', cleanUsername).maybeSingle();
     if (existing) return text.errorExists;
 
@@ -659,7 +675,7 @@ function LoginContent() {
 
     const { data, error } = await supabase.auth.signUp({
       email: cleanEmail,
-      password,
+      password: cleanPassword,
       options: {
         emailRedirectTo: `${window.location.origin}/login`,
         data: {
@@ -675,7 +691,7 @@ function LoginContent() {
       },
     });
 
-    if (error) return error.message || text.errorRegister;
+    if (error) return friendlyAuthError(error.message);
 
     const newUser = data.user ?? (await supabase.auth.getUser()).data.user;
     if (newUser && data.session) {
@@ -722,7 +738,7 @@ function LoginContent() {
     if (!session) return text.resetSent;
     const passwordError = validatePassword(password);
     if (passwordError) return passwordError;
-    if (password !== confirmPassword) return text.errorMismatch;
+    if (password.trim() !== confirmPassword.trim()) return text.errorMismatch;
     if (recoveryQuestion && recoveryHash) {
       if (securityAttempts >= 5) return text.errorSecurityLocked;
       const salt = user?.email || email || forgotEmail;
@@ -732,8 +748,8 @@ function LoginContent() {
         return text.errorSecurityAnswer;
       }
     }
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) return error.message;
+    const { error } = await supabase.auth.updateUser({ password: password.trim() });
+    if (error) return friendlyAuthError(error.message);
     await signOut();
     setAuthMode('login');
     setMessage({ type: 'ok', text: text.resetSuccess });
