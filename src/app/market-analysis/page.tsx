@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { Activity, AlertTriangle, BarChart3, Bell, Brain, Calculator, FileText, LineChart, Plus, Search, ShieldAlert, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { Sidebar } from '@/components/Sidebar';
@@ -35,6 +35,7 @@ type PortfolioInvestment = {
 };
 type MarketTab = 'analyze' | 'watchlist' | 'alerts' | 'comparison' | 'assetReport';
 type MarketAiInsightView = MarketAiInsight & { riskScore?: number };
+type MarketSearchSuggestion = MarketSearchItem & { provider?: string };
 
 const WATCHLIST_STORAGE_KEY = 'sfm_market_watchlist';
 const ALERTS_STORAGE_KEY = 'sfm_market_alerts';
@@ -86,12 +87,69 @@ function parseNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function normalizeSearchItem(item: MarketSearchItem): MarketSearchItem {
+function cleanSearchText(value: unknown) {
+  return String(value ?? '')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s|:·,-]+|[\s|:·,-]+$/g, '')
+    .trim();
+}
+
+function normalizeAssetSearchResult(result: Partial<MarketSearchItem> & Record<string, unknown>): MarketSearchSuggestion | null {
+  const rawSymbol = cleanSearchText(result.symbol ?? result.ticker ?? result.providerSymbol ?? result.provider_symbol);
+  const rawProviderSymbol = cleanSearchText(result.providerSymbol ?? result.provider_symbol ?? result.symbol ?? result.ticker);
+  const symbol = validateSymbol(rawSymbol) ?? validateSymbol(rawProviderSymbol);
+  const providerSymbol = validateSymbol(rawProviderSymbol) ?? symbol ?? undefined;
+  const name = cleanSearchText(result.name ?? result.description ?? result.label ?? result.securityName ?? result.security_name ?? symbol);
+
+  if (!symbol && !name) return null;
+
   return {
-    ...item,
-    symbol: item.symbol.toUpperCase(),
-    providerSymbol: item.providerSymbol?.toUpperCase(),
-    assetType: normalizeAssetType(item.assetType),
+    symbol: symbol ?? name.toUpperCase(),
+    providerSymbol,
+    name: name || symbol || '',
+    assetType: normalizeAssetType(result.assetType ?? result.asset_type ?? result.type),
+    exchange: cleanSearchText(result.exchange ?? result.market ?? result.venue ?? result.mic) || undefined,
+    country: cleanSearchText(result.country) || undefined,
+    currency: cleanSearchText(result.currency) || undefined,
+    provider: cleanSearchText(result.provider ?? result.source) || 'OpenBB',
+  };
+}
+
+function normalizeSearchItems(items: MarketSearchItem[], query: string): MarketSearchSuggestion[] {
+  const normalizedQuery = query.trim().toUpperCase();
+  const seen = new Set<string>();
+  const normalized = items
+    .map(item => normalizeAssetSearchResult(item as Partial<MarketSearchItem> & Record<string, unknown>))
+    .filter((item): item is MarketSearchSuggestion => Boolean(item))
+    .filter(item => {
+      const key = `${item.symbol}-${item.providerSymbol ?? item.symbol}-${item.assetType}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+  return normalized
+    .sort((a, b) => {
+      const score = (item: MarketSearchSuggestion) => {
+        const symbol = item.symbol.toUpperCase();
+        const providerSymbol = item.providerSymbol?.toUpperCase() ?? '';
+        const name = item.name.toUpperCase();
+        if (symbol === normalizedQuery || providerSymbol === normalizedQuery) return 0;
+        if (symbol.startsWith(normalizedQuery) || providerSymbol.startsWith(normalizedQuery)) return 1;
+        if (name.startsWith(normalizedQuery)) return 2;
+        if (name.includes(normalizedQuery)) return 3;
+        return 4;
+      };
+      return score(a) - score(b) || a.symbol.localeCompare(b.symbol);
+    })
+    .slice(0, 8);
+}
+
+function normalizeSearchItem(item: MarketSearchItem): MarketSearchSuggestion {
+  return normalizeAssetSearchResult(item as Partial<MarketSearchItem> & Record<string, unknown>) ?? {
+    symbol: '',
+    name: '',
+    assetType: DEFAULT_MARKET_TYPE,
   };
 }
 
@@ -211,6 +269,18 @@ function normalizeProviderSymbolForRequest(value: string | undefined | null) {
   return validateSymbol(symbol.includes(':') ? symbol.split(':').pop() || symbol : symbol);
 }
 
+function marketAssetTypeLabel(assetType: MarketAssetType, t: (key: string) => string) {
+  const keyMap: Record<MarketAssetType, string> = {
+    stock: 'market_asset_stocks',
+    etf: 'market_asset_etf',
+    crypto: 'market_asset_crypto',
+    forex: 'market_asset_forex',
+    commodity: 'market_asset_commodities',
+    gold: 'market_asset_gold',
+  };
+  return t(keyMap[assetType]);
+}
+
 function delay(ms: number) {
   return new Promise(resolve => window.setTimeout(resolve, ms));
 }
@@ -222,10 +292,11 @@ export default function MarketAnalysisPage() {
   const [assetType, setAssetType] = useState<MarketAssetType | 'all'>(DEFAULT_MARKET_TYPE);
   const [analysis, setAnalysis] = useState<MarketViewAnalysis | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<SelectedMarketAsset | null>(null);
-  const [searchResults, setSearchResults] = useState<MarketSearchItem[]>([]);
+  const [searchResults, setSearchResults] = useState<MarketSearchSuggestion[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchMessage, setSearchMessage] = useState('');
+  const [highlightedSearchIndex, setHighlightedSearchIndex] = useState(0);
   const [suggestedAssets, setSuggestedAssets] = useState<MarketSearchItem[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [alerts, setAlerts] = useState<SavedAlert[]>([]);
@@ -464,6 +535,7 @@ export default function MarketAnalysisPage() {
       setSearchResults([]);
       setSearchMessage('');
       setSearchLoading(false);
+      setHighlightedSearchIndex(0);
       return;
     }
 
@@ -475,12 +547,14 @@ export default function MarketAnalysisPage() {
         if (assetType !== 'all') params.set('assetType', assetType);
         const data = await fetchJsonWithTimeout<{ results?: MarketSearchItem[] }>(`/api/market/search?${params.toString()}`, 8000);
         if (cancelled) return;
-        const results = (data.results ?? []).map(normalizeSearchItem).slice(0, 12);
+        const results = normalizeSearchItems(data.results ?? [], cleanQuery);
         setSearchResults(results);
+        setHighlightedSearchIndex(0);
         setSearchMessage(results.length === 0 ? t('market_symbol_not_found') : '');
       } catch {
         if (!cancelled) {
           setSearchResults([]);
+          setHighlightedSearchIndex(0);
           setSearchMessage(t('market_symbol_not_found'));
         }
       } finally {
@@ -705,22 +779,23 @@ export default function MarketAnalysisPage() {
       return;
     }
 
-    const selectBestMatch = (items: MarketSearchItem[]) => {
+    const selectBestMatch = (items: MarketSearchSuggestion[]) => {
       const normalizedQuery = cleanQuery.toUpperCase();
       return items.find(result => result.symbol.toUpperCase() === normalizedQuery || result.providerSymbol?.toUpperCase() === normalizedQuery)
         ?? items.find(result => result.name.toLowerCase() === cleanQuery.toLowerCase())
         ?? items[0];
     };
 
-    let selectedItem: MarketSearchItem | undefined = item ? normalizeSearchItem(item) : selectBestMatch(searchResults.map(normalizeSearchItem));
+    let selectedItem: MarketSearchSuggestion | undefined = item ? normalizeSearchItem(item) : selectBestMatch(searchResults);
     if (!selectedItem && cleanQuery) {
       try {
         setSearchLoading(true);
         const params = new URLSearchParams({ q: cleanQuery });
         if (assetType !== 'all') params.set('assetType', assetType);
         const data = await fetchJsonWithTimeout<{ results?: MarketSearchItem[] }>(`/api/market/search?${params.toString()}`, 8000);
-        const results = (data.results ?? []).map(normalizeSearchItem);
+        const results = normalizeSearchItems(data.results ?? [], cleanQuery);
         setSearchResults(results);
+        setHighlightedSearchIndex(0);
         selectedItem = selectBestMatch(results);
       } catch {
         selectedItem = undefined;
@@ -747,6 +822,37 @@ export default function MarketAnalysisPage() {
       exchange: selectedItem.exchange,
     });
   }, [assetType, query, requestAnalysis, searchResults, t]);
+
+  const handleSearchKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
+    const hasResults = searchResults.length > 0;
+
+    if (event.key === 'Escape') {
+      setSearchOpen(false);
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (!searchOpen && query.trim().length >= 2) setSearchOpen(true);
+      if (hasResults) {
+        setHighlightedSearchIndex(current => Math.min(current + 1, searchResults.length - 1));
+      }
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (hasResults) {
+        setHighlightedSearchIndex(current => Math.max(current - 1, 0));
+      }
+      return;
+    }
+
+    if (event.key === 'Enter' && searchOpen && hasResults) {
+      event.preventDefault();
+      void analyzeSearchSelection(searchResults[highlightedSearchIndex] ?? searchResults[0]);
+    }
+  }, [analyzeSearchSelection, highlightedSearchIndex, query, searchOpen, searchResults]);
 
   const removeAlert = useCallback(async (alert: SavedAlert, index: number) => {
     if (alert.id && user && !isGuest) {
@@ -861,7 +967,7 @@ export default function MarketAnalysisPage() {
             <form className="market-search-panel" onSubmit={event => { event.preventDefault(); void analyzeSearchSelection(); }}>
               <label className="market-search-field">
                 <span>{t('market_search_label')}</span>
-                <div>
+                <div className="market-search-input-shell">
                   <Search size={17} />
                   <input
                     value={query}
@@ -872,17 +978,20 @@ export default function MarketAnalysisPage() {
                     aria-label={t('market_search_label')}
                     aria-expanded={searchOpen && query.trim().length >= 2}
                     aria-controls="market-search-results"
+                    aria-activedescendant={searchOpen && searchResults[highlightedSearchIndex] ? `market-search-option-${highlightedSearchIndex}` : undefined}
                     onBlur={() => window.setTimeout(() => setSearchOpen(false), 160)}
                     onChange={event => {
                       const nextQuery = event.target.value;
                       setQuery(nextQuery);
                       setError('');
+                      setHighlightedSearchIndex(0);
                       if (selectedAsset && nextQuery.trim().toUpperCase() !== selectedAsset.symbol) {
                         setSelectedAsset(null);
                       }
-                      setSearchOpen(true);
+                      setSearchOpen(nextQuery.trim().length >= 2);
                     }}
-                    onFocus={() => setSearchOpen(true)}
+                    onFocus={() => setSearchOpen(query.trim().length >= 2)}
+                    onKeyDown={handleSearchKeyDown}
                     placeholder={t('market_search_placeholder')}
                   />
                 </div>
@@ -891,22 +1000,33 @@ export default function MarketAnalysisPage() {
                     <strong>{t('market_search_results')}</strong>
                     {searchLoading ? (
                       <p>{t('loading')}</p>
-                    ) : searchResults.length > 0 ? searchResults.map(item => (
+                    ) : searchResults.length > 0 ? searchResults.map((item, index) => {
+                      const meta = [
+                        item.symbol,
+                        item.exchange,
+                        marketAssetTypeLabel(item.assetType, t),
+                        item.provider,
+                      ].filter(Boolean).join(' · ');
+                      const cleanMeta = meta.replace(/\u00c2\u00b7/g, '·');
+                      return (
                       <button
                         type="button"
+                        id={`market-search-option-${index}`}
                         key={`${item.symbol}-${item.assetType}-${item.providerSymbol ?? item.symbol}`}
                         onMouseDown={event => event.preventDefault()}
                         onClick={() => void analyzeSearchSelection(item)}
+                        onMouseEnter={() => setHighlightedSearchIndex(index)}
                         role="option"
-                        aria-selected={selectedAsset?.symbol === item.symbol}
+                        aria-selected={highlightedSearchIndex === index}
                       >
-                        <span>
-                          <b>{item.symbol}</b>
-                          <em>{item.name}</em>
+                        <span className="market-search-result-main">
+                          <b title={item.name}>{item.name || item.symbol}</b>
+                          <em>{item.symbol}</em>
                         </span>
-                        <small>{t(`market_asset_${item.assetType === 'stock' ? 'stocks' : item.assetType === 'commodity' ? 'commodities' : item.assetType}`)}{item.exchange ? ` · ${item.exchange}` : ''}</small>
+                        <small title={cleanMeta}>{cleanMeta}</small>
                       </button>
-                    )) : (
+                      );
+                    }) : (
                       <p>{searchMessage || t('market_no_search_results')}</p>
                     )}
                   </div>
@@ -1471,6 +1591,7 @@ export default function MarketAnalysisPage() {
         .market-hero-copy,.market-hero-card{position:relative;z-index:1}.market-eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(167,243,240,.28);background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:900;margin-bottom:14px}
         .market-hero h1{margin:0 0 10px;font-size:clamp(30px,5vw,52px);line-height:1.02;font-weight:900}.market-hero p{max-width:760px;margin:0;color:rgba(255,255,255,.72);line-height:1.8;font-size:14px}
         .market-search-panel{margin-top:22px;display:grid;grid-template-columns:minmax(0,1fr) 180px auto;gap:10px;align-items:end}.market-search-panel label{display:grid;gap:7px}.market-search-panel label>span{font-size:12px;font-weight:900;color:var(--sfm-soft-cyan)}.market-search-field{position:relative}.market-search-panel label>div{height:48px;display:flex;align-items:center;gap:9px;border:1px solid rgba(29,140,255,.35);border-radius:15px;background:rgba(234,246,255,.94);padding:0 13px;color:var(--sfm-foreground);box-shadow:0 8px 22px rgba(3,18,37,.12)}.market-search-panel label>div:focus-within{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.22),0 10px 24px rgba(3,18,37,.14)}.market-search-panel label>div svg{color:var(--sfm-primary);flex-shrink:0}.market-search-panel input,.market-search-panel select{width:100%;height:48px;min-width:0;border:1px solid rgba(29,140,255,.35);border-radius:15px;background:var(--sfm-card);color:var(--sfm-foreground);padding:0 13px;font:800 13px Tajawal,Arial,sans-serif;outline:0}.market-search-panel input{border:0;background:transparent;padding:0;color:var(--sfm-foreground)}.market-search-panel input::placeholder{color:var(--sfm-muted);opacity:1}.market-search-panel select{cursor:pointer;box-shadow:0 8px 22px rgba(3,18,37,.12)}.market-search-panel select:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.22),0 10px 24px rgba(3,18,37,.14)}.market-search-panel select option{color:var(--sfm-foreground);background:var(--sfm-card)}.market-search-panel button{height:48px;border:0;border-radius:15px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:var(--sfm-primary-dark);padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;box-shadow:0 10px 24px rgba(3,18,37,.16)}.market-search-panel button svg{color:var(--sfm-primary-dark)}.market-search-panel button:disabled{opacity:.9;cursor:wait;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:var(--sfm-primary-dark)}.market-search-results{position:absolute;z-index:90;inset-inline:0;top:calc(100% + 12px);max-height:min(320px,48dvh);overflow-y:auto;background:var(--sfm-card);color:var(--sfm-foreground);border:1px solid rgba(29,140,255,.25);border-radius:14px;box-shadow:0 22px 60px rgba(3,18,37,.32);padding:10px;display:grid;gap:8px;overscroll-behavior:contain}.market-search-results strong{color:var(--sfm-primary-hover);font-size:12px;font-weight:900;padding:5px 7px}.market-search-results p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:900;line-height:1.7;padding:12px}.market-search-results button{height:auto;min-height:58px;width:100%;border:1px solid rgba(29,140,255,.14);background:var(--sfm-card);color:var(--sfm-foreground);border-radius:12px;padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:start;box-shadow:none}.market-search-results button:hover,.market-search-results button:focus-visible,.market-search-results button[aria-selected="true"]{background:rgba(29,140,255,.10);border-color:rgba(29,140,255,.32);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.18)}.market-search-results button span{display:grid;gap:4px;min-width:0}.market-search-results button b{font-size:15px;color:var(--sfm-foreground);letter-spacing:.02em;direction:ltr;unicode-bidi:isolate}.market-search-results button em{font-style:normal;color:var(--sfm-midnight);font-size:13px;line-height:1.45;white-space:normal;overflow-wrap:anywhere}.market-search-results button small{color:var(--sfm-primary-hover);background:rgba(29,140,255,.10);border:1px solid rgba(29,140,255,.18);border-radius:999px;padding:4px 8px;font-size:11px;font-weight:900;line-height:1.3;flex-shrink:0;white-space:nowrap}
+        .market-search-field{z-index:70;min-width:0}.market-search-panel .market-search-input-shell{position:relative;z-index:2}.market-search-results{z-index:9999;top:calc(100% + 10px);max-height:min(360px,52dvh);overflow-y:auto;overflow-x:hidden;background:var(--sfm-card);border-color:rgba(29,140,255,.24);border-radius:18px;box-shadow:0 24px 70px rgba(3,18,37,.36);padding:8px;gap:6px}.market-search-results strong{padding:6px 8px;color:var(--sfm-soft-cyan);line-height:1.4}.market-search-results p{border-radius:12px;background:rgba(29,140,255,.06);text-align:start}.market-search-results button{min-height:68px;display:grid;grid-template-columns:1fr;align-items:center;justify-items:stretch;gap:7px;padding:11px 12px;border-radius:14px;background:var(--sfm-light-card);border-color:rgba(29,140,255,.14);text-align:start;color:var(--sfm-foreground);box-shadow:none}.market-search-results button:hover,.market-search-results button:focus-visible,.market-search-results button[aria-selected="true"]{background:rgba(24,212,212,.10);border-color:rgba(47,214,192,.55);box-shadow:0 0 0 3px rgba(24,212,212,.16);outline:none}.market-search-result-main{display:flex!important;align-items:center;justify-content:space-between;gap:12px;min-width:0}.market-search-results button b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:inherit;unicode-bidi:normal;letter-spacing:0;color:var(--sfm-foreground);font-size:14px}.market-search-results button em{flex-shrink:0;border-radius:999px;border:1px solid rgba(47,214,192,.28);background:rgba(47,214,192,.12);color:var(--sfm-soft-cyan);padding:4px 8px;font-style:normal;font-size:11px;font-weight:950;line-height:1.2;direction:ltr;unicode-bidi:isolate}.market-search-results button small{display:block;width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0;border:0;background:transparent;color:var(--sfm-muted);font-size:12px;line-height:1.55;text-align:start}.dark .market-search-results{background:#0f1d31;border-color:#1d3050;box-shadow:0 24px 70px rgba(0,0,0,.42)}.dark .market-search-results button{background:#0a1422;border-color:#1d3050}.dark .market-search-results button:hover,.dark .market-search-results button:focus-visible,.dark .market-search-results button[aria-selected="true"]{background:#10263f;border-color:#2fd6c0}.dark .market-search-results p{background:rgba(47,214,192,.08)}
         .market-hero-card{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);border-radius:20px;padding:18px;display:grid;gap:8px;backdrop-filter:blur(14px)}.market-hero-card span{font-size:12px;color:rgba(255,255,255,.62);font-weight:900}.market-hero-card strong{font-size:42px;color:var(--sfm-soft-cyan);line-height:1}.market-hero-card p{margin:0;font-size:13px}.market-hero-card em{font-style:normal;color:rgba(255,255,255,.78);font-size:12px;font-weight:900;line-height:1.5}.risk{justify-self:start;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:900}.risk.low{background:rgba(34,197,94,.14);color:#16A34A}.risk.medium{background:rgba(167,243,240,.18);color:var(--sfm-muted)}.risk.high{background:rgba(239,68,68,.12);color:#DC2626}
         .market-card-grid,.market-status-grid,.market-decision-grid,.market-tools-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.market-status-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.market-decision-grid{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr)}.market-tools-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.market-card,.market-panel,.market-disclaimer,.market-notice,.market-stock-header{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:22px;box-shadow:0 6px 24px rgba(3,18,37,.06)}.market-card{padding:16px;display:grid;gap:10px}.market-card-head{display:flex;justify-content:space-between;gap:10px}.market-card-head strong{display:block;font-size:18px}.market-card-head span{display:block;color:var(--sfm-muted);font-size:12px;font-weight:800;margin-top:3px}.market-price{font-size:24px;font-weight:900;color:var(--sfm-foreground)}.change{font-size:13px;font-weight:900}.change.up,.up{color:#16A34A}.change.down,.down{color:#DC2626}.market-empty{grid-column:1/-1;padding:24px;text-align:center;color:var(--sfm-muted);font-weight:900;background:var(--sfm-card);border:1px dashed rgba(167,243,240,.24);border-radius:18px}.market-empty-detailed{display:grid;gap:10px;justify-items:center;text-align:center}.market-empty-detailed strong{color:var(--sfm-foreground);font-size:17px}.market-empty-detailed span{color:var(--sfm-muted);font-size:13px;line-height:1.6}.market-empty-detailed p{margin:0;max-width:680px;color:var(--sfm-muted);line-height:1.8}.market-empty-detailed button{border:0;border-radius:999px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:var(--sfm-primary-dark);padding:10px 16px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.market-notice{padding:13px 15px;color:#B91C1C;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18);font-weight:900;display:flex;align-items:center;justify-content:space-between;gap:12px}.market-notice button{border:0;border-radius:999px;background:var(--sfm-foreground);color:var(--sfm-card);padding:8px 12px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}.market-notice button:disabled{opacity:.55;cursor:not-allowed}.market-notice.success{color:#15803D;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.18)}.market-notice.slow{color:#92400E;background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.22)}
         .market-stock-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px}.market-stock-header h2{margin:8px 0 4px;color:var(--sfm-foreground);font-size:28px}.market-stock-header p{margin:0;color:var(--sfm-muted);font-weight:850}.stock-price-block{display:grid;justify-items:end;gap:5px;text-align:end}.stock-price-block strong{font-size:30px;color:var(--sfm-foreground);font-weight:950}.stock-price-block small{color:var(--sfm-muted);font-weight:850}.data-badge{display:inline-flex;width:max-content;border-radius:999px;border:1px solid rgba(29,140,255,.22);background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:5px 10px;font-size:11px;font-weight:950}.data-badge.delayed{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.22);color:#B45309}.data-badge.unavailable{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.22);color:#B91C1C}
@@ -1481,6 +1602,7 @@ export default function MarketAnalysisPage() {
         @media(max-width:1180px){.market-card-grid,.market-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.market-layout,.market-bottom-grid,.market-decision-grid,.market-tools-grid{grid-template-columns:1fr}.market-chart{grid-row:auto}.market-search-panel{grid-template-columns:1fr 1fr}}
         @media(max-width:1024px){.market-main{margin-inline-start:0;padding:calc(88px + env(safe-area-inset-top)) 16px 18px;max-width:100%}}
         @media(max-width:720px){.market-main{padding-inline:14px}.market-hero{grid-template-columns:1fr;padding:22px;border-radius:22px}.market-search-panel,.market-card-grid,.market-status-grid,.market-stat-row,.indicator-list,.scenario-grid,.alert-form{grid-template-columns:1fr}.market-search-panel button{width:100%}.market-search-results{max-height:min(300px,42dvh);top:calc(100% + 10px);border-radius:16px}.market-search-results button{min-height:68px;align-items:flex-start}.market-search-results button small{white-space:normal;text-align:end}.market-hero-card strong{font-size:36px}.market-stock-header{display:grid;gap:14px}.stock-price-block{justify-items:start;text-align:start}.market-panel,.market-card,.market-stock-header{border-radius:18px}.compare-bars div{grid-template-columns:42px minmax(0,1fr) 48px}}
+        @media(max-width:720px){.market-search-results{width:100%;max-height:min(320px,48dvh)}.market-search-results button{align-items:stretch}.market-search-results button small{white-space:nowrap;text-align:start}.market-search-result-main{gap:10px}.market-search-results button b{font-size:13px}}
       `}</style>
     </div>
   );
