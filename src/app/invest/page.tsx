@@ -2,9 +2,9 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { BarChart3, Brain, Layers3, LineChart as LineChartIcon, PieChart as PieChartIcon, Plus, ShieldAlert, TrendingUp, WalletCards } from 'lucide-react';
-import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -21,6 +21,17 @@ import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
 import { investmentSymbol, marketAnalysisUrl } from '@/lib/data/investmentData';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
+
+const InvestPerformanceCharts = dynamic(() => import('@/components/invest/InvestPerformanceCharts'), {
+  ssr: false,
+  loading: () => (
+    <section className="invest-chart-grid" aria-hidden="true">
+      <div className="invest-panel invest-chart-card invest-chart-skeleton" />
+      <div className="invest-panel invest-chart-card invest-chart-skeleton" />
+      <div className="invest-panel invest-chart-card invest-chart-skeleton" />
+    </section>
+  ),
+});
 
 const TYPES: InvestmentType[] = ['stocks', 'realEstate', 'fund', 'gold', 'cash', 'crypto', 'project', 'other'];
 const RISKS: RiskLevel[] = ['low', 'medium', 'high'];
@@ -380,44 +391,19 @@ export default function InvestPage() {
             )}
 
             {activeTab === 'performance' && (
-            <section className="invest-chart-grid">
-              <ChartCard icon={<PieChartIcon size={18} />} title={t('invest_charts_distribution')}>
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie data={typeDistribution} dataKey="value" nameKey="name" innerRadius={62} outerRadius={95} paddingAngle={3}>
-                      {typeDistribution.map(item => <Cell key={item.name} fill={item.color} />)}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => money(Number(value))} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </ChartCard>
-              <ChartCard icon={<BarChart3 size={18} />} title={t('invest_charts_byInvestment')}>
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={valueByInvestment}>
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={value => String(Math.round(Number(value)))} tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={(value: number) => money(Number(value))} />
-                    <Bar dataKey="value" fill="var(--sfm-soft-cyan)" radius={[10, 10, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartCard>
-              {canShowReturnProjection ? (
-                <ChartCard icon={<LineChartIcon size={18} />} title={t('invest_charts_projection12')}>
-                  <ResponsiveContainer width="100%" height={260}>
-                    <LineChart data={projectionLineData}>
-                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-                      <YAxis tickFormatter={value => String(Math.round(Number(value)))} tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-                      <Tooltip formatter={(value: number) => money(Number(value))} />
-                      <Line type="monotone" dataKey="value" stroke="var(--sfm-muted)" strokeWidth={3} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </ChartCard>
-              ) : (
-                <ChartCard icon={<LineChartIcon size={18} />} title={t('invest_charts_projection12')}>
-                  <div className="invest-empty-chart">{t('invest_summary_defaultReturn')}</div>
-                </ChartCard>
-              )}
-            </section>
+              <InvestPerformanceCharts
+                distribution={typeDistribution}
+                values={valueByInvestment}
+                projection={projectionLineData}
+                canShowProjection={canShowReturnProjection}
+                titles={{
+                  distribution: t('invest_charts_distribution'),
+                  byInvestment: t('invest_charts_byInvestment'),
+                  projection12: t('invest_charts_projection12'),
+                }}
+                fallbackText={t('invest_summary_defaultReturn')}
+                money={money}
+              />
             )}
 
             {activeTab === 'risk' && (
@@ -553,7 +539,7 @@ export default function InvestPage() {
         .invest-primary-btn,.invest-secondary-btn,.invest-danger-btn,.invest-glass-btn{height:43px;border-radius:14px;border:0;padding:0 17px;font:900 13px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:all .2s}.invest-primary-btn{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 10px 24px rgba(167,243,240,.22)}.invest-primary-btn:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(167,243,240,.28)}.invest-secondary-btn{background:var(--sfm-card);color:var(--sfm-muted);border:1px solid rgba(167,243,240,.22)}.invest-danger-btn{background:#B91C1C;color:#fff}.invest-glass-btn{margin-inline-start:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:var(--sfm-card)}.invest-glass-btn:hover{background:rgba(255,255,255,.18)}.invest-primary-btn:disabled,.invest-secondary-btn:disabled,.invest-danger-btn:disabled{opacity:.6;cursor:wait}
         .invest-panel,.invest-empty{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:22px;box-shadow:0 4px 22px rgba(3,18,37,.06);min-width:0}
         .invest-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;min-width:0;max-width:100%}.invest-summary-card{min-height:132px;padding:16px;display:grid;gap:8px;align-content:start}.invest-summary-card .icon{width:38px;height:38px;border-radius:13px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.invest-summary-card span{font-size:11px;font-weight:900;color:var(--sfm-muted)}.invest-summary-card strong{font-size:18px;color:var(--sfm-foreground);overflow-wrap:anywhere}.invest-summary-card p{margin:0;color:var(--sfm-muted);font-size:11px;font-weight:800;line-height:1.6}
-        .invest-chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}.invest-chart-card{padding:17px;min-height:330px}.invest-section-head{display:flex;align-items:center;gap:9px;margin-bottom:14px;color:var(--sfm-muted);min-width:0}.invest-section-head h2{margin:0;color:var(--sfm-foreground);font-size:16px;font-weight:900}.invest-section-head span{display:block;margin-bottom:4px;color:var(--sfm-muted);font-size:11px;font-weight:900}.invest-section-head--split{justify-content:space-between;align-items:flex-start;gap:14px}
+        .invest-chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}.invest-chart-card{padding:17px;min-height:330px}.invest-chart-skeleton{background:linear-gradient(90deg,var(--sfm-card),var(--sfm-light-card),var(--sfm-card));background-size:200% 100%;animation:invest-chart-shimmer 1.25s linear infinite}@keyframes invest-chart-shimmer{to{background-position:-200% 0}}.invest-section-head{display:flex;align-items:center;gap:9px;margin-bottom:14px;color:var(--sfm-muted);min-width:0}.invest-section-head h2{margin:0;color:var(--sfm-foreground);font-size:16px;font-weight:900}.invest-section-head span{display:block;margin-bottom:4px;color:var(--sfm-muted);font-size:11px;font-weight:900}.invest-section-head--split{justify-content:space-between;align-items:flex-start;gap:14px}
         .invest-portfolio-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:14px;align-items:start;min-width:0;max-width:100%}.invest-preview-panel{padding:17px}.invest-list--preview{padding:0}.invest-list--preview .invest-row:last-child{padding-bottom:0}.invest-market-link{padding:17px}.invest-market-link p,.invest-report-card p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:900;line-height:1.7}.invest-market-chips{display:flex;flex-wrap:wrap;gap:9px}.invest-market-chips button{min-height:44px;border:1px solid rgba(167,243,240,.16);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-foreground);padding:8px 12px;display:flex;align-items:center;gap:8px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.invest-market-chips button strong{direction:ltr;color:var(--sfm-muted)}.invest-market-chips button span{color:var(--sfm-muted)}
         .invest-analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.invest-insights,.invest-projections,.invest-report-card{padding:18px}.invest-report-card{display:grid;gap:12px;align-content:start}.invest-insight-list{display:grid;gap:10px}.invest-insight-item{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:15px;padding:12px}.invest-insight-item span{width:30px;height:30px;border-radius:11px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));display:grid;place-items:center;color:var(--sfm-foreground);font-size:12px;font-weight:900}.invest-insight-item p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:800;line-height:1.7}.invest-empty-chart{min-height:220px;display:grid;place-items:center;text-align:center;color:var(--sfm-muted);font-size:13px;font-weight:900;line-height:1.7;background:var(--sfm-light-card);border:1px dashed rgba(167,243,240,.24);border-radius:18px;padding:18px}
         .invest-projection-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.invest-projection-grid div{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:15px;padding:12px;display:grid;gap:6px}.invest-projection-grid span{color:var(--sfm-muted);font-size:11px;font-weight:900}.invest-projection-grid strong{font-size:15px;color:var(--sfm-foreground)}.invest-projection-grid small{font-size:11px;color:var(--sfm-muted);font-weight:800}.invest-disclaimer{margin:12px 0 0;color:var(--sfm-muted);font-size:11px;font-weight:900}
@@ -577,18 +563,6 @@ function SummaryCard({ icon, title, value, subtitle }: { icon: ReactNode; title:
       <span>{title}</span>
       <strong>{value}</strong>
       <p>{subtitle}</p>
-    </div>
-  );
-}
-
-function ChartCard({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
-  return (
-    <div className="invest-panel invest-chart-card">
-      <div className="invest-section-head">
-        {icon}
-        <h2>{title}</h2>
-      </div>
-      {children}
     </div>
   );
 }

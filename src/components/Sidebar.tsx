@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { ViewModeSelector } from '@/components/ViewModeSelector';
-import { CommandMenuButton } from '@/components/CommandMenu';
+import { CommandMenuButton } from '@/components/CommandMenuButton';
 import { useViewMode } from '@/hooks/useViewMode';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -57,15 +57,24 @@ export function Sidebar() {
         return;
       }
       const db = supabase as any;
-      let result = await db.from('notifications').select('id,read,status').eq('user_id', user.id).limit(500);
-      if (result.error) result = await db.from('notifications').select('id,read').eq('user_id', user.id).limit(500);
+      let result = await db
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'unread');
+      if (result.error) {
+        result = await db
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('read', false);
+      }
       if (cancelled) return;
       if (result.error) {
         setUnreadNotifications(0);
         return;
       }
-      const count = (result.data ?? []).filter((row: any) => row.status !== 'archived' && (row.status === 'unread' || row.read === false)).length;
-      setUnreadNotifications(count);
+      setUnreadNotifications(result.count ?? 0);
     }
     loadUnread();
     const id = window.setInterval(loadUnread, 60000);

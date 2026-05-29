@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -27,10 +28,6 @@ import {
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
-import { ProjectAiAdvisorTab } from '@/components/projects/ProjectAiAdvisorTab';
-import { ProjectDocumentsTab } from '@/components/projects/ProjectDocumentsTab';
-import { ProjectFinancialModelTab } from '@/components/projects/ProjectFinancialModelTab';
-import { ProjectPitchDeckTab } from '@/components/projects/ProjectPitchDeckTab';
 import {
   ProjectKpisTab,
   buildProjectKpiSummary,
@@ -51,7 +48,28 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
+import { buildFeasibilityStudyExportRow, printFeasibilityStudyToPdf } from '@/lib/reports/feasibilityStudyExport';
 import { useCurrency } from '@/lib/useCurrency';
+
+const ProjectAiAdvisorTab = dynamic(() => import('@/components/projects/ProjectAiAdvisorTab').then(mod => mod.ProjectAiAdvisorTab), {
+  ssr: false,
+  loading: () => <LazyTabSkeleton />,
+});
+
+const ProjectDocumentsTab = dynamic(() => import('@/components/projects/ProjectDocumentsTab').then(mod => mod.ProjectDocumentsTab), {
+  ssr: false,
+  loading: () => <LazyTabSkeleton />,
+});
+
+const ProjectFinancialModelTab = dynamic(() => import('@/components/projects/ProjectFinancialModelTab').then(mod => mod.ProjectFinancialModelTab), {
+  ssr: false,
+  loading: () => <LazyTabSkeleton />,
+});
+
+const ProjectPitchDeckTab = dynamic(() => import('@/components/projects/ProjectPitchDeckTab').then(mod => mod.ProjectPitchDeckTab), {
+  ssr: false,
+  loading: () => <LazyTabSkeleton />,
+});
 
 type Lang = 'ar' | 'en' | 'fr';
 type TabId = 'overview' | 'feasibility' | 'financial' | 'tasks' | 'documents' | 'kpis' | 'ai' | 'pitchDeck';
@@ -89,6 +107,8 @@ type FeasibilityStudyRow = {
   legal_data: Record<string, string> | null;
   feasibility_score: number | null;
   feasibility_status: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 type ProjectExpenseRow = {
@@ -154,6 +174,17 @@ type ProjectIncomeForm = {
 type DeleteTarget =
   | { type: 'income'; row: ProjectIncomeRow }
   | { type: 'expense'; row: ProjectExpenseRow };
+
+function LazyTabSkeleton() {
+  return (
+    <section className="warm-card lazy-tab-skeleton" aria-hidden="true">
+      <span />
+      <i />
+      <i />
+      <i />
+    </section>
+  );
+}
 
 const TEXT = {
   ar: {
@@ -343,6 +374,10 @@ const TEXT = {
     aiFeasibilityAnalysis: 'تحليل AI لدراسة الجدوى',
     aiFeasibilitySoon: 'سيتم تفعيل تحليل الذكاء الاصطناعي المتقدم في مرحلة لاحقة.',
     exportFeasibilityPdf: 'تصدير دراسة الجدوى PDF',
+    creatingFeasibilityPdf: 'جاري إنشاء PDF...',
+    feasibilityPdfExported: 'تم تصدير PDF بنجاح',
+    feasibilityPdfExportError: 'تعذر تصدير PDF، حاول مرة أخرى',
+    saveFeasibilityBeforeExport: 'احفظ دراسة الجدوى أولاً قبل التصدير',
     comingSoonShort: 'قريباً',
     internalScoreDisclaimer: 'هذه درجة تخطيط داخلية وليست توصية مضمونة لنجاح المشروع.',
     months: 'شهر',
@@ -586,6 +621,10 @@ const TEXT = {
     aiFeasibilityAnalysis: 'AI Feasibility Analysis',
     aiFeasibilitySoon: 'Advanced AI analysis will be enabled in a later phase.',
     exportFeasibilityPdf: 'Export Feasibility PDF',
+    creatingFeasibilityPdf: 'Creating PDF...',
+    feasibilityPdfExported: 'PDF exported successfully',
+    feasibilityPdfExportError: 'Could not export PDF, please try again',
+    saveFeasibilityBeforeExport: 'Save the feasibility study before exporting',
     comingSoonShort: 'Coming soon',
     internalScoreDisclaimer: 'This is an internal planning score, not a guaranteed business recommendation.',
     months: 'months',
@@ -829,6 +868,10 @@ const TEXT = {
     aiFeasibilityAnalysis: 'Analyse IA de faisabilité',
     aiFeasibilitySoon: 'L’analyse IA avancée sera activée dans une phase ultérieure.',
     exportFeasibilityPdf: 'Exporter l’étude PDF',
+    creatingFeasibilityPdf: 'Création du PDF...',
+    feasibilityPdfExported: 'PDF exporté avec succès',
+    feasibilityPdfExportError: 'Impossible d’exporter le PDF, veuillez réessayer',
+    saveFeasibilityBeforeExport: 'Enregistrez l’étude de faisabilité avant l’export',
     comingSoonShort: 'Bientôt',
     internalScoreDisclaimer: 'Il s’agit d’un score interne de planification, pas d’une recommandation commerciale garantie.',
     months: 'mois',
@@ -1035,6 +1078,20 @@ function clampScore(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
+function uniqueProjectDocumentCount(rows: any[] = []) {
+  const grouped = new Map<string, any>();
+  const timestamp = (row: any) => new Date(String(row?.updated_at ?? row?.uploaded_at ?? row?.created_at ?? '')).getTime() || 0;
+  for (const row of rows) {
+    const sourceUrl = String(row?.source_url ?? '').trim().toLowerCase();
+    const key = sourceUrl
+      ? [row?.category || '', sourceUrl, row?.document_type || 'uploaded_file'].join('|')
+      : `record:${row?.id}`;
+    const current = grouped.get(key);
+    if (!current || timestamp(row) >= timestamp(current)) grouped.set(key, row);
+  }
+  return grouped.size;
+}
+
 export default function ProjectWorkspacePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1057,7 +1114,9 @@ export default function ProjectWorkspacePage() {
   }, [searchParams]);
   const [feasibility, setFeasibility] = useState<FeasibilityForm>(() => createEmptyFeasibility());
   const [feasibilityId, setFeasibilityId] = useState<string | null>(null);
+  const [feasibilityUpdatedAt, setFeasibilityUpdatedAt] = useState<string | null>(null);
   const [savingFeasibility, setSavingFeasibility] = useState(false);
+  const [exportingFeasibilityPdf, setExportingFeasibilityPdf] = useState(false);
   const [notice, setNotice] = useState('');
   const [taskSummary, setTaskSummary] = useState<ProjectTasksSummary>(emptyProjectTasksSummary);
   const [documentsCount, setDocumentsCount] = useState(0);
@@ -1211,7 +1270,7 @@ export default function ProjectWorkspacePage() {
         .eq('project_id', id),
       (supabase as any)
         .from('project_documents')
-        .select('id')
+        .select('id,category,source_url,document_type,uploaded_at,created_at,updated_at')
         .eq('user_id', user.id)
         .eq('project_id', id),
       (supabase as any)
@@ -1236,7 +1295,7 @@ export default function ProjectWorkspacePage() {
     const loadedProject = projectRes.error ? null : (projectRes.data as ProjectRow | null);
     const loadedTasks = taskRes.error ? [] : (taskRes.data ?? []) as ProjectTaskRow[];
     const loadedMilestones = milestoneRes.error ? [] : (milestoneRes.data ?? []) as ProjectMilestoneRow[];
-    const loadedDocumentsCount = documentsRes.error ? 0 : (documentsRes.data ?? []).length;
+    const loadedDocumentsCount = documentsRes.error ? 0 : uniqueProjectDocumentCount(documentsRes.data ?? []);
     const loadedFeasibility = !feasibilityRes.error && feasibilityRes.data ? feasibilityRes.data as FeasibilityStudyRow : null;
     const loadedProjectIncome = projectIncomeRes.error ? [] : (projectIncomeRes.data ?? []) as ProjectIncomeRow[];
     const loadedProjectExpenses = projectExpensesRes.error ? [] : (projectExpensesRes.data ?? []) as ProjectExpenseRow[];
@@ -1248,9 +1307,11 @@ export default function ProjectWorkspacePage() {
     }
     if (loadedFeasibility) {
       setFeasibilityId(loadedFeasibility.id);
+      setFeasibilityUpdatedAt(loadedFeasibility.updated_at ?? loadedFeasibility.created_at ?? null);
       setFeasibility(normalizeFeasibilityRow(loadedFeasibility, loadedProject));
     } else {
       setFeasibilityId(null);
+      setFeasibilityUpdatedAt(null);
       setFeasibility(normalizeFeasibilityRow(null, loadedProject));
     }
     setTaskSummary(buildProjectTasksSummary(loadedTasks, loadedMilestones));
@@ -1368,6 +1429,7 @@ export default function ProjectWorkspacePage() {
     if (!user || !project) return;
     setSavingFeasibility(true);
     setNotice('');
+    const savedAt = new Date().toISOString();
     const payload = {
       id: feasibilityId ?? undefined,
       user_id: user.id,
@@ -1378,12 +1440,12 @@ export default function ProjectWorkspacePage() {
       legal_data: feasibility.legal,
       feasibility_score: feasibilityMetrics.score,
       feasibility_status: feasibilityMetrics.status,
-      updated_at: new Date().toISOString(),
+      updated_at: savedAt,
     };
     const { data, error } = await (supabase as any)
       .from('project_feasibility_studies')
       .upsert(payload, { onConflict: 'user_id,project_id' })
-      .select('id')
+      .select('id, updated_at')
       .single();
     setSavingFeasibility(false);
     if (error) {
@@ -1391,7 +1453,39 @@ export default function ProjectWorkspacePage() {
       return;
     }
     setFeasibilityId(data?.id ?? feasibilityId);
+    setFeasibilityUpdatedAt(data?.updated_at ?? savedAt);
     setNotice(tr.feasibilitySaved);
+  };
+
+  const exportFeasibilityPdf = async () => {
+    if (!project || !feasibilityId) {
+      setNotice(tr.saveFeasibilityBeforeExport);
+      return;
+    }
+    setExportingFeasibilityPdf(true);
+    setNotice('');
+    try {
+      const row = buildFeasibilityStudyExportRow({
+        projectName: projectTitle,
+        currency: projectCurrency,
+        financialData: feasibility.financial,
+        feasibilityScore: feasibilityMetrics.score,
+        feasibilityStatus: feasibilityMetrics.status,
+        reportDate: feasibilityUpdatedAt,
+      }, lang as Lang);
+      printFeasibilityStudyToPdf({
+        title: tr.exportFeasibilityPdf,
+        rows: [row],
+        lang: lang as Lang,
+        dir: dir as 'rtl' | 'ltr',
+      });
+      setNotice(tr.feasibilityPdfExported);
+    } catch (error) {
+      console.error('Feasibility PDF export failed', error);
+      setNotice(tr.feasibilityPdfExportError);
+    } finally {
+      setExportingFeasibilityPdf(false);
+    }
   };
 
   const openProjectExpenseModal = () => {
@@ -2029,10 +2123,16 @@ export default function ProjectWorkspacePage() {
                     <Save size={16} />
                     {savingFeasibility ? tr.saveFeasibilityStudy : tr.saveFeasibilityStudy}
                   </button>
-                  <button type="button" className="disabled-btn" disabled aria-disabled="true">
+                  <button
+                    type="button"
+                    className="secondary-action"
+                    onClick={exportFeasibilityPdf}
+                    disabled={exportingFeasibilityPdf}
+                    aria-disabled={exportingFeasibilityPdf}
+                    aria-label={tr.exportFeasibilityPdf}
+                  >
                     <FileText size={16} />
-                    {tr.exportFeasibilityPdf}
-                    <span>{tr.comingSoonShort}</span>
+                    {exportingFeasibilityPdf ? tr.creatingFeasibilityPdf : tr.exportFeasibilityPdf}
                   </button>
                 </article>
               </aside>
@@ -2366,10 +2466,13 @@ export default function ProjectWorkspacePage() {
       ) : null}
 
       <style jsx global>{`
-        .project-workspace{min-height:100vh;background:var(--sfm-background);color:var(--sfm-primary-dark);font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}.project-workspace .sfm-dashboard-page-shell{width:auto;max-width:none;margin:0;margin-inline-start:var(--sidebar-w);margin-inline-end:0;padding:var(--sfm-page-pad-y,24px) var(--sfm-page-pad-x,24px) 60px;overflow-x:clip}.project-workspace .sfm-dashboard-page-content{width:100%;max-width:var(--sfm-page-max,1320px);margin:0 auto;min-width:0}.workspace-content{display:grid;gap:18px;min-width:0}.workspace-hero{position:relative;overflow:hidden;border-radius:24px;padding:26px;background:radial-gradient(circle at 14% 10%,rgba(167,243,240,.26),transparent 30%),linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark) 50%,var(--sfm-card-dark) 138%);color:var(--sfm-card);box-shadow:0 22px 55px rgba(3,18,37,.18);display:grid;gap:20px;min-width:0}.hero-copy span,.back-link{color:var(--sfm-soft-cyan);font-size:12px;font-weight:900}.back-link{display:inline-flex;align-items:center;gap:7px;text-decoration:none;margin-bottom:10px}.hero-copy h1{margin:8px 0;font-size:clamp(30px,5vw,48px);font-weight:950;line-height:1.08}.hero-copy p{margin:0;color:rgba(234,246,255,.76);line-height:1.8;max-width:820px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px}.hero-actions button{min-height:42px;border-radius:13px;border:1px solid rgba(167,243,240,.28);background:rgba(255,255,255,.10);color:var(--sfm-card);padding:0 14px;display:inline-flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.hero-actions button:first-child,.primary-save{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.hero-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.hero-metrics div{border:1px solid rgba(167,243,240,.18);background:rgba(234,246,255,.08);border-radius:16px;padding:12px;min-width:0}.hero-metrics small{display:block;color:var(--sfm-soft-cyan);font-weight:900}.hero-metrics strong{display:block;margin-top:5px;color:var(--sfm-card);overflow-wrap:anywhere}.workspace-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin}.workspace-tabs button{flex:0 0 auto;min-height:42px;border:1px solid rgba(29,140,255,.18);border-radius:999px;background:var(--sfm-card);color:var(--sfm-muted);padding:0 14px;display:flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.workspace-tabs button.active,.workspace-tabs button:focus-visible{background:var(--sfm-midnight);color:var(--sfm-soft-cyan);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}.overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:16px;align-items:start}.overview-grid>.warm-card{grid-column:auto;min-width:0}.warm-card{background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);border-radius:20px;padding:18px;box-shadow:0 14px 34px rgba(3,18,37,.07);min-width:0}.span-6{grid-column:auto}.card-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.card-title h2{margin:0;color:var(--sfm-midnight);font-size:19px}.card-title svg{color:var(--sfm-primary)}.details-list{display:grid;gap:10px;margin:0}.details-list div{display:grid;grid-template-columns:minmax(120px,.35fr) minmax(0,1fr);gap:12px;border-bottom:1px solid rgba(29,140,255,.1);padding-bottom:10px}.details-list dt,.metric small{color:var(--sfm-muted);font-weight:900}.details-list dd{margin:0;color:var(--sfm-primary-dark);font-weight:900;overflow-wrap:anywhere}.badge{display:inline-flex;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:5px 10px;font-size:12px}.badge.completed{background:#ECFDF5;color:#047857}.badge.paused{background:#FEF2F2;color:#B91C1C}.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.metric,.timeline-list .metric{border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:15px;padding:12px;min-width:0;writing-mode:horizontal-tb;text-orientation:mixed}.metric strong{display:block;margin-top:6px;color:var(--sfm-primary-dark);font-size:18px;overflow-wrap:anywhere}.progress-bar{height:10px;border-radius:999px;background:rgba(29,140,255,.10);overflow:hidden;margin-top:14px}.progress-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--sfm-soft-cyan),var(--sfm-primary))}.timeline-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.timeline-empty{margin:0;border:1px dashed rgba(29,140,255,.24);background:var(--sfm-light-card);color:var(--sfm-muted);border-radius:15px;padding:14px;line-height:1.7;font-weight:900;text-align:start}.risk-card,.quick-card{grid-column:auto}.overview-grid>.task-overview-card,.overview-grid>.kpi-overview-card{grid-column:1 / -1}.risk-badge{display:inline-flex;border-radius:999px;padding:8px 12px;font-weight:950;margin-bottom:10px}.risk-card.low .risk-badge{background:#ECFDF5;color:#047857}.risk-card.medium .risk-badge{background:#FFF7ED;color:#B45309}.risk-card.high .risk-badge{background:#FEF2F2;color:#B91C1C}.risk-card p,.ai-placeholder p{margin:0;color:var(--sfm-muted);line-height:1.7}.overview-link-btn{margin-top:14px;min-height:42px;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;padding:0 14px;font-weight:950;font-family:inherit;cursor:pointer}.overview-link-btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}.quick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.quick-grid button{min-height:44px;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:var(--sfm-light-card);color:var(--sfm-midnight);font-weight:900;font-family:inherit;cursor:pointer}.quick-grid button:hover,.quick-grid button:focus-visible{background:rgba(29,140,255,.10);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.14)}.feasibility-tab{display:grid;gap:16px;min-width:0}.feasibility-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:12px;align-items:stretch}.score-card{display:grid;align-content:start}.score-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}.score-number{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--sfm-primary) var(--score-angle, 270deg),rgba(29,140,255,.10) 0);position:relative;box-shadow:inset 0 0 0 12px var(--sfm-light-card)}.score-number strong{font-size:30px;color:var(--sfm-primary-dark)}.score-number span{font-size:12px;color:var(--sfm-muted);font-weight:900}.status-pill{display:inline-flex;border-radius:999px;padding:7px 11px;font-weight:950;font-size:12px}.status-pill.feasible{background:#ECFDF5;color:#047857}.status-pill.needs_review{background:#FFF7ED;color:#B45309}.status-pill.high_risk{background:#FEF2F2;color:#B91C1C}.score-row p{margin:10px 0 0;color:var(--sfm-muted);line-height:1.6}.notice{border:1px solid rgba(29,140,255,.2);background:var(--sfm-light-card);color:var(--sfm-midnight);border-radius:15px;padding:12px 14px;font-weight:900}.feasibility-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(290px,.85fr);gap:16px;align-items:start}.feasibility-sections{display:grid;gap:16px;min-width:0}.feasibility-side{display:grid;gap:16px;min-width:0;position:sticky;top:16px}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.section-heading small{display:inline-flex;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:5px 10px;font-weight:950}.section-heading h2{margin:8px 0 0;color:var(--sfm-midnight);font-size:20px}.section-heading svg{color:var(--sfm-primary)}.feasibility-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-field{display:grid;gap:7px;min-width:0}.form-field span{font-weight:900;color:var(--sfm-muted)}.form-field input,.form-field textarea,.form-field select{width:100%;min-width:0;border:1px solid rgba(29,140,255,.2);background:var(--sfm-card);color:var(--sfm-foreground);border-radius:13px;padding:11px 12px;font-family:inherit;font-weight:800;outline:none}.form-field textarea{resize:vertical;line-height:1.6}.form-field input:focus,.form-field textarea:focus,.form-field select:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.15)}.calculations-card{display:grid;gap:10px}.future-actions{display:grid;gap:10px}.future-actions button{min-height:44px;border-radius:13px;border:1px solid rgba(29,140,255,.18);font-family:inherit;font-weight:950;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}.future-actions button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}.primary-save:disabled{opacity:.66;cursor:not-allowed}.disabled-btn{background:var(--sfm-light-card);color:var(--sfm-muted);cursor:not-allowed}.disabled-btn span{border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:3px 8px;font-size:11px}.placeholder-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}.placeholder-card{min-height:280px;display:grid;place-items:center;text-align:center;align-content:center}.placeholder-card svg{color:var(--sfm-primary)}.placeholder-card h2{margin:12px 0 6px;color:var(--sfm-midnight)}.placeholder-card p{margin:0;max-width:620px;color:var(--sfm-muted);line-height:1.8}.placeholder-card span{margin-top:14px;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:7px 12px;font-weight:900}.state-card{border-radius:20px;background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);padding:24px;color:var(--sfm-midnight);font-weight:900}.empty-state{min-height:360px;display:grid;place-items:center;text-align:center}.empty-state article{background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);border-radius:22px;padding:28px;box-shadow:0 14px 34px rgba(3,18,37,.07)}.empty-state button{margin-top:16px;min-height:42px;border:0;border-radius:13px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;padding:0 16px;font-weight:900;font-family:inherit;cursor:pointer}@media(max-width:1180px){.hero-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.feasibility-layout{grid-template-columns:1fr}.feasibility-side{position:static}}@media(max-width:1024px){.project-workspace .sfm-dashboard-page-shell{margin-inline:0;padding:calc(74px + env(safe-area-inset-top)) 16px 44px}.project-workspace .sfm-dashboard-page-content{max-width:100%}}@media(max-width:760px){.workspace-hero{padding:22px}.hero-actions{display:grid;grid-template-columns:1fr}.hero-actions button{width:100%;justify-content:center}.hero-metrics,.metric-grid,.timeline-list,.quick-grid,.feasibility-summary-grid,.feasibility-form-grid{grid-template-columns:1fr}.details-list div{grid-template-columns:1fr}.warm-card{padding:16px}.overview-grid{grid-template-columns:1fr}.overview-grid>.warm-card{grid-column:1 / -1}.overview-link-btn{width:100%}.score-row{grid-template-columns:1fr}.score-number{width:92px;height:92px}.section-heading{align-items:flex-start}.placeholder-card{min-height:220px}}
+        .project-workspace{min-height:100vh;background:var(--sfm-background);color:var(--sfm-primary-dark);font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}.project-workspace .sfm-dashboard-page-shell{width:auto;max-width:none;margin:0;margin-inline-start:var(--sidebar-w);margin-inline-end:0;padding:var(--sfm-page-pad-y,24px) var(--sfm-page-pad-x,24px) 60px;overflow-x:clip}.project-workspace .sfm-dashboard-page-content{width:100%;max-width:var(--sfm-page-max,1320px);margin:0 auto;min-width:0}.workspace-content{display:grid;gap:18px;min-width:0}.workspace-hero{position:relative;overflow:hidden;border-radius:24px;padding:26px;background:radial-gradient(circle at 14% 10%,rgba(167,243,240,.26),transparent 30%),linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark) 50%,var(--sfm-card-dark) 138%);color:var(--sfm-card);box-shadow:0 22px 55px rgba(3,18,37,.18);display:grid;gap:20px;min-width:0}.hero-copy span,.back-link{color:var(--sfm-soft-cyan);font-size:12px;font-weight:900}.back-link{display:inline-flex;align-items:center;gap:7px;text-decoration:none;margin-bottom:10px}.hero-copy h1{margin:8px 0;font-size:clamp(30px,5vw,48px);font-weight:950;line-height:1.08}.hero-copy p{margin:0;color:rgba(234,246,255,.76);line-height:1.8;max-width:820px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px}.hero-actions button{min-height:42px;border-radius:13px;border:1px solid rgba(167,243,240,.28);background:rgba(255,255,255,.10);color:var(--sfm-card);padding:0 14px;display:inline-flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.hero-actions button:first-child,.primary-save{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.hero-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.hero-metrics div{border:1px solid rgba(167,243,240,.18);background:rgba(234,246,255,.08);border-radius:16px;padding:12px;min-width:0}.hero-metrics small{display:block;color:var(--sfm-soft-cyan);font-weight:900}.hero-metrics strong{display:block;margin-top:5px;color:var(--sfm-card);overflow-wrap:anywhere}.workspace-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin}.workspace-tabs button{flex:0 0 auto;min-height:42px;border:1px solid rgba(29,140,255,.18);border-radius:999px;background:var(--sfm-card);color:var(--sfm-muted);padding:0 14px;display:flex;align-items:center;gap:8px;font-weight:900;font-family:inherit;cursor:pointer}.workspace-tabs button.active,.workspace-tabs button:focus-visible{background:var(--sfm-midnight);color:var(--sfm-soft-cyan);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}.overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:16px;align-items:start}.overview-grid>.warm-card{grid-column:auto;min-width:0}.warm-card{background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);border-radius:20px;padding:18px;box-shadow:0 14px 34px rgba(3,18,37,.07);min-width:0}.lazy-tab-skeleton{min-height:300px;display:grid;gap:14px;align-content:start}.lazy-tab-skeleton span,.lazy-tab-skeleton i{display:block;border-radius:999px;background:linear-gradient(90deg,rgba(148,163,184,.12),rgba(34,211,238,.13),rgba(148,163,184,.12));background-size:200% 100%;animation:project-tab-shimmer 1.25s linear infinite}.lazy-tab-skeleton span{width:42%;height:18px}.lazy-tab-skeleton i{height:42px}.lazy-tab-skeleton i:nth-child(3){width:82%}.lazy-tab-skeleton i:nth-child(4){width:64%}@keyframes project-tab-shimmer{to{background-position:-200% 0}}.span-6{grid-column:auto}.card-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.card-title h2{margin:0;color:var(--sfm-midnight);font-size:19px}.card-title svg{color:var(--sfm-primary)}.details-list{display:grid;gap:10px;margin:0}.details-list div{display:grid;grid-template-columns:minmax(120px,.35fr) minmax(0,1fr);gap:12px;border-bottom:1px solid rgba(29,140,255,.1);padding-bottom:10px}.details-list dt,.metric small{color:var(--sfm-muted);font-weight:900}.details-list dd{margin:0;color:var(--sfm-primary-dark);font-weight:900;overflow-wrap:anywhere}.badge{display:inline-flex;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:5px 10px;font-size:12px}.badge.completed{background:#ECFDF5;color:#047857}.badge.paused{background:#FEF2F2;color:#B91C1C}.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.metric,.timeline-list .metric{border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:15px;padding:12px;min-width:0;writing-mode:horizontal-tb;text-orientation:mixed}.metric strong{display:block;margin-top:6px;color:var(--sfm-primary-dark);font-size:18px;overflow-wrap:anywhere}.progress-bar{height:10px;border-radius:999px;background:rgba(29,140,255,.10);overflow:hidden;margin-top:14px}.progress-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--sfm-soft-cyan),var(--sfm-primary))}.timeline-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.timeline-empty{margin:0;border:1px dashed rgba(29,140,255,.24);background:var(--sfm-light-card);color:var(--sfm-muted);border-radius:15px;padding:14px;line-height:1.7;font-weight:900;text-align:start}.risk-card,.quick-card{grid-column:auto}.overview-grid>.task-overview-card,.overview-grid>.kpi-overview-card{grid-column:1 / -1}.risk-badge{display:inline-flex;border-radius:999px;padding:8px 12px;font-weight:950;margin-bottom:10px}.risk-card.low .risk-badge{background:#ECFDF5;color:#047857}.risk-card.medium .risk-badge{background:#FFF7ED;color:#B45309}.risk-card.high .risk-badge{background:#FEF2F2;color:#B91C1C}.risk-card p,.ai-placeholder p{margin:0;color:var(--sfm-muted);line-height:1.7}.overview-link-btn{margin-top:14px;min-height:42px;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;padding:0 14px;font-weight:950;font-family:inherit;cursor:pointer}.overview-link-btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}.quick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.quick-grid button{min-height:44px;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:var(--sfm-light-card);color:var(--sfm-midnight);font-weight:900;font-family:inherit;cursor:pointer}.quick-grid button:hover,.quick-grid button:focus-visible{background:rgba(29,140,255,.10);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.14)}.feasibility-tab{display:grid;gap:16px;min-width:0}.feasibility-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:12px;align-items:stretch}.score-card{display:grid;align-content:start}.score-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}.score-number{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--sfm-primary) var(--score-angle, 270deg),rgba(29,140,255,.10) 0);position:relative;box-shadow:inset 0 0 0 12px var(--sfm-light-card)}.score-number strong{font-size:30px;color:var(--sfm-primary-dark)}.score-number span{font-size:12px;color:var(--sfm-muted);font-weight:900}.status-pill{display:inline-flex;border-radius:999px;padding:7px 11px;font-weight:950;font-size:12px}.status-pill.feasible{background:#ECFDF5;color:#047857}.status-pill.needs_review{background:#FFF7ED;color:#B45309}.status-pill.high_risk{background:#FEF2F2;color:#B91C1C}.score-row p{margin:10px 0 0;color:var(--sfm-muted);line-height:1.6}.notice{border:1px solid rgba(29,140,255,.2);background:var(--sfm-light-card);color:var(--sfm-midnight);border-radius:15px;padding:12px 14px;font-weight:900}.feasibility-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(290px,.85fr);gap:16px;align-items:start}.feasibility-sections{display:grid;gap:16px;min-width:0}.feasibility-side{display:grid;gap:16px;min-width:0;position:sticky;top:16px}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.section-heading small{display:inline-flex;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:5px 10px;font-weight:950}.section-heading h2{margin:8px 0 0;color:var(--sfm-midnight);font-size:20px}.section-heading svg{color:var(--sfm-primary)}.feasibility-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-field{display:grid;gap:7px;min-width:0}.form-field span{font-weight:900;color:var(--sfm-muted)}.form-field input,.form-field textarea,.form-field select{width:100%;min-width:0;border:1px solid rgba(29,140,255,.2);background:var(--sfm-card);color:var(--sfm-foreground);border-radius:13px;padding:11px 12px;font-family:inherit;font-weight:800;outline:none}.form-field textarea{resize:vertical;line-height:1.6}.form-field input:focus,.form-field textarea:focus,.form-field select:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.15)}.calculations-card{display:grid;gap:10px}.future-actions{display:grid;gap:10px}.future-actions button{min-height:44px;border-radius:13px;border:1px solid rgba(29,140,255,.18);font-family:inherit;font-weight:950;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}.future-actions button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}.primary-save:disabled{opacity:.66;cursor:not-allowed}.disabled-btn{background:var(--sfm-light-card);color:var(--sfm-muted);cursor:not-allowed}.disabled-btn span{border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:3px 8px;font-size:11px}.placeholder-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}.placeholder-card{min-height:280px;display:grid;place-items:center;text-align:center;align-content:center}.placeholder-card svg{color:var(--sfm-primary)}.placeholder-card h2{margin:12px 0 6px;color:var(--sfm-midnight)}.placeholder-card p{margin:0;max-width:620px;color:var(--sfm-muted);line-height:1.8}.placeholder-card span{margin-top:14px;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:7px 12px;font-weight:900}.state-card{border-radius:20px;background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);padding:24px;color:var(--sfm-midnight);font-weight:900}.empty-state{min-height:360px;display:grid;place-items:center;text-align:center}.empty-state article{background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);border-radius:22px;padding:28px;box-shadow:0 14px 34px rgba(3,18,37,.07)}.empty-state button{margin-top:16px;min-height:42px;border:0;border-radius:13px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;padding:0 16px;font-weight:900;font-family:inherit;cursor:pointer}@media(max-width:1180px){.hero-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.feasibility-layout{grid-template-columns:1fr}.feasibility-side{position:static}}@media(max-width:1024px){.project-workspace .sfm-dashboard-page-shell{margin-inline:0;padding:calc(74px + env(safe-area-inset-top)) 16px 44px}.project-workspace .sfm-dashboard-page-content{max-width:100%}}@media(max-width:760px){.workspace-hero{padding:22px}.hero-actions{display:grid;grid-template-columns:1fr}.hero-actions button{width:100%;justify-content:center}.hero-metrics,.metric-grid,.timeline-list,.quick-grid,.feasibility-summary-grid,.feasibility-form-grid{grid-template-columns:1fr}.details-list div{grid-template-columns:1fr}.warm-card{padding:16px}.overview-grid{grid-template-columns:1fr}.overview-grid>.warm-card{grid-column:1 / -1}.overview-link-btn{width:100%}.score-row{grid-template-columns:1fr}.score-number{width:92px;height:92px}.section-heading{align-items:flex-start}.placeholder-card{min-height:220px}}
       `}</style>
       <style jsx global>{`
         .project-overview{display:grid;gap:16px;min-width:0}
+        .future-actions .secondary-action{background:var(--sfm-light-card);color:var(--sfm-midnight)}
+        .future-actions .secondary-action:hover:not(:disabled),.future-actions .secondary-action:focus-visible{background:rgba(29,140,255,.10);border-color:rgba(24,212,212,.44)}
+        .future-actions .secondary-action:disabled{opacity:.66;cursor:not-allowed}
         .overview-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;align-items:stretch}
         .overview-main-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.75fr);gap:16px;align-items:start;min-width:0}
         .overview-main-column,.overview-side-column{display:grid;gap:16px;min-width:0}

@@ -14,6 +14,7 @@ import {
   FileText,
   FolderKanban,
   HandHeart,
+  Landmark,
   LineChart,
   Menu,
   PiggyBank,
@@ -21,16 +22,19 @@ import {
   ReceiptText,
   ShieldCheck,
   Sparkles,
+  Target,
   TrendingUp,
   Wallet,
   X,
   Zap,
 } from 'lucide-react';
 
+import { flattenNavigationItems } from '@/components/navigationConfig';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_MAILTO } from '@/lib/constants/contact';
+import { TR } from '@/lib/translations';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -66,6 +70,16 @@ const COPY = {
     howSubtitle: 'ابدأ من الحساب والبيانات الحقيقية، ثم فعّل الأقسام التي تحتاجها حتى تظهر التحليلات عندما تصبح المدخلات كافية.',
     featuresTitle: 'كل أدواتك المالية في مكان واحد',
     featuresSubtitle: 'صممت THE SFM لتجميع المتابعة اليومية، التقارير، المشاريع، والزكاة بدون خلط البيانات الحقيقية مع بيانات تجريبية.',
+    toolsFilterAll: 'الكل',
+    toolsFilterPersonal: 'المال الشخصي',
+    toolsFilterAi: 'الذكاء المالي',
+    toolsFilterBusiness: 'المشاريع والأعمال',
+    toolsFilterCharity: 'الزكاة والخير',
+    toolsFilterSecurity: 'الأمان والتقارير',
+    toolOpen: 'فتح',
+    toolBadgeSmart: 'ذكي',
+    toolBadgeNew: 'جديد',
+    toolBadgeCore: 'أساسي',
     aiTitle: 'مساعد مالي ذكي يحترم بياناتك',
     aiSubtitle: 'يقرأ المساعد بياناتك الفعلية ويقترح الخطوات القادمة عندما تكون المعلومات كافية. إذا كانت البيانات ناقصة، يعرض ذلك بوضوح بدلاً من اختراع أرقام.',
     aiExampleLabel: 'مثال توضيحي',
@@ -133,6 +147,16 @@ const COPY = {
     howSubtitle: 'Start with an account and real data, then activate the sections you need so analysis appears when inputs are sufficient.',
     featuresTitle: 'Your financial tools in one place',
     featuresSubtitle: 'THE SFM brings daily tracking, reports, projects, and zakat together without mixing real data with demo data.',
+    toolsFilterAll: 'All',
+    toolsFilterPersonal: 'Personal finance',
+    toolsFilterAi: 'Financial intelligence',
+    toolsFilterBusiness: 'Projects & business',
+    toolsFilterCharity: 'Zakat & giving',
+    toolsFilterSecurity: 'Security & reports',
+    toolOpen: 'Open',
+    toolBadgeSmart: 'Smart',
+    toolBadgeNew: 'New',
+    toolBadgeCore: 'Core',
     aiTitle: 'An AI financial assistant that respects your data',
     aiSubtitle: 'The assistant reads your real data and suggests next steps when there is enough information. If data is missing, it says so instead of inventing numbers.',
     aiExampleLabel: 'Illustrative example',
@@ -200,6 +224,16 @@ const COPY = {
     howSubtitle: 'Commencez avec un compte et des données réelles, puis activez les sections utiles afin que les analyses apparaissent quand les données sont suffisantes.',
     featuresTitle: 'Vos outils financiers au même endroit',
     featuresSubtitle: 'THE SFM réunit suivi quotidien, rapports, projets et zakat sans mélanger données réelles et données de démonstration.',
+    toolsFilterAll: 'Tous',
+    toolsFilterPersonal: 'Finance personnelle',
+    toolsFilterAi: 'Intelligence financière',
+    toolsFilterBusiness: 'Projets et business',
+    toolsFilterCharity: 'Zakat et dons',
+    toolsFilterSecurity: 'Sécurité et rapports',
+    toolOpen: 'Ouvrir',
+    toolBadgeSmart: 'Intelligent',
+    toolBadgeNew: 'Nouveau',
+    toolBadgeCore: 'Essentiel',
     aiTitle: 'Un assistant financier IA qui respecte vos données',
     aiSubtitle: 'L’assistant lit vos données réelles et suggère les prochaines étapes quand les informations sont suffisantes. Si les données manquent, il l’indique au lieu d’inventer des chiffres.',
     aiExampleLabel: 'Exemple illustratif',
@@ -407,6 +441,42 @@ const featureItems = [
   },
 ] as const;
 
+type ToolCategory = 'all' | 'personal' | 'ai' | 'business' | 'charity' | 'security';
+type ToolBadge = 'smart' | 'new' | 'core';
+
+const landingToolCatalog = [
+  { navId: 'home', category: 'personal', badge: 'core', description: ['نظرة شاملة على دخلك، مصروفاتك، أهدافك، واستثماراتك.', 'A complete view of income, expenses, goals, and investments.', 'Une vue globale des revenus, dépenses, objectifs et investissements.'] },
+  { navId: 'income', category: 'personal', description: ['سجل مصادر دخلك الشهرية والمتكررة وتتبع نموها.', 'Record monthly and recurring income sources and track growth.', 'Enregistrez les revenus mensuels et récurrents et suivez leur évolution.'] },
+  { navId: 'expenses', category: 'personal', description: ['تابع مصروفاتك وصنّفها لمعرفة أين تذهب أموالك.', 'Track and categorize expenses to understand where money goes.', 'Suivez et classez vos dépenses pour comprendre où va votre argent.'] },
+  { navId: 'goals', category: 'personal', description: ['خطط لأهدافك مثل الادخار، سداد الديون، شراء سيارة أو بناء صندوق طوارئ.', 'Plan goals like saving, debt payoff, buying a car, or building an emergency fund.', 'Planifiez l’épargne, le remboursement des dettes, l’achat d’une voiture ou un fonds d’urgence.'] },
+  { navId: 'savings', category: 'personal', description: ['سجل مبالغ الإدخار واربطها بأهدافك المالية.', 'Record savings amounts and connect them to your financial goals.', 'Enregistrez l’épargne et reliez-la à vos objectifs financiers.'] },
+  { navId: 'invest', category: 'personal', description: ['تابع استثماراتك وأدائك المالي في مكان واحد.', 'Track investments and financial performance in one place.', 'Suivez vos investissements et performances financières au même endroit.'] },
+  { navId: 'market-analysis', category: 'personal', badge: 'new', description: ['تابع مؤشرات السوق والفرص الاستثمارية بشكل مبسط.', 'Follow market indicators and investment opportunities in a simple way.', 'Suivez les indicateurs de marché et opportunités d’investissement simplement.'] },
+  { navId: 'decisions', category: 'ai', badge: 'smart', description: ['حلل قراراتك قبل تنفيذها واعرف هل القرار مناسب أم يحتاج انتظار.', 'Analyze decisions before acting and know whether to proceed or wait.', 'Analysez vos décisions avant d’agir et sachez s’il faut avancer ou attendre.'] },
+  { navId: 'smart-assistant', category: 'ai', badge: 'smart', description: ['مساعد مالي ذكي يقرأ بياناتك ويعطيك اقتراحات عملية.', 'A smart financial assistant that reads your data and gives practical suggestions.', 'Un assistant financier intelligent qui lit vos données et propose des actions concrètes.'] },
+  { id: 'financial-ai-report', navId: 'reports-center', icon: FileText, category: 'ai', badge: 'smart', title: ['تقرير الذكاء المالي', 'Smart Financial Report', 'Rapport financier intelligent'], description: ['احصل على تقرير شامل عن وضعك المالي ونقاط القوة والتحسين.', 'Get a complete report on financial health, strengths, and improvement areas.', 'Obtenez un rapport complet sur votre situation financière et les axes d’amélioration.'] },
+  { navId: 'reports-center', category: 'security', description: ['صدّر تقارير PDF و Excel و CSV عن بياناتك المالية.', 'Export PDF, Excel, and CSV reports from your financial data.', 'Exportez des rapports PDF, Excel et CSV à partir de vos données financières.'] },
+  { navId: 'documents-center', category: 'security', description: ['احفظ وراجع ملفاتك المالية والتقارير والعروض الاستثمارية.', 'Save and review financial files, reports, and pitch documents.', 'Enregistrez et consultez vos fichiers financiers, rapports et présentations.'] },
+  { navId: 'business-operations', category: 'business', description: ['نظّم مشاريعك، العملاء، الفواتير، الموظفين، والموردين.', 'Organize projects, customers, invoices, employees, and suppliers.', 'Organisez projets, clients, factures, employés et fournisseurs.'] },
+  { id: 'feasibility-study', navId: 'projects', icon: Calculator, category: 'business', title: ['دراسة الجدوى', 'Feasibility Study', 'Étude de faisabilité'], description: ['ابنِ دراسة جدوى للمشاريع مع تحليل التكاليف والربحية.', 'Build feasibility studies with cost and profitability analysis.', 'Créez des études de faisabilité avec analyse des coûts et de la rentabilité.'] },
+  { navId: 'investment-offers', category: 'business', badge: 'new', description: ['أنشئ عرضًا استثماريًا مرتبًا لمشروعك أو فكرتك.', 'Create a structured pitch deck for your project or idea.', 'Créez une présentation investisseur structurée pour votre projet.'] },
+  { navId: 'zakat', category: 'charity', description: ['احسب الزكاة بناءً على بياناتك المالية وأسعار الذهب والفضة.', 'Calculate zakat using your financial data and gold/silver prices.', 'Calculez la zakat avec vos données financières et les prix de l’or/argent.'] },
+  { navId: 'charity', category: 'charity', description: ['نظّم التبرعات والمساهمات الخيرية حسب ميزانيتك.', 'Organize donations and charitable contributions around your budget.', 'Organisez les dons et contributions caritatives selon votre budget.'] },
+  { navId: 'financial-theories', category: 'ai', description: ['تعلم مفاهيم مالية تساعدك على اتخاذ قرارات أفضل.', 'Learn financial concepts that help you make better decisions.', 'Apprenez des concepts financiers pour prendre de meilleures décisions.'] },
+  { navId: 'tasks', category: 'ai', badge: 'smart', description: ['حوّل التوصيات المالية إلى مهام قابلة للتنفيذ.', 'Turn financial recommendations into actionable tasks.', 'Transformez les recommandations financières en tâches concrètes.'] },
+  { navId: 'notif', category: 'security', description: ['استقبل تنبيهات عن الأهداف، المدفوعات، الميزانية، والقرارات المهمة.', 'Receive alerts for goals, payments, budgets, and important decisions.', 'Recevez des alertes sur objectifs, paiements, budget et décisions importantes.'] },
+  { navId: 'security', category: 'security', badge: 'new', description: ['تحكم في حماية حسابك، المصادقة الثنائية، وبياناتك الشخصية.', 'Manage account protection, two-factor authentication, and personal data.', 'Gérez la protection du compte, la 2FA et vos données personnelles.'] },
+  { navId: 'profile', category: 'security', description: ['إدارة بياناتك، العملة، اللغة، المدينة، والمهنة.', 'Manage personal data, currency, language, city, and profession.', 'Gérez vos données, devise, langue, ville et profession.'] },
+] as const satisfies ReadonlyArray<{
+  id?: string;
+  navId: string;
+  icon?: typeof Wallet;
+  category: Exclude<ToolCategory, 'all'>;
+  badge?: ToolBadge;
+  title?: readonly [string, string, string];
+  description: readonly [string, string, string];
+}>;
+
 const audienceItems = [
   {
     title: ['الأفراد', 'Individuals', 'Particuliers'],
@@ -495,21 +565,47 @@ function pickOne(item: readonly [string, string, string], lang: Lang) {
   return item[index];
 }
 
+function pickTranslation(key: keyof typeof TR, lang: Lang) {
+  const item = TR[key];
+  return lang === 'ar' ? item.ar : lang === 'fr' ? item.fr : item.en;
+}
+
 export default function PublicLandingPage() {
   const { lang, dir } = useLanguage();
   const { session } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
+  const [activeToolCategory, setActiveToolCategory] = useState<ToolCategory>('all');
   const text = COPY[(lang as Lang) || 'ar'];
   const appHref = session ? '/dashboard' : '/login';
   const primaryLabel = session ? text.openDashboard : text.start;
   const aboutLabel = lang === 'ar' ? 'من نحن' : lang === 'fr' ? 'À propos' : 'About';
-  const features = useMemo(() => featureItems.map(item => ({
-    ...item,
-    titleText: pickOne(item.title, lang as Lang),
-    descriptionText: pickOne(item.description, lang as Lang),
-  })), [lang]);
+  const navigationItems = useMemo(() => new Map(flattenNavigationItems().map(item => [item.id, item])), []);
+  const tools = useMemo(() => landingToolCatalog.map(item => {
+    const navItem = navigationItems.get(item.navId);
+    const Icon = item.icon || navItem?.icon || Zap;
+    const href = navItem?.href || '/dashboard';
+    return {
+      ...item,
+      Icon,
+      href,
+      titleText: item.title ? pickOne(item.title, lang as Lang) : navItem ? pickTranslation(navItem.labelKey, lang as Lang) : item.navId,
+      descriptionText: pickOne(item.description, lang as Lang),
+    };
+  }), [lang, navigationItems]);
+  const visibleTools = useMemo(
+    () => activeToolCategory === 'all' ? tools : tools.filter(item => item.category === activeToolCategory),
+    [activeToolCategory, tools],
+  );
+  const toolFilters = useMemo(() => [
+    { id: 'all' as ToolCategory, label: text.toolsFilterAll },
+    { id: 'personal' as ToolCategory, label: text.toolsFilterPersonal },
+    { id: 'ai' as ToolCategory, label: text.toolsFilterAi },
+    { id: 'business' as ToolCategory, label: text.toolsFilterBusiness },
+    { id: 'charity' as ToolCategory, label: text.toolsFilterCharity },
+    { id: 'security' as ToolCategory, label: text.toolsFilterSecurity },
+  ], [text]);
   const steps = useMemo(() => howSteps.map((item, index) => ({
     ...item,
     number: index + 1,
@@ -682,25 +778,34 @@ export default function PublicLandingPage() {
           <h2>{text.featuresTitle}</h2>
           <p>{text.featuresSubtitle}</p>
         </div>
-        <div id="tools" className="feature-grid">
-          {features.map(feature => {
-            const Icon = feature.icon ?? Zap;
-            const content = (
-              <>
-                <div><Icon size={22} /></div>
-                <h3>{feature.titleText}</h3>
-                <p>{feature.descriptionText}</p>
-              </>
-            );
-
-            return feature.href ? (
-              <Link key={feature.titleText} href={feature.href} className="feature-card" aria-label={feature.titleText}>
-                {content}
+        <div className="tool-filter-row" role="tablist" aria-label={text.navTools}>
+          {toolFilters.map(filter => (
+            <button
+              key={filter.id}
+              type="button"
+              role="tab"
+              aria-selected={activeToolCategory === filter.id}
+              className={activeToolCategory === filter.id ? 'tool-filter active' : 'tool-filter'}
+              onClick={() => setActiveToolCategory(filter.id)}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+        <div id="tools" className="feature-grid tool-grid">
+          {visibleTools.map(tool => {
+            const Icon = tool.Icon;
+            const badgeLabel = tool.badge === 'smart' ? text.toolBadgeSmart : tool.badge === 'new' ? text.toolBadgeNew : tool.badge === 'core' ? text.toolBadgeCore : '';
+            return (
+              <Link key={tool.id || tool.navId} href={tool.href} className="feature-card tool-card" aria-label={tool.titleText}>
+                <div className="tool-card-top">
+                  <span className="tool-icon"><Icon size={22} /></span>
+                  {badgeLabel && <span className={`tool-badge ${tool.badge}`}>{badgeLabel}</span>}
+                </div>
+                <h3>{tool.titleText}</h3>
+                <p>{tool.descriptionText}</p>
+                <span className="tool-open">{text.toolOpen}</span>
               </Link>
-            ) : (
-              <article key={feature.titleText} className="feature-card">
-                {content}
-              </article>
             );
           })}
         </div>
@@ -1320,6 +1425,103 @@ const landingStyles = `
     font-size: 13px;
     line-height: 1.7;
     font-weight: 750;
+  }
+  .tool-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: -6px 0 18px;
+  }
+  .tool-filter {
+    min-height: 42px;
+    border: 1px solid rgba(29, 140, 255, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--landing-muted);
+    padding: 8px 14px;
+    font: 950 13px Tajawal, Arial, sans-serif;
+    cursor: pointer;
+    transition: background 180ms var(--ease), color 180ms var(--ease), border-color 180ms var(--ease), box-shadow 180ms var(--ease), transform 180ms var(--ease);
+  }
+  .tool-filter:hover,
+  .tool-filter.active {
+    background: linear-gradient(135deg, rgba(29, 140, 255, 0.13), rgba(24, 212, 212, 0.18));
+    color: var(--landing-heading);
+    border-color: rgba(24, 212, 212, 0.42);
+    box-shadow: 0 12px 28px rgba(29, 140, 255, 0.12);
+    transform: translateY(-1px);
+  }
+  .tool-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+  .tool-card {
+    display: grid;
+    align-content: start;
+    gap: 12px;
+    min-height: 244px;
+  }
+  .feature-card .tool-card-top {
+    width: 100%;
+    height: auto;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .feature-card .tool-icon {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(29, 140, 255, 0.12), rgba(24, 212, 212, 0.14));
+    border: 1px solid rgba(29, 140, 255, 0.14);
+    color: #18D4D4;
+  }
+  .tool-badge {
+    align-self: start;
+    border-radius: 999px;
+    border: 1px solid rgba(29, 140, 255, 0.14);
+    background: #F8FBFF;
+    color: #0B76E0;
+    padding: 5px 9px;
+    font-size: 11px;
+    font-weight: 950;
+  }
+  .tool-badge.smart {
+    border-color: rgba(24, 212, 212, 0.28);
+    background: rgba(24, 212, 212, 0.12);
+    color: #0F766E;
+  }
+  .tool-badge.new {
+    border-color: rgba(245, 158, 11, 0.24);
+    background: #FFFBEB;
+    color: #B45309;
+  }
+  .tool-badge.core {
+    border-color: rgba(16, 185, 129, 0.22);
+    background: #ECFDF5;
+    color: #047857;
+  }
+  .tool-card h3 {
+    margin: 2px 0 0;
+  }
+  .tool-open {
+    width: fit-content;
+    margin-top: auto;
+    border-radius: 999px;
+    background: rgba(29, 140, 255, 0.08);
+    color: #0B76E0;
+    padding: 7px 11px;
+    font-size: 12px;
+    font-weight: 950;
+  }
+  .tool-card:hover .tool-open,
+  .tool-card:focus-visible .tool-open {
+    background: linear-gradient(135deg, #1D8CFF, #18D4D4);
+    color: #FFFFFF;
   }
   .ai-section {
     padding-top: 64px;

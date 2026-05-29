@@ -1,15 +1,19 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Menu } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
-import { MobileMenu } from '@/components/MobileMenu';
-import { CommandMenuButton } from '@/components/CommandMenu';
+import { CommandMenuButton } from '@/components/CommandMenuButton';
 import { flattenNavigationItems, isNavigationItemActive } from '@/components/navigationConfig';
+
+const MobileMenu = dynamic(() => import('@/components/MobileMenu').then(mod => mod.MobileMenu), {
+  ssr: false,
+});
 
 export function AppHeader() {
   const pathname = usePathname() || '/';
@@ -63,7 +67,7 @@ export function AppHeader() {
         </div>
       </header>
 
-      <MobileMenu open={open} onClose={() => setOpen(false)} />
+      {open && <MobileMenu open={open} onClose={() => setOpen(false)} />}
 
       <style jsx global>{`
         .sfm-global-header {

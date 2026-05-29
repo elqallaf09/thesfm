@@ -30,6 +30,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { loadUserDataTables } from '@/lib/data/reportsData';
 import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
+import { buildFeasibilityStudyExportRow, printFeasibilityStudyToPdf } from '@/lib/reports/feasibilityStudyExport';
 import { formatDate, formatNumber } from '@/lib/locale';
 
 type Lang = 'ar' | 'en' | 'fr';
@@ -759,8 +760,13 @@ const COLUMN_LABELS: Record<Lang, Record<string, string>> = {
     target: 'الهدف',
     start_date: 'تاريخ البداية',
     end_date: 'تاريخ النهاية',
-    project_id: 'معرف المشروع',
+    project_id: 'اسم المشروع',
+    project_name: 'اسم المشروع',
+    report_date: 'تاريخ التقرير',
     score: 'الدرجة',
+    net_profit: 'صافي الربح',
+    break_even: 'نقطة التعادل',
+    recommendations: 'التوصيات',
     updated_at: 'آخر تحديث',
     total_revenue: 'إجمالي الإيرادات',
     total_profit: 'إجمالي الربح',
@@ -811,8 +817,13 @@ const COLUMN_LABELS: Record<Lang, Record<string, string>> = {
     target: 'Target',
     start_date: 'Start date',
     end_date: 'End date',
-    project_id: 'Project ID',
+    project_id: 'Project name',
+    project_name: 'Project name',
+    report_date: 'Report date',
     score: 'Score',
+    net_profit: 'Net profit',
+    break_even: 'Break-even point',
+    recommendations: 'Recommendations',
     updated_at: 'Updated at',
     total_revenue: 'Total revenue',
     total_profit: 'Total profit',
@@ -863,8 +874,13 @@ const COLUMN_LABELS: Record<Lang, Record<string, string>> = {
     target: 'Objectif',
     start_date: 'Date de début',
     end_date: 'Date de fin',
-    project_id: 'ID du projet',
+    project_id: 'Nom du projet',
+    project_name: 'Nom du projet',
+    report_date: 'Date du rapport',
     score: 'Score',
+    net_profit: 'Bénéfice net',
+    break_even: 'Seuil de rentabilité',
+    recommendations: 'Recommandations',
     updated_at: 'Dernière mise à jour',
     total_revenue: 'Revenu total',
     total_profit: 'Profit total',
@@ -1186,6 +1202,26 @@ function normalizeProjectForReport(project: any, lang: Lang, filters: Filters) {
   };
 }
 
+const MISSING_PROJECT_NAME: Record<Lang, string> = {
+  ar: 'مشروع غير مسمى',
+  en: 'Unnamed project',
+  fr: 'Projet sans nom',
+};
+
+const DELETED_PROJECT_NAME: Record<Lang, string> = {
+  ar: 'مشروع محذوف',
+  en: 'Deleted project',
+  fr: 'Projet supprimé',
+};
+
+function projectNameForReport(projects: any[], projectId: unknown, lang: Lang) {
+  const id = String(projectId ?? '');
+  if (!id) return MISSING_PROJECT_NAME[lang];
+  const project = projects.find(row => String(row?.id ?? '') === id);
+  if (!project) return DELETED_PROJECT_NAME[lang];
+  return firstText(project, ['name', 'project_name'], MISSING_PROJECT_NAME[lang]);
+}
+
 function dateInFilters(row: any, filters: Filters) {
   const raw = firstDate(row);
   if (!raw) return true;
@@ -1290,7 +1326,7 @@ function uniqueActions(actions: MissingAction[]) {
   });
 }
 
-function reportRows(report: ReportDefinition, records: RecordsState, filters: Filters, lang: Lang) {
+function reportRows(report: ReportDefinition, records: RecordsState, filters: Filters, lang: Lang): Record<string, unknown>[] {
   const money = (value: unknown, currency?: unknown) => `${numberValue(value).toFixed(3)} ${String(currency || filters.currency || 'KWD')}`;
   const entity = ENTITY_LABELS[lang];
   const rows: Record<string, unknown>[] = [];
@@ -1373,12 +1409,19 @@ function reportRows(report: ReportDefinition, records: RecordsState, filters: Fi
   }
 
   if (report.id === 'project-feasibility') {
-    return filteredRows(records.feasibility, filters).map(row => ({
-      project_id: row.project_id,
-      score: numberValue(row.feasibility_score),
-      status: row.feasibility_status || '',
-      updated_at: row.updated_at || row.created_at || '',
-    }));
+    return filteredRows(records.feasibility, filters).map(row => {
+      const project = records.projects.find(item => String(item?.id ?? '') === String(row.project_id ?? ''));
+      const projectNotes = parseMaybeObject(project?.notes) ?? {};
+      return buildFeasibilityStudyExportRow({
+        projectName: projectNameForReport(records.projects, row.project_id, lang),
+        currency: currencyCode(project?.currency ?? projectNotes.currency, filters.currency),
+        financialData: row.financial_data,
+        feasibilityScore: row.feasibility_score,
+        feasibilityStatus: row.feasibility_status,
+        reportDate: row.updated_at || row.created_at,
+        recommendations: row.recommendations ?? row.ai_recommendations,
+      }, lang);
+    });
   }
 
   if (report.id === 'project-financial') {
@@ -1386,7 +1429,7 @@ function reportRows(report: ReportDefinition, records: RecordsState, filters: Fi
       const kpis = row.kpis && typeof row.kpis === 'object' ? row.kpis : {};
       return {
         source: sourceLabel('project_financial_models', lang),
-        project_id: row.project_id,
+        project_name: projectNameForReport(records.projects, row.project_id, lang),
         total_revenue: numberValue(kpis.totalRevenue ?? kpis.total_revenue),
         total_profit: numberValue(kpis.totalProfit ?? kpis.total_profit),
         roi: numberValue(kpis.roi),
@@ -1396,7 +1439,7 @@ function reportRows(report: ReportDefinition, records: RecordsState, filters: Fi
     });
     const expenseRows = filteredRows(records.projectExpenses, filters).map(row => ({
       source: sourceLabel('project_expenses', lang),
-      project_id: row.project_id,
+      project_name: projectNameForReport(records.projects, row.project_id, lang),
       date: row.expense_date || row.created_at || '',
       title: firstText(row, ['title', 'name'], entity.expense),
       category: firstText(row, ['category']),
@@ -1406,7 +1449,7 @@ function reportRows(report: ReportDefinition, records: RecordsState, filters: Fi
     }));
     const incomeRows = filteredRows(records.projectIncome, filters).map(row => ({
       source: sourceLabel('project_income', lang),
-      project_id: row.project_id,
+      project_name: projectNameForReport(records.projects, row.project_id, lang),
       date: row.income_date || row.created_at || '',
       title: firstText(row, ['title', 'name'], entity.income),
       category: firstText(row, ['category', 'source']),
@@ -1472,7 +1515,7 @@ function reportRows(report: ReportDefinition, records: RecordsState, filters: Fi
       amount: numberValue(row.amount),
       currency: row.currency || filters.currency,
       type: firstText(row, ['donation_type', 'category']),
-      project_id: row.project_id || '',
+      project_name: projectNameForReport(records.charityProjects, row.project_id, lang),
       notes: row.notes || '',
     }));
   }
@@ -1492,7 +1535,7 @@ function reportRows(report: ReportDefinition, records: RecordsState, filters: Fi
   if (report.id === 'charity-impact') {
     const metrics = filteredRows(records.charityImpact, filters).map(row => ({
       source: entity.impactMetrics,
-      project_id: row.project_id,
+      project_name: projectNameForReport(records.charityProjects, row.project_id, lang),
       metric_name: row.metric_name,
       metric_value: numberValue(row.metric_value),
       metric_unit: row.metric_unit || '',
@@ -1665,12 +1708,27 @@ export default function ReportsCenterPage() {
     const status = reportStatus(report, records, loadErrors);
     const rows = status === 'ready' ? reportRows(report, records, filters, lang as Lang) : [];
     if (status !== 'ready' || !rows.length) return showToast(tr.exportsDisabled);
+    if (report.id === 'project-feasibility') {
+      try {
+        printFeasibilityStudyToPdf({
+          title: report.title[lang as Lang],
+          rows: rows as ReturnType<typeof buildFeasibilityStudyExportRow>[],
+          lang: lang as Lang,
+          dir: dir as 'rtl' | 'ltr',
+        });
+        showToast(tr.printOpened);
+      } catch (error) {
+        console.error('Feasibility PDF export failed', error);
+        showToast(tr.exportsDisabled);
+      }
+      return;
+    }
     setActiveReportId(report.id);
     window.setTimeout(() => {
       window.print();
       showToast(tr.printOpened);
     }, 120);
-  }, [filters, lang, loadErrors, records, showToast, tr.exportsDisabled, tr.printOpened]);
+  }, [dir, filters, lang, loadErrors, records, showToast, tr.exportsDisabled, tr.printOpened]);
 
   const statusLabel = (status: ReportStatus) => {
     if (status === 'ready') return tr.ready;

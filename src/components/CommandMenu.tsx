@@ -7,10 +7,10 @@ import {
   CircleDollarSign,
   FileText,
   Landmark,
-  Search,
   Settings,
   Sparkles,
   Target,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   CommandDialog,
@@ -35,95 +35,8 @@ type CommandResult = {
   description: string;
   href: string;
   keywords: string[];
-  icon: typeof Search;
+  icon: LucideIcon;
 };
-
-function openCommandMenu() {
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(new Event('sfm:open-command-menu'));
-}
-
-export function CommandMenuButton({ compact = false, dark = false }: { compact?: boolean; dark?: boolean }) {
-  const { t, dir } = useLanguage();
-
-  return (
-    <button
-      type="button"
-      className={`sfm-command-trigger${compact ? ' compact' : ''}${dark ? ' dark' : ''}`}
-      onClick={openCommandMenu}
-      aria-label={t('command_open')}
-      dir={dir}
-    >
-      <Search size={compact ? 18 : 16} aria-hidden="true" />
-      {!compact && <span>{t('command_open')}</span>}
-      {!compact && <kbd>{t('command_shortcut')}</kbd>}
-      <style jsx>{`
-        .sfm-command-trigger {
-          width: 100%;
-          min-height: 42px;
-          border: 1px solid rgba(167, 243, 240, 0.20);
-          border-radius: 14px;
-          background: rgba(255, 255, 255, 0.07);
-          color: #EAF6FF;
-          display: flex;
-          align-items: center;
-          gap: 9px;
-          padding: 0 12px;
-          font-family: Tajawal, Arial, sans-serif;
-          font-weight: 900;
-          cursor: pointer;
-          transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
-        }
-        .sfm-command-trigger:not(.dark) {
-          background: linear-gradient(180deg, #FFFFFF, #F8FBFF);
-          border-color: rgba(29, 140, 255, .18);
-          color: var(--sfm-primary-dark);
-          box-shadow: 0 8px 20px rgba(3, 18, 37, .10);
-        }
-        .sfm-command-trigger.compact {
-          width: 44px;
-          height: 44px;
-          min-height: 44px;
-          justify-content: center;
-          padding: 0;
-        }
-        .sfm-command-trigger:hover,
-        .sfm-command-trigger:focus-visible {
-          outline: none;
-          transform: translateY(-1px);
-          border-color: rgba(24, 212, 212, .42);
-          box-shadow: 0 0 0 3px rgba(24, 212, 212, .16), 0 12px 26px rgba(3, 18, 37, .14);
-        }
-        .sfm-command-trigger svg {
-          color: var(--sfm-soft-cyan);
-          flex: 0 0 auto;
-        }
-        .sfm-command-trigger:not(.dark) svg {
-          color: var(--sfm-primary);
-        }
-        .sfm-command-trigger span {
-          flex: 1;
-          text-align: start;
-        }
-        .sfm-command-trigger kbd {
-          border: 1px solid rgba(167, 243, 240, .20);
-          border-radius: 9px;
-          padding: 3px 7px;
-          color: #A7C7E7;
-          background: rgba(255, 255, 255, .06);
-          font-size: 11px;
-          font-family: Tajawal, Arial, sans-serif;
-          font-weight: 950;
-        }
-        .sfm-command-trigger:not(.dark) kbd {
-          color: var(--sfm-muted);
-          background: rgba(29, 140, 255, .08);
-          border-color: rgba(29, 140, 255, .14);
-        }
-      `}</style>
-    </button>
-  );
-}
 
 function itemTitle(row: any, keys: string[], fallback: string) {
   for (const key of keys) {
@@ -150,15 +63,15 @@ function pageResults(items: NavigationItem[], t: (key: any) => string): CommandR
       description: item.href ?? '',
       href: item.href ?? '/',
       keywords: [item.id, t(item.labelKey), item.href ?? ''],
-      icon: item.icon as typeof Search,
+      icon: item.icon as LucideIcon,
     }));
 }
 
-export function CommandMenu() {
+export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const router = useRouter();
   const { user } = useAuth();
   const { t, dir } = useLanguage();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [dynamicResults, setDynamicResults] = useState<CommandResult[]>([]);
 
   const staticResults = useMemo(() => pageResults([...flattenNavigationItems(), ...SUPPORT_LINKS], t), [t]);
@@ -185,7 +98,7 @@ export function CommandMenu() {
       safeQuery('monthly_income_sources', 'id,label,source_name,amount,currency,created_at'),
       safeQuery('expense_items', 'id,name,amount,currency,created_at'),
       safeQuery('investment_items', 'id,name,symbol,amount,current_value,currency,created_at'),
-      safeQuery('user_decisions', 'id,title,decision_type,target_date,created_at'),
+      safeQuery('user_decisions', 'id,decision_title,title,decision_type,target_date,created_at'),
       safeQuery('reports', 'id,title,report_type,created_at'),
     ]);
 
@@ -229,10 +142,10 @@ export function CommandMenu() {
       ...decisions.map((row: any) => ({
         id: `decision:${row.id}`,
         group: 'decisions' as const,
-        title: itemTitle(row, ['title'], t('command_decisions')),
+        title: itemTitle(row, ['decision_title', 'title'], t('command_decisions')),
         description: row?.decision_type ? String(row.decision_type) : t('command_decisions'),
         href: `/decisions?decision=${encodeURIComponent(String(row.id))}`,
-        keywords: ['decision', 'قرار', t('command_decisions'), itemTitle(row, ['title'], '')],
+        keywords: ['decision', 'قرار', t('command_decisions'), itemTitle(row, ['decision_title', 'title'], '')],
         icon: Landmark,
       })),
       ...reports.map((row: any) => ({

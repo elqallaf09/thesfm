@@ -31,6 +31,7 @@ const protectedPrefixes = [
   '/settings',
   '/site-map',
   '/security',
+  '/mfa/verify',
   '/profile',
   '/notifications',
   '/market-alerts',
@@ -128,6 +129,12 @@ export async function middleware(request: NextRequest) {
   const hasSession = session.hasSession;
 
   if (authPages.includes(pathname) && hasSession) {
+    if (request.cookies.get('sfm_mfa_required')?.value === 'true') {
+      const mfaUrl = request.nextUrl.clone();
+      mfaUrl.pathname = '/mfa/verify';
+      mfaUrl.searchParams.set('next', request.nextUrl.searchParams.get('next') || '/dashboard');
+      return NextResponse.redirect(mfaUrl);
+    }
     const dashboardUrl = request.nextUrl.clone();
     dashboardUrl.pathname = '/dashboard';
     dashboardUrl.search = '';
@@ -136,6 +143,12 @@ export async function middleware(request: NextRequest) {
 
   if (!isProtected(pathname)) return response;
   if (hasSession) {
+    if (request.cookies.get('sfm_mfa_required')?.value === 'true' && pathname !== '/mfa/verify') {
+      const mfaUrl = request.nextUrl.clone();
+      mfaUrl.pathname = '/mfa/verify';
+      mfaUrl.searchParams.set('next', request.nextUrl.pathname);
+      return NextResponse.redirect(mfaUrl);
+    }
     if (pathname === '/dashboard' && !(await onboardingCompleted(session))) {
       const onboardingUrl = request.nextUrl.clone();
       onboardingUrl.pathname = '/onboarding';

@@ -60,10 +60,10 @@ export function IncomeSourcesForm({ userId, username, onComplete }: IncomeSource
         <div className="space-y-2 text-center">
           <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">مرحباً {username || 'بك'}</p>
           <h1 className="text-3xl font-bold text-emerald-950 dark:text-emerald-100">أنواع الدخل الشهري</h1>
-          <p className="text-slate-600 dark:text-slate-300">اختر مصادر دخلك وأدخل قيمة كل مصدر ليتم حساب دخلك الشهري بدقة.</p>
+          <p className="text-muted-foreground">اختر مصادر دخلك وأدخل قيمة كل مصدر ليتم حساب دخلك الشهري بدقة.</p>
         </div>
 
-        <Card className="border-emerald-900/10 bg-white/85 shadow-[0_24px_80px_rgba(0,66,54,0.14)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/70">
+        <Card className="border-border bg-card/90 shadow-[0_24px_80px_rgba(0,66,54,0.14)] backdrop-blur-2xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-emerald-900 dark:text-emerald-100">
               <Coins className="h-6 w-6" />
@@ -75,11 +75,11 @@ export function IncomeSourcesForm({ userId, username, onComplete }: IncomeSource
             {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">{error}</div>}
             <div className="grid gap-4 md:grid-cols-2">
               {INCOME_CATEGORIES.map((category) => (
-                <section key={category.id} className="rounded-2xl border border-emerald-900/10 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900/70">
+                <section key={category.id} className="rounded-2xl border border-border bg-card/90 p-4 text-card-foreground">
                   <div className="space-y-3">
                     <div>
                       <h2 className="font-bold text-emerald-950 dark:text-emerald-100">{category.nameAr}</h2>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{category.nameEn}</p>
+                      <p className="text-xs text-muted-foreground">{category.nameEn}</p>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {category.examples.map((example) => (

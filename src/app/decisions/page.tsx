@@ -38,16 +38,28 @@ type Lang = 'ar' | 'en' | 'fr';
 
 type DecisionRow = {
   id: string;
-  title: string;
+  decision_title?: string | null;
+  title?: string | null;
   decision_type: DecisionType;
-  amount: number;
+  estimated_cost?: number | string | null;
+  amount?: number | string | null;
+  monthly_impact?: number | string | null;
+  expected_benefit?: string | null;
+  risk_level?: 'low' | 'medium' | 'high' | string | null;
   currency: string;
   target_date: string | null;
-  priority: DecisionPriority;
-  inputs: Record<string, unknown> | null;
-  analysis: DecisionAnalysis | null;
-  status: string;
+  notes?: string | null;
+  risk_score?: number | string | null;
+  is_recommended?: boolean | null;
+  main_reason?: string | null;
+  better_alternative?: string | null;
+  action_plan?: unknown;
+  priority?: DecisionPriority;
+  inputs?: Record<string, unknown> | null;
+  analysis?: DecisionAnalysis | null;
+  status?: string;
   created_at: string;
+  updated_at?: string | null;
 };
 
 const SOURCE_TABLES = [
@@ -65,13 +77,13 @@ const SOURCE_TABLES = [
 
 const TEXT = {
   ar: {
-    title: 'مركز القرارات المالية',
-    subtitle: 'اختبر أثر القرار على السيولة والميزانية والمخاطر قبل تنفيذه، بناءً على بياناتك الحقيقية فقط.',
+    title: 'هل القرار مناسب؟',
+    subtitle: 'حلّل قراراً مالياً قبل تنفيذه، مثل شراء سيارة، أخذ قرض، فتح مشروع، تغيير السكن، شراء جهاز غالي، الاستثمار في فرصة، أو زيادة مصروف شهري.',
     eyebrow: 'تحليل قرارات',
     newDecision: 'قرار جديد',
     formTitle: 'بيانات القرار',
     titleLabel: 'عنوان القرار',
-    titlePlaceholder: 'مثال: شراء سيارة',
+    titlePlaceholder: 'مثال: شراء سيارة، أخذ قرض، فتح مشروع',
     type: 'نوع القرار',
     cost: 'التكلفة التقديرية',
     monthlyImpact: 'الأثر الشهري',
@@ -88,13 +100,15 @@ const TEXT = {
     saferAlternative: 'بديل أكثر أماناً',
     checklist: 'قائمة تجهيز 30 يوم',
     previous: 'قرارات سابقة',
-    noDecisions: 'لا توجد قرارات محفوظة بعد.',
+    noDecisions: 'لا توجد قرارات سابقة بعد',
+    noDecisionsBody: 'ابدأ بتحليل أول قرار مالي لك.',
     delete: 'حذف',
     deleted: 'تم حذف القرار.',
     saved: 'تم حفظ تحليل القرار.',
     validation: 'أدخل عنوان القرار والتكلفة التقديرية.',
     yes: 'نعم',
     no: 'لا',
+    wait: 'انتظر',
     high: 'عالي',
     medium: 'متوسط',
     low: 'منخفض',
@@ -107,13 +121,13 @@ const TEXT = {
     reasonHigh: 'القرار قد يخفض صافي الميزانية أو يضغط على المدخرات.',
   },
   en: {
-    title: 'Financial Decisions Center',
-    subtitle: 'Test the impact of a decision on liquidity, budget, and risk before acting, using only your real data.',
+    title: 'Is This Decision Suitable?',
+    subtitle: 'Analyze a financial action before committing, such as buying a car, taking a loan, starting a project, moving homes, buying an expensive device, investing in an opportunity, or adding a monthly expense.',
     eyebrow: 'Decision analysis',
     newDecision: 'New decision',
     formTitle: 'Decision details',
     titleLabel: 'Decision title',
-    titlePlaceholder: 'Example: Buy a car',
+    titlePlaceholder: 'Example: Buy a car, take a loan, start a project',
     type: 'Decision type',
     cost: 'Estimated cost',
     monthlyImpact: 'Monthly impact',
@@ -130,13 +144,15 @@ const TEXT = {
     saferAlternative: 'Safer alternative',
     checklist: '30-day preparation checklist',
     previous: 'Previous decisions',
-    noDecisions: 'No saved decisions yet.',
+    noDecisions: 'No previous decisions yet',
+    noDecisionsBody: 'Start by analyzing your first financial decision.',
     delete: 'Delete',
     deleted: 'Decision deleted.',
     saved: 'Decision analysis saved.',
     validation: 'Enter a decision title and estimated cost.',
     yes: 'Yes',
     no: 'No',
+    wait: 'Wait',
     high: 'High',
     medium: 'Medium',
     low: 'Low',
@@ -149,13 +165,13 @@ const TEXT = {
     reasonHigh: 'The decision may reduce monthly net or pressure savings.',
   },
   fr: {
-    title: 'Centre des décisions financières',
-    subtitle: 'Testez l’impact d’une décision sur la liquidité, le budget et le risque avant d’agir, avec vos données réelles uniquement.',
+    title: 'Cette décision est-elle adaptée ?',
+    subtitle: 'Analysez une action financière avant de vous engager : acheter une voiture, prendre un prêt, lancer un projet, déménager, acheter un appareil coûteux, investir ou ajouter une dépense mensuelle.',
     eyebrow: 'Analyse de décision',
     newDecision: 'Nouvelle décision',
     formTitle: 'Détails de la décision',
     titleLabel: 'Titre de la décision',
-    titlePlaceholder: 'Exemple : acheter une voiture',
+    titlePlaceholder: 'Exemple : acheter une voiture, prendre un prêt, lancer un projet',
     type: 'Type de décision',
     cost: 'Coût estimé',
     monthlyImpact: 'Impact mensuel',
@@ -172,13 +188,15 @@ const TEXT = {
     saferAlternative: 'Alternative plus sûre',
     checklist: 'Checklist de préparation 30 jours',
     previous: 'Décisions précédentes',
-    noDecisions: 'Aucune décision enregistrée.',
+    noDecisions: 'Aucune décision précédente',
+    noDecisionsBody: 'Commencez par analyser votre première décision financière.',
     delete: 'Supprimer',
     deleted: 'Décision supprimée.',
     saved: 'Analyse de décision enregistrée.',
     validation: 'Saisissez un titre et un coût estimé.',
     yes: 'Oui',
     no: 'Non',
+    wait: 'Attendre',
     high: 'Élevé',
     medium: 'Moyen',
     low: 'Faible',
@@ -228,6 +246,43 @@ function riskScore(analysis: DecisionAnalysis | null) {
   return Math.max(0, Math.min(100, 100 - analysis.score));
 }
 
+function rowTitle(row: DecisionRow) {
+  return String(row.decision_title ?? row.title ?? '').trim();
+}
+
+function rowAmount(row: DecisionRow) {
+  return Number(row.estimated_cost ?? row.amount ?? 0) || 0;
+}
+
+function rowRiskScore(row: DecisionRow) {
+  const savedScore = Number(row.risk_score);
+  if (Number.isFinite(savedScore) && savedScore > 0) return Math.max(0, Math.min(100, savedScore));
+  return riskScore(row.analysis ?? null);
+}
+
+function rowAnalysis(row: DecisionRow): DecisionAnalysis | null {
+  if (row.analysis) return row.analysis;
+  const score = Number(row.risk_score);
+  if (!Number.isFinite(score)) return null;
+  const recommended = row.is_recommended === true;
+  return {
+    source: 'rules',
+    monthlyIncome: 0,
+    monthlyExpenses: 0,
+    monthlyNet: null,
+    savingsTotal: 0,
+    investmentsTotal: 0,
+    decisionRatio: null,
+    netAfterDecision: null,
+    savingsAfterDecision: null,
+    score: Math.max(0, Math.min(100, 100 - score)),
+    status: recommended ? 'initially_suitable' : score >= 70 ? 'high_risk' : score >= 40 ? 'needs_review' : 'insufficient_data',
+    missingData: [],
+    riskFlags: [],
+    scenarios: [],
+  };
+}
+
 function statusTone(analysis: DecisionAnalysis | null) {
   if (!analysis || analysis.status === 'insufficient_data') return 'warning';
   if (analysis.status === 'high_risk') return 'danger';
@@ -264,7 +319,7 @@ export default function DecisionsPage() {
     const db = supabase as any;
     const [sources, saved] = await Promise.all([
       loadUserDataTables(db, user.id, SOURCE_TABLES),
-      db.from('user_decisions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      db.from('user_decisions').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
     ]);
 
     const records = sources.records as Record<string, any[]>;
@@ -308,14 +363,14 @@ export default function DecisionsPage() {
       priority: 'medium',
       notes: form.notes,
       recurringCost: numeric(form.monthlyImpact),
-      expectedReturn: numeric(form.expectedBenefit),
+      expectedReturn: 0,
       riskLevel: form.riskLevel,
     };
     return analyzeDecision(inputs, sourceData);
   }, [currency, form, sourceData]);
 
   const selectedDecision = decisions.find(item => item.id === selectedId) ?? null;
-  const visibleAnalysis = selectedDecision?.analysis ?? draftAnalysis;
+  const visibleAnalysis = selectedDecision ? rowAnalysis(selectedDecision) : draftAnalysis;
 
   async function saveDecision() {
     if (!user || !sourceData) return;
@@ -334,17 +389,39 @@ export default function DecisionsPage() {
       priority: 'medium',
       notes: form.notes,
       recurringCost: numeric(form.monthlyImpact),
-      expectedReturn: numeric(form.expectedBenefit),
+      expectedReturn: 0,
       riskLevel: form.riskLevel,
     };
     const analysis = analyzeDecision(inputs, sourceData);
+    const savedRiskScore = riskScore(analysis) ?? 0;
+    const recommended = analysis.status === 'initially_suitable';
+    const mainReason = analysis.status === 'high_risk'
+      ? text.reasonHigh
+      : analysis.status === 'needs_review'
+        ? text.reasonReview
+        : analysis.status === 'insufficient_data'
+          ? text.insufficient
+          : text.reasonGood;
+    const now = new Date().toISOString();
     const { error: saveError } = await (supabase as any).from('user_decisions').insert({
       user_id: user.id,
-      title: inputs.title,
+      decision_title: inputs.title,
       decision_type: inputs.decisionType,
-      amount: inputs.amount,
-      currency,
+      estimated_cost: inputs.amount,
+      monthly_impact: inputs.recurringCost ?? 0,
+      expected_benefit: form.expectedBenefit.trim() || null,
+      risk_level: inputs.riskLevel ?? 'medium',
       target_date: inputs.targetDate ?? null,
+      notes: inputs.notes?.trim() || null,
+      risk_score: savedRiskScore,
+      is_recommended: recommended,
+      main_reason: mainReason,
+      better_alternative: text.alternativeText,
+      action_plan: { checklist: CHECKLIST[lang as Lang], scenarios: analysis.scenarios },
+      currency,
+      updated_at: now,
+      title: inputs.title,
+      amount: inputs.amount,
       priority: inputs.priority,
       inputs,
       analysis,
@@ -361,7 +438,8 @@ export default function DecisionsPage() {
   }
 
   async function deleteDecision(id: string) {
-    const { error: deleteError } = await (supabase as any).from('user_decisions').delete().eq('id', id);
+    if (!user) return;
+    const { error: deleteError } = await (supabase as any).from('user_decisions').delete().eq('id', id).eq('user_id', user.id);
     if (deleteError) {
       setError(deleteError.message || 'delete_error');
       return;
@@ -372,7 +450,11 @@ export default function DecisionsPage() {
 
   const tone = statusTone(visibleAnalysis);
   const score = riskScore(visibleAnalysis);
-  const suitable = visibleAnalysis?.status === 'initially_suitable';
+  const recommendation = visibleAnalysis?.status === 'initially_suitable'
+    ? text.yes
+    : visibleAnalysis?.status === 'high_risk'
+      ? text.no
+      : text.wait;
   const reason = !visibleAnalysis || visibleAnalysis.status === 'insufficient_data'
     ? text.insufficient
     : visibleAnalysis.status === 'high_risk'
@@ -437,7 +519,7 @@ export default function DecisionsPage() {
               </label>
               <label>
                 <span>{text.benefit}</span>
-                <input inputMode="decimal" value={form.expectedBenefit} onChange={event => setForm(prev => ({ ...prev, expectedBenefit: event.target.value }))} />
+                <input value={form.expectedBenefit} onChange={event => setForm(prev => ({ ...prev, expectedBenefit: event.target.value }))} />
               </label>
               <label>
                 <span>{text.riskLevel}</span>
@@ -474,7 +556,7 @@ export default function DecisionsPage() {
             <div className="decision-metrics">
               <Metric label={text.liquidityImpact} value={liquidity} />
               <Metric label={text.monthlyBudgetImpact} value={monthlyImpact} />
-              <Metric label={text.suitableNow} value={suitable ? text.yes : text.no} />
+              <Metric label={text.suitableNow} value={recommendation} />
             </div>
             <div className="decision-reason">
               <b>{text.mainReason}</b>
@@ -497,19 +579,26 @@ export default function DecisionsPage() {
             <ClipboardCheck size={19} />
             <h2>{text.previous}</h2>
           </div>
-          {decisions.length === 0 ? <div className="decision-empty"><CalendarDays size={24} />{text.noDecisions}</div> : (
+          {decisions.length === 0 ? (
+            <div className="decision-empty">
+              <CalendarDays size={24} />
+              <strong>{text.noDecisions}</strong>
+              <span>{text.noDecisionsBody}</span>
+            </div>
+          ) : (
             <div className="decision-list">
               {decisions.map(item => {
-                const itemScore = riskScore(item.analysis);
+                const itemScore = rowRiskScore(item);
                 const active = item.id === selectedId;
+                const title = rowTitle(item);
                 return (
                   <article key={item.id} className={`decision-row ${active ? 'active' : ''}`}>
                     <button type="button" onClick={() => setSelectedId(item.id)}>
-                      <strong>{item.title}</strong>
+                      <strong>{title}</strong>
                       <span>{TYPE_LABELS[item.decision_type]?.[lang as Lang] ?? item.decision_type} · {money(Number(item.amount || 0))}</span>
                     </button>
                     <em>{itemScore === null ? '--' : `${itemScore}%`}</em>
-                    <button type="button" className="delete" onClick={() => deleteDecision(item.id)} aria-label={`${text.delete}: ${item.title}`}>
+                    <button type="button" className="delete" onClick={() => deleteDecision(item.id)} aria-label={`${text.delete}: ${title}`}>
                       <Trash2 size={16} />
                     </button>
                   </article>
@@ -530,4 +619,3 @@ export default function DecisionsPage() {
 function Metric({ label, value }: { label: string; value: string }) {
   return <div className="decision-metric"><span>{label}</span><strong>{value}</strong></div>;
 }
-

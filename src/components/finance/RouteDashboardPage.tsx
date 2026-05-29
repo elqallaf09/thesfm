@@ -55,7 +55,19 @@ type PageKind = 'expenses' | 'income' | 'invest' | 'savings' | 'goals' | 'report
 type ExpensePageTab = 'overview' | 'records' | 'receipts' | 'categories' | 'analytics' | 'reports';
 type LangText = { ar: string; en: string; fr?: string };
 type TranslateFn = ReturnType<typeof useLanguage>['t'];
-type MoneyItem = { id: string; name: string; amount: number; created_at?: string | null };
+type MoneyItem = {
+  id: string;
+  name: string;
+  amount: number;
+  currency?: string | null;
+  saving_type?: string | null;
+  saving_method?: string | null;
+  saved_at?: string | null;
+  note?: string | null;
+  goal_id?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
 type IncomeSource = MoneyItem & {
   label?: string | null;
   category?: string | null;
@@ -66,7 +78,18 @@ type IncomeSource = MoneyItem & {
   enhanced?: Record<string, unknown> | null;
 };
 type EntryKind = Extract<PageKind, 'expenses' | 'income' | 'invest' | 'savings'>;
-type EntryFormState = { id?: string; name: string; amount: string; category: string };
+type EntryFormState = {
+  id?: string;
+  name: string;
+  amount: string;
+  category: string;
+  currency: string;
+  savingType: string;
+  savingMethod: string;
+  savedAt: string;
+  note: string;
+  goalId: string;
+};
 type EntryRow = { id: string; title: string; subtitle: string; value: string; item?: MoneyItem | IncomeSource };
 type GoalItem = {
   id: string;
@@ -287,10 +310,20 @@ const emptySnapshot: Snapshot = {
   error: null,
 };
 
-const emptyEntryForm: EntryFormState = { name: '', amount: '', category: 'general' };
 function todayInputDate() {
   return new Date().toISOString().slice(0, 10);
 }
+const emptyEntryForm = (defaultCurrency = 'KWD'): EntryFormState => ({
+  name: '',
+  amount: '',
+  category: 'general',
+  currency: defaultCurrency,
+  savingType: '',
+  savingMethod: '',
+  savedAt: todayInputDate(),
+  note: '',
+  goalId: '',
+});
 const emptyExpenseForm = (defaultCurrency = 'KWD'): ExpenseFormState => ({
   name: '',
   amount: '',
@@ -370,6 +403,52 @@ const PAYMENT_METHODS = [
   { id: 'apple_pay', label: { ar: 'Apple Pay', en: 'Apple Pay', fr: 'Apple Pay' } },
   { id: 'other', label: { ar: 'أخرى', en: 'Other', fr: 'Autre' } },
 ];
+
+const SAVING_TYPES = [
+  { id: 'emergency_fund', label: { ar: 'صندوق طوارئ', en: 'Emergency fund', fr: 'Fonds d’urgence' } },
+  { id: 'financial_goal', label: { ar: 'هدف مالي', en: 'Financial goal', fr: 'Objectif financier' } },
+  { id: 'monthly_saving', label: { ar: 'ادخار شهري', en: 'Monthly saving', fr: 'Épargne mensuelle' } },
+  { id: 'temporary_saving', label: { ar: 'ادخار مؤقت', en: 'Temporary saving', fr: 'Épargne temporaire' } },
+  { id: 'future_investment', label: { ar: 'استثمار مستقبلي', en: 'Future investment', fr: 'Investissement futur' } },
+  { id: 'other', label: { ar: 'أخرى', en: 'Other', fr: 'Autre' } },
+];
+
+const SAVING_METHODS = [
+  { id: 'cash', label: { ar: 'نقدي', en: 'Cash', fr: 'Espèces' } },
+  { id: 'bank_account', label: { ar: 'حساب بنكي', en: 'Bank account', fr: 'Compte bancaire' } },
+  { id: 'automatic_transfer', label: { ar: 'تحويل تلقائي', en: 'Automatic transfer', fr: 'Virement automatique' } },
+  { id: 'digital_wallet', label: { ar: 'محفظة رقمية', en: 'Digital wallet', fr: 'Portefeuille numérique' } },
+  { id: 'other', label: { ar: 'أخرى', en: 'Other', fr: 'Autre' } },
+];
+
+const savingModalText = {
+  title: { ar: 'إضافة إدخار جديد', en: 'Add new saving', fr: 'Ajouter une épargne' },
+  editTitle: { ar: 'تعديل الإدخار', en: 'Edit saving', fr: 'Modifier l’épargne' },
+  subtitle: {
+    ar: 'سجّل مبلغ ادخار جديد ليتم احتسابه ضمن خطتك المالية.',
+    en: 'Record a new saving amount so it counts toward your financial plan.',
+    fr: 'Enregistrez un nouveau montant d’épargne pour l’intégrer à votre plan financier.',
+  },
+  name: { ar: 'اسم الإدخار', en: 'Saving name', fr: 'Nom de l’épargne' },
+  namePlaceholder: { ar: 'مثال: حصالة، صندوق طوارئ، توفير للسيارة', en: 'Example: money box, emergency fund, car saving', fr: 'Exemple : tirelire, fonds d’urgence, voiture' },
+  amount: { ar: 'المبلغ', en: 'Amount', fr: 'Montant' },
+  type: { ar: 'نوع الإدخار', en: 'Saving type', fr: 'Type d’épargne' },
+  method: { ar: 'طريقة الإدخار', en: 'Saving method', fr: 'Méthode d’épargne' },
+  date: { ar: 'التاريخ', en: 'Date', fr: 'Date' },
+  note: { ar: 'ملاحظة', en: 'Note', fr: 'Note' },
+  notePlaceholder: { ar: 'اكتب ملاحظة قصيرة إن وجدت', en: 'Write a short note if needed', fr: 'Ajoutez une courte note si nécessaire' },
+  linkedGoal: { ar: 'ربط بهدف مالي', en: 'Link to financial goal', fr: 'Lier à un objectif' },
+  noGoal: { ar: 'بدون ربط', en: 'No linked goal', fr: 'Sans objectif lié' },
+  save: { ar: 'حفظ الإدخار', en: 'Save saving', fr: 'Enregistrer' },
+  saving: { ar: 'جاري الحفظ...', en: 'Saving...', fr: 'Enregistrement...' },
+  success: { ar: 'تم حفظ الإدخار بنجاح', en: 'Saving saved successfully', fr: 'Épargne enregistrée' },
+  failed: { ar: 'تعذر حفظ الإدخار، حاول مرة أخرى', en: 'Could not save saving. Please try again.', fr: 'Impossible d’enregistrer l’épargne.' },
+  nameRequired: { ar: 'يرجى إدخال اسم الإدخار', en: 'Please enter the saving name', fr: 'Veuillez saisir le nom' },
+  amountRequired: { ar: 'يرجى إدخال مبلغ صحيح', en: 'Please enter a valid amount', fr: 'Veuillez saisir un montant valide' },
+  typeRequired: { ar: 'يرجى اختيار نوع الإدخار', en: 'Please choose the saving type', fr: 'Veuillez choisir le type' },
+  methodRequired: { ar: 'يرجى اختيار طريقة الإدخار', en: 'Please choose the saving method', fr: 'Veuillez choisir la méthode' },
+  dateRequired: { ar: 'يرجى اختيار التاريخ', en: 'Please choose the date', fr: 'Veuillez choisir la date' },
+};
 
 const expenseUi = {
   manualTab: { ar: 'إدخال يدوي', en: 'Manual Entry', fr: 'Saisie manuelle' },
@@ -538,6 +617,11 @@ function pick(text: LangText, langOrIsAr: string | boolean) {
   if (lang === 'ar') return text.ar;
   if (lang === 'fr') return text.fr ?? text.en;
   return text.en;
+}
+
+function optionLabelById(options: Array<{ id: string; label: LangText }>, id: string | null | undefined, lang: string) {
+  if (!id) return '';
+  return pick(options.find(option => option.id === id)?.label || { ar: id, en: id, fr: id }, lang);
 }
 
 function expenseText(key: keyof typeof expenseUi, lang: string) {
@@ -1283,7 +1367,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [chatValue, setChatValue] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
-  const [entryForm, setEntryForm] = useState<EntryFormState>(emptyEntryForm);
+  const [entryForm, setEntryForm] = useState<EntryFormState>(() => emptyEntryForm(currency || 'KWD'));
   const [entryMode, setEntryMode] = useState<'create' | 'edit'>('create');
   const [entryOpen, setEntryOpen] = useState(false);
   const [expenseForm, setExpenseForm] = useState<ExpenseFormState>(() => emptyExpenseForm());
@@ -1352,7 +1436,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       const [income, expenses, savings, investments, goals] = await Promise.all([
         safeQuery<IncomeSource>(supabase.from('monthly_income_sources').select('*').eq('user_id', user.id) as unknown as QueryResult<IncomeSource>, queryMeta('monthly_income_sources', 'monthly_income_sources')),
         expensesQuery(),
-        safeQuery<MoneyItem>(supabase.from('savings_items').select('id, name, amount, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('savings_items', 'savings_items')),
+        safeQuery<MoneyItem>(supabase.from('savings_items').select('*').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<MoneyItem>, queryMeta('savings_items', 'savings_items')),
         safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('investment_items', 'investment_items')),
         safeQuery<GoalRow>(supabase.from('financial_goals').select('*').eq('user_id', user.id) as unknown as QueryResult<GoalRow>, queryMeta('financial_goals', 'financial_goals')),
       ]);
@@ -1408,6 +1492,19 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const insights = useMemo(() => buildInsights(kind, data, lang, currency, t), [data, lang, kind, currency, t]);
   const selectedGoalCurrency = useMemo(() => getCurrency(goalForm.currency || currency || 'KWD'), [currency, goalForm.currency]);
   const selectedCurrencySymbol = isAr ? selectedGoalCurrency.symbolAr : selectedGoalCurrency.symbolEn;
+  const selectedEntryCurrency = useMemo(() => getCurrency(entryForm.currency || currency || 'KWD'), [currency, entryForm.currency]);
+  const selectedEntryCurrencySymbol = isAr ? selectedEntryCurrency.symbolAr : selectedEntryCurrency.symbolEn;
+  const savingFormErrors = useMemo(() => {
+    if (kind !== 'savings') return [] as string[];
+    const errors: string[] = [];
+    if (!entryForm.name.trim()) errors.push(pick(savingModalText.nameRequired, lang));
+    if (!Number.isFinite(Number(entryForm.amount)) || Number(entryForm.amount) <= 0) errors.push(pick(savingModalText.amountRequired, lang));
+    if (!entryForm.savingType) errors.push(pick(savingModalText.typeRequired, lang));
+    if (!entryForm.savingMethod) errors.push(pick(savingModalText.methodRequired, lang));
+    if (!entryForm.savedAt) errors.push(pick(savingModalText.dateRequired, lang));
+    return errors;
+  }, [entryForm, kind, lang]);
+  const savingFormValid = kind !== 'savings' || savingFormErrors.length === 0;
   const goalPreview = useMemo(() => buildGoalAnalysis({
     id: goalForm.id || 'preview',
     name: goalForm.name || t('goal_name_label'),
@@ -1488,6 +1585,29 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     window.setTimeout(() => setEntryMessage(null), 2200);
   }
 
+  async function adjustLinkedSavingsGoal(goalId: string | null | undefined, delta: number) {
+    if (!goalId || !user || !Number.isFinite(delta) || delta === 0) return;
+    const { data: goal, error: goalFetchError } = await supabase
+      .from('financial_goals')
+      .select('id,current_amount')
+      .eq('id', goalId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (goalFetchError) throw goalFetchError;
+    if (!goal) return;
+    const nextAmount = Math.max(0, Number(goal.current_amount || 0) + delta);
+    const { error: goalUpdateError } = await supabase
+      .from('financial_goals')
+      .update({ current_amount: nextAmount, updated_at: new Date().toISOString() })
+      .eq('id', goalId)
+      .eq('user_id', user.id);
+    if (goalUpdateError) throw goalUpdateError;
+    setSnapshot(prev => ({
+      ...prev,
+      goals: prev.goals.map(item => item.id === goalId ? { ...item, current_amount: nextAmount } : item),
+    }));
+  }
+
   function openCreateEntry() {
     if (!editableKind(kind)) return;
     if (kind === 'expenses') {
@@ -1500,7 +1620,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       return;
     }
     setEntryMode('create');
-    setEntryForm(emptyEntryForm);
+    setEntryForm(emptyEntryForm(currency || 'KWD'));
     setEntryOpen(true);
   }
 
@@ -1537,6 +1657,12 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       name: 'label' in item && item.label ? item.label : item.name,
       amount: String(item.amount ?? ''),
       category: 'category' in item && item.category ? item.category : 'general',
+      currency: item.currency || currency || 'KWD',
+      savingType: item.saving_type || '',
+      savingMethod: item.saving_method || '',
+      savedAt: item.saved_at ? item.saved_at.slice(0, 10) : item.created_at ? item.created_at.slice(0, 10) : todayInputDate(),
+      note: item.note || '',
+      goalId: item.goal_id || '',
     });
     setEntryOpen(true);
   }
@@ -2070,6 +2196,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
     const name = entryForm.name.trim();
     const amount = Number(entryForm.amount);
+    if (kind === 'savings' && savingFormErrors.length > 0) {
+      showEntryMessage('err', savingFormErrors[0]);
+      return;
+    }
     if (!name || !amount || amount <= 0) {
       showEntryMessage('err', t('entry_validation_error'));
       return;
@@ -2084,7 +2214,21 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         const current = readGuestItems(kind);
         const item = kind === 'income'
           ? { id, name, label: name, category: entryForm.category || 'general', amount, created_at: new Date().toISOString() } as IncomeSource
-          : { id, name, amount, created_at: new Date().toISOString() } as MoneyItem;
+          : kind === 'savings'
+            ? {
+              id,
+              name,
+              amount,
+              currency: entryForm.currency || currency || 'KWD',
+              saving_type: entryForm.savingType,
+              saving_method: entryForm.savingMethod,
+              saved_at: entryForm.savedAt,
+              note: entryForm.note.trim() || null,
+              goal_id: entryForm.savingType === 'financial_goal' ? entryForm.goalId || null : null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            } as MoneyItem
+            : { id, name, amount, created_at: new Date().toISOString() } as MoneyItem;
         const next = mode === 'create' ? [item, ...current] : current.map(existing => existing.id === id ? item : existing);
         writeGuestItems(kind, next);
         applyEntryToSnapshot(kind, item, mode);
@@ -2111,6 +2255,68 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           }
         } else {
           const table = kind === 'expenses' ? 'expense_items' : kind === 'savings' ? 'savings_items' : 'investment_items';
+          if (kind === 'savings') {
+            const previous = snapshot.savings.find(item => item.id === id);
+            const linkedGoalId = entryForm.savingType === 'financial_goal' ? entryForm.goalId || null : null;
+            const savingPayload = {
+              user_id: user.id,
+              name,
+              amount,
+              currency: entryForm.currency || currency || 'KWD',
+              saving_type: entryForm.savingType,
+              saving_method: entryForm.savingMethod,
+              saved_at: entryForm.savedAt,
+              note: entryForm.note.trim() || null,
+              goal_id: linkedGoalId,
+              updated_at: new Date().toISOString(),
+            };
+            const adjustGoal = async (goalId: string | null | undefined, delta: number) => {
+              if (!goalId || !Number.isFinite(delta) || delta === 0) return;
+              const { data: goal, error: goalFetchError } = await supabase
+                .from('financial_goals')
+                .select('id,current_amount')
+                .eq('id', goalId)
+                .eq('user_id', user.id)
+                .maybeSingle();
+              if (goalFetchError) throw goalFetchError;
+              if (!goal) return;
+              const nextAmount = Math.max(0, Number(goal.current_amount || 0) + delta);
+              const { error: goalUpdateError } = await supabase
+                .from('financial_goals')
+                .update({ current_amount: nextAmount, updated_at: new Date().toISOString() })
+                .eq('id', goalId)
+                .eq('user_id', user.id);
+              if (goalUpdateError) throw goalUpdateError;
+              setSnapshot(prev => ({
+                ...prev,
+                goals: prev.goals.map(item => item.id === goalId ? { ...item, current_amount: nextAmount } : item),
+              }));
+            };
+
+            if (mode === 'create') {
+              const { data: created, error } = await supabase
+                .from('savings_items')
+                .insert(savingPayload)
+                .select('*')
+                .single();
+              if (error) throw error;
+              await adjustGoal(linkedGoalId, amount);
+              applyEntryToSnapshot(kind, created as MoneyItem, mode);
+            } else {
+              const { data: updated, error } = await supabase
+                .from('savings_items')
+                .update(savingPayload)
+                .eq('id', id)
+                .eq('user_id', user.id)
+                .select('*')
+                .single();
+              if (error) throw error;
+              if (previous?.goal_id && previous.goal_id !== linkedGoalId) await adjustGoal(previous.goal_id, -Number(previous.amount || 0));
+              const delta = amount - (previous?.goal_id === linkedGoalId ? Number(previous.amount || 0) : 0);
+              await adjustGoal(linkedGoalId, delta);
+              applyEntryToSnapshot(kind, updated as MoneyItem, mode);
+            }
+          } else
           if (mode === 'create') {
             const { data: created, error } = await supabase.from(table).insert({
               user_id: user.id,
@@ -2128,10 +2334,11 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       }
 
       setEntryOpen(false);
-      setEntryForm(emptyEntryForm);
-      showEntryMessage('ok', mode === 'create' ? t('success') : t('updateSuccess'));
+      setEntryForm(emptyEntryForm(currency || 'KWD'));
+      showEntryMessage('ok', kind === 'savings' ? pick(savingModalText.success, lang) : mode === 'create' ? t('success') : t('updateSuccess'));
     } catch (err) {
-      showEntryMessage('err', err instanceof Error ? err.message : t('error'));
+      console.error(`[${kind}] Failed to save entry`, err);
+      showEntryMessage('err', kind === 'savings' ? pick(savingModalText.failed, lang) : err instanceof Error ? err.message : t('error'));
     } finally {
       setEntrySaving(false);
     }
@@ -2150,6 +2357,13 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         const table = kind === 'income' ? 'monthly_income_sources' : kind === 'expenses' ? 'expense_items' : kind === 'savings' ? 'savings_items' : 'investment_items';
         const { error } = await supabase.from(table).delete().eq('id', confirmDelete.id);
         if (error) throw error;
+        if (kind === 'savings') {
+          try {
+            await adjustLinkedSavingsGoal((confirmDelete as MoneyItem).goal_id, -Number(confirmDelete.amount || 0));
+          } catch (goalError) {
+            console.error('[savings] Failed to update linked goal after deleting saving', goalError);
+          }
+        }
       }
 
       setSnapshot(prev => {
@@ -2328,6 +2542,16 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     };
     window.addEventListener('keydown', close);
     return () => window.removeEventListener('keydown', close);
+  }, [confirmDelete, entryOpen, goalEditOpen, receiptDetails]);
+
+  useEffect(() => {
+    const modalOpen = entryOpen || Boolean(confirmDelete) || goalEditOpen || Boolean(receiptDetails);
+    if (!modalOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
   }, [confirmDelete, entryOpen, goalEditOpen, receiptDetails]);
 
   async function sendAiMessage() {
@@ -2868,10 +3092,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   }
 
   return (
-    <div className="sfm-shell" dir={dir}>
+    <div className={`sfm-shell${kind === 'savings' ? ' savings-shell' : ''}`} dir={dir}>
       <Sidebar />
 
-      <main className={`sfm-main${kind === 'reports' ? ' reports-main' : ''}`}>
+      <main className={`sfm-main${kind === 'reports' ? ' reports-main' : ''}${kind === 'savings' ? ' savings-main' : ''}`}>
         <header className="sfm-header">
           <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open navigation">
             <Menu size={20} />
@@ -3149,33 +3373,76 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
         {entryOpen && editableKind(kind) && (
           <div className="entry-overlay" role="presentation" onMouseDown={() => setEntryOpen(false)}>
-            <div className="entry-modal" role="dialog" aria-modal="true" aria-labelledby="entry-modal-title" onMouseDown={event => event.stopPropagation()}>
+            <div className={`entry-modal${kind === 'savings' ? ' savings-modal' : ''}`} role="dialog" aria-modal="true" aria-labelledby="entry-modal-title" onMouseDown={event => event.stopPropagation()}>
               <div className="entry-modal-head">
                 <div>
-                  <p>{entryMode === 'edit' ? t('update') : t('entry_save')}</p>
-                  <h3 id="entry-modal-title">{t(entryTitleKey(kind))}</h3>
+                  <p>{kind === 'savings' ? pick(savingModalText.subtitle, lang) : entryMode === 'edit' ? t('update') : t('entry_save')}</p>
+                  <h3 id="entry-modal-title">{kind === 'savings' ? entryMode === 'edit' ? pick(savingModalText.editTitle, lang) : pick(savingModalText.title, lang) : t(entryTitleKey(kind))}</h3>
                 </div>
                 <button type="button" className="icon-btn" onClick={() => setEntryOpen(false)} aria-label={t('close')}>
                   <X size={18} />
                 </button>
               </div>
-              <form className="entry-form" onSubmit={saveEntry}>
+              <form className={`entry-form${kind === 'savings' ? ' savings-form-grid' : ''}`} onSubmit={saveEntry}>
                 <label>
-                  <span>{t('entry_name')}</span>
+                  <span>{kind === 'savings' ? pick(savingModalText.name, lang) : t('entry_name')}</span>
                   <input
                     value={entryForm.name}
                     onChange={event => setEntryForm(prev => ({ ...prev, name: event.target.value }))}
+                    placeholder={kind === 'savings' ? pick(savingModalText.namePlaceholder, lang) : undefined}
                     autoFocus
                   />
                 </label>
                 <label>
-                  <span>{t('entry_amount')}</span>
-                  <input
-                    inputMode="decimal"
-                    value={entryForm.amount}
-                    onChange={event => setEntryForm(prev => ({ ...prev, amount: event.target.value }))}
-                  />
+                  <span>{kind === 'savings' ? pick(savingModalText.amount, lang) : t('entry_amount')}</span>
+                  <div className={kind === 'savings' ? 'currency-input-wrap' : undefined}>
+                    {kind === 'savings' && <span className="currency-symbol">{selectedEntryCurrencySymbol}</span>}
+                    <input
+                      inputMode="decimal"
+                      value={entryForm.amount}
+                      onChange={event => setEntryForm(prev => ({ ...prev, amount: event.target.value }))}
+                      placeholder={kind === 'savings' ? '0.000' : undefined}
+                    />
+                  </div>
                 </label>
+                {kind === 'savings' && (
+                  <>
+                    <label>
+                      <span>{pick(savingModalText.type, lang)}</span>
+                      <select value={entryForm.savingType} onChange={event => setEntryForm(prev => ({ ...prev, savingType: event.target.value, goalId: event.target.value === 'financial_goal' ? prev.goalId : '' }))}>
+                        <option value="">{pick(savingModalText.typeRequired, lang)}</option>
+                        {SAVING_TYPES.map(option => <option key={option.id} value={option.id}>{pick(option.label, lang)}</option>)}
+                      </select>
+                    </label>
+                    <label>
+                      <span>{pick(savingModalText.method, lang)}</span>
+                      <select value={entryForm.savingMethod} onChange={event => setEntryForm(prev => ({ ...prev, savingMethod: event.target.value }))}>
+                        <option value="">{pick(savingModalText.methodRequired, lang)}</option>
+                        {SAVING_METHODS.map(option => <option key={option.id} value={option.id}>{pick(option.label, lang)}</option>)}
+                      </select>
+                    </label>
+                    <label>
+                      <span>{pick(savingModalText.date, lang)}</span>
+                      <input type="date" value={entryForm.savedAt} onChange={event => setEntryForm(prev => ({ ...prev, savedAt: event.target.value }))} />
+                    </label>
+                    {entryForm.savingType === 'financial_goal' && (
+                      <label>
+                        <span>{pick(savingModalText.linkedGoal, lang)}</span>
+                        <select value={entryForm.goalId} onChange={event => setEntryForm(prev => ({ ...prev, goalId: event.target.value }))}>
+                          <option value="">{pick(savingModalText.noGoal, lang)}</option>
+                          {data.goals.map(goal => <option key={goal.id} value={goal.id}>{goal.name}</option>)}
+                        </select>
+                      </label>
+                    )}
+                    <label className="savings-note-field">
+                      <span>{pick(savingModalText.note, lang)}</span>
+                      <textarea value={entryForm.note} onChange={event => setEntryForm(prev => ({ ...prev, note: event.target.value }))} placeholder={pick(savingModalText.notePlaceholder, lang)} />
+                    </label>
+                    {savingFormErrors.length > 0 && (
+                      <div className="form-error">{savingFormErrors[0]}</div>
+                    )}
+                  </>
+                )}
                 {kind === 'income' && (
                   <label>
                     <span>{t('entry_category')}</span>
@@ -3189,8 +3456,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                   <button type="button" className="ghost-form-btn" onClick={() => setEntryOpen(false)} disabled={entrySaving}>
                     {t('cancel')}
                   </button>
-                  <button type="submit" className="primary-form-btn" disabled={entrySaving}>
-                    {entrySaving ? t('saving') : entryMode === 'edit' ? t('update') : t('entry_save')}
+                  <button type="submit" className="primary-form-btn" disabled={entrySaving || !savingFormValid}>
+                    {kind === 'savings' ? entrySaving ? pick(savingModalText.saving, lang) : pick(savingModalText.save, lang) : entrySaving ? t('saving') : entryMode === 'edit' ? t('update') : t('entry_save')}
                   </button>
                 </div>
               </form>
@@ -3755,13 +4022,15 @@ const baseStyles = `
   .goal-card{background:var(--sfm-card);border:1px solid rgba(167,243,240,.16);border-radius:22px;padding:18px;box-shadow:0 8px 28px rgba(3,18,37,.07);display:grid;gap:15px;transition:all .22s ease}.goal-card:hover{transform:translateY(-2px);box-shadow:0 16px 38px rgba(3,18,37,.11)}.goal-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.goal-title-wrap{display:flex;align-items:center;gap:12px}.goal-icon{width:42px;height:42px;border-radius:14px;background:rgba(167,243,240,.13);display:grid;place-items:center;font-size:20px}.goal-title-wrap strong{display:block;font-size:16px;font-weight:900;color:var(--sfm-foreground)}.goal-title-wrap span{display:block;margin-top:4px;color:var(--sfm-muted);font-size:12px;font-weight:800}.goal-edit-btn{height:38px;border:1px solid rgba(167,243,240,.28);border-radius:13px;background:linear-gradient(135deg,rgba(167,243,240,.16),rgba(248,251,255,.95));color:var(--sfm-muted);padding:0 12px;font:900 12px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;gap:7px;cursor:pointer;box-shadow:0 6px 18px rgba(167,243,240,.12);transition:all .2s ease}.goal-edit-btn:hover{background:var(--sfm-soft-cyan);color:var(--sfm-foreground);transform:translateY(-1px)}.goal-progress-row{display:flex;align-items:center;gap:10px}.goal-progress-track{height:10px;border-radius:999px;background:rgba(29,140,255,.10);overflow:hidden;flex:1}.goal-progress-track span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--sfm-primary),var(--sfm-accent))}.goal-progress-row b{color:var(--sfm-muted);font-size:13px}.goal-meta-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.goal-meta-grid div,.goal-ai-metrics div{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:14px;padding:10px}.goal-meta-grid span,.goal-ai-metrics span{display:block;color:var(--sfm-muted);font-size:11px;font-weight:900;margin-bottom:5px}.goal-meta-grid strong,.goal-ai-metrics b{font-size:13px;color:var(--sfm-foreground)}.goal-ai-card,.goal-modal-preview{border:1px solid rgba(167,243,240,.2);background:linear-gradient(180deg,var(--sfm-card),var(--sfm-light-card));border-radius:18px;padding:15px;display:grid;gap:12px}.goal-ai-head{display:flex;align-items:center;gap:9px;color:var(--sfm-muted)}.goal-ai-head svg{color:var(--sfm-soft-cyan)}.goal-ai-head strong{font-size:14px;font-weight:900}.risk-pill{margin-inline-start:auto;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900}.risk-pill.low{background:rgba(34,197,94,.12);color:#15803D}.risk-pill.medium{background:rgba(167,243,240,.16);color:var(--sfm-muted)}.risk-pill.high{background:rgba(239,68,68,.1);color:#B91C1C}.goal-ai-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.goal-ai-card p,.goal-modal-preview p{margin:0;color:var(--sfm-muted);font-size:13px;line-height:1.8;font-weight:700}.goal-ai-plan{background:rgba(255,255,255,.72);border-radius:14px;padding:12px}.goal-ai-plan strong{font-size:13px;color:var(--sfm-foreground)}.goal-ai-plan ol{margin:8px 18px 0;padding:0;color:var(--sfm-muted);font-size:12.5px;line-height:1.8;font-weight:700}.goal-modal{width:min(860px,100%);max-height:min(88vh,980px);overflow:auto}.goal-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.goal-form-grid label:first-child,.goal-form-grid .entry-actions,.goal-notes-field,.goal-ai-toggle,.goal-modal-preview{grid-column:1/-1}.goal-form-grid select,.goal-form-grid textarea{border:1.5px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);padding:0 13px;color:var(--sfm-foreground);font:800 14px Tajawal,Arial,sans-serif;outline:0}.goal-form-grid select{height:50px}.goal-form-grid textarea{min-height:92px;padding-top:12px;resize:vertical}.goal-form-grid select:focus,.goal-form-grid textarea:focus{border-color:var(--sfm-soft-cyan);box-shadow:0 0 0 4px rgba(167,243,240,.12);background:var(--sfm-card)}.currency-input-wrap{position:relative}.currency-input-wrap input{width:100%;padding-inline-start:58px}.currency-symbol{position:absolute;inset-inline-start:10px;top:50%;transform:translateY(-50%);min-width:38px;height:30px;border-radius:10px;background:rgba(167,243,240,.16);color:var(--sfm-muted);display:grid;place-items:center;font-size:12px;font-weight:900;z-index:1}.goal-ai-toggle{display:flex!important;align-items:center;justify-content:space-between;border:1px solid rgba(167,243,240,.14);background:var(--sfm-light-card);border-radius:16px;padding:12px 14px}.switch{width:54px;height:30px;border:0;border-radius:999px;background:rgba(29,140,255,.22);padding:3px;cursor:pointer;transition:.2s}.switch span{display:block;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);transition:.2s}.switch.active{background:var(--sfm-soft-cyan)}.switch.active span{transform:translateX(24px)}[dir="rtl"] .switch.active span{transform:translateX(-24px)}.preview-missing{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.12);border-radius:14px;padding:12px;color:#B91C1C}.preview-missing strong{font-size:13px}.preview-missing ul{margin:8px 18px 0;padding:0;font-size:12.5px;line-height:1.8;font-weight:800}.form-error{grid-column:1/-1;border-radius:13px;padding:11px 13px;background:rgba(239,68,68,.08);color:#B91C1C;font-size:13px;font-weight:900}
   .insight-list{display:grid;gap:12px}.insight-list>div{display:flex;gap:10px;padding:12px;border-radius:14px;background:rgba(167,243,240,.07)}.insight-list svg{color:var(--sfm-soft-cyan);flex-shrink:0}.insight-list strong{display:block;font-size:13px}.insight-list span{display:block;font-size:12px;color:var(--sfm-muted);line-height:1.6;margin-top:3px}
   .summary-band,.ai-panel{margin-top:18px;background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:20px;padding:18px 20px;display:flex;align-items:center;gap:14px}.summary-band svg{color:var(--sfm-soft-cyan)}.summary-band strong,.ai-panel h3{font-size:16px}.summary-band p,.ai-panel p{margin:4px 0 0;color:var(--sfm-muted);line-height:1.7;font-size:13px}
+  .savings-shell{min-height:auto}.savings-main{padding-bottom:32px}.savings-main .content-grid{align-items:start}.savings-main .panel{align-self:start}.savings-main .row-list{gap:0}.savings-main .empty-state{padding:18px}.savings-main .summary-band{margin-top:14px;padding:14px 16px;align-items:flex-start}.savings-main .summary-band p{line-height:1.6}.savings-main .data-row:last-child{padding-bottom:0}.savings-main .entry-overlay{position:fixed;min-height:0}
   .ai-panel{align-items:stretch;justify-content:space-between}.chat-history{display:grid;gap:8px;min-width:min(460px,100%);max-height:190px;overflow:auto;margin-bottom:10px}.chat-history>div{padding:10px 12px;border-radius:14px;font-size:13px;line-height:1.6}.chat-history .user{background:var(--sfm-foreground);color:var(--sfm-card)}.chat-history .assistant{background:rgba(167,243,240,.11);color:var(--sfm-muted)}.chat-box{display:flex;gap:10px;min-width:min(460px,100%)}.chat-box input{height:46px;border:1.5px solid rgba(167,243,240,.22);border-radius:14px;padding:0 14px;background:var(--sfm-light-card);min-width:0;flex:1;font:600 14px Tajawal,Arial,sans-serif;color:var(--sfm-foreground)}.chat-box button{width:46px;border-radius:14px;border:0;background:var(--sfm-foreground);color:var(--sfm-soft-cyan);display:grid;place-items:center;cursor:pointer}.chat-box button:disabled{opacity:.55;cursor:wait}
   .mobile-panel{position:fixed;inset:12px;z-index:50;background:var(--sfm-foreground);border-radius:22px;padding:16px;color:var(--sfm-card);box-shadow:0 24px 80px rgba(0,0,0,.35)}.mobile-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.mobile-brand{display:flex;align-items:center;gap:10px}.mobile-brand img{border-radius:10px;object-fit:cover}
   .entry-overlay{position:fixed;inset:0;background:rgba(17,17,17,.42);backdrop-filter:blur(8px);z-index:80;display:grid;place-items:center;padding:18px}.entry-modal,.confirm-modal{width:min(480px,100%);background:var(--sfm-card);border:1px solid rgba(167,243,240,.2);border-radius:22px;box-shadow:0 26px 80px rgba(3,18,37,.26);padding:20px}.entry-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.entry-modal-head p{margin:0 0 4px;color:var(--sfm-muted);font-size:12px;font-weight:900}.entry-modal-head h3,.confirm-modal h3{margin:0;font-size:21px;font-weight:900}.entry-form{display:grid;gap:14px}.entry-form label{display:grid;gap:7px;font-weight:900;color:var(--sfm-muted);font-size:13px}.entry-form input{height:50px;border:1.5px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);padding:0 14px;color:var(--sfm-foreground);font:800 14px Tajawal,Arial,sans-serif;outline:0}.entry-form input:focus{border-color:var(--sfm-soft-cyan);box-shadow:0 0 0 4px rgba(167,243,240,.12);background:var(--sfm-card)}.entry-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}.primary-form-btn,.ghost-form-btn,.danger-form-btn{height:44px;border-radius:13px;padding:0 18px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer}.primary-form-btn{border:0;background:linear-gradient(135deg,var(--sfm-foreground),var(--sfm-primary-dark),var(--sfm-soft-cyan));color:#fff}.ghost-form-btn{border:1px solid rgba(167,243,240,.22);background:var(--sfm-card);color:var(--sfm-muted)}.danger-form-btn{border:0;background:#B91C1C;color:#fff}.primary-form-btn:disabled,.ghost-form-btn:disabled,.danger-form-btn:disabled{opacity:.58;cursor:wait}.confirm-modal{text-align:center}.confirm-icon{width:58px;height:58px;border-radius:18px;background:rgba(239,68,68,.10);color:#B91C1C;display:grid;place-items:center;margin:0 auto 12px}.confirm-modal p{margin:8px 0 4px;color:var(--sfm-muted);font-weight:800}.confirm-modal small{display:block;color:var(--sfm-muted);line-height:1.6;margin-bottom:14px}.confirm-modal .entry-actions{justify-content:center}.entry-toast{position:fixed;z-index:90;inset-inline-end:22px;bottom:22px;max-width:min(360px,calc(100vw - 32px));padding:13px 16px;border-radius:15px;font:900 13px Tajawal,Arial,sans-serif;box-shadow:0 18px 45px rgba(3,18,37,.18);animation:slideUp .22s ease}.entry-toast.ok{background:#ECFDF5;color:#047857;border:1px solid rgba(34,197,94,.2)}.entry-toast.err{background:#FEF2F2;color:#B91C1C;border:1px solid rgba(239,68,68,.2)}@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .savings-modal{width:min(780px,calc(100vw - 36px));max-height:90vh;overflow:auto;border-radius:24px;padding:22px;background:var(--sfm-card)}.savings-modal .entry-modal-head{align-items:flex-start}.savings-modal .entry-modal-head p{max-width:620px;line-height:1.6}.savings-form-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.savings-form-grid label{min-width:0}.savings-form-grid input,.savings-form-grid select,.savings-form-grid textarea{width:100%;min-width:0;min-height:50px;border:1.5px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-foreground);padding:0 14px;font:800 14px Tajawal,Arial,sans-serif;outline:0}.savings-form-grid textarea{min-height:92px;resize:vertical;padding-top:12px;line-height:1.7}.savings-form-grid input:focus,.savings-form-grid select:focus,.savings-form-grid textarea:focus{border-color:var(--sfm-soft-cyan);box-shadow:0 0 0 4px rgba(167,243,240,.12);background:var(--sfm-card)}.savings-form-grid .currency-input-wrap input{padding-inline-start:58px}.savings-note-field,.savings-form-grid .form-error,.savings-form-grid .entry-actions{grid-column:1/-1}.savings-form-grid .entry-actions{margin-top:2px}.dark .savings-modal{background:#0B1F35;border-color:rgba(255,255,255,.10);color:#F8FAFC}.dark .savings-form-grid input,.dark .savings-form-grid select,.dark .savings-form-grid textarea{background:#0F2942;border-color:rgba(255,255,255,.12);color:#F8FAFC}.dark .savings-form-grid label,.dark .savings-modal .entry-modal-head p{color:#CBD5E1}
   .finance-header-lang{display:block}
   @media(max-width:1180px){.reports-main .content-grid{grid-template-columns:1fr}.reports-main .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:920px){.sfm-sidebar{display:none}.menu-btn{display:grid}.sfm-main{padding:16px;margin-inline-start:0}.sfm-main.reports-main{width:100%;max-width:100%;margin-inline-start:0;margin-inline-end:0;padding:calc(84px + env(safe-area-inset-top)) 16px 24px}.hero{display:block}.hero-actions{margin-top:18px}.content-grid{grid-template-columns:1fr}.ai-panel{display:grid}.chat-box{min-width:0}}
-  @media(max-width:640px){.kpi-grid{grid-template-columns:1fr}.sfm-header{height:auto}.title-wrap h1{font-size:20px}.hero{padding:22px}.hero h2{font-size:27px}.data-row{align-items:flex-start;flex-direction:column}.row-actions-wrap{width:100%;justify-content:space-between}.summary-band{align-items:flex-start}.primary-btn,.ghost-btn{width:100%;justify-content:center}.entry-actions{display:grid;grid-template-columns:1fr 1fr}.primary-form-btn,.ghost-form-btn,.danger-form-btn{width:100%}.goal-card-head{display:grid}.goal-edit-btn{width:100%;justify-content:center}.goal-meta-grid,.goal-ai-metrics,.goal-form-grid{grid-template-columns:1fr}.goal-form-grid label:first-child{grid-column:auto}}
+  @media(max-width:920px){.sfm-sidebar{display:none}.menu-btn{display:grid}.sfm-main{padding:16px;margin-inline-start:0}.sfm-main.savings-main{padding-bottom:24px}.sfm-main.reports-main{width:100%;max-width:100%;margin-inline-start:0;margin-inline-end:0;padding:calc(84px + env(safe-area-inset-top)) 16px 24px}.hero{display:block}.hero-actions{margin-top:18px}.content-grid{grid-template-columns:1fr}.ai-panel{display:grid}.chat-box{min-width:0}}
+  @media(max-width:640px){.kpi-grid{grid-template-columns:1fr}.sfm-header{height:auto}.title-wrap h1{font-size:20px}.hero{padding:22px}.hero h2{font-size:27px}.data-row{align-items:flex-start;flex-direction:column}.row-actions-wrap{width:100%;justify-content:space-between}.summary-band{align-items:flex-start}.savings-main .summary-band{margin-top:12px;padding:14px}.primary-btn,.ghost-btn{width:100%;justify-content:center}.entry-actions{display:grid;grid-template-columns:1fr 1fr}.primary-form-btn,.ghost-form-btn,.danger-form-btn{width:100%}.savings-modal{width:calc(100% - 24px);max-height:90vh;padding:18px}.savings-form-grid{grid-template-columns:1fr}.savings-form-grid label,.savings-note-field,.savings-form-grid .form-error,.savings-form-grid .entry-actions{grid-column:auto}.savings-form-grid .entry-actions{grid-template-columns:1fr}.goal-card-head{display:grid}.goal-edit-btn{width:100%;justify-content:center}.goal-meta-grid,.goal-ai-metrics,.goal-form-grid{grid-template-columns:1fr}.goal-form-grid label:first-child{grid-column:auto}}
 `;
 
 const expenseSmartStyles = `

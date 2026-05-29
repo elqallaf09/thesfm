@@ -494,6 +494,20 @@ function getLocale(lang?: string): Lang {
   return lang === 'en' || lang === 'fr' || lang === 'ar' ? lang : 'ar';
 }
 
+function uniqueDocumentCount(rows: any[] = []) {
+  const grouped = new Map<string, any>();
+  const timestamp = (row: any) => new Date(String(row?.updated_at ?? row?.uploaded_at ?? row?.created_at ?? '')).getTime() || 0;
+  for (const row of rows) {
+    const sourceUrl = String(row?.source_url ?? '').trim().toLowerCase();
+    const key = sourceUrl
+      ? [row?.category || '', sourceUrl, row?.document_type || 'uploaded_file'].join('|')
+      : `record:${row?.id}`;
+    const current = grouped.get(key);
+    if (!current || timestamp(row) >= timestamp(current)) grouped.set(key, row);
+  }
+  return grouped.size;
+}
+
 export function ProjectKpisTab({
   userId,
   projectId,
@@ -542,7 +556,7 @@ export function ProjectKpisTab({
       (supabase as any).from('project_feasibility_studies').select('*').eq('user_id', userId).eq('project_id', projectId).maybeSingle(),
       (supabase as any).from('project_tasks').select('*').eq('user_id', userId).eq('project_id', projectId),
       (supabase as any).from('project_milestones').select('*').eq('user_id', userId).eq('project_id', projectId),
-      (supabase as any).from('project_documents').select('id').eq('user_id', userId).eq('project_id', projectId),
+      (supabase as any).from('project_documents').select('id,category,source_url,document_type,uploaded_at,created_at,updated_at').eq('user_id', userId).eq('project_id', projectId),
       (supabase as any).from('project_income').select('id, amount, project_id, income_date, created_at').eq('user_id', userId).eq('project_id', projectId),
       (supabase as any).from('project_expenses').select('id, amount, project_id, expense_date, created_at').eq('user_id', userId).eq('project_id', projectId),
       (supabase as any).from('expense_items').select('id, amount, enhanced, created_at').eq('user_id', userId),
@@ -551,7 +565,7 @@ export function ProjectKpisTab({
     setFeasibilityStudy(feasibilityRes.error ? null : feasibilityRes.data as ProjectFeasibilityKpiRow | null);
     setTasks(taskRes.error ? [] : (taskRes.data ?? []) as ProjectTaskRow[]);
     setMilestones(milestoneRes.error ? [] : (milestoneRes.data ?? []) as ProjectMilestoneRow[]);
-    setDocumentsCount(documentRes.error ? 0 : (documentRes.data ?? []).length);
+    setDocumentsCount(documentRes.error ? 0 : uniqueDocumentCount(documentRes.data ?? []));
     setLinkedIncome(projectIncomeRes.error ? [] : (projectIncomeRes.data ?? []) as ActualIncomeRow[]);
     const projectExpenseRows = projectExpenseRes.error ? [] : (projectExpenseRes.data ?? []) as ActualExpenseRow[];
     const legacyExpenseRows = legacyExpenseRes.error ? [] : actualProjectExpenseRows((legacyExpenseRes.data ?? []) as ActualExpenseRow[], projectId);

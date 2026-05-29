@@ -96,6 +96,36 @@ export type Database = {
         }
         Relationships: []
       }
+      email_2fa_codes: {
+        Row: {
+          id: string
+          user_id: string
+          code_hash: string
+          purpose: string
+          expires_at: string
+          used_at: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          code_hash: string
+          purpose?: string
+          expires_at: string
+          used_at?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          code_hash?: string
+          purpose?: string
+          expires_at?: string
+          used_at?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
       monthly_income_sources: {
         Row: {
           id: string
@@ -132,6 +162,12 @@ export type Database = {
           user_id: string
           name: string
           amount: number
+          currency: string | null
+          saving_type: string | null
+          saving_method: string | null
+          saved_at: string | null
+          note: string | null
+          goal_id: string | null
           created_at: string | null
           updated_at: string | null
         }
@@ -140,6 +176,12 @@ export type Database = {
           user_id: string
           name: string
           amount?: number
+          currency?: string | null
+          saving_type?: string | null
+          saving_method?: string | null
+          saved_at?: string | null
+          note?: string | null
+          goal_id?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -148,6 +190,12 @@ export type Database = {
           user_id?: string
           name?: string
           amount?: number
+          currency?: string | null
+          saving_type?: string | null
+          saving_method?: string | null
+          saved_at?: string | null
+          note?: string | null
+          goal_id?: string | null
           created_at?: string | null
           updated_at?: string | null
         }

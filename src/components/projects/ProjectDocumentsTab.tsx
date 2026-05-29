@@ -29,9 +29,13 @@ export type ProjectDocumentRow = {
   file_name: string;
   file_type: string | null;
   file_size: number | string | null;
+  source_url?: string | null;
+  document_type?: string | null;
+  status?: string | null;
   notes: string | null;
   uploaded_at: string | null;
   created_at?: string | null;
+  updated_at?: string | null;
 };
 
 const TEXT = {
@@ -272,6 +276,32 @@ function categoryLabel(category: string | null | undefined, t: DocumentTranslati
   return t[key];
 }
 
+function documentDateValue(doc: ProjectDocumentRow) {
+  return new Date(String(doc.updated_at ?? doc.uploaded_at ?? doc.created_at ?? '')).getTime() || 0;
+}
+
+function uniqueDocumentKey(doc: ProjectDocumentRow) {
+  const sourceUrl = String(doc.source_url ?? '').trim().toLowerCase();
+  if (!sourceUrl) return `record:${doc.id}`;
+  return [
+    doc.user_id,
+    doc.project_id,
+    doc.category || 'other',
+    sourceUrl,
+    doc.document_type || 'uploaded_file',
+  ].join('|');
+}
+
+function uniqueLatestDocuments(rows: ProjectDocumentRow[]) {
+  const grouped = new Map<string, ProjectDocumentRow>();
+  for (const row of rows) {
+    const key = uniqueDocumentKey(row);
+    const current = grouped.get(key);
+    if (!current || documentDateValue(row) >= documentDateValue(current)) grouped.set(key, row);
+  }
+  return Array.from(grouped.values()).sort((left, right) => documentDateValue(right) - documentDateValue(left));
+}
+
 function fileIcon(fileName: string, fileType?: string | null): ReactNode {
   const extension = getExtension(fileName);
   if (String(fileType ?? '').startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp'].includes(extension)) return <ImageIcon size={22} />;
@@ -314,7 +344,7 @@ export function ProjectDocumentsTab({
       .eq('user_id', userId)
       .eq('project_id', projectId)
       .order('uploaded_at', { ascending: false });
-    if (!error) setDocuments((data ?? []) as ProjectDocumentRow[]);
+    if (!error) setDocuments(uniqueLatestDocuments((data ?? []) as ProjectDocumentRow[]));
     setLoading(false);
   }, [projectId, userId]);
 
@@ -375,6 +405,9 @@ export function ProjectDocumentsTab({
     setUploading(true);
     const documentId = makeUuid();
     const filePath = `${userId}/projects/${projectId}/${documentId}-${cleanFileName(documentFile.name)}`;
+    const sourceUrl = '';
+    const documentType = 'uploaded_file';
+    const now = new Date().toISOString();
 
     try {
       const upload = await supabase.storage.from('project-documents').upload(filePath, documentFile, {
@@ -384,29 +417,60 @@ export function ProjectDocumentsTab({
       });
       if (upload.error) throw upload.error;
 
-      const { data, error } = await (supabase as any)
-        .from('project_documents')
-        .insert({
-          id: documentId,
-          user_id: userId,
-          project_id: projectId,
-          title: form.title.trim(),
-          category: form.category,
-          file_url: null,
-          file_path: filePath,
-          file_name: documentFile.name,
-          file_type: documentFile.type || getExtension(documentFile.name),
-          file_size: documentFile.size,
-          notes: form.notes.trim() || null,
-        })
-        .select('*')
-        .single();
+      const basePayload = {
+        title: form.title.trim(),
+        category: form.category,
+        file_url: null,
+        file_path: filePath,
+        file_name: documentFile.name,
+        file_type: documentFile.type || getExtension(documentFile.name),
+        file_size: documentFile.size,
+        notes: form.notes.trim() || null,
+        source_url: sourceUrl || null,
+        document_type: documentType,
+        status: 'uploaded',
+        updated_at: now,
+      };
+
+      let existingId = '';
+      if (sourceUrl) {
+        const existing = await (supabase as any)
+          .from('project_documents')
+          .select('id,file_path')
+          .eq('user_id', userId)
+          .eq('project_id', projectId)
+          .eq('category', form.category)
+          .eq('source_url', sourceUrl)
+          .eq('document_type', documentType)
+          .maybeSingle();
+        if (existing.error) throw existing.error;
+        existingId = existing.data?.id ?? '';
+      }
+
+      const { data, error } = existingId
+        ? await (supabase as any)
+          .from('project_documents')
+          .update(basePayload)
+          .eq('id', existingId)
+          .eq('user_id', userId)
+          .select('*')
+          .single()
+        : await (supabase as any)
+          .from('project_documents')
+          .insert({
+            id: documentId,
+            user_id: userId,
+            project_id: projectId,
+            ...basePayload,
+          })
+          .select('*')
+          .single();
       if (error) {
         await supabase.storage.from('project-documents').remove([filePath]);
         throw error;
       }
 
-      setDocuments(prev => [data as ProjectDocumentRow, ...prev]);
+      setDocuments(prev => uniqueLatestDocuments([data as ProjectDocumentRow, ...prev]));
       setMessage(t.documentUploaded);
       closeModal();
     } catch {

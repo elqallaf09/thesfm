@@ -1,9 +1,9 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { ArrowLeft, BarChart3, Edit3, FileDown, FileText, Loader2, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { ArrowLeft, Edit3, FileDown, FileText, Loader2, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
@@ -19,6 +19,11 @@ import { BUSINESS_TEXT, SALE_STATUS_OPTIONS, businessRoleLabel, normalizeBusines
 import { aggregateBy, downloadCsv, downloadXlsx, isInDateRange, monthLabel, printPdf, saleExportColumns } from '@/lib/businessReports';
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
+
+const SalesChartCard = dynamic(() => import('@/components/business/SalesChartCard'), {
+  ssr: false,
+  loading: () => <article className="business-chart-card business-chart-skeleton" aria-hidden="true" />,
+});
 
 type SaleRow = {
   id: string;
@@ -356,11 +361,11 @@ export default function SalesPage() {
         </section>
 
         <section className="business-chart-grid" aria-label={text.monthlySales}>
-          <ChartCard title={text.monthlySales} data={chartData.monthly} currency={defaultCurrency} lang={locale} />
-          <ChartCard title={text.yearlySales} data={chartData.yearly} currency={defaultCurrency} lang={locale} />
-          <ChartCard title={text.salesByStatus} data={chartData.status} currency={defaultCurrency} lang={locale} variant="pie" />
-          <ChartCard title={text.topProducts} data={chartData.products} currency={defaultCurrency} lang={locale} />
-          <ChartCard title={text.salesByCustomer} data={chartData.customers} currency={defaultCurrency} lang={locale} />
+          <SalesChartCard title={text.monthlySales} data={chartData.monthly} currency={defaultCurrency} lang={locale} />
+          <SalesChartCard title={text.yearlySales} data={chartData.yearly} currency={defaultCurrency} lang={locale} />
+          <SalesChartCard title={text.salesByStatus} data={chartData.status} currency={defaultCurrency} lang={locale} variant="pie" />
+          <SalesChartCard title={text.topProducts} data={chartData.products} currency={defaultCurrency} lang={locale} />
+          <SalesChartCard title={text.salesByCustomer} data={chartData.customers} currency={defaultCurrency} lang={locale} />
         </section>
 
         {formOpen && permissions.canWriteSales ? (
@@ -462,42 +467,6 @@ export default function SalesPage() {
   );
 }
 
-function ChartCard({ title, data, currency, lang, variant = 'bar' }: { title: string; data: Array<{ name: string; value: number; label?: string }>; currency: string; lang: 'ar' | 'en' | 'fr'; variant?: 'bar' | 'pie' }) {
-  const text = BUSINESS_TEXT[lang];
-  const hasData = data.some((item) => item.value > 0);
-  const colors = ['#1D8CFF', '#18D4D4', '#10B981', '#F59E0B', '#8B5CF6'];
-  const chartRows = data.map((item) => ({ ...item, label: item.label ?? item.name }));
-  return (
-    <article className="business-chart-card">
-      <div className="business-section-heading">
-        <h2><BarChart3 size={18} aria-hidden="true" />{title}</h2>
-      </div>
-      {!hasData ? (
-        <p className="business-chart-empty">{text.insufficientChartData}</p>
-      ) : (
-        <ResponsiveContainer width="100%" height={220}>
-          {variant === 'pie' ? (
-            <PieChart>
-              <Pie data={chartRows} dataKey="value" nameKey="name" innerRadius={48} outerRadius={82} paddingAngle={3}>
-                {chartRows.map((_, index) => <Cell key={index} fill={colors[index % colors.length]} />)}
-              </Pie>
-              <Tooltip formatter={(value) => formatMoney(Number(value), currency, lang)} />
-            </PieChart>
-          ) : (
-            <BarChart data={chartRows}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-              <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(value) => formatMoney(Number(value), currency, lang)} />
-              <Bar dataKey="value" fill="#1D8CFF" radius={[10, 10, 0, 0]} />
-            </BarChart>
-          )}
-        </ResponsiveContainer>
-      )}
-    </article>
-  );
-}
-
 const salesStyles = `
   .business-ops-page{min-height:100vh;background:var(--sfm-background);color:var(--sfm-foreground)}
   .business-records-content{display:grid;gap:18px}
@@ -528,6 +497,8 @@ const salesStyles = `
   .business-chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px}
   .business-chart-card{min-width:0;border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);border-radius:22px;padding:16px;box-shadow:0 16px 38px rgba(3,18,37,.07)}
   .business-chart-card .business-section-heading h2{display:flex;align-items:center;gap:8px;font-size:1rem}
+  .business-chart-skeleton{min-height:288px;background:linear-gradient(90deg,var(--sfm-card),var(--sfm-light-card),var(--sfm-card));background-size:200% 100%;animation:business-chart-shimmer 1.25s linear infinite}
+  @keyframes business-chart-shimmer{to{background-position:-200% 0}}
   .business-chart-empty{min-height:220px;margin:0;display:grid;place-items:center;text-align:center;color:var(--sfm-muted);font-weight:850;border:1px dashed rgba(29,140,255,.22);border-radius:16px;background:var(--sfm-light-card);padding:18px}
   .business-form-card{padding:18px}
   .business-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}

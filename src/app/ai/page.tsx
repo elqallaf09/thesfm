@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -25,19 +26,6 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
@@ -48,8 +36,13 @@ import { calculateFinancialAnalysis } from '@/lib/financialAnalysis';
 import { formatCurrency } from '@/lib/format';
 import { useCurrency } from '@/lib/useCurrency';
 
+const AiCharts = dynamic(() => import('@/components/ai/AiCharts'), {
+  ssr: false,
+  loading: () => <div className="ai-chart-grid"><ChartSkeleton /><ChartSkeleton /><ChartSkeleton /></div>,
+});
+
 type MoneyRow = { id: string; name: string; amount: number; createdAt?: string };
-type IncomeRow = { id: string; label: string; category: string; amount: number };
+type IncomeRow = { id: string; label: string; category: string; amount: number; createdAt?: string };
 type GoalRow = {
   id: string;
   name: string;
@@ -102,7 +95,7 @@ const copy = {
   send: { ar: 'إرسال', en: 'Send', fr: 'Envoyer' },
   health: { ar: 'مؤشرات الصحة المالية', en: 'Financial Health Indicators', fr: 'Indicateurs de santé financière' },
   comparison: { ar: 'مقارنة الأشهر', en: 'Monthly Comparison', fr: 'Comparaison mensuelle' },
-  notEnough: { ar: 'لا توجد بيانات كافية للمقارنة. أضف بيانات شهرين على الأقل لعرض المقارنة.', en: 'Not enough data for comparison. Add at least two months of data.', fr: 'Données insuffisantes. Ajoutez au moins deux mois de données.' },
+  notEnough: { ar: 'تحتاج شهرين على الأقل لعرض المقارنة', en: 'At least two months are needed to show the comparison.', fr: 'Il faut au moins deux mois pour afficher la comparaison.' },
   nextMonth: { ar: 'توقع الشهر القادم', en: 'Next Month Prediction', fr: 'Prévision du mois prochain' },
   goals: { ar: 'تحليل الأهداف بالذكاء الاصطناعي', en: 'AI Goal Achievement Analysis', fr: "Analyse IA des objectifs" },
   charts: { ar: 'رسوم داعمة للتحليل', en: 'Supporting Charts', fr: "Graphiques d'appui" },
@@ -187,6 +180,37 @@ function clamp(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
+function monthKey(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function currentAndPreviousMonthKeys() {
+  const current = new Date();
+  const previous = new Date(current.getFullYear(), current.getMonth() - 1, 1);
+  return {
+    current: monthKey(current.toISOString()),
+    previous: monthKey(previous.toISOString()),
+  };
+}
+
+function sumByMonth<T extends { amount: number; createdAt?: string }>(rows: T[], key: string) {
+  return rows.reduce((sum, row) => monthKey(row.createdAt) === key ? sum + amount(row.amount) : sum, 0);
+}
+
+function percentDelta(current: number, previous: number) {
+  if (previous <= 0) return current > 0 ? null : 0;
+  return Math.round(((current - previous) / previous) * 100);
+}
+
+function formatDelta(value: number | null, lang: Lang) {
+  if (value === null) return lang === 'en' ? 'New' : lang === 'fr' ? 'Nouveau' : 'جديد';
+  if (value === 0) return '0%';
+  return `${value > 0 ? '+' : ''}${value}%`;
+}
+
 export default function AiPage() {
   const router = useRouter();
   const { user, isGuest, loading } = useAuth();
@@ -231,7 +255,7 @@ export default function AiPage() {
         const guestInvest = read<MoneyRow[]>('sfm_guest_invest', []);
         const guestGoals = read<GoalRow[]>('sfm_guest_goals', []);
         if (!cancelled) {
-          setIncome(guestIncome.map(row => ({ ...row, amount: amount(row.amount) })));
+          setIncome(guestIncome.map(row => ({ ...row, amount: amount(row.amount), createdAt: text((row as IncomeRow).createdAt) })));
           setExpenses(guestExpenses.map(row => ({ ...row, amount: amount(row.amount), createdAt: row.createdAt })));
           setSavings(guestSavings.map(row => ({ ...row, amount: amount(row.amount) })));
           setInvestments(guestInvest.map(row => ({ ...row, amount: amount(row.amount) })));
@@ -255,6 +279,7 @@ export default function AiPage() {
         label: text(row.label || row.name),
         category: text(row.category),
         amount: amount(row.amount),
+        createdAt: text(row.created_at),
       })));
       setExpenses(personalExpenseRows(expenseRes.data ?? []).map(row => ({
         id: text(row.id),
@@ -262,8 +287,8 @@ export default function AiPage() {
         amount: amount(row.amount),
         createdAt: text(row.created_at),
       })));
-      setSavings((savingRes.data ?? []).map(row => ({ id: text(row.id), name: text(row.name), amount: amount(row.amount) })));
-      setInvestments((investRes.data ?? []).map(row => ({ id: text(row.id), name: text(row.name), amount: amount(row.current_value || row.amount) })));
+      setSavings((savingRes.data ?? []).map(row => ({ id: text(row.id), name: text(row.name), amount: amount(row.amount), createdAt: text(row.created_at) })));
+      setInvestments((investRes.data ?? []).map(row => ({ id: text(row.id), name: text(row.name), amount: amount(row.current_value || row.amount), createdAt: text(row.created_at) })));
       setGoals((goalRes.data ?? []).map(row => {
         const notes = parseNotes(row.notes);
         return {
@@ -352,6 +377,32 @@ export default function AiPage() {
   const insights = useMemo(() => buildInsights(lang, money, totals, topExpense, score, goals.length), [goals.length, lang, money, score, topExpense, totals]);
   const planItems = useMemo(() => buildPlan(lang, money, topExpense, totals, recommendedSavings, recommendedInvestment), [lang, money, recommendedInvestment, recommendedSavings, topExpense, totals]);
   const monthlyData = useMemo(() => buildMonthlyData(lang, totals, predictedExpenses, predictedSavings, recommendedInvestment), [lang, predictedExpenses, predictedSavings, recommendedInvestment, totals]);
+  const monthComparison = useMemo(() => {
+    const keys = currentAndPreviousMonthKeys();
+    const current = {
+      income: sumByMonth(income, keys.current),
+      expenses: sumByMonth(expenses, keys.current),
+      savings: sumByMonth(savings, keys.current),
+      investments: sumByMonth(investments, keys.current),
+    };
+    const previous = {
+      income: sumByMonth(income, keys.previous),
+      expenses: sumByMonth(expenses, keys.previous),
+      savings: sumByMonth(savings, keys.previous),
+      investments: sumByMonth(investments, keys.previous),
+    };
+    const hasPrevious = Object.values(previous).some(value => value > 0);
+    const hasCurrent = Object.values(current).some(value => value > 0);
+    return {
+      hasData: hasPrevious && hasCurrent,
+      items: [
+        { key: 'income', label: L('income'), value: formatDelta(percentDelta(current.income, previous.income), lang), tone: current.income >= previous.income ? 'good' : 'danger' },
+        { key: 'expenses', label: L('expenses'), value: formatDelta(percentDelta(current.expenses, previous.expenses), lang), tone: current.expenses <= previous.expenses ? 'good' : 'warning' },
+        { key: 'savings', label: L('savings'), value: formatDelta(percentDelta(current.savings, previous.savings), lang), tone: current.savings >= previous.savings ? 'good' : 'warning' },
+        { key: 'investments', label: L('investments'), value: formatDelta(percentDelta(current.investments, previous.investments), lang), tone: current.investments >= previous.investments ? 'good' : 'warning' },
+      ],
+    };
+  }, [L, expenses, income, investments, lang, savings]);
   const calculatedAnalysis = useMemo(() => calculateFinancialAnalysis({
     income: income.map(row => ({ name: row.label, category: row.category, amount: row.amount })),
     expenses: expenses.map(row => ({ name: row.name, amount: row.amount })),
@@ -494,14 +545,25 @@ export default function AiPage() {
               </div>
             </section>
 
-            <section className="ai-grid">
-              <div className="ai-card span-6">
+            <section className="ai-compact-report-row">
+              <div className="ai-card ai-compact-card">
                 <SectionTitle icon={<LineChartIcon size={19} />} title={L('comparison')} />
-                <EmptyState title={L('comparison')} text={L('notEnough')} compact />
+                {monthComparison.hasData ? (
+                  <div className="ai-comparison-mini-grid">
+                    {monthComparison.items.map(item => (
+                      <div className={`ai-compact-metric ${item.tone}`} key={item.key}>
+                        <span>{item.label}</span>
+                        <strong>{item.value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState title={L('comparison')} text={L('notEnough')} compact />
+                )}
               </div>
-              <div className="ai-card span-6" id="ai-prediction">
+              <div className="ai-card ai-compact-card" id="ai-prediction">
                 <SectionTitle icon={<TrendingUp size={19} />} title={L('nextMonth')} />
-                <div className="ai-prediction-grid">
+                <div className="ai-forecast-mini-grid">
                   <Metric label={L('expectedIncome')} value={money(totals.totalIncome)} />
                   <Metric label={L('expectedExpenses')} value={money(Math.round(predictedExpenses))} />
                   <Metric label={L('expectedSavings')} value={money(Math.round(predictedSavings))} />
@@ -537,39 +599,13 @@ export default function AiPage() {
         <section className="ai-card">
           <SectionTitle icon={<BarChart3 size={19} />} title={L('charts')} />
           {!hasCoreData ? <EmptyState title={L('charts')} text={L('noCharts')} compact /> : (
-            <div className="ai-chart-grid">
-              <ChartBox title={L('expenses')}>
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie data={categoryTotals} dataKey="value" nameKey="name" innerRadius={52} outerRadius={82}>
-                      {categoryTotals.map(item => <Cell key={item.name} fill={item.color} />)}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => money(Number(value))} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </ChartBox>
-              <ChartBox title={`${L('income')} / ${L('expenses')}`}>
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart data={monthlyData}>
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={(value: number) => money(Number(value))} />
-                    <Area dataKey="income" stroke="#22C55E" fill="#22C55E33" />
-                    <Area dataKey="expenses" stroke="#EF4444" fill="#EF444433" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </ChartBox>
-              <ChartBox title={L('goalsLabel')}>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={goals.map(goal => ({ name: goal.name, value: goal.target > 0 ? Math.round((goal.current / goal.target) * 100) : 0 }))}>
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={(value: number) => `${Number(value)}%`} />
-                    <Bar dataKey="value" fill="var(--sfm-soft-cyan)" radius={[10, 10, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartBox>
-            </div>
+            <AiCharts
+              categoryTotals={categoryTotals}
+              monthlyData={monthlyData}
+              goals={goals}
+              labels={{ expenses: L('expenses'), income: L('income'), goals: L('goalsLabel') }}
+              money={money}
+            />
           )}
         </section>
 
@@ -596,9 +632,9 @@ export default function AiPage() {
         .ai-insights,.ai-plan-grid,.ai-goals-grid,.ai-chart-grid,.ai-prediction-grid{display:grid;gap:12px}.ai-insights{grid-template-columns:repeat(2,1fr)}.ai-insight-card{border-radius:18px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.13);padding:14px}.ai-insight-top{display:flex;justify-content:space-between;gap:10px}.ai-insight-card h3{margin:0;font-size:15px}.ai-pill{border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900}.ai-pill.good{background:#DCFCE7;color:#166534}.ai-pill.warning{background:#FEF3C7;color:#92400E}.ai-pill.danger{background:#FEE2E2;color:#B91C1C}.ai-insight-card b{display:block;color:var(--sfm-soft-cyan);margin:10px 0 5px}.ai-insight-card p{margin:0 0 8px;color:var(--sfm-muted);font-size:13px;line-height:1.7}.ai-action{color:var(--sfm-foreground)!important;font-weight:900}
         .ai-plan-grid{grid-template-columns:repeat(4,1fr)}.ai-plan-card,.ai-metric,.ai-goal-card,.ai-chart-box{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:18px;padding:14px}.ai-plan-card h3{margin:0 0 10px}.ai-plan-card div{display:flex;justify-content:space-between;font-size:12px;margin-top:6px}.ai-plan-card span,.ai-metric span{color:var(--sfm-muted);font-weight:900}.ai-plan-card strong,.ai-metric strong{color:var(--sfm-foreground)}.ai-plan-summary{background:rgba(167,243,240,.1);border:1px solid rgba(167,243,240,.15);border-radius:15px;padding:12px;margin:14px 0 0;color:var(--sfm-muted);font-weight:900;line-height:1.7}
         .ai-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}.ai-chips button{border:1px solid rgba(167,243,240,.15);background:var(--sfm-light-card);color:var(--sfm-muted);border-radius:999px;padding:8px 11px;font:800 12px Tajawal,Arial,sans-serif;cursor:pointer}.ai-chat-row{display:grid;grid-template-columns:1fr auto;gap:8px}.ai-chat-row input{height:46px;border:1.5px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);padding:0 12px;outline:0;font:800 13px Tajawal,Arial,sans-serif}.ai-answer{margin-top:12px;display:flex;gap:9px;background:var(--sfm-foreground);color:var(--sfm-light-card);border-radius:16px;padding:12px}.ai-answer svg{color:var(--sfm-soft-cyan);flex:0 0 auto}.ai-answer p{margin:0;line-height:1.8;font-size:13px}
-        .ai-prediction-grid{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}.ai-metric{display:grid;gap:6px}.ai-metric strong{font-size:16px}.ai-disclaimer{margin:14px 0 0;border:1px solid rgba(29,140,255,.16);background:var(--sfm-light-card);border-radius:14px;padding:11px 12px;color:var(--sfm-muted);font-size:12.5px;font-weight:900;line-height:1.7}.ai-goals-grid{grid-template-columns:repeat(2,1fr)}.ai-goal-card h3{margin:0 0 10px}.ai-goal-card p{margin:6px 0;color:var(--sfm-muted);font-size:13px;line-height:1.7}.ai-chart-grid{grid-template-columns:repeat(3,1fr)}.ai-chart-box h3{margin:0 0 8px;font-size:14px}.ai-actions{display:flex;flex-wrap:wrap;gap:9px}.ai-actions a,.ai-actions button{background:var(--sfm-light-card);color:var(--sfm-muted);border:1px solid rgba(167,243,240,.16)}.ai-actions a:hover,.ai-actions button:hover,.ai-chips button:hover{background:rgba(167,243,240,.14)}
+        .ai-prediction-grid{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}.ai-compact-report-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}.ai-compact-card{margin-bottom:14px;align-self:start}.ai-comparison-mini-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ai-compact-metric{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:12px;display:grid;gap:6px;min-width:0}.ai-compact-metric span{color:var(--sfm-muted);font-size:12px;font-weight:900}.ai-compact-metric strong{color:var(--sfm-foreground);font-size:18px;font-weight:950}.ai-compact-metric.good strong{color:#16A34A}.ai-compact-metric.warning strong{color:#D97706}.ai-compact-metric.danger strong{color:#DC2626}.ai-forecast-mini-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}.ai-forecast-mini-grid .ai-metric{padding:12px;border-radius:16px}.ai-metric{display:grid;gap:6px}.ai-metric strong{font-size:16px}.ai-disclaimer{margin:14px 0 0;border:1px solid rgba(29,140,255,.16);background:var(--sfm-light-card);border-radius:14px;padding:11px 12px;color:var(--sfm-muted);font-size:12.5px;font-weight:900;line-height:1.7}.ai-goals-grid{grid-template-columns:repeat(2,1fr)}.ai-goal-card h3{margin:0 0 10px}.ai-goal-card p{margin:6px 0;color:var(--sfm-muted);font-size:13px;line-height:1.7}.ai-chart-grid{grid-template-columns:repeat(3,1fr)}.ai-chart-box h3{margin:0 0 8px;font-size:14px}.ai-chart-skeleton{min-height:248px;display:grid;gap:14px;align-content:start}.ai-chart-skeleton span{width:46%;height:14px;border-radius:999px;background:rgba(148,163,184,.18)}.ai-chart-skeleton i{height:190px;border-radius:18px;background:linear-gradient(90deg,rgba(148,163,184,.10),rgba(34,211,238,.12),rgba(148,163,184,.10));background-size:200% 100%;animation:ai-shimmer 1.3s infinite linear}@keyframes ai-shimmer{to{background-position:-200% 0}}.ai-actions{display:flex;flex-wrap:wrap;gap:9px}.ai-actions a,.ai-actions button{background:var(--sfm-light-card);color:var(--sfm-muted);border:1px solid rgba(167,243,240,.16)}.ai-actions a:hover,.ai-actions button:hover,.ai-chips button:hover{background:rgba(167,243,240,.14)}
         .ai-empty{text-align:center;padding:28px 16px;color:var(--sfm-muted)}.ai-empty h3{margin:0 0 8px;color:var(--sfm-foreground)}.ai-empty p{margin:0;line-height:1.7}.ai-toast{position:fixed;z-index:100;inset-inline-end:22px;bottom:22px;background:var(--sfm-foreground);color:var(--sfm-soft-cyan);border:1px solid rgba(167,243,240,.28);border-radius:16px;padding:13px 16px;font:900 13px Tajawal,Arial,sans-serif;box-shadow:0 18px 45px rgba(3,18,37,.2)}.ai-loading{height:180px;display:grid;place-items:center;color:var(--sfm-muted);font-size:32px}
-        @media(max-width:1180px){.ai-main{margin-inline-start:0}.ai-hero{grid-template-columns:1fr}.ai-score-ring{justify-self:start}.span-5,.span-6,.span-7{grid-column:span 12}.ai-plan-grid,.ai-chart-grid,.ai-prediction-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:720px){.ai-main{padding:14px}.ai-hero{padding:22px}.ai-hero h2{font-size:30px}.ai-score-ring{width:160px;height:160px}.ai-insights,.ai-plan-grid,.ai-health-grid,.ai-goals-grid,.ai-chart-grid,.ai-prediction-grid{grid-template-columns:1fr}.ai-chat-row{grid-template-columns:1fr}.ai-hero-actions button,.ai-actions a,.ai-actions button{width:100%}}
+        @media(max-width:1180px){.ai-main{margin-inline-start:0}.ai-hero{grid-template-columns:1fr}.ai-score-ring{justify-self:start}.span-5,.span-6,.span-7{grid-column:span 12}.ai-plan-grid,.ai-chart-grid,.ai-prediction-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:860px){.ai-compact-report-row{grid-template-columns:1fr}}@media(max-width:720px){.ai-main{padding:14px}.ai-hero{padding:22px}.ai-hero h2{font-size:30px}.ai-score-ring{width:160px;height:160px}.ai-insights,.ai-plan-grid,.ai-health-grid,.ai-goals-grid,.ai-chart-grid,.ai-prediction-grid,.ai-comparison-mini-grid,.ai-forecast-mini-grid{grid-template-columns:1fr}.ai-chat-row{grid-template-columns:1fr}.ai-hero-actions button,.ai-actions a,.ai-actions button{width:100%}}
       `}</style>
     </div>
   );
@@ -817,6 +853,11 @@ function GoalAnalysis({ goal, income, lang, money }: { goal: GoalRow; income: nu
   return <article className="ai-goal-card"><h3>{goal.name}</h3><p>{textLine}</p><p className="ai-action">{suggestion}</p></article>;
 }
 
-function ChartBox({ title, children }: { title: string; children: ReactNode }) {
-  return <div className="ai-chart-box"><h3>{title}</h3>{children}</div>;
+function ChartSkeleton() {
+  return (
+    <div className="ai-chart-box ai-chart-skeleton">
+      <span />
+      <i />
+    </div>
+  );
 }

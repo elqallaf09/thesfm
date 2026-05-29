@@ -21,6 +21,9 @@ export type UnifiedDocument = {
   uploadedAt?: string;
   filePath?: string;
   fileUrl?: string;
+  sourceUrl?: string;
+  documentType?: string;
+  status?: string;
   actionUrl?: string;
   notes?: string;
   bucket?: string;
@@ -68,6 +71,32 @@ function documentTitle(row: any, fallback: string) {
   return textValue(row?.title, row?.name, row?.file_name, row?.fileName, fallback);
 }
 
+function documentTimestamp(document: UnifiedDocument) {
+  return document.uploadedAt ? new Date(document.uploadedAt).getTime() || 0 : 0;
+}
+
+function documentIdentity(document: UnifiedDocument) {
+  const sourceUrl = textValue(document.sourceUrl).toLowerCase();
+  if (!sourceUrl) return `record:${document.id}`;
+  return [
+    document.sourceModule,
+    document.relatedName || '',
+    document.category || '',
+    sourceUrl,
+    document.documentType || '',
+  ].join('|');
+}
+
+function uniqueLatestDocuments(documents: UnifiedDocument[]) {
+  const grouped = new Map<string, UnifiedDocument>();
+  for (const document of documents) {
+    const key = documentIdentity(document);
+    const current = grouped.get(key);
+    if (!current || documentTimestamp(document) >= documentTimestamp(current)) grouped.set(key, document);
+  }
+  return Array.from(grouped.values());
+}
+
 export function normalizeUnifiedDocuments(rows: UnifiedDocumentSourceRows): UnifiedDocument[] {
   const projectNames = relationMap(rows.projects);
   const charityProjectNames = relationMap(rows.charityProjects);
@@ -91,6 +120,9 @@ export function normalizeUnifiedDocuments(rows: UnifiedDocumentSourceRows): Unif
       uploadedAt: dateValue(row?.uploaded_at, row?.created_at),
       filePath: textValue(row?.file_path) || undefined,
       fileUrl: textValue(row?.file_url) || undefined,
+      sourceUrl: textValue(row?.source_url, row?.sourceUrl) || undefined,
+      documentType: textValue(row?.document_type, row?.documentType, 'uploaded_file'),
+      status: textValue(row?.status) || undefined,
       actionUrl: projectId ? `/projects/${projectId}#documents` : '/projects',
       notes: textValue(row?.notes) || undefined,
       bucket: 'project-documents',
@@ -230,7 +262,7 @@ export function normalizeUnifiedDocuments(rows: UnifiedDocumentSourceRows): Unif
     });
   }
 
-  return documents.sort((a, b) => {
+  return uniqueLatestDocuments(documents).sort((a, b) => {
     const left = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
     const right = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
     return right - left;

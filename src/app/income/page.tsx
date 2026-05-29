@@ -13,9 +13,10 @@ import { formatMoney } from '@/lib/formatMoney';
 import { isProjectLinkedIncomeRow, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { useCurrency } from '@/lib/useCurrency';
 
-type IncomeType = 'salary' | 'side' | 'investment' | 'bonus' | 'gift' | 'rent' | 'other';
+type IncomeType = 'salary' | 'freelance' | 'project' | 'investment' | 'bonus' | 'gift' | 'rent' | 'other';
 type IncomeStatus = 'received' | 'pending' | 'expected' | 'late';
-type Frequency = 'monthly' | 'weekly' | 'yearly';
+type Frequency = 'monthly' | 'weekly' | 'daily' | 'yearly';
+type FrequencyMode = Frequency | 'one-time';
 type Lang = 'ar' | 'en' | 'fr';
 type IncomeFilter = 'all' | IncomeStatus | 'recurring' | 'one-time';
 type IncomePageTab = 'overview' | 'sources' | 'recurring' | 'analytics' | 'reports';
@@ -88,6 +89,8 @@ type IncomeForm = {
   notes: string;
 };
 
+type FormErrors = Partial<Record<'name' | 'amount' | 'incomeType' | 'frequency' | 'receivedDate', string>>;
+
 type AttachmentPayload = {
   attachment_url: string | null;
   attachment_name: string | null;
@@ -125,6 +128,7 @@ const TX: Record<string, Record<Lang, string>> = {
   lateFollowup: { ar: 'حاول متابعة الدخل المتأخر لتحديث الصافي المتوقع.', en: 'Follow up overdue income to keep expected net updated.', fr: 'Suivez les revenus en retard pour actualiser le net prévu.' },
   diversificationHelps: { ar: 'تنويع مصادر الدخل يقلل الاعتماد على مصدر واحد.', en: 'Diversifying income sources reduces reliance on one source.', fr: 'Diversifier les sources réduit la dépendance à une seule source.' },
   addIncome: { ar: '+ إضافة دخل', en: '+ Add Income', fr: '+ Ajouter un revenu' },
+  addFirstIncome: { ar: 'إضافة أول دخل', en: 'Add first income', fr: 'Ajouter le premier revenu' },
   savingsRateTitle: { ar: 'معدل الادخار', en: 'Savings rate', fr: 'Taux d’épargne' },
   spendingRatioTitle: { ar: 'نسبة الصرف', en: 'Spending ratio', fr: 'Ratio de dépenses' },
   calculatedFromRealData: { ar: 'محسوب من بياناتك الفعلية', en: 'Calculated from your real data', fr: 'Calculé à partir de vos données réelles' },
@@ -143,8 +147,11 @@ const TX: Record<string, Record<Lang, string>> = {
   incomeList: { ar: 'مصادر الدخل', en: 'Income Sources', fr: 'Sources de revenus' },
   projectIncome: { ar: 'دخل مشروع', en: 'Project Income', fr: 'Revenu de projet' },
   noIncome: { ar: 'لا توجد مصادر دخل بعد', en: 'No income sources yet', fr: 'Aucune source de revenu pour le moment' },
+  noIncomeDescription: { ar: 'ابدأ بإضافة راتبك أو أي مصدر دخل آخر ليتم بناء خطتك المالية بدقة.', en: 'Start by adding your salary or any other income source so your financial plan is built accurately.', fr: 'Commencez par ajouter votre salaire ou une autre source de revenu pour construire votre plan financier avec précision.' },
   name: { ar: 'اسم الدخل', en: 'Income name', fr: 'Nom du revenu' },
+  incomeNamePlaceholder: { ar: 'مثال: راتب، مشروع، عميل، إيجار', en: 'Example: salary, project, client, rent', fr: 'Exemple : salaire, projet, client, loyer' },
   amount: { ar: 'المبلغ', en: 'Amount', fr: 'Montant' },
+  amountPlaceholder: { ar: '0.000', en: '0.000', fr: '0.000' },
   currency: { ar: 'العملة', en: 'Currency', fr: 'Devise' },
   conversionDisabled: { ar: 'التحويل إلى الدينار الكويتي غير مفعّل حالياً.', en: 'Conversion to KWD is not enabled yet.', fr: 'La conversion vers le KWD n’est pas encore activée.' },
   attachFile: { ar: 'إرفاق ملف', en: 'Attach file', fr: 'Joindre un fichier' },
@@ -155,12 +162,17 @@ const TX: Record<string, Record<Lang, string>> = {
   fileTooLarge: { ar: 'حجم الملف كبير جداً', en: 'File size is too large', fr: 'Le fichier est trop volumineux' },
   uploadFailed: { ar: 'تعذر رفع الملف', en: 'Could not upload file', fr: 'Impossible de téléverser le fichier' },
   storageSetup: { ar: 'احفظ الدخل بدون المرفق الآن. يحتاج تخزين Supabase إلى تفعيل حاوية income-attachments.', en: 'Income was saved without the attachment. Supabase Storage needs the income-attachments bucket enabled.', fr: 'Le revenu a été enregistré sans pièce jointe. Supabase Storage doit activer le bucket income-attachments.' },
-  type: { ar: 'النوع', en: 'Type', fr: 'Type' },
+  type: { ar: 'نوع الدخل', en: 'Income type', fr: 'Type de revenu' },
+  addIncomeTitle: { ar: 'إضافة دخل جديد', en: 'Add new income', fr: 'Ajouter un nouveau revenu' },
+  editIncomeTitle: { ar: 'تعديل الدخل', en: 'Edit income', fr: 'Modifier le revenu' },
+  addIncomeSubtitle: { ar: 'أضف مصدر دخل ليتم احتسابه ضمن خطتك المالية.', en: 'Add an income source so it is included in your financial plan.', fr: 'Ajoutez une source de revenu pour l’inclure dans votre plan financier.' },
   receivedDate: { ar: 'تاريخ الاستلام', en: 'Received date', fr: 'Date de réception' },
   status: { ar: 'الحالة', en: 'Status', fr: 'Statut' },
   recurring: { ar: 'متكرر', en: 'Recurring', fr: 'Récurrent' },
   oneTime: { ar: 'لمرة واحدة', en: 'One time', fr: 'Une fois' },
   frequency: { ar: 'التكرار', en: 'Frequency', fr: 'Fréquence' },
+  optionalNote: { ar: 'ملاحظة اختيارية', en: 'Optional note', fr: 'Note facultative' },
+  notePlaceholder: { ar: 'اكتب ملاحظة قصيرة إن وجدت', en: 'Write a short note if needed', fr: 'Ajoutez une courte note si nécessaire' },
   startDate: { ar: 'تاريخ البداية', en: 'Start date', fr: 'Date de début' },
   endDateOptional: { ar: 'تاريخ النهاية اختياري', en: 'End date optional', fr: 'Date de fin facultative' },
   upcomingIncome: { ar: 'دخل متوقع قادم', en: 'Upcoming Income', fr: 'Revenus à venir' },
@@ -181,6 +193,7 @@ const TX: Record<string, Record<Lang, string>> = {
   cancel: { ar: 'إلغاء', en: 'Cancel', fr: 'Annuler' },
   add: { ar: '+ إضافة', en: '+ Add', fr: '+ Ajouter' },
   save: { ar: 'حفظ', en: 'Save', fr: 'Enregistrer' },
+  saveIncome: { ar: 'حفظ الدخل', en: 'Save income', fr: 'Enregistrer le revenu' },
   saving: { ar: 'جارٍ الحفظ...', en: 'Saving...', fr: 'Enregistrement...' },
   edit: { ar: 'تعديل', en: 'Edit', fr: 'Modifier' },
   delete: { ar: 'حذف', en: 'Delete', fr: 'Supprimer' },
@@ -188,10 +201,13 @@ const TX: Record<string, Record<Lang, string>> = {
   source: { ar: 'المصدر', en: 'Source', fr: 'Source' },
   date: { ar: 'التاريخ', en: 'Date', fr: 'Date' },
   percent: { ar: 'من الإجمالي', en: 'of total', fr: 'du total' },
-  nameError: { ar: 'الرجاء إدخال اسم الدخل.', en: 'Please enter income name.', fr: 'Veuillez saisir le nom du revenu.' },
-  amountError: { ar: 'المبلغ يجب أن يكون أكبر من صفر.', en: 'Amount must be greater than zero.', fr: 'Le montant doit être supérieur à zéro.' },
+  nameError: { ar: 'يرجى إدخال اسم الدخل', en: 'Please enter income name.', fr: 'Veuillez saisir le nom du revenu.' },
+  amountError: { ar: 'يرجى إدخال مبلغ صحيح', en: 'Please enter a valid amount.', fr: 'Veuillez saisir un montant valide.' },
+  typeError: { ar: 'يرجى اختيار نوع الدخل', en: 'Please choose income type.', fr: 'Veuillez choisir le type de revenu.' },
+  frequencyError: { ar: 'يرجى اختيار التكرار', en: 'Please choose frequency.', fr: 'Veuillez choisir la fréquence.' },
+  receivedDateError: { ar: 'يرجى اختيار تاريخ الاستلام', en: 'Please choose received date.', fr: 'Veuillez choisir la date de réception.' },
   requiredError: { ar: 'يرجى إكمال الحقول المطلوبة.', en: 'Please complete the required fields.', fr: 'Veuillez compléter les champs requis.' },
-  saved: { ar: 'تم حفظ الدخل', en: 'Income saved', fr: 'Revenu enregistré' },
+  saved: { ar: 'تمت إضافة الدخل بنجاح', en: 'Income added successfully', fr: 'Revenu ajouté avec succès' },
   deleted: { ar: 'تم حذف الدخل', en: 'Income deleted', fr: 'Revenu supprimé' },
   exportSoon: { ar: 'التصدير غير مفعّل في هذه المرحلة.', en: 'Export is not enabled in this phase.', fr: 'L’export n’est pas activé dans cette phase.' },
   insightDetails: { ar: 'تعتمد هذه البطاقة على السجلات المحفوظة فقط، وتظهر بيانات غير كافية عندما لا تتوفر أرقام حقيقية كافية.', en: 'This card uses saved records only and shows insufficient data when there are not enough real numbers.', fr: 'Cette carte utilise uniquement les enregistrements sauvegardés et affiche des données insuffisantes lorsque les chiffres réels manquent.' },
@@ -199,11 +215,11 @@ const TX: Record<string, Record<Lang, string>> = {
 
 const TYPES: Array<{ id: IncomeType; icon: string; label: Record<Lang, string> }> = [
   { id: 'salary', icon: '💼', label: { ar: 'راتب', en: 'Salary', fr: 'Salaire' } },
-  { id: 'side', icon: '🧰', label: { ar: 'دخل جانبي', en: 'Side income', fr: 'Revenu secondaire' } },
+  { id: 'freelance', icon: '🧰', label: { ar: 'عمل حر', en: 'Freelance', fr: 'Freelance' } },
+  { id: 'project', icon: '🚀', label: { ar: 'مشروع', en: 'Project', fr: 'Projet' } },
   { id: 'investment', icon: '📈', label: { ar: 'استثمار', en: 'Investment', fr: 'Investissement' } },
-  { id: 'bonus', icon: '✨', label: { ar: 'مكافأة', en: 'Bonus', fr: 'Prime' } },
-  { id: 'gift', icon: '🎁', label: { ar: 'هدية', en: 'Gift', fr: 'Cadeau' } },
   { id: 'rent', icon: '🏠', label: { ar: 'إيجار', en: 'Rent', fr: 'Loyer' } },
+  { id: 'bonus', icon: '✨', label: { ar: 'مكافأة', en: 'Bonus', fr: 'Prime' } },
   { id: 'other', icon: '💰', label: { ar: 'أخرى', en: 'Other', fr: 'Autre' } },
 ];
 
@@ -217,7 +233,12 @@ const STATUSES: Array<{ id: IncomeStatus; label: Record<Lang, string> }> = [
 const FREQUENCIES: Array<{ id: Frequency; label: Record<Lang, string> }> = [
   { id: 'monthly', label: { ar: 'شهري', en: 'Monthly', fr: 'Mensuel' } },
   { id: 'weekly', label: { ar: 'أسبوعي', en: 'Weekly', fr: 'Hebdomadaire' } },
-  { id: 'yearly', label: { ar: 'سنوي', en: 'Yearly', fr: 'Annuel' } },
+  { id: 'daily', label: { ar: 'يومي', en: 'Daily', fr: 'Quotidien' } },
+];
+
+const FREQUENCY_MODES: Array<{ id: FrequencyMode; label: Record<Lang, string> }> = [
+  ...FREQUENCIES,
+  { id: 'one-time', label: { ar: 'مرة واحدة', en: 'One time', fr: 'Une fois' } },
 ];
 
 const ALLOWED_ATTACHMENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
@@ -244,8 +265,8 @@ function tr(key: keyof typeof TX, lang: string) {
 }
 
 function normalizeType(value?: string | null): IncomeType {
-  if (value === 'salary' || value === 'side' || value === 'investment' || value === 'bonus' || value === 'gift' || value === 'rent') return value;
-  if (value === 'business' || value === 'additional' || value === 'active') return 'side';
+  if (value === 'salary' || value === 'freelance' || value === 'project' || value === 'investment' || value === 'bonus' || value === 'gift' || value === 'rent') return value;
+  if (value === 'side' || value === 'business' || value === 'additional' || value === 'active') return 'freelance';
   if (value === 'passive') return 'rent';
   return 'other';
 }
@@ -274,6 +295,7 @@ function compareDateOnly(a: string, b: string) {
 
 function addFrequencyDate(value: string, frequency: Frequency) {
   const date = dateOnlyToLocalDate(value);
+  if (frequency === 'daily') date.setDate(date.getDate() + 1);
   if (frequency === 'weekly') date.setDate(date.getDate() + 7);
   if (frequency === 'monthly') date.setMonth(date.getMonth() + 1);
   if (frequency === 'yearly') date.setFullYear(date.getFullYear() + 1);
@@ -357,12 +379,23 @@ function suggestIncomeType(name: string): IncomeType | null {
   if (/مكافأة|مكافاه|bonus|commission/.test(value)) return 'bonus';
   if (/استثمار|dividend|investment|stock|fund/.test(value)) return 'investment';
   if (/هدية|gift/.test(value)) return 'gift';
-  if (/جانبي|freelance|side|project/.test(value)) return 'side';
+  if (/project|مشروع/.test(value)) return 'project';
+  if (/جانبي|freelance|side|عمل حر|عميل/.test(value)) return 'freelance';
   return null;
 }
 
 function legacyName(row: IncomeRow) {
   return row.label || row.name || row.source_name || 'Income';
+}
+
+function currencySymbol(code: string) {
+  if (code === 'KWD') return 'د.ك';
+  if (code === 'USD') return '$';
+  if (code === 'EUR') return '€';
+  if (code === 'GBP') return '£';
+  if (code === 'SAR') return 'ر.س';
+  if (code === 'AED') return 'د.إ';
+  return code;
 }
 
 export default function IncomePage() {
@@ -377,6 +410,7 @@ export default function IncomePage() {
   const [form, setForm] = useState<IncomeForm>(() => emptyForm());
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [toast, setToast] = useState('');
   const [insightOpen, setInsightOpen] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<IncomeFilter>('all');
@@ -583,6 +617,11 @@ export default function IncomePage() {
     return items.slice(0, 5);
   }, [concentrationPercent, lang, largestRow, lateRows.length, recurringPercent, viewRows]);
   const categorySuggestion = suggestIncomeType(form.name);
+  const frequencyMode: FrequencyMode = form.isRecurring ? form.frequency : 'one-time';
+  const formValidity = useMemo(() => {
+    const amount = Number(form.amount);
+    return Boolean(form.name.trim().length >= 2 && Number.isFinite(amount) && amount > 0 && form.incomeType && frequencyMode && form.receivedDate);
+  }, [form.amount, form.incomeType, form.name, form.receivedDate, frequencyMode]);
   const incomeTabs = useMemo(() => {
     const labels = {
       ar: {
@@ -642,9 +681,29 @@ export default function IncomePage() {
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(' ');
 
+  function patchForm(next: Partial<IncomeForm>, clear?: keyof FormErrors) {
+    setForm(previous => ({ ...previous, ...next }));
+    if (clear) {
+      setFormErrors(previous => {
+        const { [clear]: _removed, ...rest } = previous;
+        return rest;
+      });
+    }
+    setFormError('');
+  }
+
+  function setFrequencyMode(mode: FrequencyMode) {
+    if (mode === 'one-time') {
+      patchForm({ isRecurring: false }, 'frequency');
+      return;
+    }
+    patchForm({ isRecurring: true, frequency: mode, recurrenceStartDate: form.receivedDate || todayDateOnly() }, 'frequency');
+  }
+
   function openCreate() {
     setForm({ ...emptyForm(), currency: defaultCurrency || 'KWD' });
     setFormError('');
+    setFormErrors({});
     setAttachmentError('');
     setSelectedFile(null);
     setModalOpen(true);
@@ -660,13 +719,14 @@ export default function IncomePage() {
       receivedDate: row.received_date || (row.created_at ? row.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)),
       status: normalizeStatus(row.status),
       isRecurring: Boolean(row.is_recurring),
-      frequency: (row.frequency === 'weekly' || row.frequency === 'yearly' ? row.frequency : 'monthly'),
+      frequency: (row.frequency === 'weekly' || row.frequency === 'daily' || row.frequency === 'yearly' ? row.frequency : 'monthly'),
       recurrenceStartDate: row.recurrence_start_date || row.received_date || (row.created_at ? row.created_at.slice(0, 10) : todayDateOnly()),
       recurrenceEndDate: row.recurrence_end_date || '',
       sourceName: row.source_name || '',
       notes: row.notes || '',
     });
     setFormError('');
+    setFormErrors({});
     setAttachmentError('');
     setSelectedFile(null);
     setModalOpen(true);
@@ -827,11 +887,18 @@ export default function IncomePage() {
     if (saving) return;
     const name = form.name.trim();
     const amount = Number(form.amount);
-    if (name.length < 2) return setFormError(tr('nameError', lang));
-    if (!amount || amount <= 0) return setFormError(tr('amountError', lang));
-    if (!form.incomeType || !form.status) return setFormError(tr('requiredError', lang));
-    if (form.isRecurring && (!form.frequency || !form.recurrenceStartDate)) return setFormError(tr('requiredError', lang));
-    if (!form.isRecurring && !form.receivedDate) return setFormError(tr('requiredError', lang));
+    const nextErrors: FormErrors = {};
+    if (name.length < 2) nextErrors.name = tr('nameError', lang);
+    if (!Number.isFinite(amount) || amount <= 0) nextErrors.amount = tr('amountError', lang);
+    if (!form.incomeType) nextErrors.incomeType = tr('typeError', lang);
+    if (!frequencyMode) nextErrors.frequency = tr('frequencyError', lang);
+    if (!form.receivedDate) nextErrors.receivedDate = tr('receivedDateError', lang);
+    setFormErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      setFormError(tr('requiredError', lang));
+      return;
+    }
+    setFormError('');
 
     setSaving(true);
     const id = form.id || crypto.randomUUID();
@@ -908,6 +975,7 @@ export default function IncomePage() {
         const { error } = await supabase.from('monthly_income_sources').update(payload).eq('id', id).eq('user_id', user.id);
         if (error) throw error;
         setRows(previous => previous.map(row => row.id === id ? { ...row, ...nextRow } : row));
+        await load();
       } else {
         const { data, error } = await supabase
           .from('monthly_income_sources')
@@ -959,12 +1027,14 @@ export default function IncomePage() {
           }
         }
         setRows(previous => [parent, ...generatedRows, ...previous]);
+        await load();
       }
       setModalOpen(false);
       setSelectedFile(null);
       setAttachmentError('');
       showToast(tr('saved', lang));
     } catch (error) {
+      console.error('[Income] Failed to save income record', error);
       setFormError(error instanceof Error ? error.message : tr('requiredError', lang));
     } finally {
       setSaving(false);
@@ -1110,7 +1180,7 @@ export default function IncomePage() {
             <CalendarDays size={18} /><h2>{tr('upcomingIncome', lang)}</h2>
           </div>
           <div className="upcoming-list">
-            {upcomingRows.length === 0 ? <div className="empty">{tr('noIncome', lang)}</div> : upcomingRows.map(row => (
+            {upcomingRows.length === 0 ? <div className="empty compact-empty">{tr('noIncome', lang)}</div> : upcomingRows.map(row => (
               <article className="upcoming-item" key={row.id}>
                 <div>
                   <strong>{legacyName(row)}</strong>
@@ -1184,7 +1254,14 @@ export default function IncomePage() {
             ))}
           </div>}
           <div className="income-list">
-            {loading ? <div className="empty">{tr('title', lang)}...</div> : displayRows.length === 0 ? <div className="empty">{tr('noIncome', lang)}</div> : displayRows.map(row => {
+            {loading ? <div className="empty">{tr('title', lang)}...</div> : displayRows.length === 0 ? (
+              <div className="income-empty-state">
+                <span className="income-empty-icon" aria-hidden="true"><Wallet size={28} /></span>
+                <strong>{tr('noIncome', lang)}</strong>
+                <p>{tr('noIncomeDescription', lang)}</p>
+                <button type="button" className="primary-dark" onClick={openCreate}><Plus size={16} />{tr('addFirstIncome', lang)}</button>
+              </div>
+            ) : displayRows.map(row => {
               const amount = Number(row.amount || 0);
               const pct = total > 0 ? Math.round((amount / total) * 100) : 0;
               const projectLinked = isProjectLinkedIncomeRow(row);
@@ -1230,60 +1307,38 @@ export default function IncomePage() {
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setModalOpen(false)}>
           <div className="income-modal" role="dialog" aria-modal="true" aria-labelledby="income-modal-title" onMouseDown={event => event.stopPropagation()}>
             <div className="modal-head">
-              <div><p>{tr('breadcrumb', lang)}</p><h2 id="income-modal-title">{form.id ? tr('edit', lang) : tr('addIncome', lang)}</h2></div>
+              <div className="modal-title-wrap">
+                <span className="modal-title-icon" aria-hidden="true"><CircleDollarSign size={22} /></span>
+                <div><h2 id="income-modal-title">{form.id ? tr('editIncomeTitle', lang) : tr('addIncomeTitle', lang)}</h2><p>{tr('addIncomeSubtitle', lang)}</p></div>
+              </div>
               <button type="button" aria-label={tr('close', lang)} onClick={() => setModalOpen(false)}><X size={18} /></button>
             </div>
             <form className="income-form" onSubmit={saveIncome}>
-              <label><span>{tr('name', lang)}</span><input autoFocus value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required minLength={2} /></label>
+              <label><span>{tr('name', lang)}</span><input autoFocus value={form.name} onChange={e => patchForm({ name: e.target.value }, 'name')} placeholder={tr('incomeNamePlaceholder', lang)} aria-invalid={Boolean(formErrors.name)} />{formErrors.name && <small className="field-error">{formErrors.name}</small>}</label>
               {categorySuggestion && categorySuggestion !== form.incomeType && (
                 <div className="suggestion-pill">
                   <Sparkles size={14} />
                   <span>{tr('suggestion', lang)}: {typeLabel(categorySuggestion, lang)}</span>
-                  <button type="button" onClick={() => setForm({ ...form, incomeType: categorySuggestion })}>{tr('acceptSuggestion', lang)}</button>
+                  <button type="button" onClick={() => patchForm({ incomeType: categorySuggestion }, 'incomeType')}>{tr('acceptSuggestion', lang)}</button>
                 </div>
               )}
-              <label><span>{tr('amount', lang)}</span><input value={form.amount} inputMode="decimal" onChange={e => setForm({ ...form, amount: e.target.value })} required /></label>
+              <label><span>{tr('amount', lang)}</span><div className="amount-control"><input value={form.amount} inputMode="decimal" onChange={e => patchForm({ amount: e.target.value }, 'amount')} placeholder={tr('amountPlaceholder', lang)} aria-invalid={Boolean(formErrors.amount)} /><em>{currencySymbol(form.currency)}</em></div>{formErrors.amount && <small className="field-error">{formErrors.amount}</small>}</label>
               <CurrencySelect
                 value={form.currency}
-                onChange={code => setForm({ ...form, currency: code })}
+                onChange={code => patchForm({ currency: code })}
                 lang={lang}
                 label={tr('currency', lang)}
                 ariaLabel={tr('currency', lang)}
               />
+              <label><span>{tr('type', lang)}</span><select value={form.incomeType} onChange={e => patchForm({ incomeType: e.target.value as IncomeType }, 'incomeType')} aria-invalid={Boolean(formErrors.incomeType)}>{TYPES.map(item => <option key={item.id} value={item.id}>{item.icon} {item.label[lang as Lang]}</option>)}</select>{formErrors.incomeType && <small className="field-error">{formErrors.incomeType}</small>}</label>
+              <label><span>{tr('frequency', lang)}</span><select value={frequencyMode} onChange={e => setFrequencyMode(e.target.value as FrequencyMode)} aria-invalid={Boolean(formErrors.frequency)}>{FREQUENCY_MODES.map(item => <option key={item.id} value={item.id}>{item.label[lang as Lang]}</option>)}</select>{formErrors.frequency && <small className="field-error">{formErrors.frequency}</small>}</label>
+              <label><span>{tr('receivedDate', lang)}</span><input type="date" value={form.receivedDate} onChange={e => patchForm({ receivedDate: e.target.value, recurrenceStartDate: e.target.value }, 'receivedDate')} aria-invalid={Boolean(formErrors.receivedDate)} />{formErrors.receivedDate && <small className="field-error">{formErrors.receivedDate}</small>}</label>
+              <label className="wide"><span>{tr('optionalNote', lang)}</span><textarea value={form.notes} onChange={e => patchForm({ notes: e.target.value })} placeholder={tr('notePlaceholder', lang)} /></label>
               {form.currency !== 'KWD' && <div className="form-note">{tr('conversionDisabled', lang)}</div>}
-              <label><span>{tr('receivedDate', lang)}</span><input type="date" value={form.receivedDate} onChange={e => setForm({ ...form, receivedDate: e.target.value })} required={!form.isRecurring} /></label>
-              <label><span>{tr('type', lang)}</span><select value={form.incomeType} onChange={e => setForm({ ...form, incomeType: e.target.value as IncomeType })}>{TYPES.map(item => <option key={item.id} value={item.id}>{item.icon} {item.label[lang as Lang]}</option>)}</select></label>
-              <label><span>{tr('status', lang)}</span><select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as IncomeStatus })}>{STATUSES.map(item => <option key={item.id} value={item.id}>{item.label[lang as Lang]}</option>)}</select></label>
-              <label className="toggle-line"><span>{tr('recurring', lang)}</span><button type="button" className={form.isRecurring ? 'toggle on' : 'toggle'} onClick={() => setForm({ ...form, isRecurring: !form.isRecurring })}><span />{form.isRecurring ? tr('recurring', lang) : tr('oneTime', lang)}</button></label>
-              {form.isRecurring && (
-                <>
-                  <label><span>{tr('frequency', lang)}</span><select value={form.frequency} onChange={e => setForm({ ...form, frequency: e.target.value as Frequency })}>{FREQUENCIES.map(item => <option key={item.id} value={item.id}>{item.label[lang as Lang]}</option>)}</select></label>
-                  <label><span>{tr('startDate', lang)}</span><input type="date" value={form.recurrenceStartDate} onChange={e => setForm({ ...form, recurrenceStartDate: e.target.value, receivedDate: e.target.value })} required /></label>
-                  <label><span>{tr('endDateOptional', lang)}</span><input type="date" value={form.recurrenceEndDate} onChange={e => setForm({ ...form, recurrenceEndDate: e.target.value })} /></label>
-                  {form.id && <div className="form-note">{tr('editThisOnly', lang)}</div>}
-                </>
-              )}
-              <label><span>{tr('sourceCompany', lang)}</span><input value={form.sourceName} onChange={e => setForm({ ...form, sourceName: e.target.value })} /></label>
-              <label className="wide"><span>{tr('notes', lang)}</span><textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></label>
-              <div className="attachment-field">
-                <label>
-                  <span>{tr('attachFile', lang)}</span>
-                  <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp" onChange={event => handleFileSelect(event.target.files?.[0] ?? null)} />
-                </label>
-                {(selectedFile || (form.id && rows.find(row => row.id === form.id)?.attachment_name)) && (
-                  <div className="attachment-chip">
-                    <Paperclip size={14} />
-                    <span>{selectedFile?.name || rows.find(row => row.id === form.id)?.attachment_name}</span>
-                    <small>{formatFileSize(selectedFile?.size || rows.find(row => row.id === form.id)?.attachment_size)}</small>
-                    {selectedFile && <button type="button" onClick={() => setSelectedFile(null)} aria-label={tr('removeAttachment', lang)}><X size={13} /></button>}
-                  </div>
-                )}
-                {attachmentError && <div className="form-error">{attachmentError}</div>}
-              </div>
               {formError && <div className="form-error">{formError}</div>}
               <div className="form-actions">
                 <button type="button" className="ghost-light" onClick={() => setModalOpen(false)} disabled={saving}>{tr('cancel', lang)}</button>
-                <button type="submit" className="primary-dark" disabled={saving}>{saving ? tr('saving', lang) : form.id ? tr('save', lang) : tr('add', lang)}</button>
+                <button type="submit" className="primary-dark" disabled={saving || !formValidity}>{saving ? tr('saving', lang) : tr('saveIncome', lang)}</button>
               </div>
             </form>
           </div>
@@ -1315,8 +1370,9 @@ export default function IncomePage() {
         .income-list{display:grid;gap:10px}.income-row{display:flex;justify-content:space-between;gap:14px;border:1px solid rgba(29,140,255,.14);border-radius:16px;padding:14px;background:var(--sfm-light-card)}.row-main{display:flex;gap:12px;min-width:0}.row-icon{width:44px;height:44px;border-radius:14px;background:rgba(29,140,255,.10);display:grid;place-items:center;font-size:21px}.row-main strong{display:block;font-size:15px;font-weight:600;color:var(--sfm-midnight)}.row-main span{display:block;margin-top:4px;color:var(--sfm-muted);font-size:12px}.row-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.row-meta em{font-style:normal;border-radius:999px;background:var(--sfm-background);color:var(--sfm-muted);padding:4px 8px;font-size:11px;display:inline-flex;align-items:center;gap:4px}.row-meta .received{background:#ECFDF5;color:#047857}.row-meta .pending,.row-meta .expected{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover)}.row-meta .late{background:#FEF2F2;color:#B91C1C}.row-meta .project-income{background:rgba(24,212,212,.14);color:var(--sfm-primary-hover);border:1px solid rgba(24,212,212,.22)}.row-side{display:flex;align-items:center;gap:12px}.row-side b{white-space:nowrap;color:var(--sfm-midnight)}.row-side div{display:flex;gap:6px}.row-side button,.modal-head button,.mini-pop button{width:36px;height:36px;border-radius:11px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);color:var(--sfm-midnight);display:grid;place-items:center;cursor:pointer}.empty{padding:24px;text-align:center;color:var(--sfm-muted);border:1px dashed rgba(29,140,255,.22);border-radius:14px;background:var(--sfm-light-card)}
         .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(36,24,13,.42);display:grid;place-items:center;padding:18px}.income-modal{width:min(760px,100%);max-height:min(92dvh,900px);overflow:auto;background:var(--sfm-card);border-radius:20px;border:1px solid rgba(29,140,255,.18);padding:20px}.modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}.modal-head p{margin:0;color:var(--sfm-primary);font-size:12px}.modal-head h2{margin:4px 0 0;font-size:24px;color:var(--sfm-midnight)}.income-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.income-form label{display:grid;gap:7px;color:var(--sfm-midnight);font-size:13px;font-weight:500}.income-form input,.income-form select,.income-form textarea{width:100%;border:1px solid rgba(29,140,255,.16);border-radius:12px;background:var(--sfm-background);color:var(--sfm-midnight);padding:0 12px;min-height:46px;font:500 14px inherit;outline:none}.income-form input[type=file]{padding:11px 12px}.income-form textarea{min-height:92px;padding-top:12px;resize:vertical}.income-form input:focus,.income-form select:focus,.income-form textarea:focus{border-color:var(--sfm-primary);box-shadow:0 0 0 3px rgba(29,140,255,.14);background:var(--sfm-card)}.wide,.form-actions,.form-error,.form-note,.attachment-field,.suggestion-pill{grid-column:1/-1}.suggestion-pill{display:flex;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.18);border-radius:12px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:10px 12px;font-size:13px}.suggestion-pill button{margin-inline-start:auto;border:0;border-radius:10px;background:var(--sfm-midnight);color:#fff;padding:7px 10px;font:600 12px inherit;cursor:pointer}.attachment-field{display:grid;gap:10px}.attachment-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.16);border-radius:12px;background:var(--sfm-background);color:var(--sfm-midnight);padding:9px 10px;font-size:13px}.attachment-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attachment-chip small{color:var(--sfm-muted);margin-inline-start:auto}.attachment-chip button{width:28px;height:28px;border-radius:9px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);color:var(--sfm-midnight);display:grid;place-items:center;cursor:pointer}.toggle-line{align-content:end}.toggle{height:46px;border-radius:12px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-background);color:var(--sfm-midnight);display:flex;align-items:center;gap:9px;padding:0 12px;cursor:pointer}.toggle span{width:20px;height:20px;border-radius:50%;background:#c9bea9}.toggle.on span{background:var(--sfm-primary)}.form-actions{display:flex;justify-content:flex-end;gap:10px}.form-error{background:#FEF2F2;color:#B91C1C;border-radius:12px;padding:10px 12px;font-size:13px}.form-note{background:#E6F1FB;color:#0C447C;border-radius:12px;padding:10px 12px;font-size:13px}
         .mini-pop,.toast{position:fixed;z-index:100;inset-inline-end:22px;bottom:22px;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:14px;max-width:min(360px,calc(100vw - 32px));box-shadow:0 16px 38px rgba(3,18,37,.12)}.mini-pop strong{display:block;margin-bottom:6px}.mini-pop p{margin:0;color:var(--sfm-muted);line-height:1.6}.mini-pop button{float:inline-end;width:28px;height:28px}.toast{background:#ECFDF5;color:#047857;font-weight:600}
+        .income-shell{background:linear-gradient(180deg,#EEF7FF 0%,#F8FBFF 42%,#FFFFFF 100%);color:#0B172A}.income-main{gap:20px;padding:28px 28px 64px}.income-header{overflow:hidden;background:linear-gradient(135deg,#061A2E 0%,#0B2A4A 58%,#0E7490 140%);border-color:rgba(34,211,238,.24);border-radius:28px;padding:34px;box-shadow:0 28px 70px rgba(3,18,37,.22)}.income-header h1{font-size:clamp(36px,6vw,58px);font-weight:900;color:#F8FAFC}.income-header p{color:#A7F3D0;font-weight:800}.income-header span{color:#BAE6FD;font-weight:700}.primary,.primary-dark{min-height:46px;border-radius:14px;background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#061A2E;font-weight:900;box-shadow:0 14px 28px rgba(29,140,255,.22)}.ghost-light,.ghost{min-height:46px;border-radius:14px;font-weight:900}.stat-grid article,.panel,.insight{border-color:#E2E8F0;background:#fff;border-radius:22px;box-shadow:0 18px 42px rgba(3,18,37,.06)}.stat-grid strong{font-size:clamp(24px,3vw,34px);font-weight:900;color:#0B172A}.income-row{border-color:#E2E8F0;background:#F8FBFF;border-radius:18px}.row-main strong,.row-side b{color:#0B172A;font-weight:950}.empty{border-radius:16px;background:#F8FBFF;font-weight:800}.compact-empty{min-height:96px;display:grid;place-items:center}.income-empty-state{min-height:280px;display:grid;place-items:center;align-content:center;gap:12px;text-align:center;border:1px dashed rgba(29,140,255,.28);border-radius:22px;background:linear-gradient(180deg,#F8FBFF,#FFFFFF);padding:34px}.income-empty-icon{width:62px;height:62px;border-radius:20px;display:grid;place-items:center;color:#061A2E;background:linear-gradient(135deg,#22D3EE,#38BDF8);box-shadow:0 18px 34px rgba(29,140,255,.22)}.income-empty-state strong{font-size:1.25rem;color:#0B172A;font-weight:950}.income-empty-state p{margin:0;max-width:480px;color:#64748B;line-height:1.8;font-weight:800}.modal-backdrop{background:rgba(6,26,46,.56);backdrop-filter:blur(10px);padding:18px}.income-modal{width:min(880px,100%);max-height:min(90vh,900px);background:#fff;border-radius:24px;border:1px solid rgba(226,232,240,.95);padding:24px;box-shadow:0 34px 90px rgba(3,18,37,.28)}.modal-head{flex-direction:row-reverse;gap:18px;margin-bottom:22px}.modal-title-wrap{display:flex;gap:12px;align-items:flex-start}.modal-title-icon{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;color:#061A2E;background:linear-gradient(135deg,#22D3EE,#38BDF8);box-shadow:0 16px 30px rgba(29,140,255,.22);flex:0 0 auto}.modal-head h2{margin:0;font-size:28px;color:#0B172A;font-weight:950}.modal-head p{margin:6px 0 0;color:#64748B;font-size:14px;font-weight:800;line-height:1.7}.income-form{gap:16px}.income-form label{gap:8px;color:#0B172A;font-weight:900}.income-form input,.income-form select,.income-form textarea{border-color:#CBD5E1;border-radius:14px;background:#F8FAFC;color:#0B172A;min-height:50px;font-weight:800}.income-form input::placeholder,.income-form textarea::placeholder{color:#94A3B8}.income-form input:focus,.income-form select:focus,.income-form textarea:focus{border-color:#22D3EE;box-shadow:0 0 0 4px rgba(34,211,238,.16);background:#fff}.income-form [aria-invalid="true"]{border-color:#EF4444}.amount-control{position:relative}.amount-control input{padding-inline-end:58px}.amount-control em{position:absolute;inset-inline-end:12px;top:50%;transform:translateY(-50%);font-style:normal;color:#0369A1;font-weight:950;pointer-events:none}.field-error{color:#B91C1C;font-size:12px;font-weight:900}.form-error{font-weight:900}.dark .income-shell{background:#061A2E;color:#F8FAFC}.dark .income-header{background:linear-gradient(135deg,#061A2E,#0B2A4A 58%,#102F52 140%);border-color:rgba(255,255,255,.10)}.dark .insight,.dark .stat-grid article,.dark .panel,.dark .income-modal{background:#102A45;border-color:rgba(255,255,255,.10);color:#F8FAFC}.dark .income-modal{background:#0B1F35}.dark .income-row,.dark .empty,.dark .income-empty-state,.dark .income-form input,.dark .income-form select,.dark .income-form textarea{background:#0F2942;border-color:rgba(255,255,255,.10);color:#F8FAFC}.dark .income-form input:focus,.dark .income-form select:focus,.dark .income-form textarea:focus{background:#102A45;border-color:#22D3EE}.dark .modal-head h2,.dark .income-form label,.dark .stat-grid strong,.dark .row-main strong,.dark .row-side b,.dark .income-empty-state strong{color:#F8FAFC}.dark .modal-head p,.dark .income-empty-state p{color:#CBD5E1}.dark .amount-control em{color:#22D3EE}.dark .modal-head button{background:#102A45;border-color:rgba(255,255,255,.10);color:#F8FAFC}
         @media(max-width:1024px){.income-main{margin-inline-start:0;padding:calc(84px + env(safe-area-inset-top)) 16px 24px}.insights,.chart-grid,.smart-grid{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:680px){.income-header,.income-row,.late-card{display:grid}.income-header{padding:22px}.income-header h1{font-size:34px}.income-actions,.form-actions{display:grid;grid-template-columns:1fr}.export-wrap,.primary,.ghost,.primary-dark,.ghost-light{width:100%}.export-menu{position:static;margin-top:8px}.stat-grid,.income-form,.donut-wrap,.upcoming-item{grid-template-columns:1fr}.row-side{justify-content:space-between}.modal-backdrop{align-items:end;padding:10px}.income-modal{border-radius:20px 20px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.insight{align-items:flex-start}.insight b{margin-inline-start:0}.row-meta{gap:5px}.upcoming-item button,.late-card button{width:100%;justify-content:center}.suggestion-pill{display:grid}.suggestion-pill button{margin-inline-start:0;width:100%}}
+        @media(max-width:680px){.income-header,.income-row,.late-card{display:grid}.income-header{padding:24px}.income-header h1{font-size:34px}.income-actions,.form-actions{display:grid;grid-template-columns:1fr}.export-wrap,.primary,.ghost,.primary-dark,.ghost-light{width:100%}.export-menu{position:static;margin-top:8px}.stat-grid,.income-form,.donut-wrap,.upcoming-item{grid-template-columns:1fr}.row-side{justify-content:space-between}.modal-backdrop{align-items:end;padding:12px}.income-modal{width:calc(100% - 24px);border-radius:24px 24px 0 0;max-height:90vh;padding:20px;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-title-wrap{display:grid}.income-form input,.income-form select,.income-form textarea{min-height:52px}.insight{align-items:flex-start}.insight b{margin-inline-start:0}.row-meta{gap:5px}.upcoming-item button,.late-card button{width:100%;justify-content:center}.suggestion-pill{display:grid}.suggestion-pill button{margin-inline-start:0;width:100%}}
       `}</style>
     </div>
   );

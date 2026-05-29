@@ -1,9 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { BarChart3, BriefcaseBusiness, FileDown, FileText, Loader2, Plus, ReceiptText, ShoppingCart, Truck, UserRound, UsersRound } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { AlertTriangle, BriefcaseBusiness, FileDown, FileText, FolderKanban, Loader2, Plus, ReceiptText, RefreshCw, ShoppingCart, Truck, UserRound, UsersRound } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
@@ -19,6 +19,11 @@ import { BUSINESS_TEXT, businessRoleLabel, normalizeBusinessLang, numericValue, 
 import { aggregateBy, downloadCsv, downloadXlsx, monthLabel, nextPayrollDate, printPdf } from '@/lib/businessReports';
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
+
+const BusinessOperationsChartCard = dynamic(() => import('@/components/business/BusinessOperationsChartCard'), {
+  ssr: false,
+  loading: () => <article className="business-chart-card business-chart-skeleton" aria-hidden="true" />,
+});
 
 type SaleRow = {
   id: string;
@@ -39,9 +44,19 @@ type EmployeeRow = {
   payroll_due_day: number | string | null;
 };
 
+type ProjectRow = {
+  id: string;
+};
+
 type SummaryRow = {
   metric: string;
   value: string;
+};
+
+type BusinessLoadIssues = {
+  projects?: string;
+  sales?: string;
+  employees?: string;
 };
 
 export default function BusinessOperationsPage() {
@@ -52,44 +67,93 @@ export default function BusinessOperationsPage() {
   const { role, loading: roleLoading, permissions } = useBusinessRole(user?.id);
   const [salesRows, setSalesRows] = useState<SaleRow[]>([]);
   const [employeeRows, setEmployeeRows] = useState<EmployeeRow[]>([]);
+  const [projectRows, setProjectRows] = useState<ProjectRow[]>([]);
   const [defaultCurrency, setDefaultCurrency] = useState('KWD');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [loadIssues, setLoadIssues] = useState<BusinessLoadIssues>({});
   const [notice, setNotice] = useState('');
 
   const loadBusinessData = useCallback(async () => {
     if (!user) {
       setSalesRows([]);
       setEmployeeRows([]);
+      setProjectRows([]);
       setLoading(false);
       return;
     }
     setLoading(true);
     setError('');
-    const db = supabase as any;
-    const [profileResult, salesResult, employeesResult] = await Promise.all([
-      db.from('profiles').select('default_currency').eq('id', user.id).maybeSingle(),
-      permissions.canViewSales
-        ? db.from('business_sales').select('id, customer_name, product_or_service, amount, currency, status, sale_date').eq('user_id', user.id).order('sale_date', { ascending: false })
-        : Promise.resolve({ data: [], error: null }),
-      permissions.canViewEmployees
-        ? db.from('business_employees').select('id, employee_name, salary, bonus, status, payroll_due_day').eq('user_id', user.id).order('created_at', { ascending: false })
-        : Promise.resolve({ data: [], error: null }),
-    ]);
+    setLoadIssues({});
+    try {
+      const db = supabase as any;
+      const [profileResult, projectsResult, salesResult, employeesResult] = await Promise.all([
+        db.from('profiles').select('default_currency').eq('id', user.id).maybeSingle(),
+        db.from('projects').select('id').eq('user_id', user.id),
+        permissions.canViewSales
+          ? db.from('business_sales').select('id, customer_name, product_or_service, amount, currency, status, sale_date').eq('user_id', user.id).order('sale_date', { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
+        permissions.canViewEmployees
+          ? db.from('business_employees').select('id, employee_name, salary, bonus, status, payroll_due_day').eq('user_id', user.id).order('created_at', { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
+      ]);
 
-    if (!profileResult.error && profileResult.data?.default_currency) {
-      setDefaultCurrency(profileResult.data.default_currency);
-    }
+      if (profileResult.error) {
+        console.warn('[BusinessOperations] Profile currency could not be loaded', profileResult.error);
+      } else if (profileResult.data?.default_currency) {
+        setDefaultCurrency(profileResult.data.default_currency);
+      }
 
-    if (salesResult.error || employeesResult.error) {
+      const nextIssues: BusinessLoadIssues = {};
+
+      if (projectsResult.error) {
+        console.error('[BusinessOperations] Projects query failed', projectsResult.error);
+        nextIssues.projects = text.loadError;
+        setProjectRows([]);
+      } else {
+        setProjectRows(Array.isArray(projectsResult.data) ? (projectsResult.data as ProjectRow[]) : []);
+      }
+
+      if (salesResult.error) {
+        console.error('[BusinessOperations] Sales query failed', salesResult.error);
+        if (permissions.canViewSales) nextIssues.sales = text.loadError;
+        setSalesRows([]);
+      } else {
+        setSalesRows(Array.isArray(salesResult.data) ? (salesResult.data as SaleRow[]) : []);
+      }
+
+      if (employeesResult.error) {
+        console.error('[BusinessOperations] Employees query failed', employeesResult.error);
+        if (permissions.canViewEmployees) nextIssues.employees = text.loadError;
+        setEmployeeRows([]);
+      } else {
+        setEmployeeRows(Array.isArray(employeesResult.data) ? (employeesResult.data as EmployeeRow[]) : []);
+      }
+
+      setLoadIssues(nextIssues);
+
+      const attemptedQueries = [
+        { attempted: true, error: projectsResult.error },
+        { attempted: permissions.canViewSales, error: salesResult.error },
+        { attempted: permissions.canViewEmployees, error: employeesResult.error },
+      ].filter(item => item.attempted);
+      const everyAttemptedQueryFailed = attemptedQueries.length > 0 && attemptedQueries.every(item => Boolean(item.error));
+
+      if (everyAttemptedQueryFailed) {
+        console.error('[BusinessOperations] All business data sources failed', {
+          projectsError: projectsResult.error,
+          salesError: salesResult.error,
+          employeesError: employeesResult.error,
+        });
+        setError(text.loadError);
+        return;
+      }
+    } catch (loadError) {
+      console.error('[BusinessOperations] Unexpected business data load error', loadError);
       setError(text.loadError);
-      setSalesRows([]);
-      setEmployeeRows([]);
-    } else {
-      setSalesRows((salesResult.data ?? []) as SaleRow[]);
-      setEmployeeRows((employeesResult.data ?? []) as EmployeeRow[]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [permissions.canViewEmployees, permissions.canViewSales, text.loadError, user]);
 
   useEffect(() => {
@@ -106,13 +170,14 @@ export default function BusinessOperationsPage() {
       .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
     return {
       totalSales,
+      projectCount: projectRows.length,
       salesCount: salesRows.length,
       employeeCount: employeeRows.length,
       activeEmployees: activeEmployees.length,
       payroll,
       nearestPayroll,
     };
-  }, [employeeRows, salesRows]);
+  }, [employeeRows, projectRows.length, salesRows]);
 
   const chartData = useMemo(() => {
     const activeSales = salesRows.filter((row) => row.status !== 'canceled');
@@ -128,9 +193,12 @@ export default function BusinessOperationsPage() {
     return { monthly, status, products };
   }, [locale, salesRows, text.unclassified]);
 
+  const isEmpty = summary.projectCount === 0 && summary.salesCount === 0 && summary.employeeCount === 0;
+
   function summaryRows(): SummaryRow[] {
     return [
       { metric: text.totalSales, value: permissions.canViewSales ? formatMoney(summary.totalSales, defaultCurrency, locale) : text.permissionDenied },
+      { metric: text.totalProjects, value: String(summary.projectCount) },
       { metric: text.sales, value: permissions.canViewSales ? String(summary.salesCount) : text.permissionDenied },
       { metric: text.totalEmployees, value: permissions.canViewEmployees ? String(summary.employeeCount) : text.permissionDenied },
       { metric: text.activeEmployees, value: permissions.canViewEmployees ? String(summary.activeEmployees) : text.permissionDenied },
@@ -161,6 +229,16 @@ export default function BusinessOperationsPage() {
 
   const cards = useMemo(() => [
     {
+      title: text.projects,
+      description: text.projectsDescription,
+      href: '/projects',
+      action: text.openProjects,
+      icon: FolderKanban,
+      active: true,
+      allowed: true,
+      count: summary.projectCount,
+    },
+    {
       title: text.sales,
       description: text.salesDescription,
       href: '/sales',
@@ -184,7 +262,7 @@ export default function BusinessOperationsPage() {
     { title: text.invoices, description: text.invoicesDescription, icon: FileText, active: false, allowed: false, count: 0 },
     { title: text.suppliers, description: text.suppliersDescription, icon: Truck, active: false, allowed: false, count: 0 },
     { title: text.operatingExpenses, description: text.operatingExpensesDescription, icon: ReceiptText, active: false, allowed: false, count: 0 },
-  ], [permissions.canViewEmployees, permissions.canViewSales, summary.employeeCount, summary.salesCount, text]);
+  ], [permissions.canViewEmployees, permissions.canViewSales, summary.employeeCount, summary.projectCount, summary.salesCount, text]);
 
   if (authLoading || loading || roleLoading) {
     return (
@@ -224,7 +302,15 @@ export default function BusinessOperationsPage() {
           ) : null}
         />
 
-        {error ? <div className="business-alert" role="alert">{error}</div> : null}
+        {error ? (
+          <div className="business-alert" role="alert">
+            <span><AlertTriangle size={18} aria-hidden="true" />{error}</span>
+            <button type="button" onClick={loadBusinessData}>
+              <RefreshCw size={15} aria-hidden="true" />
+              {text.retry}
+            </button>
+          </div>
+        ) : null}
         {notice ? <div className="business-notice" role="status">{notice}</div> : null}
 
         <section className="business-summary-grid" aria-label={text.businessOperations}>
@@ -278,65 +364,34 @@ export default function BusinessOperationsPage() {
         </section>
 
         <section className="business-chart-grid" aria-label={text.monthlySales}>
-          <HubChartCard title={text.monthlySales} data={chartData.monthly} currency={defaultCurrency} lang={locale} />
-          <HubChartCard title={text.salesByStatus} data={chartData.status} currency={defaultCurrency} lang={locale} variant="pie" />
-          <HubChartCard title={text.topProducts} data={chartData.products} currency={defaultCurrency} lang={locale} />
+          <BusinessOperationsChartCard title={text.monthlySales} data={chartData.monthly} currency={defaultCurrency} lang={locale} />
+          <BusinessOperationsChartCard title={text.salesByStatus} data={chartData.status} currency={defaultCurrency} lang={locale} variant="pie" />
+          <BusinessOperationsChartCard title={text.topProducts} data={chartData.products} currency={defaultCurrency} lang={locale} />
         </section>
 
-        {summary.salesCount === 0 && summary.employeeCount === 0 && !error ? (
+        {!error && Object.keys(loadIssues).length > 0 ? (
+          <div className="business-section-warning" role="status">
+            <AlertTriangle size={17} aria-hidden="true" />
+            <span>{text.partialLoadWarning}</span>
+          </div>
+        ) : null}
+
+        {isEmpty && !error ? (
           <EmptyState
             title={text.noDataYet}
             description={text.emptyDashboardBody}
             icon={<BriefcaseBusiness size={26} />}
+            actions={(
+              <Link className="business-empty-action" href="/sales">
+                <Plus size={16} aria-hidden="true" />
+                {text.addSale}
+              </Link>
+            )}
           />
         ) : null}
       </DashboardPageShell>
       <style jsx global>{businessOperationsStyles}</style>
     </div>
-  );
-}
-
-function HubChartCard({ title, data, currency, lang, variant = 'bar' }: { title: string; data: Array<{ name: string; value: number; label?: string }>; currency: string; lang: 'ar' | 'en' | 'fr'; variant?: 'bar' | 'pie' }) {
-  const text = BUSINESS_TEXT[lang];
-  const hasData = data.some((item) => item.value > 0);
-  const colors = ['#1D8CFF', '#18D4D4', '#10B981', '#F59E0B', '#8B5CF6'];
-  const chartRows = data.map((item) => ({ ...item, label: item.label ?? item.name }));
-  return (
-    <article className="business-chart-card">
-      <div className="business-section-heading">
-        <h2><BarChart3 size={18} aria-hidden="true" />{title}</h2>
-      </div>
-      {!hasData ? (
-        <div className="business-chart-empty">
-          <span className="business-chart-empty-icon" aria-hidden="true"><BarChart3 size={24} /></span>
-          <strong>{text.insufficientChartData}</strong>
-          <p>{text.chartEmptyBody}</p>
-          <Link className="business-chart-empty-action" href="/sales">
-            <Plus size={15} aria-hidden="true" />
-            {text.addSale}
-          </Link>
-        </div>
-      ) : (
-        <ResponsiveContainer width="100%" height={220}>
-          {variant === 'pie' ? (
-            <PieChart>
-              <Pie data={chartRows} dataKey="value" nameKey="name" innerRadius={48} outerRadius={82} paddingAngle={3}>
-                {chartRows.map((_, index) => <Cell key={index} fill={colors[index % colors.length]} />)}
-              </Pie>
-              <Tooltip formatter={(value) => formatMoney(Number(value), currency, lang)} />
-            </PieChart>
-          ) : (
-            <BarChart data={chartRows}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-              <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(value) => formatMoney(Number(value), currency, lang)} />
-              <Bar dataKey="value" fill="#1D8CFF" radius={[10, 10, 0, 0]} />
-            </BarChart>
-          )}
-        </ResponsiveContainer>
-      )}
-    </article>
   );
 }
 
@@ -385,6 +440,37 @@ const businessOperationsStyles = `
     border-radius: 16px;
     padding: 12px 14px;
     font-weight: 850;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .business-alert span,
+  .business-alert button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .business-alert button {
+    min-height: 36px;
+    border: 1px solid rgba(185, 28, 28, 0.24);
+    border-radius: 12px;
+    background: var(--sfm-card);
+    color: #B91C1C;
+    padding: 0 12px;
+    font-family: inherit;
+    font-weight: 950;
+    cursor: pointer;
+  }
+
+  .business-alert button:hover,
+  .business-alert button:focus-visible {
+    border-color: rgba(185, 28, 28, 0.42);
+    outline: 2px solid rgba(239, 68, 68, 0.22);
+    outline-offset: 2px;
   }
 
   .business-notice {
@@ -393,6 +479,18 @@ const businessOperationsStyles = `
     color: #047857;
     border-radius: 16px;
     padding: 12px 14px;
+    font-weight: 850;
+  }
+
+  .business-section-warning {
+    border: 1px solid rgba(245, 158, 11, 0.24);
+    background: rgba(245, 158, 11, 0.09);
+    color: #92400E;
+    border-radius: 16px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-weight: 850;
   }
 
@@ -555,6 +653,17 @@ const businessOperationsStyles = `
     padding: 16px;
   }
 
+  .business-chart-skeleton {
+    min-height: 286px;
+    background: linear-gradient(90deg, var(--sfm-card), var(--sfm-light-card), var(--sfm-card));
+    background-size: 200% 100%;
+    animation: business-chart-shimmer 1.25s linear infinite;
+  }
+
+  @keyframes business-chart-shimmer {
+    to { background-position: -200% 0; }
+  }
+
   .business-section-heading {
     display: flex;
     align-items: center;
@@ -625,6 +734,28 @@ const businessOperationsStyles = `
     box-shadow: 0 12px 24px rgba(29, 140, 255, 0.20);
   }
 
+  .business-empty-action {
+    min-height: 42px;
+    padding: 0 16px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+    text-decoration: none;
+    font-weight: 950;
+    box-shadow: 0 14px 28px rgba(29, 140, 255, 0.20);
+  }
+
+  .business-empty-action:hover,
+  .business-empty-action:focus-visible {
+    transform: translateY(-1px);
+    outline: 2px solid rgba(24, 212, 212, 0.36);
+    outline-offset: 3px;
+  }
+
   .business-chart-empty-action:focus-visible {
     outline: 2px solid rgba(24, 212, 212, 0.42);
     outline-offset: 3px;
@@ -633,6 +764,12 @@ const businessOperationsStyles = `
   .dark .business-alert {
     color: #FCA5A5;
     background: rgba(239, 68, 68, 0.14);
+  }
+
+  .dark .business-alert button {
+    border-color: rgba(252, 165, 165, 0.28);
+    background: rgba(15, 23, 42, 0.74);
+    color: #FCA5A5;
   }
 
   .dark .business-notice {

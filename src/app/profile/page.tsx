@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
@@ -479,54 +479,78 @@ export default function ProfilePage() {
     if (storedTheme && storedTheme !== theme) setTheme(storedTheme);
   }, [currency, lang, setTheme, theme]);
 
-  useEffect(() => {
-    async function load() {
-      if (!user) return;
-      const extras = readStored<Record<string, Partial<ProfileState>>>(PROFILE_EXTRA_KEY, {});
-      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
-      const extra = extras[user.id] || {};
-      const authEmail = user.email || String(data?.email || '');
-      if (user.email && data?.email !== user.email) {
-        void supabase.from('profiles').update({ email: user.email }).eq('id', user.id);
-      }
-      const normalizedCountry = normalizeCountry(data?.country || extra.country || '');
-      const phoneCode = String(data?.phone_country_code || extra.phoneCode || phoneCodeForCountry(normalizedCountry) || '+965');
-      setPendingEmail(String((user as { new_email?: string | null }).new_email || ''));
-      setEmailTwoFactor(prev => ({
-        ...prev,
-        enabled: Boolean(data?.email_2fa_enabled),
-        enabledAt: String(data?.email_2fa_enabled_at || ''),
-        loading: false,
-        error: '',
-      }));
-      setProfile({
-        displayName: String(data?.display_name || user.user_metadata?.display_name || ''),
-        username: String(data?.username || user.email?.split('@')[0] || ''),
-        email: authEmail,
-        phoneCode,
-        phone: String(data?.phone_number || extra.phone || ''),
-        age: data?.age ? String(data.age) : String(extra.age || ''),
-        gender: String(data?.gender || extra.gender || ''),
-        profession: String(data?.profession || extra.profession || ''),
-        professionOther: String(data?.profession_other || extra.professionOther || ''),
-        country: normalizedCountry,
-        city: normalizeStoredCity(data?.city || extra.city || ''),
-      });
-      if (data?.default_currency) {
-        setPreferences(prev => ({ ...prev, currency: String(data.default_currency) }));
-      }
-      const [goalRes, investRes] = await Promise.all([
-        supabase.from('financial_goals').select('id').eq('user_id', user.id),
-        supabase.from('investment_items').select('id').eq('user_id', user.id),
-      ]);
-      setStats({
-        goals: goalRes.data?.length || 0,
-        investments: investRes.data?.length || 0,
-        health: Math.min(100, 62 + (goalRes.data?.length || 0) * 3 + (investRes.data?.length || 0) * 4),
-      });
+  const loadProfileData = useCallback(async () => {
+    if (!user) return;
+    const extras = readStored<Record<string, Partial<ProfileState>>>(PROFILE_EXTRA_KEY, {});
+    const db = supabase as any;
+    const { data, error } = await db
+      .from('profiles')
+      .select('id,username,display_name,email,age,phone_country_code,phone_number,profession,gender,preferred_lang,preferred_currency,preferred_theme,default_currency,city,profession_other')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[profile] Failed to load profile', error);
+      setToast(T('saveError', lang));
+      window.setTimeout(() => setToast(''), 2400);
+      return;
     }
-    void load();
-  }, [user]);
+
+    const extra = extras[user.id] || {};
+    const authEmail = user.email || String(data?.email || '');
+    if (user.email && data?.email !== user.email) {
+      const { error: emailSyncError } = await db
+        .from('profiles')
+        .update({ email: user.email, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+      if (emailSyncError) console.error('[profile] Failed to sync auth email to profile', emailSyncError);
+    }
+    const normalizedCountry = normalizeCountry(extra.country || '');
+    const phoneCode = String(data?.phone_country_code || extra.phoneCode || phoneCodeForCountry(normalizedCountry) || '+965');
+    setPendingEmail(String((user as { new_email?: string | null }).new_email || ''));
+    setEmailTwoFactor(prev => ({
+      ...prev,
+      enabled: false,
+      enabledAt: '',
+      loading: false,
+      error: '',
+    }));
+    setProfile({
+      displayName: String(data?.display_name || user.user_metadata?.display_name || ''),
+      username: String(data?.username || user.email?.split('@')[0] || ''),
+      email: authEmail,
+      phoneCode,
+      phone: String(data?.phone_number || extra.phone || ''),
+      age: data?.age ? String(data.age) : String(extra.age || ''),
+      gender: String(data?.gender || extra.gender || ''),
+      profession: String(data?.profession || extra.profession || ''),
+      professionOther: String(data?.profession_other || extra.professionOther || ''),
+      country: normalizedCountry,
+      city: normalizeStoredCity(data?.city || extra.city || ''),
+    });
+
+    const savedCurrency = data?.preferred_currency || data?.default_currency;
+    setPreferences(prev => ({
+      ...prev,
+      language: (data?.preferred_lang as Lang) || prev.language,
+      theme: (data?.preferred_theme as ThemeMode) || prev.theme,
+      currency: savedCurrency || prev.currency,
+    }));
+
+    const [goalRes, investRes] = await Promise.all([
+      supabase.from('financial_goals').select('id').eq('user_id', user.id),
+      supabase.from('investment_items').select('id').eq('user_id', user.id),
+    ]);
+    setStats({
+      goals: goalRes.data?.length || 0,
+      investments: investRes.data?.length || 0,
+      health: Math.min(100, 62 + (goalRes.data?.length || 0) * 3 + (investRes.data?.length || 0) * 4),
+    });
+  }, [lang, user]);
+
+  useEffect(() => {
+    void loadProfileData();
+  }, [loadProfileData]);
 
   const completion = useMemo(() => {
     const fields = [profile.displayName, profile.username, profile.email, profile.phone, profile.age, profile.gender, profile.country, profile.city, profile.profession];
@@ -572,23 +596,33 @@ export default function ProfilePage() {
       showToast(L('invalidPhone'));
       return;
     }
-    const { error } = await supabase.from('profiles').upsert({
+    const db = supabase as any;
+    const { error } = await db.from('profiles').upsert({
       id: user.id,
-      display_name: displayName,
       username,
+      display_name: displayName,
       email: user.email || profile.email,
       age: ageValue,
-      gender: cleanOptional(profile.gender),
-      profession: cleanOptional(profile.profession),
-      profession_other: profile.profession === 'other' ? cleanOptional(profile.professionOther) : null,
-      country: cleanOptional(profile.country),
-      city: cleanOptional(profile.city),
-      default_currency: preferences.currency || 'KWD',
       phone_country_code: profile.phoneCode,
       phone_number: cleanOptional(profile.phone),
+      profession: cleanOptional(profile.profession),
+      gender: cleanOptional(profile.gender),
+      preferred_lang: preferences.language,
+      preferred_currency: preferences.currency || 'KWD',
+      preferred_theme: preferences.theme,
+      default_currency: preferences.currency || 'KWD',
+      city: cleanOptional(profile.city),
+      profession_other: profile.profession === 'other' ? cleanOptional(profile.professionOther) : null,
+      updated_at: new Date().toISOString(),
     }, { onConflict: 'id' });
     const extras = readStored<Record<string, Partial<ProfileState>>>(PROFILE_EXTRA_KEY, {});
     writeStored(PROFILE_EXTRA_KEY, { ...extras, [user.id]: { country: profile.country, city: profile.city, professionOther: profile.professionOther } });
+    if (error) {
+      console.error('[profile] Failed to save profile', error);
+      setSaving(false);
+      showToast(L('saveError'));
+      return;
+    }
     if (!error) {
       const { data: authData } = await supabase.auth.updateUser({
         data: {
@@ -608,9 +642,10 @@ export default function ProfilePage() {
         },
       });
       router.refresh();
+      await loadProfileData();
     }
     setSaving(false);
-    showToast(error ? L('saveError') : L('profileSaved'));
+    showToast(L('profileSaved'));
   }
 
   async function changePassword() {

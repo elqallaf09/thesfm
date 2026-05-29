@@ -255,6 +255,29 @@ function looksStrategicDocument(row: Row) {
   ].some(keyword => haystack.includes(keyword));
 }
 
+function rowTimestamp(row: Row) {
+  return new Date(String(row.updated_at ?? row.uploaded_at ?? row.created_at ?? '')).getTime() || 0;
+}
+
+function uniqueDocumentRows(rows: Row[]) {
+  const grouped = new Map<string, Row>();
+  for (const row of rows) {
+    const sourceUrl = String(row.source_url ?? row.sourceUrl ?? '').trim().toLowerCase();
+    const key = sourceUrl
+      ? [
+        row.user_id,
+        projectId(row),
+        row.category || '',
+        sourceUrl,
+        row.document_type || row.documentType || row.type || 'uploaded_file',
+      ].join('|')
+      : `record:${row.id}`;
+    const current = grouped.get(key);
+    if (!current || rowTimestamp(row) >= rowTimestamp(current)) grouped.set(key, row);
+  }
+  return Array.from(grouped.values()).sort((left, right) => rowTimestamp(right) - rowTimestamp(left));
+}
+
 function formatDate(value: unknown, lang: Lang) {
   const raw = String(value ?? '').trim();
   if (!raw) return '';
@@ -358,7 +381,7 @@ export default function InvestmentOffersPage() {
       pitchDecks: pitchDecksResult.rows,
       fundingReadiness: fundingResult.rows,
       strategicDocuments: strategicDocsResult.rows,
-      projectDocuments: projectDocsResult.rows,
+      projectDocuments: uniqueDocumentRows(projectDocsResult.rows),
     });
     setLoadError(errors.length ? text.partialLoadError : '');
 

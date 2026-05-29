@@ -31,7 +31,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useSmartTasks } from '@/hooks/useSmartTasks';
 import { supabase } from '@/integrations/supabase/client';
-import { loadUserDataTables, personalExpenseRows, personalIncomeRows, safeDivide, sumAmounts } from '@/lib/data/financeData';
+import { personalExpenseRows, personalIncomeRows, safeDivide, sumAmounts } from '@/lib/data/financeData';
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
 
@@ -66,6 +66,14 @@ type DashboardKey =
 type DataRow = Record<string, unknown>;
 type DashboardRecords = Record<DashboardKey, DataRow[]>;
 type DashboardTable = { key: DashboardKey; table: string; limit?: number; order?: { column: string; ascending?: boolean } };
+type DashboardFailureSection = DashboardKey | 'profile' | 'auth';
+type DashboardLoadFailure = {
+  section: DashboardFailureSection;
+  table: string;
+  message: string;
+  code?: string;
+  details?: string;
+};
 
 type ProfileRow = {
   default_currency?: string | null;
@@ -126,8 +134,8 @@ const TEXT = {
     currentMonth: 'الشهر الحالي',
     allRecords: 'كل السجلات',
     insufficientData: 'بيانات غير كافية',
-    noDataYet: 'لا توجد بيانات حتى الآن.',
-    noDataBody: 'أضف بياناتك لعرض التحليل.',
+    noDataYet: 'لا توجد بيانات حالياً',
+    noDataBody: 'أضف بياناتك للبدء',
     openPage: 'فتح الصفحة',
     financialHealth: 'الصحة المالية',
     financialHealthHint: 'أضف الدخل والمصروفات والمدخرات لحساب الصحة المالية.',
@@ -180,7 +188,7 @@ const TEXT = {
     readyReports: 'تقارير جاهزة',
     reportsNeedData: 'تقارير تحتاج بيانات',
     lastGenerated: 'آخر تقرير محفوظ',
-    lastGeneratedUnavailable: 'لا توجد تقارير محفوظة حالياً.',
+    lastGeneratedUnavailable: 'لا توجد تقارير محفوظة حالياً',
     openReportsCenter: 'فتح مركز التقارير',
     smartNotifications: 'الإشعارات الذكية',
     smartTasks: 'مركز المهام',
@@ -195,7 +203,7 @@ const TEXT = {
     completeSetupText: 'أضف بياناتك الأساسية للحصول على لوحة قيادة أدق.',
     completeSetup: 'إكمال الإعداد',
     loading: 'جاري تحميل لوحة القيادة...',
-    dataError: 'تعذر تحميل بعض البيانات حالياً.',
+    dataError: 'تعذر تحميل بعض البيانات حالياً',
     addIncomeAction: 'أضف دخلك الشهري لتفعيل تقارير الدخل ولوحة القيادة.',
     reportNeedsDataAction: 'أكمل البيانات المطلوبة في مركز التقارير.',
     overdueTaskAction: 'راجع المهام المتأخرة في مشاريعك.',
@@ -218,8 +226,8 @@ const TEXT = {
     currentMonth: 'Current month',
     allRecords: 'All records',
     insufficientData: 'Insufficient data',
-    noDataYet: 'No data yet.',
-    noDataBody: 'Add your data to view analysis.',
+    noDataYet: 'No data right now.',
+    noDataBody: 'Add your data to get started.',
     openPage: 'Open page',
     financialHealth: 'Financial Health',
     financialHealthHint: 'Add income, expenses, and savings to calculate financial health.',
@@ -272,7 +280,7 @@ const TEXT = {
     readyReports: 'Ready reports',
     reportsNeedData: 'Reports needing data',
     lastGenerated: 'Last saved report',
-    lastGeneratedUnavailable: 'No saved reports yet.',
+    lastGeneratedUnavailable: 'No saved reports right now.',
     openReportsCenter: 'Open Reports Center',
     smartNotifications: 'Smart Notifications',
     smartTasks: 'Tasks Center',
@@ -311,7 +319,7 @@ const TEXT = {
     allRecords: 'Tous les enregistrements',
     insufficientData: 'Données insuffisantes',
     noDataYet: 'Aucune donnée pour le moment.',
-    noDataBody: 'Ajoutez vos données pour afficher l’analyse.',
+    noDataBody: 'Ajoutez vos données pour commencer.',
     openPage: 'Ouvrir la page',
     financialHealth: 'Santé financière',
     financialHealthHint: 'Ajoutez les revenus, dépenses et épargne pour calculer la santé financière.',
@@ -560,6 +568,50 @@ function EmptyState({ title, body }: { title: string; body?: string }) {
   );
 }
 
+function normalizeDashboardError(error: unknown, fallback = 'Load failed') {
+  if (!error) return { message: fallback };
+  if (error instanceof Error) return { message: error.message || fallback };
+  if (typeof error === 'string') return { message: error || fallback };
+
+  if (typeof error === 'object') {
+    const source = error as Record<string, unknown>;
+    return {
+      message: String(source.message || fallback),
+      code: source.code ? String(source.code) : undefined,
+      details: source.details ? String(source.details) : source.hint ? String(source.hint) : undefined,
+    };
+  }
+
+  return { message: fallback };
+}
+
+function logDashboardFailure(failure: DashboardLoadFailure) {
+  if (process.env.NODE_ENV === 'production') return;
+  console.error(`[ExecutiveDashboard] Failed to load ${failure.section}`, {
+    table: failure.table,
+    code: failure.code,
+    message: failure.message,
+    details: failure.details,
+  });
+}
+
+async function fetchDashboardTable(userId: string, item: DashboardTable): Promise<{ key: DashboardKey; rows: DataRow[] }> {
+  let query = (supabase as any)
+    .from(item.table)
+    .select('*')
+    .eq('user_id', userId)
+    .limit(item.limit ?? 1000);
+
+  if (item.order) {
+    query = query.order(item.order.column, { ascending: item.order.ascending ?? false });
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  return { key: item.key, rows: Array.isArray(data) ? data : [] };
+}
+
 function ProgressBar({ value, label }: { value: number; label: string }) {
   const normalized = Math.max(0, Math.min(value, 100));
   return (
@@ -575,56 +627,82 @@ export default function ExecutiveDashboardPage() {
   const locale: Lang = lang === 'en' || lang === 'fr' ? lang : 'ar';
   const text = TEXT[locale];
   const { tasks: dashboardTasks, loading: tasksLoading } = useSmartTasks();
+  const userId = user?.id;
 
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [records, setRecords] = useState<DashboardRecords>(EMPTY_RECORDS);
   const [errors, setErrors] = useState<Partial<Record<DashboardKey, string>>>({});
+  const [loadFailures, setLoadFailures] = useState<DashboardLoadFailure[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   const loadDashboard = useCallback(async () => {
-    if (!user) {
+    if (!userId) {
       setRecords(EMPTY_RECORDS);
       setProfile(null);
+      setErrors({});
+      setLoadFailures([]);
       setIsLoadingData(false);
       return;
     }
 
     setIsLoadingData(true);
-    const db = supabase as unknown as {
-      from: (table: string) => {
-        select: (columns?: string) => {
-          eq: (column: string, value: string) => { maybeSingle: () => Promise<{ data: ProfileRow | null; error: unknown }> };
-        };
-      };
-    };
 
-    const [profileResult, dataResult] = await Promise.allSettled([
-      db.from('profiles').select('*').eq('id', user.id).maybeSingle(),
-      loadUserDataTables<DashboardKey>(supabase, user.id, DASHBOARD_TABLES),
-    ]);
+    try {
+      const profileQuery = (supabase as any).from('profiles').select('*').eq('id', userId).maybeSingle();
+      const [profileResult, ...tableResults] = await Promise.allSettled([
+        profileQuery,
+        ...DASHBOARD_TABLES.map((item) => fetchDashboardTable(userId, item)),
+      ]);
 
-    if (profileResult.status === 'fulfilled' && profileResult.value.data) {
-      setProfile(profileResult.value.data);
-    } else {
-      setProfile(null);
-    }
+      const failures: DashboardLoadFailure[] = [];
+      const nextErrors: Partial<Record<DashboardKey, string>> = {};
+      const nextRecords: DashboardRecords = { ...EMPTY_RECORDS };
 
-    if (dataResult.status === 'fulfilled') {
-      const nextRecords = {
-        ...EMPTY_RECORDS,
-        ...dataResult.value.records,
-        income: personalIncomeRows(dataResult.value.records.income ?? []),
-        expenses: personalExpenseRows(dataResult.value.records.expenses ?? []),
-      };
+      if (profileResult.status === 'fulfilled') {
+        if (profileResult.value.error) {
+          const normalized = normalizeDashboardError(profileResult.value.error);
+          failures.push({ section: 'profile', table: 'profiles', ...normalized });
+          setProfile(null);
+        } else {
+          setProfile(profileResult.value.data ?? null);
+        }
+      } else {
+        const normalized = normalizeDashboardError(profileResult.reason);
+        failures.push({ section: 'profile', table: 'profiles', ...normalized });
+        setProfile(null);
+      }
+
+      tableResults.forEach((result, index) => {
+        const table = DASHBOARD_TABLES[index];
+        if (result.status === 'fulfilled') {
+          nextRecords[result.value.key] = result.value.rows;
+          return;
+        }
+
+        const normalized = normalizeDashboardError(result.reason);
+        failures.push({ section: table.key, table: table.table, ...normalized });
+        nextErrors[table.key] = normalized.message;
+        nextRecords[table.key] = [];
+      });
+
+      nextRecords.income = personalIncomeRows(nextRecords.income ?? []);
+      nextRecords.expenses = personalExpenseRows(nextRecords.expenses ?? []);
+
+      failures.forEach(logDashboardFailure);
       setRecords(nextRecords);
-      setErrors(dataResult.value.errors);
-    } else {
+      setErrors(nextErrors);
+      setLoadFailures(failures);
+    } catch (error) {
+      const normalized = normalizeDashboardError(error);
+      const failure: DashboardLoadFailure = { section: 'auth', table: 'dashboard', ...normalized };
+      logDashboardFailure(failure);
       setRecords(EMPTY_RECORDS);
-      setErrors({ income: 'load_failed' });
+      setErrors({ income: normalized.message });
+      setLoadFailures([failure]);
+    } finally {
+      setIsLoadingData(false);
     }
-
-    setIsLoadingData(false);
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     if (!loading) void loadDashboard();
@@ -829,7 +907,7 @@ export default function ExecutiveDashboardPage() {
     [text.insufficientData]
   );
 
-  const hasErrors = Object.keys(errors).length > 0;
+  const hasErrors = loadFailures.length > 0;
   const topOpenTasks = dashboardTasks.filter(task => task.status === 'open').slice(0, 3);
   const sourceUnavailable = (...keys: DashboardKey[]) => keys.some((key) => Boolean(errors[key]));
   const hasAssetData = records.savings.length > 0 || records.investments.length > 0 || records.goals.length > 0;
@@ -928,6 +1006,22 @@ export default function ExecutiveDashboardPage() {
             <AlertTriangle size={18} aria-hidden="true" />
             <span>{text.dataError}</span>
           </div>
+        ) : null}
+
+        {process.env.NODE_ENV !== 'production' && loadFailures.length > 0 ? (
+          <section className="dashboard-debug-panel" aria-label="Executive dashboard debug">
+            <strong>Dashboard debug: failed sections</strong>
+            <ul>
+              {loadFailures.map((failure) => (
+                <li key={`${failure.section}-${failure.table}`}>
+                  <span>{failure.section}</span>
+                  <code>{failure.table}</code>
+                  <em>{failure.code ? `${failure.code}: ` : ''}{failure.message}</em>
+                  {failure.details ? <small>{failure.details}</small> : null}
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
 
         {profile?.onboarding_completed === false ? (
@@ -1479,6 +1573,50 @@ const dashboardStyles = `
     color: var(--sfm-primary-hover);
   }
 
+  .dashboard-debug-panel {
+    margin-top: 14px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px dashed rgba(239, 68, 68, 0.38);
+    background: rgba(254, 242, 242, 0.88);
+    color: #7F1D1D;
+    font-size: 0.84rem;
+  }
+
+  .dashboard-debug-panel strong {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+  }
+
+  .dashboard-debug-panel ul {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .dashboard-debug-panel li {
+    display: grid;
+    gap: 4px;
+    padding: 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(127, 29, 29, 0.12);
+  }
+
+  .dashboard-debug-panel span {
+    font-weight: 900;
+  }
+
+  .dashboard-debug-panel code,
+  .dashboard-debug-panel em,
+  .dashboard-debug-panel small {
+    overflow-wrap: anywhere;
+    font-style: normal;
+  }
+
   .setup-card {
     display: flex;
     justify-content: space-between;
@@ -1868,6 +2006,17 @@ const dashboardStyles = `
     background: rgba(29, 140, 255, 0.14);
     border-color: rgba(29, 140, 255, 0.28);
     color: #A7D8FF;
+  }
+
+  .dark .dashboard-debug-panel {
+    background: rgba(127, 29, 29, 0.24);
+    border-color: rgba(248, 113, 113, 0.32);
+    color: #FEE2E2;
+  }
+
+  .dark .dashboard-debug-panel li {
+    background: rgba(69, 10, 10, 0.28);
+    border-color: rgba(248, 113, 113, 0.18);
   }
 
   .dark .card-heading h2,

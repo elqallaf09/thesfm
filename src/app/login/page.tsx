@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { User } from '@supabase/supabase-js';
+import type { Session, User } from '@supabase/supabase-js';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AtSign,
@@ -31,6 +31,25 @@ type PasswordStrength = 'weak' | 'medium' | 'strong';
 type TwoFactorChallenge = {
   email: string;
 };
+
+function syncLoggedInCookies(session: Session | null) {
+  if (typeof document === 'undefined') return;
+  const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `sfm_auth=${session ? 'true' : ''}; path=/; max-age=${session ? 60 * 60 * 24 * 30 : 0}; SameSite=Lax`;
+  document.cookie = `sfm_access_token=${session?.access_token ?? ''}; path=/; max-age=${session?.access_token ? 60 * 60 * 24 * 7 : 0}; SameSite=Lax${secureFlag}`;
+  document.cookie = 'sfm_guest=; path=/; max-age=0; SameSite=Lax';
+  try {
+    window.localStorage?.removeItem('sfm_guest_mode');
+    window.localStorage?.removeItem('sfm_guest_started_at');
+  } catch {
+    // Keep login navigation working in restricted browser storage contexts.
+  }
+}
+
+function setMfaRequiredCookie(required: boolean) {
+  if (typeof document === 'undefined') return;
+  document.cookie = `sfm_mfa_required=${required ? 'true' : ''}; path=/; max-age=${required ? 60 * 15 : 0}; SameSite=Lax`;
+}
 
 const COUNTRY_OPTIONS = [
   { value: 'Kuwait', ar: 'الكويت', en: 'Kuwait', fr: 'Koweït' },
@@ -390,7 +409,10 @@ function LoginContent() {
   const [twoFactorChallenge, setTwoFactorChallenge] = useState<TwoFactorChallenge | null>(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
 
-  const nextPath = useMemo(() => searchParams.get('next') || '/dashboard', [searchParams]);
+  const nextPath = useMemo(() => {
+    const requested = searchParams.get('next') || '/dashboard';
+    return requested.startsWith('/') && !requested.startsWith('//') ? requested : '/dashboard';
+  }, [searchParams]);
   const passwordStrength = useMemo(() => strengthFor(password), [password]);
   const passwordScore = useMemo(() => scorePassword(password), [password]);
 
@@ -414,7 +436,19 @@ function LoginContent() {
   }, [queryMode, router]);
 
   useEffect(() => {
-    if (session && mode !== 'reset' && mode !== 'twoFactor' && !submitting && !twoFactorChallenge) router.replace(nextPath);
+    if (session && mode !== 'reset' && mode !== 'twoFactor' && !submitting && !twoFactorChallenge) {
+      supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(({ data }) => {
+        if (data?.nextLevel === 'aal2' && data.currentLevel !== 'aal2') {
+          setMfaRequiredCookie(true);
+          router.replace(`/mfa/verify?next=${encodeURIComponent(nextPath)}`);
+          return;
+        }
+        setMfaRequiredCookie(false);
+        console.debug('[auth] redirect target', nextPath);
+        router.replace(nextPath);
+        router.refresh();
+      });
+    }
   }, [mode, nextPath, router, session, submitting, twoFactorChallenge]);
 
   useEffect(() => {
@@ -511,10 +545,12 @@ function LoginContent() {
   }
 
   async function handleLogin() {
+    console.debug('[auth] login started');
     const loginIdentifier = username.trim();
     if (!loginIdentifier || !password.trim()) return text.errorEmpty;
     const result = await signIn(loginIdentifier, password);
     if (result.error) {
+      console.error('[auth] login error', result.error);
       if (result.code === 'username_not_found') return text.errorUsernameNotFound;
       if (result.code === 'profile_email_missing') return text.errorProfileEmailMissing;
       if (result.code === 'profile_missing') return text.profileSetupNeeded;
@@ -523,8 +559,20 @@ function LoginContent() {
     }
     const authUser = result.user ?? result.session?.user ?? null;
     if (!authUser?.id) return text.errorLoginGeneric;
+    console.debug('[auth] login success', { userId: authUser.id });
+    console.debug('[auth] session returned', { hasSession: Boolean(result.session), hasAccessToken: Boolean(result.session?.access_token) });
 
     const profile = await getOrCreateLoginProfile(authUser, loginIdentifier);
+
+    const aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal.data?.nextLevel === 'aal2' && aal.data.currentLevel !== 'aal2') {
+      syncLoggedInCookies(result.session ?? null);
+      setMfaRequiredCookie(true);
+      console.debug('[auth] redirect target', '/mfa/verify');
+      router.replace(`/mfa/verify?next=${encodeURIComponent(nextPath)}`);
+      router.refresh();
+      return '';
+    }
 
     if (profile?.email_2fa_enabled) {
       const authEmail = authUser.email?.trim().toLowerCase() || '';
@@ -544,8 +592,11 @@ function LoginContent() {
       setMessage({ type: 'ok', text: text.twoFactorSent });
       return '';
     }
-    router.refresh();
+    syncLoggedInCookies(result.session ?? null);
+    setMfaRequiredCookie(false);
+    console.debug('[auth] redirect target', nextPath);
     router.replace(nextPath);
+    router.refresh();
     return '';
   }
 
@@ -560,12 +611,13 @@ function LoginContent() {
     });
     if (error) return error.message.toLowerCase().includes('expired') ? text.codeExpired : text.codeInvalidOrExpired;
     if (!data.session?.user) return text.errorLoginGeneric;
-    if (typeof document !== 'undefined') {
-      document.cookie = `sfm_auth=true; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
-      document.cookie = 'sfm_guest=; path=/; max-age=0; SameSite=Lax';
-    }
-    router.refresh();
+    console.debug('[auth] login success', { userId: data.session.user.id, twoFactor: true });
+    console.debug('[auth] session returned', { hasSession: Boolean(data.session), hasAccessToken: Boolean(data.session.access_token) });
+    syncLoggedInCookies(data.session);
+    setMfaRequiredCookie(false);
+    console.debug('[auth] redirect target', nextPath);
     router.replace(nextPath);
+    router.refresh();
     return '';
   }
 
@@ -636,9 +688,10 @@ function LoginContent() {
       }, { onConflict: 'id' });
       if (profileError) return profileError.message || text.errorRegister;
 
-      document.cookie = `sfm_auth=true; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
-      document.cookie = 'sfm_guest=; path=/; max-age=0; SameSite=Lax';
-      localStorage.removeItem('sfm_guest_mode');
+      console.debug('[auth] login success', { userId: newUser.id, source: 'register' });
+      console.debug('[auth] session returned', { hasSession: Boolean(data.session), hasAccessToken: Boolean(data.session.access_token) });
+      syncLoggedInCookies(data.session);
+      console.debug('[auth] redirect target', '/dashboard');
       router.replace('/dashboard');
       router.refresh();
       return '';
@@ -692,14 +745,19 @@ function LoginContent() {
 
     setSubmitting(true);
     try {
+      console.debug('[auth] login started', { mode });
       const error =
         mode === 'login' ? await handleLogin()
         : mode === 'register' ? await handleRegister()
         : mode === 'forgot' ? await handleForgotPassword()
         : mode === 'twoFactor' ? await handleTwoFactorLogin()
         : await handleResetPassword();
-      if (error) setMessage({ type: 'error', text: error });
+      if (error) {
+        console.error('[auth] login error', error);
+        setMessage({ type: 'error', text: error });
+      }
     } catch (error: any) {
+      console.error('[auth] login error', error);
       setMessage({ type: 'error', text: error?.message || text.errorRegister });
     } finally {
       setSubmitting(false);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle,
@@ -32,20 +32,14 @@ type ZakatTab = 'calculator' | 'assets' | 'history' | 'reminders' | 'reports';
 
 type MetalsPriceResponse = {
   success: boolean;
-  source: 'api' | 'manual' | 'fallback';
-  currency: 'KWD';
-  gold: {
-    pricePerGram: number;
-    pricePerGram24k?: number;
-    pricePerGram22k?: number;
-    pricePerGram21k?: number;
-    pricePerGram18k?: number;
-    unit: 'gram';
-  };
-  silver: { pricePerGram: number; unit: 'gram' };
-  updatedAt: string;
+  source?: 'api' | 'mock' | 'cache';
+  gold?: { price: number; currency: string; unit: 'gram'; lastUpdated: string };
+  silver?: { price: number; currency: string; unit: 'gram'; lastUpdated: string };
+  error?: string;
   message?: string;
 };
+
+const METALS_CACHE_KEY = 'sfm_zakat_metals_cache_v1';
 
 type ZakatAsset = {
   id: string;
@@ -121,7 +115,11 @@ const TEXT = {
     lastUpdated: 'آخر تحديث',
     source: 'المصدر',
     refreshPrices: 'تحديث الأسعار',
+    updating: 'جاري التحديث...',
     live: 'مباشر',
+    apiSource: 'API',
+    mockSource: 'تجريبي',
+    cachedSource: 'آخر سعر محفوظ',
     manual: 'يدوي',
     failed: 'تعذر التحديث',
     apiNotConfigured: 'واجهة أسعار المعادن غير مفعلة.',
@@ -217,7 +215,11 @@ const TEXT = {
     lastUpdated: 'Last updated',
     source: 'Source',
     refreshPrices: 'Refresh prices',
+    updating: 'Updating...',
     live: 'Live',
+    apiSource: 'API',
+    mockSource: 'Mock',
+    cachedSource: 'Last saved price',
     manual: 'Manual',
     failed: 'Update failed',
     apiNotConfigured: 'Metals price API is not configured.',
@@ -313,7 +315,11 @@ const TEXT = {
     lastUpdated: 'Dernière mise à jour',
     source: 'Source',
     refreshPrices: 'Actualiser les prix',
+    updating: 'Mise à jour...',
     live: 'Direct',
+    apiSource: 'API',
+    mockSource: 'Mock',
+    cachedSource: 'Dernier prix enregistré',
     manual: 'Manuel',
     failed: 'Échec de mise à jour',
     apiNotConfigured: 'L’API des prix des métaux n’est pas configurée.',
@@ -420,6 +426,7 @@ export default function ZakatPage() {
   const [loadingMetals, setLoadingMetals] = useState(false);
   const [priceMode, setPriceMode] = useState<'automatic' | 'manual'>('manual');
   const [metalsPrice, setMetalsPrice] = useState<MetalsPriceResponse | null>(null);
+  const fetchingMetalsRef = useRef(false);
   const [nisabMethod, setNisabMethod] = useState<NisabMethod>('conservative');
   const [importedFinance, setImportedFinance] = useState({ savingsTotal: 0, investmentTotal: 0 });
   const [includedImports, setIncludedImports] = useState({ savings: false, investments: false });
@@ -449,6 +456,58 @@ export default function ZakatPage() {
 
   const money = useCallback((amount: number, currency = 'KWD') => formatMoney(amount, currency, lang as Lang), [lang]);
   const dateLabel = useCallback((date?: string | null) => date ? new Date(`${date.slice(0, 10)}T00:00:00`).toLocaleDateString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US') : '-', [lang]);
+  const timeLabel = useCallback((date?: string | null) => date ? new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(new Date(date)) : '-', [lang]);
+
+  const applyMetalsPrice = useCallback((data: MetalsPriceResponse, cacheSuccessful: boolean) => {
+    const goldPrice = toNum(data.gold?.price);
+    const silverPrice = toNum(data.silver?.price);
+    if (goldPrice <= 0 || silverPrice <= 0) return false;
+
+    setMetalsPrice(data);
+    setPriceMode('automatic');
+    setZakat(prev => ({
+      ...prev,
+      goldPrice: String(goldPrice),
+      silverPrice: String(silverPrice),
+    }));
+
+    if (cacheSuccessful && typeof window !== 'undefined') {
+      window.localStorage.setItem(METALS_CACHE_KEY, JSON.stringify(data));
+      window.localStorage.setItem('sfm_zakat_gold_price_kwd', String(goldPrice));
+      window.localStorage.setItem('sfm_zakat_silver_price_kwd', String(silverPrice));
+      window.localStorage.setItem('sfm_zakat_metals_cached_at', data.gold?.lastUpdated ?? data.silver?.lastUpdated ?? new Date().toISOString());
+    }
+    return true;
+  }, []);
+
+  const readCachedMetalsPrice = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const cached = window.localStorage.getItem(METALS_CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached) as MetalsPriceResponse;
+        if (toNum(parsed.gold?.price) > 0 && toNum(parsed.silver?.price) > 0) return parsed;
+      }
+      const savedGold = window.localStorage.getItem('sfm_zakat_gold_price_kwd') ?? window.localStorage.getItem('sfm_charity_gold_price_kwd') ?? '';
+      const savedSilver = window.localStorage.getItem('sfm_zakat_silver_price_kwd') ?? window.localStorage.getItem('sfm_charity_silver_price_kwd') ?? '';
+      if (toNum(savedGold) > 0 && toNum(savedSilver) > 0) {
+        const lastUpdated = window.localStorage.getItem('sfm_zakat_metals_cached_at') ?? new Date().toISOString();
+        return {
+          success: true,
+          source: 'cache',
+          gold: { price: toNum(savedGold), currency: 'KWD', unit: 'gram', lastUpdated },
+          silver: { price: toNum(savedSilver), currency: 'KWD', unit: 'gram', lastUpdated },
+        } satisfies MetalsPriceResponse;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }, []);
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -466,49 +525,50 @@ export default function ZakatPage() {
   }, [db, user]);
 
   const loadMetalsPrices = useCallback(async () => {
+    if (fetchingMetalsRef.current) return;
+    fetchingMetalsRef.current = true;
     setLoadingMetals(true);
     try {
-      const response = await fetch('/api/zakat/metals-prices');
+      const response = await fetch('/api/market/metals?currency=KWD', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Metals API failed: ${response.status}`);
       const data = await response.json() as MetalsPriceResponse;
-      setMetalsPrice(data);
-      if (data.success && data.source === 'api') {
-        setPriceMode('automatic');
-        setZakat(prev => ({
-          ...prev,
-          goldPrice: String(data.gold.pricePerGram24k || data.gold.pricePerGram || ''),
-          silverPrice: String(data.silver.pricePerGram || ''),
-        }));
+      if (!data.success || !applyMetalsPrice(data, data.source === 'api' || data.source === 'mock')) throw new Error(data.error || tr.manualFallback);
+    } catch (error) {
+      const cached = readCachedMetalsPrice();
+      if (cached && applyMetalsPrice({ ...cached, success: false, source: 'cache', message: tr.cachedSource }, false)) {
+        setMetalsPrice(prev => prev ? { ...prev, success: false, source: 'cache', message: tr.cachedSource } : null);
       } else {
         setPriceMode('manual');
+        setMetalsPrice({
+          success: false,
+          error: error instanceof Error ? error.message : tr.apiNotConfigured,
+          message: tr.apiNotConfigured,
+        });
       }
-    } catch {
-      setPriceMode('manual');
-      setMetalsPrice({
-        success: false,
-        source: 'manual',
-        message: tr.apiNotConfigured,
-        currency: 'KWD',
-        gold: { pricePerGram: 0, unit: 'gram' },
-        silver: { pricePerGram: 0, unit: 'gram' },
-        updatedAt: new Date().toISOString(),
-      });
     } finally {
+      fetchingMetalsRef.current = false;
       setLoadingMetals(false);
     }
-  }, [tr.apiNotConfigured]);
+  }, [applyMetalsPrice, readCachedMetalsPrice, tr.apiNotConfigured, tr.cachedSource, tr.manualFallback]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   useEffect(() => {
-    const savedGold = window.localStorage.getItem('sfm_zakat_gold_price_kwd') ?? window.localStorage.getItem('sfm_charity_gold_price_kwd') ?? '';
-    const savedSilver = window.localStorage.getItem('sfm_zakat_silver_price_kwd') ?? window.localStorage.getItem('sfm_charity_silver_price_kwd') ?? '';
+    const cached = readCachedMetalsPrice();
+    if (cached) applyMetalsPrice({ ...cached, source: 'cache' }, false);
+
     const savedMethod = window.localStorage.getItem('sfm_zakat_nisab_method') ?? window.localStorage.getItem('sfm_charity_nisab_method');
-    if (savedGold || savedSilver) setZakat(prev => ({ ...prev, goldPrice: savedGold, silverPrice: savedSilver }));
     if (savedMethod && ['gold', 'silver', 'conservative'].includes(savedMethod)) setNisabMethod(savedMethod as NisabMethod);
+
     loadMetalsPrices();
-  }, [loadMetalsPrices]);
+    const interval = window.setInterval(() => {
+      loadMetalsPrices();
+    }, 15000);
+
+    return () => window.clearInterval(interval);
+  }, [applyMetalsPrice, loadMetalsPrices, readCachedMetalsPrice]);
 
   useEffect(() => {
     window.localStorage.setItem('sfm_zakat_gold_price_kwd', zakat.goldPrice);
@@ -521,10 +581,10 @@ export default function ZakatPage() {
 
   const goldPricesByKarat = useMemo(() => ({
     '24': toNum(zakat.goldPrice),
-    '22': (metalsPrice?.gold.pricePerGram22k && metalsPrice.gold.pricePerGram22k > 0) ? metalsPrice.gold.pricePerGram22k : toNum(zakat.goldPrice) * (22 / 24),
-    '21': (metalsPrice?.gold.pricePerGram21k && metalsPrice.gold.pricePerGram21k > 0) ? metalsPrice.gold.pricePerGram21k : toNum(zakat.goldPrice) * (21 / 24),
-    '18': (metalsPrice?.gold.pricePerGram18k && metalsPrice.gold.pricePerGram18k > 0) ? metalsPrice.gold.pricePerGram18k : toNum(zakat.goldPrice) * (18 / 24),
-  }), [metalsPrice, zakat.goldPrice]);
+    '22': toNum(zakat.goldPrice) * (22 / 24),
+    '21': toNum(zakat.goldPrice) * (21 / 24),
+    '18': toNum(zakat.goldPrice) * (18 / 24),
+  }), [zakat.goldPrice]);
 
   const selectedGoldGramPrice = goldPricesByKarat[zakat.goldKarat as keyof typeof goldPricesByKarat] || 0;
   const zakatableGoldValue = toNum(zakat.goldDirectValue) > 0 ? toNum(zakat.goldDirectValue) : toNum(zakat.goldGrams) * selectedGoldGramPrice;
@@ -545,7 +605,16 @@ export default function ZakatPage() {
   const closeToNisab = selectedNisabValue > 0 && !reachedNisab && netZakatBase >= selectedNisabValue * 0.85;
   const nextHawl = assets.map(asset => asset.zakat_due_date).filter(Boolean).sort()[0];
   const lastSaved = history[0];
-  const priceSourceLabel = metalsPrice?.source === 'api' ? tr.live : metalsPrice?.source === 'fallback' ? tr.failed : tr.manual;
+  const priceSourceLabel = metalsPrice?.source === 'api'
+    ? tr.apiSource
+    : metalsPrice?.source === 'mock'
+      ? tr.mockSource
+      : metalsPrice?.source === 'cache'
+        ? tr.cachedSource
+        : tr.manual;
+  const priceStatusLabel = loadingMetals ? tr.updating : metalsPrice?.success ? tr.live : metalsPrice?.source === 'cache' ? tr.cachedSource : tr.failed;
+  const goldPriceLastUpdated = metalsPrice?.gold?.lastUpdated || metalsPrice?.silver?.lastUpdated || null;
+  const silverPriceLastUpdated = metalsPrice?.silver?.lastUpdated || metalsPrice?.gold?.lastUpdated || null;
 
   function includeImportedAmount(kind: 'savings' | 'investments') {
     const amount = kind === 'savings' ? importedFinance.savingsTotal : importedFinance.investmentTotal;
@@ -761,21 +830,25 @@ export default function ZakatPage() {
             <div className="price-grid">
               <div className="price-card">
                 <small>{tr.goldPriceToday}</small>
-                <strong>{toNum(zakat.goldPrice) > 0 ? money(toNum(zakat.goldPrice)) : '-'}</strong>
-                <span>{metalsPrice?.success ? tr.live : tr.failed}</span>
+                <strong>{toNum(zakat.goldPrice) > 0 ? `${money(toNum(zakat.goldPrice))} / ${lang === 'ar' ? 'جرام' : lang === 'fr' ? 'gramme' : 'gram'}` : tr.updating}</strong>
+                <span>{priceStatusLabel}</span>
+                <em>{tr.lastUpdated}: {goldPriceLastUpdated ? timeLabel(goldPriceLastUpdated) : tr.updating}</em>
               </div>
               <div className="price-card">
                 <small>{tr.silverPriceToday}</small>
-                <strong>{toNum(zakat.silverPrice) > 0 ? money(toNum(zakat.silverPrice)) : '-'}</strong>
-                <span>{metalsPrice?.success ? tr.live : tr.failed}</span>
+                <strong>{toNum(zakat.silverPrice) > 0 ? `${money(toNum(zakat.silverPrice))} / ${lang === 'ar' ? 'جرام' : lang === 'fr' ? 'gramme' : 'gram'}` : tr.updating}</strong>
+                <span>{priceStatusLabel}</span>
+                <em>{tr.lastUpdated}: {silverPriceLastUpdated ? timeLabel(silverPriceLastUpdated) : tr.updating}</em>
               </div>
             </div>
             <div className="price-meta">
               <span>{tr.source}: {priceSourceLabel}</span>
-              <span>{tr.lastUpdated}: {metalsPrice?.updatedAt ? dateLabel(metalsPrice.updatedAt) : '-'}</span>
+              <span>{tr.lastUpdated}: {goldPriceLastUpdated ? timeLabel(goldPriceLastUpdated) : tr.updating}</span>
+              {metalsPrice?.source === 'cache' && <span>{tr.cachedSource}</span>}
+              {!metalsPrice?.success && metalsPrice?.message && <span>{metalsPrice.message}</span>}
             </div>
             <button className="primary-wide" type="button" onClick={loadMetalsPrices} disabled={loadingMetals} aria-label={tr.refreshPrices}>
-              <RefreshCw size={16} /> {loadingMetals ? tr.refreshPrices : tr.refreshPrices}
+              <RefreshCw size={16} /> {loadingMetals ? tr.updating : tr.refreshPrices}
             </button>
             {(!metalsPrice?.success || priceMode === 'manual') && (
               <div className="manual-box">
@@ -878,7 +951,7 @@ export default function ZakatPage() {
       </DashboardPageShell>
 
       <style jsx>{`
-        .zakat-page{min-height:100vh;background:var(--sfm-background);color:var(--sfm-primary-dark);font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}.zakat-content{display:grid;gap:18px}.zakat-hero{position:relative;overflow:hidden;border-radius:24px;padding:28px;background:radial-gradient(circle at 14% 10%,rgba(167,243,240,.28),transparent 30%),linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark) 48%,var(--sfm-card-dark) 135%);color:var(--sfm-card);display:flex;align-items:center;justify-content:space-between;gap:20px;box-shadow:0 22px 55px rgba(3,18,37,.18)}.zakat-hero span{color:var(--sfm-soft-cyan);font-size:12px;font-weight:900}.zakat-hero h1{margin:10px 0 8px;font-size:42px;line-height:1.05;font-weight:950}.zakat-hero p{margin:0;color:rgba(234,246,255,.76);max-width:720px;line-height:1.75}.hero-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}.gold-btn,.dark-btn,.primary-wide,.secondary-link{min-height:44px;border-radius:14px;border:1px solid rgba(167,243,240,.28);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 16px;font-weight:900;text-decoration:none;cursor:pointer;font-family:inherit}.gold-btn,.primary-wide{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 10px 24px rgba(24,212,212,.2)}.dark-btn{background:rgba(255,255,255,.10);color:var(--sfm-card)}.dark-btn:disabled,.primary-wide:disabled{opacity:.55;cursor:not-allowed}.secondary-link{background:var(--sfm-card);color:var(--sfm-midnight);border-color:rgba(29,140,255,.18)}.notice{border:1px solid rgba(29,140,255,.18);background:var(--sfm-light-card);color:var(--sfm-primary-hover);border-radius:16px;padding:12px 14px;font-weight:900}.summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}.warm-card{background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);border-radius:20px;box-shadow:0 14px 34px rgba(3,18,37,.07);padding:18px;min-width:0}.summary-card{display:grid;gap:8px}.summary-card span{width:36px;height:36px;border-radius:13px;background:rgba(29,140,255,.10);color:#B45309;display:grid;place-items:center}.summary-card small{color:var(--sfm-muted);font-weight:900}.summary-card strong{font-size:20px;color:var(--sfm-primary-dark);overflow-wrap:anywhere}.zakat-main-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(280px,.78fr);gap:16px;align-items:start}.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}.section-head h2{margin:0;font-size:19px;color:var(--sfm-midnight)}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid.one{grid-template-columns:1fr}.form-grid label,.asset-box label{display:grid;gap:7px;color:var(--sfm-midnight);font-size:13px;font-weight:900;min-width:0}.form-grid span,.asset-box span{min-width:0}.form-grid input,.form-grid select,.asset-box input{width:100%;min-height:44px;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:var(--sfm-card);color:var(--sfm-deep-navy);padding:0 12px;outline:none;font-family:inherit}.form-grid input:focus,.form-grid select:focus,.asset-box input:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.16)}.wide{grid-column:1 / -1}.asset-box,.manual-box,.import-box{margin-top:12px;border:1px solid rgba(29,140,255,.13);background:var(--sfm-light-card);border-radius:16px;padding:14px;display:grid;gap:10px;min-width:0}.asset-box strong,.import-box strong{color:var(--sfm-midnight)}.asset-box p,.manual-box p,.import-box p,.muted,.disclaimer{margin:0;color:var(--sfm-muted);line-height:1.7;font-size:13px}.import-box div{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;border:1px solid rgba(29,140,255,.12);background:var(--sfm-card);border-radius:14px;padding:10px}.import-box span{color:var(--sfm-midnight);font-weight:900;line-height:1.6}.import-box button{min-height:36px;border-radius:12px;border:1px solid rgba(29,140,255,.2);background:var(--sfm-midnight);color:var(--sfm-card);padding:0 12px;font-weight:900;font-family:inherit;cursor:pointer}.import-box button:disabled{background:#ECFDF5;color:#047857;cursor:default}.chip-grid{display:flex;flex-wrap:wrap;gap:8px}.chip{border:1px solid rgba(29,140,255,.2);background:var(--sfm-light-card);color:var(--sfm-midnight);border-radius:999px;min-height:36px;padding:0 12px;font-weight:900;cursor:pointer}.chip.active{background:var(--sfm-midnight);color:var(--sfm-card);border-color:var(--sfm-midnight)}.price-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.price-card{background:var(--sfm-midnight);border:1px solid rgba(167,243,240,.18);border-radius:16px;padding:14px;color:var(--sfm-card);min-width:0}.price-card small,.price-card span{display:block;color:var(--sfm-soft-cyan);font-weight:900}.price-card strong{display:block;margin:6px 0;color:var(--sfm-card);font-size:20px;overflow-wrap:anywhere}.price-meta{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;color:var(--sfm-primary-hover);font-size:12px;font-weight:900}.price-meta span{border-radius:999px;background:rgba(29,140,255,.10);padding:6px 10px}.result-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.result-grid div{border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:14px;padding:11px;min-width:0}.result-grid small{display:block;color:var(--sfm-muted);font-weight:900}.result-grid strong{display:block;color:var(--sfm-primary-dark);font-size:16px;margin-top:4px;overflow-wrap:anywhere}.result-grid .nisab-reached{background:#ECFDF5}.result-grid .nisab-reached strong{color:#047857}.result-grid .nisab-missing{background:#FFF7ED}.outcome{margin:12px 0 0;border-radius:15px;background:#ECFDF5;color:#047857;padding:12px;font-weight:900;line-height:1.7}.guidance-list{display:grid;gap:9px}.guidance-list p{margin:0;display:flex;gap:8px;align-items:flex-start;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:14px;padding:11px;color:var(--sfm-midnight);line-height:1.65}.guidance-list svg{color:var(--sfm-primary);flex:0 0 auto;margin-top:2px}.guidance-panel .primary-wide{width:100%;margin:14px 0}.split-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:16px}.check-row{display:flex!important;align-items:center;gap:9px}.check-row input{width:auto;min-height:auto}.asset-list,.history-list{display:grid;gap:10px}.asset-list article,.history-list article{border:1px solid rgba(29,140,255,.13);background:var(--sfm-light-card);border-radius:15px;padding:12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}.asset-list span,.asset-list small,.history-list span,.history-list small{color:var(--sfm-muted);overflow-wrap:anywhere}.asset-list strong,.history-list strong{color:var(--sfm-primary-dark);overflow-wrap:anywhere}.asset-list b{color:var(--sfm-primary-hover)}.history-list article{grid-template-columns:1fr 1fr 1fr 1fr .7fr auto}.history-list button{width:36px;height:36px;border:1px solid rgba(121,31,31,.14);border-radius:11px;background:#FEF2F2;color:#B91C1C;display:grid;place-items:center;cursor:pointer}@media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.zakat-main-grid{grid-template-columns:1fr 1fr}.guidance-panel{grid-column:1 / -1}}@media(max-width:760px){.zakat-hero{display:grid;padding:22px}.zakat-hero h1{font-size:34px}.hero-actions{display:grid;grid-template-columns:1fr;width:100%}.summary-grid,.zakat-main-grid,.split-grid,.form-grid,.price-grid,.result-grid,.import-box div{grid-template-columns:1fr}.history-list article,.asset-list article{grid-template-columns:1fr}.warm-card{padding:16px}.gold-btn,.dark-btn,.primary-wide,.secondary-link,.import-box button{width:100%}}
+        .zakat-page{min-height:100vh;background:var(--sfm-background);color:var(--sfm-primary-dark);font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}.zakat-content{display:grid;gap:18px}.zakat-hero{position:relative;overflow:hidden;border-radius:24px;padding:28px;background:radial-gradient(circle at 14% 10%,rgba(167,243,240,.28),transparent 30%),linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark) 48%,var(--sfm-card-dark) 135%);color:var(--sfm-card);display:flex;align-items:center;justify-content:space-between;gap:20px;box-shadow:0 22px 55px rgba(3,18,37,.18)}.zakat-hero span{color:var(--sfm-soft-cyan);font-size:12px;font-weight:900}.zakat-hero h1{margin:10px 0 8px;font-size:42px;line-height:1.05;font-weight:950}.zakat-hero p{margin:0;color:rgba(234,246,255,.76);max-width:720px;line-height:1.75}.hero-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}.gold-btn,.dark-btn,.primary-wide,.secondary-link{min-height:44px;border-radius:14px;border:1px solid rgba(167,243,240,.28);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 16px;font-weight:900;text-decoration:none;cursor:pointer;font-family:inherit}.gold-btn,.primary-wide{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 10px 24px rgba(24,212,212,.2)}.dark-btn{background:rgba(255,255,255,.10);color:var(--sfm-card)}.dark-btn:disabled,.primary-wide:disabled{opacity:.55;cursor:not-allowed}.secondary-link{background:var(--sfm-card);color:var(--sfm-midnight);border-color:rgba(29,140,255,.18)}.notice{border:1px solid rgba(29,140,255,.18);background:var(--sfm-light-card);color:var(--sfm-primary-hover);border-radius:16px;padding:12px 14px;font-weight:900}.summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}.warm-card{background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);border-radius:20px;box-shadow:0 14px 34px rgba(3,18,37,.07);padding:18px;min-width:0}.summary-card{display:grid;gap:8px}.summary-card span{width:36px;height:36px;border-radius:13px;background:rgba(29,140,255,.10);color:#B45309;display:grid;place-items:center}.summary-card small{color:var(--sfm-muted);font-weight:900}.summary-card strong{font-size:20px;color:var(--sfm-primary-dark);overflow-wrap:anywhere}.zakat-main-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(280px,.78fr);gap:16px;align-items:start}.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}.section-head h2{margin:0;font-size:19px;color:var(--sfm-midnight)}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid.one{grid-template-columns:1fr}.form-grid label,.asset-box label{display:grid;gap:7px;color:var(--sfm-midnight);font-size:13px;font-weight:900;min-width:0}.form-grid span,.asset-box span{min-width:0}.form-grid input,.form-grid select,.asset-box input{width:100%;min-height:44px;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:var(--sfm-card);color:var(--sfm-deep-navy);padding:0 12px;outline:none;font-family:inherit}.form-grid input:focus,.form-grid select:focus,.asset-box input:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.16)}.wide{grid-column:1 / -1}.asset-box,.manual-box,.import-box{margin-top:12px;border:1px solid rgba(29,140,255,.13);background:var(--sfm-light-card);border-radius:16px;padding:14px;display:grid;gap:10px;min-width:0}.asset-box strong,.import-box strong{color:var(--sfm-midnight)}.asset-box p,.manual-box p,.import-box p,.muted,.disclaimer{margin:0;color:var(--sfm-muted);line-height:1.7;font-size:13px}.import-box div{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;border:1px solid rgba(29,140,255,.12);background:var(--sfm-card);border-radius:14px;padding:10px}.import-box span{color:var(--sfm-midnight);font-weight:900;line-height:1.6}.import-box button{min-height:36px;border-radius:12px;border:1px solid rgba(29,140,255,.2);background:var(--sfm-midnight);color:var(--sfm-card);padding:0 12px;font-weight:900;font-family:inherit;cursor:pointer}.import-box button:disabled{background:#ECFDF5;color:#047857;cursor:default}.chip-grid{display:flex;flex-wrap:wrap;gap:8px}.chip{border:1px solid rgba(29,140,255,.2);background:var(--sfm-light-card);color:var(--sfm-midnight);border-radius:999px;min-height:36px;padding:0 12px;font-weight:900;cursor:pointer}.chip.active{background:var(--sfm-midnight);color:var(--sfm-card);border-color:var(--sfm-midnight)}.price-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.price-card{background:#061A2E;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:15px;color:#F8FAFC;min-width:0;box-shadow:0 16px 34px rgba(3,18,37,.22)}.price-card small,.price-card span,.price-card em{display:block;font-style:normal;font-weight:900}.price-card small{color:#22D3EE;text-align:start}.price-card strong{display:block;margin:7px 0 5px;color:#F8FAFC;font-size:clamp(20px,4.8vw,25px);line-height:1.25;overflow-wrap:anywhere}.price-card span{color:#CBD5E1}.price-card em{margin-top:6px;color:#94A3B8;font-size:12px}.price-meta{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;color:var(--sfm-primary-hover);font-size:12px;font-weight:900}.price-meta span{border-radius:999px;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.16);color:var(--sfm-midnight);padding:6px 10px}.dark .price-meta span{color:#CBD5E1}.result-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.result-grid div{border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:14px;padding:11px;min-width:0}.result-grid small{display:block;color:var(--sfm-muted);font-weight:900}.result-grid strong{display:block;color:var(--sfm-primary-dark);font-size:16px;margin-top:4px;overflow-wrap:anywhere}.result-grid .nisab-reached{background:#ECFDF5}.result-grid .nisab-reached strong{color:#047857}.result-grid .nisab-missing{background:#FFF7ED}.outcome{margin:12px 0 0;border-radius:15px;background:#ECFDF5;color:#047857;padding:12px;font-weight:900;line-height:1.7}.guidance-list{display:grid;gap:9px}.guidance-list p{margin:0;display:flex;gap:8px;align-items:flex-start;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:14px;padding:11px;color:var(--sfm-midnight);line-height:1.65}.guidance-list svg{color:var(--sfm-primary);flex:0 0 auto;margin-top:2px}.guidance-panel .primary-wide{width:100%;margin:14px 0}.split-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:16px}.check-row{display:flex!important;align-items:center;gap:9px}.check-row input{width:auto;min-height:auto}.asset-list,.history-list{display:grid;gap:10px}.asset-list article,.history-list article{border:1px solid rgba(29,140,255,.13);background:var(--sfm-light-card);border-radius:15px;padding:12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}.asset-list span,.asset-list small,.history-list span,.history-list small{color:var(--sfm-muted);overflow-wrap:anywhere}.asset-list strong,.history-list strong{color:var(--sfm-primary-dark);overflow-wrap:anywhere}.asset-list b{color:var(--sfm-primary-hover)}.history-list article{grid-template-columns:1fr 1fr 1fr 1fr .7fr auto}.history-list button{width:36px;height:36px;border:1px solid rgba(121,31,31,.14);border-radius:11px;background:#FEF2F2;color:#B91C1C;display:grid;place-items:center;cursor:pointer}@media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.zakat-main-grid{grid-template-columns:1fr 1fr}.guidance-panel{grid-column:1 / -1}}@media(max-width:760px){.zakat-hero{display:grid;padding:22px}.zakat-hero h1{font-size:34px}.hero-actions{display:grid;grid-template-columns:1fr;width:100%}.summary-grid,.zakat-main-grid,.split-grid,.form-grid,.price-grid,.result-grid,.import-box div{grid-template-columns:1fr}.history-list article,.asset-list article{grid-template-columns:1fr}.warm-card{padding:16px}.gold-btn,.dark-btn,.primary-wide,.secondary-link,.import-box button{width:100%}}
       `}</style>
     </div>
   );

@@ -4,6 +4,7 @@ import type { ComponentType } from 'react';
 import {
   Bell,
   BookOpen,
+  Bot,
   BriefcaseBusiness,
   Building2,
   Calculator,
@@ -83,6 +84,14 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'expenses', icon: ReceiptText, href: '/expenses', labelKey: 'nav_expenses', viewModes: ['simple', 'professional'] },
       { id: 'savings', icon: PiggyBank, href: '/savings', labelKey: 'nav_savings' },
       { id: 'goals', icon: Target, href: '/goals', labelKey: 'nav_goals', viewModes: ['simple', 'professional'] },
+    ],
+  },
+  {
+    id: 'financial-intelligence',
+    labelKey: 'nav_group_financial_ai',
+    defaultOpen: true,
+    items: [
+      { id: 'smart-assistant', icon: Bot, href: '/ai', labelKey: 'nav_smart_assistant', viewModes: ['simple', 'professional'] },
     ],
   },
   {

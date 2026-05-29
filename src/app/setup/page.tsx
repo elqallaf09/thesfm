@@ -822,8 +822,6 @@ export default function SetupPage() {
         email: user.email ?? null,
         default_currency: defaultCurrency,
         preferred_currency: defaultCurrency,
-        onboarding_skipped: true,
-        onboarding_skipped_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
       if (profileError) throw profileError;
@@ -850,9 +848,7 @@ export default function SetupPage() {
         preferred_currency: defaultCurrency,
         financial_focus: focusValues || existingData.profile?.financial_focus || null,
         monthly_income_target: buildSetupSummary().expectedRemaining + existingExpensesTotal(),
-        essential_expenses: existingExpensesTotal(),
         onboarding_completed: true,
-        onboarding_completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
       if (profileError) throw profileError;
@@ -906,12 +902,7 @@ export default function SetupPage() {
         preferred_currency: defaultCurrency,
         financial_focus: focusValues || null,
         monthly_income_target: incomeAmount,
-        essential_expenses: essentialExpenseTotal,
-        first_goal_name: goalEnabled ? goal.name.trim() || null : null,
-        first_goal_amount: goalEnabled ? toAmount(goal.targetAmount) : 0,
-        first_goal_deadline: goalEnabled && goal.targetDate ? goal.targetDate : null,
         onboarding_completed: true,
-        onboarding_completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
       if (profileError) throw profileError;

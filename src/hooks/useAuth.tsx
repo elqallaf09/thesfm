@@ -57,6 +57,14 @@ function isConfirmedAuthEmail(user: User | null) {
   return Boolean(user?.email && (user.email_confirmed_at || user.confirmed_at));
 }
 
+function syncAuthCookies(nextSession: Session | null, guestMode: boolean) {
+  if (typeof document === 'undefined') return;
+  const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `sfm_auth=${nextSession ? 'true' : ''}; path=/; max-age=${nextSession ? 60 * 60 * 24 * 30 : 0}; SameSite=Lax`;
+  document.cookie = `sfm_access_token=${nextSession?.access_token ?? ''}; path=/; max-age=${nextSession?.access_token ? 60 * 60 * 24 * 7 : 0}; SameSite=Lax${secureFlag}`;
+  document.cookie = `sfm_guest=${guestMode ? 'true' : ''}; path=/; max-age=${guestMode ? 60 * 60 * 24 : 0}; SameSite=Lax`;
+}
+
 function normalizeLoginEmail(value: string) {
   return value.trim().toLowerCase();
 }
@@ -72,29 +80,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
-    const syncCookies = (nextSession: Session | null, guestMode: boolean) => {
-      if (typeof document === 'undefined') return;
-      const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-      document.cookie = `sfm_auth=${nextSession ? 'true' : ''}; path=/; max-age=${nextSession ? 60 * 60 * 24 * 30 : 0}; SameSite=Lax`;
-      document.cookie = `sfm_access_token=${nextSession?.access_token ?? ''}; path=/; max-age=${nextSession?.access_token ? 60 * 60 * 24 * 7 : 0}; SameSite=Lax${secureFlag}`;
-      document.cookie = `sfm_guest=${guestMode ? 'true' : ''}; path=/; max-age=${guestMode ? 60 * 60 * 24 : 0}; SameSite=Lax`;
-    };
-
     supabase.auth.getSession().then(({ data }) => {
       const guestMode = getStoredGuestMode();
       setSession(data.session);
       setUser(data.session?.user ?? null);
       setIsGuest(!data.session && guestMode);
-      syncCookies(data.session, !data.session && guestMode);
+      syncAuthCookies(data.session, !data.session && guestMode);
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      console.debug('[auth] auth state changed', { event, userId: nextSession?.user?.id ?? null, hasSession: Boolean(nextSession) });
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       const guestMode = getStoredGuestMode();
       setIsGuest(!nextSession && guestMode);
-      syncCookies(nextSession, !nextSession && guestMode);
+      syncAuthCookies(nextSession, !nextSession && guestMode);
       setLoading(false);
     });
 
@@ -108,17 +109,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isGuest,
     continueAsGuest: () => {
       setStoredGuestMode();
-      if (typeof document !== 'undefined') {
-        document.cookie = `sfm_guest=true; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`;
-        document.cookie = 'sfm_auth=; path=/; max-age=0; SameSite=Lax';
-        document.cookie = 'sfm_access_token=; path=/; max-age=0; SameSite=Lax';
-      }
+      syncAuthCookies(null, true);
       setSession(null);
       setUser(null);
       setIsGuest(true);
     },
     signIn: async (username: string, password: string) => {
       try {
+        console.debug('[auth] login started');
         if (supabaseConfigError) return { error: new Error(supabaseConfigError) };
         const identifier = username.trim();
         const identifierIsEmail = identifier.includes('@');
@@ -173,6 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (error) {
+          console.error('[auth] login error', error);
           if (error.message === 'Email not confirmed') {
             return { error: new Error('الحساب جاهز الآن. أعد الضغط على تسجيل الدخول.') };
           }
@@ -203,15 +202,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         clearStoredGuestMode();
-        if (typeof document !== 'undefined') {
-          document.cookie = `sfm_auth=true; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
-          document.cookie = 'sfm_guest=; path=/; max-age=0; SameSite=Lax';
-        }
+        syncAuthCookies(signedInSession, false);
         setSession(signedInSession);
         setUser(signedInUser);
         setIsGuest(false);
+        console.debug('[auth] login success', { userId: signedInUser.id, hasSession: Boolean(signedInSession) });
+        console.debug('[auth] session returned', { hasAccessToken: Boolean(signedInSession?.access_token), expiresAt: signedInSession?.expires_at ?? null });
         return { error: null, session: signedInSession, user: signedInUser, email };
       } catch (err: any) {
+        console.error('[auth] login error', err);
         return { error: new Error(err.message || 'فشل الاتصال بالخادم') };
       }
     },
@@ -272,10 +271,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut: async () => {
       await supabase.auth.signOut();
       clearStoredGuestMode();
-      if (typeof document !== 'undefined') {
-        document.cookie = 'sfm_auth=; path=/; max-age=0; SameSite=Lax';
-        document.cookie = 'sfm_guest=; path=/; max-age=0; SameSite=Lax';
-      }
+      syncAuthCookies(null, false);
+      setSession(null);
+      setUser(null);
       setIsGuest(false);
     },
   }), [isGuest, loading, session, user]);

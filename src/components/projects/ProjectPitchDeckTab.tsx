@@ -48,8 +48,6 @@ const TEXT = {
     cancel: 'إلغاء',
     printPdf: 'تصدير PDF',
     exportPowerPoint: 'تصدير PowerPoint احترافي',
-    voiceoverSoon: 'توليد تعليق صوتي قريباً',
-    comingSoon: 'قريباً',
     preparingSlides: 'جاري تجهيز الشرائح...',
     designingLayout: 'جاري تصميم العرض...',
     generatingNotes: 'جاري إنشاء الملاحظات...',
@@ -97,8 +95,6 @@ const TEXT = {
     cancel: 'Cancel',
     printPdf: 'Export PDF',
     exportPowerPoint: 'Export Professional PowerPoint',
-    voiceoverSoon: 'Voice-over generation coming soon',
-    comingSoon: 'Coming soon',
     preparingSlides: 'Preparing slides...',
     designingLayout: 'Designing layout...',
     generatingNotes: 'Generating notes...',
@@ -146,8 +142,6 @@ const TEXT = {
     cancel: 'Annuler',
     printPdf: 'Exporter PDF',
     exportPowerPoint: 'Exporter PowerPoint professionnel',
-    voiceoverSoon: 'Génération de narration bientôt disponible',
-    comingSoon: 'Bientôt',
     preparingSlides: 'Préparation des diapositives...',
     designingLayout: 'Conception de la mise en page...',
     generatingNotes: 'Génération des notes...',
@@ -410,11 +404,6 @@ export function ProjectPitchDeckTab({ projectId, lang, onNavigateTab }: Props) {
         <button type="button" onClick={exportPowerPoint} disabled={!deck || exporting} aria-label={t.exportPowerPoint}>
           {exporting ? <Loader2 size={16} className="spin" /> : <Presentation size={16} />}
           {exporting ? exportStep || t.exportingPowerPoint : t.exportPowerPoint}
-        </button>
-        <button type="button" disabled aria-disabled="true" className="disabled">
-          <Presentation size={16} />
-          {t.voiceoverSoon}
-          <span>{t.comingSoon}</span>
         </button>
       </div>
 
