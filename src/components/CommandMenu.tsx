@@ -98,7 +98,7 @@ export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) 
       safeQuery('monthly_income_sources', 'id,label,source_name,amount,currency,created_at'),
       safeQuery('expense_items', 'id,name,amount,currency,created_at'),
       safeQuery('investment_items', 'id,name,symbol,amount,current_value,currency,created_at'),
-      safeQuery('user_decisions', 'id,decision_title,title,decision_type,target_date,created_at'),
+      safeQuery('user_decisions', 'id,title,decision_type,target_date,created_at'),
       safeQuery('reports', 'id,title,report_type,created_at'),
     ]);
 
@@ -142,10 +142,10 @@ export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) 
       ...decisions.map((row: any) => ({
         id: `decision:${row.id}`,
         group: 'decisions' as const,
-        title: itemTitle(row, ['decision_title', 'title'], t('command_decisions')),
+        title: itemTitle(row, ['title'], t('command_decisions')),
         description: row?.decision_type ? String(row.decision_type) : t('command_decisions'),
         href: `/decisions?decision=${encodeURIComponent(String(row.id))}`,
-        keywords: ['decision', 'قرار', t('command_decisions'), itemTitle(row, ['decision_title', 'title'], '')],
+        keywords: ['decision', 'قرار', t('command_decisions'), itemTitle(row, ['title'], '')],
         icon: Landmark,
       })),
       ...reports.map((row: any) => ({

@@ -38,13 +38,11 @@ type Lang = 'ar' | 'en' | 'fr';
 
 type DecisionRow = {
   id: string;
-  decision_title?: string | null;
   title?: string | null;
   decision_type: DecisionType;
-  estimated_cost?: number | string | null;
   amount?: number | string | null;
   monthly_impact?: number | string | null;
-  expected_benefit?: string | null;
+  expected_benefit?: number | string | null;
   risk_level?: 'low' | 'medium' | 'high' | string | null;
   currency: string;
   target_date: string | null;
@@ -105,6 +103,7 @@ const TEXT = {
     delete: 'حذف',
     deleted: 'تم حذف القرار.',
     saved: 'تم حفظ تحليل القرار.',
+    saveFailed: 'تعذر حفظ القرار حالياً، الرجاء المحاولة مرة أخرى.',
     validation: 'أدخل عنوان القرار والتكلفة التقديرية.',
     yes: 'نعم',
     no: 'لا',
@@ -149,6 +148,7 @@ const TEXT = {
     delete: 'Delete',
     deleted: 'Decision deleted.',
     saved: 'Decision analysis saved.',
+    saveFailed: 'Could not save the decision right now. Please try again.',
     validation: 'Enter a decision title and estimated cost.',
     yes: 'Yes',
     no: 'No',
@@ -193,6 +193,7 @@ const TEXT = {
     delete: 'Supprimer',
     deleted: 'Décision supprimée.',
     saved: 'Analyse de décision enregistrée.',
+    saveFailed: 'Impossible d’enregistrer la décision pour le moment. Veuillez réessayer.',
     validation: 'Saisissez un titre et un coût estimé.',
     yes: 'Oui',
     no: 'Non',
@@ -247,11 +248,7 @@ function riskScore(analysis: DecisionAnalysis | null) {
 }
 
 function rowTitle(row: DecisionRow) {
-  return String(row.decision_title ?? row.title ?? '').trim();
-}
-
-function rowAmount(row: DecisionRow) {
-  return Number(row.estimated_cost ?? row.amount ?? 0) || 0;
+  return String(row.title ?? '').trim();
 }
 
 function rowRiskScore(row: DecisionRow) {
@@ -373,6 +370,7 @@ export default function DecisionsPage() {
   const visibleAnalysis = selectedDecision ? rowAnalysis(selectedDecision) : draftAnalysis;
 
   async function saveDecision() {
+    if (saving) return;
     if (!user || !sourceData) return;
     if (!form.title.trim() || numeric(form.amount) <= 0) {
       setError(text.validation);
@@ -403,38 +401,48 @@ export default function DecisionsPage() {
           ? text.insufficient
           : text.reasonGood;
     const now = new Date().toISOString();
-    const { error: saveError } = await (supabase as any).from('user_decisions').insert({
+    const { data: savedDecision, error: saveError } = await (supabase as any).from('user_decisions').insert({
       user_id: user.id,
-      decision_title: inputs.title,
+      title: inputs.title,
       decision_type: inputs.decisionType,
-      estimated_cost: inputs.amount,
+      amount: inputs.amount,
       monthly_impact: inputs.recurringCost ?? 0,
-      expected_benefit: form.expectedBenefit.trim() || null,
+      expected_benefit: numeric(form.expectedBenefit),
       risk_level: inputs.riskLevel ?? 'medium',
       target_date: inputs.targetDate ?? null,
       notes: inputs.notes?.trim() || null,
-      risk_score: savedRiskScore,
-      is_recommended: recommended,
-      main_reason: mainReason,
-      better_alternative: text.alternativeText,
-      action_plan: { checklist: CHECKLIST[lang as Lang], scenarios: analysis.scenarios },
       currency,
       updated_at: now,
-      title: inputs.title,
-      amount: inputs.amount,
-      priority: inputs.priority,
-      inputs,
-      analysis,
-      status: 'analyzed',
-    });
+      analysis: {
+        ...analysis,
+        riskScore: savedRiskScore,
+        isRecommended: recommended,
+        mainReason,
+        betterAlternative: text.alternativeText,
+        actionPlan: { checklist: CHECKLIST[lang as Lang], scenarios: analysis.scenarios },
+        inputs,
+      },
+    }).select('*').single();
     setSaving(false);
     if (saveError) {
-      setError(saveError.message || 'save_error');
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[FinancialDecisions] Failed to save decision', {
+          code: saveError.code,
+          message: saveError.message,
+          details: saveError.details,
+        });
+      }
+      setError(text.saveFailed);
       return;
     }
     setForm(emptyForm);
     setMessage(text.saved);
-    await load();
+    if (savedDecision) {
+      setDecisions(prev => [savedDecision as DecisionRow, ...prev.filter(row => row.id !== savedDecision.id)]);
+      setSelectedId(savedDecision.id);
+    } else {
+      await load();
+    }
   }
 
   async function deleteDecision(id: string) {
@@ -519,7 +527,7 @@ export default function DecisionsPage() {
               </label>
               <label>
                 <span>{text.benefit}</span>
-                <input value={form.expectedBenefit} onChange={event => setForm(prev => ({ ...prev, expectedBenefit: event.target.value }))} />
+                <input inputMode="decimal" value={form.expectedBenefit} onChange={event => setForm(prev => ({ ...prev, expectedBenefit: event.target.value }))} />
               </label>
               <label>
                 <span>{text.riskLevel}</span>

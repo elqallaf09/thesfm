@@ -126,6 +126,57 @@ export type Database = {
         }
         Relationships: []
       }
+      user_decisions: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          decision_type: string | null
+          amount: number | null
+          currency: string | null
+          expected_benefit: number | null
+          monthly_impact: number | null
+          risk_level: string | null
+          target_date: string | null
+          notes: string | null
+          analysis: Json | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          decision_type?: string | null
+          amount?: number | null
+          currency?: string | null
+          expected_benefit?: number | null
+          monthly_impact?: number | null
+          risk_level?: string | null
+          target_date?: string | null
+          notes?: string | null
+          analysis?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          decision_type?: string | null
+          amount?: number | null
+          currency?: string | null
+          expected_benefit?: number | null
+          monthly_impact?: number | null
+          risk_level?: string | null
+          target_date?: string | null
+          notes?: string | null
+          analysis?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       monthly_income_sources: {
         Row: {
           id: string
