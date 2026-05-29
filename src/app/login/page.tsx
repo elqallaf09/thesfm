@@ -143,7 +143,7 @@ const TEXT = {
     errorPasswordLength: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل.',
     errorPasswordContent: 'كلمة المرور يجب أن تحتوي على حرف ورقم على الأقل.',
     errorMismatch: 'كلمتا المرور غير متطابقتين.',
-    errorTerms: 'يجب الموافقة على الشروط وسياسة الخصوصية.',
+    errorTerms: 'يجب الموافقة على الشروط وسياسة الخصوصية للمتابعة.',
     errorExists: 'اسم المستخدم مستخدم بالفعل.',
     errorRegister: 'تعذر إنشاء الحساب. حاول مرة أخرى.',
     errorLogin: 'اسم المستخدم أو كلمة المرور غير صحيحة.',
@@ -230,7 +230,7 @@ const TEXT = {
     errorPasswordLength: 'Password must be at least 8 characters.',
     errorPasswordContent: 'Password must contain at least one letter and one number.',
     errorMismatch: 'Passwords do not match.',
-    errorTerms: 'You must accept the terms and privacy policy.',
+    errorTerms: 'You must agree to the Terms and Privacy Policy to continue.',
     errorExists: 'This username is already taken.',
     errorRegister: 'Could not create the account. Try again.',
     errorLogin: 'Username or password is incorrect.',
@@ -277,8 +277,8 @@ const TEXT = {
     securityAnswer: 'Réponse de sécurité',
     securityOptional: 'La question de sécurité est facultative et sert uniquement de couche de vérification supplémentaire, pas de remplacement à la récupération par email.',
     termsPrefix: 'J’accepte les',
-    terms: 'Conditions',
-    privacy: 'Politique de confidentialité',
+    terms: 'conditions',
+    privacy: 'politique de confidentialité',
     and: 'et la',
     accountDetails: 'Détails du compte',
     preferencesSecurity: 'Préférences et sécurité',
@@ -317,7 +317,7 @@ const TEXT = {
     errorPasswordLength: 'Le mot de passe doit contenir au moins 8 caractères.',
     errorPasswordContent: 'Le mot de passe doit contenir au moins une lettre et un chiffre.',
     errorMismatch: 'Les mots de passe ne correspondent pas.',
-    errorTerms: 'Vous devez accepter les conditions et la politique de confidentialité.',
+    errorTerms: 'Vous devez accepter les conditions et la politique de confidentialité pour continuer.',
     errorExists: 'Ce nom d’utilisateur est déjà utilisé.',
     errorRegister: 'Impossible de créer le compte. Réessayez.',
     errorLogin: 'Nom d’utilisateur ou mot de passe incorrect.',
@@ -398,6 +398,7 @@ function LoginContent() {
   const [customSecurityQuestion, setCustomSecurityQuestion] = useState('');
   const [securityAnswer, setSecurityAnswer] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsError, setTermsError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState<Message>(null);
@@ -473,6 +474,7 @@ function LoginContent() {
     setMode(nextMode);
     setSignupStep(1);
     setMessage(null);
+    setTermsError('');
     setPassword('');
     setConfirmPassword('');
     setRecoveryAnswer('');
@@ -637,7 +639,11 @@ function LoginContent() {
       setSignupStep(2);
       return '';
     }
-    if (!termsAccepted) return text.errorTerms;
+    if (!termsAccepted) {
+      setTermsError(text.errorTerms);
+      return '';
+    }
+    setTermsError('');
 
     const question = resolvedSecurityQuestion();
     if ((question && !securityAnswer.trim()) || (!question && securityAnswer.trim())) return text.errorSecurityPair;
@@ -949,12 +955,27 @@ function LoginContent() {
                 <ShieldCheck size={17} aria-hidden="true" />
                 <span>{text.securityOptional}</span>
               </div>
-              <label className="terms-line grid-full">
-                <input type="checkbox" checked={termsAccepted} onChange={event => setTermsAccepted(event.target.checked)} />
-                <span>
-                  {text.termsPrefix} <Link href="/terms">{text.terms}</Link> {text.and} <Link href="/privacy">{text.privacy}</Link>.
-                </span>
-              </label>
+              <div className="terms-field grid-full">
+                <label className={`terms-line${termsError ? ' has-error' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={termsAccepted}
+                    onChange={event => {
+                      const checked = event.target.checked;
+                      setTermsAccepted(checked);
+                      if (checked) setTermsError('');
+                    }}
+                    aria-invalid={Boolean(termsError)}
+                    aria-describedby={termsError ? 'terms-error' : undefined}
+                  />
+                  <span className="terms-box" aria-hidden="true" />
+                  <span className="terms-copy">
+                    {text.termsPrefix} <Link href="/terms" onClick={event => event.stopPropagation()}>{text.terms}</Link> {text.and} <Link href="/privacy" onClick={event => event.stopPropagation()}>{text.privacy}</Link>.
+                    <em>{text.required}</em>
+                  </span>
+                </label>
+                {termsError && <p id="terms-error" className="terms-error">{termsError}</p>}
+              </div>
             </div>
           )}
 
@@ -966,7 +987,12 @@ function LoginContent() {
                 <ChevronLeft size={16} aria-hidden="true" />{text.back}
               </button>
             )}
-            <button className="primary" disabled={submitting}>
+            <button
+              className="primary"
+              disabled={submitting}
+              aria-disabled={isRegister && signupStep === 2 && !termsAccepted ? true : undefined}
+              data-needs-agreement={isRegister && signupStep === 2 && !termsAccepted ? 'true' : undefined}
+            >
               {submitting ? (
                 <span className="loading-label"><span className="spinner" />{mode === 'login' ? text.signingIn : mode === 'register' ? text.saving : mode === 'twoFactor' ? text.verifyingCode : text.sendReset}</span>
               ) : mode === 'login' ? text.signIn : mode === 'register' ? (signupStep === 1 ? text.continue : text.createAccount) : mode === 'forgot' ? text.sendReset : mode === 'twoFactor' ? text.verifyCode : text.reset}
@@ -995,8 +1021,8 @@ function LoginContent() {
         .login-shell .icon{border:0;background:transparent;color:#0B2748;display:grid;place-items:center;cursor:pointer;border-radius:999px;padding:4px}.login-shell .icon:hover{color:#1D8CFF}.login-shell .icon:focus-visible,.login-shell .primary:focus-visible,.login-shell .secondary:focus-visible,.login-shell .actions button:focus-visible,.login-shell .terms-line:focus-within{outline:3px solid rgba(24,212,212,.35);outline-offset:3px}
         .login-shell .password-meter{display:grid;gap:8px}.login-shell .meter-top{display:flex;justify-content:space-between;gap:12px;color:#334155;font-size:12px;font-weight:900}.login-shell .meter-top strong.weak{color:#B91C1C}.login-shell .meter-top strong.medium{color:#B45309}.login-shell .meter-top strong.strong{color:#047857}.login-shell .meter-bars{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.login-shell .meter-bars span{height:7px;border-radius:999px;background:rgba(100,116,139,.16)}.login-shell .meter-bars span.on.weak{background:#EF4444}.login-shell .meter-bars span.on.medium{background:#F59E0B}.login-shell .meter-bars span.on.strong{background:#10B981}.login-shell .password-meter p{margin:0;color:#64748B;font-size:12px;font-weight:800}
         .login-shell .security-note,.login-shell .security-check{border:1px solid rgba(24,212,212,.22);background:rgba(24,212,212,.08);border-radius:15px;color:#0B2748;display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;padding:12px;font-size:13px;font-weight:850;line-height:1.7}.login-shell .security-note svg,.login-shell .security-check svg{color:#1D8CFF;margin-top:2px}.login-shell .security-check strong{display:block;color:#061B33}.login-shell .security-check p{margin:4px 0 10px;color:#475569}.login-shell .security-check label{display:grid;gap:7px}.login-shell .security-check input{min-height:46px;border:1px solid rgba(29,140,255,.22);border-radius:12px;background:#FFFFFF;padding:0 12px}
-        .login-shell .terms-line{display:flex;gap:10px;align-items:flex-start;border:1px solid rgba(29,140,255,.14);background:#F8FBFF;border-radius:15px;padding:12px;color:#334155;font-size:13px;font-weight:850;line-height:1.7}.login-shell .terms-line input{width:18px;height:18px;accent-color:#1D8CFF;flex:0 0 auto;margin-top:3px}.login-shell .terms-line a{color:#1D8CFF;font-weight:950;text-decoration:none}.login-shell .terms-line a:hover{text-decoration:underline}
-        .login-shell .submit-row{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:2px}.login-shell .primary,.login-shell .secondary{min-height:54px;border-radius:16px;padding:0 18px;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease,background .18s ease,border-color .18s ease}.login-shell .primary{border:0;background:linear-gradient(135deg,#061B33 0%,#1D8CFF 54%,#18D4D4 100%);color:#FFFFFF;box-shadow:0 14px 34px rgba(29,140,255,.28);min-width:190px}.login-shell .secondary{border:1px solid rgba(29,140,255,.22);background:#FFFFFF;color:#0B2748}.login-shell .primary:hover:not(:disabled),.login-shell .secondary:hover:not(:disabled){transform:translateY(-2px);filter:saturate(1.08) brightness(1.02);box-shadow:0 16px 38px rgba(24,212,212,.22)}.login-shell .primary:active:not(:disabled),.login-shell .secondary:active:not(:disabled){transform:translateY(0) scale(.985)}.login-shell .primary:disabled,.login-shell .secondary:disabled{opacity:.72;cursor:not-allowed;transform:none;box-shadow:none}
+        .login-shell .terms-field{display:grid;gap:7px}.login-shell .terms-line{position:relative;display:flex;gap:12px;align-items:flex-start;border:1.5px solid rgba(29,140,255,.26);background:#FFFFFF;border-radius:16px;padding:13px 14px;color:#0B2748;font-size:13px;font-weight:900;line-height:1.7;cursor:pointer;box-shadow:0 10px 26px rgba(3,18,37,.06);transition:border-color .18s ease,box-shadow .18s ease,background .18s ease}.login-shell .terms-line:hover{border-color:rgba(29,140,255,.42);background:#F8FBFF;box-shadow:0 14px 30px rgba(29,140,255,.10)}.login-shell .terms-line.has-error{border-color:rgba(239,68,68,.55);background:rgba(254,242,242,.78)}.login-shell .terms-line input{position:absolute;inset-inline-start:14px;top:15px;width:24px;height:24px;opacity:0;cursor:pointer}.login-shell .terms-box{width:24px;height:24px;border-radius:8px;border:2px solid rgba(29,140,255,.58);background:#FFFFFF;display:grid;place-items:center;flex:0 0 auto;margin-top:1px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.85);transition:background .16s ease,border-color .16s ease,box-shadow .16s ease}.login-shell .terms-box::after{content:"";width:7px;height:12px;border:solid #FFFFFF;border-width:0 2px 2px 0;transform:rotate(45deg) scale(.65);opacity:0;transition:opacity .16s ease,transform .16s ease}.login-shell .terms-line input:checked+.terms-box{background:linear-gradient(135deg,#1D8CFF,#18D4D4);border-color:#18D4D4;box-shadow:0 0 0 4px rgba(24,212,212,.18)}.login-shell .terms-line input:checked+.terms-box::after{opacity:1;transform:rotate(45deg) scale(1)}.login-shell .terms-line:focus-within .terms-box{box-shadow:0 0 0 4px rgba(24,212,212,.24)}.login-shell .terms-copy{display:block;min-width:0}.login-shell .terms-copy em{display:inline-flex;margin-inline-start:8px;border:1px solid rgba(29,140,255,.22);border-radius:999px;padding:1px 7px;color:#1D8CFF;background:rgba(29,140,255,.08);font-size:11px;font-style:normal;font-weight:950;vertical-align:middle}.login-shell .terms-line a{color:#1D8CFF;font-weight:950;text-decoration:none}.login-shell .terms-line a:hover{text-decoration:underline}.login-shell .terms-error{margin:0;color:#B91C1C;font-size:12px;font-weight:900;line-height:1.6}
+        .login-shell .submit-row{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:2px}.login-shell .primary,.login-shell .secondary{min-height:54px;border-radius:16px;padding:0 18px;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease,background .18s ease,border-color .18s ease,opacity .18s ease}.login-shell .primary{border:0;background:linear-gradient(135deg,#061B33 0%,#1D8CFF 54%,#18D4D4 100%);color:#FFFFFF;box-shadow:0 14px 34px rgba(29,140,255,.28);min-width:190px}.login-shell .primary[data-needs-agreement="true"]{opacity:.58;box-shadow:none;filter:saturate(.82)}.login-shell .secondary{border:1px solid rgba(29,140,255,.22);background:#FFFFFF;color:#0B2748}.login-shell .primary:hover:not(:disabled),.login-shell .secondary:hover:not(:disabled){transform:translateY(-2px);filter:saturate(1.08) brightness(1.02);box-shadow:0 16px 38px rgba(24,212,212,.22)}.login-shell .primary[data-needs-agreement="true"]:hover:not(:disabled){filter:saturate(.9);box-shadow:none}.login-shell .primary:active:not(:disabled),.login-shell .secondary:active:not(:disabled){transform:translateY(0) scale(.985)}.login-shell .primary:disabled,.login-shell .secondary:disabled{opacity:.72;cursor:not-allowed;transform:none;box-shadow:none}
         .login-shell .loading-label{display:inline-flex;align-items:center;justify-content:center;gap:9px}.login-shell .spinner{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#FFFFFF;animation:sfm-login-spin .75s linear infinite}@keyframes sfm-login-spin{to{transform:rotate(360deg)}}
         .login-shell .message{background:rgba(239,68,68,.08);color:#B91C1C;border:1px solid rgba(239,68,68,.18);border-radius:13px;padding:11px 13px;font-size:13px;font-weight:850;line-height:1.6}.login-shell .message.ok{background:rgba(16,185,129,.10);border-color:rgba(16,185,129,.24);color:#047857}
         .login-shell .actions{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin-top:18px}.login-shell .actions button{border:1px solid rgba(29,140,255,.22);background:#FFFFFF;color:#0B2748;border-radius:999px;padding:9px 13px;font:850 12px Tajawal,Arial,sans-serif;cursor:pointer;transition:background .18s ease,border-color .18s ease,color .18s ease}.login-shell .actions button:hover:not(:disabled){background:#EEF6FF;border-color:rgba(29,140,255,.34);color:#061B33}.login-shell .actions button:disabled{opacity:.55;cursor:not-allowed}
