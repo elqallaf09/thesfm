@@ -38,11 +38,11 @@ type Lang = 'ar' | 'en' | 'fr';
 
 type DecisionRow = {
   id: string;
-  title?: string | null;
+  decision_title?: string | null;
   decision_type: DecisionType;
-  amount?: number | string | null;
+  estimated_cost?: number | string | null;
   monthly_impact?: number | string | null;
-  expected_benefit?: number | string | null;
+  expected_benefit?: string | null;
   risk_level?: 'low' | 'medium' | 'high' | string | null;
   currency: string;
   target_date: string | null;
@@ -102,7 +102,7 @@ const TEXT = {
     noDecisionsBody: 'ابدأ بتحليل أول قرار مالي لك.',
     delete: 'حذف',
     deleted: 'تم حذف القرار.',
-    saved: 'تم حفظ تحليل القرار.',
+    saved: 'تم حفظ القرار بنجاح',
     saveFailed: 'تعذر حفظ القرار حالياً، الرجاء المحاولة مرة أخرى.',
     validation: 'أدخل عنوان القرار والتكلفة التقديرية.',
     yes: 'نعم',
@@ -248,7 +248,7 @@ function riskScore(analysis: DecisionAnalysis | null) {
 }
 
 function rowTitle(row: DecisionRow) {
-  return String(row.title ?? '').trim();
+  return String(row.decision_title ?? '').trim();
 }
 
 function rowRiskScore(row: DecisionRow) {
@@ -278,6 +278,11 @@ function rowAnalysis(row: DecisionRow): DecisionAnalysis | null {
     riskFlags: [],
     scenarios: [],
   };
+}
+
+function decisionCost(row: DecisionRow) {
+  const cost = Number(row.estimated_cost);
+  return Number.isFinite(cost) ? cost : 0;
 }
 
 function statusTone(analysis: DecisionAnalysis | null) {
@@ -378,6 +383,7 @@ export default function DecisionsPage() {
     }
     setSaving(true);
     setError('');
+    setMessage('');
     const inputs: DecisionInputs = {
       title: form.title.trim(),
       decisionType: form.decisionType,
@@ -400,29 +406,25 @@ export default function DecisionsPage() {
         : analysis.status === 'insufficient_data'
           ? text.insufficient
           : text.reasonGood;
-    const now = new Date().toISOString();
-    const { data: savedDecision, error: saveError } = await (supabase as any).from('user_decisions').insert({
+    const payload = {
       user_id: user.id,
-      title: inputs.title,
+      decision_title: inputs.title,
       decision_type: inputs.decisionType,
-      amount: inputs.amount,
+      estimated_cost: inputs.amount,
       monthly_impact: inputs.recurringCost ?? 0,
-      expected_benefit: numeric(form.expectedBenefit),
+      expected_benefit: String(form.expectedBenefit || ''),
       risk_level: inputs.riskLevel ?? 'medium',
       target_date: inputs.targetDate ?? null,
       notes: inputs.notes?.trim() || null,
+      risk_score: savedRiskScore,
+      is_recommended: recommended,
+      main_reason: mainReason,
+      better_alternative: text.alternativeText,
+      action_plan: { checklist: CHECKLIST[locale], scenarios: analysis.scenarios },
       currency,
-      updated_at: now,
-      analysis: {
-        ...analysis,
-        riskScore: savedRiskScore,
-        isRecommended: recommended,
-        mainReason,
-        betterAlternative: text.alternativeText,
-        actionPlan: { checklist: CHECKLIST[lang as Lang], scenarios: analysis.scenarios },
-        inputs,
-      },
-    }).select('*').single();
+      updated_at: new Date().toISOString(),
+    };
+    const { data: savedDecision, error: saveError } = await (supabase as any).from('user_decisions').insert(payload).select('*').single();
     setSaving(false);
     if (saveError) {
       if (process.env.NODE_ENV !== 'production') {
@@ -430,6 +432,8 @@ export default function DecisionsPage() {
           code: saveError.code,
           message: saveError.message,
           details: saveError.details,
+          hint: saveError.hint,
+          payload,
         });
       }
       setError(text.saveFailed);
@@ -599,11 +603,31 @@ export default function DecisionsPage() {
                 const itemScore = rowRiskScore(item);
                 const active = item.id === selectedId;
                 const title = rowTitle(item);
+                const createdAt = item.created_at ? formatDate(item.created_at, locale) : '';
+                const targetDate = item.target_date ? formatDate(item.target_date, locale) : '';
+                const benefit = String(item.expected_benefit ?? '').trim();
+                const riskLabel = item.risk_level === 'low'
+                  ? text.low
+                  : item.risk_level === 'high'
+                    ? text.high
+                    : item.risk_level === 'medium'
+                      ? text.medium
+                      : item.risk_level || text.medium;
                 return (
                   <article key={item.id} className={`decision-row ${active ? 'active' : ''}`}>
                     <button type="button" onClick={() => setSelectedId(item.id)}>
                       <strong>{title}</strong>
-                      <span>{TYPE_LABELS[item.decision_type]?.[lang as Lang] ?? item.decision_type} · {money(Number(item.amount || 0))}</span>
+                      <span>{TYPE_LABELS[item.decision_type]?.[locale] ?? item.decision_type} · {money(decisionCost(item))}</span>
+                      <span>
+                        {text.monthlyImpact}: {money(Number(item.monthly_impact || 0))}
+                        {' · '}
+                        {text.riskLevel}: {riskLabel}
+                      </span>
+                      <span>
+                        {benefit ? `${text.benefit}: ${benefit} · ` : ''}
+                        {targetDate ? `${text.targetDate}: ${targetDate} · ` : ''}
+                        {createdAt}
+                      </span>
                     </button>
                     <em>{itemScore === null ? '--' : `${itemScore}%`}</em>
                     <button type="button" className="delete" onClick={() => deleteDecision(item.id)} aria-label={`${text.delete}: ${title}`}>
