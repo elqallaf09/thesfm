@@ -1,4 +1,5 @@
 import {
+  type FundamentalsUnavailableReason,
   normalizeAssetType,
   validateSymbol,
   type MarketAnalysis,
@@ -21,6 +22,8 @@ type FetchOpenBBResult =
 
 const responseCache = new Map<string, { expiresAt: number; createdAt: number; data: any }>();
 let lastSuccessfulRequestAt: string | null = null;
+
+const FUNDAMENTAL_KEYS = ['marketCap', 'peRatio', 'eps', 'revenue', 'dividend'];
 
 export function getOpenBBServiceUrl() {
   return (process.env.OPENBB_API_URL || process.env.OPENBB_SERVICE_URL || '').trim().replace(/\/+$/, '');
@@ -254,6 +257,66 @@ function isRealProviderPayload(data: Record<string, any>) {
   return data.success === true && data.fallback !== true && String(data.source ?? 'openbb').toLowerCase() === 'openbb';
 }
 
+function hasUsableFundamentals(fundamentals: unknown) {
+  if (!fundamentals || typeof fundamentals !== 'object') return false;
+  const data = fundamentals as Record<string, unknown>;
+  return FUNDAMENTAL_KEYS.some(key => {
+    const value = data[key];
+    if (value === null || value === undefined || value === '') return false;
+    if (typeof value === 'number') return Number.isFinite(value);
+    if (typeof value === 'string') return value.trim().length > 0 && !/^n\/?a$/i.test(value.trim());
+    return false;
+  });
+}
+
+function fundamentalsReason(assetType: MarketAssetType, fundamentals: unknown): FundamentalsUnavailableReason | undefined {
+  if (assetType !== 'stock') return 'not_supported_for_asset_type';
+  return hasUsableFundamentals(fundamentals) ? undefined : 'provider_returned_empty';
+}
+
+function normalizeFinnhubMetric(metric: Record<string, unknown>) {
+  return {
+    marketCap: metric.marketCapitalization,
+    peRatio: metric.peNormalizedAnnual ?? metric.peTTM,
+    eps: metric.epsNormalizedAnnual ?? metric.epsTTM,
+    revenue: metric.revenuePerShareAnnual,
+    dividend: metric.dividendYieldIndicatedAnnual ?? metric.dividendYield5Y,
+  };
+}
+
+async function fetchFinnhubFundamentals(symbol: string) {
+  const apiKey = process.env.FINNHUB_API_KEY?.trim();
+  if (!apiKey) return { fundamentals: null, reason: 'provider_returned_empty' as FundamentalsUnavailableReason };
+
+  const params = new URLSearchParams({ symbol, metric: 'all', token: apiKey });
+  try {
+    const response = await fetch(`https://finnhub.io/api/v1/stock/metric?${params.toString()}`, {
+      next: { revalidate: 60 * 60 * 6 },
+      headers: { accept: 'application/json' },
+    });
+    if (!response.ok) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[MarketAnalysis] Finnhub fundamentals failed', { symbol, status: response.status });
+      }
+      return { fundamentals: null, reason: response.status === 404 ? 'symbol_not_supported' as const : 'api_error' as const };
+    }
+    const payload = await response.json() as Record<string, unknown>;
+    const metric = payload.metric && typeof payload.metric === 'object' ? payload.metric as Record<string, unknown> : {};
+    const fundamentals = normalizeFinnhubMetric(metric);
+    return hasUsableFundamentals(fundamentals)
+      ? { fundamentals, reason: undefined }
+      : { fundamentals: null, reason: 'provider_returned_empty' as const };
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[MarketAnalysis] Finnhub fundamentals exception', {
+        symbol,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return { fundamentals: null, reason: 'api_error' as const };
+  }
+}
+
 function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType, meta?: { fromCache?: boolean; cacheAgeSeconds?: number }): MarketAnalysis | null {
   const data = raw && typeof raw === 'object' ? raw as Record<string, any> : {};
   if (!isRealProviderPayload(data)) return null;
@@ -299,6 +362,9 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
       timestamp: String(data.timestamp ?? data.updatedAt ?? new Date().toISOString()),
     },
     fundamentals: data.fundamentals && typeof data.fundamentals === 'object' ? data.fundamentals : undefined,
+    fundamentalsAvailable: hasUsableFundamentals(data.fundamentals),
+    fundamentalsUnavailableReason: fundamentalsReason(assetType, data.fundamentals),
+    fundamentalsSource: hasUsableFundamentals(data.fundamentals) ? 'openbb' : undefined,
     technicals: data.technicals && typeof data.technicals === 'object' ? data.technicals : undefined,
     trend,
     riskLevel,
@@ -377,13 +443,36 @@ export async function proxyAnalyze(
       console.warn('OpenBB analyze mapping failed', { ...startedLog, status: result.status, elapsedMs: result.elapsedMs, code });
       return marketError(code, { openbbService: 'degraded' });
     }
-    return {
+    let marketAnalysis: MarketAnalysis & { displaySymbol?: string } = {
       ...enriched,
       symbol: displaySymbol,
       displaySymbol,
       providerSymbol: enriched.providerSymbol ?? providerSymbol,
       name: friendlyName || enriched.name,
     };
+    if (marketAnalysis.assetType === 'stock' && !marketAnalysis.fundamentalsAvailable) {
+      const fallback = await fetchFinnhubFundamentals(providerSymbol);
+      if (fallback.fundamentals) {
+        marketAnalysis = {
+          ...marketAnalysis,
+          fundamentals: {
+            ...(marketAnalysis.fundamentals ?? {}),
+            ...fallback.fundamentals,
+          },
+          fundamentalsAvailable: true,
+          fundamentalsUnavailableReason: undefined,
+          fundamentalsSource: 'finnhub',
+        };
+      } else {
+        marketAnalysis = {
+          ...marketAnalysis,
+          fundamentalsAvailable: false,
+          fundamentalsUnavailableReason: fallback.reason,
+          fundamentalsSource: marketAnalysis.fundamentalsSource,
+        };
+      }
+    }
+    return marketAnalysis;
   }
 
   const code = !result.configured

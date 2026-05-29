@@ -2,6 +2,7 @@ export type MarketAssetType = 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity'
 export type MarketTrend = 'bullish' | 'neutral' | 'bearish';
 export type MarketRiskLevel = 'low' | 'medium' | 'high';
 export type MarketDataStatus = 'live' | 'delayed' | 'unavailable';
+export type FundamentalsUnavailableReason = 'not_supported_for_asset_type' | 'provider_returned_empty' | 'symbol_not_supported' | 'api_error';
 export type MarketAiInsight = {
   status: 'ready' | 'unavailable' | 'skipped';
   provider?: 'anthropic' | 'rule-based';
@@ -36,6 +37,9 @@ export type MarketAnalysis = {
     timestamp: string;
   };
   fundamentals?: Record<string, unknown>;
+  fundamentalsAvailable?: boolean;
+  fundamentalsUnavailableReason?: FundamentalsUnavailableReason;
+  fundamentalsSource?: string;
   technicals?: Record<string, unknown>;
   trend: MarketTrend;
   riskLevel: MarketRiskLevel;
