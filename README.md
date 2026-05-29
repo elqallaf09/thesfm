@@ -93,4 +93,16 @@ Run later with:
 SUPABASE_URL=https://YOUR-PROJECT.supabase.co SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY pnpm dlx tsx scripts/import-market-symbols.ts ./symbols.csv
 ```
 
+## Tech Market News
+
+The `/tech-news` page uses the server-only route `/api/tech-news` to fetch real company news and stock quotes from Finnhub. The browser never receives the API key.
+
+Required Vercel environment variable:
+
+```text
+FINNHUB_API_KEY=your_finnhub_key
+```
+
+Create a key from the Finnhub dashboard, add it to `.env.local` for development and to Vercel Environment Variables for production, then redeploy. If the key is missing or Finnhub fails, THE SFM shows the news error state instead of fake articles or fake prices.
+
 
