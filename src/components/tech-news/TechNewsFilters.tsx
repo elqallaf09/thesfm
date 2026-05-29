@@ -1,7 +1,15 @@
 'use client';
 
-import { Search } from 'lucide-react';
-import { TECH_NEWS_SECTORS, type TechNewsSectorFilter } from '@/lib/market/techStocks';
+import { Filter, Search } from 'lucide-react';
+import type { TechNewsSectorFilter } from '@/lib/market/techStocks';
+
+const VISIBLE_TECH_NEWS_SECTORS: TechNewsSectorFilter[] = [
+  'all',
+  'ai',
+  'semiconductors',
+  'software',
+  'hardware',
+];
 
 type TechNewsFiltersProps = {
   query: string;
@@ -38,7 +46,10 @@ export function TechNewsFilters({
         />
       </label>
       <div className="tech-news-chip-row">
-        {TECH_NEWS_SECTORS.map(item => (
+        <button type="button" className="tech-news-filter-icon" aria-label={labels.sort}>
+          <Filter size={15} />
+        </button>
+        {VISIBLE_TECH_NEWS_SECTORS.map(item => (
           <button
             key={item}
             type="button"
@@ -49,12 +60,7 @@ export function TechNewsFilters({
           </button>
         ))}
       </div>
-      <label className="tech-news-sort">
-        <span>{labels.sort}</span>
-        <select value={sort} disabled>
-          <option value="recent">{labels.recent}</option>
-        </select>
-      </label>
+      <input type="hidden" value={sort} readOnly aria-label={labels.recent} />
     </section>
   );
 }

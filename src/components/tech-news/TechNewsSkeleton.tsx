@@ -8,6 +8,7 @@ export function TechNewsSkeleton() {
           <span />
           <i />
           <i />
+          <i />
           <b />
           <small />
         </article>
