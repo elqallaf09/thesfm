@@ -25,6 +25,7 @@ import { useCurrency } from '@/lib/useCurrency';
 import { supabase } from '@/integrations/supabase/client';
 import { loadUserDataTables, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { formatCurrency } from '@/lib/format';
+import { formatDate } from '@/lib/formatters';
 import {
   analyzeDecision,
   type DecisionAnalysis,
