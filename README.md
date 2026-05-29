@@ -119,6 +119,25 @@ Required Vercel environment variable:
 FINNHUB_API_KEY=your_finnhub_key
 ```
 
+If Finnhub company news has no recent articles, `/api/tech-news` falls back to public RSS feeds and still keeps all API keys server-side. News cards only show headlines and short excerpts with links to the original source.
+
+## Optional News Translation
+
+Market news pages support optional server-side translation for headlines and short excerpts only:
+
+- `/tech-news`
+- `/gulf-news`
+- `/europe-news`
+
+Set these server-only variables in Vercel to enable LibreTranslate:
+
+```text
+LIBRETRANSLATE_URL=https://your-libretranslate-host
+LIBRETRANSLATE_API_KEY=optional_key
+```
+
+Translation is optional. If `LIBRETRANSLATE_URL` is not configured, THE SFM shows RSS/Finnhub news in the original source language and marks the card as original language. The app never translates full articles, never modifies original links, and never exposes translation keys to the browser.
+
 Create a key from the Finnhub dashboard, add it to `.env.local` for development and to Vercel Environment Variables for production, then redeploy. If the key is missing or Finnhub fails, THE SFM shows the news error state instead of fake articles or fake prices.
 
 

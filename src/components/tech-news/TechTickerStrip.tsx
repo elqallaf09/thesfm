@@ -1,32 +1,36 @@
 'use client';
 
 import { TrendingDown, TrendingUp } from 'lucide-react';
-import type { TechNewsItem } from '@/lib/market/fetchTechNews';
+import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 
-const TICKER_ORDER = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'TSLA', 'AMD', 'AVGO'];
+const TICKER_ORDER = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'META', 'TSLA', 'AMD', 'INTC', 'AVGO'];
 
 type TechTickerStripProps = {
-  items: TechNewsItem[];
+  prices: TechStockPrice[];
   formatPrice: (value: number | null) => string;
 };
 
-export function TechTickerStrip({ items, formatPrice }: TechTickerStripProps) {
+export function TechTickerStrip({ prices, formatPrice }: TechTickerStripProps) {
   const tickerItems = TICKER_ORDER
-    .map(ticker => items.find(item => item.ticker === ticker && item.price !== null))
-    .filter((item): item is TechNewsItem => Boolean(item))
-    .filter((item, index, list) => list.findIndex(match => match.ticker === item.ticker) === index);
-
-  if (tickerItems.length === 0) return null;
+    .map(ticker => prices.find(item => item.symbol === ticker) ?? {
+      symbol: ticker,
+      price: null,
+      changePercent: null,
+      change: null,
+      source: 'Finnhub' as const,
+      delayed: true as const,
+    });
+  const marqueeItems = [...tickerItems, ...tickerItems];
 
   return (
     <section className="tech-ticker-strip" aria-label="Tech market ticker">
       <div className="tech-ticker-track">
-        {tickerItems.map(item => {
+        {marqueeItems.map((item, index) => {
           const tone = item.changePercent === null || item.changePercent === 0 ? 'neutral' : item.changePercent > 0 ? 'up' : 'down';
           const Icon = tone === 'down' ? TrendingDown : TrendingUp;
           return (
-            <div className="tech-ticker-item" key={item.ticker}>
-              <strong>{item.ticker}</strong>
+            <div className="tech-ticker-item" key={`${item.symbol}-${index}`}>
+              <strong>{item.symbol}</strong>
               <span>{formatPrice(item.price)}</span>
               <b className={tone}>
                 <Icon size={13} />
@@ -41,4 +45,3 @@ export function TechTickerStrip({ items, formatPrice }: TechTickerStripProps) {
 }
 
 export default TechTickerStrip;
-

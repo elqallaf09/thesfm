@@ -9,6 +9,8 @@ type EuropeNewsCardProps = {
   labels: {
     source: string;
     openArticle: string;
+    translated: string;
+    originalLanguage: string;
   };
   formatDateTime: (value: string) => string;
 };
@@ -18,6 +20,9 @@ export function EuropeNewsCard({ item, marketBadge, labels, formatDateTime }: Eu
     <article className="europe-news-card">
       <div className="europe-news-card-top">
         <span className="europe-news-market-tag">{marketBadge}</span>
+        <span className={`europe-news-translation-badge ${item.isTranslated ? 'translated' : 'original'}`}>
+          {item.isTranslated ? labels.translated : labels.originalLanguage}
+        </span>
       </div>
       <h2>{item.headline}</h2>
       <p>{item.summary || item.headline}</p>

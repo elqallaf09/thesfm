@@ -10,6 +10,8 @@ type GulfNewsCardProps = {
     source: string;
     published: string;
     openArticle: string;
+    translated: string;
+    originalLanguage: string;
   };
   formatDateTime: (value: string) => string;
 };
@@ -19,6 +21,9 @@ export function GulfNewsCard({ item, marketBadge, labels, formatDateTime }: Gulf
     <article className="gulf-news-card">
       <div className="gulf-news-card-top">
         <span className="gulf-news-market-tag">{marketBadge}</span>
+        <span className={`gulf-news-translation-badge ${item.isTranslated ? 'translated' : 'original'}`}>
+          {item.isTranslated ? labels.translated : labels.originalLanguage}
+        </span>
       </div>
       <h2>{item.headline}</h2>
       <p>{item.summary || item.headline}</p>
@@ -37,4 +42,3 @@ export function GulfNewsCard({ item, marketBadge, labels, formatDateTime }: Gulf
 }
 
 export default GulfNewsCard;
-

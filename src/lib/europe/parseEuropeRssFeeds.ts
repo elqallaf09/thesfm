@@ -6,6 +6,13 @@ export type EuropeNewsItem = {
   market: EuropeMarketId;
   headline: string;
   summary: string;
+  titleOriginal: string;
+  summaryOriginal: string;
+  languageOriginal: string;
+  title: string;
+  translatedTo?: string;
+  isTranslated?: boolean;
+  translationSource?: string;
   source: string;
   publishedAt: string;
   url: string;
@@ -91,6 +98,10 @@ function parseItems(feed: EuropeRssFeed, xml: string) {
         market: feed.market,
         headline,
         summary: excerpt(description, headline),
+        titleOriginal: headline,
+        summaryOriginal: excerpt(description, headline),
+        languageOriginal: 'unknown',
+        title: headline,
         source,
         publishedAt: safeDate(published),
         url,

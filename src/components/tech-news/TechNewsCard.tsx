@@ -10,6 +10,8 @@ type TechNewsCardProps = {
     published: string;
     openArticle: string;
     priceUnavailable: string;
+    translated: string;
+    originalLanguage: string;
   };
   formatDateTime: (value: string) => string;
   formatPrice: (value: number | null) => string;
@@ -30,6 +32,9 @@ export function TechNewsCard({ item, labels, formatDateTime, formatPrice }: Tech
         <div className="tech-news-company-wrap">
           <span className="tech-news-company">{item.companyName}</span>
           <span className="tech-news-ticker">{item.ticker}</span>
+          <span className={`tech-news-translation-badge ${item.isTranslated ? 'translated' : 'original'}`}>
+            {item.isTranslated ? labels.translated : labels.originalLanguage}
+          </span>
         </div>
         <div className="tech-news-card-price">
           <strong>{item.price === null ? labels.priceUnavailable : formatPrice(item.price)}</strong>
@@ -56,4 +61,3 @@ export function TechNewsCard({ item, labels, formatDateTime, formatPrice }: Tech
 }
 
 export default TechNewsCard;
-

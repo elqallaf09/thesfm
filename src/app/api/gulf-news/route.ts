@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { fetchDelayedGulfMarketData } from '@/lib/gulf/fetchDelayedMarketData';
 import { parseGulfRssFeeds } from '@/lib/gulf/parseRssFeeds';
+import { isNewsTranslationEnabled, normalizeNewsLanguage, translateNewsItems } from '@/lib/translation/translateNewsText';
 
 export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const language = normalizeNewsLanguage(new URL(request.url).searchParams.get('lang'));
     const [newsResult, marketDataResult] = await Promise.allSettled([
       parseGulfRssFeeds(),
       fetchDelayedGulfMarketData(),
@@ -16,13 +19,18 @@ export async function GET() {
       console.warn('[GulfNews] Some RSS feeds failed', failedFeeds);
     }
 
+    const rawItems = newsResult.status === 'fulfilled' ? newsResult.value.items : [];
+    const items = await translateNewsItems(rawItems, language);
+
     return NextResponse.json(
       {
         success: true,
+        language,
+        translationEnabled: isNewsTranslationEnabled(),
         source: 'RSS',
         marketDataSource: 'Delayed free market data',
         lastUpdated: new Date().toISOString(),
-        items: newsResult.status === 'fulfilled' ? newsResult.value.items : [],
+        items,
         marketData: marketDataResult.status === 'fulfilled' ? marketDataResult.value : {},
         failedFeeds,
       },
@@ -46,4 +54,3 @@ export async function GET() {
     );
   }
 }
-

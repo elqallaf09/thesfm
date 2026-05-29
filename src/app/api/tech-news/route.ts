@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import { fetchTechNews } from '@/lib/market/fetchTechNews';
 
 export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const payload = await fetchTechNews();
+    const payload = await fetchTechNews(new URL(request.url).searchParams.get('lang'));
     return NextResponse.json(payload, {
       headers: {
         'cache-control': 's-maxage=300, stale-while-revalidate=600',
