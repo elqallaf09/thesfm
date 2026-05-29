@@ -377,7 +377,9 @@ function cleanOptional(value: string) {
 }
 
 function stripUndefined<T extends Record<string, unknown>>(payload: T) {
-  return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined)) as Partial<T>;
+  return Object.fromEntries(
+    Object.entries(payload).filter(([key, value]) => key !== 'user_id' && value !== undefined),
+  ) as Partial<T>;
 }
 
 function readStored<T>(key: string, fallback: T): T {
