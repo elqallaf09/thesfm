@@ -10,17 +10,17 @@ const STORE_KEY = 'sfm_view_mode';
 const EVENT_NAME = 'sfm:view-mode-change';
 
 function normalizeViewMode(value: unknown): ViewMode {
-  return value === 'simple' ? 'simple' : 'professional';
+  return value === 'professional' ? 'professional' : 'simple';
 }
 
 function readStoredMode(): ViewMode {
-  if (typeof window === 'undefined') return 'professional';
+  if (typeof window === 'undefined') return 'simple';
   return normalizeViewMode(window.localStorage.getItem(STORE_KEY));
 }
 
 export function useViewMode() {
   const { user } = useAuth();
-  const [viewMode, setViewModeState] = useState<ViewMode>('professional');
+  const [viewMode, setViewModeState] = useState<ViewMode>('simple');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,12 +42,22 @@ export function useViewMode() {
           .eq('id', user.id)
           .maybeSingle();
 
-        if (!cancelled && !error && data?.view_mode) {
-          const nextMode = normalizeViewMode(data.view_mode);
+        if (error) {
+          console.warn('[ViewMode] Profile view mode unavailable; using local fallback', {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+          });
+        }
+
+        if (!cancelled && !error) {
+          const nextMode = normalizeViewMode(data?.view_mode ?? 'simple');
           setViewModeState(nextMode);
           window.localStorage.setItem(STORE_KEY, nextMode);
         }
-      } catch {
+      } catch (error) {
+        console.warn('[ViewMode] Profile view mode load failed; using local fallback', error);
         // The app can still use the local preference if the profile column is not available yet.
       } finally {
         if (!cancelled) setLoading(false);
@@ -86,7 +96,8 @@ export function useViewMode() {
         .from('profiles')
         .update({ view_mode: normalized, updated_at: new Date().toISOString() })
         .eq('id', user.id);
-    } catch {
+    } catch (error) {
+      console.warn('[ViewMode] Profile view mode update failed; local preference remains active', error);
       // The local preference remains active if the profile migration has not been applied yet.
     }
   }, [user]);
