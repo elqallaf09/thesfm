@@ -1,4 +1,4 @@
-import { currencyDisplaySymbol, getCurrency } from './currencies';
+import { getCurrency } from './currencies';
 import type { CurrencyLocale } from './currencies';
 
 export type AppLocale = CurrencyLocale;
@@ -69,28 +69,21 @@ export function formatDate(value: unknown, locale?: string | null, options?: Int
 export function formatCurrency(amount: number, currencyCode = 'KWD', locale?: string | null) {
   const config = getLocaleConfig(locale);
   const currency = getCurrency(currencyCode);
-
-  if (config.locale === 'en') {
+  try {
+    return new Intl.NumberFormat(config.intlLocale, {
+      style: 'currency',
+      currency: currency.code,
+      currencyDisplay: 'narrowSymbol',
+      minimumFractionDigits: currency.decimals,
+      maximumFractionDigits: currency.decimals,
+    }).format(amount);
+  } catch {
     const formatted = formatNumber(amount, config.locale, {
       minimumFractionDigits: currency.decimals,
       maximumFractionDigits: currency.decimals,
     });
-    return `${currency.code} ${formatted}`;
+    return config.currencyPosition === 'before' ? `${currency.code} ${formatted}` : `${formatted} ${currency.code}`;
   }
-
-  if (config.locale === 'fr') {
-    const formatted = formatNumber(amount, config.locale, {
-      minimumFractionDigits: currency.decimals,
-      maximumFractionDigits: currency.decimals,
-    });
-    return `${formatted} ${currency.code}`;
-  }
-
-  const formatted = formatNumber(amount, config.locale, {
-    minimumFractionDigits: currency.decimals,
-    maximumFractionDigits: currency.decimals,
-  });
-  return `${formatted} ${currencyDisplaySymbol(currency, 'ar')}`;
 }
 
 export function formatPercent(value: number, locale?: string | null, options?: Intl.NumberFormatOptions) {
