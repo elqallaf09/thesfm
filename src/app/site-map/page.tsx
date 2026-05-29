@@ -5,8 +5,7 @@ import Link from 'next/link';
 import {
   ArrowUpRight,
   BarChart3,
-  BrainCircuit,
-  ChevronLeft,
+  ChevronDown,
   LayoutDashboard,
   MapPinned,
   ReceiptText,
@@ -39,6 +38,8 @@ const TEXT = {
     linkCount: '{count} صفحة',
     noPages: 'لا توجد صفحات حالياً',
     mainSections: 'الأقسام الرئيسية',
+    toolsSupportTitle: 'الأدوات والدعم',
+    accountSettingsTitle: 'الحساب والإعدادات',
     mainGroupDesc: 'لوحة القيادة، المهام، التقارير، والتنقل اليومي داخل المنصة.',
     personalFinanceGroupDesc: 'الدخل، المصاريف، الادخار، والأهداف المالية الشخصية.',
     financialAiGroupDesc: 'المساعد الذكي، التحليل المالي، والتوصيات المبنية على بياناتك.',
@@ -94,6 +95,8 @@ const TEXT = {
     linkCount: '{count} pages',
     noPages: 'No pages right now',
     mainSections: 'Main sections',
+    toolsSupportTitle: 'Tools & Support',
+    accountSettingsTitle: 'Account & Settings',
     mainGroupDesc: 'Dashboard, tasks, reports, and day-to-day platform navigation.',
     personalFinanceGroupDesc: 'Income, expenses, savings, and personal financial goals.',
     financialAiGroupDesc: 'Smart assistant, financial analysis, and recommendations based on your data.',
@@ -149,6 +152,8 @@ const TEXT = {
     linkCount: '{count} pages',
     noPages: 'Aucune page pour le moment',
     mainSections: 'Sections principales',
+    toolsSupportTitle: 'Outils et support',
+    accountSettingsTitle: 'Compte et paramètres',
     mainGroupDesc: 'Tableau de bord, tâches, rapports et navigation quotidienne.',
     personalFinanceGroupDesc: 'Revenus, dépenses, épargne et objectifs financiers personnels.',
     financialAiGroupDesc: 'Assistant intelligent, analyse financière et recommandations basées sur vos données.',
@@ -232,26 +237,44 @@ const PURPOSE_KEY: Record<string, keyof typeof TEXT.ar> = {
   'support-contact': 'contactDesc',
 };
 
-const GROUP_DESC_KEY: Record<string, keyof typeof TEXT.ar> = {
-  main: 'mainGroupDesc',
-  'personal-finance': 'personalFinanceGroupDesc',
-  'financial-intelligence': 'financialAiGroupDesc',
-  'investment-market': 'investmentGroupDesc',
-  'business-projects': 'businessGroupDesc',
-  charity: 'charityGroupDesc',
-  services: 'servicesGroupDesc',
-  account: 'accountGroupDesc',
-  support: 'supportGroupDesc',
-};
-
 const FEATURED_ITEMS = [
   { id: 'home', href: '/dashboard', icon: LayoutDashboard, labelKey: 'nav_home' as TranslationKey, purposeKey: 'dashboardDesc' as const },
   { id: 'income', href: '/income', icon: Wallet, labelKey: 'nav_income' as TranslationKey, purposeKey: 'incomeDesc' as const },
   { id: 'expenses', href: '/expenses', icon: ReceiptText, labelKey: 'nav_expenses' as TranslationKey, purposeKey: 'expensesDesc' as const },
   { id: 'goals', href: '/goals', icon: Target, labelKey: 'nav_goals' as TranslationKey, purposeKey: 'goalsDesc' as const },
+  { id: 'market-analysis', href: '/market-analysis', icon: BarChart3, labelKey: 'nav_market_analysis' as TranslationKey, purposeKey: 'marketDesc' as const },
   { id: 'reports-center', href: '/reports-center', icon: BarChart3, labelKey: 'nav_reports_center' as TranslationKey, purposeKey: 'reportsDesc' as const },
-  { id: 'ai', href: '/ai', icon: BrainCircuit, labelKey: 'nav_ai' as TranslationKey, purposeKey: 'aiDesc' as const },
 ] as const;
+
+const CATEGORY_DEFS = [
+  { id: 'main', groupIds: ['main', 'financial-intelligence'] },
+  { id: 'personal-finance', groupIds: ['personal-finance'] },
+  { id: 'investment-market', groupIds: ['investment-market'] },
+  { id: 'business-projects', groupIds: ['business-projects'] },
+  { id: 'charity', groupIds: ['charity'] },
+  { id: 'tools-support', groupIds: ['services', 'support'] },
+  { id: 'account', groupIds: ['account'] },
+] as const;
+
+const CATEGORY_LABEL_KEY: Record<string, TranslationKey> = {
+  main: 'nav_group_main',
+  'personal-finance': 'nav_group_personal_finance',
+  'investment-market': 'nav_group_invest_market',
+  'business-projects': 'nav_group_business_projects',
+  charity: 'nav_group_charity',
+  'tools-support': 'nav_group_support',
+  account: 'nav_group_account',
+};
+
+const CATEGORY_DESC_KEY: Record<string, keyof typeof TEXT.ar> = {
+  main: 'mainGroupDesc',
+  'personal-finance': 'personalFinanceGroupDesc',
+  'investment-market': 'investmentGroupDesc',
+  'business-projects': 'businessGroupDesc',
+  charity: 'charityGroupDesc',
+  'tools-support': 'supportGroupDesc',
+  account: 'accountGroupDesc',
+};
 
 function countText(template: string, count: number) {
   return template.replace('{count}', String(count));
@@ -265,9 +288,20 @@ export default function SiteMapPage() {
   const { lang, dir, t } = useLanguage();
   const text = TEXT[(lang as Lang) || 'ar'];
   const [query, setQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string>('main');
+  const [openMobileCategory, setOpenMobileCategory] = useState<string>('main');
   const normalizedQuery = normalize(query);
 
-  const groups = useMemo(() => {
+  const sourceGroups = useMemo(() => [
+    ...NAV_GROUPS,
+    {
+      id: 'support',
+      labelKey: 'nav_group_support' as TranslationKey,
+      items: SUPPORT_LINKS,
+    },
+  ], []);
+
+  const allLinks = useMemo(() => {
     const sourceGroups = [
       ...NAV_GROUPS,
       {
@@ -277,10 +311,9 @@ export default function SiteMapPage() {
       },
     ];
 
-    return sourceGroups.map(group => {
+    return sourceGroups.flatMap(group => {
       const title = t(group.labelKey);
-      const description = text[GROUP_DESC_KEY[group.id] ?? 'siteMapDesc'];
-      const routes = group.items
+      return group.items
         .filter(item => item.href)
         .map(item => {
           const routeDescription = text[PURPOSE_KEY[item.id] ?? 'siteMapDesc'];
@@ -291,20 +324,33 @@ export default function SiteMapPage() {
             icon: item.icon as IconType,
             label,
             description: routeDescription,
+            groupId: group.id,
+            groupTitle: title,
             keywords: normalize(`${title} ${label} ${routeDescription}`),
           };
-        })
-        .filter(item => !normalizedQuery || item.keywords.includes(normalizedQuery));
+        });
+    });
+  }, [t, text]);
 
-      return {
-        id: group.id,
-        title,
-        description,
-        icon: (group.items.find(item => item.href)?.icon ?? MapPinned) as IconType,
-        routes,
-      };
-    }).filter(group => !normalizedQuery || group.routes.length > 0);
-  }, [normalizedQuery, t, text]);
+  const searchResults = useMemo(() => (
+    normalizedQuery ? allLinks.filter(item => item.keywords.includes(normalizedQuery)) : []
+  ), [allLinks, normalizedQuery]);
+
+  const categories = useMemo(() => CATEGORY_DEFS.map(category => {
+    const routes = allLinks.filter(item => category.groupIds.includes(item.groupId as never));
+    const firstGroup = sourceGroups.find(group => category.groupIds.includes(group.id as never));
+    return {
+      id: category.id,
+      title: category.id === 'tools-support'
+        ? text.toolsSupportTitle
+        : category.id === 'account'
+          ? text.accountSettingsTitle
+          : t(CATEGORY_LABEL_KEY[category.id]),
+      description: text[CATEGORY_DESC_KEY[category.id] ?? 'siteMapDesc'],
+      icon: (firstGroup?.items.find(item => item.href)?.icon ?? MapPinned) as IconType,
+      routes,
+    };
+  }).filter(category => category.routes.length > 0), [allLinks, sourceGroups, t, text]);
 
   const featuredItems = useMemo(() => (
     FEATURED_ITEMS.map(item => {
@@ -319,7 +365,8 @@ export default function SiteMapPage() {
     }).filter(item => !normalizedQuery || item.keywords.includes(normalizedQuery))
   ), [normalizedQuery, t, text]);
 
-  const hasResults = featuredItems.length > 0 || groups.some(group => group.routes.length > 0);
+  const selectedCategory = categories.find(category => category.id === activeCategory) ?? categories[0];
+  const hasResults = normalizedQuery ? searchResults.length > 0 : categories.length > 0;
 
   return (
     <div className="site-map-shell" dir={dir}>
@@ -331,6 +378,7 @@ export default function SiteMapPage() {
         </div>
 
         <PageHero
+          className="site-map-hero"
           eyebrow={text.eyebrow}
           title={text.title}
           subtitle={text.subtitle}
@@ -388,55 +436,105 @@ export default function SiteMapPage() {
               <div>
                 <p>{text.eyebrow}</p>
                 <h2 id="site-map-main-title">{text.mainSections}</h2>
-                <span>{text.subtitle}</span>
+                <span>{normalizedQuery ? countText(text.linkCount, searchResults.length) : selectedCategory?.description}</span>
               </div>
             </div>
 
-            <div className="site-map-grid">
-              {groups.map(group => {
-                const GroupIcon = group.icon;
-                return (
-                  <article key={group.id} className="site-map-group">
-                    <div className="site-map-group-head">
-                      <span className="site-map-group-icon" aria-hidden="true">
-                        <GroupIcon size={20} />
-                      </span>
+            {normalizedQuery ? (
+              <div className="site-map-routes-grid search-results">
+                {searchResults.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <Link className="site-map-route-card" key={`${item.groupId}-${item.id}`} href={item.href} aria-label={`${text.open}: ${item.label}`}>
+                      <span className="route-icon" aria-hidden="true"><Icon size={19} /></span>
                       <div>
-                        <h3>{group.title}</h3>
-                        <p>{group.description}</p>
-                        <small>{countText(text.linkCount, group.routes.length)}</small>
+                        <small>{item.groupTitle}</small>
+                        <strong>{item.label}</strong>
+                        <p>{item.description}</p>
                       </div>
-                    </div>
+                      <em>{text.open}<ArrowUpRight size={14} /></em>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <>
+                <div className="site-map-tabs" role="tablist" aria-label={text.mainSections}>
+                  {categories.map(category => {
+                    const Icon = category.icon;
+                    const selected = category.id === selectedCategory?.id;
+                    return (
+                      <button
+                        key={category.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={selected}
+                        className={selected ? 'active' : ''}
+                        onClick={() => setActiveCategory(category.id)}
+                      >
+                        <Icon size={17} />
+                        {category.title}
+                        <span>{category.routes.length}</span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-                    <div className="site-map-routes">
-                      {group.routes.length ? group.routes.map(item => {
+                <div className="site-map-desktop-panel">
+                  {selectedCategory ? (
+                    <div className="site-map-routes-grid">
+                      {selectedCategory.routes.map(item => {
                         const Icon = item.icon;
                         return (
-                          <Link
-                            className="site-map-route-card"
-                            key={item.id}
-                            href={item.href}
-                            aria-label={`${text.open}: ${item.label}`}
-                          >
-                            <span className="route-icon" aria-hidden="true"><Icon size={18} /></span>
+                          <Link className="site-map-route-card" key={item.id} href={item.href} aria-label={`${text.open}: ${item.label}`}>
+                            <span className="route-icon" aria-hidden="true"><Icon size={19} /></span>
                             <div>
                               <strong>{item.label}</strong>
                               <p>{item.description}</p>
                             </div>
-                            <em>{text.open}<ChevronLeft size={14} /></em>
+                            <em>{text.open}<ArrowUpRight size={14} /></em>
                           </Link>
                         );
-                      }) : (
-                        <div className="site-map-empty">
-                          <MapPinned size={20} aria-hidden="true" />
-                          <span>{text.noPages}</span>
-                        </div>
-                      )}
+                      })}
                     </div>
-                  </article>
-                );
-              })}
-            </div>
+                  ) : null}
+                </div>
+
+                <div className="site-map-mobile-accordion">
+                  {categories.map(category => {
+                    const Icon = category.icon;
+                    const open = openMobileCategory === category.id;
+                    return (
+                      <article className="site-map-accordion-item" key={category.id}>
+                        <button type="button" onClick={() => setOpenMobileCategory(open ? '' : category.id)} aria-expanded={open}>
+                          <span className="site-map-group-icon" aria-hidden="true"><Icon size={18} /></span>
+                          <strong>{category.title}</strong>
+                          <small>{countText(text.linkCount, category.routes.length)}</small>
+                          <ChevronDown size={17} />
+                        </button>
+                        {open ? (
+                          <div className="site-map-routes-grid">
+                            {category.routes.map(item => {
+                              const RouteIcon = item.icon;
+                              return (
+                                <Link className="site-map-route-card" key={item.id} href={item.href} aria-label={`${text.open}: ${item.label}`}>
+                                  <span className="route-icon" aria-hidden="true"><RouteIcon size={19} /></span>
+                                  <div>
+                                    <strong>{item.label}</strong>
+                                    <p>{item.description}</p>
+                                  </div>
+                                  <em>{text.open}<ArrowUpRight size={14} /></em>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </article>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </section>
         ) : (
           <section className="site-map-no-results" aria-live="polite">
@@ -860,6 +958,159 @@ export default function SiteMapPage() {
           color: var(--muted-foreground);
         }
 
+        .site-map-hero {
+          min-height: 0 !important;
+          padding: 22px !important;
+          border-radius: 24px !important;
+        }
+
+        .site-map-hero .sfm-page-hero-icon {
+          width: 54px !important;
+          height: 54px !important;
+          border-radius: 18px !important;
+        }
+
+        .site-map-hero h1 {
+          font-size: clamp(30px, 4vw, 44px) !important;
+        }
+
+        .site-map-hero p {
+          max-width: 780px !important;
+          line-height: 1.65 !important;
+        }
+
+        .site-map-tabs {
+          display: flex;
+          gap: 8px;
+          max-width: 100%;
+          overflow-x: auto;
+          padding: 4px 2px 8px;
+          scrollbar-width: thin;
+        }
+
+        .site-map-tabs button {
+          flex: 0 0 auto;
+          min-height: 42px;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          border: 1px solid var(--border);
+          border-radius: 999px;
+          background: var(--card);
+          color: var(--muted-foreground);
+          padding: 0 13px;
+          font: 900 12px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+          transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+          white-space: nowrap;
+        }
+
+        .site-map-tabs button span {
+          direction: ltr;
+          unicode-bidi: isolate;
+          display: inline-grid;
+          min-width: 22px;
+          height: 22px;
+          place-items: center;
+          border-radius: 999px;
+          background: var(--site-map-icon-background);
+          color: var(--primary);
+          font-size: 11px;
+        }
+
+        .site-map-tabs button.active,
+        .site-map-tabs button:hover,
+        .site-map-tabs button:focus-visible {
+          outline: none;
+          border-color: var(--site-map-card-hover-border);
+          color: var(--card-foreground);
+          box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.10);
+        }
+
+        .site-map-tabs button.active {
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          border-color: transparent;
+          color: #FFFFFF;
+        }
+
+        .site-map-tabs button.active span {
+          background: rgba(255, 255, 255, 0.18);
+          color: #FFFFFF;
+        }
+
+        .site-map-routes-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .site-map-routes-grid.search-results {
+          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        }
+
+        .site-map-routes-grid .site-map-route-card {
+          min-height: 116px;
+          grid-template-columns: auto minmax(0, 1fr);
+          grid-template-rows: minmax(0, 1fr) auto;
+          align-content: stretch;
+        }
+
+        .site-map-routes-grid .site-map-route-card > em {
+          grid-column: 2;
+          align-self: end;
+        }
+
+        .site-map-routes-grid .site-map-route-card small {
+          display: block;
+          margin: 0 0 4px;
+          color: var(--primary);
+          font-size: 11px;
+          font-weight: 950;
+        }
+
+        .site-map-mobile-accordion {
+          display: none;
+        }
+
+        .site-map-accordion-item {
+          border: 1px solid var(--border);
+          background: var(--card);
+          border-radius: 18px;
+          overflow: hidden;
+        }
+
+        .site-map-accordion-item > button {
+          width: 100%;
+          min-height: 64px;
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto auto;
+          align-items: center;
+          gap: 10px;
+          border: 0;
+          background: transparent;
+          color: var(--card-foreground);
+          padding: 12px;
+          font: 900 14px Tajawal, Arial, sans-serif;
+          text-align: start;
+          cursor: pointer;
+        }
+
+        .site-map-accordion-item > button small {
+          color: var(--muted-foreground);
+          font-size: 11px;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        .site-map-accordion-item > button[aria-expanded="true"] {
+          border-bottom: 1px solid var(--border);
+          color: var(--primary);
+        }
+
+        .site-map-accordion-item .site-map-routes-grid {
+          padding: 12px;
+        }
+
         @media (max-width: 1024px) {
           .site-map-shell .sfm-dashboard-page-shell {
             width: 100% !important;
@@ -878,7 +1129,8 @@ export default function SiteMapPage() {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
-          .site-map-grid {
+          .site-map-grid,
+          .site-map-routes-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
         }
@@ -896,8 +1148,19 @@ export default function SiteMapPage() {
           }
 
           .site-map-featured-grid,
-          .site-map-grid {
+          .site-map-grid,
+          .site-map-routes-grid {
             grid-template-columns: 1fr;
+          }
+
+          .site-map-tabs,
+          .site-map-desktop-panel {
+            display: none;
+          }
+
+          .site-map-mobile-accordion {
+            display: grid;
+            gap: 10px;
           }
 
           .site-map-feature-card {
