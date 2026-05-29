@@ -41,7 +41,7 @@ type EmployeeRow = {
   salary: number | string | null;
   bonus: number | string | null;
   status: string | null;
-  payroll_due_day: number | string | null;
+  payroll_due_day?: number | string | null;
 };
 
 type ProjectRow = {
@@ -94,7 +94,7 @@ function normalizeBusinessLoadIssue(section: BusinessSectionKey, table: string, 
 function logBusinessLoadIssue(issue: BusinessLoadIssue) {
   if (process.env.NODE_ENV !== 'development') return;
 
-  console.error('[BusinessManagement] Failed to load section', {
+  console.error('[BusinessManagement] Real data loading error', {
     section: issue.section,
     table: issue.table,
     code: issue.code,
@@ -141,7 +141,7 @@ export default function BusinessOperationsPage() {
           ? db.from('business_sales').select('id, customer_name, product_or_service, amount, currency, status, sale_date').eq('user_id', user.id).order('sale_date', { ascending: false })
           : Promise.resolve({ data: [], error: null }),
         employees: permissions.canViewEmployees
-          ? db.from('business_employees').select('id, employee_name, salary, bonus, status, payroll_due_day').eq('user_id', user.id).order('created_at', { ascending: false })
+          ? db.from('business_employees').select('id, employee_name, salary, bonus, status').eq('user_id', user.id).order('created_at', { ascending: false })
           : Promise.resolve({ data: [], error: null }),
       };
 
@@ -283,9 +283,13 @@ export default function BusinessOperationsPage() {
       { metric: text.totalSales, value: permissions.canViewSales ? formatMoney(summary.totalSales, defaultCurrency, locale) : text.permissionDenied },
       { metric: text.totalProjects, value: String(summary.projectCount) },
       { metric: text.sales, value: permissions.canViewSales ? String(summary.salesCount) : text.permissionDenied },
+      { metric: text.customers, value: '0' },
+      { metric: text.invoices, value: '0' },
+      { metric: text.suppliers, value: '0' },
       { metric: text.totalEmployees, value: permissions.canViewEmployees ? String(summary.employeeCount) : text.permissionDenied },
       { metric: text.activeEmployees, value: permissions.canViewEmployees ? String(summary.activeEmployees) : text.permissionDenied },
       { metric: text.totalMonthlyCost, value: permissions.canViewPayrollTotals ? formatMoney(summary.payroll, defaultCurrency, locale) : text.permissionDenied },
+      { metric: text.operatingExpenses, value: formatMoney(0, defaultCurrency, locale) },
       { metric: text.nearestPayrollDate, value: summary.nearestPayroll ? formatDate(summary.nearestPayroll, locale) : text.noPayrollDate },
     ];
   }
@@ -483,10 +487,24 @@ export default function BusinessOperationsPage() {
             description={text.emptyDashboardBody}
             icon={<BriefcaseBusiness size={26} />}
             actions={(
-              <Link className="business-empty-action" href="/sales">
-                <Plus size={16} aria-hidden="true" />
-                {text.addSale}
-              </Link>
+              <div className="business-empty-actions">
+                <Link className="business-empty-action" href="/projects">
+                  <Plus size={16} aria-hidden="true" />
+                  {text.addProject}
+                </Link>
+                <Link className="business-empty-action" href="/sales">
+                  <Plus size={16} aria-hidden="true" />
+                  {text.addSale}
+                </Link>
+                <button className="business-empty-action muted" type="button" disabled>
+                  <Plus size={16} aria-hidden="true" />
+                  {text.addCustomer}
+                </button>
+                <Link className="business-empty-action" href="/employees">
+                  <Plus size={16} aria-hidden="true" />
+                  {text.addEmployee}
+                </Link>
+              </div>
             )}
           />
         ) : null}
@@ -859,9 +877,17 @@ const businessOperationsStyles = `
     box-shadow: 0 12px 24px rgba(29, 140, 255, 0.20);
   }
 
+  .business-empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+
   .business-empty-action {
     min-height: 42px;
     padding: 0 16px;
+    border: 0;
     border-radius: 999px;
     display: inline-flex;
     align-items: center;
@@ -871,7 +897,17 @@ const businessOperationsStyles = `
     background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
     text-decoration: none;
     font-weight: 950;
+    font-family: inherit;
     box-shadow: 0 14px 28px rgba(29, 140, 255, 0.20);
+    cursor: pointer;
+  }
+
+  .business-empty-action.muted {
+    background: var(--sfm-light-card);
+    color: var(--sfm-muted);
+    box-shadow: none;
+    border: 1px solid rgba(29, 140, 255, 0.14);
+    cursor: not-allowed;
   }
 
   .business-empty-action:hover,
@@ -879,6 +915,11 @@ const businessOperationsStyles = `
     transform: translateY(-1px);
     outline: 2px solid rgba(24, 212, 212, 0.36);
     outline-offset: 3px;
+  }
+
+  .business-empty-action:disabled:hover {
+    transform: none;
+    outline: 0;
   }
 
   .business-chart-empty-action:focus-visible {
