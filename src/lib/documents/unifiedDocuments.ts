@@ -75,29 +75,76 @@ function documentTimestamp(document: UnifiedDocument) {
   return document.uploadedAt ? new Date(document.uploadedAt).getTime() || 0 : 0;
 }
 
-function documentIdentity(document: UnifiedDocument) {
-  const sourceUrl = textValue(document.sourceUrl).toLowerCase();
-  if (!sourceUrl) return `record:${document.id}`;
+function documentCompletenessScore(document: UnifiedDocument) {
   return [
-    document.sourceModule,
-    document.relatedName || '',
-    document.category || '',
-    sourceUrl,
-    document.documentType || '',
+    document.filePath,
+    document.fileUrl,
+    document.fileName,
+    document.fileSize,
+    document.sourceUrl,
+    document.notes,
+    document.relatedName,
+  ].filter(value => value !== undefined && value !== null && String(value).trim() !== '').length;
+}
+
+function normalizedDateKey(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return String(value).trim().toLowerCase();
+  return date.toISOString().slice(0, 10);
+}
+
+export function unifiedDocumentDedupeKey(document: UnifiedDocument) {
+  const fileUrl = textValue(document.fileUrl, document.filePath).toLowerCase();
+  if (fileUrl) return `file:${fileUrl}`;
+
+  const sourceUrl = textValue(document.sourceUrl).toLowerCase();
+  const title = textValue(document.title).toLowerCase();
+  const category = textValue(document.category, 'other').toLowerCase();
+  const sourceModule = textValue(document.sourceModule, 'other').toLowerCase();
+  const relatedName = textValue(document.relatedName).toLowerCase();
+  const documentType = textValue(document.documentType, 'document').toLowerCase();
+
+  if (sourceUrl) return ['source', sourceModule, sourceUrl, title, category].join('|');
+
+  if (sourceModule === 'pitch_deck' || sourceModule === 'business') {
+    return ['reference', sourceModule, relatedName, title, category, documentType].join('|');
+  }
+
+  return [
+    'fallback',
+    sourceModule,
+    title,
+    category,
+    normalizedDateKey(document.uploadedAt),
   ].join('|');
 }
 
-function uniqueLatestDocuments(documents: UnifiedDocument[]) {
+export function dedupeUnifiedDocuments(documents: UnifiedDocument[]) {
   const grouped = new Map<string, UnifiedDocument>();
+  const duplicateKeys = new Set<string>();
   for (const document of documents) {
-    const key = documentIdentity(document);
+    const key = unifiedDocumentDedupeKey(document);
     const current = grouped.get(key);
-    if (!current || documentTimestamp(document) >= documentTimestamp(current)) grouped.set(key, document);
+    if (current) duplicateKeys.add(key);
+    if (
+      !current ||
+      documentCompletenessScore(document) > documentCompletenessScore(current) ||
+      (
+        documentCompletenessScore(document) === documentCompletenessScore(current) &&
+        documentTimestamp(document) >= documentTimestamp(current)
+      )
+    ) {
+      grouped.set(key, document);
+    }
   }
-  return Array.from(grouped.values());
+  return {
+    documents: Array.from(grouped.values()),
+    duplicateKeys: Array.from(duplicateKeys),
+  };
 }
 
-export function normalizeUnifiedDocuments(rows: UnifiedDocumentSourceRows): UnifiedDocument[] {
+export function normalizeUnifiedDocumentsWithMeta(rows: UnifiedDocumentSourceRows) {
   const projectNames = relationMap(rows.projects);
   const charityProjectNames = relationMap(rows.charityProjects);
 
@@ -159,7 +206,7 @@ export function normalizeUnifiedDocuments(rows: UnifiedDocumentSourceRows): Unif
   for (const row of rows.incomeRows ?? []) {
     const attachmentUrl = textValue(row?.attachment_url);
     const attachmentName = textValue(row?.attachment_name);
-    if (!attachmentUrl && !attachmentName) continue;
+    if (!attachmentUrl) continue;
     const recordId = textValue(row?.id);
     if (!recordId) continue;
     documents.push({
@@ -183,7 +230,7 @@ export function normalizeUnifiedDocuments(rows: UnifiedDocumentSourceRows): Unif
   for (const row of rows.expenseRows ?? []) {
     const receiptUrl = textValue(row?.receipt_image_url);
     const receiptName = textValue(row?.receipt_file_name);
-    if (!receiptUrl && !receiptName) continue;
+    if (!receiptUrl) continue;
     const recordId = textValue(row?.id);
     if (!recordId) continue;
     documents.push({
@@ -262,7 +309,25 @@ export function normalizeUnifiedDocuments(rows: UnifiedDocumentSourceRows): Unif
     });
   }
 
-  return uniqueLatestDocuments(documents).sort((a, b) => {
+  const displayableDocuments = documents.filter(document => {
+    if (document.filePath || document.fileUrl || document.sourceUrl) return true;
+    return document.sourceModule === 'pitch_deck' || document.sourceModule === 'business';
+  });
+  const deduped = dedupeUnifiedDocuments(displayableDocuments);
+  return {
+    documents: deduped.documents.sort((a, b) => {
+      const left = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
+      const right = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
+      return right - left;
+    }),
+    rawCount: documents.length,
+    displayableCount: displayableDocuments.length,
+    duplicateKeys: deduped.duplicateKeys,
+  };
+}
+
+export function normalizeUnifiedDocuments(rows: UnifiedDocumentSourceRows): UnifiedDocument[] {
+  return normalizeUnifiedDocumentsWithMeta(rows).documents.sort((a, b) => {
     const left = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
     const right = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
     return right - left;

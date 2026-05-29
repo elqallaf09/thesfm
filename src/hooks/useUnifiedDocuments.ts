@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { normalizeUnifiedDocuments, type UnifiedDocument } from '@/lib/documents/unifiedDocuments';
+import { normalizeUnifiedDocumentsWithMeta, type UnifiedDocument } from '@/lib/documents/unifiedDocuments';
 
 type LoadState = {
   documents: UnifiedDocument[];
@@ -63,7 +63,7 @@ export function useUnifiedDocuments() {
       loadRows('charity_projects', user.id, { select: 'id,name' }),
     ]);
 
-    const documents = normalizeUnifiedDocuments({
+    const normalized = normalizeUnifiedDocumentsWithMeta({
       projectDocuments: projectDocuments.rows,
       charityDocuments: charityDocuments.rows,
       incomeRows: incomeRows.rows,
@@ -74,6 +74,16 @@ export function useUnifiedDocuments() {
       projects: projects.rows,
       charityProjects: charityProjects.rows,
     });
+    const documents = normalized.documents;
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('[DocumentsCenter] Loaded documents', {
+        rawCount: normalized.rawCount,
+        displayableCount: normalized.displayableCount,
+        deduplicatedCount: documents.length,
+        duplicateKeys: normalized.duplicateKeys,
+      });
+    }
 
     const errors: Record<string, string> = {};
     Object.entries({

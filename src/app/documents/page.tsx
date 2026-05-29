@@ -537,10 +537,12 @@ export default function DocumentsCenterPage() {
                     <Download size={15} />
                     {text.download}
                   </button>
-                  <Link href={document.actionUrl ?? '/documents'} aria-label={`${text.openSource} ${document.title}`}>
-                    <ExternalLink size={15} />
-                    {text.openSource}
-                  </Link>
+                  {document.actionUrl ? (
+                    <Link href={document.actionUrl} aria-label={`${text.openSource} ${document.title}`}>
+                      <ExternalLink size={15} />
+                      {text.openSource}
+                    </Link>
+                  ) : null}
                   {document.canDelete ? (
                     <button type="button" className="danger" onClick={() => deleteDocument(document)} aria-label={`${text.delete} ${document.title}`}>
                       <Trash2 size={15} />

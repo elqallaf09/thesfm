@@ -281,12 +281,27 @@ function documentDateValue(doc: ProjectDocumentRow) {
 }
 
 function uniqueDocumentKey(doc: ProjectDocumentRow) {
+  const fileUrl = String(doc.file_url ?? doc.file_path ?? '').trim().toLowerCase();
+  if (fileUrl) return `file:${fileUrl}`;
+
   const sourceUrl = String(doc.source_url ?? '').trim().toLowerCase();
-  if (!sourceUrl) return `record:${doc.id}`;
+  const title = String(doc.title ?? '').trim().toLowerCase();
+  const category = String(doc.category ?? 'other').trim().toLowerCase();
+  const fileName = String(doc.file_name ?? '').trim().toLowerCase();
+  if (!sourceUrl) {
+    return [
+      doc.user_id,
+      doc.project_id,
+      title,
+      category,
+      fileName,
+    ].join('|');
+  }
+
   return [
     doc.user_id,
     doc.project_id,
-    doc.category || 'other',
+    category,
     sourceUrl,
     doc.document_type || 'uploaded_file',
   ].join('|');
@@ -344,7 +359,17 @@ export function ProjectDocumentsTab({
       .eq('user_id', userId)
       .eq('project_id', projectId)
       .order('uploaded_at', { ascending: false });
-    if (!error) setDocuments(uniqueLatestDocuments((data ?? []) as ProjectDocumentRow[]));
+    if (!error) {
+      const rawRows = (data ?? []) as ProjectDocumentRow[];
+      const uniqueRows = uniqueLatestDocuments(rawRows);
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('[ProjectDocumentsTab] Loaded documents', {
+          rawCount: rawRows.length,
+          deduplicatedCount: uniqueRows.length,
+        });
+      }
+      setDocuments(uniqueRows);
+    }
     setLoading(false);
   }, [projectId, userId]);
 
@@ -410,6 +435,26 @@ export function ProjectDocumentsTab({
     const now = new Date().toISOString();
 
     try {
+      const db = (supabase as any).from('project_documents');
+      const existing = sourceUrl
+        ? await db
+          .select('id,file_path')
+          .eq('user_id', userId)
+          .eq('project_id', projectId)
+          .eq('category', form.category)
+          .eq('source_url', sourceUrl)
+          .eq('document_type', documentType)
+          .maybeSingle()
+        : await db
+          .select('id,file_path')
+          .eq('user_id', userId)
+          .eq('project_id', projectId)
+          .eq('title', form.title.trim())
+          .eq('category', form.category)
+          .eq('file_name', documentFile.name)
+          .maybeSingle();
+      if (existing.error) throw existing.error;
+
       const upload = await supabase.storage.from('project-documents').upload(filePath, documentFile, {
         cacheControl: '3600',
         contentType: documentFile.type || undefined,
@@ -432,20 +477,8 @@ export function ProjectDocumentsTab({
         updated_at: now,
       };
 
-      let existingId = '';
-      if (sourceUrl) {
-        const existing = await (supabase as any)
-          .from('project_documents')
-          .select('id,file_path')
-          .eq('user_id', userId)
-          .eq('project_id', projectId)
-          .eq('category', form.category)
-          .eq('source_url', sourceUrl)
-          .eq('document_type', documentType)
-          .maybeSingle();
-        if (existing.error) throw existing.error;
-        existingId = existing.data?.id ?? '';
-      }
+      const existingId = existing.data?.id ?? '';
+      const previousFilePath = existing.data?.file_path ? String(existing.data.file_path) : '';
 
       const { data, error } = existingId
         ? await (supabase as any)
@@ -468,6 +501,9 @@ export function ProjectDocumentsTab({
       if (error) {
         await supabase.storage.from('project-documents').remove([filePath]);
         throw error;
+      }
+      if (previousFilePath && previousFilePath !== filePath) {
+        void supabase.storage.from('project-documents').remove([previousFilePath]);
       }
 
       setDocuments(prev => uniqueLatestDocuments([data as ProjectDocumentRow, ...prev]));
