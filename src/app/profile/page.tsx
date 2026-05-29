@@ -176,7 +176,7 @@ const txt = {
   invalidPhone: { ar: 'الرجاء إدخال رقم هاتف صحيح.', en: 'Please enter a valid phone number.', fr: 'Veuillez saisir un numéro de téléphone valide.' },
   savePersonal: { ar: 'حفظ المعلومات الشخصية', en: 'Save personal information', fr: 'Enregistrer les informations' },
   saved: { ar: 'تم الحفظ بنجاح', en: 'Saved successfully', fr: 'Enregistré avec succès' },
-  saveError: { ar: 'تعذر الحفظ. حاول مرة أخرى.', en: 'Could not save. Try again.', fr: "Impossible d'enregistrer. Réessayez." },
+  saveError: { ar: 'تعذر حفظ المعلومات الشخصية، الرجاء المحاولة مرة أخرى.', en: 'Could not save personal information. Please try again.', fr: "Impossible d’enregistrer les informations personnelles. Veuillez réessayer." },
   changePassword: { ar: 'تغيير كلمة المرور', en: 'Change password', fr: 'Changer le mot de passe' },
   twoFactor: { ar: 'تفعيل المصادقة الثنائية', en: 'Enable two-factor authentication', fr: "Activer l'authentification à deux facteurs" },
   connectedDevices: { ar: 'الأجهزة المتصلة', en: 'Connected devices', fr: 'Appareils connectés' },
@@ -374,6 +374,10 @@ function normalizeStoredCity(value: unknown) {
 function cleanOptional(value: string) {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+function stripUndefined<T extends Record<string, unknown>>(payload: T) {
+  return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined)) as Partial<T>;
 }
 
 function readStored<T>(key: string, fallback: T): T {
@@ -580,7 +584,7 @@ export default function ProfilePage() {
   }
 
   async function saveProfile() {
-    if (!user) return;
+    if (!user?.id) return;
     setSaving(true);
     const displayName = profile.displayName.trim();
     const username = profile.username.trim();
@@ -596,9 +600,8 @@ export default function ProfilePage() {
       showToast(L('invalidPhone'));
       return;
     }
-    const db = supabase as any;
-    const { error } = await db.from('profiles').upsert({
-      id: user.id,
+    const now = new Date().toISOString();
+    const payload = stripUndefined({
       username,
       display_name: displayName,
       email: user.email || profile.email,
@@ -613,17 +616,109 @@ export default function ProfilePage() {
       default_currency: preferences.currency || 'KWD',
       city: cleanOptional(profile.city),
       profession_other: profile.profession === 'other' ? cleanOptional(profile.professionOther) : null,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'id' });
-    const extras = readStored<Record<string, Partial<ProfileState>>>(PROFILE_EXTRA_KEY, {});
-    writeStored(PROFILE_EXTRA_KEY, { ...extras, [user.id]: { country: profile.country, city: profile.city, professionOther: profile.professionOther } });
-    if (error) {
-      console.error('[profile] Failed to save profile', error);
+      updated_at: now,
+    });
+    const upsertPayload = {
+      id: user.id,
+      ...payload,
+    };
+    const minimalPayload = stripUndefined({
+      username,
+      display_name: displayName,
+      email: user.email || profile.email,
+      profession: cleanOptional(profile.profession),
+      updated_at: now,
+    });
+    const minimalUpsertPayload = {
+      id: user.id,
+      ...minimalPayload,
+    };
+    const isSchemaCacheColumnError = (error: unknown) => {
+      if (!error || typeof error !== 'object') return false;
+      const supabaseError = error as { code?: string; message?: string; details?: string; hint?: string };
+      const text = `${supabaseError.message || ''} ${supabaseError.details || ''} ${supabaseError.hint || ''}`.toLowerCase();
+      return supabaseError.code === 'PGRST204' || (text.includes('schema cache') && text.includes('column'));
+    };
+    const logProfileSaveError = (error: unknown, failedPayload: Record<string, unknown>) => {
+      if (process.env.NODE_ENV !== 'development') return;
+      const supabaseError = error && typeof error === 'object'
+        ? error as { code?: string; message?: string; details?: string; hint?: string }
+        : {};
+      console.error('[Profile] Failed to save profile', {
+        code: supabaseError.code,
+        message: supabaseError.message,
+        details: supabaseError.details,
+        hint: supabaseError.hint,
+        payload: failedPayload,
+      });
+    };
+
+    const db = supabase as any;
+    let saveError: unknown = null;
+    let savedProfile = false;
+    let updateResult = await db
+      .from('profiles')
+      .update(payload)
+      .eq('id', user.id)
+      .select('id')
+      .maybeSingle();
+
+    if (updateResult.error) {
+      saveError = updateResult.error;
+      logProfileSaveError(updateResult.error, payload);
+      if (isSchemaCacheColumnError(updateResult.error)) {
+        updateResult = await db
+          .from('profiles')
+          .update(minimalPayload)
+          .eq('id', user.id)
+          .select('id')
+          .maybeSingle();
+        if (updateResult.error) {
+          saveError = updateResult.error;
+          logProfileSaveError(updateResult.error, minimalPayload);
+        } else {
+          saveError = null;
+        }
+      }
+    }
+    if (!saveError && updateResult.data) savedProfile = true;
+
+    if (!saveError && !savedProfile) {
+      let upsertResult = await db
+        .from('profiles')
+        .upsert(upsertPayload, { onConflict: 'id' })
+        .select('id')
+        .maybeSingle();
+      if (upsertResult.error) {
+        saveError = upsertResult.error;
+        logProfileSaveError(upsertResult.error, upsertPayload);
+        if (isSchemaCacheColumnError(upsertResult.error)) {
+          upsertResult = await db
+            .from('profiles')
+            .upsert(minimalUpsertPayload, { onConflict: 'id' })
+            .select('id')
+            .maybeSingle();
+          if (upsertResult.error) {
+            saveError = upsertResult.error;
+            logProfileSaveError(upsertResult.error, minimalUpsertPayload);
+          } else {
+            saveError = null;
+            savedProfile = true;
+          }
+        }
+      } else {
+        savedProfile = true;
+      }
+    }
+
+    if (saveError) {
       setSaving(false);
       showToast(L('saveError'));
       return;
     }
-    if (!error) {
+    const extras = readStored<Record<string, Partial<ProfileState>>>(PROFILE_EXTRA_KEY, {});
+    writeStored(PROFILE_EXTRA_KEY, { ...extras, [user.id]: { country: profile.country, city: profile.city, professionOther: profile.professionOther } });
+    if (!saveError) {
       const { data: authData } = await supabase.auth.updateUser({
         data: {
           display_name: displayName,

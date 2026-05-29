@@ -34,6 +34,9 @@ export type Database = {
           security_answer_3: string | null
           phone_country_code: string | null
           phone_number: string | null
+          preferred_lang: string | null
+          preferred_currency: string | null
+          preferred_theme: string | null
           email_2fa_enabled: boolean
           email_2fa_enabled_at: string | null
           view_mode: string | null
@@ -61,6 +64,9 @@ export type Database = {
           security_answer_3?: string | null
           phone_country_code?: string | null
           phone_number?: string | null
+          preferred_lang?: string | null
+          preferred_currency?: string | null
+          preferred_theme?: string | null
           email_2fa_enabled?: boolean
           email_2fa_enabled_at?: string | null
           view_mode?: string | null
@@ -88,6 +94,9 @@ export type Database = {
           security_answer_3?: string | null
           phone_country_code?: string | null
           phone_number?: string | null
+          preferred_lang?: string | null
+          preferred_currency?: string | null
+          preferred_theme?: string | null
           email_2fa_enabled?: boolean
           email_2fa_enabled_at?: string | null
           view_mode?: string | null
