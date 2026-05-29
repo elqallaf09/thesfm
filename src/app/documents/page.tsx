@@ -537,8 +537,8 @@ export default function DocumentsCenterPage() {
                     <Download size={15} />
                     {text.download}
                   </button>
-                  {document.actionUrl ? (
-                    <Link href={document.actionUrl} aria-label={`${text.openSource} ${document.title}`}>
+                  {document.sourceUrl ? (
+                    <Link href={document.sourceUrl} target="_blank" rel="noopener noreferrer" aria-label={`${text.openSource} ${document.title}`}>
                       <ExternalLink size={15} />
                       {text.openSource}
                     </Link>
