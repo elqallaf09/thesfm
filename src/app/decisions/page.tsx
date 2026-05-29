@@ -242,6 +242,21 @@ function numeric(value: string) {
   return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
+function validDateOrNull(value?: string | null) {
+  const text = String(value ?? '').trim();
+  if (!text) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
+}
+
+function finiteNumber(value: unknown) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function isUuid(value: unknown) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value ?? ''));
+}
+
 function riskScore(analysis: DecisionAnalysis | null) {
   if (!analysis?.score && analysis?.score !== 0) return null;
   return Math.max(0, Math.min(100, 100 - analysis.score));
@@ -376,7 +391,17 @@ export default function DecisionsPage() {
 
   async function saveDecision() {
     if (saving) return;
-    if (!user || !sourceData) return;
+    if (!user?.id || !sourceData) {
+      setError(text.saveFailed);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[FinancialDecisions] Save failed', {
+          message: 'Missing authenticated user or source data',
+          userId: user?.id,
+          hasSourceData: Boolean(sourceData),
+        });
+      }
+      return;
+    }
     if (!form.title.trim() || numeric(form.amount) <= 0) {
       setError(text.validation);
       return;
@@ -384,68 +409,111 @@ export default function DecisionsPage() {
     setSaving(true);
     setError('');
     setMessage('');
-    const inputs: DecisionInputs = {
-      title: form.title.trim(),
-      decisionType: form.decisionType,
-      amount: numeric(form.amount),
-      currency,
-      targetDate: form.targetDate || undefined,
-      priority: 'medium',
-      notes: form.notes,
-      recurringCost: numeric(form.monthlyImpact),
-      expectedReturn: 0,
-      riskLevel: form.riskLevel,
-    };
-    const analysis = analyzeDecision(inputs, sourceData);
-    const savedRiskScore = riskScore(analysis) ?? 0;
-    const recommended = analysis.status === 'initially_suitable';
-    const mainReason = analysis.status === 'high_risk'
-      ? text.reasonHigh
-      : analysis.status === 'needs_review'
-        ? text.reasonReview
-        : analysis.status === 'insufficient_data'
-          ? text.insufficient
-          : text.reasonGood;
-    const payload = {
-      user_id: user.id,
-      decision_title: inputs.title,
-      decision_type: inputs.decisionType,
-      estimated_cost: inputs.amount,
-      monthly_impact: inputs.recurringCost ?? 0,
-      expected_benefit: String(form.expectedBenefit || ''),
-      risk_level: inputs.riskLevel ?? 'medium',
-      target_date: inputs.targetDate ?? null,
-      notes: inputs.notes?.trim() || null,
-      risk_score: savedRiskScore,
-      is_recommended: recommended,
-      main_reason: mainReason,
-      better_alternative: text.alternativeText,
-      action_plan: { checklist: CHECKLIST[locale], scenarios: analysis.scenarios },
-      currency,
-      updated_at: new Date().toISOString(),
-    };
-    const { data: savedDecision, error: saveError } = await (supabase as any).from('user_decisions').insert(payload).select('*').single();
-    setSaving(false);
-    if (saveError) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('[FinancialDecisions] Failed to save decision', {
+    let payload: {
+      user_id: string;
+      decision_title: string;
+      decision_type: string;
+      estimated_cost: number;
+      monthly_impact: number;
+      expected_benefit: string;
+      risk_level: string;
+      target_date: string | null;
+      notes: string | null;
+      risk_score: number;
+      is_recommended: boolean;
+      main_reason: string;
+      better_alternative: string;
+      action_plan: string[];
+      currency: string;
+      updated_at: string;
+    } | null = null;
+    try {
+      if (!user?.id) throw new Error('Missing authenticated user');
+      if (!isUuid(user.id)) throw new Error('Authenticated user id is not a valid UUID');
+      const selectedCurrency = currency || 'KWD';
+      const decisionForm = form as typeof form & Record<string, unknown>;
+      const inputs: DecisionInputs = {
+        title: form.title.trim(),
+        decisionType: form.decisionType,
+        amount: numeric(form.amount),
+        currency: selectedCurrency,
+        targetDate: validDateOrNull(form.targetDate) || undefined,
+        priority: 'medium',
+        notes: form.notes,
+        recurringCost: numeric(form.monthlyImpact),
+        expectedReturn: 0,
+        riskLevel: form.riskLevel,
+      };
+      const analysis = analyzeDecision(inputs, sourceData);
+      const savedRiskScore = riskScore(analysis) ?? 0;
+      const recommended = analysis.status === 'initially_suitable';
+      const mainReason = analysis.status === 'high_risk'
+        ? text.reasonHigh
+        : analysis.status === 'needs_review'
+          ? text.reasonReview
+          : analysis.status === 'insufficient_data'
+            ? text.insufficient
+            : text.reasonGood;
+
+      payload = {
+        user_id: user.id,
+        decision_title: String(decisionForm.title || decisionForm.decision_title || '').trim(),
+        decision_type: String(decisionForm.decisionType || decisionForm.decision_type || '').trim(),
+        estimated_cost: finiteNumber(decisionForm.estimatedCost ?? decisionForm.estimated_cost ?? numeric(form.amount)),
+        monthly_impact: finiteNumber(decisionForm.monthlyImpact ?? decisionForm.monthly_impact),
+        expected_benefit: String(decisionForm.expectedBenefit ?? decisionForm.expected_benefit ?? ''),
+        risk_level: String(decisionForm.riskLevel || decisionForm.risk_level || '').trim(),
+        target_date: validDateOrNull(String(decisionForm.targetDate || decisionForm.target_date || '')),
+        notes: decisionForm.notes ? String(decisionForm.notes) : null,
+        risk_score: finiteNumber(savedRiskScore),
+        is_recommended: Boolean(recommended),
+        main_reason: mainReason || '',
+        better_alternative: text.alternativeText || '',
+        action_plan: [...(CHECKLIST[locale] || [])],
+        currency: selectedCurrency,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (!payload.decision_title || !payload.decision_type) {
+        throw new Error('Decision title and type are required');
+      }
+
+      const { data: savedDecision, error: saveError } = await (supabase as any)
+        .from('user_decisions')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (saveError) {
+        console.error('[FinancialDecisions] Supabase insert response', {
           code: saveError.code,
           message: saveError.message,
           details: saveError.details,
           hint: saveError.hint,
           payload,
         });
+        throw saveError;
       }
+
+      setForm(emptyForm);
+      setMessage(text.saved);
+      if (savedDecision) {
+        setDecisions(prev => [savedDecision as DecisionRow, ...prev.filter(row => row.id !== savedDecision.id)]);
+        setSelectedId(savedDecision.id);
+      } else {
+        await load();
+      }
+    } catch (error: any) {
+      console.error('[FinancialDecisions] Save failed', {
+        code: error?.code,
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        payload,
+      });
       setError(text.saveFailed);
-      return;
-    }
-    setForm(emptyForm);
-    setMessage(text.saved);
-    if (savedDecision) {
-      setDecisions(prev => [savedDecision as DecisionRow, ...prev.filter(row => row.id !== savedDecision.id)]);
-      setSelectedId(savedDecision.id);
-    } else {
-      await load();
+    } finally {
+      setSaving(false);
     }
   }
 

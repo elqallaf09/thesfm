@@ -109,9 +109,25 @@ begin
        select 1 from information_schema.columns
        where table_schema = 'public'
          and table_name = 'project_milestones'
-         and column_name in ('user_id', 'project_id', 'status', 'target_date')
-       group by table_name
-       having count(distinct column_name) = 4
+         and column_name = 'user_id'
+     )
+     and exists (
+       select 1 from information_schema.columns
+       where table_schema = 'public'
+         and table_name = 'project_milestones'
+         and column_name = 'project_id'
+     )
+     and exists (
+       select 1 from information_schema.columns
+       where table_schema = 'public'
+         and table_name = 'project_milestones'
+         and column_name = 'status'
+     )
+     and exists (
+       select 1 from information_schema.columns
+       where table_schema = 'public'
+         and table_name = 'project_milestones'
+         and column_name = 'target_date'
      ) then
     create index if not exists project_milestones_user_project_status_target_idx
       on public.project_milestones(user_id, project_id, status, target_date);
