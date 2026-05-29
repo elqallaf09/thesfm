@@ -15,6 +15,7 @@ type GulfMarketSummaryProps = {
     dailyChange: string;
     source: string;
     unavailable: string;
+    unavailableHelper: string;
     delayed: string;
   };
   formatNumber: (value: number | null) => string;
@@ -34,33 +35,27 @@ export function GulfMarketSummary({ market, marketLabel, data, labels, formatNum
 
   return (
     <section className="gulf-news-summary">
-      <div className="gulf-news-summary-head">
+      <div className="gulf-news-summary-identity">
+        <span className="gulf-news-summary-code">{market.code}</span>
         <div>
           <span>{labels.title}</span>
-          <h2>{market.flag} {marketLabel}</h2>
+          <h2>{marketLabel}</h2>
+          <p>{labels.indexName}: {market.indexName}</p>
         </div>
         <strong>{labels.delayed}</strong>
       </div>
-      <div className="gulf-news-summary-grid">
-        <div>
-          <span>{labels.indexName}</span>
-          <strong>{market.indexName}</strong>
-        </div>
-        <div>
-          <span>{labels.indexValue}</span>
-          <strong>{value === null ? labels.unavailable : formatNumber(value)}</strong>
-        </div>
-        <div>
-          <span>{labels.dailyChange}</span>
-          <strong className={`gulf-news-change ${tone}`}>
-            <ChangeIcon size={15} />
+      <div className="gulf-news-summary-market">
+        <span>{labels.indexValue}</span>
+        <strong>{value === null ? labels.unavailable : formatNumber(value)}</strong>
+        {value === null ? (
+          <p>{labels.unavailableHelper}</p>
+        ) : (
+          <em className={`gulf-news-change ${tone}`}>
+            <ChangeIcon size={16} />
             {change === null ? labels.unavailable : formatPercent(change)}
-          </strong>
-        </div>
-        <div>
-          <span>{labels.source}</span>
-          <strong>{data?.source ?? labels.unavailable}</strong>
-        </div>
+          </em>
+        )}
+        <small>{labels.source}: {data?.source ?? labels.unavailable}</small>
       </div>
     </section>
   );

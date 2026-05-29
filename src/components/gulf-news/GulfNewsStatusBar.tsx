@@ -15,6 +15,7 @@ type GulfNewsStatusBarProps = {
 export function GulfNewsStatusBar({ labels, lastUpdated, nextUpdate, formatDateTime }: GulfNewsStatusBarProps) {
   return (
     <section className="gulf-news-status-bar">
+      <span className="gulf-news-status-health" aria-hidden="true" />
       <span>{labels.lastUpdated}: {lastUpdated ? formatDateTime(lastUpdated) : '-'}</span>
       <span>{labels.nextUpdate}: {nextUpdate}</span>
       <strong>{labels.delayed}</strong>
@@ -24,3 +25,4 @@ export function GulfNewsStatusBar({ labels, lastUpdated, nextUpdate, formatDateT
 }
 
 export default GulfNewsStatusBar;
+

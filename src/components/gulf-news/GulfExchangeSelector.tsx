@@ -1,19 +1,41 @@
 'use client';
 
+import { TrendingDown, TrendingUp } from 'lucide-react';
 import type { GulfMarket, GulfMarketId } from '@/lib/gulf/gulfMarkets';
+import type { GulfMarketData } from '@/lib/gulf/fetchDelayedMarketData';
 
 type GulfExchangeSelectorProps = {
   markets: GulfMarket[];
   selectedMarket: GulfMarketId;
   labels: Record<GulfMarketId, string>;
+  unavailableLabel: string;
+  marketData: Partial<Record<GulfMarketId, GulfMarketData>>;
+  formatPercent: (value: number | null) => string;
   onSelect: (market: GulfMarketId) => void;
 };
 
-export function GulfExchangeSelector({ markets, selectedMarket, labels, onSelect }: GulfExchangeSelectorProps) {
+function changeTone(value: number | null | undefined) {
+  if (!value) return 'neutral';
+  return value > 0 ? 'up' : 'down';
+}
+
+export function GulfExchangeSelector({
+  markets,
+  selectedMarket,
+  labels,
+  unavailableLabel,
+  marketData,
+  formatPercent,
+  onSelect,
+}: GulfExchangeSelectorProps) {
   return (
     <section className="gulf-news-exchange-grid" aria-label="Gulf markets">
       {markets.map(market => {
         const active = selectedMarket === market.id;
+        const change = marketData[market.id]?.changePercent ?? null;
+        const tone = changeTone(change);
+        const Icon = tone === 'down' ? TrendingDown : TrendingUp;
+
         return (
           <button
             key={market.id}
@@ -22,8 +44,12 @@ export function GulfExchangeSelector({ markets, selectedMarket, labels, onSelect
             aria-pressed={active}
             onClick={() => onSelect(market.id)}
           >
-            <span className="gulf-news-flag" aria-hidden="true">{market.flag}</span>
-            <span>{labels[market.id]}</span>
+            <span className="gulf-news-exchange-code">{market.code}</span>
+            <span className="gulf-news-exchange-name">{labels[market.id]}</span>
+            <span className={`gulf-news-exchange-change ${tone}`}>
+              <Icon size={14} />
+              {change === null ? unavailableLabel : formatPercent(change)}
+            </span>
           </button>
         );
       })}
