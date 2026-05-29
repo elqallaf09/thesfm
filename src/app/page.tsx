@@ -74,7 +74,7 @@ const COPY = {
     toolsFilterPersonal: 'المال الشخصي',
     toolsFilterAi: 'الذكاء المالي',
     toolsFilterBusiness: 'المشاريع والأعمال',
-    toolsFilterCharity: 'الزكاة والخير',
+    toolsFilterCharity: 'الزكاة والأعمال الخيرية',
     toolsFilterSecurity: 'الأمان والتقارير',
     toolOpen: 'فتح',
     toolBadgeSmart: 'ذكي',
