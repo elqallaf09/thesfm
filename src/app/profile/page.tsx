@@ -237,9 +237,12 @@ const txt = {
   paymentNeeded: { ar: 'إدارة الاشتراك تحتاج ربط نظام الدفع.', en: 'Subscription management needs a payment system connection.', fr: 'La gestion de l’abonnement nécessite un système de paiement.' },
   exportData: { ar: 'تصدير نسخة من بياناتي قبل الحذف', en: 'Export my data before deletion', fr: 'Exporter mes données avant suppression' },
   deleteAccount: { ar: 'حذف الحساب', en: 'Delete account', fr: 'Supprimer le compte' },
-  deleteHint: { ar: 'حذف الحساب يحتاج ربطه بنظام المصادقة وقاعدة البيانات.', en: 'Account deletion needs to be connected to auth and database systems.', fr: 'La suppression du compte doit être reliée à l’authentification et à la base de données.' },
+  deleteHint: { ar: 'سيتم حذف حسابك وبياناتك المرتبطة نهائياً. لا يمكن التراجع عن هذا الإجراء.', en: 'Your account and related data will be permanently deleted. This action cannot be undone.', fr: 'Votre compte et les données associées seront définitivement supprimés. Cette action est irréversible.' },
   typeDelete: { ar: 'اكتب DELETE أو حذف لتفعيل زر الحذف النهائي', en: 'Type DELETE or حذف to enable final deletion', fr: 'Tapez DELETE ou حذف pour activer la suppression finale' },
   finalDelete: { ar: 'تأكيد الحذف النهائي', en: 'Confirm final deletion', fr: 'Confirmer la suppression finale' },
+  deletingAccount: { ar: 'جاري حذف الحساب...', en: 'Deleting account...', fr: 'Suppression du compte...' },
+  accountDeleted: { ar: 'تم حذف الحساب بنجاح', en: 'Account deleted successfully', fr: 'Compte supprimé avec succès' },
+  accountDeleteError: { ar: 'تعذر حذف الحساب حالياً، الرجاء المحاولة مرة أخرى.', en: 'Could not delete the account right now. Please try again.', fr: 'Impossible de supprimer le compte pour le moment. Veuillez réessayer.' },
   cancel: { ar: 'إلغاء', en: 'Cancel', fr: 'Annuler' },
   close: { ar: 'إغلاق', en: 'Close', fr: 'Fermer' },
   open: { ar: 'فتح', en: 'Open', fr: 'Ouvrir' },
@@ -451,6 +454,7 @@ export default function ProfilePage() {
     error: '',
   });
   const [deleteWord, setDeleteWord] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const L = (key: keyof typeof txt) => T(key, lang);
   const authUser = user as (typeof user & { new_email?: string | null; email_change_sent_at?: string | null }) | null;
@@ -802,6 +806,41 @@ export default function ProfilePage() {
     router.push('/login');
   }
 
+  async function deleteAccount() {
+    if (deletingAccount || (deleteWord !== 'DELETE' && deleteWord !== 'حذف')) return;
+    setDeletingAccount(true);
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (sessionError || !token) throw sessionError || new Error('Missing authenticated session');
+
+      const response = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) throw new Error(result?.error || 'delete_failed');
+
+      showToast(L('accountDeleted'));
+      await supabase.auth.signOut({ scope: 'global' }).catch(() => undefined);
+      await signOut().catch(() => undefined);
+      try {
+        window.localStorage?.clear();
+        window.sessionStorage?.clear();
+      } catch {
+        // Storage can be unavailable in restricted browser contexts.
+      }
+      window.setTimeout(() => router.replace('/login'), 500);
+    } catch (error) {
+      console.error('[Profile] Account deletion failed', error);
+      showToast(L('accountDeleteError'));
+      setDeletingAccount(false);
+    }
+  }
+
   function openEmailModal() {
     const currentEmail = currentAuthEmail || '';
     setEmailChange({ currentEmail, newEmail: '', confirmEmail: '', currentPassword: '' });
@@ -1103,8 +1142,8 @@ export default function ProfilePage() {
       <ConfirmationModal open={modal === 'delete'} title={L('deleteAccount')} onClose={() => setModal(null)}>
         <div className="modal-fields">
           <InfoBox icon={<AlertTriangle />} text={L('deleteHint')} danger />
-          <Field icon={<Trash2 size={16} />} label={L('typeDelete')}><input value={deleteWord} onChange={event => setDeleteWord(event.target.value)} /></Field>
-          <button className="danger-btn" disabled={deleteWord !== 'DELETE' && deleteWord !== 'حذف'} onClick={() => showToast(L('deleteHint'))}>{L('finalDelete')}</button>
+          <Field icon={<Trash2 size={16} />} label={L('typeDelete')}><input value={deleteWord} onChange={event => setDeleteWord(event.target.value)} disabled={deletingAccount} /></Field>
+          <button className="danger-btn" disabled={deletingAccount || (deleteWord !== 'DELETE' && deleteWord !== 'حذف')} onClick={deleteAccount}>{deletingAccount ? L('deletingAccount') : L('finalDelete')}</button>
         </div>
       </ConfirmationModal>
 
