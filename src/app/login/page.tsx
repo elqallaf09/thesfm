@@ -23,7 +23,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { hashSecurityAnswer, isEmail } from '@/lib/authSecurity';
+import { isEmail } from '@/lib/authSecurity';
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset' | 'twoFactor';
 type Message = { type: 'error' | 'ok'; text: string } | null;
@@ -378,6 +378,12 @@ function strengthFor(password: string): PasswordStrength {
   return 'strong';
 }
 
+function cleanObject<T extends Record<string, unknown>>(payload: T) {
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
+}
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -462,13 +468,13 @@ function LoginContent() {
     let cancelled = false;
     supabase
       .from('profiles')
-      .select('security_question, security_answer_hash')
+      .select('security_question_2, security_answer_2')
       .eq('id', user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return;
-        setRecoveryQuestion(data?.security_question || null);
-        setRecoveryHash(data?.security_answer_hash || null);
+        setRecoveryQuestion(data?.security_question_2 || null);
+        setRecoveryHash(data?.security_answer_2 || null);
       });
     return () => {
       cancelled = true;
@@ -672,10 +678,6 @@ function LoginContent() {
     const { data: existing } = await supabase.from('profiles').select('id').eq('username', cleanUsername).maybeSingle();
     if (existing) return text.errorExists;
 
-    const answerHash = question && securityAnswer.trim()
-      ? await hashSecurityAnswer(securityAnswer, cleanEmail)
-      : null;
-
     const { data, error } = await supabase.auth.signUp({
       email: cleanEmail,
       password: cleanPassword,
@@ -687,8 +689,6 @@ function LoginContent() {
           email: cleanEmail,
           default_currency: defaultCurrency,
           country,
-          security_question: question || null,
-          security_answer_hash: answerHash,
           terms_accepted_at: new Date().toISOString(),
         },
       },
@@ -698,19 +698,25 @@ function LoginContent() {
 
     const newUser = data.user ?? (await supabase.auth.getUser()).data.user;
     if (newUser && data.session) {
-      const profilePayload = {
+      const profilePayload = cleanObject({
         id: newUser.id,
-        username: cleanUsername,
-        display_name: cleanUsername,
-        email: cleanEmail,
-        default_currency: defaultCurrency,
-        preferred_currency: defaultCurrency,
-        country,
-        security_question: question || null,
-        security_answer_hash: answerHash,
+        username: cleanUsername || newUser.user_metadata?.username || null,
+        display_name: cleanUsername || newUser.user_metadata?.display_name || null,
+        email: newUser.email || cleanEmail,
+        country: country || null,
+        default_currency: defaultCurrency || 'KWD',
+        preferred_currency: defaultCurrency || 'KWD',
+        currency: defaultCurrency || 'KWD',
         preferred_lang: lang,
+        language: lang,
+        preferred_theme: 'light',
+        theme: 'light',
+        view_mode: 'simple',
+        onboarding_completed: false,
+        security_question_2: question || null,
+        security_answer_2: securityAnswer.trim() || null,
         updated_at: new Date().toISOString(),
-      };
+      });
       const { error: profileError } = await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' });
       if (profileError) {
         console.error('[Signup] Profile creation failed', {
@@ -754,9 +760,7 @@ function LoginContent() {
     if (password.trim() !== confirmPassword.trim()) return text.errorMismatch;
     if (recoveryQuestion && recoveryHash) {
       if (securityAttempts >= 5) return text.errorSecurityLocked;
-      const salt = user?.email || email || forgotEmail;
-      const answerHash = await hashSecurityAnswer(recoveryAnswer, salt);
-      if (answerHash !== recoveryHash) {
+      if (recoveryAnswer.trim().toLowerCase() !== recoveryHash.trim().toLowerCase()) {
         setSecurityAttempts(count => count + 1);
         return text.errorSecurityAnswer;
       }

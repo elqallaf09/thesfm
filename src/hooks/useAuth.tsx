@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
-import { hashSecurityAnswer, isEmail } from '@/lib/authSecurity';
+import { isEmail } from '@/lib/authSecurity';
 
 interface AuthContextValue {
   user: User | null;
@@ -23,6 +23,12 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+function cleanObject<T extends Record<string, unknown>>(payload: T) {
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
+}
 
 function getStoredGuestMode() {
   if (typeof window === 'undefined') return false;
@@ -223,10 +229,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!isEmail(cleanEmail)) return { error: new Error('Invalid email format') };
         if (cleanPassword.length < 6) return { error: new Error('Password must be at least 6 characters') };
 
-        const answerHash = securityQuestion && securityAnswer
-          ? await hashSecurityAnswer(securityAnswer, cleanEmail)
-          : null;
-
         const { data: signUpData, error } = await supabase.auth.signUp({
           email: cleanEmail,
           password: cleanPassword,
@@ -238,8 +240,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: cleanEmail,
               age: parseInt(age, 10) || null,
               gender: gender || null,
-              security_question: securityQuestion || null,
-              security_answer_hash: answerHash,
             },
           },
         });
@@ -256,17 +256,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const user = signUpData.user ?? (await supabase.auth.getUser()).data.user;
         if (user && signUpData.session) {
-          const profilePayload = {
+          const profilePayload = cleanObject({
             id: user.id,
             username: cleanUsername,
             display_name: username.trim(),
             email: cleanEmail,
             age: parseInt(age, 10) || null,
             gender: gender || null,
-            security_question: securityQuestion || null,
-            security_answer_hash: answerHash,
+            preferred_lang: 'ar',
+            language: 'ar',
+            preferred_currency: 'KWD',
+            default_currency: 'KWD',
+            currency: 'KWD',
+            preferred_theme: 'light',
+            theme: 'light',
+            view_mode: 'simple',
+            onboarding_completed: false,
+            security_question_2: securityQuestion || null,
+            security_answer_2: securityAnswer?.trim() || null,
             updated_at: new Date().toISOString(),
-          };
+          });
           const { error: profileError } = await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' });
           if (profileError) {
             console.error('[Signup] Profile creation failed', {
