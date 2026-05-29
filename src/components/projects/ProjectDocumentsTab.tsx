@@ -29,9 +29,6 @@ export type ProjectDocumentRow = {
   file_name: string;
   file_type: string | null;
   file_size: number | string | null;
-  source_url?: string | null;
-  document_type?: string | null;
-  status?: string | null;
   notes: string | null;
   uploaded_at: string | null;
   created_at?: string | null;
@@ -281,29 +278,30 @@ function documentDateValue(doc: ProjectDocumentRow) {
 }
 
 function uniqueDocumentKey(doc: ProjectDocumentRow) {
-  const fileUrl = String(doc.file_url ?? doc.file_path ?? '').trim().toLowerCase();
-  if (fileUrl) return `file:${fileUrl}`;
+  const fileUrl = String(doc.file_url ?? '').trim().toLowerCase();
+  if (fileUrl) return `file-url:${fileUrl}`;
 
-  const sourceUrl = String(doc.source_url ?? '').trim().toLowerCase();
+  const filePath = String(doc.file_path ?? '').trim().toLowerCase();
+  if (filePath) return `file-path:${filePath}`;
+
   const title = String(doc.title ?? '').trim().toLowerCase();
   const category = String(doc.category ?? 'other').trim().toLowerCase();
   const fileName = String(doc.file_name ?? '').trim().toLowerCase();
-  if (!sourceUrl) {
+  if (title && category) {
     return [
       doc.user_id,
       doc.project_id,
       title,
       category,
-      fileName,
     ].join('|');
   }
 
   return [
     doc.user_id,
     doc.project_id,
-    category,
-    sourceUrl,
-    doc.document_type || 'uploaded_file',
+    title,
+    fileName,
+    String(doc.uploaded_at ?? doc.created_at ?? '').slice(0, 10),
   ].join('|');
 }
 
@@ -430,29 +428,18 @@ export function ProjectDocumentsTab({
     setUploading(true);
     const documentId = makeUuid();
     const filePath = `${userId}/projects/${projectId}/${documentId}-${cleanFileName(documentFile.name)}`;
-    const sourceUrl = '';
-    const documentType = 'uploaded_file';
     const now = new Date().toISOString();
 
     try {
       const db = (supabase as any).from('project_documents');
-      const existing = sourceUrl
-        ? await db
-          .select('id,file_path')
-          .eq('user_id', userId)
-          .eq('project_id', projectId)
-          .eq('category', form.category)
-          .eq('source_url', sourceUrl)
-          .eq('document_type', documentType)
-          .maybeSingle()
-        : await db
-          .select('id,file_path')
-          .eq('user_id', userId)
-          .eq('project_id', projectId)
-          .eq('title', form.title.trim())
-          .eq('category', form.category)
-          .eq('file_name', documentFile.name)
-          .maybeSingle();
+      const existing = await db
+        .select('id,file_path')
+        .eq('user_id', userId)
+        .eq('project_id', projectId)
+        .eq('title', form.title.trim())
+        .eq('category', form.category)
+        .eq('file_name', documentFile.name)
+        .maybeSingle();
       if (existing.error) throw existing.error;
 
       const upload = await supabase.storage.from('project-documents').upload(filePath, documentFile, {
@@ -471,9 +458,6 @@ export function ProjectDocumentsTab({
         file_type: documentFile.type || getExtension(documentFile.name),
         file_size: documentFile.size,
         notes: form.notes.trim() || null,
-        source_url: sourceUrl || null,
-        document_type: documentType,
-        status: 'uploaded',
         updated_at: now,
       };
 
@@ -509,7 +493,20 @@ export function ProjectDocumentsTab({
       setDocuments(prev => uniqueLatestDocuments([data as ProjectDocumentRow, ...prev]));
       setMessage(t.documentUploaded);
       closeModal();
-    } catch {
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[ProjectDocumentsTab] Failed to upload project document', {
+          error,
+          payload: {
+            user_id: userId,
+            project_id: projectId,
+            title: form.title.trim(),
+            category: form.category,
+            file_name: documentFile.name,
+            file_path: filePath,
+          },
+        });
+      }
       setMessage(t.uploadFailed);
     } finally {
       setUploading(false);

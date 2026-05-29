@@ -498,10 +498,20 @@ function uniqueDocumentCount(rows: any[] = []) {
   const grouped = new Map<string, any>();
   const timestamp = (row: any) => new Date(String(row?.updated_at ?? row?.uploaded_at ?? row?.created_at ?? '')).getTime() || 0;
   for (const row of rows) {
-    const sourceUrl = String(row?.source_url ?? '').trim().toLowerCase();
-    const key = sourceUrl
-      ? [row?.category || '', sourceUrl, row?.document_type || 'uploaded_file'].join('|')
-      : `record:${row?.id}`;
+    const fileUrl = String(row?.file_url ?? '').trim().toLowerCase();
+    const filePath = String(row?.file_path ?? '').trim().toLowerCase();
+    const title = String(row?.title ?? '').trim().toLowerCase();
+    const category = String(row?.category ?? '').trim().toLowerCase();
+    const uploadedDate = String(row?.uploaded_at ?? row?.created_at ?? '').slice(0, 10);
+    const key = fileUrl
+      ? `file-url|${fileUrl}`
+      : filePath
+        ? `file-path|${filePath}`
+        : title && category
+          ? `title-category-project|${title}|${category}`
+          : title
+            ? `title-project-date|${title}|${uploadedDate}`
+            : `record|${row?.id ?? uploadedDate}`;
     const current = grouped.get(key);
     if (!current || timestamp(row) >= timestamp(current)) grouped.set(key, row);
   }
@@ -556,7 +566,7 @@ export function ProjectKpisTab({
       (supabase as any).from('project_feasibility_studies').select('*').eq('user_id', userId).eq('project_id', projectId).maybeSingle(),
       (supabase as any).from('project_tasks').select('*').eq('user_id', userId).eq('project_id', projectId),
       (supabase as any).from('project_milestones').select('*').eq('user_id', userId).eq('project_id', projectId),
-      (supabase as any).from('project_documents').select('id,category,source_url,document_type,uploaded_at,created_at,updated_at').eq('user_id', userId).eq('project_id', projectId),
+      (supabase as any).from('project_documents').select('id,title,category,file_url,file_path,uploaded_at,created_at,updated_at').eq('user_id', userId).eq('project_id', projectId),
       (supabase as any).from('project_income').select('id, amount, project_id, income_date, created_at').eq('user_id', userId).eq('project_id', projectId),
       (supabase as any).from('project_expenses').select('id, amount, project_id, expense_date, created_at').eq('user_id', userId).eq('project_id', projectId),
       (supabase as any).from('expense_items').select('id, amount, enhanced, created_at').eq('user_id', userId),

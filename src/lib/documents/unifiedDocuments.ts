@@ -95,8 +95,11 @@ function normalizedDateKey(value?: string) {
 }
 
 export function unifiedDocumentDedupeKey(document: UnifiedDocument) {
-  const fileUrl = textValue(document.fileUrl, document.filePath).toLowerCase();
-  if (fileUrl) return `file:${fileUrl}`;
+  const fileUrl = textValue(document.fileUrl).toLowerCase();
+  if (fileUrl) return `file-url:${fileUrl}`;
+
+  const filePath = textValue(document.filePath).toLowerCase();
+  if (filePath) return `file-path:${filePath}`;
 
   const sourceUrl = textValue(document.sourceUrl).toLowerCase();
   const title = textValue(document.title).toLowerCase();
@@ -109,6 +112,18 @@ export function unifiedDocumentDedupeKey(document: UnifiedDocument) {
 
   if (sourceModule === 'pitch_deck' || sourceModule === 'business') {
     return ['reference', sourceModule, relatedName, title, category, documentType].join('|');
+  }
+
+  if (sourceModule === 'projects' && title && category && relatedName) {
+    return ['project-title-category', relatedName, title, category].join('|');
+  }
+
+  if (sourceModule === 'projects' && title && relatedName) {
+    return ['project-title-date', relatedName, title, normalizedDateKey(document.uploadedAt)].join('|');
+  }
+
+  if (sourceModule === 'projects') {
+    return ['project-record', textValue(document.recordId, document.id)].join('|');
   }
 
   return [
@@ -167,9 +182,7 @@ export function normalizeUnifiedDocumentsWithMeta(rows: UnifiedDocumentSourceRow
       uploadedAt: dateValue(row?.uploaded_at, row?.created_at),
       filePath: textValue(row?.file_path) || undefined,
       fileUrl: textValue(row?.file_url) || undefined,
-      sourceUrl: textValue(row?.source_url, row?.sourceUrl) || undefined,
-      documentType: textValue(row?.document_type, row?.documentType, 'uploaded_file'),
-      status: textValue(row?.status) || undefined,
+      documentType: 'uploaded_file',
       actionUrl: projectId ? `/projects/${projectId}#documents` : '/projects',
       notes: textValue(row?.notes) || undefined,
       bucket: 'project-documents',
