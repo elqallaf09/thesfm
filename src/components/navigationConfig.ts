@@ -101,6 +101,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     items: [
       { id: 'invest', icon: TrendingUp, href: '/invest', labelKey: 'nav_invest' },
       { id: 'market-analysis', icon: LineChart, href: '/market-analysis', labelKey: 'nav_market_analysis' },
+      { id: 'gulf-news', icon: Newspaper, href: '/gulf-news', labelKey: 'nav_gulf_news' },
       { id: 'tech-news', icon: Newspaper, href: '/tech-news', labelKey: 'nav_tech_news' },
     ],
   },

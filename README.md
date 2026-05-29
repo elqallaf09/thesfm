@@ -68,6 +68,22 @@ Setup:
 
 The browser should call the local Next.js proxy routes, such as `/api/market/health` and `/api/market/analyze?symbol=AAPL&assetType=stock`. Client components should not call the Render URL directly.
 
+## Gulf Market News Sources
+
+The `/gulf-news` page uses free server-side RSS feeds and delayed/free market data only. It does not use paid APIs, client-side keys, fake news, or fake index values.
+
+RSS feeds currently configured in `src/lib/gulf/rssFeeds.ts`:
+
+- Mubasher Kuwait: `http://feeds.mubasher.info/ar/KSE/news`
+- Mubasher Saudi Arabia: `http://feeds.mubasher.info/ar/TDWL/news`
+- Mubasher Oman: `http://feeds.mubasher.info/ar/MSM/news`
+- Mubasher Bahrain: `http://feeds.mubasher.info/ar/BB/news`
+- Mubasher Dubai Financial Market: `http://feeds.mubasher.info/ar/DFM/news`
+- Mubasher Abu Dhabi Securities Exchange: `http://feeds.mubasher.info/ar/ADX/news`
+- Mubasher Qatar: `http://feeds.mubasher.info/ar/QE/news`
+
+Feeds are fetched through `/api/gulf-news` with a 5-minute revalidation window. If a feed blocks or fails, it is skipped gracefully. Delayed index data is attempted only where a reliable free Yahoo-compatible symbol is configured; otherwise the UI shows the market value as unavailable.
+
 ## Market Symbols Directory
 
 Market search uses a server-side directory so global symbols are not bundled into the frontend. Apply `supabase/migrations/010_create_market_symbols.sql` to create and seed the public read-only `market_symbols` table.
