@@ -4,17 +4,20 @@ export type TechStockPrice = {
   symbol: string;
   price: number | null;
   changePercent: number | null;
+  change: number | null;
   source: 'Finnhub';
+  delayed: true;
 };
 
 type FinnhubQuote = {
   c?: number;
+  d?: number;
   dp?: number;
 };
 
 async function fetchFinnhubJson<T>(url: string) {
   const response = await fetch(url, {
-    next: { revalidate: 1800 },
+    next: { revalidate: 300 },
     headers: { accept: 'application/json' },
   });
   if (!response.ok) throw new Error(`Finnhub returned ${response.status}`);
@@ -30,7 +33,9 @@ export async function fetchStockPrices(stocks: TechStockConfig[], apiKey: string
         symbol: stock.symbol,
         price: Number.isFinite(Number(quote.c)) && Number(quote.c) > 0 ? Number(quote.c) : null,
         changePercent: Number.isFinite(Number(quote.dp)) ? Number(quote.dp) : null,
+        change: Number.isFinite(Number(quote.d)) ? Number(quote.d) : null,
         source: 'Finnhub' as const,
+        delayed: true as const,
       };
     }),
   );
@@ -43,7 +48,9 @@ export async function fetchStockPrices(stocks: TechStockConfig[], apiKey: string
           symbol: stocks[index]?.symbol ?? '',
           price: null,
           changePercent: null,
+          change: null,
           source: 'Finnhub' as const,
+          delayed: true as const,
         })
       .filter(price => price.symbol)
       .map(price => [price.symbol, price]),

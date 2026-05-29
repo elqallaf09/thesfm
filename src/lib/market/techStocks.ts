@@ -19,6 +19,7 @@ export const TECH_STOCKS: TechStockConfig[] = [
   { name: 'Microsoft', symbol: 'MSFT', sector: 'cloud' },
   { name: 'Nvidia', symbol: 'NVDA', sector: 'ai' },
   { name: 'Alphabet', symbol: 'GOOGL', aliases: ['GOOG'], sector: 'cloud' },
+  { name: 'Alphabet Class C', symbol: 'GOOG', sector: 'cloud' },
   { name: 'Amazon', symbol: 'AMZN', sector: 'ecommerce' },
   { name: 'Meta', symbol: 'META', sector: 'ai' },
   { name: 'Tesla', symbol: 'TSLA', sector: 'ev' },

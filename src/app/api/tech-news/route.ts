@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { fetchTechNews } from '@/lib/market/fetchTechNews';
 
-export const revalidate = 1800;
+export const revalidate = 300;
 
 export async function GET() {
   try {
     const payload = await fetchTechNews();
     return NextResponse.json(payload, {
       headers: {
-        'cache-control': 's-maxage=1800, stale-while-revalidate=3600',
+        'cache-control': 's-maxage=300, stale-while-revalidate=600',
       },
     });
   } catch (error) {
