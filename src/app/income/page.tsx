@@ -132,7 +132,8 @@ const TX: Record<string, Record<Lang, string>> = {
   savingsRateTitle: { ar: 'معدل الادخار', en: 'Savings rate', fr: 'Taux d’épargne' },
   spendingRatioTitle: { ar: 'نسبة الصرف', en: 'Spending ratio', fr: 'Ratio de dépenses' },
   calculatedFromRealData: { ar: 'محسوب من بياناتك الفعلية', en: 'Calculated from your real data', fr: 'Calculé à partir de vos données réelles' },
-  insufficientData: { ar: 'بيانات غير كافية', en: 'Insufficient data', fr: 'Données insuffisantes' },
+  insufficientData: { ar: 'بيانات غير كافية', en: 'Not enough data', fr: 'Données insuffisantes' },
+  addIncomeForStability: { ar: 'أضف مصادر دخل لحساب درجة الاستقرار', en: 'Add income sources to calculate stability score', fr: 'Ajoutez des sources de revenus pour calculer le score de stabilité' },
   insufficientIncomeSavings: { ar: 'لا توجد بيانات دخل كافية لحساب معدل الادخار.', en: 'Not enough income data to calculate savings rate.', fr: 'Données de revenus insuffisantes pour calculer le taux d’épargne.' },
   insufficientExpensesSpending: { ar: 'لا توجد بيانات مصروفات كافية لحساب نسبة الصرف.', en: 'Not enough expense data to calculate spending ratio.', fr: 'Données de dépenses insuffisantes pour calculer le ratio de dépenses.' },
   insufficientForecast: { ar: 'لا توجد بيانات كافية لتوقع الشهر القادم.', en: 'Not enough data to forecast next month.', fr: 'Données insuffisantes pour prévoir le mois prochain.' },
@@ -530,14 +531,18 @@ export default function IncomePage() {
   const largestRow = viewRows.reduce<IncomeViewRow | null>((largest, row) => toFiniteAmount(row.amount) > toFiniteAmount(largest?.amount) ? row : largest, null);
   const concentrationPercent = total > 0 && largestRow ? Math.round((toFiniteAmount(largestRow.amount) / total) * 100) : 0;
   const stableMonths = new Set(viewRows.map(row => (row.received_date || row.generated_for_date || '').slice(0, 7)).filter(Boolean)).size;
-  const stabilityScore = Math.max(0, Math.min(100,
-    45
-    + Math.min(activeSources, 5) * 6
-    + Math.min(recurringPercent, 80) * 0.25
-    - Math.max(0, concentrationPercent - 55) * 0.35
-    - lateRows.length * 7
-    - viewRows.filter(row => row.workflowStatus === 'pending').length * 3
-  ));
+  const hasIncomeData = viewRows.some(row => row.workflowStatus !== 'late' && toFiniteAmount(row.amount) > 0);
+  const stabilityScore = hasIncomeData
+    ? Math.max(0, Math.min(100,
+      Math.min(activeSources, 5) * 6
+      + Math.min(recurringPercent, 80) * 0.25
+      + Math.min(stableMonths, 4) * 10
+      + 25
+      - Math.max(0, concentrationPercent - 55) * 0.35
+      - lateRows.length * 7
+      - viewRows.filter(row => row.workflowStatus === 'pending').length * 3
+    ))
+    : null;
   const monthTotals = useMemo(() => {
     const totals = new Map<string, number>();
     viewRows.forEach(row => {
@@ -608,6 +613,7 @@ export default function IncomePage() {
     ];
   }, [forecastPercent, insightLoadError, lang, locale, savingsRate, spendingRatio]);
   const smartGuidance = useMemo(() => {
+    if (!hasIncomeData) return [tr('addIncomeForStability', lang)];
     const items: string[] = [];
     if (recurringPercent >= 50) items.push(tr('recurringStrong', lang));
     if (largestRow) items.push(`${tr('largestSource', lang)} ${legacyName(largestRow)}.`);
@@ -615,7 +621,7 @@ export default function IncomePage() {
     if (lateRows.length > 0) items.push(tr('lateFollowup', lang));
     items.push(concentrationPercent > 65 ? tr('highDependency', lang) : tr('diversificationHelps', lang));
     return items.slice(0, 5);
-  }, [concentrationPercent, lang, largestRow, lateRows.length, recurringPercent, viewRows]);
+  }, [concentrationPercent, hasIncomeData, lang, largestRow, lateRows.length, recurringPercent, viewRows]);
   const categorySuggestion = suggestIncomeType(form.name);
   const frequencyMode: FrequencyMode = form.isRecurring ? form.frequency : 'one-time';
   const formValidity = useMemo(() => {
@@ -1154,8 +1160,18 @@ export default function IncomePage() {
         <section className="smart-grid">
           <article className="panel smart-score">
             <div className="panel-title"><Gauge size={18} /><h2>{tr('stabilityScore', lang)}</h2></div>
-            <strong>{new Intl.NumberFormat(locale).format(Math.round(stabilityScore))}/100</strong>
-            <span>{stabilityScore >= 70 ? tr('stable', lang) : tr('needsReview', lang)}</span>
+            {stabilityScore === null ? (
+              <div className="score-empty">
+                <strong>{tr('insufficientData', lang)}</strong>
+                <span>{tr('addIncomeForStability', lang)}</span>
+                <button type="button" className="ghost-light" onClick={openCreate}>{tr('addIncome', lang)}</button>
+              </div>
+            ) : (
+              <>
+                <strong>{new Intl.NumberFormat(locale).format(Math.round(stabilityScore))}/100</strong>
+                <span>{stabilityScore >= 70 ? tr('stable', lang) : tr('needsReview', lang)}</span>
+              </>
+            )}
           </article>
           <article className="panel">
             <div className="panel-title"><TrendingUp size={18} /><h2>{tr('nextForecast', lang)}</h2></div>
@@ -1363,7 +1379,7 @@ export default function IncomePage() {
         .income-actions{display:flex;gap:10px;flex-wrap:wrap}.export-wrap{position:relative}.export-menu{position:absolute;z-index:80;inset-block-start:calc(100% + 8px);inset-inline-end:0;min-width:190px;background:var(--sfm-card);border:1px solid rgba(29,140,255,.25);border-radius:12px;padding:8px;box-shadow:0 18px 44px rgba(3,18,37,.24)}.export-menu button{width:100%;min-height:42px;border:0;border-radius:10px;background:var(--sfm-card);color:var(--sfm-foreground);display:flex;align-items:center;gap:8px;padding:0 10px;font:600 13px inherit;cursor:pointer;text-align:start;white-space:nowrap}.export-menu button:hover,.export-menu button:focus-visible{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.18)}.primary,.ghost,.primary-dark,.ghost-light{border-radius:12px;border:1px solid rgba(167,243,240,.26);height:42px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 14px inherit;cursor:pointer}.primary,.primary-dark{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:var(--sfm-primary-dark);border-color:rgba(167,243,240,.48)}.ghost{background:rgba(3,18,37,.34);color:var(--sfm-card);border-color:rgba(167,243,240,.3)}.ghost:disabled{opacity:.55;cursor:not-allowed}.ghost-light{background:var(--sfm-card);color:var(--sfm-midnight);border-color:rgba(29,140,255,.18)}
         .insights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.insight{min-height:76px;text-align:start;border:1px solid rgba(29,140,255,.16);border-radius:18px;padding:15px;background:var(--sfm-card);display:flex;align-items:center;gap:10px;color:var(--sfm-midnight);cursor:pointer;box-shadow:0 8px 22px rgba(3,18,37,.04)}.insight span{display:grid;gap:3px;line-height:1.45}.insight span strong{font-weight:600}.insight span small{font-size:13px;font-weight:600}.insight b{margin-inline-start:auto;font-size:12px;color:var(--sfm-primary-hover);max-width:140px}.insight.success{background:#F0F7E8;color:#047857}.insight.warning{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover)}.insight.info{background:#EEF5FB;color:#0C447C}.insight.muted{background:var(--sfm-card);color:var(--sfm-muted)}
         .stat-grid,.smart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.stat-grid article,.panel{background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);border-radius:20px;padding:18px;box-shadow:0 10px 26px rgba(3,18,37,.05)}.stat-grid span{display:flex;gap:8px;align-items:center;color:var(--sfm-muted);font-size:13px}.stat-grid strong{display:block;margin-top:10px;font-size:26px;font-weight:600;color:var(--sfm-midnight)}.stat-grid em{display:inline-flex;margin-top:10px;border-radius:999px;background:#ECFDF5;color:#047857;padding:4px 9px;font-style:normal;font-size:12px}
-        .smart-score strong,.smart-grid strong{display:block;color:var(--sfm-midnight);font-size:26px;font-weight:600}.smart-score span,.smart-grid p{color:var(--sfm-muted);font-size:13px;line-height:1.7;margin:8px 0 0}.smart-view{grid-column:span 1}.smart-view ul{margin:0;padding-inline-start:18px;color:var(--sfm-muted);line-height:1.8;font-size:13px}
+        .smart-score strong,.smart-grid strong{display:block;color:var(--sfm-midnight);font-size:26px;font-weight:600}.smart-score span,.smart-grid p{color:var(--sfm-muted);font-size:13px;line-height:1.7;margin:8px 0 0}.score-empty{display:grid;gap:9px;align-items:start}.score-empty strong{font-size:18px}.score-empty span{margin:0}.score-empty button{width:max-content}.smart-view{grid-column:span 1}.smart-view ul{margin:0;padding-inline-start:18px;color:var(--sfm-muted);line-height:1.8;font-size:13px}
         .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.panel-title{display:flex;align-items:center;gap:9px;margin-bottom:16px;color:var(--sfm-primary)}.panel-title h2{margin:0;font-size:18px;font-weight:600;color:var(--sfm-midnight)}.donut-wrap{display:grid;grid-template-columns:180px 1fr;gap:18px;align-items:center}.donut{width:170px;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;position:relative}.donut:after{content:"";position:absolute;inset:32px;background:var(--sfm-card);border-radius:50%}.donut span{position:relative;z-index:1;font-weight:600;color:var(--sfm-midnight)}.legend{display:grid;gap:10px}.legend div{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:13px}.legend i{width:10px;height:10px;border-radius:50%}.line-chart{width:100%;height:auto;min-height:170px;background:var(--sfm-light-card);border-radius:14px;padding:12px;overflow:visible}
         .income-report-panel p{margin:0;color:var(--sfm-muted);line-height:1.8;font-weight:600}.income-report-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
         .late-card{display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);border:1px solid rgba(133,79,11,.16);border-radius:18px;padding:14px 16px}.late-card span{display:flex;align-items:center;gap:8px;font-weight:600}.late-card button,.upcoming-item button{border:1px solid rgba(133,79,11,.16);background:#fff7eb;color:var(--sfm-primary-hover);border-radius:12px;min-height:38px;padding:0 12px;display:inline-flex;align-items:center;gap:7px;font:600 12px inherit;cursor:pointer}.upcoming-panel{display:grid;gap:10px}.upcoming-list{display:grid;gap:9px}.upcoming-item{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;border:1px solid rgba(29,140,255,.14);border-radius:14px;padding:12px;background:var(--sfm-light-card)}.upcoming-item strong{display:block;color:var(--sfm-midnight);font-weight:600}.upcoming-item span{display:block;margin-top:4px;color:var(--sfm-muted);font-size:12px}.upcoming-item em,.income-filters button{font-style:normal;border-radius:999px;background:var(--sfm-background);color:var(--sfm-muted);padding:5px 10px;font-size:12px;white-space:nowrap}.upcoming-item .received{background:#ECFDF5;color:#047857}.upcoming-item .pending,.upcoming-item .expected{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover)}.upcoming-item .late{background:#FEF2F2;color:#B91C1C}.income-filters{display:flex;gap:8px;overflow-x:auto;padding:0 0 12px;margin-top:-4px;scrollbar-width:thin}.income-filters button{border:1px solid rgba(29,140,255,.14);cursor:pointer;font:600 12px inherit;background:var(--sfm-light-card)}.income-filters button.active{background:var(--sfm-midnight);color:#fff;border-color:var(--sfm-midnight)}
