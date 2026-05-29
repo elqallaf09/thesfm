@@ -1,7 +1,6 @@
 'use client';
 
-import { Landmark, Moon, RefreshCcw, Sun } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { Landmark, RefreshCcw } from 'lucide-react';
 
 type GulfNewsHeaderProps = {
   title: string;
@@ -11,9 +10,6 @@ type GulfNewsHeaderProps = {
 };
 
 export function GulfNewsHeader({ title, subtitle, refreshing, onRefresh }: GulfNewsHeaderProps) {
-  const { resolvedTheme, setTheme } = useTheme();
-  const nextTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
-
   return (
     <section className="gulf-news-header">
       <div className="gulf-news-title-row">
@@ -29,10 +25,6 @@ export function GulfNewsHeader({ title, subtitle, refreshing, onRefresh }: GulfN
         </div>
       </div>
       <div className="gulf-news-header-actions">
-        <button type="button" className="gulf-news-icon-btn" aria-label="Theme" onClick={() => setTheme(nextTheme)}>
-          <Sun className="gulf-news-sun" size={18} />
-          <Moon className="gulf-news-moon" size={18} />
-        </button>
         <button type="button" className="gulf-news-icon-btn" aria-label="Refresh" onClick={onRefresh} disabled={refreshing}>
           <RefreshCcw size={18} className={refreshing ? 'spinning' : ''} />
         </button>
@@ -42,4 +34,3 @@ export function GulfNewsHeader({ title, subtitle, refreshing, onRefresh }: GulfN
 }
 
 export default GulfNewsHeader;
-

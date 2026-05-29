@@ -1,7 +1,6 @@
 'use client';
 
-import { Landmark, Moon, RefreshCcw, Sun } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { Landmark, RefreshCcw } from 'lucide-react';
 
 type EuropeNewsHeaderProps = {
   title: string;
@@ -11,9 +10,6 @@ type EuropeNewsHeaderProps = {
 };
 
 export function EuropeNewsHeader({ title, subtitle, refreshing, onRefresh }: EuropeNewsHeaderProps) {
-  const { resolvedTheme, setTheme } = useTheme();
-  const nextTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
-
   return (
     <section className="europe-news-header">
       <div className="europe-news-title-row">
@@ -29,10 +25,6 @@ export function EuropeNewsHeader({ title, subtitle, refreshing, onRefresh }: Eur
         </div>
       </div>
       <div className="europe-news-header-actions">
-        <button type="button" className="europe-news-icon-btn" aria-label="Theme" onClick={() => setTheme(nextTheme)}>
-          <Sun className="europe-news-sun" size={18} />
-          <Moon className="europe-news-moon" size={18} />
-        </button>
         <button type="button" className="europe-news-icon-btn" aria-label="Refresh" onClick={onRefresh} disabled={refreshing}>
           <RefreshCcw size={18} className={refreshing ? 'spinning' : ''} />
         </button>

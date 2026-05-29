@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 import { CommandMenuButton } from '@/components/CommandMenuButton';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { flattenNavigationItems, isNavigationItemActive } from '@/components/navigationConfig';
 
 const MobileMenu = dynamic(() => import('@/components/MobileMenu').then(mod => mod.MobileMenu), {
@@ -53,6 +54,7 @@ export function AppHeader() {
 
         <div className="sfm-global-actions">
           <CommandMenuButton compact />
+          <ThemeToggle />
           <LanguageSwitcher variant="gold" compact />
           <button
             type="button"

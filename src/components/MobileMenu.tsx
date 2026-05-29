@@ -7,6 +7,7 @@ import { ChevronDown, X } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { ViewModeSelector } from '@/components/ViewModeSelector';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { useViewMode } from '@/hooks/useViewMode';
@@ -107,9 +108,12 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
               <span>{menuLabel}</span>
             </div>
           </div>
-          <button type="button" className="sfm-mobile-close" aria-label={closeLabel} onClick={onClose}>
-            <X size={22} />
-          </button>
+          <div className="sfm-mobile-head-actions">
+            <ThemeToggle />
+            <button type="button" className="sfm-mobile-close" aria-label={closeLabel} onClick={onClose}>
+              <X size={22} />
+            </button>
+          </div>
         </div>
 
         <div className="sfm-mobile-lang">
@@ -198,6 +202,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
         .sfm-mobile-layer.open .sfm-mobile-panel{transform:translateX(0)}
         .sfm-mobile-panel-head,.sfm-mobile-logo,.sfm-mobile-lang,.sfm-mobile-nav button{display:flex;align-items:center}
         .sfm-mobile-panel-head{justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--mobile-menu-border)}
+        .sfm-mobile-head-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
         .sfm-mobile-logo{min-width:0;gap:10px}.sfm-mobile-logo img{object-fit:cover}.sfm-mobile-logo strong{display:block;color:var(--mobile-menu-accent);font-size:17px;font-weight:900;letter-spacing:0}.sfm-mobile-logo span{display:block;color:var(--mobile-menu-secondary);font-size:12px;font-weight:800;margin-top:2px}
         .sfm-mobile-close{flex:0 0 auto;width:42px;height:42px;border:1px solid var(--mobile-menu-border);border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.08);color:var(--mobile-menu-text);cursor:pointer}
         .sfm-mobile-lang{justify-content:center;padding:14px 0;border-bottom:1px solid var(--mobile-menu-border)}

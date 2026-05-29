@@ -1,7 +1,6 @@
 'use client';
 
-import { Moon, Newspaper, RefreshCcw, Sun } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { Newspaper, RefreshCcw } from 'lucide-react';
 
 type TechNewsHeaderProps = {
   title: string;
@@ -11,9 +10,6 @@ type TechNewsHeaderProps = {
 };
 
 export function TechNewsHeader({ title, subtitle, refreshing, onRefresh }: TechNewsHeaderProps) {
-  const { resolvedTheme, setTheme } = useTheme();
-  const nextTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
-
   return (
     <section className="tech-news-header">
       <div className="tech-news-title-row">
@@ -29,15 +25,6 @@ export function TechNewsHeader({ title, subtitle, refreshing, onRefresh }: TechN
         </div>
       </div>
       <div className="tech-news-header-actions">
-        <button
-          type="button"
-          className="tech-news-icon-btn"
-          aria-label="Theme"
-          onClick={() => setTheme(nextTheme)}
-        >
-          <Sun className="tech-news-sun" size={18} />
-          <Moon className="tech-news-moon" size={18} />
-        </button>
         <button
           type="button"
           className="tech-news-icon-btn"
