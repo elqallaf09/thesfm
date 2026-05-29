@@ -53,11 +53,56 @@ type SummaryRow = {
   value: string;
 };
 
-type BusinessLoadIssues = {
-  projects?: string;
-  sales?: string;
-  employees?: string;
+type BusinessSectionKey = 'projects' | 'sales' | 'employees';
+
+type BusinessLoadIssue = {
+  section: BusinessSectionKey;
+  table: string;
+  code?: string;
+  message: string;
+  details?: string;
+  hint?: string;
 };
+
+type BusinessLoadIssues = Partial<Record<BusinessSectionKey, BusinessLoadIssue>>;
+
+type SupabaseQueryResult<T> = {
+  data: T | null;
+  error: {
+    code?: string;
+    message?: string;
+    details?: string;
+    hint?: string;
+  } | null;
+};
+
+function normalizeBusinessLoadIssue(section: BusinessSectionKey, table: string, error: unknown): BusinessLoadIssue {
+  const maybeError = error && typeof error === 'object'
+    ? error as { code?: string; message?: string; details?: string; hint?: string }
+    : {};
+
+  return {
+    section,
+    table,
+    code: maybeError.code,
+    message: maybeError.message || (error instanceof Error ? error.message : 'Unknown business data load error'),
+    details: maybeError.details,
+    hint: maybeError.hint,
+  };
+}
+
+function logBusinessLoadIssue(issue: BusinessLoadIssue) {
+  if (process.env.NODE_ENV !== 'development') return;
+
+  console.error('[BusinessManagement] Failed to load section', {
+    section: issue.section,
+    table: issue.table,
+    code: issue.code,
+    message: issue.message,
+    details: issue.details,
+    hint: issue.hint,
+  });
+}
 
 export default function BusinessOperationsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -79,6 +124,7 @@ export default function BusinessOperationsPage() {
       setSalesRows([]);
       setEmployeeRows([]);
       setProjectRows([]);
+      setLoadIssues({});
       setLoading(false);
       return;
     }
@@ -87,44 +133,81 @@ export default function BusinessOperationsPage() {
     setLoadIssues({});
     try {
       const db = supabase as any;
-      const [profileResult, projectsResult, salesResult, employeesResult] = await Promise.all([
-        db.from('profiles').select('default_currency').eq('id', user.id).maybeSingle(),
-        db.from('projects').select('id').eq('user_id', user.id),
-        permissions.canViewSales
+      const nextIssues: BusinessLoadIssues = {};
+      const queries = {
+        profile: db.from('profiles').select('default_currency').eq('id', user.id).maybeSingle(),
+        projects: db.from('projects').select('id').eq('user_id', user.id),
+        sales: permissions.canViewSales
           ? db.from('business_sales').select('id, customer_name, product_or_service, amount, currency, status, sale_date').eq('user_id', user.id).order('sale_date', { ascending: false })
           : Promise.resolve({ data: [], error: null }),
-        permissions.canViewEmployees
+        employees: permissions.canViewEmployees
           ? db.from('business_employees').select('id, employee_name, salary, bonus, status, payroll_due_day').eq('user_id', user.id).order('created_at', { ascending: false })
           : Promise.resolve({ data: [], error: null }),
+      };
+
+      const [profileSettled, projectsSettled, salesSettled, employeesSettled] = await Promise.allSettled([
+        queries.profile,
+        queries.projects,
+        queries.sales,
+        queries.employees,
       ]);
 
+      const profileResult = profileSettled.status === 'fulfilled'
+        ? profileSettled.value as SupabaseQueryResult<{ default_currency?: string }>
+        : { data: null, error: profileSettled.reason };
+
       if (profileResult.error) {
-        console.warn('[BusinessOperations] Profile currency could not be loaded', profileResult.error);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[BusinessManagement] Profile currency could not be loaded', {
+            table: 'profiles',
+            code: profileResult.error.code,
+            message: profileResult.error.message,
+            details: profileResult.error.details,
+            hint: profileResult.error.hint,
+          });
+        }
       } else if (profileResult.data?.default_currency) {
         setDefaultCurrency(profileResult.data.default_currency);
       }
 
-      const nextIssues: BusinessLoadIssues = {};
+      const projectsResult = projectsSettled.status === 'fulfilled'
+        ? projectsSettled.value as SupabaseQueryResult<ProjectRow[]>
+        : { data: null, error: projectsSettled.reason };
 
       if (projectsResult.error) {
-        console.error('[BusinessOperations] Projects query failed', projectsResult.error);
-        nextIssues.projects = text.loadError;
+        const issue = normalizeBusinessLoadIssue('projects', 'projects', projectsResult.error);
+        nextIssues.projects = issue;
+        logBusinessLoadIssue(issue);
         setProjectRows([]);
       } else {
         setProjectRows(Array.isArray(projectsResult.data) ? (projectsResult.data as ProjectRow[]) : []);
       }
 
+      const salesResult = salesSettled.status === 'fulfilled'
+        ? salesSettled.value as SupabaseQueryResult<SaleRow[]>
+        : { data: null, error: salesSettled.reason };
+
       if (salesResult.error) {
-        console.error('[BusinessOperations] Sales query failed', salesResult.error);
-        if (permissions.canViewSales) nextIssues.sales = text.loadError;
+        const issue = normalizeBusinessLoadIssue('sales', 'business_sales', salesResult.error);
+        if (permissions.canViewSales) {
+          nextIssues.sales = issue;
+          logBusinessLoadIssue(issue);
+        }
         setSalesRows([]);
       } else {
         setSalesRows(Array.isArray(salesResult.data) ? (salesResult.data as SaleRow[]) : []);
       }
 
+      const employeesResult = employeesSettled.status === 'fulfilled'
+        ? employeesSettled.value as SupabaseQueryResult<EmployeeRow[]>
+        : { data: null, error: employeesSettled.reason };
+
       if (employeesResult.error) {
-        console.error('[BusinessOperations] Employees query failed', employeesResult.error);
-        if (permissions.canViewEmployees) nextIssues.employees = text.loadError;
+        const issue = normalizeBusinessLoadIssue('employees', 'business_employees', employeesResult.error);
+        if (permissions.canViewEmployees) {
+          nextIssues.employees = issue;
+          logBusinessLoadIssue(issue);
+        }
         setEmployeeRows([]);
       } else {
         setEmployeeRows(Array.isArray(employeesResult.data) ? (employeesResult.data as EmployeeRow[]) : []);
@@ -140,16 +223,16 @@ export default function BusinessOperationsPage() {
       const everyAttemptedQueryFailed = attemptedQueries.length > 0 && attemptedQueries.every(item => Boolean(item.error));
 
       if (everyAttemptedQueryFailed) {
-        console.error('[BusinessOperations] All business data sources failed', {
-          projectsError: projectsResult.error,
-          salesError: salesResult.error,
-          employeesError: employeesResult.error,
-        });
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[BusinessManagement] All business data sources failed', Object.values(nextIssues));
+        }
         setError(text.loadError);
         return;
       }
     } catch (loadError) {
-      console.error('[BusinessOperations] Unexpected business data load error', loadError);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[BusinessManagement] Unexpected business data load error', loadError);
+      }
       setError(text.loadError);
     } finally {
       setLoading(false);
@@ -264,6 +347,8 @@ export default function BusinessOperationsPage() {
     { title: text.operatingExpenses, description: text.operatingExpensesDescription, icon: ReceiptText, active: false, allowed: false, count: 0 },
   ], [permissions.canViewEmployees, permissions.canViewSales, summary.employeeCount, summary.projectCount, summary.salesCount, text]);
 
+  const failedBusinessSections = Object.values(loadIssues).filter(Boolean);
+
   if (authLoading || loading || roleLoading) {
     return (
       <div className="business-ops-page" dir={dir}>
@@ -369,11 +454,27 @@ export default function BusinessOperationsPage() {
           <BusinessOperationsChartCard title={text.topProducts} data={chartData.products} currency={defaultCurrency} lang={locale} />
         </section>
 
-        {!error && Object.keys(loadIssues).length > 0 ? (
+        {!error && failedBusinessSections.length > 0 ? (
           <div className="business-section-warning" role="status">
             <AlertTriangle size={17} aria-hidden="true" />
             <span>{text.partialLoadWarning}</span>
           </div>
+        ) : null}
+
+        {process.env.NODE_ENV === 'development' && failedBusinessSections.length > 0 ? (
+          <section className="business-debug-panel" dir="ltr" aria-label="Business data debug">
+            <strong>Business data debug</strong>
+            {failedBusinessSections.map((issue) => (
+              <pre key={issue.section}>{JSON.stringify({
+                section: issue.section,
+                table: issue.table,
+                code: issue.code,
+                message: issue.message,
+                details: issue.details,
+                hint: issue.hint,
+              }, null, 2)}</pre>
+            ))}
+          </section>
         ) : null}
 
         {isEmpty && !error ? (
@@ -492,6 +593,30 @@ const businessOperationsStyles = `
     align-items: center;
     gap: 8px;
     font-weight: 850;
+  }
+
+  .business-debug-panel {
+    border: 1px solid rgba(239, 68, 68, 0.22);
+    background: rgba(15, 23, 42, 0.96);
+    color: #F8FAFC;
+    border-radius: 16px;
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+    overflow: auto;
+  }
+
+  .business-debug-panel strong {
+    font-size: 0.9rem;
+  }
+
+  .business-debug-panel pre {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: #CBD5E1;
+    font-size: 0.78rem;
+    line-height: 1.55;
   }
 
   .business-hero-actions {
