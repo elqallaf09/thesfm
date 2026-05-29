@@ -73,6 +73,7 @@ type DashboardLoadFailure = {
   message: string;
   code?: string;
   details?: string;
+  hint?: string;
 };
 
 type ProfileRow = {
@@ -111,6 +112,23 @@ const DASHBOARD_TABLES: DashboardTable[] = [
   { key: 'charityCommitments', table: 'charity_commitments', limit: 1000 },
   { key: 'notifications', table: 'notifications', limit: 1000 },
 ];
+
+const OPTIONAL_DASHBOARD_SECTIONS = new Set<DashboardFailureSection>([
+  'projectTasks',
+  'projectMilestones',
+  'projectFinancialModels',
+  'projectPitchDecks',
+  'projectFundingReadiness',
+  'marketWatchlist',
+  'marketPriceAlerts',
+  'zakatCalculations',
+  'zakatAssets',
+  'charityProjects',
+  'charityDonations',
+  'charityReminders',
+  'charityCommitments',
+  'notifications',
+]);
 
 const EMPTY_RECORDS = DASHBOARD_TABLES.reduce((acc, item) => {
   acc[item.key] = [];
@@ -180,7 +198,7 @@ const TEXT = {
     nextZakatDate: 'تاريخ الاستحقاق القادم',
     charityProjects: 'المشاريع الخيرية',
     annualDonations: 'تبرعات السنة',
-    noZakat: 'لا توجد حسابات زكاة محفوظة.',
+    noZakat: 'لا توجد حسابات زكاة محفوظة',
     openZakat: 'فتح الزكاة',
     openCharityProjects: 'فتح المشاريع الخيرية',
     openCharity: 'فتح الأعمال الخيرية',
@@ -198,7 +216,7 @@ const TEXT = {
     highPriority: 'عالية الأهمية',
     dueToday: 'مستحقة اليوم',
     viewAllNotifications: 'عرض كل الإشعارات',
-    noNotifications: 'لا توجد إشعارات حالياً.',
+    noNotifications: 'لا توجد إشعارات حالياً',
     completeSetupTitle: 'أكمل إعداد حسابك',
     completeSetupText: 'أضف بياناتك الأساسية للحصول على لوحة قيادة أدق.',
     completeSetup: 'إكمال الإعداد',
@@ -226,7 +244,7 @@ const TEXT = {
     currentMonth: 'Current month',
     allRecords: 'All records',
     insufficientData: 'Insufficient data',
-    noDataYet: 'No data right now.',
+    noDataYet: 'No data yet',
     noDataBody: 'Add your data to get started.',
     openPage: 'Open page',
     financialHealth: 'Financial Health',
@@ -272,7 +290,7 @@ const TEXT = {
     nextZakatDate: 'Next due date',
     charityProjects: 'Charity projects',
     annualDonations: 'Annual donations',
-    noZakat: 'No saved zakat calculations.',
+    noZakat: 'No saved zakat calculations',
     openZakat: 'Open Zakat',
     openCharityProjects: 'Open Charity Projects',
     openCharity: 'Open Charity',
@@ -280,7 +298,7 @@ const TEXT = {
     readyReports: 'Ready reports',
     reportsNeedData: 'Reports needing data',
     lastGenerated: 'Last saved report',
-    lastGeneratedUnavailable: 'No saved reports right now.',
+    lastGeneratedUnavailable: 'No saved reports yet',
     openReportsCenter: 'Open Reports Center',
     smartNotifications: 'Smart Notifications',
     smartTasks: 'Tasks Center',
@@ -290,7 +308,7 @@ const TEXT = {
     highPriority: 'High Priority',
     dueToday: 'Due Today',
     viewAllNotifications: 'View all notifications',
-    noNotifications: 'No notifications right now.',
+    noNotifications: 'No notifications yet',
     completeSetupTitle: 'Complete your account setup',
     completeSetupText: 'Add your core data to get a more accurate executive dashboard.',
     completeSetup: 'Complete Setup',
@@ -318,7 +336,7 @@ const TEXT = {
     currentMonth: 'Mois en cours',
     allRecords: 'Tous les enregistrements',
     insufficientData: 'Données insuffisantes',
-    noDataYet: 'Aucune donnée pour le moment.',
+    noDataYet: 'Aucune donnée pour le moment',
     noDataBody: 'Ajoutez vos données pour commencer.',
     openPage: 'Ouvrir la page',
     financialHealth: 'Santé financière',
@@ -364,7 +382,7 @@ const TEXT = {
     nextZakatDate: 'Prochaine échéance',
     charityProjects: 'Projets caritatifs',
     annualDonations: 'Dons annuels',
-    noZakat: 'Aucun calcul de zakat enregistré.',
+    noZakat: 'Aucun calcul de zakat enregistré',
     openZakat: 'Ouvrir la zakat',
     openCharityProjects: 'Ouvrir les projets caritatifs',
     openCharity: 'Ouvrir la charité',
@@ -372,7 +390,7 @@ const TEXT = {
     readyReports: 'Rapports prêts',
     reportsNeedData: 'Rapports avec données requises',
     lastGenerated: 'Dernier rapport enregistré',
-    lastGeneratedUnavailable: 'Aucun rapport enregistré pour le moment.',
+    lastGeneratedUnavailable: 'Aucun rapport enregistré',
     openReportsCenter: 'Ouvrir le Centre des rapports',
     smartNotifications: 'Notifications intelligentes',
     smartTasks: 'Centre des tâches',
@@ -382,7 +400,7 @@ const TEXT = {
     highPriority: 'Haute priorité',
     dueToday: 'À échéance aujourd’hui',
     viewAllNotifications: 'Voir toutes les notifications',
-    noNotifications: 'Aucune notification pour le moment.',
+    noNotifications: 'Aucune notification pour le moment',
     completeSetupTitle: 'Complétez la configuration du compte',
     completeSetupText: 'Ajoutez vos données de base pour obtenir un tableau de bord plus précis.',
     completeSetup: 'Terminer la configuration',
@@ -578,7 +596,8 @@ function normalizeDashboardError(error: unknown, fallback = 'Load failed') {
     return {
       message: String(source.message || fallback),
       code: source.code ? String(source.code) : undefined,
-      details: source.details ? String(source.details) : source.hint ? String(source.hint) : undefined,
+      details: source.details ? String(source.details) : undefined,
+      hint: source.hint ? String(source.hint) : undefined,
     };
   }
 
@@ -587,12 +606,18 @@ function normalizeDashboardError(error: unknown, fallback = 'Load failed') {
 
 function logDashboardFailure(failure: DashboardLoadFailure) {
   if (process.env.NODE_ENV === 'production') return;
-  console.error(`[ExecutiveDashboard] Failed to load ${failure.section}`, {
+  console.error('[ExecutiveDashboard] Real loading error', {
+    section: failure.section,
     table: failure.table,
     code: failure.code,
     message: failure.message,
     details: failure.details,
+    hint: failure.hint,
   });
+}
+
+function isGlobalDashboardFailure(failure: DashboardLoadFailure) {
+  return failure.section === 'auth' || failure.section === 'profile' || !OPTIONAL_DASHBOARD_SECTIONS.has(failure.section);
 }
 
 async function fetchDashboardTable(userId: string, item: DashboardTable): Promise<{ key: DashboardKey; rows: DataRow[] }> {
@@ -907,7 +932,8 @@ export default function ExecutiveDashboardPage() {
     [text.insufficientData]
   );
 
-  const hasErrors = loadFailures.length > 0;
+  const globalLoadFailures = loadFailures.filter(isGlobalDashboardFailure);
+  const hasErrors = globalLoadFailures.length > 0;
   const topOpenTasks = dashboardTasks.filter(task => task.status === 'open').slice(0, 3);
   const sourceUnavailable = (...keys: DashboardKey[]) => keys.some((key) => Boolean(errors[key]));
   const hasAssetData = records.savings.length > 0 || records.investments.length > 0 || records.goals.length > 0;
