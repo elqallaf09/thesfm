@@ -64,15 +64,15 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
   return {
     id: row.id,
     name: row.name || '',
-    type: row.type || meta?.type || 'stocks',
+    type: row.type || meta?.type || 'investment',
     currentValue,
     monthlyContribution: Number(row.monthly_contribution ?? meta?.monthlyContribution ?? 0) || 0,
     startDate: row.start_date || meta?.startDate || createdAt.slice(0, 10) || todayInput(),
     riskLevel: row.risk_level || meta?.riskLevel || 'medium',
     expectedAnnualReturn: row.expected_annual_return !== undefined && row.expected_annual_return !== null
       ? Number(row.expected_annual_return)
-      : meta?.expectedAnnualReturn,
-    notes: row.notes ?? meta?.notes,
+      : meta?.expectedAnnualReturn ?? 0,
+    notes: row.notes ?? meta?.notes ?? '',
     createdAt,
     updatedAt: row.updated_at || createdAt,
   };
