@@ -25,6 +25,7 @@ function changeClass(value: number | null) {
 export function TechNewsCard({ item, labels, formatDateTime, formatPrice }: TechNewsCardProps) {
   const tone = changeClass(item.changePercent);
   const ChangeIcon = tone === 'down' ? TrendingDown : TrendingUp;
+  const hasPrice = item.price !== null;
 
   return (
     <article className="tech-news-card">
@@ -36,13 +37,21 @@ export function TechNewsCard({ item, labels, formatDateTime, formatPrice }: Tech
             {item.isTranslated ? labels.translated : labels.originalLanguage}
           </span>
         </div>
-        <div className="tech-news-card-price">
-          <strong>{item.price === null ? labels.priceUnavailable : formatPrice(item.price)}</strong>
-          <span className={`tech-news-change ${tone}`}>
-            <ChangeIcon size={15} />
-            {item.changePercent === null ? '-' : `${item.changePercent >= 0 ? '+' : ''}${item.changePercent.toFixed(2)}%`}
-          </span>
-        </div>
+        {hasPrice ? (
+          <div className="tech-news-card-price">
+            <strong>{formatPrice(item.price)}</strong>
+            {item.changePercent !== null ? (
+              <span className={`tech-news-change ${tone}`}>
+                <ChangeIcon size={15} />
+                {`${item.changePercent >= 0 ? '+' : ''}${item.changePercent.toFixed(2)}%`}
+              </span>
+            ) : null}
+          </div>
+        ) : (
+          <div className="tech-news-card-price unavailable">
+            <strong>{labels.priceUnavailable}</strong>
+          </div>
+        )}
       </div>
       <h2>{item.headline}</h2>
       <p>{item.summary || item.headline}</p>

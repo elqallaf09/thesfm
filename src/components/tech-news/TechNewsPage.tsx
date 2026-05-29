@@ -118,7 +118,14 @@ export function TechNewsPage() {
       <AppHeader />
       <Sidebar />
       <main className="tech-news-main">
-        <TechTickerStrip prices={prices} formatPrice={formatPrice} />
+        <TechTickerStrip
+          prices={prices}
+          formatPrice={formatPrice}
+          labels={{
+            priceUnavailable: t('tech_news_price_unavailable'),
+            delayed: t('market_data_status_delayed'),
+          }}
+        />
 
         <TechNewsHeader
           title={t('tech_news_title')}
@@ -218,6 +225,7 @@ export function TechNewsPage() {
         .tech-ticker-item strong{direction:ltr;unicode-bidi:isolate;color:var(--tech-text);font-size:12px;font-weight:950}
         .tech-ticker-item span{direction:ltr;unicode-bidi:isolate;color:var(--tech-muted);font-size:12px;font-weight:900}
         .tech-ticker-item b{direction:ltr;unicode-bidi:isolate;display:inline-flex;align-items:center;gap:4px;border:1px solid transparent;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:950;line-height:1.2}
+        .tech-ticker-item small{color:var(--tech-muted);font-size:11px;font-weight:900}
         .tech-ticker-item b.up{color:#047857;background:#CCFBF1;border-color:rgba(15,118,110,.20)}.tech-ticker-item b.down{color:#DC2626;background:#FEE2E2;border-color:rgba(220,38,38,.20)}.tech-ticker-item b.neutral{color:var(--tech-muted);background:rgba(142,166,195,.10);border-color:var(--tech-border)}
         .tech-news-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:4px 0}
         .tech-news-title-row{display:flex;align-items:center;gap:14px;min-width:0}
@@ -248,7 +256,7 @@ export function TechNewsPage() {
         .tech-news-company-wrap{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
         .tech-news-company{min-width:0;color:var(--tech-text);font-size:13px;font-weight:950;overflow-wrap:anywhere}
         .tech-news-ticker{direction:ltr;unicode-bidi:isolate;border-radius:999px;background:#CCFBF1;border:1px solid rgba(15,118,110,.25);color:#0F766E;padding:6px 10px;font-size:12px;font-weight:950}.tech-news-translation-badge{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:950;border:1px solid var(--tech-border);color:var(--tech-muted);background:rgba(142,166,195,.10)}.tech-news-translation-badge.translated{color:#0F766E;border-color:rgba(15,118,110,.25);background:#CCFBF1}.dark .tech-news-ticker,.dark .tech-news-translation-badge.translated{color:#2FD6C0;background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.25)}.dark .tech-news-chip-row button.active{background:#2FD6C0;border-color:#2FD6C0;color:#061A2E;box-shadow:0 10px 24px rgba(47,214,192,.22)}.dark .tech-news-chip-row button.active:hover,.dark .tech-news-chip-row button.active:focus-visible{color:#061A2E}
-        .tech-news-card-price{display:grid;justify-items:end;gap:4px;flex:0 0 auto}.tech-news-card-price strong{direction:ltr;unicode-bidi:isolate;color:var(--tech-text);font-size:15px;font-weight:950}
+        .tech-news-card-price{display:grid;justify-items:end;gap:4px;flex:0 0 auto}.tech-news-card-price strong{direction:ltr;unicode-bidi:isolate;color:var(--tech-text);font-size:15px;font-weight:950}.tech-news-card-price.unavailable strong{direction:inherit;unicode-bidi:normal;color:var(--tech-muted);font-size:12px}
         .tech-news-change{direction:ltr;unicode-bidi:isolate;display:inline-flex;align-items:center;gap:5px;border:1px solid transparent;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:950;line-height:1.2}.tech-news-change.up{color:#047857;background:#CCFBF1;border-color:rgba(15,118,110,.20)}.tech-news-change.down{color:#DC2626;background:#FEE2E2;border-color:rgba(220,38,38,.20)}.tech-news-change.neutral{color:var(--tech-muted);background:rgba(142,166,195,.10);border-color:var(--tech-border)}.dark .tech-ticker-item b.up,.dark .tech-news-change.up{color:#2FD6C0;background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.25)}.dark .tech-ticker-item b.down,.dark .tech-news-change.down{color:#FF5B6E;background:rgba(255,91,110,.12);border-color:rgba(255,91,110,.25)}
         .tech-news-card h2{margin:0;color:var(--tech-text);font-size:18px;font-weight:950;line-height:1.45;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
         .tech-news-card p{margin:0;color:var(--tech-muted);font-size:13.5px;font-weight:760;line-height:1.75;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}

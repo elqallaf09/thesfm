@@ -13,6 +13,7 @@ export type NewsTranslationState = {
 
 type TranslatableNewsItem = {
   id: string;
+  url?: string;
   headline?: string;
   summary?: string;
   titleOriginal?: string;
@@ -126,7 +127,7 @@ export async function translateNewsItems<T extends TranslatableNewsItem>(
     const title = item.titleOriginal || item.title || item.headline || '';
     const summary = item.summaryOriginal || item.summary || title;
     const state = await translateNewsText({
-      cacheKey: item.id,
+      cacheKey: item.url || item.id,
       title,
       summary,
       targetLanguage,

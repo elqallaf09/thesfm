@@ -537,7 +537,7 @@ export const TR: Record<string, TranslationEntry> = {
   tech_news_source: { ar:'المصدر', en:'Source', fr:'Source' },
   tech_news_published: { ar:'النشر', en:'Published', fr:'Publié' },
   tech_news_open_article: { ar:'فتح الخبر الأصلي', en:'Open original article', fr:'Ouvrir l’article original' },
-  tech_news_price_unavailable: { ar:'السعر غير متاح', en:'Price unavailable', fr:'Prix indisponible' },
+  tech_news_price_unavailable: { ar:'غير متوفر', en:'Price unavailable', fr:'Prix indisponible' },
   tech_news_sector_all: { ar:'الكل', en:'All', fr:'Tout' },
   tech_news_sector_ai: { ar:'الذكاء الاصطناعي', en:'Artificial Intelligence', fr:'Intelligence artificielle' },
   tech_news_sector_semiconductors: { ar:'أشباه الموصلات', en:'Semiconductors', fr:'Semi-conducteurs' },

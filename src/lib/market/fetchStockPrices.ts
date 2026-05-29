@@ -1,12 +1,15 @@
 import type { TechStockConfig } from '@/lib/market/techStocks';
+import { fetchYahooChartQuote, fetchYahooQuote } from '@/lib/market/fetchYahooQuote';
 
 export type TechStockPrice = {
   symbol: string;
   price: number | null;
   changePercent: number | null;
   change: number | null;
-  source: 'Finnhub';
+  source: 'Finnhub' | 'Yahoo Finance';
   delayed: true;
+  available: boolean;
+  unavailableReason?: string;
 };
 
 type FinnhubQuote = {
@@ -15,29 +18,110 @@ type FinnhubQuote = {
   dp?: number;
 };
 
-async function fetchFinnhubJson<T>(url: string) {
-  const response = await fetch(url, {
+function devLog(message: string, meta: Record<string, unknown>) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.info(message, meta);
+  }
+}
+
+function numberOrNull(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeFinnhubQuote(symbol: string, quote: FinnhubQuote): TechStockPrice {
+  const price = numberOrNull(quote.c);
+  const change = numberOrNull(quote.d);
+  const changePercent = numberOrNull(quote.dp);
+  const available = price !== null && price > 0;
+
+  return {
+    symbol,
+    price: available ? price : null,
+    change: available ? change : null,
+    changePercent: available ? changePercent : null,
+    source: 'Finnhub',
+    delayed: true,
+    available,
+    ...(available ? {} : { unavailableReason: 'provider_returned_empty_quote' }),
+  };
+}
+
+function unavailableFinnhubPrice(symbol: string, unavailableReason: string): TechStockPrice {
+  return {
+    symbol,
+    price: null,
+    change: null,
+    changePercent: null,
+    source: 'Finnhub',
+    delayed: true,
+    available: false,
+    unavailableReason,
+  };
+}
+
+async function fetchFinnhubQuote(symbol: string, apiKey: string): Promise<TechStockPrice> {
+  const safeUrl = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}`;
+  const params = new URLSearchParams({ symbol, token: apiKey });
+  const response = await fetch(`https://finnhub.io/api/v1/quote?${params.toString()}`, {
     next: { revalidate: 300 },
     headers: { accept: 'application/json' },
   });
-  if (!response.ok) throw new Error(`Finnhub returned ${response.status}`);
-  return response.json() as Promise<T>;
+
+  let quote: FinnhubQuote = {};
+  let unavailableReason = '';
+  try {
+    quote = await response.json() as FinnhubQuote;
+  } catch {
+    unavailableReason = 'provider_returned_invalid_json';
+  }
+
+  if (!response.ok) {
+    unavailableReason = `provider_http_${response.status}`;
+  }
+
+  const normalized = unavailableReason
+    ? unavailableFinnhubPrice(symbol, unavailableReason)
+    : normalizeFinnhubQuote(symbol, quote);
+
+  devLog('[TechNews] Finnhub quote response', {
+    symbol,
+    url: safeUrl,
+    status: response.status,
+    rawQuoteKeys: Object.keys(quote),
+    parsed: {
+      c: numberOrNull(quote.c),
+      d: numberOrNull(quote.d),
+      dp: numberOrNull(quote.dp),
+    },
+    unavailableReason: normalized.unavailableReason ?? null,
+  });
+
+  return normalized;
 }
 
-export async function fetchStockPrices(stocks: TechStockConfig[], apiKey: string) {
+async function fetchPriceWithFallback(stock: TechStockConfig, apiKey?: string) {
+  const finnhubPrice = apiKey
+    ? await fetchFinnhubQuote(stock.symbol, apiKey)
+    : unavailableFinnhubPrice(stock.symbol, 'finnhub_api_key_not_configured');
+
+  if (finnhubPrice.available) return finnhubPrice;
+
+  const yahooPrice = await fetchYahooQuote(stock.symbol);
+  if (yahooPrice.available) return yahooPrice;
+
+  const yahooChartPrice = await fetchYahooChartQuote(stock.symbol);
+  if (yahooChartPrice.available) return yahooChartPrice;
+
+  return {
+    ...finnhubPrice,
+    unavailableReason: yahooChartPrice.unavailableReason ?? yahooPrice.unavailableReason ?? finnhubPrice.unavailableReason,
+  };
+}
+
+export async function fetchStockPrices(stocks: TechStockConfig[], apiKey?: string) {
   const settled = await Promise.allSettled(
-    stocks.map(async stock => {
-      const params = new URLSearchParams({ symbol: stock.symbol, token: apiKey });
-      const quote = await fetchFinnhubJson<FinnhubQuote>(`https://finnhub.io/api/v1/quote?${params.toString()}`);
-      return {
-        symbol: stock.symbol,
-        price: Number.isFinite(Number(quote.c)) && Number(quote.c) > 0 ? Number(quote.c) : null,
-        changePercent: Number.isFinite(Number(quote.dp)) ? Number(quote.dp) : null,
-        change: Number.isFinite(Number(quote.d)) ? Number(quote.d) : null,
-        source: 'Finnhub' as const,
-        delayed: true as const,
-      };
-    }),
+    stocks.map(stock => fetchPriceWithFallback(stock, apiKey)),
   );
 
   return new Map<string, TechStockPrice>(
@@ -51,6 +135,8 @@ export async function fetchStockPrices(stocks: TechStockConfig[], apiKey: string
           change: null,
           source: 'Finnhub' as const,
           delayed: true as const,
+          available: false,
+          unavailableReason: result.reason instanceof Error ? result.reason.message : 'price_fetch_failed',
         })
       .filter(price => price.symbol)
       .map(price => [price.symbol, price]),

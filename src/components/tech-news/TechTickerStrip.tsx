@@ -8,9 +8,13 @@ const TICKER_ORDER = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'META', 'TSLA', '
 type TechTickerStripProps = {
   prices: TechStockPrice[];
   formatPrice: (value: number | null) => string;
+  labels: {
+    priceUnavailable: string;
+    delayed: string;
+  };
 };
 
-export function TechTickerStrip({ prices, formatPrice }: TechTickerStripProps) {
+export function TechTickerStrip({ prices, formatPrice, labels }: TechTickerStripProps) {
   const tickerItems = TICKER_ORDER
     .map(ticker => prices.find(item => item.symbol === ticker) ?? {
       symbol: ticker,
@@ -19,6 +23,8 @@ export function TechTickerStrip({ prices, formatPrice }: TechTickerStripProps) {
       change: null,
       source: 'Finnhub' as const,
       delayed: true as const,
+      available: false,
+      unavailableReason: 'price_not_fetched',
     });
   const marqueeItems = [...tickerItems, ...tickerItems];
 
@@ -31,11 +37,18 @@ export function TechTickerStrip({ prices, formatPrice }: TechTickerStripProps) {
           return (
             <div className="tech-ticker-item" key={`${item.symbol}-${index}`}>
               <strong>{item.symbol}</strong>
-              <span>{formatPrice(item.price)}</span>
-              <b className={tone}>
-                <Icon size={13} />
-                {item.changePercent === null ? '-' : `${item.changePercent >= 0 ? '+' : ''}${item.changePercent.toFixed(2)}%`}
-              </b>
+              <span>{item.price === null ? labels.priceUnavailable : formatPrice(item.price)}</span>
+              {item.changePercent === null ? (
+                <b className="neutral">{labels.delayed}</b>
+              ) : (
+                <>
+                  <b className={tone}>
+                    <Icon size={13} />
+                    {`${item.changePercent >= 0 ? '+' : ''}${item.changePercent.toFixed(2)}%`}
+                  </b>
+                  <small>{labels.delayed}</small>
+                </>
+              )}
             </div>
           );
         })}

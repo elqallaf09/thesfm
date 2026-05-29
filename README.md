@@ -111,7 +111,7 @@ SUPABASE_URL=https://YOUR-PROJECT.supabase.co SUPABASE_SERVICE_ROLE_KEY=YOUR_SER
 
 ## Tech Market News
 
-The `/tech-news` page uses the server-only route `/api/tech-news` to fetch real company news and stock quotes from Finnhub. The browser never receives the API key.
+The `/tech-news` page uses the server-only route `/api/tech-news` to fetch real company news and stock quotes from Finnhub. The browser never receives the API key. If Finnhub company news has no recent articles, `/api/tech-news` falls back to public RSS feeds. If a Finnhub quote is empty or unavailable, the API tries the free Yahoo Finance quote endpoint server-side before marking that ticker unavailable.
 
 Required Vercel environment variable:
 
@@ -119,7 +119,7 @@ Required Vercel environment variable:
 FINNHUB_API_KEY=your_finnhub_key
 ```
 
-If Finnhub company news has no recent articles, `/api/tech-news` falls back to public RSS feeds and still keeps all API keys server-side. News cards only show headlines and short excerpts with links to the original source.
+News cards only show headlines and short excerpts with links to the original source. The app does not show fake news, fake translations, or fake prices; unavailable prices are displayed as unavailable.
 
 ## Optional News Translation
 
@@ -136,8 +136,8 @@ LIBRETRANSLATE_URL=https://your-libretranslate-host
 LIBRETRANSLATE_API_KEY=optional_key
 ```
 
-Translation is optional. If `LIBRETRANSLATE_URL` is not configured, THE SFM shows RSS/Finnhub news in the original source language and marks the card as original language. The app never translates full articles, never modifies original links, and never exposes translation keys to the browser.
+Translation is optional. If `LIBRETRANSLATE_URL` is not configured, THE SFM shows RSS/Finnhub news in the original source language and marks the card as original language. When configured, LibreTranslate translates only news headlines and short excerpts for Arabic and French pages, and for English only when the detected original language is not English. The app never translates full articles, never modifies original links, and never exposes translation keys to the browser.
 
-Create a key from the Finnhub dashboard, add it to `.env.local` for development and to Vercel Environment Variables for production, then redeploy. If the key is missing or Finnhub fails, THE SFM shows the news error state instead of fake articles or fake prices.
+Create a key from the Finnhub dashboard, add it to `.env.local` for development and to Vercel Environment Variables for production, then redeploy. If the key is missing or Finnhub fails, THE SFM uses the configured real fallbacks where available, and otherwise shows unavailable states instead of fake articles or fake prices.
 
 

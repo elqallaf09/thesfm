@@ -24,13 +24,14 @@ export type TechNewsItem = {
   price: number | null;
   changePercent: number | null;
   change: number | null;
-  priceSource: 'Finnhub';
+  priceSource: TechStockPrice['source'] | null;
   delayed: true;
 };
 
 export type TechNewsPayload = {
   success: true;
   source: 'Finnhub' | 'Finnhub + RSS fallback';
+  priceSource: 'Finnhub/Yahoo Finance fallback';
   lastUpdated: string;
   language: AppNewsLanguage;
   translationEnabled: boolean;
@@ -76,23 +77,29 @@ const RSS_FALLBACK_FEEDS = [
   },
 ];
 
-const TECH_KEYWORDS: Array<{ stock: TechStockConfig; keywords: string[] }> = TECH_STOCKS.map(stock => ({
-  stock,
-  keywords: [
-    stock.name,
-    stock.symbol,
-    ...(stock.aliases ?? []),
-    ...(stock.symbol === 'AAPL' ? ['Apple', 'iPhone', 'iPad', 'Mac'] : []),
-    ...(stock.symbol === 'MSFT' ? ['Microsoft', 'Azure', 'OpenAI', 'Windows'] : []),
-    ...(stock.symbol === 'NVDA' ? ['Nvidia', 'NVIDIA', 'GPU', 'AI chips'] : []),
-    ...(stock.symbol === 'GOOGL' ? ['Google', 'Alphabet', 'YouTube', 'Gemini'] : []),
-    ...(stock.symbol === 'AMZN' ? ['Amazon', 'AWS'] : []),
-    ...(stock.symbol === 'META' ? ['Meta', 'Facebook', 'Instagram', 'WhatsApp'] : []),
-    ...(stock.symbol === 'TSLA' ? ['Tesla', 'EV', 'Elon Musk'] : []),
-    ...(stock.symbol === 'AVGO' ? ['Broadcom'] : []),
-    ...(stock.symbol === 'PLTR' ? ['Palantir'] : []),
-  ],
-}));
+const STOCK_BY_SYMBOL = new Map(TECH_STOCKS.map(stock => [stock.symbol, stock]));
+
+const RSS_STOCK_KEYWORDS: Array<{ symbol: string; keywords: string[] }> = [
+  { symbol: 'AMD', keywords: ['AMD', 'Advanced Micro Devices'] },
+  { symbol: 'NVDA', keywords: ['Nvidia', 'NVIDIA', 'NVDA'] },
+  { symbol: 'AAPL', keywords: ['Apple', 'AAPL', 'iPhone', 'iPad', 'Mac'] },
+  { symbol: 'MSFT', keywords: ['Microsoft', 'MSFT', 'Azure'] },
+  { symbol: 'META', keywords: ['Meta', 'Facebook', 'Instagram', 'WhatsApp'] },
+  { symbol: 'AMZN', keywords: ['Amazon', 'AMZN', 'AWS'] },
+  { symbol: 'TSLA', keywords: ['Tesla', 'TSLA'] },
+  { symbol: 'INTC', keywords: ['Intel', 'INTC'] },
+  { symbol: 'AVGO', keywords: ['Broadcom', 'AVGO'] },
+  { symbol: 'PLTR', keywords: ['Palantir', 'PLTR'] },
+  { symbol: 'GOOGL', keywords: ['Alphabet', 'Google', 'YouTube', 'GOOGL', 'GOOG'] },
+  { symbol: 'CRM', keywords: ['Salesforce', 'CRM'] },
+  { symbol: 'ORCL', keywords: ['Oracle', 'ORCL'] },
+  { symbol: 'NFLX', keywords: ['Netflix', 'NFLX'] },
+  { symbol: 'ADBE', keywords: ['Adobe', 'ADBE'] },
+  { symbol: 'QCOM', keywords: ['Qualcomm', 'QCOM'] },
+  { symbol: 'TSM', keywords: ['Taiwan Semiconductor', 'TSMC', 'TSM'] },
+  { symbol: 'SHOP', keywords: ['Shopify', 'SHOP'] },
+  { symbol: 'UBER', keywords: ['Uber', 'UBER'] },
+];
 
 function dateString(daysAgo = 0) {
   const date = new Date();
@@ -174,9 +181,18 @@ function excerpt(value: string, fallback: string) {
   return text.length <= 190 ? text : `${text.slice(0, 187).trim()}...`;
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function hasKeyword(text: string, keyword: string) {
+  return new RegExp(`(^|[^a-z0-9])${escapeRegExp(keyword.toLowerCase())}([^a-z0-9]|$)`, 'i').test(text);
+}
+
 function matchStock(headline: string, summary: string) {
   const text = `${headline} ${summary}`.toLowerCase();
-  return TECH_KEYWORDS.find(({ keywords }) => keywords.some(keyword => text.includes(keyword.toLowerCase())))?.stock ?? null;
+  const match = RSS_STOCK_KEYWORDS.find(({ keywords }) => keywords.some(keyword => hasKeyword(text, keyword)));
+  return match ? STOCK_BY_SYMBOL.get(match.symbol) ?? null : null;
 }
 
 function mapNewsItem(stock: TechStockConfig, item: FinnhubNews, price: TechStockPrice | undefined): TechNewsItem | null {
@@ -203,7 +219,7 @@ function mapNewsItem(stock: TechStockConfig, item: FinnhubNews, price: TechStock
     price: price?.price ?? null,
     changePercent: price?.changePercent ?? null,
     change: price?.change ?? null,
-    priceSource: 'Finnhub',
+    priceSource: price?.available ? price.source : null,
     delayed: true,
   };
 }
@@ -251,7 +267,7 @@ function parseRssTechItems(feed: { source: string; url: string }, xml: string, p
       price: price?.price ?? null,
       changePercent: price?.changePercent ?? null,
       change: price?.change ?? null,
-      priceSource: 'Finnhub',
+      priceSource: price?.available ? price.source : null,
       delayed: true,
     } satisfies TechNewsItem;
   }).filter((item): item is TechNewsItem => Boolean(item));
@@ -360,13 +376,13 @@ export async function fetchTechNews(languageInput?: string | null) {
   const language = normalizeNewsLanguage(languageInput);
   const apiKey = process.env.FINNHUB_API_KEY?.trim();
   let selected: Awaited<ReturnType<typeof fetchAllCompanyNewsForRange>> | null = null;
-  const prices = apiKey ? await fetchStockPrices(TECH_STOCKS, apiKey) : new Map<string, TechStockPrice>();
+  const prices = await fetchStockPrices(TECH_STOCKS, apiKey);
   if (apiKey) {
     selected = await fetchAllCompanyNewsForRange(apiKey, NEWS_RANGES[0]);
     if (selected.usableCount === 0) selected = await fetchAllCompanyNewsForRange(apiKey, NEWS_RANGES[1]);
     if (selected.usableCount === 0) selected = await fetchAllCompanyNewsForRange(apiKey, NEWS_RANGES[2]);
   } else if (process.env.NODE_ENV !== 'production') {
-    console.warn('[TechNews] FINNHUB_API_KEY is not configured; using RSS fallback without prices.');
+    console.warn('[TechNews] FINNHUB_API_KEY is not configured; using RSS fallback for news and Yahoo Finance fallback for prices.');
   }
 
   const finnhubItems = selected
@@ -383,12 +399,15 @@ export async function fetchTechNews(languageInput?: string | null) {
     change: null,
     source: 'Finnhub' as const,
     delayed: true as const,
+    available: false,
+    unavailableReason: 'price_not_fetched',
   });
   devLog('[TechNews] Final payload counts', { items: items.length, prices: priceList.length });
 
   return {
     success: true,
     source: 'Finnhub + RSS fallback',
+    priceSource: 'Finnhub/Yahoo Finance fallback',
     lastUpdated: new Date().toISOString(),
     language,
     translationEnabled: isNewsTranslationEnabled(),
