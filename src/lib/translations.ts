@@ -1244,6 +1244,13 @@ export const TR: Record<string, TranslationEntry> = {
   notif_mark_read:      { ar:'تحديد الكل كمقروء', en:'Mark all as read', fr:'Tout marquer comme lu' },
   notif_clear:          { ar:'مسح الكل', en:'Clear all', fr:'Tout effacer' },
 
+  investment_type_investment: { ar:'استثمار', en:'Investment', fr:'Investissement' },
+  investment_type_stock: { ar:'أسهم', en:'Stocks', fr:'Actions' },
+  investment_type_real_estate: { ar:'عقار', en:'Real Estate', fr:'Immobilier' },
+  investment_type_crypto: { ar:'عملات رقمية', en:'Crypto', fr:'Crypto' },
+  investment_type_gold: { ar:'ذهب', en:'Gold', fr:'Or' },
+  investment_type_bonds: { ar:'سندات', en:'Bonds', fr:'Obligations' },
+  investment_type_fund: { ar:'صندوق استثماري', en:'Investment Fund', fr:'Fonds d’investissement' },
 } as const;
 
 /** Helper: get translation for current language */

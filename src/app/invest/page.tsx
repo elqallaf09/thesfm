@@ -39,6 +39,42 @@ const CHART_COLORS = ['#1D8CFF', '#18D4D4', '#10B981', '#F59E0B', '#6366F1', '#0
 const RISK_SCORE: Record<RiskLevel, number> = { low: 1, medium: 2, high: 3 };
 type InvestTab = 'portfolio' | 'assets' | 'performance' | 'risk' | 'reports';
 
+function formatInvestmentType(type: string | null | undefined, t: (key: any) => string) {
+  const fallback = t('investment_type_investment') || 'استثمار';
+  if (!type) return fallback;
+
+  const normalized = String(type)
+    .replace(/^invest_types_/, '')
+    .replace(/^investment_type_/, '')
+    .trim();
+
+  const aliases: Record<string, string> = {
+    stocks: 'stock',
+    stock: 'stock',
+    realEstate: 'real_estate',
+    real_estate: 'real_estate',
+    crypto: 'crypto',
+    gold: 'gold',
+    bonds: 'bonds',
+    bond: 'bonds',
+    fund: 'fund',
+    funds: 'fund',
+    investment: 'investment',
+  };
+  const key = `investment_type_${aliases[normalized] || normalized}`;
+  const translated = t(key);
+  if (translated && translated !== key) return translated;
+
+  const legacyKey = `invest_types_${normalized}`;
+  const legacyTranslated = t(legacyKey);
+  if (legacyTranslated && legacyTranslated !== legacyKey) return legacyTranslated;
+
+  const directTranslated = t(type);
+  if (directTranslated && directTranslated !== type) return directTranslated;
+
+  return normalized || fallback;
+}
+
 export default function InvestPage() {
   const router = useRouter();
   const { lang, dir, t } = useLanguage();
@@ -111,7 +147,7 @@ export default function InvestPage() {
     },
   }), [t]);
 
-  const typeLabel = useCallback((type: InvestmentType) => t(`invest_types_${type}`), [t]);
+  const typeLabel = useCallback((type: InvestmentType | string | null | undefined) => formatInvestmentType(type, t), [t]);
   const riskLabel = useCallback((risk: RiskLevel) => t(`invest_risks_${risk}`), [t]);
   const L = useCallback((ar: string, en: string, fr: string) => lang === 'ar' ? ar : lang === 'fr' ? fr : en, [lang]);
   const tabs = useMemo(() => [
