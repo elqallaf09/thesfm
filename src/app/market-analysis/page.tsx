@@ -128,6 +128,19 @@ function normalizeAlertRow(row: Record<string, unknown>): SavedAlert {
   };
 }
 
+function normalizeInvestmentItem(row: Record<string, unknown>): PortfolioInvestment {
+  const amount = parseNumber(row.amount);
+  const name = String(row.name ?? '').trim();
+  return {
+    id: String(row.id ?? ''),
+    name,
+    amount,
+    currentValue: amount,
+    type: name || 'investment',
+    riskLevel: 'medium',
+  };
+}
+
 function normalizeAlertType(value: unknown): AlertType {
   const normalized = String(value ?? '').trim();
   if (normalized === 'below' || normalized === 'change_exceeds' || normalized === 'rsi_above' || normalized === 'rsi_below') return normalized;
@@ -561,7 +574,7 @@ export default function MarketAnalysisPage() {
           .order('created_at', { ascending: false }),
         supabase
           .from('investment_items')
-          .select('id, name, amount, current_value, type, risk_level')
+          .select('id, name, amount, created_at, ai_analysis')
           .eq('user_id', user.id),
       ]);
 
@@ -580,19 +593,17 @@ export default function MarketAnalysisPage() {
       }
 
       if (portfolioResult.status === 'fulfilled' && !portfolioResult.value.error) {
-        setPortfolio((portfolioResult.value.data ?? []).map(row => {
-          const item = row as Record<string, unknown>;
-          const amount = parseNumber(item.amount);
-          return {
-            id: String(item.id ?? ''),
-            name: String(item.name ?? ''),
-            amount,
-            currentValue: parseNumber(item.current_value) || amount,
-            type: typeof item.type === 'string' ? item.type : null,
-            riskLevel: typeof item.risk_level === 'string' ? item.risk_level : null,
-          };
-        }));
+        setPortfolio((portfolioResult.value.data ?? []).map(row => normalizeInvestmentItem(row as Record<string, unknown>)));
       } else {
+        const investmentError = portfolioResult.status === 'fulfilled' ? portfolioResult.value.error : portfolioResult.reason;
+        if (process.env.NODE_ENV !== 'production' && investmentError) {
+          console.error('[MarketAnalysis] Failed to load investment_items', {
+            code: investmentError.code,
+            message: investmentError.message,
+            details: investmentError.details,
+            hint: investmentError.hint,
+          });
+        }
         setPortfolio([]);
       }
     }
@@ -985,7 +996,7 @@ export default function MarketAnalysisPage() {
                 <div className="market-section-head">
                   <WalletCards size={19} />
                   <div>
-                    <span>{portfolioMatch ? t('market_asset_in_portfolio') : t('market_asset_not_in_portfolio')}</span>
+                    <span>{portfolio.length === 0 ? 'لا توجد بيانات استثمارية حالياً' : portfolioMatch ? t('market_asset_in_portfolio') : t('market_asset_not_in_portfolio')}</span>
                     <h2>{t('market_portfolio_comparison')}</h2>
                   </div>
                 </div>
