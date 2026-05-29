@@ -670,7 +670,8 @@ function LoginContent() {
     setTermsError('');
 
     const question = resolvedSecurityQuestion();
-    if ((question && !securityAnswer.trim()) || (!question && securityAnswer.trim())) return text.errorSecurityPair;
+    const answer = securityAnswer.trim();
+    const shouldSaveSecurityQuestion = Boolean(question && answer);
 
     const cleanUsername = username.trim().toLowerCase();
     const cleanEmail = email.trim().toLowerCase();
@@ -713,8 +714,8 @@ function LoginContent() {
         theme: 'light',
         view_mode: 'simple',
         onboarding_completed: false,
-        security_question_2: question || null,
-        security_answer_2: securityAnswer.trim() || null,
+        security_question_2: shouldSaveSecurityQuestion ? question : null,
+        security_answer_2: shouldSaveSecurityQuestion ? answer : null,
         updated_at: new Date().toISOString(),
       });
       const { error: profileError } = await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' });

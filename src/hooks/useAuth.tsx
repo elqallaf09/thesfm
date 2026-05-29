@@ -256,6 +256,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const user = signUpData.user ?? (await supabase.auth.getUser()).data.user;
         if (user && signUpData.session) {
+          const cleanSecurityQuestion = securityQuestion?.trim() || '';
+          const cleanSecurityAnswer = securityAnswer?.trim() || '';
+          const shouldSaveSecurityQuestion = Boolean(cleanSecurityQuestion && cleanSecurityAnswer);
           const profilePayload = cleanObject({
             id: user.id,
             username: cleanUsername,
@@ -272,8 +275,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             theme: 'light',
             view_mode: 'simple',
             onboarding_completed: false,
-            security_question_2: securityQuestion || null,
-            security_answer_2: securityAnswer?.trim() || null,
+            security_question_2: shouldSaveSecurityQuestion ? cleanSecurityQuestion : null,
+            security_answer_2: shouldSaveSecurityQuestion ? cleanSecurityAnswer : null,
             updated_at: new Date().toISOString(),
           });
           const { error: profileError } = await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' });
