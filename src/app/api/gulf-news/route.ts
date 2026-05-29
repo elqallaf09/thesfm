@@ -28,7 +28,7 @@ export async function GET(request: Request) {
         language,
         translationEnabled: isNewsTranslationEnabled(),
         source: 'RSS',
-        marketDataSource: 'Delayed free market data',
+        marketDataSource: 'Yahoo Finance delayed',
         lastUpdated: new Date().toISOString(),
         items,
         marketData: marketDataResult.status === 'fulfilled' ? marketDataResult.value : {},
