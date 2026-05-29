@@ -255,8 +255,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         const user = signUpData.user ?? (await supabase.auth.getUser()).data.user;
-        if (user) {
-          const { error: profileError } = await supabase.from('profiles').upsert({
+        if (user && signUpData.session) {
+          const profilePayload = {
             id: user.id,
             username: cleanUsername,
             display_name: username.trim(),
@@ -264,10 +264,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             age: parseInt(age, 10) || null,
             gender: gender || null,
             security_question: securityQuestion || null,
-            security_answer: null,
             security_answer_hash: answerHash,
-          }, { onConflict: 'id' }).select().single();
-          if (profileError) return { error: new Error(profileError.message) };
+            updated_at: new Date().toISOString(),
+          };
+          const { error: profileError } = await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' });
+          if (profileError) {
+            console.error('[Signup] Profile creation failed', {
+              code: profileError.code,
+              message: profileError.message,
+              details: profileError.details,
+              hint: profileError.hint,
+              payload: profilePayload,
+            });
+            return { error: new Error('Account created, but we could not save your profile details. Please try again.') };
+          }
         }
 
         return { error: null };

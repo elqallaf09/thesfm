@@ -147,6 +147,7 @@ const TEXT = {
     errorTerms: 'يجب الموافقة على الشروط وسياسة الخصوصية للمتابعة.',
     errorExists: 'اسم المستخدم مستخدم بالفعل.',
     errorRegister: 'تعذر إنشاء الحساب. حاول مرة أخرى.',
+    errorProfileCreate: 'تم إنشاء الحساب، لكن تعذر حفظ بيانات الملف الشخصي. الرجاء المحاولة مرة أخرى.',
     errorLogin: 'اسم المستخدم أو كلمة المرور غير صحيحة.',
     errorUsernameNotFound: 'اسم المستخدم غير موجود',
     errorProfileEmailMissing: 'لا يوجد بريد إلكتروني مرتبط بهذا المستخدم',
@@ -234,6 +235,7 @@ const TEXT = {
     errorTerms: 'You must agree to the Terms and Privacy Policy to continue.',
     errorExists: 'This username is already taken.',
     errorRegister: 'Could not create the account. Try again.',
+    errorProfileCreate: 'Account created, but we could not save your profile details. Please try again.',
     errorLogin: 'Username or password is incorrect.',
     errorUsernameNotFound: 'Username not found.',
     errorProfileEmailMissing: 'No email address is linked to this user.',
@@ -321,6 +323,7 @@ const TEXT = {
     errorTerms: 'Vous devez accepter les conditions et la politique de confidentialité pour continuer.',
     errorExists: 'Ce nom d’utilisateur est déjà utilisé.',
     errorRegister: 'Impossible de créer le compte. Réessayez.',
+    errorProfileCreate: 'Le compte a été créé, mais les informations du profil n’ont pas pu être enregistrées. Veuillez réessayer.',
     errorLogin: 'Nom d’utilisateur ou mot de passe incorrect.',
     errorUsernameNotFound: 'Nom d’utilisateur introuvable.',
     errorProfileEmailMissing: 'Aucune adresse email n’est liée à cet utilisateur.',
@@ -695,7 +698,7 @@ function LoginContent() {
 
     const newUser = data.user ?? (await supabase.auth.getUser()).data.user;
     if (newUser && data.session) {
-      const { error: profileError } = await supabase.from('profiles').upsert({
+      const profilePayload = {
         id: newUser.id,
         username: cleanUsername,
         display_name: cleanUsername,
@@ -704,11 +707,21 @@ function LoginContent() {
         preferred_currency: defaultCurrency,
         country,
         security_question: question || null,
-        security_answer: null,
         security_answer_hash: answerHash,
         preferred_lang: lang,
-      }, { onConflict: 'id' });
-      if (profileError) return profileError.message || text.errorRegister;
+        updated_at: new Date().toISOString(),
+      };
+      const { error: profileError } = await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' });
+      if (profileError) {
+        console.error('[Signup] Profile creation failed', {
+          code: profileError.code,
+          message: profileError.message,
+          details: profileError.details,
+          hint: profileError.hint,
+          payload: profilePayload,
+        });
+        return text.errorProfileCreate;
+      }
 
       console.debug('[auth] login success', { userId: newUser.id, source: 'register' });
       console.debug('[auth] session returned', { hasSession: Boolean(data.session), hasAccessToken: Boolean(data.session.access_token) });
