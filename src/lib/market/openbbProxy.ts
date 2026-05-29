@@ -339,24 +339,10 @@ export async function proxyHealth() {
       lastSuccessfulRequestAt,
     };
   }
-  const probe = await proxyAnalyze('AAPL', 'stock', { displaySymbol: 'AAPL', name: 'Apple Inc.' });
-  if (probe.success) {
-    return {
-      ...marketServiceConnected(),
-      responseTimeMs: result.elapsedMs,
-      probeSymbol: 'AAPL',
-      probeDataStatus: probe.dataStatus,
-    };
-  }
   return {
-    ok: false,
+    ...marketServiceConnected(),
     marketService: 'openbb',
-    openbbService: 'degraded' as ProxyState,
-    serviceUrlConfigured: true,
     responseTimeMs: result.elapsedMs,
-    probeSymbol: 'AAPL',
-    code: 'code' in probe ? probe.code : 'provider_no_data',
-    message: 'OpenBB health works, but real market data is unavailable.',
     lastSuccessfulRequestAt,
   };
 }
@@ -447,7 +433,7 @@ export async function proxyCompare(symbolsInput: unknown, assetTypeInput: unknow
   const result = await fetchOpenBB('/market/compare', new URLSearchParams({ symbols: symbols.join(','), assetType }));
   if (result.configured && result.available && result.data?.success) {
     const results = Array.isArray(result.data.results)
-      ? result.data.results.map((item: unknown, index: number) => enrichAnalysis(item, symbols[index] ?? 'AAPL', assetType, {
+      ? result.data.results.map((item: unknown, index: number) => enrichAnalysis(item, symbols[index] ?? 'UNKNOWN', assetType, {
         fromCache: result.fromCache,
         cacheAgeSeconds: result.cacheAgeSeconds,
       })).filter(Boolean)

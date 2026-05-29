@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { proxySearch } from '@/lib/market/openbbProxy';
 import { normalizeAssetType, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
+import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbolResolver';
 
 type MarketSymbolRow = {
   symbol: string;
@@ -65,17 +66,36 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const query = cleanSearchTerm(searchParams.get('query') ?? searchParams.get('q') ?? '');
   const assetType = searchParams.get('assetType') ? normalizeAssetType(searchParams.get('assetType')) : undefined;
+  const shouldSearchUSUniverse = !assetType || assetType === 'stock' || assetType === 'etf';
 
   const supabaseResults = await searchSupabaseSymbols(query, assetType);
+  const usResults = shouldSearchUSUniverse ? await searchUSSymbols(query, assetType) : null;
   if (supabaseResults && supabaseResults.length > 0) {
+    const merged = mergeMarketSearchResults(supabaseResults, usResults?.results ?? []).slice(0, 20);
     return NextResponse.json({
       success: true,
       query,
-      source: 'supabase',
-      results: supabaseResults,
+      source: usResults ? `supabase+${usResults.source}` : 'supabase',
+      results: merged,
     });
   }
 
   const result = await proxySearch(query, assetType);
+  const liveResults = Array.isArray(result?.results) ? result.results as MarketSearchItem[] : [];
+  const hasLiveResults = liveResults.length > 0
+    && result?.source !== 'cache'
+    && result?.openbbService !== 'not_configured'
+    && result?.openbbService !== 'unavailable';
+  if (usResults && usResults.results.length > 0) {
+    return NextResponse.json({
+      success: true,
+      query,
+      source: hasLiveResults ? `openbb+${usResults.source}` : usResults.source,
+      fallback: !hasLiveResults,
+      openbbService: result?.openbbService,
+      results: mergeMarketSearchResults(liveResults, usResults.results).slice(0, 20),
+    });
+  }
+
   return NextResponse.json(result);
 }
