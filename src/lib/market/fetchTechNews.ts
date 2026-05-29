@@ -24,6 +24,7 @@ export type TechNewsPayload = {
   success: true;
   source: 'Finnhub';
   lastUpdated: string;
+  dateRangeUsed?: '7d' | '30d' | '90d';
   items: TechNewsItem[];
   message?: string;
 };
@@ -38,6 +39,17 @@ type FinnhubNews = {
   image?: string;
 };
 
+type NewsRange = {
+  label: '7d' | '30d' | '90d';
+  daysBack: number;
+};
+
+const NEWS_RANGES: NewsRange[] = [
+  { label: '7d', daysBack: 7 },
+  { label: '30d', daysBack: 30 },
+  { label: '90d', daysBack: 90 },
+];
+
 function dateString(daysAgo = 0) {
   const date = new Date();
   date.setUTCDate(date.getUTCDate() - daysAgo);
@@ -49,8 +61,19 @@ async function fetchFinnhubJson<T>(url: string) {
     next: { revalidate: 300 },
     headers: { accept: 'application/json' },
   });
-  if (!response.ok) throw new Error(`Finnhub returned ${response.status}`);
-  return response.json() as Promise<T>;
+  const text = await response.text();
+  let body: unknown = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    body = text;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Finnhub returned ${response.status}: ${typeof body === 'string' ? body : JSON.stringify(body)}`);
+  }
+
+  return body as T;
 }
 
 function devLog(message: string, meta: Record<string, unknown>) {
@@ -84,8 +107,12 @@ function mapNewsItem(stock: TechStockConfig, item: FinnhubNews, price: TechStock
   };
 }
 
-async function fetchCompanyNewsForRange(stock: TechStockConfig, apiKey: string, daysBack: number) {
-  const from = dateString(daysBack);
+function hasUsableArticle(item: FinnhubNews) {
+  return Boolean(String(item.headline ?? '').trim() && String(item.url ?? '').trim());
+}
+
+async function fetchCompanyNewsForRange(stock: TechStockConfig, apiKey: string, range: NewsRange) {
+  const from = dateString(range.daysBack);
   const to = dateString(0);
   const params = new URLSearchParams({
     symbol: stock.symbol,
@@ -94,26 +121,48 @@ async function fetchCompanyNewsForRange(stock: TechStockConfig, apiKey: string, 
     token: apiKey,
   });
 
-  devLog('[TechNews] Fetching company news', { symbol: stock.symbol, from, to });
-  const news = await fetchFinnhubJson<FinnhubNews[]>(`https://finnhub.io/api/v1/company-news?${params.toString()}`);
-  devLog('[TechNews] Company news returned', { symbol: stock.symbol, count: news.length, from, to });
+  devLog('[TechNews] Fetching company news', { symbol: stock.symbol, range: range.label, from, to });
+  const news = await fetchFinnhubJson<unknown>(`https://finnhub.io/api/v1/company-news?${params.toString()}`);
+  if (!Array.isArray(news)) {
+    throw new Error(`Finnhub company-news returned non-array response for ${stock.symbol}: ${JSON.stringify(news)}`);
+  }
+  devLog('[TechNews] Company news returned', {
+    symbol: stock.symbol,
+    range: range.label,
+    count: news.length,
+    usableCount: news.filter((item): item is FinnhubNews => hasUsableArticle(item as FinnhubNews)).length,
+    from,
+    to,
+  });
   return news;
 }
 
-async function fetchCompanyNewsWithFallback(stock: TechStockConfig, apiKey: string) {
-  try {
-    const sevenDayNews = await fetchCompanyNewsForRange(stock, apiKey, 7);
-    if (sevenDayNews.length > 0) return sevenDayNews;
-    return fetchCompanyNewsForRange(stock, apiKey, 30);
-  } catch (error) {
+async function fetchAllCompanyNewsForRange(apiKey: string, range: NewsRange) {
+  const settled = await Promise.allSettled(
+    TECH_STOCKS.map(async stock => ({
+      stock,
+      news: await fetchCompanyNewsForRange(stock, apiKey, range),
+    })),
+  );
+
+  const rows = settled.flatMap((result, index) => {
+    if (result.status === 'fulfilled') return [result.value];
+
     if (process.env.NODE_ENV !== 'production') {
       console.error('[TechNews] Finnhub company-news failed', {
-        symbol: stock.symbol,
-        message: error instanceof Error ? error.message : String(error),
+        symbol: TECH_STOCKS[index]?.symbol,
+        range: range.label,
+        message: result.reason instanceof Error ? result.reason.message : String(result.reason),
       });
     }
-    throw error;
-  }
+    return [];
+  });
+
+  return {
+    range,
+    rows,
+    usableCount: rows.reduce((total, row) => total + row.news.filter(item => hasUsableArticle(item as FinnhubNews)).length, 0),
+  };
 }
 
 function dedupeAndSort(items: TechNewsItem[]) {
@@ -139,26 +188,27 @@ export async function fetchTechNews() {
     throw new Error('FINNHUB_API_KEY is not configured');
   }
 
-  const prices = await fetchStockPrices(TECH_STOCKS, apiKey);
-  const settled = await Promise.allSettled(
-    TECH_STOCKS.map(async stock => {
-      const news = await fetchCompanyNewsWithFallback(stock, apiKey);
-      return news
-        .slice(0, 8)
-        .map(item => mapNewsItem(stock, item, prices.get(stock.symbol)))
-        .filter((item): item is TechNewsItem => Boolean(item));
-    }),
-  );
+  let selected = await fetchAllCompanyNewsForRange(apiKey, NEWS_RANGES[0]);
+  if (selected.usableCount === 0) selected = await fetchAllCompanyNewsForRange(apiKey, NEWS_RANGES[1]);
+  if (selected.usableCount === 0) selected = await fetchAllCompanyNewsForRange(apiKey, NEWS_RANGES[2]);
 
-  const items = dedupeAndSort(settled.flatMap(result => result.status === 'fulfilled' ? result.value : []));
+  const prices = selected.usableCount > 0
+    ? await fetchStockPrices(TECH_STOCKS, apiKey)
+    : new Map<string, TechStockPrice>();
+  const items = dedupeAndSort(
+    selected.rows.flatMap(({ stock, news }) => news
+      .map(item => mapNewsItem(stock, item as FinnhubNews, prices.get(stock.symbol)))
+      .filter((item): item is TechNewsItem => Boolean(item))),
+  );
 
   return {
     success: true,
     source: 'Finnhub',
     lastUpdated: new Date().toISOString(),
+    dateRangeUsed: items.length > 0 ? selected.range.label : undefined,
     items,
     ...(items.length === 0
-      ? { message: 'No recent tech news found from Finnhub for the configured symbols.' }
+      ? { message: 'No recent technology stock news found from Finnhub for the configured symbols.' }
       : {}),
   } satisfies TechNewsPayload;
 }
