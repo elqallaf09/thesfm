@@ -18,32 +18,47 @@ function changeTone(value: number | null | undefined) {
 }
 
 export function GulfTickerStrip({ labels, unavailableLabel, marketData, formatNumber, formatPercent }: GulfTickerStripProps) {
-  return (
-    <section className="gulf-ticker-strip" aria-label="GCC market ticker">
-      <div className="gulf-ticker-track">
-        {GULF_MARKETS.map(market => {
-          const data = marketData[market.id];
-          const value = data?.value ?? null;
-          const change = data?.changePercent ?? null;
-          const tone = changeTone(change);
-          const Icon = tone === 'down' ? TrendingDown : TrendingUp;
+  const tickerItems = GULF_MARKETS.map(market => {
+    const data = marketData[market.id];
+    const value = data?.value ?? null;
+    const change = data?.changePercent ?? null;
+    const tone = changeTone(change);
+    const Icon = tone === 'down' ? TrendingDown : TrendingUp;
 
-          return (
-            <div className="gulf-ticker-item" key={market.id}>
-              <strong>{market.code}</strong>
-              <span>{labels[market.id]}</span>
-              <b>{value === null ? unavailableLabel : formatNumber(value)}</b>
-              <em className={tone}>
-                <Icon size={13} />
-                {change === null ? unavailableLabel : formatPercent(change)}
-              </em>
+    return {
+      market,
+      value,
+      change,
+      tone,
+      Icon,
+      displayValue: value === null ? unavailableLabel : formatNumber(value),
+      displayChange: change === null ? unavailableLabel : formatPercent(change),
+    };
+  });
+
+  return (
+    <section className="gulf-ticker-strip" aria-label="GCC market ticker" dir="ltr">
+      <div className="gulf-ticker-viewport">
+        <div className="gulf-ticker-track">
+          {[0, 1].map(copy => (
+            <div className="gulf-ticker-set" key={copy} aria-hidden={copy === 1}>
+              {tickerItems.map(({ market, displayValue, displayChange, tone, Icon }) => (
+                <div className="gulf-ticker-item" key={`${copy}-${market.id}`}>
+                  <strong>{market.code}</strong>
+                  <span>{labels[market.id]} / {market.indexName}</span>
+                  <b>{displayValue}</b>
+                  <em className={tone}>
+                    <Icon size={13} />
+                    {displayChange}
+                  </em>
+                </div>
+              ))}
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
 export default GulfTickerStrip;
-
