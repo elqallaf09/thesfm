@@ -62,8 +62,10 @@ type MoneyItem = {
   currency?: string | null;
   saving_type?: string | null;
   saving_method?: string | null;
+  method?: string | null;
   saved_at?: string | null;
   note?: string | null;
+  notes?: string | null;
   goal_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -442,7 +444,7 @@ const savingModalText = {
   save: { ar: 'حفظ الإدخار', en: 'Save saving', fr: 'Enregistrer' },
   saving: { ar: 'جاري الحفظ...', en: 'Saving...', fr: 'Enregistrement...' },
   success: { ar: 'تم حفظ الإدخار بنجاح', en: 'Saving saved successfully', fr: 'Épargne enregistrée' },
-  failed: { ar: 'تعذر حفظ الإدخار، حاول مرة أخرى', en: 'Could not save saving. Please try again.', fr: 'Impossible d’enregistrer l’épargne.' },
+  failed: { ar: 'تعذر حفظ الادخار، الرجاء المحاولة مرة أخرى.', en: 'Could not save saving. Please try again.', fr: 'Impossible d’enregistrer l’épargne. Veuillez réessayer.' },
   nameRequired: { ar: 'يرجى إدخال اسم الإدخار', en: 'Please enter the saving name', fr: 'Veuillez saisir le nom' },
   amountRequired: { ar: 'يرجى إدخال مبلغ صحيح', en: 'Please enter a valid amount', fr: 'Veuillez saisir un montant valide' },
   typeRequired: { ar: 'يرجى اختيار نوع الإدخار', en: 'Please choose the saving type', fr: 'Veuillez choisir le type' },
@@ -1659,9 +1661,9 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       category: 'category' in item && item.category ? item.category : 'general',
       currency: item.currency || currency || 'KWD',
       savingType: item.saving_type || '',
-      savingMethod: item.saving_method || '',
+      savingMethod: item.method || item.saving_method || '',
       savedAt: item.saved_at ? item.saved_at.slice(0, 10) : item.created_at ? item.created_at.slice(0, 10) : todayInputDate(),
-      note: item.note || '',
+      note: item.notes || item.note || '',
       goalId: item.goal_id || '',
     });
     setEntryOpen(true);
@@ -2195,7 +2197,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     if (!editableKind(kind) || entrySaving) return;
 
     const name = entryForm.name.trim();
-    const amount = Number(entryForm.amount);
+    const amount = parseMoney(entryForm.amount);
     if (kind === 'savings' && savingFormErrors.length > 0) {
       showEntryMessage('err', savingFormErrors[0]);
       return;
@@ -2221,8 +2223,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               amount,
               currency: entryForm.currency || currency || 'KWD',
               saving_type: entryForm.savingType,
+              method: entryForm.savingMethod,
               saving_method: entryForm.savingMethod,
               saved_at: entryForm.savedAt,
+              notes: entryForm.note.trim() || null,
               note: entryForm.note.trim() || null,
               goal_id: entryForm.savingType === 'financial_goal' ? entryForm.goalId || null : null,
               created_at: new Date().toISOString(),
@@ -2233,7 +2237,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         writeGuestItems(kind, next);
         applyEntryToSnapshot(kind, item, mode);
       } else {
-        if (!user) throw new Error(t('entry_auth_required'));
+        if (!user?.id) throw new Error(t('entry_auth_required'));
         if (kind === 'income') {
           if (mode === 'create') {
             const { data: created, error } = await supabase.from('monthly_income_sources').insert({
@@ -2258,17 +2262,48 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           if (kind === 'savings') {
             const previous = snapshot.savings.find(item => item.id === id);
             const linkedGoalId = entryForm.savingType === 'financial_goal' ? entryForm.goalId || null : null;
+            const savingNotes = entryForm.note.trim() || null;
             const savingPayload = {
               user_id: user.id,
               name,
               amount,
               currency: entryForm.currency || currency || 'KWD',
               saving_type: entryForm.savingType,
-              saving_method: entryForm.savingMethod,
+              method: entryForm.savingMethod,
               saved_at: entryForm.savedAt,
-              note: entryForm.note.trim() || null,
+              notes: savingNotes,
               goal_id: linkedGoalId,
               updated_at: new Date().toISOString(),
+            };
+            const legacySavingPayload = {
+              ...savingPayload,
+              saving_method: entryForm.savingMethod,
+              note: savingNotes,
+            };
+            const minimalSavingPayload = {
+              user_id: user.id,
+              name,
+              amount,
+              updated_at: savingPayload.updated_at,
+            };
+            const isSchemaCacheColumnError = (error: unknown) => {
+              if (!error || typeof error !== 'object') return false;
+              const supabaseError = error as { code?: string; message?: string; details?: string; hint?: string };
+              const text = `${supabaseError.message || ''} ${supabaseError.details || ''} ${supabaseError.hint || ''}`.toLowerCase();
+              return supabaseError.code === 'PGRST204' || (text.includes('schema cache') && text.includes('column'));
+            };
+            const logSavingsSaveError = (error: unknown, payload: Record<string, unknown>) => {
+              if (process.env.NODE_ENV !== 'development') return;
+              const supabaseError = error && typeof error === 'object'
+                ? error as { code?: string; message?: string; details?: string; hint?: string }
+                : {};
+              console.error('[Savings] Failed to save saving', {
+                code: supabaseError.code,
+                message: supabaseError.message,
+                details: supabaseError.details,
+                hint: supabaseError.hint,
+                payload,
+              });
             };
             const adjustGoal = async (goalId: string | null | undefined, delta: number) => {
               if (!goalId || !Number.isFinite(delta) || delta === 0) return;
@@ -2294,27 +2329,69 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             };
 
             if (mode === 'create') {
-              const { data: created, error } = await supabase
+              let createResult = await supabase
                 .from('savings_items')
                 .insert(savingPayload)
                 .select('*')
                 .single();
-              if (error) throw error;
+              if (createResult.error && isSchemaCacheColumnError(createResult.error)) {
+                logSavingsSaveError(createResult.error, savingPayload);
+                createResult = await supabase
+                  .from('savings_items')
+                  .insert(legacySavingPayload)
+                  .select('*')
+                  .single();
+              }
+              if (createResult.error && isSchemaCacheColumnError(createResult.error)) {
+                logSavingsSaveError(createResult.error, legacySavingPayload);
+                createResult = await supabase
+                  .from('savings_items')
+                  .insert(minimalSavingPayload)
+                  .select('*')
+                  .single();
+              }
+              if (createResult.error) {
+                logSavingsSaveError(createResult.error, savingPayload);
+                throw createResult.error;
+              }
               await adjustGoal(linkedGoalId, amount);
-              applyEntryToSnapshot(kind, created as MoneyItem, mode);
+              applyEntryToSnapshot(kind, { ...savingPayload, ...createResult.data } as MoneyItem, mode);
             } else {
-              const { data: updated, error } = await supabase
+              let updateResult = await supabase
                 .from('savings_items')
                 .update(savingPayload)
                 .eq('id', id)
                 .eq('user_id', user.id)
                 .select('*')
                 .single();
-              if (error) throw error;
+              if (updateResult.error && isSchemaCacheColumnError(updateResult.error)) {
+                logSavingsSaveError(updateResult.error, savingPayload);
+                updateResult = await supabase
+                  .from('savings_items')
+                  .update(legacySavingPayload)
+                  .eq('id', id)
+                  .eq('user_id', user.id)
+                  .select('*')
+                  .single();
+              }
+              if (updateResult.error && isSchemaCacheColumnError(updateResult.error)) {
+                logSavingsSaveError(updateResult.error, legacySavingPayload);
+                updateResult = await supabase
+                  .from('savings_items')
+                  .update(minimalSavingPayload)
+                  .eq('id', id)
+                  .eq('user_id', user.id)
+                  .select('*')
+                  .single();
+              }
+              if (updateResult.error) {
+                logSavingsSaveError(updateResult.error, savingPayload);
+                throw updateResult.error;
+              }
               if (previous?.goal_id && previous.goal_id !== linkedGoalId) await adjustGoal(previous.goal_id, -Number(previous.amount || 0));
               const delta = amount - (previous?.goal_id === linkedGoalId ? Number(previous.amount || 0) : 0);
               await adjustGoal(linkedGoalId, delta);
-              applyEntryToSnapshot(kind, updated as MoneyItem, mode);
+              applyEntryToSnapshot(kind, { ...savingPayload, ...updateResult.data } as MoneyItem, mode);
             }
           } else
           if (mode === 'create') {
@@ -2337,7 +2414,11 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       setEntryForm(emptyEntryForm(currency || 'KWD'));
       showEntryMessage('ok', kind === 'savings' ? pick(savingModalText.success, lang) : mode === 'create' ? t('success') : t('updateSuccess'));
     } catch (err) {
-      console.error(`[${kind}] Failed to save entry`, err);
+      if (kind === 'savings') {
+        if (process.env.NODE_ENV === 'development') console.error('[Savings] Save flow failed', err);
+      } else {
+        console.error(`[${kind}] Failed to save entry`, err);
+      }
       showEntryMessage('err', kind === 'savings' ? pick(savingModalText.failed, lang) : err instanceof Error ? err.message : t('error'));
     } finally {
       setEntrySaving(false);

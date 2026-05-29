@@ -258,6 +258,14 @@ export type Database = {
           user_id: string
           name: string
           amount: number
+          currency: string | null
+          saving_type: string | null
+          method: string | null
+          saving_method: string | null
+          saved_at: string | null
+          notes: string | null
+          note: string | null
+          goal_id: string | null
           created_at: string | null
           updated_at: string | null
         }
@@ -266,6 +274,14 @@ export type Database = {
           user_id: string
           name: string
           amount?: number
+          currency?: string | null
+          saving_type?: string | null
+          method?: string | null
+          saving_method?: string | null
+          saved_at?: string | null
+          notes?: string | null
+          note?: string | null
+          goal_id?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -274,6 +290,14 @@ export type Database = {
           user_id?: string
           name?: string
           amount?: number
+          currency?: string | null
+          saving_type?: string | null
+          method?: string | null
+          saving_method?: string | null
+          saved_at?: string | null
+          notes?: string | null
+          note?: string | null
+          goal_id?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
