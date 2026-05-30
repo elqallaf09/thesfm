@@ -812,13 +812,13 @@ export default function PublicLandingPage() {
       </section>
 
       <section className="ai-section">
-        <div className="ai-card">
+        <div className="landing-ai-card">
           <div className="ai-icon"><Bot size={30} /></div>
           <div>
             <span>{text.aiExampleLabel}</span>
             <h2>{text.aiTitle}</h2>
             <p>{text.aiSubtitle}</p>
-            <div className="ai-example">{text.aiExampleText}</div>
+            <div className="landing-ai-example">{text.aiExampleText}</div>
           </div>
         </div>
       </section>
@@ -1275,12 +1275,12 @@ const landingStyles = `
     box-shadow: 0 18px 46px rgba(3, 18, 37, 0.08);
     padding: 22px;
   }
-  .trust-section h2, .section-heading h2, .ai-card h2, .final-cta h2 {
+  .trust-section h2, .section-heading h2, .landing-ai-card h2, .final-cta h2 {
     margin: 0;
     color: var(--landing-heading);
     font-weight: 950;
   }
-  .trust-section p, .section-heading p, .ai-card p, .final-cta p, .pricing-card p, .faq-answer p {
+  .trust-section p, .section-heading p, .landing-ai-card p, .final-cta p, .pricing-card p, .faq-answer p {
     margin: 8px 0 0;
     color: var(--landing-muted);
     line-height: 1.8;
@@ -1357,13 +1357,13 @@ const landingStyles = `
     max-width: 760px;
     margin-bottom: 18px;
   }
-  .section-heading span, .ai-card span {
+  .section-heading span, .landing-ai-card span {
     color: #0B76E0;
     font-size: 12px;
     font-weight: 950;
     text-transform: uppercase;
   }
-  .section-heading h2, .ai-card h2, .final-cta h2 {
+  .section-heading h2, .landing-ai-card h2, .final-cta h2 {
     margin-top: 8px;
     font-size: clamp(28px, 4vw, 44px);
     line-height: 1.15;
@@ -1526,34 +1526,59 @@ const landingStyles = `
   .ai-section {
     padding-top: 56px;
   }
-  .ai-card {
+  .landing-ai-card {
     border-radius: 32px;
     background:
-      radial-gradient(circle at 12% 10%, rgba(24, 212, 212, 0.24), transparent 28%),
-      linear-gradient(135deg, #031225, #061B33 48%, #0B2748);
-    color: #FFFFFF;
-    border: 1px solid rgba(167, 243, 240, 0.18);
-    box-shadow: 0 24px 70px rgba(3, 18, 37, 0.2);
+      radial-gradient(circle at 12% 10%, rgba(24, 212, 212, 0.14), transparent 28%),
+      linear-gradient(135deg, #FFFFFF, #F8FBFF 58%, #EEF6FF) !important;
+    color: #0F172A;
+    border: 1px solid rgba(29, 140, 255, 0.16) !important;
+    box-shadow: 0 18px 46px rgba(3, 18, 37, 0.08) !important;
     padding: 30px;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: 18px;
   }
-  .ai-card h2 {
-    color: #FFFFFF;
+  .landing-ai-card h2 {
+    color: #0F172A;
   }
-  .ai-card p {
-    color: var(--landing-dark-muted);
+  .landing-ai-card p {
+    color: #334155;
   }
-  .ai-example {
+  .landing-ai-card > div > span {
+    color: #0F766E;
+  }
+  .landing-ai-example {
     margin-top: 16px;
     width: fit-content;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(167, 243, 240, 0.18);
-    color: #EAF6FF;
+    background: rgba(20, 184, 166, 0.12);
+    border: 1px solid rgba(15, 118, 110, 0.22);
+    color: #0F766E;
     padding: 9px 13px;
     font-weight: 900;
+  }
+  :global(.dark) .landing-page .landing-ai-card {
+    background:
+      radial-gradient(circle at 12% 10%, rgba(47, 214, 192, 0.22), transparent 28%),
+      linear-gradient(135deg, #031225, #061B33 48%, #0B2748) !important;
+    color: #E8EEF6;
+    border-color: rgba(47, 214, 192, 0.24) !important;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28) !important;
+  }
+  :global(.dark) .landing-page .landing-ai-card h2 {
+    color: #E8EEF6;
+  }
+  :global(.dark) .landing-page .landing-ai-card p {
+    color: #B8C7D9;
+  }
+  :global(.dark) .landing-page .landing-ai-card > div > span {
+    color: #2FD6C0;
+  }
+  :global(.dark) .landing-page .landing-ai-example {
+    background: rgba(47, 214, 192, 0.12);
+    border-color: rgba(47, 214, 192, 0.28);
+    color: #E8EEF6;
   }
   .compact {
     padding-top: 56px;
@@ -1802,7 +1827,7 @@ const landingStyles = `
       grid-template-columns: 1fr;
       padding: 28px 0 38px;
     }
-    .trust-section, .ai-card, .landing-footer {
+    .trust-section, .landing-ai-card, .landing-footer {
       grid-template-columns: 1fr;
     }
     .how-grid, .audience-grid, .pricing-grid, .faq-accordion {
@@ -1849,10 +1874,10 @@ const landingStyles = `
     .how-section, .section-block, .ai-section {
       padding-top: 42px;
     }
-    .ai-card {
+    .landing-ai-card {
       padding: 22px;
     }
-    .ai-example {
+    .landing-ai-example {
       width: 100%;
       border-radius: 16px;
     }
