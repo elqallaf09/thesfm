@@ -33,7 +33,6 @@ const COPY = {
     supportChannel: 'قناة الدعم',
     heroTitle: 'تواصل معنا',
     heroSubtitle: 'نحن هنا لمساعدتك في الأسئلة العامة عن THE SFM، الحساب، الخصوصية، أو طريقة استخدام المنصة.',
-    supportEmail: 'البريد الإلكتروني للدعم',
     supportEmailReady: 'للدعم والمساعدة، تواصل معنا عبر:',
     supportEmailHint: 'للدعم والمساعدة، تواصل معنا عبر:',
     contactForm: 'نموذج التواصل',
@@ -75,7 +74,6 @@ const COPY = {
     supportChannel: 'Support Channel',
     heroTitle: 'Contact Us',
     heroSubtitle: 'We are here to help with general questions about THE SFM, your account, privacy, or how to use the platform.',
-    supportEmail: 'Support Email',
     supportEmailReady: 'For support, contact us at:',
     supportEmailHint: 'For support, contact us at:',
     contactForm: 'Contact Form',
@@ -117,7 +115,6 @@ const COPY = {
     supportChannel: 'Support',
     heroTitle: 'Contactez-nous',
     heroSubtitle: 'Nous sommes là pour vous aider avec les questions générales sur THE SFM, votre compte, la confidentialité ou l’utilisation de la plateforme.',
-    supportEmail: 'E-mail de support',
     supportEmailReady: 'Pour obtenir de l’aide, contactez-nous à :',
     supportEmailHint: 'Pour obtenir de l’aide, contactez-nous à :',
     contactForm: 'Formulaire de contact',
@@ -223,7 +220,7 @@ export default function ContactPage() {
 
   const contactCards = useMemo(() => [
     {
-      title: text.supportEmail,
+      title: text.heroTitle,
       body: text.supportEmailReady,
       value: supportEmail,
       icon: Mail,

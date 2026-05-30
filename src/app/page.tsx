@@ -100,7 +100,7 @@ const COPY = {
     footerAccount: 'الحساب',
     footerLegal: 'قانوني',
     footerSupport: 'الدعم',
-    supportEmailLabel: 'الدعم:',
+    contact: 'تواصل معنا',
     supportContactLine: 'للدعم والمساعدة، تواصل معنا عبر:',
     businessHub: 'مركز الأعمال',
     reportsCenter: 'مركز التقارير',
@@ -177,7 +177,7 @@ const COPY = {
     footerAccount: 'Account',
     footerLegal: 'Legal',
     footerSupport: 'Support',
-    supportEmailLabel: 'Support:',
+    contact: 'Contact us',
     supportContactLine: 'For support, contact us at:',
     businessHub: 'Business Hub',
     reportsCenter: 'Reports Center',
@@ -254,7 +254,7 @@ const COPY = {
     footerAccount: 'Compte',
     footerLegal: 'Légal',
     footerSupport: 'Support',
-    supportEmailLabel: 'Support :',
+    contact: 'Contactez-nous',
     supportContactLine: 'Pour obtenir de l’aide, contactez-nous à :',
     businessHub: 'Centre d’affaires',
     reportsCenter: 'Centre des rapports',
@@ -919,7 +919,7 @@ export default function PublicLandingPage() {
         <FooterColumn title={text.footerCompany} links={[['/about', aboutLabel], ['/#faq', text.navFaq]]} />
         <FooterColumn title={text.footerAccount} links={[[appHref, primaryLabel], ['/login', text.login]]} />
         <FooterColumn title={text.footerLegal} links={[['/privacy', text.privacy], ['/terms', text.terms]]} />
-        <FooterColumn title={text.footerSupport} links={[[SUPPORT_EMAIL_MAILTO, `${text.supportEmailLabel} ${SUPPORT_EMAIL}`]]} />
+        <FooterColumn title={text.footerSupport} links={[['/contact', text.contact]]} />
       </footer>
 
       <style jsx>{landingStyles}</style>

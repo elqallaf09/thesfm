@@ -68,7 +68,6 @@ const COPY = {
     footerAccount: 'الحساب',
     footerSupport: 'الدعم',
     contact: 'تواصل معنا',
-    supportEmail: 'البريد الإلكتروني للدعم',
     supportContactLine: 'للتواصل أو الدعم:',
     reportsCenter: 'مركز التقارير',
     businessHub: 'مركز الأعمال',
@@ -144,7 +143,6 @@ const COPY = {
     footerAccount: 'Account',
     footerSupport: 'Support',
     contact: 'Contact Us',
-    supportEmail: 'Support Email',
     supportContactLine: 'For contact or support:',
     reportsCenter: 'Reports Center',
     businessHub: 'Business Hub',
@@ -220,7 +218,6 @@ const COPY = {
     footerAccount: 'Compte',
     footerSupport: 'Support',
     contact: 'Contactez-nous',
-    supportEmail: 'E-mail de support',
     supportContactLine: 'Pour contact ou assistance :',
     reportsCenter: 'Centre des rapports',
     businessHub: 'Centre d’affaires',
@@ -423,7 +420,7 @@ export default function AboutPage() {
         <FooterColumn title={text.footerProduct} links={[['/', 'THE SFM'], ['/reports-center', text.reportsCenter], ['/business-hub', text.businessHub]]} />
         <FooterColumn title={text.footerCompany} links={[['/about', text.about], ['/security', text.security]]} />
         <FooterColumn title={text.footerAccount} links={[['/login', text.login], ['/dashboard', text.openDashboard]]} />
-        <FooterColumn title={text.footerSupport} links={[['/contact', text.contact], [SUPPORT_EMAIL_MAILTO, text.supportEmail]]} />
+        <FooterColumn title={text.footerSupport} links={[['/contact', text.contact]]} />
       </footer>
 
       <style jsx>{aboutStyles}</style>
