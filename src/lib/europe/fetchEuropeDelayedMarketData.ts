@@ -1,80 +1,122 @@
 import { EUROPE_MARKETS, type EuropeMarket, type EuropeMarketId } from '@/lib/europe/europeMarkets';
+import { fetchYahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 
 export type EuropeMarketData = {
   market: EuropeMarketId;
+  code: EuropeMarket['code'];
   indexName: string;
+  requestedSymbol: string | null;
+  symbolUsed: string | null;
   value: number | null;
+  change: number | null;
   changePercent: number | null;
+  currency: string | null;
+  marketTime: string | null;
   source: string;
   status: 'available' | 'unavailable';
+  available: boolean;
   delayed: true;
   updatedAt: string;
+  unavailableReason?: string;
 };
 
-type YahooChartResponse = {
-  chart?: {
-    result?: Array<{
-      meta?: {
-        regularMarketPrice?: number;
-        chartPreviousClose?: number;
-        previousClose?: number;
-        regularMarketTime?: number;
-      };
-    }>;
-  };
-};
+function devLog(message: string, meta: Record<string, unknown>) {
+  if (process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true') {
+    console.info(message, meta);
+  }
+}
 
-function unavailable(market: EuropeMarket, source = 'Yahoo Finance delayed unavailable'): EuropeMarketData {
+function unavailable(market: EuropeMarket, unavailableReason = 'provider_returned_empty_quote'): EuropeMarketData {
   return {
     market: market.id,
+    code: market.code,
     indexName: market.indexName,
+    requestedSymbol: market.yahooSymbols[0] ?? null,
+    symbolUsed: null,
     value: null,
+    change: null,
     changePercent: null,
-    source,
+    currency: null,
+    marketTime: null,
+    source: 'Yahoo Finance',
     status: 'unavailable',
+    available: false,
     delayed: true,
     updatedAt: new Date().toISOString(),
+    unavailableReason,
   };
 }
 
 async function fetchYahooMarketData(market: EuropeMarket): Promise<EuropeMarketData> {
-  try {
-    const response = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(market.yahooSymbol)}?range=2d&interval=1d`,
-      {
-        next: { revalidate: 300 },
-        headers: { accept: 'application/json' },
-      },
-    );
-    if (!response.ok) return unavailable(market, `Yahoo Finance delayed (${response.status})`);
-
-    const json = await response.json() as YahooChartResponse;
-    const meta = json.chart?.result?.[0]?.meta;
-    const value = Number(meta?.regularMarketPrice ?? 0);
-    const previous = Number(meta?.chartPreviousClose ?? meta?.previousClose ?? 0);
-    if (!Number.isFinite(value) || value <= 0) return unavailable(market, 'Yahoo Finance delayed');
-
-    const changePercent = previous > 0 ? ((value - previous) / previous) * 100 : null;
-    return {
+  const quote = await fetchYahooNormalizedQuote({
+    requestedSymbol: market.yahooSymbols[0] ?? market.indexName,
+    symbols: market.yahooSymbols,
+    name: market.indexName,
+    debugContext: {
+      marketCode: market.code,
       market: market.id,
-      indexName: market.indexName,
-      value,
-      changePercent: changePercent === null || Number.isFinite(changePercent) ? changePercent : null,
-      source: 'Yahoo Finance',
-      status: 'available',
-      delayed: true,
-      updatedAt: meta?.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString() : new Date().toISOString(),
-    };
-  } catch {
-    return unavailable(market, 'Yahoo Finance delayed');
-  }
+      symbolsTried: market.yahooSymbols,
+    },
+  });
+
+  devLog('[EuropeNews] Yahoo index attempt result', {
+    marketCode: market.code,
+    symbolsTried: market.yahooSymbols,
+    parsedValue: quote.price,
+    parsedChangePercent: quote.changePercent,
+    symbolUsed: quote.symbolUsed,
+    unavailableReason: quote.available ? null : quote.unavailableReason ?? 'provider_returned_empty_quote',
+  });
+
+  if (!quote.available) return unavailable(market, quote.unavailableReason ?? 'provider_returned_empty_quote');
+
+  return {
+    market: market.id,
+    code: market.code,
+    indexName: market.indexName,
+    requestedSymbol: quote.requestedSymbol,
+    symbolUsed: quote.symbolUsed,
+    value: quote.price,
+    change: quote.change,
+    changePercent: quote.changePercent,
+    currency: quote.currency,
+    marketTime: quote.marketTime,
+    source: 'Yahoo Finance',
+    status: 'available',
+    available: true,
+    delayed: true,
+    updatedAt: quote.marketTime ?? new Date().toISOString(),
+  };
 }
 
 export async function fetchEuropeDelayedMarketData() {
   const settled = await Promise.allSettled(EUROPE_MARKETS.map(market => fetchYahooMarketData(market)));
   return settled.reduce<Record<EuropeMarketId, EuropeMarketData>>((acc, result, index) => {
     const market = EUROPE_MARKETS[index];
-    acc[market.id] = result.status === 'fulfilled' ? result.value : unavailable(market);
+    acc[market.id] = result.status === 'fulfilled'
+      ? result.value
+      : unavailable(market, result.reason instanceof Error ? result.reason.message : 'market_data_fetch_failed');
     return acc;
   }, {} as Record<EuropeMarketId, EuropeMarketData>);
+}
+
+export function europeMarketDataToApiMarkets(marketData: Partial<Record<EuropeMarketId, EuropeMarketData>>) {
+  return EUROPE_MARKETS.map(market => {
+    const data = marketData[market.id] ?? unavailable(market);
+    return {
+      code: data.code,
+      indexName: data.indexName,
+      requestedSymbol: data.requestedSymbol,
+      symbolUsed: data.symbolUsed,
+      value: data.value,
+      change: data.change,
+      changePercent: data.changePercent,
+      currency: data.currency,
+      marketTime: data.marketTime,
+      source: data.source,
+      delayed: data.delayed,
+      available: data.available,
+      unavailableReason: data.unavailableReason,
+    };
+  });
 }

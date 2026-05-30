@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchEuropeDelayedMarketData } from '@/lib/europe/fetchEuropeDelayedMarketData';
+import { europeMarketDataToApiMarkets, fetchEuropeDelayedMarketData } from '@/lib/europe/fetchEuropeDelayedMarketData';
 import { parseEuropeRssFeeds } from '@/lib/europe/parseEuropeRssFeeds';
 import { isNewsTranslationEnabled, normalizeNewsLanguage, translateNewsItems } from '@/lib/translation/translateNewsText';
 
@@ -21,6 +21,7 @@ export async function GET(request: Request) {
 
     const rawItems = newsResult.status === 'fulfilled' ? newsResult.value.items : [];
     const items = await translateNewsItems(rawItems, language);
+    const marketData = marketDataResult.status === 'fulfilled' ? marketDataResult.value : {};
 
     return NextResponse.json(
       {
@@ -30,8 +31,9 @@ export async function GET(request: Request) {
         source: 'RSS',
         marketDataSource: 'Yahoo Finance delayed',
         lastUpdated: new Date().toISOString(),
+        markets: europeMarketDataToApiMarkets(marketData),
         items,
-        marketData: marketDataResult.status === 'fulfilled' ? marketDataResult.value : {},
+        marketData,
         failedFeeds,
       },
       {
