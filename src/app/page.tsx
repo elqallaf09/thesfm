@@ -1002,8 +1002,8 @@ const landingStyles = `
     top: 12px;
     z-index: 150;
     width: min(1180px, calc(100% - 32px));
-    margin: 16px auto 0;
-    min-height: 70px;
+    margin: 12px auto 0;
+    min-height: 64px;
     border: 1px solid var(--landing-border);
     border-radius: 24px;
     background: rgba(255, 255, 255, 0.92);
@@ -1012,8 +1012,8 @@ const landingStyles = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    padding: 12px 14px;
+    gap: 14px;
+    padding: 10px 14px;
   }
   .landing-brand, .landing-actions, .landing-links, .hero-buttons, .trust-card, .feature-card div, .ai-icon, .audience-grid article, .footer-brand {
     display: flex;
@@ -1112,17 +1112,17 @@ const landingStyles = `
   }
   .hero-section {
     width: min(1180px, calc(100% - 32px));
-    margin: 26px auto 0;
-    min-height: calc(100vh - 120px);
+    margin: 18px auto 0;
+    min-height: 560px;
     display: grid;
     grid-template-columns: minmax(0, 1.04fr) minmax(340px, 0.96fr);
     align-items: center;
-    gap: 28px;
-    padding: 42px 0 70px;
+    gap: 22px;
+    padding: 34px 0 46px;
   }
   .hero-copy {
     display: grid;
-    gap: 20px;
+    gap: 16px;
   }
   .kicker {
     width: fit-content;
@@ -1150,7 +1150,7 @@ const landingStyles = `
     margin: 0;
     color: var(--landing-muted);
     font-size: 18px;
-    line-height: 1.9;
+    line-height: 1.75;
     font-weight: 700;
   }
   .hero-buttons {
@@ -1351,11 +1351,11 @@ const landingStyles = `
     font-weight: 900;
   }
   .section-block {
-    padding: 64px 0 0;
+    padding: 56px 0 0;
   }
   .section-heading {
     max-width: 760px;
-    margin-bottom: 24px;
+    margin-bottom: 18px;
   }
   .section-heading span, .ai-card span {
     color: #0B76E0;
@@ -1524,7 +1524,7 @@ const landingStyles = `
     color: #FFFFFF;
   }
   .ai-section {
-    padding-top: 64px;
+    padding-top: 56px;
   }
   .ai-card {
     border-radius: 32px;
@@ -1556,7 +1556,7 @@ const landingStyles = `
     font-weight: 900;
   }
   .compact {
-    padding-top: 64px;
+    padding-top: 56px;
   }
   .audience-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1696,10 +1696,10 @@ const landingStyles = `
     text-decoration: underline;
   }
   .final-cta {
-    margin-top: 70px;
+    margin-top: 56px;
     border-radius: 34px;
     text-align: center;
-    padding: 46px 24px;
+    padding: 34px 24px;
     color: #FFFFFF;
     background:
       radial-gradient(circle at 18% 16%, rgba(24, 212, 212, 0.24), transparent 30%),
@@ -1723,8 +1723,8 @@ const landingStyles = `
     background: linear-gradient(135deg, #1D8CFF, #18D4D4);
   }
   .landing-footer {
-    margin-top: 70px;
-    padding: 34px 0 44px;
+    margin-top: 42px;
+    padding: 24px 0 30px;
     display: grid;
     grid-template-columns: 1.25fr repeat(6, minmax(0, 1fr));
     gap: 18px;
@@ -1800,7 +1800,7 @@ const landingStyles = `
     .hero-section {
       min-height: auto;
       grid-template-columns: 1fr;
-      padding-top: 34px;
+      padding: 28px 0 38px;
     }
     .trust-section, .ai-card, .landing-footer {
       grid-template-columns: 1fr;
@@ -1847,7 +1847,7 @@ const landingStyles = `
       grid-template-columns: 1fr;
     }
     .how-section, .section-block, .ai-section {
-      padding-top: 64px;
+      padding-top: 42px;
     }
     .ai-card {
       padding: 22px;
@@ -1857,7 +1857,8 @@ const landingStyles = `
       border-radius: 16px;
     }
     .landing-footer {
-      padding-bottom: 32px;
+      margin-top: 32px;
+      padding-bottom: 24px;
     }
   }
 `;

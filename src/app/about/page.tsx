@@ -487,9 +487,9 @@ const aboutStyles = `
     top: 12px;
     z-index: 150;
     width: min(1180px, calc(100% - 32px));
-    min-height: 70px;
-    margin: 16px auto 0;
-    padding: 12px 14px;
+    min-height: 64px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -565,16 +565,16 @@ const aboutStyles = `
     margin: 0 auto;
   }
   .about-hero {
-    min-height: calc(100vh - 120px);
-    padding: 44px 0 70px;
+    min-height: 560px;
+    padding: 34px 0 46px;
     display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
     align-items: center;
-    gap: 28px;
+    gap: 22px;
   }
   .hero-copy {
     display: grid;
-    gap: 20px;
+    gap: 16px;
   }
   .hero-badge {
     width: fit-content;
@@ -590,7 +590,7 @@ const aboutStyles = `
   .hero-copy h1 {
     margin: 0;
     color: #061B33;
-    font-size: clamp(38px, 7vw, 76px);
+    font-size: clamp(36px, 6vw, 64px);
     line-height: 1.03;
     font-weight: 950;
     letter-spacing: 0;
@@ -600,7 +600,7 @@ const aboutStyles = `
     margin: 0;
     color: #475569;
     font-size: 18px;
-    line-height: 1.9;
+    line-height: 1.75;
     font-weight: 750;
   }
   .hero-actions {
@@ -626,8 +626,8 @@ const aboutStyles = `
     position: relative;
     overflow: hidden;
     border-radius: 32px;
-    padding: 28px;
-    min-height: 430px;
+    padding: 24px;
+    min-height: 360px;
     display: grid;
     align-content: end;
     background:
@@ -645,7 +645,7 @@ const aboutStyles = `
   .hero-panel p {
     margin: 0;
     color: rgba(234, 246, 255, 0.78);
-    line-height: 1.85;
+    line-height: 1.75;
     font-weight: 800;
   }
   .hero-orbit {
@@ -681,7 +681,7 @@ const aboutStyles = `
     border-radius: 24px;
     background: #FFFFFF;
     box-shadow: 0 14px 36px rgba(3, 18, 37, 0.07);
-    padding: 22px;
+    padding: 20px;
   }
   .info-card.featured {
     background:
@@ -710,18 +710,18 @@ const aboutStyles = `
   .info-card p, .icon-card p, .value-card p, .trust-card p {
     margin: 0;
     color: #64748B;
-    line-height: 1.8;
+    line-height: 1.72;
     font-weight: 760;
   }
   .info-card.featured p {
     color: rgba(234, 246, 255, 0.78);
   }
   .section-block {
-    padding-top: 86px;
+    padding-top: 56px;
   }
   .section-heading {
     max-width: 760px;
-    margin-bottom: 24px;
+    margin-bottom: 18px;
   }
   .section-heading span {
     color: #1D8CFF;
@@ -754,13 +754,13 @@ const aboutStyles = `
     gap: 2px;
   }
   .trust-band {
-    margin-top: 90px;
+    margin-top: 56px;
     display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
     gap: 18px;
     align-items: stretch;
     border-radius: 32px;
-    padding: 28px;
+    padding: 24px;
     color: #FFFFFF;
     background:
       radial-gradient(circle at 16% 14%, rgba(24, 212, 212, 0.24), transparent 32%),
@@ -784,7 +784,7 @@ const aboutStyles = `
   .trust-band p {
     margin: 0;
     color: rgba(234, 246, 255, 0.78);
-    line-height: 1.85;
+    line-height: 1.75;
     font-weight: 800;
   }
   .trust-card {
@@ -799,16 +799,16 @@ const aboutStyles = `
     color: #18D4D4;
   }
   .values-section {
-    padding-top: 86px;
+    padding-top: 56px;
   }
   .value-card svg {
     color: #18D4D4;
   }
   .about-cta {
-    margin-top: 90px;
+    margin-top: 56px;
     border-radius: 34px;
     text-align: center;
-    padding: 46px 24px;
+    padding: 34px 24px;
     color: #FFFFFF;
     background:
       radial-gradient(circle at 18% 16%, rgba(24, 212, 212, 0.24), transparent 30%),
@@ -849,8 +849,8 @@ const aboutStyles = `
     background: rgba(255, 255, 255, 0.08);
   }
   .about-footer {
-    margin-top: 70px;
-    padding: 34px 0 44px;
+    margin-top: 42px;
+    padding: 24px 0 30px;
     display: grid;
     grid-template-columns: 1.35fr repeat(4, minmax(0, 1fr));
     gap: 18px;
@@ -922,13 +922,13 @@ const aboutStyles = `
     .about-hero {
       min-height: auto;
       grid-template-columns: 1fr;
-      padding-top: 34px;
+      padding: 28px 0 38px;
     }
     .statement-grid, .trust-band, .about-footer {
       grid-template-columns: 1fr;
     }
     .hero-panel {
-      min-height: 360px;
+      min-height: 320px;
     }
   }
   @media (max-width: 620px) {
@@ -969,15 +969,20 @@ const aboutStyles = `
       border-radius: 18px;
     }
     .section-block, .values-section {
-      padding-top: 64px;
+      padding-top: 42px;
     }
     .trust-band {
-      margin-top: 68px;
+      margin-top: 42px;
       padding: 22px;
       border-radius: 26px;
     }
+    .about-cta {
+      margin-top: 42px;
+      padding: 28px 18px;
+    }
     .about-footer {
-      padding-bottom: 32px;
+      margin-top: 32px;
+      padding-bottom: 24px;
     }
   }
 `;
