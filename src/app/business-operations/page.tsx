@@ -277,6 +277,10 @@ export default function BusinessOperationsPage() {
   }, [locale, salesRows, text.unclassified]);
 
   const isEmpty = summary.projectCount === 0 && summary.salesCount === 0 && summary.employeeCount === 0;
+  const failedBusinessSections = Object.values(loadIssues).filter(Boolean);
+  const hasLoadedBusinessRecords = !isEmpty;
+  const hasPartialErrors = failedBusinessSections.length > 0;
+  const showPartialLoadWarning = !error && hasPartialErrors && hasLoadedBusinessRecords;
 
   function summaryRows(): SummaryRow[] {
     return [
@@ -350,8 +354,6 @@ export default function BusinessOperationsPage() {
     { title: text.suppliers, description: text.suppliersDescription, icon: Truck, active: false, allowed: false, count: 0 },
     { title: text.operatingExpenses, description: text.operatingExpensesDescription, icon: ReceiptText, active: false, allowed: false, count: 0 },
   ], [permissions.canViewEmployees, permissions.canViewSales, summary.employeeCount, summary.projectCount, summary.salesCount, text]);
-
-  const failedBusinessSections = Object.values(loadIssues).filter(Boolean);
 
   if (authLoading || loading || roleLoading) {
     return (
@@ -458,7 +460,7 @@ export default function BusinessOperationsPage() {
           <BusinessOperationsChartCard title={text.topProducts} data={chartData.products} currency={defaultCurrency} lang={locale} />
         </section>
 
-        {!error && failedBusinessSections.length > 0 ? (
+        {showPartialLoadWarning ? (
           <div className="business-section-warning" role="status">
             <AlertTriangle size={17} aria-hidden="true" />
             <span>{text.partialLoadWarning}</span>
@@ -484,7 +486,7 @@ export default function BusinessOperationsPage() {
         {isEmpty && !error ? (
           <EmptyState
             title={text.noDataYet}
-            description={text.emptyDashboardBody}
+            description={text.startAddingFirstData}
             icon={<BriefcaseBusiness size={26} />}
             actions={(
               <div className="business-empty-actions">
