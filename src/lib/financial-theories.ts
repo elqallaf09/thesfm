@@ -12,9 +12,11 @@ export type FinancialTheoryCategoryId =
 
 export type FinancialTheory = {
   id: string;
+  slug: string;
   number: number;
   title: LocalizedText;
   category: Exclude<FinancialTheoryCategoryId, 'all'>;
+  isEssential: boolean;
   short: LocalizedText;
   details: Record<FinancialTheoryLang, string[]>;
   examples?: Record<FinancialTheoryLang, string[]>;
@@ -37,6 +39,17 @@ export type FinancialTheoryTool = {
   href?: string;
 };
 
+const ESSENTIAL_FINANCIAL_THEORY_IDS = new Set([
+  'personal-budgeting',
+  'pay-yourself-first',
+  'emergency-fund',
+  'smart-goals',
+  'diversification',
+  'reduce-bad-debt',
+  'multiple-income-streams',
+  'financial-freedom',
+]);
+
 export const FINANCIAL_THEORY_PAGE_TEXT = {
   ar: {
     title: 'النظريات المالية',
@@ -44,7 +57,7 @@ export const FINANCIAL_THEORY_PAGE_TEXT = {
     badge: 'مكتبة مالية ذكية',
     startLearning: 'ابدأ التعلّم',
     exploreTools: 'استكشف الأدوات الذكية',
-    introTitle: 'ليش تحتاج تفهم النظريات المالية؟',
+    introTitle: 'لماذا تحتاج إلى فهم النظريات المالية؟',
     introBody: 'لأن إدارة المال ما تعتمد فقط على تسجيل الدخل والمصروفات. تحتاج تفهم القواعد التي تساعدك على اتخاذ قرارات أفضل: كيف تقسّم راتبك، كيف تدخر، متى تستثمر، كيف تتجنب الديون السيئة، وكيف تبني حرية مالية على المدى الطويل.',
     educationNote: 'هذه الصفحة تعليمية وليست استشارة مالية شخصية.',
     categories: 'التصنيفات',
@@ -173,6 +186,8 @@ export const FINANCIAL_THEORY_CATEGORIES: Array<{
 export const FINANCIAL_THEORIES: FinancialTheory[] = [
   {
     id: 'personal-budgeting',
+    slug: 'personal-budgeting',
+    isEssential: ESSENTIAL_FINANCIAL_THEORY_IDS.has('personal-budgeting'),
     number: 1,
     title: { ar: 'نظرية الميزانية الشخصية', en: 'Personal Budgeting Theory', fr: 'Théorie du budget personnel' },
     category: 'budget-saving',
@@ -217,6 +232,8 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
   },
   {
     id: 'pay-yourself-first',
+    slug: 'pay-yourself-first',
+    isEssential: ESSENTIAL_FINANCIAL_THEORY_IDS.has('pay-yourself-first'),
     number: 2,
     title: { ar: 'نظرية ادفع لنفسك أولًا', en: 'Pay Yourself First', fr: 'Se payer en premier' },
     category: 'budget-saving',
@@ -236,7 +253,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       fr: ['Si votre salaire est de 1000 KWD, transférez d’abord 150 KWD vers l’épargne, puis vivez avec le reste.'],
     },
     keyTakeaway: {
-      ar: 'الادخار لا يكون من الباقي، لأن غالبًا ما راح يبقى شيء.',
+      ar: 'الادخار لا يكون من الباقي، لأن غالبًا قد لا يبقى شيء.',
       en: 'Saving should not depend on leftovers, because leftovers often disappear.',
       fr: 'L’épargne ne doit pas dépendre du reste, car il ne reste souvent rien.',
     },
@@ -245,6 +262,8 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
   },
   {
     id: 'compound-interest',
+    slug: 'compound-interest',
+    isEssential: ESSENTIAL_FINANCIAL_THEORY_IDS.has('compound-interest'),
     number: 3,
     title: { ar: 'نظرية الفائدة المركبة', en: 'Compound Interest Theory', fr: 'Théorie des intérêts composés' },
     category: 'investing',
@@ -272,6 +291,8 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
   },
   {
     id: 'diversification',
+    slug: 'diversification',
+    isEssential: ESSENTIAL_FINANCIAL_THEORY_IDS.has('diversification'),
     number: 4,
     title: { ar: 'نظرية تنويع الاستثمار', en: 'Investment Diversification', fr: 'Diversification des investissements' },
     category: 'investing',
@@ -281,7 +302,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       fr: 'Ne mettez pas tout votre argent dans un seul actif.',
     },
     details: {
-      ar: ['لا تحط كل فلوسك في مكان واحد. وزّع أموالك بين أكثر من أصل لتقليل المخاطر.'],
+      ar: ['لا تضع كل أموالك في مكان واحد. وزّع أموالك بين أكثر من أصل لتقليل المخاطر.'],
       en: ['Spread money across more than one asset type to reduce the impact of one asset performing badly.'],
       fr: ['Répartissez l’argent entre plusieurs types d’actifs pour réduire l’impact d’un actif en difficulté.'],
     },
@@ -318,6 +339,8 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
   },
   {
     id: 'risk-return',
+    slug: 'risk-return',
+    isEssential: ESSENTIAL_FINANCIAL_THEORY_IDS.has('risk-return'),
     number: 5,
     title: { ar: 'نظرية المخاطرة والعائد', en: 'Risk and Return Theory', fr: 'Théorie risque-rendement' },
     category: 'debt-risk',
@@ -346,6 +369,8 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
   },
   {
     id: 'emergency-fund',
+    slug: 'emergency-fund',
+    isEssential: ESSENTIAL_FINANCIAL_THEORY_IDS.has('emergency-fund'),
     number: 6,
     title: { ar: 'نظرية صندوق الطوارئ', en: 'Emergency Fund Theory', fr: 'Théorie du fonds d’urgence' },
     category: 'budget-saving',
@@ -373,6 +398,8 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
   },
   {
     id: 'multiple-income-streams',
+    slug: 'multiple-income-streams',
+    isEssential: ESSENTIAL_FINANCIAL_THEORY_IDS.has('multiple-income-streams'),
     number: 7,
     title: { ar: 'نظرية الدخل المتعدد', en: 'Multiple Income Streams', fr: 'Sources de revenus multiples' },
     category: 'financial-planning',
@@ -419,6 +446,8 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
   },
   {
     id: 'reduce-bad-debt',
+    slug: 'reduce-bad-debt',
+    isEssential: ESSENTIAL_FINANCIAL_THEORY_IDS.has('reduce-bad-debt'),
     number: 8,
     title: { ar: 'نظرية تقليل الديون السيئة', en: 'Reducing Bad Debt', fr: 'Réduire les mauvaises dettes' },
     category: 'debt-risk',
@@ -428,12 +457,12 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       fr: 'Évitez les dettes qui ne créent ni actif ni revenu.',
     },
     details: {
-      ar: ['مو كل دين سيئ، لكن بعض الديون تدمّر المال.', 'الدين السيئ: قرض لاستهلاك شيء لا يزيد قيمته.', 'الدين الجيد: دين يساعدك تزيد دخلك أو تملك أصلًا، مثل مشروع مدروس أو عقار مؤجر.'],
+      ar: ['ليست كل الديون سيئة، لكن بعض الديون تضر الخطة المالية.', 'الدين السيئ: قرض لاستهلاك شيء لا يزيد قيمته.', 'الدين الجيد: دين يساعدك تزيد دخلك أو تملك أصلًا، مثل مشروع مدروس أو عقار مؤجر.'],
       en: ['Not all debt is harmful, but some debt weakens financial stability.', 'Bad debt funds consumption that does not grow in value.', 'Good debt can help build income or own an asset, such as a studied project or rental property.'],
       fr: ['Toutes les dettes ne sont pas mauvaises, mais certaines fragilisent la situation financière.', 'Une mauvaise dette finance une consommation qui ne prend pas de valeur.', 'Une bonne dette peut aider à créer un revenu ou posséder un actif, comme un projet étudié ou un bien locatif.'],
     },
     keyTakeaway: {
-      ar: 'لا تدخل قرض إلا إذا تعرف شلون راح تدفعه وشنو فائدته.',
+      ar: 'لا تدخل في قرض إلا إذا كنت تعرف كيف ستسدده وما فائدته.',
       en: 'Do not take debt unless you know how you will repay it and why it helps.',
       fr: 'Ne prenez pas de dette sans savoir comment la rembourser et en quoi elle aide.',
     },
@@ -441,6 +470,8 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
   },
   {
     id: 'time-value-money',
+    slug: 'time-value-money',
+    isEssential: ESSENTIAL_FINANCIAL_THEORY_IDS.has('time-value-money'),
     number: 9,
     title: { ar: 'نظرية القيمة الزمنية للمال', en: 'Time Value of Money', fr: 'Valeur temporelle de l’argent' },
     category: 'investing',
@@ -460,7 +491,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       fr: ['100 KWD aujourd’hui peuvent acheter plus que 100 KWD dans cinq ans si les prix augmentent.'],
     },
     keyTakeaway: {
-      ar: 'لا تخلي فلوسك واقفة بدون هدف.',
+      ar: 'لا تترك أموالك دون هدف واضح.',
       en: 'Do not leave money idle without a purpose.',
       fr: 'Ne laissez pas l’argent immobile sans objectif.',
     },
@@ -469,6 +500,8 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
   },
   {
     id: 'long-term-investing',
+    slug: 'long-term-investing',
+    isEssential: ESSENTIAL_FINANCIAL_THEORY_IDS.has('long-term-investing'),
     number: 10,
     title: { ar: 'نظرية الاستثمار طويل المدى', en: 'Long-Term Investing', fr: 'Investissement à long terme' },
     category: 'investing',
@@ -492,6 +525,8 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
   },
   {
     id: 'lifestyle-inflation',
+    slug: 'lifestyle-inflation',
+    isEssential: ESSENTIAL_FINANCIAL_THEORY_IDS.has('lifestyle-inflation'),
     number: 11,
     title: { ar: 'نظرية التحكم بالتضخم الشخصي', en: 'Lifestyle Inflation Control', fr: 'Contrôle de l’inflation du mode de vie' },
     category: 'budget-saving',
@@ -511,7 +546,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       fr: ['Si le salaire passe de 800 à 1000 KWD, évitez de faire passer les dépenses de 700 à 950. Augmentez plutôt l’épargne ou l’investissement.'],
     },
     keyTakeaway: {
-      ar: 'الغنى مو بس بزيادة الدخل، الغنى بالتحكم بالمصاريف.',
+      ar: 'الثراء لا يعتمد فقط على زيادة الدخل، بل على التحكم بالمصاريف.',
       en: 'Wealth is not only higher income; it is also expense control.',
       fr: 'La richesse n’est pas seulement un revenu plus élevé, c’est aussi la maîtrise des dépenses.',
     },
@@ -520,6 +555,8 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
   },
   {
     id: 'smart-goals',
+    slug: 'smart-goals',
+    isEssential: ESSENTIAL_FINANCIAL_THEORY_IDS.has('smart-goals'),
     number: 12,
     title: { ar: 'نظرية الأهداف المالية الذكية', en: 'SMART Financial Goals', fr: 'Objectifs financiers SMART' },
     category: 'financial-planning',
@@ -534,12 +571,12 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       fr: ['Un objectif financier solide inclut un montant, une durée et une action mensuelle.'],
     },
     examples: {
-      ar: ['مثال ضعيف: أبي أوفر فلوس.', 'مثال قوي: أبي أوفر 3000 دينار خلال 12 شهر، يعني لازم أدخر 250 دينار شهريًا.'],
+      ar: ['مثال ضعيف: أريد ادخار المال.', 'مثال قوي: أريد ادخار 3000 دينار خلال 12 شهرًا، أي أحتاج إلى ادخار 250 دينارًا شهريًا.'],
       en: ['Weak: I want to save money.', 'Strong: I want to save 3000 KWD in 12 months, so I need 250 KWD monthly.'],
       fr: ['Faible : je veux économiser.', 'Fort : je veux économiser 3000 KWD en 12 mois, donc 250 KWD par mois.'],
     },
     keyTakeaway: {
-      ar: 'الهدف بدون رقم ومدة يصير أمنية، مو خطة.',
+      ar: 'الهدف دون رقم ومدة يصبح أمنية، وليس خطة.',
       en: 'A goal without a number and time frame is a wish, not a plan.',
       fr: 'Un objectif sans montant ni durée est un souhait, pas un plan.',
     },
@@ -548,6 +585,8 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
   },
   {
     id: 'liquidity',
+    slug: 'liquidity',
+    isEssential: ESSENTIAL_FINANCIAL_THEORY_IDS.has('liquidity'),
     number: 13,
     title: { ar: 'نظرية السيولة', en: 'Liquidity Theory', fr: 'Théorie de la liquidité' },
     category: 'debt-risk',
@@ -557,7 +596,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       fr: 'Gardez une partie de l’argent rapidement accessible.',
     },
     details: {
-      ar: ['لازم يكون عندك جزء من المال سهل الوصول له بسرعة. مو كل فلوسك تكون في عقار أو استثمار يصعب بيعه.'],
+      ar: ['من المهم أن يكون لديك جزء من المال سهل الوصول إليه بسرعة. لا ينبغي أن تكون كل أموالك في عقار أو استثمار يصعب بيعه.'],
       en: ['Some money should be easy to access. Not all wealth should be locked in real estate or hard-to-sell investments.'],
       fr: ['Une partie de l’argent doit être facilement accessible. Tout ne doit pas être bloqué dans l’immobilier ou des actifs difficiles à vendre.'],
     },
@@ -571,6 +610,8 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
   },
   {
     id: 'opportunity-cost',
+    slug: 'opportunity-cost',
+    isEssential: ESSENTIAL_FINANCIAL_THEORY_IDS.has('opportunity-cost'),
     number: 14,
     title: { ar: 'نظرية تكلفة الفرصة البديلة', en: 'Opportunity Cost Theory', fr: 'Coût d’opportunité' },
     category: 'financial-planning',
@@ -590,7 +631,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       fr: ['Si vous dépensez 200 KWD pour quelque chose de non essentiel, vous perdez l’occasion de l’épargner ou de l’investir.'],
     },
     keyTakeaway: {
-      ar: 'قبل لا تشتري، اسأل نفسك: شنو الشي الثاني اللي أقدر أسويه بهالمبلغ؟',
+      ar: 'قبل أن تشتري، اسأل نفسك: ما الخيار الآخر الذي يمكنني استخدام هذا المبلغ فيه؟',
       en: 'Before buying, ask what else this money could do.',
       fr: 'Avant d’acheter, demandez ce que cet argent pourrait faire d’autre.',
     },
@@ -599,6 +640,8 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
   },
   {
     id: 'financial-freedom',
+    slug: 'financial-freedom',
+    isEssential: ESSENTIAL_FINANCIAL_THEORY_IDS.has('financial-freedom'),
     number: 15,
     title: { ar: 'نظرية الحرية المالية', en: 'Financial Freedom Theory', fr: 'Théorie de la liberté financière' },
     category: 'financial-freedom',
@@ -618,7 +661,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       fr: ['Si vos dépenses mensuelles sont de 1000 KWD et que des investissements ou projets génèrent 1000 KWD par mois sans dépendre totalement du travail, vous êtes proche de la liberté financière.'],
     },
     keyTakeaway: {
-      ar: 'الهدف مو بس تجمع فلوس، الهدف تبني دخل مستمر.',
+      ar: 'الهدف ليس جمع المال فقط، بل بناء دخل مستمر.',
       en: 'The goal is not only to collect money; it is to build recurring income.',
       fr: 'L’objectif n’est pas seulement d’accumuler de l’argent, mais de créer un revenu durable.',
     },
@@ -769,7 +812,7 @@ export const FINANCIAL_THEORY_EXAMPLES = [
       fr: 'Un objectif financier devient un plan',
     },
     body: {
-      ar: 'بدل “أبي أوفر”، اكتب المبلغ والمدة، ثم حوّلها إلى ادخار شهري واضح.',
+      ar: 'بدل “أريد الادخار”، اكتب المبلغ والمدة، ثم حوّلها إلى ادخار شهري واضح.',
       en: 'Instead of “I want to save,” define the amount and deadline, then convert it into a monthly action.',
       fr: 'Au lieu de “je veux économiser”, définissez le montant et le délai, puis une action mensuelle.',
     },
