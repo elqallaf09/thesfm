@@ -75,7 +75,10 @@ export function TechNewsPage() {
       .filter(item => !needle
         || item.companyName.toLowerCase().includes(needle)
         || item.ticker.toLowerCase().includes(needle)
-        || item.headline.toLowerCase().includes(needle))
+        || item.title.toLowerCase().includes(needle)
+        || item.summary.toLowerCase().includes(needle)
+        || item.titleOriginal.toLowerCase().includes(needle)
+        || item.summaryOriginal.toLowerCase().includes(needle))
       .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
   }, [items, query, sector]);
 

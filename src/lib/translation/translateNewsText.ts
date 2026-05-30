@@ -25,7 +25,8 @@ type TranslatableNewsItem = {
   translationSource?: string;
 };
 
-const translationCache = new Map<string, NewsTranslationState>();
+const TRANSLATION_CACHE_TTL_MS = 5 * 60 * 1000;
+const translationCache = new Map<string, { value: NewsTranslationState; timestamp: number }>();
 
 export function normalizeNewsLanguage(value: string | null | undefined): AppNewsLanguage {
   return value === 'en' || value === 'fr' || value === 'ar' ? value : 'ar';
@@ -42,20 +43,29 @@ function providerUrl() {
   return process.env.LIBRETRANSLATE_URL?.trim().replace(/\/$/, '') || '';
 }
 
-async function libreTranslate(text: string, source: string, target: AppNewsLanguage) {
+function translateEndpoint() {
   const baseUrl = providerUrl();
-  if (!baseUrl || !text.trim()) return null;
+  if (!baseUrl) return '';
+  return /\/translate$/i.test(baseUrl) ? baseUrl : `${baseUrl}/translate`;
+}
 
-  const response = await fetch(`${baseUrl}/translate`, {
+async function libreTranslate(text: string, source: string, target: AppNewsLanguage) {
+  const endpoint = translateEndpoint();
+  if (!endpoint || !text.trim()) return null;
+
+  const apiKey = process.env.LIBRETRANSLATE_API_KEY?.trim();
+  const body: Record<string, string> = {
+    q: text,
+    source: source === 'unknown' ? 'auto' : source,
+    target,
+    format: 'text',
+  };
+  if (apiKey) body.api_key = apiKey;
+
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify({
-      q: text,
-      source: source === 'unknown' ? 'auto' : source,
-      target,
-      format: 'text',
-      api_key: process.env.LIBRETRANSLATE_API_KEY?.trim() || undefined,
-    }),
+    body: JSON.stringify(body),
     next: { revalidate: 300 },
   });
   if (!response.ok) throw new Error(`LibreTranslate returned ${response.status}`);
@@ -75,7 +85,7 @@ export async function translateNewsText(options: {
   const originalLanguage = options.languageOriginal || detectLanguage(`${titleOriginal} ${summaryOriginal}`);
   const cacheKey = `newsTranslation:${options.cacheKey}:${options.targetLanguage}`;
   const cached = translationCache.get(cacheKey);
-  if (cached) return cached;
+  if (cached && Date.now() - cached.timestamp < TRANSLATION_CACHE_TTL_MS) return cached.value;
 
   const originalState: NewsTranslationState = {
     titleOriginal,
@@ -89,7 +99,7 @@ export async function translateNewsText(options: {
   };
 
   if (!providerUrl() || originalLanguage === options.targetLanguage) {
-    translationCache.set(cacheKey, originalState);
+    translationCache.set(cacheKey, { value: originalState, timestamp: Date.now() });
     return originalState;
   }
 
@@ -105,7 +115,7 @@ export async function translateNewsText(options: {
       isTranslated: Boolean(translatedTitle || translatedSummary),
       translationSource: translatedTitle || translatedSummary ? 'LibreTranslate' : 'original',
     };
-    translationCache.set(cacheKey, state);
+    translationCache.set(cacheKey, { value: state, timestamp: Date.now() });
     return state;
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
@@ -114,7 +124,7 @@ export async function translateNewsText(options: {
         reason: error instanceof Error ? error.message : String(error),
       });
     }
-    translationCache.set(cacheKey, originalState);
+    translationCache.set(cacheKey, { value: originalState, timestamp: Date.now() });
     return originalState;
   }
 }
@@ -123,23 +133,34 @@ export async function translateNewsItems<T extends TranslatableNewsItem>(
   items: T[],
   targetLanguage: AppNewsLanguage,
 ): Promise<Array<T & NewsTranslationState>> {
-  const translated = await Promise.all(items.map(async item => {
-    const title = item.titleOriginal || item.title || item.headline || '';
-    const summary = item.summaryOriginal || item.summary || title;
-    const state = await translateNewsText({
-      cacheKey: item.url || item.id,
-      title,
-      summary,
-      targetLanguage,
-      languageOriginal: item.languageOriginal,
-    });
-    return {
-      ...item,
-      ...state,
-      headline: state.title,
-      summary: state.summary,
-    };
-  }));
+  const translated: Array<T & NewsTranslationState> = [];
+  let nextIndex = 0;
+  const concurrency = Math.min(4, items.length);
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      const item = items[currentIndex];
+      const title = item.titleOriginal || item.title || item.headline || '';
+      const summary = item.summaryOriginal || item.summary || title;
+      const state = await translateNewsText({
+        cacheKey: item.url || item.id,
+        title,
+        summary,
+        targetLanguage,
+        languageOriginal: item.languageOriginal,
+      });
+      translated[currentIndex] = {
+        ...item,
+        ...state,
+        headline: state.title,
+        summary: state.summary,
+      };
+    }
+  }
+
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
   return translated;
 }
 

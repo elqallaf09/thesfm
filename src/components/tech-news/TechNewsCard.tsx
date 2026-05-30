@@ -26,6 +26,8 @@ export function TechNewsCard({ item, labels, formatDateTime, formatPrice }: Tech
   const tone = changeClass(item.changePercent);
   const ChangeIcon = tone === 'down' ? TrendingDown : TrendingUp;
   const hasPrice = item.price !== null;
+  const displayTitle = item.title || item.headline;
+  const displaySummary = item.summary || displayTitle;
 
   return (
     <article className="tech-news-card">
@@ -53,10 +55,10 @@ export function TechNewsCard({ item, labels, formatDateTime, formatPrice }: Tech
           </div>
         )}
       </div>
-      <h2>{item.headline}</h2>
-      <p>{item.summary || item.headline}</p>
+      <h2>{displayTitle}</h2>
+      <p>{displaySummary}</p>
       <div className="tech-news-meta">
-        <a href={item.url} target="_blank" rel="noreferrer" aria-label={`${labels.openArticle}: ${item.headline}`}>
+        <a href={item.url} target="_blank" rel="noreferrer" aria-label={`${labels.openArticle}: ${displayTitle}`}>
           {item.source || labels.source}
           <ExternalLink size={14} />
         </a>

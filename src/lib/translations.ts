@@ -571,6 +571,7 @@ export const TR: Record<string, TranslationEntry> = {
   news_translated_badge: { ar:'مترجم', en:'Translated', fr:'Traduit' },
   news_original_language_badge: { ar:'باللغة الأصلية', en:'Original language', fr:'Langue originale' },
   news_show_original: { ar:'عرض النص الأصلي', en:'Show original', fr:'Voir l’original' },
+  news_hide_original: { ar:'إخفاء النص الأصلي', en:'Hide original', fr:'Masquer l’original' },
   news_translation_unavailable: { ar:'تعذر ترجمة الخبر', en:'Translation unavailable', fr:'Traduction indisponible' },
   gulf_news_title: { ar:'أخبار البورصات الخليجية', en:'Gulf Stock Exchange News', fr:'Actualités des bourses du Golfe' },
   gulf_news_subtitle: { ar:'آخر الأخبار والمؤشرات المؤجلة لأسواق الخليج', en:'Latest news and delayed indicators for Gulf markets', fr:'Dernières actualités et indicateurs différés des marchés du Golfe' },

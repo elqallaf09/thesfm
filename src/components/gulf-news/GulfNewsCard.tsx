@@ -17,6 +17,9 @@ type GulfNewsCardProps = {
 };
 
 export function GulfNewsCard({ item, marketBadge, labels, formatDateTime }: GulfNewsCardProps) {
+  const displayTitle = item.title || item.headline;
+  const displaySummary = item.summary || displayTitle;
+
   return (
     <article className="gulf-news-card">
       <div className="gulf-news-card-top">
@@ -25,10 +28,10 @@ export function GulfNewsCard({ item, marketBadge, labels, formatDateTime }: Gulf
           {item.isTranslated ? labels.translated : labels.originalLanguage}
         </span>
       </div>
-      <h2>{item.headline}</h2>
-      <p>{item.summary || item.headline}</p>
+      <h2>{displayTitle}</h2>
+      <p>{displaySummary}</p>
       <div className="gulf-news-meta">
-        <a href={item.url} target="_blank" rel="noreferrer" aria-label={`${labels.openArticle}: ${item.headline}`}>
+        <a href={item.url} target="_blank" rel="noreferrer" aria-label={`${labels.openArticle}: ${displayTitle}`}>
           {item.source || labels.source}
           <ExternalLink size={14} />
         </a>

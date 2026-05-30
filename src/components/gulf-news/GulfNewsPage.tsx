@@ -132,8 +132,10 @@ export function GulfNewsPage() {
     return items
       .filter(item => item.market === selectedMarket)
       .filter(item => !needle
-        || item.headline.toLowerCase().includes(needle)
+        || item.title.toLowerCase().includes(needle)
         || item.summary.toLowerCase().includes(needle)
+        || item.titleOriginal.toLowerCase().includes(needle)
+        || item.summaryOriginal.toLowerCase().includes(needle)
         || item.source.toLowerCase().includes(needle))
       .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
   }, [items, query, selectedMarket]);

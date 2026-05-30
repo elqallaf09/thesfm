@@ -16,6 +16,9 @@ type EuropeNewsCardProps = {
 };
 
 export function EuropeNewsCard({ item, marketBadge, labels, formatDateTime }: EuropeNewsCardProps) {
+  const displayTitle = item.title || item.headline;
+  const displaySummary = item.summary || displayTitle;
+
   return (
     <article className="europe-news-card">
       <div className="europe-news-card-top">
@@ -24,10 +27,10 @@ export function EuropeNewsCard({ item, marketBadge, labels, formatDateTime }: Eu
           {item.isTranslated ? labels.translated : labels.originalLanguage}
         </span>
       </div>
-      <h2>{item.headline}</h2>
-      <p>{item.summary || item.headline}</p>
+      <h2>{displayTitle}</h2>
+      <p>{displaySummary}</p>
       <div className="europe-news-meta">
-        <a href={item.url} target="_blank" rel="noreferrer" aria-label={`${labels.openArticle}: ${item.headline}`}>
+        <a href={item.url} target="_blank" rel="noreferrer" aria-label={`${labels.openArticle}: ${displayTitle}`}>
           {item.source || labels.source}
           <ExternalLink size={14} />
         </a>
