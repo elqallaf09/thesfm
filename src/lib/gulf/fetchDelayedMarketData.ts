@@ -1,83 +1,115 @@
 import { GULF_MARKETS, type GulfMarket, type GulfMarketId } from '@/lib/gulf/gulfMarkets';
+import { fetchYahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 
 export type GulfMarketData = {
   market: GulfMarketId;
+  code: GulfMarket['code'];
+  name: string;
   indexName: string;
+  requestedSymbol: string | null;
+  symbolUsed: string | null;
   value: number | null;
+  change: number | null;
   changePercent: number | null;
+  currency: string | null;
+  marketTime: string | null;
   source: string;
   status: 'available' | 'unavailable';
+  available: boolean;
   delayed: true;
   updatedAt: string;
+  unavailableReason?: string;
 };
 
-type YahooChartResponse = {
-  chart?: {
-    result?: Array<{
-      meta?: {
-        regularMarketPrice?: number;
-        chartPreviousClose?: number;
-        previousClose?: number;
-        regularMarketTime?: number;
-      };
-    }>;
-  };
-};
-
-function unavailable(market: GulfMarket, source = 'Free delayed data source unavailable'): GulfMarketData {
+function unavailable(market: GulfMarket, unavailableReason = 'provider_symbol_not_configured'): GulfMarketData {
   return {
     market: market.id,
+    code: market.code,
+    name: market.nameAr,
     indexName: market.indexName,
+    requestedSymbol: market.yahooSymbols[0] ?? null,
+    symbolUsed: null,
     value: null,
+    change: null,
     changePercent: null,
-    source,
+    currency: null,
+    marketTime: null,
+    source: 'Data provider',
     status: 'unavailable',
+    available: false,
     delayed: true,
     updatedAt: new Date().toISOString(),
+    unavailableReason,
   };
 }
 
 async function fetchYahooMarketData(market: GulfMarket): Promise<GulfMarketData> {
-  if (!market.yahooSymbol) return unavailable(market);
+  if (market.yahooSymbols.length === 0) return unavailable(market);
 
-  try {
-    const response = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(market.yahooSymbol)}?range=2d&interval=1d`,
-      {
-        next: { revalidate: 300 },
-        headers: { accept: 'application/json' },
-      },
-    );
-    if (!response.ok) return unavailable(market, `Yahoo Finance delayed (${response.status})`);
-
-    const json = await response.json() as YahooChartResponse;
-    const meta = json.chart?.result?.[0]?.meta;
-    const value = Number(meta?.regularMarketPrice ?? 0);
-    const previous = Number(meta?.chartPreviousClose ?? meta?.previousClose ?? 0);
-    if (!Number.isFinite(value) || value <= 0) return unavailable(market, 'Yahoo Finance delayed');
-
-    const changePercent = previous > 0 ? ((value - previous) / previous) * 100 : null;
-    return {
+  const quote = await fetchYahooNormalizedQuote({
+    requestedSymbol: market.yahooSymbols[0],
+    symbols: market.yahooSymbols,
+    name: market.indexName,
+    debugContext: {
+      marketCode: market.code,
       market: market.id,
-      indexName: market.indexName,
-      value,
-      changePercent: changePercent === null || Number.isFinite(changePercent) ? changePercent : null,
-      source: 'Yahoo Finance delayed',
-      status: 'available',
-      delayed: true,
-      updatedAt: meta?.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString() : new Date().toISOString(),
-    };
-  } catch {
-    return unavailable(market, 'Yahoo Finance delayed');
+      symbolsTried: market.yahooSymbols,
+    },
+  });
+
+  if (!quote.available) {
+    return unavailable(market, quote.unavailableReason ?? 'provider_returned_empty_quote');
   }
+
+  return {
+    market: market.id,
+    code: market.code,
+    name: market.nameAr,
+    indexName: market.indexName,
+    requestedSymbol: quote.requestedSymbol,
+    symbolUsed: quote.symbolUsed,
+    value: quote.price,
+    change: quote.change,
+    changePercent: quote.changePercent,
+    currency: quote.currency,
+    marketTime: quote.marketTime,
+    source: quote.source,
+    status: 'available',
+    available: true,
+    delayed: true,
+    updatedAt: quote.marketTime ?? new Date().toISOString(),
+  };
 }
 
 export async function fetchDelayedGulfMarketData() {
   const settled = await Promise.allSettled(GULF_MARKETS.map(market => fetchYahooMarketData(market)));
   return settled.reduce<Record<GulfMarketId, GulfMarketData>>((acc, result, index) => {
     const market = GULF_MARKETS[index];
-    acc[market.id] = result.status === 'fulfilled' ? result.value : unavailable(market);
+    acc[market.id] = result.status === 'fulfilled'
+      ? result.value
+      : unavailable(market, result.reason instanceof Error ? result.reason.message : 'market_data_fetch_failed');
     return acc;
   }, {} as Record<GulfMarketId, GulfMarketData>);
 }
 
+export function gulfMarketDataToApiMarkets(marketData: Record<GulfMarketId, GulfMarketData>) {
+  return GULF_MARKETS.map(market => {
+    const data = marketData[market.id] ?? unavailable(market);
+    return {
+      code: market.code,
+      name: data.name,
+      indexName: data.indexName,
+      requestedSymbol: data.requestedSymbol,
+      symbolUsed: data.symbolUsed,
+      value: data.value,
+      change: data.change,
+      changePercent: data.changePercent,
+      currency: data.currency,
+      marketTime: data.marketTime,
+      source: data.source,
+      delayed: data.delayed,
+      available: data.available,
+      unavailableReason: data.unavailableReason,
+    };
+  });
+}

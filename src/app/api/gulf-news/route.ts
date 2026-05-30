@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchDelayedGulfMarketData } from '@/lib/gulf/fetchDelayedMarketData';
+import { fetchDelayedGulfMarketData, gulfMarketDataToApiMarkets } from '@/lib/gulf/fetchDelayedMarketData';
 import { parseGulfRssFeeds } from '@/lib/gulf/parseRssFeeds';
 import { isNewsTranslationEnabled, normalizeNewsLanguage, translateNewsItems } from '@/lib/translation/translateNewsText';
 
@@ -21,17 +21,20 @@ export async function GET(request: Request) {
 
     const rawItems = newsResult.status === 'fulfilled' ? newsResult.value.items : [];
     const items = await translateNewsItems(rawItems, language);
+    const marketData = marketDataResult.status === 'fulfilled' ? marketDataResult.value : {};
+    const markets = marketDataResult.status === 'fulfilled' ? gulfMarketDataToApiMarkets(marketDataResult.value) : [];
 
     return NextResponse.json(
       {
         success: true,
         language,
         translationEnabled: isNewsTranslationEnabled(),
-        source: 'RSS',
-        marketDataSource: 'Yahoo Finance delayed',
+        source: 'RSS + Yahoo Finance',
+        marketDataSource: 'Yahoo Finance',
         lastUpdated: new Date().toISOString(),
+        markets,
         items,
-        marketData: marketDataResult.status === 'fulfilled' ? marketDataResult.value : {},
+        marketData,
         failedFeeds,
       },
       {
