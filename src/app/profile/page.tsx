@@ -474,9 +474,9 @@ export default function ProfilePage() {
   useEffect(() => {
     const stored = readStored<Partial<PreferencesState>>(STORE_KEY, {});
     const storedTheme =
-      normalizeThemeMode(stored.theme) ||
       normalizeThemeMode(typeof window !== 'undefined' ? localStorage.getItem(THEME_STORE_KEY) : null) ||
       normalizeThemeMode(typeof window !== 'undefined' ? localStorage.getItem('theme') : null) ||
+      normalizeThemeMode(stored.theme) ||
       normalizeThemeMode(theme);
     setPreferences(prev => ({
       ...prev,
@@ -583,7 +583,10 @@ export default function ProfilePage() {
     setLang(next.language);
     setCurrency(next.currency);
     setTheme(next.theme);
-    if (typeof window !== 'undefined') localStorage.setItem(THEME_STORE_KEY, next.theme);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(THEME_STORE_KEY, next.theme);
+      localStorage.setItem('theme', next.theme);
+    }
     writeStored(STORE_KEY, next);
     if (typeof document !== 'undefined') document.documentElement.classList.toggle('sfm-luxury', next.luxury);
     showToast(themeChanged ? L('themeChanged') : L('saved'));

@@ -9,6 +9,21 @@ type ThemeToggleProps = {
   className?: string;
 };
 
+function persistThemePreference(theme: 'light' | 'dark') {
+  if (typeof window === 'undefined') return;
+
+  window.localStorage.setItem('the-sfm-theme', theme);
+  window.localStorage.setItem('theme', theme);
+
+  try {
+    const raw = window.localStorage.getItem('sfm_settings');
+    const settings = raw ? JSON.parse(raw) as Record<string, unknown> : {};
+    window.localStorage.setItem('sfm_settings', JSON.stringify({ ...settings, theme }));
+  } catch {
+    window.localStorage.setItem('sfm_settings', JSON.stringify({ theme }));
+  }
+}
+
 export function ThemeToggle({ className = '' }: ThemeToggleProps) {
   const { lang } = useLanguage();
   const { resolvedTheme, setTheme } = useTheme();
@@ -25,6 +40,12 @@ export function ThemeToggle({ className = '' }: ThemeToggleProps) {
       ? 'Changer le thème'
       : 'تغيير وضع العرض';
 
+  const handleToggle = () => {
+    const nextTheme = isDark ? 'light' : 'dark';
+    persistThemePreference(nextTheme);
+    setTheme(nextTheme);
+  };
+
   return (
     <>
       <button
@@ -32,7 +53,7 @@ export function ThemeToggle({ className = '' }: ThemeToggleProps) {
         className={`sfm-theme-toggle ${className}`.trim()}
         aria-label={label}
         title={label}
-        onClick={() => setTheme(isDark ? 'light' : 'dark')}
+        onClick={handleToggle}
       >
         {isDark ? <Moon size={18} aria-hidden="true" /> : <Sun size={18} aria-hidden="true" />}
       </button>
