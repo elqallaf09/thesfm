@@ -11,7 +11,7 @@ type TechTickerStripProps = {
   formatPrice: (value: number | null) => string;
   labels: {
     priceUnavailable: string;
-    delayed: string;
+    delayedGlobal: string;
   };
 };
 
@@ -35,6 +35,7 @@ export function TechTickerStrip({ prices, formatPrice, labels }: TechTickerStrip
       viewportClassName="tech-ticker-viewport"
       trackClassName="tech-ticker-track"
       setClassName="tech-ticker-set"
+      status={<span className="tech-ticker-delay-badge">{labels.delayedGlobal}</span>}
     >
         {tickerItems.map(item => {
           const tone = item.changePercent === null || item.changePercent === 0 ? 'neutral' : item.changePercent > 0 ? 'up' : 'down';
@@ -43,17 +44,12 @@ export function TechTickerStrip({ prices, formatPrice, labels }: TechTickerStrip
             <div className="tech-ticker-item" key={item.symbol}>
               <strong>{item.symbol}</strong>
               <span>{item.price === null ? labels.priceUnavailable : formatPrice(item.price)}</span>
-              {item.changePercent === null ? (
-                <b className="neutral">{labels.delayed}</b>
-              ) : (
-                <>
+              {item.price !== null && item.changePercent !== null ? (
                   <b className={tone}>
                     <Icon size={13} />
                     {`${item.changePercent >= 0 ? '+' : ''}${item.changePercent.toFixed(2)}%`}
                   </b>
-                  <small>{labels.delayed}</small>
-                </>
-              )}
+              ) : null}
             </div>
           );
         })}

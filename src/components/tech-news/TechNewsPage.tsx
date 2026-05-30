@@ -125,8 +125,8 @@ export function TechNewsPage() {
           prices={prices}
           formatPrice={formatPrice}
           labels={{
-            priceUnavailable: t('tech_news_price_unavailable'),
-            delayed: t('market_data_status_delayed'),
+            priceUnavailable: t('market_unavailable_short'),
+            delayedGlobal: t('market_prices_delayed'),
           }}
         />
 
@@ -222,8 +222,9 @@ export function TechNewsPage() {
           --tech-accent-strong:#3DE7D0;
         }
         .tech-news-main{width:100%;max-width:1280px;margin:0 auto;padding:18px 22px 32px;margin-inline-start:230px;display:grid;gap:18px;overflow-x:hidden}
-        .tech-ticker-strip{border:1px solid var(--tech-border);background:linear-gradient(180deg,var(--tech-panel),var(--tech-panel-soft));border-radius:18px;overflow:hidden;box-shadow:0 16px 44px rgba(3,18,37,.12)}
-        .tech-ticker-viewport{width:100%;overflow-x:auto;scrollbar-width:none;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}.tech-ticker-viewport::-webkit-scrollbar{display:none}.tech-ticker-track{width:max-content;display:flex;align-items:center;animation:techTickerMarquee 34s linear infinite;will-change:transform}.tech-ticker-strip:hover .tech-ticker-track,.tech-ticker-strip:focus-within .tech-ticker-track,.tech-ticker-strip:active .tech-ticker-track{animation-play-state:paused}.tech-ticker-set{display:flex;align-items:center;flex:0 0 auto}@keyframes techTickerMarquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+        .tech-ticker-strip{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;border:1px solid var(--tech-border);background:linear-gradient(180deg,var(--tech-panel),var(--tech-panel-soft));border-radius:18px;overflow:hidden;box-shadow:0 16px 44px rgba(3,18,37,.12)}
+        .tech-ticker-delay-badge{position:relative;z-index:3;margin-inline-start:10px;border:1px solid rgba(245,185,66,.24);background:rgba(245,185,66,.12);color:#B45309;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:950;line-height:1.25;white-space:nowrap;direction:rtl;unicode-bidi:isolate}.dark .tech-ticker-delay-badge{color:#F5B942}
+        .tech-ticker-viewport{width:100%;overflow-x:auto;scrollbar-width:none;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}.tech-ticker-viewport::-webkit-scrollbar{display:none}.tech-ticker-track{width:max-content;display:flex;align-items:center;animation:techTickerMarquee 34s linear infinite;will-change:transform}.tech-ticker-strip:hover .tech-ticker-track,.tech-ticker-strip:focus-within .tech-ticker-track,.tech-ticker-strip:active .tech-ticker-track,.tech-ticker-strip.is-paused .tech-ticker-track{animation-play-state:paused}.tech-ticker-set{display:flex;align-items:center;flex:0 0 auto}@keyframes techTickerMarquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
         .tech-ticker-item{flex:0 0 auto;min-height:44px;display:flex;align-items:center;gap:9px;padding:0 16px;border-inline-end:1px solid var(--tech-border);white-space:nowrap}
         .tech-ticker-item strong{direction:ltr;unicode-bidi:isolate;color:var(--tech-text);font-size:12px;font-weight:950}
         .tech-ticker-item span{direction:ltr;unicode-bidi:isolate;color:var(--tech-muted);font-size:12px;font-weight:900}

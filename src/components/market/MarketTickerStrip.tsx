@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 
 type MarketTickerStripProps = {
@@ -8,6 +9,7 @@ type MarketTickerStripProps = {
   viewportClassName: string;
   trackClassName: string;
   setClassName: string;
+  status?: ReactNode;
   children: ReactNode;
 };
 
@@ -17,17 +19,28 @@ export function MarketTickerStrip({
   viewportClassName,
   trackClassName,
   setClassName,
+  status,
   children,
 }: MarketTickerStripProps) {
+  const [paused, setPaused] = useState(false);
+
   return (
-    <section className={className} aria-label={ariaLabel} dir="ltr">
+    <section
+      className={`${className}${paused ? ' is-paused' : ''}`}
+      aria-label={ariaLabel}
+      dir="ltr"
+      onPointerDown={() => setPaused(true)}
+      onPointerUp={() => setPaused(false)}
+      onPointerCancel={() => setPaused(false)}
+      onPointerLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+    >
+      {status}
       <div className={viewportClassName}>
         <div className={trackClassName}>
-          {[0, 1].map(copy => (
-            <div className={setClassName} key={copy} aria-hidden={copy === 1}>
-              {children}
-            </div>
-          ))}
+          <div className={setClassName}>{children}</div>
+          <div className={setClassName} aria-hidden="true">{children}</div>
         </div>
       </div>
     </section>

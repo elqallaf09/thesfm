@@ -544,6 +544,9 @@ export const TR: Record<string, TranslationEntry> = {
   market_report_portfolio: { ar:'ملاءمة المحفظة', en:'Portfolio suitability', fr:'Adéquation au portefeuille' },
   market_report_monitor: { ar:'أمور يجب مراقبتها', en:'Things to monitor', fr:'Points à surveiller' },
   market_symbol: { ar:'الرمز', en:'Symbol', fr:'Symbole' },
+  market_prices_delayed: { ar:'الأسعار مؤجلة', en:'Prices delayed', fr:'Prix différés' },
+  market_prices_delayed_15: { ar:'الأسعار مؤجلة حوالي 15 دقيقة', en:'Prices delayed by around 15 minutes', fr:'Prix différés d’environ 15 minutes' },
+  market_unavailable_short: { ar:'غير متوفر', en:'Unavailable', fr:'Indisponible' },
 
   tech_news_title: { ar:'أخبار السوق التقني', en:'Tech Market News', fr:'Actualités du marché technologique' },
   tech_news_subtitle: { ar:'آخر الأخبار والتحركات اليومية لأهم شركات التقنية في السوق الأمريكي', en:'Latest news and daily moves for major US technology companies', fr:'Dernières actualités et mouvements quotidiens des grandes entreprises technologiques américaines' },
