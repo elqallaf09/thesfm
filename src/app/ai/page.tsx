@@ -76,7 +76,7 @@ const copy = {
   title: { ar: 'تقريرك المالي الذكي', en: 'AI Financial Report', fr: 'Rapport financier intelligent' },
   subtitle: { ar: 'تحليل عملي بالأرقام للدخل، المصروفات، الادخار، الاستثمار، والأهداف.', en: 'Number-based analysis across income, expenses, savings, investments, and goals.', fr: 'Analyse chiffrée des revenus, dépenses, épargne, investissements et objectifs.' },
   analyze: { ar: 'حلل وضعي المالي الآن', en: 'Analyze my financial situation', fr: 'Analyser ma situation financière' },
-  monthlyPlan: { ar: 'اعطني خطة شهرية', en: 'Give me a monthly plan', fr: 'Me donner un plan mensuel' },
+  monthlyPlan: { ar: 'أعطني خطة شهرية', en: 'Give me a monthly plan', fr: 'Me donner un plan mensuel' },
   predict: { ar: 'توقع الشهر القادم', en: 'Predict next month', fr: 'Prévoir le mois prochain' },
   addData: { ar: 'أضف الدخل والمصروفات أولاً حتى يظهر التحليل الذكي بالأرقام.', en: 'Add income and expenses first to unlock number-based AI analysis.', fr: "Ajoutez d'abord revenus et dépenses pour activer l'analyse chiffrée." },
   numbersFirst: { ar: 'الأرقام أولاً', en: 'Numbers first', fr: 'Les chiffres d’abord' },
@@ -89,7 +89,7 @@ const copy = {
   scoreBreakdown: { ar: 'تفصيل الدرجة الذكية', en: 'Smart Score Breakdown', fr: 'Détail du score intelligent' },
   smartAlerts: { ar: 'أهم التنبيهات الذكية', en: 'Smart Alerts', fr: 'Alertes intelligentes' },
   actionPlan: { ar: 'خطة الذكاء الاصطناعي لهذا الشهر', en: 'AI Action Plan for This Month', fr: "Plan d'action IA pour ce mois" },
-  planSummary: { ar: 'بتطبيق هذه الخطة، تقدر توفر تقريباً {amount} هذا الشهر.', en: 'By applying this plan, you can save about {amount} this month.', fr: 'En appliquant ce plan, vous pouvez économiser environ {amount} ce mois-ci.' },
+  planSummary: { ar: 'بتطبيق هذه الخطة، يمكنك توفير نحو {amount} هذا الشهر.', en: 'By applying this plan, you can save about {amount} this month.', fr: 'En appliquant ce plan, vous pouvez économiser environ {amount} ce mois-ci.' },
   advisor: { ar: 'اسأل المستشار المالي الذكي', en: 'Ask the AI Financial Advisor', fr: 'Demander au conseiller financier IA' },
   chatPlaceholder: { ar: 'اكتب سؤالك المالي...', en: 'Type your financial question...', fr: 'Écrivez votre question financière...' },
   send: { ar: 'إرسال', en: 'Send', fr: 'Envoyer' },
@@ -132,7 +132,7 @@ const copy = {
 };
 
 const questions = {
-  ar: ['كيف أحسن الادخار هذا الشهر؟', 'شنو أكثر تصنيف أصرف عليه؟', 'هل استثماري مناسب لدخلي؟', 'متى أوصل لهدفي؟', 'اعطني خطة من دخلي الحالي'],
+  ar: ['كيف أحسّن الادخار هذا الشهر؟', 'ما أكثر تصنيف أنفق عليه؟', 'هل استثماري مناسب لدخلي؟', 'متى أصل إلى هدفي؟', 'أعطني خطة بناءً على دخلي الحالي'],
   en: ['How can I improve savings this month?', 'Which category do I spend on most?', 'Is my investment suitable for my income?', 'When will I reach my goal?', 'Create a plan from my current income'],
   fr: ['Comment améliorer mon épargne ce mois-ci ?', 'Quelle catégorie coûte le plus ?', 'Mon investissement convient-il à mes revenus ?', 'Quand atteindrai-je mon objectif ?', 'Créez un plan à partir de mes revenus actuels'],
 };
@@ -371,7 +371,7 @@ export default function AiPage() {
     const top = topExpense ? `${topExpense.name} (${money(topExpense.value)})` : money(totals.totalExpenses);
     if (lang === 'en') return `Your financial position is ${tx(copy[scoreStatus(score)], lang).toLowerCase()}. Monthly income is ${money(totals.totalIncome)}, expenses are ${money(totals.totalExpenses)}, and the highest pressure is ${top}. Reducing expenses by ${cut} can raise your savings ratio and improve next month's score.`;
     if (lang === 'fr') return `Votre situation financière est ${tx(copy[scoreStatus(score)], lang).toLowerCase()}. Les revenus mensuels sont de ${money(totals.totalIncome)}, les dépenses de ${money(totals.totalExpenses)}, et la pression principale est ${top}. Réduire les dépenses de ${cut} peut améliorer l'épargne et le score du mois prochain.`;
-    return `وضعك المالي ${tx(copy[scoreStatus(score)], lang)}. دخلك ${money(totals.totalIncome)} ومصروفاتك ${money(totals.totalExpenses)}، وأكثر ضغط عندك هو ${top}. إذا خفضت ${cut} هذا الشهر، تقدر ترفع نسبة الادخار وتحسن درجة الشهر القادم.`;
+    return `وضعك المالي ${tx(copy[scoreStatus(score)], lang)}. دخلك ${money(totals.totalIncome)} ومصروفاتك ${money(totals.totalExpenses)}، وأكبر ضغط مالي لديك هو ${top}. إذا خفضت ${cut} هذا الشهر، يمكنك رفع نسبة الادخار وتحسين درجة الشهر القادم.`;
   }, [L, hasCoreData, lang, money, reduceAmount, score, topExpense, totals]);
 
   const insights = useMemo(() => buildInsights(lang, money, totals, topExpense, score, goals.length), [goals.length, lang, money, score, topExpense, totals]);

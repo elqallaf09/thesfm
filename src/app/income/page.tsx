@@ -148,7 +148,7 @@ const TX: Record<string, Record<Lang, string>> = {
   incomeList: { ar: 'مصادر الدخل', en: 'Income Sources', fr: 'Sources de revenus' },
   projectIncome: { ar: 'دخل مشروع', en: 'Project Income', fr: 'Revenu de projet' },
   noIncome: { ar: 'لا توجد مصادر دخل بعد', en: 'No income sources yet', fr: 'Aucune source de revenu pour le moment' },
-  noIncomeDescription: { ar: 'ابدأ بإضافة راتبك أو أي مصدر دخل آخر ليتم بناء خطتك المالية بدقة.', en: 'Start by adding your salary or any other income source so your financial plan is built accurately.', fr: 'Commencez par ajouter votre salaire ou une autre source de revenu pour construire votre plan financier avec précision.' },
+  noIncomeDescription: { ar: 'ابدأ بإضافة دخلك الشهري أو أي مصدر دخل آخر ليتم بناء خطتك المالية بدقة.', en: 'Start by adding your salary or any other income source so your financial plan is built accurately.', fr: 'Commencez par ajouter votre salaire ou une autre source de revenu pour construire votre plan financier avec précision.' },
   name: { ar: 'اسم الدخل', en: 'Income name', fr: 'Nom du revenu' },
   incomeNamePlaceholder: { ar: 'مثال: راتب، مشروع، عميل، إيجار', en: 'Example: salary, project, client, rent', fr: 'Exemple : salaire, projet, client, loyer' },
   amount: { ar: 'المبلغ', en: 'Amount', fr: 'Montant' },

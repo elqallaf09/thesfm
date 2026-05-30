@@ -58,11 +58,11 @@ export const FINANCIAL_THEORY_PAGE_TEXT = {
     startLearning: 'ابدأ التعلّم',
     exploreTools: 'استكشف الأدوات الذكية',
     introTitle: 'لماذا تحتاج إلى فهم النظريات المالية؟',
-    introBody: 'لأن إدارة المال ما تعتمد فقط على تسجيل الدخل والمصروفات. تحتاج تفهم القواعد التي تساعدك على اتخاذ قرارات أفضل: كيف تقسّم راتبك، كيف تدخر، متى تستثمر، كيف تتجنب الديون السيئة، وكيف تبني حرية مالية على المدى الطويل.',
+    introBody: 'لأن إدارة المال لا تعتمد فقط على تسجيل الدخل والمصروفات. تحتاج إلى فهم القواعد التي تساعدك على اتخاذ قرارات أفضل: كيف تقسّم دخلك، كيف تدخر، متى تستثمر، كيف تتجنب الديون السيئة، وكيف تبني حرية مالية على المدى الطويل.',
     educationNote: 'هذه الصفحة تعليمية وليست استشارة مالية شخصية.',
     categories: 'التصنيفات',
     theoryLibrary: 'مكتبة النظريات',
-    theoryLibrarySubtitle: 'اختر تصنيفاً، افتح النظرية، وشوف كيف يمكن تطبيقها داخل أدوات THE SFM.',
+    theoryLibrarySubtitle: 'اختر تصنيفاً، وافتح النظرية، واطّلع على كيفية تطبيقها داخل أدوات THE SFM.',
     readMore: 'اقرأ أكثر',
     hideDetails: 'إخفاء التفاصيل',
     keyTakeaway: 'الخلاصة',
@@ -197,7 +197,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       fr: 'Répartissez votre revenu en catégories claires au lieu de dépenser au hasard.',
     },
     details: {
-      ar: ['تقول إن الشخص لازم يقسم دخله إلى أقسام واضحة بدل ما يصرف عشوائيًا.'],
+      ar: ['توضح أن الشخص يحتاج إلى تقسيم دخله إلى أقسام واضحة بدلاً من الصرف العشوائي.'],
       en: ['This theory says income should be divided into clear categories so daily spending does not absorb the whole salary.'],
       fr: ['Cette théorie recommande de diviser le revenu en catégories claires pour éviter que les dépenses quotidiennes absorbent tout le salaire.'],
     },
@@ -224,7 +224,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       ],
     },
     keyTakeaway: {
-      ar: 'لا تخلي الراتب كله يروح على المصاريف اليومية.',
+      ar: 'لا تجعل الدخل الشهري كله يذهب إلى المصروفات اليومية.',
       en: 'Do not let your entire salary disappear into daily expenses.',
       fr: 'Ne laissez pas tout votre salaire partir dans les dépenses quotidiennes.',
     },
@@ -248,7 +248,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       fr: ['Avant de dépenser, transférez d’abord un montant fixe vers l’épargne ou l’investissement.'],
     },
     examples: {
-      ar: ['راتبك 1000 دينار. أول شيء تحوّل 150 دينار للادخار. وبعدين تعيش على الباقي.'],
+      ar: ['إذا كان دخلك الشهري 1000 دينار، فابدأ بتحويل 150 ديناراً إلى الادخار، ثم نظّم مصروفاتك ضمن المبلغ المتبقي.'],
       en: ['If your salary is 1000 KWD, move 150 KWD to savings first, then live on the rest.'],
       fr: ['Si votre salaire est de 1000 KWD, transférez d’abord 150 KWD vers l’épargne, puis vivez avec le reste.'],
     },
@@ -380,7 +380,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       fr: 'Gardez assez d’argent pour couvrir 3 à 6 mois de dépenses.',
     },
     details: {
-      ar: ['لازم يكون عندك مبلغ يغطي مصاريفك من 3 إلى 6 أشهر.'],
+      ar: ['ينبغي أن يكون لديك مبلغ يغطي مصروفاتك لمدة 3 إلى 6 أشهر.'],
       en: ['An emergency fund protects your budget when income stops or unexpected expenses appear.'],
       fr: ['Un fonds d’urgence protège votre budget en cas d’arrêt de revenu ou de dépense imprévue.'],
     },
@@ -437,7 +437,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       ],
     },
     keyTakeaway: {
-      ar: 'إذا توقف مصدر، عندك غيره يغطيك.',
+      ar: 'إذا توقف أحد مصادر الدخل، يمكن أن يساعد مصدر آخر في تغطية احتياجاتك.',
       en: 'If one source stops, another can support you.',
       fr: 'Si une source s’arrête, une autre peut vous soutenir.',
     },
@@ -481,7 +481,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       fr: 'L’argent aujourd’hui vaut souvent plus que l’argent plus tard.',
     },
     details: {
-      ar: ['الدينار اليوم قيمته أعلى من الدينار بعد سنة لأنك تقدر تستثمره، ولأن التضخم يرفع الأسعار.'],
+      ar: ['قيمة الدينار اليوم أعلى من قيمته بعد سنة، لأن بإمكانك استثماره، ولأن التضخم يرفع الأسعار.'],
       en: ['Money now has more potential because it can be invested, while inflation can reduce future purchasing power.'],
       fr: ['L’argent disponible maintenant a plus de potentiel car il peut être investi, tandis que l’inflation réduit le pouvoir d’achat futur.'],
     },
@@ -541,7 +541,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       fr: ['Quand le revenu augmente, évitez d’augmenter les dépenses au même rythme.'],
     },
     examples: {
-      ar: ['راتبك كان 800 وصار 1000. لا تخلي مصروفك يزيد من 700 إلى 950. الأفضل تزيد الادخار والاستثمار.'],
+      ar: ['إذا كان دخلك الشهري 800 ثم أصبح 1000، فلا تجعل مصروفاتك ترتفع من 700 إلى 950. الأفضل زيادة الادخار والاستثمار.'],
       en: ['If salary rises from 800 to 1000 KWD, avoid raising expenses from 700 to 950. Increase saving or investing instead.'],
       fr: ['Si le salaire passe de 800 à 1000 KWD, évitez de faire passer les dépenses de 700 à 950. Augmentez plutôt l’épargne ou l’investissement.'],
     },
@@ -561,12 +561,12 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
     title: { ar: 'نظرية الأهداف المالية الذكية', en: 'SMART Financial Goals', fr: 'Objectifs financiers SMART' },
     category: 'financial-planning',
     short: {
-      ar: 'الهدف المالي لازم يكون واضحًا وقابلًا للحساب.',
+      ar: 'ينبغي أن يكون الهدف المالي واضحًا وقابلًا للحساب.',
       en: 'A financial goal must be clear and measurable.',
       fr: 'Un objectif financier doit être clair et mesurable.',
     },
     details: {
-      ar: ['أي هدف مالي لازم يكون واضح وقابل للحساب.'],
+      ar: ['ينبغي أن يكون أي هدف مالي واضحًا وقابلًا للحساب.'],
       en: ['A strong financial goal includes an amount, a time frame, and a monthly action.'],
       fr: ['Un objectif financier solide inclut un montant, une durée et une action mensuelle.'],
     },
@@ -656,7 +656,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       fr: ['La liberté financière arrive lorsque le revenu récurrent ou passif couvre les dépenses essentielles sans dépendance totale au travail.'],
     },
     examples: {
-      ar: ['مصروفك الشهري 1000 دينار. إذا عندك استثمارات أو مشاريع تدخل لك 1000 دينار شهريًا بدون اعتماد كامل على الوظيفة، فأنت قريب من الحرية المالية.'],
+      ar: ['إذا كانت مصروفاتك الشهرية 1000 دينار، وكانت لديك استثمارات أو مشاريع تحقق 1000 دينار شهريًا دون اعتماد كامل على الوظيفة، فأنت قريب من الحرية المالية.'],
       en: ['If monthly expenses are 1000 KWD and investments or projects generate 1000 KWD monthly without full job dependence, you are close to financial freedom.'],
       fr: ['Si vos dépenses mensuelles sont de 1000 KWD et que des investissements ou projets génèrent 1000 KWD par mois sans dépendre totalement du travail, vous êtes proche de la liberté financière.'],
     },

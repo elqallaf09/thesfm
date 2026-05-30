@@ -106,7 +106,7 @@ const COPY = {
     saved: 'تم إعداد حسابك بنجاح',
     savedSub: 'تم حفظ البيانات التي أدخلتها فقط. الخطوات التي تخطيتها بقيت فارغة.',
     initialPlanBuilt: 'تم بناء خطتك المالية الأولية',
-    expectedRemaining: 'باقي من راتبك المتوقع',
+    expectedRemaining: 'المتبقي من دخلك المتوقع',
     recommendedSavingPercent: 'أفضل نسبة ادخار لك',
     monthlySavingSuggestion: 'اقتراح الادخار الشهري',
     firstGoalCompletion: 'موعد إنجاز الهدف الأول المتوقع',

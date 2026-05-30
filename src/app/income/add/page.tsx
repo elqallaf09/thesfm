@@ -14,7 +14,7 @@ const INCOME_TYPES = [
   { id: 'bonus', label_ar: 'مكافأة', label_en: 'Bonus', label_fr: 'Prime', icon: '🎁' },
   { id: 'gift', label_ar: 'هدية', label_en: 'Gift', label_fr: 'Cadeau', icon: '🎀' },
   { id: 'rental', label_ar: 'إيجار', label_en: 'Rental', label_fr: 'Loyer', icon: '🏠' },
-  { id: 'pension', label_ar: 'معاش', label_en: 'Pension', label_fr: 'Pension', icon: '👴' },
+  { id: 'pension', label_ar: 'دخل تقاعدي', label_en: 'Pension', label_fr: 'Pension', icon: '👴' },
   { id: 'other', label_ar: 'دخل آخر', label_en: 'Other Income', label_fr: 'Autre revenu', icon: '💰' },
 ];
 
