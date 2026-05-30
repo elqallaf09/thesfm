@@ -23,6 +23,7 @@ export function GulfTickerStrip({ labels, unavailableLabel, marketData, formatNu
     const value = data?.value ?? null;
     const change = data?.changePercent ?? null;
     const tone = changeTone(change);
+    const indexName = data?.indexName ?? market.indexName;
     const Icon = tone === 'down' ? TrendingDown : TrendingUp;
 
     return {
@@ -31,6 +32,7 @@ export function GulfTickerStrip({ labels, unavailableLabel, marketData, formatNu
       change,
       tone,
       Icon,
+      indexName,
       displayValue: value === null ? unavailableLabel : formatNumber(value),
       displayChange: change === null ? unavailableLabel : formatPercent(change),
     };
@@ -42,10 +44,10 @@ export function GulfTickerStrip({ labels, unavailableLabel, marketData, formatNu
         <div className="gulf-ticker-track">
           {[0, 1].map(copy => (
             <div className="gulf-ticker-set" key={copy} aria-hidden={copy === 1}>
-              {tickerItems.map(({ market, displayValue, displayChange, tone, Icon }) => (
+              {tickerItems.map(({ market, indexName, displayValue, displayChange, tone, Icon }) => (
                 <div className="gulf-ticker-item" key={`${copy}-${market.id}`}>
                   <strong>{market.code}</strong>
-                  <span>{labels[market.id]} / {market.indexName}</span>
+                  <span>{labels[market.id]} / {indexName}</span>
                   <b>{displayValue}</b>
                   <em className={tone}>
                     <Icon size={13} />

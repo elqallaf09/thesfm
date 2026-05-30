@@ -35,6 +35,7 @@ type GulfNewsApiResponse =
       currency: string | null;
       marketTime: string | null;
       source: string;
+      sourceLabel?: string;
       delayed: boolean;
       available: boolean;
       unavailableReason?: string;
@@ -112,6 +113,11 @@ export function GulfNewsPage() {
   }, [lastLoadedAt]);
 
   const selectedMarketConfig = getGulfMarket(selectedMarket);
+  const selectedUnavailableHelper = selectedMarket === 'bahrain'
+    ? t('gulf_news_bahrain_unavailable_helper')
+    : selectedMarket === 'oman'
+      ? t('gulf_news_oman_unavailable_helper')
+      : t('gulf_news_unavailable_helper');
   const marketLabels = useMemo<Record<GulfMarketId, string>>(() => ({
     kuwait: t('gulf_news_market_kuwait'),
     saudi: t('gulf_news_market_saudi'),
@@ -213,7 +219,7 @@ export function GulfNewsPage() {
             dailyChange: t('gulf_news_daily_change'),
             source: t('gulf_news_source'),
             unavailable: t('gulf_news_unavailable'),
-            unavailableHelper: t('gulf_news_unavailable_helper'),
+            unavailableHelper: selectedUnavailableHelper,
             delayed: t('gulf_news_delayed_badge'),
           }}
           formatNumber={formatNumber}

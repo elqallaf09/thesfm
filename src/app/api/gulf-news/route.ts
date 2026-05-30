@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchDelayedGulfMarketData, gulfMarketDataToApiMarkets } from '@/lib/gulf/fetchDelayedMarketData';
+import { fetchDelayedGulfMarketData, gulfMarketDataToApiMarkets } from '@/lib/gulf/fetchGulfIndexData';
 import { parseGulfRssFeeds } from '@/lib/gulf/parseRssFeeds';
 import { isNewsTranslationEnabled, normalizeNewsLanguage, translateNewsItems } from '@/lib/translation/translateNewsText';
 
@@ -29,8 +29,8 @@ export async function GET(request: Request) {
         success: true,
         language,
         translationEnabled: isNewsTranslationEnabled(),
-        source: 'RSS + Yahoo Finance',
-        marketDataSource: 'Yahoo Finance',
+        source: 'RSS + Yahoo Finance + official/Mubasher fallbacks',
+        marketDataSource: 'Yahoo Finance + official/Mubasher fallbacks',
         lastUpdated: new Date().toISOString(),
         markets,
         items,

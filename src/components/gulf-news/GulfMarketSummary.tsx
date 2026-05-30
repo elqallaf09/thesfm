@@ -55,11 +55,13 @@ export function GulfMarketSummary({ market, marketLabel, data, labels, formatNum
             {change === null ? labels.unavailable : formatPercent(change)}
           </em>
         )}
-        <small>{labels.source}: {data?.source ?? labels.unavailable}</small>
+        <small>
+          {labels.source}: {data?.source ?? labels.unavailable}
+          {data?.sourceLabel ? ` / ${data.sourceLabel}` : ''}
+        </small>
       </div>
     </section>
   );
 }
 
 export default GulfMarketSummary;
-
