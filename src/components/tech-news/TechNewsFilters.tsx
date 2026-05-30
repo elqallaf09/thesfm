@@ -9,6 +9,16 @@ const VISIBLE_TECH_NEWS_SECTORS: TechNewsSectorFilter[] = [
   'semiconductors',
   'software',
   'hardware',
+  'cloud',
+];
+
+const MORE_TECH_NEWS_SECTORS: TechNewsSectorFilter[] = [
+  'cybersecurity',
+  'ecommerce',
+  'ev',
+  'social_ads',
+  'gaming',
+  'infrastructure',
 ];
 
 type TechNewsFiltersProps = {
@@ -19,6 +29,7 @@ type TechNewsFiltersProps = {
     search: string;
     sort: string;
     recent: string;
+    more: string;
     sectors: Record<TechNewsSectorFilter, string>;
   };
   onQueryChange: (value: string) => void;
@@ -59,6 +70,24 @@ export function TechNewsFilters({
             {labels.sectors[item]}
           </button>
         ))}
+        <details className="tech-news-more-menu">
+          <summary>{labels.more}</summary>
+          <div>
+            {MORE_TECH_NEWS_SECTORS.map(item => (
+              <button
+                key={item}
+                type="button"
+                className={sector === item ? 'active' : ''}
+                onClick={event => {
+                  onSectorChange(item);
+                  event.currentTarget.closest('details')?.removeAttribute('open');
+                }}
+              >
+                {labels.sectors[item]}
+              </button>
+            ))}
+          </div>
+        </details>
       </div>
       <input type="hidden" value={sort} readOnly aria-label={labels.recent} />
     </section>

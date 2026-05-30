@@ -10,12 +10,13 @@ export type TechNewsItem = {
   summaryOriginal: string;
   languageOriginal: string;
   title: string;
-  translatedTo?: string;
+  translatedTo?: AppNewsLanguage;
   isTranslated?: boolean;
   translationSource?: string;
   companyName: string;
   ticker: string;
   sector: TechStockSector;
+  sectors: TechStockSector[];
   source: string;
   datetime: number | null;
   publishedAt: string;
@@ -65,11 +66,11 @@ const NEWS_RANGES: NewsRange[] = [
 const RSS_FALLBACK_FEEDS = [
   {
     source: 'Yahoo Finance',
-    url: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=AAPL,MSFT,NVDA,GOOGL,AMZN,META,TSLA,AMD,INTC,AVGO,CRM,ORCL,NFLX,ADBE,QCOM,TSM,SHOP,UBER,PLTR&region=US&lang=en-US',
+    url: `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${TECH_STOCKS.map(stock => stock.symbol).join(',')}&region=US&lang=en-US`,
   },
   {
     source: 'Google News',
-    url: 'https://news.google.com/rss/search?q=(Apple%20OR%20Microsoft%20OR%20Nvidia%20OR%20Alphabet%20OR%20Amazon%20OR%20Meta%20OR%20Tesla%20OR%20AMD%20OR%20Intel%20OR%20Broadcom)%20(stock%20OR%20shares%20OR%20earnings%20OR%20market)&hl=en-US&gl=US&ceid=US:en',
+    url: 'https://news.google.com/rss/search?q=(technology%20stocks%20OR%20AI%20stocks%20OR%20semiconductor%20stocks%20OR%20cloud%20computing%20stocks%20OR%20cybersecurity%20stocks%20OR%20e-commerce%20stocks%20OR%20electric%20vehicle%20stocks)%20(stock%20OR%20shares%20OR%20earnings%20OR%20market)&hl=en-US&gl=US&ceid=US:en',
   },
   {
     source: 'The Verge',
@@ -99,6 +100,52 @@ const RSS_STOCK_KEYWORDS: Array<{ symbol: string; keywords: string[] }> = [
   { symbol: 'TSM', keywords: ['Taiwan Semiconductor', 'TSMC', 'TSM'] },
   { symbol: 'SHOP', keywords: ['Shopify', 'SHOP'] },
   { symbol: 'UBER', keywords: ['Uber', 'UBER'] },
+  { symbol: 'MU', keywords: ['Micron', 'MU'] },
+  { symbol: 'ASML', keywords: ['ASML'] },
+  { symbol: 'ARM', keywords: ['Arm Holdings', 'ARM'] },
+  { symbol: 'NOW', keywords: ['ServiceNow', 'NOW'] },
+  { symbol: 'SNOW', keywords: ['Snowflake', 'SNOW'] },
+  { symbol: 'INTU', keywords: ['Intuit', 'INTU'] },
+  { symbol: 'TEAM', keywords: ['Atlassian', 'TEAM'] },
+  { symbol: 'DELL', keywords: ['Dell', 'DELL'] },
+  { symbol: 'HPQ', keywords: ['HP', 'HPQ', 'Hewlett Packard'] },
+  { symbol: 'LOGI', keywords: ['Logitech', 'LOGI'] },
+  { symbol: 'IBM', keywords: ['IBM'] },
+  { symbol: 'NET', keywords: ['Cloudflare', 'NET'] },
+  { symbol: 'CRWD', keywords: ['CrowdStrike', 'CRWD'] },
+  { symbol: 'PANW', keywords: ['Palo Alto', 'PANW'] },
+  { symbol: 'FTNT', keywords: ['Fortinet', 'FTNT'] },
+  { symbol: 'ZS', keywords: ['Zscaler', 'ZS'] },
+  { symbol: 'OKTA', keywords: ['Okta', 'OKTA'] },
+  { symbol: 'S', keywords: ['SentinelOne'] },
+  { symbol: 'MELI', keywords: ['MercadoLibre', 'Mercado Libre', 'MELI'] },
+  { symbol: 'EBAY', keywords: ['eBay', 'EBAY'] },
+  { symbol: 'RIVN', keywords: ['Rivian', 'RIVN'] },
+  { symbol: 'LCID', keywords: ['Lucid', 'LCID'] },
+  { symbol: 'SNAP', keywords: ['Snap', 'Snapchat', 'SNAP'] },
+  { symbol: 'PINS', keywords: ['Pinterest', 'PINS'] },
+  { symbol: 'TTD', keywords: ['The Trade Desk', 'TTD'] },
+  { symbol: 'RBLX', keywords: ['Roblox', 'RBLX'] },
+  { symbol: 'EA', keywords: ['Electronic Arts', 'EA'] },
+  { symbol: 'TTWO', keywords: ['Take-Two', 'Take Two', 'TTWO'] },
+  { symbol: 'SONY', keywords: ['Sony', 'SONY'] },
+  { symbol: 'SMCI', keywords: ['Super Micro', 'Supermicro', 'SMCI'] },
+  { symbol: 'VRT', keywords: ['Vertiv', 'VRT'] },
+  { symbol: 'ANET', keywords: ['Arista', 'ANET'] },
+];
+
+const CATEGORY_KEYWORDS: Array<{ sector: TechStockSector; keywords: string[] }> = [
+  { sector: 'ai', keywords: ['AI', 'artificial intelligence', 'generative AI', 'machine learning', 'OpenAI', 'data center AI'] },
+  { sector: 'semiconductors', keywords: ['chip', 'chips', 'semiconductor', 'GPU', 'CPU', 'wafer', 'foundry', 'TSMC', 'Nvidia', 'AMD', 'Intel', 'Qualcomm', 'Broadcom', 'ASML'] },
+  { sector: 'software', keywords: ['software', 'SaaS', 'enterprise software', 'CRM', 'cloud software', 'Adobe', 'Salesforce', 'Oracle', 'ServiceNow'] },
+  { sector: 'hardware', keywords: ['iPhone', 'Mac', 'PC', 'laptop', 'hardware', 'Apple', 'Dell', 'HP'] },
+  { sector: 'cloud', keywords: ['AWS', 'Azure', 'Google Cloud', 'cloud computing', 'cloud infrastructure'] },
+  { sector: 'cybersecurity', keywords: ['cybersecurity', 'cyber security', 'security breach', 'ransomware', 'CrowdStrike', 'Palo Alto', 'Fortinet', 'Okta', 'Zscaler'] },
+  { sector: 'ecommerce', keywords: ['e-commerce', 'ecommerce', 'online retail', 'marketplace', 'Amazon', 'Shopify'] },
+  { sector: 'ev', keywords: ['electric vehicle', 'EV', 'Tesla', 'Rivian', 'Lucid', 'autonomous driving'] },
+  { sector: 'social_ads', keywords: ['social media', 'advertising', 'digital ads', 'Meta', 'Instagram', 'Facebook', 'YouTube', 'Google Ads', 'Snap', 'Pinterest'] },
+  { sector: 'gaming', keywords: ['gaming', 'streaming', 'Netflix', 'Roblox', 'Electronic Arts', 'EA', 'Take-Two', 'Take Two'] },
+  { sector: 'infrastructure', keywords: ['data center', 'data centre', 'server', 'networking', 'AI infrastructure', 'Super Micro', 'Supermicro', 'Vertiv', 'Arista', 'Dell'] },
 ];
 
 function dateString(daysAgo = 0) {
@@ -201,11 +248,28 @@ function matchStock(headline: string, summary: string) {
   return match ? STOCK_BY_SYMBOL.get(match.symbol) ?? null : null;
 }
 
+function uniqueSectors(values: TechStockSector[]) {
+  return Array.from(new Set(values));
+}
+
+function stockSectors(stock: TechStockConfig) {
+  return uniqueSectors([stock.sector, ...(stock.sectors ?? [])]);
+}
+
+function detectNewsSectors(headline: string, summary: string, stock?: TechStockConfig | null) {
+  const text = `${headline} ${summary}`;
+  const keywordSectors = CATEGORY_KEYWORDS
+    .filter(({ keywords }) => keywords.some(keyword => hasKeyword(text, keyword)))
+    .map(item => item.sector);
+  return uniqueSectors([...(stock ? stockSectors(stock) : []), ...keywordSectors]);
+}
+
 function mapNewsItem(stock: TechStockConfig, item: FinnhubNews, price: TechStockPrice | undefined): TechNewsItem | null {
   const headline = String(item.headline ?? '').trim();
   const url = String(item.url ?? '').trim();
   if (!headline || !url) return null;
   const publishedAt = item.datetime ? new Date(item.datetime * 1000).toISOString() : new Date().toISOString();
+  const sectors = detectNewsSectors(headline, String(item.summary ?? '').trim(), stock);
   return {
     id: `${stock.symbol}-${item.id ?? publishedAt}-${url}`,
     headline,
@@ -217,6 +281,7 @@ function mapNewsItem(stock: TechStockConfig, item: FinnhubNews, price: TechStock
     companyName: stock.name,
     ticker: stock.symbol,
     sector: stock.sector,
+    sectors,
     source: String(item.source ?? 'Finnhub').trim() || 'Finnhub',
     datetime: typeof item.datetime === 'number' ? item.datetime : null,
     publishedAt,
@@ -252,10 +317,12 @@ function parseRssTechItems(feed: { source: string; url: string }, xml: string, p
     const description = extractTag(block, 'description') || extractTag(block, 'summary') || extractTag(block, 'content:encoded');
     const summary = excerpt(description, headline);
     const stock = matchStock(headline, summary);
+    const sectors = detectNewsSectors(headline, summary, stock);
+    if (!stock && sectors.length === 0) return null;
     const published = extractTag(block, 'pubDate') || extractTag(block, 'published') || extractTag(block, 'updated');
     const publishedAt = safeDate(published);
     const price = stock ? prices.get(stock.symbol) : undefined;
-    return {
+    const row: TechNewsItem = {
       id: `rss-${feed.source}-${url || headline}`.toLowerCase().replace(/\s+/g, '-'),
       headline,
       summary,
@@ -265,7 +332,8 @@ function parseRssTechItems(feed: { source: string; url: string }, xml: string, p
       title: headline,
       companyName: stock?.name ?? 'Technology Market',
       ticker: stock?.symbol ?? 'TECH',
-      sector: stock?.sector ?? 'ai',
+      sector: stock?.sector ?? sectors[0] ?? 'ai',
+      sectors,
       source: feed.source,
       datetime: Math.floor(new Date(publishedAt).getTime() / 1000),
       publishedAt,
@@ -276,7 +344,8 @@ function parseRssTechItems(feed: { source: string; url: string }, xml: string, p
       change: price?.change ?? null,
       priceSource: price?.available ? price.source : null,
       delayed: true,
-    } satisfies TechNewsItem;
+    };
+    return row;
   }).filter((item): item is TechNewsItem => Boolean(item));
 }
 
@@ -385,9 +454,10 @@ export async function fetchTechNews(languageInput?: string | null) {
   let selected: Awaited<ReturnType<typeof fetchAllCompanyNewsForRange>> | null = null;
   const prices = await fetchStockPrices(TECH_STOCKS, apiKey);
   if (hasUsableFinnhubKey(apiKey)) {
-    selected = await fetchAllCompanyNewsForRange(apiKey, NEWS_RANGES[0]);
-    if (selected.usableCount === 0) selected = await fetchAllCompanyNewsForRange(apiKey, NEWS_RANGES[1]);
-    if (selected.usableCount === 0) selected = await fetchAllCompanyNewsForRange(apiKey, NEWS_RANGES[2]);
+    const usableApiKey = apiKey ?? '';
+    selected = await fetchAllCompanyNewsForRange(usableApiKey, NEWS_RANGES[0]!);
+    if (selected.usableCount === 0) selected = await fetchAllCompanyNewsForRange(usableApiKey, NEWS_RANGES[1]!);
+    if (selected.usableCount === 0) selected = await fetchAllCompanyNewsForRange(usableApiKey, NEWS_RANGES[2]!);
   } else if (process.env.NODE_ENV !== 'production') {
     console.warn('[TechNews] FINNHUB_API_KEY is not configured; using RSS fallback for news and Yahoo Finance fallback for prices.');
   }
@@ -398,7 +468,7 @@ export async function fetchTechNews(languageInput?: string | null) {
       .filter((item): item is TechNewsItem => Boolean(item)))
     : [];
   const rssItems = finnhubItems.length === 0 ? await fetchRssFallbackNews(prices) : [];
-  const items = await translateNewsItems(dedupeAndSort(finnhubItems.length > 0 ? finnhubItems : rssItems), language);
+  const items = await translateNewsItems(dedupeAndSort(finnhubItems.length > 0 ? finnhubItems : rssItems), language) as TechNewsItem[];
   const priceList = TECH_STOCKS.map(stock => prices.get(stock.symbol) ?? {
     symbol: stock.symbol,
     price: null,
