@@ -931,7 +931,7 @@ function ProductPreview({ text }: { text: Record<string, string> }) {
   return (
     <aside className="product-preview" aria-label={text.previewLabel}>
       <div className="preview-label">{text.previewLabel}</div>
-      <div className="preview-panel">
+      <div className="landing-preview-panel">
         <div className="preview-top">
           <div>
             <span>{text.previewTitle}</span>
@@ -1188,24 +1188,24 @@ const landingStyles = `
   }
   .preview-label {
     justify-self: start;
-    border: 1px solid rgba(29, 140, 255, 0.2);
+    border: 1px solid rgba(15, 118, 110, 0.2);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.9);
-    color: #0B2748;
+    background: rgba(255, 255, 255, 0.95);
+    color: #0F766E;
     padding: 8px 12px;
     font-size: 12px;
     font-weight: 950;
   }
-  .preview-panel {
+  .landing-preview-panel {
     position: relative;
     overflow: hidden;
     border-radius: 30px;
     background:
-      radial-gradient(circle at 18% 12%, rgba(24, 212, 212, 0.26), transparent 28%),
-      linear-gradient(135deg, #031225 0%, #061B33 48%, #0B2748 100%);
-    color: #FFFFFF;
-    border: 1px solid rgba(167, 243, 240, 0.18);
-    box-shadow: 0 30px 90px rgba(3, 18, 37, 0.26);
+      radial-gradient(circle at 18% 12%, rgba(45, 212, 191, 0.14), transparent 28%),
+      linear-gradient(135deg, #FFFFFF 0%, #F8FBFF 55%, #EEF6FF 100%);
+    color: #0F172A;
+    border: 1px solid rgba(15, 118, 110, 0.18);
+    box-shadow: 0 18px 46px rgba(3, 18, 37, 0.08);
     padding: 24px;
   }
   .preview-top {
@@ -1215,15 +1215,18 @@ const landingStyles = `
     margin-bottom: 22px;
   }
   .preview-top span {
-    color: #A7F3F0;
+    color: #0F766E;
     font-weight: 950;
     font-size: 13px;
   }
   .preview-top p {
     margin: 7px 0 0;
-    color: var(--landing-dark-muted);
+    color: #334155;
     line-height: 1.7;
-    font-weight: 700;
+    font-weight: 760;
+  }
+  .preview-top svg {
+    color: #0F766E;
   }
   .preview-grid {
     display: grid;
@@ -1232,33 +1235,71 @@ const landingStyles = `
   }
   .preview-grid div {
     min-width: 0;
-    border: 1px solid rgba(167, 243, 240, 0.16);
+    border: 1px solid rgba(15, 118, 110, 0.18);
     border-radius: 18px;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.78);
     padding: 14px;
   }
   .preview-grid small {
     display: block;
-    color: #A7F3F0;
-    font-weight: 900;
+    color: #0F766E;
+    font-weight: 950;
   }
   .preview-grid strong {
     display: block;
     margin-top: 8px;
-    color: #FFFFFF;
+    color: #0F172A;
     font-size: 14px;
+    font-weight: 900;
   }
   .preview-warning {
     margin-top: 14px;
-    border: 1px solid rgba(167, 243, 240, 0.18);
+    border: 1px solid rgba(15, 118, 110, 0.2);
     border-radius: 16px;
     padding: 12px;
-    background: rgba(24, 212, 212, 0.1);
-    color: #EAF6FF;
+    background: rgba(45, 212, 191, 0.16);
+    color: #0F766E;
     display: flex;
     align-items: center;
     gap: 10px;
     font-weight: 900;
+  }
+  .preview-warning span {
+    color: #0F766E;
+  }
+  :global(.dark) .landing-page .preview-label {
+    border-color: rgba(47, 214, 192, 0.25);
+    background: rgba(15, 29, 49, 0.9);
+    color: #E8EEF6;
+  }
+  :global(.dark) .landing-page .landing-preview-panel {
+    background:
+      radial-gradient(circle at 18% 12%, rgba(47, 214, 192, 0.22), transparent 28%),
+      linear-gradient(135deg, #031225 0%, #061B33 48%, #0B2748 100%);
+    color: #E8EEF6;
+    border-color: rgba(47, 214, 192, 0.24);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+  }
+  :global(.dark) .landing-page .preview-top span,
+  :global(.dark) .landing-page .preview-top svg,
+  :global(.dark) .landing-page .preview-grid small,
+  :global(.dark) .landing-page .preview-warning,
+  :global(.dark) .landing-page .preview-warning span {
+    color: #2FD6C0;
+  }
+  :global(.dark) .landing-page .preview-top p {
+    color: #B8C7D9;
+  }
+  :global(.dark) .landing-page .preview-grid div {
+    border-color: #1D3050;
+    background: rgba(19, 36, 58, 0.78);
+  }
+  :global(.dark) .landing-page .preview-grid strong {
+    color: #E8EEF6;
+  }
+  :global(.dark) .landing-page .preview-warning {
+    border-color: rgba(47, 214, 192, 0.28);
+    background: rgba(47, 214, 192, 0.12);
   }
   .trust-section, .how-section, .section-block, .ai-section, .final-cta, .landing-footer {
     width: min(1180px, calc(100% - 32px));
@@ -1864,7 +1905,7 @@ const landingStyles = `
     .primary-cta, .secondary-cta {
       width: 100%;
     }
-    .preview-panel {
+    .landing-preview-panel {
       padding: 18px;
       border-radius: 24px;
     }
