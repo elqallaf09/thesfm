@@ -64,7 +64,7 @@ export function EuropeNewsPage() {
     setRefreshing(!showLoader);
     setError('');
     try {
-      const response = await fetch(`/api/europe-news?lang=${encodeURIComponent(lang)}`);
+      const response = await fetch(`/api/europe-news?lang=${encodeURIComponent(lang)}&limit=50`);
       const json = await response.json().catch(() => ({})) as EuropeNewsApiResponse;
       if (!response.ok || !json.success) {
         throw new Error('reason' in json ? json.reason || json.error || t('europe_news_error') : t('europe_news_error'));
@@ -125,8 +125,8 @@ export function EuropeNewsPage() {
       .filter(item => !needle
         || item.title.toLowerCase().includes(needle)
         || item.summary.toLowerCase().includes(needle)
-        || item.titleOriginal.toLowerCase().includes(needle)
-        || item.summaryOriginal.toLowerCase().includes(needle)
+        || (item.titleOriginal ?? '').toLowerCase().includes(needle)
+        || (item.summaryOriginal ?? '').toLowerCase().includes(needle)
         || item.source.toLowerCase().includes(needle))
       .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
   }, [items, query, selectedMarket]);

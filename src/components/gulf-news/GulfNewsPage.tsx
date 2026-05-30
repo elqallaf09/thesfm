@@ -81,7 +81,7 @@ export function GulfNewsPage() {
     setRefreshing(!showLoader);
     setError('');
     try {
-      const response = await fetch(`/api/gulf-news?lang=${encodeURIComponent(lang)}`);
+      const response = await fetch(`/api/gulf-news?lang=${encodeURIComponent(lang)}&limit=50`);
       const json = await response.json().catch(() => ({})) as GulfNewsApiResponse;
       if (!response.ok || !json.success) {
         throw new Error('reason' in json ? json.reason || json.error || t('gulf_news_error') : t('gulf_news_error'));
@@ -134,8 +134,8 @@ export function GulfNewsPage() {
       .filter(item => !needle
         || item.title.toLowerCase().includes(needle)
         || item.summary.toLowerCase().includes(needle)
-        || item.titleOriginal.toLowerCase().includes(needle)
-        || item.summaryOriginal.toLowerCase().includes(needle)
+        || (item.titleOriginal ?? '').toLowerCase().includes(needle)
+        || (item.summaryOriginal ?? '').toLowerCase().includes(needle)
         || item.source.toLowerCase().includes(needle))
       .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
   }, [items, query, selectedMarket]);
