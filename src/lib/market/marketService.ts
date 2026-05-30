@@ -1,4 +1,4 @@
-export type MarketAssetType = 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity' | 'gold';
+export type MarketAssetType = 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity' | 'gold' | 'index';
 export type MarketTrend = 'bullish' | 'neutral' | 'bearish';
 export type MarketRiskLevel = 'low' | 'medium' | 'high';
 export type MarketDataStatus = 'live' | 'delayed' | 'unavailable';
@@ -89,11 +89,11 @@ export type MarketSearchItem = {
   providerSymbol?: string;
 };
 
-const SUPPORTED_ASSET_TYPES: MarketAssetType[] = ['stock', 'etf', 'crypto', 'forex', 'commodity', 'gold'];
+const SUPPORTED_ASSET_TYPES: MarketAssetType[] = ['stock', 'etf', 'crypto', 'forex', 'commodity', 'gold', 'index'];
 
 export function validateSymbol(symbol: unknown) {
   const normalized = String(symbol ?? '').trim().toUpperCase();
-  if (!/^[A-Z0-9.=:/-]{1,24}$/.test(normalized)) return null;
+  if (!/^[A-Z0-9.^=:/-]{1,24}$/.test(normalized)) return null;
   return normalized;
 }
 
@@ -101,6 +101,7 @@ export function normalizeAssetType(assetType: unknown): MarketAssetType {
   const normalized = String(assetType ?? '').trim().toLowerCase();
   if (normalized === 'stocks') return 'stock';
   if (normalized === 'commodities') return 'commodity';
+  if (normalized === 'indices' || normalized === 'indexes') return 'index';
   if (SUPPORTED_ASSET_TYPES.includes(normalized as MarketAssetType)) return normalized as MarketAssetType;
   return 'stock';
 }

@@ -1,0 +1,251 @@
+import { ExternalLink, FileText, Info, Layers3 } from 'lucide-react';
+import type { AssetProfile, AssetProfileResponse } from '@/lib/market/fetchAssetProfile';
+import type { MarketAssetType } from '@/lib/market/marketService';
+
+type AssetProfileCardProps = {
+  response: AssetProfileResponse | null;
+  loading: boolean;
+  error: string | null;
+  language: string;
+  assetType: MarketAssetType;
+  t: (key: string) => string;
+};
+
+function hasValue(value: unknown) {
+  if (Array.isArray(value)) return value.length > 0;
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (typeof value === 'string') return value.trim().length > 0;
+  return true;
+}
+
+function formatCompactNumber(value: unknown, language: string) {
+  if (typeof value === 'string') return value;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  return new Intl.NumberFormat(language === 'ar' ? 'ar' : language === 'fr' ? 'fr-FR' : 'en-US', {
+    notation: Math.abs(value) >= 1000000 ? 'compact' : 'standard',
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatPercent(value: unknown, language: string) {
+  if (typeof value === 'string') return value;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  const normalized = Math.abs(value) <= 1 ? value : value / 100;
+  return new Intl.NumberFormat(language === 'ar' ? 'ar' : language === 'fr' ? 'fr-FR' : 'en-US', {
+    style: 'percent',
+    maximumFractionDigits: 2,
+  }).format(normalized);
+}
+
+function formatDate(value: unknown, language: string) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  return new Intl.DateTimeFormat(language === 'ar' ? 'ar' : language === 'fr' ? 'fr-FR' : 'en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+}
+
+function fieldValue(value: unknown, fallback: string) {
+  return hasValue(value) ? String(value) : fallback;
+}
+
+function limitationLabel(key: string, t: (key: string) => string) {
+  const map: Record<string, string> = {
+    profile_description_unavailable: 'market_asset_profile_limitation_description',
+    sector_unavailable: 'market_asset_profile_limitation_sector',
+    holdings_unavailable: 'market_asset_profile_limitation_holdings',
+    expense_ratio_unavailable: 'market_asset_profile_limitation_expense_ratio',
+  };
+  return t(map[key] ?? 'market_asset_profile_limitation_general');
+}
+
+function Metric({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div className="asset-profile-metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function profileMetrics(profile: AssetProfile, assetType: MarketAssetType, unavailable: string, language: string, t: (key: string) => string) {
+  const common = [
+    <Metric key="ticker" label={t('market_asset_profile_ticker')} value={fieldValue(profile.ticker, unavailable)} />,
+    <Metric key="exchange" label={t('market_asset_profile_exchange')} value={fieldValue(profile.exchange, unavailable)} />,
+    <Metric key="currency" label={t('market_asset_profile_currency')} value={fieldValue(profile.currency, unavailable)} />,
+  ];
+
+  if (assetType === 'stock') {
+    return [
+      ...common,
+      <Metric key="sector" label={t('market_asset_profile_sector')} value={fieldValue(profile.sector, unavailable)} />,
+      <Metric key="industry" label={t('market_asset_profile_industry')} value={fieldValue(profile.industry, unavailable)} />,
+      <Metric key="country" label={t('market_asset_profile_country')} value={fieldValue(profile.country, unavailable)} />,
+      <Metric key="market-cap" label={t('market_asset_profile_market_cap')} value={formatCompactNumber(profile.marketCap, language) ?? unavailable} />,
+      <Metric key="employees" label={t('market_asset_profile_employees')} value={formatCompactNumber(profile.employees, language) ?? unavailable} />,
+    ];
+  }
+
+  if (assetType === 'etf') {
+    return [
+      ...common,
+      <Metric key="issuer" label={t('market_asset_profile_issuer')} value={fieldValue(profile.issuer, unavailable)} />,
+      <Metric key="tracked" label={t('market_asset_profile_index_tracked')} value={fieldValue(profile.indexTracked, unavailable)} />,
+      <Metric key="category" label={t('market_asset_profile_category')} value={fieldValue(profile.category, unavailable)} />,
+      <Metric key="expense" label={t('market_asset_profile_expense_ratio')} value={formatPercent(profile.expenseRatio, language) ?? unavailable} />,
+      <Metric key="aum" label={t('market_asset_profile_aum')} value={formatCompactNumber(profile.aum, language) ?? unavailable} />,
+      <Metric key="inception" label={t('market_asset_profile_inception_date')} value={formatDate(profile.inceptionDate, language) ?? unavailable} />,
+    ];
+  }
+
+  if (assetType === 'crypto') {
+    return [
+      ...common,
+      <Metric key="category" label={t('market_asset_profile_category')} value={fieldValue(profile.category, unavailable)} />,
+      <Metric key="market-cap" label={t('market_asset_profile_market_cap')} value={formatCompactNumber(profile.marketCap, language) ?? unavailable} />,
+    ];
+  }
+
+  if (assetType === 'index') {
+    return [
+      ...common,
+      <Metric key="category" label={t('market_asset_profile_category')} value={fieldValue(profile.category, unavailable)} />,
+      <Metric key="country" label={t('market_asset_profile_country')} value={fieldValue(profile.country, unavailable)} />,
+    ];
+  }
+
+  return [
+    ...common,
+    <Metric key="category" label={t('market_asset_profile_category')} value={fieldValue(profile.category, unavailable)} />,
+    <Metric key="country" label={t('market_asset_profile_country')} value={fieldValue(profile.country, unavailable)} />,
+  ];
+}
+
+export function AssetProfileCard({ response, loading, error, language, assetType, t }: AssetProfileCardProps) {
+  const profile = response?.profile ?? null;
+  const unavailable = t('market_asset_profile_unavailable_value');
+  const lastUpdated = response?.lastUpdated ? formatDate(response.lastUpdated, language) : null;
+
+  return (
+    <>
+      <article className="market-panel asset-profile-card" aria-busy={loading}>
+        <div className="market-section-head">
+          <FileText size={19} />
+          <div>
+            <span>{t('market_asset_profile_eyebrow')}</span>
+            <h2>{t('market_asset_profile')}</h2>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="asset-profile-state" role="status">
+            <span className="asset-profile-pulse" />
+            {t('market_asset_profile_loading')}
+          </div>
+        ) : error ? (
+          <div className="asset-profile-state error" role="alert">
+            <Info size={17} />
+            {t('market_asset_profile_error')}
+          </div>
+        ) : !response?.profileAvailable || !profile ? (
+          <div className="asset-profile-state">
+            <Info size={17} />
+            {t('market_asset_profile_unavailable')}
+          </div>
+        ) : (
+          <div className="asset-profile-body">
+            <div className="asset-profile-header">
+              <div>
+                <strong>{profile.name ?? response.symbol}</strong>
+                <p>{profile.description ?? t('market_asset_profile_unavailable')}</p>
+              </div>
+              <div className="asset-profile-badges">
+                <span>{profile.ticker ?? response.symbol}</span>
+                <span>{t(`market_asset_type_${assetType}`)}</span>
+                <span>{response.source}</span>
+              </div>
+            </div>
+
+            <section className="asset-profile-section">
+              <h3>{t('market_asset_profile_what')}</h3>
+              <p>{profile.description ?? t('market_asset_profile_unavailable')}</p>
+            </section>
+
+            {(profile.objective || profile.sector || profile.industry || profile.issuer) && (
+              <section className="asset-profile-section">
+                <h3>{assetType === 'etf' ? t('market_asset_profile_objective') : t('market_asset_profile_activity')}</h3>
+                <p>{profile.objective ?? profile.sector ?? profile.industry ?? profile.issuer ?? unavailable}</p>
+              </section>
+            )}
+
+            <section className="asset-profile-section">
+              <h3>{t('market_asset_profile_basics')}</h3>
+              <div className="asset-profile-metrics">
+                {profileMetrics(profile, assetType, unavailable, language, t)}
+                {profile.website && (
+                  <a className="asset-profile-link" href={profile.website} target="_blank" rel="noreferrer">
+                    <ExternalLink size={15} />
+                    {t('market_asset_profile_website')}
+                  </a>
+                )}
+              </div>
+            </section>
+
+            {assetType === 'etf' && profile.topHoldings && profile.topHoldings.length > 0 && (
+              <section className="asset-profile-section">
+                <h3>{t('market_asset_profile_top_holdings')}</h3>
+                <div className="asset-profile-holdings">
+                  {profile.topHoldings.slice(0, 6).map((holding, index) => (
+                    <span key={`${holding.symbol ?? holding.name ?? index}-${index}`}>
+                      <b>{holding.symbol ?? holding.name}</b>
+                      {holding.weight !== undefined && <em>{formatPercent(holding.weight, language)}</em>}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {assetType === 'etf' && profile.sectorExposure && profile.sectorExposure.length > 0 && (
+              <section className="asset-profile-section">
+                <h3>{t('market_asset_profile_sector_exposure')}</h3>
+                <div className="asset-profile-holdings">
+                  {profile.sectorExposure.slice(0, 6).map((sector, index) => (
+                    <span key={`${sector.sector}-${index}`}>
+                      <b>{sector.sector}</b>
+                      {sector.weight !== undefined && <em>{formatPercent(sector.weight, language)}</em>}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="asset-profile-section asset-profile-limitations">
+              <h3><Layers3 size={16} />{t('market_asset_profile_risk_notes')}</h3>
+              <ul>
+                {(profile.dataLimitations && profile.dataLimitations.length > 0
+                  ? profile.dataLimitations
+                  : ['market_asset_profile_limitation_general']
+                ).slice(0, 4).map((item, index) => (
+                  <li key={`${item}-${index}`}>{limitationLabel(item, t)}</li>
+                ))}
+              </ul>
+            </section>
+
+            <footer className="asset-profile-footer">
+              <span>{t('market_asset_profile_data_source')}: {response.source}</span>
+              <span>{t('market_asset_profile_last_updated')}: {lastUpdated ?? unavailable}</span>
+            </footer>
+          </div>
+        )}
+      </article>
+
+      <style jsx>{`
+        .asset-profile-card{margin:16px 0;display:grid;gap:0;padding:20px;min-width:0}.market-section-head{display:flex;align-items:flex-start;gap:11px;margin-bottom:16px;color:var(--sfm-soft-cyan)}.market-section-head span{display:block;color:var(--sfm-muted);font-size:11px;font-weight:900;margin-bottom:5px;line-height:1.4}.market-section-head h2{margin:0;color:var(--sfm-foreground);font-size:17px;font-weight:900;line-height:1.35}.asset-profile-body{display:grid;gap:14px}.asset-profile-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border:1px solid rgba(47,214,192,.18);background:rgba(47,214,192,.08);border-radius:18px;padding:15px}.asset-profile-header strong{display:block;color:var(--sfm-foreground);font-size:18px;font-weight:950;line-height:1.35}.asset-profile-header p,.asset-profile-section p{margin:6px 0 0;color:var(--sfm-muted);font-size:13px;font-weight:800;line-height:1.8}.asset-profile-badges{display:flex;flex-wrap:wrap;gap:7px;justify-content:flex-end}.asset-profile-badges span{border:1px solid rgba(47,214,192,.24);background:var(--sfm-light-card);color:var(--sfm-foreground);border-radius:999px;padding:6px 9px;font-size:11px;font-weight:950;line-height:1.2}.asset-profile-section{display:grid;gap:10px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:18px;padding:14px}.asset-profile-section h3{margin:0;display:flex;align-items:center;gap:7px;color:var(--sfm-foreground);font-size:14px;font-weight:950;line-height:1.4}.asset-profile-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.asset-profile-metric{display:grid;gap:5px;min-width:0;border:1px solid rgba(167,243,240,.12);background:var(--sfm-card);border-radius:14px;padding:10px}.asset-profile-metric span{color:var(--sfm-muted);font-size:11px;font-weight:900;line-height:1.35}.asset-profile-metric strong{color:var(--sfm-foreground);font-size:13px;font-weight:950;line-height:1.45;overflow-wrap:anywhere}.asset-profile-link{min-height:58px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid rgba(47,214,192,.28);background:rgba(47,214,192,.10);border-radius:14px;color:var(--sfm-primary-hover);font-size:12px;font-weight:950;text-decoration:none}.asset-profile-link:hover,.asset-profile-link:focus-visible{outline:none;border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.14)}.asset-profile-holdings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.asset-profile-holdings span{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid rgba(167,243,240,.12);background:var(--sfm-card);border-radius:13px;padding:9px 10px;min-width:0}.asset-profile-holdings b{color:var(--sfm-foreground);font-size:12px;font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.asset-profile-holdings em{color:var(--sfm-soft-cyan);font-size:11px;font-weight:950;font-style:normal;white-space:nowrap}.asset-profile-limitations ul{margin:0;padding-inline-start:18px;color:var(--sfm-muted);font-size:12px;font-weight:850;line-height:1.8}.asset-profile-footer{display:flex;flex-wrap:wrap;gap:8px;color:var(--sfm-muted);font-size:11px;font-weight:900}.asset-profile-footer span{border:1px solid rgba(167,243,240,.12);background:var(--sfm-light-card);border-radius:999px;padding:6px 9px}.asset-profile-state{display:flex;align-items:center;gap:9px;border:1px dashed rgba(167,243,240,.22);background:var(--sfm-light-card);border-radius:16px;padding:14px;color:var(--sfm-muted);font-size:13px;font-weight:900;line-height:1.6}.asset-profile-state.error{border-color:rgba(239,68,68,.25);color:#B91C1C}.dark .asset-profile-state.error{color:#FF8A96}.asset-profile-pulse{width:10px;height:10px;border-radius:50%;background:var(--sfm-soft-cyan);box-shadow:0 0 0 4px rgba(47,214,192,.12);animation:assetProfilePulse 1.1s ease-in-out infinite}@keyframes assetProfilePulse{50%{transform:scale(.72);opacity:.55}}@media (max-width:760px){.asset-profile-header{display:grid}.asset-profile-badges{justify-content:flex-start}.asset-profile-metrics,.asset-profile-holdings{grid-template-columns:1fr}.asset-profile-card{padding:16px}}
+      `}</style>
+    </>
+  );
+}
