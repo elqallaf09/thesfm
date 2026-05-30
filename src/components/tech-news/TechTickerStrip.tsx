@@ -1,6 +1,7 @@
 'use client';
 
 import { TrendingDown, TrendingUp } from 'lucide-react';
+import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 
 const TICKER_ORDER = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'META', 'TSLA', 'AMD', 'INTC', 'AVGO'];
@@ -26,16 +27,20 @@ export function TechTickerStrip({ prices, formatPrice, labels }: TechTickerStrip
       available: false,
       unavailableReason: 'price_not_fetched',
     });
-  const marqueeItems = [...tickerItems, ...tickerItems];
 
   return (
-    <section className="tech-ticker-strip" aria-label="Tech market ticker">
-      <div className="tech-ticker-track">
-        {marqueeItems.map((item, index) => {
+    <MarketTickerStrip
+      ariaLabel="Tech market ticker"
+      className="tech-ticker-strip"
+      viewportClassName="tech-ticker-viewport"
+      trackClassName="tech-ticker-track"
+      setClassName="tech-ticker-set"
+    >
+        {tickerItems.map(item => {
           const tone = item.changePercent === null || item.changePercent === 0 ? 'neutral' : item.changePercent > 0 ? 'up' : 'down';
           const Icon = tone === 'down' ? TrendingDown : TrendingUp;
           return (
-            <div className="tech-ticker-item" key={`${item.symbol}-${index}`}>
+            <div className="tech-ticker-item" key={item.symbol}>
               <strong>{item.symbol}</strong>
               <span>{item.price === null ? labels.priceUnavailable : formatPrice(item.price)}</span>
               {item.changePercent === null ? (
@@ -52,8 +57,7 @@ export function TechTickerStrip({ prices, formatPrice, labels }: TechTickerStrip
             </div>
           );
         })}
-      </div>
-    </section>
+    </MarketTickerStrip>
   );
 }
 

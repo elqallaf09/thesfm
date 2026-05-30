@@ -1,6 +1,7 @@
 'use client';
 
 import { TrendingDown, TrendingUp } from 'lucide-react';
+import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import { GULF_MARKETS, type GulfMarketId } from '@/lib/gulf/gulfMarkets';
 import type { GulfMarketData } from '@/lib/gulf/fetchDelayedMarketData';
 
@@ -39,27 +40,25 @@ export function GulfTickerStrip({ labels, unavailableLabel, marketData, formatNu
   });
 
   return (
-    <section className="gulf-ticker-strip" aria-label="GCC market ticker" dir="ltr">
-      <div className="gulf-ticker-viewport">
-        <div className="gulf-ticker-track">
-          {[0, 1].map(copy => (
-            <div className="gulf-ticker-set" key={copy} aria-hidden={copy === 1}>
-              {tickerItems.map(({ market, indexName, displayValue, displayChange, tone, Icon }) => (
-                <div className="gulf-ticker-item" key={`${copy}-${market.id}`}>
-                  <strong>{market.code}</strong>
-                  <span>{labels[market.id]} / {indexName}</span>
-                  <b>{displayValue}</b>
-                  <em className={tone}>
-                    <Icon size={13} />
-                    {displayChange}
-                  </em>
-                </div>
-              ))}
-            </div>
-          ))}
+    <MarketTickerStrip
+      ariaLabel="GCC market ticker"
+      className="gulf-ticker-strip"
+      viewportClassName="gulf-ticker-viewport"
+      trackClassName="gulf-ticker-track"
+      setClassName="gulf-ticker-set"
+    >
+      {tickerItems.map(({ market, indexName, displayValue, displayChange, tone, Icon }) => (
+        <div className="gulf-ticker-item" key={market.id}>
+          <strong>{market.code}</strong>
+          <span>{labels[market.id]} / {indexName}</span>
+          <b>{displayValue}</b>
+          <em className={tone}>
+            <Icon size={13} />
+            {displayChange}
+          </em>
         </div>
-      </div>
-    </section>
+      ))}
+    </MarketTickerStrip>
   );
 }
 

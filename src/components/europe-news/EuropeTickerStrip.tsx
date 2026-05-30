@@ -1,6 +1,7 @@
 'use client';
 
 import { TrendingDown, TrendingUp } from 'lucide-react';
+import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import { EUROPE_MARKETS, type EuropeMarketId } from '@/lib/europe/europeMarkets';
 import type { EuropeMarketData } from '@/lib/europe/fetchEuropeDelayedMarketData';
 
@@ -38,27 +39,25 @@ export function EuropeTickerStrip({ marketLabels, indexLabels, unavailableLabel,
   });
 
   return (
-    <section className="europe-ticker-strip" aria-label="European market ticker" dir="ltr">
-      <div className="europe-ticker-viewport">
-        <div className="europe-ticker-track">
-          {[0, 1].map(copy => (
-            <div className="europe-ticker-set" key={copy} aria-hidden={copy === 1}>
-              {tickerItems.map(({ market, displayValue, displayChange, tone, Icon }) => (
-                <div className="europe-ticker-item" key={`${copy}-${market.id}`}>
-                  <strong>{market.code}</strong>
-                  <span>{marketLabels[market.id]} / {indexLabels[market.id]}</span>
-                  <b>{displayValue}</b>
-                  <em className={tone}>
-                    <Icon size={13} />
-                    {displayChange}
-                  </em>
-                </div>
-              ))}
-            </div>
-          ))}
+    <MarketTickerStrip
+      ariaLabel="European market ticker"
+      className="europe-ticker-strip"
+      viewportClassName="europe-ticker-viewport"
+      trackClassName="europe-ticker-track"
+      setClassName="europe-ticker-set"
+    >
+      {tickerItems.map(({ market, displayValue, displayChange, tone, Icon }) => (
+        <div className="europe-ticker-item" key={market.id}>
+          <strong>{market.code}</strong>
+          <span>{marketLabels[market.id]} / {indexLabels[market.id]}</span>
+          <b>{displayValue}</b>
+          <em className={tone}>
+            <Icon size={13} />
+            {displayChange}
+          </em>
         </div>
-      </div>
-    </section>
+      ))}
+    </MarketTickerStrip>
   );
 }
 
