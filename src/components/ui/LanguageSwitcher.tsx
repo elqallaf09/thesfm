@@ -146,7 +146,8 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         onKeyDown={handleTriggerKeyDown}
       >
         <Globe2 size={16} aria-hidden="true" />
-        <span>{selectedLanguage.label}</span>
+        <span className="sfm-language-label-full">{selectedLanguage.label}</span>
+        <span className="sfm-language-label-short">{selectedLanguage.short}</span>
         <ChevronDown className="sfm-language-chevron" size={15} aria-hidden="true" />
       </button>
 
@@ -204,6 +205,9 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           box-shadow: 0 10px 26px rgba(3,18,37,.08);
           transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
           white-space: nowrap;
+        }
+        .sfm-language-label-short {
+          display: none;
         }
         .sfm-language-dropdown[data-compact='true'] .sfm-language-trigger {
           min-width: 112px;
@@ -317,6 +321,32 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           }
           .sfm-language-menu {
             min-width: 178px;
+          }
+        }
+        @media (max-width: 520px) {
+          .sfm-language-dropdown[data-compact='true'] {
+            max-width: 86px;
+          }
+          .sfm-language-dropdown[data-compact='true'] .sfm-language-trigger {
+            min-width: 0;
+            width: auto;
+            max-width: 86px;
+            min-height: 40px;
+            gap: 6px;
+            border-radius: 14px;
+            padding-inline: 10px;
+          }
+          .sfm-language-dropdown[data-compact='true'] .sfm-language-label-full {
+            display: none;
+          }
+          .sfm-language-dropdown[data-compact='true'] .sfm-language-label-short {
+            display: inline;
+            font-weight: 950;
+            letter-spacing: 0;
+          }
+          .sfm-language-dropdown[data-compact='true'] .sfm-language-chevron {
+            width: 13px;
+            height: 13px;
           }
         }
       `}</style>

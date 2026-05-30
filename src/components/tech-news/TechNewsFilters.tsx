@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Filter, Search } from 'lucide-react';
 import type { TechNewsSectorFilter } from '@/lib/market/techStocks';
 
@@ -44,6 +45,10 @@ export function TechNewsFilters({
   onQueryChange,
   onSectorChange,
 }: TechNewsFiltersProps) {
+  const [showMoreSectors, setShowMoreSectors] = useState(false);
+  const moreSectorSelected = MORE_TECH_NEWS_SECTORS.includes(sector);
+  const expandedSectors = showMoreSectors || moreSectorSelected;
+
   return (
     <section className="tech-news-controls" aria-label={labels.search}>
       <label className="tech-news-search">
@@ -56,7 +61,7 @@ export function TechNewsFilters({
           autoComplete="off"
         />
       </label>
-      <div className="tech-news-chip-row">
+      <div className="tech-news-chip-row no-scrollbar">
         <button type="button" className="tech-news-filter-icon" aria-label={labels.sort}>
           <Filter size={15} />
         </button>
@@ -70,24 +75,24 @@ export function TechNewsFilters({
             {labels.sectors[item]}
           </button>
         ))}
-        <details className="tech-news-more-menu">
-          <summary>{labels.more}</summary>
-          <div>
-            {MORE_TECH_NEWS_SECTORS.map(item => (
-              <button
-                key={item}
-                type="button"
-                className={sector === item ? 'active' : ''}
-                onClick={event => {
-                  onSectorChange(item);
-                  event.currentTarget.closest('details')?.removeAttribute('open');
-                }}
-              >
-                {labels.sectors[item]}
-              </button>
-            ))}
-          </div>
-        </details>
+        <button
+          type="button"
+          className={expandedSectors ? 'tech-news-more-button active' : 'tech-news-more-button'}
+          aria-expanded={expandedSectors}
+          onClick={() => setShowMoreSectors(value => !value)}
+        >
+          {labels.more}
+        </button>
+        {expandedSectors ? MORE_TECH_NEWS_SECTORS.map(item => (
+          <button
+            key={item}
+            type="button"
+            className={sector === item ? 'active' : ''}
+            onClick={() => onSectorChange(item)}
+          >
+            {labels.sectors[item]}
+          </button>
+        )) : null}
       </div>
       <input type="hidden" value={sort} readOnly aria-label={labels.recent} />
     </section>

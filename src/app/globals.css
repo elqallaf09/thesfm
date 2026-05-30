@@ -346,6 +346,7 @@
 
 html {
   font-size:16px;
+  width:100%;
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
   text-rendering:optimizeLegibility;
@@ -356,6 +357,7 @@ html {
 }
 
 body {
+  width:100%;
   font-family:'Tajawal',var(--font-cairo,'Cairo'),
     -apple-system,BlinkMacSystemFont,'Segoe UI',Tahoma,Arial,sans-serif;
   font-size:15px;
@@ -376,6 +378,9 @@ img,svg,canvas,video,iframe{max-width:100%}
 button,input,select,textarea{max-width:100%;min-width:0}
 
 main,section,article,aside,header,footer,nav,div{min-width:0}
+
+.no-scrollbar::-webkit-scrollbar{display:none}
+.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
 
 [dir="ltr"] body{text-align:left}
 [dir="rtl"] body{text-align:right}

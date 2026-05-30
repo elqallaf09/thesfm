@@ -100,12 +100,20 @@ export function AppHeader() {
           }
 
           .sfm-global-brand {
+            flex: 1 1 auto;
             min-width: 0;
+            max-width: min(42vw, 220px);
             display: flex;
             align-items: center;
             gap: 10px;
             color: var(--sfm-foreground);
             text-decoration: none;
+            overflow: hidden;
+          }
+
+          .sfm-global-brand > div {
+            min-width: 0;
+            max-width: 100%;
           }
 
           .sfm-global-brand img {
@@ -140,6 +148,7 @@ export function AppHeader() {
             align-items: center;
             gap: 8px;
             min-width: 0;
+            max-width: calc(100vw - 112px);
           }
 
           .sfm-global-menu-button {
@@ -153,6 +162,46 @@ export function AppHeader() {
             color: var(--sfm-primary-dark);
             box-shadow: 0 8px 20px rgba(3, 18, 37, 0.12);
             cursor: pointer;
+          }
+        }
+
+        @media (max-width: 520px) {
+          .sfm-global-header {
+            padding: calc(10px + env(safe-area-inset-top)) 10px 10px;
+            gap: 6px;
+          }
+
+          .sfm-global-brand {
+            max-width: min(120px, 31vw);
+            gap: 7px;
+          }
+
+          .sfm-brand-mark--header {
+            width: 30px !important;
+            height: 30px !important;
+          }
+
+          .sfm-global-brand strong {
+            font-size: 12px;
+          }
+
+          .sfm-global-brand span {
+            max-width: 74px;
+            font-size: 10px;
+          }
+
+          .sfm-global-actions {
+            gap: 5px;
+            max-width: calc(100vw - 126px);
+          }
+
+          .sfm-global-actions .sfm-command-trigger.compact,
+          .sfm-global-actions .sfm-theme-toggle,
+          .sfm-global-menu-button {
+            width: 40px;
+            min-width: 40px;
+            height: 40px;
+            border-radius: 13px;
           }
         }
       `}</style>
