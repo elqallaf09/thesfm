@@ -111,6 +111,7 @@ async function fetchFinnhubJson<T>(url: string) {
   const response = await fetch(url, {
     next: { revalidate: 300 },
     headers: { accept: 'application/json' },
+    signal: AbortSignal.timeout(8000),
   });
   const text = await response.text();
   let body: unknown = null;
@@ -131,6 +132,11 @@ function devLog(message: string, meta: Record<string, unknown>) {
   if (process.env.NODE_ENV !== 'production') {
     console.info(message, meta);
   }
+}
+
+function hasUsableFinnhubKey(apiKey?: string) {
+  const key = apiKey?.trim();
+  return Boolean(key && key !== 'your_key_here');
 }
 
 function decodeEntity(entity: string) {
@@ -227,6 +233,7 @@ function mapNewsItem(stock: TechStockConfig, item: FinnhubNews, price: TechStock
 async function fetchRssFeed(feed: { source: string; url: string }) {
   const response = await fetch(feed.url, {
     next: { revalidate: 300 },
+    signal: AbortSignal.timeout(8000),
     headers: {
       accept: 'application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8',
       'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',
@@ -377,7 +384,7 @@ export async function fetchTechNews(languageInput?: string | null) {
   const apiKey = process.env.FINNHUB_API_KEY?.trim();
   let selected: Awaited<ReturnType<typeof fetchAllCompanyNewsForRange>> | null = null;
   const prices = await fetchStockPrices(TECH_STOCKS, apiKey);
-  if (apiKey) {
+  if (hasUsableFinnhubKey(apiKey)) {
     selected = await fetchAllCompanyNewsForRange(apiKey, NEWS_RANGES[0]);
     if (selected.usableCount === 0) selected = await fetchAllCompanyNewsForRange(apiKey, NEWS_RANGES[1]);
     if (selected.usableCount === 0) selected = await fetchAllCompanyNewsForRange(apiKey, NEWS_RANGES[2]);

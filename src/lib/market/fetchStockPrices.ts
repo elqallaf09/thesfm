@@ -19,7 +19,7 @@ type FinnhubQuote = {
 };
 
 function devLog(message: string, meta: Record<string, unknown>) {
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true') {
     console.info(message, meta);
   }
 }
@@ -66,6 +66,7 @@ async function fetchFinnhubQuote(symbol: string, apiKey: string): Promise<TechSt
   const response = await fetch(`https://finnhub.io/api/v1/quote?${params.toString()}`, {
     next: { revalidate: 300 },
     headers: { accept: 'application/json' },
+    signal: AbortSignal.timeout(8000),
   });
 
   let quote: FinnhubQuote = {};
@@ -100,17 +101,52 @@ async function fetchFinnhubQuote(symbol: string, apiKey: string): Promise<TechSt
   return normalized;
 }
 
+function hasUsableFinnhubKey(apiKey?: string) {
+  const key = apiKey?.trim();
+  return Boolean(key && key !== 'your_key_here');
+}
+
 async function fetchPriceWithFallback(stock: TechStockConfig, apiKey?: string) {
-  const finnhubPrice = apiKey
-    ? await fetchFinnhubQuote(stock.symbol, apiKey)
-    : unavailableFinnhubPrice(stock.symbol, 'finnhub_api_key_not_configured');
+  let finnhubPrice = unavailableFinnhubPrice(stock.symbol, 'finnhub_api_key_not_configured');
+  if (hasUsableFinnhubKey(apiKey)) {
+    try {
+      finnhubPrice = await fetchFinnhubQuote(stock.symbol, apiKey);
+    } catch (error) {
+      finnhubPrice = unavailableFinnhubPrice(
+        stock.symbol,
+        error instanceof Error ? error.message : 'finnhub_quote_failed',
+      );
+      devLog('[TechNews] Finnhub quote failed before normalization', {
+        symbol: stock.symbol,
+        unavailableReason: finnhubPrice.unavailableReason,
+      });
+    }
+  }
 
   if (finnhubPrice.available) return finnhubPrice;
 
-  const yahooPrice = await fetchYahooQuote(stock.symbol);
+  const yahooPrice = await fetchYahooQuote(stock.symbol).catch(error => ({
+    symbol: stock.symbol,
+    price: null,
+    change: null,
+    changePercent: null,
+    source: 'Yahoo Finance' as const,
+    delayed: true as const,
+    available: false,
+    unavailableReason: error instanceof Error ? error.message : 'yahoo_quote_failed',
+  }));
   if (yahooPrice.available) return yahooPrice;
 
-  const yahooChartPrice = await fetchYahooChartQuote(stock.symbol);
+  const yahooChartPrice = await fetchYahooChartQuote(stock.symbol).catch(error => ({
+    symbol: stock.symbol,
+    price: null,
+    change: null,
+    changePercent: null,
+    source: 'Yahoo Finance' as const,
+    delayed: true as const,
+    available: false,
+    unavailableReason: error instanceof Error ? error.message : 'yahoo_chart_quote_failed',
+  }));
   if (yahooChartPrice.available) return yahooChartPrice;
 
   return {

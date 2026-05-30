@@ -98,6 +98,7 @@ export async function fetchYahooQuote(symbol: string): Promise<TechStockPrice> {
   const url = `https://query1.finance.yahoo.com/v7/finance/quote?${params.toString()}`;
   const response = await fetch(url, {
     next: { revalidate: 300 },
+    signal: AbortSignal.timeout(8000),
     headers: {
       accept: 'application/json',
       'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',
@@ -150,6 +151,7 @@ export async function fetchYahooChartQuote(symbol: string): Promise<TechStockPri
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1d`;
   const response = await fetch(url, {
     next: { revalidate: 300 },
+    signal: AbortSignal.timeout(8000),
     headers: {
       accept: 'application/json',
       'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',
@@ -206,6 +208,7 @@ async function fetchYahooQuoteEndpoint(symbol: string, requestedSymbol: string, 
   const url = `https://query1.finance.yahoo.com/v7/finance/quote?${params.toString()}`;
   const response = await fetch(url, {
     next: { revalidate: 300 },
+    signal: AbortSignal.timeout(8000),
     headers: {
       accept: 'application/json',
       'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',
@@ -259,6 +262,7 @@ async function fetchYahooChartEndpoint(symbol: string, requestedSymbol: string, 
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=2d&interval=1d`;
   const response = await fetch(url, {
     next: { revalidate: 300 },
+    signal: AbortSignal.timeout(8000),
     headers: {
       accept: 'application/json',
       'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',

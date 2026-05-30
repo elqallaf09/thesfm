@@ -111,7 +111,7 @@ SUPABASE_URL=https://YOUR-PROJECT.supabase.co SUPABASE_SERVICE_ROLE_KEY=YOUR_SER
 
 ## Tech Market News
 
-The `/tech-news` page uses the server-only route `/api/tech-news` to fetch real company news and stock quotes from Finnhub. The browser never receives the API key. If Finnhub company news has no recent articles, `/api/tech-news` falls back to public RSS feeds. If a Finnhub quote is empty or unavailable, the API tries the free Yahoo Finance quote endpoint server-side before marking that ticker unavailable.
+The `/tech-news` page uses the server-only route `/api/tech-news` to fetch real company news and stock quotes from Finnhub. The browser never receives the API key. If Finnhub company news has no recent articles, `/api/tech-news` falls back to public RSS feeds. If a Finnhub quote is empty or unavailable, the API tries Yahoo Finance server-side before marking that ticker unavailable.
 
 Required Vercel environment variable:
 
