@@ -111,6 +111,19 @@ function ReportsCenterShortcut() {
           outline:3px solid rgba(24,212,212,.38);
           outline-offset:2px;
         }
+        .dark .reports-center-shortcut{
+          background:rgba(15,29,49,.96);
+          border-color:#1d3050;
+          color:#e8eef6;
+          box-shadow:0 18px 46px rgba(0,0,0,.28);
+        }
+        .dark .shortcut-text span{
+          color:#b8c7d9;
+        }
+        .dark .reports-center-shortcut button{
+          color:#061a2e;
+          background:linear-gradient(135deg,#1d8cff,#18d4d4);
+        }
         @media(max-width:720px){
           .reports-center-shortcut{
             position:fixed;

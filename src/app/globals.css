@@ -2440,6 +2440,64 @@ button:disabled,
   color: var(--sfm-heading) !important;
 }
 
+.dark :is(.income-shell, .expense-smart-main, .sfm-main.savings-main, .sfm-main.goals-main, .sfm-main.reports-main, .dashboard-main) {
+  --sfm-background: #0a1422;
+  --sfm-light-card: #13243a;
+  --sfm-card: #0f1d31;
+  --sfm-card-elevated: #13243a;
+  --sfm-input-bg: #0f1d31;
+  --sfm-foreground: #e8eef6;
+  --sfm-heading: #e8eef6;
+  --sfm-body: #b8c7d9;
+  --sfm-muted: #8ea6c3;
+  --sfm-muted-readable: #b8c7d9;
+  --sfm-border: #1d3050;
+  --sfm-border-strong: rgba(47, 214, 192, 0.42);
+}
+
+.dark :is(.income-shell, .expense-smart-main, .sfm-main.savings-main, .sfm-main.goals-main, .sfm-main.reports-main, .dashboard-main) :is(
+  .sfm-app-card,
+  .sfm-card,
+  .panel,
+  .kpi-card,
+  .summary-card,
+  .income-row,
+  .expense-card-row,
+  .data-row,
+  .goal-card,
+  .goal-ai-card,
+  .goal-ai-plan,
+  .goal-modal-preview,
+  .monthly-grid div,
+  .receipt-detail-grid div,
+  .receipt-review-card,
+  .receipt-candidate-panel,
+  .receipt-candidate-panel button
+) {
+  background: #0f1d31 !important;
+  border-color: #1d3050 !important;
+  color: #e8eef6 !important;
+}
+
+.dark :is(.income-shell, .expense-smart-main, .sfm-main.savings-main, .sfm-main.goals-main, .sfm-main.reports-main, .dashboard-main) :is(
+  .empty,
+  .income-empty-state,
+  .expense-empty,
+  .sfm-empty-state,
+  .empty-state,
+  .line-chart,
+  .row-controls,
+  .summary-band,
+  .goal-meta-grid div,
+  .goal-ai-metrics div,
+  .receipt-items span,
+  .receipt-selected-count
+) {
+  background: #13243a !important;
+  border-color: #1d3050 !important;
+  color: #b8c7d9 !important;
+}
+
 .dark :is(.today-section-list a, .package-item, .fund-row, .missing-item, .dd-row, .setting-row, .milestone-card, .task-column, .task-card, .metric, .monthly-grid div, .receipt-detail-grid div) {
   background: var(--sfm-light-card) !important;
   border-color: rgba(167, 243, 240, 0.14) !important;
