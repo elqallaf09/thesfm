@@ -226,6 +226,7 @@ const PURPOSE_KEY: Record<string, keyof typeof TEXT.ar> = {
   beneficiaries: 'beneficiariesDesc',
   'charity-reports': 'charityReportsDesc',
   'investment-firms': 'servicesDesc',
+  'trading-companies': 'servicesDesc',
   'accounting-firms': 'servicesDesc',
   'feasibility-firms': 'servicesDesc',
   'advisory-firms': 'servicesDesc',
@@ -245,6 +246,8 @@ const FEATURED_ITEMS = [
   { id: 'market-analysis', href: '/market-analysis', icon: BarChart3, labelKey: 'nav_market_analysis' as TranslationKey, purposeKey: 'marketDesc' as const },
   { id: 'reports-center', href: '/reports-center', icon: BarChart3, labelKey: 'nav_reports_center' as TranslationKey, purposeKey: 'reportsDesc' as const },
 ] as const;
+
+const COMING_SOON_ROUTE_IDS = new Set(['trading-companies']);
 
 const CATEGORY_DEFS = [
   { id: 'main', groupIds: ['main', 'financial-intelligence'] },
@@ -318,15 +321,17 @@ export default function SiteMapPage() {
         .map(item => {
           const routeDescription = text[PURPOSE_KEY[item.id] ?? 'siteMapDesc'];
           const label = t(item.labelKey);
+          const isComingSoon = COMING_SOON_ROUTE_IDS.has(item.id);
           return {
             id: item.id,
             href: item.href ?? '/',
             icon: item.icon as IconType,
             label,
             description: routeDescription,
+            isComingSoon,
             groupId: group.id,
             groupTitle: title,
-            keywords: normalize(`${title} ${label} ${routeDescription}`),
+            keywords: normalize(`${title} ${label} ${routeDescription} ${isComingSoon ? t('services.tradingCompanies.badge') : ''}`),
           };
         });
     });
@@ -449,7 +454,7 @@ export default function SiteMapPage() {
                       <span className="route-icon" aria-hidden="true"><Icon size={19} /></span>
                       <div>
                         <small>{item.groupTitle}</small>
-                        <strong>{item.label}</strong>
+                        <strong>{item.label}{item.isComingSoon ? <span className="site-map-soon-badge">{t('services.tradingCompanies.badge')}</span> : null}</strong>
                         <p>{item.description}</p>
                       </div>
                       <em>{text.open}<ArrowUpRight size={14} /></em>
@@ -489,7 +494,7 @@ export default function SiteMapPage() {
                           <Link className="site-map-route-card" key={item.id} href={item.href} aria-label={`${text.open}: ${item.label}`}>
                             <span className="route-icon" aria-hidden="true"><Icon size={19} /></span>
                             <div>
-                              <strong>{item.label}</strong>
+                              <strong>{item.label}{item.isComingSoon ? <span className="site-map-soon-badge">{t('services.tradingCompanies.badge')}</span> : null}</strong>
                               <p>{item.description}</p>
                             </div>
                             <em>{text.open}<ArrowUpRight size={14} /></em>
@@ -520,7 +525,7 @@ export default function SiteMapPage() {
                                 <Link className="site-map-route-card" key={item.id} href={item.href} aria-label={`${text.open}: ${item.label}`}>
                                   <span className="route-icon" aria-hidden="true"><RouteIcon size={19} /></span>
                                   <div>
-                                    <strong>{item.label}</strong>
+                                    <strong>{item.label}{item.isComingSoon ? <span className="site-map-soon-badge">{t('services.tradingCompanies.badge')}</span> : null}</strong>
                                     <p>{item.description}</p>
                                   </div>
                                   <em>{text.open}<ArrowUpRight size={14} /></em>
@@ -902,6 +907,20 @@ export default function SiteMapPage() {
           color: var(--card-foreground);
           font-size: 0.94rem;
           font-weight: 950;
+        }
+
+        .site-map-soon-badge {
+          display: inline-flex;
+          margin-inline-start: 8px;
+          border-radius: 999px;
+          border: 1px solid rgba(47, 214, 192, 0.28);
+          background: rgba(47, 214, 192, 0.12);
+          color: var(--primary);
+          padding: 3px 8px;
+          font-size: 11px;
+          font-weight: 950;
+          line-height: 1.2;
+          vertical-align: middle;
         }
 
         .site-map-routes p {

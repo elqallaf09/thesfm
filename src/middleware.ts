@@ -38,6 +38,7 @@ const protectedPrefixes = [
   '/market-analysis',
   '/market-watchlist',
   '/watchlist',
+  '/trading-companies',
   '/services/investment-firms',
   '/services/accounting-firms',
   '/services/feasibility-firms',

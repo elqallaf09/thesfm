@@ -11,9 +11,11 @@ type TranslationKey = keyof typeof TR;
 interface UnderDevelopmentProps {
   titleKey: TranslationKey;
   descriptionKey?: TranslationKey;
+  helperKey?: TranslationKey;
+  statusKey?: TranslationKey;
 }
 
-export function UnderDevelopment({ titleKey, descriptionKey }: UnderDevelopmentProps) {
+export function UnderDevelopment({ titleKey, descriptionKey, helperKey, statusKey = 'common_comingSoon' }: UnderDevelopmentProps) {
   const { t, dir, isAr } = useLanguage();
 
   return (
@@ -28,10 +30,11 @@ export function UnderDevelopment({ titleKey, descriptionKey }: UnderDevelopmentP
           <h1 id="under-development-title">{t(titleKey)}</h1>
           <p className="sfm-under-message">{t('common_underDevelopment')}</p>
           {descriptionKey && <p className="sfm-under-description">{t(descriptionKey)}</p>}
+          {helperKey && <p className="sfm-under-description">{t(helperKey)}</p>}
 
           <div className="sfm-under-status">
             <span />
-            {t('common_comingSoon')}
+            {t(statusKey)}
           </div>
 
           <div className="sfm-under-footer">
