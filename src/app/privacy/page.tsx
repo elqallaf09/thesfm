@@ -14,6 +14,7 @@ const TEXT = {
     updated: 'آخر تحديث: مايو 2026',
     home: 'العودة إلى الرئيسية',
     contact: 'تواصل معنا',
+    contactAria: 'تواصل معنا بخصوص سياسة الخصوصية',
     sections: [
       ['ما البيانات التي نجمعها؟', 'نجمع بيانات الحساب الأساسية مثل البريد الإلكتروني واسم المستخدم والتفضيلات، والبيانات التي تضيفها أنت داخل المنصة مثل الدخل والمصروفات والأهداف والاستثمارات والزكاة والمشاريع والمستندات والتقارير.'],
       ['كيف تُستخدم البيانات؟', 'تُستخدم بياناتك لتشغيل وظائف المنصة، عرض الملخصات، إنشاء التقارير، تنظيم التنبيهات، وتحسين تجربة الاستخدام داخل حسابك. لا نستخدم بيانات وهمية داخل حسابات المستخدمين الحقيقيين.'],
@@ -31,6 +32,7 @@ const TEXT = {
     updated: 'Last updated: May 2026',
     home: 'Back to home',
     contact: 'Contact us',
+    contactAria: 'Contact us about the privacy policy',
     sections: [
       ['What data do we collect?', 'We collect basic account data such as email, username, and preferences, plus the data you add inside the platform, including income, expenses, goals, investments, zakat, projects, documents, and reports.'],
       ['How is data used?', 'Your data is used to run platform features, show summaries, generate reports, organize notifications, and improve your account experience. We do not use fake data inside real user accounts.'],
@@ -48,6 +50,7 @@ const TEXT = {
     updated: 'Dernière mise à jour : mai 2026',
     home: 'Retour à l’accueil',
     contact: 'Nous contacter',
+    contactAria: 'Nous contacter à propos de la politique de confidentialité',
     sections: [
       ['Quelles données collectons-nous ?', 'Nous collectons les données de compte de base comme e-mail, nom d’utilisateur et préférences, ainsi que les données ajoutées dans la plateforme : revenus, dépenses, objectifs, investissements, zakat, projets, documents et rapports.'],
       ['Comment les données sont-elles utilisées ?', 'Vos données servent à faire fonctionner la plateforme, afficher des synthèses, générer des rapports, organiser les notifications et améliorer l’expérience de votre compte. Nous n’utilisons pas de données fictives dans les comptes réels.'],
@@ -76,7 +79,7 @@ export default function PrivacyPage() {
         <small>{text.updated}</small>
         <div className="legal-actions">
           <Link href="/">{text.home}</Link>
-          <a href={SUPPORT_EMAIL_MAILTO}><Mail size={16} />{text.contact}</a>
+          <Link href="/contact" aria-label={text.contactAria}><Mail size={16} />{text.contact}</Link>
         </div>
       </section>
 
@@ -94,8 +97,11 @@ export default function PrivacyPage() {
           );
         })}
         <footer>
-          <strong>{SUPPORT_EMAIL}</strong>
-          <span>{text.contact}</span>
+          <a className="privacy-email" href={SUPPORT_EMAIL_MAILTO}>{SUPPORT_EMAIL}</a>
+          <Link className="privacy-contact-link" href="/contact" aria-label={text.contactAria}>
+            <Mail size={16} aria-hidden="true" />
+            <span>{text.contact}</span>
+          </Link>
         </footer>
       </section>
 
@@ -121,9 +127,12 @@ const legalStyles = `
   article svg{margin-top:4px;color:#18D4D4}
   h2{margin:0 0 8px;color:#061B33;font-size:20px;font-weight:950}
   article p{margin:0;color:#475569;line-height:1.9;font-weight:780}
-  footer{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;border-radius:20px;background:#071E3A;color:#EAF6FF;padding:18px 20px}
-  footer strong{overflow-wrap:anywhere}
-  footer span{color:#A7F3F0;font-weight:900}
+  footer{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;border-radius:20px;background:#071E3A;color:#EAF6FF;padding:18px 20px}
+  footer a{color:inherit;text-decoration:none}
+  .privacy-email{overflow-wrap:anywhere;font-weight:950}
+  .privacy-contact-link{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(167,243,240,.22);border-radius:999px;background:rgba(24,212,212,.1);color:#A7F3F0!important;padding:9px 12px;font-weight:950}
+  .privacy-contact-link:hover{border-color:rgba(167,243,240,.42);background:rgba(24,212,212,.16)}
+  footer span{color:inherit;font-weight:950}
   a:focus-visible{outline:3px solid rgba(24,212,212,.58);outline-offset:4px}
   @media(max-width:680px){.legal-page{padding:16px}.legal-hero{padding-top:34px}article{grid-template-columns:1fr}.legal-actions a{width:100%}}
 `;
