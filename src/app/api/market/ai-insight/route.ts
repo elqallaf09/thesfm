@@ -23,6 +23,7 @@ function fallbackUnavailable(error: string): MarketAiInsight {
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const marketData = body?.marketData;
+  const language = body?.language === 'en' || body?.language === 'fr' || body?.language === 'ar' ? body.language : 'ar';
 
   if (!isRealMarketAnalysis(marketData)) {
     return NextResponse.json({
@@ -62,7 +63,10 @@ export async function POST(request: NextRequest) {
           'Use only the supplied real market JSON.',
           'Do not invent prices, news, fundamentals, or events.',
           'Do not give buy, sell, hold, guaranteed return, or personalized investment advice.',
+          `Write in this language only: ${language}.`,
           'Return strict JSON only with: summary, trendStatus, riskNotes, watchNext array, riskScore number 0-100.',
+          'Keep summary, trendStatus, and riskNotes concise. watchNext must contain 2 to 4 short educational monitoring points.',
+          'Mention data limitations when fundamentals, news, or other fields are missing.',
           'Frame everything as educational analysis, not investment advice.',
         ].join(' '),
         messages: [{
@@ -78,6 +82,7 @@ export async function POST(request: NextRequest) {
             indicators: marketData.indicators,
             levels: marketData.levels,
             historyTail: marketData.history.slice(-30),
+            language,
             disclaimer: 'Educational only, not investment advice.',
           }),
         }],
