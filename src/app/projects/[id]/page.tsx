@@ -2119,6 +2119,7 @@ export default function ProjectWorkspacePage() {
                     onClick={saveFeasibility}
                     disabled={savingFeasibility}
                     aria-label={tr.saveFeasibilityStudy}
+                    title={savingFeasibility ? tr.saveFeasibilityStudy : undefined}
                   >
                     <Save size={16} />
                     {savingFeasibility ? tr.saveFeasibilityStudy : tr.saveFeasibilityStudy}
@@ -2130,6 +2131,7 @@ export default function ProjectWorkspacePage() {
                     disabled={exportingFeasibilityPdf}
                     aria-disabled={exportingFeasibilityPdf}
                     aria-label={tr.exportFeasibilityPdf}
+                    title={exportingFeasibilityPdf ? tr.creatingFeasibilityPdf : undefined}
                   >
                     <FileText size={16} />
                     {exportingFeasibilityPdf ? tr.creatingFeasibilityPdf : tr.exportFeasibilityPdf}
@@ -2508,6 +2510,18 @@ export default function ProjectWorkspacePage() {
         .dark .transaction-row,.dark .activity-list div,.dark .delete-modal{background:var(--card);border-color:var(--border)}
         .dark .transaction-main strong,.dark .activity-list span{color:var(--foreground)}
         .dark .transaction-actions button{background:var(--sfm-card-elevated,#0F335C);color:var(--foreground);border-color:var(--border)}
+        .dark .quick-card .quick-grid button{background:rgba(47,214,192,.12);border-color:rgba(167,243,240,.30);color:#EAF6FF;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+        .dark .quick-card .quick-grid button svg{color:#67E8F9}
+        .dark .quick-card .quick-grid button:hover,.dark .quick-card .quick-grid button:focus-visible{background:rgba(47,214,192,.18);border-color:rgba(103,232,249,.58);color:#FFFFFF;box-shadow:0 0 0 3px rgba(47,214,192,.18)}
+        .dark .quick-card .quick-grid button:disabled,.dark .future-actions button:disabled,.dark .primary-save:disabled{opacity:.6;color:#CBD5E1;cursor:not-allowed}
+        .dark .future-actions .secondary-action,.dark .project-workspace .secondary-action{background:rgba(255,255,255,.08);border-color:rgba(167,243,240,.26);color:#EAF6FF}
+        .dark .future-actions .secondary-action:hover:not(:disabled),.dark .future-actions .secondary-action:focus-visible{background:rgba(47,214,192,.15);border-color:rgba(103,232,249,.50);color:#FFFFFF}
+        .dark .project-workspace .action-empty{background:linear-gradient(135deg,rgba(47,214,192,.12),rgba(29,140,255,.10)),#0B2746;border-color:rgba(103,232,249,.28);box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+        .dark .project-workspace .action-empty-icon{background:rgba(47,214,192,.16);border-color:rgba(103,232,249,.34);color:#67E8F9}
+        .dark .project-workspace .action-empty strong{color:#F8FAFC}
+        .dark .project-workspace .action-empty p{color:#CBD5E1}
+        .dark .project-workspace .action-empty button{background:linear-gradient(135deg,#1D8CFF,#18D4D4);border-color:rgba(103,232,249,.55);color:#FFFFFF;box-shadow:0 12px 28px rgba(24,212,212,.18)}
+        .dark .project-workspace .action-empty button:hover,.dark .project-workspace .action-empty button:focus-visible{background:linear-gradient(135deg,#2563EB,#22D3EE);color:#FFFFFF}
         .project-workspace .overview-grid{grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));align-items:stretch}
         .project-workspace .project-income-card,.project-workspace .project-expenses-card,.project-workspace .missing-data-card{grid-column:1 / -1}
         .project-workspace .expense-list{display:grid;gap:10px;margin-top:12px}
@@ -2518,6 +2532,28 @@ export default function ProjectWorkspacePage() {
         .project-workspace .action-empty{border:1px dashed rgba(29,140,255,.24);background:var(--sfm-light-card);border-radius:16px;padding:16px;display:grid;gap:12px}
         .project-workspace .action-empty p{margin:0;color:var(--sfm-muted);font-weight:900;line-height:1.7}
         .project-workspace .action-empty button,.project-workspace .secondary-action{min-height:42px;border-radius:13px;border:1px solid rgba(29,140,255,.18);background:var(--sfm-card);color:var(--sfm-midnight);font-family:inherit;font-weight:950;cursor:pointer;padding:0 14px}
+        .project-workspace .quick-grid button{min-height:52px;border-color:rgba(29,140,255,.26);background:rgba(29,140,255,.09);color:var(--sfm-midnight);font-weight:950;transition:background .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease}
+        .project-workspace .quick-grid button svg{color:var(--sfm-primary);flex:0 0 auto}
+        .project-workspace .quick-grid button:hover,.project-workspace .quick-grid button:focus-visible{background:rgba(29,140,255,.14);border-color:rgba(24,212,212,.48);color:var(--sfm-primary-dark);box-shadow:0 0 0 3px rgba(24,212,212,.16);transform:translateY(-1px)}
+        .project-workspace .quick-grid button:disabled{opacity:.6;cursor:not-allowed;transform:none}
+        .project-workspace .action-empty{grid-template-columns:auto minmax(0,1fr);align-items:center;border-style:solid;border-color:rgba(29,140,255,.24);background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(24,212,212,.06)),var(--sfm-light-card);padding:18px}
+        .project-workspace .action-empty-icon{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;background:rgba(24,212,212,.12);border:1px solid rgba(24,212,212,.28);color:var(--sfm-primary);box-shadow:0 10px 24px rgba(3,18,37,.08)}
+        .project-workspace .action-empty strong{display:block;color:var(--sfm-midnight);font-weight:950;line-height:1.55;overflow-wrap:anywhere}
+        .project-workspace .action-empty p{margin:4px 0 0;color:var(--sfm-muted);font-size:12px;font-weight:900;line-height:1.55}
+        .project-workspace .action-empty button{grid-column:1 / -1;justify-self:start;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));border-color:rgba(24,212,212,.48);color:#fff;box-shadow:0 10px 24px rgba(29,140,255,.18)}
+        .project-workspace .action-empty button:hover,.project-workspace .action-empty button:focus-visible{outline:none;background:linear-gradient(135deg,var(--sfm-primary-hover),var(--sfm-soft-cyan));box-shadow:0 0 0 3px rgba(24,212,212,.18),0 14px 30px rgba(29,140,255,.20)}
+        .dark .quick-card .quick-grid button{background:rgba(47,214,192,.12);border-color:rgba(167,243,240,.30);color:#EAF6FF;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+        .dark .quick-card .quick-grid button svg{color:#67E8F9}
+        .dark .quick-card .quick-grid button:hover,.dark .quick-card .quick-grid button:focus-visible{background:rgba(47,214,192,.18);border-color:rgba(103,232,249,.58);color:#FFFFFF;box-shadow:0 0 0 3px rgba(47,214,192,.18)}
+        .dark .quick-card .quick-grid button:disabled,.dark .future-actions button:disabled,.dark .primary-save:disabled{opacity:.6;color:#CBD5E1;cursor:not-allowed}
+        .dark .future-actions .secondary-action,.dark .project-workspace .secondary-action{background:rgba(255,255,255,.08);border-color:rgba(167,243,240,.26);color:#EAF6FF}
+        .dark .future-actions .secondary-action:hover:not(:disabled),.dark .future-actions .secondary-action:focus-visible{background:rgba(47,214,192,.15);border-color:rgba(103,232,249,.50);color:#FFFFFF}
+        .dark .project-workspace .action-empty{background:linear-gradient(135deg,rgba(47,214,192,.12),rgba(29,140,255,.10)),#0B2746;border-color:rgba(103,232,249,.28);box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+        .dark .project-workspace .action-empty-icon{background:rgba(47,214,192,.16);border-color:rgba(103,232,249,.34);color:#67E8F9}
+        .dark .project-workspace .action-empty strong{color:#F8FAFC}
+        .dark .project-workspace .action-empty p{color:#CBD5E1}
+        .dark .project-workspace .action-empty button{background:linear-gradient(135deg,#1D8CFF,#18D4D4);border-color:rgba(103,232,249,.55);color:#FFFFFF;box-shadow:0 12px 28px rgba(24,212,212,.18)}
+        .dark .project-workspace .action-empty button:hover,.dark .project-workspace .action-empty button:focus-visible{background:linear-gradient(135deg,#2563EB,#22D3EE);color:#FFFFFF}
         .project-workspace .missing-data-card ul{margin:0;padding-inline-start:20px;color:var(--sfm-muted);font-weight:900;line-height:1.8}
         .expense-modal-backdrop{position:fixed;inset:0;z-index:80;background:rgba(3,18,37,.55);backdrop-filter:blur(8px);display:grid;place-items:center;padding:20px}
         .expense-modal{width:min(760px,100%);max-height:calc(100vh - 40px);overflow:auto;border:1px solid rgba(167,243,240,.22);border-radius:24px;background:var(--sfm-card);box-shadow:0 30px 80px rgba(3,18,37,.35);padding:22px;display:grid;gap:16px;color:var(--sfm-primary-dark)}
@@ -2537,7 +2573,7 @@ export default function ProjectWorkspacePage() {
         .modal-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
         .modal-actions .primary-save{min-height:44px;border:0;border-radius:13px;padding:0 16px;display:inline-flex;align-items:center;gap:8px;font-family:inherit;font-weight:950;cursor:pointer}
         @media(max-width:1180px){.overview-main-layout{grid-template-columns:1fr}.overview-side-column{position:static}.compact-details{grid-template-columns:1fr 1fr}}
-        @media(max-width:760px){.overview-kpi-grid,.compact-details{grid-template-columns:1fr}.transaction-row,.activity-list div{grid-template-columns:1fr}.transaction-actions{justify-content:stretch}.transaction-actions button{flex:1;justify-content:center}.expense-modal-backdrop{align-items:end;padding:12px}.expense-modal,.delete-modal{border-radius:22px 22px 0 0;max-height:88vh;overflow:auto}.project-expense-form-grid{grid-template-columns:1fr}.modal-actions{display:grid;grid-template-columns:1fr}.modal-actions button{width:100%}.project-workspace .expense-list div{grid-template-columns:1fr}.project-workspace .project-income-card,.project-workspace .project-expenses-card,.project-workspace .missing-data-card{grid-column:1 / -1}}
+        @media(max-width:760px){.overview-kpi-grid,.compact-details{grid-template-columns:1fr}.transaction-row,.activity-list div{grid-template-columns:1fr}.transaction-actions{justify-content:stretch}.transaction-actions button{flex:1;justify-content:center}.expense-modal-backdrop{align-items:end;padding:12px}.expense-modal,.delete-modal{border-radius:22px 22px 0 0;max-height:88vh;overflow:auto}.project-expense-form-grid{grid-template-columns:1fr}.modal-actions{display:grid;grid-template-columns:1fr}.modal-actions button{width:100%}.project-workspace .expense-list div{grid-template-columns:1fr}.project-workspace .project-income-card,.project-workspace .project-expenses-card,.project-workspace .missing-data-card{grid-column:1 / -1}.project-workspace .quick-grid button{min-height:54px}.project-workspace .action-empty{grid-template-columns:1fr;text-align:start}.project-workspace .action-empty button{width:100%;justify-self:stretch}}
       `}</style>
     </div>
   );
@@ -2824,8 +2860,15 @@ function ProjectTransactionSection({
         </>
       ) : (
         <div className="action-empty">
-          <p>{emptyText}</p>
-          <button type="button" onClick={onAdd}>{addText}</button>
+          <span className="action-empty-icon" aria-hidden="true"><Icon size={22} /></span>
+          <div>
+            <strong>{emptyText}</strong>
+            <p>{isIncome ? tr.projectIncome : tr.projectExpenses}</p>
+          </div>
+          <button type="button" onClick={onAdd}>
+            <Icon size={16} />
+            {addText}
+          </button>
         </div>
       )}
     </article>
