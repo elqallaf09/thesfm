@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, ChevronDown, Globe2 } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { Lang } from '@/lib/translations';
@@ -37,9 +38,11 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
   const id = useId();
   const language = useLanguage();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
   const rootRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selected = value ?? language.lang;
   const selectedIndex = Math.max(0, LANGS.findIndex(item => item.id === selected));
@@ -53,28 +56,44 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
     if (!trigger) return;
 
     const rect = trigger.getBoundingClientRect();
-    const maxWidth = Math.max(160, window.innerWidth - VIEWPORT_GUTTER * 2);
+    const viewport = window.visualViewport;
+    const viewportWidth = viewport?.width ?? window.innerWidth;
+    const viewportOffsetLeft = viewport?.offsetLeft ?? 0;
+    const viewportOffsetTop = viewport?.offsetTop ?? 0;
+    const maxWidth = Math.max(160, viewportWidth - VIEWPORT_GUTTER * 2);
     const width = Math.min(Math.max(rect.width, MENU_WIDTH), maxWidth);
     const alignRight = document.documentElement.dir === 'rtl';
     const preferredLeft = alignRight ? rect.right - width : rect.left;
-    const maxLeft = Math.max(VIEWPORT_GUTTER, window.innerWidth - width - VIEWPORT_GUTTER);
-    const left = clamp(preferredLeft, VIEWPORT_GUTTER, maxLeft);
+    const minLeft = viewportOffsetLeft + VIEWPORT_GUTTER;
+    const maxLeft = Math.max(minLeft, viewportOffsetLeft + viewportWidth - width - VIEWPORT_GUTTER);
+    const left = clamp(preferredLeft + viewportOffsetLeft, minLeft, maxLeft);
 
     setMenuStyle({
-      top: Math.round(rect.bottom + 8),
+      top: Math.round(rect.bottom + viewportOffsetTop + 8),
       left: Math.round(left),
       width: Math.round(width),
     });
   }, []);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
     updateMenuPosition();
 
-    const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    const isInsideSwitcher = (target: EventTarget | null) => {
+      const node = target as Node | null;
+      return Boolean(node && (rootRef.current?.contains(node) || menuRef.current?.contains(node)));
     };
-    const onKeyDown = (event: KeyboardEvent) => {
+    const onPointerDown = (event: PointerEvent) => {
+      if (!isInsideSwitcher(event.target)) setOpen(false);
+    };
+    const onTouchStart = (event: TouchEvent) => {
+      if (!isInsideSwitcher(event.target)) setOpen(false);
+    };
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') {
         setOpen(false);
         triggerRef.current?.focus();
@@ -82,15 +101,21 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
     };
     const onViewportChange = () => updateMenuPosition();
 
-    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('pointerdown', onPointerDown, { passive: true });
+    document.addEventListener('touchstart', onTouchStart, { passive: true });
     document.addEventListener('keydown', onKeyDown);
     window.addEventListener('resize', onViewportChange);
     window.addEventListener('scroll', onViewportChange, true);
+    window.visualViewport?.addEventListener('resize', onViewportChange);
+    window.visualViewport?.addEventListener('scroll', onViewportChange);
     return () => {
       document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('touchstart', onTouchStart);
       document.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('resize', onViewportChange);
       window.removeEventListener('scroll', onViewportChange, true);
+      window.visualViewport?.removeEventListener('resize', onViewportChange);
+      window.visualViewport?.removeEventListener('scroll', onViewportChange);
     };
   }, [open, updateMenuPosition]);
 
@@ -129,6 +154,40 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
     }
   }
 
+  const menu = open ? (
+    <div
+      ref={menuRef}
+      id={`${id}-menu`}
+      className="sfm-language-menu"
+      data-variant={variant}
+      role="listbox"
+      aria-label={SWITCHER_LABEL[selected]}
+      style={menuStyle}
+    >
+      {LANGS.map((item, index) => {
+        const active = item.id === selected;
+        return (
+          <button
+            key={item.id}
+            ref={node => {
+              itemRefs.current[index] = node;
+            }}
+            type="button"
+            className={active ? 'sfm-language-option active' : 'sfm-language-option'}
+            role="option"
+            aria-selected={active}
+            tabIndex={open ? 0 : -1}
+            onClick={() => selectLanguage(item.id)}
+            onKeyDown={event => handleItemKeyDown(event, index)}
+          >
+            <span>{item.label}</span>
+            {active ? <Check className="sfm-language-check" size={16} aria-hidden="true" /> : <span className="sfm-language-check-placeholder" aria-hidden="true" />}
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
+
   return (
     <div ref={rootRef} className="sfm-language-dropdown" data-variant={variant} data-compact={isCompact ? 'true' : 'false'}>
       <button
@@ -151,33 +210,9 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         <ChevronDown className="sfm-language-chevron" size={15} aria-hidden="true" />
       </button>
 
-      {open && (
-        <div id={`${id}-menu`} className="sfm-language-menu" role="listbox" aria-label={SWITCHER_LABEL[selected]} style={menuStyle}>
-          {LANGS.map((item, index) => {
-            const active = item.id === selected;
-            return (
-              <button
-                key={item.id}
-                ref={node => {
-                  itemRefs.current[index] = node;
-                }}
-                type="button"
-                className={active ? 'sfm-language-option active' : 'sfm-language-option'}
-                role="option"
-                aria-selected={active}
-                tabIndex={open ? 0 : -1}
-                onClick={() => selectLanguage(item.id)}
-                onKeyDown={event => handleItemKeyDown(event, index)}
-              >
-                <span>{item.label}</span>
-                {active ? <Check className="sfm-language-check" size={16} aria-hidden="true" /> : <span className="sfm-language-check-placeholder" aria-hidden="true" />}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {mounted && menu ? createPortal(menu, document.body) : null}
 
-      <style jsx>{`
+      <style jsx global>{`
         .sfm-language-dropdown {
           position: relative;
           display: inline-flex;
@@ -205,6 +240,8 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           box-shadow: 0 10px 26px rgba(3,18,37,.08);
           transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
           white-space: nowrap;
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
         }
         .sfm-language-label-short {
           display: none;
@@ -248,6 +285,9 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         .sfm-language-menu {
           position: fixed;
           max-width: calc(100vw - 24px);
+          max-height: min(260px, calc(100dvh - 24px));
+          overflow-y: auto;
+          overscroll-behavior: contain;
           border-radius: 18px;
           border: 1px solid rgba(29,140,255,.20);
           background: #FFFFFF;
@@ -256,10 +296,12 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           box-shadow: 0 20px 50px rgba(3,18,37,.18);
           display: grid;
           gap: 4px;
-          z-index: 220;
+          z-index: 10000;
           animation: sfmLangMenuIn .16s ease-out;
+          -webkit-overflow-scrolling: touch;
+          font-family: Tajawal, Arial, sans-serif;
         }
-        .sfm-language-dropdown[data-variant='dark'] .sfm-language-menu {
+        .sfm-language-menu[data-variant='dark'] {
           background: #061B33;
           color: #EAF6FF;
           border-color: rgba(167,243,240,.22);
@@ -280,13 +322,15 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           cursor: pointer;
           text-align: start;
           transition: background .16s ease, color .16s ease, border-color .16s ease, transform .16s ease;
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
         }
         .sfm-language-option:hover {
           background: rgba(29,140,255,.08);
           border-color: rgba(29,140,255,.14);
           transform: translateY(-1px);
         }
-        .sfm-language-dropdown[data-variant='dark'] .sfm-language-option:hover {
+        .sfm-language-menu[data-variant='dark'] .sfm-language-option:hover {
           background: rgba(24,212,212,.11);
           border-color: rgba(167,243,240,.14);
         }
@@ -295,7 +339,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           border-color: rgba(24,212,212,.24);
           color: #061B33;
         }
-        .sfm-language-dropdown[data-variant='dark'] .sfm-language-option.active {
+        .sfm-language-menu[data-variant='dark'] .sfm-language-option.active {
           color: #EAF6FF;
           background: rgba(24,212,212,.16);
         }
