@@ -25,7 +25,7 @@ import { useMemo, useState } from 'react';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { SUPPORT_EMAIL, SUPPORT_EMAIL_MAILTO } from '@/lib/constants/contact';
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -414,7 +414,7 @@ export default function AboutPage() {
           <strong>THE SFM</strong>
           <p>
             {text.supportContactLine}{' '}
-            <a href={SUPPORT_EMAIL_MAILTO}>{SUPPORT_EMAIL}</a>
+            <a href={SUPPORT_EMAIL_SUPPORT_MAILTO} aria-label={SUPPORT_EMAIL_ARIA_LABEL}>{SUPPORT_EMAIL}</a>
           </p>
         </div>
         <FooterColumn title={text.footerProduct} links={[['/', 'THE SFM'], ['/reports-center', text.reportsCenter], ['/business-hub', text.businessHub]]} />
@@ -896,8 +896,16 @@ const aboutStyles = `
   }
   .footer-brand p a {
     color: #1D8CFF;
+    cursor: pointer;
     font-weight: 950;
     text-decoration: none;
+    transition: color 180ms var(--ease), text-decoration-color 180ms var(--ease);
+  }
+  .footer-brand p a:hover {
+    color: #0B76E0;
+    text-decoration: underline;
+    text-decoration-color: rgba(24, 212, 212, 0.72);
+    text-underline-offset: 4px;
   }
   .footer-column {
     display: grid;

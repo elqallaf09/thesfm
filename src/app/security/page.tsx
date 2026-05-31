@@ -35,7 +35,7 @@ import { ActionRow } from '@/components/layout/ActionRow';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
-import { SUPPORT_EMAIL, SUPPORT_EMAIL_MAILTO } from '@/lib/constants/contact';
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_MAILTO, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -807,7 +807,7 @@ export default function SecurityPage() {
 
           <SecuritySection title={text.contactPrivacy} icon={Mail} wide>
             <p className="section-copy">{text.supportDesc}</p>
-            <a className="security-mail-link" href={SUPPORT_EMAIL_MAILTO}>{SUPPORT_EMAIL}</a>
+            <a className="security-mail-link" href={SUPPORT_EMAIL_SUPPORT_MAILTO} aria-label={SUPPORT_EMAIL_ARIA_LABEL}>{SUPPORT_EMAIL}</a>
           </SecuritySection>
         </section>
       </DashboardPageShell>

@@ -33,7 +33,7 @@ import { flattenNavigationItems } from '@/components/navigationConfig';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { SUPPORT_EMAIL, SUPPORT_EMAIL_MAILTO } from '@/lib/constants/contact';
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
 import { TR } from '@/lib/translations';
 
 type Lang = 'ar' | 'en' | 'fr';
@@ -974,7 +974,7 @@ function SupportEmailAnswer({ answer }: { answer: string }) {
   return (
     <>
       {before}
-      <a href={SUPPORT_EMAIL_MAILTO}>{SUPPORT_EMAIL}</a>
+      <a href={SUPPORT_EMAIL_SUPPORT_MAILTO} aria-label={SUPPORT_EMAIL_ARIA_LABEL}>{SUPPORT_EMAIL}</a>
       {after}
     </>
   );

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Database, Download, LockKeyhole, Mail, ShieldCheck, Trash2 } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
-import { SUPPORT_EMAIL, SUPPORT_EMAIL_MAILTO } from '@/lib/constants/contact';
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -97,7 +97,7 @@ export default function PrivacyPage() {
           );
         })}
         <footer>
-          <a className="privacy-email" href={SUPPORT_EMAIL_MAILTO}>{SUPPORT_EMAIL}</a>
+          <a className="privacy-email" href={SUPPORT_EMAIL_SUPPORT_MAILTO} aria-label={SUPPORT_EMAIL_ARIA_LABEL}>{SUPPORT_EMAIL}</a>
           <Link className="privacy-contact-link" href="/contact" aria-label={text.contactAria}>
             <Mail size={16} aria-hidden="true" />
             <span>{text.contact}</span>
@@ -129,7 +129,8 @@ const legalStyles = `
   article p{margin:0;color:#475569;line-height:1.9;font-weight:780}
   footer{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;border-radius:20px;background:#071E3A;color:#EAF6FF;padding:18px 20px}
   footer a{color:inherit;text-decoration:none}
-  .privacy-email{overflow-wrap:anywhere;font-weight:950}
+  .privacy-email{overflow-wrap:anywhere;font-weight:950;cursor:pointer;transition:color .18s ease,text-decoration-color .18s ease}
+  .privacy-email:hover{color:#A7F3F0;text-decoration:underline;text-decoration-color:rgba(24,212,212,.7);text-underline-offset:4px}
   .privacy-contact-link{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(167,243,240,.22);border-radius:999px;background:rgba(24,212,212,.1);color:#A7F3F0!important;padding:9px 12px;font-weight:950}
   .privacy-contact-link:hover{border-color:rgba(167,243,240,.42);background:rgba(24,212,212,.16)}
   footer span{color:inherit;font-weight:950}

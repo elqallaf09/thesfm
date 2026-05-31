@@ -18,7 +18,7 @@ import {
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { SUPPORT_EMAIL, SUPPORT_EMAIL_MAILTO } from '@/lib/constants/contact';
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -304,7 +304,7 @@ export default function ContactPage() {
               <h2>{card.title}</h2>
               <p>{card.body}</p>
               {card.value === supportEmail ? (
-                <a href={SUPPORT_EMAIL_MAILTO} className="support-email-link">{card.value}</a>
+                <a href={SUPPORT_EMAIL_SUPPORT_MAILTO} className="support-email-link" aria-label={SUPPORT_EMAIL_ARIA_LABEL}>{card.value}</a>
               ) : card.value ? (
                 <strong>{card.value}</strong>
               ) : null}
@@ -407,7 +407,7 @@ export default function ContactPage() {
               {formStatus.type === 'error' && formStatus.showEmailFallback && (
                 <>
                   {' '}
-                  <a href={SUPPORT_EMAIL_MAILTO}>{SUPPORT_EMAIL}</a>.
+                  <a href={SUPPORT_EMAIL_SUPPORT_MAILTO} aria-label={SUPPORT_EMAIL_ARIA_LABEL}>{SUPPORT_EMAIL}</a>.
                 </>
               )}
             </p>
@@ -712,6 +712,7 @@ const contactStyles = `
   .form-status a {
     width: fit-content;
     color: #0B76E0;
+    cursor: pointer;
     overflow-wrap: anywhere;
     font-size: 15px;
     line-height: 1.55;

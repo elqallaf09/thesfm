@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { AlertTriangle, CheckCircle2, FileText, Mail, Scale, ShieldCheck, UserCheck } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
-import { SUPPORT_EMAIL, SUPPORT_EMAIL_MAILTO } from '@/lib/constants/contact';
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -76,7 +76,7 @@ export default function TermsPage() {
         <small>{text.updated}</small>
         <div className="legal-actions">
           <Link href="/">{text.home}</Link>
-          <a href={SUPPORT_EMAIL_MAILTO}><Mail size={16} />{text.contact}</a>
+          <a href={SUPPORT_EMAIL_SUPPORT_MAILTO} aria-label={SUPPORT_EMAIL_ARIA_LABEL}><Mail size={16} />{text.contact}</a>
         </div>
       </section>
 
@@ -94,7 +94,7 @@ export default function TermsPage() {
           );
         })}
         <footer>
-          <strong>{SUPPORT_EMAIL}</strong>
+          <a className="legal-email" href={SUPPORT_EMAIL_SUPPORT_MAILTO} aria-label={SUPPORT_EMAIL_ARIA_LABEL}>{SUPPORT_EMAIL}</a>
           <span>{text.contact}</span>
         </footer>
       </section>
@@ -122,7 +122,8 @@ const legalStyles = `
   h2{margin:0 0 8px;color:#061B33;font-size:20px;font-weight:950}
   article p{margin:0;color:#475569;line-height:1.9;font-weight:780}
   footer{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;border-radius:20px;background:#071E3A;color:#EAF6FF;padding:18px 20px}
-  footer strong{overflow-wrap:anywhere}
+  .legal-email{color:inherit;cursor:pointer;overflow-wrap:anywhere;font-weight:950;text-decoration:none;transition:color .18s ease,text-decoration-color .18s ease}
+  .legal-email:hover{color:#A7F3F0;text-decoration:underline;text-decoration-color:rgba(24,212,212,.7);text-underline-offset:4px}
   footer span{color:#A7F3F0;font-weight:900}
   a:focus-visible{outline:3px solid rgba(24,212,212,.58);outline-offset:4px}
   @media(max-width:680px){.legal-page{padding:16px}.legal-hero{padding-top:34px}article{grid-template-columns:1fr}.legal-actions a{width:100%}}
