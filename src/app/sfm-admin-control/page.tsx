@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Activity, BarChart3, Clock3, Eye, Globe2, Languages, LockKeyhole, MonitorSmartphone, ShieldCheck, Users, type LucideIcon } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
@@ -108,7 +109,10 @@ export default function AdminAnalyticsPage() {
   const [from, setFrom] = useState(dateValue(29));
   const [to, setTo] = useState(dateValue());
   const [data, setData] = useState<AdminData | null>(null);
-  const [state, setState] = useState<'loading' | 'ready' | 'empty' | 'error' | 'forbidden'>('loading');
+  const [state, setState] = useState<'loading' | 'ready' | 'empty' | 'error' | 'forbidden' | 'code_required'>('loading');
+  const [adminCode, setAdminCode] = useState('');
+  const [codeError, setCodeError] = useState('');
+  const [submittingCode, setSubmittingCode] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login?next=/sfm-admin-control');
@@ -136,6 +140,10 @@ export default function AdminAnalyticsPage() {
         setState('forbidden');
         return;
       }
+      if (response.status === 428) {
+        setState('code_required');
+        return;
+      }
       if (!response.ok) {
         setState('error');
         return;
@@ -151,6 +159,35 @@ export default function AdminAnalyticsPage() {
   useEffect(() => {
     if (!loading && user) void load();
   }, [load, loading, user]);
+
+  const submitAdminCode = useCallback(async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmittingCode(true);
+    setCodeError('');
+    try {
+      const response = await fetch('/api/admin/access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: adminCode }),
+      });
+      if (response.ok) {
+        setAdminCode('');
+        await load();
+        return;
+      }
+      if (response.status === 429) {
+        setCodeError(t('admin_code_locked'));
+      } else if (response.status === 500) {
+        setCodeError(t('admin_code_missing_config'));
+      } else {
+        setCodeError(t('admin_code_invalid'));
+      }
+    } catch {
+      setCodeError(t('admin_error'));
+    } finally {
+      setSubmittingCode(false);
+    }
+  }, [adminCode, load, t]);
 
   const stats = data?.stats ?? {};
   const statCards = [
@@ -174,6 +211,34 @@ export default function AdminAnalyticsPage() {
 
   if (state === 'forbidden') {
     return <AdminShell dir={dir}><StateCard icon={LockKeyhole} text={t('admin_unauthorized')} /></AdminShell>;
+  }
+
+  if (state === 'code_required') {
+    return (
+      <AdminShell dir={dir}>
+        <section className="admin-code-card" aria-labelledby="admin-code-title">
+          <div className="admin-code-icon" aria-hidden="true"><LockKeyhole size={24} /></div>
+          <h1 id="admin-code-title">{t('admin_code_title')}</h1>
+          <p>{t('admin_code_description')}</p>
+          <form onSubmit={submitAdminCode}>
+            <label>
+              <span>{t('admin_code_label')}</span>
+              <input
+                type="password"
+                value={adminCode}
+                onChange={event => setAdminCode(event.target.value)}
+                autoComplete="off"
+                required
+              />
+            </label>
+            {codeError && <strong role="alert">{codeError}</strong>}
+            <button type="submit" disabled={submittingCode || !adminCode.trim()}>
+              {submittingCode ? t('admin_loading') : t('admin_code_submit')}
+            </button>
+          </form>
+        </section>
+      </AdminShell>
+    );
   }
 
   return (
@@ -377,8 +442,19 @@ const adminStyles = `
   .admin-state{display:flex;align-items:center;gap:12px;padding:18px;color:var(--sfm-foreground)}
   .admin-state svg{color:#18D4D4;flex:0 0 auto}
   .admin-state p{margin:0;color:var(--sfm-muted);font-weight:900;line-height:1.8}
-  :global(.dark) .admin-stat-card,:global(.dark) .admin-panel,:global(.dark) .admin-filters,:global(.dark) .admin-state{background:#102A45;border-color:rgba(255,255,255,.10);box-shadow:0 16px 44px rgba(0,0,0,.18)}
+  .admin-code-card{width:min(100%,520px);margin:48px auto;border:1px solid rgba(29,140,255,.14);background:var(--sfm-card-bg);border-radius:26px;padding:26px;box-shadow:0 24px 70px rgba(3,18,37,.12);display:grid;gap:14px}
+  .admin-code-icon{width:54px;height:54px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#061A2E}
+  .admin-code-card h1{margin:0;color:var(--sfm-foreground);font-size:28px;font-weight:950}
+  .admin-code-card p{margin:0;color:var(--sfm-muted);line-height:1.8;font-weight:850}
+  .admin-code-card form{display:grid;gap:12px;margin-top:4px}
+  .admin-code-card label{display:grid;gap:7px;color:var(--sfm-foreground);font-weight:950}
+  .admin-code-card input{min-height:48px;border-radius:14px;border:1px solid rgba(29,140,255,.18);background:var(--sfm-input-bg,#fff);color:var(--sfm-foreground);padding:0 12px;font:900 15px Tajawal,Arial,sans-serif}
+  .admin-code-card strong{color:#DC2626;font-size:13px}
+  .admin-code-card button{min-height:48px;border:0;border-radius:15px;background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#061A2E;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer}
+  .admin-code-card button:disabled{opacity:.6;cursor:not-allowed}
+  :global(.dark) .admin-stat-card,:global(.dark) .admin-panel,:global(.dark) .admin-filters,:global(.dark) .admin-state,:global(.dark) .admin-code-card{background:#102A45;border-color:rgba(255,255,255,.10);box-shadow:0 16px 44px rgba(0,0,0,.18)}
   :global(.dark) .admin-filters select,:global(.dark) .admin-filters input{background:#0F2942;border-color:rgba(255,255,255,.12);color:#F8FAFC}
+  :global(.dark) .admin-code-card input{background:#0F2942;border-color:rgba(255,255,255,.12);color:#F8FAFC}
   @media(max-width:1100px){.admin-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-section-grid,.admin-section-grid.two,.admin-filters{grid-template-columns:1fr 1fr}}
   @media(max-width:720px){.admin-dashboard{padding:14px}.admin-hero{display:grid;padding:22px}.admin-privacy-badge{width:max-content;max-width:100%}.admin-stat-grid,.admin-section-grid,.admin-section-grid.two,.admin-filters{grid-template-columns:1fr}table{min-width:620px}.admin-stat-card strong{font-size:24px}}
 `;

@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { createServerSupabaseAdmin, getUserFromBearerToken, isAdminEmail } from '@/lib/server/adminAccess';
+import { ADMIN_SESSION_COOKIE, createServerSupabaseAdmin, getUserFromBearerToken, isAdminEmail, verifyAdminSessionToken } from '@/lib/server/adminAccess';
 
 type AnalyticsRow = {
   id: string;
@@ -91,6 +91,9 @@ export async function GET(request: Request) {
 
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   if (!isAdminEmail(user.email)) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (!verifyAdminSessionToken(cookieStore.get(ADMIN_SESSION_COOKIE)?.value, user)) {
+    return NextResponse.json({ error: 'admin_code_required' }, { status: 428 });
+  }
 
   const admin = createServerSupabaseAdmin();
   if (!admin) return NextResponse.json({ error: 'server_not_configured' }, { status: 500 });
