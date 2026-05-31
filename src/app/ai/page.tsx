@@ -11,9 +11,11 @@ import {
   Bot,
   Brain,
   CalendarClock,
+  CheckCircle2,
   Download,
   Goal,
   LineChart as LineChartIcon,
+  Loader2,
   MessageCircle,
   PiggyBank,
   Plus,
@@ -54,6 +56,11 @@ type GoalRow = {
 type Severity = 'good' | 'warning' | 'danger';
 type Lang = 'ar' | 'en' | 'fr';
 type AiText = Record<Lang, string>;
+type AnalysisResultState = {
+  status: 'success' | 'missing' | 'error';
+  missing: Array<{ key: string; label: string; href: string }>;
+  generatedAt?: string;
+};
 type FinancialTotals = {
   totalIncome: number;
   totalExpenses: number;
@@ -214,7 +221,7 @@ function formatDelta(value: number | null, lang: Lang) {
 export default function AiPage() {
   const router = useRouter();
   const { user, isGuest, loading } = useAuth();
-  const { lang, dir } = useLanguage();
+  const { lang, dir, t } = useLanguage();
   const { currency } = useCurrency();
   const locale = lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en';
   const [income, setIncome] = useState<IncomeRow[]>([]);
@@ -224,6 +231,8 @@ export default function AiPage() {
   const [goals, setGoals] = useState<GoalRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState('');
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResultState | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [chatAnswer, setChatAnswer] = useState('');
 
@@ -356,6 +365,14 @@ export default function AiPage() {
 
   const score = useMemo(() => clamp(scoreParts.reduce((sum, part) => sum + part.score, 0) / scoreParts.length), [scoreParts]);
   const hasCoreData = totals.totalIncome > 0 || totals.totalExpenses > 0 || totals.totalInvestments > 0 || totals.totalSavings > 0;
+  const missingAnalysisData = useMemo(() => [
+    ...(totals.totalIncome > 0 ? [] : [{ key: 'income', label: L('addIncome'), href: '/income/add' }]),
+    ...(totals.totalExpenses > 0 ? [] : [{ key: 'expenses', label: L('addExpense'), href: '/expenses/add' }]),
+    ...(goals.length > 0 ? [] : [{ key: 'goals', label: L('addGoal'), href: '/goals/add' }]),
+    ...(totals.totalSavings > 0 ? [] : [{ key: 'savings', label: L('savings'), href: '/savings' }]),
+    ...(totals.totalInvestments > 0 ? [] : [{ key: 'investments', label: L('addInvestment'), href: '/invest' }]),
+  ], [L, goals.length, totals.totalExpenses, totals.totalIncome, totals.totalInvestments, totals.totalSavings]);
+  const hasRequiredAnalysisData = totals.totalIncome > 0 && totals.totalExpenses > 0;
   const topExpense = categoryTotals[0];
   const recommendedExpenseLimit = totals.totalIncome > 0 ? totals.totalIncome * 0.65 : totals.totalExpenses * 0.9;
   const reduceAmount = Math.max(0, totals.totalExpenses - recommendedExpenseLimit);
@@ -420,7 +437,30 @@ export default function AiPage() {
 
   function showToast(message: string) {
     setToast(message);
-    window.setTimeout(() => setToast(''), 2400);
+    window.setTimeout(() => setToast(''), 5200);
+  }
+
+  function analyzeFinancialSituation() {
+    if (analysisLoading) return;
+    setAnalysisLoading(true);
+    setAnalysisResult(null);
+    window.setTimeout(() => {
+      try {
+        if (!hasRequiredAnalysisData) {
+          setAnalysisResult({ status: 'missing', missing: missingAnalysisData });
+          return;
+        }
+        setAnalysisResult({
+          status: 'success',
+          missing: missingAnalysisData,
+          generatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        });
+      } catch {
+        setAnalysisResult({ status: 'error', missing: missingAnalysisData });
+      } finally {
+        setAnalysisLoading(false);
+      }
+    }, 650);
   }
 
   function answerQuestion(raw: string) {
@@ -462,7 +502,10 @@ export default function AiPage() {
             <h2>{L('title')}</h2>
             <p>{aiSummary}</p>
             <div className="ai-hero-actions">
-              <button onClick={() => showToast(aiSummary)}><Brain size={16} />{L('analyze')}</button>
+              <button onClick={analyzeFinancialSituation} disabled={analysisLoading}>
+                {analysisLoading ? <Loader2 size={16} className="spin" /> : <Brain size={16} />}
+                {analysisLoading ? t('ai_analysis_loading') : L('analyze')}
+              </button>
               <button onClick={() => document.getElementById('ai-plan')?.scrollIntoView({ behavior: 'smooth' })}><CalendarClock size={16} />{L('monthlyPlan')}</button>
               <button onClick={() => document.getElementById('ai-prediction')?.scrollIntoView({ behavior: 'smooth' })}><TrendingUp size={16} />{L('predict')}</button>
             </div>
@@ -477,6 +520,68 @@ export default function AiPage() {
             </div>
           )}
         </section>
+
+        {analysisResult && (
+          <section className={`ai-card ai-analysis-result ${analysisResult.status}`} aria-live="polite">
+            <SectionTitle
+              icon={analysisResult.status === 'success' ? <CheckCircle2 size={19} /> : <ShieldAlert size={19} />}
+              title={analysisResult.status === 'success' ? t('ai_analysis_result_title') : t('ai_analysis_missing_title')}
+            />
+            {analysisResult.status === 'success' ? (
+              <>
+                <div className="ai-analysis-summary">
+                  <div className="ai-analysis-score">
+                    <strong>{score}</strong>
+                    <span>/100</span>
+                    <b>{tx(copy[scoreStatus(score)], lang)}</b>
+                  </div>
+                  <div>
+                    <p>{t('ai_analysis_success_summary')}</p>
+                    <p>{aiSummary}</p>
+                    {analysisResult.generatedAt && <small>{t('market_last_updated')}: {analysisResult.generatedAt}</small>}
+                  </div>
+                </div>
+                <div className="ai-analysis-columns">
+                  <div>
+                    <h3>{t('ai_analysis_strengths')}</h3>
+                    <ul>
+                      {scoreParts.filter(part => part.score >= 60).slice(0, 3).map(part => <li key={part.key}>{part.title}: {part.reason}</li>)}
+                      {scoreParts.filter(part => part.score >= 60).length === 0 && <li>{t('ai_analysis_no_strengths')}</li>}
+                    </ul>
+                  </div>
+                  <div>
+                    <h3>{t('ai_analysis_weaknesses')}</h3>
+                    <ul>
+                      {scoreParts.filter(part => part.score < 60).slice(0, 3).map(part => <li key={part.key}>{part.title}: {part.reason}</li>)}
+                      {scoreParts.filter(part => part.score < 60).length === 0 && <li>{t('ai_analysis_no_weaknesses')}</li>}
+                    </ul>
+                  </div>
+                  <div>
+                    <h3>{t('ai_analysis_recommendations')}</h3>
+                    <ul>
+                      {planItems.slice(0, 3).map(item => <li key={item.title}>{item.title}: {item.recommended}</li>)}
+                    </ul>
+                  </div>
+                </div>
+                {analysisResult.missing.length > 0 && (
+                  <div className="ai-analysis-guidance">
+                    <strong>{t('ai_analysis_optional_data_title')}</strong>
+                    <div>
+                      {analysisResult.missing.map(item => <Link key={item.key} href={item.href}>{item.label}</Link>)}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="ai-analysis-empty">
+                <p>{analysisResult.status === 'error' ? t('ai_analysis_error_body') : t('ai_analysis_missing_body')}</p>
+                <div>
+                  {analysisResult.missing.map(item => <Link key={item.key} href={item.href}>{item.label}</Link>)}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {!hasCoreData && (
           <EmptyState title={L('title')} text={L('addData')} />
@@ -630,11 +735,11 @@ export default function AiPage() {
         .ai-card{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:22px;box-shadow:0 4px 22px rgba(3,18,37,.06);padding:18px;margin-bottom:14px}.ai-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}.span-5{grid-column:span 5}.span-6{grid-column:span 6}.span-7{grid-column:span 7}.ai-section-title{display:flex;align-items:center;gap:9px;color:var(--sfm-muted);margin-bottom:14px}.ai-section-title h2{font-size:17px;color:var(--sfm-foreground);margin:0;font-weight:900}
         .ai-health{display:grid;gap:7px;margin-bottom:12px}.ai-health-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.ai-health strong{font-size:13px}.ai-health span{font-size:12px;color:var(--sfm-muted);font-weight:900}.ai-bar{height:10px;background:rgba(29,140,255,.10);border-radius:999px;overflow:hidden}.ai-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--sfm-muted),var(--sfm-soft-cyan))}.ai-health p{margin:0;color:var(--sfm-muted);font-size:12px;line-height:1.6;font-weight:800}.ai-health-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
         .ai-insights,.ai-plan-grid,.ai-goals-grid,.ai-chart-grid,.ai-prediction-grid{display:grid;gap:12px}.ai-insights{grid-template-columns:repeat(2,1fr)}.ai-insight-card{border-radius:18px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.13);padding:14px}.ai-insight-top{display:flex;justify-content:space-between;gap:10px}.ai-insight-card h3{margin:0;font-size:15px}.ai-pill{border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900}.ai-pill.good{background:#DCFCE7;color:#166534}.ai-pill.warning{background:#FEF3C7;color:#92400E}.ai-pill.danger{background:#FEE2E2;color:#B91C1C}.ai-insight-card b{display:block;color:var(--sfm-soft-cyan);margin:10px 0 5px}.ai-insight-card p{margin:0 0 8px;color:var(--sfm-muted);font-size:13px;line-height:1.7}.ai-action{color:var(--sfm-foreground)!important;font-weight:900}
-        .ai-plan-grid{grid-template-columns:repeat(4,1fr)}.ai-plan-card,.ai-metric,.ai-goal-card,.ai-chart-box{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:18px;padding:14px}.ai-plan-card h3{margin:0 0 10px}.ai-plan-card div{display:flex;justify-content:space-between;font-size:12px;margin-top:6px}.ai-plan-card span,.ai-metric span{color:var(--sfm-muted);font-weight:900}.ai-plan-card strong,.ai-metric strong{color:var(--sfm-foreground)}.ai-plan-summary{background:rgba(167,243,240,.1);border:1px solid rgba(167,243,240,.15);border-radius:15px;padding:12px;margin:14px 0 0;color:var(--sfm-muted);font-weight:900;line-height:1.7}
+        .ai-plan-grid{grid-template-columns:repeat(4,1fr)}.ai-plan-card,.ai-metric,.ai-goal-card,.ai-chart-box{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:18px;padding:14px}.ai-plan-card h3{margin:0 0 10px}.ai-plan-card div{display:flex;justify-content:space-between;font-size:12px;margin-top:6px}.ai-plan-card span,.ai-metric span{color:var(--sfm-muted);font-weight:900}.ai-plan-card strong,.ai-metric strong{color:var(--sfm-foreground)}.ai-plan-summary{background:rgba(167,243,240,.1);border:1px solid rgba(167,243,240,.15);border-radius:15px;padding:12px;margin:14px 0 0;color:var(--sfm-muted);font-weight:900;line-height:1.7}.ai-hero-actions button:disabled{opacity:.76;cursor:wait}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.ai-analysis-result{border-color:rgba(47,214,192,.26);background:linear-gradient(135deg,var(--sfm-card),rgba(167,243,240,.08));scroll-margin-top:18px}.ai-analysis-result.missing,.ai-analysis-result.error{border-color:rgba(245,158,11,.28);background:linear-gradient(135deg,var(--sfm-card),rgba(245,158,11,.08))}.ai-analysis-summary{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}.ai-analysis-score{width:104px;height:104px;border-radius:28px;background:linear-gradient(145deg,var(--sfm-foreground),var(--sfm-primary-dark));border:1px solid rgba(167,243,240,.24);display:grid;place-items:center;text-align:center;color:#fff}.ai-analysis-score strong{display:block;color:var(--sfm-soft-cyan);font-size:32px;line-height:1}.ai-analysis-score span,.ai-analysis-score b{display:block;font-size:12px}.ai-analysis-summary p,.ai-analysis-empty p{margin:0 0 8px;color:var(--sfm-muted);font-weight:900;line-height:1.8}.ai-analysis-summary small{color:var(--sfm-muted);font-weight:900}.ai-analysis-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}.ai-analysis-columns>div,.ai-analysis-guidance,.ai-analysis-empty{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.13);border-radius:18px;padding:14px;min-width:0}.ai-analysis-columns h3{margin:0 0 8px;color:var(--sfm-foreground);font-size:14px}.ai-analysis-columns ul{margin:0;padding-inline-start:20px;color:var(--sfm-muted);font-weight:850;line-height:1.8}.ai-analysis-guidance{margin-top:14px}.ai-analysis-guidance strong{display:block;margin-bottom:10px;color:var(--sfm-foreground)}.ai-analysis-guidance div,.ai-analysis-empty div{display:flex;flex-wrap:wrap;gap:8px}.ai-analysis-guidance a,.ai-analysis-empty a{min-height:38px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;border:1px solid rgba(47,214,192,.24);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);padding:0 12px;text-decoration:none;font-weight:950}.ai-analysis-guidance a:hover,.ai-analysis-empty a:hover{background:rgba(47,214,192,.16)}
         .ai-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}.ai-chips button{border:1px solid rgba(167,243,240,.15);background:var(--sfm-light-card);color:var(--sfm-muted);border-radius:999px;padding:8px 11px;font:800 12px Tajawal,Arial,sans-serif;cursor:pointer}.ai-chat-row{display:grid;grid-template-columns:1fr auto;gap:8px}.ai-chat-row input{height:46px;border:1.5px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);padding:0 12px;outline:0;font:800 13px Tajawal,Arial,sans-serif}.ai-answer{margin-top:12px;display:flex;gap:9px;background:var(--sfm-foreground);color:var(--sfm-light-card);border-radius:16px;padding:12px}.ai-answer svg{color:var(--sfm-soft-cyan);flex:0 0 auto}.ai-answer p{margin:0;line-height:1.8;font-size:13px}
         .ai-prediction-grid{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}.ai-compact-report-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}.ai-compact-card{margin-bottom:14px;align-self:start}.ai-comparison-mini-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ai-compact-metric{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:12px;display:grid;gap:6px;min-width:0}.ai-compact-metric span{color:var(--sfm-muted);font-size:12px;font-weight:900}.ai-compact-metric strong{color:var(--sfm-foreground);font-size:18px;font-weight:950}.ai-compact-metric.good strong{color:#16A34A}.ai-compact-metric.warning strong{color:#D97706}.ai-compact-metric.danger strong{color:#DC2626}.ai-forecast-mini-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}.ai-forecast-mini-grid .ai-metric{padding:12px;border-radius:16px}.ai-metric{display:grid;gap:6px}.ai-metric strong{font-size:16px}.ai-disclaimer{margin:14px 0 0;border:1px solid rgba(29,140,255,.16);background:var(--sfm-light-card);border-radius:14px;padding:11px 12px;color:var(--sfm-muted);font-size:12.5px;font-weight:900;line-height:1.7}.ai-goals-grid{grid-template-columns:repeat(2,1fr)}.ai-goal-card h3{margin:0 0 10px}.ai-goal-card p{margin:6px 0;color:var(--sfm-muted);font-size:13px;line-height:1.7}.ai-chart-grid{grid-template-columns:repeat(3,1fr)}.ai-chart-box h3{margin:0 0 8px;font-size:14px}.ai-chart-skeleton{min-height:248px;display:grid;gap:14px;align-content:start}.ai-chart-skeleton span{width:46%;height:14px;border-radius:999px;background:rgba(148,163,184,.18)}.ai-chart-skeleton i{height:190px;border-radius:18px;background:linear-gradient(90deg,rgba(148,163,184,.10),rgba(34,211,238,.12),rgba(148,163,184,.10));background-size:200% 100%;animation:ai-shimmer 1.3s infinite linear}@keyframes ai-shimmer{to{background-position:-200% 0}}.ai-actions{display:flex;flex-wrap:wrap;gap:9px}.ai-actions a,.ai-actions button{background:var(--sfm-light-card);color:var(--sfm-muted);border:1px solid rgba(167,243,240,.16)}.ai-actions a:hover,.ai-actions button:hover,.ai-chips button:hover{background:rgba(167,243,240,.14)}
-        .ai-empty{text-align:center;padding:28px 16px;color:var(--sfm-muted)}.ai-empty h3{margin:0 0 8px;color:var(--sfm-foreground)}.ai-empty p{margin:0;line-height:1.7}.ai-toast{position:fixed;z-index:100;inset-inline-end:22px;bottom:22px;background:var(--sfm-foreground);color:var(--sfm-soft-cyan);border:1px solid rgba(167,243,240,.28);border-radius:16px;padding:13px 16px;font:900 13px Tajawal,Arial,sans-serif;box-shadow:0 18px 45px rgba(3,18,37,.2)}.ai-loading{height:180px;display:grid;place-items:center;color:var(--sfm-muted);font-size:32px}
-        @media(max-width:1180px){.ai-main{margin-inline-start:0}.ai-hero{grid-template-columns:1fr}.ai-score-ring{justify-self:start}.span-5,.span-6,.span-7{grid-column:span 12}.ai-plan-grid,.ai-chart-grid,.ai-prediction-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:860px){.ai-compact-report-row{grid-template-columns:1fr}}@media(max-width:720px){.ai-main{padding:14px}.ai-hero{padding:22px}.ai-hero h2{font-size:30px}.ai-score-ring{width:160px;height:160px}.ai-insights,.ai-plan-grid,.ai-health-grid,.ai-goals-grid,.ai-chart-grid,.ai-prediction-grid,.ai-comparison-mini-grid,.ai-forecast-mini-grid{grid-template-columns:1fr}.ai-chat-row{grid-template-columns:1fr}.ai-hero-actions button,.ai-actions a,.ai-actions button{width:100%}}
+        .ai-empty{text-align:center;padding:28px 16px;color:var(--sfm-muted)}.ai-empty h3{margin:0 0 8px;color:var(--sfm-foreground)}.ai-empty p{margin:0;line-height:1.7}.ai-toast{position:fixed;z-index:9999;inset-inline-end:22px;bottom:calc(22px + env(safe-area-inset-bottom));width:max-content;max-width:min(520px,calc(100vw - 32px));white-space:normal;overflow-wrap:anywhere;background:var(--sfm-foreground);color:var(--sfm-soft-cyan);border:1px solid rgba(167,243,240,.28);border-radius:16px;padding:14px 16px;font:900 13px/1.7 Tajawal,Arial,sans-serif;box-shadow:0 18px 45px rgba(3,18,37,.2)}.ai-loading{height:180px;display:grid;place-items:center;color:var(--sfm-muted);font-size:32px}
+        @media(max-width:1180px){.ai-main{margin-inline-start:0}.ai-hero{grid-template-columns:1fr}.ai-score-ring{justify-self:start}.span-5,.span-6,.span-7{grid-column:span 12}.ai-plan-grid,.ai-chart-grid,.ai-prediction-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:980px){.ai-analysis-columns{grid-template-columns:1fr}.ai-analysis-summary{grid-template-columns:1fr}.ai-analysis-score{width:96px;height:96px}}@media(max-width:860px){.ai-compact-report-row{grid-template-columns:1fr}}@media(max-width:720px){.ai-main{padding:14px}.ai-hero{padding:22px}.ai-hero h2{font-size:30px}.ai-score-ring{width:160px;height:160px}.ai-insights,.ai-plan-grid,.ai-health-grid,.ai-goals-grid,.ai-chart-grid,.ai-prediction-grid,.ai-comparison-mini-grid,.ai-forecast-mini-grid{grid-template-columns:1fr}.ai-chat-row{grid-template-columns:1fr}.ai-hero-actions button,.ai-actions a,.ai-actions button{width:100%}.ai-toast{inset-inline:16px;width:auto;max-width:none}}
       `}</style>
     </div>
   );
