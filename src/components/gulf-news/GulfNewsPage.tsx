@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Newspaper, RefreshCcw, Search } from 'lucide-react';
-import { AppHeader } from '@/components/AppHeader';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import { GULF_MARKETS, getGulfMarket, type GulfMarketId } from '@/lib/gulf/gulfMarkets';
@@ -169,7 +168,6 @@ export function GulfNewsPage() {
 
   return (
     <div className="gulf-news-shell" dir={dir}>
-      <AppHeader />
       <Sidebar />
       <main className="gulf-news-main">
         <GulfTickerStrip

@@ -58,6 +58,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
     const rect = trigger.getBoundingClientRect();
     const viewport = window.visualViewport;
     const viewportWidth = viewport?.width ?? window.innerWidth;
+    const viewportHeight = viewport?.height ?? window.innerHeight;
     const viewportOffsetLeft = viewport?.offsetLeft ?? 0;
     const viewportOffsetTop = viewport?.offsetTop ?? 0;
     const maxWidth = Math.max(160, viewportWidth - VIEWPORT_GUTTER * 2);
@@ -67,9 +68,13 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
     const minLeft = viewportOffsetLeft + VIEWPORT_GUTTER;
     const maxLeft = Math.max(minLeft, viewportOffsetLeft + viewportWidth - width - VIEWPORT_GUTTER);
     const left = clamp(preferredLeft + viewportOffsetLeft, minLeft, maxLeft);
+    const preferredTop = rect.bottom + viewportOffsetTop + 8;
+    const minTop = viewportOffsetTop + VIEWPORT_GUTTER;
+    const maxTop = Math.max(minTop, viewportOffsetTop + viewportHeight - 260 - VIEWPORT_GUTTER);
+    const top = clamp(preferredTop, minTop, maxTop);
 
     setMenuStyle({
-      top: Math.round(rect.bottom + viewportOffsetTop + 8),
+      top: Math.round(top),
       left: Math.round(left),
       width: Math.round(width),
     });
@@ -198,6 +203,12 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={`${id}-menu`}
+        onPointerDown={() => {
+          if (!open) updateMenuPosition();
+        }}
+        onTouchStart={() => {
+          if (!open) updateMenuPosition();
+        }}
         onClick={() => {
           if (!open) updateMenuPosition();
           setOpen(value => !value);
@@ -220,7 +231,8 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           max-width: 100%;
           flex-shrink: 0;
           font-family: Tajawal, Arial, sans-serif;
-          z-index: 120;
+          z-index: 2147483647;
+          overflow: visible;
         }
         .sfm-language-trigger {
           min-height: 40px;
@@ -283,10 +295,11 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           transform: rotate(180deg);
         }
         .sfm-language-menu {
-          position: fixed;
+          position: fixed !important;
           max-width: calc(100vw - 24px);
           max-height: min(260px, calc(100dvh - 24px));
           overflow-y: auto;
+          overflow-x: hidden;
           overscroll-behavior: contain;
           border-radius: 18px;
           border: 1px solid rgba(29,140,255,.20);
@@ -296,9 +309,12 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           box-shadow: 0 20px 50px rgba(3,18,37,.18);
           display: grid;
           gap: 4px;
-          z-index: 10000;
+          z-index: 2147483647 !important;
+          pointer-events: auto;
           animation: sfmLangMenuIn .16s ease-out;
           -webkit-overflow-scrolling: touch;
+          -webkit-transform: translateZ(0);
+          transform: translateZ(0);
           font-family: Tajawal, Arial, sans-serif;
         }
         .sfm-language-menu[data-variant='dark'] {

@@ -90,7 +90,7 @@ export function AppHeader() {
             justify-content: space-between;
             gap: 10px;
             max-width: 100%;
-            overflow: hidden;
+            overflow: visible;
             background: rgba(248, 251, 255, 0.94);
             border-bottom: 1px solid rgba(167, 243, 240, 0.22);
             box-shadow: 0 12px 34px rgba(3, 18, 37, 0.12);

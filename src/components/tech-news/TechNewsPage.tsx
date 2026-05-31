@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Newspaper, RefreshCcw } from 'lucide-react';
-import { AppHeader } from '@/components/AppHeader';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechNewsItem, TechNewsPayload } from '@/lib/market/fetchTechNews';
@@ -124,7 +123,6 @@ export function TechNewsPage() {
 
   return (
     <div className="tech-news-shell" dir={dir}>
-      <AppHeader />
       <Sidebar />
       <main className="tech-news-main">
         <TechTickerStrip

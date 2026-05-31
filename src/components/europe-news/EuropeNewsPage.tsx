@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Newspaper, RefreshCcw, Search } from 'lucide-react';
-import { AppHeader } from '@/components/AppHeader';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import { EUROPE_MARKETS, getEuropeMarket, type EuropeMarketId } from '@/lib/europe/europeMarkets';
@@ -160,7 +159,6 @@ export function EuropeNewsPage() {
 
   return (
     <div className="europe-news-shell" dir={dir}>
-      <AppHeader />
       <Sidebar />
       <main className="europe-news-main">
         <EuropeTickerStrip
