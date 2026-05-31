@@ -8,8 +8,8 @@ import {
   Bell,
   CalendarDays,
   CheckCheck,
-  ChevronRight,
   Clock3,
+  Eye,
   FileText,
   HandHeart,
   LineChart,
@@ -142,6 +142,7 @@ const TEXT = {
     system: 'النظام',
     general: 'عام',
     view: 'عرض',
+    viewDetails: 'عرض التفاصيل',
     done: 'تم',
     archive: 'أرشفة',
     delete: 'حذف',
@@ -202,6 +203,7 @@ const TEXT = {
     system: 'System',
     general: 'General',
     view: 'View',
+    viewDetails: 'View details',
     done: 'Done',
     archive: 'Archive',
     delete: 'Delete',
@@ -262,6 +264,7 @@ const TEXT = {
     system: 'Système',
     general: 'Général',
     view: 'Voir',
+    viewDetails: 'Voir les détails',
     done: 'Terminé',
     archive: 'Archiver',
     delete: 'Supprimer',
@@ -947,8 +950,8 @@ export function NotificationsPage() {
                           <span>{notice.isDynamic ? tr.dynamicSource : tr.savedSource}</span>
                         </div>
                         <div className="actions">
-                          <button type="button" onClick={() => router.push(notice.actionUrl || '/')} aria-label={`${tr.view}: ${notice.title}`}>
-                            {tr.view} <ChevronRight size={15} />
+                          <button type="button" className="view-action" onClick={() => router.push(notice.actionUrl || '/')} aria-label={`${tr.viewDetails}: ${notice.title}`}>
+                            <Eye size={15} /> {tr.viewDetails}
                           </button>
                           {notice.status === 'unread' && (
                             <button type="button" onClick={() => markAsRead(notice)} aria-label={`${tr.done}: ${notice.title}`}>
@@ -1008,7 +1011,7 @@ const styles = `
   .notice-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;background:var(--sfm-card);border:1px solid rgba(29,140,255,.14);border-radius:20px;padding:15px;box-shadow:0 14px 38px rgba(3,18,37,.06);min-width:0;max-width:100%;overflow:hidden}.notice-card.unread{border-color:rgba(29,140,255,.28);background:var(--sfm-light-card)}.notice-card.archived{opacity:.72;background:var(--sfm-light-card)}
   .notice-icon{width:44px;height:44px;border-radius:15px;display:grid;place-items:center;flex:0 0 auto}.notice-content{min-width:0;display:grid;gap:10px}.notice-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start;min-width:0}.notice-head h3{margin:0 0 5px;color:var(--sfm-primary-dark);font-size:16px;font-weight:950;line-height:1.35;overflow-wrap:anywhere}.notice-head p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:800;line-height:1.65;overflow-wrap:anywhere;text-align:start}
   .severity{display:inline-flex;align-items:center;border:1px solid;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:950;white-space:nowrap}.meta-row{display:flex;gap:7px;flex-wrap:wrap}.meta-row span{background:var(--sfm-light-card);border:1px solid rgba(29,140,255,.12);color:var(--sfm-muted);border-radius:999px;padding:5px 8px;font-size:11px;font-weight:900}
-  .actions{display:flex;gap:7px;flex-wrap:wrap}.actions button{background:var(--sfm-primary-dark);color:var(--sfm-card)}.actions button:nth-child(2),.actions button:nth-child(3){background:rgba(29,140,255,.10);color:var(--sfm-primary-hover)}.actions .danger-action{background:#FEF2F2;color:#B91C1C}
+  .actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}.actions button{border:1px solid rgba(29,140,255,.18);background:#FFFFFF;color:var(--sfm-primary-dark);box-shadow:0 8px 18px rgba(3,18,37,.05);transition:transform .18s ease,background .18s ease,border-color .18s ease,box-shadow .18s ease}.actions button:hover{transform:translateY(-1px);border-color:rgba(24,212,212,.34);background:rgba(24,212,212,.08);box-shadow:0 12px 24px rgba(3,18,37,.08)}.actions .view-action{border-color:rgba(24,212,212,.26);background:linear-gradient(135deg,var(--sfm-primary-dark),var(--sfm-card-dark));color:#EAF6FF}.actions .view-action:hover{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-card-dark));color:#FFFFFF}.actions .danger-action{background:#FEF2F2;color:#B91C1C;border-color:rgba(185,28,28,.18)}
   .empty{text-align:center;padding:54px 20px;color:var(--sfm-muted);background:var(--sfm-card);border:1px dashed rgba(29,140,255,.24);border-radius:22px}.empty svg{color:var(--sfm-primary);margin-bottom:12px}.empty strong{display:block;color:var(--sfm-primary-dark);font-size:19px}.empty p{margin:8px 0 0;color:var(--sfm-muted);font-weight:900}
   button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.18)}
   @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{grid-template-columns:1fr}.hero-actions button{flex:1 1 180px}}

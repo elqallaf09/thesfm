@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   CircleCheck,
   ClipboardList,
+  Eye,
   FileText,
   HandHeart,
   Landmark,
@@ -63,6 +64,8 @@ const TEXT = {
     source: 'المصدر',
     dueDate: 'تاريخ الاستحقاق',
     open: 'فتح',
+    viewDetails: 'عرض التفاصيل',
+    openUnavailable: 'لا يمكن فتح تفاصيل هذه المهمة حالياً',
     done: 'تم',
     dismiss: 'تجاهل',
     noTasks: 'لا توجد مهام حالياً.',
@@ -116,8 +119,10 @@ const TEXT = {
     source: 'Source',
     dueDate: 'Due date',
     open: 'Open',
+    viewDetails: 'View details',
+    openUnavailable: 'Task details cannot be opened right now',
     done: 'Done',
-    dismiss: 'Dismiss',
+    dismiss: 'Ignore',
     noTasks: 'No tasks right now.',
     noTasksBody: 'Everything looks organized.',
     noFilterTasks: 'No tasks in this section.',
@@ -169,6 +174,8 @@ const TEXT = {
     source: 'Source',
     dueDate: 'Date d’échéance',
     open: 'Ouvrir',
+    viewDetails: 'Voir les détails',
+    openUnavailable: 'Les détails de cette tâche ne peuvent pas être ouverts pour le moment',
     done: 'Terminé',
     dismiss: 'Ignorer',
     noTasks: 'Aucune tâche pour le moment.',
@@ -200,11 +207,13 @@ const TEXT = {
   },
 } as const;
 
+type TasksText = (typeof TEXT)[Lang];
+
 const PERSONAL_MODULES = new Set(['setup', 'income', 'expense', 'goal', 'savings']);
 const PROJECT_MODULES = new Set(['project', 'business']);
 const ZAKAT_CHARITY_MODULES = new Set(['zakat', 'charity']);
 
-function sourceLabel(source: string, text: typeof TEXT.ar) {
+function sourceLabel(source: string, text: TasksText) {
   const key = source as keyof typeof text;
   return typeof text[key] === 'string' ? text[key] : source;
 }
@@ -221,7 +230,7 @@ function taskIcon(source: string) {
   return <ClipboardList size={20} />;
 }
 
-function sourceDiagnosticLabel(source: SmartTaskSourceId, text: typeof TEXT.ar) {
+function sourceDiagnosticLabel(source: SmartTaskSourceId, text: TasksText) {
   const labels: Record<SmartTaskSourceId, string> = {
     personal: text.sourcePersonal,
     projects: text.sourceProjects,
@@ -613,7 +622,7 @@ function TaskCard({
   onDismiss,
 }: {
   task: SmartTask;
-  text: typeof TEXT.ar;
+  text: TasksText;
   locale: Lang;
   onDone: () => void;
   onDismiss: () => void;
@@ -634,8 +643,16 @@ function TaskCard({
       </div>
       <div className="smart-task-actions">
         {task.actionUrl ? (
-          <Link href={task.actionUrl} aria-label={`${text.open}: ${task.title}`}>{task.actionLabel || text.open}</Link>
-        ) : null}
+          <Link className="view-action" href={task.actionUrl} aria-label={`${text.viewDetails}: ${task.title}`}>
+            <Eye size={16} aria-hidden="true" />
+            {text.viewDetails}
+          </Link>
+        ) : (
+          <button type="button" className="view-action" disabled title={text.openUnavailable} aria-label={`${text.viewDetails}: ${task.title}`}>
+            <Eye size={16} aria-hidden="true" />
+            {text.viewDetails}
+          </button>
+        )}
         {task.status === 'open' ? (
           <>
             <button type="button" onClick={onDone} aria-label={`${text.done}: ${task.title}`}>
@@ -734,29 +751,46 @@ function TaskCard({
           justify-content: flex-end;
           gap: 8px;
           min-width: 0;
+          align-items: center;
         }
         .smart-task-actions a,
         .smart-task-actions button {
-          min-height: 38px;
+          min-height: 40px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 7px;
           border-radius: 12px;
-          padding: 0 12px;
-          font: 900 12px Tajawal, Arial, sans-serif;
+          border: 1px solid rgba(29, 140, 255, .18);
+          background: #FFFFFF;
+          color: var(--sfm-primary-dark);
+          padding: 0 13px;
+          font: 950 12px Tajawal, Arial, sans-serif;
           text-decoration: none;
           cursor: pointer;
+          box-shadow: 0 8px 18px rgba(3, 18, 37, .05);
+          transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
         }
-        .smart-task-actions a {
+        .smart-task-actions a:hover,
+        .smart-task-actions button:hover:not(:disabled) {
+          transform: translateY(-1px);
+          border-color: rgba(24, 212, 212, .34);
+          background: rgba(24, 212, 212, .08);
+          box-shadow: 0 12px 24px rgba(3, 18, 37, .08);
+        }
+        .smart-task-actions .view-action {
           border: 1px solid rgba(24, 212, 212, .26);
           background: linear-gradient(135deg, var(--sfm-primary-dark), var(--sfm-card-dark));
           color: #EAF6FF;
         }
-        .smart-task-actions button {
-          border: 1px solid rgba(29, 140, 255, .18);
-          background: #FFFFFF;
-          color: var(--sfm-primary-dark);
+        .smart-task-actions .view-action:hover:not(:disabled) {
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-card-dark));
+          color: #FFFFFF;
+        }
+        .smart-task-actions button:disabled {
+          opacity: .62;
+          cursor: not-allowed;
+          box-shadow: none;
         }
         .smart-task-actions a:focus-visible,
         .smart-task-actions button:focus-visible {
