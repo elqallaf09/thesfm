@@ -47,7 +47,7 @@ export function InvestmentRow({
           <h3>{investment.name}</h3>
           <p>{typeLabel(investment.type)} · {labels.risk}: {riskLabel(investment.riskLevel)}</p>
         </div>
-        <strong>{formatMoney(investment.displayValue, investment.displayValueStatus)}</strong>
+        <strong className="invest-asset-value">{formatMoney(investment.displayValue, investment.displayValueStatus)}</strong>
       </div>
 
       <div className="invest-row-meta">
