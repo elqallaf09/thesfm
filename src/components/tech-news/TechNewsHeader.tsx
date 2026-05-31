@@ -16,7 +16,7 @@ export function TechNewsHeader({ title, subtitle, refreshing, onRefresh }: TechN
         <div className="tech-news-title-icon" aria-hidden="true">
           <Newspaper size={24} />
         </div>
-        <div>
+        <div className="tech-news-title-copy">
           <h1>{title}</h1>
           <p>
             <span className="tech-news-status-dot" aria-hidden="true" />
