@@ -88,7 +88,7 @@ type IncomeForm = {
   notes: string;
 };
 
-type FormErrors = Partial<Record<'name' | 'amount' | 'incomeType' | 'frequency' | 'receivedDate', string>>;
+type FormErrors = Partial<Record<'name' | 'amount' | 'currency' | 'incomeType' | 'frequency' | 'receivedDate', string>>;
 
 type AttachmentPayload = {
   attachment_url: string | null;
@@ -203,6 +203,7 @@ const TX: Record<string, Record<Lang, string>> = {
   percent: { ar: 'من الإجمالي', en: 'of total', fr: 'du total' },
   nameError: { ar: 'يرجى إدخال اسم الدخل', en: 'Please enter income name.', fr: 'Veuillez saisir le nom du revenu.' },
   amountError: { ar: 'يرجى إدخال مبلغ صحيح', en: 'Please enter a valid amount.', fr: 'Veuillez saisir un montant valide.' },
+  currencyError: { ar: 'يرجى اختيار العملة', en: 'Please choose a currency.', fr: 'Veuillez choisir la devise.' },
   typeError: { ar: 'يرجى اختيار نوع الدخل', en: 'Please choose income type.', fr: 'Veuillez choisir le type de revenu.' },
   frequencyError: { ar: 'يرجى اختيار التكرار', en: 'Please choose frequency.', fr: 'Veuillez choisir la fréquence.' },
   receivedDateError: { ar: 'يرجى اختيار تاريخ الاستلام', en: 'Please choose received date.', fr: 'Veuillez choisir la date de réception.' },
@@ -265,9 +266,16 @@ function tr(key: keyof typeof TX, lang: string) {
 }
 
 function normalizeType(value?: string | null): IncomeType {
-  if (value === 'salary' || value === 'freelance' || value === 'project' || value === 'investment' || value === 'bonus' || value === 'gift' || value === 'rent') return value;
-  if (value === 'side' || value === 'business' || value === 'additional' || value === 'active') return 'freelance';
-  if (value === 'passive') return 'rent';
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized === 'salary' || normalized === 'freelance' || normalized === 'project' || normalized === 'investment' || normalized === 'bonus' || normalized === 'gift' || normalized === 'rent') return normalized;
+  if (normalized === 'side' || normalized === 'business' || normalized === 'additional' || normalized === 'active') return 'freelance';
+  if (normalized === 'passive' || normalized === 'إيجار' || normalized === 'ايجار' || normalized === 'loyer') return 'rent';
+  if (normalized === 'راتب' || normalized === 'salaire') return 'salary';
+  if (normalized === 'عمل حر') return 'freelance';
+  if (normalized === 'استثمار' || normalized === 'investissement') return 'investment';
+  if (normalized === 'مكافأة' || normalized === 'مكافاه' || normalized === 'prime') return 'bonus';
+  if (normalized === 'هدية' || normalized === 'cadeau') return 'gift';
+  if (normalized === 'مشروع' || normalized === 'projet') return 'project';
   return 'other';
 }
 
@@ -280,6 +288,50 @@ function todayDateOnly() {
   const now = new Date();
   const offset = now.getTimezoneOffset() * 60000;
   return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function normalizeCurrency(value?: string | null, fallback = 'KWD') {
+  const code = String(value ?? '').trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(code) ? code : fallback;
+}
+
+function parseIncomeAmount(value: string) {
+  const normalized = value
+    .replace(/[٠-٩]/g, digit => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+    .replace(/[۰-۹]/g, digit => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
+    .replace(/[٬,]/g, '')
+    .replace(/٫/g, '.')
+    .trim();
+  const amount = Number(normalized);
+  return Number.isFinite(amount) ? amount : Number.NaN;
+}
+
+function toDateInputValue(value?: string | null) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const slash = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slash) {
+    const first = Number(slash[1]);
+    const second = Number(slash[2]);
+    const month = first > 12 ? second : first;
+    const day = first > 12 ? first : second;
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${slash[3]}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+  }
+  const date = new Date(raw);
+  if (!Number.isFinite(date.getTime())) return '';
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function isValidDateOnly(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }
 
 function dateOnlyToLocalDate(value: string | null | undefined) {
@@ -623,10 +675,6 @@ export default function IncomePage() {
   }, [concentrationPercent, hasIncomeData, lang, largestRow, lateRows.length, recurringPercent, viewRows]);
   const categorySuggestion = suggestIncomeType(form.name);
   const frequencyMode: FrequencyMode = form.isRecurring ? form.frequency : 'one-time';
-  const formValidity = useMemo(() => {
-    const amount = Number(form.amount);
-    return Boolean(form.name.trim().length >= 2 && Number.isFinite(amount) && amount > 0 && form.incomeType && frequencyMode && form.receivedDate);
-  }, [form.amount, form.incomeType, form.name, form.receivedDate, frequencyMode]);
   const incomeTabs = useMemo(() => {
     const labels = {
       ar: {
@@ -706,7 +754,7 @@ export default function IncomePage() {
   }
 
   function openCreate() {
-    setForm({ ...emptyForm(), currency: defaultCurrency || 'KWD' });
+    setForm({ ...emptyForm(), currency: normalizeCurrency(defaultCurrency, 'KWD') });
     setFormError('');
     setFormErrors({});
     setAttachmentError('');
@@ -715,18 +763,21 @@ export default function IncomePage() {
   }
 
   function openEdit(row: IncomeRow) {
+    const receivedDate = toDateInputValue(row.received_date || row.created_at) || todayDateOnly();
+    const recurrenceStartDate = toDateInputValue(row.recurrence_start_date || row.received_date || row.created_at) || receivedDate;
+    const frequency = row.frequency === 'weekly' || row.frequency === 'daily' || row.frequency === 'yearly' ? row.frequency : 'monthly';
     setForm({
       id: row.id,
       name: legacyName(row),
-      amount: String(row.amount || ''),
-      currency: row.currency || defaultCurrency || 'KWD',
+      amount: row.amount === null || row.amount === undefined ? '' : String(row.amount),
+      currency: normalizeCurrency(row.currency, normalizeCurrency(defaultCurrency, 'KWD')),
       incomeType: normalizeType(row.income_type || row.category),
-      receivedDate: row.received_date || (row.created_at ? row.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)),
+      receivedDate,
       status: normalizeStatus(row.status),
       isRecurring: Boolean(row.is_recurring),
-      frequency: (row.frequency === 'weekly' || row.frequency === 'daily' || row.frequency === 'yearly' ? row.frequency : 'monthly'),
-      recurrenceStartDate: row.recurrence_start_date || row.received_date || (row.created_at ? row.created_at.slice(0, 10) : todayDateOnly()),
-      recurrenceEndDate: row.recurrence_end_date || '',
+      frequency,
+      recurrenceStartDate,
+      recurrenceEndDate: toDateInputValue(row.recurrence_end_date) || '',
       sourceName: row.source_name || '',
       notes: row.notes || '',
     });
@@ -891,16 +942,22 @@ export default function IncomePage() {
     event.preventDefault();
     if (saving) return;
     const name = form.name.trim();
-    const amount = Number(form.amount);
+    const amount = parseIncomeAmount(form.amount);
+    const currency = normalizeCurrency(form.currency, '');
+    const receivedDateInput = toDateInputValue(form.receivedDate);
+    const recurrenceStartDate = toDateInputValue(form.recurrenceStartDate || form.receivedDate);
+    const recurrenceEndDate = toDateInputValue(form.recurrenceEndDate);
+    const effectiveReceivedDate = form.isRecurring ? recurrenceStartDate : receivedDateInput;
     const nextErrors: FormErrors = {};
     if (name.length < 2) nextErrors.name = tr('nameError', lang);
     if (!Number.isFinite(amount) || amount <= 0) nextErrors.amount = tr('amountError', lang);
+    if (!currency) nextErrors.currency = tr('currencyError', lang);
     if (!form.incomeType) nextErrors.incomeType = tr('typeError', lang);
     if (!frequencyMode) nextErrors.frequency = tr('frequencyError', lang);
-    if (!form.receivedDate) nextErrors.receivedDate = tr('receivedDateError', lang);
+    if (!effectiveReceivedDate || !isValidDateOnly(effectiveReceivedDate)) nextErrors.receivedDate = tr('receivedDateError', lang);
     setFormErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
-      setFormError(tr('requiredError', lang));
+      setFormError(Object.values(nextErrors).join(' '));
       return;
     }
     setFormError('');
@@ -908,7 +965,7 @@ export default function IncomePage() {
     setSaving(true);
     const id = form.id || crypto.randomUUID();
     const now = new Date().toISOString();
-    const receivedDate = form.isRecurring ? form.recurrenceStartDate : form.receivedDate;
+    const receivedDate = effectiveReceivedDate;
     const savedStatus = form.isRecurring ? workflowStatus({ id, amount, status: 'expected', received_date: receivedDate }) : form.status;
     let attachmentPayload: AttachmentPayload = {
       attachment_url: rows.find(row => row.id === id)?.attachment_url ?? null,
@@ -928,34 +985,34 @@ export default function IncomePage() {
       label: name,
       category: form.incomeType,
       amount,
-      amount_kwd: form.currency === 'KWD' ? amount : null,
+      amount_kwd: currency === 'KWD' ? amount : null,
       exchange_rate: null,
       income_type: form.incomeType,
       status: savedStatus,
       received_date: receivedDate,
-      currency: form.currency,
+      currency,
       ...attachmentPayload,
       source_name: form.sourceName || null,
       notes: form.notes || null,
       is_recurring: form.isRecurring,
       frequency: form.isRecurring ? form.frequency : null,
-      recurrence_start_date: form.isRecurring ? form.recurrenceStartDate : null,
-      recurrence_end_date: form.isRecurring && form.recurrenceEndDate ? form.recurrenceEndDate : null,
+      recurrence_start_date: form.isRecurring ? recurrenceStartDate : null,
+      recurrence_end_date: form.isRecurring && recurrenceEndDate ? recurrenceEndDate : null,
       parent_recurring_income_id: null,
-      generated_for_date: form.isRecurring ? form.recurrenceStartDate : null,
+      generated_for_date: form.isRecurring ? recurrenceStartDate : null,
       confirmed_at: savedStatus === 'received' ? now : null,
       updated_at: now,
     };
     const nextRow: IncomeRow = { id, ...payload, created_at: now };
-    const occurrenceDates = form.isRecurring ? generateOccurrenceDates(form.recurrenceStartDate, form.frequency, form.recurrenceEndDate) : [];
+    const occurrenceDates = form.isRecurring ? generateOccurrenceDates(recurrenceStartDate, form.frequency, recurrenceEndDate) : [];
     const futureDates = occurrenceDates.slice(1);
     const makeGeneratedRows = (parentId: string, createdAt = now): IncomeRow[] => futureDates.map(date => ({
       ...nextRow,
       id: crypto.randomUUID(),
       status: 'expected',
       received_date: date,
-      recurrence_start_date: form.recurrenceStartDate,
-      recurrence_end_date: form.recurrenceEndDate || null,
+      recurrence_start_date: recurrenceStartDate,
+      recurrence_end_date: recurrenceEndDate || null,
       parent_recurring_income_id: parentId,
       generated_for_date: date,
       confirmed_at: null,
@@ -1004,18 +1061,18 @@ export default function IncomePage() {
               label: name,
               category: form.incomeType,
               amount,
-              amount_kwd: form.currency === 'KWD' ? amount : null,
+              amount_kwd: currency === 'KWD' ? amount : null,
               exchange_rate: null,
               income_type: form.incomeType,
               status: 'expected',
               received_date: date,
-              currency: form.currency,
+              currency,
               source_name: form.sourceName || null,
               notes: form.notes || null,
               is_recurring: true,
               frequency: form.frequency,
-              recurrence_start_date: form.recurrenceStartDate,
-              recurrence_end_date: form.recurrenceEndDate || null,
+              recurrence_start_date: recurrenceStartDate,
+              recurrence_end_date: recurrenceEndDate || null,
               parent_recurring_income_id: parent.id,
               generated_for_date: date,
               confirmed_at: null,
@@ -1337,13 +1394,16 @@ export default function IncomePage() {
                 </div>
               )}
               <label><span>{tr('amount', lang)}</span><div className="amount-control"><input value={form.amount} inputMode="decimal" onChange={e => patchForm({ amount: e.target.value }, 'amount')} placeholder={tr('amountPlaceholder', lang)} aria-invalid={Boolean(formErrors.amount)} /><em>{currencySymbol(form.currency)}</em></div>{formErrors.amount && <small className="field-error">{formErrors.amount}</small>}</label>
-              <CurrencySelect
-                value={form.currency}
-                onChange={code => patchForm({ currency: code })}
-                lang={lang}
-                label={tr('currency', lang)}
-                ariaLabel={tr('currency', lang)}
-              />
+              <div className="currency-field">
+                <CurrencySelect
+                  value={form.currency}
+                  onChange={code => patchForm({ currency: normalizeCurrency(code) }, 'currency')}
+                  lang={lang}
+                  label={tr('currency', lang)}
+                  ariaLabel={tr('currency', lang)}
+                />
+                {formErrors.currency && <small className="field-error">{formErrors.currency}</small>}
+              </div>
               <label><span>{tr('type', lang)}</span><select value={form.incomeType} onChange={e => patchForm({ incomeType: e.target.value as IncomeType }, 'incomeType')} aria-invalid={Boolean(formErrors.incomeType)}>{TYPES.map(item => <option key={item.id} value={item.id}>{item.icon} {item.label[lang as Lang]}</option>)}</select>{formErrors.incomeType && <small className="field-error">{formErrors.incomeType}</small>}</label>
               <label><span>{tr('frequency', lang)}</span><select value={frequencyMode} onChange={e => setFrequencyMode(e.target.value as FrequencyMode)} aria-invalid={Boolean(formErrors.frequency)}>{FREQUENCY_MODES.map(item => <option key={item.id} value={item.id}>{item.label[lang as Lang]}</option>)}</select>{formErrors.frequency && <small className="field-error">{formErrors.frequency}</small>}</label>
               <label><span>{tr('receivedDate', lang)}</span><input type="date" value={form.receivedDate} onChange={e => patchForm({ receivedDate: e.target.value, recurrenceStartDate: e.target.value }, 'receivedDate')} aria-invalid={Boolean(formErrors.receivedDate)} />{formErrors.receivedDate && <small className="field-error">{formErrors.receivedDate}</small>}</label>
@@ -1352,7 +1412,7 @@ export default function IncomePage() {
               {formError && <div className="form-error">{formError}</div>}
               <div className="form-actions">
                 <button type="button" className="ghost-light" onClick={() => setModalOpen(false)} disabled={saving}>{tr('cancel', lang)}</button>
-                <button type="submit" className="primary-dark" disabled={saving || !formValidity}>{saving ? tr('saving', lang) : tr('saveIncome', lang)}</button>
+                <button type="submit" className="primary-dark" disabled={saving}>{saving ? tr('saving', lang) : tr('saveIncome', lang)}</button>
               </div>
             </form>
           </div>
@@ -1382,7 +1442,7 @@ export default function IncomePage() {
         .income-report-panel p{margin:0;color:var(--sfm-muted);line-height:1.8;font-weight:600}.income-report-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
         .late-card{display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);border:1px solid rgba(133,79,11,.16);border-radius:18px;padding:14px 16px}.late-card span{display:flex;align-items:center;gap:8px;font-weight:600}.late-card button,.upcoming-item button{border:1px solid rgba(133,79,11,.16);background:#fff7eb;color:var(--sfm-primary-hover);border-radius:12px;min-height:38px;padding:0 12px;display:inline-flex;align-items:center;gap:7px;font:600 12px inherit;cursor:pointer}.upcoming-panel{display:grid;gap:10px}.upcoming-list{display:grid;gap:9px}.upcoming-item{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;border:1px solid rgba(29,140,255,.14);border-radius:14px;padding:12px;background:var(--sfm-light-card)}.upcoming-item strong{display:block;color:var(--sfm-midnight);font-weight:600}.upcoming-item span{display:block;margin-top:4px;color:var(--sfm-muted);font-size:12px}.upcoming-item em,.income-filters button{font-style:normal;border-radius:999px;background:var(--sfm-background);color:var(--sfm-muted);padding:5px 10px;font-size:12px;white-space:nowrap}.upcoming-item .received{background:#ECFDF5;color:#047857}.upcoming-item .pending,.upcoming-item .expected{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover)}.upcoming-item .late{background:#FEF2F2;color:#B91C1C}.income-filters{display:flex;gap:8px;overflow-x:auto;padding:0 0 12px;margin-top:-4px;scrollbar-width:thin}.income-filters button{border:1px solid rgba(29,140,255,.14);cursor:pointer;font:600 12px inherit;background:var(--sfm-light-card)}.income-filters button.active{background:var(--sfm-midnight);color:#fff;border-color:var(--sfm-midnight)}
         .income-list{display:grid;gap:10px}.income-row{display:flex;justify-content:space-between;gap:14px;border:1px solid rgba(29,140,255,.14);border-radius:16px;padding:14px;background:var(--sfm-light-card)}.row-main{display:flex;gap:12px;min-width:0}.row-icon{width:44px;height:44px;border-radius:14px;background:rgba(29,140,255,.10);display:grid;place-items:center;font-size:21px}.row-main strong{display:block;font-size:15px;font-weight:600;color:var(--sfm-midnight)}.row-main span{display:block;margin-top:4px;color:var(--sfm-muted);font-size:12px}.row-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.row-meta em{font-style:normal;border-radius:999px;background:var(--sfm-background);color:var(--sfm-muted);padding:4px 8px;font-size:11px;display:inline-flex;align-items:center;gap:4px}.row-meta .received{background:#ECFDF5;color:#047857}.row-meta .pending,.row-meta .expected{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover)}.row-meta .late{background:#FEF2F2;color:#B91C1C}.row-meta .project-income{background:rgba(24,212,212,.14);color:var(--sfm-primary-hover);border:1px solid rgba(24,212,212,.22)}.row-side{display:flex;align-items:center;gap:12px}.row-side b{white-space:nowrap;color:var(--sfm-midnight)}.row-side div{display:flex;gap:6px}.row-side button,.modal-head button,.mini-pop button{width:36px;height:36px;border-radius:11px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);color:var(--sfm-midnight);display:grid;place-items:center;cursor:pointer}.empty{padding:24px;text-align:center;color:var(--sfm-muted);border:1px dashed rgba(29,140,255,.22);border-radius:14px;background:var(--sfm-light-card)}
-        .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(36,24,13,.42);display:grid;place-items:center;padding:18px}.income-modal{width:min(760px,100%);max-height:min(92dvh,900px);overflow:auto;background:var(--sfm-card);border-radius:20px;border:1px solid rgba(29,140,255,.18);padding:20px}.modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}.modal-head p{margin:0;color:var(--sfm-primary);font-size:12px}.modal-head h2{margin:4px 0 0;font-size:24px;color:var(--sfm-midnight)}.income-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.income-form label{display:grid;gap:7px;color:var(--sfm-midnight);font-size:13px;font-weight:500}.income-form input,.income-form select,.income-form textarea{width:100%;border:1px solid rgba(29,140,255,.16);border-radius:12px;background:var(--sfm-background);color:var(--sfm-midnight);padding:0 12px;min-height:46px;font:500 14px inherit;outline:none}.income-form input[type=file]{padding:11px 12px}.income-form textarea{min-height:92px;padding-top:12px;resize:vertical}.income-form input:focus,.income-form select:focus,.income-form textarea:focus{border-color:var(--sfm-primary);box-shadow:0 0 0 3px rgba(29,140,255,.14);background:var(--sfm-card)}.wide,.form-actions,.form-error,.form-note,.attachment-field,.suggestion-pill{grid-column:1/-1}.suggestion-pill{display:flex;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.18);border-radius:12px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:10px 12px;font-size:13px}.suggestion-pill button{margin-inline-start:auto;border:0;border-radius:10px;background:var(--sfm-midnight);color:#fff;padding:7px 10px;font:600 12px inherit;cursor:pointer}.attachment-field{display:grid;gap:10px}.attachment-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.16);border-radius:12px;background:var(--sfm-background);color:var(--sfm-midnight);padding:9px 10px;font-size:13px}.attachment-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attachment-chip small{color:var(--sfm-muted);margin-inline-start:auto}.attachment-chip button{width:28px;height:28px;border-radius:9px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);color:var(--sfm-midnight);display:grid;place-items:center;cursor:pointer}.toggle-line{align-content:end}.toggle{height:46px;border-radius:12px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-background);color:var(--sfm-midnight);display:flex;align-items:center;gap:9px;padding:0 12px;cursor:pointer}.toggle span{width:20px;height:20px;border-radius:50%;background:#c9bea9}.toggle.on span{background:var(--sfm-primary)}.form-actions{display:flex;justify-content:flex-end;gap:10px}.form-error{background:#FEF2F2;color:#B91C1C;border-radius:12px;padding:10px 12px;font-size:13px}.form-note{background:#E6F1FB;color:#0C447C;border-radius:12px;padding:10px 12px;font-size:13px}
+        .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(36,24,13,.42);display:grid;place-items:center;padding:18px}.income-modal{width:min(760px,100%);max-height:min(92dvh,900px);overflow:auto;background:var(--sfm-card);border-radius:20px;border:1px solid rgba(29,140,255,.18);padding:20px}.modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}.modal-head p{margin:0;color:var(--sfm-primary);font-size:12px}.modal-head h2{margin:4px 0 0;font-size:24px;color:var(--sfm-midnight)}.income-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.income-form label,.currency-field{display:grid;gap:7px;color:var(--sfm-midnight);font-size:13px;font-weight:500}.income-form input,.income-form select,.income-form textarea{width:100%;border:1px solid rgba(29,140,255,.16);border-radius:12px;background:var(--sfm-background);color:var(--sfm-midnight);padding:0 12px;min-height:46px;font:500 14px inherit;outline:none}.income-form input[type=file]{padding:11px 12px}.income-form textarea{min-height:92px;padding-top:12px;resize:vertical}.income-form input:focus,.income-form select:focus,.income-form textarea:focus{border-color:var(--sfm-primary);box-shadow:0 0 0 3px rgba(29,140,255,.14);background:var(--sfm-card)}.wide,.form-actions,.form-error,.form-note,.attachment-field,.suggestion-pill{grid-column:1/-1}.suggestion-pill{display:flex;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.18);border-radius:12px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:10px 12px;font-size:13px}.suggestion-pill button{margin-inline-start:auto;border:0;border-radius:10px;background:var(--sfm-midnight);color:#fff;padding:7px 10px;font:600 12px inherit;cursor:pointer}.attachment-field{display:grid;gap:10px}.attachment-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.16);border-radius:12px;background:var(--sfm-background);color:var(--sfm-midnight);padding:9px 10px;font-size:13px}.attachment-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attachment-chip small{color:var(--sfm-muted);margin-inline-start:auto}.attachment-chip button{width:28px;height:28px;border-radius:9px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);color:var(--sfm-midnight);display:grid;place-items:center;cursor:pointer}.toggle-line{align-content:end}.toggle{height:46px;border-radius:12px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-background);color:var(--sfm-midnight);display:flex;align-items:center;gap:9px;padding:0 12px;cursor:pointer}.toggle span{width:20px;height:20px;border-radius:50%;background:#c9bea9}.toggle.on span{background:var(--sfm-primary)}.form-actions{display:flex;justify-content:flex-end;gap:10px}.form-error{background:#FEF2F2;color:#B91C1C;border-radius:12px;padding:10px 12px;font-size:13px}.form-note{background:#E6F1FB;color:#0C447C;border-radius:12px;padding:10px 12px;font-size:13px}
         .mini-pop,.toast{position:fixed;z-index:100;inset-inline-end:22px;bottom:22px;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:14px;max-width:min(360px,calc(100vw - 32px));box-shadow:0 16px 38px rgba(3,18,37,.12)}.mini-pop strong{display:block;margin-bottom:6px}.mini-pop p{margin:0;color:var(--sfm-muted);line-height:1.6}.mini-pop button{float:inline-end;width:28px;height:28px}.toast{background:#ECFDF5;color:#047857;font-weight:600}
         .income-shell{background:linear-gradient(180deg,#EEF7FF 0%,#F8FBFF 42%,#FFFFFF 100%);color:#0B172A}.income-main{gap:20px;padding:28px 28px 64px}.income-header{overflow:hidden;background:linear-gradient(135deg,#061A2E 0%,#0B2A4A 58%,#0E7490 140%);border-color:rgba(34,211,238,.24);border-radius:28px;padding:34px;box-shadow:0 28px 70px rgba(3,18,37,.22)}.income-header h1{font-size:clamp(36px,6vw,58px);font-weight:900;color:#F8FAFC}.income-header p{color:#A7F3D0;font-weight:800}.income-header span{color:#BAE6FD;font-weight:700}.primary,.primary-dark{min-height:46px;border-radius:14px;background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#061A2E;font-weight:900;box-shadow:0 14px 28px rgba(29,140,255,.22)}.ghost-light,.ghost{min-height:46px;border-radius:14px;font-weight:900}.stat-grid article,.panel,.insight{border-color:#E2E8F0;background:#fff;border-radius:22px;box-shadow:0 18px 42px rgba(3,18,37,.06)}.stat-grid strong{font-size:clamp(24px,3vw,34px);font-weight:900;color:#0B172A}.income-row{border-color:#E2E8F0;background:#F8FBFF;border-radius:18px}.row-main strong,.row-side b{color:#0B172A;font-weight:950}.empty{border-radius:16px;background:#F8FBFF;font-weight:800}.compact-empty{min-height:96px;display:grid;place-items:center}.income-empty-state{min-height:280px;display:grid;place-items:center;align-content:center;gap:12px;text-align:center;border:1px dashed rgba(29,140,255,.28);border-radius:22px;background:linear-gradient(180deg,#F8FBFF,#FFFFFF);padding:34px}.income-empty-icon{width:62px;height:62px;border-radius:20px;display:grid;place-items:center;color:#061A2E;background:linear-gradient(135deg,#22D3EE,#38BDF8);box-shadow:0 18px 34px rgba(29,140,255,.22)}.income-empty-state strong{font-size:1.25rem;color:#0B172A;font-weight:950}.income-empty-state p{margin:0;max-width:480px;color:#64748B;line-height:1.8;font-weight:800}.modal-backdrop{background:rgba(6,26,46,.56);backdrop-filter:blur(10px);padding:18px}.income-modal{width:min(880px,100%);max-height:min(90vh,900px);background:#fff;border-radius:24px;border:1px solid rgba(226,232,240,.95);padding:24px;box-shadow:0 34px 90px rgba(3,18,37,.28)}.modal-head{flex-direction:row-reverse;gap:18px;margin-bottom:22px}.modal-title-wrap{display:flex;gap:12px;align-items:flex-start}.modal-title-icon{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;color:#061A2E;background:linear-gradient(135deg,#22D3EE,#38BDF8);box-shadow:0 16px 30px rgba(29,140,255,.22);flex:0 0 auto}.modal-head h2{margin:0;font-size:28px;color:#0B172A;font-weight:950}.modal-head p{margin:6px 0 0;color:#64748B;font-size:14px;font-weight:800;line-height:1.7}.income-form{gap:16px}.income-form label{gap:8px;color:#0B172A;font-weight:900}.income-form input,.income-form select,.income-form textarea{border-color:#CBD5E1;border-radius:14px;background:#F8FAFC;color:#0B172A;min-height:50px;font-weight:800}.income-form input::placeholder,.income-form textarea::placeholder{color:#94A3B8}.income-form input:focus,.income-form select:focus,.income-form textarea:focus{border-color:#22D3EE;box-shadow:0 0 0 4px rgba(34,211,238,.16);background:#fff}.income-form [aria-invalid="true"]{border-color:#EF4444}.amount-control{position:relative}.amount-control input{padding-inline-end:58px}.amount-control em{position:absolute;inset-inline-end:12px;top:50%;transform:translateY(-50%);font-style:normal;color:#0369A1;font-weight:950;pointer-events:none}.field-error{color:#B91C1C;font-size:12px;font-weight:900}.form-error{font-weight:900}:global(.dark) .income-shell{background:#0a1422;color:#e8eef6}:global(.dark) .income-header{background:linear-gradient(135deg,#061A2E,#0B2A4A 58%,#102F52 140%);border-color:rgba(47,214,192,.24)}:global(.dark) .insight,:global(.dark) .stat-grid article,:global(.dark) .panel,:global(.dark) .income-modal{background:#0f1d31;border-color:#1d3050;color:#e8eef6;box-shadow:0 18px 46px rgba(0,0,0,.30)}:global(.dark) .income-modal{background:#0f1d31}:global(.dark) .income-row,:global(.dark) .empty,:global(.dark) .income-empty-state,:global(.dark) .line-chart,:global(.dark) .upcoming-item,:global(.dark) .income-filters button,:global(.dark) .attachment-chip,:global(.dark) .toggle,:global(.dark) .income-form input,:global(.dark) .income-form select,:global(.dark) .income-form textarea{background:#13243a;border-color:#1d3050;color:#e8eef6}:global(.dark) .income-form input:focus,:global(.dark) .income-form select:focus,:global(.dark) .income-form textarea:focus{background:#0f1d31;border-color:#2fd6c0;box-shadow:0 0 0 4px rgba(47,214,192,.16)}:global(.dark) .modal-head h2,:global(.dark) .income-form label,:global(.dark) .stat-grid strong,:global(.dark) .smart-score strong,:global(.dark) .smart-grid strong,:global(.dark) .panel-title h2,:global(.dark) .donut span,:global(.dark) .legend div,:global(.dark) .upcoming-item strong,:global(.dark) .row-main strong,:global(.dark) .row-side b,:global(.dark) .income-empty-state strong,:global(.dark) .mini-pop strong{color:#e8eef6}:global(.dark) .modal-head p,:global(.dark) .smart-score span,:global(.dark) .smart-grid p,:global(.dark) .smart-view ul,:global(.dark) .income-report-panel p,:global(.dark) .upcoming-item span,:global(.dark) .row-main span,:global(.dark) .row-meta em,:global(.dark) .income-empty-state p,:global(.dark) .mini-pop p{color:#b8c7d9}:global(.dark) .amount-control em,:global(.dark) .panel-title{color:#2fd6c0}:global(.dark) .modal-head button,:global(.dark) .row-side button,:global(.dark) .mini-pop,:global(.dark) .export-menu,:global(.dark) .export-menu button{background:#0f1d31;border-color:#1d3050;color:#e8eef6}:global(.dark) .late-card{background:rgba(47,214,192,.10);border-color:rgba(47,214,192,.24);color:#b8c7d9}:global(.dark) .late-card button,:global(.dark) .upcoming-item button{background:#13243a;border-color:#1d3050;color:#e8eef6}:global(.dark) .ghost-light,:global(.dark) .ghost{background:#13243a;border-color:#1d3050;color:#e8eef6}:global(.dark) .form-note,:global(.dark) .suggestion-pill{background:rgba(47,214,192,.10);border-color:rgba(47,214,192,.24);color:#b8c7d9}:global(.dark) .form-error{background:rgba(239,68,68,.14);color:#fca5a5}:global(.dark) .toast{background:rgba(16,185,129,.16);border-color:rgba(16,185,129,.28);color:#86efac}
         @media(max-width:1024px){.income-main{margin-inline-start:0;padding:calc(84px + env(safe-area-inset-top)) 16px 24px}.insights,.chart-grid,.smart-grid{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
