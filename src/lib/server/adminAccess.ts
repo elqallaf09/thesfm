@@ -1,16 +1,9 @@
 import { createClient, type User } from '@supabase/supabase-js';
 
-export function adminEmails() {
-  const raw = process.env.ADMIN_EMAILS || 'elqallaf09@gmail.com';
-  return raw
-    .split(',')
-    .map(item => item.trim().replace(/^mailto:/i, '').replace(/^\[(.*)\]\(mailto:.*\)$/i, '$1').toLowerCase())
-    .filter(Boolean);
-}
+export const ADMIN_EMAIL = 'elqallaf09@gmail.com';
 
 export function isAdminEmail(email?: string | null) {
-  if (!email) return false;
-  return adminEmails().includes(email.trim().toLowerCase());
+  return email?.trim().toLowerCase() === ADMIN_EMAIL;
 }
 
 export function createServerSupabaseAdmin() {

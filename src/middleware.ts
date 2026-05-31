@@ -68,15 +68,10 @@ type SessionCheck = {
   supabaseAnonKey?: string;
 };
 
-function adminEmails() {
-  return (process.env.ADMIN_EMAILS || 'elqallaf09@gmail.com')
-    .split(',')
-    .map(item => item.trim().replace(/^mailto:/i, '').replace(/^\[(.*)\]\(mailto:.*\)$/i, '$1').toLowerCase())
-    .filter(Boolean);
-}
+const ADMIN_EMAIL = 'elqallaf09@gmail.com';
 
 function isAdminEmail(email?: string | null) {
-  return Boolean(email && adminEmails().includes(email.trim().toLowerCase()));
+  return email?.trim().toLowerCase() === ADMIN_EMAIL;
 }
 
 async function getSupabaseSession(request: NextRequest): Promise<SessionCheck> {
