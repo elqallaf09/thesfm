@@ -34,6 +34,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { currentMonthRange, personalExpenseRows, personalIncomeRows, safeDivide, sumAmounts } from '@/lib/data/financeData';
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
+import { calculateGoalProgress } from '@/lib/goalProgress';
 import { parseMoneyValue } from '@/lib/money';
 
 const Sidebar = dynamic(() => import('@/components/Sidebar').then(mod => mod.Sidebar), { ssr: false });
@@ -496,11 +497,7 @@ function isTaskOverdue(row: DataRow) {
 }
 
 function goalProgress(row: DataRow) {
-  const current = firstNumber(row, ['current_amount', 'saved_amount', 'currentAmount', 'savedAmount']);
-  const target = firstNumber(row, ['target_amount', 'amount', 'targetAmount']);
-  const progress = safeDivide(current, target);
-  if (progress === null) return null;
-  return Math.max(0, Math.min(progress, 1));
+  return calculateGoalProgress(row).progressRatio;
 }
 
 function latestByDate(rows: DataRow[], keys: string[]) {
@@ -774,18 +771,6 @@ export default function ExecutiveDashboardPage() {
     const hasCurrentMonthData = monthIncomeRows.length > 0 || monthExpenseRows.length > 0;
     const currentMonthNet = currentMonthIncome - currentMonthExpenses;
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Monthly range:', { startOfMonth: monthRange.startIso, endOfMonth: monthRange.endIso });
-      console.log('Monthly income records:', monthIncomeRows);
-      console.log('Monthly expense records:', monthExpenseRows);
-      console.log('Monthly totals:', {
-        currentMonthIncome,
-        currentMonthExpenses,
-        currentMonthNet,
-        spendingRatio,
-      });
-    }
-
     const goalProgressValues = records.goals.map(goalProgress).filter((value): value is number => value !== null);
     const averageGoalProgress = goalProgressValues.length ? goalProgressValues.reduce((total, value) => total + value, 0) / goalProgressValues.length : null;
     const nearestGoalDate = records.goals
@@ -934,7 +919,7 @@ export default function ExecutiveDashboardPage() {
       activeGoals: records.goals.length,
       nearestGoalDate,
       averageGoalProgress,
-      totalGoalBalance: sumAmounts(records.goals, ['current_amount', 'saved_amount']),
+      totalGoalBalance: records.goals.reduce((sum, row) => sum + calculateGoalProgress(row).currentAmount, 0),
       watchlistCount: records.marketWatchlist.length,
       marketAlertsCount: records.marketPriceAlerts.length,
       topWatchedAsset: firstText(records.marketWatchlist[0] ?? {}, ['symbol', 'name', 'asset_name']),

@@ -7,22 +7,38 @@ import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { moneyNumber, normalizeNumberInput } from '@/lib/money';
 
 const DURATIONS = [
-  { value: '3', ar: '3 أشهر', en: '3 months' },
-  { value: '6', ar: '6 أشهر', en: '6 months' },
-  { value: '12', ar: 'سنة', en: '1 year' },
-  { value: '24', ar: 'سنتان', en: '2 years' },
+  { value: '3', ar: '3 أشهر', en: '3 months', fr: '3 mois' },
+  { value: '6', ar: '6 أشهر', en: '6 months', fr: '6 mois' },
+  { value: '12', ar: 'سنة', en: '1 year', fr: '1 an' },
+  { value: '24', ar: 'سنتان', en: '2 years', fr: '2 ans' },
 ];
+
+function addMonths(date: Date, months: number) {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + months);
+  return next;
+}
+
+function formatDateInput(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export default function AddGoalPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { dir, isAr } = useLanguage();
+  const { dir, lang } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [goal, setGoal] = useState('');
   const [amount, setAmount] = useState('');
+  const [currentAmount, setCurrentAmount] = useState('');
+  const [monthlyContribution, setMonthlyContribution] = useState('');
   const [duration, setDuration] = useState('12');
   const [notes, setNotes] = useState('');
   const [message, setMessage] = useState('');
@@ -31,8 +47,10 @@ export default function AddGoalPage() {
     setMounted(true);
   }, []);
 
+  const text = (ar: string, en: string, fr = en) => lang === 'ar' ? ar : lang === 'fr' ? fr : en;
+
   const formatAmount = (value: string) => {
-    const clean = value.replace(/[^\d.]/g, '');
+    const clean = normalizeNumberInput(value);
     const parts = clean.split('.');
     return parts.length > 1 ? `${parts[0]}.${parts[1].slice(0, 3)}` : clean;
   };
@@ -46,34 +64,89 @@ export default function AddGoalPage() {
       return;
     }
     if (!user) {
-      setMessage(isAr ? 'سجل الدخول لحفظ الهدف' : 'Sign in to save this goal');
+      setMessage(text('سجل الدخول لحفظ الهدف', 'Sign in to save this goal', 'Connectez-vous pour enregistrer cet objectif'));
       return;
     }
-    if (!goal.trim() || !amount || Number(amount) <= 0) {
-      setMessage(isAr ? 'أدخل اسم الهدف والمبلغ المستهدف' : 'Enter goal name and target amount');
+
+    const targetValue = moneyNumber(amount, 0);
+    const currentValue = moneyNumber(currentAmount, 0);
+    const monthlyValue = moneyNumber(monthlyContribution, 0);
+
+    if (!goal.trim() || targetValue <= 0) {
+      setMessage(text('أدخل اسم الهدف والمبلغ المستهدف', 'Enter goal name and target amount', "Saisissez le nom de l'objectif et le montant cible"));
+      return;
+    }
+    if (currentValue < 0 || monthlyValue < 0) {
+      setMessage(text('أدخل مبالغ موجبة فقط', 'Enter positive amounts only', 'Saisissez uniquement des montants positifs'));
+      return;
+    }
+    if (currentValue > targetValue) {
+      setMessage(text('المبلغ الحالي لا يمكن أن يتجاوز الهدف', 'Current saved amount cannot exceed the target', 'Le montant actuel ne peut pas dépasser la cible'));
       return;
     }
 
     setSaving(true);
-    const { error } = await supabase.from('financial_goals').insert({
+    const targetDate = formatDateInput(addMonths(new Date(), Number(duration) || 0));
+    const goalNotes = JSON.stringify({
+      currentAmount: currentValue,
+      monthlyContribution: monthlyValue,
+      deadline: targetDate,
+      currency: 'KWD',
+      description: notes.trim() || null,
+    });
+    const payload = {
       user_id: user.id,
       goal: goal.trim(),
-      amount: Number(amount),
+      title: goal.trim(),
+      name: goal.trim(),
+      amount: targetValue,
+      target_amount: targetValue,
+      current_amount: currentValue,
+      saved_amount: currentValue,
+      progress_amount: currentValue,
+      monthly_contribution: monthlyValue,
+      target_date: targetDate,
+      currency: 'KWD',
       duration,
       duration_unit: 'month',
-      notes: notes.trim() || null,
-    });
+      notes: goalNotes,
+    };
+
+    let result = await supabase.from('financial_goals').insert(payload);
+    if (result.error && /title|name|target_amount|saved_amount|progress_amount|monthly_contribution|target_date|currency|column|schema|PGRST/i.test(result.error.message)) {
+      result = await supabase.from('financial_goals').insert({
+        user_id: user.id,
+        goal: goal.trim(),
+        amount: targetValue,
+        current_amount: currentValue,
+        duration,
+        duration_unit: 'month',
+        notes: goalNotes,
+      });
+    }
+    if (result.error && /current_amount|column|schema|PGRST/i.test(result.error.message)) {
+      result = await supabase.from('financial_goals').insert({
+        user_id: user.id,
+        goal: goal.trim(),
+        amount: targetValue,
+        duration,
+        duration_unit: 'month',
+        notes: goalNotes,
+      });
+    }
     setSaving(false);
 
-    if (error) {
-      setMessage(error.message || (isAr ? 'تعذر حفظ الهدف' : 'Could not save goal'));
+    if (result.error) {
+      setMessage(result.error.message || text('تعذر حفظ الهدف', 'Could not save goal', "Impossible d'enregistrer l'objectif"));
       return;
     }
 
     setGoal('');
     setAmount('');
+    setCurrentAmount('');
+    setMonthlyContribution('');
     setNotes('');
-    setMessage(isAr ? 'تم حفظ الهدف بنجاح' : 'Goal saved');
+    setMessage(text('تم حفظ الهدف بنجاح', 'Goal saved', 'Objectif enregistré'));
     window.setTimeout(() => router.push('/goals'), 900);
   };
 
@@ -87,7 +160,7 @@ export default function AddGoalPage() {
         <header className="top">
           <button type="button" className="back" onClick={() => router.back()}>
             <ArrowLeft size={17} />
-            {isAr ? 'رجوع' : 'Back'}
+            {text('رجوع', 'Back', 'Retour')}
           </button>
           <LanguageSwitcher variant="gold" />
         </header>
@@ -95,35 +168,41 @@ export default function AddGoalPage() {
         <div className="hero">
           <div className="mark"><Target size={30} /></div>
           <div>
-            <h1>{isAr ? 'إضافة هدف مالي' : 'Add Financial Goal'}</h1>
-            <p>{isAr ? 'حوّل هدفك إلى مبلغ واضح ومدة زمنية قابلة للمتابعة.' : 'Turn your target into a clear amount and timeline.'}</p>
+            <h1>{text('إضافة هدف مالي', 'Add Financial Goal', 'Ajouter un objectif financier')}</h1>
+            <p>{text('حوّل هدفك إلى مبلغ واضح ومدة زمنية قابلة للمتابعة.', 'Turn your target into a clear amount and timeline.', 'Transformez votre cible en montant clair et en calendrier suivi.')}</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <label>{isAr ? 'اسم الهدف' : 'Goal name'}</label>
-          <input value={goal} onChange={event => setGoal(event.target.value)} placeholder={isAr ? 'مثال: صندوق الطوارئ' : 'Example: Emergency fund'} />
+          <label>{text('اسم الهدف', 'Goal name', "Nom de l'objectif")}</label>
+          <input value={goal} onChange={event => setGoal(event.target.value)} placeholder={text('مثال: صندوق الطوارئ', 'Example: Emergency fund', "Exemple : fonds d'urgence")} />
 
-          <label>{isAr ? 'المبلغ المستهدف' : 'Target amount'}</label>
+          <label>{text('المبلغ المستهدف', 'Target amount', 'Montant cible')}</label>
           <input value={amount} onChange={event => setAmount(formatAmount(event.target.value))} inputMode="decimal" placeholder="0.000" dir="ltr" />
 
-          <label>{isAr ? 'المدة' : 'Timeline'}</label>
+          <label>{text('المبلغ المدخر حالياً', 'Current saved amount', 'Montant actuellement épargné')}</label>
+          <input value={currentAmount} onChange={event => setCurrentAmount(formatAmount(event.target.value))} inputMode="decimal" placeholder="0.000" dir="ltr" />
+
+          <label>{text('المساهمة الشهرية', 'Monthly contribution', 'Contribution mensuelle')}</label>
+          <input value={monthlyContribution} onChange={event => setMonthlyContribution(formatAmount(event.target.value))} inputMode="decimal" placeholder="0.000" dir="ltr" />
+
+          <label>{text('المدة', 'Timeline', 'Calendrier')}</label>
           <div className="durations">
             {DURATIONS.map(item => (
               <button key={item.value} type="button" className={duration === item.value ? 'duration active' : 'duration'} onClick={() => setDuration(item.value)}>
-                {isAr ? item.ar : item.en}
+                {lang === 'ar' ? item.ar : lang === 'fr' ? item.fr : item.en}
               </button>
             ))}
           </div>
 
-          <label>{isAr ? 'ملاحظات' : 'Notes'}</label>
-          <textarea value={notes} onChange={event => setNotes(event.target.value)} placeholder={isAr ? 'اختياري' : 'Optional'} />
+          <label>{text('ملاحظات', 'Notes', 'Notes')}</label>
+          <textarea value={notes} onChange={event => setNotes(event.target.value)} placeholder={text('اختياري', 'Optional', 'Facultatif')} />
 
-          {message && <div className={message.includes('تم') || message.includes('saved') ? 'msg ok' : 'msg'}>{message}</div>}
+          {message && <div className={message.includes('تم') || message.includes('saved') || message.includes('enregistré') ? 'msg ok' : 'msg'}>{message}</div>}
 
           <button type="submit" className="save" disabled={saving}>
             <Save size={17} />
-            {saving ? (isAr ? 'جاري الحفظ...' : 'Saving...') : (isAr ? 'حفظ الهدف' : 'Save Goal')}
+            {saving ? text('جاري الحفظ...', 'Saving...', 'Enregistrement...') : text('حفظ الهدف', 'Save Goal', "Enregistrer l'objectif")}
           </button>
         </form>
       </section>

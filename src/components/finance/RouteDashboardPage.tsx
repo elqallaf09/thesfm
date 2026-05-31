@@ -113,18 +113,32 @@ type GoalItem = {
 };
 type GoalRow = {
   id: string;
-  goal: string;
+  goal?: string | null;
+  title?: string | null;
+  name?: string | null;
   amount: number | string | null;
   target_amount?: number | string | null;
   targetAmount?: number | string | null;
+  goal_amount?: number | string | null;
   current_amount?: number | string | null;
   currentAmount?: number | string | null;
   saved_amount?: number | string | null;
   savedAmount?: number | string | null;
+  progress_amount?: number | string | null;
+  progressAmount?: number | string | null;
+  monthly_contribution?: number | string | null;
+  monthlyContribution?: number | string | null;
+  monthly_saving?: number | string | null;
+  monthlySaving?: number | string | null;
+  target_date?: string | null;
+  targetDate?: string | null;
+  deadline?: string | null;
+  currency?: string | null;
   duration?: string | null;
   duration_unit?: string | null;
   notes?: string | null;
   created_at?: string | null;
+  updated_at?: string | null;
 };
 type GoalFormState = {
   id: string;
@@ -1252,23 +1266,25 @@ function monthsBetween(from: Date, to?: string | null) {
 function goalFromRow(item: GoalRow): GoalItem {
   const notes = parseGoalNotes(item.notes);
   const amounts = calculateGoalProgress(item);
-  const deadline = typeof notes.deadline === 'string'
-    ? notes.deadline
-    : item.duration && item.duration_unit === 'month'
+  const deadline = item.target_date
+    ?? item.targetDate
+    ?? item.deadline
+    ?? (typeof notes.deadline === 'string' ? notes.deadline : null)
+    ?? (item.duration && item.duration_unit === 'month'
       ? formatDateInput(addMonths(new Date(), Number(item.duration) || 0))
-      : null;
+      : null);
 
   return {
     id: item.id,
-    name: item.goal,
+    name: item.goal ?? item.title ?? item.name ?? '',
     target_amount: amounts.targetAmount,
     current_amount: amounts.currentAmount,
-    monthly_contribution: parseMoney(notes.monthlyContribution),
+    monthly_contribution: amounts.monthlyContribution,
     goal_type: typeof notes.goalType === 'string' ? notes.goalType : 'saving',
     category: typeof notes.category === 'string' ? notes.category : 'general',
     priority: typeof notes.priority === 'string' ? notes.priority : 'medium',
     funding_source: typeof notes.fundingSource === 'string' ? notes.fundingSource : 'salary',
-    currency: typeof notes.currency === 'string' ? notes.currency : 'KWD',
+    currency: item.currency || (typeof notes.currency === 'string' ? notes.currency : 'KWD'),
     ai_enabled: typeof notes.aiEnabled === 'boolean' ? notes.aiEnabled : true,
     icon: '🎯',
     color: 'var(--sfm-soft-cyan)',
@@ -1591,21 +1607,38 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
   async function adjustLinkedSavingsGoal(goalId: string | null | undefined, delta: number) {
     if (!goalId || !user || !Number.isFinite(delta) || delta === 0) return;
-    const { data: goal, error: goalFetchError } = await supabase
+    let goalFetchResult = await supabase
       .from('financial_goals')
-      .select('id,current_amount')
+      .select('id,current_amount,saved_amount,progress_amount,notes')
       .eq('id', goalId)
       .eq('user_id', user.id)
       .maybeSingle();
+    if (goalFetchResult.error && /saved_amount|progress_amount|notes|column|schema|PGRST/i.test(goalFetchResult.error.message)) {
+      goalFetchResult = await supabase
+        .from('financial_goals')
+        .select('id,current_amount')
+        .eq('id', goalId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+    }
+    const { data: goal, error: goalFetchError } = goalFetchResult;
     if (goalFetchError) throw goalFetchError;
     if (!goal) return;
-    const nextAmount = Math.max(0, Number(goal.current_amount || 0) + delta);
-    const { error: goalUpdateError } = await supabase
+    const currentProgress = calculateGoalProgress(goal as GoalRow);
+    const nextAmount = Math.max(0, currentProgress.currentAmount + delta);
+    let updateResult = await supabase
       .from('financial_goals')
-      .update({ current_amount: nextAmount, updated_at: new Date().toISOString() })
+      .update({ current_amount: nextAmount, saved_amount: nextAmount, progress_amount: nextAmount, updated_at: new Date().toISOString() })
       .eq('id', goalId)
       .eq('user_id', user.id);
-    if (goalUpdateError) throw goalUpdateError;
+    if (updateResult.error && /saved_amount|progress_amount|updated_at|column|schema|PGRST/i.test(updateResult.error.message)) {
+      updateResult = await supabase
+        .from('financial_goals')
+        .update({ current_amount: nextAmount })
+        .eq('id', goalId)
+        .eq('user_id', user.id);
+    }
+    if (updateResult.error) throw updateResult.error;
     setSnapshot(prev => ({
       ...prev,
       goals: prev.goals.map(item => item.id === goalId ? { ...item, current_amount: nextAmount } : item),
@@ -2309,21 +2342,38 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             };
             const adjustGoal = async (goalId: string | null | undefined, delta: number) => {
               if (!goalId || !Number.isFinite(delta) || delta === 0) return;
-              const { data: goal, error: goalFetchError } = await supabase
+              let goalFetchResult = await supabase
                 .from('financial_goals')
-                .select('id,current_amount')
+                .select('id,current_amount,saved_amount,progress_amount,notes')
                 .eq('id', goalId)
                 .eq('user_id', user.id)
                 .maybeSingle();
+              if (goalFetchResult.error && /saved_amount|progress_amount|notes|column|schema|PGRST/i.test(goalFetchResult.error.message)) {
+                goalFetchResult = await supabase
+                  .from('financial_goals')
+                  .select('id,current_amount')
+                  .eq('id', goalId)
+                  .eq('user_id', user.id)
+                  .maybeSingle();
+              }
+              const { data: goal, error: goalFetchError } = goalFetchResult;
               if (goalFetchError) throw goalFetchError;
               if (!goal) return;
-              const nextAmount = Math.max(0, Number(goal.current_amount || 0) + delta);
-              const { error: goalUpdateError } = await supabase
+              const currentProgress = calculateGoalProgress(goal as GoalRow);
+              const nextAmount = Math.max(0, currentProgress.currentAmount + delta);
+              let updateResult = await supabase
                 .from('financial_goals')
-                .update({ current_amount: nextAmount, updated_at: new Date().toISOString() })
+                .update({ current_amount: nextAmount, saved_amount: nextAmount, progress_amount: nextAmount, updated_at: new Date().toISOString() })
                 .eq('id', goalId)
                 .eq('user_id', user.id);
-              if (goalUpdateError) throw goalUpdateError;
+              if (updateResult.error && /saved_amount|progress_amount|updated_at|column|schema|PGRST/i.test(updateResult.error.message)) {
+                updateResult = await supabase
+                  .from('financial_goals')
+                  .update({ current_amount: nextAmount })
+                  .eq('id', goalId)
+                  .eq('user_id', user.id);
+              }
+              if (updateResult.error) throw updateResult.error;
               setSnapshot(prev => ({
                 ...prev,
                 goals: prev.goals.map(item => item.id === goalId ? { ...item, current_amount: nextAmount } : item),
@@ -2473,8 +2523,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       name: goal.name,
       goalType: goal.goal_type || 'saving',
       targetAmount: String(goal.target_amount || ''),
-      currentAmount: String(goal.current_amount || ''),
-      monthlyContribution: String(goal.monthly_contribution || ''),
+      currentAmount: goal.current_amount === null || goal.current_amount === undefined ? '' : String(goal.current_amount),
+      monthlyContribution: goal.monthly_contribution === null || goal.monthly_contribution === undefined ? '' : String(goal.monthly_contribution),
       deadline: goal.deadline || '',
       category: goal.category || 'general',
       priority: goal.priority || 'medium',
@@ -2549,24 +2599,52 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       if (!user) throw new Error(t('entry_auth_required'));
       const payload = {
         goal: name,
+        title: name,
+        name,
         amount: targetAmount,
+        target_amount: targetAmount,
         current_amount: currentAmount,
+        saved_amount: currentAmount,
+        progress_amount: currentAmount,
+        monthly_contribution: monthlyContribution,
+        target_date: goalForm.deadline || null,
+        currency: goalForm.currency || currency || 'KWD',
         duration: months ? String(months) : null,
         duration_unit: months ? 'month' : null,
         notes,
+      };
+      const compactPayload = {
+        goal: payload.goal,
+        amount: payload.amount,
+        current_amount: payload.current_amount,
+        duration: payload.duration,
+        duration_unit: payload.duration_unit,
+        notes: payload.notes,
+      };
+      const legacyPayload = {
+        goal: payload.goal,
+        amount: payload.amount,
+        duration: payload.duration,
+        duration_unit: payload.duration_unit,
+        notes: payload.notes,
       };
 
       if (goalMode === 'create') {
         let insertResult = await supabase.from('financial_goals').insert({
           ...payload,
           user_id: user.id,
-        }).select('id, goal, amount, duration, duration_unit, notes, created_at').single();
+        }).select('*').single();
+        if (insertResult.error && /title|name|target_amount|saved_amount|progress_amount|monthly_contribution|target_date|currency|column|schema|PGRST/i.test(insertResult.error.message)) {
+          insertResult = await supabase.from('financial_goals').insert({
+            ...compactPayload,
+            user_id: user.id,
+          }).select('*').single();
+        }
         if (insertResult.error && /current_amount|column|schema|PGRST/i.test(insertResult.error.message)) {
-          const { current_amount: _currentAmount, ...legacyPayload } = payload;
           insertResult = await supabase.from('financial_goals').insert({
             ...legacyPayload,
             user_id: user.id,
-          }).select('id, goal, amount, duration, duration_unit, notes, created_at').single();
+          }).select('*').single();
         }
         const { data: created, error } = insertResult;
         if (error) throw error;
@@ -2576,8 +2654,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         }));
       } else {
         let updateResult = await supabase.from('financial_goals').update(payload).eq('id', goalForm.id).eq('user_id', user.id);
+        if (updateResult.error && /title|name|target_amount|saved_amount|progress_amount|monthly_contribution|target_date|currency|column|schema|PGRST/i.test(updateResult.error.message)) {
+          updateResult = await supabase.from('financial_goals').update(compactPayload).eq('id', goalForm.id).eq('user_id', user.id);
+        }
         if (updateResult.error && /current_amount|column|schema|PGRST/i.test(updateResult.error.message)) {
-          const { current_amount: _currentAmount, ...legacyPayload } = payload;
           updateResult = await supabase.from('financial_goals').update(legacyPayload).eq('id', goalForm.id).eq('user_id', user.id);
         }
         const { error } = updateResult;
@@ -3359,6 +3439,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 const analysis = buildGoalAnalysis(goal, data, lang, currency, t);
                 const goalProgress = calculateGoalProgress(goal);
                 const done = goalProgress.progressPercent;
+                const visualDone = done > 0 && done < 2 ? 2 : done;
                 return (
                   <article className="goal-card" key={goal.id}>
                     <div className="goal-card-head">
@@ -3382,15 +3463,15 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                     </div>
                     <div className="goal-progress-row">
                       <div className="goal-progress-track">
-                        <span style={{ width: `${done}%` }} />
+                        <span style={{ width: `${visualDone}%` }} />
                       </div>
                       <b>{done}%</b>
                     </div>
                     <div className="goal-meta-grid">
                       <div><span>{t('goal_target_amount')}</span><strong>{goalProgress.targetAmount > 0 ? money(goalProgress.targetAmount, lang, goal.currency || currency) : t('goal_missing_target_hint')}</strong></div>
-                      <div><span>{t('goal_current_amount')}</span><strong>{money(goalProgress.currentAmount, lang, goal.currency || currency)}</strong></div>
+                      <div><span>{t('goal_current_amount')}</span><strong>{goalProgress.hasCurrentAmount ? money(goalProgress.currentAmount, lang, goal.currency || currency) : t('goal_missing_current_hint')}</strong></div>
                       <div><span>{t('goal_remaining_amount')}</span><strong>{money(goalProgress.remainingAmount, lang, goal.currency || currency)}</strong></div>
-                      <div><span>{t('goal_monthly_contribution')}</span><strong>{money(goal.monthly_contribution, lang, goal.currency || currency)}</strong></div>
+                      <div><span>{t('goal_monthly_contribution')}</span><strong>{goalProgress.hasMonthlyContribution ? money(goalProgress.monthlyContribution, lang, goal.currency || currency) : t('goal_missing_contribution_hint')}</strong></div>
                     </div>
                     <div className="goal-ai-card">
                       <div className="goal-ai-head">
@@ -3399,6 +3480,9 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                         <span className={`risk-pill ${analysis.riskClass}`}>{analysis.riskLabel}</span>
                       </div>
                       <div className="goal-ai-metrics">
+                        <div><span>{t('goal_target_amount')}</span><b>{money(analysis.targetAmount, lang, goal.currency || currency)}</b></div>
+                        <div><span>{t('goal_current_amount')}</span><b>{money(analysis.currentAmount, lang, goal.currency || currency)}</b></div>
+                        <div><span>{t('goal_monthly_contribution')}</span><b>{analysis.hasMonthlyContribution ? money(analysis.monthlyContribution, lang, goal.currency || currency) : t('goal_missing_contribution_hint')}</b></div>
                         <div><span>{t('goal_required_monthly')}</span><b>{money(analysis.requiredMonthlySaving, lang, goal.currency || currency)}</b></div>
                         <div><span>{t('goal_estimated_completion')}</span><b>{analysis.estimatedCompletion}</b></div>
                         <div><span>{t('goal_status_label')}</span><b>{analysis.statusLabel}</b></div>
@@ -3722,7 +3806,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                         <div className="goal-ai-metrics">
                           <div><span>{t('goal_remaining_amount')}</span><b>{money(goalPreview.remainingAmount, lang, goalForm.currency || currency)}</b></div>
                           <div><span>{t('goal_required_monthly')}</span><b>{money(goalPreview.requiredMonthlySaving, lang, goalForm.currency || currency)}</b></div>
-                          <div><span>{t('goal_current_contribution')}</span><b>{money(Number(goalForm.monthlyContribution) || 0, lang, goalForm.currency || currency)}</b></div>
+                          <div><span>{t('goal_current_contribution')}</span><b>{money(goalPreview.monthlyContribution, lang, goalForm.currency || currency)}</b></div>
                           <div><span>{t('goal_estimated_completion')}</span><b>{goalPreview.estimatedCompletion}</b></div>
                         </div>
                         <p>{goalPreview.summary}</p>
@@ -3918,24 +4002,28 @@ function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape>, lang
 
 function buildGoalAnalysis(goal: GoalItem, data: ReturnType<typeof buildDataShape>, lang: string, currency = 'KWD', t: TranslateFn) {
   const isAr = lang === 'ar';
-  const remainingAmount = Math.max(goal.target_amount - goal.current_amount, 0);
+  const progress = calculateGoalProgress(goal);
+  const targetAmount = progress.targetAmount;
+  const currentAmount = progress.currentAmount;
+  const monthlyContribution = progress.monthlyContribution;
+  const remainingAmount = progress.remainingAmount;
   const monthsRemaining = monthsBetween(new Date(), goal.deadline);
   const missing = [
-    goal.target_amount <= 0 ? t('goal_missing_target') : '',
-    goal.current_amount < 0 ? t('goal_missing_current') : '',
-    goal.monthly_contribution <= 0 ? t('goal_missing_contribution') : '',
+    targetAmount <= 0 ? t('goal_missing_target') : '',
+    !progress.hasCurrentAmount ? t('goal_missing_current') : '',
+    monthlyContribution <= 0 ? t('goal_missing_contribution') : '',
     monthsRemaining <= 0 ? t('goal_missing_deadline') : '',
   ].filter(Boolean);
   const requiredMonthlySaving = monthsRemaining > 0
     ? remainingAmount / monthsRemaining
-    : goal.monthly_contribution > 0
-      ? goal.monthly_contribution
+    : monthlyContribution > 0
+      ? monthlyContribution
       : 0;
-  const contribution = goal.monthly_contribution;
+  const contribution = monthlyContribution;
   const adjustment = Math.max(requiredMonthlySaving - contribution, 0);
   const expenseRatio = data.totalIncome > 0 ? data.totalExpenses / data.totalIncome : 0;
   const availableSurplus = Math.max(data.totalIncome - data.totalExpenses - data.totalSavings, 0);
-  const estimatedMonths = contribution > 0 ? Math.ceil(remainingAmount / contribution) : 0;
+  const estimatedMonths = progress.monthsToGoal ?? 0;
   const estimatedCompletion = monthsRemaining > 0
     ? `${monthsRemaining} ${t('goal_months')}`
     : estimatedMonths > 0
@@ -3972,10 +4060,18 @@ function buildGoalAnalysis(goal: GoalItem, data: ReturnType<typeof buildDataShap
   ];
 
   return {
+    targetAmount,
+    currentAmount,
+    monthlyContribution,
     remainingAmount,
     requiredMonthlySaving,
     estimatedCompletion,
     adjustment,
+    monthsToGoal: progress.monthsToGoal,
+    progressPercent: progress.progressPercent,
+    hasCurrentAmount: progress.hasCurrentAmount,
+    hasTargetAmount: progress.hasTargetAmount,
+    hasMonthlyContribution: progress.hasMonthlyContribution,
     riskClass,
     riskLabel,
     statusLabel,
