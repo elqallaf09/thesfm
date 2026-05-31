@@ -28,9 +28,10 @@ export function TechNewsCard({ item, labels, formatDateTime, formatPrice }: Tech
   const hasPrice = item.price !== null;
   const displayTitle = item.title || item.headline;
   const displaySummary = item.summary || displayTitle;
+  const contentDir = item.isTranslated && item.translatedTo === 'ar' ? 'rtl' : item.isTranslated ? 'ltr' : 'auto';
 
   return (
-    <article className="tech-news-card">
+    <article className="tech-news-card" dir={contentDir}>
       <div className="tech-news-card-top">
         <div className="tech-news-company-wrap">
           <span className="tech-news-company">{item.companyName}</span>
@@ -55,8 +56,8 @@ export function TechNewsCard({ item, labels, formatDateTime, formatPrice }: Tech
           </div>
         )}
       </div>
-      <h2>{displayTitle}</h2>
-      <p>{displaySummary}</p>
+      <h2 dir={contentDir}>{displayTitle}</h2>
+      <p dir={contentDir}>{displaySummary}</p>
       <div className="tech-news-meta">
         <a href={item.url} target="_blank" rel="noreferrer" aria-label={`${labels.openArticle}: ${displayTitle}`}>
           {item.source || labels.source}

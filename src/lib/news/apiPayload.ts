@@ -13,6 +13,9 @@ type NewsLike = {
   title?: string;
   headline?: string;
   summary?: string;
+  titleOriginal?: string;
+  summaryOriginal?: string;
+  languageOriginal?: string;
   source: string;
   url: string;
   publishedAt: string;
@@ -26,6 +29,9 @@ export function compactNewsItem<T extends NewsLike>(item: T) {
     id: item.id,
     title: item.title || item.headline || '',
     summary: item.summary || item.title || item.headline || '',
+    titleOriginal: item.titleOriginal || item.headline || item.title || '',
+    summaryOriginal: item.summaryOriginal || item.summary || item.title || item.headline || '',
+    languageOriginal: item.languageOriginal || 'unknown',
     source: item.source,
     url: item.url,
     publishedAt: item.publishedAt,
