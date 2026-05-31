@@ -467,7 +467,7 @@ const STARTER_THEORIES: Array<{ theoryId: string; reason: LocalizedText }> = [
 
 const THEORY_PROGRESS_STORAGE_KEY = 'sfm:financial-theories:read';
 
-const SUMMARY_STATS: Array<{ kind: 'total' | 'essential' | 'static'; label: LocalizedText; value?: string; icon: typeof BookOpen }> = [
+const SUMMARY_STATS: Array<{ kind: 'total' | 'essential' | 'tools' | 'static'; label: LocalizedText; value?: string; icon: typeof BookOpen }> = [
   {
     kind: 'total',
     label: { ar: 'نظرية مالية', en: 'financial theories', fr: 'théories financières' },
@@ -479,8 +479,7 @@ const SUMMARY_STATS: Array<{ kind: 'total' | 'essential' | 'static'; label: Loca
     icon: Sparkles,
   },
   {
-    kind: 'static',
-    value: '5',
+    kind: 'tools',
     label: { ar: 'أدوات ذكية', en: 'Smart Tools', fr: 'Outils intelligents' },
     icon: Calculator,
   },
@@ -1656,7 +1655,9 @@ export default function FinancialTheoriesPage() {
                 ? totalTheories.toString()
                 : stat.kind === 'essential'
                   ? essentialCount.toString()
-                  : stat.value ?? '';
+                  : stat.kind === 'tools'
+                    ? THEORY_CALCULATORS.length.toString()
+                    : stat.value ?? '';
               return (
                 <AppCard key={getFinancialTheoryText(stat.label, locale)} className="theory-stat-card">
                   <span aria-hidden="true"><Icon size={20} /></span>

@@ -41,12 +41,18 @@ export type FinancialTheoryTool = {
 
 export type TheoryCalculatorCategoryId =
   | 'all'
+  | 'financial-planning'
   | 'growth-investing'
   | 'debt-financing'
   | 'big-decisions'
   | 'local-gulf';
 
 export type TheoryCalculatorId =
+  | 'financial-health'
+  | 'goal-plan'
+  | 'debt-plan'
+  | 'emergency-fund'
+  | 'salary-split'
   | 'compound-interest'
   | 'loan-financing'
   | 'retirement-fire'
@@ -69,13 +75,94 @@ export type TheoryCalculatorDefinition = {
 
 export const THEORY_CALCULATOR_CATEGORIES: Array<{ id: TheoryCalculatorCategoryId; label: LocalizedText }> = [
   { id: 'all', label: { ar: 'الكل', en: 'All', fr: 'Tout' } },
-  { id: 'growth-investing', label: { ar: 'النمو والاستثمار', en: 'Growth & Investing', fr: 'Croissance et investissement' } },
+  { id: 'financial-planning', label: { ar: 'التخطيط المالي', en: 'Financial Planning', fr: 'Planification financière' } },
   { id: 'debt-financing', label: { ar: 'الديون والتمويل', en: 'Debt & Financing', fr: 'Dette et financement' } },
+  { id: 'growth-investing', label: { ar: 'النمو والاستثمار', en: 'Growth & Investing', fr: 'Croissance et investissement' } },
   { id: 'big-decisions', label: { ar: 'قرارات مالية كبيرة', en: 'Big Financial Decisions', fr: 'Grandes décisions financières' } },
   { id: 'local-gulf', label: { ar: 'أدوات خليجية ومحلية', en: 'Gulf/local tools', fr: 'Outils Golfe et locaux' } },
 ];
 
 export const THEORY_CALCULATORS: TheoryCalculatorDefinition[] = [
+  {
+    id: 'financial-health',
+    category: 'financial-planning',
+    title: { ar: 'تحليل الصحة المالية', en: 'Financial Health Analysis', fr: 'Analyse de santé financière' },
+    description: {
+      ar: 'راجع توازن وضعك المالي من خلال الدخل والمصروفات والادخار ونسبة الالتزامات.',
+      en: 'Review financial balance across income, expenses, savings, and commitment ratio.',
+      fr: 'Évaluez l’équilibre financier avec revenus, dépenses, épargne et ratio d’engagement.',
+    },
+    relatedTheories: [
+      { ar: 'التخطيط المالي الشخصي', en: 'Personal Financial Planning', fr: 'Planification financière personnelle' },
+      { ar: 'الميزانية الشخصية', en: 'Personal Budgeting', fr: 'Budget personnel' },
+      { ar: 'إدارة المخاطر', en: 'Risk Management', fr: 'Gestion du risque' },
+    ],
+    cta: { ar: 'حلل الصحة المالية', en: 'Analyze financial health', fr: 'Analyser la santé financière' },
+  },
+  {
+    id: 'goal-plan',
+    category: 'financial-planning',
+    title: { ar: 'خطة تحقيق الهدف', en: 'Goal Achievement Plan', fr: 'Plan d’atteinte d’objectif' },
+    description: {
+      ar: 'حوّل هدفك المالي إلى مساهمة شهرية واضحة واعرف إن كان موعدك المستهدف واقعياً.',
+      en: 'Turn a financial goal into a clear monthly contribution and test the target date.',
+      fr: 'Transformez un objectif financier en contribution mensuelle et testez l’échéance.',
+    },
+    relatedTheories: [
+      { ar: 'الأهداف الذكية', en: 'SMART Goals', fr: 'Objectifs SMART' },
+      { ar: 'القيمة الزمنية للنقود', en: 'Time Value of Money', fr: 'Valeur temps de l’argent' },
+      { ar: 'الادخار المنتظم', en: 'Consistent Saving', fr: 'Épargne régulière' },
+    ],
+    cta: { ar: 'خطط للهدف', en: 'Plan goal', fr: 'Planifier l’objectif' },
+  },
+  {
+    id: 'debt-plan',
+    category: 'debt-financing',
+    title: { ar: 'خطة سداد الديون', en: 'Debt Repayment Plan', fr: 'Plan de remboursement des dettes' },
+    description: {
+      ar: 'رتّب الدين مع دفعة شهرية واضحة وشاهد مدة السداد والتكلفة التقريبية.',
+      en: 'Organize debt with a clear monthly payment and estimate payoff time and cost.',
+      fr: 'Organisez la dette avec un paiement mensuel et estimez durée et coût.',
+    },
+    relatedTheories: [
+      { ar: 'تقليل الديون السيئة', en: 'Reduce Bad Debt', fr: 'Réduire les mauvaises dettes' },
+      { ar: 'إدارة التدفق النقدي', en: 'Cash Flow Management', fr: 'Gestion de trésorerie' },
+      { ar: 'الأهداف الذكية', en: 'SMART Goals', fr: 'Objectifs SMART' },
+    ],
+    cta: { ar: 'أنشئ خطة السداد', en: 'Create payoff plan', fr: 'Créer le plan' },
+  },
+  {
+    id: 'emergency-fund',
+    category: 'financial-planning',
+    title: { ar: 'حاسبة صندوق الطوارئ', en: 'Emergency Fund Calculator', fr: 'Calculateur de fonds d’urgence' },
+    description: {
+      ar: 'احسب المبلغ المناسب لتغطية مصاريفك من 3 إلى 6 أشهر أو حسب مستوى الأمان الذي تختاره.',
+      en: 'Estimate the reserve needed to cover 3 to 6 months of expenses or your chosen safety level.',
+      fr: 'Estimez la réserve pour couvrir 3 à 6 mois de dépenses ou le niveau choisi.',
+    },
+    relatedTheories: [
+      { ar: 'صندوق الطوارئ', en: 'Emergency Fund', fr: 'Fonds d’urgence' },
+      { ar: 'السيولة', en: 'Liquidity', fr: 'Liquidité' },
+      { ar: 'إدارة المخاطر', en: 'Risk Management', fr: 'Gestion du risque' },
+    ],
+    cta: { ar: 'احسب صندوق الطوارئ', en: 'Calculate emergency fund', fr: 'Calculer le fonds' },
+  },
+  {
+    id: 'salary-split',
+    category: 'financial-planning',
+    title: { ar: 'حاسبة تقسيم الراتب', en: 'Salary Split Calculator', fr: 'Calculateur de répartition du revenu' },
+    description: {
+      ar: 'قسّم دخلك حسب قاعدة 50 / 30 / 20 أو حسب نسبك الخاصة للضروريات والرغبات والادخار.',
+      en: 'Split income using the 50 / 30 / 20 rule or custom needs, wants, and savings percentages.',
+      fr: 'Répartissez le revenu avec la règle 50 / 30 / 20 ou des pourcentages personnalisés.',
+    },
+    relatedTheories: [
+      { ar: 'قاعدة 50 / 30 / 20', en: '50 / 30 / 20 Rule', fr: 'Règle 50 / 30 / 20' },
+      { ar: 'الميزانية الشخصية', en: 'Personal Budgeting', fr: 'Budget personnel' },
+      { ar: 'ادفع لنفسك أولاً', en: 'Pay Yourself First', fr: 'Se payer d’abord' },
+    ],
+    cta: { ar: 'قسّم الراتب', en: 'Split salary', fr: 'Répartir le revenu' },
+  },
   {
     id: 'compound-interest',
     category: 'growth-investing',
@@ -109,7 +196,7 @@ export const THEORY_CALCULATORS: TheoryCalculatorDefinition[] = [
   },
   {
     id: 'retirement-fire',
-    category: 'growth-investing',
+    category: 'financial-planning',
     title: { ar: 'حاسبة التقاعد والحرية المالية', en: 'Retirement / FIRE Calculator', fr: 'Calculateur retraite / FIRE' },
     description: {
       ar: 'قدّر هدف الاستقلال المالي والمدة التقريبية للوصول إليه بناءً على الادخار والاستثمار الشهري.',
