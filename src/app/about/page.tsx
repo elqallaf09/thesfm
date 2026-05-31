@@ -383,7 +383,7 @@ export default function AboutPage() {
 
       <section id="vision" className="statement-grid">
         <InfoCard title={text.visionTitle} body={text.visionText} icon={<Sparkles size={24} />} featured />
-        <InfoCard title={text.disclaimerTitle} body={text.disclaimerText} icon={<ShieldCheck size={24} />} />
+        <InfoCard title={text.disclaimerTitle} body={text.disclaimerText} icon={<ShieldCheck size={24} />} variant="notice" />
       </section>
 
       <section className="section-block values-section" aria-labelledby="values-title">
@@ -437,9 +437,9 @@ function SectionHeading({ eyebrow, title }: { eyebrow: string; title: string }) 
   );
 }
 
-function InfoCard({ title, body, icon, featured = false }: { title: string; body: string; icon: ReactNode; featured?: boolean }) {
+function InfoCard({ title, body, icon, featured = false, variant }: { title: string; body: string; icon: ReactNode; featured?: boolean; variant?: 'notice' }) {
   return (
-    <article className={featured ? 'info-card featured' : 'info-card'}>
+    <article className={['info-card', featured ? 'featured' : '', variant === 'notice' ? 'notice' : ''].filter(Boolean).join(' ')}>
       <div className="card-icon" aria-hidden="true">{icon}</div>
       <h2>{title}</h2>
       <p>{body}</p>
@@ -680,11 +680,32 @@ const aboutStyles = `
     box-shadow: 0 14px 36px rgba(3, 18, 37, 0.07);
     padding: 20px;
   }
-  .info-card.featured {
+  .info-card.featured,
+  .info-card.notice {
     background:
       radial-gradient(circle at 16% 12%, rgba(24, 212, 212, 0.2), transparent 28%),
       linear-gradient(135deg, #071E3A, #0B2748);
     color: #FFFFFF;
+  }
+  .info-card.notice {
+    position: relative;
+    overflow: hidden;
+    border-color: rgba(251, 191, 36, 0.32);
+    background:
+      radial-gradient(circle at 16% 12%, rgba(251, 191, 36, 0.16), transparent 30%),
+      radial-gradient(circle at 86% 8%, rgba(24, 212, 212, 0.16), transparent 26%),
+      linear-gradient(135deg, rgba(3, 18, 37, 0.98), rgba(7, 30, 58, 0.96) 58%, rgba(11, 39, 72, 0.94));
+    box-shadow: 0 22px 58px rgba(3, 18, 37, 0.18);
+  }
+  .info-card.notice::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    top: 18px;
+    bottom: 18px;
+    width: 4px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #FBBF24, #18D4D4);
   }
   .card-icon, .icon-card div {
     width: 48px;
@@ -701,7 +722,8 @@ const aboutStyles = `
     font-size: 20px;
     font-weight: 950;
   }
-  .info-card.featured h2 {
+  .info-card.featured h2,
+  .info-card.notice h2 {
     color: #FFFFFF;
   }
   .info-card p, .icon-card p, .value-card p, .trust-card p {
@@ -710,8 +732,14 @@ const aboutStyles = `
     line-height: 1.72;
     font-weight: 760;
   }
-  .info-card.featured p {
+  .info-card.featured p,
+  .info-card.notice p {
     color: rgba(234, 246, 255, 0.78);
+  }
+  .info-card.notice .card-icon {
+    color: #FCD34D;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(24, 212, 212, 0.12));
+    border: 1px solid rgba(251, 191, 36, 0.24);
   }
   .section-block {
     padding-top: 56px;
