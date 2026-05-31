@@ -86,7 +86,7 @@ function profileMetrics(profile: AssetProfile, assetType: MarketAssetType, unava
       <Metric key="industry" label={t('market_asset_profile_industry')} value={fieldValue(profile.industry, unavailable)} />,
       <Metric key="country" label={t('market_asset_profile_country')} value={fieldValue(profile.country, unavailable)} />,
       <Metric key="market-cap" label={t('market_asset_profile_market_cap')} value={formatCompactNumber(profile.marketCap, language) ?? unavailable} />,
-      <Metric key="employees" label={t('market_asset_profile_employees')} value={formatCompactNumber(profile.employees, language) ?? unavailable} />,
+      <Metric key="employees" label={t('market_asset_profile_employees')} value={formatCompactNumber(profile.employeeCount ?? profile.employees, language) ?? unavailable} />,
     ];
   }
 
@@ -161,7 +161,7 @@ export function AssetProfileCard({ response, loading, error, language, assetType
             <div className="asset-profile-header">
               <div>
                 <strong>{profile.name ?? response.symbol}</strong>
-                <p>{profile.description ?? t('market_asset_profile_unavailable')}</p>
+                <p>{profile.description ?? t('market_asset_profile_partial')}</p>
               </div>
               <div className="asset-profile-badges">
                 <span>{profile.ticker ?? response.symbol}</span>
@@ -170,10 +170,12 @@ export function AssetProfileCard({ response, loading, error, language, assetType
               </div>
             </div>
 
-            <section className="asset-profile-section">
-              <h3>{t('market_asset_profile_what')}</h3>
-              <p>{profile.description ?? t('market_asset_profile_unavailable')}</p>
-            </section>
+            {profile.description && (
+              <section className="asset-profile-section">
+                <h3>{t('market_asset_profile_company_overview')}</h3>
+                <p>{profile.description}</p>
+              </section>
+            )}
 
             {(profile.objective || profile.sector || profile.industry || profile.issuer) && (
               <section className="asset-profile-section">

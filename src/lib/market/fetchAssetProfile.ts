@@ -1,4 +1,5 @@
 import { normalizeAssetType, validateSymbol, type MarketAssetType } from '@/lib/market/marketService';
+import staticUsSymbols from '@/data/us-symbols.json';
 
 export type AssetProfileHolding = {
   symbol?: string;
@@ -31,6 +32,7 @@ export type AssetProfile = {
   sectorExposure?: AssetProfileExposure[];
   marketCap?: number | string;
   employees?: number | string;
+  employeeCount?: number | string;
   ceo?: string;
   currency?: string;
   dataLimitations?: string[];
@@ -62,6 +64,40 @@ type YahooQuoteResponse = {
   };
 };
 
+type YahooChartResponse = {
+  chart?: {
+    result?: Array<{
+      meta?: Record<string, unknown>;
+    }>;
+  };
+};
+
+type SecCompanyTickersExchangeResponse = {
+  data?: Array<[number, string, string, string]>;
+};
+
+type SecSubmissionResponse = {
+  name?: string;
+  tickers?: string[];
+  exchanges?: string[];
+  sic?: string;
+  sicDescription?: string;
+  website?: string;
+};
+
+type SecCompanyFactsResponse = {
+  facts?: {
+    dei?: Record<string, {
+      units?: Record<string, Array<{
+        val?: number;
+        end?: string;
+        filed?: string;
+        form?: string;
+      }>>;
+    }>;
+  };
+};
+
 type FetchAssetProfileInput = {
   symbol: string;
   providerSymbol?: string;
@@ -73,9 +109,11 @@ type FetchAssetProfileInput = {
 
 const PROFILE_REVALIDATE_SECONDS = 3600;
 const USER_AGENT = 'THE-SFM/1.0 (+https://www.the-sfm.com)';
+const SEC_USER_AGENT = process.env.SEC_USER_AGENT || 'THE-SFM admin@the-sfm.com';
+const staticUsSymbolRows = staticUsSymbols as Array<Record<string, unknown>>;
 
 function devLog(message: string, meta: Record<string, unknown>) {
-  if (process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true') {
+  if (process.env.DEBUG_MARKET_DATA === 'true') {
     console.info(message, meta);
   }
 }
@@ -86,6 +124,7 @@ function stringOrUndefined(value: unknown) {
 }
 
 function numberOrUndefined(value: unknown) {
+  if (typeof value === 'string' && value.trim().length === 0) return undefined;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
@@ -120,6 +159,24 @@ function unwrapFmt(value: unknown) {
   return value;
 }
 
+function pickString(source: Record<string, unknown> | undefined | null, keys: string[]) {
+  if (!source) return undefined;
+  for (const key of keys) {
+    const value = stringOrUndefined(unwrapFmt(source[key]));
+    if (value) return value;
+  }
+  return undefined;
+}
+
+function pickNumber(source: Record<string, unknown> | undefined | null, keys: string[]) {
+  if (!source) return undefined;
+  for (const key of keys) {
+    const value = numberOrUndefined(unwrapRaw(source[key]));
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
 function isoFromUnix(value: unknown) {
   const raw = Number(unwrapRaw(value));
   if (!Number.isFinite(raw) || raw <= 0) return undefined;
@@ -144,58 +201,34 @@ function compactProfile(profile: AssetProfile): AssetProfile {
   return next;
 }
 
-function normalizeLanguage(language: unknown) {
-  const normalized = String(language ?? '').trim().toLowerCase();
-  return normalized === 'en' || normalized === 'fr' ? normalized : 'ar';
-}
-
-function fallbackDescription(assetType: MarketAssetType, language: string) {
-  const lang = normalizeLanguage(language);
-  const map: Record<MarketAssetType, Record<'ar' | 'en' | 'fr', string>> = {
-    stock: {
-      ar: 'هذا الأصل مصنف كسهم شركة. يمكن عرض نشاط الشركة والقطاع وبيانات الملف عند توفرها من مزود البيانات.',
-      en: 'This asset is classified as a company stock. Company activity, sector, and profile details appear when they are available from the data provider.',
-      fr: 'Cet actif est classé comme une action. L’activité de l’entreprise, le secteur et les détails du profil apparaissent lorsqu’ils sont disponibles auprès du fournisseur de données.',
-    },
-    etf: {
-      ar: 'هذا الأصل مصنف كصندوق متداول. قد تتوفر بيانات إضافية مثل المؤشر المتتبع والمكونات الرئيسية ونسبة المصاريف من مزود البيانات عند توفرها.',
-      en: 'This asset is classified as an exchange-traded fund. Additional fund details such as tracked index, holdings, and expense ratio appear when they are available from the data provider.',
-      fr: 'Cet actif est classé comme un fonds négocié en bourse. Des détails comme l’indice suivi, les positions et le ratio de frais apparaissent lorsqu’ils sont disponibles auprès du fournisseur de données.',
-    },
-    index: {
-      ar: 'هذا الأصل مصنف كمؤشر سوق. يمثل سوقًا أو منطقة أو مجموعة أوراق مالية عندما تتوفر تفاصيل المكونات من مزود البيانات.',
-      en: 'This asset is classified as a market index. It represents a market, region, or group of securities when detailed constituents are available from the data provider.',
-      fr: 'Cet actif est classé comme un indice de marché. Il représente un marché, une région ou un groupe de titres lorsque les détails sont disponibles auprès du fournisseur de données.',
-    },
-    commodity: {
-      ar: 'هذا الأصل مصنف كسلعة. لا تنطبق عليه مقاييس الشركات مثل الإيرادات أو عدد الموظفين.',
-      en: 'This asset is classified as a commodity. Company-specific metrics are not applicable to this asset type.',
-      fr: 'Cet actif est classé comme une matière première. Les indicateurs propres aux entreprises ne s’appliquent pas à ce type d’actif.',
-    },
-    gold: {
-      ar: 'يمثل هذا الأصل الذهب أو أداة سوقية مرتبطة بالذهب. لا تنطبق عليه مقاييس الشركات مثل الإيرادات أو عدد الموظفين.',
-      en: 'This asset represents gold or a gold-linked market instrument. Company-specific metrics are not applicable to this asset type.',
-      fr: 'Cet actif représente l’or ou un instrument de marché lié à l’or. Les indicateurs propres aux entreprises ne s’appliquent pas à ce type d’actif.',
-    },
-    crypto: {
-      ar: 'هذا الأصل مصنف كأصل رقمي. تظهر بيانات الشبكة والسوق عند توفرها من مزود البيانات.',
-      en: 'This asset is classified as a crypto asset. Network and market details appear when they are available from the data provider.',
-      fr: 'Cet actif est classé comme un cryptoactif. Les détails du réseau et du marché apparaissent lorsqu’ils sont disponibles auprès du fournisseur de données.',
-    },
-    forex: {
-      ar: 'هذا الأصل مصنف كزوج عملات. لا تنطبق عليه مقاييس الشركات مثل الإيرادات أو عدد الموظفين.',
-      en: 'This asset is classified as a currency pair. Company-specific metrics are not applicable to this asset type.',
-      fr: 'Cet actif est classé comme une paire de devises. Les indicateurs propres aux entreprises ne s’appliquent pas à ce type d’actif.',
-    },
-  };
-  return map[assetType][lang];
-}
-
 function sectorNameFromYahooKey(key: string) {
   return key
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+function sectorFromSic(sic?: string) {
+  const code = Number(sic);
+  if (!Number.isFinite(code)) return undefined;
+  if (code >= 100 && code <= 999) return 'Agriculture';
+  if (code >= 1000 && code <= 1499) return 'Energy and Mining';
+  if (code >= 1500 && code <= 1799) return 'Industrials';
+  if (code >= 2000 && code <= 3999) {
+    if (code >= 3570 && code <= 3579) return 'Technology';
+    if (code >= 3600 && code <= 3699) return 'Technology';
+    if (code >= 3800 && code <= 3899) return 'Healthcare';
+    return 'Manufacturing';
+  }
+  if (code >= 4000 && code <= 4999) return 'Utilities and Communications';
+  if (code >= 5000 && code <= 5999) return 'Consumer and Retail';
+  if (code >= 6000 && code <= 6799) return 'Financial Services';
+  if (code >= 7000 && code <= 8999) {
+    if (code >= 7370 && code <= 7379) return 'Technology';
+    if (code >= 8000 && code <= 8099) return 'Healthcare';
+    return 'Services';
+  }
+  return undefined;
 }
 
 function parseTopHoldings(value: unknown): AssetProfileHolding[] {
@@ -226,6 +259,14 @@ function parseSectorExposure(value: unknown): AssetProfileExposure[] {
   });
 }
 
+async function safeJson<T>(response: Response): Promise<T | null> {
+  try {
+    return await response.json() as T;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchYahooQuoteSummary(symbol: string) {
   const modules = [
     'assetProfile',
@@ -246,7 +287,7 @@ async function fetchYahooQuoteSummary(symbol: string) {
       'user-agent': USER_AGENT,
     },
   });
-  const body = await response.json().catch(() => null) as YahooQuoteSummaryResponse | null;
+  const body = await safeJson<YahooQuoteSummaryResponse>(response);
   const result = body?.quoteSummary?.result?.[0] ?? null;
   devLog('[AssetProfile] Yahoo quoteSummary response', {
     provider: 'Yahoo Finance',
@@ -268,7 +309,7 @@ async function fetchYahooQuote(symbol: string) {
       'user-agent': USER_AGENT,
     },
   });
-  const body = await response.json().catch(() => null) as YahooQuoteResponse | null;
+  const body = await safeJson<YahooQuoteResponse>(response);
   const quote = body?.quoteResponse?.result?.[0] ?? null;
   devLog('[AssetProfile] Yahoo quote response', {
     provider: 'Yahoo Finance',
@@ -278,6 +319,28 @@ async function fetchYahooQuote(symbol: string) {
     unavailableReason: response.ok && quote ? null : response.ok ? 'provider_returned_empty' : `provider_http_${response.status}`,
   });
   return response.ok && quote ? quote : null;
+}
+
+async function fetchYahooChartProfile(symbol: string) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1d`;
+  const response = await fetch(url, {
+    next: { revalidate: PROFILE_REVALIDATE_SECONDS },
+    signal: AbortSignal.timeout(8000),
+    headers: {
+      accept: 'application/json',
+      'user-agent': USER_AGENT,
+    },
+  });
+  const body = await safeJson<YahooChartResponse>(response);
+  const meta = body?.chart?.result?.[0]?.meta ?? null;
+  devLog('[AssetProfile] Yahoo chart response', {
+    provider: 'Yahoo Finance Chart',
+    symbol,
+    status: response.status,
+    fieldsReturned: meta ? Object.keys(meta) : [],
+    unavailableReason: response.ok && meta ? null : response.ok ? 'provider_returned_empty' : `provider_http_${response.status}`,
+  });
+  return response.ok && meta ? meta : null;
 }
 
 async function fetchFinnhubProfile(symbol: string) {
@@ -292,7 +355,7 @@ async function fetchFinnhubProfile(symbol: string) {
       'user-agent': USER_AGENT,
     },
   });
-  const body = await response.json().catch(() => null) as Record<string, unknown> | null;
+  const body = await safeJson<Record<string, unknown>>(response);
   devLog('[AssetProfile] Finnhub profile response', {
     provider: 'Finnhub',
     symbol,
@@ -305,21 +368,123 @@ async function fetchFinnhubProfile(symbol: string) {
   return body;
 }
 
+async function fetchSecCompanyProfile(symbol: string) {
+  const exchangeResponse = await fetch('https://www.sec.gov/files/company_tickers_exchange.json', {
+    next: { revalidate: 86400 },
+    signal: AbortSignal.timeout(9000),
+    headers: {
+      accept: 'application/json',
+      'user-agent': SEC_USER_AGENT,
+    },
+  });
+  const exchangeBody = await safeJson<SecCompanyTickersExchangeResponse>(exchangeResponse);
+  const row = exchangeBody?.data?.find(item => String(item[2] ?? '').toUpperCase() === symbol.toUpperCase());
+  if (!exchangeResponse.ok || !row) {
+    devLog('[AssetProfile] SEC ticker directory response', {
+      provider: 'SEC',
+      symbol,
+      status: exchangeResponse.status,
+      fieldsReturned: exchangeBody ? Object.keys(exchangeBody) : [],
+      unavailableReason: exchangeResponse.ok ? 'symbol_not_found' : `provider_http_${exchangeResponse.status}`,
+    });
+    return null;
+  }
+
+  const cik = String(row[0]).padStart(10, '0');
+  const [submissionResponse, factsResponse] = await Promise.all([
+    fetch(`https://data.sec.gov/submissions/CIK${cik}.json`, {
+      next: { revalidate: 86400 },
+      signal: AbortSignal.timeout(9000),
+      headers: {
+        accept: 'application/json',
+        'user-agent': SEC_USER_AGENT,
+      },
+    }),
+    fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(9000),
+      headers: {
+        accept: 'application/json',
+        'user-agent': SEC_USER_AGENT,
+      },
+    }),
+  ]);
+
+  const submission = await safeJson<SecSubmissionResponse>(submissionResponse);
+  const facts = await safeJson<SecCompanyFactsResponse>(factsResponse);
+  devLog('[AssetProfile] SEC profile response', {
+    provider: 'SEC',
+    symbol,
+    normalizedSymbol: row[2],
+    cik,
+    status: { submissions: submissionResponse.status, facts: factsResponse.status },
+    rawResponseKeys: {
+      submissions: submission ? Object.keys(submission) : [],
+      facts: facts?.facts?.dei ? Object.keys(facts.facts.dei) : [],
+    },
+  });
+
+  const shareCount = latestSecFact(facts, 'EntityCommonStockSharesOutstanding');
+  const publicFloat = latestSecFact(facts, 'EntityPublicFloat');
+  const profile = compactProfile({
+    name: stringOrUndefined(submission?.name) ?? stringOrUndefined(row[1]),
+    ticker: stringOrUndefined(submission?.tickers?.[0]) ?? stringOrUndefined(row[2]),
+    exchange: stringOrUndefined(submission?.exchanges?.[0]) ?? stringOrUndefined(row[3]),
+    industry: stringOrUndefined(submission?.sicDescription),
+    sector: sectorFromSic(submission?.sic),
+    country: 'US',
+    currency: 'USD',
+    marketCap: publicFloat,
+  });
+  return { profile, shareCount, source: 'SEC EDGAR' };
+}
+
+function latestSecFact(facts: SecCompanyFactsResponse | null, concept: string) {
+  const units = facts?.facts?.dei?.[concept]?.units;
+  if (!units) return undefined;
+  const rows = Object.values(units)
+    .flat()
+    .filter(row => Number.isFinite(Number(row.val)))
+    .sort((a, b) => {
+      const filedDiff = String(b.filed ?? '').localeCompare(String(a.filed ?? ''));
+      if (filedDiff !== 0) return filedDiff;
+      return String(b.end ?? '').localeCompare(String(a.end ?? ''));
+    });
+  return rows[0]?.val;
+}
+
 function profileFromFinnhub(data: Record<string, unknown>): AssetProfile {
   return compactProfile({
-    name: stringOrUndefined(data.name),
-    ticker: stringOrUndefined(data.ticker),
-    exchange: stringOrUndefined(data.exchange),
-    industry: stringOrUndefined(data.finnhubIndustry),
-    country: stringOrUndefined(data.country),
-    website: stringOrUndefined(data.weburl),
-    marketCap: numberOrUndefined(data.marketCapitalization),
-    inceptionDate: stringOrUndefined(data.ipo),
-    currency: stringOrUndefined(data.currency),
+    name: pickString(data, ['name', 'companyName']),
+    ticker: pickString(data, ['ticker', 'symbol']),
+    exchange: pickString(data, ['exchange', 'exchangeCode', 'mic']),
+    sector: pickString(data, ['sector', 'gsector', 'category']),
+    industry: pickString(data, ['finnhubIndustry', 'industry', 'gind', 'industryName']),
+    country: pickString(data, ['country', 'countryName']),
+    website: pickString(data, ['weburl', 'website']),
+    marketCap: pickNumber(data, ['marketCapitalization', 'marketCap', 'market_cap']),
+    inceptionDate: pickString(data, ['ipo']),
+    currency: pickString(data, ['currency', 'currencyCode', 'financialCurrency']),
   });
 }
 
-function profileFromYahoo(summary: Record<string, unknown> | null, quote: Record<string, unknown> | null, input: {
+function profileFromDirectory(symbol: string, providerSymbol: string, input: FetchAssetProfileInput): AssetProfile {
+  const row = staticUsSymbolRows.find(item => {
+    const itemSymbol = String(item.symbol ?? '').toUpperCase();
+    const itemProviderSymbol = String(item.providerSymbol ?? '').toUpperCase();
+    return itemSymbol === symbol.toUpperCase() || itemProviderSymbol === providerSymbol.toUpperCase();
+  });
+  return compactProfile({
+    name: stringOrUndefined(input.name) ?? stringOrUndefined(row?.name),
+    ticker: symbol,
+    exchange: stringOrUndefined(input.exchange) ?? stringOrUndefined(row?.exchange),
+    country: stringOrUndefined(row?.country),
+    currency: stringOrUndefined(row?.currency),
+    category: stringOrUndefined(row?.assetType),
+  });
+}
+
+function profileFromYahoo(summary: Record<string, unknown> | null, quote: Record<string, unknown> | null, chart: Record<string, unknown> | null, input: {
   symbol: string;
   providerSymbol: string;
   assetType: MarketAssetType;
@@ -337,35 +502,36 @@ function profileFromYahoo(summary: Record<string, unknown> | null, quote: Record
   const profileSource = assetProfile ?? summaryProfile;
 
   const profile: AssetProfile = {
-    name: stringOrUndefined(getPath(price, ['longName']))
-      ?? stringOrUndefined(getPath(price, ['shortName']))
-      ?? stringOrUndefined(quote?.longName)
-      ?? stringOrUndefined(quote?.shortName)
+    name: pickString(price, ['longName', 'shortName'])
+      ?? pickString(quote, ['longName', 'shortName'])
+      ?? pickString(chart, ['longName', 'shortName'])
       ?? input.name,
-    ticker: stringOrUndefined(getPath(price, ['symbol'])) ?? stringOrUndefined(quote?.symbol) ?? input.symbol,
-    exchange: stringOrUndefined(getPath(price, ['exchangeName']))
-      ?? stringOrUndefined(getPath(quoteType, ['exchange']))
-      ?? stringOrUndefined(quote?.fullExchangeName)
+    ticker: pickString(price, ['symbol']) ?? pickString(quote, ['symbol']) ?? pickString(chart, ['symbol']) ?? input.symbol,
+    exchange: pickString(price, ['exchangeName', 'exchange'])
+      ?? pickString(quoteType, ['exchange'])
+      ?? pickString(quote, ['fullExchangeName', 'exchange'])
+      ?? pickString(chart, ['fullExchangeName', 'exchangeName'])
       ?? input.exchange,
-    category: stringOrUndefined(getPath(fundProfile, ['categoryName']))
-      ?? stringOrUndefined(getPath(quoteType, ['quoteType']))
-      ?? stringOrUndefined(quote?.quoteType),
-    sector: input.assetType === 'stock' ? stringOrUndefined(profileSource?.sector) : undefined,
-    industry: input.assetType === 'stock' ? stringOrUndefined(profileSource?.industry) : undefined,
-    country: stringOrUndefined(profileSource?.country),
-    website: stringOrUndefined(profileSource?.website),
-    description: stringOrUndefined(profileSource?.longBusinessSummary),
+    category: pickString(fundProfile, ['categoryName'])
+      ?? pickString(quoteType, ['quoteType'])
+      ?? pickString(quote, ['quoteType'])
+      ?? pickString(chart, ['instrumentType']),
+    sector: input.assetType === 'stock' ? pickString(profileSource, ['sector', 'gsector', 'category']) : undefined,
+    industry: input.assetType === 'stock' ? pickString(profileSource, ['industry', 'gind', 'industryName']) : undefined,
+    country: pickString(profileSource, ['country', 'countryName']),
+    website: pickString(profileSource, ['website', 'weburl']),
+    description: pickString(profileSource, ['longBusinessSummary', 'description', 'businessSummary']),
     issuer: input.assetType === 'etf'
-      ? stringOrUndefined(getPath(fundProfile, ['family']))
-        ?? stringOrUndefined(getPath(topHoldings, ['fundFamily']))
+      ? pickString(fundProfile, ['family'])
+        ?? pickString(topHoldings, ['fundFamily'])
       : undefined,
     indexTracked: input.assetType === 'etf'
-      ? stringOrUndefined(getPath(fundProfile, ['indexName']))
-        ?? stringOrUndefined(getPath(topHoldings, ['indexName']))
+      ? pickString(fundProfile, ['indexName'])
+        ?? pickString(topHoldings, ['indexName'])
       : undefined,
     objective: input.assetType === 'etf'
-      ? stringOrUndefined(getPath(fundProfile, ['investmentStrategy']))
-        ?? stringOrUndefined(profileSource?.longBusinessSummary)
+      ? pickString(fundProfile, ['investmentStrategy'])
+        ?? pickString(profileSource, ['longBusinessSummary', 'description'])
       : undefined,
     expenseRatio: input.assetType === 'etf'
       ? numberOrUndefined(unwrapRaw(getPath(summaryDetail, ['annualReportExpenseRatio'])))
@@ -383,12 +549,15 @@ function profileFromYahoo(summary: Record<string, unknown> | null, quote: Record
     topHoldings: input.assetType === 'etf' ? parseTopHoldings(topHoldings?.holdings) : undefined,
     sectorExposure: input.assetType === 'etf' ? parseSectorExposure(topHoldings?.sectorWeightings) : undefined,
     marketCap: input.assetType === 'stock' || input.assetType === 'crypto'
-      ? numberOrUndefined(unwrapRaw(getPath(price, ['marketCap'])))
-        ?? numberOrUndefined(quote?.marketCap)
-        ?? numberOrUndefined(unwrapRaw(getPath(stats, ['marketCap'])))
+      ? pickNumber(price, ['marketCap', 'market_cap', 'marketCapitalization'])
+        ?? pickNumber(quote, ['marketCap', 'market_cap', 'marketCapitalization'])
+        ?? pickNumber(stats, ['marketCap', 'market_cap', 'marketCapitalization'])
       : undefined,
-    employees: input.assetType === 'stock' ? numberOrUndefined(profileSource?.fullTimeEmployees) : undefined,
-    currency: stringOrUndefined(getPath(price, ['currency'])) ?? stringOrUndefined(quote?.currency),
+    employees: input.assetType === 'stock' ? pickNumber(profileSource, ['fullTimeEmployees', 'employeeCount', 'employees']) : undefined,
+    employeeCount: input.assetType === 'stock' ? pickNumber(profileSource, ['employeeCount', 'fullTimeEmployees', 'employees']) : undefined,
+    currency: pickString(price, ['currency', 'currencyCode', 'financialCurrency'])
+      ?? pickString(quote, ['currency', 'currencyCode', 'financialCurrency'])
+      ?? pickString(chart, ['currency', 'currencyCode', 'financialCurrency']),
     dataLimitations: [],
   };
 
@@ -398,6 +567,8 @@ function profileFromYahoo(summary: Record<string, unknown> | null, quote: Record
 function mergeProfiles(primary: AssetProfile, secondary: AssetProfile) {
   const merged: AssetProfile = { ...secondary, ...primary };
   if (!merged.description) merged.description = secondary.description;
+  if (!merged.employees) merged.employees = secondary.employees ?? secondary.employeeCount;
+  if (!merged.employeeCount) merged.employeeCount = secondary.employeeCount ?? secondary.employees;
   return compactProfile(merged);
 }
 
@@ -407,65 +578,103 @@ function unavailableResponse(symbol: string, providerSymbol: string, assetType: 
     symbol,
     providerSymbol,
     assetType,
-    source: 'Yahoo Finance/Finnhub',
+    source: 'Market data providers',
     lastUpdated: new Date().toISOString(),
     profileAvailable: false,
     profile: null,
     unavailableReason: reason,
-    message: 'بيانات هذا الأصل غير متاحة حاليًا من مزود البيانات.',
+    message: 'profile_unavailable',
   };
+}
+
+function normalizeProviderSymbol(symbol: string, exchange?: string) {
+  const validated = validateSymbol(symbol);
+  if (!validated) return null;
+  const withoutExchange = validated.includes(':') ? validated.split(':').pop() || validated : validated;
+  const cleaned = withoutExchange.replace(/\$/g, '-').replace(/\./g, '-').toUpperCase();
+  if (/^(NASDAQ|NYSE|AMEX|NYSEARCA)$/i.test(String(exchange ?? ''))) return cleaned;
+  return validateSymbol(cleaned);
+}
+
+function usefulProfileFields(profile: AssetProfile) {
+  return Object.entries(profile).filter(([key, value]) => (
+    key !== 'dataLimitations'
+    && key !== 'category'
+    && hasProfileValue(value)
+  ));
 }
 
 export async function fetchAssetProfile(input: FetchAssetProfileInput): Promise<AssetProfileResponse> {
   const symbol = validateSymbol(input.symbol);
-  const providerSymbol = validateSymbol(input.providerSymbol) ?? symbol;
+  const providerSymbol = normalizeProviderSymbol(input.providerSymbol ?? input.symbol, input.exchange);
+  const assetType = normalizeAssetType(input.assetType);
   if (!symbol || !providerSymbol) {
-    return unavailableResponse(String(input.symbol ?? '').toUpperCase(), String(input.providerSymbol ?? input.symbol ?? '').toUpperCase(), normalizeAssetType(input.assetType), 'invalid_symbol');
+    return unavailableResponse(String(input.symbol ?? '').toUpperCase(), String(input.providerSymbol ?? input.symbol ?? '').toUpperCase(), assetType, 'invalid_symbol');
   }
 
-  const assetType = normalizeAssetType(input.assetType);
-  const language = normalizeLanguage(input.language);
   const providersTried: string[] = [];
   let source = 'Symbol directory';
-  let profile: AssetProfile = {};
+  let profile: AssetProfile = profileFromDirectory(symbol, providerSymbol, input);
+  let secShareCount: number | undefined;
+  let latestChartPrice: number | undefined;
 
   devLog('[AssetProfile] Fetch start', {
+    requestedSymbol: input.symbol,
+    normalizedSymbol: providerSymbol,
     symbol,
-    providerSymbol,
     assetType,
-    providersTried,
+    exchange: input.exchange,
   });
 
   if (assetType === 'stock') {
     providersTried.push('Finnhub');
     const finnhub = await fetchFinnhubProfile(providerSymbol);
     if (finnhub) {
-      profile = profileFromFinnhub(finnhub);
+      profile = mergeProfiles(profileFromFinnhub(finnhub), profile);
       source = 'Finnhub';
     }
   }
 
   providersTried.push('Yahoo Finance');
-  const [yahooSummary, yahooQuote] = await Promise.allSettled([
+  const [yahooSummary, yahooQuote, yahooChart] = await Promise.allSettled([
     fetchYahooQuoteSummary(providerSymbol),
     fetchYahooQuote(providerSymbol),
+    fetchYahooChartProfile(providerSymbol),
   ]);
   const summary = yahooSummary.status === 'fulfilled' ? yahooSummary.value : null;
   const quote = yahooQuote.status === 'fulfilled' ? yahooQuote.value : null;
-  const yahooHasData = Boolean(summary || quote);
-  const yahooProfile = yahooHasData ? profileFromYahoo(summary, quote, {
+  const chart = yahooChart.status === 'fulfilled' ? yahooChart.value : null;
+  latestChartPrice = pickNumber(chart, ['regularMarketPrice']);
+  const yahooHasData = Boolean(summary || quote || chart);
+  const yahooProfile = yahooHasData ? profileFromYahoo(summary, quote, chart, {
     symbol,
     providerSymbol,
     assetType,
     name: input.name,
     exchange: input.exchange,
   }) : {};
-  if (yahooHasData && Object.keys(yahooProfile).length > 0) {
-    profile = mergeProfiles(profile, yahooProfile);
-    source = source === 'Finnhub' && Object.keys(profile).length > Object.keys(yahooProfile).length
-      ? 'Finnhub/Yahoo Finance'
-      : 'Yahoo Finance';
+  if (yahooHasData && usefulProfileFields(yahooProfile).length > 0) {
+    profile = mergeProfiles(yahooProfile, profile);
+    source = source === 'Finnhub' ? 'Finnhub/Yahoo Finance' : 'Yahoo Finance';
   }
+
+  if (assetType === 'stock') {
+    providersTried.push('SEC EDGAR');
+    const sec = await fetchSecCompanyProfile(providerSymbol);
+    if (sec) {
+      secShareCount = sec.shareCount;
+      profile = mergeProfiles(profile, sec.profile);
+      source = source.includes('Yahoo') || source.includes('Finnhub')
+        ? `${source}/SEC EDGAR`
+        : sec.source;
+    }
+  }
+
+  if (secShareCount && latestChartPrice) {
+    profile.marketCap = secShareCount * latestChartPrice;
+  }
+  if (!profile.employees && profile.employeeCount) profile.employees = profile.employeeCount;
+  if (!profile.employeeCount && profile.employees) profile.employeeCount = profile.employees;
 
   const dataLimitations = [
     ...(profile.dataLimitations ?? []),
@@ -479,19 +688,28 @@ export async function fetchAssetProfile(input: FetchAssetProfileInput): Promise<
     name: profile.name ?? input.name ?? symbol,
     ticker: profile.ticker ?? symbol,
     exchange: profile.exchange ?? input.exchange,
-    description: profile.description ?? fallbackDescription(assetType, language),
     dataLimitations,
   });
 
-  const profileAvailable = Object.keys(profile).some(key => key !== 'dataLimitations' && hasProfileValue((profile as Record<string, unknown>)[key]));
+  const profileAvailable = usefulProfileFields(profile).length > 0;
   const unavailableReason = profileAvailable ? undefined : 'provider_returned_empty';
   devLog('[AssetProfile] Fetch complete', {
+    requestedSymbol: input.symbol,
+    normalizedSymbol: providerSymbol,
     symbol,
-    providerSymbol,
     assetType,
     providersTried,
-    source,
-    fieldsReturned: Object.keys(profile),
+    providerUsed: source,
+    rawResponseKeys: Object.keys(profile),
+    missingFields: {
+      sector: !profile.sector,
+      industry: !profile.industry,
+      marketCap: !profile.marketCap,
+      country: !profile.country,
+      currency: !profile.currency,
+      employeeCount: !(profile.employeeCount ?? profile.employees),
+      description: !profile.description,
+    },
     unavailableReason,
   });
 
