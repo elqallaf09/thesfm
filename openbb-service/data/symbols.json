@@ -51,5 +51,8 @@
   {"symbol":"USDJPY","name":"USD/JPY","assetType":"forex","exchange":"FX","country":"Global","providerSymbol":"USDJPY=X"},
   {"symbol":"USDCHF","name":"USD/CHF","assetType":"forex","exchange":"FX","country":"Global","providerSymbol":"USDCHF=X"},
   {"symbol":"AUDUSD","name":"AUD/USD","assetType":"forex","exchange":"FX","country":"Global","providerSymbol":"AUDUSD=X"},
-  {"symbol":"USDCAD","name":"USD/CAD","assetType":"forex","exchange":"FX","country":"Global","providerSymbol":"USDCAD=X"}
+  {"symbol":"USDCAD","name":"USD/CAD","assetType":"forex","exchange":"FX","country":"Global","providerSymbol":"USDCAD=X"},
+  {"symbol":"NZDUSD","name":"NZD/USD","assetType":"forex","exchange":"FX","country":"Global","providerSymbol":"NZDUSD=X"},
+  {"symbol":"EURJPY","name":"EUR/JPY","assetType":"forex","exchange":"FX","country":"Global","providerSymbol":"EURJPY=X"},
+  {"symbol":"GBPJPY","name":"GBP/JPY","assetType":"forex","exchange":"FX","country":"Global","providerSymbol":"GBPJPY=X"}
 ]

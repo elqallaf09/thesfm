@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import type { MarketAssetType } from '@/lib/market/marketService';
+import { normalizeMarketSymbolInput, type MarketAssetType } from '@/lib/market/marketService';
 
 declare global {
   interface Window {
@@ -19,7 +19,9 @@ type TradingViewChartProps = {
 };
 
 function tradingViewSymbol(symbol: string, assetType: MarketAssetType, exchange?: string) {
-  const clean = symbol.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const normalized = normalizeMarketSymbolInput(symbol, assetType);
+  const displaySymbol = normalized.valid ? normalized.displaySymbol : symbol;
+  const clean = displaySymbol.toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (assetType === 'crypto') return `COINBASE:${clean.replace(/USD$/, '')}USD`;
   if (assetType === 'forex') return `FX:${clean}`;
   if (assetType === 'gold' || clean === 'XAU' || clean === 'XAUUSD') return 'TVC:GOLD';

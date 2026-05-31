@@ -70,6 +70,7 @@ export type MarketError = {
   code?: string;
   error: string;
   suggestions?: string[];
+  correction?: string | null;
   provider?: 'openbb';
   dataStatus?: 'unavailable';
   source?: string;
@@ -92,6 +93,7 @@ export type MarketSearchItem = {
 
 const SUPPORTED_ASSET_TYPES: MarketAssetType[] = ['stock', 'etf', 'crypto', 'forex', 'commodity', 'gold', 'index'];
 const COMMON_CURRENCY_CODES = ['USD', 'EUR', 'JPY', 'GBP', 'CHF', 'CAD', 'AUD', 'NZD'] as const;
+const COMMON_FOREX_PAIRS = ['USDJPY', 'EURUSD', 'GBPUSD', 'USDCHF', 'USDCAD', 'AUDUSD', 'NZDUSD', 'EURJPY', 'GBPJPY'] as const;
 const COMMON_CRYPTO_PAIRS: Record<string, string> = {
   BTCUSD: 'BTC-USD',
   ETHUSD: 'ETH-USD',
@@ -109,12 +111,16 @@ export function validateSymbol(symbol: unknown) {
 }
 
 function compactSymbol(symbol: unknown) {
-  return String(symbol ?? '')
+  const compact = String(symbol ?? '')
     .trim()
     .toUpperCase()
     .replace(/\s+/g, '')
     .replace(/[\\/]/g, '')
     .replace(/:/g, '');
+  return compact
+    .replace(/^([A-Z]{6})=X$/, '$1')
+    .replace(/^(FX|FOREX|OANDA|TVC)(?=[A-Z]{6}$)/, '')
+    .replace(/^(NASDAQ|NYSE|AMEX|COINBASE)(?=[A-Z0-9.^=-]{1,12}$)/, '');
 }
 
 function isCurrencyCode(code: string) {
@@ -132,10 +138,38 @@ function closestCurrencyCode(code: string) {
   return sorted[0]?.score >= 2 ? sorted[0].currency : null;
 }
 
+function closestForexPair(symbol: string) {
+  const directPrefix = COMMON_FOREX_PAIRS.find(pair => symbol.startsWith(pair) && symbol.length <= pair.length + 2);
+  if (directPrefix) return directPrefix;
+  const compact = symbol.replace(/[^A-Z]/g, '');
+  const scored = COMMON_FOREX_PAIRS
+    .map(pair => {
+      let score = 0;
+      const max = Math.max(compact.length, pair.length);
+      for (let index = 0; index < max; index += 1) {
+        if (compact[index] === pair[index]) score += 2;
+        else if (compact.includes(pair[index] ?? '')) score += 0.25;
+      }
+      score -= Math.abs(compact.length - pair.length);
+      return { pair, score };
+    })
+    .sort((a, b) => b.score - a.score);
+  return scored[0]?.score >= 9 ? scored[0].pair : null;
+}
+
+export function marketSymbolCorrection(symbol: unknown) {
+  const compact = compactSymbol(symbol);
+  if (compact === 'USDERU') return 'USDEUR';
+  const forexPair = closestForexPair(compact);
+  return forexPair && compact !== forexPair ? forexPair : null;
+}
+
 export function marketSymbolSuggestions(symbol: unknown) {
   const compact = compactSymbol(symbol);
-  const base = ['EURUSD', 'USDEUR', 'AAPL', 'NVDA', 'XAUUSD', 'BTCUSD'];
+  const base = ['USDJPY', 'EURUSD', 'GBPUSD', 'XAUUSD', 'BTCUSD', 'NVDA'];
   if (compact === 'USDERU') return ['USDEUR', 'EURUSD', 'AAPL', 'NVDA', 'XAUUSD', 'BTCUSD'];
+  const typoPair = closestForexPair(compact);
+  if (typoPair) return [typoPair, ...base].filter((item, index, list) => list.indexOf(item) === index).slice(0, 6);
   if (compact.length === 6) {
     const from = closestCurrencyCode(compact.slice(0, 3));
     const to = closestCurrencyCode(compact.slice(3, 6));
@@ -149,7 +183,7 @@ export function normalizeMarketSymbolInput(symbol: unknown, assetTypeInput?: unk
   const raw = String(symbol ?? '').trim();
   const compact = compactSymbol(raw);
   const requestedAssetType = normalizeAssetType(assetTypeInput);
-  if (!compact || !validateSymbol(raw)) {
+  if (!compact || !validateSymbol(compact)) {
     return { valid: false as const, code: 'invalid_symbol', suggestions: marketSymbolSuggestions(raw) };
   }
 
@@ -175,6 +209,11 @@ export function normalizeMarketSymbolInput(symbol: unknown, assetTypeInput?: unk
     };
   }
 
+  const likelyForexTypo = closestForexPair(compact);
+  if (likelyForexTypo && compact !== likelyForexTypo) {
+    return { valid: false as const, code: 'invalid_symbol', suggestions: marketSymbolSuggestions(compact), correction: likelyForexTypo };
+  }
+
   if (compact.length === 6) {
     const base = compact.slice(0, 3);
     const quote = compact.slice(3, 6);
@@ -192,7 +231,7 @@ export function normalizeMarketSymbolInput(symbol: unknown, assetTypeInput?: unk
       };
     }
     if (baseValid || quoteValid || requestedAssetType === 'forex') {
-      return { valid: false as const, code: 'symbol_not_found', suggestions: marketSymbolSuggestions(compact) };
+      return { valid: false as const, code: 'symbol_not_found', suggestions: marketSymbolSuggestions(compact), correction: marketSymbolCorrection(compact) };
     }
   }
 

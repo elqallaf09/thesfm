@@ -49,6 +49,7 @@ type MarketResultWithMeta = MarketResult & {
   fallback?: boolean;
   fallbackReason?: string;
   suggestions?: string[];
+  correction?: string | null;
 };
 
 const WATCHLIST_STORAGE_KEY = 'sfm_market_watchlist';
@@ -346,6 +347,12 @@ function marketErrorText(code: string | undefined, fallback: string, t: (key: st
   return map[code] || fallback;
 }
 
+function invalidSymbolMessage(t: (key: string) => string, correction?: string | null) {
+  return correction
+    ? t('market_invalid_symbol_did_you_mean').replace('{symbol}', correction)
+    : t('market_symbol_not_found_helpful');
+}
+
 function normalizeProviderSymbolForRequest(value: string | undefined | null) {
   const symbol = validateSymbol(value);
   if (!symbol) return null;
@@ -487,7 +494,7 @@ export default function MarketAnalysisPage() {
     const normalizedInput = normalizeMarketSymbolInput(selectedInput?.providerSymbol ?? symbolInput, typeInput);
     if (!normalizedInput.valid) {
       const suggestions = normalizedInput.suggestions.length ? normalizedInput.suggestions : marketSymbolSuggestions(symbolInput);
-      setError(t('market_symbol_not_found_helpful'));
+      setError(invalidSymbolMessage(t, normalizedInput.correction));
       setErrorSuggestions(suggestions);
       setAnalysis(null);
       setAiInsight(null);
@@ -498,7 +505,7 @@ export default function MarketAnalysisPage() {
     const displaySymbol = validateSymbol(selectedInput?.symbol ?? normalizedInput.displaySymbol ?? symbolInput);
     const requestSymbol = normalizeProviderSymbolForRequest(String(selectedInput?.providerSymbol ?? normalizedInput.providerSymbol));
     if (!requestSymbol || !displaySymbol) {
-      setError(t('market_symbol_not_found_helpful'));
+      setError(invalidSymbolMessage(t, normalizedInput.correction));
       setErrorSuggestions(normalizedInput.suggestions);
       setAnalysis(null);
       setAiInsight(null);
@@ -573,9 +580,10 @@ export default function MarketAnalysisPage() {
       if (!result.success) {
         const symbolIssue = result.code === 'invalid_symbol' || result.code === 'symbol_not_found';
         setServiceState(symbolIssue ? 'connected' : result.openbbService === 'degraded' || result.openbbService === 'slow' ? 'degraded' : result.openbbService === 'not_configured' ? 'not_configured' : 'unavailable');
-        setErrorSuggestions(result.suggestions?.length ? result.suggestions : symbolIssue ? normalizedInput.suggestions : []);
+        const suggestions = result.suggestions?.length ? result.suggestions : symbolIssue ? normalizedInput.suggestions : [];
+        setErrorSuggestions(suggestions);
         setAiInsight({ status: 'skipped', error: t('market_no_real_data_ai') });
-        throw new Error(marketErrorText(result.code, result.error || t('market_analysis_unavailable'), t));
+        throw new Error(symbolIssue ? invalidSymbolMessage(t, result.correction) : marketErrorText(result.code, result.error || t('market_analysis_unavailable'), t));
       }
 
       if (hasUsableAnalysis(result)) {
@@ -658,7 +666,7 @@ export default function MarketAnalysisPage() {
     const normalizedTypedSymbol = normalizeMarketSymbolInput(cleanQuery, assetType);
     if (!normalizedTypedSymbol.valid) {
       setSearchResults([]);
-      setSearchMessage(t('market_symbol_not_found_helpful'));
+      setSearchMessage(invalidSymbolMessage(t, normalizedTypedSymbol.correction));
       setSearchLoading(false);
       setHighlightedSearchIndex(0);
       return;
@@ -996,9 +1004,9 @@ export default function MarketAnalysisPage() {
         setSelectedAsset(null);
         setAnalysis(null);
         setServiceState(current => current === 'checking' ? 'connected' : current);
-        setError(t('market_symbol_not_found_helpful'));
+        setError(invalidSymbolMessage(t, normalizedInput.correction));
         setErrorSuggestions(normalizedInput.suggestions);
-        setSearchMessage(t('market_symbol_not_found_helpful'));
+        setSearchMessage(invalidSymbolMessage(t, normalizedInput.correction));
         return;
       }
     }
@@ -1006,9 +1014,10 @@ export default function MarketAnalysisPage() {
     if (!selectedItem) {
       setSelectedAsset(null);
       setAnalysis(null);
-      setError(t('market_symbol_not_found_helpful'));
-      setErrorSuggestions(marketSymbolSuggestions(cleanQuery));
-      setSearchMessage(t('market_symbol_not_found_helpful'));
+      const suggestions = marketSymbolSuggestions(cleanQuery);
+      setError(invalidSymbolMessage(t));
+      setErrorSuggestions(suggestions);
+      setSearchMessage(invalidSymbolMessage(t));
       return;
     }
 

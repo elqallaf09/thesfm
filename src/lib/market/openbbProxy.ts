@@ -427,10 +427,10 @@ export async function proxyAnalyze(
 ): Promise<MarketResult & { displaySymbol?: string; source?: string; fallback?: boolean; openbbService?: ProxyState }> {
   const normalizedSymbol = normalizeMarketSymbolInput(symbolInput, assetTypeInput);
   if (!normalizedSymbol.valid) {
-    return marketError(normalizedSymbol.code, { openbbService: 'connected', suggestions: normalizedSymbol.suggestions });
+    return marketError(normalizedSymbol.code, { openbbService: 'connected', suggestions: normalizedSymbol.suggestions, correction: normalizedSymbol.correction });
   }
   const providerSymbol = normalizeProviderSymbol(normalizedSymbol.providerSymbol);
-  if (!providerSymbol) return marketError('invalid_symbol', { openbbService: 'connected', suggestions: normalizedSymbol.suggestions });
+  if (!providerSymbol) return marketError('invalid_symbol', { openbbService: 'connected', suggestions: normalizedSymbol.suggestions, correction: normalizedSymbol.correction });
 
   const assetType = normalizedSymbol.assetType;
   const displaySymbol = validateSymbol(metaInput?.displaySymbol) ?? normalizedSymbol.displaySymbol ?? providerSymbol;
@@ -497,6 +497,7 @@ export async function proxyAnalyze(
   return marketError(code, {
     openbbService: result.configured ? (code === 'provider_no_data' || code === 'symbol_not_found' ? 'degraded' : 'unavailable') : 'not_configured',
     suggestions: normalizedSymbol.suggestions,
+    correction: normalizedSymbol.correction,
   });
 }
 
