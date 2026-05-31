@@ -50,6 +50,7 @@ import { formatCurrency } from '@/lib/format';
 import { getCurrency } from '@/lib/currencies';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { calculateGoalProgress, parseMoney } from '@/lib/goalProgress';
+import { parseMoneyValue } from '@/lib/money';
 import { isProjectLinkedExpenseRow, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { trackEvent } from '@/lib/analytics';
 
@@ -438,6 +439,46 @@ const SAVING_METHODS = [
   { id: 'digital_wallet', label: { ar: 'محفظة رقمية', en: 'Digital wallet', fr: 'Portefeuille numérique' } },
   { id: 'other', label: { ar: 'أخرى', en: 'Other', fr: 'Autre' } },
 ];
+
+type SavingsOption = { id: string; label: LangText };
+
+function normalizeSavingsOption(value: unknown, options: SavingsOption[]) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const normalized = raw.toLowerCase();
+  const matched = options.find(option => {
+    const labels = [option.id, option.label.ar, option.label.en, option.label.fr].filter(Boolean);
+    return labels.some(label => String(label).trim().toLowerCase() === normalized);
+  });
+  return matched?.id ?? '';
+}
+
+function normalizeSavingsDate(value: unknown) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const slashMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMatch) {
+    const [, month, day, year] = slashMatch;
+    const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+    if (
+      parsed.getFullYear() === Number(year) &&
+      parsed.getMonth() === Number(month) - 1 &&
+      parsed.getDate() === Number(day)
+    ) {
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+  }
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? '' : formatDateInput(parsed);
+}
+
+function normalizeCurrencyCode(value: unknown, fallback = 'KWD') {
+  const raw = String(value ?? '').trim().toUpperCase();
+  if (!raw) return fallback;
+  const directCode = raw.match(/\b[A-Z]{3}\b/)?.[0];
+  return directCode || fallback;
+}
 
 const savingModalText = {
   title: { ar: 'إضافة إدخار جديد', en: 'Add new saving', fr: 'Ajouter une épargne' },
@@ -1516,16 +1557,30 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const selectedCurrencySymbol = isAr ? selectedGoalCurrency.symbolAr : selectedGoalCurrency.symbolEn;
   const selectedEntryCurrency = useMemo(() => getCurrency(entryForm.currency || currency || 'KWD'), [currency, entryForm.currency]);
   const selectedEntryCurrencySymbol = isAr ? selectedEntryCurrency.symbolAr : selectedEntryCurrency.symbolEn;
+  const normalizedSavingForm = useMemo(() => {
+    const amount = parseMoneyValue(entryForm.amount);
+    return {
+      name: entryForm.name.trim(),
+      amount,
+      currency: normalizeCurrencyCode(entryForm.currency, currency || 'KWD'),
+      savingType: normalizeSavingsOption(entryForm.savingType, SAVING_TYPES),
+      savingMethod: normalizeSavingsOption(entryForm.savingMethod, SAVING_METHODS),
+      savedAt: normalizeSavingsDate(entryForm.savedAt),
+      note: entryForm.note.trim(),
+      goalId: entryForm.goalId.trim(),
+    };
+  }, [currency, entryForm]);
   const savingFormErrors = useMemo(() => {
     if (kind !== 'savings') return [] as string[];
     const errors: string[] = [];
-    if (!entryForm.name.trim()) errors.push(pick(savingModalText.nameRequired, lang));
-    if (!Number.isFinite(Number(entryForm.amount)) || Number(entryForm.amount) <= 0) errors.push(pick(savingModalText.amountRequired, lang));
-    if (!entryForm.savingType) errors.push(pick(savingModalText.typeRequired, lang));
-    if (!entryForm.savingMethod) errors.push(pick(savingModalText.methodRequired, lang));
-    if (!entryForm.savedAt) errors.push(pick(savingModalText.dateRequired, lang));
+    if (!normalizedSavingForm.name) errors.push(t('savings_error_name_required'));
+    if (normalizedSavingForm.amount.status !== 'valid' || normalizedSavingForm.amount.value <= 0) errors.push(t('savings_error_amount_required'));
+    if (!normalizedSavingForm.currency) errors.push(t('savings_error_currency_required'));
+    if (!normalizedSavingForm.savingType) errors.push(t('savings_error_type_required'));
+    if (!normalizedSavingForm.savingMethod) errors.push(t('savings_error_method_required'));
+    if (!normalizedSavingForm.savedAt) errors.push(t('savings_error_date_required'));
     return errors;
-  }, [entryForm, kind, lang]);
+  }, [kind, normalizedSavingForm, t]);
   const savingFormValid = kind !== 'savings' || savingFormErrors.length === 0;
   const goalPreview = useMemo(() => buildGoalAnalysis({
     id: goalForm.id || 'preview',
@@ -2236,12 +2291,14 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     event.preventDefault();
     if (!editableKind(kind) || entrySaving) return;
 
-    const name = entryForm.name.trim();
-    const amount = parseMoney(entryForm.amount);
     if (kind === 'savings' && savingFormErrors.length > 0) {
       showEntryMessage('err', savingFormErrors[0]);
       return;
     }
+    const name = kind === 'savings' ? normalizedSavingForm.name : entryForm.name.trim();
+    const amount = kind === 'savings' && normalizedSavingForm.amount.status === 'valid'
+      ? normalizedSavingForm.amount.value
+      : parseMoney(entryForm.amount);
     if (!name || !amount || amount <= 0) {
       showEntryMessage('err', t('entry_validation_error'));
       return;
@@ -2277,7 +2334,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         writeGuestItems(kind, next);
         applyEntryToSnapshot(kind, item, mode);
       } else {
-        if (!user?.id) throw new Error(t('entry_auth_required'));
+        if (!user?.id) throw new Error(kind === 'savings' ? t('savings_error_auth_required') : t('entry_auth_required'));
         if (kind === 'income') {
           if (mode === 'create') {
             const { data: created, error } = await supabase.from('monthly_income_sources').insert({
@@ -2302,31 +2359,21 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           const table = kind === 'expenses' ? 'expense_items' : kind === 'savings' ? 'savings_items' : 'investment_items';
           if (kind === 'savings') {
             const previous = snapshot.savings.find(item => item.id === id);
-            const linkedGoalId = entryForm.savingType === 'financial_goal' ? entryForm.goalId || null : null;
-            const savingNotes = entryForm.note.trim() || null;
+            const linkedGoalId = normalizedSavingForm.savingType === 'financial_goal' ? normalizedSavingForm.goalId || null : null;
+            const savingNotes = normalizedSavingForm.note || null;
             const savingPayload = {
               user_id: user.id,
               name,
               amount,
-              currency: entryForm.currency || currency || 'KWD',
-              saving_type: entryForm.savingType,
-              method: entryForm.savingMethod,
-              saved_at: entryForm.savedAt,
+              currency: normalizedSavingForm.currency,
+              saving_type: normalizedSavingForm.savingType,
+              method: normalizedSavingForm.savingMethod,
+              saved_at: normalizedSavingForm.savedAt,
               notes: savingNotes,
               goal_id: linkedGoalId,
               updated_at: new Date().toISOString(),
             };
-            const legacySavingPayload = {
-              ...savingPayload,
-              saving_method: entryForm.savingMethod,
-              note: savingNotes,
-            };
-            const minimalSavingPayload = {
-              user_id: user.id,
-              name,
-              amount,
-              updated_at: savingPayload.updated_at,
-            };
+            const createPayload = { ...savingPayload, created_at: new Date().toISOString() };
             const isSchemaCacheColumnError = (error: unknown) => {
               if (!error || typeof error !== 'object') return false;
               const supabaseError = error as { code?: string; message?: string; details?: string; hint?: string };
@@ -2346,6 +2393,22 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 payload,
               });
             };
+            const savingsErrorMessage = (error: unknown) => {
+              if (!error || typeof error !== 'object') return t('savings_error_unknown');
+              const supabaseError = error as { code?: string; message?: string; details?: string; hint?: string };
+              const text = `${supabaseError.code || ''} ${supabaseError.message || ''} ${supabaseError.details || ''} ${supabaseError.hint || ''}`.toLowerCase();
+              if (text.includes('permission') || text.includes('row-level') || text.includes('rls') || text.includes('42501') || text.includes('not authorized')) return t('savings_error_permission');
+              if (text.includes('auth') || text.includes('jwt') || text.includes('session')) return t('savings_error_auth_required');
+              return t('savings_error_unknown');
+            };
+            if (process.env.NODE_ENV === 'development') {
+              console.info('[Savings] Submit values', {
+                rawForm: entryForm,
+                normalized: normalizedSavingForm,
+                validationErrors: savingFormErrors,
+                payload: mode === 'create' ? createPayload : savingPayload,
+              });
+            }
             const adjustGoal = async (goalId: string | null | undefined, delta: number) => {
               if (!goalId || !Number.isFinite(delta) || delta === 0) return;
               let goalFetchResult = await supabase
@@ -2389,32 +2452,25 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             if (mode === 'create') {
               let createResult = await supabase
                 .from('savings_items')
-                .insert(savingPayload)
+                .insert(createPayload)
                 .select('*')
                 .single();
               if (createResult.error && isSchemaCacheColumnError(createResult.error)) {
-                logSavingsSaveError(createResult.error, savingPayload);
+                logSavingsSaveError(createResult.error, createPayload);
+                const { created_at: _createdAt, updated_at: _updatedAt, ...schemaSafePayload } = createPayload;
                 createResult = await supabase
                   .from('savings_items')
-                  .insert(legacySavingPayload)
-                  .select('*')
-                  .single();
-              }
-              if (createResult.error && isSchemaCacheColumnError(createResult.error)) {
-                logSavingsSaveError(createResult.error, legacySavingPayload);
-                createResult = await supabase
-                  .from('savings_items')
-                  .insert(minimalSavingPayload)
+                  .insert(schemaSafePayload)
                   .select('*')
                   .single();
               }
               if (createResult.error) {
-                logSavingsSaveError(createResult.error, savingPayload);
-                throw createResult.error;
+                logSavingsSaveError(createResult.error, createPayload);
+                throw new Error(savingsErrorMessage(createResult.error));
               }
-              void trackEvent('add_saving', { module: 'savings', metadata: { saving_type: entryForm.savingType || entryForm.savingMethod || 'general', linked_goal: Boolean(linkedGoalId) } });
+              void trackEvent('add_saving', { module: 'savings', metadata: { saving_type: normalizedSavingForm.savingType || normalizedSavingForm.savingMethod || 'general', linked_goal: Boolean(linkedGoalId) } });
               await adjustGoal(linkedGoalId, amount);
-              applyEntryToSnapshot(kind, { ...savingPayload, ...createResult.data } as MoneyItem, mode);
+              applyEntryToSnapshot(kind, { ...createPayload, ...createResult.data } as MoneyItem, mode);
             } else {
               let updateResult = await supabase
                 .from('savings_items')
@@ -2425,19 +2481,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 .single();
               if (updateResult.error && isSchemaCacheColumnError(updateResult.error)) {
                 logSavingsSaveError(updateResult.error, savingPayload);
+                const { updated_at: _updatedAt, ...schemaSafePayload } = savingPayload;
                 updateResult = await supabase
                   .from('savings_items')
-                  .update(legacySavingPayload)
-                  .eq('id', id)
-                  .eq('user_id', user.id)
-                  .select('*')
-                  .single();
-              }
-              if (updateResult.error && isSchemaCacheColumnError(updateResult.error)) {
-                logSavingsSaveError(updateResult.error, legacySavingPayload);
-                updateResult = await supabase
-                  .from('savings_items')
-                  .update(minimalSavingPayload)
+                  .update(schemaSafePayload)
                   .eq('id', id)
                   .eq('user_id', user.id)
                   .select('*')
@@ -2445,7 +2492,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               }
               if (updateResult.error) {
                 logSavingsSaveError(updateResult.error, savingPayload);
-                throw updateResult.error;
+                throw new Error(savingsErrorMessage(updateResult.error));
               }
               if (previous?.goal_id && previous.goal_id !== linkedGoalId) await adjustGoal(previous.goal_id, -Number(previous.amount || 0));
               const delta = amount - (previous?.goal_id === linkedGoalId ? Number(previous.amount || 0) : 0);
@@ -2478,7 +2525,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       } else {
         console.error(`[${kind}] Failed to save entry`, err);
       }
-      showEntryMessage('err', kind === 'savings' ? pick(savingModalText.failed, lang) : err instanceof Error ? err.message : t('error'));
+      showEntryMessage('err', kind === 'savings' ? err instanceof Error ? err.message : t('savings_error_unknown') : err instanceof Error ? err.message : t('error'));
     } finally {
       setEntrySaving(false);
     }
