@@ -1,5 +1,6 @@
 import {
   type FundamentalsUnavailableReason,
+  normalizeMarketSymbolInput,
   normalizeAssetType,
   validateSymbol,
   type MarketAnalysis,
@@ -152,11 +153,17 @@ async function fetchOpenBB(path: string, params?: URLSearchParams, options?: { t
   }
 }
 
-function normalizeProviderSymbol(symbolInput: unknown) {
+function cleanProviderSymbol(symbolInput: unknown) {
   const validated = validateSymbol(symbolInput);
   if (!validated) return null;
   const withoutExchange = validated.includes(':') ? validated.split(':').pop() || validated : validated;
   return validateSymbol(withoutExchange);
+}
+
+function normalizeProviderSymbol(symbolInput: unknown) {
+  const normalized = normalizeMarketSymbolInput(symbolInput);
+  if (normalized.valid) return cleanProviderSymbol(normalized.providerSymbol);
+  return cleanProviderSymbol(symbolInput);
 }
 
 function errorMessageForCode(code: string) {
@@ -418,11 +425,15 @@ export async function proxyAnalyze(
   assetTypeInput: unknown,
   metaInput?: { displaySymbol?: unknown; name?: unknown },
 ): Promise<MarketResult & { displaySymbol?: string; source?: string; fallback?: boolean; openbbService?: ProxyState }> {
-  const providerSymbol = normalizeProviderSymbol(symbolInput);
-  if (!providerSymbol) return marketError('invalid_symbol', { openbbService: 'unavailable' });
+  const normalizedSymbol = normalizeMarketSymbolInput(symbolInput, assetTypeInput);
+  if (!normalizedSymbol.valid) {
+    return marketError(normalizedSymbol.code, { openbbService: 'connected', suggestions: normalizedSymbol.suggestions });
+  }
+  const providerSymbol = normalizeProviderSymbol(normalizedSymbol.providerSymbol);
+  if (!providerSymbol) return marketError('invalid_symbol', { openbbService: 'connected', suggestions: normalizedSymbol.suggestions });
 
-  const assetType = normalizeAssetType(assetTypeInput);
-  const displaySymbol = validateSymbol(metaInput?.displaySymbol) ?? providerSymbol;
+  const assetType = normalizedSymbol.assetType;
+  const displaySymbol = validateSymbol(metaInput?.displaySymbol) ?? normalizedSymbol.displaySymbol ?? providerSymbol;
   const friendlyName = typeof metaInput?.name === 'string' ? metaInput.name.trim().slice(0, 120) : '';
   const params = new URLSearchParams({ symbol: providerSymbol, assetType });
   const result = await fetchOpenBB('/market/analyze', params, { timeoutMs: OPENBB_TIMEOUT_MS });
@@ -483,7 +494,10 @@ export async function proxyAnalyze(
         ? (/invalid/i.test(String(result.data.error || '')) ? 'invalid_symbol' : /not found/i.test(String(result.data.error || '')) ? 'symbol_not_found' : 'provider_no_data')
         : 'provider_no_data';
   console.warn('OpenBB analyze failed', { ...startedLog, status: result.status, elapsedMs: result.elapsedMs, code });
-  return marketError(code, { openbbService: result.configured ? (code === 'provider_no_data' || code === 'symbol_not_found' ? 'degraded' : 'unavailable') : 'not_configured' });
+  return marketError(code, {
+    openbbService: result.configured ? (code === 'provider_no_data' || code === 'symbol_not_found' ? 'degraded' : 'unavailable') : 'not_configured',
+    suggestions: normalizedSymbol.suggestions,
+  });
 }
 
 export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown, periodInput: unknown) {

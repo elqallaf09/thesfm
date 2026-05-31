@@ -500,6 +500,8 @@ export const TR: Record<string, TranslationEntry> = {
   market_progress_preparing_analysis: { ar:'تجهيز التحليل', en:'Preparing analysis', fr:'Préparation de l’analyse' },
   market_retry: { ar:'إعادة المحاولة', en:'Retry', fr:'Réessayer' },
   market_symbol_not_found: { ar:'لم يتم العثور على هذا الرمز. تأكد من كتابة الرمز بشكل صحيح.', en:'Symbol not found. Check that the symbol is typed correctly.', fr:'Symbole introuvable. Vérifiez que le symbole est correctement saisi.' },
+  market_symbol_not_found_helpful: { ar:'لم يتم العثور على بيانات لهذا الرمز. تأكد من كتابة الرمز بشكل صحيح أو جرّب أحد الاقتراحات.', en:'No data was found for this symbol. Check the spelling or try one of the suggestions.', fr:'Aucune donnée trouvée pour ce symbole. Vérifiez la saisie ou essayez une suggestion.' },
+  market_symbol_suggestions: { ar:'اقتراحات', en:'Suggestions', fr:'Suggestions' },
   market_no_data_for_symbol: { ar:'الرمز موجود، لكن تعذر تحميل بيانات السوق حالياً. جرّب مرة أخرى أو تحقق من اتصال مزود البيانات.', en:'The symbol exists, but live market data is temporarily unavailable.', fr:'Le symbole existe, mais les données de marché sont temporairement indisponibles.' },
   market_symbol_data_unavailable: { ar:'تعذر تحميل بيانات السوق لهذا الرمز', en:'Market data could not be loaded for this symbol', fr:'Les données de marché de ce symbole n’ont pas pu être chargées' },
   market_symbol_exists_note: { ar:'الرمز موجود، لكن تعذر تحميل بيانات السوق حالياً. جرّب مرة أخرى أو تحقق من اتصال مزود البيانات.', en:'The symbol exists, but live market data is temporarily unavailable.', fr:'Le symbole existe, mais les données de marché sont temporairement indisponibles.' },
