@@ -277,10 +277,13 @@ export default function BusinessOperationsPage() {
   }, [locale, salesRows, text.unclassified]);
 
   const isEmpty = summary.projectCount === 0 && summary.salesCount === 0 && summary.employeeCount === 0;
+  const hasAnalyticsData = chartData.monthly.some(item => item.value > 0)
+    || chartData.status.some(item => item.value > 0)
+    || chartData.products.some(item => item.value > 0);
   const failedBusinessSections = Object.values(loadIssues).filter(Boolean);
-  const hasLoadedBusinessRecords = !isEmpty;
   const hasPartialErrors = failedBusinessSections.length > 0;
-  const showPartialLoadWarning = !error && hasPartialErrors && hasLoadedBusinessRecords;
+  const showPartialLoadWarning = !error && hasPartialErrors;
+  const showAnalyticsInfo = !error && !hasPartialErrors && !hasAnalyticsData;
 
   function summaryRows(): SummaryRow[] {
     return [
@@ -455,15 +458,21 @@ export default function BusinessOperationsPage() {
         </section>
 
         <section className="business-chart-grid" aria-label={text.monthlySales}>
-          <BusinessOperationsChartCard title={text.monthlySales} data={chartData.monthly} currency={defaultCurrency} lang={locale} />
-          <BusinessOperationsChartCard title={text.salesByStatus} data={chartData.status} currency={defaultCurrency} lang={locale} variant="pie" />
-          <BusinessOperationsChartCard title={text.topProducts} data={chartData.products} currency={defaultCurrency} lang={locale} />
+          <BusinessOperationsChartCard title={text.monthlySales} data={chartData.monthly} currency={defaultCurrency} lang={locale} emptyActionHref="/sales" emptyActionLabel={text.addSale} />
+          <BusinessOperationsChartCard title={text.salesByStatus} data={chartData.status} currency={defaultCurrency} lang={locale} variant="pie" emptyActionHref="/sales" emptyActionLabel={text.addSale} />
+          <BusinessOperationsChartCard title={text.topProducts} data={chartData.products} currency={defaultCurrency} lang={locale} emptyActionHref="/sales" emptyActionLabel={text.addSale} />
         </section>
 
         {showPartialLoadWarning ? (
           <div className="business-section-warning" role="status">
             <AlertTriangle size={17} aria-hidden="true" />
             <span>{text.partialLoadWarning}</span>
+          </div>
+        ) : null}
+        {showAnalyticsInfo ? (
+          <div className="business-section-info" role="status">
+            <BriefcaseBusiness size={17} aria-hidden="true" />
+            <span>{text.analyticsNeedMoreData}</span>
           </div>
         ) : null}
 
@@ -486,7 +495,7 @@ export default function BusinessOperationsPage() {
         {isEmpty && !error ? (
           <EmptyState
             title={text.noDataYet}
-            description={text.startAddingFirstData}
+            description={text.emptyDashboardBody}
             icon={<BriefcaseBusiness size={26} />}
             actions={(
               <div className="business-empty-actions">
@@ -607,6 +616,18 @@ const businessOperationsStyles = `
     border: 1px solid rgba(245, 158, 11, 0.24);
     background: rgba(245, 158, 11, 0.09);
     color: #92400E;
+    border-radius: 16px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 850;
+  }
+
+  .business-section-info {
+    border: 1px solid rgba(29, 140, 255, 0.18);
+    background: rgba(29, 140, 255, 0.08);
+    color: var(--sfm-primary-hover);
     border-radius: 16px;
     padding: 12px 14px;
     display: flex;
@@ -942,6 +963,12 @@ const businessOperationsStyles = `
 
   .dark .business-notice {
     color: #86EFAC;
+  }
+
+  .dark .business-section-info {
+    color: #A7F3F0;
+    background: rgba(47, 214, 192, 0.10);
+    border-color: rgba(47, 214, 192, 0.22);
   }
 
   @media (max-width: 720px) {

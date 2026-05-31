@@ -12,12 +12,16 @@ export default function BusinessOperationsChartCard({
   currency,
   lang,
   variant = 'bar',
+  emptyActionHref = '/sales',
+  emptyActionLabel,
 }: {
   title: string;
   data: Array<{ name: string; value: number; label?: string }>;
   currency: string;
   lang: 'ar' | 'en' | 'fr';
   variant?: 'bar' | 'pie';
+  emptyActionHref?: string;
+  emptyActionLabel?: string;
 }) {
   const text = BUSINESS_TEXT[lang];
   const hasData = data.some((item) => item.value > 0);
@@ -34,9 +38,9 @@ export default function BusinessOperationsChartCard({
           <span className="business-chart-empty-icon" aria-hidden="true"><BarChart3 size={24} /></span>
           <strong>{text.insufficientChartData}</strong>
           <p>{text.chartEmptyBody}</p>
-          <Link className="business-chart-empty-action" href="/sales">
+          <Link className="business-chart-empty-action" href={emptyActionHref}>
             <Plus size={15} aria-hidden="true" />
-            {text.addSale}
+            {emptyActionLabel ?? text.addSale}
           </Link>
         </div>
       ) : (
