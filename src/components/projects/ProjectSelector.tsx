@@ -30,7 +30,7 @@ const COPY = {
     selectedProject: 'المشروع المحدد',
     changeProject: 'تغيير المشروع',
     openProject: 'فتح المشروع',
-    addProject: 'إضافة مشروع جديد',
+    addProject: '+ إضافة مشروع جديد',
     availablePlural: (count: number) => `لديك ${count} مشاريع متاحة`,
     availableOne: 'مشروع واحد متاح',
     availableNone: 'لا توجد مشاريع بعد',
@@ -49,7 +49,7 @@ const COPY = {
     selectedProject: 'Selected Project',
     changeProject: 'Change Project',
     openProject: 'Open Project',
-    addProject: 'Add New Project',
+    addProject: '+ Add New Project',
     availablePlural: (count: number) => `You have ${count} available projects`,
     availableOne: 'One project available',
     availableNone: 'No projects yet',
@@ -68,7 +68,7 @@ const COPY = {
     selectedProject: 'Projet sélectionné',
     changeProject: 'Changer de projet',
     openProject: 'Ouvrir le projet',
-    addProject: 'Ajouter un projet',
+    addProject: '+ Ajouter un nouveau projet',
     availablePlural: (count: number) => `Vous avez ${count} projets disponibles`,
     availableOne: 'Un projet disponible',
     availableNone: 'Aucun projet pour le moment',
@@ -290,14 +290,14 @@ export function ProjectSelector({
 
       <div className="project-selector-actions">
         {selectedProject ? (
-          <Link href={openProjectHref(selectedProject.id)} aria-label={copy.openProject}>
+          <Link className="project-selector-action primary" href={openProjectHref(selectedProject.id)} aria-label={copy.openProject}>
             {copy.openProject}
           </Link>
         ) : (
-          <span aria-disabled="true">{copy.openProject}</span>
+          <span className="project-selector-action primary disabled" aria-disabled="true">{copy.openProject}</span>
         )}
-        <Link href={addProjectHref} aria-label={copy.addProject}>
-          <Plus size={14} aria-hidden="true" />
+        <Link className="project-selector-action secondary" href={addProjectHref} aria-label={copy.addProject}>
+          <Plus size={16} aria-hidden="true" />
           {copy.addProject}
         </Link>
       </div>
@@ -503,35 +503,82 @@ export function ProjectSelector({
         .project-selector-actions {
           display: flex;
           flex-wrap: wrap;
-          gap: 8px;
+          align-items: center;
+          justify-content: flex-start;
+          gap: 10px;
+          min-width: 0;
         }
-        .project-selector-actions a,
-        .project-selector-actions span {
-          min-height: 36px;
-          border-radius: 999px;
-          border: 1px solid rgba(29, 140, 255, .18);
-          background: #FFFFFF;
-          color: var(--sfm-midnight);
+        .project-selector-action {
+          min-height: 42px;
+          border-radius: 14px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 7px;
-          padding: 0 11px;
-          font-size: 12px;
+          gap: 8px;
+          padding: 0 15px;
+          font-size: 13px;
           font-weight: 950;
           text-decoration: none;
+          line-height: 1.2;
+          white-space: nowrap;
+          transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease, color .18s ease;
         }
-        .project-selector-actions span {
-          color: var(--sfm-muted);
+        .project-selector-action.primary {
+          border: 0;
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          color: #FFFFFF;
+          box-shadow: 0 14px 30px rgba(29, 140, 255, .20);
+        }
+        .project-selector-action.primary.disabled {
+          border: 1px solid rgba(29, 140, 255, .18);
           background: var(--sfm-light-card);
+          color: var(--sfm-muted-readable, #475569);
+          box-shadow: none;
           cursor: not-allowed;
+          opacity: .72;
         }
-        .project-selector-actions a:hover,
-        .project-selector-actions a:focus-visible {
+        .project-selector-action.secondary {
+          border: 1px solid rgba(24, 212, 212, .40);
+          background: rgba(236, 254, 255, .72);
+          color: #0E7490;
+          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .38);
+        }
+        .project-selector-action.secondary svg {
+          flex: 0 0 auto;
+        }
+        .project-selector-action:not(.disabled):hover {
+          transform: translateY(-1px);
+        }
+        .project-selector-action.primary:not(.disabled):hover {
+          box-shadow: 0 16px 36px rgba(29, 140, 255, .26);
+        }
+        .project-selector-action.secondary:hover {
+          background: rgba(207, 250, 254, .92);
+          border-color: rgba(24, 212, 212, .58);
+          color: #155E75;
+          box-shadow: 0 12px 28px rgba(14, 116, 144, .12);
+        }
+        .project-selector-action:focus-visible {
           outline: none;
-          color: var(--sfm-primary-hover);
           border-color: rgba(24, 212, 212, .38);
-          box-shadow: 0 0 0 3px rgba(24, 212, 212, .12);
+          box-shadow: 0 0 0 3px rgba(24, 212, 212, .18);
+        }
+        :global(.dark) .project-selector-action.primary.disabled {
+          border-color: rgba(255, 255, 255, .14);
+          background: rgba(255, 255, 255, .06);
+          color: rgba(232, 238, 246, .72);
+        }
+        :global(.dark) .project-selector-action.secondary {
+          border-color: rgba(103, 232, 249, .38);
+          background: rgba(6, 182, 212, .10);
+          color: #CFFAFE;
+          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04);
+        }
+        :global(.dark) .project-selector-action.secondary:hover {
+          border-color: rgba(103, 232, 249, .56);
+          background: rgba(34, 211, 238, .15);
+          color: #ECFEFF;
+          box-shadow: 0 12px 28px rgba(6, 182, 212, .14);
         }
         .project-selector-popover {
           position: absolute;
@@ -676,9 +723,10 @@ export function ProjectSelector({
             display: grid;
             grid-template-columns: 1fr;
           }
-          .project-selector-actions a,
-          .project-selector-actions span {
+          .project-selector-action {
             width: 100%;
+            min-height: 44px;
+            white-space: normal;
           }
           .project-selector-popover {
             position: fixed;
