@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle,
+  ArrowUpRight,
   BriefcaseBusiness,
   CheckCircle2,
   FileText,
@@ -27,6 +28,7 @@ import { UserChip } from '@/components/UserChip';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
+import type { TR } from '@/lib/translations';
 
 type Lang = 'ar' | 'en' | 'fr';
 type Row = Record<string, any>;
@@ -47,6 +49,7 @@ type StatusCardItem = {
   href: string;
   actionLabel: string;
   icon: ReactNode;
+  actionIcon: ReactNode;
 };
 
 const EMPTY_DATA: LoadState = {
@@ -57,140 +60,48 @@ const EMPTY_DATA: LoadState = {
   projectDocuments: [],
 };
 
-const TEXT = {
-  ar: {
-    title: 'العروض الاستثمارية',
-    subtitle: 'مركز مختصر لمواد المستثمرين الجاهزة من مشاريعك: Pitch Deck، جاهزية التمويل، المستندات الاستراتيجية، واستخدام التمويل.',
-    eyebrow: 'حزمة المستثمر من بيانات مشروعك الفعلية',
-    loading: 'جاري تحميل مواد العروض الاستثمارية...',
-    signInTitle: 'سجّل الدخول لعرض العروض الاستثمارية.',
-    signInBody: 'لا يمكن عرض مواد المستثمرين بدون حساب وبيانات مشاريع محفوظة.',
-    signIn: 'تسجيل الدخول',
-    noProjectsTitle: 'أضف مشروعاً أولاً لإنشاء عرض استثماري.',
-    noProjectsBody: 'لن تظهر عروض أو مواد مستثمرين قبل إضافة مشروع حقيقي.',
-    openProjects: 'فتح مشاريعي',
-    openBusinessHub: 'فتح مركز الأعمال',
-    openProjectPitchDeck: 'فتح Pitch Deck للمشروع',
-    openFundingReadiness: 'فتح جاهزية التمويل',
-    selectProject: 'اختيار المشروع',
-    selectProjectHint: 'اختر مشروعاً لعرض حالة مواد المستثمرين بناءً على بياناته الفعلية.',
-    projects: 'المشاريع',
-    pitchDecks: 'Pitch Deck',
-    fundingReadiness: 'جاهزية التمويل',
-    strategicDocuments: 'المستندات الاستراتيجية',
-    useOfFunds: 'استخدام التمويل',
-    investorPackage: 'حزمة المستثمر',
-    ready: 'جاهز',
-    needsData: 'يحتاج بيانات',
-    insufficientData: 'بيانات غير كافية',
-    availableProjects: 'مشاريع متاحة',
-    savedPitchDecks: 'عروض محفوظة',
-    fundingRecords: 'سجلات جاهزية التمويل',
-    strategicDocs: 'مستندات استراتيجية',
-    selectedProject: 'المشروع المحدد',
-    packageProgress: 'اكتمال حزمة المستثمر',
-    readyItems: 'عناصر جاهزة',
-    noFakeOffers: 'لا يتم عرض مستثمرين، فرص تمويل، أو عروض وهمية. هذه الصفحة تعرض حالة المواد التي أنشأتها أو حفظتها فقط.',
-    pitchDeckReady: 'يوجد Pitch Deck محفوظ لهذا المشروع.',
-    pitchDeckMissing: 'أنشئ Pitch Deck من صفحة المشروع أو مركز الأعمال.',
-    fundingReady: 'توجد بيانات جاهزية تمويل محفوظة لهذا المشروع.',
-    fundingMissing: 'أكمل جاهزية التمويل لتوضيح احتياج المشروع وتمويله.',
-    docsReady: 'توجد مستندات استراتيجية أو مستندات مشروع مرتبطة بهذا المشروع.',
-    docsMissing: 'أضف المستندات الاستراتيجية أو مستندات المشروع المطلوبة.',
-    fundsReady: 'تم حفظ توزيع استخدام التمويل لهذا المشروع.',
-    fundsMissing: 'أكمل خطة استخدام التمويل في مركز الأعمال.',
-    sourceNote: 'المصدر: بيانات المشاريع، Pitch Deck، جاهزية التمويل، ومستنداتك المحفوظة.',
-    partialLoadError: 'تعذر تحميل بعض مصادر البيانات حالياً. تم عرض ما يمكن تحميله فقط.',
-  },
-  en: {
-    title: 'Investment Offers',
-    subtitle: 'A focused hub for investor-ready project materials: Pitch Deck, funding readiness, strategic documents, and use of funds.',
-    eyebrow: 'Investor package from your real project data',
-    loading: 'Loading investment offer materials...',
-    signInTitle: 'Sign in to view investment offers.',
-    signInBody: 'Investor materials require an account and saved project data.',
-    signIn: 'Sign In',
-    noProjectsTitle: 'Add a project first to create an investment offer.',
-    noProjectsBody: 'Investor materials will not appear until you add a real project.',
-    openProjects: 'Open My Projects',
-    openBusinessHub: 'Open Business Hub',
-    openProjectPitchDeck: 'Open Project Pitch Deck',
-    openFundingReadiness: 'Open Funding Readiness',
-    selectProject: 'Select Project',
-    selectProjectHint: 'Choose a project to view investor material status from its real data.',
-    projects: 'Projects',
-    pitchDecks: 'Pitch Deck',
-    fundingReadiness: 'Funding Readiness',
-    strategicDocuments: 'Strategic Documents',
-    useOfFunds: 'Use of Funds',
-    investorPackage: 'Investor Package',
-    ready: 'Ready',
-    needsData: 'Needs Data',
-    insufficientData: 'Insufficient data',
-    availableProjects: 'Available Projects',
-    savedPitchDecks: 'Saved Pitch Decks',
-    fundingRecords: 'Funding Readiness Records',
-    strategicDocs: 'Strategic Documents',
-    selectedProject: 'Selected Project',
-    packageProgress: 'Investor Package Completion',
-    readyItems: 'Ready Items',
-    noFakeOffers: 'No fake investors, funding opportunities, or offers are shown. This page only reflects materials you created or saved.',
-    pitchDeckReady: 'A Pitch Deck is saved for this project.',
-    pitchDeckMissing: 'Create a Pitch Deck from the project page or Business Hub.',
-    fundingReady: 'Funding readiness data is saved for this project.',
-    fundingMissing: 'Complete funding readiness to clarify the project funding need.',
-    docsReady: 'Strategic documents or project documents are linked to this project.',
-    docsMissing: 'Add strategic documents or the required project documents.',
-    fundsReady: 'Use-of-funds allocation is saved for this project.',
-    fundsMissing: 'Complete the use-of-funds plan in Business Hub.',
-    sourceNote: 'Source: projects, Pitch Decks, funding readiness, and saved documents.',
-    partialLoadError: 'Some data sources could not be loaded right now. Showing what is available.',
-  },
-  fr: {
-    title: 'Offres d’investissement',
-    subtitle: 'Un centre clair pour les éléments prêts pour investisseurs : Pitch Deck, préparation au financement, documents stratégiques et utilisation des fonds.',
-    eyebrow: 'Dossier investisseur basé sur vos données projet réelles',
-    loading: 'Chargement des éléments d’offre d’investissement...',
-    signInTitle: 'Connectez-vous pour voir les offres d’investissement.',
-    signInBody: 'Les éléments investisseurs nécessitent un compte et des données projet enregistrées.',
-    signIn: 'Se connecter',
-    noProjectsTitle: 'Ajoutez d’abord un projet pour créer une offre d’investissement.',
-    noProjectsBody: 'Les éléments investisseurs n’apparaîtront qu’après l’ajout d’un projet réel.',
-    openProjects: 'Ouvrir mes projets',
-    openBusinessHub: 'Ouvrir le Centre d’affaires',
-    openProjectPitchDeck: 'Ouvrir le Pitch Deck du projet',
-    openFundingReadiness: 'Ouvrir la préparation au financement',
-    selectProject: 'Sélectionner un projet',
-    selectProjectHint: 'Choisissez un projet pour voir l’état des éléments investisseurs selon ses données réelles.',
-    projects: 'Projets',
-    pitchDecks: 'Pitch Deck',
-    fundingReadiness: 'Préparation au financement',
-    strategicDocuments: 'Documents stratégiques',
-    useOfFunds: 'Utilisation des fonds',
-    investorPackage: 'Dossier investisseur',
-    ready: 'Prêt',
-    needsData: 'Données requises',
-    insufficientData: 'Données insuffisantes',
-    availableProjects: 'Projets disponibles',
-    savedPitchDecks: 'Pitch Decks enregistrés',
-    fundingRecords: 'Dossiers de préparation',
-    strategicDocs: 'Documents stratégiques',
-    selectedProject: 'Projet sélectionné',
-    packageProgress: 'Complétion du dossier investisseur',
-    readyItems: 'Éléments prêts',
-    noFakeOffers: 'Aucun investisseur, opportunité de financement ou offre fictive n’est affiché. Cette page reflète uniquement les éléments créés ou enregistrés.',
-    pitchDeckReady: 'Un Pitch Deck est enregistré pour ce projet.',
-    pitchDeckMissing: 'Créez un Pitch Deck depuis la page projet ou le Centre d’affaires.',
-    fundingReady: 'Les données de préparation au financement sont enregistrées pour ce projet.',
-    fundingMissing: 'Complétez la préparation au financement pour clarifier le besoin du projet.',
-    docsReady: 'Des documents stratégiques ou documents projet sont liés à ce projet.',
-    docsMissing: 'Ajoutez les documents stratégiques ou documents projet requis.',
-    fundsReady: 'Le plan d’utilisation des fonds est enregistré pour ce projet.',
-    fundsMissing: 'Complétez le plan d’utilisation des fonds dans le Centre d’affaires.',
-    sourceNote: 'Source : projets, Pitch Decks, préparation au financement et documents enregistrés.',
-    partialLoadError: 'Certaines sources de données n’ont pas pu être chargées. Les données disponibles sont affichées.',
-  },
-} as const;
+const TEXT_KEYS = {
+  title: 'investment_offers_title',
+  subtitle: 'investment_offers_subtitle',
+  eyebrow: 'investment_offers_eyebrow',
+  loading: 'investment_offers_loading',
+  signInTitle: 'investment_offers_sign_in_title',
+  signInBody: 'investment_offers_sign_in_body',
+  signIn: 'investment_offers_sign_in',
+  noProjectsTitle: 'investment_offers_no_projects_title',
+  noProjectsBody: 'investment_offers_no_projects_body',
+  openProjects: 'investment_offers_open_projects',
+  openBusinessHub: 'investment_offers_open_business_hub',
+  openProjectPitchDeck: 'investment_offers_open_project_pitch_deck',
+  openFundingReadiness: 'investment_offers_open_funding_readiness',
+  selectProject: 'investment_offers_select_project',
+  selectProjectHint: 'investment_offers_select_project_hint',
+  availableProjects: 'investment_offers_available_projects',
+  savedPitchDecks: 'investment_offers_saved_pitch_decks',
+  fundingRecords: 'investment_offers_funding_records',
+  strategicDocs: 'investment_offers_strategic_docs',
+  selectedProject: 'investment_offers_selected_project',
+  packageProgress: 'investment_offers_package_progress',
+  readyItems: 'investment_offers_ready_items',
+  noFakeOffers: 'investment_offers_no_fake_offers',
+  pitchDecks: 'investment_offers_pitch_decks',
+  fundingReadiness: 'investment_offers_funding_readiness',
+  strategicDocuments: 'investment_offers_strategic_documents',
+  useOfFunds: 'investment_offers_use_of_funds',
+  ready: 'investment_offers_ready',
+  needsData: 'investment_offers_needs_data',
+  insufficientData: 'investment_offers_insufficient_data',
+  pitchDeckReady: 'investment_offers_pitch_deck_ready',
+  pitchDeckMissing: 'investment_offers_pitch_deck_missing',
+  fundingReady: 'investment_offers_funding_ready',
+  fundingMissing: 'investment_offers_funding_missing',
+  docsReady: 'investment_offers_docs_ready',
+  docsMissing: 'investment_offers_docs_missing',
+  fundsReady: 'investment_offers_funds_ready',
+  fundsMissing: 'investment_offers_funds_missing',
+  sourceNote: 'investment_offers_source_note',
+  partialLoadError: 'investment_offers_partial_load_error',
+} as const satisfies Record<string, keyof typeof TR>;
 
 function textValue(row: Row | null | undefined, keys: string[], fallback = '') {
   if (!row) return fallback;
@@ -332,16 +243,23 @@ function StatusCard({ item, readyLabel, needsDataLabel }: { item: StatusCardItem
       <h2>{item.title}</h2>
       <p>{item.description}</p>
       <small>{item.detail}</small>
-      <Link href={item.href} aria-label={item.actionLabel}>{item.actionLabel}</Link>
+      <Link className="investment-status-action" href={item.href} aria-label={item.actionLabel}>
+        {item.actionIcon}
+        <span>{item.actionLabel}</span>
+      </Link>
     </AppCard>
   );
 }
 
 export default function InvestmentOffersPage() {
   const { user, loading: authLoading, isGuest } = useAuth();
-  const { lang, dir } = useLanguage();
+  const { lang, dir, t } = useLanguage();
   const locale = (lang === 'en' || lang === 'fr' || lang === 'ar' ? lang : 'ar') as Lang;
-  const text = TEXT[locale];
+  const text = useMemo(() => (
+    Object.fromEntries(
+      Object.entries(TEXT_KEYS).map(([name, key]) => [name, t(key)]),
+    ) as Record<keyof typeof TEXT_KEYS, string>
+  ), [t]);
   const [data, setData] = useState<LoadState>(EMPTY_DATA);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -445,6 +363,7 @@ export default function InvestmentOffersPage() {
       href: projectPitchHref,
       actionLabel: text.openProjectPitchDeck,
       icon: <Presentation size={22} />,
+      actionIcon: <Presentation size={16} aria-hidden="true" />,
     },
     {
       key: 'funding',
@@ -455,6 +374,7 @@ export default function InvestmentOffersPage() {
       href: businessHubFundingHref,
       actionLabel: text.openFundingReadiness,
       icon: <Gauge size={22} />,
+      actionIcon: <Gauge size={16} aria-hidden="true" />,
     },
     {
       key: 'documents',
@@ -465,6 +385,7 @@ export default function InvestmentOffersPage() {
       href: businessHubDocumentsHref,
       actionLabel: text.openBusinessHub,
       icon: <FileText size={22} />,
+      actionIcon: <BriefcaseBusiness size={16} aria-hidden="true" />,
     },
     {
       key: 'funds',
@@ -475,13 +396,14 @@ export default function InvestmentOffersPage() {
       href: businessHubFundingHref,
       actionLabel: text.openFundingReadiness,
       icon: <Landmark size={22} />,
+      actionIcon: <Landmark size={16} aria-hidden="true" />,
     },
   ];
 
   const heroActions = (
     <>
-      <Link className="investment-primary-action" href="/projects">{text.openProjects}</Link>
-      <Link className="investment-secondary-action" href={businessHubDocumentsHref}>{text.openBusinessHub}</Link>
+      <Link className="investment-primary-action" href="/projects"><FolderKanban size={16} aria-hidden="true" />{text.openProjects}</Link>
+      <Link className="investment-secondary-action" href={businessHubDocumentsHref}><BriefcaseBusiness size={16} aria-hidden="true" />{text.openBusinessHub}</Link>
     </>
   );
 
@@ -565,8 +487,15 @@ export default function InvestmentOffersPage() {
                     <em>{readyCount}/4 {text.readyItems}</em>
                   </div>
                   <div className="package-actions">
-                    <Link href={projectHref}>{text.openProjects}</Link>
-                    <Link href={projectPitchHref}>{text.openProjectPitchDeck}</Link>
+                    <Link className="investment-package-action primary" href={projectHref}>
+                      <FolderKanban size={16} aria-hidden="true" />
+                      <span>{text.openProjects}</span>
+                    </Link>
+                    <Link className="investment-package-action secondary" href={projectPitchHref}>
+                      <Presentation size={16} aria-hidden="true" />
+                      <span>{text.openProjectPitchDeck}</span>
+                      <ArrowUpRight size={14} aria-hidden="true" />
+                    </Link>
                   </div>
                 </AppCard>
 
@@ -604,8 +533,8 @@ export default function InvestmentOffersPage() {
         }
         .investment-primary-action,
         .investment-secondary-action,
-        .investment-status-card a,
-        .package-actions a {
+        .investment-status-action,
+        .investment-package-action {
           min-height: 42px;
           border-radius: 14px;
           display: inline-flex;
@@ -619,27 +548,27 @@ export default function InvestmentOffersPage() {
           transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
         }
         .investment-primary-action,
-        .investment-status-card a,
-        .package-actions a:first-child {
+        .investment-status-action,
+        .investment-package-action.primary {
           border: 0;
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
           color: #FFFFFF;
           box-shadow: 0 12px 30px rgba(29, 140, 255, .22);
         }
         .investment-secondary-action,
-        .package-actions a {
+        .investment-package-action.secondary {
           border: 1px solid rgba(29, 140, 255, .20);
           background: #FFFFFF;
           color: var(--sfm-midnight);
         }
         .investment-primary-action:hover,
         .investment-secondary-action:hover,
-        .investment-status-card a:hover,
-        .package-actions a:hover,
+        .investment-status-action:hover,
+        .investment-package-action:hover,
         .investment-primary-action:focus-visible,
         .investment-secondary-action:focus-visible,
-        .investment-status-card a:focus-visible,
-        .package-actions a:focus-visible {
+        .investment-status-action:focus-visible,
+        .investment-package-action:focus-visible {
           outline: none;
           transform: translateY(-1px);
           border-color: rgba(24, 212, 212, .42);
@@ -647,8 +576,8 @@ export default function InvestmentOffersPage() {
         }
         .investment-primary-action:active,
         .investment-secondary-action:active,
-        .investment-status-card a:active,
-        .package-actions a:active {
+        .investment-status-action:active,
+        .investment-package-action:active {
           transform: translateY(0) scale(.98);
         }
         .investment-loading,
@@ -802,6 +731,7 @@ export default function InvestmentOffersPage() {
           gap: 12px;
           align-content: start;
           min-width: 0;
+          grid-template-rows: auto auto auto auto 1fr;
         }
         .status-card-head {
           display: flex;
@@ -865,9 +795,11 @@ export default function InvestmentOffersPage() {
           font-weight: 950;
           overflow-wrap: anywhere;
         }
-        .investment-status-card a {
+        .investment-status-action {
           width: fit-content;
           max-width: 100%;
+          align-self: end;
+          margin-top: 4px;
         }
         @keyframes investment-spin {
           to { transform: rotate(360deg); }
@@ -897,8 +829,8 @@ export default function InvestmentOffersPage() {
           }
           .investment-primary-action,
           .investment-secondary-action,
-          .investment-status-card a,
-          .package-actions a {
+          .investment-status-action,
+          .investment-package-action {
             width: 100%;
           }
           .investment-loading,
