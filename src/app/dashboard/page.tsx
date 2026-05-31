@@ -31,9 +31,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useSmartTasks } from '@/hooks/useSmartTasks';
 import { supabase } from '@/integrations/supabase/client';
-import { personalExpenseRows, personalIncomeRows, safeDivide, sumAmounts } from '@/lib/data/financeData';
+import { currentMonthRange, personalExpenseRows, personalIncomeRows, safeDivide, sumAmounts } from '@/lib/data/financeData';
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
+import { parseMoneyValue } from '@/lib/money';
 
 const Sidebar = dynamic(() => import('@/components/Sidebar').then(mod => mod.Sidebar), { ssr: false });
 const LanguageSwitcher = dynamic(() => import('@/components/ui/LanguageSwitcher').then(mod => mod.LanguageSwitcher), { ssr: false });
@@ -152,6 +153,10 @@ const TEXT = {
     currentMonth: 'الشهر الحالي',
     allRecords: 'كل السجلات',
     insufficientData: 'بيانات غير كافية',
+    noCurrentMonthData: 'لا توجد بيانات للشهر الحالي',
+    notCalculable: 'غير قابل للحساب',
+    notEntered: 'غير مدخل',
+    invalidValue: 'قيمة غير صالحة',
     noDataYet: 'لا توجد بيانات حالياً',
     noDataBody: 'أضف بياناتك للبدء',
     openPage: 'فتح الصفحة',
@@ -244,6 +249,10 @@ const TEXT = {
     currentMonth: 'Current month',
     allRecords: 'All records',
     insufficientData: 'Insufficient data',
+    noCurrentMonthData: 'No data for the current month',
+    notCalculable: 'Not calculable',
+    notEntered: 'Not entered',
+    invalidValue: 'Invalid value',
     noDataYet: 'No data yet',
     noDataBody: 'Add your data to get started.',
     openPage: 'Open page',
@@ -336,6 +345,10 @@ const TEXT = {
     currentMonth: 'Mois en cours',
     allRecords: 'Tous les enregistrements',
     insufficientData: 'Données insuffisantes',
+    noCurrentMonthData: 'Aucune donnée pour le mois en cours',
+    notCalculable: 'Non calculable',
+    notEntered: 'Non saisi',
+    invalidValue: 'Valeur invalide',
     noDataYet: 'Aucune donnée pour le moment',
     noDataBody: 'Ajoutez vos données pour commencer.',
     openPage: 'Ouvrir la page',
@@ -415,12 +428,8 @@ const TEXT = {
 } satisfies Record<Lang, Record<string, string>>;
 
 function numberValue(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string' && value.trim() !== '') {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
+  const parsed = parseMoneyValue(value);
+  return parsed.status === 'valid' ? parsed.value : null;
 }
 
 function firstNumber(row: DataRow, keys: string[]): number | null {
@@ -447,12 +456,22 @@ function firstDate(row: DataRow, keys: string[]): string | null {
   return null;
 }
 
-function isCurrentMonth(row: DataRow, keys: string[]) {
+function parseRecordDate(value: string) {
+  const dateOnly = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const [, year, month, day] = dateOnly;
+    return new Date(Number(year), Number(month) - 1, Number(day), 12, 0, 0, 0);
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isCurrentMonth(row: DataRow, keys: string[], range = currentMonthRange()) {
   const value = firstDate(row, keys);
   if (!value) return false;
-  const date = new Date(value);
-  const now = new Date();
-  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+  const date = parseRecordDate(value);
+  if (!date) return false;
+  return date >= range.start && date <= range.end;
 }
 
 function daysUntil(value?: string | null) {
@@ -744,13 +763,28 @@ export default function ExecutiveDashboardPage() {
     const incomeTotal = sumAmounts(records.income, ['amount']);
     const expenseTotal = sumAmounts(records.expenses, ['amount']);
     const savingsTotal = sumAmounts(records.savings, ['current_amount', 'balance', 'amount']);
-    const investmentsTotal = sumAmounts(records.investments, ['current_value', 'market_value', 'amount']);
+    const investmentsTotal = sumAmounts(records.investments, ['current_value', 'market_value', 'amount', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
 
-    const monthIncomeRows = records.income.filter((row) => isCurrentMonth(row, ['received_date', 'generated_for_date', 'created_at']));
-    const monthExpenseRows = records.expenses.filter((row) => isCurrentMonth(row, ['expense_date', 'date', 'created_at']));
+    const monthRange = currentMonthRange();
+    const monthIncomeRows = records.income.filter((row) => isCurrentMonth(row, ['transaction_date', 'date', 'recorded_at', 'received_date', 'generated_for_date', 'created_at'], monthRange));
+    const monthExpenseRows = records.expenses.filter((row) => isCurrentMonth(row, ['transaction_date', 'date', 'recorded_at', 'expense_date', 'created_at'], monthRange));
     const currentMonthIncome = sumAmounts(monthIncomeRows, ['amount']);
     const currentMonthExpenses = sumAmounts(monthExpenseRows, ['amount']);
     const spendingRatio = safeDivide(currentMonthExpenses, currentMonthIncome);
+    const hasCurrentMonthData = monthIncomeRows.length > 0 || monthExpenseRows.length > 0;
+    const currentMonthNet = currentMonthIncome - currentMonthExpenses;
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Monthly range:', { startOfMonth: monthRange.startIso, endOfMonth: monthRange.endIso });
+      console.log('Monthly income records:', monthIncomeRows);
+      console.log('Monthly expense records:', monthExpenseRows);
+      console.log('Monthly totals:', {
+        currentMonthIncome,
+        currentMonthExpenses,
+        currentMonthNet,
+        spendingRatio,
+      });
+    }
 
     const goalProgressValues = records.goals.map(goalProgress).filter((value): value is number => value !== null);
     const averageGoalProgress = goalProgressValues.length ? goalProgressValues.reduce((total, value) => total + value, 0) / goalProgressValues.length : null;
@@ -894,7 +928,9 @@ export default function ExecutiveDashboardPage() {
       investmentsTotal,
       currentMonthIncome,
       currentMonthExpenses,
+      currentMonthNet,
       spendingRatio,
+      hasCurrentMonthData,
       activeGoals: records.goals.length,
       nearestGoalDate,
       averageGoalProgress,
@@ -923,14 +959,25 @@ export default function ExecutiveDashboardPage() {
   }, [profile?.default_currency, profile?.onboarding_completed, records, text]);
 
   const money = useCallback(
-    (amount: number | null) => (amount === null ? text.insufficientData : formatMoney(amount, summary.defaultCurrency, locale)),
-    [locale, summary.defaultCurrency, text.insufficientData]
+    (amount: number | null | undefined) => {
+      if (amount === null || amount === undefined) return text.notEntered;
+      if (!Number.isFinite(amount)) return text.invalidValue;
+      return formatMoney(amount, summary.defaultCurrency, locale);
+    },
+    [locale, summary.defaultCurrency, text.invalidValue, text.notEntered]
   );
 
   const percent = useCallback(
     (value: number | null) => (value === null ? text.insufficientData : `${Math.round(value * 100)}%`),
     [text.insufficientData]
   );
+
+  const monthlySpendingRatio = useMemo(() => {
+    if (!summary.hasCurrentMonthData) return text.noCurrentMonthData;
+    if (summary.currentMonthIncome <= 0 && summary.currentMonthExpenses > 0) return text.notCalculable;
+    if (summary.currentMonthIncome <= 0 && summary.currentMonthExpenses <= 0) return text.insufficientData;
+    return percent(summary.spendingRatio);
+  }, [percent, summary.currentMonthExpenses, summary.currentMonthIncome, summary.hasCurrentMonthData, summary.spendingRatio, text.insufficientData, text.noCurrentMonthData, text.notCalculable]);
 
   const globalLoadFailures = loadFailures.filter(isGlobalDashboardFailure);
   const hasErrors = globalLoadFailures.length > 0;
@@ -1125,12 +1172,16 @@ export default function ExecutiveDashboardPage() {
               </>
             }
           >
-            <div className="stats-grid">
-              <SmallStat label={text.currentMonthIncome} value={money(summary.currentMonthIncome)} />
-              <SmallStat label={text.currentMonthExpenses} value={money(summary.currentMonthExpenses)} />
-              <SmallStat label={text.netBalance} value={money(summary.currentMonthIncome - summary.currentMonthExpenses)} />
-              <SmallStat label={text.spendingRatio} value={percent(summary.spendingRatio)} />
-            </div>
+            {!summary.hasCurrentMonthData ? (
+              <EmptyState title={text.noCurrentMonthData} />
+            ) : (
+              <div className="stats-grid">
+                <SmallStat label={text.currentMonthIncome} value={money(summary.currentMonthIncome)} />
+                <SmallStat label={text.currentMonthExpenses} value={money(summary.currentMonthExpenses)} />
+                <SmallStat label={text.netBalance} value={money(summary.currentMonthNet)} />
+                <SmallStat label={text.spendingRatio} value={monthlySpendingRatio} />
+              </div>
+            )}
           </CardShell>
 
           <CardShell title={text.goalsSavings} icon={<Goal size={20} />} action={<ActionLink href="/goals">{text.openGoals}</ActionLink>}>

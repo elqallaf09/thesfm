@@ -19,7 +19,7 @@ interface Props {
   };
   typeLabel: (type: Investment['type']) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
-  formatMoney: (amount: number) => string;
+  formatMoney: (amount: number | null | undefined, status?: Investment['displayValueStatus']) => string;
   onClose: () => void;
 }
 
@@ -52,8 +52,8 @@ export function InvestmentDetailDrawer({
 
         <div className="invest-detail-grid">
           <Info label={labels.type} value={typeLabel(investment.type)} />
-          <Info label={labels.currentValue} value={formatMoney(investment.currentValue)} />
-          <Info label={labels.monthly} value={formatMoney(investment.monthlyContribution)} />
+          <Info label={labels.currentValue} value={formatMoney(investment.displayValue, investment.displayValueStatus)} />
+          <Info label={labels.monthly} value={formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)} />
           <Info label={labels.startDate} value={investment.startDate} />
           <Info label={labels.risk} value={riskLabel(investment.riskLevel)} />
           <Info label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? '—' : `${investment.expectedAnnualReturn}%`} />
@@ -76,4 +76,3 @@ function Info({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-

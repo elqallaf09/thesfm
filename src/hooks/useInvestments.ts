@@ -4,16 +4,24 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
+import { firstMoneyValue, parseMoneyValue } from '@/lib/money';
 
 type DbInvestmentRow = {
   id: string;
   name: string;
   amount: number | string | null;
+  user_id?: string | null;
   type?: InvestmentType | null;
+  category?: InvestmentType | string | null;
+  value?: number | string | null;
   current_value?: number | string | null;
+  initial_value?: number | string | null;
+  invested_amount?: number | string | null;
+  purchase_price?: number | string | null;
   monthly_contribution?: number | string | null;
   start_date?: string | null;
   risk_level?: RiskLevel | null;
+  expected_return?: number | string | null;
   expected_annual_return?: number | string | null;
   notes?: string | null;
   created_at?: string | null;
@@ -24,6 +32,7 @@ type InvestmentMeta = Omit<InvestmentInput, 'name' | 'currentValue'>;
 
 const GUEST_KEY = 'sfm_guest_investments';
 const OLD_GUEST_KEY = 'sfm_guest_invest';
+let hasLoggedInvestmentDebug = false;
 
 function nowIso() {
   return new Date().toISOString();
@@ -60,18 +69,35 @@ function writeJson<T>(key: string, value: T) {
 
 function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): Investment {
   const createdAt = row.created_at || nowIso();
-  const currentValue = Number(row.current_value ?? row.amount ?? 0) || 0;
+  const displayAmount = firstMoneyValue(row as Record<string, unknown>, ['current_value', 'amount', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
+  const monthlyAmount = parseMoneyValue(row.monthly_contribution ?? meta?.monthlyContribution);
+  const expectedReturn = parseMoneyValue(row.expected_annual_return ?? row.expected_return ?? meta?.expectedAnnualReturn);
+  if (process.env.NODE_ENV === 'development' && !hasLoggedInvestmentDebug) {
+    hasLoggedInvestmentDebug = true;
+    console.log('RAW INVESTMENT ASSET:', row);
+    console.log('Investment amount fields:', {
+      amount: row.amount,
+      value: row.value,
+      current_value: row.current_value,
+      initial_value: row.initial_value,
+      invested_amount: row.invested_amount,
+      purchase_price: row.purchase_price,
+      monthly_contribution: row.monthly_contribution,
+    });
+  }
   return {
     id: row.id,
     name: row.name || '',
-    type: row.type || meta?.type || 'investment',
-    currentValue,
-    monthlyContribution: Number(row.monthly_contribution ?? meta?.monthlyContribution ?? 0) || 0,
+    type: row.type || (row.category as InvestmentType | undefined) || meta?.type || 'other',
+    currentValue: displayAmount.status === 'valid' ? displayAmount.value : 0,
+    displayValue: displayAmount.status === 'valid' ? displayAmount.value : null,
+    displayValueStatus: displayAmount.status,
+    displayValueRaw: displayAmount.raw,
+    monthlyContribution: monthlyAmount.status === 'valid' ? monthlyAmount.value : 0,
+    monthlyContributionStatus: monthlyAmount.status,
     startDate: row.start_date || meta?.startDate || createdAt.slice(0, 10) || todayInput(),
     riskLevel: row.risk_level || meta?.riskLevel || 'medium',
-    expectedAnnualReturn: row.expected_annual_return !== undefined && row.expected_annual_return !== null
-      ? Number(row.expected_annual_return)
-      : meta?.expectedAnnualReturn ?? 0,
+    expectedAnnualReturn: expectedReturn.status === 'valid' ? expectedReturn.value : meta?.expectedAnnualReturn ?? 0,
     notes: row.notes ?? meta?.notes ?? '',
     createdAt,
     updatedAt: row.updated_at || createdAt,
@@ -82,7 +108,7 @@ function toLegacyRow(item: Investment): DbInvestmentRow {
   return {
     id: item.id,
     name: item.name,
-    amount: item.currentValue,
+    amount: item.displayValue ?? item.currentValue,
     created_at: item.createdAt,
   };
 }
@@ -130,9 +156,21 @@ export function useInvestments() {
       }
 
       const meta = readJson<Record<string, InvestmentMeta>>(userMetaKey, {});
+      const full = await supabase
+        .from('investment_items')
+        .select('id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,created_at,updated_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (!cancelled && !full.error) {
+        setItems((full.data ?? []).map(row => rowToInvestment(row as DbInvestmentRow, meta[(row as DbInvestmentRow).id])));
+        setIsLoading(false);
+        return;
+      }
+
       const extended = await supabase
         .from('investment_items')
-        .select('id,name,amount,type,current_value,monthly_contribution,start_date,risk_level,expected_annual_return,notes,created_at')
+        .select('id,name,amount,type,current_value,monthly_contribution,start_date,risk_level,expected_annual_return,notes,created_at,updated_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -170,6 +208,8 @@ export function useInvestments() {
     const optimistic: Investment = {
       ...data,
       id: newId(),
+      displayValue: data.currentValue,
+      displayValueStatus: 'valid',
       createdAt,
       updatedAt: createdAt,
     };
@@ -222,6 +262,8 @@ export function useInvestments() {
     const nextItem: Investment = {
       ...previous,
       ...data,
+      displayValue: data.currentValue,
+      displayValueStatus: 'valid',
       updatedAt,
     };
 

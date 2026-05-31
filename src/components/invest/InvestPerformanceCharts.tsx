@@ -15,6 +15,11 @@ type ValuePoint = {
   value: number;
 };
 
+type ProjectionPoint = {
+  month: string;
+  value: number;
+};
+
 export default function InvestPerformanceCharts({
   distribution,
   values,
@@ -26,7 +31,7 @@ export default function InvestPerformanceCharts({
 }: {
   distribution: DistributionPoint[];
   values: ValuePoint[];
-  projection: ValuePoint[];
+  projection: ProjectionPoint[];
   canShowProjection: boolean;
   titles: {
     distribution: string;

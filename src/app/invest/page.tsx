@@ -19,6 +19,7 @@ import { useInvestments } from '@/hooks/useInvestments';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
+import type { MoneyParseStatus } from '@/lib/money';
 import { investmentSymbol, marketAnalysisUrl } from '@/lib/data/investmentData';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
 
@@ -157,7 +158,15 @@ export default function InvestPage() {
     { id: 'risk', label: L('المخاطر', 'Risk', 'Risque') },
     { id: 'reports', label: L('التقارير', 'Reports', 'Rapports') },
   ], [L, items.length]);
-  const money = useCallback((amount: number) => formatCurrency(amount, currency, lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en'), [currency, lang]);
+  const money = useCallback((amount: number | null | undefined, status: MoneyParseStatus = 'valid') => {
+    if (status === 'missing' || amount === null || amount === undefined) {
+      return L('القيمة غير مدخلة', 'Value not entered', 'Valeur non saisie');
+    }
+    if (status === 'invalid' || !Number.isFinite(amount)) {
+      return L('قيمة غير صالحة', 'Invalid value', 'Valeur invalide');
+    }
+    return formatCurrency(amount, currency, lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en');
+  }, [L, currency, lang]);
   const totalValue = useMemo(() => items.reduce((sum, item) => sum + item.currentValue, 0), [items]);
   const totalMonthly = useMemo(() => items.reduce((sum, item) => sum + item.monthlyContribution, 0), [items]);
   const uniqueCategories = useMemo(() => new Set(items.map(item => item.type)).size, [items]);
@@ -392,7 +401,7 @@ export default function InvestPage() {
                   <InvestmentRow
                     key={item.id}
                     investment={item}
-                    portfolioPercent={totalValue > 0 ? (item.currentValue / totalValue) * 100 : 0}
+                    portfolioPercent={totalValue > 0 ? (item.currentValue / totalValue) * 100 : null}
                     labels={labels}
                     typeLabel={typeLabel}
                     riskLabel={riskLabel}

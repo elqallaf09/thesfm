@@ -1,3 +1,5 @@
+import { moneyNumber } from './money';
+
 export type GoalProgressInput = {
   amount?: unknown;
   target_amount?: unknown;
@@ -21,23 +23,7 @@ export type GoalProgress = {
 };
 
 export function parseMoney(value: unknown): number {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-  if (value === null || value === undefined || value === '') return 0;
-
-  const normalized = String(value)
-    .replace(/[٠-٩]/g, digit => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
-    .replace(/[۰-۹]/g, digit => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
-    .replace(/[^\d.,-]/g, '');
-
-  if (!normalized) return 0;
-
-  const decimalComma = /,\d{1,3}$/.test(normalized) && normalized.lastIndexOf(',') > normalized.lastIndexOf('.');
-  const numeric = decimalComma
-    ? normalized.replace(/\./g, '').replace(',', '.')
-    : normalized.replace(/,/g, '');
-
-  const parsed = Number(numeric);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return moneyNumber(value, 0);
 }
 
 export function parseGoalNotes(notes: unknown): Record<string, unknown> {

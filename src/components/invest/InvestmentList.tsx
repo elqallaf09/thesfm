@@ -28,7 +28,7 @@ interface Props {
   types: InvestmentType[];
   typeLabel: (type: InvestmentType) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
-  formatMoney: (amount: number) => string;
+  formatMoney: (amount: number | null | undefined, status?: Investment['displayValueStatus']) => string;
   onDetails: (item: Investment) => void;
   onEdit: (item: Investment) => void;
   onDelete: (item: Investment) => void;
@@ -101,7 +101,7 @@ export function InvestmentList({
           <InvestmentRow
             key={item.id}
             investment={item}
-            portfolioPercent={total > 0 ? (item.currentValue / total) * 100 : 0}
+            portfolioPercent={total > 0 ? (item.currentValue / total) * 100 : null}
             labels={labels}
             typeLabel={typeLabel}
             riskLabel={riskLabel}
@@ -115,4 +115,3 @@ export function InvestmentList({
     </section>
   );
 }
-

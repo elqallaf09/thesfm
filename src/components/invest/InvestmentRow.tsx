@@ -5,7 +5,7 @@ import type { Investment } from '@/types/investment';
 
 interface Props {
   investment: Investment;
-  portfolioPercent: number;
+  portfolioPercent: number | null;
   labels: {
     details: string;
     edit: string;
@@ -17,7 +17,7 @@ interface Props {
   };
   typeLabel: (type: Investment['type']) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
-  formatMoney: (amount: number) => string;
+  formatMoney: (amount: number | null | undefined, status?: Investment['displayValueStatus']) => string;
   onDetails: (item: Investment) => void;
   onEdit: (item: Investment) => void;
   onDelete: (item: Investment) => void;
@@ -34,6 +34,12 @@ export function InvestmentRow({
   onEdit,
   onDelete,
 }: Props) {
+  const notCalculable = labels.ofPortfolio.includes('portfolio')
+    ? 'Not calculable'
+    : labels.ofPortfolio.includes('portefeuille')
+      ? 'Non calculable'
+      : 'غير قابل للحساب';
+
   return (
     <article className="invest-row">
       <div className="invest-row-main">
@@ -41,13 +47,13 @@ export function InvestmentRow({
           <h3>{investment.name}</h3>
           <p>{typeLabel(investment.type)} · {labels.risk}: {riskLabel(investment.riskLevel)}</p>
         </div>
-        <strong>{formatMoney(investment.currentValue)}</strong>
+        <strong>{formatMoney(investment.displayValue, investment.displayValueStatus)}</strong>
       </div>
 
       <div className="invest-row-meta">
-        <span>{labels.monthly}: {formatMoney(investment.monthlyContribution)}</span>
+        <span>{labels.monthly}: {formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)}</span>
         <span>{labels.expectedReturn}: {investment.expectedAnnualReturn === undefined ? '—' : `${investment.expectedAnnualReturn}%`}</span>
-        <span>{labels.ofPortfolio.replace('{pct}', portfolioPercent.toFixed(0))}</span>
+        <span>{portfolioPercent === null ? notCalculable : labels.ofPortfolio.replace('{pct}', portfolioPercent.toFixed(0))}</span>
       </div>
 
       <div className="invest-row-actions">
@@ -67,4 +73,3 @@ export function InvestmentRow({
     </article>
   );
 }
-

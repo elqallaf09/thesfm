@@ -102,13 +102,7 @@ export function emptyRecords<K extends string>(tables: Array<{ key: K }>): SfmRe
 }
 
 export function moneyAmount(value: unknown) {
-  if (typeof value === 'string') {
-    const normalized = value.replace(/[^\d.-]/g, '');
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return moneyNumber(value, 0);
 }
 
 export function safeDivide(numerator: unknown, denominator: unknown) {
@@ -125,8 +119,8 @@ export function safePercent(numerator: unknown, denominator: unknown) {
 
 export function sumAmounts(rows: any[] = [], keys: string[] = ['amount']) {
   return rows.reduce((sum, row) => {
-    const value = keys.map(key => row?.[key]).find(item => item !== undefined && item !== null && String(item).trim() !== '');
-    return sum + moneyAmount(value);
+    const parsed = firstMoneyValue(row, keys);
+    return sum + (parsed.status === 'valid' ? parsed.value : 0);
   }, 0);
 }
 
@@ -272,12 +266,18 @@ export function projectExpenseRows<T = any>(rows: T[] = [], projectId?: string |
 
 export function currentMonthRange(date = new Date()) {
   const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  start.setHours(0, 0, 0, 0);
   const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  end.setHours(23, 59, 59, 999);
   return {
     year: String(date.getFullYear()),
     month: String(date.getMonth() + 1).padStart(2, '0'),
     startDate: start.toISOString().slice(0, 10),
     endDate: end.toISOString().slice(0, 10),
+    startIso: start.toISOString(),
+    endIso: end.toISOString(),
+    start,
+    end,
   };
 }
 
@@ -320,7 +320,7 @@ export function buildFinanceOverview(records: Partial<SfmRecords>) {
   const incomeTotal = sumAmounts(personalIncome, ['amount']);
   const expenseTotal = sumAmounts(personalExpenses, ['amount']);
   const savingsTotal = sumAmounts(records.savings ?? [], ['amount', 'current_value']);
-  const investmentTotal = sumAmounts(records.investments ?? [], ['current_value', 'amount']);
+  const investmentTotal = sumAmounts(records.investments ?? [], ['current_value', 'amount', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
   const charityTotal = sumAmounts(records.charityDonations ?? [], ['amount', 'donation_amount'])
     + sumAmounts(records.charityProjects ?? [], ['collected_amount', 'current_amount']);
   const zakatDue = sumAmounts(records.zakatCalculations ?? [], ['zakat_due']);
@@ -345,3 +345,4 @@ export function buildFinanceOverview(records: Partial<SfmRecords>) {
     hasZakat: (records.zakatCalculations?.length ?? 0) > 0 || (records.zakatAssets?.length ?? 0) > 0,
   };
 }
+import { firstMoneyValue, moneyNumber } from '@/lib/money';

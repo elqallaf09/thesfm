@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { INCOME_CATEGORIES } from '@/lib/income-categories';
+import { moneyNumber } from '@/lib/money';
 
 interface IncomeSourcesFormProps {
   userId: string;
@@ -21,7 +22,7 @@ export function IncomeSourcesForm({ userId, username, onComplete }: IncomeSource
   const [error, setError] = useState('');
 
   const totalIncome = INCOME_CATEGORIES.reduce((sum, category) => {
-    const amount = parseFloat((amounts[category.id] || '').replace(/[^\d.]/g, '')) || 0;
+    const amount = moneyNumber(amounts[category.id], 0);
     return sum + amount;
   }, 0);
 
@@ -39,7 +40,7 @@ export function IncomeSourcesForm({ userId, username, onComplete }: IncomeSource
       user_id: userId,
       category: category.id,
       label: category.nameAr,
-      amount: parseFloat((amounts[category.id] || '').replace(/[^\d.]/g, '')) || 0,
+      amount: moneyNumber(amounts[category.id], 0),
     })).filter((row) => row.amount > 0);
 
     const { error: insertError } = await supabase.from('monthly_income_sources').insert(rows);

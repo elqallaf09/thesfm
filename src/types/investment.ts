@@ -15,7 +15,11 @@ export interface Investment {
   name: string;
   type: InvestmentType;
   currentValue: number;
+  displayValue: number | null;
+  displayValueStatus: 'valid' | 'missing' | 'invalid';
+  displayValueRaw?: unknown;
   monthlyContribution: number;
+  monthlyContributionStatus?: 'valid' | 'missing' | 'invalid';
   startDate: string;
   riskLevel: RiskLevel;
   expectedAnnualReturn?: number;
@@ -24,5 +28,4 @@ export interface Investment {
   updatedAt: string;
 }
 
-export type InvestmentInput = Omit<Investment, 'id' | 'createdAt' | 'updatedAt'>;
-
+export type InvestmentInput = Omit<Investment, 'id' | 'createdAt' | 'updatedAt' | 'displayValue' | 'displayValueStatus' | 'displayValueRaw' | 'monthlyContributionStatus'>;

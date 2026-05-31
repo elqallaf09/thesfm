@@ -3,7 +3,7 @@ import { sumAmounts } from './financeData';
 export const INVESTMENT_TABLE = 'investment_items';
 
 export function totalInvestments(rows: any[] = []) {
-  return sumAmounts(rows, ['current_value', 'amount']);
+  return sumAmounts(rows, ['current_value', 'amount', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
 }
 
 export function investmentSymbol(row: any) {

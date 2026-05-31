@@ -7,6 +7,7 @@ import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { normalizeNumberInput, parseMoneyValue } from '@/lib/money';
 
 const INVESTMENT_TYPES = [
   { ar: 'أسهم', en: 'Stocks', icon: '📈' },
@@ -32,7 +33,7 @@ export default function AddInvestmentPage() {
   }, []);
 
   const formatAmount = (value: string) => {
-    const clean = value.replace(/[^\d.]/g, '');
+    const clean = normalizeNumberInput(value);
     const parts = clean.split('.');
     return parts.length > 1 ? `${parts[0]}.${parts[1].slice(0, 3)}` : clean;
   };
@@ -49,17 +50,27 @@ export default function AddInvestmentPage() {
       setMessage(isAr ? 'سجل الدخول لحفظ الاستثمار' : 'Sign in to save this investment');
       return;
     }
-    if (!name.trim() || !amount || Number(amount) <= 0) {
+    const parsedAmount = parseMoneyValue(amount);
+    if (!name.trim() || parsedAmount.status !== 'valid' || parsedAmount.value <= 0) {
       setMessage(isAr ? 'أدخل اسم الاستثمار والمبلغ' : 'Enter investment name and amount');
       return;
     }
 
     setSaving(true);
-    const { error } = await supabase.from('investment_items').insert({
+    let { error } = await supabase.from('investment_items').insert({
       user_id: user.id,
       name: name.trim(),
-      amount: Number(amount),
+      amount: parsedAmount.value,
+      current_value: parsedAmount.value,
     });
+    if (error) {
+      const legacy = await supabase.from('investment_items').insert({
+        user_id: user.id,
+        name: name.trim(),
+        amount: parsedAmount.value,
+      });
+      error = legacy.error;
+    }
     setSaving(false);
 
     if (error) {
