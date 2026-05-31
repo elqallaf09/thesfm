@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { useCurrency } from '@/lib/useCurrency';
+import { trackEvent } from '@/lib/analytics';
 
 const EXPENSE_CATEGORIES = [
   { id: 'transport', label_ar: 'المواصلات', label_en: 'Transport', label_fr: 'Transport', icon: '🚌' },
@@ -84,6 +85,7 @@ export default function AddExpensePage() {
 
       if (error) throw error;
 
+      void trackEvent('add_expense', { module: 'expenses', metadata: { category, necessity, currency } });
       setShowSuccess(true);
       setTimeout(() => {
         router.push('/expenses');

@@ -9,6 +9,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { Loader2, Pencil, Trash2, Send, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
+import { trackEvent } from '@/lib/analytics';
 
 /* ─── Types ─── */
 type ProjectStatus = 'فكرة' | 'قيد التنفيذ' | 'نشط' | 'متوقف' | 'مكتمل';
@@ -248,6 +249,7 @@ export default function ProjectsPage() {
       } else if (user) {
         const { data, error } = await supabase.from('projects').insert({ user_id: user.id, name: form.name, emoji: form.emoji, budget: form.capital, timeline: form.startTimeline, duration_unit: 'month', steps: [], notes }).select().single();
         if (error) throw new Error(error.message);
+        void trackEvent('create_project', { module: 'projects', metadata: { has_timeline: Boolean(form.startTimeline), has_feasibility_types: form.feasibilityTypes.length > 0 } });
         if (data) setProjects(prev => [{ ...form, id: data.id, analysis: analysis || undefined, expanded: false }, ...prev]);
       }
       setForm(emptyForm); setShowForm(false); setFormStep(0);

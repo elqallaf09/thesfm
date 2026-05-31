@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { useCurrency } from '@/lib/useCurrency';
+import { trackEvent } from '@/lib/analytics';
 
 const INCOME_TYPES = [
   { id: 'salary', label_ar: 'الراتب', label_en: 'Salary', label_fr: 'Salaire', icon: '💼' },
@@ -76,6 +77,7 @@ export default function AddIncomePage() {
 
       if (error) throw error;
 
+      void trackEvent('add_income', { module: 'income', metadata: { category: incomeType, currency } });
       setShowSuccess(true);
       setTimeout(() => {
         router.push('/income');

@@ -7,6 +7,7 @@ import { AuthProvider } from '@/hooks/useAuth';
 import { LanguageProvider } from '@/components/LanguageProvider';
 import { CurrencyProvider } from '@/lib/useCurrency';
 import { AppLayout } from '@/components/AppLayout';
+import { AnalyticsTracker } from '@/components/AnalyticsTracker';
 import { pageMetadata } from '@/lib/seo';
 import './globals.css';
 
@@ -61,6 +62,7 @@ export default function RootLayout({
           <AuthProvider>
             <LanguageProvider>
               <CurrencyProvider>
+                <AnalyticsTracker />
                 <AppLayout>{children}</AppLayout>
               </CurrencyProvider>
               <GlobalClientEffects />

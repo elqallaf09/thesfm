@@ -51,6 +51,7 @@ import { getCurrency } from '@/lib/currencies';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { calculateGoalProgress, parseMoney } from '@/lib/goalProgress';
 import { isProjectLinkedExpenseRow, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
+import { trackEvent } from '@/lib/analytics';
 
 type PageKind = 'expenses' | 'income' | 'invest' | 'savings' | 'goals' | 'reports' | 'ai';
 type ExpensePageTab = 'overview' | 'records' | 'receipts' | 'categories' | 'analytics' | 'reports';
@@ -1998,7 +1999,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         .select('*')
         .single();
 
-      if (!error) return created as SmartExpense;
+      if (!error) {
+        void trackEvent('add_expense', { module: 'expenses', metadata: { category: String(nextPayload.category ?? 'general') } });
+        return created as SmartExpense;
+      }
 
       lastError = error;
       console.error('Expense insert failed:', {
@@ -2283,6 +2287,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               amount,
             }).select('id,label,category,amount').single();
             if (error) throw error;
+            void trackEvent('add_income', { module: 'income', metadata: { category: entryForm.category || 'general' } });
             applyEntryToSnapshot(kind, { id: created.id, name: created.label || name, label: created.label, category: created.category, amount: Number(created.amount) || amount }, mode);
           } else {
             const { error } = await supabase.from('monthly_income_sources').update({
@@ -2407,6 +2412,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 logSavingsSaveError(createResult.error, savingPayload);
                 throw createResult.error;
               }
+              void trackEvent('add_saving', { module: 'savings', metadata: { saving_type: entryForm.savingType || entryForm.savingMethod || 'general', linked_goal: Boolean(linkedGoalId) } });
               await adjustGoal(linkedGoalId, amount);
               applyEntryToSnapshot(kind, { ...savingPayload, ...createResult.data } as MoneyItem, mode);
             } else {
@@ -2649,6 +2655,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         }
         const { data: created, error } = insertResult;
         if (error) throw error;
+        void trackEvent('add_goal', { module: 'goals', metadata: { category: goalForm.category || 'general' } });
         setSnapshot(prev => ({
           ...prev,
           goals: [goalFromRow(created as GoalRow), ...prev.goals],

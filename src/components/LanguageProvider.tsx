@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { Lang } from '@/lib/translations';
 import { t as translate, TR } from '@/lib/translations';
+import { trackEvent } from '@/lib/analytics';
 
 const STORAGE_KEY = 'sfm_lang';
 const LANG_EVENT = 'sfm-language-change';
@@ -64,6 +65,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const setLang = useCallback((l: Lang) => {
     if (!isLang(l)) return;
     setLangState(l);
+    void trackEvent('change_language', { language: l, metadata: { language: l } });
     try {
       localStorage.setItem(STORAGE_KEY, l);
       window.dispatchEvent(new CustomEvent(LANG_EVENT, { detail: { lang: l } }));

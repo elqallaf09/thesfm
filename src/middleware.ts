@@ -43,6 +43,7 @@ const protectedPrefixes = [
   '/services/accounting-firms',
   '/services/feasibility-firms',
   '/services/advisory-firms',
+  '/sfm-admin-control',
 ];
 
 const authPages = ['/login', '/reset-password'];
@@ -61,10 +62,22 @@ function redirectToLogin(request: NextRequest) {
 type SessionCheck = {
   hasSession: boolean;
   userId?: string;
+  email?: string;
   token?: string;
   supabaseUrl?: string;
   supabaseAnonKey?: string;
 };
+
+function adminEmails() {
+  return (process.env.ADMIN_EMAILS || 'elqallaf09@gmail.com')
+    .split(',')
+    .map(item => item.trim().replace(/^mailto:/i, '').replace(/^\[(.*)\]\(mailto:.*\)$/i, '$1').toLowerCase())
+    .filter(Boolean);
+}
+
+function isAdminEmail(email?: string | null) {
+  return Boolean(email && adminEmails().includes(email.trim().toLowerCase()));
+}
 
 async function getSupabaseSession(request: NextRequest): Promise<SessionCheck> {
   const token = request.cookies.get('sfm_access_token')?.value;
@@ -82,10 +95,11 @@ async function getSupabaseSession(request: NextRequest): Promise<SessionCheck> {
       cache: 'no-store',
     });
     if (!response.ok) return { hasSession: false };
-    const user = await response.json() as { id?: string };
+    const user = await response.json() as { id?: string; email?: string };
     return {
       hasSession: Boolean(user.id),
       userId: user.id,
+      email: user.email,
       token,
       supabaseUrl,
       supabaseAnonKey,
@@ -144,6 +158,12 @@ export async function middleware(request: NextRequest) {
 
   if (!isProtected(pathname)) return response;
   if (hasSession) {
+    if (pathname === '/sfm-admin-control' && !isAdminEmail(session.email)) {
+      const dashboardUrl = request.nextUrl.clone();
+      dashboardUrl.pathname = '/dashboard';
+      dashboardUrl.search = '';
+      return NextResponse.redirect(dashboardUrl);
+    }
     if (request.cookies.get('sfm_mfa_required')?.value === 'true' && pathname !== '/mfa/verify') {
       const mfaUrl = request.nextUrl.clone();
       mfaUrl.pathname = '/mfa/verify';

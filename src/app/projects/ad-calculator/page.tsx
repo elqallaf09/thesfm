@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { trackEvent } from '@/lib/analytics';
 
 const PLATFORMS = [
   { id: 'instagram', name: 'Instagram', pct: 30, cpm: 3.8, cpc: 0.42, color: '#EC4899' },
@@ -98,6 +99,8 @@ export default function AdCampaignCalculatorPage() {
         estimated_clicks: totals.clicks,
       }).select().single();
       if (error) throw error;
+      void trackEvent('use_calculator', { module: 'projects', metadata: { calculator_type: 'ad_campaign', industry } });
+      void trackEvent('create_project', { module: 'projects', metadata: { source: 'ad_campaign_calculator' } });
       setMessage(isAr ? 'تم حفظ الحملة بنجاح' : 'Campaign saved');
     } catch (err: any) {
       setMessage(err.message || (isAr ? 'تعذر حفظ الحملة' : 'Could not save campaign'));

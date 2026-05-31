@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
 import { isProjectLinkedIncomeRow, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { useCurrency } from '@/lib/useCurrency';
+import { trackEvent } from '@/lib/analytics';
 
 type IncomeType = 'salary' | 'freelance' | 'project' | 'investment' | 'bonus' | 'gift' | 'rent' | 'other';
 type IncomeStatus = 'received' | 'pending' | 'expected' | 'late';
@@ -872,6 +873,7 @@ export default function IncomePage() {
       link.click();
       URL.revokeObjectURL(url);
       setExportOpen(false);
+      void trackEvent('export_report', { module: 'income', metadata: { export_type: 'csv', report_id: 'income' } });
       showToast(tr('exportSuccess', lang));
     } catch {
       showToast(tr('exportFailed', lang));
@@ -932,6 +934,7 @@ export default function IncomePage() {
       `);
       report.document.close();
       setExportOpen(false);
+      void trackEvent('export_report', { module: 'income', metadata: { export_type: 'pdf', report_id: 'income' } });
       showToast(tr('exportSuccess', lang));
     } catch {
       showToast(tr('exportFailed', lang));
@@ -1089,6 +1092,7 @@ export default function IncomePage() {
           }
         }
         setRows(previous => [parent, ...generatedRows, ...previous]);
+        void trackEvent('add_income', { module: 'income', metadata: { category: form.incomeType, currency, recurring: form.isRecurring } });
         await load();
       }
       setModalOpen(false);

@@ -32,6 +32,7 @@ import { loadUserDataTables } from '@/lib/data/reportsData';
 import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { buildFeasibilityStudyExportRow, printFeasibilityStudyToPdf } from '@/lib/reports/feasibilityStudyExport';
 import { formatDate, formatNumber } from '@/lib/locale';
+import { trackEvent } from '@/lib/analytics';
 
 type Lang = 'ar' | 'en' | 'fr';
 type ReportStatus = 'ready' | 'needs_data' | 'unavailable' | 'error';
@@ -1701,6 +1702,7 @@ export default function ReportsCenterPage() {
     const rows = status === 'ready' ? reportRows(report, records, filters, lang as Lang) : [];
     if (!rows.length) return showToast(tr.noRowsForExport);
     downloadCsv(`sfm-${slug(report.title.en)}-${filters.year}.csv`, rows, lang as Lang);
+    void trackEvent('export_report', { module: 'reports', metadata: { export_type: 'csv', report_id: report.id } });
     showToast(tr.csvDownloaded);
   }, [filters, lang, loadErrors, records, showToast, tr.csvDownloaded, tr.noRowsForExport]);
 
@@ -1716,6 +1718,7 @@ export default function ReportsCenterPage() {
           lang: lang as Lang,
           dir: dir as 'rtl' | 'ltr',
         });
+        void trackEvent('export_report', { module: 'reports', metadata: { export_type: 'pdf', report_id: report.id } });
         showToast(tr.printOpened);
       } catch (error) {
         console.error('Feasibility PDF export failed', error);
@@ -1726,6 +1729,7 @@ export default function ReportsCenterPage() {
     setActiveReportId(report.id);
     window.setTimeout(() => {
       window.print();
+      void trackEvent('export_report', { module: 'reports', metadata: { export_type: 'print', report_id: report.id } });
       showToast(tr.printOpened);
     }, 120);
   }, [dir, filters, lang, loadErrors, records, showToast, tr.exportsDisabled, tr.printOpened]);

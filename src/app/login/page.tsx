@@ -24,6 +24,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { isEmail } from '@/lib/authSecurity';
+import { trackEvent } from '@/lib/analytics';
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset' | 'twoFactor';
 type Message = { type: 'error' | 'ok'; text: string } | null;
@@ -641,6 +642,7 @@ function LoginContent() {
     console.debug('[auth] session returned', { hasSession: Boolean(data.session), hasAccessToken: Boolean(data.session.access_token) });
     syncLoggedInCookies(data.session);
     setMfaRequiredCookie(false);
+    void trackEvent('login', { module: 'auth', metadata: { method: 'email_2fa' } });
     console.debug('[auth] redirect target', nextPath);
     router.replace(nextPath);
     router.refresh();
@@ -733,6 +735,7 @@ function LoginContent() {
       console.debug('[auth] login success', { userId: newUser.id, source: 'register' });
       console.debug('[auth] session returned', { hasSession: Boolean(data.session), hasAccessToken: Boolean(data.session.access_token) });
       syncLoggedInCookies(data.session);
+      void trackEvent('signup', { module: 'auth', metadata: { method: 'email' } });
       console.debug('[auth] redirect target', '/dashboard');
       router.replace('/dashboard');
       router.refresh();

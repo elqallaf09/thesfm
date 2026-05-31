@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { isEmail } from '@/lib/authSecurity';
+import { trackEvent } from '@/lib/analytics';
 
 interface AuthContextValue {
   user: User | null;
@@ -212,6 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(signedInSession);
         setUser(signedInUser);
         setIsGuest(false);
+        void trackEvent('login', { module: 'auth', metadata: { method: identifierIsEmail ? 'email' : 'username' } });
         console.debug('[auth] login success', { userId: signedInUser.id, hasSession: Boolean(signedInSession) });
         console.debug('[auth] session returned', { hasAccessToken: Boolean(signedInSession?.access_token), expiresAt: signedInSession?.expires_at ?? null });
         return { error: null, session: signedInSession, user: signedInUser, email };
@@ -292,12 +294,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
+        void trackEvent('signup', { module: 'auth', metadata: { method: 'email' } });
         return { error: null };
       } catch (err: any) {
         return { error: new Error(err.message || 'فشل الاتصال بالخادم') };
       }
     },
     signOut: async () => {
+      void trackEvent('logout', { module: 'auth' });
       await supabase.auth.signOut();
       clearStoredGuestMode();
       syncAuthCookies(null, false);
