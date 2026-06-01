@@ -490,6 +490,8 @@ export const TR: Record<string, TranslationEntry> = {
   market_entry_price_optional: { ar:'سعر الدخول اختياري', en:'Entry price optional', fr:'Prix d’entrée optionnel' },
   market_stop_price_optional: { ar:'سعر وقف الخسارة اختياري', en:'Stop loss price optional', fr:'Prix du stop loss optionnel' },
   market_risk_above_two_warning: { ar:'تنبيه: المخاطرة أعلى من 2٪. راجع حجم الصفقة قبل التنفيذ.', en:'Warning: risk is above 2%. Review position size before execution.', fr:'Attention : le risque dépasse 2 %. Vérifiez la taille de position avant exécution.' },
+  market_calculation_results: { ar:'نتائج الحساب', en:'Calculation results', fr:'Résultats du calcul' },
+  market_pair_asset_type: { ar:'الأصل / الزوج', en:'Pair / asset type', fr:'Paire / type d’actif' },
   market_currency_pair: { ar:'زوج العملات', en:'Currency pair', fr:'Paire de devises' },
   market_entry_price: { ar:'سعر الدخول', en:'Entry price', fr:'Prix d’entrée' },
   market_exit_price: { ar:'سعر الخروج', en:'Exit price', fr:'Prix de sortie' },

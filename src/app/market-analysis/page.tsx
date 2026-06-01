@@ -2244,6 +2244,7 @@ export default function MarketAnalysisPage() {
         .ai-summary-compact{display:grid;gap:10px;align-content:start}.ai-summary-compact small{color:var(--sfm-muted);font-size:12px;font-weight:800;line-height:1.7}
         .market-bottom-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.market-copy,.market-muted{margin:0;color:var(--sfm-muted);line-height:1.8;font-size:13px;font-weight:800}.market-muted{margin-top:12px;color:var(--sfm-muted);font-size:12px}.watchlist{display:flex;flex-wrap:wrap;gap:8px}.watchlist span,.watchlist>button{border-radius:999px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14);padding:7px 11px;color:var(--sfm-muted);font-weight:900;font-size:12px;display:inline-flex;align-items:center;gap:6px}.watchlist button{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:0}.compare-bars{display:grid;gap:10px}.compare-bars div{display:grid;grid-template-columns:46px minmax(0,1fr) 54px;gap:8px;align-items:center}.compare-bars span,.compare-bars b{font-size:12px;font-weight:900;color:var(--sfm-muted)}.compare-bars div i{height:9px;border-radius:999px;background:linear-gradient(90deg,var(--sfm-primary),var(--sfm-accent));display:block}.compare-table{margin-top:14px;overflow-x:auto;display:grid;gap:7px}.compare-table>div{display:grid;grid-template-columns:60px 90px 70px 52px 76px 80px;gap:7px;min-width:470px}.compare-table b,.compare-table span{font-size:11px;font-weight:900;color:var(--sfm-muted)}.compare-table b{color:var(--sfm-muted)}
         .trader-dashboard{display:grid;gap:16px}.tool-tabs,.symbol-chip-row,.overlap-row{display:flex;flex-wrap:wrap;gap:8px}.tool-tabs button,.symbol-chip-row button{min-height:38px;border:1px solid rgba(167,243,240,.18);border-radius:999px;background:var(--sfm-light-card);color:var(--sfm-muted);padding:0 13px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.tool-tabs button[aria-pressed="true"],.tool-tabs button:hover,.tool-tabs button:focus-visible,.symbol-chip-row button[aria-pressed="true"],.symbol-chip-row button:hover,.symbol-chip-row button:focus-visible{outline:none;background:linear-gradient(135deg,rgba(29,140,255,.18),rgba(47,214,192,.14));border-color:rgba(47,214,192,.38);color:var(--sfm-foreground);box-shadow:0 0 0 3px rgba(24,212,212,.12)}.trader-tool-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.trader-tool-card{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14);border-radius:18px;padding:16px;display:grid;gap:14px;min-width:0}.trader-tool-card.compact{align-content:start}.trader-tool-card h3{margin:0;color:var(--sfm-foreground);font-size:16px;font-weight:950;line-height:1.45}.trader-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tool-input select{width:100%;min-width:0;border:1px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);padding:12px 13px;font:900 13px Tajawal,Arial,sans-serif;outline:0;color:var(--sfm-foreground)}.tool-result-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tool-warning{margin:0;border:1px solid rgba(245,158,11,.25);background:rgba(245,158,11,.10);color:#92400E;border-radius:13px;padding:10px 12px;font-size:12px;font-weight:900;line-height:1.7}.trader-table-wrap{overflow-x:auto;border:1px solid rgba(167,243,240,.14);border-radius:18px}.trader-table{display:grid;min-width:780px}.trader-table>div{display:grid;grid-template-columns:90px minmax(160px,1fr) 110px 90px 90px 90px 90px;gap:10px;padding:11px 12px;border-bottom:1px solid rgba(167,243,240,.10);align-items:center}.trader-table>div:last-child{border-bottom:0}.trader-table b{color:var(--sfm-muted);font-size:11px;font-weight:950}.trader-table span{color:var(--sfm-foreground);font-size:12px;font-weight:900;overflow-wrap:anywhere}.trader-empty-state{display:grid;gap:9px;justify-items:start;border:1px dashed rgba(167,243,240,.24);background:var(--sfm-light-card);border-radius:18px;padding:18px;color:var(--sfm-muted)}.trader-empty-state svg{color:var(--sfm-soft-cyan)}.trader-empty-state strong{color:var(--sfm-foreground);font-size:15px;font-weight:950}.trader-empty-state p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:850;line-height:1.8}.session-timeline{position:relative;height:48px;border-radius:999px;background:linear-gradient(90deg,rgba(29,140,255,.10),rgba(47,214,192,.12));border:1px solid rgba(167,243,240,.14);overflow:hidden}.session-timeline span{position:absolute;top:7px;bottom:7px;border-radius:999px;background:rgba(148,163,184,.22);color:var(--sfm-muted);display:grid;place-items:center;font-size:11px;font-weight:950;min-width:54px}.session-timeline span.open{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.sessions-grid{margin-top:14px}.session-badge{width:max-content;border-radius:999px;padding:6px 10px;background:rgba(148,163,184,.12);color:var(--sfm-muted);font-size:12px}.session-badge.open{background:rgba(47,214,192,.14);color:var(--sfm-primary-hover)}.overlap-row{margin-top:14px}.overlap-row span{border:1px solid rgba(167,243,240,.14);background:var(--sfm-light-card);color:var(--sfm-muted);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900}.overlap-row span.active{background:rgba(47,214,192,.14);border-color:rgba(47,214,192,.32);color:var(--sfm-primary-hover)}
+        .market-panel.trader-dashboard{width:100%;max-width:100%;overflow:hidden;padding:clamp(16px,4vw,28px);border-radius:28px;background:linear-gradient(135deg,rgba(29,140,255,.06),rgba(47,214,192,.08)),var(--sfm-card);display:grid;gap:18px;box-sizing:border-box}.trader-dashboard *{box-sizing:border-box}.trader-dashboard-head{margin:0;align-items:center;border:1px solid rgba(47,214,192,.18);background:linear-gradient(135deg,rgba(29,140,255,.12),rgba(47,214,192,.09));border-radius:22px;padding:14px;min-width:0}.trader-dashboard-head>div{min-width:0}.trader-dashboard-head h2{font-size:clamp(24px,5vw,34px);line-height:1.15}.trader-head-icon,.trader-tool-card-head span{width:42px;height:42px;border-radius:16px;display:grid;place-items:center;flex:0 0 auto;background:rgba(47,214,192,.14);color:var(--sfm-soft-cyan);border:1px solid rgba(47,214,192,.22)}.tool-tabs{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;display:flex;flex-wrap:nowrap;gap:8px;padding:2px 2px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.tool-tabs::-webkit-scrollbar{display:none}.tool-tabs button{flex:0 0 auto;white-space:nowrap;min-height:42px;border-radius:16px;padding:0 14px;font-size:13px;max-width:none}.trader-tool-grid{grid-template-columns:1fr;gap:16px;min-width:0}.trader-tool-card{width:100%;max-width:100%;overflow:hidden;border-radius:24px;padding:18px;gap:16px;background:var(--sfm-card);border-color:rgba(47,214,192,.16);box-shadow:0 10px 30px rgba(3,18,37,.06)}.trader-tool-card-head{display:flex;align-items:center;gap:10px;min-width:0}.trader-tool-card-head h3{font-size:clamp(18px,4vw,22px);line-height:1.35;min-width:0;overflow-wrap:anywhere}.trader-form-grid{grid-template-columns:1fr;gap:14px;min-width:0}.tool-input{width:100%;max-width:100%;display:grid!important;grid-template-columns:1fr!important;gap:8px;min-width:0;align-items:start}.tool-input span{display:block;color:var(--sfm-foreground);font-size:13px;font-weight:950;line-height:1.55;text-align:start}.tool-input input,.tool-input select{width:100%;max-width:100%;min-width:0;height:50px;border:1px solid rgba(167,243,240,.24);border-radius:16px;background:var(--sfm-light-card);color:var(--sfm-foreground);padding:0 14px;font:900 16px Tajawal,Arial,sans-serif;outline:0;box-shadow:none}.tool-input input:focus,.tool-input select:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.16)}.tool-input input[dir="ltr"]{text-align:left;direction:ltr;unicode-bidi:isolate}.tool-results{display:grid;gap:10px;border-top:1px solid rgba(167,243,240,.14);padding-top:14px;min-width:0}.tool-results-title{color:var(--sfm-foreground);font-size:14px;font-weight:950;line-height:1.4}.tool-result-grid{grid-template-columns:1fr;gap:10px;min-width:0}.tool-result-card{display:grid;gap:5px;min-width:0;border:1px solid rgba(167,243,240,.14);background:var(--sfm-light-card);border-radius:18px;padding:13px 14px}.tool-result-card span{color:var(--sfm-muted);font-size:12px;font-weight:900;line-height:1.45;text-align:start}.tool-result-card b{color:var(--sfm-foreground);font-size:18px;font-weight:950;line-height:1.3;overflow-wrap:anywhere;text-align:start}.tool-warning{display:block;margin:0;border-radius:16px;padding:12px 14px;font-size:13px;line-height:1.75}.dark .trader-tool-card{background:#0f1d31;border-color:#1d3050}.dark .tool-input input,.dark .tool-input select,.dark .tool-result-card{background:#0a1422;border-color:#1d3050;color:#e8eef6}@media(min-width:640px){.tool-result-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(min-width:760px){.trader-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(min-width:1180px){.trader-tool-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}[dir="rtl"] .trader-dashboard,[dir="rtl"] .trader-tool-card,[dir="rtl"] .tool-input span,[dir="rtl"] .tool-result-card span{text-align:right}[dir="rtl"] .tool-result-card b{text-align:left}[dir="ltr"] .trader-dashboard,[dir="ltr"] .trader-tool-card,[dir="ltr"] .tool-input span,[dir="ltr"] .tool-result-card span,[dir="ltr"] .tool-result-card b{text-align:left}
         .market-disclaimer{display:flex;align-items:flex-start;gap:12px;padding:16px;color:var(--sfm-muted)}.market-disclaimer strong{display:block;color:var(--sfm-foreground);margin-bottom:4px}.market-disclaimer p{margin:0;color:var(--sfm-muted);font-size:13px;line-height:1.7;font-weight:800}
         @media(max-width:1180px){.market-card-grid,.market-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.market-layout,.market-bottom-grid,.market-decision-grid,.market-tools-grid,.trader-tool-grid{grid-template-columns:1fr}.market-chart{grid-row:auto}.market-search-panel{grid-template-columns:1fr 1fr}}
         @media(max-width:1024px){.market-main{margin-inline-start:0;padding:calc(88px + env(safe-area-inset-top)) 16px 18px;max-width:100%}}
@@ -2287,6 +2288,7 @@ function TraderToolsDashboard({
     riskPercentage: '1',
     stopLossPips: '50',
     pipValue: '10',
+    assetType: 'EURUSD',
   });
 
   const position = calculatePositionSize({
@@ -2313,8 +2315,8 @@ function TraderToolsDashboard({
 
   return (
     <section className="market-panel trader-dashboard">
-      <div className="market-section-head">
-        <Calculator size={20} />
+      <div className="market-section-head trader-dashboard-head">
+        <span className="trader-head-icon"><Calculator size={20} /></span>
         <div>
           <span>{t('market_trader_tools_subtitle')}</span>
           <h2>{t('market_trader_tools')}</h2>
@@ -2330,7 +2332,10 @@ function TraderToolsDashboard({
       {subTab === 'calculators' ? (
         <div className="trader-tool-grid">
           <article className="trader-tool-card">
-            <h3>{t('market_risk_position_calculator')}</h3>
+            <div className="trader-tool-card-head">
+              <span><ShieldAlert size={18} /></span>
+              <h3>{t('market_risk_position_calculator')}</h3>
+            </div>
             <div className="trader-form-grid">
               <ToolInput label={t('market_account_balance')} value={positionInput.accountBalance} onChange={value => setPositionInput(prev => ({ ...prev, accountBalance: value }))} />
               <ToolInput label={t('market_risk_percentage')} value={positionInput.riskPercentage} onChange={value => setPositionInput(prev => ({ ...prev, riskPercentage: value }))} />
@@ -2348,7 +2353,7 @@ function TraderToolsDashboard({
               <ToolInput label={t('market_entry_price_optional')} value={positionInput.entryPrice} onChange={value => setPositionInput(prev => ({ ...prev, entryPrice: value }))} />
               <ToolInput label={t('market_stop_price_optional')} value={positionInput.stopLossPrice} onChange={value => setPositionInput(prev => ({ ...prev, stopLossPrice: value }))} />
             </div>
-            <ResultGrid rows={[
+            <ResultGrid title={t('market_calculation_results')} rows={[
               [t('market_risk_amount'), money(position.riskAmount, currency)],
               [t('market_suggested_position_size'), formatNumber(position.positionSize, 4)],
               [t('market_lot_size'), position.lotSize === null ? '--' : formatNumber(position.lotSize, 4)],
@@ -2358,9 +2363,12 @@ function TraderToolsDashboard({
           </article>
 
           <article className="trader-tool-card">
-            <h3>{t('market_pips_calculator')}</h3>
+            <div className="trader-tool-card-head">
+              <span><LineChart size={18} /></span>
+              <h3>{t('market_pips_calculator')}</h3>
+            </div>
             <div className="trader-form-grid">
-              <ToolInput label={t('market_currency_pair')} value={pipsInput.pair} onChange={value => setPipsInput(prev => ({ ...prev, pair: value.toUpperCase() }))} />
+              <ToolInput label={t('market_currency_pair')} value={pipsInput.pair} inputDir="ltr" inputMode="text" onChange={value => setPipsInput(prev => ({ ...prev, pair: value.toUpperCase() }))} />
               <ToolInput label={t('market_entry_price')} value={pipsInput.entryPrice} onChange={value => setPipsInput(prev => ({ ...prev, entryPrice: value }))} />
               <ToolInput label={t('market_exit_price')} value={pipsInput.exitPrice} onChange={value => setPipsInput(prev => ({ ...prev, exitPrice: value }))} />
               <ToolInput label={t('market_lot_size')} value={pipsInput.lotSize} onChange={value => setPipsInput(prev => ({ ...prev, lotSize: value }))} />
@@ -2372,21 +2380,25 @@ function TraderToolsDashboard({
                 </select>
               </label>
             </div>
-            <ResultGrid rows={[
+            <ResultGrid title={t('market_calculation_results')} rows={[
               [t('market_number_of_pips'), formatNumber(pips.pips, 1)],
               [t('market_profit_loss'), money(pips.profitLoss, currency)],
             ]} />
           </article>
 
           <article className="trader-tool-card">
-            <h3>{t('market_lot_size_by_risk')}</h3>
+            <div className="trader-tool-card-head">
+              <span><Calculator size={18} /></span>
+              <h3>{t('market_lot_size_by_risk')}</h3>
+            </div>
             <div className="trader-form-grid">
               <ToolInput label={t('market_account_balance')} value={lotInput.accountBalance} onChange={value => setLotInput(prev => ({ ...prev, accountBalance: value }))} />
               <ToolInput label={t('market_risk_percentage')} value={lotInput.riskPercentage} onChange={value => setLotInput(prev => ({ ...prev, riskPercentage: value }))} />
               <ToolInput label={t('market_stop_loss_pips')} value={lotInput.stopLossPips} onChange={value => setLotInput(prev => ({ ...prev, stopLossPips: value }))} />
               <ToolInput label={t('market_pip_value')} value={lotInput.pipValue} onChange={value => setLotInput(prev => ({ ...prev, pipValue: value }))} />
+              <ToolInput label={t('market_pair_asset_type')} value={lotInput.assetType} inputDir="ltr" inputMode="text" onChange={value => setLotInput(prev => ({ ...prev, assetType: value.toUpperCase() }))} />
             </div>
-            <ResultGrid rows={[
+            <ResultGrid title={t('market_calculation_results')} rows={[
               [t('market_recommended_lot_size'), formatNumber(lots.recommendedLotSize, 4)],
               [t('market_micro_lots'), formatNumber(lots.microLots, 2)],
               [t('market_mini_lots'), formatNumber(lots.miniLots, 2)],
@@ -2401,20 +2413,28 @@ function TraderToolsDashboard({
   );
 }
 
-function ToolInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function ToolInput({ label, value, inputDir = 'ltr', inputMode = 'decimal', onChange }: { label: string; value: string; inputDir?: 'ltr' | 'rtl'; inputMode?: 'decimal' | 'text'; onChange: (value: string) => void }) {
   return (
     <label className="tool-input">
       <span>{label}</span>
-      <input value={value} inputMode="decimal" onChange={event => onChange(event.target.value)} />
+      <input value={value} inputMode={inputMode} dir={inputDir} onChange={event => onChange(event.target.value)} />
     </label>
   );
 }
 
-function ResultGrid({ rows }: { rows: Array<[string, string]> }) {
+function ResultGrid({ rows, title }: { rows: Array<[string, string]>; title?: string }) {
   return (
-    <div className="tool-result-grid">
-      {rows.map(([label, value]) => <MarketMetric key={label} label={label} value={value} />)}
-    </div>
+    <section className="tool-results" aria-label={title}>
+      {title && <strong className="tool-results-title">{title}</strong>}
+      <div className="tool-result-grid">
+        {rows.map(([label, value]) => (
+          <div className="tool-result-card" key={label}>
+            <span>{label}</span>
+            <b dir="ltr">{value}</b>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
