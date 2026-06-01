@@ -39,15 +39,21 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
       <style jsx>{`
         .page-section-tabs {
           display: flex;
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
           gap: 8px;
+          width: 100%;
           max-width: 100%;
           min-width: 0;
-          overflow-x: visible;
-          overflow-y: visible;
-          padding: 2px 2px 10px;
+          overflow-x: auto;
+          overflow-y: hidden;
+          padding: 8px;
+          border: 1px solid rgba(47, 214, 192, .14);
+          border-radius: 24px;
+          background: linear-gradient(135deg, rgba(29, 140, 255, .05), rgba(47, 214, 192, .06)), var(--sfm-card);
+          box-shadow: 0 10px 28px rgba(3, 18, 37, .05);
           scrollbar-width: none;
           -webkit-overflow-scrolling: touch;
+          overscroll-behavior-inline: contain;
         }
         .page-section-tabs::-webkit-scrollbar {
           display: none;
@@ -55,12 +61,12 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
         .page-section-tabs button {
           flex: 0 0 auto;
           max-width: 100%;
-          min-height: 42px;
+          min-height: 44px;
           border: 1px solid rgba(29, 140, 255, .20);
-          border-radius: 999px;
+          border-radius: 18px;
           background: var(--sfm-card);
           color: var(--sfm-muted-readable);
-          padding: 0 14px;
+          padding: 0 16px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -72,8 +78,8 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
         }
         .page-section-tabs button span {
           min-width: 0;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          overflow: visible;
+          text-overflow: clip;
         }
         .page-section-tabs button:hover,
         .page-section-tabs button:focus-visible {
@@ -116,8 +122,8 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
             overflow-x: auto;
             overflow-y: hidden;
             gap: 8px;
-            overscroll-behavior-inline: contain;
-            padding: 2px 4px 8px;
+            padding: 8px;
+            border-radius: 20px;
           }
           .page-section-tabs button {
             max-width: none;
