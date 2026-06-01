@@ -31,10 +31,15 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
   const { signOut } = useAuth();
   const { viewMode, setViewMode } = useViewMode();
   const [activeSource, setActiveSource] = useState(pathname);
-  const [closedGroups, setClosedGroups] = useState<Record<string, boolean>>({});
+  const [openGroupId, setOpenGroupId] = useState<string | null>(null);
   const previousLang = useRef(lang);
 
   const activeGroupId = useMemo(() => findActiveNavigationGroup(activeSource), [activeSource]);
+  const activeSupport = useMemo(
+    () => SUPPORT_LINKS.some(item => isNavigationItemActive(activeSource, item.href)),
+    [activeSource],
+  );
+  const activeSidebarGroupId = activeGroupId ?? (activeSupport ? 'support' : null);
   const navGroups = useMemo(() => filterNavigationGroups(NAV_GROUPS, viewMode), [viewMode]);
 
   useEffect(() => {
@@ -53,11 +58,8 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
   }, [pathname]);
 
   useEffect(() => {
-    if (activeGroupId) setClosedGroups(prev => ({ ...prev, [activeGroupId]: false }));
-  }, [activeGroupId]);
-
-  useEffect(() => {
     if (!open) return;
+    setOpenGroupId(null);
     const original = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.body.classList.add('sfm-mobile-lock');
@@ -130,16 +132,17 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
 
         <nav className="sfm-mobile-nav" aria-label={menuLabel}>
           {navGroups.map(group => {
-            const expanded = !closedGroups[group.id] && (group.defaultOpen || activeGroupId === group.id || closedGroups[group.id] === false);
+            const expanded = openGroupId === group.id;
+            const activeGroup = activeSidebarGroupId === group.id;
             const groupId = `sfm-mobile-group-${group.id}`;
             return (
               <section key={group.id} className="sfm-mobile-group">
                 <button
                   type="button"
-                  className="sfm-mobile-section"
+                  className={`sfm-mobile-section${activeGroup ? ' active' : ''}`}
                   aria-expanded={expanded}
                   aria-controls={groupId}
-                  onClick={() => setClosedGroups(prev => ({ ...prev, [group.id]: expanded }))}
+                  onClick={() => setOpenGroupId(current => current === group.id ? null : group.id)}
                 >
                   <span>{t(group.labelKey)}</span>
                   <ChevronDown size={15} />
@@ -169,25 +172,36 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
           })}
         </nav>
         <section className="sfm-mobile-support" aria-label={t('nav_group_support')}>
-          <span className="sfm-mobile-support-title">{t('nav_group_support')}</span>
-          <div className="sfm-mobile-support-links">
-            {SUPPORT_LINKS.map(item => {
-              const Icon = item.icon;
-              const active = isNavigationItemActive(activeSource, item.href);
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={active ? 'active' : ''}
-                  aria-current={active ? 'page' : undefined}
-                  onClick={() => go(item)}
-                >
-                  <span className="sfm-mobile-support-icon"><Icon size={15} /></span>
-                  <span>{t(item.labelKey)}</span>
-                </button>
-              );
-            })}
-          </div>
+          <button
+            type="button"
+            className={`sfm-mobile-section${activeSupport ? ' active' : ''}`}
+            aria-expanded={openGroupId === 'support'}
+            aria-controls="sfm-mobile-group-support"
+            onClick={() => setOpenGroupId(current => current === 'support' ? null : 'support')}
+          >
+            <span>{t('nav_group_support')}</span>
+            <ChevronDown size={15} />
+          </button>
+          {openGroupId === 'support' && (
+            <div className="sfm-mobile-support-links" id="sfm-mobile-group-support">
+              {SUPPORT_LINKS.map(item => {
+                const Icon = item.icon;
+                const active = isNavigationItemActive(activeSource, item.href);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={active ? 'active' : ''}
+                    aria-current={active ? 'page' : undefined}
+                    onClick={() => go(item)}
+                  >
+                    <span className="sfm-mobile-support-icon"><Icon size={15} /></span>
+                    <span>{t(item.labelKey)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </section>
       </aside>
 
@@ -213,6 +227,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
         .sfm-mobile-group:last-child{border-bottom:0}
         .sfm-mobile-section{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:34px;border:1px solid transparent;border-radius:12px;padding:6px 10px;background:transparent;color:var(--mobile-menu-secondary);cursor:pointer;font:900 11px Tajawal,Arial,sans-serif;text-align:start;transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease}
         .sfm-mobile-section:hover,.sfm-mobile-section:focus-visible{background:var(--mobile-menu-card-hover);border-color:var(--mobile-menu-accent);color:var(--mobile-menu-text);outline:0;box-shadow:0 0 0 2px rgba(34,211,238,.18)}
+        .sfm-mobile-section.active{background:rgba(34,211,238,.12);border-color:rgba(34,211,238,.32);color:var(--mobile-menu-text)}
         .sfm-mobile-section svg{transition:transform .18s ease}
         .sfm-mobile-section[aria-expanded="false"] svg{transform:rotate(90deg)}
         [dir="ltr"] .sfm-mobile-section[aria-expanded="false"] svg{transform:rotate(-90deg)}

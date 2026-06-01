@@ -32,7 +32,7 @@ export function Sidebar() {
   const { viewMode, setViewMode } = useViewMode();
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [hash, setHash] = useState('');
-  const [closedGroups, setClosedGroups] = useState<Record<string, boolean>>({});
+  const [openGroupId, setOpenGroupId] = useState<string | null>(null);
 
   useEffect(() => {
     const updateHash = () => setHash(typeof window === 'undefined' ? '' : window.location.hash);
@@ -43,12 +43,16 @@ export function Sidebar() {
 
   const activeSource = normalizeNavigationSource(pathname, hash);
   const activeGroupId = useMemo(() => findActiveNavigationGroup(activeSource), [activeSource]);
+  const activeSupport = useMemo(
+    () => SUPPORT_LINKS.some(item => isNavigationItemActive(activeSource, item.href)),
+    [activeSource],
+  );
+  const activeSidebarGroupId = activeGroupId ?? (activeSupport ? 'support' : null);
   const navGroups = useMemo(() => filterNavigationGroups(NAV_GROUPS, viewMode), [viewMode]);
 
   useEffect(() => {
-    if (!activeGroupId) return;
-    setClosedGroups(prev => ({ ...prev, [activeGroupId]: false }));
-  }, [activeGroupId]);
+    setOpenGroupId(activeSidebarGroupId);
+  }, [activeSidebarGroupId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,6 +118,7 @@ export function Sidebar() {
         .sfm-shared-group:last-child{border-bottom:0}
         .sfm-shared-group-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid transparent;background:transparent;color:#B8C7D9;padding:8px 10px 7px;border-radius:10px;cursor:pointer;font:900 10.5px Tajawal,Arial,sans-serif;letter-spacing:.02em;text-align:start;transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease}
         .sfm-shared-group-toggle:hover,.sfm-shared-group-toggle:focus-visible{background:rgba(29,140,255,.12);color:#EAF6FF;border-color:rgba(167,243,240,.14);outline:0;box-shadow:0 0 0 2px rgba(24,212,212,.14)}
+        .sfm-shared-group-toggle.active{background:rgba(29,140,255,.16);color:#EAF6FF;border-color:rgba(24,212,212,.24)}
         .sfm-shared-group-toggle .sfm-chevron{transition:transform .18s ease;opacity:.75}
         .sfm-shared-group-toggle[aria-expanded="false"] .sfm-chevron{transform:rotate(90deg)}
         [dir="ltr"] .sfm-shared-group-toggle[aria-expanded="false"] .sfm-chevron{transform:rotate(-90deg)}
@@ -165,16 +170,17 @@ export function Sidebar() {
       </div>
       <nav className="sfm-shared-nav" aria-label={t('nav_mobile_menu')}>
         {navGroups.map(group => {
-          const open = !closedGroups[group.id] && (group.defaultOpen || activeGroupId === group.id || closedGroups[group.id] === false);
+          const open = openGroupId === group.id;
+          const activeGroup = activeSidebarGroupId === group.id;
           const groupId = `sfm-sidebar-group-${group.id}`;
           return (
             <section className="sfm-shared-group" key={group.id}>
               <button
                 type="button"
-                className="sfm-shared-group-toggle"
+                className={`sfm-shared-group-toggle${activeGroup ? ' active' : ''}`}
                 aria-expanded={open}
                 aria-controls={groupId}
-                onClick={() => setClosedGroups(prev => ({ ...prev, [group.id]: open }))}
+                onClick={() => setOpenGroupId(current => current === group.id ? null : group.id)}
               >
                 <span>{t(group.labelKey)}</span>
                 <ChevronDown className="sfm-chevron" size={14} />
@@ -207,23 +213,36 @@ export function Sidebar() {
         })}
       </nav>
       <section className="sfm-shared-support" aria-label={t('nav_group_support')}>
-        <span className="sfm-shared-support-title">{t('nav_group_support')}</span>
-        {SUPPORT_LINKS.map(item => {
-          const active = isNavigationItemActive(activeSource, item.href);
-          const SupportIcon = item.icon;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => handleItem(item)}
-              className={`sfm-shared-support-item${active ? ' active' : ''}`}
-              aria-current={active ? 'page' : undefined}
-            >
-              <span className="sfm-shared-support-icon"><SupportIcon size={15} /></span>
-              <span className="sfm-shared-support-label">{t(item.labelKey)}</span>
-            </button>
-          );
-        })}
+        <button
+          type="button"
+          className={`sfm-shared-group-toggle${activeSupport ? ' active' : ''}`}
+          aria-expanded={openGroupId === 'support'}
+          aria-controls="sfm-sidebar-group-support"
+          onClick={() => setOpenGroupId(current => current === 'support' ? null : 'support')}
+        >
+          <span>{t('nav_group_support')}</span>
+          <ChevronDown className="sfm-chevron" size={14} />
+        </button>
+        {openGroupId === 'support' && (
+          <div id="sfm-sidebar-group-support">
+            {SUPPORT_LINKS.map(item => {
+              const active = isNavigationItemActive(activeSource, item.href);
+              const SupportIcon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleItem(item)}
+                  className={`sfm-shared-support-item${active ? ' active' : ''}`}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  <span className="sfm-shared-support-icon"><SupportIcon size={15} /></span>
+                  <span className="sfm-shared-support-label">{t(item.labelKey)}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </section>
     </aside>
   );
