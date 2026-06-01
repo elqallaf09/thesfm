@@ -75,6 +75,10 @@ type TechnicalState = {
   loading: boolean;
   data: Record<string, any> | null;
   message: string;
+  updatedAt?: string;
+  available?: Record<string, any> | null;
+  code?: string;
+  symbol?: string;
 };
 
 const WATCHLIST_STORAGE_KEY = 'sfm_market_watchlist';
@@ -108,7 +112,42 @@ const QUICK_MARKET_EXAMPLES: MarketSearchItem[] = [
   { symbol: '^GSPC', providerSymbol: '^GSPC', name: 'S&P 500 Index', assetType: 'index', exchange: 'CBOE' },
   { symbol: '^IXIC', providerSymbol: '^IXIC', name: 'Nasdaq Composite', assetType: 'index', exchange: 'NASDAQ' },
 ];
-const DEFAULT_TECHNICAL_SYMBOLS = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD', 'XAUUSD', 'BTCUSD', 'ETHUSD', 'QQQ', 'SPY', 'NVDA', 'AAPL', 'MSFT'];
+type TechnicalSymbolCategory = 'forex' | 'stocks' | 'indices' | 'metals' | 'crypto';
+type TechnicalSymbolOption = {
+  symbol: string;
+  label: string;
+  category: TechnicalSymbolCategory;
+};
+const TECHNICAL_SYMBOL_CATEGORIES: TechnicalSymbolCategory[] = ['forex', 'stocks', 'indices', 'metals', 'crypto'];
+const TECHNICAL_SYMBOL_GROUPS: Record<TechnicalSymbolCategory, TechnicalSymbolOption[]> = {
+  forex: [
+    { symbol: 'EURUSD', label: 'EUR/USD', category: 'forex' },
+    { symbol: 'GBPUSD', label: 'GBP/USD', category: 'forex' },
+    { symbol: 'USDJPY', label: 'USD/JPY', category: 'forex' },
+    { symbol: 'USDCHF', label: 'USD/CHF', category: 'forex' },
+    { symbol: 'AUDUSD', label: 'AUD/USD', category: 'forex' },
+    { symbol: 'NZDUSD', label: 'NZD/USD', category: 'forex' },
+    { symbol: 'USDCAD', label: 'USD/CAD', category: 'forex' },
+  ],
+  stocks: [
+    { symbol: 'AAPL', label: 'AAPL', category: 'stocks' },
+    { symbol: 'NVDA', label: 'NVDA', category: 'stocks' },
+    { symbol: 'MSFT', label: 'MSFT', category: 'stocks' },
+  ],
+  indices: [
+    { symbol: 'SPY', label: 'SPY', category: 'indices' },
+    { symbol: 'QQQ', label: 'QQQ', category: 'indices' },
+  ],
+  metals: [
+    { symbol: 'XAUUSD', label: 'XAU/USD', category: 'metals' },
+  ],
+  crypto: [
+    { symbol: 'BTCUSD', label: 'BTC/USD', category: 'crypto' },
+    { symbol: 'ETHUSD', label: 'ETH/USD', category: 'crypto' },
+  ],
+};
+const TECHNICAL_SYMBOL_OPTIONS = Object.values(TECHNICAL_SYMBOL_GROUPS).flat();
+const TECHNICAL_SYMBOL_FAVORITES_KEY = 'sfm_market_technical_favorites';
 const TRADER_TOOL_TABS: TraderToolsSubTab[] = ['calculators', 'performance'];
 
 function money(value: number, currency = 'USD') {
@@ -133,6 +172,30 @@ function normalizePerformanceTrend(value?: string | null): 'bullish' | 'bearish'
   if (['bullish', 'up', 'positive', 'صاعد', 'haussier'].some(token => normalized.includes(token))) return 'bullish';
   if (['bearish', 'down', 'negative', 'هابط', 'baissier'].some(token => normalized.includes(token))) return 'bearish';
   return 'neutral';
+}
+
+function getTechnicalSymbolOption(symbol: string) {
+  const normalized = symbol.trim().toUpperCase();
+  return TECHNICAL_SYMBOL_OPTIONS.find(item => item.symbol === normalized);
+}
+
+function getTechnicalSymbolCategory(symbol: string): TechnicalSymbolCategory {
+  return getTechnicalSymbolOption(symbol)?.category ?? 'forex';
+}
+
+function formatTechnicalSymbol(symbol: string) {
+  const normalized = symbol.trim().toUpperCase();
+  return getTechnicalSymbolOption(normalized)?.label ?? normalized;
+}
+
+function formatTechnicalTimestamp(value?: string, locale = 'ar') {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
 }
 
 function formatNumber(value: number, maximumFractionDigits = 2) {
@@ -558,10 +621,15 @@ export default function MarketAnalysisPage() {
       .then(async response => {
         const payload = await response.json().catch(() => ({}));
         if (cancelled) return;
+        const isSuccess = response.ok && payload.success;
         setTechnicalState({
           loading: false,
-          data: response.ok ? payload : payload.available ? payload : null,
-          message: response.ok ? '' : String(payload.message ?? t('market_technical_no_data')),
+          data: isSuccess ? payload : null,
+          message: isSuccess ? '' : String(payload.message ?? t('market_technical_no_data')),
+          updatedAt: typeof payload.updated_at === 'string' ? payload.updated_at : undefined,
+          available: !isSuccess && payload.available && typeof payload.available === 'object' ? payload.available : null,
+          code: typeof payload.code === 'string' ? payload.code : undefined,
+          symbol: typeof payload.symbol === 'string' ? payload.symbol : symbol,
         });
       })
       .catch(error => {
@@ -1639,6 +1707,7 @@ export default function MarketAnalysisPage() {
         {activeTab === 'technicalAnalysis' && (
           <TechnicalAnalysisPanel
             t={t}
+            locale={lang}
             symbol={technicalSymbol}
             setSymbol={setTechnicalSymbol}
             state={technicalState}
@@ -2247,13 +2316,15 @@ export default function MarketAnalysisPage() {
         .ai-summary-compact{display:grid;gap:10px;align-content:start}.ai-summary-compact small{color:var(--sfm-muted);font-size:12px;font-weight:800;line-height:1.7}
         .market-bottom-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.market-copy,.market-muted{margin:0;color:var(--sfm-muted);line-height:1.8;font-size:13px;font-weight:800}.market-muted{margin-top:12px;color:var(--sfm-muted);font-size:12px}.watchlist{display:flex;flex-wrap:wrap;gap:8px}.watchlist span,.watchlist>button{border-radius:999px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14);padding:7px 11px;color:var(--sfm-muted);font-weight:900;font-size:12px;display:inline-flex;align-items:center;gap:6px}.watchlist button{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:0}.compare-bars{display:grid;gap:10px}.compare-bars div{display:grid;grid-template-columns:46px minmax(0,1fr) 54px;gap:8px;align-items:center}.compare-bars span,.compare-bars b{font-size:12px;font-weight:900;color:var(--sfm-muted)}.compare-bars div i{height:9px;border-radius:999px;background:linear-gradient(90deg,var(--sfm-primary),var(--sfm-accent));display:block}.compare-table{margin-top:14px;overflow-x:auto;display:grid;gap:7px}.compare-table>div{display:grid;grid-template-columns:60px 90px 70px 52px 76px 80px;gap:7px;min-width:470px}.compare-table b,.compare-table span{font-size:11px;font-weight:900;color:var(--sfm-muted)}.compare-table b{color:var(--sfm-muted)}
         .trader-dashboard{display:grid;gap:16px}.tool-tabs,.symbol-chip-row,.overlap-row{display:flex;flex-wrap:wrap;gap:8px}.tool-tabs button,.symbol-chip-row button{min-height:38px;border:1px solid rgba(167,243,240,.18);border-radius:999px;background:var(--sfm-light-card);color:var(--sfm-muted);padding:0 13px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.tool-tabs button[aria-pressed="true"],.tool-tabs button:hover,.tool-tabs button:focus-visible,.symbol-chip-row button[aria-pressed="true"],.symbol-chip-row button:hover,.symbol-chip-row button:focus-visible{outline:none;background:linear-gradient(135deg,rgba(29,140,255,.18),rgba(47,214,192,.14));border-color:rgba(47,214,192,.38);color:var(--sfm-foreground);box-shadow:0 0 0 3px rgba(24,212,212,.12)}.trader-tool-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.trader-tool-card{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14);border-radius:18px;padding:16px;display:grid;gap:14px;min-width:0}.trader-tool-card.compact{align-content:start}.trader-tool-card h3{margin:0;color:var(--sfm-foreground);font-size:16px;font-weight:950;line-height:1.45}.trader-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tool-input select{width:100%;min-width:0;border:1px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);padding:12px 13px;font:900 13px Tajawal,Arial,sans-serif;outline:0;color:var(--sfm-foreground)}.tool-result-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tool-warning{margin:0;border:1px solid rgba(245,158,11,.25);background:rgba(245,158,11,.10);color:#92400E;border-radius:13px;padding:10px 12px;font-size:12px;font-weight:900;line-height:1.7}.trader-table-wrap{overflow-x:auto;border:1px solid rgba(167,243,240,.14);border-radius:18px}.trader-table{display:grid;min-width:780px}.trader-table>div{display:grid;grid-template-columns:90px minmax(160px,1fr) 110px 90px 90px 90px 90px;gap:10px;padding:11px 12px;border-bottom:1px solid rgba(167,243,240,.10);align-items:center}.trader-table>div:last-child{border-bottom:0}.trader-table b{color:var(--sfm-muted);font-size:11px;font-weight:950}.trader-table span{color:var(--sfm-foreground);font-size:12px;font-weight:900;overflow-wrap:anywhere}.trader-empty-state{display:grid;gap:9px;justify-items:start;border:1px dashed rgba(167,243,240,.24);background:var(--sfm-light-card);border-radius:18px;padding:18px;color:var(--sfm-muted)}.trader-empty-state svg{color:var(--sfm-soft-cyan)}.trader-empty-state strong{color:var(--sfm-foreground);font-size:15px;font-weight:950}.trader-empty-state p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:850;line-height:1.8}.session-timeline{position:relative;height:48px;border-radius:999px;background:linear-gradient(90deg,rgba(29,140,255,.10),rgba(47,214,192,.12));border:1px solid rgba(167,243,240,.14);overflow:hidden}.session-timeline span{position:absolute;top:7px;bottom:7px;border-radius:999px;background:rgba(148,163,184,.22);color:var(--sfm-muted);display:grid;place-items:center;font-size:11px;font-weight:950;min-width:54px}.session-timeline span.open{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.sessions-grid{margin-top:14px}.session-badge{width:max-content;border-radius:999px;padding:6px 10px;background:rgba(148,163,184,.12);color:var(--sfm-muted);font-size:12px}.session-badge.open{background:rgba(47,214,192,.14);color:var(--sfm-primary-hover)}.overlap-row{margin-top:14px}.overlap-row span{border:1px solid rgba(167,243,240,.14);background:var(--sfm-light-card);color:var(--sfm-muted);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900}.overlap-row span.active{background:rgba(47,214,192,.14);border-color:rgba(47,214,192,.32);color:var(--sfm-primary-hover)}
+        .technical-analysis-panel{display:grid;gap:16px;overflow:hidden}.technical-selector-shell{display:grid;gap:13px;border:1px solid rgba(47,214,192,.18);background:linear-gradient(135deg,rgba(29,140,255,.06),rgba(47,214,192,.08)),var(--sfm-light-card);border-radius:24px;padding:14px;min-width:0}.technical-search{min-height:48px;display:flex;align-items:center;gap:10px;border:1px solid rgba(167,243,240,.18);background:var(--sfm-card);border-radius:18px;padding:0 13px;color:var(--sfm-muted);min-width:0}.technical-search:focus-within{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.14)}.technical-search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--sfm-foreground);font:900 13px Tajawal,Arial,sans-serif;line-height:1.4}.technical-search input::placeholder{color:var(--sfm-muted);opacity:1}.technical-search button{width:28px;height:28px;border:0;border-radius:999px;background:rgba(148,163,184,.12);color:var(--sfm-muted);font:950 15px Arial,sans-serif;cursor:pointer}.technical-category-row,.technical-symbol-row{width:100%;max-width:100%;display:flex;flex-wrap:nowrap;gap:9px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.technical-category-row::-webkit-scrollbar,.technical-symbol-row::-webkit-scrollbar{display:none}.technical-category-row button{flex:0 0 auto;min-height:40px;border:1px solid rgba(167,243,240,.18);border-radius:999px;background:var(--sfm-card);color:var(--sfm-muted);padding:0 15px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}.technical-category-row button[aria-pressed="true"],.technical-category-row button:hover,.technical-category-row button:focus-visible{outline:none;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));border-color:transparent;color:#FFFFFF;box-shadow:0 10px 22px rgba(29,140,255,.18)}.technical-symbol-pill{flex:0 0 auto;display:flex;align-items:center;gap:4px;min-height:42px;border:1px solid rgba(167,243,240,.18);border-radius:999px;background:var(--sfm-card);padding:3px;color:var(--sfm-foreground);box-shadow:0 10px 24px rgba(5,22,42,.05)}.technical-symbol-pill[data-active="true"]{border-color:transparent;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 14px 30px rgba(29,140,255,.22)}.technical-symbol-main,.technical-symbol-favorite{border:0;background:transparent;color:inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}.technical-symbol-main{min-height:34px;padding:0 10px;font:950 13px Tajawal,Arial,sans-serif;letter-spacing:.01em}.technical-symbol-main span{unicode-bidi:isolate}.technical-symbol-favorite{width:32px;height:32px;border-radius:999px;color:inherit;opacity:.78}.technical-symbol-favorite:hover,.technical-symbol-favorite:focus-visible{outline:none;background:rgba(255,255,255,.18);opacity:1}.technical-symbol-pill:not([data-active="true"]) .technical-symbol-favorite:hover,.technical-symbol-pill:not([data-active="true"]) .technical-symbol-favorite:focus-visible{background:rgba(47,214,192,.12);color:var(--sfm-primary-hover)}.technical-favorites{display:grid;gap:6px;min-width:0}.technical-favorites>span{color:var(--sfm-muted);font-size:11px;font-weight:950;line-height:1.4}.technical-symbol-row.compact{padding-bottom:2px}.technical-no-results{flex:0 0 auto;border:1px dashed rgba(167,243,240,.18);border-radius:999px;background:var(--sfm-card);color:var(--sfm-muted);padding:10px 13px;font-size:12px;font-weight:900}.technical-selected-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.technical-result-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.market-status-grid .metric{border-radius:20px;background:linear-gradient(135deg,rgba(29,140,255,.05),rgba(47,214,192,.07)),var(--sfm-light-card);border-color:rgba(47,214,192,.16)}
         .market-panel.trader-dashboard{width:100%;max-width:100%;overflow:hidden;padding:clamp(16px,4vw,28px);border-radius:28px;background:linear-gradient(135deg,rgba(29,140,255,.06),rgba(47,214,192,.08)),var(--sfm-card);display:grid;gap:18px;box-sizing:border-box}.trader-dashboard *{box-sizing:border-box}.trader-dashboard-head{margin:0;align-items:center;border:1px solid rgba(47,214,192,.18);background:linear-gradient(135deg,rgba(29,140,255,.12),rgba(47,214,192,.09));border-radius:22px;padding:14px;min-width:0}.trader-dashboard-head>div{min-width:0}.trader-dashboard-head h2{font-size:clamp(24px,5vw,34px);line-height:1.15}.trader-head-icon,.trader-tool-card-head span{width:42px;height:42px;border-radius:16px;display:grid;place-items:center;flex:0 0 auto;background:rgba(47,214,192,.14);color:var(--sfm-soft-cyan);border:1px solid rgba(47,214,192,.22)}.tool-tabs{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;display:flex;flex-wrap:nowrap;gap:8px;padding:2px 2px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.tool-tabs::-webkit-scrollbar{display:none}.tool-tabs button{flex:0 0 auto;white-space:nowrap;min-height:42px;border-radius:16px;padding:0 14px;font-size:13px;max-width:none}.trader-tool-grid{grid-template-columns:1fr;gap:16px;min-width:0}.trader-tool-card{width:100%;max-width:100%;overflow:hidden;border-radius:24px;padding:18px;gap:16px;background:var(--sfm-card);border-color:rgba(47,214,192,.16);box-shadow:0 10px 30px rgba(3,18,37,.06)}.trader-tool-card-head{display:flex;align-items:center;gap:10px;min-width:0}.trader-tool-card-head h3{font-size:clamp(18px,4vw,22px);line-height:1.35;min-width:0;overflow-wrap:anywhere}.trader-form-grid{grid-template-columns:1fr;gap:14px;min-width:0}.tool-input{width:100%;max-width:100%;display:grid!important;grid-template-columns:1fr!important;gap:8px;min-width:0;align-items:start}.tool-input span{display:block;color:var(--sfm-foreground);font-size:13px;font-weight:950;line-height:1.55;text-align:start}.tool-input input,.tool-input select{width:100%;max-width:100%;min-width:0;height:50px;border:1px solid rgba(167,243,240,.24);border-radius:16px;background:var(--sfm-light-card);color:var(--sfm-foreground);padding:0 14px;font:900 16px Tajawal,Arial,sans-serif;outline:0;box-shadow:none}.tool-input input:focus,.tool-input select:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.16)}.tool-input input[dir="ltr"]{text-align:left;direction:ltr;unicode-bidi:isolate}.tool-results{display:grid;gap:10px;border-top:1px solid rgba(167,243,240,.14);padding-top:14px;min-width:0}.tool-results-title{color:var(--sfm-foreground);font-size:14px;font-weight:950;line-height:1.4}.tool-result-grid{grid-template-columns:1fr;gap:10px;min-width:0}.tool-result-card{display:grid;gap:5px;min-width:0;border:1px solid rgba(167,243,240,.14);background:var(--sfm-light-card);border-radius:18px;padding:13px 14px}.tool-result-card span{color:var(--sfm-muted);font-size:12px;font-weight:900;line-height:1.45;text-align:start}.tool-result-card b{color:var(--sfm-foreground);font-size:18px;font-weight:950;line-height:1.3;overflow-wrap:anywhere;text-align:start}.tool-warning{display:block;margin:0;border-radius:16px;padding:12px 14px;font-size:13px;line-height:1.75}.dark .trader-tool-card{background:#0f1d31;border-color:#1d3050}.dark .tool-input input,.dark .tool-input select,.dark .tool-result-card{background:#0a1422;border-color:#1d3050;color:#e8eef6}@media(min-width:640px){.tool-result-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(min-width:760px){.trader-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(min-width:1180px){.trader-tool-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}[dir="rtl"] .trader-dashboard,[dir="rtl"] .trader-tool-card,[dir="rtl"] .tool-input span,[dir="rtl"] .tool-result-card span{text-align:right}[dir="rtl"] .tool-result-card b{text-align:left}[dir="ltr"] .trader-dashboard,[dir="ltr"] .trader-tool-card,[dir="ltr"] .tool-input span,[dir="ltr"] .tool-result-card span,[dir="ltr"] .tool-result-card b{text-align:left}
         .performance-card-list{display:none}.performance-table-desktop{display:block}.trader-table-wrap{width:100%;max-width:100%;overflow-x:auto;border:1px solid rgba(167,243,240,.14);border-radius:18px;-webkit-overflow-scrolling:touch}.trader-table{display:table;width:100%;min-width:760px;border-collapse:separate;border-spacing:0 8px;padding:8px}.trader-table th{padding:12px 16px;color:var(--sfm-muted);font-size:13px;font-weight:950;line-height:1.35;text-align:start;white-space:nowrap}.trader-table td{padding:13px 16px;background:var(--sfm-light-card);color:var(--sfm-foreground);font-size:13px;font-weight:900;line-height:1.45;white-space:nowrap;vertical-align:middle}.trader-table tbody tr td:first-child{border-start-start-radius:14px;border-end-start-radius:14px}.trader-table tbody tr td:last-child{border-start-end-radius:14px;border-end-end-radius:14px}.performance-symbol{display:inline-flex;direction:ltr;unicode-bidi:isolate;font-weight:950;letter-spacing:.02em}.performance-value{display:inline-flex;direction:ltr;unicode-bidi:isolate;font-weight:950}.performance-trend{display:inline-flex;align-items:center;justify-content:center;width:max-content;border:1px solid transparent;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:950;line-height:1.2;white-space:nowrap}.performance-trend.bullish{background:#CCFBF1;color:#047857;border-color:rgba(15,118,110,.20)}.performance-trend.bearish{background:#FEE2E2;color:#DC2626;border-color:rgba(220,38,38,.20)}.performance-trend.neutral{background:rgba(148,163,184,.12);color:var(--sfm-muted);border-color:rgba(148,163,184,.20)}.performance-card{width:100%;max-width:100%;min-width:0;overflow:hidden;border:1px solid rgba(167,243,240,.16);border-radius:20px;background:var(--sfm-card);padding:15px;box-shadow:0 10px 26px rgba(3,18,37,.06)}.performance-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}.performance-card-head div{display:grid;gap:4px;min-width:0}.performance-card-head strong{color:var(--sfm-foreground);font-size:17px;font-weight:950;line-height:1.2;direction:ltr;unicode-bidi:isolate;text-align:start}.performance-card-head span{color:var(--sfm-muted);font-size:13px;font-weight:850;line-height:1.45;overflow-wrap:anywhere}.performance-metric-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.performance-metric{min-width:0;border:1px solid rgba(167,243,240,.12);border-radius:15px;background:var(--sfm-light-card);padding:11px;display:grid;gap:5px}.performance-metric span{color:var(--sfm-muted);font-size:11px;font-weight:900;line-height:1.35}.performance-metric b{color:var(--sfm-foreground);font-size:14px;font-weight:950;line-height:1.3;direction:ltr;unicode-bidi:isolate;text-align:start;overflow-wrap:anywhere}.performance-metric b.up,.performance-value.up{color:#047857}.performance-metric b.down,.performance-value.down{color:#DC2626}.dark .trader-table td,.dark .performance-card{background:#0f1d31;border-color:#1d3050}.dark .performance-metric{background:#0a1422;border-color:#1d3050}.dark .performance-trend.bullish{background:rgba(47,214,192,.12);color:#2FD6C0;border-color:rgba(47,214,192,.25)}.dark .performance-trend.bearish{background:rgba(255,91,110,.12);color:#FF5B6E;border-color:rgba(255,91,110,.25)}.dark .performance-metric b.up,.dark .performance-value.up{color:#2FD6C0}.dark .performance-metric b.down,.dark .performance-value.down{color:#FF5B6E}
         .market-disclaimer{display:flex;align-items:flex-start;gap:12px;padding:16px;color:var(--sfm-muted)}.market-disclaimer strong{display:block;color:var(--sfm-foreground);margin-bottom:4px}.market-disclaimer p{margin:0;color:var(--sfm-muted);font-size:13px;line-height:1.7;font-weight:800}
         @media(max-width:1180px){.market-card-grid,.market-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.market-layout,.market-bottom-grid,.market-decision-grid,.market-tools-grid,.trader-tool-grid{grid-template-columns:1fr}.market-chart{grid-row:auto}.market-search-panel{grid-template-columns:1fr 1fr}}
         @media(max-width:1024px){.market-main{margin-inline-start:0;padding:calc(88px + env(safe-area-inset-top)) 16px 18px;max-width:100%}}
-        @media(max-width:720px){.market-main{padding-inline:14px;width:100%;max-width:100%;overflow-x:hidden}.market-hero{grid-template-columns:1fr;padding:22px;border-radius:22px}.market-search-panel,.market-card-grid,.market-status-grid,.market-stat-row,.indicator-list,.scenario-grid,.alert-form,.trader-form-grid,.tool-result-grid{grid-template-columns:1fr}.market-search-panel button{width:100%}.market-search-results{max-height:min(300px,42dvh);top:calc(100% + 10px);border-radius:16px}.market-search-results button{min-height:68px;align-items:flex-start}.market-search-results button small{white-space:normal;text-align:end}.market-hero-card strong{font-size:36px}.market-stock-header{display:grid;gap:14px}.stock-price-block{justify-items:start;text-align:start}.market-panel,.market-card,.market-stock-header{border-radius:18px}.compare-bars div{grid-template-columns:42px minmax(0,1fr) 48px}.tool-tabs,.symbol-chip-row{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;gap:8px;padding:2px 2px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.tool-tabs::-webkit-scrollbar,.symbol-chip-row::-webkit-scrollbar{display:none}.tool-tabs button,.symbol-chip-row button{flex:0 0 auto;white-space:nowrap}.performance-card-list{display:grid;grid-template-columns:1fr;gap:12px;width:100%;max-width:100%;min-width:0}.performance-table-desktop{display:none}.performance-card-head{align-items:flex-start}.performance-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.performance-metric{padding:10px}.performance-trend{flex:0 0 auto}.trader-dashboard{overflow:hidden}}
+        @media(max-width:720px){.market-main{padding-inline:14px;width:100%;max-width:100%;overflow-x:hidden}.market-hero{grid-template-columns:1fr;padding:22px;border-radius:22px}.market-search-panel,.market-card-grid,.market-status-grid,.market-stat-row,.indicator-list,.scenario-grid,.alert-form,.trader-form-grid,.tool-result-grid{grid-template-columns:1fr}.market-search-panel button{width:100%}.market-search-results{max-height:min(300px,42dvh);top:calc(100% + 10px);border-radius:16px}.market-search-results button{min-height:68px;align-items:flex-start}.market-search-results button small{white-space:normal;text-align:end}.market-hero-card strong{font-size:36px}.market-stock-header{display:grid;gap:14px}.stock-price-block{justify-items:start;text-align:start}.market-panel,.market-card,.market-stock-header{border-radius:18px}.compare-bars div{grid-template-columns:42px minmax(0,1fr) 48px}.tool-tabs,.symbol-chip-row{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;gap:8px;padding:2px 2px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.tool-tabs::-webkit-scrollbar,.symbol-chip-row::-webkit-scrollbar{display:none}.tool-tabs button,.symbol-chip-row button{flex:0 0 auto;white-space:nowrap}.technical-selector-shell{border-radius:20px;padding:12px}.technical-selected-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.technical-result-grid{grid-template-columns:1fr}.technical-category-row,.technical-symbol-row{gap:8px}.technical-category-row button{min-height:38px;padding-inline:13px}.technical-symbol-main{padding-inline:9px;font-size:12px}.performance-card-list{display:grid;grid-template-columns:1fr;gap:12px;width:100%;max-width:100%;min-width:0}.performance-table-desktop{display:none}.performance-card-head{align-items:flex-start}.performance-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.performance-metric{padding:10px}.performance-trend{flex:0 0 auto}.trader-dashboard{overflow:hidden}}
         @media(max-width:720px){.market-search-results{width:100%;max-height:min(320px,48dvh)}.market-search-results button{align-items:stretch}.market-search-results button small{white-space:nowrap;text-align:start}.market-search-result-main{gap:10px}.market-search-results button b{font-size:13px}}
+        @media(max-width:460px){.technical-selected-summary{grid-template-columns:1fr}.technical-search{min-height:46px}.technical-symbol-favorite{width:30px;height:30px}.technical-symbol-pill{min-height:40px}.performance-metric-grid{grid-template-columns:1fr}}
       `}</style>
     </div>
   );
@@ -2597,18 +2668,89 @@ function TradingSessionsPanel({ t, locale }: { t: (key: string) => string; local
 
 function TechnicalAnalysisPanel({
   t,
+  locale,
   symbol,
   setSymbol,
   state,
 }: {
   t: (key: string) => string;
+  locale: string;
   symbol: string;
   setSymbol: (symbol: string) => void;
   state: TechnicalState;
 }) {
   const data = state.data;
+  const [category, setCategory] = useState<TechnicalSymbolCategory>(() => getTechnicalSymbolCategory(symbol));
+  const [query, setQuery] = useState('');
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favoritesLoaded, setFavoritesLoaded] = useState(false);
+  const normalizedQuery = query.trim().toUpperCase();
+  const filteredSymbols = normalizedQuery
+    ? TECHNICAL_SYMBOL_OPTIONS.filter(item => `${item.symbol} ${item.label}`.includes(normalizedQuery))
+    : TECHNICAL_SYMBOL_GROUPS[category];
+  const favoriteSymbols = favorites
+    .map(item => getTechnicalSymbolOption(item))
+    .filter((item): item is TechnicalSymbolOption => Boolean(item));
+  const currentTrend = normalizePerformanceTrend(String(data?.trend ?? state.available?.trend ?? 'neutral'));
+  const currentUpdatedAt = String(data?.updated_at ?? state.updatedAt ?? '');
+  const currentStatus = state.loading ? t('market_loading_data') : data ? t('market_analysis_ready') : t('market_analysis_insufficient');
+
+  useEffect(() => {
+    setCategory(getTechnicalSymbolCategory(symbol));
+  }, [symbol]);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(TECHNICAL_SYMBOL_FAVORITES_KEY);
+      const parsed = stored ? JSON.parse(stored) : [];
+      if (Array.isArray(parsed)) {
+        setFavorites(parsed.filter((item): item is string => typeof item === 'string' && Boolean(getTechnicalSymbolOption(item))));
+      }
+    } catch {
+      setFavorites([]);
+    } finally {
+      setFavoritesLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!favoritesLoaded) return;
+    window.localStorage.setItem(TECHNICAL_SYMBOL_FAVORITES_KEY, JSON.stringify(favorites));
+  }, [favorites, favoritesLoaded]);
+
+  const handleSelectSymbol = (nextSymbol: string) => {
+    const option = getTechnicalSymbolOption(nextSymbol);
+    if (option) setCategory(option.category);
+    setSymbol(nextSymbol);
+  };
+
+  const toggleFavorite = (nextSymbol: string) => {
+    setFavorites(prev => prev.includes(nextSymbol) ? prev.filter(item => item !== nextSymbol) : [...prev, nextSymbol]);
+  };
+
+  const renderSymbolPill = (item: TechnicalSymbolOption) => {
+    const active = symbol === item.symbol;
+    const favorite = favorites.includes(item.symbol);
+    return (
+      <div className="technical-symbol-pill" data-active={active ? 'true' : 'false'} key={item.symbol}>
+        <button className="technical-symbol-main" type="button" aria-pressed={active} onClick={() => handleSelectSymbol(item.symbol)}>
+          <span dir="ltr">{item.label}</span>
+        </button>
+        <button
+          className="technical-symbol-favorite"
+          type="button"
+          aria-label={favorite ? t('market_remove_from_favorites') : t('market_add_to_favorites')}
+          aria-pressed={favorite}
+          onClick={() => toggleFavorite(item.symbol)}
+        >
+          <Star size={14} fill={favorite ? 'currentColor' : 'none'} />
+        </button>
+      </div>
+    );
+  };
+
   return (
-    <section className="market-panel">
+    <section className="market-panel technical-analysis-panel">
       <div className="market-section-head">
         <Gauge size={20} />
         <div>
@@ -2616,16 +2758,53 @@ function TechnicalAnalysisPanel({
           <h2>{t('market_daily_technical_analysis')}</h2>
         </div>
       </div>
-      <div className="symbol-chip-row">
-        {DEFAULT_TECHNICAL_SYMBOLS.map(item => (
-          <button key={item} type="button" aria-pressed={symbol === item} onClick={() => setSymbol(item)}>{item}</button>
-        ))}
+      <div className="technical-selector-shell">
+        <div className="technical-search">
+          <Search size={16} />
+          <input
+            value={query}
+            onChange={event => setQuery(event.target.value)}
+            placeholder={t('market_symbol_search_placeholder')}
+            dir="auto"
+          />
+          {query ? (
+            <button type="button" onClick={() => setQuery('')} aria-label={t('market_clear_symbol_search')}>
+              ×
+            </button>
+          ) : null}
+        </div>
+        <div className="technical-category-row" aria-label={t('market_asset_type')}>
+          {TECHNICAL_SYMBOL_CATEGORIES.map(item => (
+            <button key={item} type="button" aria-pressed={category === item} onClick={() => setCategory(item)}>
+              {t(`market_symbol_category_${item}`)}
+            </button>
+          ))}
+        </div>
+        {favoriteSymbols.length > 0 ? (
+          <div className="technical-favorites">
+            <span>{t('market_favorites')}</span>
+            <div className="technical-symbol-row compact">
+              {favoriteSymbols.map(renderSymbolPill)}
+            </div>
+          </div>
+        ) : null}
+        <div className="technical-symbol-row">
+          {filteredSymbols.length > 0 ? filteredSymbols.map(renderSymbolPill) : (
+            <span className="technical-no-results">{t('market_no_search_results')}</span>
+          )}
+        </div>
+      </div>
+      <div className="technical-selected-summary">
+        <MarketMetric label={t('market_selected_asset')} value={formatTechnicalSymbol(symbol)} valueDir="ltr" />
+        <MarketMetric label={t('market_trend')} value={t(`market_trend_${currentTrend}`)} />
+        <MarketMetric label={t('market_last_updated')} value={formatTechnicalTimestamp(currentUpdatedAt, locale) || t('market_unavailable')} />
+        <MarketMetric label={t('market_analysis_status')} value={currentStatus} />
       </div>
       {state.loading ? <div className="market-empty">{t('market_loading_data')}</div> : state.message ? (
-        <EmptyToolState title={t('market_technical_no_data_title')} body={state.message || t('market_technical_no_data')} />
+        <EmptyToolState title={t('market_technical_unified_empty_title')} body={t('market_technical_unified_empty_body')} />
       ) : data ? (
-        <div className="trader-tool-grid">
-          <MarketMetric label={t('market_trend')} value={String(data.trend ?? '--')} />
+        <div className="trader-tool-grid technical-result-grid">
+          <MarketMetric label={t('market_trend')} value={t(`market_trend_${normalizePerformanceTrend(String(data.trend ?? 'neutral'))}`)} />
           <MarketMetric label="RSI" value={formatNumber(Number(data.rsi), 1)} />
           <MarketMetric label={t('market_support_zone')} value={formatNumber(Number(data.support?.[0]), 4)} />
           <MarketMetric label={t('market_resistance_zone')} value={formatNumber(Number(data.resistance?.[0]), 4)} />
