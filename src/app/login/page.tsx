@@ -118,8 +118,10 @@ const TEXT = {
     saving: 'جاري إنشاء الحساب...',
     sendReset: 'إرسال رابط الاستعادة',
     sendResetBody: 'أدخل بريدك الإلكتروني لإرسال رابط استعادة كلمة المرور.',
-    resetSent: 'إذا كان البريد مسجلاً، سيتم إرسال رابط استعادة كلمة المرور.',
+    resetSent: 'إذا كان البريد مسجلاً، سنرسل لك رابط إعادة تعيين كلمة المرور. تحقق من البريد الوارد والرسائل غير المرغوبة.',
     resetSendError: 'تعذر إرسال رابط الاستعادة حالياً. حاول مرة أخرى.',
+    resetAccountNotFound: 'لا يوجد حساب مسجل بهذا البريد الإلكتروني.',
+    resetVerifyError: 'تعذر التحقق من البريد حالياً. تأكد من إعدادات الخادم ثم حاول مرة أخرى.',
     resetSuccess: 'تم تغيير كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.',
     switchCreate: 'إنشاء حساب جديد',
     switchLogin: 'لدي حساب بالفعل',
@@ -206,8 +208,10 @@ const TEXT = {
     saving: 'Creating account...',
     sendReset: 'Send reset link',
     sendResetBody: 'Enter your email to send a password recovery link.',
-    resetSent: 'If the email is registered, a password reset link will be sent.',
+    resetSent: 'If this email is registered, we will send a password reset link. Check your inbox and spam folder.',
     resetSendError: 'Could not send the reset link right now. Please try again.',
+    resetAccountNotFound: 'No account is registered with this email address.',
+    resetVerifyError: 'Could not verify this email right now. Check the server settings, then try again.',
     resetSuccess: 'Password changed successfully. You can sign in now.',
     switchCreate: 'Create new account',
     switchLogin: 'I already have an account',
@@ -294,8 +298,10 @@ const TEXT = {
     saving: 'Création du compte...',
     sendReset: 'Envoyer le lien',
     sendResetBody: 'Entrez votre email pour envoyer un lien de récupération du mot de passe.',
-    resetSent: 'Si l’e-mail est enregistré, un lien de réinitialisation sera envoyé.',
+    resetSent: 'Si cet e-mail est enregistré, nous vous enverrons un lien de réinitialisation. Vérifiez votre boîte de réception et les spams.',
     resetSendError: 'Impossible d’envoyer le lien de réinitialisation pour le moment. Réessayez.',
+    resetAccountNotFound: 'Aucun compte n’est enregistré avec cette adresse e-mail.',
+    resetVerifyError: 'Impossible de vérifier cet e-mail pour le moment. Vérifiez la configuration du serveur, puis réessayez.',
     resetSuccess: 'Mot de passe changé avec succès. Vous pouvez vous connecter.',
     switchCreate: 'Créer un nouveau compte',
     switchLogin: 'J’ai déjà un compte',
@@ -748,11 +754,50 @@ function LoginContent() {
   }
 
   async function handleForgotPassword() {
-    if (!isEmail(forgotEmail)) return text.errorEmail;
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim().toLowerCase(), {
+    const emailForReset = forgotEmail.trim().toLowerCase();
+    if (!isEmail(emailForReset)) return text.errorEmail;
+
+    const checkResponse = await fetch('/api/auth/password-reset/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailForReset }),
+    }).catch(error => {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[password-reset] Account check request failed', {
+          email: emailForReset,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+      return null;
+    });
+
+    if (!checkResponse) return text.resetVerifyError;
+    if (checkResponse.status === 400) return text.errorEmail;
+    if (!checkResponse.ok) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[password-reset] Account check returned error', {
+          email: emailForReset,
+          status: checkResponse.status,
+        });
+      }
+      return text.resetVerifyError;
+    }
+
+    const checkPayload = await checkResponse.json().catch(() => null) as { exists?: boolean } | null;
+    if (!checkPayload?.exists) return text.resetAccountNotFound;
+
+    const { error } = await supabase.auth.resetPasswordForEmail(emailForReset, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
-    if (error) return text.resetSendError;
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('[password-reset] resetPasswordForEmail response', {
+        email: emailForReset,
+        ok: !error,
+        errorCode: error?.code,
+        errorMessage: error?.message,
+      });
+    }
+    if (error) return error.message || text.resetSendError;
     setMessage({ type: 'ok', text: text.resetSent });
     return '';
   }
