@@ -547,6 +547,8 @@ export const TR: Record<string, TranslationEntry> = {
   market_no_data: { ar:'لا توجد بيانات', en:'No data', fr:'Aucune donnée' },
   market_error_message: { ar:'تعذر جلب بيانات السوق لهذا الأصل حالياً.', en:'Could not fetch market data for this asset right now.', fr:"Impossible de récupérer les données de marché pour cet actif." },
   market_no_selected_asset: { ar:'لا يوجد أصل محدد', en:'No selected asset', fr:'Aucun actif sélectionné' },
+  market_no_asset_selected_yet: { ar:'لم يتم اختيار أصل بعد', en:'No asset selected yet', fr:'Aucun actif sélectionné pour le moment' },
+  market_unavailable: { ar:'غير متاح', en:'Unavailable', fr:'Indisponible' },
   market_provider_no_real_data: { ar:'مزود البيانات لم يرجع بيانات حقيقية', en:'Provider did not return real data', fr:'Le fournisseur n’a pas renvoyé de données réelles' },
   market_analysis_unavailable: { ar:'التحليل غير متاح حالياً', en:'Analysis unavailable right now', fr:'Analyse indisponible pour le moment' },
   market_select_asset_to_start: { ar:'اختر أصلاً مالياً للبدء', en:'Select an asset to start', fr:'Sélectionnez un actif pour commencer' },

@@ -111,14 +111,21 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
         }
         @media (max-width: 720px) {
           .page-section-tabs {
+            width: 100%;
             flex-wrap: nowrap;
             overflow-x: auto;
             overflow-y: hidden;
+            gap: 8px;
             overscroll-behavior-inline: contain;
-            padding-bottom: 8px;
+            padding: 2px 4px 8px;
           }
           .page-section-tabs button {
-            max-width: min(76vw, 280px);
+            max-width: none;
+            white-space: nowrap;
+          }
+          .page-section-tabs button span {
+            overflow: visible;
+            text-overflow: clip;
           }
         }
       `}</style>
