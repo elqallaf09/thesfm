@@ -71,7 +71,18 @@ type SessionCheck = {
 const ADMIN_EMAIL = 'elqallaf09@gmail.com';
 
 function isAdminEmail(email?: string | null) {
-  return email?.trim().toLowerCase() === ADMIN_EMAIL;
+  const normalizedEmail = email?.trim().toLowerCase();
+  if (!normalizedEmail) return false;
+  const allowedEmails = (process.env.ADMIN_EMAILS || ADMIN_EMAIL)
+    .split(',')
+    .map(item => item.trim().toLowerCase())
+    .filter(Boolean);
+  return allowedEmails.includes(normalizedEmail);
+}
+
+function safeInternalPath(value: string | null) {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return null;
+  return value;
 }
 
 async function getSupabaseSession(request: NextRequest): Promise<SessionCheck> {
@@ -144,6 +155,13 @@ export async function middleware(request: NextRequest) {
       mfaUrl.pathname = '/mfa/verify';
       mfaUrl.searchParams.set('next', request.nextUrl.searchParams.get('next') || '/dashboard');
       return NextResponse.redirect(mfaUrl);
+    }
+    const nextPath = safeInternalPath(request.nextUrl.searchParams.get('next'));
+    if (nextPath === '/sfm-admin-control') {
+      const adminTargetUrl = request.nextUrl.clone();
+      adminTargetUrl.pathname = isAdminEmail(session.email) ? nextPath : '/dashboard';
+      adminTargetUrl.search = '';
+      return NextResponse.redirect(adminTargetUrl);
     }
     const dashboardUrl = request.nextUrl.clone();
     dashboardUrl.pathname = '/dashboard';

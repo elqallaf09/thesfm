@@ -6,7 +6,13 @@ export const ADMIN_SESSION_COOKIE = 'sfm_admin_session';
 export const ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60;
 
 export function isAdminEmail(email?: string | null) {
-  return email?.trim().toLowerCase() === ADMIN_EMAIL;
+  const normalizedEmail = email?.trim().toLowerCase();
+  if (!normalizedEmail) return false;
+  const allowedEmails = (process.env.ADMIN_EMAILS || ADMIN_EMAIL)
+    .split(',')
+    .map(item => item.trim().toLowerCase())
+    .filter(Boolean);
+  return allowedEmails.includes(normalizedEmail);
 }
 
 export function createServerSupabaseAdmin() {
