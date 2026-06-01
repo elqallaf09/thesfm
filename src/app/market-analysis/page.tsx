@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
-import { Activity, AlertTriangle, BarChart3, Bell, Brain, Calculator, FileText, LineChart, Plus, Search, ShieldAlert, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, Clock3, FileText, Gauge, LineChart, Newspaper, Plus, Search, ShieldAlert, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { AssetProfileCard } from '@/components/market/AssetProfileCard';
@@ -18,6 +18,8 @@ import { generateEducationalMarketSummary, type EducationalSummaryLanguage } fro
 import type { AssetProfileResponse } from '@/lib/market/fetchAssetProfile';
 import type { MarketAiInsight, MarketAnalysis, MarketAssetType, MarketResult, MarketSearchItem } from '@/lib/market/marketService';
 import { marketSymbolSuggestions, normalizeAssetType, normalizeMarketSymbolInput, validateSymbol } from '@/lib/market/marketService';
+import { calculateLotSizeByRisk, calculatePips, calculatePositionSize, type TradeDirection, type TradingInstrumentType } from '@/lib/trading/calculators';
+import { getActiveOverlapIds, getTradingSessionsState, isHighLiquidityPeriod, TRADING_OVERLAPS } from '@/lib/trading/sessions';
 
 type MarketServiceState = 'checking' | 'connected' | 'degraded' | 'slow' | 'not_configured' | 'unavailable';
 type MarketViewAnalysis = MarketAnalysis & { source?: string; fallback?: boolean; fallbackReason?: string; openbbService?: MarketServiceState };
@@ -39,7 +41,7 @@ type PortfolioInvestment = {
   type?: string | null;
   riskLevel?: string | null;
 };
-type MarketTab = 'analyze' | 'watchlist' | 'alerts' | 'comparison' | 'assetReport';
+type MarketTab = 'analyze' | 'traderTools' | 'economicCalendar' | 'sessions' | 'technicalAnalysis' | 'newsSentiment' | 'watchlist' | 'alerts' | 'comparison' | 'assetReport';
 type MarketAiInsightView = MarketAiInsight & { riskScore?: number };
 type MarketSearchSuggestion = MarketSearchItem & { provider?: string };
 type MarketResultWithMeta = MarketResult & {
@@ -50,6 +52,29 @@ type MarketResultWithMeta = MarketResult & {
   fallbackReason?: string;
   suggestions?: string[];
   correction?: string | null;
+};
+type TraderToolsSubTab = 'calculators' | 'performance';
+type MarketPerformanceItem = {
+  symbol: string;
+  name: string;
+  price: number;
+  change_1d: number | null;
+  change_1w: number | null;
+  change_1m: number | null;
+  asset_type: string;
+  trend?: string;
+  updated_at?: string;
+};
+type ApiListState<T> = {
+  loading: boolean;
+  items: T[];
+  message: string;
+  updatedAt?: string;
+};
+type TechnicalState = {
+  loading: boolean;
+  data: Record<string, any> | null;
+  message: string;
 };
 
 const WATCHLIST_STORAGE_KEY = 'sfm_market_watchlist';
@@ -83,6 +108,8 @@ const QUICK_MARKET_EXAMPLES: MarketSearchItem[] = [
   { symbol: '^GSPC', providerSymbol: '^GSPC', name: 'S&P 500 Index', assetType: 'index', exchange: 'CBOE' },
   { symbol: '^IXIC', providerSymbol: '^IXIC', name: 'Nasdaq Composite', assetType: 'index', exchange: 'NASDAQ' },
 ];
+const DEFAULT_TECHNICAL_SYMBOLS = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD', 'XAUUSD', 'BTCUSD', 'ETHUSD', 'QQQ', 'SPY', 'NVDA', 'AAPL', 'MSFT'];
+const TRADER_TOOL_TABS: TraderToolsSubTab[] = ['calculators', 'performance'];
 
 function money(value: number, currency = 'USD') {
   const maximumFractionDigits = value > 1000 ? 0 : 2;
@@ -99,6 +126,33 @@ function money(value: number, currency = 'USD') {
 
 function percent(value: number) {
   return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+}
+
+function formatOptionalPercent(value: number | null | undefined) {
+  return Number.isFinite(Number(value)) ? percent(Number(value)) : '--';
+}
+
+function formatNumber(value: number, maximumFractionDigits = 2) {
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits }).format(Number.isFinite(value) ? value : 0);
+}
+
+async function fetchMarketToolState<T>(url: string): Promise<ApiListState<T>> {
+  try {
+    const response = await fetch(url, { cache: 'no-store' });
+    const payload = await response.json().catch(() => ({})) as { items?: T[]; events?: T[]; message?: string; updated_at?: string };
+    return {
+      loading: false,
+      items: Array.isArray(payload.items) ? payload.items : Array.isArray(payload.events) ? payload.events : [],
+      message: response.ok ? '' : String(payload.message ?? 'Data source is not configured.'),
+      updatedAt: payload.updated_at,
+    };
+  } catch (error) {
+    return {
+      loading: false,
+      items: [],
+      message: error instanceof Error ? error.message : 'Data source is unavailable.',
+    };
+  }
 }
 
 function normalizeSummaryLanguage(lang: string): EducationalSummaryLanguage {
@@ -309,6 +363,11 @@ function normalizeMarketTab(value: string | null | undefined): MarketTab | null 
     .toLowerCase();
 
   if (normalized === 'analysis' || normalized === 'analyze') return 'analyze';
+  if (normalized === 'trader-tools' || normalized === 'tradertools' || normalized === 'tools') return 'traderTools';
+  if (normalized === 'economic-calendar' || normalized === 'calendar') return 'economicCalendar';
+  if (normalized === 'sessions' || normalized === 'trading-sessions') return 'sessions';
+  if (normalized === 'technical-analysis' || normalized === 'technical') return 'technicalAnalysis';
+  if (normalized === 'news-sentiment' || normalized === 'news' || normalized === 'sentiment') return 'newsSentiment';
   if (normalized === 'watchlist' || normalized === 'market-watchlist') return 'watchlist';
   if (normalized === 'alerts' || normalized === 'market-alerts' || normalized === 'price-alerts') return 'alerts';
   if (normalized === 'comparison' || normalized === 'compare') return 'comparison';
@@ -422,6 +481,13 @@ export default function MarketAnalysisPage() {
   const [scenarioCurrencyOpen, setScenarioCurrencyOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<MarketTab>('analyze');
+  const [traderToolTab, setTraderToolTab] = useState<TraderToolsSubTab>('calculators');
+  const [performance, setPerformance] = useState<ApiListState<MarketPerformanceItem>>({ loading: false, items: [], message: '' });
+  const [economicCalendar, setEconomicCalendar] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
+  const [centralBankNews, setCentralBankNews] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
+  const [marketSentiment, setMarketSentiment] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
+  const [technicalSymbol, setTechnicalSymbol] = useState('EURUSD');
+  const [technicalState, setTechnicalState] = useState<TechnicalState>({ loading: false, data: null, message: '' });
   const [lastUpdated, setLastUpdated] = useState('');
   const [chartTheme, setChartTheme] = useState<'light' | 'dark'>('light');
 
@@ -454,6 +520,54 @@ export default function MarketAnalysisPage() {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'traderTools' || traderToolTab !== 'performance' || performance.loading || performance.items.length > 0 || performance.message) return;
+    setPerformance(prev => ({ ...prev, loading: true }));
+    void fetchMarketToolState<MarketPerformanceItem>('/api/market/performance').then(setPerformance);
+  }, [activeTab, performance.items.length, performance.loading, performance.message, traderToolTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'economicCalendar' || economicCalendar.loading || economicCalendar.items.length > 0 || economicCalendar.message) return;
+    setEconomicCalendar(prev => ({ ...prev, loading: true }));
+    void fetchMarketToolState<Record<string, any>>('/api/market/economic-calendar').then(setEconomicCalendar);
+  }, [activeTab, economicCalendar.items.length, economicCalendar.loading, economicCalendar.message]);
+
+  useEffect(() => {
+    if (activeTab !== 'newsSentiment') return;
+    if (!centralBankNews.loading && centralBankNews.items.length === 0 && !centralBankNews.message) {
+      setCentralBankNews(prev => ({ ...prev, loading: true }));
+      void fetchMarketToolState<Record<string, any>>('/api/market/central-bank-news').then(setCentralBankNews);
+    }
+    if (!marketSentiment.loading && marketSentiment.items.length === 0 && !marketSentiment.message) {
+      setMarketSentiment(prev => ({ ...prev, loading: true }));
+      void fetchMarketToolState<Record<string, any>>('/api/market/sentiment').then(setMarketSentiment);
+    }
+  }, [activeTab, centralBankNews.items.length, centralBankNews.loading, centralBankNews.message, marketSentiment.items.length, marketSentiment.loading, marketSentiment.message]);
+
+  useEffect(() => {
+    if (activeTab !== 'technicalAnalysis') return;
+    const symbol = technicalSymbol.trim().toUpperCase();
+    if (!symbol) return;
+    let cancelled = false;
+    setTechnicalState({ loading: true, data: null, message: '' });
+    fetch(`/api/market/technical-analysis?symbol=${encodeURIComponent(symbol)}`, { cache: 'no-store' })
+      .then(async response => {
+        const payload = await response.json().catch(() => ({}));
+        if (cancelled) return;
+        setTechnicalState({
+          loading: false,
+          data: response.ok ? payload : payload.available ? payload : null,
+          message: response.ok ? '' : String(payload.message ?? t('market_technical_no_data')),
+        });
+      })
+      .catch(error => {
+        if (!cancelled) setTechnicalState({ loading: false, data: null, message: error instanceof Error ? error.message : t('market_technical_no_data') });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, technicalSymbol, t]);
 
   const baseScenarioCurrency = normalizeScenarioCurrency(
     userCurrency && userCurrency !== 'KWD' ? userCurrency : currentUserProfile.defaultCurrency || userCurrency,
@@ -992,12 +1106,13 @@ export default function MarketAnalysisPage() {
     if (!selectedItem) {
       const normalizedInput = normalizeMarketSymbolInput(cleanQuery, assetType);
       if (normalizedInput.valid) {
+        const validInput = normalizedInput as Extract<ReturnType<typeof normalizeMarketSymbolInput>, { valid: true }>;
         selectedItem = {
-          symbol: normalizedInput.displaySymbol ?? normalizedInput.symbol,
-          providerSymbol: normalizedInput.providerSymbol,
-          name: normalizedInput.displaySymbol ?? normalizedInput.symbol,
-          assetType: normalizedInput.assetType,
-          exchange: normalizedInput.assetType === 'forex' ? 'FX' : normalizedInput.assetType === 'crypto' ? 'Crypto' : normalizedInput.assetType === 'gold' ? 'COMEX' : undefined,
+          symbol: validInput.displaySymbol ?? validInput.symbol,
+          providerSymbol: validInput.providerSymbol,
+          name: validInput.displaySymbol ?? validInput.symbol,
+          assetType: validInput.assetType,
+          exchange: validInput.assetType === 'forex' ? 'FX' : validInput.assetType === 'crypto' ? 'Crypto' : validInput.assetType === 'gold' ? 'COMEX' : undefined,
           provider: 'THE SFM',
         };
       } else {
@@ -1285,6 +1400,11 @@ export default function MarketAnalysisPage() {
   ] : [];
   const marketTabs = useMemo(() => [
     { id: 'analyze', label: t('market_analysis_tab') },
+    { id: 'traderTools', label: t('market_trader_tools') },
+    { id: 'economicCalendar', label: t('market_economic_calendar') },
+    { id: 'sessions', label: t('market_trading_sessions') },
+    { id: 'technicalAnalysis', label: t('market_daily_technical_analysis') },
+    { id: 'newsSentiment', label: t('market_news_sentiment') },
     { id: 'watchlist', label: t('market_watchlist'), count: watchlist.length },
     { id: 'alerts', label: t('market_price_alerts'), count: alerts.length },
     { id: 'comparison', label: t('market_compare_assets'), count: compare.length },
@@ -1488,7 +1608,49 @@ export default function MarketAnalysisPage() {
           ))}
         </section>}
 
-        {selected && activeTab === 'analyze' ? (
+        {activeTab === 'traderTools' && (
+          <TraderToolsDashboard
+            t={t}
+            currency={scenarioCurrency}
+            subTab={traderToolTab}
+            setSubTab={setTraderToolTab}
+            performance={performance}
+          />
+        )}
+
+        {activeTab === 'economicCalendar' && (
+          <MarketDataPanel
+            icon={<CalendarDays size={20} />}
+            title={t('market_economic_calendar')}
+            eyebrow={t('market_high_impact_events')}
+            state={economicCalendar}
+            emptyTitle={t('market_calendar_not_configured_title')}
+            emptyBody={t('market_calendar_not_configured_body')}
+          />
+        )}
+
+        {activeTab === 'sessions' && (
+          <TradingSessionsPanel t={t} locale={lang} />
+        )}
+
+        {activeTab === 'technicalAnalysis' && (
+          <TechnicalAnalysisPanel
+            t={t}
+            symbol={technicalSymbol}
+            setSymbol={setTechnicalSymbol}
+            state={technicalState}
+          />
+        )}
+
+        {activeTab === 'newsSentiment' && (
+          <NewsSentimentPanel
+            t={t}
+            news={centralBankNews}
+            sentiment={marketSentiment}
+          />
+        )}
+
+        {(['traderTools', 'economicCalendar', 'sessions', 'technicalAnalysis', 'newsSentiment'] as MarketTab[]).includes(activeTab) ? null : selected && activeTab === 'analyze' ? (
           <>
             <section className="market-stock-header">
               <div>
@@ -2081,12 +2243,378 @@ export default function MarketAnalysisPage() {
         .market-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px}.market-chart{grid-row:span 2}.market-panel{padding:20px;min-width:0}.market-section-head{display:flex;align-items:flex-start;gap:11px;margin-bottom:16px;color:var(--sfm-soft-cyan)}.market-section-head span{display:block;color:var(--sfm-muted);font-size:11px;font-weight:900;margin-bottom:5px;line-height:1.4}.market-section-head h2{margin:0;color:var(--sfm-foreground);font-size:17px;font-weight:900;line-height:1.35}.market-chart svg{width:100%;height:auto;max-height:300px;display:block}.timeframe-row{display:flex;flex-wrap:wrap;gap:8px;margin:-4px 0 12px}.timeframe-row button{border:1px solid rgba(29,140,255,.18);background:var(--sfm-light-card);color:var(--sfm-foreground);border-radius:999px;padding:7px 11px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.timeframe-row button[aria-pressed="true"],.timeframe-row button:hover,.timeframe-row button:focus-visible{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));border-color:transparent;color:#FFFFFF;outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.16)}.market-stat-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.metric{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:13px;display:grid;gap:7px;min-width:0;align-content:start}.metric span{font-size:11px;color:var(--sfm-muted);font-weight:900;line-height:1.45}.metric strong{font-size:15px;color:var(--sfm-foreground);display:flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere;line-height:1.45}.indicator-list,.scenario-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.fundamentals-empty{display:grid;gap:9px;background:var(--sfm-light-card);border:1px dashed rgba(167,243,240,.22);border-radius:18px;padding:16px;color:var(--sfm-muted);line-height:1.8}.fundamentals-empty svg{color:var(--sfm-soft-cyan)}.fundamentals-empty strong{color:var(--sfm-foreground);font-size:15px;font-weight:950;line-height:1.45}.fundamentals-empty p{margin:0;color:var(--sfm-muted);font-weight:850}.fundamentals-empty small{width:max-content;max-width:100%;border:1px solid rgba(47,214,192,.25);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);border-radius:999px;padding:5px 9px;font-weight:950;line-height:1.35}.asset-profile-card{margin:16px 0;display:grid;gap:0}.asset-profile-body{display:grid;gap:14px}.asset-profile-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border:1px solid rgba(47,214,192,.18);background:rgba(47,214,192,.08);border-radius:18px;padding:15px}.asset-profile-header strong{display:block;color:var(--sfm-foreground);font-size:18px;font-weight:950;line-height:1.35}.asset-profile-header p,.asset-profile-section p{margin:6px 0 0;color:var(--sfm-muted);font-size:13px;font-weight:800;line-height:1.8}.asset-profile-badges{display:flex;flex-wrap:wrap;gap:7px;justify-content:flex-end}.asset-profile-badges span{border:1px solid rgba(47,214,192,.24);background:var(--sfm-light-card);color:var(--sfm-foreground);border-radius:999px;padding:6px 9px;font-size:11px;font-weight:950;line-height:1.2}.asset-profile-section{display:grid;gap:10px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:18px;padding:14px}.asset-profile-section h3{margin:0;display:flex;align-items:center;gap:7px;color:var(--sfm-foreground);font-size:14px;font-weight:950;line-height:1.4}.asset-profile-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.asset-profile-metric{display:grid;gap:5px;min-width:0;border:1px solid rgba(167,243,240,.12);background:var(--sfm-card);border-radius:14px;padding:10px}.asset-profile-metric span{color:var(--sfm-muted);font-size:11px;font-weight:900;line-height:1.35}.asset-profile-metric strong{color:var(--sfm-foreground);font-size:13px;font-weight:950;line-height:1.45;overflow-wrap:anywhere}.asset-profile-link{min-height:58px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid rgba(47,214,192,.28);background:rgba(47,214,192,.10);border-radius:14px;color:var(--sfm-primary-hover);font-size:12px;font-weight:950;text-decoration:none}.asset-profile-link:hover,.asset-profile-link:focus-visible{outline:none;border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.14)}.asset-profile-holdings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.asset-profile-holdings span{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid rgba(167,243,240,.12);background:var(--sfm-card);border-radius:13px;padding:9px 10px;min-width:0}.asset-profile-holdings b{color:var(--sfm-foreground);font-size:12px;font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.asset-profile-holdings em{color:var(--sfm-soft-cyan);font-size:11px;font-weight:950;font-style:normal;white-space:nowrap}.asset-profile-limitations ul{margin:0;padding-inline-start:18px;color:var(--sfm-muted);font-size:12px;font-weight:850;line-height:1.8}.asset-profile-footer{display:flex;flex-wrap:wrap;gap:8px;color:var(--sfm-muted);font-size:11px;font-weight:900}.asset-profile-footer span{border:1px solid rgba(167,243,240,.12);background:var(--sfm-light-card);border-radius:999px;padding:6px 9px}.asset-profile-state{display:flex;align-items:center;gap:9px;border:1px dashed rgba(167,243,240,.22);background:var(--sfm-light-card);border-radius:16px;padding:14px;color:var(--sfm-muted);font-size:13px;font-weight:900;line-height:1.6}.asset-profile-state.error{border-color:rgba(239,68,68,.25);color:#B91C1C}.dark .asset-profile-state.error{color:#FF8A96}.asset-profile-pulse{width:10px;height:10px;border-radius:50%;background:var(--sfm-soft-cyan);box-shadow:0 0 0 4px rgba(47,214,192,.12);animation:marketPulse 1.1s ease-in-out infinite}.decision-body{display:grid;gap:13px}.decision-body b{font-size:25px;font-weight:900;color:var(--sfm-foreground);line-height:1.25}.decision-body p,.decision-body small,.decision-body strong{margin:0;color:var(--sfm-muted);line-height:1.9;font-weight:800;overflow-wrap:anywhere}.decision-body small{font-size:12px;color:var(--sfm-muted)}.decision-body strong{color:var(--sfm-muted)}.ai-summary-body{align-content:start}.ai-summary-intro{border:1px solid rgba(47,214,192,.20);background:rgba(47,214,192,.10);border-radius:14px;padding:10px 12px;color:var(--sfm-foreground)!important;font-size:13px;line-height:1.75}.ai-summary-section{display:grid;gap:5px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:12px}.ai-summary-section b{font-size:13px;color:var(--sfm-foreground);font-weight:950}.ai-summary-section p{font-size:13px;line-height:1.75}.ai-summary-section ul{margin:0;padding-inline-start:18px;color:var(--sfm-muted);font-size:13px;font-weight:800;line-height:1.75}.ai-summary-loading{display:flex;align-items:center;gap:9px;color:var(--sfm-muted);font-size:13px;font-weight:950}.ai-summary-loading span{width:10px;height:10px;border-radius:50%;background:var(--sfm-soft-cyan);box-shadow:0 0 0 4px rgba(47,214,192,.12);animation:marketPulse 1.1s ease-in-out infinite}@keyframes marketPulse{50%{transform:scale(.72);opacity:.55}}.ai-summary-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.ai-summary-actions small{flex:1;min-width:180px}.ai-regenerate{margin:0;width:max-content;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#fff}.risk-score{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14);border-radius:14px;padding:10px 12px}.risk-score span,.risk-score strong{font-size:12px!important;color:var(--sfm-foreground)!important;font-weight:950!important;line-height:1.3!important}.risk-score i{height:9px;border-radius:999px;background:rgba(29,140,255,.12);overflow:hidden}.risk-score i b{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--sfm-primary),#F59E0B,#EF4444)}.decision.ok{border-color:rgba(34,197,94,.22)}.decision.warn{border-color:rgba(167,243,240,.28)}.decision.danger{border-color:rgba(239,68,68,.22)}.levels-strip{margin-top:16px;display:grid;gap:10px;color:var(--sfm-muted);font-size:12px;font-weight:900;line-height:1.6}.levels-strip i{position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,#22C55E,var(--sfm-soft-cyan),#EF4444);display:block}.levels-strip b{position:absolute;top:-4px;width:4px;height:18px;border-radius:999px;background:var(--sfm-foreground)}.levels-strip b.current{width:10px;height:10px;top:0;transform:translateX(-50%);background:#FFF;border:2px solid var(--sfm-foreground)}.tool-input,.alert-form{display:grid;gap:10px}.tool-input span{font-size:12px;font-weight:900;color:var(--sfm-muted);line-height:1.5}.tool-input input,.alert-form input,.alert-form select{width:100%;min-width:0;border:1px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);padding:12px 13px;font:900 13px Tajawal,Arial,sans-serif;outline:0;line-height:1.5}.market-currency-input{min-height:52px;display:flex;align-items:center;gap:9px;border:1px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);padding:0 9px;transition:border-color .18s ease,box-shadow .18s ease;position:relative}.market-currency-input:focus-within{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.16)}.tool-input .market-currency-input input{border:0;background:transparent;padding:0;box-shadow:none;flex:1;min-width:0}.tool-input .market-currency-input input::placeholder{color:var(--sfm-muted);opacity:1}.market-scenario-currency{position:relative;flex:0 0 auto;display:flex;align-items:center;gap:7px}.market-scenario-currency>span{color:var(--sfm-muted);font-size:11px;font-weight:950;line-height:1.2}.market-scenario-currency-trigger{min-width:62px;height:36px;border-radius:999px;border:1px solid rgba(15,118,110,.25);background:#CCFBF1;color:#0F766E;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}.market-scenario-currency-trigger:focus-visible{outline:none;border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.18)}.market-scenario-currency-trigger b{direction:rtl;unicode-bidi:isolate;font-size:12px}.market-scenario-currency-trigger small{font-size:10px;line-height:1}.market-scenario-currency-menu{position:absolute;inset-inline-end:0;top:calc(100% + 8px);z-index:80;width:150px;max-height:260px;overflow:auto;border:1px solid rgba(47,214,192,.28);border-radius:14px;background:var(--sfm-card);box-shadow:0 18px 44px rgba(3,18,37,.22);padding:6px;display:grid;gap:5px}.market-scenario-currency-menu button{height:38px;border:1px solid transparent;border-radius:11px;background:transparent;color:var(--sfm-foreground);display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 10px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.market-scenario-currency-menu button:hover,.market-scenario-currency-menu button:focus-visible,.market-scenario-currency-menu button[aria-selected="true"]{outline:none;background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.28)}.market-scenario-currency-menu button span{color:var(--sfm-foreground);font-size:13px}.market-scenario-currency-menu button b{direction:ltr;unicode-bidi:isolate;color:var(--sfm-muted);font-size:11px}.dark .market-scenario-currency-trigger{border-color:rgba(47,214,192,.25);background:rgba(47,214,192,.12);color:#2FD6C0}.dark .market-scenario-currency-menu{background:#0f1d31;border-color:#1d3050;box-shadow:0 22px 56px rgba(0,0,0,.38)}.dark .market-scenario-currency-menu button:hover,.dark .market-scenario-currency-menu button:focus-visible,.dark .market-scenario-currency-menu button[aria-selected="true"]{background:#10263f;border-color:#2fd6c0}.market-field-error{display:block;color:#B91C1C;font-size:12px;font-weight:900;line-height:1.55}.dark .market-field-error{color:#FF5B6E}.alert-form{grid-template-columns:minmax(0,1fr) 110px auto;align-items:stretch}.alert-form button,.inline-action,.report-button{border:0;border-radius:14px;background:var(--sfm-foreground);color:var(--sfm-card);padding:12px 14px;font:900 12px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;line-height:1.45}.inline-action{margin-bottom:14px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.inline-action:disabled{opacity:.58;cursor:default}.saved-alerts,.asset-report{display:grid;gap:10px;margin-top:14px}.saved-alerts span,.asset-report p{margin:0;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:12px;padding:10px 11px;color:var(--sfm-muted);font-size:12px;font-weight:900;line-height:1.65}.saved-alerts span{display:flex;align-items:center;justify-content:space-between;gap:9px}.saved-alerts span b{min-width:0;overflow-wrap:anywhere}.saved-alerts button{border:0;background:transparent;color:var(--sfm-muted);cursor:pointer;display:inline-flex;padding:2px}.asset-report small{color:var(--sfm-muted);line-height:1.75;font-weight:800;display:block}
         .ai-summary-compact{display:grid;gap:10px;align-content:start}.ai-summary-compact small{color:var(--sfm-muted);font-size:12px;font-weight:800;line-height:1.7}
         .market-bottom-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.market-copy,.market-muted{margin:0;color:var(--sfm-muted);line-height:1.8;font-size:13px;font-weight:800}.market-muted{margin-top:12px;color:var(--sfm-muted);font-size:12px}.watchlist{display:flex;flex-wrap:wrap;gap:8px}.watchlist span,.watchlist>button{border-radius:999px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14);padding:7px 11px;color:var(--sfm-muted);font-weight:900;font-size:12px;display:inline-flex;align-items:center;gap:6px}.watchlist button{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:0}.compare-bars{display:grid;gap:10px}.compare-bars div{display:grid;grid-template-columns:46px minmax(0,1fr) 54px;gap:8px;align-items:center}.compare-bars span,.compare-bars b{font-size:12px;font-weight:900;color:var(--sfm-muted)}.compare-bars div i{height:9px;border-radius:999px;background:linear-gradient(90deg,var(--sfm-primary),var(--sfm-accent));display:block}.compare-table{margin-top:14px;overflow-x:auto;display:grid;gap:7px}.compare-table>div{display:grid;grid-template-columns:60px 90px 70px 52px 76px 80px;gap:7px;min-width:470px}.compare-table b,.compare-table span{font-size:11px;font-weight:900;color:var(--sfm-muted)}.compare-table b{color:var(--sfm-muted)}
+        .trader-dashboard{display:grid;gap:16px}.tool-tabs,.symbol-chip-row,.overlap-row{display:flex;flex-wrap:wrap;gap:8px}.tool-tabs button,.symbol-chip-row button{min-height:38px;border:1px solid rgba(167,243,240,.18);border-radius:999px;background:var(--sfm-light-card);color:var(--sfm-muted);padding:0 13px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.tool-tabs button[aria-pressed="true"],.tool-tabs button:hover,.tool-tabs button:focus-visible,.symbol-chip-row button[aria-pressed="true"],.symbol-chip-row button:hover,.symbol-chip-row button:focus-visible{outline:none;background:linear-gradient(135deg,rgba(29,140,255,.18),rgba(47,214,192,.14));border-color:rgba(47,214,192,.38);color:var(--sfm-foreground);box-shadow:0 0 0 3px rgba(24,212,212,.12)}.trader-tool-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.trader-tool-card{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14);border-radius:18px;padding:16px;display:grid;gap:14px;min-width:0}.trader-tool-card.compact{align-content:start}.trader-tool-card h3{margin:0;color:var(--sfm-foreground);font-size:16px;font-weight:950;line-height:1.45}.trader-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tool-input select{width:100%;min-width:0;border:1px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);padding:12px 13px;font:900 13px Tajawal,Arial,sans-serif;outline:0;color:var(--sfm-foreground)}.tool-result-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tool-warning{margin:0;border:1px solid rgba(245,158,11,.25);background:rgba(245,158,11,.10);color:#92400E;border-radius:13px;padding:10px 12px;font-size:12px;font-weight:900;line-height:1.7}.trader-table-wrap{overflow-x:auto;border:1px solid rgba(167,243,240,.14);border-radius:18px}.trader-table{display:grid;min-width:780px}.trader-table>div{display:grid;grid-template-columns:90px minmax(160px,1fr) 110px 90px 90px 90px 90px;gap:10px;padding:11px 12px;border-bottom:1px solid rgba(167,243,240,.10);align-items:center}.trader-table>div:last-child{border-bottom:0}.trader-table b{color:var(--sfm-muted);font-size:11px;font-weight:950}.trader-table span{color:var(--sfm-foreground);font-size:12px;font-weight:900;overflow-wrap:anywhere}.trader-empty-state{display:grid;gap:9px;justify-items:start;border:1px dashed rgba(167,243,240,.24);background:var(--sfm-light-card);border-radius:18px;padding:18px;color:var(--sfm-muted)}.trader-empty-state svg{color:var(--sfm-soft-cyan)}.trader-empty-state strong{color:var(--sfm-foreground);font-size:15px;font-weight:950}.trader-empty-state p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:850;line-height:1.8}.session-timeline{position:relative;height:48px;border-radius:999px;background:linear-gradient(90deg,rgba(29,140,255,.10),rgba(47,214,192,.12));border:1px solid rgba(167,243,240,.14);overflow:hidden}.session-timeline span{position:absolute;top:7px;bottom:7px;border-radius:999px;background:rgba(148,163,184,.22);color:var(--sfm-muted);display:grid;place-items:center;font-size:11px;font-weight:950;min-width:54px}.session-timeline span.open{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.sessions-grid{margin-top:14px}.session-badge{width:max-content;border-radius:999px;padding:6px 10px;background:rgba(148,163,184,.12);color:var(--sfm-muted);font-size:12px}.session-badge.open{background:rgba(47,214,192,.14);color:var(--sfm-primary-hover)}.overlap-row{margin-top:14px}.overlap-row span{border:1px solid rgba(167,243,240,.14);background:var(--sfm-light-card);color:var(--sfm-muted);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900}.overlap-row span.active{background:rgba(47,214,192,.14);border-color:rgba(47,214,192,.32);color:var(--sfm-primary-hover)}
         .market-disclaimer{display:flex;align-items:flex-start;gap:12px;padding:16px;color:var(--sfm-muted)}.market-disclaimer strong{display:block;color:var(--sfm-foreground);margin-bottom:4px}.market-disclaimer p{margin:0;color:var(--sfm-muted);font-size:13px;line-height:1.7;font-weight:800}
-        @media(max-width:1180px){.market-card-grid,.market-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.market-layout,.market-bottom-grid,.market-decision-grid,.market-tools-grid{grid-template-columns:1fr}.market-chart{grid-row:auto}.market-search-panel{grid-template-columns:1fr 1fr}}
+        @media(max-width:1180px){.market-card-grid,.market-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.market-layout,.market-bottom-grid,.market-decision-grid,.market-tools-grid,.trader-tool-grid{grid-template-columns:1fr}.market-chart{grid-row:auto}.market-search-panel{grid-template-columns:1fr 1fr}}
         @media(max-width:1024px){.market-main{margin-inline-start:0;padding:calc(88px + env(safe-area-inset-top)) 16px 18px;max-width:100%}}
-        @media(max-width:720px){.market-main{padding-inline:14px}.market-hero{grid-template-columns:1fr;padding:22px;border-radius:22px}.market-search-panel,.market-card-grid,.market-status-grid,.market-stat-row,.indicator-list,.scenario-grid,.alert-form{grid-template-columns:1fr}.market-search-panel button{width:100%}.market-search-results{max-height:min(300px,42dvh);top:calc(100% + 10px);border-radius:16px}.market-search-results button{min-height:68px;align-items:flex-start}.market-search-results button small{white-space:normal;text-align:end}.market-hero-card strong{font-size:36px}.market-stock-header{display:grid;gap:14px}.stock-price-block{justify-items:start;text-align:start}.market-panel,.market-card,.market-stock-header{border-radius:18px}.compare-bars div{grid-template-columns:42px minmax(0,1fr) 48px}}
+        @media(max-width:720px){.market-main{padding-inline:14px}.market-hero{grid-template-columns:1fr;padding:22px;border-radius:22px}.market-search-panel,.market-card-grid,.market-status-grid,.market-stat-row,.indicator-list,.scenario-grid,.alert-form,.trader-form-grid,.tool-result-grid{grid-template-columns:1fr}.market-search-panel button{width:100%}.market-search-results{max-height:min(300px,42dvh);top:calc(100% + 10px);border-radius:16px}.market-search-results button{min-height:68px;align-items:flex-start}.market-search-results button small{white-space:normal;text-align:end}.market-hero-card strong{font-size:36px}.market-stock-header{display:grid;gap:14px}.stock-price-block{justify-items:start;text-align:start}.market-panel,.market-card,.market-stock-header{border-radius:18px}.compare-bars div{grid-template-columns:42px minmax(0,1fr) 48px}.tool-tabs,.symbol-chip-row{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px}.tool-tabs button,.symbol-chip-row button{flex:0 0 auto}}
         @media(max-width:720px){.market-search-results{width:100%;max-height:min(320px,48dvh)}.market-search-results button{align-items:stretch}.market-search-results button small{white-space:nowrap;text-align:start}.market-search-result-main{gap:10px}.market-search-results button b{font-size:13px}}
       `}</style>
+    </div>
+  );
+}
+
+function TraderToolsDashboard({
+  t,
+  currency,
+  subTab,
+  setSubTab,
+  performance,
+}: {
+  t: (key: string) => string;
+  currency: string;
+  subTab: TraderToolsSubTab;
+  setSubTab: (tab: TraderToolsSubTab) => void;
+  performance: ApiListState<MarketPerformanceItem>;
+}) {
+  const [positionInput, setPositionInput] = useState({
+    accountBalance: '10000',
+    riskPercentage: '1',
+    stopLossDistance: '50',
+    instrumentType: 'forex' as TradingInstrumentType,
+    entryPrice: '',
+    stopLossPrice: '',
+  });
+  const [pipsInput, setPipsInput] = useState({
+    pair: 'EURUSD',
+    entryPrice: '1.0800',
+    exitPrice: '1.0850',
+    lotSize: '1',
+    direction: 'buy' as TradeDirection,
+  });
+  const [lotInput, setLotInput] = useState({
+    accountBalance: '10000',
+    riskPercentage: '1',
+    stopLossPips: '50',
+    pipValue: '10',
+  });
+
+  const position = calculatePositionSize({
+    accountBalance: parseNumber(positionInput.accountBalance),
+    riskPercentage: parseNumber(positionInput.riskPercentage),
+    stopLossDistance: parseNumber(positionInput.stopLossDistance),
+    instrumentType: positionInput.instrumentType,
+    entryPrice: parseNumber(positionInput.entryPrice),
+    stopLossPrice: parseNumber(positionInput.stopLossPrice),
+  });
+  const pips = calculatePips({
+    pair: pipsInput.pair,
+    entryPrice: parseNumber(pipsInput.entryPrice),
+    exitPrice: parseNumber(pipsInput.exitPrice),
+    lotSize: parseNumber(pipsInput.lotSize),
+    direction: pipsInput.direction,
+  });
+  const lots = calculateLotSizeByRisk({
+    accountBalance: parseNumber(lotInput.accountBalance),
+    riskPercentage: parseNumber(lotInput.riskPercentage),
+    stopLossPips: parseNumber(lotInput.stopLossPips),
+    pipValue: parseNumber(lotInput.pipValue),
+  });
+
+  return (
+    <section className="market-panel trader-dashboard">
+      <div className="market-section-head">
+        <Calculator size={20} />
+        <div>
+          <span>{t('market_trader_tools_subtitle')}</span>
+          <h2>{t('market_trader_tools')}</h2>
+        </div>
+      </div>
+      <div className="tool-tabs" role="tablist" aria-label={t('market_trader_tools')}>
+        {TRADER_TOOL_TABS.map(tab => (
+          <button key={tab} type="button" aria-pressed={subTab === tab} onClick={() => setSubTab(tab)}>
+            {t(tab === 'calculators' ? 'market_trading_calculators' : 'market_asset_performance')}
+          </button>
+        ))}
+      </div>
+      {subTab === 'calculators' ? (
+        <div className="trader-tool-grid">
+          <article className="trader-tool-card">
+            <h3>{t('market_risk_position_calculator')}</h3>
+            <div className="trader-form-grid">
+              <ToolInput label={t('market_account_balance')} value={positionInput.accountBalance} onChange={value => setPositionInput(prev => ({ ...prev, accountBalance: value }))} />
+              <ToolInput label={t('market_risk_percentage')} value={positionInput.riskPercentage} onChange={value => setPositionInput(prev => ({ ...prev, riskPercentage: value }))} />
+              <ToolInput label={t('market_stop_loss')} value={positionInput.stopLossDistance} onChange={value => setPositionInput(prev => ({ ...prev, stopLossDistance: value }))} />
+              <label className="tool-input">
+                <span>{t('market_instrument_type')}</span>
+                <select value={positionInput.instrumentType} onChange={event => setPositionInput(prev => ({ ...prev, instrumentType: event.target.value as TradingInstrumentType }))}>
+                  <option value="forex">{t('market_asset_forex')}</option>
+                  <option value="metals">{t('market_gold_metals')}</option>
+                  <option value="indices">{t('market_indices')}</option>
+                  <option value="crypto">{t('market_asset_crypto')}</option>
+                  <option value="stocks">{t('market_asset_stocks')}</option>
+                </select>
+              </label>
+              <ToolInput label={t('market_entry_price_optional')} value={positionInput.entryPrice} onChange={value => setPositionInput(prev => ({ ...prev, entryPrice: value }))} />
+              <ToolInput label={t('market_stop_price_optional')} value={positionInput.stopLossPrice} onChange={value => setPositionInput(prev => ({ ...prev, stopLossPrice: value }))} />
+            </div>
+            <ResultGrid rows={[
+              [t('market_risk_amount'), money(position.riskAmount, currency)],
+              [t('market_suggested_position_size'), formatNumber(position.positionSize, 4)],
+              [t('market_lot_size'), position.lotSize === null ? '--' : formatNumber(position.lotSize, 4)],
+              [t('market_expected_loss'), money(position.estimatedLoss, currency)],
+            ]} />
+            {position.riskWarning && <p className="tool-warning">{t('market_risk_above_two_warning')}</p>}
+          </article>
+
+          <article className="trader-tool-card">
+            <h3>{t('market_pips_calculator')}</h3>
+            <div className="trader-form-grid">
+              <ToolInput label={t('market_currency_pair')} value={pipsInput.pair} onChange={value => setPipsInput(prev => ({ ...prev, pair: value.toUpperCase() }))} />
+              <ToolInput label={t('market_entry_price')} value={pipsInput.entryPrice} onChange={value => setPipsInput(prev => ({ ...prev, entryPrice: value }))} />
+              <ToolInput label={t('market_exit_price')} value={pipsInput.exitPrice} onChange={value => setPipsInput(prev => ({ ...prev, exitPrice: value }))} />
+              <ToolInput label={t('market_lot_size')} value={pipsInput.lotSize} onChange={value => setPipsInput(prev => ({ ...prev, lotSize: value }))} />
+              <label className="tool-input">
+                <span>{t('market_trade_direction')}</span>
+                <select value={pipsInput.direction} onChange={event => setPipsInput(prev => ({ ...prev, direction: event.target.value as TradeDirection }))}>
+                  <option value="buy">{t('market_buy')}</option>
+                  <option value="sell">{t('market_sell')}</option>
+                </select>
+              </label>
+            </div>
+            <ResultGrid rows={[
+              [t('market_number_of_pips'), formatNumber(pips.pips, 1)],
+              [t('market_profit_loss'), money(pips.profitLoss, currency)],
+            ]} />
+          </article>
+
+          <article className="trader-tool-card">
+            <h3>{t('market_lot_size_by_risk')}</h3>
+            <div className="trader-form-grid">
+              <ToolInput label={t('market_account_balance')} value={lotInput.accountBalance} onChange={value => setLotInput(prev => ({ ...prev, accountBalance: value }))} />
+              <ToolInput label={t('market_risk_percentage')} value={lotInput.riskPercentage} onChange={value => setLotInput(prev => ({ ...prev, riskPercentage: value }))} />
+              <ToolInput label={t('market_stop_loss_pips')} value={lotInput.stopLossPips} onChange={value => setLotInput(prev => ({ ...prev, stopLossPips: value }))} />
+              <ToolInput label={t('market_pip_value')} value={lotInput.pipValue} onChange={value => setLotInput(prev => ({ ...prev, pipValue: value }))} />
+            </div>
+            <ResultGrid rows={[
+              [t('market_recommended_lot_size'), formatNumber(lots.recommendedLotSize, 4)],
+              [t('market_micro_lots'), formatNumber(lots.microLots, 2)],
+              [t('market_mini_lots'), formatNumber(lots.miniLots, 2)],
+              [t('market_standard_lots'), formatNumber(lots.standardLots, 4)],
+            ]} />
+          </article>
+        </div>
+      ) : (
+        <PerformanceTable t={t} performance={performance} />
+      )}
+    </section>
+  );
+}
+
+function ToolInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="tool-input">
+      <span>{label}</span>
+      <input value={value} inputMode="decimal" onChange={event => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+function ResultGrid({ rows }: { rows: Array<[string, string]> }) {
+  return (
+    <div className="tool-result-grid">
+      {rows.map(([label, value]) => <MarketMetric key={label} label={label} value={value} />)}
+    </div>
+  );
+}
+
+function PerformanceTable({ t, performance }: { t: (key: string) => string; performance: ApiListState<MarketPerformanceItem> }) {
+  if (performance.loading) return <div className="market-empty">{t('market_loading_data')}</div>;
+  if (performance.items.length === 0) {
+    return <EmptyToolState title={t('market_performance_unavailable_title')} body={performance.message || t('market_performance_unavailable_body')} />;
+  }
+  const sorted = [...performance.items].sort((a, b) => Number(b.change_1d ?? -Infinity) - Number(a.change_1d ?? -Infinity));
+  return (
+    <div className="trader-table-wrap">
+      <div className="trader-table">
+        <div>
+          <b>{t('market_symbol')}</b>
+          <b>{t('market_symbol_name')}</b>
+          <b>{t('market_current_price')}</b>
+          <b>{t('market_daily_change')}</b>
+          <b>{t('market_weekly_change')}</b>
+          <b>{t('market_monthly_change')}</b>
+          <b>{t('market_trend')}</b>
+        </div>
+        {sorted.map(item => (
+          <div key={`${item.symbol}-${item.asset_type}`}>
+            <span>{item.symbol}</span>
+            <span>{item.name}</span>
+            <span>{money(item.price, 'USD')}</span>
+            <span className={Number(item.change_1d) >= 0 ? 'up' : 'down'}>{formatOptionalPercent(item.change_1d)}</span>
+            <span className={Number(item.change_1w) >= 0 ? 'up' : 'down'}>{formatOptionalPercent(item.change_1w)}</span>
+            <span className={Number(item.change_1m) >= 0 ? 'up' : 'down'}>{formatOptionalPercent(item.change_1m)}</span>
+            <span>{item.trend ?? '--'}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MarketDataPanel({
+  icon,
+  title,
+  eyebrow,
+  state,
+  emptyTitle,
+  emptyBody,
+}: {
+  icon: ReactNode;
+  title: string;
+  eyebrow: string;
+  state: ApiListState<Record<string, any>>;
+  emptyTitle: string;
+  emptyBody: string;
+}) {
+  return (
+    <section className="market-panel">
+      <div className="market-section-head">
+        {icon}
+        <div>
+          <span>{eyebrow}</span>
+          <h2>{title}</h2>
+        </div>
+      </div>
+      {state.loading ? <div className="market-empty">Loading...</div> : (
+        <EmptyToolState title={emptyTitle} body={state.message || emptyBody} />
+      )}
+    </section>
+  );
+}
+
+function TradingSessionsPanel({ t, locale }: { t: (key: string) => string; locale: string }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60000);
+    return () => window.clearInterval(id);
+  }, []);
+  const sessions = getTradingSessionsState(now);
+  const overlaps = getActiveOverlapIds(now);
+  const formatter = new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+  return (
+    <section className="market-panel">
+      <div className="market-section-head">
+        <Clock3 size={20} />
+        <div>
+          <span>{isHighLiquidityPeriod(now) ? t('market_high_liquidity') : t('market_sessions_utc_note')}</span>
+          <h2>{t('market_trading_sessions')}</h2>
+        </div>
+      </div>
+      <div className="session-timeline">
+        {sessions.map(session => (
+          <span key={session.id} className={session.isOpen ? 'open' : ''} style={{ insetInlineStart: `${(session.openHourUtc / 24) * 100}%`, width: `${(((session.closeHourUtc - session.openHourUtc + 24) % 24 || 24) / 24) * 100}%` }}>
+            {session.name}
+          </span>
+        ))}
+      </div>
+      <div className="trader-tool-grid sessions-grid">
+        {sessions.map(session => (
+          <article className="trader-tool-card compact" key={session.id}>
+            <h3>{session.name}</h3>
+            <b className={`session-badge ${session.isOpen ? 'open' : ''}`}>{session.isOpen ? t('market_session_open') : t('market_session_closed')}</b>
+            <ResultGrid rows={[
+              [t('market_opening_time'), formatter.format(new Date(session.opensAt))],
+              [t('market_closing_time'), formatter.format(new Date(session.closesAt))],
+              [t('market_countdown'), `${Math.floor(session.minutesToNextChange / 60)}h ${session.minutesToNextChange % 60}m`],
+            ]} />
+          </article>
+        ))}
+      </div>
+      <div className="overlap-row">
+        {TRADING_OVERLAPS.map(overlap => (
+          <span key={overlap.id} className={overlaps.includes(overlap.id) ? 'active' : ''}>
+            {overlap.sessions.join(' + ')} {overlaps.includes(overlap.id) ? `- ${t('market_high_liquidity')}` : ''}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TechnicalAnalysisPanel({
+  t,
+  symbol,
+  setSymbol,
+  state,
+}: {
+  t: (key: string) => string;
+  symbol: string;
+  setSymbol: (symbol: string) => void;
+  state: TechnicalState;
+}) {
+  const data = state.data;
+  return (
+    <section className="market-panel">
+      <div className="market-section-head">
+        <Gauge size={20} />
+        <div>
+          <span>{t('market_pivot_points')}</span>
+          <h2>{t('market_daily_technical_analysis')}</h2>
+        </div>
+      </div>
+      <div className="symbol-chip-row">
+        {DEFAULT_TECHNICAL_SYMBOLS.map(item => (
+          <button key={item} type="button" aria-pressed={symbol === item} onClick={() => setSymbol(item)}>{item}</button>
+        ))}
+      </div>
+      {state.loading ? <div className="market-empty">{t('market_loading_data')}</div> : state.message ? (
+        <EmptyToolState title={t('market_technical_no_data_title')} body={state.message || t('market_technical_no_data')} />
+      ) : data ? (
+        <div className="trader-tool-grid">
+          <MarketMetric label={t('market_trend')} value={String(data.trend ?? '--')} />
+          <MarketMetric label="RSI" value={formatNumber(Number(data.rsi), 1)} />
+          <MarketMetric label={t('market_support_zone')} value={formatNumber(Number(data.support?.[0]), 4)} />
+          <MarketMetric label={t('market_resistance_zone')} value={formatNumber(Number(data.resistance?.[0]), 4)} />
+          <MarketMetric label="SMA 20" value={formatNumber(Number(data.movingAverages?.sma20), 4)} />
+          <MarketMetric label="SMA 50" value={formatNumber(Number(data.movingAverages?.sma50), 4)} />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function NewsSentimentPanel({
+  t,
+  news,
+  sentiment,
+}: {
+  t: (key: string) => string;
+  news: ApiListState<Record<string, any>>;
+  sentiment: ApiListState<Record<string, any>>;
+}) {
+  return (
+    <section className="market-bottom-grid">
+      <article className="market-panel">
+        <div className="market-section-head">
+          <Newspaper size={20} />
+          <div>
+            <span>{t('market_central_bank_topics')}</span>
+            <h2>{t('market_central_bank_news')}</h2>
+          </div>
+        </div>
+        {news.loading ? <div className="market-empty">{t('market_loading_data')}</div> : <EmptyToolState title={t('market_news_not_configured_title')} body={news.message || t('market_news_not_configured_body')} />}
+      </article>
+      <article className="market-panel">
+        <div className="market-section-head">
+          <BarChart3 size={20} />
+          <div>
+            <span>{t('market_sentiment_warning')}</span>
+            <h2>{t('market_market_sentiment')}</h2>
+          </div>
+        </div>
+        {sentiment.loading ? <div className="market-empty">{t('market_loading_data')}</div> : <EmptyToolState title={t('market_sentiment_not_configured_title')} body={sentiment.message || t('market_sentiment_not_configured_body')} />}
+      </article>
+    </section>
+  );
+}
+
+function EmptyToolState({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="trader-empty-state">
+      <AlertTriangle size={18} />
+      <strong>{title}</strong>
+      <p>{body}</p>
     </div>
   );
 }
