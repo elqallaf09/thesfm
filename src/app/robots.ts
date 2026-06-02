@@ -47,7 +47,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      allow: ['/', '/about', '/contact', '/financial-theories', '/privacy', '/terms'],
+      allow: ['/', '/about', '/contact', '/financial-theories', '/ebooks', '/privacy', '/terms'],
       disallow: privateRoutes,
     },
     sitemap: absoluteUrl('/sitemap.xml'),

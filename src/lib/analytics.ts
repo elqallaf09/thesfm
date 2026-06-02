@@ -118,6 +118,7 @@ export function moduleFromPath(pathname: string) {
   if (pathname.startsWith('/projects')) return 'projects';
   if (pathname.startsWith('/reports')) return 'reports';
   if (pathname.startsWith('/financial-theories')) return 'financial_theories';
+  if (pathname.startsWith('/ebooks')) return 'ebooks';
   if (pathname.startsWith('/market')) return 'market';
   if (pathname.startsWith('/charity') || pathname.startsWith('/zakat')) return 'charity';
   if (pathname.startsWith('/business')) return 'business';

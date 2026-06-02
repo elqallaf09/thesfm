@@ -203,6 +203,7 @@ export const TR: Record<string, TranslationEntry> = {
   nav_decisions: { ar:'محلل القرارات', en:'Decision Analyzer', fr:'Analyseur de décisions' },
   nav_today: { ar:'اليوم المالي', en:'Financial Today', fr:'Aujourd’hui financier' },
   nav_financial_theories: { ar:'النظريات المالية', en:'Financial Theories', fr:'Théories financières' },
+  nav_ebooks: { ar:'كتب إلكترونية', en:'E-Books', fr:'Livres électroniques' },
   nav_tasks: { ar:'مركز المهام', en:'Tasks Center', fr:'Centre des tâches' },
   nav_documents_center: { ar:'مركز المستندات', en:'Documents Center', fr:'Centre des documents' },
   nav_expenses:   { ar:'المصاريف', en:'Expenses', fr:'Dépenses' },
