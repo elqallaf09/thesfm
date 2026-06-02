@@ -15,7 +15,19 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBusinessRole } from '@/hooks/useBusinessRole';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
-import { BUSINESS_TEXT, SALE_STATUS_OPTIONS, businessRoleLabel, normalizeBusinessLang, numericValue, saleStatusLabel, type SaleStatus } from '@/lib/businessOperations';
+import {
+  BUSINESS_TEXT,
+  SALE_STATUS_OPTIONS,
+  businessRoleLabel,
+  isActiveSaleStatus,
+  isCancelledSaleStatus,
+  legacySaleStatus,
+  normalizeBusinessLang,
+  normalizeSaleStatus,
+  numericValue,
+  saleStatusLabel,
+  type SaleStatus,
+} from '@/lib/businessOperations';
 import { aggregateBy, downloadCsv, downloadXlsx, isInDateRange, monthLabel, printPdf, saleExportColumns } from '@/lib/businessReports';
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
@@ -29,6 +41,7 @@ type SaleRow = {
   id: string;
   user_id: string;
   invoice_number: string | null;
+  customer_id?: string | null;
   customer_name: string;
   product_or_service: string | null;
   amount: number | string;
@@ -51,6 +64,46 @@ type SaleForm = {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+function parseAmountInput(value: string) {
+  const parsed = Number(value.trim().replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
+function isValidDateInput(value: string) {
+  if (!value) return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function logSaleSaveError(error: any, context: { attempt: string; payloadKeys: string[] }) {
+  if (process.env.NODE_ENV !== 'development' && process.env.NEXT_PUBLIC_DEBUG_BUSINESS_SAVE !== 'true') return;
+  console.error('[business_sales] save failed', {
+    attempt: context.attempt,
+    payloadKeys: context.payloadKeys,
+    code: error?.code,
+    message: error?.message,
+    details: error?.details,
+    hint: error?.hint,
+  });
+}
+
+function missingSaleColumn(error: any) {
+  const message = String(error?.message ?? '');
+  const match = message.match(/column "([^"]+)"/i);
+  return match?.[1] ?? '';
+}
+
+function isSalePermissionError(error: any) {
+  const message = String(error?.message ?? '').toLowerCase();
+  return error?.code === '42501' || message.includes('row-level security') || message.includes('permission denied');
+}
+
+function isStatusConstraintError(error: any) {
+  const message = `${error?.message ?? ''} ${error?.details ?? ''}`.toLowerCase();
+  return error?.code === '23514' && message.includes('status');
+}
+
 function createEmptyForm(currency = 'KWD'): SaleForm {
   return {
     invoice_number: '',
@@ -58,7 +111,7 @@ function createEmptyForm(currency = 'KWD'): SaleForm {
     product_or_service: '',
     amount: '',
     currency,
-    status: 'pending',
+    status: 'completed',
     sale_date: today(),
     notes: '',
   };
@@ -123,8 +176,9 @@ export default function SalesPage() {
   const filteredRows = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return rows.filter((row) => {
-      const matchesStatus = statusFilter === 'all' || row.status === statusFilter;
-      if (!matchesStatus) return false;
+      const normalizedStatus = normalizeSaleStatus(row.status);
+      const matchesNormalizedStatus = statusFilter === 'all' || normalizedStatus === statusFilter;
+      if (!matchesNormalizedStatus) return false;
       if (!isInDateRange(row.sale_date, fromDate, toDate)) return false;
       if (!needle) return true;
       return [row.customer_name, row.invoice_number, row.product_or_service, row.notes]
@@ -133,17 +187,17 @@ export default function SalesPage() {
   }, [fromDate, query, rows, statusFilter, toDate]);
 
   const summary = useMemo(() => {
-    const completed = filteredRows.filter((row) => row.status === 'completed');
+    const completed = filteredRows.filter((row) => normalizeSaleStatus(row.status) === 'completed');
     return {
       totalSales: completed.reduce((total, row) => total + numericValue(row.amount), 0),
       completed: completed.length,
-      pending: filteredRows.filter((row) => row.status === 'pending' || !row.status).length,
-      canceled: filteredRows.filter((row) => row.status === 'canceled').length,
+      pending: filteredRows.filter((row) => normalizeSaleStatus(row.status) === 'pending' || !row.status).length,
+      canceled: filteredRows.filter((row) => isCancelledSaleStatus(row.status)).length,
     };
   }, [filteredRows]);
 
   const chartData = useMemo(() => {
-    const activeSalesRows = filteredRows.filter((row) => row.status !== 'canceled');
+    const activeSalesRows = filteredRows.filter((row) => isActiveSaleStatus(row.status));
     const monthly = aggregateBy(
       activeSalesRows,
       (row) => String(row.sale_date ?? '').slice(0, 7) || text.noDataYet,
@@ -179,7 +233,7 @@ export default function SalesPage() {
       product_or_service: row.product_or_service ?? '',
       amount: String(row.amount ?? ''),
       currency: row.currency ?? defaultCurrency,
-      status: SALE_STATUS_OPTIONS.includes(row.status as SaleStatus) ? row.status as SaleStatus : 'pending',
+      status: SALE_STATUS_OPTIONS.includes(normalizeSaleStatus(row.status)) ? normalizeSaleStatus(row.status) : 'completed',
       sale_date: row.sale_date ?? today(),
       notes: row.notes ?? '',
     });
@@ -196,14 +250,44 @@ export default function SalesPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!user || !permissions.canWriteSales) return;
-    const amount = numericValue(form.amount);
-    if (!form.customer_name.trim()) {
-      setFormError(text.requiredField);
+    if (!user) {
+      setFormError(text.loginRequiredToSaveSale);
       return;
     }
-    if (amount <= 0) {
-      setFormError(text.invalidAmount);
+    if (!permissions.canWriteSales) {
+      setFormError(text.permissionDenied);
+      return;
+    }
+    const customerName = form.customer_name.trim();
+    const productOrService = form.product_or_service.trim();
+    const amount = parseAmountInput(form.amount);
+    const normalizedStatus = normalizeSaleStatus(form.status);
+    if (!customerName) {
+      setFormError(text.saleCustomerRequired);
+      return;
+    }
+    if (!productOrService) {
+      setFormError(text.saleProductRequired);
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setFormError(text.saleAmountRequired);
+      return;
+    }
+    if (!form.currency) {
+      setFormError(text.currency);
+      return;
+    }
+    if (!form.sale_date) {
+      setFormError(text.saleDateRequired);
+      return;
+    }
+    if (!isValidDateInput(form.sale_date)) {
+      setFormError(text.saleDateInvalid);
+      return;
+    }
+    if (!SALE_STATUS_OPTIONS.includes(normalizedStatus)) {
+      setFormError(text.saleStatusInvalid);
       return;
     }
 
@@ -213,23 +297,46 @@ export default function SalesPage() {
     const payload = {
       user_id: user.id,
       invoice_number: form.invoice_number.trim() || null,
-      customer_name: form.customer_name.trim(),
-      product_or_service: form.product_or_service.trim() || null,
+      customer_id: null,
+      customer_name: customerName,
+      product_or_service: productOrService,
       amount,
-      currency: form.currency || defaultCurrency,
-      status: form.status,
-      sale_date: form.sale_date || today(),
+      currency: form.currency || defaultCurrency || 'KWD',
+      status: normalizedStatus,
+      sale_date: form.sale_date,
+      notes: form.notes.trim() || null,
+    };
+    const legacyPayload = {
+      user_id: user.id,
+      invoice_number: form.invoice_number.trim() || null,
+      customer_name: customerName,
+      product_or_service: productOrService,
+      amount,
+      currency: form.currency || defaultCurrency || 'KWD',
+      status: legacySaleStatus(normalizedStatus),
+      sale_date: form.sale_date,
       notes: form.notes.trim() || null,
     };
 
     const db = supabase as any;
-    const result = editing
-      ? await db.from('business_sales').update(payload).eq('id', editing.id).eq('user_id', user.id)
-      : await db.from('business_sales').insert(payload);
+    const savePayload = async (nextPayload: Record<string, unknown>) => {
+      return editing
+        ? await db.from('business_sales').update(nextPayload).eq('id', editing.id).eq('user_id', user.id)
+        : await db.from('business_sales').insert(nextPayload);
+    };
+    let result = await savePayload(payload);
+    if (result.error) {
+      logSaleSaveError(result.error, { attempt: 'aligned', payloadKeys: Object.keys(payload) });
+      const missingColumn = missingSaleColumn(result.error);
+      if (missingColumn === 'customer_id' || isStatusConstraintError(result.error)) {
+        result = await savePayload(legacyPayload);
+        if (result.error) logSaleSaveError(result.error, { attempt: 'legacy', payloadKeys: Object.keys(legacyPayload) });
+      }
+    }
 
     setSaving(false);
     if (result.error) {
-      setFormError(text.saveError);
+      setFormError(isSalePermissionError(result.error) ? text.saleAccessDeniedSave : text.saleSaveFailedDetailed);
       return;
     }
 
@@ -386,11 +493,11 @@ export default function SalesPage() {
               </label>
               <label>
                 <span>{text.productService}</span>
-                <input value={form.product_or_service} onChange={(event) => setForm({ ...form, product_or_service: event.target.value })} />
+                <input required value={form.product_or_service} onChange={(event) => setForm({ ...form, product_or_service: event.target.value })} />
               </label>
               <label>
                 <span>{text.amount}</span>
-                <input required type="number" min="0" step="0.001" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
+                <input required type="number" min="0.001" step="0.001" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
               </label>
               <CurrencySelect value={form.currency} onChange={(currency) => setForm({ ...form, currency })} lang={locale} label={text.currency} />
               <label>
@@ -444,7 +551,7 @@ export default function SalesPage() {
                       <td><strong>{row.customer_name}</strong></td>
                       <td>{row.product_or_service || '-'}</td>
                       <td>{formatMoney(numericValue(row.amount), row.currency || defaultCurrency, locale)}</td>
-                      <td><span className={`business-status status-${row.status || 'pending'}`}>{saleStatusLabel(row.status, locale)}</span></td>
+                      <td><span className={`business-status status-${normalizeSaleStatus(row.status)}`}>{saleStatusLabel(row.status, locale)}</span></td>
                       <td>{row.sale_date ? formatDate(row.sale_date, locale) : '-'}</td>
                       <td>
                         <div className="business-row-actions">
@@ -516,12 +623,12 @@ const salesStyles = `
   th{background:rgba(29,140,255,.08);color:var(--sfm-muted);font-size:.82rem;font-weight:950;position:sticky;top:0;z-index:1}
   td{color:var(--sfm-foreground);font-weight:760}
   .business-status{display:inline-flex;border-radius:999px;padding:5px 10px;font-size:.78rem;font-weight:950;background:rgba(29,140,255,.12);color:var(--sfm-primary)}
-  .status-completed{background:rgba(16,185,129,.14);color:#047857}.status-canceled{background:rgba(239,68,68,.14);color:#B91C1C}
+  .status-completed{background:rgba(16,185,129,.14);color:#047857}.status-cancelled,.status-canceled{background:rgba(239,68,68,.14);color:#B91C1C}.status-refunded{background:rgba(245,158,11,.16);color:#B45309}
   .business-row-actions{display:flex;flex-wrap:wrap;gap:8px}
   .business-row-actions button{border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);color:var(--sfm-primary);border-radius:12px;min-height:34px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-weight:900;cursor:pointer}
   .business-row-actions button.danger{color:#DC2626;border-color:rgba(239,68,68,.20)}
   .business-row-actions button:focus-visible{outline:2px solid rgba(24,212,212,.22);outline-offset:2px}
-  .dark .business-alert,.dark .business-form-error{color:#FCA5A5}.dark .business-notice{color:#86EFAC}.dark .status-completed{color:#86EFAC}.dark .status-canceled{color:#FCA5A5}
+  .dark .business-alert,.dark .business-form-error{color:#FCA5A5}.dark .business-notice{color:#86EFAC}.dark .status-completed{color:#86EFAC}.dark .status-cancelled,.dark .status-canceled{color:#FCA5A5}.dark .status-refunded{color:#FCD34D}
   @media(max-width:980px){.business-toolbar{grid-template-columns:1fr 1fr}.business-search{grid-column:1 / -1}}
   @media(max-width:760px){.business-topbar{justify-content:space-between;align-items:flex-start}.business-toolbar,.business-form-grid{grid-template-columns:1fr}.business-search{grid-column:auto}.business-hero-actions,.business-primary-btn,.business-ghost-btn,.business-form-actions{width:100%}.business-form-actions{display:grid}.business-table-card{border-radius:18px}table{min-width:720px}}
 `;

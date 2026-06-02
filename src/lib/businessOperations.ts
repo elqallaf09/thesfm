@@ -1,6 +1,6 @@
 export type BusinessLang = 'ar' | 'en' | 'fr';
 
-export type SaleStatus = 'completed' | 'pending' | 'canceled';
+export type SaleStatus = 'completed' | 'pending' | 'cancelled' | 'refunded' | 'canceled';
 export type EmployeeStatus = 'active' | 'on_leave' | 'inactive';
 export type BusinessRole = 'manager' | 'accountant' | 'employee';
 export type BusinessInvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue';
@@ -14,7 +14,7 @@ export type BusinessOperatingExpenseCategory =
   | 'shipping_delivery'
   | 'other';
 
-export const SALE_STATUS_OPTIONS: SaleStatus[] = ['completed', 'pending', 'canceled'];
+export const SALE_STATUS_OPTIONS: SaleStatus[] = ['completed', 'pending', 'cancelled', 'refunded'];
 export const EMPLOYEE_STATUS_OPTIONS: EmployeeStatus[] = ['active', 'on_leave', 'inactive'];
 export const BUSINESS_INVOICE_STATUS_OPTIONS: BusinessInvoiceStatus[] = ['draft', 'sent', 'paid', 'overdue'];
 export const BUSINESS_OPERATING_EXPENSE_CATEGORY_OPTIONS: BusinessOperatingExpenseCategory[] = [
@@ -105,9 +105,10 @@ export const BUSINESS_TEXT = {
     status: 'الحالة',
     saleDate: 'تاريخ البيع',
     notes: 'ملاحظات',
-    completed: 'مكتمل',
-    pending: 'قيد المعالجة',
-    canceled: 'ملغي',
+    completed: 'مكتملة',
+    pending: 'معلقة',
+    canceled: 'ملغاة',
+    refunded: 'مستردة',
     totalSales: 'إجمالي المبيعات',
     totalProjects: 'إجمالي المشاريع',
     completedSales: 'العمليات المكتملة',
@@ -222,6 +223,15 @@ export const BUSINESS_TEXT = {
     partialLoadWarning: 'حدث خطأ أثناء تحميل بعض البيانات. حاول تحديث الصفحة.',
     retry: 'إعادة المحاولة',
     saveError: 'تعذر حفظ البيانات حالياً.',
+    saleCustomerRequired: 'يرجى إدخال اسم العميل.',
+    saleProductRequired: 'يرجى إدخال المنتج أو الخدمة.',
+    saleAmountRequired: 'يرجى إدخال مبلغ صحيح.',
+    saleDateRequired: 'يرجى اختيار تاريخ البيع.',
+    saleDateInvalid: 'تاريخ البيع غير صالح.',
+    saleStatusInvalid: 'حالة البيع غير صالحة.',
+    loginRequiredToSaveSale: 'يجب تسجيل الدخول لحفظ عملية البيع.',
+    saleAccessDeniedSave: 'تعذر حفظ عملية البيع بسبب صلاحيات الوصول. يرجى مراجعة إعدادات قاعدة البيانات.',
+    saleSaveFailedDetailed: 'تعذر حفظ عملية البيع. يرجى التحقق من البيانات والمحاولة مرة أخرى.',
     employeeNameRequired: 'يرجى إدخال اسم الموظف.',
     salaryRequired: 'يرجى إدخال راتب صحيح.',
     salaryDayInvalid: 'يوم استحقاق الراتب يجب أن يكون بين 1 و31.',
@@ -318,12 +328,13 @@ export const BUSINESS_TEXT = {
     notes: 'Notes',
     completed: 'Completed',
     pending: 'Pending',
-    canceled: 'Canceled',
+    canceled: 'Cancelled',
+    refunded: 'Refunded',
     totalSales: 'Total Sales',
     totalProjects: 'Total Projects',
     completedSales: 'Completed Sales',
     pendingSales: 'Pending',
-    canceledSales: 'Canceled',
+    canceledSales: 'Cancelled',
     searchSales: 'Search customer, invoice, or service...',
     allStatuses: 'All statuses',
     saveSale: 'Save Sale',
@@ -433,6 +444,15 @@ export const BUSINESS_TEXT = {
     partialLoadWarning: 'An error occurred while loading some data. Try refreshing the page.',
     retry: 'Retry',
     saveError: 'Could not save data right now.',
+    saleCustomerRequired: 'Please enter the customer name.',
+    saleProductRequired: 'Please enter the product or service.',
+    saleAmountRequired: 'Please enter a valid amount.',
+    saleDateRequired: 'Please choose the sale date.',
+    saleDateInvalid: 'Sale date is invalid.',
+    saleStatusInvalid: 'Sale status is invalid.',
+    loginRequiredToSaveSale: 'You must sign in to save the sale.',
+    saleAccessDeniedSave: 'Could not save the sale because of access permissions. Please review the database settings.',
+    saleSaveFailedDetailed: 'Could not save the sale. Please check the details and try again.',
     employeeNameRequired: 'Please enter the employee name.',
     salaryRequired: 'Please enter a valid salary.',
     salaryDayInvalid: 'Payroll due day must be between 1 and 31.',
@@ -530,6 +550,7 @@ export const BUSINESS_TEXT = {
     completed: 'Terminée',
     pending: 'En traitement',
     canceled: 'Annulée',
+    refunded: 'Remboursée',
     totalSales: 'Ventes totales',
     totalProjects: 'Total des projets',
     completedSales: 'Ventes terminées',
@@ -644,6 +665,15 @@ export const BUSINESS_TEXT = {
     partialLoadWarning: 'Une erreur est survenue lors du chargement de certaines données. Essayez d’actualiser la page.',
     retry: 'Réessayer',
     saveError: 'Impossible d’enregistrer les données pour le moment.',
+    saleCustomerRequired: 'Veuillez saisir le nom du client.',
+    saleProductRequired: 'Veuillez saisir le produit ou le service.',
+    saleAmountRequired: 'Veuillez saisir un montant valide.',
+    saleDateRequired: 'Veuillez choisir la date de vente.',
+    saleDateInvalid: 'La date de vente n’est pas valide.',
+    saleStatusInvalid: 'Le statut de la vente n’est pas valide.',
+    loginRequiredToSaveSale: 'Vous devez vous connecter pour enregistrer la vente.',
+    saleAccessDeniedSave: 'Impossible d’enregistrer la vente en raison des autorisations d’accès. Veuillez vérifier les paramètres de la base de données.',
+    saleSaveFailedDetailed: 'Impossible d’enregistrer la vente. Vérifiez les informations puis réessayez.',
     employeeNameRequired: 'Veuillez saisir le nom de l’employé.',
     salaryRequired: 'Veuillez saisir un salaire valide.',
     salaryDayInvalid: 'Le jour de paie doit être compris entre 1 et 31.',
@@ -668,10 +698,37 @@ export function normalizeBusinessLang(lang?: string): BusinessLang {
   return lang === 'en' || lang === 'fr' || lang === 'ar' ? lang : 'ar';
 }
 
+export function normalizeSaleStatus(status: string | null | undefined): SaleStatus {
+  if (status === 'completed' || status === 'pending' || status === 'refunded') return status;
+  if (status === 'cancelled' || status === 'canceled') return 'cancelled';
+  return 'pending';
+}
+
+export function legacySaleStatus(status: string | null | undefined): 'completed' | 'pending' | 'canceled' | 'refunded' {
+  const normalized = normalizeSaleStatus(status);
+  if (normalized === 'cancelled') return 'canceled';
+  return normalized === 'canceled' ? 'canceled' : normalized;
+}
+
+export function isCancelledSaleStatus(status: string | null | undefined) {
+  return normalizeSaleStatus(status) === 'cancelled';
+}
+
+export function isRefundedSaleStatus(status: string | null | undefined) {
+  return normalizeSaleStatus(status) === 'refunded';
+}
+
+export function isActiveSaleStatus(status: string | null | undefined) {
+  const normalized = normalizeSaleStatus(status);
+  return normalized !== 'cancelled' && normalized !== 'refunded';
+}
+
 export function saleStatusLabel(status: string | null | undefined, lang: BusinessLang) {
   const text = BUSINESS_TEXT[lang];
-  if (status === 'completed') return text.completed;
-  if (status === 'canceled') return text.canceled;
+  const normalized = normalizeSaleStatus(status);
+  if (normalized === 'completed') return text.completed;
+  if (normalized === 'cancelled' || normalized === 'canceled') return text.canceled;
+  if (normalized === 'refunded') return text.refunded;
   return text.pending;
 }
 

@@ -15,7 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBusinessRole } from '@/hooks/useBusinessRole';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
-import { BUSINESS_TEXT, businessRoleLabel, normalizeBusinessLang, numericValue, saleStatusLabel } from '@/lib/businessOperations';
+import { BUSINESS_TEXT, businessRoleLabel, isActiveSaleStatus, normalizeBusinessLang, normalizeSaleStatus, numericValue, saleStatusLabel } from '@/lib/businessOperations';
 import { aggregateBy, downloadCsv, downloadXlsx, monthLabel, nextPayrollDate, printPdf } from '@/lib/businessReports';
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
@@ -344,7 +344,7 @@ export default function BusinessOperationsPage() {
   }, [authLoading, loadBusinessData, roleLoading]);
 
   const summary = useMemo(() => {
-    const completedSales = salesRows.filter((row) => row.status === 'completed');
+    const completedSales = salesRows.filter((row) => normalizeSaleStatus(row.status) === 'completed');
     const activeEmployees = employeeRows.filter((row) => row.status === 'active' || !row.status);
     const totalSales = completedSales.reduce((total, row) => total + numericValue(row.amount), 0);
     const payroll = activeEmployees.reduce((total, row) => total + numericValue(row.salary) + numericValue(row.bonus), 0);
@@ -372,7 +372,7 @@ export default function BusinessOperationsPage() {
   }, [customerRows.length, employeeRows, invoiceRows.length, operatingExpenseRows, projectRows.length, salesRows, supplierRows.length]);
 
   const chartData = useMemo(() => {
-    const activeSales = salesRows.filter((row) => row.status !== 'canceled');
+    const activeSales = salesRows.filter((row) => isActiveSaleStatus(row.status));
     const monthly = aggregateBy(
       activeSales,
       (row) => String(row.sale_date ?? '').slice(0, 7) || text.unclassified,
