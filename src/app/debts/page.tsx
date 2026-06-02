@@ -193,7 +193,7 @@ const TEXT = {
   validationStartDate: { ar: 'تاريخ بداية الدين غير صالح.', en: 'Debt start date is invalid.', fr: 'La date de début de la dette est invalide.' },
   authSaveError: { ar: 'يجب تسجيل الدخول لحفظ بيانات الدين.', en: 'You must sign in to save debt data.', fr: 'Vous devez vous connecter pour enregistrer les données de la dette.' },
   rlsSaveError: { ar: 'تعذر حفظ الدين بسبب صلاحيات الوصول. يرجى مراجعة إعدادات قاعدة البيانات.', en: 'Debt could not be saved because of access permissions. Please review database settings.', fr: 'La dette n’a pas pu être enregistrée en raison des autorisations d’accès. Veuillez vérifier les paramètres de la base de données.' },
-  databaseSaveError: { ar: 'تعذر حفظ بيانات الدين. يرجى التحقق من البيانات والمحاولة مرة أخرى.', en: 'Debt data could not be saved. Please check the data and try again.', fr: 'Les données de la dette n’ont pas pu être enregistrées. Vérifiez les données puis réessayez.' },
+  databaseSaveError: { ar: 'تعذر حفظ بيانات الدين. يرجى مراجعة إعدادات قاعدة البيانات والمحاولة مرة أخرى.', en: 'Debt data could not be saved. Please review the database settings and try again.', fr: 'Les données de la dette n’ont pas pu être enregistrées. Veuillez vérifier les paramètres de la base de données puis réessayer.' },
   networkSaveError: { ar: 'تعذر الاتصال بالخادم. يرجى المحاولة لاحقًا.', en: 'Could not connect to the server. Please try again later.', fr: 'Impossible de se connecter au serveur. Veuillez réessayer plus tard.' },
   duplicatePayment: { ar: 'تم تسجيل دفعة لهذا الدين في هذا التاريخ مسبقًا.', en: 'A payment for this debt already exists on this date.', fr: 'Un paiement pour cette dette existe déjà à cette date.' },
   error: { ar: 'تعذر إكمال العملية. حاول مرة أخرى لاحقًا.', en: 'Could not complete the action. Please try again later.', fr: 'Impossible de terminer l’action. Réessayez plus tard.' },
@@ -233,6 +233,16 @@ function formatDateToYYYYMMDD(value: string) {
   }
   const parsed = new Date(trimmed);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+}
+
+function mapInterestTypeToDb(value: unknown): InterestType {
+  if (value === 'none' || value === 'monthly' || value === 'annual') return value;
+  return 'annual';
+}
+
+function mapDebtStatusToDb(value: unknown): DebtStatus {
+  if (value === 'paid' || value === 'paused' || value === 'active') return value;
+  return 'active';
 }
 
 function clampPaymentDay(value: unknown) {
@@ -312,21 +322,23 @@ function estimatePayoffMonths(debt: DebtRow) {
 
 function payloadFromForm(form: DebtForm, userId: string) {
   const startDate = formatDateToYYYYMMDD(form.startDate);
+  if (!startDate) throw new Error('INVALID_DATE');
+
   return {
     user_id: userId,
     name: form.name.trim(),
     creditor_name: form.creditorName.trim(),
     original_amount: toNumber(form.originalAmount),
-    remaining_amount: toNumber(form.remainingAmount || form.originalAmount),
-    currency: form.currency || 'KWD',
-    start_date: startDate ?? form.startDate,
+    remaining_amount: toNumber(form.remainingAmount),
+    currency: form.currency.trim() || 'KWD',
+    start_date: startDate,
     monthly_payment: toNumber(form.monthlyPayment),
     interest_rate: toNumber(form.interestRate, 0),
-    interest_type: form.interestType || 'annual',
-    payment_day: Math.round(toNumber(form.paymentDay, 1)),
+    interest_type: mapInterestTypeToDb(form.interestType),
+    payment_day: clampPaymentDay(form.paymentDay),
     notes: form.notes.trim() || null,
     auto_add_to_expenses: Boolean(form.autoAddToExpenses),
-    status: form.status || 'active',
+    status: mapDebtStatusToDb(form.status),
   };
 }
 
@@ -361,6 +373,9 @@ function debtSaveErrorMessage(error: unknown, t: (key: keyof typeof TEXT) => str
   ].join(' ').toLowerCase();
   if (details.includes('failed to fetch') || details.includes('network') || details.includes('timeout')) {
     return t('networkSaveError');
+  }
+  if (details.includes('invalid_date')) {
+    return t('validationStartDate');
   }
   if (details.includes('row-level security') || details.includes('rls') || details.includes('42501') || details.includes('permission')) {
     return t('rlsSaveError');
@@ -525,7 +540,9 @@ export default function DebtsPage() {
       resetForm();
       await loadData();
     } catch (err) {
-      console.error('Debt save error:', err);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Debt save error:', err);
+      }
       setError(debtSaveErrorMessage(err, t));
     } finally {
       setSaving(false);
