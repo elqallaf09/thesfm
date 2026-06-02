@@ -275,7 +275,7 @@ export function ProjectSelector({
             <strong>{copy.emptyTitle}</strong>
             <small>{copy.emptyDescription}</small>
           </span>
-          <Link className="project-selector-action secondary primary-add" href={addProjectHref} aria-label={copy.addProject}>
+          <Link className="project-selector-action add-primary" href={addProjectHref} aria-label={copy.addProject}>
             <Plus size={16} aria-hidden="true" />
             {copy.addProject}
           </Link>
@@ -318,7 +318,9 @@ export function ProjectSelector({
                 {copy.openProject}
               </Link>
             ) : (
-              <span className="project-selector-action primary disabled" aria-disabled="true">{copy.chooseProjectFirst}</span>
+              <button className="project-selector-action disabled" type="button" disabled aria-disabled="true">
+                {copy.chooseProjectFirst}
+              </button>
             )}
             <Link className="project-selector-action secondary" href={addProjectHref} aria-label={copy.addProject}>
               <Plus size={16} aria-hidden="true" />
@@ -571,6 +573,7 @@ export function ProjectSelector({
         }
         .project-selector-action {
           min-height: 42px;
+          border: 1px solid transparent;
           border-radius: 14px;
           display: inline-flex;
           align-items: center;
@@ -582,21 +585,32 @@ export function ProjectSelector({
           text-decoration: none;
           line-height: 1.2;
           white-space: nowrap;
+          cursor: pointer;
+          font-family: Tajawal, Arial, sans-serif;
           transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease, color .18s ease;
         }
         .project-selector-action.primary {
-          border: 0;
+          border-color: transparent;
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
           color: #FFFFFF;
           box-shadow: 0 14px 30px rgba(29, 140, 255, .20);
         }
-        .project-selector-action.primary.disabled {
+        .project-selector-action.add-primary {
+          min-height: 48px;
+          border-radius: 18px;
+          padding: 0 20px;
+          border-color: rgba(24, 212, 212, .22);
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          color: #FFFFFF;
+          box-shadow: 0 14px 32px rgba(29, 140, 255, .22);
+        }
+        .project-selector-action.disabled {
           border: 1px solid rgba(29, 140, 255, .18);
-          background: var(--sfm-light-card);
-          color: var(--sfm-muted-readable, #475569);
+          background: #F1F5F9;
+          color: #64748B;
           box-shadow: none;
           cursor: not-allowed;
-          opacity: .72;
+          opacity: 1;
         }
         .project-selector-action.secondary {
           border: 1px solid rgba(24, 212, 212, .40);
@@ -604,22 +618,16 @@ export function ProjectSelector({
           color: #0E7490;
           box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .38);
         }
-        .project-selector-action.secondary.primary-add {
-          min-height: 46px;
-          padding-inline: 18px;
-          border-color: rgba(24, 212, 212, .48);
-          background: linear-gradient(135deg, rgba(29, 140, 255, .12), rgba(24, 212, 212, .18));
-          color: #0F766E;
-          box-shadow: 0 12px 28px rgba(14, 116, 144, .12);
-        }
-        .project-selector-action.secondary svg {
+        .project-selector-action svg {
           flex: 0 0 auto;
         }
         .project-selector-action:not(.disabled):hover {
           transform: translateY(-1px);
         }
-        .project-selector-action.primary:not(.disabled):hover {
+        .project-selector-action.primary:not(.disabled):hover,
+        .project-selector-action.add-primary:hover {
           box-shadow: 0 16px 36px rgba(29, 140, 255, .26);
+          filter: saturate(1.06);
         }
         .project-selector-action.secondary:hover {
           background: rgba(207, 250, 254, .92);
@@ -627,12 +635,7 @@ export function ProjectSelector({
           color: #155E75;
           box-shadow: 0 12px 28px rgba(14, 116, 144, .12);
         }
-        .project-selector-action.secondary.primary-add:hover {
-          background: linear-gradient(135deg, rgba(29, 140, 255, .16), rgba(24, 212, 212, .24));
-          color: #0F5F59;
-          box-shadow: 0 16px 34px rgba(14, 116, 144, .16);
-        }
-        .project-selector-action.secondary.primary-add:active {
+        .project-selector-action:not(.disabled):active {
           transform: translateY(0) scale(.985);
         }
         .project-selector-action:focus-visible {
@@ -654,7 +657,7 @@ export function ProjectSelector({
         :global(.dark) .project-selector-empty-copy small {
           color: #B8C7D9;
         }
-        :global(.dark) .project-selector-action.primary.disabled {
+        :global(.dark) .project-selector-action.disabled {
           border-color: rgba(255, 255, 255, .14);
           background: rgba(255, 255, 255, .06);
           color: rgba(232, 238, 246, .72);
@@ -665,9 +668,9 @@ export function ProjectSelector({
           color: #CFFAFE;
           box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04);
         }
-        :global(.dark) .project-selector-action.secondary.primary-add {
+        :global(.dark) .project-selector-action.add-primary {
           border-color: rgba(103, 232, 249, .46);
-          background: linear-gradient(135deg, rgba(29, 140, 255, .22), rgba(6, 182, 212, .16));
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
           color: #ECFEFF;
           box-shadow: 0 14px 30px rgba(6, 182, 212, .12);
         }
@@ -677,9 +680,9 @@ export function ProjectSelector({
           color: #ECFEFF;
           box-shadow: 0 12px 28px rgba(6, 182, 212, .14);
         }
-        :global(.dark) .project-selector-action.secondary.primary-add:hover {
+        :global(.dark) .project-selector-action.add-primary:hover {
           border-color: rgba(103, 232, 249, .62);
-          background: linear-gradient(135deg, rgba(29, 140, 255, .28), rgba(6, 182, 212, .22));
+          box-shadow: 0 16px 36px rgba(6, 182, 212, .18);
         }
         .project-selector-popover {
           position: absolute;
