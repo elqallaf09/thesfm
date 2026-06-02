@@ -1622,6 +1622,11 @@ export default function MarketAnalysisPage() {
             label={t('market_last_updated')}
             value={selected && lastUpdated ? lastUpdated : t('market_unavailable')}
           />
+          <MarketStatusCard
+            icon={serviceState === 'connected' ? <CheckCircle2 size={18} /> : <Activity size={18} />}
+            label={t('market_service_status')}
+            value={serviceState === 'connected' ? t('market_connected_short') : serviceNotice}
+          />
         </section>
 
         <PageTabs
@@ -1629,6 +1634,7 @@ export default function MarketAnalysisPage() {
           active={activeTab}
           onChange={id => setActiveTab(id as MarketTab)}
           ariaLabel={t('market_title')}
+          className="market-dashboard-tabs"
         />
 
         <MarketStatusBanner t={t} state={serviceState} serviceNotice={serviceNotice} />
@@ -2346,6 +2352,322 @@ export default function MarketAnalysisPage() {
         @media(max-width:720px){.market-search-results{width:100%;max-height:min(320px,48dvh)}.market-search-results button{align-items:stretch}.market-search-results button small{white-space:nowrap;text-align:start}.market-search-result-main{gap:10px}.market-search-results button b{font-size:13px}}
         @media(max-width:460px){.technical-selected-summary{grid-template-columns:1fr}.technical-search{min-height:46px}.technical-symbol-favorite{width:30px;height:30px}.technical-symbol-pill{min-height:40px}.portfolio-metric-grid,.performance-metric-grid{grid-template-columns:1fr}}
       `}</style>
+      <style jsx global>{`
+        .market-shell,
+        .market-main {
+          max-width: 100%;
+          overflow-x: hidden;
+        }
+
+        .market-main {
+          justify-items: stretch;
+          gap: 24px;
+        }
+
+        .market-main > * {
+          box-sizing: border-box;
+          max-width: 1480px;
+        }
+
+        .market-status-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          align-items: stretch;
+        }
+
+        .market-status-card {
+          min-height: 104px;
+          align-items: flex-start;
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, .82), rgba(234, 246, 255, .66)),
+            var(--sfm-card);
+        }
+
+        .dark .market-status-card {
+          background:
+            linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .07)),
+            #0f1d31;
+          border-color: #1d3050;
+        }
+
+        .market-dashboard-tabs {
+          border-radius: 28px !important;
+          padding: 10px !important;
+          background:
+            linear-gradient(135deg, rgba(29, 140, 255, .055), rgba(47, 214, 192, .075)),
+            var(--sfm-card) !important;
+          box-shadow: 0 16px 42px rgba(3, 18, 37, .07) !important;
+        }
+
+        .market-focused-tab,
+        .market-bottom-grid.news-sentiment-dashboard > .market-panel {
+          min-height: 260px;
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, .74), rgba(234, 246, 255, .60)),
+            var(--sfm-card);
+        }
+
+        .news-sentiment-dashboard {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+
+        .trading-sessions-dashboard {
+          display: grid;
+          gap: 18px;
+          overflow: hidden;
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, .78), rgba(234, 246, 255, .62)),
+            var(--sfm-card);
+          border-radius: 30px;
+        }
+
+        .session-card-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 14px;
+          min-width: 0;
+        }
+
+        .session-card {
+          display: grid;
+          gap: 14px;
+          min-width: 0;
+          border: 1px solid rgba(167, 243, 240, .16);
+          border-radius: 24px;
+          padding: 15px;
+          background: var(--sfm-card);
+          box-shadow: 0 14px 34px rgba(3, 18, 37, .06);
+        }
+
+        .session-card.open {
+          border-color: rgba(47, 214, 192, .34);
+          background:
+            linear-gradient(135deg, rgba(29, 140, 255, .07), rgba(47, 214, 192, .12)),
+            var(--sfm-card);
+        }
+
+        .session-card-head {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+        }
+
+        .session-card-head div {
+          display: grid;
+          gap: 4px;
+          min-width: 0;
+        }
+
+        .session-card-head strong {
+          color: var(--sfm-foreground);
+          font-size: 15px;
+          font-weight: 950;
+          line-height: 1.3;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .session-card-head small {
+          color: var(--sfm-muted);
+          font-size: 11px;
+          font-weight: 900;
+          line-height: 1.35;
+        }
+
+        .session-icon {
+          width: 38px;
+          height: 38px;
+          border-radius: 15px;
+          display: grid;
+          place-items: center;
+          color: var(--sfm-soft-cyan);
+          background: rgba(47, 214, 192, .12);
+          border: 1px solid rgba(47, 214, 192, .20);
+        }
+
+        .session-progress {
+          height: 9px;
+          border-radius: 999px;
+          overflow: hidden;
+          background: rgba(148, 163, 184, .16);
+          border: 1px solid rgba(148, 163, 184, .14);
+        }
+
+        .session-progress i {
+          display: block;
+          height: 100%;
+          min-width: 8px;
+          border-radius: inherit;
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          transition: width .3s ease;
+        }
+
+        .session-card.closed .session-progress i {
+          opacity: .28;
+          width: 8px !important;
+        }
+
+        .session-metrics {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+        }
+
+        .session-metric {
+          min-width: 0;
+          border: 1px solid rgba(167, 243, 240, .13);
+          border-radius: 16px;
+          background: var(--sfm-light-card);
+          padding: 10px;
+          display: grid;
+          gap: 5px;
+        }
+
+        .session-metric span {
+          color: var(--sfm-muted);
+          font-size: 10.5px;
+          font-weight: 950;
+          line-height: 1.35;
+        }
+
+        .session-metric strong {
+          color: var(--sfm-foreground);
+          font-size: 13px;
+          font-weight: 950;
+          line-height: 1.35;
+          overflow-wrap: anywhere;
+        }
+
+        .session-overlap-panel {
+          display: grid;
+          gap: 12px;
+          border: 1px solid rgba(47, 214, 192, .16);
+          border-radius: 24px;
+          padding: 14px;
+          background:
+            linear-gradient(135deg, rgba(29, 140, 255, .045), rgba(47, 214, 192, .07)),
+            var(--sfm-light-card);
+          min-width: 0;
+        }
+
+        .session-overlap-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+          min-width: 0;
+        }
+
+        .session-overlap-head strong {
+          color: var(--sfm-foreground);
+          font-size: 14px;
+          font-weight: 950;
+          line-height: 1.45;
+        }
+
+        .session-overlap-head span {
+          max-width: 520px;
+          color: var(--sfm-muted);
+          font-size: 12px;
+          font-weight: 850;
+          line-height: 1.65;
+        }
+
+        .session-overlap-timeline {
+          position: relative;
+          height: 46px;
+          border-radius: 999px;
+          overflow: hidden;
+          background: rgba(148, 163, 184, .12);
+          border: 1px solid rgba(167, 243, 240, .14);
+        }
+
+        .session-overlap-timeline span {
+          position: absolute;
+          top: 8px;
+          bottom: 8px;
+          border-radius: 999px;
+          background: rgba(148, 163, 184, .22);
+        }
+
+        .session-overlap-timeline span.active {
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          box-shadow: 0 0 22px rgba(47, 214, 192, .32);
+        }
+
+        .dark .market-focused-tab,
+        .dark .market-bottom-grid.news-sentiment-dashboard > .market-panel,
+        .dark .trading-sessions-dashboard,
+        .dark .session-card,
+        .dark .session-card.open {
+          background:
+            linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .07)),
+            #0f1d31;
+          border-color: #1d3050;
+        }
+
+        .dark .session-metric,
+        .dark .session-overlap-panel {
+          background: #0a1422;
+          border-color: #1d3050;
+        }
+
+        @media (max-width: 1180px) {
+          .market-status-grid,
+          .session-card-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+
+          .news-sentiment-dashboard {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        @media (max-width: 720px) {
+          .market-main {
+            gap: 18px;
+          }
+
+          .market-status-grid,
+          .session-card-grid,
+          .session-metrics {
+            grid-template-columns: 1fr !important;
+          }
+
+          .market-dashboard-tabs {
+            border-radius: 22px !important;
+            padding: 8px !important;
+          }
+
+          .session-card {
+            border-radius: 20px;
+            padding: 14px;
+          }
+
+          .session-card-head {
+            grid-template-columns: auto minmax(0, 1fr);
+          }
+
+          .session-card-head .session-badge {
+            grid-column: 1 / -1;
+            justify-self: start;
+          }
+
+          .session-overlap-head {
+            display: grid;
+          }
+
+          .session-overlap-head span {
+            max-width: 100%;
+          }
+
+          .session-overlap-timeline {
+            height: 40px;
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -2919,8 +3241,17 @@ function TradingSessionsPanel({ t, locale }: { t: (key: string) => string; local
   const sessions = getTradingSessionsState(now);
   const overlaps = getActiveOverlapIds(now);
   const formatter = new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+  const minutesNow = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const sessionProgress = (session: (typeof sessions)[number]) => {
+    if (!session.isOpen) return 0;
+    const open = session.openHourUtc * 60;
+    const duration = (((session.closeHourUtc - session.openHourUtc + 24) % 24) || 24) * 60;
+    const elapsed = minutesNow >= open ? minutesNow - open : minutesNow + 1440 - open;
+    return Math.min(100, Math.max(0, (elapsed / duration) * 100));
+  };
+
   return (
-    <section className="market-panel">
+    <section className="market-panel trading-sessions-dashboard">
       <div className="market-section-head">
         <Clock3 size={20} />
         <div>
@@ -2935,27 +3266,64 @@ function TradingSessionsPanel({ t, locale }: { t: (key: string) => string; local
           </span>
         ))}
       </div>
-      <div className="trader-tool-grid sessions-grid">
-        {sessions.map(session => (
-          <article className="trader-tool-card compact" key={session.id}>
-            <h3>{session.name}</h3>
-            <b className={`session-badge ${session.isOpen ? 'open' : ''}`}>{session.isOpen ? t('market_session_open') : t('market_session_closed')}</b>
-            <ResultGrid rows={[
-              [t('market_opening_time'), formatter.format(new Date(session.opensAt))],
-              [t('market_closing_time'), formatter.format(new Date(session.closesAt))],
-              [t('market_countdown'), `${Math.floor(session.minutesToNextChange / 60)}h ${session.minutesToNextChange % 60}m`],
-            ]} />
-          </article>
-        ))}
+      <div className="session-card-grid">
+        {sessions.map(session => {
+          const progress = sessionProgress(session);
+          const countdown = `${Math.floor(session.minutesToNextChange / 60)}h ${session.minutesToNextChange % 60}m`;
+          return (
+            <article className={`session-card ${session.isOpen ? 'open' : 'closed'}`} key={session.id}>
+              <div className="session-card-head">
+                <span className="session-icon"><Clock3 size={16} /></span>
+                <div>
+                  <strong dir="ltr">{session.name}</strong>
+                  <small>{t('market_local_time')}: {formatter.format(now)}</small>
+                </div>
+                <b className={`session-badge ${session.isOpen ? 'open' : ''}`}>{session.isOpen ? t('market_session_open') : t('market_session_closed')}</b>
+              </div>
+              <div className="session-progress" aria-hidden="true">
+                <i style={{ width: `${progress}%` }} />
+              </div>
+              <div className="session-metrics">
+                <SessionMetric label={t('market_opening_time')} value={formatter.format(new Date(session.opensAt))} />
+                <SessionMetric label={t('market_closing_time')} value={formatter.format(new Date(session.closesAt))} />
+                <SessionMetric label={t('market_countdown')} value={countdown} valueDir="ltr" />
+              </div>
+            </article>
+          );
+        })}
       </div>
-      <div className="overlap-row">
-        {TRADING_OVERLAPS.map(overlap => (
-          <span key={overlap.id} className={overlaps.includes(overlap.id) ? 'active' : ''}>
-            {overlap.sessions.join(' + ')} {overlaps.includes(overlap.id) ? `- ${t('market_high_liquidity')}` : ''}
-          </span>
-        ))}
+      <div className="session-overlap-panel">
+        <div className="session-overlap-head">
+          <strong>{t('market_liquidity_overlaps')}</strong>
+          <span>{t('market_london_newyork_liquidity_note')}</span>
+        </div>
+        <div className="session-overlap-timeline" aria-hidden="true">
+          {TRADING_OVERLAPS.map(overlap => (
+            <span
+              key={overlap.id}
+              className={overlaps.includes(overlap.id) ? 'active' : ''}
+              style={{ insetInlineStart: `${(overlap.startHourUtc / 24) * 100}%`, width: `${(((overlap.endHourUtc - overlap.startHourUtc + 24) % 24 || 24) / 24) * 100}%` }}
+            />
+          ))}
+        </div>
+        <div className="overlap-row">
+          {TRADING_OVERLAPS.map(overlap => (
+            <span key={overlap.id} className={overlaps.includes(overlap.id) ? 'active' : ''} dir="ltr">
+              {overlap.sessions.join(' + ')} {overlaps.includes(overlap.id) ? `- ${t('market_high_liquidity')}` : ''}
+            </span>
+          ))}
+        </div>
       </div>
     </section>
+  );
+}
+
+function SessionMetric({ label, value, valueDir }: { label: string; value: string; valueDir?: 'ltr' | 'rtl' }) {
+  return (
+    <div className="session-metric">
+      <span>{label}</span>
+      <strong dir={valueDir}>{value}</strong>
+    </div>
   );
 }
 
@@ -3268,7 +3636,7 @@ function NewsSentimentPanel({
   sentiment: ApiListState<Record<string, any>>;
 }) {
   return (
-    <section className="market-bottom-grid">
+    <section className="market-bottom-grid news-sentiment-dashboard">
       <article className="market-panel">
         <div className="market-section-head">
           <Newspaper size={20} />
