@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   CalendarDays,
@@ -66,6 +66,7 @@ type DebtForm = {
   id?: string;
   name: string;
   creditorName: string;
+  category: string;
   originalAmount: string;
   remainingAmount: string;
   currency: string;
@@ -84,6 +85,7 @@ const SUPPORTED_CURRENCIES = ['KWD', 'USD', 'SAR', 'AED', 'QAR', 'BHD', 'OMR', '
 const DEFAULT_FORM: DebtForm = {
   name: '',
   creditorName: '',
+  category: '',
   originalAmount: '',
   remainingAmount: '',
   currency: 'KWD',
@@ -123,6 +125,8 @@ const TEXT = {
   namePlaceholder: { ar: 'مثال: قرض سيارة أو بطاقة ائتمان', en: 'Example: car loan or credit card', fr: 'Exemple : prêt auto ou carte de crédit' },
   creditor: { ar: 'الجهة الدائنة', en: 'Creditor', fr: 'Créancier' },
   creditorPlaceholder: { ar: 'بنك أو شركة تمويل أو شخص', en: 'Bank, finance company, or person', fr: 'Banque, société de financement ou personne' },
+  category: { ar: 'الفئة', en: 'Category', fr: 'Catégorie' },
+  categoryPlaceholder: { ar: 'مثال: قرض أو بطاقة أو تمويل', en: 'Example: loan, card, or financing', fr: 'Exemple : prêt, carte ou financement' },
   originalAmount: { ar: 'مبلغ الدين الأصلي', en: 'Original amount', fr: 'Montant initial' },
   remainingAmount: { ar: 'المبلغ المتبقي', en: 'Remaining amount', fr: 'Montant restant' },
   currency: { ar: 'العملة', en: 'Currency', fr: 'Devise' },
@@ -177,7 +181,8 @@ const TEXT = {
   required: { ar: 'يرجى إكمال الحقول المطلوبة بقيم صحيحة.', en: 'Please complete required fields with valid values.', fr: 'Veuillez compléter les champs obligatoires avec des valeurs valides.' },
   completeRequired: { ar: 'يرجى إدخال الحقول المطلوبة قبل الحفظ.', en: 'Please complete the required fields before saving.', fr: 'Veuillez compléter les champs obligatoires avant l’enregistrement.' },
   completeRequiredButton: { ar: 'أكمل البيانات المطلوبة', en: 'Complete required fields', fr: 'Compléter les champs requis' },
-  modalSubtitle: { ar: 'أدخل بيانات الدين وجدولة السداد الشهري.', en: 'Enter debt details and schedule the monthly repayment.', fr: 'Saisissez les détails de la dette et planifiez le remboursement mensuel.' },
+  modalSubtitle: { ar: 'أدخل بيانات الدين لمتابعة السداد الشهري.', en: 'Enter debt details to track monthly repayment.', fr: 'Saisissez les données de la dette pour suivre le remboursement mensuel.' },
+  saveErrorTitle: { ar: 'تعذر حفظ بيانات الدين', en: 'Could not save debt data', fr: 'Impossible d’enregistrer les données de la dette' },
   sectionDebtData: { ar: 'بيانات الدين', en: 'Debt details', fr: 'Détails de la dette' },
   sectionPaymentDetails: { ar: 'تفاصيل السداد', en: 'Repayment details', fr: 'Détails du remboursement' },
   sectionInterest: { ar: 'الفائدة', en: 'Interest', fr: 'Intérêt' },
@@ -329,6 +334,7 @@ function payloadFromForm(form: DebtForm, userId: string) {
     user_id: userId,
     name: form.name.trim(),
     creditor_name: form.creditorName.trim(),
+    category: form.category.trim() || null,
     original_amount: toNumber(form.originalAmount),
     remaining_amount: toNumber(form.remainingAmount),
     currency: form.currency.trim() || 'KWD',
@@ -396,14 +402,16 @@ export default function DebtsPage() {
   const [saving, setSaving] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<DebtForm>({ ...DEFAULT_FORM, currency: baseCurrency || 'KWD' });
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [generationChecked, setGenerationChecked] = useState(false);
+  const modalRef = useRef<HTMLFormElement>(null);
 
   const t = useCallback((key: keyof typeof TEXT) => tr(locale, key), [locale]);
   const validationKeys = useMemo(() => validateDebtForm(form), [form]);
   const formIsValid = validationKeys.length === 0;
-  const visibleValidationKeys = formIsValid ? [] : validationKeys;
+  const visibleValidationKeys = submitAttempted && !formIsValid ? validationKeys : [];
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -501,11 +509,14 @@ export default function DebtsPage() {
 
   function resetForm() {
     setForm({ ...DEFAULT_FORM, currency: baseCurrency || 'KWD' });
+    setSubmitAttempted(false);
+    setError('');
     setFormOpen(false);
   }
 
   function openAddForm() {
     setForm({ ...DEFAULT_FORM, currency: baseCurrency || 'KWD' });
+    setSubmitAttempted(false);
     setError('');
     setFormOpen(true);
   }
@@ -515,6 +526,7 @@ export default function DebtsPage() {
       id: debt.id,
       name: debt.name,
       creditorName: debt.creditor_name ?? '',
+      category: debt.category ?? '',
       originalAmount: String(debt.original_amount ?? ''),
       remainingAmount: String(debt.remaining_amount ?? ''),
       currency: debt.currency || baseCurrency || 'KWD',
@@ -527,18 +539,79 @@ export default function DebtsPage() {
       autoAddToExpenses: debt.auto_add_to_expenses !== false,
       status: (debt.status === 'paid' || debt.status === 'paused' || debt.status === 'active') ? debt.status : 'active',
     });
+    setSubmitAttempted(false);
     setError('');
     setFormOpen(true);
   }
 
+  useEffect(() => {
+    if (!formOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const focusTimer = window.setTimeout(() => {
+      const firstField = modalRef.current?.querySelector<HTMLElement>(
+        'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])',
+      );
+      firstField?.focus();
+    }, 60);
+
+    const focusableSelector = [
+      'a[href]',
+      'button:not([disabled])',
+      'textarea:not([disabled])',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(',');
+
+    function handleModalKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setSubmitAttempted(false);
+        setError('');
+        setFormOpen(false);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = Array.from(modalRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [])
+        .filter(element => !element.hasAttribute('disabled') && element.offsetParent !== null);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener('keydown', handleModalKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleModalKeyDown);
+    };
+  }, [formOpen]);
+
   async function saveDebt(event: FormEvent) {
     event.preventDefault();
+    setSubmitAttempted(true);
     if (!user) {
       setError(t('authSaveError'));
       return;
     }
     if (!formIsValid) {
       setError('');
+      window.requestAnimationFrame(() => {
+        const firstInvalidField = modalRef.current?.querySelector<HTMLElement>(
+          '[data-invalid="true"] input, [data-invalid="true"] select, [data-invalid="true"] textarea',
+        );
+        firstInvalidField?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        firstInvalidField?.focus();
+      });
       return;
     }
     setSaving(true);
@@ -661,6 +734,7 @@ export default function DebtsPage() {
   }
 
   const money = (value: unknown, currency = baseCurrency || 'KWD') => formatMoney(toNumber(value), currency, locale);
+  const pageError = formOpen ? supabaseConfigError : error || supabaseConfigError;
 
   if (authLoading || loading) {
     return (
@@ -706,10 +780,10 @@ export default function DebtsPage() {
           </button>
         </section>
 
-        {(notice || error || supabaseConfigError) && (
-          <section className={`debts-notice ${error || supabaseConfigError ? 'error' : 'success'}`}>
-            {error || supabaseConfigError ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
-            <span>{error || supabaseConfigError || notice}</span>
+        {(notice || pageError) && (
+          <section className={`debts-notice ${pageError ? 'error' : 'success'}`}>
+            {pageError ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
+            <span>{pageError || notice}</span>
           </section>
         )}
 
@@ -830,16 +904,41 @@ export default function DebtsPage() {
       </main>
 
       {formOpen && (
-        <div className="debt-modal-backdrop" role="dialog" aria-modal="true" aria-label={form.id ? t('editDebt') : t('addDebt')}>
-          <form className="debt-modal" onSubmit={saveDebt} dir={dir}>
+        <div
+          className="debt-modal-backdrop"
+          role="presentation"
+          onMouseDown={event => {
+            if (event.target === event.currentTarget) resetForm();
+          }}
+        >
+          <form
+            ref={modalRef}
+            className="debt-modal"
+            onSubmit={saveDebt}
+            dir={dir}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="debt-modal-title"
+            aria-describedby="debt-modal-description"
+            onMouseDown={event => event.stopPropagation()}
+          >
             <div className="debt-modal-head">
               <div>
                 <span>THE SFM</span>
-                <h2>{form.id ? t('editDebt') : t('addDebt')}</h2>
-                <p>{t('modalSubtitle')}</p>
+                <h2 id="debt-modal-title">{form.id ? t('editDebt') : t('addDebt')}</h2>
+                <p id="debt-modal-description">{t('modalSubtitle')}</p>
               </div>
               <button type="button" onClick={resetForm} aria-label={t('cancel')}><X size={18} /></button>
             </div>
+            {error && (
+              <div className="debt-save-alert" role="alert">
+                <AlertTriangle size={18} />
+                <div>
+                  <strong>{t('saveErrorTitle')}</strong>
+                  <p>{error}</p>
+                </div>
+              </div>
+            )}
             {visibleValidationKeys.length > 0 && (
               <div className="debt-validation-panel">
                 <AlertTriangle size={18} />
@@ -853,22 +952,23 @@ export default function DebtsPage() {
             )}
             <div className="debt-form-grid">
               <FormSectionTitle title={t('sectionDebtData')} />
-              <DebtInput required label={t('name')} value={form.name} placeholder={t('namePlaceholder')} onChange={value => setForm(current => ({ ...current, name: value }))} />
-              <DebtInput required label={t('creditor')} value={form.creditorName} placeholder={t('creditorPlaceholder')} onChange={value => setForm(current => ({ ...current, creditorName: value }))} />
-              <MoneyInput required label={t('originalAmount')} currency={form.currency} value={form.originalAmount} onChange={value => setForm(current => ({ ...current, originalAmount: value, remainingAmount: current.remainingAmount || value }))} />
-              <MoneyInput required label={t('remainingAmount')} currency={form.currency} value={form.remainingAmount} onChange={value => setForm(current => ({ ...current, remainingAmount: value }))} />
-              <label className="debt-field">
+              <DebtInput required invalid={submitAttempted && validationKeys.includes('validationName')} label={t('name')} value={form.name} placeholder={t('namePlaceholder')} onChange={value => setForm(current => ({ ...current, name: value }))} />
+              <DebtInput required invalid={submitAttempted && validationKeys.includes('validationCreditor')} label={t('creditor')} value={form.creditorName} placeholder={t('creditorPlaceholder')} onChange={value => setForm(current => ({ ...current, creditorName: value }))} />
+              <DebtInput label={t('category')} value={form.category} placeholder={t('categoryPlaceholder')} onChange={value => setForm(current => ({ ...current, category: value }))} />
+              <MoneyInput required invalid={submitAttempted && validationKeys.includes('validationOriginalAmount')} label={t('originalAmount')} currency={form.currency} value={form.originalAmount} onChange={value => setForm(current => ({ ...current, originalAmount: value, remainingAmount: current.remainingAmount || value }))} />
+              <MoneyInput required invalid={submitAttempted && validationKeys.includes('validationRemainingAmount')} label={t('remainingAmount')} currency={form.currency} value={form.remainingAmount} onChange={value => setForm(current => ({ ...current, remainingAmount: value }))} />
+              <label className={`debt-field ${submitAttempted && validationKeys.includes('validationCurrency') ? 'invalid' : ''}`} data-invalid={submitAttempted && validationKeys.includes('validationCurrency') ? 'true' : undefined}>
                 <span>{t('currency')} <i>*</i></span>
                 <select value={form.currency} onChange={event => setForm(current => ({ ...current, currency: event.target.value }))}>
                   {SUPPORTED_CURRENCIES.map(code => <option key={code} value={code}>{code}</option>)}
                 </select>
               </label>
-              <DebtInput required type="date" label={t('startDate')} value={form.startDate} onChange={value => setForm(current => ({ ...current, startDate: value }))} />
+              <DebtInput required invalid={submitAttempted && validationKeys.includes('validationStartDate')} type="date" label={t('startDate')} value={form.startDate} onChange={value => setForm(current => ({ ...current, startDate: value }))} />
               <FormSectionTitle title={t('sectionPaymentDetails')} />
-              <MoneyInput required label={t('monthlyPayment')} currency={form.currency} value={form.monthlyPayment} onChange={value => setForm(current => ({ ...current, monthlyPayment: value }))} />
-              <SuffixInput required label={t('paymentDay')} suffix="1 - 31" value={form.paymentDay} onChange={value => setForm(current => ({ ...current, paymentDay: value }))} />
+              <MoneyInput required invalid={submitAttempted && validationKeys.includes('validationMonthlyPayment')} label={t('monthlyPayment')} currency={form.currency} value={form.monthlyPayment} onChange={value => setForm(current => ({ ...current, monthlyPayment: value }))} />
+              <SuffixInput required invalid={submitAttempted && validationKeys.includes('validationPaymentDay')} label={t('paymentDay')} suffix="1 - 31" value={form.paymentDay} onChange={value => setForm(current => ({ ...current, paymentDay: value }))} />
               <FormSectionTitle title={t('sectionInterest')} />
-              <SuffixInput label={t('interestRate')} suffix="%" value={form.interestRate} onChange={value => setForm(current => ({ ...current, interestRate: value }))} />
+              <SuffixInput invalid={submitAttempted && validationKeys.includes('validationInterestRate')} label={t('interestRate')} suffix="%" value={form.interestRate} onChange={value => setForm(current => ({ ...current, interestRate: value }))} />
               <label className="debt-field">
                 <span>{t('interestType')}</span>
                 <select value={form.interestType} onChange={event => setForm(current => ({ ...current, interestType: event.target.value as InterestType }))}>
@@ -892,7 +992,7 @@ export default function DebtsPage() {
             {!formIsValid && <p className="debt-form-helper">{t('completeRequired')}</p>}
             <div className="debt-modal-actions">
               <button type="button" className="debt-secondary-action" onClick={resetForm}>{t('cancel')}</button>
-              <button type="submit" className="debts-primary" disabled={saving || !formIsValid}>{saving ? t('saving') : formIsValid ? t('save') : t('completeRequiredButton')}</button>
+              <button type="submit" className="debts-primary" disabled={saving} aria-disabled={saving || !formIsValid}>{saving ? t('saving') : t('save')}</button>
             </div>
           </form>
         </div>
@@ -940,18 +1040,18 @@ function RequiredMark({ required }: { required?: boolean }) {
   return required ? <i>*</i> : null;
 }
 
-function DebtInput({ label, value, onChange, type = 'text', placeholder, required }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string; required?: boolean }) {
+function DebtInput({ label, value, onChange, type = 'text', placeholder, required, invalid = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string; required?: boolean; invalid?: boolean }) {
   return (
-    <label className="debt-field">
+    <label className={`debt-field ${invalid ? 'invalid' : ''}`} data-invalid={invalid ? 'true' : undefined}>
       <span>{label} <RequiredMark required={required} /></span>
       <input type={type} value={value} placeholder={placeholder} onChange={event => onChange(event.target.value)} />
     </label>
   );
 }
 
-function MoneyInput({ label, currency, value, onChange, required }: { label: string; currency: string; value: string; onChange: (value: string) => void; required?: boolean }) {
+function MoneyInput({ label, currency, value, onChange, required, invalid = false }: { label: string; currency: string; value: string; onChange: (value: string) => void; required?: boolean; invalid?: boolean }) {
   return (
-    <label className="debt-field">
+    <label className={`debt-field ${invalid ? 'invalid' : ''}`} data-invalid={invalid ? 'true' : undefined}>
       <span>{label} <RequiredMark required={required} /></span>
       <div className="affix-input">
         <em dir="ltr">{currency}</em>
@@ -961,9 +1061,9 @@ function MoneyInput({ label, currency, value, onChange, required }: { label: str
   );
 }
 
-function SuffixInput({ label, suffix, value, onChange, required }: { label: string; suffix: string; value: string; onChange: (value: string) => void; required?: boolean }) {
+function SuffixInput({ label, suffix, value, onChange, required, invalid = false }: { label: string; suffix: string; value: string; onChange: (value: string) => void; required?: boolean; invalid?: boolean }) {
   return (
-    <label className="debt-field">
+    <label className={`debt-field ${invalid ? 'invalid' : ''}`} data-invalid={invalid ? 'true' : undefined}>
       <span>{label} <RequiredMark required={required} /></span>
       <div className="affix-input">
         <input inputMode="decimal" dir="ltr" value={value} onChange={event => onChange(cleanNumericInput(event.target.value))} />
@@ -1060,6 +1160,19 @@ function DebtStyles() {
         font: 950 13px Tajawal, Arial, sans-serif;
         cursor: pointer;
         box-shadow: 0 12px 28px rgba(29, 140, 255, .22);
+        transition: transform .18s ease, box-shadow .18s ease, filter .18s ease, background .18s ease;
+      }
+
+      .debts-primary:hover,
+      .debts-section-head button:hover {
+        transform: translateY(-1px);
+        filter: saturate(1.08);
+        box-shadow: 0 16px 34px rgba(29, 140, 255, .30);
+      }
+
+      .debts-primary:active,
+      .debts-section-head button:active {
+        transform: translateY(0) scale(.99);
       }
 
       .debts-notice,
@@ -1428,25 +1541,29 @@ function DebtStyles() {
       .debt-modal-backdrop {
         position: fixed;
         inset: 0;
-        z-index: 80;
+        z-index: 240;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(3, 18, 37, .56);
-        backdrop-filter: blur(10px);
-        padding: 18px;
+        background:
+          radial-gradient(circle at 50% 20%, rgba(47, 214, 192, .16), transparent 32%),
+          rgba(3, 18, 37, .58);
+        backdrop-filter: blur(12px);
+        padding: clamp(14px, 3vw, 28px);
         overflow-y: auto;
+        overscroll-behavior: contain;
       }
 
       .debt-modal {
-        width: 100%;
-        max-width: 920px;
-        max-height: min(90dvh, 920px);
+        width: min(860px, 100%);
+        max-height: min(90dvh, 940px);
         overflow-y: auto;
-        border-radius: 30px;
-        padding: 22px;
+        border-radius: 32px;
+        padding: clamp(18px, 2.5vw, 28px);
         margin: auto;
         outline: none;
+        box-shadow: 0 30px 90px rgba(3, 18, 37, .32);
+        scrollbar-gutter: stable;
       }
 
       .debt-modal-head {
@@ -1455,44 +1572,58 @@ function DebtStyles() {
         gap: 14px;
         align-items: flex-start;
         margin-bottom: 18px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid rgba(47, 214, 192, .16);
       }
 
       .debt-modal-head span {
-        color: var(--sfm-muted);
+        display: inline-flex;
+        width: max-content;
+        border: 1px solid rgba(47, 214, 192, .18);
+        border-radius: 999px;
+        background: rgba(47, 214, 192, .10);
+        color: var(--sfm-primary-hover);
+        padding: 5px 10px;
         font-size: 12px;
         font-weight: 950;
       }
 
       .debt-modal-head h2 {
-        margin: 4px 0 0;
+        margin: 10px 0 0;
         color: var(--sfm-foreground);
-        font-size: 24px;
+        font-size: clamp(24px, 3vw, 32px);
         font-weight: 950;
+        line-height: 1.15;
       }
 
       .debt-modal-head p {
-        margin: 6px 0 0;
-        color: var(--sfm-muted);
-        font-size: 13px;
-        font-weight: 750;
+        margin: 8px 0 0;
+        max-width: 560px;
+        color: var(--sfm-muted-readable, #475569);
+        font-size: 14px;
+        font-weight: 850;
         line-height: 1.7;
       }
 
       .debt-modal-head > button {
-        width: 40px;
-        height: 40px;
-        border: 1px solid rgba(47, 214, 192, .18);
-        border-radius: 14px;
-        background: var(--sfm-light-card);
+        width: 44px;
+        height: 44px;
+        border: 1px solid rgba(29, 140, 255, .18);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, .76);
         color: var(--sfm-foreground);
         cursor: pointer;
         flex-shrink: 0;
-        transition: transform .18s ease, background .18s ease, border-color .18s ease;
+        display: grid;
+        place-items: center;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .35);
+        transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
       }
 
       .debt-modal-head > button:hover {
         background: rgba(47, 214, 192, .12);
         border-color: rgba(47, 214, 192, .32);
+        box-shadow: 0 12px 26px rgba(3, 18, 37, .10);
       }
 
       .debt-modal-head > button:active {
@@ -1509,6 +1640,38 @@ function DebtStyles() {
         color: #92400e;
         padding: 13px;
         margin-bottom: 16px;
+      }
+
+      .debt-save-alert {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        border: 1px solid rgba(220, 38, 38, .24);
+        border-radius: 20px;
+        background: rgba(220, 38, 38, .08);
+        color: #b91c1c;
+        padding: 14px;
+        margin-bottom: 16px;
+      }
+
+      .debt-save-alert svg {
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
+
+      .debt-save-alert strong {
+        display: block;
+        color: #991b1b;
+        font-size: 13px;
+        font-weight: 950;
+      }
+
+      .debt-save-alert p {
+        margin: 6px 0 0;
+        color: #7f1d1d;
+        font-size: 13px;
+        font-weight: 850;
+        line-height: 1.7;
       }
 
       .debt-validation-panel svg {
@@ -1535,7 +1698,7 @@ function DebtStyles() {
       .debt-form-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
+        gap: 16px;
       }
 
       .debt-form-section {
@@ -1565,7 +1728,7 @@ function DebtStyles() {
 
       .debt-field {
         display: grid;
-        gap: 8px;
+        gap: 9px;
         min-width: 0;
       }
 
@@ -1574,8 +1737,8 @@ function DebtStyles() {
       }
 
       .debt-field > span {
-        color: var(--sfm-muted);
-        font-size: 12px;
+        color: var(--sfm-foreground);
+        font-size: 13px;
         font-weight: 950;
       }
 
@@ -1588,9 +1751,9 @@ function DebtStyles() {
       .debt-field > span small {
         display: block;
         margin-top: 5px;
-        color: var(--sfm-muted);
+        color: var(--sfm-muted-readable, #475569);
         font-size: 11px;
-        font-weight: 750;
+        font-weight: 850;
         line-height: 1.6;
       }
 
@@ -1600,19 +1763,27 @@ function DebtStyles() {
       .affix-input {
         width: 100%;
         min-width: 0;
-        min-height: 48px;
-        border: 1px solid rgba(47, 214, 192, .18);
-        border-radius: 16px;
-        background: var(--sfm-card);
+        min-height: 52px;
+        border: 1.5px solid rgba(15, 118, 110, .22);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, .92);
         color: var(--sfm-foreground);
-        padding: 0 13px;
-        font: 850 14px Tajawal, Arial, sans-serif;
+        padding: 0 14px;
+        font: 900 14px Tajawal, Arial, sans-serif;
         outline: none;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55);
+        transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+      }
+
+      .debt-field input::placeholder,
+      .debt-field textarea::placeholder {
+        color: #64748b;
+        opacity: 1;
       }
 
       .debt-field textarea {
-        min-height: 92px;
-        padding-block: 12px;
+        min-height: 104px;
+        padding-block: 13px;
         resize: vertical;
       }
 
@@ -1621,28 +1792,40 @@ function DebtStyles() {
       .debt-field textarea:focus,
       .affix-input:focus-within {
         border-color: var(--sfm-soft-cyan);
-        box-shadow: 0 0 0 3px rgba(47, 214, 192, .14);
+        box-shadow: 0 0 0 4px rgba(47, 214, 192, .16), inset 0 1px 0 rgba(255, 255, 255, .55);
+        background: #fff;
+      }
+
+      .debt-field.invalid input,
+      .debt-field.invalid select,
+      .debt-field.invalid textarea,
+      .debt-field.invalid .affix-input {
+        border-color: rgba(220, 38, 38, .58);
+        box-shadow: 0 0 0 4px rgba(220, 38, 38, .10);
       }
 
       .affix-input {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding-inline: 8px;
+        gap: 10px;
+        padding-inline: 9px;
+        direction: ltr;
       }
 
       .affix-input em {
-        min-width: 54px;
-        min-height: 34px;
+        min-width: 58px;
+        min-height: 36px;
         border-radius: 999px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: rgba(47, 214, 192, .12);
-        color: var(--sfm-primary-hover);
+        background: linear-gradient(135deg, rgba(29, 140, 255, .12), rgba(47, 214, 192, .18));
+        color: #0f766e;
+        border: 1px solid rgba(15, 118, 110, .16);
         font-style: normal;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 950;
+        letter-spacing: .02em;
       }
 
       .affix-input input {
@@ -1650,6 +1833,8 @@ function DebtStyles() {
         box-shadow: none;
         background: transparent;
         padding-inline: 6px;
+        min-height: 42px;
+        text-align: start;
       }
 
       .affix-input input:focus {
@@ -1661,10 +1846,10 @@ function DebtStyles() {
         align-items: center;
         justify-content: space-between;
         gap: 14px;
-        border: 1px solid rgba(47, 214, 192, .14);
+        border: 1.5px solid rgba(15, 118, 110, .18);
         border-radius: 18px;
-        background: var(--sfm-light-card);
-        padding: 13px;
+        background: rgba(236, 254, 255, .44);
+        padding: 14px;
       }
 
       .toggle-row button {
@@ -1686,7 +1871,9 @@ function DebtStyles() {
         display: flex;
         justify-content: flex-end;
         gap: 10px;
-        margin-top: 18px;
+        margin-top: 22px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(47, 214, 192, .16);
         flex-wrap: wrap;
       }
 
@@ -1694,25 +1881,31 @@ function DebtStyles() {
         border: 0;
         color: #fff;
         width: auto;
-        min-width: 170px;
+        min-width: 190px;
+        min-height: 50px;
+        font-size: 14px;
+        box-shadow: 0 16px 36px rgba(29, 140, 255, .30);
       }
 
-      .debt-modal-actions .debts-primary:disabled {
+      .debt-modal-actions .debts-primary:disabled,
+      .debt-modal-actions .debts-primary[aria-disabled="true"] {
         background: rgba(15, 23, 42, .08);
         border: 1px solid rgba(15, 23, 42, .12);
         color: #475569;
         box-shadow: none;
         cursor: not-allowed;
-        opacity: 1;
+        filter: none;
+        transform: none;
+        opacity: .78;
       }
 
       .debt-secondary-action {
-        min-height: 44px;
+        min-height: 50px;
         border: 1px solid rgba(47, 214, 192, .22);
         border-radius: 999px;
-        background: var(--sfm-light-card);
+        background: rgba(255, 255, 255, .86);
         color: var(--sfm-foreground);
-        padding: 0 17px;
+        padding: 0 20px;
         font: 950 13px Tajawal, Arial, sans-serif;
         cursor: pointer;
         transition: background .18s ease, border-color .18s ease, transform .18s ease;
@@ -1727,6 +1920,14 @@ function DebtStyles() {
         transform: translateY(1px);
       }
 
+      .debt-modal-head > button:focus-visible,
+      .debt-modal-actions button:focus-visible,
+      .toggle-row button:focus-visible {
+        outline: none;
+        border-color: var(--sfm-soft-cyan);
+        box-shadow: 0 0 0 4px rgba(47, 214, 192, .16);
+      }
+
       .debt-form-helper {
         margin: 14px 0 0;
         color: var(--sfm-muted);
@@ -1738,6 +1939,12 @@ function DebtStyles() {
         background:
           radial-gradient(circle at top left, rgba(47, 214, 192, .08), transparent 34%),
           #0a1422;
+      }
+
+      .dark .debt-modal-backdrop {
+        background:
+          radial-gradient(circle at 50% 20%, rgba(47, 214, 192, .10), transparent 34%),
+          rgba(2, 8, 23, .74);
       }
 
       .dark .debts-notice,
@@ -1755,6 +1962,26 @@ function DebtStyles() {
         box-shadow: 0 16px 42px rgba(0, 0, 0, .25);
       }
 
+      .dark .debt-modal {
+        box-shadow: 0 32px 95px rgba(0, 0, 0, .52);
+      }
+
+      .dark .debt-modal-head {
+        border-bottom-color: #1d3050;
+      }
+
+      .dark .debt-modal-head span {
+        background: rgba(47, 214, 192, .12);
+        border-color: rgba(47, 214, 192, .25);
+        color: #2fd6c0;
+      }
+
+      .dark .debt-modal-head p,
+      .dark .debt-field > span small,
+      .dark .debt-form-helper {
+        color: #b8c7d9;
+      }
+
       .dark .debt-metric,
       .dark .insight-row,
       .dark .payment-row,
@@ -1766,6 +1993,52 @@ function DebtStyles() {
       .dark .debt-modal-head > button {
         background: #0a1422;
         border-color: #1d3050;
+      }
+
+      .dark .debt-field input,
+      .dark .debt-field select,
+      .dark .debt-field textarea,
+      .dark .affix-input {
+        color: #e8eef6;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+      }
+
+      .dark .debt-field input::placeholder,
+      .dark .debt-field textarea::placeholder {
+        color: #8ea6c3;
+      }
+
+      .dark .debt-field > span,
+      .dark .debt-form-section span,
+      .dark .debt-modal-head h2 {
+        color: #e8eef6;
+      }
+
+      .dark .debt-field input:focus,
+      .dark .debt-field select:focus,
+      .dark .debt-field textarea:focus,
+      .dark .affix-input:focus-within {
+        background: #0f1d31;
+        border-color: #2fd6c0;
+        box-shadow: 0 0 0 4px rgba(47, 214, 192, .14), inset 0 1px 0 rgba(255, 255, 255, .04);
+      }
+
+      .dark .debt-field.invalid input,
+      .dark .debt-field.invalid select,
+      .dark .debt-field.invalid textarea,
+      .dark .debt-field.invalid .affix-input {
+        border-color: rgba(255, 91, 110, .64);
+        box-shadow: 0 0 0 4px rgba(255, 91, 110, .12);
+      }
+
+      .dark .affix-input em {
+        background: rgba(47, 214, 192, .12);
+        border-color: rgba(47, 214, 192, .25);
+        color: #2fd6c0;
+      }
+
+      .dark .toggle-row {
+        background: #13243a;
       }
 
       .dark .debt-status.active,
@@ -1793,7 +2066,26 @@ function DebtStyles() {
         color: #f5b942;
       }
 
-      .dark .debt-modal-actions .debts-primary:disabled {
+      .dark .debt-save-alert {
+        background: rgba(255, 91, 110, .12);
+        border-color: rgba(255, 91, 110, .28);
+        color: #ffb4bd;
+      }
+
+      .dark .debt-save-alert strong {
+        color: #ffb4bd;
+      }
+
+      .dark .debt-save-alert p {
+        color: #ffd7dc;
+      }
+
+      .dark .debt-modal-actions {
+        border-top-color: #1d3050;
+      }
+
+      .dark .debt-modal-actions .debts-primary:disabled,
+      .dark .debt-modal-actions .debts-primary[aria-disabled="true"] {
         background: rgba(19, 36, 58, .88);
         border-color: #1d3050;
         color: #b8c7d9;
@@ -1803,6 +2095,12 @@ function DebtStyles() {
         background: #0a1422;
         border-color: #1d3050;
         color: #e8eef6;
+      }
+
+      .dark .debt-secondary-action:hover,
+      .dark .debt-modal-head > button:hover {
+        background: #13243a;
+        border-color: rgba(47, 214, 192, .35);
       }
 
       @media (max-width: 1180px) {
@@ -1851,15 +2149,28 @@ function DebtStyles() {
         }
         .debt-modal-backdrop {
           align-items: end;
-          padding: 0;
+          padding: 10px;
         }
         .debt-modal {
           width: 100%;
-          max-height: 92dvh;
+          max-height: calc(100dvh - 20px);
           overflow-y: auto;
-          border-end-start-radius: 0;
-          border-end-end-radius: 0;
+          border-radius: 26px;
           padding: 18px;
+        }
+        .debt-modal-head {
+          gap: 12px;
+        }
+        .debt-modal-head > button {
+          width: 42px;
+          height: 42px;
+        }
+        .toggle-row {
+          display: grid;
+        }
+        .toggle-row button {
+          width: 100%;
+          min-height: 42px;
         }
         .debt-modal-actions {
           display: grid;
