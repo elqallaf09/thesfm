@@ -2997,6 +2997,185 @@ export default function MarketAnalysisPage() {
           color: #b8c7d9;
         }
 
+        .market-shell {
+          background:
+            radial-gradient(circle at 92% 0%, rgba(47, 214, 192, .12), transparent 30%),
+            radial-gradient(circle at 8% 12%, rgba(29, 140, 255, .10), transparent 28%),
+            linear-gradient(180deg, #f8fbff 0%, #eef7ff 46%, #f8fbff 100%) !important;
+          color: #0f172a !important;
+        }
+
+        .market-main {
+          background: transparent !important;
+        }
+
+        .market-hero {
+          background:
+            radial-gradient(circle at 12% 10%, rgba(47, 214, 192, .18), transparent 32%),
+            linear-gradient(135deg, rgba(255, 255, 255, .97), rgba(234, 246, 255, .92) 58%, rgba(224, 242, 254, .88) 130%) !important;
+          color: #0f172a !important;
+          border-color: rgba(14, 165, 233, .18) !important;
+          box-shadow: 0 20px 56px rgba(3, 18, 37, .08) !important;
+        }
+
+        .market-hero:before {
+          background: rgba(47, 214, 192, .14) !important;
+        }
+
+        .market-hero h1 {
+          color: #0f172a !important;
+        }
+
+        .market-hero p {
+          color: #475569 !important;
+        }
+
+        .market-eyebrow {
+          background: rgba(47, 214, 192, .12) !important;
+          border-color: rgba(15, 118, 110, .18) !important;
+          color: #0f766e !important;
+        }
+
+        .market-search-panel label > span,
+        .market-search-field > label {
+          color: #0f766e !important;
+        }
+
+        .market-hero-card {
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, .88), rgba(224, 242, 254, .72)) !important;
+          border-color: rgba(14, 165, 233, .20) !important;
+          color: #0f172a !important;
+          box-shadow: 0 16px 36px rgba(3, 18, 37, .08) !important;
+        }
+
+        .market-hero-card span {
+          color: #64748b !important;
+        }
+
+        .market-hero-card strong {
+          color: #0f172a !important;
+        }
+
+        .market-hero-card p,
+        .market-hero-card em {
+          color: #475569 !important;
+        }
+
+        .market-hero-card-icon {
+          color: #0f766e !important;
+          background: rgba(204, 251, 241, .72) !important;
+          border: 1px solid rgba(15, 118, 110, .16) !important;
+          box-shadow: 0 12px 24px rgba(15, 118, 110, .10) !important;
+        }
+
+        .market-hero-card.empty {
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, .92), rgba(224, 242, 254, .80)) !important;
+          border-color: rgba(14, 165, 233, .22) !important;
+        }
+
+        .market-hero-card.empty p {
+          color: #475569 !important;
+        }
+
+        .market-hero-card.empty button {
+          color: #0f766e !important;
+          background: rgba(204, 251, 241, .72) !important;
+          border-color: rgba(15, 118, 110, .22) !important;
+        }
+
+        .market-hero-card.empty button:hover,
+        .market-hero-card.empty button:focus-visible {
+          color: #fff !important;
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent)) !important;
+          border-color: transparent !important;
+        }
+
+        .dark .market-shell {
+          background:
+            radial-gradient(circle at 92% 0%, rgba(29, 140, 255, .16), transparent 28%),
+            radial-gradient(circle at 12% 10%, rgba(47, 214, 192, .10), transparent 30%),
+            #0a1422 !important;
+          color: #e8eef6 !important;
+        }
+
+        .dark .market-hero {
+          background:
+            radial-gradient(circle at 12% 10%, rgba(24, 212, 212, .22), transparent 30%),
+            linear-gradient(135deg, #071426 0%, #08203a 58%, #0f3650 150%) !important;
+          color: #e8eef6 !important;
+          border-color: rgba(47, 214, 192, .22) !important;
+          box-shadow: 0 24px 64px rgba(0, 0, 0, .32) !important;
+        }
+
+        .dark .market-hero:before {
+          background: rgba(47, 214, 192, .14) !important;
+        }
+
+        .dark .market-hero h1 {
+          color: #f8fbff !important;
+        }
+
+        .dark .market-hero p {
+          color: rgba(232, 238, 246, .72) !important;
+        }
+
+        .dark .market-eyebrow {
+          background: rgba(47, 214, 192, .12) !important;
+          border-color: rgba(47, 214, 192, .24) !important;
+          color: #2fd6c0 !important;
+        }
+
+        .dark .market-search-panel label > span,
+        .dark .market-search-field > label {
+          color: #2fd6c0 !important;
+        }
+
+        .dark .market-hero-card {
+          background:
+            linear-gradient(135deg, rgba(15, 29, 49, .72), rgba(10, 20, 34, .82)) !important;
+          border-color: rgba(47, 214, 192, .22) !important;
+          color: #e8eef6 !important;
+          box-shadow: 0 20px 52px rgba(0, 0, 0, .28) !important;
+        }
+
+        .dark .market-hero-card span {
+          color: #8ea6c3 !important;
+        }
+
+        .dark .market-hero-card strong {
+          color: #2fd6c0 !important;
+        }
+
+        .dark .market-hero-card p,
+        .dark .market-hero-card em {
+          color: #b8c7d9 !important;
+        }
+
+        .dark .market-hero-card-icon {
+          color: #2fd6c0 !important;
+          background: rgba(47, 214, 192, .12) !important;
+          border-color: rgba(47, 214, 192, .24) !important;
+          box-shadow: 0 14px 28px rgba(0, 0, 0, .20) !important;
+        }
+
+        .dark .market-hero-card.empty {
+          background:
+            linear-gradient(135deg, rgba(15, 29, 49, .78), rgba(10, 20, 34, .86)) !important;
+          border-color: rgba(47, 214, 192, .24) !important;
+        }
+
+        .dark .market-hero-card.empty p {
+          color: #b8c7d9 !important;
+        }
+
+        .dark .market-hero-card.empty button {
+          color: #e8eef6 !important;
+          background: rgba(47, 214, 192, .14) !important;
+          border-color: rgba(47, 214, 192, .28) !important;
+        }
+
         .market-dashboard-tabs {
           border-radius: 28px !important;
           padding: 10px !important;
