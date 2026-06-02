@@ -440,7 +440,20 @@ export default function DebtsPage() {
   useEffect(() => {
     async function generateDuePayments() {
       if (!user || !session?.access_token || generationChecked) return;
+      const paymentDate = new Date().toISOString().slice(0, 10);
+      const generationKey = `sfm:debts:monthly-generation:${user.id}:${paymentDate}`;
+      if (typeof window !== 'undefined' && window.sessionStorage.getItem(generationKey)) {
+        setGenerationChecked(true);
+        return;
+      }
       setGenerationChecked(true);
+      try {
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.setItem(generationKey, 'checked');
+        }
+      } catch {
+        // Session storage can be unavailable in some browser privacy modes.
+      }
       try {
         const response = await fetch('/api/debts/generate-monthly-expenses', {
           method: 'POST',

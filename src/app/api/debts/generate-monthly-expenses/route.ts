@@ -3,6 +3,15 @@ import { createServerSupabaseAdmin, getUserFromBearerToken } from '@/lib/server/
 
 export const runtime = 'nodejs';
 
+type DebtGenerationResult = {
+  debtId: string;
+  status: 'created' | 'skipped' | 'error';
+  reason?: string;
+  expenseId?: string | null;
+  paymentId?: string | null;
+  warning?: string | null;
+};
+
 type DebtRow = {
   id: string;
   user_id: string;
@@ -22,6 +31,47 @@ type DebtRow = {
 function numeric(value: unknown, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+async function safeSupabaseRequest<T extends { data?: unknown; error?: unknown }>(request: PromiseLike<T>): Promise<T | { data: null; error: unknown }> {
+  try {
+    return await request;
+  } catch (error) {
+    return { data: null, error };
+  }
+}
+
+function errorCode(error: unknown) {
+  return error && typeof error === 'object' && 'code' in error ? String((error as { code?: unknown }).code ?? '') : '';
+}
+
+function errorMessage(error: unknown) {
+  return error && typeof error === 'object' && 'message' in error ? String((error as { message?: unknown }).message ?? '') : String(error ?? '');
+}
+
+function isMissingRelation(error: unknown) {
+  return errorCode(error) === '42P01' || /relation .* does not exist/i.test(errorMessage(error));
+}
+
+function rowId(data: unknown) {
+  if (!data || typeof data !== 'object' || !('id' in data)) return null;
+  const id = (data as { id?: unknown }).id;
+  return typeof id === 'string' && id.trim() ? id : null;
+}
+
+function noDueDebtsResponse(scope: 'all_users' | 'current_user', paymentDate: string, code = 'NO_DUE_DEBTS') {
+  return NextResponse.json({
+    ok: true,
+    success: true,
+    scope,
+    paymentDate,
+    processed: 0,
+    skipped: 0,
+    errors: 0,
+    message: 'NO_DUE_DEBTS',
+    code,
+    results: [],
+  });
 }
 
 function todayUtc() {
@@ -86,34 +136,43 @@ async function getAuthorizedUserId(request: NextRequest) {
   return user?.id ?? null;
 }
 
-async function processDebt(db: any, debt: DebtRow, paymentDate: string) {
-  const existingPayment = await db
+async function processDebt(db: any, debt: DebtRow, paymentDate: string): Promise<DebtGenerationResult> {
+  const existingPayment = await safeSupabaseRequest(db
     .from('debt_payments')
     .select('id')
     .eq('user_id', debt.user_id)
     .eq('debt_id', debt.id)
     .eq('payment_date', paymentDate)
-    .maybeSingle();
+    .maybeSingle());
 
   if (existingPayment.error) {
-    return { debtId: debt.id, status: 'error', reason: existingPayment.error.message };
+    return {
+      debtId: debt.id,
+      status: isMissingRelation(existingPayment.error) ? 'skipped' : 'error',
+      reason: isMissingRelation(existingPayment.error) ? 'debt_payments_table_missing' : errorMessage(existingPayment.error),
+    };
   }
 
-  if (existingPayment.data?.id) {
+  const existingPaymentId = rowId(existingPayment.data);
+  if (existingPaymentId) {
     return { debtId: debt.id, status: 'skipped', reason: 'payment_exists' };
   }
 
-  const existingExpense = await db
+  const existingExpense = await safeSupabaseRequest(db
     .from('expense_items')
     .select('id')
     .eq('user_id', debt.user_id)
     .eq('debt_id', debt.id)
     .eq('source', 'debt')
     .eq('date', paymentDate)
-    .maybeSingle();
+    .maybeSingle());
 
   if (existingExpense.error) {
-    return { debtId: debt.id, status: 'error', reason: existingExpense.error.message };
+    return {
+      debtId: debt.id,
+      status: isMissingRelation(existingExpense.error) ? 'skipped' : 'error',
+      reason: isMissingRelation(existingExpense.error) ? 'expense_items_table_missing' : errorMessage(existingExpense.error),
+    };
   }
 
   const payment = calculatePayment(debt);
@@ -121,9 +180,9 @@ async function processDebt(db: any, debt: DebtRow, paymentDate: string) {
     return { debtId: debt.id, status: 'skipped', reason: 'monthly_payment_missing' };
   }
 
-  let expenseId = existingExpense.data?.id ?? null;
+  let expenseId = rowId(existingExpense.data);
   if (!expenseId && debt.auto_add_to_expenses !== false) {
-    const expenseInsert = await db
+    const expenseInsert = await safeSupabaseRequest(db
       .from('expense_items')
       .insert({
         user_id: debt.user_id,
@@ -143,15 +202,15 @@ async function processDebt(db: any, debt: DebtRow, paymentDate: string) {
         },
       })
       .select('id')
-      .maybeSingle();
+      .maybeSingle());
 
     if (expenseInsert.error) {
-      return { debtId: debt.id, status: 'error', reason: expenseInsert.error.message };
+      return { debtId: debt.id, status: 'error', reason: errorMessage(expenseInsert.error) };
     }
-    expenseId = expenseInsert.data?.id ?? null;
+    expenseId = rowId(expenseInsert.data);
   }
 
-  const paymentInsert = await db
+  const paymentInsert = await safeSupabaseRequest(db
     .from('debt_payments')
     .insert({
       user_id: debt.user_id,
@@ -164,30 +223,30 @@ async function processDebt(db: any, debt: DebtRow, paymentDate: string) {
       expense_id: expenseId,
     })
     .select('id')
-    .maybeSingle();
+    .maybeSingle());
 
   if (paymentInsert.error) {
-    return { debtId: debt.id, status: 'error', reason: paymentInsert.error.message };
+    return { debtId: debt.id, status: 'error', reason: errorMessage(paymentInsert.error) };
   }
 
-  const update = await db
+  const update = await safeSupabaseRequest(db
     .from('debts')
     .update({
       remaining_amount: payment.nextRemaining,
       status: payment.status,
     })
     .eq('id', debt.id)
-    .eq('user_id', debt.user_id);
+    .eq('user_id', debt.user_id));
 
   if (update.error) {
-    return { debtId: debt.id, status: 'error', reason: update.error.message };
+    return { debtId: debt.id, status: 'error', reason: errorMessage(update.error) };
   }
 
   return {
     debtId: debt.id,
     status: 'created',
     expenseId,
-    paymentId: paymentInsert.data?.id ?? null,
+    paymentId: rowId(paymentInsert.data),
     warning: payment.warning,
   };
 }
@@ -213,6 +272,7 @@ async function handleGenerateMonthlyExpenses(request: NextRequest) {
 
   const baseDate = todayUtc();
   const paymentDate = isoDate(baseDate);
+  const scope = cronAuthorized ? 'all_users' : 'current_user';
 
   let query = admin
     .from('debts')
@@ -222,13 +282,19 @@ async function handleGenerateMonthlyExpenses(request: NextRequest) {
 
   if (userId) query = query.eq('user_id', userId);
 
-  const { data, error } = await query;
+  const { data, error } = await safeSupabaseRequest(query);
   if (error) {
+    if (isMissingRelation(error)) {
+      console.warn('[debts] monthly payment generation skipped: debt tables are not available yet', {
+        code: errorCode(error),
+        message: errorMessage(error),
+      });
+      return noDueDebtsResponse(scope, paymentDate, 'DEBT_TABLES_NOT_READY');
+    }
+
     console.error('[debts] monthly payment generation failed', {
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
+      code: errorCode(error),
+      message: errorMessage(error),
     });
     return NextResponse.json({
       ok: false,
@@ -240,20 +306,10 @@ async function handleGenerateMonthlyExpenses(request: NextRequest) {
 
   const dueDebts = (data ?? []).filter((debt: DebtRow) => isDueToday(debt, baseDate));
   if (dueDebts.length === 0) {
-    return NextResponse.json({
-      ok: true,
-      success: true,
-      scope: cronAuthorized ? 'all_users' : 'current_user',
-      paymentDate,
-      processed: 0,
-      skipped: 0,
-      errors: 0,
-      message: 'NO_DUE_DEBTS',
-      results: [],
-    });
+    return noDueDebtsResponse(scope, paymentDate);
   }
 
-  const results = [];
+  const results: DebtGenerationResult[] = [];
   for (const debt of dueDebts) {
     results.push(await processDebt(admin, debt as DebtRow, paymentDate));
   }
@@ -272,7 +328,7 @@ async function handleGenerateMonthlyExpenses(request: NextRequest) {
     ok: errorCount === 0,
     success: errorCount === 0,
     code: errorCount > 0 ? 'DEBT_PAYMENT_GENERATION_FAILED' : undefined,
-    scope: cronAuthorized ? 'all_users' : 'current_user',
+    scope,
     paymentDate,
     processed: createdCount,
     skipped: skippedCount,
@@ -289,9 +345,27 @@ async function handleGenerateMonthlyExpenses(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  return handleGenerateMonthlyExpenses(request);
+  try {
+    return await handleGenerateMonthlyExpenses(request);
+  } catch (error) {
+    console.error('[debts] monthly payment generation route failed safely', {
+      name: error instanceof Error ? error.name : undefined,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json({
+      ok: false,
+      success: false,
+      ignored: true,
+      code: 'DEBT_PAYMENT_GENERATION_FAILED',
+      processed: 0,
+      skipped: 0,
+      errors: 1,
+      message: 'BACKGROUND_TASK_FAILED',
+      results: [],
+    });
+  }
 }
 
 export async function GET(request: NextRequest) {
-  return handleGenerateMonthlyExpenses(request);
+  return POST(request);
 }
