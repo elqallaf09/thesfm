@@ -30,6 +30,9 @@ export interface Investment {
   assetType?: string;
   currency?: string;
   quantity?: number;
+  currentPrice?: number;
+  currentMarketValue?: number;
+  priceCurrency?: string;
   lastPrice?: number;
   lastPriceUpdatedAt?: string;
   dataSource?: string;

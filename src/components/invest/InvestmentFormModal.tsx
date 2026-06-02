@@ -46,6 +46,11 @@ interface Props {
     currentSharePrice: string;
     currentMarketValue: string;
     quantity: string;
+    numberOfUnits: string;
+    assetQuantity: string;
+    quantityHelper: string;
+    currentPriceUnavailable: string;
+    recalculate: string;
     monthly: string;
     startDate: string;
     risk: string;
@@ -72,6 +77,7 @@ interface Props {
       nameRequired: string;
       valuePositive: string;
       contributionPositive: string;
+      quantityPositive: string;
       returnRange: string;
     };
   };
@@ -145,6 +151,7 @@ export function InvestmentFormModal({
   const [expectedReturn, setExpectedReturn] = useState('');
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [manualValueEdited, setManualValueEdited] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<AssetSearchItem | null>(null);
   const [searchResults, setSearchResults] = useState<AssetSearchItem[]>([]);
   const [searchState, setSearchState] = useState<SearchState>('idle');
@@ -152,9 +159,12 @@ export function InvestmentFormModal({
   const currencyInfo = useMemo(() => getCurrency(currency), [currency]);
   const activeCurrency = (selectedAsset?.currency || initialValues?.currency || currencyInfo.code || currency).toUpperCase();
   const selectedPrice = selectedAsset?.price ?? null;
+  const hasLinkedPrice = selectedPrice !== null && Number.isFinite(selectedPrice) && selectedPrice > 0;
   const quantityValue = Number(quantity || 0);
   const hasQuantity = quantity.trim() !== '' && Number.isFinite(quantityValue) && quantityValue > 0;
-  const marketValue = selectedPrice !== null && hasQuantity ? selectedPrice * quantityValue : null;
+  const marketValue = hasLinkedPrice && hasQuantity ? selectedPrice * quantityValue : null;
+  const valueForValidation = marketValue ?? Number(currentValue);
+  const quantityLabel = getQuantityLabel(selectedAsset?.asset_type, labels);
   const assetName = selectedAsset ? localizedAssetName(selectedAsset, dir) : '';
   const selectedMatchesName = Boolean(selectedAsset && name.trim() === assetName);
   const shouldShowManualWarning = Boolean(name.trim() && !selectedAsset);
@@ -169,6 +179,7 @@ export function InvestmentFormModal({
       setName(initialValues.name);
       setType(initialValues.type);
       setCurrentValue(String(initialValues.currentValue));
+      setManualValueEdited(false);
       setMonthlyContribution(String(initialValues.monthlyContribution || ''));
       setQuantity(initialValues.quantity === undefined ? '' : String(initialValues.quantity));
       setStartDate(initialValues.startDate);
@@ -182,6 +193,7 @@ export function InvestmentFormModal({
     setName('');
     setType('stocks');
     setCurrentValue('');
+    setManualValueEdited(false);
     setMonthlyContribution('');
     setQuantity('');
     setStartDate(new Date().toISOString().slice(0, 10));
@@ -193,9 +205,9 @@ export function InvestmentFormModal({
 
   useEffect(() => {
     if (!open) return;
-    if (selectedPrice === null || !hasQuantity) return;
-    setCurrentValue(String(Number(marketValue?.toFixed(3) ?? selectedPrice.toFixed(3))));
-  }, [hasQuantity, marketValue, open, selectedPrice]);
+    if (marketValue === null || manualValueEdited) return;
+    setCurrentValue(String(Number(marketValue.toFixed(3))));
+  }, [manualValueEdited, marketValue, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -238,12 +250,14 @@ export function InvestmentFormModal({
 
   function validate() {
     const nextErrors: Record<string, string> = {};
-    const value = Number(currentValue);
     const monthly = Number(monthlyContribution || 0);
     const expected = Number(expectedReturn || 0);
 
     if (!name.trim()) nextErrors.name = labels.errors.nameRequired;
-    if (!currentValue || Number.isNaN(value) || value <= 0) nextErrors.currentValue = labels.errors.valuePositive;
+    if (selectedAsset && hasLinkedPrice && !hasQuantity) nextErrors.quantity = labels.errors.quantityPositive;
+    if ((!selectedAsset || !hasLinkedPrice) && (!currentValue || Number.isNaN(valueForValidation) || valueForValidation <= 0)) {
+      nextErrors.currentValue = labels.errors.valuePositive;
+    }
     if (monthlyContribution && (Number.isNaN(monthly) || monthly < 0)) nextErrors.monthlyContribution = labels.errors.contributionPositive;
     if (expectedReturn && (Number.isNaN(expected) || expected < 0 || expected > 100)) nextErrors.expectedReturn = labels.errors.returnRange;
 
@@ -267,7 +281,12 @@ export function InvestmentFormModal({
     setSearchState('idle');
 
     if (asset.price !== null && Number.isFinite(asset.price)) {
-      setCurrentValue(String(asset.price));
+      if (hasQuantity) {
+        setCurrentValue(String(Number((asset.price * quantityValue).toFixed(3))));
+      } else {
+        setCurrentValue('');
+      }
+      setManualValueEdited(false);
     }
     if (!notes.trim()) {
       setNotes(labels.fetchedPriceNote);
@@ -277,10 +296,11 @@ export function InvestmentFormModal({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!validate()) return;
+    const finalCurrentValue = marketValue ?? Number(currentValue);
     await onSave({
       name: name.trim(),
       type,
-      currentValue: Number(currentValue),
+      currentValue: finalCurrentValue,
       monthlyContribution: Number(monthlyContribution || 0),
       startDate,
       riskLevel,
@@ -292,6 +312,9 @@ export function InvestmentFormModal({
       assetType: selectedAsset?.asset_type,
       currency: selectedAsset?.currency ?? activeCurrency,
       quantity: hasQuantity ? quantityValue : undefined,
+      currentPrice: hasLinkedPrice ? selectedPrice : undefined,
+      currentMarketValue: finalCurrentValue,
+      priceCurrency: activeCurrency,
       lastPrice: selectedPrice ?? undefined,
       lastPriceUpdatedAt: selectedAsset?.updated_at ?? undefined,
       dataSource: selectedAsset?.source,
@@ -406,16 +429,41 @@ export function InvestmentFormModal({
             </select>
           </Field>
 
-          <Field label={labels.quantity}>
+          <Field label={quantityLabel} error={errors.quantity} helper={labels.quantityHelper}>
             <input type="number" min="0" step="0.001" value={quantity} onChange={event => setQuantity(event.target.value)} dir="ltr" />
           </Field>
 
-          <Field label={selectedAsset && selectedPrice !== null ? labels.currentSharePrice : labels.currentValue} error={errors.currentValue} required>
-            <div className="invest-money-input">
-              <span dir="ltr">{activeCurrency}</span>
-              <input type="number" min="0" step="0.001" value={currentValue} onChange={event => setCurrentValue(event.target.value)} dir="ltr" />
+          {selectedAsset && hasLinkedPrice ? (
+            <div className="invest-field">
+              <span>{labels.currentSharePrice}</span>
+              <div className="invest-readonly-money">
+                <span dir="ltr">{activeCurrency}</span>
+                <strong dir="ltr">{formatNumber(selectedPrice)}</strong>
+              </div>
             </div>
-          </Field>
+          ) : selectedAsset ? (
+            <div className="invest-price-unavailable">
+              <AlertCircle size={17} />
+              <span>{labels.currentPriceUnavailable}</span>
+            </div>
+          ) : (
+            <Field label={labels.currentValue} error={errors.currentValue} required>
+              <div className="invest-money-input">
+                <span dir="ltr">{activeCurrency}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  value={currentValue}
+                  onChange={event => {
+                    setCurrentValue(event.target.value);
+                    setManualValueEdited(true);
+                  }}
+                  dir="ltr"
+                />
+              </div>
+            </Field>
+          )}
 
           <Field label={labels.monthly} error={errors.monthlyContribution}>
             <div className="invest-money-input">
@@ -424,11 +472,38 @@ export function InvestmentFormModal({
             </div>
           </Field>
 
-          {marketValue !== null && (
-            <div className="invest-market-value span-2">
-              <span>{labels.totalMarketValue}</span>
-              <strong dir="ltr">{activeCurrency} {formatNumber(marketValue)}</strong>
-              <small>{labels.currentMarketValue}</small>
+          {selectedAsset && hasLinkedPrice && (
+            <div className="invest-calculation-card span-2">
+              <div className="invest-calculation-head">
+                <span>{labels.totalMarketValue}</span>
+                {marketValue !== null && (
+                  <button type="button" onClick={() => {
+                    setCurrentValue(String(Number(marketValue.toFixed(3))));
+                    setManualValueEdited(false);
+                  }}>
+                    {labels.recalculate}
+                  </button>
+                )}
+              </div>
+              <div className="invest-calculation-grid">
+                <div>
+                  <span>{labels.currentSharePrice}</span>
+                  <strong dir="ltr">{activeCurrency} {formatNumber(selectedPrice)}</strong>
+                </div>
+                <div>
+                  <span>{quantityLabel}</span>
+                  <strong dir="ltr">{hasQuantity ? formatNumber(quantityValue) : '-'}</strong>
+                </div>
+                <div className="invest-calculation-total">
+                  <span>{labels.currentMarketValue}</span>
+                  <strong dir="ltr">{marketValue !== null ? `${activeCurrency} ${formatNumber(marketValue)}` : '-'}</strong>
+                </div>
+              </div>
+              <small dir="ltr">
+                {marketValue !== null
+                  ? `${formatNumber(selectedPrice)} × ${formatNumber(quantityValue)} = ${formatNumber(marketValue)} ${activeCurrency}`
+                  : labels.quantityHelper}
+              </small>
             </div>
           )}
 
@@ -477,6 +552,13 @@ function localizedMarketName(asset: AssetSearchItem, dir: 'rtl' | 'ltr') {
   return asset.market_en || asset.market || asset.market_ar || '';
 }
 
+function getQuantityLabel(assetType: string | undefined, labels: Props['labels']) {
+  const normalized = String(assetType ?? '').toLowerCase();
+  if (normalized === 'etf' || normalized === 'fund' || normalized === 'index') return labels.numberOfUnits;
+  if (normalized === 'crypto' || normalized === 'forex' || normalized === 'commodity' || normalized === 'gold') return labels.assetQuantity;
+  return labels.quantity;
+}
+
 function formatUpdatedAt(value: string | null) {
   if (!value) return '';
   const date = new Date(value);
@@ -497,12 +579,14 @@ function TrendingGlyph({ assetType }: { assetType: string }) {
 function Field({
   label,
   error,
+  helper,
   required,
   children,
   className = '',
 }: {
   label: string;
   error?: string;
+  helper?: string;
   required?: boolean;
   children: React.ReactNode;
   className?: string;
@@ -511,6 +595,7 @@ function Field({
     <label className={`invest-field ${className}`}>
       <span>{label}{required && <b>*</b>}</span>
       {children}
+      {helper && !error && <em>{helper}</em>}
       {error && <small>{error}</small>}
     </label>
   );

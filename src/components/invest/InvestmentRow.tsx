@@ -17,6 +17,9 @@ interface Props {
     refreshPrice?: string;
     refreshingPrice?: string;
     lastPrice?: string;
+    quantity?: string;
+    currentMarketValue?: string;
+    lastUpdated?: string;
   };
   typeLabel: (type: Investment['type']) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
@@ -64,6 +67,15 @@ export function InvestmentRow({
         {typeof investment.lastPrice === 'number' && investment.currency && (
           <span>{labels.lastPrice}: <b dir="ltr">{investment.currency} {formatNumber(investment.lastPrice)}</b></span>
         )}
+        {typeof investment.quantity === 'number' && (
+          <span>{labels.quantity || 'Quantity'}: <b dir="ltr">{formatNumber(investment.quantity)}</b></span>
+        )}
+        {linkedSymbol && (
+          <span>{labels.currentMarketValue || 'Current market value'}: <b>{formatMoney(investment.displayValue, investment.displayValueStatus)}</b></span>
+        )}
+        {investment.lastPriceUpdatedAt && (
+          <span>{labels.lastUpdated || 'Last updated'}: <b dir="ltr">{formatDate(investment.lastPriceUpdatedAt)}</b></span>
+        )}
         <span>{labels.monthly}: {formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)}</span>
         <span>{labels.expectedReturn}: {investment.expectedAnnualReturn === undefined ? '-' : `${investment.expectedAnnualReturn}%`}</span>
         <span>{portfolioPercent === null ? notCalculable : labels.ofPortfolio.replace('{pct}', portfolioPercent.toFixed(0))}</span>
@@ -98,4 +110,16 @@ function formatNumber(value: number) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 3,
   });
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
 }

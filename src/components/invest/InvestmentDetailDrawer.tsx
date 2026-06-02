@@ -20,6 +20,7 @@ interface Props {
     market?: string;
     quantity?: string;
     currentPrice?: string;
+    currentMarketValue?: string;
     dataSource?: string;
     lastUpdated?: string;
     refreshPrice?: string;
@@ -75,7 +76,7 @@ export function InvestmentDetailDrawer({
 
         <div className="invest-detail-grid">
           <Info label={labels.type} value={typeLabel(investment.type)} />
-          <Info label={labels.currentValue} value={formatMoney(investment.displayValue, investment.displayValueStatus)} />
+          <Info label={labels.currentMarketValue || labels.currentValue} value={formatMoney(investment.displayValue, investment.displayValueStatus)} />
           <Info label={labels.monthly} value={formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)} />
           <Info label={labels.startDate} value={investment.startDate} />
           <Info label={labels.risk} value={riskLabel(investment.riskLevel)} />

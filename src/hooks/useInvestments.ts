@@ -29,6 +29,9 @@ type DbInvestmentRow = {
   asset_type?: string | null;
   currency?: string | null;
   quantity?: number | string | null;
+  current_price?: number | string | null;
+  current_market_value?: number | string | null;
+  price_currency?: string | null;
   last_price?: number | string | null;
   last_price_updated_at?: string | null;
   data_source?: string | null;
@@ -82,7 +85,9 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
   const monthlyAmount = parseMoneyValue(row.monthly_contribution ?? meta?.monthlyContribution);
   const expectedReturn = parseMoneyValue(row.expected_annual_return ?? row.expected_return ?? meta?.expectedAnnualReturn);
   const quantity = parseMoneyValue(row.quantity ?? meta?.quantity);
-  const lastPrice = parseMoneyValue(row.last_price ?? meta?.lastPrice);
+  const currentPrice = parseMoneyValue(row.current_price ?? row.last_price ?? meta?.currentPrice ?? meta?.lastPrice);
+  const currentMarketValue = parseMoneyValue(row.current_market_value ?? meta?.currentMarketValue);
+  const lastPrice = parseMoneyValue(row.last_price ?? row.current_price ?? meta?.lastPrice ?? meta?.currentPrice);
   if (process.env.NODE_ENV === 'development' && !hasLoggedInvestmentDebug) {
     hasLoggedInvestmentDebug = true;
     console.log('RAW INVESTMENT ASSET:', row);
@@ -115,6 +120,13 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
     market: row.market ?? meta?.market,
     assetType: row.asset_type ?? meta?.assetType,
     currency: row.currency ?? meta?.currency,
+    currentPrice: currentPrice.status === 'valid' ? currentPrice.value : meta?.currentPrice,
+    currentMarketValue: currentMarketValue.status === 'valid'
+      ? currentMarketValue.value
+      : displayAmount.status === 'valid'
+        ? displayAmount.value
+        : meta?.currentMarketValue,
+    priceCurrency: row.price_currency ?? meta?.priceCurrency ?? row.currency ?? meta?.currency,
     quantity: quantity.status === 'valid' ? quantity.value : meta?.quantity,
     lastPrice: lastPrice.status === 'valid' ? lastPrice.value : meta?.lastPrice,
     lastPriceUpdatedAt: row.last_price_updated_at ?? meta?.lastPriceUpdatedAt,
@@ -147,6 +159,9 @@ function metaFromInvestment(item: Investment | InvestmentInput): InvestmentMeta 
     assetType: item.assetType,
     currency: item.currency,
     quantity: item.quantity,
+    currentPrice: item.currentPrice,
+    currentMarketValue: item.currentMarketValue,
+    priceCurrency: item.priceCurrency,
     lastPrice: item.lastPrice,
     lastPriceUpdatedAt: item.lastPriceUpdatedAt,
     dataSource: item.dataSource,
@@ -187,7 +202,7 @@ export function useInvestments() {
       const meta = readJson<Record<string, InvestmentMeta>>(userMetaKey, {});
       const full = await supabase
         .from('investment_items')
-        .select('id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,asset_type,quantity,last_price,last_price_updated_at,data_source,created_at,updated_at')
+        .select('id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,asset_type,quantity,current_price,current_market_value,price_currency,last_price,last_price_updated_at,data_source,created_at,updated_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -264,6 +279,9 @@ export function useInvestments() {
       asset_type: data.assetType ?? null,
       currency: data.currency ?? null,
       quantity: data.quantity ?? null,
+      current_price: data.currentPrice ?? data.lastPrice ?? null,
+      current_market_value: data.currentMarketValue ?? data.currentValue,
+      price_currency: data.priceCurrency ?? data.currency ?? null,
       last_price: data.lastPrice ?? null,
       last_price_updated_at: data.lastPriceUpdatedAt ?? null,
       data_source: data.dataSource ?? null,
@@ -325,6 +343,9 @@ export function useInvestments() {
       asset_type: data.assetType ?? null,
       currency: data.currency ?? null,
       quantity: data.quantity ?? null,
+      current_price: data.currentPrice ?? data.lastPrice ?? null,
+      current_market_value: data.currentMarketValue ?? data.currentValue,
+      price_currency: data.priceCurrency ?? data.currency ?? null,
       last_price: data.lastPrice ?? null,
       last_price_updated_at: data.lastPriceUpdatedAt ?? null,
       data_source: data.dataSource ?? null,
