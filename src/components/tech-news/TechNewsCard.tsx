@@ -13,6 +13,7 @@ type TechNewsCardProps = {
     priceUnavailable: string;
     translated: string;
     originalLanguage: string;
+    linkUnavailable: string;
   };
   formatDateTime: (value: string) => string;
   formatPrice: (value: number | null) => string;
@@ -30,6 +31,7 @@ export function TechNewsCard({ item, labels, formatDateTime, formatPrice }: Tech
   const displayTitle = item.title || item.headline;
   const displaySummary = item.summary || displayTitle;
   const contentDir = item.isTranslated && item.translatedTo === 'ar' ? 'rtl' : item.isTranslated ? 'ltr' : 'auto';
+  const hasArticleUrl = Boolean(item.url);
 
   return (
     <article className="tech-news-card" dir={contentDir}>
@@ -59,17 +61,26 @@ export function TechNewsCard({ item, labels, formatDateTime, formatPrice }: Tech
       </div>
       <h2 dir={contentDir}>{displayTitle}</h2>
       <p dir={contentDir}>{displaySummary}</p>
-      <div className="tech-news-meta">
-        <span>{item.source || labels.source}</span>
-        <span>
-          <Clock3 size={14} />
-          {formatDateTime(item.publishedAt)}
-        </span>
+      <div className="tech-news-card-footer">
+        <div className="tech-news-meta">
+          <span>{item.source || labels.source}</span>
+          <span>
+            <Clock3 size={14} />
+            {formatDateTime(item.publishedAt)}
+          </span>
+        </div>
+        {hasArticleUrl ? (
+          <a className="tech-news-read-link" href={item.url} target="_blank" rel="noreferrer" aria-label={`${labels.openArticle}: ${displayTitle}`}>
+            {labels.readMore}
+            <ExternalLink size={15} />
+          </a>
+        ) : (
+          <span className="tech-news-read-link disabled" aria-disabled="true">
+            {labels.linkUnavailable}
+            <ExternalLink size={15} />
+          </span>
+        )}
       </div>
-      <a className="tech-news-read-link" href={item.url} target="_blank" rel="noreferrer" aria-label={`${labels.openArticle}: ${displayTitle}`}>
-        {labels.readMore}
-        <ExternalLink size={14} />
-      </a>
     </article>
   );
 }
