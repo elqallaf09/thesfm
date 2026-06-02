@@ -280,10 +280,11 @@ export default function BusinessOperationsPage() {
   const hasAnalyticsData = chartData.monthly.some(item => item.value > 0)
     || chartData.status.some(item => item.value > 0)
     || chartData.products.some(item => item.value > 0);
-  const failedBusinessSections = Object.values(loadIssues).filter(Boolean);
+  const failedBusinessSections = Object.values(loadIssues).filter((issue): issue is BusinessLoadIssue => Boolean(issue));
   const hasPartialErrors = failedBusinessSections.length > 0;
   const showPartialLoadWarning = !error && hasPartialErrors;
-  const showAnalyticsInfo = !error && !hasPartialErrors && !hasAnalyticsData;
+  const showEmptyDashboard = isEmpty && !error && !hasPartialErrors;
+  const showAnalyticsInfo = !error && !hasPartialErrors && !isEmpty && !hasAnalyticsData;
 
   function summaryRows(): SummaryRow[] {
     return [
@@ -492,7 +493,7 @@ export default function BusinessOperationsPage() {
           </section>
         ) : null}
 
-        {isEmpty && !error ? (
+        {showEmptyDashboard ? (
           <EmptyState
             title={text.noDataYet}
             description={text.emptyDashboardBody}
@@ -506,6 +507,10 @@ export default function BusinessOperationsPage() {
                 <Link className="business-empty-action" href="/sales">
                   <Plus size={16} aria-hidden="true" />
                   {text.addSale}
+                </Link>
+                <Link className="business-empty-action" href="/expenses/add">
+                  <Plus size={16} aria-hidden="true" />
+                  {text.addExpense}
                 </Link>
                 <button className="business-empty-action muted" type="button" disabled>
                   <Plus size={16} aria-hidden="true" />
