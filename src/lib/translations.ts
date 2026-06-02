@@ -735,6 +735,7 @@ export const TR: Record<string, TranslationEntry> = {
   market_decision_action_review: { ar:'إجراء تعليمي: راجع حجم التعرض، الأخبار، والمؤشرات قبل اتخاذ أي خطوة.', en:'Educational action: review exposure size, news, and indicators before taking any step.', fr:'Action éducative : révisez l’exposition, l’actualité et les indicateurs avant toute étape.' },
   market_decision_action_high: { ar:'إجراء تعليمي: اختبر سيناريوهات الهبوط والصعود وقلل الاعتماد على توقع واحد.', en:'Educational action: test upside and downside scenarios and avoid relying on one forecast.', fr:'Action éducative : testez les scénarios haussiers et baissiers et évitez une seule prévision.' },
   market_portfolio_comparison: { ar:'مقارنة مع محفظتي', en:'Compare with my portfolio', fr:'Comparer avec mon portefeuille' },
+  market_no_portfolio_data: { ar:'لا توجد بيانات استثمارية حالياً', en:'No investment data yet', fr:'Aucune donnée d’investissement pour le moment' },
   market_asset_in_portfolio: { ar:'هذا الأصل موجود في محفظتك', en:'This asset is in your portfolio', fr:'Cet actif est dans votre portefeuille' },
   market_asset_not_in_portfolio: { ar:'هذا الأصل غير موجود في محفظتك حالياً.', en:'This asset is not currently in your portfolio.', fr:'Cet actif n’est pas actuellement dans votre portefeuille.' },
   market_purchase_price: { ar:'سعر الشراء', en:'Purchase price', fr:'Prix d’achat' },
