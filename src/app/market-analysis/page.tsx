@@ -155,13 +155,15 @@ const TECHNICAL_SYMBOL_GROUPS: Record<TechnicalSymbolCategory, TechnicalSymbolOp
     { symbol: 'AAPL', label: 'AAPL', category: 'stocks' },
     { symbol: 'NVDA', label: 'NVDA', category: 'stocks' },
     { symbol: 'MSFT', label: 'MSFT', category: 'stocks' },
+    { symbol: 'TSLA', label: 'TSLA', category: 'stocks' },
   ],
   indices: [
-    { symbol: 'SPY', label: 'SPY', category: 'indices' },
     { symbol: 'QQQ', label: 'QQQ', category: 'indices' },
+    { symbol: 'SPY', label: 'SPY', category: 'indices' },
   ],
   metals: [
     { symbol: 'XAUUSD', label: 'XAU/USD', category: 'metals' },
+    { symbol: 'XAGUSD', label: 'XAG/USD', category: 'metals' },
   ],
   crypto: [
     { symbol: 'BTCUSD', label: 'BTC/USD', category: 'crypto' },
@@ -206,6 +208,7 @@ function getTechnicalSymbolCategory(symbol: string): TechnicalSymbolCategory {
 }
 
 function technicalSymbolAssetType(symbol: string): MarketAssetType {
+  if (symbol.trim().toUpperCase().startsWith('XAG')) return 'commodity';
   const category = getTechnicalSymbolCategory(symbol);
   if (category === 'stocks') return 'stock';
   if (category === 'indices') return 'index';
@@ -320,6 +323,85 @@ function hasDisplayValue(value: unknown) {
   if (typeof value === 'number') return Number.isFinite(value);
   if (typeof value === 'string') return value.trim().length > 0 && !/^n\/?a$/i.test(value.trim());
   return false;
+}
+
+function finiteTechnicalNumber(...values: unknown[]) {
+  for (const value of values) {
+    if (!hasDisplayValue(value)) continue;
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function formatTechnicalNumberValue(value: unknown, maximumFractionDigits = 4) {
+  const parsed = finiteTechnicalNumber(value);
+  return parsed === null ? '' : formatNumber(parsed, maximumFractionDigits);
+}
+
+function formatTechnicalPrice(value: unknown) {
+  const parsed = finiteTechnicalNumber(value);
+  if (parsed === null) return '';
+  const digits = Math.abs(parsed) >= 10 ? 2 : 4;
+  return formatNumber(parsed, digits);
+}
+
+function technicalTrendLabelKey(trend: string) {
+  const normalized = normalizePerformanceTrend(trend);
+  return normalized === 'neutral' ? 'market_trend_sideways' : `market_trend_${normalized}`;
+}
+
+function technicalRsiStatusKey(value: unknown) {
+  const rsi = finiteTechnicalNumber(value);
+  if (rsi === null) return null;
+  if (rsi >= 70) return 'market_rsi_status_overbought';
+  if (rsi <= 30) return 'market_rsi_status_oversold';
+  return 'market_rsi_status_normal';
+}
+
+function technicalSignalStrength(data: Record<string, any>, currentPrice: number | null, pivotValue: number | null) {
+  const trend = normalizePerformanceTrend(String(data?.trend ?? 'neutral'));
+  const rsi = finiteTechnicalNumber(data?.rsi);
+  const sma20 = finiteTechnicalNumber(data?.movingAverages?.sma20, data?.sma20);
+  const sma50 = finiteTechnicalNumber(data?.movingAverages?.sma50, data?.sma50);
+  const sma200 = finiteTechnicalNumber(data?.movingAverages?.sma200, data?.sma200);
+  let available = 0;
+  let aligned = 0;
+
+  if (trend !== 'neutral') {
+    available += 1;
+    aligned += 1;
+  }
+
+  if (currentPrice !== null && pivotValue !== null) {
+    available += 1;
+    if ((trend === 'bullish' && currentPrice >= pivotValue) || (trend === 'bearish' && currentPrice <= pivotValue)) {
+      aligned += 1;
+    }
+  }
+
+  if (rsi !== null) {
+    available += 1;
+    if (rsi > 35 && rsi < 65) aligned += 1;
+  }
+
+  if (sma20 !== null && sma50 !== null) {
+    available += 1;
+    if ((trend === 'bullish' && sma20 >= sma50) || (trend === 'bearish' && sma20 <= sma50)) {
+      aligned += 1;
+    }
+  }
+
+  if (sma20 !== null && sma200 !== null) {
+    available += 1;
+    if ((trend === 'bullish' && sma20 >= sma200) || (trend === 'bearish' && sma20 <= sma200)) {
+      aligned += 1;
+    }
+  }
+
+  if (available >= 4 && aligned >= 3) return 'strong';
+  if (available >= 2 && aligned >= 1) return 'medium';
+  return 'weak';
 }
 
 function formatFundamentalValue(value: unknown) {
@@ -5724,25 +5806,40 @@ function TechnicalAnalysisPanel({
     .filter((item): item is TechnicalSymbolOption => Boolean(item));
   const currentTrend = normalizePerformanceTrend(String(data?.trend ?? state.available?.trend ?? 'neutral'));
   const currentUpdatedAt = String(data?.updated_at ?? state.updatedAt ?? '');
-  const currentStatus = state.loading ? t('market_loading_technical_analysis_short') : data ? t('market_analysis_ready') : t('market_analysis_insufficient');
+  const currentPriceValue = finiteTechnicalNumber(data?.currentPrice, data?.latestPrice, data?.price, state.available?.currentPrice, state.available?.price);
+  const currentStatus = state.loading
+    ? t('market_loading_technical_analysis_short')
+    : data
+      ? t('market_data_complete')
+      : state.available
+        ? t('market_data_incomplete')
+        : t('market_analysis_insufficient');
   const pivotPoints = data?.pivotPoints && typeof data.pivotPoints === 'object' ? data.pivotPoints as Record<string, unknown> : {};
+  const pivotValue = finiteTechnicalNumber(pivotPoints.pivot);
   const supportRows = [
     ['S1', pivotPoints.s1],
     ['S2', pivotPoints.s2],
     ['S3', pivotPoints.s3],
-    [t('market_support_zone'), data?.support?.[0]],
   ].filter((row): row is [string, unknown] => hasDisplayValue(row[1]));
   const resistanceRows = [
     ['R1', pivotPoints.r1],
     ['R2', pivotPoints.r2],
     ['R3', pivotPoints.r3],
-    [t('market_resistance_zone'), data?.resistance?.[0]],
   ].filter((row): row is [string, unknown] => hasDisplayValue(row[1]));
-  const indicatorRows = [
-    ['RSI', data?.rsi],
-    ['SMA 20', data?.movingAverages?.sma20],
-    ['SMA 50', data?.movingAverages?.sma50],
+  const movingAverageRows = [
+    ['MA 20', data?.movingAverages?.sma20 ?? data?.sma20],
+    ['MA 50', data?.movingAverages?.sma50 ?? data?.sma50],
+    ['MA 200', data?.movingAverages?.sma200 ?? data?.sma200],
   ].filter((row): row is [string, unknown] => hasDisplayValue(row[1]));
+  const rsiStatusKey = technicalRsiStatusKey(data?.rsi);
+  const signalStrength = data ? technicalSignalStrength(data, currentPriceValue, pivotValue) : 'weak';
+  const rangeLevels = [
+    { label: 'S2', value: finiteTechnicalNumber(pivotPoints.s2), tone: 'support' as const },
+    { label: 'S1', value: finiteTechnicalNumber(pivotPoints.s1), tone: 'support' as const },
+    { label: 'Pivot', value: pivotValue, tone: 'pivot' as const },
+    { label: 'R1', value: finiteTechnicalNumber(pivotPoints.r1), tone: 'resistance' as const },
+    { label: 'R2', value: finiteTechnicalNumber(pivotPoints.r2), tone: 'resistance' as const },
+  ].filter((item): item is { label: string; value: number; tone: 'support' | 'pivot' | 'resistance' } => item.value !== null);
   const technicalCode = String(state.code ?? '').toUpperCase();
   const partialData = (technicalCode === 'OHLC_DATA_NOT_AVAILABLE' || state.code === 'insufficient_ohlc_data') && state.available ? state.available : null;
   const technicalEmptyCopy = technicalEmptyStateCopy(state.code, t);
@@ -5803,13 +5900,18 @@ function TechnicalAnalysisPanel({
 
   return (
     <section className="market-panel technical-analysis-panel">
-      <div className="market-section-head">
-        <Gauge size={20} />
+      <div className="technical-dashboard-head">
+        <span className="technical-dashboard-icon">
+          <Gauge size={22} />
+        </span>
         <div>
-          <span>{t('market_pivot_points')}</span>
           <h2>{t('market_daily_technical_analysis')}</h2>
+          <p>{t('market_daily_technical_subtitle')}</p>
         </div>
-        <MarketSectionRefreshButton t={t} loading={state.loading} onRefresh={onRefresh} />
+        <button className="technical-refresh-button" type="button" onClick={onRefresh} disabled={state.loading}>
+          <Activity size={15} className={state.loading ? 'market-spin' : undefined} />
+          {state.loading ? t('market_refreshing_technical_analysis') : t('market_refresh_section')}
+        </button>
       </div>
       {!hasSelectedAsset ? (
         <MarketEmptyState
@@ -5821,89 +5923,128 @@ function TechnicalAnalysisPanel({
         />
       ) : (
         <>
-      <div className="technical-selector-shell">
-        <div className="technical-search">
-          <Search size={16} />
-          <input
-            value={query}
-            onChange={event => setQuery(event.target.value)}
-            placeholder={t('market_symbol_search_placeholder')}
-            dir="auto"
-          />
-          {query ? (
-            <button type="button" onClick={() => setQuery('')} aria-label={t('market_clear_symbol_search')}>
-              ×
-            </button>
-          ) : null}
-        </div>
-        <div className="technical-category-row" aria-label={t('market_asset_type')}>
-          {TECHNICAL_SYMBOL_CATEGORIES.map(item => (
-            <button key={item} type="button" aria-pressed={category === item} onClick={() => setCategory(item)}>
-              {t(`market_symbol_category_${item}`)}
-            </button>
-          ))}
-        </div>
-        {favoriteSymbols.length > 0 ? (
-          <div className="technical-favorites">
-            <span>{t('market_favorites')}</span>
-            <div className="technical-symbol-row compact">
-              {favoriteSymbols.map(renderSymbolPill)}
+          <div className="technical-selector-shell">
+            <div className="technical-selector-head">
+              <div>
+                <span>{t('market_symbol_search_placeholder')}</span>
+                <strong dir="ltr">{formatTechnicalSymbol(symbol)}</strong>
+              </div>
+              <div className="technical-search">
+                <Search size={16} />
+                <input
+                  value={query}
+                  onChange={event => setQuery(event.target.value)}
+                  placeholder={t('market_symbol_search_placeholder')}
+                  dir="auto"
+                />
+                {query ? (
+                  <button type="button" onClick={() => setQuery('')} aria-label={t('market_clear_symbol_search')}>
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <div className="technical-category-row" aria-label={t('market_asset_type')}>
+              {TECHNICAL_SYMBOL_CATEGORIES.map(item => (
+                <button key={item} type="button" aria-pressed={category === item} onClick={() => setCategory(item)}>
+                  {t(`market_symbol_category_${item}`)}
+                </button>
+              ))}
+            </div>
+            {favoriteSymbols.length > 0 ? (
+              <div className="technical-favorites">
+                <span>{t('market_favorites')}</span>
+                <div className="technical-symbol-row compact">
+                  {favoriteSymbols.map(renderSymbolPill)}
+                </div>
+              </div>
+            ) : null}
+            <div className="technical-symbol-row">
+              {filteredSymbols.length > 0 ? filteredSymbols.map(renderSymbolPill) : (
+                <span className="technical-no-results">{t('market_no_search_results')}</span>
+              )}
             </div>
           </div>
-        ) : null}
-        <div className="technical-symbol-row">
-          {filteredSymbols.length > 0 ? filteredSymbols.map(renderSymbolPill) : (
-            <span className="technical-no-results">{t('market_no_search_results')}</span>
-          )}
-        </div>
-      </div>
-      <div className="technical-selected-summary">
-        <TechnicalSummaryItem icon={<WalletCards size={16} />} label={t('market_selected_asset')} value={formatTechnicalSymbol(symbol)} valueDir="ltr" />
-        <TechnicalSummaryItem icon={<TrendingUp size={16} />} label={t('market_trend')} value={t(currentTrend === 'neutral' ? 'market_trend_sideways' : `market_trend_${currentTrend}`)} />
-        <TechnicalSummaryItem icon={<Clock3 size={16} />} label={t('market_last_updated')} value={formatTechnicalTimestamp(currentUpdatedAt, locale) || t('market_unavailable')} />
-        <TechnicalSummaryItem icon={<CheckCircle2 size={16} />} label={t('market_analysis_status')} value={currentStatus} />
-      </div>
-      {state.loading ? <MarketSectionLoading label={t('market_loading_technical_analysis')} /> : partialData ? (
-        <TechnicalPartialDataState
-          t={t}
-          locale={locale}
-          available={partialData}
-          symbol={state.symbol || symbol}
-          updatedAt={state.updatedAt}
-          onRefresh={onRefresh}
-        />
-      ) : state.message || state.code ? (
-        <TechnicalEmptyState title={technicalEmptyCopy.title} body={technicalEmptyCopy.body} />
-      ) : data ? (
-        <div className="technical-data-grid">
-          <TechnicalDataCard
-            icon={<TrendingUp size={17} />}
-            title={t('market_general_trend')}
-            value={t(normalizePerformanceTrend(String(data.trend ?? 'neutral')) === 'neutral' ? 'market_trend_sideways' : `market_trend_${normalizePerformanceTrend(String(data.trend ?? 'neutral'))}`)}
-          />
-          <TechnicalDataCard
-            icon={<Gauge size={17} />}
-            title={t('market_pivot_point')}
-            value={hasDisplayValue(pivotPoints.pivot) ? formatNumber(Number(pivotPoints.pivot), 4) : t('market_unavailable')}
-            valueDir="ltr"
-          />
-          <TechnicalDataCard
-            icon={<TrendingDown size={17} />}
-            title={t('market_support_zone')}
-            rows={supportRows.map(([label, value]) => [label, formatNumber(Number(value), 4)])}
-          />
-          <TechnicalDataCard
-            icon={<TrendingUp size={17} />}
-            title={t('market_resistance_zone')}
-            rows={resistanceRows.map(([label, value]) => [label, formatNumber(Number(value), 4)])}
-          />
-          <TechnicalDataCard
-            icon={<BarChart3 size={17} />}
-            title={t('market_indicators')}
-            rows={indicatorRows.map(([label, value]) => [label, formatNumber(Number(value), label === 'RSI' ? 1 : 4)])}
-          />
-        </div>
-      ) : null}
+          <div className="technical-selected-summary">
+            <TechnicalSummaryItem icon={<WalletCards size={16} />} label={t('market_selected_asset')} value={formatTechnicalSymbol(symbol)} valueDir="ltr" />
+            <TechnicalSummaryItem icon={<CircleDollarSign size={16} />} label={t('market_current_price')} value={currentPriceValue === null ? t('market_unavailable') : formatTechnicalPrice(currentPriceValue)} valueDir="ltr" />
+            <TechnicalSummaryItem icon={<Clock3 size={16} />} label={t('market_last_updated')} value={formatTechnicalTimestamp(currentUpdatedAt, locale) || t('market_unavailable')} valueDir="ltr" />
+            <TechnicalSummaryItem icon={<TrendingUp size={16} />} label={t('market_general_trend')} value={t(technicalTrendLabelKey(currentTrend))} />
+            <TechnicalSummaryItem icon={<CheckCircle2 size={16} />} label={t('market_data_status')} value={currentStatus} />
+          </div>
+          {state.loading ? <MarketSectionLoading label={t('market_loading_technical_analysis')} /> : partialData ? (
+            <TechnicalPartialDataState
+              t={t}
+              locale={locale}
+              available={partialData}
+              symbol={state.symbol || symbol}
+              updatedAt={state.updatedAt}
+              onRefresh={onRefresh}
+            />
+          ) : state.message || state.code ? (
+            <TechnicalEmptyState
+              title={technicalEmptyCopy.title}
+              body={state.code === 'OHLC_DATA_NOT_AVAILABLE' ? t('market_technical_compact_empty_body') : technicalEmptyCopy.body}
+              actionLabel={t('market_refresh_section')}
+              onAction={onRefresh}
+            />
+          ) : data ? (
+            <>
+              <div className="technical-data-grid">
+                <TechnicalDataCard
+                  icon={<TrendingUp size={17} />}
+                  title={t('market_general_trend')}
+                  value={t(technicalTrendLabelKey(String(data.trend ?? 'neutral')))}
+                />
+                <TechnicalDataCard
+                  icon={<Gauge size={17} />}
+                  title={t('market_pivot_point')}
+                  value={pivotValue === null ? t('market_unavailable') : formatNumber(pivotValue, 4)}
+                  valueDir="ltr"
+                />
+                <TechnicalDataCard
+                  icon={<TrendingDown size={17} />}
+                  title={t('market_support_zone')}
+                  rows={supportRows.map(([label, value]) => [label, formatTechnicalNumberValue(value, 4)])}
+                  tone="support"
+                />
+                <TechnicalDataCard
+                  icon={<TrendingUp size={17} />}
+                  title={t('market_resistance_zone')}
+                  rows={resistanceRows.map(([label, value]) => [label, formatTechnicalNumberValue(value, 4)])}
+                  tone="resistance"
+                />
+                <TechnicalDataCard
+                  icon={<BarChart3 size={17} />}
+                  title="RSI"
+                  value={formatTechnicalNumberValue(data?.rsi, 1) || t('market_unavailable')}
+                  valueDir="ltr"
+                  footer={rsiStatusKey ? t(rsiStatusKey) : t('market_unavailable')}
+                />
+                <TechnicalDataCard
+                  icon={<LineChart size={17} />}
+                  title={t('market_moving_averages')}
+                  rows={movingAverageRows.map(([label, value]) => [label, formatTechnicalNumberValue(value, 4)])}
+                />
+                <TechnicalDataCard
+                  icon={<ShieldAlert size={17} />}
+                  title={t('market_signal_strength')}
+                  value={t(`market_signal_${signalStrength}`)}
+                  footer={t('market_signal_helper')}
+                  tone="signal"
+                />
+              </div>
+              <TechnicalRangeCard t={t} levels={rangeLevels} />
+              <TechnicalEducationCard t={t} />
+              <section className="technical-tab-disclaimer">
+                <ShieldAlert size={19} />
+                <div>
+                  <strong>{t('market_disclaimer_title')}</strong>
+                  <p>{t('market_disclaimer')}</p>
+                </div>
+              </section>
+            </>
+          ) : null}
         </>
       )}
     </section>
@@ -6102,15 +6243,19 @@ function TechnicalDataCard({
   value,
   valueDir,
   rows,
+  footer,
+  tone,
 }: {
   icon: ReactNode;
   title: string;
   value?: string;
   valueDir?: 'ltr' | 'rtl';
   rows?: Array<[string, string]>;
+  footer?: string;
+  tone?: 'support' | 'resistance' | 'signal';
 }) {
   return (
-    <article className="technical-data-card">
+    <article className={`technical-data-card ${tone ?? ''}`}>
       <div className="technical-data-card-head">
         <span>{icon}</span>
         <h3>{title}</h3>
@@ -6120,23 +6265,107 @@ function TechnicalDataCard({
         <div className="technical-data-rows">
           {rows.map(([label, rowValue]) => (
             <div key={`${title}-${label}`}>
-              <small dir="ltr">{label}</small>
+              <small dir="auto">{label}</small>
               <b dir="ltr">{rowValue}</b>
             </div>
           ))}
         </div>
       ) : null}
+      {footer ? <p className="technical-data-card-foot">{footer}</p> : null}
     </article>
   );
 }
 
-function TechnicalEmptyState({ title, body }: { title: string; body: string }) {
+function TechnicalRangeCard({
+  t,
+  levels,
+}: {
+  t: (key: string) => string;
+  levels: Array<{ label: string; value: number; tone: 'support' | 'pivot' | 'resistance' }>;
+}) {
+  if (levels.length < 3) return null;
+  const values = levels.map(item => item.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+
+  return (
+    <article className="technical-range-card">
+      <div className="technical-range-head">
+        <div>
+          <strong>{t('market_support_resistance_levels')}</strong>
+          <p>{t('market_support_resistance_helper')}</p>
+        </div>
+        <span><LineChart size={18} /></span>
+      </div>
+      <div className="technical-range-track" dir="ltr">
+        <span className="technical-range-fill support" />
+        <span className="technical-range-fill pivot" />
+        <span className="technical-range-fill resistance" />
+        {levels.map(level => {
+          const left = `${((level.value - min) / span) * 100}%`;
+          return (
+            <span className={`technical-range-marker ${level.tone}`} style={{ left }} key={level.label}>
+              <b>{level.label}</b>
+              <small>{formatNumber(level.value, 4)}</small>
+            </span>
+          );
+        })}
+      </div>
+    </article>
+  );
+}
+
+function TechnicalEducationCard({ t }: { t: (key: string) => string }) {
+  const bullets = [
+    ['market_technical_explanation_pivot', 'Pivot'],
+    ['market_technical_explanation_support', 'S1 / S2'],
+    ['market_technical_explanation_resistance', 'R1 / R2'],
+    ['market_technical_explanation_rsi', 'RSI'],
+    ['market_technical_explanation_averages', 'MA'],
+  ];
+
+  return (
+    <article className="technical-education-card">
+      <div className="technical-education-head">
+        <span><BarChart3 size={18} /></span>
+        <strong>{t('market_technical_explanation_title')}</strong>
+      </div>
+      <ul className="technical-education-list">
+        {bullets.map(([key, label]) => (
+          <li key={key}>
+            <b dir="ltr">{label}</b>
+            <span>{t(key)}</span>
+          </li>
+        ))}
+      </ul>
+    </article>
+  );
+}
+
+function TechnicalEmptyState({
+  title,
+  body,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  body: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
   return (
     <div className="technical-empty-state">
       <AlertTriangle size={19} />
       <div>
         <strong>{title}</strong>
         <p>{body}</p>
+        {actionLabel && onAction ? (
+          <button type="button" onClick={onAction}>
+            <Activity size={15} />
+            {actionLabel}
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -6158,13 +6387,12 @@ function TechnicalPartialDataState({
   onRefresh: () => void;
 }) {
   const parsedPrice = Number(available.currentPrice ?? available.price);
-  const currency = String(available.currency ?? 'USD').toUpperCase();
   const source = String(available.source ?? '').trim();
   const displaySymbol = String(available.symbol ?? available.providerSymbol ?? symbol ?? '').trim();
   const availableUpdatedAt = String(available.updatedAt ?? updatedAt ?? '').trim();
   const metricRows = [
     displaySymbol ? [t('market_symbol'), formatTechnicalSymbol(displaySymbol), 'ltr'] as const : null,
-    Number.isFinite(parsedPrice) && parsedPrice > 0 ? [t('market_current_price'), money(parsedPrice, currency), 'ltr'] as const : null,
+    Number.isFinite(parsedPrice) && parsedPrice > 0 ? [t('market_current_price'), formatTechnicalPrice(parsedPrice), 'ltr'] as const : null,
     availableUpdatedAt ? [t('market_last_updated'), formatTechnicalTimestamp(availableUpdatedAt, locale) || t('market_unavailable'), 'ltr'] as const : null,
     source ? [t('market_data_source'), source.toLowerCase() === 'openbb' ? 'OpenBB' : source, 'ltr'] as const : null,
   ].filter((row): row is readonly [string, string, 'ltr'] => Boolean(row));
@@ -6792,6 +7020,409 @@ function MarketAsyncToolStyles() {
         border-color: rgba(148, 163, 184, .18);
       }
 
+      .technical-analysis-panel {
+        width: 100%;
+        max-width: 1500px !important;
+        margin-inline: auto;
+        gap: 18px !important;
+        overflow: hidden;
+      }
+
+      .technical-dashboard-head {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 14px;
+        align-items: center;
+        border: 1px solid rgba(47, 214, 192, .16);
+        border-radius: 26px;
+        background: linear-gradient(135deg, rgba(29, 140, 255, .06), rgba(47, 214, 192, .08)), var(--sfm-card);
+        padding: clamp(15px, 2vw, 20px);
+        box-shadow: 0 14px 34px rgba(3, 18, 37, .06);
+        min-width: 0;
+      }
+
+      .technical-dashboard-icon {
+        width: 54px;
+        height: 54px;
+        border-radius: 22px;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+        color: #fff;
+        box-shadow: 0 16px 30px rgba(29, 140, 255, .18);
+      }
+
+      .technical-dashboard-head h2 {
+        margin: 0;
+        color: var(--sfm-foreground);
+        font-size: clamp(22px, 2.3vw, 34px);
+        font-weight: 950;
+        line-height: 1.2;
+      }
+
+      .technical-dashboard-head p {
+        margin: 6px 0 0;
+        color: var(--sfm-muted);
+        font-size: 13px;
+        font-weight: 850;
+        line-height: 1.7;
+      }
+
+      .technical-refresh-button,
+      .technical-empty-state button {
+        min-height: 42px;
+        border: 1px solid rgba(47, 214, 192, .28);
+        border-radius: 999px;
+        background: rgba(47, 214, 192, .12);
+        color: var(--sfm-primary-hover);
+        padding: 0 15px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font: 950 12px Tajawal, Arial, sans-serif;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
+      }
+
+      .technical-refresh-button:hover,
+      .technical-refresh-button:focus-visible,
+      .technical-empty-state button:hover,
+      .technical-empty-state button:focus-visible {
+        outline: none;
+        background: rgba(47, 214, 192, .18);
+        border-color: var(--sfm-accent);
+        box-shadow: 0 0 0 3px rgba(24, 212, 212, .12);
+      }
+
+      .technical-refresh-button:active,
+      .technical-empty-state button:active {
+        transform: translateY(1px);
+      }
+
+      .technical-refresh-button:disabled {
+        opacity: .72;
+        cursor: wait;
+        box-shadow: none;
+      }
+
+      .market-spin {
+        animation: marketSpin 1s linear infinite;
+      }
+
+      .technical-selector-head {
+        display: grid;
+        grid-template-columns: minmax(170px, .4fr) minmax(260px, 1fr);
+        gap: 12px;
+        align-items: stretch;
+        min-width: 0;
+      }
+
+      .technical-selector-head > div:first-child {
+        display: grid;
+        align-content: center;
+        gap: 5px;
+        border: 1px solid rgba(47, 214, 192, .16);
+        border-radius: 18px;
+        background: var(--sfm-light-card);
+        padding: 12px 14px;
+        min-width: 0;
+      }
+
+      .technical-selector-head span {
+        color: var(--sfm-muted);
+        font-size: 11px;
+        font-weight: 950;
+        line-height: 1.3;
+      }
+
+      .technical-selector-head strong {
+        color: var(--sfm-foreground);
+        font-size: 18px;
+        font-weight: 950;
+        letter-spacing: .02em;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+      }
+
+      .technical-selected-summary {
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+      }
+
+      .technical-data-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+      }
+
+      .technical-data-card.support .technical-data-card-head span {
+        color: #16A34A;
+        background: rgba(34, 197, 94, .12);
+        border-color: rgba(34, 197, 94, .20);
+      }
+
+      .technical-data-card.resistance .technical-data-card-head span {
+        color: #DC2626;
+        background: rgba(239, 68, 68, .12);
+        border-color: rgba(239, 68, 68, .20);
+      }
+
+      .technical-data-card.signal {
+        background: linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .08)), var(--sfm-card);
+      }
+
+      .technical-data-card-foot {
+        margin: 0;
+        width: fit-content;
+        max-width: 100%;
+        border: 1px solid rgba(47, 214, 192, .18);
+        border-radius: 999px;
+        background: rgba(47, 214, 192, .10);
+        color: var(--sfm-primary-hover);
+        padding: 7px 10px;
+        font-size: 11px;
+        font-weight: 950;
+        line-height: 1.35;
+      }
+
+      .technical-range-card,
+      .technical-education-card,
+      .technical-tab-disclaimer {
+        border: 1px solid rgba(47, 214, 192, .16);
+        border-radius: 26px;
+        background: var(--sfm-card);
+        box-shadow: 0 14px 34px rgba(3, 18, 37, .06);
+        padding: clamp(15px, 2vw, 20px);
+        min-width: 0;
+      }
+
+      .technical-range-card {
+        display: grid;
+        gap: 20px;
+      }
+
+      .technical-range-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      .technical-range-head strong,
+      .technical-education-head strong,
+      .technical-tab-disclaimer strong {
+        display: block;
+        color: var(--sfm-foreground);
+        font-size: 15px;
+        font-weight: 950;
+        line-height: 1.45;
+      }
+
+      .technical-range-head p,
+      .technical-tab-disclaimer p {
+        margin: 5px 0 0;
+        color: var(--sfm-muted);
+        font-size: 13px;
+        font-weight: 850;
+        line-height: 1.75;
+      }
+
+      .technical-range-head > span {
+        width: 40px;
+        height: 40px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        background: rgba(47, 214, 192, .12);
+        color: var(--sfm-soft-cyan);
+        border: 1px solid rgba(47, 214, 192, .20);
+        flex: 0 0 auto;
+      }
+
+      .technical-range-track {
+        position: relative;
+        height: 92px;
+        border-radius: 22px;
+        background: linear-gradient(90deg, rgba(34, 197, 94, .08), rgba(29, 140, 255, .08), rgba(239, 68, 68, .08));
+        border: 1px solid rgba(148, 163, 184, .16);
+        overflow: visible;
+      }
+
+      .technical-range-fill {
+        position: absolute;
+        top: 46px;
+        height: 4px;
+        border-radius: 999px;
+      }
+
+      .technical-range-fill.support {
+        left: 0;
+        width: 45%;
+        background: #16A34A;
+      }
+
+      .technical-range-fill.pivot {
+        left: 44%;
+        width: 12%;
+        background: #1D8CFF;
+      }
+
+      .technical-range-fill.resistance {
+        right: 0;
+        width: 45%;
+        background: #DC2626;
+      }
+
+      .technical-range-marker {
+        position: absolute;
+        top: 18px;
+        transform: translateX(-50%);
+        display: grid;
+        justify-items: center;
+        gap: 6px;
+        min-width: 74px;
+      }
+
+      .technical-range-marker::after {
+        content: "";
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 0 5px rgba(255, 255, 255, .82);
+        order: 2;
+      }
+
+      .technical-range-marker b,
+      .technical-range-marker small {
+        border-radius: 999px;
+        background: var(--sfm-card);
+        border: 1px solid rgba(167, 243, 240, .16);
+        padding: 5px 8px;
+        line-height: 1.2;
+        box-shadow: 0 8px 18px rgba(3, 18, 37, .06);
+      }
+
+      .technical-range-marker b {
+        color: currentColor;
+        font-size: 11px;
+        font-weight: 950;
+      }
+
+      .technical-range-marker small {
+        color: var(--sfm-foreground);
+        font-size: 11px;
+        font-weight: 900;
+      }
+
+      .technical-range-marker.support {
+        color: #16A34A;
+      }
+
+      .technical-range-marker.pivot {
+        color: #1D8CFF;
+      }
+
+      .technical-range-marker.resistance {
+        color: #DC2626;
+      }
+
+      .technical-education-card {
+        display: grid;
+        gap: 14px;
+      }
+
+      .technical-education-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .technical-education-head > span,
+      .technical-tab-disclaimer > svg {
+        width: 38px;
+        height: 38px;
+        border-radius: 15px;
+        display: grid;
+        place-items: center;
+        background: rgba(29, 140, 255, .10);
+        color: var(--sfm-primary-hover);
+        border: 1px solid rgba(29, 140, 255, .18);
+        flex: 0 0 auto;
+      }
+
+      .technical-education-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .technical-education-list li {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: start;
+        gap: 9px;
+        border: 1px solid rgba(167, 243, 240, .14);
+        border-radius: 18px;
+        background: var(--sfm-light-card);
+        padding: 11px;
+        min-width: 0;
+      }
+
+      .technical-education-list b {
+        color: var(--sfm-primary-hover);
+        font-size: 12px;
+        font-weight: 950;
+      }
+
+      .technical-education-list span {
+        color: var(--sfm-muted);
+        font-size: 13px;
+        font-weight: 850;
+        line-height: 1.7;
+      }
+
+      .technical-tab-disclaimer {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        background: linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .06)), var(--sfm-card);
+      }
+
+      .technical-empty-state button {
+        margin-top: 12px;
+      }
+
+      .dark .technical-dashboard-head,
+      .dark .technical-selector-head > div:first-child,
+      .dark .technical-range-card,
+      .dark .technical-education-card,
+      .dark .technical-tab-disclaimer,
+      .dark .technical-data-card.signal {
+        background: linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .07)), #0f1d31;
+        border-color: #1d3050;
+      }
+
+      .dark .technical-range-track,
+      .dark .technical-education-list li {
+        background: #0a1422;
+        border-color: #1d3050;
+      }
+
+      .dark .technical-range-marker b,
+      .dark .technical-range-marker small {
+        background: #0f1d31;
+        border-color: #1d3050;
+      }
+
+      .dark .technical-range-marker::after {
+        box-shadow: 0 0 0 5px rgba(15, 29, 49, .88);
+      }
+
       .portfolio-card {
         gap: 18px !important;
         padding: clamp(18px, 2.2vw, 26px) !important;
@@ -7083,6 +7714,47 @@ function MarketAsyncToolStyles() {
         grid-template-columns: auto minmax(0, 1fr) auto;
       }
 
+      @media (max-width: 1180px) {
+        .technical-selected-summary {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+
+        .technical-data-grid,
+        .technical-education-list {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+      }
+
+      @media (max-width: 780px) {
+        .technical-dashboard-head,
+        .technical-selector-head {
+          grid-template-columns: 1fr;
+        }
+
+        .technical-dashboard-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 19px;
+        }
+
+        .technical-refresh-button {
+          width: 100%;
+        }
+
+        .technical-data-grid,
+        .technical-education-list {
+          grid-template-columns: 1fr !important;
+        }
+
+        .technical-range-card {
+          overflow-x: auto;
+        }
+
+        .technical-range-track {
+          min-width: 560px;
+        }
+      }
+
       @media (max-width: 640px) {
         .market-section-refresh {
           width: 100%;
@@ -7108,6 +7780,35 @@ function MarketAsyncToolStyles() {
 
         .technical-partial-action {
           width: 100%;
+        }
+
+        .technical-analysis-panel {
+          padding: 14px !important;
+          border-radius: 24px !important;
+        }
+
+        .technical-selected-summary {
+          grid-template-columns: 1fr !important;
+        }
+
+        .technical-category-row,
+        .technical-symbol-row {
+          flex-wrap: nowrap !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          padding-bottom: 8px !important;
+          scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .technical-category-row::-webkit-scrollbar,
+        .technical-symbol-row::-webkit-scrollbar {
+          display: none;
+        }
+
+        .technical-tab-disclaimer,
+        .technical-range-head {
+          display: grid;
         }
 
         .portfolio-card-head,

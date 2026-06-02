@@ -103,8 +103,11 @@ const COMMON_CRYPTO_PAIRS: Record<string, string> = {
 };
 const COMMON_METAL_PAIRS: Record<string, string> = {
   XAUUSD: 'GC=F',
+  XAGUSD: 'SI=F',
   GOLD: 'GC=F',
   XAU: 'GC=F',
+  SILVER: 'SI=F',
+  XAG: 'SI=F',
 };
 
 export function validateSymbol(symbol: unknown) {
@@ -191,12 +194,13 @@ export function normalizeMarketSymbolInput(symbol: unknown, assetTypeInput?: unk
   }
 
   if (COMMON_METAL_PAIRS[compact]) {
+    const normalizedMetalSymbol = compact === 'GOLD' ? 'XAUUSD' : compact === 'SILVER' ? 'XAGUSD' : compact;
     return {
       valid: true as const,
-      symbol: compact === 'GOLD' ? 'XAUUSD' : compact,
-      displaySymbol: compact === 'GOLD' ? 'XAUUSD' : compact,
+      symbol: normalizedMetalSymbol,
+      displaySymbol: normalizedMetalSymbol,
       providerSymbol: COMMON_METAL_PAIRS[compact],
-      assetType: 'gold' as MarketAssetType,
+      assetType: normalizedMetalSymbol === 'XAGUSD' ? 'commodity' as MarketAssetType : 'gold' as MarketAssetType,
       suggestions: marketSymbolSuggestions(compact),
     };
   }

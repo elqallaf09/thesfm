@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
     }, { status: 400, headers: cacheHeaders });
   }
 
-  const normalized = normalizeMarketSymbol(providerSymbol || symbol, assetType) ?? normalizeMarketSymbol(symbol, assetType);
+  const normalized = normalizeMarketSymbol(symbol, assetType) ?? normalizeMarketSymbol(providerSymbol || symbol, assetType);
   if (!normalized) {
     return NextResponse.json({
       ok: false,
@@ -224,6 +224,8 @@ export async function GET(request: NextRequest) {
       providerSymbol: analysis.providerSymbol ?? candidate.symbol,
       name: analysis.name,
       interval,
+      currentPrice: analysis.latestPrice ?? null,
+      currency: analysis.currency ?? analysis.quote?.currency ?? null,
       trend: trendFromAverages(analysis.latestPrice, analysis.indicators.sma20, analysis.indicators.sma50),
       support: [analysis.levels.support],
       resistance: [analysis.levels.resistance],
