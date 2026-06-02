@@ -824,6 +824,7 @@ export const TR: Record<string, TranslationEntry> = {
   market_amount: { ar:'المبلغ', en:'Amount', fr:'Montant' },
   market_amount_with_currency_placeholder: { ar:'أدخل المبلغ', en:'Enter amount', fr:'Saisissez le montant' },
   market_amount_currency_label: { ar:'العملة', en:'Currency', fr:'Devise' },
+  market_amount_helper: { ar:'أدخل مبلغًا لاختبار السيناريوهات دون تغيير بياناتك الأساسية.', en:'Enter an amount to test scenarios without changing your core data.', fr:'Saisissez un montant pour tester des scénarios sans modifier vos données principales.' },
   market_invalid_amount: { ar:'أدخل مبلغًا صحيحًا', en:'Enter a valid amount', fr:'Saisissez un montant valide' },
   market_estimated_units: { ar:'الوحدات/الأسهم المقدرة', en:'Estimated units/shares', fr:'Unités/actions estimées' },
   market_positive_scenario: { ar:'السيناريو الإيجابي', en:'Positive scenario', fr:'Scénario positif' },
