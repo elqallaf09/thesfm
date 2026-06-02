@@ -204,7 +204,12 @@ function formatNumber(value: number, maximumFractionDigits = 2) {
 }
 
 function sanitizeMarketToolMessage(code: string, message: string) {
-  if (code === 'ECONOMIC_CALENDAR_SOURCE_NOT_CONFIGURED' || /ECONOMIC_CALENDAR_API_KEY/i.test(message)) {
+  if (
+    code === 'ECONOMIC_CALENDAR_SOURCE_NOT_CONFIGURED' ||
+    code === 'ECONOMIC_CALENDAR_PROVIDER_NOT_CONFIGURED' ||
+    code === 'ECONOMIC_CALENDAR_NOT_CONFIGURED' ||
+    /ECONOMIC_CALENDAR_|FINNHUB_API_KEY|provider integration is not configured/i.test(message)
+  ) {
     return '';
   }
   return message;
@@ -3110,7 +3115,7 @@ function EconomicCalendarPanel({ t, locale, state }: { t: (key: string) => strin
     return event.currency.toUpperCase() === filter;
   }), [filter, sortedEvents]);
   const nextEvent = sortedEvents.find(event => event.eventTime && event.eventTime.getTime() >= Date.now()) ?? sortedEvents[0];
-  const isMissingSource = state.code === 'ECONOMIC_CALENDAR_SOURCE_NOT_CONFIGURED' || state.code === 'ECONOMIC_CALENDAR_NOT_CONFIGURED';
+  const isMissingSource = state.code === 'ECONOMIC_CALENDAR_SOURCE_NOT_CONFIGURED' || state.code === 'ECONOMIC_CALENDAR_PROVIDER_NOT_CONFIGURED' || state.code === 'ECONOMIC_CALENDAR_NOT_CONFIGURED';
   const emptyTitle = isMissingSource ? t('market_calendar_not_configured_title') : t('market_calendar_unavailable_title');
   const emptyBody = isMissingSource ? t('market_calendar_not_configured_body') : (state.message || t('market_calendar_unavailable_body'));
 

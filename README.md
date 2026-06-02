@@ -68,6 +68,19 @@ Setup:
 
 The browser should call the local Next.js proxy routes, such as `/api/market/health` and `/api/market/analyze?symbol=AAPL&assetType=stock`. Client components should not call the Render URL directly.
 
+## Economic Calendar
+
+The Market Analysis page uses `/api/market/economic-calendar` for real high-impact economic events. The route runs server-side only and never exposes provider keys to the browser.
+
+Set these Vercel environment variables:
+
+```text
+ECONOMIC_CALENDAR_PROVIDER=finnhub
+ECONOMIC_CALENDAR_API_KEY=your_finnhub_key
+```
+
+If `ECONOMIC_CALENDAR_API_KEY` is empty, the route falls back to the existing server-only `FINNHUB_API_KEY`. If no provider key is configured, the API returns an empty event list with `ECONOMIC_CALENDAR_PROVIDER_NOT_CONFIGURED`, and the UI shows a polished empty state instead of raw deployment or environment-variable errors.
+
 ## Gulf Market News Sources
 
 The `/gulf-news` page uses free server-side RSS feeds and delayed/free market data only. It does not use paid APIs, client-side keys, fake news, or fake index values.
