@@ -174,6 +174,27 @@ const TEXT = {
   paymentRecorded: { ar: 'تم تسجيل الدفعة وتحديث الرصيد.', en: 'Payment recorded and balance updated.', fr: 'Paiement enregistré et solde mis à jour.' },
   generatedPayments: { ar: 'تمت إضافة الدفعات الشهرية المستحقة.', en: 'Due monthly payments were added.', fr: 'Les mensualités dues ont été ajoutées.' },
   required: { ar: 'يرجى إكمال الحقول المطلوبة بقيم صحيحة.', en: 'Please complete required fields with valid values.', fr: 'Veuillez compléter les champs obligatoires avec des valeurs valides.' },
+  completeRequired: { ar: 'يرجى إدخال الحقول المطلوبة قبل الحفظ.', en: 'Please complete the required fields before saving.', fr: 'Veuillez compléter les champs obligatoires avant l’enregistrement.' },
+  completeRequiredButton: { ar: 'أكمل البيانات المطلوبة', en: 'Complete required fields', fr: 'Compléter les champs requis' },
+  modalSubtitle: { ar: 'أدخل بيانات الدين وجدولة السداد الشهري.', en: 'Enter debt details and schedule the monthly repayment.', fr: 'Saisissez les détails de la dette et planifiez le remboursement mensuel.' },
+  sectionDebtData: { ar: 'بيانات الدين', en: 'Debt details', fr: 'Détails de la dette' },
+  sectionPaymentDetails: { ar: 'تفاصيل السداد', en: 'Repayment details', fr: 'Détails du remboursement' },
+  sectionInterest: { ar: 'الفائدة', en: 'Interest', fr: 'Intérêt' },
+  sectionSettings: { ar: 'الإعدادات والملاحظات', en: 'Settings and notes', fr: 'Paramètres et notes' },
+  autoExpenseHelper: { ar: 'سيتم تسجيل الدفعة الشهرية ضمن المصروفات عند موعد الاستحقاق.', en: 'The monthly payment will be recorded as an expense when it becomes due.', fr: 'La mensualité sera enregistrée comme dépense à la date d’échéance.' },
+  validationName: { ar: 'يرجى إدخال اسم الدين.', en: 'Please enter the debt name.', fr: 'Veuillez saisir le nom de la dette.' },
+  validationCreditor: { ar: 'يرجى إدخال الجهة الدائنة.', en: 'Please enter the creditor.', fr: 'Veuillez saisir le créancier.' },
+  validationOriginalAmount: { ar: 'يرجى إدخال مبلغ الدين الأصلي.', en: 'Please enter the original debt amount.', fr: 'Veuillez saisir le montant initial de la dette.' },
+  validationRemainingAmount: { ar: 'يرجى إدخال المبلغ المتبقي.', en: 'Please enter the remaining amount.', fr: 'Veuillez saisir le montant restant.' },
+  validationMonthlyPayment: { ar: 'يرجى إدخال قيمة الدفع الشهري.', en: 'Please enter the monthly payment amount.', fr: 'Veuillez saisir le montant de la mensualité.' },
+  validationCurrency: { ar: 'يرجى اختيار العملة.', en: 'Please choose a currency.', fr: 'Veuillez choisir une devise.' },
+  validationInterestRate: { ar: 'نسبة الفائدة يجب أن تكون بين 0 و100.', en: 'Interest rate must be between 0 and 100.', fr: 'Le taux d’intérêt doit être compris entre 0 et 100.' },
+  validationPaymentDay: { ar: 'يوم الدفع الشهري يجب أن يكون بين 1 و31.', en: 'Monthly payment day must be between 1 and 31.', fr: 'Le jour de paiement mensuel doit être compris entre 1 et 31.' },
+  validationStartDate: { ar: 'تاريخ بداية الدين غير صالح.', en: 'Debt start date is invalid.', fr: 'La date de début de la dette est invalide.' },
+  authSaveError: { ar: 'يجب تسجيل الدخول لحفظ بيانات الدين.', en: 'You must sign in to save debt data.', fr: 'Vous devez vous connecter pour enregistrer les données de la dette.' },
+  rlsSaveError: { ar: 'تعذر حفظ الدين بسبب صلاحيات الوصول. يرجى مراجعة إعدادات قاعدة البيانات.', en: 'Debt could not be saved because of access permissions. Please review database settings.', fr: 'La dette n’a pas pu être enregistrée en raison des autorisations d’accès. Veuillez vérifier les paramètres de la base de données.' },
+  databaseSaveError: { ar: 'تعذر حفظ بيانات الدين. يرجى التحقق من البيانات والمحاولة مرة أخرى.', en: 'Debt data could not be saved. Please check the data and try again.', fr: 'Les données de la dette n’ont pas pu être enregistrées. Vérifiez les données puis réessayez.' },
+  networkSaveError: { ar: 'تعذر الاتصال بالخادم. يرجى المحاولة لاحقًا.', en: 'Could not connect to the server. Please try again later.', fr: 'Impossible de se connecter au serveur. Veuillez réessayer plus tard.' },
   duplicatePayment: { ar: 'تم تسجيل دفعة لهذا الدين في هذا التاريخ مسبقًا.', en: 'A payment for this debt already exists on this date.', fr: 'Un paiement pour cette dette existe déjà à cette date.' },
   error: { ar: 'تعذر إكمال العملية. حاول مرة أخرى لاحقًا.', en: 'Could not complete the action. Please try again later.', fr: 'Impossible de terminer l’action. Réessayez plus tard.' },
   yes: { ar: 'نعم', en: 'Yes', fr: 'Oui' },
@@ -190,6 +211,28 @@ function tr(lang: string | undefined, key: keyof typeof TEXT) {
 function toNumber(value: unknown, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function optionalNumber(value: unknown) {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function cleanNumericInput(value: string) {
+  const cleaned = value.replace(/[^\d.]/g, '');
+  const [whole, ...fractionParts] = cleaned.split('.');
+  return fractionParts.length ? `${whole}.${fractionParts.join('')}` : whole;
+}
+
+function formatDateToYYYYMMDD(value: string) {
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const parsed = new Date(`${trimmed}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? null : trimmed;
+  }
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
 }
 
 function clampPaymentDay(value: unknown) {
@@ -268,34 +311,61 @@ function estimatePayoffMonths(debt: DebtRow) {
 }
 
 function payloadFromForm(form: DebtForm, userId: string) {
+  const startDate = formatDateToYYYYMMDD(form.startDate);
   return {
     user_id: userId,
     name: form.name.trim(),
-    creditor_name: form.creditorName.trim() || null,
+    creditor_name: form.creditorName.trim(),
     original_amount: toNumber(form.originalAmount),
     remaining_amount: toNumber(form.remainingAmount || form.originalAmount),
-    currency: form.currency,
-    start_date: form.startDate,
+    currency: form.currency || 'KWD',
+    start_date: startDate ?? form.startDate,
     monthly_payment: toNumber(form.monthlyPayment),
-    interest_rate: toNumber(form.interestRate),
-    interest_type: form.interestType,
-    payment_day: clampPaymentDay(form.paymentDay),
-    category: 'debt',
+    interest_rate: toNumber(form.interestRate, 0),
+    interest_type: form.interestType || 'annual',
+    payment_day: Math.round(toNumber(form.paymentDay, 1)),
     notes: form.notes.trim() || null,
-    auto_add_to_expenses: form.autoAddToExpenses,
-    status: form.status,
+    auto_add_to_expenses: Boolean(form.autoAddToExpenses),
+    status: form.status || 'active',
   };
 }
 
-function isValidForm(form: DebtForm) {
-  return Boolean(
-    form.name.trim()
-    && form.startDate
-    && toNumber(form.originalAmount) > 0
-    && toNumber(form.remainingAmount || form.originalAmount) >= 0
-    && toNumber(form.monthlyPayment) > 0
-    && clampPaymentDay(form.paymentDay) >= 1
-  );
+function validateDebtForm(form: DebtForm): Array<keyof typeof TEXT> {
+  const errors: Array<keyof typeof TEXT> = [];
+  const originalAmount = optionalNumber(form.originalAmount);
+  const remainingAmount = optionalNumber(form.remainingAmount);
+  const monthlyPayment = optionalNumber(form.monthlyPayment);
+  const interestRate = optionalNumber(form.interestRate || '0');
+  const paymentDay = optionalNumber(form.paymentDay);
+
+  if (!form.name.trim()) errors.push('validationName');
+  if (!form.creditorName.trim()) errors.push('validationCreditor');
+  if (originalAmount === null || originalAmount <= 0) errors.push('validationOriginalAmount');
+  if (remainingAmount === null || remainingAmount < 0) errors.push('validationRemainingAmount');
+  if (!form.currency.trim()) errors.push('validationCurrency');
+  if (!formatDateToYYYYMMDD(form.startDate)) errors.push('validationStartDate');
+  if (monthlyPayment === null || monthlyPayment <= 0) errors.push('validationMonthlyPayment');
+  if (interestRate === null || interestRate < 0 || interestRate > 100) errors.push('validationInterestRate');
+  if (paymentDay === null || !Number.isInteger(paymentDay) || paymentDay < 1 || paymentDay > 31) errors.push('validationPaymentDay');
+
+  return errors;
+}
+
+function debtSaveErrorMessage(error: unknown, t: (key: keyof typeof TEXT) => string) {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return t('networkSaveError');
+  const details = [
+    error && typeof error === 'object' && 'message' in error ? String((error as { message?: unknown }).message ?? '') : '',
+    error && typeof error === 'object' && 'details' in error ? String((error as { details?: unknown }).details ?? '') : '',
+    error && typeof error === 'object' && 'hint' in error ? String((error as { hint?: unknown }).hint ?? '') : '',
+    error && typeof error === 'object' && 'code' in error ? String((error as { code?: unknown }).code ?? '') : '',
+  ].join(' ').toLowerCase();
+  if (details.includes('failed to fetch') || details.includes('network') || details.includes('timeout')) {
+    return t('networkSaveError');
+  }
+  if (details.includes('row-level security') || details.includes('rls') || details.includes('42501') || details.includes('permission')) {
+    return t('rlsSaveError');
+  }
+  return t('databaseSaveError');
 }
 
 export default function DebtsPage() {
@@ -315,6 +385,9 @@ export default function DebtsPage() {
   const [generationChecked, setGenerationChecked] = useState(false);
 
   const t = useCallback((key: keyof typeof TEXT) => tr(locale, key), [locale]);
+  const validationKeys = useMemo(() => validateDebtForm(form), [form]);
+  const formIsValid = validationKeys.length === 0;
+  const visibleValidationKeys = formIsValid ? [] : validationKeys;
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -404,6 +477,7 @@ export default function DebtsPage() {
 
   function openAddForm() {
     setForm({ ...DEFAULT_FORM, currency: baseCurrency || 'KWD' });
+    setError('');
     setFormOpen(true);
   }
 
@@ -424,17 +498,23 @@ export default function DebtsPage() {
       autoAddToExpenses: debt.auto_add_to_expenses !== false,
       status: (debt.status === 'paid' || debt.status === 'paused' || debt.status === 'active') ? debt.status : 'active',
     });
+    setError('');
     setFormOpen(true);
   }
 
   async function saveDebt(event: FormEvent) {
     event.preventDefault();
-    if (!user || !isValidForm(form)) {
-      setError(t('required'));
+    if (!user) {
+      setError(t('authSaveError'));
+      return;
+    }
+    if (!formIsValid) {
+      setError('');
       return;
     }
     setSaving(true);
     setError('');
+    setNotice('');
     try {
       const payload = payloadFromForm(form, user.id);
       const result = form.id
@@ -445,7 +525,8 @@ export default function DebtsPage() {
       resetForm();
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error'));
+      console.error('Debt save error:', err);
+      setError(debtSaveErrorMessage(err, t));
     } finally {
       setSaving(false);
     }
@@ -718,27 +799,43 @@ export default function DebtsPage() {
 
       {formOpen && (
         <div className="debt-modal-backdrop" role="dialog" aria-modal="true" aria-label={form.id ? t('editDebt') : t('addDebt')}>
-          <form className="debt-modal" onSubmit={saveDebt}>
+          <form className="debt-modal" onSubmit={saveDebt} dir={dir}>
             <div className="debt-modal-head">
               <div>
-                <span>{form.id ? t('editDebt') : t('addDebt')}</span>
-                <h2>{t('title')}</h2>
+                <span>THE SFM</span>
+                <h2>{form.id ? t('editDebt') : t('addDebt')}</h2>
+                <p>{t('modalSubtitle')}</p>
               </div>
               <button type="button" onClick={resetForm} aria-label={t('cancel')}><X size={18} /></button>
             </div>
+            {visibleValidationKeys.length > 0 && (
+              <div className="debt-validation-panel">
+                <AlertTriangle size={18} />
+                <div>
+                  <strong>{t('completeRequired')}</strong>
+                  <ul>
+                    {visibleValidationKeys.map(key => <li key={key}>{t(key)}</li>)}
+                  </ul>
+                </div>
+              </div>
+            )}
             <div className="debt-form-grid">
-              <DebtInput label={t('name')} value={form.name} placeholder={t('namePlaceholder')} onChange={value => setForm(current => ({ ...current, name: value }))} />
-              <DebtInput label={t('creditor')} value={form.creditorName} placeholder={t('creditorPlaceholder')} onChange={value => setForm(current => ({ ...current, creditorName: value }))} />
-              <MoneyInput label={t('originalAmount')} currency={form.currency} value={form.originalAmount} onChange={value => setForm(current => ({ ...current, originalAmount: value, remainingAmount: current.remainingAmount || value }))} />
-              <MoneyInput label={t('remainingAmount')} currency={form.currency} value={form.remainingAmount} onChange={value => setForm(current => ({ ...current, remainingAmount: value }))} />
+              <FormSectionTitle title={t('sectionDebtData')} />
+              <DebtInput required label={t('name')} value={form.name} placeholder={t('namePlaceholder')} onChange={value => setForm(current => ({ ...current, name: value }))} />
+              <DebtInput required label={t('creditor')} value={form.creditorName} placeholder={t('creditorPlaceholder')} onChange={value => setForm(current => ({ ...current, creditorName: value }))} />
+              <MoneyInput required label={t('originalAmount')} currency={form.currency} value={form.originalAmount} onChange={value => setForm(current => ({ ...current, originalAmount: value, remainingAmount: current.remainingAmount || value }))} />
+              <MoneyInput required label={t('remainingAmount')} currency={form.currency} value={form.remainingAmount} onChange={value => setForm(current => ({ ...current, remainingAmount: value }))} />
               <label className="debt-field">
-                <span>{t('currency')}</span>
+                <span>{t('currency')} <i>*</i></span>
                 <select value={form.currency} onChange={event => setForm(current => ({ ...current, currency: event.target.value }))}>
                   {SUPPORTED_CURRENCIES.map(code => <option key={code} value={code}>{code}</option>)}
                 </select>
               </label>
-              <DebtInput type="date" label={t('startDate')} value={form.startDate} onChange={value => setForm(current => ({ ...current, startDate: value }))} />
-              <MoneyInput label={t('monthlyPayment')} currency={form.currency} value={form.monthlyPayment} onChange={value => setForm(current => ({ ...current, monthlyPayment: value }))} />
+              <DebtInput required type="date" label={t('startDate')} value={form.startDate} onChange={value => setForm(current => ({ ...current, startDate: value }))} />
+              <FormSectionTitle title={t('sectionPaymentDetails')} />
+              <MoneyInput required label={t('monthlyPayment')} currency={form.currency} value={form.monthlyPayment} onChange={value => setForm(current => ({ ...current, monthlyPayment: value }))} />
+              <SuffixInput required label={t('paymentDay')} suffix="1 - 31" value={form.paymentDay} onChange={value => setForm(current => ({ ...current, paymentDay: value }))} />
+              <FormSectionTitle title={t('sectionInterest')} />
               <SuffixInput label={t('interestRate')} suffix="%" value={form.interestRate} onChange={value => setForm(current => ({ ...current, interestRate: value }))} />
               <label className="debt-field">
                 <span>{t('interestType')}</span>
@@ -748,9 +845,9 @@ export default function DebtsPage() {
                   <option value="monthly">{t('monthlyInterest')}</option>
                 </select>
               </label>
-              <SuffixInput label={t('paymentDay')} suffix="1 - 31" value={form.paymentDay} onChange={value => setForm(current => ({ ...current, paymentDay: value }))} />
+              <FormSectionTitle title={t('sectionSettings')} />
               <label className="debt-field wide toggle-row">
-                <span>{t('autoExpense')}</span>
+                <span>{t('autoExpense')} <small>{t('autoExpenseHelper')}</small></span>
                 <button type="button" aria-pressed={form.autoAddToExpenses} onClick={() => setForm(current => ({ ...current, autoAddToExpenses: !current.autoAddToExpenses }))}>
                   {form.autoAddToExpenses ? t('yes') : t('no')}
                 </button>
@@ -760,9 +857,10 @@ export default function DebtsPage() {
                 <textarea value={form.notes} rows={3} onChange={event => setForm(current => ({ ...current, notes: event.target.value }))} />
               </label>
             </div>
+            {!formIsValid && <p className="debt-form-helper">{t('completeRequired')}</p>}
             <div className="debt-modal-actions">
-              <button type="button" onClick={resetForm}>{t('cancel')}</button>
-              <button type="submit" className="debts-primary" disabled={saving}>{saving ? t('saving') : t('save')}</button>
+              <button type="button" className="debt-secondary-action" onClick={resetForm}>{t('cancel')}</button>
+              <button type="submit" className="debts-primary" disabled={saving || !formIsValid}>{saving ? t('saving') : formIsValid ? t('save') : t('completeRequiredButton')}</button>
             </div>
           </form>
         </div>
@@ -802,33 +900,41 @@ function InsightRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function DebtInput({ label, value, onChange, type = 'text', placeholder }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string }) {
+function FormSectionTitle({ title }: { title: string }) {
+  return <div className="debt-form-section"><span>{title}</span></div>;
+}
+
+function RequiredMark({ required }: { required?: boolean }) {
+  return required ? <i>*</i> : null;
+}
+
+function DebtInput({ label, value, onChange, type = 'text', placeholder, required }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string; required?: boolean }) {
   return (
     <label className="debt-field">
-      <span>{label}</span>
+      <span>{label} <RequiredMark required={required} /></span>
       <input type={type} value={value} placeholder={placeholder} onChange={event => onChange(event.target.value)} />
     </label>
   );
 }
 
-function MoneyInput({ label, currency, value, onChange }: { label: string; currency: string; value: string; onChange: (value: string) => void }) {
+function MoneyInput({ label, currency, value, onChange, required }: { label: string; currency: string; value: string; onChange: (value: string) => void; required?: boolean }) {
   return (
     <label className="debt-field">
-      <span>{label}</span>
+      <span>{label} <RequiredMark required={required} /></span>
       <div className="affix-input">
         <em dir="ltr">{currency}</em>
-        <input inputMode="decimal" dir="ltr" value={value} onChange={event => onChange(event.target.value.replace(/[^\d.]/g, ''))} />
+        <input inputMode="decimal" dir="ltr" value={value} onChange={event => onChange(cleanNumericInput(event.target.value))} />
       </div>
     </label>
   );
 }
 
-function SuffixInput({ label, suffix, value, onChange }: { label: string; suffix: string; value: string; onChange: (value: string) => void }) {
+function SuffixInput({ label, suffix, value, onChange, required }: { label: string; suffix: string; value: string; onChange: (value: string) => void; required?: boolean }) {
   return (
     <label className="debt-field">
-      <span>{label}</span>
+      <span>{label} <RequiredMark required={required} /></span>
       <div className="affix-input">
-        <input inputMode="decimal" dir="ltr" value={value} onChange={event => onChange(event.target.value.replace(/[^\d.]/g, ''))} />
+        <input inputMode="decimal" dir="ltr" value={value} onChange={event => onChange(cleanNumericInput(event.target.value))} />
         <em dir="ltr">{suffix}</em>
       </div>
     </label>
@@ -1291,17 +1397,24 @@ function DebtStyles() {
         position: fixed;
         inset: 0;
         z-index: 80;
-        display: grid;
-        place-items: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         background: rgba(3, 18, 37, .56);
+        backdrop-filter: blur(10px);
         padding: 18px;
         overflow-y: auto;
       }
 
       .debt-modal {
-        width: min(920px, 100%);
+        width: 100%;
+        max-width: 920px;
+        max-height: min(90dvh, 920px);
+        overflow-y: auto;
         border-radius: 30px;
         padding: 22px;
+        margin: auto;
+        outline: none;
       }
 
       .debt-modal-head {
@@ -1325,6 +1438,14 @@ function DebtStyles() {
         font-weight: 950;
       }
 
+      .debt-modal-head p {
+        margin: 6px 0 0;
+        color: var(--sfm-muted);
+        font-size: 13px;
+        font-weight: 750;
+        line-height: 1.7;
+      }
+
       .debt-modal-head > button {
         width: 40px;
         height: 40px;
@@ -1333,12 +1454,81 @@ function DebtStyles() {
         background: var(--sfm-light-card);
         color: var(--sfm-foreground);
         cursor: pointer;
+        flex-shrink: 0;
+        transition: transform .18s ease, background .18s ease, border-color .18s ease;
+      }
+
+      .debt-modal-head > button:hover {
+        background: rgba(47, 214, 192, .12);
+        border-color: rgba(47, 214, 192, .32);
+      }
+
+      .debt-modal-head > button:active {
+        transform: translateY(1px);
+      }
+
+      .debt-validation-panel {
+        display: flex;
+        align-items: flex-start;
+        gap: 11px;
+        border: 1px solid rgba(245, 158, 11, .28);
+        border-radius: 20px;
+        background: rgba(245, 158, 11, .10);
+        color: #92400e;
+        padding: 13px;
+        margin-bottom: 16px;
+      }
+
+      .debt-validation-panel svg {
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
+
+      .debt-validation-panel strong {
+        display: block;
+        font-size: 13px;
+        font-weight: 950;
+      }
+
+      .debt-validation-panel ul {
+        margin: 8px 0 0;
+        padding-inline-start: 18px;
+        display: grid;
+        gap: 4px;
+        color: #78350f;
+        font-size: 12px;
+        font-weight: 800;
       }
 
       .debt-form-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 14px;
+      }
+
+      .debt-form-section {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 6px;
+      }
+
+      .debt-form-section:first-child {
+        margin-top: 0;
+      }
+
+      .debt-form-section::after {
+        content: "";
+        height: 1px;
+        flex: 1;
+        background: linear-gradient(90deg, rgba(47, 214, 192, .32), rgba(148, 163, 184, .10));
+      }
+
+      .debt-form-section span {
+        color: var(--sfm-foreground);
+        font-size: 13px;
+        font-weight: 950;
       }
 
       .debt-field {
@@ -1355,6 +1545,21 @@ function DebtStyles() {
         color: var(--sfm-muted);
         font-size: 12px;
         font-weight: 950;
+      }
+
+      .debt-field > span i {
+        color: #dc2626;
+        font-style: normal;
+        margin-inline-start: 2px;
+      }
+
+      .debt-field > span small {
+        display: block;
+        margin-top: 5px;
+        color: var(--sfm-muted);
+        font-size: 11px;
+        font-weight: 750;
+        line-height: 1.6;
       }
 
       .debt-field input,
@@ -1415,6 +1620,10 @@ function DebtStyles() {
         padding-inline: 6px;
       }
 
+      .affix-input input:focus {
+        box-shadow: none;
+      }
+
       .toggle-row {
         display: flex;
         align-items: center;
@@ -1446,11 +1655,51 @@ function DebtStyles() {
         justify-content: flex-end;
         gap: 10px;
         margin-top: 18px;
+        flex-wrap: wrap;
       }
 
       .debt-modal-actions .debts-primary {
         border: 0;
         color: #fff;
+        width: auto;
+        min-width: 170px;
+      }
+
+      .debt-modal-actions .debts-primary:disabled {
+        background: rgba(15, 23, 42, .08);
+        border: 1px solid rgba(15, 23, 42, .12);
+        color: #475569;
+        box-shadow: none;
+        cursor: not-allowed;
+        opacity: 1;
+      }
+
+      .debt-secondary-action {
+        min-height: 44px;
+        border: 1px solid rgba(47, 214, 192, .22);
+        border-radius: 999px;
+        background: var(--sfm-light-card);
+        color: var(--sfm-foreground);
+        padding: 0 17px;
+        font: 950 13px Tajawal, Arial, sans-serif;
+        cursor: pointer;
+        transition: background .18s ease, border-color .18s ease, transform .18s ease;
+      }
+
+      .debt-secondary-action:hover {
+        background: rgba(47, 214, 192, .10);
+        border-color: rgba(47, 214, 192, .35);
+      }
+
+      .debt-secondary-action:active {
+        transform: translateY(1px);
+      }
+
+      .debt-form-helper {
+        margin: 14px 0 0;
+        color: var(--sfm-muted);
+        font-size: 12px;
+        font-weight: 850;
       }
 
       .dark .debts-shell {
@@ -1500,6 +1749,28 @@ function DebtStyles() {
         color: #f5b942;
         background: rgba(245, 185, 66, .12);
         border-color: rgba(245, 185, 66, .25);
+      }
+
+      .dark .debt-validation-panel {
+        background: rgba(245, 185, 66, .12);
+        border-color: rgba(245, 185, 66, .25);
+        color: #f8d47a;
+      }
+
+      .dark .debt-validation-panel ul {
+        color: #f5b942;
+      }
+
+      .dark .debt-modal-actions .debts-primary:disabled {
+        background: rgba(19, 36, 58, .88);
+        border-color: #1d3050;
+        color: #b8c7d9;
+      }
+
+      .dark .debt-secondary-action {
+        background: #0a1422;
+        border-color: #1d3050;
+        color: #e8eef6;
       }
 
       @media (max-width: 1180px) {
@@ -1556,6 +1827,14 @@ function DebtStyles() {
           overflow-y: auto;
           border-end-start-radius: 0;
           border-end-end-radius: 0;
+          padding: 18px;
+        }
+        .debt-modal-actions {
+          display: grid;
+        }
+        .debt-modal-actions .debts-primary,
+        .debt-secondary-action {
+          width: 100%;
         }
       }
 
