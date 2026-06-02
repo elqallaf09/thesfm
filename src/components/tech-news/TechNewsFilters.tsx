@@ -1,56 +1,73 @@
 'use client';
 
-import { useState } from 'react';
 import { Filter, Search } from 'lucide-react';
-import type { TechNewsSectorFilter } from '@/lib/market/techStocks';
 
-const VISIBLE_TECH_NEWS_SECTORS: TechNewsSectorFilter[] = [
-  'all',
-  'ai',
-  'semiconductors',
-  'software',
-  'hardware',
-  'cloud',
-];
+export type TechNewsDashboardCategory =
+  | 'all'
+  | 'techStocks'
+  | 'ai'
+  | 'semiconductors'
+  | 'markets'
+  | 'crypto'
+  | 'companies';
 
-const MORE_TECH_NEWS_SECTORS: TechNewsSectorFilter[] = [
-  'cybersecurity',
-  'ecommerce',
-  'ev',
-  'social_ads',
-  'gaming',
-  'infrastructure',
-];
+export type TechNewsTimeFilter = 'all' | 'today' | 'week' | 'month';
+export type TechNewsSort = 'recent' | 'relevance' | 'impact';
 
 type TechNewsFiltersProps = {
   query: string;
-  sector: TechNewsSectorFilter;
-  sort: 'recent';
+  category: TechNewsDashboardCategory;
+  source: string;
+  timeFilter: TechNewsTimeFilter;
+  sort: TechNewsSort;
+  sources: string[];
   labels: {
     search: string;
+    filter: string;
+    source: string;
+    allSources: string;
+    time: string;
     sort: string;
-    recent: string;
-    more: string;
-    sectors: Record<TechNewsSectorFilter, string>;
+    categories: Record<TechNewsDashboardCategory, string>;
+    times: Record<TechNewsTimeFilter, string>;
+    sorts: Record<TechNewsSort, string>;
   };
   onQueryChange: (value: string) => void;
-  onSectorChange: (value: TechNewsSectorFilter) => void;
+  onCategoryChange: (value: TechNewsDashboardCategory) => void;
+  onSourceChange: (value: string) => void;
+  onTimeFilterChange: (value: TechNewsTimeFilter) => void;
+  onSortChange: (value: TechNewsSort) => void;
 };
+
+const CATEGORY_ORDER: TechNewsDashboardCategory[] = [
+  'all',
+  'techStocks',
+  'ai',
+  'semiconductors',
+  'markets',
+  'crypto',
+  'companies',
+];
+
+const TIME_FILTERS: TechNewsTimeFilter[] = ['all', 'today', 'week', 'month'];
+const SORT_OPTIONS: TechNewsSort[] = ['recent', 'relevance', 'impact'];
 
 export function TechNewsFilters({
   query,
-  sector,
+  category,
+  source,
+  timeFilter,
   sort,
+  sources,
   labels,
   onQueryChange,
-  onSectorChange,
+  onCategoryChange,
+  onSourceChange,
+  onTimeFilterChange,
+  onSortChange,
 }: TechNewsFiltersProps) {
-  const [showMoreSectors, setShowMoreSectors] = useState(false);
-  const moreSectorSelected = MORE_TECH_NEWS_SECTORS.includes(sector);
-  const expandedSectors = showMoreSectors || moreSectorSelected;
-
   return (
-    <section className="tech-news-controls" aria-label={labels.search}>
+    <section className="tech-news-controls" aria-label={labels.filter}>
       <label className="tech-news-search">
         <Search size={17} />
         <input
@@ -61,40 +78,53 @@ export function TechNewsFilters({
           autoComplete="off"
         />
       </label>
-      <div className="tech-news-chip-row no-scrollbar">
-        <button type="button" className="tech-news-filter-icon" aria-label={labels.sort}>
+
+      <div className="tech-news-filter-row">
+        <span className="tech-news-filter-label">
           <Filter size={15} />
-        </button>
-        {VISIBLE_TECH_NEWS_SECTORS.map(item => (
+          {labels.filter}
+        </span>
+        <label className="tech-news-select-control">
+          <span>{labels.source}</span>
+          <select value={source} onChange={event => onSourceChange(event.target.value)}>
+            <option value="all">{labels.allSources}</option>
+            {sources.map(item => (
+              <option key={item} value={item}>{item}</option>
+            ))}
+          </select>
+        </label>
+        <label className="tech-news-select-control">
+          <span>{labels.time}</span>
+          <select value={timeFilter} onChange={event => onTimeFilterChange(event.target.value as TechNewsTimeFilter)}>
+            {TIME_FILTERS.map(item => (
+              <option key={item} value={item}>{labels.times[item]}</option>
+            ))}
+          </select>
+        </label>
+        <label className="tech-news-select-control">
+          <span>{labels.sort}</span>
+          <select value={sort} onChange={event => onSortChange(event.target.value as TechNewsSort)}>
+            {SORT_OPTIONS.map(item => (
+              <option key={item} value={item}>{labels.sorts[item]}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="tech-news-chip-row no-scrollbar" role="tablist" aria-label={labels.filter}>
+        {CATEGORY_ORDER.map(item => (
           <button
             key={item}
             type="button"
-            className={sector === item ? 'active' : ''}
-            onClick={() => onSectorChange(item)}
+            role="tab"
+            aria-selected={category === item}
+            className={category === item ? 'active' : ''}
+            onClick={() => onCategoryChange(item)}
           >
-            {labels.sectors[item]}
+            {labels.categories[item]}
           </button>
         ))}
-        <button
-          type="button"
-          className={expandedSectors ? 'tech-news-more-button active' : 'tech-news-more-button'}
-          aria-expanded={expandedSectors}
-          onClick={() => setShowMoreSectors(value => !value)}
-        >
-          {labels.more}
-        </button>
-        {expandedSectors ? MORE_TECH_NEWS_SECTORS.map(item => (
-          <button
-            key={item}
-            type="button"
-            className={sector === item ? 'active' : ''}
-            onClick={() => onSectorChange(item)}
-          >
-            {labels.sectors[item]}
-          </button>
-        )) : null}
       </div>
-      <input type="hidden" value={sort} readOnly aria-label={labels.recent} />
     </section>
   );
 }

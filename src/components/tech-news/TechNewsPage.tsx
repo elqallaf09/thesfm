@@ -1,19 +1,25 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Newspaper, RefreshCcw } from 'lucide-react';
+import { AlertTriangle, Clock3, ExternalLink, Newspaper, RefreshCcw, Star, TrendingUp } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechNewsItem, TechNewsPayload } from '@/lib/market/fetchTechNews';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
-import type { TechNewsSectorFilter } from '@/lib/market/techStocks';
 import { TechNewsCard } from '@/components/tech-news/TechNewsCard';
-import { TechNewsFilters } from '@/components/tech-news/TechNewsFilters';
+import {
+  TechNewsFilters,
+  type TechNewsDashboardCategory,
+  type TechNewsSort,
+  type TechNewsTimeFilter,
+} from '@/components/tech-news/TechNewsFilters';
 import { TechNewsHeader } from '@/components/tech-news/TechNewsHeader';
 import { TechNewsSkeleton } from '@/components/tech-news/TechNewsSkeleton';
 import { TechTickerStrip } from '@/components/tech-news/TechTickerStrip';
 
 type ApiResponse = TechNewsPayload | { success: false; error?: string; reason?: string };
+const NEWS_PAGE_SIZE = 12;
+const FEATURED_NEWS_COUNT = 4;
 
 function localeFor(lang: string) {
   if (lang === 'en') return 'en-US';
@@ -27,6 +33,65 @@ function minutesAgo(value: string) {
   return Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
 }
 
+function itemSearchText(item: TechNewsItem) {
+  return [
+    item.companyName,
+    item.ticker,
+    item.source,
+    item.title,
+    item.summary,
+    item.titleOriginal,
+    item.summaryOriginal,
+  ].join(' ').toLowerCase();
+}
+
+function hasKeyword(item: TechNewsItem, keywords: string[]) {
+  const haystack = itemSearchText(item);
+  return keywords.some(keyword => haystack.includes(keyword.toLowerCase()));
+}
+
+function categoryMatches(item: TechNewsItem, category: TechNewsDashboardCategory) {
+  if (category === 'all') return true;
+  const sectors = new Set([item.sector, ...(item.sectors ?? [])]);
+  const ticker = String(item.ticker ?? '').toUpperCase();
+
+  if (category === 'techStocks') return Boolean(ticker && ticker !== 'TECH');
+  if (category === 'ai') return sectors.has('ai') || hasKeyword(item, ['AI', 'artificial intelligence', 'OpenAI', 'machine learning']);
+  if (category === 'semiconductors') return sectors.has('semiconductors') || hasKeyword(item, ['chip', 'semiconductor', 'GPU', 'CPU', 'Nvidia', 'AMD', 'Intel', 'TSMC']);
+  if (category === 'markets') return hasKeyword(item, ['market', 'markets', 'stock', 'stocks', 'shares', 'earnings', 'Nasdaq', 'S&P', 'Wall Street', 'futures', 'rally', 'selloff']);
+  if (category === 'crypto') return ['BTC', 'ETH', 'BTCUSD', 'ETHUSD'].includes(ticker) || hasKeyword(item, ['crypto', 'bitcoin', 'ethereum', 'blockchain']);
+  if (category === 'companies') return Boolean(ticker && ticker !== 'TECH' && item.companyName && item.companyName !== 'Technology Market');
+  return true;
+}
+
+function timeMatches(item: TechNewsItem, filter: TechNewsTimeFilter) {
+  if (filter === 'all') return true;
+  const date = new Date(item.publishedAt);
+  if (Number.isNaN(date.getTime())) return false;
+  const diffDays = (Date.now() - date.getTime()) / 86400000;
+  if (filter === 'today') return diffDays <= 1;
+  if (filter === 'week') return diffDays <= 7;
+  return diffDays <= 31;
+}
+
+function relevanceScore(item: TechNewsItem, query: string) {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return new Date(item.publishedAt).getTime() / 1000000000;
+  let score = 0;
+  if (item.ticker.toLowerCase() === needle) score += 80;
+  if (item.companyName.toLowerCase().includes(needle)) score += 40;
+  if (item.title.toLowerCase().includes(needle)) score += 30;
+  if (item.summary.toLowerCase().includes(needle)) score += 15;
+  if ((item.titleOriginal ?? '').toLowerCase().includes(needle)) score += 10;
+  return score + new Date(item.publishedAt).getTime() / 10000000000;
+}
+
+function impactScore(item: TechNewsItem) {
+  const changeImpact = Math.abs(Number(item.changePercent ?? 0));
+  const tickerBonus = item.ticker && item.ticker !== 'TECH' ? 0.5 : 0;
+  return changeImpact + tickerBonus;
+}
+
 export function TechNewsPage() {
   const { dir, lang, t } = useLanguage();
   const [items, setItems] = useState<TechNewsItem[]>([]);
@@ -36,7 +101,11 @@ export function TechNewsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
-  const [sector, setSector] = useState<TechNewsSectorFilter>('all');
+  const [category, setCategory] = useState<TechNewsDashboardCategory>('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [timeFilter, setTimeFilter] = useState<TechNewsTimeFilter>('all');
+  const [sort, setSort] = useState<TechNewsSort>('recent');
+  const [visibleCount, setVisibleCount] = useState(NEWS_PAGE_SIZE);
   const locale = localeFor(lang);
 
   const load = useCallback(async (showLoader = true) => {
@@ -44,7 +113,7 @@ export function TechNewsPage() {
     setRefreshing(!showLoader);
     setError('');
     try {
-      const response = await fetch(`/api/tech-news?lang=${encodeURIComponent(lang)}&limit=50`);
+      const response = await fetch(`/api/tech-news?lang=${encodeURIComponent(lang)}&limit=60`);
       const json = await response.json().catch(() => ({})) as ApiResponse;
       if (!response.ok || !json.success) {
         throw new Error('reason' in json ? json.reason || json.error || t('tech_news_error') : t('tech_news_error'));
@@ -67,19 +136,64 @@ export function TechNewsPage() {
     void load();
   }, [load]);
 
-  const visibleItems = useMemo(() => {
+  useEffect(() => {
+    setVisibleCount(NEWS_PAGE_SIZE);
+  }, [category, lang, query, sort, sourceFilter, timeFilter]);
+
+  const sourceOptions = useMemo(() => (
+    Array.from(new Set(items.map(item => item.source).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+  ), [items]);
+
+  const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return items
-      .filter(item => sector === 'all' || item.sector === sector || item.sectors?.includes(sector))
+    const nextItems = items
+      .filter(item => categoryMatches(item, category))
+      .filter(item => sourceFilter === 'all' || item.source === sourceFilter)
+      .filter(item => timeMatches(item, timeFilter))
       .filter(item => !needle
         || item.companyName.toLowerCase().includes(needle)
         || item.ticker.toLowerCase().includes(needle)
         || item.title.toLowerCase().includes(needle)
         || item.summary.toLowerCase().includes(needle)
         || (item.titleOriginal ?? '').toLowerCase().includes(needle)
-        || (item.summaryOriginal ?? '').toLowerCase().includes(needle))
-      .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-  }, [items, query, sector]);
+        || (item.summaryOriginal ?? '').toLowerCase().includes(needle));
+
+    return nextItems.sort((a, b) => {
+      if (sort === 'impact') {
+        const impactDiff = impactScore(b) - impactScore(a);
+        if (impactDiff !== 0) return impactDiff;
+      }
+      if (sort === 'relevance') {
+        const relevanceDiff = relevanceScore(b, query) - relevanceScore(a, query);
+        if (relevanceDiff !== 0) return relevanceDiff;
+      }
+      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+    });
+  }, [category, items, query, sort, sourceFilter, timeFilter]);
+
+  const featuredItems = filteredItems.slice(0, FEATURED_NEWS_COUNT);
+  const listItems = filteredItems.slice(featuredItems.length);
+  const visibleNewsItems = listItems.slice(0, visibleCount);
+  const hasMoreItems = visibleCount < listItems.length;
+
+  const mentionedTickers = useMemo(() => {
+    const counts = new Map<string, number>();
+    filteredItems.forEach(item => {
+      const ticker = String(item.ticker ?? '').trim().toUpperCase();
+      if (!ticker || ticker === 'TECH') return;
+      counts.set(ticker, (counts.get(ticker) ?? 0) + 1);
+    });
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  }, [filteredItems]);
+
+  const sourceCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    filteredItems.forEach(item => {
+      if (!item.source) return;
+      counts.set(item.source, (counts.get(item.source) ?? 0) + 1);
+    });
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  }, [filteredItems]);
 
   const formatDateTime = (value: string) => {
     const date = new Date(value);
@@ -104,22 +218,29 @@ export function TechNewsPage() {
     ? `${t('tech_news_subtitle')} - ${t('tech_news_updated_daily')}`
     : `${t('tech_news_subtitle')} - ${t('tech_news_last_updated_before')} ${updatedMinutes} ${t('tech_news_minutes')}`;
 
-  const sectorLabels = {
-    all: t('tech_news_sector_all'),
-    ai: t('tech_news_sector_ai'),
-    semiconductors: t('tech_news_sector_semiconductors'),
-    software: t('tech_news_sector_software'),
-    hardware: t('tech_news_sector_hardware'),
-    cloud: t('tech_news_sector_cloud'),
-    cybersecurity: t('tech_news_sector_cybersecurity'),
-    ecommerce: t('tech_news_sector_ecommerce'),
-    ev: t('tech_news_sector_ev'),
-    social_ads: t('tech_news_sector_social_ads'),
-    gaming: t('tech_news_sector_gaming'),
-    infrastructure: t('tech_news_sector_infrastructure'),
+  const categoryLabels = {
+    all: t('tech_news_dashboard_category_all'),
+    techStocks: t('tech_news_dashboard_category_tech_stocks'),
+    ai: t('tech_news_dashboard_category_ai'),
+    semiconductors: t('tech_news_dashboard_category_semiconductors'),
+    markets: t('tech_news_dashboard_category_markets'),
+    crypto: t('tech_news_dashboard_category_crypto'),
+    companies: t('tech_news_dashboard_category_companies'),
   };
-  const emptyTitle = sector === 'all' ? t('tech_news_empty') : t('tech_news_empty_category');
-  const emptyHint = sector === 'all' ? t('tech_news_empty_hint') : t('tech_news_empty_category_hint');
+  const timeLabels = {
+    all: t('tech_news_time_all'),
+    today: t('tech_news_time_today'),
+    week: t('tech_news_time_week'),
+    month: t('tech_news_time_month'),
+  };
+  const sortLabels = {
+    recent: t('tech_news_sort_recent'),
+    relevance: t('tech_news_sort_relevance'),
+    impact: t('tech_news_sort_impact'),
+  };
+  const emptyTitle = category === 'all' ? t('tech_news_empty') : t('tech_news_empty_category');
+  const emptyHint = category === 'all' ? t('tech_news_empty_hint') : t('tech_news_empty_category_hint');
+  const resultsCountLabel = t('tech_news_results_count').replace('{count}', String(filteredItems.length));
 
   return (
     <div className="tech-news-shell" dir={dir}>
@@ -141,19 +262,41 @@ export function TechNewsPage() {
           onRefresh={() => void load(false)}
         />
 
+        {!loading && !error && featuredItems.length > 0 ? (
+          <FeaturedNewsSection
+            items={featuredItems}
+            labels={{
+              title: t('tech_news_featured_title'),
+              readNews: t('tech_news_read_news'),
+              source: t('tech_news_source'),
+            }}
+            formatDateTime={formatDateTime}
+          />
+        ) : null}
+
         <TechNewsFilters
           query={query}
-          sector={sector}
-          sort="recent"
+          category={category}
+          source={sourceFilter}
+          timeFilter={timeFilter}
+          sort={sort}
+          sources={sourceOptions}
           labels={{
             search: t('tech_news_search_placeholder'),
+            filter: t('tech_news_filter_news'),
+            source: t('tech_news_source_filter'),
+            allSources: t('tech_news_source_all'),
+            time: t('tech_news_time_filter'),
             sort: t('tech_news_sort'),
-            recent: t('tech_news_sort_recent'),
-            more: t('tech_news_more'),
-            sectors: sectorLabels,
+            categories: categoryLabels,
+            times: timeLabels,
+            sorts: sortLabels,
           }}
           onQueryChange={setQuery}
-          onSectorChange={setSector}
+          onCategoryChange={setCategory}
+          onSourceChange={setSourceFilter}
+          onTimeFilterChange={setTimeFilter}
+          onSortChange={setSort}
         />
 
         {loading ? (
@@ -168,30 +311,62 @@ export function TechNewsPage() {
               {t('market_retry')}
             </button>
           </section>
-        ) : visibleItems.length === 0 ? (
+        ) : filteredItems.length === 0 ? (
           <section className="tech-news-state">
             <Newspaper size={24} />
             <strong>{emptyTitle}</strong>
             <p>{emptyHint}</p>
           </section>
         ) : (
-          <section className="tech-news-grid" aria-label={t('tech_news_title')}>
-            {visibleItems.map(item => (
-              <TechNewsCard
-                key={item.id}
-                item={item}
-                labels={{
-                  source: t('tech_news_source'),
-                  published: t('tech_news_published'),
-                  openArticle: t('tech_news_open_article'),
-                  priceUnavailable: t('tech_news_price_unavailable'),
-                  translated: t('news_translated_badge'),
-                  originalLanguage: t('news_original_language_badge'),
-                }}
-                formatDateTime={formatDateTime}
-                formatPrice={formatPrice}
-              />
-            ))}
+          <section className="tech-news-layout" aria-label={t('tech_news_title')}>
+            <div className="tech-news-content-column">
+              <div className="tech-news-results-bar">
+                <span>{resultsCountLabel}</span>
+                <b>{t('tech_news_showing_count').replace('{count}', String(featuredItems.length + visibleNewsItems.length))}</b>
+              </div>
+              {visibleNewsItems.length > 0 ? (
+                <section className="tech-news-grid" aria-label={t('tech_news_title')}>
+                  {visibleNewsItems.map(item => (
+                    <TechNewsCard
+                      key={item.id}
+                      item={item}
+                      labels={{
+                        source: t('tech_news_source'),
+                        published: t('tech_news_published'),
+                        openArticle: t('tech_news_open_article'),
+                        readMore: t('tech_news_read_more'),
+                        priceUnavailable: t('tech_news_price_unavailable'),
+                        translated: t('news_translated_badge'),
+                        originalLanguage: t('news_original_language_badge'),
+                      }}
+                      formatDateTime={formatDateTime}
+                      formatPrice={formatPrice}
+                    />
+                  ))}
+                </section>
+              ) : null}
+              <div className="tech-news-load-more-wrap">
+                {hasMoreItems ? (
+                  <button type="button" className="tech-news-load-more" onClick={() => setVisibleCount(count => count + NEWS_PAGE_SIZE)}>
+                    {t('tech_news_load_more')}
+                  </button>
+                ) : (
+                  <span>{t('tech_news_all_loaded')}</span>
+                )}
+              </div>
+            </div>
+            <TechNewsSidePanel
+              latestItems={filteredItems.slice(0, 5)}
+              mentionedTickers={mentionedTickers}
+              sourceCounts={sourceCounts}
+              labels={{
+                latest: t('tech_news_side_latest'),
+                mentioned: t('tech_news_side_mentioned'),
+                sources: t('tech_news_side_sources'),
+                articles: t('tech_news_articles_count'),
+              }}
+              formatDateTime={formatDateTime}
+            />
           </section>
         )}
 
@@ -250,11 +425,13 @@ export function TechNewsPage() {
         .tech-news-icon-btn:hover,.tech-news-icon-btn:focus-visible{outline:none;transform:translateY(-1px);border-color:rgba(47,214,192,.48);color:var(--tech-accent);box-shadow:0 0 0 4px rgba(47,214,192,.10)}
         .tech-news-icon-btn:disabled{opacity:.62;cursor:not-allowed}.spinning{animation:techNewsSpin .9s linear infinite}@keyframes techNewsSpin{to{transform:rotate(360deg)}}
         .tech-news-sun,.dark .tech-news-moon{display:block}.tech-news-moon,.dark .tech-news-sun{display:none}
+        .tech-news-featured{width:100%;max-width:100%;display:grid;gap:14px;border:1px solid var(--tech-border);background:linear-gradient(135deg,rgba(29,140,255,.055),rgba(47,214,192,.085)),var(--tech-panel);border-radius:26px;padding:18px;box-shadow:0 18px 48px rgba(3,18,37,.10);min-width:0;overflow:hidden}.tech-news-featured-head{display:flex;align-items:center;gap:10px;color:var(--tech-accent);min-width:0}.tech-news-featured-head span{width:36px;height:36px;border-radius:14px;display:grid;place-items:center;background:rgba(47,214,192,.12);border:1px solid rgba(47,214,192,.24);flex:0 0 auto}.tech-news-featured-head h2{margin:0;color:var(--tech-text);font-size:20px;font-weight:950;line-height:1.35}.tech-news-featured-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);gap:14px;min-width:0}.tech-featured-main,.tech-featured-mini{min-width:0;border:1px solid var(--tech-border);background:linear-gradient(180deg,var(--tech-panel),var(--tech-panel-soft));border-radius:22px;box-shadow:0 12px 34px rgba(3,18,37,.08)}.tech-featured-main{display:grid;gap:13px;padding:18px}.tech-featured-badges{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.tech-featured-badges span,.tech-featured-badges b{border:1px solid rgba(47,214,192,.22);background:rgba(47,214,192,.10);color:var(--tech-accent);border-radius:999px;padding:6px 10px;font-size:11px;font-weight:950;line-height:1.2}.tech-featured-main h3{margin:0;color:var(--tech-text);font-size:clamp(22px,3vw,32px);font-weight:950;line-height:1.25;overflow-wrap:anywhere}.tech-featured-main p{margin:0;color:var(--tech-muted);font-size:14px;font-weight:800;line-height:1.75;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.tech-featured-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid var(--tech-border);padding-top:12px}.tech-featured-meta span,.tech-featured-mini small{display:inline-flex;align-items:center;gap:6px;color:var(--tech-muted);font-size:12px;font-weight:900;line-height:1.4}.tech-featured-meta a,.tech-news-read-link{width:max-content;max-width:100%;display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid rgba(47,214,192,.28);background:linear-gradient(135deg,rgba(29,140,255,.12),rgba(47,214,192,.16));color:var(--tech-accent);border-radius:999px;min-height:38px;padding:0 13px;text-decoration:none;font-size:12px;font-weight:950;line-height:1.2}.tech-featured-meta a:hover,.tech-featured-meta a:focus-visible,.tech-news-read-link:hover,.tech-news-read-link:focus-visible{outline:none;border-color:rgba(47,214,192,.56);box-shadow:0 0 0 3px rgba(47,214,192,.12)}.tech-featured-side{display:grid;gap:10px;min-width:0}.tech-featured-mini{display:grid;gap:8px;padding:13px;text-decoration:none;color:inherit}.tech-featured-mini span{width:max-content;max-width:100%;border-radius:999px;color:var(--tech-accent);font-size:11px;font-weight:950;line-height:1.2}.tech-featured-mini strong{color:var(--tech-text);font-size:13px;font-weight:950;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
         .tech-news-controls{width:100%;max-width:100%;background:transparent;border:0;padding:0;display:grid;grid-template-columns:1fr;gap:14px;min-width:0;overflow-x:hidden}
         .tech-news-search{width:100%;max-width:100%;display:flex;align-items:center;gap:10px;border:1px solid var(--tech-border);background:var(--tech-panel);border-radius:18px;padding:0 16px;min-height:58px;color:var(--tech-accent);min-width:0;box-shadow:0 16px 44px rgba(3,18,37,.08);transition:border-color .18s ease,box-shadow .18s ease}
         .tech-news-search:focus-within{border-color:rgba(47,214,192,.62);box-shadow:0 0 0 4px rgba(47,214,192,.10),0 16px 44px rgba(3,18,37,.12)}
         .tech-news-search input{width:100%;min-width:0;border:0;background:transparent;outline:0;color:var(--tech-text);font:900 14px Tajawal,Arial,sans-serif;text-align:start}
         .tech-news-search input::placeholder{color:var(--tech-muted);opacity:1}
+        .tech-news-filter-row{display:grid;grid-template-columns:auto minmax(150px,1fr) minmax(150px,1fr) minmax(150px,1fr);gap:10px;align-items:end;min-width:0;border:1px solid var(--tech-border);background:var(--tech-panel);border-radius:18px;padding:12px;box-shadow:0 14px 38px rgba(3,18,37,.06)}.tech-news-filter-label{min-height:42px;display:inline-flex;align-items:center;gap:8px;color:var(--tech-accent);font-size:12px;font-weight:950;white-space:nowrap}.tech-news-select-control{display:grid;gap:6px;min-width:0}.tech-news-select-control span{color:var(--tech-muted);font-size:11px;font-weight:950;line-height:1.3}.tech-news-select-control select{width:100%;min-width:0;height:42px;border:1px solid var(--tech-border);border-radius:14px;background:var(--tech-panel-soft);color:var(--tech-text);padding:0 12px;font:900 12px Tajawal,Arial,sans-serif;outline:0}.tech-news-select-control select:focus{border-color:rgba(47,214,192,.62);box-shadow:0 0 0 3px rgba(47,214,192,.10)}
         .tech-news-chip-row{width:100%;min-width:0;max-width:100%;display:flex;flex-wrap:wrap;justify-content:flex-start;gap:9px;overflow-x:visible;overflow-y:visible;padding-bottom:2px;scrollbar-width:none;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}
         .tech-news-chip-row button{flex:0 0 auto;border:1px solid var(--tech-border);background:var(--tech-panel);color:var(--tech-muted);border-radius:999px;min-height:40px;padding:0 14px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap;transition:background .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease}
         .tech-news-chip-row button.active{background:#CCFBF1;border-color:rgba(15,118,110,.25);color:#0F766E;box-shadow:0 10px 24px rgba(15,118,110,.12)}
@@ -262,7 +439,7 @@ export function TechNewsPage() {
         .tech-news-chip-row button.active:hover,.tech-news-chip-row button.active:focus-visible{color:#0F766E}
         .tech-news-more-button{flex:0 0 auto}
         .tech-news-filter-icon{width:40px!important;padding:0!important;display:grid!important;place-items:center!important;color:var(--tech-accent)!important}
-        .tech-news-grid{width:100%;max-width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;min-width:0;overflow-x:hidden}
+        .tech-news-layout{width:100%;max-width:100%;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start;min-width:0}.tech-news-content-column{display:grid;gap:14px;min-width:0}.tech-news-results-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid var(--tech-border);background:var(--tech-panel);border-radius:18px;padding:12px 14px;color:var(--tech-muted);box-shadow:0 12px 32px rgba(3,18,37,.06)}.tech-news-results-bar span,.tech-news-results-bar b{font-size:12px;font-weight:950;line-height:1.4}.tech-news-results-bar b{color:var(--tech-accent)}.tech-news-grid{width:100%;max-width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;min-width:0;overflow-x:hidden}
         .tech-news-card{width:100%;max-width:100%;box-sizing:border-box;background:linear-gradient(180deg,var(--tech-panel),var(--tech-panel-soft));border:1px solid var(--tech-border);border-radius:20px;padding:18px;display:grid;gap:15px;box-shadow:0 18px 48px rgba(3,18,37,.13);min-width:0;overflow:hidden;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
         .tech-news-card:hover{transform:translateY(-2px);border-color:rgba(47,214,192,.46);box-shadow:0 24px 60px rgba(3,18,37,.18)}
         .tech-news-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;min-width:0;max-width:100%}
@@ -273,18 +450,130 @@ export function TechNewsPage() {
         .tech-news-card-price{display:grid;justify-items:end;gap:4px;flex:0 0 auto;min-width:max-content}.tech-news-card-price strong{direction:ltr;unicode-bidi:isolate;color:var(--tech-text);font-size:15px;font-weight:950}.tech-news-card-price.unavailable strong{direction:inherit;unicode-bidi:normal;color:var(--tech-muted);font-size:12px}
         .tech-news-change{direction:ltr;unicode-bidi:isolate;display:inline-flex;align-items:center;gap:5px;border:1px solid transparent;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:950;line-height:1.2}.tech-news-change.up{color:#047857;background:#CCFBF1;border-color:rgba(15,118,110,.20)}.tech-news-change.down{color:#DC2626;background:#FEE2E2;border-color:rgba(220,38,38,.20)}.tech-news-change.neutral{color:var(--tech-muted);background:rgba(142,166,195,.10);border-color:var(--tech-border)}.dark .tech-ticker-item b.up,.dark .tech-news-change.up{color:#2FD6C0;background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.25)}.dark .tech-ticker-item b.down,.dark .tech-news-change.down{color:#FF5B6E;background:rgba(255,91,110,.12);border-color:rgba(255,91,110,.25)}
         .tech-news-card h2{margin:0;color:var(--tech-text);font-size:18px;font-weight:950;line-height:1.45;overflow:hidden;overflow-wrap:anywhere;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-        .tech-news-card p{margin:0;color:var(--tech-muted);font-size:13.5px;font-weight:760;line-height:1.75;overflow:hidden;overflow-wrap:anywhere;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+        .tech-news-card p{margin:0;color:var(--tech-muted);font-size:13.5px;font-weight:760;line-height:1.75;overflow:hidden;overflow-wrap:anywhere;word-break:break-word;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical}
         .tech-news-meta{border-top:1px solid var(--tech-border);padding-top:13px;display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;max-width:100%;color:var(--tech-muted);font-size:12px;font-weight:900;line-height:1.55;flex-wrap:wrap}
         .tech-news-meta a,.tech-news-meta span{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%;color:var(--tech-muted);text-decoration:none;overflow-wrap:anywhere}.tech-news-meta a:hover,.tech-news-meta a:focus-visible{outline:none;color:var(--tech-accent)}
+        .tech-news-read-link{justify-self:start;margin-top:-4px}.tech-news-load-more-wrap{display:grid;place-items:center;min-height:46px;margin-top:4px}.tech-news-load-more-wrap span{color:var(--tech-muted);font-size:12px;font-weight:900;line-height:1.5}.tech-news-load-more{min-height:46px;border:0;border-radius:999px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#061A2E;padding:0 22px;font:950 13px Tajawal,Arial,sans-serif;cursor:pointer;box-shadow:0 14px 32px rgba(29,140,255,.18)}.tech-news-load-more:hover,.tech-news-load-more:focus-visible{outline:none;box-shadow:0 0 0 4px rgba(47,214,192,.14),0 16px 38px rgba(29,140,255,.22)}
+        .tech-news-side-panel{position:sticky;top:24px;display:grid;gap:12px;min-width:0}.tech-side-card{display:grid;gap:12px;border:1px solid var(--tech-border);background:linear-gradient(180deg,var(--tech-panel),var(--tech-panel-soft));border-radius:22px;padding:15px;box-shadow:0 16px 42px rgba(3,18,37,.10);min-width:0}.tech-side-card h3{margin:0;display:flex;align-items:center;gap:8px;color:var(--tech-text);font-size:15px;font-weight:950;line-height:1.4}.tech-side-card h3 svg{color:var(--tech-accent);flex:0 0 auto}.tech-side-list{display:grid;gap:10px}.tech-side-list a{display:grid;gap:5px;text-decoration:none;color:inherit;border-top:1px solid var(--tech-border);padding-top:10px}.tech-side-list a:first-child{border-top:0;padding-top:0}.tech-side-list strong{color:var(--tech-text);font-size:12.5px;font-weight:950;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.tech-side-list small{color:var(--tech-muted);font-size:11px;font-weight:850;line-height:1.4}.tech-side-pill-list{display:flex;flex-wrap:wrap;gap:8px}.tech-side-pill-list span{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(47,214,192,.22);background:rgba(47,214,192,.10);color:var(--tech-accent);border-radius:999px;padding:7px 10px}.tech-side-pill-list b{font-size:12px;font-weight:950}.tech-side-pill-list small{min-width:20px;height:20px;border-radius:999px;display:grid;place-items:center;background:var(--tech-panel);color:var(--tech-muted);font-size:10px;font-weight:950}.tech-side-source-list{display:grid;gap:8px}.tech-side-source-list span{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--tech-border);background:var(--tech-panel-soft);border-radius:14px;padding:9px}.tech-side-source-list b{color:var(--tech-text);font-size:12px;font-weight:950}.tech-side-source-list small{color:var(--tech-muted);font-size:11px;font-weight:850;white-space:nowrap}
         .tech-news-state{display:grid;place-items:center;gap:10px;text-align:center;padding:58px 20px;color:var(--tech-muted);background:linear-gradient(180deg,var(--tech-panel),var(--tech-panel-soft));border:1px dashed var(--tech-border-strong);border-radius:22px}.tech-news-state svg{color:var(--tech-accent)}.tech-news-state strong{display:block;color:var(--tech-text);font-size:19px;font-weight:950}.tech-news-state p{margin:0;max-width:620px;color:var(--tech-muted);font-weight:850;line-height:1.75}.tech-news-state button{border:0;border-radius:14px;background:var(--tech-accent);color:#061A2E;display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 13px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}
         .tech-news-disclaimer{margin:2px auto 0;text-align:center;color:var(--tech-muted);font-size:12px;font-weight:820;line-height:1.7}
         .tech-news-skeleton span,.tech-news-skeleton i,.tech-news-skeleton b,.tech-news-skeleton small{display:block;border-radius:999px;background:linear-gradient(90deg,rgba(142,166,195,.10),rgba(47,214,192,.20),rgba(142,166,195,.10));background-size:220% 100%;animation:techNewsShimmer 1.2s linear infinite}.tech-news-skeleton span{width:42%;height:18px}.tech-news-skeleton i{width:100%;height:15px}.tech-news-skeleton i:nth-child(3){width:76%}.tech-news-skeleton i:nth-child(4){width:64%}.tech-news-skeleton b{width:58%;height:38px;border-radius:14px}.tech-news-skeleton small{width:35%;height:14px}@keyframes techNewsShimmer{to{background-position:-220% 0}}
-        @media(max-width:1024px){[dir].tech-news-shell .tech-news-main{width:100%;max-width:100%;margin-left:0;margin-right:0;padding:92px 22px 32px}.tech-news-header{align-items:flex-start}.tech-news-grid{grid-template-columns:1fr}}
-        @media(max-width:720px){[dir].tech-news-shell .tech-news-main{padding-inline:14px;gap:16px}.tech-news-header{display:flex;flex-direction:column;gap:12px;min-width:0;max-width:100%}.tech-news-header-actions{justify-content:flex-start}.tech-news-title-row{align-items:flex-start;min-width:0;flex-basis:auto}.tech-news-title-icon{width:50px;height:50px}.tech-news-header h1{font-size:28px;line-height:1.2}.tech-news-header p{font-size:12.5px;align-items:flex-start}.tech-news-card,.tech-news-search{border-radius:18px}.tech-news-card{padding:16px;gap:14px}.tech-news-card-top{display:grid;grid-template-columns:1fr;gap:12px}.tech-news-company-wrap{align-items:flex-start;gap:7px}.tech-news-ticker,.tech-news-translation-badge{font-size:11px;padding:5px 9px}.tech-news-card-price{justify-items:start;min-width:0}.tech-news-card h2{font-size:17px;line-height:1.5}.tech-news-card p{font-size:13px;line-height:1.7}.tech-news-meta{display:grid;gap:8px;justify-content:start}.tech-ticker-strip{margin-inline:-2px}.tech-ticker-viewport{overflow-x:auto;scrollbar-width:thin;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}.tech-news-chip-row{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding-bottom:10px}.tech-news-chip-row::-webkit-scrollbar{display:none}}
-        @media(max-width:640px){.tech-news-shell{width:100%;max-width:100%;overflow-x:hidden}[dir].tech-news-shell .tech-news-main{width:100%;max-width:100%;padding-inline:12px;padding-top:84px;margin-left:0;margin-right:0;overflow-x:hidden}.tech-news-controls,.tech-news-grid{width:100%;max-width:100%;min-width:0;overflow-x:hidden}.tech-news-chip-row{gap:8px;margin-inline:0;padding-inline:0 4px;scrollbar-width:none}.tech-news-chip-row button{min-height:44px;padding:0 16px;font-size:11.5px;border-radius:16px}.tech-news-filter-icon{width:44px!important;min-width:44px!important}.tech-news-search{min-height:52px;padding-inline:13px}.tech-news-title-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px}.tech-news-header h1{font-size:25px}.tech-news-title-icon{width:44px;height:44px;border-radius:15px}.tech-news-card{width:100%;max-width:100%;min-width:0;border-radius:18px;padding:15px;overflow:hidden}.tech-news-company{flex-basis:100%;font-size:12.5px}.tech-news-ticker,.tech-news-translation-badge{min-height:30px;padding:6px 9px;font-size:11px}.tech-news-card-price strong{font-size:14px}.tech-news-change{font-size:11px;padding:5px 8px}.tech-news-meta{font-size:11.5px}.tech-news-disclaimer{font-size:11.5px;padding-inline:4px}}
+        @media(max-width:1024px){[dir].tech-news-shell .tech-news-main{width:100%;max-width:100%;margin-left:0;margin-right:0;padding:92px 22px 32px}.tech-news-header{align-items:flex-start}.tech-news-featured-grid,.tech-news-layout{grid-template-columns:1fr}.tech-news-side-panel{position:static}.tech-news-grid{grid-template-columns:1fr}}
+        @media(max-width:860px){.tech-news-filter-row{grid-template-columns:1fr 1fr}.tech-news-filter-label{grid-column:1/-1}}
+        @media(max-width:720px){[dir].tech-news-shell .tech-news-main{padding-inline:14px;gap:16px}.tech-news-header{display:flex;flex-direction:column;gap:12px;min-width:0;max-width:100%}.tech-news-header-actions{justify-content:flex-start}.tech-news-title-row{align-items:flex-start;min-width:0;flex-basis:auto}.tech-news-title-icon{width:50px;height:50px}.tech-news-header h1{font-size:28px;line-height:1.2}.tech-news-header p{font-size:12.5px;align-items:flex-start}.tech-news-card,.tech-news-search{border-radius:18px}.tech-news-featured{border-radius:22px;padding:14px}.tech-featured-main{padding:15px}.tech-featured-main h3{font-size:20px}.tech-news-card{padding:16px;gap:14px}.tech-news-card-top{display:grid;grid-template-columns:1fr;gap:12px}.tech-news-company-wrap{align-items:flex-start;gap:7px}.tech-news-ticker,.tech-news-translation-badge{font-size:11px;padding:5px 9px}.tech-news-card-price{justify-items:start;min-width:0}.tech-news-card h2{font-size:17px;line-height:1.5}.tech-news-card p{font-size:13px;line-height:1.7}.tech-news-meta{display:grid;gap:8px;justify-content:start}.tech-ticker-strip{margin-inline:-2px}.tech-ticker-viewport{overflow-x:auto;scrollbar-width:thin;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}.tech-news-chip-row{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding-bottom:10px}.tech-news-chip-row::-webkit-scrollbar{display:none}}
+        @media(max-width:640px){.tech-news-shell{width:100%;max-width:100%;overflow-x:hidden}[dir].tech-news-shell .tech-news-main{width:100%;max-width:100%;padding-inline:12px;padding-top:84px;margin-left:0;margin-right:0;overflow-x:hidden}.tech-news-controls,.tech-news-grid,.tech-news-layout,.tech-news-featured{width:100%;max-width:100%;min-width:0;overflow-x:hidden}.tech-news-filter-row{grid-template-columns:1fr;padding:10px}.tech-news-select-control select{height:44px}.tech-news-chip-row{gap:8px;margin-inline:0;padding-inline:0 4px;scrollbar-width:none}.tech-news-chip-row button{min-height:44px;padding:0 16px;font-size:11.5px;border-radius:16px}.tech-news-filter-icon{width:44px!important;min-width:44px!important}.tech-news-search{min-height:52px;padding-inline:13px}.tech-news-title-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px}.tech-news-header h1{font-size:25px}.tech-news-title-icon{width:44px;height:44px;border-radius:15px}.tech-news-card{width:100%;max-width:100%;min-width:0;border-radius:18px;padding:15px;overflow:hidden}.tech-news-company{flex-basis:100%;font-size:12.5px}.tech-news-ticker,.tech-news-translation-badge{min-height:30px;padding:6px 9px;font-size:11px}.tech-news-card-price strong{font-size:14px}.tech-news-change{font-size:11px;padding:5px 8px}.tech-news-meta{font-size:11.5px}.tech-news-read-link{width:100%}.tech-news-results-bar{display:grid;justify-content:stretch}.tech-news-disclaimer{font-size:11.5px;padding-inline:4px}}
         @media(prefers-reduced-motion:reduce){.tech-ticker-viewport{overflow-x:auto;scrollbar-width:thin}.tech-ticker-track{animation:none}.tech-ticker-set[aria-hidden="true"]{display:none}}
       `}</style>
     </div>
+  );
+}
+
+function FeaturedNewsSection({
+  items,
+  labels,
+  formatDateTime,
+}: {
+  items: TechNewsItem[];
+  labels: { title: string; readNews: string; source: string };
+  formatDateTime: (value: string) => string;
+}) {
+  const [lead, ...secondaryItems] = items;
+  if (!lead) return null;
+  const leadTitle = lead.title || lead.headline;
+  const leadSummary = lead.summary || leadTitle;
+
+  return (
+    <section className="tech-news-featured" aria-label={labels.title}>
+      <div className="tech-news-featured-head">
+        <span><Star size={16} /></span>
+        <h2>{labels.title}</h2>
+      </div>
+      <div className="tech-news-featured-grid">
+        <article className="tech-featured-main">
+          <div className="tech-featured-badges">
+            <span>{lead.source || labels.source}</span>
+            <b dir="ltr">{lead.ticker}</b>
+          </div>
+          <h3>{leadTitle}</h3>
+          <p>{leadSummary}</p>
+          <div className="tech-featured-meta">
+            <span><Clock3 size={14} />{formatDateTime(lead.publishedAt)}</span>
+            <a href={lead.url} target="_blank" rel="noreferrer">
+              {labels.readNews}
+              <ExternalLink size={14} />
+            </a>
+          </div>
+        </article>
+        <div className="tech-featured-side">
+          {secondaryItems.map(item => (
+            <a className="tech-featured-mini" href={item.url} target="_blank" rel="noreferrer" key={item.id}>
+              <span>{item.source || labels.source}</span>
+              <strong>{item.title || item.headline}</strong>
+              <small>
+                <Clock3 size={13} />
+                {formatDateTime(item.publishedAt)}
+              </small>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TechNewsSidePanel({
+  latestItems,
+  mentionedTickers,
+  sourceCounts,
+  labels,
+  formatDateTime,
+}: {
+  latestItems: TechNewsItem[];
+  mentionedTickers: Array<[string, number]>;
+  sourceCounts: Array<[string, number]>;
+  labels: { latest: string; mentioned: string; sources: string; articles: string };
+  formatDateTime: (value: string) => string;
+}) {
+  return (
+    <aside className="tech-news-side-panel">
+      <section className="tech-side-card">
+        <h3><Newspaper size={16} />{labels.latest}</h3>
+        <div className="tech-side-list">
+          {latestItems.map(item => (
+            <a href={item.url} target="_blank" rel="noreferrer" key={`latest-${item.id}`}>
+              <strong>{item.title || item.headline}</strong>
+              <small>{formatDateTime(item.publishedAt)}</small>
+            </a>
+          ))}
+        </div>
+      </section>
+      {mentionedTickers.length > 0 ? (
+        <section className="tech-side-card">
+          <h3><TrendingUp size={16} />{labels.mentioned}</h3>
+          <div className="tech-side-pill-list">
+            {mentionedTickers.map(([ticker, count]) => (
+              <span key={ticker}>
+                <b dir="ltr">{ticker}</b>
+                <small>{count}</small>
+              </span>
+            ))}
+          </div>
+        </section>
+      ) : null}
+      {sourceCounts.length > 0 ? (
+        <section className="tech-side-card">
+          <h3><Newspaper size={16} />{labels.sources}</h3>
+          <div className="tech-side-source-list">
+            {sourceCounts.map(([source, count]) => (
+              <span key={source}>
+                <b>{source}</b>
+                <small>{count} {labels.articles}</small>
+              </span>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </aside>
   );
 }
 

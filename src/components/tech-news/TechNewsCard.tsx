@@ -9,6 +9,7 @@ type TechNewsCardProps = {
     source: string;
     published: string;
     openArticle: string;
+    readMore: string;
     priceUnavailable: string;
     translated: string;
     originalLanguage: string;
@@ -59,15 +60,16 @@ export function TechNewsCard({ item, labels, formatDateTime, formatPrice }: Tech
       <h2 dir={contentDir}>{displayTitle}</h2>
       <p dir={contentDir}>{displaySummary}</p>
       <div className="tech-news-meta">
-        <a href={item.url} target="_blank" rel="noreferrer" aria-label={`${labels.openArticle}: ${displayTitle}`}>
-          {item.source || labels.source}
-          <ExternalLink size={14} />
-        </a>
+        <span>{item.source || labels.source}</span>
         <span>
           <Clock3 size={14} />
           {formatDateTime(item.publishedAt)}
         </span>
       </div>
+      <a className="tech-news-read-link" href={item.url} target="_blank" rel="noreferrer" aria-label={`${labels.openArticle}: ${displayTitle}`}>
+        {labels.readMore}
+        <ExternalLink size={14} />
+      </a>
     </article>
   );
 }
