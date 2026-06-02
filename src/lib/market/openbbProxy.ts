@@ -241,6 +241,11 @@ function average(values: number[]) {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 }
 
+function optionalFiniteNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function standardDeviation(values: number[]) {
   if (values.length < 2) return 0;
   const avg = average(values);
@@ -387,6 +392,9 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
     },
     history: history.length ? history.map((point: any) => ({
       date: String(point.date ?? ''),
+      open: optionalFiniteNumber(point.open ?? point.o),
+      high: optionalFiniteNumber(point.high ?? point.h),
+      low: optionalFiniteNumber(point.low ?? point.l),
       close: Number(point.close ?? 0),
     })).filter(point => point.date && Number.isFinite(point.close)) : [],
     summary: String(data.summary ?? 'Market data loaded from the configured provider. Review the source before making decisions.'),
@@ -493,7 +501,12 @@ export async function proxyAnalyze(
       : result.data?.success === false
         ? (/invalid/i.test(String(result.data.error || '')) ? 'invalid_symbol' : /not found/i.test(String(result.data.error || '')) ? 'symbol_not_found' : 'provider_no_data')
         : 'provider_no_data';
-  console.warn('OpenBB analyze failed', { ...startedLog, status: result.status, elapsedMs: result.elapsedMs, code });
+  console.warn('OpenBB analyze failed', {
+    ...startedLog,
+    status: result.configured && 'status' in result ? result.status : undefined,
+    elapsedMs: result.elapsedMs,
+    code,
+  });
   return marketError(code, {
     openbbService: result.configured ? (code === 'provider_no_data' || code === 'symbol_not_found' ? 'degraded' : 'unavailable') : 'not_configured',
     suggestions: normalizedSymbol.suggestions,
@@ -514,7 +527,7 @@ export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown
 
   return {
     success: false,
-    code: result.configured ? result.code || (result.timedOut ? 'openbb_timeout' : 'provider_no_data') : 'openbb_unreachable',
+    code: result.configured && !result.available ? result.code || (result.timedOut ? 'openbb_timeout' : 'provider_no_data') : 'openbb_unreachable',
     source: 'openbb',
     fallback: false,
     openbbService: result.configured ? 'unavailable' : 'not_configured',

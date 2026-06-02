@@ -15,6 +15,9 @@ export type MarketAiInsight = {
 
 export type MarketHistoryPoint = {
   date: string;
+  open?: number;
+  high?: number;
+  low?: number;
   close: number;
 };
 

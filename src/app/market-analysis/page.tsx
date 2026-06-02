@@ -5054,6 +5054,7 @@ function TechnicalAnalysisPanel({
     ['SMA 20', data?.movingAverages?.sma20],
     ['SMA 50', data?.movingAverages?.sma50],
   ].filter((row): row is [string, unknown] => hasDisplayValue(row[1]));
+  const partialData = state.code === 'insufficient_ohlc_data' && state.available ? state.available : null;
   const technicalEmptyTitle = state.code === 'MARKET_DATA_TIMEOUT'
     ? t('market_section_timeout_title')
     : t('market_technical_unified_empty_title');
@@ -5177,7 +5178,16 @@ function TechnicalAnalysisPanel({
         <TechnicalSummaryItem icon={<Clock3 size={16} />} label={t('market_last_updated')} value={formatTechnicalTimestamp(currentUpdatedAt, locale) || t('market_unavailable')} />
         <TechnicalSummaryItem icon={<CheckCircle2 size={16} />} label={t('market_analysis_status')} value={currentStatus} />
       </div>
-      {state.loading ? <MarketSectionLoading label={t('market_loading_technical_analysis')} /> : state.message || state.code ? (
+      {state.loading ? <MarketSectionLoading label={t('market_loading_technical_analysis')} /> : partialData ? (
+        <TechnicalPartialDataState
+          t={t}
+          locale={locale}
+          available={partialData}
+          symbol={state.symbol || symbol}
+          updatedAt={state.updatedAt}
+          onRefresh={onRefresh}
+        />
+      ) : state.message || state.code ? (
         <TechnicalEmptyState title={technicalEmptyTitle} body={technicalEmptyBody} />
       ) : data ? (
         <div className="technical-data-grid">
@@ -5443,6 +5453,64 @@ function TechnicalEmptyState({ title, body }: { title: string; body: string }) {
         <strong>{title}</strong>
         <p>{body}</p>
       </div>
+    </div>
+  );
+}
+
+function TechnicalPartialDataState({
+  t,
+  locale,
+  available,
+  symbol,
+  updatedAt,
+  onRefresh,
+}: {
+  t: (key: string) => string;
+  locale: string;
+  available: Record<string, any>;
+  symbol: string;
+  updatedAt?: string;
+  onRefresh: () => void;
+}) {
+  const parsedPrice = Number(available.currentPrice ?? available.price);
+  const currency = String(available.currency ?? 'USD').toUpperCase();
+  const source = String(available.source ?? '').trim();
+  const displaySymbol = String(available.symbol ?? available.providerSymbol ?? symbol ?? '').trim();
+  const availableUpdatedAt = String(available.updatedAt ?? updatedAt ?? '').trim();
+  const metricRows = [
+    displaySymbol ? [t('market_symbol'), formatTechnicalSymbol(displaySymbol), 'ltr'] as const : null,
+    Number.isFinite(parsedPrice) && parsedPrice > 0 ? [t('market_current_price'), money(parsedPrice, currency), 'ltr'] as const : null,
+    availableUpdatedAt ? [t('market_last_updated'), formatTechnicalTimestamp(availableUpdatedAt, locale) || t('market_unavailable'), 'ltr'] as const : null,
+    source ? [t('market_data_source'), source.toLowerCase() === 'openbb' ? 'OpenBB' : source, 'ltr'] as const : null,
+  ].filter((row): row is readonly [string, string, 'ltr'] => Boolean(row));
+
+  return (
+    <div className="technical-partial-state">
+      <div className="technical-partial-state-head">
+        <span><AlertTriangle size={18} /></span>
+        <div>
+          <strong>{t('market_technical_partial_title')}</strong>
+          <p>{t('market_technical_partial_body')}</p>
+        </div>
+      </div>
+      {metricRows.length > 0 ? (
+        <div className="technical-partial-grid">
+          {metricRows.map(([label, value, dir]) => (
+            <span className="technical-partial-metric" key={label}>
+              <small>{label}</small>
+              <b dir={dir}>{value}</b>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className="technical-partial-note">
+        <p>{t('market_technical_pivot_unavailable_body')}</p>
+        <small>{t('market_technical_ohlc_helper')}</small>
+      </div>
+      <button className="technical-partial-action" type="button" onClick={onRefresh}>
+        <Activity size={15} />
+        {t('market_refresh_section')}
+      </button>
     </div>
   );
 }
@@ -5821,6 +5889,144 @@ function MarketAsyncToolStyles() {
         height: 10px;
       }
 
+      .technical-partial-state {
+        grid-column: 1 / -1;
+        display: grid;
+        gap: 14px;
+        border: 1px solid rgba(245, 158, 11, .26);
+        border-radius: 24px;
+        background:
+          linear-gradient(135deg, rgba(245, 158, 11, .10), rgba(47, 214, 192, .06)),
+          var(--sfm-light-card);
+        padding: 18px;
+        color: var(--sfm-foreground);
+        box-shadow: 0 18px 46px rgba(15, 23, 42, .08);
+        min-width: 0;
+      }
+
+      .technical-partial-state-head {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .technical-partial-state-head > span {
+        width: 38px;
+        height: 38px;
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: #b45309;
+        background: rgba(245, 158, 11, .14);
+        border: 1px solid rgba(245, 158, 11, .22);
+      }
+
+      .technical-partial-state-head strong {
+        display: block;
+        color: var(--sfm-foreground);
+        font-size: 15px;
+        font-weight: 950;
+        line-height: 1.5;
+      }
+
+      .technical-partial-state-head p,
+      .technical-partial-note p,
+      .technical-partial-note small {
+        margin: 0;
+        color: var(--sfm-muted);
+        font-size: 13px;
+        line-height: 1.75;
+      }
+
+      .technical-partial-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .technical-partial-metric {
+        display: grid;
+        gap: 6px;
+        border: 1px solid rgba(47, 214, 192, .16);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, .74);
+        padding: 12px;
+        min-width: 0;
+      }
+
+      .technical-partial-metric small {
+        color: var(--sfm-muted);
+        font-size: 11px;
+        font-weight: 900;
+      }
+
+      .technical-partial-metric b {
+        color: var(--sfm-foreground);
+        font-size: 14px;
+        font-weight: 950;
+        overflow-wrap: anywhere;
+      }
+
+      .technical-partial-note {
+        display: grid;
+        gap: 4px;
+        border: 1px solid rgba(148, 163, 184, .18);
+        border-radius: 18px;
+        background: rgba(15, 23, 42, .035);
+        padding: 12px;
+      }
+
+      .technical-partial-note p {
+        color: var(--sfm-foreground);
+        font-weight: 850;
+      }
+
+      .technical-partial-action {
+        width: fit-content;
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border: 1px solid rgba(47, 214, 192, .28);
+        border-radius: 999px;
+        background: rgba(47, 214, 192, .12);
+        color: var(--sfm-primary-hover);
+        padding: 0 15px;
+        font: 950 12px Tajawal, Arial, sans-serif;
+        cursor: pointer;
+        transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+      }
+
+      .technical-partial-action:hover,
+      .technical-partial-action:focus-visible {
+        outline: none;
+        background: rgba(47, 214, 192, .18);
+        border-color: var(--sfm-accent);
+        box-shadow: 0 0 0 3px rgba(24, 212, 212, .12);
+      }
+
+      .technical-partial-action:active {
+        transform: translateY(1px);
+      }
+
+      .dark .technical-partial-state {
+        background:
+          linear-gradient(135deg, rgba(245, 158, 11, .12), rgba(47, 214, 192, .08)),
+          rgba(15, 29, 49, .86);
+        border-color: rgba(245, 158, 11, .32);
+        box-shadow: 0 18px 46px rgba(0, 0, 0, .22);
+      }
+
+      .dark .technical-partial-metric,
+      .dark .technical-partial-note {
+        background: rgba(19, 36, 58, .78);
+        border-color: rgba(148, 163, 184, .18);
+      }
+
       .news-tool-card-head .market-section-refresh {
         margin-inline-start: auto;
       }
@@ -5847,6 +6053,18 @@ function MarketAsyncToolStyles() {
 
         .market-loading-card-grid {
           grid-template-columns: 1fr;
+        }
+
+        .technical-partial-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .technical-partial-state {
+          padding: 15px;
+        }
+
+        .technical-partial-action {
+          width: 100%;
         }
       }
 

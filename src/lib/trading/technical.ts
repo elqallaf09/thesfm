@@ -1,5 +1,6 @@
 export type OhlcPoint = {
   date?: string;
+  open: number;
   high: number;
   low: number;
   close: number;
@@ -27,7 +28,7 @@ export function calculatePivotPoints(point: OhlcPoint): PivotPoints {
 export function hasOhlcPoint(value: unknown): value is OhlcPoint {
   if (!value || typeof value !== 'object') return false;
   const point = value as Record<string, unknown>;
-  return ['high', 'low', 'close'].every(key => Number.isFinite(Number(point[key])));
+  return ['open', 'high', 'low', 'close'].every(key => Number.isFinite(Number(point[key])));
 }
 
 export function trendFromAverages(latestPrice: number, sma20?: number, sma50?: number) {
