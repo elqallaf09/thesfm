@@ -2815,10 +2815,21 @@ export default function MarketAnalysisPage() {
           grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         }
 
+        .news-sentiment-section {
+          width: 100%;
+          max-width: 1500px;
+          min-width: 0;
+          margin-inline: auto;
+          padding-inline: 0;
+          overflow: hidden;
+        }
+
         .news-sentiment-shell {
           display: grid;
           gap: 18px;
           overflow: hidden;
+          width: 100%;
+          min-width: 0;
           border-radius: 32px !important;
           background:
             linear-gradient(135deg, rgba(255, 255, 255, .82), rgba(234, 246, 255, .68)),
@@ -2913,6 +2924,20 @@ export default function MarketAnalysisPage() {
             var(--sfm-light-card);
         }
 
+        .tool-empty-state.info {
+          border-color: rgba(29, 140, 255, .20);
+          background:
+            linear-gradient(135deg, rgba(29, 140, 255, .075), rgba(47, 214, 192, .08)),
+            var(--sfm-light-card);
+        }
+
+        .tool-empty-state.warning {
+          border-color: rgba(245, 158, 11, .26);
+          background:
+            linear-gradient(135deg, rgba(245, 158, 11, .12), rgba(47, 214, 192, .05)),
+            var(--sfm-light-card);
+        }
+
         .tool-empty-state div {
           display: grid;
           gap: 6px;
@@ -2932,6 +2957,18 @@ export default function MarketAnalysisPage() {
           font-size: 13px;
           font-weight: 850;
           line-height: 1.8;
+        }
+
+        .tool-empty-state button {
+          width: max-content;
+          max-width: 100%;
+          border: 0;
+          border-radius: 999px;
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          color: #fff;
+          padding: 9px 13px;
+          font: 950 12px Tajawal, Arial, sans-serif;
+          cursor: pointer;
         }
 
         .central-news-list,
@@ -3312,6 +3349,20 @@ export default function MarketAnalysisPage() {
           border-color: #1d3050;
         }
 
+        .dark .tool-empty-state.info {
+          background:
+            linear-gradient(135deg, rgba(29, 140, 255, .11), rgba(47, 214, 192, .08)),
+            #0a1422;
+          border-color: rgba(47, 214, 192, .22);
+        }
+
+        .dark .tool-empty-state.warning {
+          background:
+            linear-gradient(135deg, rgba(245, 185, 66, .12), rgba(47, 214, 192, .05)),
+            #0a1422;
+          border-color: rgba(245, 185, 66, .24);
+        }
+
         .dark .news-sentiment-head {
           background: rgba(47, 214, 192, .08);
           border-color: #1d3050;
@@ -3387,6 +3438,10 @@ export default function MarketAnalysisPage() {
           .news-sentiment-shell {
             border-radius: 24px !important;
             padding: 16px;
+          }
+
+          .news-sentiment-section {
+            padding-inline: 0;
           }
 
           .news-sentiment-head,
@@ -4613,133 +4668,154 @@ function NewsSentimentPanel({
   const sentimentEmpty = publicSentimentEmptyCopy(sentiment.code, t);
 
   return (
-    <section className="market-panel news-sentiment-shell">
-      <div className="market-section-head news-sentiment-head">
-        <span className="news-sentiment-head-icon"><Newspaper size={20} /></span>
-        <div>
-          <span>{t('market_news_sentiment_subtitle')}</span>
-          <h2>{t('market_news_sentiment')}</h2>
+    <section className="news-sentiment-section" aria-labelledby="market-news-sentiment-title">
+      <div className="market-panel news-sentiment-shell">
+        <div className="market-section-head news-sentiment-head">
+          <span className="news-sentiment-head-icon"><Newspaper size={20} /></span>
+          <div>
+            <span>{t('market_news_sentiment_subtitle')}</span>
+            <h2 id="market-news-sentiment-title">{t('market_news_sentiment')}</h2>
+          </div>
         </div>
-      </div>
 
-      <div className="news-sentiment-grid">
-        <article className="news-tool-card">
-          <div className="news-tool-card-head">
-            <span><Landmark size={19} /></span>
-            <div>
-              <small>{t('market_central_bank_topics')}</small>
-              <h3>{t('market_central_bank_news')}</h3>
+        <div className="news-sentiment-grid">
+          <article className="news-tool-card">
+            <div className="news-tool-card-head">
+              <span><Landmark size={19} /></span>
+              <div>
+                <small>{t('market_central_bank_topics')}</small>
+                <h3>{t('market_central_bank_news')}</h3>
+              </div>
             </div>
-          </div>
 
-          {news.loading ? (
-            <div className="market-empty">{t('market_loading_data')}</div>
-          ) : news.items.length > 0 ? (
-            <div className="central-news-list">
-              {news.items.map((item, index) => {
-                const headline = textField(item, ['title', 'headline', 'name']);
-                const summary = textField(item, ['summary', 'description', 'excerpt']);
-                const source = textField(item, ['source', 'sourceName', 'provider', 'publisher']);
-                const published = textField(item, ['publishedAt', 'published_at', 'published', 'date', 'time']);
-                const related = textField(item, ['bank', 'centralBank', 'central_bank', 'currency', 'region']);
-                const url = textField(item, ['url', 'link', 'sourceUrl', 'source_url']);
-                return (
-                  <article className="central-news-card" key={`${headline || source || 'central-news'}-${index}`}>
-                    <div className="central-news-meta">
-                      {related ? <span dir="ltr">{related}</span> : null}
-                      {published ? <small dir="ltr">{published}</small> : null}
-                    </div>
-                    <h4>{headline || t('market_news_no_items_title')}</h4>
-                    {summary ? <p>{summary}</p> : null}
-                    <div className="central-news-footer">
-                      {source ? <small>{t('market_news_source')}: {source}</small> : null}
-                      {url ? <a href={url} target="_blank" rel="noreferrer">{t('market_open_source')}</a> : null}
-                    </div>
-                  </article>
-                );
-              })}
+            {news.loading ? (
+              <div className="market-empty">{t('market_loading_data')}</div>
+            ) : news.items.length > 0 ? (
+              <div className="central-news-list">
+                {news.items.map((item, index) => {
+                  const headline = textField(item, ['title', 'headline', 'name']);
+                  const summary = textField(item, ['summary', 'description', 'excerpt']);
+                  const source = textField(item, ['source', 'sourceName', 'provider', 'publisher']);
+                  const published = textField(item, ['publishedAt', 'published_at', 'published', 'date', 'time']);
+                  const related = textField(item, ['bank', 'centralBank', 'central_bank', 'currency', 'region']);
+                  const url = textField(item, ['url', 'link', 'sourceUrl', 'source_url']);
+                  return (
+                    <article className="central-news-card" key={`${headline || source || 'central-news'}-${index}`}>
+                      <div className="central-news-meta">
+                        {related ? <span dir="ltr">{related}</span> : null}
+                        {published ? <small dir="ltr">{published}</small> : null}
+                      </div>
+                      <h4>{headline || t('market_news_no_items_title')}</h4>
+                      {summary ? <p>{summary}</p> : null}
+                      <div className="central-news-footer">
+                        {source ? <small>{t('market_news_source')}: {source}</small> : null}
+                        {url ? <a href={url} target="_blank" rel="noreferrer">{t('market_open_source')}</a> : null}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <MarketToolEmptyState icon={<Newspaper size={18} />} title={newsEmpty.title} description={newsEmpty.body} variant="info" />
+            )}
+          </article>
+
+          <article className="news-tool-card">
+            <div className="news-tool-card-head">
+              <span><BarChart3 size={19} /></span>
+              <div>
+                <small>{t('market_sentiment_note_title')}</small>
+                <h3>{t('market_market_sentiment')}</h3>
+              </div>
             </div>
-          ) : (
-            <EmptyToolState icon={<Newspaper size={18} />} title={newsEmpty.title} body={newsEmpty.body} />
-          )}
-        </article>
 
-        <article className="news-tool-card">
-          <div className="news-tool-card-head">
-            <span><BarChart3 size={19} /></span>
-            <div>
-              <small>{t('market_sentiment_note_title')}</small>
-              <h3>{t('market_market_sentiment')}</h3>
-            </div>
-          </div>
-
-          {sentiment.loading ? (
-            <div className="market-empty">{t('market_loading_data')}</div>
-          ) : sentiment.items.length > 0 ? (
-            <div className="sentiment-card-list">
-              {sentiment.items.map((item, index) => {
-                const symbol = textField(item, ['symbol', 'ticker', 'asset', 'instrument']);
-                const name = textField(item, ['name', 'assetName', 'asset_name', 'description']);
-                const values = sentimentValues(item);
-                if (!values) {
+            {sentiment.loading ? (
+              <div className="market-empty">{t('market_loading_data')}</div>
+            ) : sentiment.items.length > 0 ? (
+              <div className="sentiment-card-list">
+                {sentiment.items.map((item, index) => {
+                  const symbol = textField(item, ['symbol', 'ticker', 'asset', 'instrument']);
+                  const name = textField(item, ['name', 'assetName', 'asset_name', 'description']);
+                  const values = sentimentValues(item);
+                  if (!values) {
+                    return (
+                      <article className="sentiment-card" key={`${symbol || 'sentiment'}-${index}`}>
+                        <div className="sentiment-card-head">
+                          <b dir="ltr">{symbol || t('market_unavailable')}</b>
+                          {name ? <span>{name}</span> : null}
+                        </div>
+                        <p>{t('market_sentiment_no_items_body')}</p>
+                      </article>
+                    );
+                  }
+                  const tone = sentimentTone(values);
                   return (
                     <article className="sentiment-card" key={`${symbol || 'sentiment'}-${index}`}>
                       <div className="sentiment-card-head">
-                        <b dir="ltr">{symbol || t('market_unavailable')}</b>
-                        {name ? <span>{name}</span> : null}
+                        <div>
+                          <b dir="ltr">{symbol || t('market_unavailable')}</b>
+                          {name ? <span>{name}</span> : null}
+                        </div>
+                        <em className={`sentiment-badge ${tone}`}>
+                          {tone === 'buy' ? t('market_sentiment_majority_buy') : tone === 'sell' ? t('market_sentiment_majority_sell') : t('market_sentiment_balanced')}
+                        </em>
                       </div>
-                      <p>{t('market_sentiment_no_items_body')}</p>
+                      <div className="sentiment-metrics">
+                        <span>{t('market_buy_ratio')} <b dir="ltr">{values.buy.toFixed(0)}%</b></span>
+                        <span>{t('market_sell_ratio')} <b dir="ltr">{values.sell.toFixed(0)}%</b></span>
+                      </div>
+                      <div className="sentiment-bar" aria-hidden="true">
+                        <i style={{ width: `${values.buy}%` }} />
+                        <b style={{ width: `${values.sell}%` }} />
+                      </div>
                     </article>
                   );
-                }
-                const tone = sentimentTone(values);
-                return (
-                  <article className="sentiment-card" key={`${symbol || 'sentiment'}-${index}`}>
-                    <div className="sentiment-card-head">
-                      <div>
-                        <b dir="ltr">{symbol || t('market_unavailable')}</b>
-                        {name ? <span>{name}</span> : null}
-                      </div>
-                      <em className={`sentiment-badge ${tone}`}>
-                        {tone === 'buy' ? t('market_sentiment_majority_buy') : tone === 'sell' ? t('market_sentiment_majority_sell') : t('market_sentiment_balanced')}
-                      </em>
-                    </div>
-                    <div className="sentiment-metrics">
-                      <span>{t('market_buy_ratio')} <b dir="ltr">{values.buy.toFixed(0)}%</b></span>
-                      <span>{t('market_sell_ratio')} <b dir="ltr">{values.sell.toFixed(0)}%</b></span>
-                    </div>
-                    <div className="sentiment-bar" aria-hidden="true">
-                      <i style={{ width: `${values.buy}%` }} />
-                      <b style={{ width: `${values.sell}%` }} />
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          ) : (
-            <EmptyToolState icon={<BarChart3 size={18} />} title={sentimentEmpty.title} body={sentimentEmpty.body} />
-          )}
+                })}
+              </div>
+            ) : (
+              <MarketToolEmptyState icon={<BarChart3 size={18} />} title={sentimentEmpty.title} description={sentimentEmpty.body} variant="info" />
+            )}
 
-          <div className="sentiment-info-card">
-            <ShieldAlert size={17} />
-            <p>{t('market_sentiment_warning')}</p>
-          </div>
-        </article>
+            <div className="sentiment-info-card">
+              <ShieldAlert size={17} />
+              <p>{t('market_sentiment_warning')}</p>
+            </div>
+          </article>
+        </div>
       </div>
     </section>
   );
 }
 
-function EmptyToolState({ icon = <AlertTriangle size={18} />, title, body }: { icon?: ReactNode; title: string; body: string }) {
+function MarketToolEmptyState({
+  icon = <AlertTriangle size={18} />,
+  title,
+  description,
+  actionLabel,
+  onAction,
+  variant = 'neutral',
+}: {
+  icon?: ReactNode;
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  variant?: 'info' | 'warning' | 'neutral';
+}) {
   return (
-    <div className="tool-empty-state">
+    <div className={`tool-empty-state ${variant}`}>
       <span>{icon}</span>
       <div>
         <strong>{title}</strong>
-        <p>{body}</p>
+        <p>{description}</p>
+        {actionLabel && onAction ? <button type="button" onClick={onAction}>{actionLabel}</button> : null}
       </div>
     </div>
   );
+}
+
+function EmptyToolState({ icon, title, body }: { icon?: ReactNode; title: string; body: string }) {
+  return <MarketToolEmptyState icon={icon} title={title} description={body} variant="neutral" />;
 }
 
 function MarketMetric({ label, value, icon, valueDir }: { label: string; value: string; icon?: ReactNode; valueDir?: 'ltr' | 'rtl' }) {
