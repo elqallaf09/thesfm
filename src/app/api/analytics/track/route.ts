@@ -58,6 +58,19 @@ function errorMessage(error: unknown) {
   return error && typeof error === 'object' && 'message' in error ? String((error as { message?: unknown }).message ?? '') : String(error ?? '');
 }
 
+function schemaRelatedError(error: unknown) {
+  const code = errorCode(error);
+  const message = errorMessage(error).toLowerCase();
+  return (
+    code === '42P01' ||
+    code === '42703' ||
+    code === 'PGRST204' ||
+    code === 'PGRST205' ||
+    message.includes('schema cache') ||
+    message.includes('does not exist')
+  );
+}
+
 function text(value: unknown, limit = 240) {
   if (typeof value !== 'string') return null;
   const clean = value.trim();
@@ -109,15 +122,6 @@ function requestIp(request: Request) {
 function fallbackSessionId(request: Request, userAgent: string) {
   const source = `${requestIp(request)}:${userAgent}:${new Date().toISOString().slice(0, 10)}`;
   return `server-${createHash('sha256').update(source).digest('hex').slice(0, 24)}`;
-}
-
-function cityFromHeader(value: string | null) {
-  if (!value) return null;
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
 }
 
 async function readRequestBody(request: Request): Promise<Record<string, unknown> | null> {
@@ -178,9 +182,19 @@ export async function POST(request: Request) {
       device_type: resolvedDeviceType,
       browser: resolvedBrowser,
       os: resolvedOs,
-      country: text(request.headers.get('x-vercel-ip-country'), 80),
-      city: cityFromHeader(request.headers.get('x-vercel-ip-city')),
       metadata: safeMetadata(body?.metadata),
+    };
+
+    const minimalEventPayload = {
+      user_id: eventPayload.user_id,
+      session_id: eventPayload.session_id,
+      event_type: eventPayload.event_type,
+      page_path: eventPayload.page_path,
+      language: eventPayload.language,
+      device_type: eventPayload.device_type,
+      browser: eventPayload.browser,
+      os: eventPayload.os,
+      metadata: eventPayload.metadata,
     };
 
     const sessionPayload: Record<string, unknown> = {
@@ -198,25 +212,35 @@ export async function POST(request: Request) {
       .from('site_sessions')
       .upsert(sessionPayload, { onConflict: 'session_id' }));
 
-    if (sessionResult.error && errorCode(sessionResult.error) !== '42P01') {
+    let resolvedSessionResult = sessionResult;
+    if (resolvedSessionResult.error && schemaRelatedError(resolvedSessionResult.error) && errorCode(resolvedSessionResult.error) !== '42P01') {
+      resolvedSessionResult = await safeSupabaseRequest(admin
+        .from('site_sessions')
+        .upsert({ session_id: sessionId }, { onConflict: 'session_id' }));
+    }
+
+    if (resolvedSessionResult.error && errorCode(resolvedSessionResult.error) !== '42P01') {
       safeLog('warn', '[analytics] session upsert ignored', {
-        code: errorCode(sessionResult.error),
-        message: errorMessage(sessionResult.error),
+        code: errorCode(resolvedSessionResult.error),
+        message: errorMessage(resolvedSessionResult.error),
       });
     }
 
-    const eventResult = await safeSupabaseRequest(admin.from('site_events').insert(eventPayload));
+    let eventResult = await safeSupabaseRequest(admin.from('site_events').insert(eventPayload));
+    if (eventResult.error && schemaRelatedError(eventResult.error) && errorCode(eventResult.error) !== '42P01') {
+      eventResult = await safeSupabaseRequest(admin.from('site_events').insert(minimalEventPayload));
+    }
     if (!eventResult.error) return NextResponse.json({ ok: true, success: true });
 
-    const missingSiteTables = errorCode(eventResult.error) === '42P01' || errorCode(sessionResult.error) === '42P01';
+    const missingSiteTables = errorCode(eventResult.error) === '42P01' || errorCode(resolvedSessionResult.error) === '42P01';
     if (!missingSiteTables) {
       safeLog('error', '[analytics] tracking insert failed', {
         eventCode: errorCode(eventResult.error),
         eventMessage: errorMessage(eventResult.error),
-        sessionCode: errorCode(sessionResult.error),
-        sessionMessage: errorMessage(sessionResult.error),
+        sessionCode: errorCode(resolvedSessionResult.error),
+        sessionMessage: errorMessage(resolvedSessionResult.error),
       });
-      return ignored('ANALYTICS_TRACKING_FAILED');
+      return ignored('ANALYTICS_INSERT_FAILED');
     }
 
     const legacyResult = await safeSupabaseRequest(admin.from('analytics_events').insert({
@@ -235,13 +259,13 @@ export async function POST(request: Request) {
     }));
 
     if (legacyResult.error) {
-      safeLog('error', '[analytics] fallback tracking insert failed', {
+      safeLog('error', '[analytics] tracking insert failed', {
         eventCode: errorCode(eventResult.error),
         eventMessage: errorMessage(eventResult.error),
         legacyCode: errorCode(legacyResult.error),
         legacyMessage: errorMessage(legacyResult.error),
       });
-      return ignored('ANALYTICS_TABLES_MISSING');
+      return ignored('ANALYTICS_INSERT_FAILED');
     }
 
     return NextResponse.json({ ok: true, success: true, fallback: 'analytics_events' });
@@ -250,7 +274,7 @@ export async function POST(request: Request) {
       name: error instanceof Error ? error.name : undefined,
       message: error instanceof Error ? error.message : String(error),
     });
-    return ignored('ANALYTICS_TRACKING_FAILED');
+    return ignored('ANALYTICS_INSERT_FAILED');
   }
 }
 

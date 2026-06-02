@@ -103,6 +103,7 @@ export const TR: Record<string, TranslationEntry> = {
   admin_tracking_status: { ar:'حالة التتبع', en:'Tracking status', fr:'État du suivi' },
   admin_tracking_active: { ar:'مفعّل', en:'Active', fr:'Actif' },
   admin_tracking_no_recent_events: { ar:'لا توجد أحداث حديثة', en:'No recent events', fr:'Aucun événement récent' },
+  admin_tracking_disabled: { ar:'غير مفعّل', en:'Not active', fr:'Non actif' },
   admin_tracking_privacy_note: { ar:'تعرض هذه الصفحة بيانات استخدام عامة فقط، ولا تعرض أي بيانات مالية خاصة.', en:'This page shows general usage data only and never shows private financial data.', fr:'Cette page affiche uniquement des données d’utilisation générales et aucune donnée financière privée.' },
   admin_code_title: { ar:'رمز دخول الأدمن', en:'Admin access code', fr:'Code d’accès administrateur' },
   admin_code_description: { ar:'أدخل رمز الأدمن الخاص لفتح لوحة التحكم. يتم التحقق من الرمز على الخادم فقط.', en:'Enter the private admin code to open the dashboard. The code is validated on the server only.', fr:'Saisissez le code administrateur privé pour ouvrir le tableau de bord. Le code est validé uniquement côté serveur.' },

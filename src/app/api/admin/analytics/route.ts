@@ -178,7 +178,7 @@ function emptyAnalyticsPayload(
     tracking: {
       enabled: options.trackingEnabled ?? true,
       recent: false,
-      label: 'no_recent_events',
+      label: options.trackingEnabled === false ? 'disabled' : 'no_recent_events',
     },
     hasData: false,
   };
@@ -186,6 +186,50 @@ function emptyAnalyticsPayload(
 
 function missingRelation(error: { code?: string } | null | undefined) {
   return error?.code === '42P01';
+}
+
+function schemaRelatedError(error: { code?: string; message?: string } | null | undefined) {
+  const message = error?.message?.toLowerCase() ?? '';
+  return (
+    error?.code === '42P01' ||
+    error?.code === '42703' ||
+    error?.code === 'PGRST204' ||
+    error?.code === 'PGRST205' ||
+    message.includes('schema cache') ||
+    message.includes('does not exist')
+  );
+}
+
+function moduleFromPath(path: string | null) {
+  if (!path || path === '/') return 'home';
+  if (path.startsWith('/income')) return 'income';
+  if (path.startsWith('/expenses')) return 'expenses';
+  if (path.startsWith('/debts')) return 'debts';
+  if (path.startsWith('/savings')) return 'savings';
+  if (path.startsWith('/goals')) return 'goals';
+  if (path.startsWith('/projects')) return 'projects';
+  if (path.startsWith('/reports')) return 'reports';
+  if (path.startsWith('/financial-theories')) return 'financial_theories';
+  if (path.startsWith('/ebooks')) return 'ebooks';
+  if (path.startsWith('/market')) return 'market';
+  if (path.startsWith('/ai')) return 'financial_ai';
+  if (path.startsWith('/charity') || path.startsWith('/zakat')) return 'charity';
+  if (path.startsWith('/business')) return 'business';
+  if (path.startsWith('/investment-offers')) return 'investment_offers';
+  if (path.startsWith('/profile')) return 'profile';
+  return 'other';
+}
+
+function rowModule(row: AnalyticsRow) {
+  return row.section_name || row.module || moduleFromPath(row.page_path);
+}
+
+function applyFilters(rows: AnalyticsRow[], moduleFilter: string, eventFilter: string) {
+  return rows.filter(row => {
+    if (moduleFilter !== 'all' && rowModule(row) !== moduleFilter) return false;
+    if (eventFilter !== 'all' && row.event_type !== eventFilter) return false;
+    return true;
+  });
 }
 
 function mapLegacyRow(row: Record<string, unknown>): AnalyticsRow {
@@ -217,40 +261,40 @@ async function loadAnalyticsRows(
 
   let siteQuery = admin
     .from('site_events')
-    .select('id, session_id, event_type, page_path, page_title, section_name, language, device_type, browser, os, created_at')
+    .select('*')
     .gte('created_at', from.toISOString())
     .lte('created_at', to.toISOString())
     .order('created_at', { ascending: false })
     .limit(20000);
-
-  if (moduleFilter !== 'all') siteQuery = siteQuery.eq('section_name', moduleFilter);
-  if (eventFilter !== 'all') siteQuery = siteQuery.eq('event_type', eventFilter);
 
   const siteResult = await siteQuery;
   if (!siteResult.error) {
-    return { rows: (siteResult.data ?? []).map(row => mapLegacyRow(row as Record<string, unknown>)), source: 'site_events' };
+    return {
+      rows: applyFilters((siteResult.data ?? []).map(row => mapLegacyRow(row as Record<string, unknown>)), moduleFilter, eventFilter),
+      source: 'site_events',
+    };
   }
-  if (!missingRelation(siteResult.error)) return { rows: [] as AnalyticsRow[], source: 'site_events', error: siteResult.error.message };
+  if (!schemaRelatedError(siteResult.error)) return { rows: [] as AnalyticsRow[], source: 'site_events', error: siteResult.error.message };
 
   let legacyQuery = admin
     .from('analytics_events')
-    .select('id, session_id, event_type, page_path, page_title, module, language, device_type, browser, operating_system, created_at')
+    .select('*')
     .gte('created_at', from.toISOString())
     .lte('created_at', to.toISOString())
     .order('created_at', { ascending: false })
     .limit(20000);
 
-  if (moduleFilter !== 'all') legacyQuery = legacyQuery.eq('module', moduleFilter);
-  if (eventFilter !== 'all') legacyQuery = legacyQuery.eq('event_type', eventFilter);
-
   const legacyResult = await legacyQuery;
   if (legacyResult.error) {
-    if (missingRelation(legacyResult.error)) {
+    if (schemaRelatedError(legacyResult.error) || missingRelation(legacyResult.error)) {
       return { rows: [], source: 'none', code: 'ANALYTICS_TABLES_MISSING' };
     }
     return { rows: [], source: 'analytics_events', error: legacyResult.error.message };
   }
-  return { rows: (legacyResult.data ?? []).map(row => mapLegacyRow(row as Record<string, unknown>)), source: 'analytics_events' };
+  return {
+    rows: applyFilters((legacyResult.data ?? []).map(row => mapLegacyRow(row as Record<string, unknown>)), moduleFilter, eventFilter),
+    source: 'analytics_events',
+  };
 }
 
 export async function GET(request: Request) {

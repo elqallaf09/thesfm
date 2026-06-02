@@ -23,7 +23,7 @@ type AdminData = {
   languages: Array<{ name: string; count: number; percentage: number }>;
   recent: Array<{ id: string; eventType: string; pagePath: string | null; sectionName?: string | null; module: string | null; device: string | null; language: string | null; createdAt: string }>;
   recentActivity?: Array<{ id: string; eventType: string; pagePath: string | null; sectionName?: string | null; module: string | null; device: string | null; language: string | null; createdAt: string }>;
-  tracking?: { enabled: boolean; recent: boolean; label: 'active' | 'no_recent_events' };
+  tracking?: { enabled: boolean; recent: boolean; label: 'active' | 'no_recent_events' | 'disabled' };
 };
 
 const rangeOptions: Array<[string, TranslationKey]> = [
@@ -226,7 +226,13 @@ export default function AdminAnalyticsClient() {
   }, [adminCode, load, t]);
 
   const stats = data?.stats ?? {};
+  const trackingEnabled = data?.tracking?.enabled ?? true;
   const trackingRecent = data?.tracking?.recent ?? false;
+  const trackingStatusKey: TranslationKey = !trackingEnabled
+    ? 'admin_tracking_disabled'
+    : trackingRecent
+      ? 'admin_tracking_active'
+      : 'admin_tracking_no_recent_events';
   const topPages = data?.topPages ?? data?.pages ?? [];
   const topSections = data?.topSections ?? [];
   const recent = data?.recentActivity ?? data?.recent ?? [];
@@ -333,10 +339,10 @@ export default function AdminAnalyticsClient() {
         {state === 'empty' && <StateCard icon={BarChart3} text={t('admin_no_data')} />}
 
         {data && (
-          <section className={`admin-tracking-status ${trackingRecent ? 'active' : 'stale'}`}>
+          <section className={`admin-tracking-status ${!trackingEnabled ? 'disabled' : trackingRecent ? 'active' : 'stale'}`}>
             <div>
               <span>{t('admin_tracking_status')}</span>
-              <strong>{trackingRecent ? t('admin_tracking_active') : t('admin_tracking_no_recent_events')}</strong>
+              <strong>{t(trackingStatusKey)}</strong>
               <small>{t('admin_tracking_privacy_note')}</small>
             </div>
             <Activity size={24} aria-hidden="true" />
@@ -483,10 +489,12 @@ const adminStyles = `
   .admin-stat-card,.admin-panel,.admin-state,.admin-tracking-status{border:1px solid rgba(29,140,255,.12);background:var(--sfm-card-bg);border-radius:22px;box-shadow:0 16px 40px rgba(3,18,37,.06)}
   .admin-tracking-status{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 18px;border-color:rgba(34,197,94,.22);background:linear-gradient(135deg,rgba(34,197,94,.10),var(--sfm-card-bg))}
   .admin-tracking-status.stale{border-color:rgba(245,158,11,.25);background:linear-gradient(135deg,rgba(245,158,11,.10),var(--sfm-card-bg))}
+  .admin-tracking-status.disabled{border-color:rgba(239,68,68,.22);background:linear-gradient(135deg,rgba(239,68,68,.08),var(--sfm-card-bg))}
   .admin-tracking-status span,.admin-tracking-status small{display:block;color:var(--sfm-muted);font-weight:900;line-height:1.7}
   .admin-tracking-status strong{display:block;margin-top:2px;color:var(--sfm-foreground);font-size:18px;font-weight:950}
   .admin-tracking-status svg{color:#16A34A;flex:0 0 auto}
   .admin-tracking-status.stale svg{color:#D97706}
+  .admin-tracking-status.disabled svg{color:#DC2626}
   .admin-stat-card{display:grid;gap:8px;padding:17px}
   .admin-stat-card svg{color:#18D4D4}
   .admin-stat-card span{color:var(--sfm-muted);font-size:12px;font-weight:950}
