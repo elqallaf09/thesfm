@@ -541,9 +541,13 @@ function marketAiInsightErrorText(code: string | undefined, t: (key: string) => 
   const normalized = String(code ?? '').trim().toUpperCase();
   const map: Record<string, string> = {
     AI_PROVIDER_NOT_CONFIGURED: t('market_ai_provider_not_configured'),
-    AI_INSIGHT_TIMEOUT: t('market_ai_timeout'),
+    AI_PROVIDER_AUTH_FAILED: t('market_ai_auth_failed'),
+    AI_PROVIDER_RATE_LIMITED: t('market_ai_rate_limited'),
+    AI_PROVIDER_TIMEOUT: t('market_ai_timeout'),
+    AI_PROVIDER_BAD_REQUEST: t('market_ai_bad_request'),
     MARKET_DATA_REQUIRED: t('market_ai_market_data_required'),
     AI_PROVIDER_UNAVAILABLE: t('market_ai_provider_unavailable_clean'),
+    AI_INSIGHT_INTERNAL_ERROR: t('market_ai_internal_error'),
   };
   return map[normalized] || t('market_ai_summary_error');
 }

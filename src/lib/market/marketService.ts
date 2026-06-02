@@ -5,7 +5,7 @@ export type MarketDataStatus = 'live' | 'delayed' | 'unavailable';
 export type FundamentalsUnavailableReason = 'not_supported_for_asset_type' | 'provider_returned_empty' | 'symbol_not_supported' | 'api_error';
 export type MarketAiInsight = {
   status: 'ready' | 'unavailable' | 'skipped';
-  provider?: 'anthropic' | 'rule-based';
+  provider?: 'openai' | 'anthropic' | 'rule-based';
   summary?: string;
   trendStatus?: string;
   riskNotes?: string;
