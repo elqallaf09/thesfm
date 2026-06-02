@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
-import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, CircleDollarSign, Clock3, FileText, Gauge, Landmark, LineChart, Newspaper, Percent, PieChart, Plus, Search, ShieldAlert, ShoppingCart, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, CircleDollarSign, Clock3, FileText, Gauge, Info, Landmark, LineChart, Newspaper, Percent, PieChart, Plus, Search, ShieldAlert, ShoppingCart, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { AssetProfileCard } from '@/components/market/AssetProfileCard';
@@ -5132,6 +5132,78 @@ function economicStatusLabel(status: NormalizedEconomicEvent['status'], t: (key:
   return t('market_unavailable');
 }
 
+type EconomicExplanationEvent = {
+  eventName: string;
+  currency: string | null;
+  previous: string | number | null;
+  forecast: string | number | null;
+  actual: string | number | null;
+  status?: NormalizedEconomicEvent['status'];
+};
+
+function interpolateTranslation(template: string, replacements: Record<string, string>) {
+  return Object.entries(replacements).reduce(
+    (text, [key, value]) => text.replaceAll(`{${key}}`, value),
+    template,
+  );
+}
+
+function economicExplanationTypeKey(eventName: string) {
+  const name = eventName.toLowerCase();
+  if (/\bgdp\b|gross domestic|الناتج|نمو الاقتصاد|croissance|pib/.test(name)) return 'market_calendar_explanation_type_gdp';
+  if (/\bcpi\b|inflation|consumer price|أسعار المستهلك|التضخم|inflation|prix/.test(name)) return 'market_calendar_explanation_type_cpi';
+  if (/interest rate|rate decision|fomc|fed|ecb|boe|boj|سعر الفائدة|قرار الفائدة|البنك المركزي|taux|banque centrale/.test(name)) return 'market_calendar_explanation_type_rate';
+  if (/\bnfp\b|payroll|employment|jobs|وظائف|التوظيف|سوق العمل|emploi/.test(name)) return 'market_calendar_explanation_type_employment';
+  if (/\bpmi\b|purchasing managers|مديري المشتريات|activité/.test(name)) return 'market_calendar_explanation_type_pmi';
+  if (/retail sales|مبيعات التجزئة|ventes au détail/.test(name)) return 'market_calendar_explanation_type_retail';
+  if (/unemployment|jobless|البطالة|chômage/.test(name)) return 'market_calendar_explanation_type_unemployment';
+  if (/speech|speaks|testimony|تصريح|خطاب|شهادة|discours/.test(name)) return 'market_calendar_explanation_type_speech';
+  return 'market_calendar_explanation_type_generic';
+}
+
+function economicExplanationValue(value: unknown, unavailable: string) {
+  return displayEconomicValue(value, unavailable);
+}
+
+function buildEconomicExplanationRows(event: EconomicExplanationEvent, unavailable: string, t: (key: string) => string) {
+  const previous = economicExplanationValue(event.previous, unavailable);
+  const forecast = economicExplanationValue(event.forecast, unavailable);
+  const actual = economicExplanationValue(event.actual, unavailable);
+  const hasActual = actual !== unavailable;
+  const currency = displayEconomicValue(event.currency, unavailable);
+  const currencyNote = currency !== unavailable
+    ? ` ${interpolateTranslation(t('market_calendar_explanation_currency_note'), { currency })}`
+    : '';
+
+  return {
+    overview: t(economicExplanationTypeKey(event.eventName)),
+    rows: [
+      {
+        label: t('market_calendar_previous'),
+        value: previous,
+        body: interpolateTranslation(t('market_calendar_explanation_previous_body'), { value: previous }),
+      },
+      {
+        label: t('market_calendar_forecast'),
+        value: forecast,
+        body: interpolateTranslation(t('market_calendar_explanation_forecast_body'), { value: forecast }),
+      },
+      {
+        label: t('market_calendar_actual'),
+        value: actual,
+        body: hasActual
+          ? interpolateTranslation(t('market_calendar_explanation_actual_body'), { value: actual })
+          : t('market_calendar_explanation_actual_unavailable'),
+      },
+      {
+        label: t('market_calendar_potential_impact'),
+        value: currency,
+        body: `${hasActual ? t('market_calendar_explanation_impact_body') : t('market_calendar_explanation_impact_pending')}${currencyNote}`,
+      },
+    ],
+  };
+}
+
 function EconomicCalendarPanel({
   t,
   locale,
@@ -5289,6 +5361,7 @@ function EconomicCalendarPanel({
                         <td>
                           <strong dir="auto">{event.eventName}</strong>
                           <small>{displayEconomicValue(event.country, unavailable)} · {economicStatusLabel(event.status, t)}</small>
+                          <EconomicEventExplanationAccordion event={event} t={t} unavailable={unavailable} compact />
                         </td>
                         <td><span className="calendar-currency-badge" dir="ltr">{displayEconomicValue(event.currency, unavailable)}</span></td>
                         <td><CalendarImpactBadge impact={event.impact} t={t} /></td>
@@ -5368,6 +5441,24 @@ function EconomicCalendarPanel({
         .economic-calendar-metric{display:grid;gap:5px;min-width:0;border:1px solid rgba(167,243,240,.12);background:var(--sfm-light-card);border-radius:16px;padding:10px}
         .economic-calendar-metric small{color:var(--sfm-muted);font-size:11px;font-weight:900;line-height:1.35}
         .economic-calendar-metric b{color:var(--sfm-foreground);font-size:12px;font-weight:950;line-height:1.45;overflow-wrap:anywhere}
+        .economic-calendar-featured>.economic-event-explanation{grid-column:1/-1}
+        .economic-calendar-table-card .economic-event-explanation{margin-top:10px;max-width:520px;white-space:normal}
+        .economic-event-explanation{display:grid;gap:10px;min-width:0}
+        .economic-event-explanation-toggle{width:max-content;max-width:100%;min-height:39px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid rgba(47,214,192,.34);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);border-radius:14px;padding:8px 12px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+        .economic-event-explanation-toggle:hover,.economic-event-explanation-toggle:focus-visible{outline:none;background:rgba(47,214,192,.16);border-color:var(--sfm-accent);box-shadow:0 10px 22px rgba(29,140,255,.12);transform:translateY(-1px)}
+        .economic-event-explanation-toggle svg:last-child{transition:transform .18s ease}
+        .economic-event-explanation-toggle[aria-expanded="true"] svg:last-child{transform:rotate(180deg)}
+        .economic-event-explanation-panel{display:grid;gap:11px;border:1px solid rgba(47,214,192,.20);background:linear-gradient(135deg,rgba(29,140,255,.06),rgba(47,214,192,.09)),var(--sfm-light-card);border-radius:20px;padding:14px;color:var(--sfm-foreground);animation:economicExplanationIn .18s ease-out}
+        .economic-event-explanation-title{display:flex;align-items:center;gap:8px;color:var(--sfm-primary-hover)}
+        .economic-event-explanation-title strong{font-size:14px;font-weight:950;line-height:1.4}
+        .economic-event-explanation-panel>p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:850;line-height:1.8}
+        .economic-event-explanation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+        .economic-event-explanation-item{display:grid;gap:5px;min-width:0;border:1px solid rgba(167,243,240,.14);background:var(--sfm-card);border-radius:16px;padding:11px}
+        .economic-event-explanation-item span{color:var(--sfm-muted);font-size:11px;font-weight:950;line-height:1.35}
+        .economic-event-explanation-item b{color:var(--sfm-foreground);font-size:13px;font-weight:950;line-height:1.45;overflow-wrap:anywhere}
+        .economic-event-explanation-item p{margin:0;color:var(--sfm-muted);font-size:12px;font-weight:800;line-height:1.7}
+        .economic-event-explanation-panel>small{display:block;color:var(--sfm-muted);font-size:11px;font-weight:900;line-height:1.7;border-top:1px solid rgba(167,243,240,.14);padding-top:9px}
+        @keyframes economicExplanationIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
         .calendar-impact-badge{display:inline-flex;align-items:center;width:max-content;border-radius:999px;border:1px solid rgba(100,116,139,.18);background:rgba(100,116,139,.08);color:var(--sfm-muted);padding:7px 10px;font-size:12px;font-weight:950;line-height:1.2}
         .calendar-impact-badge.high{border-color:rgba(239,68,68,.22);background:rgba(239,68,68,.10);color:#DC2626}
         .calendar-impact-badge.medium{border-color:rgba(245,158,11,.24);background:rgba(245,158,11,.12);color:#B45309}
@@ -5384,6 +5475,10 @@ function EconomicCalendarPanel({
         .economic-calendar-empty-state em{display:inline-flex;width:max-content;max-width:100%;margin-top:12px;border:1px solid rgba(47,214,192,.24);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);border-radius:999px;padding:7px 11px;font-style:normal;font-size:12px;font-weight:950;line-height:1.4}
         .dark .calendar-stat-card,.dark .economic-calendar-filter-card,.dark .economic-calendar-table-card,.dark .economic-calendar-event-card{background:#0f1d31;border-color:#1d3050}
         .dark .calendar-stat-card i,.dark .economic-calendar-search,.dark .calendar-filter-row button,.dark .economic-calendar-table-card th,.dark .economic-calendar-metric{background:#0a1422;border-color:#1d3050}
+        .dark .economic-event-explanation-toggle{border-color:rgba(47,214,192,.30);background:rgba(47,214,192,.11);color:#A7F3F0}
+        .dark .economic-event-explanation-toggle:hover,.dark .economic-event-explanation-toggle:focus-visible{background:rgba(47,214,192,.16);border-color:#2FD6C0;box-shadow:0 10px 24px rgba(47,214,192,.10)}
+        .dark .economic-event-explanation-panel{background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(47,214,192,.08)),#0a1422;border-color:#1d3050}
+        .dark .economic-event-explanation-item{background:#0f1d31;border-color:#1d3050}
         .dark .economic-calendar-featured{background:linear-gradient(135deg,rgba(29,140,255,.09),rgba(47,214,192,.10)),#0f1d31;border-color:rgba(47,214,192,.24)}
         .dark .calendar-status-badge{color:#93C5FD;border-color:rgba(147,197,253,.24);background:rgba(147,197,253,.10)}
         .dark .calendar-countdown-badge{color:#FDE68A;border-color:rgba(245,185,66,.25);background:rgba(245,185,66,.12)}
@@ -5393,7 +5488,7 @@ function EconomicCalendarPanel({
         .dark .economic-calendar-empty-state small{color:#F5B942}
         .dark .economic-calendar-empty-state em{color:#2FD6C0;background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.25)}
         @media(max-width:980px){.economic-calendar-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.economic-calendar-featured{grid-template-columns:1fr}.economic-calendar-table-card{display:none}.economic-calendar-mobile-list{display:grid}}
-        @media(max-width:640px){.economic-calendar-dashboard{border-radius:24px;padding:16px}.economic-calendar-dashboard-head{grid-template-columns:1fr}.economic-calendar-summary-grid{grid-template-columns:1fr}.calendar-stat-card strong{white-space:normal}.economic-calendar-featured{border-radius:24px;padding:15px}.economic-calendar-featured-metrics,.economic-calendar-event-metrics{grid-template-columns:1fr}.economic-calendar-filter-card{border-radius:22px;padding:12px}.economic-calendar-empty-state{grid-template-columns:1fr;padding:16px;border-radius:22px}.economic-calendar-empty-state>span{width:46px;height:46px;border-radius:17px}}
+        @media(max-width:640px){.economic-calendar-dashboard{border-radius:24px;padding:16px}.economic-calendar-dashboard-head{grid-template-columns:1fr}.economic-calendar-summary-grid{grid-template-columns:1fr}.calendar-stat-card strong{white-space:normal}.economic-calendar-featured{border-radius:24px;padding:15px}.economic-calendar-featured-metrics,.economic-calendar-event-metrics,.economic-event-explanation-grid{grid-template-columns:1fr}.economic-event-explanation-toggle{width:100%;min-height:44px}.economic-calendar-filter-card{border-radius:22px;padding:12px}.economic-calendar-empty-state{grid-template-columns:1fr;padding:16px;border-radius:22px}.economic-calendar-empty-state>span{width:46px;height:46px;border-radius:17px}}
       `}</style>
     </section>
   );
@@ -5431,6 +5526,7 @@ function CalendarFeaturedEvent({ event, locale, t, unavailable }: { event: Norma
         <CalendarMetric label={t('market_calendar_forecast')} value={displayEconomicValue(event.forecast, unavailable)} valueDir="ltr" />
         <CalendarMetric label={t('market_calendar_actual')} value={displayEconomicValue(event.actual, unavailable)} valueDir="ltr" />
       </div>
+      <EconomicEventExplanationAccordion event={event} t={t} unavailable={unavailable} compact />
     </article>
   );
 }
@@ -5488,6 +5584,7 @@ function CalendarEventCard({ event, locale, t, unavailable }: { event: Normalize
         <CalendarMetric label={t('market_calendar_actual')} value={displayEconomicValue(event.actual, unavailable)} valueDir="ltr" />
         <CalendarMetric label={t('market_calendar_source')} value={displayEconomicValue(event.source, unavailable)} valueDir="ltr" />
       </div>
+      <EconomicEventExplanationAccordion event={event} t={t} unavailable={unavailable} />
     </article>
   );
 }
@@ -5498,6 +5595,58 @@ function CalendarMetric({ label, value, valueDir }: { label: string; value: stri
       <small>{label}</small>
       <b dir={valueDir}>{value}</b>
     </span>
+  );
+}
+
+function EconomicEventExplanationAccordion({
+  event,
+  t,
+  unavailable,
+  compact = false,
+}: {
+  event: EconomicExplanationEvent;
+  t: (key: string) => string;
+  unavailable: string;
+  compact?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const reactId = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const panelId = `economic-event-explanation-${reactId}`;
+  const explanation = buildEconomicExplanationRows(event, unavailable, t);
+
+  return (
+    <div className={`economic-event-explanation ${compact ? 'compact' : ''}`}>
+      <button
+        type="button"
+        className="economic-event-explanation-toggle"
+        aria-expanded={expanded}
+        aria-controls={panelId}
+        onClick={() => setExpanded(value => !value)}
+      >
+        <Info size={16} aria-hidden="true" />
+        <span>{expanded ? t('market_calendar_hide_explanation') : t('market_calendar_show_explanation')}</span>
+        <ChevronDown size={16} aria-hidden="true" />
+      </button>
+      {expanded ? (
+        <div className="economic-event-explanation-panel" id={panelId}>
+          <div className="economic-event-explanation-title">
+            <Info size={16} aria-hidden="true" />
+            <strong>{t('market_calendar_simple_explanation')}</strong>
+          </div>
+          <p>{explanation.overview}</p>
+          <div className="economic-event-explanation-grid">
+            {explanation.rows.map(row => (
+              <section key={row.label} className="economic-event-explanation-item">
+                <span>{row.label}</span>
+                <b dir="auto">{row.value}</b>
+                <p>{row.body}</p>
+              </section>
+            ))}
+          </div>
+          <small>{t('market_calendar_explanation_disclaimer')}</small>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -5589,6 +5738,17 @@ function LegacyEconomicCalendarPanel({ t, locale, state }: { t: (key: string) =>
                     <CalendarMetric label={t('market_calendar_forecast')} value={event.forecast} valueDir="ltr" />
                     <CalendarMetric label={t('market_calendar_actual')} value={event.actual} valueDir="ltr" />
                   </div>
+                  <EconomicEventExplanationAccordion
+                    event={{
+                      eventName: event.name,
+                      currency: event.currency,
+                      previous: event.previous,
+                      forecast: event.forecast,
+                      actual: event.actual,
+                    }}
+                    t={t}
+                    unavailable={t('market_unavailable')}
+                  />
                 </article>
               ))}
             </div>
