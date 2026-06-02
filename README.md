@@ -81,6 +81,32 @@ ECONOMIC_CALENDAR_API_KEY=your_finnhub_key
 
 If `ECONOMIC_CALENDAR_API_KEY` is empty, the route falls back to the existing server-only `FINNHUB_API_KEY`. If no provider key is configured, the API returns an empty event list with `ECONOMIC_CALENDAR_PROVIDER_NOT_CONFIGURED`, and the UI shows a polished empty state instead of raw deployment or environment-variable errors.
 
+## Market Analysis News and Sentiment Providers
+
+The Market Analysis page uses server-only routes for central bank news and market sentiment. Provider keys are read only on the server and are never exposed to the browser.
+
+Set these Vercel environment variables as needed:
+
+```text
+NEWS_PROVIDER=newsapi
+NEWS_API_KEY=your_newsapi_key
+CENTRAL_BANK_NEWS_PROVIDER=newsapi
+CENTRAL_BANK_NEWS_API_KEY=optional_dedicated_newsapi_key
+
+MARKET_SENTIMENT_PROVIDER=finnhub
+MARKET_SENTIMENT_API_KEY=optional_dedicated_sentiment_key
+FINNHUB_API_KEY=your_finnhub_key
+ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key
+```
+
+Central bank news uses `CENTRAL_BANK_NEWS_API_KEY` first, then falls back to `NEWS_API_KEY`. If provider variables are empty, it defaults to `newsapi`.
+
+Market sentiment uses `MARKET_SENTIMENT_API_KEY` first for the selected provider. If no sentiment provider is set, it uses Finnhub when `FINNHUB_API_KEY` exists, then Alpha Vantage when `ALPHA_VANTAGE_API_KEY` exists.
+
+After adding or changing provider keys in Vercel, redeploy the project so the runtime can read the updated variables. If a provider is connected but returns no usable data, the UI shows a professional unavailable state and does not invent sentiment values or news.
+
+An optional protected diagnostics route is available at `/api/market/provider-health`. Set `MARKET_PROVIDER_HEALTH_TOKEN` or use the existing `ADMIN_ACCESS_CODE`, then call the route with `Authorization: Bearer <token>` or `x-admin-diagnostics-token`. The response reports provider names and key-presence booleans only; it never returns actual key values.
+
 ## Gulf Market News Sources
 
 The `/gulf-news` page uses free server-side RSS feeds and delayed/free market data only. It does not use paid APIs, client-side keys, fake news, or fake index values.
