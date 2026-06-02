@@ -23,8 +23,14 @@ create table if not exists public.charity_organizations (
 );
 
 alter table public.charity_organizations
+  drop constraint if exists charity_organizations_type_check;
+
+alter table public.charity_organizations
   add constraint charity_organizations_type_check
   check (organization_type in ('charity', 'zakat_house', 'humanitarian', 'waqf', 'mosque', 'education', 'relief', 'other')) not valid;
+
+alter table public.charity_organizations
+  drop constraint if exists charity_organizations_verification_check;
 
 alter table public.charity_organizations
   add constraint charity_organizations_verification_check
