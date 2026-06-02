@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMarketSentimentProviderConfig } from '@/lib/market/providerConfig';
 
-export const revalidate = 600;
+export const revalidate = 300;
 
 const cacheHeaders = {
-  'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200',
+  'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
 };
 const REQUEST_TIMEOUT_MS = 7000;
 

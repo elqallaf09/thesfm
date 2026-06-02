@@ -1,4 +1,4 @@
-export type CentralBankNewsProvider = 'newsapi';
+export type CentralBankNewsProvider = 'newsapi' | 'finnhub';
 export type MarketSentimentProvider = 'finnhub' | 'alphavantage';
 
 export function cleanEnv(value: unknown) {
@@ -6,8 +6,9 @@ export function cleanEnv(value: unknown) {
 }
 
 function normalizeCentralBankNewsProvider(value: string): CentralBankNewsProvider | null {
-  const normalized = value.trim().toLowerCase();
+  const normalized = value.trim().toLowerCase().replace(/[_\s-]+/g, '');
   if (!normalized || normalized === 'newsapi' || normalized === 'news-api') return 'newsapi';
+  if (normalized === 'finnhub') return 'finnhub';
   return null;
 }
 
@@ -22,19 +23,28 @@ function normalizeMarketSentimentProvider(value: string): MarketSentimentProvide
 export function getCentralBankNewsProviderConfig() {
   const centralBankNewsApiKey = cleanEnv(process.env.CENTRAL_BANK_NEWS_API_KEY);
   const newsApiKey = cleanEnv(process.env.NEWS_API_KEY);
+  const finnhubApiKey = cleanEnv(process.env.FINNHUB_API_KEY);
   const explicitProviderEnv = cleanEnv(process.env.CENTRAL_BANK_NEWS_PROVIDER) || cleanEnv(process.env.NEWS_PROVIDER);
-  const providerEnv = explicitProviderEnv || 'newsapi';
-  const provider = normalizeCentralBankNewsProvider(providerEnv);
-  const apiKey = centralBankNewsApiKey || newsApiKey;
+  const explicitProvider = normalizeCentralBankNewsProvider(explicitProviderEnv);
+  const inferredProvider: CentralBankNewsProvider | null = explicitProvider
+    ?? (centralBankNewsApiKey || newsApiKey ? 'newsapi' : null)
+    ?? (finnhubApiKey ? 'finnhub' : null);
+  const providerEnv = explicitProviderEnv || inferredProvider || 'newsapi';
+  const apiKey = inferredProvider === 'finnhub'
+    ? finnhubApiKey
+    : inferredProvider === 'newsapi'
+      ? (centralBankNewsApiKey || newsApiKey)
+      : (centralBankNewsApiKey || newsApiKey || finnhubApiKey);
 
   return {
-    configured: Boolean(provider && apiKey),
-    provider,
+    configured: Boolean(inferredProvider && apiKey),
+    provider: inferredProvider,
     providerEnv,
     providerEnvConfigured: Boolean(explicitProviderEnv),
     apiKey,
     hasCentralBankNewsApiKey: Boolean(centralBankNewsApiKey),
     hasNewsApiKey: Boolean(newsApiKey),
+    hasFinnhubApiKey: Boolean(finnhubApiKey),
   };
 }
 

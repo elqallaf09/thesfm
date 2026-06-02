@@ -16,6 +16,16 @@ type NewsApiArticle = {
   source?: { name?: string | null } | null;
 };
 
+type FinnhubNewsArticle = {
+  headline?: string | null;
+  summary?: string | null;
+  url?: string | null;
+  datetime?: number | null;
+  source?: string | null;
+};
+
+type CentralBankNewsArticle = NewsApiArticle | FinnhubNewsArticle;
+
 const CENTRAL_BANK_QUERY = [
   '"Federal Reserve"',
   'Fed',
@@ -28,6 +38,24 @@ const CENTRAL_BANK_QUERY = [
   '"central bank"',
   '"interest rates"',
 ].join(' OR ');
+
+const CENTRAL_BANK_KEYWORDS = [
+  'federal reserve',
+  ' fed ',
+  'fomc',
+  'ecb',
+  'european central bank',
+  'boe',
+  'bank of england',
+  'boj',
+  'bank of japan',
+  'central bank',
+  'interest rate',
+  'rate decision',
+  'monetary policy',
+  'inflation target',
+  'policy meeting',
+];
 
 function shouldDebug() {
   return process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true';
@@ -63,8 +91,14 @@ function inferRelatedCentralBank(title: string, summary: string) {
   return 'Central banks';
 }
 
-function stableId(article: NewsApiArticle, index: number) {
-  const base = article.url || article.title || `central-bank-news-${index}`;
+function articleHeadline(article: CentralBankNewsArticle) {
+  if ('title' in article) return article.title;
+  if ('headline' in article) return article.headline;
+  return null;
+}
+
+function stableId(article: CentralBankNewsArticle, index: number) {
+  const base = article.url || articleHeadline(article) || `central-bank-news-${index}`;
   return base
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -95,6 +129,88 @@ function normalizeArticle(article: NewsApiArticle, index: number) {
   };
 }
 
+function isCentralBankArticle(article: FinnhubNewsArticle) {
+  const text = ` ${shortText(article.headline, 240)} ${shortText(article.summary, 400)} `.toLowerCase();
+  return CENTRAL_BANK_KEYWORDS.some(keyword => text.includes(keyword));
+}
+
+function normalizeFinnhubArticle(article: FinnhubNewsArticle, index: number) {
+  const title = shortText(article.headline, 180);
+  if (!title) return null;
+  const summary = shortText(article.summary);
+  const url = shortText(article.url, 500);
+  const source = shortText(article.source, 90) || 'Finnhub';
+  const related = inferRelatedCentralBank(title, summary);
+  const publishedAt = typeof article.datetime === 'number' && article.datetime > 0
+    ? new Date(article.datetime * 1000).toISOString()
+    : null;
+
+  return {
+    id: stableId(article, index),
+    title,
+    headline: title,
+    summary,
+    description: summary,
+    source,
+    provider: 'finnhub',
+    url,
+    publishedAt,
+    bank: related,
+    currency: related,
+  };
+}
+
+async function fetchNewsApiItems(apiKey: string) {
+  const url = new URL('https://newsapi.org/v2/everything');
+  url.searchParams.set('q', CENTRAL_BANK_QUERY);
+  url.searchParams.set('language', 'en');
+  url.searchParams.set('sortBy', 'publishedAt');
+  url.searchParams.set('pageSize', '18');
+  url.searchParams.set('apiKey', apiKey);
+
+  const response = await fetch(url, {
+    next: { revalidate },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    if (shouldDebug()) {
+      console.warn('[central-bank-news] NewsAPI request failed', { status: response.status });
+    }
+    return null;
+  }
+
+  const payload = await response.json().catch(() => ({})) as { articles?: NewsApiArticle[] };
+  return (Array.isArray(payload.articles) ? payload.articles : [])
+    .map(normalizeArticle)
+    .filter((item): item is NonNullable<ReturnType<typeof normalizeArticle>> => Boolean(item));
+}
+
+async function fetchFinnhubItems(apiKey: string) {
+  const url = new URL('https://finnhub.io/api/v1/news');
+  url.searchParams.set('category', 'general');
+  url.searchParams.set('token', apiKey);
+
+  const response = await fetch(url, {
+    next: { revalidate },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    if (shouldDebug()) {
+      console.warn('[central-bank-news] Finnhub request failed', { status: response.status });
+    }
+    return null;
+  }
+
+  const payload = await response.json().catch(() => []) as FinnhubNewsArticle[];
+  return (Array.isArray(payload) ? payload : [])
+    .filter(isCentralBankArticle)
+    .slice(0, 18)
+    .map(normalizeFinnhubArticle)
+    .filter((item): item is NonNullable<ReturnType<typeof normalizeFinnhubArticle>> => Boolean(item));
+}
+
 export async function GET() {
   const config = getCentralBankNewsProviderConfig();
 
@@ -102,44 +218,28 @@ export async function GET() {
     return unavailableResponse('CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED');
   }
 
-  if (!config.provider || config.provider !== 'newsapi') {
+  if (!config.provider) {
     return unavailableResponse('CENTRAL_BANK_NEWS_PROVIDER_UNAVAILABLE');
   }
 
   try {
-    const url = new URL('https://newsapi.org/v2/everything');
-    url.searchParams.set('q', CENTRAL_BANK_QUERY);
-    url.searchParams.set('language', 'en');
-    url.searchParams.set('sortBy', 'publishedAt');
-    url.searchParams.set('pageSize', '18');
-    url.searchParams.set('apiKey', config.apiKey);
+    const items = config.provider === 'newsapi'
+      ? await fetchNewsApiItems(config.apiKey)
+      : await fetchFinnhubItems(config.apiKey);
 
-    const response = await fetch(url, {
-      next: { revalidate },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-
-    if (!response.ok) {
-      if (shouldDebug()) {
-        console.warn('[central-bank-news] NewsAPI request failed', { status: response.status, provider: config.provider });
-      }
+    if (!items) {
       return unavailableResponse('CENTRAL_BANK_NEWS_PROVIDER_ERROR');
     }
 
-    const payload = await response.json().catch(() => ({})) as { articles?: NewsApiArticle[] };
-    const items = (Array.isArray(payload.articles) ? payload.articles : [])
-      .map(normalizeArticle)
-      .filter((item): item is NonNullable<ReturnType<typeof normalizeArticle>> => Boolean(item));
-
     if (shouldDebug()) {
-      console.info('[central-bank-news] NewsAPI normalized articles', { count: items.length, provider: config.provider });
+      console.info('[central-bank-news] normalized provider response', { count: items.length, provider: config.provider });
     }
 
     return NextResponse.json({
       ok: true,
       success: true,
-      provider: 'newsapi',
-      source: 'NewsAPI',
+      provider: config.provider,
+      source: config.provider === 'newsapi' ? 'NewsAPI' : 'Finnhub',
       items,
       updated_at: new Date().toISOString(),
     }, { status: 200, headers: cacheHeaders });

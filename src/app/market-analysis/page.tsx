@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, Clock3, FileText, Gauge, Landmark, LineChart, Newspaper, Plus, Search, ShieldAlert, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
@@ -264,7 +264,7 @@ async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiLis
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), MARKET_TOOL_REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+    const response = await fetch(url, { signal: controller.signal });
     const payload = await response.json().catch(() => ({})) as { items?: T[]; events?: T[]; message?: string; updated_at?: string | null; code?: string; ok?: boolean; success?: boolean };
     const code = String(payload.code ?? '').trim().toUpperCase();
     const sourceAvailable = response.ok && payload.ok !== false && payload.success !== false;
@@ -624,6 +624,8 @@ export default function MarketAnalysisPage() {
   const [economicCalendar, setEconomicCalendar] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
   const [centralBankNews, setCentralBankNews] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
   const [marketSentiment, setMarketSentiment] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
+  const newsSentimentLoadedRef = useRef<Record<'news' | 'sentiment', boolean>>({ news: false, sentiment: false });
+  const newsSentimentLoadingRef = useRef<Record<'news' | 'sentiment', boolean>>({ news: false, sentiment: false });
   const [technicalSymbol, setTechnicalSymbol] = useState('EURUSD');
   const [technicalState, setTechnicalState] = useState<TechnicalState>({ loading: false, data: null, message: '' });
   const [technicalRefreshKey, setTechnicalRefreshKey] = useState(0);
@@ -640,15 +642,26 @@ export default function MarketAnalysisPage() {
     void fetchMarketToolState<Record<string, any>>('/api/market/economic-calendar', 'economic-calendar').then(setEconomicCalendar);
   }, []);
 
-  const loadNewsSentiment = useCallback((targets: Array<'news' | 'sentiment'> = ['news', 'sentiment']) => {
-    if (targets.includes('news')) {
+  const loadNewsSentiment = useCallback((targets: Array<'news' | 'sentiment'> = ['news', 'sentiment'], options: { force?: boolean } = {}) => {
+    const uniqueTargets = [...new Set(targets)].filter(target => {
+      if (options.force) return true;
+      return !newsSentimentLoadedRef.current[target] && !newsSentimentLoadingRef.current[target];
+    });
+
+    if (uniqueTargets.length === 0) return;
+
+    if (uniqueTargets.includes('news')) {
+      newsSentimentLoadingRef.current.news = true;
+      if (options.force) newsSentimentLoadedRef.current.news = false;
       setCentralBankNews(prev => ({ ...prev, loading: true, message: '', code: undefined }));
     }
-    if (targets.includes('sentiment')) {
+    if (uniqueTargets.includes('sentiment')) {
+      newsSentimentLoadingRef.current.sentiment = true;
+      if (options.force) newsSentimentLoadedRef.current.sentiment = false;
       setMarketSentiment(prev => ({ ...prev, loading: true, message: '', code: undefined }));
     }
 
-    const requests = targets.map(target => ({
+    const requests = uniqueTargets.map(target => ({
       target,
       request: target === 'news'
         ? fetchMarketToolState<Record<string, any>>('/api/market/central-bank-news', 'central-bank-news')
@@ -663,6 +676,10 @@ export default function MarketAnalysisPage() {
           : marketToolFailureState<Record<string, any>>(result.reason);
         if (target === 'news') setCentralBankNews(nextState);
         if (target === 'sentiment') setMarketSentiment(nextState);
+        if (target) {
+          newsSentimentLoadedRef.current[target] = true;
+          newsSentimentLoadingRef.current[target] = false;
+        }
       });
     });
   }, []);
@@ -709,15 +726,8 @@ export default function MarketAnalysisPage() {
 
   useEffect(() => {
     if (activeTab !== 'newsSentiment') return;
-    const targets: Array<'news' | 'sentiment'> = [];
-    if (!centralBankNews.loading && centralBankNews.items.length === 0 && !centralBankNews.message && !centralBankNews.code) {
-      targets.push('news');
-    }
-    if (!marketSentiment.loading && marketSentiment.items.length === 0 && !marketSentiment.message && !marketSentiment.code) {
-      targets.push('sentiment');
-    }
-    if (targets.length > 0) loadNewsSentiment(targets);
-  }, [activeTab, centralBankNews.code, centralBankNews.items.length, centralBankNews.loading, centralBankNews.message, loadNewsSentiment, marketSentiment.code, marketSentiment.items.length, marketSentiment.loading, marketSentiment.message]);
+    loadNewsSentiment();
+  }, [activeTab, loadNewsSentiment]);
 
   useEffect(() => {
     if (activeTab !== 'technicalAnalysis' || !selectedAsset) return;
@@ -1893,8 +1903,8 @@ export default function MarketAnalysisPage() {
             t={t}
             news={centralBankNews}
             sentiment={marketSentiment}
-            onRefreshNews={() => loadNewsSentiment(['news'])}
-            onRefreshSentiment={() => loadNewsSentiment(['sentiment'])}
+            onRefreshNews={() => loadNewsSentiment(['news'], { force: true })}
+            onRefreshSentiment={() => loadNewsSentiment(['sentiment'], { force: true })}
           />
         )}
 

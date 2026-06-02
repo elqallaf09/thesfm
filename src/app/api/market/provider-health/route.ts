@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
       providerEnvConfigured: centralBankNews.providerEnvConfigured,
       hasCentralBankNewsApiKey: centralBankNews.hasCentralBankNewsApiKey,
       hasNewsApiKey: centralBankNews.hasNewsApiKey,
+      hasFinnhubApiKey: centralBankNews.hasFinnhubApiKey,
     },
     marketSentiment: {
       configured: marketSentiment.configured,
