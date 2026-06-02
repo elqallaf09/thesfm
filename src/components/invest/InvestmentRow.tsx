@@ -1,6 +1,6 @@
 'use client';
 
-import { Edit3, Eye, Trash2 } from 'lucide-react';
+import { Edit3, Eye, RefreshCw, Trash2 } from 'lucide-react';
 import type { Investment } from '@/types/investment';
 
 interface Props {
@@ -14,6 +14,9 @@ interface Props {
     risk: string;
     expectedReturn: string;
     ofPortfolio: string;
+    refreshPrice?: string;
+    refreshingPrice?: string;
+    lastPrice?: string;
   };
   typeLabel: (type: Investment['type']) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
@@ -21,6 +24,8 @@ interface Props {
   onDetails: (item: Investment) => void;
   onEdit: (item: Investment) => void;
   onDelete: (item: Investment) => void;
+  onRefreshPrice?: (item: Investment) => void;
+  refreshing?: boolean;
 }
 
 export function InvestmentRow({
@@ -33,7 +38,10 @@ export function InvestmentRow({
   onDetails,
   onEdit,
   onDelete,
+  onRefreshPrice,
+  refreshing = false,
 }: Props) {
+  const linkedSymbol = investment.providerSymbol || investment.symbol;
   const notCalculable = labels.ofPortfolio.includes('portfolio')
     ? 'Not calculable'
     : labels.ofPortfolio.includes('portefeuille')
@@ -51,8 +59,13 @@ export function InvestmentRow({
       </div>
 
       <div className="invest-row-meta">
+        {linkedSymbol && <span dir="ltr">{linkedSymbol}</span>}
+        {investment.market && <span>{investment.market}</span>}
+        {typeof investment.lastPrice === 'number' && investment.currency && (
+          <span>{labels.lastPrice}: <b dir="ltr">{investment.currency} {formatNumber(investment.lastPrice)}</b></span>
+        )}
         <span>{labels.monthly}: {formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)}</span>
-        <span>{labels.expectedReturn}: {investment.expectedAnnualReturn === undefined ? '—' : `${investment.expectedAnnualReturn}%`}</span>
+        <span>{labels.expectedReturn}: {investment.expectedAnnualReturn === undefined ? '-' : `${investment.expectedAnnualReturn}%`}</span>
         <span>{portfolioPercent === null ? notCalculable : labels.ofPortfolio.replace('{pct}', portfolioPercent.toFixed(0))}</span>
       </div>
 
@@ -65,6 +78,12 @@ export function InvestmentRow({
           <Edit3 size={15} />
           <span>{labels.edit}</span>
         </button>
+        {linkedSymbol && onRefreshPrice && (
+          <button type="button" onClick={() => onRefreshPrice(investment)} aria-label={labels.refreshPrice} title={labels.refreshPrice} disabled={refreshing}>
+            <RefreshCw size={15} className={refreshing ? 'invest-spin' : undefined} />
+            <span>{refreshing ? labels.refreshingPrice : labels.refreshPrice}</span>
+          </button>
+        )}
         <button type="button" className="danger" onClick={() => onDelete(investment)} aria-label={labels.delete} title={labels.delete}>
           <Trash2 size={15} />
           <span>{labels.delete}</span>
@@ -72,4 +91,11 @@ export function InvestmentRow({
       </div>
     </article>
   );
+}
+
+function formatNumber(value: number) {
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  });
 }

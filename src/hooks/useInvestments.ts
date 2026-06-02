@@ -23,6 +23,15 @@ type DbInvestmentRow = {
   risk_level?: RiskLevel | null;
   expected_return?: number | string | null;
   expected_annual_return?: number | string | null;
+  symbol?: string | null;
+  provider_symbol?: string | null;
+  market?: string | null;
+  asset_type?: string | null;
+  currency?: string | null;
+  quantity?: number | string | null;
+  last_price?: number | string | null;
+  last_price_updated_at?: string | null;
+  data_source?: string | null;
   notes?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -72,6 +81,8 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
   const displayAmount = firstMoneyValue(row as Record<string, unknown>, ['current_value', 'amount', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
   const monthlyAmount = parseMoneyValue(row.monthly_contribution ?? meta?.monthlyContribution);
   const expectedReturn = parseMoneyValue(row.expected_annual_return ?? row.expected_return ?? meta?.expectedAnnualReturn);
+  const quantity = parseMoneyValue(row.quantity ?? meta?.quantity);
+  const lastPrice = parseMoneyValue(row.last_price ?? meta?.lastPrice);
   if (process.env.NODE_ENV === 'development' && !hasLoggedInvestmentDebug) {
     hasLoggedInvestmentDebug = true;
     console.log('RAW INVESTMENT ASSET:', row);
@@ -99,6 +110,15 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
     riskLevel: row.risk_level || meta?.riskLevel || 'medium',
     expectedAnnualReturn: expectedReturn.status === 'valid' ? expectedReturn.value : meta?.expectedAnnualReturn ?? 0,
     notes: row.notes ?? meta?.notes ?? '',
+    symbol: row.symbol ?? meta?.symbol,
+    providerSymbol: row.provider_symbol ?? meta?.providerSymbol,
+    market: row.market ?? meta?.market,
+    assetType: row.asset_type ?? meta?.assetType,
+    currency: row.currency ?? meta?.currency,
+    quantity: quantity.status === 'valid' ? quantity.value : meta?.quantity,
+    lastPrice: lastPrice.status === 'valid' ? lastPrice.value : meta?.lastPrice,
+    lastPriceUpdatedAt: row.last_price_updated_at ?? meta?.lastPriceUpdatedAt,
+    dataSource: row.data_source ?? meta?.dataSource,
     createdAt,
     updatedAt: row.updated_at || createdAt,
   };
@@ -121,6 +141,15 @@ function metaFromInvestment(item: Investment | InvestmentInput): InvestmentMeta 
     riskLevel: item.riskLevel,
     expectedAnnualReturn: item.expectedAnnualReturn,
     notes: item.notes,
+    symbol: item.symbol,
+    providerSymbol: item.providerSymbol,
+    market: item.market,
+    assetType: item.assetType,
+    currency: item.currency,
+    quantity: item.quantity,
+    lastPrice: item.lastPrice,
+    lastPriceUpdatedAt: item.lastPriceUpdatedAt,
+    dataSource: item.dataSource,
   };
 }
 
@@ -158,7 +187,7 @@ export function useInvestments() {
       const meta = readJson<Record<string, InvestmentMeta>>(userMetaKey, {});
       const full = await supabase
         .from('investment_items')
-        .select('id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,created_at,updated_at')
+        .select('id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,asset_type,quantity,last_price,last_price_updated_at,data_source,created_at,updated_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -229,6 +258,15 @@ export function useInvestments() {
       start_date: data.startDate,
       risk_level: data.riskLevel,
       expected_annual_return: data.expectedAnnualReturn ?? null,
+      symbol: data.symbol ?? null,
+      provider_symbol: data.providerSymbol ?? null,
+      market: data.market ?? null,
+      asset_type: data.assetType ?? null,
+      currency: data.currency ?? null,
+      quantity: data.quantity ?? null,
+      last_price: data.lastPrice ?? null,
+      last_price_updated_at: data.lastPriceUpdatedAt ?? null,
+      data_source: data.dataSource ?? null,
       notes: data.notes ?? null,
     };
 
@@ -281,6 +319,15 @@ export function useInvestments() {
       start_date: data.startDate,
       risk_level: data.riskLevel,
       expected_annual_return: data.expectedAnnualReturn ?? null,
+      symbol: data.symbol ?? null,
+      provider_symbol: data.providerSymbol ?? null,
+      market: data.market ?? null,
+      asset_type: data.assetType ?? null,
+      currency: data.currency ?? null,
+      quantity: data.quantity ?? null,
+      last_price: data.lastPrice ?? null,
+      last_price_updated_at: data.lastPriceUpdatedAt ?? null,
+      data_source: data.dataSource ?? null,
       notes: data.notes ?? null,
     };
 

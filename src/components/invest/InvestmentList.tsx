@@ -24,6 +24,9 @@ interface Props {
     risk: string;
     expectedReturn: string;
     ofPortfolio: string;
+    refreshPrice?: string;
+    refreshingPrice?: string;
+    lastPrice?: string;
   };
   types: InvestmentType[];
   typeLabel: (type: InvestmentType) => string;
@@ -32,6 +35,8 @@ interface Props {
   onDetails: (item: Investment) => void;
   onEdit: (item: Investment) => void;
   onDelete: (item: Investment) => void;
+  onRefreshPrice?: (item: Investment) => void;
+  refreshingPriceId?: string | null;
 }
 
 export function InvestmentList({
@@ -44,6 +49,8 @@ export function InvestmentList({
   onDetails,
   onEdit,
   onDelete,
+  onRefreshPrice,
+  refreshingPriceId,
 }: Props) {
   const [query, setQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | InvestmentType>('all');
@@ -109,6 +116,8 @@ export function InvestmentList({
             onDetails={onDetails}
             onEdit={onEdit}
             onDelete={onDelete}
+            onRefreshPrice={onRefreshPrice}
+            refreshing={refreshingPriceId === item.id}
           />
         ))}
       </div>

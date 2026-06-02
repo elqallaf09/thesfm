@@ -24,6 +24,15 @@ export interface Investment {
   riskLevel: RiskLevel;
   expectedAnnualReturn?: number;
   notes?: string;
+  symbol?: string;
+  providerSymbol?: string;
+  market?: string;
+  assetType?: string;
+  currency?: string;
+  quantity?: number;
+  lastPrice?: number;
+  lastPriceUpdatedAt?: string;
+  dataSource?: string;
   createdAt: string;
   updatedAt: string;
 }

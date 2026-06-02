@@ -7,11 +7,11 @@ export function totalInvestments(rows: any[] = []) {
 }
 
 export function investmentSymbol(row: any) {
-  const direct = String(row?.symbol ?? row?.ticker ?? '').trim();
+  const direct = String(row?.providerSymbol ?? row?.provider_symbol ?? row?.symbol ?? row?.ticker ?? '').trim();
   if (direct) return direct.toUpperCase();
   try {
     const parsed = row?.notes ? JSON.parse(String(row.notes)) : null;
-    const symbol = String(parsed?.symbol ?? parsed?.ticker ?? '').trim();
+    const symbol = String(parsed?.providerSymbol ?? parsed?.provider_symbol ?? parsed?.symbol ?? parsed?.ticker ?? '').trim();
     return symbol ? symbol.toUpperCase() : '';
   } catch {
     return '';
