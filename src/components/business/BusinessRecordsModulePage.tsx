@@ -90,6 +90,40 @@ function valueAsString(value: unknown) {
   return String(value);
 }
 
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function logSupplierSaveFailure(error: any) {
+  console.error('Supplier save failed:', {
+    message: error?.message,
+    code: error?.code,
+    details: error?.details,
+    hint: error?.hint,
+  });
+}
+
+function isSupplierAccessDeniedError(error: any) {
+  const code = String(error?.code ?? '');
+  const message = String(error?.message ?? '').toLowerCase();
+  return code === '42501' || message.includes('row-level security') || message.includes('permission denied');
+}
+
+function isSupplierSchemaError(error: any) {
+  const code = String(error?.code ?? '');
+  const message = String(error?.message ?? '').toLowerCase();
+  return (
+    code === '42P01' ||
+    code === '42703' ||
+    code === '23502' ||
+    code === '23503' ||
+    code === 'PGRST204' ||
+    message.includes('schema cache') ||
+    message.includes('does not exist') ||
+    message.includes('column')
+  );
+}
+
 function booleanLabel(value: unknown, locale: BusinessLang) {
   if (locale === 'ar') return value ? 'نعم' : 'لا';
   if (locale === 'fr') return value ? 'Oui' : 'Non';
@@ -436,8 +470,26 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
     setFormOpen(false);
   }
 
-  function buildPayload() {
-    const payload: BusinessRecord = { user_id: user?.id };
+  function buildPayload(currentUserId: string) {
+    if (module === 'suppliers') {
+      const optionalText = (key: string) => {
+        const normalized = valueAsString(form[key]).trim();
+        return normalized || null;
+      };
+
+      return {
+        user_id: currentUserId,
+        name: valueAsString(form.name).trim(),
+        phone: optionalText('phone'),
+        email: optionalText('email'),
+        company: optionalText('company'),
+        supply_type: optionalText('supply_type'),
+        address: optionalText('address'),
+        notes: optionalText('notes'),
+      };
+    }
+
+    const payload: BusinessRecord = { user_id: currentUserId };
     for (const field of config.fields) {
       const value = form[field.key];
       if (field.type === 'checkbox') {
@@ -456,7 +508,33 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!user || !permissions.canWriteBusinessModules) return;
+    if (!user) {
+      setFormError(module === 'suppliers' ? text.supplierAuthRequired : text.permissionDenied);
+      return;
+    }
+    const currentUserId = user.id;
+    if (!currentUserId) {
+      setFormError(module === 'suppliers' ? text.supplierAuthRequired : text.permissionDenied);
+      return;
+    }
+    if (!permissions.canWriteBusinessModules) {
+      setFormError(text.permissionDenied);
+      return;
+    }
+
+    if (module === 'suppliers') {
+      const supplierName = valueAsString(form.name).trim();
+      const supplierEmail = valueAsString(form.email).trim();
+
+      if (!supplierName) {
+        setFormError(text.supplierNameRequired);
+        return;
+      }
+      if (supplierEmail && !isValidEmail(supplierEmail)) {
+        setFormError(text.invalidEmail);
+        return;
+      }
+    }
 
     for (const field of config.fields) {
       if (!field.required) continue;
@@ -466,7 +544,7 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
         return;
       }
       if (field.type !== 'number' && !valueAsString(value).trim()) {
-        setFormError(text.requiredField);
+        setFormError(module === 'suppliers' ? text.businessValidationRequired : text.requiredField);
         return;
       }
     }
@@ -475,14 +553,30 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
     setFormError('');
     setNotice('');
     const db = supabase as any;
-    const payload = buildPayload();
-    const result = editing
-      ? await db.from(config.tableName).update(payload).eq('id', editing.id).eq('user_id', user.id)
-      : await db.from(config.tableName).insert(payload);
+    const payload = buildPayload(currentUserId);
+    let result: { error: any };
+
+    try {
+      result = editing
+        ? await db.from(config.tableName).update(payload).eq('id', editing.id).eq('user_id', currentUserId)
+        : await db.from(config.tableName).insert(payload);
+    } catch (error) {
+      setSaving(false);
+      if (module === 'suppliers') logSupplierSaveFailure(error);
+      setFormError(module === 'suppliers' ? text.networkSaveError : text.saveError);
+      return;
+    }
 
     setSaving(false);
     if (result.error) {
-      setFormError(text.saveError);
+      if (module === 'suppliers') {
+        logSupplierSaveFailure(result.error);
+        if (isSupplierAccessDeniedError(result.error)) setFormError(text.supplierRlsSaveError);
+        else if (isSupplierSchemaError(result.error)) setFormError(text.supplierSchemaSaveError);
+        else setFormError(text.saveError);
+      } else {
+        setFormError(text.saveError);
+      }
       return;
     }
 
