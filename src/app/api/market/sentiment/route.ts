@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getMarketSentimentProviderConfig } from '@/lib/market/providerConfig';
 
 export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
 const cacheHeaders = {
   'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
 };
 const REQUEST_TIMEOUT_MS = 8000;
-
-const DEFAULT_SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'MSFT', 'NVDA', 'TSLA'];
 
 type FinnhubSentimentEntry = {
   atTime?: string;
@@ -29,7 +28,12 @@ type AlphaVantageTickerSentiment = {
 type AlphaVantageArticle = {
   ticker_sentiment?: AlphaVantageTickerSentiment[];
   time_published?: string;
+  Information?: string;
+  Note?: string;
+  'Error Message'?: string;
 };
+
+type SentimentProvider = 'finnhub' | 'alphavantage';
 
 function shouldDebug() {
   return process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true';
@@ -50,10 +54,46 @@ function unavailableResponse(code: string, provider: string | null = null) {
   }, { status: 200, headers: cacheHeaders });
 }
 
+class MarketSentimentProviderError extends Error {
+  code: string;
+  status?: number;
+  statusText?: string;
+
+  constructor(code: string, message: string, status?: number, statusText?: string) {
+    super(message);
+    this.name = 'MarketSentimentProviderError';
+    this.code = code;
+    this.status = status;
+    this.statusText = statusText;
+  }
+}
+
+function providerErrorCode(status: number) {
+  if (status === 401) return 'MARKET_SENTIMENT_AUTH_FAILED';
+  if (status === 403) return 'MARKET_SENTIMENT_PLAN_NOT_ALLOWED';
+  if (status === 404) return 'NO_MARKET_SENTIMENT_DATA';
+  if (status === 429) return 'MARKET_SENTIMENT_RATE_LIMITED';
+  if (status >= 500) return 'MARKET_SENTIMENT_PROVIDER_FAILED';
+  return 'MARKET_SENTIMENT_PROVIDER_FAILED';
+}
+
 function providerFailedError(message = 'Market sentiment provider failed') {
   const error = new Error(message);
   error.name = 'ProviderFailedError';
   return error;
+}
+
+function logProviderError(provider: string | null, error: unknown) {
+  const status = error instanceof MarketSentimentProviderError ? error.status : undefined;
+  const statusText = error instanceof MarketSentimentProviderError ? error.statusText : undefined;
+  const code = error instanceof MarketSentimentProviderError ? error.code : isTimeoutError(error) ? 'MARKET_SENTIMENT_TIMEOUT' : undefined;
+  console.error('Market sentiment provider error:', {
+    provider,
+    status,
+    statusText,
+    message: error instanceof Error ? error.message : String(error),
+    code,
+  });
 }
 
 function safeNumber(value: unknown) {
@@ -65,14 +105,42 @@ function clampPercent(value: number) {
   return Math.max(0, Math.min(100, value));
 }
 
-function parseSymbols(request: NextRequest) {
+function normalizeSentimentSymbol(symbol: string, provider: SentimentProvider) {
+  const raw = symbol.trim().toUpperCase();
+  const withoutYahooSuffix = raw.replace(/=X$/, '');
+  const compact = withoutYahooSuffix.replace(/[\s/_-]+/g, '');
+
+  if (!compact) return '';
+  if (/^[A-Z]{6}$/.test(compact)) {
+    if (provider === 'alphavantage' && compact.endsWith('USD') && compact.length === 6 && ['BTC', 'ETH'].includes(compact.slice(0, 3))) {
+      return `CRYPTO:${compact.slice(0, 3)}`;
+    }
+    if (provider === 'alphavantage' && !compact.endsWith('USD')) {
+      return compact;
+    }
+    return compact;
+  }
+
+  if (raw.includes('/') && /^[A-Z]{3}\/[A-Z]{3}$/.test(raw)) {
+    const compactPair = raw.replace('/', '');
+    if (provider === 'alphavantage' && ['BTC/USD', 'ETH/USD'].includes(raw)) {
+      return `CRYPTO:${raw.slice(0, 3)}`;
+    }
+    return compactPair;
+  }
+
+  if (/^[A-Z0-9.^]{1,14}$/.test(compact)) return compact;
+  return '';
+}
+
+function parseSymbols(request: NextRequest, provider: SentimentProvider) {
   const raw = request.nextUrl.searchParams.get('symbols') || request.nextUrl.searchParams.get('symbol') || '';
   const symbols = raw
     .split(',')
-    .map(symbol => symbol.trim().toUpperCase())
-    .filter(symbol => /^[A-Z0-9.^/-]{1,14}$/.test(symbol))
-    .slice(0, 8);
-  return symbols.length > 0 ? symbols : DEFAULT_SYMBOLS;
+    .map(symbol => normalizeSentimentSymbol(symbol, provider))
+    .filter(symbol => /^[A-Z0-9.^:]{1,18}$/.test(symbol))
+    .slice(0, 4);
+  return symbols;
 }
 
 function formatDate(date: Date) {
@@ -155,7 +223,12 @@ async function fetchFinnhubSentiment(symbols: string[], apiKey: string) {
       if (shouldDebug()) {
         console.warn('[market-sentiment] Finnhub symbol failed', { symbol, status: response.status });
       }
-      throw providerFailedError('Finnhub sentiment request failed');
+      throw new MarketSentimentProviderError(
+        providerErrorCode(response.status),
+        'Finnhub sentiment request failed',
+        response.status,
+        response.statusText,
+      );
     }
 
     const payload = await response.json().catch(() => ({})) as { reddit?: FinnhubSentimentEntry[]; twitter?: FinnhubSentimentEntry[] };
@@ -171,6 +244,8 @@ async function fetchFinnhubSentiment(symbols: string[], apiKey: string) {
 
   const allProviderRequestsFailed = settled.length > 0 && settled.every(result => result.status === 'rejected');
   if (allProviderRequestsFailed) {
+    const firstRejected = settled.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+    if (firstRejected?.reason instanceof MarketSentimentProviderError) throw firstRejected.reason;
     throw providerFailedError('Finnhub sentiment provider failed for all symbols');
   }
 
@@ -226,10 +301,15 @@ async function fetchAlphaVantageSentiment(symbols: string[], apiKey: string) {
     if (shouldDebug()) {
       console.warn('[market-sentiment] Alpha Vantage request failed', { status: response.status });
     }
-    throw providerFailedError('Alpha Vantage sentiment request failed');
+    throw new MarketSentimentProviderError(
+      providerErrorCode(response.status),
+      'Alpha Vantage sentiment request failed',
+      response.status,
+      response.statusText,
+    );
   }
 
-  const payload = await response.json().catch(() => ({})) as { feed?: AlphaVantageArticle[]; Information?: string; Note?: string };
+  const payload = await response.json().catch(() => ({})) as { feed?: AlphaVantageArticle[]; Information?: string; Note?: string; 'Error Message'?: string };
   if (!Array.isArray(payload.feed)) {
     if (shouldDebug()) {
       console.warn('[market-sentiment] Alpha Vantage returned no feed', {
@@ -237,8 +317,14 @@ async function fetchAlphaVantageSentiment(symbols: string[], apiKey: string) {
         hasNote: Boolean(payload.Note),
       });
     }
-    if (payload.Information || payload.Note) {
-      throw providerFailedError('Alpha Vantage sentiment provider returned a service notice');
+    if (payload.Note) {
+      throw new MarketSentimentProviderError('MARKET_SENTIMENT_RATE_LIMITED', 'Alpha Vantage sentiment provider rate limited');
+    }
+    if (payload['Error Message']) {
+      throw new MarketSentimentProviderError('MARKET_SENTIMENT_AUTH_FAILED', 'Alpha Vantage sentiment provider rejected the request');
+    }
+    if (payload.Information) {
+      throw new MarketSentimentProviderError('MARKET_SENTIMENT_PROVIDER_FAILED', 'Alpha Vantage sentiment provider returned a service notice');
     }
     return [];
   }
@@ -248,14 +334,25 @@ async function fetchAlphaVantageSentiment(symbols: string[], apiKey: string) {
 
 export async function GET(request: NextRequest) {
   const config = getMarketSentimentProviderConfig();
-  const symbols = parseSymbols(request);
+  const envCheck = {
+    hasMarketSentimentKey: config.hasMarketSentimentApiKey,
+    hasFinnhubKey: config.hasFinnhubApiKey,
+    hasAlphaVantageKey: config.hasAlphaVantageApiKey,
+    nodeEnv: process.env.NODE_ENV,
+  };
+  console.log('Market sentiment env check:', envCheck);
 
   if (!config.apiKey) {
     return unavailableResponse('MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED');
   }
 
   if (!config.provider) {
-    return unavailableResponse('MARKET_SENTIMENT_PROVIDER_FAILED');
+    return unavailableResponse('MARKET_SENTIMENT_PROVIDER_MISSING');
+  }
+
+  const symbols = parseSymbols(request, config.provider);
+  if (symbols.length === 0) {
+    return unavailableResponse('SYMBOL_REQUIRED', config.provider);
   }
 
   try {
@@ -284,9 +381,12 @@ export async function GET(request: NextRequest) {
       updated_at: new Date().toISOString(),
     }, { status: 200, headers: cacheHeaders });
   } catch (error) {
-    if (shouldDebug()) {
-      console.warn('[market-sentiment] provider error', error instanceof Error ? error.message : error);
-    }
-    return unavailableResponse('MARKET_SENTIMENT_PROVIDER_FAILED', config.provider);
+    logProviderError(config.provider, error);
+    const code = error instanceof MarketSentimentProviderError
+      ? error.code
+      : isTimeoutError(error)
+        ? 'MARKET_SENTIMENT_TIMEOUT'
+        : 'MARKET_SENTIMENT_PROVIDER_FAILED';
+    return unavailableResponse(code, config.provider);
   }
 }

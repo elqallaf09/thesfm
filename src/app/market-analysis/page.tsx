@@ -239,7 +239,8 @@ function sanitizeMarketToolMessage(code: string, message: string) {
     code === 'ECONOMIC_CALENDAR_PROVIDER_NOT_CONFIGURED' ||
     code === 'ECONOMIC_CALENDAR_NOT_CONFIGURED' ||
     code === 'CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED' ||
-    code === 'MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED' ||
+    code.startsWith('MARKET_SENTIMENT_') ||
+    code === 'SYMBOL_REQUIRED' ||
     code === 'MARKET_DATA_TIMEOUT' ||
     /ECONOMIC_CALENDAR_|\b[A-Z0-9_]*(API_)?(KEY|TOKEN|SECRET)\b|provider integration is not configured/i.test(message)
   ) {
@@ -651,6 +652,7 @@ export default function MarketAnalysisPage() {
   const [marketSentiment, setMarketSentiment] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
   const newsSentimentLoadedRef = useRef<Record<'news' | 'sentiment', boolean>>({ news: false, sentiment: false });
   const newsSentimentLoadingRef = useRef<Record<'news' | 'sentiment', boolean>>({ news: false, sentiment: false });
+  const newsSentimentSymbolRef = useRef('');
   const [technicalSymbol, setTechnicalSymbol] = useState('EURUSD');
   const [technicalState, setTechnicalState] = useState<TechnicalState>({ loading: false, data: null, message: '' });
   const [technicalRefreshKey, setTechnicalRefreshKey] = useState(0);
@@ -667,9 +669,18 @@ export default function MarketAnalysisPage() {
     void fetchMarketToolState<Record<string, any>>('/api/market/economic-calendar', 'economic-calendar').then(setEconomicCalendar);
   }, []);
 
+  const selectedSentimentSymbol = useMemo(() => (
+    selectedAsset?.providerSymbol
+    ?? selectedAsset?.symbol
+    ?? ''
+  ).trim().toUpperCase(), [selectedAsset]);
+
   const loadNewsSentiment = useCallback((targets: Array<'news' | 'sentiment'> = ['news', 'sentiment'], options: { force?: boolean } = {}) => {
     const uniqueTargets = [...new Set(targets)].filter(target => {
       if (options.force) return true;
+      if (target === 'sentiment' && selectedSentimentSymbol !== newsSentimentSymbolRef.current) {
+        return !newsSentimentLoadingRef.current[target];
+      }
       return !newsSentimentLoadedRef.current[target] && !newsSentimentLoadingRef.current[target];
     });
 
@@ -692,8 +703,8 @@ export default function MarketAnalysisPage() {
         ? `/api/market/central-bank-news?refresh=${refreshKey}`
         : '/api/market/central-bank-news';
       const sentimentUrl = refreshKey
-        ? `/api/market/sentiment?refresh=${refreshKey}`
-        : '/api/market/sentiment';
+        ? `/api/market/sentiment?refresh=${refreshKey}${selectedSentimentSymbol ? `&symbol=${encodeURIComponent(selectedSentimentSymbol)}` : ''}`
+        : `/api/market/sentiment${selectedSentimentSymbol ? `?symbol=${encodeURIComponent(selectedSentimentSymbol)}` : ''}`;
       return {
         target,
         request: target === 'news'
@@ -709,14 +720,17 @@ export default function MarketAnalysisPage() {
           ? result.value
           : marketToolFailureState<Record<string, any>>(result.reason);
         if (target === 'news') setCentralBankNews(nextState);
-        if (target === 'sentiment') setMarketSentiment(nextState);
+        if (target === 'sentiment') {
+          setMarketSentiment(nextState);
+          newsSentimentSymbolRef.current = selectedSentimentSymbol;
+        }
         if (target) {
           newsSentimentLoadedRef.current[target] = true;
           newsSentimentLoadingRef.current[target] = false;
         }
       });
     });
-  }, []);
+  }, [selectedSentimentSymbol]);
 
   useEffect(() => {
     const syncTabFromRoute = () => {
@@ -5896,11 +5910,26 @@ function publicNewsEmptyCopy(code: string | undefined, t: (key: string) => strin
 }
 
 function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => string) {
-  if (code === 'MARKET_DATA_TIMEOUT') {
-    return { title: t('market_section_timeout_title'), body: t('market_section_timeout_body') };
+  if (code === 'MARKET_DATA_TIMEOUT' || code === 'MARKET_SENTIMENT_TIMEOUT') {
+    return { title: t('market_sentiment_timeout_title'), body: t('market_sentiment_timeout_body') };
   }
   if (code === 'MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED') {
     return { title: t('market_sentiment_not_configured_title'), body: t('market_sentiment_not_configured_body') };
+  }
+  if (code === 'MARKET_SENTIMENT_PROVIDER_MISSING') {
+    return { title: t('market_sentiment_provider_missing_title'), body: t('market_sentiment_provider_missing_body') };
+  }
+  if (code === 'SYMBOL_REQUIRED') {
+    return { title: t('market_sentiment_symbol_required_title'), body: t('market_sentiment_symbol_required_body') };
+  }
+  if (code === 'MARKET_SENTIMENT_AUTH_FAILED') {
+    return { title: t('market_sentiment_auth_failed_title'), body: t('market_sentiment_auth_failed_body') };
+  }
+  if (code === 'MARKET_SENTIMENT_PLAN_NOT_ALLOWED') {
+    return { title: t('market_sentiment_plan_not_allowed_title'), body: t('market_sentiment_plan_not_allowed_body') };
+  }
+  if (code === 'MARKET_SENTIMENT_RATE_LIMITED') {
+    return { title: t('market_sentiment_rate_limited_title'), body: t('market_sentiment_rate_limited_body') };
   }
   if (code === 'NO_MARKET_SENTIMENT_DATA') {
     return { title: t('market_sentiment_no_items_title'), body: t('market_sentiment_no_items_body') };
