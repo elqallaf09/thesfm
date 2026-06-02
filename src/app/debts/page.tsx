@@ -13,6 +13,7 @@ import {
   PlayCircle,
   Plus,
   ReceiptText,
+  RefreshCcw,
   Sparkles,
   Trash2,
   WalletCards,
@@ -22,6 +23,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
+import { calculateDebtSchedule, debtPaymentMonth, deriveFirstPaymentDate } from '@/lib/debts/calculateDebtSchedule';
 import { formatMoney } from '@/lib/formatMoney';
 import { useCurrency } from '@/lib/useCurrency';
 
@@ -36,8 +38,14 @@ type DebtRow = {
   creditor_name: string | null;
   original_amount: number | string;
   remaining_amount: number | string;
+  calculated_remaining_amount?: number | string | null;
+  total_paid_amount?: number | string | null;
+  total_interest_paid?: number | string | null;
+  total_principal_paid?: number | string | null;
+  last_calculated_at?: string | null;
   currency: string;
   start_date: string;
+  first_payment_date?: string | null;
   monthly_payment: number | string;
   interest_rate: number | string | null;
   interest_type: InterestType | string | null;
@@ -69,6 +77,7 @@ type DebtForm = {
   remainingAmount: string;
   currency: string;
   startDate: string;
+  firstPaymentDate: string;
   monthlyPayment: string;
   interestRate: string;
   interestType: InterestType;
@@ -79,6 +88,7 @@ type DebtForm = {
 };
 
 const SUPPORTED_CURRENCIES = ['KWD', 'USD', 'SAR', 'AED', 'QAR', 'BHD', 'OMR', 'EUR', 'GBP'];
+const DEFAULT_START_DATE = new Date().toISOString().slice(0, 10);
 
 const DEFAULT_FORM: DebtForm = {
   name: '',
@@ -86,7 +96,8 @@ const DEFAULT_FORM: DebtForm = {
   originalAmount: '',
   remainingAmount: '',
   currency: 'KWD',
-  startDate: new Date().toISOString().slice(0, 10),
+  startDate: DEFAULT_START_DATE,
+  firstPaymentDate: deriveFirstPaymentDate(DEFAULT_START_DATE, '1'),
   monthlyPayment: '',
   interestRate: '0',
   interestType: 'annual',
@@ -95,6 +106,16 @@ const DEFAULT_FORM: DebtForm = {
   autoAddToExpenses: true,
   status: 'active',
 };
+
+function createDefaultForm(currency = 'KWD'): DebtForm {
+  const startDate = new Date().toISOString().slice(0, 10);
+  return {
+    ...DEFAULT_FORM,
+    currency,
+    startDate,
+    firstPaymentDate: deriveFirstPaymentDate(startDate, DEFAULT_FORM.paymentDay),
+  };
+}
 
 const TEXT = {
   title: { ar: 'الديون', en: 'Debts', fr: 'Dettes' },
@@ -126,6 +147,12 @@ const TEXT = {
   remainingAmount: { ar: 'المبلغ المتبقي', en: 'Remaining amount', fr: 'Montant restant' },
   currency: { ar: 'العملة', en: 'Currency', fr: 'Devise' },
   startDate: { ar: 'تاريخ بداية الدين', en: 'Start date', fr: 'Date de début' },
+  firstPaymentDate: { ar: 'تاريخ أول دفعة شهرية', en: 'First monthly payment date', fr: 'Date de la première mensualité' },
+  firstPaymentDateHelp: {
+    ar: 'يُستخدم هذا التاريخ لحساب الدفعات الشهرية المستحقة وخصمها من الرصيد المتبقي.',
+    en: 'This date is used to calculate due monthly payments and deduct them from the remaining balance.',
+    fr: 'Cette date sert à calculer les mensualités dues et à les déduire du solde restant.',
+  },
   monthlyPayment: { ar: 'قيمة الدفع الشهري', en: 'Monthly payment', fr: 'Paiement mensuel' },
   interestRate: { ar: 'نسبة الفائدة', en: 'Interest rate', fr: 'Taux d’intérêt' },
   interestType: { ar: 'نوع الفائدة', en: 'Interest type', fr: 'Type d’intérêt' },
@@ -143,6 +170,10 @@ const TEXT = {
   paused: { ar: 'متوقف', en: 'Paused', fr: 'Suspendue' },
   remaining: { ar: 'المتبقي', en: 'Remaining', fr: 'Restant' },
   paidAmount: { ar: 'المدفوع', en: 'Paid', fr: 'Payé' },
+  totalPaidAmount: { ar: 'إجمالي المدفوع', en: 'Total paid', fr: 'Total payé' },
+  totalInterestPaid: { ar: 'إجمالي الفائدة المدفوعة', en: 'Total interest paid', fr: 'Total des intérêts payés' },
+  paidPaymentsCount: { ar: 'عدد الدفعات المدفوعة', en: 'Paid payments', fr: 'Paiements effectués' },
+  lastPayment: { ar: 'آخر دفعة تم خصمها', en: 'Last deducted payment', fr: 'Dernier paiement déduit' },
   payoffRate: { ar: 'نسبة السداد', en: 'Payoff rate', fr: 'Taux de remboursement' },
   nextPayment: { ar: 'الدفعة القادمة', en: 'Next payment', fr: 'Prochain paiement' },
   paymentDayLabel: { ar: 'يوم الدفع', en: 'Payment day', fr: 'Jour de paiement' },
@@ -173,6 +204,10 @@ const TEXT = {
   deleted: { ar: 'تم حذف الدين.', en: 'Debt deleted.', fr: 'Dette supprimée.' },
   paymentRecorded: { ar: 'تم تسجيل الدفعة وتحديث الرصيد.', en: 'Payment recorded and balance updated.', fr: 'Paiement enregistré et solde mis à jour.' },
   generatedPayments: { ar: 'تمت إضافة الدفعات الشهرية المستحقة.', en: 'Due monthly payments were added.', fr: 'Les mensualités dues ont été ajoutées.' },
+  updateDebtCalculations: { ar: 'تحديث حساب الديون', en: 'Update debt calculations', fr: 'Mettre à jour les calculs des dettes' },
+  calculatingDebts: { ar: 'جارٍ تحديث الحساب...', en: 'Updating calculations...', fr: 'Mise à jour des calculs...' },
+  debtCalculationUpdated: { ar: 'تم تحديث حساب الديون بنجاح.', en: 'Debt calculations updated successfully.', fr: 'Les calculs des dettes ont été mis à jour.' },
+  noDueMonthlyPayments: { ar: 'لا توجد دفعات شهرية مستحقة حاليًا.', en: 'No monthly payments are currently due.', fr: 'Aucune mensualité n’est actuellement due.' },
   required: { ar: 'يرجى إكمال الحقول المطلوبة بقيم صحيحة.', en: 'Please complete required fields with valid values.', fr: 'Veuillez compléter les champs obligatoires avec des valeurs valides.' },
   completeRequired: { ar: 'يرجى إدخال الحقول المطلوبة قبل الحفظ.', en: 'Please complete the required fields before saving.', fr: 'Veuillez compléter les champs obligatoires avant l’enregistrement.' },
   completeRequiredButton: { ar: 'أكمل البيانات المطلوبة', en: 'Complete required fields', fr: 'Compléter les champs requis' },
@@ -192,6 +227,8 @@ const TEXT = {
   validationInterestRate: { ar: 'نسبة الفائدة يجب أن تكون بين 0 و100.', en: 'Interest rate must be between 0 and 100.', fr: 'Le taux d’intérêt doit être compris entre 0 et 100.' },
   validationPaymentDay: { ar: 'يوم الدفع الشهري يجب أن يكون بين 1 و31.', en: 'Monthly payment day must be between 1 and 31.', fr: 'Le jour de paiement mensuel doit être compris entre 1 et 31.' },
   validationStartDate: { ar: 'تاريخ بداية الدين غير صالح.', en: 'Debt start date is invalid.', fr: 'La date de début de la dette est invalide.' },
+  validationFirstPaymentDate: { ar: 'تاريخ أول دفعة شهرية غير صالح.', en: 'First monthly payment date is invalid.', fr: 'La date de la première mensualité est invalide.' },
+  debtCalculationError: { ar: 'تعذر تحديث بيانات الدين. يرجى مراجعة إعدادات قاعدة البيانات.', en: 'Could not update debt data. Please review database settings.', fr: 'Impossible de mettre à jour les données de la dette. Veuillez vérifier les paramètres de la base de données.' },
   authSaveError: { ar: 'يجب تسجيل الدخول لحفظ بيانات الدين.', en: 'You must sign in to save debt data.', fr: 'Vous devez vous connecter pour enregistrer les données de la dette.' },
   rlsSaveError: { ar: 'تعذر حفظ الدين بسبب صلاحيات الوصول. يرجى مراجعة إعدادات قاعدة البيانات.', en: 'Debt could not be saved because of access permissions. Please review database settings.', fr: 'La dette n’a pas pu être enregistrée en raison des autorisations d’accès. Veuillez vérifier les paramètres de la base de données.' },
   databaseSaveError: { ar: 'تعذر حفظ بيانات الدين. يرجى مراجعة إعدادات قاعدة البيانات والمحاولة مرة أخرى.', en: 'Debt data could not be saved. Please review the database settings and try again.', fr: 'Les données de la dette n’ont pas pu être enregistrées. Veuillez vérifier les paramètres de la base de données puis réessayer.' },
@@ -212,6 +249,10 @@ function tr(lang: string | undefined, key: keyof typeof TEXT) {
 function toNumber(value: unknown, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function remainingForDebt(debt: DebtRow) {
+  return toNumber(debt.calculated_remaining_amount ?? debt.remaining_amount);
 }
 
 function optionalNumber(value: unknown) {
@@ -254,20 +295,26 @@ function clampPaymentDay(value: unknown) {
   return Math.min(31, Math.max(1, Math.round(toNumber(value, 1))));
 }
 
-function dueDateForMonth(day: number, base = new Date()) {
-  const year = base.getFullYear();
-  const month = base.getMonth();
-  const lastDay = new Date(year, month + 1, 0).getDate();
-  return new Date(year, month, Math.min(day, lastDay));
+function addOneDebtMonth(monthIso: string) {
+  const [year, month] = monthIso.split('-').map(Number);
+  if (!Number.isFinite(year) || !Number.isFinite(month)) return '';
+  return new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10);
 }
 
-function nextPaymentDate(debt: DebtRow) {
-  const now = new Date();
-  let next = dueDateForMonth(clampPaymentDay(debt.payment_day), now);
-  if (next < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
-    next = dueDateForMonth(clampPaymentDay(debt.payment_day), new Date(now.getFullYear(), now.getMonth() + 1, 1));
-  }
-  return next.toISOString().slice(0, 10);
+function debtFirstPaymentDate(debt: DebtRow) {
+  return debt.first_payment_date || deriveFirstPaymentDate(debt.start_date, debt.payment_day);
+}
+
+function debtSchedule(debt: DebtRow) {
+  return calculateDebtSchedule({
+    originalAmount: toNumber(debt.original_amount),
+    startDate: debt.start_date,
+    firstPaymentDate: debtFirstPaymentDate(debt),
+    monthlyPayment: toNumber(debt.monthly_payment),
+    interestRate: toNumber(debt.interest_rate),
+    interestType: debt.interest_type || 'annual',
+    paymentDay: debt.payment_day,
+  });
 }
 
 function formatDate(value: string | null | undefined, lang: Lang) {
@@ -282,7 +329,7 @@ function formatDate(value: string | null | undefined, lang: Lang) {
 }
 
 function monthlyInterestAmount(debt: DebtRow) {
-  const remaining = toNumber(debt.remaining_amount);
+  const remaining = remainingForDebt(debt);
   const rate = toNumber(debt.interest_rate);
   const type = debt.interest_type || 'annual';
   const monthlyRate = type === 'none' ? 0 : type === 'monthly' ? rate / 100 : rate / 100 / 12;
@@ -290,28 +337,31 @@ function monthlyInterestAmount(debt: DebtRow) {
 }
 
 function calculateDebtPayment(debt: DebtRow, overrideAmount?: number) {
-  const amount = overrideAmount ?? toNumber(debt.monthly_payment);
-  const interestAmount = Math.max(0, monthlyInterestAmount(debt));
-  const principalAmount = amount - interestAmount;
-  const nextRemaining = Math.max(0, toNumber(debt.remaining_amount) - principalAmount);
+  const remaining = remainingForDebt(debt);
+  const requestedAmount = Math.max(0, overrideAmount ?? toNumber(debt.monthly_payment));
+  const interestDue = Math.max(0, monthlyInterestAmount(debt));
+  const amount = Math.min(requestedAmount, remaining + interestDue);
+  const interestAmount = Math.min(interestDue, amount);
+  const principalAmount = Math.max(0, amount - interestAmount);
+  const nextRemaining = Math.max(0, remaining - principalAmount);
   return {
     amount,
     interestAmount,
     principalAmount,
     nextRemaining,
-    warning: principalAmount < 0,
+    warning: interestDue > 0 && requestedAmount <= interestDue,
   };
 }
 
 function payoffProgress(debt: DebtRow) {
   const original = toNumber(debt.original_amount);
   if (original <= 0) return 0;
-  const paid = Math.max(0, original - toNumber(debt.remaining_amount));
+  const paid = Math.max(0, original - remainingForDebt(debt));
   return Math.min(100, Math.max(0, (paid / original) * 100));
 }
 
 function estimatePayoffMonths(debt: DebtRow) {
-  let remaining = toNumber(debt.remaining_amount);
+  let remaining = remainingForDebt(debt);
   const payment = toNumber(debt.monthly_payment);
   if (remaining <= 0) return 0;
   if (payment <= 0) return null;
@@ -328,6 +378,9 @@ function estimatePayoffMonths(debt: DebtRow) {
 function payloadFromForm(form: DebtForm, userId: string) {
   const startDate = formatDateToYYYYMMDD(form.startDate);
   if (!startDate) throw new Error('INVALID_DATE');
+  const firstPaymentDate = formatDateToYYYYMMDD(form.firstPaymentDate) || deriveFirstPaymentDate(startDate, form.paymentDay);
+  if (!firstPaymentDate) throw new Error('INVALID_FIRST_PAYMENT_DATE');
+  if (firstPaymentDate < startDate) throw new Error('INVALID_FIRST_PAYMENT_DATE');
 
   return {
     user_id: userId,
@@ -337,6 +390,7 @@ function payloadFromForm(form: DebtForm, userId: string) {
     remaining_amount: toNumber(form.remainingAmount),
     currency: form.currency.trim() || 'KWD',
     start_date: startDate,
+    first_payment_date: firstPaymentDate,
     monthly_payment: toNumber(form.monthlyPayment),
     interest_rate: toNumber(form.interestRate, 0),
     interest_type: mapInterestTypeToDb(form.interestType),
@@ -360,7 +414,10 @@ function validateDebtForm(form: DebtForm): Array<keyof typeof TEXT> {
   if (originalAmount === null || originalAmount <= 0) errors.push('validationOriginalAmount');
   if (remainingAmount === null || remainingAmount < 0) errors.push('validationRemainingAmount');
   if (!form.currency.trim()) errors.push('validationCurrency');
-  if (!formatDateToYYYYMMDD(form.startDate)) errors.push('validationStartDate');
+  const startDate = formatDateToYYYYMMDD(form.startDate);
+  const firstPaymentDate = formatDateToYYYYMMDD(form.firstPaymentDate);
+  if (!startDate) errors.push('validationStartDate');
+  if (!firstPaymentDate || (startDate && firstPaymentDate < startDate)) errors.push('validationFirstPaymentDate');
   if (monthlyPayment === null || monthlyPayment <= 0) errors.push('validationMonthlyPayment');
   if (interestRate === null || interestRate < 0 || interestRate > 100) errors.push('validationInterestRate');
   if (paymentDay === null || !Number.isInteger(paymentDay) || paymentDay < 1 || paymentDay > 31) errors.push('validationPaymentDay');
@@ -381,6 +438,9 @@ function debtSaveErrorMessage(error: unknown, t: (key: keyof typeof TEXT) => str
   }
   if (details.includes('invalid_date')) {
     return t('validationStartDate');
+  }
+  if (details.includes('invalid_first_payment_date')) {
+    return t('validationFirstPaymentDate');
   }
   if (details.includes('row-level security') || details.includes('rls') || details.includes('42501') || details.includes('permission')) {
     return t('rlsSaveError');
@@ -423,8 +483,9 @@ export default function DebtsPage() {
   const [incomeRows, setIncomeRows] = useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [calculating, setCalculating] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState<DebtForm>({ ...DEFAULT_FORM, currency: baseCurrency || 'KWD' });
+  const [form, setForm] = useState<DebtForm>(() => createDefaultForm(baseCurrency || 'KWD'));
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
@@ -506,10 +567,10 @@ export default function DebtsPage() {
   const monthlyIncome = useMemo(() => incomeRows.reduce((sum, row) => sum + toNumber(row.amount), 0), [incomeRows]);
   const totals = useMemo(() => {
     const totalOriginal = debts.reduce((sum, debt) => sum + toNumber(debt.original_amount), 0);
-    const totalRemaining = activeDebts.reduce((sum, debt) => sum + toNumber(debt.remaining_amount), 0);
+    const totalRemaining = activeDebts.reduce((sum, debt) => sum + remainingForDebt(debt), 0);
     const totalMonthly = activeDebts.reduce((sum, debt) => sum + toNumber(debt.monthly_payment), 0);
     const highest = activeDebts.reduce<DebtRow | null>((current, debt) => {
-      if (!current || toNumber(debt.remaining_amount) > toNumber(current.remaining_amount)) return debt;
+      if (!current || remainingForDebt(debt) > remainingForDebt(current)) return debt;
       return current;
     }, null);
     return {
@@ -528,17 +589,17 @@ export default function DebtsPage() {
 
   const interestRiskDebt = activeDebts.find(debt => calculateDebtPayment(debt).warning);
   const highestInterest = [...activeDebts].sort((a, b) => toNumber(b.interest_rate) - toNumber(a.interest_rate))[0];
-  const smallestDebt = [...activeDebts].sort((a, b) => toNumber(a.remaining_amount) - toNumber(b.remaining_amount))[0];
+  const smallestDebt = [...activeDebts].sort((a, b) => remainingForDebt(a) - remainingForDebt(b))[0];
 
   function resetForm() {
-    setForm({ ...DEFAULT_FORM, currency: baseCurrency || 'KWD' });
+    setForm(createDefaultForm(baseCurrency || 'KWD'));
     setSubmitAttempted(false);
     setError('');
     setFormOpen(false);
   }
 
   function openAddForm() {
-    setForm({ ...DEFAULT_FORM, currency: baseCurrency || 'KWD' });
+    setForm(createDefaultForm(baseCurrency || 'KWD'));
     setSubmitAttempted(false);
     setError('');
     setFormOpen(true);
@@ -550,9 +611,10 @@ export default function DebtsPage() {
       name: debt.name,
       creditorName: debt.creditor_name ?? '',
       originalAmount: String(debt.original_amount ?? ''),
-      remainingAmount: String(debt.remaining_amount ?? ''),
+      remainingAmount: String(debt.calculated_remaining_amount ?? debt.remaining_amount ?? ''),
       currency: debt.currency || baseCurrency || 'KWD',
       startDate: debt.start_date,
+      firstPaymentDate: debtFirstPaymentDate(debt),
       monthlyPayment: String(debt.monthly_payment ?? ''),
       interestRate: String(debt.interest_rate ?? '0'),
       interestType: (debt.interest_type === 'none' || debt.interest_type === 'monthly' || debt.interest_type === 'annual') ? debt.interest_type : 'annual',
@@ -660,7 +722,11 @@ export default function DebtsPage() {
     if (!user) return;
     setError('');
     const payload: Record<string, unknown> = { status };
-    if (typeof remainingAmount === 'number') payload.remaining_amount = remainingAmount;
+    if (typeof remainingAmount === 'number') {
+      payload.remaining_amount = remainingAmount;
+      payload.calculated_remaining_amount = remainingAmount;
+      payload.last_calculated_at = new Date().toISOString();
+    }
     const { error: updateError } = await (supabase as any).from('debts').update(payload).eq('id', debt.id).eq('user_id', user.id);
     if (updateError) setError(updateError.message);
     else {
@@ -685,12 +751,16 @@ export default function DebtsPage() {
     if (!user) return;
     setError('');
     const paymentDate = new Date().toISOString().slice(0, 10);
+    const paymentMonth = debtPaymentMonth(paymentDate);
+    const nextMonth = addOneDebtMonth(paymentMonth);
     const existing = await (supabase as any)
       .from('debt_payments')
       .select('id')
       .eq('user_id', user.id)
       .eq('debt_id', debt.id)
-      .eq('payment_date', paymentDate)
+      .gte('payment_date', paymentMonth || paymentDate)
+      .lt('payment_date', nextMonth || paymentDate)
+      .limit(1)
       .maybeSingle();
     if (existing.data?.id) {
       setError(t('duplicatePayment'));
@@ -707,7 +777,9 @@ export default function DebtsPage() {
           .eq('user_id', user.id)
           .eq('debt_id', debt.id)
           .eq('source', 'debt')
-          .eq('date', paymentDate)
+          .gte('date', paymentMonth || paymentDate)
+          .lt('date', nextMonth || paymentDate)
+          .limit(1)
           .maybeSingle();
         expenseId = expenseExisting.data?.id ?? null;
         if (!expenseId) {
@@ -741,8 +813,17 @@ export default function DebtsPage() {
       if (paymentInsert.error) throw paymentInsert.error;
 
       const status = payment.nextRemaining <= 0 ? 'paid' : debt.status || 'active';
+      const debtPayments = payments.filter(item => item.debt_id === debt.id);
+      const recordedTotalPaid = debtPayments.reduce((sum, item) => sum + toNumber(item.amount), 0);
+      const recordedTotalInterest = debtPayments.reduce((sum, item) => sum + toNumber(item.interest_amount), 0);
+      const recordedTotalPrincipal = debtPayments.reduce((sum, item) => sum + toNumber(item.principal_amount), 0);
       const update = await (supabase as any).from('debts').update({
         remaining_amount: payment.nextRemaining,
+        calculated_remaining_amount: payment.nextRemaining,
+        total_paid_amount: (debt.total_paid_amount == null ? recordedTotalPaid : toNumber(debt.total_paid_amount)) + payment.amount,
+        total_interest_paid: (debt.total_interest_paid == null ? recordedTotalInterest : toNumber(debt.total_interest_paid)) + payment.interestAmount,
+        total_principal_paid: (debt.total_principal_paid == null ? recordedTotalPrincipal : toNumber(debt.total_principal_paid)) + payment.principalAmount,
+        last_calculated_at: new Date().toISOString(),
         status,
       }).eq('id', debt.id).eq('user_id', user.id);
       if (update.error) throw update.error;
@@ -750,6 +831,31 @@ export default function DebtsPage() {
       await loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : t('error'));
+    }
+  }
+
+  async function runDebtCalculations() {
+    if (!session?.access_token || calculating) return;
+    setCalculating(true);
+    setError('');
+    setNotice('');
+    try {
+      const response = await fetch('/api/debts/generate-monthly-expenses', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; success?: boolean; processed?: number; updated?: number; code?: string; message?: string } | null;
+      if (!response.ok || payload?.ok === false || payload?.success === false) {
+        throw new Error(payload?.code || payload?.message || 'DEBT_CALCULATION_FAILED');
+      }
+      const processed = toNumber(payload?.processed);
+      setNotice(processed > 0 ? t('debtCalculationUpdated') : t('noDueMonthlyPayments'));
+      await loadData();
+    } catch (err) {
+      console.error('Debt calculation refresh failed:', safeDebtSaveErrorDetails(err));
+      setError(t('debtCalculationError'));
+    } finally {
+      setCalculating(false);
     }
   }
 
@@ -794,10 +900,16 @@ export default function DebtsPage() {
             <h1>{t('title')}</h1>
             <p>{t('subtitle')}</p>
           </div>
-          <button type="button" className="debts-primary" onClick={openAddForm}>
-            <Plus size={18} />
-            {t('addDebt')}
-          </button>
+          <div className="debts-hero-actions">
+            <button type="button" className="debts-secondary-hero" onClick={() => void runDebtCalculations()} disabled={calculating || !session?.access_token}>
+              <RefreshCcw size={18} className={calculating ? 'spin' : undefined} />
+              {calculating ? t('calculatingDebts') : t('updateDebtCalculations')}
+            </button>
+            <button type="button" className="debts-primary" onClick={openAddForm}>
+              <Plus size={18} />
+              {t('addDebt')}
+            </button>
+          </div>
         </section>
 
         {(notice || pageError) && (
@@ -811,7 +923,7 @@ export default function DebtsPage() {
           <SummaryCard icon={<WalletCards size={18} />} label={t('totalDebts')} value={money(totals.totalOriginal)} />
           <SummaryCard icon={<CreditCard size={18} />} label={t('remainingToPay')} value={money(totals.totalRemaining)} />
           <SummaryCard icon={<ReceiptText size={18} />} label={t('monthlyInstallments')} value={money(totals.totalMonthly)} />
-          <SummaryCard icon={<Gauge size={18} />} label={t('highestDebt')} value={totals.highest ? money(totals.highest.remaining_amount, totals.highest.currency) : t('unavailable')} />
+          <SummaryCard icon={<Gauge size={18} />} label={t('highestDebt')} value={totals.highest ? money(remainingForDebt(totals.highest), totals.highest.currency) : t('unavailable')} />
           <SummaryCard icon={<Sparkles size={18} />} label={t('debtToIncome')} value={totals.ratio === null ? t('unavailable') : `${totals.ratio.toFixed(1)}%`} />
         </section>
 
@@ -836,9 +948,17 @@ export default function DebtsPage() {
               <div className="debt-card-grid">
                 {debts.map(debt => {
                   const progress = payoffProgress(debt);
+                  const schedule = debtSchedule(debt);
                   const status = (debt.status === 'paid' || debt.status === 'paused' || debt.status === 'active') ? debt.status : 'active';
-                  const paidAmount = Math.max(0, toNumber(debt.original_amount) - toNumber(debt.remaining_amount));
-                  const isDue = nextPaymentDate(debt) === new Date().toISOString().slice(0, 10);
+                  const effectiveRemaining = remainingForDebt(debt);
+                  const debtPayments = payments.filter(item => item.debt_id === debt.id);
+                  const totalPaid = debt.total_paid_amount == null
+                    ? debtPayments.reduce((sum, payment) => sum + toNumber(payment.amount), 0)
+                    : toNumber(debt.total_paid_amount);
+                  const paidAmount = Math.max(0, toNumber(debt.original_amount) - effectiveRemaining);
+                  const nextPayment = schedule.nextPaymentDate ?? '';
+                  const lastPayment = debtPayments[0]?.payment_date ?? '';
+                  const isDue = nextPayment === new Date().toISOString().slice(0, 10);
                   return (
                     <article className="debt-card" key={debt.id}>
                       <div className="debt-card-top">
@@ -853,14 +973,20 @@ export default function DebtsPage() {
                         <i><b style={{ width: `${progress}%` }} /></i>
                       </div>
                       <div className="debt-metrics">
-                        <DebtMetric label={t('remaining')} value={money(debt.remaining_amount, debt.currency)} />
-                        <DebtMetric label={t('paidAmount')} value={money(paidAmount, debt.currency)} />
+                        <DebtMetric label={t('originalAmount')} value={money(debt.original_amount, debt.currency)} />
+                        <DebtMetric label={t('remaining')} value={money(effectiveRemaining, debt.currency)} />
                         <DebtMetric label={t('monthlyPayment')} value={money(debt.monthly_payment, debt.currency)} />
+                        <DebtMetric label={t('startDate')} value={formatDate(debt.start_date, locale)} />
+                        <DebtMetric label={t('firstPaymentDate')} value={formatDate(debtFirstPaymentDate(debt), locale)} />
+                        <DebtMetric label={t('lastPayment')} value={formatDate(lastPayment, locale)} />
+                        <DebtMetric label={t('nextPayment')} value={formatDate(nextPayment, locale)} />
+                        <DebtMetric label={t('paidPaymentsCount')} value={`${debtPayments.length}`} />
+                        <DebtMetric label={t('totalPaidAmount')} value={money(totalPaid || paidAmount, debt.currency)} />
                         <DebtMetric label={t('interestRate')} value={`${toNumber(debt.interest_rate).toFixed(2)}%`} />
+                        <DebtMetric label={t('totalInterestPaid')} value={money(debt.total_interest_paid ?? 0, debt.currency)} />
                         <DebtMetric label={t('paymentDayLabel')} value={`${clampPaymentDay(debt.payment_day)}`} />
-                        <DebtMetric label={t('nextPayment')} value={formatDate(nextPaymentDate(debt), locale)} />
                       </div>
-                      {calculateDebtPayment(debt).warning && (
+                      {(schedule.warning || calculateDebtPayment(debt).warning) && (
                         <div className="debt-warning"><AlertTriangle size={15} />{t('interestWarning')}</div>
                       )}
                       {isDue && status === 'active' && <div className="debt-due"><CalendarDays size={15} />{t('dueToday')}</div>}
@@ -892,7 +1018,7 @@ export default function DebtsPage() {
               {totals.ratio === null ? t('incomeUnavailable') : totals.ratio > 30 ? t('ratioHigh') : t('ratioOk')}
             </p>
             {interestRiskDebt && <p className="insight-alert">{t('interestWarning')}</p>}
-            <InsightRow label={t('highestImpact')} value={totals.highest ? `${totals.highest.name} - ${money(totals.highest.remaining_amount, totals.highest.currency)}` : t('unavailable')} />
+            <InsightRow label={t('highestImpact')} value={totals.highest ? `${totals.highest.name} - ${money(remainingForDebt(totals.highest), totals.highest.currency)}` : t('unavailable')} />
             <InsightRow label={t('highestInterestFirst')} value={highestInterest ? highestInterest.name : t('unavailable')} />
             <InsightRow label={t('smallestDebtFirst')} value={smallestDebt ? smallestDebt.name : t('unavailable')} />
             <InsightRow label={t('payoffEstimate')} value={payoffMonths === null ? t('unavailable') : `${payoffMonths} ${t('months')}`} />
@@ -982,10 +1108,41 @@ export default function DebtsPage() {
                   {SUPPORTED_CURRENCIES.map(code => <option key={code} value={code}>{code}</option>)}
                 </select>
               </label>
-              <DebtInput required invalid={submitAttempted && validationKeys.includes('validationStartDate')} type="date" label={t('startDate')} value={form.startDate} onChange={value => setForm(current => ({ ...current, startDate: value }))} />
+              <DebtInput
+                required
+                invalid={submitAttempted && validationKeys.includes('validationStartDate')}
+                type="date"
+                label={t('startDate')}
+                value={form.startDate}
+                onChange={value => setForm(current => ({
+                  ...current,
+                  startDate: value,
+                  firstPaymentDate: current.id ? current.firstPaymentDate : deriveFirstPaymentDate(value, current.paymentDay),
+                }))}
+              />
+              <DebtInput
+                required
+                invalid={submitAttempted && validationKeys.includes('validationFirstPaymentDate')}
+                type="date"
+                label={t('firstPaymentDate')}
+                helper={t('firstPaymentDateHelp')}
+                value={form.firstPaymentDate}
+                onChange={value => setForm(current => ({ ...current, firstPaymentDate: value }))}
+              />
               <FormSectionTitle title={t('sectionPaymentDetails')} />
               <MoneyInput required invalid={submitAttempted && validationKeys.includes('validationMonthlyPayment')} label={t('monthlyPayment')} currency={form.currency} value={form.monthlyPayment} onChange={value => setForm(current => ({ ...current, monthlyPayment: value }))} />
-              <SuffixInput required invalid={submitAttempted && validationKeys.includes('validationPaymentDay')} label={t('paymentDay')} suffix="1 - 31" value={form.paymentDay} onChange={value => setForm(current => ({ ...current, paymentDay: value }))} />
+              <SuffixInput
+                required
+                invalid={submitAttempted && validationKeys.includes('validationPaymentDay')}
+                label={t('paymentDay')}
+                suffix="1 - 31"
+                value={form.paymentDay}
+                onChange={value => setForm(current => ({
+                  ...current,
+                  paymentDay: value,
+                  firstPaymentDate: current.id ? current.firstPaymentDate : deriveFirstPaymentDate(current.startDate, value),
+                }))}
+              />
               <FormSectionTitle title={t('sectionInterest')} />
               <SuffixInput invalid={submitAttempted && validationKeys.includes('validationInterestRate')} label={t('interestRate')} suffix="%" value={form.interestRate} onChange={value => setForm(current => ({ ...current, interestRate: value }))} />
               <label className="debt-field">
@@ -1037,7 +1194,7 @@ function DebtMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="debt-metric">
       <span>{label}</span>
-      <b dir="ltr">{value}</b>
+      <b dir="auto">{value}</b>
     </div>
   );
 }
@@ -1059,10 +1216,10 @@ function RequiredMark({ required }: { required?: boolean }) {
   return required ? <i>*</i> : null;
 }
 
-function DebtInput({ label, value, onChange, type = 'text', placeholder, required, invalid = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string; required?: boolean; invalid?: boolean }) {
+function DebtInput({ label, value, onChange, type = 'text', placeholder, helper, required, invalid = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string; helper?: string; required?: boolean; invalid?: boolean }) {
   return (
     <label className={`debt-field ${invalid ? 'invalid' : ''}`} data-invalid={invalid ? 'true' : undefined}>
-      <span>{label} <RequiredMark required={required} /></span>
+      <span>{label} <RequiredMark required={required} />{helper ? <small>{helper}</small> : null}</span>
       <input type={type} value={value} placeholder={placeholder} onChange={event => onChange(event.target.value)} />
     </label>
   );
@@ -1164,8 +1321,18 @@ function DebtStyles() {
         line-height: 1.8;
       }
 
+      .debts-hero-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+      }
+
       .debts-primary,
-      .debts-section-head button {
+      .debts-section-head button,
+      .debts-secondary-hero {
         border: 0;
         border-radius: 999px;
         min-height: 46px;
@@ -1182,16 +1349,40 @@ function DebtStyles() {
         transition: transform .18s ease, box-shadow .18s ease, filter .18s ease, background .18s ease;
       }
 
+      .debts-secondary-hero {
+        border: 1px solid rgba(167, 243, 240, .26);
+        background: rgba(255, 255, 255, .10);
+        color: rgba(255, 255, 255, .92);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
+      }
+
       .debts-primary:hover,
-      .debts-section-head button:hover {
+      .debts-section-head button:hover,
+      .debts-secondary-hero:hover {
         transform: translateY(-1px);
         filter: saturate(1.08);
         box-shadow: 0 16px 34px rgba(29, 140, 255, .30);
       }
 
       .debts-primary:active,
-      .debts-section-head button:active {
+      .debts-section-head button:active,
+      .debts-secondary-hero:active {
         transform: translateY(0) scale(.99);
+      }
+
+      .debts-secondary-hero:disabled {
+        cursor: not-allowed;
+        opacity: .7;
+        filter: none;
+        transform: none;
+      }
+
+      .spin {
+        animation: debt-spin .9s linear infinite;
+      }
+
+      @keyframes debt-spin {
+        to { transform: rotate(360deg); }
       }
 
       .debts-notice,
@@ -1941,6 +2132,7 @@ function DebtStyles() {
 
       .debt-modal-head > button:focus-visible,
       .debt-modal-actions button:focus-visible,
+      .debts-secondary-hero:focus-visible,
       .toggle-row button:focus-visible {
         outline: none;
         border-color: var(--sfm-soft-cyan);
@@ -2151,6 +2343,7 @@ function DebtStyles() {
           border-radius: 24px;
         }
         .debts-primary,
+        .debts-secondary-hero,
         .debts-section-head button {
           width: 100%;
         }
