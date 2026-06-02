@@ -155,12 +155,22 @@ export async function trackEvent(eventType: AnalyticsEventType, payload: TrackPa
     access_token: sessionResult.data.session?.access_token ?? null,
   };
 
+  const serializedBody = JSON.stringify(body);
+
   try {
+    if (typeof navigator.sendBeacon === 'function' && serializedBody.length < 60000) {
+      const sent = navigator.sendBeacon(
+        '/api/analytics/track',
+        new Blob([serializedBody], { type: 'application/json' }),
+      );
+      if (sent) return;
+    }
+
     await fetch('/api/analytics/track', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      keepalive: JSON.stringify(body).length < 60000,
+      body: serializedBody,
+      keepalive: serializedBody.length < 60000,
     });
   } catch {
     // Analytics must never interrupt the user flow.

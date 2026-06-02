@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { createServerSupabaseAdmin, getUserFromBearerToken } from '@/lib/server/adminAccess';
 
+export const runtime = 'nodejs';
+
 const ALLOWED_EVENTS = new Set([
   'page_view',
   'section_view',
@@ -28,8 +30,32 @@ const ALLOWED_EVENTS = new Set([
 
 const SENSITIVE_KEY_PATTERN = /(amount|value|salary|income|expense|saving|zakat|goal|note|description|phone|mobile|security|password|document|file|private|token|secret)/i;
 
-function ignored(code: string) {
-  return NextResponse.json({ ok: false, success: false, ignored: true, code });
+function ignored(code: string, status = 200) {
+  return NextResponse.json({ ok: false, success: false, ignored: true, code }, { status });
+}
+
+function safeLog(level: 'warn' | 'error', message: string, details?: Record<string, unknown>) {
+  const payload = details
+    ? Object.fromEntries(Object.entries(details).filter(([key]) => !/token|secret|key|cookie|authorization/i.test(key)))
+    : undefined;
+  if (level === 'warn') console.warn(message, payload ?? '');
+  else console.error(message, payload ?? '');
+}
+
+async function safeSupabaseRequest<T extends { error?: unknown }>(request: PromiseLike<T>): Promise<T | { error: unknown }> {
+  try {
+    return await request;
+  } catch (error) {
+    return { error };
+  }
+}
+
+function errorCode(error: unknown) {
+  return error && typeof error === 'object' && 'code' in error ? String((error as { code?: unknown }).code ?? '') : '';
+}
+
+function errorMessage(error: unknown) {
+  return error && typeof error === 'object' && 'message' in error ? String((error as { message?: unknown }).message ?? '') : String(error ?? '');
 }
 
 function text(value: unknown, limit = 240) {
@@ -94,17 +120,37 @@ function cityFromHeader(value: string | null) {
   }
 }
 
+async function readRequestBody(request: Request): Promise<Record<string, unknown> | null> {
+  const contentType = request.headers.get('content-type') || '';
+  try {
+    if (contentType.includes('application/json')) {
+      const parsed = await request.json();
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+    }
+
+    const raw = await request.text().catch(() => '');
+    if (!raw.trim()) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => null) as Record<string, unknown> | null;
-    const eventType = text(body?.event_type, 80);
-    if (!eventType || !ALLOWED_EVENTS.has(eventType)) {
-      return NextResponse.json({ success: false, error: 'unsupported_event' }, { status: 400 });
+    const body = await readRequestBody(request);
+    const rawEventType = text(body?.event_type, 80) ?? 'page_view';
+    const eventType = ALLOWED_EVENTS.has(rawEventType) ? rawEventType : null;
+    const pagePath = text(body?.page_path, 300);
+
+    if (!eventType || !pagePath) {
+      return ignored('ANALYTICS_INVALID_PAYLOAD');
     }
 
     const admin = createServerSupabaseAdmin();
     if (!admin) {
-      console.warn('[analytics] tracking ignored: service role is not configured');
+      safeLog('warn', 'Analytics service role key is not configured');
       return ignored('ANALYTICS_SERVICE_NOT_CONFIGURED');
     }
 
@@ -114,7 +160,6 @@ export async function POST(request: Request) {
     const user = accessToken ? await getUserFromBearerToken(accessToken) : null;
 
     const sessionId = requiredText(body?.session_id, fallbackSessionId(request, userAgent), 180);
-    const pagePath = requiredText(body?.page_path, '/unknown', 300);
     const language = text(body?.language, 16) ?? 'ar';
     const resolvedDeviceType = text(body?.device_type, 80) ?? deviceType(userAgent);
     const resolvedBrowser = text(body?.browser, 80) ?? browser(userAgent);
@@ -149,25 +194,32 @@ export async function POST(request: Request) {
     };
     if (user?.id) sessionPayload.user_id = user.id;
 
-    const sessionResult = await admin
+    const sessionResult = await safeSupabaseRequest(admin
       .from('site_sessions')
-      .upsert(sessionPayload, { onConflict: 'session_id' });
+      .upsert(sessionPayload, { onConflict: 'session_id' }));
 
-    const eventResult = await admin.from('site_events').insert(eventPayload);
-    if (!eventResult.error) return NextResponse.json({ ok: true, success: true });
-
-    const missingSiteTables = eventResult.error.code === '42P01' || sessionResult.error?.code === '42P01';
-    if (!missingSiteTables) {
-      console.error('[analytics] tracking insert failed', {
-        eventCode: eventResult.error.code,
-        eventMessage: eventResult.error.message,
-        sessionCode: sessionResult.error?.code,
-        sessionMessage: sessionResult.error?.message,
+    if (sessionResult.error && errorCode(sessionResult.error) !== '42P01') {
+      safeLog('warn', '[analytics] session upsert ignored', {
+        code: errorCode(sessionResult.error),
+        message: errorMessage(sessionResult.error),
       });
-      return ignored('ANALYTICS_TRACK_FAILED');
     }
 
-    const legacyResult = await admin.from('analytics_events').insert({
+    const eventResult = await safeSupabaseRequest(admin.from('site_events').insert(eventPayload));
+    if (!eventResult.error) return NextResponse.json({ ok: true, success: true });
+
+    const missingSiteTables = errorCode(eventResult.error) === '42P01' || errorCode(sessionResult.error) === '42P01';
+    if (!missingSiteTables) {
+      safeLog('error', '[analytics] tracking insert failed', {
+        eventCode: errorCode(eventResult.error),
+        eventMessage: errorMessage(eventResult.error),
+        sessionCode: errorCode(sessionResult.error),
+        sessionMessage: errorMessage(sessionResult.error),
+      });
+      return ignored('ANALYTICS_TRACKING_FAILED');
+    }
+
+    const legacyResult = await safeSupabaseRequest(admin.from('analytics_events').insert({
       user_id: user?.id ?? null,
       session_id: sessionId,
       event_type: eventType,
@@ -180,21 +232,28 @@ export async function POST(request: Request) {
       browser: resolvedBrowser,
       operating_system: resolvedOs,
       metadata: eventPayload.metadata,
-    });
+    }));
 
     if (legacyResult.error) {
-      console.error('[analytics] fallback tracking insert failed', {
-        eventCode: eventResult.error.code,
-        eventMessage: eventResult.error.message,
-        legacyCode: legacyResult.error.code,
-        legacyMessage: legacyResult.error.message,
+      safeLog('error', '[analytics] fallback tracking insert failed', {
+        eventCode: errorCode(eventResult.error),
+        eventMessage: errorMessage(eventResult.error),
+        legacyCode: errorCode(legacyResult.error),
+        legacyMessage: errorMessage(legacyResult.error),
       });
       return ignored('ANALYTICS_TABLES_MISSING');
     }
 
     return NextResponse.json({ ok: true, success: true, fallback: 'analytics_events' });
   } catch (error) {
-    console.error('[analytics] tracking failed', error);
-    return ignored('ANALYTICS_TRACK_FAILED');
+    safeLog('error', '[analytics] tracking failed', {
+      name: error instanceof Error ? error.name : undefined,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return ignored('ANALYTICS_TRACKING_FAILED');
   }
+}
+
+export function OPTIONS() {
+  return new NextResponse(null, { status: 204 });
 }
