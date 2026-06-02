@@ -48,12 +48,22 @@ type ProjectRow = {
   id: string;
 };
 
+type CountRow = {
+  id: string;
+};
+
+type OperatingExpenseRow = {
+  id: string;
+  amount: number | string | null;
+  expense_date: string | null;
+};
+
 type SummaryRow = {
   metric: string;
   value: string;
 };
 
-type BusinessSectionKey = 'projects' | 'sales' | 'employees';
+type BusinessSectionKey = 'projects' | 'sales' | 'employees' | 'customers' | 'invoices' | 'suppliers' | 'operatingExpenses';
 
 type BusinessLoadIssue = {
   section: BusinessSectionKey;
@@ -113,6 +123,10 @@ export default function BusinessOperationsPage() {
   const [salesRows, setSalesRows] = useState<SaleRow[]>([]);
   const [employeeRows, setEmployeeRows] = useState<EmployeeRow[]>([]);
   const [projectRows, setProjectRows] = useState<ProjectRow[]>([]);
+  const [customerRows, setCustomerRows] = useState<CountRow[]>([]);
+  const [invoiceRows, setInvoiceRows] = useState<CountRow[]>([]);
+  const [supplierRows, setSupplierRows] = useState<CountRow[]>([]);
+  const [operatingExpenseRows, setOperatingExpenseRows] = useState<OperatingExpenseRow[]>([]);
   const [defaultCurrency, setDefaultCurrency] = useState('KWD');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -124,6 +138,10 @@ export default function BusinessOperationsPage() {
       setSalesRows([]);
       setEmployeeRows([]);
       setProjectRows([]);
+      setCustomerRows([]);
+      setInvoiceRows([]);
+      setSupplierRows([]);
+      setOperatingExpenseRows([]);
       setLoadIssues({});
       setLoading(false);
       return;
@@ -143,13 +161,29 @@ export default function BusinessOperationsPage() {
         employees: permissions.canViewEmployees
           ? db.from('business_employees').select('id, employee_name, salary, bonus, status').eq('user_id', user.id).order('created_at', { ascending: false })
           : Promise.resolve({ data: [], error: null }),
+        customers: permissions.canViewBusinessModules
+          ? db.from('business_customers').select('id').eq('user_id', user.id)
+          : Promise.resolve({ data: [], error: null }),
+        invoices: permissions.canViewBusinessModules
+          ? db.from('business_invoices').select('id').eq('user_id', user.id)
+          : Promise.resolve({ data: [], error: null }),
+        suppliers: permissions.canViewBusinessModules
+          ? db.from('business_suppliers').select('id').eq('user_id', user.id)
+          : Promise.resolve({ data: [], error: null }),
+        operatingExpenses: permissions.canViewBusinessModules
+          ? db.from('business_operating_expenses').select('id, amount, expense_date').eq('user_id', user.id).order('expense_date', { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
       };
 
-      const [profileSettled, projectsSettled, salesSettled, employeesSettled] = await Promise.allSettled([
+      const [profileSettled, projectsSettled, salesSettled, employeesSettled, customersSettled, invoicesSettled, suppliersSettled, operatingExpensesSettled] = await Promise.allSettled([
         queries.profile,
         queries.projects,
         queries.sales,
         queries.employees,
+        queries.customers,
+        queries.invoices,
+        queries.suppliers,
+        queries.operatingExpenses,
       ]);
 
       const profileResult = profileSettled.status === 'fulfilled'
@@ -213,12 +247,76 @@ export default function BusinessOperationsPage() {
         setEmployeeRows(Array.isArray(employeesResult.data) ? (employeesResult.data as EmployeeRow[]) : []);
       }
 
+      const customersResult = customersSettled.status === 'fulfilled'
+        ? customersSettled.value as SupabaseQueryResult<CountRow[]>
+        : { data: null, error: customersSettled.reason };
+
+      if (customersResult.error) {
+        const issue = normalizeBusinessLoadIssue('customers', 'business_customers', customersResult.error);
+        if (permissions.canViewBusinessModules) {
+          nextIssues.customers = issue;
+          logBusinessLoadIssue(issue);
+        }
+        setCustomerRows([]);
+      } else {
+        setCustomerRows(Array.isArray(customersResult.data) ? (customersResult.data as CountRow[]) : []);
+      }
+
+      const invoicesResult = invoicesSettled.status === 'fulfilled'
+        ? invoicesSettled.value as SupabaseQueryResult<CountRow[]>
+        : { data: null, error: invoicesSettled.reason };
+
+      if (invoicesResult.error) {
+        const issue = normalizeBusinessLoadIssue('invoices', 'business_invoices', invoicesResult.error);
+        if (permissions.canViewBusinessModules) {
+          nextIssues.invoices = issue;
+          logBusinessLoadIssue(issue);
+        }
+        setInvoiceRows([]);
+      } else {
+        setInvoiceRows(Array.isArray(invoicesResult.data) ? (invoicesResult.data as CountRow[]) : []);
+      }
+
+      const suppliersResult = suppliersSettled.status === 'fulfilled'
+        ? suppliersSettled.value as SupabaseQueryResult<CountRow[]>
+        : { data: null, error: suppliersSettled.reason };
+
+      if (suppliersResult.error) {
+        const issue = normalizeBusinessLoadIssue('suppliers', 'business_suppliers', suppliersResult.error);
+        if (permissions.canViewBusinessModules) {
+          nextIssues.suppliers = issue;
+          logBusinessLoadIssue(issue);
+        }
+        setSupplierRows([]);
+      } else {
+        setSupplierRows(Array.isArray(suppliersResult.data) ? (suppliersResult.data as CountRow[]) : []);
+      }
+
+      const operatingExpensesResult = operatingExpensesSettled.status === 'fulfilled'
+        ? operatingExpensesSettled.value as SupabaseQueryResult<OperatingExpenseRow[]>
+        : { data: null, error: operatingExpensesSettled.reason };
+
+      if (operatingExpensesResult.error) {
+        const issue = normalizeBusinessLoadIssue('operatingExpenses', 'business_operating_expenses', operatingExpensesResult.error);
+        if (permissions.canViewBusinessModules) {
+          nextIssues.operatingExpenses = issue;
+          logBusinessLoadIssue(issue);
+        }
+        setOperatingExpenseRows([]);
+      } else {
+        setOperatingExpenseRows(Array.isArray(operatingExpensesResult.data) ? (operatingExpensesResult.data as OperatingExpenseRow[]) : []);
+      }
+
       setLoadIssues(nextIssues);
 
       const attemptedQueries = [
         { attempted: true, error: projectsResult.error },
         { attempted: permissions.canViewSales, error: salesResult.error },
         { attempted: permissions.canViewEmployees, error: employeesResult.error },
+        { attempted: permissions.canViewBusinessModules, error: customersResult.error },
+        { attempted: permissions.canViewBusinessModules, error: invoicesResult.error },
+        { attempted: permissions.canViewBusinessModules, error: suppliersResult.error },
+        { attempted: permissions.canViewBusinessModules, error: operatingExpensesResult.error },
       ].filter(item => item.attempted);
       const everyAttemptedQueryFailed = attemptedQueries.length > 0 && attemptedQueries.every(item => Boolean(item.error));
 
@@ -237,7 +335,7 @@ export default function BusinessOperationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [permissions.canViewEmployees, permissions.canViewSales, text.loadError, user]);
+  }, [permissions.canViewBusinessModules, permissions.canViewEmployees, permissions.canViewSales, text.loadError, user]);
 
   useEffect(() => {
     if (!authLoading && !roleLoading) void loadBusinessData();
@@ -248,6 +346,10 @@ export default function BusinessOperationsPage() {
     const activeEmployees = employeeRows.filter((row) => row.status === 'active' || !row.status);
     const totalSales = completedSales.reduce((total, row) => total + numericValue(row.amount), 0);
     const payroll = activeEmployees.reduce((total, row) => total + numericValue(row.salary) + numericValue(row.bonus), 0);
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const monthlyOperatingExpenses = operatingExpenseRows
+      .filter((row) => String(row.expense_date ?? '').slice(0, 7) === currentMonth)
+      .reduce((total, row) => total + numericValue(row.amount), 0);
     const nearestPayroll = activeEmployees
       .map((row) => nextPayrollDate(Number(row.payroll_due_day ?? 25)))
       .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
@@ -256,11 +358,16 @@ export default function BusinessOperationsPage() {
       projectCount: projectRows.length,
       salesCount: salesRows.length,
       employeeCount: employeeRows.length,
+      customerCount: customerRows.length,
+      invoiceCount: invoiceRows.length,
+      supplierCount: supplierRows.length,
+      operatingExpenseCount: operatingExpenseRows.length,
       activeEmployees: activeEmployees.length,
       payroll,
+      monthlyOperatingExpenses,
       nearestPayroll,
     };
-  }, [employeeRows, projectRows.length, salesRows]);
+  }, [customerRows.length, employeeRows, invoiceRows.length, operatingExpenseRows, projectRows.length, salesRows, supplierRows.length]);
 
   const chartData = useMemo(() => {
     const activeSales = salesRows.filter((row) => row.status !== 'canceled');
@@ -273,13 +380,25 @@ export default function BusinessOperationsPage() {
     const products = aggregateBy(activeSales, (row) => row.product_or_service || text.unclassified, (row) => numericValue(row.amount))
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
-    return { monthly, status, products };
-  }, [locale, salesRows, text.unclassified]);
+    const operatingExpenses = aggregateBy(
+      operatingExpenseRows,
+      (row) => String(row.expense_date ?? '').slice(0, 7) || text.unclassified,
+      (row) => numericValue(row.amount)
+    ).sort((a, b) => a.name.localeCompare(b.name)).map((item) => ({ ...item, label: /^\d{4}-\d{2}$/.test(item.name) ? monthLabel(item.name, locale) : item.name }));
+    return { monthly, status, products, operatingExpenses };
+  }, [locale, operatingExpenseRows, salesRows, text.unclassified]);
 
-  const isEmpty = summary.projectCount === 0 && summary.salesCount === 0 && summary.employeeCount === 0;
+  const isEmpty = summary.projectCount === 0
+    && summary.salesCount === 0
+    && summary.employeeCount === 0
+    && summary.customerCount === 0
+    && summary.invoiceCount === 0
+    && summary.supplierCount === 0
+    && summary.operatingExpenseCount === 0;
   const hasAnalyticsData = chartData.monthly.some(item => item.value > 0)
     || chartData.status.some(item => item.value > 0)
-    || chartData.products.some(item => item.value > 0);
+    || chartData.products.some(item => item.value > 0)
+    || chartData.operatingExpenses.some(item => item.value > 0);
   const failedBusinessSections = Object.values(loadIssues).filter((issue): issue is BusinessLoadIssue => Boolean(issue));
   const hasPartialErrors = failedBusinessSections.length > 0;
   const showPartialLoadWarning = !error && hasPartialErrors;
@@ -291,13 +410,13 @@ export default function BusinessOperationsPage() {
       { metric: text.totalSales, value: permissions.canViewSales ? formatMoney(summary.totalSales, defaultCurrency, locale) : text.permissionDenied },
       { metric: text.totalProjects, value: String(summary.projectCount) },
       { metric: text.sales, value: permissions.canViewSales ? String(summary.salesCount) : text.permissionDenied },
-      { metric: text.customers, value: '0' },
-      { metric: text.invoices, value: '0' },
-      { metric: text.suppliers, value: '0' },
+      { metric: text.customers, value: permissions.canViewBusinessModules ? String(summary.customerCount) : text.permissionDenied },
+      { metric: text.invoices, value: permissions.canViewBusinessModules ? String(summary.invoiceCount) : text.permissionDenied },
+      { metric: text.suppliers, value: permissions.canViewBusinessModules ? String(summary.supplierCount) : text.permissionDenied },
       { metric: text.totalEmployees, value: permissions.canViewEmployees ? String(summary.employeeCount) : text.permissionDenied },
       { metric: text.activeEmployees, value: permissions.canViewEmployees ? String(summary.activeEmployees) : text.permissionDenied },
-      { metric: text.totalMonthlyCost, value: permissions.canViewPayrollTotals ? formatMoney(summary.payroll, defaultCurrency, locale) : text.permissionDenied },
-      { metric: text.operatingExpenses, value: formatMoney(0, defaultCurrency, locale) },
+      { metric: text.totalMonthlyCost, value: permissions.canViewPayrollTotals ? formatMoney(summary.payroll + summary.monthlyOperatingExpenses, defaultCurrency, locale) : text.permissionDenied },
+      { metric: text.operatingExpenses, value: permissions.canViewBusinessModules ? formatMoney(summary.monthlyOperatingExpenses, defaultCurrency, locale) : text.permissionDenied },
       { metric: text.nearestPayrollDate, value: summary.nearestPayroll ? formatDate(summary.nearestPayroll, locale) : text.noPayrollDate },
     ];
   }
@@ -353,11 +472,47 @@ export default function BusinessOperationsPage() {
       allowed: permissions.canViewEmployees,
       count: summary.employeeCount,
     },
-    { title: text.customers, description: text.customersDescription, icon: UserRound, active: false, allowed: false, count: 0 },
-    { title: text.invoices, description: text.invoicesDescription, icon: FileText, active: false, allowed: false, count: 0 },
-    { title: text.suppliers, description: text.suppliersDescription, icon: Truck, active: false, allowed: false, count: 0 },
-    { title: text.operatingExpenses, description: text.operatingExpensesDescription, icon: ReceiptText, active: false, allowed: false, count: 0 },
-  ], [permissions.canViewEmployees, permissions.canViewSales, summary.employeeCount, summary.projectCount, summary.salesCount, text]);
+    {
+      title: text.customers,
+      description: text.customersDescription,
+      href: '/customers',
+      action: text.openCustomers,
+      icon: UserRound,
+      active: true,
+      allowed: permissions.canViewBusinessModules,
+      count: summary.customerCount,
+    },
+    {
+      title: text.invoices,
+      description: text.invoicesDescription,
+      href: '/invoices',
+      action: text.openInvoices,
+      icon: FileText,
+      active: true,
+      allowed: permissions.canViewBusinessModules,
+      count: summary.invoiceCount,
+    },
+    {
+      title: text.suppliers,
+      description: text.suppliersDescription,
+      href: '/suppliers',
+      action: text.openSuppliers,
+      icon: Truck,
+      active: true,
+      allowed: permissions.canViewBusinessModules,
+      count: summary.supplierCount,
+    },
+    {
+      title: text.operatingExpenses,
+      description: text.operatingExpensesDescription,
+      href: '/operating-expenses',
+      action: text.openOperatingExpenses,
+      icon: ReceiptText,
+      active: true,
+      allowed: permissions.canViewBusinessModules,
+      count: summary.operatingExpenseCount,
+    },
+  ], [permissions.canViewBusinessModules, permissions.canViewEmployees, permissions.canViewSales, summary.customerCount, summary.employeeCount, summary.invoiceCount, summary.operatingExpenseCount, summary.projectCount, summary.salesCount, summary.supplierCount, text]);
 
   if (authLoading || loading || roleLoading) {
     return (
@@ -462,6 +617,7 @@ export default function BusinessOperationsPage() {
           <BusinessOperationsChartCard title={text.monthlySales} data={chartData.monthly} currency={defaultCurrency} lang={locale} emptyActionHref="/sales" emptyActionLabel={text.addSale} />
           <BusinessOperationsChartCard title={text.salesByStatus} data={chartData.status} currency={defaultCurrency} lang={locale} variant="pie" emptyActionHref="/sales" emptyActionLabel={text.addSale} />
           <BusinessOperationsChartCard title={text.topProducts} data={chartData.products} currency={defaultCurrency} lang={locale} emptyActionHref="/sales" emptyActionLabel={text.addSale} />
+          <BusinessOperationsChartCard title={text.monthlyOperatingExpenses} data={chartData.operatingExpenses} currency={defaultCurrency} lang={locale} emptyActionHref="/operating-expenses" emptyActionLabel={text.addOperatingExpense} />
         </section>
 
         {showPartialLoadWarning ? (
