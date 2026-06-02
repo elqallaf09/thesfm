@@ -55,6 +55,7 @@ type MarketResultWithMeta = MarketResult & {
   correction?: string | null;
 };
 type TraderToolsSubTab = 'risk' | 'pips' | 'lot' | 'performance';
+type MarketAssetFilter = MarketAssetType | 'all';
 type MarketPerformanceItem = {
   symbol: string;
   name: string;
@@ -86,6 +87,7 @@ type TechnicalState = {
 const WATCHLIST_STORAGE_KEY = 'sfm_market_watchlist';
 const ALERTS_STORAGE_KEY = 'sfm_market_alerts';
 const DEFAULT_MARKET_TYPE: MarketAssetType = 'stock';
+const DEFAULT_MARKET_ASSET_FILTER: MarketAssetFilter = 'all';
 const MARKET_REQUEST_TIMEOUT_MS = 12000;
 const MARKET_SLOW_NOTICE_MS = 5000;
 const MARKET_TOOL_REQUEST_TIMEOUT_MS = 7000;
@@ -584,7 +586,7 @@ export default function MarketAnalysisPage() {
   const currentUserProfile = useCurrentUserProfile();
   const { user, isGuest } = useAuth();
   const [query, setQuery] = useState('');
-  const [assetType, setAssetType] = useState<MarketAssetType | 'all'>(DEFAULT_MARKET_TYPE);
+  const [assetType, setAssetType] = useState<MarketAssetFilter>(DEFAULT_MARKET_ASSET_FILTER);
   const [analysis, setAnalysis] = useState<MarketViewAnalysis | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<SelectedMarketAsset | null>(null);
   const [searchResults, setSearchResults] = useState<MarketSearchSuggestion[]>([]);
@@ -808,7 +810,7 @@ export default function MarketAnalysisPage() {
     }
   }, [lang, t]);
 
-  const requestAnalysis = useCallback(async (symbolInput: string, typeInput: MarketAssetType | 'all', selectedInput?: Partial<SelectedMarketAsset>) => {
+  const requestAnalysis = useCallback(async (symbolInput: string, typeInput: MarketAssetFilter, selectedInput?: Partial<SelectedMarketAsset>) => {
     const normalizedInput = normalizeMarketSymbolInput(selectedInput?.providerSymbol ?? symbolInput, typeInput);
     if (!normalizedInput.valid) {
       const suggestions = normalizedInput.suggestions.length ? normalizedInput.suggestions : marketSymbolSuggestions(symbolInput);
@@ -852,7 +854,6 @@ export default function MarketAnalysisPage() {
     };
     setSelectedAsset(selectedMeta);
     setQuery(displaySymbol);
-    setAssetType(normalizedType);
     try {
       const params = new URLSearchParams({
         symbol: requestSymbol,
@@ -1710,7 +1711,7 @@ export default function MarketAnalysisPage() {
               </div>
               <label>
                 <span>{t('market_asset_type')}</span>
-                <select value={assetType} aria-label={t('market_asset_type')} onChange={event => setAssetType(event.target.value as MarketAssetType | 'all')}>
+                <select value={assetType} aria-label={t('market_asset_type')} onChange={event => setAssetType(event.target.value as MarketAssetFilter)}>
                   <option value="all">{t('market_asset_all')}</option>
                   <option value="stock">{t('market_asset_stocks')}</option>
                   <option value="etf">{t('market_asset_etf')}</option>
