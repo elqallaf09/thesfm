@@ -21,7 +21,6 @@ import {
   businessRoleLabel,
   isActiveSaleStatus,
   isCancelledSaleStatus,
-  legacySaleStatus,
   normalizeBusinessLang,
   normalizeSaleStatus,
   numericValue,
@@ -76,22 +75,33 @@ function isValidDateInput(value: string) {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
-function logSaleSaveError(error: any, context: { attempt: string; payloadKeys: string[] }) {
-  if (process.env.NODE_ENV !== 'development' && process.env.NEXT_PUBLIC_DEBUG_BUSINESS_SAVE !== 'true') return;
-  console.error('[business_sales] save failed', {
-    attempt: context.attempt,
-    payloadKeys: context.payloadKeys,
-    code: error?.code,
+function formatDateToYYYYMMDD(value: string) {
+  const normalized = value.trim();
+  if (isValidDateInput(normalized)) return normalized;
+
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toISOString().slice(0, 10);
+}
+
+function mapSaleStatusToDb(status: string | null | undefined): SaleStatus | null {
+  const normalized = String(status ?? '').trim();
+  if (normalized === 'مكتملة') return 'completed';
+  if (normalized === 'معلقة') return 'pending';
+  if (normalized === 'ملغاة') return 'cancelled';
+  if (normalized === 'مستردة') return 'refunded';
+  if (normalized === 'completed' || normalized === 'pending' || normalized === 'refunded') return normalized;
+  if (normalized === 'cancelled' || normalized === 'canceled') return 'cancelled';
+  return null;
+}
+
+function logSaleSaveError(error: any) {
+  console.error('Sale save failed:', {
     message: error?.message,
+    code: error?.code,
     details: error?.details,
     hint: error?.hint,
   });
-}
-
-function missingSaleColumn(error: any) {
-  const message = String(error?.message ?? '');
-  const match = message.match(/column "([^"]+)"/i);
-  return match?.[1] ?? '';
 }
 
 function isSalePermissionError(error: any) {
@@ -99,9 +109,21 @@ function isSalePermissionError(error: any) {
   return error?.code === '42501' || message.includes('row-level security') || message.includes('permission denied');
 }
 
-function isStatusConstraintError(error: any) {
+function isSaleSchemaError(error: any) {
+  const code = String(error?.code ?? '');
   const message = `${error?.message ?? ''} ${error?.details ?? ''}`.toLowerCase();
-  return error?.code === '23514' && message.includes('status');
+  return (
+    code === '42P01' ||
+    code === '42703' ||
+    code === '23502' ||
+    code === '23503' ||
+    code === '23514' ||
+    code === 'PGRST204' ||
+    message.includes('schema cache') ||
+    message.includes('does not exist') ||
+    message.includes('column') ||
+    message.includes('constraint')
+  );
 }
 
 function createEmptyForm(currency = 'KWD'): SaleForm {
@@ -254,6 +276,11 @@ export default function SalesPage() {
       setFormError(text.loginRequiredToSaveSale);
       return;
     }
+    const currentUserId = user.id;
+    if (!currentUserId) {
+      setFormError(text.loginRequiredToSaveSale);
+      return;
+    }
     if (!permissions.canWriteSales) {
       setFormError(text.permissionDenied);
       return;
@@ -261,7 +288,9 @@ export default function SalesPage() {
     const customerName = form.customer_name.trim();
     const productOrService = form.product_or_service.trim();
     const amount = parseAmountInput(form.amount);
-    const normalizedStatus = normalizeSaleStatus(form.status);
+    const normalizedStatus = mapSaleStatusToDb(form.status);
+    const saleDate = formatDateToYYYYMMDD(form.sale_date);
+    const selectedCurrency = form.currency.trim() || defaultCurrency || 'KWD';
     if (!customerName) {
       setFormError(text.saleCustomerRequired);
       return;
@@ -274,19 +303,19 @@ export default function SalesPage() {
       setFormError(text.saleAmountRequired);
       return;
     }
-    if (!form.currency) {
-      setFormError(text.currency);
+    if (!selectedCurrency) {
+      setFormError(text.businessValidationRequired);
       return;
     }
     if (!form.sale_date) {
       setFormError(text.saleDateRequired);
       return;
     }
-    if (!isValidDateInput(form.sale_date)) {
+    if (!saleDate || !isValidDateInput(saleDate)) {
       setFormError(text.saleDateInvalid);
       return;
     }
-    if (!SALE_STATUS_OPTIONS.includes(normalizedStatus)) {
+    if (!normalizedStatus || !SALE_STATUS_OPTIONS.includes(normalizedStatus)) {
       setFormError(text.saleStatusInvalid);
       return;
     }
@@ -295,48 +324,37 @@ export default function SalesPage() {
     setFormError('');
     setNotice('');
     const payload = {
-      user_id: user.id,
+      user_id: currentUserId,
       invoice_number: form.invoice_number.trim() || null,
       customer_id: null,
       customer_name: customerName,
       product_or_service: productOrService,
       amount,
-      currency: form.currency || defaultCurrency || 'KWD',
+      currency: selectedCurrency,
       status: normalizedStatus,
-      sale_date: form.sale_date,
-      notes: form.notes.trim() || null,
-    };
-    const legacyPayload = {
-      user_id: user.id,
-      invoice_number: form.invoice_number.trim() || null,
-      customer_name: customerName,
-      product_or_service: productOrService,
-      amount,
-      currency: form.currency || defaultCurrency || 'KWD',
-      status: legacySaleStatus(normalizedStatus),
-      sale_date: form.sale_date,
+      sale_date: saleDate,
       notes: form.notes.trim() || null,
     };
 
     const db = supabase as any;
-    const savePayload = async (nextPayload: Record<string, unknown>) => {
-      return editing
-        ? await db.from('business_sales').update(nextPayload).eq('id', editing.id).eq('user_id', user.id)
-        : await db.from('business_sales').insert(nextPayload);
-    };
-    let result = await savePayload(payload);
-    if (result.error) {
-      logSaleSaveError(result.error, { attempt: 'aligned', payloadKeys: Object.keys(payload) });
-      const missingColumn = missingSaleColumn(result.error);
-      if (missingColumn === 'customer_id' || isStatusConstraintError(result.error)) {
-        result = await savePayload(legacyPayload);
-        if (result.error) logSaleSaveError(result.error, { attempt: 'legacy', payloadKeys: Object.keys(legacyPayload) });
-      }
+    let result: { error: any };
+    try {
+      result = editing
+        ? await db.from('business_sales').update(payload).eq('id', editing.id).eq('user_id', currentUserId)
+        : await db.from('business_sales').insert(payload);
+    } catch (error) {
+      setSaving(false);
+      logSaleSaveError(error);
+      setFormError(text.saleNetworkSaveError);
+      return;
     }
 
     setSaving(false);
     if (result.error) {
-      setFormError(isSalePermissionError(result.error) ? text.saleAccessDeniedSave : text.saleSaveFailedDetailed);
+      logSaleSaveError(result.error);
+      if (isSalePermissionError(result.error)) setFormError(text.saleAccessDeniedSave);
+      else if (isSaleSchemaError(result.error)) setFormError(text.saleSchemaSaveError);
+      else setFormError(text.saleSaveFailedDetailed);
       return;
     }
 
