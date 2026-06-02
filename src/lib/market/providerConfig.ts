@@ -54,15 +54,10 @@ export function getMarketSentimentProviderConfig() {
   const alphaVantageApiKey = cleanEnv(process.env.ALPHA_VANTAGE_API_KEY);
   const providerEnv = cleanEnv(process.env.MARKET_SENTIMENT_PROVIDER);
   const explicitProvider = normalizeMarketSentimentProvider(providerEnv);
+  const apiKey = marketSentimentApiKey || finnhubApiKey || alphaVantageApiKey;
   const inferredProvider: MarketSentimentProvider | null = explicitProvider
-    ?? (finnhubApiKey ? 'finnhub' : null)
-    ?? (alphaVantageApiKey ? 'alphavantage' : null)
-    ?? (marketSentimentApiKey ? 'finnhub' : null);
-  const apiKey = inferredProvider === 'alphavantage'
-    ? (marketSentimentApiKey || alphaVantageApiKey)
-    : inferredProvider === 'finnhub'
-      ? (marketSentimentApiKey || finnhubApiKey)
-      : (marketSentimentApiKey || finnhubApiKey || alphaVantageApiKey);
+    ?? (marketSentimentApiKey || finnhubApiKey ? 'finnhub' : null)
+    ?? (alphaVantageApiKey ? 'alphavantage' : null);
 
   return {
     configured: Boolean(inferredProvider && apiKey),

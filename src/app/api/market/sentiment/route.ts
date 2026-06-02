@@ -50,6 +50,12 @@ function unavailableResponse(code: string, provider: string | null = null) {
   }, { status: 200, headers: cacheHeaders });
 }
 
+function providerFailedError(message = 'Market sentiment provider failed') {
+  const error = new Error(message);
+  error.name = 'ProviderFailedError';
+  return error;
+}
+
 function safeNumber(value: unknown) {
   const parsed = typeof value === 'number' ? value : Number(String(value ?? '').trim());
   return Number.isFinite(parsed) ? parsed : null;
@@ -149,7 +155,7 @@ async function fetchFinnhubSentiment(symbols: string[], apiKey: string) {
       if (shouldDebug()) {
         console.warn('[market-sentiment] Finnhub symbol failed', { symbol, status: response.status });
       }
-      return null;
+      throw providerFailedError('Finnhub sentiment request failed');
     }
 
     const payload = await response.json().catch(() => ({})) as { reddit?: FinnhubSentimentEntry[]; twitter?: FinnhubSentimentEntry[] };
@@ -161,6 +167,11 @@ async function fetchFinnhubSentiment(symbols: string[], apiKey: string) {
     const timeout = new Error('Market sentiment provider timed out');
     timeout.name = 'TimeoutError';
     throw timeout;
+  }
+
+  const allProviderRequestsFailed = settled.length > 0 && settled.every(result => result.status === 'rejected');
+  if (allProviderRequestsFailed) {
+    throw providerFailedError('Finnhub sentiment provider failed for all symbols');
   }
 
   return settled
@@ -215,7 +226,7 @@ async function fetchAlphaVantageSentiment(symbols: string[], apiKey: string) {
     if (shouldDebug()) {
       console.warn('[market-sentiment] Alpha Vantage request failed', { status: response.status });
     }
-    return [];
+    throw providerFailedError('Alpha Vantage sentiment request failed');
   }
 
   const payload = await response.json().catch(() => ({})) as { feed?: AlphaVantageArticle[]; Information?: string; Note?: string };
@@ -225,6 +236,9 @@ async function fetchAlphaVantageSentiment(symbols: string[], apiKey: string) {
         hasInformation: Boolean(payload.Information),
         hasNote: Boolean(payload.Note),
       });
+    }
+    if (payload.Information || payload.Note) {
+      throw providerFailedError('Alpha Vantage sentiment provider returned a service notice');
     }
     return [];
   }
@@ -241,7 +255,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!config.provider) {
-    return unavailableResponse('MARKET_SENTIMENT_PROVIDER_UNAVAILABLE');
+    return unavailableResponse('MARKET_SENTIMENT_PROVIDER_FAILED');
   }
 
   try {
@@ -258,7 +272,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (items.length === 0) {
-      return unavailableResponse('MARKET_SENTIMENT_PROVIDER_ERROR', config.provider);
+      return unavailableResponse('NO_MARKET_SENTIMENT_DATA', config.provider);
     }
 
     return NextResponse.json({
@@ -273,6 +287,6 @@ export async function GET(request: NextRequest) {
     if (shouldDebug()) {
       console.warn('[market-sentiment] provider error', error instanceof Error ? error.message : error);
     }
-    return unavailableResponse(isTimeoutError(error) ? 'MARKET_DATA_TIMEOUT' : 'MARKET_SENTIMENT_PROVIDER_ERROR', config.provider);
+    return unavailableResponse('MARKET_SENTIMENT_PROVIDER_FAILED', config.provider);
   }
 }

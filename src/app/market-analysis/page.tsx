@@ -686,15 +686,19 @@ export default function MarketAnalysisPage() {
       setMarketSentiment(prev => ({ ...prev, loading: true, message: '', code: undefined }));
     }
 
+    const refreshKey = options.force ? Date.now() : null;
     const requests = uniqueTargets.map(target => {
-      const newsUrl = options.force
-        ? `/api/market/central-bank-news?refresh=${Date.now()}`
+      const newsUrl = refreshKey
+        ? `/api/market/central-bank-news?refresh=${refreshKey}`
         : '/api/market/central-bank-news';
+      const sentimentUrl = refreshKey
+        ? `/api/market/sentiment?refresh=${refreshKey}`
+        : '/api/market/sentiment';
       return {
         target,
         request: target === 'news'
           ? fetchMarketToolState<Record<string, any>>(newsUrl, 'central-bank-news')
-          : fetchMarketToolState<Record<string, any>>('/api/market/sentiment', 'market-sentiment'),
+          : fetchMarketToolState<Record<string, any>>(sentimentUrl, 'market-sentiment'),
       };
     });
 
@@ -3247,14 +3251,17 @@ export default function MarketAnalysisPage() {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 16px;
+          align-items: start;
           min-width: 0;
         }
 
         .news-tool-card {
           min-width: 0;
+          align-self: start;
           display: grid;
           gap: 14px;
           align-content: start;
+          height: auto;
           border: 1px solid rgba(47, 214, 192, .16);
           border-radius: 26px;
           padding: clamp(15px, 1.8vw, 20px);
@@ -3262,6 +3269,18 @@ export default function MarketAnalysisPage() {
             linear-gradient(135deg, rgba(255, 255, 255, .76), rgba(234, 246, 255, .54)),
             var(--sfm-card);
           box-shadow: 0 14px 34px rgba(3, 18, 37, .06);
+        }
+
+        .sentiment-tool-card {
+          min-height: 0;
+        }
+
+        .sentiment-tool-card .tool-empty-state {
+          min-height: 0;
+        }
+
+        .sentiment-tool-card .market-section-loading {
+          min-height: 180px;
         }
 
         .news-tool-card-head {
@@ -3849,6 +3868,10 @@ export default function MarketAnalysisPage() {
           .news-tool-card {
             border-radius: 22px;
             padding: 15px;
+          }
+
+          .sentiment-tool-card .market-section-loading {
+            min-height: 160px;
           }
 
           .tool-empty-state {
@@ -5831,10 +5854,8 @@ function clampPercentValue(value: number) {
 }
 
 function sentimentValues(item: Record<string, any>) {
-  let buy = numberField(item, ['buyPercent', 'buy_percentage', 'buy_percent', 'buyRatio', 'buy_ratio', 'buy', 'longPercent', 'long_percentage', 'bullishPercent', 'bullish_percentage']);
-  let sell = numberField(item, ['sellPercent', 'sell_percentage', 'sell_percent', 'sellRatio', 'sell_ratio', 'sell', 'shortPercent', 'short_percentage', 'bearishPercent', 'bearish_percentage']);
-  if (buy !== null && sell === null) sell = 100 - buy;
-  if (sell !== null && buy === null) buy = 100 - sell;
+  const buy = numberField(item, ['buyPercent', 'buy_percentage', 'buy_percent', 'buyRatio', 'buy_ratio', 'buy', 'longPercent', 'long_percentage', 'bullishPercent', 'bullish_percentage']);
+  const sell = numberField(item, ['sellPercent', 'sell_percentage', 'sell_percent', 'sellRatio', 'sell_ratio', 'sell', 'shortPercent', 'short_percentage', 'bearishPercent', 'bearish_percentage']);
   if (buy === null || sell === null) return null;
   return {
     buy: clampPercentValue(buy),
@@ -5878,9 +5899,20 @@ function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => 
   if (code === 'MARKET_DATA_TIMEOUT') {
     return { title: t('market_section_timeout_title'), body: t('market_section_timeout_body') };
   }
-  return code === 'MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED'
-    ? { title: t('market_sentiment_not_configured_title'), body: t('market_sentiment_not_configured_body') }
-    : { title: t('market_sentiment_unavailable_title'), body: t('market_sentiment_unavailable_body') };
+  if (code === 'MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED') {
+    return { title: t('market_sentiment_not_configured_title'), body: t('market_sentiment_not_configured_body') };
+  }
+  if (code === 'NO_MARKET_SENTIMENT_DATA') {
+    return { title: t('market_sentiment_no_items_title'), body: t('market_sentiment_no_items_body') };
+  }
+  if (
+    code === 'MARKET_SENTIMENT_PROVIDER_FAILED'
+    || code === 'MARKET_SENTIMENT_PROVIDER_ERROR'
+    || code === 'MARKET_SENTIMENT_PROVIDER_UNAVAILABLE'
+  ) {
+    return { title: t('market_sentiment_unavailable_title'), body: t('market_sentiment_provider_failed_body') };
+  }
+  return { title: t('market_sentiment_unavailable_title'), body: t('market_sentiment_unavailable_body') };
 }
 
 function NewsSentimentPanel({
@@ -5902,6 +5934,9 @@ function NewsSentimentPanel({
   const sentimentEmpty = publicSentimentEmptyCopy(sentiment.code, t);
   const newsLastAttempt = news.updatedAt
     ? `${t('market_last_attempt')}: ${formatMarketToolTimestamp(news.updatedAt, lang)}`
+    : undefined;
+  const sentimentLastAttempt = sentiment.updatedAt
+    ? `${t('market_last_attempt')}: ${formatMarketToolTimestamp(sentiment.updatedAt, lang)}`
     : undefined;
 
   return (
@@ -5968,18 +6003,24 @@ function NewsSentimentPanel({
             )}
           </article>
 
-          <article className="news-tool-card">
+          <article className="news-tool-card sentiment-tool-card">
             <div className="news-tool-card-head">
               <span><BarChart3 size={19} /></span>
               <div>
                 <small>{t('market_sentiment_note_title')}</small>
                 <h3>{t('market_market_sentiment')}</h3>
               </div>
-              <MarketSectionRefreshButton t={t} loading={sentiment.loading} onRefresh={onRefreshSentiment} />
+              <MarketSectionRefreshButton
+                t={t}
+                loading={sentiment.loading}
+                onRefresh={onRefreshSentiment}
+                label={t('market_refresh_sentiment')}
+                loadingLabel={t('market_refreshing_section')}
+              />
             </div>
 
             {sentiment.loading ? (
-              <MarketSectionLoading label={t('market_loading_market_sentiment')} />
+              <MarketSectionLoading label={t('market_loading_market_sentiment')} cards={2} />
             ) : sentiment.items.length > 0 ? (
               <div className="sentiment-card-list">
                 {sentiment.items.map((item, index) => {
@@ -6022,7 +6063,15 @@ function NewsSentimentPanel({
                 })}
               </div>
             ) : (
-              <MarketToolEmptyState icon={<BarChart3 size={18} />} title={sentimentEmpty.title} description={sentimentEmpty.body} variant="info" />
+              <MarketToolEmptyState
+                icon={<BarChart3 size={18} />}
+                title={sentimentEmpty.title}
+                description={sentimentEmpty.body}
+                meta={sentimentLastAttempt}
+                actionLabel={t('market_refresh_sentiment')}
+                onAction={onRefreshSentiment}
+                variant="info"
+              />
             )}
 
             <div className="sentiment-info-card">
@@ -6075,16 +6124,18 @@ function MarketSectionRefreshButton({
   loading,
   onRefresh,
   label,
+  loadingLabel,
 }: {
   t: (key: string) => string;
   loading: boolean;
   onRefresh: () => void;
   label?: string;
+  loadingLabel?: string;
 }) {
   return (
     <button className="market-section-refresh" type="button" onClick={onRefresh} disabled={loading}>
       <Activity size={15} />
-      <span>{loading ? t('market_loading_short') : label ?? t('market_refresh_section')}</span>
+      <span>{loading ? loadingLabel ?? t('market_loading_short') : label ?? t('market_refresh_section')}</span>
     </button>
   );
 }
