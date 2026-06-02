@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { MarketAnalysis, MarketAiInsight } from '@/lib/market/marketService';
 
-const AI_TIMEOUT_MS = 28000;
+const AI_TIMEOUT_MS = 10000;
+type AiInsightFailureCode =
+  | 'AI_PROVIDER_NOT_CONFIGURED'
+  | 'MARKET_DATA_REQUIRED'
+  | 'AI_INSIGHT_TIMEOUT'
+  | 'AI_PROVIDER_UNAVAILABLE';
 
 function isRealMarketAnalysis(value: unknown): value is MarketAnalysis {
   const data = value && typeof value === 'object' ? value as Partial<MarketAnalysis> : {};
@@ -16,8 +21,26 @@ function isRealMarketAnalysis(value: unknown): value is MarketAnalysis {
   );
 }
 
-function fallbackUnavailable(error: string): MarketAiInsight {
-  return { status: 'unavailable', provider: 'anthropic', error };
+function failureResponse(code: AiInsightFailureCode) {
+  return NextResponse.json({
+    ok: false,
+    success: false,
+    code,
+    insight: null,
+    updated_at: null,
+  }, { status: 200 });
+}
+
+function isTimeoutError(error: unknown) {
+  return error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError');
+}
+
+function parseProviderJson(text: string) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -26,20 +49,12 @@ export async function POST(request: NextRequest) {
   const language = body?.language === 'en' || body?.language === 'fr' || body?.language === 'ar' ? body.language : 'ar';
 
   if (!isRealMarketAnalysis(marketData)) {
-    return NextResponse.json({
-      success: false,
-      insight: { status: 'skipped', error: 'Real market data is required before AI analysis.' },
-      error: 'Real market data is required before AI analysis.',
-    }, { status: 400 });
+    return failureResponse('MARKET_DATA_REQUIRED');
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({
-      success: false,
-      insight: fallbackUnavailable('ANTHROPIC_API_KEY is not configured.'),
-      error: 'AI provider is not configured.',
-    }, { status: 503 });
+    return failureResponse('AI_PROVIDER_NOT_CONFIGURED');
   }
 
   const controller = new AbortController();
@@ -90,16 +105,18 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
-      return NextResponse.json({
-        success: false,
-        insight: fallbackUnavailable(`Anthropic returned ${response.status}.`),
-        error: 'AI analysis is unavailable right now.',
-      }, { status: 503 });
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[market-ai-insight] provider unavailable', { status: response.status });
+      }
+      return failureResponse('AI_PROVIDER_UNAVAILABLE');
     }
 
     const payload = await response.json();
     const text = payload?.content?.find?.((item: { type?: string; text?: string }) => item.type === 'text')?.text;
-    const parsed = typeof text === 'string' ? JSON.parse(text) : {};
+    const parsed = typeof text === 'string' ? parseProviderJson(text) : null;
+    if (!parsed || typeof parsed !== 'object') {
+      return failureResponse('AI_PROVIDER_UNAVAILABLE');
+    }
     const insight: MarketAiInsight & { riskScore?: number } = {
       status: 'ready',
       provider: 'anthropic',
@@ -110,13 +127,18 @@ export async function POST(request: NextRequest) {
       riskScore: Number.isFinite(Number(parsed.riskScore)) ? Math.max(0, Math.min(100, Number(parsed.riskScore))) : undefined,
     };
 
-    return NextResponse.json({ success: true, insight });
-  } catch (error) {
     return NextResponse.json({
-      success: false,
-      insight: fallbackUnavailable(error instanceof Error && error.name === 'AbortError' ? 'AI analysis timed out.' : 'AI analysis failed.'),
-      error: 'AI analysis is unavailable right now.',
-    }, { status: 503 });
+      ok: true,
+      success: true,
+      code: 'AI_INSIGHT_READY',
+      insight,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[market-ai-insight] request failed', error instanceof Error ? error.message : error);
+    }
+    return failureResponse(isTimeoutError(error) ? 'AI_INSIGHT_TIMEOUT' : 'AI_PROVIDER_UNAVAILABLE');
   } finally {
     clearTimeout(timeout);
   }

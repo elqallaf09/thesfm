@@ -537,6 +537,17 @@ function marketErrorText(code: string | undefined, fallback: string, t: (key: st
   return map[code] || fallback;
 }
 
+function marketAiInsightErrorText(code: string | undefined, t: (key: string) => string) {
+  const normalized = String(code ?? '').trim().toUpperCase();
+  const map: Record<string, string> = {
+    AI_PROVIDER_NOT_CONFIGURED: t('market_ai_provider_not_configured'),
+    AI_INSIGHT_TIMEOUT: t('market_ai_timeout'),
+    MARKET_DATA_REQUIRED: t('market_ai_market_data_required'),
+    AI_PROVIDER_UNAVAILABLE: t('market_ai_provider_unavailable_clean'),
+  };
+  return map[normalized] || t('market_ai_summary_error');
+}
+
 function invalidSymbolMessage(t: (key: string) => string, correction?: string | null) {
   return correction
     ? t('market_invalid_symbol_did_you_mean').replace('{symbol}', correction)
@@ -603,6 +614,7 @@ export default function MarketAnalysisPage() {
   const [slowLoading, setSlowLoading] = useState(false);
   const [aiInsight, setAiInsight] = useState<MarketAiInsightView | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const aiInsightLoadingRef = useRef(false);
   const [assetProfile, setAssetProfile] = useState<AssetProfileResponse | null>(null);
   const [assetProfileLoading, setAssetProfileLoading] = useState(false);
   const [assetProfileError, setAssetProfileError] = useState<string | null>(null);
@@ -796,14 +808,16 @@ export default function MarketAnalysisPage() {
   }, [baseScenarioCurrency, scenarioCurrencyTouched]);
 
   const requestAiInsight = useCallback(async (marketData: MarketAnalysis) => {
+    if (aiInsightLoadingRef.current) return;
     if (!hasUsableAnalysis(marketData)) {
       setAiInsight({ status: 'skipped', error: t('market_no_real_data_ai') });
       return;
     }
+    aiInsightLoadingRef.current = true;
     setAiLoading(true);
     setAiInsight(null);
     try {
-      const result = await fetchJsonWithTimeout<{ success?: boolean; insight?: MarketAiInsightView; error?: string }>('/api/market/ai-insight', 30000, true, {
+      const result = await fetchJsonWithTimeout<{ ok?: boolean; success?: boolean; code?: string; insight?: MarketAiInsightView | null; updated_at?: string | null }>('/api/market/ai-insight', 12000, true, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ marketData, language: lang }),
@@ -811,11 +825,20 @@ export default function MarketAnalysisPage() {
       if (result.success && result.insight?.status === 'ready') {
         setAiInsight(result.insight);
       } else {
-        setAiInsight(result.insight ?? null);
+        setAiInsight({
+          status: 'unavailable',
+          provider: 'rule-based',
+          error: marketAiInsightErrorText(result.code, t),
+        });
       }
     } catch {
-      setAiInsight(null);
+      setAiInsight({
+        status: 'unavailable',
+        provider: 'rule-based',
+        error: t('market_ai_provider_unavailable_clean'),
+      });
     } finally {
+      aiInsightLoadingRef.current = false;
       setAiLoading(false);
     }
   }, [lang, t]);
