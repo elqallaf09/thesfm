@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
-import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, Clock3, FileText, Gauge, LineChart, Newspaper, Plus, Search, ShieldAlert, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, Clock3, FileText, Gauge, Landmark, LineChart, Newspaper, Plus, Search, ShieldAlert, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { AssetProfileCard } from '@/components/market/AssetProfileCard';
@@ -208,7 +208,9 @@ function sanitizeMarketToolMessage(code: string, message: string) {
     code === 'ECONOMIC_CALENDAR_SOURCE_NOT_CONFIGURED' ||
     code === 'ECONOMIC_CALENDAR_PROVIDER_NOT_CONFIGURED' ||
     code === 'ECONOMIC_CALENDAR_NOT_CONFIGURED' ||
-    /ECONOMIC_CALENDAR_|FINNHUB_API_KEY|provider integration is not configured/i.test(message)
+    code === 'CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED' ||
+    code === 'MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED' ||
+    /ECONOMIC_CALENDAR_|\b[A-Z0-9_]*(API_)?(KEY|TOKEN|SECRET)\b|provider integration is not configured/i.test(message)
   ) {
     return '';
   }
@@ -605,28 +607,28 @@ export default function MarketAnalysisPage() {
   }, []);
 
   useEffect(() => {
-    if (activeTab !== 'traderTools' || traderToolTab !== 'performance' || performance.loading || performance.items.length > 0 || performance.message) return;
+    if (activeTab !== 'traderTools' || traderToolTab !== 'performance' || performance.loading || performance.items.length > 0 || performance.message || performance.code) return;
     setPerformance(prev => ({ ...prev, loading: true }));
     void fetchMarketToolState<MarketPerformanceItem>('/api/market/performance').then(setPerformance);
-  }, [activeTab, performance.items.length, performance.loading, performance.message, traderToolTab]);
+  }, [activeTab, performance.code, performance.items.length, performance.loading, performance.message, traderToolTab]);
 
   useEffect(() => {
-    if (activeTab !== 'economicCalendar' || economicCalendar.loading || economicCalendar.items.length > 0 || economicCalendar.message) return;
+    if (activeTab !== 'economicCalendar' || economicCalendar.loading || economicCalendar.items.length > 0 || economicCalendar.message || economicCalendar.code) return;
     setEconomicCalendar(prev => ({ ...prev, loading: true }));
     void fetchMarketToolState<Record<string, any>>('/api/market/economic-calendar').then(setEconomicCalendar);
-  }, [activeTab, economicCalendar.items.length, economicCalendar.loading, economicCalendar.message]);
+  }, [activeTab, economicCalendar.code, economicCalendar.items.length, economicCalendar.loading, economicCalendar.message]);
 
   useEffect(() => {
     if (activeTab !== 'newsSentiment') return;
-    if (!centralBankNews.loading && centralBankNews.items.length === 0 && !centralBankNews.message) {
+    if (!centralBankNews.loading && centralBankNews.items.length === 0 && !centralBankNews.message && !centralBankNews.code) {
       setCentralBankNews(prev => ({ ...prev, loading: true }));
       void fetchMarketToolState<Record<string, any>>('/api/market/central-bank-news').then(setCentralBankNews);
     }
-    if (!marketSentiment.loading && marketSentiment.items.length === 0 && !marketSentiment.message) {
+    if (!marketSentiment.loading && marketSentiment.items.length === 0 && !marketSentiment.message && !marketSentiment.code) {
       setMarketSentiment(prev => ({ ...prev, loading: true }));
       void fetchMarketToolState<Record<string, any>>('/api/market/sentiment').then(setMarketSentiment);
     }
-  }, [activeTab, centralBankNews.items.length, centralBankNews.loading, centralBankNews.message, marketSentiment.items.length, marketSentiment.loading, marketSentiment.message]);
+  }, [activeTab, centralBankNews.code, centralBankNews.items.length, centralBankNews.loading, centralBankNews.message, marketSentiment.code, marketSentiment.items.length, marketSentiment.loading, marketSentiment.message]);
 
   useEffect(() => {
     if (activeTab !== 'technicalAnalysis' || !selectedAsset) return;
@@ -2654,6 +2656,294 @@ export default function MarketAnalysisPage() {
           grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         }
 
+        .news-sentiment-shell {
+          display: grid;
+          gap: 18px;
+          overflow: hidden;
+          border-radius: 32px !important;
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, .82), rgba(234, 246, 255, .68)),
+            var(--sfm-card) !important;
+          border-color: rgba(47, 214, 192, .18) !important;
+          box-shadow: 0 20px 56px rgba(3, 18, 37, .08) !important;
+        }
+
+        .news-sentiment-head {
+          align-items: center;
+          border: 1px solid rgba(47, 214, 192, .16);
+          border-radius: 24px;
+          background: rgba(47, 214, 192, .07);
+          padding: 14px;
+          margin-bottom: 0;
+        }
+
+        .news-sentiment-head-icon,
+        .news-tool-card-head > span,
+        .tool-empty-state > span {
+          width: 44px;
+          height: 44px;
+          border-radius: 17px;
+          display: grid;
+          place-items: center;
+          color: #fff;
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          box-shadow: 0 14px 28px rgba(29, 140, 255, .18);
+          flex: 0 0 auto;
+        }
+
+        .news-sentiment-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+          min-width: 0;
+        }
+
+        .news-tool-card {
+          min-width: 0;
+          display: grid;
+          gap: 14px;
+          align-content: start;
+          border: 1px solid rgba(47, 214, 192, .16);
+          border-radius: 26px;
+          padding: clamp(15px, 1.8vw, 20px);
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, .76), rgba(234, 246, 255, .54)),
+            var(--sfm-card);
+          box-shadow: 0 14px 34px rgba(3, 18, 37, .06);
+        }
+
+        .news-tool-card-head {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          min-width: 0;
+        }
+
+        .news-tool-card-head div {
+          display: grid;
+          gap: 4px;
+          min-width: 0;
+        }
+
+        .news-tool-card-head small {
+          color: var(--sfm-muted);
+          font-size: 12px;
+          font-weight: 900;
+          line-height: 1.45;
+        }
+
+        .news-tool-card-head h3 {
+          margin: 0;
+          color: var(--sfm-foreground);
+          font-size: 18px;
+          font-weight: 950;
+          line-height: 1.35;
+        }
+
+        .tool-empty-state {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          gap: 14px;
+          align-items: flex-start;
+          min-width: 0;
+          border: 1px solid rgba(47, 214, 192, .18);
+          border-radius: 24px;
+          padding: 16px;
+          background:
+            linear-gradient(135deg, rgba(29, 140, 255, .07), rgba(47, 214, 192, .08)),
+            var(--sfm-light-card);
+        }
+
+        .tool-empty-state div {
+          display: grid;
+          gap: 6px;
+          min-width: 0;
+        }
+
+        .tool-empty-state strong {
+          color: var(--sfm-foreground);
+          font-size: 16px;
+          font-weight: 950;
+          line-height: 1.45;
+        }
+
+        .tool-empty-state p {
+          margin: 0;
+          color: var(--sfm-muted);
+          font-size: 13px;
+          font-weight: 850;
+          line-height: 1.8;
+        }
+
+        .central-news-list,
+        .sentiment-card-list {
+          display: grid;
+          gap: 12px;
+          min-width: 0;
+        }
+
+        .central-news-card,
+        .sentiment-card {
+          min-width: 0;
+          display: grid;
+          gap: 11px;
+          border: 1px solid rgba(167, 243, 240, .14);
+          border-radius: 22px;
+          padding: 14px;
+          background: var(--sfm-light-card);
+        }
+
+        .central-news-meta,
+        .central-news-footer,
+        .sentiment-metrics,
+        .sentiment-card-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          min-width: 0;
+          flex-wrap: wrap;
+        }
+
+        .central-news-meta span,
+        .sentiment-badge {
+          display: inline-flex;
+          width: max-content;
+          max-width: 100%;
+          align-items: center;
+          border: 1px solid rgba(47, 214, 192, .22);
+          border-radius: 999px;
+          background: rgba(47, 214, 192, .10);
+          color: var(--sfm-primary-hover);
+          padding: 5px 9px;
+          font-size: 11px;
+          font-weight: 950;
+          line-height: 1.3;
+        }
+
+        .central-news-meta small,
+        .central-news-footer small,
+        .sentiment-card-head span,
+        .sentiment-card p,
+        .sentiment-metrics span {
+          color: var(--sfm-muted);
+          font-size: 12px;
+          font-weight: 850;
+          line-height: 1.55;
+        }
+
+        .central-news-card h4,
+        .sentiment-card-head b {
+          margin: 0;
+          color: var(--sfm-foreground);
+          font-size: 15px;
+          font-weight: 950;
+          line-height: 1.45;
+          overflow-wrap: anywhere;
+        }
+
+        .central-news-card p,
+        .sentiment-card p {
+          margin: 0;
+          color: var(--sfm-muted);
+          font-size: 13px;
+          font-weight: 850;
+          line-height: 1.75;
+        }
+
+        .central-news-footer a {
+          color: var(--sfm-primary-hover);
+          font-size: 12px;
+          font-weight: 950;
+          text-decoration: none;
+        }
+
+        .central-news-footer a:hover,
+        .central-news-footer a:focus-visible {
+          text-decoration: underline;
+          outline: none;
+        }
+
+        .sentiment-card-head > div {
+          display: grid;
+          gap: 4px;
+          min-width: 0;
+        }
+
+        .sentiment-badge.buy {
+          color: #047857;
+          background: #CCFBF1;
+          border-color: rgba(15, 118, 110, .22);
+        }
+
+        .sentiment-badge.sell {
+          color: #DC2626;
+          background: #FEE2E2;
+          border-color: rgba(220, 38, 38, .20);
+        }
+
+        .sentiment-badge.balanced {
+          color: var(--sfm-primary-hover);
+          background: rgba(29, 140, 255, .10);
+          border-color: rgba(29, 140, 255, .18);
+        }
+
+        .sentiment-metrics b {
+          color: var(--sfm-foreground);
+          font-size: 13px;
+          font-weight: 950;
+        }
+
+        .sentiment-bar {
+          display: flex;
+          width: 100%;
+          height: 10px;
+          overflow: hidden;
+          border-radius: 999px;
+          border: 1px solid rgba(148, 163, 184, .15);
+          background: rgba(148, 163, 184, .12);
+        }
+
+        .sentiment-bar i,
+        .sentiment-bar b {
+          display: block;
+          min-width: 3px;
+          height: 100%;
+        }
+
+        .sentiment-bar i {
+          background: linear-gradient(135deg, #22C55E, var(--sfm-accent));
+        }
+
+        .sentiment-bar b {
+          background: linear-gradient(135deg, #EF4444, #F97316);
+        }
+
+        .sentiment-info-card {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          min-width: 0;
+          border: 1px solid rgba(29, 140, 255, .20);
+          border-radius: 20px;
+          padding: 13px;
+          background: rgba(29, 140, 255, .08);
+          color: var(--sfm-primary-hover);
+        }
+
+        .sentiment-info-card svg {
+          flex: 0 0 auto;
+          margin-top: 2px;
+        }
+
+        .sentiment-info-card p {
+          margin: 0;
+          color: var(--sfm-muted);
+          font-size: 12px;
+          font-weight: 850;
+          line-height: 1.7;
+        }
+
         .trading-sessions-dashboard {
           display: grid;
           gap: 18px;
@@ -2843,6 +3133,8 @@ export default function MarketAnalysisPage() {
 
         .dark .market-focused-tab,
         .dark .market-bottom-grid.news-sentiment-dashboard > .market-panel,
+        .dark .news-sentiment-shell,
+        .dark .news-tool-card,
         .dark .trading-sessions-dashboard,
         .dark .session-card,
         .dark .session-card.open {
@@ -2853,9 +3145,45 @@ export default function MarketAnalysisPage() {
         }
 
         .dark .session-metric,
-        .dark .session-overlap-panel {
+        .dark .session-overlap-panel,
+        .dark .central-news-card,
+        .dark .sentiment-card,
+        .dark .tool-empty-state {
           background: #0a1422;
           border-color: #1d3050;
+        }
+
+        .dark .news-sentiment-head {
+          background: rgba(47, 214, 192, .08);
+          border-color: #1d3050;
+        }
+
+        .dark .tool-empty-state p,
+        .dark .central-news-meta small,
+        .dark .central-news-footer small,
+        .dark .central-news-card p,
+        .dark .sentiment-card-head span,
+        .dark .sentiment-card p,
+        .dark .sentiment-metrics span,
+        .dark .sentiment-info-card p {
+          color: #b8c7d9;
+        }
+
+        .dark .sentiment-badge.buy {
+          background: rgba(47, 214, 192, .12);
+          color: #2FD6C0;
+          border-color: rgba(47, 214, 192, .25);
+        }
+
+        .dark .sentiment-badge.sell {
+          background: rgba(255, 91, 110, .12);
+          color: #FF5B6E;
+          border-color: rgba(255, 91, 110, .25);
+        }
+
+        .dark .sentiment-info-card {
+          background: rgba(29, 140, 255, .10);
+          border-color: rgba(29, 140, 255, .24);
         }
 
         @media (max-width: 1180px) {
@@ -2867,6 +3195,10 @@ export default function MarketAnalysisPage() {
 
           .news-sentiment-dashboard {
             grid-template-columns: 1fr !important;
+          }
+
+          .news-sentiment-grid {
+            grid-template-columns: 1fr;
           }
         }
 
@@ -2891,6 +3223,28 @@ export default function MarketAnalysisPage() {
             grid-template-columns: 1fr;
             justify-items: start;
             border-radius: 22px;
+          }
+
+          .news-sentiment-shell {
+            border-radius: 24px !important;
+            padding: 16px;
+          }
+
+          .news-sentiment-head,
+          .news-tool-card-head,
+          .tool-empty-state {
+            grid-template-columns: 1fr;
+          }
+
+          .news-tool-card {
+            border-radius: 22px;
+            padding: 15px;
+          }
+
+          .tool-empty-state {
+            display: grid;
+            grid-template-columns: 1fr;
+            border-radius: 20px;
           }
 
           .market-empty-state-icon,
@@ -4024,6 +4378,60 @@ function TechnicalEmptyState({ title, body }: { title: string; body: string }) {
   );
 }
 
+function textField(item: Record<string, any>, keys: string[]) {
+  for (const key of keys) {
+    const value = item[key];
+    if (value === null || value === undefined) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return '';
+}
+
+function numberField(item: Record<string, any>, keys: string[]) {
+  for (const key of keys) {
+    const value = item[key];
+    if (value === null || value === undefined || value === '') continue;
+    const parsed = Number(String(value).replace('%', '').trim());
+    if (Number.isFinite(parsed)) return parsed <= 1 && parsed >= 0 ? parsed * 100 : parsed;
+  }
+  return null;
+}
+
+function clampPercentValue(value: number) {
+  return Math.max(0, Math.min(100, value));
+}
+
+function sentimentValues(item: Record<string, any>) {
+  let buy = numberField(item, ['buyPercent', 'buy_percentage', 'buy_percent', 'buyRatio', 'buy_ratio', 'buy', 'longPercent', 'long_percentage', 'bullishPercent', 'bullish_percentage']);
+  let sell = numberField(item, ['sellPercent', 'sell_percentage', 'sell_percent', 'sellRatio', 'sell_ratio', 'sell', 'shortPercent', 'short_percentage', 'bearishPercent', 'bearish_percentage']);
+  if (buy !== null && sell === null) sell = 100 - buy;
+  if (sell !== null && buy === null) buy = 100 - sell;
+  if (buy === null || sell === null) return null;
+  return {
+    buy: clampPercentValue(buy),
+    sell: clampPercentValue(sell),
+  };
+}
+
+function sentimentTone(values: { buy: number; sell: number }) {
+  if (values.buy > values.sell + 5) return 'buy';
+  if (values.sell > values.buy + 5) return 'sell';
+  return 'balanced';
+}
+
+function publicNewsEmptyCopy(code: string | undefined, t: (key: string) => string) {
+  return code === 'CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED'
+    ? { title: t('market_news_not_configured_title'), body: t('market_news_not_configured_body') }
+    : { title: t('market_news_unavailable_title'), body: t('market_news_unavailable_body') };
+}
+
+function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => string) {
+  return code === 'MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED'
+    ? { title: t('market_sentiment_not_configured_title'), body: t('market_sentiment_not_configured_body') }
+    : { title: t('market_sentiment_unavailable_title'), body: t('market_sentiment_unavailable_body') };
+}
+
 function NewsSentimentPanel({
   t,
   news,
@@ -4033,35 +4441,136 @@ function NewsSentimentPanel({
   news: ApiListState<Record<string, any>>;
   sentiment: ApiListState<Record<string, any>>;
 }) {
+  const newsEmpty = publicNewsEmptyCopy(news.code, t);
+  const sentimentEmpty = publicSentimentEmptyCopy(sentiment.code, t);
+
   return (
-    <section className="market-bottom-grid news-sentiment-dashboard">
-      <article className="market-panel">
-        <div className="market-section-head">
-          <Newspaper size={20} />
-          <div>
-            <span>{t('market_central_bank_topics')}</span>
-            <h2>{t('market_central_bank_news')}</h2>
-          </div>
+    <section className="market-panel news-sentiment-shell">
+      <div className="market-section-head news-sentiment-head">
+        <span className="news-sentiment-head-icon"><Newspaper size={20} /></span>
+        <div>
+          <span>{t('market_news_sentiment_subtitle')}</span>
+          <h2>{t('market_news_sentiment')}</h2>
         </div>
-        {news.loading ? <div className="market-empty">{t('market_loading_data')}</div> : <EmptyToolState title={t('market_news_not_configured_title')} body={news.message || t('market_news_not_configured_body')} />}
-      </article>
-      <article className="market-panel">
-        <div className="market-section-head">
-          <BarChart3 size={20} />
-          <div>
-            <span>{t('market_sentiment_warning')}</span>
-            <h2>{t('market_market_sentiment')}</h2>
+      </div>
+
+      <div className="news-sentiment-grid">
+        <article className="news-tool-card">
+          <div className="news-tool-card-head">
+            <span><Landmark size={19} /></span>
+            <div>
+              <small>{t('market_central_bank_topics')}</small>
+              <h3>{t('market_central_bank_news')}</h3>
+            </div>
           </div>
-        </div>
-        {sentiment.loading ? <div className="market-empty">{t('market_loading_data')}</div> : <EmptyToolState title={t('market_sentiment_not_configured_title')} body={sentiment.message || t('market_sentiment_not_configured_body')} />}
-      </article>
+
+          {news.loading ? (
+            <div className="market-empty">{t('market_loading_data')}</div>
+          ) : news.items.length > 0 ? (
+            <div className="central-news-list">
+              {news.items.map((item, index) => {
+                const headline = textField(item, ['title', 'headline', 'name']);
+                const summary = textField(item, ['summary', 'description', 'excerpt']);
+                const source = textField(item, ['source', 'sourceName', 'provider', 'publisher']);
+                const published = textField(item, ['publishedAt', 'published_at', 'published', 'date', 'time']);
+                const related = textField(item, ['bank', 'centralBank', 'central_bank', 'currency', 'region']);
+                const url = textField(item, ['url', 'link', 'sourceUrl', 'source_url']);
+                return (
+                  <article className="central-news-card" key={`${headline || source || 'central-news'}-${index}`}>
+                    <div className="central-news-meta">
+                      {related ? <span dir="ltr">{related}</span> : null}
+                      {published ? <small dir="ltr">{published}</small> : null}
+                    </div>
+                    <h4>{headline || t('market_news_no_items_title')}</h4>
+                    {summary ? <p>{summary}</p> : null}
+                    <div className="central-news-footer">
+                      {source ? <small>{t('market_news_source')}: {source}</small> : null}
+                      {url ? <a href={url} target="_blank" rel="noreferrer">{t('market_open_source')}</a> : null}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyToolState icon={<Newspaper size={18} />} title={newsEmpty.title} body={newsEmpty.body} />
+          )}
+        </article>
+
+        <article className="news-tool-card">
+          <div className="news-tool-card-head">
+            <span><BarChart3 size={19} /></span>
+            <div>
+              <small>{t('market_sentiment_note_title')}</small>
+              <h3>{t('market_market_sentiment')}</h3>
+            </div>
+          </div>
+
+          {sentiment.loading ? (
+            <div className="market-empty">{t('market_loading_data')}</div>
+          ) : sentiment.items.length > 0 ? (
+            <div className="sentiment-card-list">
+              {sentiment.items.map((item, index) => {
+                const symbol = textField(item, ['symbol', 'ticker', 'asset', 'instrument']);
+                const name = textField(item, ['name', 'assetName', 'asset_name', 'description']);
+                const values = sentimentValues(item);
+                if (!values) {
+                  return (
+                    <article className="sentiment-card" key={`${symbol || 'sentiment'}-${index}`}>
+                      <div className="sentiment-card-head">
+                        <b dir="ltr">{symbol || t('market_unavailable')}</b>
+                        {name ? <span>{name}</span> : null}
+                      </div>
+                      <p>{t('market_sentiment_no_items_body')}</p>
+                    </article>
+                  );
+                }
+                const tone = sentimentTone(values);
+                return (
+                  <article className="sentiment-card" key={`${symbol || 'sentiment'}-${index}`}>
+                    <div className="sentiment-card-head">
+                      <div>
+                        <b dir="ltr">{symbol || t('market_unavailable')}</b>
+                        {name ? <span>{name}</span> : null}
+                      </div>
+                      <em className={`sentiment-badge ${tone}`}>
+                        {tone === 'buy' ? t('market_sentiment_majority_buy') : tone === 'sell' ? t('market_sentiment_majority_sell') : t('market_sentiment_balanced')}
+                      </em>
+                    </div>
+                    <div className="sentiment-metrics">
+                      <span>{t('market_buy_ratio')} <b dir="ltr">{values.buy.toFixed(0)}%</b></span>
+                      <span>{t('market_sell_ratio')} <b dir="ltr">{values.sell.toFixed(0)}%</b></span>
+                    </div>
+                    <div className="sentiment-bar" aria-hidden="true">
+                      <i style={{ width: `${values.buy}%` }} />
+                      <b style={{ width: `${values.sell}%` }} />
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyToolState icon={<BarChart3 size={18} />} title={sentimentEmpty.title} body={sentimentEmpty.body} />
+          )}
+
+          <div className="sentiment-info-card">
+            <ShieldAlert size={17} />
+            <p>{t('market_sentiment_warning')}</p>
+          </div>
+        </article>
+      </div>
     </section>
   );
 }
 
-function EmptyToolState({ title, body }: { title: string; body: string }) {
+function EmptyToolState({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
   return (
-    <MarketEmptyState icon={<AlertTriangle size={18} />} title={title} description={body} />
+    <div className="tool-empty-state">
+      <span>{icon}</span>
+      <div>
+        <strong>{title}</strong>
+        <p>{body}</p>
+      </div>
+    </div>
   );
 }
 

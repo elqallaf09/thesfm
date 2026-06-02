@@ -5,19 +5,19 @@ export async function GET() {
 
   if (!configured) {
     return NextResponse.json({
+      ok: false,
       success: false,
-      code: 'market_sentiment_not_configured',
-      message: 'MARKET_SENTIMENT_API_KEY is not configured.',
+      code: 'MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED',
       items: [],
-      updated_at: new Date().toISOString(),
-    }, { status: 503 });
+      updated_at: null,
+    });
   }
 
   return NextResponse.json({
+    ok: false,
     success: false,
-    code: 'market_sentiment_provider_missing',
-    message: 'Market sentiment provider integration is not configured for this deployment.',
+    code: 'MARKET_SENTIMENT_PROVIDER_UNAVAILABLE',
     items: [],
-    updated_at: new Date().toISOString(),
-  }, { status: 501 });
+    updated_at: null,
+  });
 }

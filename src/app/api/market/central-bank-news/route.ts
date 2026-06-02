@@ -5,19 +5,19 @@ export async function GET() {
 
   if (!configured) {
     return NextResponse.json({
+      ok: false,
       success: false,
-      code: 'central_bank_news_not_configured',
-      message: 'CENTRAL_BANK_NEWS_API_KEY or NEWS_API_KEY is not configured.',
+      code: 'CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED',
       items: [],
-      updated_at: new Date().toISOString(),
-    }, { status: 503 });
+      updated_at: null,
+    });
   }
 
   return NextResponse.json({
+    ok: false,
     success: false,
-    code: 'central_bank_news_provider_missing',
-    message: 'Central bank news provider integration is not configured for this deployment.',
+    code: 'CENTRAL_BANK_NEWS_PROVIDER_UNAVAILABLE',
     items: [],
-    updated_at: new Date().toISOString(),
-  }, { status: 501 });
+    updated_at: null,
+  });
 }
