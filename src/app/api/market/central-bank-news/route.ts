@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getCentralBankNewsProviderConfig } from '@/lib/market/providerConfig';
 
-export const revalidate = 300;
-export const dynamic = 'force-dynamic';
+export const revalidate = 600;
 
 const cacheHeaders = {
-  'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+  'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200',
 };
+const REQUEST_TIMEOUT_MS = 7000;
 
 type NewsApiArticle = {
   title?: string | null;
@@ -31,6 +31,10 @@ const CENTRAL_BANK_QUERY = [
 
 function shouldDebug() {
   return process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true';
+}
+
+function isTimeoutError(error: unknown) {
+  return error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError');
 }
 
 function unavailableResponse(code: string) {
@@ -112,7 +116,7 @@ export async function GET() {
 
     const response = await fetch(url, {
       next: { revalidate },
-      signal: AbortSignal.timeout(9000),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -143,6 +147,6 @@ export async function GET() {
     if (shouldDebug()) {
       console.warn('[central-bank-news] provider error', error instanceof Error ? error.message : error);
     }
-    return unavailableResponse('CENTRAL_BANK_NEWS_PROVIDER_ERROR');
+    return unavailableResponse(isTimeoutError(error) ? 'MARKET_DATA_TIMEOUT' : 'CENTRAL_BANK_NEWS_PROVIDER_ERROR');
   }
 }

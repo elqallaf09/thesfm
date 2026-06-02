@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMarketSentimentProviderConfig } from '@/lib/market/providerConfig';
 
-export const revalidate = 300;
-export const dynamic = 'force-dynamic';
+export const revalidate = 600;
 
 const cacheHeaders = {
-  'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+  'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200',
 };
+const REQUEST_TIMEOUT_MS = 7000;
 
 const DEFAULT_SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'MSFT', 'NVDA', 'TSLA'];
 
@@ -33,6 +33,10 @@ type AlphaVantageArticle = {
 
 function shouldDebug() {
   return process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true';
+}
+
+function isTimeoutError(error: unknown) {
+  return error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError');
 }
 
 function unavailableResponse(code: string, provider: string | null = null) {
@@ -138,7 +142,7 @@ async function fetchFinnhubSentiment(symbols: string[], apiKey: string) {
 
     const response = await fetch(url, {
       next: { revalidate },
-      signal: AbortSignal.timeout(9000),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -151,6 +155,13 @@ async function fetchFinnhubSentiment(symbols: string[], apiKey: string) {
     const payload = await response.json().catch(() => ({})) as { reddit?: FinnhubSentimentEntry[]; twitter?: FinnhubSentimentEntry[] };
     return normalizeFinnhubSymbol(symbol, payload);
   }));
+
+  const allTimedOut = settled.length > 0 && settled.every(result => result.status === 'rejected' && isTimeoutError(result.reason));
+  if (allTimedOut) {
+    const timeout = new Error('Market sentiment provider timed out');
+    timeout.name = 'TimeoutError';
+    throw timeout;
+  }
 
   return settled
     .map(result => result.status === 'fulfilled' ? result.value : null)
@@ -197,7 +208,7 @@ async function fetchAlphaVantageSentiment(symbols: string[], apiKey: string) {
 
   const response = await fetch(url, {
     next: { revalidate },
-    signal: AbortSignal.timeout(9000),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -262,6 +273,6 @@ export async function GET(request: NextRequest) {
     if (shouldDebug()) {
       console.warn('[market-sentiment] provider error', error instanceof Error ? error.message : error);
     }
-    return unavailableResponse('MARKET_SENTIMENT_PROVIDER_ERROR', config.provider);
+    return unavailableResponse(isTimeoutError(error) ? 'MARKET_DATA_TIMEOUT' : 'MARKET_SENTIMENT_PROVIDER_ERROR', config.provider);
   }
 }

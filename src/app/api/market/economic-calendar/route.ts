@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 
-export const revalidate = 300;
+export const revalidate = 900;
 
 const cacheHeaders = {
-  'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+  'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=1800',
 };
+const REQUEST_TIMEOUT_MS = 7000;
 
 type NormalizedImpact = 'high' | 'medium' | 'low';
 
@@ -97,6 +98,10 @@ function valueOrNull(value: unknown) {
   return text || null;
 }
 
+function isTimeoutError(error: unknown) {
+  return error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError');
+}
+
 function inferCurrency(country: string, event: Record<string, unknown>) {
   const explicitCurrency = clean(event.currency ?? event.ccy ?? event.symbol).toUpperCase();
   if (explicitCurrency) return explicitCurrency;
@@ -154,7 +159,10 @@ export async function GET() {
     url.searchParams.set('to', to);
     url.searchParams.set('token', apiKey);
 
-    const response = await fetch(url, { next: { revalidate } });
+    const response = await fetch(url, {
+      next: { revalidate },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
 
     if (!response.ok) {
       if (process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true') {
@@ -195,6 +203,6 @@ export async function GET() {
     if (process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true') {
       console.warn('[economic-calendar] provider error', error instanceof Error ? error.message : error);
     }
-    return unavailableResponse('ECONOMIC_CALENDAR_PROVIDER_ERROR');
+    return unavailableResponse(isTimeoutError(error) ? 'MARKET_DATA_TIMEOUT' : 'ECONOMIC_CALENDAR_PROVIDER_ERROR');
   }
 }

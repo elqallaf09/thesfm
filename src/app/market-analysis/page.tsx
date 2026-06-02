@@ -88,6 +88,7 @@ const ALERTS_STORAGE_KEY = 'sfm_market_alerts';
 const DEFAULT_MARKET_TYPE: MarketAssetType = 'stock';
 const MARKET_REQUEST_TIMEOUT_MS = 12000;
 const MARKET_SLOW_NOTICE_MS = 5000;
+const MARKET_TOOL_REQUEST_TIMEOUT_MS = 7000;
 const MARKET_TIMEFRAMES = ['1D', '1W', '1M', '6M', '1Y'] as const;
 const SCENARIO_CURRENCY_OPTIONS = [
   { code: 'KWD', symbol: 'د.ك' },
@@ -228,6 +229,7 @@ function sanitizeMarketToolMessage(code: string, message: string) {
     code === 'ECONOMIC_CALENDAR_NOT_CONFIGURED' ||
     code === 'CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED' ||
     code === 'MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED' ||
+    code === 'MARKET_DATA_TIMEOUT' ||
     /ECONOMIC_CALENDAR_|\b[A-Z0-9_]*(API_)?(KEY|TOKEN|SECRET)\b|provider integration is not configured/i.test(message)
   ) {
     return '';
@@ -235,26 +237,50 @@ function sanitizeMarketToolMessage(code: string, message: string) {
   return message;
 }
 
-async function fetchMarketToolState<T>(url: string): Promise<ApiListState<T>> {
+function isAbortLikeError(error: unknown) {
+  return error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError');
+}
+
+function marketToolFailureState<T>(error: unknown): ApiListState<T> {
+  const isTimeout = isAbortLikeError(error);
+  return {
+    loading: false,
+    items: [],
+    message: isTimeout ? '' : error instanceof Error ? error.message : 'Data source is unavailable.',
+    code: isTimeout ? 'MARKET_DATA_TIMEOUT' : 'MARKET_DATA_UNAVAILABLE',
+  };
+}
+
+function logMarketToolPerformance(label: string, startedAt: number, meta: Record<string, unknown>) {
+  if (process.env.NODE_ENV === 'production') return;
+  const durationMs = Math.round(globalThis.performance.now() - startedAt);
+  console.info('[market-analysis] section loaded', { section: label, durationMs, ...meta });
+}
+
+async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiListState<T>> {
+  const startedAt = globalThis.performance.now();
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), MARKET_TOOL_REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch(url, { cache: 'no-store' });
+    const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
     const payload = await response.json().catch(() => ({})) as { items?: T[]; events?: T[]; message?: string; updated_at?: string | null; code?: string; ok?: boolean; success?: boolean };
     const code = String(payload.code ?? '').trim().toUpperCase();
     const sourceAvailable = response.ok && payload.ok !== false && payload.success !== false;
     const rawMessage = sourceAvailable ? '' : String(payload.message ?? 'Data source is not configured.');
+    const items = Array.isArray(payload.items) ? payload.items : Array.isArray(payload.events) ? payload.events : [];
+    logMarketToolPerformance(label, startedAt, { status: response.status, code, count: items.length });
     return {
       loading: false,
-      items: Array.isArray(payload.items) ? payload.items : Array.isArray(payload.events) ? payload.events : [],
+      items,
       message: sanitizeMarketToolMessage(code, rawMessage),
       updatedAt: payload.updated_at ?? undefined,
       code,
     };
   } catch (error) {
-    return {
-      loading: false,
-      items: [],
-      message: error instanceof Error ? error.message : 'Data source is unavailable.',
-    };
+    logMarketToolPerformance(label, startedAt, { status: 'failed', code: isAbortLikeError(error) ? 'MARKET_DATA_TIMEOUT' : 'MARKET_DATA_UNAVAILABLE' });
+    return marketToolFailureState<T>(error);
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }
 
@@ -598,8 +624,46 @@ export default function MarketAnalysisPage() {
   const [marketSentiment, setMarketSentiment] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
   const [technicalSymbol, setTechnicalSymbol] = useState('EURUSD');
   const [technicalState, setTechnicalState] = useState<TechnicalState>({ loading: false, data: null, message: '' });
+  const [technicalRefreshKey, setTechnicalRefreshKey] = useState(0);
   const [lastUpdated, setLastUpdated] = useState('');
   const [chartTheme, setChartTheme] = useState<'light' | 'dark'>('light');
+
+  const loadPerformance = useCallback(() => {
+    setPerformance(prev => ({ ...prev, loading: true, message: '', code: undefined }));
+    void fetchMarketToolState<MarketPerformanceItem>('/api/market/performance', 'asset-performance').then(setPerformance);
+  }, []);
+
+  const loadEconomicCalendar = useCallback(() => {
+    setEconomicCalendar(prev => ({ ...prev, loading: true, message: '', code: undefined }));
+    void fetchMarketToolState<Record<string, any>>('/api/market/economic-calendar', 'economic-calendar').then(setEconomicCalendar);
+  }, []);
+
+  const loadNewsSentiment = useCallback((targets: Array<'news' | 'sentiment'> = ['news', 'sentiment']) => {
+    if (targets.includes('news')) {
+      setCentralBankNews(prev => ({ ...prev, loading: true, message: '', code: undefined }));
+    }
+    if (targets.includes('sentiment')) {
+      setMarketSentiment(prev => ({ ...prev, loading: true, message: '', code: undefined }));
+    }
+
+    const requests = targets.map(target => ({
+      target,
+      request: target === 'news'
+        ? fetchMarketToolState<Record<string, any>>('/api/market/central-bank-news', 'central-bank-news')
+        : fetchMarketToolState<Record<string, any>>('/api/market/sentiment', 'market-sentiment'),
+    }));
+
+    void Promise.allSettled(requests.map(item => item.request)).then(results => {
+      results.forEach((result, index) => {
+        const target = requests[index]?.target;
+        const nextState = result.status === 'fulfilled'
+          ? result.value
+          : marketToolFailureState<Record<string, any>>(result.reason);
+        if (target === 'news') setCentralBankNews(nextState);
+        if (target === 'sentiment') setMarketSentiment(nextState);
+      });
+    });
+  }, []);
 
   useEffect(() => {
     const syncTabFromRoute = () => {
@@ -633,39 +697,46 @@ export default function MarketAnalysisPage() {
 
   useEffect(() => {
     if (activeTab !== 'traderTools' || traderToolTab !== 'performance' || performance.loading || performance.items.length > 0 || performance.message || performance.code) return;
-    setPerformance(prev => ({ ...prev, loading: true }));
-    void fetchMarketToolState<MarketPerformanceItem>('/api/market/performance').then(setPerformance);
-  }, [activeTab, performance.code, performance.items.length, performance.loading, performance.message, traderToolTab]);
+    loadPerformance();
+  }, [activeTab, loadPerformance, performance.code, performance.items.length, performance.loading, performance.message, traderToolTab]);
 
   useEffect(() => {
     if (activeTab !== 'economicCalendar' || economicCalendar.loading || economicCalendar.items.length > 0 || economicCalendar.message || economicCalendar.code) return;
-    setEconomicCalendar(prev => ({ ...prev, loading: true }));
-    void fetchMarketToolState<Record<string, any>>('/api/market/economic-calendar').then(setEconomicCalendar);
-  }, [activeTab, economicCalendar.code, economicCalendar.items.length, economicCalendar.loading, economicCalendar.message]);
+    loadEconomicCalendar();
+  }, [activeTab, economicCalendar.code, economicCalendar.items.length, economicCalendar.loading, economicCalendar.message, loadEconomicCalendar]);
 
   useEffect(() => {
     if (activeTab !== 'newsSentiment') return;
+    const targets: Array<'news' | 'sentiment'> = [];
     if (!centralBankNews.loading && centralBankNews.items.length === 0 && !centralBankNews.message && !centralBankNews.code) {
-      setCentralBankNews(prev => ({ ...prev, loading: true }));
-      void fetchMarketToolState<Record<string, any>>('/api/market/central-bank-news').then(setCentralBankNews);
+      targets.push('news');
     }
     if (!marketSentiment.loading && marketSentiment.items.length === 0 && !marketSentiment.message && !marketSentiment.code) {
-      setMarketSentiment(prev => ({ ...prev, loading: true }));
-      void fetchMarketToolState<Record<string, any>>('/api/market/sentiment').then(setMarketSentiment);
+      targets.push('sentiment');
     }
-  }, [activeTab, centralBankNews.code, centralBankNews.items.length, centralBankNews.loading, centralBankNews.message, marketSentiment.code, marketSentiment.items.length, marketSentiment.loading, marketSentiment.message]);
+    if (targets.length > 0) loadNewsSentiment(targets);
+  }, [activeTab, centralBankNews.code, centralBankNews.items.length, centralBankNews.loading, centralBankNews.message, loadNewsSentiment, marketSentiment.code, marketSentiment.items.length, marketSentiment.loading, marketSentiment.message]);
 
   useEffect(() => {
     if (activeTab !== 'technicalAnalysis' || !selectedAsset) return;
     const symbol = technicalSymbol.trim().toUpperCase();
     if (!symbol) return;
     let cancelled = false;
-    setTechnicalState({ loading: true, data: null, message: '' });
-    fetch(`/api/market/technical-analysis?symbol=${encodeURIComponent(symbol)}`, { cache: 'no-store' })
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), MARKET_TOOL_REQUEST_TIMEOUT_MS);
+    const startedAt = globalThis.performance.now();
+    setTechnicalState({ loading: true, data: null, message: '', symbol });
+    fetch(`/api/market/technical-analysis?symbol=${encodeURIComponent(symbol)}`, { cache: 'no-store', signal: controller.signal })
       .then(async response => {
         const payload = await response.json().catch(() => ({}));
         if (cancelled) return;
         const isSuccess = response.ok && payload.success;
+        logMarketToolPerformance('technical-analysis', startedAt, {
+          status: response.status,
+          code: typeof payload.code === 'string' ? payload.code : '',
+          symbol,
+          success: isSuccess,
+        });
         setTechnicalState({
           loading: false,
           data: isSuccess ? payload : null,
@@ -677,12 +748,30 @@ export default function MarketAnalysisPage() {
         });
       })
       .catch(error => {
-        if (!cancelled) setTechnicalState({ loading: false, data: null, message: error instanceof Error ? error.message : t('market_technical_no_data') });
+        logMarketToolPerformance('technical-analysis', startedAt, {
+          status: 'failed',
+          code: isAbortLikeError(error) ? 'MARKET_DATA_TIMEOUT' : 'MARKET_DATA_UNAVAILABLE',
+          symbol,
+        });
+        if (!cancelled) {
+          setTechnicalState({
+            loading: false,
+            data: null,
+            message: isAbortLikeError(error) ? '' : error instanceof Error ? error.message : t('market_technical_no_data'),
+            code: isAbortLikeError(error) ? 'MARKET_DATA_TIMEOUT' : 'MARKET_DATA_UNAVAILABLE',
+            symbol,
+          });
+        }
+      })
+      .finally(() => {
+        window.clearTimeout(timeoutId);
       });
     return () => {
       cancelled = true;
+      controller.abort();
+      window.clearTimeout(timeoutId);
     };
-  }, [activeTab, selectedAsset, technicalSymbol, t]);
+  }, [activeTab, selectedAsset, technicalRefreshKey, technicalSymbol, t]);
 
   const baseScenarioCurrency = normalizeScenarioCurrency(
     userCurrency && userCurrency !== 'KWD' ? userCurrency : currentUserProfile.defaultCurrency || userCurrency,
@@ -1536,6 +1625,7 @@ export default function MarketAnalysisPage() {
     <div className="market-shell" dir={dir}>
       <Sidebar />
       <main className="market-main">
+        <MarketAsyncToolStyles />
         <section className="market-hero">
           <div className="market-hero-copy">
             <span className="market-eyebrow"><Sparkles size={15} />{heroBadge}</span>
@@ -1777,7 +1867,7 @@ export default function MarketAnalysisPage() {
         )}
 
         {activeTab === 'economicCalendar' && (
-          <EconomicCalendarPanel t={t} locale={lang} state={economicCalendar} />
+          <EconomicCalendarPanel t={t} locale={lang} state={economicCalendar} onRefresh={loadEconomicCalendar} />
         )}
 
         {activeTab === 'sessions' && (
@@ -1793,6 +1883,7 @@ export default function MarketAnalysisPage() {
             state={technicalState}
             hasSelectedAsset={Boolean(selectedAsset || selected)}
             onSelectAsset={focusMarketSearch}
+            onRefresh={() => setTechnicalRefreshKey(value => value + 1)}
           />
         )}
 
@@ -1801,6 +1892,8 @@ export default function MarketAnalysisPage() {
             t={t}
             news={centralBankNews}
             sentiment={marketSentiment}
+            onRefreshNews={() => loadNewsSentiment(['news'])}
+            onRefreshSentiment={() => loadNewsSentiment(['sentiment'])}
           />
         )}
 
@@ -3937,7 +4030,7 @@ function FormulaCard({ title, body, example }: { title: string; body: string; ex
 }
 
 function PerformanceTable({ t, performance }: { t: (key: string) => string; performance: ApiListState<MarketPerformanceItem> }) {
-  if (performance.loading) return <div className="market-empty">{t('market_loading_data')}</div>;
+  if (performance.loading) return <MarketSectionLoading label={t('market_loading_performance')} />;
   if (performance.items.length === 0) {
     return <EmptyToolState title={t('market_performance_unavailable_title')} body={performance.message || t('market_performance_unavailable_body')} />;
   }
@@ -4182,7 +4275,17 @@ function economicStatusLabel(status: NormalizedEconomicEvent['status'], t: (key:
   return t('market_unavailable');
 }
 
-function EconomicCalendarPanel({ t, locale, state }: { t: (key: string) => string; locale: string; state: ApiListState<Record<string, any>> }) {
+function EconomicCalendarPanel({
+  t,
+  locale,
+  state,
+  onRefresh,
+}: {
+  t: (key: string) => string;
+  locale: string;
+  state: ApiListState<Record<string, any>>;
+  onRefresh: () => void;
+}) {
   const [timeFilter, setTimeFilter] = useState<CalendarTimeFilter>('week');
   const [impactFilter, setImpactFilter] = useState<CalendarImpactFilter>('all');
   const [currencyFilter, setCurrencyFilter] = useState<CalendarCurrencyFilter>('all');
@@ -4228,8 +4331,9 @@ function EconomicCalendarPanel({ t, locale, state }: { t: (key: string) => strin
   const visibleEvents = filteredEvents.slice(0, visibleCount);
   const lastUpdatedLabel = state.updatedAt ? formatEconomicCalendarDate(new Date(state.updatedAt), locale, unavailable) : unavailable;
   const isMissingSource = state.code === 'ECONOMIC_CALENDAR_SOURCE_NOT_CONFIGURED' || state.code === 'ECONOMIC_CALENDAR_PROVIDER_NOT_CONFIGURED' || state.code === 'ECONOMIC_CALENDAR_NOT_CONFIGURED';
-  const emptyTitle = isMissingSource ? t('market_calendar_not_configured_title') : t('market_calendar_unavailable_title');
-  const emptyBody = isMissingSource ? t('market_calendar_not_configured_body') : (state.message || t('market_calendar_unavailable_body'));
+  const isTimedOut = state.code === 'MARKET_DATA_TIMEOUT';
+  const emptyTitle = isTimedOut ? t('market_section_timeout_title') : isMissingSource ? t('market_calendar_not_configured_title') : t('market_calendar_unavailable_title');
+  const emptyBody = isTimedOut ? t('market_section_timeout_body') : isMissingSource ? t('market_calendar_not_configured_body') : (state.message || t('market_calendar_unavailable_body'));
 
   return (
     <section className="economic-calendar-dashboard market-panel">
@@ -4240,6 +4344,7 @@ function EconomicCalendarPanel({ t, locale, state }: { t: (key: string) => strin
           <h2>{t('market_economic_calendar')}</h2>
           <p>{t('market_calendar_dashboard_subtitle')}</p>
         </div>
+        <MarketSectionRefreshButton t={t} loading={state.loading} onRefresh={onRefresh} />
       </div>
 
       <div className="economic-calendar-summary-grid">
@@ -4250,7 +4355,7 @@ function EconomicCalendarPanel({ t, locale, state }: { t: (key: string) => strin
       </div>
 
       {state.loading ? (
-        <div className="market-empty">{t('market_loading_data')}</div>
+        <MarketSectionLoading label={t('market_loading_economic_calendar')} />
       ) : sortedEvents.length === 0 ? (
         <div className="economic-calendar-empty-state">
           <span><CalendarDays size={24} /></span>
@@ -4557,8 +4662,9 @@ function LegacyEconomicCalendarPanel({ t, locale, state }: { t: (key: string) =>
   }), [filter, sortedEvents]);
   const nextEvent = sortedEvents.find(event => event.eventTime && event.eventTime.getTime() >= Date.now()) ?? sortedEvents[0];
   const isMissingSource = state.code === 'ECONOMIC_CALENDAR_SOURCE_NOT_CONFIGURED' || state.code === 'ECONOMIC_CALENDAR_PROVIDER_NOT_CONFIGURED' || state.code === 'ECONOMIC_CALENDAR_NOT_CONFIGURED';
-  const emptyTitle = isMissingSource ? t('market_calendar_not_configured_title') : t('market_calendar_unavailable_title');
-  const emptyBody = isMissingSource ? t('market_calendar_not_configured_body') : (state.message || t('market_calendar_unavailable_body'));
+  const isTimedOut = state.code === 'MARKET_DATA_TIMEOUT';
+  const emptyTitle = isTimedOut ? t('market_section_timeout_title') : isMissingSource ? t('market_calendar_not_configured_title') : t('market_calendar_unavailable_title');
+  const emptyBody = isTimedOut ? t('market_section_timeout_body') : isMissingSource ? t('market_calendar_not_configured_body') : (state.message || t('market_calendar_unavailable_body'));
 
   return (
     <section className="market-panel economic-calendar-panel">
@@ -4571,7 +4677,7 @@ function LegacyEconomicCalendarPanel({ t, locale, state }: { t: (key: string) =>
       </div>
 
       {state.loading ? (
-        <div className="market-empty">{t('market_loading_data')}</div>
+        <MarketSectionLoading label={t('market_loading_economic_calendar')} />
       ) : sortedEvents.length === 0 ? (
         <div className="economic-calendar-empty">
           <span className="economic-calendar-empty-icon"><CalendarDays size={24} /></span>
@@ -4903,6 +5009,7 @@ function TechnicalAnalysisPanel({
   state,
   hasSelectedAsset,
   onSelectAsset,
+  onRefresh,
 }: {
   t: (key: string) => string;
   locale: string;
@@ -4911,6 +5018,7 @@ function TechnicalAnalysisPanel({
   state: TechnicalState;
   hasSelectedAsset: boolean;
   onSelectAsset: () => void;
+  onRefresh: () => void;
 }) {
   const data = state.data;
   const [category, setCategory] = useState<TechnicalSymbolCategory>(() => getTechnicalSymbolCategory(symbol));
@@ -4926,7 +5034,7 @@ function TechnicalAnalysisPanel({
     .filter((item): item is TechnicalSymbolOption => Boolean(item));
   const currentTrend = normalizePerformanceTrend(String(data?.trend ?? state.available?.trend ?? 'neutral'));
   const currentUpdatedAt = String(data?.updated_at ?? state.updatedAt ?? '');
-  const currentStatus = state.loading ? t('market_loading_data') : data ? t('market_analysis_ready') : t('market_analysis_insufficient');
+  const currentStatus = state.loading ? t('market_loading_technical_analysis_short') : data ? t('market_analysis_ready') : t('market_analysis_insufficient');
   const pivotPoints = data?.pivotPoints && typeof data.pivotPoints === 'object' ? data.pivotPoints as Record<string, unknown> : {};
   const supportRows = [
     ['S1', pivotPoints.s1],
@@ -4945,6 +5053,12 @@ function TechnicalAnalysisPanel({
     ['SMA 20', data?.movingAverages?.sma20],
     ['SMA 50', data?.movingAverages?.sma50],
   ].filter((row): row is [string, unknown] => hasDisplayValue(row[1]));
+  const technicalEmptyTitle = state.code === 'MARKET_DATA_TIMEOUT'
+    ? t('market_section_timeout_title')
+    : t('market_technical_unified_empty_title');
+  const technicalEmptyBody = state.code === 'MARKET_DATA_TIMEOUT'
+    ? t('market_section_timeout_body')
+    : t('market_technical_unified_empty_body');
 
   useEffect(() => {
     setCategory(getTechnicalSymbolCategory(symbol));
@@ -5008,6 +5122,7 @@ function TechnicalAnalysisPanel({
           <span>{t('market_pivot_points')}</span>
           <h2>{t('market_daily_technical_analysis')}</h2>
         </div>
+        <MarketSectionRefreshButton t={t} loading={state.loading} onRefresh={onRefresh} />
       </div>
       {!hasSelectedAsset ? (
         <MarketEmptyState
@@ -5061,8 +5176,8 @@ function TechnicalAnalysisPanel({
         <TechnicalSummaryItem icon={<Clock3 size={16} />} label={t('market_last_updated')} value={formatTechnicalTimestamp(currentUpdatedAt, locale) || t('market_unavailable')} />
         <TechnicalSummaryItem icon={<CheckCircle2 size={16} />} label={t('market_analysis_status')} value={currentStatus} />
       </div>
-      {state.loading ? <div className="market-empty">{t('market_loading_data')}</div> : state.message ? (
-        <TechnicalEmptyState title={t('market_technical_unified_empty_title')} body={t('market_technical_unified_empty_body')} />
+      {state.loading ? <MarketSectionLoading label={t('market_loading_technical_analysis')} /> : state.message || state.code ? (
+        <TechnicalEmptyState title={technicalEmptyTitle} body={technicalEmptyBody} />
       ) : data ? (
         <div className="technical-data-grid">
           <TechnicalDataCard
@@ -5374,12 +5489,18 @@ function sentimentTone(values: { buy: number; sell: number }) {
 }
 
 function publicNewsEmptyCopy(code: string | undefined, t: (key: string) => string) {
+  if (code === 'MARKET_DATA_TIMEOUT') {
+    return { title: t('market_section_timeout_title'), body: t('market_section_timeout_body') };
+  }
   return code === 'CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED'
     ? { title: t('market_news_not_configured_title'), body: t('market_news_not_configured_body') }
     : { title: t('market_news_unavailable_title'), body: t('market_news_unavailable_body') };
 }
 
 function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => string) {
+  if (code === 'MARKET_DATA_TIMEOUT') {
+    return { title: t('market_section_timeout_title'), body: t('market_section_timeout_body') };
+  }
   return code === 'MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED'
     ? { title: t('market_sentiment_not_configured_title'), body: t('market_sentiment_not_configured_body') }
     : { title: t('market_sentiment_unavailable_title'), body: t('market_sentiment_unavailable_body') };
@@ -5389,10 +5510,14 @@ function NewsSentimentPanel({
   t,
   news,
   sentiment,
+  onRefreshNews,
+  onRefreshSentiment,
 }: {
   t: (key: string) => string;
   news: ApiListState<Record<string, any>>;
   sentiment: ApiListState<Record<string, any>>;
+  onRefreshNews: () => void;
+  onRefreshSentiment: () => void;
 }) {
   const newsEmpty = publicNewsEmptyCopy(news.code, t);
   const sentimentEmpty = publicSentimentEmptyCopy(sentiment.code, t);
@@ -5416,10 +5541,11 @@ function NewsSentimentPanel({
                 <small>{t('market_central_bank_topics')}</small>
                 <h3>{t('market_central_bank_news')}</h3>
               </div>
+              <MarketSectionRefreshButton t={t} loading={news.loading} onRefresh={onRefreshNews} />
             </div>
 
             {news.loading ? (
-              <div className="market-empty">{t('market_loading_data')}</div>
+              <MarketSectionLoading label={t('market_loading_central_bank_news')} />
             ) : news.items.length > 0 ? (
               <div className="central-news-list">
                 {news.items.map((item, index) => {
@@ -5457,10 +5583,11 @@ function NewsSentimentPanel({
                 <small>{t('market_sentiment_note_title')}</small>
                 <h3>{t('market_market_sentiment')}</h3>
               </div>
+              <MarketSectionRefreshButton t={t} loading={sentiment.loading} onRefresh={onRefreshSentiment} />
             </div>
 
             {sentiment.loading ? (
-              <div className="market-empty">{t('market_loading_data')}</div>
+              <MarketSectionLoading label={t('market_loading_market_sentiment')} />
             ) : sentiment.items.length > 0 ? (
               <div className="sentiment-card-list">
                 {sentiment.items.map((item, index) => {
@@ -5546,6 +5673,191 @@ function MarketToolEmptyState({
 
 function EmptyToolState({ icon, title, body }: { icon?: ReactNode; title: string; body: string }) {
   return <MarketToolEmptyState icon={icon} title={title} description={body} variant="neutral" />;
+}
+
+function MarketSectionRefreshButton({
+  t,
+  loading,
+  onRefresh,
+}: {
+  t: (key: string) => string;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <button className="market-section-refresh" type="button" onClick={onRefresh} disabled={loading}>
+      <Activity size={15} />
+      <span>{loading ? t('market_loading_short') : t('market_refresh_section')}</span>
+    </button>
+  );
+}
+
+function MarketSectionLoading({ label, cards = 3 }: { label: string; cards?: number }) {
+  return (
+    <div className="market-section-loading" role="status" aria-live="polite">
+      <div className="market-section-loading-head">
+        <span className="market-loading-dot" />
+        <strong>{label}</strong>
+      </div>
+      <div className="market-loading-card-grid" aria-hidden="true">
+        {Array.from({ length: cards }).map((_, index) => (
+          <span className="market-loading-card" key={index}>
+            <i />
+            <b />
+            <em />
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MarketAsyncToolStyles() {
+  return (
+    <style jsx global>{`
+      .market-section-refresh {
+        margin-inline-start: auto;
+        min-height: 38px;
+        border: 1px solid rgba(47, 214, 192, .24);
+        border-radius: 999px;
+        background: rgba(47, 214, 192, .10);
+        color: var(--sfm-primary-hover);
+        padding: 0 12px;
+        font: 950 12px Tajawal, Arial, sans-serif;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+      }
+
+      .market-section-refresh:hover,
+      .market-section-refresh:focus-visible {
+        outline: none;
+        background: rgba(47, 214, 192, .16);
+        border-color: var(--sfm-accent);
+        box-shadow: 0 0 0 3px rgba(24, 212, 212, .12);
+      }
+
+      .market-section-refresh:disabled {
+        opacity: .68;
+        cursor: default;
+        box-shadow: none;
+      }
+
+      .market-section-refresh:disabled svg {
+        animation: marketSpin 1s linear infinite;
+      }
+
+      .market-section-loading {
+        grid-column: 1 / -1;
+        display: grid;
+        gap: 14px;
+        border: 1px solid rgba(47, 214, 192, .18);
+        border-radius: 22px;
+        background: linear-gradient(135deg, rgba(29, 140, 255, .06), rgba(47, 214, 192, .07)), var(--sfm-light-card);
+        padding: 16px;
+        min-width: 0;
+      }
+
+      .market-section-loading-head {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        color: var(--sfm-foreground);
+        font-size: 13px;
+        font-weight: 950;
+      }
+
+      .market-loading-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--sfm-soft-cyan);
+        box-shadow: 0 0 0 5px rgba(47, 214, 192, .12);
+        animation: marketPulse 1.1s ease-in-out infinite;
+      }
+
+      .market-loading-card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .market-loading-card {
+        display: grid;
+        gap: 9px;
+        border: 1px solid rgba(167, 243, 240, .14);
+        border-radius: 16px;
+        background: var(--sfm-card);
+        padding: 12px;
+      }
+
+      .market-loading-card i,
+      .market-loading-card b,
+      .market-loading-card em {
+        display: block;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(148, 163, 184, .16), rgba(47, 214, 192, .18), rgba(148, 163, 184, .16));
+        background-size: 220% 100%;
+        animation: marketSkeleton 1.25s ease-in-out infinite;
+      }
+
+      .market-loading-card i {
+        width: 42px;
+        height: 10px;
+      }
+
+      .market-loading-card b {
+        width: 80%;
+        height: 12px;
+      }
+
+      .market-loading-card em {
+        width: 56%;
+        height: 10px;
+      }
+
+      .news-tool-card-head .market-section-refresh {
+        margin-inline-start: auto;
+      }
+
+      .technical-analysis-panel .market-section-head,
+      .news-tool-card-head {
+        flex-wrap: wrap;
+      }
+
+      .economic-calendar-dashboard-head {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+      }
+
+      @media (max-width: 640px) {
+        .market-section-refresh {
+          width: 100%;
+          min-height: 40px;
+          margin-inline-start: 0;
+        }
+
+        .economic-calendar-dashboard-head {
+          grid-template-columns: 1fr;
+        }
+
+        .market-loading-card-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @keyframes marketSpin {
+        to { transform: rotate(360deg); }
+      }
+
+      @keyframes marketSkeleton {
+        50% { background-position: 100% 0; opacity: .68; }
+      }
+    `}</style>
+  );
 }
 
 function MarketMetric({ label, value, icon, valueDir }: { label: string; value: string; icon?: ReactNode; valueDir?: 'ltr' | 'rtl' }) {
