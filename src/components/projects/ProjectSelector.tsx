@@ -30,7 +30,10 @@ const COPY = {
     selectedProject: 'المشروع المحدد',
     changeProject: 'تغيير المشروع',
     openProject: 'فتح المشروع',
-    addProject: '+ إضافة مشروع جديد',
+    chooseProjectFirst: 'اختر مشروعًا أولًا',
+    addProject: 'إضافة مشروع جديد',
+    emptyTitle: 'لا توجد مشاريع بعد',
+    emptyDescription: 'أضف مشروعك الأول لبدء إعداد التقارير ومتابعة الأداء.',
     availablePlural: (count: number) => `لديك ${count} مشاريع متاحة`,
     availableOne: 'مشروع واحد متاح',
     availableNone: 'لا توجد مشاريع بعد',
@@ -49,7 +52,10 @@ const COPY = {
     selectedProject: 'Selected Project',
     changeProject: 'Change Project',
     openProject: 'Open Project',
-    addProject: '+ Add New Project',
+    chooseProjectFirst: 'Choose a project first',
+    addProject: 'Add New Project',
+    emptyTitle: 'No projects yet',
+    emptyDescription: 'Add your first project to start preparing reports and tracking performance.',
     availablePlural: (count: number) => `You have ${count} available projects`,
     availableOne: 'One project available',
     availableNone: 'No projects yet',
@@ -68,7 +74,10 @@ const COPY = {
     selectedProject: 'Projet sélectionné',
     changeProject: 'Changer de projet',
     openProject: 'Ouvrir le projet',
-    addProject: '+ Ajouter un nouveau projet',
+    chooseProjectFirst: 'Choisissez d’abord un projet',
+    addProject: 'Ajouter un nouveau projet',
+    emptyTitle: 'Aucun projet pour le moment',
+    emptyDescription: 'Ajoutez votre premier projet pour préparer les rapports et suivre la performance.',
     availablePlural: (count: number) => `Vous avez ${count} projets disponibles`,
     availableOne: 'Un projet disponible',
     availableNone: 'Aucun projet pour le moment',
@@ -191,7 +200,8 @@ export function ProjectSelector({
   const selectedUpdated = formatDate(dateValue(selectedProject), locale);
   const selectorLabel = label ?? copy.selectedProject;
   const emptyLabel = emptyOptionLabel ?? copy.allProjects;
-  const isDisabled = disabled || projects.length === 0;
+  const hasProjects = projects.length > 0;
+  const isDisabled = disabled || !hasProjects;
 
   useEffect(() => {
     function closeOnOutside(event: PointerEvent) {
@@ -258,115 +268,131 @@ export function ProjectSelector({
       dir={dir}
       onKeyDown={handleKeyDown}
     >
-      <button
-        type="button"
-        className="project-selector-card"
-        aria-label={selectorLabel}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        disabled={isDisabled && !allowEmpty}
-        onClick={() => setOpen(value => !value)}
-      >
-        <span className="project-selector-icon" aria-hidden="true"><FolderKanban size={20} /></span>
-        <span className="project-selector-main">
-          <span className="project-selector-kicker">
-            <span>{selectorLabel}</span>
-            <b>{countLabel(projects.length, copy)}</b>
+      {!hasProjects ? (
+        <section className="project-selector-empty-card" aria-label={copy.emptyTitle}>
+          <span className="project-selector-icon" aria-hidden="true"><FolderKanban size={20} /></span>
+          <span className="project-selector-empty-copy">
+            <strong>{copy.emptyTitle}</strong>
+            <small>{copy.emptyDescription}</small>
           </span>
-          <strong>{selectedProject ? projectName(selectedProject, copy.unselected) : allowEmpty ? emptyLabel : copy.unselected}</strong>
-          <span className="project-selector-meta">
-            <em>{selectedProject ? projectType(selectedProject, copy.insufficientData) : copy.insufficientData}</em>
-            <em>{selectedProject ? projectStatus(selectedProject, copy.unselected, locale) : copy.unselected}</em>
-            <em>{selectedReadiness !== null && selectedReadiness !== undefined ? `${Math.round(selectedReadiness)}%` : copy.insufficientData}</em>
-            {selectedUpdated && <em>{selectedUpdated}</em>}
-          </span>
-          {hint && <small>{hint}</small>}
-        </span>
-        <span className="project-selector-change">
-          {copy.changeProject}
-          <ChevronDown size={17} aria-hidden="true" />
-        </span>
-      </button>
-
-      <div className="project-selector-actions">
-        {selectedProject ? (
-          <Link className="project-selector-action primary" href={openProjectHref(selectedProject.id)} aria-label={copy.openProject}>
-            {copy.openProject}
+          <Link className="project-selector-action secondary primary-add" href={addProjectHref} aria-label={copy.addProject}>
+            <Plus size={16} aria-hidden="true" />
+            {copy.addProject}
           </Link>
-        ) : (
-          <span className="project-selector-action primary disabled" aria-disabled="true">{copy.openProject}</span>
-        )}
-        <Link className="project-selector-action secondary" href={addProjectHref} aria-label={copy.addProject}>
-          <Plus size={16} aria-hidden="true" />
-          {copy.addProject}
-        </Link>
-      </div>
+        </section>
+      ) : (
+        <>
+          <button
+            type="button"
+            className="project-selector-card"
+            aria-label={selectorLabel}
+            aria-expanded={open}
+            aria-haspopup="listbox"
+            disabled={isDisabled && !allowEmpty}
+            onClick={() => setOpen(value => !value)}
+          >
+            <span className="project-selector-icon" aria-hidden="true"><FolderKanban size={20} /></span>
+            <span className="project-selector-main">
+              <span className="project-selector-kicker">
+                <span>{selectorLabel}</span>
+                <b>{countLabel(projects.length, copy)}</b>
+              </span>
+              <strong>{selectedProject ? projectName(selectedProject, copy.unselected) : allowEmpty ? emptyLabel : copy.unselected}</strong>
+              <span className="project-selector-meta">
+                <em>{selectedProject ? projectType(selectedProject, copy.insufficientData) : copy.insufficientData}</em>
+                <em>{selectedProject ? projectStatus(selectedProject, copy.unselected, locale) : copy.unselected}</em>
+                <em>{selectedReadiness !== null && selectedReadiness !== undefined ? `${Math.round(selectedReadiness)}%` : copy.insufficientData}</em>
+                {selectedUpdated && <em>{selectedUpdated}</em>}
+              </span>
+              {hint && <small>{hint}</small>}
+            </span>
+            <span className="project-selector-change">
+              {copy.changeProject}
+              <ChevronDown size={17} aria-hidden="true" />
+            </span>
+          </button>
 
-      {open && (
-        <div className="project-selector-popover" role="dialog" aria-label={copy.availableProjects}>
-          {projects.length > 5 && (
-            <label className="project-selector-search">
-              <Search size={15} aria-hidden="true" />
-              <input
-                ref={searchRef}
-                value={search}
-                onChange={event => setSearch(event.target.value)}
-                placeholder={copy.searchPlaceholder}
-                aria-label={copy.searchPlaceholder}
-              />
-            </label>
-          )}
-          <div className="project-selector-list" role="listbox" aria-label={copy.availableProjects}>
-            {allowEmpty && (
-              <button
-                type="button"
-                role="option"
-                aria-selected={!selectedProjectId}
-                className={`${!selectedProjectId ? 'selected' : ''} ${activeIndex === 0 ? 'active' : ''}`}
-                onMouseEnter={() => setActiveIndex(0)}
-                onClick={() => selectProject('')}
-              >
-                <span className="option-copy">
-                  <strong>{emptyLabel}</strong>
-                  <small>{copy.unselected}</small>
-                </span>
-                {!selectedProjectId && <CheckCircle2 size={17} aria-label={copy.selected} />}
-              </button>
+          <div className="project-selector-actions">
+            {selectedProject ? (
+              <Link className="project-selector-action primary" href={openProjectHref(selectedProject.id)} aria-label={copy.openProject}>
+                {copy.openProject}
+              </Link>
+            ) : (
+              <span className="project-selector-action primary disabled" aria-disabled="true">{copy.chooseProjectFirst}</span>
             )}
-            {filteredProjects.map((project, index) => {
-              const offset = allowEmpty ? 1 : 0;
-              const isSelected = project.id === selectedProjectId;
-              const optionReadiness = isSelected ? selectedReadiness : getReadinessScore?.(project) ?? null;
-              return (
-                <button
-                  type="button"
-                  key={project.id}
-                  role="option"
-                  aria-selected={isSelected}
-                  className={`${isSelected ? 'selected' : ''} ${activeIndex === index + offset ? 'active' : ''}`}
-                  onMouseEnter={() => setActiveIndex(index + offset)}
-                  onClick={() => selectProject(project.id)}
-                >
-                  <span className="option-copy">
-                    <strong>{projectName(project, project.id)}</strong>
-                    <small>
-                      {projectType(project, copy.insufficientData)}
-                      {' · '}
-                      {projectStatus(project, copy.unselected, locale)}
-                    </small>
-                  </span>
-                  <span className="option-badges">
-                    <em>{optionReadiness !== null && optionReadiness !== undefined ? `${Math.round(optionReadiness)}%` : copy.insufficientData}</em>
-                    {isSelected && <CheckCircle2 size={17} aria-label={copy.selected} />}
-                  </span>
-                </button>
-              );
-            })}
-            {filteredProjects.length === 0 && (
-              <p className="project-selector-empty">{copy.availableNone}</p>
-            )}
+            <Link className="project-selector-action secondary" href={addProjectHref} aria-label={copy.addProject}>
+              <Plus size={16} aria-hidden="true" />
+              {copy.addProject}
+            </Link>
           </div>
-        </div>
+
+          {open && (
+            <div className="project-selector-popover" role="dialog" aria-label={copy.availableProjects}>
+              {projects.length > 5 && (
+                <label className="project-selector-search">
+                  <Search size={15} aria-hidden="true" />
+                  <input
+                    ref={searchRef}
+                    value={search}
+                    onChange={event => setSearch(event.target.value)}
+                    placeholder={copy.searchPlaceholder}
+                    aria-label={copy.searchPlaceholder}
+                  />
+                </label>
+              )}
+              <div className="project-selector-list" role="listbox" aria-label={copy.availableProjects}>
+                {allowEmpty && (
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={!selectedProjectId}
+                    className={`${!selectedProjectId ? 'selected' : ''} ${activeIndex === 0 ? 'active' : ''}`}
+                    onMouseEnter={() => setActiveIndex(0)}
+                    onClick={() => selectProject('')}
+                  >
+                    <span className="option-copy">
+                      <strong>{emptyLabel}</strong>
+                      <small>{copy.unselected}</small>
+                    </span>
+                    {!selectedProjectId && <CheckCircle2 size={17} aria-label={copy.selected} />}
+                  </button>
+                )}
+                {filteredProjects.map((project, index) => {
+                  const offset = allowEmpty ? 1 : 0;
+                  const isSelected = project.id === selectedProjectId;
+                  const optionReadiness = isSelected ? selectedReadiness : getReadinessScore?.(project) ?? null;
+                  return (
+                    <button
+                      type="button"
+                      key={project.id}
+                      role="option"
+                      aria-selected={isSelected}
+                      className={`${isSelected ? 'selected' : ''} ${activeIndex === index + offset ? 'active' : ''}`}
+                      onMouseEnter={() => setActiveIndex(index + offset)}
+                      onClick={() => selectProject(project.id)}
+                    >
+                      <span className="option-copy">
+                        <strong>{projectName(project, project.id)}</strong>
+                        <small>
+                          {projectType(project, copy.insufficientData)}
+                          {' · '}
+                          {projectStatus(project, copy.unselected, locale)}
+                        </small>
+                      </span>
+                      <span className="option-badges">
+                        <em>{optionReadiness !== null && optionReadiness !== undefined ? `${Math.round(optionReadiness)}%` : copy.insufficientData}</em>
+                        {isSelected && <CheckCircle2 size={17} aria-label={copy.selected} />}
+                      </span>
+                    </button>
+                  );
+                })}
+                {filteredProjects.length === 0 && (
+                  <p className="project-selector-empty">{copy.availableNone}</p>
+                )}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <style jsx>{`
@@ -377,6 +403,41 @@ export function ProjectSelector({
           min-width: 0;
           width: 100%;
           z-index: 30;
+        }
+        .project-selector-empty-card {
+          width: 100%;
+          min-width: 0;
+          border: 1px solid rgba(29, 140, 255, .18);
+          border-radius: 24px;
+          background:
+            radial-gradient(circle at 12% 0%, rgba(167, 243, 240, .24), transparent 30%),
+            linear-gradient(135deg, #FFFFFF, var(--sfm-light-card));
+          color: var(--sfm-primary-dark);
+          padding: 18px;
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
+          gap: 14px;
+          align-items: center;
+          text-align: start;
+          font-family: Tajawal, Arial, sans-serif;
+          box-shadow: 0 16px 42px rgba(3, 18, 37, .08);
+        }
+        .project-selector-empty-copy {
+          min-width: 0;
+          display: grid;
+          gap: 6px;
+        }
+        .project-selector-empty-copy strong {
+          color: var(--sfm-primary-dark);
+          font-size: clamp(18px, 2vw, 23px);
+          line-height: 1.25;
+          font-weight: 950;
+        }
+        .project-selector-empty-copy small {
+          color: var(--sfm-muted-readable, #475569);
+          font-size: 13px;
+          line-height: 1.65;
+          font-weight: 850;
         }
         .project-selector-card {
           width: 100%;
@@ -543,6 +604,14 @@ export function ProjectSelector({
           color: #0E7490;
           box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .38);
         }
+        .project-selector-action.secondary.primary-add {
+          min-height: 46px;
+          padding-inline: 18px;
+          border-color: rgba(24, 212, 212, .48);
+          background: linear-gradient(135deg, rgba(29, 140, 255, .12), rgba(24, 212, 212, .18));
+          color: #0F766E;
+          box-shadow: 0 12px 28px rgba(14, 116, 144, .12);
+        }
         .project-selector-action.secondary svg {
           flex: 0 0 auto;
         }
@@ -558,10 +627,32 @@ export function ProjectSelector({
           color: #155E75;
           box-shadow: 0 12px 28px rgba(14, 116, 144, .12);
         }
+        .project-selector-action.secondary.primary-add:hover {
+          background: linear-gradient(135deg, rgba(29, 140, 255, .16), rgba(24, 212, 212, .24));
+          color: #0F5F59;
+          box-shadow: 0 16px 34px rgba(14, 116, 144, .16);
+        }
+        .project-selector-action.secondary.primary-add:active {
+          transform: translateY(0) scale(.985);
+        }
         .project-selector-action:focus-visible {
           outline: none;
           border-color: rgba(24, 212, 212, .38);
           box-shadow: 0 0 0 3px rgba(24, 212, 212, .18);
+        }
+        :global(.dark) .project-selector-empty-card {
+          border-color: rgba(103, 232, 249, .18);
+          background:
+            radial-gradient(circle at 12% 0%, rgba(34, 211, 238, .16), transparent 30%),
+            linear-gradient(135deg, rgba(15, 29, 49, .96), rgba(19, 36, 58, .88));
+          color: #E8EEF6;
+          box-shadow: 0 18px 48px rgba(0, 0, 0, .28);
+        }
+        :global(.dark) .project-selector-empty-copy strong {
+          color: #E8EEF6;
+        }
+        :global(.dark) .project-selector-empty-copy small {
+          color: #B8C7D9;
         }
         :global(.dark) .project-selector-action.primary.disabled {
           border-color: rgba(255, 255, 255, .14);
@@ -574,11 +665,21 @@ export function ProjectSelector({
           color: #CFFAFE;
           box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04);
         }
+        :global(.dark) .project-selector-action.secondary.primary-add {
+          border-color: rgba(103, 232, 249, .46);
+          background: linear-gradient(135deg, rgba(29, 140, 255, .22), rgba(6, 182, 212, .16));
+          color: #ECFEFF;
+          box-shadow: 0 14px 30px rgba(6, 182, 212, .12);
+        }
         :global(.dark) .project-selector-action.secondary:hover {
           border-color: rgba(103, 232, 249, .56);
           background: rgba(34, 211, 238, .15);
           color: #ECFEFF;
           box-shadow: 0 12px 28px rgba(6, 182, 212, .14);
+        }
+        :global(.dark) .project-selector-action.secondary.primary-add:hover {
+          border-color: rgba(103, 232, 249, .62);
+          background: linear-gradient(135deg, rgba(29, 140, 255, .28), rgba(6, 182, 212, .22));
         }
         .project-selector-popover {
           position: absolute;
@@ -711,6 +812,15 @@ export function ProjectSelector({
           width: max-content;
         }
         @media (max-width: 720px) {
+          .project-selector-empty-card {
+            grid-template-columns: auto minmax(0, 1fr);
+            border-radius: 22px;
+            padding: 15px;
+          }
+          .project-selector-empty-card .project-selector-action {
+            grid-column: 1 / -1;
+            width: 100%;
+          }
           .project-selector-card {
             grid-template-columns: auto minmax(0, 1fr);
             border-radius: 20px;
