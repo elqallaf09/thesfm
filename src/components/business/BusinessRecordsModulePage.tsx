@@ -815,6 +815,26 @@ const businessRecordsModuleStyles = `
     padding: 0 14px;
   }
 
+  .business-back-link {
+    width: max-content;
+    min-height: 44px;
+    border-color: rgba(24, 212, 212, 0.28);
+    background: rgba(29, 140, 255, 0.08);
+    color: var(--sfm-primary);
+    border-radius: 16px;
+    padding: 0 16px;
+    font-size: 0.92rem;
+    box-shadow: 0 12px 28px rgba(29, 140, 255, 0.08);
+  }
+
+  .business-back-link svg {
+    flex-shrink: 0;
+  }
+
+  [dir="rtl"] .business-back-link svg {
+    transform: scaleX(-1);
+  }
+
   .business-primary-btn {
     border: 0;
     background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
@@ -834,6 +854,19 @@ const businessRecordsModuleStyles = `
     transform: translateY(-1px);
     outline: 2px solid rgba(24, 212, 212, 0.22);
     outline-offset: 2px;
+  }
+
+  .business-back-link:hover,
+  .business-back-link:focus-visible {
+    border-color: rgba(24, 212, 212, 0.46);
+    background: rgba(24, 212, 212, 0.14);
+    color: var(--sfm-primary-dark);
+    box-shadow: 0 16px 34px rgba(29, 140, 255, 0.14);
+  }
+
+  .business-back-link:active {
+    transform: translateY(0);
+    box-shadow: 0 8px 18px rgba(29, 140, 255, 0.10);
   }
 
   .business-alert,
@@ -1118,6 +1151,11 @@ const businessRecordsModuleStyles = `
     .business-form-actions,
     .business-hero-actions {
       width: 100%;
+    }
+
+    .business-back-link {
+      width: 100%;
+      min-height: 46px;
     }
 
     .business-record-actions button,
