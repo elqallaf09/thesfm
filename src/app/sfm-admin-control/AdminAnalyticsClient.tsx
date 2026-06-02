@@ -23,7 +23,7 @@ type AdminData = {
   languages: Array<{ name: string; count: number; percentage: number }>;
   recent: Array<{ id: string; eventType: string; pagePath: string | null; sectionName?: string | null; module: string | null; device: string | null; language: string | null; createdAt: string }>;
   recentActivity?: Array<{ id: string; eventType: string; pagePath: string | null; sectionName?: string | null; module: string | null; device: string | null; language: string | null; createdAt: string }>;
-  tracking?: { enabled: boolean; recent: boolean; label: 'active' | 'no_recent_events' | 'disabled' };
+  tracking?: { enabled: boolean; recent: boolean; label: 'active' | 'no_recent_events' | 'disabled'; lastEventAt?: string | null };
 };
 
 const rangeOptions: Array<[string, TranslationKey]> = [
@@ -135,6 +135,31 @@ function dateValue(daysBack = 0) {
   return date.toISOString().slice(0, 10);
 }
 
+function formatDateTime(value: string, lang: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
+}
+
+function formatRelative(value: string | null | undefined, lang: string, fallback: string) {
+  if (!value) return fallback;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return fallback;
+  const diffSeconds = Math.round((date.getTime() - Date.now()) / 1000);
+  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  const absSeconds = Math.abs(diffSeconds);
+  if (absSeconds < 60) return formatter.format(diffSeconds, 'second');
+  const diffMinutes = Math.round(diffSeconds / 60);
+  if (Math.abs(diffMinutes) < 60) return formatter.format(diffMinutes, 'minute');
+  const diffHours = Math.round(diffMinutes / 60);
+  if (Math.abs(diffHours) < 24) return formatter.format(diffHours, 'hour');
+  return formatter.format(Math.round(diffHours / 24), 'day');
+}
+
 export default function AdminAnalyticsClient() {
   const { user, loading } = useAuth();
   const { lang, dir, t } = useLanguage();
@@ -236,19 +261,21 @@ export default function AdminAnalyticsClient() {
   const topPages = data?.topPages ?? data?.pages ?? [];
   const topSections = data?.topSections ?? [];
   const recent = data?.recentActivity ?? data?.recent ?? [];
+  const lastEventAt = data?.tracking?.lastEventAt ?? recent[0]?.createdAt ?? null;
+  const hasAnalyticsRows = Boolean(data?.hasData && recent.length > 0);
   const statCards = [
     ['admin_total_visitors', stats.totalVisitors, Users],
     ['admin_visitors_today', stats.visitorsToday, Users],
-    ['admin_visitors_week', stats.visitorsWeek, Users],
-    ['admin_visitors_month', stats.visitorsMonth, Users],
+    ['admin_visitors_week', stats.visitorsThisWeek ?? stats.visitorsWeek, Users],
+    ['admin_visitors_month', stats.visitorsThisMonth ?? stats.visitorsMonth, Users],
     ['admin_total_page_views', stats.totalPageViews, Eye],
     ['admin_page_views_today', stats.pageViewsToday, Eye],
-    ['admin_page_views_week', stats.pageViewsWeek, Eye],
-    ['admin_page_views_month', stats.pageViewsMonth, Eye],
-    ['admin_total_accounts', stats.totalUsers, ShieldCheck],
-    ['admin_new_accounts_today', stats.newUsersToday, ShieldCheck],
-    ['admin_new_accounts_week', stats.newUsersWeek, ShieldCheck],
-    ['admin_new_accounts_month', stats.newUsersMonth, ShieldCheck],
+    ['admin_page_views_week', stats.pageViewsThisWeek ?? stats.pageViewsWeek, Eye],
+    ['admin_page_views_month', stats.pageViewsThisMonth ?? stats.pageViewsMonth, Eye],
+    ['admin_total_accounts', stats.totalAccounts ?? stats.totalUsers, ShieldCheck],
+    ['admin_new_accounts_today', stats.accountsToday ?? stats.newUsersToday, ShieldCheck],
+    ['admin_new_accounts_week', stats.accountsThisWeek ?? stats.newUsersWeek, ShieldCheck],
+    ['admin_new_accounts_month', stats.accountsThisMonth ?? stats.newUsersMonth, ShieldCheck],
   ] as const;
 
   if (loading || (!user && state === 'loading')) {
@@ -343,7 +370,11 @@ export default function AdminAnalyticsClient() {
             <div>
               <span>{t('admin_tracking_status')}</span>
               <strong>{t(trackingStatusKey)}</strong>
-              <small>{t('admin_tracking_privacy_note')}</small>
+              <small>
+                {lastEventAt
+                  ? `${t('admin_last_event')}: ${formatRelative(lastEventAt, lang, t('admin_last_event_pending'))}`
+                  : t('admin_last_event_pending')}
+              </small>
             </div>
             <Activity size={24} aria-hidden="true" />
           </section>
@@ -361,73 +392,88 @@ export default function AdminAnalyticsClient() {
 
         <section className="admin-section-grid">
           <Panel title={t('admin_most_used_pages')} icon={BarChart3}>
-            <div className="admin-table-wrap">
-              <table>
-                <thead><tr><th>{t('admin_page_name')}</th><th>{t('admin_route')}</th><th>{t('admin_views')}</th><th>{t('admin_unique_visitors')}</th><th>{t('admin_percentage')}</th></tr></thead>
-                <tbody>
-                  {topPages.map(page => (
-                    <tr key={`${page.pageName}-${page.route}`}>
-                      <td>{pageLabelKeys[page.pageName] ? t(pageLabelKeys[page.pageName]) : page.pageName}</td>
-                      <td>{page.route}</td>
-                      <td>{formatNumber(page.views, lang)}</td>
-                      <td>{formatNumber(page.visitors, lang)}</td>
-                      <td>{page.percentage}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {topPages.length > 0 ? (
+              <div className="admin-table-wrap">
+                <table>
+                  <thead><tr><th>{t('admin_page_name')}</th><th>{t('admin_route')}</th><th>{t('admin_views')}</th><th>{t('admin_unique_visitors')}</th><th>{t('admin_percentage')}</th></tr></thead>
+                  <tbody>
+                    {topPages.map(page => (
+                      <tr key={`${page.pageName}-${page.route}`}>
+                        <td>{pageLabelKeys[page.pageName] ? t(pageLabelKeys[page.pageName]) : page.pageName}</td>
+                        <td dir="ltr">{page.route}</td>
+                        <td>{formatNumber(page.views, lang)}</td>
+                        <td>{formatNumber(page.visitors, lang)}</td>
+                        <td dir="ltr">{page.percentage}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <CompactEmpty title={t('admin_no_visit_data_title')} body={t('admin_no_visit_data_body')} />}
           </Panel>
 
           <Panel title={t('admin_top_sections')} icon={Activity}>
-            <div className="admin-event-grid">
-              {topSections.map(item => (
-                <article key={item.name}>
-                  <span>{sectionLabelKeys[item.name] ? t(sectionLabelKeys[item.name]) : item.name}</span>
-                  <strong>{formatNumber(item.count, lang)}</strong>
-                  <small>{item.percentage}%</small>
-                </article>
-              ))}
-            </div>
+            {topSections.length > 0 ? (
+              <div className="admin-event-grid compact">
+                {topSections.map(item => (
+                  <article key={item.name}>
+                    <span>{sectionLabelKeys[item.name] ? t(sectionLabelKeys[item.name]) : item.name}</span>
+                    <strong>{formatNumber(item.count, lang)}</strong>
+                    <small dir="ltr">{item.percentage}%</small>
+                  </article>
+                ))}
+              </div>
+            ) : <CompactEmpty title={t('admin_no_visit_data_title')} body={t('admin_no_visit_data_body')} />}
           </Panel>
         </section>
 
         <section className="admin-section-grid single">
           <Panel title={t('admin_important_events')} icon={Activity}>
-            <div className="admin-event-grid">
-              {(data?.importantEvents ?? []).map(item => (
-                <article key={item.event}>
-                  <span>{t(eventLabelKeys[item.event] ?? 'admin_event_type')}</span>
-                  <strong>{formatNumber(item.count, lang)}</strong>
-                  <small>{formatNumber(item.uniqueUsers, lang)} {t('admin_unique_visitors')}</small>
-                </article>
-              ))}
-            </div>
+            {recent.length > 0 ? (
+              <div className="admin-table-wrap">
+                <table className="admin-compact-table">
+                  <thead><tr><th>{t('admin_event_type')}</th><th>{t('admin_module')}</th><th>{t('admin_device')}</th><th>{t('admin_language')}</th><th>{t('admin_date')}</th></tr></thead>
+                  <tbody>
+                    {recent.slice(0, 12).map(item => (
+                      <tr key={`important-${item.id}`}>
+                        <td>{eventLabelKeys[item.eventType] ? t(eventLabelKeys[item.eventType]) : item.eventType}</td>
+                        <td>{sectionLabelKeys[item.sectionName || item.module || ''] ? t(sectionLabelKeys[item.sectionName || item.module || '']) : item.module || item.pagePath || '-'}</td>
+                        <td>{item.device || '-'}</td>
+                        <td>{item.language || '-'}</td>
+                        <td>{formatDateTime(item.createdAt, lang)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <CompactEmpty title={t('admin_no_events_registered_title')} body={t('admin_no_events_registered_body')} />}
           </Panel>
         </section>
 
         <section className="admin-section-grid two">
-          <Breakdown title={t('admin_devices')} icon={MonitorSmartphone} items={data?.devices ?? []} lang={lang} />
-          <Breakdown title={t('admin_languages')} icon={Languages} items={data?.languages ?? []} lang={lang} />
+          <Breakdown title={t('admin_devices')} icon={MonitorSmartphone} items={data?.devices ?? []} lang={lang} emptyTitle={t('admin_no_visit_data_title')} emptyBody={t('admin_no_visit_data_body')} />
+          <Breakdown title={t('admin_languages')} icon={Languages} items={data?.languages ?? []} lang={lang} emptyTitle={t('admin_no_visit_data_title')} emptyBody={t('admin_no_visit_data_body')} />
         </section>
 
         <Panel title={t('admin_recent_activity')} icon={Globe2}>
-          <div className="admin-table-wrap">
-            <table>
-              <thead><tr><th>{t('admin_event_type')}</th><th>{t('admin_module')}</th><th>{t('admin_device')}</th><th>{t('admin_language')}</th><th>{t('admin_date')}</th></tr></thead>
-              <tbody>
-                {recent.map(item => (
-                  <tr key={item.id}>
-                    <td>{eventLabelKeys[item.eventType] ? t(eventLabelKeys[item.eventType]) : item.eventType}</td>
-                    <td>{sectionLabelKeys[item.sectionName || item.module || ''] ? t(sectionLabelKeys[item.sectionName || item.module || '']) : item.module || item.pagePath || '-'}</td>
-                    <td>{item.device || '-'}</td>
-                    <td>{item.language || '-'}</td>
-                    <td>{new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.createdAt))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {hasAnalyticsRows ? (
+            <div className="admin-table-wrap">
+              <table>
+                <thead><tr><th>{t('admin_event_type')}</th><th>{t('admin_module')}</th><th>{t('admin_device')}</th><th>{t('admin_language')}</th><th>{t('admin_date')}</th></tr></thead>
+                <tbody>
+                  {recent.map(item => (
+                    <tr key={item.id}>
+                      <td>{eventLabelKeys[item.eventType] ? t(eventLabelKeys[item.eventType]) : item.eventType}</td>
+                      <td>{sectionLabelKeys[item.sectionName || item.module || ''] ? t(sectionLabelKeys[item.sectionName || item.module || '']) : item.module || item.pagePath || '-'}</td>
+                      <td>{item.device || '-'}</td>
+                      <td>{item.language || '-'}</td>
+                      <td>{formatDateTime(item.createdAt, lang)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <CompactEmpty title={t('admin_no_events_registered_title')} body={t('admin_no_events_registered_body')} />}
         </Panel>
       </main>
       <style jsx>{adminStyles}</style>
@@ -457,37 +503,62 @@ function Panel({ title, icon: Icon, children }: { title: string; icon: LucideIco
   );
 }
 
-function Breakdown({ title, icon, items, lang }: { title: string; icon: LucideIcon; items: Array<{ name: string; count: number; percentage: number }>; lang: string }) {
+function CompactEmpty({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="admin-empty-compact">
+      <strong>{title}</strong>
+      <p>{body}</p>
+    </div>
+  );
+}
+
+function Breakdown({
+  title,
+  icon,
+  items,
+  lang,
+  emptyTitle,
+  emptyBody,
+}: {
+  title: string;
+  icon: LucideIcon;
+  items: Array<{ name: string; count: number; percentage: number }>;
+  lang: string;
+  emptyTitle: string;
+  emptyBody: string;
+}) {
   return (
     <Panel title={title} icon={icon}>
-      <div className="breakdown-list">
-        {items.map(item => (
-          <div key={item.name}>
-            <span>{item.name}</span>
-            <strong>{formatNumber(item.count, lang)}</strong>
-            <em style={{ width: `${Math.min(100, item.percentage)}%` }} />
-            <small>{item.percentage}%</small>
-          </div>
-        ))}
-      </div>
+      {items.length > 0 ? (
+        <div className="breakdown-list">
+          {items.map(item => (
+            <div key={item.name}>
+              <span>{item.name}</span>
+              <strong>{formatNumber(item.count, lang)}</strong>
+              <em style={{ width: `${Math.min(100, item.percentage)}%` }} />
+              <small dir="ltr">{item.percentage}%</small>
+            </div>
+          ))}
+        </div>
+      ) : <CompactEmpty title={emptyTitle} body={emptyBody} />}
     </Panel>
   );
 }
 
 const adminStyles = `
-  .admin-dashboard{width:100%;max-width:1480px;margin:0 auto;padding:24px;display:grid;gap:18px;color:var(--sfm-foreground)}
-  .admin-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;border-radius:28px;padding:28px;background:radial-gradient(circle at 12% 10%,rgba(34,211,238,.22),transparent 30%),linear-gradient(135deg,#061A2E,#0B2748 58%,#071E3A);color:#fff;box-shadow:0 24px 70px rgba(3,18,37,.18)}
+  .admin-dashboard{width:100%;max-width:1480px;margin:0 auto;padding:22px;display:grid;gap:16px;color:var(--sfm-foreground)}
+  .admin-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;border-radius:26px;padding:24px;background:radial-gradient(circle at 12% 10%,rgba(34,211,238,.22),transparent 30%),linear-gradient(135deg,#061A2E,#0B2748 58%,#071E3A);color:#fff;box-shadow:0 20px 56px rgba(3,18,37,.16)}
   .admin-eyebrow,.admin-privacy-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(167,243,240,.24);background:rgba(255,255,255,.08);border-radius:999px;padding:8px 12px;color:#A7F3F0;font-weight:950}
-  .admin-hero h1{margin:16px 0 10px;font-size:clamp(30px,5vw,56px);line-height:1.05;font-weight:950;letter-spacing:0}
+  .admin-hero h1{margin:13px 0 8px;font-size:clamp(28px,4.2vw,48px);line-height:1.05;font-weight:950;letter-spacing:0}
   .admin-hero p{max-width:760px;margin:0;color:#DCEBFA;line-height:1.8;font-weight:800}
   .admin-privacy-badge{flex-shrink:0;color:#FDE68A;border-color:rgba(251,191,36,.3)}
-  .admin-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;border:1px solid rgba(29,140,255,.12);background:var(--sfm-card-bg);border-radius:22px;padding:16px;box-shadow:0 16px 40px rgba(3,18,37,.06)}
+  .admin-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;border:1px solid rgba(29,140,255,.12);background:var(--sfm-card-bg);border-radius:22px;padding:14px;box-shadow:0 12px 30px rgba(3,18,37,.05)}
   .admin-filters label{display:grid;gap:7px;min-width:0}
   .admin-filters span{font-size:12px;color:var(--sfm-muted);font-weight:950}
   .admin-filters select,.admin-filters input{width:100%;min-height:42px;border-radius:14px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-input-bg,#fff);color:var(--sfm-foreground);padding:0 12px;font:850 13px Tajawal,Arial,sans-serif}
   .admin-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-  .admin-stat-card,.admin-panel,.admin-state,.admin-tracking-status{border:1px solid rgba(29,140,255,.12);background:var(--sfm-card-bg);border-radius:22px;box-shadow:0 16px 40px rgba(3,18,37,.06)}
-  .admin-tracking-status{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 18px;border-color:rgba(34,197,94,.22);background:linear-gradient(135deg,rgba(34,197,94,.10),var(--sfm-card-bg))}
+  .admin-stat-card,.admin-panel,.admin-state,.admin-tracking-status{border:1px solid rgba(29,140,255,.12);background:var(--sfm-card-bg);border-radius:22px;box-shadow:0 12px 30px rgba(3,18,37,.05)}
+  .admin-tracking-status{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 16px;border-color:rgba(34,197,94,.22);background:linear-gradient(135deg,rgba(34,197,94,.10),var(--sfm-card-bg))}
   .admin-tracking-status.stale{border-color:rgba(245,158,11,.25);background:linear-gradient(135deg,rgba(245,158,11,.10),var(--sfm-card-bg))}
   .admin-tracking-status.disabled{border-color:rgba(239,68,68,.22);background:linear-gradient(135deg,rgba(239,68,68,.08),var(--sfm-card-bg))}
   .admin-tracking-status span,.admin-tracking-status small{display:block;color:var(--sfm-muted);font-weight:900;line-height:1.7}
@@ -495,22 +566,24 @@ const adminStyles = `
   .admin-tracking-status svg{color:#16A34A;flex:0 0 auto}
   .admin-tracking-status.stale svg{color:#D97706}
   .admin-tracking-status.disabled svg{color:#DC2626}
-  .admin-stat-card{display:grid;gap:8px;padding:17px}
+  .admin-stat-card{display:grid;gap:7px;padding:15px;min-height:112px}
   .admin-stat-card svg{color:#18D4D4}
   .admin-stat-card span{color:var(--sfm-muted);font-size:12px;font-weight:950}
-  .admin-stat-card strong{font-size:28px;font-weight:950;color:var(--sfm-foreground);font-variant-numeric:tabular-nums}
+  .admin-stat-card strong{font-size:26px;font-weight:950;color:var(--sfm-foreground);font-variant-numeric:tabular-nums}
   .admin-section-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:16px;align-items:start}
   .admin-section-grid.single{grid-template-columns:1fr}
   .admin-section-grid.two{grid-template-columns:1fr 1fr}
-  .admin-panel{min-width:0;padding:18px;display:grid;gap:14px}
+  .admin-panel{min-width:0;padding:16px;display:grid;gap:12px}
   .admin-panel h2{margin:0;display:flex;align-items:center;gap:8px;color:var(--sfm-foreground);font-size:18px;font-weight:950}
   .admin-panel h2 svg{color:#18D4D4}
   .admin-table-wrap{max-width:100%;overflow-x:auto}
   table{width:100%;border-collapse:collapse;min-width:680px}
-  th,td{padding:12px 10px;border-bottom:1px solid rgba(148,163,184,.18);text-align:start;font-size:13px}
+  .admin-compact-table{min-width:620px}
+  th,td{padding:10px 9px;border-bottom:1px solid rgba(148,163,184,.18);text-align:start;font-size:12px;line-height:1.45}
   th{color:var(--sfm-muted);font-weight:950}
   td{color:var(--sfm-foreground);font-weight:800}
   .admin-event-grid{display:grid;gap:10px}
+  .admin-event-grid.compact{grid-template-columns:repeat(2,minmax(0,1fr))}
   .admin-event-grid article{border:1px solid rgba(24,212,212,.14);background:rgba(24,212,212,.07);border-radius:16px;padding:13px;display:grid;gap:5px}
   .admin-event-grid span,.breakdown-list span{color:var(--sfm-muted);font-weight:900;font-size:12px}
   .admin-event-grid strong{font-size:23px;font-weight:950;color:var(--sfm-foreground)}
@@ -519,6 +592,9 @@ const adminStyles = `
   .breakdown-list div{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
   .breakdown-list em{grid-column:1/-1;height:9px;border-radius:999px;background:linear-gradient(90deg,#1D8CFF,#18D4D4);min-width:8px}
   .breakdown-list strong{font-weight:950;color:var(--sfm-foreground)}
+  .admin-empty-compact{border:1px dashed rgba(29,140,255,.20);background:rgba(29,140,255,.055);border-radius:16px;padding:14px;display:grid;gap:5px}
+  .admin-empty-compact strong{color:var(--sfm-foreground);font-size:13px;font-weight:950;line-height:1.45}
+  .admin-empty-compact p{margin:0;color:var(--sfm-muted);font-size:12px;font-weight:850;line-height:1.7}
   .admin-state{display:flex;align-items:center;gap:12px;padding:18px;color:var(--sfm-foreground)}
   .admin-state svg{color:#18D4D4;flex:0 0 auto}
   .admin-state p{margin:0;color:var(--sfm-muted);font-weight:900;line-height:1.8}
@@ -533,8 +609,9 @@ const adminStyles = `
   .admin-code-card button{min-height:48px;border:0;border-radius:15px;background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#061A2E;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer}
   .admin-code-card button:disabled{opacity:.6;cursor:not-allowed}
   :global(.dark) .admin-stat-card,:global(.dark) .admin-panel,:global(.dark) .admin-filters,:global(.dark) .admin-state,:global(.dark) .admin-code-card,:global(.dark) .admin-tracking-status{background:#102A45;border-color:rgba(255,255,255,.10);box-shadow:0 16px 44px rgba(0,0,0,.18)}
+  :global(.dark) .admin-empty-compact{background:rgba(24,212,212,.07);border-color:rgba(24,212,212,.18)}
   :global(.dark) .admin-filters select,:global(.dark) .admin-filters input{background:#0F2942;border-color:rgba(255,255,255,.12);color:#F8FAFC}
   :global(.dark) .admin-code-card input{background:#0F2942;border-color:rgba(255,255,255,.12);color:#F8FAFC}
   @media(max-width:1100px){.admin-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-section-grid,.admin-section-grid.two,.admin-filters{grid-template-columns:1fr 1fr}}
-  @media(max-width:720px){.admin-dashboard{padding:14px}.admin-hero{display:grid;padding:22px}.admin-privacy-badge{width:max-content;max-width:100%}.admin-stat-grid,.admin-section-grid,.admin-section-grid.two,.admin-filters{grid-template-columns:1fr}table{min-width:620px}.admin-stat-card strong{font-size:24px}}
+  @media(max-width:720px){.admin-dashboard{padding:14px}.admin-hero{display:grid;padding:20px}.admin-privacy-badge{width:max-content;max-width:100%}.admin-stat-grid,.admin-section-grid,.admin-section-grid.two,.admin-filters,.admin-event-grid.compact{grid-template-columns:1fr}table{min-width:620px}.admin-stat-card strong{font-size:24px}}
 `;

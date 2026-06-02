@@ -25,9 +25,28 @@ type AnalyticsRow = {
   created_at: string;
 };
 
+type SessionRow = {
+  session_id: string;
+  user_id: string | null;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+  language: string | null;
+  device_type: string | null;
+  browser: string | null;
+  os: string | null;
+  referrer: string | null;
+  created_at: string | null;
+};
+
 type AnalyticsLoadResult = {
   rows: AnalyticsRow[];
   source: string;
+  error?: string;
+  code?: string;
+};
+
+type SessionLoadResult = {
+  sessions: SessionRow[];
   error?: string;
   code?: string;
 };
@@ -108,7 +127,7 @@ function sectionName(row: AnalyticsRow) {
   return row.section_name || row.module || pageName(row.page_path);
 }
 
-function groupCount(rows: AnalyticsRow[], read: (row: AnalyticsRow) => string | null | undefined) {
+function groupCount<T>(rows: T[], read: (row: T) => string | null | undefined) {
   const map = new Map<string, number>();
   rows.forEach(row => {
     const key = read(row);
@@ -124,6 +143,13 @@ function countSince(rows: AnalyticsRow[], start: Date, eventType?: string) {
 
 function uniqueSessions(rows: AnalyticsRow[]) {
   return new Set(rows.map(row => row.session_id).filter(Boolean)).size;
+}
+
+function countSessionsSince(sessions: SessionRow[], start: Date) {
+  return sessions.filter(session => {
+    const activityDate = new Date(session.last_seen_at ?? session.created_at ?? 0);
+    return !Number.isNaN(activityDate.getTime()) && activityDate >= start;
+  }).length;
 }
 
 function zeroStats() {
@@ -158,7 +184,6 @@ function emptyAnalyticsPayload(
   to: Date,
   options: { code?: string; trackingEnabled?: boolean } = {},
 ) {
-  const importantEvents = EVENT_LABELS.map(event => ({ event, count: 0, uniqueUsers: 0 }));
   return {
     ok: true,
     success: true,
@@ -170,7 +195,7 @@ function emptyAnalyticsPayload(
     pages: [],
     topSections: [],
     sections: [],
-    importantEvents,
+    importantEvents: [],
     devices: [],
     languages: [],
     recentActivity: [],
@@ -179,6 +204,7 @@ function emptyAnalyticsPayload(
       enabled: options.trackingEnabled ?? true,
       recent: false,
       label: options.trackingEnabled === false ? 'disabled' : 'no_recent_events',
+      lastEventAt: null,
     },
     hasData: false,
   };
@@ -250,6 +276,21 @@ function mapLegacyRow(row: Record<string, unknown>): AnalyticsRow {
   };
 }
 
+function mapSessionRow(row: Record<string, unknown>): SessionRow {
+  return {
+    session_id: String(row.session_id ?? ''),
+    user_id: typeof row.user_id === 'string' ? row.user_id : null,
+    first_seen_at: typeof row.first_seen_at === 'string' ? row.first_seen_at : null,
+    last_seen_at: typeof row.last_seen_at === 'string' ? row.last_seen_at : null,
+    language: typeof row.language === 'string' ? row.language : null,
+    device_type: typeof row.device_type === 'string' ? row.device_type : null,
+    browser: typeof row.browser === 'string' ? row.browser : null,
+    os: typeof row.os === 'string' ? row.os : null,
+    referrer: typeof row.referrer === 'string' ? row.referrer : null,
+    created_at: typeof row.created_at === 'string' ? row.created_at : null,
+  };
+}
+
 async function loadAnalyticsRows(
   admin: ReturnType<typeof createServerSupabaseAdmin>,
   from: Date,
@@ -297,6 +338,35 @@ async function loadAnalyticsRows(
   };
 }
 
+async function loadSessionRows(
+  admin: ReturnType<typeof createServerSupabaseAdmin>,
+  from: Date,
+  to: Date,
+): Promise<SessionLoadResult> {
+  if (!admin) return { sessions: [], code: 'ANALYTICS_SERVICE_NOT_CONFIGURED' };
+
+  const sessionResult = await admin
+    .from('site_sessions')
+    .select('session_id,user_id,first_seen_at,last_seen_at,language,device_type,browser,os,referrer,created_at')
+    .gte('last_seen_at', from.toISOString())
+    .lte('first_seen_at', to.toISOString())
+    .order('last_seen_at', { ascending: false })
+    .limit(20000);
+
+  if (sessionResult.error) {
+    if (schemaRelatedError(sessionResult.error) || missingRelation(sessionResult.error)) {
+      return { sessions: [], code: 'ANALYTICS_SESSIONS_TABLE_MISSING' };
+    }
+    return { sessions: [], error: sessionResult.error.message };
+  }
+
+  return {
+    sessions: (sessionResult.data ?? [])
+      .map(row => mapSessionRow(row as Record<string, unknown>))
+      .filter(session => session.session_id),
+  };
+}
+
 export async function GET(request: Request) {
   const cookieStore = await cookies();
   const token = cookieStore.get('sfm_access_token')?.value;
@@ -324,10 +394,22 @@ export async function GET(request: Request) {
     );
   }
 
-  const { rows, source, error, code } = await loadAnalyticsRows(admin, from, to, moduleFilter, eventFilter);
-  if (code === 'ANALYTICS_TABLES_MISSING') {
+  const [{ rows, source, error, code }, sessionLoad] = await Promise.all([
+    loadAnalyticsRows(admin, from, to, moduleFilter, eventFilter),
+    loadSessionRows(admin, from, to),
+  ]);
+  const effectiveSource = source === 'none' && sessionLoad.sessions.length ? 'site_sessions' : source;
+  if (code === 'ANALYTICS_TABLES_MISSING' && sessionLoad.sessions.length === 0) {
     console.warn('[admin-analytics] analytics tables are missing; returning empty analytics payload');
     return NextResponse.json(emptyAnalyticsPayload(source, from, to, { code }), { status: 200 });
+  }
+  if (code === 'ANALYTICS_TABLES_MISSING' && sessionLoad.sessions.length > 0) {
+    console.warn('[admin-analytics] event analytics table is missing; continuing with session data only');
+  }
+  if (sessionLoad.error) {
+    console.warn('[admin-analytics] session analytics load failed; continuing with event data only', {
+      error: sessionLoad.error,
+    });
   }
   if (error) {
     console.error('[admin-analytics] analytics load failed', { source, error });
@@ -355,6 +437,12 @@ export async function GET(request: Request) {
   const week = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
   const month = startOfMonth(now);
   const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const sessions = sessionLoad.sessions;
+  const canUseSessionStats = moduleFilter === 'all' && eventFilter === 'all';
+  const visitorTotal = canUseSessionStats && sessions.length ? sessions.length : uniqueSessions(rows);
+  const visitorsToday = canUseSessionStats && sessions.length ? countSessionsSince(sessions, today) : uniqueSessions(rows.filter(row => new Date(row.created_at) >= today));
+  const visitorsWeek = canUseSessionStats && sessions.length ? countSessionsSince(sessions, week) : uniqueSessions(rows.filter(row => new Date(row.created_at) >= week));
+  const visitorsMonth = canUseSessionStats && sessions.length ? countSessionsSince(sessions, month) : uniqueSessions(rows.filter(row => new Date(row.created_at) >= month));
 
   const pageGroups = new Map<string, { pageName: string; route: string; views: number; visitors: Set<string> }>();
   pageViews.forEach(row => {
@@ -375,15 +463,24 @@ export async function GET(request: Request) {
     percentage: percent(group.views, totalViews),
   })).sort((a, b) => b.views - a.views);
 
-  const sections = groupCount(rows.filter(row => row.event_type === 'section_view'), sectionName)
-    .map(item => ({ ...item, percentage: percent(item.count, rows.filter(row => row.event_type === 'section_view').length) }));
-  const devices = groupCount(rows, row => row.device_type || 'unknown').map(item => ({ ...item, percentage: percent(item.count, rows.length) }));
-  const languages = groupCount(rows, row => row.language || 'unknown').map(item => ({ ...item, percentage: percent(item.count, rows.length) }));
-  const importantEvents = EVENT_LABELS.map(event => ({
-    event,
-    count: rows.filter(row => row.event_type === event).length,
-    uniqueUsers: uniqueSessions(rows.filter(row => row.event_type === event)),
-  }));
+  const sections = groupCount(rows, rowModule)
+    .map(item => ({ ...item, percentage: percent(item.count, rows.length) }))
+    .slice(0, 12);
+  const useSessionBreakdowns = canUseSessionStats && rows.length === 0 && sessions.length > 0;
+  const devices = !useSessionBreakdowns
+    ? groupCount(rows, row => row.device_type || 'unknown').map(item => ({ ...item, percentage: percent(item.count, rows.length) }))
+    : groupCount(sessions, row => row.device_type || 'unknown').map(item => ({ ...item, percentage: percent(item.count, sessions.length) }));
+  const languages = !useSessionBreakdowns
+    ? groupCount(rows, row => row.language || 'unknown').map(item => ({ ...item, percentage: percent(item.count, rows.length) }))
+    : groupCount(sessions, row => row.language || 'unknown').map(item => ({ ...item, percentage: percent(item.count, sessions.length) }));
+  const importantEvents = EVENT_LABELS.map(event => {
+    const eventRows = rows.filter(row => row.event_type === event);
+    return {
+      event,
+      count: eventRows.length,
+      uniqueUsers: uniqueSessions(eventRows),
+    };
+  }).filter(item => item.count > 0);
 
   const userCountQuery = async (start?: Date) => {
     let profileQuery = admin.from('profiles').select('id', { count: 'exact', head: true });
@@ -403,20 +500,22 @@ export async function GET(request: Request) {
     userCountQuery(month),
   ]);
 
-  const trackingRecent = rows.some(row => new Date(row.created_at) >= last24Hours);
+  const trackingRecent = rows.some(row => new Date(row.created_at) >= last24Hours)
+    || sessions.some(session => new Date(session.last_seen_at ?? session.created_at ?? 0) >= last24Hours);
+  const lastEventAt = rows[0]?.created_at ?? sessions[0]?.last_seen_at ?? sessions[0]?.created_at ?? null;
 
   return NextResponse.json({
     ok: true,
     success: true,
-    source,
+    source: effectiveSource,
     range: { from: from.toISOString(), to: to.toISOString() },
     stats: {
-      totalVisitors: uniqueSessions(rows),
-      visitorsToday: uniqueSessions(rows.filter(row => new Date(row.created_at) >= today)),
-      visitorsThisWeek: uniqueSessions(rows.filter(row => new Date(row.created_at) >= week)),
-      visitorsWeek: uniqueSessions(rows.filter(row => new Date(row.created_at) >= week)),
-      visitorsThisMonth: uniqueSessions(rows.filter(row => new Date(row.created_at) >= month)),
-      visitorsMonth: uniqueSessions(rows.filter(row => new Date(row.created_at) >= month)),
+      totalVisitors: visitorTotal,
+      visitorsToday,
+      visitorsThisWeek: visitorsWeek,
+      visitorsWeek,
+      visitorsThisMonth: visitorsMonth,
+      visitorsMonth,
       totalPageViews: totalViews,
       pageViewsToday: countSince(rows, today, 'page_view'),
       pageViewsThisWeek: countSince(rows, week, 'page_view'),
@@ -464,8 +563,9 @@ export async function GET(request: Request) {
       enabled: true,
       recent: trackingRecent,
       label: trackingRecent ? 'active' : 'no_recent_events',
+      lastEventAt,
     },
-    hasData: rows.length > 0,
+    hasData: rows.length > 0 || (canUseSessionStats && sessions.length > 0),
   });
 }
 
