@@ -27,6 +27,7 @@ const UI_COPY: Record<EbookLocale, ReaderCopy> = {
     downloadPdf: 'تحميل PDF',
     language: 'اللغة',
     category: 'التصنيف',
+    pageCount: 'عدد الصفحات',
     fileSize: 'حجم الملف',
     pdfUnavailable: 'إذا لم يظهر ملف PDF داخل القارئ، يمكنك فتحه أو تحميله من الزر أعلاه.',
     relatedBooks: 'كتب مرتبطة',
@@ -39,6 +40,7 @@ const UI_COPY: Record<EbookLocale, ReaderCopy> = {
     downloadPdf: 'Download PDF',
     language: 'Language',
     category: 'Category',
+    pageCount: 'Pages',
     fileSize: 'File size',
     pdfUnavailable: 'If the PDF does not appear in the reader, you can open or download it using the button above.',
     relatedBooks: 'Related books',
@@ -51,6 +53,7 @@ const UI_COPY: Record<EbookLocale, ReaderCopy> = {
     downloadPdf: 'Télécharger le PDF',
     language: 'Langue',
     category: 'Catégorie',
+    pageCount: 'Pages',
     fileSize: 'Taille du fichier',
     pdfUnavailable: 'Si le PDF ne s’affiche pas dans le lecteur, vous pouvez l’ouvrir ou le télécharger avec le bouton ci-dessus.',
     relatedBooks: 'Livres associés',
@@ -106,6 +109,11 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
             <BookOpen size={19} aria-hidden="true" />
             <span>{text.category}</span>
             <strong>{ebookText(EBOOK_CATEGORY_LABELS[book.category], locale)}</strong>
+          </AppCard>
+          <AppCard className="ebook-reader-meta-card">
+            <FileText size={19} aria-hidden="true" />
+            <span>{text.pageCount}</span>
+            <strong dir="ltr">{book.pages ?? '-'}</strong>
           </AppCard>
           <AppCard className="ebook-reader-meta-card">
             <FileText size={19} aria-hidden="true" />
@@ -249,7 +257,7 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
 
         .ebook-reader-meta {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 14px;
         }
 
@@ -425,4 +433,3 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
     </div>
   );
 }
-

@@ -54,6 +54,7 @@ const UI_COPY: Record<EbookLocale, Record<string, string>> = {
     categoriesCount: 'عدد التصنيفات',
     latestAddition: 'أحدث إضافة',
     featuredBook: 'الكتاب المقترح',
+    featuredReason: 'مناسب لمستخدمي صفحة تحليلات السوق والتداول.',
     allBooks: 'جميع الكتب',
     browseByCategory: 'تصفح حسب التصنيف',
     readingPath: 'مسار قراءة مقترح',
@@ -62,6 +63,8 @@ const UI_COPY: Record<EbookLocale, Record<string, string>> = {
     viewDetails: 'عرض التفاصيل',
     fileType: 'PDF',
     fileSize: 'حجم الملف',
+    pages: 'صفحة',
+    pageCount: 'عدد الصفحات',
     detailsTitle: 'تفاصيل الكتاب',
     whatYouWillLearn: 'ماذا ستتعلم؟',
     close: 'إغلاق',
@@ -70,9 +73,9 @@ const UI_COPY: Record<EbookLocale, Record<string, string>> = {
     category: 'التصنيف',
     emptyTitle: 'لا توجد كتب مطابقة لبحثك.',
     emptyBody: 'جرّب تغيير كلمات البحث أو الفلتر المحدد.',
-    readingStepOne: 'ابدأ بالدليل المالي الشامل لفهم أساسيات إدارة المال.',
-    readingStepTwo: 'ثم انتقل إلى أساسيات التداول إذا كنت تريد فهم الأسواق وإدارة المخاطر.',
-    readingStepThree: 'بعد ذلك اقرأ دراسة الجدوى إذا كنت تخطط لمشروع أو قرار استثماري.',
+    readingStepOne: 'ابدأ بكتاب المدخرات والاستثمار لبناء أساس مالي واضح.',
+    readingStepTwo: 'ثم اقرأ قراءة شموع الأسهم وتحليلها لفهم حركة السعر ضمن سياق تداول منضبط.',
+    readingStepThree: 'بعد ذلك اقرأ دراسة الجدوى: دليل عملي إذا كنت تخطط لمشروع أو قرار استثماري.',
     disclaimerTitle: 'تنبيه تعليمي',
     disclaimerBody: 'هذه الكتب لأغراض تعليمية وتثقيفية، ولا تُعد توصية مالية أو استثمارية.',
     relatedBooks: 'كتب مرتبطة',
@@ -93,6 +96,7 @@ const UI_COPY: Record<EbookLocale, Record<string, string>> = {
     categoriesCount: 'Categories',
     latestAddition: 'Latest addition',
     featuredBook: 'Featured book',
+    featuredReason: 'Suitable for Market Analysis and trading users.',
     allBooks: 'All books',
     browseByCategory: 'Browse by category',
     readingPath: 'Suggested reading path',
@@ -101,6 +105,8 @@ const UI_COPY: Record<EbookLocale, Record<string, string>> = {
     viewDetails: 'View details',
     fileType: 'PDF',
     fileSize: 'File size',
+    pages: 'pages',
+    pageCount: 'Pages',
     detailsTitle: 'Book details',
     whatYouWillLearn: 'What you will learn',
     close: 'Close',
@@ -109,9 +115,9 @@ const UI_COPY: Record<EbookLocale, Record<string, string>> = {
     category: 'Category',
     emptyTitle: 'No books match your search.',
     emptyBody: 'Try changing the search terms or selected filter.',
-    readingStepOne: 'Start with the comprehensive financial guide to understand money management fundamentals.',
-    readingStepTwo: 'Then move to trading basics if you want to understand markets and risk management.',
-    readingStepThree: 'After that, read the feasibility study guide if you are planning a project or investment decision.',
+    readingStepOne: 'Start with Savings and Investment to build a clear financial foundation.',
+    readingStepTwo: 'Then read Reading and Analyzing Stock Candlesticks to understand price movement in a disciplined trading context.',
+    readingStepThree: 'After that, read Feasibility Study: Practical Guide if you are planning a project or investment decision.',
     disclaimerTitle: 'Educational notice',
     disclaimerBody: 'These books are for educational purposes only and are not financial or investment advice.',
     relatedBooks: 'Related books',
@@ -132,6 +138,7 @@ const UI_COPY: Record<EbookLocale, Record<string, string>> = {
     categoriesCount: 'Catégories',
     latestAddition: 'Dernier ajout',
     featuredBook: 'Livre recommandé',
+    featuredReason: 'Adapté aux utilisateurs des analyses de marché et du trading.',
     allBooks: 'Tous les livres',
     browseByCategory: 'Parcourir par catégorie',
     readingPath: 'Parcours de lecture suggéré',
@@ -140,6 +147,8 @@ const UI_COPY: Record<EbookLocale, Record<string, string>> = {
     viewDetails: 'Voir les détails',
     fileType: 'PDF',
     fileSize: 'Taille du fichier',
+    pages: 'pages',
+    pageCount: 'Pages',
     detailsTitle: 'Détails du livre',
     whatYouWillLearn: 'Ce que vous apprendrez',
     close: 'Fermer',
@@ -148,9 +157,9 @@ const UI_COPY: Record<EbookLocale, Record<string, string>> = {
     category: 'Catégorie',
     emptyTitle: 'Aucun livre ne correspond à votre recherche.',
     emptyBody: 'Essayez de modifier les mots-clés ou le filtre sélectionné.',
-    readingStepOne: 'Commencez par le guide financier complet pour comprendre les bases de la gestion de l’argent.',
-    readingStepTwo: 'Passez ensuite aux bases du trading si vous souhaitez comprendre les marchés et la gestion des risques.',
-    readingStepThree: 'Lisez ensuite le guide de faisabilité si vous préparez un projet ou une décision d’investissement.',
+    readingStepOne: 'Commencez par Épargne et investissement pour bâtir une base financière claire.',
+    readingStepTwo: 'Lisez ensuite Lire et analyser les chandeliers des actions pour comprendre le mouvement des prix dans un cadre de trading discipliné.',
+    readingStepThree: 'Lisez ensuite Étude de faisabilité : guide pratique si vous préparez un projet ou une décision d’investissement.',
     disclaimerTitle: 'Avis éducatif',
     disclaimerBody: 'Ces livres sont fournis à des fins éducatives et ne constituent pas un conseil financier ou d’investissement.',
     relatedBooks: 'Livres associés',
@@ -163,11 +172,13 @@ const UI_COPY: Record<EbookLocale, Record<string, string>> = {
 const FILTERS: Array<{ id: FilterId; label: Record<EbookLocale, string> }> = [
   { id: 'all', label: { ar: 'الكل', en: 'All', fr: 'Tout' } },
   { id: 'personal-finance', label: { ar: 'إدارة الأموال', en: 'Personal finance', fr: 'Finances personnelles' } },
+  { id: 'investment', label: { ar: 'الاستثمار', en: 'Investment', fr: 'Investissement' } },
   { id: 'trading', label: { ar: 'التداول', en: 'Trading', fr: 'Trading' } },
   { id: 'feasibility', label: { ar: 'دراسة الجدوى', en: 'Feasibility studies', fr: 'Études de faisabilité' } },
   { id: 'ar', label: { ar: 'العربية', en: 'Arabic', fr: 'Arabe' } },
   { id: 'en', label: { ar: 'الإنجليزية', en: 'English', fr: 'Anglais' } },
   { id: 'fr', label: { ar: 'الفرنسية', en: 'French', fr: 'Français' } },
+  { id: 'multilingual', label: { ar: 'متعدد اللغات', en: 'Multilingual', fr: 'Multilingue' } },
 ];
 
 function localeFrom(lang: string): EbookLocale {
@@ -176,6 +187,36 @@ function localeFrom(lang: string): EbookLocale {
 
 function normalize(value: string) {
   return value.trim().toLowerCase();
+}
+
+function isCategoryFilter(filter: FilterId): filter is EbookCategory {
+  return Object.prototype.hasOwnProperty.call(EBOOK_CATEGORY_LABELS, filter);
+}
+
+function isLanguageFilter(filter: FilterId): filter is EbookLanguage {
+  return Object.prototype.hasOwnProperty.call(EBOOK_LANGUAGE_LABELS, filter);
+}
+
+function bookCategories(book: Ebook) {
+  return Array.from(new Set([book.category, ...(book.categories ?? [])]));
+}
+
+function bookLanguages(book: Ebook) {
+  return book.languages ?? (book.language === 'multilingual' ? [] : [book.language]);
+}
+
+function bookMatchesCategory(book: Ebook, category: EbookCategory) {
+  return bookCategories(book).includes(category);
+}
+
+function bookMatchesFilter(book: Ebook, filter: FilterId) {
+  if (filter === 'all') return true;
+  if (isCategoryFilter(filter)) return bookMatchesCategory(book, filter);
+  if (isLanguageFilter(filter)) {
+    if (filter === 'multilingual') return book.language === 'multilingual';
+    return book.language === filter || book.languages?.includes(filter);
+  }
+  return false;
 }
 
 function coverLabel(book: Ebook, locale: EbookLocale) {
@@ -198,9 +239,14 @@ function EbookCover({ book, locale }: { book: Ebook; locale: EbookLocale }) {
 }
 
 function EbookBadges({ book, locale }: { book: Ebook; locale: EbookLocale }) {
+  const languageList = bookLanguages(book)
+    .map(language => ebookText(EBOOK_LANGUAGE_LABELS[language], locale))
+    .join(' · ');
+
   return (
     <div className="ebook-badges">
       <span>{ebookText(EBOOK_LANGUAGE_LABELS[book.language], locale)}</span>
+      {book.language === 'multilingual' && languageList ? <span>{languageList}</span> : null}
       <span>{ebookText(EBOOK_CATEGORY_LABELS[book.category], locale)}</span>
       <span dir="ltr">PDF</span>
     </div>
@@ -248,6 +294,7 @@ function EbookCard({
         </div>
         <div className="ebook-meta-row">
           <span><FileText size={15} aria-hidden="true" />{text.fileType}</span>
+          {book.pages ? <span><BookOpen size={15} aria-hidden="true" /><span dir="ltr">{book.pages}</span> {text.pages}</span> : null}
           {size ? <span dir="ltr">{size}</span> : <span>{text.noPages}</span>}
         </div>
         <EbookActions book={book} text={text} />
@@ -271,10 +318,7 @@ export default function EbooksPage() {
   const filteredBooks = useMemo(() => {
     const term = normalize(query);
     return ebooks.filter(book => {
-      const matchesFilter = activeFilter === 'all'
-        || book.category === activeFilter
-        || book.language === activeFilter;
-      if (!matchesFilter) return false;
+      if (!bookMatchesFilter(book, activeFilter)) return false;
       if (!term) return true;
       const searchable = [
         ebookText(book.title, locale),
@@ -282,19 +326,22 @@ export default function EbooksPage() {
         ebookText(EBOOK_CATEGORY_LABELS[book.category], locale),
         ebookText(EBOOK_LANGUAGE_LABELS[book.language], locale),
         book.originalTitle,
+        ...bookLanguages(book).map(language => ebookText(EBOOK_LANGUAGE_LABELS[language], locale)),
+        ...bookCategories(book).map(category => ebookText(EBOOK_CATEGORY_LABELS[category], locale)),
         ...book.topics.flatMap(topic => [topic.ar, topic.en, topic.fr]),
+        ...(book.searchTerms ?? []).flatMap(term => [term.ar, term.en, term.fr]),
       ].join(' ');
       return normalize(searchable).includes(term);
     });
   }, [activeFilter, locale, query]);
 
-  const languageCount = new Set(ebooks.map(book => book.language)).size;
-  const categoryCount = new Set(ebooks.map(book => book.category)).size;
+  const languageCount = new Set(ebooks.flatMap(bookLanguages)).size;
+  const categoryCount = Object.keys(EBOOK_CATEGORY_LABELS).length;
   const featuredBook = ebooks[0];
   const latestBook = ebooks[0];
   const categorySummaries = (Object.keys(EBOOK_CATEGORY_LABELS) as EbookCategory[]).map(category => ({
     category,
-    count: ebooks.filter(book => book.category === category).length,
+    count: ebooks.filter(book => bookMatchesCategory(book, category)).length,
   }));
 
   return (
@@ -367,7 +414,7 @@ export default function EbooksPage() {
           <div className="ebooks-section-head">
             <span>{text.featuredBook}</span>
             <h2 id="ebooks-featured-title">{ebookText(featuredBook.title, locale)}</h2>
-            <p>{ebookText(featuredBook.description, locale)}</p>
+            <p>{text.featuredReason}</p>
           </div>
           <article className="ebooks-featured-card">
             <EbookCover book={featuredBook} locale={locale} />
@@ -481,6 +528,10 @@ export default function EbooksPage() {
                 <div>
                   <dt>{text.category}</dt>
                   <dd>{ebookText(EBOOK_CATEGORY_LABELS[selectedBook.category], locale)}</dd>
+                </div>
+                <div>
+                  <dt>{text.pageCount}</dt>
+                  <dd dir="ltr">{selectedBook.pages ?? '-'}</dd>
                 </div>
                 <div>
                   <dt>{text.fileSize}</dt>
@@ -1250,4 +1301,3 @@ export default function EbooksPage() {
     </div>
   );
 }
-

@@ -1,6 +1,7 @@
 export type EbookLocale = 'ar' | 'en' | 'fr';
-export type EbookLanguage = 'ar' | 'en' | 'fr';
-export type EbookCategory = 'personal-finance' | 'trading' | 'feasibility';
+export type EbookBaseLanguage = 'ar' | 'en' | 'fr';
+export type EbookLanguage = EbookBaseLanguage | 'multilingual';
+export type EbookCategory = 'personal-finance' | 'trading' | 'feasibility' | 'investment';
 export type EbookCoverType = 'finance' | 'trading' | 'feasibility';
 
 export type LocalizedText = Record<EbookLocale, string>;
@@ -11,13 +12,17 @@ export type Ebook = {
   title: LocalizedText;
   originalTitle: string;
   language: EbookLanguage;
+  languages?: EbookBaseLanguage[];
   category: EbookCategory;
+  categories?: EbookCategory[];
   fileUrl: string;
   fileName: string;
   fileSizeBytes: number;
+  pages?: number;
   coverType: EbookCoverType;
   description: LocalizedText;
   topics: LocalizedText[];
+  searchTerms?: LocalizedText[];
   learningPoints: LocalizedText[];
   publishedLabel: LocalizedText;
 };
@@ -27,6 +32,11 @@ export const EBOOK_CATEGORY_LABELS: Record<EbookCategory, LocalizedText> = {
     ar: 'إدارة الأموال الشخصية',
     en: 'Personal Finance',
     fr: 'Finances personnelles',
+  },
+  investment: {
+    ar: 'الاستثمار',
+    en: 'Investment',
+    fr: 'Investissement',
   },
   trading: {
     ar: 'التداول والأسواق',
@@ -44,6 +54,7 @@ export const EBOOK_LANGUAGE_LABELS: Record<EbookLanguage, LocalizedText> = {
   ar: { ar: 'العربية', en: 'Arabic', fr: 'Arabe' },
   en: { ar: 'الإنجليزية', en: 'English', fr: 'Anglais' },
   fr: { ar: 'الفرنسية', en: 'French', fr: 'Français' },
+  multilingual: { ar: 'متعدد اللغات', en: 'Multilingual', fr: 'Multilingue' },
 };
 
 const commonFinancialLearning: LocalizedText[] = [
@@ -64,7 +75,212 @@ const commonFinancialLearning: LocalizedText[] = [
   },
 ];
 
+const candlestickLearning: LocalizedText[] = [
+  {
+    ar: 'تشريح الشمعة اليابانية وفهم معنى جسم الشمعة وظلالها.',
+    en: 'Understand candlestick anatomy, including bodies and shadows.',
+    fr: 'Comprendre l’anatomie des chandeliers, y compris les corps et les mèches.',
+  },
+  {
+    ar: 'فهم نفسية المشترين والبائعين خلف حركة السعر.',
+    en: 'Read the psychology of buyers and sellers behind price movement.',
+    fr: 'Comprendre la psychologie des acheteurs et des vendeurs derrière le mouvement des prix.',
+  },
+  {
+    ar: 'التمييز بين نماذج الانعكاس ونماذج الاستمرار.',
+    en: 'Distinguish reversal patterns from continuation patterns.',
+    fr: 'Distinguer les figures de retournement des figures de continuation.',
+  },
+  {
+    ar: 'استخدام الشموع ضمن خطة تداول منضبطة.',
+    en: 'Use candlesticks within a disciplined trading plan.',
+    fr: 'Utiliser les chandeliers dans un plan de trading discipliné.',
+  },
+  {
+    ar: 'تجنب الاعتماد على الشمعة وحدها دون سياق فني واضح.',
+    en: 'Avoid relying on a single candle without clear technical context.',
+    fr: 'Éviter de s’appuyer sur un seul chandelier sans contexte technique clair.',
+  },
+];
+
+const savingsInvestmentLearning: LocalizedText[] = [
+  {
+    ar: 'بناء عادة الادخار بطريقة عملية ومستدامة.',
+    en: 'Build a practical and sustainable savings habit.',
+    fr: 'Construire une habitude d’épargne pratique et durable.',
+  },
+  {
+    ar: 'فهم الفرق بين الادخار والاستثمار.',
+    en: 'Understand the difference between saving and investing.',
+    fr: 'Comprendre la différence entre épargne et investissement.',
+  },
+  {
+    ar: 'تطبيق قاعدة 50/30/20 وصندوق الطوارئ في التخطيط المالي.',
+    en: 'Apply the 50/30/20 rule and emergency funds to financial planning.',
+    fr: 'Appliquer la règle 50/30/20 et le fonds d’urgence à la planification financière.',
+  },
+  {
+    ar: 'فهم الفائدة المركبة وأثر التضخم على القوة الشرائية.',
+    en: 'Understand compounding and the impact of inflation on purchasing power.',
+    fr: 'Comprendre les intérêts composés et l’effet de l’inflation sur le pouvoir d’achat.',
+  },
+  {
+    ar: 'بناء محفظة استثمارية متوازنة وفق مستوى المخاطر المناسب.',
+    en: 'Build a balanced investment portfolio aligned with suitable risk levels.',
+    fr: 'Construire un portefeuille équilibré selon un niveau de risque adapté.',
+  },
+];
+
 export const ebooks: Ebook[] = [
+  {
+    id: 'candlestick-analysis-ar-en-fr',
+    slug: 'candlestick-analysis',
+    title: {
+      ar: 'قراءة شموع الأسهم وتحليلها',
+      en: 'Reading and Analyzing Stock Candlesticks',
+      fr: 'Lire et analyser les chandeliers des actions',
+    },
+    originalTitle: 'قراءة شموع الأسهم وتحليلها',
+    language: 'multilingual',
+    languages: ['ar', 'en', 'fr'],
+    category: 'trading',
+    fileUrl: '/ebooks/candlestick-analysis-ar-en-fr.pdf',
+    fileName: 'candlestick-analysis-ar-en-fr.pdf',
+    fileSizeBytes: 131818,
+    pages: 24,
+    coverType: 'trading',
+    description: {
+      ar: 'كتاب تفصيلي يشرح بنية الشمعة، نفسية السوق، أشهر نماذج الشموع، وشروط استخدامها ضمن خطة تداول منضبطة.',
+      en: 'A detailed guide explaining candle anatomy, market psychology, common candlestick patterns, and how to use them within a disciplined trading plan.',
+      fr: 'Un guide détaillé expliquant l’anatomie des chandeliers, la psychologie du marché, les figures courantes et leur utilisation dans un plan de trading discipliné.',
+    },
+    topics: [
+      { ar: 'الشموع اليابانية', en: 'Candlesticks', fr: 'Chandeliers japonais' },
+      { ar: 'قراءة الشارت', en: 'Chart reading', fr: 'Lecture graphique' },
+      { ar: 'نماذج الانعكاس', en: 'Reversal patterns', fr: 'Figures de retournement' },
+      { ar: 'نماذج الاستمرار', en: 'Continuation patterns', fr: 'Figures de continuation' },
+      { ar: 'إدارة المخاطر', en: 'Risk management', fr: 'Gestion du risque' },
+    ],
+    searchTerms: [
+      { ar: 'شموع', en: 'candlesticks', fr: 'chandeliers' },
+      { ar: 'التداول', en: 'trading', fr: 'trading' },
+      { ar: 'قراءة الشارت', en: 'chart reading', fr: 'lecture graphique' },
+      { ar: 'التحليل الفني', en: 'technical analysis', fr: 'analyse technique' },
+    ],
+    learningPoints: candlestickLearning,
+    publishedLabel: { ar: 'إضافة حديثة', en: 'Recently added', fr: 'Ajout récent' },
+  },
+  {
+    id: 'savings-investment-ar',
+    slug: 'savings-investment-ar',
+    title: {
+      ar: 'المدخرات والاستثمار',
+      en: 'Savings and Investment',
+      fr: 'Épargne et investissement',
+    },
+    originalTitle: 'المدخرات والاستثمار',
+    language: 'ar',
+    category: 'personal-finance',
+    categories: ['personal-finance', 'investment'],
+    fileUrl: '/ebooks/savings-investment-ar.pdf',
+    fileName: 'savings-investment-ar.pdf',
+    fileSizeBytes: 721190,
+    pages: 49,
+    coverType: 'finance',
+    description: {
+      ar: 'دليل شامل من أول مبلغ تدخره إلى بناء محفظة استثمارية متوازنة، مع شرح الادخار، صندوق الطوارئ، الفائدة المركبة، التضخم، وأساسيات الاستثمار.',
+      en: 'A complete Arabic guide to saving, emergency funds, compounding, inflation, and building a balanced investment portfolio.',
+      fr: 'Un guide arabe complet sur l’épargne, le fonds d’urgence, les intérêts composés, l’inflation et la construction d’un portefeuille équilibré.',
+    },
+    topics: [
+      { ar: 'الادخار', en: 'Savings', fr: 'Épargne' },
+      { ar: 'الاستثمار', en: 'Investment', fr: 'Investissement' },
+      { ar: 'صندوق الطوارئ', en: 'Emergency fund', fr: 'Fonds d’urgence' },
+      { ar: 'قاعدة 50/30/20', en: '50/30/20 rule', fr: 'Règle 50/30/20' },
+      { ar: 'الفائدة المركبة', en: 'Compound interest', fr: 'Intérêts composés' },
+      { ar: 'التضخم', en: 'Inflation', fr: 'Inflation' },
+    ],
+    searchTerms: [
+      { ar: 'المدخرات', en: 'savings', fr: 'épargne' },
+      { ar: 'الاستثمار', en: 'investment', fr: 'investissement' },
+      { ar: 'صندوق الطوارئ', en: 'emergency fund', fr: 'fonds d’urgence' },
+      { ar: 'الفائدة المركبة', en: 'compounding', fr: 'intérêts composés' },
+    ],
+    learningPoints: savingsInvestmentLearning,
+    publishedLabel: { ar: 'إضافة حديثة', en: 'Recently added', fr: 'Ajout récent' },
+  },
+  {
+    id: 'savings-investment-en',
+    slug: 'savings-investment-en',
+    title: {
+      ar: 'المدخرات والاستثمار - النسخة الإنجليزية',
+      en: 'Savings & Investment',
+      fr: 'Épargne et investissement - Anglais',
+    },
+    originalTitle: 'Savings & Investment',
+    language: 'en',
+    category: 'personal-finance',
+    categories: ['personal-finance', 'investment'],
+    fileUrl: '/ebooks/savings-investment-en.pdf',
+    fileName: 'savings-investment-en.pdf',
+    fileSizeBytes: 709132,
+    pages: 49,
+    coverType: 'finance',
+    description: {
+      ar: 'النسخة الإنجليزية من دليل المدخرات والاستثمار، وتشرح بناء عادة الادخار، حماية المال، وتنمية المحفظة الاستثمارية.',
+      en: 'A complete guide from the first unit you save to a balanced investment portfolio, covering concepts, examples, charts, and practical steps.',
+      fr: 'La version anglaise du guide sur l’épargne et l’investissement.',
+    },
+    topics: [
+      { ar: 'الادخار', en: 'Savings', fr: 'Épargne' },
+      { ar: 'الاستثمار', en: 'Investment', fr: 'Investissement' },
+      { ar: 'التخطيط المالي', en: 'Financial planning', fr: 'Planification financière' },
+    ],
+    searchTerms: [
+      { ar: 'المدخرات', en: 'savings', fr: 'épargne' },
+      { ar: 'الاستثمار', en: 'investment', fr: 'investissement' },
+      { ar: 'صندوق الطوارئ', en: 'emergency fund', fr: 'fonds d’urgence' },
+      { ar: 'الفائدة المركبة', en: 'compounding', fr: 'intérêts composés' },
+    ],
+    learningPoints: savingsInvestmentLearning,
+    publishedLabel: { ar: 'إضافة حديثة', en: 'Recently added', fr: 'Ajout récent' },
+  },
+  {
+    id: 'savings-investment-fr',
+    slug: 'savings-investment-fr',
+    title: {
+      ar: 'المدخرات والاستثمار - النسخة الفرنسية',
+      en: 'Savings & Investment - French',
+      fr: 'L’Épargne et l’Investissement',
+    },
+    originalTitle: 'L’Épargne et l’Investissement',
+    language: 'fr',
+    category: 'personal-finance',
+    categories: ['personal-finance', 'investment'],
+    fileUrl: '/ebooks/savings-investment-fr.pdf',
+    fileName: 'savings-investment-fr.pdf',
+    fileSizeBytes: 736752,
+    pages: 49,
+    coverType: 'finance',
+    description: {
+      ar: 'النسخة الفرنسية من دليل المدخرات والاستثمار، وتشرح الادخار، الاستثمار، صندوق الطوارئ، والتخطيط المالي.',
+      en: 'The French version of the savings and investment guide.',
+      fr: 'Un guide complet, du premier euro épargné à un portefeuille équilibré, avec concepts, exemples, graphiques et étapes pratiques.',
+    },
+    topics: [
+      { ar: 'الادخار', en: 'Savings', fr: 'Épargne' },
+      { ar: 'الاستثمار', en: 'Investment', fr: 'Investissement' },
+      { ar: 'التخطيط المالي', en: 'Financial planning', fr: 'Planification financière' },
+    ],
+    searchTerms: [
+      { ar: 'المدخرات', en: 'savings', fr: 'épargne' },
+      { ar: 'الاستثمار', en: 'investment', fr: 'investissement' },
+      { ar: 'صندوق الطوارئ', en: 'emergency fund', fr: 'fonds d’urgence' },
+      { ar: 'الفائدة المركبة', en: 'compounding', fr: 'intérêts composés' },
+    ],
+    learningPoints: savingsInvestmentLearning,
+    publishedLabel: { ar: 'إضافة حديثة', en: 'Recently added', fr: 'Ajout récent' },
+  },
   {
     id: 'financial-guide-ar',
     slug: 'financial-guide',
@@ -76,6 +292,7 @@ export const ebooks: Ebook[] = [
     originalTitle: 'الدليل المالي الشامل',
     language: 'ar',
     category: 'personal-finance',
+    categories: ['personal-finance', 'investment'],
     fileUrl: '/ebooks/financial-guide-ar.pdf',
     fileName: 'financial-guide-ar.pdf',
     fileSizeBytes: 1334715,
@@ -194,9 +411,9 @@ export const ebooks: Ebook[] = [
     id: 'feasibility-study-en',
     slug: 'feasibility-study-en',
     title: {
-      ar: 'Feasibility Study: Practical Guide',
+      ar: 'دراسة الجدوى: دليل عملي - النسخة الإنجليزية',
       en: 'Feasibility Study: Practical Guide',
-      fr: 'Feasibility Study: Practical Guide',
+      fr: 'Étude de faisabilité : guide pratique - Anglais',
     },
     originalTitle: 'Feasibility Study: Practical Guide',
     language: 'en',
@@ -240,8 +457,8 @@ export const ebooks: Ebook[] = [
     id: 'feasibility-study-fr',
     slug: 'feasibility-study-fr',
     title: {
-      ar: 'L’Étude de Faisabilité : Guide Pratique',
-      en: 'Feasibility Study: Practical Guide',
+      ar: 'دراسة الجدوى: دليل عملي - النسخة الفرنسية',
+      en: 'Feasibility Study: Practical Guide - French',
       fr: 'L’Étude de Faisabilité : Guide Pratique',
     },
     originalTitle: 'L’Étude de Faisabilité : Guide Pratique',
@@ -297,4 +514,3 @@ export function formatEbookSize(bytes: number) {
   const mb = bytes / (1024 * 1024);
   return `${mb.toFixed(mb >= 1 ? 1 : 2)} MB`;
 }
-
