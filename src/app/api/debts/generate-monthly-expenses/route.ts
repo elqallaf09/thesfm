@@ -95,6 +95,10 @@ async function processDebt(db: any, debt: DebtRow, paymentDate: string) {
     .eq('payment_date', paymentDate)
     .maybeSingle();
 
+  if (existingPayment.error) {
+    return { debtId: debt.id, status: 'error', reason: existingPayment.error.message };
+  }
+
   if (existingPayment.data?.id) {
     return { debtId: debt.id, status: 'skipped', reason: 'payment_exists' };
   }
@@ -107,6 +111,10 @@ async function processDebt(db: any, debt: DebtRow, paymentDate: string) {
     .eq('source', 'debt')
     .eq('date', paymentDate)
     .maybeSingle();
+
+  if (existingExpense.error) {
+    return { debtId: debt.id, status: 'error', reason: existingExpense.error.message };
+  }
 
   const payment = calculatePayment(debt);
   if (payment.amount <= 0) {
@@ -152,6 +160,7 @@ async function processDebt(db: any, debt: DebtRow, paymentDate: string) {
       amount: payment.amount,
       interest_amount: payment.interestAmount,
       principal_amount: payment.principalAmount,
+      currency: debt.currency || 'KWD',
       expense_id: expenseId,
     })
     .select('id')
@@ -186,7 +195,14 @@ async function processDebt(db: any, debt: DebtRow, paymentDate: string) {
 async function handleGenerateMonthlyExpenses(request: NextRequest) {
   const admin = createServerSupabaseAdmin();
   if (!admin) {
-    return NextResponse.json({ success: false, error: 'Supabase service role is not configured.' }, { status: 503 });
+    console.warn('[debts] monthly payment generation skipped: service role is not configured');
+    return NextResponse.json({
+      ok: false,
+      success: false,
+      ignored: true,
+      code: 'SUPABASE_SERVICE_ROLE_NOT_CONFIGURED',
+      processed: 0,
+    });
   }
 
   const cronAuthorized = isCronAuthorized(request);
@@ -208,23 +224,67 @@ async function handleGenerateMonthlyExpenses(request: NextRequest) {
 
   const { data, error } = await query;
   if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('[debts] monthly payment generation failed', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    return NextResponse.json({
+      ok: false,
+      success: false,
+      code: 'DEBT_PAYMENT_GENERATION_FAILED',
+      processed: 0,
+    });
   }
 
   const dueDebts = (data ?? []).filter((debt: DebtRow) => isDueToday(debt, baseDate));
+  if (dueDebts.length === 0) {
+    return NextResponse.json({
+      ok: true,
+      success: true,
+      scope: cronAuthorized ? 'all_users' : 'current_user',
+      paymentDate,
+      processed: 0,
+      skipped: 0,
+      errors: 0,
+      message: 'NO_DUE_DEBTS',
+      results: [],
+    });
+  }
+
   const results = [];
   for (const debt of dueDebts) {
     results.push(await processDebt(admin, debt as DebtRow, paymentDate));
   }
+  const createdCount = results.filter(item => item.status === 'created').length;
+  const skippedCount = results.filter(item => item.status === 'skipped').length;
+  const errorCount = results.filter(item => item.status === 'error').length;
+  if (errorCount > 0) {
+    console.error('[debts] monthly payment generation completed with errors', {
+      paymentDate,
+      errors: errorCount,
+      results,
+    });
+  }
 
   return NextResponse.json({
-    success: true,
+    ok: errorCount === 0,
+    success: errorCount === 0,
+    code: errorCount > 0 ? 'DEBT_PAYMENT_GENERATION_FAILED' : undefined,
     scope: cronAuthorized ? 'all_users' : 'current_user',
     paymentDate,
-    processed: results.filter(item => item.status === 'created').length,
-    skipped: results.filter(item => item.status === 'skipped').length,
-    errors: results.filter(item => item.status === 'error').length,
-    results,
+    processed: createdCount,
+    skipped: skippedCount,
+    errors: errorCount,
+    results: results.map(item => ({
+      debtId: item.debtId,
+      status: item.status,
+      reason: item.status === 'error' ? 'processing_failed' : item.reason,
+      expenseId: item.expenseId,
+      paymentId: item.paymentId,
+      warning: item.warning,
+    })),
   });
 }
 

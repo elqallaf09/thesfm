@@ -28,6 +28,10 @@ const ALLOWED_EVENTS = new Set([
 
 const SENSITIVE_KEY_PATTERN = /(amount|value|salary|income|expense|saving|zakat|goal|note|description|phone|mobile|security|password|document|file|private|token|secret)/i;
 
+function ignored(code: string) {
+  return NextResponse.json({ ok: false, success: false, ignored: true, code });
+}
+
 function text(value: unknown, limit = 240) {
   if (typeof value !== 'string') return null;
   const clean = value.trim();
@@ -99,7 +103,10 @@ export async function POST(request: Request) {
     }
 
     const admin = createServerSupabaseAdmin();
-    if (!admin) return NextResponse.json({ success: false, error: 'analytics_not_configured' }, { status: 503 });
+    if (!admin) {
+      console.warn('[analytics] tracking ignored: service role is not configured');
+      return ignored('ANALYTICS_SERVICE_NOT_CONFIGURED');
+    }
 
     const userAgent = request.headers.get('user-agent') || '';
     const cookieStore = await cookies();
@@ -147,11 +154,17 @@ export async function POST(request: Request) {
       .upsert(sessionPayload, { onConflict: 'session_id' });
 
     const eventResult = await admin.from('site_events').insert(eventPayload);
-    if (!eventResult.error) return NextResponse.json({ success: true });
+    if (!eventResult.error) return NextResponse.json({ ok: true, success: true });
 
     const missingSiteTables = eventResult.error.code === '42P01' || sessionResult.error?.code === '42P01';
     if (!missingSiteTables) {
-      return NextResponse.json({ success: false, error: 'analytics_insert_failed' }, { status: 500 });
+      console.error('[analytics] tracking insert failed', {
+        eventCode: eventResult.error.code,
+        eventMessage: eventResult.error.message,
+        sessionCode: sessionResult.error?.code,
+        sessionMessage: sessionResult.error?.message,
+      });
+      return ignored('ANALYTICS_TRACK_FAILED');
     }
 
     const legacyResult = await admin.from('analytics_events').insert({
@@ -170,11 +183,18 @@ export async function POST(request: Request) {
     });
 
     if (legacyResult.error) {
-      return NextResponse.json({ success: false, error: 'analytics_insert_failed' }, { status: 500 });
+      console.error('[analytics] fallback tracking insert failed', {
+        eventCode: eventResult.error.code,
+        eventMessage: eventResult.error.message,
+        legacyCode: legacyResult.error.code,
+        legacyMessage: legacyResult.error.message,
+      });
+      return ignored('ANALYTICS_TABLES_MISSING');
     }
 
-    return NextResponse.json({ success: true, fallback: 'analytics_events' });
-  } catch {
-    return NextResponse.json({ success: false, error: 'analytics_failed' }, { status: 500 });
+    return NextResponse.json({ ok: true, success: true, fallback: 'analytics_events' });
+  } catch (error) {
+    console.error('[analytics] tracking failed', error);
+    return ignored('ANALYTICS_TRACK_FAILED');
   }
 }

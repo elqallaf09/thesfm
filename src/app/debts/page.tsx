@@ -58,6 +58,7 @@ type DebtPaymentRow = {
   amount: number | string;
   interest_amount: number | string | null;
   principal_amount: number | string | null;
+  currency: string | null;
   expense_id: string | null;
 };
 
@@ -628,6 +629,7 @@ export default function DebtsPage() {
         amount: payment.amount,
         interest_amount: payment.interestAmount,
         principal_amount: payment.principalAmount,
+        currency: debt.currency || 'KWD',
         expense_id: expenseId,
       });
       if (paymentInsert.error) throw paymentInsert.error;
