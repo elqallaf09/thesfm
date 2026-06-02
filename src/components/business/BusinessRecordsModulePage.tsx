@@ -124,6 +124,71 @@ function isSupplierSchemaError(error: any) {
   );
 }
 
+function formatDateToYYYYMMDD(value: string) {
+  const normalized = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    const parsed = new Date(`${normalized}T00:00:00Z`);
+    if (!Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === normalized) return normalized;
+  }
+
+  const slashDate = normalized.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashDate) {
+    const month = Number(slashDate[1]);
+    const day = Number(slashDate[2]);
+    const year = Number(slashDate[3]);
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      const candidate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const parsed = new Date(`${candidate}T00:00:00Z`);
+      if (!Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === candidate) return candidate;
+    }
+  }
+
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toISOString().slice(0, 10);
+}
+
+function logOperatingExpensesLoadFailure(error: any) {
+  console.error('Operating expenses load failed:', {
+    message: error?.message,
+    code: error?.code,
+    details: error?.details,
+    hint: error?.hint,
+  });
+}
+
+function logOperatingExpenseSaveFailure(error: any) {
+  console.error('Operating expense save failed:', {
+    message: error?.message,
+    code: error?.code,
+    details: error?.details,
+    hint: error?.hint,
+  });
+}
+
+function isBusinessAccessDeniedError(error: any) {
+  const code = String(error?.code ?? '');
+  const message = String(error?.message ?? '').toLowerCase();
+  return code === '42501' || message.includes('row-level security') || message.includes('permission denied');
+}
+
+function isBusinessSchemaError(error: any) {
+  const code = String(error?.code ?? '');
+  const message = `${error?.message ?? ''} ${error?.details ?? ''}`.toLowerCase();
+  return (
+    code === '42P01' ||
+    code === '42703' ||
+    code === '23502' ||
+    code === '23503' ||
+    code === '23514' ||
+    code === 'PGRST204' ||
+    message.includes('schema cache') ||
+    message.includes('does not exist') ||
+    message.includes('column') ||
+    message.includes('constraint')
+  );
+}
+
 function booleanLabel(value: unknown, locale: BusinessLang) {
   if (locale === 'ar') return value ? 'نعم' : 'لا';
   if (locale === 'fr') return value ? 'Oui' : 'Non';
@@ -377,6 +442,7 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
 
   const loadRows = useCallback(async () => {
     if (!user || !permissions.canViewBusinessModules) {
+      if (module === 'operatingExpenses' && !user) setError(text.operatingExpenseAuthRequired);
       setRows([]);
       setCustomerRows([]);
       setLoading(false);
@@ -387,13 +453,28 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
     setError('');
     const db = supabase as any;
     const orderColumn = config.dateField ?? 'created_at';
+    const recordsQuery = module === 'operatingExpenses'
+      ? db.from('business_operating_expenses').select('*').eq('user_id', user.id).order('expense_date', { ascending: false })
+      : db.from(config.tableName).select('*').eq('user_id', user.id).order(orderColumn, { ascending: false }).order('created_at', { ascending: false });
     const queries = [
       db.from('profiles').select('default_currency').eq('id', user.id).maybeSingle(),
-      db.from(config.tableName).select('*').eq('user_id', user.id).order(orderColumn, { ascending: false }).order('created_at', { ascending: false }),
+      recordsQuery,
       db.from('business_customers').select('id, name').eq('user_id', user.id).order('created_at', { ascending: false }),
     ];
 
-    const [profileResult, recordsResult, customersResult] = await Promise.all(queries);
+    let results;
+    try {
+      results = await Promise.all(queries);
+    } catch (loadError) {
+      if (module === 'operatingExpenses') logOperatingExpensesLoadFailure(loadError);
+      setRows([]);
+      setCustomerRows([]);
+      setError(text.loadError);
+      setLoading(false);
+      return;
+    }
+
+    const [profileResult, recordsResult, customersResult] = results;
 
     if (!profileResult.error && profileResult.data?.default_currency) {
       setDefaultCurrency(profileResult.data.default_currency);
@@ -406,13 +487,14 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
     }
 
     if (recordsResult.error) {
+      if (module === 'operatingExpenses') logOperatingExpensesLoadFailure(recordsResult.error);
       setError(text.loadError);
       setRows([]);
     } else {
       setRows((recordsResult.data ?? []) as BusinessRecord[]);
     }
     setLoading(false);
-  }, [config.dateField, config.tableName, permissions.canViewBusinessModules, text.loadError, user]);
+  }, [config.dateField, config.tableName, module, permissions.canViewBusinessModules, text.loadError, text.operatingExpenseAuthRequired, user]);
 
   useEffect(() => {
     if (!authLoading && !roleLoading) void loadRows();
@@ -471,12 +553,12 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
   }
 
   function buildPayload(currentUserId: string) {
-    if (module === 'suppliers') {
-      const optionalText = (key: string) => {
-        const normalized = valueAsString(form[key]).trim();
-        return normalized || null;
-      };
+    const optionalText = (key: string) => {
+      const normalized = valueAsString(form[key]).trim();
+      return normalized || null;
+    };
 
+    if (module === 'suppliers') {
       return {
         user_id: currentUserId,
         name: valueAsString(form.name).trim(),
@@ -485,6 +567,19 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
         company: optionalText('company'),
         supply_type: optionalText('supply_type'),
         address: optionalText('address'),
+        notes: optionalText('notes'),
+      };
+    }
+
+    if (module === 'operatingExpenses') {
+      return {
+        user_id: currentUserId,
+        name: valueAsString(form.name).trim(),
+        category: optionalText('category'),
+        amount: numericValue(form.amount),
+        currency: valueAsString(form.currency || defaultCurrency || 'KWD').trim() || 'KWD',
+        expense_date: formatDateToYYYYMMDD(valueAsString(form.expense_date)),
+        recurring_monthly: Boolean(form.recurring_monthly),
         notes: optionalText('notes'),
       };
     }
@@ -509,12 +604,16 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user) {
-      setFormError(module === 'suppliers' ? text.supplierAuthRequired : text.permissionDenied);
+      if (module === 'suppliers') setFormError(text.supplierAuthRequired);
+      else if (module === 'operatingExpenses') setFormError(text.operatingExpenseAuthRequired);
+      else setFormError(text.permissionDenied);
       return;
     }
     const currentUserId = user.id;
     if (!currentUserId) {
-      setFormError(module === 'suppliers' ? text.supplierAuthRequired : text.permissionDenied);
+      if (module === 'suppliers') setFormError(text.supplierAuthRequired);
+      else if (module === 'operatingExpenses') setFormError(text.operatingExpenseAuthRequired);
+      else setFormError(text.permissionDenied);
       return;
     }
     if (!permissions.canWriteBusinessModules) {
@@ -536,15 +635,44 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
       }
     }
 
+    if (module === 'operatingExpenses') {
+      const expenseName = valueAsString(form.name).trim();
+      const amount = numericValue(form.amount);
+      const selectedCurrency = valueAsString(form.currency || defaultCurrency || 'KWD').trim();
+      const expenseDate = valueAsString(form.expense_date).trim();
+      const normalizedExpenseDate = formatDateToYYYYMMDD(expenseDate);
+
+      if (!expenseName) {
+        setFormError(text.operatingExpenseNameRequired);
+        return;
+      }
+      if (!Number.isFinite(amount) || amount <= 0) {
+        setFormError(text.operatingExpenseAmountRequired);
+        return;
+      }
+      if (!selectedCurrency) {
+        setFormError(text.businessValidationRequired);
+        return;
+      }
+      if (!expenseDate) {
+        setFormError(text.operatingExpenseDateRequired);
+        return;
+      }
+      if (!normalizedExpenseDate) {
+        setFormError(text.operatingExpenseDateInvalid);
+        return;
+      }
+    }
+
     for (const field of config.fields) {
       if (!field.required) continue;
       const value = form[field.key];
       if (field.type === 'number' && numericValue(value) <= 0) {
-        setFormError(text.invalidAmount);
+        setFormError(module === 'operatingExpenses' ? text.operatingExpenseAmountRequired : text.invalidAmount);
         return;
       }
       if (field.type !== 'number' && !valueAsString(value).trim()) {
-        setFormError(module === 'suppliers' ? text.businessValidationRequired : text.requiredField);
+        setFormError(module === 'suppliers' || module === 'operatingExpenses' ? text.businessValidationRequired : text.requiredField);
         return;
       }
     }
@@ -563,7 +691,8 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
     } catch (error) {
       setSaving(false);
       if (module === 'suppliers') logSupplierSaveFailure(error);
-      setFormError(module === 'suppliers' ? text.networkSaveError : text.saveError);
+      if (module === 'operatingExpenses') logOperatingExpenseSaveFailure(error);
+      setFormError(module === 'suppliers' || module === 'operatingExpenses' ? text.networkSaveError : text.saveError);
       return;
     }
 
@@ -573,6 +702,11 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
         logSupplierSaveFailure(result.error);
         if (isSupplierAccessDeniedError(result.error)) setFormError(text.supplierRlsSaveError);
         else if (isSupplierSchemaError(result.error)) setFormError(text.supplierSchemaSaveError);
+        else setFormError(text.saveError);
+      } else if (module === 'operatingExpenses') {
+        logOperatingExpenseSaveFailure(result.error);
+        if (isBusinessAccessDeniedError(result.error)) setFormError(text.operatingExpenseRlsSaveError);
+        else if (isBusinessSchemaError(result.error)) setFormError(text.operatingExpenseSchemaSaveError);
         else setFormError(text.saveError);
       } else {
         setFormError(text.saveError);
