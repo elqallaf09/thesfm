@@ -2,6 +2,8 @@ export type SfmDataKey =
   | 'profiles'
   | 'income'
   | 'expenses'
+  | 'debts'
+  | 'debtPayments'
   | 'projectIncome'
   | 'projectExpenses'
   | 'savings'
@@ -42,6 +44,8 @@ export type SfmLoadResult<K extends string = SfmDataKey> = {
 export const CORE_FINANCE_TABLES: SfmDataTable[] = [
   { key: 'income', table: 'monthly_income_sources' },
   { key: 'expenses', table: 'expense_items' },
+  { key: 'debts', table: 'debts' },
+  { key: 'debtPayments', table: 'debt_payments' },
   { key: 'savings', table: 'savings_items' },
   { key: 'goals', table: 'financial_goals' },
   { key: 'investments', table: 'investment_items' },
@@ -55,6 +59,8 @@ export const CORE_FINANCE_TABLES: SfmDataTable[] = [
 export const REPORT_DATA_TABLES: SfmDataTable[] = [
   { key: 'income', table: 'monthly_income_sources' },
   { key: 'expenses', table: 'expense_items' },
+  { key: 'debts', table: 'debts' },
+  { key: 'debtPayments', table: 'debt_payments' },
   { key: 'projectIncome', table: 'project_income' },
   { key: 'projectExpenses', table: 'project_expenses' },
   { key: 'savings', table: 'savings_items' },
@@ -79,6 +85,7 @@ export const REPORT_DATA_TABLES: SfmDataTable[] = [
 export const NOTIFICATION_DATA_TABLES: SfmDataTable[] = [
   { key: 'income', table: 'monthly_income_sources' },
   { key: 'expenses', table: 'expense_items' },
+  { key: 'debts', table: 'debts' },
   { key: 'goals', table: 'financial_goals' },
   { key: 'marketPriceAlerts', table: 'market_price_alerts' },
   { key: 'projects', table: 'projects' },
@@ -321,6 +328,14 @@ export function buildFinanceOverview(records: Partial<SfmRecords>) {
   const expenseTotal = sumAmounts(personalExpenses, ['amount']);
   const savingsTotal = sumAmounts(records.savings ?? [], ['amount', 'current_value']);
   const investmentTotal = sumAmounts(records.investments ?? [], ['current_value', 'amount', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
+  const debts = records.debts ?? [];
+  const activeDebts = debts.filter(row => {
+    const status = String(row?.status ?? 'active').trim().toLowerCase();
+    return status !== 'paid';
+  });
+  const debtRemainingTotal = sumAmounts(activeDebts, ['remaining_amount']);
+  const debtOriginalTotal = sumAmounts(debts, ['original_amount']);
+  const monthlyDebtPayments = sumAmounts(activeDebts, ['monthly_payment']);
   const charityTotal = sumAmounts(records.charityDonations ?? [], ['amount', 'donation_amount'])
     + sumAmounts(records.charityProjects ?? [], ['collected_amount', 'current_amount']);
   const zakatDue = sumAmounts(records.zakatCalculations ?? [], ['zakat_due']);
@@ -334,9 +349,14 @@ export function buildFinanceOverview(records: Partial<SfmRecords>) {
     charityTotal,
     zakatDue,
     netBalance,
+    debtOriginalTotal,
+    debtRemainingTotal,
+    monthlyDebtPayments,
     expenseRatio: safeDivide(expenseTotal, incomeTotal),
+    debtToIncomeRatio: safeDivide(monthlyDebtPayments, incomeTotal),
     hasIncome: personalIncome.length > 0,
     hasExpenses: personalExpenses.length > 0,
+    hasDebts: debts.length > 0,
     hasSavings: (records.savings?.length ?? 0) > 0,
     hasInvestments: (records.investments?.length ?? 0) > 0,
     hasGoals: (records.goals?.length ?? 0) > 0,

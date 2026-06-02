@@ -1,3 +1,9 @@
 {
-  "installCommand": "pnpm install --no-frozen-lockfile"
+  "installCommand": "pnpm install --no-frozen-lockfile",
+  "crons": [
+    {
+      "path": "/api/debts/generate-monthly-expenses",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }

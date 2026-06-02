@@ -207,6 +207,7 @@ export const TR: Record<string, TranslationEntry> = {
   nav_documents_center: { ar:'مركز المستندات', en:'Documents Center', fr:'Centre des documents' },
   nav_expenses:   { ar:'المصاريف', en:'Expenses', fr:'Dépenses' },
   nav_income:     { ar:'الدخل', en:'Income', fr:'Revenus' },
+  nav_debts:      { ar:'الديون', en:'Debts', fr:'Dettes' },
   nav_invest:     { ar:'الاستثمارات', en:'Investments', fr:'Investissements' },
   nav_market_analysis: { ar:'تحليلات السوق', en:'Market Analysis', fr:'Analyse du marché' },
   nav_gulf_news: { ar:'أخبار أسواق الخليج', en:'Gulf Market News', fr:'Actualités des marchés du Golfe' },

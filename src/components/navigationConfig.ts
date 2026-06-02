@@ -83,6 +83,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     items: [
       { id: 'income', icon: Wallet, href: '/income', labelKey: 'nav_income', viewModes: ['simple', 'professional'] },
       { id: 'expenses', icon: ReceiptText, href: '/expenses', labelKey: 'nav_expenses', viewModes: ['simple', 'professional'] },
+      { id: 'debts', icon: Landmark, href: '/debts', labelKey: 'nav_debts', viewModes: ['simple', 'professional'] },
       { id: 'savings', icon: PiggyBank, href: '/savings', labelKey: 'nav_savings' },
       { id: 'goals', icon: Target, href: '/goals', labelKey: 'nav_goals', viewModes: ['simple', 'professional'] },
     ],
