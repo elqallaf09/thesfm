@@ -514,15 +514,18 @@ export async function proxyAnalyze(
   });
 }
 
-export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown, periodInput: unknown) {
+export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown, periodInput: unknown, intervalInput?: unknown) {
   const symbol = normalizeProviderSymbol(symbolInput);
   if (!symbol) return { success: false, code: 'invalid_symbol', error: errorMessageForCode('invalid_symbol') };
 
   const assetType = normalizeAssetType(assetTypeInput);
   const period = String(periodInput ?? '6m');
-  const result = await fetchOpenBB('/market/history', new URLSearchParams({ symbol, assetType, period }), { timeoutMs: OPENBB_TIMEOUT_MS });
+  const interval = String(intervalInput ?? '').trim();
+  const params = new URLSearchParams({ symbol, assetType, period });
+  if (interval) params.set('interval', interval);
+  const result = await fetchOpenBB('/market/history', params, { timeoutMs: OPENBB_TIMEOUT_MS });
   if (result.configured && result.available && result.data?.success && result.data?.fallback !== true && result.data?.source !== 'mock') {
-    return { ...result.data, cached: result.fromCache, cacheAgeSeconds: result.cacheAgeSeconds };
+    return { ...result.data, period, interval: interval || undefined, cached: result.fromCache, cacheAgeSeconds: result.cacheAgeSeconds };
   }
 
   return {
@@ -534,6 +537,7 @@ export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown
     symbol,
     assetType,
     period,
+    interval: interval || undefined,
     history: [],
     error: result.configured ? 'Market data provider is unavailable.' : 'Market data provider is not configured.',
   };
