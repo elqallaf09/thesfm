@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
-import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, Clock3, FileText, Gauge, Landmark, LineChart, Newspaper, Plus, Search, ShieldAlert, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, CircleDollarSign, Clock3, FileText, Gauge, Landmark, LineChart, Newspaper, Percent, PieChart, Plus, Search, ShieldAlert, ShoppingCart, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { AssetProfileCard } from '@/components/market/AssetProfileCard';
@@ -1483,7 +1483,9 @@ export default function MarketAnalysisPage() {
   const unrealized = portfolioMatch && purchasePrice > 0 ? selected!.latestPrice - purchasePrice : 0;
   const unrealizedPct = portfolioMatch && purchasePrice > 0 ? (unrealized / purchasePrice) * 100 : 0;
   const exposure = portfolioMatch && portfolioTotal > 0 ? (portfolioMatch.currentValue / portfolioTotal) * 100 : 0;
-  const concentrationRisk = exposure >= 35 ? t('market_concentration_high') : exposure >= 20 ? t('market_concentration_medium') : t('market_concentration_low');
+  const concentrationRiskLevel = exposure >= 35 ? 'high' : exposure >= 20 ? 'medium' : 'low';
+  const concentrationRisk = t(`market_concentration_risk_${concentrationRiskLevel}`);
+  const concentrationRiskTone = concentrationRiskLevel === 'high' ? 'danger' : concentrationRiskLevel === 'medium' ? 'warning' : 'success';
   const whatIfValue = parseNumber(whatIfAmount);
   const hasWhatIfAmount = whatIfValue > 0;
   const hasWhatIfInput = whatIfAmount.trim().length > 0;
@@ -2030,21 +2032,38 @@ export default function MarketAnalysisPage() {
                 </div>
               </article>
 
-              <article className="market-panel portfolio-card">
-                <div className="market-section-head">
-                  <WalletCards size={19} />
-                  <div>
-                    <span>{portfolio.length === 0 ? t('market_no_portfolio_data') : portfolioMatch ? t('market_asset_in_portfolio') : t('market_asset_not_in_portfolio')}</span>
-                    <h2>{t('market_portfolio_comparison')}</h2>
+              <article className="market-panel portfolio-card" aria-labelledby="portfolio-comparison-title">
+                <div className="portfolio-card-head">
+                  <div className="portfolio-card-title">
+                    <span aria-hidden="true"><WalletCards size={24} /></span>
+                    <div>
+                      <h2 id="portfolio-comparison-title">{t('market_portfolio_comparison')}</h2>
+                      <p>{t('market_portfolio_comparison_subtitle')}</p>
+                      <i aria-hidden="true" />
+                    </div>
                   </div>
+                  <span className={`portfolio-card-status ${portfolioMatch ? 'available' : 'unavailable'}`}>
+                    {portfolioMatch ? t('market_portfolio_data_available') : portfolio.length === 0 ? t('market_no_portfolio_data') : t('market_asset_not_in_portfolio')}
+                  </span>
                 </div>
-                <div className="portfolio-metric-grid">
-                  <MarketMetric label={t('market_purchase_price')} value={portfolioMatch ? money(purchasePrice, selectedCurrency) : t('market_unavailable')} valueDir="ltr" />
-                  <MarketMetric label={t('market_current_price')} value={money(selected.latestPrice, selectedCurrency)} valueDir="ltr" />
-                  <MarketMetric label={t('market_unrealized_pl')} value={portfolioMatch ? money(unrealized, selectedCurrency) : t('market_unavailable')} valueDir="ltr" />
-                  <MarketMetric label={t('market_gain_loss_percent')} value={portfolioMatch ? percent(unrealizedPct) : t('market_unavailable')} valueDir="ltr" />
-                  <MarketMetric label={t('market_portfolio_exposure')} value={portfolioMatch ? `${exposure.toFixed(1)}%` : t('market_unavailable')} valueDir="ltr" />
-                  <MarketMetric label={t('market_concentration_risk')} value={portfolioMatch ? concentrationRisk : t('market_no_data')} />
+
+                {portfolio.length === 0 ? (
+                  <div className="portfolio-empty-note">
+                    <AlertTriangle size={17} />
+                    <div>
+                      <strong>{t('market_portfolio_comparison_empty_title')}</strong>
+                      <p>{t('market_portfolio_comparison_empty_body')}</p>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="portfolio-comparison-grid">
+                  <PortfolioComparisonMetric icon={<CircleDollarSign size={18} />} label={t('market_current_price')} value={money(selected.latestPrice, selectedCurrency)} valueDir="ltr" />
+                  <PortfolioComparisonMetric icon={<ShoppingCart size={18} />} label={t('market_purchase_price')} value={portfolioMatch ? money(purchasePrice, selectedCurrency) : t('market_unavailable')} valueDir={portfolioMatch ? 'ltr' : undefined} status={portfolioMatch ? 'default' : 'unavailable'} />
+                  <PortfolioComparisonMetric icon={<Percent size={18} />} label={t('market_gain_loss_percent')} value={portfolioMatch ? percent(unrealizedPct) : t('market_unavailable')} valueDir={portfolioMatch ? 'ltr' : undefined} status={portfolioMatch ? unrealizedPct >= 0 ? 'success' : 'danger' : 'unavailable'} />
+                  <PortfolioComparisonMetric icon={<LineChart size={18} />} label={t('market_unrealized_pl')} value={portfolioMatch ? money(unrealized, selectedCurrency) : t('market_unavailable')} valueDir={portfolioMatch ? 'ltr' : undefined} status={portfolioMatch ? unrealized >= 0 ? 'success' : 'danger' : 'unavailable'} />
+                  <PortfolioComparisonMetric icon={<PieChart size={18} />} label={t('market_portfolio_exposure')} value={portfolioMatch ? `${exposure.toFixed(1)}%` : t('market_unavailable')} valueDir={portfolioMatch ? 'ltr' : undefined} status={portfolioMatch ? 'default' : 'unavailable'} />
+                  <PortfolioComparisonMetric icon={<ShieldAlert size={18} />} label={t('market_concentration_risk')} value={portfolioMatch ? concentrationRisk : t('market_unavailable')} status={portfolioMatch ? concentrationRiskTone : 'unavailable'} />
                 </div>
               </article>
             </section>
@@ -6157,6 +6176,284 @@ function MarketAsyncToolStyles() {
         border-color: rgba(148, 163, 184, .18);
       }
 
+      .portfolio-card {
+        gap: 18px !important;
+        padding: clamp(18px, 2.2vw, 26px) !important;
+        border-radius: 30px !important;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, .86), rgba(234, 246, 255, .62)),
+          var(--sfm-card) !important;
+        border-color: rgba(47, 214, 192, .18) !important;
+        box-shadow: 0 18px 48px rgba(3, 18, 37, .08) !important;
+      }
+
+      .portfolio-card-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        min-width: 0;
+        border-bottom: 1px solid rgba(47, 214, 192, .14);
+        padding-bottom: 16px;
+      }
+
+      .portfolio-card-title {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        min-width: 0;
+      }
+
+      .portfolio-card-title > span {
+        width: 58px;
+        height: 58px;
+        border-radius: 22px;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        color: var(--sfm-soft-cyan);
+        background: linear-gradient(135deg, rgba(47, 214, 192, .20), rgba(29, 140, 255, .10));
+        border: 1px solid rgba(47, 214, 192, .24);
+        box-shadow: 0 14px 28px rgba(47, 214, 192, .12);
+      }
+
+      .portfolio-card-title div {
+        min-width: 0;
+        display: grid;
+        gap: 8px;
+      }
+
+      .portfolio-card-title h2 {
+        margin: 0;
+        color: var(--sfm-foreground);
+        font-size: clamp(24px, 2.4vw, 36px);
+        font-weight: 950;
+        line-height: 1.2;
+      }
+
+      .portfolio-card-title p {
+        margin: 0;
+        color: var(--sfm-muted);
+        font-size: 14px;
+        font-weight: 850;
+        line-height: 1.7;
+      }
+
+      .portfolio-card-title i {
+        width: 84px;
+        height: 5px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--sfm-primary), var(--sfm-accent));
+      }
+
+      .portfolio-card-status {
+        flex: 0 1 auto;
+        max-width: 280px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        border: 1px solid rgba(148, 163, 184, .24);
+        background: rgba(148, 163, 184, .10);
+        color: var(--sfm-muted);
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 950;
+        line-height: 1.35;
+        text-align: center;
+      }
+
+      .portfolio-card-status.available {
+        color: #047857;
+        background: rgba(16, 185, 129, .12);
+        border-color: rgba(16, 185, 129, .24);
+      }
+
+      .portfolio-empty-note {
+        display: flex;
+        align-items: flex-start;
+        gap: 11px;
+        border: 1px solid rgba(47, 214, 192, .18);
+        background: rgba(47, 214, 192, .08);
+        border-radius: 20px;
+        padding: 13px 14px;
+        color: var(--sfm-primary-hover);
+      }
+
+      .portfolio-empty-note svg {
+        flex: 0 0 auto;
+        margin-top: 3px;
+      }
+
+      .portfolio-empty-note strong {
+        display: block;
+        color: var(--sfm-foreground);
+        font-size: 13px;
+        font-weight: 950;
+        line-height: 1.5;
+      }
+
+      .portfolio-empty-note p {
+        margin: 4px 0 0;
+        color: var(--sfm-muted);
+        font-size: 12px;
+        font-weight: 850;
+        line-height: 1.75;
+      }
+
+      .portfolio-comparison-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        border: 1px solid rgba(47, 214, 192, .16);
+        border-radius: 24px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, .45);
+      }
+
+      .portfolio-comparison-metric {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 14px;
+        padding: 18px;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, .66), rgba(234, 246, 255, .42)),
+          var(--sfm-card);
+        border-bottom: 1px solid rgba(47, 214, 192, .12);
+      }
+
+      .portfolio-comparison-metric:nth-child(odd) {
+        border-inline-end: 1px solid rgba(47, 214, 192, .12);
+      }
+
+      .portfolio-comparison-metric:nth-last-child(-n + 2) {
+        border-bottom: 0;
+      }
+
+      .portfolio-metric-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 18px;
+        display: grid;
+        place-items: center;
+        color: var(--sfm-primary-hover);
+        background: rgba(47, 214, 192, .12);
+        border: 1px solid rgba(47, 214, 192, .20);
+      }
+
+      .portfolio-comparison-metric div {
+        min-width: 0;
+        display: grid;
+        gap: 7px;
+      }
+
+      .portfolio-comparison-metric small {
+        color: var(--sfm-muted);
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1.45;
+      }
+
+      .portfolio-comparison-metric strong {
+        width: max-content;
+        max-width: 100%;
+        color: var(--sfm-foreground);
+        font-size: clamp(18px, 1.7vw, 25px);
+        font-weight: 950;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .portfolio-comparison-metric.success strong,
+      .portfolio-comparison-metric.warning strong,
+      .portfolio-comparison-metric.danger strong,
+      .portfolio-comparison-metric.unavailable strong {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 7px 11px;
+        border: 1px solid transparent;
+        font-size: 14px;
+      }
+
+      .portfolio-comparison-metric.success strong {
+        color: #047857;
+        background: rgba(16, 185, 129, .12);
+        border-color: rgba(16, 185, 129, .24);
+      }
+
+      .portfolio-comparison-metric.warning strong {
+        color: #B45309;
+        background: rgba(245, 158, 11, .13);
+        border-color: rgba(245, 158, 11, .25);
+      }
+
+      .portfolio-comparison-metric.danger strong {
+        color: #DC2626;
+        background: rgba(239, 68, 68, .12);
+        border-color: rgba(239, 68, 68, .24);
+      }
+
+      .portfolio-comparison-metric.unavailable strong {
+        color: var(--sfm-muted);
+        background: rgba(148, 163, 184, .11);
+        border-color: rgba(148, 163, 184, .22);
+      }
+
+      .dark .portfolio-card {
+        background: linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .07)), #0f1d31 !important;
+        border-color: #1d3050 !important;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, .24) !important;
+      }
+
+      .dark .portfolio-card-title > span,
+      .dark .portfolio-metric-icon {
+        color: #2FD6C0;
+        background: rgba(47, 214, 192, .12);
+        border-color: rgba(47, 214, 192, .25);
+      }
+
+      .dark .portfolio-card-status.available,
+      .dark .portfolio-comparison-metric.success strong {
+        color: #2FD6C0;
+        background: rgba(47, 214, 192, .12);
+        border-color: rgba(47, 214, 192, .25);
+      }
+
+      .dark .portfolio-empty-note,
+      .dark .portfolio-comparison-grid {
+        background: #0a1422;
+        border-color: #1d3050;
+      }
+
+      .dark .portfolio-comparison-metric {
+        background: linear-gradient(135deg, rgba(29, 140, 255, .06), rgba(47, 214, 192, .05)), #0f1d31;
+        border-color: #1d3050;
+      }
+
+      .dark .portfolio-comparison-metric.warning strong {
+        color: #F5B942;
+        background: rgba(245, 185, 66, .12);
+        border-color: rgba(245, 185, 66, .25);
+      }
+
+      .dark .portfolio-comparison-metric.danger strong {
+        color: #FF5B6E;
+        background: rgba(255, 91, 110, .12);
+        border-color: rgba(255, 91, 110, .25);
+      }
+
+      .dark .portfolio-comparison-metric.unavailable strong,
+      .dark .portfolio-card-status.unavailable {
+        color: #8ea6c3;
+        background: rgba(142, 166, 195, .12);
+        border-color: rgba(142, 166, 195, .22);
+      }
+
       .news-tool-card-head .market-section-refresh {
         margin-inline-start: auto;
       }
@@ -6196,6 +6493,33 @@ function MarketAsyncToolStyles() {
         .technical-partial-action {
           width: 100%;
         }
+
+        .portfolio-card-head,
+        .portfolio-card-title {
+          display: grid;
+        }
+
+        .portfolio-card-status {
+          max-width: 100%;
+          width: 100%;
+        }
+
+        .portfolio-comparison-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .portfolio-comparison-metric,
+        .portfolio-comparison-metric:nth-child(odd) {
+          border-inline-end: 0;
+        }
+
+        .portfolio-comparison-metric:nth-last-child(-n + 2) {
+          border-bottom: 1px solid rgba(47, 214, 192, .12);
+        }
+
+        .portfolio-comparison-metric:last-child {
+          border-bottom: 0;
+        }
       }
 
       @keyframes marketSpin {
@@ -6214,6 +6538,32 @@ function MarketMetric({ label, value, icon, valueDir }: { label: string; value: 
     <div className="metric">
       <span>{label}</span>
       <strong dir={valueDir}>{icon}{value}</strong>
+    </div>
+  );
+}
+
+type PortfolioMetricTone = 'default' | 'unavailable' | 'success' | 'warning' | 'danger';
+
+function PortfolioComparisonMetric({
+  icon,
+  label,
+  value,
+  valueDir,
+  status = 'default',
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  valueDir?: 'ltr' | 'rtl';
+  status?: PortfolioMetricTone;
+}) {
+  return (
+    <div className={`portfolio-comparison-metric ${status}`}>
+      <span className="portfolio-metric-icon" aria-hidden="true">{icon}</span>
+      <div>
+        <small>{label}</small>
+        <strong dir={valueDir}>{value}</strong>
+      </div>
     </div>
   );
 }
