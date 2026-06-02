@@ -1635,22 +1635,31 @@ export default function MarketAnalysisPage() {
             icon={<Activity size={18} />}
             label={t('market_data_source')}
             value={selected ? (selected.cached ? t('market_cached_data') : 'OpenBB') : 'OpenBB'}
+            helper={t('market_status_source_hint')}
+            valueDir={selected?.cached ? undefined : 'ltr'}
           />
           <MarketStatusCard
             icon={serviceState === 'connected' ? <CheckCircle2 size={18} /> : <Activity size={18} />}
             label={t('market_service_status')}
-            value={serviceState === 'connected' ? t('market_connected_short') : serviceNotice}
+            value={serviceState === 'connected' ? t('market_connected_short') : serviceState === 'checking' ? t('market_service_checking_short') : t('market_service_not_connected_short')}
+            helper={serviceState === 'connected' ? t('market_status_service_connected_hint') : t('market_status_service_pending_hint')}
+            tone={serviceState === 'connected' ? 'success' : serviceState === 'checking' ? 'info' : 'warning'}
           />
           <MarketStatusCard
             icon={<WalletCards size={18} />}
             label={t('market_selected_asset')}
             value={selected?.symbol ?? selectedAsset?.symbol ?? t('market_no_asset_selected_yet')}
+            helper={selected?.symbol || selectedAsset?.symbol ? localizedAssetName ?? selected?.name ?? selectedAsset?.name ?? t('market_selected_asset') : t('market_status_select_asset_hint')}
+            tone={selected?.symbol || selectedAsset?.symbol ? undefined : 'muted'}
             valueDir={selected?.symbol || selectedAsset?.symbol ? 'ltr' : undefined}
           />
           <MarketStatusCard
             icon={<Clock3 size={18} />}
             label={t('market_last_updated')}
             value={selected && lastUpdated ? lastUpdated : t('market_unavailable')}
+            helper={selected && lastUpdated ? t('market_status_update_current_hint') : t('market_status_update_after_fetch')}
+            tone={selected && lastUpdated ? undefined : 'muted'}
+            valueDir={selected && lastUpdated ? 'ltr' : undefined}
           />
         </section>
 
@@ -2603,21 +2612,171 @@ export default function MarketAnalysisPage() {
         .market-status-grid {
           grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
           align-items: stretch;
+          gap: 16px !important;
+          margin-block: 2px 4px;
         }
 
         .market-status-card {
-          min-height: 104px;
-          align-items: flex-start;
+          min-height: 126px;
+          align-items: flex-start !important;
+          gap: 14px !important;
+          border-radius: 28px !important;
+          border: 1px solid rgba(15, 118, 110, .16) !important;
           background:
-            linear-gradient(135deg, rgba(255, 255, 255, .82), rgba(234, 246, 255, .66)),
-            var(--sfm-card);
+            radial-gradient(circle at top right, rgba(47, 214, 192, .16), transparent 42%),
+            linear-gradient(135deg, rgba(255, 255, 255, .94), rgba(234, 246, 255, .76)),
+            #ffffff !important;
+          box-shadow: 0 16px 38px rgba(3, 18, 37, .08) !important;
+          padding: 18px !important;
+          overflow: hidden;
+        }
+
+        .market-status-icon {
+          width: 44px !important;
+          height: 44px !important;
+          border-radius: 18px !important;
+          color: #0891b2 !important;
+          background: linear-gradient(135deg, rgba(207, 250, 254, .94), rgba(204, 251, 241, .82)) !important;
+          border: 1px solid rgba(14, 165, 233, .18) !important;
+          box-shadow: 0 10px 24px rgba(8, 145, 178, .10);
+        }
+
+        .market-status-body {
+          min-width: 0;
+          display: grid;
+          gap: 7px;
+          align-content: start;
+        }
+
+        .market-status-body small {
+          color: #64748b !important;
+          font-size: 12px !important;
+          font-weight: 950 !important;
+          line-height: 1.35 !important;
+        }
+
+        .market-status-value,
+        .market-status-badge {
+          min-width: 0;
+          width: max-content;
+          max-width: 100%;
+          overflow-wrap: anywhere;
+          line-height: 1.25;
+        }
+
+        .market-status-value {
+          color: #0f172a !important;
+          font-size: 19px !important;
+          font-weight: 950 !important;
+        }
+
+        .market-status-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 999px;
+          border: 1px solid rgba(15, 118, 110, .20);
+          background: rgba(204, 251, 241, .72);
+          color: #0f766e;
+          padding: 7px 11px;
+          font-size: 13px;
+          font-weight: 950;
+        }
+
+        .market-status-badge.success {
+          color: #047857;
+          background: #ccfbf1;
+          border-color: rgba(15, 118, 110, .22);
+        }
+
+        .market-status-badge.info {
+          color: #0369a1;
+          background: #e0f2fe;
+          border-color: rgba(14, 165, 233, .22);
+        }
+
+        .market-status-badge.warning {
+          color: #92400e;
+          background: #fef3c7;
+          border-color: rgba(245, 158, 11, .24);
+        }
+
+        .market-status-badge.danger {
+          color: #b91c1c;
+          background: #fee2e2;
+          border-color: rgba(239, 68, 68, .24);
+        }
+
+        .market-status-badge.muted {
+          color: #475569;
+          background: #f1f5f9;
+          border-color: rgba(100, 116, 139, .18);
+        }
+
+        .market-status-body p {
+          margin: 0;
+          color: #475569;
+          font-size: 12px;
+          font-weight: 850;
+          line-height: 1.6;
         }
 
         .dark .market-status-card {
           background:
+            radial-gradient(circle at top right, rgba(47, 214, 192, .12), transparent 44%),
             linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .07)),
-            #0f1d31;
-          border-color: #1d3050;
+            #0f1d31 !important;
+          border-color: #1d3050 !important;
+          box-shadow: 0 20px 44px rgba(0, 0, 0, .24) !important;
+        }
+
+        .dark .market-status-icon {
+          color: #2fd6c0 !important;
+          background: rgba(47, 214, 192, .12) !important;
+          border-color: rgba(47, 214, 192, .25) !important;
+          box-shadow: 0 10px 24px rgba(0, 0, 0, .18);
+        }
+
+        .dark .market-status-body small {
+          color: #8ea6c3 !important;
+        }
+
+        .dark .market-status-value {
+          color: #e8eef6 !important;
+        }
+
+        .dark .market-status-body p {
+          color: #b8c7d9;
+        }
+
+        .dark .market-status-badge.success {
+          color: #2fd6c0;
+          background: rgba(47, 214, 192, .12);
+          border-color: rgba(47, 214, 192, .25);
+        }
+
+        .dark .market-status-badge.info {
+          color: #7dd3fc;
+          background: rgba(29, 140, 255, .14);
+          border-color: rgba(125, 211, 252, .24);
+        }
+
+        .dark .market-status-badge.warning {
+          color: #f5b942;
+          background: rgba(245, 185, 66, .13);
+          border-color: rgba(245, 185, 66, .26);
+        }
+
+        .dark .market-status-badge.danger {
+          color: #ff5b6e;
+          background: rgba(255, 91, 110, .12);
+          border-color: rgba(255, 91, 110, .25);
+        }
+
+        .dark .market-status-badge.muted {
+          color: #b8c7d9;
+          background: rgba(142, 166, 195, .12);
+          border-color: rgba(142, 166, 195, .20);
         }
 
         .dark .market-active-dashboard,
@@ -4271,19 +4430,28 @@ function MarketStatusCard({
   icon,
   label,
   value,
+  helper,
+  tone,
   valueDir,
 }: {
   icon: ReactNode;
   label: string;
   value: string;
+  helper?: string;
+  tone?: 'success' | 'info' | 'warning' | 'danger' | 'muted';
   valueDir?: 'ltr' | 'rtl';
 }) {
   return (
     <article className="market-status-card">
-      <span>{icon}</span>
-      <div>
+      <span className="market-status-icon">{icon}</span>
+      <div className="market-status-body">
         <small>{label}</small>
-        <strong dir={valueDir}>{value}</strong>
+        {tone ? (
+          <span className={`market-status-badge ${tone}`} dir={valueDir}>{value}</span>
+        ) : (
+          <strong className="market-status-value" dir={valueDir}>{value}</strong>
+        )}
+        {helper ? <p>{helper}</p> : null}
       </div>
     </article>
   );
@@ -4562,7 +4730,7 @@ function NewsSentimentPanel({
   );
 }
 
-function EmptyToolState({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
+function EmptyToolState({ icon = <AlertTriangle size={18} />, title, body }: { icon?: ReactNode; title: string; body: string }) {
   return (
     <div className="tool-empty-state">
       <span>{icon}</span>
