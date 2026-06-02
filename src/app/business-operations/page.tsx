@@ -37,10 +37,12 @@ type SaleRow = {
 
 type EmployeeRow = {
   id: string;
-  employee_name: string;
+  name?: string | null;
+  employee_name?: string | null;
   salary: number | string | null;
-  bonus: number | string | null;
+  bonus?: number | string | null;
   status: string | null;
+  salary_day?: number | string | null;
   payroll_due_day?: number | string | null;
 };
 
@@ -159,7 +161,7 @@ export default function BusinessOperationsPage() {
           ? db.from('business_sales').select('id, customer_name, product_or_service, amount, currency, status, sale_date').eq('user_id', user.id).order('sale_date', { ascending: false })
           : Promise.resolve({ data: [], error: null }),
         employees: permissions.canViewEmployees
-          ? db.from('business_employees').select('id, employee_name, salary, bonus, status').eq('user_id', user.id).order('created_at', { ascending: false })
+          ? db.from('business_employees').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
           : Promise.resolve({ data: [], error: null }),
         customers: permissions.canViewBusinessModules
           ? db.from('business_customers').select('id').eq('user_id', user.id)
@@ -351,7 +353,7 @@ export default function BusinessOperationsPage() {
       .filter((row) => String(row.expense_date ?? '').slice(0, 7) === currentMonth)
       .reduce((total, row) => total + numericValue(row.amount), 0);
     const nearestPayroll = activeEmployees
-      .map((row) => nextPayrollDate(Number(row.payroll_due_day ?? 25)))
+      .map((row) => nextPayrollDate(Number(row.salary_day ?? row.payroll_due_day ?? 25)))
       .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
     return {
       totalSales,

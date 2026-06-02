@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBusinessRole } from '@/hooks/useBusinessRole';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
-import { BUSINESS_TEXT, EMPLOYEE_STATUS_OPTIONS, businessRoleLabel, employeeStatusLabel, normalizeBusinessLang, numericValue, type EmployeeStatus } from '@/lib/businessOperations';
+import { BUSINESS_TEXT, EMPLOYEE_STATUS_OPTIONS, businessRoleLabel, employeeStatusLabel, normalizeBusinessLang, numericValue, type BusinessLang, type EmployeeStatus } from '@/lib/businessOperations';
 import { daysBetweenCalendar, downloadCsv, downloadXlsx, employeeExportColumns, nextPayrollDate, printPdf } from '@/lib/businessReports';
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
@@ -21,14 +21,18 @@ import { formatMoney } from '@/lib/formatMoney';
 type EmployeeRow = {
   id: string;
   user_id: string;
-  employee_name: string;
+  name?: string | null;
+  employee_name?: string | null;
   role: string | null;
   department: string | null;
   salary: number | string | null;
-  bonus: number | string | null;
+  currency?: string | null;
+  skill_level?: number | string | null;
+  bonus?: number | string | null;
   status: EmployeeStatus | string | null;
   join_date: string | null;
-  payroll_due_day: number | string | null;
+  salary_day?: number | string | null;
+  payroll_due_day?: number | string | null;
   notes: string | null;
 };
 
@@ -37,10 +41,10 @@ type EmployeeForm = {
   role: string;
   department: string;
   salary: string;
-  bonus: string;
+  skill_level: string;
   status: EmployeeStatus;
   join_date: string;
-  payroll_due_day: string;
+  salary_day: string;
   notes: string;
 };
 
@@ -50,12 +54,61 @@ function createEmptyEmployeeForm(): EmployeeForm {
     role: '',
     department: '',
     salary: '',
-    bonus: '',
+    skill_level: '',
     status: 'active',
     join_date: '',
-    payroll_due_day: '25',
+    salary_day: '25',
     notes: '',
   };
+}
+
+function employeeDisplayName(row: EmployeeRow) {
+  return row.name || row.employee_name || '';
+}
+
+function employeeSalaryDay(row: EmployeeRow) {
+  return Number(row.salary_day ?? row.payroll_due_day ?? 25);
+}
+
+function parseNumberInput(value: string, fallback = 0) {
+  if (!value.trim()) return fallback;
+  const parsed = Number(value.trim().replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
+function formatSkillLevel(value: number | string | null | undefined, lang: BusinessLang) {
+  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(numericValue(value))}%`;
+}
+
+function isValidDateInput(value: string) {
+  if (!value) return true;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function logEmployeeSaveError(error: any, context: { attempt: string; payloadKeys: string[] }) {
+  if (process.env.NODE_ENV !== 'development' && process.env.NEXT_PUBLIC_DEBUG_BUSINESS_SAVE !== 'true') return;
+  console.error('[business_employees] save failed', {
+    attempt: context.attempt,
+    payloadKeys: context.payloadKeys,
+    code: error?.code,
+    message: error?.message,
+    details: error?.details,
+    hint: error?.hint,
+  });
+}
+
+function missingEmployeeColumn(error: any) {
+  const message = String(error?.message ?? '');
+  const match = message.match(/column "([^"]+)"/i);
+  return match?.[1] ?? '';
+}
+
+function isEmployeePermissionError(error: any) {
+  const message = String(error?.message ?? '').toLowerCase();
+  return error?.code === '42501' || message.includes('row-level security') || message.includes('permission denied');
 }
 
 export default function EmployeesPage() {
@@ -82,7 +135,7 @@ export default function EmployeesPage() {
   const syncPayrollNotifications = useCallback(async (employeeRows: EmployeeRow[]) => {
     if (!user) return;
     const activeRows = employeeRows.filter((row) => row.status === 'active' || !row.status);
-    const dueDays = Array.from(new Set(activeRows.map((row) => Number(row.payroll_due_day ?? 25)).filter((day) => day >= 1 && day <= 31)));
+    const dueDays = Array.from(new Set(activeRows.map((row) => employeeSalaryDay(row)).filter((day) => day >= 1 && day <= 31)));
     if (!dueDays.length) return;
     const db = supabase as any;
     const todayDate = new Date();
@@ -162,7 +215,7 @@ export default function EmployeesPage() {
       const matchesDepartment = departmentFilter === 'all' || row.department === departmentFilter;
       if (!matchesStatus || !matchesDepartment) return false;
       if (!needle) return true;
-      return [row.employee_name, row.role, row.department, row.notes]
+      return [employeeDisplayName(row), row.role, row.department, row.notes]
         .some((value) => String(value ?? '').toLowerCase().includes(needle));
     });
   }, [departmentFilter, query, rows, statusFilter]);
@@ -173,7 +226,7 @@ export default function EmployeesPage() {
     const allowances = activeRows.reduce((total, row) => total + numericValue(row.bonus), 0);
     const salaryTotal = rows.reduce((total, row) => total + numericValue(row.salary), 0);
     const nearestDate = activeRows
-      .map((row) => nextPayrollDate(Number(row.payroll_due_day ?? 25)))
+      .map((row) => nextPayrollDate(employeeSalaryDay(row)))
       .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
     return {
       payroll,
@@ -196,14 +249,14 @@ export default function EmployeesPage() {
   function openEdit(row: EmployeeRow) {
     setEditing(row);
     setForm({
-      employee_name: row.employee_name ?? '',
+      employee_name: employeeDisplayName(row),
       role: row.role ?? '',
       department: row.department ?? '',
       salary: String(row.salary ?? ''),
-      bonus: String(row.bonus ?? ''),
+      skill_level: String(row.skill_level ?? ''),
       status: EMPLOYEE_STATUS_OPTIONS.includes(row.status as EmployeeStatus) ? row.status as EmployeeStatus : 'active',
       join_date: row.join_date ?? '',
-      payroll_due_day: String(row.payroll_due_day ?? 25),
+      salary_day: String(row.salary_day ?? row.payroll_due_day ?? 25),
       notes: row.notes ?? '',
     });
     setFormError('');
@@ -219,42 +272,97 @@ export default function EmployeesPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!user || !permissions.canWriteEmployees) return;
-    const salary = numericValue(form.salary);
-    const bonus = numericValue(form.bonus);
-    if (!form.employee_name.trim()) {
-      setFormError(text.requiredField);
+    if (!user) {
+      setFormError(text.loginRequiredToSaveEmployee);
       return;
     }
-    if (salary < 0 || bonus < 0) {
-      setFormError(text.invalidAmount);
+    if (!permissions.canWriteEmployees) {
+      setFormError(text.permissionDenied);
+      return;
+    }
+    const employeeName = form.employee_name.trim();
+    const salary = parseNumberInput(form.salary, Number.NaN);
+    const skillLevel = parseNumberInput(form.skill_level, 0);
+    const salaryDay = parseNumberInput(form.salary_day, Number.NaN);
+    if (!employeeName) {
+      setFormError(text.employeeNameRequired);
+      return;
+    }
+    if (!Number.isFinite(salary) || salary < 0) {
+      setFormError(text.salaryRequired);
+      return;
+    }
+    if (!Number.isFinite(skillLevel) || skillLevel < 0 || skillLevel > 100) {
+      setFormError(text.skillLevelInvalid);
+      return;
+    }
+    if (!Number.isFinite(salaryDay) || salaryDay < 1 || salaryDay > 31 || !Number.isInteger(salaryDay)) {
+      setFormError(text.salaryDayInvalid);
+      return;
+    }
+    if (!isValidDateInput(form.join_date)) {
+      setFormError(text.joinDateInvalid);
       return;
     }
 
     setSaving(true);
     setFormError('');
     setNotice('');
-    const payload = {
+    const basePayload = {
       user_id: user.id,
-      employee_name: form.employee_name.trim(),
       role: form.role.trim() || null,
       department: form.department.trim() || null,
       salary,
-      bonus,
       status: form.status,
       join_date: form.join_date || null,
-      payroll_due_day: Math.max(1, Math.min(numericValue(form.payroll_due_day) || 25, 31)),
       notes: form.notes.trim() || null,
+    };
+    const alignedPayload = {
+      ...basePayload,
+      name: employeeName,
+      employee_name: employeeName,
+      currency: defaultCurrency || 'KWD',
+      skill_level: skillLevel,
+      bonus: 0,
+      salary_day: salaryDay,
+      payroll_due_day: salaryDay,
+    };
+    const modernPayload = {
+      ...basePayload,
+      name: employeeName,
+      currency: defaultCurrency || 'KWD',
+      skill_level: skillLevel,
+      salary_day: salaryDay,
+    };
+    const legacyPayload = {
+      ...basePayload,
+      employee_name: employeeName,
+      bonus: 0,
+      payroll_due_day: salaryDay,
     };
 
     const db = supabase as any;
-    const result = editing
-      ? await db.from('business_employees').update(payload).eq('id', editing.id).eq('user_id', user.id)
-      : await db.from('business_employees').insert(payload);
+    const savePayload = async (payload: Record<string, unknown>) => {
+      return editing
+        ? await db.from('business_employees').update(payload).eq('id', editing.id).eq('user_id', user.id)
+        : await db.from('business_employees').insert(payload);
+    };
+    let result = await savePayload(alignedPayload);
+    if (result.error) {
+      logEmployeeSaveError(result.error, { attempt: 'aligned', payloadKeys: Object.keys(alignedPayload) });
+      const missingColumn = missingEmployeeColumn(result.error);
+      if (['name', 'currency', 'skill_level', 'salary_day'].includes(missingColumn)) {
+        result = await savePayload(legacyPayload);
+        if (result.error) logEmployeeSaveError(result.error, { attempt: 'legacy', payloadKeys: Object.keys(legacyPayload) });
+      } else if (['employee_name', 'bonus', 'payroll_due_day'].includes(missingColumn)) {
+        result = await savePayload(modernPayload);
+        if (result.error) logEmployeeSaveError(result.error, { attempt: 'modern', payloadKeys: Object.keys(modernPayload) });
+      }
+    }
 
     setSaving(false);
     if (result.error) {
-      setFormError(text.saveError);
+      setFormError(isEmployeePermissionError(result.error) ? text.employeeAccessDeniedSave : text.employeeSaveFailedDetailed);
       return;
     }
 
@@ -412,8 +520,8 @@ export default function EmployeesPage() {
                 <input type="number" min="0" step="0.001" value={form.salary} onChange={(event) => setForm({ ...form, salary: event.target.value })} />
               </label>
               <label>
-                <span>{text.bonus}</span>
-                <input type="number" min="0" step="0.001" value={form.bonus} onChange={(event) => setForm({ ...form, bonus: event.target.value })} />
+                <span>{text.skillLevel}</span>
+                <input type="number" min="0" max="100" step="0.1" value={form.skill_level} onChange={(event) => setForm({ ...form, skill_level: event.target.value })} />
               </label>
               <label>
                 <span>{text.status}</span>
@@ -427,7 +535,7 @@ export default function EmployeesPage() {
               </label>
               <label>
                 <span>{text.payrollDueDay}</span>
-                <input type="number" min="1" max="31" step="1" value={form.payroll_due_day} onChange={(event) => setForm({ ...form, payroll_due_day: event.target.value })} />
+                <input type="number" min="1" max="31" step="1" value={form.salary_day} onChange={(event) => setForm({ ...form, salary_day: event.target.value })} />
               </label>
               <label className="business-full-field">
                 <span>{text.notes}</span>
@@ -454,7 +562,7 @@ export default function EmployeesPage() {
               <article className="employee-card" key={row.id}>
                 <div className="employee-card-head">
                   <div>
-                    <h2>{row.employee_name}</h2>
+                    <h2>{employeeDisplayName(row)}</h2>
                     <p>{row.role || text.noDataYet}</p>
                   </div>
                   <span className={`business-status status-${row.status || 'active'}`}>{employeeStatusLabel(row.status, locale)}</span>
@@ -462,9 +570,9 @@ export default function EmployeesPage() {
                 <dl>
                   <div><dt>{text.department}</dt><dd>{row.department || '-'}</dd></div>
                   <div><dt>{text.salary}</dt><dd>{formatMoney(numericValue(row.salary), defaultCurrency, locale)}</dd></div>
-                  <div><dt>{text.bonus}</dt><dd>{formatMoney(numericValue(row.bonus), defaultCurrency, locale)}</dd></div>
+                  <div><dt>{text.skillLevel}</dt><dd dir="ltr">{formatSkillLevel(row.skill_level, locale)}</dd></div>
                   <div><dt>{text.joinDate}</dt><dd>{row.join_date ? formatDate(row.join_date, locale) : '-'}</dd></div>
-                  <div><dt>{text.payrollDueDay}</dt><dd>{row.payroll_due_day || 25}</dd></div>
+                  <div><dt>{text.payrollDueDay}</dt><dd>{employeeSalaryDay(row) || 25}</dd></div>
                 </dl>
                 <div className="business-row-actions">
                   {permissions.canWriteEmployees ? <button type="button" onClick={() => openEdit(row)} aria-label={text.edit}><Edit3 size={15} />{text.edit}</button> : null}
@@ -483,7 +591,7 @@ export default function EmployeesPage() {
                     <th>{text.role}</th>
                     <th>{text.department}</th>
                     <th>{text.salary}</th>
-                    <th>{text.bonus}</th>
+                    <th>{text.skillLevel}</th>
                     <th>{text.status}</th>
                     <th>{text.joinDate}</th>
                     <th>{text.payrollDueDay}</th>
@@ -493,14 +601,14 @@ export default function EmployeesPage() {
                 <tbody>
                   {filteredRows.map((row) => (
                     <tr key={row.id}>
-                      <td><strong>{row.employee_name}</strong></td>
+                      <td><strong>{employeeDisplayName(row)}</strong></td>
                       <td>{row.role || '-'}</td>
                       <td>{row.department || '-'}</td>
                       <td>{formatMoney(numericValue(row.salary), defaultCurrency, locale)}</td>
-                      <td>{formatMoney(numericValue(row.bonus), defaultCurrency, locale)}</td>
+                      <td dir="ltr">{formatSkillLevel(row.skill_level, locale)}</td>
                       <td><span className={`business-status status-${row.status || 'active'}`}>{employeeStatusLabel(row.status, locale)}</span></td>
                       <td>{row.join_date ? formatDate(row.join_date, locale) : '-'}</td>
-                      <td>{row.payroll_due_day || 25}</td>
+                      <td>{employeeSalaryDay(row) || 25}</td>
                       <td>
                         <div className="business-row-actions">
                           {permissions.canWriteEmployees ? <button type="button" onClick={() => openEdit(row)} aria-label={text.edit}><Edit3 size={15} />{text.edit}</button> : null}

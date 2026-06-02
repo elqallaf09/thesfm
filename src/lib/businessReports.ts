@@ -134,14 +134,15 @@ export function saleExportColumns(lang: BusinessLang, currency: string) {
 
 export function employeeExportColumns(lang: BusinessLang, currency: string) {
   const text = BUSINESS_TEXT[lang];
+  const percentFormatter = new Intl.NumberFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1 });
   return [
-    { key: 'employee_name', label: text.employeeName, value: (row: any) => row.employee_name || '' },
+    { key: 'employee_name', label: text.employeeName, value: (row: any) => row.name || row.employee_name || '' },
     { key: 'role', label: text.role, value: (row: any) => row.role || '' },
     { key: 'department', label: text.department, value: (row: any) => row.department || '' },
-    { key: 'salary', label: text.salary, value: (row: any) => formatMoney(numericValue(row.salary), currency, lang) },
-    { key: 'bonus', label: text.bonus, value: (row: any) => formatMoney(numericValue(row.bonus), currency, lang) },
+    { key: 'salary', label: text.salary, value: (row: any) => formatMoney(numericValue(row.salary), row.currency || currency, lang) },
+    { key: 'skill_level', label: text.skillLevel, value: (row: any) => `${percentFormatter.format(numericValue(row.skill_level))}%` },
     { key: 'status', label: text.status, value: (row: any) => employeeStatusLabel(row.status, lang) },
-    { key: 'payroll_due_day', label: text.payrollDueDay, value: (row: any) => row.payroll_due_day || 25 },
+    { key: 'salary_day', label: text.payrollDueDay, value: (row: any) => row.salary_day || row.payroll_due_day || 25 },
     { key: 'join_date', label: text.joinDate, value: (row: any) => row.join_date ? formatDate(row.join_date, lang) : '' },
     { key: 'notes', label: text.notes, value: (row: any) => row.notes || '' },
   ];
