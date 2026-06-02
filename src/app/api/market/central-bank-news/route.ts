@@ -6,7 +6,7 @@ export const revalidate = 600;
 const cacheHeaders = {
   'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200',
 };
-const REQUEST_TIMEOUT_MS = 7000;
+const REQUEST_TIMEOUT_MS = 8000;
 
 type NewsApiArticle = {
   title?: string | null;

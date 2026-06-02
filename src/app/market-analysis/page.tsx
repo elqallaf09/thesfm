@@ -90,7 +90,7 @@ const DEFAULT_MARKET_TYPE: MarketAssetType = 'stock';
 const DEFAULT_MARKET_ASSET_FILTER: MarketAssetFilter = 'all';
 const MARKET_REQUEST_TIMEOUT_MS = 12000;
 const MARKET_SLOW_NOTICE_MS = 5000;
-const MARKET_TOOL_REQUEST_TIMEOUT_MS = 7000;
+const MARKET_TOOL_REQUEST_TIMEOUT_MS = 8000;
 const MARKET_TIMEFRAMES = ['1D', '1W', '1M', '6M', '1Y'] as const;
 const SCENARIO_CURRENCY_OPTIONS = [
   { code: 'KWD', symbol: 'د.ك' },

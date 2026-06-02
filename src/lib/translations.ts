@@ -96,7 +96,7 @@ export const TR: Record<string, TranslationEntry> = {
   admin_use_calculator: { ar:'استخدام حاسبة', en:'Use calculator', fr:'Utiliser un calculateur' },
   admin_open_market_analysis: { ar:'فتح تحليل السوق', en:'Open market analysis', fr:'Ouvrir l’analyse de marché' },
   admin_open_financial_theories: { ar:'فتح النظريات المالية', en:'Open financial theories', fr:'Ouvrir les théories financières' },
-  admin_no_data: { ar:'لم يتم تسجيل أي زيارات بعد. تأكد من تفعيل مكوّن تتبع الزيارات في الموقع.', en:'No visits have been recorded yet. Make sure the site visit tracker is enabled.', fr:'Aucune visite n’a encore été enregistrée. Vérifiez que le suivi des visites est activé.' },
+  admin_no_data: { ar:'لا توجد بيانات زيارات حتى الآن. سيتم عرض الإحصائيات بعد تسجيل أول زيارة.', en:'No visit data has been recorded yet. Analytics will appear after the first visit is tracked.', fr:'Aucune donnée de visite n’a encore été enregistrée. Les statistiques apparaîtront après la première visite.' },
   admin_error: { ar:'تعذر تحميل بيانات الإحصائيات.', en:'Unable to load analytics data.', fr:'Impossible de charger les données analytiques.' },
   admin_unauthorized: { ar:'غير مصرح لك بفتح هذه الصفحة.', en:'You are not authorized to open this page.', fr:'Vous n’êtes pas autorisé à ouvrir cette page.' },
   admin_loading: { ar:'جارٍ تحميل بيانات الزيارات...', en:'Loading visit analytics...', fr:'Chargement des données de visites...' },

@@ -6,7 +6,7 @@ export const revalidate = 300;
 const cacheHeaders = {
   'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
 };
-const REQUEST_TIMEOUT_MS = 7000;
+const REQUEST_TIMEOUT_MS = 8000;
 
 const DEFAULT_SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'MSFT', 'NVDA', 'TSLA'];
 

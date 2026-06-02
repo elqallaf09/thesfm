@@ -5,7 +5,7 @@ export const revalidate = 900;
 const cacheHeaders = {
   'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=1800',
 };
-const REQUEST_TIMEOUT_MS = 7000;
+const REQUEST_TIMEOUT_MS = 8000;
 
 type NormalizedImpact = 'high' | 'medium' | 'low';
 

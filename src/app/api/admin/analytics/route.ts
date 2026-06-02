@@ -25,6 +25,13 @@ type AnalyticsRow = {
   created_at: string;
 };
 
+type AnalyticsLoadResult = {
+  rows: AnalyticsRow[];
+  source: string;
+  error?: string;
+  code?: string;
+};
+
 const EVENT_LABELS = [
   'page_view',
   'section_view',
@@ -119,6 +126,64 @@ function uniqueSessions(rows: AnalyticsRow[]) {
   return new Set(rows.map(row => row.session_id).filter(Boolean)).size;
 }
 
+function zeroStats() {
+  return {
+    totalVisitors: 0,
+    visitorsToday: 0,
+    visitorsThisWeek: 0,
+    visitorsWeek: 0,
+    visitorsThisMonth: 0,
+    visitorsMonth: 0,
+    totalPageViews: 0,
+    pageViewsToday: 0,
+    pageViewsThisWeek: 0,
+    pageViewsWeek: 0,
+    pageViewsThisMonth: 0,
+    pageViewsMonth: 0,
+    uniquePageViewVisitors: 0,
+    totalAccounts: 0,
+    totalUsers: 0,
+    accountsToday: 0,
+    newUsersToday: 0,
+    accountsThisWeek: 0,
+    newUsersWeek: 0,
+    accountsThisMonth: 0,
+    newUsersMonth: 0,
+  };
+}
+
+function emptyAnalyticsPayload(
+  source: string,
+  from: Date,
+  to: Date,
+  options: { code?: string; trackingEnabled?: boolean } = {},
+) {
+  const importantEvents = EVENT_LABELS.map(event => ({ event, count: 0, uniqueUsers: 0 }));
+  return {
+    ok: true,
+    success: true,
+    code: options.code,
+    source,
+    range: { from: from.toISOString(), to: to.toISOString() },
+    stats: zeroStats(),
+    topPages: [],
+    pages: [],
+    topSections: [],
+    sections: [],
+    importantEvents,
+    devices: [],
+    languages: [],
+    recentActivity: [],
+    recent: [],
+    tracking: {
+      enabled: options.trackingEnabled ?? true,
+      recent: false,
+      label: 'no_recent_events',
+    },
+    hasData: false,
+  };
+}
+
 function missingRelation(error: { code?: string } | null | undefined) {
   return error?.code === '42P01';
 }
@@ -147,8 +212,8 @@ async function loadAnalyticsRows(
   to: Date,
   moduleFilter: string,
   eventFilter: string,
-) {
-  if (!admin) return { rows: [] as AnalyticsRow[], source: 'none', error: 'server_not_configured' };
+): Promise<AnalyticsLoadResult> {
+  if (!admin) return { rows: [], source: 'none', code: 'ANALYTICS_SERVICE_NOT_CONFIGURED' };
 
   let siteQuery = admin
     .from('site_events')
@@ -179,7 +244,12 @@ async function loadAnalyticsRows(
   if (eventFilter !== 'all') legacyQuery = legacyQuery.eq('event_type', eventFilter);
 
   const legacyResult = await legacyQuery;
-  if (legacyResult.error) return { rows: [] as AnalyticsRow[], source: 'analytics_events', error: legacyResult.error.message };
+  if (legacyResult.error) {
+    if (missingRelation(legacyResult.error)) {
+      return { rows: [], source: 'none', code: 'ANALYTICS_TABLES_MISSING' };
+    }
+    return { rows: [], source: 'analytics_events', error: legacyResult.error.message };
+  }
   return { rows: (legacyResult.data ?? []).map(row => mapLegacyRow(row as Record<string, unknown>)), source: 'analytics_events' };
 }
 
@@ -194,9 +264,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'admin_code_required' }, { status: 428 });
   }
 
-  const admin = createServerSupabaseAdmin();
-  if (!admin) return NextResponse.json({ error: 'server_not_configured' }, { status: 500 });
-
   const url = new URL(request.url);
   const range = url.searchParams.get('range') || '30d';
   const moduleFilter = url.searchParams.get('module') || 'all';
@@ -204,8 +271,38 @@ export async function GET(request: Request) {
   const from = filterStart(range, url.searchParams.get('from'));
   const to = filterEnd(range, url.searchParams.get('to'));
 
-  const { rows, source, error } = await loadAnalyticsRows(admin, from, to, moduleFilter, eventFilter);
-  if (error) return NextResponse.json({ error: 'analytics_load_failed', details: error }, { status: 500 });
+  const admin = createServerSupabaseAdmin();
+  if (!admin) {
+    console.warn('[admin-analytics] service role is not configured; returning empty analytics payload');
+    return NextResponse.json(
+      emptyAnalyticsPayload('none', from, to, { code: 'ANALYTICS_SERVICE_NOT_CONFIGURED', trackingEnabled: false }),
+      { status: 200 },
+    );
+  }
+
+  const { rows, source, error, code } = await loadAnalyticsRows(admin, from, to, moduleFilter, eventFilter);
+  if (code === 'ANALYTICS_TABLES_MISSING') {
+    console.warn('[admin-analytics] analytics tables are missing; returning empty analytics payload');
+    return NextResponse.json(emptyAnalyticsPayload(source, from, to, { code }), { status: 200 });
+  }
+  if (error) {
+    console.error('[admin-analytics] analytics load failed', { source, error });
+    return NextResponse.json({
+      ok: false,
+      success: false,
+      code: 'ANALYTICS_LOAD_FAILED',
+      source,
+      stats: zeroStats(),
+      topPages: [],
+      pages: [],
+      topSections: [],
+      sections: [],
+      devices: [],
+      languages: [],
+      recentActivity: [],
+      recent: [],
+    }, { status: 500 });
+  }
 
   const pageViews = rows.filter(row => row.event_type === 'page_view');
   const accountEvents = rows.filter(row => row.event_type === 'account_created' || row.event_type === 'signup');
@@ -265,6 +362,7 @@ export async function GET(request: Request) {
   const trackingRecent = rows.some(row => new Date(row.created_at) >= last24Hours);
 
   return NextResponse.json({
+    ok: true,
     success: true,
     source,
     range: { from: from.toISOString(), to: to.toISOString() },
@@ -325,4 +423,8 @@ export async function GET(request: Request) {
     },
     hasData: rows.length > 0,
   });
+}
+
+export async function POST(request: Request) {
+  return GET(request);
 }
