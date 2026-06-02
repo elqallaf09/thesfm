@@ -629,7 +629,7 @@ export default function MarketAnalysisPage() {
   }, [activeTab, centralBankNews.items.length, centralBankNews.loading, centralBankNews.message, marketSentiment.items.length, marketSentiment.loading, marketSentiment.message]);
 
   useEffect(() => {
-    if (activeTab !== 'technicalAnalysis') return;
+    if (activeTab !== 'technicalAnalysis' || !selectedAsset) return;
     const symbol = technicalSymbol.trim().toUpperCase();
     if (!symbol) return;
     let cancelled = false;
@@ -655,7 +655,7 @@ export default function MarketAnalysisPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, technicalSymbol, t]);
+  }, [activeTab, selectedAsset, technicalSymbol, t]);
 
   const baseScenarioCurrency = normalizeScenarioCurrency(
     userCurrency && userCurrency !== 'KWD' ? userCurrency : currentUserProfile.defaultCurrency || userCurrency,
@@ -1498,6 +1498,12 @@ export default function MarketAnalysisPage() {
     { id: 'comparison', label: t('market_compare_assets'), count: compare.length },
     { id: 'assetReport', label: t('market_ai_asset_report') },
   ], [alerts.length, compare.length, t, watchlist.length]);
+  const focusMarketSearch = useCallback(() => {
+    setActiveTab('analyze');
+    window.requestAnimationFrame(() => {
+      document.getElementById('market-asset-search')?.focus();
+    });
+  }, []);
 
   return (
     <div className="market-shell" dir={dir}>
@@ -1601,12 +1607,24 @@ export default function MarketAnalysisPage() {
               <button className="market-search-submit" type="submit" disabled={loading || (!selectedAsset && query.trim().length < 2)}><Activity size={17} />{loading ? loadingLabel : t('market_analyze_now')}</button>
             </form>
           </div>
-          <div className="market-hero-card">
-            <span>{t('market_selected_asset')}</span>
-            <strong dir={selected?.symbol || selectedAsset?.symbol ? 'ltr' : undefined}>{selected?.symbol ?? selectedAsset?.symbol ?? t('market_no_asset_selected_yet')}</strong>
-            <p>{localizedAssetName ?? selectedAsset?.name ?? t('market_select_asset_to_start')}</p>
-            {selected && <em>{money(selected.latestPrice, selectedCurrency)} · {selected.cached ? t('market_cached_data') : t('market_badge_live')}</em>}
-            {selected && <b className={`risk ${selected.riskLevel}`}>{t(`market_risk_${selected.riskLevel}`)}</b>}
+          <div className={`market-hero-card ${selected ? 'selected' : 'empty'}`}>
+            {selected ? (
+              <>
+                <span>{t('market_selected_asset')}</span>
+                <strong dir="ltr">{selected.symbol}</strong>
+                <p>{localizedAssetName ?? selected.name}</p>
+                <em className="market-hero-card-meta" dir="ltr">{money(selected.latestPrice, selectedCurrency)} / {selected.cached ? t('market_cached_data') : t('market_badge_live')}</em>
+                <b className={`risk ${selected.riskLevel}`}>{t(`market_risk_${selected.riskLevel}`)}</b>
+              </>
+            ) : (
+              <>
+                <div className="market-hero-card-icon"><LineChart size={22} /></div>
+                <span>{t('market_selected_asset')}</span>
+                <strong>{t('market_no_asset_selected_yet')}</strong>
+                <p>{t('market_selected_asset_empty_body')}</p>
+                <button type="button" onClick={focusMarketSearch}>{t('market_search_asset_action')}</button>
+              </>
+            )}
           </div>
         </section>
 
@@ -1615,6 +1633,11 @@ export default function MarketAnalysisPage() {
             icon={<Activity size={18} />}
             label={t('market_data_source')}
             value={selected ? (selected.cached ? t('market_cached_data') : 'OpenBB') : 'OpenBB'}
+          />
+          <MarketStatusCard
+            icon={serviceState === 'connected' ? <CheckCircle2 size={18} /> : <Activity size={18} />}
+            label={t('market_service_status')}
+            value={serviceState === 'connected' ? t('market_connected_short') : serviceNotice}
           />
           <MarketStatusCard
             icon={<WalletCards size={18} />}
@@ -1626,11 +1649,6 @@ export default function MarketAnalysisPage() {
             icon={<Clock3 size={18} />}
             label={t('market_last_updated')}
             value={selected && lastUpdated ? lastUpdated : t('market_unavailable')}
-          />
-          <MarketStatusCard
-            icon={serviceState === 'connected' ? <CheckCircle2 size={18} /> : <Activity size={18} />}
-            label={t('market_service_status')}
-            value={serviceState === 'connected' ? t('market_connected_short') : serviceNotice}
           />
         </section>
 
@@ -1678,22 +1696,22 @@ export default function MarketAnalysisPage() {
           </div>
         )}
 
+        <section className="market-active-dashboard">
         {activeTab === 'analyze' && <section className="market-card-grid" aria-label={t('market_analysis_cards')}>
           {loading ? (
             <div className="market-empty" role="status">{loadingLabel}</div>
           ) : cards.length === 0 ? (
-            <div className="market-empty market-empty-detailed">
-              <strong>{selectedAsset?.symbol ? t('market_symbol_data_unavailable') : t('market_select_asset_to_start')}</strong>
-              {selectedAsset?.symbol && <span>{t('market_selected_asset')}: {selectedAsset.symbol}{selectedAsset.name ? ` - ${selectedAsset.name}` : ''}</span>}
-              {selectedAsset?.symbol && <span>{t('market_data_source')}: OpenBB / {selectedAsset.exchange ?? 'US market symbols'}</span>}
-              {error && <span>{t('market_error_reason')}: {error}</span>}
-              {selectedAsset?.symbol && <p>{t('market_symbol_exists_note')}</p>}
-              {selectedAsset && (
-                <button type="button" onClick={() => void requestAnalysis(selectedAsset.providerSymbol ?? selectedAsset.symbol, selectedAsset.assetType, selectedAsset)}>
-                  {t('market_retry')}
-                </button>
-              )}
-            </div>
+            selectedAsset ? (
+              <MarketEmptyState
+                icon={<AlertTriangle size={22} />}
+                title={t('market_symbol_data_unavailable')}
+                description={error || t('market_symbol_exists_note')}
+                actionLabel={t('market_retry')}
+                onAction={() => void requestAnalysis(selectedAsset.providerSymbol ?? selectedAsset.symbol, selectedAsset.assetType, selectedAsset)}
+              />
+            ) : (
+              <MarketDefaultDashboard t={t} onSearch={focusMarketSearch} onOpenTab={setActiveTab} />
+            )
           ) : cards.map(asset => (
             <article className="market-card" key={asset.symbol}>
               <div className="market-card-head">
@@ -1736,6 +1754,8 @@ export default function MarketAnalysisPage() {
             symbol={technicalSymbol}
             setSymbol={setTechnicalSymbol}
             state={technicalState}
+            hasSelectedAsset={Boolean(selectedAsset || selected)}
+            onSelectAsset={focusMarketSearch}
           />
         )}
 
@@ -2316,6 +2336,7 @@ export default function MarketAnalysisPage() {
         ) : (
           <div className="market-empty">{t('market_no_data')}</div>
         )}
+        </section>
 
         <section className="market-disclaimer">
           <AlertTriangle size={18} />
@@ -2371,7 +2392,210 @@ export default function MarketAnalysisPage() {
 
         .market-main > * {
           box-sizing: border-box;
-          max-width: 1480px;
+          width: 100%;
+          max-width: 1500px;
+        }
+
+        .market-active-dashboard {
+          width: 100%;
+          max-width: 1500px;
+          min-width: 0;
+          margin-inline: auto;
+          display: grid;
+          gap: 20px;
+          border: 1px solid rgba(47, 214, 192, .18);
+          border-radius: 32px;
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, .84), rgba(234, 246, 255, .68)),
+            var(--sfm-card);
+          box-shadow: 0 20px 56px rgba(3, 18, 37, .08);
+          padding: clamp(16px, 2vw, 24px);
+          overflow: hidden;
+        }
+
+        .market-active-dashboard > .market-card-grid,
+        .market-active-dashboard > .market-panel,
+        .market-active-dashboard > .market-bottom-grid,
+        .market-active-dashboard > .market-stock-header,
+        .market-active-dashboard > .market-decision-grid,
+        .market-active-dashboard > .market-layout,
+        .market-active-dashboard > .market-tools-grid {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+        }
+
+        .market-default-dashboard {
+          grid-column: 1 / -1;
+          display: grid;
+          gap: 18px;
+          width: 100%;
+          min-width: 0;
+        }
+
+        .market-default-modules {
+          display: grid;
+          gap: 14px;
+        }
+
+        .market-default-section-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          min-width: 0;
+        }
+
+        .market-default-section-head span {
+          color: var(--sfm-foreground);
+          font-size: 15px;
+          font-weight: 950;
+          line-height: 1.45;
+        }
+
+        .market-quick-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        .market-quick-card {
+          min-width: 0;
+          display: grid;
+          gap: 14px;
+          align-content: start;
+          border: 1px solid rgba(47, 214, 192, .16);
+          border-radius: 26px;
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, .78), rgba(234, 246, 255, .55)),
+            var(--sfm-card);
+          box-shadow: 0 14px 34px rgba(3, 18, 37, .06);
+          padding: 18px;
+          transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+        }
+
+        .market-quick-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(47, 214, 192, .34);
+          box-shadow: 0 18px 42px rgba(3, 18, 37, .09);
+        }
+
+        .market-quick-icon,
+        .market-empty-state-icon,
+        .market-hero-card-icon {
+          width: 46px;
+          height: 46px;
+          border-radius: 18px;
+          display: grid;
+          place-items: center;
+          color: #fff;
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          box-shadow: 0 14px 28px rgba(29, 140, 255, .18);
+          flex: 0 0 auto;
+        }
+
+        .market-quick-card h3 {
+          margin: 0;
+          color: var(--sfm-foreground);
+          font-size: 16px;
+          font-weight: 950;
+          line-height: 1.4;
+        }
+
+        .market-quick-card p {
+          margin: 6px 0 0;
+          color: var(--sfm-muted);
+          font-size: 13px;
+          font-weight: 850;
+          line-height: 1.75;
+        }
+
+        .market-quick-card button,
+        .market-empty-state button,
+        .market-hero-card.empty button {
+          width: max-content;
+          max-width: 100%;
+          border: 1px solid rgba(47, 214, 192, .28);
+          border-radius: 999px;
+          background: rgba(47, 214, 192, .12);
+          color: var(--sfm-primary-hover);
+          padding: 9px 14px;
+          font: 950 12px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+          transition: background .2s ease, border-color .2s ease, transform .2s ease;
+        }
+
+        .market-quick-card button:hover,
+        .market-quick-card button:focus-visible,
+        .market-empty-state button:hover,
+        .market-empty-state button:focus-visible,
+        .market-hero-card.empty button:hover,
+        .market-hero-card.empty button:focus-visible {
+          outline: none;
+          transform: translateY(-1px);
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          border-color: transparent;
+          color: #fff;
+          box-shadow: 0 0 0 3px rgba(24, 212, 212, .16);
+        }
+
+        .market-empty-state {
+          grid-column: 1 / -1;
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          gap: 16px;
+          align-items: center;
+          min-width: 0;
+          border: 1px solid rgba(47, 214, 192, .18);
+          border-radius: 28px;
+          background:
+            linear-gradient(135deg, rgba(29, 140, 255, .07), rgba(47, 214, 192, .08)),
+            var(--sfm-card);
+          padding: clamp(18px, 2.3vw, 26px);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .48);
+        }
+
+        .market-empty-state div {
+          display: grid;
+          gap: 8px;
+          min-width: 0;
+        }
+
+        .market-empty-state strong {
+          color: var(--sfm-foreground);
+          font-size: clamp(18px, 2vw, 24px);
+          font-weight: 950;
+          line-height: 1.35;
+        }
+
+        .market-empty-state p {
+          max-width: 820px;
+          margin: 0;
+          color: var(--sfm-muted);
+          font-size: 14px;
+          font-weight: 850;
+          line-height: 1.8;
+        }
+
+        .market-hero-card.empty {
+          align-content: start;
+          border-color: rgba(167, 243, 240, .28);
+          background: rgba(255, 255, 255, .12);
+        }
+
+        .market-hero-card.empty strong {
+          font-size: clamp(22px, 3vw, 32px);
+          line-height: 1.25;
+        }
+
+        .market-hero-card.empty p {
+          color: rgba(255, 255, 255, .74);
+          line-height: 1.75;
+        }
+
+        .market-hero-card.empty button {
+          color: #fff;
+          border-color: rgba(167, 243, 240, .34);
+          background: rgba(167, 243, 240, .14);
         }
 
         .market-status-grid {
@@ -2392,6 +2616,21 @@ export default function MarketAnalysisPage() {
             linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .07)),
             #0f1d31;
           border-color: #1d3050;
+        }
+
+        .dark .market-active-dashboard,
+        .dark .market-quick-card,
+        .dark .market-empty-state {
+          background:
+            linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .07)),
+            #0f1d31;
+          border-color: #1d3050;
+          box-shadow: 0 20px 56px rgba(0, 0, 0, .28);
+        }
+
+        .dark .market-quick-card p,
+        .dark .market-empty-state p {
+          color: #b8c7d9;
         }
 
         .market-dashboard-tabs {
@@ -2621,6 +2860,7 @@ export default function MarketAnalysisPage() {
 
         @media (max-width: 1180px) {
           .market-status-grid,
+          .market-quick-grid,
           .session-card-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           }
@@ -2636,9 +2876,34 @@ export default function MarketAnalysisPage() {
           }
 
           .market-status-grid,
+          .market-quick-grid,
           .session-card-grid,
           .session-metrics {
             grid-template-columns: 1fr !important;
+          }
+
+          .market-active-dashboard {
+            border-radius: 24px;
+            padding: 14px;
+          }
+
+          .market-empty-state {
+            grid-template-columns: 1fr;
+            justify-items: start;
+            border-radius: 22px;
+          }
+
+          .market-empty-state-icon,
+          .market-quick-icon,
+          .market-hero-card-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 16px;
+          }
+
+          .market-quick-card {
+            border-radius: 22px;
+            padding: 16px;
           }
 
           .market-dashboard-tabs {
@@ -3338,12 +3603,16 @@ function TechnicalAnalysisPanel({
   symbol,
   setSymbol,
   state,
+  hasSelectedAsset,
+  onSelectAsset,
 }: {
   t: (key: string) => string;
   locale: string;
   symbol: string;
   setSymbol: (symbol: string) => void;
   state: TechnicalState;
+  hasSelectedAsset: boolean;
+  onSelectAsset: () => void;
 }) {
   const data = state.data;
   const [category, setCategory] = useState<TechnicalSymbolCategory>(() => getTechnicalSymbolCategory(symbol));
@@ -3442,6 +3711,16 @@ function TechnicalAnalysisPanel({
           <h2>{t('market_daily_technical_analysis')}</h2>
         </div>
       </div>
+      {!hasSelectedAsset ? (
+        <MarketEmptyState
+          icon={<LineChart size={22} />}
+          title={t('market_technical_choose_asset_title')}
+          description={t('market_technical_choose_asset_body')}
+          actionLabel={t('market_search_asset_action')}
+          onAction={onSelectAsset}
+        />
+      ) : (
+        <>
       <div className="technical-selector-shell">
         <div className="technical-search">
           <Search size={16} />
@@ -3516,7 +3795,121 @@ function TechnicalAnalysisPanel({
           />
         </div>
       ) : null}
+        </>
+      )}
     </section>
+  );
+}
+
+function MarketDefaultDashboard({
+  t,
+  onSearch,
+  onOpenTab,
+}: {
+  t: (key: string) => string;
+  onSearch: () => void;
+  onOpenTab: (tab: MarketTab) => void;
+}) {
+  const modules: Array<{
+    tab: MarketTab;
+    icon: ReactNode;
+    title: string;
+    body: string;
+    action: string;
+    onClick: () => void;
+  }> = [
+    {
+      tab: 'analyze',
+      icon: <Search size={18} />,
+      title: t('market_quick_analyze_title'),
+      body: t('market_quick_analyze_body'),
+      action: t('market_search_asset_action'),
+      onClick: onSearch,
+    },
+    {
+      tab: 'traderTools',
+      icon: <Calculator size={18} />,
+      title: t('market_trader_tools'),
+      body: t('market_quick_trader_tools_body'),
+      action: t('market_open_module'),
+      onClick: () => onOpenTab('traderTools'),
+    },
+    {
+      tab: 'economicCalendar',
+      icon: <CalendarDays size={18} />,
+      title: t('market_economic_calendar'),
+      body: t('market_quick_calendar_body'),
+      action: t('market_open_module'),
+      onClick: () => onOpenTab('economicCalendar'),
+    },
+    {
+      tab: 'sessions',
+      icon: <Clock3 size={18} />,
+      title: t('market_trading_sessions'),
+      body: t('market_quick_sessions_body'),
+      action: t('market_open_module'),
+      onClick: () => onOpenTab('sessions'),
+    },
+  ];
+
+  return (
+    <div className="market-default-dashboard">
+      <MarketEmptyState
+        icon={<LineChart size={24} />}
+        title={t('market_default_start_title')}
+        description={t('market_default_start_body')}
+        actionLabel={t('market_search_asset_action')}
+        onAction={onSearch}
+      />
+      <section className="market-default-modules" aria-label={t('market_default_modules_title')}>
+        <div className="market-default-section-head">
+          <span>{t('market_default_modules_title')}</span>
+        </div>
+        <div className="market-quick-grid">
+          {modules.map(module => (
+            <article className="market-quick-card" key={module.tab}>
+              <span className="market-quick-icon">{module.icon}</span>
+              <div>
+                <h3>{module.title}</h3>
+                <p>{module.body}</p>
+              </div>
+              <button type="button" onClick={module.onClick}>
+                {module.action}
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function MarketEmptyState({
+  icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="market-empty-state">
+      <span className="market-empty-state-icon">{icon}</span>
+      <div>
+        <strong>{title}</strong>
+        <p>{description}</p>
+        {actionLabel && onAction ? (
+          <button type="button" onClick={onAction}>
+            {actionLabel}
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -3668,11 +4061,7 @@ function NewsSentimentPanel({
 
 function EmptyToolState({ title, body }: { title: string; body: string }) {
   return (
-    <div className="trader-empty-state">
-      <AlertTriangle size={18} />
-      <strong>{title}</strong>
-      <p>{body}</p>
-    </div>
+    <MarketEmptyState icon={<AlertTriangle size={18} />} title={title} description={body} />
   );
 }
 
