@@ -54,7 +54,7 @@ type MarketResultWithMeta = MarketResult & {
   suggestions?: string[];
   correction?: string | null;
 };
-type TraderToolsSubTab = 'risk' | 'pips' | 'lot' | 'performance';
+type TraderToolsSubTab = 'risk' | 'pips' | 'lot' | 'margin' | 'performance';
 type MarketAssetFilter = MarketAssetType | 'all';
 type MarketPerformanceItem = {
   symbol: string;
@@ -170,7 +170,7 @@ const TECHNICAL_SYMBOL_GROUPS: Record<TechnicalSymbolCategory, TechnicalSymbolOp
 };
 const TECHNICAL_SYMBOL_OPTIONS = Object.values(TECHNICAL_SYMBOL_GROUPS).flat();
 const TECHNICAL_SYMBOL_FAVORITES_KEY = 'sfm_market_technical_favorites';
-const TRADER_TOOL_TABS: TraderToolsSubTab[] = ['risk', 'pips', 'lot', 'performance'];
+const TRADER_TOOL_TABS: TraderToolsSubTab[] = ['risk', 'pips', 'lot', 'margin', 'performance'];
 
 function money(value: number, currency = 'USD') {
   const maximumFractionDigits = value > 1000 ? 0 : 2;
@@ -2602,6 +2602,7 @@ export default function MarketAnalysisPage() {
         .trader-dashboard-head{justify-content:space-between;gap:14px}.trader-dashboard-head small{margin-inline-start:auto;border:1px solid rgba(47,214,192,.24);background:rgba(47,214,192,.12);color:var(--sfm-primary-hover);border-radius:999px;padding:7px 10px;font-size:11px;font-weight:950;line-height:1.3;white-space:nowrap}.trader-tool-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:18px}.trader-tool-card{grid-column:span 4;border-radius:26px;padding:20px;background:linear-gradient(135deg,rgba(255,255,255,.70),rgba(234,246,255,.52)),var(--sfm-card);border-color:rgba(47,214,192,.18);box-shadow:0 16px 38px rgba(3,18,37,.08);align-content:start}.trader-tool-card-head{align-items:flex-start;justify-content:space-between;gap:12px;border:1px solid rgba(47,214,192,.14);background:rgba(47,214,192,.07);border-radius:20px;padding:12px}.trader-tool-card-head>div{display:grid;gap:5px;min-width:0}.trader-tool-card-head h3{margin:0;color:var(--sfm-foreground);font-size:clamp(17px,1.4vw,21px);font-weight:950;line-height:1.35}.trader-tool-card-head p{margin:0;color:var(--sfm-muted);font-size:12px;font-weight:850;line-height:1.7}.tool-reset{min-height:36px;border:1px solid rgba(47,214,192,.24);border-radius:999px;background:var(--sfm-card);color:var(--sfm-primary-hover);padding:0 12px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}.tool-reset:hover,.tool-reset:focus-visible{outline:none;border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.14);background:rgba(47,214,192,.12)}.tool-input{gap:8px}.tool-input span{color:var(--sfm-foreground);font-size:12px;font-weight:950;letter-spacing:0}.tool-input small{color:var(--sfm-muted);font-size:11px;font-weight:850;line-height:1.6}.tool-input-shell,.market-currency-input{width:100%;min-height:56px;display:flex;align-items:center;gap:10px;border:1px solid rgba(47,214,192,.22);border-radius:18px;background:linear-gradient(135deg,rgba(255,255,255,.84),rgba(234,246,255,.58)),var(--sfm-card);padding:0 10px;box-shadow:0 12px 26px rgba(3,18,37,.06);transition:border-color .18s ease,box-shadow .18s ease,background .18s ease}.tool-input-shell:focus-within,.market-currency-input:focus-within{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.16),0 14px 30px rgba(3,18,37,.09)}.tool-input-shell em,.market-input-affix{flex:0 0 auto;min-width:48px;text-align:center;border:1px solid rgba(47,214,192,.24);background:linear-gradient(135deg,rgba(47,214,192,.13),rgba(29,140,255,.08));color:var(--sfm-primary-hover);border-radius:14px;padding:8px 10px;font-style:normal;font-size:11px;font-weight:950;line-height:1.2;white-space:nowrap}.tool-input .tool-input-shell input,.tool-input .tool-input-shell select,.tool-input .market-currency-input input{height:54px!important;width:100%;min-width:0;border:0!important;background:transparent!important;color:var(--sfm-foreground);padding:0!important;box-shadow:none!important;font:950 16px Tajawal,Arial,sans-serif;outline:0}.tool-input .tool-input-shell input[dir="ltr"],.tool-input .market-currency-input input{text-align:left;direction:ltr;unicode-bidi:isolate}.tool-input-shell.select{padding-inline-end:12px}.tool-input-shell.select select{cursor:pointer}.market-scenario-currency{flex:0 0 auto}.market-scenario-currency>span{display:none}.market-scenario-currency-trigger{height:38px;min-width:54px;border-radius:14px}.tool-results{border:1px solid rgba(47,214,192,.16);border-radius:24px;background:linear-gradient(135deg,rgba(29,140,255,.05),rgba(47,214,192,.07)),var(--sfm-light-card);padding:14px;display:grid;gap:12px}.tool-results-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}.tool-results-head small{color:var(--sfm-muted);font-size:11px;font-weight:850;line-height:1.55}.tool-results-title{color:var(--sfm-foreground);font-size:14px;font-weight:950;line-height:1.4}.tool-result-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.tool-result-card{position:relative;overflow:hidden;min-height:96px;border-radius:20px;padding:15px;background:linear-gradient(135deg,rgba(255,255,255,.82),rgba(234,246,255,.62)),var(--sfm-card);border:1px solid rgba(47,214,192,.18);box-shadow:0 12px 28px rgba(3,18,37,.06)}.tool-result-card:before{content:"";position:absolute;inset-inline-start:0;top:14px;bottom:14px;width:3px;border-radius:999px;background:linear-gradient(180deg,var(--sfm-primary),var(--sfm-accent))}.tool-result-card span{color:var(--sfm-muted);font-size:11px;font-weight:900;line-height:1.4}.tool-result-card b{color:var(--sfm-foreground);font-size:clamp(18px,1.7vw,25px);font-weight:950;line-height:1.2;letter-spacing:0;direction:ltr;unicode-bidi:isolate;overflow-wrap:anywhere}.scenario-grid .metric,.portfolio-metric-grid .metric{position:relative;overflow:hidden;border-radius:18px;background:linear-gradient(135deg,rgba(255,255,255,.82),rgba(234,246,255,.58)),var(--sfm-card);border-color:rgba(47,214,192,.18);box-shadow:0 10px 26px rgba(3,18,37,.05);padding:14px}.scenario-grid .metric:before,.portfolio-metric-grid .metric:before{content:"";position:absolute;inset-inline-start:0;top:12px;bottom:12px;width:3px;border-radius:999px;background:linear-gradient(180deg,var(--sfm-primary),var(--sfm-accent))}.scenario-grid .metric span,.portfolio-metric-grid .metric span{font-size:11px;color:var(--sfm-muted);font-weight:950}.scenario-grid .metric strong,.portfolio-metric-grid .metric strong{font-size:clamp(16px,1.4vw,21px);font-weight:950;direction:ltr;unicode-bidi:isolate;line-height:1.25}.dark .trader-dashboard-head small,.dark .tool-reset,.dark .tool-input-shell em,.dark .market-input-affix{color:#2FD6C0;background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.25)}.dark .trader-tool-card{background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(47,214,192,.07)),#0f1d31;border-color:#1d3050}.dark .trader-tool-card-head,.dark .tool-input-shell,.dark .market-currency-input,.dark .tool-result-card,.dark .scenario-grid .metric,.dark .portfolio-metric-grid .metric{background:linear-gradient(135deg,rgba(29,140,255,.06),rgba(47,214,192,.05)),#0a1422;border-color:#1d3050}.dark .tool-results{background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(47,214,192,.07)),#0f1d31;border-color:#1d3050}.dark .tool-input .tool-input-shell input,.dark .tool-input .tool-input-shell select,.dark .tool-input .market-currency-input input{color:#e8eef6}
         .trader-dashboard .tool-input{width:100%;max-width:100%;min-width:0;display:grid;grid-template-columns:1fr;gap:9px}.trader-dashboard .tool-input>span,.market-tools-grid .tool-input>span{color:var(--sfm-foreground);font-size:13px;font-weight:950;line-height:1.45}.trader-dashboard .tool-input small,.market-tools-grid .tool-input small{color:var(--sfm-muted);font-size:11px;font-weight:850;line-height:1.65}.trader-dashboard .tool-input-shell,.market-tools-grid .market-currency-input{min-width:0;min-height:60px;border-radius:20px;border-color:rgba(47,214,192,.24);background:linear-gradient(135deg,rgba(255,255,255,.90),rgba(234,246,255,.66)),var(--sfm-card);box-shadow:0 14px 32px rgba(3,18,37,.07);padding-inline:12px}.trader-dashboard .tool-input-shell:focus-within,.market-tools-grid .market-currency-input:focus-within{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.18),0 18px 36px rgba(3,18,37,.10)}.trader-dashboard .tool-input-shell em,.market-tools-grid .market-input-affix{min-width:54px;min-height:38px;display:inline-flex;align-items:center;justify-content:center;border-radius:15px;background:linear-gradient(135deg,rgba(47,214,192,.16),rgba(29,140,255,.10));border-color:rgba(47,214,192,.28);color:var(--sfm-primary-hover);font-size:11px;font-weight:950;font-variant-numeric:tabular-nums}.trader-dashboard .tool-input .tool-input-shell input,.trader-dashboard .tool-input .tool-input-shell select,.market-tools-grid .market-currency-input input{height:58px!important;font-size:16px!important;font-weight:950!important;font-variant-numeric:tabular-nums;letter-spacing:0;color:var(--sfm-foreground)}.trader-dashboard .tool-results{border-radius:26px;padding:16px;background:linear-gradient(135deg,rgba(29,140,255,.055),rgba(47,214,192,.085)),var(--sfm-light-card);box-shadow:inset 0 1px 0 rgba(255,255,255,.45)}.trader-dashboard .tool-results-head{padding-bottom:12px;border-bottom:1px solid rgba(47,214,192,.13)}.trader-dashboard .tool-result-grid{gap:12px}.trader-dashboard .tool-result-card{isolation:isolate;display:grid;align-content:space-between;gap:12px;min-height:104px;border-radius:22px;padding:16px;background:linear-gradient(135deg,rgba(255,255,255,.88),rgba(234,246,255,.70)),var(--sfm-card);border-color:rgba(47,214,192,.20);box-shadow:0 14px 32px rgba(3,18,37,.07)}.trader-dashboard .tool-result-card span{font-size:11px;font-weight:950;color:var(--sfm-muted);line-height:1.45}.trader-dashboard .tool-result-card b{display:block;max-width:100%;text-align:left;font-size:clamp(18px,2vw,26px);font-weight:950;line-height:1.2;font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate;overflow-wrap:anywhere}.market-tools-grid .scenario-grid .metric,.portfolio-metric-grid .metric{min-width:0}.dark .trader-dashboard .tool-input-shell,.dark .market-tools-grid .market-currency-input,.dark .trader-dashboard .tool-result-card{background:linear-gradient(135deg,rgba(29,140,255,.07),rgba(47,214,192,.06)),#0a1422;border-color:#1d3050}.dark .trader-dashboard .tool-results{background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(47,214,192,.07)),#0f1d31;border-color:#1d3050}@media(max-width:520px){.trader-dashboard .tool-input-shell,.market-tools-grid .market-currency-input{min-height:54px;border-radius:18px;padding-inline:8px;gap:7px}.trader-dashboard .tool-input-shell em,.market-tools-grid .market-input-affix{min-width:42px;min-height:34px;padding-inline:7px;font-size:10px}.market-scenario-currency-trigger{min-width:48px;height:34px;padding-inline:7px}.trader-dashboard .tool-input .tool-input-shell input,.trader-dashboard .tool-input .tool-input-shell select,.market-tools-grid .market-currency-input input{height:52px!important;font-size:15px!important}.trader-dashboard .tool-results{padding:13px;border-radius:22px}.trader-dashboard .tool-result-card{min-height:88px;padding:14px;border-radius:18px}.trader-dashboard .tool-result-card b{font-size:17px}.trader-dashboard,.trader-tool-card,.tool-result-grid{width:100%;max-width:100%;min-width:0;overflow:hidden}}
         .trader-currency-bar{display:grid;grid-template-columns:minmax(220px,360px) minmax(0,1fr);gap:14px;align-items:end;border:1px solid rgba(47,214,192,.16);background:linear-gradient(135deg,rgba(255,255,255,.78),rgba(234,246,255,.55)),var(--sfm-light-card);border-radius:24px;padding:14px;min-width:0}.trader-currency-action{display:grid;justify-items:start;align-content:end;gap:8px;min-width:0}.trader-currency-action button{min-height:46px;border:1px solid rgba(47,214,192,.26);border-radius:999px;background:linear-gradient(135deg,rgba(29,140,255,.12),rgba(47,214,192,.16));color:var(--sfm-primary-hover);padding:0 16px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;box-shadow:0 10px 24px rgba(3,18,37,.06)}.trader-currency-action button:hover,.trader-currency-action button:focus-visible{outline:none;border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.14),0 12px 26px rgba(3,18,37,.08)}.trader-currency-action button:disabled{opacity:.72;cursor:not-allowed}.trader-currency-action small{font-size:12px;font-weight:900;line-height:1.45}.trader-currency-action small.success{color:#047857}.trader-currency-action small.error{color:#B91C1C}.trader-active-tool{display:grid;gap:16px;min-width:0}.trader-active-intro{display:grid;gap:6px;border:1px solid rgba(47,214,192,.16);background:linear-gradient(135deg,rgba(29,140,255,.055),rgba(47,214,192,.08)),var(--sfm-light-card);border-radius:24px;padding:16px;min-width:0}.trader-active-intro span{color:var(--sfm-primary-hover);font-size:11px;font-weight:950;line-height:1.4}.trader-active-intro h3{margin:0;color:var(--sfm-foreground);font-size:clamp(20px,2.5vw,28px);font-weight:950;line-height:1.25}.trader-active-intro p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:850;line-height:1.8}.trader-dashboard .trader-tool-grid{grid-template-columns:minmax(0,1.18fr) minmax(300px,.82fr);gap:16px;align-items:start}.trader-dashboard .trader-tool-card,.trader-dashboard .trader-result-stack{grid-column:auto;min-width:0}.trader-result-stack{display:grid;gap:14px;align-content:start;min-width:0}.tool-formula-card{display:flex;align-items:flex-start;gap:12px;border:1px solid rgba(47,214,192,.16);background:linear-gradient(135deg,rgba(29,140,255,.05),rgba(47,214,192,.08)),var(--sfm-card);border-radius:24px;padding:15px;box-shadow:0 10px 28px rgba(3,18,37,.05);min-width:0}.tool-formula-card>span{width:38px;height:38px;border-radius:15px;display:grid;place-items:center;flex:0 0 auto;background:rgba(47,214,192,.13);border:1px solid rgba(47,214,192,.22);color:var(--sfm-soft-cyan)}.tool-formula-card div{display:grid;gap:6px;min-width:0}.tool-formula-card strong{color:var(--sfm-foreground);font-size:14px;font-weight:950;line-height:1.4}.tool-formula-card p{margin:0;color:var(--sfm-muted);font-size:12px;font-weight:850;line-height:1.75}.tool-formula-card b{display:block;width:max-content;max-width:100%;border:1px solid rgba(47,214,192,.20);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:950;line-height:1.35;overflow-wrap:anywhere;white-space:normal}.tool-advanced{grid-column:1/-1;border:1px solid rgba(47,214,192,.16);background:rgba(47,214,192,.06);border-radius:20px;padding:10px;min-width:0}.tool-advanced summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:42px;color:var(--sfm-foreground);font-size:13px;font-weight:950;cursor:pointer;list-style:none}.tool-advanced summary::-webkit-details-marker{display:none}.tool-advanced summary:after{content:"+";width:26px;height:26px;border-radius:999px;display:grid;place-items:center;background:rgba(47,214,192,.12);color:var(--sfm-primary-hover);font-weight:950}.tool-advanced[open] summary{margin-bottom:12px}.tool-advanced[open] summary:after{content:"−"}.trader-disclaimer{margin:0;border:1px solid rgba(29,140,255,.18);background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(47,214,192,.06)),var(--sfm-card);border-radius:22px;padding:13px 15px;color:var(--sfm-muted);font-size:12px;font-weight:850;line-height:1.8}.dark .trader-currency-bar,.dark .trader-active-intro,.dark .tool-formula-card,.dark .trader-disclaimer{background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(47,214,192,.07)),#0f1d31;border-color:#1d3050}.dark .tool-advanced{background:#0a1422;border-color:#1d3050}.dark .tool-formula-card b{background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.25);color:#2FD6C0}.dark .trader-currency-action small.success{color:#2FD6C0}.dark .trader-currency-action small.error{color:#FF5B6E}@media(max-width:1180px){.trader-dashboard .trader-tool-grid,.trader-currency-bar{grid-template-columns:1fr}.trader-dashboard .trader-tool-card,.trader-dashboard .trader-result-stack{grid-column:1/-1}}@media(max-width:720px){.trader-currency-action{justify-items:stretch}.trader-currency-action button{width:100%;min-height:44px}.tool-formula-card{display:grid}.tool-formula-card b{width:100%}.trader-active-intro,.trader-currency-bar{border-radius:20px;padding:13px}}
+        .trader-legacy-hidden{display:none!important}.trader-premium-dashboard{width:100%;max-width:1500px;margin-inline:auto;display:grid;gap:18px;min-width:0;overflow:hidden}.trader-premium-header{display:flex;align-items:center;gap:16px;min-width:0;border:1px solid rgba(47,214,192,.18);border-radius:30px;background:linear-gradient(135deg,rgba(255,255,255,.9),rgba(234,246,255,.68)),var(--sfm-card);box-shadow:0 18px 46px rgba(3,18,37,.08);padding:clamp(18px,2vw,26px)}.trader-premium-header-icon,.trader-premium-tool-icon,.trader-support-icon,.trader-accordion-icon{width:46px;height:46px;border-radius:18px;display:grid;place-items:center;flex:0 0 auto;color:#fff;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));box-shadow:0 14px 28px rgba(29,140,255,.18)}.trader-premium-header span:not(.trader-premium-header-icon),.trader-premium-main-head span:not(.trader-premium-tool-icon){color:var(--sfm-primary-hover);font-size:12px;font-weight:950;line-height:1.35}.trader-premium-header h2,.trader-premium-main-head h3{margin:4px 0 0;color:var(--sfm-foreground);font-size:clamp(24px,3.2vw,36px);font-weight:950;line-height:1.2}.trader-premium-header p,.trader-premium-main-head p,.trader-support-card p{margin:7px 0 0;color:var(--sfm-muted);font-size:13px;font-weight:850;line-height:1.8}.trader-premium-layout{display:grid;grid-template-columns:minmax(0,.75fr) minmax(0,1.25fr);grid-template-areas:"support main";gap:18px;align-items:start;min-width:0}.trader-support-column{grid-area:support;display:grid;gap:14px;min-width:0}.trader-premium-main-card{grid-area:main;display:grid;gap:16px;min-width:0;border:1px solid rgba(47,214,192,.18);border-radius:30px;background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(234,246,255,.66)),var(--sfm-card);box-shadow:0 18px 46px rgba(3,18,37,.08);padding:clamp(16px,2vw,24px);overflow:hidden}.trader-support-card{display:flex;gap:13px;min-width:0;border:1px solid rgba(47,214,192,.16);border-radius:24px;background:linear-gradient(135deg,rgba(255,255,255,.86),rgba(234,246,255,.58)),var(--sfm-card);box-shadow:0 12px 30px rgba(3,18,37,.06);padding:16px}.trader-support-card.highlight{background:linear-gradient(135deg,rgba(29,140,255,.11),rgba(47,214,192,.12)),var(--sfm-card);border-color:rgba(47,214,192,.28)}.trader-support-icon{width:38px;height:38px;border-radius:15px}.trader-support-card h3{margin:0;color:var(--sfm-foreground);font-size:15px;font-weight:950;line-height:1.4}.trader-side-result-grid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}.trader-side-stat{border:1px solid rgba(47,214,192,.14);border-radius:16px;background:rgba(255,255,255,.72);padding:11px;display:grid;gap:5px}.trader-side-stat span{color:var(--sfm-muted);font-size:11px;font-weight:950;line-height:1.3}.trader-side-stat b{color:var(--sfm-primary-hover);font-size:20px;font-weight:950;line-height:1.2;text-align:start}.trader-steps{margin:10px 0 0;padding-inline-start:20px;color:var(--sfm-muted);display:grid;gap:8px;font-size:13px;font-weight:850;line-height:1.7}.trader-premium-main-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;min-width:0;border:1px solid rgba(47,214,192,.14);border-radius:24px;background:rgba(47,214,192,.07);padding:14px}.trader-premium-tool-icon{width:42px;height:42px;border-radius:16px}.trader-premium-main-head h3{font-size:clamp(20px,2.4vw,28px)}.trader-premium-save{display:grid;gap:6px;justify-items:end;min-width:180px}.trader-premium-save button{border:1px solid rgba(47,214,192,.28);border-radius:999px;background:rgba(47,214,192,.12);color:var(--sfm-primary-hover);min-height:40px;padding:0 14px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;transition:background .2s ease,transform .2s ease,border-color .2s ease}.trader-premium-save button:hover{background:rgba(47,214,192,.18);border-color:rgba(47,214,192,.42);transform:translateY(-1px)}.trader-premium-save button:disabled{cursor:wait;opacity:.72;transform:none}.trader-premium-save small{font-size:11px;font-weight:900;line-height:1.35}.trader-premium-save small.success{color:#047857}.trader-premium-save small.error{color:#DC2626}.trader-accordion-list{display:grid;gap:12px;min-width:0}.trader-accordion-item{min-width:0;border:1px solid rgba(47,214,192,.15);border-radius:22px;background:rgba(255,255,255,.76);box-shadow:0 10px 26px rgba(3,18,37,.05);overflow:hidden}.trader-accordion-item.active{background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(234,246,255,.68));border-color:rgba(47,214,192,.34);box-shadow:0 16px 38px rgba(3,18,37,.08)}.trader-accordion-item>button{width:100%;border:0;background:transparent;color:var(--sfm-foreground);display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;text-align:start;padding:14px;cursor:pointer}.trader-accordion-icon{width:38px;height:38px;border-radius:15px}.trader-accordion-copy{display:grid;gap:4px;min-width:0}.trader-accordion-copy strong{color:var(--sfm-foreground);font-size:14px;font-weight:950;line-height:1.35}.trader-accordion-copy small{color:var(--sfm-muted);font-size:12px;font-weight:850;line-height:1.55;overflow-wrap:anywhere}.trader-accordion-chevron{width:30px;height:30px;border-radius:999px;display:grid;place-items:center;background:rgba(47,214,192,.12);color:var(--sfm-primary-hover);font-weight:950;transition:transform .2s ease}.trader-accordion-item.active .trader-accordion-chevron{transform:rotate(180deg)}.trader-accordion-panel{border-top:1px solid rgba(47,214,192,.14);padding:14px;background:rgba(234,246,255,.35);min-width:0}.trader-premium-panel-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.78fr);gap:14px;align-items:start;min-width:0}.trader-premium-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.trader-premium-result-stack{gap:12px}.trader-highlight-result{border:1px solid rgba(47,214,192,.32);border-radius:22px;background:linear-gradient(135deg,rgba(29,140,255,.12),rgba(47,214,192,.16));box-shadow:inset 0 1px 0 rgba(255,255,255,.55);padding:15px;display:grid;gap:7px}.trader-highlight-result span{color:var(--sfm-primary-hover);font-size:12px;font-weight:950}.trader-highlight-result strong{color:#047857;font-size:clamp(30px,4vw,42px);font-weight:950;line-height:1}.trader-highlight-result p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:850;line-height:1.75}.trader-highlight-result b{color:var(--sfm-foreground)}.trader-premium-disclaimer{display:flex;align-items:flex-start;gap:12px;border:1px solid rgba(29,140,255,.18);border-radius:26px;background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(47,214,192,.06)),var(--sfm-card);box-shadow:0 12px 32px rgba(3,18,37,.06);padding:17px 18px}.trader-premium-disclaimer>span{width:40px;height:40px;border-radius:16px;display:grid;place-items:center;color:var(--sfm-primary-hover);background:rgba(29,140,255,.10);border:1px solid rgba(29,140,255,.16);flex:0 0 auto}.trader-premium-disclaimer strong{display:block;color:var(--sfm-foreground);font-size:14px;font-weight:950;margin-bottom:4px}.trader-premium-disclaimer p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:850;line-height:1.8}.dark .trader-premium-header,.dark .trader-premium-main-card,.dark .trader-support-card,.dark .trader-accordion-item,.dark .trader-premium-disclaimer{background:linear-gradient(135deg,rgba(29,140,255,.10),rgba(47,214,192,.07)),#0f1d31;border-color:#1d3050;box-shadow:0 18px 46px rgba(0,0,0,.28)}.dark .trader-premium-main-head,.dark .trader-accordion-panel{background:rgba(47,214,192,.08);border-color:#1d3050}.dark .trader-accordion-item.active{background:linear-gradient(135deg,rgba(29,140,255,.12),rgba(47,214,192,.10)),#0f1d31;border-color:rgba(47,214,192,.32)}.dark .trader-side-stat{background:#0a1422;border-color:#1d3050}.dark .trader-highlight-result{background:linear-gradient(135deg,rgba(29,140,255,.16),rgba(47,214,192,.14)),#0a1422;border-color:rgba(47,214,192,.30);box-shadow:none}.dark .trader-highlight-result strong,.dark .trader-side-stat b,.dark .trader-premium-save small.success{color:#2FD6C0}.dark .trader-premium-save small.error{color:#FF5B6E}.dark .trader-premium-save button{background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.25);color:#2FD6C0}.dark .trader-premium-save button:hover{background:rgba(47,214,192,.18);border-color:rgba(47,214,192,.42)}@media(max-width:1180px){.trader-premium-layout{grid-template-columns:1fr;grid-template-areas:"main" "support"}.trader-premium-panel-grid{grid-template-columns:1fr}.trader-premium-main-head{grid-template-columns:auto minmax(0,1fr)}.trader-premium-save{grid-column:1/-1;justify-items:stretch;min-width:0}.trader-premium-save button{width:100%}}@media(max-width:720px){.trader-premium-header,.trader-support-card,.trader-premium-main-card,.trader-premium-disclaimer{border-radius:22px}.trader-premium-header{align-items:flex-start}.trader-premium-form-grid{grid-template-columns:1fr}.trader-accordion-item>button{grid-template-columns:auto minmax(0,1fr) auto;padding:12px}.trader-accordion-copy small{display:none}.trader-accordion-panel{padding:12px}.trader-premium-main-head{border-radius:20px;padding:12px}.trader-premium-header h2{font-size:25px}.trader-side-result-grid{grid-template-columns:1fr}.trader-support-column{order:2}}
         .performance-card-list{display:none}.performance-table-desktop{display:block}.trader-table-wrap{width:100%;max-width:100%;overflow-x:auto;border:1px solid rgba(167,243,240,.14);border-radius:18px;-webkit-overflow-scrolling:touch}.trader-table{display:table;width:100%;min-width:760px;border-collapse:separate;border-spacing:0 8px;padding:8px}.trader-table th{padding:12px 16px;color:var(--sfm-muted);font-size:13px;font-weight:950;line-height:1.35;text-align:start;white-space:nowrap}.trader-table td{padding:13px 16px;background:var(--sfm-light-card);color:var(--sfm-foreground);font-size:13px;font-weight:900;line-height:1.45;white-space:nowrap;vertical-align:middle}.trader-table tbody tr td:first-child{border-start-start-radius:14px;border-end-start-radius:14px}.trader-table tbody tr td:last-child{border-start-end-radius:14px;border-end-end-radius:14px}.performance-symbol{display:inline-flex;direction:ltr;unicode-bidi:isolate;font-weight:950;letter-spacing:.02em}.performance-value{display:inline-flex;direction:ltr;unicode-bidi:isolate;font-weight:950}.performance-trend{display:inline-flex;align-items:center;justify-content:center;width:max-content;border:1px solid transparent;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:950;line-height:1.2;white-space:nowrap}.performance-trend.bullish{background:#CCFBF1;color:#047857;border-color:rgba(15,118,110,.20)}.performance-trend.bearish{background:#FEE2E2;color:#DC2626;border-color:rgba(220,38,38,.20)}.performance-trend.neutral{background:rgba(148,163,184,.12);color:var(--sfm-muted);border-color:rgba(148,163,184,.20)}.performance-card{width:100%;max-width:100%;min-width:0;overflow:hidden;border:1px solid rgba(167,243,240,.16);border-radius:20px;background:var(--sfm-card);padding:15px;box-shadow:0 10px 26px rgba(3,18,37,.06)}.performance-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}.performance-card-head div{display:grid;gap:4px;min-width:0}.performance-card-head strong{color:var(--sfm-foreground);font-size:17px;font-weight:950;line-height:1.2;direction:ltr;unicode-bidi:isolate;text-align:start}.performance-card-head span{color:var(--sfm-muted);font-size:13px;font-weight:850;line-height:1.45;overflow-wrap:anywhere}.performance-metric-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.performance-metric{min-width:0;border:1px solid rgba(167,243,240,.12);border-radius:15px;background:var(--sfm-light-card);padding:11px;display:grid;gap:5px}.performance-metric span{color:var(--sfm-muted);font-size:11px;font-weight:900;line-height:1.35}.performance-metric b{color:var(--sfm-foreground);font-size:14px;font-weight:950;line-height:1.3;direction:ltr;unicode-bidi:isolate;text-align:start;overflow-wrap:anywhere}.performance-metric b.up,.performance-value.up{color:#047857}.performance-metric b.down,.performance-value.down{color:#DC2626}.dark .trader-table td,.dark .performance-card{background:#0f1d31;border-color:#1d3050}.dark .performance-metric{background:#0a1422;border-color:#1d3050}.dark .performance-trend.bullish{background:rgba(47,214,192,.12);color:#2FD6C0;border-color:rgba(47,214,192,.25)}.dark .performance-trend.bearish{background:rgba(255,91,110,.12);color:#FF5B6E;border-color:rgba(255,91,110,.25)}.dark .performance-metric b.up,.dark .performance-value.up{color:#2FD6C0}.dark .performance-metric b.down,.dark .performance-value.down{color:#FF5B6E}
         .market-status-card{display:flex;align-items:center;gap:13px;min-width:0;border:1px solid rgba(47,214,192,.16);border-radius:24px;background:linear-gradient(135deg,rgba(29,140,255,.045),rgba(47,214,192,.07)),var(--sfm-card);box-shadow:0 12px 32px rgba(3,18,37,.06);padding:16px}.market-status-card>span{width:42px;height:42px;border-radius:16px;display:grid;place-items:center;flex:0 0 auto;background:rgba(47,214,192,.12);border:1px solid rgba(47,214,192,.20);color:var(--sfm-soft-cyan)}.market-status-card div{display:grid;gap:5px;min-width:0}.market-status-card small{color:var(--sfm-muted);font-size:12px;font-weight:900;line-height:1.35}.market-status-card strong{color:var(--sfm-foreground);font-size:18px;font-weight:950;line-height:1.3;min-width:0;overflow-wrap:anywhere}.market-status-banner{display:flex;align-items:flex-start;gap:12px;border:1px solid rgba(34,197,94,.22);background:rgba(34,197,94,.08);color:#15803D;border-radius:24px;padding:15px 17px;box-shadow:0 8px 26px rgba(3,18,37,.05)}.market-status-banner.preparing{border-color:rgba(47,214,192,.22);background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(47,214,192,.08));color:var(--sfm-primary-hover)}.market-status-banner svg{flex:0 0 auto;margin-top:2px}.market-status-banner strong{display:block;color:inherit;font-size:14px;font-weight:950;line-height:1.4}.market-status-banner p{margin:4px 0 0;color:var(--sfm-muted);font-size:13px;font-weight:850;line-height:1.7}.technical-analysis-panel{width:100%;max-width:100%;border-radius:30px!important;padding:clamp(16px,2.2vw,28px)!important;background:linear-gradient(135deg,rgba(255,255,255,.72),rgba(234,246,255,.62)),var(--sfm-card)!important;border-color:rgba(47,214,192,.18)!important;box-shadow:0 18px 46px rgba(3,18,37,.08)!important}.technical-analysis-panel .market-section-head{align-items:center;border:1px solid rgba(47,214,192,.16);background:rgba(47,214,192,.07);border-radius:22px;padding:14px;margin-bottom:0}.technical-analysis-panel .market-section-head>svg{width:42px;height:42px;border-radius:16px;padding:10px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#fff;box-shadow:0 12px 24px rgba(29,140,255,.18)}.technical-selector-shell{background:var(--sfm-card)!important;border-radius:24px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)}.technical-category-row,.technical-symbol-row{flex-wrap:wrap;overflow:visible;padding-bottom:2px}.technical-category-row button{min-height:44px;padding:0 17px;font-size:13px}.technical-symbol-pill{min-height:44px}.technical-selected-summary{border:1px solid rgba(47,214,192,.16);background:linear-gradient(135deg,rgba(29,140,255,.05),rgba(47,214,192,.07));border-radius:24px;padding:12px}.technical-summary-item{display:flex;align-items:center;gap:10px;min-width:0;border:1px solid rgba(167,243,240,.14);background:var(--sfm-card);border-radius:18px;padding:13px}.technical-summary-item>span{width:34px;height:34px;border-radius:13px;display:grid;place-items:center;flex:0 0 auto;background:rgba(47,214,192,.12);color:var(--sfm-soft-cyan)}.technical-summary-item div{display:grid;gap:4px;min-width:0}.technical-summary-item small{color:var(--sfm-muted);font-size:11px;font-weight:950;line-height:1.35}.technical-summary-item strong{color:var(--sfm-foreground);font-size:15px;font-weight:950;line-height:1.35;overflow-wrap:anywhere}.technical-empty-state{display:flex;align-items:flex-start;gap:12px;border:1px solid rgba(245,158,11,.28);background:rgba(245,158,11,.11);border-radius:22px;padding:16px;color:#92400E}.technical-empty-state svg{flex:0 0 auto;margin-top:2px}.technical-empty-state strong{display:block;color:#78350F;font-size:15px;font-weight:950;line-height:1.5}.technical-empty-state p{margin:5px 0 0;color:#92400E;font-size:13px;font-weight:850;line-height:1.8}.technical-data-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.technical-data-card{display:grid;gap:12px;align-content:start;min-width:0;border:1px solid rgba(167,243,240,.15);background:var(--sfm-card);border-radius:22px;padding:16px;box-shadow:0 10px 28px rgba(3,18,37,.05)}.technical-data-card-head{display:flex;align-items:center;gap:9px;min-width:0}.technical-data-card-head span{width:34px;height:34px;border-radius:13px;display:grid;place-items:center;background:rgba(47,214,192,.12);color:var(--sfm-soft-cyan);border:1px solid rgba(47,214,192,.20);flex:0 0 auto}.technical-data-card h3{margin:0;color:var(--sfm-foreground);font-size:14px;font-weight:950;line-height:1.4}.technical-data-card>strong{color:var(--sfm-foreground);font-size:23px;font-weight:950;line-height:1.2}.technical-data-rows{display:grid;gap:8px}.technical-data-rows div{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid rgba(167,243,240,.12);background:var(--sfm-light-card);border-radius:14px;padding:9px 10px}.technical-data-rows small{color:var(--sfm-muted);font-size:11px;font-weight:950}.technical-data-rows b{color:var(--sfm-foreground);font-size:13px;font-weight:950}.market-disclaimer{display:flex;align-items:flex-start;gap:12px;padding:17px 18px;color:var(--sfm-muted);background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(47,214,192,.06)),var(--sfm-card);border-color:rgba(29,140,255,.18);border-radius:24px}.market-disclaimer svg{color:var(--sfm-primary-hover);flex:0 0 auto}.market-disclaimer strong{display:block;color:var(--sfm-foreground);margin-bottom:4px}.market-disclaimer p{margin:0;color:var(--sfm-muted);font-size:13px;line-height:1.7;font-weight:800}.dark .technical-analysis-panel{background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(47,214,192,.07)),#0f1d31!important;border-color:#1d3050!important}.dark .market-status-card,.dark .technical-summary-item,.dark .technical-data-card{background:#0f1d31;border-color:#1d3050}.dark .technical-selector-shell,.dark .technical-search,.dark .technical-data-rows div{background:#0a1422!important;border-color:#1d3050}.dark .market-status-banner.connected{color:#2FD6C0;background:rgba(47,214,192,.10);border-color:rgba(47,214,192,.24)}.dark .technical-empty-state{background:rgba(245,185,66,.12);border-color:rgba(245,185,66,.26);color:#F5B942}.dark .technical-empty-state strong{color:#FDE68A}.dark .technical-empty-state p{color:#F5B942}
         @media(max-width:1180px){.market-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.market-status-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.technical-data-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.market-layout,.market-bottom-grid,.market-decision-grid,.market-tools-grid,.trader-tool-grid{grid-template-columns:1fr}.trader-tool-card{grid-column:1/-1}.market-chart{grid-row:auto}.market-search-panel{grid-template-columns:1fr 1fr}}
@@ -3980,9 +3981,15 @@ function TraderToolsDashboard({
     pipValue: '10',
     assetType: 'EURUSD',
   };
+  const defaultMarginInput = {
+    tradeSize: '100000',
+    leverage: '100',
+    currentPrice: '1',
+  };
   const [positionInput, setPositionInput] = useState({ ...defaultPositionInput });
   const [pipsInput, setPipsInput] = useState({ ...defaultPipsInput });
   const [lotInput, setLotInput] = useState({ ...defaultLotInput });
+  const [marginInput, setMarginInput] = useState({ ...defaultMarginInput });
   const [accountCurrency, setAccountCurrency] = useState<AccountCurrencyCode>(() => normalizeAccountCurrency(currency));
   const [accountCurrencyTouched, setAccountCurrencyTouched] = useState(false);
   const [savingCurrency, setSavingCurrency] = useState(false);
@@ -4014,14 +4021,17 @@ function TraderToolsDashboard({
     stopLossPips: parseNumber(lotInput.stopLossPips),
     pipValue: parseNumber(lotInput.pipValue),
   });
+  const margin = {
+    required: parseNumber(marginInput.leverage) > 0
+      ? (parseNumber(marginInput.tradeSize) * parseNumber(marginInput.currentPrice)) / parseNumber(marginInput.leverage)
+      : 0,
+    leverage: parseNumber(marginInput.leverage),
+    tradeSize: parseNumber(marginInput.tradeSize),
+  };
   const pipUnit = t('market_unit_pip');
-  const activeDescription = subTab === 'risk'
-    ? t('market_risk_position_description')
-    : subTab === 'pips'
-      ? t('market_pips_description')
-      : subTab === 'lot'
-        ? t('market_lot_by_risk_description')
-        : t('market_asset_performance');
+  const lotValue = position.lotSize === null ? t('market_unavailable') : `${formatNumber(position.lotSize, 2)} ${t('market_lot_unit')}`;
+  const riskPercentDisplay = `${formatNumber(parseNumber(positionInput.riskPercentage), 2)}%`;
+  const stopLossDisplay = `${formatNumber(parseNumber(positionInput.stopLossDistance), 0)} ${pipUnit}`;
 
   const handleSaveDefaultCurrency = async () => {
     setCurrencyMessage('');
@@ -4046,9 +4056,324 @@ function TraderToolsDashboard({
   };
 
   const accountCurrencyOptions = ACCOUNT_CURRENCY_OPTIONS.map(code => [code, code] as [string, string]);
+  const toolItems: Array<{ id: TraderToolsSubTab; title: string; description: string; icon: ReactNode }> = [
+    { id: 'risk', title: t('market_risk_position_calculator'), description: t('market_risk_position_description'), icon: <ShieldAlert size={18} /> },
+    { id: 'pips', title: t('market_pip_value_calculator'), description: t('market_pips_description'), icon: <LineChart size={18} /> },
+    { id: 'lot', title: t('market_risk_reward_calculator'), description: t('market_lot_by_risk_description'), icon: <Calculator size={18} /> },
+    { id: 'margin', title: t('market_margin_calculator'), description: t('market_margin_description'), icon: <Landmark size={18} /> },
+    { id: 'performance', title: t('market_asset_performance'), description: t('market_asset_performance_description'), icon: <BarChart3 size={18} /> },
+  ];
+  const activeTool = toolItems.find(item => item.id === subTab) ?? toolItems[0];
+  const activeDescription = activeTool.description;
+  const renderToolPanel = (toolId: TraderToolsSubTab) => {
+    if (toolId === 'risk') {
+      return (
+        <div className="trader-premium-panel-grid">
+          <article className="trader-tool-card trader-tool-input-card">
+            <div className="trader-tool-card-head">
+              <span><ShieldAlert size={18} /></span>
+              <div>
+                <h3>{t('market_risk_position_calculator')}</h3>
+                <p>{t('market_risk_position_description')}</p>
+              </div>
+              <button type="button" className="tool-reset" onClick={() => setPositionInput({ ...defaultPositionInput })}>
+                {t('market_reset')}
+              </button>
+            </div>
+            <div className="trader-form-grid trader-premium-form-grid">
+              <ToolSelect
+                label={t('market_account_currency')}
+                helper={t('market_account_currency_hint')}
+                value={accountCurrency}
+                onChange={value => {
+                  setAccountCurrency(normalizeAccountCurrency(value));
+                  setAccountCurrencyTouched(true);
+                  setCurrencyMessage('');
+                  setCurrencyError('');
+                }}
+                options={accountCurrencyOptions}
+              />
+              <ToolInput label={t('market_account_balance')} helper={t('market_account_balance_hint')} prefix={accountCurrency} value={positionInput.accountBalance} onChange={value => setPositionInput(prev => ({ ...prev, accountBalance: value }))} />
+              <ToolInput label={t('market_risk_percentage')} helper={t('market_risk_percentage_hint')} suffix="%" value={positionInput.riskPercentage} onChange={value => setPositionInput(prev => ({ ...prev, riskPercentage: value }))} />
+              <ToolInput label={t('market_stop_loss')} helper={t('market_stop_loss_hint')} suffix={pipUnit} value={positionInput.stopLossDistance} onChange={value => setPositionInput(prev => ({ ...prev, stopLossDistance: value }))} />
+              <ToolSelect
+                label={t('market_instrument_type')}
+                helper={t('market_instrument_type_hint')}
+                value={positionInput.instrumentType}
+                onChange={value => setPositionInput(prev => ({ ...prev, instrumentType: value as TradingInstrumentType }))}
+                options={[
+                  ['forex', t('market_asset_forex')],
+                  ['metals', t('market_gold_metals')],
+                  ['indices', t('market_indices')],
+                  ['crypto', t('market_asset_crypto')],
+                  ['stocks', t('market_asset_stocks')],
+                ]}
+              />
+              <details className="tool-advanced">
+                <summary>{t('market_advanced_settings')}</summary>
+                <div className="trader-form-grid">
+                  <ToolInput label={t('market_entry_price_optional')} helper={t('market_entry_price_hint')} prefix={accountCurrency} value={positionInput.entryPrice} onChange={value => setPositionInput(prev => ({ ...prev, entryPrice: value }))} />
+                  <ToolInput label={t('market_stop_price_optional')} helper={t('market_stop_price_hint')} prefix={accountCurrency} value={positionInput.stopLossPrice} onChange={value => setPositionInput(prev => ({ ...prev, stopLossPrice: value }))} />
+                </div>
+              </details>
+            </div>
+          </article>
+
+          <aside className="trader-result-stack trader-premium-result-stack">
+            <section className="trader-highlight-result">
+              <span>{t('market_suitable_position_size')}</span>
+              <strong dir="ltr">{lotValue}</strong>
+              <p>
+                {t('market_risk_result_explanation_start')}{' '}
+                <b dir="ltr">{money(position.riskAmount, accountCurrency)}</b>{' '}
+                {t('market_risk_result_explanation_middle')}{' '}
+                <b dir="ltr">{riskPercentDisplay}</b>{' '}
+                {t('market_risk_result_explanation_end')}{' '}
+                <b dir="ltr">{stopLossDisplay}</b>.
+              </p>
+            </section>
+            <ResultGrid title={t('market_calculation_results')} subtitle={t('market_live_calculation_note')} rows={[
+              [t('market_risk_amount'), money(position.riskAmount, accountCurrency)],
+              [t('market_suggested_position_size'), formatNumber(position.positionSize, 4)],
+              [t('market_lot_size'), lotValue],
+              [t('market_expected_loss'), money(position.estimatedLoss, accountCurrency)],
+            ]} />
+            <FormulaCard
+              title={t('market_calculation_method')}
+              body={t('market_risk_formula')}
+              example={`${accountCurrency} ${formatNumber(parseNumber(positionInput.accountBalance), 2)} × ${formatNumber(parseNumber(positionInput.riskPercentage), 2)}% = ${money(position.riskAmount, accountCurrency)}`}
+            />
+            {position.riskWarning && <p className="tool-warning">{t('market_risk_above_two_warning')}</p>}
+          </aside>
+        </div>
+      );
+    }
+
+    if (toolId === 'pips') {
+      return (
+        <div className="trader-premium-panel-grid">
+          <article className="trader-tool-card trader-tool-input-card">
+            <div className="trader-tool-card-head">
+              <span><LineChart size={18} /></span>
+              <div>
+                <h3>{t('market_pip_value_calculator')}</h3>
+                <p>{t('market_pips_description')}</p>
+              </div>
+              <button type="button" className="tool-reset" onClick={() => setPipsInput({ ...defaultPipsInput })}>
+                {t('market_reset')}
+              </button>
+            </div>
+            <div className="trader-form-grid trader-premium-form-grid">
+              <ToolInput label={t('market_currency_pair')} helper={t('market_pair_hint')} value={pipsInput.pair} inputDir="ltr" inputMode="text" onChange={value => setPipsInput(prev => ({ ...prev, pair: value.toUpperCase() }))} />
+              <ToolInput label={t('market_entry_price')} helper={t('market_entry_price_hint')} value={pipsInput.entryPrice} onChange={value => setPipsInput(prev => ({ ...prev, entryPrice: value }))} />
+              <ToolInput label={t('market_exit_price')} helper={t('market_exit_price_hint')} value={pipsInput.exitPrice} onChange={value => setPipsInput(prev => ({ ...prev, exitPrice: value }))} />
+              <ToolInput label={t('market_lot_size')} helper={t('market_lot_size_hint')} suffix={t('market_lot_unit')} value={pipsInput.lotSize} onChange={value => setPipsInput(prev => ({ ...prev, lotSize: value }))} />
+              <ToolSelect
+                label={t('market_trade_direction')}
+                helper={t('market_trade_direction_hint')}
+                value={pipsInput.direction}
+                onChange={value => setPipsInput(prev => ({ ...prev, direction: value as TradeDirection }))}
+                options={[
+                  ['buy', t('market_buy')],
+                  ['sell', t('market_sell')],
+                ]}
+              />
+            </div>
+          </article>
+          <aside className="trader-result-stack trader-premium-result-stack">
+            <ResultGrid title={t('market_calculation_results')} subtitle={t('market_live_calculation_note')} rows={[
+              [t('market_number_of_pips'), `${formatNumber(pips.pips, 1)} ${pipUnit}`],
+              [t('market_profit_loss'), money(pips.profitLoss, accountCurrency)],
+              [t('market_profit_loss_ratio'), `${formatNumber(parseNumber(pipsInput.lotSize) > 0 ? pips.profitLoss / Math.max(1, parseNumber(pipsInput.lotSize)) : 0, 2)}%`],
+            ]} />
+            <FormulaCard
+              title={t('market_calculation_method')}
+              body={t('market_pips_formula')}
+              example={`${pipsInput.pair.toUpperCase()} · ${formatNumber(parseNumber(pipsInput.entryPrice), 4)} → ${formatNumber(parseNumber(pipsInput.exitPrice), 4)} = ${formatNumber(pips.pips, 1)} ${pipUnit}`}
+            />
+          </aside>
+        </div>
+      );
+    }
+
+    if (toolId === 'lot') {
+      return (
+        <div className="trader-premium-panel-grid">
+          <article className="trader-tool-card trader-tool-input-card">
+            <div className="trader-tool-card-head">
+              <span><Calculator size={18} /></span>
+              <div>
+                <h3>{t('market_risk_reward_calculator')}</h3>
+                <p>{t('market_lot_by_risk_description')}</p>
+              </div>
+              <button type="button" className="tool-reset" onClick={() => setLotInput({ ...defaultLotInput })}>
+                {t('market_reset')}
+              </button>
+            </div>
+            <div className="trader-form-grid trader-premium-form-grid">
+              <ToolInput label={t('market_account_balance')} helper={t('market_account_balance_hint')} prefix={accountCurrency} value={lotInput.accountBalance} onChange={value => setLotInput(prev => ({ ...prev, accountBalance: value }))} />
+              <ToolInput label={t('market_risk_percentage')} helper={t('market_risk_percentage_hint')} suffix="%" value={lotInput.riskPercentage} onChange={value => setLotInput(prev => ({ ...prev, riskPercentage: value }))} />
+              <ToolInput label={t('market_stop_loss_pips')} helper={t('market_stop_loss_hint')} suffix={pipUnit} value={lotInput.stopLossPips} onChange={value => setLotInput(prev => ({ ...prev, stopLossPips: value }))} />
+              <ToolInput label={t('market_pip_value')} helper={t('market_pip_value_hint')} prefix={accountCurrency} value={lotInput.pipValue} onChange={value => setLotInput(prev => ({ ...prev, pipValue: value }))} />
+              <details className="tool-advanced">
+                <summary>{t('market_advanced_settings')}</summary>
+                <ToolInput label={t('market_pair_asset_type')} helper={t('market_asset_pair_hint')} value={lotInput.assetType} inputDir="ltr" inputMode="text" onChange={value => setLotInput(prev => ({ ...prev, assetType: value.toUpperCase() }))} />
+              </details>
+            </div>
+          </article>
+          <aside className="trader-result-stack trader-premium-result-stack">
+            <ResultGrid title={t('market_calculation_results')} subtitle={t('market_live_calculation_note')} rows={[
+              [t('market_recommended_lot_size'), `${formatNumber(lots.recommendedLotSize, 4)} ${t('market_lot_unit')}`],
+              [t('market_micro_lots'), formatNumber(lots.microLots, 2)],
+              [t('market_mini_lots'), formatNumber(lots.miniLots, 2)],
+              [t('market_standard_lots'), formatNumber(lots.standardLots, 4)],
+              [t('market_expected_loss'), money((parseNumber(lotInput.accountBalance) * parseNumber(lotInput.riskPercentage)) / 100, accountCurrency)],
+            ]} />
+            <FormulaCard
+              title={t('market_calculation_method')}
+              body={t('market_lot_formula')}
+              example={`${money((parseNumber(lotInput.accountBalance) * parseNumber(lotInput.riskPercentage)) / 100, accountCurrency)} ÷ (${formatNumber(parseNumber(lotInput.stopLossPips), 2)} ${pipUnit} × ${accountCurrency} ${formatNumber(parseNumber(lotInput.pipValue), 2)})`}
+            />
+          </aside>
+        </div>
+      );
+    }
+
+    if (toolId === 'margin') {
+      return (
+        <div className="trader-premium-panel-grid">
+          <article className="trader-tool-card trader-tool-input-card">
+            <div className="trader-tool-card-head">
+              <span><Landmark size={18} /></span>
+              <div>
+                <h3>{t('market_margin_calculator')}</h3>
+                <p>{t('market_margin_description')}</p>
+              </div>
+              <button type="button" className="tool-reset" onClick={() => setMarginInput({ ...defaultMarginInput })}>
+                {t('market_reset')}
+              </button>
+            </div>
+            <div className="trader-form-grid trader-premium-form-grid">
+              <ToolInput label={t('market_trade_size')} helper={t('market_trade_size_hint')} value={marginInput.tradeSize} onChange={value => setMarginInput(prev => ({ ...prev, tradeSize: value }))} />
+              <ToolInput label={t('market_current_price')} helper={t('market_margin_price_hint')} prefix={accountCurrency} value={marginInput.currentPrice} onChange={value => setMarginInput(prev => ({ ...prev, currentPrice: value }))} />
+              <ToolInput label={t('market_leverage')} helper={t('market_leverage_hint')} prefix="1:" value={marginInput.leverage} onChange={value => setMarginInput(prev => ({ ...prev, leverage: value }))} />
+            </div>
+          </article>
+          <aside className="trader-result-stack trader-premium-result-stack">
+            <ResultGrid title={t('market_calculation_results')} subtitle={t('market_live_calculation_note')} rows={[
+              [t('market_required_margin'), money(margin.required, accountCurrency)],
+              [t('market_trade_size'), formatNumber(margin.tradeSize, 2)],
+              [t('market_leverage'), `1:${formatNumber(margin.leverage, 0)}`],
+            ]} />
+            <FormulaCard
+              title={t('market_calculation_method')}
+              body={t('market_margin_formula')}
+              example={`(${formatNumber(margin.tradeSize, 2)} × ${formatNumber(parseNumber(marginInput.currentPrice), 4)}) ÷ ${formatNumber(margin.leverage, 0)} = ${money(margin.required, accountCurrency)}`}
+            />
+          </aside>
+        </div>
+      );
+    }
+
+    return <PerformanceTable t={t} performance={performance} />;
+  };
 
   return (
-    <section className="market-panel trader-dashboard">
+    <>
+    <section className="trader-premium-dashboard">
+      <header className="trader-premium-header">
+        <span className="trader-premium-header-icon"><Calculator size={22} /></span>
+        <div>
+          <span>{t('market_trader_tools_subtitle')}</span>
+          <h2>{t('market_trader_tools')}</h2>
+          <p>{t('market_trader_tools_dashboard_description')}</p>
+        </div>
+      </header>
+
+      <div className="trader-premium-layout">
+        <aside className="trader-support-column">
+          <TraderSupportCard icon={<WalletCards size={18} />} title={t('market_tool_summary')}>
+            <p>{t('market_tool_summary_body')}</p>
+          </TraderSupportCard>
+
+          <TraderSupportCard icon={<Sparkles size={18} />} title={t('market_quick_tip')}>
+            <p>{t('market_quick_tip_body')}</p>
+          </TraderSupportCard>
+
+          <TraderSupportCard icon={<Calculator size={18} />} title={t('market_calculation_results')} highlight>
+            <div className="trader-side-result-grid">
+              <TraderSideStat label={t('market_lot_size')} value={lotValue} />
+              <TraderSideStat label={t('market_cash_risk')} value={money(position.riskAmount, accountCurrency)} />
+              <TraderSideStat label={t('market_risk_percentage')} value={riskPercentDisplay} />
+            </div>
+          </TraderSupportCard>
+
+          <TraderSupportCard icon={<CheckCircle2 size={18} />} title={t('market_usage_steps')}>
+            <ol className="trader-steps">
+              <li>{t('market_usage_step_balance')}</li>
+              <li>{t('market_usage_step_stop_loss')}</li>
+              <li>{t('market_usage_step_result')}</li>
+            </ol>
+          </TraderSupportCard>
+        </aside>
+
+        <article className="trader-premium-main-card">
+          <div className="trader-premium-main-head">
+            <span className="trader-premium-tool-icon">{activeTool.icon}</span>
+            <div>
+              <span>{t('market_active_tool')}</span>
+              <h3>{activeTool.title}</h3>
+              <p>{activeTool.description}</p>
+            </div>
+            <div className="trader-premium-save">
+              <button type="button" onClick={handleSaveDefaultCurrency} disabled={savingCurrency}>
+                {savingCurrency ? t('market_saving') : t('market_save_account_currency_default')}
+              </button>
+              {currencyMessage ? <small className="success">{currencyMessage}</small> : null}
+              {currencyError ? <small className="error">{currencyError}</small> : null}
+            </div>
+          </div>
+
+          <div className="trader-accordion-list" role="tablist" aria-label={t('market_trader_tools')}>
+            {toolItems.map(item => {
+              const isActive = subTab === item.id;
+              return (
+                <article className={`trader-accordion-item${isActive ? ' active' : ''}`} key={item.id}>
+                  <button
+                    type="button"
+                    aria-expanded={isActive}
+                    aria-controls={`trader-tool-${item.id}`}
+                    onClick={() => setSubTab(item.id)}
+                  >
+                    <span className="trader-accordion-icon">{item.icon}</span>
+                    <span className="trader-accordion-copy">
+                      <strong>{item.title}</strong>
+                      <small>{item.description}</small>
+                    </span>
+                    <span className="trader-accordion-chevron" aria-hidden="true">⌄</span>
+                  </button>
+                  {isActive ? (
+                    <div id={`trader-tool-${item.id}`} className="trader-accordion-panel">
+                      {renderToolPanel(item.id)}
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        </article>
+      </div>
+
+      <section className="trader-premium-disclaimer">
+        <span><ShieldAlert size={18} /></span>
+        <div>
+          <strong>{t('market_investment_disclaimer_title')}</strong>
+          <p>{t('market_investment_disclaimer_body')}</p>
+        </div>
+      </section>
+    </section>
+
+    <section className="market-panel trader-dashboard trader-legacy-hidden" aria-hidden="true">
       <div className="market-section-head trader-dashboard-head">
         <span className="trader-head-icon"><Calculator size={20} /></span>
         <div>
@@ -4245,6 +4570,38 @@ function TraderToolsDashboard({
       )}
       <p className="trader-disclaimer">{t('market_trader_tools_disclaimer')}</p>
     </section>
+    </>
+  );
+}
+
+function TraderSupportCard({
+  icon,
+  title,
+  children,
+  highlight = false,
+}: {
+  icon: ReactNode;
+  title: string;
+  children: ReactNode;
+  highlight?: boolean;
+}) {
+  return (
+    <article className={`trader-support-card${highlight ? ' highlight' : ''}`}>
+      <span className="trader-support-icon">{icon}</span>
+      <div>
+        <h3>{title}</h3>
+        {children}
+      </div>
+    </article>
+  );
+}
+
+function TraderSideStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="trader-side-stat">
+      <span>{label}</span>
+      <b dir="ltr">{value}</b>
+    </div>
   );
 }
 
