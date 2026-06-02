@@ -677,12 +677,17 @@ export default function MarketAnalysisPage() {
       setMarketSentiment(prev => ({ ...prev, loading: true, message: '', code: undefined }));
     }
 
-    const requests = uniqueTargets.map(target => ({
-      target,
-      request: target === 'news'
-        ? fetchMarketToolState<Record<string, any>>('/api/market/central-bank-news', 'central-bank-news')
-        : fetchMarketToolState<Record<string, any>>('/api/market/sentiment', 'market-sentiment'),
-    }));
+    const requests = uniqueTargets.map(target => {
+      const newsUrl = options.force
+        ? `/api/market/central-bank-news?refresh=${Date.now()}`
+        : '/api/market/central-bank-news';
+      return {
+        target,
+        request: target === 'news'
+          ? fetchMarketToolState<Record<string, any>>(newsUrl, 'central-bank-news')
+          : fetchMarketToolState<Record<string, any>>('/api/market/sentiment', 'market-sentiment'),
+      };
+    });
 
     void Promise.allSettled(requests.map(item => item.request)).then(results => {
       results.forEach((result, index) => {
@@ -1928,6 +1933,7 @@ export default function MarketAnalysisPage() {
         {activeTab === 'newsSentiment' && (
           <NewsSentimentPanel
             t={t}
+            lang={lang}
             news={centralBankNews}
             sentiment={marketSentiment}
             onRefreshNews={() => loadNewsSentiment(['news'], { force: true })}
@@ -3117,6 +3123,19 @@ export default function MarketAnalysisPage() {
           line-height: 1.8;
         }
 
+        .tool-empty-state small {
+          width: max-content;
+          max-width: 100%;
+          border: 1px solid rgba(29, 140, 255, .18);
+          border-radius: 999px;
+          background: rgba(29, 140, 255, .07);
+          color: var(--sfm-primary-hover);
+          padding: 5px 9px;
+          font-size: 11px;
+          font-weight: 950;
+          line-height: 1.35;
+        }
+
         .tool-empty-state button {
           width: max-content;
           max-width: 100%;
@@ -3527,6 +3546,7 @@ export default function MarketAnalysisPage() {
         }
 
         .dark .tool-empty-state p,
+        .dark .tool-empty-state small,
         .dark .central-news-meta small,
         .dark .central-news-footer small,
         .dark .central-news-card p,
@@ -5594,13 +5614,30 @@ function sentimentTone(values: { buy: number; sell: number }) {
   return 'balanced';
 }
 
+function formatMarketToolTimestamp(value: string | undefined, locale = 'ar') {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(date);
+}
+
 function publicNewsEmptyCopy(code: string | undefined, t: (key: string) => string) {
   if (code === 'MARKET_DATA_TIMEOUT') {
     return { title: t('market_section_timeout_title'), body: t('market_section_timeout_body') };
   }
-  return code === 'CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED'
-    ? { title: t('market_news_not_configured_title'), body: t('market_news_not_configured_body') }
-    : { title: t('market_news_unavailable_title'), body: t('market_news_unavailable_body') };
+  if (code === 'CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED') {
+    return { title: t('market_news_not_configured_title'), body: t('market_news_not_configured_body') };
+  }
+  if (code === 'NO_CENTRAL_BANK_NEWS') {
+    return { title: t('market_news_no_items_title'), body: t('market_news_no_items_body') };
+  }
+  if (code === 'CENTRAL_BANK_NEWS_PROVIDER_FAILED' || code === 'CENTRAL_BANK_NEWS_PROVIDER_ERROR') {
+    return { title: t('market_news_unavailable_title'), body: t('market_news_provider_failed_body') };
+  }
+  return { title: t('market_news_unavailable_title'), body: t('market_news_unavailable_body') };
 }
 
 function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => string) {
@@ -5614,12 +5651,14 @@ function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => 
 
 function NewsSentimentPanel({
   t,
+  lang,
   news,
   sentiment,
   onRefreshNews,
   onRefreshSentiment,
 }: {
   t: (key: string) => string;
+  lang: string;
   news: ApiListState<Record<string, any>>;
   sentiment: ApiListState<Record<string, any>>;
   onRefreshNews: () => void;
@@ -5627,6 +5666,9 @@ function NewsSentimentPanel({
 }) {
   const newsEmpty = publicNewsEmptyCopy(news.code, t);
   const sentimentEmpty = publicSentimentEmptyCopy(sentiment.code, t);
+  const newsLastAttempt = news.updatedAt
+    ? `${t('market_last_attempt')}: ${formatMarketToolTimestamp(news.updatedAt, lang)}`
+    : undefined;
 
   return (
     <section className="news-sentiment-section" aria-labelledby="market-news-sentiment-title">
@@ -5647,7 +5689,7 @@ function NewsSentimentPanel({
                 <small>{t('market_central_bank_topics')}</small>
                 <h3>{t('market_central_bank_news')}</h3>
               </div>
-              <MarketSectionRefreshButton t={t} loading={news.loading} onRefresh={onRefreshNews} />
+              <MarketSectionRefreshButton t={t} loading={news.loading} onRefresh={onRefreshNews} label={t('market_refresh_news')} />
             </div>
 
             {news.loading ? (
@@ -5659,7 +5701,9 @@ function NewsSentimentPanel({
                   const summary = textField(item, ['summary', 'description', 'excerpt']);
                   const source = textField(item, ['source', 'sourceName', 'provider', 'publisher']);
                   const published = textField(item, ['publishedAt', 'published_at', 'published', 'date', 'time']);
-                  const related = textField(item, ['bank', 'centralBank', 'central_bank', 'currency', 'region']);
+                  const relatedBank = textField(item, ['related_bank', 'bank', 'centralBank', 'central_bank', 'region']);
+                  const relatedCurrency = textField(item, ['related_currency', 'currency']);
+                  const related = [relatedBank, relatedCurrency].filter(Boolean).join(' / ');
                   const url = textField(item, ['url', 'link', 'sourceUrl', 'source_url']);
                   return (
                     <article className="central-news-card" key={`${headline || source || 'central-news'}-${index}`}>
@@ -5678,7 +5722,15 @@ function NewsSentimentPanel({
                 })}
               </div>
             ) : (
-              <MarketToolEmptyState icon={<Newspaper size={18} />} title={newsEmpty.title} description={newsEmpty.body} variant="info" />
+              <MarketToolEmptyState
+                icon={<Newspaper size={18} />}
+                title={newsEmpty.title}
+                description={newsEmpty.body}
+                meta={newsLastAttempt}
+                actionLabel={t('market_refresh_news')}
+                onAction={onRefreshNews}
+                variant="info"
+              />
             )}
           </article>
 
@@ -5754,6 +5806,7 @@ function MarketToolEmptyState({
   icon = <AlertTriangle size={18} />,
   title,
   description,
+  meta,
   actionLabel,
   onAction,
   variant = 'neutral',
@@ -5761,6 +5814,7 @@ function MarketToolEmptyState({
   icon?: ReactNode;
   title: string;
   description: string;
+  meta?: string;
   actionLabel?: string;
   onAction?: () => void;
   variant?: 'info' | 'warning' | 'neutral';
@@ -5771,6 +5825,7 @@ function MarketToolEmptyState({
       <div>
         <strong>{title}</strong>
         <p>{description}</p>
+        {meta ? <small>{meta}</small> : null}
         {actionLabel && onAction ? <button type="button" onClick={onAction}>{actionLabel}</button> : null}
       </div>
     </div>
@@ -5785,15 +5840,17 @@ function MarketSectionRefreshButton({
   t,
   loading,
   onRefresh,
+  label,
 }: {
   t: (key: string) => string;
   loading: boolean;
   onRefresh: () => void;
+  label?: string;
 }) {
   return (
     <button className="market-section-refresh" type="button" onClick={onRefresh} disabled={loading}>
       <Activity size={15} />
-      <span>{loading ? t('market_loading_short') : t('market_refresh_section')}</span>
+      <span>{loading ? t('market_loading_short') : label ?? t('market_refresh_section')}</span>
     </button>
   );
 }
