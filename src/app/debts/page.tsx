@@ -42,7 +42,6 @@ type DebtRow = {
   interest_rate: number | string | null;
   interest_type: InterestType | string | null;
   payment_day: number | string | null;
-  category: string | null;
   notes: string | null;
   auto_add_to_expenses: boolean | null;
   status: DebtStatus | string | null;
@@ -66,7 +65,6 @@ type DebtForm = {
   id?: string;
   name: string;
   creditorName: string;
-  category: string;
   originalAmount: string;
   remainingAmount: string;
   currency: string;
@@ -85,7 +83,6 @@ const SUPPORTED_CURRENCIES = ['KWD', 'USD', 'SAR', 'AED', 'QAR', 'BHD', 'OMR', '
 const DEFAULT_FORM: DebtForm = {
   name: '',
   creditorName: '',
-  category: '',
   originalAmount: '',
   remainingAmount: '',
   currency: 'KWD',
@@ -125,8 +122,6 @@ const TEXT = {
   namePlaceholder: { ar: 'مثال: قرض سيارة أو بطاقة ائتمان', en: 'Example: car loan or credit card', fr: 'Exemple : prêt auto ou carte de crédit' },
   creditor: { ar: 'الجهة الدائنة', en: 'Creditor', fr: 'Créancier' },
   creditorPlaceholder: { ar: 'بنك أو شركة تمويل أو شخص', en: 'Bank, finance company, or person', fr: 'Banque, société de financement ou personne' },
-  category: { ar: 'الفئة', en: 'Category', fr: 'Catégorie' },
-  categoryPlaceholder: { ar: 'مثال: قرض أو بطاقة أو تمويل', en: 'Example: loan, card, or financing', fr: 'Exemple : prêt, carte ou financement' },
   originalAmount: { ar: 'مبلغ الدين الأصلي', en: 'Original amount', fr: 'Montant initial' },
   remainingAmount: { ar: 'المبلغ المتبقي', en: 'Remaining amount', fr: 'Montant restant' },
   currency: { ar: 'العملة', en: 'Currency', fr: 'Devise' },
@@ -243,6 +238,10 @@ function formatDateToYYYYMMDD(value: string) {
 
 function mapInterestTypeToDb(value: unknown): InterestType {
   if (value === 'none' || value === 'monthly' || value === 'annual') return value;
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized.includes('بدون') || normalized.includes('none') || normalized.includes('sans')) return 'none';
+  if (normalized.includes('شهري') || normalized.includes('monthly') || normalized.includes('mensuel')) return 'monthly';
+  if (normalized.includes('سنوي') || normalized.includes('annual') || normalized.includes('annuel')) return 'annual';
   return 'annual';
 }
 
@@ -334,7 +333,6 @@ function payloadFromForm(form: DebtForm, userId: string) {
     user_id: userId,
     name: form.name.trim(),
     creditor_name: form.creditorName.trim(),
-    category: form.category.trim() || null,
     original_amount: toNumber(form.originalAmount),
     remaining_amount: toNumber(form.remainingAmount),
     currency: form.currency.trim() || 'KWD',
@@ -345,7 +343,7 @@ function payloadFromForm(form: DebtForm, userId: string) {
     payment_day: clampPaymentDay(form.paymentDay),
     notes: form.notes.trim() || null,
     auto_add_to_expenses: Boolean(form.autoAddToExpenses),
-    status: mapDebtStatusToDb(form.status),
+    status: form.id ? mapDebtStatusToDb(form.status) : 'active',
   };
 }
 
@@ -388,6 +386,31 @@ function debtSaveErrorMessage(error: unknown, t: (key: keyof typeof TEXT) => str
     return t('rlsSaveError');
   }
   return t('databaseSaveError');
+}
+
+function safeDebtSaveErrorDetails(error: unknown) {
+  if (!error || typeof error !== 'object') {
+    return {
+      message: error instanceof Error ? error.message : String(error ?? ''),
+      code: undefined,
+      details: undefined,
+      hint: undefined,
+    };
+  }
+
+  const record = error as {
+    message?: unknown;
+    code?: unknown;
+    details?: unknown;
+    hint?: unknown;
+  };
+
+  return {
+    message: typeof record.message === 'string' ? record.message : undefined,
+    code: typeof record.code === 'string' ? record.code : undefined,
+    details: typeof record.details === 'string' ? record.details : undefined,
+    hint: typeof record.hint === 'string' ? record.hint : undefined,
+  };
 }
 
 export default function DebtsPage() {
@@ -526,7 +549,6 @@ export default function DebtsPage() {
       id: debt.id,
       name: debt.name,
       creditorName: debt.creditor_name ?? '',
-      category: debt.category ?? '',
       originalAmount: String(debt.original_amount ?? ''),
       remainingAmount: String(debt.remaining_amount ?? ''),
       currency: debt.currency || baseCurrency || 'KWD',
@@ -627,9 +649,7 @@ export default function DebtsPage() {
       resetForm();
       await loadData();
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Debt save error:', err);
-      }
+      console.error('Debt save failed:', safeDebtSaveErrorDetails(err));
       setError(debtSaveErrorMessage(err, t));
     } finally {
       setSaving(false);
@@ -954,7 +974,6 @@ export default function DebtsPage() {
               <FormSectionTitle title={t('sectionDebtData')} />
               <DebtInput required invalid={submitAttempted && validationKeys.includes('validationName')} label={t('name')} value={form.name} placeholder={t('namePlaceholder')} onChange={value => setForm(current => ({ ...current, name: value }))} />
               <DebtInput required invalid={submitAttempted && validationKeys.includes('validationCreditor')} label={t('creditor')} value={form.creditorName} placeholder={t('creditorPlaceholder')} onChange={value => setForm(current => ({ ...current, creditorName: value }))} />
-              <DebtInput label={t('category')} value={form.category} placeholder={t('categoryPlaceholder')} onChange={value => setForm(current => ({ ...current, category: value }))} />
               <MoneyInput required invalid={submitAttempted && validationKeys.includes('validationOriginalAmount')} label={t('originalAmount')} currency={form.currency} value={form.originalAmount} onChange={value => setForm(current => ({ ...current, originalAmount: value, remainingAmount: current.remainingAmount || value }))} />
               <MoneyInput required invalid={submitAttempted && validationKeys.includes('validationRemainingAmount')} label={t('remainingAmount')} currency={form.currency} value={form.remainingAmount} onChange={value => setForm(current => ({ ...current, remainingAmount: value }))} />
               <label className={`debt-field ${submitAttempted && validationKeys.includes('validationCurrency') ? 'invalid' : ''}`} data-invalid={submitAttempted && validationKeys.includes('validationCurrency') ? 'true' : undefined}>
