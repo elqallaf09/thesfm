@@ -13,12 +13,17 @@ type TranslationKey = keyof typeof TR;
 
 type AdminData = {
   hasData: boolean;
+  source?: string;
   stats: Record<string, number>;
   pages: Array<{ pageName: string; route: string; views: number; visitors: number; percentage: number }>;
+  topPages?: Array<{ pageName: string; route: string; views: number; visitors: number; percentage: number }>;
+  topSections?: Array<{ name: string; count: number; percentage: number }>;
   importantEvents: Array<{ event: string; count: number; uniqueUsers: number }>;
   devices: Array<{ name: string; count: number; percentage: number }>;
   languages: Array<{ name: string; count: number; percentage: number }>;
-  recent: Array<{ id: string; eventType: string; pagePath: string | null; module: string | null; device: string | null; language: string | null; createdAt: string }>;
+  recent: Array<{ id: string; eventType: string; pagePath: string | null; sectionName?: string | null; module: string | null; device: string | null; language: string | null; createdAt: string }>;
+  recentActivity?: Array<{ id: string; eventType: string; pagePath: string | null; sectionName?: string | null; module: string | null; device: string | null; language: string | null; createdAt: string }>;
+  tracking?: { enabled: boolean; recent: boolean; label: 'active' | 'no_recent_events' };
 };
 
 const rangeOptions: Array<[string, TranslationKey]> = [
@@ -33,10 +38,12 @@ const rangeOptions: Array<[string, TranslationKey]> = [
 const moduleOptions: Array<[string, TranslationKey]> = [
   ['all', 'admin_all'],
   ['home', 'admin_module_home'],
+  ['ebooks', 'admin_module_ebooks'],
   ['income', 'admin_module_income'],
   ['expenses', 'admin_module_expenses'],
   ['savings', 'admin_module_savings'],
   ['goals', 'admin_module_goals'],
+  ['debts', 'admin_module_debts'],
   ['projects', 'admin_module_projects'],
   ['reports', 'admin_module_reports'],
   ['financial_theories', 'admin_module_financial_theories'],
@@ -50,7 +57,8 @@ const moduleOptions: Array<[string, TranslationKey]> = [
 const eventOptions: Array<[string, TranslationKey]> = [
   ['all', 'admin_all_events'],
   ['page_view', 'admin_page_views'],
-  ['signup', 'admin_signups'],
+  ['section_view', 'admin_section_views'],
+  ['account_created', 'admin_account_created'],
   ['login', 'admin_logins'],
   ['add_income', 'admin_add_income'],
   ['add_expense', 'admin_add_expense'],
@@ -60,6 +68,8 @@ const eventOptions: Array<[string, TranslationKey]> = [
 ];
 
 const eventLabelKeys: Record<string, TranslationKey> = {
+  section_view: 'admin_section_views',
+  account_created: 'admin_account_created',
   add_income: 'admin_add_income',
   add_expense: 'admin_add_expense',
   create_project: 'admin_create_project',
@@ -70,23 +80,49 @@ const eventLabelKeys: Record<string, TranslationKey> = {
   page_view: 'admin_page_views',
   signup: 'admin_signups',
   login: 'admin_logins',
+  logout: 'nav_logout',
 };
 
 const pageLabelKeys: Record<string, TranslationKey> = {
   Home: 'admin_module_home',
   Income: 'admin_module_income',
   Expenses: 'admin_module_expenses',
+  Debts: 'admin_module_debts',
   Savings: 'admin_module_savings',
   Goals: 'admin_module_goals',
   Projects: 'admin_module_projects',
   Reports: 'admin_module_reports',
   'Financial Theories': 'admin_module_financial_theories',
+  'E-Books': 'admin_module_ebooks',
   'Market Analysis': 'admin_module_market',
+  'Financial AI': 'nav_ai',
   'Charity / Zakat': 'admin_module_charity',
   'Business Management': 'admin_module_business',
   'Investment Offers': 'admin_module_investment_offers',
   Profile: 'admin_module_profile',
   'Other pages': 'admin_module_other',
+};
+
+const sectionLabelKeys: Record<string, TranslationKey> = {
+  home: 'admin_module_home',
+  income: 'admin_module_income',
+  expenses: 'admin_module_expenses',
+  savings: 'admin_module_savings',
+  financial_goals: 'admin_module_goals',
+  goals: 'admin_module_goals',
+  debts: 'admin_module_debts',
+  investments: 'nav_invest',
+  projects: 'admin_module_projects',
+  reports: 'admin_module_reports',
+  financial_theories: 'admin_module_financial_theories',
+  ebooks: 'admin_module_ebooks',
+  market_analysis: 'admin_module_market',
+  market: 'admin_module_market',
+  charity: 'admin_module_charity',
+  zakat: 'nav_zakat',
+  financial_ai: 'nav_ai',
+  business: 'admin_module_business',
+  profile: 'admin_module_profile',
 };
 
 function formatNumber(value: number, lang: string) {
@@ -190,6 +226,10 @@ export default function AdminAnalyticsClient() {
   }, [adminCode, load, t]);
 
   const stats = data?.stats ?? {};
+  const trackingRecent = data?.tracking?.recent ?? false;
+  const topPages = data?.topPages ?? data?.pages ?? [];
+  const topSections = data?.topSections ?? [];
+  const recent = data?.recentActivity ?? data?.recent ?? [];
   const statCards = [
     ['admin_total_visitors', stats.totalVisitors, Users],
     ['admin_visitors_today', stats.visitorsToday, Users],
@@ -292,6 +332,17 @@ export default function AdminAnalyticsClient() {
         {state === 'error' && <StateCard icon={Activity} text={t('admin_error')} />}
         {state === 'empty' && <StateCard icon={BarChart3} text={t('admin_no_data')} />}
 
+        {data && (
+          <section className={`admin-tracking-status ${trackingRecent ? 'active' : 'stale'}`}>
+            <div>
+              <span>{t('admin_tracking_status')}</span>
+              <strong>{trackingRecent ? t('admin_tracking_active') : t('admin_tracking_no_recent_events')}</strong>
+              <small>{t('admin_tracking_privacy_note')}</small>
+            </div>
+            <Activity size={24} aria-hidden="true" />
+          </section>
+        )}
+
         <section className="admin-stat-grid">
           {statCards.map(([label, value, Icon]) => (
             <article key={label} className="admin-stat-card">
@@ -308,7 +359,7 @@ export default function AdminAnalyticsClient() {
               <table>
                 <thead><tr><th>{t('admin_page_name')}</th><th>{t('admin_route')}</th><th>{t('admin_views')}</th><th>{t('admin_unique_visitors')}</th><th>{t('admin_percentage')}</th></tr></thead>
                 <tbody>
-                  {(data?.pages ?? []).map(page => (
+                  {topPages.map(page => (
                     <tr key={`${page.pageName}-${page.route}`}>
                       <td>{pageLabelKeys[page.pageName] ? t(pageLabelKeys[page.pageName]) : page.pageName}</td>
                       <td>{page.route}</td>
@@ -322,6 +373,20 @@ export default function AdminAnalyticsClient() {
             </div>
           </Panel>
 
+          <Panel title={t('admin_top_sections')} icon={Activity}>
+            <div className="admin-event-grid">
+              {topSections.map(item => (
+                <article key={item.name}>
+                  <span>{sectionLabelKeys[item.name] ? t(sectionLabelKeys[item.name]) : item.name}</span>
+                  <strong>{formatNumber(item.count, lang)}</strong>
+                  <small>{item.percentage}%</small>
+                </article>
+              ))}
+            </div>
+          </Panel>
+        </section>
+
+        <section className="admin-section-grid single">
           <Panel title={t('admin_important_events')} icon={Activity}>
             <div className="admin-event-grid">
               {(data?.importantEvents ?? []).map(item => (
@@ -345,10 +410,10 @@ export default function AdminAnalyticsClient() {
             <table>
               <thead><tr><th>{t('admin_event_type')}</th><th>{t('admin_module')}</th><th>{t('admin_device')}</th><th>{t('admin_language')}</th><th>{t('admin_date')}</th></tr></thead>
               <tbody>
-                {(data?.recent ?? []).map(item => (
+                {recent.map(item => (
                   <tr key={item.id}>
                     <td>{eventLabelKeys[item.eventType] ? t(eventLabelKeys[item.eventType]) : item.eventType}</td>
-                    <td>{item.module || item.pagePath || '-'}</td>
+                    <td>{sectionLabelKeys[item.sectionName || item.module || ''] ? t(sectionLabelKeys[item.sectionName || item.module || '']) : item.module || item.pagePath || '-'}</td>
                     <td>{item.device || '-'}</td>
                     <td>{item.language || '-'}</td>
                     <td>{new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.createdAt))}</td>
@@ -415,12 +480,19 @@ const adminStyles = `
   .admin-filters span{font-size:12px;color:var(--sfm-muted);font-weight:950}
   .admin-filters select,.admin-filters input{width:100%;min-height:42px;border-radius:14px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-input-bg,#fff);color:var(--sfm-foreground);padding:0 12px;font:850 13px Tajawal,Arial,sans-serif}
   .admin-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-  .admin-stat-card,.admin-panel,.admin-state{border:1px solid rgba(29,140,255,.12);background:var(--sfm-card-bg);border-radius:22px;box-shadow:0 16px 40px rgba(3,18,37,.06)}
+  .admin-stat-card,.admin-panel,.admin-state,.admin-tracking-status{border:1px solid rgba(29,140,255,.12);background:var(--sfm-card-bg);border-radius:22px;box-shadow:0 16px 40px rgba(3,18,37,.06)}
+  .admin-tracking-status{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 18px;border-color:rgba(34,197,94,.22);background:linear-gradient(135deg,rgba(34,197,94,.10),var(--sfm-card-bg))}
+  .admin-tracking-status.stale{border-color:rgba(245,158,11,.25);background:linear-gradient(135deg,rgba(245,158,11,.10),var(--sfm-card-bg))}
+  .admin-tracking-status span,.admin-tracking-status small{display:block;color:var(--sfm-muted);font-weight:900;line-height:1.7}
+  .admin-tracking-status strong{display:block;margin-top:2px;color:var(--sfm-foreground);font-size:18px;font-weight:950}
+  .admin-tracking-status svg{color:#16A34A;flex:0 0 auto}
+  .admin-tracking-status.stale svg{color:#D97706}
   .admin-stat-card{display:grid;gap:8px;padding:17px}
   .admin-stat-card svg{color:#18D4D4}
   .admin-stat-card span{color:var(--sfm-muted);font-size:12px;font-weight:950}
   .admin-stat-card strong{font-size:28px;font-weight:950;color:var(--sfm-foreground);font-variant-numeric:tabular-nums}
   .admin-section-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:16px;align-items:start}
+  .admin-section-grid.single{grid-template-columns:1fr}
   .admin-section-grid.two{grid-template-columns:1fr 1fr}
   .admin-panel{min-width:0;padding:18px;display:grid;gap:14px}
   .admin-panel h2{margin:0;display:flex;align-items:center;gap:8px;color:var(--sfm-foreground);font-size:18px;font-weight:950}
@@ -452,7 +524,7 @@ const adminStyles = `
   .admin-code-card strong{color:#DC2626;font-size:13px}
   .admin-code-card button{min-height:48px;border:0;border-radius:15px;background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#061A2E;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer}
   .admin-code-card button:disabled{opacity:.6;cursor:not-allowed}
-  :global(.dark) .admin-stat-card,:global(.dark) .admin-panel,:global(.dark) .admin-filters,:global(.dark) .admin-state,:global(.dark) .admin-code-card{background:#102A45;border-color:rgba(255,255,255,.10);box-shadow:0 16px 44px rgba(0,0,0,.18)}
+  :global(.dark) .admin-stat-card,:global(.dark) .admin-panel,:global(.dark) .admin-filters,:global(.dark) .admin-state,:global(.dark) .admin-code-card,:global(.dark) .admin-tracking-status{background:#102A45;border-color:rgba(255,255,255,.10);box-shadow:0 16px 44px rgba(0,0,0,.18)}
   :global(.dark) .admin-filters select,:global(.dark) .admin-filters input{background:#0F2942;border-color:rgba(255,255,255,.12);color:#F8FAFC}
   :global(.dark) .admin-code-card input{background:#0F2942;border-color:rgba(255,255,255,.12);color:#F8FAFC}
   @media(max-width:1100px){.admin-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-section-grid,.admin-section-grid.two,.admin-filters{grid-template-columns:1fr 1fr}}

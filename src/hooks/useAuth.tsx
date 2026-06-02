@@ -294,7 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        void trackEvent('signup', { module: 'auth', metadata: { method: 'email' } });
+        void trackEvent('account_created', { page_path: '/login', module: 'auth', section_name: 'auth', metadata: { method: 'email' } });
         return { error: null };
       } catch (err: any) {
         return { error: new Error(err.message || 'فشل الاتصال بالخادم') };

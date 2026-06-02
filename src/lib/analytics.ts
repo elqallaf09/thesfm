@@ -4,6 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type AnalyticsEventType =
   | 'page_view'
+  | 'section_view'
+  | 'account_created'
+  | 'button_click'
   | 'signup'
   | 'login'
   | 'logout'
@@ -25,6 +28,7 @@ type TrackPayload = {
   page_path?: string;
   page_title?: string;
   module?: string;
+  section_name?: string;
   referrer?: string;
   language?: string;
   metadata?: Record<string, unknown>;
@@ -73,11 +77,10 @@ export function getAnalyticsSessionId() {
 
 function deviceType(userAgent: string) {
   const ua = userAgent.toLowerCase();
-  if (/ipad|tablet/.test(ua)) return 'iPad';
-  if (/iphone|ipod/.test(ua)) return 'iPhone';
-  if (/android/.test(ua)) return /mobile/.test(ua) ? 'Android' : 'Android Tablet';
-  if (/mobile/.test(ua)) return 'Mobile';
-  return 'Desktop';
+  if (/ipad|tablet/.test(ua)) return 'tablet';
+  if (/android/.test(ua) && !/mobile/.test(ua)) return 'tablet';
+  if (/iphone|ipod|android|mobile/.test(ua)) return 'mobile';
+  return 'desktop';
 }
 
 function browser(userAgent: string) {
@@ -113,6 +116,7 @@ export function moduleFromPath(pathname: string) {
   if (pathname === '/') return 'home';
   if (pathname.startsWith('/income')) return 'income';
   if (pathname.startsWith('/expenses')) return 'expenses';
+  if (pathname.startsWith('/debts')) return 'debts';
   if (pathname.startsWith('/savings')) return 'savings';
   if (pathname.startsWith('/goals')) return 'goals';
   if (pathname.startsWith('/projects')) return 'projects';
@@ -120,6 +124,7 @@ export function moduleFromPath(pathname: string) {
   if (pathname.startsWith('/financial-theories')) return 'financial_theories';
   if (pathname.startsWith('/ebooks')) return 'ebooks';
   if (pathname.startsWith('/market')) return 'market';
+  if (pathname.startsWith('/ai')) return 'financial_ai';
   if (pathname.startsWith('/charity') || pathname.startsWith('/zakat')) return 'charity';
   if (pathname.startsWith('/business')) return 'business';
   if (pathname.startsWith('/investment-offers')) return 'investment_offers';
@@ -139,10 +144,12 @@ export async function trackEvent(eventType: AnalyticsEventType, payload: TrackPa
     page_path: payload.page_path ?? window.location.pathname,
     page_title: payload.page_title ?? document.title,
     module: payload.module ?? moduleFromPath(payload.page_path ?? window.location.pathname),
+    section_name: payload.section_name ?? payload.module ?? moduleFromPath(payload.page_path ?? window.location.pathname),
     referrer: payload.referrer ?? document.referrer,
     language: payload.language ?? document.documentElement.lang ?? 'ar',
     device_type: deviceType(ua),
     browser: browser(ua),
+    os: operatingSystem(ua),
     operating_system: operatingSystem(ua),
     metadata: sanitizeMetadata(payload.metadata),
     access_token: sessionResult.data.session?.access_token ?? null,
