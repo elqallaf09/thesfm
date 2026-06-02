@@ -205,6 +205,15 @@ function getTechnicalSymbolCategory(symbol: string): TechnicalSymbolCategory {
   return getTechnicalSymbolOption(symbol)?.category ?? 'forex';
 }
 
+function technicalSymbolAssetType(symbol: string): MarketAssetType {
+  const category = getTechnicalSymbolCategory(symbol);
+  if (category === 'stocks') return 'stock';
+  if (category === 'indices') return 'index';
+  if (category === 'metals') return 'gold';
+  if (category === 'crypto') return 'crypto';
+  return 'forex';
+}
+
 function formatTechnicalSymbol(symbol: string) {
   const normalized = symbol.trim().toUpperCase();
   return getTechnicalSymbolOption(normalized)?.label ?? normalized;
@@ -758,8 +767,19 @@ export default function MarketAnalysisPage() {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), MARKET_TOOL_REQUEST_TIMEOUT_MS);
     const startedAt = globalThis.performance.now();
+    const assetType = technicalSymbolAssetType(symbol);
+    const normalizedInput = normalizeMarketSymbolInput(symbol, assetType);
+    const providerSymbol = normalizedInput.valid ? normalizedInput.providerSymbol : symbol;
+    const params = new URLSearchParams({
+      symbol,
+      assetType,
+      interval: '1d',
+    });
+    if (providerSymbol && providerSymbol !== symbol) {
+      params.set('providerSymbol', providerSymbol);
+    }
     setTechnicalState({ loading: true, data: null, message: '', symbol });
-    fetch(`/api/market/technical-analysis?symbol=${encodeURIComponent(symbol)}`, { cache: 'no-store', signal: controller.signal })
+    fetch(`/api/market/technical-analysis?${params.toString()}`, { cache: 'no-store', signal: controller.signal })
       .then(async response => {
         const payload = await response.json().catch(() => ({}));
         if (cancelled) return;
@@ -5059,6 +5079,26 @@ function SessionMetric({ label, value, valueDir }: { label: string; value: strin
   );
 }
 
+function technicalEmptyStateCopy(code: string | undefined, t: (key: string) => string) {
+  const normalizedCode = String(code ?? '').toUpperCase();
+  if (normalizedCode === 'MARKET_DATA_TIMEOUT') {
+    return { title: t('market_section_timeout_title'), body: t('market_section_timeout_body') };
+  }
+  if (normalizedCode === 'SYMBOL_REQUIRED') {
+    return { title: t('market_technical_choose_asset_title'), body: t('market_technical_symbol_required_body') };
+  }
+  if (normalizedCode === 'UNSUPPORTED_SYMBOL') {
+    return { title: t('market_technical_unified_empty_title'), body: t('market_technical_unsupported_symbol_body') };
+  }
+  if (normalizedCode === 'OHLC_DATA_NOT_AVAILABLE') {
+    return { title: t('market_technical_partial_title'), body: t('market_technical_ohlc_unavailable_body') };
+  }
+  if (normalizedCode === 'PROVIDER_UNAVAILABLE' || normalizedCode === 'MARKET_DATA_UNAVAILABLE') {
+    return { title: t('market_analysis_unavailable'), body: t('market_technical_provider_unavailable_body') };
+  }
+  return { title: t('market_technical_unified_empty_title'), body: t('market_technical_unified_empty_body') };
+}
+
 function TechnicalAnalysisPanel({
   t,
   locale,
@@ -5111,13 +5151,9 @@ function TechnicalAnalysisPanel({
     ['SMA 20', data?.movingAverages?.sma20],
     ['SMA 50', data?.movingAverages?.sma50],
   ].filter((row): row is [string, unknown] => hasDisplayValue(row[1]));
-  const partialData = state.code === 'insufficient_ohlc_data' && state.available ? state.available : null;
-  const technicalEmptyTitle = state.code === 'MARKET_DATA_TIMEOUT'
-    ? t('market_section_timeout_title')
-    : t('market_technical_unified_empty_title');
-  const technicalEmptyBody = state.code === 'MARKET_DATA_TIMEOUT'
-    ? t('market_section_timeout_body')
-    : t('market_technical_unified_empty_body');
+  const technicalCode = String(state.code ?? '').toUpperCase();
+  const partialData = (technicalCode === 'OHLC_DATA_NOT_AVAILABLE' || state.code === 'insufficient_ohlc_data') && state.available ? state.available : null;
+  const technicalEmptyCopy = technicalEmptyStateCopy(state.code, t);
 
   useEffect(() => {
     setCategory(getTechnicalSymbolCategory(symbol));
@@ -5245,7 +5281,7 @@ function TechnicalAnalysisPanel({
           onRefresh={onRefresh}
         />
       ) : state.message || state.code ? (
-        <TechnicalEmptyState title={technicalEmptyTitle} body={technicalEmptyBody} />
+        <TechnicalEmptyState title={technicalEmptyCopy.title} body={technicalEmptyCopy.body} />
       ) : data ? (
         <div className="technical-data-grid">
           <TechnicalDataCard

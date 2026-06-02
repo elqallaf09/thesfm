@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { proxyAnalyze } from '@/lib/market/openbbProxy';
-import { normalizeAssetType, normalizeMarketSymbolInput, validateSymbol, type MarketAssetType } from '@/lib/market/marketService';
+import { normalizeMarketSymbol, type NormalizedMarketSymbol } from '@/lib/market/normalizeSymbol';
+import { validateSymbol, type MarketAssetType } from '@/lib/market/marketService';
 import { hasOhlcPoint, calculatePivotPoints, trendFromAverages, type OhlcPoint } from '@/lib/trading/technical';
 
 export const revalidate = 300;
@@ -30,69 +31,40 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   });
 }
 
-function compactTechnicalSymbol(value: string) {
-  return value
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, '')
-    .replace(/[\\/]/g, '')
-    .replace(/^([A-Z]{6})=X$/, '$1');
-}
-
 function addCandidate(list: TechnicalSymbolCandidate[], candidate: TechnicalSymbolCandidate) {
   const symbol = validateSymbol(candidate.symbol);
   const displaySymbol = validateSymbol(candidate.displaySymbol) ?? symbol;
   if (!symbol || !displaySymbol) return;
-  const normalized = {
-    symbol,
-    assetType: normalizeAssetType(candidate.assetType),
-    displaySymbol,
-  };
-  const key = `${normalized.symbol}:${normalized.assetType}`;
-  if (!list.some(item => `${item.symbol}:${item.assetType}` === key)) list.push(normalized);
+  const key = `${symbol}:${candidate.assetType}`;
+  if (!list.some(item => `${item.symbol}:${item.assetType}` === key)) {
+    list.push({ symbol, assetType: candidate.assetType, displaySymbol });
+  }
 }
 
-function technicalSymbolCandidates(symbolInput: string, assetTypeInput: string): TechnicalSymbolCandidate[] {
+function technicalSymbolCandidates(normalized: NormalizedMarketSymbol, providerSymbolInput?: string | null): TechnicalSymbolCandidate[] {
   const candidates: TechnicalSymbolCandidate[] = [];
-  const compact = compactTechnicalSymbol(symbolInput);
-  const isCryptoPair = compact === 'BTCUSD' || compact === 'ETHUSD';
-  const isGoldPair = compact === 'XAUUSD' || compact === 'XAU' || compact === 'GOLD';
-  const normalized = normalizeMarketSymbolInput(symbolInput, assetTypeInput);
-  const normalizedRecord = normalized as Record<string, any>;
-  const normalizedValid = normalized.valid === true;
-  const inferredAssetType = normalizedValid ? normalizeAssetType(normalizedRecord.assetType) : normalizeAssetType(assetTypeInput);
-  const displaySymbol = normalizedValid ? String(normalizedRecord.displaySymbol ?? normalizedRecord.symbol) : compact || symbolInput.toUpperCase();
-
-  addCandidate(candidates, { symbol: symbolInput, assetType: inferredAssetType, displaySymbol });
-  if (normalizedValid) {
-    addCandidate(candidates, { symbol: normalizedRecord.providerSymbol, assetType: normalizeAssetType(normalizedRecord.assetType), displaySymbol });
-    addCandidate(candidates, { symbol: normalizedRecord.symbol, assetType: normalizeAssetType(normalizedRecord.assetType), displaySymbol });
+  if (providerSymbolInput) {
+    const providerNormalized = normalizeMarketSymbol(providerSymbolInput, normalized.assetType);
+    if (providerNormalized) {
+      addCandidate(candidates, {
+        symbol: providerNormalized.providerSymbol,
+        assetType: providerNormalized.assetType,
+        displaySymbol: normalized.displaySymbol,
+      });
+      providerNormalized.alternatives.forEach(symbol => {
+        addCandidate(candidates, { symbol, assetType: providerNormalized.assetType, displaySymbol: normalized.displaySymbol });
+      });
+    } else {
+      addCandidate(candidates, { symbol: providerSymbolInput, assetType: normalized.assetType, displaySymbol: normalized.displaySymbol });
+    }
   }
 
-  if (/^[A-Z]{6}$/.test(compact) && !isCryptoPair && !isGoldPair) {
-    addCandidate(candidates, { symbol: compact, assetType: 'forex', displaySymbol: compact });
-    addCandidate(candidates, { symbol: `${compact}=X`, assetType: 'forex', displaySymbol: compact });
-    addCandidate(candidates, { symbol: `${compact.slice(0, 3)}/${compact.slice(3)}`, assetType: 'forex', displaySymbol: compact });
-  }
+  addCandidate(candidates, { symbol: normalized.providerSymbol, assetType: normalized.assetType, displaySymbol: normalized.displaySymbol });
+  normalized.alternatives.forEach(symbol => {
+    addCandidate(candidates, { symbol, assetType: normalized.assetType, displaySymbol: normalized.displaySymbol });
+  });
 
-  if (isGoldPair) {
-    addCandidate(candidates, { symbol: 'XAUUSD', assetType: 'gold', displaySymbol: 'XAUUSD' });
-    addCandidate(candidates, { symbol: 'XAU/USD', assetType: 'gold', displaySymbol: 'XAUUSD' });
-    addCandidate(candidates, { symbol: 'GC=F', assetType: 'gold', displaySymbol: 'XAUUSD' });
-  }
-
-  if (isCryptoPair || compact === 'BTC' || compact === 'ETH') {
-    const base = compact.startsWith('ETH') ? 'ETH' : 'BTC';
-    addCandidate(candidates, { symbol: `${base}USD`, assetType: 'crypto', displaySymbol: `${base}USD` });
-    addCandidate(candidates, { symbol: `${base}/USD`, assetType: 'crypto', displaySymbol: `${base}USD` });
-    addCandidate(candidates, { symbol: `${base}-USD`, assetType: 'crypto', displaySymbol: `${base}USD` });
-  }
-
-  if (['QQQ', 'SPY', 'VOO', 'DIA', 'IWM'].includes(compact)) {
-    addCandidate(candidates, { symbol: compact, assetType: 'etf', displaySymbol: compact });
-  }
-
-  return candidates.slice(0, 6);
+  return candidates.slice(0, 8);
 }
 
 function normalizeOhlcPoint(value: unknown): OhlcPoint | null {
@@ -120,23 +92,32 @@ function latestOhlcPoint(analysis: Extract<TechnicalAnalyzeResult, { success: tr
   return Array.isArray(analysis.history) ? [...analysis.history].reverse().map(normalizeOhlcPoint).find(Boolean) ?? undefined : undefined;
 }
 
-function partialOhlcResponse(analysis: Extract<TechnicalAnalyzeResult, { success: true }>, attemptedSymbols: TechnicalSymbolCandidate[]) {
+function partialOhlcResponse(
+  analysis: Extract<TechnicalAnalyzeResult, { success: true }>,
+  normalized: NormalizedMarketSymbol,
+  attemptedSymbols: TechnicalSymbolCandidate[],
+  interval: string,
+) {
+  const updatedAt = analysis.fetchedAt ?? analysis.quote?.timestamp ?? new Date().toISOString();
   return NextResponse.json({
+    ok: false,
     success: false,
-    code: 'insufficient_ohlc_data',
-    symbol: analysis.symbol,
-    providerSymbol: analysis.providerSymbol,
-    message: 'Price data is available, but OHLC data is not sufficient to calculate daily pivot points.',
-    updated_at: analysis.fetchedAt ?? analysis.quote?.timestamp ?? new Date().toISOString(),
+    code: 'OHLC_DATA_NOT_AVAILABLE',
+    symbol: normalized.displaySymbol,
+    providerSymbol: analysis.providerSymbol ?? normalized.providerSymbol,
+    interval,
+    currentPrice: analysis.latestPrice ?? null,
+    message: 'Price data is available, but daily candle OHLC data is not sufficient to calculate pivot points.',
+    updated_at: updatedAt,
     attemptedSymbols: attemptedSymbols.map(item => item.symbol),
     available: {
-      symbol: analysis.symbol,
-      providerSymbol: analysis.providerSymbol,
+      symbol: normalized.displaySymbol,
+      providerSymbol: analysis.providerSymbol ?? normalized.providerSymbol,
       price: analysis.latestPrice,
       currentPrice: analysis.latestPrice,
       currency: analysis.currency ?? analysis.quote?.currency,
       source: analysis.source ?? 'openbb',
-      updatedAt: analysis.fetchedAt ?? analysis.quote?.timestamp,
+      updatedAt,
       rsi: analysis.indicators.rsi,
       sma20: analysis.indicators.sma20,
       sma50: analysis.indicators.sma50,
@@ -145,12 +126,64 @@ function partialOhlcResponse(analysis: Extract<TechnicalAnalyzeResult, { success
   }, { status: 200, headers: cacheHeaders });
 }
 
+function providerFailureResponse(firstError: Record<string, unknown> | null, candidates: TechnicalSymbolCandidate[], normalized: NormalizedMarketSymbol) {
+  return NextResponse.json({
+    ok: false,
+    success: false,
+    code: 'PROVIDER_UNAVAILABLE',
+    message: 'Market data provider is unavailable for technical analysis right now.',
+    symbol: normalized.displaySymbol,
+    providerSymbol: normalized.providerSymbol,
+    providerCode: typeof firstError?.code === 'string' ? firstError.code : undefined,
+    updated_at: new Date().toISOString(),
+    attemptedSymbols: candidates.map(item => item.symbol),
+  }, { status: 200, headers: cacheHeaders });
+}
+
 export async function GET(request: NextRequest) {
-  const symbol = request.nextUrl.searchParams.get('symbol') || 'EURUSD';
-  const assetType = request.nextUrl.searchParams.get('assetType') || 'stock';
-  const candidates = technicalSymbolCandidates(symbol, assetType);
+  const searchParams = request.nextUrl.searchParams;
+  const symbol = searchParams.get('symbol')?.trim();
+  const assetType = searchParams.get('assetType')?.trim() || undefined;
+  const providerSymbol = searchParams.get('providerSymbol')?.trim() || undefined;
+  const interval = searchParams.get('interval')?.trim() || '1d';
+
+  if (!symbol) {
+    return NextResponse.json({
+      ok: false,
+      success: false,
+      code: 'SYMBOL_REQUIRED',
+      message: 'Symbol is required.',
+      items: [],
+      updated_at: null,
+    }, { status: 400, headers: cacheHeaders });
+  }
+
+  const normalized = normalizeMarketSymbol(providerSymbol || symbol, assetType) ?? normalizeMarketSymbol(symbol, assetType);
+  if (!normalized) {
+    return NextResponse.json({
+      ok: false,
+      success: false,
+      code: 'UNSUPPORTED_SYMBOL',
+      message: 'Symbol is not supported.',
+      symbol,
+      updated_at: null,
+    }, { status: 422, headers: cacheHeaders });
+  }
+
+  const candidates = technicalSymbolCandidates(normalized, providerSymbol);
+  if (candidates.length === 0) {
+    return NextResponse.json({
+      ok: false,
+      success: false,
+      code: 'UNSUPPORTED_SYMBOL',
+      message: 'Symbol is not supported.',
+      symbol,
+      updated_at: null,
+    }, { status: 422, headers: cacheHeaders });
+  }
+
   let partialAnalysis: Extract<TechnicalAnalyzeResult, { success: true }> | null = null;
-  let firstError: Extract<TechnicalAnalyzeResult, { success: false }> | null = null;
+  let firstError: Record<string, unknown> | null = null;
 
   for (const candidate of candidates) {
     const analysis = await withTimeout(
@@ -173,7 +206,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!analysis.success) {
-      firstError ??= analysis;
+      firstError ??= analysis as Record<string, unknown>;
       continue;
     }
 
@@ -184,9 +217,13 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
+      ok: true,
       success: true,
-      symbol: analysis.symbol,
+      code: undefined,
+      symbol: normalized.displaySymbol,
+      providerSymbol: analysis.providerSymbol ?? candidate.symbol,
       name: analysis.name,
+      interval,
       trend: trendFromAverages(analysis.latestPrice, analysis.indicators.sma20, analysis.indicators.sma50),
       support: [analysis.levels.support],
       resistance: [analysis.levels.resistance],
@@ -199,16 +236,11 @@ export async function GET(request: NextRequest) {
       summary: analysis.summary,
       source: analysis.source ?? 'openbb',
       updated_at: analysis.fetchedAt ?? new Date().toISOString(),
+      attemptedSymbols: candidates.map(item => item.symbol),
     }, { status: 200, headers: cacheHeaders });
   }
 
-  if (partialAnalysis) return partialOhlcResponse(partialAnalysis, candidates);
+  if (partialAnalysis) return partialOhlcResponse(partialAnalysis, normalized, candidates, interval);
 
-  return NextResponse.json({
-    success: false,
-    code: firstError?.code ?? 'provider_no_data',
-    message: firstError?.error,
-    updated_at: new Date().toISOString(),
-    attemptedSymbols: candidates.map(item => item.symbol),
-  }, { status: 200, headers: cacheHeaders });
+  return providerFailureResponse(firstError, candidates, normalized);
 }
