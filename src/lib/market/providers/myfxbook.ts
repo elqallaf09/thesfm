@@ -42,8 +42,8 @@ type MyfxbookOutlookResponse = {
 };
 
 type MyfxbookLoginResult =
-  | { ok: true; session: string; providerMessage: string | null }
-  | { ok: false; code: MyfxbookErrorCode; providerMessage: string | null };
+  | { ok: true; session: string; providerMessage: string | null; httpStatus?: number; canReachMyfxbook?: boolean }
+  | { ok: false; code: MyfxbookErrorCode; providerMessage: string | null; httpStatus?: number; canReachMyfxbook?: boolean };
 
 export type MyfxbookSentimentItem = {
   symbol: string;
@@ -112,13 +112,13 @@ function isRateLimitMessage(message: string | undefined) {
 function logEnvCheckOnce() {
   if (envCheckLogged) return;
   envCheckLogged = true;
-  console.info('Myfxbook env check:', {
+  console.log('Myfxbook env diagnostic:', {
     provider: process.env.MARKET_SENTIMENT_PROVIDER,
     hasEmail: Boolean(cleanEnv(process.env.MYFXBOOK_EMAIL)),
     hasPassword: Boolean(cleanEnv(process.env.MYFXBOOK_PASSWORD)),
     emailLength: cleanEnv(process.env.MYFXBOOK_EMAIL).length,
     passwordLength: cleanEnv(process.env.MYFXBOOK_PASSWORD).length,
-    nodeEnv: process.env.NODE_ENV,
+    passwordHasSpecialChars: /[^a-zA-Z0-9]/.test(process.env.MYFXBOOK_PASSWORD || ''),
   });
 }
 
@@ -238,13 +238,14 @@ async function fetchJsonWithTimeout<T>(url: URL, timeoutMs = REQUEST_TIMEOUT_MS)
 export async function loginToMyfxbook(options: { force?: boolean } = {}): Promise<MyfxbookLoginResult> {
   const now = Date.now();
   if (!options.force && cachedSession && cachedSession.expiresAt > now) {
-    return { ok: true as const, session: cachedSession.value, providerMessage: null };
+    return { ok: true as const, session: cachedSession.value, providerMessage: null, canReachMyfxbook: true };
   }
   if (!options.force && cachedFailure && cachedFailure.expiresAt > now) {
     return {
       ok: false as const,
       code: cachedFailure.code,
       providerMessage: cachedFailure.providerMessage,
+      canReachMyfxbook: cachedFailure.code !== 'MYFXBOOK_PROVIDER_FAILED',
     };
   }
 
@@ -257,38 +258,85 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
 
   logEnvCheckOnce();
 
-  const url = new URL(LOGIN_URL);
-  url.searchParams.set('email', rawEmail);
-  url.searchParams.set('password', rawPassword);
+  const email = encodeURIComponent(rawEmail);
+  const password = encodeURIComponent(rawPassword);
+  const loginUrl = `${LOGIN_URL}?email=${email}&password=${password}`;
 
-  const payload = await fetchJsonWithTimeout<MyfxbookLoginResponse>(url);
+  console.log('MYFXBOOK_LOGIN_ATTEMPT');
+
+  const response = await fetch(loginUrl, {
+    cache: 'no-store',
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  const payload = await response.json().catch(() => ({})) as MyfxbookLoginResponse;
+
+  console.error('Myfxbook login response:', {
+    httpStatus: response.status,
+    ok: response.ok,
+    error: payload?.error,
+    message: payload?.message,
+    hasSession: Boolean(payload?.session),
+  });
+
+  if (response.status === 429) {
+    cachedFailure = {
+      code: 'MYFXBOOK_RATE_LIMITED',
+      providerMessage: payload.message ?? null,
+      expiresAt: now + OUTLOOK_TTL_MS,
+    };
+    return {
+      ok: false as const,
+      code: 'MYFXBOOK_RATE_LIMITED' as const,
+      providerMessage: payload.message ?? null,
+      httpStatus: response.status,
+      canReachMyfxbook: true,
+    };
+  }
+
+  if (!response.ok) {
+    cachedFailure = {
+      code: 'MYFXBOOK_PROVIDER_FAILED',
+      providerMessage: payload.message ?? null,
+      expiresAt: now + OUTLOOK_TTL_MS,
+    };
+    return {
+      ok: false as const,
+      code: 'MYFXBOOK_PROVIDER_FAILED' as const,
+      providerMessage: payload.message ?? null,
+      httpStatus: response.status,
+      canReachMyfxbook: false,
+    };
+  }
+
   if (payload.error) {
     const code: MyfxbookErrorCode = isRateLimitMessage(payload.message) ? 'MYFXBOOK_RATE_LIMITED' : 'MYFXBOOK_AUTH_FAILED';
-    console.error('Myfxbook login failed:', {
-      error: payload.error,
-      message: payload.message ?? null,
-      hasSession: Boolean(payload.session),
-    });
     cachedFailure = {
       code,
       providerMessage: payload.message ?? null,
       expiresAt: now + OUTLOOK_TTL_MS,
     };
-    return { ok: false as const, code, providerMessage: payload.message ?? null };
+    return {
+      ok: false as const,
+      code,
+      providerMessage: payload.message ?? null,
+      httpStatus: response.status,
+      canReachMyfxbook: true,
+    };
   }
 
   if (!payload.session) {
-    console.error('Myfxbook login failed:', {
-      error: payload.error,
-      message: payload.message ?? null,
-      hasSession: false,
-    });
     cachedFailure = {
       code: 'MYFXBOOK_SESSION_MISSING',
       providerMessage: payload.message ?? null,
       expiresAt: now + OUTLOOK_TTL_MS,
     };
-    return { ok: false as const, code: 'MYFXBOOK_SESSION_MISSING' as const, providerMessage: payload.message ?? null };
+    return {
+      ok: false as const,
+      code: 'MYFXBOOK_SESSION_MISSING' as const,
+      providerMessage: payload.message ?? null,
+      httpStatus: response.status,
+      canReachMyfxbook: true,
+    };
   }
 
   cachedSession = {
@@ -296,7 +344,13 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     expiresAt: now + SESSION_TTL_MS,
   };
   cachedFailure = null;
-  return { ok: true as const, session: payload.session, providerMessage: payload.message ?? null };
+  return {
+    ok: true as const,
+    session: payload.session,
+    providerMessage: payload.message ?? null,
+    httpStatus: response.status,
+    canReachMyfxbook: true,
+  };
 }
 
 async function getSession() {

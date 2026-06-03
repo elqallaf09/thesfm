@@ -349,6 +349,14 @@ async function fetchAlphaVantageSentiment(symbols: string[], apiKey: string) {
 export async function GET(request: NextRequest) {
   const config = getMarketSentimentProviderConfig();
 
+  console.log('Market sentiment provider selected:', {
+    provider: process.env.MARKET_SENTIMENT_PROVIDER,
+  });
+
+  if (config.provider !== 'myfxbook') {
+    return unavailableResponse('MARKET_SENTIMENT_PROVIDER_NOT_MYFXBOOK', config.provider ?? config.providerEnv ?? null);
+  }
+
   if (!config.provider) {
     return unavailableResponse('MARKET_SENTIMENT_PROVIDER_MISSING');
   }
