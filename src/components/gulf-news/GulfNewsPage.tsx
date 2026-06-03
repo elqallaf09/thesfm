@@ -14,6 +14,7 @@ import { GulfNewsHeader } from '@/components/gulf-news/GulfNewsHeader';
 import { GulfNewsSkeleton } from '@/components/gulf-news/GulfNewsSkeleton';
 import { GulfNewsStatusBar } from '@/components/gulf-news/GulfNewsStatusBar';
 import { GulfTickerStrip } from '@/components/gulf-news/GulfTickerStrip';
+import { MarketMoversCard } from '@/components/market-news/MarketMoversCard';
 
 type GulfNewsApiResponse =
   | {
@@ -224,6 +225,34 @@ export function GulfNewsPage() {
           }}
           formatNumber={formatNumber}
           formatPercent={formatPercent}
+        />
+
+        <MarketMoversCard
+          market={selectedMarket}
+          marketLabel={marketLabels[selectedMarket]}
+          locale={locale}
+          labels={{
+            title: t('market_movers_title'),
+            subtitle: t('market_movers_subtitle'),
+            topGainers: t('market_movers_top_gainers'),
+            topLosers: t('market_movers_top_losers'),
+            highestPrice: t('market_movers_highest_price'),
+            lowestPrice: t('market_movers_lowest_price'),
+            highestVolume: t('market_movers_highest_volume'),
+            lowestVolume: t('market_movers_lowest_volume'),
+            price: t('market_movers_price'),
+            change: t('market_movers_change'),
+            volume: t('market_movers_volume'),
+            source: t('market_movers_source'),
+            lastUpdated: t('market_movers_last_updated'),
+            refresh: t('market_movers_refresh'),
+            loading: t('market_movers_loading'),
+            unavailableTitle: t('market_movers_unavailable_title'),
+            unavailableBody: t('market_movers_unavailable_body'),
+            emptyTitle: t('market_movers_empty_title'),
+            emptyBody: t('market_movers_empty_body'),
+            limitedData: t('market_movers_limited_data'),
+          }}
         />
 
         <section className="gulf-news-controls">
