@@ -3048,6 +3048,86 @@ export default function MarketAnalysisPage() {
           min-width: 0;
         }
 
+        .trader-premium-layout.performance-layout {
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-areas: "main";
+        }
+
+        .performance-layout .trader-premium-main-card,
+        .performance-table-section {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+        }
+
+        .performance-table-section {
+          display: grid;
+          gap: 14px;
+        }
+
+        .performance-table-wrap {
+          border-radius: 28px;
+          border: 1px solid rgba(47, 214, 192, .18);
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, .88), rgba(234, 246, 255, .58)),
+            var(--sfm-card);
+          box-shadow: 0 18px 46px rgba(3, 18, 37, .08);
+          padding: 8px;
+        }
+
+        .performance-table {
+          border-spacing: 0 10px;
+          padding: 6px;
+        }
+
+        .performance-table th {
+          background: transparent;
+          color: #475569;
+          font-size: 12px;
+          letter-spacing: 0;
+        }
+
+        .performance-table td {
+          background: rgba(255, 255, 255, .92);
+          border-block: 1px solid rgba(47, 214, 192, .12);
+          box-shadow: 0 8px 22px rgba(3, 18, 37, .045);
+        }
+
+        .performance-table td:first-child {
+          border-inline-start: 1px solid rgba(47, 214, 192, .12);
+        }
+
+        .performance-table td:last-child {
+          border-inline-end: 1px solid rgba(47, 214, 192, .12);
+        }
+
+        .performance-table tbody tr {
+          transition: transform .18s ease, filter .18s ease;
+        }
+
+        .performance-table tbody tr:hover {
+          transform: translateY(-1px);
+          filter: drop-shadow(0 10px 22px rgba(29, 140, 255, .08));
+        }
+
+        .dark .performance-table-wrap {
+          background:
+            linear-gradient(135deg, rgba(29, 140, 255, .10), rgba(47, 214, 192, .07)),
+            #0f1d31;
+          border-color: #1d3050;
+          box-shadow: 0 18px 46px rgba(0, 0, 0, .24);
+        }
+
+        .dark .performance-table th {
+          color: #b8c7d9;
+        }
+
+        .dark .performance-table td {
+          background: #10243a;
+          border-color: #1d3050;
+          box-shadow: none;
+        }
+
         .market-default-modules {
           display: grid;
           gap: 14px;
@@ -4286,6 +4366,97 @@ export default function MarketAnalysisPage() {
             padding: 14px;
           }
 
+          .performance-table-wrap {
+            overflow: visible;
+            padding: 10px;
+            border-radius: 22px;
+          }
+
+          .performance-table,
+          .performance-table thead,
+          .performance-table tbody,
+          .performance-table tr,
+          .performance-table td {
+            display: block;
+            width: 100%;
+            min-width: 0;
+          }
+
+          .performance-table {
+            padding: 0;
+            border-spacing: 0;
+          }
+
+          .performance-table thead {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+          }
+
+          .performance-table tbody {
+            display: grid;
+            gap: 12px;
+          }
+
+          .performance-table tbody tr {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            border: 1px solid rgba(47, 214, 192, .16);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, .9);
+            padding: 12px;
+            box-shadow: 0 10px 28px rgba(3, 18, 37, .06);
+          }
+
+          .performance-table tbody tr:hover {
+            transform: none;
+            filter: none;
+          }
+
+          .performance-table td,
+          .performance-table td:first-child,
+          .performance-table td:last-child {
+            display: grid;
+            gap: 5px;
+            border: 1px solid rgba(47, 214, 192, .12);
+            border-radius: 15px;
+            background: var(--sfm-light-card);
+            padding: 11px;
+            box-shadow: none;
+            white-space: normal;
+            overflow-wrap: anywhere;
+          }
+
+          .performance-table td::before {
+            content: attr(data-label);
+            color: var(--sfm-muted);
+            font-size: 11px;
+            font-weight: 950;
+            line-height: 1.35;
+          }
+
+          .performance-table td:nth-child(2) {
+            color: var(--sfm-foreground);
+            font-weight: 950;
+          }
+
+          .dark .performance-table tbody tr {
+            background: #0f1d31;
+            border-color: #1d3050;
+            box-shadow: none;
+          }
+
+          .dark .performance-table td,
+          .dark .performance-table td:first-child,
+          .dark .performance-table td:last-child {
+            background: #0a1422;
+            border-color: #1d3050;
+          }
+
           .market-empty-state {
             grid-template-columns: 1fr;
             justify-items: start;
@@ -4811,7 +4982,8 @@ function TraderToolsDashboard({
         </b>
       </header>
 
-      <div className="trader-premium-layout">
+      <div className={`trader-premium-layout${subTab === 'performance' ? ' performance-layout' : ''}`}>
+        {subTab !== 'performance' ? (
         <aside className="trader-support-column" aria-label={t('market_tool_summary')}>
           <TraderSupportCard icon={<WalletCards size={18} />} title={t('market_tool_summary')}>
             <p>{t('market_tool_summary_body')}</p>
@@ -4837,6 +5009,7 @@ function TraderToolsDashboard({
             </ol>
           </TraderSupportCard>
         </aside>
+        ) : null}
 
         <article className="trader-premium-main-card">
           <div className="trader-premium-main-head">
@@ -5102,28 +5275,9 @@ function PerformanceTable({ t, performance }: { t: (key: string) => string; perf
   const trendLabel = (value?: string | null) => t(`market_trend_${normalizePerformanceTrend(value)}`);
 
   return (
-    <>
-      <div className="performance-card-list">
-        {sorted.map(item => (
-          <article className="performance-card" key={`card-${item.symbol}-${item.asset_type}`}>
-            <div className="performance-card-head">
-              <div>
-                <strong dir="ltr">{item.symbol}</strong>
-                <span>{item.name}</span>
-              </div>
-              <b className={`performance-trend ${normalizePerformanceTrend(item.trend)}`}>{trendLabel(item.trend)}</b>
-            </div>
-            <div className="performance-metric-grid">
-              <PerformanceMetric label={t('market_current_price')} value={displayPrice(item.price)} />
-              <PerformanceMetric label={t('market_daily_change')} value={displayPercent(item.change_1d)} tone={item.change_1d} />
-              <PerformanceMetric label={t('market_weekly_change')} value={displayPercent(item.change_1w)} tone={item.change_1w} />
-              <PerformanceMetric label={t('market_monthly_change')} value={displayPercent(item.change_1m)} tone={item.change_1m} />
-            </div>
-          </article>
-        ))}
-      </div>
-      <div className="trader-table-wrap performance-table-desktop">
-        <table className="trader-table">
+    <section className="performance-table-section" aria-label={t('market_asset_performance')}>
+      <div className="trader-table-wrap performance-table-wrap">
+        <table className="trader-table performance-table">
           <thead>
             <tr>
               <th>{t('market_symbol')}</th>
@@ -5138,29 +5292,19 @@ function PerformanceTable({ t, performance }: { t: (key: string) => string; perf
           <tbody>
             {sorted.map(item => (
               <tr key={`${item.symbol}-${item.asset_type}`}>
-                <td><span className="performance-symbol" dir="ltr">{item.symbol}</span></td>
-                <td>{item.name}</td>
-                <td><span className="performance-value" dir="ltr">{displayPrice(item.price)}</span></td>
-                <td><span className={`performance-value ${Number(item.change_1d) >= 0 ? 'up' : 'down'}`} dir="ltr">{displayPercent(item.change_1d)}</span></td>
-                <td><span className={`performance-value ${Number(item.change_1w) >= 0 ? 'up' : 'down'}`} dir="ltr">{displayPercent(item.change_1w)}</span></td>
-                <td><span className={`performance-value ${Number(item.change_1m) >= 0 ? 'up' : 'down'}`} dir="ltr">{displayPercent(item.change_1m)}</span></td>
-                <td><span className={`performance-trend ${normalizePerformanceTrend(item.trend)}`}>{trendLabel(item.trend)}</span></td>
+                <td data-label={t('market_symbol')}><span className="performance-symbol" dir="ltr">{item.symbol}</span></td>
+                <td data-label={t('market_symbol_name')}>{item.name}</td>
+                <td data-label={t('market_current_price')}><span className="performance-value" dir="ltr">{displayPrice(item.price)}</span></td>
+                <td data-label={t('market_daily_change')}><span className={`performance-value ${Number(item.change_1d) >= 0 ? 'up' : 'down'}`} dir="ltr">{displayPercent(item.change_1d)}</span></td>
+                <td data-label={t('market_weekly_change')}><span className={`performance-value ${Number(item.change_1w) >= 0 ? 'up' : 'down'}`} dir="ltr">{displayPercent(item.change_1w)}</span></td>
+                <td data-label={t('market_monthly_change')}><span className={`performance-value ${Number(item.change_1m) >= 0 ? 'up' : 'down'}`} dir="ltr">{displayPercent(item.change_1m)}</span></td>
+                <td data-label={t('market_trend')}><span className={`performance-trend ${normalizePerformanceTrend(item.trend)}`}>{trendLabel(item.trend)}</span></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    </>
-  );
-}
-
-function PerformanceMetric({ label, value, tone }: { label: string; value: string; tone?: number | null }) {
-  const toneClass = Number.isFinite(Number(tone)) ? Number(tone) >= 0 ? 'up' : 'down' : '';
-  return (
-    <div className="performance-metric">
-      <span>{label}</span>
-      <b className={toneClass} dir="ltr">{value}</b>
-    </div>
+    </section>
   );
 }
 
