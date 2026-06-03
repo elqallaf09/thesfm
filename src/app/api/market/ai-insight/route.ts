@@ -9,6 +9,7 @@ type AiInsightFailureCode =
   | 'AI_PROVIDER_NOT_CONFIGURED'
   | 'MARKET_DATA_REQUIRED'
   | 'AI_PROVIDER_AUTH_FAILED'
+  | 'AI_PROVIDER_QUOTA_EXCEEDED'
   | 'AI_PROVIDER_RATE_LIMITED'
   | 'AI_PROVIDER_TIMEOUT'
   | 'AI_PROVIDER_BAD_REQUEST'
@@ -41,6 +42,7 @@ function statusForFailure(code: AiInsightFailureCode) {
     AI_PROVIDER_NOT_CONFIGURED: 200,
     MARKET_DATA_REQUIRED: 400,
     AI_PROVIDER_AUTH_FAILED: 401,
+    AI_PROVIDER_QUOTA_EXCEEDED: 200,
     AI_PROVIDER_RATE_LIMITED: 429,
     AI_PROVIDER_TIMEOUT: 504,
     AI_PROVIDER_BAD_REQUEST: 400,
@@ -67,12 +69,13 @@ function isTimeoutError(error: unknown) {
 function safeErrorInfo(error: unknown): OpenAiErrorLike {
   if (!error || typeof error !== 'object') return {};
   const record = error as Record<string, unknown>;
+  const nestedError = record.error && typeof record.error === 'object' ? record.error as Record<string, unknown> : {};
   return {
     name: typeof record.name === 'string' ? record.name : undefined,
     message: typeof record.message === 'string' ? record.message : undefined,
     status: typeof record.status === 'number' ? record.status : undefined,
-    code: typeof record.code === 'string' ? record.code : undefined,
-    type: typeof record.type === 'string' ? record.type : undefined,
+    code: typeof record.code === 'string' ? record.code : typeof nestedError.code === 'string' ? nestedError.code : undefined,
+    type: typeof record.type === 'string' ? record.type : typeof nestedError.type === 'string' ? nestedError.type : undefined,
   };
 }
 
@@ -80,6 +83,8 @@ function mapOpenAiError(error: unknown): AiInsightFailureCode {
   if (isTimeoutError(error)) return 'AI_PROVIDER_TIMEOUT';
   const info = safeErrorInfo(error);
   if (info.status === 401 || info.status === 403) return 'AI_PROVIDER_AUTH_FAILED';
+  if (info.status === 429 && (info.code === 'insufficient_quota' || info.type === 'insufficient_quota')) return 'AI_PROVIDER_QUOTA_EXCEEDED';
+  if (info.code === 'insufficient_quota' || info.type === 'insufficient_quota') return 'AI_PROVIDER_QUOTA_EXCEEDED';
   if (info.status === 429) return 'AI_PROVIDER_RATE_LIMITED';
   if (info.status === 400) return 'AI_PROVIDER_BAD_REQUEST';
   if (typeof info.status === 'number' && info.status >= 500) return 'AI_PROVIDER_UNAVAILABLE';

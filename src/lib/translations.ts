@@ -11,6 +11,7 @@ export type Lang = 'ar' | 'en' | 'fr';
 type TranslationEntry = Partial<Record<Lang, string>> & { ar: string; en: string };
 
 export const TR: Record<string, TranslationEntry> = {
+  market_ai_quota_exceeded: { ar:'تعذر إنشاء التحليل الذكي حاليًا. تم تجاوز حد استخدام خدمة الذكاء الاصطناعي. يرجى مراجعة إعدادات الفوترة أو المحاولة لاحقًا.', en:'Unable to generate the smart analysis right now. The AI service usage quota has been exceeded. Review billing settings or try again later.', fr:'Impossible de générer l’analyse intelligente pour le moment. Le quota d’utilisation du service IA a été dépassé. Vérifiez la facturation ou réessayez plus tard.' },
   market_pip_asset_type_oil: { ar:'النفط', en:'Oil', fr:'Pétrole' },
   market_asset_symbol: { ar:'الأصل / الرمز', en:'Asset / symbol', fr:'Actif / symbole' },
   market_asset_symbol_hint: { ar:'اختر الأصل المطلوب. يمكن تعديل حجم النقطة وقيمتها بعد الاختيار.', en:'Choose the asset. You can still edit point size and point value after selecting it.', fr:'Choisissez l’actif. Vous pouvez toujours modifier la taille du point et sa valeur après la sélection.' },

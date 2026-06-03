@@ -763,6 +763,7 @@ function marketAiInsightErrorText(code: string | undefined, t: (key: string) => 
   const map: Record<string, string> = {
     AI_PROVIDER_NOT_CONFIGURED: t('market_ai_provider_not_configured'),
     AI_PROVIDER_AUTH_FAILED: t('market_ai_auth_failed'),
+    AI_PROVIDER_QUOTA_EXCEEDED: t('market_ai_quota_exceeded'),
     AI_PROVIDER_RATE_LIMITED: t('market_ai_rate_limited'),
     AI_PROVIDER_TIMEOUT: t('market_ai_timeout'),
     AI_PROVIDER_BAD_REQUEST: t('market_ai_bad_request'),
@@ -840,6 +841,7 @@ export default function MarketAnalysisPage() {
   const [aiInsight, setAiInsight] = useState<MarketAiInsightView | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const aiInsightLoadingRef = useRef(false);
+  const aiQuotaExceededRef = useRef(false);
   const [assetProfile, setAssetProfile] = useState<AssetProfileResponse | null>(null);
   const [assetProfileLoading, setAssetProfileLoading] = useState(false);
   const [assetProfileError, setAssetProfileError] = useState<string | null>(null);
@@ -1087,10 +1089,18 @@ export default function MarketAnalysisPage() {
     }
   }, [baseScenarioCurrency, scenarioCurrencyTouched]);
 
-  const requestAiInsight = useCallback(async (marketData: MarketAnalysis) => {
+  const requestAiInsight = useCallback(async (marketData: MarketAnalysis, options?: { force?: boolean }) => {
     if (aiInsightLoadingRef.current) return;
     if (!hasUsableAnalysis(marketData)) {
       setAiInsight({ status: 'skipped', error: t('market_no_real_data_ai') });
+      return;
+    }
+    if (aiQuotaExceededRef.current && !options?.force) {
+      setAiInsight({
+        status: 'unavailable',
+        provider: 'rule-based',
+        error: t('market_ai_quota_exceeded'),
+      });
       return;
     }
     aiInsightLoadingRef.current = true;
@@ -1103,8 +1113,12 @@ export default function MarketAnalysisPage() {
         body: JSON.stringify({ marketData, language: lang }),
       });
       if (result.success && result.insight?.status === 'ready') {
+        aiQuotaExceededRef.current = false;
         setAiInsight(result.insight);
       } else {
+        if (String(result.code ?? '').toUpperCase() === 'AI_PROVIDER_QUOTA_EXCEEDED') {
+          aiQuotaExceededRef.current = true;
+        }
         setAiInsight({
           status: 'unavailable',
           provider: 'rule-based',
@@ -1887,7 +1901,7 @@ export default function MarketAnalysisPage() {
   }, [selected, t]);
   const regenerateAiSummary = useCallback(() => {
     if (!selected || aiLoading || !hasUsableAnalysis(selected)) return;
-    void requestAiInsight(selected);
+    void requestAiInsight(selected, { force: true });
   }, [aiLoading, requestAiInsight, selected]);
   const aiSummarySections = useMemo(() => {
     if (!selected) {
