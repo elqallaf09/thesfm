@@ -15,6 +15,7 @@ import { EuropeNewsSkeleton } from '@/components/europe-news/EuropeNewsSkeleton'
 import { EuropeNewsStatusBar } from '@/components/europe-news/EuropeNewsStatusBar';
 import { EuropeTickerStrip } from '@/components/europe-news/EuropeTickerStrip';
 import { MarketMoversCard } from '@/components/market-news/MarketMoversCard';
+import { PortfolioComparisonCard } from '@/components/market-news/PortfolioComparisonCard';
 
 type EuropeNewsApiResponse =
   | {
@@ -244,6 +245,13 @@ export function EuropeNewsPage() {
             emptyBody: t('market_movers_empty_body'),
             limitedData: t('market_movers_limited_data'),
           }}
+        />
+
+        <PortfolioComparisonCard
+          market={selectedMarket}
+          marketLabel={marketLabels[selectedMarket]}
+          locale={locale}
+          t={t}
         />
 
         <section className="europe-news-controls">

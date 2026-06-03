@@ -15,6 +15,7 @@ import { GulfNewsSkeleton } from '@/components/gulf-news/GulfNewsSkeleton';
 import { GulfNewsStatusBar } from '@/components/gulf-news/GulfNewsStatusBar';
 import { GulfTickerStrip } from '@/components/gulf-news/GulfTickerStrip';
 import { MarketMoversCard } from '@/components/market-news/MarketMoversCard';
+import { PortfolioComparisonCard } from '@/components/market-news/PortfolioComparisonCard';
 
 type GulfNewsApiResponse =
   | {
@@ -253,6 +254,13 @@ export function GulfNewsPage() {
             emptyBody: t('market_movers_empty_body'),
             limitedData: t('market_movers_limited_data'),
           }}
+        />
+
+        <PortfolioComparisonCard
+          market={selectedMarket}
+          marketLabel={marketLabels[selectedMarket]}
+          locale={locale}
+          t={t}
         />
 
         <section className="gulf-news-controls">
