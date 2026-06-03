@@ -266,6 +266,8 @@ function sanitizeMarketToolMessage(code: string, message: string) {
     code === 'ECONOMIC_CALENDAR_NOT_CONFIGURED' ||
     code === 'CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED' ||
     code.startsWith('MARKET_SENTIMENT_') ||
+    code.startsWith('MYFXBOOK_') ||
+    code === 'NO_MARKET_SENTIMENT_DATA' ||
     code === 'SYMBOL_REQUIRED' ||
     code === 'MARKET_DATA_TIMEOUT' ||
     /ECONOMIC_CALENDAR_|\b[A-Z0-9_]*(API_)?(KEY|TOKEN|SECRET)\b|provider integration is not configured/i.test(message)
@@ -6935,6 +6937,9 @@ function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => 
   if (code === 'MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED') {
     return { title: t('market_sentiment_not_configured_title'), body: t('market_sentiment_not_configured_body') };
   }
+  if (code === 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED') {
+    return { title: t('market_sentiment_myfxbook_not_configured_title'), body: t('market_sentiment_myfxbook_not_configured_body') };
+  }
   if (code === 'MARKET_SENTIMENT_PROVIDER_MISSING') {
     return { title: t('market_sentiment_provider_missing_title'), body: t('market_sentiment_provider_missing_body') };
   }
@@ -6944,14 +6949,20 @@ function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => 
   if (code === 'MARKET_SENTIMENT_AUTH_FAILED') {
     return { title: t('market_sentiment_auth_failed_title'), body: t('market_sentiment_auth_failed_body') };
   }
+  if (code === 'MYFXBOOK_AUTH_FAILED') {
+    return { title: t('market_sentiment_myfxbook_auth_failed_title'), body: t('market_sentiment_myfxbook_auth_failed_body') };
+  }
   if (code === 'MARKET_SENTIMENT_PLAN_NOT_ALLOWED') {
     return { title: t('market_sentiment_plan_not_allowed_title'), body: t('market_sentiment_plan_not_allowed_body') };
   }
-  if (code === 'MARKET_SENTIMENT_RATE_LIMITED') {
+  if (code === 'MARKET_SENTIMENT_RATE_LIMITED' || code === 'MYFXBOOK_RATE_LIMITED') {
     return { title: t('market_sentiment_rate_limited_title'), body: t('market_sentiment_rate_limited_body') };
   }
   if (code === 'NO_MARKET_SENTIMENT_DATA') {
-    return { title: t('market_sentiment_no_items_title'), body: t('market_sentiment_no_items_body') };
+    return { title: t('market_sentiment_myfxbook_no_items_title'), body: t('market_sentiment_myfxbook_no_items_body') };
+  }
+  if (code === 'MYFXBOOK_PROVIDER_FAILED') {
+    return { title: t('market_sentiment_unavailable_title'), body: t('market_sentiment_myfxbook_provider_failed_body') };
   }
   if (
     code === 'MARKET_SENTIMENT_PROVIDER_FAILED'
@@ -7091,7 +7102,7 @@ function NewsSentimentPanel({
             ) : sentimentItems.length > 0 ? (
               <div className="sentiment-card-list">
                 {sentimentItems.map((item, index) => {
-                  const symbol = textField(item, ['symbol', 'ticker', 'asset', 'instrument']);
+                  const symbol = textField(item, ['displaySymbol', 'symbol', 'ticker', 'asset', 'instrument']);
                   const name = textField(item, ['name', 'assetName', 'asset_name', 'description']);
                   const values = sentimentValues(item);
                   if (!values) {

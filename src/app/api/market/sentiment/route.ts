@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMarketSentimentProviderConfig } from '@/lib/market/providerConfig';
+import { getMyfxbookSentiment } from '@/lib/market/providers/myfxbook';
 
 export const revalidate = 300;
 export const dynamic = 'force-dynamic';
@@ -145,6 +146,15 @@ function parseSymbols(request: NextRequest, provider: SentimentProvider) {
     .filter(symbol => /^[A-Z0-9.^:]{1,18}$/.test(symbol));
   const uniqueSymbols = [...new Set(symbols)].slice(0, 4);
   return uniqueSymbols;
+}
+
+function parseMyfxbookSymbol(request: NextRequest) {
+  const params = request.nextUrl.searchParams;
+  const raw = params.get('providerSymbol')
+    || params.get('symbol')
+    || params.get('symbols')?.split(',')[0]
+    || '';
+  return raw.trim();
 }
 
 function formatDate(date: Date) {
@@ -338,20 +348,30 @@ async function fetchAlphaVantageSentiment(symbols: string[], apiKey: string) {
 
 export async function GET(request: NextRequest) {
   const config = getMarketSentimentProviderConfig();
-  const envCheck = {
-    hasMarketSentimentKey: config.hasMarketSentimentApiKey,
-    hasFinnhubKey: config.hasFinnhubApiKey,
-    hasAlphaVantageKey: config.hasAlphaVantageApiKey,
-    nodeEnv: process.env.NODE_ENV,
-  };
-  console.log('Market sentiment env check:', envCheck);
-
-  if (!config.apiKey) {
-    return unavailableResponse('MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED');
-  }
 
   if (!config.provider) {
     return unavailableResponse('MARKET_SENTIMENT_PROVIDER_MISSING');
+  }
+
+  if (config.provider === 'myfxbook') {
+    const symbol = parseMyfxbookSymbol(request);
+    const result = await getMyfxbookSentiment(symbol);
+    if (!result.ok) {
+      return unavailableResponse(result.code, 'myfxbook');
+    }
+
+    return NextResponse.json({
+      ok: true,
+      success: true,
+      provider: 'myfxbook',
+      source: 'Myfxbook',
+      items: result.items,
+      updated_at: result.updated_at,
+    }, { status: 200, headers: cacheHeaders });
+  }
+
+  if (!config.apiKey) {
+    return unavailableResponse('MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED');
   }
 
   const symbols = parseSymbols(request, config.provider);

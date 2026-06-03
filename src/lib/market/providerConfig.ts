@@ -1,5 +1,5 @@
 export type CentralBankNewsProvider = 'newsapi' | 'finnhub';
-export type MarketSentimentProvider = 'finnhub' | 'alphavantage';
+export type MarketSentimentProvider = 'finnhub' | 'alphavantage' | 'myfxbook';
 
 export function cleanEnv(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
@@ -17,6 +17,7 @@ function normalizeMarketSentimentProvider(value: string): MarketSentimentProvide
   if (!normalized) return null;
   if (normalized === 'finnhub') return 'finnhub';
   if (normalized === 'alphavantage') return 'alphavantage';
+  if (normalized === 'myfxbook') return 'myfxbook';
   return null;
 }
 
@@ -52,6 +53,8 @@ export function getMarketSentimentProviderConfig() {
   const marketSentimentApiKey = cleanEnv(process.env.MARKET_SENTIMENT_API_KEY);
   const finnhubApiKey = cleanEnv(process.env.FINNHUB_API_KEY);
   const alphaVantageApiKey = cleanEnv(process.env.ALPHA_VANTAGE_API_KEY);
+  const myfxbookEmail = cleanEnv(process.env.MYFXBOOK_EMAIL);
+  const myfxbookPassword = cleanEnv(process.env.MYFXBOOK_PASSWORD);
   const providerEnv = cleanEnv(process.env.MARKET_SENTIMENT_PROVIDER);
   const explicitProvider = normalizeMarketSentimentProvider(providerEnv);
   const apiKey = marketSentimentApiKey || finnhubApiKey || alphaVantageApiKey;
@@ -68,5 +71,6 @@ export function getMarketSentimentProviderConfig() {
     hasMarketSentimentApiKey: Boolean(marketSentimentApiKey),
     hasFinnhubApiKey: Boolean(finnhubApiKey),
     hasAlphaVantageApiKey: Boolean(alphaVantageApiKey),
+    hasMyfxbookCredentials: Boolean(myfxbookEmail && myfxbookPassword),
   };
 }
