@@ -4336,6 +4336,7 @@ function TraderToolsDashboard({
   ];
   const activeTool = toolItems.find(item => item.id === subTab) ?? toolItems[0];
   const activeDescription = activeTool.description;
+  const activeToolIndex = Math.max(0, toolItems.findIndex(item => item.id === activeTool.id)) + 1;
   const renderToolPanel = (toolId: TraderToolsSubTab) => {
     if (toolId === 'risk') {
       return (
@@ -4558,10 +4559,14 @@ function TraderToolsDashboard({
           <h2>{t('market_trader_tools')}</h2>
           <p>{t('market_trader_tools_dashboard_description')}</p>
         </div>
+        <b className="trader-premium-header-badge">
+          <Sparkles size={14} />
+          {t('market_trading_calculators')}
+        </b>
       </header>
 
       <div className="trader-premium-layout">
-        <aside className="trader-support-column">
+        <aside className="trader-support-column" aria-label={t('market_tool_summary')}>
           <TraderSupportCard icon={<WalletCards size={18} />} title={t('market_tool_summary')}>
             <p>{t('market_tool_summary_body')}</p>
           </TraderSupportCard>
@@ -4591,9 +4596,9 @@ function TraderToolsDashboard({
           <div className="trader-premium-main-head">
             <span className="trader-premium-tool-icon">{activeTool.icon}</span>
             <div>
-              <span>{t('market_active_tool')}</span>
+              <span>{t('market_active_tool')} · {activeToolIndex}/{toolItems.length}</span>
               <h3>{activeTool.title}</h3>
-              <p>{activeTool.description}</p>
+              <p>{activeDescription}</p>
             </div>
             <div className="trader-premium-save">
               <button type="button" onClick={handleSaveDefaultCurrency} disabled={savingCurrency}>
@@ -4604,32 +4609,30 @@ function TraderToolsDashboard({
             </div>
           </div>
 
-          <div className="trader-accordion-list" role="tablist" aria-label={t('market_trader_tools')}>
+          <div className="trader-tool-switcher" role="tablist" aria-label={t('market_trader_tools')}>
             {toolItems.map(item => {
               const isActive = subTab === item.id;
               return (
-                <article className={`trader-accordion-item${isActive ? ' active' : ''}`} key={item.id}>
-                  <button
-                    type="button"
-                    aria-expanded={isActive}
-                    aria-controls={`trader-tool-${item.id}`}
-                    onClick={() => setSubTab(item.id)}
-                  >
-                    <span className="trader-accordion-icon">{item.icon}</span>
-                    <span className="trader-accordion-copy">
-                      <strong>{item.title}</strong>
-                      <small>{item.description}</small>
-                    </span>
-                    <span className="trader-accordion-chevron" aria-hidden="true">⌄</span>
-                  </button>
-                  {isActive ? (
-                    <div id={`trader-tool-${item.id}`} className="trader-accordion-panel">
-                      {renderToolPanel(item.id)}
-                    </div>
-                  ) : null}
-                </article>
+                <button
+                  key={item.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls="trader-active-tool-panel"
+                  onClick={() => setSubTab(item.id)}
+                >
+                  <span className="trader-switcher-icon">{item.icon}</span>
+                  <span>
+                    <strong>{item.title}</strong>
+                    <small>{item.description}</small>
+                  </span>
+                </button>
               );
             })}
+          </div>
+
+          <div className="trader-active-workspace" id="trader-active-tool-panel" role="tabpanel">
+            {renderToolPanel(activeTool.id)}
           </div>
         </article>
       </div>
@@ -9006,6 +9009,43 @@ function MarketAsyncToolStyles() {
         box-sizing: border-box;
       }
 
+      .trader-premium-dashboard {
+        overflow: visible;
+      }
+
+      .trader-premium-dashboard .trader-premium-header {
+        position: relative;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        overflow: hidden;
+      }
+
+      .trader-premium-dashboard .trader-premium-header > div,
+      .trader-premium-dashboard .trader-premium-main-head > div {
+        min-width: 0;
+      }
+
+      .trader-premium-dashboard .trader-premium-header-badge {
+        align-self: start;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        width: max-content;
+        max-width: 100%;
+        min-height: 38px;
+        border: 1px solid rgba(47, 214, 192, .28);
+        border-radius: 999px;
+        background: linear-gradient(135deg, rgba(29, 140, 255, .10), rgba(47, 214, 192, .14));
+        color: var(--sfm-primary-hover);
+        padding: 0 13px;
+        font-size: 12px;
+        font-weight: 950;
+        line-height: 1.25;
+        white-space: nowrap;
+      }
+
       .trader-premium-dashboard .trader-premium-header,
       .trader-premium-dashboard .trader-premium-layout,
       .trader-premium-dashboard .trader-premium-main-card,
@@ -9026,10 +9066,126 @@ function MarketAsyncToolStyles() {
       .trader-premium-dashboard .trader-premium-layout {
         direction: ltr;
         display: grid;
-        grid-template-columns: minmax(280px, .75fr) minmax(0, 1.25fr);
+        grid-template-columns: minmax(300px, .68fr) minmax(0, 1.32fr);
         grid-template-areas: "support main";
         gap: clamp(16px, 2vw, 22px);
         align-items: start;
+      }
+
+      .trader-premium-dashboard .trader-premium-main-card,
+      .trader-premium-dashboard .trader-support-card,
+      .trader-premium-dashboard .trader-premium-disclaimer {
+        transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+      }
+
+      .trader-premium-dashboard .trader-premium-main-card {
+        align-content: start;
+        gap: clamp(14px, 1.7vw, 20px);
+      }
+
+      .trader-premium-dashboard .trader-tool-switcher {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        display: flex;
+        align-items: stretch;
+        gap: 10px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 3px 2px 10px;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .trader-premium-dashboard .trader-tool-switcher::-webkit-scrollbar {
+        display: none;
+      }
+
+      .trader-premium-dashboard .trader-tool-switcher > button {
+        flex: 0 0 min(230px, 72vw);
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+        min-height: 76px;
+        border: 1px solid rgba(47, 214, 192, .18);
+        border-radius: 22px;
+        background: linear-gradient(135deg, rgba(255, 255, 255, .84), rgba(234, 246, 255, .56)), var(--sfm-card);
+        color: var(--sfm-foreground);
+        padding: 12px;
+        text-align: start;
+        cursor: pointer;
+        box-shadow: 0 10px 26px rgba(3, 18, 37, .055);
+        transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+      }
+
+      .trader-premium-dashboard .trader-tool-switcher > button:hover,
+      .trader-premium-dashboard .trader-tool-switcher > button:focus-visible {
+        outline: none;
+        transform: translateY(-1px);
+        border-color: rgba(47, 214, 192, .38);
+        box-shadow: 0 0 0 3px rgba(47, 214, 192, .12), 0 14px 30px rgba(3, 18, 37, .08);
+      }
+
+      .trader-premium-dashboard .trader-tool-switcher > button[aria-selected="true"] {
+        border-color: transparent;
+        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+        color: #061A2E;
+        box-shadow: 0 16px 34px rgba(29, 140, 255, .20);
+      }
+
+      .trader-premium-dashboard .trader-tool-switcher strong,
+      .trader-premium-dashboard .trader-tool-switcher small {
+        display: block;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .trader-premium-dashboard .trader-tool-switcher strong {
+        font-size: 13px;
+        font-weight: 950;
+        line-height: 1.35;
+      }
+
+      .trader-premium-dashboard .trader-tool-switcher small {
+        margin-top: 3px;
+        color: var(--sfm-muted);
+        font-size: 11px;
+        font-weight: 850;
+        line-height: 1.45;
+      }
+
+      .trader-premium-dashboard .trader-tool-switcher > button[aria-selected="true"] small {
+        color: rgba(6, 26, 46, .78);
+      }
+
+      .trader-premium-dashboard .trader-switcher-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        border: 1px solid rgba(47, 214, 192, .24);
+        background: rgba(47, 214, 192, .12);
+        color: var(--sfm-primary-hover);
+      }
+
+      .trader-premium-dashboard .trader-tool-switcher > button[aria-selected="true"] .trader-switcher-icon {
+        background: rgba(255, 255, 255, .24);
+        border-color: rgba(255, 255, 255, .36);
+        color: #061A2E;
+      }
+
+      .trader-premium-dashboard .trader-active-workspace {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        border: 1px solid rgba(47, 214, 192, .16);
+        border-radius: 28px;
+        background: linear-gradient(135deg, rgba(29, 140, 255, .045), rgba(47, 214, 192, .07)), var(--sfm-light-card);
+        padding: clamp(12px, 1.7vw, 18px);
+        overflow: hidden;
       }
 
       [dir="rtl"] .trader-premium-dashboard .trader-support-column,
@@ -9062,8 +9218,8 @@ function MarketAsyncToolStyles() {
 
       .trader-premium-dashboard .trader-premium-panel-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(280px, .78fr);
-        gap: 14px;
+        grid-template-columns: minmax(0, 1.08fr) minmax(300px, .92fr);
+        gap: clamp(14px, 1.6vw, 18px);
         align-items: start;
       }
 
@@ -9098,6 +9254,44 @@ function MarketAsyncToolStyles() {
         overflow: hidden;
       }
 
+      .trader-premium-dashboard .trader-tool-card {
+        border-radius: 26px;
+        box-shadow: 0 14px 34px rgba(3, 18, 37, .07);
+      }
+
+      .trader-premium-dashboard .trader-tool-card-head {
+        align-items: center;
+      }
+
+      .trader-premium-dashboard .trader-tool-card-head h3,
+      .trader-premium-dashboard .trader-tool-card-head p {
+        overflow-wrap: anywhere;
+      }
+
+      .trader-premium-dashboard .tool-input-shell,
+      .trader-premium-dashboard .tool-result-card,
+      .trader-premium-dashboard .tool-formula-card,
+      .trader-premium-dashboard .trader-highlight-result {
+        box-shadow: 0 12px 28px rgba(3, 18, 37, .055);
+      }
+
+      .trader-premium-dashboard .tool-result-card {
+        position: relative;
+        padding-inline-end: 58px;
+      }
+
+      .trader-premium-dashboard .tool-result-card::after {
+        content: "";
+        position: absolute;
+        inset-inline-end: 14px;
+        top: 14px;
+        width: 34px;
+        height: 34px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(29, 140, 255, .12), rgba(47, 214, 192, .18));
+        border: 1px solid rgba(47, 214, 192, .20);
+      }
+
       .trader-premium-dashboard .tool-result-card b,
       .trader-premium-dashboard .trader-highlight-result strong,
       .trader-premium-dashboard .trader-highlight-result b,
@@ -9105,6 +9299,47 @@ function MarketAsyncToolStyles() {
         direction: ltr;
         unicode-bidi: isolate;
         overflow-wrap: anywhere;
+      }
+
+      .dark .trader-premium-dashboard .trader-premium-header-badge,
+      .dark .trader-premium-dashboard .trader-switcher-icon {
+        background: rgba(47, 214, 192, .12);
+        border-color: rgba(47, 214, 192, .28);
+        color: #2FD6C0;
+      }
+
+      .dark .trader-premium-dashboard .trader-tool-switcher > button {
+        background: linear-gradient(135deg, rgba(29, 140, 255, .07), rgba(47, 214, 192, .06)), #0A1422;
+        border-color: #1D3050;
+        color: #E8EEF6;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, .22);
+      }
+
+      .dark .trader-premium-dashboard .trader-tool-switcher > button:hover,
+      .dark .trader-premium-dashboard .trader-tool-switcher > button:focus-visible {
+        border-color: rgba(47, 214, 192, .42);
+        box-shadow: 0 0 0 3px rgba(47, 214, 192, .14), 0 16px 34px rgba(0, 0, 0, .28);
+      }
+
+      .dark .trader-premium-dashboard .trader-tool-switcher > button[aria-selected="true"] {
+        background: linear-gradient(135deg, #1D8CFF, #2FD6C0);
+        color: #061A2E;
+        border-color: transparent;
+        box-shadow: 0 18px 36px rgba(29, 140, 255, .22);
+      }
+
+      .dark .trader-premium-dashboard .trader-tool-switcher small {
+        color: #B8C7D9;
+      }
+
+      .dark .trader-premium-dashboard .trader-tool-switcher > button[aria-selected="true"] small,
+      .dark .trader-premium-dashboard .trader-tool-switcher > button[aria-selected="true"] .trader-switcher-icon {
+        color: #061A2E;
+      }
+
+      .dark .trader-premium-dashboard .trader-active-workspace {
+        background: linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .07)), #0A1422;
+        border-color: #1D3050;
       }
 
       @media (max-width: 1180px) {
@@ -9138,10 +9373,44 @@ function MarketAsyncToolStyles() {
           align-items: start;
         }
 
+        .trader-premium-dashboard .trader-premium-header-badge {
+          grid-column: 1 / -1;
+          justify-self: start;
+          width: fit-content;
+          white-space: normal;
+        }
+
+        .trader-premium-dashboard .trader-tool-switcher {
+          gap: 8px;
+          padding-bottom: 8px;
+        }
+
+        .trader-premium-dashboard .trader-tool-switcher > button {
+          flex-basis: min(210px, 82vw);
+          min-height: 68px;
+          border-radius: 20px;
+          padding: 10px;
+        }
+
+        .trader-premium-dashboard .trader-switcher-icon {
+          width: 36px;
+          height: 36px;
+          border-radius: 14px;
+        }
+
+        .trader-premium-dashboard .trader-active-workspace {
+          border-radius: 22px;
+          padding: 12px;
+        }
+
         .trader-premium-dashboard .trader-premium-form-grid,
         .trader-premium-dashboard .trader-form-grid,
         .trader-premium-dashboard .tool-result-grid {
           grid-template-columns: 1fr;
+        }
+
+        .trader-premium-dashboard .tool-result-card {
+          padding-inline-end: 50px;
         }
 
         .trader-premium-dashboard .trader-accordion-copy small {
