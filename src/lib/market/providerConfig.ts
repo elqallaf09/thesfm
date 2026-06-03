@@ -61,9 +61,12 @@ export function getMarketSentimentProviderConfig() {
   const inferredProvider: MarketSentimentProvider | null = explicitProvider
     ?? (finnhubApiKey ? 'finnhub' : null)
     ?? (alphaVantageApiKey ? 'alphavantage' : null);
+  const configured = inferredProvider === 'myfxbook'
+    ? Boolean(myfxbookEmail && myfxbookPassword)
+    : Boolean(inferredProvider && apiKey);
 
   return {
-    configured: Boolean(inferredProvider && apiKey),
+    configured,
     provider: inferredProvider,
     providerEnv,
     providerEnvConfigured: Boolean(providerEnv),

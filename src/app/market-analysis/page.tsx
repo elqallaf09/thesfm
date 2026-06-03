@@ -7281,6 +7281,9 @@ function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => 
   if (code === 'MYFXBOOK_AUTH_FAILED') {
     return { title: t('market_sentiment_myfxbook_auth_failed_title'), body: t('market_sentiment_myfxbook_auth_failed_body') };
   }
+  if (code === 'MYFXBOOK_SESSION_MISSING') {
+    return { title: t('market_sentiment_myfxbook_session_missing_title'), body: t('market_sentiment_myfxbook_session_missing_body') };
+  }
   if (code === 'MARKET_SENTIMENT_PLAN_NOT_ALLOWED') {
     return { title: t('market_sentiment_plan_not_allowed_title'), body: t('market_sentiment_plan_not_allowed_body') };
   }
