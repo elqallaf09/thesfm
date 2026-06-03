@@ -25,6 +25,8 @@ export type PipsInput = {
   lotSize: number;
   direction: TradeDirection;
   pair: string;
+  pipSize?: number;
+  pipValuePerLot?: number;
 };
 
 export type PipsResult = {
@@ -94,10 +96,12 @@ export function calculatePips(input: PipsInput): PipsResult {
   const entryPrice = safeNumber(input.entryPrice);
   const exitPrice = safeNumber(input.exitPrice);
   const lotSize = Math.max(0, safeNumber(input.lotSize));
-  const pipSize = pipSizeForPair(input.pair);
+  const explicitPipSize = safeNumber(input.pipSize);
+  const pipSize = explicitPipSize > 0 ? explicitPipSize : pipSizeForPair(input.pair);
+  const pipValuePerLot = Math.max(0, safeNumber(input.pipValuePerLot, 10));
   const rawPips = pipSize > 0 ? (exitPrice - entryPrice) / pipSize : 0;
   const directionalPips = input.direction === 'sell' ? -rawPips : rawPips;
-  const profitLoss = directionalPips * 10 * lotSize;
+  const profitLoss = directionalPips * pipValuePerLot * lotSize;
 
   return {
     pips: directionalPips,

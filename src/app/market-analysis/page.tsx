@@ -197,6 +197,82 @@ const TECHNICAL_SYMBOL_GROUPS: Record<TechnicalSymbolCategory, TechnicalSymbolOp
 const TECHNICAL_SYMBOL_OPTIONS = Object.values(TECHNICAL_SYMBOL_GROUPS).flat();
 const TECHNICAL_SYMBOL_FAVORITES_KEY = 'sfm_market_technical_favorites';
 
+type PipCalculatorAssetType = 'forex' | 'metals' | 'oil' | 'indices' | 'crypto';
+type PipCalculatorAsset = {
+  type: PipCalculatorAssetType;
+  name: Record<'ar' | 'en' | 'fr', string>;
+  symbol: string;
+  internalSymbol: string;
+  pointSize: number;
+  defaultPointValue: number;
+};
+
+const PIP_CALCULATOR_ASSET_TYPES: PipCalculatorAssetType[] = ['forex', 'metals', 'oil', 'indices', 'crypto'];
+const PIP_CALCULATOR_ASSETS: Record<PipCalculatorAssetType, PipCalculatorAsset[]> = {
+  forex: [
+    { type: 'forex', name: { ar: 'يورو / دولار', en: 'Euro / US Dollar', fr: 'Euro / dollar US' }, symbol: 'EUR/USD', internalSymbol: 'EURUSD', pointSize: 0.0001, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'جنيه إسترليني / دولار', en: 'British Pound / US Dollar', fr: 'Livre sterling / dollar US' }, symbol: 'GBP/USD', internalSymbol: 'GBPUSD', pointSize: 0.0001, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'دولار / ين ياباني', en: 'US Dollar / Japanese Yen', fr: 'Dollar US / yen japonais' }, symbol: 'USD/JPY', internalSymbol: 'USDJPY', pointSize: 0.01, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'دولار / فرنك سويسري', en: 'US Dollar / Swiss Franc', fr: 'Dollar US / franc suisse' }, symbol: 'USD/CHF', internalSymbol: 'USDCHF', pointSize: 0.0001, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'دولار أسترالي / دولار', en: 'Australian Dollar / US Dollar', fr: 'Dollar australien / dollar US' }, symbol: 'AUD/USD', internalSymbol: 'AUDUSD', pointSize: 0.0001, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'دولار نيوزيلندي / دولار', en: 'New Zealand Dollar / US Dollar', fr: 'Dollar néo-zélandais / dollar US' }, symbol: 'NZD/USD', internalSymbol: 'NZDUSD', pointSize: 0.0001, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'دولار / دولار كندي', en: 'US Dollar / Canadian Dollar', fr: 'Dollar US / dollar canadien' }, symbol: 'USD/CAD', internalSymbol: 'USDCAD', pointSize: 0.0001, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'يورو / جنيه إسترليني', en: 'Euro / British Pound', fr: 'Euro / livre sterling' }, symbol: 'EUR/GBP', internalSymbol: 'EURGBP', pointSize: 0.0001, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'يورو / ين ياباني', en: 'Euro / Japanese Yen', fr: 'Euro / yen japonais' }, symbol: 'EUR/JPY', internalSymbol: 'EURJPY', pointSize: 0.01, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'جنيه إسترليني / ين ياباني', en: 'British Pound / Japanese Yen', fr: 'Livre sterling / yen japonais' }, symbol: 'GBP/JPY', internalSymbol: 'GBPJPY', pointSize: 0.01, defaultPointValue: 10 },
+  ],
+  metals: [
+    { type: 'metals', name: { ar: 'الذهب', en: 'Gold', fr: 'Or' }, symbol: 'XAU/USD', internalSymbol: 'XAUUSD', pointSize: 0.01, defaultPointValue: 1 },
+    { type: 'metals', name: { ar: 'الفضة', en: 'Silver', fr: 'Argent' }, symbol: 'XAG/USD', internalSymbol: 'XAGUSD', pointSize: 0.001, defaultPointValue: 1 },
+    { type: 'metals', name: { ar: 'البلاتين', en: 'Platinum', fr: 'Platine' }, symbol: 'XPT/USD', internalSymbol: 'XPTUSD', pointSize: 0.01, defaultPointValue: 1 },
+    { type: 'metals', name: { ar: 'البلاديوم', en: 'Palladium', fr: 'Palladium' }, symbol: 'XPD/USD', internalSymbol: 'XPDUSD', pointSize: 0.01, defaultPointValue: 1 },
+  ],
+  oil: [
+    { type: 'oil', name: { ar: 'نفط خام WTI', en: 'WTI crude oil', fr: 'Pétrole brut WTI' }, symbol: 'XTI/USD', internalSymbol: 'XTIUSD', pointSize: 0.01, defaultPointValue: 1 },
+    { type: 'oil', name: { ar: 'نفط برنت', en: 'Brent crude oil', fr: 'Pétrole Brent' }, symbol: 'XBR/USD', internalSymbol: 'XBRUSD', pointSize: 0.01, defaultPointValue: 1 },
+  ],
+  indices: [
+    { type: 'indices', name: { ar: 'ناسداك 100', en: 'Nasdaq 100', fr: 'Nasdaq 100' }, symbol: 'NAS100', internalSymbol: 'NAS100', pointSize: 1, defaultPointValue: 1 },
+    { type: 'indices', name: { ar: 'ستاندرد آند بورز 500', en: 'S&P 500', fr: 'S&P 500' }, symbol: 'SPX500', internalSymbol: 'SPX500', pointSize: 1, defaultPointValue: 1 },
+    { type: 'indices', name: { ar: 'داو جونز', en: 'Dow Jones', fr: 'Dow Jones' }, symbol: 'US30', internalSymbol: 'US30', pointSize: 1, defaultPointValue: 1 },
+    { type: 'indices', name: { ar: 'داكس الألماني', en: 'Germany DAX', fr: 'DAX allemand' }, symbol: 'GER40', internalSymbol: 'GER40', pointSize: 1, defaultPointValue: 1 },
+    { type: 'indices', name: { ar: 'فوتسي البريطاني', en: 'UK FTSE', fr: 'FTSE britannique' }, symbol: 'UK100', internalSymbol: 'UK100', pointSize: 1, defaultPointValue: 1 },
+    { type: 'indices', name: { ar: 'كاك الفرنسي', en: 'France CAC', fr: 'CAC français' }, symbol: 'FRA40', internalSymbol: 'FRA40', pointSize: 1, defaultPointValue: 1 },
+    { type: 'indices', name: { ar: 'نيكاي الياباني', en: 'Japan Nikkei', fr: 'Nikkei japonais' }, symbol: 'JPN225', internalSymbol: 'JPN225', pointSize: 1, defaultPointValue: 1 },
+  ],
+  crypto: [
+    { type: 'crypto', name: { ar: 'بيتكوين', en: 'Bitcoin', fr: 'Bitcoin' }, symbol: 'BTC/USD', internalSymbol: 'BTCUSD', pointSize: 1, defaultPointValue: 1 },
+    { type: 'crypto', name: { ar: 'إيثريوم', en: 'Ethereum', fr: 'Ethereum' }, symbol: 'ETH/USD', internalSymbol: 'ETHUSD', pointSize: 1, defaultPointValue: 1 },
+    { type: 'crypto', name: { ar: 'سولانا', en: 'Solana', fr: 'Solana' }, symbol: 'SOL/USD', internalSymbol: 'SOLUSD', pointSize: 0.01, defaultPointValue: 1 },
+    { type: 'crypto', name: { ar: 'ريبل', en: 'Ripple', fr: 'Ripple' }, symbol: 'XRP/USD', internalSymbol: 'XRPUSD', pointSize: 0.0001, defaultPointValue: 1 },
+    { type: 'crypto', name: { ar: 'كاردانو', en: 'Cardano', fr: 'Cardano' }, symbol: 'ADA/USD', internalSymbol: 'ADAUSD', pointSize: 0.0001, defaultPointValue: 1 },
+  ],
+};
+
+const DEFAULT_PIP_CALCULATOR_ASSET: PipCalculatorAsset = PIP_CALCULATOR_ASSETS.forex[0]!;
+
+function pipAssetTypeTranslationKey(type: PipCalculatorAssetType) {
+  if (type === 'oil') return 'market_pip_asset_type_oil';
+  if (type === 'metals') return 'market_symbol_category_metals';
+  if (type === 'indices') return 'market_symbol_category_indices';
+  if (type === 'crypto') return 'market_symbol_category_crypto';
+  return 'market_symbol_category_forex';
+}
+
+function pipAssetName(asset: PipCalculatorAsset, locale: string) {
+  const lang = locale === 'fr' ? 'fr' : locale === 'en' ? 'en' : 'ar';
+  return asset.name[lang];
+}
+
+function getPipCalculatorAsset(type: PipCalculatorAssetType, internalSymbol: string) {
+  const normalized = internalSymbol.trim().toUpperCase();
+  return PIP_CALCULATOR_ASSETS[type].find(asset => asset.internalSymbol === normalized) ?? PIP_CALCULATOR_ASSETS[type][0] ?? DEFAULT_PIP_CALCULATOR_ASSET;
+}
+
+function pipCalculatorWarningKey(type: PipCalculatorAssetType) {
+  return `market_pip_value_warning_${type}`;
+}
+
 function money(value: number, currency = 'USD') {
   const maximumFractionDigits = value > 1000 ? 0 : 2;
   try {
@@ -2152,6 +2228,7 @@ export default function MarketAnalysisPage() {
         {activeTab === 'traderTools' && (
           <TraderToolsDashboard
             t={t}
+            locale={lang}
             currency={baseScenarioCurrency}
             userId={!isGuest ? user?.id : undefined}
             subTab={traderToolTab}
@@ -4217,6 +4294,7 @@ export default function MarketAnalysisPage() {
 
 function TraderToolsDashboard({
   t,
+  locale,
   currency,
   userId,
   subTab,
@@ -4224,6 +4302,7 @@ function TraderToolsDashboard({
   performance,
 }: {
   t: (key: string) => string;
+  locale: string;
   currency: string;
   userId?: string;
   subTab: TraderToolsSubTab;
@@ -4239,11 +4318,15 @@ function TraderToolsDashboard({
     stopLossPrice: '',
   };
   const defaultPipsInput = {
-    pair: 'EURUSD',
+    assetType: 'forex' as PipCalculatorAssetType,
+    assetSymbol: DEFAULT_PIP_CALCULATOR_ASSET.internalSymbol,
+    pair: DEFAULT_PIP_CALCULATOR_ASSET.internalSymbol,
     entryPrice: '1.0800',
     exitPrice: '1.0850',
     lotSize: '1',
     direction: 'buy' as TradeDirection,
+    pointSize: String(DEFAULT_PIP_CALCULATOR_ASSET.pointSize),
+    pipValue: String(DEFAULT_PIP_CALCULATOR_ASSET.defaultPointValue),
   };
   const defaultLotInput = {
     accountBalance: '10000',
@@ -4285,6 +4368,8 @@ function TraderToolsDashboard({
     exitPrice: parseNumber(pipsInput.exitPrice),
     lotSize: parseNumber(pipsInput.lotSize),
     direction: pipsInput.direction,
+    pipSize: parseNumber(pipsInput.pointSize),
+    pipValuePerLot: parseNumber(pipsInput.pipValue),
   });
   const lots = calculateLotSizeByRisk({
     accountBalance: parseNumber(lotInput.accountBalance),
@@ -4300,6 +4385,25 @@ function TraderToolsDashboard({
     tradeSize: parseNumber(marginInput.tradeSize),
   };
   const pipUnit = t('market_unit_pip');
+  const pipAssetOptions = PIP_CALCULATOR_ASSETS[pipsInput.assetType] ?? PIP_CALCULATOR_ASSETS.forex;
+  const selectedPipAsset = getPipCalculatorAsset(pipsInput.assetType, pipsInput.assetSymbol);
+  const pipsPointSize = parseNumber(pipsInput.pointSize);
+  const pipsPointValue = parseNumber(pipsInput.pipValue);
+  const pipsPriceDifference = pipsInput.direction === 'sell'
+    ? parseNumber(pipsInput.entryPrice) - parseNumber(pipsInput.exitPrice)
+    : parseNumber(pipsInput.exitPrice) - parseNumber(pipsInput.entryPrice);
+  const pipsTradeStatus = Math.abs(pips.profitLoss) < 0.000001 ? t('market_trade_breakeven') : pips.profitLoss > 0 ? t('market_trade_profit') : t('market_trade_loss');
+  const pipsValidationMessage = pipsPointSize <= 0
+    ? t('market_valid_point_size_required')
+    : pipsPointValue <= 0
+      ? t('market_valid_point_value_required')
+      : parseNumber(pipsInput.entryPrice) <= 0
+        ? t('market_valid_entry_price_required')
+        : parseNumber(pipsInput.exitPrice) <= 0
+          ? t('market_valid_exit_price_required')
+          : parseNumber(pipsInput.lotSize) <= 0
+            ? t('market_valid_lot_size_required')
+            : '';
   const lotValue = position.lotSize === null ? t('market_unavailable') : `${formatNumber(position.lotSize, 2)} ${t('market_lot_unit')}`;
   const riskPercentDisplay = `${formatNumber(parseNumber(positionInput.riskPercentage), 2)}%`;
   const stopLossDisplay = `${formatNumber(parseNumber(positionInput.stopLossDistance), 0)} ${pipUnit}`;
@@ -4436,11 +4540,46 @@ function TraderToolsDashboard({
               </button>
             </div>
             <div className="trader-form-grid trader-premium-form-grid">
-              <ToolInput label={t('market_currency_pair')} helper={t('market_pair_hint')} value={pipsInput.pair} inputDir="ltr" inputMode="text" onChange={value => setPipsInput(prev => ({ ...prev, pair: value.toUpperCase() }))} />
+              <ToolSelect
+                label={t('market_asset_type')}
+                helper={t('market_instrument_type_hint')}
+                value={pipsInput.assetType}
+                onChange={value => {
+                  const nextType = value as PipCalculatorAssetType;
+                  const nextAsset = PIP_CALCULATOR_ASSETS[nextType][0] ?? DEFAULT_PIP_CALCULATOR_ASSET;
+                  setPipsInput(prev => ({
+                    ...prev,
+                    assetType: nextType,
+                    assetSymbol: nextAsset.internalSymbol,
+                    pair: nextAsset.internalSymbol,
+                    pointSize: String(nextAsset.pointSize),
+                    pipValue: String(nextAsset.defaultPointValue),
+                  }));
+                }}
+                options={PIP_CALCULATOR_ASSET_TYPES.map(type => [type, t(pipAssetTypeTranslationKey(type))])}
+              />
+              <ToolSelect
+                label={t('market_asset_symbol')}
+                helper={t('market_asset_symbol_hint')}
+                value={pipsInput.assetSymbol}
+                onChange={value => {
+                  const nextAsset = getPipCalculatorAsset(pipsInput.assetType, value);
+                  setPipsInput(prev => ({
+                    ...prev,
+                    assetSymbol: nextAsset.internalSymbol,
+                    pair: nextAsset.internalSymbol,
+                    pointSize: String(nextAsset.pointSize),
+                    pipValue: String(nextAsset.defaultPointValue),
+                  }));
+                }}
+                options={pipAssetOptions.map(asset => [asset.internalSymbol, `${pipAssetName(asset, locale)} - ${asset.symbol}`])}
+              />
               <ToolInput label={t('market_entry_price')} helper={t('market_entry_price_hint')} value={pipsInput.entryPrice} onChange={value => setPipsInput(prev => ({ ...prev, entryPrice: value }))} />
               <ToolInput label={t('market_exit_price')} helper={t('market_exit_price_hint')} value={pipsInput.exitPrice} onChange={value => setPipsInput(prev => ({ ...prev, exitPrice: value }))} />
               <ToolInput label={t('market_lot_size')} helper={t('market_lot_size_hint')} suffix={t('market_lot_unit')} value={pipsInput.lotSize} onChange={value => setPipsInput(prev => ({ ...prev, lotSize: value }))} />
-              <ToolSelect
+              <ToolInput label={t('market_point_size')} helper={t('market_point_size_hint')} suffix={pipUnit} value={pipsInput.pointSize} onChange={value => setPipsInput(prev => ({ ...prev, pointSize: value }))} />
+              <ToolInput label={t('market_point_value_per_lot')} helper={t('market_point_value_per_lot_hint')} prefix={accountCurrency} value={pipsInput.pipValue} onChange={value => setPipsInput(prev => ({ ...prev, pipValue: value }))} />
+              <ToolSegmented
                 label={t('market_trade_direction')}
                 helper={t('market_trade_direction_hint')}
                 value={pipsInput.direction}
@@ -4451,18 +4590,31 @@ function TraderToolsDashboard({
                 ]}
               />
             </div>
+            <p className="tool-warning">{t(pipCalculatorWarningKey(pipsInput.assetType))}</p>
           </article>
           <aside className="trader-result-stack trader-premium-result-stack">
+            <section className="trader-highlight-result">
+              <span>{t('market_profit_loss')}</span>
+              <strong dir="ltr">{money(pips.profitLoss, accountCurrency)}</strong>
+              <p>
+                <b dir="ltr">{selectedPipAsset.symbol}</b>{' '}
+                {t('market_point_value_per_lot')}: <b dir="ltr">{accountCurrency} {formatNumber(pipsPointValue, 2)}</b>
+              </p>
+            </section>
             <ResultGrid title={t('market_calculation_results')} subtitle={t('market_live_calculation_note')} rows={[
+              [t('market_asset_symbol'), selectedPipAsset.symbol, 'ltr'],
               [t('market_number_of_pips'), `${formatNumber(pips.pips, 1)} ${pipUnit}`],
+              [t('market_point_value_per_lot'), `${accountCurrency} ${formatNumber(pipsPointValue, 2)}`],
+              [t('market_lot_size'), `${formatNumber(parseNumber(pipsInput.lotSize), 2)} ${t('market_lot_unit')}`],
               [t('market_profit_loss'), money(pips.profitLoss, accountCurrency)],
-              [t('market_profit_loss_ratio'), `${formatNumber(parseNumber(pipsInput.lotSize) > 0 ? pips.profitLoss / Math.max(1, parseNumber(pipsInput.lotSize)) : 0, 2)}%`],
+              [t('market_trade_status'), pipsTradeStatus, 'auto'],
             ]} />
             <FormulaCard
               title={t('market_calculation_method')}
               body={t('market_pips_formula')}
-              example={`${pipsInput.pair.toUpperCase()} · ${formatNumber(parseNumber(pipsInput.entryPrice), 4)} → ${formatNumber(parseNumber(pipsInput.exitPrice), 4)} = ${formatNumber(pips.pips, 1)} ${pipUnit}`}
+              example={`${selectedPipAsset.symbol} | (${formatNumber(pipsPriceDifference, 5)} / ${formatNumber(pipsPointSize, 5)}) x ${accountCurrency} ${formatNumber(pipsPointValue, 2)} x ${formatNumber(parseNumber(pipsInput.lotSize), 2)} = ${money(pips.profitLoss, accountCurrency)}`}
             />
+            {pipsValidationMessage && <p className="tool-warning">{pipsValidationMessage}</p>}
           </aside>
         </div>
       );
@@ -4739,7 +4891,40 @@ function ToolSelect({
   );
 }
 
-function ResultGrid({ rows, title, subtitle }: { rows: Array<[string, string]>; title?: string; subtitle?: string }) {
+function ToolSegmented({
+  label,
+  value,
+  options,
+  helper,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: Array<[string, string]>;
+  helper?: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="tool-input tool-segmented">
+      <span>{label}</span>
+      <div className="tool-segmented-row" role="group" aria-label={label}>
+        {options.map(([optionValue, optionLabel]) => (
+          <button
+            type="button"
+            key={optionValue}
+            aria-pressed={value === optionValue}
+            onClick={() => onChange(optionValue)}
+          >
+            {optionLabel}
+          </button>
+        ))}
+      </div>
+      {helper ? <small>{helper}</small> : null}
+    </div>
+  );
+}
+
+function ResultGrid({ rows, title, subtitle }: { rows: Array<[string, string, ('ltr' | 'rtl' | 'auto')?]>; title?: string; subtitle?: string }) {
   return (
     <section className="tool-results" aria-label={title}>
       {(title || subtitle) && (
@@ -4749,10 +4934,10 @@ function ResultGrid({ rows, title, subtitle }: { rows: Array<[string, string]>; 
         </div>
       )}
       <div className="tool-result-grid">
-        {rows.map(([label, value]) => (
+        {rows.map(([label, value, valueDir]) => (
           <div className="tool-result-card" key={label}>
             <span>{label}</span>
-            <b dir="ltr">{value}</b>
+            <b dir={valueDir ?? 'ltr'}>{value}</b>
           </div>
         ))}
       </div>
@@ -9286,6 +9471,54 @@ function MarketAsyncToolStyles() {
         gap: 12px;
       }
 
+      .trader-premium-dashboard .tool-segmented {
+        display: grid;
+        gap: 8px;
+      }
+
+      .trader-premium-dashboard .tool-segmented-row {
+        display: flex;
+        gap: 8px;
+        min-width: 0;
+        border: 1px solid rgba(47, 214, 192, .22);
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(255, 255, 255, .84), rgba(234, 246, 255, .58)), var(--sfm-card);
+        padding: 5px;
+        box-shadow: 0 12px 26px rgba(3, 18, 37, .06);
+      }
+
+      .trader-premium-dashboard .tool-segmented-row button {
+        flex: 1 1 0;
+        min-width: 0;
+        min-height: 46px;
+        border: 1px solid transparent;
+        border-radius: 14px;
+        background: transparent;
+        color: var(--sfm-muted);
+        font: 950 13px Tajawal, Arial, sans-serif;
+        cursor: pointer;
+        transition: transform .16s ease, box-shadow .16s ease, background .16s ease, color .16s ease;
+      }
+
+      .trader-premium-dashboard .tool-segmented-row button:hover,
+      .trader-premium-dashboard .tool-segmented-row button:focus-visible {
+        outline: none;
+        color: var(--sfm-primary-hover);
+        background: rgba(47, 214, 192, .10);
+        box-shadow: 0 0 0 3px rgba(24, 212, 212, .12);
+      }
+
+      .trader-premium-dashboard .tool-segmented-row button[aria-pressed="true"] {
+        border-color: transparent;
+        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+        color: #FFFFFF;
+        box-shadow: 0 12px 26px rgba(29, 140, 255, .18);
+      }
+
+      .trader-premium-dashboard .tool-segmented-row button:active {
+        transform: scale(.98);
+      }
+
       .trader-premium-dashboard .tool-result-card,
       .trader-premium-dashboard .trader-highlight-result,
       .trader-premium-dashboard .tool-formula-card {
@@ -9338,6 +9571,22 @@ function MarketAsyncToolStyles() {
         direction: ltr;
         unicode-bidi: isolate;
         overflow-wrap: anywhere;
+      }
+
+      .dark .trader-premium-dashboard .tool-segmented-row {
+        background: linear-gradient(135deg, rgba(29, 140, 255, .07), rgba(47, 214, 192, .06)), #0A1422;
+        border-color: #1D3050;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, .22);
+      }
+
+      .dark .trader-premium-dashboard .tool-segmented-row button {
+        color: #B8C7D9;
+      }
+
+      .dark .trader-premium-dashboard .tool-segmented-row button:hover,
+      .dark .trader-premium-dashboard .tool-segmented-row button:focus-visible {
+        color: #E8EEF6;
+        background: rgba(47, 214, 192, .12);
       }
 
       .dark .trader-premium-dashboard .trader-premium-header-badge,
