@@ -1,5 +1,8 @@
-import type { TechStockConfig } from '@/lib/market/techStocks';
 import { fetchYahooChartQuote, fetchYahooQuote } from '@/lib/market/fetchYahooQuote';
+
+type StockPriceConfig = {
+  symbol: string;
+};
 
 export type TechStockPrice = {
   symbol: string;
@@ -106,11 +109,12 @@ function hasUsableFinnhubKey(apiKey?: string) {
   return Boolean(key && key !== 'your_key_here');
 }
 
-async function fetchPriceWithFallback(stock: TechStockConfig, apiKey?: string) {
+async function fetchPriceWithFallback(stock: StockPriceConfig, apiKey?: string) {
   let finnhubPrice = unavailableFinnhubPrice(stock.symbol, 'finnhub_api_key_not_configured');
   if (hasUsableFinnhubKey(apiKey)) {
+    const usableApiKey = apiKey?.trim() ?? '';
     try {
-      finnhubPrice = await fetchFinnhubQuote(stock.symbol, apiKey);
+      finnhubPrice = await fetchFinnhubQuote(stock.symbol, usableApiKey);
     } catch (error) {
       finnhubPrice = unavailableFinnhubPrice(
         stock.symbol,
@@ -155,7 +159,7 @@ async function fetchPriceWithFallback(stock: TechStockConfig, apiKey?: string) {
   };
 }
 
-export async function fetchStockPrices(stocks: TechStockConfig[], apiKey?: string) {
+export async function fetchStockPrices(stocks: StockPriceConfig[], apiKey?: string) {
   const settled = await Promise.allSettled(
     stocks.map(stock => fetchPriceWithFallback(stock, apiKey)),
   );
