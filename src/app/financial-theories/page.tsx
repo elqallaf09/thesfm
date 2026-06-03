@@ -211,6 +211,9 @@ const UI_COPY: Record<FinancialTheoryLang, Record<string, string>> = {
     progressRatio: 'نسبة التقدم',
     toolSearchPlaceholder: 'ابحث عن أداة أو حاسبة',
     toolSearchLabel: 'بحث في الأدوات والحاسبات',
+    toolSearchResults: 'نتائج البحث: {count}',
+    allToolsDisplayed: 'تم عرض جميع الأدوات ({count})',
+    toolsVisibleCount: 'يعرض {visible} من {total} أداة',
     noTools: 'لا توجد أدوات مطابقة.',
     noToolsDescription: 'جرّب بحثاً آخر أو اختر تبويباً مختلفاً.',
   },
@@ -358,6 +361,9 @@ const UI_COPY: Record<FinancialTheoryLang, Record<string, string>> = {
     progressRatio: 'Progress',
     toolSearchPlaceholder: 'Search for a tool or calculator',
     toolSearchLabel: 'Search tools and calculators',
+    toolSearchResults: 'Search results: {count}',
+    allToolsDisplayed: 'All tools are displayed ({count})',
+    toolsVisibleCount: 'Showing {visible} of {total} tools',
     noTools: 'No matching tools.',
     noToolsDescription: 'Try another search or choose a different tab.',
   },
@@ -505,6 +511,9 @@ const UI_COPY: Record<FinancialTheoryLang, Record<string, string>> = {
     progressRatio: 'Progression',
     toolSearchPlaceholder: 'Rechercher un outil ou un calculateur',
     toolSearchLabel: 'Rechercher des outils et calculateurs',
+    toolSearchResults: 'Résultats de recherche : {count}',
+    allToolsDisplayed: 'Tous les outils sont affichés ({count})',
+    toolsVisibleCount: '{visible} outil(s) affiché(s) sur {total}',
     noTools: 'Aucun outil correspondant.',
     noToolsDescription: 'Essayez une autre recherche ou choisissez un autre onglet.',
   },
@@ -1778,10 +1787,9 @@ export default function FinancialTheoriesPage() {
   const filteredCalculators = useMemo(() => {
     const normalizedQuery = normalize(toolQuery);
     const activeTab = GUIDED_TOOL_TABS.find(tab => tab.id === activeToolCategory) ?? GUIDED_TOOL_TABS[0];
-    const selectedGoalToolIds = new Set(selectedGoal.toolIds);
     const tabToolIds = new Set(activeTab.toolIds);
     return THEORY_CALCULATORS
-      .filter(tool => activeToolCategory === 'all' ? selectedGoalToolIds.has(tool.id) : tabToolIds.has(tool.id))
+      .filter(tool => activeToolCategory === 'all' ? true : tabToolIds.has(tool.id))
       .filter(tool => {
         if (!normalizedQuery) return true;
         const haystack = [
@@ -1791,7 +1799,20 @@ export default function FinancialTheoriesPage() {
         ].join(' ');
         return normalize(haystack).includes(normalizedQuery);
       });
-  }, [activeToolCategory, locale, selectedGoal, toolQuery]);
+  }, [activeToolCategory, locale, toolQuery]);
+
+  const visibleCalculators = activeToolCategory === 'all' || showAllTools
+    ? filteredCalculators
+    : filteredCalculators.slice(0, 6);
+  const canShowMoreTools = activeToolCategory !== 'all' && filteredCalculators.length > visibleCalculators.length;
+  const isToolSearchActive = toolQuery.trim().length > 0;
+  const toolsDisplaySummary = isToolSearchActive
+    ? text.toolSearchResults.replace('{count}', filteredCalculators.length.toString())
+    : visibleCalculators.length < filteredCalculators.length
+      ? text.toolsVisibleCount
+        .replace('{visible}', visibleCalculators.length.toString())
+        .replace('{total}', filteredCalculators.length.toString())
+      : text.allToolsDisplayed.replace('{count}', filteredCalculators.length.toString());
 
   return (
     <div className="financial-theories-shell" dir={dir}>
@@ -2106,12 +2127,16 @@ export default function FinancialTheoriesPage() {
               ariaLabel={text.smartToolsTitle}
               className="financial-theory-tabs tool-category-tabs"
             />
+
+            <p className="tool-results-summary" aria-live="polite">
+              {toolsDisplaySummary}
+            </p>
           </div>
 
           {filteredCalculators.length > 0 ? (
             <>
             <CardsGrid className="tools-grid">
-              {(showAllTools ? filteredCalculators : filteredCalculators.slice(0, 6)).map((tool, index) => {
+              {visibleCalculators.map((tool, index) => {
               const Icon = [Calculator, Landmark, PiggyBank, WalletCards, Gauge, Sparkles, ShieldAlert, Brain, Target][index] ?? Calculator;
               const title = getFinancialTheoryText(tool.title, locale);
               const calculatorId = isCalculatorId(tool.id) ? tool.id : null;
@@ -2153,7 +2178,7 @@ export default function FinancialTheoriesPage() {
               );
               })}
             </CardsGrid>
-            {filteredCalculators.length > 6 ? (
+            {canShowMoreTools ? (
               <button type="button" className="show-more-button" onClick={() => setShowAllTools(value => !value)}>
                 {showAllTools ? text.showLess : text.showMore}
               </button>
@@ -2649,6 +2674,22 @@ export default function FinancialTheoriesPage() {
           gap: 12px;
           align-items: center;
           min-width: 0;
+        }
+
+        .tool-results-summary {
+          grid-column: 1 / -1;
+          width: fit-content;
+          max-width: 100%;
+          margin: 0;
+          border: 1px solid rgba(15, 118, 110, .18);
+          border-radius: 999px;
+          background: rgba(45, 212, 191, .12);
+          color: #0F766E;
+          padding: 8px 12px;
+          font-size: 12px;
+          font-weight: 950;
+          line-height: 1.35;
+          overflow-wrap: anywhere;
         }
 
         .learning-stats-grid {
@@ -3858,6 +3899,12 @@ export default function FinancialTheoriesPage() {
           background: rgba(16, 185, 129, .16);
           color: #86EFAC;
           border-color: rgba(16, 185, 129, .28);
+        }
+
+        .dark .financial-theories-shell .tool-results-summary {
+          border-color: rgba(47, 214, 192, .30);
+          background: rgba(47, 214, 192, .12);
+          color: #B8FFF4;
         }
 
         .dark .financial-theories-shell .learning-progress-card,
