@@ -512,6 +512,7 @@ export const TR: Record<string, TranslationEntry> = {
   market_account_currency: { ar:'عملة الحساب', en:'Account currency', fr:'Devise du compte' },
   market_account_currency_hint: { ar:'تُستخدم هذه العملة في نتائج حاسبات المتداول فقط.', en:'This currency is used only for trader calculator results.', fr:'Cette devise est utilisée uniquement pour les résultats des calculateurs.' },
   market_save_account_currency_default: { ar:'حفظ هذه العملة كعملة افتراضية للحساب', en:'Save as default account currency', fr:'Enregistrer comme devise par défaut du compte' },
+  market_save_preference: { ar:'حفظ التفضيل', en:'Save preference', fr:'Enregistrer la préférence' },
   market_account_currency_saved: { ar:'تم حفظ عملة الحساب الافتراضية.', en:'Default account currency saved.', fr:'Devise par défaut du compte enregistrée.' },
   market_account_currency_save_error: { ar:'تعذر حفظ عملة الحساب حاليًا.', en:'Could not save the account currency right now.', fr:'Impossible d’enregistrer la devise du compte pour le moment.' },
   market_account_currency_signin_required: { ar:'سجّل الدخول لحفظ العملة الافتراضية للحساب.', en:'Sign in to save the default account currency.', fr:'Connectez-vous pour enregistrer la devise par défaut du compte.' },

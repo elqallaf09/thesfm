@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
-import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, CircleDollarSign, Clock3, FileText, Gauge, Info, Landmark, LineChart, Newspaper, Percent, PieChart, Plus, Search, ShieldAlert, ShoppingCart, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDollarSign, Clock3, FileText, Gauge, Info, Landmark, LineChart, Newspaper, Percent, PieChart, Plus, Search, ShieldAlert, ShoppingCart, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { AssetProfileCard } from '@/components/market/AssetProfileCard';
@@ -4454,7 +4454,13 @@ function TraderToolsDashboard({
   ];
   const activeTool = toolItems.find(item => item.id === subTab) ?? toolItems[0];
   const activeDescription = activeTool.description;
-  const activeToolIndex = Math.max(0, toolItems.findIndex(item => item.id === activeTool.id)) + 1;
+  const activeToolZeroIndex = Math.max(0, toolItems.findIndex(item => item.id === activeTool.id));
+  const activeToolIndex = activeToolZeroIndex + 1;
+  const isRtlLocale = locale === 'ar';
+  const selectToolByOffset = (offset: number) => {
+    const nextIndex = (activeToolZeroIndex + offset + toolItems.length) % toolItems.length;
+    setSubTab(toolItems[nextIndex].id);
+  };
   const renderToolPanel = (toolId: TraderToolsSubTab) => {
     if (toolId === 'risk') {
       return (
@@ -4635,7 +4641,7 @@ function TraderToolsDashboard({
             <FormulaCard
               title={t('market_calculation_method')}
               body={t('market_pips_formula')}
-              example={`${selectedPipAsset.symbol} | (${formatNumber(pipsPriceDifference, 5)} / ${formatNumber(pipsPointSize, 5)}) x ${accountCurrency} ${formatNumber(pipsPointValue, 2)} x ${formatNumber(parseNumber(pipsInput.lotSize), 2)} = ${money(pips.profitLoss, accountCurrency)}`}
+              example={`${selectedPipAsset.symbol} | (${formatNumber(pipsPriceDifference, 5)} ÷ ${formatNumber(pipsPointSize, 5)}) × ${accountCurrency} ${formatNumber(pipsPointValue, 2)} × ${formatNumber(parseNumber(pipsInput.lotSize), 2)} = ${money(pips.profitLoss, accountCurrency)}`}
             />
             {pipsValidationMessage && <p className="tool-warning">{pipsValidationMessage}</p>}
           </aside>
@@ -4775,35 +4781,59 @@ function TraderToolsDashboard({
               <h3>{activeTool.title}</h3>
               <p>{activeDescription}</p>
             </div>
-            <div className="trader-premium-save">
+            <div className="trader-premium-save" aria-label={t('market_save_account_currency_default')}>
+              <span className="trader-premium-save-icon"><WalletCards size={16} /></span>
+              <div>
+                <strong>{t('market_save_account_currency_default')}</strong>
+                <small>{t('market_account_currency_hint')}</small>
+              </div>
               <button type="button" onClick={handleSaveDefaultCurrency} disabled={savingCurrency}>
-                {savingCurrency ? t('market_saving') : t('market_save_account_currency_default')}
+                <CheckCircle2 size={14} />
+                {savingCurrency ? t('market_saving') : t('market_save_preference')}
               </button>
               {currencyMessage ? <small className="success">{currencyMessage}</small> : null}
               {currencyError ? <small className="error">{currencyError}</small> : null}
             </div>
           </div>
 
-          <div className="trader-tool-switcher" role="tablist" aria-label={t('market_trader_tools')}>
-            {toolItems.map(item => {
-              const isActive = subTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-controls="trader-active-tool-panel"
-                  onClick={() => setSubTab(item.id)}
-                >
-                  <span className="trader-switcher-icon">{item.icon}</span>
-                  <span>
-                    <strong>{item.title}</strong>
-                    <small>{item.description}</small>
-                  </span>
-                </button>
-              );
-            })}
+          <div className="trader-tool-switcher-shell">
+            <button
+              type="button"
+              className="trader-switcher-arrow"
+              aria-label={t('previous')}
+              onClick={() => selectToolByOffset(-1)}
+            >
+              {isRtlLocale ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            </button>
+            <div className="trader-tool-switcher" role="tablist" aria-label={t('market_trader_tools')}>
+              {toolItems.map(item => {
+                const isActive = subTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-controls="trader-active-tool-panel"
+                    onClick={() => setSubTab(item.id)}
+                  >
+                    <span className="trader-switcher-icon">{item.icon}</span>
+                    <span>
+                      <strong>{item.title}</strong>
+                      <small>{item.description}</small>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              className="trader-switcher-arrow"
+              aria-label={t('next')}
+              onClick={() => selectToolByOffset(1)}
+            >
+              {isRtlLocale ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+            </button>
           </div>
 
           <div className="trader-active-workspace" id="trader-active-tool-panel" role="tabpanel">
@@ -10001,6 +10031,136 @@ function MarketAsyncToolStyles() {
         color: #2FD6C0;
       }
 
+      .trader-premium-dashboard .trader-tool-switcher-shell {
+        display: grid;
+        grid-template-columns: 46px minmax(0, 1fr) 46px;
+        gap: 10px;
+        align-items: center;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .trader-premium-dashboard .trader-switcher-arrow {
+        width: 46px;
+        height: 46px;
+        border-radius: 18px;
+        border: 1px solid rgba(47, 214, 192, .22);
+        background: linear-gradient(135deg, rgba(255, 255, 255, .88), rgba(234, 246, 255, .62)), var(--sfm-card);
+        color: var(--sfm-primary-hover);
+        display: inline-grid;
+        place-items: center;
+        cursor: pointer;
+        box-shadow: 0 10px 24px rgba(3, 18, 37, .055);
+        transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease;
+      }
+
+      .trader-premium-dashboard .trader-switcher-arrow:hover,
+      .trader-premium-dashboard .trader-switcher-arrow:focus-visible {
+        outline: none;
+        transform: translateY(-1px);
+        border-color: rgba(47, 214, 192, .42);
+        box-shadow: 0 0 0 3px rgba(47, 214, 192, .12), 0 14px 28px rgba(3, 18, 37, .08);
+      }
+
+      .trader-premium-dashboard .trader-switcher-arrow:active {
+        transform: scale(.97);
+      }
+
+      .trader-premium-dashboard .trader-premium-save {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        justify-items: stretch;
+        gap: 10px;
+        min-width: min(320px, 100%);
+        max-width: 100%;
+        border: 1px solid rgba(47, 214, 192, .18);
+        border-radius: 20px;
+        background: linear-gradient(135deg, rgba(255, 255, 255, .78), rgba(234, 246, 255, .56)), var(--sfm-card);
+        padding: 10px;
+        box-shadow: 0 10px 24px rgba(3, 18, 37, .05);
+      }
+
+      .trader-premium-dashboard .trader-premium-save-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        background: rgba(47, 214, 192, .12);
+        border: 1px solid rgba(47, 214, 192, .22);
+        color: var(--sfm-primary-hover);
+      }
+
+      .trader-premium-dashboard .trader-premium-save div {
+        display: grid;
+        gap: 3px;
+        min-width: 0;
+      }
+
+      .trader-premium-dashboard .trader-premium-save strong {
+        color: var(--sfm-foreground);
+        font-size: 12px;
+        font-weight: 950;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+      }
+
+      .trader-premium-dashboard .trader-premium-save div small {
+        color: var(--sfm-muted);
+        font-size: 11px;
+        font-weight: 850;
+        line-height: 1.45;
+      }
+
+      .trader-premium-dashboard .trader-premium-save button {
+        width: max-content;
+        min-width: 116px;
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        border: 0;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+        color: #FFFFFF;
+        padding: 0 13px;
+        font: 950 12px Tajawal, Arial, sans-serif;
+        white-space: nowrap;
+      }
+
+      .trader-premium-dashboard .trader-premium-save > small {
+        grid-column: 1 / -1;
+        justify-self: start;
+      }
+
+      .dark .trader-premium-dashboard .trader-switcher-arrow,
+      .dark .trader-premium-dashboard .trader-premium-save {
+        background: linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .07)), #0A1422;
+        border-color: #1D3050;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, .22);
+      }
+
+      .dark .trader-premium-dashboard .trader-switcher-arrow,
+      .dark .trader-premium-dashboard .trader-premium-save-icon {
+        color: #2FD6C0;
+      }
+
+      .dark .trader-premium-dashboard .trader-premium-save-icon {
+        background: rgba(47, 214, 192, .12);
+        border-color: rgba(47, 214, 192, .25);
+      }
+
+      .dark .trader-premium-dashboard .trader-premium-save strong {
+        color: #E8EEF6;
+      }
+
+      .dark .trader-premium-dashboard .trader-premium-save div small {
+        color: #B8C7D9;
+      }
+
       @media (max-width: 1180px) {
         .trader-premium-dashboard .trader-premium-layout,
         .trader-premium-dashboard .trader-premium-panel-grid {
@@ -10009,6 +10169,26 @@ function MarketAsyncToolStyles() {
       }
 
       @media (max-width: 720px) {
+        .trader-premium-dashboard .trader-tool-switcher-shell {
+          grid-template-columns: 40px minmax(0, 1fr) 40px;
+          gap: 7px;
+        }
+
+        .trader-premium-dashboard .trader-switcher-arrow {
+          width: 40px;
+          height: 40px;
+          border-radius: 15px;
+        }
+
+        .trader-premium-dashboard .trader-premium-save {
+          grid-template-columns: auto minmax(0, 1fr);
+        }
+
+        .trader-premium-dashboard .trader-premium-save button {
+          grid-column: 1 / -1;
+          width: 100%;
+        }
+
         .trader-premium-dashboard .trader-field-group .trader-form-grid,
         .trader-premium-dashboard .tool-result-grid {
           grid-template-columns: 1fr;
