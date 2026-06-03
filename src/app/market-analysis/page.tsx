@@ -302,8 +302,13 @@ function normalizePerformanceTrend(value?: string | null): 'bullish' | 'bearish'
 }
 
 function getTechnicalSymbolOption(symbol: string) {
-  const normalized = symbol.trim().toUpperCase();
+  const normalized = compactTechnicalSymbol(symbol);
   return TECHNICAL_SYMBOL_OPTIONS.find(item => item.symbol === normalized);
+}
+
+function compactTechnicalSymbol(symbol: string) {
+  const normalized = symbol.trim().toUpperCase().replace(/[\s_-]+/g, '').replace(/\//g, '');
+  return normalized.endsWith('=X') ? normalized.slice(0, -2) : normalized;
 }
 
 function getTechnicalSymbolCategory(symbol: string): TechnicalSymbolCategory {
@@ -311,13 +316,14 @@ function getTechnicalSymbolCategory(symbol: string): TechnicalSymbolCategory {
 }
 
 function technicalSymbolDescription(option: TechnicalSymbolOption | undefined, locale: string, t: (key: string) => string) {
-  if (!option) return t('market_selected_asset');
+  if (!option) return t('market_technical_symbol_used_for_analysis');
   const lang = locale === 'fr' ? 'fr' : locale === 'en' ? 'en' : 'ar';
   return option.description[lang];
 }
 
 function technicalSymbolAssetType(symbol: string): MarketAssetType {
-  if (symbol.trim().toUpperCase().startsWith('XAG')) return 'commodity';
+  const compact = compactTechnicalSymbol(symbol);
+  if (compact.startsWith('XAG')) return 'commodity';
   const category = getTechnicalSymbolCategory(symbol);
   if (category === 'stocks') return 'stock';
   if (category === 'indices') return 'index';
@@ -327,8 +333,40 @@ function technicalSymbolAssetType(symbol: string): MarketAssetType {
 }
 
 function formatTechnicalSymbol(symbol: string) {
-  const normalized = symbol.trim().toUpperCase();
+  const normalized = compactTechnicalSymbol(symbol);
   return getTechnicalSymbolOption(normalized)?.label ?? normalized;
+}
+
+function normalizeTechnicalSymbolInput(input: string) {
+  const compact = compactTechnicalSymbol(input);
+  if (!compact) return { valid: false as const, code: 'symbol_required' };
+  const option = getTechnicalSymbolOption(compact);
+  if (option) {
+    const normalized = normalizeMarketSymbolInput(option.symbol, technicalSymbolAssetType(option.symbol));
+    return {
+      valid: true as const,
+      symbol: option.symbol,
+      displaySymbol: option.label,
+      providerSymbol: normalized.valid ? normalized.providerSymbol : option.symbol,
+      assetType: technicalSymbolAssetType(option.symbol),
+      name: option.description.en,
+      category: option.category,
+    };
+  }
+  const normalized = normalizeMarketSymbolInput(input, 'all');
+  if (!normalized.valid) {
+    return { valid: false as const, code: normalized.code === 'symbol_not_found' ? 'unsupported_symbol' : 'invalid_symbol' };
+  }
+  const displaySymbol = formatTechnicalSymbol(normalized.symbol);
+  return {
+    valid: true as const,
+    symbol: compactTechnicalSymbol(normalized.symbol),
+    displaySymbol,
+    providerSymbol: normalized.providerSymbol,
+    assetType: normalized.assetType,
+    name: displaySymbol,
+    category: getTechnicalSymbolCategory(normalized.symbol),
+  };
 }
 
 function formatTechnicalTimestamp(value?: string, locale = 'ar') {
@@ -1038,7 +1076,7 @@ export default function MarketAnalysisPage() {
 
   useEffect(() => {
     if (activeTab !== 'technicalAnalysis' || !selectedAsset) return;
-    const symbol = technicalSymbol.trim().toUpperCase();
+    const symbol = compactTechnicalSymbol(technicalSymbol);
     if (!symbol) return;
     let cancelled = false;
     const controller = new AbortController();
@@ -1102,6 +1140,37 @@ export default function MarketAnalysisPage() {
       window.clearTimeout(timeoutId);
     };
   }, [activeTab, selectedAsset, technicalRefreshKey, technicalSymbol, t]);
+
+  const applyTechnicalAsset = useCallback((input: string) => {
+    const normalized = normalizeTechnicalSymbolInput(input);
+    if (!normalized.valid) {
+      setTechnicalState({
+        loading: false,
+        data: null,
+        message: normalized.code === 'symbol_required' ? t('market_technical_symbol_required_body') : t('market_technical_unsupported_symbol_body'),
+        code: normalized.code === 'symbol_required' ? 'SYMBOL_REQUIRED' : 'UNSUPPORTED_SYMBOL',
+        symbol: compactTechnicalSymbol(input),
+      });
+      return false;
+    }
+
+    setTechnicalSymbol(normalized.symbol);
+    setSelectedAsset({
+      symbol: normalized.displaySymbol,
+      providerSymbol: normalized.providerSymbol,
+      name: normalized.name,
+      assetType: normalized.assetType,
+      exchange: normalized.assetType === 'forex'
+        ? 'FX'
+        : normalized.assetType === 'crypto'
+          ? 'Crypto'
+          : normalized.assetType === 'gold'
+            ? 'COMEX'
+            : undefined,
+    });
+    setTechnicalRefreshKey(value => value + 1);
+    return true;
+  }, [t]);
 
   const baseScenarioCurrency = normalizeScenarioCurrency(
     userCurrency && userCurrency !== 'KWD' ? userCurrency : currentUserProfile.defaultCurrency || userCurrency,
@@ -2305,10 +2374,10 @@ export default function MarketAnalysisPage() {
             t={t}
             locale={lang}
             symbol={technicalSymbol}
-            setSymbol={setTechnicalSymbol}
             state={technicalState}
             hasSelectedAsset={Boolean(selectedAsset || selected)}
             onSelectAsset={focusMarketSearch}
+            onApplySymbol={applyTechnicalAsset}
             onRefresh={() => setTechnicalRefreshKey(value => value + 1)}
           />
         )}
@@ -6755,19 +6824,19 @@ function LegacyTechnicalAnalysisPanel({
   t,
   locale,
   symbol,
-  setSymbol,
   state,
   hasSelectedAsset,
   onSelectAsset,
+  onApplySymbol,
   onRefresh,
 }: {
   t: (key: string) => string;
   locale: string;
   symbol: string;
-  setSymbol: (symbol: string) => void;
   state: TechnicalState;
   hasSelectedAsset: boolean;
   onSelectAsset: () => void;
+  onApplySymbol: (symbol: string) => boolean;
   onRefresh: () => void;
 }) {
   const data = state.data;
@@ -6848,7 +6917,19 @@ function LegacyTechnicalAnalysisPanel({
   const handleSelectSymbol = (nextSymbol: string) => {
     const option = getTechnicalSymbolOption(nextSymbol);
     if (option) setCategory(option.category);
-    setSymbol(nextSymbol);
+    const applied = onApplySymbol(nextSymbol);
+    if (applied) setQuery('');
+  };
+
+  const handleApplySearch = () => {
+    const applied = onApplySymbol(query);
+    if (applied) setQuery('');
+  };
+
+  const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    handleApplySearch();
   };
 
   const toggleFavorite = (nextSymbol: string) => {
@@ -7033,19 +7114,19 @@ function TechnicalAnalysisPanel({
   t,
   locale,
   symbol,
-  setSymbol,
   state,
   hasSelectedAsset,
   onSelectAsset,
+  onApplySymbol,
   onRefresh,
 }: {
   t: (key: string) => string;
   locale: string;
   symbol: string;
-  setSymbol: (symbol: string) => void;
   state: TechnicalState;
   hasSelectedAsset: boolean;
   onSelectAsset: () => void;
+  onApplySymbol: (symbol: string) => boolean;
   onRefresh: () => void;
 }) {
   const data = state.data;
@@ -7128,7 +7209,19 @@ function TechnicalAnalysisPanel({
   const handleSelectSymbol = (nextSymbol: string) => {
     const option = getTechnicalSymbolOption(nextSymbol);
     if (option) setCategory(option.category);
-    setSymbol(nextSymbol);
+    const applied = onApplySymbol(nextSymbol);
+    if (applied) setQuery('');
+  };
+
+  const handleApplySearch = () => {
+    const applied = onApplySymbol(query);
+    if (applied) setQuery('');
+  };
+
+  const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    handleApplySearch();
   };
 
   const toggleFavorite = (nextSymbol: string) => {
@@ -7190,6 +7283,7 @@ function TechnicalAnalysisPanel({
               <input
                 value={query}
                 onChange={event => setQuery(event.target.value)}
+                onKeyDown={handleSearchKeyDown}
                 placeholder={t('market_symbol_search_placeholder')}
                 dir="auto"
               />
@@ -7199,6 +7293,10 @@ function TechnicalAnalysisPanel({
                 </button>
               ) : null}
             </div>
+            <button className="technical-search-apply" type="button" onClick={handleApplySearch} disabled={state.loading}>
+              <Search size={16} aria-hidden="true" />
+              {t('market_search_button')}
+            </button>
           </div>
 
           <div className="technical-category-row" aria-label={t('market_asset_type')}>
@@ -7225,7 +7323,7 @@ function TechnicalAnalysisPanel({
           </div>
         </section>
 
-        {!hasSelectedAsset ? (
+        {!hasSelectedAsset && !state.message && !state.code ? (
           <MarketEmptyState
             icon={<LineChart size={22} />}
             title={t('market_technical_choose_asset_title')}
@@ -7235,13 +7333,15 @@ function TechnicalAnalysisPanel({
           />
         ) : (
           <>
-            <section className="technical-selected-summary" aria-label={t('market_selected_asset')}>
-              <TechnicalSummaryItem icon={<WalletCards size={16} />} label={t('market_selected_asset')} value={formatTechnicalSymbol(symbol)} valueDir="ltr" />
-              <TechnicalSummaryItem icon={<CircleDollarSign size={16} />} label={t('market_current_price')} value={currentPriceValue === null ? t('market_unavailable') : formatTechnicalPrice(currentPriceValue)} valueDir="ltr" />
-              <TechnicalSummaryItem icon={<Clock3 size={16} />} label={t('market_last_updated')} value={formatTechnicalTimestamp(currentUpdatedAt, locale) || t('market_unavailable')} valueDir="ltr" />
-              <TechnicalSummaryItem icon={<TrendingUp size={16} />} label={t('market_general_trend')} value={t(technicalTrendLabelKey(currentTrend))} />
-              <TechnicalSummaryItem icon={<CheckCircle2 size={16} />} label={t('market_data_status')} value={currentStatus} />
-            </section>
+            {hasSelectedAsset ? (
+              <section className="technical-selected-summary" aria-label={t('market_selected_asset')}>
+                <TechnicalSummaryItem icon={<WalletCards size={16} />} label={t('market_selected_asset')} value={formatTechnicalSymbol(symbol)} valueDir="ltr" />
+                <TechnicalSummaryItem icon={<CircleDollarSign size={16} />} label={t('market_current_price')} value={currentPriceValue === null ? t('market_unavailable') : formatTechnicalPrice(currentPriceValue)} valueDir="ltr" />
+                <TechnicalSummaryItem icon={<Clock3 size={16} />} label={t('market_last_updated')} value={formatTechnicalTimestamp(currentUpdatedAt, locale) || t('market_unavailable')} valueDir="ltr" />
+                <TechnicalSummaryItem icon={<TrendingUp size={16} />} label={t('market_general_trend')} value={t(technicalTrendLabelKey(currentTrend))} />
+                <TechnicalSummaryItem icon={<CheckCircle2 size={16} />} label={t('market_data_status')} value={currentStatus} />
+              </section>
+            ) : null}
 
             <div className="technical-content-stage">
               {state.loading ? <MarketSectionLoading label={t('market_loading_technical_analysis')} /> : partialData ? (
@@ -9484,18 +9584,23 @@ function MarketAsyncToolStyles() {
       }
 
       .technical-dashboard .technical-summary-item small {
+        display: block;
         color: #475569;
         font-size: 12px;
         font-weight: 950;
-        line-height: 1.35;
+        line-height: 1.45;
+        margin-bottom: 6px;
       }
 
       .technical-dashboard .technical-summary-item strong {
+        display: block;
+        min-width: 0;
         color: #0F172A;
-        font-size: clamp(16px, 1.45vw, 20px);
+        font-size: clamp(16px, 1.35vw, 19px);
         font-weight: 950;
-        line-height: 1.3;
+        line-height: 1.45;
         font-variant-numeric: tabular-nums;
+        overflow-wrap: anywhere;
       }
 
       .technical-dashboard .technical-data-grid {
@@ -9806,7 +9911,8 @@ function MarketAsyncToolStyles() {
           grid-template-columns: 1fr;
         }
 
-        .technical-dashboard .technical-refresh-button {
+        .technical-dashboard .technical-refresh-button,
+        .technical-dashboard .technical-search-apply {
           width: 100%;
         }
 
@@ -9866,7 +9972,7 @@ function MarketAsyncToolStyles() {
       }
 
       .technical-dashboard .technical-search-row {
-        grid-template-columns: minmax(220px, 300px) minmax(0, 1fr) !important;
+        grid-template-columns: minmax(220px, 300px) minmax(0, 1fr) auto !important;
         gap: 14px !important;
         align-items: stretch !important;
       }
@@ -9916,6 +10022,47 @@ function MarketAsyncToolStyles() {
 
       .technical-dashboard .technical-search input::placeholder {
         color: #64748B !important;
+      }
+
+      .technical-dashboard .technical-search-apply {
+        min-height: 58px;
+        min-width: 112px;
+        border: 0;
+        border-radius: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 0 20px;
+        cursor: pointer;
+        color: #FFFFFF;
+        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+        box-shadow: 0 14px 30px rgba(29, 140, 255, .18);
+        font: 950 14px Tajawal, Arial, sans-serif;
+        transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+        white-space: nowrap;
+      }
+
+      .technical-dashboard .technical-search-apply:hover {
+        transform: translateY(-1px);
+        filter: saturate(1.06) brightness(1.03);
+        box-shadow: 0 18px 38px rgba(24, 212, 212, .24);
+      }
+
+      .technical-dashboard .technical-search-apply:active {
+        transform: translateY(0) scale(.985);
+      }
+
+      .technical-dashboard .technical-search-apply:focus-visible {
+        outline: 3px solid rgba(24, 212, 212, .30);
+        outline-offset: 3px;
+      }
+
+      .technical-dashboard .technical-search-apply:disabled {
+        cursor: not-allowed;
+        opacity: .72;
+        transform: none;
+        filter: none;
       }
 
       .technical-dashboard .technical-category-row,
@@ -10013,6 +10160,11 @@ function MarketAsyncToolStyles() {
       .dark .technical-dashboard .technical-search:focus-within {
         border-color: rgba(47, 214, 192, .58) !important;
         box-shadow: 0 0 0 4px rgba(47, 214, 192, .12) !important;
+      }
+
+      .dark .technical-dashboard .technical-search-apply {
+        color: #061A2E;
+        box-shadow: 0 16px 34px rgba(47, 214, 192, .16);
       }
 
       .dark .technical-dashboard .technical-category-row button,
