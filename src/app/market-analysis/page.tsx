@@ -4599,6 +4599,7 @@ function TraderToolsDashboard({
   const [savingCurrency, setSavingCurrency] = useState(false);
   const [currencyMessage, setCurrencyMessage] = useState('');
   const [currencyError, setCurrencyError] = useState('');
+  const [showIncomePrompt, setShowIncomePrompt] = useState(true);
 
   useEffect(() => {
     if (!accountCurrencyTouched) setAccountCurrency(normalizeAccountCurrency(currency));
@@ -4995,9 +4996,9 @@ function TraderToolsDashboard({
 
           <TraderSupportCard icon={<Calculator size={18} />} title={t('market_calculation_results')} highlight>
             <div className="trader-side-result-grid">
-              <TraderSideStat label={t('market_lot_size')} value={lotValue} />
-              <TraderSideStat label={t('market_cash_risk')} value={money(position.riskAmount, accountCurrency)} />
-              <TraderSideStat label={t('market_risk_percentage')} value={riskPercentDisplay} />
+              <TraderSideStat icon={<BarChart3 size={16} />} label={t('market_lot_size')} value={lotValue} />
+              <TraderSideStat icon={<WalletCards size={16} />} label={t('market_cash_risk')} value={money(position.riskAmount, accountCurrency)} />
+              <TraderSideStat icon={<Percent size={16} />} label={t('market_risk_percentage')} value={riskPercentDisplay} />
             </div>
           </TraderSupportCard>
 
@@ -5008,6 +5009,33 @@ function TraderToolsDashboard({
               <li>{t('market_usage_step_result')}</li>
             </ol>
           </TraderSupportCard>
+
+          {showIncomePrompt ? (
+            <article className="trader-income-prompt-card" aria-label={t('market_income_prompt_title')}>
+              <span className="trader-income-prompt-icon" aria-hidden="true">
+                <WalletCards size={30} />
+              </span>
+              <div className="trader-income-prompt-copy">
+                <h3>{t('market_income_prompt_title')}</h3>
+                <p>{t('market_income_prompt_body')}</p>
+              </div>
+              <div className="trader-income-actions">
+                <a className="trader-income-action primary" href="/income/add" aria-label={t('market_income_prompt_primary')}>
+                  <Plus size={17} aria-hidden="true" />
+                  <span>{t('market_income_prompt_primary')}</span>
+                  {isRtlLocale ? <ChevronLeft size={17} aria-hidden="true" /> : <ChevronRight size={17} aria-hidden="true" />}
+                </a>
+                <button
+                  type="button"
+                  className="trader-income-action secondary"
+                  onClick={() => setShowIncomePrompt(false)}
+                  aria-label={t('market_income_prompt_secondary')}
+                >
+                  {t('market_income_prompt_secondary')}
+                </button>
+              </div>
+            </article>
+          ) : null}
         </aside>
         ) : null}
 
@@ -5087,6 +5115,341 @@ function TraderToolsDashboard({
           <p>{t('market_investment_disclaimer_body')}</p>
         </div>
       </section>
+
+      <style jsx global>{`
+        .trader-support-column {
+          gap: 18px;
+        }
+
+        .trader-support-card,
+        .trader-income-prompt-card {
+          position: relative;
+          min-width: 0;
+          overflow: hidden;
+          border-radius: 28px;
+          border: 1px solid rgba(29, 140, 255, .14);
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, .94), rgba(239, 248, 255, .78)),
+            var(--sfm-card);
+          box-shadow: 0 16px 42px rgba(3, 18, 37, .08);
+        }
+
+        .trader-support-card {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 16px;
+          align-items: start;
+          padding: 22px;
+        }
+
+        .trader-support-card > div {
+          min-width: 0;
+          display: grid;
+          gap: 12px;
+        }
+
+        .trader-support-icon {
+          width: 54px;
+          height: 54px;
+          border-radius: 22px;
+          color: var(--sfm-primary-hover);
+          background: linear-gradient(135deg, rgba(29, 140, 255, .10), rgba(47, 214, 192, .13));
+          border: 1px solid rgba(29, 140, 255, .16);
+          box-shadow: 0 12px 26px rgba(29, 140, 255, .10);
+        }
+
+        .trader-support-card h3 {
+          color: var(--sfm-foreground);
+          font-size: clamp(18px, 2vw, 22px);
+          font-weight: 950;
+          line-height: 1.35;
+        }
+
+        .trader-support-card p {
+          max-width: 38rem;
+          color: var(--sfm-muted);
+          font-size: 15px;
+          font-weight: 800;
+          line-height: 1.95;
+        }
+
+        .trader-support-card.highlight {
+          background:
+            linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .10)),
+            var(--sfm-card);
+          border-color: rgba(47, 214, 192, .24);
+        }
+
+        .trader-side-result-grid {
+          display: grid;
+          gap: 10px;
+          margin-top: 0;
+        }
+
+        .trader-side-stat {
+          min-width: 0;
+          display: grid;
+          grid-template-columns: 42px minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 12px;
+          border-radius: 17px;
+          border: 1px solid rgba(29, 140, 255, .12);
+          background: rgba(255, 255, 255, .78);
+          padding: 12px;
+        }
+
+        .trader-side-stat-icon {
+          width: 42px;
+          height: 42px;
+          border-radius: 15px;
+          display: grid;
+          place-items: center;
+          color: var(--sfm-primary-hover);
+          background: rgba(29, 140, 255, .08);
+          border: 1px solid rgba(29, 140, 255, .10);
+        }
+
+        .trader-side-stat span:not(.trader-side-stat-icon) {
+          color: var(--sfm-muted);
+          font-size: 13px;
+          font-weight: 900;
+          line-height: 1.45;
+        }
+
+        .trader-side-stat b {
+          min-width: 0;
+          color: var(--sfm-foreground);
+          font-size: clamp(16px, 2vw, 20px);
+          font-weight: 950;
+          line-height: 1.2;
+          text-align: end;
+          white-space: nowrap;
+        }
+
+        .trader-steps {
+          position: relative;
+          margin: 2px 0 0;
+          padding: 0;
+          list-style: none;
+          counter-reset: traderStep;
+          display: grid;
+          gap: 12px;
+        }
+
+        .trader-steps li {
+          position: relative;
+          display: grid;
+          grid-template-columns: 34px minmax(0, 1fr);
+          align-items: center;
+          gap: 12px;
+          color: var(--sfm-muted);
+          font-size: 14px;
+          font-weight: 850;
+          line-height: 1.75;
+        }
+
+        .trader-steps li::before {
+          counter-increment: traderStep;
+          content: counter(traderStep);
+          width: 34px;
+          height: 34px;
+          border-radius: 999px;
+          display: grid;
+          place-items: center;
+          color: #fff;
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          font-size: 13px;
+          font-weight: 950;
+          box-shadow: 0 10px 20px rgba(29, 140, 255, .18);
+        }
+
+        .trader-income-prompt-card {
+          display: grid;
+          justify-items: center;
+          text-align: center;
+          gap: 22px;
+          padding: clamp(28px, 5vw, 46px) 24px;
+        }
+
+        .trader-income-prompt-icon {
+          width: 96px;
+          height: 96px;
+          border-radius: 999px;
+          display: grid;
+          place-items: center;
+          color: var(--sfm-soft-cyan);
+          background:
+            radial-gradient(circle at 30% 25%, rgba(255, 255, 255, .96), rgba(234, 246, 255, .74)),
+            rgba(47, 214, 192, .08);
+          border: 1px solid rgba(47, 214, 192, .28);
+          box-shadow: 0 18px 42px rgba(29, 140, 255, .12);
+        }
+
+        .trader-income-prompt-copy {
+          display: grid;
+          gap: 14px;
+          max-width: 31rem;
+        }
+
+        .trader-income-prompt-copy h3 {
+          margin: 0;
+          color: var(--sfm-foreground);
+          font-size: clamp(24px, 3.4vw, 34px);
+          font-weight: 950;
+          line-height: 1.45;
+        }
+
+        .trader-income-prompt-copy p {
+          margin: 0;
+          color: var(--sfm-muted);
+          font-size: 15px;
+          font-weight: 800;
+          line-height: 2;
+        }
+
+        .trader-income-actions {
+          width: 100%;
+          display: grid;
+          gap: 14px;
+        }
+
+        .trader-income-action {
+          min-height: 50px;
+          width: 100%;
+          border-radius: 18px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 12px 18px;
+          font: 950 15px Tajawal, Arial, sans-serif;
+          text-decoration: none;
+          cursor: pointer;
+          transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease, color .18s ease;
+        }
+
+        .trader-income-action:focus-visible {
+          outline: 3px solid rgba(24, 212, 212, .34);
+          outline-offset: 3px;
+        }
+
+        .trader-income-action.primary {
+          border: 0;
+          color: #fff;
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          box-shadow: 0 16px 32px rgba(29, 140, 255, .22);
+        }
+
+        .trader-income-action.primary:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 20px 38px rgba(29, 140, 255, .28);
+        }
+
+        .trader-income-action.primary:active,
+        .trader-income-action.secondary:active {
+          transform: scale(.985);
+        }
+
+        .trader-income-action.secondary {
+          border: 1px solid rgba(29, 140, 255, .32);
+          color: var(--sfm-primary-hover);
+          background: rgba(255, 255, 255, .70);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .60);
+        }
+
+        .trader-income-action.secondary:hover {
+          color: var(--sfm-foreground);
+          background: rgba(29, 140, 255, .08);
+          border-color: rgba(47, 214, 192, .45);
+        }
+
+        .dark .trader-support-card,
+        .dark .trader-income-prompt-card {
+          background:
+            linear-gradient(135deg, rgba(29, 140, 255, .10), rgba(47, 214, 192, .07)),
+            #0f1d31;
+          border-color: #1d3050;
+          box-shadow: 0 18px 46px rgba(0, 0, 0, .28);
+        }
+
+        .dark .trader-support-card.highlight {
+          background:
+            linear-gradient(135deg, rgba(29, 140, 255, .14), rgba(47, 214, 192, .10)),
+            #0f1d31;
+          border-color: rgba(47, 214, 192, .30);
+        }
+
+        .dark .trader-support-icon,
+        .dark .trader-side-stat-icon,
+        .dark .trader-income-prompt-icon {
+          color: #2FD6C0;
+          background: rgba(47, 214, 192, .12);
+          border-color: rgba(47, 214, 192, .24);
+          box-shadow: none;
+        }
+
+        .dark .trader-side-stat {
+          background: #0a1422;
+          border-color: #1d3050;
+        }
+
+        .dark .trader-side-stat b {
+          color: #f8fbff;
+        }
+
+        .dark .trader-income-action.secondary {
+          color: #d8f7f3;
+          background: rgba(10, 20, 34, .72);
+          border-color: rgba(47, 214, 192, .26);
+          box-shadow: none;
+        }
+
+        .dark .trader-income-action.secondary:hover {
+          color: #fff;
+          background: rgba(47, 214, 192, .12);
+          border-color: rgba(47, 214, 192, .42);
+        }
+
+        @media (min-width: 1181px) {
+          .trader-income-prompt-card {
+            min-height: 420px;
+            align-content: center;
+          }
+        }
+
+        @media (max-width: 720px) {
+          .trader-support-card {
+            grid-template-columns: minmax(0, 1fr) auto;
+            border-radius: 24px;
+            padding: 18px;
+          }
+
+          .trader-side-stat {
+            grid-template-columns: 38px minmax(0, 1fr);
+          }
+
+          .trader-side-stat b {
+            grid-column: 2;
+            text-align: start;
+            white-space: normal;
+          }
+
+          .trader-income-prompt-card {
+            border-radius: 24px;
+            padding: 24px 18px;
+          }
+
+          .trader-income-prompt-icon {
+            width: 78px;
+            height: 78px;
+          }
+
+          .trader-income-action {
+            min-height: 48px;
+            font-size: 14px;
+          }
+        }
+      `}</style>
     </section>
   );
 }
@@ -5113,9 +5476,10 @@ function TraderSupportCard({
   );
 }
 
-function TraderSideStat({ label, value }: { label: string; value: string }) {
+function TraderSideStat({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <div className="trader-side-stat">
+      <span className="trader-side-stat-icon" aria-hidden="true">{icon}</span>
       <span>{label}</span>
       <b dir="ltr">{value}</b>
     </div>
