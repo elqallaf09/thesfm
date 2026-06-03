@@ -2181,18 +2181,6 @@ export default function FinancialTheoriesPage() {
           ) : null}
         </section>
 
-        <section className="theories-cta" aria-labelledby="financial-theories-cta-title">
-          <div>
-            <span>{text.badge}</span>
-            <h2 id="financial-theories-cta-title">{text.ctaTitle}</h2>
-            <p>{text.ctaSubtitle}</p>
-          </div>
-          <div className="cta-actions">
-            <Link href="/dashboard">{text.openDashboard}</Link>
-            <Link href="/goals">{text.openGoals}</Link>
-            <a href="#smart-tools">{text.openTools}</a>
-          </div>
-        </section>
       </DashboardPageShell>
 
       <style jsx global>{`
