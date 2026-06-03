@@ -33,7 +33,7 @@ export type StockCategoryNewsItem = {
   change: number | null;
   priceSource: TechStockPrice['source'] | null;
   delayed: true;
-  shariaStatus?: 'possible' | 'needs_review' | 'unclassified';
+  shariaStatus?: 'possible' | 'needs_review' | 'unclassified' | 'non_compliant';
 };
 
 export type StockCategoryNewsPayload = {
@@ -292,7 +292,7 @@ function parseRssItems(config: StockCategoryConfig, feed: { source: string; url:
     const stock = matchStock(config, headline, summary);
     const sectors = detectNewsFilters(config, headline, summary, stock);
     if (!stock && sectors.length === 0) return null;
-    const fallbackFilter = sectors[0] ?? config.filters.find(filter => filter.key !== 'all')?.key ?? 'general';
+    const fallbackFilter = config.shariaCaution ? 'unclassified' : sectors[0] ?? config.filters.find(filter => filter.key !== 'all')?.key ?? 'general';
     const matchedStock = stock ?? stockMap.get('') ?? null;
     const published = extractTag(block, 'pubDate') || extractTag(block, 'published') || extractTag(block, 'updated');
     const publishedAt = safeDate(published);

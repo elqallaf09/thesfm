@@ -53,6 +53,26 @@ function changeBadgeClass(value: number | null) {
     : 'border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-500/40 dark:bg-rose-900/40 dark:text-rose-100';
 }
 
+function shariaStatusLabelKey(status: StockCategoryNewsItem['shariaStatus']): keyof typeof TR {
+  if (status === 'possible') return 'stock_category_sharia_status_possible';
+  if (status === 'needs_review') return 'stock_category_sharia_status_review';
+  if (status === 'non_compliant') return 'stock_category_sharia_status_non_compliant';
+  return 'stock_category_sharia_status_unclassified';
+}
+
+function shariaStatusBadgeClass(status: StockCategoryNewsItem['shariaStatus']) {
+  if (status === 'possible') {
+    return 'border-teal-300 bg-teal-100 text-teal-800 dark:border-teal-500/40 dark:bg-teal-900/40 dark:text-teal-100';
+  }
+  if (status === 'needs_review') {
+    return 'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-500/40 dark:bg-amber-900/40 dark:text-amber-100';
+  }
+  if (status === 'non_compliant') {
+    return 'border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-500/40 dark:bg-rose-900/40 dark:text-rose-100';
+  }
+  return 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100';
+}
+
 function itemSearchText(item: StockCategoryNewsItem) {
   return [
     item.companyName,
@@ -427,8 +447,8 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                               {item.source}
                             </span>
                             {item.shariaStatus && (
-                              <span className="rounded-full border border-amber-300 bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800 dark:border-amber-500/40 dark:bg-amber-900/40 dark:text-amber-100">
-                                {tr('stock_category_sharia_status_unclassified')}
+                              <span className={`rounded-full border px-3 py-1.5 text-xs font-bold ${shariaStatusBadgeClass(item.shariaStatus)}`}>
+                                {tr(shariaStatusLabelKey(item.shariaStatus))}
                               </span>
                             )}
                           </div>
@@ -452,6 +472,20 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                               </p>
                             </div>
                           </div>
+                          {item.shariaStatus && (
+                            <div className="mt-3 rounded-2xl border border-slate-200 bg-white/80 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950/50 dark:text-slate-300">
+                              <p>
+                                <span className="font-black text-slate-900 dark:text-white">{tr('stock_category_sharia_compliance_status')}: </span>
+                                <span className={`font-bold ${item.shariaStatus === 'non_compliant' ? 'text-rose-700 dark:text-rose-200' : item.shariaStatus === 'needs_review' ? 'text-amber-700 dark:text-amber-200' : item.shariaStatus === 'possible' ? 'text-teal-700 dark:text-teal-200' : 'text-slate-700 dark:text-slate-200'}`}>
+                                  {tr(shariaStatusLabelKey(item.shariaStatus))}
+                                </span>
+                              </p>
+                              <p className="mt-1">
+                                <span className="font-black text-slate-900 dark:text-white">{tr('stock_category_sharia_note_label')}: </span>
+                                {tr('stock_category_sharia_preliminary_note')}
+                              </p>
+                            </div>
+                          )}
                           <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5">
                             <span className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                               <Clock3 size={14} />
@@ -585,6 +619,10 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                 <div>
                   <h2 className="text-lg font-black">{tr(config.disclaimerTitleKey)}</h2>
                   <p className="mt-2 text-sm leading-7">{tr(config.disclaimerBodyKey)}</p>
+                  <div className="mt-4 inline-flex flex-wrap items-center gap-2 rounded-2xl border border-amber-300/80 bg-white/60 px-4 py-3 text-sm font-bold text-amber-950 dark:border-amber-500/30 dark:bg-slate-950/30 dark:text-amber-100">
+                    <span>{tr('stock_category_sharia_classification_source')}:</span>
+                    <span>{tr('stock_category_sharia_source_unavailable')}</span>
+                  </div>
                 </div>
               </div>
             </section>
