@@ -7,9 +7,12 @@ export type TechNewsDashboardCategory =
   | 'techStocks'
   | 'ai'
   | 'semiconductors'
-  | 'markets'
-  | 'crypto'
-  | 'companies';
+  | 'software'
+  | 'cloud'
+  | 'cybersecurity'
+  | 'ecommerce'
+  | 'hardware'
+  | 'gaming';
 
 export type TechNewsTimeFilter = 'all' | 'today' | 'week' | 'month';
 export type TechNewsSort = 'recent' | 'relevance' | 'impact';
@@ -32,6 +35,7 @@ type TechNewsFiltersProps = {
     times: Record<TechNewsTimeFilter, string>;
     sorts: Record<TechNewsSort, string>;
   };
+  categoryCounts?: Record<TechNewsDashboardCategory, number>;
   onQueryChange: (value: string) => void;
   onCategoryChange: (value: TechNewsDashboardCategory) => void;
   onSourceChange: (value: string) => void;
@@ -44,9 +48,12 @@ const CATEGORY_ORDER: TechNewsDashboardCategory[] = [
   'techStocks',
   'ai',
   'semiconductors',
-  'markets',
-  'crypto',
-  'companies',
+  'software',
+  'cloud',
+  'cybersecurity',
+  'ecommerce',
+  'hardware',
+  'gaming',
 ];
 
 const TIME_FILTERS: TechNewsTimeFilter[] = ['all', 'today', 'week', 'month'];
@@ -60,6 +67,7 @@ export function TechNewsFilters({
   sort,
   sources,
   labels,
+  categoryCounts,
   onQueryChange,
   onCategoryChange,
   onSourceChange,
@@ -121,7 +129,8 @@ export function TechNewsFilters({
             className={category === item ? 'active' : ''}
             onClick={() => onCategoryChange(item)}
           >
-            {labels.categories[item]}
+            <span>{labels.categories[item]}</span>
+            {categoryCounts ? <b>{categoryCounts[item] ?? 0}</b> : null}
           </button>
         ))}
       </div>

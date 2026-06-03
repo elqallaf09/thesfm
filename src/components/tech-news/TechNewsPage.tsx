@@ -44,6 +44,8 @@ function itemSearchText(item: TechNewsItem) {
     item.companyName,
     item.ticker,
     item.source,
+    item.sector,
+    ...(item.sectors ?? []),
     item.title,
     item.summary,
     item.titleOriginal,
@@ -56,18 +58,58 @@ function hasKeyword(item: TechNewsItem, keywords: string[]) {
   return keywords.some(keyword => haystack.includes(keyword.toLowerCase()));
 }
 
+const CATEGORY_SEARCH_TERMS: Record<TechNewsDashboardCategory, string[]> = {
+  all: ['all', 'technology', 'tech market', 'الكل', 'التقنية', 'السوق التقني', 'tout', 'technologie'],
+  techStocks: ['tech stocks', 'technology stocks', 'technology market', 'nasdaq', 'أسهم التقنية', 'أسهم تكنولوجية', 'actions technologiques'],
+  ai: ['ai', 'artificial intelligence', 'machine learning', 'openai', 'anthropic', 'copilot', 'gemini', 'الذكاء الاصطناعي', 'تعلم الآلة', 'intelligence artificielle'],
+  semiconductors: ['semiconductors', 'semiconductor', 'chips', 'chip', 'gpu', 'cpu', 'nvidia', 'amd', 'intel', 'broadcom', 'tsmc', 'qualcomm', 'micron', 'asml', 'أشباه الموصلات', 'الرقائق', 'semi-conducteurs', 'puces'],
+  software: ['software', 'saas', 'microsoft', 'salesforce', 'oracle', 'adobe', 'servicenow', 'palantir', 'datadog', 'snowflake', 'البرمجيات', 'Logiciels'],
+  cloud: ['cloud', 'cloud computing', 'aws', 'azure', 'google cloud', 'oracle cloud', 'cloud infrastructure', 'data center', 'الحوسبة السحابية', 'السحابة', 'cloud computing'],
+  cybersecurity: ['cybersecurity', 'cyber security', 'palo alto', 'crowdstrike', 'fortinet', 'zscaler', 'ransomware', 'data breach', 'الأمن السيبراني', 'اختراق البيانات', 'cybersécurité'],
+  ecommerce: ['e-commerce', 'ecommerce', 'online retail', 'marketplace', 'amazon', 'shopify', 'mercadolibre', 'alibaba', 'التجارة الإلكترونية', 'متجر إلكتروني'],
+  hardware: ['devices', 'smartphones', 'hardware', 'apple', 'samsung', 'iphone', 'mac', 'الأجهزة', 'الهواتف', 'هواتف ذكية', 'appareils', 'smartphones'],
+  gaming: ['gaming', 'digital entertainment', 'sony', 'nintendo', 'roblox', 'unity', 'electronic arts', 'streaming', 'entertainment', 'الألعاب', 'الترفيه الرقمي', 'jeux', 'divertissement numérique'],
+};
+
+function itemMatchesSearch(item: TechNewsItem, query: string) {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  const haystack = itemSearchText(item);
+  const categoryTerms = Object.entries(CATEGORY_SEARCH_TERMS)
+    .filter(([, terms]) => terms.some(term => term.toLowerCase().includes(needle) || needle.includes(term.toLowerCase())))
+    .flatMap(([category, terms]) => [category, ...terms]);
+  return haystack.includes(needle) || categoryTerms.some(term => haystack.includes(term.toLowerCase()));
+}
+
 function categoryMatches(item: TechNewsItem, category: TechNewsDashboardCategory) {
   if (category === 'all') return true;
   const sectors = new Set([item.sector, ...(item.sectors ?? [])]);
   const ticker = String(item.ticker ?? '').toUpperCase();
 
-  if (category === 'techStocks') return Boolean(ticker && ticker !== 'TECH');
-  if (category === 'ai') return sectors.has('ai') || hasKeyword(item, ['AI', 'artificial intelligence', 'OpenAI', 'machine learning']);
-  if (category === 'semiconductors') return sectors.has('semiconductors') || hasKeyword(item, ['chip', 'semiconductor', 'GPU', 'CPU', 'Nvidia', 'AMD', 'Intel', 'TSMC']);
-  if (category === 'markets') return hasKeyword(item, ['market', 'markets', 'stock', 'stocks', 'shares', 'earnings', 'Nasdaq', 'S&P', 'Wall Street', 'futures', 'rally', 'selloff']);
-  if (category === 'crypto') return ['BTC', 'ETH', 'BTCUSD', 'ETHUSD'].includes(ticker) || hasKeyword(item, ['crypto', 'bitcoin', 'ethereum', 'blockchain']);
-  if (category === 'companies') return Boolean(ticker && ticker !== 'TECH' && item.companyName && item.companyName !== 'Technology Market');
-  return true;
+  if (category === 'ai') return sectors.has('ai') || hasKeyword(item, ['AI', 'artificial intelligence', 'machine learning', 'OpenAI', 'Anthropic', 'Nvidia', 'Microsoft Copilot', 'Gemini']);
+  if (category === 'semiconductors') return sectors.has('semiconductors') || hasKeyword(item, ['NVIDIA', 'AMD', 'Intel', 'Broadcom', 'TSMC', 'Qualcomm', 'Micron', 'ASML', 'chips', 'chip', 'semiconductors', 'semiconductor']);
+  if (category === 'software') return sectors.has('software') || hasKeyword(item, ['Microsoft', 'Salesforce', 'Oracle', 'Adobe', 'ServiceNow', 'Palantir', 'Datadog', 'Snowflake', 'software', 'SaaS']);
+  if (category === 'cloud') return sectors.has('cloud') || hasKeyword(item, ['AWS', 'Azure', 'Google Cloud', 'Oracle Cloud', 'cloud infrastructure', 'cloud computing', 'data center']);
+  if (category === 'cybersecurity') return sectors.has('cybersecurity') || hasKeyword(item, ['Palo Alto Networks', 'CrowdStrike', 'Fortinet', 'Zscaler', 'cybersecurity', 'ransomware', 'data breach']);
+  if (category === 'ecommerce') return sectors.has('ecommerce') || hasKeyword(item, ['Amazon', 'Shopify', 'MercadoLibre', 'Alibaba', 'online retail', 'marketplace', 'e-commerce', 'ecommerce']);
+  if (category === 'hardware') return sectors.has('hardware') || hasKeyword(item, ['Apple', 'Samsung', 'iPhone', 'Mac', 'devices', 'hardware', 'smartphones']);
+  if (category === 'gaming') return sectors.has('gaming') || hasKeyword(item, ['Sony', 'Nintendo', 'Roblox', 'Unity', 'Electronic Arts', 'gaming', 'streaming', 'entertainment']);
+
+  if (category === 'techStocks') {
+    const isSpecificCategory = ([
+      'ai',
+      'semiconductors',
+      'software',
+      'cloud',
+      'cybersecurity',
+      'ecommerce',
+      'hardware',
+      'gaming',
+    ] as TechNewsDashboardCategory[]).some(specificCategory => categoryMatches(item, specificCategory));
+    return Boolean(ticker && ticker !== 'TECH') && !isSpecificCategory;
+  }
+
+  return false;
 }
 
 function timeMatches(item: TechNewsItem, filter: TechNewsTimeFilter) {
@@ -150,19 +192,28 @@ export function TechNewsPage() {
     Array.from(new Set(items.map(item => item.source).filter(Boolean))).sort((a, b) => a.localeCompare(b))
   ), [items]);
 
-  const filteredItems = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    const nextItems = items
-      .filter(item => categoryMatches(item, category))
+  const baseFilteredItems = useMemo(() => {
+    return items
       .filter(item => sourceFilter === 'all' || item.source === sourceFilter)
       .filter(item => timeMatches(item, timeFilter))
-      .filter(item => !needle
-        || item.companyName.toLowerCase().includes(needle)
-        || item.ticker.toLowerCase().includes(needle)
-        || item.title.toLowerCase().includes(needle)
-        || item.summary.toLowerCase().includes(needle)
-        || (item.titleOriginal ?? '').toLowerCase().includes(needle)
-        || (item.summaryOriginal ?? '').toLowerCase().includes(needle));
+      .filter(item => itemMatchesSearch(item, query));
+  }, [items, query, sourceFilter, timeFilter]);
+
+  const categoryCounts = useMemo(() => ({
+    all: baseFilteredItems.filter(item => categoryMatches(item, 'all')).length,
+    techStocks: baseFilteredItems.filter(item => categoryMatches(item, 'techStocks')).length,
+    ai: baseFilteredItems.filter(item => categoryMatches(item, 'ai')).length,
+    semiconductors: baseFilteredItems.filter(item => categoryMatches(item, 'semiconductors')).length,
+    software: baseFilteredItems.filter(item => categoryMatches(item, 'software')).length,
+    cloud: baseFilteredItems.filter(item => categoryMatches(item, 'cloud')).length,
+    cybersecurity: baseFilteredItems.filter(item => categoryMatches(item, 'cybersecurity')).length,
+    ecommerce: baseFilteredItems.filter(item => categoryMatches(item, 'ecommerce')).length,
+    hardware: baseFilteredItems.filter(item => categoryMatches(item, 'hardware')).length,
+    gaming: baseFilteredItems.filter(item => categoryMatches(item, 'gaming')).length,
+  }), [baseFilteredItems]);
+
+  const filteredItems = useMemo(() => {
+    const nextItems = baseFilteredItems.filter(item => categoryMatches(item, category));
 
     return nextItems.sort((a, b) => {
       if (sort === 'impact') {
@@ -175,7 +226,7 @@ export function TechNewsPage() {
       }
       return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
     });
-  }, [category, items, query, sort, sourceFilter, timeFilter]);
+  }, [baseFilteredItems, category, query, sort]);
 
   const featuredItems = filteredItems.slice(0, FEATURED_NEWS_COUNT);
   const listItems = filteredItems.slice(featuredItems.length);
@@ -235,9 +286,12 @@ export function TechNewsPage() {
     techStocks: t('tech_news_dashboard_category_tech_stocks'),
     ai: t('tech_news_dashboard_category_ai'),
     semiconductors: t('tech_news_dashboard_category_semiconductors'),
-    markets: t('tech_news_dashboard_category_markets'),
-    crypto: t('tech_news_dashboard_category_crypto'),
-    companies: t('tech_news_dashboard_category_companies'),
+    software: t('tech_news_dashboard_category_software'),
+    cloud: t('tech_news_dashboard_category_cloud'),
+    cybersecurity: t('tech_news_dashboard_category_cybersecurity'),
+    ecommerce: t('tech_news_dashboard_category_ecommerce'),
+    hardware: t('tech_news_dashboard_category_hardware'),
+    gaming: t('tech_news_dashboard_category_gaming'),
   };
   const timeLabels = {
     all: t('tech_news_time_all'),
@@ -306,6 +360,7 @@ export function TechNewsPage() {
             times: timeLabels,
             sorts: sortLabels,
           }}
+          categoryCounts={categoryCounts}
           onQueryChange={setQuery}
           onCategoryChange={setCategory}
           onSourceChange={setSourceFilter}
@@ -454,6 +509,8 @@ export function TechNewsPage() {
         .tech-news-chip-row button.active{background:#CCFBF1;border-color:rgba(15,118,110,.25);color:#0F766E;box-shadow:0 10px 24px rgba(15,118,110,.12)}
         .tech-news-chip-row button:hover,.tech-news-chip-row button:focus-visible{outline:none;border-color:rgba(47,214,192,.56);color:var(--tech-accent)}
         .tech-news-chip-row button.active:hover,.tech-news-chip-row button.active:focus-visible{color:#0F766E}
+        .tech-news-chip-row button{display:inline-flex;align-items:center;gap:8px;padding-inline:12px}
+        .tech-news-chip-row button span{line-height:1.25}.tech-news-chip-row button b{min-width:22px;height:22px;border-radius:999px;display:inline-grid;place-items:center;padding:0 6px;background:rgba(29,140,255,.10);color:var(--tech-muted);font-size:11px;font-weight:950;line-height:1}.tech-news-chip-row button.active b{background:rgba(255,255,255,.72);color:#065F46}
         .tech-news-more-button{flex:0 0 auto}
         .tech-news-filter-icon{width:40px!important;padding:0!important;display:grid!important;place-items:center!important;color:var(--tech-accent)!important}
         .tech-news-layout{width:100%;max-width:100%;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start;min-width:0}.tech-news-content-column{display:grid;gap:14px;min-width:0}.tech-news-results-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid var(--tech-border);background:var(--tech-panel);border-radius:18px;padding:12px 14px;color:var(--tech-muted);box-shadow:0 12px 32px rgba(3,18,37,.06)}.tech-news-results-bar span,.tech-news-results-bar b{font-size:12px;font-weight:950;line-height:1.4}.tech-news-results-bar b{color:var(--tech-accent)}.tech-news-grid{width:100%;max-width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;min-width:0;overflow-x:hidden}
@@ -462,7 +519,7 @@ export function TechNewsPage() {
         .tech-news-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;min-width:0;max-width:100%}
         .tech-news-company-wrap{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;flex:1 1 auto;flex-wrap:wrap}
         .tech-news-company{min-width:0;max-width:100%;color:var(--tech-text);font-size:13px;font-weight:950;overflow-wrap:anywhere;word-break:break-word}
-        .tech-news-ticker{direction:ltr;unicode-bidi:isolate;border-radius:999px;background:#CCFBF1;border:1px solid rgba(15,118,110,.25);color:#0F766E;padding:6px 10px;font-size:12px;font-weight:950;flex:0 0 auto}.tech-news-translation-badge{display:inline-flex;align-items:center;max-width:100%;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:950;line-height:1.25;border:1px solid var(--tech-border);color:var(--tech-muted);background:rgba(142,166,195,.10);white-space:normal;overflow-wrap:anywhere}.tech-news-translation-badge.translated{color:#0F766E;border-color:rgba(15,118,110,.25);background:#CCFBF1}.dark .tech-news-ticker,.dark .tech-news-translation-badge.translated{color:#2FD6C0;background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.25)}.dark .tech-news-chip-row button.active{background:#2FD6C0;border-color:#2FD6C0;color:#061A2E;box-shadow:0 10px 24px rgba(47,214,192,.22)}.dark .tech-news-chip-row button.active:hover,.dark .tech-news-chip-row button.active:focus-visible{color:#061A2E}
+        .tech-news-ticker{direction:ltr;unicode-bidi:isolate;border-radius:999px;background:#CCFBF1;border:1px solid rgba(15,118,110,.25);color:#0F766E;padding:6px 10px;font-size:12px;font-weight:950;flex:0 0 auto}.tech-news-translation-badge{display:inline-flex;align-items:center;max-width:100%;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:950;line-height:1.25;border:1px solid var(--tech-border);color:var(--tech-muted);background:rgba(142,166,195,.10);white-space:normal;overflow-wrap:anywhere}.tech-news-translation-badge.translated{color:#0F766E;border-color:rgba(15,118,110,.25);background:#CCFBF1}.dark .tech-news-ticker,.dark .tech-news-translation-badge.translated{color:#2FD6C0;background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.25)}.dark .tech-news-chip-row button b{background:rgba(142,166,195,.12);color:#8EA6C3}.dark .tech-news-chip-row button.active{background:#2FD6C0;border-color:#2FD6C0;color:#061A2E;box-shadow:0 10px 24px rgba(47,214,192,.22)}.dark .tech-news-chip-row button.active b{background:rgba(6,26,46,.16);color:#061A2E}.dark .tech-news-chip-row button.active:hover,.dark .tech-news-chip-row button.active:focus-visible{color:#061A2E}
         .dark .tech-news-more-button.active{background:#2FD6C0;border-color:#2FD6C0;color:#061A2E}
         .tech-news-card-price{display:grid;justify-items:end;gap:4px;flex:0 0 auto;min-width:max-content}.tech-news-card-price strong{direction:ltr;unicode-bidi:isolate;color:var(--tech-text);font-size:15px;font-weight:950}.tech-news-card-price.unavailable strong{direction:inherit;unicode-bidi:normal;color:var(--tech-muted);font-size:12px}
         .tech-news-change{direction:ltr;unicode-bidi:isolate;display:inline-flex;align-items:center;gap:5px;border:1px solid transparent;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:950;line-height:1.2}.tech-news-change.up{color:#047857;background:#CCFBF1;border-color:rgba(15,118,110,.20)}.tech-news-change.down{color:#DC2626;background:#FEE2E2;border-color:rgba(220,38,38,.20)}.tech-news-change.neutral{color:var(--tech-muted);background:rgba(142,166,195,.10);border-color:var(--tech-border)}.dark .tech-ticker-item b.up,.dark .tech-news-change.up{color:#2FD6C0;background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.25)}.dark .tech-ticker-item b.down,.dark .tech-news-change.down{color:#FF5B6E;background:rgba(255,91,110,.12);border-color:rgba(255,91,110,.25)}
