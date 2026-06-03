@@ -92,6 +92,9 @@ const MARKET_SLOW_NOTICE_MS = 5000;
 const MARKET_TOOL_REQUEST_TIMEOUT_MS = 8000;
 const MARKET_TIMEFRAMES = ['1D', '1W', '1M', '6M', '1Y'] as const;
 type MarketTimeframe = typeof MARKET_TIMEFRAMES[number];
+const MARKET_CHART_TYPES = ['line', 'area', 'candlestick', 'ohlc'] as const;
+type MarketChartType = typeof MARKET_CHART_TYPES[number];
+const MARKET_CHART_TYPE_STORAGE_KEY = 'sfm_market_chart_type';
 type PriceHistoryPoint = {
   time: string;
   open: number | null;
@@ -641,7 +644,20 @@ function historyFromPricePoints(points: PriceHistoryPoint[]): MarketHistoryPoint
       high: point.high ?? undefined,
       low: point.low ?? undefined,
       close: point.close,
+      volume: point.volume,
     }));
+}
+
+function normalizeChartType(value: unknown): MarketChartType {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  return MARKET_CHART_TYPES.includes(normalized as MarketChartType) ? normalized as MarketChartType : 'area';
+}
+
+function hasCompleteOhlc(point: MarketHistoryPoint) {
+  return Number.isFinite(point.open)
+    && Number.isFinite(point.high)
+    && Number.isFinite(point.low)
+    && Number.isFinite(point.close);
 }
 
 function formatChartTimestamp(value: string, locale: string, timeframe: MarketTimeframe) {
@@ -857,6 +873,7 @@ export default function MarketAnalysisPage() {
   const [notice, setNotice] = useState('');
   const [serviceState, setServiceState] = useState<MarketServiceState>('checking');
   const [timeframe, setTimeframe] = useState<MarketTimeframe>('1D');
+  const [chartType, setChartType] = useState<MarketChartType>('area');
   const [chartLoading, setChartLoading] = useState(false);
   const [chartMessage, setChartMessage] = useState('');
   const [chartMeta, setChartMeta] = useState<{ interval?: string; source?: string; updatedAt?: string }>({});
@@ -1285,6 +1302,22 @@ export default function MarketAnalysisPage() {
   const historySymbol = analysis?.symbol ?? '';
   const historyProviderSymbol = analysis?.providerSymbol ?? historySymbol;
   const historyAssetType = analysis?.assetType ?? DEFAULT_MARKET_TYPE;
+
+  useEffect(() => {
+    try {
+      setChartType(normalizeChartType(window.localStorage.getItem(MARKET_CHART_TYPE_STORAGE_KEY)));
+    } catch {
+      setChartType('area');
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(MARKET_CHART_TYPE_STORAGE_KEY, chartType);
+    } catch {
+      // Ignore storage failures; the chart still works with the in-memory selection.
+    }
+  }, [chartType]);
 
   const loadHistory = useCallback((nextTimeframe: MarketTimeframe) => {
     setTimeframe(nextTimeframe);
@@ -1817,6 +1850,7 @@ export default function MarketAnalysisPage() {
   const estimatedUnits = selected?.latestPrice ? whatIfValue / selected.latestPrice : 0;
   const loadingLabel = slowLoading ? t('market_service_waking') : notice || t('market_loading_data');
   const selectedCurrency = selected?.currency ?? selected?.quote?.currency ?? 'USD';
+  const selectedHasOhlc = Boolean(selected?.history?.some(point => hasCompleteOhlc(point)));
   const scenarioCurrencyMeta = getCurrency(scenarioCurrency);
   const scenarioCurrencyOption = SCENARIO_CURRENCY_OPTIONS.find(option => option.code === scenarioCurrency) ?? SCENARIO_CURRENCY_OPTIONS[0];
   const scenarioCurrencySymbol = scenarioCurrencyOption.symbol || currencyDisplaySymbol(scenarioCurrencyMeta, lang);
@@ -2406,23 +2440,47 @@ export default function MarketAnalysisPage() {
                     <h2>{selected.symbol}</h2>
                   </div>
                 </div>
-                <div className="timeframe-row" role="group" aria-label={t('market_timeframe')}>
-                  {MARKET_TIMEFRAMES.map(item => (
-                    <button
-                      type="button"
-                      key={item}
-                      aria-pressed={timeframe === item}
-                      onClick={() => loadHistory(item)}
-                    >
-                      {item}
-                    </button>
-                  ))}
+                <div className="market-chart-controls">
+                  <div className="timeframe-row" role="group" aria-label={t('market_timeframe')}>
+                    {MARKET_TIMEFRAMES.map(item => (
+                      <button
+                        type="button"
+                        key={item}
+                        aria-pressed={timeframe === item}
+                        onClick={() => loadHistory(item)}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="chart-type-control">
+                    <span>{t('market_chart_type')}</span>
+                    <div className="chart-type-row" role="group" aria-label={t('market_chart_type')}>
+                      {MARKET_CHART_TYPES.map(item => {
+                        const requiresOhlc = item === 'candlestick' || item === 'ohlc';
+                        const disabled = requiresOhlc && !selectedHasOhlc;
+                        return (
+                          <button
+                            type="button"
+                            key={item}
+                            aria-pressed={chartType === item}
+                            disabled={disabled}
+                            title={disabled ? t('market_chart_ohlc_unavailable_short') : undefined}
+                            onClick={() => setChartType(item)}
+                          >
+                            {t(`market_chart_type_${item}`)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
                 <PriceHistoryChart
                   history={selected.history}
                   loading={chartLoading}
                   message={chartMessage}
                   timeframe={timeframe}
+                  chartType={chartType}
                   locale={lang}
                   currency={selectedCurrency}
                   t={t}
@@ -10442,6 +10500,77 @@ function MarketAsyncToolStyles() {
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, .58), 0 12px 30px rgba(3, 18, 37, .055);
       }
 
+      .market-chart-controls {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: -4px 0 12px;
+        min-width: 0;
+      }
+
+      .market-chart-controls .timeframe-row {
+        margin: 0;
+      }
+
+      .chart-type-control {
+        display: grid;
+        gap: 7px;
+        min-width: 0;
+      }
+
+      .chart-type-control > span {
+        color: var(--sfm-muted);
+        font-size: 11px;
+        font-weight: 950;
+        line-height: 1.35;
+      }
+
+      .chart-type-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .chart-type-row button {
+        flex: 0 0 auto;
+        min-height: 34px;
+        border: 1px solid rgba(29, 140, 255, .18);
+        background: var(--sfm-light-card);
+        color: var(--sfm-foreground);
+        border-radius: 999px;
+        padding: 7px 11px;
+        font: 900 12px Tajawal, Arial, sans-serif;
+        cursor: pointer;
+        transition: transform .16s ease, border-color .16s ease, background .16s ease, color .16s ease, box-shadow .16s ease, opacity .16s ease;
+        white-space: nowrap;
+      }
+
+      .chart-type-row button[aria-pressed="true"],
+      .chart-type-row button:hover,
+      .chart-type-row button:focus-visible {
+        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+        border-color: transparent;
+        color: #FFFFFF;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(24, 212, 212, .16);
+      }
+
+      .chart-type-row button:active {
+        transform: scale(.98);
+      }
+
+      .chart-type-row button:disabled {
+        cursor: not-allowed;
+        opacity: .62;
+        background: rgba(226, 232, 240, .72);
+        color: #64748B;
+        border-color: rgba(148, 163, 184, .22);
+        box-shadow: none;
+      }
+
       .price-history-chart svg {
         height: clamp(250px, 30vw, 340px);
         overflow: hidden;
@@ -10496,12 +10625,79 @@ function MarketAsyncToolStyles() {
         pointer-events: none;
       }
 
+      .price-candle-wick,
+      .price-ohlc-line,
+      .price-ohlc-tick {
+        stroke-width: 2;
+        vector-effect: non-scaling-stroke;
+        stroke-linecap: round;
+        pointer-events: all;
+      }
+
+      .price-candle-body {
+        stroke-width: 1.2;
+        vector-effect: non-scaling-stroke;
+        pointer-events: all;
+      }
+
+      .price-candle.up .price-candle-wick,
+      .price-candle.up .price-candle-body,
+      .price-ohlc.up .price-ohlc-line,
+      .price-ohlc.up .price-ohlc-tick {
+        stroke: #0F766E;
+      }
+
+      .price-candle.up .price-candle-body {
+        fill: rgba(20, 184, 166, .72);
+      }
+
+      .price-candle.down .price-candle-wick,
+      .price-candle.down .price-candle-body,
+      .price-ohlc.down .price-ohlc-line,
+      .price-ohlc.down .price-ohlc-tick {
+        stroke: #DC2626;
+      }
+
+      .price-candle.down .price-candle-body {
+        fill: rgba(239, 68, 68, .70);
+      }
+
+      .price-chart-state span {
+        display: block;
+        max-width: 520px;
+        color: var(--sfm-muted);
+        font-size: 13px;
+        font-weight: 850;
+        line-height: 1.8;
+      }
+
       .dark .price-history-chart {
         border-color: #1D3050;
         background:
           radial-gradient(circle at 12% 0%, rgba(47, 214, 192, .13), transparent 36%),
           linear-gradient(180deg, rgba(15, 29, 49, .94), rgba(10, 20, 34, .82));
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 16px 34px rgba(0, 0, 0, .25);
+      }
+
+      .dark .chart-type-row button {
+        background: #13243A;
+        border-color: #1D3050;
+        color: #B8C7D9;
+      }
+
+      .dark .chart-type-row button[aria-pressed="true"],
+      .dark .chart-type-row button:hover,
+      .dark .chart-type-row button:focus-visible {
+        background: linear-gradient(135deg, #1D8CFF, #2FD6C0);
+        border-color: transparent;
+        color: #FFFFFF;
+      }
+
+      .dark .chart-type-row button:disabled {
+        background: rgba(15, 29, 49, .74);
+        border-color: #1D3050;
+        color: #8EA6C3;
+        opacity: .66;
       }
 
       .dark .price-chart-grid-line {
@@ -10515,6 +10711,50 @@ function MarketAsyncToolStyles() {
       .dark .price-chart-y-label {
         fill: #8EA6C3;
         opacity: .88;
+      }
+
+      .dark .price-candle.up .price-candle-wick,
+      .dark .price-candle.up .price-candle-body,
+      .dark .price-ohlc.up .price-ohlc-line,
+      .dark .price-ohlc.up .price-ohlc-tick {
+        stroke: #2FD6C0;
+      }
+
+      .dark .price-candle.up .price-candle-body {
+        fill: rgba(47, 214, 192, .58);
+      }
+
+      .dark .price-candle.down .price-candle-wick,
+      .dark .price-candle.down .price-candle-body,
+      .dark .price-ohlc.down .price-ohlc-line,
+      .dark .price-ohlc.down .price-ohlc-tick {
+        stroke: #FF5B6E;
+      }
+
+      .dark .price-candle.down .price-candle-body {
+        fill: rgba(255, 91, 110, .56);
+      }
+
+      @media (max-width: 720px) {
+        .market-chart-controls {
+          display: grid;
+          gap: 12px;
+        }
+
+        .market-chart-controls .timeframe-row,
+        .chart-type-row {
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          overflow-y: hidden;
+          padding-bottom: 6px;
+          scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .market-chart-controls .timeframe-row::-webkit-scrollbar,
+        .chart-type-row::-webkit-scrollbar {
+          display: none;
+        }
       }
 
       @keyframes marketSpin {
@@ -10542,6 +10782,7 @@ function PriceHistoryChart({
   loading,
   message,
   timeframe,
+  chartType,
   locale,
   currency,
   t,
@@ -10550,6 +10791,7 @@ function PriceHistoryChart({
   loading: boolean;
   message: string;
   timeframe: MarketTimeframe;
+  chartType: MarketChartType;
   locale: string;
   currency: string;
   t: (key: string) => string;
@@ -10561,16 +10803,26 @@ function PriceHistoryChart({
   const points = history
     .map(point => ({
       date: point.date,
+      open: Number(point.open),
+      high: Number(point.high),
+      low: Number(point.low),
       close: Number(point.close),
+      volume: point.volume ?? null,
     }))
     .filter(point => point.date && Number.isFinite(point.close) && point.close > 0);
+  const ohlcPoints = points.filter(point => Number.isFinite(point.open) && Number.isFinite(point.high) && Number.isFinite(point.low));
+  const requiresOhlc = chartType === 'candlestick' || chartType === 'ohlc';
+  const activeOhlcPoints = requiresOhlc ? ohlcPoints : [];
+  const hasOhlcForChart = activeOhlcPoints.length > 0;
   const width = 640;
   const height = 260;
   const padX = 34;
   const padY = 28;
-  const closes = points.map(point => point.close);
-  const min = closes.length > 0 ? Math.min(...closes) : 0;
-  const max = closes.length > 0 ? Math.max(...closes) : 0;
+  const domainValues = requiresOhlc && hasOhlcForChart
+    ? activeOhlcPoints.flatMap(point => [point.high, point.low, point.open, point.close])
+    : points.map(point => point.close);
+  const min = domainValues.length > 0 ? Math.min(...domainValues) : 0;
+  const max = domainValues.length > 0 ? Math.max(...domainValues) : 0;
   const rawSpread = max - min;
   const domainPadding = Math.max(rawSpread * 0.08, Math.max(max, 1) * 0.004);
   const domainMin = Math.max(0, min - domainPadding);
@@ -10583,7 +10835,10 @@ function PriceHistoryChart({
   const xFor = (index: number) => points.length <= 1
     ? width / 2
     : chartLeft + (index / (points.length - 1)) * (chartRight - chartLeft);
-  const yFor = (close: number) => chartTop + ((domainMax - close) / spread) * (chartBottom - chartTop);
+  const xForOhlc = (index: number) => activeOhlcPoints.length <= 1
+    ? width / 2
+    : chartLeft + (index / (activeOhlcPoints.length - 1)) * (chartRight - chartLeft);
+  const yFor = (value: number) => chartTop + ((domainMax - value) / spread) * (chartBottom - chartTop);
   const path = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${xFor(index).toFixed(2)} ${yFor(point.close).toFixed(2)}`).join(' ');
   const areaPath = points.length > 1
     ? `${path} L ${xFor(points.length - 1).toFixed(2)} ${chartBottom.toFixed(2)} L ${xFor(0).toFixed(2)} ${chartBottom.toFixed(2)} Z`
@@ -10591,11 +10846,17 @@ function PriceHistoryChart({
   const first = points[0];
   const last = points.at(-1);
   const isPositive = first && last ? last.close >= first.close : true;
-  const chartMessage = message || (!loading && points.length === 0 ? t('market_chart_empty_range') : '');
+  const ohlcUnavailable = !loading && requiresOhlc && points.length > 0 && !hasOhlcForChart;
+  const chartMessage = message
+    || (!loading && points.length === 0 ? t('market_chart_empty_range') : '')
+    || (ohlcUnavailable ? t('market_chart_ohlc_unavailable_short') : '');
+  const chartStateDescription = ohlcUnavailable ? t('market_chart_ohlc_use_line_or_area') : '';
   const lineStartColor = isPositive ? '#1D8CFF' : '#EF4444';
   const lineEndColor = isPositive ? '#2FD6C0' : '#F59E0B';
   const areaColor = isPositive ? '#22D3EE' : '#EF4444';
   const axisValues = [domainMax, domainMin + spread / 2, domainMin];
+  const candleWidth = Math.max(3, Math.min(13, (chartRight - chartLeft) / Math.max(activeOhlcPoints.length, 1) * 0.48));
+  const tickWidth = Math.max(5, Math.min(11, candleWidth * 0.82));
 
   return (
     <div className="price-history-chart" aria-busy={loading}>
@@ -10637,14 +10898,59 @@ function PriceHistoryChart({
               );
             })}
             <g clipPath={`url(#${clipPathId})`}>
-              {areaPath ? <path d={areaPath} className="price-chart-area-path" fill={`url(#${areaGradientId})`} /> : null}
-              <path d={path} className="price-chart-line-path" stroke={`url(#${lineGradientId})`} />
-              {points.map((point, index) => (
-                <circle key={`${point.date}-${index}`} cx={xFor(index)} cy={yFor(point.close)} r="9" className="price-chart-hit-point">
-                  <title>{`${formatChartTimestamp(point.date, locale, timeframe)} - ${money(point.close, currency)}`}</title>
-                </circle>
-              ))}
-              {last ? <circle cx={xFor(points.length - 1)} cy={yFor(last.close)} r="4.5" className="price-chart-last-dot" /> : null}
+              {chartType === 'area' && areaPath ? <path d={areaPath} className="price-chart-area-path" fill={`url(#${areaGradientId})`} /> : null}
+              {(chartType === 'line' || chartType === 'area') ? (
+                <>
+                  <path d={path} className="price-chart-line-path" stroke={`url(#${lineGradientId})`} />
+                  {points.map((point, index) => (
+                    <circle key={`${point.date}-${index}`} cx={xFor(index)} cy={yFor(point.close)} r="9" className="price-chart-hit-point">
+                      <title>{`${formatChartTimestamp(point.date, locale, timeframe)} - ${money(point.close, currency)}`}</title>
+                    </circle>
+                  ))}
+                  {last ? <circle cx={xFor(points.length - 1)} cy={yFor(last.close)} r="4.5" className="price-chart-last-dot" /> : null}
+                </>
+              ) : null}
+              {chartType === 'candlestick' ? activeOhlcPoints.map((point, index) => {
+                const x = xForOhlc(index);
+                const bullish = point.close >= point.open;
+                const openY = yFor(point.open);
+                const closeY = yFor(point.close);
+                const bodyTop = Math.min(openY, closeY);
+                const bodyHeight = Math.max(2, Math.abs(closeY - openY));
+                return (
+                  <g key={`${point.date}-candle-${index}`} className={bullish ? 'price-candle up' : 'price-candle down'}>
+                    <line x1={x} x2={x} y1={yFor(point.high)} y2={yFor(point.low)} className="price-candle-wick" />
+                    <rect x={x - candleWidth / 2} y={bodyTop} width={candleWidth} height={bodyHeight} rx="2" className="price-candle-body" />
+                    <title>{[
+                      `${t('market_time')}: ${formatChartTimestamp(point.date, locale, timeframe)}`,
+                      `${t('market_open')}: ${money(point.open, currency)}`,
+                      `${t('market_high')}: ${money(point.high, currency)}`,
+                      `${t('market_low')}: ${money(point.low, currency)}`,
+                      `${t('market_close')}: ${money(point.close, currency)}`,
+                      point.volume !== null ? `${t('market_volume')}: ${Number(point.volume).toLocaleString('en-US')}` : '',
+                    ].filter(Boolean).join('\n')}</title>
+                  </g>
+                );
+              }) : null}
+              {chartType === 'ohlc' ? activeOhlcPoints.map((point, index) => {
+                const x = xForOhlc(index);
+                const bullish = point.close >= point.open;
+                return (
+                  <g key={`${point.date}-ohlc-${index}`} className={bullish ? 'price-ohlc up' : 'price-ohlc down'}>
+                    <line x1={x} x2={x} y1={yFor(point.high)} y2={yFor(point.low)} className="price-ohlc-line" />
+                    <line x1={x - tickWidth} x2={x} y1={yFor(point.open)} y2={yFor(point.open)} className="price-ohlc-tick" />
+                    <line x1={x} x2={x + tickWidth} y1={yFor(point.close)} y2={yFor(point.close)} className="price-ohlc-tick" />
+                    <title>{[
+                      `${t('market_time')}: ${formatChartTimestamp(point.date, locale, timeframe)}`,
+                      `${t('market_open')}: ${money(point.open, currency)}`,
+                      `${t('market_high')}: ${money(point.high, currency)}`,
+                      `${t('market_low')}: ${money(point.low, currency)}`,
+                      `${t('market_close')}: ${money(point.close, currency)}`,
+                      point.volume !== null ? `${t('market_volume')}: ${Number(point.volume).toLocaleString('en-US')}` : '',
+                    ].filter(Boolean).join('\n')}</title>
+                  </g>
+                );
+              }) : null}
             </g>
           </svg>
           <div className="price-chart-axis">
@@ -10658,6 +10964,7 @@ function PriceHistoryChart({
         <div className="price-chart-state">
           <AlertTriangle size={18} aria-hidden="true" />
           <strong>{chartMessage}</strong>
+          {chartStateDescription ? <span>{chartStateDescription}</span> : null}
         </div>
       ) : null}
       {loading ? (

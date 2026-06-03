@@ -19,6 +19,7 @@ export type MarketHistoryPoint = {
   high?: number;
   low?: number;
   close: number;
+  volume?: number | null;
 };
 
 export type MarketAnalysis = {
