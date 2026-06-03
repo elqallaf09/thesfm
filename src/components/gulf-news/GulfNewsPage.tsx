@@ -228,34 +228,6 @@ export function GulfNewsPage() {
           formatPercent={formatPercent}
         />
 
-        <MarketMoversCard
-          market={selectedMarket}
-          marketLabel={marketLabels[selectedMarket]}
-          locale={locale}
-          labels={{
-            title: t('market_movers_title'),
-            subtitle: t('market_movers_subtitle'),
-            topGainers: t('market_movers_top_gainers'),
-            topLosers: t('market_movers_top_losers'),
-            highestPrice: t('market_movers_highest_price'),
-            lowestPrice: t('market_movers_lowest_price'),
-            highestVolume: t('market_movers_highest_volume'),
-            lowestVolume: t('market_movers_lowest_volume'),
-            price: t('market_movers_price'),
-            change: t('market_movers_change'),
-            volume: t('market_movers_volume'),
-            source: t('market_movers_source'),
-            lastUpdated: t('market_movers_last_updated'),
-            refresh: t('market_movers_refresh'),
-            loading: t('market_movers_loading'),
-            unavailableTitle: t('market_movers_unavailable_title'),
-            unavailableBody: t('market_movers_unavailable_body'),
-            emptyTitle: t('market_movers_empty_title'),
-            emptyBody: t('market_movers_empty_body'),
-            limitedData: t('market_movers_limited_data'),
-          }}
-        />
-
         <PortfolioComparisonCard
           market={selectedMarket}
           marketLabel={marketLabels[selectedMarket]}
@@ -263,60 +235,104 @@ export function GulfNewsPage() {
           t={t}
         />
 
-        <section className="gulf-news-controls">
-          <label className="gulf-news-search">
-            <Search size={17} />
-            <input
-              value={query}
-              onChange={event => setQuery(event.target.value)}
-              placeholder={searchPlaceholder}
-              aria-label={searchPlaceholder}
-            />
-          </label>
-        </section>
-
-        {loading ? (
-          <GulfNewsSkeleton />
-        ) : error ? (
-          <section className="gulf-news-state error" role="alert">
-            <AlertTriangle size={24} />
-            <strong>{t('gulf_news_error')}</strong>
-            <p>{error}</p>
-            <button type="button" onClick={() => void load()}>
-              <RefreshCcw size={16} />
-              {t('market_retry')}
-            </button>
-          </section>
-        ) : visibleItems.length === 0 ? (
-          <section className="gulf-news-state">
-            <Newspaper size={24} />
-            <strong>{t('gulf_news_empty')}</strong>
-            <p>{t('gulf_news_empty_hint')}</p>
-          </section>
-        ) : (
-          <section className="gulf-news-grid" aria-label={t('gulf_news_title')}>
-            {visibleItems.map(item => {
-              const market = getGulfMarket(item.market);
-              return (
-                <GulfNewsCard
-                  key={item.id}
-                  item={item}
-                  marketBadge={`${market.code} ${marketLabels[item.market]}`}
-                  labels={{
-                    source: t('gulf_news_source'),
-                    published: t('gulf_news_published'),
-                    openArticle: t('gulf_news_open_article'),
-                    translated: t('news_translated_badge'),
-                    originalLanguage: t('news_original_language_badge'),
-                  }}
-                  formatDateTime={formatDateTime}
+        <section className="gulf-news-content-layout">
+          <div className="gulf-news-news-column">
+            <section className="gulf-news-controls">
+              <label className="gulf-news-search">
+                <Search size={17} />
+                <input
+                  value={query}
+                  onChange={event => setQuery(event.target.value)}
+                  placeholder={searchPlaceholder}
+                  aria-label={searchPlaceholder}
                 />
-              );
-            })}
-          </section>
-        )}
+              </label>
+            </section>
 
-        <p className="gulf-news-disclaimer">{t('gulf_news_disclaimer')}</p>
+            {loading ? (
+              <GulfNewsSkeleton />
+            ) : error ? (
+              <section className="gulf-news-state error" role="alert">
+                <AlertTriangle size={24} />
+                <strong>{t('gulf_news_error')}</strong>
+                <p>{error}</p>
+                <button type="button" onClick={() => void load()}>
+                  <RefreshCcw size={16} />
+                  {t('market_retry')}
+                </button>
+              </section>
+            ) : visibleItems.length === 0 ? (
+              <section className="gulf-news-state">
+                <Newspaper size={24} />
+                <strong>{t('gulf_news_empty')}</strong>
+                <p>{t('gulf_news_empty_hint')}</p>
+              </section>
+            ) : (
+              <section className="gulf-news-grid" aria-label={t('gulf_news_title')}>
+                {visibleItems.map(item => {
+                  const market = getGulfMarket(item.market);
+                  return (
+                    <GulfNewsCard
+                      key={item.id}
+                      item={item}
+                      marketBadge={`${market.code} ${marketLabels[item.market]}`}
+                      labels={{
+                        source: t('gulf_news_source'),
+                        published: t('gulf_news_published'),
+                        openArticle: t('gulf_news_open_article'),
+                        translated: t('news_translated_badge'),
+                        originalLanguage: t('news_original_language_badge'),
+                      }}
+                      formatDateTime={formatDateTime}
+                    />
+                  );
+                })}
+              </section>
+            )}
+
+            <p className="gulf-news-disclaimer">{t('gulf_news_disclaimer')}</p>
+          </div>
+
+          <aside className="gulf-news-side-panel" aria-label={t('market_movers_title')}>
+            <MarketMoversCard
+              market={selectedMarket}
+              marketLabel={marketLabels[selectedMarket]}
+              locale={locale}
+              labels={{
+                title: t('market_movers_title'),
+                subtitle: t('market_movers_subtitle'),
+                compactTitle: t('market_movers_compact_title'),
+                compactSubtitle: t('market_movers_compact_subtitle'),
+                fullDetails: t('market_movers_full_details'),
+                fullTitle: t('market_movers_full_title'),
+                fullSubtitle: t('market_movers_full_subtitle'),
+                close: t('market_movers_close'),
+                topGainers: t('market_movers_top_gainers'),
+                topLosers: t('market_movers_top_losers'),
+                highestPrice: t('market_movers_highest_price'),
+                lowestPrice: t('market_movers_lowest_price'),
+                highestVolume: t('market_movers_highest_volume'),
+                lowestVolume: t('market_movers_lowest_volume'),
+                topGainersShort: t('market_movers_top_gainers_short'),
+                topLosersShort: t('market_movers_top_losers_short'),
+                highestVolumeShort: t('market_movers_highest_volume_short'),
+                stocksCount: t('market_movers_stocks_count'),
+                price: t('market_movers_price'),
+                change: t('market_movers_change'),
+                volume: t('market_movers_volume'),
+                source: t('market_movers_source'),
+                lastUpdated: t('market_movers_last_updated'),
+                refresh: t('market_movers_refresh'),
+                loading: t('market_movers_loading'),
+                unavailableTitle: t('market_movers_unavailable_title'),
+                unavailableBody: t('market_movers_unavailable_body'),
+                emptyTitle: t('market_movers_empty_title'),
+                emptyBody: t('market_movers_empty_body'),
+                limitedData: t('market_movers_limited_data'),
+              }}
+            />
+          </aside>
+        </section>
       </main>
 
       <style jsx global>{`
@@ -352,11 +368,13 @@ export function GulfNewsPage() {
         .gulf-news-status-bar{background:linear-gradient(180deg,var(--gulf-panel),var(--gulf-panel-soft));border:1px solid var(--gulf-border);border-radius:18px;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:var(--gulf-muted);box-shadow:0 12px 30px rgba(3,18,37,.05);font-size:12px;font-weight:900}.gulf-news-status-bar strong{border-radius:999px;padding:5px 10px;background:rgba(245,185,66,.12);color:var(--gulf-amber);border:1px solid rgba(245,185,66,.24)}
         .gulf-news-exchange-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.gulf-news-exchange-grid button{min-width:0;min-height:118px;border:1px solid var(--gulf-border);border-radius:20px;background:linear-gradient(180deg,var(--gulf-panel),var(--gulf-panel-soft));color:var(--gulf-text);box-shadow:0 16px 44px rgba(3,18,37,.10);font-family:Tajawal,Arial,sans-serif;display:grid;grid-template-columns:auto 1fr;grid-template-areas:"code name" "code value" "code change";gap:6px 12px;align-items:center;text-align:start;padding:16px;cursor:pointer;transition:transform .18s ease,border-color .18s ease,background .18s ease,box-shadow .18s ease}.gulf-news-exchange-grid button:hover,.gulf-news-exchange-grid button:focus-visible{outline:none;transform:translateY(-2px);border-color:rgba(47,214,192,.46);box-shadow:0 0 0 4px rgba(47,214,192,.08),0 18px 48px rgba(3,18,37,.14)}.gulf-news-exchange-grid button.active{background:linear-gradient(135deg,var(--gulf-accent),#1AAE9D);border-color:rgba(47,214,192,.7);color:#061A2E;box-shadow:0 18px 48px rgba(47,214,192,.20)}.gulf-news-exchange-code{grid-area:code;direction:ltr;unicode-bidi:isolate;width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:rgba(47,214,192,.10);border:1px solid rgba(47,214,192,.18);color:var(--gulf-accent);font-size:20px;font-weight:950}.active .gulf-news-exchange-code{background:rgba(6,26,46,.18);border-color:rgba(6,26,46,.20);color:#061A2E}.gulf-news-exchange-name{grid-area:name;font-size:15px;font-weight:950}.gulf-news-exchange-value{grid-area:value;direction:ltr;unicode-bidi:isolate;color:var(--gulf-text);font-size:16px;font-weight:950;line-height:1.2}.active .gulf-news-exchange-value{color:#061A2E}.gulf-news-exchange-change{grid-area:change;display:inline-flex;align-items:center;gap:5px;width:max-content;border:1px solid transparent;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:950;line-height:1.2}.gulf-news-exchange-change.up{color:#047857;background:#CCFBF1;border-color:rgba(15,118,110,.20)}.gulf-news-exchange-change.down{color:#DC2626;background:#FEE2E2;border-color:rgba(220,38,38,.20)}.gulf-news-exchange-change.neutral{color:var(--gulf-muted);background:rgba(142,166,195,.10);border-color:var(--gulf-border)}.active .gulf-news-exchange-change{background:rgba(6,26,46,.16);color:#061A2E}
         .gulf-news-summary{background:linear-gradient(180deg,var(--gulf-panel),var(--gulf-panel-soft));border:1px solid var(--gulf-border);border-radius:22px;padding:20px;box-shadow:0 18px 48px rgba(3,18,37,.12);display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center}.gulf-news-summary-identity{display:flex;align-items:center;gap:13px;min-width:0}.gulf-news-summary-code{direction:ltr;unicode-bidi:isolate;width:64px;height:64px;border-radius:20px;display:grid;place-items:center;background:rgba(47,214,192,.10);border:1px solid rgba(47,214,192,.24);color:var(--gulf-accent);font-size:22px;font-weight:950}.gulf-news-summary-identity span:not(.gulf-news-summary-code){display:block;color:var(--gulf-muted);font-size:12px;font-weight:950}.gulf-news-summary-identity h2{margin:4px 0;color:var(--gulf-text);font-size:24px;font-weight:950;line-height:1.2}.gulf-news-summary-identity p{margin:0;color:var(--gulf-muted);font-size:13px;font-weight:850}.gulf-news-summary-identity>strong{align-self:flex-start;border-radius:999px;padding:6px 10px;background:rgba(245,185,66,.12);color:var(--gulf-amber);border:1px solid rgba(245,185,66,.24);font-size:11px;font-weight:950;white-space:nowrap}.gulf-news-summary-market{display:grid;justify-items:end;gap:5px;min-width:210px}.gulf-news-summary-market span{color:var(--gulf-muted);font-size:12px;font-weight:950}.gulf-news-summary-market strong{direction:ltr;unicode-bidi:isolate;color:var(--gulf-text);font-size:30px;font-weight:950;line-height:1.15}.gulf-news-summary-market p{margin:0;max-width:320px;text-align:end;color:var(--gulf-muted);font-size:12px;font-weight:820;line-height:1.6}.gulf-news-summary-market small{color:var(--gulf-muted);font-size:11px;font-weight:820}.gulf-news-change{direction:ltr;unicode-bidi:isolate;display:inline-flex!important;align-items:center;gap:5px;width:max-content;border:1px solid transparent;border-radius:999px;padding:6px 10px;font-style:normal;font-size:13px;font-weight:950;line-height:1.2}.gulf-news-change.up{color:#047857;background:#CCFBF1;border-color:rgba(15,118,110,.20)}.gulf-news-change.down{color:#DC2626;background:#FEE2E2;border-color:rgba(220,38,38,.20)}.gulf-news-change.neutral{color:var(--gulf-muted);background:rgba(142,166,195,.10);border-color:var(--gulf-border)}.dark .gulf-ticker-item em.up,.dark .gulf-news-exchange-change.up,.dark .gulf-news-change.up{color:#2FD6C0;background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.25)}.dark .gulf-ticker-item em.down,.dark .gulf-news-exchange-change.down,.dark .gulf-news-change.down{color:#FF5B6E;background:rgba(255,91,110,.12);border-color:rgba(255,91,110,.25)}.gulf-news-exchange-grid button.active .gulf-news-exchange-change{background:rgba(6,26,46,.16);border-color:rgba(6,26,46,.20);color:#061A2E}
+        .gulf-news-content-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,360px);gap:18px;align-items:start;min-width:0}.gulf-news-shell[dir="rtl"] .gulf-news-content-layout{grid-template-columns:minmax(300px,360px) minmax(0,1fr)}.gulf-news-shell[dir="rtl"] .gulf-news-news-column{grid-column:2}.gulf-news-shell[dir="rtl"] .gulf-news-side-panel{grid-column:1}.gulf-news-news-column{display:grid;gap:16px;min-width:0}.gulf-news-side-panel{min-width:0;position:sticky;top:24px}
         .gulf-news-controls{background:transparent;border:0;padding:0;display:grid;grid-template-columns:1fr;gap:12px;min-width:0}.gulf-news-search{display:flex;align-items:center;gap:10px;border:1px solid var(--gulf-border);background:var(--gulf-panel);border-radius:18px;padding:0 16px;min-height:58px;color:var(--gulf-accent);min-width:0;box-shadow:0 16px 44px rgba(3,18,37,.08);transition:border-color .18s ease,box-shadow .18s ease}.gulf-news-search:focus-within{border-color:rgba(47,214,192,.62);box-shadow:0 0 0 4px rgba(47,214,192,.10),0 16px 44px rgba(3,18,37,.12)}.gulf-news-search input{width:100%;min-width:0;border:0;background:transparent;outline:0;color:var(--gulf-text);font:900 14px Tajawal,Arial,sans-serif;text-align:start}.gulf-news-search input::placeholder{color:var(--gulf-muted);opacity:1}
         .gulf-news-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;min-width:0}.gulf-news-card{background:linear-gradient(180deg,var(--gulf-panel),var(--gulf-panel-soft));border:1px solid var(--gulf-border);border-radius:20px;padding:18px;display:grid;gap:14px;box-shadow:0 18px 48px rgba(3,18,37,.13);min-width:0;overflow:hidden;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}.gulf-news-card:hover{transform:translateY(-2px);border-color:rgba(47,214,192,.46);box-shadow:0 24px 60px rgba(3,18,37,.18)}.gulf-news-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;color:var(--gulf-muted);font-size:11px;font-weight:900;line-height:1.55;flex-wrap:wrap}.gulf-news-market-tag{border-radius:999px;background:#CCFBF1;border:1px solid rgba(15,118,110,.25);color:#0F766E;padding:6px 10px;font-size:12px;font-weight:950}.gulf-news-translation-badge{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:950;border:1px solid var(--gulf-border);color:var(--gulf-muted);background:rgba(142,166,195,.10)}.gulf-news-translation-badge.translated{color:#0F766E;border-color:rgba(15,118,110,.25);background:#CCFBF1}.gulf-news-card h2{margin:0;color:var(--gulf-text);font-size:18px;font-weight:950;line-height:1.45;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.gulf-news-card p{margin:0;color:var(--gulf-muted);font-size:13.5px;font-weight:760;line-height:1.75;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.gulf-news-meta{border-top:1px solid var(--gulf-border);padding-top:13px;display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;color:var(--gulf-muted);font-size:12px;font-weight:900;line-height:1.55}.gulf-news-meta a,.gulf-news-meta span{display:inline-flex;align-items:center;gap:6px;min-width:0;color:var(--gulf-muted);text-decoration:none}.gulf-news-meta a:hover,.gulf-news-meta a:focus-visible{outline:none;color:var(--gulf-accent)}
         .dark .gulf-news-market-tag,.dark .gulf-news-translation-badge.translated{color:#2FD6C0;background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.25)}.gulf-news-summary-code,.gulf-news-exchange-code{background:#CCFBF1!important;border-color:rgba(15,118,110,.25)!important;color:#0F766E!important}.dark .gulf-news-summary-code,.dark .gulf-news-exchange-code{background:rgba(47,214,192,.12)!important;border-color:rgba(47,214,192,.25)!important;color:#2FD6C0!important}.gulf-news-exchange-grid button.active .gulf-news-exchange-code{background:rgba(6,26,46,.18)!important;border-color:rgba(6,26,46,.20)!important;color:#061A2E!important}
         .gulf-news-state{display:grid;place-items:center;gap:10px;text-align:center;padding:58px 20px;color:var(--gulf-muted);background:linear-gradient(180deg,var(--gulf-panel),var(--gulf-panel-soft));border:1px dashed var(--gulf-border-strong);border-radius:22px}.gulf-news-state svg{color:var(--gulf-accent)}.gulf-news-state strong{display:block;color:var(--gulf-text);font-size:19px;font-weight:950}.gulf-news-state p{margin:0;max-width:620px;color:var(--gulf-muted);font-weight:850;line-height:1.75}.gulf-news-state button{border:0;border-radius:14px;background:var(--gulf-accent);color:#061A2E;display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 13px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}.gulf-news-disclaimer{margin:2px auto 0;text-align:center;color:var(--gulf-muted);font-size:12px;font-weight:820;line-height:1.7}
         .gulf-news-skeleton span,.gulf-news-skeleton i,.gulf-news-skeleton b,.gulf-news-skeleton small{display:block;border-radius:999px;background:linear-gradient(90deg,rgba(142,166,195,.10),rgba(47,214,192,.20),rgba(142,166,195,.10));background-size:220% 100%;animation:gulfNewsShimmer 1.2s linear infinite}.gulf-news-skeleton span{width:42%;height:18px}.gulf-news-skeleton i{width:100%;height:15px}.gulf-news-skeleton i:nth-child(3){width:76%}.gulf-news-skeleton b{width:58%;height:38px;border-radius:14px}.gulf-news-skeleton small{width:35%;height:14px}@keyframes gulfNewsShimmer{to{background-position:-220% 0}}
+        @media(max-width:1180px){.gulf-news-content-layout,.gulf-news-shell[dir="rtl"] .gulf-news-content-layout{grid-template-columns:1fr}.gulf-news-shell[dir="rtl"] .gulf-news-news-column,.gulf-news-shell[dir="rtl"] .gulf-news-side-panel{grid-column:auto}.gulf-news-side-panel{position:relative;top:auto;order:-1}}
         @media(max-width:1024px){.gulf-news-main{margin-inline-start:0;padding-top:92px}.gulf-news-header{align-items:flex-start}.gulf-news-grid{grid-template-columns:1fr}}
         @media(max-width:720px){.gulf-news-main{padding-inline:14px}.gulf-news-header{display:grid}.gulf-news-header-actions{justify-content:flex-start}.gulf-news-title-icon{width:50px;height:50px}.gulf-news-header h1{font-size:29px}.gulf-news-exchange-grid,.gulf-news-summary{grid-template-columns:1fr}.gulf-news-summary-market{justify-items:start;min-width:0}.gulf-news-summary-market p{text-align:start}.gulf-news-card,.gulf-news-search{border-radius:18px}.gulf-news-meta{display:grid;gap:8px}.gulf-ticker-strip{margin-inline:-2px}.gulf-ticker-viewport{overflow-x:auto;scrollbar-width:thin;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}.gulf-ticker-item span{max-width:210px}}
         @media(prefers-reduced-motion:reduce){.gulf-ticker-viewport{overflow-x:auto;scrollbar-width:thin}.gulf-ticker-track{animation:none}.gulf-ticker-set[aria-hidden="true"]{display:none}}
