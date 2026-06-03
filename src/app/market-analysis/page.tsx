@@ -805,16 +805,46 @@ export default function MarketAnalysisPage() {
     void fetchMarketToolState<Record<string, any>>('/api/market/economic-calendar', 'economic-calendar').then(setEconomicCalendar);
   }, []);
 
-  const selectedSentimentSymbol = useMemo(() => (
-    selectedAsset?.providerSymbol
-    ?? selectedAsset?.symbol
-    ?? ''
-  ).trim().toUpperCase(), [selectedAsset]);
+  const selectedSentimentSymbol = useMemo(() => (selectedAsset?.symbol ?? '').trim(), [selectedAsset]);
+  const selectedSentimentProviderSymbol = useMemo(() => (selectedAsset?.providerSymbol ?? '').trim(), [selectedAsset]);
+  const selectedSentimentAssetType = selectedAsset?.assetType;
+  const selectedSentimentRequestKey = useMemo(() => {
+    if (!selectedSentimentSymbol || !selectedSentimentAssetType) return '';
+    return [
+      selectedSentimentSymbol,
+      selectedSentimentProviderSymbol,
+      selectedSentimentAssetType,
+    ].join('|').toUpperCase();
+  }, [selectedSentimentAssetType, selectedSentimentProviderSymbol, selectedSentimentSymbol]);
+  const selectedSentimentAsset = useMemo<SelectedMarketAsset | null>(() => {
+    if (!selectedSentimentSymbol || !selectedSentimentAssetType) return null;
+    return {
+      symbol: selectedSentimentSymbol,
+      providerSymbol: selectedSentimentProviderSymbol || undefined,
+      assetType: selectedSentimentAssetType,
+      name: selectedAsset?.name,
+      exchange: selectedAsset?.exchange,
+    };
+  }, [selectedAsset?.exchange, selectedAsset?.name, selectedSentimentAssetType, selectedSentimentProviderSymbol, selectedSentimentSymbol]);
 
   const loadNewsSentiment = useCallback((targets: Array<'news' | 'sentiment'> = ['news', 'sentiment'], options: { force?: boolean } = {}) => {
-    const uniqueTargets = [...new Set(targets)].filter(target => {
-      if (options.force) return true;
-      if (target === 'sentiment' && selectedSentimentSymbol !== newsSentimentSymbolRef.current) {
+    const requestedTargets = [...new Set(targets)];
+
+    if (requestedTargets.includes('sentiment') && !selectedSentimentRequestKey) {
+      newsSentimentLoadingRef.current.sentiment = false;
+      newsSentimentSymbolRef.current = '';
+      setMarketSentiment({
+        loading: false,
+        items: [],
+        message: t('market_sentiment_symbol_required_body'),
+        code: 'NO_SELECTED_ASSET',
+      });
+    }
+
+    const uniqueTargets = requestedTargets.filter(target => {
+      if (target === 'sentiment' && !selectedSentimentRequestKey) return false;
+      if (options.force) return !newsSentimentLoadingRef.current[target];
+      if (target === 'sentiment' && selectedSentimentRequestKey !== newsSentimentSymbolRef.current) {
         return !newsSentimentLoadingRef.current[target];
       }
       return !newsSentimentLoadedRef.current[target] && !newsSentimentLoadingRef.current[target];
@@ -838,9 +868,13 @@ export default function MarketAnalysisPage() {
       const newsUrl = refreshKey
         ? `/api/market/central-bank-news?refresh=${refreshKey}`
         : '/api/market/central-bank-news';
-      const sentimentUrl = refreshKey
-        ? `/api/market/sentiment?refresh=${refreshKey}${selectedSentimentSymbol ? `&symbol=${encodeURIComponent(selectedSentimentSymbol)}` : ''}`
-        : `/api/market/sentiment${selectedSentimentSymbol ? `?symbol=${encodeURIComponent(selectedSentimentSymbol)}` : ''}`;
+      const sentimentParams = new URLSearchParams();
+      if (refreshKey) sentimentParams.set('refresh', String(refreshKey));
+      if (selectedSentimentSymbol) sentimentParams.set('symbol', selectedSentimentSymbol);
+      if (selectedSentimentProviderSymbol) sentimentParams.set('providerSymbol', selectedSentimentProviderSymbol);
+      if (selectedSentimentAssetType) sentimentParams.set('assetType', selectedSentimentAssetType);
+      const sentimentQuery = sentimentParams.toString();
+      const sentimentUrl = `/api/market/sentiment${sentimentQuery ? `?${sentimentQuery}` : ''}`;
       return {
         target,
         request: target === 'news'
@@ -858,7 +892,7 @@ export default function MarketAnalysisPage() {
         if (target === 'news') setCentralBankNews(nextState);
         if (target === 'sentiment') {
           setMarketSentiment(nextState);
-          newsSentimentSymbolRef.current = selectedSentimentSymbol;
+          newsSentimentSymbolRef.current = selectedSentimentRequestKey;
         }
         if (target) {
           newsSentimentLoadedRef.current[target] = true;
@@ -866,7 +900,7 @@ export default function MarketAnalysisPage() {
         }
       });
     });
-  }, [selectedSentimentSymbol]);
+  }, [selectedSentimentAssetType, selectedSentimentProviderSymbol, selectedSentimentRequestKey, selectedSentimentSymbol, t]);
 
   useEffect(() => {
     const syncTabFromRoute = () => {
@@ -1874,7 +1908,9 @@ export default function MarketAnalysisPage() {
   const focusMarketSearch = useCallback(() => {
     setActiveTab('analyze');
     window.requestAnimationFrame(() => {
-      document.getElementById('market-asset-search')?.focus();
+      const search = document.getElementById('market-asset-search');
+      search?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      search?.focus({ preventScroll: true });
     });
   }, []);
 
@@ -2150,8 +2186,10 @@ export default function MarketAnalysisPage() {
             lang={lang}
             news={centralBankNews}
             sentiment={marketSentiment}
+            selectedAsset={selectedSentimentAsset}
+            onSelectAsset={focusMarketSearch}
             onRefreshNews={() => loadNewsSentiment(['news'], { force: true })}
-            onRefreshSentiment={() => loadNewsSentiment(['sentiment'], { force: true })}
+            onRefreshSentiment={() => selectedSentimentAsset ? loadNewsSentiment(['sentiment'], { force: true }) : focusMarketSearch()}
           />
         )}
 
@@ -3485,6 +3523,37 @@ export default function MarketAnalysisPage() {
           min-height: 180px;
         }
 
+        .sentiment-selected-asset {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+          min-width: 0;
+          border: 1px solid rgba(47, 214, 192, .18);
+          border-radius: 18px;
+          background: rgba(47, 214, 192, .08);
+          padding: 10px 12px;
+          color: var(--sfm-muted);
+          font-size: 12px;
+          font-weight: 850;
+          line-height: 1.45;
+        }
+
+        .sentiment-selected-asset b {
+          color: var(--sfm-foreground);
+          font-size: 14px;
+          font-weight: 950;
+          letter-spacing: .02em;
+        }
+
+        .sentiment-selected-asset small {
+          min-width: 0;
+          overflow-wrap: anywhere;
+          color: var(--sfm-muted);
+          font-size: 12px;
+          font-weight: 800;
+        }
+
         .news-tool-card-head {
           display: flex;
           align-items: flex-start;
@@ -3960,9 +4029,23 @@ export default function MarketAnalysisPage() {
         .dark .session-overlap-panel,
         .dark .central-news-card,
         .dark .sentiment-card,
+        .dark .sentiment-selected-asset,
         .dark .tool-empty-state {
           background: #0a1422;
           border-color: #1d3050;
+        }
+
+        .dark .sentiment-selected-asset {
+          background: rgba(47, 214, 192, .09);
+          color: #b8c7d9;
+        }
+
+        .dark .sentiment-selected-asset b {
+          color: #e8eef6;
+        }
+
+        .dark .sentiment-selected-asset small {
+          color: #8ea6c3;
         }
 
         .dark .tool-empty-state.info {
@@ -6038,7 +6121,7 @@ function technicalEmptyStateCopy(code: string | undefined, t: (key: string) => s
   return { title: t('market_technical_unified_empty_title'), body: t('market_technical_unified_empty_body') };
 }
 
-function TechnicalAnalysisPanel({
+function LegacyTechnicalAnalysisPanel({
   t,
   locale,
   symbol,
@@ -6312,6 +6395,295 @@ function TechnicalAnalysisPanel({
           ) : null}
         </>
       )}
+    </section>
+  );
+}
+
+function TechnicalAnalysisPanel({
+  t,
+  locale,
+  symbol,
+  setSymbol,
+  state,
+  hasSelectedAsset,
+  onSelectAsset,
+  onRefresh,
+}: {
+  t: (key: string) => string;
+  locale: string;
+  symbol: string;
+  setSymbol: (symbol: string) => void;
+  state: TechnicalState;
+  hasSelectedAsset: boolean;
+  onSelectAsset: () => void;
+  onRefresh: () => void;
+}) {
+  const data = state.data;
+  const [category, setCategory] = useState<TechnicalSymbolCategory>(() => getTechnicalSymbolCategory(symbol));
+  const [query, setQuery] = useState('');
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favoritesLoaded, setFavoritesLoaded] = useState(false);
+  const normalizedQuery = query.trim().toUpperCase();
+  const filteredSymbols = normalizedQuery
+    ? TECHNICAL_SYMBOL_OPTIONS.filter(item => `${item.symbol} ${item.label}`.includes(normalizedQuery))
+    : TECHNICAL_SYMBOL_GROUPS[category];
+  const favoriteSymbols = favorites
+    .map(item => getTechnicalSymbolOption(item))
+    .filter((item): item is TechnicalSymbolOption => Boolean(item));
+  const currentTrend = normalizePerformanceTrend(String(data?.trend ?? state.available?.trend ?? 'neutral'));
+  const currentUpdatedAt = String(data?.updated_at ?? state.updatedAt ?? '');
+  const currentPriceValue = finiteTechnicalNumber(data?.currentPrice, data?.latestPrice, data?.price, state.available?.currentPrice, state.available?.price);
+  const currentStatus = state.loading
+    ? t('market_loading_technical_analysis_short')
+    : data
+      ? t('market_data_complete')
+      : state.available
+        ? t('market_data_incomplete')
+        : t('market_analysis_insufficient');
+  const pivotPoints = data?.pivotPoints && typeof data.pivotPoints === 'object' ? data.pivotPoints as Record<string, unknown> : {};
+  const pivotValue = finiteTechnicalNumber(pivotPoints.pivot);
+  const supportRows = [
+    ['S1', pivotPoints.s1],
+    ['S2', pivotPoints.s2],
+    ['S3', pivotPoints.s3],
+  ].filter((row): row is [string, unknown] => hasDisplayValue(row[1]));
+  const resistanceRows = [
+    ['R1', pivotPoints.r1],
+    ['R2', pivotPoints.r2],
+    ['R3', pivotPoints.r3],
+  ].filter((row): row is [string, unknown] => hasDisplayValue(row[1]));
+  const movingAverageRows = [
+    ['MA 20', data?.movingAverages?.sma20 ?? data?.sma20],
+    ['MA 50', data?.movingAverages?.sma50 ?? data?.sma50],
+    ['MA 200', data?.movingAverages?.sma200 ?? data?.sma200],
+  ].filter((row): row is [string, unknown] => hasDisplayValue(row[1]));
+  const rsiStatusKey = technicalRsiStatusKey(data?.rsi);
+  const signalStrength = data ? technicalSignalStrength(data, currentPriceValue, pivotValue) : 'weak';
+  const rangeLevels = [
+    { label: 'S2', value: finiteTechnicalNumber(pivotPoints.s2), tone: 'support' as const },
+    { label: 'S1', value: finiteTechnicalNumber(pivotPoints.s1), tone: 'support' as const },
+    { label: 'Pivot', value: pivotValue, tone: 'pivot' as const },
+    { label: 'R1', value: finiteTechnicalNumber(pivotPoints.r1), tone: 'resistance' as const },
+    { label: 'R2', value: finiteTechnicalNumber(pivotPoints.r2), tone: 'resistance' as const },
+  ].filter((item): item is { label: string; value: number; tone: 'support' | 'pivot' | 'resistance' } => item.value !== null);
+  const technicalCode = String(state.code ?? '').toUpperCase();
+  const partialData = (technicalCode === 'OHLC_DATA_NOT_AVAILABLE' || state.code === 'insufficient_ohlc_data') && state.available ? state.available : null;
+  const technicalEmptyCopy = technicalEmptyStateCopy(state.code, t);
+
+  useEffect(() => {
+    setCategory(getTechnicalSymbolCategory(symbol));
+  }, [symbol]);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(TECHNICAL_SYMBOL_FAVORITES_KEY);
+      const parsed = stored ? JSON.parse(stored) : [];
+      if (Array.isArray(parsed)) {
+        setFavorites(parsed.filter((item): item is string => typeof item === 'string' && Boolean(getTechnicalSymbolOption(item))));
+      }
+    } catch {
+      setFavorites([]);
+    } finally {
+      setFavoritesLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!favoritesLoaded) return;
+    window.localStorage.setItem(TECHNICAL_SYMBOL_FAVORITES_KEY, JSON.stringify(favorites));
+  }, [favorites, favoritesLoaded]);
+
+  const handleSelectSymbol = (nextSymbol: string) => {
+    const option = getTechnicalSymbolOption(nextSymbol);
+    if (option) setCategory(option.category);
+    setSymbol(nextSymbol);
+  };
+
+  const toggleFavorite = (nextSymbol: string) => {
+    setFavorites(prev => prev.includes(nextSymbol) ? prev.filter(item => item !== nextSymbol) : [...prev, nextSymbol]);
+  };
+
+  const renderSymbolPill = (item: TechnicalSymbolOption) => {
+    const active = symbol === item.symbol;
+    const favorite = favorites.includes(item.symbol);
+    return (
+      <div className="technical-symbol-pill" data-active={active ? 'true' : 'false'} key={item.symbol}>
+        <button className="technical-symbol-main" type="button" aria-pressed={active} onClick={() => handleSelectSymbol(item.symbol)}>
+          <span dir="ltr">{item.label}</span>
+        </button>
+        <button
+          className="technical-symbol-favorite"
+          type="button"
+          aria-label={favorite ? t('market_remove_from_favorites') : t('market_add_to_favorites')}
+          aria-pressed={favorite}
+          onClick={() => toggleFavorite(item.symbol)}
+        >
+          <Star size={14} fill={favorite ? 'currentColor' : 'none'} />
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <section className="technical-dashboard" aria-labelledby="daily-technical-title">
+      <header className="technical-dashboard-head">
+        <span className="technical-dashboard-icon">
+          <Gauge size={22} />
+        </span>
+        <div className="technical-dashboard-title">
+          <h2 id="daily-technical-title">{t('market_daily_technical_analysis')}</h2>
+          <p>{t('market_daily_technical_subtitle')}</p>
+        </div>
+        <button className="technical-refresh-button" type="button" onClick={onRefresh} disabled={state.loading}>
+          <Activity size={15} className={state.loading ? 'market-spin' : undefined} />
+          {state.loading ? t('market_refreshing_technical_analysis') : t('market_refresh_section')}
+        </button>
+      </header>
+
+      <div className="technical-dashboard-body">
+        <section className="technical-selector-shell" aria-label={t('market_asset_type')}>
+          <div className="technical-search-row">
+            <div className="technical-selected-chip">
+              <small>{t('market_selected_asset')}</small>
+              <strong dir="ltr">{formatTechnicalSymbol(symbol)}</strong>
+            </div>
+            <div className="technical-search">
+              <Search size={16} />
+              <input
+                value={query}
+                onChange={event => setQuery(event.target.value)}
+                placeholder={t('market_symbol_search_placeholder')}
+                dir="auto"
+              />
+              {query ? (
+                <button type="button" onClick={() => setQuery('')} aria-label={t('market_clear_symbol_search')}>
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="technical-category-row" aria-label={t('market_asset_type')}>
+            {TECHNICAL_SYMBOL_CATEGORIES.map(item => (
+              <button key={item} type="button" aria-pressed={category === item} onClick={() => setCategory(item)}>
+                {t(`market_symbol_category_${item}`)}
+              </button>
+            ))}
+          </div>
+
+          {favoriteSymbols.length > 0 ? (
+            <div className="technical-favorites">
+              <span>{t('market_favorites')}</span>
+              <div className="technical-symbol-row compact">
+                {favoriteSymbols.map(renderSymbolPill)}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="technical-symbol-row">
+            {filteredSymbols.length > 0 ? filteredSymbols.map(renderSymbolPill) : (
+              <span className="technical-no-results">{t('market_no_search_results')}</span>
+            )}
+          </div>
+        </section>
+
+        {!hasSelectedAsset ? (
+          <MarketEmptyState
+            icon={<LineChart size={22} />}
+            title={t('market_technical_choose_asset_title')}
+            description={t('market_technical_choose_asset_body')}
+            actionLabel={t('market_search_asset_action')}
+            onAction={onSelectAsset}
+          />
+        ) : (
+          <>
+            <section className="technical-selected-summary" aria-label={t('market_selected_asset')}>
+              <TechnicalSummaryItem icon={<WalletCards size={16} />} label={t('market_selected_asset')} value={formatTechnicalSymbol(symbol)} valueDir="ltr" />
+              <TechnicalSummaryItem icon={<CircleDollarSign size={16} />} label={t('market_current_price')} value={currentPriceValue === null ? t('market_unavailable') : formatTechnicalPrice(currentPriceValue)} valueDir="ltr" />
+              <TechnicalSummaryItem icon={<Clock3 size={16} />} label={t('market_last_updated')} value={formatTechnicalTimestamp(currentUpdatedAt, locale) || t('market_unavailable')} valueDir="ltr" />
+              <TechnicalSummaryItem icon={<TrendingUp size={16} />} label={t('market_general_trend')} value={t(technicalTrendLabelKey(currentTrend))} />
+              <TechnicalSummaryItem icon={<CheckCircle2 size={16} />} label={t('market_data_status')} value={currentStatus} />
+            </section>
+
+            <div className="technical-content-stage">
+              {state.loading ? <MarketSectionLoading label={t('market_loading_technical_analysis')} /> : partialData ? (
+                <TechnicalPartialDataState
+                  t={t}
+                  locale={locale}
+                  available={partialData}
+                  symbol={state.symbol || symbol}
+                  updatedAt={state.updatedAt}
+                  onRefresh={onRefresh}
+                />
+              ) : state.message || state.code ? (
+                <TechnicalEmptyState
+                  title={technicalEmptyCopy.title}
+                  body={state.code === 'OHLC_DATA_NOT_AVAILABLE' ? t('market_technical_compact_empty_body') : technicalEmptyCopy.body}
+                  actionLabel={t('market_refresh_section')}
+                  onAction={onRefresh}
+                />
+              ) : data ? (
+                <>
+                  <section className="technical-data-grid" aria-label={t('market_daily_technical_analysis')}>
+                    <TechnicalDataCard
+                      icon={<Gauge size={17} />}
+                      title={t('market_pivot_point')}
+                      value={pivotValue === null ? t('market_unavailable') : formatNumber(pivotValue, 4)}
+                      valueDir="ltr"
+                    />
+                    <TechnicalDataCard
+                      icon={<TrendingDown size={17} />}
+                      title={t('market_support_zone')}
+                      rows={supportRows.map(([label, value]) => [label, formatTechnicalNumberValue(value, 4)])}
+                      tone="support"
+                    />
+                    <TechnicalDataCard
+                      icon={<TrendingUp size={17} />}
+                      title={t('market_resistance_zone')}
+                      rows={resistanceRows.map(([label, value]) => [label, formatTechnicalNumberValue(value, 4)])}
+                      tone="resistance"
+                    />
+                    <TechnicalDataCard
+                      icon={<BarChart3 size={17} />}
+                      title="RSI"
+                      value={formatTechnicalNumberValue(data?.rsi, 1) || t('market_unavailable')}
+                      valueDir="ltr"
+                      footer={rsiStatusKey ? t(rsiStatusKey) : t('market_unavailable')}
+                    />
+                    <TechnicalDataCard
+                      icon={<LineChart size={17} />}
+                      title={t('market_moving_averages')}
+                      rows={movingAverageRows.map(([label, value]) => [label, formatTechnicalNumberValue(value, 4)])}
+                    />
+                    <TechnicalDataCard
+                      icon={<ShieldAlert size={17} />}
+                      title={t('market_signal_strength')}
+                      value={t(`market_signal_${signalStrength}`)}
+                      footer={t('market_signal_helper')}
+                      tone="signal"
+                    />
+                    <TechnicalDataCard
+                      icon={<Activity size={17} />}
+                      title={t('market_general_trend')}
+                      value={t(technicalTrendLabelKey(String(data.trend ?? 'neutral')))}
+                    />
+                  </section>
+
+                  <TechnicalRangeCard t={t} levels={rangeLevels} />
+                  <TechnicalEducationCard t={t} />
+                  <section className="technical-tab-disclaimer">
+                    <ShieldAlert size={19} />
+                    <div>
+                      <strong>{t('market_disclaimer_title')}</strong>
+                      <p>{t('market_disclaimer')}</p>
+                    </div>
+                  </section>
+                </>
+              ) : null}
+            </div>
+          </>
+        )}
+      </div>
     </section>
   );
 }
@@ -6760,6 +7132,9 @@ function publicNewsEmptyCopy(code: string | undefined, t: (key: string) => strin
 }
 
 function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => string) {
+  if (code === 'NO_SELECTED_ASSET') {
+    return { title: t('market_sentiment_symbol_required_title'), body: t('market_sentiment_symbol_required_body') };
+  }
   if (code === 'MARKET_DATA_TIMEOUT' || code === 'MARKET_SENTIMENT_TIMEOUT') {
     return { title: t('market_sentiment_timeout_title'), body: t('market_sentiment_timeout_body') };
   }
@@ -6799,6 +7174,8 @@ function NewsSentimentPanel({
   lang,
   news,
   sentiment,
+  selectedAsset,
+  onSelectAsset,
   onRefreshNews,
   onRefreshSentiment,
 }: {
@@ -6806,17 +7183,24 @@ function NewsSentimentPanel({
   lang: string;
   news: ApiListState<Record<string, any>>;
   sentiment: ApiListState<Record<string, any>>;
+  selectedAsset: SelectedMarketAsset | null;
+  onSelectAsset: () => void;
   onRefreshNews: () => void;
   onRefreshSentiment: () => void;
 }) {
   const newsEmpty = publicNewsEmptyCopy(news.code, t);
-  const sentimentEmpty = publicSentimentEmptyCopy(sentiment.code, t);
+  const hasSelectedAsset = Boolean(selectedAsset?.symbol?.trim());
+  const sentimentItems = hasSelectedAsset ? sentiment.items : [];
+  const sentimentLoading = hasSelectedAsset && sentiment.loading;
+  const sentimentEmpty = publicSentimentEmptyCopy(hasSelectedAsset ? sentiment.code : 'NO_SELECTED_ASSET', t);
   const newsLastAttempt = news.updatedAt
     ? `${t('market_last_attempt')}: ${formatMarketToolTimestamp(news.updatedAt, lang)}`
     : undefined;
-  const sentimentLastAttempt = sentiment.updatedAt
+  const sentimentLastAttempt = hasSelectedAsset && sentiment.updatedAt
     ? `${t('market_last_attempt')}: ${formatMarketToolTimestamp(sentiment.updatedAt, lang)}`
     : undefined;
+  const sentimentActionLabel = hasSelectedAsset ? t('market_refresh_sentiment') : t('market_sentiment_select_asset_action');
+  const sentimentAction = hasSelectedAsset ? onRefreshSentiment : onSelectAsset;
 
   return (
     <section className="news-sentiment-section" aria-labelledby="market-news-sentiment-title">
@@ -6889,20 +7273,30 @@ function NewsSentimentPanel({
                 <small>{t('market_sentiment_note_title')}</small>
                 <h3>{t('market_market_sentiment')}</h3>
               </div>
-              <MarketSectionRefreshButton
-                t={t}
-                loading={sentiment.loading}
-                onRefresh={onRefreshSentiment}
-                label={t('market_refresh_sentiment')}
-                loadingLabel={t('market_refreshing_section')}
-              />
+              {hasSelectedAsset ? (
+                <MarketSectionRefreshButton
+                  t={t}
+                  loading={sentiment.loading}
+                  onRefresh={onRefreshSentiment}
+                  label={t('market_refresh_sentiment')}
+                  loadingLabel={t('market_refreshing_section')}
+                />
+              ) : null}
             </div>
 
-            {sentiment.loading ? (
+            {hasSelectedAsset ? (
+              <div className="sentiment-selected-asset" aria-label={t('market_sentiment_selected_asset')}>
+                <span>{t('market_sentiment_selected_asset')}</span>
+                <b dir="ltr">{selectedAsset?.symbol}</b>
+                {selectedAsset?.name ? <small>{selectedAsset.name}</small> : null}
+              </div>
+            ) : null}
+
+            {sentimentLoading ? (
               <MarketSectionLoading label={t('market_loading_market_sentiment')} cards={2} />
-            ) : sentiment.items.length > 0 ? (
+            ) : sentimentItems.length > 0 ? (
               <div className="sentiment-card-list">
-                {sentiment.items.map((item, index) => {
+                {sentimentItems.map((item, index) => {
                   const symbol = textField(item, ['symbol', 'ticker', 'asset', 'instrument']);
                   const name = textField(item, ['name', 'assetName', 'asset_name', 'description']);
                   const values = sentimentValues(item);
@@ -6947,8 +7341,8 @@ function NewsSentimentPanel({
                 title={sentimentEmpty.title}
                 description={sentimentEmpty.body}
                 meta={sentimentLastAttempt}
-                actionLabel={t('market_refresh_sentiment')}
-                onAction={onRefreshSentiment}
+                actionLabel={sentimentActionLabel}
+                onAction={sentimentAction}
                 variant="info"
               />
             )}
@@ -8101,6 +8495,338 @@ function MarketAsyncToolStyles() {
 
         .portfolio-comparison-metric:last-child {
           border-bottom: 0;
+        }
+      }
+
+      .market-active-dashboard > .technical-dashboard {
+        width: 100%;
+        max-width: 1500px;
+        min-width: 0;
+        margin-inline: auto;
+      }
+
+      .technical-dashboard {
+        display: grid;
+        gap: clamp(16px, 2vw, 22px);
+        align-content: start;
+        align-self: start;
+        height: auto;
+        border: 1px solid rgba(47, 214, 192, .18);
+        border-radius: 32px;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, .9), rgba(234, 246, 255, .68)),
+          var(--sfm-card);
+        box-shadow: 0 22px 58px rgba(3, 18, 37, .08);
+        padding: clamp(16px, 2.4vw, 28px);
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+
+      .technical-dashboard *,
+      .technical-dashboard *::before,
+      .technical-dashboard *::after {
+        box-sizing: border-box;
+      }
+
+      .technical-dashboard-body,
+      .technical-content-stage {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        display: grid;
+        gap: clamp(14px, 1.8vw, 20px);
+        align-content: start;
+      }
+
+      .technical-dashboard .technical-dashboard-head {
+        width: 100%;
+        max-width: 100%;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        margin: 0;
+      }
+
+      .technical-dashboard-title {
+        min-width: 0;
+      }
+
+      .technical-dashboard .technical-selector-shell {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        display: grid;
+        gap: 15px;
+        border: 1px solid rgba(47, 214, 192, .16);
+        border-radius: 26px;
+        background:
+          linear-gradient(135deg, rgba(29, 140, 255, .055), rgba(47, 214, 192, .075)),
+          var(--sfm-card) !important;
+        box-shadow: 0 14px 34px rgba(3, 18, 37, .055);
+        padding: clamp(14px, 1.8vw, 18px);
+        overflow: hidden;
+      }
+
+      .technical-search-row {
+        display: grid;
+        grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+        gap: 12px;
+        align-items: stretch;
+        width: 100%;
+        min-width: 0;
+      }
+
+      .technical-selected-chip {
+        min-width: 0;
+        display: grid;
+        align-content: center;
+        gap: 5px;
+        border: 1px solid rgba(47, 214, 192, .16);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, .78);
+        padding: 12px 14px;
+      }
+
+      .technical-selected-chip small {
+        color: var(--sfm-muted);
+        font-size: 11px;
+        font-weight: 950;
+        line-height: 1.35;
+      }
+
+      .technical-selected-chip strong {
+        color: var(--sfm-foreground);
+        font-size: 18px;
+        font-weight: 950;
+        line-height: 1.25;
+        letter-spacing: .02em;
+        overflow-wrap: anywhere;
+      }
+
+      .technical-dashboard .technical-search {
+        width: 100%;
+        min-width: 0;
+        min-height: 50px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, .86);
+      }
+
+      .technical-dashboard .technical-search button span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+      }
+
+      .technical-dashboard .technical-category-row,
+      .technical-dashboard .technical-symbol-row {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 10px;
+        overflow: visible;
+        padding: 2px;
+      }
+
+      .technical-dashboard .technical-category-row button {
+        flex: 0 0 auto;
+        min-height: 42px;
+        border-radius: 999px;
+        padding: 0 17px;
+        font-size: 13px;
+        line-height: 1.2;
+      }
+
+      .technical-dashboard .technical-symbol-pill {
+        flex: 0 0 auto;
+        min-height: 44px;
+        max-width: 100%;
+        border-radius: 999px;
+      }
+
+      .technical-dashboard .technical-symbol-main {
+        min-height: 36px;
+        padding: 0 13px;
+        font-size: 13px;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+
+      .technical-dashboard .technical-symbol-main span {
+        direction: ltr;
+        unicode-bidi: isolate;
+      }
+
+      .technical-dashboard .technical-favorites {
+        width: 100%;
+        min-width: 0;
+        border: 1px solid rgba(47, 214, 192, .12);
+        border-radius: 20px;
+        background: rgba(47, 214, 192, .055);
+        padding: 10px;
+      }
+
+      .technical-dashboard .technical-selected-summary {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 12px;
+        border: 1px solid rgba(47, 214, 192, .16);
+        border-radius: 26px;
+        background:
+          linear-gradient(135deg, rgba(29, 140, 255, .05), rgba(47, 214, 192, .07)),
+          rgba(255, 255, 255, .72);
+        padding: 12px;
+      }
+
+      .technical-dashboard .technical-summary-item,
+      .technical-dashboard .technical-data-card,
+      .technical-dashboard .technical-range-card,
+      .technical-dashboard .technical-education-card,
+      .technical-dashboard .technical-tab-disclaimer,
+      .technical-dashboard .technical-empty-state,
+      .technical-dashboard .technical-partial-state {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        align-self: start;
+      }
+
+      .technical-dashboard .technical-summary-item {
+        min-height: 96px;
+        align-items: flex-start;
+      }
+
+      .technical-dashboard .technical-summary-item strong,
+      .technical-dashboard .technical-data-card > strong,
+      .technical-dashboard .technical-data-rows b {
+        overflow-wrap: anywhere;
+        word-break: normal;
+      }
+
+      .technical-dashboard .technical-data-grid {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+      }
+
+      .technical-dashboard .technical-data-card {
+        min-height: 160px;
+        align-content: start;
+      }
+
+      .technical-dashboard .technical-range-card {
+        overflow: hidden;
+      }
+
+      .technical-dashboard .technical-range-track {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .technical-dashboard .technical-empty-state {
+        min-height: auto;
+      }
+
+      .technical-dashboard .market-empty-state {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .dark .technical-dashboard {
+        background:
+          radial-gradient(circle at top right, rgba(29, 140, 255, .18), transparent 36%),
+          linear-gradient(135deg, rgba(47, 214, 192, .08), rgba(29, 140, 255, .08)),
+          #0a1422;
+        border-color: #1d3050;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, .28);
+      }
+
+      .dark .technical-dashboard .technical-selector-shell,
+      .dark .technical-dashboard .technical-selected-summary,
+      .dark .technical-dashboard .technical-selected-chip,
+      .dark .technical-dashboard .technical-search,
+      .dark .technical-dashboard .technical-favorites {
+        background:
+          linear-gradient(135deg, rgba(29, 140, 255, .07), rgba(47, 214, 192, .06)),
+          #0f1d31 !important;
+        border-color: #1d3050;
+      }
+
+      @media (max-width: 1180px) {
+        .technical-dashboard .technical-selected-summary {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+
+        .technical-dashboard .technical-data-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+      }
+
+      @media (max-width: 780px) {
+        .technical-dashboard {
+          border-radius: 26px;
+          padding: 15px;
+        }
+
+        .technical-dashboard .technical-dashboard-head,
+        .technical-search-row {
+          grid-template-columns: 1fr;
+        }
+
+        .technical-dashboard .technical-refresh-button {
+          width: 100%;
+        }
+
+        .technical-dashboard .technical-category-row,
+        .technical-dashboard .technical-symbol-row {
+          flex-wrap: nowrap !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          padding: 2px 2px 9px !important;
+          scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .technical-dashboard .technical-category-row::-webkit-scrollbar,
+        .technical-dashboard .technical-symbol-row::-webkit-scrollbar {
+          display: none;
+        }
+
+        .technical-dashboard .technical-selected-summary,
+        .technical-dashboard .technical-data-grid,
+        .technical-dashboard .technical-education-list {
+          grid-template-columns: 1fr !important;
+        }
+
+        .technical-dashboard .technical-range-card {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .technical-dashboard .technical-range-track {
+          min-width: 560px;
+        }
+      }
+
+      @media (max-width: 460px) {
+        .technical-dashboard .technical-summary-item,
+        .technical-dashboard .technical-data-card {
+          min-height: auto;
+        }
+
+        .technical-dashboard .technical-symbol-main {
+          padding-inline: 10px;
+          font-size: 12px;
         }
       }
 

@@ -134,13 +134,17 @@ function normalizeSentimentSymbol(symbol: string, provider: SentimentProvider) {
 }
 
 function parseSymbols(request: NextRequest, provider: SentimentProvider) {
-  const raw = request.nextUrl.searchParams.get('symbols') || request.nextUrl.searchParams.get('symbol') || '';
+  const params = request.nextUrl.searchParams;
+  const raw = params.get('symbols')
+    || [params.get('providerSymbol'), params.get('symbol')]
+      .filter(Boolean)
+      .join(',');
   const symbols = raw
     .split(',')
     .map(symbol => normalizeSentimentSymbol(symbol, provider))
-    .filter(symbol => /^[A-Z0-9.^:]{1,18}$/.test(symbol))
-    .slice(0, 4);
-  return symbols;
+    .filter(symbol => /^[A-Z0-9.^:]{1,18}$/.test(symbol));
+  const uniqueSymbols = [...new Set(symbols)].slice(0, 4);
+  return uniqueSymbols;
 }
 
 function formatDate(date: Date) {
