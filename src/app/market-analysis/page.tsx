@@ -6348,8 +6348,13 @@ function TechnicalAnalysisPanel({
         <section className="technical-selector-shell" aria-label={t('market_asset_type')}>
           <div className="technical-search-row">
             <div className="technical-selected-chip">
-              <small>{t('market_selected_asset')}</small>
-              <strong dir="ltr">{formatTechnicalSymbol(symbol)}</strong>
+              <span className="technical-selected-chip-icon" aria-hidden="true">
+                <WalletCards size={16} />
+              </span>
+              <div>
+                <small>{t('market_selected_asset')}</small>
+                <strong dir="ltr">{formatTechnicalSymbol(symbol)}</strong>
+              </div>
             </div>
             <div className="technical-search">
               <Search size={16} />
@@ -6734,16 +6739,16 @@ function TechnicalRangeCard({
         </div>
         <span><LineChart size={18} /></span>
       </div>
-      <div className="technical-range-track" dir="ltr">
+      <div className="technical-range-track">
         <span className="technical-range-fill support" />
         <span className="technical-range-fill pivot" />
         <span className="technical-range-fill resistance" />
         {levels.map(level => {
-          const left = `${((level.value - min) / span) * 100}%`;
+          const position = `${((level.value - min) / span) * 100}%`;
           return (
-            <span className={`technical-range-marker ${level.tone}`} style={{ left }} key={level.label}>
-              <b>{level.label}</b>
-              <small>{formatNumber(level.value, 4)}</small>
+            <span className={`technical-range-marker ${level.tone}`} style={{ insetInlineStart: position }} key={level.label}>
+              <b dir="ltr">{level.label}</b>
+              <small dir="ltr">{formatNumber(level.value, 4)}</small>
             </span>
           );
         })}
@@ -7724,19 +7729,19 @@ function MarketAsyncToolStyles() {
       }
 
       .technical-range-fill.support {
-        left: 0;
+        inset-inline-start: 0;
         width: 45%;
         background: #16A34A;
       }
 
       .technical-range-fill.pivot {
-        left: 44%;
+        inset-inline-start: 44%;
         width: 12%;
         background: #1D8CFF;
       }
 
       .technical-range-fill.resistance {
-        right: 0;
+        inset-inline-end: 0;
         width: 45%;
         background: #DC2626;
       }
@@ -7749,6 +7754,10 @@ function MarketAsyncToolStyles() {
         justify-items: center;
         gap: 6px;
         min-width: 74px;
+      }
+
+      [dir="rtl"] .technical-dashboard .technical-range-marker {
+        transform: translateX(50%);
       }
 
       .technical-range-marker::after {
@@ -8386,12 +8395,33 @@ function MarketAsyncToolStyles() {
       .technical-selected-chip {
         min-width: 0;
         display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        column-gap: 11px;
         align-content: center;
         gap: 5px;
         border: 1px solid rgba(47, 214, 192, .16);
         border-radius: 20px;
         background: rgba(255, 255, 255, .78);
         padding: 12px 14px;
+      }
+
+      .technical-selected-chip-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 15px;
+        display: grid;
+        place-items: center;
+        color: #1D8CFF;
+        background: rgba(29, 140, 255, .10);
+        border: 1px solid rgba(29, 140, 255, .16);
+        box-shadow: 0 10px 22px rgba(29, 140, 255, .08);
+      }
+
+      .technical-selected-chip > div {
+        min-width: 0;
+        display: grid;
+        gap: 5px;
       }
 
       .technical-selected-chip small {
@@ -8507,7 +8537,7 @@ function MarketAsyncToolStyles() {
 
       .technical-dashboard .technical-summary-item {
         min-height: 96px;
-        align-items: flex-start;
+        align-items: center;
       }
 
       .technical-dashboard .technical-summary-item strong,
@@ -8570,6 +8600,13 @@ function MarketAsyncToolStyles() {
         border-color: #1d3050;
       }
 
+      .dark .technical-selected-chip-icon {
+        color: #67E8F9;
+        background: rgba(47, 214, 192, .12);
+        border-color: rgba(47, 214, 192, .28);
+        box-shadow: none;
+      }
+
       .technical-dashboard .technical-summary-item,
       .technical-dashboard .technical-data-card {
         border-color: rgba(29, 140, 255, .14);
@@ -8584,7 +8621,7 @@ function MarketAsyncToolStyles() {
         display: grid;
         grid-template-columns: auto minmax(0, 1fr);
         gap: 13px;
-        min-height: 108px;
+        min-height: 98px;
         padding: 16px;
       }
 
@@ -8618,6 +8655,7 @@ function MarketAsyncToolStyles() {
         color: #475569;
         font-size: 12px;
         font-weight: 950;
+        line-height: 1.35;
       }
 
       .technical-dashboard .technical-summary-item strong {
@@ -8625,6 +8663,7 @@ function MarketAsyncToolStyles() {
         font-size: clamp(16px, 1.45vw, 20px);
         font-weight: 950;
         line-height: 1.3;
+        font-variant-numeric: tabular-nums;
       }
 
       .technical-dashboard .technical-data-grid {
@@ -8782,7 +8821,7 @@ function MarketAsyncToolStyles() {
       .technical-dashboard .technical-range-marker {
         top: 20px;
         gap: 8px;
-        min-width: 86px;
+        min-width: 82px;
       }
 
       .technical-dashboard .technical-range-marker b,
