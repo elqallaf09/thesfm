@@ -162,36 +162,37 @@ type TechnicalSymbolCategory = 'forex' | 'stocks' | 'indices' | 'metals' | 'cryp
 type TechnicalSymbolOption = {
   symbol: string;
   label: string;
+  description: Record<'ar' | 'en' | 'fr', string>;
   category: TechnicalSymbolCategory;
 };
 const TECHNICAL_SYMBOL_CATEGORIES: TechnicalSymbolCategory[] = ['forex', 'stocks', 'indices', 'metals', 'crypto'];
 const TECHNICAL_SYMBOL_GROUPS: Record<TechnicalSymbolCategory, TechnicalSymbolOption[]> = {
   forex: [
-    { symbol: 'EURUSD', label: 'EUR/USD', category: 'forex' },
-    { symbol: 'GBPUSD', label: 'GBP/USD', category: 'forex' },
-    { symbol: 'USDJPY', label: 'USD/JPY', category: 'forex' },
-    { symbol: 'USDCHF', label: 'USD/CHF', category: 'forex' },
-    { symbol: 'AUDUSD', label: 'AUD/USD', category: 'forex' },
-    { symbol: 'NZDUSD', label: 'NZD/USD', category: 'forex' },
-    { symbol: 'USDCAD', label: 'USD/CAD', category: 'forex' },
+    { symbol: 'EURUSD', label: 'EUR/USD', description: { ar: 'Euro / US Dollar', en: 'Euro / US Dollar', fr: 'Euro / dollar US' }, category: 'forex' },
+    { symbol: 'GBPUSD', label: 'GBP/USD', description: { ar: 'British Pound / US Dollar', en: 'British Pound / US Dollar', fr: 'Livre sterling / dollar US' }, category: 'forex' },
+    { symbol: 'USDJPY', label: 'USD/JPY', description: { ar: 'US Dollar / Japanese Yen', en: 'US Dollar / Japanese Yen', fr: 'Dollar US / yen japonais' }, category: 'forex' },
+    { symbol: 'USDCHF', label: 'USD/CHF', description: { ar: 'US Dollar / Swiss Franc', en: 'US Dollar / Swiss Franc', fr: 'Dollar US / franc suisse' }, category: 'forex' },
+    { symbol: 'AUDUSD', label: 'AUD/USD', description: { ar: 'Australian Dollar / US Dollar', en: 'Australian Dollar / US Dollar', fr: 'Dollar australien / dollar US' }, category: 'forex' },
+    { symbol: 'NZDUSD', label: 'NZD/USD', description: { ar: 'New Zealand Dollar / US Dollar', en: 'New Zealand Dollar / US Dollar', fr: 'Dollar neo-zelandais / dollar US' }, category: 'forex' },
+    { symbol: 'USDCAD', label: 'USD/CAD', description: { ar: 'US Dollar / Canadian Dollar', en: 'US Dollar / Canadian Dollar', fr: 'Dollar US / dollar canadien' }, category: 'forex' },
   ],
   stocks: [
-    { symbol: 'AAPL', label: 'AAPL', category: 'stocks' },
-    { symbol: 'NVDA', label: 'NVDA', category: 'stocks' },
-    { symbol: 'MSFT', label: 'MSFT', category: 'stocks' },
-    { symbol: 'TSLA', label: 'TSLA', category: 'stocks' },
+    { symbol: 'AAPL', label: 'AAPL', description: { ar: 'Apple Inc.', en: 'Apple Inc.', fr: 'Apple Inc.' }, category: 'stocks' },
+    { symbol: 'NVDA', label: 'NVDA', description: { ar: 'NVIDIA Corporation', en: 'NVIDIA Corporation', fr: 'NVIDIA Corporation' }, category: 'stocks' },
+    { symbol: 'MSFT', label: 'MSFT', description: { ar: 'Microsoft Corporation', en: 'Microsoft Corporation', fr: 'Microsoft Corporation' }, category: 'stocks' },
+    { symbol: 'TSLA', label: 'TSLA', description: { ar: 'Tesla Inc.', en: 'Tesla Inc.', fr: 'Tesla Inc.' }, category: 'stocks' },
   ],
   indices: [
-    { symbol: 'QQQ', label: 'QQQ', category: 'indices' },
-    { symbol: 'SPY', label: 'SPY', category: 'indices' },
+    { symbol: 'QQQ', label: 'QQQ', description: { ar: 'Invesco QQQ Trust', en: 'Invesco QQQ Trust', fr: 'Invesco QQQ Trust' }, category: 'indices' },
+    { symbol: 'SPY', label: 'SPY', description: { ar: 'SPDR S&P 500 ETF Trust', en: 'SPDR S&P 500 ETF Trust', fr: 'SPDR S&P 500 ETF Trust' }, category: 'indices' },
   ],
   metals: [
-    { symbol: 'XAUUSD', label: 'XAU/USD', category: 'metals' },
-    { symbol: 'XAGUSD', label: 'XAG/USD', category: 'metals' },
+    { symbol: 'XAUUSD', label: 'XAU/USD', description: { ar: 'Gold / US Dollar', en: 'Gold / US Dollar', fr: 'Or / dollar US' }, category: 'metals' },
+    { symbol: 'XAGUSD', label: 'XAG/USD', description: { ar: 'Silver / US Dollar', en: 'Silver / US Dollar', fr: 'Argent / dollar US' }, category: 'metals' },
   ],
   crypto: [
-    { symbol: 'BTCUSD', label: 'BTC/USD', category: 'crypto' },
-    { symbol: 'ETHUSD', label: 'ETH/USD', category: 'crypto' },
+    { symbol: 'BTCUSD', label: 'BTC/USD', description: { ar: 'Bitcoin / US Dollar', en: 'Bitcoin / US Dollar', fr: 'Bitcoin / dollar US' }, category: 'crypto' },
+    { symbol: 'ETHUSD', label: 'ETH/USD', description: { ar: 'Ethereum / US Dollar', en: 'Ethereum / US Dollar', fr: 'Ethereum / dollar US' }, category: 'crypto' },
   ],
 };
 const TECHNICAL_SYMBOL_OPTIONS = Object.values(TECHNICAL_SYMBOL_GROUPS).flat();
@@ -304,6 +305,12 @@ function getTechnicalSymbolOption(symbol: string) {
 
 function getTechnicalSymbolCategory(symbol: string): TechnicalSymbolCategory {
   return getTechnicalSymbolOption(symbol)?.category ?? 'forex';
+}
+
+function technicalSymbolDescription(option: TechnicalSymbolOption | undefined, locale: string, t: (key: string) => string) {
+  if (!option) return t('market_selected_asset');
+  const lang = locale === 'fr' ? 'fr' : locale === 'en' ? 'en' : 'ar';
+  return option.description[lang];
 }
 
 function technicalSymbolAssetType(symbol: string): MarketAssetType {
@@ -6204,7 +6211,7 @@ function LegacyTechnicalAnalysisPanel({
   const [favoritesLoaded, setFavoritesLoaded] = useState(false);
   const normalizedQuery = query.trim().toUpperCase();
   const filteredSymbols = normalizedQuery
-    ? TECHNICAL_SYMBOL_OPTIONS.filter(item => `${item.symbol} ${item.label}`.includes(normalizedQuery))
+    ? TECHNICAL_SYMBOL_OPTIONS.filter(item => `${item.symbol} ${item.label} ${item.description.ar} ${item.description.en} ${item.description.fr}`.toUpperCase().includes(normalizedQuery))
     : TECHNICAL_SYMBOL_GROUPS[category];
   const favoriteSymbols = favorites
     .map(item => getTechnicalSymbolOption(item))
@@ -6481,8 +6488,10 @@ function TechnicalAnalysisPanel({
   const [favorites, setFavorites] = useState<string[]>([]);
   const [favoritesLoaded, setFavoritesLoaded] = useState(false);
   const normalizedQuery = query.trim().toUpperCase();
+  const selectedSymbolOption = getTechnicalSymbolOption(symbol);
+  const selectedSymbolDescription = technicalSymbolDescription(selectedSymbolOption, locale, t);
   const filteredSymbols = normalizedQuery
-    ? TECHNICAL_SYMBOL_OPTIONS.filter(item => `${item.symbol} ${item.label}`.includes(normalizedQuery))
+    ? TECHNICAL_SYMBOL_OPTIONS.filter(item => `${item.symbol} ${item.label} ${item.description.ar} ${item.description.en} ${item.description.fr}`.toUpperCase().includes(normalizedQuery))
     : TECHNICAL_SYMBOL_GROUPS[category];
   const favoriteSymbols = favorites
     .map(item => getTechnicalSymbolOption(item))
@@ -6607,6 +6616,7 @@ function TechnicalAnalysisPanel({
               <div>
                 <small>{t('market_selected_asset')}</small>
                 <strong dir="ltr">{formatTechnicalSymbol(symbol)}</strong>
+                <span dir="auto">{selectedSymbolDescription}</span>
               </div>
             </div>
             <div className="technical-search">
@@ -6644,7 +6654,7 @@ function TechnicalAnalysisPanel({
 
           <div className="technical-symbol-row">
             {filteredSymbols.length > 0 ? filteredSymbols.map(renderSymbolPill) : (
-              <span className="technical-no-results">{t('market_no_search_results')}</span>
+              <span className="technical-no-results">{t('market_no_matching_asset')}</span>
             )}
           </div>
         </section>
@@ -9271,6 +9281,230 @@ function MarketAsyncToolStyles() {
         .technical-dashboard .technical-symbol-main {
           padding-inline: 10px;
           font-size: 12px;
+        }
+      }
+
+      .technical-dashboard .technical-selector-shell {
+        align-content: start !important;
+        gap: 14px !important;
+        height: auto !important;
+        min-height: 0 !important;
+        padding: clamp(12px, 1.6vw, 18px) !important;
+        border-color: rgba(14, 165, 233, .18) !important;
+        background:
+          linear-gradient(135deg, rgba(239, 246, 255, .86), rgba(240, 253, 250, .72)),
+          rgba(255, 255, 255, .92) !important;
+      }
+
+      .technical-dashboard .technical-search-row {
+        grid-template-columns: minmax(220px, 300px) minmax(0, 1fr) !important;
+        gap: 14px !important;
+        align-items: stretch !important;
+      }
+
+      .technical-dashboard .technical-selected-chip {
+        min-height: 74px !important;
+        border-color: rgba(14, 165, 233, .18) !important;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, .96), rgba(240, 249, 255, .90)) !important;
+        box-shadow: 0 12px 26px rgba(15, 23, 42, .055);
+      }
+
+      .technical-dashboard .technical-selected-chip small {
+        color: #64748B !important;
+      }
+
+      .technical-dashboard .technical-selected-chip strong {
+        color: #0F172A !important;
+        font-size: clamp(17px, 1.5vw, 20px) !important;
+      }
+
+      .technical-dashboard .technical-selected-chip span:not(.technical-selected-chip-icon) {
+        min-width: 0;
+        color: #475569;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+      }
+
+      .technical-dashboard .technical-search {
+        min-height: 58px !important;
+        border: 1px solid rgba(14, 165, 233, .18) !important;
+        background: rgba(255, 255, 255, .94) !important;
+        box-shadow: 0 12px 26px rgba(15, 23, 42, .045);
+      }
+
+      .technical-dashboard .technical-search:focus-within {
+        border-color: rgba(6, 182, 212, .56) !important;
+        box-shadow: 0 0 0 4px rgba(45, 212, 191, .18), 0 14px 28px rgba(15, 23, 42, .06) !important;
+      }
+
+      .technical-dashboard .technical-search input {
+        color: #0F172A !important;
+        font-weight: 850 !important;
+      }
+
+      .technical-dashboard .technical-search input::placeholder {
+        color: #64748B !important;
+      }
+
+      .technical-dashboard .technical-category-row,
+      .technical-dashboard .technical-symbol-row {
+        align-items: center !important;
+        gap: 10px !important;
+      }
+
+      .technical-dashboard .technical-category-row button {
+        border: 1px solid rgba(148, 163, 184, .28) !important;
+        background: rgba(255, 255, 255, .86) !important;
+        color: #334155 !important;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, .035) !important;
+        transition: transform .18s ease, border-color .18s ease, background .18s ease, color .18s ease, box-shadow .18s ease;
+      }
+
+      .technical-dashboard .technical-category-row button[aria-pressed="true"],
+      .technical-dashboard .technical-category-row button:hover,
+      .technical-dashboard .technical-category-row button:focus-visible {
+        border-color: transparent !important;
+        background: linear-gradient(135deg, #1D8CFF, #2FD6C0) !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 14px 30px rgba(29, 140, 255, .22) !important;
+      }
+
+      .technical-dashboard .technical-category-row button:active,
+      .technical-dashboard .technical-symbol-pill:active {
+        transform: scale(.98);
+      }
+
+      .technical-dashboard .technical-symbol-pill {
+        border: 1px solid rgba(148, 163, 184, .28) !important;
+        background: rgba(255, 255, 255, .92) !important;
+        color: #334155 !important;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, .04) !important;
+        transition: transform .18s ease, border-color .18s ease, background .18s ease, color .18s ease, box-shadow .18s ease;
+      }
+
+      .technical-dashboard .technical-symbol-pill:hover,
+      .technical-dashboard .technical-symbol-pill:focus-within {
+        border-color: rgba(6, 182, 212, .46) !important;
+        background: #ECFEFF !important;
+        color: #0F766E !important;
+        box-shadow: 0 12px 26px rgba(8, 145, 178, .11) !important;
+      }
+
+      .technical-dashboard .technical-symbol-pill[data-active="true"] {
+        border-color: transparent !important;
+        background: linear-gradient(135deg, #1D8CFF, #2FD6C0) !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 14px 30px rgba(29, 140, 255, .24) !important;
+      }
+
+      .technical-dashboard .technical-symbol-main {
+        font-weight: 950 !important;
+        letter-spacing: .01em;
+      }
+
+      .technical-dashboard .technical-no-results {
+        width: 100%;
+        border: 1px dashed rgba(14, 165, 233, .24) !important;
+        border-radius: 18px !important;
+        background: rgba(240, 249, 255, .78) !important;
+        color: #475569 !important;
+        padding: 12px 14px !important;
+        text-align: center;
+      }
+
+      .dark .technical-dashboard .technical-selector-shell {
+        background:
+          linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .07)),
+          #0F1D31 !important;
+        border-color: #1D3050 !important;
+      }
+
+      .dark .technical-dashboard .technical-selected-chip,
+      .dark .technical-dashboard .technical-search {
+        background:
+          linear-gradient(135deg, rgba(19, 36, 58, .94), rgba(15, 29, 49, .96)) !important;
+        border-color: #1D3050 !important;
+        box-shadow: none !important;
+      }
+
+      .dark .technical-dashboard .technical-selected-chip small,
+      .dark .technical-dashboard .technical-selected-chip span:not(.technical-selected-chip-icon),
+      .dark .technical-dashboard .technical-search input::placeholder {
+        color: #B8C7D9 !important;
+      }
+
+      .dark .technical-dashboard .technical-selected-chip strong,
+      .dark .technical-dashboard .technical-search input {
+        color: #E8EEF6 !important;
+      }
+
+      .dark .technical-dashboard .technical-search:focus-within {
+        border-color: rgba(47, 214, 192, .58) !important;
+        box-shadow: 0 0 0 4px rgba(47, 214, 192, .12) !important;
+      }
+
+      .dark .technical-dashboard .technical-category-row button,
+      .dark .technical-dashboard .technical-symbol-pill {
+        border-color: #1D3050 !important;
+        background: #13243A !important;
+        color: #B8C7D9 !important;
+        box-shadow: none !important;
+      }
+
+      .dark .technical-dashboard .technical-symbol-pill:hover,
+      .dark .technical-dashboard .technical-symbol-pill:focus-within {
+        border-color: rgba(47, 214, 192, .46) !important;
+        background: #0F1D31 !important;
+        color: #B8FFF4 !important;
+      }
+
+      .dark .technical-dashboard .technical-category-row button[aria-pressed="true"],
+      .dark .technical-dashboard .technical-category-row button:hover,
+      .dark .technical-dashboard .technical-category-row button:focus-visible,
+      .dark .technical-dashboard .technical-symbol-pill[data-active="true"] {
+        border-color: transparent !important;
+        background: linear-gradient(135deg, #1D8CFF, #2FD6C0) !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 14px 30px rgba(29, 140, 255, .18) !important;
+      }
+
+      .dark .technical-dashboard .technical-no-results {
+        border-color: #1D3050 !important;
+        background: #13243A !important;
+        color: #B8C7D9 !important;
+      }
+
+      @media (max-width: 780px) {
+        .technical-dashboard .technical-selector-shell {
+          gap: 12px !important;
+          padding: 12px !important;
+        }
+
+        .technical-dashboard .technical-search-row {
+          grid-template-columns: 1fr !important;
+        }
+
+        .technical-dashboard .technical-selected-chip {
+          min-height: 70px !important;
+        }
+
+        .technical-dashboard .technical-category-row,
+        .technical-dashboard .technical-symbol-row {
+          flex-wrap: nowrap !important;
+          justify-content: flex-start !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          padding: 2px 2px 10px !important;
+          scroll-padding-inline: 12px;
+        }
+
+        .technical-dashboard .technical-category-row button,
+        .technical-dashboard .technical-symbol-pill {
+          flex: 0 0 auto !important;
+          white-space: nowrap !important;
         }
       }
 

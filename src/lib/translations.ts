@@ -1066,6 +1066,7 @@ export const TR: Record<string, TranslationEntry> = {
   market_search_results: { ar:'نتائج البحث', en:'Search results', fr:'Résultats de recherche' },
   market_no_results_found: { ar:'لا توجد نتائج', en:'No results found', fr:'Aucun résultat' },
   market_no_search_results: { ar:'لا توجد نتائج', en:'No results found', fr:'Aucun résultat' },
+  market_no_matching_asset: { ar:'لم يتم العثور على أصل مطابق.', en:'No matching asset was found.', fr:'Aucun actif correspondant n’a été trouvé.' },
   market_no_asset_found_short: { ar:'لم يتم العثور على هذا الأصل', en:'No asset found', fr:'Aucun actif trouvé' },
   market_select_asset: { ar:'اختر أصل مالي', en:'Select an asset', fr:'Sélectionner un actif' },
   market_symbol_name: { ar:'الاسم', en:'Name', fr:'Nom' },
