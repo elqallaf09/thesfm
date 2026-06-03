@@ -63,8 +63,8 @@ export function TechNewsCard({ item, labels, formatDateTime, formatPrice }: Tech
       <p dir={contentDir}>{displaySummary}</p>
       <div className="tech-news-card-footer">
         <div className="tech-news-meta">
-          <span>{item.source || labels.source}</span>
-          <span>
+          <span className="tech-news-source-badge">{item.source || labels.source}</span>
+          <span className="tech-news-date-meta">
             <Clock3 size={14} />
             {formatDateTime(item.publishedAt)}
           </span>
