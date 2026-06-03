@@ -8,8 +8,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
+    const category = url.searchParams.get('category');
     const limit = parseNewsLimit(url.searchParams.get('limit'));
-    const payload = await fetchStockCategoryNews('defensive', url.searchParams.get('lang'));
+    const payload = await fetchStockCategoryNews(category, url.searchParams.get('lang'));
     const items = payload.items.slice(0, limit).map(item => ({
       ...compactNewsItem(item),
       companyName: item.companyName,
@@ -21,6 +22,7 @@ export async function GET(request: Request) {
       changePercent: item.changePercent,
       priceSource: item.priceSource,
       delayed: item.delayed,
+      ...(item.shariaStatus ? { shariaStatus: item.shariaStatus } : {}),
     }));
 
     return NextResponse.json({
@@ -33,13 +35,13 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error('[DefensiveStocksNews] Failed to load news', {
+    console.error('[StockCategoryNews] Failed to load category news', {
       message: error instanceof Error ? error.message : String(error),
     });
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to load defensive stocks news',
+        error: 'Failed to load stock category news',
         reason: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 503 },

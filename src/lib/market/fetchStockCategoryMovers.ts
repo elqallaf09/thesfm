@@ -1,6 +1,6 @@
-import { DEFENSIVE_STOCKS } from '@/lib/market/defensiveStocks';
+import { getStockCategoryConfig, type StockCategoryId, type StockCategoryStock } from '@/lib/market/stockCategoryConfigs';
 
-export type DefensiveMoverItem = {
+export type StockCategoryMoverItem = {
   rank: number;
   symbol: string;
   name: string;
@@ -10,26 +10,28 @@ export type DefensiveMoverItem = {
   volume: number | null;
 };
 
-export type DefensiveMoversData = {
-  topGainers: DefensiveMoverItem[];
-  topLosers: DefensiveMoverItem[];
-  highestPrice: DefensiveMoverItem[];
-  lowestPrice: DefensiveMoverItem[];
-  highestVolume: DefensiveMoverItem[];
-  lowestVolume: DefensiveMoverItem[];
+export type StockCategoryMoversData = {
+  topGainers: StockCategoryMoverItem[];
+  topLosers: StockCategoryMoverItem[];
+  highestPrice: StockCategoryMoverItem[];
+  lowestPrice: StockCategoryMoverItem[];
+  highestVolume: StockCategoryMoverItem[];
+  lowestVolume: StockCategoryMoverItem[];
 };
 
-export type DefensiveMoversResponse =
+export type StockCategoryMoversResponse =
   | {
     ok: true;
+    category: StockCategoryId;
     updated_at: string;
     source: 'Yahoo Finance';
-    data: DefensiveMoversData;
+    data: StockCategoryMoversData;
     warnings?: string[];
   }
   | {
     ok: false;
-    code: 'DEFENSIVE_MOVERS_UNAVAILABLE';
+    category: string;
+    code: 'STOCK_CATEGORY_MOVERS_UNAVAILABLE' | 'UNSUPPORTED_STOCK_CATEGORY';
     updated_at: string | null;
     source: 'Yahoo Finance';
     data: null;
@@ -73,17 +75,17 @@ function finiteNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function configuredName(symbol: string) {
-  return DEFENSIVE_STOCKS.find(stock => stock.symbol === symbol)?.name ?? symbol;
+function configuredName(stocks: StockCategoryStock[], symbol: string) {
+  return stocks.find(stock => stock.symbol === symbol)?.name ?? symbol;
 }
 
-function normalizeQuoteRow(row: YahooQuoteRow) {
+function normalizeQuoteRow(stocks: StockCategoryStock[], row: YahooQuoteRow) {
   const symbol = String(row.symbol ?? '').toUpperCase();
   const price = finiteNumber(row.regularMarketPrice);
   if (!symbol || price === null || price <= 0) return null;
   return {
     symbol,
-    name: row.longName ?? row.shortName ?? configuredName(symbol),
+    name: row.longName ?? row.shortName ?? configuredName(stocks, symbol),
     price,
     currency: String(row.currency ?? 'USD').toUpperCase(),
     changePercent: finiteNumber(row.regularMarketChangePercent),
@@ -91,14 +93,14 @@ function normalizeQuoteRow(row: YahooQuoteRow) {
   };
 }
 
-function normalizeChartRow(symbol: string, meta: NonNullable<NonNullable<YahooChartResponse['chart']>['result']>[number]['meta']) {
+function normalizeChartRow(stocks: StockCategoryStock[], symbol: string, meta: NonNullable<NonNullable<YahooChartResponse['chart']>['result']>[number]['meta']) {
   const price = finiteNumber(meta?.regularMarketPrice);
   if (price === null || price <= 0) return null;
   const previousClose = finiteNumber(meta?.chartPreviousClose) ?? finiteNumber(meta?.previousClose);
   const changePercent = previousClose && previousClose > 0 ? ((price - previousClose) / previousClose) * 100 : null;
   return {
     symbol,
-    name: meta?.longName ?? meta?.shortName ?? configuredName(symbol),
+    name: meta?.longName ?? meta?.shortName ?? configuredName(stocks, symbol),
     price,
     currency: String(meta?.currency ?? 'USD').toUpperCase(),
     changePercent,
@@ -106,7 +108,7 @@ function normalizeChartRow(symbol: string, meta: NonNullable<NonNullable<YahooCh
   };
 }
 
-async function fetchYahooChartRow(symbol: string) {
+async function fetchYahooChartRow(stocks: StockCategoryStock[], symbol: string) {
   const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=2d&interval=1d`, {
     next: { revalidate: 300 },
     signal: AbortSignal.timeout(10000),
@@ -117,11 +119,11 @@ async function fetchYahooChartRow(symbol: string) {
   });
   if (!response.ok) return null;
   const payload = await response.json().catch(() => null) as YahooChartResponse | null;
-  return normalizeChartRow(symbol, payload?.chart?.result?.[0]?.meta);
+  return normalizeChartRow(stocks, symbol, payload?.chart?.result?.[0]?.meta);
 }
 
-async function fetchYahooRows() {
-  const symbols = DEFENSIVE_STOCKS.map(stock => stock.symbol);
+async function fetchYahooRows(stocks: StockCategoryStock[]) {
+  const symbols = stocks.map(stock => stock.symbol);
   const params = new URLSearchParams({ symbols: symbols.join(',') });
 
   try {
@@ -136,23 +138,23 @@ async function fetchYahooRows() {
     if (response.ok) {
       const payload = await response.json().catch(() => null) as YahooQuoteResponse | null;
       const rows = (payload?.quoteResponse?.result ?? [])
-        .map(normalizeQuoteRow)
-        .filter((row): row is Omit<DefensiveMoverItem, 'rank'> => Boolean(row));
+        .map(row => normalizeQuoteRow(stocks, row))
+        .filter((row): row is Omit<StockCategoryMoverItem, 'rank'> => Boolean(row));
       if (rows.length > 0) return rows;
     }
   } catch {
     // Chart fallback is used when Yahoo quote returns an empty or blocked response.
   }
 
-  const settled = await Promise.allSettled(symbols.map(symbol => fetchYahooChartRow(symbol)));
+  const settled = await Promise.allSettled(symbols.map(symbol => fetchYahooChartRow(stocks, symbol)));
   return settled
     .map(result => result.status === 'fulfilled' ? result.value : null)
-    .filter((row): row is Omit<DefensiveMoverItem, 'rank'> => Boolean(row));
+    .filter((row): row is Omit<StockCategoryMoverItem, 'rank'> => Boolean(row));
 }
 
 function ranked(
-  rows: Array<Omit<DefensiveMoverItem, 'rank'>>,
-  sorter: (a: Omit<DefensiveMoverItem, 'rank'>, b: Omit<DefensiveMoverItem, 'rank'>) => number,
+  rows: Array<Omit<StockCategoryMoverItem, 'rank'>>,
+  sorter: (a: Omit<StockCategoryMoverItem, 'rank'>, b: Omit<StockCategoryMoverItem, 'rank'>) => number,
   limit: number,
 ) {
   return rows
@@ -163,8 +165,8 @@ function ranked(
 }
 
 function rankedByNullable(
-  rows: Array<Omit<DefensiveMoverItem, 'rank'>>,
-  selector: (row: Omit<DefensiveMoverItem, 'rank'>) => number | null,
+  rows: Array<Omit<StockCategoryMoverItem, 'rank'>>,
+  selector: (row: Omit<StockCategoryMoverItem, 'rank'>) => number | null,
   direction: 'asc' | 'desc',
   limit: number,
 ) {
@@ -179,7 +181,7 @@ function rankedByNullable(
   );
 }
 
-function buildMoversData(rows: Array<Omit<DefensiveMoverItem, 'rank'>>, limit: number): DefensiveMoversData {
+function buildMoversData(rows: Array<Omit<StockCategoryMoverItem, 'rank'>>, limit: number): StockCategoryMoversData {
   return {
     topGainers: rankedByNullable(rows, row => row.changePercent, 'desc', limit).filter(row => (row.changePercent ?? 0) > 0),
     topLosers: rankedByNullable(rows, row => row.changePercent, 'asc', limit).filter(row => (row.changePercent ?? 0) < 0),
@@ -190,19 +192,34 @@ function buildMoversData(rows: Array<Omit<DefensiveMoverItem, 'rank'>>, limit: n
   };
 }
 
-function hasAnyMoverData(data: DefensiveMoversData) {
+function hasAnyMoverData(data: StockCategoryMoversData) {
   return Object.values(data).some(list => list.length > 0);
 }
 
-export async function fetchDefensiveStockMovers(limitInput = 5): Promise<DefensiveMoversResponse> {
+export async function fetchStockCategoryMovers(categoryInput: string | null | undefined, limitInput = 5): Promise<StockCategoryMoversResponse> {
+  const config = getStockCategoryConfig(categoryInput);
+  const category = String(categoryInput ?? '');
   const limit = Math.max(1, Math.min(5, Math.floor(limitInput)));
+
+  if (!config) {
+    return {
+      ok: false,
+      category,
+      code: 'UNSUPPORTED_STOCK_CATEGORY',
+      updated_at: null,
+      source: 'Yahoo Finance',
+      data: null,
+    };
+  }
+
   try {
-    const rows = await fetchYahooRows();
+    const rows = await fetchYahooRows(config.watchlist);
     const data = buildMoversData(rows, limit);
     if (!hasAnyMoverData(data)) {
       return {
         ok: false,
-        code: 'DEFENSIVE_MOVERS_UNAVAILABLE',
+        category: config.id,
+        code: 'STOCK_CATEGORY_MOVERS_UNAVAILABLE',
         updated_at: null,
         source: 'Yahoo Finance',
         data: null,
@@ -210,6 +227,7 @@ export async function fetchDefensiveStockMovers(limitInput = 5): Promise<Defensi
     }
     return {
       ok: true,
+      category: config.id,
       updated_at: new Date().toISOString(),
       source: 'Yahoo Finance',
       data,
@@ -217,13 +235,15 @@ export async function fetchDefensiveStockMovers(limitInput = 5): Promise<Defensi
     };
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
-      console.warn('[DefensiveStockMovers] Failed to fetch movers', {
+      console.warn('[StockCategoryMovers] Failed to fetch movers', {
+        category: config.id,
         message: error instanceof Error ? error.message : String(error),
       });
     }
     return {
       ok: false,
-      code: 'DEFENSIVE_MOVERS_UNAVAILABLE',
+      category: config.id,
+      code: 'STOCK_CATEGORY_MOVERS_UNAVAILABLE',
       updated_at: null,
       source: 'Yahoo Finance',
       data: null,

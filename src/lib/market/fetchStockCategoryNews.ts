@@ -1,8 +1,14 @@
-import { DEFENSIVE_STOCKS, type DefensiveStockConfig, type DefensiveStockSector } from '@/lib/market/defensiveStocks';
 import { fetchStockPrices, type TechStockPrice } from '@/lib/market/fetchStockPrices';
+import {
+  getStockCategoryConfig,
+  type StockCategoryConfig,
+  type StockCategoryFilterKey,
+  type StockCategoryId,
+  type StockCategoryStock,
+} from '@/lib/market/stockCategoryConfigs';
 import { isNewsTranslationEnabled, normalizeNewsLanguage, translateNewsItems, type AppNewsLanguage } from '@/lib/translation/translateNewsText';
 
-export type DefensiveStockNewsItem = {
+export type StockCategoryNewsItem = {
   id: string;
   headline: string;
   title: string;
@@ -15,8 +21,8 @@ export type DefensiveStockNewsItem = {
   translationSource?: string;
   companyName: string;
   ticker: string;
-  sector: DefensiveStockSector;
-  sectors: DefensiveStockSector[];
+  sector: StockCategoryFilterKey;
+  sectors: StockCategoryFilterKey[];
   source: string;
   datetime: number | null;
   publishedAt: string;
@@ -27,17 +33,19 @@ export type DefensiveStockNewsItem = {
   change: number | null;
   priceSource: TechStockPrice['source'] | null;
   delayed: true;
+  shariaStatus?: 'possible' | 'needs_review' | 'unclassified';
 };
 
-export type DefensiveStocksNewsPayload = {
+export type StockCategoryNewsPayload = {
   success: true;
+  category: StockCategoryId;
   source: 'Finnhub + RSS fallback';
   priceSource: 'Finnhub/Yahoo Finance fallback';
   lastUpdated: string;
   language: AppNewsLanguage;
   translationEnabled: boolean;
   prices: TechStockPrice[];
-  items: DefensiveStockNewsItem[];
+  items: StockCategoryNewsItem[];
   message?: string;
 };
 
@@ -51,67 +59,7 @@ type FinnhubNews = {
   image?: string;
 };
 
-const STOCK_BY_SYMBOL = new Map(DEFENSIVE_STOCKS.map(stock => [stock.symbol, stock]));
-
-const RSS_FALLBACK_FEEDS = [
-  {
-    source: 'Yahoo Finance',
-    url: `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${DEFENSIVE_STOCKS.map(stock => stock.symbol).join(',')}&region=US&lang=en-US`,
-  },
-  {
-    source: 'Google News',
-    url: 'https://news.google.com/rss/search?q=(defensive%20stocks%20OR%20consumer%20staples%20stocks%20OR%20healthcare%20stocks%20OR%20utility%20stocks%20OR%20telecom%20stocks%20OR%20dividend%20stocks)%20(stock%20OR%20shares%20OR%20earnings%20OR%20market)&hl=en-US&gl=US&ceid=US:en',
-  },
-];
-
-const RSS_STOCK_KEYWORDS: Array<{ symbol: string; keywords: string[] }> = [
-  { symbol: 'PG', keywords: ['Procter', 'P&G', 'PG'] },
-  { symbol: 'KO', keywords: ['Coca-Cola', 'Coca Cola', 'KO'] },
-  { symbol: 'PEP', keywords: ['PepsiCo', 'PEP'] },
-  { symbol: 'WMT', keywords: ['Walmart', 'WMT'] },
-  { symbol: 'COST', keywords: ['Costco', 'COST'] },
-  { symbol: 'CL', keywords: ['Colgate', 'CL'] },
-  { symbol: 'KMB', keywords: ['Kimberly-Clark', 'Kimberly Clark', 'KMB'] },
-  { symbol: 'GIS', keywords: ['General Mills', 'GIS'] },
-  { symbol: 'MDLZ', keywords: ['Mondelez', 'MDLZ'] },
-  { symbol: 'HSY', keywords: ['Hershey', 'HSY'] },
-  { symbol: 'JNJ', keywords: ['Johnson & Johnson', 'Johnson and Johnson', 'JNJ'] },
-  { symbol: 'PFE', keywords: ['Pfizer', 'PFE'] },
-  { symbol: 'MRK', keywords: ['Merck', 'MRK'] },
-  { symbol: 'ABBV', keywords: ['AbbVie', 'ABBV'] },
-  { symbol: 'LLY', keywords: ['Eli Lilly', 'Lilly', 'LLY'] },
-  { symbol: 'UNH', keywords: ['UnitedHealth', 'UNH'] },
-  { symbol: 'BMY', keywords: ['Bristol Myers', 'Bristol-Myers', 'BMY'] },
-  { symbol: 'NEE', keywords: ['NextEra', 'NEE'] },
-  { symbol: 'DUK', keywords: ['Duke Energy', 'DUK'] },
-  { symbol: 'SO', keywords: ['Southern Company'] },
-  { symbol: 'AEP', keywords: ['American Electric Power', 'AEP'] },
-  { symbol: 'EXC', keywords: ['Exelon', 'EXC'] },
-  { symbol: 'VZ', keywords: ['Verizon', 'VZ'] },
-  { symbol: 'T', keywords: ['AT&T', 'AT and T'] },
-  { symbol: 'XLP', keywords: ['XLP', 'Consumer Staples Select Sector'] },
-  { symbol: 'XLV', keywords: ['XLV', 'Health Care Select Sector'] },
-  { symbol: 'XLU', keywords: ['XLU', 'Utilities Select Sector'] },
-  { symbol: 'VDC', keywords: ['VDC', 'Vanguard Consumer Staples'] },
-  { symbol: 'VHT', keywords: ['VHT', 'Vanguard Health Care'] },
-];
-
-const CATEGORY_KEYWORDS: Array<{ sector: DefensiveStockSector; keywords: string[] }> = [
-  { sector: 'consumer_staples', keywords: ['consumer staples', 'staples', 'household products', 'defensive stocks'] },
-  { sector: 'healthcare', keywords: ['healthcare', 'health care', 'medical', 'hospital', 'insurance'] },
-  { sector: 'utilities', keywords: ['utilities', 'utility', 'electricity', 'power', 'regulated utility'] },
-  { sector: 'telecom', keywords: ['telecom', 'telecommunications', 'wireless', 'broadband'] },
-  { sector: 'food_beverage', keywords: ['food', 'beverage', 'drinks', 'snacks', 'grocery'] },
-  { sector: 'essential_retail', keywords: ['retail', 'warehouse club', 'essential retail', 'supermarket'] },
-  { sector: 'pharmaceuticals', keywords: ['pharmaceutical', 'pharma', 'drug', 'medicine', 'vaccine'] },
-  { sector: 'insurance_stable', keywords: ['insurance', 'managed care', 'health insurer'] },
-];
-
-const NEWS_RANGES = [
-  { daysBack: 7, label: '7d' },
-  { daysBack: 30, label: '30d' },
-  { daysBack: 90, label: '90d' },
-] as const;
+const NEWS_RANGES = [7, 30, 90] as const;
 
 function dateString(daysAgo = 0) {
   const date = new Date();
@@ -184,26 +132,50 @@ function hasKeyword(text: string, keyword: string) {
   return new RegExp(`(^|[^a-z0-9])${escapeRegExp(keyword.toLowerCase())}([^a-z0-9]|$)`, 'i').test(text);
 }
 
-function uniqueSectors(values: DefensiveStockSector[]) {
-  return Array.from(new Set(values));
+function uniqueValues(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean)));
 }
 
-function stockSectors(stock: DefensiveStockConfig) {
-  return uniqueSectors([stock.sector, ...(stock.sectors ?? [])]);
+function stockFilters(stock: StockCategoryStock) {
+  return uniqueValues([stock.filter, ...(stock.filters ?? [])]);
 }
 
-function matchStock(headline: string, summary: string) {
+function makeStockMap(config: StockCategoryConfig) {
+  return new Map(config.watchlist.map(stock => [stock.symbol, stock]));
+}
+
+function matchStock(config: StockCategoryConfig, headline: string, summary: string) {
   const text = `${headline} ${summary}`.toLowerCase();
-  const match = RSS_STOCK_KEYWORDS.find(({ keywords }) => keywords.some(keyword => hasKeyword(text, keyword)));
-  return match ? STOCK_BY_SYMBOL.get(match.symbol) ?? null : null;
+  return config.watchlist.find(stock => {
+    const keywords = [stock.symbol, stock.name, ...(stock.aliases ?? [])];
+    return keywords.some(keyword => hasKeyword(text, keyword));
+  }) ?? null;
 }
 
-function detectNewsSectors(headline: string, summary: string, stock?: DefensiveStockConfig | null) {
+function detectNewsFilters(config: StockCategoryConfig, headline: string, summary: string, stock?: StockCategoryStock | null) {
   const text = `${headline} ${summary}`;
-  const keywordSectors = CATEGORY_KEYWORDS
-    .filter(({ keywords }) => keywords.some(keyword => hasKeyword(text, keyword)))
-    .map(item => item.sector);
-  return uniqueSectors([...(stock ? stockSectors(stock) : []), ...keywordSectors]);
+  const keywordFilters = config.filters
+    .filter(filter => filter.key !== 'all' && filter.keywords.some(keyword => hasKeyword(text, keyword)))
+    .map(filter => filter.key);
+  return uniqueValues([...(stock ? stockFilters(stock) : []), ...keywordFilters]);
+}
+
+function encodedGoogleNewsUrl(query: string) {
+  const encoded = encodeURIComponent(`(${query}) (stock OR shares OR earnings OR market)`);
+  return `https://news.google.com/rss/search?q=${encoded}&hl=en-US&gl=US&ceid=US:en`;
+}
+
+function rssFeedsFor(config: StockCategoryConfig) {
+  return [
+    {
+      source: 'Yahoo Finance',
+      url: `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${config.watchlist.map(stock => stock.symbol).join(',')}&region=US&lang=en-US`,
+    },
+    {
+      source: 'Google News',
+      url: encodedGoogleNewsUrl(config.rssQuery),
+    },
+  ];
 }
 
 async function fetchFinnhubJson<T>(url: string) {
@@ -217,15 +189,20 @@ async function fetchFinnhubJson<T>(url: string) {
   return body as T;
 }
 
-function mapNewsItem(stock: DefensiveStockConfig, item: FinnhubNews, price: TechStockPrice | undefined): DefensiveStockNewsItem | null {
+function mapNewsItem(
+  config: StockCategoryConfig,
+  stock: StockCategoryStock,
+  item: FinnhubNews,
+  price: TechStockPrice | undefined,
+): StockCategoryNewsItem | null {
   const headline = String(item.headline ?? '').trim();
   const url = String(item.url ?? '').trim();
   if (!headline || !url) return null;
   const rawSummary = String(item.summary ?? '').trim();
   const publishedAt = item.datetime ? new Date(item.datetime * 1000).toISOString() : new Date().toISOString();
-  const sectors = detectNewsSectors(headline, rawSummary, stock);
+  const sectors = detectNewsFilters(config, headline, rawSummary, stock);
   return {
-    id: `${stock.symbol}-${item.id ?? publishedAt}-${url}`,
+    id: `${config.id}-${stock.symbol}-${item.id ?? publishedAt}-${url}`,
     headline,
     title: headline,
     summary: rawSummary,
@@ -234,7 +211,7 @@ function mapNewsItem(stock: DefensiveStockConfig, item: FinnhubNews, price: Tech
     languageOriginal: 'en',
     companyName: stock.name,
     ticker: stock.symbol,
-    sector: stock.sector,
+    sector: stock.filter,
     sectors,
     source: String(item.source ?? 'Finnhub').trim() || 'Finnhub',
     datetime: typeof item.datetime === 'number' ? item.datetime : null,
@@ -246,6 +223,7 @@ function mapNewsItem(stock: DefensiveStockConfig, item: FinnhubNews, price: Tech
     change: price?.change ?? null,
     priceSource: price?.available ? price.source : null,
     delayed: true,
+    ...(config.shariaCaution ? { shariaStatus: 'unclassified' as const } : {}),
   };
 }
 
@@ -253,7 +231,7 @@ function hasUsableArticle(item: FinnhubNews) {
   return Boolean(String(item.headline ?? '').trim() && String(item.url ?? '').trim());
 }
 
-async function fetchCompanyNewsForRange(stock: DefensiveStockConfig, apiKey: string, daysBack: number) {
+async function fetchCompanyNewsForRange(stock: StockCategoryStock, apiKey: string, daysBack: number) {
   const params = new URLSearchParams({
     symbol: stock.symbol,
     from: dateString(daysBack),
@@ -265,9 +243,9 @@ async function fetchCompanyNewsForRange(stock: DefensiveStockConfig, apiKey: str
   return news;
 }
 
-async function fetchAllCompanyNews(apiKey: string, daysBack: number) {
+async function fetchAllCompanyNews(config: StockCategoryConfig, apiKey: string, daysBack: number) {
   const settled = await Promise.allSettled(
-    DEFENSIVE_STOCKS.map(async stock => ({
+    config.watchlist.map(async stock => ({
       stock,
       news: await fetchCompanyNewsForRange(stock, apiKey, daysBack),
     })),
@@ -275,8 +253,9 @@ async function fetchAllCompanyNews(apiKey: string, daysBack: number) {
   const rows = settled.flatMap((result, index) => {
     if (result.status === 'fulfilled') return [result.value];
     if (process.env.NODE_ENV !== 'production') {
-      console.warn('[DefensiveStocksNews] Finnhub company-news failed', {
-        symbol: DEFENSIVE_STOCKS[index]?.symbol,
+      console.warn('[StockCategoryNews] Finnhub company-news failed', {
+        category: config.id,
+        symbol: config.watchlist[index]?.symbol,
         reason: result.reason instanceof Error ? result.reason.message : String(result.reason),
       });
     }
@@ -301,31 +280,34 @@ async function fetchRssFeed(feed: { source: string; url: string }) {
   return response.text();
 }
 
-function parseRssItems(feed: { source: string; url: string }, xml: string, prices: Map<string, TechStockPrice>) {
+function parseRssItems(config: StockCategoryConfig, feed: { source: string; url: string }, xml: string, prices: Map<string, TechStockPrice>) {
   const blocks = xml.match(/<item[\s\S]*?<\/item>/gi) ?? xml.match(/<entry[\s\S]*?<\/entry>/gi) ?? [];
+  const stockMap = makeStockMap(config);
   return blocks.map(block => {
     const headline = extractTag(block, 'title');
     const url = extractLink(block);
     if (!headline || !url) return null;
     const description = extractTag(block, 'description') || extractTag(block, 'summary') || extractTag(block, 'content:encoded');
     const summary = excerpt(description, headline);
-    const stock = matchStock(headline, summary);
-    const sectors = detectNewsSectors(headline, summary, stock);
+    const stock = matchStock(config, headline, summary);
+    const sectors = detectNewsFilters(config, headline, summary, stock);
     if (!stock && sectors.length === 0) return null;
+    const fallbackFilter = sectors[0] ?? config.filters.find(filter => filter.key !== 'all')?.key ?? 'general';
+    const matchedStock = stock ?? stockMap.get('') ?? null;
     const published = extractTag(block, 'pubDate') || extractTag(block, 'published') || extractTag(block, 'updated');
     const publishedAt = safeDate(published);
-    const price = stock ? prices.get(stock.symbol) : undefined;
-    const row: DefensiveStockNewsItem = {
-      id: `rss-${feed.source}-${url || headline}`.toLowerCase().replace(/\s+/g, '-'),
+    const price = matchedStock ? prices.get(matchedStock.symbol) : undefined;
+    const row: StockCategoryNewsItem = {
+      id: `rss-${config.id}-${feed.source}-${url || headline}`.toLowerCase().replace(/\s+/g, '-'),
       headline,
       title: headline,
       summary,
       titleOriginal: headline,
       summaryOriginal: summary,
       languageOriginal: 'unknown',
-      companyName: stock?.name ?? 'Defensive Stocks',
-      ticker: stock?.symbol ?? 'DEF',
-      sector: stock?.sector ?? sectors[0] ?? 'consumer_staples',
+      companyName: matchedStock?.name ?? `${config.id} stocks`,
+      ticker: matchedStock?.symbol ?? config.id.toUpperCase(),
+      sector: matchedStock?.filter ?? fallbackFilter,
       sectors,
       source: feed.source,
       datetime: Math.floor(new Date(publishedAt).getTime() / 1000),
@@ -337,35 +319,37 @@ function parseRssItems(feed: { source: string; url: string }, xml: string, price
       change: price?.change ?? null,
       priceSource: price?.available ? price.source : null,
       delayed: true,
+      ...(config.shariaCaution ? { shariaStatus: 'unclassified' as const } : {}),
     };
     return row;
-  }).filter((item): item is DefensiveStockNewsItem => Boolean(item));
+  }).filter((item): item is StockCategoryNewsItem => Boolean(item));
 }
 
-async function fetchRssFallbackNews(prices: Map<string, TechStockPrice>) {
+async function fetchRssFallbackNews(config: StockCategoryConfig, prices: Map<string, TechStockPrice>) {
+  const feeds = rssFeedsFor(config);
   const settled = await Promise.allSettled(
-    RSS_FALLBACK_FEEDS.map(async feed => ({
+    feeds.map(async feed => ({
       feed,
-      items: parseRssItems(feed, await fetchRssFeed(feed), prices),
+      items: parseRssItems(config, feed, await fetchRssFeed(feed), prices),
     })),
   );
-  const items = settled.flatMap((result, index) => {
+  return settled.flatMap((result, index) => {
     if (result.status === 'fulfilled') {
-      devLog('[DefensiveStocksNews] RSS fallback returned', { source: result.value.feed.source, count: result.value.items.length });
+      devLog('[StockCategoryNews] RSS fallback returned', { category: config.id, source: result.value.feed.source, count: result.value.items.length });
       return result.value.items;
     }
     if (process.env.NODE_ENV !== 'production') {
-      console.warn('[DefensiveStocksNews] RSS fallback failed', {
-        source: RSS_FALLBACK_FEEDS[index]?.source,
+      console.warn('[StockCategoryNews] RSS fallback failed', {
+        category: config.id,
+        source: feeds[index]?.source,
         reason: result.reason instanceof Error ? result.reason.message : String(result.reason),
       });
     }
     return [];
   });
-  return items;
 }
 
-function dedupeAndSort(items: DefensiveStockNewsItem[]) {
+function dedupeAndSort(items: StockCategoryNewsItem[]) {
   const seenUrls = new Set<string>();
   const seenHeadlines = new Set<string>();
   return items
@@ -381,30 +365,35 @@ function dedupeAndSort(items: DefensiveStockNewsItem[]) {
     .slice(0, 60);
 }
 
-export async function fetchDefensiveStocksNews(languageInput?: string | null) {
+export async function fetchStockCategoryNews(categoryInput: string | null | undefined, languageInput?: string | null) {
+  const config = getStockCategoryConfig(categoryInput);
+  if (!config) throw new Error('Unsupported stock category');
+
   const language = normalizeNewsLanguage(languageInput);
   const apiKey = process.env.FINNHUB_API_KEY?.trim();
-  const prices = await fetchStockPrices(DEFENSIVE_STOCKS, apiKey);
+  const prices = await fetchStockPrices(config.watchlist, apiKey);
   let selected: Awaited<ReturnType<typeof fetchAllCompanyNews>> | null = null;
 
   if (hasUsableFinnhubKey(apiKey)) {
     const usableApiKey = apiKey ?? '';
-    for (const range of NEWS_RANGES) {
-      selected = await fetchAllCompanyNews(usableApiKey, range.daysBack);
+    for (const daysBack of NEWS_RANGES) {
+      selected = await fetchAllCompanyNews(config, usableApiKey, daysBack);
       if (selected.usableCount > 0) break;
     }
   } else if (process.env.NODE_ENV !== 'production') {
-    console.warn('[DefensiveStocksNews] FINNHUB_API_KEY is not configured; using RSS fallback for news and Yahoo Finance fallback for prices.');
+    console.warn('[StockCategoryNews] FINNHUB_API_KEY is not configured; using RSS fallback for news and Yahoo Finance fallback for prices.', {
+      category: config.id,
+    });
   }
 
   const finnhubItems = selected
     ? selected.rows.flatMap(({ stock, news }) => news
-      .map(item => mapNewsItem(stock, item as FinnhubNews, prices.get(stock.symbol)))
-      .filter((item): item is DefensiveStockNewsItem => Boolean(item)))
+      .map(item => mapNewsItem(config, stock, item as FinnhubNews, prices.get(stock.symbol)))
+      .filter((item): item is StockCategoryNewsItem => Boolean(item)))
     : [];
-  const rssItems = finnhubItems.length === 0 ? await fetchRssFallbackNews(prices) : [];
-  const items = await translateNewsItems(dedupeAndSort(finnhubItems.length > 0 ? finnhubItems : rssItems), language) as DefensiveStockNewsItem[];
-  const priceList = DEFENSIVE_STOCKS.map(stock => prices.get(stock.symbol) ?? {
+  const rssItems = finnhubItems.length === 0 ? await fetchRssFallbackNews(config, prices) : [];
+  const items = await translateNewsItems(dedupeAndSort(finnhubItems.length > 0 ? finnhubItems : rssItems), language) as StockCategoryNewsItem[];
+  const priceList = config.watchlist.map(stock => prices.get(stock.symbol) ?? {
     symbol: stock.symbol,
     price: null,
     changePercent: null,
@@ -417,6 +406,7 @@ export async function fetchDefensiveStocksNews(languageInput?: string | null) {
 
   return {
     success: true,
+    category: config.id,
     source: 'Finnhub + RSS fallback',
     priceSource: 'Finnhub/Yahoo Finance fallback',
     lastUpdated: new Date().toISOString(),
@@ -424,6 +414,6 @@ export async function fetchDefensiveStocksNews(languageInput?: string | null) {
     translationEnabled: isNewsTranslationEnabled(),
     prices: priceList,
     items,
-    ...(items.length === 0 ? { message: 'No recent defensive stocks news found from configured real data sources.' } : {}),
-  } satisfies DefensiveStocksNewsPayload;
+    ...(items.length === 0 ? { message: config.noNewsMessage } : {}),
+  } satisfies StockCategoryNewsPayload;
 }

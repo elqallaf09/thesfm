@@ -108,6 +108,12 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'europe-news', icon: Newspaper, href: '/europe-news', labelKey: 'nav_europe_news' },
       { id: 'tech-news', icon: Newspaper, href: '/tech-news', labelKey: 'nav_tech_news' },
       { id: 'defensive-stocks', icon: ShieldCheck, href: '/defensive-stocks', labelKey: 'nav_defensive_stocks' },
+      { id: 'growth-stocks', icon: TrendingUp, href: '/growth-stocks', labelKey: 'nav_growth_stocks' },
+      { id: 'dividend-stocks', icon: PiggyBank, href: '/dividend-stocks', labelKey: 'nav_dividend_stocks' },
+      { id: 'cyclical-stocks', icon: LineChart, href: '/cyclical-stocks', labelKey: 'nav_cyclical_stocks' },
+      { id: 'energy-stocks', icon: Compass, href: '/energy-stocks', labelKey: 'nav_energy_stocks' },
+      { id: 'banking-stocks', icon: Landmark, href: '/banking-stocks', labelKey: 'nav_banking_stocks' },
+      { id: 'sharia-stocks', icon: ShieldCheck, href: '/sharia-stocks', labelKey: 'nav_sharia_stocks' },
     ],
   },
   {

@@ -13,8 +13,9 @@ function parseLimit(value: string | null) {
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  const category = url.searchParams.get('category');
   const limit = parseLimit(url.searchParams.get('limit'));
-  const result = await fetchStockCategoryMovers('defensive', limit);
+  const result = await fetchStockCategoryMovers(category, limit);
 
   return NextResponse.json(result, {
     headers: {
