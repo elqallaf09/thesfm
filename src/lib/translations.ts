@@ -521,6 +521,8 @@ export const TR: Record<string, TranslationEntry> = {
   market_trader_tools_dashboard_description: { ar:'مجموعة من الأدوات الاحترافية لمساعدتك في إدارة المخاطر وتحسين قراراتك التداولية.', en:'A professional toolkit to help you manage risk and improve trading decisions.', fr:'Une suite d’outils professionnels pour gérer le risque et améliorer vos décisions de trading.' },
   market_tool_summary: { ar:'ملخص الأداة', en:'Tool summary', fr:'Résumé de l’outil' },
   market_tool_summary_body: { ar:'تساعدك هذه الأداة على تحديد حجم صفقتك المناسب بناءً على نسبة المخاطرة في الحساب ووقف الخسارة.', en:'This tool helps estimate a suitable trade size based on account risk percentage and stop-loss distance.', fr:'Cet outil aide à estimer une taille de position adaptée selon le risque du compte et la distance du stop loss.' },
+  market_account_settings: { ar:'إعدادات الحساب', en:'Account settings', fr:'Paramètres du compte' },
+  market_risk_settings: { ar:'إعدادات المخاطرة', en:'Risk settings', fr:'Paramètres de risque' },
   market_quick_tip: { ar:'نصيحة سريعة', en:'Quick tip', fr:'Conseil rapide' },
   market_quick_tip_body: { ar:'لا تخاطر بأكثر من 1–2% من رأس مالك في الصفقة الواحدة للحفاظ على استدامة حسابك.', en:'Avoid risking more than 1–2% of capital on one trade to preserve account sustainability.', fr:'Évitez de risquer plus de 1 à 2 % du capital sur une seule transaction afin de préserver la durabilité du compte.' },
   market_usage_steps: { ar:'خطوات الاستخدام', en:'How to use', fr:'Étapes d’utilisation' },

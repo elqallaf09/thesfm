@@ -4470,35 +4470,44 @@ function TraderToolsDashboard({
                 {t('market_reset')}
               </button>
             </div>
-            <div className="trader-form-grid trader-premium-form-grid">
-              <ToolSelect
-                label={t('market_account_currency')}
-                helper={t('market_account_currency_hint')}
-                value={accountCurrency}
-                onChange={value => {
-                  setAccountCurrency(normalizeAccountCurrency(value));
-                  setAccountCurrencyTouched(true);
-                  setCurrencyMessage('');
-                  setCurrencyError('');
-                }}
-                options={accountCurrencyOptions}
-              />
-              <ToolInput label={t('market_account_balance')} helper={t('market_account_balance_hint')} prefix={accountCurrency} value={positionInput.accountBalance} onChange={value => setPositionInput(prev => ({ ...prev, accountBalance: value }))} />
-              <ToolInput label={t('market_risk_percentage')} helper={t('market_risk_percentage_hint')} suffix="%" value={positionInput.riskPercentage} onChange={value => setPositionInput(prev => ({ ...prev, riskPercentage: value }))} />
-              <ToolInput label={t('market_stop_loss')} helper={t('market_stop_loss_hint')} suffix={pipUnit} value={positionInput.stopLossDistance} onChange={value => setPositionInput(prev => ({ ...prev, stopLossDistance: value }))} />
-              <ToolSelect
-                label={t('market_instrument_type')}
-                helper={t('market_instrument_type_hint')}
-                value={positionInput.instrumentType}
-                onChange={value => setPositionInput(prev => ({ ...prev, instrumentType: value as TradingInstrumentType }))}
-                options={[
-                  ['forex', t('market_asset_forex')],
-                  ['metals', t('market_gold_metals')],
-                  ['indices', t('market_indices')],
-                  ['crypto', t('market_asset_crypto')],
-                  ['stocks', t('market_asset_stocks')],
-                ]}
-              />
+            <div className="trader-field-groups">
+              <TraderFieldGroup title={t('market_account_settings')} icon={<WalletCards size={15} />}>
+                <ToolSelect
+                  label={t('market_account_currency')}
+                  helper={t('market_account_currency_hint')}
+                  value={accountCurrency}
+                  onChange={value => {
+                    setAccountCurrency(normalizeAccountCurrency(value));
+                    setAccountCurrencyTouched(true);
+                    setCurrencyMessage('');
+                    setCurrencyError('');
+                  }}
+                  options={accountCurrencyOptions}
+                />
+                <ToolInput label={t('market_account_balance')} helper={t('market_account_balance_hint')} prefix={accountCurrency} value={positionInput.accountBalance} onChange={value => setPositionInput(prev => ({ ...prev, accountBalance: value }))} />
+              </TraderFieldGroup>
+
+              <TraderFieldGroup title={t('market_risk_settings')} icon={<ShieldAlert size={15} />}>
+                <ToolInput label={t('market_risk_percentage')} helper={t('market_risk_percentage_hint')} suffix="%" value={positionInput.riskPercentage} onChange={value => setPositionInput(prev => ({ ...prev, riskPercentage: value }))} />
+                <ToolInput label={t('market_stop_loss')} helper={t('market_stop_loss_hint')} suffix={pipUnit} value={positionInput.stopLossDistance} onChange={value => setPositionInput(prev => ({ ...prev, stopLossDistance: value }))} />
+              </TraderFieldGroup>
+
+              <TraderFieldGroup title={t('market_instrument_type')} icon={<Gauge size={15} />}>
+                <ToolSelect
+                  label={t('market_instrument_type')}
+                  helper={t('market_instrument_type_hint')}
+                  value={positionInput.instrumentType}
+                  onChange={value => setPositionInput(prev => ({ ...prev, instrumentType: value as TradingInstrumentType }))}
+                  options={[
+                    ['forex', t('market_asset_forex')],
+                    ['metals', t('market_gold_metals')],
+                    ['indices', t('market_indices')],
+                    ['crypto', t('market_asset_crypto')],
+                    ['stocks', t('market_asset_stocks')],
+                  ]}
+                />
+              </TraderFieldGroup>
+
               <details className="tool-advanced">
                 <summary>{t('market_advanced_settings')}</summary>
                 <div className="trader-form-grid">
@@ -4523,10 +4532,10 @@ function TraderToolsDashboard({
               </p>
             </section>
             <ResultGrid title={t('market_calculation_results')} subtitle={t('market_live_calculation_note')} rows={[
-              [t('market_risk_amount'), money(position.riskAmount, accountCurrency)],
-              [t('market_suggested_position_size'), formatNumber(position.positionSize, 4)],
-              [t('market_lot_size'), lotValue],
-              [t('market_expected_loss'), money(position.estimatedLoss, accountCurrency)],
+              [t('market_risk_amount'), money(position.riskAmount, accountCurrency), 'ltr', <CircleDollarSign key="risk-amount" size={16} />],
+              [t('market_suggested_position_size'), formatNumber(position.positionSize, 4), 'ltr', <TrendingUp key="position-size" size={16} />],
+              [t('market_lot_size'), lotValue, 'ltr', <PieChart key="lot-size" size={16} />],
+              [t('market_expected_loss'), money(position.estimatedLoss, accountCurrency), 'ltr', <ShieldAlert key="expected-loss" size={16} />],
             ]} />
             <FormulaCard
               title={t('market_calculation_method')}
@@ -4616,12 +4625,12 @@ function TraderToolsDashboard({
               </p>
             </section>
             <ResultGrid title={t('market_calculation_results')} subtitle={t('market_live_calculation_note')} rows={[
-              [t('market_asset_symbol'), selectedPipAsset.symbol, 'ltr'],
-              [t('market_number_of_pips'), `${formatNumber(pips.pips, 1)} ${pipUnit}`],
-              [t('market_point_value_per_lot'), `${accountCurrency} ${formatNumber(pipsPointValue, 2)}`],
-              [t('market_lot_size'), `${formatNumber(parseNumber(pipsInput.lotSize), 2)} ${t('market_lot_unit')}`],
-              [t('market_profit_loss'), money(pips.profitLoss, accountCurrency)],
-              [t('market_trade_status'), pipsTradeStatus, 'auto'],
+              [t('market_asset_symbol'), selectedPipAsset.symbol, 'ltr', <LineChart key="pip-symbol" size={16} />],
+              [t('market_number_of_pips'), `${formatNumber(pips.pips, 1)} ${pipUnit}`, 'ltr', <Gauge key="pip-count" size={16} />],
+              [t('market_point_value_per_lot'), `${accountCurrency} ${formatNumber(pipsPointValue, 2)}`, 'ltr', <CircleDollarSign key="pip-value" size={16} />],
+              [t('market_lot_size'), `${formatNumber(parseNumber(pipsInput.lotSize), 2)} ${t('market_lot_unit')}`, 'ltr', <PieChart key="pip-lot-size" size={16} />],
+              [t('market_profit_loss'), money(pips.profitLoss, accountCurrency), 'ltr', <TrendingUp key="pip-profit-loss" size={16} />],
+              [t('market_trade_status'), pipsTradeStatus, 'auto', <CheckCircle2 key="pip-status" size={16} />],
             ]} />
             <FormulaCard
               title={t('market_calculation_method')}
@@ -4661,11 +4670,11 @@ function TraderToolsDashboard({
           </article>
           <aside className="trader-result-stack trader-premium-result-stack">
             <ResultGrid title={t('market_calculation_results')} subtitle={t('market_live_calculation_note')} rows={[
-              [t('market_recommended_lot_size'), `${formatNumber(lots.recommendedLotSize, 4)} ${t('market_lot_unit')}`],
-              [t('market_micro_lots'), formatNumber(lots.microLots, 2)],
-              [t('market_mini_lots'), formatNumber(lots.miniLots, 2)],
-              [t('market_standard_lots'), formatNumber(lots.standardLots, 4)],
-              [t('market_expected_loss'), money((parseNumber(lotInput.accountBalance) * parseNumber(lotInput.riskPercentage)) / 100, accountCurrency)],
+              [t('market_recommended_lot_size'), `${formatNumber(lots.recommendedLotSize, 4)} ${t('market_lot_unit')}`, 'ltr', <PieChart key="recommended-lot" size={16} />],
+              [t('market_micro_lots'), formatNumber(lots.microLots, 2), 'ltr', <Calculator key="micro-lots" size={16} />],
+              [t('market_mini_lots'), formatNumber(lots.miniLots, 2), 'ltr', <Calculator key="mini-lots" size={16} />],
+              [t('market_standard_lots'), formatNumber(lots.standardLots, 4), 'ltr', <Calculator key="standard-lots" size={16} />],
+              [t('market_expected_loss'), money((parseNumber(lotInput.accountBalance) * parseNumber(lotInput.riskPercentage)) / 100, accountCurrency), 'ltr', <ShieldAlert key="lot-expected-loss" size={16} />],
             ]} />
             <FormulaCard
               title={t('market_calculation_method')}
@@ -4699,9 +4708,9 @@ function TraderToolsDashboard({
           </article>
           <aside className="trader-result-stack trader-premium-result-stack">
             <ResultGrid title={t('market_calculation_results')} subtitle={t('market_live_calculation_note')} rows={[
-              [t('market_required_margin'), money(margin.required, accountCurrency)],
-              [t('market_trade_size'), formatNumber(margin.tradeSize, 2)],
-              [t('market_leverage'), `1:${formatNumber(margin.leverage, 0)}`],
+              [t('market_required_margin'), money(margin.required, accountCurrency), 'ltr', <Landmark key="required-margin" size={16} />],
+              [t('market_trade_size'), formatNumber(margin.tradeSize, 2), 'ltr', <TrendingUp key="margin-trade-size" size={16} />],
+              [t('market_leverage'), `1:${formatNumber(margin.leverage, 0)}`, 'ltr', <Gauge key="margin-leverage" size={16} />],
             ]} />
             <FormulaCard
               title={t('market_calculation_method')}
@@ -4845,6 +4854,20 @@ function TraderSideStat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function TraderFieldGroup({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
+  return (
+    <section className="trader-field-group">
+      <div className="trader-field-group-title">
+        <span>{icon}</span>
+        <h4>{title}</h4>
+      </div>
+      <div className="trader-form-grid">
+        {children}
+      </div>
+    </section>
+  );
+}
+
 function ToolInput({
   label,
   value,
@@ -4938,7 +4961,7 @@ function ToolSegmented({
   );
 }
 
-function ResultGrid({ rows, title, subtitle }: { rows: Array<[string, string, ('ltr' | 'rtl' | 'auto')?]>; title?: string; subtitle?: string }) {
+function ResultGrid({ rows, title, subtitle }: { rows: Array<[string, string, ('ltr' | 'rtl' | 'auto')?, ReactNode?]>; title?: string; subtitle?: string }) {
   return (
     <section className="tool-results" aria-label={title}>
       {(title || subtitle) && (
@@ -4948,8 +4971,9 @@ function ResultGrid({ rows, title, subtitle }: { rows: Array<[string, string, ('
         </div>
       )}
       <div className="tool-result-grid">
-        {rows.map(([label, value, valueDir]) => (
+        {rows.map(([label, value, valueDir, icon]) => (
           <div className="tool-result-card" key={label}>
+            <span className="tool-result-icon" aria-hidden="true">{icon ?? <Calculator size={16} />}</span>
             <span>{label}</span>
             <b dir={valueDir ?? 'ltr'}>{value}</b>
           </div>
@@ -9717,6 +9741,281 @@ function MarketAsyncToolStyles() {
 
         .trader-premium-dashboard .trader-accordion-copy small {
           display: block;
+        }
+      }
+
+      .trader-premium-dashboard .trader-premium-layout {
+        grid-template-columns: minmax(280px, .58fr) minmax(0, 1.42fr);
+        gap: clamp(14px, 1.6vw, 20px);
+      }
+
+      .trader-premium-dashboard .trader-premium-main-card,
+      .trader-premium-dashboard .trader-support-column,
+      .trader-premium-dashboard .trader-tool-card,
+      .trader-premium-dashboard .trader-result-stack {
+        height: auto;
+        align-self: start;
+        align-content: start;
+      }
+
+      .trader-premium-dashboard .trader-premium-main-card {
+        padding: clamp(14px, 1.6vw, 20px);
+        gap: 14px;
+        overflow: visible;
+      }
+
+      .trader-premium-dashboard .trader-premium-header {
+        padding: clamp(16px, 1.8vw, 22px);
+      }
+
+      .trader-premium-dashboard .trader-premium-header p,
+      .trader-premium-dashboard .trader-premium-main-head p,
+      .trader-premium-dashboard .trader-support-card p {
+        line-height: 1.65;
+      }
+
+      .trader-premium-dashboard .trader-tool-switcher {
+        gap: 9px;
+        padding-bottom: 8px;
+      }
+
+      .trader-premium-dashboard .trader-tool-switcher > button {
+        flex-basis: min(206px, 70vw);
+        min-height: 68px;
+        border-radius: 20px;
+        padding: 10px;
+      }
+
+      .trader-premium-dashboard .trader-tool-switcher small {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .trader-premium-dashboard .trader-active-workspace {
+        padding: clamp(12px, 1.4vw, 16px);
+        overflow: visible;
+      }
+
+      .trader-premium-dashboard .trader-premium-panel-grid {
+        grid-template-columns: minmax(0, 1.02fr) minmax(300px, .98fr);
+        gap: clamp(14px, 1.5vw, 18px);
+      }
+
+      .trader-premium-dashboard .trader-field-groups {
+        display: grid;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .trader-premium-dashboard .trader-field-group {
+        display: grid;
+        gap: 12px;
+        min-width: 0;
+        border: 1px solid rgba(47, 214, 192, .16);
+        border-radius: 22px;
+        background: linear-gradient(135deg, rgba(255, 255, 255, .76), rgba(234, 246, 255, .56)), var(--sfm-light-card);
+        padding: 13px;
+        box-shadow: 0 10px 24px rgba(3, 18, 37, .045);
+      }
+
+      .trader-premium-dashboard .trader-field-group-title {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-width: 0;
+      }
+
+      .trader-premium-dashboard .trader-field-group-title span,
+      .trader-premium-dashboard .tool-result-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        border: 1px solid rgba(47, 214, 192, .22);
+        background: rgba(47, 214, 192, .12);
+        color: var(--sfm-primary-hover);
+      }
+
+      .trader-premium-dashboard .trader-field-group-title h4 {
+        margin: 0;
+        min-width: 0;
+        color: var(--sfm-foreground);
+        font-size: 13px;
+        font-weight: 950;
+        line-height: 1.35;
+      }
+
+      .trader-premium-dashboard .trader-field-group .trader-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 11px;
+      }
+
+      .trader-premium-dashboard .tool-input-shell {
+        min-height: 52px;
+        border-radius: 17px;
+      }
+
+      .trader-premium-dashboard .tool-input .tool-input-shell input,
+      .trader-premium-dashboard .tool-input .tool-input-shell select {
+        height: 50px !important;
+        font-size: 15px;
+      }
+
+      .trader-premium-dashboard .tool-advanced {
+        margin-top: 0;
+        border-radius: 22px;
+        padding: 10px 12px;
+      }
+
+      .trader-premium-dashboard .trader-result-stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .trader-premium-dashboard .trader-highlight-result {
+        border-radius: 24px;
+        padding: 18px;
+        gap: 8px;
+        background:
+          radial-gradient(circle at 12% 0%, rgba(47, 214, 192, .24), transparent 42%),
+          linear-gradient(135deg, rgba(29, 140, 255, .14), rgba(47, 214, 192, .18)),
+          var(--sfm-card);
+      }
+
+      .trader-premium-dashboard .trader-highlight-result strong {
+        font-size: clamp(34px, 4vw, 46px);
+        color: #0F766E;
+      }
+
+      .trader-premium-dashboard .tool-results {
+        padding: 13px;
+        border-radius: 24px;
+      }
+
+      .trader-premium-dashboard .tool-result-grid {
+        gap: 10px;
+      }
+
+      .trader-premium-dashboard .tool-result-card {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-areas:
+          "icon label"
+          "icon value";
+        column-gap: 10px;
+        row-gap: 3px;
+        min-height: 86px;
+        padding: 13px;
+        padding-inline-end: 13px;
+        align-items: center;
+      }
+
+      .trader-premium-dashboard .tool-result-card::after {
+        display: none;
+      }
+
+      .trader-premium-dashboard .tool-result-icon {
+        grid-area: icon;
+      }
+
+      .trader-premium-dashboard .tool-result-card > span:not(.tool-result-icon) {
+        grid-area: label;
+        color: var(--sfm-muted);
+        font-size: 11px;
+        font-weight: 950;
+        line-height: 1.35;
+      }
+
+      .trader-premium-dashboard .tool-result-card b {
+        grid-area: value;
+        font-size: clamp(18px, 1.65vw, 24px);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .trader-premium-dashboard .tool-formula-card {
+        border-radius: 22px;
+        padding: 14px;
+      }
+
+      .trader-premium-dashboard .trader-support-card {
+        padding: 14px;
+        border-radius: 22px;
+      }
+
+      .trader-premium-dashboard .trader-support-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 14px;
+      }
+
+      .trader-premium-dashboard .trader-steps {
+        list-style: none;
+        padding: 0;
+        margin: 10px 0 0;
+        counter-reset: trader-step;
+      }
+
+      .trader-premium-dashboard .trader-steps li {
+        counter-increment: trader-step;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 9px;
+        align-items: start;
+        color: var(--sfm-muted);
+        font-size: 12px;
+        font-weight: 850;
+        line-height: 1.65;
+      }
+
+      .trader-premium-dashboard .trader-steps li::before {
+        content: counter(trader-step);
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+        color: #FFFFFF;
+        font-size: 11px;
+        font-weight: 950;
+      }
+
+      .dark .trader-premium-dashboard .trader-field-group {
+        background: linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .07)), #0A1422;
+        border-color: #1D3050;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, .22);
+      }
+
+      .dark .trader-premium-dashboard .trader-field-group-title span,
+      .dark .trader-premium-dashboard .tool-result-icon {
+        background: rgba(47, 214, 192, .12);
+        border-color: rgba(47, 214, 192, .25);
+        color: #2FD6C0;
+      }
+
+      .dark .trader-premium-dashboard .trader-highlight-result strong {
+        color: #2FD6C0;
+      }
+
+      @media (max-width: 1180px) {
+        .trader-premium-dashboard .trader-premium-layout,
+        .trader-premium-dashboard .trader-premium-panel-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .trader-premium-dashboard .trader-field-group .trader-form-grid,
+        .trader-premium-dashboard .tool-result-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .trader-premium-dashboard .trader-highlight-result strong {
+          font-size: 32px;
         }
       }
 
