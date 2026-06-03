@@ -12,6 +12,7 @@ import {
   HandHeart,
   Loader2,
   PiggyBank,
+  Plus,
   ShieldCheck,
   Target,
   Wallet,
@@ -95,6 +96,8 @@ const COPY = {
     required: 'مطلوب',
     yes: 'نعم، إضافة بيانات',
     skip: 'تخطي',
+    incomeYes: 'نعم، إضافة بيانات الدخل',
+    skipCurrently: 'تخطي حالياً',
     loading: 'جاري التحميل...',
     signInTitle: 'سجّل الدخول لإعداد حسابك.',
     signInAction: 'تسجيل الدخول',
@@ -209,6 +212,8 @@ const COPY = {
     required: 'Required',
     yes: 'Yes, add data',
     skip: 'Skip',
+    incomeYes: 'Yes, add income data',
+    skipCurrently: 'Skip for now',
     loading: 'Loading...',
     signInTitle: 'Sign in to set up your account.',
     signInAction: 'Sign In',
@@ -323,6 +328,8 @@ const COPY = {
     required: 'Requis',
     yes: 'Oui, ajouter des données',
     skip: 'Ignorer',
+    incomeYes: 'Oui, ajouter les revenus',
+    skipCurrently: 'Ignorer pour le moment',
     loading: 'Chargement...',
     signInTitle: 'Connectez-vous pour configurer votre compte.',
     signInAction: 'Connexion',
@@ -1226,6 +1233,7 @@ export default function SetupPage() {
         .step-panel{display:grid;gap:16px;min-width:0}
         .step-heading{display:flex;align-items:flex-start;gap:13px}.step-heading svg{color:var(--sfm-primary);flex:0 0 auto}.step-heading h2{margin:0;color:var(--sfm-primary-dark);font-size:clamp(24px,3vw,32px);line-height:1.22}.step-heading p{margin:7px 0 0;color:var(--sfm-muted-readable);line-height:1.8;font-weight:820;font-size:15px}
         .choice-row{display:flex;gap:10px;flex-wrap:wrap}.choice-btn,.toggle-card{min-height:48px;border:1px solid rgba(29,140,255,.18);border-radius:15px;background:var(--sfm-light-card);color:var(--sfm-midnight);padding:0 16px;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease}.choice-btn:hover,.toggle-card:hover{transform:translateY(-1px);border-color:rgba(24,212,212,.34);box-shadow:0 10px 26px rgba(3,18,37,.08)}.choice-btn:focus-visible,.toggle-card:focus-visible,.focus-card:focus-visible{outline:3px solid rgba(24,212,212,.32);outline-offset:3px}.choice-btn.active,.toggle-card.active{background:var(--sfm-primary-dark);color:var(--sfm-soft-cyan);border-color:rgba(167,243,240,.28)}
+        .income-cta-row{margin-top:4px;display:grid;grid-template-columns:minmax(220px,max-content) minmax(150px,max-content);gap:14px;align-items:center}.income-cta-btn{min-height:50px;border-radius:18px;padding:0 22px;font:950 14px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;white-space:nowrap;transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease,filter .18s ease,color .18s ease}.income-cta-btn.primary{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 16px 34px rgba(29,140,255,.24)}.income-cta-btn.primary svg{flex:0 0 auto;filter:drop-shadow(0 2px 8px rgba(255,255,255,.2))}.income-cta-btn.secondary{border:1px solid rgba(29,140,255,.22);background:#FFFFFF;color:var(--sfm-primary-dark);box-shadow:0 8px 22px rgba(3,18,37,.05)}.income-cta-btn:hover{transform:translateY(-2px)}.income-cta-btn.primary:hover{filter:saturate(1.08) brightness(1.04);box-shadow:0 20px 44px rgba(24,212,212,.30)}.income-cta-btn.secondary:hover{border-color:rgba(24,212,212,.42);background:rgba(24,212,212,.08);box-shadow:0 12px 28px rgba(3,18,37,.08)}.income-cta-btn:active{transform:translateY(0) scale(.985)}.income-cta-btn:focus-visible{outline:3px solid rgba(24,212,212,.34);outline-offset:3px}.income-cta-btn.secondary.active{border-color:rgba(29,140,255,.32);background:rgba(29,140,255,.08);color:var(--sfm-primary-dark)}:global(.dark) .setup-page .income-cta-btn.primary{color:#061A2E;box-shadow:0 18px 38px rgba(47,214,192,.20)}:global(.dark) .setup-page .income-cta-btn.secondary{background:#13243A;border-color:#1D3050;color:#E8EEF6;box-shadow:0 12px 28px rgba(0,0,0,.22)}:global(.dark) .setup-page .income-cta-btn.secondary:hover,:global(.dark) .setup-page .income-cta-btn.secondary.active{background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.36);color:#E8EEF6}
         .welcome-actions{margin-top:4px}.existing-data-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:13px;align-items:start;border:1px solid rgba(16,185,129,.22);background:linear-gradient(180deg,#F0FDF4,#FFFFFF);border-radius:18px;padding:16px;box-shadow:0 12px 30px rgba(3,18,37,.06)}.existing-data-card>svg{color:#059669;margin-top:3px}.existing-data-card h3{margin:0;color:var(--sfm-primary-dark);font-size:16px;font-weight:950}.existing-data-card strong{display:block;margin-top:6px;color:#047857;font-size:24px;font-weight:950;overflow-wrap:anywhere}.existing-data-card p{margin:6px 0 0;color:var(--sfm-muted-readable);font-weight:850;line-height:1.65}.existing-actions{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap}.existing-actions .primary-btn,.existing-actions .ghost-btn{min-height:44px}
         .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
         .form-field{display:grid;gap:7px;min-width:0}.form-field.full{grid-column:1/-1}.form-field span{font-weight:950;color:var(--sfm-muted);font-size:13px}.form-field input,.form-field select{width:100%;min-height:46px;border:1px solid rgba(29,140,255,.2);background:var(--sfm-light-card);color:var(--sfm-primary-dark);border-radius:13px;padding:0 12px;font:900 14px Tajawal,Arial,sans-serif;outline:none}.form-field input:focus,.form-field select:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.15);background:var(--sfm-card)}
@@ -1236,7 +1244,7 @@ export default function SetupPage() {
         .wizard-actions{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid rgba(29,140,255,.12);padding-top:18px;margin-top:auto}.primary-btn,.ghost-btn{min-height:52px;border-radius:16px;padding:0 20px;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease,border-color .18s ease,background .18s ease}.primary-btn{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 14px 34px rgba(29,140,255,.22)}.primary-btn:not(:disabled):hover{transform:translateY(-2px);filter:saturate(1.06) brightness(1.04);box-shadow:0 18px 42px rgba(24,212,212,.28)}.primary-btn:not(:disabled):active{transform:translateY(0) scale(.985)}.primary-btn:focus-visible,.ghost-btn:focus-visible,.finish-actions button:focus-visible{outline:3px solid rgba(24,212,212,.32);outline-offset:3px}.ghost-btn{border:1px solid rgba(29,140,255,.20);background:var(--sfm-light-card);color:var(--sfm-midnight)}.ghost-btn:not(:disabled):hover{transform:translateY(-1px);border-color:rgba(24,212,212,.34);background:var(--sfm-surface-hover);box-shadow:0 10px 26px rgba(3,18,37,.08)}.primary-btn:disabled,.ghost-btn:disabled{opacity:.65;cursor:not-allowed;transform:none;box-shadow:none}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
         .finish-actions{display:flex;gap:10px;flex-wrap:wrap}.finish-actions button{min-height:46px;border:1px solid rgba(29,140,255,.18);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-midnight);padding:0 15px;font-weight:950;font-family:inherit;cursor:pointer}.finish-actions button.primary{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}
         @media(max-width:1024px){.setup-page .sfm-dashboard-page-shell{margin-inline-start:0}.setup-hero,.step-layout{grid-template-columns:1fr}.progress-orb{width:124px;height:124px}.step-side{position:static}.setup-plan ul{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:720px){:global(.setup-page .sfm-dashboard-page-shell){padding-inline:16px!important}.setup-hero{border-radius:22px}.setup-card{padding:14px;border-radius:22px}.progress-orb{width:112px;height:112px}.form-grid,.expense-grid,.summary-grid,.focus-grid,.setup-plan ul{grid-template-columns:1fr}.wizard-actions,.choice-row,.finish-actions{display:grid;grid-template-columns:1fr}.primary-btn,.ghost-btn,.choice-btn,.toggle-card,.finish-actions button{width:100%}.setup-top{align-items:flex-start}.step-main{padding:16px;min-height:auto}.step-heading h2{font-size:22px}}
+        @media(max-width:720px){:global(.setup-page .sfm-dashboard-page-shell){padding-inline:16px!important}.setup-hero{border-radius:22px}.setup-card{padding:14px;border-radius:22px}.progress-orb{width:112px;height:112px}.form-grid,.expense-grid,.summary-grid,.focus-grid,.setup-plan ul{grid-template-columns:1fr}.wizard-actions,.choice-row,.finish-actions{display:grid;grid-template-columns:1fr}.primary-btn,.ghost-btn,.choice-btn,.toggle-card,.finish-actions button,.income-cta-btn{width:100%}.income-cta-row{gap:12px}.setup-top{align-items:flex-start}.step-main{padding:16px;min-height:auto}.step-heading h2{font-size:22px}}
       `}</style>
     </div>
   );
@@ -1306,7 +1314,13 @@ export default function SetupPage() {
               onEdit={() => { setEditingExisting(prev => ({ ...prev, 2: true })); setIncomeEnabled(true); }}
             />
           ) : (
-            <ToggleRow active={incomeEnabled} setActive={setIncomeEnabled} yes={text.yes} no={text.skip} />
+            <ToggleRow
+              active={incomeEnabled}
+              setActive={setIncomeEnabled}
+              yes={text.incomeYes}
+              no={text.skipCurrently}
+              variant="incomeCta"
+            />
           )}
           {incomeEnabled && (!showExistingIncome || editingExisting[2]) && (
             <div className="form-grid">
@@ -1574,11 +1588,49 @@ function Stepper({
   );
 }
 
-function ToggleRow({ active, setActive, yes, no }: { active: boolean; setActive: (value: boolean) => void; yes: string; no: string }) {
+function ToggleRow({
+  active,
+  setActive,
+  yes,
+  no,
+  variant = 'default',
+}: {
+  active: boolean;
+  setActive: (value: boolean) => void;
+  yes: string;
+  no: string;
+  variant?: 'default' | 'incomeCta';
+}) {
+  if (variant === 'incomeCta') {
+    return (
+      <div className="choice-row income-cta-row">
+        <button
+          type="button"
+          className={active ? 'income-cta-btn primary active' : 'income-cta-btn primary'}
+          onClick={() => setActive(true)}
+          aria-pressed={active}
+          aria-label={yes}
+        >
+          <Plus size={18} aria-hidden="true" />
+          <span>{yes}</span>
+        </button>
+        <button
+          type="button"
+          className={!active ? 'income-cta-btn secondary active' : 'income-cta-btn secondary'}
+          onClick={() => setActive(false)}
+          aria-pressed={!active}
+          aria-label={no}
+        >
+          <span>{no}</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="choice-row">
-      <button type="button" className={active ? 'choice-btn active' : 'choice-btn'} onClick={() => setActive(true)}>{yes}</button>
-      <button type="button" className={!active ? 'choice-btn active' : 'choice-btn'} onClick={() => setActive(false)}>{no}</button>
+      <button type="button" className={active ? 'choice-btn active' : 'choice-btn'} onClick={() => setActive(true)} aria-pressed={active}>{yes}</button>
+      <button type="button" className={!active ? 'choice-btn active' : 'choice-btn'} onClick={() => setActive(false)} aria-pressed={!active}>{no}</button>
     </div>
   );
 }
