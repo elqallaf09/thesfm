@@ -18,6 +18,7 @@ import {
   filterNavigationGroups,
   findActiveNavigationGroup,
   isNavigationItemActive,
+  isNavigationItemOrChildActive,
   NAV_GROUPS,
   normalizeNavigationSource,
   SUPPORT_LINKS,
@@ -33,6 +34,7 @@ export function Sidebar() {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [hash, setHash] = useState('');
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
+  const [openItemIds, setOpenItemIds] = useState<string[]>([]);
 
   useEffect(() => {
     const updateHash = () => setHash(typeof window === 'undefined' ? '' : window.location.hash);
@@ -49,10 +51,23 @@ export function Sidebar() {
   );
   const activeSidebarGroupId = activeGroupId ?? (activeSupport ? 'support' : null);
   const navGroups = useMemo(() => filterNavigationGroups(NAV_GROUPS, viewMode), [viewMode]);
+  const activeChildParentIds = useMemo(
+    () => navGroups.flatMap(group =>
+      group.items
+        .filter(item => item.children?.some(child => isNavigationItemOrChildActive(activeSource, child)))
+        .map(item => item.id),
+    ),
+    [activeSource, navGroups],
+  );
 
   useEffect(() => {
     setOpenGroupId(activeSidebarGroupId);
   }, [activeSidebarGroupId]);
+
+  useEffect(() => {
+    if (!activeChildParentIds.length) return;
+    setOpenItemIds(current => Array.from(new Set([...current, ...activeChildParentIds])));
+  }, [activeChildParentIds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -131,6 +146,17 @@ export function Sidebar() {
         .sfm-shared-item:hover .sfm-shared-icon,.sfm-shared-item.active .sfm-shared-icon{color:var(--sfm-soft-cyan);transform:scale(1.06)}
         .sfm-shared-label{min-width:0;flex:1;overflow-wrap:anywhere}
         .sfm-shared-badge{min-width:22px;height:22px;border-radius:999px;background:var(--sfm-primary);color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;font-size:11px;font-weight:950}
+        .sfm-shared-item-parent .sfm-nested-chevron{flex:0 0 auto;opacity:.72;transition:transform .18s ease}
+        .sfm-shared-item-parent[aria-expanded="false"] .sfm-nested-chevron{transform:rotate(90deg)}
+        [dir="ltr"] .sfm-shared-item-parent[aria-expanded="false"] .sfm-nested-chevron{transform:rotate(-90deg)}
+        .sfm-shared-subitems{display:grid;gap:3px;margin:2px 0 5px;padding-inline-start:16px}
+        .sfm-shared-subitem{position:relative;display:flex;align-items:center;gap:8px;width:100%;min-width:0;padding:8px 10px;border:1px solid transparent;border-radius:11px;background:rgba(255,255,255,.025);color:#ADC1D8;text-align:start;font:800 11.5px Tajawal,Arial,sans-serif;cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+        .sfm-shared-subitem:hover,.sfm-shared-subitem:focus-visible{background:rgba(29,140,255,.12);color:#F8FCFF;border-color:rgba(167,243,240,.14);outline:0;box-shadow:0 0 0 2px rgba(24,212,212,.12);transform:translateY(-1px)}
+        .sfm-shared-subitem.active{background:rgba(47,214,192,.14);color:#FFFFFF;border-color:rgba(47,214,192,.28);box-shadow:inset 0 0 0 1px rgba(167,243,240,.10)}
+        .sfm-shared-subitem.active::before{content:"";position:absolute;inset-inline-start:3px;top:50%;width:4px;height:18px;border-radius:999px;background:var(--sfm-accent);box-shadow:0 0 10px rgba(24,212,212,.62);transform:translateY(-50%)}
+        .sfm-shared-subitem-icon{width:18px;height:18px;display:grid;place-items:center;flex:0 0 18px;color:#8FB3CF}
+        .sfm-shared-subitem.active .sfm-shared-subitem-icon,.sfm-shared-subitem:hover .sfm-shared-subitem-icon{color:var(--sfm-soft-cyan)}
+        .sfm-shared-subitem-label{min-width:0;overflow-wrap:anywhere;line-height:1.35}
         .sfm-shared-support{margin:0 8px 10px;padding:10px 8px 12px;border-top:1px solid rgba(167,243,240,.10);display:grid;gap:5px;flex:0 0 auto}
         .sfm-shared-support-title{padding:0 4px 3px;color:#B8C7D9;font:950 10.5px Tajawal,Arial,sans-serif;letter-spacing:.02em}
         .sfm-shared-support-item{position:relative;width:100%;min-height:34px;border:1px solid transparent;border-radius:10px;background:transparent;color:#B8C7D9;display:flex;align-items:center;gap:8px;padding:6px 8px;text-align:start;font:850 11.5px Tajawal,Arial,sans-serif;cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
@@ -189,7 +215,50 @@ export function Sidebar() {
                 <div className="sfm-shared-group-items" id={groupId}>
                   {group.items.map(item => {
                     const active = isNavigationItemActive(activeSource, item.href);
+                    const childActive = Boolean(item.children?.some(child => isNavigationItemOrChildActive(activeSource, child)));
+                    const hasChildren = Boolean(item.children?.length);
+                    const itemOpen = childActive || openItemIds.includes(item.id);
                     const NavIcon = item.icon;
+                    if (hasChildren) {
+                      const nestedId = `${groupId}-item-${item.id}`;
+                      return (
+                        <div key={item.id}>
+                          <button
+                            type="button"
+                            onClick={() => setOpenItemIds(current =>
+                              current.includes(item.id) ? current.filter(id => id !== item.id) : [...current, item.id],
+                            )}
+                            className={`sfm-shared-item sfm-shared-item-parent${childActive ? ' active' : ''}`}
+                            aria-expanded={itemOpen}
+                            aria-controls={nestedId}
+                          >
+                            <span className="sfm-shared-icon"><NavIcon size={17} /></span>
+                            <span className="sfm-shared-label">{t(item.labelKey)}</span>
+                            <ChevronDown className="sfm-nested-chevron" size={13} />
+                          </button>
+                          {itemOpen && (
+                            <div className="sfm-shared-subitems" id={nestedId}>
+                              {item.children?.map(child => {
+                                const childItemActive = isNavigationItemActive(activeSource, child.href);
+                                const ChildIcon = child.icon;
+                                return (
+                                  <button
+                                    key={child.id}
+                                    type="button"
+                                    onClick={() => handleItem(child)}
+                                    className={`sfm-shared-subitem${childItemActive ? ' active' : ''}`}
+                                    aria-current={childItemActive ? 'page' : undefined}
+                                  >
+                                    <span className="sfm-shared-subitem-icon"><ChildIcon size={14} /></span>
+                                    <span className="sfm-shared-subitem-label">{t(child.labelKey)}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
                     return (
                       <button
                         key={item.id}

@@ -265,6 +265,7 @@ export const TR: Record<string, TranslationEntry> = {
   nav_gulf_news: { ar:'أخبار أسواق الخليج', en:'Gulf Market News', fr:'Actualités des marchés du Golfe' },
   nav_europe_news: { ar:'أخبار الأسواق الأوروبية', en:'European Market News', fr:'Actualités des marchés européens' },
   nav_tech_news: { ar:'أخبار السوق التقني', en:'Tech Market News', fr:'Actualités du marché technologique' },
+  nav_stock_news_menu: { ar:'أخبار الأسهم', en:'Stock News', fr:'Actualités boursières' },
   nav_defensive_stocks: { ar:'أخبار الأسهم الدفاعية', en:'Defensive Stocks News', fr:'Actualités des actions défensives' },
   nav_growth_stocks: { ar:'أخبار أسهم النمو', en:'Growth Stocks News', fr:'Actualités des actions de croissance' },
   nav_dividend_stocks: { ar:'أخبار أسهم التوزيعات', en:'Dividend Stocks News', fr:'Actualités des actions à dividendes' },

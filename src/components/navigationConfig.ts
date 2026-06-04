@@ -52,6 +52,7 @@ export type NavigationItem = {
   labelKey: TranslationKey;
   action?: NavigationAction;
   viewModes?: NavigationViewMode[];
+  children?: NavigationItem[];
 };
 
 export type NavigationGroup = {
@@ -104,16 +105,23 @@ export const NAV_GROUPS: NavigationGroup[] = [
     items: [
       { id: 'invest', icon: TrendingUp, href: '/invest', labelKey: 'nav_invest' },
       { id: 'market-analysis', icon: LineChart, href: '/market-analysis', labelKey: 'nav_market_analysis' },
-      { id: 'gulf-news', icon: Newspaper, href: '/gulf-news', labelKey: 'nav_gulf_news' },
-      { id: 'europe-news', icon: Newspaper, href: '/europe-news', labelKey: 'nav_europe_news' },
-      { id: 'tech-news', icon: Newspaper, href: '/tech-news', labelKey: 'nav_tech_news' },
-      { id: 'defensive-stocks', icon: ShieldCheck, href: '/defensive-stocks', labelKey: 'nav_defensive_stocks' },
-      { id: 'growth-stocks', icon: TrendingUp, href: '/growth-stocks', labelKey: 'nav_growth_stocks' },
-      { id: 'dividend-stocks', icon: PiggyBank, href: '/dividend-stocks', labelKey: 'nav_dividend_stocks' },
-      { id: 'cyclical-stocks', icon: LineChart, href: '/cyclical-stocks', labelKey: 'nav_cyclical_stocks' },
-      { id: 'energy-stocks', icon: Compass, href: '/energy-stocks', labelKey: 'nav_energy_stocks' },
-      { id: 'banking-stocks', icon: Landmark, href: '/banking-stocks', labelKey: 'nav_banking_stocks' },
-      { id: 'sharia-stocks', icon: ShieldCheck, href: '/sharia-stocks', labelKey: 'nav_sharia_stocks' },
+      {
+        id: 'stock-news',
+        icon: Newspaper,
+        labelKey: 'nav_stock_news_menu',
+        children: [
+          { id: 'gulf-news', icon: Newspaper, href: '/gulf-news', labelKey: 'nav_gulf_news' },
+          { id: 'europe-news', icon: Newspaper, href: '/europe-news', labelKey: 'nav_europe_news' },
+          { id: 'tech-news', icon: Newspaper, href: '/tech-news', labelKey: 'nav_tech_news' },
+          { id: 'defensive-stocks', icon: ShieldCheck, href: '/defensive-stocks', labelKey: 'nav_defensive_stocks' },
+          { id: 'growth-stocks', icon: TrendingUp, href: '/growth-stocks', labelKey: 'nav_growth_stocks' },
+          { id: 'dividend-stocks', icon: PiggyBank, href: '/dividend-stocks', labelKey: 'nav_dividend_stocks' },
+          { id: 'cyclical-stocks', icon: LineChart, href: '/cyclical-stocks', labelKey: 'nav_cyclical_stocks' },
+          { id: 'energy-stocks', icon: Compass, href: '/energy-stocks', labelKey: 'nav_energy_stocks' },
+          { id: 'banking-stocks', icon: Landmark, href: '/banking-stocks', labelKey: 'nav_banking_stocks' },
+          { id: 'sharia-stocks', icon: ShieldCheck, href: '/sharia-stocks', labelKey: 'nav_sharia_stocks' },
+        ],
+      },
     ],
   },
   {
@@ -172,13 +180,21 @@ export function filterNavigationGroups(groups: NavigationGroup[], viewMode: Navi
   return groups
     .map(group => ({
       ...group,
-      items: group.items.filter(item => item.action || item.viewModes?.includes('simple')),
+      items: group.items
+        .map(item => {
+          const children = item.children?.filter(child => child.action || child.viewModes?.includes('simple'));
+          if (children?.length) return { ...item, children };
+          return item.action || item.viewModes?.includes('simple') ? item : null;
+        })
+        .filter((item): item is NavigationItem => Boolean(item)),
     }))
     .filter(group => group.items.length > 0);
 }
 
 export function flattenNavigationItems(options: { includeActions?: boolean } = {}) {
-  return NAV_GROUPS.flatMap(group => group.items).filter(item => options.includeActions || !item.action);
+  const flatten = (items: NavigationItem[]): NavigationItem[] =>
+    items.flatMap(item => [item, ...(item.children ? flatten(item.children) : [])]);
+  return NAV_GROUPS.flatMap(group => flatten(group.items)).filter(item => options.includeActions || !item.action);
 }
 
 export function normalizeNavigationSource(pathname: string, hash = '') {
@@ -196,6 +212,10 @@ export function isNavigationItemActive(activeSource: string, href?: string) {
   return itemPath === '/' ? activePath === '/' : activePath === itemPath || activePath.startsWith(`${itemPath}/`);
 }
 
+export function isNavigationItemOrChildActive(activeSource: string, item: NavigationItem): boolean {
+  return isNavigationItemActive(activeSource, item.href) || Boolean(item.children?.some(child => isNavigationItemOrChildActive(activeSource, child)));
+}
+
 export function findActiveNavigationGroup(activeSource: string) {
-  return NAV_GROUPS.find(group => group.items.some(item => isNavigationItemActive(activeSource, item.href)))?.id;
+  return NAV_GROUPS.find(group => group.items.some(item => isNavigationItemOrChildActive(activeSource, item)))?.id;
 }

@@ -16,6 +16,7 @@ import {
   findActiveNavigationGroup,
   flattenNavigationItems,
   isNavigationItemActive,
+  isNavigationItemOrChildActive,
   NAV_GROUPS,
   normalizeNavigationSource,
   SUPPORT_LINKS,
@@ -32,6 +33,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
   const { viewMode, setViewMode } = useViewMode();
   const [activeSource, setActiveSource] = useState(pathname);
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
+  const [openItemIds, setOpenItemIds] = useState<string[]>([]);
   const previousLang = useRef(lang);
 
   const activeGroupId = useMemo(() => findActiveNavigationGroup(activeSource), [activeSource]);
@@ -41,6 +43,14 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
   );
   const activeSidebarGroupId = activeGroupId ?? (activeSupport ? 'support' : null);
   const navGroups = useMemo(() => filterNavigationGroups(NAV_GROUPS, viewMode), [viewMode]);
+  const activeChildParentIds = useMemo(
+    () => navGroups.flatMap(group =>
+      group.items
+        .filter(item => item.children?.some(child => isNavigationItemOrChildActive(activeSource, child)))
+        .map(item => item.id),
+    ),
+    [activeSource, navGroups],
+  );
 
   useEffect(() => {
     const nextPath = typeof window === 'undefined'
@@ -59,7 +69,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
 
   useEffect(() => {
     if (!open) return;
-    setOpenGroupId(null);
+    setOpenGroupId(activeSidebarGroupId);
     const original = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.body.classList.add('sfm-mobile-lock');
@@ -67,7 +77,12 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
       document.body.style.overflow = original;
       document.body.classList.remove('sfm-mobile-lock');
     };
-  }, [open]);
+  }, [activeSidebarGroupId, open]);
+
+  useEffect(() => {
+    if (!activeChildParentIds.length) return;
+    setOpenItemIds(current => Array.from(new Set([...current, ...activeChildParentIds])));
+  }, [activeChildParentIds]);
 
   useEffect(() => {
     if (previousLang.current !== lang && open) onClose();
@@ -152,6 +167,49 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
                     {group.items.map(item => {
                       const Icon = item.icon;
                       const active = isNavigationItemActive(activeSource, item.href);
+                      const childActive = Boolean(item.children?.some(child => isNavigationItemOrChildActive(activeSource, child)));
+                      const hasChildren = Boolean(item.children?.length);
+                      const itemOpen = childActive || openItemIds.includes(item.id);
+                      if (hasChildren) {
+                        const nestedId = `${groupId}-item-${item.id}`;
+                        return (
+                          <div key={item.id} className="sfm-mobile-nested">
+                            <button
+                              type="button"
+                              className={`sfm-mobile-parent-item${childActive ? ' active' : ''}`}
+                              aria-expanded={itemOpen}
+                              aria-controls={nestedId}
+                              onClick={() => setOpenItemIds(current =>
+                                current.includes(item.id) ? current.filter(id => id !== item.id) : [...current, item.id],
+                              )}
+                            >
+                              <span className="sfm-mobile-nav-icon"><Icon size={18} /></span>
+                              <span>{t(item.labelKey)}</span>
+                              <ChevronDown className="sfm-mobile-nested-chevron" size={15} />
+                            </button>
+                            {itemOpen && (
+                              <div className="sfm-mobile-subitems" id={nestedId}>
+                                {item.children?.map(child => {
+                                  const ChildIcon = child.icon;
+                                  const childItemActive = isNavigationItemActive(activeSource, child.href);
+                                  return (
+                                    <button
+                                      key={child.id}
+                                      type="button"
+                                      className={`sfm-mobile-subitem${childItemActive ? ' active' : ''}`}
+                                      aria-current={childItemActive ? 'page' : undefined}
+                                      onClick={() => go(child)}
+                                    >
+                                      <span className="sfm-mobile-subitem-icon"><ChildIcon size={15} /></span>
+                                      <span>{t(child.labelKey)}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
                       return (
                         <button
                           key={item.id}
@@ -238,6 +296,14 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
         .sfm-mobile-nav .sfm-mobile-group-items button.active{border-color:var(--mobile-menu-accent);background:linear-gradient(135deg,rgba(34,211,238,.22),rgba(56,189,248,.14)),var(--mobile-menu-card);color:var(--mobile-menu-text);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 10px 26px rgba(0,0,0,.20)}
         .sfm-mobile-nav .sfm-mobile-group-items button.active::before{content:"";position:absolute;inset-inline-start:5px;top:50%;width:5px;height:24px;border-radius:999px;background:var(--mobile-menu-accent);box-shadow:0 0 14px rgba(34,211,238,.72);transform:translateY(-50%)}.sfm-mobile-nav button:active{transform:scale(.99)}
         .sfm-mobile-nav-icon{width:26px;height:26px;flex:0 0 26px;display:grid;place-items:center;border-radius:10px;background:rgba(255,255,255,.08);color:var(--mobile-menu-secondary);transition:background .18s ease,color .18s ease}.sfm-mobile-nav button:hover .sfm-mobile-nav-icon,.sfm-mobile-nav button.active .sfm-mobile-nav-icon{background:rgba(34,211,238,.18);color:var(--mobile-menu-accent)}
+        .sfm-mobile-nested{display:grid;gap:5px}
+        .sfm-mobile-parent-item .sfm-mobile-nested-chevron{margin-inline-start:auto;flex:0 0 auto;opacity:.75;transition:transform .18s ease}
+        .sfm-mobile-parent-item[aria-expanded="false"] .sfm-mobile-nested-chevron{transform:rotate(90deg)}
+        [dir="ltr"] .sfm-mobile-parent-item[aria-expanded="false"] .sfm-mobile-nested-chevron{transform:rotate(-90deg)}
+        .sfm-mobile-subitems{display:grid;gap:4px;padding-inline-start:18px}
+        .sfm-mobile-nav .sfm-mobile-group-items .sfm-mobile-subitem{min-height:38px;border-radius:13px;padding:7px 10px;font-size:12px;background:rgba(255,255,255,.035)}
+        .sfm-mobile-subitem-icon{width:22px;height:22px;display:grid;place-items:center;flex:0 0 22px;border-radius:9px;background:rgba(255,255,255,.07);color:var(--mobile-menu-secondary)}
+        .sfm-mobile-subitem:hover .sfm-mobile-subitem-icon,.sfm-mobile-subitem.active .sfm-mobile-subitem-icon{background:rgba(34,211,238,.16);color:var(--mobile-menu-accent)}
         .sfm-mobile-support{margin-top:auto;padding-top:12px;border-top:1px solid var(--mobile-menu-border);display:grid;gap:8px}
         .sfm-mobile-support-title{color:var(--mobile-menu-muted);font:950 11px Tajawal,Arial,sans-serif;padding-inline:4px}
         .sfm-mobile-support-links{display:grid;gap:5px}
