@@ -2,7 +2,18 @@ export type CentralBankNewsProvider = 'newsapi' | 'finnhub';
 export type MarketSentimentProvider = 'finnhub' | 'alphavantage' | 'myfxbook';
 
 export function cleanEnv(value: unknown) {
-  return typeof value === 'string' ? value.trim() : '';
+  if (typeof value !== 'string') return '';
+  let cleaned = value.replace(/\u0000/g, '').trim();
+  cleaned = cleaned.replace(/^[\r\n]+|[\r\n]+$/g, '').trim();
+  const first = cleaned[0];
+  const last = cleaned[cleaned.length - 1];
+  if (
+    cleaned.length >= 2
+    && ((first === '"' && last === '"') || (first === "'" && last === "'"))
+  ) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+  return cleaned.replace(/[\r\n]+/g, '').trim();
 }
 
 function normalizeCentralBankNewsProvider(value: string): CentralBankNewsProvider | null {

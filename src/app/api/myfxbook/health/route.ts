@@ -36,27 +36,29 @@ export async function GET(request: NextRequest) {
   const healthTokenConfigured = Boolean(cleanEnv(process.env.MARKET_PROVIDER_HEALTH_TOKEN));
 
   if (!healthTokenConfigured && !isAdminAccessCodeConfigured()) {
-    return NextResponse.json({ ok: false, code: 'SENTIMENT_HEALTH_DISABLED' }, { status: 404 });
+    return NextResponse.json({ ok: false, code: 'MYFXBOOK_HEALTH_DISABLED' }, { status: 404 });
   }
 
   if (!isAllowed(request)) {
-    return NextResponse.json({ ok: false, code: 'SENTIMENT_HEALTH_FORBIDDEN' }, { status: 403 });
+    return NextResponse.json({ ok: false, code: 'MYFXBOOK_HEALTH_FORBIDDEN' }, { status: 403 });
   }
 
-  console.log('MYFXBOOK_HEALTH_START');
-  const rawEmail = cleanEnv(process.env.MYFXBOOK_EMAIL);
-  const rawPassword = cleanEnv(process.env.MYFXBOOK_PASSWORD);
-  console.log('Myfxbook env diagnostic:', {
-    provider: process.env.MARKET_SENTIMENT_PROVIDER,
-    hasEmail: Boolean(rawEmail),
-    hasPassword: Boolean(rawPassword),
-    emailLength: rawEmail.length,
-    passwordLength: rawPassword.length,
-    passwordHasSpecialChars: /[^a-zA-Z0-9]/.test(rawPassword),
+  const email = cleanEnv(process.env.MYFXBOOK_EMAIL);
+  const password = cleanEnv(process.env.MYFXBOOK_PASSWORD);
+  const config = getMarketSentimentProviderConfig();
+  const envConfigured = Boolean(email && password);
+  const providerIsMyfxbook = config.provider === 'myfxbook';
+
+  console.log('[Myfxbook] env check', {
+    provider: config.provider ?? config.providerEnv ?? null,
+    hasEmail: Boolean(email),
+    hasPassword: Boolean(password),
+    emailLength: email.length,
+    passwordLength: password.length,
+    passwordHasSpecialChars: /[^a-zA-Z0-9]/.test(password),
   });
 
-  const config = getMarketSentimentProviderConfig();
-  const login = config.provider === 'myfxbook'
+  const login = envConfigured && providerIsMyfxbook
     ? await loginToMyfxbook({ force: true }).catch(error => ({
         ok: false as const,
         code: 'MYFXBOOK_PROVIDER_FAILED' as const,
@@ -68,16 +70,18 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    provider: config.provider ?? (config.providerEnv || null),
-    hasEmail: Boolean(rawEmail),
-    hasPassword: Boolean(rawPassword),
-    emailLength: rawEmail.length,
-    passwordLength: rawPassword.length,
-    passwordHasSpecialChars: /[^a-zA-Z0-9]/.test(rawPassword),
+    provider: config.provider ?? config.providerEnv ?? null,
+    envConfigured,
+    providerIsMyfxbook,
+    hasEmail: Boolean(email),
+    hasPassword: Boolean(password),
+    emailLength: email.length,
+    passwordLength: password.length,
+    passwordHasSpecialChars: /[^a-zA-Z0-9]/.test(password),
+    loginAttempted: Boolean(login),
+    loginSuccess: login?.ok ?? false,
+    errorType: login && !login.ok ? login.code : envConfigured ? null : 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED',
     canReachMyfxbook: login?.canReachMyfxbook ?? false,
-    loginAttempted: config.provider === 'myfxbook' && Boolean(rawEmail && rawPassword),
-    loginOk: login?.ok ?? false,
-    code: login && !login.ok ? login.code : null,
     providerMessage: login && !login.ok ? maskedProviderMessage(login.providerMessage) : null,
     hasSession: Boolean(login?.ok),
   });

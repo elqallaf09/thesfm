@@ -109,16 +109,23 @@ function isRateLimitMessage(message: string | undefined) {
   return /rate|limit|too many|throttle/i.test(message ?? '');
 }
 
+function maskProviderMessage(message: string | null | undefined) {
+  if (!message) return null;
+  return message.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]');
+}
+
 function logEnvCheckOnce() {
   if (envCheckLogged) return;
   envCheckLogged = true;
+  const email = cleanEnv(process.env.MYFXBOOK_EMAIL);
+  const password = cleanEnv(process.env.MYFXBOOK_PASSWORD);
   console.log('Myfxbook env diagnostic:', {
     provider: process.env.MARKET_SENTIMENT_PROVIDER,
-    hasEmail: Boolean(cleanEnv(process.env.MYFXBOOK_EMAIL)),
-    hasPassword: Boolean(cleanEnv(process.env.MYFXBOOK_PASSWORD)),
-    emailLength: cleanEnv(process.env.MYFXBOOK_EMAIL).length,
-    passwordLength: cleanEnv(process.env.MYFXBOOK_PASSWORD).length,
-    passwordHasSpecialChars: /[^a-zA-Z0-9]/.test(process.env.MYFXBOOK_PASSWORD || ''),
+    hasEmail: Boolean(email),
+    hasPassword: Boolean(password),
+    emailLength: email.length,
+    passwordLength: password.length,
+    passwordHasSpecialChars: /[^a-zA-Z0-9]/.test(password),
   });
 }
 
@@ -264,17 +271,37 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
 
   console.log('MYFXBOOK_LOGIN_ATTEMPT');
 
-  const response = await fetch(loginUrl, {
-    cache: 'no-store',
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
-  const payload = await response.json().catch(() => ({})) as MyfxbookLoginResponse;
+  let response: Response;
+  let payload: MyfxbookLoginResponse;
+  try {
+    response = await fetch(loginUrl, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    payload = await response.json().catch(() => ({})) as MyfxbookLoginResponse;
+  } catch (error) {
+    console.error('Myfxbook login network error:', {
+      message: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : undefined,
+    });
+    cachedFailure = {
+      code: 'MYFXBOOK_PROVIDER_FAILED',
+      providerMessage: null,
+      expiresAt: now + OUTLOOK_TTL_MS,
+    };
+    return {
+      ok: false as const,
+      code: 'MYFXBOOK_PROVIDER_FAILED' as const,
+      providerMessage: null,
+      canReachMyfxbook: false,
+    };
+  }
 
   console.error('Myfxbook login response:', {
     httpStatus: response.status,
     ok: response.ok,
     error: payload?.error,
-    message: payload?.message,
+    message: maskProviderMessage(payload?.message),
     hasSession: Boolean(payload?.session),
   });
 
@@ -308,7 +335,7 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     };
   }
 
-  if (payload.error) {
+  if (payload.error !== false) {
     const code: MyfxbookErrorCode = isRateLimitMessage(payload.message) ? 'MYFXBOOK_RATE_LIMITED' : 'MYFXBOOK_AUTH_FAILED';
     cachedFailure = {
       code,
