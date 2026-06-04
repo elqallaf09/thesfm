@@ -121,24 +121,26 @@ const PAGE_GUIDES: Partial<Record<StockCategoryId, PageGuide>> = {
     ],
   },
   cyclical: {
-    comparisonTitle: { ar: 'الأسهم الدورية أثناء الدورة الاقتصادية', en: 'Cyclical stocks across the economic cycle', fr: 'Actions cycliques au fil du cycle économique' },
-    leftTitle: { ar: 'فرص وقت الانتعاش', en: 'Recovery opportunities', fr: 'Opportunités en reprise' },
+    comparisonTitle: { ar: 'الأسهم الدورية مقارنة بالأسهم الدفاعية', en: 'Cyclical stocks versus defensive stocks', fr: 'Actions cycliques et actions défensives' },
+    leftTitle: { ar: 'الأسهم الدورية', en: 'Cyclical stocks', fr: 'Actions cycliques' },
     leftItems: {
-      ar: ['تستفيد من ارتفاع الطلب', 'قد تحقق نموًا قويًا في الأرباح', 'ترتبط بالإنفاق الاستهلاكي والصناعي', 'تظهر قوتها عند تحسن الثقة', 'قد تناسب المستثمر النشط'],
-      en: ['Benefit from rising demand', 'May deliver strong earnings growth', 'Linked to consumer and industrial spending', 'Often strengthen when confidence improves', 'May suit active investors'],
-      fr: ['Profitent de la hausse de la demande', 'Croissance des bénéfices parfois forte', 'Liées aux dépenses industrielles et de consommation', 'Se renforcent quand la confiance revient', 'Peuvent convenir aux investisseurs actifs'],
+      ar: ['تستفيد من النمو الاقتصادي', 'قد ترتفع بقوة وقت الانتعاش', 'أكثر حساسية للركود', 'تقلباتها أعلى غالبًا', 'مناسبة لمن يتحمل مخاطر أعلى'],
+      en: ['Benefit from economic growth', 'May rise strongly during recoveries', 'More sensitive to recessions', 'Often higher volatility', 'Suited to higher risk tolerance'],
+      fr: ['Profitent de la croissance économique', 'Peuvent fortement monter en reprise', 'Plus sensibles aux récessions', 'Volatilité souvent plus élevée', 'Adaptées à une tolérance au risque plus élevée'],
     },
-    rightTitle: { ar: 'مخاطر وقت التباطؤ', en: 'Slowdown risks', fr: 'Risques en ralentissement' },
+    rightTitle: { ar: 'الأسهم الدفاعية', en: 'Defensive stocks', fr: 'Actions défensives' },
     rightItems: {
-      ar: ['تتأثر بالركود بسرعة', 'قد تنخفض المبيعات والهوامش', 'تعتمد على ثقة المستهلك والشركات', 'قد تكون تقلباتها مرتفعة', 'تحتاج متابعة للمؤشرات الاقتصادية'],
-      en: ['Can react quickly to recessions', 'Sales and margins may fall', 'Depend on consumer and business confidence', 'Can be highly volatile', 'Require monitoring economic indicators'],
-      fr: ['Sensibles aux récessions', 'Ventes et marges parfois en baisse', 'Dépendent de la confiance des ménages et entreprises', 'Volatilité élevée possible', 'Nécessitent un suivi macroéconomique'],
+      ar: ['طلب أكثر استقرارًا', 'تقلب أقل غالبًا', 'أقل تأثرًا بالدورة الاقتصادية', 'مناسبة للمستثمر المحافظ', 'تشمل قطاعات أساسية مثل الغذاء والدواء والمرافق'],
+      en: ['More stable demand', 'Often lower volatility', 'Less affected by the economic cycle', 'Suited to conservative investors', 'Includes essential sectors such as food, medicine, and utilities'],
+      fr: ['Demande plus stable', 'Volatilité souvent plus faible', 'Moins sensibles au cycle économique', 'Adaptées aux investisseurs prudents', 'Comprennent des secteurs essentiels comme alimentation, santé et services publics'],
     },
     sectors: [
-      { title: { ar: 'السيارات', en: 'Autos', fr: 'Automobile' }, body: { ar: 'شركات ترتبط بالطلب على المركبات وتمويل المستهلكين.', en: 'Companies linked to vehicle demand and consumer financing.', fr: 'Sociétés liées à la demande automobile et au crédit.' }, symbols: ['F', 'GM', 'TSLA'] },
-      { title: { ar: 'الطيران والسفر', en: 'Airlines and travel', fr: 'Aérien et voyage' }, body: { ar: 'قطاع حساس للإنفاق والسياحة وأسعار الوقود.', en: 'Sensitive to spending, tourism, and fuel prices.', fr: 'Sensible aux dépenses, au tourisme et au carburant.' }, symbols: ['DAL', 'UAL', 'AAL'] },
-      { title: { ar: 'الصناعة والمعدات', en: 'Industrials and equipment', fr: 'Industrie et équipements' }, body: { ar: 'تتأثر بالإنفاق الرأسمالي والطلب على البنية التحتية.', en: 'Affected by capital spending and infrastructure demand.', fr: 'Influencées par les dépenses d’investissement.' }, symbols: ['CAT', 'DE', 'BA'] },
-      { title: { ar: 'السلع الكمالية', en: 'Discretionary goods', fr: 'Biens discrétionnaires' }, body: { ar: 'قد تزدهر مع تحسن الدخل والثقة، وتتراجع عند الضغط على الميزانيات.', en: 'May thrive with income and confidence, and weaken when budgets tighten.', fr: 'Progressent avec le revenu et la confiance, reculent sous pression.' }, symbols: ['NKE', 'SBUX', 'HD'] },
+      { title: { ar: 'السيارات', en: 'Autos', fr: 'Automobile' }, body: { ar: 'تتأثر بقوة بثقة المستهلك وأسعار الفائدة والطلب على التمويل.', en: 'Strongly affected by consumer confidence, interest rates, and financing demand.', fr: 'Très sensible à la confiance des consommateurs, aux taux et au financement.' }, symbols: ['F', 'GM', 'TSLA'] },
+      { title: { ar: 'السفر والطيران', en: 'Travel and airlines', fr: 'Voyage et aérien' }, body: { ar: 'يتحسن غالبًا مع قوة الاقتصاد وارتفاع الإنفاق على السفر.', en: 'Often improves with a stronger economy and higher travel spending.', fr: 'S’améliore souvent avec une économie solide et les dépenses de voyage.' }, symbols: ['DAL', 'UAL', 'AAL'] },
+      { title: { ar: 'الفنادق والترفيه', en: 'Hotels and entertainment', fr: 'Hôtels et loisirs' }, body: { ar: 'يتأثر بالدخل المتاح وثقة المستهلك.', en: 'Affected by disposable income and consumer confidence.', fr: 'Influencé par le revenu disponible et la confiance des consommateurs.' }, symbols: ['MAR', 'HLT'] },
+      { title: { ar: 'الصناعة', en: 'Industrials', fr: 'Industrie' }, body: { ar: 'تعتمد على الطلب التجاري والإنفاق الرأسمالي.', en: 'Depends on business demand and capital spending.', fr: 'Dépend de la demande commerciale et des investissements.' }, symbols: ['CAT', 'DE', 'BA'] },
+      { title: { ar: 'السلع الكمالية', en: 'Luxury goods', fr: 'Biens de luxe' }, body: { ar: 'ترتفع غالبًا عند تحسن دخل المستهلكين.', en: 'Often rises when consumer income improves.', fr: 'Progressent souvent quand le revenu des consommateurs augmente.' }, symbols: ['NKE', 'RACE'] },
+      { title: { ar: 'البناء والعقار', en: 'Construction and real estate', fr: 'Construction et immobilier' }, body: { ar: 'يتأثر بأسعار الفائدة والتمويل والدورة الاقتصادية.', en: 'Affected by interest rates, financing, and the economic cycle.', fr: 'Sensible aux taux, au financement et au cycle économique.' }, symbols: ['HD', 'LOW'] },
     ],
   },
   energy: {
@@ -483,7 +485,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
     return (
       <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white" dir={dir}>
         <Sidebar />
-        <main className="px-4 py-24 lg:ms-[var(--sidebar-w,230px)]">
+        <main className="px-4 py-24 lg:ms-[var(--sidebar-w,230px)] lg:w-[calc(100%-var(--sidebar-w,230px))]">
           <div className="mx-auto max-w-3xl rounded-3xl border border-rose-200 bg-white p-6 text-center shadow-sm dark:border-rose-500/30 dark:bg-slate-900">
             <AlertTriangle className="mx-auto mb-3 text-rose-500" />
             <p className="font-bold">{tr('stock_category_error')}</p>
@@ -496,7 +498,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#e0f7ff_0%,#f8fbff_36%,#eef6ff_100%)] text-slate-950 dark:bg-[radial-gradient(circle_at_top,#0b2b4a_0%,#06182d_38%,#020817_100%)] dark:text-white" dir={dir}>
       <Sidebar />
-      <main className="w-full max-w-full overflow-x-hidden px-4 py-24 sm:px-6 lg:ms-[var(--sidebar-w,230px)] lg:px-8">
+      <main className="w-full max-w-full overflow-x-hidden px-4 py-24 sm:px-6 lg:ms-[var(--sidebar-w,230px)] lg:w-[calc(100%-var(--sidebar-w,230px))] lg:px-8">
         <div className="mx-auto grid w-full max-w-[1500px] gap-6">
           <section className="rounded-[2rem] border border-cyan-200/70 bg-white/90 p-5 shadow-[0_24px_70px_rgba(15,118,110,.12)] backdrop-blur dark:border-cyan-400/20 dark:bg-slate-950/72 dark:shadow-[0_24px_90px_rgba(0,0,0,.35)] sm:p-7">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
