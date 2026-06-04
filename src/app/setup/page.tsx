@@ -1305,15 +1305,18 @@ export default function SetupPage() {
     if (step === 2) {
       const existingIncome = firstExistingIncome(existingData.income);
       const showExistingIncome = existingIncome && !editingExisting[2];
+      const showIncomeDecision = !showExistingIncome && !incomeEnabled;
       return (
         <section className="step-panel">
-          <div className="step-heading">
-            <Wallet size={28} />
-            <div>
-              <h2 id="setup-step-title">{text.incomeTitle}</h2>
-              <p>{text.incomeBody}</p>
+          {!showIncomeDecision && (
+            <div className="step-heading">
+              <Wallet size={28} />
+              <div>
+                <h2 id="setup-step-title">{text.incomeTitle}</h2>
+                <p>{text.incomeBody}</p>
+              </div>
             </div>
-          </div>
+          )}
           {showExistingIncome ? (
             <ExistingDataCard
               title={text.existingIncomeFound}
@@ -1631,12 +1634,12 @@ function IncomeDecisionCard({
   onSkip: () => void;
 }) {
   return (
-    <section className="income-decision-card" aria-labelledby="income-decision-title">
+    <section className="income-decision-card" aria-labelledby="setup-step-title">
       <div className="income-decision-icon" aria-hidden="true">
         <CircleDollarSign size={30} />
       </div>
       <div className="income-decision-copy">
-        <h3 id="income-decision-title">{title}</h3>
+        <h3 id="setup-step-title">{title}</h3>
         <p>{body}</p>
       </div>
       <div className="income-decision-actions">
