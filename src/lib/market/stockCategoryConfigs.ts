@@ -168,6 +168,10 @@ export const STOCK_CATEGORY_CONFIGS: StockCategoryConfig[] = [
       { symbol: 'ABNB', name: 'Airbnb', filter: 'digital_consumption' },
       { symbol: 'ISRG', name: 'Intuitive Surgical', filter: 'innovative_healthcare' },
       { symbol: 'TTD', name: 'The Trade Desk', filter: 'digital_consumption' },
+      { symbol: 'DXCM', name: 'DexCom', filter: 'innovative_healthcare' },
+      { symbol: 'CRWD', name: 'CrowdStrike', filter: 'software' },
+      { symbol: 'ZS', name: 'Zscaler', filter: 'software' },
+      { symbol: 'MDB', name: 'MongoDB', filter: 'software', filters: ['software', 'cloud'] },
     ],
   },
   {
