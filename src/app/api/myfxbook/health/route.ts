@@ -50,12 +50,9 @@ export async function GET(request: NextRequest) {
   const providerIsMyfxbook = config.provider === 'myfxbook';
 
   console.log('[Myfxbook] env check', {
-    provider: config.provider ?? config.providerEnv ?? null,
     hasEmail: Boolean(email),
     hasPassword: Boolean(password),
-    emailLength: email.length,
     passwordLength: password.length,
-    passwordHasSpecialChars: /[^a-zA-Z0-9]/.test(password),
   });
 
   const login = envConfigured && providerIsMyfxbook
@@ -75,9 +72,7 @@ export async function GET(request: NextRequest) {
     providerIsMyfxbook,
     hasEmail: Boolean(email),
     hasPassword: Boolean(password),
-    emailLength: email.length,
     passwordLength: password.length,
-    passwordHasSpecialChars: /[^a-zA-Z0-9]/.test(password),
     loginAttempted: Boolean(login),
     loginSuccess: login?.ok ?? false,
     errorType: login && !login.ok ? login.code : envConfigured ? null : 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED',

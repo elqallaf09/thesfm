@@ -47,12 +47,9 @@ export async function GET(request: NextRequest) {
   const rawEmail = cleanEnv(process.env.MYFXBOOK_EMAIL);
   const rawPassword = cleanEnv(process.env.MYFXBOOK_PASSWORD);
   console.log('Myfxbook env diagnostic:', {
-    provider: process.env.MARKET_SENTIMENT_PROVIDER,
     hasEmail: Boolean(rawEmail),
     hasPassword: Boolean(rawPassword),
-    emailLength: rawEmail.length,
     passwordLength: rawPassword.length,
-    passwordHasSpecialChars: /[^a-zA-Z0-9]/.test(rawPassword),
   });
 
   const config = getMarketSentimentProviderConfig();
@@ -71,9 +68,7 @@ export async function GET(request: NextRequest) {
     provider: config.provider ?? (config.providerEnv || null),
     hasEmail: Boolean(rawEmail),
     hasPassword: Boolean(rawPassword),
-    emailLength: rawEmail.length,
     passwordLength: rawPassword.length,
-    passwordHasSpecialChars: /[^a-zA-Z0-9]/.test(rawPassword),
     canReachMyfxbook: login?.canReachMyfxbook ?? false,
     loginAttempted: config.provider === 'myfxbook' && Boolean(rawEmail && rawPassword),
     loginOk: login?.ok ?? false,

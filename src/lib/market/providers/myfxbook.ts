@@ -120,12 +120,9 @@ function logEnvCheckOnce() {
   const email = cleanEnv(process.env.MYFXBOOK_EMAIL);
   const password = cleanEnv(process.env.MYFXBOOK_PASSWORD);
   console.log('Myfxbook env diagnostic:', {
-    provider: process.env.MARKET_SENTIMENT_PROVIDER,
     hasEmail: Boolean(email),
     hasPassword: Boolean(password),
-    emailLength: email.length,
     passwordLength: password.length,
-    passwordHasSpecialChars: /[^a-zA-Z0-9]/.test(password),
   });
 }
 
