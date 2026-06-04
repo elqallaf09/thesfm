@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
+import { CategoryStockTicker } from '@/components/stock-categories/CategoryStockTicker';
 import { useLanguage } from '@/hooks/useLanguage';
 import { getStockCategoryConfig, type StockCategoryFilterKey, type StockCategoryId } from '@/lib/market/stockCategoryConfigs';
 import type { StockCategoryNewsItem, StockCategoryNewsPayload } from '@/lib/market/fetchStockCategoryNews';
@@ -485,7 +486,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
     return (
       <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white" dir={dir}>
         <Sidebar />
-        <main className="px-4 py-24 lg:ms-[var(--sidebar-w,230px)] lg:w-[calc(100%-var(--sidebar-w,230px))]">
+        <main className="px-4 py-24 lg:ms-[var(--sidebar-w,230px)] lg:w-[calc(100%_-_var(--sidebar-w,230px))]">
           <div className="mx-auto max-w-3xl rounded-3xl border border-rose-200 bg-white p-6 text-center shadow-sm dark:border-rose-500/30 dark:bg-slate-900">
             <AlertTriangle className="mx-auto mb-3 text-rose-500" />
             <p className="font-bold">{tr('stock_category_error')}</p>
@@ -498,7 +499,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#e0f7ff_0%,#f8fbff_36%,#eef6ff_100%)] text-slate-950 dark:bg-[radial-gradient(circle_at_top,#0b2b4a_0%,#06182d_38%,#020817_100%)] dark:text-white" dir={dir}>
       <Sidebar />
-      <main className="w-full max-w-full overflow-x-hidden px-4 py-24 sm:px-6 lg:ms-[var(--sidebar-w,230px)] lg:w-[calc(100%-var(--sidebar-w,230px))] lg:px-8">
+      <main className="w-full max-w-full overflow-x-hidden px-4 py-24 sm:px-6 lg:ms-[var(--sidebar-w,230px)] lg:w-[calc(100%_-_var(--sidebar-w,230px))] lg:px-8">
         <div className="mx-auto grid w-full max-w-[1500px] gap-6">
           <section className="rounded-[2rem] border border-cyan-200/70 bg-white/90 p-5 shadow-[0_24px_70px_rgba(15,118,110,.12)] backdrop-blur dark:border-cyan-400/20 dark:bg-slate-950/72 dark:shadow-[0_24px_90px_rgba(0,0,0,.35)] sm:p-7">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -530,6 +531,14 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
               </button>
             </div>
           </section>
+
+          <CategoryStockTicker
+            categoryType={config.id}
+            symbols={config.watchlist}
+            priceData={prices}
+            direction={dir}
+            locale={locale}
+          />
 
           <section className="grid gap-6 xl:grid-cols-[1fr_380px]">
             <div className="grid min-w-0 gap-6">
