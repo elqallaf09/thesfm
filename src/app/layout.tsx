@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Cairo } from 'next/font/google';
+import { Cairo, IBM_Plex_Sans_Arabic, Tajawal } from 'next/font/google';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/sonner';
 import GlobalClientEffects from '@/components/GlobalClientEffects';
@@ -15,6 +15,20 @@ const cairo = Cairo({
   variable: '--font-cairo',
   subsets: ['arabic', 'latin'],
   weight: ['300', '400', '500', '600', '700', '900'],
+  display: 'swap',
+});
+
+const tajawal = Tajawal({
+  variable: '--font-tajawal',
+  subsets: ['arabic', 'latin'],
+  weight: ['300', '400', '500', '700', '800', '900'],
+  display: 'swap',
+});
+
+const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
+  variable: '--font-ibm-plex-sans-arabic',
+  subsets: ['arabic', 'latin'],
+  weight: ['300', '400', '500', '600', '700'],
   display: 'swap',
 });
 
@@ -41,15 +55,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className={`${cairo.variable} font-cairo antialiased`}>
+      <body className={`${cairo.variable} ${tajawal.variable} ${ibmPlexSansArabic.variable} font-cairo antialiased`}>
         <a className="sfm-skip-link" href="#main-content">تخطّي إلى المحتوى</a>
         <ThemeProvider
           attribute="class"
