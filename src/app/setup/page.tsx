@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -134,7 +134,8 @@ const COPY = {
     incomeAmount: 'المبلغ',
     incomeType: 'نوع الدخل',
     receivedDate: 'تاريخ الاستلام',
-    recurringMonthly: 'دخل متكرر شهرياً',
+    recurringMonthly: 'دخل متكرر شهريًا',
+    recurringMonthlyHint: 'فعّل هذا الخيار إذا كان هذا الدخل يتكرر كل شهر.',
     expensesTitle: 'أضف مصروفاتك الأساسية إن رغبت',
     expensesBody: 'احفظ فقط البنود التي تعرف مبلغها الفعلي أو تقديرك الشخصي لها. البنود الفارغة لن يتم حفظها.',
     rent: 'السكن / الإيجار',
@@ -251,6 +252,7 @@ const COPY = {
     incomeType: 'Income type',
     receivedDate: 'Received date',
     recurringMonthly: 'Recurring monthly income',
+    recurringMonthlyHint: 'Turn this on if this income repeats every month.',
     expensesTitle: 'Add basic monthly expenses if you want',
     expensesBody: 'Only filled rows will be saved. Empty expense rows will stay empty.',
     rent: 'Rent / housing',
@@ -367,6 +369,7 @@ const COPY = {
     incomeType: 'Type de revenu',
     receivedDate: 'Date de réception',
     recurringMonthly: 'Revenu mensuel récurrent',
+    recurringMonthlyHint: 'Activez cette option si ce revenu se répète chaque mois.',
     expensesTitle: 'Ajoutez vos dépenses mensuelles de base si vous le souhaitez',
     expensesBody: 'Seules les lignes remplies seront enregistrées. Les lignes vides resteront vides.',
     rent: 'Loyer / logement',
@@ -1234,18 +1237,18 @@ export default function SetupPage() {
         .step-panel{display:grid;gap:16px;min-width:0}
         .step-heading{display:flex;align-items:flex-start;gap:13px}.step-heading svg{color:var(--sfm-primary);flex:0 0 auto}.step-heading h2{margin:0;color:var(--sfm-primary-dark);font-size:clamp(24px,3vw,32px);line-height:1.22}.step-heading p{margin:7px 0 0;color:var(--sfm-muted-readable);line-height:1.8;font-weight:820;font-size:15px}
         .choice-row{display:flex;gap:10px;flex-wrap:wrap}.choice-btn,.toggle-card{min-height:48px;border:1px solid rgba(29,140,255,.18);border-radius:15px;background:var(--sfm-light-card);color:var(--sfm-midnight);padding:0 16px;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease}.choice-btn:hover,.toggle-card:hover{transform:translateY(-1px);border-color:rgba(24,212,212,.34);box-shadow:0 10px 26px rgba(3,18,37,.08)}.choice-btn:focus-visible,.toggle-card:focus-visible,.focus-card:focus-visible{outline:3px solid rgba(24,212,212,.32);outline-offset:3px}.choice-btn.active,.toggle-card.active{background:var(--sfm-primary-dark);color:var(--sfm-soft-cyan);border-color:rgba(167,243,240,.28)}
-        .income-decision-card{display:grid;justify-items:center;text-align:center;gap:18px;border:1px solid rgba(29,140,255,.16);background:linear-gradient(180deg,#FFFFFF,rgba(234,246,255,.72));border-radius:28px;padding:clamp(22px,4vw,34px);box-shadow:0 18px 46px rgba(3,18,37,.08);min-width:0;overflow:hidden}.income-decision-card.active{border-color:rgba(24,212,212,.34);box-shadow:0 22px 52px rgba(24,212,212,.12)}.income-decision-icon{width:76px;height:76px;border-radius:999px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(234,246,255,.95),rgba(24,212,212,.12));border:1px solid rgba(29,140,255,.16);color:var(--sfm-primary);box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 12px 28px rgba(29,140,255,.12)}.income-decision-copy{display:grid;gap:10px;max-width:620px}.income-decision-copy h3{margin:0;color:var(--sfm-primary-dark);font-size:clamp(24px,3.5vw,34px);line-height:1.25;font-weight:950}.income-decision-copy p{margin:0;color:var(--sfm-muted-readable);font-size:15px;font-weight:850;line-height:1.9}.income-decision-actions{margin-top:4px;display:flex;flex-wrap:wrap;justify-content:center;gap:14px;width:100%}.income-action-btn{min-height:52px;border-radius:18px;padding:0 24px;font:950 15px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;white-space:nowrap;transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease,filter .18s ease,color .18s ease;min-width:190px}.income-action-btn.primary{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 18px 38px rgba(29,140,255,.24)}.income-action-btn.secondary{border:1px solid rgba(29,140,255,.26);background:#FFFFFF;color:var(--sfm-primary-dark);box-shadow:0 10px 24px rgba(3,18,37,.06)}.income-action-btn:hover{transform:translateY(-2px)}.income-action-btn.primary:hover{filter:saturate(1.08) brightness(1.04);box-shadow:0 22px 48px rgba(24,212,212,.30)}.income-action-btn.secondary:hover{border-color:rgba(24,212,212,.42);background:rgba(24,212,212,.08);box-shadow:0 14px 30px rgba(3,18,37,.08)}.income-action-btn:active{transform:translateY(0) scale(.985)}.income-action-btn:focus-visible{outline:3px solid rgba(24,212,212,.34);outline-offset:3px}:global(.dark) .setup-page .income-decision-card{background:linear-gradient(180deg,#0F1E32,#0B1728);border-color:#1D3050;box-shadow:0 22px 54px rgba(0,0,0,.28)}:global(.dark) .setup-page .income-decision-icon{background:linear-gradient(135deg,rgba(47,214,192,.18),rgba(29,140,255,.12));border-color:rgba(47,214,192,.24);color:#8EEAE5}:global(.dark) .setup-page .income-decision-copy h3{color:#F8FBFF}:global(.dark) .setup-page .income-decision-copy p{color:#C7D3E1}:global(.dark) .setup-page .income-action-btn.primary{color:#061A2E;box-shadow:0 18px 38px rgba(47,214,192,.20)}:global(.dark) .setup-page .income-action-btn.secondary{background:#13243A;border-color:#1D3050;color:#E8EEF6;box-shadow:0 12px 28px rgba(0,0,0,.22)}:global(.dark) .setup-page .income-action-btn.secondary:hover{background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.36)}
+        .income-decision-card{display:grid;justify-items:center;text-align:center;gap:18px;border:1px solid rgba(29,140,255,.16);background:linear-gradient(180deg,#FFFFFF,rgba(234,246,255,.72));border-radius:28px;padding:clamp(22px,4vw,34px);box-shadow:0 18px 46px rgba(3,18,37,.08);min-width:0;overflow:hidden}.income-decision-card.active{border-color:rgba(24,212,212,.34);box-shadow:0 22px 52px rgba(24,212,212,.12)}.income-decision-icon{width:76px;height:76px;border-radius:999px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(234,246,255,.95),rgba(24,212,212,.12));border:1px solid rgba(29,140,255,.16);color:var(--sfm-primary);box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 12px 28px rgba(29,140,255,.12)}.income-decision-copy{display:grid;gap:10px;max-width:620px}.income-decision-copy h3{margin:0;color:var(--sfm-primary-dark);font-size:clamp(24px,3.5vw,34px);line-height:1.25;font-weight:950}.income-decision-copy p{margin:0;color:var(--sfm-muted-readable);font-size:15px;font-weight:850;line-height:1.9}.income-decision-actions{margin-top:4px;display:grid;grid-template-columns:repeat(2,minmax(0,220px));justify-content:center;align-items:center;gap:14px;width:100%;max-width:520px}.income-action-btn{width:100%;min-height:52px;border-radius:18px;padding:0 22px;font:950 15px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;white-space:nowrap;transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease,filter .18s ease,color .18s ease;min-width:0}.income-action-btn.primary{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 18px 38px rgba(29,140,255,.24)}.income-action-btn.secondary{border:1px solid rgba(29,140,255,.26);background:#FFFFFF;color:var(--sfm-primary-dark);box-shadow:0 10px 24px rgba(3,18,37,.06)}.income-action-btn:hover{transform:translateY(-2px)}.income-action-btn.primary:hover{filter:saturate(1.08) brightness(1.04);box-shadow:0 22px 48px rgba(24,212,212,.30)}.income-action-btn.secondary:hover{border-color:rgba(24,212,212,.42);background:rgba(24,212,212,.08);box-shadow:0 14px 30px rgba(3,18,37,.08)}.income-action-btn:active{transform:translateY(0) scale(.985)}.income-action-btn:focus-visible{outline:3px solid rgba(24,212,212,.34);outline-offset:3px}:global(.dark) .setup-page .income-decision-card{background:linear-gradient(180deg,#0F1E32,#0B1728);border-color:#1D3050;box-shadow:0 22px 54px rgba(0,0,0,.28)}:global(.dark) .setup-page .income-decision-icon{background:linear-gradient(135deg,rgba(47,214,192,.18),rgba(29,140,255,.12));border-color:rgba(47,214,192,.24);color:#8EEAE5}:global(.dark) .setup-page .income-decision-copy h3{color:#F8FBFF}:global(.dark) .setup-page .income-decision-copy p{color:#C7D3E1}:global(.dark) .setup-page .income-action-btn.primary{color:#061A2E;box-shadow:0 18px 38px rgba(47,214,192,.20)}:global(.dark) .setup-page .income-action-btn.secondary{background:#13243A;border-color:#1D3050;color:#E8EEF6;box-shadow:0 12px 28px rgba(0,0,0,.22)}:global(.dark) .setup-page .income-action-btn.secondary:hover{background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.36)}
         .welcome-actions{margin-top:4px}.existing-data-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:13px;align-items:start;border:1px solid rgba(16,185,129,.22);background:linear-gradient(180deg,#F0FDF4,#FFFFFF);border-radius:18px;padding:16px;box-shadow:0 12px 30px rgba(3,18,37,.06)}.existing-data-card>svg{color:#059669;margin-top:3px}.existing-data-card h3{margin:0;color:var(--sfm-primary-dark);font-size:16px;font-weight:950}.existing-data-card strong{display:block;margin-top:6px;color:#047857;font-size:24px;font-weight:950;overflow-wrap:anywhere}.existing-data-card p{margin:6px 0 0;color:var(--sfm-muted-readable);font-weight:850;line-height:1.65}.existing-actions{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap}.existing-actions .primary-btn,.existing-actions .ghost-btn{min-height:44px}
         .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
         .form-field{display:grid;gap:7px;min-width:0}.form-field.full{grid-column:1/-1}.form-field span{font-weight:950;color:var(--sfm-muted);font-size:13px}.form-field input,.form-field select{width:100%;min-height:46px;border:1px solid rgba(29,140,255,.2);background:var(--sfm-light-card);color:var(--sfm-primary-dark);border-radius:13px;padding:0 12px;font:900 14px Tajawal,Arial,sans-serif;outline:none}.form-field input:focus,.form-field select:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.15);background:var(--sfm-card)}
-        .checkbox-line{display:flex;align-items:center;gap:9px;background:var(--sfm-light-card);border:1px solid rgba(29,140,255,.12);border-radius:13px;padding:12px;font-weight:900;color:var(--sfm-muted)}.checkbox-line input{width:18px;height:18px;accent-color:var(--sfm-primary)}
+        .recurring-income-card{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;border:1px solid rgba(29,140,255,.16);background:linear-gradient(180deg,#FFFFFF,rgba(234,246,255,.70));border-radius:20px;padding:16px;min-width:0;box-shadow:0 10px 26px rgba(3,18,37,.05)}.recurring-income-copy{display:grid;gap:5px;min-width:0;text-align:start}.recurring-income-copy strong{color:var(--sfm-primary-dark);font-size:15px;font-weight:950;line-height:1.45}.recurring-income-copy p{margin:0;color:var(--sfm-muted-readable);font-size:13px;font-weight:850;line-height:1.7}.recurring-income-switch{width:58px;height:32px;border-radius:999px;border:1px solid rgba(29,140,255,.22);background:#EAF6FF;padding:3px;display:flex;align-items:center;justify-content:flex-start;cursor:pointer;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease;flex:0 0 auto}.recurring-income-switch span{width:26px;height:26px;border-radius:999px;background:#FFFFFF;box-shadow:0 6px 14px rgba(3,18,37,.16);transition:transform .18s ease}.recurring-income-switch.active{justify-content:flex-end;border-color:transparent;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));box-shadow:0 10px 24px rgba(29,140,255,.18)}.recurring-income-switch:focus-visible{outline:3px solid rgba(24,212,212,.34);outline-offset:3px}:global(.dark) .setup-page .recurring-income-card{background:linear-gradient(180deg,#0F1E32,#0B1728);border-color:#1D3050;box-shadow:0 14px 34px rgba(0,0,0,.22)}:global(.dark) .setup-page .recurring-income-copy strong{color:#F8FBFF}:global(.dark) .setup-page .recurring-income-copy p{color:#C7D3E1}:global(.dark) .setup-page .recurring-income-switch{background:#13243A;border-color:#1D3050}:global(.dark) .setup-page .recurring-income-switch span{background:#F8FBFF}:global(.dark) .setup-page .recurring-income-switch.active{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));box-shadow:0 10px 24px rgba(47,214,192,.18)}
         .expense-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.summary-card{background:var(--sfm-light-card);border:1px solid rgba(29,140,255,.14);border-radius:16px;padding:13px;min-width:0}.summary-card small{display:block;color:var(--sfm-muted);font-weight:900}.summary-card strong{display:block;margin-top:5px;color:var(--sfm-primary-dark);font-size:22px}
         .focus-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.focus-card{border:1px solid rgba(29,140,255,.16);border-radius:16px;background:var(--sfm-light-card);padding:14px;text-align:start;display:grid;gap:8px;color:var(--sfm-midnight);font-weight:950;cursor:pointer}.focus-card.active{background:var(--sfm-primary-dark);color:var(--sfm-soft-cyan);border-color:rgba(167,243,240,.28)}
         .setup-error{border:1px solid rgba(185,28,28,.16);background:#FEF2F2;color:#B91C1C;border-radius:14px;padding:12px;font-weight:950}
         .wizard-actions{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid rgba(29,140,255,.12);padding-top:18px;margin-top:auto}.primary-btn,.ghost-btn{min-height:52px;border-radius:16px;padding:0 20px;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease,border-color .18s ease,background .18s ease}.primary-btn{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 14px 34px rgba(29,140,255,.22)}.primary-btn:not(:disabled):hover{transform:translateY(-2px);filter:saturate(1.06) brightness(1.04);box-shadow:0 18px 42px rgba(24,212,212,.28)}.primary-btn:not(:disabled):active{transform:translateY(0) scale(.985)}.primary-btn:focus-visible,.ghost-btn:focus-visible,.finish-actions button:focus-visible{outline:3px solid rgba(24,212,212,.32);outline-offset:3px}.ghost-btn{border:1px solid rgba(29,140,255,.20);background:var(--sfm-light-card);color:var(--sfm-midnight)}.ghost-btn:not(:disabled):hover{transform:translateY(-1px);border-color:rgba(24,212,212,.34);background:var(--sfm-surface-hover);box-shadow:0 10px 26px rgba(3,18,37,.08)}.primary-btn:disabled,.ghost-btn:disabled{opacity:.65;cursor:not-allowed;transform:none;box-shadow:none}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
         .finish-actions{display:flex;gap:10px;flex-wrap:wrap}.finish-actions button{min-height:46px;border:1px solid rgba(29,140,255,.18);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-midnight);padding:0 15px;font-weight:950;font-family:inherit;cursor:pointer}.finish-actions button.primary{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}
         @media(max-width:1024px){.setup-page .sfm-dashboard-page-shell{margin-inline-start:0}.setup-hero,.step-layout{grid-template-columns:1fr}.progress-orb{width:124px;height:124px}.step-side{position:static}.setup-plan ul{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:720px){:global(.setup-page .sfm-dashboard-page-shell){padding-inline:16px!important}.setup-hero{border-radius:22px}.setup-card{padding:14px;border-radius:22px}.progress-orb{width:112px;height:112px}.form-grid,.expense-grid,.summary-grid,.focus-grid,.setup-plan ul{grid-template-columns:1fr}.wizard-actions,.choice-row,.finish-actions,.income-decision-actions{display:grid;grid-template-columns:1fr}.primary-btn,.ghost-btn,.choice-btn,.toggle-card,.finish-actions button,.income-action-btn{width:100%;min-width:0}.income-decision-card{padding:22px 16px;border-radius:24px}.income-decision-icon{width:68px;height:68px}.setup-top{align-items:flex-start}.step-main{padding:16px;min-height:auto}.step-heading h2{font-size:22px}}
+        @media(max-width:720px){:global(.setup-page .sfm-dashboard-page-shell){padding-inline:16px!important}.setup-hero{border-radius:22px}.setup-card{padding:14px;border-radius:22px}.progress-orb{width:112px;height:112px}.form-grid,.expense-grid,.summary-grid,.focus-grid,.setup-plan ul{grid-template-columns:1fr}.wizard-actions,.choice-row,.finish-actions,.income-decision-actions{display:grid;grid-template-columns:1fr}.primary-btn,.ghost-btn,.choice-btn,.toggle-card,.finish-actions button,.income-action-btn{width:100%;min-width:0}.income-decision-card{padding:22px 16px;border-radius:24px}.income-decision-icon{width:68px;height:68px}.recurring-income-card{grid-template-columns:minmax(0,1fr) auto;align-items:start;padding:14px;border-radius:18px}.setup-top{align-items:flex-start}.step-main{padding:16px;min-height:auto}.step-heading h2{font-size:22px}}
       `}</style>
     </div>
   );
@@ -1337,10 +1340,12 @@ export default function SetupPage() {
               <div className="form-field full">
                 <CurrencySelect value={income.currency} onChange={value => setIncome(prev => ({ ...prev, currency: value }))} lang={lang} label={text.currencyTitle} ariaLabel={text.currencyTitle} />
               </div>
-              <label className="checkbox-line form-field full" htmlFor="income-recurring">
-                <input id="income-recurring" type="checkbox" checked={income.recurring} onChange={event => setIncome(prev => ({ ...prev, recurring: event.target.checked }))} />
-                {text.recurringMonthly}
-              </label>
+              <RecurringIncomeToggle
+                checked={income.recurring}
+                label={text.recurringMonthly}
+                description={text.recurringMonthlyHint}
+                onChange={checked => setIncome(prev => ({ ...prev, recurring: checked }))}
+              />
             </div>
           )}
         </section>
@@ -1640,6 +1645,41 @@ function IncomeDecisionCard({
         </button>
       </div>
     </section>
+  );
+}
+
+function RecurringIncomeToggle({
+  checked,
+  label,
+  description,
+  onChange,
+}: {
+  checked: boolean;
+  label: string;
+  description: string;
+  onChange: (checked: boolean) => void;
+}) {
+  const labelId = useId();
+  const descriptionId = useId();
+
+  return (
+    <div className="recurring-income-card">
+      <div className="recurring-income-copy">
+        <strong id={labelId}>{label}</strong>
+        <p id={descriptionId}>{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-labelledby={labelId}
+        aria-describedby={descriptionId}
+        className={checked ? 'recurring-income-switch active' : 'recurring-income-switch'}
+        onClick={() => onChange(!checked)}
+      >
+        <span aria-hidden="true" />
+      </button>
+    </div>
   );
 }
 
