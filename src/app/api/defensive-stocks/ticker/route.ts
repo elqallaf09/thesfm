@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchStockPrices } from '@/lib/market/fetchStockPrices';
+import { fetchStockPrices, type TechStockPrice } from '@/lib/market/fetchStockPrices';
 import { getStockCategoryConfig } from '@/lib/market/stockCategoryConfigs';
 
 export const revalidate = 300;
@@ -26,6 +26,10 @@ const TICKER_SYMBOLS = [
   'XLU',
 ];
 
+function isUsableMarketPrice(price: TechStockPrice | undefined): price is TechStockPrice & { price: number } {
+  return Boolean(price?.available && price.price !== null && Number.isFinite(price.price) && price.price > 0 && price.source);
+}
+
 export async function GET() {
   const config = getStockCategoryConfig('defensive');
 
@@ -50,7 +54,7 @@ export async function GET() {
     const items = watchlist
       .map(stock => {
         const price = prices.get(stock.symbol);
-        if (!price?.available || price.price === null) return null;
+        if (!isUsableMarketPrice(price)) return null;
         return {
           symbol: stock.symbol,
           name: stock.name,

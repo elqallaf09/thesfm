@@ -68,6 +68,7 @@ const COPY = {
     noTicker: 'لا توجد بيانات كافية لعرض شريط الأسهم الدفاعية.',
     tickerError: 'تعذر تحديث شريط الأسهم الدفاعية حاليًا.',
     tickerCached: 'أسعار محدثة دوريًا',
+    tickerLoading: 'جارٍ تحديث شريط الأسهم الدفاعية...',
     provider: 'المصدر',
     newsCount: 'عدد الأخبار',
     watchlistCount: 'عدد الرموز',
@@ -101,6 +102,7 @@ const COPY = {
     noTicker: 'Not enough data to show the defensive stocks ticker.',
     tickerError: 'Could not update the defensive stocks ticker right now.',
     tickerCached: 'Periodically updated prices',
+    tickerLoading: 'Updating defensive stocks ticker...',
     provider: 'Source',
     newsCount: 'News items',
     watchlistCount: 'Symbols',
@@ -134,6 +136,7 @@ const COPY = {
     noTicker: 'Données insuffisantes pour afficher le téléscripteur défensif.',
     tickerError: 'Impossible de mettre à jour le téléscripteur des actions défensives.',
     tickerCached: 'Prix mis à jour périodiquement',
+    tickerLoading: 'Mise à jour du téléscripteur défensif...',
     provider: 'Source',
     newsCount: 'Actualités',
     watchlistCount: 'Symboles',
@@ -802,18 +805,24 @@ function DefensiveStocksTicker({ copy, locale }: { copy: Record<string, string>;
 
   useEffect(() => {
     let cancelled = false;
+    const hasRealTickerPrice = (item: TickerItem) => (
+      Boolean(item.symbol && item.source)
+      && Number.isFinite(item.price)
+      && item.price > 0
+    );
     async function loadTicker() {
       try {
         const response = await fetch('/api/defensive-stocks/ticker');
         const json = await response.json().catch(() => null) as TickerResponse | null;
         if (cancelled) return;
-        if (!response.ok || !json?.ok || json.items.length === 0) {
+        const realItems = json?.ok ? json.items.filter(hasRealTickerPrice) : [];
+        if (!response.ok || !json?.ok || realItems.length === 0) {
           setStatus(response.ok ? 'empty' : 'error');
           setItems([]);
           setUpdatedAt('');
           return;
         }
-        setItems(json.items);
+        setItems(realItems);
         setUpdatedAt(json.updated_at);
         setStatus('ready');
       } catch {
@@ -843,6 +852,13 @@ function DefensiveStocksTicker({ copy, locale }: { copy: Record<string, string>;
 
   const tickerItems = items.length > 6 ? [...items, ...items] : items;
   const updatedDate = updatedAt ? new Intl.DateTimeFormat(locale, { timeStyle: 'short' }).format(new Date(updatedAt)) : '';
+  const statusLabel = status === 'ready'
+    ? copy.tickerCached
+    : status === 'loading'
+      ? copy.tickerLoading
+      : status === 'error'
+        ? copy.tickerError
+        : copy.noTicker;
 
   return (
     <section className="overflow-hidden rounded-[1.75rem] border border-cyan-200/70 bg-white/90 shadow-sm dark:border-cyan-500/20 dark:bg-slate-950/70">
@@ -854,12 +870,12 @@ function DefensiveStocksTicker({ copy, locale }: { copy: Record<string, string>;
           <div>
             <p className="text-sm font-black text-slate-950 dark:text-white">{copy.watchlistLabel}</p>
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              {updatedDate ? `${copy.updated}: ${updatedDate}` : copy.tickerCached}
+              {status === 'ready' && updatedDate ? `${copy.updated}: ${updatedDate}` : statusLabel}
             </p>
           </div>
         </div>
         <span className="w-fit rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-800 dark:border-cyan-500/30 dark:bg-cyan-950/40 dark:text-cyan-100">
-          {copy.tickerCached}
+          {statusLabel}
         </span>
       </div>
 
