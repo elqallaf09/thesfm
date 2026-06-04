@@ -57,12 +57,13 @@ type MoverSectionView = {
 
 const FILTER_LABELS: Record<string, string> = {
   all: 'الكل',
-  defense_contractors: 'شركات الدفاع',
-  aerospace: 'الطيران والفضاء',
-  cybersecurity: 'الأمن السيبراني',
-  government_services: 'الخدمات الحكومية',
-  defense_systems: 'الأنظمة الدفاعية',
-  defense_etfs: 'صناديق القطاع',
+  consumer_staples: 'السلع الاستهلاكية الأساسية',
+  healthcare: 'الرعاية الصحية',
+  food_beverage: 'الأغذية والمشروبات',
+  pharmaceuticals: 'الأدوية الأساسية',
+  telecom: 'الاتصالات',
+  utilities: 'المرافق العامة',
+  essential_retail: 'تجارة التجزئة',
 };
 
 const NAV_SUB = [
@@ -81,35 +82,47 @@ const NAV_SUB = [
 
 const COMPARE = [
   {
-    title: 'شركات الدفاع والطيران',
-    text: 'تعمل في العقود الدفاعية والطائرات والأنظمة العسكرية والفضائية، وتتأثر بالإنفاق الحكومي والطلبيات طويلة الأجل.',
+    title: 'الأسهم الدفاعية',
+    tone: 'defensive',
+    items: [
+      'طلب مستقر نسبيًا',
+      'تقلب أقل غالبًا',
+      'توزيعات أرباح في بعض الشركات',
+      'مناسبة للمستثمر المحافظ',
+    ],
   },
   {
-    title: 'الأمن السيبراني',
-    text: 'يرتبط بحماية البنية الرقمية والبيانات، وقد يستفيد من نمو الإنفاق على الحماية التقنية وإدارة المخاطر الرقمية.',
+    title: 'الأسهم الدورية',
+    tone: 'cyclical',
+    items: [
+      'تتأثر بقوة بالدورة الاقتصادية',
+      'قد ترتفع بقوة وقت الانتعاش',
+      'قد تنخفض بقوة وقت الركود',
+      'مناسبة لمن يتحمل مخاطر أعلى',
+    ],
   },
 ];
 
 const SECTORS = [
   {
-    title: 'شركات الدفاع الكبرى',
-    text: 'شركات عقود دفاعية وأنظمة عسكرية مرتبطة بالإنفاق الحكومي وطلبات التوريد طويلة الأجل.',
-    symbols: ['LMT', 'NOC', 'RTX', 'GD', 'HII'],
+    title: 'السلع الاستهلاكية الأساسية',
+    text: 'شركات الأغذية والمشروبات والمنتجات المنزلية التي يظل الطلب عليها حاضرًا في أغلب الظروف.',
+    symbols: ['PG', 'KO', 'PEP', 'WMT', 'COST'],
   },
   {
-    title: 'الطيران والفضاء',
-    text: 'شركات تصنيع ومكونات وخدمات مرتبطة بالطائرات والفضاء والدفاع الجوي.',
-    symbols: ['BA', 'TDG', 'HEI', 'RTX'],
+    title: 'الرعاية الصحية',
+    text: 'شركات الأدوية والخدمات الصحية التي ترتبط باحتياجات أساسية طويلة الأجل.',
+    symbols: ['JNJ', 'MRK', 'PFE', 'ABBV', 'UNH'],
   },
   {
-    title: 'الأمن السيبراني',
-    text: 'شركات حماية الشبكات والبيانات والأنظمة الرقمية الحساسة.',
-    symbols: ['PANW', 'CRWD', 'ZS', 'FTNT'],
+    title: 'المرافق العامة',
+    text: 'شركات الكهرباء والمياه والبنية الخدمية التي تميل إيراداتها إلى الاستقرار النسبي.',
+    symbols: ['NEE', 'DUK', 'SO', 'AEP'],
   },
   {
-    title: 'صناديق القطاع',
-    text: 'صناديق متداولة تتابع سلالًا من شركات الطيران والدفاع، وليست توصيات استثمارية.',
-    symbols: ['ITA', 'XAR', 'PPA'],
+    title: 'الاتصالات',
+    text: 'مزودو خدمات الاتصال والبيانات التي تُعد من الخدمات الأساسية للمستهلكين والشركات.',
+    symbols: ['VZ', 'T'],
   },
 ];
 
@@ -333,6 +346,7 @@ export default async function DefensiveStocksPage({ searchParams }: { searchPara
     { k: 'مصدر الأخبار', v: newsPayload.source },
     { k: 'مصدر الأسعار', v: newsPayload.priceSource },
   ];
+  const resultCountLabel = `${new Intl.NumberFormat('ar-KW').format(NEWS.length)} خبر مطابق`;
 
   return (
     <main className="sfm">
@@ -375,11 +389,66 @@ export default async function DefensiveStocksPage({ searchParams }: { searchPara
                 <span className="pill">تصنيف استثماري دفاعي</span>
                 <h1>أخبار الأسهم الدفاعية</h1>
                 <p>
-                  متابعة أخبار شركات الدفاع والطيران والأمن السيبراني، مع عرض الأخبار والأسعار
-                  الحقيقية عند توفرها من مزودي البيانات.
+                  تابع أخبار الشركات والقطاعات التي تميل إلى الاستقرار أثناء تقلبات السوق،
+                  مثل السلع الأساسية، الرعاية الصحية، المرافق، والاتصالات.
                 </p>
               </div>
               <a className="refresh" href="/defensive-stocks">تحديث البيانات</a>
+            </div>
+
+            <section className="edu-card intro-card" aria-label="شرح الأسهم الدفاعية">
+              <div className="intro-icon" aria-hidden="true">حماية</div>
+              <div className="block-title">
+                <span>معلومة تعليمية</span>
+                <h2>ما هي الأسهم الدفاعية؟</h2>
+              </div>
+              <p>
+                الأسهم الدفاعية هي أسهم شركات تقدم منتجات أو خدمات أساسية يظل الطلب عليها مستقرًا نسبيًا
+                حتى أثناء فترات الركود أو تقلبات السوق، مثل الغذاء، الدواء، الكهرباء، الماء، الاتصالات،
+                والسلع الاستهلاكية الأساسية.
+              </p>
+              <div className="comparison-title">
+                <span>الفرق بينها وبين الأسهم الدورية</span>
+              </div>
+              <div className="compare-grid">
+                {COMPARE.map(item => (
+                  <article className={`compare-card ${item.tone}`} key={item.title}>
+                    <h3>{item.title}</h3>
+                    <ul>
+                      {item.items.map(point => (
+                        <li key={point}>
+                          <span aria-hidden="true">{item.tone === 'defensive' ? '✓' : '•'}</span>
+                          <b>{point}</b>
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <form className="search" action="/defensive-stocks">
+              <input type="hidden" name="filter" value={selectedFilter} />
+              <input
+                name="q"
+                defaultValue={query}
+                placeholder="ابحث عن سهم، أو شركة، أو تصنيف مثل COST أو الرعاية الصحية..."
+                aria-label="البحث في أخبار الأسهم الدفاعية"
+              />
+              <button type="submit">بحث</button>
+            </form>
+
+            <div className="chips" aria-label="تصنيفات الأسهم الدفاعية">
+              {CHIPS.map(chip => (
+                <a
+                  key={chip.key}
+                  href={buildUrl(chip.key, query)}
+                  className={chip.key === selectedFilter ? 'active' : ''}
+                >
+                  <span>{chip.label}</span>
+                  <b>{chip.count}</b>
+                </a>
+              ))}
             </div>
 
             <section className="feat-panel" aria-label="أحدث خبر دفاعي بارز">
@@ -421,83 +490,48 @@ export default async function DefensiveStocksPage({ searchParams }: { searchPara
               )}
             </section>
 
-            <section className="edu-card">
-              <div className="block-title">
-                <span>معلومة تعليمية</span>
-                <h2>ما هي الأسهم الدفاعية؟</h2>
-              </div>
-              <p>
-                تركز هذه الصفحة على أخبار شركات الدفاع والطيران والأمن السيبراني، مثل الشركات المرتبطة
-                بالعقود الحكومية والأنظمة الدفاعية وحماية البنية الرقمية. لا تُعد هذه القائمة توصية
-                استثمارية، وتُعرض الأخبار والأسعار فقط عند توفر بيانات حقيقية من مزودي السوق.
-              </p>
-              <div className="compare-grid">
-                {COMPARE.map(item => (
-                  <article className="compare-card" key={item.title}>
-                    <h3>{item.title}</h3>
-                    <p>{item.text}</p>
-                  </article>
-                ))}
-              </div>
-            </section>
-
-            <form className="search" action="/defensive-stocks">
-              <input type="hidden" name="filter" value={selectedFilter} />
-              <input
-                name="q"
-                defaultValue={query}
-                placeholder="ابحث عن سهم أو شركة أو تصنيف..."
-                aria-label="البحث في أخبار الأسهم الدفاعية"
-              />
-              <button type="submit">بحث</button>
-            </form>
-
-            <div className="chips" aria-label="تصنيفات الأسهم الدفاعية">
-              {CHIPS.map(chip => (
-                <a
-                  key={chip.key}
-                  href={buildUrl(chip.key, query)}
-                  className={chip.key === selectedFilter ? 'active' : ''}
-                >
-                  <span>{chip.label}</span>
-                  <b>{chip.count}</b>
-                </a>
-              ))}
-            </div>
-
             <div className="content">
-              <section className="news-grid" aria-label="أخبار الأسهم الدفاعية">
-                {VISIBLE_NEWS.length > 0 ? VISIBLE_NEWS.map(item => (
-                  <article className="ncard" key={`${item.sym}-${item.url}`}>
-                    <div className="nmeta">
-                      <span className="badge" dir="ltr">{item.sym}</span>
-                      <span>{item.name}</span>
-                    </div>
-                    <h3>{item.title}</h3>
-                    <p>{item.desc}</p>
-                    <div className="market-row">
-                      <span>{item.src}</span>
-                      <span>{item.date}</span>
-                      <b dir="ltr">{item.px}</b>
-                      <em className={item.up ? 'up' : 'down'} dir="ltr">{item.chg}</em>
-                    </div>
-                    <a href={item.url} target="_blank" rel="noreferrer">قراءة الخبر</a>
-                  </article>
-                )) : (
-                  <div className="empty">
-                    <h3>لا توجد أخبار حاليًا في هذا التصنيف</h3>
-                    <p>جرّب تصنيفًا آخر أو ابحث عن شركة محددة.</p>
+              <section className="news-area" aria-label="أخبار الأسهم الدفاعية">
+                <div className="news-heading">
+                  <div>
+                    <span>الأحدث أولًا</span>
+                    <h2>أخبار الأسهم الدفاعية</h2>
                   </div>
-                )}
-                {NEWS.length > 0 ? (
-                  <div className="load-more">
-                    {hasMoreNews ? (
-                      <a href={buildUrl(selectedFilter, query, visibleCount + 12)}>عرض المزيد من الأخبار</a>
-                    ) : (
-                      <span>تم عرض جميع الأخبار المتاحة</span>
-                    )}
-                  </div>
-                ) : null}
+                  <b>{resultCountLabel}</b>
+                </div>
+                <div className="news-grid">
+                  {VISIBLE_NEWS.length > 0 ? VISIBLE_NEWS.map(item => (
+                    <article className="ncard" key={`${item.sym}-${item.url}`}>
+                      <div className="nmeta">
+                        <span className="badge" dir="ltr">{item.sym}</span>
+                        <span>{item.name}</span>
+                      </div>
+                      <h3>{item.title}</h3>
+                      <p>{item.desc}</p>
+                      <div className="market-row">
+                        <span>{item.src}</span>
+                        <span>{item.date}</span>
+                        <b dir="ltr">{item.px}</b>
+                        <em className={item.up ? 'up' : 'down'} dir="ltr">{item.chg}</em>
+                      </div>
+                      <a href={item.url} target="_blank" rel="noreferrer">قراءة الخبر</a>
+                    </article>
+                  )) : (
+                    <div className="empty">
+                      <h3>لا توجد أخبار متاحة حاليًا. حاول لاحقًا.</h3>
+                      <p>يمكنك تجربة تصنيف آخر أو البحث عن شركة محددة.</p>
+                    </div>
+                  )}
+                  {NEWS.length > 0 ? (
+                    <div className="load-more">
+                      {hasMoreNews ? (
+                        <a href={buildUrl(selectedFilter, query, visibleCount + 12)}>عرض المزيد من الأخبار</a>
+                      ) : (
+                        <span>تم عرض جميع الأخبار المتاحة</span>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
               </section>
 
               <aside className="sidebar">
@@ -823,6 +857,34 @@ const CSS = `
   background: var(--panel);
   box-shadow: 0 18px 48px rgba(15,74,117,.08);
 }
+.intro-card {
+  position: relative;
+  overflow: hidden;
+  padding-inline-start: 110px;
+}
+.intro-card::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 7px;
+  background: linear-gradient(180deg, var(--cyan), var(--green));
+}
+.intro-icon {
+  position: absolute;
+  inset-block-start: 26px;
+  inset-inline-start: 26px;
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 74px;
+  border-radius: 24px;
+  border: 1px solid rgba(5,184,216,.28);
+  background: linear-gradient(135deg, rgba(5,184,216,.14), rgba(22,166,106,.12));
+  color: var(--blue);
+  font-size: .92rem;
+  font-weight: 900;
+}
 .feat-panel { padding: 22px; }
 .feat-head {
   display: flex;
@@ -889,6 +951,12 @@ const CSS = `
   margin: 6px 0 12px;
   font-size: 1.65rem;
 }
+.comparison-title {
+  margin-top: 22px;
+  color: var(--text);
+  font-size: 1.15rem;
+  font-weight: 900;
+}
 .compare-grid, .sectors-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -899,6 +967,37 @@ const CSS = `
 .compare-card h3, .sector-card h3, .mover-card h3, .side-card h3 {
   margin: 0 0 10px;
   font-size: 1.05rem;
+}
+.compare-card ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.compare-card li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--text);
+  line-height: 1.6;
+}
+.compare-card li span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  font-weight: 900;
+}
+.compare-card.defensive li span {
+  background: rgba(22,166,106,.12);
+  color: var(--green);
+}
+.compare-card.cyclical li span {
+  background: rgba(217,137,16,.14);
+  color: var(--amber);
 }
 .search {
   display: grid;
@@ -960,6 +1059,40 @@ const CSS = `
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 20px;
   align-items: start;
+}
+.news-area {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.news-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--panel);
+  padding: 18px 20px;
+}
+.news-heading span {
+  color: var(--cyan);
+  font-weight: 900;
+}
+.news-heading h2 {
+  margin: 4px 0 0;
+  font-size: 1.5rem;
+}
+.news-heading > b {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(5,184,216,.32);
+  background: rgba(5,184,216,.1);
+  color: var(--blue);
+  padding: 0 12px;
 }
 .news-grid {
   display: grid;
@@ -1110,6 +1243,8 @@ const CSS = `
   .ticker { align-items: flex-start; flex-direction: column; }
   .ticker-track { animation: none; overflow-x: auto; width: 100%; padding-bottom: 4px; }
   .page-head { align-items: stretch; flex-direction: column; padding: 24px; }
+  .intro-card { padding-inline-start: 26px; padding-top: 112px; }
+  .intro-icon { inset-block-start: 24px; }
   .feat-grid, .compare-grid, .news-grid, .movers-grid, .sectors-grid, .sidebar { grid-template-columns: minmax(0,1fr); }
   .search { grid-template-columns: minmax(0,1fr); }
   .refresh, .search button { width: 100%; }
