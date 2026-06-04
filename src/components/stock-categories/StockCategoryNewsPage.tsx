@@ -272,6 +272,17 @@ function itemMatchesSearch(item: StockCategoryNewsItem, query: string) {
   return itemSearchText(item).includes(needle);
 }
 
+function normalizeText(value: string) {
+  if (!/[ÃÂØÙâ]/.test(value)) return value;
+  try {
+    const bytes = Uint8Array.from(Array.from(value, char => char.charCodeAt(0) & 0xff));
+    const decoded = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+    return decoded.includes('\uFFFD') ? value : decoded;
+  } catch {
+    return value;
+  }
+}
+
 export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategoryId }) {
   const config = getStockCategoryConfig(categoryId);
   const { dir, lang, t } = useLanguage();
@@ -486,12 +497,16 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
     return (
       <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white" dir={dir}>
         <Sidebar />
-        <main className="px-4 py-24 lg:ms-[var(--sidebar-w,230px)] lg:w-[calc(100%_-_var(--sidebar-w,230px))]">
+        <main className="stock-category-main">
           <div className="mx-auto max-w-3xl rounded-3xl border border-rose-200 bg-white p-6 text-center shadow-sm dark:border-rose-500/30 dark:bg-slate-900">
             <AlertTriangle className="mx-auto mb-3 text-rose-500" />
             <p className="font-bold">{tr('stock_category_error')}</p>
           </div>
         </main>
+        <style jsx global>{`
+          .stock-category-main{box-sizing:border-box;width:100%;max-width:100%;overflow-x:hidden;padding:6rem 1rem 2.5rem}
+          @media(min-width:1025px){.stock-category-main{width:100%;margin:0;padding:1.5rem 2rem 3rem;padding-right:calc(var(--sidebar-w,230px) + 2rem)}[dir="ltr"] .stock-category-main{padding-left:calc(var(--sidebar-w,230px) + 2rem);padding-right:2rem}}
+        `}</style>
       </div>
     );
   }
@@ -499,7 +514,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#e0f7ff_0%,#f8fbff_36%,#eef6ff_100%)] text-slate-950 dark:bg-[radial-gradient(circle_at_top,#0b2b4a_0%,#06182d_38%,#020817_100%)] dark:text-white" dir={dir}>
       <Sidebar />
-      <main className="w-full max-w-full overflow-x-hidden px-4 py-24 sm:px-6 lg:ms-[var(--sidebar-w,230px)] lg:w-[calc(100%_-_var(--sidebar-w,230px))] lg:px-8">
+      <main className="stock-category-main">
         <div className="mx-auto grid w-full max-w-[1500px] gap-6">
           <section className="rounded-[2rem] border border-cyan-200/70 bg-white/90 p-5 shadow-[0_24px_70px_rgba(15,118,110,.12)] backdrop-blur dark:border-cyan-400/20 dark:bg-slate-950/72 dark:shadow-[0_24px_90px_rgba(0,0,0,.35)] sm:p-7">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -551,7 +566,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                       </span>
                       <h2 className="text-lg font-black text-slate-950 dark:text-white">{tr(config.explanationTitleKey)}</h2>
                     </div>
-                    <p className="mt-4 text-sm leading-7 text-slate-650 dark:text-slate-300">{tr(config.explanationBodyKey)}</p>
+                    <p className="mt-4 text-sm leading-7 text-slate-600 dark:text-slate-300">{tr(config.explanationBodyKey)}</p>
                   </div>
                   <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900/70">
                     <div className="flex items-center gap-3">
@@ -577,13 +592,13 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                         <Layers size={19} />
                       </span>
                       <h2 className="text-lg font-black text-slate-950 dark:text-white">
-                        {guide.comparisonTitle[localizedLang]}
+                        {normalizeText(guide.comparisonTitle[localizedLang])}
                       </h2>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       {[
-                        { title: guide.leftTitle[localizedLang], items: guide.leftItems[localizedLang], tone: 'positive' },
-                        { title: guide.rightTitle[localizedLang], items: guide.rightItems[localizedLang], tone: 'caution' },
+                        { title: normalizeText(guide.leftTitle[localizedLang]), items: guide.leftItems[localizedLang].map(normalizeText), tone: 'positive' },
+                        { title: normalizeText(guide.rightTitle[localizedLang]), items: guide.rightItems[localizedLang].map(normalizeText), tone: 'caution' },
                       ].map(card => (
                         <article
                           key={card.title}
@@ -923,14 +938,14 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
               </div>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {sectorGuideCards.map(card => (
-                  <article key={card.title[localizedLang]} className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/70">
+                  <article key={normalizeText(card.title[localizedLang])} className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/70">
                     <div className="mb-3 flex items-center gap-3">
                       <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700 dark:bg-cyan-900/45 dark:text-cyan-100">
                         <BookOpen size={18} />
                       </span>
-                      <h3 className="font-black text-slate-950 dark:text-white">{card.title[localizedLang]}</h3>
+                      <h3 className="font-black text-slate-950 dark:text-white">{normalizeText(card.title[localizedLang])}</h3>
                     </div>
-                    <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{card.body[localizedLang]}</p>
+                    <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{normalizeText(card.body[localizedLang])}</p>
                     {card.symbols?.length ? (
                       <div className="mt-4 flex flex-wrap gap-2">
                         {card.symbols.map(symbol => (
@@ -990,6 +1005,11 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
           </div>
         </div>
       )}
+      <style jsx global>{`
+        .stock-category-main{box-sizing:border-box;width:100%;max-width:100%;overflow-x:hidden;padding:6rem 1rem 2.5rem}
+        @media(min-width:640px){.stock-category-main{padding-inline:1.5rem}}
+        @media(min-width:1025px){.stock-category-main{width:100%;margin:0;padding:1.5rem 2rem 3rem;padding-right:calc(var(--sidebar-w,230px) + 2rem)}[dir="ltr"] .stock-category-main{padding-left:calc(var(--sidebar-w,230px) + 2rem);padding-right:2rem}}
+      `}</style>
     </div>
   );
 }
