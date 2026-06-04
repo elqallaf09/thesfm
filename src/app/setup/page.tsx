@@ -129,6 +129,8 @@ const COPY = {
     currencyBody: 'ستستخدم THE SFM هذه العملة في العرض والتحليلات. يمكنك تغييرها لاحقاً من الملف الشخصي.',
     incomeTitle: 'هل تريد إضافة دخلك الشهري الآن؟',
     incomeBody: 'أضف دخلك الفعلي فقط إذا كنت جاهزًا، أو يمكنك تخطي هذه الخطوة وإكمالها لاحقًا.',
+    incomeFormTitle: 'بيانات الدخل الشهري',
+    incomeFormBody: 'أدخل بيانات دخلك الفعلي فقط. لن يتم حفظ الحقول الفارغة أو إنشاء بيانات تلقائية.',
     incomeName: 'اسم الدخل',
     incomeNamePh: 'مثال: الراتب الشهري',
     incomeAmount: 'المبلغ',
@@ -246,6 +248,8 @@ const COPY = {
     currencyBody: 'THE SFM will use this currency for display and analysis. You can change it later in Profile.',
     incomeTitle: 'Do you want to add monthly income now?',
     incomeBody: 'Add your actual income only if you are ready, or skip this step and complete it later.',
+    incomeFormTitle: 'Monthly income details',
+    incomeFormBody: 'Enter your real income details only. Empty fields will not be saved and no automatic data will be created.',
     incomeName: 'Income name',
     incomeNamePh: 'Example: Monthly salary',
     incomeAmount: 'Amount',
@@ -363,6 +367,8 @@ const COPY = {
     currencyBody: 'THE SFM utilisera cette devise pour l’affichage et l’analyse. Vous pourrez la modifier plus tard.',
     incomeTitle: 'Voulez-vous ajouter votre revenu mensuel maintenant ?',
     incomeBody: 'Ajoutez votre revenu réel uniquement si vous êtes prêt, ou ignorez cette étape et complétez-la plus tard.',
+    incomeFormTitle: 'Détails du revenu mensuel',
+    incomeFormBody: 'Saisissez uniquement les données réelles de votre revenu. Les champs vides ne seront pas enregistrés.',
     incomeName: 'Nom du revenu',
     incomeNamePh: 'Exemple : salaire mensuel',
     incomeAmount: 'Montant',
@@ -1241,6 +1247,7 @@ export default function SetupPage() {
         .welcome-actions{margin-top:4px}.existing-data-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:13px;align-items:start;border:1px solid rgba(16,185,129,.22);background:linear-gradient(180deg,#F0FDF4,#FFFFFF);border-radius:18px;padding:16px;box-shadow:0 12px 30px rgba(3,18,37,.06)}.existing-data-card>svg{color:#059669;margin-top:3px}.existing-data-card h3{margin:0;color:var(--sfm-primary-dark);font-size:16px;font-weight:950}.existing-data-card strong{display:block;margin-top:6px;color:#047857;font-size:24px;font-weight:950;overflow-wrap:anywhere}.existing-data-card p{margin:6px 0 0;color:var(--sfm-muted-readable);font-weight:850;line-height:1.65}.existing-actions{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap}.existing-actions .primary-btn,.existing-actions .ghost-btn{min-height:44px}
         .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
         .form-field{display:grid;gap:7px;min-width:0}.form-field.full{grid-column:1/-1}.form-field span{font-weight:950;color:var(--sfm-muted);font-size:13px}.form-field input,.form-field select{width:100%;min-height:46px;border:1px solid rgba(29,140,255,.2);background:var(--sfm-light-card);color:var(--sfm-primary-dark);border-radius:13px;padding:0 12px;font:900 14px Tajawal,Arial,sans-serif;outline:none}.form-field input:focus,.form-field select:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.15);background:var(--sfm-card)}
+        .income-form-card{display:grid;gap:18px;border:1px solid rgba(29,140,255,.16);background:linear-gradient(180deg,#FFFFFF,rgba(234,246,255,.70));border-radius:28px;padding:clamp(18px,3vw,26px);box-shadow:0 18px 46px rgba(3,18,37,.08);min-width:0}.income-form-head{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:13px;min-width:0}.income-form-icon{width:48px;height:48px;border-radius:17px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(234,246,255,.95),rgba(24,212,212,.13));border:1px solid rgba(29,140,255,.16);color:var(--sfm-primary);box-shadow:0 10px 24px rgba(29,140,255,.10)}.income-form-head h3{margin:0;color:var(--sfm-primary-dark);font-size:20px;font-weight:950;line-height:1.35}.income-form-head p{margin:6px 0 0;color:var(--sfm-muted-readable);font-size:14px;font-weight:850;line-height:1.8}.income-form-grid{background:rgba(255,255,255,.58);border:1px solid rgba(29,140,255,.10);border-radius:22px;padding:14px}:global(.dark) .setup-page .income-form-card{background:linear-gradient(180deg,#0F1E32,#0B1728);border-color:#1D3050;box-shadow:0 22px 54px rgba(0,0,0,.28)}:global(.dark) .setup-page .income-form-icon{background:linear-gradient(135deg,rgba(47,214,192,.18),rgba(29,140,255,.12));border-color:rgba(47,214,192,.24);color:#8EEAE5}:global(.dark) .setup-page .income-form-head h3{color:#F8FBFF}:global(.dark) .setup-page .income-form-head p{color:#C7D3E1}:global(.dark) .setup-page .income-form-grid{background:rgba(15,30,50,.64);border-color:#1D3050}
         .recurring-income-card{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;border:1px solid rgba(29,140,255,.16);background:linear-gradient(180deg,#FFFFFF,rgba(234,246,255,.70));border-radius:20px;padding:16px;min-width:0;box-shadow:0 10px 26px rgba(3,18,37,.05)}.recurring-income-copy{display:grid;gap:5px;min-width:0;text-align:start}.recurring-income-copy strong{color:var(--sfm-primary-dark);font-size:15px;font-weight:950;line-height:1.45}.recurring-income-copy p{margin:0;color:var(--sfm-muted-readable);font-size:13px;font-weight:850;line-height:1.7}.recurring-income-switch{width:58px;height:32px;border-radius:999px;border:1px solid rgba(29,140,255,.22);background:#EAF6FF;padding:3px;display:flex;align-items:center;justify-content:flex-start;cursor:pointer;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease;flex:0 0 auto}.recurring-income-switch span{width:26px;height:26px;border-radius:999px;background:#FFFFFF;box-shadow:0 6px 14px rgba(3,18,37,.16);transition:transform .18s ease}.recurring-income-switch.active{justify-content:flex-end;border-color:transparent;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));box-shadow:0 10px 24px rgba(29,140,255,.18)}.recurring-income-switch:focus-visible{outline:3px solid rgba(24,212,212,.34);outline-offset:3px}:global(.dark) .setup-page .recurring-income-card{background:linear-gradient(180deg,#0F1E32,#0B1728);border-color:#1D3050;box-shadow:0 14px 34px rgba(0,0,0,.22)}:global(.dark) .setup-page .recurring-income-copy strong{color:#F8FBFF}:global(.dark) .setup-page .recurring-income-copy p{color:#C7D3E1}:global(.dark) .setup-page .recurring-income-switch{background:#13243A;border-color:#1D3050}:global(.dark) .setup-page .recurring-income-switch span{background:#F8FBFF}:global(.dark) .setup-page .recurring-income-switch.active{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));box-shadow:0 10px 24px rgba(47,214,192,.18)}
         .expense-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.summary-card{background:var(--sfm-light-card);border:1px solid rgba(29,140,255,.14);border-radius:16px;padding:13px;min-width:0}.summary-card small{display:block;color:var(--sfm-muted);font-weight:900}.summary-card strong{display:block;margin-top:5px;color:var(--sfm-primary-dark);font-size:22px}
         .focus-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.focus-card{border:1px solid rgba(29,140,255,.16);border-radius:16px;background:var(--sfm-light-card);padding:14px;text-align:start;display:grid;gap:8px;color:var(--sfm-midnight);font-weight:950;cursor:pointer}.focus-card.active{background:var(--sfm-primary-dark);color:var(--sfm-soft-cyan);border-color:rgba(167,243,240,.28)}
@@ -1317,9 +1324,35 @@ export default function SetupPage() {
               onConfirm={() => confirmExistingStep(2)}
               onEdit={() => { setEditingExisting(prev => ({ ...prev, 2: true })); setIncomeEnabled(true); }}
             />
+          ) : incomeEnabled ? (
+            <section className="income-form-card" aria-labelledby="income-form-title">
+              <div className="income-form-head">
+                <div className="income-form-icon" aria-hidden="true">
+                  <CircleDollarSign size={24} />
+                </div>
+                <div>
+                  <h3 id="income-form-title">{text.incomeFormTitle}</h3>
+                  <p>{text.incomeFormBody}</p>
+                </div>
+              </div>
+              <div className="form-grid income-form-grid">
+                <Field id="income-name" label={text.incomeName} value={income.name} placeholder={text.incomeNamePh} onChange={value => setIncome(prev => ({ ...prev, name: value }))} />
+                <Field id="income-amount" label={text.incomeAmount} value={income.amount} type="number" onChange={value => setIncome(prev => ({ ...prev, amount: value }))} />
+                <SelectField id="income-type" label={text.incomeType} value={income.incomeType} options={INCOME_TYPES.map(item => ({ value: item, label: labels[item] }))} onChange={value => setIncome(prev => ({ ...prev, incomeType: value }))} />
+                <Field id="income-date" label={text.receivedDate} value={income.receivedDate} type="date" onChange={value => setIncome(prev => ({ ...prev, receivedDate: value }))} />
+                <div className="form-field full">
+                  <CurrencySelect value={income.currency} onChange={value => setIncome(prev => ({ ...prev, currency: value }))} lang={lang} label={text.currencyTitle} ariaLabel={text.currencyTitle} />
+                </div>
+                <RecurringIncomeToggle
+                  checked={income.recurring}
+                  label={text.recurringMonthly}
+                  description={text.recurringMonthlyHint}
+                  onChange={checked => setIncome(prev => ({ ...prev, recurring: checked }))}
+                />
+              </div>
+            </section>
           ) : (
             <IncomeDecisionCard
-              active={incomeEnabled}
               title={text.incomeTitle}
               body={text.incomeBody}
               primaryLabel={text.incomeYes}
@@ -1330,23 +1363,6 @@ export default function SetupPage() {
                 setStep(nextStepAfter(2));
               }}
             />
-          )}
-          {incomeEnabled && (!showExistingIncome || editingExisting[2]) && (
-            <div className="form-grid">
-              <Field id="income-name" label={text.incomeName} value={income.name} placeholder={text.incomeNamePh} onChange={value => setIncome(prev => ({ ...prev, name: value }))} />
-              <Field id="income-amount" label={text.incomeAmount} value={income.amount} type="number" onChange={value => setIncome(prev => ({ ...prev, amount: value }))} />
-              <SelectField id="income-type" label={text.incomeType} value={income.incomeType} options={INCOME_TYPES.map(item => ({ value: item, label: labels[item] }))} onChange={value => setIncome(prev => ({ ...prev, incomeType: value }))} />
-              <Field id="income-date" label={text.receivedDate} value={income.receivedDate} type="date" onChange={value => setIncome(prev => ({ ...prev, receivedDate: value }))} />
-              <div className="form-field full">
-                <CurrencySelect value={income.currency} onChange={value => setIncome(prev => ({ ...prev, currency: value }))} lang={lang} label={text.currencyTitle} ariaLabel={text.currencyTitle} />
-              </div>
-              <RecurringIncomeToggle
-                checked={income.recurring}
-                label={text.recurringMonthly}
-                description={text.recurringMonthlyHint}
-                onChange={checked => setIncome(prev => ({ ...prev, recurring: checked }))}
-              />
-            </div>
           )}
         </section>
       );
@@ -1600,7 +1616,6 @@ function Stepper({
 }
 
 function IncomeDecisionCard({
-  active,
   title,
   body,
   primaryLabel,
@@ -1608,7 +1623,6 @@ function IncomeDecisionCard({
   onAdd,
   onSkip,
 }: {
-  active: boolean;
   title: string;
   body: string;
   primaryLabel: string;
@@ -1617,7 +1631,7 @@ function IncomeDecisionCard({
   onSkip: () => void;
 }) {
   return (
-    <section className={active ? 'income-decision-card active' : 'income-decision-card'} aria-labelledby="income-decision-title">
+    <section className="income-decision-card" aria-labelledby="income-decision-title">
       <div className="income-decision-icon" aria-hidden="true">
         <CircleDollarSign size={30} />
       </div>
@@ -1630,7 +1644,6 @@ function IncomeDecisionCard({
           type="button"
           className="income-action-btn primary"
           onClick={onAdd}
-          aria-pressed={active}
         >
           <Plus size={18} aria-hidden="true" />
           <span>{primaryLabel}</span>
