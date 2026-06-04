@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { fetchStockCategoryMovers, type StockCategoryMoverItem } from '@/lib/market/fetchStockCategoryMovers';
 import { fetchStockCategoryNews, type StockCategoryNewsItem } from '@/lib/market/fetchStockCategoryNews';
-import { getStockCategoryConfig, type StockCategoryFilterKey } from '@/lib/market/stockCategoryConfigs';
+import { getStockCategoryConfig } from '@/lib/market/stockCategoryConfigs';
+import GrowthStocksInteractive from './GrowthStocksInteractive';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 300;
@@ -10,8 +11,6 @@ export const metadata: Metadata = {
   title: 'أخبار أسهم النمو | THE SFM',
   description: 'تابع أخبار الشركات التي تركز على التوسع السريع ونمو الإيرادات والابتكار مع بيانات سوق حقيقية من مصادر Finnhub وYahoo Finance.',
 };
-
-type PageSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 type TickerView = {
   sym: string;
@@ -32,12 +31,8 @@ type NewsView = {
   src: string;
   date: string;
   url: string;
-};
-
-type RankedView = {
-  sym: string;
-  name: string;
-  count: number;
+  sectors: string[];
+  searchText: string;
 };
 
 type MoverRowView = {
@@ -146,15 +141,6 @@ const SECTORS = [
   },
 ];
 
-function single(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function positiveInt(value: string | string[] | undefined, fallback: number) {
-  const parsed = Number.parseInt(single(value) ?? '', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
 function finite(value: unknown) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
@@ -206,31 +192,11 @@ function formatVolume(value: number | null | undefined) {
   }).format(parsed);
 }
 
-function itemMatchesFilter(item: StockCategoryNewsItem, filter: StockCategoryFilterKey) {
-  if (filter === 'all') return true;
-  return item.sector === filter || item.sectors.includes(filter);
-}
-
-function itemMatchesQuery(item: StockCategoryNewsItem, query: string) {
-  if (!query) return true;
-  const haystack = [
-    item.ticker,
-    item.companyName,
-    item.title,
-    item.summary,
-    item.source,
-    item.sector,
-    ...item.sectors,
-  ].join(' ').toLowerCase();
-  return haystack.includes(query.toLowerCase());
-}
-
-function countByFilter(items: StockCategoryNewsItem[], filter: StockCategoryFilterKey) {
-  return items.filter(item => itemMatchesFilter(item, filter)).length;
-}
-
 function toNewsView(item: StockCategoryNewsItem): NewsView {
   const changePercent = finite(item.changePercent) ?? 0;
+  const sectors = Array.from(
+    new Set(['all', item.sector, ...item.sectors].filter((value): value is string => Boolean(value))),
+  );
   return {
     sym: item.ticker || 'GRO',
     name: item.companyName || 'سهم نمو',
@@ -242,34 +208,17 @@ function toNewsView(item: StockCategoryNewsItem): NewsView {
     src: item.source || 'مصدر سوق',
     date: formatDate(item.publishedAt),
     url: item.url || '#',
+    sectors,
+    searchText: [
+      item.ticker,
+      item.companyName,
+      item.title,
+      item.summary,
+      item.source,
+      item.sector,
+      ...item.sectors,
+    ].join(' '),
   };
-}
-
-function buildRanked(items: StockCategoryNewsItem[]) {
-  const map = new Map<string, RankedView>();
-  items.forEach(item => {
-    const sym = item.ticker?.trim().toUpperCase();
-    if (!sym || sym === 'GROWTH') return;
-    const current = map.get(sym);
-    map.set(sym, {
-      sym,
-      name: current?.name ?? item.companyName ?? sym,
-      count: (current?.count ?? 0) + 1,
-    });
-  });
-  return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, 5);
-}
-
-function buildSources(items: StockCategoryNewsItem[]) {
-  const map = new Map<string, number>();
-  items.forEach(item => {
-    const source = item.source?.trim() || 'مصدر سوق';
-    map.set(source, (map.get(source) ?? 0) + 1);
-  });
-  return Array.from(map.entries())
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
 }
 
 function mapMoverRow(row: StockCategoryMoverItem): MoverRowView {
@@ -306,23 +255,8 @@ function buildMoverSections(response: Awaited<ReturnType<typeof fetchStockCatego
   return sections.filter(section => section.rows.length > 0);
 }
 
-function buildUrl(filter: string, query: string, shown?: number) {
-  const params = new URLSearchParams();
-  if (filter && filter !== 'all') params.set('filter', filter);
-  if (query) params.set('q', query);
-  if (shown && shown > 12) params.set('shown', String(shown));
-  const suffix = params.toString();
-  return suffix ? `/growth-stocks?${suffix}` : '/growth-stocks';
-}
-
-export default async function GrowthStocksPage({ searchParams }: { searchParams: PageSearchParams }) {
-  const params = await searchParams;
+export default async function GrowthStocksPage() {
   const config = getStockCategoryConfig('growth');
-  const requestedFilter = single(params.filter) || 'all';
-  const validFilters = new Set((config?.filters ?? []).map(filter => filter.key));
-  const selectedFilter = validFilters.has(requestedFilter) ? requestedFilter : 'all';
-  const query = single(params.q)?.trim() || '';
-  const requestedVisibleCount = positiveInt(params.shown, 12);
 
   const [newsPayload, moversPayload] = await Promise.all([
     fetchStockCategoryNews('growth', 'ar'),
@@ -330,16 +264,7 @@ export default async function GrowthStocksPage({ searchParams }: { searchParams:
   ]);
 
   const allItems = newsPayload.items;
-  const filteredItems = allItems.filter(item => itemMatchesFilter(item, selectedFilter) && itemMatchesQuery(item, query));
-  const NEWS = filteredItems.map(toNewsView);
-  const visibleCount = Math.min(Math.max(requestedVisibleCount, 12), Math.max(NEWS.length, 12));
-  const VISIBLE_NEWS = NEWS.slice(0, visibleCount);
-  const hasMoreNews = visibleCount < NEWS.length;
-  const FEATURED = NEWS[0] ?? null;
-  const MINI = NEWS.slice(1, 4);
-  const LATEST = NEWS.slice(0, 4);
-  const RANKED = buildRanked(filteredItems.length > 0 ? filteredItems : allItems);
-  const SOURCES = buildSources(filteredItems.length > 0 ? filteredItems : allItems);
+  const NEWS = allItems.map(toNewsView);
   const MOVERS = buildMoverSections(moversPayload);
   const TICKERS: TickerView[] = newsPayload.prices
     .filter(price => price.available && price.price !== null)
@@ -358,7 +283,6 @@ export default async function GrowthStocksPage({ searchParams }: { searchParams:
   const CHIPS = (config?.filters ?? []).map(filter => ({
     key: filter.key,
     label: FILTER_LABELS[filter.key] ?? filter.key,
-    count: countByFilter(allItems, filter.key),
   }));
   const SUMMARY = [
     { k: 'عدد الأخبار', v: new Intl.NumberFormat('ar-KW').format(allItems.length) },
@@ -366,10 +290,9 @@ export default async function GrowthStocksPage({ searchParams }: { searchParams:
     { k: 'مصدر الأخبار', v: newsPayload.source },
     { k: 'مصدر الأسعار', v: newsPayload.priceSource },
   ];
-  const resultCountLabel = `${new Intl.NumberFormat('ar-KW').format(NEWS.length)} خبر مطابق`;
 
   return (
-    <main className="sfm">
+    <main className="sfm" dir="rtl">
       <div className="layout">
         <aside className="nav" aria-label="تنقل أخبار السوق">
           <div className="brand">
@@ -444,157 +367,7 @@ export default async function GrowthStocksPage({ searchParams }: { searchParams:
               </div>
             </section>
 
-            <form className="search" action="/growth-stocks">
-              <input type="hidden" name="filter" value={selectedFilter} />
-              <input
-                name="q"
-                defaultValue={query}
-                placeholder="ابحث عن سهم، أو شركة، أو قطاع مثل NVDA أو البرمجيات أو الذكاء الاصطناعي..."
-                aria-label="البحث في أخبار أسهم النمو"
-              />
-              <button type="submit">بحث</button>
-            </form>
-
-            <div className="chips" aria-label="تصنيفات أسهم النمو">
-              {CHIPS.map(chip => (
-                <a
-                  key={chip.key}
-                  href={buildUrl(chip.key, query)}
-                  className={chip.key === selectedFilter ? 'active' : ''}
-                >
-                  <span>{chip.label}</span>
-                  <b>{chip.count}</b>
-                </a>
-              ))}
-            </div>
-
-            <section className="feat-panel" aria-label="أحدث خبر نمو بارز">
-              {FEATURED ? (
-                <>
-                  <div className="feat-head">
-                    <span className="badge" dir="ltr">{FEATURED.sym}</span>
-                    <span>{FEATURED.src}</span>
-                    <span>{FEATURED.date}</span>
-                  </div>
-                  <div className="feat-grid">
-                    <article className="hero">
-                      <h2>{FEATURED.title}</h2>
-                      <p>{FEATURED.desc}</p>
-                      <div className="meta">
-                        <span dir="ltr">{FEATURED.px}</span>
-                        <em className={FEATURED.up ? 'up' : 'down'} dir="ltr">{FEATURED.chg}</em>
-                      </div>
-                      <a href={FEATURED.url} target="_blank" rel="noreferrer">قراءة الخبر</a>
-                    </article>
-                    <div className="mini-list">
-                      {MINI.length > 0 ? MINI.map(item => (
-                        <a href={item.url} target="_blank" rel="noreferrer" key={`${item.sym}-${item.title}`}>
-                          <b dir="ltr">{item.sym}</b>
-                          <span>{item.title}</span>
-                          <small>{item.date}</small>
-                        </a>
-                      )) : (
-                        <div className="empty">لا توجد أخبار إضافية من المصادر المتاحة حاليًا.</div>
-                      )}
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="empty">
-                  <h2>لا توجد أخبار حاليًا في هذا التصنيف</h2>
-                  <p>جرّب تصنيفًا آخر أو ابحث عن شركة محددة.</p>
-                </div>
-              )}
-            </section>
-
-            <div className="content">
-              <section className="news-area" aria-label="أخبار أسهم النمو">
-                <div className="news-heading">
-                  <div>
-                    <span>الأحدث أولًا</span>
-                    <h2>أخبار أسهم النمو</h2>
-                  </div>
-                  <b>{resultCountLabel}</b>
-                </div>
-                <div className="news-grid">
-                  {VISIBLE_NEWS.length > 0 ? VISIBLE_NEWS.map(item => (
-                    <article className="ncard" key={`${item.sym}-${item.url}`}>
-                      <div className="nmeta">
-                        <span className="badge" dir="ltr">{item.sym}</span>
-                        <span>{item.name}</span>
-                      </div>
-                      <h3>{item.title}</h3>
-                      <p>{item.desc}</p>
-                      <div className="market-row">
-                        <span>{item.src}</span>
-                        <span>{item.date}</span>
-                        <b dir="ltr">{item.px}</b>
-                        <em className={item.up ? 'up' : 'down'} dir="ltr">{item.chg}</em>
-                      </div>
-                      <a href={item.url} target="_blank" rel="noreferrer">قراءة الخبر</a>
-                    </article>
-                  )) : (
-                    <div className="empty">
-                      <h3>لا توجد أخبار متاحة حاليًا. حاول لاحقًا.</h3>
-                      <p>يمكنك تجربة تصنيف آخر أو البحث عن شركة محددة.</p>
-                    </div>
-                  )}
-                  {NEWS.length > 0 ? (
-                    <div className="load-more">
-                      {hasMoreNews ? (
-                        <a href={buildUrl(selectedFilter, query, visibleCount + 12)}>عرض المزيد من الأخبار</a>
-                      ) : (
-                        <span>تم عرض جميع الأخبار المتاحة</span>
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-              </section>
-
-              <aside className="sidebar">
-                <section className="side-card latest">
-                  <h3>أحدث الأخبار</h3>
-                  {LATEST.length > 0 ? LATEST.map(item => (
-                    <a href={item.url} target="_blank" rel="noreferrer" key={`${item.url}-latest`}>
-                      <b dir="ltr">{item.sym}</b>
-                      <span>{item.title}</span>
-                    </a>
-                  )) : <p>لا توجد أخبار حديثة متاحة حاليًا.</p>}
-                </section>
-
-                <section className="side-card ranked">
-                  <h3>أسهم النمو الأكثر ذكرًا</h3>
-                  {RANKED.length > 0 ? RANKED.map((item, index) => (
-                    <div className="rank-row" key={item.sym}>
-                      <b>{index + 1}</b>
-                      <span dir="ltr">{item.sym}</span>
-                      <small>{item.name}</small>
-                      <em>{item.count} أخبار</em>
-                    </div>
-                  )) : <p>لا توجد إشارات كافية بعد.</p>}
-                </section>
-
-                <section className="side-card sources">
-                  <h3>مصادر الأخبار</h3>
-                  {SOURCES.length > 0 ? SOURCES.map(item => (
-                    <div key={item.name}>
-                      <span>{item.name}</span>
-                      <b>{item.count}</b>
-                    </div>
-                  )) : <p>لا توجد مصادر متاحة حاليًا.</p>}
-                </section>
-
-                <section className="side-card summary">
-                  <h3>ملخص سريع</h3>
-                  {SUMMARY.map(item => (
-                    <div key={item.k}>
-                      <span>{item.k}</span>
-                      <b>{item.v}</b>
-                    </div>
-                  ))}
-                </section>
-              </aside>
-            </div>
+            <GrowthStocksInteractive news={NEWS} chips={CHIPS} summary={SUMMARY} />
 
             <section className="movers">
               <div className="section-head">
@@ -607,7 +380,7 @@ export default async function GrowthStocksPage({ searchParams }: { searchParams:
                   {MOVERS.map(section => (
                     <article className={`mover-card ${section.accent}`} key={section.title}>
                       <h3>{section.title}</h3>
-                      {section.rows.slice(0, 5).map((row, index) => (
+                      {section.rows.slice(0, 2).map((row, index) => (
                         <div className="mover-row" key={`${section.title}-${row.sym}`}>
                           <b>{index + 1}</b>
                           <span dir="ltr">{row.sym}</span>
@@ -1042,7 +815,7 @@ const CSS = `
   overflow-x: auto;
   padding-bottom: 4px;
 }
-.chips a {
+.chips button {
   display: inline-flex;
   align-items: center;
   gap: 9px;
@@ -1054,9 +827,11 @@ const CSS = `
   color: var(--text);
   text-decoration: none;
   padding: 0 14px;
+  font: inherit;
   font-weight: 800;
+  cursor: pointer;
 }
-.chips a.active {
+.chips button.active {
   color: #fff;
   border-color: transparent;
   background: linear-gradient(135deg, var(--blue), var(--cyan));
@@ -1140,7 +915,7 @@ const CSS = `
   justify-content: center;
   padding-top: 8px;
 }
-.load-more a, .load-more span {
+.load-more button, .load-more span {
   display: inline-flex;
   min-height: 46px;
   align-items: center;
@@ -1151,9 +926,13 @@ const CSS = `
   color: var(--text);
   padding: 0 18px;
   text-decoration: none;
+  font: inherit;
   font-weight: 900;
 }
-.load-more a:hover {
+.load-more button {
+  cursor: pointer;
+}
+.load-more button:hover {
   border-color: rgba(5,184,216,.45);
   color: var(--blue);
 }
