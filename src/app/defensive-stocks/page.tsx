@@ -40,11 +40,6 @@ type RankedView = {
   count: number;
 };
 
-type SourceView = {
-  name: string;
-  count: number;
-};
-
 type MoverRowView = {
   sym: string;
   name: string;
@@ -62,14 +57,12 @@ type MoverSectionView = {
 
 const FILTER_LABELS: Record<string, string> = {
   all: 'الكل',
-  consumer_staples: 'السلع الاستهلاكية الأساسية',
-  healthcare: 'الرعاية الصحية',
-  utilities: 'المرافق العامة',
-  telecom: 'الاتصالات',
-  food_beverage: 'الأغذية والمشروبات',
-  essential_retail: 'التجزئة الأساسية',
-  pharmaceuticals: 'الأدوية',
-  insurance_stable: 'التأمين والخدمات المستقرة',
+  defense_contractors: 'شركات الدفاع',
+  aerospace: 'الطيران والفضاء',
+  cybersecurity: 'الأمن السيبراني',
+  government_services: 'الخدمات الحكومية',
+  defense_systems: 'الأنظمة الدفاعية',
+  defense_etfs: 'صناديق القطاع',
 };
 
 const NAV_SUB = [
@@ -88,40 +81,45 @@ const NAV_SUB = [
 
 const COMPARE = [
   {
-    title: 'الأسهم الدفاعية',
-    text: 'تركّز على شركات تقدم منتجات أو خدمات أساسية، وقد يكون الطلب عليها أكثر استقرارًا نسبيًا وقت التقلبات.',
+    title: 'شركات الدفاع والطيران',
+    text: 'تعمل في العقود الدفاعية والطائرات والأنظمة العسكرية والفضائية، وتتأثر بالإنفاق الحكومي والطلبيات طويلة الأجل.',
   },
   {
-    title: 'الأسهم الدورية',
-    text: 'تتأثر عادةً بدورات الاقتصاد والإنفاق، وقد ترتفع بقوة وقت الانتعاش وتتراجع وقت الركود.',
+    title: 'الأمن السيبراني',
+    text: 'يرتبط بحماية البنية الرقمية والبيانات، وقد يستفيد من نمو الإنفاق على الحماية التقنية وإدارة المخاطر الرقمية.',
   },
 ];
 
 const SECTORS = [
   {
-    title: 'السلع الاستهلاكية الأساسية',
-    text: 'شركات الأغذية والمشروبات والمنتجات المنزلية التي يظل الطلب عليها حاضرًا في أغلب الظروف.',
-    symbols: ['PG', 'KO', 'PEP', 'WMT', 'COST'],
+    title: 'شركات الدفاع الكبرى',
+    text: 'شركات عقود دفاعية وأنظمة عسكرية مرتبطة بالإنفاق الحكومي وطلبات التوريد طويلة الأجل.',
+    symbols: ['LMT', 'NOC', 'RTX', 'GD', 'HII'],
   },
   {
-    title: 'الرعاية الصحية',
-    text: 'شركات الأدوية والخدمات الصحية التي ترتبط باحتياجات أساسية طويلة الأجل.',
-    symbols: ['JNJ', 'MRK', 'PFE', 'ABBV', 'UNH'],
+    title: 'الطيران والفضاء',
+    text: 'شركات تصنيع ومكونات وخدمات مرتبطة بالطائرات والفضاء والدفاع الجوي.',
+    symbols: ['BA', 'TDG', 'HEI', 'RTX'],
   },
   {
-    title: 'المرافق العامة',
-    text: 'شركات الكهرباء والمياه والبنية الخدمية التي تميل إيراداتها إلى الاستقرار النسبي.',
-    symbols: ['NEE', 'DUK', 'SO', 'AEP'],
+    title: 'الأمن السيبراني',
+    text: 'شركات حماية الشبكات والبيانات والأنظمة الرقمية الحساسة.',
+    symbols: ['PANW', 'CRWD', 'ZS', 'FTNT'],
   },
   {
-    title: 'الاتصالات',
-    text: 'مزودو خدمات الاتصال والبيانات التي تُعد من الخدمات الأساسية للمستهلكين والشركات.',
-    symbols: ['VZ', 'T'],
+    title: 'صناديق القطاع',
+    text: 'صناديق متداولة تتابع سلالًا من شركات الطيران والدفاع، وليست توصيات استثمارية.',
+    symbols: ['ITA', 'XAR', 'PPA'],
   },
 ];
 
 function single(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function positiveInt(value: string | string[] | undefined, fallback: number) {
+  const parsed = Number.parseInt(single(value) ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function finite(value: unknown) {
@@ -275,10 +273,11 @@ function buildMoverSections(response: Awaited<ReturnType<typeof fetchStockCatego
   return sections.filter(section => section.rows.length > 0);
 }
 
-function buildUrl(filter: string, query: string) {
+function buildUrl(filter: string, query: string, shown?: number) {
   const params = new URLSearchParams();
   if (filter && filter !== 'all') params.set('filter', filter);
   if (query) params.set('q', query);
+  if (shown && shown > 12) params.set('shown', String(shown));
   const suffix = params.toString();
   return suffix ? `/defensive-stocks?${suffix}` : '/defensive-stocks';
 }
@@ -286,8 +285,11 @@ function buildUrl(filter: string, query: string) {
 export default async function DefensiveStocksPage({ searchParams }: { searchParams: PageSearchParams }) {
   const params = await searchParams;
   const config = getStockCategoryConfig('defensive');
-  const selectedFilter = single(params.filter) || 'all';
+  const requestedFilter = single(params.filter) || 'all';
+  const validFilters = new Set((config?.filters ?? []).map(filter => filter.key));
+  const selectedFilter = validFilters.has(requestedFilter) ? requestedFilter : 'all';
   const query = single(params.q)?.trim() || '';
+  const requestedVisibleCount = positiveInt(params.shown, 12);
 
   const [newsPayload, moversPayload] = await Promise.all([
     fetchStockCategoryNews('defensive', 'ar'),
@@ -297,6 +299,9 @@ export default async function DefensiveStocksPage({ searchParams }: { searchPara
   const allItems = newsPayload.items;
   const filteredItems = allItems.filter(item => itemMatchesFilter(item, selectedFilter) && itemMatchesQuery(item, query));
   const NEWS = filteredItems.map(toNewsView);
+  const visibleCount = Math.min(Math.max(requestedVisibleCount, 12), Math.max(NEWS.length, 12));
+  const VISIBLE_NEWS = NEWS.slice(0, visibleCount);
+  const hasMoreNews = visibleCount < NEWS.length;
   const FEATURED = NEWS[0] ?? null;
   const MINI = NEWS.slice(1, 4);
   const LATEST = NEWS.slice(0, 4);
@@ -330,7 +335,7 @@ export default async function DefensiveStocksPage({ searchParams }: { searchPara
   ];
 
   return (
-    <main className="sfm" dir="rtl">
+    <main className="sfm">
       <div className="layout">
         <aside className="nav" aria-label="تنقل أخبار السوق">
           <div className="brand">
@@ -370,8 +375,8 @@ export default async function DefensiveStocksPage({ searchParams }: { searchPara
                 <span className="pill">تصنيف استثماري دفاعي</span>
                 <h1>أخبار الأسهم الدفاعية</h1>
                 <p>
-                  تابع أخبار الشركات والقطاعات التي تميل إلى الاستقرار أثناء تقلبات السوق،
-                  مثل السلع الأساسية، الرعاية الصحية، المرافق، والاتصالات.
+                  متابعة أخبار شركات الدفاع والطيران والأمن السيبراني، مع عرض الأخبار والأسعار
+                  الحقيقية عند توفرها من مزودي البيانات.
                 </p>
               </div>
               <a className="refresh" href="/defensive-stocks">تحديث البيانات</a>
@@ -422,9 +427,9 @@ export default async function DefensiveStocksPage({ searchParams }: { searchPara
                 <h2>ما هي الأسهم الدفاعية؟</h2>
               </div>
               <p>
-                الأسهم الدفاعية هي أسهم شركات تقدم منتجات أو خدمات أساسية يظل الطلب عليها مستقرًا نسبيًا
-                حتى أثناء فترات الركود أو تقلبات السوق، مثل الغذاء، الدواء، الكهرباء، الماء، الاتصالات،
-                والسلع الاستهلاكية الأساسية.
+                تركز هذه الصفحة على أخبار شركات الدفاع والطيران والأمن السيبراني، مثل الشركات المرتبطة
+                بالعقود الحكومية والأنظمة الدفاعية وحماية البنية الرقمية. لا تُعد هذه القائمة توصية
+                استثمارية، وتُعرض الأخبار والأسعار فقط عند توفر بيانات حقيقية من مزودي السوق.
               </p>
               <div className="compare-grid">
                 {COMPARE.map(item => (
@@ -462,7 +467,7 @@ export default async function DefensiveStocksPage({ searchParams }: { searchPara
 
             <div className="content">
               <section className="news-grid" aria-label="أخبار الأسهم الدفاعية">
-                {NEWS.length > 0 ? NEWS.map(item => (
+                {VISIBLE_NEWS.length > 0 ? VISIBLE_NEWS.map(item => (
                   <article className="ncard" key={`${item.sym}-${item.url}`}>
                     <div className="nmeta">
                       <span className="badge" dir="ltr">{item.sym}</span>
@@ -484,6 +489,15 @@ export default async function DefensiveStocksPage({ searchParams }: { searchPara
                     <p>جرّب تصنيفًا آخر أو ابحث عن شركة محددة.</p>
                   </div>
                 )}
+                {NEWS.length > 0 ? (
+                  <div className="load-more">
+                    {hasMoreNews ? (
+                      <a href={buildUrl(selectedFilter, query, visibleCount + 12)}>عرض المزيد من الأخبار</a>
+                    ) : (
+                      <span>تم عرض جميع الأخبار المتاحة</span>
+                    )}
+                  </div>
+                ) : null}
               </section>
 
               <aside className="sidebar">
@@ -596,6 +610,7 @@ export default async function DefensiveStocksPage({ searchParams }: { searchPara
 
 const CSS = `
 .sfm {
+  --nav-width: 292px;
   --bg: #edf7ff;
   --panel: rgba(255,255,255,.92);
   --panel2: rgba(248,252,255,.86);
@@ -626,25 +641,37 @@ const CSS = `
     linear-gradient(180deg, #041020 0%, #071827 52%, #061425 100%);
 }
 .layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 292px;
-  gap: 22px;
-  align-items: start;
-  width: min(1560px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 22px 0 42px;
+  width: 100%;
+  min-height: 100vh;
 }
-.main { min-width: 0; }
+.main {
+  min-width: 0;
+  margin-inline-start: var(--nav-width);
+  padding: 24px 32px 48px;
+}
 .nav {
-  position: sticky;
-  top: 18px;
-  order: 2;
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  z-index: 30;
+  width: var(--nav-width);
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
   border: 1px solid var(--line);
-  border-radius: 30px;
+  border-block: 0;
+  border-inline-start: 0;
+  border-radius: 0 0 0 30px;
   background: linear-gradient(180deg, rgba(5,28,50,.96), rgba(7,44,72,.9));
   color: #e9f8ff;
   padding: 20px;
-  box-shadow: 0 24px 60px rgba(4,29,57,.18);
+  box-shadow: -18px 0 54px rgba(4,29,57,.18);
+  scrollbar-width: thin;
+}
+[dir="ltr"] .sfm .nav {
+  border-radius: 0 0 30px 0;
+  box-shadow: 18px 0 54px rgba(4,29,57,.18);
 }
 .brand {
   display: grid;
@@ -684,6 +711,8 @@ const CSS = `
   background: var(--panel);
   padding: 10px 14px;
   box-shadow: 0 14px 36px rgba(15,74,117,.08);
+  max-width: 1440px;
+  margin-inline: auto;
 }
 .ticker > strong {
   flex: 0 0 auto;
@@ -722,7 +751,13 @@ const CSS = `
   font-weight: 700;
 }
 .dark .warn { background: rgba(217,137,16,.16); color: #ffd28a; }
-.container { display: grid; gap: 22px; margin-top: 18px; }
+.container {
+  display: grid;
+  gap: 22px;
+  width: 100%;
+  max-width: 1440px;
+  margin: 18px auto 0;
+}
 .page-head {
   display: flex;
   align-items: end;
@@ -928,11 +963,17 @@ const CSS = `
 }
 .news-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   min-width: 0;
 }
-.ncard { padding: 20px; min-width: 0; }
+.ncard {
+  display: flex;
+  min-width: 0;
+  min-height: 330px;
+  flex-direction: column;
+  padding: 20px;
+}
 .nmeta {
   display: flex;
   align-items: center;
@@ -942,6 +983,30 @@ const CSS = `
 .market-row {
   font-size: .88rem;
   margin: 16px 0;
+}
+.ncard a { margin-top: auto; }
+.load-more {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+}
+.load-more a, .load-more span {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  padding: 0 18px;
+  text-decoration: none;
+  font-weight: 900;
+}
+.load-more a:hover {
+  border-color: rgba(5,184,216,.45);
+  color: var(--blue);
 }
 .sidebar {
   display: grid;
@@ -1031,21 +1096,22 @@ const CSS = `
 @media (prefers-reduced-motion: reduce) {
   .ticker-track { animation: none; }
 }
-@media (max-width: 1180px) {
-  .layout { grid-template-columns: minmax(0,1fr); }
-  .nav { position: static; order: 0; }
-  .nav nav { grid-template-columns: repeat(2, minmax(0,1fr)); }
+@media (max-width: 1280px) {
+  .news-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .content { grid-template-columns: minmax(0, 1fr); }
   .sidebar { position: static; grid-template-columns: repeat(2, minmax(0,1fr)); }
 }
+@media (max-width: 1024px) {
+  .nav { display: none; }
+  .main { margin-inline-start: 0; padding: 18px 16px 38px; }
+}
 @media (max-width: 860px) {
-  .layout { width: min(100% - 20px, 1560px); padding-top: 12px; }
+  .main { padding-inline: 12px; }
   .ticker { align-items: flex-start; flex-direction: column; }
   .ticker-track { animation: none; overflow-x: auto; width: 100%; padding-bottom: 4px; }
   .page-head { align-items: stretch; flex-direction: column; padding: 24px; }
   .feat-grid, .compare-grid, .news-grid, .movers-grid, .sectors-grid, .sidebar { grid-template-columns: minmax(0,1fr); }
   .search { grid-template-columns: minmax(0,1fr); }
   .refresh, .search button { width: 100%; }
-  .nav nav { grid-template-columns: minmax(0,1fr); }
 }
 `;

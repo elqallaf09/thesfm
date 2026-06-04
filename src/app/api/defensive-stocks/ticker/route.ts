@@ -5,27 +5,6 @@ import { getStockCategoryConfig } from '@/lib/market/stockCategoryConfigs';
 export const revalidate = 300;
 export const dynamic = 'force-dynamic';
 
-const TICKER_SYMBOLS = [
-  'PG',
-  'KO',
-  'PEP',
-  'WMT',
-  'COST',
-  'JNJ',
-  'MRK',
-  'PFE',
-  'ABBV',
-  'UNH',
-  'NEE',
-  'DUK',
-  'SO',
-  'VZ',
-  'T',
-  'XLP',
-  'XLV',
-  'XLU',
-];
-
 function isUsableMarketPrice(price: TechStockPrice | undefined): price is TechStockPrice & { price: number } {
   return Boolean(price?.available && price.price !== null && Number.isFinite(price.price) && price.price > 0 && price.source);
 }
@@ -47,9 +26,7 @@ export async function GET() {
   }
 
   try {
-    const watchlist = TICKER_SYMBOLS
-      .map(symbol => config.watchlist.find(stock => stock.symbol === symbol))
-      .filter((stock): stock is NonNullable<typeof stock> => Boolean(stock));
+    const watchlist = config.watchlist.slice(0, 18);
     const prices = await fetchStockPrices(watchlist, process.env.FINNHUB_API_KEY);
     const items = watchlist
       .map(stock => {
