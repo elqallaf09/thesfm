@@ -31,6 +31,7 @@ import { getStockCategoryConfig, type StockCategoryFilterKey } from '@/lib/marke
 import type { StockCategoryNewsItem, StockCategoryNewsPayload } from '@/lib/market/fetchStockCategoryNews';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
 import type { TR } from '@/lib/translations';
+import styles from './DefensiveStocksNews.module.css';
 
 type UiLang = 'ar' | 'en' | 'fr';
 type NewsApiResponse = StockCategoryNewsPayload | { success: false; error?: string; reason?: string };
@@ -59,6 +60,7 @@ const COPY = {
   ar: {
     searchPlaceholder: 'ابحث عن سهم أو شركة أو تصنيف...',
     latestNews: 'أحدث الأخبار',
+    featuredNews: 'أبرز الأخبار',
     quickSummary: 'ملخص سريع',
     realDataOnly: 'تُعرض الأخبار والأسعار المتاحة من مزودي البيانات فقط.',
     watchlistLabel: 'قائمة متابعة دفاعية',
@@ -93,6 +95,7 @@ const COPY = {
   en: {
     searchPlaceholder: 'Search by stock, company, or category...',
     latestNews: 'Latest News',
+    featuredNews: 'Featured News',
     quickSummary: 'Quick Summary',
     realDataOnly: 'Only available news and prices from data providers are shown.',
     watchlistLabel: 'Defensive watchlist',
@@ -127,6 +130,7 @@ const COPY = {
   fr: {
     searchPlaceholder: 'Rechercher une action, une société ou une catégorie...',
     latestNews: 'Dernières actualités',
+    featuredNews: 'Actualités à la une',
     quickSummary: 'Résumé rapide',
     realDataOnly: 'Seules les actualités et les prix disponibles auprès des fournisseurs sont affichés.',
     watchlistLabel: 'Liste de suivi défensive',
@@ -294,6 +298,8 @@ export function DefensiveStocksNewsPage() {
 
   const visibleItems = filteredItems.slice(0, visibleCount);
   const latestItems = filteredItems.slice(0, 4);
+  const featuredHero = filteredItems[0];
+  const featuredMiniItems = filteredItems.slice(1, 4);
   const hasMoreItems = visibleCount < filteredItems.length;
 
   const mentionedTickers = useMemo(() => {
@@ -432,10 +438,10 @@ export function DefensiveStocksNewsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#dff8ff_0%,#f8fbff_34%,#eef6ff_100%)] text-slate-950 dark:bg-[radial-gradient(circle_at_top,#0b2b4a_0%,#06182d_38%,#020817_100%)] dark:text-white" dir={dir}>
+    <div className={styles.page} dir={dir}>
       <Sidebar />
-      <main className="w-full max-w-full overflow-x-hidden px-4 py-24 sm:px-6 lg:px-8">
-        <div className="mx-auto grid w-full max-w-[1500px] gap-6">
+      <main className={styles.main}>
+        <div className={styles.container}>
           <DefensiveStocksTicker copy={copy} locale={locale} />
 
           <section className="overflow-hidden rounded-[2rem] border border-cyan-200/70 bg-white/90 shadow-[0_24px_70px_rgba(15,118,110,.12)] backdrop-blur dark:border-cyan-400/20 dark:bg-slate-950/72 dark:shadow-[0_24px_90px_rgba(0,0,0,.35)]">
@@ -457,6 +463,17 @@ export function DefensiveStocksNewsPage() {
               </div>
             </div>
           </section>
+
+          {featuredHero && (
+            <FeaturedNewsPanel
+              title={copy.featuredNews}
+              hero={featuredHero}
+              miniItems={featuredMiniItems}
+              copy={copy}
+              formatDateTime={formatDateTime}
+              tr={tr}
+            />
+          )}
 
           <section className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
             <article className="rounded-[2rem] border border-cyan-200/70 bg-white/90 p-5 shadow-sm dark:border-cyan-500/20 dark:bg-slate-950/70 sm:p-6">
@@ -965,6 +982,64 @@ function EmptyState({ title, body }: { title: string; body: string }) {
       <h3 className="text-lg font-black text-slate-950 dark:text-white">{title}</h3>
       <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{body}</p>
     </div>
+  );
+}
+
+function FeaturedNewsPanel({
+  title,
+  hero,
+  miniItems,
+  copy,
+  formatDateTime,
+  tr,
+}: {
+  title: string;
+  hero: StockCategoryNewsItem;
+  miniItems: StockCategoryNewsItem[];
+  copy: Record<string, string>;
+  formatDateTime: (value: string) => string;
+  tr: (key: keyof typeof TR) => string;
+}) {
+  return (
+    <section className={styles.featuredPanel} aria-labelledby="defensive-featured-title">
+      <div className={styles.featuredHead}>
+        <span className={styles.featuredIcon} aria-hidden="true">
+          <Sparkles size={18} />
+        </span>
+        <h2 id="defensive-featured-title">{title}</h2>
+      </div>
+      <div className={styles.featuredGrid}>
+        <div className={styles.featuredMiniList}>
+          {miniItems.length > 0 ? miniItems.map(item => (
+            <a key={`featured-mini-${item.id}`} href={item.url} target="_blank" rel="noreferrer" className={styles.featuredMini}>
+              <span className={styles.sourceBadge}>{item.source}</span>
+              <h3>{item.title}</h3>
+              <p>{formatDateTime(item.publishedAt)}</p>
+            </a>
+          )) : (
+            <div className={styles.featuredMini}>
+              <span className={styles.sourceBadge}>{copy.provider}</span>
+              <h3>{copy.noNewsBody}</h3>
+            </div>
+          )}
+        </div>
+        <article className={styles.featuredHero}>
+          <div className={styles.featuredTags}>
+            <span dir="ltr" className={styles.symbolTag}>{hero.ticker}</span>
+            <span className={styles.sourceBadge}>{hero.source}</span>
+          </div>
+          <h3>{hero.title}</h3>
+          <p>{hero.summary || hero.title}</p>
+          <div className={styles.featuredFooter}>
+            <a href={hero.url} target="_blank" rel="noreferrer" className={styles.primaryLink}>
+              {tr('defensive_news_read_article')}
+              <ExternalLink size={15} aria-hidden="true" />
+            </a>
+            <span>{formatDateTime(hero.publishedAt)}</span>
+          </div>
+        </article>
+      </div>
+    </section>
   );
 }
 
