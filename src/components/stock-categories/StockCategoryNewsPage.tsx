@@ -220,6 +220,30 @@ function changeTone(value: number | null) {
   return value > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300';
 }
 
+function StockNewsCardSkeleton() {
+  return (
+    <article className="min-h-[260px] rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+      <div className="flex items-center gap-2">
+        <span className="h-7 w-16 animate-pulse rounded-full bg-cyan-100 dark:bg-cyan-900/40" />
+        <span className="h-7 w-24 animate-pulse rounded-full bg-emerald-100 dark:bg-emerald-900/40" />
+      </div>
+      <div className="mt-5 space-y-3">
+        <div className="h-4 w-11/12 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+        <div className="h-4 w-9/12 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+        <div className="h-4 w-7/12 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+      </div>
+      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60">
+        <div className="h-3 w-24 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+        <div className="mt-3 h-4 w-32 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+      </div>
+      <div className="mt-5 flex items-center justify-between">
+        <span className="h-4 w-28 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+        <span className="h-10 w-28 animate-pulse rounded-xl bg-cyan-100 dark:bg-cyan-900/40" />
+      </div>
+    </article>
+  );
+}
+
 function changeBadgeClass(value: number | null) {
   if (value === null || value === 0) return 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200';
   return value > 0
@@ -308,8 +332,12 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
     if (showLoader) setLoading(true);
     setRefreshing(!showLoader);
     setError('');
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 15000);
     try {
-      const response = await fetch(`/api/stock-categories/news?category=${encodeURIComponent(config.id)}&lang=${encodeURIComponent(lang)}&limit=60`);
+      const response = await fetch(`/api/stock-categories/news?category=${encodeURIComponent(config.id)}&lang=${encodeURIComponent(lang)}&limit=60`, {
+        signal: controller.signal,
+      });
       const json = await response.json().catch(() => ({})) as NewsApiResponse;
       if (!response.ok || !json.success) {
         throw new Error('reason' in json ? json.reason || json.error || tr('stock_category_error') : tr('stock_category_error'));
@@ -323,6 +351,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
       setLastUpdated('');
       setError(loadError instanceof Error ? loadError.message : tr('stock_category_error'));
     } finally {
+      window.clearTimeout(timeoutId);
       if (showLoader) setLoading(false);
       setRefreshing(false);
     }
@@ -515,7 +544,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#e0f7ff_0%,#f8fbff_36%,#eef6ff_100%)] text-slate-950 dark:bg-[radial-gradient(circle_at_top,#0b2b4a_0%,#06182d_38%,#020817_100%)] dark:text-white" dir={dir}>
       <Sidebar />
       <main className="stock-category-main">
-        <div className="mx-auto grid w-full max-w-[1500px] gap-6">
+        <div className="mx-auto grid w-full max-w-[1440px] gap-6">
           <section className="rounded-[2rem] border border-cyan-200/70 bg-white/90 p-5 shadow-[0_24px_70px_rgba(15,118,110,.12)] backdrop-blur dark:border-cyan-400/20 dark:bg-slate-950/72 dark:shadow-[0_24px_90px_rgba(0,0,0,.35)] sm:p-7">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex min-w-0 items-start gap-4">
@@ -555,7 +584,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
             locale={locale}
           />
 
-          <section className="grid gap-6 xl:grid-cols-[1fr_380px]">
+          <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="grid min-w-0 gap-6">
               <section className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
                 <div className="grid gap-4 lg:grid-cols-[1.2fr_.8fr]">
@@ -682,17 +711,39 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                   </div>
                 </div>
 
-                {error && (
-                  <div className="mt-5 rounded-3xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-100">
-                    {tr('stock_category_error')}
-                  </div>
-                )}
-
                 {loading ? (
-                  <div className="mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                    {Array.from({ length: 4 }).map((_, index) => (
-                      <div key={index} className="h-52 animate-pulse rounded-3xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-900" />
-                    ))}
+                  <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/50" aria-live="polite">
+                    <div className="flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-200">
+                      <RefreshCcw size={16} className="animate-spin text-cyan-600 dark:text-cyan-300" />
+                      {tr('stock_category_loading_news')}
+                    </div>
+                    <div className="mt-4 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                      {Array.from({ length: 6 }).map((_, index) => (
+                        <StockNewsCardSkeleton key={index} />
+                      ))}
+                    </div>
+                  </div>
+                ) : error ? (
+                  <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-500/30 dark:bg-amber-950/25" role="alert">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-amber-700 shadow-sm dark:bg-slate-900 dark:text-amber-200">
+                          <AlertTriangle size={20} />
+                        </span>
+                        <div className="min-w-0">
+                          <h3 className="text-lg font-black text-amber-950 dark:text-amber-100">{tr('stock_category_news_error_title')}</h3>
+                          <p className="mt-1 text-sm font-semibold leading-7 text-amber-900 dark:text-amber-100">{tr('stock_category_news_error_body')}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { void loadNews(true); }}
+                        className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-amber-300 bg-white px-4 text-sm font-black text-amber-800 transition hover:bg-amber-100 active:scale-[0.98] dark:border-amber-500/30 dark:bg-slate-900 dark:text-amber-100 dark:hover:bg-amber-950/50"
+                      >
+                        <RefreshCcw size={16} />
+                        {tr('market_refresh_news')}
+                      </button>
+                    </div>
                   </div>
                 ) : visibleItems.length === 0 ? (
                   <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center dark:border-slate-800 dark:bg-slate-900/60">
@@ -701,7 +752,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                     <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{tr('stock_category_empty_hint')}</p>
                   </div>
                 ) : (
-                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  <div className="mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
                     {visibleItems.map(item => {
                       const price = priceMap.get(item.ticker);
                       return (
@@ -819,7 +870,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                     </a>
                   )) : (
                     <p className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-400">
-                      {tr('stock_category_empty')}
+                      {tr('stock_category_latest_empty')}
                     </p>
                   )}
                 </div>
