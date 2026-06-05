@@ -130,6 +130,26 @@ const COPY = {
     initialPlanBuilt: 'تم بناء خطتك المالية الأولية',
     completionTitle: 'تم بناء خطتك المالية الأولية بنجاح',
     completionDescription: 'تم حفظ البيانات التي أدخلتها فقط، ويمكنك تعديل أو إضافة أي بيانات لاحقاً من لوحة التحكم.',
+    dashboardMiniTitle: 'لوحة خطتك المالية الأولية',
+    dashboardMiniSubtitle: 'نظرة تنفيذية مختصرة على ما حفظته، وما يحتاج إلى استكمال، والخطوة التالية داخل THE SFM.',
+    planSnapshotTitle: 'ملخص سريع للخطة',
+    planSnapshotSubtitle: 'كل بطاقة تعرض بيانات محفوظة فعلياً من إعدادك فقط.',
+    financialPulse: 'المؤشرات الأساسية',
+    dataHealthTitle: 'جاهزية بيانات الخطة',
+    dataHealthSubtitle: 'توضح ما اكتمل وما يحتاج إلى بيانات إضافية لتحسين التحليل.',
+    nextStepTitle: 'الخطوة التالية',
+    nextStepBody: 'افتح لوحة التحكم لمراجعة الأرقام، متابعة الفائض، وربط الخطة بالتقارير اليومية.',
+    dashboardPrimaryHint: 'ابدأ من هنا لمتابعة الخطة وتعديلها.',
+    readyStatus: 'جاهزة',
+    needsMoreData: 'تحتاج بيانات',
+    currencyReady: 'العملة الافتراضية محددة',
+    incomeReady: 'الدخل الشهري محفوظ',
+    expensesReady: 'المصروفات الشهرية محفوظة',
+    goalsReady: 'هدف مالي واحد على الأقل',
+    growthDataReady: 'ادخار أو استثمار أو مشروع',
+    expenseRatio: 'نسبة المصروفات',
+    surplusRatio: 'نسبة الفائض',
+    reportMiniHint: 'افتح ملخصاً سريعاً قبل الانتقال إلى التقارير.',
     expectedRemaining: 'المتبقي من دخلك المتوقع',
     expectedMonthlyIncome: 'الدخل الشهري المتوقع',
     recommendedSavingPercent: 'أفضل نسبة ادخار لك',
@@ -299,6 +319,26 @@ const COPY = {
     initialPlanBuilt: 'Your initial financial plan has been built',
     completionTitle: 'Your initial financial plan has been built successfully',
     completionDescription: 'Only the data you entered was saved, and you can edit or add more data later from the dashboard.',
+    dashboardMiniTitle: 'Your initial financial plan dashboard',
+    dashboardMiniSubtitle: 'An executive snapshot of what you saved, what still needs data, and the next step inside THE SFM.',
+    planSnapshotTitle: 'Quick plan snapshot',
+    planSnapshotSubtitle: 'Every card shows only real data saved from your setup.',
+    financialPulse: 'Core indicators',
+    dataHealthTitle: 'Plan data readiness',
+    dataHealthSubtitle: 'Shows what is complete and what needs more data to improve analysis.',
+    nextStepTitle: 'Next step',
+    nextStepBody: 'Open the dashboard to review the numbers, track surplus, and connect the plan to daily reports.',
+    dashboardPrimaryHint: 'Start here to follow and adjust your plan.',
+    readyStatus: 'Ready',
+    needsMoreData: 'Needs data',
+    currencyReady: 'Default currency selected',
+    incomeReady: 'Monthly income saved',
+    expensesReady: 'Monthly expenses saved',
+    goalsReady: 'At least one financial goal',
+    growthDataReady: 'Savings, investment, or project data',
+    expenseRatio: 'Expense ratio',
+    surplusRatio: 'Surplus ratio',
+    reportMiniHint: 'Open a quick summary before going to reports.',
     expectedRemaining: 'Expected remaining salary',
     expectedMonthlyIncome: 'Expected monthly income',
     recommendedSavingPercent: 'Recommended saving percentage',
@@ -468,6 +508,26 @@ const COPY = {
     initialPlanBuilt: 'Votre plan financier initial a été créé',
     completionTitle: 'Votre plan financier initial a été créé avec succès',
     completionDescription: 'Seules les données saisies ont été enregistrées. Vous pourrez les modifier ou ajouter d’autres données plus tard depuis le tableau de bord.',
+    dashboardMiniTitle: 'Tableau de bord de votre plan financier initial',
+    dashboardMiniSubtitle: 'Un aperçu exécutif de ce qui est enregistré, de ce qui reste à compléter, et de la prochaine étape dans THE SFM.',
+    planSnapshotTitle: 'Aperçu rapide du plan',
+    planSnapshotSubtitle: 'Chaque carte affiche uniquement les données réellement enregistrées pendant la configuration.',
+    financialPulse: 'Indicateurs principaux',
+    dataHealthTitle: 'Préparation des données du plan',
+    dataHealthSubtitle: 'Indique ce qui est complet et ce qui nécessite plus de données pour améliorer l’analyse.',
+    nextStepTitle: 'Prochaine étape',
+    nextStepBody: 'Ouvrez le tableau de bord pour vérifier les chiffres, suivre le surplus et relier le plan aux rapports quotidiens.',
+    dashboardPrimaryHint: 'Commencez ici pour suivre et ajuster votre plan.',
+    readyStatus: 'Prêt',
+    needsMoreData: 'Données requises',
+    currencyReady: 'Devise par défaut sélectionnée',
+    incomeReady: 'Revenu mensuel enregistré',
+    expensesReady: 'Dépenses mensuelles enregistrées',
+    goalsReady: 'Au moins un objectif financier',
+    growthDataReady: 'Données d’épargne, d’investissement ou de projet',
+    expenseRatio: 'Ratio de dépenses',
+    surplusRatio: 'Ratio de surplus',
+    reportMiniHint: 'Ouvrez un résumé rapide avant d’accéder aux rapports.',
     expectedRemaining: 'Salaire restant estimé',
     expectedMonthlyIncome: 'Revenu mensuel estimé',
     recommendedSavingPercent: 'Pourcentage d’épargne recommandé',
@@ -1627,10 +1687,26 @@ export default function SetupPage() {
         :global(.setup-page .progress-details li.active){background:rgba(24,212,212,.07);border-color:rgba(24,212,212,.28)}
         :global(.setup-page .progress-details li.optional){background:#F8FBFF}
         .completion-panel{gap:16px}
+        .completion-dashboard{background:linear-gradient(180deg,#FFFFFF 0%,#F8FBFF 58%,#FFFFFF 100%)}
+        .mini-dashboard-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,340px);gap:14px;align-items:stretch;min-width:0}
         .completion-hero{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center;border:1px solid rgba(16,185,129,.18);background:linear-gradient(135deg,#F0FDF4,#FFFFFF 54%,#EAF6FF);border-radius:24px;padding:clamp(18px,3vw,26px);box-shadow:0 18px 46px rgba(3,18,37,.08);min-width:0}
+        .dashboard-hero{align-items:start;min-height:178px}
         .completion-success-icon{width:74px;height:74px;border-radius:24px;display:grid;place-items:center;background:linear-gradient(135deg,#10B981,#18D4D4);color:#FFFFFF;box-shadow:0 18px 36px rgba(16,185,129,.22);flex:0 0 auto}
         .completion-copy{min-width:0}.completion-copy span{display:inline-flex;border-radius:999px;background:#ECFDF5;color:#047857;padding:5px 10px;font-size:12px;font-weight:950}.completion-copy h2{margin:10px 0 8px;color:var(--sfm-primary-dark);font-size:clamp(25px,4vw,38px);line-height:1.18;font-weight:950}.completion-copy p{margin:0;color:var(--sfm-muted-readable);font-size:15px;line-height:1.8;font-weight:850}
+        .next-action-card{display:grid;align-content:center;gap:9px;border:1px solid rgba(29,140,255,.16);background:linear-gradient(160deg,var(--sfm-primary-dark),#12375D 62%,#0B1728);border-radius:24px;padding:20px;box-shadow:0 18px 46px rgba(3,18,37,.12);min-width:0;color:#FFFFFF;position:relative;overflow:hidden}
+        .next-action-card::after{content:"";position:absolute;inset:auto -28px -44px auto;width:130px;height:130px;border-radius:999px;background:rgba(24,212,212,.18);filter:blur(2px)}
+        .next-action-card span{color:var(--sfm-soft-cyan);font-size:12px;font-weight:950}.next-action-card strong{font-size:24px;line-height:1.25;font-weight:950;position:relative}.next-action-card p{margin:0;color:#DCEBFA;font-size:13px;font-weight:850;line-height:1.75;position:relative}.next-action-card small{color:#9DEFE9;font-size:11px;font-weight:950;position:relative}
+        .dashboard-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;min-width:0}
+        .dashboard-metrics :global(.dashboard-metric){display:grid;gap:12px;border:1px solid rgba(29,140,255,.12);background:#FFFFFF;border-radius:18px;padding:15px;box-shadow:0 12px 30px rgba(3,18,37,.06);min-width:0}
+        .dashboard-metrics :global(.metric-icon){width:42px;height:42px;border-radius:15px;display:grid;place-items:center;background:rgba(29,140,255,.10);color:var(--sfm-primary)}
+        .dashboard-metrics :global(.dashboard-metric.remaining .metric-icon){background:#ECFDF5;color:#047857}.dashboard-metrics :global(.dashboard-metric.saving .metric-icon){background:#FFFBEB;color:#B45309}.dashboard-metrics :global(.dashboard-metric.expenses .metric-icon){background:#FEF2F2;color:#B91C1C}
+        .dashboard-metrics :global(.dashboard-metric small){display:block;color:var(--sfm-muted-readable);font-size:12px;font-weight:950}.dashboard-metrics :global(.dashboard-metric strong){display:block;margin-top:6px;color:var(--sfm-midnight);font-size:clamp(21px,2.4vw,30px);line-height:1.15;font-weight:950;overflow-wrap:anywhere;unicode-bidi:isolate}.dashboard-metrics :global(.dashboard-metric p){margin:7px 0 0;color:var(--sfm-muted-readable);font-size:12px;font-weight:820;line-height:1.55}
+        .completion-dashboard-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(260px,.65fr);gap:14px;align-items:start;min-width:0}
+        .dashboard-main-column,.dashboard-side-column{display:grid;gap:14px;min-width:0}
+        .mini-section{display:grid;gap:13px;border:1px solid rgba(29,140,255,.12);background:rgba(255,255,255,.78);border-radius:22px;padding:15px;box-shadow:0 12px 32px rgba(3,18,37,.05);min-width:0}
+        .mini-section-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,260px);gap:12px;align-items:start;min-width:0}.mini-section-head span{display:block;color:var(--sfm-primary);font-size:12px;font-weight:950}.mini-section-head h3{margin:4px 0 0;color:var(--sfm-primary-dark);font-size:20px;font-weight:950}.mini-section-head p{margin:0;color:var(--sfm-muted-readable);font-size:12px;font-weight:850;line-height:1.7}
         .completion-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;min-width:0}
+        .completion-dashboard-grid .completion-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
         .completion-summary-grid :global(.completion-summary-card){display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px;align-items:start;border:1px solid rgba(29,140,255,.12);background:linear-gradient(180deg,#FFFFFF,#F8FBFF);border-radius:16px;padding:13px;min-width:0;box-shadow:0 10px 26px rgba(3,18,37,.05)}
         .completion-summary-grid :global(.completion-summary-card.income),.completion-summary-grid :global(.completion-summary-card.remaining){grid-column:span 2}
         .completion-summary-grid :global(.summary-icon){width:38px;height:38px;border-radius:13px;display:grid;place-items:center;background:rgba(29,140,255,.10);color:var(--sfm-primary);flex:0 0 auto}
@@ -1642,6 +1718,11 @@ export default function SetupPage() {
         .completion-summary-grid :global(.completion-summary-card p){margin:6px 0 0;color:var(--sfm-muted-readable);font-size:11px;font-weight:820;line-height:1.55}
         .goal-estimate-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;border:1px solid rgba(29,140,255,.13);background:#FFFFFF;border-radius:18px;padding:14px;min-width:0}
         .goal-estimate-card>svg{width:42px;height:42px;border-radius:14px;background:rgba(29,140,255,.10);color:var(--sfm-primary);padding:10px}.goal-estimate-card small{display:block;color:var(--sfm-muted-readable);font-weight:950}.goal-estimate-card strong{display:block;margin-top:4px;color:var(--sfm-midnight);font-size:18px;line-height:1.35}.goal-estimate-card p{margin:5px 0 0;color:var(--sfm-muted-readable);font-weight:850;line-height:1.65}
+        .data-health-card,.report-teaser-card{display:grid;gap:12px;border:1px solid rgba(29,140,255,.13);background:#FFFFFF;border-radius:18px;padding:14px;box-shadow:0 10px 26px rgba(3,18,37,.05);min-width:0}
+        .data-health-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start}.data-health-head>svg,.report-teaser-card>svg{width:40px;height:40px;border-radius:14px;background:rgba(29,140,255,.10);color:var(--sfm-primary);padding:10px}.data-health-head h3{margin:0;color:var(--sfm-primary-dark);font-size:17px;font-weight:950}.data-health-head p{margin:5px 0 0;color:var(--sfm-muted-readable);font-size:12px;font-weight:850;line-height:1.6}
+        .data-health-list{display:grid;gap:8px}.data-health-list article{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid rgba(29,140,255,.10);background:#F8FBFF;border-radius:13px;padding:9px;min-width:0}.data-health-list article svg{color:#94A3B8}.data-health-list article.ready{background:#ECFDF5;border-color:rgba(16,185,129,.20)}.data-health-list article.ready svg,.data-health-list article.ready strong{color:#047857}.data-health-list article.missing{background:#FFF7ED;border-color:rgba(234,88,12,.18)}.data-health-list article.missing svg,.data-health-list article.missing strong{color:#C2410C}.data-health-list span{min-width:0;color:var(--sfm-midnight);font-size:12px;font-weight:950;line-height:1.35}.data-health-list strong{font-size:10px;font-weight:950;white-space:nowrap;color:var(--sfm-primary)}
+        .report-teaser-card{grid-template-columns:auto minmax(0,1fr);align-items:start}.report-teaser-card strong{display:block;color:var(--sfm-primary-dark);font-size:15px;font-weight:950}.report-teaser-card p{margin:5px 0 0;color:var(--sfm-muted-readable);font-size:12px;font-weight:850;line-height:1.65}
+        .completion-note{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start;border:1px solid rgba(16,185,129,.16);background:#ECFDF5;border-radius:16px;padding:12px;min-width:0}.completion-note svg{color:#047857;margin-top:2px}.completion-note p{margin:0;color:#065F46;font-size:13px;font-weight:900;line-height:1.7}
         .recommendation-panel{display:grid;gap:13px;border:1px solid rgba(24,212,212,.20);background:linear-gradient(135deg,rgba(234,246,255,.92),rgba(24,212,212,.08));border-radius:22px;padding:16px;min-width:0}
         .recommendation-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px;align-items:start}.recommendation-head>svg{width:42px;height:42px;border-radius:14px;background:var(--sfm-midnight);color:var(--sfm-soft-cyan);padding:10px}.recommendation-head h3{margin:0;color:var(--sfm-primary-dark);font-size:19px;font-weight:950}.recommendation-head p{margin:5px 0 0;color:var(--sfm-muted-readable);font-weight:850;line-height:1.65}
         .recommendation-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.recommendation-list article{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;align-items:start;border:1px solid rgba(29,140,255,.10);background:#FFFFFF;border-radius:15px;padding:12px;min-width:0}.recommendation-list article>svg{color:#10B981;margin-top:2px}.recommendation-list strong{display:block;color:var(--sfm-midnight);font-size:13px;line-height:1.55}.recommendation-list span{display:block;margin-top:4px;color:var(--sfm-muted-readable);font-size:12px;font-weight:820;line-height:1.55}
@@ -1654,16 +1735,30 @@ export default function SetupPage() {
         .report-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.report-actions button{min-height:44px;border-radius:14px;border:1px solid rgba(29,140,255,.18);background:var(--sfm-light-card);color:var(--sfm-midnight);padding:0 15px;font-weight:950;font-family:inherit;cursor:pointer}.report-actions button.primary{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.report-data-points{color:var(--sfm-muted-readable);font-weight:900}
         :global(.dark) .setup-page :global(.progress-details summary),
         :global(.dark) .setup-page :global(.progress-details li),
+        :global(.dark) .setup-page .mini-section,
         :global(.dark) .setup-page .goal-estimate-card,
+        :global(.dark) .setup-page .data-health-card,
+        :global(.dark) .setup-page .report-teaser-card,
         :global(.dark) .setup-page .recommendation-list article,
-        :global(.dark) .setup-page .initial-report-modal{background:#0F1E32;border-color:#1D3050;color:#E8EEF6}
+        :global(.dark) .setup-page .initial-report-modal,
+        :global(.dark) .setup-page .dashboard-metrics :global(.dashboard-metric){background:#0F1E32;border-color:#1D3050;color:#E8EEF6}
         :global(.dark) .setup-page :global(.progress-details li.optional),
+        :global(.dark) .setup-page .data-health-list article,
         :global(.dark) .setup-page .completion-summary-grid :global(.completion-summary-card),
         :global(.dark) .setup-page .report-grid :global(.report-card){background:#13243A;border-color:#1D3050}
+        :global(.dark) .setup-page .completion-dashboard{background:linear-gradient(180deg,#0B1728 0%,#0F1E32 58%,#0B1728 100%)}
         :global(.dark) .setup-page .completion-hero{background:linear-gradient(135deg,rgba(16,185,129,.12),#0F1E32 52%,#0B1728);border-color:rgba(47,214,192,.24);box-shadow:0 22px 54px rgba(0,0,0,.28)}
+        :global(.dark) .setup-page .next-action-card{background:linear-gradient(160deg,#102640,#0B1728);border-color:rgba(47,214,192,.22)}
+        :global(.dark) .setup-page .completion-note{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.24)}
+        :global(.dark) .setup-page .completion-note p{color:#BDF7DA}
         :global(.dark) .setup-page .completion-copy h2,
+        :global(.dark) .setup-page .mini-section-head h3,
+        :global(.dark) .setup-page .dashboard-metrics :global(.dashboard-metric strong),
         :global(.dark) .setup-page .completion-summary-grid :global(.completion-summary-card strong),
         :global(.dark) .setup-page .goal-estimate-card strong,
+        :global(.dark) .setup-page .data-health-head h3,
+        :global(.dark) .setup-page .data-health-list span,
+        :global(.dark) .setup-page .report-teaser-card strong,
         :global(.dark) .setup-page .recommendation-head h3,
         :global(.dark) .setup-page .recommendation-list strong,
         :global(.dark) .setup-page .report-modal-head h3,
@@ -1672,10 +1767,15 @@ export default function SetupPage() {
         :global(.dark) .setup-page .report-recommendation p,
         :global(.dark) .setup-page :global(.progress-details li b){color:#F8FBFF}
         :global(.dark) .setup-page .completion-copy p,
+        :global(.dark) .setup-page .mini-section-head p,
+        :global(.dark) .setup-page .dashboard-metrics :global(.dashboard-metric small),
+        :global(.dark) .setup-page .dashboard-metrics :global(.dashboard-metric p),
         :global(.dark) .setup-page .completion-summary-grid :global(.completion-summary-card small),
         :global(.dark) .setup-page .completion-summary-grid :global(.completion-summary-card p),
         :global(.dark) .setup-page .goal-estimate-card small,
         :global(.dark) .setup-page .goal-estimate-card p,
+        :global(.dark) .setup-page .data-health-head p,
+        :global(.dark) .setup-page .report-teaser-card p,
         :global(.dark) .setup-page .recommendation-head p,
         :global(.dark) .setup-page .recommendation-list span,
         :global(.dark) .setup-page .report-modal-head p,
@@ -1693,8 +1793,8 @@ export default function SetupPage() {
         .setup-error{border:1px solid rgba(185,28,28,.16);background:#FEF2F2;color:#B91C1C;border-radius:14px;padding:12px;font-weight:950}
         .wizard-actions{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid rgba(29,140,255,.12);padding-top:18px;margin-top:auto}.primary-btn,.ghost-btn{min-height:52px;border-radius:16px;padding:0 20px;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease,border-color .18s ease,background .18s ease}.primary-btn{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 14px 34px rgba(29,140,255,.22)}.primary-btn:not(:disabled):hover{transform:translateY(-2px);filter:saturate(1.06) brightness(1.04);box-shadow:0 18px 42px rgba(24,212,212,.28)}.primary-btn:not(:disabled):active{transform:translateY(0) scale(.985)}.primary-btn:focus-visible,.ghost-btn:focus-visible,.finish-actions button:focus-visible{outline:3px solid rgba(24,212,212,.32);outline-offset:3px}.ghost-btn{border:1px solid rgba(29,140,255,.20);background:var(--sfm-light-card);color:var(--sfm-midnight)}.ghost-btn:not(:disabled):hover{transform:translateY(-1px);border-color:rgba(24,212,212,.34);background:var(--sfm-surface-hover);box-shadow:0 10px 26px rgba(3,18,37,.08)}.primary-btn:disabled,.ghost-btn:disabled{opacity:.65;cursor:not-allowed;transform:none;box-shadow:none}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
         .finish-actions{display:flex;gap:10px;flex-wrap:wrap}.finish-actions button{min-height:46px;border:1px solid rgba(29,140,255,.18);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-midnight);padding:0 15px;font-weight:950;font-family:inherit;cursor:pointer}.finish-actions button.primary{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}
-        @media(max-width:1024px){.setup-page .sfm-dashboard-page-shell{margin-inline-start:0}.setup-hero,.step-layout{grid-template-columns:1fr}.progress-orb{width:124px;height:124px}.step-side{position:static}.setup-plan ul{grid-template-columns:repeat(2,minmax(0,1fr))}.completion-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.completion-summary-grid :global(.completion-summary-card.income),.completion-summary-grid :global(.completion-summary-card.remaining){grid-column:span 1}.recommendation-list{grid-template-columns:1fr}}
-        @media(max-width:720px){:global(.setup-page .sfm-dashboard-page-shell){padding-inline:16px!important}.setup-hero{border-radius:22px}.setup-card{padding:14px;border-radius:22px}.progress-orb{width:112px;height:112px}.form-grid,.expense-grid,.summary-grid,.focus-grid,.setup-plan ul,.completion-summary-grid,.report-grid{grid-template-columns:1fr}.wizard-actions,.choice-row,.finish-actions,.income-decision-actions,.report-actions{display:grid;grid-template-columns:1fr}.primary-btn,.ghost-btn,.choice-btn,.toggle-card,.finish-actions button,.income-action-btn,.report-actions button{width:100%;min-width:0}.income-decision-card{padding:22px 16px;border-radius:24px}.income-decision-icon{width:68px;height:68px}.recurring-income-card{grid-template-columns:minmax(0,1fr) auto;align-items:start;padding:14px;border-radius:18px}.setup-top{align-items:flex-start}.step-main{padding:16px;min-height:auto}.step-heading h2{font-size:22px}.completion-hero{grid-template-columns:1fr;text-align:center;justify-items:center;border-radius:22px}.completion-copy h2{font-size:25px}.completion-summary-grid :global(.completion-summary-card){grid-template-columns:minmax(0,1fr);text-align:start}.goal-estimate-card,.recommendation-head{grid-template-columns:minmax(0,1fr)}.report-modal-backdrop{align-items:end;padding:10px}.initial-report-modal{max-height:88dvh;border-radius:22px 22px 0 0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}.report-modal-head{display:grid}.report-modal-head button{justify-self:end}:global(.setup-page .progress-details ol){max-height:280px}:global(.setup-page .progress-details li){grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon title" "icon state" "icon badge"}:global(.setup-page .progress-details li em){justify-self:start}.report-grid :global(.report-card){grid-template-columns:minmax(0,1fr)}}
+        @media(max-width:1024px){.setup-page .sfm-dashboard-page-shell{margin-inline-start:0}.setup-hero,.step-layout,.mini-dashboard-head,.completion-dashboard-grid{grid-template-columns:1fr}.progress-orb{width:124px;height:124px}.step-side{position:static}.setup-plan ul{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-metrics,.completion-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.completion-summary-grid :global(.completion-summary-card.income),.completion-summary-grid :global(.completion-summary-card.remaining){grid-column:span 1}.recommendation-list{grid-template-columns:1fr}.next-action-card{min-height:150px}}
+        @media(max-width:720px){:global(.setup-page .sfm-dashboard-page-shell){padding-inline:16px!important}.setup-hero{border-radius:22px}.setup-card{padding:14px;border-radius:22px}.progress-orb{width:112px;height:112px}.form-grid,.expense-grid,.summary-grid,.focus-grid,.setup-plan ul,.dashboard-metrics,.completion-summary-grid,.report-grid{grid-template-columns:1fr}.wizard-actions,.choice-row,.finish-actions,.income-decision-actions,.report-actions{display:grid;grid-template-columns:1fr}.primary-btn,.ghost-btn,.choice-btn,.toggle-card,.finish-actions button,.income-action-btn,.report-actions button{width:100%;min-width:0}.income-decision-card{padding:22px 16px;border-radius:24px}.income-decision-icon{width:68px;height:68px}.recurring-income-card{grid-template-columns:minmax(0,1fr) auto;align-items:start;padding:14px;border-radius:18px}.setup-top{align-items:flex-start}.step-main{padding:16px;min-height:auto}.step-heading h2{font-size:22px}.completion-hero{grid-template-columns:1fr;text-align:center;justify-items:center;border-radius:22px}.dashboard-hero{min-height:auto}.next-action-card{border-radius:22px;min-height:auto}.completion-copy h2{font-size:25px}.mini-section-head{grid-template-columns:1fr}.completion-summary-grid :global(.completion-summary-card){grid-template-columns:minmax(0,1fr);text-align:start}.goal-estimate-card,.recommendation-head,.data-health-head,.report-teaser-card{grid-template-columns:minmax(0,1fr)}.data-health-list article{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon label" "icon state"}.data-health-list article svg{grid-area:icon}.data-health-list article span{grid-area:label}.data-health-list article strong{grid-area:state;justify-self:start}.report-modal-backdrop{align-items:end;padding:10px}.initial-report-modal{max-height:88dvh;border-radius:22px 22px 0 0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}.report-modal-head{display:grid}.report-modal-head button{justify-self:end}:global(.setup-page .progress-details ol){max-height:280px}:global(.setup-page .progress-details li){grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon title" "icon state" "icon badge"}:global(.setup-page .progress-details li em){justify-self:start}.report-grid :global(.report-card){grid-template-columns:minmax(0,1fr)}}
       `}</style>
     </div>
   );
@@ -1977,81 +2077,154 @@ export default function SetupPage() {
     const activeSummary = summary ?? buildSetupSummary();
     const recommendations = recommendationItems(activeSummary);
     const savedDataPoints = activeSummary.income + activeSummary.expenses + activeSummary.goals + activeSummary.savings + activeSummary.investments + activeSummary.projects;
+    const expenseRatio = activeSummary.incomeTotal > 0 ? activeSummary.expenseTotal / activeSummary.incomeTotal : 0;
+    const surplusRatio = activeSummary.incomeTotal > 0 ? activeSummary.expectedRemaining / activeSummary.incomeTotal : 0;
     const goalEstimateValue = activeSummary.firstGoalCompletionDate ? formatSetupDate(activeSummary.firstGoalCompletionDate, lang) : text.noGoalEstimateTitle;
     const goalEstimateDescription = activeSummary.firstGoalCompletionDate ? text.goalEstimateDesc : text.noGoalEstimateHint;
+    const hasGrowthData = activeSummary.savings + activeSummary.investments + activeSummary.projects > 0;
+    const readinessItems = [
+      { label: text.currencyReady, ready: Boolean(defaultCurrency), optional: false },
+      { label: text.incomeReady, ready: activeSummary.income > 0, optional: false },
+      { label: text.expensesReady, ready: activeSummary.expenses > 0, optional: false },
+      { label: text.goalsReady, ready: activeSummary.goals > 0, optional: false },
+      { label: text.growthDataReady, ready: hasGrowthData, optional: true },
+    ];
 
     return (
-      <section className="step-panel completion-panel">
-        <div className="completion-hero">
-          <div className="completion-success-icon" aria-hidden="true">
-            <CheckCircle2 size={36} />
-          </div>
-          <div className="completion-copy">
-            <span>{text.progressComplete}</span>
-            <h2 id="setup-step-title">{text.completionTitle}</h2>
-            <p>{text.completionDescription}</p>
-          </div>
-        </div>
-
-        <div className="completion-summary-grid">
-          <SummaryCard icon={CircleDollarSign} label={text.summaryCurrency} value={defaultCurrency} description={text.currencyCardDesc} tone="currency" />
-          <SummaryCard
-            icon={Banknote}
-            label={text.expectedMonthlyIncome}
-            value={formatSetupMoney(activeSummary.incomeTotal, defaultCurrency, lang)}
-            description={activeSummary.income > 0 ? text.incomeCardDesc : text.noIncomeCardDesc}
-            tone="income"
-          />
-          <SummaryCard
-            icon={TrendingUp}
-            label={text.expectedRemaining}
-            value={formatSetupMoney(activeSummary.expectedRemaining, defaultCurrency, lang)}
-            description={text.remainingCardDesc}
-            tone="remaining"
-          />
-          <SummaryCard
-            icon={Percent}
-            label={text.recommendedSavingPercent}
-            value={activeSummary.incomeTotal > 0 ? formatSetupPercent(activeSummary.recommendedSavingPercent, lang) : text.notEnoughForEstimate}
-            description={text.savingPercentCardDesc}
-            tone="saving"
-          />
-          <SummaryCard icon={ReceiptText} label={text.addedExpenses} value={formatSetupNumber(activeSummary.expenses, lang)} description={text.expensesCardDesc} tone="count" />
-          <SummaryCard icon={LineChart} label={text.addedInvestments} value={formatSetupNumber(activeSummary.investments, lang)} description={text.investmentsCardDesc} tone="count" />
-          <SummaryCard icon={Target} label={text.addedGoals} value={formatSetupNumber(activeSummary.goals, lang)} description={text.goalsCardDesc} tone="count" />
-          <SummaryCard icon={BriefcaseBusiness} label={text.addedProjects} value={formatSetupNumber(activeSummary.projects, lang)} description={text.projectsCardDesc} tone="count" />
-          <SummaryCard icon={PiggyBank} label={text.addedSavings} value={formatSetupNumber(activeSummary.savings, lang)} description={text.savingsCardDesc} tone="count" />
-          <SummaryCard icon={Wallet} label={text.additionalIncomeSources} value={formatSetupNumber(activeSummary.additionalIncomeSources, lang)} description={text.additionalIncomeCardDesc} tone="count" />
-        </div>
-
-        <article className="goal-estimate-card">
-          <CalendarCheck size={22} aria-hidden="true" />
-          <div>
-            <small>{text.firstGoalCompletion}</small>
-            <strong>{goalEstimateValue}</strong>
-            <p>{goalEstimateDescription}</p>
-          </div>
-        </article>
-
-        <section className="recommendation-panel" aria-labelledby="setup-recommendation-title">
-          <div className="recommendation-head">
-            <Sparkles size={22} aria-hidden="true" />
-            <div>
-              <h3 id="setup-recommendation-title">{text.recommendationTitle}</h3>
-              <p>{text.recommendationBasedOn}</p>
+      <section className="step-panel completion-panel completion-dashboard">
+        <div className="mini-dashboard-head">
+          <div className="completion-hero dashboard-hero">
+            <div className="completion-success-icon" aria-hidden="true">
+              <CheckCircle2 size={36} />
+            </div>
+            <div className="completion-copy">
+              <span>{text.dashboardMiniTitle}</span>
+              <h2 id="setup-step-title">{text.completionTitle}</h2>
+              <p>{text.dashboardMiniSubtitle}</p>
             </div>
           </div>
-          <div className="recommendation-list">
-            {recommendations.map(item => (
-              <article key={item.title}>
-                <CheckCircle2 size={16} aria-hidden="true" />
+
+          <aside className="next-action-card">
+            <span>{text.nextStepTitle}</span>
+            <strong>{text.goDashboard}</strong>
+            <p>{text.nextStepBody}</p>
+            <small>{text.dashboardPrimaryHint}</small>
+          </aside>
+        </div>
+
+        <section className="dashboard-metrics" aria-label={text.financialPulse}>
+          <DashboardMetric icon={Banknote} title={text.expectedMonthlyIncome} value={formatSetupMoney(activeSummary.incomeTotal, defaultCurrency, lang)} detail={activeSummary.income > 0 ? text.incomeCardDesc : text.noIncomeCardDesc} tone="income" />
+          <DashboardMetric icon={TrendingUp} title={text.expectedRemaining} value={formatSetupMoney(activeSummary.expectedRemaining, defaultCurrency, lang)} detail={text.remainingCardDesc} tone="remaining" />
+          <DashboardMetric icon={Percent} title={text.surplusRatio} value={activeSummary.incomeTotal > 0 ? formatSetupPercent(surplusRatio * 100, lang) : text.notEnoughForEstimate} detail={text.savingPercentCardDesc} tone="saving" />
+          <DashboardMetric icon={ReceiptText} title={text.expenseRatio} value={activeSummary.incomeTotal > 0 ? formatSetupPercent(expenseRatio * 100, lang) : text.notEnoughForEstimate} detail={activeSummary.expenses > 0 ? text.expensesCardDesc : text.reportNoData} tone="expenses" />
+        </section>
+
+        <div className="completion-dashboard-grid">
+          <div className="dashboard-main-column">
+            <section className="mini-section" aria-labelledby="plan-snapshot-title">
+              <div className="mini-section-head">
                 <div>
-                  <strong>{item.title}</strong>
-                  <span>{item.meta}</span>
+                  <span>{text.financialPulse}</span>
+                  <h3 id="plan-snapshot-title">{text.planSnapshotTitle}</h3>
                 </div>
-              </article>
-            ))}
+                <p>{text.planSnapshotSubtitle}</p>
+              </div>
+              <div className="completion-summary-grid">
+                <SummaryCard icon={CircleDollarSign} label={text.summaryCurrency} value={defaultCurrency} description={text.currencyCardDesc} tone="currency" />
+                <SummaryCard
+                  icon={Banknote}
+                  label={text.expectedMonthlyIncome}
+                  value={formatSetupMoney(activeSummary.incomeTotal, defaultCurrency, lang)}
+                  description={activeSummary.income > 0 ? text.incomeCardDesc : text.noIncomeCardDesc}
+                  tone="income"
+                />
+                <SummaryCard
+                  icon={TrendingUp}
+                  label={text.expectedRemaining}
+                  value={formatSetupMoney(activeSummary.expectedRemaining, defaultCurrency, lang)}
+                  description={text.remainingCardDesc}
+                  tone="remaining"
+                />
+                <SummaryCard
+                  icon={Percent}
+                  label={text.recommendedSavingPercent}
+                  value={activeSummary.incomeTotal > 0 ? formatSetupPercent(activeSummary.recommendedSavingPercent, lang) : text.notEnoughForEstimate}
+                  description={text.savingPercentCardDesc}
+                  tone="saving"
+                />
+                <SummaryCard icon={ReceiptText} label={text.addedExpenses} value={formatSetupNumber(activeSummary.expenses, lang)} description={text.expensesCardDesc} tone="count" />
+                <SummaryCard icon={LineChart} label={text.addedInvestments} value={formatSetupNumber(activeSummary.investments, lang)} description={text.investmentsCardDesc} tone="count" />
+                <SummaryCard icon={Target} label={text.addedGoals} value={formatSetupNumber(activeSummary.goals, lang)} description={text.goalsCardDesc} tone="count" />
+                <SummaryCard icon={BriefcaseBusiness} label={text.addedProjects} value={formatSetupNumber(activeSummary.projects, lang)} description={text.projectsCardDesc} tone="count" />
+                <SummaryCard icon={PiggyBank} label={text.addedSavings} value={formatSetupNumber(activeSummary.savings, lang)} description={text.savingsCardDesc} tone="count" />
+                <SummaryCard icon={Wallet} label={text.additionalIncomeSources} value={formatSetupNumber(activeSummary.additionalIncomeSources, lang)} description={text.additionalIncomeCardDesc} tone="count" />
+              </div>
+            </section>
+
+            <section className="recommendation-panel" aria-labelledby="setup-recommendation-title">
+              <div className="recommendation-head">
+                <Sparkles size={22} aria-hidden="true" />
+                <div>
+                  <h3 id="setup-recommendation-title">{text.recommendationTitle}</h3>
+                  <p>{text.recommendationBasedOn}</p>
+                </div>
+              </div>
+              <div className="recommendation-list">
+                {recommendations.map(item => (
+                  <article key={item.title}>
+                    <CheckCircle2 size={16} aria-hidden="true" />
+                    <div>
+                      <strong>{item.title}</strong>
+                      <span>{item.meta}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
           </div>
+
+          <aside className="dashboard-side-column">
+            <article className="goal-estimate-card">
+              <CalendarCheck size={22} aria-hidden="true" />
+              <div>
+                <small>{text.firstGoalCompletion}</small>
+                <strong>{goalEstimateValue}</strong>
+                <p>{goalEstimateDescription}</p>
+              </div>
+            </article>
+
+            <section className="data-health-card" aria-labelledby="data-health-title">
+              <div className="data-health-head">
+                <ListChecks size={20} aria-hidden="true" />
+                <div>
+                  <h3 id="data-health-title">{text.dataHealthTitle}</h3>
+                  <p>{text.dataHealthSubtitle}</p>
+                </div>
+              </div>
+              <div className="data-health-list">
+                {readinessItems.map(item => (
+                  <article className={item.ready ? 'ready' : item.optional ? 'optional' : 'missing'} key={item.label}>
+                    <CheckCircle2 size={16} aria-hidden="true" />
+                    <span>{item.label}</span>
+                    <strong>{item.ready ? text.readyStatus : item.optional ? text.optional : text.needsMoreData}</strong>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="report-teaser-card">
+              <Flag size={20} aria-hidden="true" />
+              <div>
+                <strong>{text.viewInitialReport}</strong>
+                <p>{text.reportMiniHint}</p>
+              </div>
+            </section>
+          </aside>
+        </div>
+
+        <section className="completion-note">
+          <ShieldCheck size={18} aria-hidden="true" />
+          <p>{text.completionDescription}</p>
         </section>
 
         <div className="finish-actions completion-actions">
@@ -2059,7 +2232,10 @@ export default function SetupPage() {
           {focus.charity && <button type="button" onClick={() => router.push('/charity')}>{text.openCharity}</button>}
           <button type="button" onClick={openMoreData}>{text.addMoreData}</button>
           <button type="button" onClick={() => setShowInitialReport(true)}>{text.viewInitialReport}</button>
-          <button type="button" className="primary" onClick={completeAndGoDashboard} disabled={saving}>{saving ? text.saving : text.goDashboard}</button>
+          <button type="button" className="primary" onClick={completeAndGoDashboard} disabled={saving}>
+            {saving ? text.saving : text.goDashboard}
+            {dir === 'rtl' ? <ArrowLeft size={16} /> : <ArrowRight size={16} />}
+          </button>
         </div>
 
         {showInitialReport && (
@@ -2121,10 +2297,11 @@ function ProgressPanel({
     optional: string;
   };
 }) {
+  const optionalSteps = new Set<Step>([5, 6, 7]);
   return (
     <section className="progress-panel">
       <div className="progress-panel-head">
-        <ListChecks size={20} aria-hidden="true" />
+        <ListChecks size={18} aria-hidden="true" />
         <div>
           <h3>{labels.title}</h3>
           <p>{labels.subtitle}</p>
@@ -2134,32 +2311,56 @@ function ProgressPanel({
         <strong>{step === 8 ? labels.complete : `${progress}%`}</strong>
         <span aria-hidden="true"><i style={{ width: `${progress}%` }} /></span>
       </div>
-      <details className="progress-details" open>
+      <details className="progress-details" open={step === 8}>
         <summary>
           <span>{labels.listTitle}</span>
           <ChevronDown size={16} aria-hidden="true" />
         </summary>
         <ol>
-          {steps.map((item, index) => {
-            const typed = index as Step;
-            const optional = typed === 5 || typed === 6 || typed === 7;
-            const status = step === 8 && typed === 8 ? 'completed' : statuses[typed];
-            const state = status === 'completed' ? 'done' : status === 'current' ? 'active' : status === 'optional' ? 'optional' : 'upcoming';
-            const stateLabel = state === 'done' ? labels.completed : state === 'active' ? labels.current : optional ? labels.optional : labels.upcoming;
+          {steps.map((label, index) => {
+            const stepId = index as Step;
+            const isDone = step === 8 ? true : statuses[stepId] === 'completed' || statuses[stepId] === 'skipped';
+            const isActive = step === stepId;
+            const statusText = isDone ? labels.completed : isActive ? labels.current : labels.upcoming;
             return (
-              <li key={item} className={state}>
+              <li className={`${isDone ? 'done' : ''} ${isActive ? 'active' : ''} ${optionalSteps.has(stepId) ? 'optional' : ''}`} key={label}>
                 <span className="progress-row-icon">
-                  {state === 'done' ? <CheckCircle2 size={15} aria-hidden="true" /> : index + 1}
+                  {isDone ? <CheckCircle2 size={14} /> : <span>{index + 1}</span>}
                 </span>
-                <b>{item}</b>
-                {optional && <em>{labels.optional}</em>}
-                <small>{stateLabel}</small>
+                <b>{label}</b>
+                <small>{statusText}</small>
+                {optionalSteps.has(stepId) && <em>{labels.optional}</em>}
               </li>
             );
           })}
         </ol>
       </details>
     </section>
+  );
+}
+
+function DashboardMetric({
+  icon: Icon,
+  title,
+  value,
+  detail,
+  tone,
+}: {
+  icon: LucideIcon;
+  title: string;
+  value: string;
+  detail: string;
+  tone: string;
+}) {
+  return (
+    <article className={`dashboard-metric ${tone}`}>
+      <span className="metric-icon"><Icon size={20} aria-hidden="true" /></span>
+      <div>
+        <small>{title}</small>
+        <strong>{value}</strong>
+        <p>{detail}</p>
+      </div>
+    </article>
   );
 }
 
