@@ -1,3 +1,5 @@
+import type { MarketCurrencySource } from '@/lib/market/marketCurrency';
+
 export type MarketAssetType = 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity' | 'gold' | 'index';
 export type MarketTrend = 'bullish' | 'neutral' | 'bearish';
 export type MarketRiskLevel = 'low' | 'medium' | 'high';
@@ -30,14 +32,20 @@ export type MarketAnalysis = {
   providerSymbol?: string;
   name: string;
   assetType: MarketAssetType;
-  currency?: string;
+  currency?: string | null;
+  currencySource?: MarketCurrencySource;
+  exchange?: string;
+  country?: string;
+  market?: string;
+  lastUpdated?: string;
   latestPrice: number;
   changePercent: number;
   quote?: {
     price: number;
     change: number;
     changePercent: number;
-    currency: string;
+    currency: string | null;
+    currencySource?: MarketCurrencySource;
     timestamp: string;
   };
   fundamentals?: Record<string, unknown>;
@@ -92,6 +100,7 @@ export type MarketSearchItem = {
   exchange?: string;
   country?: string;
   currency?: string;
+  currencySource?: MarketCurrencySource;
   providerSymbol?: string;
 };
 

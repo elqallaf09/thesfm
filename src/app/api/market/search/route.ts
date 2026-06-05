@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { proxySearch } from '@/lib/market/openbbProxy';
+import { resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeAssetType, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
 import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbolResolver';
 
@@ -27,15 +28,27 @@ function cleanSearchTerm(value: string) {
   return value.trim().replace(/[%,]/g, '').slice(0, 64);
 }
 
-function mapMarketSymbol(row: MarketSymbolRow): MarketSearchItem & { currency?: string } {
+function mapMarketSymbol(row: MarketSymbolRow): MarketSearchItem {
+  const symbol = row.symbol.toUpperCase();
+  const providerSymbol = row.provider_symbol.toUpperCase();
+  const assetType = normalizeAssetType(row.asset_type);
+  const resolvedCurrency = resolveMarketCurrency({
+    providerCurrency: row.currency,
+    symbol,
+    providerSymbol,
+    exchange: row.exchange,
+    country: row.country,
+    assetType,
+  });
   return {
-    symbol: row.symbol.toUpperCase(),
-    providerSymbol: row.provider_symbol.toUpperCase(),
+    symbol,
+    providerSymbol,
     name: row.name,
-    assetType: normalizeAssetType(row.asset_type),
+    assetType,
     exchange: row.exchange ?? undefined,
     country: row.country ?? undefined,
-    currency: row.currency ?? undefined,
+    currency: resolvedCurrency.currency ?? undefined,
+    currencySource: resolvedCurrency.source,
   };
 }
 

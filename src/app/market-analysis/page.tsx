@@ -14,6 +14,7 @@ import { currencyDisplaySymbol, getCurrency } from '@/lib/currencies';
 import { formatCurrency } from '@/lib/locale';
 import { useCurrency } from '@/lib/useCurrency';
 import { generateEducationalMarketSummary, type EducationalSummaryLanguage } from '@/lib/market/generateEducationalMarketSummary';
+import { formatMarketPrice, marketCurrencyLabel, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeEconomicEvents, type EconomicImpact, type NormalizedEconomicEvent } from '@/lib/market/normalizeEconomicEvents';
 import type { AssetProfileResponse } from '@/lib/market/fetchAssetProfile';
 import type { MarketAiInsight, MarketAnalysis, MarketAssetType, MarketHistoryPoint, MarketResult, MarketSearchItem } from '@/lib/market/marketService';
@@ -23,8 +24,8 @@ import { getActiveOverlapIds, getTradingSessionsState, isHighLiquidityPeriod, TR
 
 type MarketServiceState = 'checking' | 'connected' | 'degraded' | 'slow' | 'not_configured' | 'unavailable';
 type MarketViewAnalysis = MarketAnalysis & { source?: string; fallback?: boolean; fallbackReason?: string; openbbService?: MarketServiceState };
-type WatchlistItem = { id?: string; symbol: string; assetType: MarketAssetType; name?: string | null; createdAt?: string | null };
-type SavedAlert = { id?: string; symbol: string; assetType: MarketAssetType; alertType: AlertType; threshold: number; createdAt?: string | null };
+type WatchlistItem = { id?: string; symbol: string; assetType: MarketAssetType; name?: string | null; providerSymbol?: string | null; currency?: string | null; exchange?: string | null; country?: string | null; createdAt?: string | null };
+type SavedAlert = { id?: string; symbol: string; assetType: MarketAssetType; alertType: AlertType; threshold: number; currency?: string | null; exchange?: string | null; country?: string | null; createdAt?: string | null };
 type AlertType = 'above' | 'below' | 'change_exceeds' | 'rsi_above' | 'rsi_below';
 type SelectedMarketAsset = {
   symbol: string;
@@ -32,6 +33,8 @@ type SelectedMarketAsset = {
   name?: string;
   assetType: MarketAssetType;
   exchange?: string;
+  country?: string;
+  currency?: string | null;
 };
 type PortfolioInvestment = {
   id: string;
@@ -59,6 +62,9 @@ type MarketPerformanceItem = {
   symbol: string;
   name: string;
   price: number;
+  currency?: string | null;
+  exchange?: string | null;
+  country?: string | null;
   change_1d: number | null;
   change_1w: number | null;
   change_1m: number | null;
@@ -277,17 +283,15 @@ function pipCalculatorWarningKey(type: PipCalculatorAssetType) {
   return `market_pip_value_warning_${type}`;
 }
 
-function money(value: number, currency = 'USD') {
-  const maximumFractionDigits = value > 1000 ? 0 : 2;
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      maximumFractionDigits,
-    }).format(value);
-  } catch {
-    return `${currency} ${value.toLocaleString('en-US', { maximumFractionDigits })}`;
-  }
+function money(value: number, currency?: string | null, options?: { locale?: string | null; exchange?: string | null; symbol?: string | null; includeKuwaitDinarEquivalent?: boolean }) {
+  return formatMarketPrice({
+    price: value,
+    currency,
+    exchange: options?.exchange,
+    symbol: options?.symbol,
+    locale: options?.locale ?? 'ar',
+    includeKuwaitDinarEquivalent: options?.includeKuwaitDinarEquivalent,
+  });
 }
 
 function percent(value: number) {
@@ -596,14 +600,27 @@ function normalizeAssetSearchResult(result: Partial<MarketSearchItem> & Record<s
 
   if (!symbol && !name) return null;
 
+  const assetType = normalizeAssetType(result.assetType ?? result.asset_type ?? result.type);
+  const exchange = cleanSearchText(result.exchange ?? result.market ?? result.venue ?? result.mic) || undefined;
+  const country = cleanSearchText(result.country) || undefined;
+  const currency = resolveMarketCurrency({
+    providerCurrency: result.currency,
+    symbol,
+    providerSymbol,
+    exchange,
+    country,
+    assetType,
+  });
+
   return {
     symbol: symbol ?? name.toUpperCase(),
     providerSymbol,
     name: name || symbol || '',
-    assetType: normalizeAssetType(result.assetType ?? result.asset_type ?? result.type),
-    exchange: cleanSearchText(result.exchange ?? result.market ?? result.venue ?? result.mic) || undefined,
-    country: cleanSearchText(result.country) || undefined,
-    currency: cleanSearchText(result.currency) || undefined,
+    assetType,
+    exchange,
+    country,
+    currency: currency.currency ?? undefined,
+    currencySource: currency.source,
     provider: cleanSearchText(result.provider ?? result.source) || 'OpenBB',
   };
 }
@@ -648,18 +665,29 @@ function normalizeSearchItem(item: MarketSearchItem): MarketSearchSuggestion {
 
 function suggestionToMarketItem(symbol: string): MarketSearchItem {
   const normalized = normalizeMarketSymbolInput(symbol, 'all');
+  const assetType = normalized.valid ? normalized.assetType : DEFAULT_MARKET_TYPE;
+  const providerSymbol = normalized.valid ? normalized.providerSymbol : symbol;
+  const exchange = normalized.valid && normalized.assetType === 'forex'
+    ? 'FX'
+    : normalized.valid && normalized.assetType === 'crypto'
+      ? 'Crypto'
+      : normalized.valid && normalized.assetType === 'gold'
+        ? 'COMEX'
+        : undefined;
+  const currency = resolveMarketCurrency({
+    symbol,
+    providerSymbol,
+    exchange,
+    assetType,
+  });
   return {
     symbol,
-    providerSymbol: normalized.valid ? normalized.providerSymbol : symbol,
+    providerSymbol,
     name: symbol,
-    assetType: normalized.valid ? normalized.assetType : DEFAULT_MARKET_TYPE,
-    exchange: normalized.valid && normalized.assetType === 'forex'
-      ? 'FX'
-      : normalized.valid && normalized.assetType === 'crypto'
-        ? 'Crypto'
-        : normalized.valid && normalized.assetType === 'gold'
-          ? 'COMEX'
-          : undefined,
+    assetType,
+    exchange,
+    currency: currency.currency ?? undefined,
+    currencySource: currency.source,
   };
 }
 
@@ -720,6 +748,10 @@ function normalizeWatchlistRow(row: Record<string, unknown>): WatchlistItem {
     symbol: String(row.symbol ?? '').toUpperCase(),
     assetType: normalizeAssetType(row.asset_type ?? row.assetType),
     name: typeof row.name === 'string' ? row.name : null,
+    providerSymbol: typeof row.provider_symbol === 'string' ? row.provider_symbol : typeof row.providerSymbol === 'string' ? row.providerSymbol : null,
+    currency: typeof row.currency === 'string' ? row.currency : null,
+    exchange: typeof row.exchange === 'string' ? row.exchange : null,
+    country: typeof row.country === 'string' ? row.country : null,
     createdAt: typeof row.created_at === 'string' ? row.created_at : null,
   };
 }
@@ -731,6 +763,9 @@ function normalizeAlertRow(row: Record<string, unknown>): SavedAlert {
     assetType: normalizeAssetType(row.asset_type ?? row.assetType),
     alertType: normalizeAlertType(row.alert_type ?? row.alertType),
     threshold: parseNumber(row.threshold),
+    currency: typeof row.currency === 'string' ? row.currency : null,
+    exchange: typeof row.exchange === 'string' ? row.exchange : null,
+    country: typeof row.country === 'string' ? row.country : null,
     createdAt: typeof row.created_at === 'string' ? row.created_at : null,
   };
 }
@@ -752,6 +787,12 @@ function normalizeAlertType(value: unknown): AlertType {
   const normalized = String(value ?? '').trim();
   if (normalized === 'below' || normalized === 'change_exceeds' || normalized === 'rsi_above' || normalized === 'rsi_below') return normalized;
   return 'above';
+}
+
+function formatSavedAlertThreshold(alert: SavedAlert, locale: string) {
+  if (alert.alertType === 'change_exceeds') return `${formatNumber(alert.threshold, 2)}%`;
+  if (alert.alertType === 'rsi_above' || alert.alertType === 'rsi_below') return formatNumber(alert.threshold, 0);
+  return money(alert.threshold, alert.currency, { locale, exchange: alert.exchange, symbol: alert.symbol });
 }
 
 function readLocalList<T>(key: string): T[] {
@@ -1271,6 +1312,15 @@ export default function MarketAnalysisPage() {
       name: selectedInput?.name,
       assetType: normalizeAssetType(selectedInput?.assetType ?? normalizedType),
       exchange: selectedInput?.exchange,
+      country: selectedInput?.country,
+      currency: resolveMarketCurrency({
+        providerCurrency: selectedInput?.currency,
+        symbol: displaySymbol,
+        providerSymbol: selectedInput?.providerSymbol ?? requestSymbol,
+        exchange: selectedInput?.exchange,
+        country: selectedInput?.country,
+        assetType: normalizeAssetType(selectedInput?.assetType ?? normalizedType),
+      }).currency,
     };
     setSelectedAsset(selectedMeta);
     setQuery(displaySymbol);
@@ -1281,6 +1331,9 @@ export default function MarketAnalysisPage() {
         displaySymbol: selectedMeta.symbol,
       });
       if (selectedMeta.name) params.set('name', selectedMeta.name);
+      if (selectedMeta.exchange) params.set('exchange', selectedMeta.exchange);
+      if (selectedMeta.country) params.set('country', selectedMeta.country);
+      if (selectedMeta.currency) params.set('currency', selectedMeta.currency);
       let result: MarketResultWithMeta | null = null;
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
@@ -1335,9 +1388,43 @@ export default function MarketAnalysisPage() {
           symbol: selectedMeta.symbol,
           providerSymbol: result.providerSymbol ?? selectedMeta.providerSymbol,
           name: selectedMeta.name ?? result.name,
+          exchange: result.exchange ?? selectedMeta.exchange,
+          country: result.country ?? selectedMeta.country,
+          currency: result.currency ?? selectedMeta.currency,
           assetType: normalizedType,
         };
         setAnalysis(nextAnalysis);
+        setSelectedAsset(current => current && current.symbol === selectedMeta.symbol && current.assetType === selectedMeta.assetType
+          ? {
+            ...current,
+            providerSymbol: nextAnalysis.providerSymbol ?? current.providerSymbol,
+            exchange: nextAnalysis.exchange ?? current.exchange,
+            country: nextAnalysis.country ?? current.country,
+            currency: nextAnalysis.currency ?? current.currency,
+          }
+          : current);
+        setWatchlist(previous => previous.map(item => item.symbol === selectedMeta.symbol && item.assetType === selectedMeta.assetType
+          ? {
+            ...item,
+            providerSymbol: nextAnalysis.providerSymbol ?? item.providerSymbol ?? selectedMeta.providerSymbol,
+            currency: nextAnalysis.currency ?? item.currency ?? selectedMeta.currency,
+            exchange: nextAnalysis.exchange ?? item.exchange ?? selectedMeta.exchange,
+            country: nextAnalysis.country ?? item.country ?? selectedMeta.country,
+          }
+          : item));
+        if (user && !isGuest) {
+          void supabase
+            .from('market_watchlist')
+            .update({
+              provider_symbol: nextAnalysis.providerSymbol ?? selectedMeta.providerSymbol ?? selectedMeta.symbol,
+              currency: nextAnalysis.currency ?? selectedMeta.currency ?? null,
+              exchange: nextAnalysis.exchange ?? selectedMeta.exchange ?? null,
+              country: nextAnalysis.country ?? selectedMeta.country ?? null,
+            })
+            .eq('user_id', user.id)
+            .eq('symbol', selectedMeta.symbol)
+            .eq('asset_type', selectedMeta.assetType);
+        }
         void requestAiInsight(nextAnalysis);
         if (result.cached) setNotice(t('market_cached_data'));
       } else {
@@ -1366,7 +1453,7 @@ export default function MarketAnalysisPage() {
       setSlowLoading(false);
       setLoading(false);
     }
-  }, [requestAiInsight, t]);
+  }, [isGuest, requestAiInsight, t, user]);
 
   const historySymbol = analysis?.symbol ?? '';
   const historyProviderSymbol = analysis?.providerSymbol ?? historySymbol;
@@ -1629,12 +1716,12 @@ export default function MarketAnalysisPage() {
       const [watchlistResult, alertsResult, portfolioResult] = await Promise.allSettled([
         supabase
           .from('market_watchlist')
-          .select('id, symbol, asset_type, name, created_at')
+          .select('id, symbol, provider_symbol, asset_type, name, currency, exchange, country, created_at')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false }),
         supabase
           .from('market_price_alerts')
-          .select('id, symbol, asset_type, alert_type, threshold, created_at')
+          .select('id, symbol, asset_type, alert_type, threshold, currency, exchange, country, created_at')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false }),
         supabase
@@ -1694,10 +1781,14 @@ export default function MarketAnalysisPage() {
       .upsert({
         user_id: user.id,
         symbol: item.symbol,
+        provider_symbol: item.providerSymbol ?? item.symbol,
         asset_type: item.assetType,
         name: item.name ?? item.symbol,
+        currency: item.currency ?? null,
+        exchange: item.exchange ?? null,
+        country: item.country ?? null,
       }, { onConflict: 'user_id,symbol,asset_type' })
-      .select('id, symbol, asset_type, name, created_at')
+      .select('id, symbol, provider_symbol, asset_type, name, currency, exchange, country, created_at')
       .single();
 
     if (saveError) {
@@ -1727,11 +1818,15 @@ export default function MarketAnalysisPage() {
       return;
     }
 
+    const alertCurrency = analysis.currency ?? analysis.quote?.currency ?? selectedAsset?.currency ?? null;
     const payload: SavedAlert = {
       symbol: analysis.symbol,
       assetType: analysis.assetType,
       alertType,
       threshold,
+      currency: alertCurrency,
+      exchange: analysis.exchange ?? selectedAsset?.exchange ?? null,
+      country: analysis.country ?? selectedAsset?.country ?? null,
       createdAt: new Date().toISOString(),
     };
 
@@ -1751,8 +1846,11 @@ export default function MarketAnalysisPage() {
         asset_type: payload.assetType,
         alert_type: payload.alertType,
         threshold: payload.threshold,
+        currency: payload.currency ?? null,
+        exchange: payload.exchange ?? null,
+        country: payload.country ?? null,
       })
-      .select('id, symbol, asset_type, alert_type, threshold, created_at')
+      .select('id, symbol, asset_type, alert_type, threshold, currency, exchange, country, created_at')
       .single();
 
     if (saveError) {
@@ -1762,7 +1860,7 @@ export default function MarketAnalysisPage() {
 
     setAlerts(previous => [normalizeAlertRow(data as Record<string, unknown>), ...previous]);
     setNotice(t('market_alert_saved'));
-  }, [alertThreshold, alertType, alerts, analysis, isGuest, t, user]);
+  }, [alertThreshold, alertType, alerts, analysis, isGuest, selectedAsset?.country, selectedAsset?.currency, selectedAsset?.exchange, t, user]);
 
   const analyzeSearchSelection = useCallback(async (item?: MarketSearchItem) => {
     const cleanQuery = query.trim();
@@ -1800,12 +1898,21 @@ export default function MarketAnalysisPage() {
       const normalizedInput = normalizeMarketSymbolInput(cleanQuery, assetType);
       if (normalizedInput.valid) {
         const validInput = normalizedInput as Extract<ReturnType<typeof normalizeMarketSymbolInput>, { valid: true }>;
+        const exchange = validInput.assetType === 'forex' ? 'FX' : validInput.assetType === 'crypto' ? 'Crypto' : validInput.assetType === 'gold' ? 'COMEX' : undefined;
+        const currency = resolveMarketCurrency({
+          symbol: validInput.displaySymbol ?? validInput.symbol,
+          providerSymbol: validInput.providerSymbol,
+          exchange,
+          assetType: validInput.assetType,
+        });
         selectedItem = {
           symbol: validInput.displaySymbol ?? validInput.symbol,
           providerSymbol: validInput.providerSymbol,
           name: validInput.displaySymbol ?? validInput.symbol,
           assetType: validInput.assetType,
-          exchange: validInput.assetType === 'forex' ? 'FX' : validInput.assetType === 'crypto' ? 'Crypto' : validInput.assetType === 'gold' ? 'COMEX' : undefined,
+          exchange,
+          currency: currency.currency ?? undefined,
+          currencySource: currency.source,
           provider: 'THE SFM',
         };
       } else {
@@ -1838,6 +1945,8 @@ export default function MarketAnalysisPage() {
       name: selectedItem.name,
       assetType: selectedItem.assetType,
       exchange: selectedItem.exchange,
+      country: selectedItem.country,
+      currency: selectedItem.currency,
     });
   }, [assetType, query, requestAnalysis, searchResults, t]);
 
@@ -1918,7 +2027,28 @@ export default function MarketAnalysisPage() {
   const invalidWhatIfAmount = hasWhatIfInput && !hasWhatIfAmount;
   const estimatedUnits = selected?.latestPrice ? whatIfValue / selected.latestPrice : 0;
   const loadingLabel = slowLoading ? t('market_service_waking') : notice || t('market_loading_data');
-  const selectedCurrency = selected?.currency ?? selected?.quote?.currency ?? 'USD';
+  const selectedCurrency = selected?.currency ?? selected?.quote?.currency ?? selectedAsset?.currency ?? null;
+  const selectedExchange = selected?.exchange ?? selectedAsset?.exchange ?? null;
+  const selectedCountry = selected?.country ?? selectedAsset?.country ?? null;
+  const selectedMarketSymbol = selected?.symbol ?? selectedAsset?.symbol ?? null;
+  const selectedCurrencyLabel = marketCurrencyLabel(selectedCurrency, lang);
+  const selectedMoney = useCallback(
+    (value: number, extra?: { includeKuwaitDinarEquivalent?: boolean }) => money(value, selectedCurrency, {
+      locale: lang,
+      exchange: selectedExchange,
+      symbol: selectedMarketSymbol,
+      includeKuwaitDinarEquivalent: extra?.includeKuwaitDinarEquivalent,
+    }),
+    [lang, selectedCurrency, selectedExchange, selectedMarketSymbol],
+  );
+  const assetMoney = useCallback(
+    (asset: Pick<MarketAnalysis, 'currency' | 'quote' | 'exchange' | 'symbol'>, value: number) => money(value, asset.currency ?? asset.quote?.currency ?? null, {
+      locale: lang,
+      exchange: asset.exchange,
+      symbol: asset.symbol,
+    }),
+    [lang],
+  );
   const selectedHasOhlc = Boolean(selected?.history?.some(point => hasCompleteOhlc(point)));
   const scenarioCurrencyMeta = getCurrency(scenarioCurrency);
   const scenarioCurrencyOption = SCENARIO_CURRENCY_OPTIONS.find(option => option.code === scenarioCurrency) ?? SCENARIO_CURRENCY_OPTIONS[0];
@@ -1965,7 +2095,9 @@ export default function MarketAnalysisPage() {
       hasFundamentals,
       marketDataSource: selected.source ?? selected.provider ?? selected.fundamentalsSource ?? null,
       currency: selectedCurrency,
+      exchange: selectedExchange,
       scenarioAmount: hasWhatIfAmount ? whatIfValue : null,
+      scenarioCurrency,
       estimatedUnits: hasWhatIfAmount ? estimatedUnits : null,
     });
   }, [
@@ -1976,6 +2108,8 @@ export default function MarketAnalysisPage() {
     localizedAssetName,
     selected,
     selectedCurrency,
+    selectedExchange,
+    scenarioCurrency,
     whatIfValue,
   ]);
   const decision = useMemo(() => {
@@ -2090,9 +2224,9 @@ export default function MarketAnalysisPage() {
   const reportLines = selected ? [
     `${t('market_report_trend')}: ${t(`market_trend_${selected.trend}`)} ${percent(selected.changePercent)}`,
     `${t('market_report_risk')}: ${t(`market_risk_${selected.riskLevel}`)} - ${selected.indicators.volatility.toFixed(1)}%`,
-    `${t('market_report_levels')}: ${t('market_support_zone')} ${money(selected.levels.support, selectedCurrency)} / ${t('market_resistance_zone')} ${money(selected.levels.resistance, selectedCurrency)}`,
+    `${t('market_report_levels')}: ${t('market_support_zone')} ${selectedMoney(selected.levels.support)} / ${t('market_resistance_zone')} ${selectedMoney(selected.levels.resistance)}`,
     `${t('market_report_portfolio')}: ${portfolioMatch ? t('market_asset_in_portfolio') : t('market_asset_not_in_portfolio')}`,
-    `${t('market_report_monitor')}: RSI ${selected.indicators.rsi}, SMA 20 ${money(selected.indicators.sma20, selectedCurrency)}, SMA 50 ${money(selected.indicators.sma50, selectedCurrency)}`,
+    `${t('market_report_monitor')}: RSI ${selected.indicators.rsi}, SMA 20 ${selectedMoney(selected.indicators.sma20)}, SMA 50 ${selectedMoney(selected.indicators.sma50)}`,
   ] : [];
   const marketTabs = useMemo(() => [
     { id: 'analyze', label: t('market_analysis_tab') },
@@ -2167,6 +2301,7 @@ export default function MarketAnalysisPage() {
                       const meta = [
                         item.symbol,
                         item.exchange,
+                        marketCurrencyLabel(item.currency, lang),
                         marketAssetTypeLabel(item.assetType, t),
                         item.provider,
                       ].filter(Boolean).join(' · ');
@@ -2174,6 +2309,7 @@ export default function MarketAnalysisPage() {
                       const readableMeta = [
                         item.symbol,
                         item.exchange,
+                        marketCurrencyLabel(item.currency, lang),
                         marketAssetTypeLabel(item.assetType, t),
                         item.provider,
                       ].filter(Boolean).join(' · ');
@@ -2224,7 +2360,7 @@ export default function MarketAnalysisPage() {
                 <span>{t('market_selected_asset')}</span>
                 <strong dir="ltr">{selected.symbol}</strong>
                 <p>{localizedAssetName ?? selected.name}</p>
-                <em className="market-hero-card-meta" dir="ltr">{money(selected.latestPrice, selectedCurrency)} / {selected.cached ? t('market_cached_data') : t('market_badge_live')}</em>
+                <em className="market-hero-card-meta" dir="ltr">{selectedMoney(selected.latestPrice)} / {selected.cached ? t('market_cached_data') : t('market_badge_live')}</em>
                 <b className={`risk ${selected.riskLevel}`}>{t(`market_risk_${selected.riskLevel}`)}</b>
               </>
             ) : (
@@ -2341,7 +2477,7 @@ export default function MarketAnalysisPage() {
                 </div>
                 <b className={`risk ${asset.riskLevel}`}>{t(`market_risk_${asset.riskLevel}`)}</b>
               </div>
-              <div className="market-price">{money(asset.latestPrice, asset.currency ?? asset.quote?.currency ?? 'USD')}</div>
+              <div className="market-price">{assetMoney(asset, asset.latestPrice)}</div>
               <div className={asset.changePercent >= 0 ? 'change up' : 'change down'}>
                 {asset.changePercent >= 0 ? '+' : ''}{asset.changePercent.toFixed(2)}%
               </div>
@@ -2406,9 +2542,9 @@ export default function MarketAnalysisPage() {
                 <p>{localizedAssetName ?? selected.name}</p>
               </div>
               <div className="stock-price-block">
-                <strong>{money(selected.latestPrice, selectedCurrency)}</strong>
+                <strong>{selectedMoney(selected.latestPrice, { includeKuwaitDinarEquivalent: true })}</strong>
                 <b className={selected.changePercent >= 0 ? 'change up' : 'change down'}>{percent(selected.changePercent)}</b>
-                <small>{t('market_last_updated')}: {lastUpdated || t('market_unavailable')} · {selectedCurrency}</small>
+                <small>{t('market_last_updated')}: {lastUpdated || t('market_unavailable')} · {selectedCurrencyLabel}</small>
               </div>
             </section>
 
@@ -2490,10 +2626,10 @@ export default function MarketAnalysisPage() {
                 ) : null}
 
                 <div className="portfolio-comparison-grid">
-                  <PortfolioComparisonMetric icon={<CircleDollarSign size={18} />} label={t('market_current_price')} value={money(selected.latestPrice, selectedCurrency)} valueDir="ltr" />
-                  <PortfolioComparisonMetric icon={<ShoppingCart size={18} />} label={t('market_purchase_price')} value={portfolioMatch ? money(purchasePrice, selectedCurrency) : t('market_unavailable')} valueDir={portfolioMatch ? 'ltr' : undefined} status={portfolioMatch ? 'default' : 'unavailable'} />
+                  <PortfolioComparisonMetric icon={<CircleDollarSign size={18} />} label={t('market_current_price')} value={selectedMoney(selected.latestPrice)} valueDir="ltr" />
+                  <PortfolioComparisonMetric icon={<ShoppingCart size={18} />} label={t('market_purchase_price')} value={portfolioMatch ? selectedMoney(purchasePrice) : t('market_unavailable')} valueDir={portfolioMatch ? 'ltr' : undefined} status={portfolioMatch ? 'default' : 'unavailable'} />
                   <PortfolioComparisonMetric icon={<Percent size={18} />} label={t('market_gain_loss_percent')} value={portfolioMatch ? percent(unrealizedPct) : t('market_unavailable')} valueDir={portfolioMatch ? 'ltr' : undefined} status={portfolioMatch ? unrealizedPct >= 0 ? 'success' : 'danger' : 'unavailable'} />
-                  <PortfolioComparisonMetric icon={<LineChart size={18} />} label={t('market_unrealized_pl')} value={portfolioMatch ? money(unrealized, selectedCurrency) : t('market_unavailable')} valueDir={portfolioMatch ? 'ltr' : undefined} status={portfolioMatch ? unrealized >= 0 ? 'success' : 'danger' : 'unavailable'} />
+                  <PortfolioComparisonMetric icon={<LineChart size={18} />} label={t('market_unrealized_pl')} value={portfolioMatch ? selectedMoney(unrealized) : t('market_unavailable')} valueDir={portfolioMatch ? 'ltr' : undefined} status={portfolioMatch ? unrealized >= 0 ? 'success' : 'danger' : 'unavailable'} />
                   <PortfolioComparisonMetric icon={<PieChart size={18} />} label={t('market_portfolio_exposure')} value={portfolioMatch ? `${exposure.toFixed(1)}%` : t('market_unavailable')} valueDir={portfolioMatch ? 'ltr' : undefined} status={portfolioMatch ? 'default' : 'unavailable'} />
                   <PortfolioComparisonMetric icon={<ShieldAlert size={18} />} label={t('market_concentration_risk')} value={portfolioMatch ? concentrationRisk : t('market_unavailable')} status={portfolioMatch ? concentrationRiskTone : 'unavailable'} />
                 </div>
@@ -2552,6 +2688,8 @@ export default function MarketAnalysisPage() {
                   chartType={chartType}
                   locale={lang}
                   currency={selectedCurrency}
+                  exchange={selectedExchange}
+                  symbol={selectedMarketSymbol}
                   t={t}
                 />
                 <div className="market-chart-meta">
@@ -2560,18 +2698,18 @@ export default function MarketAnalysisPage() {
                   {chartMeta.source ? <span>{t('market_asset_profile_data_source')}: <b>{chartMeta.source}</b></span> : null}
                 </div>
                 <div className="market-stat-row">
-                  <MarketMetric label={t('market_current_price')} value={money(selected.latestPrice, selectedCurrency)} />
+                  <MarketMetric label={t('market_current_price')} value={selectedMoney(selected.latestPrice)} />
                   <MarketMetric label={t('market_daily_change')} value={`${selected.changePercent >= 0 ? '+' : ''}${selected.changePercent.toFixed(2)}%`} />
                   <MarketMetric label={t('market_trend')} value={t(`market_trend_${selected.trend}`)} icon={trendIcon} />
                 </div>
                 <div className="levels-strip">
-                  <span>{t('market_support_zone')} {money(selected.levels.support, selectedCurrency)} ({distancePercent(selected.levels.support, selected.latestPrice).toFixed(1)}%)</span>
+                  <span>{t('market_support_zone')} {selectedMoney(selected.levels.support)} ({distancePercent(selected.levels.support, selected.latestPrice).toFixed(1)}%)</span>
                   <i>
                     <b style={{ insetInlineStart: '20%' }} />
                     <b className="current" style={{ insetInlineStart: '50%' }} />
                     <b style={{ insetInlineStart: '80%' }} />
                   </i>
-                  <span>{t('market_resistance_zone')} {money(selected.levels.resistance, selectedCurrency)} ({percent(distancePercent(selected.levels.resistance, selected.latestPrice))})</span>
+                  <span>{t('market_resistance_zone')} {selectedMoney(selected.levels.resistance)} ({percent(distancePercent(selected.levels.resistance, selected.latestPrice))})</span>
                 </div>
               </div>
 
@@ -2585,11 +2723,11 @@ export default function MarketAnalysisPage() {
                 </div>
                 <div className="indicator-list">
                   <MarketMetric label="RSI" value={String(selected.indicators.rsi)} />
-                  <MarketMetric label="SMA 20" value={money(selected.indicators.sma20, selectedCurrency)} />
-                  <MarketMetric label="SMA 50" value={money(selected.indicators.sma50, selectedCurrency)} />
+                  <MarketMetric label="SMA 20" value={selectedMoney(selected.indicators.sma20)} />
+                  <MarketMetric label="SMA 50" value={selectedMoney(selected.indicators.sma50)} />
                   <MarketMetric label={t('market_risk_level')} value={`${selected.indicators.volatility.toFixed(1)}%`} />
-                  <MarketMetric label={t('market_support_zone')} value={money(selected.levels.support, selectedCurrency)} />
-                  <MarketMetric label={t('market_resistance_zone')} value={money(selected.levels.resistance, selectedCurrency)} />
+                  <MarketMetric label={t('market_support_zone')} value={selectedMoney(selected.levels.support)} />
+                  <MarketMetric label={t('market_resistance_zone')} value={selectedMoney(selected.levels.resistance)} />
                 </div>
               </aside>
 
@@ -2722,7 +2860,7 @@ export default function MarketAnalysisPage() {
                 <div className="saved-alerts">
                   {alerts.length === 0 ? <p className="market-muted">{t('market_no_data')}</p> : alerts.slice(0, 4).map((alert, index) => (
                     <span key={`${alert.id ?? index}-${alert.symbol}`}>
-                      <b>{alert.symbol} - {t(`market_alert_type_${alert.alertType}`)} {alert.threshold}</b>
+                      <b>{alert.symbol} - {t(`market_alert_type_${alert.alertType}`)} {formatSavedAlertThreshold(alert, lang)}</b>
                       <button type="button" aria-label={t('delete')} onClick={() => void removeAlert(alert, index)}><Trash2 size={13} /></button>
                     </span>
                   ))}
@@ -2786,7 +2924,7 @@ export default function MarketAnalysisPage() {
                   type="button"
                   className="inline-action"
                   disabled={watchlistHasSelected}
-                  onClick={() => void saveWatchlist({ symbol: selected.symbol, assetType: selected.assetType, name: localizedAssetName })}
+                  onClick={() => void saveWatchlist({ symbol: selected.symbol, providerSymbol: selected.providerSymbol ?? selected.symbol, assetType: selected.assetType, name: localizedAssetName, currency: selectedCurrency, exchange: selectedExchange, country: selectedCountry })}
                 >
                   <Plus size={15} />{watchlistHasSelected ? t('market_in_watchlist') : t('market_add_to_watchlist')}
                 </button>
@@ -2801,13 +2939,15 @@ export default function MarketAnalysisPage() {
                         name: asset.name,
                         assetType: asset.assetType,
                         exchange: asset.exchange,
+                        country: asset.country,
+                        currency: asset.currency,
                       })}
                     >
                       {asset.symbol}
                     </button>
                   )) : watchlist.map(asset => (
                     <span key={`${asset.id ?? asset.symbol}-${asset.assetType}`}>
-                      <button type="button" onClick={() => void requestAnalysis(asset.symbol, asset.assetType)}>{asset.symbol}</button>
+                      <button type="button" onClick={() => void requestAnalysis(asset.providerSymbol ?? asset.symbol, asset.assetType, asset)}>{asset.symbol}</button>
                       <button type="button" aria-label={t('delete')} onClick={() => void removeWatchlist(asset)}><Trash2 size={13} /></button>
                     </span>
                   ))}
@@ -2845,7 +2985,7 @@ export default function MarketAnalysisPage() {
                     return (
                       <div key={`table-${asset.symbol}`}>
                         <span>{asset.symbol}</span>
-                        <span>{money(asset.latestPrice, asset.currency ?? asset.quote?.currency ?? 'USD')}</span>
+                        <span>{assetMoney(asset, asset.latestPrice)}</span>
                         <span className={asset.changePercent >= 0 ? 'up' : 'down'}>{percent(asset.changePercent)}</span>
                         <span>{asset.indicators.rsi}</span>
                         <span>{t(`market_risk_${asset.riskLevel}`)}</span>
@@ -2883,7 +3023,7 @@ export default function MarketAnalysisPage() {
                 <div className="saved-alerts">
                   {alerts.length === 0 ? <p className="market-muted">{t('market_no_data')}</p> : alerts.map((alert, index) => (
                     <span key={`${alert.id ?? index}-${alert.symbol}`}>
-                      <b>{alert.symbol} - {t(`market_alert_type_${alert.alertType}`)} {alert.threshold}</b>
+                      <b>{alert.symbol} - {t(`market_alert_type_${alert.alertType}`)} {formatSavedAlertThreshold(alert, lang)}</b>
                       <button type="button" aria-label={t('delete')} onClick={() => void removeAlert(alert, index)}><Trash2 size={13} /></button>
                     </span>
                   ))}
@@ -2904,7 +3044,7 @@ export default function MarketAnalysisPage() {
                   type="button"
                   className="inline-action"
                   disabled={watchlistHasSelected}
-                  onClick={() => void saveWatchlist({ symbol: selected.symbol, assetType: selected.assetType, name: localizedAssetName })}
+                  onClick={() => void saveWatchlist({ symbol: selected.symbol, providerSymbol: selected.providerSymbol ?? selected.symbol, assetType: selected.assetType, name: localizedAssetName, currency: selectedCurrency, exchange: selectedExchange, country: selectedCountry })}
                 >
                   <Plus size={15} />{watchlistHasSelected ? t('market_in_watchlist') : t('market_add_to_watchlist')}
                 </button>
@@ -2919,13 +3059,15 @@ export default function MarketAnalysisPage() {
                         name: asset.name,
                         assetType: asset.assetType,
                         exchange: asset.exchange,
+                        country: asset.country,
+                        currency: asset.currency,
                       })}
                     >
                       {asset.symbol}
                     </button>
                   )) : watchlist.map(asset => (
                     <span key={`${asset.id ?? asset.symbol}-${asset.assetType}`}>
-                      <button type="button" onClick={() => void requestAnalysis(asset.symbol, asset.assetType)}>{asset.symbol}</button>
+                      <button type="button" onClick={() => void requestAnalysis(asset.providerSymbol ?? asset.symbol, asset.assetType, asset)}>{asset.symbol}</button>
                       <button type="button" aria-label={t('delete')} onClick={() => void removeWatchlist(asset)}><Trash2 size={13} /></button>
                     </span>
                   ))}
@@ -2966,7 +3108,7 @@ export default function MarketAnalysisPage() {
                     return (
                       <div key={`focused-table-${asset.symbol}`}>
                         <span>{asset.symbol}</span>
-                        <span>{money(asset.latestPrice, asset.currency ?? asset.quote?.currency ?? 'USD')}</span>
+                        <span>{assetMoney(asset, asset.latestPrice)}</span>
                         <span className={asset.changePercent >= 0 ? 'up' : 'down'}>{percent(asset.changePercent)}</span>
                         <span>{asset.indicators.rsi}</span>
                         <span>{t(`market_risk_${asset.riskLevel}`)}</span>
@@ -5034,7 +5176,7 @@ function TraderToolsDashboard({
       );
     }
 
-    return <PerformanceTable t={t} performance={performance} />;
+    return <PerformanceTable t={t} locale={locale} performance={performance} />;
   };
 
   return (
@@ -5697,13 +5839,15 @@ function FormulaCard({ title, body, example }: { title: string; body: string; ex
   );
 }
 
-function PerformanceTable({ t, performance }: { t: (key: string) => string; performance: ApiListState<MarketPerformanceItem> }) {
+function PerformanceTable({ t, locale, performance }: { t: (key: string) => string; locale: string; performance: ApiListState<MarketPerformanceItem> }) {
   if (performance.loading) return <MarketSectionLoading label={t('market_loading_performance')} />;
   if (performance.items.length === 0) {
     return <EmptyToolState title={t('market_performance_unavailable_title')} body={performance.message || t('market_performance_unavailable_body')} />;
   }
   const sorted = [...performance.items].sort((a, b) => Number(b.change_1d ?? -Infinity) - Number(a.change_1d ?? -Infinity));
-  const displayPrice = (value: number | null | undefined) => Number.isFinite(Number(value)) ? money(Number(value), 'USD') : t('market_unavailable');
+  const displayPrice = (item: MarketPerformanceItem) => Number.isFinite(Number(item.price))
+    ? money(Number(item.price), item.currency ?? null, { locale, exchange: item.exchange, symbol: item.symbol })
+    : t('market_unavailable');
   const displayPercent = (value: number | null | undefined) => Number.isFinite(Number(value)) ? percent(Number(value)) : t('market_unavailable');
   const trendLabel = (value?: string | null) => t(`market_trend_${normalizePerformanceTrend(value)}`);
 
@@ -5727,7 +5871,7 @@ function PerformanceTable({ t, performance }: { t: (key: string) => string; perf
               <tr key={`${item.symbol}-${item.asset_type}`}>
                 <td data-label={t('market_symbol')}><span className="performance-symbol" dir="ltr">{item.symbol}</span></td>
                 <td data-label={t('market_symbol_name')}>{item.name}</td>
-                <td data-label={t('market_current_price')}><span className="performance-value" dir="ltr">{displayPrice(item.price)}</span></td>
+                <td data-label={t('market_current_price')}><span className="performance-value" dir="ltr">{displayPrice(item)}</span></td>
                 <td data-label={t('market_daily_change')}><span className={`performance-value ${Number(item.change_1d) >= 0 ? 'up' : 'down'}`} dir="ltr">{displayPercent(item.change_1d)}</span></td>
                 <td data-label={t('market_weekly_change')}><span className={`performance-value ${Number(item.change_1w) >= 0 ? 'up' : 'down'}`} dir="ltr">{displayPercent(item.change_1w)}</span></td>
                 <td data-label={t('market_monthly_change')}><span className={`performance-value ${Number(item.change_1m) >= 0 ? 'up' : 'down'}`} dir="ltr">{displayPercent(item.change_1m)}</span></td>
@@ -11448,6 +11592,8 @@ function PriceHistoryChart({
   chartType,
   locale,
   currency,
+  exchange,
+  symbol,
   t,
 }: {
   history: MarketHistoryPoint[];
@@ -11456,7 +11602,9 @@ function PriceHistoryChart({
   timeframe: MarketTimeframe;
   chartType: MarketChartType;
   locale: string;
-  currency: string;
+  currency: string | null;
+  exchange?: string | null;
+  symbol?: string | null;
   t: (key: string) => string;
 }) {
   const chartId = useId().replace(/:/g, '');
@@ -11520,6 +11668,7 @@ function PriceHistoryChart({
   const axisValues = [domainMax, domainMin + spread / 2, domainMin];
   const candleWidth = Math.max(3, Math.min(13, (chartRight - chartLeft) / Math.max(activeOhlcPoints.length, 1) * 0.48));
   const tickWidth = Math.max(5, Math.min(11, candleWidth * 0.82));
+  const chartMoney = (value: number) => money(value, currency, { locale, exchange, symbol });
 
   return (
     <div className="price-history-chart" aria-busy={loading}>
@@ -11527,7 +11676,7 @@ function PriceHistoryChart({
         <>
           <div className="price-chart-values">
             <span>{t('market_price_chart')}</span>
-            <strong dir="ltr">{money(last?.close ?? 0, currency)}</strong>
+            <strong dir="ltr">{chartMoney(last?.close ?? 0)}</strong>
           </div>
           <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={t('market_price_chart')} preserveAspectRatio="none">
             <defs>
@@ -11556,7 +11705,7 @@ function PriceHistoryChart({
               const y = index === 0 ? chartTop + 5 : index === 1 ? chartTop + (chartBottom - chartTop) / 2 : chartBottom - 5;
               return (
                 <text key={`axis-${index}`} x={chartRight - 2} y={y} className="price-chart-y-label" textAnchor="end" dominantBaseline="middle">
-                  {money(value, currency)}
+                  {chartMoney(value)}
                 </text>
               );
             })}
@@ -11567,7 +11716,7 @@ function PriceHistoryChart({
                   <path d={path} className="price-chart-line-path" stroke={`url(#${lineGradientId})`} />
                   {points.map((point, index) => (
                     <circle key={`${point.date}-${index}`} cx={xFor(index)} cy={yFor(point.close)} r="9" className="price-chart-hit-point">
-                      <title>{`${formatChartTimestamp(point.date, locale, timeframe)} - ${money(point.close, currency)}`}</title>
+                      <title>{`${formatChartTimestamp(point.date, locale, timeframe)} - ${chartMoney(point.close)}`}</title>
                     </circle>
                   ))}
                   {last ? <circle cx={xFor(points.length - 1)} cy={yFor(last.close)} r="4.5" className="price-chart-last-dot" /> : null}
@@ -11586,10 +11735,10 @@ function PriceHistoryChart({
                     <rect x={x - candleWidth / 2} y={bodyTop} width={candleWidth} height={bodyHeight} rx="2" className="price-candle-body" />
                     <title>{[
                       `${t('market_time')}: ${formatChartTimestamp(point.date, locale, timeframe)}`,
-                      `${t('market_open')}: ${money(point.open, currency)}`,
-                      `${t('market_high')}: ${money(point.high, currency)}`,
-                      `${t('market_low')}: ${money(point.low, currency)}`,
-                      `${t('market_close')}: ${money(point.close, currency)}`,
+                      `${t('market_open')}: ${chartMoney(point.open)}`,
+                      `${t('market_high')}: ${chartMoney(point.high)}`,
+                      `${t('market_low')}: ${chartMoney(point.low)}`,
+                      `${t('market_close')}: ${chartMoney(point.close)}`,
                       point.volume !== null ? `${t('market_volume')}: ${Number(point.volume).toLocaleString('en-US')}` : '',
                     ].filter(Boolean).join('\n')}</title>
                   </g>
@@ -11605,10 +11754,10 @@ function PriceHistoryChart({
                     <line x1={x} x2={x + tickWidth} y1={yFor(point.close)} y2={yFor(point.close)} className="price-ohlc-tick" />
                     <title>{[
                       `${t('market_time')}: ${formatChartTimestamp(point.date, locale, timeframe)}`,
-                      `${t('market_open')}: ${money(point.open, currency)}`,
-                      `${t('market_high')}: ${money(point.high, currency)}`,
-                      `${t('market_low')}: ${money(point.low, currency)}`,
-                      `${t('market_close')}: ${money(point.close, currency)}`,
+                      `${t('market_open')}: ${chartMoney(point.open)}`,
+                      `${t('market_high')}: ${chartMoney(point.high)}`,
+                      `${t('market_low')}: ${chartMoney(point.low)}`,
+                      `${t('market_close')}: ${chartMoney(point.close)}`,
                       point.volume !== null ? `${t('market_volume')}: ${Number(point.volume).toLocaleString('en-US')}` : '',
                     ].filter(Boolean).join('\n')}</title>
                   </g>
@@ -11618,7 +11767,7 @@ function PriceHistoryChart({
           </svg>
           <div className="price-chart-axis">
             <span dir="ltr">{first ? formatChartTimestamp(first.date, locale, timeframe) : ''}</span>
-            <span dir="ltr">{money(min, currency)}</span>
+            <span dir="ltr">{chartMoney(min)}</span>
             <span dir="ltr">{last ? formatChartTimestamp(last.date, locale, timeframe) : ''}</span>
           </div>
         </>

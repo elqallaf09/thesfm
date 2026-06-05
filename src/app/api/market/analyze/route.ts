@@ -14,6 +14,9 @@ export async function GET(request: NextRequest) {
   const result = await proxyAnalyze(searchParams.get('symbol'), searchParams.get('assetType'), {
     displaySymbol: searchParams.get('displaySymbol'),
     name: searchParams.get('name'),
+    exchange: searchParams.get('exchange'),
+    country: searchParams.get('country'),
+    currency: searchParams.get('currency'),
   });
   return NextResponse.json(result, { status: result.success ? 200 : statusForCode(result.code) });
 }
@@ -23,6 +26,9 @@ export async function POST(request: NextRequest) {
   const result = await proxyAnalyze(body?.symbol, body?.assetType, {
     displaySymbol: body?.displaySymbol ?? body?.symbol,
     name: body?.name,
+    exchange: body?.exchange,
+    country: body?.country,
+    currency: body?.currency,
   });
   return NextResponse.json(result, { status: result.success ? 200 : statusForCode(result.code) });
 }

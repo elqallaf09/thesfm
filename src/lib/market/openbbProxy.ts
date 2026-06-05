@@ -7,6 +7,7 @@ import {
   type MarketAssetType,
   type MarketResult,
 } from '@/lib/market/marketService';
+import { resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import symbolDirectory from '../../../openbb-service/data/symbols.json';
 
 const OPENBB_TIMEOUT_MS = 12000;
@@ -210,13 +211,11 @@ function scoreDirectoryItem(item: Record<string, any>, query: string) {
   return 0;
 }
 
-function defaultCurrency(assetType: MarketAssetType, symbol: string) {
-  if (assetType === 'forex' && symbol.length >= 6) return symbol.slice(-3);
-  const directoryCurrency = (symbolDirectory as Array<Record<string, any>>)
-    .find(item => String(item.symbol ?? '').toUpperCase() === symbol.toUpperCase()
-      || String(item.providerSymbol ?? '').toUpperCase() === symbol.toUpperCase())?.currency;
-  if (directoryCurrency) return String(directoryCurrency).toUpperCase();
-  return 'USD';
+function directorySymbol(symbol: string) {
+  const normalized = symbol.toUpperCase();
+  return (symbolDirectory as Array<Record<string, any>>)
+    .find(item => String(item.symbol ?? '').toUpperCase() === normalized
+      || String(item.providerSymbol ?? '').toUpperCase() === normalized);
 }
 
 function searchLocalSymbolDirectory(query: string, assetType?: MarketAssetType) {
@@ -226,15 +225,31 @@ function searchLocalSymbolDirectory(query: string, assetType?: MarketAssetType) 
     .filter(entry => entry.score > 0)
     .sort((a, b) => b.score - a.score || String(a.item.symbol).localeCompare(String(b.item.symbol)))
     .slice(0, 12)
-    .map(({ item }) => ({
-      symbol: String(item.symbol ?? '').toUpperCase(),
-      name: String(item.name ?? item.symbol ?? ''),
-      assetType: normalizeAssetType(item.assetType),
-      exchange: item.exchange ? String(item.exchange) : undefined,
-      country: item.country ? String(item.country) : undefined,
-      currency: item.currency ? String(item.currency) : defaultCurrency(normalizeAssetType(item.assetType), String(item.symbol ?? '').toUpperCase()),
-      providerSymbol: item.providerSymbol ? String(item.providerSymbol).toUpperCase() : String(item.symbol ?? '').toUpperCase(),
-    }));
+    .map(({ item }) => {
+      const assetType = normalizeAssetType(item.assetType);
+      const symbol = String(item.symbol ?? '').toUpperCase();
+      const providerSymbol = item.providerSymbol ? String(item.providerSymbol).toUpperCase() : symbol;
+      const exchange = item.exchange ? String(item.exchange) : undefined;
+      const country = item.country ? String(item.country) : undefined;
+      const currency = resolveMarketCurrency({
+        providerCurrency: item.currency,
+        symbol,
+        providerSymbol,
+        exchange,
+        country,
+        assetType,
+      });
+      return {
+        symbol,
+        name: String(item.name ?? item.symbol ?? ''),
+        assetType,
+        exchange,
+        country,
+        currency: currency.currency ?? undefined,
+        currencySource: currency.source,
+        providerSymbol,
+      };
+    });
 }
 
 function average(values: number[]) {
@@ -329,7 +344,7 @@ async function fetchFinnhubFundamentals(symbol: string) {
   }
 }
 
-function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType, meta?: { fromCache?: boolean; cacheAgeSeconds?: number }): MarketAnalysis | null {
+function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType, meta?: { fromCache?: boolean; cacheAgeSeconds?: number; exchange?: unknown; country?: unknown; providerCurrency?: unknown }): MarketAnalysis | null {
   const data = raw && typeof raw === 'object' ? raw as Record<string, any> : {};
   if (!isRealProviderPayload(data)) return null;
   const history = Array.isArray(data.history) ? data.history : [];
@@ -352,6 +367,20 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
   const riskLevel = ['low', 'medium', 'high'].includes(String(data.riskLevel))
     ? data.riskLevel
     : volatility >= 30 ? 'high' : volatility >= 12 ? 'medium' : 'low';
+  const providerSymbol = data.providerSymbol ? String(data.providerSymbol) : undefined;
+  const directory = directorySymbol(String(data.symbol ?? symbol)) ?? (providerSymbol ? directorySymbol(providerSymbol) : undefined);
+  const exchange = String(data.exchange ?? data.market ?? data.quote?.exchange ?? meta?.exchange ?? directory?.exchange ?? '').trim() || undefined;
+  const country = String(data.country ?? data.quote?.country ?? meta?.country ?? directory?.country ?? '').trim() || undefined;
+  const market = String(data.market ?? data.quote?.market ?? exchange ?? '').trim() || undefined;
+  const lastUpdated = String(data.timestamp ?? data.updatedAt ?? data.quote?.timestamp ?? new Date().toISOString());
+  const resolvedCurrency = resolveMarketCurrency({
+    providerCurrency: data.currency ?? data.quote?.currency ?? meta?.providerCurrency,
+    symbol: data.symbol ?? symbol,
+    providerSymbol: providerSymbol ?? symbol,
+    exchange,
+    country,
+    assetType,
+  });
 
   return {
     success: true,
@@ -360,18 +389,24 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
     source: 'openbb',
     fallback: false,
     symbol: String(data.symbol ?? symbol).toUpperCase(),
-    providerSymbol: data.providerSymbol ? String(data.providerSymbol) : undefined,
+    providerSymbol,
     name: String(data.name ?? `${symbol} Market Asset`),
     assetType,
-    currency: String(data.currency ?? defaultCurrency(assetType, symbol)).toUpperCase(),
+    currency: resolvedCurrency.currency,
+    currencySource: resolvedCurrency.source,
+    exchange,
+    country,
+    market,
+    lastUpdated,
     latestPrice,
     changePercent,
     quote: {
       price: latestPrice,
       change: latestPrice - (closes.at(-2) ?? latestPrice),
       changePercent,
-      currency: String(data.currency ?? defaultCurrency(assetType, symbol)).toUpperCase(),
-      timestamp: String(data.timestamp ?? data.updatedAt ?? new Date().toISOString()),
+      currency: resolvedCurrency.currency,
+      currencySource: resolvedCurrency.source,
+      timestamp: lastUpdated,
     },
     fundamentals: data.fundamentals && typeof data.fundamentals === 'object' ? data.fundamentals : undefined,
     fundamentalsAvailable: hasUsableFundamentals(data.fundamentals),
@@ -431,7 +466,7 @@ export async function proxyHealth() {
 export async function proxyAnalyze(
   symbolInput: unknown,
   assetTypeInput: unknown,
-  metaInput?: { displaySymbol?: unknown; name?: unknown },
+  metaInput?: { displaySymbol?: unknown; name?: unknown; exchange?: unknown; country?: unknown; currency?: unknown },
 ): Promise<MarketResult & { displaySymbol?: string; source?: string; fallback?: boolean; openbbService?: ProxyState }> {
   const normalizedSymbol = normalizeMarketSymbolInput(symbolInput, assetTypeInput);
   if (!normalizedSymbol.valid) {
@@ -456,6 +491,9 @@ export async function proxyAnalyze(
     const enriched = enrichAnalysis(result.data, displaySymbol, assetType, {
       fromCache: result.fromCache,
       cacheAgeSeconds: result.cacheAgeSeconds,
+      exchange: metaInput?.exchange,
+      country: metaInput?.country,
+      providerCurrency: metaInput?.currency,
     });
     if (!enriched) {
       const code = result.data?.fallback === true || result.data?.source === 'mock' ? 'provider_no_data' : 'response_mapping_failed';

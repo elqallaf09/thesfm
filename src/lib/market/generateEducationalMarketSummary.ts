@@ -1,4 +1,5 @@
 import type { MarketAssetType } from '@/lib/market/marketService';
+import { formatMarketPrice } from '@/lib/market/marketCurrency';
 
 export type EducationalSummaryLanguage = 'ar' | 'en' | 'fr';
 
@@ -18,7 +19,9 @@ export type EducationalMarketSummaryInput = {
   hasFundamentals?: boolean;
   marketDataSource?: string | null;
   currency?: string | null;
+  exchange?: string | null;
   scenarioAmount?: number | null;
+  scenarioCurrency?: string | null;
   estimatedUnits?: number | null;
 };
 
@@ -116,17 +119,14 @@ function formatNumber(value: number, language: EducationalSummaryLanguage, maxim
   return new Intl.NumberFormat(localeFor(language), { maximumFractionDigits }).format(value);
 }
 
-function formatMoney(value: number, currency: string | null | undefined, language: EducationalSummaryLanguage) {
-  if (!currency) return formatNumber(value, language, Math.abs(value) >= 1000 ? 0 : 2);
-  try {
-    return new Intl.NumberFormat(localeFor(language), {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: Math.abs(value) >= 1000 ? 0 : 2,
-    }).format(value);
-  } catch {
-    return `${currency} ${formatNumber(value, language, Math.abs(value) >= 1000 ? 0 : 2)}`;
-  }
+function formatNativeMoney(input: EducationalMarketSummaryInput, value: number) {
+  return formatMarketPrice({
+    price: value,
+    currency: input.currency,
+    exchange: input.exchange,
+    symbol: input.symbol,
+    locale: input.language,
+  });
 }
 
 function formatPercent(value: number, language: EducationalSummaryLanguage) {
@@ -137,7 +137,6 @@ export function generateEducationalMarketSummary(input: EducationalMarketSummary
   const language = input.language;
   const copy = COPY[language];
   const symbol = input.symbol || input.assetName || '';
-  const currency = input.currency || 'USD';
   const hasPrice = isFiniteNumber(input.latestPrice) && input.latestPrice > 0;
   const hasChange = isFiniteNumber(input.dailyChangePercent);
   const hasRsi = isFiniteNumber(input.rsi);
@@ -160,7 +159,7 @@ export function generateEducationalMarketSummary(input: EducationalMarketSummary
   }
 
   const overview = hasPrice
-    ? copy.price(symbol, formatMoney(input.latestPrice as number, currency, language), hasChange ? formatPercent(input.dailyChangePercent as number, language) : formatPercent(0, language))
+    ? copy.price(symbol, formatNativeMoney(input, input.latestPrice as number), hasChange ? formatPercent(input.dailyChangePercent as number, language) : formatPercent(0, language))
     : copy.noPrice(symbol);
 
   const keyObservations: string[] = [];
@@ -175,19 +174,19 @@ export function generateEducationalMarketSummary(input: EducationalMarketSummary
   }
   if (hasSma) {
     keyObservations.push(copy.sma(
-      formatMoney(input.sma20 as number, currency, language),
-      formatMoney(input.sma50 as number, currency, language),
+      formatNativeMoney(input, input.sma20 as number),
+      formatNativeMoney(input, input.sma50 as number),
     ));
   }
   if (hasLevels) {
     keyObservations.push(copy.levels(
-      formatMoney(input.support as number, currency, language),
-      formatMoney(input.resistance as number, currency, language),
+      formatNativeMoney(input, input.support as number),
+      formatNativeMoney(input, input.resistance as number),
     ));
   }
   if (hasScenario) {
     keyObservations.push(copy.scenario(
-      formatMoney(input.scenarioAmount as number, currency, language),
+      formatMarketPrice({ price: input.scenarioAmount as number, currency: input.scenarioCurrency ?? input.currency, locale: language }),
       formatNumber(input.estimatedUnits as number, language, 4),
     ));
   }
