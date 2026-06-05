@@ -88,6 +88,7 @@
 .headerActions button,
 .loadMoreWrap button,
 .sectorCard button,
+.sectorCard a,
 .stateBox button {
   min-height: 44px;
   border: 0;
@@ -112,6 +113,8 @@
 .loadMoreWrap button:focus-visible,
 .sectorCard button:hover,
 .sectorCard button:focus-visible,
+.sectorCard a:hover,
+.sectorCard a:focus-visible,
 .stateBox button:hover,
 .stateBox button:focus-visible {
   outline: none;
@@ -123,6 +126,7 @@
 .headerActions button:active,
 .loadMoreWrap button:active,
 .sectorCard button:active,
+.sectorCard a:active,
 .stateBox button:active {
   transform: translateY(0) scale(0.985);
 }
@@ -1010,12 +1014,14 @@
   font-weight: 950;
 }
 
-.sectorCard button {
+.sectorCard button,
+.sectorCard a {
   justify-self: start;
   min-height: 38px;
   border-radius: 13px;
   padding-inline: 13px;
   font-size: 12px;
+  text-decoration: none;
 }
 
 .disclaimer {

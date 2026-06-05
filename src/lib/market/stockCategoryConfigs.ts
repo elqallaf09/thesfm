@@ -176,6 +176,8 @@ export const STOCK_CATEGORY_CONFIGS: StockCategoryConfig[] = [
       { symbol: 'NVDA', name: 'NVIDIA', filter: 'artificial_intelligence', filters: ['artificial_intelligence', 'semiconductors'] },
       { symbol: 'AMD', name: 'Advanced Micro Devices', filter: 'semiconductors', filters: ['semiconductors', 'artificial_intelligence'], aliases: ['AMD'] },
       { symbol: 'AVGO', name: 'Broadcom', filter: 'semiconductors' },
+      { symbol: 'AAPL', name: 'Apple', filter: 'digital_consumption', filters: ['digital_consumption', 'software'], aliases: ['Apple Intelligence', 'iPhone'] },
+      { symbol: 'META', name: 'Meta Platforms', filter: 'artificial_intelligence', filters: ['artificial_intelligence', 'digital_consumption'], aliases: ['Meta', 'Facebook', 'Instagram'] },
       { symbol: 'MSFT', name: 'Microsoft', filter: 'artificial_intelligence', filters: ['artificial_intelligence', 'cloud', 'software'], aliases: ['Microsoft Copilot'] },
       { symbol: 'GOOGL', name: 'Alphabet', filter: 'artificial_intelligence', filters: ['artificial_intelligence', 'cloud', 'digital_consumption'], aliases: ['Google', 'Gemini'] },
       { symbol: 'PYPL', name: 'PayPal', filter: 'fintech' },
