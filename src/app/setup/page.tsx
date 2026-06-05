@@ -147,6 +147,7 @@ const COPY = {
     expenseRatio: 'نسبة المصروفات',
     surplusRatio: 'نسبة الفائض',
     reportMiniHint: 'افتح ملخصاً سريعاً قبل الانتقال إلى التقارير.',
+    expectedSurplus: 'الفائض المتوقع',
     expectedRemaining: 'المتبقي من دخلك المتوقع',
     expectedMonthlyIncome: 'الدخل الشهري المتوقع',
     recommendedSavingPercent: 'أفضل نسبة ادخار لك',
@@ -336,6 +337,7 @@ const COPY = {
     expenseRatio: 'Expense ratio',
     surplusRatio: 'Surplus ratio',
     reportMiniHint: 'Open a quick summary before going to reports.',
+    expectedSurplus: 'Expected surplus',
     expectedRemaining: 'Expected remaining salary',
     expectedMonthlyIncome: 'Expected monthly income',
     recommendedSavingPercent: 'Recommended saving percentage',
@@ -525,6 +527,7 @@ const COPY = {
     expenseRatio: 'Ratio de dépenses',
     surplusRatio: 'Ratio de surplus',
     reportMiniHint: 'Ouvrez un résumé rapide avant d’accéder aux rapports.',
+    expectedSurplus: 'Surplus estimé',
     expectedRemaining: 'Salaire restant estimé',
     expectedMonthlyIncome: 'Revenu mensuel estimé',
     recommendedSavingPercent: 'Pourcentage d’épargne recommandé',
@@ -1702,25 +1705,28 @@ export default function SetupPage() {
         :global(.setup-page .progress-details li.done b){color:#047857}
         :global(.setup-page .progress-details li.active){background:rgba(24,212,212,.07);border-color:rgba(24,212,212,.28)}
         :global(.setup-page .progress-details li.optional){background:#F8FBFF}
-        .completion-panel{gap:14px}
-        .completion-dashboard{background:linear-gradient(180deg,#FFFFFF,#F8FBFF)}
+        .completion-panel{gap:16px}
+        .completion-dashboard{background:linear-gradient(180deg,#FFFFFF,#F8FBFF);border-color:rgba(29,140,255,.12);box-shadow:0 18px 46px rgba(3,18,37,.08)}
         .completion-compact{max-width:100%;align-content:start}
-        .completion-hero{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center;border:1px solid rgba(16,185,129,.18);background:linear-gradient(135deg,#F0FDF4,#FFFFFF 54%,#EAF6FF);border-radius:22px;padding:18px 20px;box-shadow:0 14px 34px rgba(3,18,37,.07);min-width:0}
-        .completion-success-icon{width:64px;height:64px;border-radius:20px;display:grid;place-items:center;background:linear-gradient(135deg,#10B981,#18D4D4);color:#FFFFFF;box-shadow:0 14px 30px rgba(16,185,129,.20);flex:0 0 auto}
+        .completion-hero{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center;border:1px solid rgba(16,185,129,.18);background:radial-gradient(circle at 8% 0,rgba(24,212,212,.18),transparent 28%),linear-gradient(135deg,#F0FDF4,#FFFFFF 58%,#EAF6FF);border-radius:24px;padding:18px 20px;box-shadow:0 14px 34px rgba(3,18,37,.07);min-width:0}
+        .completion-success-icon{width:66px;height:66px;border-radius:22px;display:grid;place-items:center;background:linear-gradient(135deg,#10B981,#18D4D4);color:#FFFFFF;box-shadow:0 14px 30px rgba(16,185,129,.20);flex:0 0 auto}
         .completion-copy{min-width:0}
         .completion-copy span{display:inline-flex;border-radius:999px;background:#ECFDF5;color:#047857;padding:5px 10px;font-size:12px;font-weight:950}
         .completion-copy h2{margin:9px 0 6px;color:var(--sfm-primary-dark);font-size:clamp(24px,3vw,34px);line-height:1.2;font-weight:950}
         .completion-copy p{margin:0;max-width:760px;color:var(--sfm-muted-readable);font-size:14px;line-height:1.75;font-weight:850}
-        .completion-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;min-width:0}
-        .completion-summary-grid :global(.completion-summary-card){display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px;align-items:start;border:1px solid rgba(29,140,255,.12);background:linear-gradient(180deg,#FFFFFF,#F8FBFF);border-radius:16px;padding:13px;min-width:0;min-height:116px;box-shadow:0 10px 24px rgba(3,18,37,.05)}
-        .completion-summary-grid :global(.summary-icon){width:38px;height:38px;border-radius:13px;display:grid;place-items:center;background:rgba(29,140,255,.10);color:var(--sfm-primary);flex:0 0 auto}
+        .completion-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;min-width:0}
+        .completion-summary-grid :global(.completion-summary-card){display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;border:1px solid rgba(29,140,255,.12);background:linear-gradient(180deg,#FFFFFF,#F8FBFF);border-radius:18px;padding:15px;min-width:0;min-height:122px;box-shadow:0 12px 28px rgba(3,18,37,.055)}
+        .completion-summary-grid :global(.summary-icon){width:42px;height:42px;border-radius:15px;display:grid;place-items:center;background:rgba(29,140,255,.10);color:var(--sfm-primary);flex:0 0 auto}
         .completion-summary-grid :global(.completion-summary-card.currency .summary-icon){background:#EEF2FF;color:#3730A3}
         .completion-summary-grid :global(.completion-summary-card.income .summary-icon){background:#ECFDF5;color:#047857}
         .completion-summary-grid :global(.completion-summary-card.saving .summary-icon){background:#FFFBEB;color:#B45309}
         .completion-summary-grid :global(.completion-summary-card small){display:block;color:var(--sfm-muted-readable);font-size:12px;font-weight:950;line-height:1.35}
-        .completion-summary-grid :global(.completion-summary-card strong){display:block;margin-top:5px;color:var(--sfm-midnight);font-size:clamp(18px,2vw,24px);line-height:1.2;font-weight:950;overflow-wrap:anywhere;unicode-bidi:isolate}
-        .completion-summary-grid :global(.completion-summary-card p){margin:6px 0 0;color:var(--sfm-muted-readable);font-size:11px;font-weight:820;line-height:1.55}
-        .recommendation-panel{display:grid;gap:11px;border:1px solid rgba(24,212,212,.20);background:linear-gradient(135deg,rgba(234,246,255,.92),rgba(24,212,212,.08));border-radius:20px;padding:14px 16px;min-width:0}
+        .completion-summary-grid :global(.completion-summary-card strong){display:block;margin-top:6px;color:var(--sfm-midnight);font-size:clamp(19px,2vw,25px);line-height:1.18;font-weight:950;overflow-wrap:anywhere;unicode-bidi:isolate}
+        .completion-summary-grid :global(.completion-summary-card p){margin:7px 0 0;color:var(--sfm-muted-readable);font-size:11px;font-weight:820;line-height:1.55}
+        .financial-snapshot-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,0.95fr);gap:14px;align-items:center;border:1px solid rgba(29,140,255,.14);background:linear-gradient(135deg,#FFFFFF,#F8FBFF);border-radius:22px;padding:16px;box-shadow:0 12px 30px rgba(3,18,37,.055);min-width:0}
+        .snapshot-copy{min-width:0}.snapshot-copy span{display:inline-flex;border-radius:999px;background:rgba(29,140,255,.09);color:var(--sfm-primary);padding:5px 10px;font-size:12px;font-weight:950}.snapshot-copy h3{margin:8px 0 5px;color:var(--sfm-primary-dark);font-size:19px;font-weight:950}.snapshot-copy p{margin:0;color:var(--sfm-muted-readable);font-size:13px;font-weight:850;line-height:1.65}
+        .snapshot-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;min-width:0}.snapshot-metric{min-width:0;border:1px solid rgba(29,140,255,.10);background:#FFFFFF;border-radius:16px;padding:12px;box-shadow:0 8px 18px rgba(3,18,37,.04)}.snapshot-metric.primary{border-color:rgba(24,212,212,.26);background:linear-gradient(135deg,rgba(24,212,212,.12),#FFFFFF)}.snapshot-metric small{display:block;color:var(--sfm-muted-readable);font-size:11px;font-weight:950;line-height:1.35}.snapshot-metric strong{display:block;margin-top:6px;color:var(--sfm-midnight);font-size:clamp(18px,2vw,23px);font-weight:950;line-height:1.16;overflow-wrap:anywhere;unicode-bidi:isolate}
+        .recommendation-panel{display:grid;gap:12px;border:1px solid rgba(24,212,212,.22);background:linear-gradient(135deg,rgba(234,246,255,.96),rgba(24,212,212,.08));border-radius:22px;padding:16px;min-width:0;box-shadow:0 12px 30px rgba(3,18,37,.055)}
         .recommendation-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start}
         .recommendation-head>svg{width:38px;height:38px;border-radius:13px;background:var(--sfm-midnight);color:var(--sfm-soft-cyan);padding:9px}
         .recommendation-head h3{margin:0;color:var(--sfm-primary-dark);font-size:18px;font-weight:950}
@@ -1730,9 +1736,13 @@ export default function SetupPage() {
         .recommendation-list article>svg{color:#10B981;margin-top:2px}
         .recommendation-list strong{display:block;color:var(--sfm-midnight);font-size:13px;line-height:1.5}
         .recommendation-list span{display:block;margin-top:3px;color:var(--sfm-muted-readable);font-size:12px;font-weight:820;line-height:1.5}
-        .completion-actions{justify-content:flex-end;border-top:1px solid rgba(29,140,255,.10);padding-top:12px;margin-top:0}
-        .completion-actions button{box-shadow:0 8px 20px rgba(3,18,37,.05)}
-        .completion-actions button.primary{min-width:min(280px,100%);min-height:52px;font-size:15px}
+        .recommendation-single{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start;border:1px solid rgba(29,140,255,.10);background:#FFFFFF;border-radius:16px;padding:12px;min-width:0}.recommendation-single>svg{color:#10B981;margin-top:2px}.recommendation-single strong{display:block;color:var(--sfm-midnight);font-size:14px;line-height:1.55}.recommendation-single span{display:block;margin-top:4px;color:var(--sfm-muted-readable);font-size:12px;font-weight:850;line-height:1.55}
+        .recommendation-surplus{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid rgba(16,185,129,.20);background:#ECFDF5;border-radius:16px;padding:11px 13px;min-width:0}.recommendation-surplus small{color:#047857;font-size:12px;font-weight:950}.recommendation-surplus strong{color:#047857;font-size:clamp(18px,2vw,24px);font-weight:950;overflow-wrap:anywhere;unicode-bidi:isolate}
+        .completion-actions{justify-content:flex-end;border-top:1px solid rgba(29,140,255,.10);padding-top:14px;margin-top:0}
+        .completion-actions button{min-height:52px;border-radius:16px;padding:0 18px;box-shadow:0 8px 20px rgba(3,18,37,.05)}
+        .completion-actions button.primary{min-width:min(300px,100%);font-size:15px;box-shadow:0 16px 36px rgba(29,140,255,.22)}
+        .completion-actions .secondary-action{border-color:rgba(29,140,255,.24);background:#FFFFFF}
+        .completion-actions .tertiary-action{background:rgba(255,255,255,.62)}
         .report-modal-backdrop{position:fixed;inset:0;z-index:160;display:grid;place-items:center;background:rgba(3,18,37,.52);backdrop-filter:blur(10px);padding:18px}
         .initial-report-modal{width:min(860px,100%);max-height:min(88dvh,860px);overflow:auto;background:#FFFFFF;border:1px solid rgba(29,140,255,.18);border-radius:24px;padding:18px;box-shadow:0 34px 90px rgba(3,18,37,.30);display:grid;gap:14px}
         .report-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.report-modal-head span{display:block;color:var(--sfm-primary);font-size:12px;font-weight:950}.report-modal-head h3{margin:4px 0;color:var(--sfm-midnight);font-size:26px;font-weight:950}.report-modal-head p{margin:0;color:var(--sfm-muted-readable);line-height:1.7;font-weight:850}.report-modal-head button{width:40px;height:40px;border-radius:13px;border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);color:var(--sfm-midnight);display:grid;place-items:center;cursor:pointer;flex:0 0 auto}
@@ -1755,9 +1765,19 @@ export default function SetupPage() {
         :global(.dark) .setup-page .report-grid :global(.report-card){background:#13243A;border-color:#1D3050}
         :global(.dark) .setup-page .completion-dashboard{background:linear-gradient(180deg,#0B1728,#0F1E32)}
         :global(.dark) .setup-page .completion-hero{background:linear-gradient(135deg,rgba(16,185,129,.12),#0F1E32 52%,#0B1728);border-color:rgba(47,214,192,.24);box-shadow:0 22px 54px rgba(0,0,0,.28)}
+        :global(.dark) .setup-page .financial-snapshot-card{background:linear-gradient(135deg,#0F1E32,#0B1728);border-color:#1D3050;box-shadow:0 18px 42px rgba(0,0,0,.24)}
+        :global(.dark) .setup-page .snapshot-metric{background:#13243A;border-color:#1D3050}
+        :global(.dark) .setup-page .snapshot-metric.primary{background:linear-gradient(135deg,rgba(47,214,192,.14),#13243A);border-color:rgba(47,214,192,.26)}
+        :global(.dark) .setup-page .recommendation-single{background:#13243A;border-color:#1D3050}
+        :global(.dark) .setup-page .recommendation-surplus{background:rgba(16,185,129,.12);border-color:rgba(47,214,192,.24)}
+        :global(.dark) .setup-page .recommendation-surplus small,
+        :global(.dark) .setup-page .recommendation-surplus strong{color:#8EEAE5}
         :global(.dark) .setup-page .completion-copy h2,
+        :global(.dark) .setup-page .snapshot-copy h3,
+        :global(.dark) .setup-page .snapshot-metric strong,
         :global(.dark) .setup-page .completion-summary-grid :global(.completion-summary-card strong),
         :global(.dark) .setup-page .recommendation-head h3,
+        :global(.dark) .setup-page .recommendation-single strong,
         :global(.dark) .setup-page .recommendation-list strong,
         :global(.dark) .setup-page .report-modal-head h3,
         :global(.dark) .setup-page .report-grid :global(.report-card strong),
@@ -1765,9 +1785,12 @@ export default function SetupPage() {
         :global(.dark) .setup-page .report-recommendation p,
         :global(.dark) .setup-page :global(.progress-details li b){color:#F8FBFF}
         :global(.dark) .setup-page .completion-copy p,
+        :global(.dark) .setup-page .snapshot-copy p,
+        :global(.dark) .setup-page .snapshot-metric small,
         :global(.dark) .setup-page .completion-summary-grid :global(.completion-summary-card small),
         :global(.dark) .setup-page .completion-summary-grid :global(.completion-summary-card p),
         :global(.dark) .setup-page .recommendation-head p,
+        :global(.dark) .setup-page .recommendation-single span,
         :global(.dark) .setup-page .recommendation-list span,
         :global(.dark) .setup-page .report-modal-head p,
         :global(.dark) .setup-page .report-grid :global(.report-card small),
@@ -1783,9 +1806,9 @@ export default function SetupPage() {
         .focus-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.focus-card{border:1px solid rgba(29,140,255,.16);border-radius:16px;background:var(--sfm-light-card);padding:14px;text-align:start;display:grid;gap:8px;color:var(--sfm-midnight);font-weight:950;cursor:pointer}.focus-card.active{background:var(--sfm-primary-dark);color:var(--sfm-soft-cyan);border-color:rgba(167,243,240,.28)}
         .setup-error{border:1px solid rgba(185,28,28,.16);background:#FEF2F2;color:#B91C1C;border-radius:14px;padding:12px;font-weight:950}
         .wizard-actions{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid rgba(29,140,255,.12);padding-top:18px;margin-top:auto}.primary-btn,.ghost-btn{min-height:52px;border-radius:16px;padding:0 20px;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease,border-color .18s ease,background .18s ease}.primary-btn{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 14px 34px rgba(29,140,255,.22)}.primary-btn:not(:disabled):hover{transform:translateY(-2px);filter:saturate(1.06) brightness(1.04);box-shadow:0 18px 42px rgba(24,212,212,.28)}.primary-btn:not(:disabled):active{transform:translateY(0) scale(.985)}.primary-btn:focus-visible,.ghost-btn:focus-visible,.finish-actions button:focus-visible{outline:3px solid rgba(24,212,212,.32);outline-offset:3px}.ghost-btn{border:1px solid rgba(29,140,255,.20);background:var(--sfm-light-card);color:var(--sfm-midnight)}.ghost-btn:not(:disabled):hover{transform:translateY(-1px);border-color:rgba(24,212,212,.34);background:var(--sfm-surface-hover);box-shadow:0 10px 26px rgba(3,18,37,.08)}.primary-btn:disabled,.ghost-btn:disabled{opacity:.65;cursor:not-allowed;transform:none;box-shadow:none}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-        .finish-actions{display:flex;gap:10px;flex-wrap:wrap}.finish-actions button{min-height:46px;border:1px solid rgba(29,140,255,.18);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-midnight);padding:0 15px;font-weight:950;font-family:inherit;cursor:pointer}.finish-actions button.primary{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}
-        @media(max-width:1024px){.setup-page .sfm-dashboard-page-shell{margin-inline-start:0}.setup-hero,.step-layout{grid-template-columns:1fr}.progress-orb{width:124px;height:124px}.step-side{position:static}.setup-plan ul{grid-template-columns:repeat(2,minmax(0,1fr))}.completion-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.recommendation-list{grid-template-columns:1fr}}
-        @media(max-width:720px){:global(.setup-page .sfm-dashboard-page-shell){padding-inline:16px!important}.setup-top{align-items:flex-start}.setup-hero{grid-template-columns:1fr;border-radius:22px;padding:20px}.setup-hero.finish-hero .progress-orb,.progress-orb{width:108px;height:108px}.setup-card{padding:14px;border-radius:22px}.setup-card-final{padding:12px}.form-grid,.expense-grid,.summary-grid,.focus-grid,.setup-plan ul,.completion-summary-grid,.report-grid{grid-template-columns:1fr}.wizard-actions,.choice-row,.welcome-actions,.finish-actions,.income-decision-actions,.report-actions{display:grid;grid-template-columns:1fr}.primary-btn,.ghost-btn,.choice-btn,.toggle-card,.finish-actions button,.income-action-btn,.report-actions button{width:100%;min-width:0}.income-decision-card{padding:22px 16px;border-radius:24px}.income-decision-icon{width:68px;height:68px}.recurring-income-card{grid-template-columns:minmax(0,1fr) auto;align-items:start;padding:14px;border-radius:18px}.step-main{padding:14px;min-height:auto}.step-heading h2{font-size:22px}.completion-hero{grid-template-columns:1fr;text-align:center;justify-items:center;border-radius:20px;padding:18px}.completion-copy h2{font-size:24px}.completion-summary-grid :global(.completion-summary-card){grid-template-columns:minmax(0,1fr);text-align:start}.recommendation-head{grid-template-columns:minmax(0,1fr)}.report-modal-backdrop{align-items:end;padding:10px}.initial-report-modal{max-height:88dvh;border-radius:22px 22px 0 0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}.report-modal-head{display:grid}.report-modal-head button{justify-self:end}:global(.setup-page .progress-details ol){max-height:280px}:global(.setup-page .progress-details li){grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon title" "icon state" "icon badge"}:global(.setup-page .progress-details li em){justify-self:start}.report-grid :global(.report-card){grid-template-columns:minmax(0,1fr)}}
+        .finish-actions{display:flex;gap:10px;flex-wrap:wrap}.finish-actions button{min-height:46px;border:1px solid rgba(29,140,255,.18);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-midnight);padding:0 15px;font-weight:950;font-family:inherit;cursor:pointer}.finish-actions button.primary{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.completion-actions{justify-content:flex-end;border-top:1px solid rgba(29,140,255,.10);padding-top:14px;margin-top:0}.completion-actions button{min-height:52px;border-radius:16px;padding:0 18px;box-shadow:0 8px 20px rgba(3,18,37,.05)}.completion-actions button.primary{min-width:min(300px,100%);font-size:15px;box-shadow:0 16px 36px rgba(29,140,255,.22)}.completion-actions .secondary-action{border-color:rgba(29,140,255,.24);background:#FFFFFF}.completion-actions .tertiary-action{background:rgba(255,255,255,.62)}
+        @media(max-width:1024px){.setup-page .sfm-dashboard-page-shell{margin-inline-start:0}.setup-hero,.step-layout,.financial-snapshot-card{grid-template-columns:1fr}.progress-orb{width:124px;height:124px}.step-side{position:static}.setup-plan ul{grid-template-columns:repeat(2,minmax(0,1fr))}.completion-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.recommendation-list{grid-template-columns:1fr}}
+        @media(max-width:720px){:global(.setup-page .sfm-dashboard-page-shell){padding-inline:16px!important}.setup-top{align-items:flex-start}.setup-hero{grid-template-columns:1fr;border-radius:22px;padding:20px}.setup-hero.finish-hero .progress-orb,.progress-orb{width:108px;height:108px}.setup-card{padding:14px;border-radius:22px}.setup-card-final{padding:12px}.form-grid,.expense-grid,.summary-grid,.focus-grid,.setup-plan ul,.completion-summary-grid,.snapshot-metrics,.report-grid{grid-template-columns:1fr}.wizard-actions,.choice-row,.welcome-actions,.finish-actions,.income-decision-actions,.report-actions{display:grid;grid-template-columns:1fr}.primary-btn,.ghost-btn,.choice-btn,.toggle-card,.finish-actions button,.income-action-btn,.report-actions button{width:100%;min-width:0}.income-decision-card{padding:22px 16px;border-radius:24px}.income-decision-icon{width:68px;height:68px}.recurring-income-card{grid-template-columns:minmax(0,1fr) auto;align-items:start;padding:14px;border-radius:18px}.step-main{padding:14px;min-height:auto}.step-heading h2{font-size:22px}.completion-hero{grid-template-columns:1fr;text-align:center;justify-items:center;border-radius:20px;padding:18px}.completion-copy h2{font-size:24px}.completion-summary-grid :global(.completion-summary-card){grid-template-columns:minmax(0,1fr);text-align:start}.financial-snapshot-card,.recommendation-panel{border-radius:20px;padding:14px}.recommendation-head,.recommendation-single{grid-template-columns:minmax(0,1fr)}.recommendation-surplus{display:grid;justify-items:start}.report-modal-backdrop{align-items:end;padding:10px}.initial-report-modal{max-height:88dvh;border-radius:22px 22px 0 0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}.report-modal-head{display:grid}.report-modal-head button{justify-self:end}:global(.setup-page .progress-details ol){max-height:280px}:global(.setup-page .progress-details li){grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon title" "icon state" "icon badge"}:global(.setup-page .progress-details li em){justify-self:start}.report-grid :global(.report-card){grid-template-columns:minmax(0,1fr)}}
       `}</style>
     </div>
   );
@@ -2067,9 +2090,14 @@ export default function SetupPage() {
 
     const activeSummary = summary ?? buildSetupSummary();
     const recommendations = recommendationItems(activeSummary);
-    const visibleRecommendations = recommendations.slice(0, 3);
     const savedDataPoints = activeSummary.income + activeSummary.expenses + activeSummary.goals + activeSummary.savings + activeSummary.investments + activeSummary.projects;
+    const primaryRecommendation = recommendations[0] ?? {
+      title: text.recBalanced,
+      meta: text.recBalancedMeta.replace('{count}', formatSetupNumber(savedDataPoints, lang)),
+    };
     const goalEstimateValue = activeSummary.firstGoalCompletionDate ? formatSetupDate(activeSummary.firstGoalCompletionDate, lang) : text.noGoalEstimateTitle;
+    const surplusValue = formatSetupMoney(activeSummary.expectedRemaining, defaultCurrency, lang);
+    const savingPercentValue = formatSetupPercent(activeSummary.recommendedSavingPercent, lang);
 
     return (
       <section className="step-panel completion-panel completion-dashboard completion-compact">
@@ -2102,25 +2130,47 @@ export default function SetupPage() {
           />
           <SummaryCard
             icon={PiggyBank}
-            label={text.addedSavings}
+            label={text.reportSavings}
             value={formatSetupMoney(activeSummary.savingsTotal, defaultCurrency, lang)}
             description={text.savingsCardDesc}
             tone="saving"
           />
           <SummaryCard
             icon={LineChart}
-            label={text.addedInvestments}
+            label={text.reportInvestments}
             value={formatSetupMoney(activeSummary.investmentTotal, defaultCurrency, lang)}
             description={text.investmentsCardDesc}
             tone="count"
           />
           <SummaryCard
             icon={Target}
-            label={text.addedGoals}
+            label={text.reportGoals}
             value={formatSetupNumber(activeSummary.goals, lang)}
             description={text.goalsCardDesc}
             tone="count"
           />
+        </section>
+
+        <section className="financial-snapshot-card" aria-labelledby="setup-snapshot-title">
+          <div className="snapshot-copy">
+            <span>{text.financialPulse}</span>
+            <h3 id="setup-snapshot-title">{text.planSnapshotTitle}</h3>
+            <p>{text.planSnapshotSubtitle}</p>
+          </div>
+          <div className="snapshot-metrics">
+            <article className="snapshot-metric primary">
+              <small>{text.expectedSurplus}</small>
+              <strong>{surplusValue}</strong>
+            </article>
+            <article className="snapshot-metric">
+              <small>{text.recommendedSavingPercent}</small>
+              <strong>{savingPercentValue}</strong>
+            </article>
+            <article className="snapshot-metric">
+              <small>{text.dataPoints}</small>
+              <strong>{formatSetupNumber(savedDataPoints, lang)}</strong>
+            </article>
+          </div>
         </section>
 
         <section className="recommendation-panel compact-recommendation" aria-labelledby="setup-recommendation-title">
@@ -2131,28 +2181,27 @@ export default function SetupPage() {
               <p>{text.recommendationBasedOn}</p>
             </div>
           </div>
-          <div className="recommendation-list concise-recommendation-list">
-            {visibleRecommendations.map(item => (
-              <article key={item.title}>
-                <CheckCircle2 size={16} aria-hidden="true" />
-                <div>
-                  <strong>{item.title}</strong>
-                  <span>{item.meta}</span>
-                </div>
-              </article>
-            ))}
-          </div>
+          <article className="recommendation-single">
+            <CheckCircle2 size={18} aria-hidden="true" />
+            <div>
+              <strong>{primaryRecommendation.title}</strong>
+              <span>{primaryRecommendation.meta}</span>
+            </div>
+          </article>
+          {activeSummary.expectedRemaining > 0 && (
+            <div className="recommendation-surplus">
+              <small>{text.expectedSurplus}</small>
+              <strong>{surplusValue}</strong>
+            </div>
+          )}
         </section>
 
         <div className="finish-actions completion-actions">
-          {focus.zakat && <button type="button" onClick={() => router.push('/zakat')}>{text.openZakat}</button>}
-          {focus.charity && <button type="button" onClick={() => router.push('/charity')}>{text.openCharity}</button>}
-          <button type="button" onClick={openMoreData}>{text.addMoreData}</button>
-          <button type="button" onClick={() => setShowInitialReport(true)}>{text.viewInitialReport}</button>
           <button type="button" className="primary" onClick={completeAndGoDashboard} disabled={saving}>
             {saving ? text.saving : text.goDashboard}
-            {dir === 'rtl' ? <ArrowLeft size={16} /> : <ArrowRight size={16} />}
           </button>
+          <button type="button" className="secondary-action" onClick={openMoreData}>{text.addMoreData}</button>
+          <button type="button" className="tertiary-action" onClick={() => setShowInitialReport(true)}>{text.viewInitialReport}</button>
         </div>
 
         {showInitialReport && (
