@@ -370,7 +370,7 @@ const SECTOR_GUIDES = [
     id: 'oil_gas' as EnergyFilterId,
     watch: 'oil_gas' as WatchlistFilter,
     icon: Activity,
-    symbols: ['COP', 'EOG', 'OXY'],
+    symbols: ['OXY', 'EOG', 'COP'],
     title: { ar: 'الاستكشاف والإنتاج', en: 'Exploration and production', fr: 'Exploration-production' },
     body: { ar: 'شركات أكثر ارتباطاً بسعر النفط والغاز وتكاليف الحفر والإنتاج.', en: 'More directly tied to oil and gas prices and production costs.', fr: 'Plus liées aux prix et aux coûts de production.' },
   },
@@ -378,7 +378,7 @@ const SECTOR_GUIDES = [
     id: 'oil_services' as EnergyFilterId,
     watch: 'oil_services' as WatchlistFilter,
     icon: Factory,
-    symbols: ['SLB', 'HAL', 'BKR'],
+    symbols: ['BKR', 'HAL', 'SLB'],
     title: { ar: 'الخدمات النفطية', en: 'Oilfield services', fr: 'Services pétroliers' },
     body: { ar: 'معدات وخدمات الحفر والإنتاج، وتتأثر بإنفاق شركات الطاقة الرأسمالي.', en: 'Drilling and production services tied to capital spending.', fr: 'Services liés au capex des producteurs.' },
   },
@@ -386,7 +386,7 @@ const SECTOR_GUIDES = [
     id: 'natural_gas' as EnergyFilterId,
     watch: 'pipelines' as WatchlistFilter,
     icon: Building2,
-    symbols: ['ENB', 'KMI', 'TRP', 'LNG'],
+    symbols: ['LNG', 'TRP', 'KMI', 'ENB'],
     title: { ar: 'خطوط الأنابيب والبنية التحتية', en: 'Pipelines and infrastructure', fr: 'Pipelines et infrastructure' },
     body: { ar: 'نقل ومعالجة الغاز والنفط، وغالباً ما ترتبط بعقود وتدفقات نقدية طويلة الأجل.', en: 'Transport and processing networks often tied to long-term cash flows.', fr: 'Réseaux avec flux souvent contractuels.' },
   },
@@ -394,7 +394,7 @@ const SECTOR_GUIDES = [
     id: 'renewables' as EnergyFilterId,
     watch: 'renewables' as WatchlistFilter,
     icon: Zap,
-    symbols: ['FSLR', 'ENPH', 'NEE', 'BEP'],
+    symbols: ['BEP', 'NEE', 'ENPH', 'FSLR'],
     title: { ar: 'الطاقة المتجددة', en: 'Renewable energy', fr: 'Énergies renouvelables' },
     body: { ar: 'الطاقة الشمسية والمتجددة تتأثر بالفائدة، السياسات، والطلب على الكهرباء النظيفة.', en: 'Solar and renewables are affected by rates, policy, and clean-power demand.', fr: 'Renouvelables sensibles aux taux, politiques et demande.' },
   },
@@ -402,7 +402,7 @@ const SECTOR_GUIDES = [
     id: 'analysis' as EnergyFilterId,
     watch: 'movers' as WatchlistFilter,
     icon: BarChart3,
-    symbols: ['XLE', 'ICLN', 'TAN'],
+    symbols: ['TAN', 'ICLN', 'XLE'],
     title: { ar: 'صناديق ومؤشرات الطاقة', en: 'Energy ETFs and benchmarks', fr: 'ETF et indices énergie' },
     body: { ar: 'مؤشرات وصناديق تساعد على قراءة أداء القطاع التقليدي والمتجدد.', en: 'ETFs and benchmarks help read traditional and renewable energy performance.', fr: 'ETF et indices pour lire le secteur.' },
   },
@@ -419,6 +419,31 @@ const SECTOR_GUIDE_ALIASES: Record<string, number> = {
   energy_etf: 5,
   renewables_etf: 5,
   solar_etf: 5,
+};
+
+const ENERGY_SYMBOL_NAMES: Record<string, string> = {
+  XOM: 'Exxon Mobil',
+  CVX: 'Chevron',
+  SHEL: 'Shell',
+  BP: 'BP',
+  TTE: 'TotalEnergies',
+  OXY: 'Occidental Petroleum',
+  EOG: 'EOG Resources',
+  COP: 'ConocoPhillips',
+  BKR: 'Baker Hughes',
+  HAL: 'Halliburton',
+  SLB: 'Schlumberger',
+  LNG: 'Cheniere Energy',
+  TRP: 'TC Energy',
+  KMI: 'Kinder Morgan',
+  ENB: 'Enbridge',
+  BEP: 'Brookfield Renewable Partners',
+  NEE: 'NextEra Energy',
+  ENPH: 'Enphase Energy',
+  FSLR: 'First Solar',
+  TAN: 'Invesco Solar ETF',
+  ICLN: 'iShares Global Clean Energy ETF',
+  XLE: 'Energy Select Sector SPDR Fund',
 };
 
 const FEATURED_META: Record<string, { sector: Record<LangCode, string>; body: Record<LangCode, string> }> = {
@@ -843,11 +868,22 @@ function SectorBreakdown({ lang, text }: { lang: LangCode; text: typeof TEXT[Lan
               <h3>{sector.title[lang]}</h3>
               <p>{sector.body[lang]}</p>
               <div className={styles.symbolChips} aria-label={text.examples as string}>
-                {sector.symbols.map(symbol => (
-                  <a key={symbol} href={`/market-analysis?symbol=${encodeURIComponent(symbol)}`} dir="ltr">
-                    {symbol}
-                  </a>
-                ))}
+                {sector.symbols.map(symbol => {
+                  const name = ENERGY_SYMBOL_NAMES[symbol] ?? symbol;
+                  return (
+                    <a
+                      key={symbol}
+                      href={`/market-analysis?symbol=${encodeURIComponent(symbol)}`}
+                      title={`${name} · ${symbol}`}
+                      aria-label={`${name} ${symbol}`}
+                      dir="ltr"
+                    >
+                      <span className={styles.symbolCompany}>{name}</span>
+                      <span className={styles.symbolDivider} aria-hidden="true">·</span>
+                      <strong>{symbol}</strong>
+                    </a>
+                  );
+                })}
               </div>
             </article>
           );
