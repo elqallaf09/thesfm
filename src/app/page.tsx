@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   BellRing,
   BookOpen,
@@ -27,6 +28,7 @@ import {
   Wallet,
   X,
   Zap,
+  type LucideIcon,
 } from 'lucide-react';
 
 import { flattenNavigationItems } from '@/components/navigationConfig';
@@ -37,6 +39,7 @@ import { SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO }
 import { TR } from '@/lib/translations';
 
 type Lang = 'ar' | 'en' | 'fr';
+type TranslationTuple = readonly [string, string, string];
 
 const COPY = {
   ar: {
@@ -87,9 +90,25 @@ const COPY = {
     usersTitle: 'من يستخدم THE SFM؟',
     usersSubtitle: 'للأفراد ورواد الأعمال والفرق الصغيرة التي تريد رؤية مالية أوضح دون ضجيج.',
     pricingTitle: 'الأسعار',
-    pricingSubtitle: 'تفاصيل الأسعار قريباً',
-    pricingNote: 'لن نعرض أسعاراً نهائية قبل اعتمادها.',
-    pricingHidden: 'السعر سيُعلن لاحقاً',
+    pricingSubtitle: 'اختر الخطة المناسبة وابدأ بإدارة أموالك بوضوح.',
+    pricingBillingMonthly: 'شهري',
+    pricingBillingYearly: 'سنوي',
+    pricingYearlyNote: 'وفّر أكثر عند الاشتراك السنوي',
+    pricingMostSuitable: 'الأكثر مناسبة',
+    pricingFreePrice: 'مجاني',
+    pricingPremiumMonthlyPrice: '20$ / شهرياً',
+    pricingPremiumYearlyPrice: '100$ / سنوياً',
+    pricingCompanyPrice: '50$ / سنوياً',
+    pricingYearlyOnly: 'سنوي فقط',
+    pricingFreeDescription: 'ابدأ بإدارة دخلك ومصروفاتك وأهدافك المالية الأساسية.',
+    pricingPremiumDescription: 'للمستخدمين الذين يريدون تحليلات أعمق وتقارير وأدوات سوق متقدمة.',
+    pricingCompanyDescription: 'للشركات والمشاريع التي تريد الظهور داخل المنصة ببيانات واضحة.',
+    pricingStartFree: 'ابدأ مجاناً',
+    pricingSubscribeNow: 'اشترك الآن',
+    pricingAddCompany: 'أضف شركتك',
+    pricingCheckoutUnavailable: 'الدفع غير متاح حالياً.',
+    pricingCheckoutError: 'تعذر فتح صفحة الدفع. حاول مرة أخرى.',
+    pricingCheckoutLoading: 'جارٍ فتح صفحة الدفع...',
     testimonialsTitle: 'قصص العملاء قريباً',
     testimonialsSubtitle: 'لن نعرض أسماء أو مراجعات غير حقيقية.',
     finalTitle: 'ابدأ بإدارة أموالك ومشاريعك من مكان واحد',
@@ -164,9 +183,25 @@ const COPY = {
     usersTitle: 'Who uses THE SFM?',
     usersSubtitle: 'For individuals, founders, and small teams that want a clearer financial operating view without noise.',
     pricingTitle: 'Pricing',
-    pricingSubtitle: 'Pricing details coming soon',
-    pricingNote: 'We will not show final prices before they are approved.',
-    pricingHidden: 'Price to be announced',
+    pricingSubtitle: 'Choose the plan that fits your financial workflow.',
+    pricingBillingMonthly: 'Monthly',
+    pricingBillingYearly: 'Yearly',
+    pricingYearlyNote: 'Save more with annual billing',
+    pricingMostSuitable: 'Most suitable',
+    pricingFreePrice: 'Free',
+    pricingPremiumMonthlyPrice: '$20 / month',
+    pricingPremiumYearlyPrice: '$100 / year',
+    pricingCompanyPrice: '$50 / year',
+    pricingYearlyOnly: 'Yearly only',
+    pricingFreeDescription: 'Start managing income, expenses, and core financial goals.',
+    pricingPremiumDescription: 'For users who need deeper analysis, reports, and advanced market tools.',
+    pricingCompanyDescription: 'For companies and projects that want a clear presence inside the platform.',
+    pricingStartFree: 'Start free',
+    pricingSubscribeNow: 'Subscribe now',
+    pricingAddCompany: 'Add your company',
+    pricingCheckoutUnavailable: 'Payments are currently unavailable.',
+    pricingCheckoutError: 'Could not open checkout. Please try again.',
+    pricingCheckoutLoading: 'Opening checkout...',
     testimonialsTitle: 'Customer stories coming soon',
     testimonialsSubtitle: 'We will not display fictional names or reviews.',
     finalTitle: 'Start managing money and projects from one place',
@@ -241,9 +276,25 @@ const COPY = {
     usersTitle: 'Qui utilise THE SFM ?',
     usersSubtitle: 'Pour les particuliers, fondateurs et petites équipes qui veulent une vue financière claire sans bruit.',
     pricingTitle: 'Prix',
-    pricingSubtitle: 'Détails des prix bientôt disponibles',
-    pricingNote: 'Nous n’afficherons pas de prix définitifs avant leur validation.',
-    pricingHidden: 'Prix à annoncer',
+    pricingSubtitle: 'Choisissez l’offre adaptée à votre organisation financière.',
+    pricingBillingMonthly: 'Mensuel',
+    pricingBillingYearly: 'Annuel',
+    pricingYearlyNote: 'Économisez davantage avec l’abonnement annuel',
+    pricingMostSuitable: 'Le plus adapté',
+    pricingFreePrice: 'Gratuit',
+    pricingPremiumMonthlyPrice: '20 $ / mois',
+    pricingPremiumYearlyPrice: '100 $ / an',
+    pricingCompanyPrice: '50 $ / an',
+    pricingYearlyOnly: 'Annuel uniquement',
+    pricingFreeDescription: 'Commencez à gérer revenus, dépenses et objectifs financiers essentiels.',
+    pricingPremiumDescription: 'Pour les utilisateurs qui veulent analyses, rapports et outils de marché avancés.',
+    pricingCompanyDescription: 'Pour les sociétés et projets qui veulent une présence claire dans la plateforme.',
+    pricingStartFree: 'Commencer gratuitement',
+    pricingSubscribeNow: 'S’abonner',
+    pricingAddCompany: 'Ajouter votre société',
+    pricingCheckoutUnavailable: 'Le paiement est actuellement indisponible.',
+    pricingCheckoutError: 'Impossible d’ouvrir le paiement. Veuillez réessayer.',
+    pricingCheckoutLoading: 'Ouverture du paiement...',
     testimonialsTitle: 'Témoignages clients bientôt disponibles',
     testimonialsSubtitle: 'Nous n’afficherons pas de noms ou avis fictifs.',
     finalTitle: 'Gérez votre argent et vos projets depuis un seul endroit',
@@ -443,8 +494,17 @@ const featureItems = [
 
 type ToolCategory = 'all' | 'personal' | 'ai' | 'business' | 'charity' | 'security';
 type ToolBadge = 'smart' | 'new' | 'core';
+type LandingToolItem = {
+  id?: string;
+  navId: string;
+  icon?: LucideIcon;
+  category: Exclude<ToolCategory, 'all'>;
+  badge?: ToolBadge;
+  title?: TranslationTuple;
+  description: TranslationTuple;
+};
 
-const landingToolCatalog = [
+const landingToolCatalog: readonly LandingToolItem[] = [
   { navId: 'home', category: 'personal', badge: 'core', description: ['نظرة شاملة على دخلك، مصروفاتك، أهدافك، واستثماراتك.', 'A complete view of income, expenses, goals, and investments.', 'Une vue globale des revenus, dépenses, objectifs et investissements.'] },
   { navId: 'income', category: 'personal', description: ['سجل مصادر دخلك الشهرية والمتكررة وتتبع نموها.', 'Record monthly and recurring income sources and track growth.', 'Enregistrez les revenus mensuels et récurrents et suivez leur évolution.'] },
   { navId: 'expenses', category: 'personal', description: ['تابع مصروفاتك وصنّفها لمعرفة أين تذهب أموالك.', 'Track and categorize expenses to understand where money goes.', 'Suivez et classez vos dépenses pour comprendre où va votre argent.'] },
@@ -467,15 +527,7 @@ const landingToolCatalog = [
   { navId: 'notif', category: 'security', description: ['استقبل تنبيهات عن الأهداف، المدفوعات، الميزانية، والقرارات المهمة.', 'Receive alerts for goals, payments, budgets, and important decisions.', 'Recevez des alertes sur objectifs, paiements, budget et décisions importantes.'] },
   { navId: 'security', category: 'security', badge: 'new', description: ['تحكم في حماية حسابك، المصادقة الثنائية، وبياناتك الشخصية.', 'Manage account protection, two-factor authentication, and personal data.', 'Gérez la protection du compte, la 2FA et vos données personnelles.'] },
   { navId: 'profile', category: 'security', description: ['إدارة بياناتك، العملة، اللغة، المدينة، والمهنة.', 'Manage personal data, currency, language, city, and profession.', 'Gérez vos données, devise, langue, ville et profession.'] },
-] as const satisfies ReadonlyArray<{
-  id?: string;
-  navId: string;
-  icon?: typeof Wallet;
-  category: Exclude<ToolCategory, 'all'>;
-  badge?: ToolBadge;
-  title?: readonly [string, string, string];
-  description: readonly [string, string, string];
-}>;
+];
 
 const audienceItems = [
   {
@@ -525,37 +577,51 @@ const howSteps = [
 
 const pricingFeatureSets = [
   {
-    key: 'planFree',
+    key: 'free',
+    titleKey: 'planFree',
+    descriptionKey: 'pricingFreeDescription',
+    ctaKey: 'pricingStartFree',
     features: [
       ['إدارة الدخل والمصروفات الأساسية', 'Basic income and expense management', 'Gestion de base des revenus et dépenses'],
       ['الأهداف والمدخرات الشخصية', 'Personal goals and savings', 'Objectifs et épargne personnels'],
-      ['تقارير أساسية من بياناتك', 'Basic reports from your data', 'Rapports de base à partir de vos données'],
-      ['الزكاة والحسابات الأساسية', 'Zakat and basic calculations', 'Zakat et calculs de base'],
+      ['تقارير مالية أساسية', 'Basic financial reports', 'Rapports financiers de base'],
+      ['الزكاة والحاسبات الأساسية', 'Zakat and basic calculators', 'Zakat et calculateurs de base'],
     ],
   },
   {
-    key: 'planPro',
+    key: 'premium',
+    titleKey: 'planPro',
+    descriptionKey: 'pricingPremiumDescription',
+    ctaKey: 'pricingSubscribeNow',
+    highlighted: true,
     features: [
       ['كل ميزات الخطة المجانية', 'Everything in Free', 'Tout ce qui est inclus dans Gratuit'],
       ['تحليلات الاستثمار وقوائم المتابعة', 'Investment analysis and watchlists', 'Analyse d’investissement et listes de suivi'],
       ['التقارير والإشعارات الذكية', 'Reports and smart notifications', 'Rapports et notifications intelligentes'],
       ['المساعد الذكي عند توفر بيانات كافية', 'AI assistant when enough data is available', 'Assistant IA lorsque les données sont suffisantes'],
       ['المكتبة التعليمية والحاسبات العملية', 'Educational library and practical calculators', 'Bibliothèque éducative et calculateurs pratiques'],
+      ['أدوات وتحليلات السوق المتقدمة', 'Advanced market tools and analysis', 'Outils et analyses de marché avancés'],
     ],
   },
   {
-    key: 'planBusiness',
+    key: 'company',
+    titleKey: 'planBusiness',
+    descriptionKey: 'pricingCompanyDescription',
+    ctaKey: 'pricingAddCompany',
     features: [
-      ['كل ميزات الخطة الاحترافية', 'Everything in Professional', 'Tout ce qui est inclus dans Professionnel'],
-      ['المشاريع التجارية ودراسات الجدوى', 'Business projects and feasibility studies', 'Projets commerciaux et études de faisabilité'],
-      ['النماذج المالية وPitch Deck', 'Financial models and pitch decks', 'Modèles financiers et pitch decks'],
-      ['مركز الأعمال والمستندات والقرارات', 'Business Hub, documents, and decisions', 'Centre d’affaires, documents et décisions'],
-      ['دعم أنسب للفرق واحتياجات الشركات', 'Support better suited for teams and business needs', 'Support mieux adapté aux équipes et besoins d’entreprise'],
+      ['صفحة أو ظهور للشركة داخل المنصة', 'Company page or presence inside the platform', 'Page ou présence de l’entreprise dans la plateforme'],
+      ['عرض بيانات الشركة الأساسية', 'Display core company information', 'Affichage des informations essentielles de l’entreprise'],
+      ['إبراز الخدمات أو النشاط التجاري', 'Highlight services or business activity', 'Mise en avant des services ou de l’activité'],
+      ['مناسب للشركات والمشاريع المالية', 'Suitable for companies and financial projects', 'Adapté aux entreprises et projets financiers'],
+      ['إمكانية مراجعة واعتماد البيانات قبل النشر', 'Review and approval before publishing', 'Révision et validation avant publication'],
     ],
   },
 ] as const;
 
-function pick(list: readonly [string, string, string][], lang: Lang) {
+type BillingInterval = 'monthly' | 'yearly';
+type PricingPlanKey = typeof pricingFeatureSets[number]['key'];
+
+function pick(list: readonly TranslationTuple[], lang: Lang) {
   const index = lang === 'ar' ? 0 : lang === 'fr' ? 2 : 1;
   return list.map(item => item[index]);
 }
@@ -572,11 +638,15 @@ function pickTranslation(key: keyof typeof TR, lang: Lang) {
 
 export default function PublicLandingPage() {
   const { lang, dir } = useLanguage();
-  const { session } = useAuth();
+  const { session, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
   const [activeToolCategory, setActiveToolCategory] = useState<ToolCategory>('all');
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>('monthly');
+  const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<PricingPlanKey | null>(null);
+  const [pricingMessage, setPricingMessage] = useState('');
   const text = COPY[(lang as Lang) || 'ar'];
   const appHref = session ? '/dashboard' : '/login';
   const primaryLabel = session ? text.openDashboard : text.start;
@@ -612,7 +682,11 @@ export default function PublicLandingPage() {
     titleText: pickOne(item.title, lang as Lang),
   })), [lang]);
   const pricingPlans = useMemo(() => pricingFeatureSets.map(plan => ({
-    title: text[plan.key],
+    key: plan.key,
+    title: text[plan.titleKey],
+    description: text[plan.descriptionKey],
+    cta: text[plan.ctaKey],
+    highlighted: 'highlighted' in plan ? plan.highlighted : false,
     features: pick(plan.features, lang as Lang),
   })), [lang, text]);
   const audiences = useMemo(() => audienceItems.map(item => ({
@@ -676,6 +750,74 @@ export default function PublicLandingPage() {
       window.removeEventListener('resize', updateActiveSection);
     };
   }, []);
+
+  function priceForPlan(planKey: PricingPlanKey) {
+    if (planKey === 'free') return text.pricingFreePrice;
+    if (planKey === 'company') return text.pricingCompanyPrice;
+    return billingInterval === 'yearly' ? text.pricingPremiumYearlyPrice : text.pricingPremiumMonthlyPrice;
+  }
+
+  function intervalForPlan(planKey: PricingPlanKey) {
+    if (planKey === 'company') return 'yearly' as const;
+    return billingInterval;
+  }
+
+  function handleFreePlan() {
+    setPricingMessage('');
+    router.push(session ? '/dashboard' : `/login?mode=register&next=${encodeURIComponent('/dashboard')}`);
+  }
+
+  const handlePaidCheckout = useCallback(async (planKey: Exclude<PricingPlanKey, 'free'>, selectedInterval?: BillingInterval) => {
+    const checkoutInterval = selectedInterval ?? (planKey === 'company' ? 'yearly' : billingInterval);
+    setPricingMessage('');
+    if (!session) {
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('sfm_pending_checkout', JSON.stringify({ plan: planKey, billingInterval: checkoutInterval }));
+      }
+      router.push(`/login?next=${encodeURIComponent('/#pricing')}`);
+      return;
+    }
+
+    setCheckoutLoadingPlan(planKey);
+    try {
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          plan: planKey,
+          billingInterval: checkoutInterval,
+        }),
+      });
+      const payload = await response.json().catch(() => ({})) as { ok?: boolean; url?: string; code?: string; message?: string };
+      if (!response.ok || !payload.ok || !payload.url) {
+        setPricingMessage(payload.code === 'PAYMENT_UNAVAILABLE' ? text.pricingCheckoutUnavailable : text.pricingCheckoutError);
+        return;
+      }
+      window.location.assign(payload.url);
+    } catch {
+      setPricingMessage(text.pricingCheckoutError);
+    } finally {
+      setCheckoutLoadingPlan(null);
+    }
+  }, [billingInterval, router, session, text.pricingCheckoutError, text.pricingCheckoutUnavailable]);
+
+  useEffect(() => {
+    if (!session || authLoading || typeof window === 'undefined') return;
+    const pending = window.sessionStorage.getItem('sfm_pending_checkout');
+    if (!pending) return;
+    window.sessionStorage.removeItem('sfm_pending_checkout');
+    try {
+      const payload = JSON.parse(pending) as { plan?: PricingPlanKey; billingInterval?: BillingInterval };
+      if (payload.plan === 'premium' || payload.plan === 'company') {
+        void handlePaidCheckout(payload.plan, payload.billingInterval === 'yearly' ? 'yearly' : 'monthly');
+      }
+    } catch {
+      setPricingMessage('');
+    }
+  }, [authLoading, handlePaidCheckout, session]);
 
   return (
     <main className="landing-page" dir={dir}>
@@ -846,17 +988,48 @@ export default function PublicLandingPage() {
           <h2>{text.pricingTitle}</h2>
           <p>{text.pricingSubtitle}</p>
         </div>
+        <div className="billing-toggle-wrap">
+          <div className="billing-toggle" role="tablist" aria-label={text.navPricing}>
+            {(['monthly', 'yearly'] as const).map(interval => (
+              <button
+                key={interval}
+                type="button"
+                role="tab"
+                aria-selected={billingInterval === interval}
+                className={billingInterval === interval ? 'active' : ''}
+                onClick={() => setBillingInterval(interval)}
+              >
+                {interval === 'monthly' ? text.pricingBillingMonthly : text.pricingBillingYearly}
+              </button>
+            ))}
+          </div>
+          {billingInterval === 'yearly' ? <span className="billing-note">{text.pricingYearlyNote}</span> : null}
+        </div>
+        {pricingMessage ? <div className="pricing-alert" role="alert">{pricingMessage}</div> : null}
         <div className="pricing-grid">
           {pricingPlans.map(plan => (
-            <article key={plan.title} className="pricing-card">
+            <article key={plan.key} className={plan.highlighted ? 'pricing-card featured' : 'pricing-card'}>
+              {plan.highlighted ? <span className="pricing-badge">{text.pricingMostSuitable}</span> : null}
               <h3>{plan.title}</h3>
-              <strong>{text.pricingHidden}</strong>
-              <p>{text.pricingNote}</p>
+              <strong>{priceForPlan(plan.key)}</strong>
+              {plan.key === 'company' ? <span className="pricing-interval">{text.pricingYearlyOnly}</span> : null}
+              <p>{plan.description}</p>
               <ul>
                 {plan.features.map(feature => (
                   <li key={feature}><CheckCircle2 size={16} />{feature}</li>
                 ))}
               </ul>
+              <button
+                type="button"
+                className={plan.highlighted ? 'pricing-action primary' : 'pricing-action'}
+                disabled={checkoutLoadingPlan !== null || authLoading}
+                onClick={() => {
+                  if (plan.key === 'free') handleFreePlan();
+                  else void handlePaidCheckout(plan.key);
+                }}
+              >
+                {checkoutLoadingPlan === plan.key ? text.pricingCheckoutLoading : plan.cta}
+              </button>
             </article>
           ))}
         </div>
@@ -1641,10 +1814,91 @@ const landingStyles = `
   }
   .pricing-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+  }
+  .billing-toggle-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin: -8px 0 22px;
+  }
+  .billing-toggle {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px;
+    border-radius: 999px;
+    background: #F1F5F9;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+  }
+  .billing-toggle button {
+    border: 0;
+    border-radius: 999px;
+    padding: 10px 18px;
+    background: transparent;
+    color: #475569;
+    font: 950 14px/1 Tajawal, Arial, sans-serif;
+    cursor: pointer;
+    transition: 0.2s ease;
+  }
+  .billing-toggle button.active {
+    color: #FFFFFF;
+    background: linear-gradient(135deg, #0B76E0, #18D4D4);
+    box-shadow: 0 10px 24px rgba(11, 118, 224, 0.22);
+  }
+  .billing-note {
+    color: #0B76E0;
+    font-size: 13px;
+    font-weight: 950;
+  }
+  .pricing-alert {
+    max-width: 760px;
+    margin: 0 auto 18px;
+    border: 1px solid rgba(220, 38, 38, 0.22);
+    background: rgba(254, 242, 242, 0.9);
+    color: #991B1B;
+    border-radius: 14px;
+    padding: 12px 16px;
+    text-align: center;
+    font-weight: 900;
+  }
+  .pricing-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+  .pricing-card.featured {
+    border-color: rgba(11, 118, 224, 0.42);
+    box-shadow: 0 24px 60px rgba(11, 118, 224, 0.18);
+    transform: translateY(-8px);
+  }
+  .pricing-badge {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 7px 11px;
+    margin-bottom: 12px;
+    background: rgba(24, 212, 212, 0.13);
+    color: #0B76E0;
+    font-size: 12px;
+    font-weight: 950;
   }
   .pricing-card strong {
     color: #0B76E0;
-    font-size: 18px;
+    font-size: 30px;
+    line-height: 1.2;
+    margin-top: 6px;
+    display: block;
+  }
+  .pricing-interval {
+    display: block;
+    margin-top: 8px;
+    color: #64748B;
+    font-size: 13px;
+    font-weight: 900;
   }
   .pricing-card ul {
     list-style: none;
@@ -1666,6 +1920,30 @@ const landingStyles = `
     flex: 0 0 auto;
     margin-top: 4px;
     color: #18D4D4;
+  }
+  .pricing-action {
+    margin-top: auto;
+    width: 100%;
+    min-height: 48px;
+    border: 1px solid rgba(11, 118, 224, 0.18);
+    border-radius: 14px;
+    background: #FFFFFF;
+    color: #0B76E0;
+    font: 950 15px/1 Tajawal, Arial, sans-serif;
+    cursor: pointer;
+    transition: 0.2s ease;
+  }
+  .pricing-action.primary,
+  .pricing-action:hover {
+    border-color: transparent;
+    background: linear-gradient(135deg, #0B76E0, #18D4D4);
+    color: #FFFFFF;
+    box-shadow: 0 14px 30px rgba(11, 118, 224, 0.22);
+  }
+  .pricing-action:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+    box-shadow: none;
   }
   .faq-block {
     scroll-margin-top: 105px;
@@ -1873,6 +2151,9 @@ const landingStyles = `
     }
     .how-grid, .audience-grid, .pricing-grid, .faq-accordion {
       grid-template-columns: 1fr;
+    }
+    .pricing-card.featured {
+      transform: none;
     }
   }
   @media (max-width: 620px) {
