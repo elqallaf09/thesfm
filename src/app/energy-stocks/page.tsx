@@ -1,5 +1,5 @@
-import { StockCategoryNewsPage } from '@/components/stock-categories/StockCategoryNewsPage';
+import { EnergyNewsPage } from '@/components/energy-stocks/EnergyNewsPage';
 
 export default function EnergyStocksPage() {
-  return <StockCategoryNewsPage categoryId="energy" />;
+  return <EnergyNewsPage />;
 }
