@@ -92,6 +92,14 @@ type ApiListState<T> = {
   message: string;
   updatedAt?: string;
   code?: string;
+  symbol?: string;
+  assetType?: string;
+  provider?: string | null;
+  source?: string | null;
+  sentimentAvailable?: boolean;
+  buyPercent?: number | null;
+  sellPercent?: number | null;
+  sentimentLabel?: string | null;
 };
 type TechnicalState = {
   loading: boolean;
@@ -410,6 +418,11 @@ function sanitizeMarketToolMessage(code: string, message: string) {
     code.startsWith('MARKET_SENTIMENT_') ||
     code.startsWith('MYFXBOOK_') ||
     code === 'NO_MARKET_SENTIMENT_DATA' ||
+    code === 'NO_SENTIMENT_DATA' ||
+    code === 'UNSUPPORTED_ASSET_TYPE' ||
+    code === 'PROVIDER_DOWN' ||
+    code === 'TIMEOUT' ||
+    code === 'MISSING_PROVIDER' ||
     code === 'SYMBOL_REQUIRED' ||
     code === 'MARKET_DATA_TIMEOUT' ||
     /ECONOMIC_CALENDAR_|\b[A-Z0-9_]*(API_)?(KEY|TOKEN|SECRET)\b|provider integration is not configured/i.test(message)
@@ -445,7 +458,24 @@ async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiLis
   const timeoutId = window.setTimeout(() => controller.abort(), MARKET_TOOL_REQUEST_TIMEOUT_MS);
   try {
     const response = await fetch(url, { signal: controller.signal });
-    const payload = await response.json().catch(() => ({})) as { items?: T[]; events?: T[]; message?: string; updated_at?: string | null; code?: string; ok?: boolean; success?: boolean };
+    const payload = await response.json().catch(() => ({})) as {
+      items?: T[];
+      events?: T[];
+      message?: string;
+      updated_at?: string | null;
+      updatedAt?: string | null;
+      code?: string | null;
+      ok?: boolean;
+      success?: boolean;
+      symbol?: string;
+      assetType?: string;
+      provider?: string | null;
+      source?: string | null;
+      sentimentAvailable?: boolean;
+      buyPercent?: number | null;
+      sellPercent?: number | null;
+      sentimentLabel?: string | null;
+    };
     const code = String(payload.code ?? '').trim().toUpperCase();
     const sourceAvailable = response.ok && payload.ok !== false && payload.success !== false;
     const rawMessage = sourceAvailable ? '' : String(payload.message ?? 'Data source is not configured.');
@@ -455,8 +485,16 @@ async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiLis
       loading: false,
       items,
       message: sanitizeMarketToolMessage(code, rawMessage),
-      updatedAt: payload.updated_at ?? undefined,
+      updatedAt: payload.updated_at ?? payload.updatedAt ?? undefined,
       code,
+      symbol: payload.symbol,
+      assetType: payload.assetType,
+      provider: payload.provider,
+      source: payload.source,
+      sentimentAvailable: payload.sentimentAvailable,
+      buyPercent: payload.buyPercent,
+      sellPercent: payload.sellPercent,
+      sentimentLabel: payload.sentimentLabel,
     };
   } catch (error) {
     logMarketToolPerformance(label, startedAt, { status: 'failed', code: isAbortLikeError(error) ? 'MARKET_DATA_TIMEOUT' : 'MARKET_DATA_UNAVAILABLE' });
@@ -988,6 +1026,71 @@ function marketAssetTypeLabel(assetType: MarketAssetType, t: (key: string) => st
     index: 'market_asset_index',
   };
   return t(keyMap[assetType]);
+}
+
+type SentimentAssetBadgeType = 'forex' | 'stock' | 'etf' | 'crypto' | 'gold' | 'silver' | 'metals' | 'index' | 'unknown';
+
+function compactSentimentSymbol(value: unknown) {
+  return String(value ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/=X$/, '')
+    .replace(/[\s/_-]+/g, '')
+    .replace(/[^A-Z0-9]/g, '');
+}
+
+function sentimentAssetBadgeType(assetType: unknown, selectedAsset?: SelectedMarketAsset | null): SentimentAssetBadgeType {
+  const normalized = String(assetType ?? selectedAsset?.assetType ?? '').trim().toLowerCase();
+  const symbol = compactSentimentSymbol(selectedAsset?.symbol ?? selectedAsset?.providerSymbol);
+  if (normalized === 'stock') return 'stock';
+  if (normalized === 'etf') return 'etf';
+  if (normalized === 'forex') return 'forex';
+  if (normalized === 'crypto') return 'crypto';
+  if (normalized === 'index') return 'index';
+  if (normalized === 'gold' || symbol.startsWith('XAU') || symbol === 'GC') return 'gold';
+  if (symbol.startsWith('XAG') || symbol === 'SI') return 'silver';
+  if (normalized === 'metals' || normalized === 'commodity') return 'metals';
+  return 'unknown';
+}
+
+function sentimentAssetBadgeKey(assetType: SentimentAssetBadgeType) {
+  const map: Record<SentimentAssetBadgeType, string> = {
+    forex: 'market_sentiment_asset_type_forex',
+    stock: 'market_sentiment_asset_type_stock',
+    etf: 'market_sentiment_asset_type_etf',
+    crypto: 'market_sentiment_asset_type_crypto',
+    gold: 'market_sentiment_asset_type_gold',
+    silver: 'market_sentiment_asset_type_silver',
+    metals: 'market_sentiment_asset_type_metals',
+    index: 'market_sentiment_asset_type_index',
+    unknown: 'market_asset_type_unknown',
+  };
+  return map[assetType];
+}
+
+function sentimentProviderBadgeKey(provider: unknown, sentimentAvailable: boolean | undefined, assetType: SentimentAssetBadgeType) {
+  const normalized = String(provider ?? '').trim().toLowerCase();
+  if (normalized === 'myfxbook' && assetType === 'forex') return 'market_sentiment_provider_myfxbook';
+  if (normalized === 'news' && sentimentAvailable) return 'market_sentiment_provider_news';
+  return 'market_sentiment_provider_none';
+}
+
+function sentimentAssetEmptyBodyKey(assetType: SentimentAssetBadgeType) {
+  if (assetType === 'stock') return 'market_sentiment_empty_stock_body';
+  if (assetType === 'etf') return 'market_sentiment_empty_etf_body';
+  if (assetType === 'forex') return 'market_sentiment_empty_forex_body';
+  if (assetType === 'gold' || assetType === 'silver' || assetType === 'metals') return 'market_sentiment_empty_metals_body';
+  if (assetType === 'crypto') return 'market_sentiment_empty_crypto_body';
+  return 'market_sentiment_empty_unknown_body';
+}
+
+function sentimentContextBodyKey(assetType: SentimentAssetBadgeType) {
+  if (assetType === 'stock') return 'market_sentiment_context_stock_body';
+  if (assetType === 'etf') return 'market_sentiment_context_etf_body';
+  if (assetType === 'forex') return 'market_sentiment_context_forex_body';
+  if (assetType === 'gold' || assetType === 'silver' || assetType === 'metals') return 'market_sentiment_context_metals_body';
+  if (assetType === 'crypto') return 'market_sentiment_context_crypto_body';
+  return 'market_sentiment_context_unknown_body';
 }
 
 function delay(ms: number) {
@@ -2642,6 +2745,7 @@ export default function MarketAnalysisPage() {
             onSelectAsset={focusMarketSearch}
             onRefreshNews={() => loadNewsSentiment(['news'], { force: true })}
             onRefreshSentiment={() => selectedSentimentAsset ? loadNewsSentiment(['sentiment'], { force: true }) : focusMarketSearch()}
+            onOpenTechnicalAnalysis={() => setActiveTab('technicalAnalysis')}
           />
         )}
 
@@ -4266,16 +4370,28 @@ export default function MarketAnalysisPage() {
           min-height: 180px;
         }
 
+        .sentiment-context-block {
+          display: grid;
+          gap: 9px;
+          min-width: 0;
+          border: 1px solid rgba(47, 214, 192, .16);
+          border-radius: 20px;
+          background:
+            linear-gradient(135deg, rgba(47, 214, 192, .07), rgba(29, 140, 255, .05)),
+            var(--sfm-light-card);
+          padding: 10px;
+        }
+
         .sentiment-selected-asset {
           display: flex;
           align-items: center;
           flex-wrap: wrap;
           gap: 8px;
           min-width: 0;
-          border: 1px solid rgba(47, 214, 192, .18);
-          border-radius: 18px;
-          background: rgba(47, 214, 192, .08);
-          padding: 10px 12px;
+          border: 0;
+          border-radius: 14px;
+          background: rgba(255, 255, 255, .58);
+          padding: 8px 10px;
           color: var(--sfm-muted);
           font-size: 12px;
           font-weight: 850;
@@ -4295,6 +4411,56 @@ export default function MarketAnalysisPage() {
           color: var(--sfm-muted);
           font-size: 12px;
           font-weight: 800;
+        }
+
+        .sentiment-context-row {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+          min-width: 0;
+        }
+
+        .sentiment-context-badge {
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          border: 1px solid rgba(47, 214, 192, .18);
+          border-radius: 14px;
+          background: rgba(47, 214, 192, .09);
+          padding: 8px 10px;
+        }
+
+        .sentiment-context-badge.source {
+          border-color: rgba(29, 140, 255, .18);
+          background: rgba(29, 140, 255, .08);
+        }
+
+        .sentiment-context-badge small {
+          min-width: 0;
+          color: var(--sfm-muted);
+          font-size: 11px;
+          font-weight: 900;
+          line-height: 1.3;
+        }
+
+        .sentiment-context-badge b {
+          min-width: 0;
+          color: var(--sfm-foreground);
+          font-size: 12px;
+          font-weight: 950;
+          line-height: 1.3;
+          text-align: end;
+          overflow-wrap: anywhere;
+        }
+
+        .sentiment-context-note {
+          margin: 0;
+          color: var(--sfm-muted);
+          font-size: 12px;
+          font-weight: 820;
+          line-height: 1.7;
         }
 
         .news-tool-card-head {
@@ -4568,6 +4734,45 @@ export default function MarketAnalysisPage() {
           line-height: 1.7;
         }
 
+        .sentiment-empty-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          min-width: 0;
+        }
+
+        .sentiment-empty-actions button {
+          min-height: 36px;
+          max-width: 100%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          border: 1px solid rgba(47, 214, 192, .22);
+          border-radius: 999px;
+          background: rgba(255, 255, 255, .72);
+          color: var(--sfm-primary-hover);
+          padding: 8px 12px;
+          font: 950 12px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+          transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        }
+
+        .sentiment-empty-actions button:first-child {
+          border-color: transparent;
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          color: #fff;
+          box-shadow: 0 12px 24px rgba(29, 140, 255, .16);
+        }
+
+        .sentiment-empty-actions button:hover,
+        .sentiment-empty-actions button:focus-visible {
+          transform: translateY(-1px);
+          border-color: rgba(29, 140, 255, .30);
+          box-shadow: 0 12px 24px rgba(3, 18, 37, .08);
+          outline: none;
+        }
+
         .trading-sessions-dashboard {
           display: grid;
           gap: 18px;
@@ -4839,6 +5044,29 @@ export default function MarketAnalysisPage() {
           border-color: rgba(29, 140, 255, .24);
         }
 
+        .dark .sentiment-context-block,
+        .dark .sentiment-selected-asset,
+        .dark .sentiment-empty-actions button {
+          background: linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .07)), #0a1422;
+          border-color: #1d3050;
+        }
+
+        .dark .sentiment-context-badge {
+          background: rgba(47, 214, 192, .10);
+          border-color: rgba(47, 214, 192, .24);
+        }
+
+        .dark .sentiment-context-badge.source {
+          background: rgba(29, 140, 255, .10);
+          border-color: rgba(29, 140, 255, .24);
+        }
+
+        .dark .sentiment-empty-actions button:first-child {
+          border-color: transparent;
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          color: #fff;
+        }
+
         @media (max-width: 1180px) {
           .market-status-grid,
           .market-quick-grid,
@@ -5023,6 +5251,20 @@ export default function MarketAnalysisPage() {
 
           .sentiment-tool-card .market-section-loading {
             min-height: 160px;
+          }
+
+          .sentiment-context-row {
+            grid-template-columns: 1fr;
+          }
+
+          .sentiment-empty-actions {
+            display: grid;
+            grid-template-columns: 1fr;
+          }
+
+          .sentiment-empty-actions button {
+            width: 100%;
+            min-height: 40px;
           }
 
           .tool-empty-state {
@@ -8335,50 +8577,60 @@ function publicNewsEmptyCopy(code: string | undefined, t: (key: string) => strin
   return { title: t('market_news_unavailable_title'), body: t('market_news_unavailable_body') };
 }
 
-function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => string) {
+function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => string, assetType: SentimentAssetBadgeType = 'unknown') {
+  const normalizedCode = String(code ?? '').trim().toUpperCase();
   if (code === 'NO_SELECTED_ASSET') {
     return { title: t('market_sentiment_symbol_required_title'), body: t('market_sentiment_symbol_required_body') };
   }
-  if (code === 'MARKET_DATA_TIMEOUT' || code === 'MARKET_SENTIMENT_TIMEOUT') {
+  if (normalizedCode === 'MARKET_DATA_TIMEOUT' || normalizedCode === 'MARKET_SENTIMENT_TIMEOUT' || normalizedCode === 'TIMEOUT') {
     return { title: t('market_sentiment_timeout_title'), body: t('market_sentiment_timeout_body') };
   }
-  if (code === 'MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED') {
+  if (
+    normalizedCode === 'NO_SENTIMENT_DATA'
+    || normalizedCode === 'UNSUPPORTED_ASSET_TYPE'
+    || normalizedCode === 'MISSING_PROVIDER'
+  ) {
+    return { title: t('market_sentiment_asset_unavailable_title'), body: t(sentimentAssetEmptyBodyKey(assetType)) };
+  }
+  if (normalizedCode === 'MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED') {
     return { title: t('market_sentiment_not_configured_title'), body: t('market_sentiment_not_configured_body') };
   }
-  if (code === 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED') {
+  if (normalizedCode === 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED') {
     return { title: t('market_sentiment_myfxbook_not_configured_title'), body: t('market_sentiment_myfxbook_not_configured_body') };
   }
-  if (code === 'MARKET_SENTIMENT_PROVIDER_MISSING') {
+  if (normalizedCode === 'MARKET_SENTIMENT_PROVIDER_MISSING') {
     return { title: t('market_sentiment_provider_missing_title'), body: t('market_sentiment_provider_missing_body') };
   }
-  if (code === 'SYMBOL_REQUIRED') {
+  if (normalizedCode === 'SYMBOL_REQUIRED') {
     return { title: t('market_sentiment_symbol_required_title'), body: t('market_sentiment_symbol_required_body') };
   }
-  if (code === 'MARKET_SENTIMENT_AUTH_FAILED') {
+  if (normalizedCode === 'MARKET_SENTIMENT_AUTH_FAILED') {
     return { title: t('market_sentiment_auth_failed_title'), body: t('market_sentiment_auth_failed_body') };
   }
-  if (code === 'MYFXBOOK_AUTH_FAILED') {
+  if (normalizedCode === 'MYFXBOOK_AUTH_FAILED') {
     return { title: t('market_sentiment_myfxbook_auth_failed_title'), body: t('market_sentiment_myfxbook_auth_failed_body') };
   }
-  if (code === 'MYFXBOOK_SESSION_MISSING') {
+  if (normalizedCode === 'MYFXBOOK_SESSION_MISSING') {
     return { title: t('market_sentiment_myfxbook_session_missing_title'), body: t('market_sentiment_myfxbook_session_missing_body') };
   }
-  if (code === 'MARKET_SENTIMENT_PLAN_NOT_ALLOWED') {
+  if (normalizedCode === 'MARKET_SENTIMENT_PLAN_NOT_ALLOWED') {
     return { title: t('market_sentiment_plan_not_allowed_title'), body: t('market_sentiment_plan_not_allowed_body') };
   }
-  if (code === 'MARKET_SENTIMENT_RATE_LIMITED' || code === 'MYFXBOOK_RATE_LIMITED') {
+  if (normalizedCode === 'MARKET_SENTIMENT_RATE_LIMITED' || normalizedCode === 'MYFXBOOK_RATE_LIMITED') {
     return { title: t('market_sentiment_rate_limited_title'), body: t('market_sentiment_rate_limited_body') };
   }
-  if (code === 'NO_MARKET_SENTIMENT_DATA') {
-    return { title: t('market_sentiment_myfxbook_no_items_title'), body: t('market_sentiment_myfxbook_no_items_body') };
+  if (normalizedCode === 'NO_MARKET_SENTIMENT_DATA') {
+    const bodyKey = assetType === 'forex' ? 'market_sentiment_myfxbook_no_items_body' : sentimentAssetEmptyBodyKey(assetType);
+    return { title: t('market_sentiment_asset_unavailable_title'), body: t(bodyKey) };
   }
-  if (code === 'MYFXBOOK_PROVIDER_FAILED') {
+  if (normalizedCode === 'MYFXBOOK_PROVIDER_FAILED') {
     return { title: t('market_sentiment_unavailable_title'), body: t('market_sentiment_myfxbook_provider_failed_body') };
   }
   if (
-    code === 'MARKET_SENTIMENT_PROVIDER_FAILED'
-    || code === 'MARKET_SENTIMENT_PROVIDER_ERROR'
-    || code === 'MARKET_SENTIMENT_PROVIDER_UNAVAILABLE'
+    normalizedCode === 'PROVIDER_DOWN'
+    || normalizedCode === 'MARKET_SENTIMENT_PROVIDER_FAILED'
+    || normalizedCode === 'MARKET_SENTIMENT_PROVIDER_ERROR'
+    || normalizedCode === 'MARKET_SENTIMENT_PROVIDER_UNAVAILABLE'
   ) {
     return { title: t('market_sentiment_unavailable_title'), body: t('market_sentiment_provider_failed_body') };
   }
@@ -8394,6 +8646,7 @@ function NewsSentimentPanel({
   onSelectAsset,
   onRefreshNews,
   onRefreshSentiment,
+  onOpenTechnicalAnalysis,
 }: {
   t: (key: string) => string;
   lang: string;
@@ -8403,12 +8656,16 @@ function NewsSentimentPanel({
   onSelectAsset: () => void;
   onRefreshNews: () => void;
   onRefreshSentiment: () => void;
+  onOpenTechnicalAnalysis: () => void;
 }) {
   const newsEmpty = publicNewsEmptyCopy(news.code, t);
   const hasSelectedAsset = Boolean(selectedAsset?.symbol?.trim());
   const sentimentItems = hasSelectedAsset ? sentiment.items : [];
   const sentimentLoading = hasSelectedAsset && sentiment.loading;
-  const sentimentEmpty = publicSentimentEmptyCopy(hasSelectedAsset ? sentiment.code : 'NO_SELECTED_ASSET', t);
+  const sentimentAssetType = sentimentAssetBadgeType(sentiment.assetType, selectedAsset);
+  const sentimentProviderKey = sentimentProviderBadgeKey(sentiment.provider, sentiment.sentimentAvailable, sentimentAssetType);
+  const sentimentEmpty = publicSentimentEmptyCopy(hasSelectedAsset ? sentiment.code : 'NO_SELECTED_ASSET', t, sentimentAssetType);
+  const sentimentContextBody = hasSelectedAsset ? t(sentimentContextBodyKey(sentimentAssetType)) : '';
   const newsLastAttempt = news.updatedAt
     ? `${t('market_last_attempt')}: ${formatMarketToolTimestamp(news.updatedAt, lang)}`
     : undefined;
@@ -8501,10 +8758,23 @@ function NewsSentimentPanel({
             </div>
 
             {hasSelectedAsset ? (
-              <div className="sentiment-selected-asset" aria-label={t('market_sentiment_selected_asset')}>
-                <span>{t('market_sentiment_selected_asset')}</span>
-                <b dir="ltr">{selectedAsset?.symbol}</b>
-                {selectedAsset?.name ? <small>{selectedAsset.name}</small> : null}
+              <div className="sentiment-context-block">
+                <div className="sentiment-selected-asset" aria-label={t('market_sentiment_selected_asset')}>
+                  <span>{t('market_sentiment_selected_asset')}</span>
+                  <b dir="ltr">{selectedAsset?.symbol}</b>
+                  {selectedAsset?.name ? <small>{selectedAsset.name}</small> : null}
+                </div>
+                <div className="sentiment-context-row" aria-label={t('market_sentiment_context_badges')}>
+                  <span className="sentiment-context-badge">
+                    <small>{t('market_asset_type_label')}</small>
+                    <b>{t(sentimentAssetBadgeKey(sentimentAssetType))}</b>
+                  </span>
+                  <span className="sentiment-context-badge source">
+                    <small>{t('market_sentiment_provider_label')}</small>
+                    <b>{t(sentimentProviderKey)}</b>
+                  </span>
+                </div>
+                {sentimentContextBody ? <p className="sentiment-context-note">{sentimentContextBody}</p> : null}
               </div>
             ) : null}
 
@@ -8552,15 +8822,33 @@ function NewsSentimentPanel({
                 })}
               </div>
             ) : (
-              <MarketToolEmptyState
-                icon={<BarChart3 size={18} />}
-                title={sentimentEmpty.title}
-                description={sentimentEmpty.body}
-                meta={sentimentLastAttempt}
-                actionLabel={sentimentActionLabel}
-                onAction={sentimentAction}
-                variant="info"
-              />
+              <>
+                <MarketToolEmptyState
+                  icon={<BarChart3 size={18} />}
+                  title={sentimentEmpty.title}
+                  description={sentimentEmpty.body}
+                  meta={sentimentLastAttempt}
+                  actionLabel={hasSelectedAsset ? undefined : sentimentActionLabel}
+                  onAction={hasSelectedAsset ? undefined : sentimentAction}
+                  variant="info"
+                />
+                {hasSelectedAsset ? (
+                  <div className="sentiment-empty-actions">
+                    <button type="button" onClick={onRefreshSentiment}>
+                      <Activity size={15} />
+                      <span>{t('market_refresh_sentiment')}</span>
+                    </button>
+                    <button type="button" onClick={onRefreshNews}>
+                      <Newspaper size={15} />
+                      <span>{t('market_sentiment_show_news_action')}</span>
+                    </button>
+                    <button type="button" onClick={onOpenTechnicalAnalysis}>
+                      <LineChart size={15} />
+                      <span>{t('market_sentiment_technical_action')}</span>
+                    </button>
+                  </div>
+                ) : null}
+              </>
             )}
 
             <div className="sentiment-info-card">

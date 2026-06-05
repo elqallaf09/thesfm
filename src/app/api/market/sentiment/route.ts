@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMarketSentimentProviderConfig } from '@/lib/market/providerConfig';
+import { cleanEnv, getMarketSentimentProviderConfig } from '@/lib/market/providerConfig';
 import { getMyfxbookSentiment } from '@/lib/market/providers/myfxbook';
+import { normalizeAssetType, type MarketAssetType } from '@/lib/market/marketService';
 
 export const revalidate = 300;
 export const dynamic = 'force-dynamic';
@@ -35,6 +36,90 @@ type AlphaVantageArticle = {
 };
 
 type SentimentProvider = 'finnhub' | 'alphavantage';
+type UnifiedSentimentProvider = 'news' | 'myfxbook' | 'none';
+type SentimentAssetType = 'forex' | 'metals' | 'crypto' | 'stock' | 'etf' | 'unsupported';
+type SentimentLabel = 'bullish' | 'bearish' | 'neutral' | 'unavailable';
+type UnifiedSentimentCode =
+  | 'UNSUPPORTED_ASSET_TYPE'
+  | 'NO_SENTIMENT_DATA'
+  | 'PROVIDER_DOWN'
+  | 'TIMEOUT'
+  | 'MISSING_PROVIDER'
+  | 'SYMBOL_REQUIRED';
+
+type NormalizedSentimentRequest = {
+  symbol: string;
+  displaySymbol: string;
+  providerSymbol: string;
+  assetType: SentimentAssetType;
+  requestedAssetType: MarketAssetType | null;
+};
+
+const COMMON_CURRENCY_CODES = new Set([
+  'USD',
+  'EUR',
+  'JPY',
+  'GBP',
+  'CHF',
+  'CAD',
+  'AUD',
+  'NZD',
+  'SEK',
+  'NOK',
+  'DKK',
+  'CNH',
+  'HKD',
+  'SGD',
+  'MXN',
+  'ZAR',
+  'TRY',
+  'PLN',
+]);
+
+const COMMON_CRYPTO_CODES = new Set([
+  'BTC',
+  'ETH',
+  'SOL',
+  'XRP',
+  'ADA',
+  'DOGE',
+  'BNB',
+  'LTC',
+  'BCH',
+  'DOT',
+  'AVAX',
+  'LINK',
+  'MATIC',
+]);
+
+const COMMON_ETFS = new Set([
+  'SPY',
+  'QQQ',
+  'DIA',
+  'IWM',
+  'VOO',
+  'VTI',
+  'IVV',
+  'VEA',
+  'VWO',
+  'GLD',
+  'SLV',
+  'TLT',
+  'HYG',
+  'EFA',
+  'EEM',
+  'ARKK',
+  'XLK',
+  'XLF',
+  'XLE',
+  'XLV',
+  'XLY',
+  'XLP',
+  'XLI',
+  'XLB',
+  'XLU',
+  'VNQ',
+]);
 
 function shouldDebug() {
   return process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true';
@@ -44,14 +129,221 @@ function isTimeoutError(error: unknown) {
   return error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError');
 }
 
-function unavailableResponse(code: string, provider: string | null = null) {
+function compactSymbol(value: unknown) {
+  return String(value ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/=X$/, '')
+    .replace(/^(FX|FOREX|OANDA|TVC|NASDAQ|NYSE|AMEX|COINBASE):?/i, '')
+    .replace(/[\s/_-]+/g, '')
+    .replace(/[^A-Z0-9.]/g, '');
+}
+
+function compactPairSymbol(value: unknown) {
+  return compactSymbol(value).replace(/\./g, '');
+}
+
+function rawSymbolFromRequest(request: NextRequest) {
+  const params = request.nextUrl.searchParams;
+  return params.get('symbol')
+    || params.get('providerSymbol')
+    || params.get('symbols')?.split(',')[0]
+    || '';
+}
+
+function rawProviderSymbolFromRequest(request: NextRequest) {
+  const params = request.nextUrl.searchParams;
+  return params.get('providerSymbol')
+    || params.get('symbol')
+    || params.get('symbols')?.split(',')[0]
+    || '';
+}
+
+function isForexPair(value: unknown) {
+  const compact = compactPairSymbol(value);
+  if (!/^[A-Z]{6}$/.test(compact)) return false;
+  if (isMetalSymbol(value) || isCryptoPair(value)) return false;
+  return COMMON_CURRENCY_CODES.has(compact.slice(0, 3)) && COMMON_CURRENCY_CODES.has(compact.slice(3, 6));
+}
+
+function isCryptoPair(value: unknown) {
+  const compact = compactPairSymbol(value);
+  if (!compact.endsWith('USD')) return false;
+  return COMMON_CRYPTO_CODES.has(compact.slice(0, -3));
+}
+
+function isMetalSymbol(value: unknown) {
+  const raw = String(value ?? '').trim().toUpperCase();
+  const compact = compactPairSymbol(value);
+  return ['GC=F', 'SI=F', 'XAU', 'XAG', 'GOLD', 'SILVER', 'XAUUSD', 'XAGUSD', 'XPTUSD', 'XPDUSD'].includes(raw)
+    || /^X(AU|AG|PT|PD)USD$/.test(compact);
+}
+
+function normalizeSentimentAssetType(assetTypeInput: unknown, symbolInput: unknown, providerSymbolInput: unknown): { assetType: SentimentAssetType; requestedAssetType: MarketAssetType | null } {
+  const rawAssetType = String(assetTypeInput ?? '').trim();
+  const requestedAssetType = rawAssetType && rawAssetType !== 'all' ? normalizeAssetType(rawAssetType) : null;
+  const symbol = symbolInput || providerSymbolInput;
+
+  if (requestedAssetType === 'forex') return { assetType: 'forex', requestedAssetType };
+  if (requestedAssetType === 'crypto') return { assetType: 'crypto', requestedAssetType };
+  if (requestedAssetType === 'gold' || requestedAssetType === 'commodity') return { assetType: 'metals', requestedAssetType };
+  if (requestedAssetType === 'stock') return { assetType: 'stock', requestedAssetType };
+  if (requestedAssetType === 'etf') return { assetType: 'etf', requestedAssetType };
+  if (requestedAssetType === 'index') return { assetType: 'unsupported', requestedAssetType };
+
+  if (isMetalSymbol(symbol)) return { assetType: 'metals', requestedAssetType };
+  if (isCryptoPair(symbol)) return { assetType: 'crypto', requestedAssetType };
+  if (isForexPair(symbol)) return { assetType: 'forex', requestedAssetType };
+  if (COMMON_ETFS.has(compactPairSymbol(symbol))) return { assetType: 'etf', requestedAssetType };
+  if (/^[A-Z]{1,5}(\.[A-Z])?$/.test(compactSymbol(symbol))) return { assetType: 'stock', requestedAssetType };
+  return { assetType: 'unsupported', requestedAssetType };
+}
+
+function normalizeRequest(request: NextRequest): NormalizedSentimentRequest {
+  const rawSymbol = rawSymbolFromRequest(request);
+  const rawProviderSymbol = rawProviderSymbolFromRequest(request);
+  const { assetType, requestedAssetType } = normalizeSentimentAssetType(
+    request.nextUrl.searchParams.get('assetType'),
+    rawSymbol,
+    rawProviderSymbol,
+  );
+  const symbolCompact = compactPairSymbol(rawSymbol);
+  const providerCompact = compactPairSymbol(rawProviderSymbol);
+  const fallbackSymbol = symbolCompact || providerCompact;
+  const symbol = assetType === 'stock' || assetType === 'etf'
+    ? (compactSymbol(rawSymbol).replace(/[^A-Z0-9.]/g, '') || compactSymbol(rawProviderSymbol).replace(/[^A-Z0-9.]/g, ''))
+    : fallbackSymbol;
+
+  return {
+    symbol,
+    displaySymbol: symbol || String(rawSymbol || rawProviderSymbol).trim().toUpperCase(),
+    providerSymbol: rawProviderSymbol.trim() || rawSymbol.trim(),
+    assetType,
+    requestedAssetType,
+  };
+}
+
+function normalizeProviderEnv(value: string) {
+  return value.trim().toLowerCase().replace(/[_\s-]+/g, '');
+}
+
+function getNewsSentimentProvider(): { provider: SentimentProvider; apiKey: string } | null {
+  const explicitProvider = normalizeProviderEnv(cleanEnv(process.env.MARKET_SENTIMENT_PROVIDER));
+  const marketSentimentApiKey = cleanEnv(process.env.MARKET_SENTIMENT_API_KEY);
+  const finnhubApiKey = cleanEnv(process.env.FINNHUB_API_KEY);
+  const alphaVantageApiKey = cleanEnv(process.env.ALPHA_VANTAGE_API_KEY);
+
+  if (explicitProvider === 'finnhub' && (marketSentimentApiKey || finnhubApiKey)) {
+    return { provider: 'finnhub', apiKey: marketSentimentApiKey || finnhubApiKey };
+  }
+
+  if (explicitProvider === 'alphavantage' && (marketSentimentApiKey || alphaVantageApiKey)) {
+    return { provider: 'alphavantage', apiKey: marketSentimentApiKey || alphaVantageApiKey };
+  }
+
+  if (finnhubApiKey) return { provider: 'finnhub', apiKey: finnhubApiKey };
+  if (alphaVantageApiKey) return { provider: 'alphavantage', apiKey: alphaVantageApiKey };
+  return null;
+}
+
+function sentimentLabel(buyPercent: number | null, sellPercent: number | null): SentimentLabel {
+  if (buyPercent === null || sellPercent === null) return 'unavailable';
+  if (Math.abs(buyPercent - sellPercent) < 5) return 'neutral';
+  return buyPercent > sellPercent ? 'bullish' : 'bearish';
+}
+
+function sentimentMessage(assetType: SentimentAssetType, code: UnifiedSentimentCode) {
+  if (code === 'SYMBOL_REQUIRED') return 'Select an asset before loading market sentiment.';
+  if (code === 'TIMEOUT') return 'Market sentiment data took longer than expected to load.';
+  if (code === 'PROVIDER_DOWN') return 'The market sentiment provider is temporarily unavailable.';
+  if (code === 'MISSING_PROVIDER') {
+    if (assetType === 'forex') return 'Trader sentiment provider is not connected for this currency pair.';
+    if (assetType === 'stock') return 'No trusted stock sentiment provider is connected right now.';
+    if (assetType === 'etf') return 'No trusted ETF sentiment provider is connected right now.';
+    if (assetType === 'crypto') return 'No trusted crypto sentiment provider is connected right now.';
+    if (assetType === 'metals') return 'No trusted metals sentiment provider is connected right now.';
+    return 'No trusted sentiment provider is connected for this asset type.';
+  }
+  if (assetType === 'forex') return 'No trader sentiment data is available for this pair right now.';
+  if (assetType === 'stock') return 'Market sentiment for this stock is not currently available from a trusted provider.';
+  if (assetType === 'etf') return 'Market sentiment for this ETF is not currently available from a trusted provider.';
+  if (assetType === 'crypto') return 'Market sentiment for this crypto asset is not currently available from a trusted provider.';
+  if (assetType === 'metals') return 'Market sentiment for this metal is not currently available from a trusted provider.';
+  return 'Market sentiment is not supported for this asset type.';
+}
+
+function extractPercent(item: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = item[key];
+    const parsed = typeof value === 'number' ? value : Number(String(value ?? '').replace('%', '').trim());
+    if (Number.isFinite(parsed)) return Math.max(0, Math.min(100, parsed));
+  }
+  return null;
+}
+
+function primarySentimentValues(items: Array<Record<string, unknown>>) {
+  const first = items[0] ?? {};
+  const buyPercent = extractPercent(first, ['buyPercent', 'buyPercentage', 'buy', 'longPercentage']);
+  const sellPercent = extractPercent(first, ['sellPercent', 'sellPercentage', 'sell', 'shortPercentage']);
+  return { buyPercent, sellPercent };
+}
+
+function unavailableResponse(input: {
+  code: UnifiedSentimentCode;
+  symbol: string;
+  assetType: SentimentAssetType;
+  provider?: UnifiedSentimentProvider;
+  legacyCode?: string;
+  message?: string;
+}) {
+  const provider = input.provider ?? 'none';
   return NextResponse.json({
     ok: false,
     success: false,
-    code,
+    code: input.code,
+    legacyCode: input.legacyCode ?? null,
+    symbol: input.symbol,
+    assetType: input.assetType,
     provider,
+    sentimentAvailable: false,
+    buyPercent: null,
+    sellPercent: null,
+    sentimentLabel: 'unavailable' as SentimentLabel,
+    message: input.message ?? sentimentMessage(input.assetType, input.code),
     items: [],
+    updatedAt: null,
     updated_at: null,
+  }, { status: 200, headers: cacheHeaders });
+}
+
+function availableResponse(input: {
+  symbol: string;
+  assetType: SentimentAssetType;
+  provider: Exclude<UnifiedSentimentProvider, 'none'>;
+  source: string;
+  items: Array<Record<string, unknown>>;
+  updatedAt: string | null;
+}) {
+  const { buyPercent, sellPercent } = primarySentimentValues(input.items);
+  const label = sentimentLabel(buyPercent, sellPercent);
+  const updatedAt = input.updatedAt ?? new Date().toISOString();
+
+  return NextResponse.json({
+    ok: true,
+    success: true,
+    code: null,
+    symbol: input.symbol,
+    assetType: input.assetType,
+    provider: input.provider,
+    source: input.source,
+    sentimentAvailable: true,
+    buyPercent,
+    sellPercent,
+    sentimentLabel: label,
+    message: '',
+    items: input.items,
+    updatedAt,
+    updated_at: updatedAt,
   }, { status: 200, headers: cacheHeaders });
 }
 
@@ -84,12 +376,14 @@ function providerFailedError(message = 'Market sentiment provider failed') {
   return error;
 }
 
-function logProviderError(provider: string | null, error: unknown) {
+function logProviderError(provider: string | null, assetType: SentimentAssetType, symbol: string, error: unknown) {
   const status = error instanceof MarketSentimentProviderError ? error.status : undefined;
   const statusText = error instanceof MarketSentimentProviderError ? error.statusText : undefined;
   const code = error instanceof MarketSentimentProviderError ? error.code : isTimeoutError(error) ? 'MARKET_SENTIMENT_TIMEOUT' : undefined;
   console.error('Market sentiment provider error:', {
     provider,
+    assetType,
+    symbol,
     status,
     statusText,
     message: error instanceof Error ? error.message : String(error),
@@ -134,27 +428,10 @@ function normalizeSentimentSymbol(symbol: string, provider: SentimentProvider) {
   return '';
 }
 
-function parseSymbols(request: NextRequest, provider: SentimentProvider) {
-  const params = request.nextUrl.searchParams;
-  const raw = params.get('symbols')
-    || [params.get('providerSymbol'), params.get('symbol')]
-      .filter(Boolean)
-      .join(',');
-  const symbols = raw
-    .split(',')
-    .map(symbol => normalizeSentimentSymbol(symbol, provider))
-    .filter(symbol => /^[A-Z0-9.^:]{1,18}$/.test(symbol));
-  const uniqueSymbols = [...new Set(symbols)].slice(0, 4);
-  return uniqueSymbols;
-}
-
-function parseMyfxbookSymbol(request: NextRequest) {
-  const params = request.nextUrl.searchParams;
-  const raw = params.get('providerSymbol')
-    || params.get('symbol')
-    || params.get('symbols')?.split(',')[0]
-    || '';
-  return raw.trim();
+function parseNewsSymbols(symbol: string, provider: SentimentProvider) {
+  const normalized = normalizeSentimentSymbol(symbol, provider);
+  if (!/^[A-Z0-9.^:]{1,18}$/.test(normalized)) return [];
+  return [normalized];
 }
 
 function formatDate(date: Date) {
@@ -172,9 +449,11 @@ function sentimentItem(symbol: string, buy: number, sell: number, provider: 'fin
     sellPercent,
     buy: buyPercent,
     sell: sellPercent,
+    sentimentLabel: sentimentLabel(buyPercent, sellPercent),
     provider,
     source: provider === 'finnhub' ? 'Finnhub' : 'Alpha Vantage',
     updatedAt,
+    updated_at: updatedAt,
   };
 }
 
@@ -346,79 +625,197 @@ async function fetchAlphaVantageSentiment(symbols: string[], apiKey: string) {
   return normalizeAlphaVantageFeed(symbols, payload.feed);
 }
 
-export async function GET(request: NextRequest) {
+function mapProviderErrorCode(error: unknown): UnifiedSentimentCode {
+  if (isTimeoutError(error)) return 'TIMEOUT';
+  if (!(error instanceof MarketSentimentProviderError)) return 'PROVIDER_DOWN';
+  if (error.code === 'NO_MARKET_SENTIMENT_DATA') return 'NO_SENTIMENT_DATA';
+  if (error.code === 'MARKET_SENTIMENT_TIMEOUT') return 'TIMEOUT';
+  return 'PROVIDER_DOWN';
+}
+
+function mapMyfxbookErrorCode(code: string): UnifiedSentimentCode {
+  if (code === 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED') return 'MISSING_PROVIDER';
+  if (code === 'NO_MARKET_SENTIMENT_DATA') return 'NO_SENTIMENT_DATA';
+  if (code === 'SYMBOL_REQUIRED') return 'SYMBOL_REQUIRED';
+  return 'PROVIDER_DOWN';
+}
+
+async function handleForexSentiment(requestMeta: NormalizedSentimentRequest) {
+  if (!requestMeta.symbol) {
+    return unavailableResponse({
+      code: 'SYMBOL_REQUIRED',
+      symbol: requestMeta.displaySymbol,
+      assetType: 'forex',
+    });
+  }
+
+  if (!isForexPair(requestMeta.symbol)) {
+    return unavailableResponse({
+      code: 'UNSUPPORTED_ASSET_TYPE',
+      symbol: requestMeta.displaySymbol,
+      assetType: 'forex',
+      message: 'This symbol is not a supported Forex pair for trader sentiment.',
+    });
+  }
+
   const config = getMarketSentimentProviderConfig();
-
-  console.log('Market sentiment provider selected:', {
-    provider: process.env.MARKET_SENTIMENT_PROVIDER,
-  });
-
-  if (config.provider !== 'myfxbook') {
-    return unavailableResponse('MARKET_SENTIMENT_PROVIDER_NOT_MYFXBOOK', config.provider ?? config.providerEnv ?? null);
+  if (!config.hasMyfxbookCredentials) {
+    return unavailableResponse({
+      code: 'MISSING_PROVIDER',
+      symbol: requestMeta.symbol,
+      assetType: 'forex',
+      provider: 'none',
+    });
   }
 
-  if (!config.provider) {
-    return unavailableResponse('MARKET_SENTIMENT_PROVIDER_MISSING');
-  }
-
-  if (config.provider === 'myfxbook') {
-    const symbol = parseMyfxbookSymbol(request);
-    const result = await getMyfxbookSentiment(symbol);
-    if (!result.ok) {
-      return unavailableResponse(result.code, 'myfxbook');
+  const result = await getMyfxbookSentiment(requestMeta.symbol);
+  if (!result.ok) {
+    const code = mapMyfxbookErrorCode(result.code);
+    if (code === 'PROVIDER_DOWN') {
+      console.error('Market sentiment provider error:', {
+        provider: 'myfxbook',
+        assetType: 'forex',
+        symbol: requestMeta.symbol,
+        code: result.code,
+        providerMessage: result.providerMessage ?? null,
+      });
     }
+    return unavailableResponse({
+      code,
+      legacyCode: result.code,
+      symbol: requestMeta.symbol,
+      assetType: 'forex',
+      provider: code === 'MISSING_PROVIDER' ? 'none' : 'myfxbook',
+    });
+  }
 
-    return NextResponse.json({
-      ok: true,
-      success: true,
+  const matchingItems = result.items.filter(item => compactPairSymbol(item.symbol) === compactPairSymbol(requestMeta.symbol));
+  if (matchingItems.length === 0) {
+    return unavailableResponse({
+      code: 'NO_SENTIMENT_DATA',
+      legacyCode: 'NO_MARKET_SENTIMENT_DATA',
+      symbol: requestMeta.symbol,
+      assetType: 'forex',
       provider: 'myfxbook',
-      source: 'Myfxbook',
-      items: result.items,
-      updated_at: result.updated_at,
-    }, { status: 200, headers: cacheHeaders });
+    });
   }
 
-  if (!config.apiKey) {
-    return unavailableResponse('MARKET_SENTIMENT_SOURCE_NOT_CONFIGURED');
+  return availableResponse({
+    symbol: requestMeta.symbol,
+    assetType: 'forex',
+    provider: 'myfxbook',
+    source: 'Myfxbook',
+    items: matchingItems,
+    updatedAt: result.updated_at,
+  });
+}
+
+async function handleNewsSentiment(requestMeta: NormalizedSentimentRequest) {
+  const newsProvider = getNewsSentimentProvider();
+  if (!newsProvider) {
+    return unavailableResponse({
+      code: 'MISSING_PROVIDER',
+      symbol: requestMeta.displaySymbol,
+      assetType: requestMeta.assetType,
+      provider: 'none',
+    });
   }
 
-  const symbols = parseSymbols(request, config.provider);
+  const symbols = parseNewsSymbols(requestMeta.symbol, newsProvider.provider);
   if (symbols.length === 0) {
-    return unavailableResponse('SYMBOL_REQUIRED', config.provider);
+    return unavailableResponse({
+      code: 'SYMBOL_REQUIRED',
+      symbol: requestMeta.displaySymbol,
+      assetType: requestMeta.assetType,
+    });
   }
 
   try {
-    const items = config.provider === 'alphavantage'
-      ? await fetchAlphaVantageSentiment(symbols, config.apiKey)
-      : await fetchFinnhubSentiment(symbols, config.apiKey);
+    const items = newsProvider.provider === 'alphavantage'
+      ? await fetchAlphaVantageSentiment(symbols, newsProvider.apiKey)
+      : await fetchFinnhubSentiment(symbols, newsProvider.apiKey);
 
     if (shouldDebug()) {
       console.info('[market-sentiment] normalized provider response', {
-        provider: config.provider,
+        provider: newsProvider.provider,
+        assetType: requestMeta.assetType,
         requestedSymbols: symbols.length,
         count: items.length,
       });
     }
 
     if (items.length === 0) {
-      return unavailableResponse('NO_MARKET_SENTIMENT_DATA', config.provider);
+      return unavailableResponse({
+        code: 'NO_SENTIMENT_DATA',
+        legacyCode: 'NO_MARKET_SENTIMENT_DATA',
+        symbol: requestMeta.displaySymbol,
+        assetType: requestMeta.assetType,
+        provider: 'none',
+      });
     }
 
-    return NextResponse.json({
-      ok: true,
-      success: true,
-      provider: config.provider,
-      source: config.provider === 'finnhub' ? 'Finnhub' : 'Alpha Vantage',
+    return availableResponse({
+      symbol: requestMeta.displaySymbol,
+      assetType: requestMeta.assetType,
+      provider: 'news',
+      source: newsProvider.provider === 'finnhub' ? 'Finnhub' : 'Alpha Vantage',
       items,
-      updated_at: new Date().toISOString(),
-    }, { status: 200, headers: cacheHeaders });
+      updatedAt: new Date().toISOString(),
+    });
   } catch (error) {
-    logProviderError(config.provider, error);
-    const code = error instanceof MarketSentimentProviderError
-      ? error.code
-      : isTimeoutError(error)
-        ? 'MARKET_SENTIMENT_TIMEOUT'
-        : 'MARKET_SENTIMENT_PROVIDER_FAILED';
-    return unavailableResponse(code, config.provider);
+    logProviderError(newsProvider.provider, requestMeta.assetType, requestMeta.displaySymbol, error);
+    return unavailableResponse({
+      code: mapProviderErrorCode(error),
+      legacyCode: error instanceof MarketSentimentProviderError ? error.code : undefined,
+      symbol: requestMeta.displaySymbol,
+      assetType: requestMeta.assetType,
+      provider: 'none',
+    });
   }
+}
+
+export async function GET(request: NextRequest) {
+  const requestMeta = normalizeRequest(request);
+
+  if (shouldDebug()) {
+    console.info('[market-sentiment] request resolved', {
+      symbol: requestMeta.displaySymbol,
+      providerSymbol: requestMeta.providerSymbol,
+      assetType: requestMeta.assetType,
+      requestedAssetType: requestMeta.requestedAssetType,
+      configuredProvider: cleanEnv(process.env.MARKET_SENTIMENT_PROVIDER) || null,
+    });
+  }
+
+  if (!requestMeta.displaySymbol) {
+    return unavailableResponse({
+      code: 'SYMBOL_REQUIRED',
+      symbol: '',
+      assetType: 'unsupported',
+    });
+  }
+
+  if (requestMeta.assetType === 'forex') {
+    return handleForexSentiment(requestMeta);
+  }
+
+  if (requestMeta.assetType === 'stock' || requestMeta.assetType === 'etf') {
+    return handleNewsSentiment(requestMeta);
+  }
+
+  if (requestMeta.assetType === 'crypto' || requestMeta.assetType === 'metals') {
+    return unavailableResponse({
+      code: 'NO_SENTIMENT_DATA',
+      symbol: requestMeta.displaySymbol,
+      assetType: requestMeta.assetType,
+      provider: 'none',
+    });
+  }
+
+  return unavailableResponse({
+    code: 'UNSUPPORTED_ASSET_TYPE',
+    symbol: requestMeta.displaySymbol,
+    assetType: requestMeta.assetType,
+    provider: 'none',
+  });
 }
