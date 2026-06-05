@@ -1,5 +1,5 @@
-import { StockCategoryNewsPage } from '@/components/stock-categories/StockCategoryNewsPage';
+import { CyclicalStocksNewsPage } from '@/components/cyclical-stocks/CyclicalStocksNewsPage';
 
 export default function CyclicalStocksPage() {
-  return <StockCategoryNewsPage categoryId="cyclical" />;
+  return <CyclicalStocksNewsPage />;
 }
