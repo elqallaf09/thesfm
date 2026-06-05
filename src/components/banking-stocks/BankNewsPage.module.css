@@ -63,6 +63,7 @@
 .stockActions,
 .newsFooter,
 .loadMoreWrap,
+.tabsBar,
 .tabs,
 .categoryScroller,
 .sourceChips,
@@ -120,18 +121,156 @@
   font-size: 14px;
 }
 
+.bankTickerStrip {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  border: 1px solid rgba(38, 120, 144, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 252, 255, 0.9));
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 16px 44px rgba(3, 18, 37, 0.1);
+  min-width: 0;
+}
+
+.bankTickerStatus {
+  position: relative;
+  z-index: 3;
+  margin-inline-start: 10px;
+  border: 1px solid rgba(245, 185, 66, 0.24);
+  background: rgba(245, 185, 66, 0.12);
+  color: #b45309;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 950;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.bankTickerViewport {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bankTickerViewport::-webkit-scrollbar {
+  display: none;
+}
+
+.bankTickerTrack {
+  width: max-content;
+  display: flex;
+  align-items: center;
+  animation: bankTickerMarquee 36s linear infinite;
+  will-change: transform;
+}
+
+.bankTickerStrip:hover .bankTickerTrack,
+.bankTickerStrip:focus-within .bankTickerTrack,
+.bankTickerStrip:active .bankTickerTrack,
+.bankTickerStrip[class*="is-paused"] .bankTickerTrack {
+  animation-play-state: paused;
+}
+
+.bankTickerSet {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.bankTickerItem {
+  flex: 0 0 auto;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 16px;
+  border-inline-end: 1px solid rgba(38, 120, 144, 0.14);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.bankTickerItem strong,
+.bankTickerItem span,
+.bankTickerItem b {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.bankTickerItem strong {
+  color: var(--sfm-foreground);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.bankTickerItem span {
+  color: var(--sfm-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.bankTickerItem b {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.bankTickerItem b.positive {
+  color: #047857 !important;
+  background: #ccfbf1;
+  border-color: rgba(15, 118, 110, 0.2);
+}
+
+.bankTickerItem b.negative {
+  color: #dc2626 !important;
+  background: #fee2e2;
+  border-color: rgba(220, 38, 38, 0.2);
+}
+
+.bankTickerItem b.neutral {
+  color: var(--sfm-muted) !important;
+  background: rgba(142, 166, 195, 0.1);
+  border-color: rgba(38, 120, 144, 0.14);
+}
+
+.bankTickerState {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  min-height: 48px;
+  padding: 0 14px;
+  color: var(--sfm-muted);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+@keyframes bankTickerMarquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 .actionButton,
 .stockActions a,
 .newsFooter a,
+.reportsLink,
 .reportsPanel a,
 .quickLinks a,
 .mobileFilterButton {
   min-height: 40px;
-  border: 1px solid rgba(15, 118, 110, 0.18);
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--sfm-foreground);
-  border-radius: 8px;
-  padding: 9px 12px;
+  border: 1px solid rgba(47, 214, 192, 0.28);
+  background: linear-gradient(135deg, rgba(29, 140, 255, 0.1), rgba(47, 214, 192, 0.14));
+  color: #0f766e;
+  border-radius: 999px;
+  padding: 9px 13px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -145,12 +284,13 @@
 .actionButton:hover,
 .stockActions a:hover,
 .newsFooter a:hover,
+.reportsLink:hover,
 .reportsPanel a:hover,
 .quickLinks a:hover,
 .mobileFilterButton:hover {
   transform: translateY(-1px);
-  border-color: rgba(47, 214, 192, 0.45);
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  border-color: rgba(47, 214, 192, 0.56);
+  box-shadow: 0 0 0 3px rgba(47, 214, 192, 0.12), 0 10px 22px rgba(15, 23, 42, 0.08);
 }
 
 .actionButton:disabled {
@@ -164,7 +304,14 @@
 .reportsPanel a {
   border-color: transparent;
   background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-  color: #ffffff;
+  color: #061a2e;
+}
+
+.reportsLink {
+  flex: 0 0 auto;
+  min-height: 42px;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .summaryStrip {
@@ -233,37 +380,60 @@
   line-height: 1.5;
 }
 
+.tabsBar {
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .tabs {
-  padding: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px;
   border: 1px solid rgba(38, 120, 144, 0.12);
   background: rgba(255, 255, 255, 0.76);
-  border-radius: 8px;
+  border-radius: 18px;
   overflow-x: auto;
   flex-wrap: nowrap;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar,
+.categoryScroller::-webkit-scrollbar {
+  display: none;
 }
 
 .tabs button,
 .categoryScroller button {
-  border: 1px solid transparent;
-  background: transparent;
+  border: 1px solid rgba(38, 120, 144, 0.12);
+  background: rgba(255, 255, 255, 0.86);
   color: var(--sfm-muted);
-  border-radius: 8px;
-  padding: 9px 12px;
+  border-radius: 999px;
+  min-height: 40px;
+  padding: 0 14px;
   font: 950 12px Tajawal, Arial, sans-serif;
   white-space: nowrap;
   cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .tabs button:hover,
 .tabs button:focus-visible,
-.tabs .activeTab,
 .categoryScroller button:hover,
-.categoryScroller button:focus-visible,
+.categoryScroller button:focus-visible {
+  outline: none;
+  border-color: rgba(47, 214, 192, 0.56);
+  color: #0f766e;
+}
+
+.tabs .activeTab,
 .categoryScroller .activeChip {
   outline: none;
-  color: #ffffff;
-  border-color: transparent;
-  background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+  color: #0f766e;
+  border-color: rgba(15, 118, 110, 0.25);
+  background: #ccfbf1;
+  box-shadow: 0 10px 24px rgba(15, 118, 110, 0.12);
 }
 
 .sectionBlock {
@@ -967,6 +1137,7 @@
 }
 
 :global(.dark) .hero,
+:global(.dark) .bankTickerStrip,
 :global(.dark) .sectionBlock,
 :global(.dark) .newsPanel,
 :global(.dark) .sidebarPanel,
@@ -987,6 +1158,7 @@
 :global(.dark) .actionButton,
 :global(.dark) .stockActions a,
 :global(.dark) .newsFooter a,
+:global(.dark) .reportsLink,
 :global(.dark) .mobileFilterButton,
 :global(.dark) .sidebarList a,
 :global(.dark) .sidebarNewsList a,
@@ -994,6 +1166,72 @@
 :global(.dark) .emptyState {
   border-color: rgba(167, 243, 240, 0.12);
   background: rgba(15, 29, 49, 0.72);
+}
+
+:global(.dark) .actionButton,
+:global(.dark) .stockActions a,
+:global(.dark) .newsFooter a,
+:global(.dark) .reportsLink,
+:global(.dark) .quickLinks a,
+:global(.dark) .mobileFilterButton {
+  color: #2fd6c0;
+}
+
+:global(.dark) .primary {
+  color: #061a2e;
+}
+
+:global(.dark) .bankTickerStatus {
+  color: #f5b942;
+}
+
+:global(.dark) .bankTickerItem {
+  border-color: #1d3050;
+}
+
+:global(.dark) .bankTickerItem strong {
+  color: #e8eef6;
+}
+
+:global(.dark) .bankTickerItem span {
+  color: #8ea6c3;
+}
+
+:global(.dark) .bankTickerItem b.positive {
+  color: #2fd6c0 !important;
+  background: rgba(47, 214, 192, 0.12);
+  border-color: rgba(47, 214, 192, 0.25);
+}
+
+:global(.dark) .bankTickerItem b.negative {
+  color: #ff5b6e !important;
+  background: rgba(255, 91, 110, 0.12);
+  border-color: rgba(255, 91, 110, 0.25);
+}
+
+:global(.dark) .bankTickerItem b.neutral {
+  color: #8ea6c3 !important;
+  background: rgba(142, 166, 195, 0.12);
+  border-color: #1d3050;
+}
+
+:global(.dark) .tabs button,
+:global(.dark) .categoryScroller button {
+  background: rgba(15, 29, 49, 0.72);
+  border-color: rgba(167, 243, 240, 0.12);
+}
+
+:global(.dark) .tabs .activeTab,
+:global(.dark) .categoryScroller .activeChip {
+  background: #2fd6c0;
+  border-color: #2fd6c0;
+  color: #061a2e;
+  box-shadow: 0 10px 24px rgba(47, 214, 192, 0.22);
+}
+
+:global(.dark) .categoryScroller .activeChip span {
+  background: rgba(6, 26, 46, 0.16);
+  color: #061a2e;
 }
 
 :global(.dark) .errorAlert {
@@ -1080,6 +1318,17 @@
   .categoryScroller {
     margin-inline: -2px;
   }
+
+  .tabsBar {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .reportsLink {
+    width: max-content;
+    max-width: 100%;
+  }
 }
 
 @media (max-width: 620px) {
@@ -1107,6 +1356,7 @@
   }
 
   .hero,
+  .bankTickerStrip,
   .sectionBlock,
   .newsPanel,
   .analysisPanel,
@@ -1137,6 +1387,31 @@
 
   .hero h1 { font-size: 28px; }
 
+  .bankTickerStrip {
+    margin-inline: -2px;
+  }
+
+  .bankTickerStatus {
+    margin-inline-start: 8px;
+    font-size: 10.5px;
+  }
+
+  .bankTickerItem {
+    min-height: 42px;
+    padding-inline: 13px;
+    gap: 7px;
+  }
+
+  .tabs {
+    padding: 5px;
+  }
+
+  .tabs button,
+  .categoryScroller button {
+    min-height: 42px;
+    padding-inline: 14px;
+  }
+
   .featuredPrimary {
     min-height: auto;
   }
@@ -1151,5 +1426,20 @@
 
   .modalPanel {
     max-height: 92vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bankTickerViewport {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .bankTickerTrack {
+    animation: none;
+  }
+
+  .bankTickerSet[aria-hidden="true"] {
+    display: none;
   }
 }

@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState, type ComponentType } from 'r
 import {
   AlertTriangle,
   ArrowUpRight,
-  BarChart3,
   Bell,
   BriefcaseBusiness,
   CalendarDays,
@@ -29,6 +28,7 @@ import {
   X,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
+import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import { useLanguage } from '@/hooks/useLanguage';
 import { marketAnalysisUrl } from '@/lib/data/investmentData';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
@@ -50,7 +50,7 @@ type CategoryId =
   | 'breaking';
 type DateFilter = 'all' | 'today' | 'week' | 'month';
 type SortMode = 'newest' | 'oldest';
-type DashboardTab = 'news' | 'stocks' | 'analysis' | 'sources' | 'reports';
+type DashboardTab = 'news' | 'stocks' | 'categories' | 'sources';
 type Tone = 'positive' | 'negative' | 'neutral';
 type TFunction = (key: string) => string;
 type IconType = ComponentType<{ size?: number; className?: string; strokeWidth?: number }>;
@@ -178,6 +178,8 @@ const BANKING_CONFIG = getStockCategoryConfig('banking');
 const NEWS_PAGE_SIZE = 9;
 const STOCK_PREVIEW_LIMIT = 8;
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
+const BANK_TICKER_ORDER = ['JPM', 'BAC', 'C', 'WFC', 'GS', 'MS', 'USB', 'PNC', 'SCHW', 'BLK', 'V', 'MA', 'PYPL'];
+const BANK_TICKER_SYMBOLS = new Set<string>(BANK_TICKER_ORDER);
 
 const CATEGORY_FILTERS: CategoryConfig[] = [
   { id: 'all', labelKey: 'bank_news_filter_all' },
@@ -235,9 +237,8 @@ const CATEGORY_FILTERS: CategoryConfig[] = [
 const DASHBOARD_TABS: Array<{ id: DashboardTab; labelKey: string }> = [
   { id: 'news', labelKey: 'bank_news_tab_news' },
   { id: 'stocks', labelKey: 'bank_news_tab_stocks' },
-  { id: 'analysis', labelKey: 'bank_news_tab_analysis' },
+  { id: 'categories', labelKey: 'bank_news_tab_categories' },
   { id: 'sources', labelKey: 'bank_news_tab_sources' },
-  { id: 'reports', labelKey: 'bank_news_tab_reports' },
 ];
 
 function localeFor(lang: LangCode) {
@@ -518,6 +519,70 @@ function PageHeader({
         </ActionButton>
       </div>
     </header>
+  );
+}
+
+function BankTickerStrip({
+  items,
+  loading,
+  t,
+  locale,
+}: {
+  items: BankTickerItem[];
+  loading: boolean;
+  t: TFunction;
+  locale: string;
+}) {
+  const orderedItems = BANK_TICKER_ORDER
+    .map(symbol => items.find(item => item.symbol === symbol))
+    .filter((item): item is BankTickerItem => Boolean(item));
+  const extraItems = items.filter(item => !BANK_TICKER_SYMBOLS.has(item.symbol)).slice(0, 6);
+  const tickerItems = [...orderedItems, ...extraItems];
+
+  if (loading) {
+    return (
+      <section className={`${styles.bankTickerStrip} ${styles.bankTickerState}`} aria-label={t('bank_news_ticker_label')}>
+        <Loader2 size={16} className={styles.spin} />
+        <span>{t('bank_news_ticker_loading')}</span>
+      </section>
+    );
+  }
+
+  if (tickerItems.length === 0) {
+    return (
+      <section className={`${styles.bankTickerStrip} ${styles.bankTickerState}`} aria-label={t('bank_news_ticker_label')}>
+        <AlertTriangle size={16} />
+        <span>{t('bank_news_market_unavailable')}</span>
+      </section>
+    );
+  }
+
+  return (
+    <MarketTickerStrip
+      ariaLabel={t('bank_news_ticker_label')}
+      className={styles.bankTickerStrip}
+      viewportClassName={styles.bankTickerViewport}
+      trackClassName={styles.bankTickerTrack}
+      setClassName={styles.bankTickerSet}
+      status={<span className={styles.bankTickerStatus}>{t('market_prices_delayed')}</span>}
+    >
+      {tickerItems.map(item => {
+        const tone = changeTone(item.changePercent);
+        const Icon = tone === 'negative' ? TrendingDown : TrendingUp;
+        return (
+          <Link className={styles.bankTickerItem} href={marketAnalysisUrl(item.symbol)} key={item.symbol}>
+            <strong>{item.symbol}</strong>
+            <span>{formatMoney(item.price, item.currency, locale) || t('bank_news_not_available')}</span>
+            {typeof item.changePercent === 'number' ? (
+              <b className={styles[tone]} dir="ltr">
+                <Icon size={13} />
+                {formatPercent(item.changePercent, locale)}
+              </b>
+            ) : null}
+          </Link>
+        );
+      })}
+    </MarketTickerStrip>
   );
 }
 
@@ -1121,24 +1186,6 @@ function SourcesPanel({ sources, t }: { sources: string[]; t: TFunction }) {
   );
 }
 
-function ReportsPanel({ t }: { t: TFunction }) {
-  return (
-    <section className={styles.sectionBlock}>
-      <div className={styles.reportsPanel}>
-        <BarChart3 size={24} />
-        <div>
-          <h2>{t('bank_news_reports_title')}</h2>
-          <p>{t('bank_news_reports_body')}</p>
-        </div>
-        <Link href="/reports-center">
-          {t('bank_news_link_reports')}
-          <ArrowUpRight size={15} />
-        </Link>
-      </div>
-    </section>
-  );
-}
-
 function AllStocksModal({
   items,
   t,
@@ -1431,25 +1478,33 @@ export function BankNewsPage() {
             onRefresh={() => void loadData(false)}
           />
 
+          <BankTickerStrip items={sortedTickerItems} loading={loading} t={t} locale={locale} />
+
           {loading ? (
             <NewsSkeleton />
           ) : (
             <>
               <MarketSummaryStrip metrics={summaryMetrics} loading={loading} />
 
-              <nav className={styles.tabs} aria-label={t('bank_news_tabs_label')}>
-                {DASHBOARD_TABS.map(tab => (
-                  <button
-                    type="button"
-                    className={activeTab === tab.id ? styles.activeTab : ''}
-                    aria-pressed={activeTab === tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    key={tab.id}
-                  >
-                    {t(tab.labelKey)}
-                  </button>
-                ))}
-              </nav>
+              <div className={styles.tabsBar}>
+                <nav className={styles.tabs} aria-label={t('bank_news_tabs_label')}>
+                  {DASHBOARD_TABS.map(tab => (
+                    <button
+                      type="button"
+                      className={activeTab === tab.id ? styles.activeTab : ''}
+                      aria-pressed={activeTab === tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      key={tab.id}
+                    >
+                      {t(tab.labelKey)}
+                    </button>
+                  ))}
+                </nav>
+                <Link className={styles.reportsLink} href="/reports-center">
+                  {t('bank_news_open_reports')}
+                  <ArrowUpRight size={14} />
+                </Link>
+              </div>
 
               {activeTab === 'news' ? (
                 <>
@@ -1462,26 +1517,6 @@ export function BankNewsPage() {
                   />
                   <BreakingStrip items={breakingNews} t={t} locale={locale} />
                   <FeaturedNews items={featuredNews} t={t} locale={locale} />
-                  <section className={styles.sectionBlock}>
-                    <CategoryChips activeCategory={activeCategory} setActiveCategory={setActiveCategory} counts={categoryCounts} t={t} />
-                    <NewsFilters
-                      query={query}
-                      setQuery={setQuery}
-                      source={sourceFilter}
-                      setSource={setSourceFilter}
-                      market={marketFilter}
-                      setMarket={setMarketFilter}
-                      dateFilter={dateFilter}
-                      setDateFilter={setDateFilter}
-                      sortMode={sortMode}
-                      setSortMode={setSortMode}
-                      sources={sources}
-                      markets={markets}
-                      filtersOpen={filtersOpen}
-                      setFiltersOpen={setFiltersOpen}
-                      t={t}
-                    />
-                  </section>
                   <div className={styles.contentGrid}>
                     <NewsDashboardGrid
                       items={gridNews}
@@ -1509,28 +1544,73 @@ export function BankNewsPage() {
               ) : null}
 
               {activeTab === 'stocks' ? (
-                <FinancialStocksPreview
-                  items={sortedTickerItems}
-                  loading={loading}
-                  t={t}
-                  locale={locale}
-                  onShowAll={() => setShowAllStocks(true)}
-                />
+                <>
+                  <FinancialStocksPreview
+                    items={sortedTickerItems}
+                    loading={loading}
+                    t={t}
+                    locale={locale}
+                    onShowAll={() => setShowAllStocks(true)}
+                  />
+                  <SnapshotPanel
+                    snapshotItems={snapshotItems}
+                    movers={moverRows}
+                    tickerItems={sortedTickerItems}
+                    loading={loading}
+                    t={t}
+                    locale={locale}
+                  />
+                </>
               ) : null}
 
-              {activeTab === 'analysis' ? (
-                <SnapshotPanel
-                  snapshotItems={snapshotItems}
-                  movers={moverRows}
-                  tickerItems={sortedTickerItems}
-                  loading={loading}
-                  t={t}
-                  locale={locale}
-                />
+              {activeTab === 'categories' ? (
+                <>
+                  <section className={styles.sectionBlock}>
+                    <CategoryChips activeCategory={activeCategory} setActiveCategory={setActiveCategory} counts={categoryCounts} t={t} />
+                    <NewsFilters
+                      query={query}
+                      setQuery={setQuery}
+                      source={sourceFilter}
+                      setSource={setSourceFilter}
+                      market={marketFilter}
+                      setMarket={setMarketFilter}
+                      dateFilter={dateFilter}
+                      setDateFilter={setDateFilter}
+                      sortMode={sortMode}
+                      setSortMode={setSortMode}
+                      sources={sources}
+                      markets={markets}
+                      filtersOpen={filtersOpen}
+                      setFiltersOpen={setFiltersOpen}
+                      t={t}
+                    />
+                  </section>
+                  <div className={styles.contentGrid}>
+                    <NewsDashboardGrid
+                      items={filteredNews}
+                      loading={loading}
+                      error={newsError}
+                      visibleCount={visibleCount}
+                      setVisibleCount={setVisibleCount}
+                      t={t}
+                      locale={locale}
+                      onRetry={() => void loadData(true)}
+                      onClear={clearFilters}
+                      hasFeatured={false}
+                    />
+                    <NewsSidebar
+                      stocks={sortedTickerItems}
+                      news={filteredNews}
+                      sources={sources}
+                      lastUpdated={lastUpdated}
+                      t={t}
+                      locale={locale}
+                    />
+                  </div>
+                </>
               ) : null}
 
               {activeTab === 'sources' ? <SourcesPanel sources={sources} t={t} /> : null}
-              {activeTab === 'reports' ? <ReportsPanel t={t} /> : null}
             </>
           )}
         </div>
