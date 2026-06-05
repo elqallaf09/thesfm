@@ -669,6 +669,15 @@ function normalizeSearchItems(items: MarketSearchItem[], query: string): MarketS
     .slice(0, 8);
 }
 
+function findExactSearchMatch(items: MarketSearchSuggestion[], query: string) {
+  const cleanQuery = query.trim();
+  if (!cleanQuery) return undefined;
+  const normalizedSymbolQuery = cleanQuery.toUpperCase();
+  const normalizedNameQuery = cleanQuery.toLowerCase();
+  return items.find(result => result.symbol.toUpperCase() === normalizedSymbolQuery || result.providerSymbol?.toUpperCase() === normalizedSymbolQuery)
+    ?? items.find(result => result.name.toLowerCase() === normalizedNameQuery);
+}
+
 function normalizeSearchItem(item: MarketSearchItem): MarketSearchSuggestion {
   return normalizeAssetSearchResult(item as Partial<MarketSearchItem> & Record<string, unknown>) ?? {
     symbol: '',
@@ -1404,7 +1413,6 @@ export default function MarketAnalysisPage() {
         assetType: normalizeAssetType(selectedInput?.assetType ?? normalizedType),
       }).currency,
     };
-    setSelectedAsset(selectedMeta);
     setQuery(displaySymbol);
     try {
       const params = new URLSearchParams({
@@ -1456,7 +1464,7 @@ export default function MarketAnalysisPage() {
         const symbolIssue = publicCode === 'INVALID_SYMBOL';
         setServiceState(symbolIssue ? 'connected' : result.openbbService === 'degraded' || result.openbbService === 'slow' ? 'degraded' : result.openbbService === 'not_configured' ? 'not_configured' : 'unavailable');
         const suggestions = result.suggestions?.length ? result.suggestions : symbolIssue ? normalizedInput.suggestions : [];
-        if (symbolIssue) setSelectedAsset(null);
+        setSelectedAsset(symbolIssue ? null : selectedMeta);
         setErrorSuggestions(normalizeErrorSuggestions(suggestions, symbolInput));
         setAiInsight({ status: 'skipped', error: t('market_no_real_data_ai') });
         throw new Error(symbolIssue ? marketErrorText(publicCode, result.message || result.error || t('market_analysis_unavailable'), t) : marketErrorText(publicCode, result.message || result.error || t('market_analysis_unavailable'), t));
@@ -1478,15 +1486,15 @@ export default function MarketAnalysisPage() {
           assetType: normalizedType,
         };
         setAnalysis(nextAnalysis);
-        setSelectedAsset(current => current && current.symbol === selectedMeta.symbol && current.assetType === selectedMeta.assetType
-          ? {
-            ...current,
-            providerSymbol: nextAnalysis.providerSymbol ?? current.providerSymbol,
-            exchange: nextAnalysis.exchange ?? current.exchange,
-            country: nextAnalysis.country ?? current.country,
-            currency: nextAnalysis.currency ?? current.currency,
-          }
-          : current);
+        setSelectedAsset({
+          symbol: nextAnalysis.symbol,
+          providerSymbol: nextAnalysis.providerSymbol ?? selectedMeta.providerSymbol,
+          name: nextAnalysis.name ?? selectedMeta.name,
+          assetType: nextAnalysis.assetType,
+          exchange: nextAnalysis.exchange ?? selectedMeta.exchange,
+          country: nextAnalysis.country ?? selectedMeta.country,
+          currency: nextAnalysis.currency ?? selectedMeta.currency,
+        });
         setWatchlist(previous => previous.map(item => item.symbol === selectedMeta.symbol && item.assetType === selectedMeta.assetType
           ? {
             ...item,
@@ -1950,14 +1958,8 @@ export default function MarketAnalysisPage() {
       return;
     }
 
-    const selectBestMatch = (items: MarketSearchSuggestion[]) => {
-      const normalizedQuery = cleanQuery.toUpperCase();
-      return items.find(result => result.symbol.toUpperCase() === normalizedQuery || result.providerSymbol?.toUpperCase() === normalizedQuery)
-        ?? items.find(result => result.name.toLowerCase() === cleanQuery.toLowerCase())
-        ?? items[0];
-    };
-
-    let selectedItem: MarketSearchSuggestion | undefined = item ? normalizeSearchItem(item) : selectBestMatch(searchResults);
+    let suggestionCandidates = searchResults;
+    let selectedItem: MarketSearchSuggestion | undefined = item ? normalizeSearchItem(item) : findExactSearchMatch(searchResults, cleanQuery);
     if (!selectedItem && cleanQuery) {
       try {
         setSearchLoading(true);
@@ -1970,10 +1972,12 @@ export default function MarketAnalysisPage() {
           ...normalizeErrorSuggestions(data.suggestions, cleanQuery, false),
         ];
         const results = normalizeSearchItems(responseItems, cleanQuery);
+        const resolvedItem = data.resolved ? normalizeSearchItem(data.resolved) : undefined;
+        suggestionCandidates = results;
         setSearchResults(results);
         setHighlightedSearchIndex(0);
         setSearchMessage(results.length === 0 ? marketErrorText(data.code, data.message || data.error || t('market_symbol_not_found_helpful'), t) : '');
-        selectedItem = selectBestMatch(results);
+        selectedItem = resolvedItem ?? findExactSearchMatch(results, cleanQuery);
       } catch {
         selectedItem = undefined;
       } finally {
@@ -2007,7 +2011,7 @@ export default function MarketAnalysisPage() {
         setAnalysis(null);
         setServiceState(current => current === 'checking' ? 'connected' : current);
         setError(invalidSymbolMessage(t, normalizedInput.correction));
-        setErrorSuggestions(normalizeErrorSuggestions(normalizedInput.suggestions, cleanQuery));
+        setErrorSuggestions(suggestionCandidates.length > 0 ? suggestionCandidates : normalizeErrorSuggestions(normalizedInput.suggestions, cleanQuery));
         setSearchMessage(invalidSymbolMessage(t, normalizedInput.correction));
         return;
       }
