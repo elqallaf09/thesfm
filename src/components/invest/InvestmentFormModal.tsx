@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { getCurrency } from '@/lib/currencies';
+import { formatMarketPrice } from '@/lib/market/marketCurrency';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
@@ -23,6 +24,16 @@ import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/t
 type Mode = 'create' | 'edit';
 type SearchState = 'idle' | 'loading' | 'ready' | 'error';
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
+
+type FxState = {
+  state: LoadState;
+  from: string;
+  to: string;
+  rate: number | null;
+  source?: string | null;
+  lastUpdated?: string | null;
+  message?: string;
+};
 
 type AssetSearchItem = {
   name: string;
@@ -309,6 +320,12 @@ function sourceLabel(source: string | undefined) {
   return source === 'api' ? 'Metals API / Yahoo Finance' : source;
 }
 
+function metalProductGrams(type: InvestmentType, product: string | undefined) {
+  if (type === 'gold') return GOLD_PRODUCTS.find(item => item.value === product)?.grams ?? null;
+  if (type === 'silver') return SILVER_PRODUCTS.find(item => item.value === product)?.grams ?? null;
+  return null;
+}
+
 export function InvestmentFormModal({
   open,
   mode,
@@ -356,12 +373,17 @@ export function InvestmentFormModal({
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [projectsState, setProjectsState] = useState<LoadState>('idle');
   const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [fx, setFx] = useState<FxState>({ state: 'idle', from: '', to: '', rate: null });
+  const [fxReloadKey, setFxReloadKey] = useState(0);
 
   const currencyInfo = useMemo(() => getCurrency(currency), [currency]);
+  const accountCurrency = (currencyInfo.code || currency || 'KWD').toUpperCase();
   const selectedPrice = selectedAsset?.price ?? null;
   const hasLinkedPrice = selectedPrice !== null && Number.isFinite(selectedPrice) && selectedPrice > 0;
   const quantityValue = parseDecimal(quantity);
   const hasQuantity = quantityValue !== null && quantityValue > 0;
+  const isMetal = type === 'gold' || type === 'silver';
+  const metalUnitQuantity = isMetal && hasQuantity ? quantityValue : isMetal ? 1 : null;
   const selectedAssetCurrency = selectedAsset?.currency || initialValues?.currency || currencyInfo.code || currency;
   const activeCurrency = selectedAssetCurrency.toUpperCase();
   const metalCurrency = (metals.gold?.currency || metals.silver?.currency || currencyInfo.code || currency).toUpperCase();
@@ -369,7 +391,7 @@ export function InvestmentFormModal({
   const selectedMatchesName = Boolean(selectedAsset && name.trim() === localizedAssetName(selectedAsset, dir));
   const assetSearchType = type === 'fund' ? 'etf' : type === 'crypto' ? 'crypto' : type === 'stocks' ? 'stock' : undefined;
   const shouldSearchAssets = open && isMarketType(type);
-  const quantityLabel = getQuantityLabel(type, selectedAsset?.asset_type, labels);
+  const quantityLabel = isMetal ? labels.numberOfUnits : getQuantityLabel(type, selectedAsset?.asset_type, labels);
   const goldConfig = GOLD_PRODUCTS.find(product => product.value === goldProduct) ?? GOLD_PRODUCTS[0];
   const silverConfig = SILVER_PRODUCTS.find(product => product.value === silverProduct) ?? SILVER_PRODUCTS[0];
   const gramsValue = parseDecimal(metalGrams);
@@ -377,8 +399,9 @@ export function InvestmentFormModal({
   const selectedSilverPurity = SILVER_PURITIES.find(item => item.value === silverPurity) ?? SILVER_PURITIES[0];
   const silverPurityValue = selectedSilverPurity.numeric ?? (parseDecimal(customPurity) !== null ? (parseDecimal(customPurity)! * 10) : null);
   const silverPurityRatio = silverPurityValue !== null ? silverPurityValue / 1000 : null;
-  const pureGoldGrams = type === 'gold' && gramsValue !== null && gramsValue > 0 ? gramsValue * (karatValue / 24) : null;
-  const pureSilverGrams = type === 'silver' && gramsValue !== null && gramsValue > 0 && silverPurityRatio !== null ? gramsValue * silverPurityRatio : null;
+  const totalMetalGrams = isMetal && gramsValue !== null && gramsValue > 0 ? gramsValue * (metalUnitQuantity ?? 1) : null;
+  const pureGoldGrams = type === 'gold' && totalMetalGrams !== null && totalMetalGrams > 0 ? totalMetalGrams * (karatValue / 24) : null;
+  const pureSilverGrams = type === 'silver' && totalMetalGrams !== null && totalMetalGrams > 0 && silverPurityRatio !== null ? totalMetalGrams * silverPurityRatio : null;
   const goldPrice = metals.gold?.price ?? null;
   const silverPrice = metals.silver?.price ?? null;
   const assetMarketValue = hasLinkedPrice && hasQuantity ? selectedPrice * quantityValue : null;
@@ -391,9 +414,19 @@ export function InvestmentFormModal({
       : isMarketType(type)
         ? assetMarketValue
         : null;
-  const valueForValidation = calculatedValue ?? parseDecimal(currentValue);
   const formCurrency = type === 'gold' || type === 'silver' ? metalCurrency : activeCurrency;
+  const nativeMarketValue = calculatedValue ?? parseDecimal(currentValue);
+  const valueForValidation = nativeMarketValue;
+  const isSameAccountCurrency = formCurrency === accountCurrency;
+  const convertedMarketValue = nativeMarketValue !== null && nativeMarketValue > 0
+    ? isSameAccountCurrency
+      ? nativeMarketValue
+      : fx.state === 'ready' && fx.rate !== null
+        ? nativeMarketValue * fx.rate
+        : null
+    : null;
   const isManualMarketValue = calculatedValue === null && (isMarketType(type) || type === 'gold' || type === 'silver');
+  const locale = dir === 'rtl' ? 'ar' : 'en';
 
   const C = useMemo(() => ({
     sectionAssetData: labels.sectionAssetData || 'بيانات الأصل',
@@ -428,6 +461,16 @@ export function InvestmentFormModal({
     cashBankName: labels.cashBankName || 'اسم البنك أو الوديعة',
     propertyLocation: labels.propertyLocation || 'اسم العقار أو الموقع',
     calculationSummary: labels.calculationSummary || 'ملخص الحساب',
+    accountCurrencyValue: 'القيمة بعملة الحساب',
+    nativeValue: 'القيمة الأصلية',
+    fxRate: 'سعر الصرف',
+    fxSource: 'مصدر سعر الصرف',
+    sameAccountCurrency: 'نفس عملة الحساب',
+    conversionLoading: 'جاري تحويل القيمة إلى عملة الحساب...',
+    conversionUnavailable: 'تعذر تحويل القيمة إلى عملة الحساب حالياً',
+    retryFx: 'إعادة المحاولة',
+    realFxBadge: 'سعر صرف حقيقي',
+    totalWeight: 'الوزن الإجمالي',
   }), [labels]);
 
   useEffect(() => {
@@ -437,12 +480,25 @@ export function InvestmentFormModal({
     setSearchState('idle');
 
     if (mode === 'edit' && initialValues) {
+      const initialProduct = initialValues.type === 'gold'
+        ? initialValues.metalProductType || 'bar'
+        : initialValues.type === 'silver'
+          ? initialValues.metalProductType || 'bar'
+          : undefined;
+      const fixedGrams = metalProductGrams(initialValues.type, initialProduct);
+      const inferredMetalQuantity = (initialValues.type === 'gold' || initialValues.type === 'silver')
+        ? initialValues.quantity ?? (fixedGrams && initialValues.grams ? initialValues.grams / fixedGrams : 1)
+        : initialValues.quantity;
+      const baseMetalGrams = (initialValues.type === 'gold' || initialValues.type === 'silver')
+        ? fixedGrams ?? initialValues.grams
+        : initialValues.grams;
+
       setName(initialValues.name);
       setType(initialValues.type);
-      setCurrentValue(toInputNumber(initialValues.currentMarketValue ?? initialValues.currentValue, 10));
+      setCurrentValue(toInputNumber(initialValues.nativeMarketValue ?? initialValues.currentMarketValue ?? initialValues.currentValue, 10));
       setManualValueEdited(false);
       setMonthlyContribution(toInputNumber(initialValues.monthlyContribution, 10));
-      setQuantity(toInputNumber(initialValues.quantity, 10));
+      setQuantity(toInputNumber(inferredMetalQuantity, 10));
       setPurchasePrice(toInputNumber(initialValues.purchasePrice, 10));
       setStartDate(initialValues.startDate);
       setRiskLevel(initialValues.riskLevel);
@@ -450,12 +506,12 @@ export function InvestmentFormModal({
       setNotes(initialValues.notes || '');
       setSelectedAsset(assetFromInvestment(initialValues));
       setSelectedProjectId(initialValues.projectId || '');
-      setGoldProduct(initialValues.type === 'gold' && initialValues.metalProductType ? initialValues.metalProductType : 'bar');
+      setGoldProduct(initialValues.type === 'gold' && initialProduct ? initialProduct : 'bar');
       setGoldKarat(initialValues.metalKarat ? toInputNumber(initialValues.metalKarat, 4) : '24');
-      setSilverProduct(initialValues.type === 'silver' && initialValues.metalProductType ? initialValues.metalProductType : 'bar');
+      setSilverProduct(initialValues.type === 'silver' && initialProduct ? initialProduct : 'bar');
       setSilverPurity(initialValues.metalPurity ? (initialValues.metalPurity === 999 || initialValues.metalPurity === 925 ? String(initialValues.metalPurity) : 'custom') : '999');
       setCustomPurity(initialValues.metalPurity && initialValues.metalPurity !== 999 && initialValues.metalPurity !== 925 ? toInputNumber(initialValues.metalPurity / 10, 4) : '99.9');
-      setMetalGrams(toInputNumber(initialValues.grams, 10));
+      setMetalGrams(toInputNumber(baseMetalGrams, 10));
       return;
     }
 
@@ -620,6 +676,75 @@ export function InvestmentFormModal({
   }, [calculatedValue, manualValueEdited, open]);
 
   useEffect(() => {
+    if (!open || !formCurrency || !accountCurrency) {
+      setFx({ state: 'idle', from: '', to: '', rate: null });
+      return;
+    }
+    if (formCurrency === accountCurrency) {
+      setFx({
+        state: 'ready',
+        from: formCurrency,
+        to: accountCurrency,
+        rate: 1,
+        source: 'same_currency',
+        lastUpdated: new Date().toISOString(),
+      });
+      return;
+    }
+
+    let cancelled = false;
+    const timeout = window.setTimeout(async () => {
+      setFx({ state: 'loading', from: formCurrency, to: accountCurrency, rate: null });
+      try {
+        const params = new URLSearchParams({ from: formCurrency, to: accountCurrency });
+        const response = await fetch(`/api/market/fx/rate?${params.toString()}`, { cache: 'no-store' });
+        const payload = await response.json() as {
+          ok?: boolean;
+          rate?: number | null;
+          source?: string | null;
+          lastUpdated?: string | null;
+          error?: string;
+        };
+        if (cancelled) return;
+        const rate = Number(payload.rate);
+        if (!response.ok || payload.ok === false || !Number.isFinite(rate) || rate <= 0) {
+          setFx({
+            state: 'error',
+            from: formCurrency,
+            to: accountCurrency,
+            rate: null,
+            message: payload.error || C.conversionUnavailable,
+          });
+          return;
+        }
+        setFx({
+          state: 'ready',
+          from: formCurrency,
+          to: accountCurrency,
+          rate,
+          source: payload.source || 'FX provider',
+          lastUpdated: payload.lastUpdated || new Date().toISOString(),
+        });
+      } catch {
+        if (!cancelled) {
+          setFx({
+            state: 'error',
+            from: formCurrency,
+            to: accountCurrency,
+            rate: null,
+            message: C.conversionUnavailable,
+          });
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [accountCurrency, C.conversionUnavailable, formCurrency, fxReloadKey, open]);
+
+  useEffect(() => {
     if (!open || type !== 'gold') return;
     if (goldConfig.grams !== null) setMetalGrams(toInputNumber(goldConfig.grams, 4));
     if (goldConfig.karat) setGoldKarat(String(goldConfig.karat));
@@ -650,6 +775,7 @@ export function InvestmentFormModal({
       }
     } else if (type === 'gold') {
       if (!goldProduct) nextErrors.metalProduct = labels.errors.nameRequired;
+      if (!hasQuantity) nextErrors.quantity = labels.errors.quantityPositive;
       if (gramsValue === null || gramsValue <= 0) nextErrors.grams = labels.errors.gramsPositive || labels.errors.quantityPositive;
       if (karatValue <= 0 || karatValue > 24) nextErrors.goldKarat = labels.errors.valuePositive;
       if (goldMarketValue === null && (!currentValue || valueForValidation === null || valueForValidation <= 0)) {
@@ -657,6 +783,7 @@ export function InvestmentFormModal({
       }
     } else if (type === 'silver') {
       if (!silverProduct) nextErrors.metalProduct = labels.errors.nameRequired;
+      if (!hasQuantity) nextErrors.quantity = labels.errors.quantityPositive;
       if (gramsValue === null || gramsValue <= 0) nextErrors.grams = labels.errors.gramsPositive || labels.errors.quantityPositive;
       if (silverPurityRatio === null || silverPurityRatio <= 0 || silverPurityRatio > 1) {
         nextErrors.silverPurity = labels.errors.purityRequired || labels.errors.valuePositive;
@@ -673,6 +800,9 @@ export function InvestmentFormModal({
 
     if (monthlyContribution && (monthly < 0)) nextErrors.monthlyContribution = labels.errors.contributionPositive;
     if (expectedReturn && (expected === null || expected < -100 || expected > 1000)) nextErrors.expectedReturn = labels.errors.returnRange;
+    if (valueForValidation !== null && valueForValidation > 0 && !isSameAccountCurrency && (fx.state !== 'ready' || fx.rate === null)) {
+      nextErrors.fx = C.conversionUnavailable;
+    }
 
     return nextErrors;
   }
@@ -690,7 +820,7 @@ export function InvestmentFormModal({
     setSearchState('idle');
     setManualValueEdited(false);
 
-    if (!isMarketType(nextType)) {
+    if (!isMarketType(nextType) && nextType !== 'gold' && nextType !== 'silver') {
       setSelectedAsset(null);
       setQuantity('');
       setPurchasePrice('');
@@ -698,11 +828,13 @@ export function InvestmentFormModal({
     if (nextType !== 'project') setSelectedProjectId('');
     if (nextType === 'gold') {
       setName(labelOf(GOLD_PRODUCTS, goldProduct));
+      setQuantity('1');
       setGoldKarat('24');
       setMetalGrams('');
       setCurrentValue('');
     } else if (nextType === 'silver') {
       setName(labelOf(SILVER_PRODUCTS, silverProduct));
+      setQuantity('1');
       setSilverPurity('999');
       setMetalGrams('');
       setCurrentValue('');
@@ -746,7 +878,8 @@ export function InvestmentFormModal({
     if (!validate()) return;
 
     const manualValue = parseDecimal(currentValue);
-    const finalCurrentValue = calculatedValue ?? manualValue ?? 0;
+    const finalNativeMarketValue = calculatedValue ?? manualValue ?? 0;
+    const finalConvertedMarketValue = convertedMarketValue ?? finalNativeMarketValue;
     const purchase = parseDecimal(purchasePrice);
     const monthly = parseDecimal(monthlyContribution) ?? 0;
     const expected = parseDecimal(expectedReturn);
@@ -766,8 +899,8 @@ export function InvestmentFormModal({
     await onSave({
       name: name.trim(),
       type,
-      currentValue: finalCurrentValue,
-      amount: finalCurrentValue,
+      currentValue: finalConvertedMarketValue,
+      amount: finalConvertedMarketValue,
       monthlyContribution: monthly,
       startDate,
       riskLevel,
@@ -777,12 +910,22 @@ export function InvestmentFormModal({
       providerSymbol: selectedAsset?.provider_symbol ?? undefined,
       market: selectedAsset ? localizedMarketName(selectedAsset, dir) : undefined,
       assetType: selectedAsset?.asset_type ?? (isGold || isSilver ? 'commodity' : type === 'project' ? 'project' : type),
-      currency: isGold || isSilver ? metalCurrency : selectedAsset?.currency ?? activeCurrency,
-      quantity: isMarketType(type) && hasQuantity ? quantityValue! : undefined,
+      currency: formCurrency,
+      quantity: (isMarketType(type) || isGold || isSilver) && hasQuantity ? quantityValue! : undefined,
       purchasePrice: purchase ?? undefined,
       currentPrice: isGold || isSilver ? currentMetalPrice ?? undefined : hasLinkedPrice ? selectedPrice : undefined,
-      currentMarketValue: finalCurrentValue,
-      priceCurrency: isGold || isSilver ? metalCurrency : activeCurrency,
+      currentMarketValue: finalNativeMarketValue,
+      priceCurrency: formCurrency,
+      nativeCurrency: formCurrency,
+      nativeUnitPrice: isGold || isSilver ? currentMetalPrice ?? undefined : hasLinkedPrice ? selectedPrice : undefined,
+      nativeMarketValue: finalNativeMarketValue,
+      userCurrency: accountCurrency,
+      fxRateToUserCurrency: isSameAccountCurrency ? 1 : fx.rate ?? undefined,
+      convertedMarketValue: finalConvertedMarketValue,
+      fxSource: isSameAccountCurrency ? 'same_currency' : fx.source ?? undefined,
+      fxLastUpdatedAt: isSameAccountCurrency ? new Date().toISOString() : fx.lastUpdated ?? undefined,
+      valuationSource: priceSource,
+      valuationLastUpdatedAt: lastUpdated,
       lastPrice: isGold || isSilver ? currentMetalPrice ?? undefined : selectedPrice ?? undefined,
       lastPriceUpdatedAt: lastUpdated,
       dataSource: priceSource,
@@ -792,7 +935,7 @@ export function InvestmentFormModal({
       metalProductType: metalProduct,
       metalKarat: isGold ? karatValue : undefined,
       metalPurity,
-      grams: isGold || isSilver ? gramsValue ?? undefined : undefined,
+      grams: isGold || isSilver ? totalMetalGrams ?? undefined : undefined,
       pureMetalGrams: pureMetalGrams ?? undefined,
       priceSource,
     });
@@ -805,6 +948,19 @@ export function InvestmentFormModal({
   const currentMetalPrice = type === 'gold' ? goldPrice : type === 'silver' ? silverPrice : null;
   const currentPureGrams = type === 'gold' ? pureGoldGrams : type === 'silver' ? pureSilverGrams : null;
   const searchPlaceholder = type === 'crypto' ? C.cryptoSearchPlaceholder : type === 'fund' ? C.fundSearchPlaceholder : C.assetSearchPlaceholder;
+  const nativeValueText = nativeMarketValue !== null && nativeMarketValue > 0
+    ? formatMarketPrice({
+      price: nativeMarketValue,
+      currency: formCurrency,
+      symbol: selectedAsset?.symbol,
+      exchange: selectedAsset?.market ?? undefined,
+      locale,
+      includeKuwaitDinarEquivalent: true,
+    })
+    : labels.unavailable;
+  const convertedValueText = convertedMarketValue !== null && convertedMarketValue > 0
+    ? formatMarketPrice({ price: convertedMarketValue, currency: accountCurrency, locale })
+    : labels.unavailable;
 
   return (
     <div className="invest-overlay" role="presentation" onMouseDown={onClose}>
@@ -1037,6 +1193,10 @@ export function InvestmentFormModal({
                       <strong dir="ltr">{metalCurrency} {formatNumber(currentMetalPrice, 6)}</strong>
                     </div>
                     <div>
+                      <span>{C.totalWeight}</span>
+                      <strong dir="ltr">{totalMetalGrams !== null ? `${formatNumber(totalMetalGrams, 6)} g` : '-'}</strong>
+                    </div>
+                    <div>
                       <span>{type === 'gold' ? C.pureGoldGrams : C.pureSilverGrams}</span>
                       <strong dir="ltr">{currentPureGrams !== null ? `${formatNumber(currentPureGrams, 6)} g` : '-'}</strong>
                     </div>
@@ -1056,7 +1216,7 @@ export function InvestmentFormModal({
 
           <FormSection title={C.sectionQuantity} icon={<Coins size={17} />} />
 
-          {isMarketType(type) && (
+          {(isMarketType(type) || type === 'gold' || type === 'silver') && (
             <Field label={quantityLabel} error={errors.quantity} helper={type === 'crypto' ? 'يدعم هذا الحقل كسور العملات الرقمية حتى 8 منازل عشرية وأكثر.' : labels.quantityHelper} required>
               <input type="number" min="0" step={type === 'crypto' ? '0.00000001' : '0.000001'} value={quantity} onChange={event => setQuantity(event.target.value)} dir="ltr" inputMode="decimal" />
             </Field>
@@ -1088,7 +1248,7 @@ export function InvestmentFormModal({
             </div>
           ) : null}
 
-          {(!isMarketType(type) || isManualMarketValue || type === 'project') && (
+          {((!isMarketType(type) && type !== 'gold' && type !== 'silver') || isManualMarketValue || type === 'project') && (
             <Field label={type === 'project' ? C.investmentAmount : isManualMarketValue ? C.manualValue : labels.currentValue} error={errors.currentValue} required>
               <div className="invest-money-input">
                 <span dir="ltr">{formCurrency}</span>
@@ -1129,13 +1289,19 @@ export function InvestmentFormModal({
                   </strong>
                 </div>
                 <div>
-                  <span>{isMarketType(type) ? quantityLabel : type === 'gold' ? C.pureGoldGrams : C.pureSilverGrams}</span>
+                  <span>{isMarketType(type) ? quantityLabel : C.totalWeight}</span>
                   <strong dir="ltr">
                     {isMarketType(type)
                       ? formatPreciseNumber(quantityValue!)
-                      : `${formatNumber(currentPureGrams!, 6)} g`}
+                      : `${formatNumber(totalMetalGrams!, 6)} g`}
                   </strong>
                 </div>
+                {!isMarketType(type) && (
+                  <div>
+                    <span>{type === 'gold' ? C.pureGoldGrams : C.pureSilverGrams}</span>
+                    <strong dir="ltr">{`${formatNumber(currentPureGrams!, 6)} g`}</strong>
+                  </div>
+                )}
                 <div className="invest-calculation-total">
                   <span>{labels.currentMarketValue}</span>
                   <strong dir="ltr">{formCurrency} {formatNumber(calculatedValue, 4)}</strong>
@@ -1146,6 +1312,45 @@ export function InvestmentFormModal({
                 {' · '}
                 {labels.lastUpdated}: {isMarketType(type) ? formatUpdatedAt(selectedAsset?.updated_at) || labels.unavailable : formatUpdatedAt(type === 'gold' ? metals.gold?.lastUpdated : metals.silver?.lastUpdated) || labels.unavailable}
               </small>
+            </div>
+          )}
+
+          {nativeMarketValue !== null && nativeMarketValue > 0 && (
+            <div className="invest-conversion-card span-2">
+              <div className="invest-calculation-head">
+                <span>{C.accountCurrencyValue}</span>
+                {!isSameAccountCurrency && (
+                  <button type="button" onClick={() => setFxReloadKey(key => key + 1)}>
+                    {C.retryFx}
+                  </button>
+                )}
+              </div>
+              <div className="invest-calculation-grid">
+                <div>
+                  <span>{C.nativeValue}</span>
+                  <strong dir="ltr">{nativeValueText}</strong>
+                </div>
+                <div className="invest-calculation-total">
+                  <span>{C.accountCurrencyValue}</span>
+                  <strong dir="ltr">{fx.state === 'loading' && !isSameAccountCurrency ? C.conversionLoading : convertedValueText}</strong>
+                </div>
+                <div>
+                  <span>{C.fxRate}</span>
+                  <strong dir="ltr">
+                    {isSameAccountCurrency
+                      ? C.sameAccountCurrency
+                      : fx.state === 'ready' && fx.rate !== null
+                        ? `1 ${formCurrency} = ${formatNumber(fx.rate, 8)} ${accountCurrency}`
+                        : C.conversionUnavailable}
+                  </strong>
+                </div>
+              </div>
+              <small>
+                {isSameAccountCurrency
+                  ? C.sameAccountCurrency
+                  : `${C.fxSource}: ${fx.source || labels.unavailable} · ${labels.lastUpdated}: ${formatUpdatedAt(fx.lastUpdated) || labels.unavailable} · ${C.realFxBadge}`}
+              </small>
+              {errors.fx && <small className="invest-error-text">{errors.fx}</small>}
             </div>
           )}
 
@@ -1196,6 +1401,22 @@ export function InvestmentFormModal({
           }
           .invest-form--upgraded {
             align-items: start;
+          }
+          .invest-conversion-card {
+            border: 1px solid rgba(14, 116, 144, .18);
+            border-radius: 20px;
+            background: linear-gradient(135deg, rgba(236, 254, 255, .76), rgba(240, 253, 250, .72));
+            padding: 14px;
+            display: grid;
+            gap: 12px;
+            min-width: 0;
+          }
+          .dark .invest-conversion-card {
+            background: linear-gradient(135deg, rgba(8, 47, 73, .54), rgba(15, 118, 110, .16));
+            border-color: rgba(103, 232, 249, .18);
+          }
+          .invest-error-text {
+            color: #B91C1C !important;
           }
           .invest-type-grid {
             display: grid;

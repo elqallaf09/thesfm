@@ -30,6 +30,8 @@ interface Props {
   typeLabel: (type: Investment['type']) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
   formatMoney: (amount: number | null | undefined, status?: Investment['displayValueStatus']) => string;
+  formatNativeMoney: (amount: number | null | undefined, currency?: string | null, item?: Investment | null) => string;
+  accountValue: number | null;
   onClose: () => void;
   onRefreshPrice?: (item: Investment) => void;
   refreshing?: boolean;
@@ -42,6 +44,8 @@ export function InvestmentDetailDrawer({
   typeLabel,
   riskLabel,
   formatMoney,
+  formatNativeMoney,
+  accountValue,
   onClose,
   onRefreshPrice,
   refreshing = false,
@@ -50,6 +54,13 @@ export function InvestmentDetailDrawer({
 
   const linkedSymbol = investment.providerSymbol || investment.symbol;
   const unavailable = labels.unavailable || '-';
+  const nativeCurrency = investment.nativeCurrency || investment.priceCurrency || investment.currency;
+  const nativeValue = typeof investment.nativeMarketValue === 'number'
+    ? investment.nativeMarketValue
+    : typeof investment.currentMarketValue === 'number'
+      ? investment.currentMarketValue
+      : null;
+  const accountValueStatus: Investment['displayValueStatus'] = accountValue !== null ? 'valid' : 'missing';
 
   return (
     <div className="invest-overlay" role="presentation" onMouseDown={onClose}>
@@ -76,7 +87,12 @@ export function InvestmentDetailDrawer({
 
         <div className="invest-detail-grid">
           <Info label={labels.type} value={typeLabel(investment.type)} />
-          <Info label={labels.currentMarketValue || labels.currentValue} value={formatMoney(investment.displayValue, investment.displayValueStatus)} />
+          <Info label={labels.currentMarketValue || labels.currentValue} value={formatMoney(accountValue, accountValueStatus)} />
+          {nativeValue !== null && nativeCurrency && <Info label="القيمة الأصلية" value={formatNativeMoney(nativeValue, nativeCurrency, investment)} ltr />}
+          {accountValue !== null && <Info label="القيمة بعملة الحساب" value={formatMoney(accountValue, 'valid')} />}
+          {investment.fxRateToUserCurrency && nativeCurrency && investment.userCurrency && nativeCurrency !== investment.userCurrency && (
+            <Info label="سعر الصرف" value={`1 ${nativeCurrency} = ${formatNumber(investment.fxRateToUserCurrency)} ${investment.userCurrency}`} ltr />
+          )}
           <Info label={labels.monthly} value={formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)} />
           <Info label={labels.startDate} value={investment.startDate} />
           <Info label={labels.risk} value={riskLabel(investment.riskLevel)} />

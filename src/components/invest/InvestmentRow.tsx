@@ -5,6 +5,7 @@ import type { Investment } from '@/types/investment';
 
 interface Props {
   investment: Investment;
+  accountValue: number | null;
   portfolioPercent: number | null;
   labels: {
     details: string;
@@ -24,6 +25,7 @@ interface Props {
   typeLabel: (type: Investment['type']) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
   formatMoney: (amount: number | null | undefined, status?: Investment['displayValueStatus']) => string;
+  formatNativeMoney: (amount: number | null | undefined, currency?: string | null, item?: Investment | null) => string;
   onDetails: (item: Investment) => void;
   onEdit: (item: Investment) => void;
   onDelete: (item: Investment) => void;
@@ -33,11 +35,13 @@ interface Props {
 
 export function InvestmentRow({
   investment,
+  accountValue,
   portfolioPercent,
   labels,
   typeLabel,
   riskLabel,
   formatMoney,
+  formatNativeMoney,
   onDetails,
   onEdit,
   onDelete,
@@ -46,6 +50,17 @@ export function InvestmentRow({
 }: Props) {
   const linkedSymbol = investment.providerSymbol || investment.symbol;
   const isMetal = investment.type === 'gold' || investment.type === 'silver';
+  const nativeCurrency = investment.nativeCurrency || investment.priceCurrency || investment.currency;
+  const nativeValue = typeof investment.nativeMarketValue === 'number'
+    ? investment.nativeMarketValue
+    : typeof investment.currentMarketValue === 'number'
+      ? investment.currentMarketValue
+      : undefined;
+  const hasNativeValue = nativeValue !== undefined && Number.isFinite(nativeValue);
+  const hasConvertedValue = accountValue !== null && Number.isFinite(accountValue);
+  const accountValueStatus: Investment['displayValueStatus'] = hasConvertedValue ? 'valid' : 'missing';
+  const userCurrency = investment.userCurrency;
+  const showConvertedLine = hasConvertedValue && nativeCurrency && userCurrency && nativeCurrency !== userCurrency;
   const notCalculable = labels.ofPortfolio.includes('portfolio')
     ? 'Not calculable'
     : labels.ofPortfolio.includes('portefeuille')
@@ -59,7 +74,7 @@ export function InvestmentRow({
           <h3>{investment.name}</h3>
           <p>{typeLabel(investment.type)} · {labels.risk}: {riskLabel(investment.riskLevel)}</p>
         </div>
-        <strong className="invest-asset-value">{formatMoney(investment.displayValue, investment.displayValueStatus)}</strong>
+        <strong className="invest-asset-value">{formatMoney(accountValue, accountValueStatus)}</strong>
       </div>
 
       <div className="invest-row-meta">
@@ -78,14 +93,26 @@ export function InvestmentRow({
         {investment.type === 'silver' && typeof investment.metalPurity === 'number' && (
           <span>النقاء: <b dir="ltr">{formatPreciseNumber(investment.metalPurity)}</b></span>
         )}
-        {typeof investment.lastPrice === 'number' && investment.currency && (
-          <span>{labels.lastPrice}: <b dir="ltr">{investment.currency} {formatNumber(investment.lastPrice)}</b></span>
+        {typeof investment.lastPrice === 'number' && nativeCurrency && (
+          <span>{labels.lastPrice}: <b dir="ltr">{formatNativeMoney(investment.lastPrice, nativeCurrency, investment)}</b></span>
         )}
         {typeof investment.quantity === 'number' && (
           <span>{labels.quantity || 'Quantity'}: <b dir="ltr">{formatPreciseNumber(investment.quantity)}</b></span>
         )}
         {linkedSymbol && (
-          <span>{labels.currentMarketValue || 'Current market value'}: <b>{formatMoney(investment.displayValue, investment.displayValueStatus)}</b></span>
+          <span>{labels.currentMarketValue || 'Current market value'}: <b>{formatMoney(accountValue, accountValueStatus)}</b></span>
+        )}
+        {hasNativeValue && nativeCurrency && (
+          <span>القيمة الأصلية: <b dir="ltr">{formatNativeMoney(nativeValue, nativeCurrency, investment)}</b></span>
+        )}
+        {showConvertedLine && (
+          <span>القيمة بعملة الحساب: <b>{formatMoney(accountValue, 'valid')}</b></span>
+        )}
+        {investment.fxRateToUserCurrency && nativeCurrency && userCurrency && nativeCurrency !== userCurrency && (
+          <span dir="ltr">FX {nativeCurrency}/{userCurrency}: <b>{formatNumber(investment.fxRateToUserCurrency)}</b></span>
+        )}
+        {investment.fxSource && investment.fxSource !== 'same_currency' && (
+          <span>{investment.fxSource === 'manual' ? 'قيمة يدوية' : 'سعر صرف حقيقي'}</span>
         )}
         {investment.lastPriceUpdatedAt && (
           <span>{labels.lastUpdated || 'Last updated'}: <b dir="ltr">{formatDate(investment.lastPriceUpdatedAt)}</b></span>

@@ -36,6 +36,16 @@ export interface Investment {
   currentPrice?: number;
   currentMarketValue?: number;
   priceCurrency?: string;
+  nativeCurrency?: string;
+  nativeUnitPrice?: number;
+  nativeMarketValue?: number;
+  userCurrency?: string;
+  fxRateToUserCurrency?: number;
+  convertedMarketValue?: number;
+  fxSource?: string;
+  fxLastUpdatedAt?: string;
+  valuationSource?: string;
+  valuationLastUpdatedAt?: string;
   lastPrice?: number;
   lastPriceUpdatedAt?: string;
   dataSource?: string;

@@ -71,6 +71,10 @@ type MoneyItem = {
   id: string;
   name: string;
   amount: number;
+  converted_market_value?: number | string | null;
+  current_value?: number | string | null;
+  current_market_value?: number | string | null;
+  native_market_value?: number | string | null;
   currency?: string | null;
   saving_type?: string | null;
   saving_method?: string | null;
@@ -1751,7 +1755,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         safeQuery<IncomeSource>(supabase.from('monthly_income_sources').select('*').eq('user_id', user.id) as unknown as QueryResult<IncomeSource>, queryMeta('monthly_income_sources', 'monthly_income_sources')),
         expensesQuery(),
         safeQuery<MoneyItem>(supabase.from('savings_items').select('*').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<MoneyItem>, queryMeta('savings_items', 'savings_items')),
-        safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('investment_items', 'investment_items')),
+        safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount, converted_market_value, current_value, current_market_value, native_market_value, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('investment_items', 'investment_items')),
         safeQuery<GoalRow>(supabase.from('financial_goals').select('*').eq('user_id', user.id) as unknown as QueryResult<GoalRow>, queryMeta('financial_goals', 'financial_goals')),
       ]);
 
@@ -1761,7 +1765,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         income: personalIncomeRows(income.data).map(item => ({ ...item, name: item.label || item.category || item.name || 'Income' })),
         expenses: personalExpenseRows(expenses.data),
         savings: savings.data,
-        investments: investments.data,
+        investments: investments.data.map(item => ({
+          ...item,
+          amount: parseMoney(item.converted_market_value ?? item.current_value ?? item.amount ?? item.current_market_value ?? item.native_market_value),
+        })),
         goals: goals.data.map(goalFromRow),
         error: [income.error, expenses.error, savings.error, investments.error, goals.error].find(Boolean) ?? null,
       });

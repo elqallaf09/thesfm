@@ -40,6 +40,16 @@ type DbInvestmentRow = {
   current_price?: number | string | null;
   current_market_value?: number | string | null;
   price_currency?: string | null;
+  native_currency?: string | null;
+  native_unit_price?: number | string | null;
+  native_market_value?: number | string | null;
+  user_currency?: string | null;
+  fx_rate_to_user_currency?: number | string | null;
+  converted_market_value?: number | string | null;
+  fx_source?: string | null;
+  fx_last_updated_at?: string | null;
+  valuation_source?: string | null;
+  valuation_last_updated_at?: string | null;
   last_price?: number | string | null;
   last_price_updated_at?: string | null;
   data_source?: string | null;
@@ -89,7 +99,7 @@ function writeJson<T>(key: string, value: T) {
 
 function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): Investment {
   const createdAt = row.created_at || nowIso();
-  const displayAmount = firstMoneyValue(row as Record<string, unknown>, ['current_market_value', 'current_value', 'amount', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
+  const displayAmount = firstMoneyValue(row as Record<string, unknown>, ['converted_market_value', 'current_value', 'amount', 'current_market_value', 'native_market_value', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
   const monthlyAmount = parseMoneyValue(row.monthly_contribution ?? meta?.monthlyContribution);
   const expectedReturn = parseMoneyValue(row.expected_annual_return ?? row.expected_return ?? meta?.expectedAnnualReturn);
   const quantity = parseMoneyValue(row.quantity ?? meta?.quantity);
@@ -97,6 +107,10 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
   const purchasePrice = parseMoneyValue(row.purchase_price ?? meta?.purchasePrice);
   const currentPrice = parseMoneyValue(row.current_price ?? row.last_price ?? meta?.currentPrice ?? meta?.lastPrice);
   const currentMarketValue = parseMoneyValue(row.current_market_value ?? meta?.currentMarketValue);
+  const nativeUnitPrice = parseMoneyValue(row.native_unit_price ?? meta?.nativeUnitPrice ?? row.current_price ?? row.last_price ?? meta?.currentPrice ?? meta?.lastPrice);
+  const nativeMarketValue = parseMoneyValue(row.native_market_value ?? meta?.nativeMarketValue ?? row.current_market_value ?? meta?.currentMarketValue);
+  const fxRateToUserCurrency = parseMoneyValue(row.fx_rate_to_user_currency ?? meta?.fxRateToUserCurrency);
+  const convertedMarketValue = parseMoneyValue(row.converted_market_value ?? meta?.convertedMarketValue ?? row.current_value ?? row.amount);
   const lastPrice = parseMoneyValue(row.last_price ?? row.current_price ?? meta?.lastPrice ?? meta?.currentPrice);
   const metalKarat = parseMoneyValue(row.metal_karat ?? meta?.metalKarat);
   const metalPurity = parseMoneyValue(row.metal_purity ?? meta?.metalPurity);
@@ -143,6 +157,20 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
         ? displayAmount.value
         : meta?.currentMarketValue,
     priceCurrency: row.price_currency ?? meta?.priceCurrency ?? row.currency ?? meta?.currency,
+    nativeCurrency: row.native_currency ?? meta?.nativeCurrency ?? row.price_currency ?? row.currency ?? meta?.priceCurrency ?? meta?.currency,
+    nativeUnitPrice: nativeUnitPrice.status === 'valid' ? nativeUnitPrice.value : meta?.nativeUnitPrice,
+    nativeMarketValue: nativeMarketValue.status === 'valid'
+      ? nativeMarketValue.value
+      : currentMarketValue.status === 'valid'
+        ? currentMarketValue.value
+        : meta?.nativeMarketValue,
+    userCurrency: row.user_currency ?? meta?.userCurrency,
+    fxRateToUserCurrency: fxRateToUserCurrency.status === 'valid' ? fxRateToUserCurrency.value : meta?.fxRateToUserCurrency,
+    convertedMarketValue: convertedMarketValue.status === 'valid' ? convertedMarketValue.value : meta?.convertedMarketValue,
+    fxSource: row.fx_source ?? meta?.fxSource,
+    fxLastUpdatedAt: row.fx_last_updated_at ?? meta?.fxLastUpdatedAt,
+    valuationSource: row.valuation_source ?? meta?.valuationSource ?? row.data_source ?? meta?.dataSource,
+    valuationLastUpdatedAt: row.valuation_last_updated_at ?? meta?.valuationLastUpdatedAt ?? row.last_price_updated_at ?? meta?.lastPriceUpdatedAt,
     quantity: quantity.status === 'valid' ? quantity.value : meta?.quantity,
     lastPrice: lastPrice.status === 'valid' ? lastPrice.value : meta?.lastPrice,
     lastPriceUpdatedAt: row.last_price_updated_at ?? meta?.lastPriceUpdatedAt,
@@ -189,6 +217,16 @@ function metaFromInvestment(item: Investment | InvestmentInput): InvestmentMeta 
     currentPrice: item.currentPrice,
     currentMarketValue: item.currentMarketValue,
     priceCurrency: item.priceCurrency,
+    nativeCurrency: item.nativeCurrency,
+    nativeUnitPrice: item.nativeUnitPrice,
+    nativeMarketValue: item.nativeMarketValue,
+    userCurrency: item.userCurrency,
+    fxRateToUserCurrency: item.fxRateToUserCurrency,
+    convertedMarketValue: item.convertedMarketValue,
+    fxSource: item.fxSource,
+    fxLastUpdatedAt: item.fxLastUpdatedAt,
+    valuationSource: item.valuationSource,
+    valuationLastUpdatedAt: item.valuationLastUpdatedAt,
     lastPrice: item.lastPrice,
     lastPriceUpdatedAt: item.lastPriceUpdatedAt,
     dataSource: item.dataSource,
@@ -238,7 +276,7 @@ export function useInvestments() {
       const meta = readJson<Record<string, InvestmentMeta>>(userMetaKey, {});
       const full = await supabase
         .from('investment_items')
-        .select('id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,asset_type,quantity,current_price,current_market_value,price_currency,last_price,last_price_updated_at,data_source,project_id,metal_type,metal_product_type,metal_karat,metal_purity,grams,pure_metal_grams,price_source,created_at,updated_at')
+        .select('id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,asset_type,quantity,current_price,current_market_value,price_currency,native_currency,native_unit_price,native_market_value,user_currency,fx_rate_to_user_currency,converted_market_value,fx_source,fx_last_updated_at,valuation_source,valuation_last_updated_at,last_price,last_price_updated_at,data_source,project_id,metal_type,metal_product_type,metal_karat,metal_purity,grams,pure_metal_grams,price_source,created_at,updated_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -317,8 +355,18 @@ export function useInvestments() {
       quantity: data.quantity ?? null,
       purchase_price: data.purchasePrice ?? null,
       current_price: data.currentPrice ?? data.lastPrice ?? null,
-      current_market_value: data.currentMarketValue ?? data.currentValue,
+      current_market_value: data.nativeMarketValue ?? data.currentMarketValue ?? data.currentValue,
       price_currency: data.priceCurrency ?? data.currency ?? null,
+      native_currency: data.nativeCurrency ?? data.priceCurrency ?? data.currency ?? null,
+      native_unit_price: data.nativeUnitPrice ?? data.currentPrice ?? data.lastPrice ?? null,
+      native_market_value: data.nativeMarketValue ?? data.currentMarketValue ?? data.currentValue,
+      user_currency: data.userCurrency ?? null,
+      fx_rate_to_user_currency: data.fxRateToUserCurrency ?? null,
+      converted_market_value: data.convertedMarketValue ?? data.currentValue,
+      fx_source: data.fxSource ?? null,
+      fx_last_updated_at: data.fxLastUpdatedAt ?? null,
+      valuation_source: data.valuationSource ?? data.dataSource ?? data.priceSource ?? null,
+      valuation_last_updated_at: data.valuationLastUpdatedAt ?? data.lastPriceUpdatedAt ?? null,
       last_price: data.lastPrice ?? null,
       last_price_updated_at: data.lastPriceUpdatedAt ?? null,
       data_source: data.dataSource ?? null,
@@ -390,8 +438,18 @@ export function useInvestments() {
       quantity: data.quantity ?? null,
       purchase_price: data.purchasePrice ?? null,
       current_price: data.currentPrice ?? data.lastPrice ?? null,
-      current_market_value: data.currentMarketValue ?? data.currentValue,
+      current_market_value: data.nativeMarketValue ?? data.currentMarketValue ?? data.currentValue,
       price_currency: data.priceCurrency ?? data.currency ?? null,
+      native_currency: data.nativeCurrency ?? data.priceCurrency ?? data.currency ?? null,
+      native_unit_price: data.nativeUnitPrice ?? data.currentPrice ?? data.lastPrice ?? null,
+      native_market_value: data.nativeMarketValue ?? data.currentMarketValue ?? data.currentValue,
+      user_currency: data.userCurrency ?? null,
+      fx_rate_to_user_currency: data.fxRateToUserCurrency ?? null,
+      converted_market_value: data.convertedMarketValue ?? data.currentValue,
+      fx_source: data.fxSource ?? null,
+      fx_last_updated_at: data.fxLastUpdatedAt ?? null,
+      valuation_source: data.valuationSource ?? data.dataSource ?? data.priceSource ?? null,
+      valuation_last_updated_at: data.valuationLastUpdatedAt ?? data.lastPriceUpdatedAt ?? null,
       last_price: data.lastPrice ?? null,
       last_price_updated_at: data.lastPriceUpdatedAt ?? null,
       data_source: data.dataSource ?? null,

@@ -41,6 +41,8 @@ type PortfolioInvestment = {
   name: string;
   amount: number;
   currentValue: number;
+  nativeMarketValue?: number | null;
+  nativeCurrency?: string | null;
   type?: string | null;
   riskLevel?: string | null;
 };
@@ -771,13 +773,16 @@ function normalizeAlertRow(row: Record<string, unknown>): SavedAlert {
 }
 
 function normalizeInvestmentItem(row: Record<string, unknown>): PortfolioInvestment {
-  const amount = parseNumber(row.amount);
+  const amount = parseNumber(row.converted_market_value ?? row.current_value ?? row.amount);
+  const nativeMarketValue = parseNumber(row.native_market_value ?? row.current_market_value);
   const name = String(row.name ?? '').trim();
   return {
     id: String(row.id ?? ''),
     name,
     amount,
     currentValue: amount,
+    nativeMarketValue: nativeMarketValue > 0 ? nativeMarketValue : null,
+    nativeCurrency: typeof row.native_currency === 'string' ? row.native_currency : typeof row.price_currency === 'string' ? row.price_currency : typeof row.currency === 'string' ? row.currency : null,
     type: name || 'investment',
     riskLevel: 'medium',
   };
@@ -1726,7 +1731,7 @@ export default function MarketAnalysisPage() {
           .order('created_at', { ascending: false }),
         supabase
           .from('investment_items')
-          .select('id, name, amount, created_at, ai_analysis')
+          .select('id, name, amount, current_value, current_market_value, converted_market_value, native_market_value, native_currency, price_currency, currency, created_at, ai_analysis')
           .eq('user_id', user.id),
       ]);
 

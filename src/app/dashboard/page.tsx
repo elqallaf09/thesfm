@@ -760,7 +760,7 @@ export default function ExecutiveDashboardPage() {
     const incomeTotal = sumAmounts(records.income, ['amount']);
     const expenseTotal = sumAmounts(records.expenses, ['amount']);
     const savingsTotal = sumAmounts(records.savings, ['current_amount', 'balance', 'amount']);
-    const investmentsTotal = sumAmounts(records.investments, ['current_value', 'market_value', 'amount', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
+    const investmentsTotal = sumAmounts(records.investments, ['converted_market_value', 'current_value', 'market_value', 'amount', 'current_market_value', 'native_market_value', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
 
     const monthRange = currentMonthRange();
     const monthIncomeRows = records.income.filter((row) => isCurrentMonth(row, ['transaction_date', 'date', 'recorded_at', 'received_date', 'generated_for_date', 'created_at'], monthRange));

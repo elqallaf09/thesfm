@@ -32,6 +32,8 @@ interface Props {
   typeLabel: (type: InvestmentType) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
   formatMoney: (amount: number | null | undefined, status?: Investment['displayValueStatus']) => string;
+  formatNativeMoney: (amount: number | null | undefined, currency?: string | null, item?: Investment | null) => string;
+  accountValue: (item: Investment) => number | null;
   onDetails: (item: Investment) => void;
   onEdit: (item: Investment) => void;
   onDelete: (item: Investment) => void;
@@ -46,6 +48,8 @@ export function InvestmentList({
   typeLabel,
   riskLabel,
   formatMoney,
+  formatNativeMoney,
+  accountValue,
   onDetails,
   onEdit,
   onDelete,
@@ -56,7 +60,7 @@ export function InvestmentList({
   const [filterType, setFilterType] = useState<'all' | InvestmentType>('all');
   const [sort, setSort] = useState<SortMode>('valueDesc');
 
-  const total = useMemo(() => investments.reduce((sum, item) => sum + item.currentValue, 0), [investments]);
+  const total = useMemo(() => investments.reduce((sum, item) => sum + (accountValue(item) ?? 0), 0), [accountValue, investments]);
   const filtered = useMemo(() => {
     const riskRank = { low: 0, medium: 1, high: 2 };
     let list = [...investments];
@@ -67,10 +71,10 @@ export function InvestmentList({
 
     switch (sort) {
       case 'valueDesc':
-        list.sort((a, b) => b.currentValue - a.currentValue);
+        list.sort((a, b) => (accountValue(b) ?? 0) - (accountValue(a) ?? 0));
         break;
       case 'valueAsc':
-        list.sort((a, b) => a.currentValue - b.currentValue);
+        list.sort((a, b) => (accountValue(a) ?? 0) - (accountValue(b) ?? 0));
         break;
       case 'monthlyDesc':
         list.sort((a, b) => b.monthlyContribution - a.monthlyContribution);
@@ -84,7 +88,7 @@ export function InvestmentList({
     }
 
     return list;
-  }, [filterType, investments, query, sort]);
+  }, [accountValue, filterType, investments, query, sort]);
 
   return (
     <section className="invest-panel">
@@ -108,11 +112,13 @@ export function InvestmentList({
           <InvestmentRow
             key={item.id}
             investment={item}
-            portfolioPercent={total > 0 ? (item.currentValue / total) * 100 : null}
+            accountValue={accountValue(item)}
+            portfolioPercent={total > 0 && accountValue(item) !== null ? ((accountValue(item) ?? 0) / total) * 100 : null}
             labels={labels}
             typeLabel={typeLabel}
             riskLabel={riskLabel}
             formatMoney={formatMoney}
+            formatNativeMoney={formatNativeMoney}
             onDetails={onDetails}
             onEdit={onEdit}
             onDelete={onDelete}

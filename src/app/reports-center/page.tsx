@@ -1341,7 +1341,7 @@ function reportRows(report: ReportDefinition, records: RecordsState, filters: Fi
     addSummaryRow(report.title[lang], lang === 'ar' ? 'إجمالي الدخل' : lang === 'fr' ? 'Total des revenus' : 'Total income', money(income.reduce((sum, row) => sum + numberValue(row.amount), 0)));
     addSummaryRow(report.title[lang], lang === 'ar' ? 'إجمالي المصروفات' : lang === 'fr' ? 'Total des dépenses' : 'Total expenses', money(expenses.reduce((sum, row) => sum + numberValue(row.amount), 0)));
     addSummaryRow(report.title[lang], lang === 'ar' ? 'إجمالي المدخرات' : lang === 'fr' ? 'Total épargne' : 'Total savings', money(savings.reduce((sum, row) => sum + numberValue(row.amount), 0)));
-    addSummaryRow(report.title[lang], lang === 'ar' ? 'إجمالي الاستثمارات' : lang === 'fr' ? 'Total investissements' : 'Total investments', money(investments.reduce((sum, row) => sum + numberValue(row.amount ?? row.current_value ?? row.currentValue), 0)));
+    addSummaryRow(report.title[lang], lang === 'ar' ? 'إجمالي الاستثمارات' : lang === 'fr' ? 'Total investissements' : 'Total investments', money(investments.reduce((sum, row) => sum + numberValue(row.converted_market_value ?? row.current_value ?? row.amount ?? row.currentValue), 0)));
     return rows.filter(row => String(row.value).match(/[1-9]/));
   }
 
@@ -1389,7 +1389,11 @@ function reportRows(report: ReportDefinition, records: RecordsState, filters: Fi
     return filteredRows(records.investments, filters).map(row => ({
       name: firstText(row, ['name', 'description'], entity.investment),
       type: firstText(row, ['type', 'investment_type']),
-      current_value: numberValue(row.currentValue ?? row.current_value ?? row.amount),
+      current_value: numberValue(row.converted_market_value ?? row.currentValue ?? row.current_value ?? row.amount),
+      native_market_value: numberValue(row.native_market_value ?? row.current_market_value),
+      native_currency: row.native_currency ?? row.price_currency ?? row.currency,
+      user_currency: row.user_currency ?? filters.currency,
+      fx_rate: numberValue(row.fx_rate_to_user_currency),
       monthly_contribution: numberValue(row.monthlyContribution ?? row.monthly_contribution),
       risk: firstText(row, ['riskLevel', 'risk_level']),
       currency: row.currency || filters.currency,

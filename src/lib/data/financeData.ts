@@ -327,7 +327,7 @@ export function buildFinanceOverview(records: Partial<SfmRecords>) {
   const incomeTotal = sumAmounts(personalIncome, ['amount']);
   const expenseTotal = sumAmounts(personalExpenses, ['amount']);
   const savingsTotal = sumAmounts(records.savings ?? [], ['amount', 'current_value']);
-  const investmentTotal = sumAmounts(records.investments ?? [], ['current_value', 'amount', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
+  const investmentTotal = sumAmounts(records.investments ?? [], ['converted_market_value', 'current_value', 'amount', 'current_market_value', 'native_market_value', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
   const debts = records.debts ?? [];
   const activeDebts = debts.filter(row => {
     const status = String(row?.status ?? 'active').trim().toLowerCase();

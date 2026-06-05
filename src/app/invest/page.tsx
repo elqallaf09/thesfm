@@ -19,6 +19,7 @@ import { useInvestments } from '@/hooks/useInvestments';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
+import { formatMarketPrice } from '@/lib/market/marketCurrency';
 import type { MoneyParseStatus } from '@/lib/money';
 import { investmentSymbol, marketAnalysisUrl } from '@/lib/data/investmentData';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
@@ -75,6 +76,42 @@ function formatInvestmentType(type: string | null | undefined, t: (key: any) => 
   if (directTranslated && directTranslated !== type) return directTranslated;
 
   return normalized || fallback;
+}
+
+function finiteNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizedCurrency(value: string | null | undefined) {
+  const code = String(value ?? '').trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(code) || code === 'GBP' || code === 'GBX' || code === 'GBp' ? code : null;
+}
+
+function nativeCurrencyOf(item: Investment) {
+  return normalizedCurrency(item.nativeCurrency)
+    ?? normalizedCurrency(item.priceCurrency)
+    ?? normalizedCurrency(item.currency)
+    ?? null;
+}
+
+function nativeMarketValueOf(item: Investment) {
+  return finiteNumber(item.nativeMarketValue)
+    ?? finiteNumber(item.currentMarketValue)
+    ?? finiteNumber(item.amount)
+    ?? finiteNumber(item.currentValue);
+}
+
+function accountMarketValueOf(item: Investment, accountCurrency: string) {
+  const userCurrency = normalizedCurrency(item.userCurrency);
+  const nativeCurrency = nativeCurrencyOf(item);
+  const converted = finiteNumber(item.convertedMarketValue);
+  if (converted !== null && (!userCurrency || userCurrency === accountCurrency)) return converted;
+  if (!nativeCurrency || nativeCurrency === accountCurrency) {
+    return nativeMarketValueOf(item) ?? finiteNumber(item.currentValue);
+  }
+  if (!item.nativeCurrency && !item.priceCurrency && !item.userCurrency) return finiteNumber(item.currentValue);
+  return null;
 }
 
 export default function InvestPage() {
@@ -253,31 +290,48 @@ export default function InvestPage() {
     }
     return formatCurrency(amount, currency, lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en');
   }, [L, currency, lang]);
-  const totalValue = useMemo(() => items.reduce((sum, item) => sum + item.currentValue, 0), [items]);
+  const accountCurrency = currency.toUpperCase();
+  const accountValue = useCallback((item: Investment) => accountMarketValueOf(item, accountCurrency), [accountCurrency]);
+  const formatNativeMoney = useCallback((amount: number | null | undefined, nativeCurrency?: string | null, item?: Investment | null) => {
+    if (amount === null || amount === undefined || !Number.isFinite(amount)) return labels.unavailable;
+    return formatMarketPrice({
+      price: amount,
+      currency: nativeCurrency ?? item?.nativeCurrency ?? item?.priceCurrency ?? item?.currency,
+      exchange: item?.market,
+      symbol: item?.symbol ?? item?.providerSymbol,
+      locale: lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en',
+      includeKuwaitDinarEquivalent: true,
+    });
+  }, [labels.unavailable, lang]);
+  const totalValue = useMemo(() => items.reduce((sum, item) => sum + (accountValue(item) ?? 0), 0), [accountValue, items]);
+  const unavailableConversionCount = useMemo(() => items.filter(item => accountValue(item) === null).length, [accountValue, items]);
   const totalMonthly = useMemo(() => items.reduce((sum, item) => sum + item.monthlyContribution, 0), [items]);
   const uniqueCategories = useMemo(() => new Set(items.map(item => item.type)).size, [items]);
   const weightedRiskScore = useMemo(() => {
     if (totalValue <= 0) return 0;
-    return items.reduce((sum, item) => sum + RISK_SCORE[item.riskLevel] * (item.currentValue / totalValue), 0);
-  }, [items, totalValue]);
+    return items.reduce((sum, item) => {
+      const value = accountValue(item) ?? 0;
+      return sum + RISK_SCORE[item.riskLevel] * (value / totalValue);
+    }, 0);
+  }, [accountValue, items, totalValue]);
   const overallRisk: RiskLevel = weightedRiskScore < 1.5 ? 'low' : weightedRiskScore < 2.5 ? 'medium' : 'high';
   const weightedReturn = useMemo(() => {
     const withReturns = items.filter(item => typeof item.expectedAnnualReturn === 'number' && item.expectedAnnualReturn >= 0);
-    const returnBase = withReturns.reduce((sum, item) => sum + item.currentValue, 0);
+    const returnBase = withReturns.reduce((sum, item) => sum + (accountValue(item) ?? 0), 0);
     if (returnBase <= 0) return null;
-    return withReturns.reduce((sum, item) => sum + (item.expectedAnnualReturn ?? 0) * item.currentValue, 0) / returnBase;
-  }, [items]);
+    return withReturns.reduce((sum, item) => sum + (item.expectedAnnualReturn ?? 0) * (accountValue(item) ?? 0), 0) / returnBase;
+  }, [accountValue, items]);
   const analysisReturn = weightedReturn ?? 0;
   const canShowReturnProjection = weightedReturn !== null;
   const typeDistribution = useMemo(() => TYPES.map((type, index) => ({
     name: typeLabel(type),
-    value: items.filter(item => item.type === type).reduce((sum, item) => sum + item.currentValue, 0),
+    value: items.filter(item => item.type === type).reduce((sum, item) => sum + (accountValue(item) ?? 0), 0),
     color: CHART_COLORS[index % CHART_COLORS.length],
-  })).filter(item => item.value > 0), [items, typeLabel]);
+  })).filter(item => item.value > 0), [accountValue, items, typeLabel]);
   const valueByInvestment = useMemo(() => items.map(item => ({
     name: item.name,
-    value: item.currentValue,
-  })), [items]);
+    value: accountValue(item) ?? 0,
+  })).filter(item => item.value > 0), [accountValue, items]);
   const projectionLineData = useMemo(() => {
     const monthlyRate = analysisReturn / 100 / 12;
     return Array.from({ length: 13 }, (_, month) => {
@@ -309,13 +363,39 @@ export default function InvestPage() {
   const portfolioPreview = useMemo(() => [...items]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 5), [items]);
+  const currencyBreakdown = useMemo(() => {
+    const groups = new Map<string, { currency: string; nativeValue: number; convertedValue: number; count: number; unavailable: number }>();
+    for (const item of items) {
+      const nativeCurrency = nativeCurrencyOf(item) ?? accountCurrency;
+      const nativeValue = nativeMarketValueOf(item) ?? 0;
+      const convertedValue = accountValue(item);
+      const group = groups.get(nativeCurrency) ?? { currency: nativeCurrency, nativeValue: 0, convertedValue: 0, count: 0, unavailable: 0 };
+      group.nativeValue += nativeValue;
+      group.count += 1;
+      if (convertedValue === null) {
+        group.unavailable += 1;
+      } else {
+        group.convertedValue += convertedValue;
+      }
+      groups.set(nativeCurrency, group);
+    }
+    return Array.from(groups.values()).sort((a, b) => b.convertedValue - a.convertedValue);
+  }, [accountCurrency, accountValue, items]);
+  const lastValuationUpdate = useMemo(() => {
+    const dates = items
+      .map(item => item.valuationLastUpdatedAt || item.fxLastUpdatedAt || item.lastPriceUpdatedAt || item.updatedAt)
+      .map(value => value ? new Date(value).getTime() : NaN)
+      .filter(value => Number.isFinite(value));
+    return dates.length ? new Date(Math.max(...dates)).toISOString() : null;
+  }, [items]);
   const insights = useMemo(() => {
     if (items.length === 0) return [];
     if (items.length === 1) return [t('invest_insights_addMoreForDiversification')];
 
     const next: string[] = [];
-    const biggest = [...items].sort((a, b) => b.currentValue - a.currentValue)[0];
-    const biggestPct = totalValue > 0 ? (biggest.currentValue / totalValue) * 100 : 0;
+    const biggest = [...items].sort((a, b) => (accountValue(b) ?? 0) - (accountValue(a) ?? 0))[0];
+    const biggestValue = accountValue(biggest) ?? 0;
+    const biggestPct = totalValue > 0 ? (biggestValue / totalValue) * 100 : 0;
     if (biggestPct > 70) {
       next.push(t('invest_insights_concentratedRisk')
         .replace('{type}', typeLabel(biggest.type))
@@ -347,11 +427,41 @@ export default function InvestPage() {
     }
 
     return next;
-  }, [analysisReturn, canShowReturnProjection, items, money, projections, t, totalMonthly, totalValue, typeLabel, uniqueCategories]);
+  }, [accountValue, analysisReturn, canShowReturnProjection, items, money, projections, t, totalMonthly, totalValue, typeLabel, uniqueCategories]);
 
   function showToast(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(''), 2200);
+  }
+
+  async function fetchFxRate(fromCurrency: string, toCurrency: string) {
+    const from = fromCurrency.toUpperCase();
+    const to = toCurrency.toUpperCase();
+    if (from === to) {
+      return {
+        rate: 1,
+        source: 'same_currency',
+        lastUpdated: new Date().toISOString(),
+      };
+    }
+    const params = new URLSearchParams({ from, to });
+    const response = await fetch(`/api/market/fx/rate?${params.toString()}`, { cache: 'no-store' });
+    const payload = await response.json() as {
+      ok?: boolean;
+      rate?: number | null;
+      source?: string | null;
+      lastUpdated?: string | null;
+      error?: string;
+    };
+    const rate = Number(payload.rate);
+    if (!response.ok || payload.ok === false || !Number.isFinite(rate) || rate <= 0) {
+      throw new Error(payload.error || L('ØªØ¹Ø°Ø± ØªØ­ÙˆÙŠÙ„ Ø§Ù„Ù‚ÙŠÙ…Ø© Ø¥Ù„Ù‰ Ø¹Ù…Ù„Ø© Ø§Ù„Ø­Ø³Ø§Ø¨ Ø­Ø§Ù„ÙŠØ§Ù‹', 'Could not convert value to account currency right now.', 'Impossible de convertir la valeur dans la devise du compte pour le moment.'));
+    }
+    return {
+      rate,
+      source: payload.source || 'FX provider',
+      lastUpdated: payload.lastUpdated || new Date().toISOString(),
+    };
   }
 
   function openCreate() {
@@ -419,11 +529,15 @@ export default function InvestPage() {
       }
 
       const quantity = typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : undefined;
+      const nativeCurrency = (payload.item?.currency || item.nativeCurrency || item.priceCurrency || item.currency || currency).toUpperCase();
       const currentMarketValue = quantity ? price * quantity : price;
+      const fx = await fetchFxRate(nativeCurrency, accountCurrency);
+      const convertedMarketValue = currentMarketValue * fx.rate;
+      const valuationUpdatedAt = payload.item?.updated_at || new Date().toISOString();
       const nextInput: InvestmentInput = {
         name: item.name,
         type: item.type,
-        currentValue: currentMarketValue,
+        currentValue: convertedMarketValue,
         monthlyContribution: item.monthlyContribution,
         startDate: item.startDate,
         riskLevel: item.riskLevel,
@@ -433,15 +547,25 @@ export default function InvestPage() {
         providerSymbol: payload.item?.provider_symbol || providerSymbol,
         market: item.market,
         assetType: item.assetType,
-        currency: payload.item?.currency || item.currency,
+        currency: nativeCurrency,
         quantity: item.quantity,
-        amount: currentMarketValue,
+        amount: convertedMarketValue,
         purchasePrice: item.purchasePrice,
         currentPrice: price,
         currentMarketValue,
-        priceCurrency: payload.item?.currency || item.priceCurrency || item.currency,
+        priceCurrency: nativeCurrency,
+        nativeCurrency,
+        nativeUnitPrice: price,
+        nativeMarketValue: currentMarketValue,
+        userCurrency: accountCurrency,
+        fxRateToUserCurrency: fx.rate,
+        convertedMarketValue,
+        fxSource: fx.source,
+        fxLastUpdatedAt: fx.lastUpdated,
+        valuationSource: payload.item?.source || item.dataSource || item.priceSource,
+        valuationLastUpdatedAt: valuationUpdatedAt,
         lastPrice: price,
-        lastPriceUpdatedAt: payload.item?.updated_at || new Date().toISOString(),
+        lastPriceUpdatedAt: valuationUpdatedAt,
         dataSource: payload.item?.source || item.dataSource,
         projectId: item.projectId,
         projectName: item.projectName,
@@ -536,11 +660,31 @@ export default function InvestPage() {
         ) : (
           <>
             <section className="invest-summary-grid">
-              <SummaryCard icon={<WalletCards size={20} />} title={t('invest_summary_portfolioValue')} value={money(totalValue)} subtitle={t('recordedData')} />
+              <SummaryCard icon={<WalletCards size={20} />} title={L('إجمالي قيمة الاستثمارات', 'Total investment value', 'Valeur totale des investissements')} value={money(totalValue)} subtitle={unavailableConversionCount > 0 ? L(`لم يتم احتساب ${unavailableConversionCount} أصل بسبب تعذر سعر الصرف`, `${unavailableConversionCount} asset(s) excluded because FX is unavailable`, `${unavailableConversionCount} actif(s) exclus car le FX est indisponible`) : L(`محسوب من ${items.length} أصل وبأسعار صرف حقيقية`, `Calculated from ${items.length} asset(s) with real FX rates`, `Calculé depuis ${items.length} actif(s) avec des taux réels`)} />
               <SummaryCard icon={<TrendingUp size={20} />} title={t('invest_summary_monthlyContribution')} value={money(totalMonthly)} subtitle={t('invest_projections_totalContributions')} />
               <SummaryCard icon={<ShieldAlert size={20} />} title={t('invest_summary_riskLevel')} value={riskLabel(overallRisk)} subtitle={t('invest_summary_notFinancialAdvice')} />
               <SummaryCard icon={<Layers3 size={20} />} title={t('invest_summary_diversification')} value={t('invest_summary_categoriesCount').replace('{count}', String(uniqueCategories))} subtitle={uniqueCategories >= 4 ? t('invest_insights_wellDiversified').replace('{count}', String(uniqueCategories)) : t('invest_insights_diversifyMore').replace('{count}', String(uniqueCategories))} />
               <SummaryCard icon={<LineChartIcon size={20} />} title={t('invest_summary_expectedReturn')} value={weightedReturn === null ? t('insufficientData') : pct(weightedReturn)} subtitle={weightedReturn === null ? t('invest_summary_defaultReturn') : t('invest_summary_notFinancialAdvice')} />
+            </section>
+
+            <section className="invest-panel invest-currency-breakdown">
+              <div className="invest-section-head invest-section-head--split">
+                <div>
+                  <span>{L('آخر تحديث للقيم', 'Last valuation update', 'Dernière mise à jour')}</span>
+                  <h2>{L('تفصيل الاستثمارات حسب العملة', 'Investment breakdown by currency', 'Répartition des investissements par devise')}</h2>
+                </div>
+                <strong dir="ltr">{lastValuationUpdate ? new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lastValuationUpdate)) : labels.unavailable}</strong>
+              </div>
+              <div className="invest-currency-grid">
+                {currencyBreakdown.map(group => (
+                  <article key={group.currency}>
+                    <span dir="ltr">{group.currency}</span>
+                    <b dir="ltr">{formatNativeMoney(group.nativeValue, group.currency)}</b>
+                    <small dir="ltr">≈ {money(group.convertedValue)}</small>
+                    {group.unavailable > 0 && <em>{L('تحويل غير متاح لبعض الأصول', 'Some conversions unavailable', 'Certaines conversions sont indisponibles')}</em>}
+                  </article>
+                ))}
+              </div>
             </section>
 
             <PageTabs
@@ -567,11 +711,13 @@ export default function InvestPage() {
                   <InvestmentRow
                     key={item.id}
                     investment={item}
-                    portfolioPercent={totalValue > 0 ? (item.currentValue / totalValue) * 100 : null}
+                    accountValue={accountValue(item)}
+                    portfolioPercent={totalValue > 0 && accountValue(item) !== null ? ((accountValue(item) ?? 0) / totalValue) * 100 : null}
                     labels={labels}
                     typeLabel={typeLabel}
                     riskLabel={riskLabel}
                     formatMoney={money}
+                    formatNativeMoney={formatNativeMoney}
                     onDetails={setDetails}
                     onEdit={openEdit}
                     onDelete={setDeleteTarget}
@@ -689,6 +835,8 @@ export default function InvestPage() {
               typeLabel={typeLabel}
               riskLabel={riskLabel}
               formatMoney={money}
+              formatNativeMoney={formatNativeMoney}
+              accountValue={accountValue}
               onDetails={setDetails}
               onEdit={openEdit}
               onDelete={setDeleteTarget}
@@ -722,6 +870,8 @@ export default function InvestPage() {
           typeLabel={typeLabel}
           riskLabel={riskLabel}
           formatMoney={money}
+          formatNativeMoney={formatNativeMoney}
+          accountValue={details ? accountValue(details) : null}
           onClose={() => setDetails(null)}
           onRefreshPrice={handleRefreshPrice}
           refreshing={Boolean(details && refreshingPriceId === details.id)}
@@ -756,7 +906,7 @@ export default function InvestPage() {
         .invest-primary-btn,.invest-secondary-btn,.invest-danger-btn,.invest-glass-btn{height:43px;border-radius:14px;border:0;padding:0 17px;font:900 13px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:all .2s}.invest-primary-btn{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 10px 24px rgba(167,243,240,.22)}.invest-primary-btn:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(167,243,240,.28)}.invest-secondary-btn{background:var(--sfm-card);color:var(--sfm-muted);border:1px solid rgba(167,243,240,.22)}.invest-danger-btn{background:#B91C1C;color:#fff}.invest-glass-btn{margin-inline-start:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:var(--sfm-card)}.invest-glass-btn:hover{background:rgba(255,255,255,.18)}.invest-primary-btn:disabled,.invest-secondary-btn:disabled,.invest-danger-btn:disabled{opacity:.6;cursor:wait}
         .invest-panel,.invest-empty{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:22px;box-shadow:0 4px 22px rgba(3,18,37,.06);min-width:0}
         .invest-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;min-width:0;max-width:100%}.invest-summary-card{min-height:132px;padding:16px;display:grid;gap:8px;align-content:start}.invest-summary-card .icon{width:38px;height:38px;border-radius:13px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.invest-summary-card span{font-size:11px;font-weight:900;color:var(--sfm-muted)}.invest-summary-card strong{font-size:18px;color:var(--sfm-foreground);overflow-wrap:anywhere}.invest-summary-card p{margin:0;color:var(--sfm-muted);font-size:11px;font-weight:800;line-height:1.6}
-        .invest-chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}.invest-chart-card{padding:17px;min-height:330px}.invest-chart-skeleton{background:linear-gradient(90deg,var(--sfm-card),var(--sfm-light-card),var(--sfm-card));background-size:200% 100%;animation:invest-chart-shimmer 1.25s linear infinite}@keyframes invest-chart-shimmer{to{background-position:-200% 0}}.invest-section-head{display:flex;align-items:center;gap:9px;margin-bottom:14px;color:var(--sfm-muted);min-width:0}.invest-section-head h2{margin:0;color:var(--sfm-foreground);font-size:16px;font-weight:900}.invest-section-head span{display:block;margin-bottom:4px;color:var(--sfm-muted);font-size:11px;font-weight:900}.invest-section-head--split{justify-content:space-between;align-items:flex-start;gap:14px}
+        .invest-chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}.invest-chart-card{padding:17px;min-height:330px}.invest-chart-skeleton{background:linear-gradient(90deg,var(--sfm-card),var(--sfm-light-card),var(--sfm-card));background-size:200% 100%;animation:invest-chart-shimmer 1.25s linear infinite}@keyframes invest-chart-shimmer{to{background-position:-200% 0}}.invest-section-head{display:flex;align-items:center;gap:9px;margin-bottom:14px;color:var(--sfm-muted);min-width:0}.invest-section-head h2{margin:0;color:var(--sfm-foreground);font-size:16px;font-weight:900}.invest-section-head span{display:block;margin-bottom:4px;color:var(--sfm-muted);font-size:11px;font-weight:900}.invest-section-head--split{justify-content:space-between;align-items:flex-start;gap:14px}.invest-currency-breakdown{padding:17px}.invest-currency-breakdown .invest-section-head strong{color:var(--sfm-muted);font-size:12px;font-weight:900}.invest-currency-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.invest-currency-grid article{display:grid;gap:6px;border:1px solid rgba(14,116,144,.14);border-radius:16px;background:rgba(236,254,255,.58);padding:12px;min-width:0}.dark .invest-currency-grid article{background:rgba(8,47,73,.36);border-color:rgba(103,232,249,.16)}.invest-currency-grid span{font-size:11px;font-weight:950;color:#0f766e}.dark .invest-currency-grid span{color:var(--sfm-soft-cyan)}.invest-currency-grid b{font-size:14px;color:var(--sfm-foreground);overflow-wrap:anywhere}.invest-currency-grid small{font-size:12px;font-weight:900;color:var(--sfm-muted);overflow-wrap:anywhere}.invest-currency-grid em{font-style:normal;color:#B45309;font-size:11px;font-weight:900}
         .invest-portfolio-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:14px;align-items:start;min-width:0;max-width:100%}.invest-preview-panel{padding:17px}.invest-list--preview{padding:0}.invest-list--preview .invest-row:last-child{padding-bottom:0}.invest-market-link{padding:17px}.invest-market-link p,.invest-report-card p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:900;line-height:1.7}.invest-market-chips{display:flex;flex-wrap:wrap;gap:9px}.invest-market-chips button{min-height:44px;border:1px solid rgba(167,243,240,.16);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-foreground);padding:8px 12px;display:flex;align-items:center;gap:8px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.invest-market-chips button strong{direction:ltr;color:var(--sfm-muted)}.invest-market-chips button span{color:var(--sfm-muted)}
         .invest-analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.invest-insights,.invest-projections,.invest-report-card{padding:18px}.invest-report-card{display:grid;gap:12px;align-content:start}.invest-insight-list{display:grid;gap:10px}.invest-insight-item{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:15px;padding:12px}.invest-insight-item span{width:30px;height:30px;border-radius:11px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));display:grid;place-items:center;color:var(--sfm-foreground);font-size:12px;font-weight:900}.invest-insight-item p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:800;line-height:1.7}.invest-empty-chart{min-height:220px;display:grid;place-items:center;text-align:center;color:var(--sfm-muted);font-size:13px;font-weight:900;line-height:1.7;background:var(--sfm-light-card);border:1px dashed rgba(167,243,240,.24);border-radius:18px;padding:18px}
         .invest-projection-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.invest-projection-grid div{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:15px;padding:12px;display:grid;gap:6px}.invest-projection-grid span{color:var(--sfm-muted);font-size:11px;font-weight:900}.invest-projection-grid strong{font-size:15px;color:var(--sfm-foreground)}.invest-projection-grid small{font-size:11px;color:var(--sfm-muted);font-weight:800}.invest-disclaimer{margin:12px 0 0;color:var(--sfm-muted);font-size:11px;font-weight:900}
