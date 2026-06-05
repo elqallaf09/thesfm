@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Banknote,
   BriefcaseBusiness,
-  CalendarCheck,
   ChevronDown,
   CheckCircle2,
   CircleDollarSign,
@@ -16,14 +15,12 @@ import {
   LineChart,
   ListChecks,
   Loader2,
-  Percent,
   PiggyBank,
   Plus,
   ReceiptText,
   ShieldCheck,
   Sparkles,
   Target,
-  TrendingUp,
   Wallet,
   X,
   type LucideIcon,
@@ -35,7 +32,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
-import { formatCurrency, formatDate, formatPercent } from '@/lib/format';
+import { formatCurrency } from '@/lib/format';
 import { getCurrency } from '@/lib/currencies';
 import { useCurrency } from '@/lib/useCurrency';
 
@@ -1554,11 +1551,11 @@ export default function SetupPage() {
           <LanguageSwitcher variant="gold" compact />
         </header>
 
-        <section className="setup-hero">
+        <section className={`setup-hero ${step === 8 ? 'finish-hero' : ''}`}>
           <div>
             <span className="hero-badge">{text.realData}</span>
-            <h2>{text.title}</h2>
-            <p>{text.subtitle}</p>
+            <h2>{step === 8 ? text.saved : text.title}</h2>
+            <p>{step === 8 ? text.progressSubtitle : text.subtitle}</p>
           </div>
           <div className="progress-orb" aria-label={`${progress}%`}>
             <strong>{progress}%</strong>
@@ -1566,18 +1563,20 @@ export default function SetupPage() {
           </div>
         </section>
 
-        <section className="setup-card" aria-labelledby="setup-step-title">
-          <Stepper
-            step={step}
-            steps={text.steps}
-            statuses={stepStatuses}
-            ariaLabel={text.pageName}
-            labels={{
-              completed: text.completedStep,
-              current: text.currentStep,
-              upcoming: text.upcomingStep,
-            }}
-          />
+        <section className={`setup-card ${step === 8 ? 'setup-card-final' : ''}`} aria-labelledby="setup-step-title">
+          {step < 8 && (
+            <Stepper
+              step={step}
+              steps={text.steps}
+              statuses={stepStatuses}
+              ariaLabel={text.pageName}
+              labels={{
+                completed: text.completedStep,
+                current: text.currentStep,
+                upcoming: text.upcomingStep,
+              }}
+            />
+          )}
           <div className="step-layout">
             <aside className="step-side">
               <div className="step-side-head">
@@ -1606,10 +1605,12 @@ export default function SetupPage() {
               />
             </aside>
             <main className="step-main">
-              <div className="setup-info-alert">
-                <ShieldCheck size={18} aria-hidden="true" />
-                <span>{text.realDataLong}</span>
-              </div>
+              {step < 8 && (
+                <div className="setup-info-alert">
+                  <ShieldCheck size={18} aria-hidden="true" />
+                  <span>{text.realDataLong}</span>
+                </div>
+              )}
               {renderStep()}
               {error && <div className="setup-error" role="alert">{error}</div>}
               {step > 0 && step < 8 && (
@@ -1640,9 +1641,18 @@ export default function SetupPage() {
         .hero-badge{display:inline-flex;border:1px solid rgba(167,243,240,.25);background:rgba(167,243,240,.1);color:var(--sfm-soft-cyan);border-radius:999px;padding:8px 13px;font-size:12px;font-weight:950}
         .setup-hero h2{margin:18px 0 10px;font-size:clamp(30px,5vw,56px);line-height:1.04;font-weight:950;letter-spacing:0}
         .setup-hero p{margin:0;max-width:760px;color:rgba(234,246,255,.78);font-size:clamp(15px,2vw,18px);font-weight:800;line-height:1.8}
+        .setup-hero.finish-hero{background:linear-gradient(135deg,#FFFFFF,#F0FDF4 48%,#EAF6FF);border-color:rgba(16,185,129,.18);color:var(--sfm-primary-dark);padding:clamp(20px,3vw,30px);box-shadow:0 16px 42px rgba(3,18,37,.08)}
+        .setup-hero.finish-hero:after{display:none}
+        .setup-hero.finish-hero .hero-badge{background:#ECFDF5;border-color:rgba(16,185,129,.22);color:#047857}
+        .setup-hero.finish-hero h2{margin:12px 0 7px;color:var(--sfm-primary-dark);font-size:clamp(24px,3vw,34px);line-height:1.18}
+        .setup-hero.finish-hero p{max-width:660px;color:var(--sfm-muted-readable);font-size:14px;line-height:1.75}
         .progress-orb{position:relative;z-index:1;width:150px;height:150px;border-radius:50%;display:grid;place-items:center;text-align:center;align-content:center;background:rgba(234,246,255,.09);border:1px solid rgba(167,243,240,.25);box-shadow:inset 0 0 0 11px rgba(167,243,240,.08),0 20px 46px rgba(3,18,37,.24)}
         .progress-orb strong{font-size:34px;color:var(--sfm-soft-cyan)}.progress-orb small{max-width:108px;color:rgba(234,246,255,.78);font-weight:900;line-height:1.35}
+        .setup-hero.finish-hero .progress-orb{width:118px;height:118px;background:#FFFFFF;border-color:rgba(16,185,129,.20);box-shadow:inset 0 0 0 9px rgba(16,185,129,.08),0 14px 30px rgba(3,18,37,.08)}
+        .setup-hero.finish-hero .progress-orb strong{font-size:30px;color:#047857}
+        .setup-hero.finish-hero .progress-orb small{max-width:92px;color:var(--sfm-muted-readable)}
         .setup-card{background:rgba(255,255,255,.94);border:1px solid rgba(29,140,255,.16);border-radius:28px;padding:22px;box-shadow:0 20px 56px rgba(3,18,37,.10);min-width:0}
+        .setup-card-final{padding:18px}
         .step-layout{display:grid;grid-template-columns:minmax(300px,.36fr) minmax(0,1fr);gap:20px;align-items:stretch}
         .step-side{position:sticky;top:18px;align-self:start;background:linear-gradient(180deg,var(--sfm-light-card),#FFFFFF);border:1px solid rgba(29,140,255,.14);border-radius:22px;padding:18px;display:grid;gap:14px;box-shadow:0 12px 32px rgba(3,18,37,.06)}
         .step-side-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center}
@@ -1686,79 +1696,61 @@ export default function SetupPage() {
         :global(.setup-page .progress-details li.done b){color:#047857}
         :global(.setup-page .progress-details li.active){background:rgba(24,212,212,.07);border-color:rgba(24,212,212,.28)}
         :global(.setup-page .progress-details li.optional){background:#F8FBFF}
-        .completion-panel{gap:16px}
-        .completion-dashboard{background:linear-gradient(180deg,#FFFFFF 0%,#F8FBFF 58%,#FFFFFF 100%)}
-        .mini-dashboard-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,340px);gap:14px;align-items:stretch;min-width:0}
-        .completion-hero{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center;border:1px solid rgba(16,185,129,.18);background:linear-gradient(135deg,#F0FDF4,#FFFFFF 54%,#EAF6FF);border-radius:24px;padding:clamp(18px,3vw,26px);box-shadow:0 18px 46px rgba(3,18,37,.08);min-width:0}
-        .dashboard-hero{align-items:start;min-height:178px}
-        .completion-success-icon{width:74px;height:74px;border-radius:24px;display:grid;place-items:center;background:linear-gradient(135deg,#10B981,#18D4D4);color:#FFFFFF;box-shadow:0 18px 36px rgba(16,185,129,.22);flex:0 0 auto}
-        .completion-copy{min-width:0}.completion-copy span{display:inline-flex;border-radius:999px;background:#ECFDF5;color:#047857;padding:5px 10px;font-size:12px;font-weight:950}.completion-copy h2{margin:10px 0 8px;color:var(--sfm-primary-dark);font-size:clamp(25px,4vw,38px);line-height:1.18;font-weight:950}.completion-copy p{margin:0;color:var(--sfm-muted-readable);font-size:15px;line-height:1.8;font-weight:850}
-        .next-action-card{display:grid;align-content:center;gap:9px;border:1px solid rgba(29,140,255,.16);background:linear-gradient(160deg,var(--sfm-primary-dark),#12375D 62%,#0B1728);border-radius:24px;padding:20px;box-shadow:0 18px 46px rgba(3,18,37,.12);min-width:0;color:#FFFFFF;position:relative;overflow:hidden}
-        .next-action-card::after{content:"";position:absolute;inset:auto -28px -44px auto;width:130px;height:130px;border-radius:999px;background:rgba(24,212,212,.18);filter:blur(2px)}
-        .next-action-card span{color:var(--sfm-soft-cyan);font-size:12px;font-weight:950}.next-action-card strong{font-size:24px;line-height:1.25;font-weight:950;position:relative}.next-action-card p{margin:0;color:#DCEBFA;font-size:13px;font-weight:850;line-height:1.75;position:relative}.next-action-card small{color:#9DEFE9;font-size:11px;font-weight:950;position:relative}
-        .dashboard-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;min-width:0}
-        .dashboard-metrics :global(.dashboard-metric){display:grid;gap:12px;border:1px solid rgba(29,140,255,.12);background:#FFFFFF;border-radius:18px;padding:15px;box-shadow:0 12px 30px rgba(3,18,37,.06);min-width:0}
-        .dashboard-metrics :global(.metric-icon){width:42px;height:42px;border-radius:15px;display:grid;place-items:center;background:rgba(29,140,255,.10);color:var(--sfm-primary)}
-        .dashboard-metrics :global(.dashboard-metric.remaining .metric-icon){background:#ECFDF5;color:#047857}.dashboard-metrics :global(.dashboard-metric.saving .metric-icon){background:#FFFBEB;color:#B45309}.dashboard-metrics :global(.dashboard-metric.expenses .metric-icon){background:#FEF2F2;color:#B91C1C}
-        .dashboard-metrics :global(.dashboard-metric small){display:block;color:var(--sfm-muted-readable);font-size:12px;font-weight:950}.dashboard-metrics :global(.dashboard-metric strong){display:block;margin-top:6px;color:var(--sfm-midnight);font-size:clamp(21px,2.4vw,30px);line-height:1.15;font-weight:950;overflow-wrap:anywhere;unicode-bidi:isolate}.dashboard-metrics :global(.dashboard-metric p){margin:7px 0 0;color:var(--sfm-muted-readable);font-size:12px;font-weight:820;line-height:1.55}
-        .completion-dashboard-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(260px,.65fr);gap:14px;align-items:start;min-width:0}
-        .dashboard-main-column,.dashboard-side-column{display:grid;gap:14px;min-width:0}
-        .mini-section{display:grid;gap:13px;border:1px solid rgba(29,140,255,.12);background:rgba(255,255,255,.78);border-radius:22px;padding:15px;box-shadow:0 12px 32px rgba(3,18,37,.05);min-width:0}
-        .mini-section-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,260px);gap:12px;align-items:start;min-width:0}.mini-section-head span{display:block;color:var(--sfm-primary);font-size:12px;font-weight:950}.mini-section-head h3{margin:4px 0 0;color:var(--sfm-primary-dark);font-size:20px;font-weight:950}.mini-section-head p{margin:0;color:var(--sfm-muted-readable);font-size:12px;font-weight:850;line-height:1.7}
-        .completion-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;min-width:0}
-        .completion-dashboard-grid .completion-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-        .completion-summary-grid :global(.completion-summary-card){display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px;align-items:start;border:1px solid rgba(29,140,255,.12);background:linear-gradient(180deg,#FFFFFF,#F8FBFF);border-radius:16px;padding:13px;min-width:0;box-shadow:0 10px 26px rgba(3,18,37,.05)}
-        .completion-summary-grid :global(.completion-summary-card.income),.completion-summary-grid :global(.completion-summary-card.remaining){grid-column:span 2}
+        .completion-panel{gap:14px}
+        .completion-dashboard{background:linear-gradient(180deg,#FFFFFF,#F8FBFF)}
+        .completion-compact{max-width:100%;align-content:start}
+        .completion-hero{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center;border:1px solid rgba(16,185,129,.18);background:linear-gradient(135deg,#F0FDF4,#FFFFFF 54%,#EAF6FF);border-radius:22px;padding:18px 20px;box-shadow:0 14px 34px rgba(3,18,37,.07);min-width:0}
+        .completion-success-icon{width:64px;height:64px;border-radius:20px;display:grid;place-items:center;background:linear-gradient(135deg,#10B981,#18D4D4);color:#FFFFFF;box-shadow:0 14px 30px rgba(16,185,129,.20);flex:0 0 auto}
+        .completion-copy{min-width:0}
+        .completion-copy span{display:inline-flex;border-radius:999px;background:#ECFDF5;color:#047857;padding:5px 10px;font-size:12px;font-weight:950}
+        .completion-copy h2{margin:9px 0 6px;color:var(--sfm-primary-dark);font-size:clamp(24px,3vw,34px);line-height:1.2;font-weight:950}
+        .completion-copy p{margin:0;max-width:760px;color:var(--sfm-muted-readable);font-size:14px;line-height:1.75;font-weight:850}
+        .completion-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;min-width:0}
+        .completion-summary-grid :global(.completion-summary-card){display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px;align-items:start;border:1px solid rgba(29,140,255,.12);background:linear-gradient(180deg,#FFFFFF,#F8FBFF);border-radius:16px;padding:13px;min-width:0;min-height:116px;box-shadow:0 10px 24px rgba(3,18,37,.05)}
         .completion-summary-grid :global(.summary-icon){width:38px;height:38px;border-radius:13px;display:grid;place-items:center;background:rgba(29,140,255,.10);color:var(--sfm-primary);flex:0 0 auto}
         .completion-summary-grid :global(.completion-summary-card.currency .summary-icon){background:#EEF2FF;color:#3730A3}
-        .completion-summary-grid :global(.completion-summary-card.remaining .summary-icon){background:#ECFDF5;color:#047857}
+        .completion-summary-grid :global(.completion-summary-card.income .summary-icon){background:#ECFDF5;color:#047857}
         .completion-summary-grid :global(.completion-summary-card.saving .summary-icon){background:#FFFBEB;color:#B45309}
         .completion-summary-grid :global(.completion-summary-card small){display:block;color:var(--sfm-muted-readable);font-size:12px;font-weight:950;line-height:1.35}
-        .completion-summary-grid :global(.completion-summary-card strong){display:block;margin-top:5px;color:var(--sfm-midnight);font-size:clamp(18px,2.3vw,26px);line-height:1.2;font-weight:950;overflow-wrap:anywhere;unicode-bidi:isolate}
+        .completion-summary-grid :global(.completion-summary-card strong){display:block;margin-top:5px;color:var(--sfm-midnight);font-size:clamp(18px,2vw,24px);line-height:1.2;font-weight:950;overflow-wrap:anywhere;unicode-bidi:isolate}
         .completion-summary-grid :global(.completion-summary-card p){margin:6px 0 0;color:var(--sfm-muted-readable);font-size:11px;font-weight:820;line-height:1.55}
-        .goal-estimate-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;border:1px solid rgba(29,140,255,.13);background:#FFFFFF;border-radius:18px;padding:14px;min-width:0}
-        .goal-estimate-card>svg{width:42px;height:42px;border-radius:14px;background:rgba(29,140,255,.10);color:var(--sfm-primary);padding:10px}.goal-estimate-card small{display:block;color:var(--sfm-muted-readable);font-weight:950}.goal-estimate-card strong{display:block;margin-top:4px;color:var(--sfm-midnight);font-size:18px;line-height:1.35}.goal-estimate-card p{margin:5px 0 0;color:var(--sfm-muted-readable);font-weight:850;line-height:1.65}
-        .data-health-card,.report-teaser-card{display:grid;gap:12px;border:1px solid rgba(29,140,255,.13);background:#FFFFFF;border-radius:18px;padding:14px;box-shadow:0 10px 26px rgba(3,18,37,.05);min-width:0}
-        .data-health-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start}.data-health-head>svg,.report-teaser-card>svg{width:40px;height:40px;border-radius:14px;background:rgba(29,140,255,.10);color:var(--sfm-primary);padding:10px}.data-health-head h3{margin:0;color:var(--sfm-primary-dark);font-size:17px;font-weight:950}.data-health-head p{margin:5px 0 0;color:var(--sfm-muted-readable);font-size:12px;font-weight:850;line-height:1.6}
-        .data-health-list{display:grid;gap:8px}.data-health-list article{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid rgba(29,140,255,.10);background:#F8FBFF;border-radius:13px;padding:9px;min-width:0}.data-health-list article svg{color:#94A3B8}.data-health-list article.ready{background:#ECFDF5;border-color:rgba(16,185,129,.20)}.data-health-list article.ready svg,.data-health-list article.ready strong{color:#047857}.data-health-list article.missing{background:#FFF7ED;border-color:rgba(234,88,12,.18)}.data-health-list article.missing svg,.data-health-list article.missing strong{color:#C2410C}.data-health-list span{min-width:0;color:var(--sfm-midnight);font-size:12px;font-weight:950;line-height:1.35}.data-health-list strong{font-size:10px;font-weight:950;white-space:nowrap;color:var(--sfm-primary)}
-        .report-teaser-card{grid-template-columns:auto minmax(0,1fr);align-items:start}.report-teaser-card strong{display:block;color:var(--sfm-primary-dark);font-size:15px;font-weight:950}.report-teaser-card p{margin:5px 0 0;color:var(--sfm-muted-readable);font-size:12px;font-weight:850;line-height:1.65}
-        .completion-note{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start;border:1px solid rgba(16,185,129,.16);background:#ECFDF5;border-radius:16px;padding:12px;min-width:0}.completion-note svg{color:#047857;margin-top:2px}.completion-note p{margin:0;color:#065F46;font-size:13px;font-weight:900;line-height:1.7}
-        .recommendation-panel{display:grid;gap:13px;border:1px solid rgba(24,212,212,.20);background:linear-gradient(135deg,rgba(234,246,255,.92),rgba(24,212,212,.08));border-radius:22px;padding:16px;min-width:0}
-        .recommendation-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px;align-items:start}.recommendation-head>svg{width:42px;height:42px;border-radius:14px;background:var(--sfm-midnight);color:var(--sfm-soft-cyan);padding:10px}.recommendation-head h3{margin:0;color:var(--sfm-primary-dark);font-size:19px;font-weight:950}.recommendation-head p{margin:5px 0 0;color:var(--sfm-muted-readable);font-weight:850;line-height:1.65}
-        .recommendation-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.recommendation-list article{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;align-items:start;border:1px solid rgba(29,140,255,.10);background:#FFFFFF;border-radius:15px;padding:12px;min-width:0}.recommendation-list article>svg{color:#10B981;margin-top:2px}.recommendation-list strong{display:block;color:var(--sfm-midnight);font-size:13px;line-height:1.55}.recommendation-list span{display:block;margin-top:4px;color:var(--sfm-muted-readable);font-size:12px;font-weight:820;line-height:1.55}
-        .completion-actions{justify-content:flex-end}.completion-actions button{box-shadow:0 8px 20px rgba(3,18,37,.05)}.completion-actions button.primary{min-width:min(260px,100%);font-size:15px}
+        .recommendation-panel{display:grid;gap:11px;border:1px solid rgba(24,212,212,.20);background:linear-gradient(135deg,rgba(234,246,255,.92),rgba(24,212,212,.08));border-radius:20px;padding:14px 16px;min-width:0}
+        .recommendation-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start}
+        .recommendation-head>svg{width:38px;height:38px;border-radius:13px;background:var(--sfm-midnight);color:var(--sfm-soft-cyan);padding:9px}
+        .recommendation-head h3{margin:0;color:var(--sfm-primary-dark);font-size:18px;font-weight:950}
+        .recommendation-head p{margin:4px 0 0;color:var(--sfm-muted-readable);font-size:13px;font-weight:850;line-height:1.6}
+        .recommendation-list{display:grid;grid-template-columns:1fr;gap:8px}
+        .recommendation-list article{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;align-items:start;border:1px solid rgba(29,140,255,.10);background:#FFFFFF;border-radius:14px;padding:10px 12px;min-width:0}
+        .recommendation-list article>svg{color:#10B981;margin-top:2px}
+        .recommendation-list strong{display:block;color:var(--sfm-midnight);font-size:13px;line-height:1.5}
+        .recommendation-list span{display:block;margin-top:3px;color:var(--sfm-muted-readable);font-size:12px;font-weight:820;line-height:1.5}
+        .completion-actions{justify-content:flex-end;border-top:1px solid rgba(29,140,255,.10);padding-top:12px;margin-top:0}
+        .completion-actions button{box-shadow:0 8px 20px rgba(3,18,37,.05)}
+        .completion-actions button.primary{min-width:min(280px,100%);min-height:52px;font-size:15px}
         .report-modal-backdrop{position:fixed;inset:0;z-index:160;display:grid;place-items:center;background:rgba(3,18,37,.52);backdrop-filter:blur(10px);padding:18px}
         .initial-report-modal{width:min(860px,100%);max-height:min(88dvh,860px);overflow:auto;background:#FFFFFF;border:1px solid rgba(29,140,255,.18);border-radius:24px;padding:18px;box-shadow:0 34px 90px rgba(3,18,37,.30);display:grid;gap:14px}
         .report-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.report-modal-head span{display:block;color:var(--sfm-primary);font-size:12px;font-weight:950}.report-modal-head h3{margin:4px 0;color:var(--sfm-midnight);font-size:26px;font-weight:950}.report-modal-head p{margin:0;color:var(--sfm-muted-readable);line-height:1.7;font-weight:850}.report-modal-head button{width:40px;height:40px;border-radius:13px;border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);color:var(--sfm-midnight);display:grid;place-items:center;cursor:pointer;flex:0 0 auto}
         .report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.report-grid :global(.report-card){display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:16px;padding:13px;min-width:0}.report-grid :global(.report-card svg){width:38px;height:38px;border-radius:13px;background:rgba(29,140,255,.10);color:var(--sfm-primary);padding:9px}.report-grid :global(.report-card small){display:block;color:var(--sfm-muted-readable);font-weight:950}.report-grid :global(.report-card strong){display:block;margin-top:5px;color:var(--sfm-midnight);font-size:21px;font-weight:950;overflow-wrap:anywhere;unicode-bidi:isolate}.report-grid :global(.report-card p){margin:5px 0 0;color:var(--sfm-muted-readable);font-size:12px;font-weight:850;line-height:1.6}
         .report-recommendation{border:1px solid rgba(24,212,212,.20);background:rgba(24,212,212,.07);border-radius:16px;padding:13px}.report-recommendation h4{margin:0 0 8px;color:var(--sfm-primary-dark);font-size:16px}.report-recommendation p{margin:6px 0 0;color:var(--sfm-midnight);font-weight:850;line-height:1.6}
         .report-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.report-actions button{min-height:44px;border-radius:14px;border:1px solid rgba(29,140,255,.18);background:var(--sfm-light-card);color:var(--sfm-midnight);padding:0 15px;font-weight:950;font-family:inherit;cursor:pointer}.report-actions button.primary{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.report-data-points{color:var(--sfm-muted-readable);font-weight:900}
+        :global(.dark) .setup-page .setup-hero.finish-hero{background:linear-gradient(135deg,#0F1E32,#0B1728);border-color:#1D3050;color:#F8FBFF}
+        :global(.dark) .setup-page .setup-hero.finish-hero h2{color:#F8FBFF}
+        :global(.dark) .setup-page .setup-hero.finish-hero p{color:#C7D3E1}
+        :global(.dark) .setup-page .setup-hero.finish-hero .hero-badge{background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.26);color:#8EEAE5}
+        :global(.dark) .setup-page .setup-hero.finish-hero .progress-orb{background:#13243A;border-color:#1D3050;box-shadow:inset 0 0 0 9px rgba(47,214,192,.08),0 14px 30px rgba(0,0,0,.20)}
+        :global(.dark) .setup-page .setup-hero.finish-hero .progress-orb strong{color:#8EEAE5}
+        :global(.dark) .setup-page .setup-hero.finish-hero .progress-orb small{color:#C7D3E1}
         :global(.dark) .setup-page :global(.progress-details summary),
         :global(.dark) .setup-page :global(.progress-details li),
-        :global(.dark) .setup-page .mini-section,
-        :global(.dark) .setup-page .goal-estimate-card,
-        :global(.dark) .setup-page .data-health-card,
-        :global(.dark) .setup-page .report-teaser-card,
         :global(.dark) .setup-page .recommendation-list article,
-        :global(.dark) .setup-page .initial-report-modal,
-        :global(.dark) .setup-page .dashboard-metrics :global(.dashboard-metric){background:#0F1E32;border-color:#1D3050;color:#E8EEF6}
+        :global(.dark) .setup-page .initial-report-modal{background:#0F1E32;border-color:#1D3050;color:#E8EEF6}
         :global(.dark) .setup-page :global(.progress-details li.optional),
-        :global(.dark) .setup-page .data-health-list article,
         :global(.dark) .setup-page .completion-summary-grid :global(.completion-summary-card),
         :global(.dark) .setup-page .report-grid :global(.report-card){background:#13243A;border-color:#1D3050}
-        :global(.dark) .setup-page .completion-dashboard{background:linear-gradient(180deg,#0B1728 0%,#0F1E32 58%,#0B1728 100%)}
+        :global(.dark) .setup-page .completion-dashboard{background:linear-gradient(180deg,#0B1728,#0F1E32)}
         :global(.dark) .setup-page .completion-hero{background:linear-gradient(135deg,rgba(16,185,129,.12),#0F1E32 52%,#0B1728);border-color:rgba(47,214,192,.24);box-shadow:0 22px 54px rgba(0,0,0,.28)}
-        :global(.dark) .setup-page .next-action-card{background:linear-gradient(160deg,#102640,#0B1728);border-color:rgba(47,214,192,.22)}
-        :global(.dark) .setup-page .completion-note{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.24)}
-        :global(.dark) .setup-page .completion-note p{color:#BDF7DA}
         :global(.dark) .setup-page .completion-copy h2,
-        :global(.dark) .setup-page .mini-section-head h3,
-        :global(.dark) .setup-page .dashboard-metrics :global(.dashboard-metric strong),
         :global(.dark) .setup-page .completion-summary-grid :global(.completion-summary-card strong),
-        :global(.dark) .setup-page .goal-estimate-card strong,
-        :global(.dark) .setup-page .data-health-head h3,
-        :global(.dark) .setup-page .data-health-list span,
-        :global(.dark) .setup-page .report-teaser-card strong,
         :global(.dark) .setup-page .recommendation-head h3,
         :global(.dark) .setup-page .recommendation-list strong,
         :global(.dark) .setup-page .report-modal-head h3,
@@ -1767,15 +1759,8 @@ export default function SetupPage() {
         :global(.dark) .setup-page .report-recommendation p,
         :global(.dark) .setup-page :global(.progress-details li b){color:#F8FBFF}
         :global(.dark) .setup-page .completion-copy p,
-        :global(.dark) .setup-page .mini-section-head p,
-        :global(.dark) .setup-page .dashboard-metrics :global(.dashboard-metric small),
-        :global(.dark) .setup-page .dashboard-metrics :global(.dashboard-metric p),
         :global(.dark) .setup-page .completion-summary-grid :global(.completion-summary-card small),
         :global(.dark) .setup-page .completion-summary-grid :global(.completion-summary-card p),
-        :global(.dark) .setup-page .goal-estimate-card small,
-        :global(.dark) .setup-page .goal-estimate-card p,
-        :global(.dark) .setup-page .data-health-head p,
-        :global(.dark) .setup-page .report-teaser-card p,
         :global(.dark) .setup-page .recommendation-head p,
         :global(.dark) .setup-page .recommendation-list span,
         :global(.dark) .setup-page .report-modal-head p,
@@ -1793,8 +1778,8 @@ export default function SetupPage() {
         .setup-error{border:1px solid rgba(185,28,28,.16);background:#FEF2F2;color:#B91C1C;border-radius:14px;padding:12px;font-weight:950}
         .wizard-actions{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid rgba(29,140,255,.12);padding-top:18px;margin-top:auto}.primary-btn,.ghost-btn{min-height:52px;border-radius:16px;padding:0 20px;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease,border-color .18s ease,background .18s ease}.primary-btn{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 14px 34px rgba(29,140,255,.22)}.primary-btn:not(:disabled):hover{transform:translateY(-2px);filter:saturate(1.06) brightness(1.04);box-shadow:0 18px 42px rgba(24,212,212,.28)}.primary-btn:not(:disabled):active{transform:translateY(0) scale(.985)}.primary-btn:focus-visible,.ghost-btn:focus-visible,.finish-actions button:focus-visible{outline:3px solid rgba(24,212,212,.32);outline-offset:3px}.ghost-btn{border:1px solid rgba(29,140,255,.20);background:var(--sfm-light-card);color:var(--sfm-midnight)}.ghost-btn:not(:disabled):hover{transform:translateY(-1px);border-color:rgba(24,212,212,.34);background:var(--sfm-surface-hover);box-shadow:0 10px 26px rgba(3,18,37,.08)}.primary-btn:disabled,.ghost-btn:disabled{opacity:.65;cursor:not-allowed;transform:none;box-shadow:none}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
         .finish-actions{display:flex;gap:10px;flex-wrap:wrap}.finish-actions button{min-height:46px;border:1px solid rgba(29,140,255,.18);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-midnight);padding:0 15px;font-weight:950;font-family:inherit;cursor:pointer}.finish-actions button.primary{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}
-        @media(max-width:1024px){.setup-page .sfm-dashboard-page-shell{margin-inline-start:0}.setup-hero,.step-layout,.mini-dashboard-head,.completion-dashboard-grid{grid-template-columns:1fr}.progress-orb{width:124px;height:124px}.step-side{position:static}.setup-plan ul{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-metrics,.completion-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.completion-summary-grid :global(.completion-summary-card.income),.completion-summary-grid :global(.completion-summary-card.remaining){grid-column:span 1}.recommendation-list{grid-template-columns:1fr}.next-action-card{min-height:150px}}
-        @media(max-width:720px){:global(.setup-page .sfm-dashboard-page-shell){padding-inline:16px!important}.setup-hero{border-radius:22px}.setup-card{padding:14px;border-radius:22px}.progress-orb{width:112px;height:112px}.form-grid,.expense-grid,.summary-grid,.focus-grid,.setup-plan ul,.dashboard-metrics,.completion-summary-grid,.report-grid{grid-template-columns:1fr}.wizard-actions,.choice-row,.finish-actions,.income-decision-actions,.report-actions{display:grid;grid-template-columns:1fr}.primary-btn,.ghost-btn,.choice-btn,.toggle-card,.finish-actions button,.income-action-btn,.report-actions button{width:100%;min-width:0}.income-decision-card{padding:22px 16px;border-radius:24px}.income-decision-icon{width:68px;height:68px}.recurring-income-card{grid-template-columns:minmax(0,1fr) auto;align-items:start;padding:14px;border-radius:18px}.setup-top{align-items:flex-start}.step-main{padding:16px;min-height:auto}.step-heading h2{font-size:22px}.completion-hero{grid-template-columns:1fr;text-align:center;justify-items:center;border-radius:22px}.dashboard-hero{min-height:auto}.next-action-card{border-radius:22px;min-height:auto}.completion-copy h2{font-size:25px}.mini-section-head{grid-template-columns:1fr}.completion-summary-grid :global(.completion-summary-card){grid-template-columns:minmax(0,1fr);text-align:start}.goal-estimate-card,.recommendation-head,.data-health-head,.report-teaser-card{grid-template-columns:minmax(0,1fr)}.data-health-list article{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon label" "icon state"}.data-health-list article svg{grid-area:icon}.data-health-list article span{grid-area:label}.data-health-list article strong{grid-area:state;justify-self:start}.report-modal-backdrop{align-items:end;padding:10px}.initial-report-modal{max-height:88dvh;border-radius:22px 22px 0 0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}.report-modal-head{display:grid}.report-modal-head button{justify-self:end}:global(.setup-page .progress-details ol){max-height:280px}:global(.setup-page .progress-details li){grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon title" "icon state" "icon badge"}:global(.setup-page .progress-details li em){justify-self:start}.report-grid :global(.report-card){grid-template-columns:minmax(0,1fr)}}
+        @media(max-width:1024px){.setup-page .sfm-dashboard-page-shell{margin-inline-start:0}.setup-hero,.step-layout{grid-template-columns:1fr}.progress-orb{width:124px;height:124px}.step-side{position:static}.setup-plan ul{grid-template-columns:repeat(2,minmax(0,1fr))}.completion-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.recommendation-list{grid-template-columns:1fr}}
+        @media(max-width:720px){:global(.setup-page .sfm-dashboard-page-shell){padding-inline:16px!important}.setup-top{align-items:flex-start}.setup-hero{grid-template-columns:1fr;border-radius:22px;padding:20px}.setup-hero.finish-hero .progress-orb,.progress-orb{width:108px;height:108px}.setup-card{padding:14px;border-radius:22px}.setup-card-final{padding:12px}.form-grid,.expense-grid,.summary-grid,.focus-grid,.setup-plan ul,.completion-summary-grid,.report-grid{grid-template-columns:1fr}.wizard-actions,.choice-row,.finish-actions,.income-decision-actions,.report-actions{display:grid;grid-template-columns:1fr}.primary-btn,.ghost-btn,.choice-btn,.toggle-card,.finish-actions button,.income-action-btn,.report-actions button{width:100%;min-width:0}.income-decision-card{padding:22px 16px;border-radius:24px}.income-decision-icon{width:68px;height:68px}.recurring-income-card{grid-template-columns:minmax(0,1fr) auto;align-items:start;padding:14px;border-radius:18px}.step-main{padding:14px;min-height:auto}.step-heading h2{font-size:22px}.completion-hero{grid-template-columns:1fr;text-align:center;justify-items:center;border-radius:20px;padding:18px}.completion-copy h2{font-size:24px}.completion-summary-grid :global(.completion-summary-card){grid-template-columns:minmax(0,1fr);text-align:start}.recommendation-head{grid-template-columns:minmax(0,1fr)}.report-modal-backdrop{align-items:end;padding:10px}.initial-report-modal{max-height:88dvh;border-radius:22px 22px 0 0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}.report-modal-head{display:grid}.report-modal-head button{justify-self:end}:global(.setup-page .progress-details ol){max-height:280px}:global(.setup-page .progress-details li){grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon title" "icon state" "icon badge"}:global(.setup-page .progress-details li em){justify-self:start}.report-grid :global(.report-card){grid-template-columns:minmax(0,1fr)}}
       `}</style>
     </div>
   );
@@ -2076,155 +2061,81 @@ export default function SetupPage() {
 
     const activeSummary = summary ?? buildSetupSummary();
     const recommendations = recommendationItems(activeSummary);
+    const visibleRecommendations = recommendations.slice(0, 3);
     const savedDataPoints = activeSummary.income + activeSummary.expenses + activeSummary.goals + activeSummary.savings + activeSummary.investments + activeSummary.projects;
-    const expenseRatio = activeSummary.incomeTotal > 0 ? activeSummary.expenseTotal / activeSummary.incomeTotal : 0;
-    const surplusRatio = activeSummary.incomeTotal > 0 ? activeSummary.expectedRemaining / activeSummary.incomeTotal : 0;
     const goalEstimateValue = activeSummary.firstGoalCompletionDate ? formatSetupDate(activeSummary.firstGoalCompletionDate, lang) : text.noGoalEstimateTitle;
-    const goalEstimateDescription = activeSummary.firstGoalCompletionDate ? text.goalEstimateDesc : text.noGoalEstimateHint;
-    const hasGrowthData = activeSummary.savings + activeSummary.investments + activeSummary.projects > 0;
-    const readinessItems = [
-      { label: text.currencyReady, ready: Boolean(defaultCurrency), optional: false },
-      { label: text.incomeReady, ready: activeSummary.income > 0, optional: false },
-      { label: text.expensesReady, ready: activeSummary.expenses > 0, optional: false },
-      { label: text.goalsReady, ready: activeSummary.goals > 0, optional: false },
-      { label: text.growthDataReady, ready: hasGrowthData, optional: true },
-    ];
 
     return (
-      <section className="step-panel completion-panel completion-dashboard">
-        <div className="mini-dashboard-head">
-          <div className="completion-hero dashboard-hero">
-            <div className="completion-success-icon" aria-hidden="true">
-              <CheckCircle2 size={36} />
-            </div>
-            <div className="completion-copy">
-              <span>{text.dashboardMiniTitle}</span>
-              <h2 id="setup-step-title">{text.completionTitle}</h2>
-              <p>{text.dashboardMiniSubtitle}</p>
-            </div>
+      <section className="step-panel completion-panel completion-dashboard completion-compact">
+        <div className="completion-hero completion-success-card">
+          <div className="completion-success-icon" aria-hidden="true">
+            <CheckCircle2 size={34} />
           </div>
-
-          <aside className="next-action-card">
-            <span>{text.nextStepTitle}</span>
-            <strong>{text.goDashboard}</strong>
-            <p>{text.nextStepBody}</p>
-            <small>{text.dashboardPrimaryHint}</small>
-          </aside>
+          <div className="completion-copy">
+            <span>{text.initialPlanBuilt}</span>
+            <h2 id="setup-step-title">{text.completionTitle}</h2>
+            <p>{text.completionDescription}</p>
+          </div>
         </div>
 
-        <section className="dashboard-metrics" aria-label={text.financialPulse}>
-          <DashboardMetric icon={Banknote} title={text.expectedMonthlyIncome} value={formatSetupMoney(activeSummary.incomeTotal, defaultCurrency, lang)} detail={activeSummary.income > 0 ? text.incomeCardDesc : text.noIncomeCardDesc} tone="income" />
-          <DashboardMetric icon={TrendingUp} title={text.expectedRemaining} value={formatSetupMoney(activeSummary.expectedRemaining, defaultCurrency, lang)} detail={text.remainingCardDesc} tone="remaining" />
-          <DashboardMetric icon={Percent} title={text.surplusRatio} value={activeSummary.incomeTotal > 0 ? formatSetupPercent(surplusRatio * 100, lang) : text.notEnoughForEstimate} detail={text.savingPercentCardDesc} tone="saving" />
-          <DashboardMetric icon={ReceiptText} title={text.expenseRatio} value={activeSummary.incomeTotal > 0 ? formatSetupPercent(expenseRatio * 100, lang) : text.notEnoughForEstimate} detail={activeSummary.expenses > 0 ? text.expensesCardDesc : text.reportNoData} tone="expenses" />
+        <section className="completion-summary-grid concise-summary-grid" aria-label={text.planSnapshotTitle}>
+          <SummaryCard icon={CircleDollarSign} label={text.summaryCurrency} value={defaultCurrency} description={text.currencyCardDesc} tone="currency" />
+          <SummaryCard
+            icon={Banknote}
+            label={text.expectedMonthlyIncome}
+            value={formatSetupMoney(activeSummary.incomeTotal, defaultCurrency, lang)}
+            description={activeSummary.income > 0 ? text.incomeCardDesc : text.noIncomeCardDesc}
+            tone="income"
+          />
+          <SummaryCard
+            icon={ReceiptText}
+            label={text.reportExpenses}
+            value={formatSetupMoney(activeSummary.expenseTotal, defaultCurrency, lang)}
+            description={activeSummary.expenses > 0 ? text.expensesCardDesc : text.reportNoData}
+            tone="count"
+          />
+          <SummaryCard
+            icon={PiggyBank}
+            label={text.addedSavings}
+            value={formatSetupMoney(activeSummary.savingsTotal, defaultCurrency, lang)}
+            description={text.savingsCardDesc}
+            tone="saving"
+          />
+          <SummaryCard
+            icon={LineChart}
+            label={text.addedInvestments}
+            value={formatSetupMoney(activeSummary.investmentTotal, defaultCurrency, lang)}
+            description={text.investmentsCardDesc}
+            tone="count"
+          />
+          <SummaryCard
+            icon={Target}
+            label={text.addedGoals}
+            value={formatSetupNumber(activeSummary.goals, lang)}
+            description={text.goalsCardDesc}
+            tone="count"
+          />
         </section>
 
-        <div className="completion-dashboard-grid">
-          <div className="dashboard-main-column">
-            <section className="mini-section" aria-labelledby="plan-snapshot-title">
-              <div className="mini-section-head">
-                <div>
-                  <span>{text.financialPulse}</span>
-                  <h3 id="plan-snapshot-title">{text.planSnapshotTitle}</h3>
-                </div>
-                <p>{text.planSnapshotSubtitle}</p>
-              </div>
-              <div className="completion-summary-grid">
-                <SummaryCard icon={CircleDollarSign} label={text.summaryCurrency} value={defaultCurrency} description={text.currencyCardDesc} tone="currency" />
-                <SummaryCard
-                  icon={Banknote}
-                  label={text.expectedMonthlyIncome}
-                  value={formatSetupMoney(activeSummary.incomeTotal, defaultCurrency, lang)}
-                  description={activeSummary.income > 0 ? text.incomeCardDesc : text.noIncomeCardDesc}
-                  tone="income"
-                />
-                <SummaryCard
-                  icon={TrendingUp}
-                  label={text.expectedRemaining}
-                  value={formatSetupMoney(activeSummary.expectedRemaining, defaultCurrency, lang)}
-                  description={text.remainingCardDesc}
-                  tone="remaining"
-                />
-                <SummaryCard
-                  icon={Percent}
-                  label={text.recommendedSavingPercent}
-                  value={activeSummary.incomeTotal > 0 ? formatSetupPercent(activeSummary.recommendedSavingPercent, lang) : text.notEnoughForEstimate}
-                  description={text.savingPercentCardDesc}
-                  tone="saving"
-                />
-                <SummaryCard icon={ReceiptText} label={text.addedExpenses} value={formatSetupNumber(activeSummary.expenses, lang)} description={text.expensesCardDesc} tone="count" />
-                <SummaryCard icon={LineChart} label={text.addedInvestments} value={formatSetupNumber(activeSummary.investments, lang)} description={text.investmentsCardDesc} tone="count" />
-                <SummaryCard icon={Target} label={text.addedGoals} value={formatSetupNumber(activeSummary.goals, lang)} description={text.goalsCardDesc} tone="count" />
-                <SummaryCard icon={BriefcaseBusiness} label={text.addedProjects} value={formatSetupNumber(activeSummary.projects, lang)} description={text.projectsCardDesc} tone="count" />
-                <SummaryCard icon={PiggyBank} label={text.addedSavings} value={formatSetupNumber(activeSummary.savings, lang)} description={text.savingsCardDesc} tone="count" />
-                <SummaryCard icon={Wallet} label={text.additionalIncomeSources} value={formatSetupNumber(activeSummary.additionalIncomeSources, lang)} description={text.additionalIncomeCardDesc} tone="count" />
-              </div>
-            </section>
-
-            <section className="recommendation-panel" aria-labelledby="setup-recommendation-title">
-              <div className="recommendation-head">
-                <Sparkles size={22} aria-hidden="true" />
-                <div>
-                  <h3 id="setup-recommendation-title">{text.recommendationTitle}</h3>
-                  <p>{text.recommendationBasedOn}</p>
-                </div>
-              </div>
-              <div className="recommendation-list">
-                {recommendations.map(item => (
-                  <article key={item.title}>
-                    <CheckCircle2 size={16} aria-hidden="true" />
-                    <div>
-                      <strong>{item.title}</strong>
-                      <span>{item.meta}</span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
+        <section className="recommendation-panel compact-recommendation" aria-labelledby="setup-recommendation-title">
+          <div className="recommendation-head">
+            <Sparkles size={22} aria-hidden="true" />
+            <div>
+              <h3 id="setup-recommendation-title">{text.recommendationTitle}</h3>
+              <p>{text.recommendationBasedOn}</p>
+            </div>
           </div>
-
-          <aside className="dashboard-side-column">
-            <article className="goal-estimate-card">
-              <CalendarCheck size={22} aria-hidden="true" />
-              <div>
-                <small>{text.firstGoalCompletion}</small>
-                <strong>{goalEstimateValue}</strong>
-                <p>{goalEstimateDescription}</p>
-              </div>
-            </article>
-
-            <section className="data-health-card" aria-labelledby="data-health-title">
-              <div className="data-health-head">
-                <ListChecks size={20} aria-hidden="true" />
+          <div className="recommendation-list concise-recommendation-list">
+            {visibleRecommendations.map(item => (
+              <article key={item.title}>
+                <CheckCircle2 size={16} aria-hidden="true" />
                 <div>
-                  <h3 id="data-health-title">{text.dataHealthTitle}</h3>
-                  <p>{text.dataHealthSubtitle}</p>
+                  <strong>{item.title}</strong>
+                  <span>{item.meta}</span>
                 </div>
-              </div>
-              <div className="data-health-list">
-                {readinessItems.map(item => (
-                  <article className={item.ready ? 'ready' : item.optional ? 'optional' : 'missing'} key={item.label}>
-                    <CheckCircle2 size={16} aria-hidden="true" />
-                    <span>{item.label}</span>
-                    <strong>{item.ready ? text.readyStatus : item.optional ? text.optional : text.needsMoreData}</strong>
-                  </article>
-                ))}
-              </div>
-            </section>
-
-            <section className="report-teaser-card">
-              <Flag size={20} aria-hidden="true" />
-              <div>
-                <strong>{text.viewInitialReport}</strong>
-                <p>{text.reportMiniHint}</p>
-              </div>
-            </section>
-          </aside>
-        </div>
-
-        <section className="completion-note">
-          <ShieldCheck size={18} aria-hidden="true" />
-          <p>{text.completionDescription}</p>
+              </article>
+            ))}
+          </div>
         </section>
 
         <div className="finish-actions completion-actions">
@@ -2311,7 +2222,7 @@ function ProgressPanel({
         <strong>{step === 8 ? labels.complete : `${progress}%`}</strong>
         <span aria-hidden="true"><i style={{ width: `${progress}%` }} /></span>
       </div>
-      <details className="progress-details" open={step === 8}>
+      <details className="progress-details" open={step !== 8}>
         <summary>
           <span>{labels.listTitle}</span>
           <ChevronDown size={16} aria-hidden="true" />
@@ -2336,31 +2247,6 @@ function ProgressPanel({
         </ol>
       </details>
     </section>
-  );
-}
-
-function DashboardMetric({
-  icon: Icon,
-  title,
-  value,
-  detail,
-  tone,
-}: {
-  icon: LucideIcon;
-  title: string;
-  value: string;
-  detail: string;
-  tone: string;
-}) {
-  return (
-    <article className={`dashboard-metric ${tone}`}>
-      <span className="metric-icon"><Icon size={20} aria-hidden="true" /></span>
-      <div>
-        <small>{title}</small>
-        <strong>{value}</strong>
-        <p>{detail}</p>
-      </div>
-    </article>
   );
 }
 
