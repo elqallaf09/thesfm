@@ -2018,9 +2018,10 @@ export const TR: Record<string, TranslationEntry> = {
   invest_summary_defaultReturn: { ar:'أضف العائد المتوقع لكل استثمار لعرض التوقعات.', en:'Add the expected return for each investment to show projections.', fr:"Ajoutez le rendement attendu de chaque investissement pour afficher les projections." },
   invest_types_stocks: { ar:'أسهم', en:'Stocks', fr:'Actions' },
   invest_types_realEstate: { ar:'عقار', en:'Real Estate', fr:'Immobilier' },
-  invest_types_fund: { ar:'صندوق استثماري', en:'Fund', fr:'Fonds' },
+  invest_types_fund: { ar:'صناديق استثمار / ETF', en:'Investment Funds / ETF', fr:'Fonds / ETF' },
   invest_types_gold: { ar:'ذهب', en:'Gold', fr:'Or' },
-  invest_types_cash: { ar:'كاش', en:'Cash', fr:'Liquidités' },
+  invest_types_silver: { ar:'فضة', en:'Silver', fr:'Argent' },
+  invest_types_cash: { ar:'نقد / وديعة', en:'Cash / Deposit', fr:'Espèces / dépôt' },
   invest_types_crypto: { ar:'عملات رقمية', en:'Crypto', fr:'Cryptomonnaies' },
   invest_types_project: { ar:'مشروع', en:'Project', fr:'Projet' },
   invest_types_other: { ar:'أخرى', en:'Other', fr:'Autre' },
@@ -2372,8 +2373,9 @@ export const TR: Record<string, TranslationEntry> = {
   investment_type_real_estate: { ar:'عقار', en:'Real Estate', fr:'Immobilier' },
   investment_type_crypto: { ar:'عملات رقمية', en:'Crypto', fr:'Crypto' },
   investment_type_gold: { ar:'ذهب', en:'Gold', fr:'Or' },
+  investment_type_silver: { ar:'فضة', en:'Silver', fr:'Argent' },
   investment_type_bonds: { ar:'سندات', en:'Bonds', fr:'Obligations' },
-  investment_type_fund: { ar:'صندوق استثماري', en:'Investment Fund', fr:'Fonds d’investissement' },
+  investment_type_fund: { ar:'صناديق استثمار / ETF', en:'Investment Funds / ETF', fr:'Fonds / ETF' },
 } as const;
 
 /** Helper: get translation for current language */

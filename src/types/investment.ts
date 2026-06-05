@@ -3,6 +3,7 @@ export type InvestmentType =
   | 'realEstate'
   | 'fund'
   | 'gold'
+  | 'silver'
   | 'cash'
   | 'crypto'
   | 'project'
@@ -30,12 +31,23 @@ export interface Investment {
   assetType?: string;
   currency?: string;
   quantity?: number;
+  amount?: number;
+  purchasePrice?: number;
   currentPrice?: number;
   currentMarketValue?: number;
   priceCurrency?: string;
   lastPrice?: number;
   lastPriceUpdatedAt?: string;
   dataSource?: string;
+  projectId?: string;
+  projectName?: string;
+  metalType?: 'gold' | 'silver' | string;
+  metalProductType?: string;
+  metalKarat?: number;
+  metalPurity?: number;
+  grams?: number;
+  pureMetalGrams?: number;
+  priceSource?: string;
   createdAt: string;
   updatedAt: string;
 }

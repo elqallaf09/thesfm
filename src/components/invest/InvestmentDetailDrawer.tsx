@@ -83,12 +83,21 @@ export function InvestmentDetailDrawer({
           <Info label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? '-' : `${investment.expectedAnnualReturn}%`} />
           {linkedSymbol && <Info label={labels.symbol || 'Symbol'} value={linkedSymbol} ltr />}
           {investment.market && <Info label={labels.market || 'Market'} value={investment.market} />}
-          {typeof investment.quantity === 'number' && <Info label={labels.quantity || 'Quantity'} value={formatNumber(investment.quantity)} ltr />}
+          {investment.type === 'project' && investment.projectId && <Info label="المشروع المرتبط" value={investment.projectName || investment.name} />}
+          {typeof investment.quantity === 'number' && <Info label={labels.quantity || 'Quantity'} value={formatPreciseNumber(investment.quantity)} ltr />}
+          {(investment.type === 'gold' || investment.type === 'silver') && investment.metalProductType && (
+            <Info label="نوع المعدن" value={metalProductLabel(investment.metalProductType)} />
+          )}
+          {investment.type === 'gold' && typeof investment.metalKarat === 'number' && <Info label="العيار" value={`${investment.metalKarat}K`} ltr />}
+          {investment.type === 'silver' && typeof investment.metalPurity === 'number' && <Info label="النقاء" value={formatPreciseNumber(investment.metalPurity)} ltr />}
+          {(investment.type === 'gold' || investment.type === 'silver') && typeof investment.grams === 'number' && <Info label="الوزن بالجرام" value={`${formatPreciseNumber(investment.grams)} g`} ltr />}
+          {(investment.type === 'gold' || investment.type === 'silver') && typeof investment.pureMetalGrams === 'number' && <Info label="صافي المعدن" value={`${formatPreciseNumber(investment.pureMetalGrams)} g`} ltr />}
+          {typeof investment.purchasePrice === 'number' && <Info label="سعر الشراء" value={`${investment.currency || investment.priceCurrency || ''} ${formatNumber(investment.purchasePrice)}`} ltr />}
           {typeof investment.lastPrice === 'number' && investment.currency && (
             <Info label={labels.currentPrice || 'Current price'} value={`${investment.currency} ${formatNumber(investment.lastPrice)}`} ltr />
           )}
           {investment.lastPriceUpdatedAt && <Info label={labels.lastUpdated || 'Last updated'} value={formatDate(investment.lastPriceUpdatedAt) || unavailable} ltr />}
-          {investment.dataSource && <Info label={labels.dataSource || 'Data source'} value={investment.dataSource} />}
+          {(investment.priceSource || investment.dataSource) && <Info label={labels.dataSource || 'Data source'} value={investment.priceSource || investment.dataSource || ''} />}
         </div>
 
         <div className="invest-notes-box">
@@ -114,6 +123,29 @@ function formatNumber(value: number) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 3,
   });
+}
+
+function formatPreciseNumber(value: number) {
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: value > 0 && value < 1 ? 10 : 4,
+  });
+}
+
+function metalProductLabel(value: string) {
+  const labels: Record<string, string> = {
+    bar: 'سبيكة',
+    lira: 'ليرة',
+    half_lira: 'نصف ليرة',
+    quarter_lira: 'ربع ليرة',
+    makhmus: 'مخمس',
+    half_makhmus: 'نصف مخمس',
+    ten_tola: '10 توله',
+    ounce: 'أونصة',
+    kilo: 'كيلو',
+    custom_grams: 'وزن مخصص',
+  };
+  return labels[value] || value;
 }
 
 function formatDate(value: string) {

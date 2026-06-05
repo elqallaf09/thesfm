@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic';
 
 const TROY_OUNCE_GRAMS = 31.1034768;
 const DEFAULT_CURRENCY = 'KWD';
-const DEV_MOCK_USD_TO_KWD = 0.307;
 const DEFAULT_METALS_PROVIDER_URL = 'https://api.metals.live/v1/spot/gold,silver';
 const DEFAULT_EXCHANGE_URL = 'https://open.er-api.com/v6/latest/USD';
 
@@ -19,7 +18,7 @@ type MetalsResponse = {
   success: boolean;
   gold?: MetalPayload;
   silver?: MetalPayload;
-  source?: 'api' | 'mock';
+  source?: 'api';
   error?: string;
 };
 
@@ -153,7 +152,6 @@ async function fetchProviderPayload() {
 
 async function fetchUsdRate(targetCurrency: string) {
   if (targetCurrency === 'USD') return 1;
-  if (targetCurrency === 'KWD' && process.env.USD_TO_KWD_RATE) return num(process.env.USD_TO_KWD_RATE);
 
   const exchangeUrl = process.env.EXCHANGE_API_URL?.trim();
   const exchangeKey = process.env.EXCHANGE_API_KEY?.trim();
@@ -169,11 +167,7 @@ async function fetchUsdRate(targetCurrency: string) {
       console.error('[metals] Default exchange provider failed', error);
     }
 
-    if (targetCurrency === 'KWD') {
-      console.info('[metals] Using configured/mock USD to KWD fallback rate');
-      return DEV_MOCK_USD_TO_KWD;
-    }
-    throw new Error('EXCHANGE_API_URL is not configured');
+    throw new Error(`No live USD to ${targetCurrency} exchange rate available`);
   }
 
   const url = exchangeKey ? exchangeUrl.replace('{EXCHANGE_API_KEY}', encodeURIComponent(exchangeKey)) : exchangeUrl;
@@ -186,27 +180,11 @@ async function fetchUsdRate(targetCurrency: string) {
   return rate;
 }
 
-function mockResponse(currency: string): MetalsResponse {
-  const now = new Date().toISOString();
-  const rate = currency === 'KWD' ? DEV_MOCK_USD_TO_KWD : 1;
-  return {
-    success: true,
-    gold: { price: (2360 / TROY_OUNCE_GRAMS) * rate, currency, unit: 'gram', lastUpdated: now },
-    silver: { price: (30.5 / TROY_OUNCE_GRAMS) * rate, currency, unit: 'gram', lastUpdated: now },
-    source: 'mock',
-  };
-}
-
 export async function GET(request: Request) {
   const targetCurrency = new URL(request.url).searchParams.get('currency')?.toUpperCase() || DEFAULT_CURRENCY;
   console.info('[metals] Metals API request started', { targetCurrency });
 
   try {
-    if (!process.env.METALS_API_URL && process.env.NODE_ENV !== 'production' && process.env.METALS_USE_MOCK === 'true') {
-      console.info('[metals] METALS_API_URL missing in development, using mock prices');
-      return NextResponse.json(mockResponse(targetCurrency));
-    }
-
     const payload = await fetchProviderPayload();
     const sourceCurrency = providerCurrency(payload);
     const { goldGram, silverGram } = extractGramPrices(payload);
@@ -229,7 +207,7 @@ export async function GET(request: Request) {
     if (goldPerGram <= 0 || silverPerGram <= 0) throw new Error('Provider did not return usable gold and silver prices');
 
     const now = new Date().toISOString();
-    console.info('[metals] Final KWD per gram price', { gold: goldPerGram, silver: silverPerGram, currency: targetCurrency });
+    console.info('[metals] Final per gram price', { gold: goldPerGram, silver: silverPerGram, currency: targetCurrency });
 
     return NextResponse.json({
       success: true,

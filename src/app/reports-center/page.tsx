@@ -1665,7 +1665,7 @@ export default function ReportsCenterPage() {
     if (key === 'expenses') return { label: tr.addExpense, href: '/expenses/add' };
     if (key === 'savings') return { label: tr.openSavings, href: '/savings' };
     if (key === 'goals') return { label: tr.openGoals, href: '/goals' };
-    if (key === 'investments') return { label: tr.openInvestments, href: '/invest/add' };
+    if (key === 'investments') return { label: tr.openInvestments, href: '/invest' };
     if (key === 'marketWatchlist') return { label: tr.openMarket, href: '/market-analysis' };
     if (key === 'zakatCalculations' || key === 'zakatAssets') return { label: tr.openZakat, href: '/zakat' };
     if (key === 'charityProjects' || key === 'charityDonations' || key === 'charityBeneficiaries' || key === 'charityImpact') {

@@ -45,6 +45,7 @@ export function InvestmentRow({
   refreshing = false,
 }: Props) {
   const linkedSymbol = investment.providerSymbol || investment.symbol;
+  const isMetal = investment.type === 'gold' || investment.type === 'silver';
   const notCalculable = labels.ofPortfolio.includes('portfolio')
     ? 'Not calculable'
     : labels.ofPortfolio.includes('portefeuille')
@@ -63,12 +64,25 @@ export function InvestmentRow({
 
       <div className="invest-row-meta">
         {linkedSymbol && <span dir="ltr">{linkedSymbol}</span>}
+        {investment.type === 'project' && investment.projectId && <span>{investment.projectName || investment.name}</span>}
         {investment.market && <span>{investment.market}</span>}
+        {isMetal && investment.metalProductType && (
+          <span>{metalProductLabel(investment.metalProductType)}{investment.metalKarat ? ` · ${investment.metalKarat}K` : ''}</span>
+        )}
+        {isMetal && typeof investment.grams === 'number' && (
+          <span>الوزن: <b dir="ltr">{formatPreciseNumber(investment.grams)} g</b></span>
+        )}
+        {isMetal && typeof investment.pureMetalGrams === 'number' && (
+          <span>الصافي: <b dir="ltr">{formatPreciseNumber(investment.pureMetalGrams)} g</b></span>
+        )}
+        {investment.type === 'silver' && typeof investment.metalPurity === 'number' && (
+          <span>النقاء: <b dir="ltr">{formatPreciseNumber(investment.metalPurity)}</b></span>
+        )}
         {typeof investment.lastPrice === 'number' && investment.currency && (
           <span>{labels.lastPrice}: <b dir="ltr">{investment.currency} {formatNumber(investment.lastPrice)}</b></span>
         )}
         {typeof investment.quantity === 'number' && (
-          <span>{labels.quantity || 'Quantity'}: <b dir="ltr">{formatNumber(investment.quantity)}</b></span>
+          <span>{labels.quantity || 'Quantity'}: <b dir="ltr">{formatPreciseNumber(investment.quantity)}</b></span>
         )}
         {linkedSymbol && (
           <span>{labels.currentMarketValue || 'Current market value'}: <b>{formatMoney(investment.displayValue, investment.displayValueStatus)}</b></span>
@@ -110,6 +124,29 @@ function formatNumber(value: number) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 3,
   });
+}
+
+function formatPreciseNumber(value: number) {
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: value > 0 && value < 1 ? 10 : 4,
+  });
+}
+
+function metalProductLabel(value: string) {
+  const labels: Record<string, string> = {
+    bar: 'سبيكة',
+    lira: 'ليرة',
+    half_lira: 'نصف ليرة',
+    quarter_lira: 'ربع ليرة',
+    makhmus: 'مخمس',
+    half_makhmus: 'نصف مخمس',
+    ten_tola: '10 توله',
+    ounce: 'أونصة',
+    kilo: 'كيلو',
+    custom_grams: 'وزن مخصص',
+  };
+  return labels[value] || value;
 }
 
 function formatDate(value: string) {

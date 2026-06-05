@@ -29,6 +29,14 @@ type DbInvestmentRow = {
   asset_type?: string | null;
   currency?: string | null;
   quantity?: number | string | null;
+  project_id?: string | null;
+  metal_type?: string | null;
+  metal_product_type?: string | null;
+  metal_karat?: number | string | null;
+  metal_purity?: number | string | null;
+  grams?: number | string | null;
+  pure_metal_grams?: number | string | null;
+  price_source?: string | null;
   current_price?: number | string | null;
   current_market_value?: number | string | null;
   price_currency?: string | null;
@@ -81,13 +89,19 @@ function writeJson<T>(key: string, value: T) {
 
 function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): Investment {
   const createdAt = row.created_at || nowIso();
-  const displayAmount = firstMoneyValue(row as Record<string, unknown>, ['current_value', 'amount', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
+  const displayAmount = firstMoneyValue(row as Record<string, unknown>, ['current_market_value', 'current_value', 'amount', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
   const monthlyAmount = parseMoneyValue(row.monthly_contribution ?? meta?.monthlyContribution);
   const expectedReturn = parseMoneyValue(row.expected_annual_return ?? row.expected_return ?? meta?.expectedAnnualReturn);
   const quantity = parseMoneyValue(row.quantity ?? meta?.quantity);
+  const amount = parseMoneyValue(row.amount ?? meta?.amount);
+  const purchasePrice = parseMoneyValue(row.purchase_price ?? meta?.purchasePrice);
   const currentPrice = parseMoneyValue(row.current_price ?? row.last_price ?? meta?.currentPrice ?? meta?.lastPrice);
   const currentMarketValue = parseMoneyValue(row.current_market_value ?? meta?.currentMarketValue);
   const lastPrice = parseMoneyValue(row.last_price ?? row.current_price ?? meta?.lastPrice ?? meta?.currentPrice);
+  const metalKarat = parseMoneyValue(row.metal_karat ?? meta?.metalKarat);
+  const metalPurity = parseMoneyValue(row.metal_purity ?? meta?.metalPurity);
+  const grams = parseMoneyValue(row.grams ?? meta?.grams);
+  const pureMetalGrams = parseMoneyValue(row.pure_metal_grams ?? meta?.pureMetalGrams);
   if (process.env.NODE_ENV === 'development' && !hasLoggedInvestmentDebug) {
     hasLoggedInvestmentDebug = true;
     console.log('RAW INVESTMENT ASSET:', row);
@@ -120,6 +134,8 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
     market: row.market ?? meta?.market,
     assetType: row.asset_type ?? meta?.assetType,
     currency: row.currency ?? meta?.currency,
+    amount: amount.status === 'valid' ? amount.value : meta?.amount,
+    purchasePrice: purchasePrice.status === 'valid' ? purchasePrice.value : meta?.purchasePrice,
     currentPrice: currentPrice.status === 'valid' ? currentPrice.value : meta?.currentPrice,
     currentMarketValue: currentMarketValue.status === 'valid'
       ? currentMarketValue.value
@@ -131,6 +147,15 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
     lastPrice: lastPrice.status === 'valid' ? lastPrice.value : meta?.lastPrice,
     lastPriceUpdatedAt: row.last_price_updated_at ?? meta?.lastPriceUpdatedAt,
     dataSource: row.data_source ?? meta?.dataSource,
+    projectId: row.project_id ?? meta?.projectId,
+    projectName: meta?.projectName,
+    metalType: row.metal_type ?? meta?.metalType,
+    metalProductType: row.metal_product_type ?? meta?.metalProductType,
+    metalKarat: metalKarat.status === 'valid' ? metalKarat.value : meta?.metalKarat,
+    metalPurity: metalPurity.status === 'valid' ? metalPurity.value : meta?.metalPurity,
+    grams: grams.status === 'valid' ? grams.value : meta?.grams,
+    pureMetalGrams: pureMetalGrams.status === 'valid' ? pureMetalGrams.value : meta?.pureMetalGrams,
+    priceSource: row.price_source ?? meta?.priceSource ?? row.data_source ?? meta?.dataSource,
     createdAt,
     updatedAt: row.updated_at || createdAt,
   };
@@ -159,12 +184,23 @@ function metaFromInvestment(item: Investment | InvestmentInput): InvestmentMeta 
     assetType: item.assetType,
     currency: item.currency,
     quantity: item.quantity,
+    amount: item.amount,
+    purchasePrice: item.purchasePrice,
     currentPrice: item.currentPrice,
     currentMarketValue: item.currentMarketValue,
     priceCurrency: item.priceCurrency,
     lastPrice: item.lastPrice,
     lastPriceUpdatedAt: item.lastPriceUpdatedAt,
     dataSource: item.dataSource,
+    projectId: item.projectId,
+    projectName: item.projectName,
+    metalType: item.metalType,
+    metalProductType: item.metalProductType,
+    metalKarat: item.metalKarat,
+    metalPurity: item.metalPurity,
+    grams: item.grams,
+    pureMetalGrams: item.pureMetalGrams,
+    priceSource: item.priceSource,
   };
 }
 
@@ -202,7 +238,7 @@ export function useInvestments() {
       const meta = readJson<Record<string, InvestmentMeta>>(userMetaKey, {});
       const full = await supabase
         .from('investment_items')
-        .select('id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,asset_type,quantity,current_price,current_market_value,price_currency,last_price,last_price_updated_at,data_source,created_at,updated_at')
+        .select('id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,asset_type,quantity,current_price,current_market_value,price_currency,last_price,last_price_updated_at,data_source,project_id,metal_type,metal_product_type,metal_karat,metal_purity,grams,pure_metal_grams,price_source,created_at,updated_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -279,12 +315,21 @@ export function useInvestments() {
       asset_type: data.assetType ?? null,
       currency: data.currency ?? null,
       quantity: data.quantity ?? null,
+      purchase_price: data.purchasePrice ?? null,
       current_price: data.currentPrice ?? data.lastPrice ?? null,
       current_market_value: data.currentMarketValue ?? data.currentValue,
       price_currency: data.priceCurrency ?? data.currency ?? null,
       last_price: data.lastPrice ?? null,
       last_price_updated_at: data.lastPriceUpdatedAt ?? null,
       data_source: data.dataSource ?? null,
+      project_id: data.projectId ?? null,
+      metal_type: data.metalType ?? null,
+      metal_product_type: data.metalProductType ?? null,
+      metal_karat: data.metalKarat ?? null,
+      metal_purity: data.metalPurity ?? null,
+      grams: data.grams ?? null,
+      pure_metal_grams: data.pureMetalGrams ?? null,
+      price_source: data.priceSource ?? data.dataSource ?? null,
       notes: data.notes ?? null,
     };
 
@@ -343,12 +388,21 @@ export function useInvestments() {
       asset_type: data.assetType ?? null,
       currency: data.currency ?? null,
       quantity: data.quantity ?? null,
+      purchase_price: data.purchasePrice ?? null,
       current_price: data.currentPrice ?? data.lastPrice ?? null,
       current_market_value: data.currentMarketValue ?? data.currentValue,
       price_currency: data.priceCurrency ?? data.currency ?? null,
       last_price: data.lastPrice ?? null,
       last_price_updated_at: data.lastPriceUpdatedAt ?? null,
       data_source: data.dataSource ?? null,
+      project_id: data.projectId ?? null,
+      metal_type: data.metalType ?? null,
+      metal_product_type: data.metalProductType ?? null,
+      metal_karat: data.metalKarat ?? null,
+      metal_purity: data.metalPurity ?? null,
+      grams: data.grams ?? null,
+      pure_metal_grams: data.pureMetalGrams ?? null,
+      price_source: data.priceSource ?? data.dataSource ?? null,
       notes: data.notes ?? null,
     };
 

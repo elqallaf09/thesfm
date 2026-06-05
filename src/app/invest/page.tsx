@@ -34,7 +34,7 @@ const InvestPerformanceCharts = dynamic(() => import('@/components/invest/Invest
   ),
 });
 
-const TYPES: InvestmentType[] = ['stocks', 'realEstate', 'fund', 'gold', 'cash', 'crypto', 'project', 'other'];
+const TYPES: InvestmentType[] = ['stocks', 'fund', 'crypto', 'gold', 'silver', 'project', 'realEstate', 'cash', 'other'];
 const RISKS: RiskLevel[] = ['low', 'medium', 'high'];
 const CHART_COLORS = ['#1D8CFF', '#18D4D4', '#10B981', '#F59E0B', '#6366F1', '#0B3A66', '#14B8A6', '#94A3B8'];
 const RISK_SCORE: Record<RiskLevel, number> = { low: 1, medium: 2, high: 3 };
@@ -56,6 +56,7 @@ function formatInvestmentType(type: string | null | undefined, t: (key: any) => 
     real_estate: 'real_estate',
     crypto: 'crypto',
     gold: 'gold',
+    silver: 'silver',
     bonds: 'bonds',
     bond: 'bonds',
     fund: 'fund',
@@ -136,6 +137,8 @@ export default function InvestPage() {
     close: t('close'),
   }), [t]);
 
+  const L = useCallback((ar: string, en: string, fr: string) => lang === 'ar' ? ar : lang === 'fr' ? fr : en, [lang]);
+
   const formLabels = useMemo(() => ({
     titleAdd: t('invest_form_titleAdd'),
     titleEdit: t('invest_form_titleEdit'),
@@ -173,6 +176,38 @@ export default function InvestPage() {
     manualLinkWarningTitle: t('invest_asset_manualWarningTitle'),
     manualLinkWarningBody: t('invest_asset_manualWarningBody'),
     totalMarketValue: t('invest_asset_totalMarketValue'),
+    sectionAssetData: L('بيانات الأصل', 'Asset details', 'Détails de l’actif'),
+    sectionQuantity: L('الكمية أو الوزن', 'Quantity or weight', 'Quantité ou poids'),
+    sectionPricing: L('السعر والقيمة الحالية', 'Price and current value', 'Prix et valeur actuelle'),
+    sectionDetails: L('تفاصيل إضافية', 'Additional details', 'Détails supplémentaires'),
+    assetSearchPlaceholder: L('ابحث باسم السهم أو الرمز مثل: Apple, AAPL, QQQ, SPY', 'Search by symbol or name, e.g. Apple, AAPL, QQQ, SPY', 'Rechercher par symbole ou nom, ex. Apple, AAPL, QQQ, SPY'),
+    cryptoSearchPlaceholder: L('ابحث عن العملة الرقمية مثل: BTC, ETH, SOL', 'Search crypto, e.g. BTC, ETH, SOL', 'Rechercher une crypto, ex. BTC, ETH, SOL'),
+    fundSearchPlaceholder: L('ابحث باسم الصندوق أو الرمز مثل: QQQ, SPY', 'Search fund or ETF, e.g. QQQ, SPY', 'Rechercher un fonds ou ETF, ex. QQQ, SPY'),
+    purchasePrice: L('سعر الشراء اختياري', 'Purchase price optional', 'Prix d’achat facultatif'),
+    investmentAmount: L('مبلغ الاستثمار', 'Investment amount', 'Montant investi'),
+    currency: L('العملة', 'Currency', 'Devise'),
+    goldProductType: L('نوع الذهب', 'Gold type', 'Type d’or'),
+    silverProductType: L('نوع الفضة', 'Silver type', 'Type d’argent'),
+    goldKarat: L('العيار', 'Karat', 'Carat'),
+    silverPurity: L('النقاء', 'Purity', 'Pureté'),
+    customPurity: L('النقاء %', 'Purity %', 'Pureté %'),
+    grams: L('الوزن بالجرام', 'Weight in grams', 'Poids en grammes'),
+    pureGoldGrams: L('صافي الذهب الخالص', 'Pure gold equivalent', 'Équivalent or pur'),
+    pureSilverGrams: L('صافي الفضة الخالصة', 'Pure silver equivalent', 'Équivalent argent pur'),
+    estimatedValue: L('القيمة التقديرية', 'Estimated value', 'Valeur estimée'),
+    pricePerGram: L('سعر الجرام', 'Price per gram', 'Prix par gramme'),
+    metalsPriceLoading: L('جارٍ جلب أسعار المعادن الحقيقية...', 'Loading real metals prices...', 'Chargement des prix réels des métaux...'),
+    metalsPriceUnavailable: L('تعذر جلب سعر المعدن الحقيقي حالياً. يمكنك إدخال القيمة يدوياً مع حفظها كقيمة غير مرتبطة بسعر مباشر.', 'Real metals price is unavailable. You can enter a manual value; it will be saved without a live price link.', 'Le prix réel du métal est indisponible. Vous pouvez saisir une valeur manuelle sans lien de prix en direct.'),
+    chooseProject: L('اختر المشروع', 'Choose project', 'Choisir un projet'),
+    noProjectsTitle: L('لا توجد مشاريع بعد', 'No projects yet', 'Aucun projet pour le moment'),
+    noProjectsBody: L('أضف مشروعاً أولاً ثم اربطه بالاستثمار.', 'Add a project first, then link it to this investment.', 'Ajoutez d’abord un projet, puis liez-le à cet investissement.'),
+    addProject: L('إضافة مشروع جديد', 'Add new project', 'Ajouter un projet'),
+    projectBudget: L('ميزانية المشروع', 'Project budget', 'Budget du projet'),
+    projectStatus: L('حالة المشروع', 'Project status', 'Statut du projet'),
+    manualValue: L('القيمة اليدوية الحالية', 'Manual current value', 'Valeur actuelle manuelle'),
+    cashBankName: L('اسم البنك أو الوديعة', 'Bank or deposit name', 'Nom de banque ou dépôt'),
+    propertyLocation: L('اسم العقار أو الموقع', 'Property name or location', 'Nom ou emplacement du bien'),
+    calculationSummary: L('ملخص الحساب', 'Calculation summary', 'Résumé du calcul'),
     assetTypes: {
       stock: t('invest_asset_type_stock'),
       etf: t('invest_asset_type_etf'),
@@ -181,19 +216,27 @@ export default function InvestPage() {
       forex: t('invest_asset_type_forex'),
       commodity: t('invest_asset_type_commodity'),
       gold: t('invest_asset_type_gold'),
+      silver: t('invest_types_silver'),
+      fund: t('investment_type_fund'),
+      project: t('invest_types_project'),
     },
     errors: {
       nameRequired: t('invest_form_errors_nameRequired'),
       valuePositive: t('invest_form_errors_valuePositive'),
       contributionPositive: t('invest_form_errors_contributionPositive'),
       quantityPositive: t('invest_form_errors_quantityPositive'),
-      returnRange: t('invest_form_errors_returnRange'),
+      returnRange: L('العائد المتوقع يجب أن يكون بين -100 و 1000.', 'Expected return must be between -100 and 1000.', 'Le rendement attendu doit être entre -100 et 1000.'),
+      assetRequired: L('اختر أصلاً من نتائج البحث.', 'Choose an asset from search results.', 'Choisissez un actif dans les résultats.'),
+      projectRequired: L('اختر مشروعاً من مشاريعك.', 'Choose one of your projects.', 'Choisissez l’un de vos projets.'),
+      gramsPositive: L('أدخل وزناً أكبر من صفر.', 'Enter a weight greater than zero.', 'Saisissez un poids supérieur à zéro.'),
+      metalPriceRequired: L('أدخل قيمة يدوية أكبر من صفر إذا كان السعر المباشر غير متاح.', 'Enter a manual value greater than zero if the live price is unavailable.', 'Saisissez une valeur manuelle supérieure à zéro si le prix en direct est indisponible.'),
+      startDateRequired: L('تاريخ البداية مطلوب.', 'Start date is required.', 'La date de début est requise.'),
+      purityRequired: L('أدخل نقاء صالحاً بين 0 و 100%.', 'Enter a valid purity between 0 and 100%.', 'Saisissez une pureté valide entre 0 et 100 %.'),
     },
-  }), [t]);
+  }), [L, t]);
 
   const typeLabel = useCallback((type: InvestmentType | string | null | undefined) => formatInvestmentType(type, t), [t]);
   const riskLabel = useCallback((risk: RiskLevel) => t(`invest_risks_${risk}`), [t]);
-  const L = useCallback((ar: string, en: string, fr: string) => lang === 'ar' ? ar : lang === 'fr' ? fr : en, [lang]);
   const tabs = useMemo(() => [
     { id: 'portfolio', label: L('المحفظة', 'Portfolio', 'Portefeuille') },
     { id: 'assets', label: L('الأصول', 'Assets', 'Actifs'), count: items.length },
@@ -392,12 +435,23 @@ export default function InvestPage() {
         assetType: item.assetType,
         currency: payload.item?.currency || item.currency,
         quantity: item.quantity,
+        amount: currentMarketValue,
+        purchasePrice: item.purchasePrice,
         currentPrice: price,
         currentMarketValue,
         priceCurrency: payload.item?.currency || item.priceCurrency || item.currency,
         lastPrice: price,
         lastPriceUpdatedAt: payload.item?.updated_at || new Date().toISOString(),
         dataSource: payload.item?.source || item.dataSource,
+        projectId: item.projectId,
+        projectName: item.projectName,
+        metalType: item.metalType,
+        metalProductType: item.metalProductType,
+        metalKarat: item.metalKarat,
+        metalPurity: item.metalPurity,
+        grams: item.grams,
+        pureMetalGrams: item.pureMetalGrams,
+        priceSource: payload.item?.source || item.priceSource || item.dataSource,
       };
 
       const updated = await update(item.id, nextInput);
