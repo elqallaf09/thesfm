@@ -56,6 +56,15 @@ import { trackEvent } from '@/lib/analytics';
 
 type PageKind = 'expenses' | 'income' | 'invest' | 'savings' | 'goals' | 'reports' | 'ai';
 type ExpensePageTab = 'overview' | 'records' | 'receipts' | 'categories' | 'analytics' | 'reports';
+type ExpensePeriodPreset = 'current' | 'previous' | 'last3' | 'last6' | 'year' | 'all' | 'custom';
+type ExpensePeriodState = { preset: ExpensePeriodPreset; month: number; year: number };
+type ExpensePeriodRange = {
+  start: Date;
+  end: Date;
+  startDate: string;
+  endDate: string;
+  months: number;
+};
 type LangText = { ar: string; en: string; fr?: string };
 type TranslateFn = ReturnType<typeof useLanguage>['t'];
 type MoneyItem = {
@@ -267,6 +276,12 @@ type SmartExpense = MoneyItem & {
   related_project_id?: string | null;
   project_expense_id?: string | null;
   paid_from_personal_budget?: boolean | null;
+  is_recurring?: boolean | string | null;
+  recurring?: boolean | string | null;
+  frequency?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  expense_type?: string | null;
 };
 type ExpenseFormState = {
   id?: string;
@@ -1296,6 +1311,223 @@ function formatDateInput(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+const EXPENSE_PAGE_SIZE = 15;
+const EXPENSE_PERIOD_PRESETS: ExpensePeriodPreset[] = ['current', 'previous', 'last3', 'last6', 'year', 'all', 'custom'];
+
+function localDateFromInput(value?: string | null) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const dateMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (dateMatch) {
+    const [, year, month, day] = dateMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function startOfLocalMonth(year: number, month: number) {
+  return new Date(year, month - 1, 1);
+}
+
+function addLocalMonths(date: Date, months: number) {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
+function makeExpenseRange(start: Date, end: Date, months: number): ExpensePeriodRange {
+  return {
+    start,
+    end,
+    startDate: formatDateInput(start),
+    endDate: formatDateInput(end),
+    months,
+  };
+}
+
+function defaultExpensePeriodState(now = new Date()): ExpensePeriodState {
+  return { preset: 'current', month: now.getMonth() + 1, year: now.getFullYear() };
+}
+
+function parseExpenseMonthParam(value: string | null) {
+  const match = value?.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) return null;
+  return { year, month };
+}
+
+function expensePeriodFromSearch(search: string, now = new Date()): ExpensePeriodState {
+  const params = new URLSearchParams(search);
+  const customMonth = parseExpenseMonthParam(params.get('month'));
+  if (customMonth) return { preset: 'custom', ...customMonth };
+  const preset = params.get('period') as ExpensePeriodPreset | null;
+  if (preset && EXPENSE_PERIOD_PRESETS.includes(preset)) {
+    return { ...defaultExpensePeriodState(now), preset };
+  }
+  return defaultExpensePeriodState(now);
+}
+
+function readExpensePeriodFromLocation(now = new Date()): ExpensePeriodState {
+  if (typeof window === 'undefined') return defaultExpensePeriodState(now);
+  return expensePeriodFromSearch(window.location.search, now);
+}
+
+function writeExpensePeriodToLocation(period: ExpensePeriodState) {
+  if (typeof window === 'undefined') return;
+  const params = new URLSearchParams(window.location.search);
+  params.delete('period');
+  params.delete('month');
+  if (period.preset === 'custom') {
+    params.set('month', `${period.year}-${String(period.month).padStart(2, '0')}`);
+  } else if (period.preset !== 'current') {
+    params.set('period', period.preset);
+  }
+  const query = params.toString();
+  window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+}
+
+function expensePeriodRange(period: ExpensePeriodState, now = new Date()) {
+  if (period.preset === 'all') return null;
+  const currentStart = startOfLocalMonth(now.getFullYear(), now.getMonth() + 1);
+  if (period.preset === 'current') return makeExpenseRange(currentStart, addLocalMonths(currentStart, 1), 1);
+  if (period.preset === 'previous') {
+    const start = addLocalMonths(currentStart, -1);
+    return makeExpenseRange(start, currentStart, 1);
+  }
+  if (period.preset === 'last3') {
+    const start = addLocalMonths(currentStart, -2);
+    return makeExpenseRange(start, addLocalMonths(currentStart, 1), 3);
+  }
+  if (period.preset === 'last6') {
+    const start = addLocalMonths(currentStart, -5);
+    return makeExpenseRange(start, addLocalMonths(currentStart, 1), 6);
+  }
+  if (period.preset === 'year') {
+    const start = new Date(now.getFullYear(), 0, 1);
+    return makeExpenseRange(start, new Date(now.getFullYear() + 1, 0, 1), 12);
+  }
+  const start = startOfLocalMonth(period.year, period.month);
+  return makeExpenseRange(start, addLocalMonths(start, 1), 1);
+}
+
+function previousExpensePeriodRange(period: ExpensePeriodState, now = new Date()) {
+  const range = expensePeriodRange(period, now);
+  if (!range) return null;
+  const start = addLocalMonths(range.start, -range.months);
+  return makeExpenseRange(start, range.start, range.months);
+}
+
+function expenseFetchRange(period: ExpensePeriodState, now = new Date()) {
+  const selected = expensePeriodRange(period, now);
+  if (!selected) return null;
+  const previous = previousExpensePeriodRange(period, now);
+  return makeExpenseRange(previous?.start ?? selected.start, selected.end, selected.months + (previous?.months ?? 0));
+}
+
+function expenseDisplayDate(item: SmartExpense) {
+  return item.date || (item.created_at ? new Date(item.created_at).toISOString().slice(0, 10) : '');
+}
+
+function recurringFrequency(item: SmartExpense) {
+  return String(item.frequency || item.expense_type || '').trim().toLowerCase();
+}
+
+function isTruthyFlag(value: unknown) {
+  return value === true || value === 'true' || value === '1' || value === 1;
+}
+
+function isRecurringExpense(item: SmartExpense) {
+  const frequency = recurringFrequency(item);
+  return isTruthyFlag(item.is_recurring) ||
+    isTruthyFlag(item.recurring) ||
+    ['monthly', 'recurring', 'weekly', 'yearly', 'annual'].includes(frequency) ||
+    ['subscriptions', 'bills', 'loans'].includes(item.category || '');
+}
+
+function isMonthlyRecurringExpense(item: SmartExpense) {
+  const frequency = recurringFrequency(item);
+  return isTruthyFlag(item.is_recurring) ||
+    isTruthyFlag(item.recurring) ||
+    frequency === 'monthly' ||
+    frequency === 'recurring' ||
+    ['subscriptions', 'bills', 'loans'].includes(item.category || '');
+}
+
+function isExpenseActiveDuringRange(item: SmartExpense, range: ExpensePeriodRange) {
+  const start = localDateFromInput(item.start_date || item.date || item.created_at);
+  const end = localDateFromInput(item.end_date);
+  return (!start || start < range.end) && (!end || end >= range.start);
+}
+
+function isExpenseInPeriod(item: SmartExpense, range: ExpensePeriodRange | null) {
+  if (!range) return true;
+  if (isMonthlyRecurringExpense(item) && isExpenseActiveDuringRange(item, range)) return true;
+  const date = localDateFromInput(item.date || item.created_at);
+  return Boolean(date && date >= range.start && date < range.end);
+}
+
+function expensePeriodDayCount(range: ExpensePeriodRange | null, expenses: SmartExpense[]) {
+  if (range) return Math.max(1, Math.round((range.end.getTime() - range.start.getTime()) / 86400000));
+  const days = new Set(expenses.map(item => expenseDisplayDate(item)).filter(Boolean));
+  return Math.max(1, days.size || 1);
+}
+
+function formatExpenseMonthYear(year: number, month: number, lang: string) {
+  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(startOfLocalMonth(year, month));
+}
+
+function expensePeriodOptionLabel(preset: ExpensePeriodPreset, lang: string) {
+  const labels: Record<ExpensePeriodPreset, LangText> = {
+    current: { ar: 'الشهر الحالي', en: 'Current month', fr: 'Mois courant' },
+    previous: { ar: 'الشهر السابق', en: 'Previous month', fr: 'Mois précédent' },
+    last3: { ar: 'آخر 3 أشهر', en: 'Last 3 months', fr: '3 derniers mois' },
+    last6: { ar: 'آخر 6 أشهر', en: 'Last 6 months', fr: '6 derniers mois' },
+    year: { ar: 'السنة الحالية', en: 'Current year', fr: 'Année courante' },
+    all: { ar: 'كل المصروفات', en: 'All expenses', fr: 'Toutes les dépenses' },
+    custom: { ar: 'اختيار شهر مخصص', en: 'Custom month', fr: 'Mois personnalisé' },
+  };
+  return pick(labels[preset], lang);
+}
+
+function expensePeriodLabel(period: ExpensePeriodState, lang: string, now = new Date()) {
+  if (period.preset === 'custom') return formatExpenseMonthYear(period.year, period.month, lang);
+  if (period.preset === 'current' || period.preset === 'previous') {
+    const range = expensePeriodRange(period, now);
+    return range ? formatExpenseMonthYear(range.start.getFullYear(), range.start.getMonth() + 1, lang) : expensePeriodOptionLabel(period.preset, lang);
+  }
+  return expensePeriodOptionLabel(period.preset, lang);
+}
+
+function expensePeriodBadge(period: ExpensePeriodState, lang: string) {
+  if (period.preset === 'all') {
+    return pick({ ar: 'يعرض: كل المصروفات', en: 'Showing: all expenses', fr: 'Affiche : toutes les dépenses' }, lang);
+  }
+  return pick({ ar: 'يعرض مصروفات:', en: 'Showing expenses:', fr: 'Affiche les dépenses :' }, lang) + ` ${expensePeriodLabel(period, lang)}`;
+}
+
+function expenseFilterTypeLabel(type: string, lang: string) {
+  const labels: Record<string, LangText> = {
+    all: { ar: 'كل الأنواع', en: 'All types', fr: 'Tous les types' },
+    personal: { ar: 'شخصي', en: 'Personal', fr: 'Personnel' },
+    project: { ar: 'مشروع', en: 'Project', fr: 'Projet' },
+    recurring: { ar: 'متكرر', en: 'Recurring', fr: 'Récurrent' },
+    one_time: { ar: 'غير متكرر', en: 'One-time', fr: 'Ponctuel' },
+  };
+  return pick(labels[type] || labels.all, lang);
+}
+
+function expenseMatchesType(item: SmartExpense, type: string) {
+  if (type === 'all') return true;
+  if (type === 'project') return isProjectLinkedExpenseRow(item);
+  if (type === 'personal') return !isProjectLinkedExpenseRow(item);
+  if (type === 'recurring') return isRecurringExpense(item);
+  if (type === 'one_time') return !isRecurringExpense(item);
+  return true;
+}
+
 function monthsBetween(from: Date, to?: string | null) {
   if (!to) return 0;
   const end = new Date(to);
@@ -1454,8 +1686,20 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [rowSearch, setRowSearch] = useState('');
   const [rowSort, setRowSort] = useState<'dateDesc' | 'dateAsc' | 'amountDesc' | 'amountAsc'>('dateDesc');
   const [rowRange, setRowRange] = useState<'all' | 'month' | 'last3' | 'year'>('all');
-  const [visibleCount, setVisibleCount] = useState(30);
+  const [expensePeriod, setExpensePeriod] = useState<ExpensePeriodState>(() => readExpensePeriodFromLocation());
+  const [expenseCategoryFilter, setExpenseCategoryFilter] = useState('all');
+  const [expensePaymentFilter, setExpensePaymentFilter] = useState('all');
+  const [expenseTypeFilter, setExpenseTypeFilter] = useState('all');
+  const [visibleCount, setVisibleCount] = useState(EXPENSE_PAGE_SIZE);
   const [expenseTab, setExpenseTab] = useState<ExpensePageTab>('overview');
+  const selectedExpenseRange = useMemo(() => expensePeriodRange(expensePeriod), [expensePeriod]);
+  const previousExpenseRange = useMemo(() => previousExpensePeriodRange(expensePeriod), [expensePeriod]);
+  const expenseFetchWindow = useMemo(() => expenseFetchRange(expensePeriod), [expensePeriod]);
+
+  useEffect(() => {
+    if (kind !== 'expenses') return;
+    setExpensePeriod(readExpensePeriodFromLocation());
+  }, [kind]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1484,8 +1728,15 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         table,
       });
       const expensesQuery = async () => {
+        const baseCurrentQuery = () => {
+          let query = supabase.from('expense_items').select('*').eq('user_id', user.id);
+          if (kind === 'expenses' && expenseFetchWindow) {
+            query = query.gte('date', expenseFetchWindow.startDate).lt('date', expenseFetchWindow.endDate);
+          }
+          return query.order('date', { ascending: false }).order('created_at', { ascending: false });
+        };
         const currentSchema = await safeQuery<SmartExpense>(
-          supabase.from('expense_items').select('*').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<SmartExpense>,
+          baseCurrentQuery() as unknown as QueryResult<SmartExpense>,
           queryMeta('expense_items', 'expense_items'),
         );
         if (!currentSchema.error || !/column|schema|pgrst/i.test(currentSchema.error.message)) return currentSchema;
@@ -1521,7 +1772,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     return () => {
       cancelled = true;
     };
-  }, [isGuest, kind, user]);
+  }, [expenseFetchWindow, isGuest, kind, user]);
 
   const data = useMemo(() => {
     const income = snapshot.income;
@@ -1550,9 +1801,87 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     };
   }, [snapshot]);
 
-  const cards = useMemo<SectionCard[]>(() => buildCards(kind, data, lang, currency), [data, lang, kind, currency]);
-  const rows = useMemo(() => buildRows(kind, data, lang, currency, t), [data, lang, kind, currency, t]);
-  const insights = useMemo(() => buildInsights(kind, data, lang, currency, t), [data, lang, kind, currency, t]);
+  const expensePeriodExpenses = useMemo(
+    () => data.expenses.filter(item => isExpenseInPeriod(item, selectedExpenseRange)),
+    [data.expenses, selectedExpenseRange],
+  );
+  const previousPeriodExpenses = useMemo(
+    () => previousExpenseRange ? data.expenses.filter(item => isExpenseInPeriod(item, previousExpenseRange)) : [],
+    [data.expenses, previousExpenseRange],
+  );
+  const expensePeriodTotal = useMemo(() => sum(expensePeriodExpenses), [expensePeriodExpenses]);
+  const expenseScopedData = useMemo(() => ({
+    ...data,
+    expenses: expensePeriodExpenses,
+    totalExpenses: expensePeriodTotal,
+    charityTotal: expensePeriodExpenses.filter(item => item.name.startsWith('خيرية:')).reduce((total, item) => total + item.amount, 0),
+    balance: data.totalIncome - expensePeriodTotal,
+  }), [data, expensePeriodExpenses, expensePeriodTotal]);
+  const dashboardData = kind === 'expenses' ? expenseScopedData : data;
+  const cards = useMemo<SectionCard[]>(() => buildCards(kind, dashboardData, lang, currency), [dashboardData, lang, kind, currency]);
+  const rows = useMemo(() => buildRows(kind, dashboardData, lang, currency, t), [dashboardData, lang, kind, currency, t]);
+  const insights = useMemo(() => buildInsights(kind, dashboardData, lang, currency, t), [dashboardData, lang, kind, currency, t]);
+  const expenseSummaryCards = useMemo<SectionCard[]>(() => {
+    const total = expensePeriodTotal;
+    const recurringTotal = expensePeriodExpenses.filter(isRecurringExpense).reduce((sumValue, item) => sumValue + item.amount, 0);
+    const dailyAverage = total / expensePeriodDayCount(selectedExpenseRange, expensePeriodExpenses);
+    const byCategory = expensePeriodExpenses.reduce<Record<string, number>>((acc, item) => {
+      const key = item.category || 'other';
+      acc[key] = (acc[key] || 0) + item.amount;
+      return acc;
+    }, {});
+    const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0];
+    const previousTotal = sum(previousPeriodExpenses);
+    const comparisonDelta = total - previousTotal;
+    const comparisonPercent = previousTotal > 0
+      ? Math.round((comparisonDelta / previousTotal) * 100)
+      : total > 0 ? 100 : 0;
+    const comparisonValue = previousExpenseRange
+      ? `${comparisonDelta >= 0 ? '+' : '-'}${money(Math.abs(comparisonDelta), lang, currency)} (${comparisonDelta >= 0 ? '+' : ''}${comparisonPercent}%)`
+      : pick({ ar: 'غير متاح', en: 'Unavailable', fr: 'Indisponible' }, lang);
+    return [
+      {
+        title: { ar: 'إجمالي المصروفات', en: 'Total expenses', fr: 'Total des dépenses' },
+        body: { ar: expensePeriodBadge(expensePeriod, lang), en: expensePeriodBadge(expensePeriod, lang), fr: expensePeriodBadge(expensePeriod, lang) },
+        value: money(total, lang, currency),
+        tone: '#EF4444',
+      },
+      {
+        title: { ar: 'عدد المصروفات', en: 'Expense count', fr: 'Nombre de dépenses' },
+        body: { ar: 'سجلات داخل الفترة المحددة فقط.', en: 'Records in the selected period only.', fr: 'Enregistrements de la période sélectionnée.' },
+        value: String(expensePeriodExpenses.length),
+        tone: 'var(--sfm-soft-cyan)',
+      },
+      {
+        title: { ar: 'المصروفات المتكررة', en: 'Recurring expenses', fr: 'Dépenses récurrentes' },
+        body: { ar: 'اشتراكات وفواتير وقروض نشطة داخل الفترة.', en: 'Subscriptions, bills, and loans active in the period.', fr: 'Abonnements, factures et prêts actifs sur la période.' },
+        value: money(recurringTotal, lang, currency),
+        tone: '#3B82F6',
+      },
+      {
+        title: { ar: 'متوسط المصروف اليومي', en: 'Daily average', fr: 'Moyenne quotidienne' },
+        body: { ar: 'محسوب على أيام الفترة المعروضة.', en: 'Calculated over the displayed period days.', fr: 'Calculé sur les jours de la période affichée.' },
+        value: money(dailyAverage, lang, currency),
+        tone: '#F59E0B',
+      },
+      {
+        title: { ar: 'أعلى تصنيف', en: 'Top category', fr: 'Catégorie principale' },
+        body: {
+          ar: topCategory ? money(topCategory[1], lang, currency) : 'لا توجد مصروفات في الفترة.',
+          en: topCategory ? money(topCategory[1], lang, currency) : 'No expenses in this period.',
+          fr: topCategory ? money(topCategory[1], lang, currency) : 'Aucune dépense sur cette période.',
+        },
+        value: topCategory ? categoryLabel(topCategory[0], lang) : '-',
+        tone: '#22C55E',
+      },
+      {
+        title: { ar: 'مقارنة مع الفترة السابقة', en: 'Previous period comparison', fr: 'Comparaison période précédente' },
+        body: { ar: 'الفرق مقارنة بالفترة السابقة المماثلة.', en: 'Difference versus the matching previous period.', fr: 'Écart par rapport à la période précédente équivalente.' },
+        value: comparisonValue,
+        tone: comparisonDelta > 0 ? '#EF4444' : '#22C55E',
+      },
+    ];
+  }, [currency, expensePeriod, expensePeriodExpenses, expensePeriodTotal, lang, previousExpenseRange, previousPeriodExpenses, selectedExpenseRange]);
   const selectedGoalCurrency = useMemo(() => getCurrency(goalForm.currency || currency || 'KWD'), [currency, goalForm.currency]);
   const selectedCurrencySymbol = isAr ? selectedGoalCurrency.symbolAr : selectedGoalCurrency.symbolEn;
   const selectedEntryCurrency = useMemo(() => getCurrency(entryForm.currency || currency || 'KWD'), [currency, entryForm.currency]);
@@ -1627,7 +1956,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   }, [rows, rowSearch, rowSort, rowRange, kind]);
 
   const filteredExpenses = useMemo(() => {
-    let result = [...data.expenses];
+    let result = [...expensePeriodExpenses];
     if (rowSearch.trim()) {
       const q = rowSearch.toLowerCase();
       result = result.filter(item =>
@@ -1636,26 +1965,36 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         paymentLabel(item.payment_method, lang).toLowerCase().includes(q),
       );
     }
-    if (rowRange !== 'all') {
-      const now = new Date();
-      result = result.filter(item => {
-        const rawDate = item.date || item.created_at;
-        if (!rawDate) return true;
-        const d = new Date(rawDate);
-        if (rowRange === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-        if (rowRange === 'last3') return d >= new Date(now.getFullYear(), now.getMonth() - 2, 1);
-        if (rowRange === 'year') return d.getFullYear() === now.getFullYear();
-        return true;
-      });
-    }
+    if (expenseCategoryFilter !== 'all') result = result.filter(item => (item.category || 'other') === expenseCategoryFilter);
+    if (expensePaymentFilter !== 'all') result = result.filter(item => (item.payment_method || 'cash') === expensePaymentFilter);
+    if (expenseTypeFilter !== 'all') result = result.filter(item => expenseMatchesType(item, expenseTypeFilter));
     if (rowSort === 'amountDesc') result.sort((a, b) => b.amount - a.amount);
     else if (rowSort === 'amountAsc') result.sort((a, b) => a.amount - b.amount);
-    else if (rowSort === 'dateAsc') result.sort((a, b) => new Date(a.date || a.created_at || 0).getTime() - new Date(b.date || b.created_at || 0).getTime());
-    else result.sort((a, b) => new Date(b.date || b.created_at || 0).getTime() - new Date(a.date || a.created_at || 0).getTime());
+    else if (rowSort === 'dateAsc') result.sort((a, b) => (localDateFromInput(a.date || a.created_at)?.getTime() ?? 0) - (localDateFromInput(b.date || b.created_at)?.getTime() ?? 0));
+    else result.sort((a, b) => (localDateFromInput(b.date || b.created_at)?.getTime() ?? 0) - (localDateFromInput(a.date || a.created_at)?.getTime() ?? 0));
     return result;
-  }, [data.expenses, lang, rowRange, rowSearch, rowSort]);
+  }, [expenseCategoryFilter, expensePaymentFilter, expensePeriodExpenses, expenseTypeFilter, lang, rowSearch, rowSort]);
 
-  useEffect(() => { setVisibleCount(30); }, [rowSearch, rowSort, rowRange, kind]);
+  useEffect(() => { setVisibleCount(EXPENSE_PAGE_SIZE); }, [expenseCategoryFilter, expensePaymentFilter, expensePeriod, expenseTypeFilter, rowSearch, rowSort, rowRange, kind]);
+
+  function changeExpensePeriod(next: ExpensePeriodState) {
+    setExpensePeriod(next);
+    writeExpensePeriodToLocation(next);
+  }
+
+  function changeExpensePeriodPreset(preset: ExpensePeriodPreset) {
+    const now = new Date();
+    const base = preset === 'custom' ? expensePeriod : defaultExpensePeriodState(now);
+    changeExpensePeriod({ ...base, preset });
+  }
+
+  function changeCustomExpenseMonth(partial: Partial<Pick<ExpensePeriodState, 'month' | 'year'>>) {
+    changeExpensePeriod({
+      preset: 'custom',
+      month: partial.month ?? expensePeriod.month,
+      year: partial.year ?? expensePeriod.year,
+    });
+  }
 
   function showEntryMessage(type: 'ok' | 'err', text: string) {
     setEntryMessage({ type, text });
@@ -1877,7 +2216,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         fileType: expenseForm.receiptFile.type,
         fileSize: expenseForm.receiptFile.size,
         status: response.status,
-        errorSource: payload.code || payload.debug?.errorSource || payload.error,
+        errorSource: payload.code || payload.error,
       });
       if (!response.ok || !payload.data) {
         throw new Error(receiptScanErrorText(payload.debug?.errorSource || payload.code, lang, payload.error || expenseText('couldNotRead', lang)));
@@ -2862,17 +3201,27 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
   if (kind === 'expenses') {
     const visibleExpenses = filteredExpenses.slice(0, visibleCount);
-    const monthlyExpenses = data.expenses.filter(item => {
-      const d = new Date(item.date || item.created_at || 0);
-      const now = new Date();
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    });
-    const monthlyTotal = monthlyExpenses.reduce((sum, item) => sum + item.amount, 0);
-    const recurringTotal = data.expenses.filter(item => ['subscriptions', 'bills', 'loans'].includes(item.category || '')).reduce((sum, item) => sum + item.amount, 0);
+    const monthlyExpenses = expensePeriodExpenses;
+    const monthlyTotal = expensePeriodTotal;
+    const recurringTotal = monthlyExpenses.filter(isRecurringExpense).reduce((sum, item) => sum + item.amount, 0);
+    const expenseNow = new Date();
+    const expenseYearOptions = Array.from({ length: 8 }, (_, index) => expenseNow.getFullYear() + 1 - index);
+    const expenseMonthFormatter = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'long' });
+    const expensePeriodEmptyTitle = expensePeriod.preset === 'all'
+      ? expenseText('emptyTitle', lang)
+      : selectedExpenseRange?.months === 1
+        ? pick({ ar: 'لا توجد مصروفات في هذا الشهر', en: 'No expenses in this month', fr: 'Aucune dépense ce mois-ci' }, lang)
+        : pick({ ar: 'لا توجد مصروفات في الفترة المحددة', en: 'No expenses in this period', fr: 'Aucune dépense sur cette période' }, lang);
+    const expenseFilteredEmptyTitle = monthlyExpenses.length > 0
+      ? pick({ ar: 'لا توجد مصروفات مطابقة للفلاتر', en: 'No expenses match these filters', fr: 'Aucune dépense ne correspond aux filtres' }, lang)
+      : expensePeriodEmptyTitle;
+    const expenseEmptyBody = monthlyExpenses.length > 0
+      ? pick({ ar: 'جرّب تعديل البحث أو التصنيف أو طريقة الدفع داخل الفترة المحددة.', en: 'Try adjusting search, category, or payment filters inside this period.', fr: 'Ajustez la recherche, la catégorie ou le mode de paiement sur cette période.' }, lang)
+      : pick({ ar: 'يمكنك إضافة مصروف جديد أو عرض كل المصروفات التاريخية بشكل صريح.', en: 'Add a new expense or explicitly switch to all historical expenses.', fr: 'Ajoutez une dépense ou affichez explicitement tout l’historique.' }, lang);
     const expenseTabs = [
       { id: 'overview', label: pick({ ar: 'نظرة عامة', en: 'Overview', fr: 'Aperçu' }, lang) },
-      { id: 'records', label: pick({ ar: 'السجلات', en: 'Records', fr: 'Enregistrements' }, lang), count: data.expenses.length },
-      { id: 'receipts', label: pick({ ar: 'الإيصالات', en: 'Receipts', fr: 'Reçus' }, lang), count: data.expenses.filter(item => item.receipt_image_url || item.receipt_file_name).length },
+      { id: 'records', label: pick({ ar: 'السجلات', en: 'Records', fr: 'Enregistrements' }, lang), count: monthlyExpenses.length },
+      { id: 'receipts', label: pick({ ar: 'الإيصالات', en: 'Receipts', fr: 'Reçus' }, lang), count: monthlyExpenses.filter(item => item.receipt_image_url || item.receipt_file_name).length },
       { id: 'categories', label: pick({ ar: 'التصنيفات', en: 'Categories', fr: 'Catégories' }, lang) },
       { id: 'analytics', label: pick({ ar: 'التحليلات', en: 'Analytics', fr: 'Analyses' }, lang) },
       { id: 'reports', label: pick({ ar: 'التقارير', en: 'Reports', fr: 'Rapports' }, lang) },
@@ -2910,7 +3259,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           )}
 
           <section className="expense-kpi-grid">
-            {cards.map(card => (
+            {expenseSummaryCards.map(card => (
               <article key={pick(card.title, lang)} className="kpi-card">
                 <span style={{ background: card.tone }} />
                 <p>{pick(card.title, lang)}</p>
@@ -2938,13 +3287,58 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 {dataLoading && <span className="loading-pill">{t('loading')}</span>}
               </div>
 
+              <div className="expense-period-panel">
+                <div className="expense-period-head">
+                  <div>
+                    <span>{pick({ ar: 'اختر الشهر', en: 'Choose period', fr: 'Choisir la période' }, lang)}</span>
+                    <strong>{expensePeriodBadge(expensePeriod, lang)}</strong>
+                  </div>
+                  <small>{pick({ ar: 'تتغير البطاقات والقائمة حسب الفترة المحددة فقط.', en: 'Cards and records update only for the selected period.', fr: 'Les cartes et la liste suivent uniquement la période choisie.' }, lang)}</small>
+                </div>
+                <div className="expense-period-options" role="group" aria-label={pick({ ar: 'اختر الشهر', en: 'Choose period', fr: 'Choisir la période' }, lang)}>
+                  {EXPENSE_PERIOD_PRESETS.map(preset => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className={expensePeriod.preset === preset ? 'active' : ''}
+                      onClick={() => changeExpensePeriodPreset(preset)}
+                    >
+                      {expensePeriodOptionLabel(preset, lang)}
+                    </button>
+                  ))}
+                </div>
+                {expensePeriod.preset === 'custom' && (
+                  <div className="expense-custom-period">
+                    <label>
+                      <span>{pick({ ar: 'الشهر', en: 'Month', fr: 'Mois' }, lang)}</span>
+                      <select value={expensePeriod.month} onChange={event => changeCustomExpenseMonth({ month: Number(event.target.value) })}>
+                        {Array.from({ length: 12 }, (_, index) => index + 1).map(month => (
+                          <option key={month} value={month}>{expenseMonthFormatter.format(startOfLocalMonth(expensePeriod.year, month))}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>{pick({ ar: 'السنة', en: 'Year', fr: 'Année' }, lang)}</span>
+                      <select value={expensePeriod.year} onChange={event => changeCustomExpenseMonth({ year: Number(event.target.value) })}>
+                        {expenseYearOptions.map(year => <option key={year} value={year}>{year}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                )}
+              </div>
+
               <div className="row-controls">
                 <input className="row-search" type="search" placeholder={t('search')} value={rowSearch} onChange={e => setRowSearch(e.target.value)} />
-                <select className="row-select" value={rowRange} onChange={e => setRowRange(e.target.value as typeof rowRange)}>
-                  <option value="all">{t('filter_all')}</option>
-                  <option value="month">{t('filter_month')}</option>
-                  <option value="last3">{t('filter_last3')}</option>
-                  <option value="year">{t('filter_year')}</option>
+                <select className="row-select" value={expenseCategoryFilter} onChange={e => setExpenseCategoryFilter(e.target.value)}>
+                  <option value="all">{pick({ ar: 'كل التصنيفات', en: 'All categories', fr: 'Toutes les catégories' }, lang)}</option>
+                  {EXPENSE_CATEGORIES.map(item => <option key={item.id} value={item.id}>{pick(item.label, lang)}</option>)}
+                </select>
+                <select className="row-select" value={expensePaymentFilter} onChange={e => setExpensePaymentFilter(e.target.value)}>
+                  <option value="all">{pick({ ar: 'كل طرق الدفع', en: 'All payment methods', fr: 'Tous les modes de paiement' }, lang)}</option>
+                  {PAYMENT_METHODS.map(item => <option key={item.id} value={item.id}>{pick(item.label, lang)}</option>)}
+                </select>
+                <select className="row-select" value={expenseTypeFilter} onChange={e => setExpenseTypeFilter(e.target.value)}>
+                  {['all', 'personal', 'project', 'recurring', 'one_time'].map(type => <option key={type} value={type}>{expenseFilterTypeLabel(type, lang)}</option>)}
                 </select>
                 <select className="row-select" value={rowSort} onChange={e => setRowSort(e.target.value as typeof rowSort)}>
                   <option value="dateDesc">{t('sort_newest')}</option>
@@ -2954,13 +3348,24 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 </select>
               </div>
 
-              {data.expenses.length === 0 ? (
+              <div className="expense-period-badge">{expensePeriodBadge(expensePeriod, lang)}</div>
+
+              {dataLoading ? (
+                <div className="expense-list-skeleton" aria-hidden="true">
+                  {Array.from({ length: 4 }, (_, index) => <span key={index} />)}
+                </div>
+              ) : filteredExpenses.length === 0 ? (
                 <div className="expense-empty">
                   <div><Receipt size={34} /></div>
-                  <h3>{expenseText('emptyTitle', lang)}</h3>
-                  <p>{expenseText('emptyBody', lang)}</p>
+                  <h3>{expenseFilteredEmptyTitle}</h3>
+                  <p>{expenseEmptyBody}</p>
                   <div>
                     <button type="button" className="primary-btn" onClick={openCreateEntry}>{expenseText('addExpense', lang)}</button>
+                    {expensePeriod.preset !== 'all' && (
+                      <button type="button" className="ghost-btn" onClick={() => changeExpensePeriodPreset('all')}>
+                        {expensePeriodOptionLabel('all', lang)}
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -2970,7 +3375,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                       ? `يعرض ${Math.min(visibleCount, filteredExpenses.length)} من ${filteredExpenses.length}`
                       : `Showing ${Math.min(visibleCount, filteredExpenses.length)} of ${filteredExpenses.length}`}
                     {' · '}
-                    {money(visibleExpenses.reduce((s, item) => s + item.amount, 0), lang, currency)}
+                    {money(filteredExpenses.reduce((s, item) => s + item.amount, 0), lang, currency)}
                   </div>
                   <div className="expense-card-list">
                     {visibleExpenses.map(item => {
@@ -2983,7 +3388,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                             <div className="expense-row-icon"><ReceiptText size={19} /></div>
                             <div>
                               <strong>{item.name.replace(/^خيرية:\d{4}-\d{2}:/, '')}</strong>
-                              <span>{item.date || (item.created_at ? new Date(item.created_at).toISOString().slice(0, 10) : '')} · {paymentLabel(item.payment_method, lang)}</span>
+                              <span>{expenseDisplayDate(item)} · {paymentLabel(item.payment_method, lang)}</span>
                               <div className="expense-badges">
                                 {projectLinked && <em className="project">{projectExpenseLabel(lang)}</em>}
                                 <em>{categoryLabel(item.category, lang)}</em>
@@ -3013,7 +3418,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                     })}
                   </div>
                   {filteredExpenses.length > visibleCount && (
-                    <button type="button" className="load-more-btn" onClick={() => setVisibleCount(v => v + 30)}>
+                    <button type="button" className="load-more-btn" onClick={() => setVisibleCount(v => v + EXPENSE_PAGE_SIZE)}>
                       {t('load_more').replace('{n}', String(filteredExpenses.length - visibleCount))}
                     </button>
                   )}
@@ -3047,11 +3452,12 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                   <div>
                     <p>{expenseText('monthlySummary', lang)}</p>
                     <h3>{money(monthlyTotal, lang, currency)}</h3>
+                    <small>{expensePeriodLabel(expensePeriod, lang)}</small>
                   </div>
                   <ChartPie size={21} />
                 </div>
                 <div className="monthly-grid">
-                  <div><span>{t('filter_month')}</span><b>{monthlyExpenses.length}</b></div>
+                  <div><span>{pick({ ar: 'الفترة', en: 'Period', fr: 'Période' }, lang)}</span><b>{monthlyExpenses.length}</b></div>
                   <div><span>{expenseText('hasReceipt', lang)}</span><b>{monthlyExpenses.filter(item => item.receipt_image_url || item.receipt_file_name).length}</b></div>
                   <div><span>{expenseText('aiAdded', lang)}</span><b>{monthlyExpenses.filter(item => item.ai_extracted_data || item.ai_confidence_score).length}</b></div>
                   <div><span>{pick({ ar: 'المتكرر', en: 'Recurring', fr: 'Recurrent' }, lang)}</span><b>{money(recurringTotal, lang, currency)}</b></div>
@@ -3068,7 +3474,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 </div>
                 <Printer size={21} />
               </div>
-              <p>{summaryText(kind, data, lang, currency)}</p>
+              <p>{summaryText(kind, dashboardData, lang, currency)}</p>
               <button type="button" className="primary-btn" onClick={() => router.push('/reports-center')}>
                 <Download size={16} />
                 {pick({ ar: 'فتح مركز التقارير', en: 'Open Reports Center', fr: 'Ouvrir le centre des rapports' }, lang)}
@@ -4303,6 +4709,7 @@ const baseStyles = `
   .sfm-shell{min-height:100vh;background:var(--sfm-light-card);color:var(--sfm-foreground);display:flex;font-family:Tajawal,Arial,sans-serif}
   .sfm-spinner{width:44px;height:44px;border-radius:50%;border:3px solid rgba(167,243,240,.2);border-top-color:var(--sfm-soft-cyan);animation:spin 1s linear infinite;margin:auto}
   @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes skeleton-shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
   .sfm-sidebar{width:250px;background:var(--sfm-foreground);border-left:1px solid rgba(167,243,240,.22);padding:22px 16px;position:sticky;top:0;height:100vh;color:var(--sfm-card);flex-shrink:0}
   [dir="ltr"] .sfm-sidebar{border-left:0;border-right:1px solid rgba(167,243,240,.22)}
   .brand{display:flex;align-items:center;gap:12px;margin-bottom:28px;cursor:pointer}
@@ -4394,6 +4801,22 @@ const expenseSmartStyles = `
   .expense-list-panel .row-search{flex:1 1 220px;min-width:0;max-width:100%}
   .expense-list-panel .row-select{flex:0 1 180px;min-width:0;max-width:100%}
   .expense-list-panel .row-count{overflow-wrap:anywhere}
+  .expense-period-panel{display:grid;gap:12px;margin-bottom:12px;border:1px solid rgba(167,243,240,.16);border-radius:20px;background:linear-gradient(180deg,var(--sfm-card),var(--sfm-light-card));padding:14px;box-shadow:0 8px 24px rgba(3,18,37,.05);min-width:0;max-width:100%;overflow:hidden}
+  .expense-period-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}
+  .expense-period-head div{display:grid;gap:4px;min-width:0}
+  .expense-period-head span,.expense-custom-period span{color:var(--sfm-muted);font-size:12px;font-weight:900}
+  .expense-period-head strong{color:var(--sfm-foreground);font-size:15px;font-weight:950;overflow-wrap:anywhere}
+  .expense-period-head small{max-width:340px;color:var(--sfm-muted);font-size:12px;font-weight:800;line-height:1.65;text-align:start}
+  .expense-period-options{display:flex;gap:8px;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
+  .expense-period-options button{flex:0 0 auto;min-height:38px;border:1px solid rgba(167,243,240,.20);border-radius:999px;background:var(--sfm-card);color:var(--sfm-muted);padding:0 13px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer;transition:all .18s ease;white-space:nowrap}
+  .expense-period-options button:hover,.expense-period-options button:focus-visible{border-color:rgba(24,212,212,.50);background:rgba(167,243,240,.10);color:var(--sfm-foreground);outline:none}
+  .expense-period-options button.active{border-color:rgba(24,212,212,.65);background:linear-gradient(135deg,rgba(29,140,255,.14),rgba(24,212,212,.18));color:var(--sfm-foreground);box-shadow:0 8px 18px rgba(24,212,212,.10)}
+  .expense-custom-period{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-width:0}
+  .expense-custom-period label{display:grid;gap:6px;min-width:0}
+  .expense-custom-period select{height:40px;border:1.5px solid rgba(167,243,240,.22);border-radius:12px;background:var(--sfm-card);padding:0 10px;color:var(--sfm-foreground);font:800 13px Tajawal,Arial,sans-serif;outline:none;min-width:0}
+  .expense-period-badge{width:max-content;max-width:100%;margin:-2px 0 12px;border:1px solid rgba(29,140,255,.18);border-radius:999px;background:rgba(29,140,255,.08);color:var(--sfm-primary);padding:7px 11px;font-size:12px;font-weight:900;overflow-wrap:anywhere}
+  .expense-list-skeleton{display:grid;gap:10px}
+  .expense-list-skeleton span{height:76px;border-radius:18px;background:linear-gradient(90deg,rgba(167,243,240,.10),rgba(167,243,240,.22),rgba(167,243,240,.10));background-size:220% 100%;animation:skeleton-shimmer 1.25s ease-in-out infinite}
   .expense-card-list{display:grid;gap:10px;min-width:0;max-width:100%}
   .expense-card-row{display:flex;justify-content:space-between;gap:14px;min-width:0;max-width:100%;overflow:hidden;padding:15px;border:1px solid rgba(167,243,240,.13);border-radius:18px;background:linear-gradient(180deg,var(--sfm-card),#FFF9EF);box-shadow:0 8px 26px rgba(3,18,37,.06)}
   .expense-row-main{display:flex;align-items:flex-start;gap:12px;min-width:0;max-width:100%}
@@ -4514,14 +4937,15 @@ const expenseSmartStyles = `
   .dark .expense-badges em.ok{background:rgba(16,185,129,.16)!important;border-color:rgba(16,185,129,.28)!important;color:#86efac!important}
   .dark .expense-badges em.ai{background:rgba(47,214,192,.10)!important;border-color:rgba(47,214,192,.25)!important;color:#b8c7d9!important}
   .dark .expense-row-actions .row-action{background:#13243a!important;border-color:#1d3050!important;color:#b8c7d9!important}.dark .expense-row-actions .row-action:hover,.dark .expense-row-actions .row-action:focus-visible{background:rgba(47,214,192,.12)!important;border-color:rgba(47,214,192,.40)!important;color:#2fd6c0!important;outline:none}.dark .expense-row-actions .row-action:last-child:hover,.dark .expense-row-actions .row-action:last-child:focus-visible{background:rgba(255,91,110,.12)!important;border-color:rgba(255,91,110,.28)!important;color:#ff5b6e!important}
-  .dark .expense-empty,.dark .monthly-grid div,.dark .expense-modal-tabs,.dark .receipt-drop,.dark .receipt-attach-card,.dark .receipt-preview-grid>div,.dark .receipt-selected-count,.dark .receipt-review-card,.dark .receipt-review-card.review,.dark .ai-result-card,.dark .receipt-candidate-panel,.dark .receipt-detail-grid div,.dark .receipt-items span{background:#13243a!important;border-color:#1d3050!important;color:#b8c7d9!important;box-shadow:none!important}
-  .dark .expense-empty h3,.dark .monthly-grid b,.dark .receipt-drop-copy strong,.dark .receipt-attach-copy strong,.dark .receipt-candidate-panel>strong,.dark .receipt-candidate-panel button b,.dark .receipt-detail-grid b,.dark .receipt-items>strong,.dark .ai-result-card dd{color:#e8eef6!important}
-  .dark .expense-empty p,.dark .monthly-grid span,.dark .receipt-drop small,.dark .receipt-attach-copy small,.dark .receipt-candidate-panel button span,.dark .receipt-detail-grid span,.dark .ai-result-card p,.dark .ai-result-card dt{color:#b8c7d9!important}
+  .dark .expense-empty,.dark .expense-period-panel,.dark .monthly-grid div,.dark .expense-modal-tabs,.dark .receipt-drop,.dark .receipt-attach-card,.dark .receipt-preview-grid>div,.dark .receipt-selected-count,.dark .receipt-review-card,.dark .receipt-review-card.review,.dark .ai-result-card,.dark .receipt-candidate-panel,.dark .receipt-detail-grid div,.dark .receipt-items span{background:#13243a!important;border-color:#1d3050!important;color:#b8c7d9!important;box-shadow:none!important}
+  .dark .expense-period-options button,.dark .expense-custom-period select{background:#0f1d31!important;border-color:#1d3050!important;color:#b8c7d9!important}.dark .expense-period-options button.active{background:rgba(47,214,192,.14)!important;border-color:rgba(47,214,192,.38)!important;color:#e8eef6!important}.dark .expense-period-badge{background:rgba(47,214,192,.12)!important;border-color:rgba(47,214,192,.25)!important;color:#2fd6c0!important}
+  .dark .expense-empty h3,.dark .expense-period-head strong,.dark .monthly-grid b,.dark .receipt-drop-copy strong,.dark .receipt-attach-copy strong,.dark .receipt-candidate-panel>strong,.dark .receipt-candidate-panel button b,.dark .receipt-detail-grid b,.dark .receipt-items>strong,.dark .ai-result-card dd{color:#e8eef6!important}
+  .dark .expense-empty p,.dark .expense-period-head span,.dark .expense-period-head small,.dark .expense-custom-period span,.dark .monthly-grid span,.dark .receipt-drop small,.dark .receipt-attach-copy small,.dark .receipt-candidate-panel button span,.dark .receipt-detail-grid span,.dark .ai-result-card p,.dark .ai-result-card dt{color:#b8c7d9!important}
   .dark .expense-modal-tabs button{background:transparent!important;color:#b8c7d9!important}.dark .expense-modal-tabs button.active{background:rgba(47,214,192,.14)!important;color:#2fd6c0!important;border:1px solid rgba(47,214,192,.25)!important;box-shadow:none!important}
   .dark .expense-form-grid select,.dark .expense-form-grid textarea,.dark .receipt-review-fields input,.dark .receipt-review-fields select{background:#0f1d31!important;border-color:#1d3050!important;color:#e8eef6!important;-webkit-text-fill-color:#e8eef6}.dark .expense-form-grid select:focus,.dark .expense-form-grid textarea:focus,.dark .receipt-review-fields input:focus,.dark .receipt-review-fields select:focus{background:#13243a!important;border-color:#2fd6c0!important;box-shadow:0 0 0 4px rgba(47,214,192,.16)!important}
   .dark .expense-smart-main .primary-btn,.dark .expense-smart-main .primary-form-btn{background:linear-gradient(135deg,#1d8cff,#18d4d4)!important;color:#061a2e!important}.dark .expense-smart-main .ghost-btn,.dark .expense-smart-main .ghost-form-btn,.dark .load-more-btn{background:#13243a!important;border-color:#1d3050!important;color:#e8eef6!important}
   .dark .receipt-error{background:rgba(245,158,11,.14)!important;border-color:rgba(245,158,11,.28)!important;color:#fcd34d!important}.dark .receipt-review-card.failed,.dark .ghost-form-btn.danger-soft{background:rgba(255,91,110,.12)!important;border-color:rgba(255,91,110,.25)!important;color:#ff5b6e!important}.dark .extracted-field-badge{background:rgba(16,185,129,.16)!important;border-color:rgba(16,185,129,.28)!important;color:#86efac!important}
   @media(max-width:1180px){.expense-dashboard-grid{grid-template-columns:1fr}.expense-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:920px){.expense-smart-main{width:100%!important;margin-inline-start:0!important;margin-inline-end:0!important;padding:calc(78px + env(safe-area-inset-top)) 16px 52px!important}.expense-smart-content{gap:14px}.expense-hero{display:grid}.expense-hero-actions .primary-btn,.expense-hero-actions .ghost-btn{width:auto}.expense-side-stack{grid-template-columns:1fr}.expense-floating-add{position:fixed;display:grid;place-items:center;z-index:70;inset-inline-end:18px;bottom:18px;width:56px;height:56px;border-radius:18px;border:0;background:var(--sfm-soft-cyan);color:var(--sfm-foreground);box-shadow:0 18px 40px rgba(3,18,37,.28)}}
-  @media(max-width:640px){.expense-hero{padding:22px}.expense-hero h1{font-size:27px}.expense-kpi-grid,.expense-form-grid,.receipt-detail-grid,.monthly-grid{grid-template-columns:1fr}.expense-list-panel .row-controls{display:grid;grid-template-columns:1fr}.expense-list-panel .row-select{width:100%}.expense-card-row{display:grid}.expense-row-actions{justify-content:space-between}.expense-row-actions>b{white-space:normal;overflow-wrap:anywhere}.expense-row-actions>div{flex-wrap:wrap;justify-content:flex-end}.expense-modal-overlay{align-items:end;padding:10px}.expense-smart-modal{border-radius:22px 22px 0 0;max-height:94dvh;overflow-y:auto;max-width:100%;overflow-x:hidden}.expense-modal-tabs{grid-template-columns:1fr}.receipt-scan-actions,.expense-actions,.receipt-batch-head{display:grid;grid-template-columns:1fr}.ai-result-card dl{grid-template-columns:1fr}.expense-hero-actions{display:grid}.expense-hero-actions .primary-btn,.expense-hero-actions .ghost-btn{width:100%;justify-content:center}.receipt-preview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.receipt-review-body{grid-template-columns:1fr}.receipt-review-body>img{width:100%;height:150px}.receipt-review-fields{grid-template-columns:1fr}}
+  @media(max-width:640px){.expense-hero{padding:22px}.expense-hero h1{font-size:27px}.expense-kpi-grid,.expense-form-grid,.receipt-detail-grid,.monthly-grid,.expense-custom-period{grid-template-columns:1fr}.expense-period-head{display:grid}.expense-period-options{margin-inline:-4px;padding-inline:4px}.expense-list-panel .row-controls{display:grid;grid-template-columns:1fr}.expense-list-panel .row-select{width:100%}.expense-card-row{display:grid}.expense-row-actions{justify-content:space-between}.expense-row-actions>b{white-space:normal;overflow-wrap:anywhere}.expense-row-actions>div{flex-wrap:wrap;justify-content:flex-end}.expense-modal-overlay{align-items:end;padding:10px}.expense-smart-modal{border-radius:22px 22px 0 0;max-height:94dvh;overflow-y:auto;max-width:100%;overflow-x:hidden}.expense-modal-tabs{grid-template-columns:1fr}.receipt-scan-actions,.expense-actions,.receipt-batch-head{display:grid;grid-template-columns:1fr}.ai-result-card dl{grid-template-columns:1fr}.expense-hero-actions{display:grid}.expense-hero-actions .primary-btn,.expense-hero-actions .ghost-btn{width:100%;justify-content:center}.receipt-preview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.receipt-review-body{grid-template-columns:1fr}.receipt-review-body>img{width:100%;height:150px}.receipt-review-fields{grid-template-columns:1fr}}
 `;
