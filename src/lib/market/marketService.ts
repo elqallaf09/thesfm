@@ -104,6 +104,7 @@ export type MarketSearchItem = {
   currency?: string;
   currencySource?: MarketCurrencySource;
   providerSymbol?: string;
+  aliases?: string[];
 };
 
 const SUPPORTED_ASSET_TYPES: MarketAssetType[] = ['stock', 'etf', 'crypto', 'forex', 'commodity', 'gold', 'index'];
@@ -184,17 +185,29 @@ export function marketSymbolCorrection(symbol: unknown) {
 
 export function marketSymbolSuggestions(symbol: unknown) {
   const compact = compactSymbol(symbol);
-  const base = ['USDJPY', 'EURUSD', 'GBPUSD', 'XAUUSD', 'BTCUSD', 'NVDA'];
-  if (compact === 'USDERU') return ['USDEUR', 'EURUSD', 'AAPL', 'NVDA', 'XAUUSD', 'BTCUSD'];
+  if (!compact) return [];
+  if (compact === 'USDERU') return ['EURUSD'];
   const typoPair = closestForexPair(compact);
-  if (typoPair) return [typoPair, ...base].filter((item, index, list) => list.indexOf(item) === index).slice(0, 6);
+  if (typoPair && typoPair !== compact) return [typoPair];
+
+  const relatedSymbols = [
+    ...COMMON_FOREX_PAIRS,
+    ...Object.keys(COMMON_CRYPTO_PAIRS),
+    ...Object.entries(COMMON_METAL_PAIRS).map(([input, provider]) => {
+      if (provider === 'GC=F') return input === 'GOLD' || input === 'XAU' ? 'XAUUSD' : input;
+      if (provider === 'SI=F') return input === 'SILVER' || input === 'XAG' ? 'XAGUSD' : input;
+      return input;
+    }),
+  ].filter((item, index, list) => list.indexOf(item) === index);
+
+  const relatedMatches = relatedSymbols.filter(item => item.startsWith(compact) || item.includes(compact));
   if (compact.length === 6) {
     const from = closestCurrencyCode(compact.slice(0, 3));
     const to = closestCurrencyCode(compact.slice(3, 6));
     const pairSuggestions = from && to ? [`${from}${to}`, `${to}${from}`] : [];
-    return [...pairSuggestions, ...base].filter((item, index, list) => list.indexOf(item) === index).slice(0, 6);
+    return [...pairSuggestions, ...relatedMatches].filter((item, index, list) => list.indexOf(item) === index).slice(0, 6);
   }
-  return base;
+  return relatedMatches.slice(0, 6);
 }
 
 export function normalizeMarketSymbolInput(symbol: unknown, assetTypeInput?: unknown) {

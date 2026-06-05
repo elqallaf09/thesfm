@@ -652,6 +652,60 @@ function cleanSearchText(value: unknown) {
     .trim();
 }
 
+function normalizeSearchComparable(value: unknown) {
+  return String(value ?? '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/[^\p{L}\p{N}\s./:-]/gu, ' ')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function compactSearchComparable(value: unknown) {
+  return normalizeSearchComparable(value).replace(/\s+/g, '');
+}
+
+function normalizeSearchSymbol(value: unknown) {
+  return String(value ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '')
+    .replace(/[\\/]/g, '')
+    .replace(/:/g, '');
+}
+
+function marketSearchMatchRank(item: MarketSearchSuggestion, query: string) {
+  const normalizedQuery = normalizeSearchComparable(query);
+  const compactQuery = compactSearchComparable(query);
+  const symbolQuery = normalizeSearchSymbol(query);
+  if (!normalizedQuery || !compactQuery) return 1;
+
+  const symbol = String(item.symbol ?? '').toUpperCase();
+  const providerSymbol = String(item.providerSymbol ?? '').toUpperCase();
+  const compactSymbol = normalizeSearchSymbol(item.symbol);
+  const compactProviderSymbol = normalizeSearchSymbol(item.providerSymbol);
+  const name = normalizeSearchComparable(item.name);
+  const compactName = compactSearchComparable(item.name);
+  const aliases = (item.aliases ?? []).map(alias => normalizeSearchComparable(alias)).filter(Boolean);
+  const compactAliases = (item.aliases ?? []).map(alias => compactSearchComparable(alias)).filter(Boolean);
+  const exactAliasMatch = aliases.some(alias => alias === normalizedQuery) || compactAliases.some(alias => alias === compactQuery);
+
+  if (item.assetType === 'crypto' && exactAliasMatch) return 110;
+  if (symbol === symbolQuery || providerSymbol === symbolQuery || compactSymbol === symbolQuery || compactProviderSymbol === symbolQuery) return 100;
+  if (exactAliasMatch) return 95;
+  if (symbol.startsWith(symbolQuery) || providerSymbol.startsWith(symbolQuery) || compactSymbol.startsWith(symbolQuery) || compactProviderSymbol.startsWith(symbolQuery)) return 90;
+  if (name === normalizedQuery || compactName === compactQuery || name.startsWith(normalizedQuery) || compactName.startsWith(compactQuery)) return 80;
+  if (name.includes(normalizedQuery) || compactName.includes(compactQuery)) return 70;
+  if (aliases.some(alias => alias.startsWith(normalizedQuery)) || compactAliases.some(alias => alias.startsWith(compactQuery))) return 50;
+  if (aliases.some(alias => alias.includes(normalizedQuery)) || compactAliases.some(alias => alias.includes(compactQuery))) return 40;
+  return 0;
+}
+
 function normalizeAssetSearchResult(result: Partial<MarketSearchItem> & Record<string, unknown>): MarketSearchSuggestion | null {
   const rawSymbol = cleanSearchText(result.symbol ?? result.ticker ?? result.providerSymbol ?? result.provider_symbol);
   const rawProviderSymbol = cleanSearchText(result.providerSymbol ?? result.provider_symbol ?? result.symbol ?? result.ticker);
@@ -664,6 +718,9 @@ function normalizeAssetSearchResult(result: Partial<MarketSearchItem> & Record<s
   const assetType = normalizeAssetType(result.assetType ?? result.asset_type ?? result.type);
   const exchange = cleanSearchText(result.exchange ?? result.market ?? result.venue ?? result.mic) || undefined;
   const country = cleanSearchText(result.country) || undefined;
+  const aliases = Array.isArray(result.aliases)
+    ? result.aliases.map(alias => cleanSearchText(alias)).filter(Boolean)
+    : [];
   const currency = resolveMarketCurrency({
     providerCurrency: result.currency,
     symbol,
@@ -683,15 +740,16 @@ function normalizeAssetSearchResult(result: Partial<MarketSearchItem> & Record<s
     currency: currency.currency ?? undefined,
     currencySource: currency.source,
     provider: cleanSearchText(result.provider ?? result.source) || 'OpenBB',
+    aliases,
   };
 }
 
-function normalizeSearchItems(items: MarketSearchItem[], query: string): MarketSearchSuggestion[] {
-  const normalizedQuery = query.trim().toUpperCase();
+function normalizeSearchItems(items: MarketSearchItem[], query: string, assetTypeFilter: MarketAssetFilter = 'all'): MarketSearchSuggestion[] {
   const seen = new Set<string>();
   const normalized = items
     .map(item => normalizeAssetSearchResult(item as Partial<MarketSearchItem> & Record<string, unknown>))
     .filter((item): item is MarketSearchSuggestion => Boolean(item))
+    .filter(item => assetTypeFilter === 'all' || item.assetType === assetTypeFilter)
     .filter(item => {
       const key = `${item.symbol}-${item.providerSymbol ?? item.symbol}-${item.assetType}`;
       if (seen.has(key)) return false;
@@ -700,19 +758,12 @@ function normalizeSearchItems(items: MarketSearchItem[], query: string): MarketS
     });
 
   return normalized
+    .map(item => ({ item, rank: marketSearchMatchRank(item, query) }))
+    .filter(entry => !query.trim() || entry.rank > 0)
     .sort((a, b) => {
-      const score = (item: MarketSearchSuggestion) => {
-        const symbol = item.symbol.toUpperCase();
-        const providerSymbol = item.providerSymbol?.toUpperCase() ?? '';
-        const name = item.name.toUpperCase();
-        if (symbol === normalizedQuery || providerSymbol === normalizedQuery) return 0;
-        if (symbol.startsWith(normalizedQuery) || providerSymbol.startsWith(normalizedQuery)) return 1;
-        if (name.startsWith(normalizedQuery)) return 2;
-        if (name.includes(normalizedQuery)) return 3;
-        return 4;
-      };
-      return score(a) - score(b) || a.symbol.localeCompare(b.symbol);
+      return b.rank - a.rank || a.item.symbol.localeCompare(b.item.symbol);
     })
+    .map(entry => entry.item)
     .slice(0, 8);
 }
 
@@ -807,11 +858,10 @@ function normalizePublicMarketErrorCode(code: string | undefined) {
 
 function canAnalyzeDirectNormalizedInput(normalized: ReturnType<typeof normalizeMarketSymbolInput>) {
   if (!normalized.valid) return false;
-  return normalized.assetType === 'forex'
-    || normalized.assetType === 'crypto'
-    || normalized.assetType === 'gold'
-    || normalized.assetType === 'commodity'
-    || normalized.assetType === 'index';
+  if (normalized.assetType === 'forex') return normalized.providerSymbol.endsWith('=X');
+  if (normalized.assetType === 'crypto') return normalized.providerSymbol.includes('-') && normalized.providerSymbol !== normalized.symbol;
+  if (normalized.assetType === 'gold' || normalized.assetType === 'commodity') return normalized.providerSymbol !== normalized.symbol;
+  return normalized.assetType === 'index';
 }
 
 function hasUsableAnalysis(result: MarketResult): result is MarketAnalysis {
@@ -1134,6 +1184,7 @@ export default function MarketAnalysisPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchMessage, setSearchMessage] = useState('');
   const [highlightedSearchIndex, setHighlightedSearchIndex] = useState(0);
+  const searchRequestIdRef = useRef(0);
   const [suggestedAssets, setSuggestedAssets] = useState<MarketSearchItem[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [alerts, setAlerts] = useState<SavedAlert[]>([]);
@@ -1754,6 +1805,8 @@ export default function MarketAnalysisPage() {
 
   useEffect(() => {
     const cleanQuery = query.trim();
+    const requestId = searchRequestIdRef.current + 1;
+    searchRequestIdRef.current = requestId;
     if (cleanQuery.length < 2) {
       setSearchResults([]);
       setSearchMessage('');
@@ -1764,29 +1817,31 @@ export default function MarketAnalysisPage() {
 
     let cancelled = false;
     setSearchLoading(true);
+    setSearchResults([]);
+    setSearchMessage('');
     const timeout = window.setTimeout(async () => {
       try {
         const params = new URLSearchParams({ q: cleanQuery });
         if (assetType !== 'all') params.set('assetType', assetType);
         const data = await fetchJsonWithTimeout<MarketSearchResponse>(`/api/market/search?${params.toString()}`, 8000, true);
-        if (cancelled) return;
+        if (cancelled || searchRequestIdRef.current !== requestId) return;
         const responseItems = [
           ...(data.resolved ? [data.resolved] : []),
           ...(data.results ?? []),
           ...normalizeErrorSuggestions(data.suggestions, cleanQuery, false),
         ];
-        const results = normalizeSearchItems(responseItems, cleanQuery);
+        const results = normalizeSearchItems(responseItems, cleanQuery, assetType);
         setSearchResults(results);
         setHighlightedSearchIndex(0);
         setSearchMessage(results.length === 0 ? marketErrorText(data.code, data.message || data.error || t('market_symbol_not_found_helpful'), t) : '');
       } catch {
-        if (!cancelled) {
+        if (!cancelled && searchRequestIdRef.current === requestId) {
           setSearchResults([]);
           setHighlightedSearchIndex(0);
           setSearchMessage(t('market_symbol_not_found_helpful'));
         }
       } finally {
-        if (!cancelled) setSearchLoading(false);
+        if (!cancelled && searchRequestIdRef.current === requestId) setSearchLoading(false);
       }
     }, 300);
 
@@ -2073,27 +2128,30 @@ export default function MarketAnalysisPage() {
     let suggestionCandidates = searchResults;
     let selectedItem: MarketSearchSuggestion | undefined = item ? normalizeSearchItem(item) : findExactSearchMatch(searchResults, cleanQuery);
     if (!selectedItem && cleanQuery) {
+      const requestId = searchRequestIdRef.current + 1;
+      searchRequestIdRef.current = requestId;
       try {
         setSearchLoading(true);
         const params = new URLSearchParams({ q: cleanQuery });
         if (assetType !== 'all') params.set('assetType', assetType);
         const data = await fetchJsonWithTimeout<MarketSearchResponse>(`/api/market/search?${params.toString()}`, 8000, true);
+        if (searchRequestIdRef.current !== requestId) return;
         const responseItems = [
           ...(data.resolved ? [data.resolved] : []),
           ...(data.results ?? []),
           ...normalizeErrorSuggestions(data.suggestions, cleanQuery, false),
         ];
-        const results = normalizeSearchItems(responseItems, cleanQuery);
-        const resolvedItem = data.resolved ? normalizeSearchItem(data.resolved) : undefined;
+        const results = normalizeSearchItems(responseItems, cleanQuery, assetType);
+        const resolvedItem = data.resolved ? normalizeSearchItems([data.resolved], cleanQuery, assetType)[0] : undefined;
         suggestionCandidates = results;
         setSearchResults(results);
         setHighlightedSearchIndex(0);
         setSearchMessage(results.length === 0 ? marketErrorText(data.code, data.message || data.error || t('market_symbol_not_found_helpful'), t) : '');
-        selectedItem = resolvedItem ?? findExactSearchMatch(results, cleanQuery);
+        selectedItem = resolvedItem ?? findExactSearchMatch(results, cleanQuery) ?? (results.length === 1 ? results[0] : undefined);
       } catch {
         selectedItem = undefined;
       } finally {
-        setSearchLoading(false);
+        if (searchRequestIdRef.current === requestId) setSearchLoading(false);
       }
     }
 
@@ -2483,9 +2541,13 @@ export default function MarketAnalysisPage() {
                     onBlur={() => window.setTimeout(() => setSearchOpen(false), 160)}
                     onChange={event => {
                       const nextQuery = event.target.value;
+                      searchRequestIdRef.current += 1;
                       setQuery(nextQuery);
                       setError('');
                       setErrorSuggestions([]);
+                      setSearchResults([]);
+                      setSearchMessage('');
+                      setSearchLoading(nextQuery.trim().length >= 2);
                       setHighlightedSearchIndex(0);
                       if (selectedAsset && nextQuery.trim().toUpperCase() !== selectedAsset.symbol) {
                         setSelectedAsset(null);

@@ -5,6 +5,7 @@ import { resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeAssetType, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
 import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbolResolver';
 import { resolveMarketSymbol } from '@/lib/market/symbolResolver';
+import { normalizeAssetSearchText } from '@/lib/market/assetAliases';
 
 type MarketSymbolRow = {
   symbol: string;
@@ -27,6 +28,55 @@ function getSupabaseServerClient() {
 
 function cleanSearchTerm(value: string) {
   return value.trim().replace(/[%,]/g, '').slice(0, 64);
+}
+
+function compactSearchText(value: unknown) {
+  return normalizeAssetSearchText(value).replace(/\s+/g, '');
+}
+
+function normalizeSymbolText(value: unknown) {
+  return String(value ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '')
+    .replace(/[\\/]/g, '')
+    .replace(/:/g, '');
+}
+
+function searchRank(item: MarketSearchItem, query: string) {
+  const normalizedQuery = normalizeAssetSearchText(query);
+  const compactQuery = compactSearchText(query);
+  const symbolQuery = normalizeSymbolText(query);
+  if (!normalizedQuery || !compactQuery) return 1;
+
+  const symbol = String(item.symbol ?? '').toUpperCase();
+  const providerSymbol = String(item.providerSymbol ?? '').toUpperCase();
+  const compactSymbol = normalizeSymbolText(item.symbol);
+  const compactProviderSymbol = normalizeSymbolText(item.providerSymbol);
+  const name = normalizeAssetSearchText(item.name);
+  const compactName = compactSearchText(item.name);
+  const aliases = (item.aliases ?? []).map(alias => normalizeAssetSearchText(alias)).filter(Boolean);
+  const compactAliases = (item.aliases ?? []).map(alias => compactSearchText(alias)).filter(Boolean);
+  const exactAliasMatch = aliases.some(alias => alias === normalizedQuery) || compactAliases.some(alias => alias === compactQuery);
+
+  if (item.assetType === 'crypto' && exactAliasMatch) return 110;
+  if (symbol === symbolQuery || providerSymbol === symbolQuery || compactSymbol === symbolQuery || compactProviderSymbol === symbolQuery) return 100;
+  if (exactAliasMatch) return 95;
+  if (symbol.startsWith(symbolQuery) || providerSymbol.startsWith(symbolQuery) || compactSymbol.startsWith(symbolQuery) || compactProviderSymbol.startsWith(symbolQuery)) return 90;
+  if (name === normalizedQuery || compactName === compactQuery || name.startsWith(normalizedQuery) || compactName.startsWith(compactQuery)) return 80;
+  if (name.includes(normalizedQuery) || compactName.includes(compactQuery)) return 70;
+  if (aliases.some(alias => alias.startsWith(normalizedQuery)) || compactAliases.some(alias => alias.startsWith(compactQuery))) return 50;
+  if (aliases.some(alias => alias.includes(normalizedQuery)) || compactAliases.some(alias => alias.includes(compactQuery))) return 40;
+  return 0;
+}
+
+function filterAndRankResults(items: MarketSearchItem[], query: string, assetType?: MarketAssetType) {
+  return items
+    .filter(item => !assetType || normalizeAssetType(item.assetType) === assetType)
+    .map(item => ({ item, rank: searchRank(item, query) }))
+    .filter(entry => !query || entry.rank > 0)
+    .sort((a, b) => b.rank - a.rank || a.item.symbol.localeCompare(b.item.symbol))
+    .map(entry => entry.item);
 }
 
 function mapMarketSymbol(row: MarketSymbolRow): MarketSearchItem {
@@ -79,7 +129,8 @@ async function searchSupabaseSymbols(query: string, assetType?: MarketAssetType)
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const query = cleanSearchTerm(searchParams.get('query') ?? searchParams.get('q') ?? '');
-  const assetType = searchParams.get('assetType') ? normalizeAssetType(searchParams.get('assetType')) : undefined;
+  const assetTypeParam = searchParams.get('assetType');
+  const assetType = assetTypeParam && assetTypeParam !== 'all' ? normalizeAssetType(assetTypeParam) : undefined;
   const shouldSearchUSUniverse = !assetType || assetType === 'stock' || assetType === 'etf';
   const resolved = query ? await resolveMarketSymbol(query, assetType) : null;
   const resolverSuggestions = resolved
@@ -91,10 +142,10 @@ export async function GET(request: NextRequest) {
   const supabaseResults = await searchSupabaseSymbols(query, assetType);
   const usResults = shouldSearchUSUniverse ? await searchUSSymbols(query, assetType) : null;
   if (supabaseResults && supabaseResults.length > 0) {
-    const merged = mergeMarketSearchResults(
+    const merged = filterAndRankResults(mergeMarketSearchResults(
       mergeMarketSearchResults(supabaseResults, usResults?.results ?? []),
       resolverSuggestions,
-    ).slice(0, 20);
+    ), query, assetType).slice(0, 20);
     return NextResponse.json({
       ok: true,
       success: true,
@@ -106,21 +157,22 @@ export async function GET(request: NextRequest) {
   }
 
   if (usResults && usResults.results.length > 0) {
+    const merged = filterAndRankResults(mergeMarketSearchResults(
+      usResults.results,
+      resolverSuggestions,
+    ), query, assetType).slice(0, 20);
     return NextResponse.json({
       ok: true,
       success: true,
       query,
       source: usResults.source,
       fallback: false,
-      results: mergeMarketSearchResults(
-        usResults.results,
-        resolverSuggestions,
-      ).slice(0, 20),
+      results: merged,
       resolved: resolved?.ok ? resolved.asset : null,
     });
   }
 
-  const resolverResults = mergeMarketSearchResults([], resolverSuggestions).slice(0, 20);
+  const resolverResults = filterAndRankResults(mergeMarketSearchResults([], resolverSuggestions), query, assetType).slice(0, 20);
   if (resolverResults.length > 0) {
     return NextResponse.json({
       ok: true,
@@ -135,7 +187,7 @@ export async function GET(request: NextRequest) {
 
   const result = await proxySearch(query, assetType);
   const liveResults = Array.isArray(result?.results) ? result.results as MarketSearchItem[] : [];
-  const fallbackResults = mergeMarketSearchResults(liveResults, []).slice(0, 20);
+  const fallbackResults = filterAndRankResults(mergeMarketSearchResults(liveResults, []), query, assetType).slice(0, 20);
   if (fallbackResults.length > 0) {
     return NextResponse.json({
       ok: true,

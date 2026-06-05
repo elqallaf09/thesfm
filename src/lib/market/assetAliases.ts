@@ -46,6 +46,28 @@ export const assetAliases: AssetAlias[] = [
     assetType: 'stock',
     currency: 'KWD',
   },
+  {
+    aliases: ['أجيليتي', 'اجيليتي', 'Agility', 'AGLTY'],
+    symbol: 'AGLTY',
+    symbolCandidates: ['AGLTY.KW', 'AGLTY', 'AGLTY:KSE'],
+    nameAr: 'أجيليتي',
+    nameEn: 'Agility',
+    marketAr: 'بورصة الكويت',
+    marketEn: 'Boursa Kuwait',
+    assetType: 'stock',
+    currency: 'KWD',
+  },
+  {
+    aliases: ['بوبيان', 'بنك بوبيان', 'Boubyan', 'Boubyan Bank', 'BOUBYAN'],
+    symbol: 'BOUBYAN',
+    symbolCandidates: ['BOUBYAN.KW', 'BOUBYAN', 'BOUBYAN:KSE'],
+    nameAr: 'بنك بوبيان',
+    nameEn: 'Boubyan Bank',
+    marketAr: 'بورصة الكويت',
+    marketEn: 'Boursa Kuwait',
+    assetType: 'stock',
+    currency: 'KWD',
+  },
 ];
 
 export function normalizeAssetSearchText(value: unknown) {

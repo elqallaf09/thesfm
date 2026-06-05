@@ -184,6 +184,7 @@ function aliasToItem(alias: CanonicalAlias): MarketSearchItem {
     exchange: alias.exchange,
     country: alias.country,
     currency: alias.currency,
+    aliases: [...alias.aliases, ...(alias.typoAliases ?? [])],
   };
 }
 
@@ -303,6 +304,14 @@ function assetAliasItems(query: string, assetType?: MarketAssetType): MarketSear
         exchange: alias.marketEn,
         currency: resolvedCurrency.currency ?? undefined,
         currencySource: resolvedCurrency.source,
+        aliases: [
+          alias.nameAr,
+          alias.nameEn,
+          alias.marketAr,
+          alias.marketEn,
+          ...alias.aliases,
+          ...alias.symbolCandidates,
+        ],
       };
     });
 }
@@ -351,6 +360,14 @@ function stringsToItems(symbols: string[], assetType?: MarketAssetType) {
 
 function dedupe(items: MarketSearchItem[]) {
   return mergeMarketSearchResults([], items).slice(0, 8);
+}
+
+function isKnownDirectPair(normalized: ReturnType<typeof normalizeMarketSymbolInput>) {
+  if (!normalized.valid) return false;
+  if (normalized.assetType === 'forex') return normalized.providerSymbol.endsWith('=X');
+  if (normalized.assetType === 'crypto') return normalized.providerSymbol.includes('-') && normalized.providerSymbol !== normalized.symbol;
+  if (normalized.assetType === 'gold' || normalized.assetType === 'commodity') return normalized.providerSymbol !== normalized.symbol;
+  return false;
 }
 
 export function marketApiMessage(code: MarketApiErrorCode) {
@@ -410,7 +427,7 @@ export async function resolveMarketSymbol(queryInput: unknown, assetTypeInput?: 
   }
 
   const normalized = normalizeMarketSymbolInput(query, assetType);
-  if (normalized.valid && ['forex', 'crypto', 'gold', 'commodity'].includes(normalized.assetType)) {
+  if (isKnownDirectPair(normalized)) {
     const knownPair: MarketSearchItem = {
       symbol: normalized.displaySymbol ?? normalized.symbol,
       providerSymbol: normalized.providerSymbol,
