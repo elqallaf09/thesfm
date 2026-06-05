@@ -623,9 +623,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     (supabase as any).from('project_milestones').select('*').eq('user_id', user.id).eq('project_id', id),
     (supabase as any).from('project_documents').select('id,title,category,file_name,file_type,file_size,uploaded_at').eq('user_id', user.id).eq('project_id', id),
     (supabase as any).from('project_pitch_decks').select('*').eq('user_id', user.id).eq('project_id', id).eq('language', language).maybeSingle(),
-    (supabase as any).from('project_income').select('id,title,amount,income_date,created_at').eq('user_id', user.id).eq('project_id', id),
-    (supabase as any).from('project_expenses').select('id,title,amount,expense_date,created_at').eq('user_id', user.id).eq('project_id', id),
-    (supabase as any).from('expense_items').select('id,name,amount,created_at,enhanced').eq('user_id', user.id),
+    (supabase as any).from('project_income').select('id,title,amount,currency,income_date,created_at').eq('user_id', user.id).eq('project_id', id),
+    (supabase as any).from('project_expenses').select('id,title,amount,currency,expense_date,created_at').eq('user_id', user.id).eq('project_id', id),
+    (supabase as any).from('expense_items').select('id,name,amount,currency,created_at,enhanced').eq('user_id', user.id),
     (supabase as any).from('monthly_income_sources').select('*').eq('user_id', user.id),
   ]);
 

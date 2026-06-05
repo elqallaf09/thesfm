@@ -172,6 +172,12 @@ type ProjectIncomeForm = {
   transferredToPersonalIncome: boolean;
 };
 
+type MoneyFormatter = (value: number, currency?: string | null) => string;
+type CurrencyAmountRow = {
+  amount: number | string | null;
+  currency?: string | null;
+};
+
 type DeleteTarget =
   | { type: 'income'; row: ProjectIncomeRow }
   | { type: 'expense'; row: ProjectExpenseRow };
@@ -971,6 +977,27 @@ function toNum(value: unknown) {
   return Number(String(value ?? 0).replace(/[^\d.-]/g, '')) || 0;
 }
 
+function normalizeCurrencyCode(value: unknown, fallback = 'KWD') {
+  const code = String(value ?? '').trim().toUpperCase();
+  return code || fallback;
+}
+
+function formatRowMoney(row: CurrencyAmountRow, money: MoneyFormatter, fallbackCurrency = 'KWD') {
+  return money(toNum(row.amount), normalizeCurrencyCode(row.currency, fallbackCurrency));
+}
+
+function formatRowsByCurrency(rows: CurrencyAmountRow[], money: MoneyFormatter, fallbackCurrency = 'KWD') {
+  const totals = new Map<string, number>();
+  rows.forEach(row => {
+    const currency = normalizeCurrencyCode(row.currency, fallbackCurrency);
+    totals.set(currency, (totals.get(currency) ?? 0) + toNum(row.amount));
+  });
+  return [...totals.entries()]
+    .filter(([, total]) => total !== 0)
+    .map(([currency, total]) => money(total, currency))
+    .join(' + ');
+}
+
 function safeDate(value?: string | null) {
   if (!value) return null;
   const date = new Date(`${value.slice(0, 10)}T00:00:00`);
@@ -1136,7 +1163,7 @@ export default function ProjectWorkspacePage() {
   const [deleteSaving, setDeleteSaving] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
-  const money = useCallback((amount: number, currency = 'KWD') => formatMoney(amount, currency, lang as Lang), [lang]);
+  const money = useCallback((amount: number, currency?: string | null) => formatMoney(amount, currency || 'KWD', lang as Lang), [lang]);
   const dateLabel = useCallback((value?: string | null) => {
     const date = safeDate(value);
     return date ? date.toLocaleDateString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US') : tr.noDate;
@@ -1502,7 +1529,7 @@ export default function ProjectWorkspacePage() {
     setProjectExpenseForm({
       title: expense.title ?? '',
       amount: String(expense.amount ?? ''),
-      currency: expense.currency || projectCurrency,
+      currency: normalizeCurrencyCode(expense.currency, 'KWD'),
       expenseDate: String(expense.expense_date ?? '').slice(0, 10) || todayInputValue(),
       category: expense.category || 'general',
       paymentMethod: expense.payment_method || '',
@@ -1603,7 +1630,7 @@ export default function ProjectWorkspacePage() {
       project_id: project.id,
       title,
       amount,
-      currency: projectExpenseForm.currency || projectCurrency,
+      currency: normalizeCurrencyCode(projectExpenseForm.currency, 'KWD'),
       expense_date: projectExpenseForm.expenseDate || todayInputValue(),
       category: projectExpenseForm.category || 'general',
       payment_method: projectExpenseForm.paymentMethod || null,
@@ -1887,7 +1914,7 @@ export default function ProjectWorkspacePage() {
     return `${new Intl.NumberFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1 }).format(value)}${suffix}`;
   };
 
-  const moneyOrNoData = (value: number) => (value > 0 || value < 0 ? money(value) : tr.noData);
+  const moneyOrNoData = (value: number) => (value > 0 || value < 0 ? money(value, projectCurrency) : tr.noData);
 
   const projectTitle = project?.name || tr.projectName;
   const statusProjectLabel = tr[model.statusKey];
@@ -2011,7 +2038,8 @@ export default function ProjectWorkspacePage() {
             onEditProjectExpense={openEditProjectExpenseModal}
             onDeleteProjectIncome={requestDeleteProjectIncome}
             onDeleteProjectExpense={requestDeleteProjectExpense}
-            money={(amount) => money(amount, projectCurrency)}
+            money={money}
+            projectCurrency={projectCurrency}
             dateLabel={dateLabel}
             setActiveTab={setActiveTab}
             routerPush={router.push}
@@ -2033,7 +2061,7 @@ export default function ProjectWorkspacePage() {
                 </div>
               </article>
               <Metric label={tr.requiredCapital} value={moneyOrNoData(feasibilityMetrics.requiredCapital)} />
-              <Metric label={tr.monthlyProfitEstimate} value={feasibilityMetrics.hasFinancialInput ? money(feasibilityMetrics.monthlyProfit) : tr.noData} />
+              <Metric label={tr.monthlyProfitEstimate} value={feasibilityMetrics.hasFinancialInput ? money(feasibilityMetrics.monthlyProfit, projectCurrency) : tr.noData} />
               <Metric label={tr.breakEvenEstimate} value={feasibilityMetrics.breakEvenMonths === null ? tr.noData : `${numericLabel(feasibilityMetrics.breakEvenMonths)} ${tr.months}`} />
               <Metric label={tr.roiEstimate} value={feasibilityMetrics.roi === null ? tr.noData : numericLabel(feasibilityMetrics.roi, '%')} />
               <Metric label={tr.missingSections} value={String(feasibilityMetrics.missingSections)} />
@@ -2104,7 +2132,7 @@ export default function ProjectWorkspacePage() {
               <aside className="feasibility-side">
                 <article className="warm-card calculations-card">
                   <CardTitle icon={<Coins size={20} />} title={tr.financialFeasibility} />
-                  <Metric label={tr.monthlyProfitEstimate} value={feasibilityMetrics.hasFinancialInput ? money(feasibilityMetrics.monthlyProfit) : tr.noData} />
+                  <Metric label={tr.monthlyProfitEstimate} value={feasibilityMetrics.hasFinancialInput ? money(feasibilityMetrics.monthlyProfit, projectCurrency) : tr.noData} />
                   <Metric label={tr.breakEvenEstimate} value={feasibilityMetrics.breakEvenMonths === null ? tr.noData : `${numericLabel(feasibilityMetrics.breakEvenMonths)} ${tr.months}`} />
                   <Metric label={tr.roiEstimate} value={feasibilityMetrics.roi === null ? tr.noData : numericLabel(feasibilityMetrics.roi, '%')} />
                 </article>
@@ -2567,9 +2595,10 @@ export default function ProjectWorkspacePage() {
         .modal-error{border:1px solid rgba(220,38,38,.22);background:#FEF2F2;color:#B91C1C;border-radius:14px;padding:12px;font-weight:900}
         .project-expense-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
         .project-expense-form-grid .wide{grid-column:1 / -1}
-        .budget-checkbox{display:flex;gap:12px;align-items:flex-start;border:1px solid rgba(29,140,255,.16);border-radius:16px;background:var(--sfm-light-card);padding:14px;cursor:pointer}
-        .budget-checkbox input{margin-top:4px;accent-color:var(--sfm-primary)}
-        .budget-checkbox span{display:grid;gap:4px}
+        .budget-checkbox{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:flex-start;width:100%;min-width:0;border:1px solid rgba(29,140,255,.16);border-radius:16px;background:var(--sfm-light-card);padding-block:14px;padding-inline:16px;cursor:pointer;overflow:visible;transition:border-color .18s ease,background .18s ease,box-shadow .18s ease}
+        .budget-checkbox:has(input:checked){border-color:rgba(24,212,212,.56);background:linear-gradient(135deg,rgba(29,140,255,.11),rgba(24,212,212,.10)),var(--sfm-light-card);box-shadow:inset 0 0 0 1px rgba(24,212,212,.16)}
+        .budget-checkbox input{inline-size:20px;block-size:20px;min-inline-size:20px;margin:3px 0 0;accent-color:var(--sfm-primary);justify-self:center}
+        .budget-checkbox span{display:grid;gap:4px;min-width:0}
         .budget-checkbox strong{color:var(--sfm-midnight)}
         .budget-checkbox small{color:var(--sfm-muted);line-height:1.6;font-weight:850}
         .modal-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
@@ -2600,6 +2629,7 @@ function OverviewTab({
   onDeleteProjectIncome,
   onDeleteProjectExpense,
   money,
+  projectCurrency,
   dateLabel,
   setActiveTab,
   routerPush,
@@ -2621,7 +2651,8 @@ function OverviewTab({
   onEditProjectExpense: (row: ProjectExpenseRow) => void;
   onDeleteProjectIncome: (row: ProjectIncomeRow) => void;
   onDeleteProjectExpense: (row: ProjectExpenseRow) => void;
-  money: (value: number) => string;
+  money: MoneyFormatter;
+  projectCurrency: string;
   dateLabel: (value?: string | null) => string;
   setActiveTab: (tab: TabId) => void;
   routerPush: (href: string) => void;
@@ -2641,22 +2672,26 @@ function OverviewTab({
     type: tr.projectIncome,
     title: row.title || tr.projectIncome,
     amount: toNum(row.amount),
+    currency: normalizeCurrencyCode(row.currency, projectCurrency),
     date: row.income_date ?? row.created_at ?? null,
   })), ...projectExpenses.map(row => ({
     id: `expense-${row.id}`,
     type: tr.projectExpenses,
     title: row.title || tr.projectExpense,
     amount: -toNum(row.amount),
+    currency: normalizeCurrencyCode(row.currency, 'KWD'),
     date: row.expense_date ?? row.created_at ?? null,
   }))]
     .sort((a, b) => String(b.date ?? '').localeCompare(String(a.date ?? '')))
     .slice(0, 5);
+  const totalProjectIncome = formatRowsByCurrency(projectIncome, money, projectCurrency);
+  const totalProjectExpenses = formatRowsByCurrency(projectExpenses, money, 'KWD');
 
   return (
     <section className="project-overview">
       <div className="overview-kpi-grid">
         <Metric label={tr.projectHealthScore} value={kpiSummary.score === null ? tr.noData : `${kpiSummary.score}/100`} />
-        <Metric label={tr.financialSnapshot} value={money(model.net)} />
+        <Metric label={tr.financialSnapshot} value={money(model.net, projectCurrency)} />
         <Metric label={tr.timelineSnapshot} value={model.daysRemaining === null ? tr.noData : String(model.daysRemaining)} />
         <Metric label={tr.riskSnapshot} value={tr[model.risk as RiskLevel]} />
         <Metric label={tr.projectProgress} value={`${taskSummary.progressPercent}%`} />
@@ -2689,6 +2724,7 @@ function OverviewTab({
             rows={projectIncome}
             model={model}
             money={money}
+            projectCurrency={projectCurrency}
             dateLabel={dateLabel}
             actualRatio={actualVsExpected}
             onAdd={openProjectIncomeModal}
@@ -2702,6 +2738,7 @@ function OverviewTab({
             rows={projectExpenses}
             model={model}
             money={money}
+            projectCurrency={projectCurrency}
             dateLabel={dateLabel}
             actualRatio={actualVsPlanned}
             onAdd={openProjectExpenseModal}
@@ -2712,11 +2749,11 @@ function OverviewTab({
           <article className="warm-card">
             <CardTitle icon={<Coins size={20} />} title={tr.financialSnapshot} />
             <div className="metric-grid">
-              <Metric label={tr.capital} value={money(model.capital)} />
-              <Metric label={tr.totalIncome} value={model.actualProjectIncome > 0 ? money(model.actualProjectIncome) : tr.noData} />
-              <Metric label={tr.totalExpenses} value={model.actualProjectExpenses > 0 ? money(model.actualProjectExpenses) : tr.noData} />
-              <Metric label={tr.netResult} value={money(model.actualProjectIncome - model.actualProjectExpenses)} />
-              <Metric label={tr.remainingBudget} value={money(model.remainingBudget)} />
+              <Metric label={tr.capital} value={money(model.capital, projectCurrency)} />
+              <Metric label={tr.totalIncome} value={totalProjectIncome || tr.noData} />
+              <Metric label={tr.totalExpenses} value={totalProjectExpenses || tr.noData} />
+              <Metric label={tr.netResult} value={money(model.actualProjectIncome - model.actualProjectExpenses, projectCurrency)} />
+              <Metric label={tr.remainingBudget} value={money(model.remainingBudget, projectCurrency)} />
               <Metric label={tr.targetProgress} value={`${model.progress.toFixed(0)}%`} />
             </div>
             <div className="progress-bar" aria-label={tr.targetProgress}>
@@ -2732,7 +2769,7 @@ function OverviewTab({
                   <div key={item.id}>
                     <span>{item.title}</span>
                     <small>{item.type} · {dateLabel(item.date)}</small>
-                    <strong>{money(item.amount)}</strong>
+                    <strong>{money(item.amount, item.currency)}</strong>
                   </div>
                 ))}
               </div>
@@ -2795,6 +2832,7 @@ function ProjectTransactionSection({
   rows,
   model,
   money,
+  projectCurrency,
   dateLabel,
   actualRatio,
   onAdd,
@@ -2805,7 +2843,8 @@ function ProjectTransactionSection({
   tr: Translation;
   rows: ProjectIncomeRow[] | ProjectExpenseRow[];
   model: any;
-  money: (value: number) => string;
+  money: MoneyFormatter;
+  projectCurrency: string;
   dateLabel: (value?: string | null) => string;
   actualRatio: string;
   onAdd: () => void;
@@ -2817,6 +2856,21 @@ function ProjectTransactionSection({
   const emptyText = isIncome ? tr.noProjectIncomeYet : tr.noProjectExpensesYet;
   const addText = isIncome ? tr.addIncome : tr.addExpense;
   const Icon = isIncome ? Coins : ReceiptText;
+  const fallbackCurrency = isIncome ? projectCurrency : 'KWD';
+  const currentMonthKey = new Date().toISOString().slice(0, 7);
+  const monthRows = rows.filter(row => {
+    const income = row as ProjectIncomeRow;
+    const expense = row as ProjectExpenseRow;
+    const date = isIncome ? income.income_date ?? income.created_at : expense.expense_date ?? expense.created_at;
+    return String(date ?? '').slice(0, 7) === currentMonthKey;
+  }) as CurrencyAmountRow[];
+  const personalRows = rows.filter(row => isIncome
+    ? (row as ProjectIncomeRow).transferred_to_personal_income === true
+    : (row as ProjectExpenseRow).paid_from_personal_budget === true
+  ) as CurrencyAmountRow[];
+  const totalDisplay = formatRowsByCurrency(rows as CurrencyAmountRow[], money, fallbackCurrency);
+  const monthDisplay = formatRowsByCurrency(monthRows, money, fallbackCurrency);
+  const personalDisplay = formatRowsByCurrency(personalRows, money, fallbackCurrency);
 
   return (
     <article className="warm-card project-transactions-card">
@@ -2824,9 +2878,9 @@ function ProjectTransactionSection({
       {rows.length ? (
         <>
           <div className="metric-grid">
-            <Metric label={isIncome ? tr.totalProjectIncome : tr.totalProjectExpenses} value={money(isIncome ? model.actualProjectIncome : model.actualProjectExpenses)} />
-            <Metric label={isIncome ? tr.projectIncomeThisMonth : tr.projectExpensesThisMonth} value={money(isIncome ? model.monthlyProjectIncome : model.monthlyProjectExpenses)} />
-            <Metric label={isIncome ? tr.personalIncomeProjectIncome : tr.personalBudgetProjectExpenses} value={money(isIncome ? model.personalIncomeProjectIncome : model.personalBudgetProjectExpenses)} />
+            <Metric label={isIncome ? tr.totalProjectIncome : tr.totalProjectExpenses} value={totalDisplay || money(isIncome ? model.actualProjectIncome : model.actualProjectExpenses, fallbackCurrency)} />
+            <Metric label={isIncome ? tr.projectIncomeThisMonth : tr.projectExpensesThisMonth} value={monthDisplay || money(isIncome ? model.monthlyProjectIncome : model.monthlyProjectExpenses, fallbackCurrency)} />
+            <Metric label={isIncome ? tr.personalIncomeProjectIncome : tr.personalBudgetProjectExpenses} value={personalDisplay || money(isIncome ? model.personalIncomeProjectIncome : model.personalBudgetProjectExpenses, fallbackCurrency)} />
             <Metric label={isIncome ? tr.actualVsExpected : tr.actualVsPlanned} value={actualRatio} />
           </div>
           <div className="transaction-list">
@@ -2844,7 +2898,7 @@ function ProjectTransactionSection({
                     <span>{dateLabel(date)} · {String(row.category || tr.general)}</span>
                     {badge ? <small>{badge}</small> : null}
                   </div>
-                  <div className="transaction-amount">{money(toNum(row.amount))}</div>
+                  <div className="transaction-amount">{formatRowMoney(row as CurrencyAmountRow, money, fallbackCurrency)}</div>
                   <div className="transaction-actions">
                     <button type="button" onClick={() => onEdit(row)} aria-label={`${tr.edit} ${row.title || title}`}>
                       <Pencil size={15} />
