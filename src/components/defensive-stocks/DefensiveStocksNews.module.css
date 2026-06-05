@@ -330,6 +330,120 @@
   justify-self: end;
 }
 
+.compactTickerPanel {
+  padding: 10px 12px;
+  border-radius: 18px;
+}
+
+.compactTickerPanel .panelTitle {
+  gap: 8px;
+  align-items: center;
+}
+
+.compactTickerPanel .panelTitle > span {
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+}
+
+.compactTickerPanel .panelTitle h2 {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.compactTickerPanel .panelTitle p {
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.compactTickerPanel .tickerSkeletonRow {
+  margin-top: 9px;
+  gap: 7px;
+}
+
+.compactTickerPanel .tickerSkeletonRow span {
+  flex-basis: 156px;
+  height: 58px;
+  border-radius: 13px;
+}
+
+.compactTickerPanel .tickerStrip {
+  margin-top: 8px;
+  gap: 5px;
+}
+
+.compactTickerPanel .tickerStatus {
+  margin-inline: 2px;
+  padding: 3px 8px;
+  font-size: 10px;
+}
+
+.compactTickerPanel .tickerSet {
+  gap: 7px;
+  padding-inline: 3px;
+}
+
+.compactTickerPanel .tickerItem {
+  width: 174px;
+  min-height: 54px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name change"
+    "price change";
+  gap: 4px 7px;
+  border-radius: 13px;
+  padding: 6px 8px;
+  box-shadow: 0 8px 18px rgba(3, 18, 37, 0.055);
+}
+
+.compactTickerPanel .tickerItem div {
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "symbol company"
+    "sector sector";
+  align-items: center;
+  gap: 1px 5px;
+}
+
+.compactTickerPanel .tickerItem strong {
+  grid-area: symbol;
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.compactTickerPanel .tickerItem span {
+  font-size: 10.5px;
+  line-height: 1.15;
+}
+
+.compactTickerPanel .tickerItem span:first-of-type {
+  grid-area: company;
+}
+
+.compactTickerPanel .tickerItem span:last-of-type {
+  grid-area: sector;
+  font-size: 9.5px;
+}
+
+.compactTickerPanel .tickerItem b {
+  font-size: 11px;
+  line-height: 1.15;
+}
+
+.compactTickerPanel .tickerItem em {
+  padding: 3px 6px;
+  font-size: 10px;
+}
+
+.compactTickerPanel .inlineState {
+  min-height: 46px;
+  margin-top: 8px;
+  border-radius: 13px;
+  padding: 9px 10px;
+  font-size: 12px;
+}
+
 .up,
 .down,
 .neutral {
@@ -1288,6 +1402,34 @@
 
   .tickerItem {
     width: 178px;
+  }
+
+  .compactTickerPanel {
+    padding: 9px;
+  }
+
+  .compactTickerPanel .panelTitle {
+    gap: 7px;
+  }
+
+  .compactTickerPanel .panelTitle > span {
+    width: 30px;
+    height: 30px;
+  }
+
+  .compactTickerPanel .panelTitle p {
+    font-size: 10.5px;
+  }
+
+  .compactTickerPanel .tickerItem {
+    width: 160px;
+    min-height: 54px;
+    padding: 6px 8px;
+  }
+
+  .compactTickerPanel .tickerSkeletonRow span {
+    flex-basis: 148px;
+    height: 56px;
   }
 
   .newsCard,

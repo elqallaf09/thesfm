@@ -608,7 +608,7 @@ function CyclicalTicker({
   locale: string;
 }) {
   return (
-    <section className={styles.tickerPanel} aria-label={text.tickerTitle}>
+    <section className={`${styles.tickerPanel} ${styles.compactTickerPanel}`} aria-label={text.tickerTitle}>
       <PanelTitle icon={Activity} title={text.tickerTitle} subtitle={text.tickerSubtitle} />
       {loading ? (
         <div className={styles.tickerSkeletonRow} aria-hidden="true">
