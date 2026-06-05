@@ -4,6 +4,7 @@ import { proxySearch } from '@/lib/market/openbbProxy';
 import { resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeAssetType, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
 import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbolResolver';
+import { resolveMarketSymbol } from '@/lib/market/symbolResolver';
 
 type MarketSymbolRow = {
   symbol: string;
@@ -80,35 +81,78 @@ export async function GET(request: NextRequest) {
   const query = cleanSearchTerm(searchParams.get('query') ?? searchParams.get('q') ?? '');
   const assetType = searchParams.get('assetType') ? normalizeAssetType(searchParams.get('assetType')) : undefined;
   const shouldSearchUSUniverse = !assetType || assetType === 'stock' || assetType === 'etf';
+  const resolved = query ? await resolveMarketSymbol(query, assetType) : null;
+  const resolverSuggestions = resolved
+    ? resolved.ok
+      ? [resolved.asset, ...resolved.suggestions]
+      : resolved.suggestions
+    : [];
 
   const supabaseResults = await searchSupabaseSymbols(query, assetType);
   const usResults = shouldSearchUSUniverse ? await searchUSSymbols(query, assetType) : null;
   if (supabaseResults && supabaseResults.length > 0) {
-    const merged = mergeMarketSearchResults(supabaseResults, usResults?.results ?? []).slice(0, 20);
+    const merged = mergeMarketSearchResults(
+      mergeMarketSearchResults(supabaseResults, usResults?.results ?? []),
+      resolverSuggestions,
+    ).slice(0, 20);
     return NextResponse.json({
+      ok: true,
       success: true,
       query,
       source: usResults ? `supabase+${usResults.source}` : 'supabase',
       results: merged,
+      resolved: resolved?.ok ? resolved.asset : null,
+    });
+  }
+
+  if (usResults && usResults.results.length > 0) {
+    return NextResponse.json({
+      ok: true,
+      success: true,
+      query,
+      source: usResults.source,
+      fallback: false,
+      results: mergeMarketSearchResults(
+        usResults.results,
+        resolverSuggestions,
+      ).slice(0, 20),
+      resolved: resolved?.ok ? resolved.asset : null,
+    });
+  }
+
+  const resolverResults = mergeMarketSearchResults([], resolverSuggestions).slice(0, 20);
+  if (resolverResults.length > 0) {
+    return NextResponse.json({
+      ok: true,
+      success: true,
+      query,
+      source: resolved?.ok ? 'resolver' : 'resolver-suggestions',
+      fallback: false,
+      results: resolverResults,
+      resolved: resolved?.ok ? resolved.asset : null,
     });
   }
 
   const result = await proxySearch(query, assetType);
   const liveResults = Array.isArray(result?.results) ? result.results as MarketSearchItem[] : [];
-  const hasLiveResults = liveResults.length > 0
-    && result?.source !== 'cache'
-    && result?.openbbService !== 'not_configured'
-    && result?.openbbService !== 'unavailable';
-  if (usResults && usResults.results.length > 0) {
+  const fallbackResults = mergeMarketSearchResults(liveResults, []).slice(0, 20);
+  if (fallbackResults.length > 0) {
     return NextResponse.json({
+      ok: true,
       success: true,
       query,
-      source: hasLiveResults ? `openbb+${usResults.source}` : usResults.source,
-      fallback: !hasLiveResults,
+      source: result?.source ?? 'resolver',
+      fallback: result?.fallback,
       openbbService: result?.openbbService,
-      results: mergeMarketSearchResults(liveResults, usResults.results).slice(0, 20),
+      results: fallbackResults,
+      resolved: resolved?.ok ? resolved.asset : null,
     });
   }
 
-  return NextResponse.json(result);
+  return NextResponse.json({
+    ok: true,
+    ...result,
+    results: [],
+    resolved: null,
+  });
 }

@@ -121,8 +121,25 @@ async function fetchOpenBB(path: string, params?: URLSearchParams, options?: { t
     const response = await fetchWithTimeout(url.toString(), options?.timeoutMs);
     const elapsedMs = Date.now() - startedAt;
     if (!response.ok) {
-      console.warn('OpenBB request failed', { path, url: url.pathname, status: response.status, elapsedMs, code: 'provider_error' });
-      return { configured: true as const, available: false as const, elapsedMs, status: response.status, code: 'provider_error' };
+      const code = response.status === 404
+        ? 'symbol_not_found'
+        : response.status === 408 || response.status === 504
+          ? 'openbb_timeout'
+          : response.status === 429
+            ? 'openbb_rate_limit'
+            : response.status >= 500
+              ? 'openbb_unreachable'
+              : 'provider_error';
+      const errorBody = await response.text().catch(() => '');
+      console.warn('OpenBB request failed', {
+        path,
+        url: url.pathname,
+        status: response.status,
+        elapsedMs,
+        code,
+        body: errorBody.slice(0, 400),
+      });
+      return { configured: true as const, available: false as const, elapsedMs, status: response.status, code };
     }
     const data = await response.json();
     lastSuccessfulRequestAt = new Date().toISOString();
@@ -171,6 +188,7 @@ function errorMessageForCode(code: string) {
   const messages: Record<string, string> = {
     openbb_unreachable: 'Market data service is unavailable.',
     openbb_timeout: 'Market data request timed out.',
+    openbb_rate_limit: 'Market data provider rate limit was reached.',
     symbol_not_found: 'Symbol not found.',
     invalid_symbol: 'Invalid symbol.',
     provider_no_data: 'Market provider returned no usable data.',
@@ -537,7 +555,7 @@ export async function proxyAnalyze(
     : !result.available
       ? result.code || (result.timedOut ? 'openbb_timeout' : 'openbb_unreachable')
       : result.data?.success === false
-        ? (/invalid/i.test(String(result.data.error || '')) ? 'invalid_symbol' : /not found/i.test(String(result.data.error || '')) ? 'symbol_not_found' : 'provider_no_data')
+        ? (/rate limit|too many/i.test(String(result.data.error || result.data.message || '')) ? 'openbb_rate_limit' : /invalid/i.test(String(result.data.error || result.data.message || '')) ? 'invalid_symbol' : /not found/i.test(String(result.data.error || result.data.message || '')) ? 'symbol_not_found' : 'provider_no_data')
         : 'provider_no_data';
   console.warn('OpenBB analyze failed', {
     ...startedLog,

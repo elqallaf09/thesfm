@@ -50,13 +50,25 @@ type MarketTab = 'analyze' | 'traderTools' | 'economicCalendar' | 'sessions' | '
 type MarketAiInsightView = MarketAiInsight & { riskScore?: number };
 type MarketSearchSuggestion = MarketSearchItem & { provider?: string };
 type MarketResultWithMeta = MarketResult & {
+  ok?: boolean;
   code?: string;
+  message?: string;
   openbbService?: MarketServiceState;
   source?: string;
   fallback?: boolean;
   fallbackReason?: string;
-  suggestions?: string[];
+  suggestions?: unknown[];
   correction?: string | null;
+};
+type MarketSearchResponse = {
+  ok?: boolean;
+  success?: boolean;
+  code?: string;
+  message?: string;
+  error?: string;
+  results?: MarketSearchItem[];
+  suggestions?: unknown[];
+  resolved?: MarketSearchItem | null;
 };
 type TraderToolsSubTab = 'risk' | 'pips' | 'lot' | 'margin' | 'performance';
 type MarketAssetFilter = MarketAssetType | 'all';
@@ -665,7 +677,12 @@ function normalizeSearchItem(item: MarketSearchItem): MarketSearchSuggestion {
   };
 }
 
-function suggestionToMarketItem(symbol: string): MarketSearchItem {
+function suggestionToMarketItem(suggestion: string | Partial<MarketSearchItem>): MarketSearchSuggestion {
+  if (typeof suggestion !== 'string') {
+    const normalized = normalizeAssetSearchResult(suggestion as Partial<MarketSearchItem> & Record<string, unknown>);
+    if (normalized) return normalized;
+  }
+  const symbol = typeof suggestion === 'string' ? suggestion : String(suggestion.symbol ?? '');
   const normalized = normalizeMarketSymbolInput(symbol, 'all');
   const assetType = normalized.valid ? normalized.assetType : DEFAULT_MARKET_TYPE;
   const providerSymbol = normalized.valid ? normalized.providerSymbol : symbol;
@@ -690,7 +707,55 @@ function suggestionToMarketItem(symbol: string): MarketSearchItem {
     exchange,
     currency: currency.currency ?? undefined,
     currencySource: currency.source,
+    provider: 'THE SFM',
   };
+}
+
+function normalizeErrorSuggestions(value: unknown, query = '', includeFallback = true): MarketSearchSuggestion[] {
+  const rawItems = Array.isArray(value) ? value : [];
+  const normalized = rawItems
+    .map(item => typeof item === 'string' ? suggestionToMarketItem(item) : normalizeAssetSearchResult(item as Partial<MarketSearchItem> & Record<string, unknown>))
+    .filter((item): item is MarketSearchSuggestion => Boolean(item));
+  const fallback = normalized.length > 0 || !includeFallback ? normalized : marketSymbolSuggestions(query).map(symbol => suggestionToMarketItem(symbol));
+  const seen = new Set<string>();
+  return fallback.filter(item => {
+    const key = `${item.symbol}-${item.providerSymbol ?? item.symbol}-${item.assetType}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 6);
+}
+
+function suggestionButtonLabel(item: MarketSearchSuggestion) {
+  return item.name && item.name !== item.symbol ? `${item.symbol} - ${item.name}` : item.symbol;
+}
+
+function normalizePublicMarketErrorCode(code: string | undefined) {
+  const normalized = String(code ?? '').trim().toUpperCase();
+  const map: Record<string, string> = {
+    INVALID_SYMBOL: 'INVALID_SYMBOL',
+    SYMBOL_NOT_FOUND: 'INVALID_SYMBOL',
+    NO_DATA: 'NO_DATA',
+    PROVIDER_NO_DATA: 'NO_DATA',
+    PRICE_HISTORY_UNAVAILABLE: 'NO_DATA',
+    PROVIDER_DOWN: 'PROVIDER_DOWN',
+    OPENBB_UNREACHABLE: 'PROVIDER_DOWN',
+    PROVIDER_ERROR: 'PROVIDER_DOWN',
+    TIMEOUT: 'TIMEOUT',
+    OPENBB_TIMEOUT: 'TIMEOUT',
+    RATE_LIMIT: 'RATE_LIMIT',
+    OPENBB_RATE_LIMIT: 'RATE_LIMIT',
+  };
+  return map[normalized] ?? normalized;
+}
+
+function canAnalyzeDirectNormalizedInput(normalized: ReturnType<typeof normalizeMarketSymbolInput>) {
+  if (!normalized.valid) return false;
+  return normalized.assetType === 'forex'
+    || normalized.assetType === 'crypto'
+    || normalized.assetType === 'gold'
+    || normalized.assetType === 'commodity'
+    || normalized.assetType === 'index';
 }
 
 function hasUsableAnalysis(result: MarketResult): result is MarketAnalysis {
@@ -852,9 +917,19 @@ async function fetchJsonWithTimeout<T>(url: string, timeoutMs = MARKET_REQUEST_T
 
 function marketErrorText(code: string | undefined, fallback: string, t: (key: string) => string) {
   if (!code) return fallback;
+  const publicCode = normalizePublicMarketErrorCode(code);
+  const publicMap: Record<string, string> = {
+    INVALID_SYMBOL: t('market_symbol_not_found_helpful'),
+    NO_DATA: t('market_no_data_for_symbol'),
+    PROVIDER_DOWN: t('market_service_unavailable'),
+    TIMEOUT: t('market_timeout_error'),
+    RATE_LIMIT: t('market_rate_limit_error'),
+  };
+  if (publicMap[publicCode]) return publicMap[publicCode];
   const map: Record<string, string> = {
     openbb_unreachable: t('market_service_unavailable'),
     openbb_timeout: t('market_timeout_error'),
+    openbb_rate_limit: t('market_rate_limit_error'),
     symbol_not_found: t('market_symbol_not_found_helpful'),
     invalid_symbol: t('market_symbol_not_found_helpful'),
     provider_no_data: t('market_no_data_for_symbol'),
@@ -953,7 +1028,7 @@ export default function MarketAnalysisPage() {
   const [assetProfileLoading, setAssetProfileLoading] = useState(false);
   const [assetProfileError, setAssetProfileError] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [errorSuggestions, setErrorSuggestions] = useState<string[]>([]);
+  const [errorSuggestions, setErrorSuggestions] = useState<MarketSearchSuggestion[]>([]);
   const [notice, setNotice] = useState('');
   const [serviceState, setServiceState] = useState<MarketServiceState>('checking');
   const [timeframe, setTimeframe] = useState<MarketTimeframe>('1D');
@@ -1281,7 +1356,8 @@ export default function MarketAnalysisPage() {
     if (!normalizedInput.valid) {
       const suggestions = normalizedInput.suggestions.length ? normalizedInput.suggestions : marketSymbolSuggestions(symbolInput);
       setError(invalidSymbolMessage(t, normalizedInput.correction));
-      setErrorSuggestions(suggestions);
+      setErrorSuggestions(normalizeErrorSuggestions(suggestions, symbolInput));
+      setSelectedAsset(null);
       setAnalysis(null);
       setAiInsight(null);
       setServiceState(current => current === 'checking' ? 'connected' : current);
@@ -1292,7 +1368,8 @@ export default function MarketAnalysisPage() {
     const requestSymbol = normalizeProviderSymbolForRequest(String(selectedInput?.providerSymbol ?? normalizedInput.providerSymbol));
     if (!requestSymbol || !displaySymbol) {
       setError(invalidSymbolMessage(t, normalizedInput.correction));
-      setErrorSuggestions(normalizedInput.suggestions);
+      setErrorSuggestions(normalizeErrorSuggestions(normalizedInput.suggestions, symbolInput));
+      setSelectedAsset(null);
       setAnalysis(null);
       setAiInsight(null);
       setLoading(false);
@@ -1344,7 +1421,7 @@ export default function MarketAnalysisPage() {
         try {
           setNotice(attempt === 0 ? t('market_progress_loading_symbol') : t('market_service_waking'));
           result = await fetchJsonWithTimeout<MarketResultWithMeta>(`/api/market/analyze?${params.toString()}`, MARKET_REQUEST_TIMEOUT_MS, true);
-          const retryableCode = !result.success && ['openbb_timeout', 'openbb_unreachable', 'provider_error'].includes(result.code || '');
+          const retryableCode = !result.success && ['TIMEOUT', 'PROVIDER_DOWN'].includes(normalizePublicMarketErrorCode(result.code));
           if (retryableCode && attempt === 0) {
             setSlowLoading(true);
             setNotice(t('market_service_waking'));
@@ -1375,12 +1452,14 @@ export default function MarketAnalysisPage() {
         });
       }
       if (!result.success) {
-        const symbolIssue = result.code === 'invalid_symbol' || result.code === 'symbol_not_found';
+        const publicCode = normalizePublicMarketErrorCode(result.code);
+        const symbolIssue = publicCode === 'INVALID_SYMBOL';
         setServiceState(symbolIssue ? 'connected' : result.openbbService === 'degraded' || result.openbbService === 'slow' ? 'degraded' : result.openbbService === 'not_configured' ? 'not_configured' : 'unavailable');
         const suggestions = result.suggestions?.length ? result.suggestions : symbolIssue ? normalizedInput.suggestions : [];
-        setErrorSuggestions(suggestions);
+        if (symbolIssue) setSelectedAsset(null);
+        setErrorSuggestions(normalizeErrorSuggestions(suggestions, symbolInput));
         setAiInsight({ status: 'skipped', error: t('market_no_real_data_ai') });
-        throw new Error(symbolIssue ? invalidSymbolMessage(t, result.correction) : marketErrorText(result.code, result.error || t('market_analysis_unavailable'), t));
+        throw new Error(symbolIssue ? marketErrorText(publicCode, result.message || result.error || t('market_analysis_unavailable'), t) : marketErrorText(publicCode, result.message || result.error || t('market_analysis_unavailable'), t));
       }
 
       if (hasUsableAnalysis(result)) {
@@ -1562,14 +1641,6 @@ export default function MarketAnalysisPage() {
       setHighlightedSearchIndex(0);
       return;
     }
-    const normalizedTypedSymbol = normalizeMarketSymbolInput(cleanQuery, assetType);
-    if (!normalizedTypedSymbol.valid) {
-      setSearchResults([]);
-      setSearchMessage(invalidSymbolMessage(t, normalizedTypedSymbol.correction));
-      setSearchLoading(false);
-      setHighlightedSearchIndex(0);
-      return;
-    }
 
     let cancelled = false;
     setSearchLoading(true);
@@ -1577,17 +1648,22 @@ export default function MarketAnalysisPage() {
       try {
         const params = new URLSearchParams({ q: cleanQuery });
         if (assetType !== 'all') params.set('assetType', assetType);
-        const data = await fetchJsonWithTimeout<{ results?: MarketSearchItem[] }>(`/api/market/search?${params.toString()}`, 8000);
+        const data = await fetchJsonWithTimeout<MarketSearchResponse>(`/api/market/search?${params.toString()}`, 8000, true);
         if (cancelled) return;
-        const results = normalizeSearchItems(data.results ?? [], cleanQuery);
+        const responseItems = [
+          ...(data.resolved ? [data.resolved] : []),
+          ...(data.results ?? []),
+          ...normalizeErrorSuggestions(data.suggestions, cleanQuery, false),
+        ];
+        const results = normalizeSearchItems(responseItems, cleanQuery);
         setSearchResults(results);
         setHighlightedSearchIndex(0);
-        setSearchMessage(results.length === 0 ? t('market_symbol_not_found') : '');
+        setSearchMessage(results.length === 0 ? marketErrorText(data.code, data.message || data.error || t('market_symbol_not_found_helpful'), t) : '');
       } catch {
         if (!cancelled) {
           setSearchResults([]);
           setHighlightedSearchIndex(0);
-          setSearchMessage(t('market_symbol_not_found'));
+          setSearchMessage(t('market_symbol_not_found_helpful'));
         }
       } finally {
         if (!cancelled) setSearchLoading(false);
@@ -1887,10 +1963,16 @@ export default function MarketAnalysisPage() {
         setSearchLoading(true);
         const params = new URLSearchParams({ q: cleanQuery });
         if (assetType !== 'all') params.set('assetType', assetType);
-        const data = await fetchJsonWithTimeout<{ results?: MarketSearchItem[] }>(`/api/market/search?${params.toString()}`, 8000);
-        const results = normalizeSearchItems(data.results ?? [], cleanQuery);
+        const data = await fetchJsonWithTimeout<MarketSearchResponse>(`/api/market/search?${params.toString()}`, 8000, true);
+        const responseItems = [
+          ...(data.resolved ? [data.resolved] : []),
+          ...(data.results ?? []),
+          ...normalizeErrorSuggestions(data.suggestions, cleanQuery, false),
+        ];
+        const results = normalizeSearchItems(responseItems, cleanQuery);
         setSearchResults(results);
         setHighlightedSearchIndex(0);
+        setSearchMessage(results.length === 0 ? marketErrorText(data.code, data.message || data.error || t('market_symbol_not_found_helpful'), t) : '');
         selectedItem = selectBestMatch(results);
       } catch {
         selectedItem = undefined;
@@ -1901,7 +1983,7 @@ export default function MarketAnalysisPage() {
 
     if (!selectedItem) {
       const normalizedInput = normalizeMarketSymbolInput(cleanQuery, assetType);
-      if (normalizedInput.valid) {
+      if (canAnalyzeDirectNormalizedInput(normalizedInput)) {
         const validInput = normalizedInput as Extract<ReturnType<typeof normalizeMarketSymbolInput>, { valid: true }>;
         const exchange = validInput.assetType === 'forex' ? 'FX' : validInput.assetType === 'crypto' ? 'Crypto' : validInput.assetType === 'gold' ? 'COMEX' : undefined;
         const currency = resolveMarketCurrency({
@@ -1925,7 +2007,7 @@ export default function MarketAnalysisPage() {
         setAnalysis(null);
         setServiceState(current => current === 'checking' ? 'connected' : current);
         setError(invalidSymbolMessage(t, normalizedInput.correction));
-        setErrorSuggestions(normalizedInput.suggestions);
+        setErrorSuggestions(normalizeErrorSuggestions(normalizedInput.suggestions, cleanQuery));
         setSearchMessage(invalidSymbolMessage(t, normalizedInput.correction));
         return;
       }
@@ -1936,7 +2018,7 @@ export default function MarketAnalysisPage() {
       setAnalysis(null);
       const suggestions = marketSymbolSuggestions(cleanQuery);
       setError(invalidSymbolMessage(t));
-      setErrorSuggestions(suggestions);
+      setErrorSuggestions(normalizeErrorSuggestions(suggestions, cleanQuery));
       setSearchMessage(invalidSymbolMessage(t));
       return;
     }
@@ -2253,6 +2335,7 @@ export default function MarketAnalysisPage() {
       search?.focus({ preventScroll: true });
     });
   }, []);
+  const primaryErrorSuggestion = errorSuggestions[0];
 
   return (
     <div className="market-shell" dir={dir}>
@@ -2426,30 +2509,52 @@ export default function MarketAnalysisPage() {
         {notice && <div className="market-notice success" role="status">{notice}</div>}
         {slowLoading && <div className="market-notice slow" role="status">{t('market_slow_loading')}</div>}
         {error && (
-          <div className="market-notice" role="alert">
-            <span>{error}</span>
-            <button
-              type="button"
-              disabled={!selectedAsset}
-              onClick={() => selectedAsset && void requestAnalysis(selectedAsset.providerSymbol ?? selectedAsset.symbol, selectedAsset.assetType, selectedAsset)}
-            >
-              {t('market_retry')}
-            </button>
+          <div className="market-error-alert" role="alert">
+            <span className="market-error-alert-icon"><AlertTriangle size={20} /></span>
+            <div className="market-error-alert-copy">
+              <strong>{t('market_error_alert_title')}</strong>
+              <p>{error || t('market_error_alert_body')}</p>
+            </div>
+            <div className="market-error-actions">
+              <button
+                type="button"
+                className="market-error-action primary"
+                disabled={!selectedAsset || loading}
+                onClick={() => selectedAsset && void requestAnalysis(selectedAsset.providerSymbol ?? selectedAsset.symbol, selectedAsset.assetType, selectedAsset)}
+              >
+                {t('market_retry')}
+              </button>
+              {primaryErrorSuggestion && (
+                <button
+                  type="button"
+                  className="market-error-action secondary"
+                  disabled={loading}
+                  onClick={() => {
+                    setQuery(primaryErrorSuggestion.symbol);
+                    setError('');
+                    setErrorSuggestions([]);
+                    void analyzeSearchSelection(primaryErrorSuggestion);
+                  }}
+                >
+                  {t('market_use_suggestion').replace('{symbol}', primaryErrorSuggestion.symbol)}
+                </button>
+              )}
+            </div>
             {errorSuggestions.length > 0 && (
               <div className="market-suggestion-chips" aria-label={t('market_symbol_suggestions')}>
                 <small>{t('market_symbol_suggestions')}</small>
-                {errorSuggestions.map(symbol => (
+                {errorSuggestions.map(suggestion => (
                   <button
                     type="button"
-                    key={symbol}
+                    key={`${suggestion.symbol}-${suggestion.assetType}-${suggestion.providerSymbol ?? suggestion.symbol}`}
                     onClick={() => {
-                      setQuery(symbol);
+                      setQuery(suggestion.symbol);
                       setError('');
                       setErrorSuggestions([]);
-                      void analyzeSearchSelection(suggestionToMarketItem(symbol));
+                      void analyzeSearchSelection(suggestion);
                     }}
                   >
-                    {symbol}
+                    {suggestionButtonLabel(suggestion)}
                   </button>
                 ))}
               </div>
@@ -2460,7 +2565,7 @@ export default function MarketAnalysisPage() {
         <section className="market-active-dashboard">
         {activeTab === 'analyze' && <section className="market-card-grid" aria-label={t('market_analysis_cards')}>
           {loading ? (
-            <div className="market-empty" role="status">{loadingLabel}</div>
+            <MarketSectionLoading label={loadingLabel} cards={4} />
           ) : cards.length === 0 ? (
             selectedAsset ? (
               <MarketEmptyState
@@ -3704,6 +3809,19 @@ export default function MarketAnalysisPage() {
 
         .market-main {
           background: transparent !important;
+          gap: 18px !important;
+        }
+
+        .market-main > *,
+        .market-active-dashboard,
+        .news-sentiment-section {
+          max-width: 1280px !important;
+        }
+
+        .market-active-dashboard {
+          gap: 16px !important;
+          border-radius: 26px !important;
+          padding: 16px !important;
         }
 
         .market-hero {
@@ -3713,6 +3831,11 @@ export default function MarketAnalysisPage() {
           color: #0f172a !important;
           border-color: rgba(14, 165, 233, .18) !important;
           box-shadow: 0 20px 56px rgba(3, 18, 37, .08) !important;
+          grid-template-columns: minmax(0, 1fr) 220px !important;
+          align-items: center !important;
+          border-radius: 22px !important;
+          padding: 20px !important;
+          gap: 16px !important;
         }
 
         .market-hero:before {
@@ -3721,10 +3844,15 @@ export default function MarketAnalysisPage() {
 
         .market-hero h1 {
           color: #0f172a !important;
+          font-size: clamp(26px, 4vw, 40px) !important;
+          line-height: 1.08 !important;
+          margin-bottom: 8px !important;
         }
 
         .market-hero p {
           color: #475569 !important;
+          font-size: 13px !important;
+          line-height: 1.7 !important;
         }
 
         .market-eyebrow {
@@ -3744,6 +3872,9 @@ export default function MarketAnalysisPage() {
           border-color: rgba(14, 165, 233, .20) !important;
           color: #0f172a !important;
           box-shadow: 0 16px 36px rgba(3, 18, 37, .08) !important;
+          border-radius: 18px !important;
+          padding: 14px !important;
+          gap: 7px !important;
         }
 
         .market-hero-card span {
@@ -3752,6 +3883,7 @@ export default function MarketAnalysisPage() {
 
         .market-hero-card strong {
           color: #0f172a !important;
+          font-size: 34px !important;
         }
 
         .market-hero-card p,
@@ -3787,6 +3919,36 @@ export default function MarketAnalysisPage() {
           color: #fff !important;
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent)) !important;
           border-color: transparent !important;
+        }
+
+        .market-search-panel {
+          margin-top: 16px !important;
+        }
+
+        .market-status-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          gap: 10px !important;
+        }
+
+        .market-status-card {
+          border-radius: 18px !important;
+          padding: 12px !important;
+          gap: 10px !important;
+          box-shadow: 0 8px 22px rgba(3, 18, 37, .05) !important;
+        }
+
+        .market-status-card > span {
+          width: 36px !important;
+          height: 36px !important;
+          border-radius: 14px !important;
+        }
+
+        .market-status-card strong {
+          font-size: 15px !important;
+        }
+
+        .market-status-card small {
+          font-size: 11px !important;
         }
 
         .dark .market-shell {
@@ -3873,6 +4035,28 @@ export default function MarketAnalysisPage() {
           border-color: rgba(47, 214, 192, .28) !important;
         }
 
+        .dark .market-error-alert {
+          background:
+            linear-gradient(135deg, rgba(245, 185, 66, .12), rgba(47, 214, 192, .07)),
+            #0f1d31;
+          border-color: rgba(245, 185, 66, .24);
+          color: #F5B942;
+        }
+
+        .dark .market-error-alert-icon {
+          color: #F5B942;
+          background: rgba(245, 185, 66, .13);
+          border-color: rgba(245, 185, 66, .26);
+        }
+
+        .dark .market-error-alert-copy strong {
+          color: #FDE68A;
+        }
+
+        .dark .market-error-alert-copy p {
+          color: #F5B942;
+        }
+
         .market-dashboard-tabs {
           border-radius: 28px !important;
           padding: 10px !important;
@@ -3880,6 +4064,108 @@ export default function MarketAnalysisPage() {
             linear-gradient(135deg, rgba(29, 140, 255, .055), rgba(47, 214, 192, .075)),
             var(--sfm-card) !important;
           box-shadow: 0 16px 42px rgba(3, 18, 37, .07) !important;
+        }
+
+        .market-error-alert {
+          width: 100%;
+          max-width: 1280px;
+          margin-inline: auto;
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
+          align-items: start;
+          gap: 14px;
+          border: 1px solid rgba(245, 158, 11, .26);
+          border-radius: 22px;
+          background:
+            linear-gradient(135deg, rgba(255, 251, 235, .92), rgba(240, 253, 250, .72)),
+            var(--sfm-card);
+          box-shadow: 0 14px 36px rgba(3, 18, 37, .07);
+          padding: 15px;
+          color: #92400E;
+          min-width: 0;
+        }
+
+        .market-error-alert-icon {
+          width: 42px;
+          height: 42px;
+          border-radius: 16px;
+          display: grid;
+          place-items: center;
+          color: #B45309;
+          background: rgba(245, 158, 11, .14);
+          border: 1px solid rgba(245, 158, 11, .22);
+          flex: 0 0 auto;
+        }
+
+        .market-error-alert-copy {
+          min-width: 0;
+          display: grid;
+          gap: 4px;
+        }
+
+        .market-error-alert-copy strong {
+          color: #78350F;
+          font-size: 15px;
+          font-weight: 950;
+          line-height: 1.35;
+        }
+
+        .market-error-alert-copy p {
+          margin: 0;
+          color: #92400E;
+          font-size: 13px;
+          font-weight: 850;
+          line-height: 1.75;
+          overflow-wrap: anywhere;
+        }
+
+        .market-error-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 8px;
+          flex-wrap: wrap;
+          min-width: 0;
+        }
+
+        .market-error-action {
+          min-height: 38px;
+          border-radius: 999px;
+          padding: 0 13px;
+          font: 950 12px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+          white-space: nowrap;
+          border: 1px solid transparent;
+        }
+
+        .market-error-action.primary {
+          background: var(--sfm-foreground);
+          color: var(--sfm-card);
+        }
+
+        .market-error-action.secondary {
+          background: rgba(47, 214, 192, .12);
+          color: var(--sfm-primary-hover);
+          border-color: rgba(47, 214, 192, .28);
+        }
+
+        .market-error-action:disabled {
+          opacity: .55;
+          cursor: not-allowed;
+        }
+
+        .market-error-alert .market-suggestion-chips {
+          grid-column: 2 / -1;
+          flex-basis: auto;
+        }
+
+        .market-error-alert .market-suggestion-chips button {
+          height: auto;
+          min-height: 34px;
+          max-width: 100%;
+          white-space: normal;
+          text-align: start;
+          line-height: 1.35;
         }
 
         .market-focused-tab,
@@ -4568,6 +4854,38 @@ export default function MarketAnalysisPage() {
         @media (max-width: 720px) {
           .market-main {
             gap: 18px;
+          }
+
+          .market-hero {
+            grid-template-columns: 1fr !important;
+            padding: 16px !important;
+            border-radius: 20px !important;
+          }
+
+          .market-hero-card strong {
+            font-size: 30px !important;
+          }
+
+          .market-error-alert {
+            grid-template-columns: 1fr;
+            gap: 11px;
+            border-radius: 20px;
+            padding: 13px;
+          }
+
+          .market-error-alert-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 14px;
+          }
+
+          .market-error-actions,
+          .market-error-action {
+            width: 100%;
+          }
+
+          .market-error-alert .market-suggestion-chips {
+            grid-column: 1;
           }
 
           .market-status-grid,

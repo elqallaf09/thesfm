@@ -34,6 +34,10 @@ const aliasMap: Record<string, string[]> = {
   amd: ['AMD'],
   palantir: ['PLTR'],
   broadcom: ['AVGO'],
+  boeing: ['BA'],
+  'boeing company': ['BA'],
+  'the boeing company': ['BA'],
+  boing: ['BA'],
 };
 
 let cachedUniverse: { expiresAt: number; rows: USSymbolRecord[]; source: 'nasdaqtrader' | 'static' } | null = null;
