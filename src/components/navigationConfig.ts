@@ -151,11 +151,11 @@ export const NAV_GROUPS: NavigationGroup[] = [
     id: 'services',
     labelKey: 'nav_group_services',
     items: [
-      { id: 'investment-firms', icon: Building2, href: '/services/investment-firms', labelKey: 'nav_investment_firms' },
+      { id: 'investment-firms', icon: Building2, href: '/investment-companies', labelKey: 'nav_investment_firms' },
       { id: 'trading-companies', icon: LineChart, href: '/trading-companies', labelKey: 'nav_trading_companies' },
-      { id: 'accounting-firms', icon: Calculator, href: '/services/accounting-firms', labelKey: 'nav_accounting_firms' },
-      { id: 'feasibility-firms', icon: FileSearch, href: '/services/feasibility-firms', labelKey: 'nav_feasibility_firms' },
-      { id: 'advisory-firms', icon: BriefcaseBusiness, href: '/services/advisory-firms', labelKey: 'nav_advisory_firms' },
+      { id: 'accounting-firms', icon: Calculator, href: '/accounting-companies', labelKey: 'nav_accounting_firms' },
+      { id: 'feasibility-firms', icon: FileSearch, href: '/feasibility-companies', labelKey: 'nav_feasibility_firms' },
+      { id: 'advisory-firms', icon: BriefcaseBusiness, href: '/financial-consulting-companies', labelKey: 'nav_advisory_firms' },
     ],
   },
   {

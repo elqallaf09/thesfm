@@ -251,7 +251,7 @@ const FEATURED_ITEMS = [
   { id: 'reports-center', href: '/reports-center', icon: BarChart3, labelKey: 'nav_reports_center' as TranslationKey, purposeKey: 'reportsDesc' as const },
 ] as const;
 
-const COMING_SOON_ROUTE_IDS = new Set(['trading-companies']);
+const COMING_SOON_ROUTE_IDS = new Set<string>();
 
 const CATEGORY_DEFS = [
   { id: 'main', groupIds: ['main', 'financial-intelligence'] },

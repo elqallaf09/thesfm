@@ -1,12 +1,5 @@
-import { UnderDevelopment } from '@/components/UnderDevelopment';
+import { CompanyCategoryPage } from '@/components/company-listings/CompanyCategoryPage';
 
 export default function Page() {
-  return (
-    <UnderDevelopment
-      titleKey="services.tradingCompanies.title"
-      descriptionKey="services.tradingCompanies.description"
-      helperKey="services.tradingCompanies.helper"
-      statusKey="services.tradingCompanies.badge"
-    />
-  );
+  return <CompanyCategoryPage category="trading" />;
 }

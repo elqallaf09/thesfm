@@ -1,5 +1,5 @@
-import { UnderDevelopment } from '@/components/UnderDevelopment';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return <UnderDevelopment titleKey="services.feasibilityFirms.title" descriptionKey="services.feasibilityFirms.description" />;
+  redirect('/feasibility-companies');
 }

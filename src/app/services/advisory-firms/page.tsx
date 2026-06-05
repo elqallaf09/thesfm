@@ -1,5 +1,5 @@
-import { UnderDevelopment } from '@/components/UnderDevelopment';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return <UnderDevelopment titleKey="services.advisoryFirms.title" descriptionKey="services.advisoryFirms.description" />;
+  redirect('/financial-consulting-companies');
 }

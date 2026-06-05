@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { Activity, BarChart3, Clock3, Eye, Globe2, Languages, LockKeyhole, MonitorSmartphone, ShieldCheck, Users, type LucideIcon } from 'lucide-react';
+import { Activity, BarChart3, Building2, Clock3, Eye, Globe2, Languages, LockKeyhole, MonitorSmartphone, ShieldCheck, Users, type LucideIcon } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { COMPANY_CATEGORY_CONFIGS, isCompanyCategory } from '@/lib/companyListings';
 import { TR } from '@/lib/translations';
 
 type TranslationKey = keyof typeof TR;
@@ -24,6 +25,16 @@ type AdminData = {
   recent: Array<{ id: string; eventType: string; pagePath: string | null; sectionName?: string | null; module: string | null; device: string | null; language: string | null; createdAt: string }>;
   recentActivity?: Array<{ id: string; eventType: string; pagePath: string | null; sectionName?: string | null; module: string | null; device: string | null; language: string | null; createdAt: string }>;
   tracking?: { enabled: boolean; recent: boolean; label: 'active' | 'no_recent_events' | 'disabled'; lastEventAt?: string | null };
+};
+
+type AdminCompanyListing = {
+  id: string;
+  company_name: string | null;
+  category: string | null;
+  country: string | null;
+  city: string | null;
+  status: string | null;
+  created_at: string | null;
 };
 
 const rangeOptions: Array<[string, TranslationKey]> = [
@@ -174,6 +185,9 @@ export default function AdminAnalyticsClient() {
   const [adminCode, setAdminCode] = useState('');
   const [codeError, setCodeError] = useState('');
   const [submittingCode, setSubmittingCode] = useState(false);
+  const [companyRequests, setCompanyRequests] = useState<AdminCompanyListing[]>([]);
+  const [companyRequestsState, setCompanyRequestsState] = useState<'loading' | 'ready' | 'empty' | 'error' | 'forbidden' | 'code_required'>('loading');
+  const [updatingCompanyId, setUpdatingCompanyId] = useState('');
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login?next=/sfm-admin-control');
@@ -220,6 +234,56 @@ export default function AdminAnalyticsClient() {
   useEffect(() => {
     if (!loading && user) void load();
   }, [load, loading, user]);
+
+  const loadCompanyRequests = useCallback(async () => {
+    if (!user) return;
+    setCompanyRequestsState('loading');
+    try {
+      const response = await fetch('/api/company-listings/admin', { cache: 'no-store' });
+      if (response.status === 428) {
+        setCompanyRequestsState('code_required');
+        return;
+      }
+      if (response.status === 403 || response.status === 401) {
+        setCompanyRequestsState('forbidden');
+        return;
+      }
+      if (!response.ok) {
+        setCompanyRequestsState('error');
+        return;
+      }
+      const payload = await response.json() as { ok?: boolean; items?: AdminCompanyListing[] };
+      const items = payload.ok ? payload.items ?? [] : [];
+      setCompanyRequests(items);
+      setCompanyRequestsState(items.length ? 'ready' : 'empty');
+    } catch {
+      setCompanyRequestsState('error');
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!loading && user) void loadCompanyRequests();
+  }, [loadCompanyRequests, loading, user]);
+
+  const updateCompanyRequest = useCallback(async (id: string, status: 'approved' | 'rejected' | 'inactive') => {
+    setUpdatingCompanyId(id);
+    try {
+      const response = await fetch('/api/company-listings/admin', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      });
+      if (!response.ok) {
+        setCompanyRequestsState('error');
+        return;
+      }
+      setCompanyRequests(items => items.filter(item => item.id !== id));
+    } catch {
+      setCompanyRequestsState('error');
+    } finally {
+      setUpdatingCompanyId('');
+    }
+  }, []);
 
   const submitAdminCode = useCallback(async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -388,6 +452,48 @@ export default function AdminAnalyticsClient() {
               <strong>{formatNumber(Number(value ?? 0), lang)}</strong>
             </article>
           ))}
+        </section>
+
+        <section className="admin-section-grid single">
+          <Panel title={t('admin_company_requests')} icon={Building2}>
+            <p className="admin-panel-copy">{t('admin_company_requests_desc')}</p>
+            {companyRequestsState === 'loading' ? (
+              <CompactEmpty title={t('admin_loading')} body={t('admin_company_requests_desc')} />
+            ) : null}
+            {companyRequestsState === 'error' ? (
+              <CompactEmpty title={t('admin_error')} body={t('admin_company_requests_desc')} />
+            ) : null}
+            {companyRequestsState === 'empty' || (companyRequestsState === 'ready' && companyRequests.length === 0) ? (
+              <CompactEmpty title={t('admin_company_no_requests')} body={t('admin_company_requests_desc')} />
+            ) : null}
+            {companyRequestsState === 'ready' && companyRequests.length > 0 ? (
+              <div className="admin-table-wrap">
+                <table>
+                  <thead><tr><th>{t('company_listing_company_name')}</th><th>{t('company_listing_company_type')}</th><th>{t('company_listing_country')}</th><th>{t('company_listing_status')}</th><th>{t('admin_actions')}</th></tr></thead>
+                  <tbody>
+                    {companyRequests.map(item => {
+                      const categoryKey = isCompanyCategory(item.category) ? COMPANY_CATEGORY_CONFIGS[item.category].labelKey : 'company_listing_activity';
+                      return (
+                        <tr key={item.id}>
+                          <td>{item.company_name || '-'}</td>
+                          <td>{t(categoryKey)}</td>
+                          <td>{[item.country, item.city].filter(Boolean).join(' / ') || '-'}</td>
+                          <td>{t('company_listing_status_pending_review')}</td>
+                          <td>
+                            <div className="company-admin-actions">
+                              <button type="button" onClick={() => void updateCompanyRequest(item.id, 'approved')} disabled={updatingCompanyId === item.id}>{t('admin_company_approve')}</button>
+                              <button type="button" onClick={() => void updateCompanyRequest(item.id, 'rejected')} disabled={updatingCompanyId === item.id}>{t('admin_company_reject')}</button>
+                              <button type="button" onClick={() => void updateCompanyRequest(item.id, 'inactive')} disabled={updatingCompanyId === item.id}>{t('admin_company_disable')}</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </Panel>
         </section>
 
         <section className="admin-section-grid">
@@ -576,6 +682,12 @@ const adminStyles = `
   .admin-panel{min-width:0;padding:16px;display:grid;gap:12px}
   .admin-panel h2{margin:0;display:flex;align-items:center;gap:8px;color:var(--sfm-foreground);font-size:18px;font-weight:950}
   .admin-panel h2 svg{color:#18D4D4}
+  .admin-panel-copy{margin:0;color:var(--sfm-muted);line-height:1.7;font-weight:850}
+  .company-admin-actions{display:flex;flex-wrap:wrap;gap:7px}
+  .company-admin-actions button{min-height:34px;border:1px solid rgba(29,140,255,.16);border-radius:10px;background:rgba(29,140,255,.08);color:var(--sfm-foreground);padding:0 10px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}
+  .company-admin-actions button:first-child{border-color:rgba(22,163,74,.24);background:rgba(22,163,74,.10);color:#15803D}
+  .company-admin-actions button:nth-child(2){border-color:rgba(220,38,38,.20);background:rgba(220,38,38,.08);color:#B91C1C}
+  .company-admin-actions button:disabled{opacity:.65;cursor:not-allowed}
   .admin-table-wrap{max-width:100%;overflow-x:auto}
   table{width:100%;border-collapse:collapse;min-width:680px}
   .admin-compact-table{min-width:620px}

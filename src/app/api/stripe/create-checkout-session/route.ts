@@ -11,6 +11,7 @@ type CheckoutRequest = {
   plan?: unknown;
   billingInterval?: unknown;
   priceId?: unknown;
+  priceKey?: unknown;
 };
 
 const STRIPE_CHECKOUT_URL = 'https://api.stripe.com/v1/checkout/sessions';
@@ -45,6 +46,11 @@ function allowedPriceId(plan: CheckoutPlan, interval: BillingInterval) {
     : process.env.STRIPE_PRICE_PREMIUM_MONTHLY?.trim() || '';
 }
 
+function allowedPriceKey(plan: CheckoutPlan, interval: BillingInterval) {
+  if (plan === 'company') return 'STRIPE_PRICE_COMPANY_YEARLY';
+  return interval === 'yearly' ? 'STRIPE_PRICE_PREMIUM_YEARLY' : 'STRIPE_PRICE_PREMIUM_MONTHLY';
+}
+
 function stripeSecretKey() {
   return process.env.STRIPE_SECRET_KEY?.trim() || '';
 }
@@ -53,6 +59,12 @@ function siteOrigin(request: NextRequest) {
   return process.env.NEXT_PUBLIC_SITE_URL?.trim()
     || process.env.NEXT_PUBLIC_APP_URL?.trim()
     || request.nextUrl.origin;
+}
+
+function companyListingOrigin() {
+  return process.env.NEXT_PUBLIC_SITE_URL?.trim()
+    || process.env.NEXT_PUBLIC_APP_URL?.trim()
+    || 'https://www.the-sfm.com';
 }
 
 async function getAuthenticatedUser(request: NextRequest) {
@@ -88,18 +100,27 @@ export async function POST(request: NextRequest) {
   const secretKey = stripeSecretKey();
   const expectedPriceId = allowedPriceId(plan, billingInterval);
   const requestedPriceId = cleanString(payload.priceId);
+  const requestedPriceKey = cleanString(payload.priceKey);
   if (!secretKey || !expectedPriceId || !expectedPriceId.startsWith('price_')) {
     return json({ ok: false, code: 'PAYMENT_UNAVAILABLE', message: 'Payment is currently unavailable.' }, { status: 503 });
   }
   if (requestedPriceId && requestedPriceId !== expectedPriceId) {
     return json({ ok: false, code: 'INVALID_PRICE', message: 'Invalid Stripe price.' }, { status: 400 });
   }
+  if (requestedPriceKey && requestedPriceKey !== allowedPriceKey(plan, billingInterval)) {
+    return json({ ok: false, code: 'INVALID_PRICE_KEY', message: 'Invalid Stripe price key.' }, { status: 400 });
+  }
 
   const origin = siteOrigin(request).replace(/\/$/, '');
+  const companyOrigin = companyListingOrigin().replace(/\/$/, '');
   const params = new URLSearchParams({
     mode: 'subscription',
-    success_url: `${origin}/dashboard?checkout=success`,
-    cancel_url: `${origin}/#pricing`,
+    success_url: plan === 'company'
+      ? `${companyOrigin}/company-listing/success?session_id={CHECKOUT_SESSION_ID}`
+      : `${origin}/dashboard?checkout=success`,
+    cancel_url: plan === 'company'
+      ? `${companyOrigin}/company-listing/cancel`
+      : `${origin}/#pricing`,
     client_reference_id: user.id,
     'line_items[0][price]': expectedPriceId,
     'line_items[0][quantity]': '1',
