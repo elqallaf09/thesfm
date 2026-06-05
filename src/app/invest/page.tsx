@@ -35,7 +35,7 @@ const InvestPerformanceCharts = dynamic(() => import('@/components/invest/Invest
   ),
 });
 
-const TYPES: InvestmentType[] = ['stocks', 'fund', 'crypto', 'gold', 'silver', 'project', 'realEstate', 'cash', 'other'];
+const TYPES: InvestmentType[] = ['stocks', 'fund', 'crypto', 'gold', 'silver', 'realEstate', 'cash', 'project', 'other'];
 const RISKS: RiskLevel[] = ['low', 'medium', 'high'];
 const CHART_COLORS = ['#1D8CFF', '#18D4D4', '#10B981', '#F59E0B', '#6366F1', '#0B3A66', '#14B8A6', '#94A3B8'];
 const RISK_SCORE: Record<RiskLevel, number> = { low: 1, medium: 2, high: 3 };
@@ -179,6 +179,7 @@ export default function InvestPage() {
   const formLabels = useMemo(() => ({
     titleAdd: t('invest_form_titleAdd'),
     titleEdit: t('invest_form_titleEdit'),
+    subtitle: t('invest_form_subtitle'),
     close: t('close'),
     name: t('invest_form_name'),
     namePlaceholder: t('invest_form_namePlaceholderSmart'),
@@ -200,6 +201,7 @@ export default function InvestPage() {
     save: t('invest_form_save'),
     update: t('invest_form_update'),
     cancel: t('cancel'),
+    saveAnother: t('invest_form_saveAnother'),
     assetSearchLoading: t('invest_asset_searchLoading'),
     assetSearchNoResultsTitle: t('invest_asset_noResultsTitle'),
     assetSearchNoResultsBody: t('invest_asset_noResultsBody'),
@@ -210,41 +212,83 @@ export default function InvestPage() {
     dataSource: t('invest_asset_dataSource'),
     unavailable: t('invest_asset_unavailable'),
     fetchedPriceNote: t('invest_asset_fetchedPriceNote'),
-    manualLinkWarningTitle: t('invest_asset_manualWarningTitle'),
-    manualLinkWarningBody: t('invest_asset_manualWarningBody'),
     totalMarketValue: t('invest_asset_totalMarketValue'),
-    sectionAssetData: L('بيانات الأصل', 'Asset details', 'Détails de l’actif'),
-    sectionQuantity: L('الكمية أو الوزن', 'Quantity or weight', 'Quantité ou poids'),
-    sectionPricing: L('السعر والقيمة الحالية', 'Price and current value', 'Prix et valeur actuelle'),
-    sectionDetails: L('تفاصيل إضافية', 'Additional details', 'Détails supplémentaires'),
-    assetSearchPlaceholder: L('ابحث باسم السهم أو الرمز مثل: Apple, AAPL, QQQ, SPY', 'Search by symbol or name, e.g. Apple, AAPL, QQQ, SPY', 'Rechercher par symbole ou nom, ex. Apple, AAPL, QQQ, SPY'),
-    cryptoSearchPlaceholder: L('ابحث عن العملة الرقمية مثل: BTC, ETH, SOL', 'Search crypto, e.g. BTC, ETH, SOL', 'Rechercher une crypto, ex. BTC, ETH, SOL'),
-    fundSearchPlaceholder: L('ابحث باسم الصندوق أو الرمز مثل: QQQ, SPY', 'Search fund or ETF, e.g. QQQ, SPY', 'Rechercher un fonds ou ETF, ex. QQQ, SPY'),
-    purchasePrice: L('سعر الشراء اختياري', 'Purchase price optional', 'Prix d’achat facultatif'),
-    investmentAmount: L('مبلغ الاستثمار', 'Investment amount', 'Montant investi'),
-    currency: L('العملة', 'Currency', 'Devise'),
-    goldProductType: L('نوع الذهب', 'Gold type', 'Type d’or'),
-    silverProductType: L('نوع الفضة', 'Silver type', 'Type d’argent'),
-    goldKarat: L('العيار', 'Karat', 'Carat'),
-    silverPurity: L('النقاء', 'Purity', 'Pureté'),
-    customPurity: L('النقاء %', 'Purity %', 'Pureté %'),
-    grams: L('الوزن بالجرام', 'Weight in grams', 'Poids en grammes'),
-    pureGoldGrams: L('صافي الذهب الخالص', 'Pure gold equivalent', 'Équivalent or pur'),
-    pureSilverGrams: L('صافي الفضة الخالصة', 'Pure silver equivalent', 'Équivalent argent pur'),
-    estimatedValue: L('القيمة التقديرية', 'Estimated value', 'Valeur estimée'),
-    pricePerGram: L('سعر الجرام', 'Price per gram', 'Prix par gramme'),
-    metalsPriceLoading: L('جارٍ جلب أسعار المعادن الحقيقية...', 'Loading real metals prices...', 'Chargement des prix réels des métaux...'),
-    metalsPriceUnavailable: L('تعذر جلب سعر المعدن الحقيقي حالياً. يمكنك إدخال القيمة يدوياً مع حفظها كقيمة غير مرتبطة بسعر مباشر.', 'Real metals price is unavailable. You can enter a manual value; it will be saved without a live price link.', 'Le prix réel du métal est indisponible. Vous pouvez saisir une valeur manuelle sans lien de prix en direct.'),
-    chooseProject: L('اختر المشروع', 'Choose project', 'Choisir un projet'),
-    noProjectsTitle: L('لا توجد مشاريع بعد', 'No projects yet', 'Aucun projet pour le moment'),
-    noProjectsBody: L('أضف مشروعاً أولاً ثم اربطه بالاستثمار.', 'Add a project first, then link it to this investment.', 'Ajoutez d’abord un projet, puis liez-le à cet investissement.'),
-    addProject: L('إضافة مشروع جديد', 'Add new project', 'Ajouter un projet'),
-    projectBudget: L('ميزانية المشروع', 'Project budget', 'Budget du projet'),
-    projectStatus: L('حالة المشروع', 'Project status', 'Statut du projet'),
-    manualValue: L('القيمة اليدوية الحالية', 'Manual current value', 'Valeur actuelle manuelle'),
-    cashBankName: L('اسم البنك أو الوديعة', 'Bank or deposit name', 'Nom de banque ou dépôt'),
-    propertyLocation: L('اسم العقار أو الموقع', 'Property name or location', 'Nom ou emplacement du bien'),
-    calculationSummary: L('ملخص الحساب', 'Calculation summary', 'Résumé du calcul'),
+    sectionAssetType: t('invest_form_sectionAssetType'),
+    sectionAssetDetails: t('invest_form_sectionAssetDetails'),
+    sectionQuantityCost: t('invest_form_sectionQuantityCost'),
+    sectionExtraDetails: t('invest_form_sectionExtraDetails'),
+    assetSearchPlaceholder: t('invest_form_assetSearchPlaceholder'),
+    cryptoSearchPlaceholder: t('invest_form_cryptoSearchPlaceholder'),
+    fundSearchPlaceholder: t('invest_form_fundSearchPlaceholder'),
+    symbolRequired: t('invest_form_symbolRequired'),
+    symbolOptional: t('invest_form_symbolOptional'),
+    marketOptional: t('invest_form_marketOptional'),
+    investmentCurrency: t('invest_form_investmentCurrency'),
+    purchasePricePerShare: t('invest_form_purchasePricePerShare'),
+    currentPricePerShare: t('invest_form_currentPricePerShare'),
+    purchasePricePerUnit: t('invest_form_purchasePricePerUnit'),
+    currentPricePerUnit: t('invest_form_currentPricePerUnit'),
+    purchasePricePerGram: t('invest_form_purchasePricePerGram'),
+    currentPricePerGram: t('invest_form_currentPricePerGram'),
+    purchaseTotal: t('invest_form_purchaseTotal'),
+    currentValueAuto: t('invest_form_currentValueAuto'),
+    goldProductType: t('invest_form_goldProductType'),
+    silverProductType: t('invest_form_silverProductType'),
+    grams: t('invest_form_grams'),
+    count: t('invest_form_count'),
+    propertyName: t('invest_form_propertyName'),
+    propertyLocation: t('invest_form_propertyLocation'),
+    propertyPurchasePrice: t('invest_form_propertyPurchasePrice'),
+    propertyCurrentValue: t('invest_form_propertyCurrentValue'),
+    propertyMonthlyIncome: t('invest_form_propertyMonthlyIncome'),
+    propertyType: t('invest_form_propertyType'),
+    cashName: t('invest_form_cashName'),
+    cashAmount: t('invest_form_cashAmount'),
+    annualYield: t('invest_form_annualYield'),
+    maturityDate: t('invest_form_maturityDate'),
+    projectName: t('invest_form_projectName'),
+    projectCapital: t('invest_form_projectCapital'),
+    projectMonthlyIncome: t('invest_form_projectMonthlyIncome'),
+    projectMonthlyExpense: t('invest_form_projectMonthlyExpense'),
+    projectNetProfit: t('invest_form_projectNetProfit'),
+    otherAmount: t('invest_form_otherAmount'),
+    otherCurrentValue: t('invest_form_otherCurrentValue'),
+    summaryTitle: t('invest_form_summaryTitle'),
+    summaryIncomplete: t('invest_form_summaryIncomplete'),
+    summaryPurchaseTotal: t('invest_form_summaryPurchaseTotal'),
+    summaryCurrentValue: t('invest_form_summaryCurrentValue'),
+    summaryProfitLoss: t('invest_form_summaryProfitLoss'),
+    summaryProfitLossPercent: t('invest_form_summaryProfitLossPercent'),
+    summaryCurrency: t('invest_form_summaryCurrency'),
+    summaryDefaultCurrencyValue: t('invest_form_summaryDefaultCurrencyValue'),
+    fxUnavailable: t('invest_form_fxUnavailable'),
+    fxLoading: t('invest_form_fxLoading'),
+    fxRate: t('invest_form_fxRate'),
+    fxRetry: t('invest_form_fxRetry'),
+    manualPriceHint: t('invest_form_manualPriceHint'),
+    livePriceHint: t('invest_form_livePriceHint'),
+    searchMustSelect: t('invest_form_searchMustSelect'),
+    metalsPriceLoading: t('invest_form_metalsPriceLoading'),
+    metalsPriceUnavailable: t('invest_form_metalsPriceUnavailable'),
+    goldUnits: {
+      bar: t('invest_form_goldUnitBar'),
+      lira: t('invest_form_goldUnitLira'),
+      gram: t('invest_form_goldUnitGram'),
+      ounce: t('invest_form_goldUnitOunce'),
+      other: t('invest_form_goldUnitOther'),
+    },
+    silverUnits: {
+      gram: t('invest_form_silverUnitGram'),
+      ounce: t('invest_form_silverUnitOunce'),
+      kilo: t('invest_form_silverUnitKilo'),
+      other: t('invest_form_silverUnitOther'),
+    },
+    propertyTypes: {
+      residential: t('invest_form_propertyTypeResidential'),
+      commercial: t('invest_form_propertyTypeCommercial'),
+      land: t('invest_form_propertyTypeLand'),
+      other: t('invest_form_propertyTypeOther'),
+    },
     assetTypes: {
       stock: t('invest_asset_type_stock'),
       etf: t('invest_asset_type_etf'),
@@ -262,15 +306,16 @@ export default function InvestPage() {
       valuePositive: t('invest_form_errors_valuePositive'),
       contributionPositive: t('invest_form_errors_contributionPositive'),
       quantityPositive: t('invest_form_errors_quantityPositive'),
-      returnRange: L('العائد المتوقع يجب أن يكون بين -100 و 1000.', 'Expected return must be between -100 and 1000.', 'Le rendement attendu doit être entre -100 et 1000.'),
-      assetRequired: L('اختر أصلاً من نتائج البحث.', 'Choose an asset from search results.', 'Choisissez un actif dans les résultats.'),
-      projectRequired: L('اختر مشروعاً من مشاريعك.', 'Choose one of your projects.', 'Choisissez l’un de vos projets.'),
-      gramsPositive: L('أدخل وزناً أكبر من صفر.', 'Enter a weight greater than zero.', 'Saisissez un poids supérieur à zéro.'),
-      metalPriceRequired: L('أدخل قيمة يدوية أكبر من صفر إذا كان السعر المباشر غير متاح.', 'Enter a manual value greater than zero if the live price is unavailable.', 'Saisissez une valeur manuelle supérieure à zéro si le prix en direct est indisponible.'),
-      startDateRequired: L('تاريخ البداية مطلوب.', 'Start date is required.', 'La date de début est requise.'),
-      purityRequired: L('أدخل نقاء صالحاً بين 0 و 100%.', 'Enter a valid purity between 0 and 100%.', 'Saisissez une pureté valide entre 0 et 100 %.'),
+      returnRange: t('invest_form_errors_returnRangeWide'),
+      assetRequired: t('invest_form_errors_assetRequired'),
+      purchasePriceRequired: t('invest_form_errors_purchasePriceRequired'),
+      currentValueRequired: t('invest_form_errors_currentValueRequired'),
+      gramsPositive: t('invest_form_errors_gramsPositive'),
+      startDateRequired: t('invest_form_errors_startDateRequired'),
+      fxRequired: t('invest_form_errors_fxRequired'),
+      expensePositive: t('invest_form_errors_expensePositive'),
     },
-  }), [L, t]);
+  }), [t]);
 
   const typeLabel = useCallback((type: InvestmentType | string | null | undefined) => formatInvestmentType(type, t), [t]);
   const riskLabel = useCallback((risk: RiskLevel) => t(`invest_risks_${risk}`), [t]);
@@ -476,7 +521,7 @@ export default function InvestPage() {
     setModalOpen(true);
   }
 
-  async function handleSave(input: InvestmentInput) {
+  async function handleSave(input: InvestmentInput, options?: { addAnother?: boolean }) {
     setSaving(true);
     try {
       if (mode === 'create') {
@@ -486,8 +531,10 @@ export default function InvestPage() {
         await update(selected.id, input);
         showToast(t('invest_form_successUpdate'));
       }
-      setModalOpen(false);
-      setSelected(null);
+      if (!options?.addAnother) {
+        setModalOpen(false);
+        setSelected(null);
+      }
     } catch (err) {
       showToast(err instanceof Error ? err.message : t('error'));
     } finally {
@@ -551,8 +598,13 @@ export default function InvestPage() {
         quantity: item.quantity,
         amount: convertedMarketValue,
         purchasePrice: item.purchasePrice,
+        purchaseTotal: item.purchaseTotal,
         currentPrice: price,
         currentMarketValue,
+        profitLoss: item.purchaseTotal !== undefined ? currentMarketValue - item.purchaseTotal : item.profitLoss,
+        profitLossPercent: item.purchaseTotal && item.purchaseTotal > 0 ? ((currentMarketValue - item.purchaseTotal) / item.purchaseTotal) * 100 : item.profitLossPercent,
+        defaultCurrencyValue: convertedMarketValue,
+        unit: item.unit,
         priceCurrency: nativeCurrency,
         nativeCurrency,
         nativeUnitPrice: price,
@@ -569,6 +621,11 @@ export default function InvestPage() {
         dataSource: payload.item?.source || item.dataSource,
         projectId: item.projectId,
         projectName: item.projectName,
+        location: item.location,
+        propertyType: item.propertyType,
+        expectedMonthlyIncome: item.expectedMonthlyIncome,
+        expectedMonthlyExpense: item.expectedMonthlyExpense,
+        maturityDate: item.maturityDate,
         metalType: item.metalType,
         metalProductType: item.metalProductType,
         metalKarat: item.metalKarat,

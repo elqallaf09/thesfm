@@ -18,6 +18,7 @@ type DbInvestmentRow = {
   initial_value?: number | string | null;
   invested_amount?: number | string | null;
   purchase_price?: number | string | null;
+  purchase_total?: number | string | null;
   monthly_contribution?: number | string | null;
   start_date?: string | null;
   risk_level?: RiskLevel | null;
@@ -29,6 +30,15 @@ type DbInvestmentRow = {
   asset_type?: string | null;
   currency?: string | null;
   quantity?: number | string | null;
+  unit?: string | null;
+  profit_loss?: number | string | null;
+  profit_loss_percent?: number | string | null;
+  default_currency_value?: number | string | null;
+  location?: string | null;
+  property_type?: string | null;
+  expected_monthly_income?: number | string | null;
+  expected_monthly_expense?: number | string | null;
+  maturity_date?: string | null;
   project_id?: string | null;
   metal_type?: string | null;
   metal_product_type?: string | null;
@@ -105,8 +115,14 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
   const quantity = parseMoneyValue(row.quantity ?? meta?.quantity);
   const amount = parseMoneyValue(row.amount ?? meta?.amount);
   const purchasePrice = parseMoneyValue(row.purchase_price ?? meta?.purchasePrice);
+  const purchaseTotal = parseMoneyValue(row.purchase_total ?? meta?.purchaseTotal ?? row.invested_amount ?? row.initial_value);
   const currentPrice = parseMoneyValue(row.current_price ?? row.last_price ?? meta?.currentPrice ?? meta?.lastPrice);
   const currentMarketValue = parseMoneyValue(row.current_market_value ?? meta?.currentMarketValue);
+  const profitLoss = parseMoneyValue(row.profit_loss ?? meta?.profitLoss);
+  const profitLossPercent = parseMoneyValue(row.profit_loss_percent ?? meta?.profitLossPercent);
+  const defaultCurrencyValue = parseMoneyValue(row.default_currency_value ?? meta?.defaultCurrencyValue ?? row.converted_market_value ?? row.current_value ?? row.amount);
+  const expectedMonthlyIncome = parseMoneyValue(row.expected_monthly_income ?? meta?.expectedMonthlyIncome);
+  const expectedMonthlyExpense = parseMoneyValue(row.expected_monthly_expense ?? meta?.expectedMonthlyExpense);
   const nativeUnitPrice = parseMoneyValue(row.native_unit_price ?? meta?.nativeUnitPrice ?? row.current_price ?? row.last_price ?? meta?.currentPrice ?? meta?.lastPrice);
   const nativeMarketValue = parseMoneyValue(row.native_market_value ?? meta?.nativeMarketValue ?? row.current_market_value ?? meta?.currentMarketValue);
   const fxRateToUserCurrency = parseMoneyValue(row.fx_rate_to_user_currency ?? meta?.fxRateToUserCurrency);
@@ -150,12 +166,17 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
     currency: row.currency ?? meta?.currency,
     amount: amount.status === 'valid' ? amount.value : meta?.amount,
     purchasePrice: purchasePrice.status === 'valid' ? purchasePrice.value : meta?.purchasePrice,
+    purchaseTotal: purchaseTotal.status === 'valid' ? purchaseTotal.value : meta?.purchaseTotal,
     currentPrice: currentPrice.status === 'valid' ? currentPrice.value : meta?.currentPrice,
     currentMarketValue: currentMarketValue.status === 'valid'
       ? currentMarketValue.value
       : displayAmount.status === 'valid'
         ? displayAmount.value
         : meta?.currentMarketValue,
+    profitLoss: profitLoss.status === 'valid' ? profitLoss.value : meta?.profitLoss,
+    profitLossPercent: profitLossPercent.status === 'valid' ? profitLossPercent.value : meta?.profitLossPercent,
+    defaultCurrencyValue: defaultCurrencyValue.status === 'valid' ? defaultCurrencyValue.value : meta?.defaultCurrencyValue,
+    unit: row.unit ?? meta?.unit,
     priceCurrency: row.price_currency ?? meta?.priceCurrency ?? row.currency ?? meta?.currency,
     nativeCurrency: row.native_currency ?? meta?.nativeCurrency ?? row.price_currency ?? row.currency ?? meta?.priceCurrency ?? meta?.currency,
     nativeUnitPrice: nativeUnitPrice.status === 'valid' ? nativeUnitPrice.value : meta?.nativeUnitPrice,
@@ -177,6 +198,11 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
     dataSource: row.data_source ?? meta?.dataSource,
     projectId: row.project_id ?? meta?.projectId,
     projectName: meta?.projectName,
+    location: row.location ?? meta?.location,
+    propertyType: row.property_type ?? meta?.propertyType,
+    expectedMonthlyIncome: expectedMonthlyIncome.status === 'valid' ? expectedMonthlyIncome.value : meta?.expectedMonthlyIncome,
+    expectedMonthlyExpense: expectedMonthlyExpense.status === 'valid' ? expectedMonthlyExpense.value : meta?.expectedMonthlyExpense,
+    maturityDate: row.maturity_date ?? meta?.maturityDate,
     metalType: row.metal_type ?? meta?.metalType,
     metalProductType: row.metal_product_type ?? meta?.metalProductType,
     metalKarat: metalKarat.status === 'valid' ? metalKarat.value : meta?.metalKarat,
@@ -214,8 +240,13 @@ function metaFromInvestment(item: Investment | InvestmentInput): InvestmentMeta 
     quantity: item.quantity,
     amount: item.amount,
     purchasePrice: item.purchasePrice,
+    purchaseTotal: item.purchaseTotal,
     currentPrice: item.currentPrice,
     currentMarketValue: item.currentMarketValue,
+    profitLoss: item.profitLoss,
+    profitLossPercent: item.profitLossPercent,
+    defaultCurrencyValue: item.defaultCurrencyValue,
+    unit: item.unit,
     priceCurrency: item.priceCurrency,
     nativeCurrency: item.nativeCurrency,
     nativeUnitPrice: item.nativeUnitPrice,
@@ -232,6 +263,11 @@ function metaFromInvestment(item: Investment | InvestmentInput): InvestmentMeta 
     dataSource: item.dataSource,
     projectId: item.projectId,
     projectName: item.projectName,
+    location: item.location,
+    propertyType: item.propertyType,
+    expectedMonthlyIncome: item.expectedMonthlyIncome,
+    expectedMonthlyExpense: item.expectedMonthlyExpense,
+    maturityDate: item.maturityDate,
     metalType: item.metalType,
     metalProductType: item.metalProductType,
     metalKarat: item.metalKarat,
@@ -276,7 +312,7 @@ export function useInvestments() {
       const meta = readJson<Record<string, InvestmentMeta>>(userMetaKey, {});
       const full = await supabase
         .from('investment_items')
-        .select('id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,asset_type,quantity,current_price,current_market_value,price_currency,native_currency,native_unit_price,native_market_value,user_currency,fx_rate_to_user_currency,converted_market_value,fx_source,fx_last_updated_at,valuation_source,valuation_last_updated_at,last_price,last_price_updated_at,data_source,project_id,metal_type,metal_product_type,metal_karat,metal_purity,grams,pure_metal_grams,price_source,created_at,updated_at')
+        .select('id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,purchase_total,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,asset_type,quantity,unit,profit_loss,profit_loss_percent,default_currency_value,location,property_type,expected_monthly_income,expected_monthly_expense,maturity_date,current_price,current_market_value,price_currency,native_currency,native_unit_price,native_market_value,user_currency,fx_rate_to_user_currency,converted_market_value,fx_source,fx_last_updated_at,valuation_source,valuation_last_updated_at,last_price,last_price_updated_at,data_source,project_id,metal_type,metal_product_type,metal_karat,metal_purity,grams,pure_metal_grams,price_source,created_at,updated_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -353,7 +389,17 @@ export function useInvestments() {
       asset_type: data.assetType ?? null,
       currency: data.currency ?? null,
       quantity: data.quantity ?? null,
+      unit: data.unit ?? null,
       purchase_price: data.purchasePrice ?? null,
+      purchase_total: data.purchaseTotal ?? data.amount ?? null,
+      profit_loss: data.profitLoss ?? null,
+      profit_loss_percent: data.profitLossPercent ?? null,
+      default_currency_value: data.defaultCurrencyValue ?? data.convertedMarketValue ?? data.currentValue,
+      location: data.location ?? null,
+      property_type: data.propertyType ?? null,
+      expected_monthly_income: data.expectedMonthlyIncome ?? null,
+      expected_monthly_expense: data.expectedMonthlyExpense ?? null,
+      maturity_date: data.maturityDate ?? null,
       current_price: data.currentPrice ?? data.lastPrice ?? null,
       current_market_value: data.nativeMarketValue ?? data.currentMarketValue ?? data.currentValue,
       price_currency: data.priceCurrency ?? data.currency ?? null,
@@ -436,7 +482,17 @@ export function useInvestments() {
       asset_type: data.assetType ?? null,
       currency: data.currency ?? null,
       quantity: data.quantity ?? null,
+      unit: data.unit ?? null,
       purchase_price: data.purchasePrice ?? null,
+      purchase_total: data.purchaseTotal ?? data.amount ?? null,
+      profit_loss: data.profitLoss ?? null,
+      profit_loss_percent: data.profitLossPercent ?? null,
+      default_currency_value: data.defaultCurrencyValue ?? data.convertedMarketValue ?? data.currentValue,
+      location: data.location ?? null,
+      property_type: data.propertyType ?? null,
+      expected_monthly_income: data.expectedMonthlyIncome ?? null,
+      expected_monthly_expense: data.expectedMonthlyExpense ?? null,
+      maturity_date: data.maturityDate ?? null,
       current_price: data.currentPrice ?? data.lastPrice ?? null,
       current_market_value: data.nativeMarketValue ?? data.currentMarketValue ?? data.currentValue,
       price_currency: data.priceCurrency ?? data.currency ?? null,

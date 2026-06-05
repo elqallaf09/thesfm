@@ -34,7 +34,12 @@ export interface Investment {
   amount?: number;
   purchasePrice?: number;
   currentPrice?: number;
+  purchaseTotal?: number;
   currentMarketValue?: number;
+  profitLoss?: number;
+  profitLossPercent?: number;
+  defaultCurrencyValue?: number;
+  unit?: string;
   priceCurrency?: string;
   nativeCurrency?: string;
   nativeUnitPrice?: number;
@@ -51,6 +56,11 @@ export interface Investment {
   dataSource?: string;
   projectId?: string;
   projectName?: string;
+  location?: string;
+  propertyType?: string;
+  expectedMonthlyIncome?: number;
+  expectedMonthlyExpense?: number;
+  maturityDate?: string;
   metalType?: 'gold' | 'silver' | string;
   metalProductType?: string;
   metalKarat?: number;
