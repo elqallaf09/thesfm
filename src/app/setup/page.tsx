@@ -5,17 +5,28 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowRight,
+  Banknote,
   BriefcaseBusiness,
+  CalendarCheck,
+  ChevronDown,
   CheckCircle2,
   CircleDollarSign,
   Flag,
   HandHeart,
+  LineChart,
+  ListChecks,
   Loader2,
+  Percent,
   PiggyBank,
   Plus,
+  ReceiptText,
   ShieldCheck,
+  Sparkles,
   Target,
+  TrendingUp,
   Wallet,
+  X,
+  type LucideIcon,
 } from 'lucide-react';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
@@ -25,6 +36,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { formatCurrency, formatDate, formatPercent } from '@/lib/format';
+import { getCurrency } from '@/lib/currencies';
 import { useCurrency } from '@/lib/useCurrency';
 
 type Lang = 'ar' | 'en' | 'fr';
@@ -37,6 +49,13 @@ type SetupSummary = {
   savings: number;
   investments: number;
   projects: number;
+  incomeTotal: number;
+  expenseTotal: number;
+  savingsTotal: number;
+  investmentTotal: number;
+  goalTargetTotal: number;
+  goalRemainingTotal: number;
+  additionalIncomeSources: number;
   expectedRemaining: number;
   recommendedSavingPercent: number;
   monthlySavingSuggestion: number;
@@ -91,7 +110,7 @@ const COPY = {
     currentStep: 'الخطوة الحالية',
     completedStep: 'مكتملة',
     upcomingStep: 'قادمة',
-    realDataLong: 'لن يتم إنشاء أي دخل أو مصروف أو هدف تلقائياً. سيتم حفظ البيانات التي تدخلها أنت فقط.',
+    realDataLong: 'لن تتم إضافة أي بيانات مالية تلقائياً. سيتم حفظ البيانات التي أدخلتها فقط، ويمكنك تعديلها أو إكمالها لاحقاً.',
     optional: 'اختياري',
     required: 'مطلوب',
     yes: 'نعم، إضافة بيانات',
@@ -109,11 +128,61 @@ const COPY = {
     saved: 'تم إعداد حسابك بنجاح',
     savedSub: 'تم حفظ البيانات التي أدخلتها فقط. الخطوات التي تخطيتها بقيت فارغة.',
     initialPlanBuilt: 'تم بناء خطتك المالية الأولية',
+    completionTitle: 'تم بناء خطتك المالية الأولية بنجاح',
+    completionDescription: 'تم حفظ البيانات التي أدخلتها فقط، ويمكنك تعديل أو إضافة أي بيانات لاحقاً من لوحة التحكم.',
     expectedRemaining: 'المتبقي من دخلك المتوقع',
+    expectedMonthlyIncome: 'الدخل الشهري المتوقع',
     recommendedSavingPercent: 'أفضل نسبة ادخار لك',
     monthlySavingSuggestion: 'اقتراح الادخار الشهري',
     firstGoalCompletion: 'موعد إنجاز الهدف الأول المتوقع',
     notEnoughForEstimate: 'بيانات غير كافية للتقدير',
+    noGoalEstimateTitle: 'لا توجد بيانات كافية لتقدير موعد تحقيق الهدف',
+    noGoalEstimateHint: 'أضف مبلغ الهدف والمبلغ الشهري المخصص له للحصول على تقدير أدق.',
+    goalEstimateDesc: 'تقدير مبني على المبلغ المتبقي ونسبة الادخار المقترحة.',
+    currencyCardDesc: 'سيتم استخدام هذه العملة في العرض والتحليلات.',
+    incomeCardDesc: 'إجمالي مصادر الدخل التي حفظتها.',
+    noIncomeCardDesc: 'لم يتم حفظ دخل بعد. يمكنك إضافته لاحقاً من لوحة التحكم.',
+    remainingCardDesc: 'الدخل بعد طرح المصروفات الشهرية المحفوظة.',
+    savingPercentCardDesc: 'نسبة مبدئية مبنية على الفائض المتاح.',
+    expensesCardDesc: 'بنود مصروفات شهرية محفوظة فعلياً.',
+    investmentsCardDesc: 'استثمارات أضفتها أنت أو كانت محفوظة سابقاً.',
+    goalsCardDesc: 'أهداف مالية حقيقية محفوظة للمتابعة.',
+    projectsCardDesc: 'مشاريع أو أفكار مشاريع أضفتها أنت.',
+    savingsCardDesc: 'مدخرات محفوظة يمكن متابعتها لاحقاً.',
+    additionalIncomeSources: 'مصادر الدخل الإضافية',
+    additionalIncomeCardDesc: 'مصادر دخل غير الراتب ضمن بياناتك المحفوظة.',
+    dataPoints: 'نقاط بيانات محفوظة',
+    recommendationTitle: 'التوصية الأولية من THE SFM',
+    recommendationBasedOn: 'مبنية على البيانات المحفوظة في الإعداد فقط.',
+    recNoIncome: 'أضف دخلك الشهري حتى يتمكن النظام من حساب الفائض ونسب الادخار بدقة.',
+    recNoIncomeMeta: 'لا توجد مصادر دخل محفوظة حالياً.',
+    recGoodRemaining: 'وضعك المالي الأولي جيد، ويمكنك البدء بتوزيع الفائض بين الادخار والاستثمار.',
+    recGoodRemainingMeta: 'الفائض المتوقع {amount}، ويمثل {percent} من الدخل.',
+    recHighExpenses: 'مصروفاتك تبدو مرتفعة مقارنة بالدخل. ننصح بمراجعة البنود المتكررة.',
+    recHighExpensesMeta: 'المصروفات تمثل {percent} من الدخل الشهري المتوقع.',
+    recNoGoals: 'أضف هدفاً مالياً واحداً على الأقل حتى يتمكن النظام من بناء خطة أوضح.',
+    recNoGoalsMeta: 'لم يتم حفظ أي هدف مالي حتى الآن.',
+    recNoInvestments: 'يمكنك لاحقاً إضافة استثماراتك لتحليل أدائها ومقارنتها بعملتك الافتراضية.',
+    recNoInvestmentsMeta: 'لا توجد استثمارات محفوظة ضمن الإعداد الحالي.',
+    recBalanced: 'تم حفظ بياناتك الأولية، والخطوة التالية هي مراجعتها من لوحة التحكم وربطها بالتقارير.',
+    recBalancedMeta: 'يعتمد الملخص على {count} نقاط بيانات محفوظة.',
+    progressTitle: 'الخطوة المالية 9 - إنهاء الإعداد',
+    progressSubtitle: 'اكتمل إعداد الخطة الأولية بنسبة 100%.',
+    progressComplete: 'مكتمل 100%',
+    stepListTitle: 'خطوات الإعداد',
+    addMoreData: 'إضافة بيانات أخرى',
+    viewInitialReport: 'عرض التقرير الأولي',
+    reportTitle: 'التقرير المالي الأولي',
+    reportSubtitle: 'ملخص سريع من البيانات التي أدخلتها أو كانت محفوظة مسبقاً فقط.',
+    reportIncome: 'ملخص الدخل',
+    reportExpenses: 'ملخص المصروفات',
+    reportSavings: 'ملخص الادخار',
+    reportInvestments: 'ملخص الاستثمار',
+    reportGoals: 'ملخص الأهداف',
+    reportRecommendation: 'التوصية الأولية',
+    reportNoData: 'لا توجد بيانات كافية لهذا القسم بعد.',
+    reportGo: 'الانتقال للتقارير',
+    closeReport: 'إغلاق التقرير',
     steps: [
       'مرحباً بك',
       'العملة الافتراضية',
@@ -210,7 +279,7 @@ const COPY = {
     currentStep: 'Current step',
     completedStep: 'Completed',
     upcomingStep: 'Upcoming',
-    realDataLong: 'No income, expense, or goal will be created automatically. Only the data you enter will be saved.',
+    realDataLong: 'No financial data will be added automatically. Only the data you entered will be saved, and you can edit or complete it later.',
     optional: 'Optional',
     required: 'Required',
     yes: 'Yes, add data',
@@ -228,11 +297,61 @@ const COPY = {
     saved: 'Your account is set up',
     savedSub: 'Only the data you entered was saved. Skipped steps stayed empty.',
     initialPlanBuilt: 'Your initial financial plan has been built',
+    completionTitle: 'Your initial financial plan has been built successfully',
+    completionDescription: 'Only the data you entered was saved, and you can edit or add more data later from the dashboard.',
     expectedRemaining: 'Expected remaining salary',
+    expectedMonthlyIncome: 'Expected monthly income',
     recommendedSavingPercent: 'Recommended saving percentage',
     monthlySavingSuggestion: 'Monthly saving suggestion',
     firstGoalCompletion: 'Estimated first goal completion',
     notEnoughForEstimate: 'Not enough data to estimate',
+    noGoalEstimateTitle: 'Not enough data to estimate goal completion',
+    noGoalEstimateHint: 'Add the goal amount and the monthly amount assigned to it for a more accurate estimate.',
+    goalEstimateDesc: 'Estimate based on the remaining amount and the recommended saving percentage.',
+    currencyCardDesc: 'This currency will be used for display and analysis.',
+    incomeCardDesc: 'Total saved income sources.',
+    noIncomeCardDesc: 'No income has been saved yet. You can add it later from the dashboard.',
+    remainingCardDesc: 'Income after subtracting saved monthly expenses.',
+    savingPercentCardDesc: 'An initial percentage based on available surplus.',
+    expensesCardDesc: 'Monthly expense items actually saved.',
+    investmentsCardDesc: 'Investments you added or had already saved.',
+    goalsCardDesc: 'Real financial goals saved for tracking.',
+    projectsCardDesc: 'Projects or project ideas you added.',
+    savingsCardDesc: 'Saved balances you can track later.',
+    additionalIncomeSources: 'Additional income sources',
+    additionalIncomeCardDesc: 'Non-salary income sources in your saved data.',
+    dataPoints: 'Saved data points',
+    recommendationTitle: 'Initial recommendation from THE SFM',
+    recommendationBasedOn: 'Based only on the data saved during setup.',
+    recNoIncome: 'Add your monthly income so the system can calculate surplus and saving ratios accurately.',
+    recNoIncomeMeta: 'No income sources are saved yet.',
+    recGoodRemaining: 'Your initial financial position looks good. You can start distributing the surplus between savings and investment.',
+    recGoodRemainingMeta: 'Expected surplus is {amount}, equal to {percent} of income.',
+    recHighExpenses: 'Your expenses look high compared with income. We recommend reviewing recurring items.',
+    recHighExpensesMeta: 'Expenses represent {percent} of expected monthly income.',
+    recNoGoals: 'Add at least one financial goal so the system can build a clearer plan.',
+    recNoGoalsMeta: 'No financial goals have been saved yet.',
+    recNoInvestments: 'You can add your investments later to analyze performance and compare them with your default currency.',
+    recNoInvestmentsMeta: 'No investments are saved in the current setup.',
+    recBalanced: 'Your initial data has been saved. The next step is reviewing it from the dashboard and connecting it to reports.',
+    recBalancedMeta: 'The summary is based on {count} saved data points.',
+    progressTitle: 'Financial step 9 - Finish setup',
+    progressSubtitle: 'The initial plan setup is 100% complete.',
+    progressComplete: '100% complete',
+    stepListTitle: 'Setup steps',
+    addMoreData: 'Add more data',
+    viewInitialReport: 'View initial report',
+    reportTitle: 'Initial financial report',
+    reportSubtitle: 'A quick summary from only the data you entered or had already saved.',
+    reportIncome: 'Income summary',
+    reportExpenses: 'Expenses summary',
+    reportSavings: 'Savings summary',
+    reportInvestments: 'Investment summary',
+    reportGoals: 'Goals summary',
+    reportRecommendation: 'Initial recommendation',
+    reportNoData: 'There is not enough data for this section yet.',
+    reportGo: 'Go to Reports',
+    closeReport: 'Close report',
     steps: [
       'Welcome',
       'Default currency',
@@ -329,7 +448,7 @@ const COPY = {
     currentStep: 'Étape actuelle',
     completedStep: 'Terminée',
     upcomingStep: 'À venir',
-    realDataLong: 'Aucun revenu, dépense ou objectif ne sera créé automatiquement. Seules les données saisies seront enregistrées.',
+    realDataLong: 'Aucune donnée financière ne sera ajoutée automatiquement. Seules les données saisies seront enregistrées, et vous pourrez les modifier ou les compléter plus tard.',
     optional: 'Facultatif',
     required: 'Requis',
     yes: 'Oui, ajouter des données',
@@ -347,11 +466,61 @@ const COPY = {
     saved: 'Votre compte est configuré',
     savedSub: 'Seules les données saisies ont été enregistrées. Les étapes ignorées sont restées vides.',
     initialPlanBuilt: 'Votre plan financier initial a été créé',
+    completionTitle: 'Votre plan financier initial a été créé avec succès',
+    completionDescription: 'Seules les données saisies ont été enregistrées. Vous pourrez les modifier ou ajouter d’autres données plus tard depuis le tableau de bord.',
     expectedRemaining: 'Salaire restant estimé',
+    expectedMonthlyIncome: 'Revenu mensuel estimé',
     recommendedSavingPercent: 'Pourcentage d’épargne recommandé',
     monthlySavingSuggestion: 'Suggestion d’épargne mensuelle',
     firstGoalCompletion: 'Date estimée du premier objectif',
     notEnoughForEstimate: 'Données insuffisantes pour estimer',
+    noGoalEstimateTitle: 'Données insuffisantes pour estimer la réalisation de l’objectif',
+    noGoalEstimateHint: 'Ajoutez le montant de l’objectif et le montant mensuel qui lui est alloué pour obtenir une estimation plus précise.',
+    goalEstimateDesc: 'Estimation basée sur le montant restant et le pourcentage d’épargne recommandé.',
+    currencyCardDesc: 'Cette devise sera utilisée pour l’affichage et l’analyse.',
+    incomeCardDesc: 'Total des sources de revenu enregistrées.',
+    noIncomeCardDesc: 'Aucun revenu n’a encore été enregistré. Vous pourrez l’ajouter plus tard depuis le tableau de bord.',
+    remainingCardDesc: 'Revenu après déduction des dépenses mensuelles enregistrées.',
+    savingPercentCardDesc: 'Pourcentage initial basé sur le surplus disponible.',
+    expensesCardDesc: 'Postes de dépenses mensuelles réellement enregistrés.',
+    investmentsCardDesc: 'Investissements que vous avez ajoutés ou déjà enregistrés.',
+    goalsCardDesc: 'Objectifs financiers réels enregistrés pour le suivi.',
+    projectsCardDesc: 'Projets ou idées de projets que vous avez ajoutés.',
+    savingsCardDesc: 'Épargne enregistrée à suivre plus tard.',
+    additionalIncomeSources: 'Sources de revenu complémentaires',
+    additionalIncomeCardDesc: 'Sources de revenu hors salaire dans vos données enregistrées.',
+    dataPoints: 'Points de données enregistrés',
+    recommendationTitle: 'Recommandation initiale de THE SFM',
+    recommendationBasedOn: 'Basée uniquement sur les données enregistrées pendant la configuration.',
+    recNoIncome: 'Ajoutez votre revenu mensuel afin que le système calcule précisément le surplus et les ratios d’épargne.',
+    recNoIncomeMeta: 'Aucune source de revenu n’est enregistrée pour le moment.',
+    recGoodRemaining: 'Votre situation financière initiale semble bonne. Vous pouvez commencer à répartir le surplus entre épargne et investissement.',
+    recGoodRemainingMeta: 'Le surplus estimé est de {amount}, soit {percent} du revenu.',
+    recHighExpenses: 'Vos dépenses semblent élevées par rapport au revenu. Nous recommandons de revoir les postes récurrents.',
+    recHighExpensesMeta: 'Les dépenses représentent {percent} du revenu mensuel estimé.',
+    recNoGoals: 'Ajoutez au moins un objectif financier afin que le système construise un plan plus clair.',
+    recNoGoalsMeta: 'Aucun objectif financier n’a encore été enregistré.',
+    recNoInvestments: 'Vous pourrez ajouter vos investissements plus tard pour analyser leur performance et les comparer à votre devise par défaut.',
+    recNoInvestmentsMeta: 'Aucun investissement n’est enregistré dans cette configuration.',
+    recBalanced: 'Vos données initiales ont été enregistrées. L’étape suivante consiste à les revoir depuis le tableau de bord et à les relier aux rapports.',
+    recBalancedMeta: 'Le résumé est basé sur {count} points de données enregistrés.',
+    progressTitle: 'Étape financière 9 - Fin de la configuration',
+    progressSubtitle: 'La configuration du plan initial est terminée à 100 %.',
+    progressComplete: '100 % terminé',
+    stepListTitle: 'Étapes de configuration',
+    addMoreData: 'Ajouter d’autres données',
+    viewInitialReport: 'Voir le rapport initial',
+    reportTitle: 'Rapport financier initial',
+    reportSubtitle: 'Résumé rapide basé uniquement sur les données saisies ou déjà enregistrées.',
+    reportIncome: 'Résumé du revenu',
+    reportExpenses: 'Résumé des dépenses',
+    reportSavings: 'Résumé de l’épargne',
+    reportInvestments: 'Résumé de l’investissement',
+    reportGoals: 'Résumé des objectifs',
+    reportRecommendation: 'Recommandation initiale',
+    reportNoData: 'Données insuffisantes pour cette section.',
+    reportGo: 'Aller aux rapports',
+    closeReport: 'Fermer le rapport',
     steps: [
       'Bienvenue',
       'Devise par défaut',
@@ -474,6 +643,130 @@ function amountFrom(value: unknown) {
   return Number.isFinite(number) ? number : 0;
 }
 
+function amountFromAny(row: any, keys: string[]) {
+  for (const key of keys) {
+    const value = amountFrom(row?.[key]);
+    if (value > 0) return value;
+  }
+  return 0;
+}
+
+function parseGoalNotes(row: any) {
+  try {
+    return typeof row?.notes === 'string' ? JSON.parse(row.notes) : row?.notes || {};
+  } catch {
+    return {};
+  }
+}
+
+function goalTargetAmount(row: any) {
+  return amountFrom(row?.amount ?? row?.target_amount);
+}
+
+function goalCurrentAmount(row: any) {
+  const notes = parseGoalNotes(row);
+  return amountFrom(row?.current_amount ?? notes.currentAmount);
+}
+
+function isAdditionalIncome(row: any) {
+  const type = String(row?.income_type || row?.category || row?.type || '').trim().toLowerCase();
+  const label = String(row?.source_name || row?.label || row?.name || '').trim().toLowerCase();
+  if (amountFrom(row?.amount) <= 0) return false;
+  if (['salary', 'راتب', 'salaire'].includes(type)) return false;
+  if (!type && /salary|راتب|salaire/.test(label)) return false;
+  return true;
+}
+
+function summarizeExistingData(data: ExistingSetupData): SetupSummary {
+  const incomeRows = data.income.filter(row => amountFrom(row?.amount) > 0);
+  const expenseRows = data.expenses.filter(row => amountFrom(row?.amount) > 0);
+  const savingsRows = data.savings.filter(row => amountFromAny(row, ['amount', 'current_value']) > 0);
+  const investmentRows = data.investments.filter(row => amountFromAny(row, ['amount', 'current_value', 'converted_market_value', 'current_market_value', 'native_market_value']) > 0);
+  const goalRows = data.goals.filter(row => goalTargetAmount(row) > 0);
+  const projectRows = data.projects.filter(row => String(row?.name || '').trim());
+
+  const incomeTotal = incomeRows.reduce((total, row) => total + amountFrom(row.amount), 0);
+  const expenseTotal = expenseRows.reduce((total, row) => total + amountFrom(row.amount), 0);
+  const savingsTotal = savingsRows.reduce((total, row) => total + amountFromAny(row, ['amount', 'current_value']), 0);
+  const investmentTotal = investmentRows.reduce((total, row) => total + amountFromAny(row, ['amount', 'current_value', 'converted_market_value', 'current_market_value', 'native_market_value']), 0);
+  const goalTargetTotal = goalRows.reduce((total, row) => total + goalTargetAmount(row), 0);
+  const goalRemainingTotal = goalRows.reduce((total, row) => total + Math.max(0, goalTargetAmount(row) - goalCurrentAmount(row)), 0);
+  const expectedRemaining = Math.max(0, incomeTotal - expenseTotal);
+  const recommendedSavingPercent = incomeTotal > 0 && expectedRemaining > 0 ? Math.min(20, Math.max(10, Math.round((expectedRemaining / incomeTotal) * 50))) : 0;
+  const monthlySavingSuggestion = incomeTotal > 0 ? Math.min(expectedRemaining, Math.round(incomeTotal * (recommendedSavingPercent / 100))) : 0;
+
+  return {
+    income: incomeRows.length,
+    expenses: expenseRows.length,
+    goals: goalRows.length,
+    savings: savingsRows.length,
+    investments: investmentRows.length,
+    projects: projectRows.length,
+    incomeTotal,
+    expenseTotal,
+    savingsTotal,
+    investmentTotal,
+    goalTargetTotal,
+    goalRemainingTotal,
+    additionalIncomeSources: incomeRows.filter(isAdditionalIncome).length,
+    expectedRemaining,
+    recommendedSavingPercent,
+    monthlySavingSuggestion,
+    firstGoalCompletionDate: goalRemainingTotal > 0 && monthlySavingSuggestion > 0 ? dateAfterMonths(goalRemainingTotal / monthlySavingSuggestion) : '',
+  };
+}
+
+function setupIntlLocale(lang: Lang) {
+  if (lang === 'ar') return 'ar-KW-u-nu-latn';
+  if (lang === 'fr') return 'fr-FR';
+  return 'en-US';
+}
+
+function cleanIntl(value: string) {
+  return value.replace(/[\u061c\u200e\u200f]/g, '').replace(/\u00a0/g, ' ').trim();
+}
+
+function formatSetupMoney(amount: number, currencyCode: string, lang: Lang) {
+  const currency = getCurrency(currencyCode);
+  try {
+    const formatted = cleanIntl(new Intl.NumberFormat(setupIntlLocale(lang), {
+      style: 'currency',
+      currency: currency.code,
+      currencyDisplay: 'narrowSymbol',
+      minimumFractionDigits: currency.decimals,
+      maximumFractionDigits: currency.decimals,
+    }).format(Number.isFinite(amount) ? amount : 0));
+    return lang === 'ar' && currency.code === 'KWD' ? formatted.replace(/د\.ك\.$/u, 'د.ك') : formatted;
+  } catch {
+    return cleanIntl(new Intl.NumberFormat(setupIntlLocale(lang), {
+      minimumFractionDigits: currency.decimals,
+      maximumFractionDigits: currency.decimals,
+    }).format(Number.isFinite(amount) ? amount : 0)) + ` ${currency.code}`;
+  }
+}
+
+function formatSetupNumber(value: number, lang: Lang) {
+  return cleanIntl(new Intl.NumberFormat(setupIntlLocale(lang)).format(Number.isFinite(value) ? value : 0));
+}
+
+function formatSetupPercent(value: number, lang: Lang) {
+  return cleanIntl(new Intl.NumberFormat(setupIntlLocale(lang), {
+    style: 'percent',
+    maximumFractionDigits: 0,
+  }).format((Number.isFinite(value) ? value : 0) / 100));
+}
+
+function formatSetupDate(value: string, lang: Lang) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return cleanIntl(new Intl.DateTimeFormat(setupIntlLocale(lang), {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }).format(date));
+}
+
 function rowCurrency(row: any, fallback = 'KWD') {
   return String(row?.currency || row?.notes?.currency || fallback || 'KWD');
 }
@@ -509,6 +802,7 @@ export default function SetupPage() {
   const [existingLoading, setExistingLoading] = useState(true);
   const [prefilledFromExisting, setPrefilledFromExisting] = useState(false);
   const [editingExisting, setEditingExisting] = useState<Record<number, boolean>>({});
+  const [showInitialReport, setShowInitialReport] = useState(false);
 
   const [defaultCurrency, setDefaultCurrency] = useState('KWD');
   const [incomeEnabled, setIncomeEnabled] = useState(false);
@@ -625,23 +919,7 @@ export default function SetupPage() {
       }
       const hasRequiredExistingData = Boolean(currency) && nextExisting.income.some(row => amountFrom(row.amount) > 0) && nextExisting.expenses.some(row => amountFrom(row.amount) > 0) && nextExisting.goals.length > 0;
       if (hasRequiredExistingData && nextExisting.profile?.onboarding_completed !== true) {
-        const incomeTotal = nextExisting.income.reduce((total, row) => total + amountFrom(row.amount), 0);
-        const expenseTotal = nextExisting.expenses.reduce((total, row) => total + amountFrom(row.amount), 0);
-        const expectedRemaining = Math.max(0, incomeTotal - expenseTotal);
-        const recommendedSavingPercent = incomeTotal > 0 && expectedRemaining > 0 ? Math.min(20, Math.max(10, Math.round((expectedRemaining / incomeTotal) * 50))) : 0;
-        const monthlySavingSuggestion = incomeTotal > 0 ? Math.min(expectedRemaining, Math.round(incomeTotal * (recommendedSavingPercent / 100))) : 0;
-        setSummary({
-          income: nextExisting.income.length,
-          expenses: nextExisting.expenses.length,
-          goals: nextExisting.goals.length,
-          savings: nextExisting.savings.length,
-          investments: nextExisting.investments.length,
-          projects: nextExisting.projects.length,
-          expectedRemaining,
-          recommendedSavingPercent,
-          monthlySavingSuggestion,
-          firstGoalCompletionDate: '',
-        });
+        setSummary(summarizeExistingData(nextExisting));
         setStep(8);
       } else if (nextExisting.profile?.onboarding_completed !== true) {
         const hasAnyExistingData = Boolean(
@@ -782,27 +1060,51 @@ export default function SetupPage() {
   }
 
   function buildSetupSummary(countOverrides?: Partial<SetupSummary>): SetupSummary {
-    const incomeAmount = incomeEnabled && (editingExisting[2] || existingData.income.length === 0) ? toAmount(income.amount) : existingIncomeTotal();
-    const essentialExpenseTotal = expensesEnabled && (editingExisting[3] || existingData.expenses.length === 0)
-      ? Object.values(expenses).reduce((total, value) => total + Math.max(0, toAmount(value) || 0), 0)
-      : existingExpensesTotal();
-    const expectedRemaining = Math.max(0, incomeAmount - essentialExpenseTotal);
-    const recommendedSavingPercent = incomeAmount > 0 && expectedRemaining > 0 ? Math.min(20, Math.max(10, Math.round((expectedRemaining / incomeAmount) * 50))) : 0;
-    const monthlySavingSuggestion = incomeAmount > 0 ? Math.min(expectedRemaining, Math.round(incomeAmount * (recommendedSavingPercent / 100))) : 0;
-    const existingGoal = existingData.goals[0];
-    const existingGoalAmount = amountFrom(existingGoal?.amount ?? existingGoal?.target_amount);
-    const existingGoalCurrent = amountFrom(existingGoal?.current_amount);
-    const goalRemaining = goalEnabled && (editingExisting[4] || existingData.goals.length === 0)
-      ? Math.max(0, toAmount(goal.targetAmount) - toAmount(goal.currentAmount))
-      : Math.max(0, existingGoalAmount - existingGoalCurrent);
-    const firstGoalCompletionDate = goalRemaining > 0 && monthlySavingSuggestion > 0 ? dateAfterMonths(goalRemaining / monthlySavingSuggestion) : '';
+    const existing = summarizeExistingData(existingData);
+    const usesNewIncome = incomeEnabled && (editingExisting[2] || existingData.income.length === 0) && toAmount(income.amount) > 0;
+    const usesNewExpenses = expensesEnabled && (editingExisting[3] || existingData.expenses.length === 0);
+    const usesNewGoal = goalEnabled && (editingExisting[4] || existingData.goals.length === 0) && toAmount(goal.targetAmount) > 0;
+    const newExpenseEntries = Object.values(expenses).filter(value => Number.isFinite(toAmount(value)) && toAmount(value) > 0);
+    const newIncomeAmount = usesNewIncome ? toAmount(income.amount) : 0;
+    const editedIncome = editingExisting[2] ? firstExistingIncome(existingData.income) : null;
+    const editedIncomeAmount = editedIncome ? amountFrom(editedIncome.amount) : 0;
+    const editedIncomeWasAdditional = editedIncome ? isAdditionalIncome(editedIncome) : false;
+    const incomeTotal = usesNewIncome
+      ? Math.max(0, existing.incomeTotal - editedIncomeAmount) + newIncomeAmount
+      : existing.incomeTotal;
+    const expenseTotal = usesNewExpenses
+      ? (editingExisting[3] ? existing.expenseTotal : 0) + newExpenseEntries.reduce((total, value) => total + Math.max(0, toAmount(value) || 0), 0)
+      : existing.expenseTotal;
+    const savingsAmount = savingsEnabled ? toAmount(savings.amount) : 0;
+    const investmentAmount = investmentsEnabled ? toAmount(investment.amount) : 0;
+    const goalTarget = usesNewGoal ? toAmount(goal.targetAmount) : 0;
+    const goalCurrent = usesNewGoal ? toAmount(goal.currentAmount) : 0;
+    const editedGoal = editingExisting[4] ? existingData.goals[0] : null;
+    const editedGoalTarget = editedGoal ? goalTargetAmount(editedGoal) : 0;
+    const editedGoalRemaining = editedGoal ? Math.max(0, goalTargetAmount(editedGoal) - goalCurrentAmount(editedGoal)) : 0;
+    const goalTargetTotal = usesNewGoal ? Math.max(0, existing.goalTargetTotal - editedGoalTarget) + goalTarget : existing.goalTargetTotal;
+    const goalRemainingTotal = usesNewGoal ? Math.max(0, existing.goalRemainingTotal - editedGoalRemaining) + Math.max(0, goalTarget - goalCurrent) : existing.goalRemainingTotal;
+    const expectedRemaining = Math.max(0, incomeTotal - expenseTotal);
+    const recommendedSavingPercent = incomeTotal > 0 && expectedRemaining > 0 ? Math.min(20, Math.max(10, Math.round((expectedRemaining / incomeTotal) * 50))) : 0;
+    const monthlySavingSuggestion = incomeTotal > 0 ? Math.min(expectedRemaining, Math.round(incomeTotal * (recommendedSavingPercent / 100))) : 0;
+    const firstGoalCompletionDate = goalRemainingTotal > 0 && monthlySavingSuggestion > 0 ? dateAfterMonths(goalRemainingTotal / monthlySavingSuggestion) : '';
+
     return {
-      income: existingData.income.length,
-      expenses: existingData.expenses.length,
-      goals: existingData.goals.length,
-      savings: existingData.savings.length,
-      investments: existingData.investments.length,
-      projects: existingData.projects.length,
+      income: usesNewIncome ? Math.max(0, existing.income - (editedIncomeAmount > 0 ? 1 : 0)) + 1 : existing.income,
+      expenses: usesNewExpenses ? (editingExisting[3] ? existing.expenses : 0) + newExpenseEntries.length : existing.expenses,
+      goals: usesNewGoal ? Math.max(0, existing.goals - (editedGoalTarget > 0 ? 1 : 0)) + 1 : existing.goals,
+      savings: existing.savings + (savingsEnabled && savingsAmount > 0 ? 1 : 0),
+      investments: existing.investments + (investmentsEnabled && investmentAmount > 0 ? 1 : 0),
+      projects: existing.projects + (projectEnabled && project.name.trim() ? 1 : 0),
+      incomeTotal,
+      expenseTotal,
+      savingsTotal: existing.savingsTotal + (savingsEnabled && savingsAmount > 0 ? savingsAmount : 0),
+      investmentTotal: existing.investmentTotal + (investmentsEnabled && investmentAmount > 0 ? investmentAmount : 0),
+      goalTargetTotal,
+      goalRemainingTotal,
+      additionalIncomeSources: usesNewIncome
+        ? Math.max(0, existing.additionalIncomeSources - (editedIncomeWasAdditional ? 1 : 0)) + (income.incomeType !== 'salary' ? 1 : 0)
+        : existing.additionalIncomeSources,
       expectedRemaining,
       recommendedSavingPercent,
       monthlySavingSuggestion,
@@ -817,6 +1119,63 @@ export default function SetupPage() {
       if (stepStatuses[typed] !== 'completed') return typed;
     }
     return 8 as Step;
+  }
+
+  function addMoreDataStep() {
+    for (const candidate of [2, 3, 4, 5, 7] as Step[]) {
+      if (stepStatuses[candidate] !== 'completed') return candidate;
+    }
+    return 5 as Step;
+  }
+
+  function openMoreData() {
+    setShowInitialReport(false);
+    setStep(addMoreDataStep());
+  }
+
+  function recommendationItems(activeSummary: SetupSummary) {
+    const items: Array<{ title: string; meta: string }> = [];
+    const incomeTotal = activeSummary.incomeTotal;
+    const expenseRatio = incomeTotal > 0 ? activeSummary.expenseTotal / incomeTotal : 0;
+    const remainingRatio = incomeTotal > 0 ? activeSummary.expectedRemaining / incomeTotal : 0;
+    const savedDataPoints = activeSummary.income + activeSummary.expenses + activeSummary.goals + activeSummary.savings + activeSummary.investments + activeSummary.projects;
+
+    if (incomeTotal <= 0) {
+      items.push({ title: text.recNoIncome, meta: text.recNoIncomeMeta });
+    }
+
+    if (incomeTotal > 0 && expenseRatio >= 0.7) {
+      items.push({
+        title: text.recHighExpenses,
+        meta: text.recHighExpensesMeta.replace('{percent}', formatSetupPercent(expenseRatio * 100, lang)),
+      });
+    }
+
+    if (incomeTotal > 0 && remainingRatio >= 0.2) {
+      items.push({
+        title: text.recGoodRemaining,
+        meta: text.recGoodRemainingMeta
+          .replace('{amount}', formatSetupMoney(activeSummary.expectedRemaining, defaultCurrency, lang))
+          .replace('{percent}', formatSetupPercent(remainingRatio * 100, lang)),
+      });
+    }
+
+    if (activeSummary.goals === 0) {
+      items.push({ title: text.recNoGoals, meta: text.recNoGoalsMeta });
+    }
+
+    if (activeSummary.investments === 0) {
+      items.push({ title: text.recNoInvestments, meta: text.recNoInvestmentsMeta });
+    }
+
+    if (items.length === 0) {
+      items.push({
+        title: text.recBalanced,
+        meta: text.recBalancedMeta.replace('{count}', formatSetupNumber(savedDataPoints, lang)),
+      });
+    }
+
+    return items.slice(0, 4);
   }
 
   function confirmExistingStep(stepId: Step) {
@@ -839,6 +1198,7 @@ export default function SetupPage() {
         email: user.email ?? null,
         default_currency: defaultCurrency,
         preferred_currency: defaultCurrency,
+        onboarding_skipped: true,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
       if (profileError) throw profileError;
@@ -857,6 +1217,7 @@ export default function SetupPage() {
     try {
       const username = String(user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`);
       const focusValues = [focus.zakat ? 'zakat' : '', focus.charity ? 'charity' : ''].filter(Boolean).join(',');
+      const activeSummary = buildSetupSummary();
       const { error: profileError } = await db.from('profiles').upsert({
         id: user.id,
         username,
@@ -864,8 +1225,9 @@ export default function SetupPage() {
         default_currency: defaultCurrency,
         preferred_currency: defaultCurrency,
         financial_focus: focusValues || existingData.profile?.financial_focus || null,
-        monthly_income_target: buildSetupSummary().expectedRemaining + existingExpensesTotal(),
+        monthly_income_target: activeSummary.incomeTotal,
         onboarding_completed: true,
+        onboarding_skipped: false,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
       if (profileError) throw profileError;
@@ -903,10 +1265,7 @@ export default function SetupPage() {
     setSaving(true);
     setError('');
     const counts: SetupSummary = buildSetupSummary();
-    const incomeAmount = counts.income > 0 && !editingExisting[2] ? existingIncomeTotal() : (incomeEnabled ? toAmount(income.amount) : 0);
-    const essentialExpenseTotal = counts.expenses > 0 && !editingExisting[3] ? existingExpensesTotal() : (expensesEnabled
-      ? Object.values(expenses).reduce((total, value) => total + Math.max(0, toAmount(value) || 0), 0)
-      : 0);
+    const incomeAmount = counts.incomeTotal;
     const focusValues = [focus.zakat ? 'zakat' : '', focus.charity ? 'charity' : ''].filter(Boolean).join(',');
 
     try {
@@ -920,6 +1279,7 @@ export default function SetupPage() {
         financial_focus: focusValues || null,
         monthly_income_target: incomeAmount,
         onboarding_completed: true,
+        onboarding_skipped: false,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
       if (profileError) throw profileError;
@@ -958,7 +1318,6 @@ export default function SetupPage() {
             amount,
           });
         }
-        counts.income = 1;
       }
 
       if (expensesEnabled && (editingExisting[3] || existingData.expenses.length === 0)) {
@@ -987,7 +1346,6 @@ export default function SetupPage() {
             category: row.category,
           }));
           await insertWithFallback('expense_items', rows, fallbackRows);
-          counts.expenses = rows.length;
         }
       }
 
@@ -1027,7 +1385,6 @@ export default function SetupPage() {
             notes,
           });
         }
-        counts.goals = 1;
       }
 
       if (savingsEnabled) {
@@ -1042,7 +1399,6 @@ export default function SetupPage() {
           name: label,
           amount: toAmount(savings.amount),
         });
-        counts.savings = 1;
       }
 
       if (investmentsEnabled) {
@@ -1059,7 +1415,6 @@ export default function SetupPage() {
           name: label,
           amount: toAmount(investment.amount),
         });
-        counts.investments = 1;
       }
 
       if (projectEnabled) {
@@ -1081,7 +1436,6 @@ export default function SetupPage() {
           steps: [],
           notes,
         });
-        counts.projects = 1;
       }
 
       setSummary(counts);
@@ -1174,25 +1528,22 @@ export default function SetupPage() {
                 </div>
               </div>
               <div className="step-progress" aria-label={`${progress}%`}><i style={{ width: `${progress}%` }} /></div>
-              <div className="setup-plan">
-                <h3>{text.setupPlanTitle}</h3>
-                <p>{text.setupPlanSubtitle}</p>
-                <ul>
-                  {text.steps.slice(1, 8).map((item, index) => {
-                    const stepIndex = index + 1;
-                    const status = stepStatuses[stepIndex as Step];
-                    const state = status === 'completed' ? 'done' : step === stepIndex ? 'active' : 'upcoming';
-                    const stateLabel = state === 'done' ? text.completedStep : state === 'active' ? text.currentStep : text.upcomingStep;
-                    return (
-                      <li key={item} className={state}>
-                        <CheckCircle2 size={15} aria-hidden="true" />
-                        <span>{item}</span>
-                        <em>{stateLabel}</em>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
+              <ProgressPanel
+                step={step}
+                progress={progress}
+                steps={text.steps}
+                statuses={stepStatuses}
+                labels={{
+                  title: text.progressTitle,
+                  subtitle: text.progressSubtitle,
+                  complete: text.progressComplete,
+                  listTitle: text.stepListTitle,
+                  completed: text.completedStep,
+                  current: text.currentStep,
+                  upcoming: text.upcomingStep,
+                  optional: text.optional,
+                }}
+              />
             </aside>
             <main className="step-main">
               <div className="setup-info-alert">
@@ -1250,12 +1601,100 @@ export default function SetupPage() {
         .income-form-card{display:grid;gap:18px;border:1px solid rgba(29,140,255,.16);background:linear-gradient(180deg,#FFFFFF,rgba(234,246,255,.70));border-radius:28px;padding:clamp(18px,3vw,26px);box-shadow:0 18px 46px rgba(3,18,37,.08);min-width:0}.income-form-head{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:13px;min-width:0}.income-form-icon{width:48px;height:48px;border-radius:17px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(234,246,255,.95),rgba(24,212,212,.13));border:1px solid rgba(29,140,255,.16);color:var(--sfm-primary);box-shadow:0 10px 24px rgba(29,140,255,.10)}.income-form-head h3{margin:0;color:var(--sfm-primary-dark);font-size:20px;font-weight:950;line-height:1.35}.income-form-head p{margin:6px 0 0;color:var(--sfm-muted-readable);font-size:14px;font-weight:850;line-height:1.8}.income-form-grid{background:rgba(255,255,255,.58);border:1px solid rgba(29,140,255,.10);border-radius:22px;padding:14px}:global(.dark) .setup-page .income-form-card{background:linear-gradient(180deg,#0F1E32,#0B1728);border-color:#1D3050;box-shadow:0 22px 54px rgba(0,0,0,.28)}:global(.dark) .setup-page .income-form-icon{background:linear-gradient(135deg,rgba(47,214,192,.18),rgba(29,140,255,.12));border-color:rgba(47,214,192,.24);color:#8EEAE5}:global(.dark) .setup-page .income-form-head h3{color:#F8FBFF}:global(.dark) .setup-page .income-form-head p{color:#C7D3E1}:global(.dark) .setup-page .income-form-grid{background:rgba(15,30,50,.64);border-color:#1D3050}
         .recurring-income-card{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;border:1px solid rgba(29,140,255,.16);background:linear-gradient(180deg,#FFFFFF,rgba(234,246,255,.70));border-radius:20px;padding:16px;min-width:0;box-shadow:0 10px 26px rgba(3,18,37,.05)}.recurring-income-copy{display:grid;gap:5px;min-width:0;text-align:start}.recurring-income-copy strong{color:var(--sfm-primary-dark);font-size:15px;font-weight:950;line-height:1.45}.recurring-income-copy p{margin:0;color:var(--sfm-muted-readable);font-size:13px;font-weight:850;line-height:1.7}.recurring-income-switch{width:58px;height:32px;border-radius:999px;border:1px solid rgba(29,140,255,.22);background:#EAF6FF;padding:3px;display:flex;align-items:center;justify-content:flex-start;cursor:pointer;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease;flex:0 0 auto}.recurring-income-switch span{width:26px;height:26px;border-radius:999px;background:#FFFFFF;box-shadow:0 6px 14px rgba(3,18,37,.16);transition:transform .18s ease}.recurring-income-switch.active{justify-content:flex-end;border-color:transparent;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));box-shadow:0 10px 24px rgba(29,140,255,.18)}.recurring-income-switch:focus-visible{outline:3px solid rgba(24,212,212,.34);outline-offset:3px}:global(.dark) .setup-page .recurring-income-card{background:linear-gradient(180deg,#0F1E32,#0B1728);border-color:#1D3050;box-shadow:0 14px 34px rgba(0,0,0,.22)}:global(.dark) .setup-page .recurring-income-copy strong{color:#F8FBFF}:global(.dark) .setup-page .recurring-income-copy p{color:#C7D3E1}:global(.dark) .setup-page .recurring-income-switch{background:#13243A;border-color:#1D3050}:global(.dark) .setup-page .recurring-income-switch span{background:#F8FBFF}:global(.dark) .setup-page .recurring-income-switch.active{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));box-shadow:0 10px 24px rgba(47,214,192,.18)}
         .expense-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.summary-card{background:var(--sfm-light-card);border:1px solid rgba(29,140,255,.14);border-radius:16px;padding:13px;min-width:0}.summary-card small{display:block;color:var(--sfm-muted);font-weight:900}.summary-card strong{display:block;margin-top:5px;color:var(--sfm-primary-dark);font-size:22px}
+        :global(.setup-page .progress-panel){display:grid;gap:13px;border-top:1px solid rgba(29,140,255,.10);padding-top:13px;min-width:0}
+        :global(.setup-page .progress-panel-head){display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start}
+        :global(.setup-page .progress-panel-head svg){width:38px;height:38px;border-radius:13px;background:rgba(24,212,212,.10);color:var(--sfm-primary);padding:9px}
+        :global(.setup-page .progress-panel-head h3){margin:0;color:var(--sfm-midnight);font-size:16px;font-weight:950;line-height:1.35}
+        :global(.setup-page .progress-panel-head p){margin:4px 0 0;color:var(--sfm-muted-readable);font-size:12px;font-weight:850;line-height:1.6}
+        :global(.setup-page .progress-panel-meter){display:grid;gap:8px}
+        :global(.setup-page .progress-panel-meter strong){font-size:18px;color:#047857}
+        :global(.setup-page .progress-panel-meter span){height:10px;border-radius:999px;background:rgba(29,140,255,.10);overflow:hidden}
+        :global(.setup-page .progress-panel-meter i){display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#10B981,var(--sfm-accent))}
+        :global(.setup-page .progress-details){display:grid;gap:9px;min-width:0}
+        :global(.setup-page .progress-details summary){display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;list-style:none;border:1px solid rgba(29,140,255,.12);background:#FFFFFF;border-radius:14px;padding:10px 11px;color:var(--sfm-midnight);font-weight:950}
+        :global(.setup-page .progress-details summary::-webkit-details-marker){display:none}
+        :global(.setup-page .progress-details summary svg){color:var(--sfm-primary);transition:transform .18s ease}
+        :global(.setup-page .progress-details[open] summary svg){transform:rotate(180deg)}
+        :global(.setup-page .progress-details ol){display:grid;gap:7px;margin:9px 0 0;padding:0;list-style:none;max-height:390px;overflow:auto}
+        :global(.setup-page .progress-details li){display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"icon title badge" "icon state badge";gap:3px 9px;align-items:center;border:1px solid rgba(29,140,255,.10);background:#FFFFFF;border-radius:14px;padding:9px;min-width:0}
+        :global(.setup-page .progress-row-icon){grid-area:icon;width:30px;height:30px;border-radius:999px;display:grid;place-items:center;background:rgba(29,140,255,.10);color:var(--sfm-primary-dark);font-size:12px;font-weight:950}
+        :global(.setup-page .progress-details li b){grid-area:title;min-width:0;color:var(--sfm-midnight);font-size:12px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        :global(.setup-page .progress-details li small){grid-area:state;color:var(--sfm-muted-readable);font-size:10px;font-weight:900}
+        :global(.setup-page .progress-details li em){grid-area:badge;font-style:normal;border-radius:999px;background:rgba(29,140,255,.09);color:var(--sfm-primary-hover);font-size:10px;font-weight:950;padding:4px 7px;white-space:nowrap}
+        :global(.setup-page .progress-details li.done){background:#ECFDF5;border-color:rgba(16,185,129,.22)}
+        :global(.setup-page .progress-details li.done .progress-row-icon){background:#D1FAE5;color:#047857}
+        :global(.setup-page .progress-details li.done b){color:#047857}
+        :global(.setup-page .progress-details li.active){background:rgba(24,212,212,.07);border-color:rgba(24,212,212,.28)}
+        :global(.setup-page .progress-details li.optional){background:#F8FBFF}
+        .completion-panel{gap:16px}
+        .completion-hero{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center;border:1px solid rgba(16,185,129,.18);background:linear-gradient(135deg,#F0FDF4,#FFFFFF 54%,#EAF6FF);border-radius:24px;padding:clamp(18px,3vw,26px);box-shadow:0 18px 46px rgba(3,18,37,.08);min-width:0}
+        .completion-success-icon{width:74px;height:74px;border-radius:24px;display:grid;place-items:center;background:linear-gradient(135deg,#10B981,#18D4D4);color:#FFFFFF;box-shadow:0 18px 36px rgba(16,185,129,.22);flex:0 0 auto}
+        .completion-copy{min-width:0}.completion-copy span{display:inline-flex;border-radius:999px;background:#ECFDF5;color:#047857;padding:5px 10px;font-size:12px;font-weight:950}.completion-copy h2{margin:10px 0 8px;color:var(--sfm-primary-dark);font-size:clamp(25px,4vw,38px);line-height:1.18;font-weight:950}.completion-copy p{margin:0;color:var(--sfm-muted-readable);font-size:15px;line-height:1.8;font-weight:850}
+        .completion-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;min-width:0}
+        .completion-summary-grid :global(.completion-summary-card){display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px;align-items:start;border:1px solid rgba(29,140,255,.12);background:linear-gradient(180deg,#FFFFFF,#F8FBFF);border-radius:16px;padding:13px;min-width:0;box-shadow:0 10px 26px rgba(3,18,37,.05)}
+        .completion-summary-grid :global(.completion-summary-card.income),.completion-summary-grid :global(.completion-summary-card.remaining){grid-column:span 2}
+        .completion-summary-grid :global(.summary-icon){width:38px;height:38px;border-radius:13px;display:grid;place-items:center;background:rgba(29,140,255,.10);color:var(--sfm-primary);flex:0 0 auto}
+        .completion-summary-grid :global(.completion-summary-card.currency .summary-icon){background:#EEF2FF;color:#3730A3}
+        .completion-summary-grid :global(.completion-summary-card.remaining .summary-icon){background:#ECFDF5;color:#047857}
+        .completion-summary-grid :global(.completion-summary-card.saving .summary-icon){background:#FFFBEB;color:#B45309}
+        .completion-summary-grid :global(.completion-summary-card small){display:block;color:var(--sfm-muted-readable);font-size:12px;font-weight:950;line-height:1.35}
+        .completion-summary-grid :global(.completion-summary-card strong){display:block;margin-top:5px;color:var(--sfm-midnight);font-size:clamp(18px,2.3vw,26px);line-height:1.2;font-weight:950;overflow-wrap:anywhere;unicode-bidi:isolate}
+        .completion-summary-grid :global(.completion-summary-card p){margin:6px 0 0;color:var(--sfm-muted-readable);font-size:11px;font-weight:820;line-height:1.55}
+        .goal-estimate-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;border:1px solid rgba(29,140,255,.13);background:#FFFFFF;border-radius:18px;padding:14px;min-width:0}
+        .goal-estimate-card>svg{width:42px;height:42px;border-radius:14px;background:rgba(29,140,255,.10);color:var(--sfm-primary);padding:10px}.goal-estimate-card small{display:block;color:var(--sfm-muted-readable);font-weight:950}.goal-estimate-card strong{display:block;margin-top:4px;color:var(--sfm-midnight);font-size:18px;line-height:1.35}.goal-estimate-card p{margin:5px 0 0;color:var(--sfm-muted-readable);font-weight:850;line-height:1.65}
+        .recommendation-panel{display:grid;gap:13px;border:1px solid rgba(24,212,212,.20);background:linear-gradient(135deg,rgba(234,246,255,.92),rgba(24,212,212,.08));border-radius:22px;padding:16px;min-width:0}
+        .recommendation-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px;align-items:start}.recommendation-head>svg{width:42px;height:42px;border-radius:14px;background:var(--sfm-midnight);color:var(--sfm-soft-cyan);padding:10px}.recommendation-head h3{margin:0;color:var(--sfm-primary-dark);font-size:19px;font-weight:950}.recommendation-head p{margin:5px 0 0;color:var(--sfm-muted-readable);font-weight:850;line-height:1.65}
+        .recommendation-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.recommendation-list article{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;align-items:start;border:1px solid rgba(29,140,255,.10);background:#FFFFFF;border-radius:15px;padding:12px;min-width:0}.recommendation-list article>svg{color:#10B981;margin-top:2px}.recommendation-list strong{display:block;color:var(--sfm-midnight);font-size:13px;line-height:1.55}.recommendation-list span{display:block;margin-top:4px;color:var(--sfm-muted-readable);font-size:12px;font-weight:820;line-height:1.55}
+        .completion-actions{justify-content:flex-end}.completion-actions button{box-shadow:0 8px 20px rgba(3,18,37,.05)}.completion-actions button.primary{min-width:min(260px,100%);font-size:15px}
+        .report-modal-backdrop{position:fixed;inset:0;z-index:160;display:grid;place-items:center;background:rgba(3,18,37,.52);backdrop-filter:blur(10px);padding:18px}
+        .initial-report-modal{width:min(860px,100%);max-height:min(88dvh,860px);overflow:auto;background:#FFFFFF;border:1px solid rgba(29,140,255,.18);border-radius:24px;padding:18px;box-shadow:0 34px 90px rgba(3,18,37,.30);display:grid;gap:14px}
+        .report-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.report-modal-head span{display:block;color:var(--sfm-primary);font-size:12px;font-weight:950}.report-modal-head h3{margin:4px 0;color:var(--sfm-midnight);font-size:26px;font-weight:950}.report-modal-head p{margin:0;color:var(--sfm-muted-readable);line-height:1.7;font-weight:850}.report-modal-head button{width:40px;height:40px;border-radius:13px;border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);color:var(--sfm-midnight);display:grid;place-items:center;cursor:pointer;flex:0 0 auto}
+        .report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.report-grid :global(.report-card){display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:16px;padding:13px;min-width:0}.report-grid :global(.report-card svg){width:38px;height:38px;border-radius:13px;background:rgba(29,140,255,.10);color:var(--sfm-primary);padding:9px}.report-grid :global(.report-card small){display:block;color:var(--sfm-muted-readable);font-weight:950}.report-grid :global(.report-card strong){display:block;margin-top:5px;color:var(--sfm-midnight);font-size:21px;font-weight:950;overflow-wrap:anywhere;unicode-bidi:isolate}.report-grid :global(.report-card p){margin:5px 0 0;color:var(--sfm-muted-readable);font-size:12px;font-weight:850;line-height:1.6}
+        .report-recommendation{border:1px solid rgba(24,212,212,.20);background:rgba(24,212,212,.07);border-radius:16px;padding:13px}.report-recommendation h4{margin:0 0 8px;color:var(--sfm-primary-dark);font-size:16px}.report-recommendation p{margin:6px 0 0;color:var(--sfm-midnight);font-weight:850;line-height:1.6}
+        .report-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.report-actions button{min-height:44px;border-radius:14px;border:1px solid rgba(29,140,255,.18);background:var(--sfm-light-card);color:var(--sfm-midnight);padding:0 15px;font-weight:950;font-family:inherit;cursor:pointer}.report-actions button.primary{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.report-data-points{color:var(--sfm-muted-readable);font-weight:900}
+        :global(.dark) .setup-page :global(.progress-details summary),
+        :global(.dark) .setup-page :global(.progress-details li),
+        :global(.dark) .setup-page .goal-estimate-card,
+        :global(.dark) .setup-page .recommendation-list article,
+        :global(.dark) .setup-page .initial-report-modal{background:#0F1E32;border-color:#1D3050;color:#E8EEF6}
+        :global(.dark) .setup-page :global(.progress-details li.optional),
+        :global(.dark) .setup-page .completion-summary-grid :global(.completion-summary-card),
+        :global(.dark) .setup-page .report-grid :global(.report-card){background:#13243A;border-color:#1D3050}
+        :global(.dark) .setup-page .completion-hero{background:linear-gradient(135deg,rgba(16,185,129,.12),#0F1E32 52%,#0B1728);border-color:rgba(47,214,192,.24);box-shadow:0 22px 54px rgba(0,0,0,.28)}
+        :global(.dark) .setup-page .completion-copy h2,
+        :global(.dark) .setup-page .completion-summary-grid :global(.completion-summary-card strong),
+        :global(.dark) .setup-page .goal-estimate-card strong,
+        :global(.dark) .setup-page .recommendation-head h3,
+        :global(.dark) .setup-page .recommendation-list strong,
+        :global(.dark) .setup-page .report-modal-head h3,
+        :global(.dark) .setup-page .report-grid :global(.report-card strong),
+        :global(.dark) .setup-page .report-recommendation h4,
+        :global(.dark) .setup-page .report-recommendation p,
+        :global(.dark) .setup-page :global(.progress-details li b){color:#F8FBFF}
+        :global(.dark) .setup-page .completion-copy p,
+        :global(.dark) .setup-page .completion-summary-grid :global(.completion-summary-card small),
+        :global(.dark) .setup-page .completion-summary-grid :global(.completion-summary-card p),
+        :global(.dark) .setup-page .goal-estimate-card small,
+        :global(.dark) .setup-page .goal-estimate-card p,
+        :global(.dark) .setup-page .recommendation-head p,
+        :global(.dark) .setup-page .recommendation-list span,
+        :global(.dark) .setup-page .report-modal-head p,
+        :global(.dark) .setup-page .report-grid :global(.report-card small),
+        :global(.dark) .setup-page .report-grid :global(.report-card p),
+        :global(.dark) .setup-page .report-data-points,
+        :global(.dark) .setup-page :global(.progress-details li small){color:#C7D3E1}
+        :global(.dark) .setup-page .recommendation-panel,
+        :global(.dark) .setup-page .report-recommendation{background:rgba(47,214,192,.10);border-color:rgba(47,214,192,.24)}
+        :global(.dark) .setup-page .report-modal-backdrop{background:rgba(3,10,20,.68)}
+        :global(.dark) .setup-page .report-modal-head button,
+        :global(.dark) .setup-page .report-actions button,
+        :global(.dark) .setup-page .completion-actions button:not(.primary){background:#13243A;border-color:#1D3050;color:#E8EEF6}
         .focus-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.focus-card{border:1px solid rgba(29,140,255,.16);border-radius:16px;background:var(--sfm-light-card);padding:14px;text-align:start;display:grid;gap:8px;color:var(--sfm-midnight);font-weight:950;cursor:pointer}.focus-card.active{background:var(--sfm-primary-dark);color:var(--sfm-soft-cyan);border-color:rgba(167,243,240,.28)}
         .setup-error{border:1px solid rgba(185,28,28,.16);background:#FEF2F2;color:#B91C1C;border-radius:14px;padding:12px;font-weight:950}
         .wizard-actions{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid rgba(29,140,255,.12);padding-top:18px;margin-top:auto}.primary-btn,.ghost-btn{min-height:52px;border-radius:16px;padding:0 20px;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease,border-color .18s ease,background .18s ease}.primary-btn{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 14px 34px rgba(29,140,255,.22)}.primary-btn:not(:disabled):hover{transform:translateY(-2px);filter:saturate(1.06) brightness(1.04);box-shadow:0 18px 42px rgba(24,212,212,.28)}.primary-btn:not(:disabled):active{transform:translateY(0) scale(.985)}.primary-btn:focus-visible,.ghost-btn:focus-visible,.finish-actions button:focus-visible{outline:3px solid rgba(24,212,212,.32);outline-offset:3px}.ghost-btn{border:1px solid rgba(29,140,255,.20);background:var(--sfm-light-card);color:var(--sfm-midnight)}.ghost-btn:not(:disabled):hover{transform:translateY(-1px);border-color:rgba(24,212,212,.34);background:var(--sfm-surface-hover);box-shadow:0 10px 26px rgba(3,18,37,.08)}.primary-btn:disabled,.ghost-btn:disabled{opacity:.65;cursor:not-allowed;transform:none;box-shadow:none}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
         .finish-actions{display:flex;gap:10px;flex-wrap:wrap}.finish-actions button{min-height:46px;border:1px solid rgba(29,140,255,.18);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-midnight);padding:0 15px;font-weight:950;font-family:inherit;cursor:pointer}.finish-actions button.primary{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}
-        @media(max-width:1024px){.setup-page .sfm-dashboard-page-shell{margin-inline-start:0}.setup-hero,.step-layout{grid-template-columns:1fr}.progress-orb{width:124px;height:124px}.step-side{position:static}.setup-plan ul{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:720px){:global(.setup-page .sfm-dashboard-page-shell){padding-inline:16px!important}.setup-hero{border-radius:22px}.setup-card{padding:14px;border-radius:22px}.progress-orb{width:112px;height:112px}.form-grid,.expense-grid,.summary-grid,.focus-grid,.setup-plan ul{grid-template-columns:1fr}.wizard-actions,.choice-row,.finish-actions,.income-decision-actions{display:grid;grid-template-columns:1fr}.primary-btn,.ghost-btn,.choice-btn,.toggle-card,.finish-actions button,.income-action-btn{width:100%;min-width:0}.income-decision-card{padding:22px 16px;border-radius:24px}.income-decision-icon{width:68px;height:68px}.recurring-income-card{grid-template-columns:minmax(0,1fr) auto;align-items:start;padding:14px;border-radius:18px}.setup-top{align-items:flex-start}.step-main{padding:16px;min-height:auto}.step-heading h2{font-size:22px}}
+        @media(max-width:1024px){.setup-page .sfm-dashboard-page-shell{margin-inline-start:0}.setup-hero,.step-layout{grid-template-columns:1fr}.progress-orb{width:124px;height:124px}.step-side{position:static}.setup-plan ul{grid-template-columns:repeat(2,minmax(0,1fr))}.completion-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.completion-summary-grid :global(.completion-summary-card.income),.completion-summary-grid :global(.completion-summary-card.remaining){grid-column:span 1}.recommendation-list{grid-template-columns:1fr}}
+        @media(max-width:720px){:global(.setup-page .sfm-dashboard-page-shell){padding-inline:16px!important}.setup-hero{border-radius:22px}.setup-card{padding:14px;border-radius:22px}.progress-orb{width:112px;height:112px}.form-grid,.expense-grid,.summary-grid,.focus-grid,.setup-plan ul,.completion-summary-grid,.report-grid{grid-template-columns:1fr}.wizard-actions,.choice-row,.finish-actions,.income-decision-actions,.report-actions{display:grid;grid-template-columns:1fr}.primary-btn,.ghost-btn,.choice-btn,.toggle-card,.finish-actions button,.income-action-btn,.report-actions button{width:100%;min-width:0}.income-decision-card{padding:22px 16px;border-radius:24px}.income-decision-icon{width:68px;height:68px}.recurring-income-card{grid-template-columns:minmax(0,1fr) auto;align-items:start;padding:14px;border-radius:18px}.setup-top{align-items:flex-start}.step-main{padding:16px;min-height:auto}.step-heading h2{font-size:22px}.completion-hero{grid-template-columns:1fr;text-align:center;justify-items:center;border-radius:22px}.completion-copy h2{font-size:25px}.completion-summary-grid :global(.completion-summary-card){grid-template-columns:minmax(0,1fr);text-align:start}.goal-estimate-card,.recommendation-head{grid-template-columns:minmax(0,1fr)}.report-modal-backdrop{align-items:end;padding:10px}.initial-report-modal{max-height:88dvh;border-radius:22px 22px 0 0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}.report-modal-head{display:grid}.report-modal-head button{justify-self:end}:global(.setup-page .progress-details ol){max-height:280px}:global(.setup-page .progress-details li){grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon title" "icon state" "icon badge"}:global(.setup-page .progress-details li em){justify-self:start}.report-grid :global(.report-card){grid-template-columns:minmax(0,1fr)}}
       `}</style>
     </div>
   );
@@ -1535,42 +1974,233 @@ export default function SetupPage() {
       );
     }
 
+    const activeSummary = summary ?? buildSetupSummary();
+    const recommendations = recommendationItems(activeSummary);
+    const savedDataPoints = activeSummary.income + activeSummary.expenses + activeSummary.goals + activeSummary.savings + activeSummary.investments + activeSummary.projects;
+    const goalEstimateValue = activeSummary.firstGoalCompletionDate ? formatSetupDate(activeSummary.firstGoalCompletionDate, lang) : text.noGoalEstimateTitle;
+    const goalEstimateDescription = activeSummary.firstGoalCompletionDate ? text.goalEstimateDesc : text.noGoalEstimateHint;
+
     return (
-      <section className="step-panel">
-        <div className="step-heading">
-          <CheckCircle2 size={30} />
-          <div>
-            <h2 id="setup-step-title">{summary ? text.initialPlanBuilt : text.builtFromExisting}</h2>
-            <p>{text.savedSub}</p>
+      <section className="step-panel completion-panel">
+        <div className="completion-hero">
+          <div className="completion-success-icon" aria-hidden="true">
+            <CheckCircle2 size={36} />
+          </div>
+          <div className="completion-copy">
+            <span>{text.progressComplete}</span>
+            <h2 id="setup-step-title">{text.completionTitle}</h2>
+            <p>{text.completionDescription}</p>
           </div>
         </div>
-        <div className="summary-grid">
-          <Summary label={text.summaryCurrency} value={defaultCurrency} />
-          <Summary label={text.expectedRemaining} value={formatCurrency(summary?.expectedRemaining ?? 0, defaultCurrency, lang)} />
-          <Summary
+
+        <div className="completion-summary-grid">
+          <SummaryCard icon={CircleDollarSign} label={text.summaryCurrency} value={defaultCurrency} description={text.currencyCardDesc} tone="currency" />
+          <SummaryCard
+            icon={Banknote}
+            label={text.expectedMonthlyIncome}
+            value={formatSetupMoney(activeSummary.incomeTotal, defaultCurrency, lang)}
+            description={activeSummary.income > 0 ? text.incomeCardDesc : text.noIncomeCardDesc}
+            tone="income"
+          />
+          <SummaryCard
+            icon={TrendingUp}
+            label={text.expectedRemaining}
+            value={formatSetupMoney(activeSummary.expectedRemaining, defaultCurrency, lang)}
+            description={text.remainingCardDesc}
+            tone="remaining"
+          />
+          <SummaryCard
+            icon={Percent}
             label={text.recommendedSavingPercent}
-            value={summary?.recommendedSavingPercent ? formatPercent(summary.recommendedSavingPercent / 100, lang) : text.notEnoughForEstimate}
+            value={activeSummary.incomeTotal > 0 ? formatSetupPercent(activeSummary.recommendedSavingPercent, lang) : text.notEnoughForEstimate}
+            description={text.savingPercentCardDesc}
+            tone="saving"
           />
-          <Summary label={text.monthlySavingSuggestion} value={formatCurrency(summary?.monthlySavingSuggestion ?? 0, defaultCurrency, lang)} />
-          <Summary
-            label={text.firstGoalCompletion}
-            value={summary?.firstGoalCompletionDate ? formatDate(summary.firstGoalCompletionDate, lang) : text.notEnoughForEstimate}
-          />
-          <Summary label={text.addedIncome} value={summary?.income ?? 0} />
-          <Summary label={text.addedExpenses} value={summary?.expenses ?? 0} />
-          <Summary label={text.addedGoals} value={summary?.goals ?? 0} />
-          <Summary label={text.addedSavings} value={summary?.savings ?? 0} />
-          <Summary label={text.addedInvestments} value={summary?.investments ?? 0} />
-          <Summary label={text.addedProjects} value={summary?.projects ?? 0} />
+          <SummaryCard icon={ReceiptText} label={text.addedExpenses} value={formatSetupNumber(activeSummary.expenses, lang)} description={text.expensesCardDesc} tone="count" />
+          <SummaryCard icon={LineChart} label={text.addedInvestments} value={formatSetupNumber(activeSummary.investments, lang)} description={text.investmentsCardDesc} tone="count" />
+          <SummaryCard icon={Target} label={text.addedGoals} value={formatSetupNumber(activeSummary.goals, lang)} description={text.goalsCardDesc} tone="count" />
+          <SummaryCard icon={BriefcaseBusiness} label={text.addedProjects} value={formatSetupNumber(activeSummary.projects, lang)} description={text.projectsCardDesc} tone="count" />
+          <SummaryCard icon={PiggyBank} label={text.addedSavings} value={formatSetupNumber(activeSummary.savings, lang)} description={text.savingsCardDesc} tone="count" />
+          <SummaryCard icon={Wallet} label={text.additionalIncomeSources} value={formatSetupNumber(activeSummary.additionalIncomeSources, lang)} description={text.additionalIncomeCardDesc} tone="count" />
         </div>
-        <div className="finish-actions">
+
+        <article className="goal-estimate-card">
+          <CalendarCheck size={22} aria-hidden="true" />
+          <div>
+            <small>{text.firstGoalCompletion}</small>
+            <strong>{goalEstimateValue}</strong>
+            <p>{goalEstimateDescription}</p>
+          </div>
+        </article>
+
+        <section className="recommendation-panel" aria-labelledby="setup-recommendation-title">
+          <div className="recommendation-head">
+            <Sparkles size={22} aria-hidden="true" />
+            <div>
+              <h3 id="setup-recommendation-title">{text.recommendationTitle}</h3>
+              <p>{text.recommendationBasedOn}</p>
+            </div>
+          </div>
+          <div className="recommendation-list">
+            {recommendations.map(item => (
+              <article key={item.title}>
+                <CheckCircle2 size={16} aria-hidden="true" />
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>{item.meta}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <div className="finish-actions completion-actions">
           {focus.zakat && <button type="button" onClick={() => router.push('/zakat')}>{text.openZakat}</button>}
           {focus.charity && <button type="button" onClick={() => router.push('/charity')}>{text.openCharity}</button>}
+          <button type="button" onClick={openMoreData}>{text.addMoreData}</button>
+          <button type="button" onClick={() => setShowInitialReport(true)}>{text.viewInitialReport}</button>
           <button type="button" className="primary" onClick={completeAndGoDashboard} disabled={saving}>{saving ? text.saving : text.goDashboard}</button>
         </div>
+
+        {showInitialReport && (
+          <div className="report-modal-backdrop" role="presentation">
+            <section className="initial-report-modal" role="dialog" aria-modal="true" aria-labelledby="initial-report-title">
+              <div className="report-modal-head">
+                <div>
+                  <span>{text.viewInitialReport}</span>
+                  <h3 id="initial-report-title">{text.reportTitle}</h3>
+                  <p>{text.reportSubtitle}</p>
+                </div>
+                <button type="button" aria-label={text.closeReport} onClick={() => setShowInitialReport(false)}>
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="report-grid">
+                <ReportCard icon={Banknote} title={text.reportIncome} value={formatSetupMoney(activeSummary.incomeTotal, defaultCurrency, lang)} detail={activeSummary.income > 0 ? `${formatSetupNumber(activeSummary.income, lang)} ${text.addedIncome}` : text.reportNoData} />
+                <ReportCard icon={ReceiptText} title={text.reportExpenses} value={formatSetupMoney(activeSummary.expenseTotal, defaultCurrency, lang)} detail={activeSummary.expenses > 0 ? `${formatSetupNumber(activeSummary.expenses, lang)} ${text.addedExpenses}` : text.reportNoData} />
+                <ReportCard icon={PiggyBank} title={text.reportSavings} value={formatSetupMoney(activeSummary.savingsTotal, defaultCurrency, lang)} detail={activeSummary.savings > 0 ? `${formatSetupNumber(activeSummary.savings, lang)} ${text.addedSavings}` : text.reportNoData} />
+                <ReportCard icon={LineChart} title={text.reportInvestments} value={formatSetupMoney(activeSummary.investmentTotal, defaultCurrency, lang)} detail={activeSummary.investments > 0 ? `${formatSetupNumber(activeSummary.investments, lang)} ${text.addedInvestments}` : text.reportNoData} />
+                <ReportCard icon={Target} title={text.reportGoals} value={formatSetupMoney(activeSummary.goalRemainingTotal, defaultCurrency, lang)} detail={activeSummary.goals > 0 ? goalEstimateValue : text.noGoalEstimateHint} />
+              </div>
+              <section className="report-recommendation">
+                <h4>{text.reportRecommendation}</h4>
+                {recommendations.map(item => <p key={item.title}>{item.title}</p>)}
+              </section>
+              <div className="report-actions">
+                <button type="button" onClick={() => setShowInitialReport(false)}>{text.closeReport}</button>
+                <button type="button" className="primary" onClick={() => router.push('/reports')}>{text.reportGo}</button>
+              </div>
+              <small className="report-data-points">{text.dataPoints}: {formatSetupNumber(savedDataPoints, lang)}</small>
+            </section>
+          </div>
+        )}
       </section>
     );
   }
+}
+
+function ProgressPanel({
+  step,
+  progress,
+  steps,
+  statuses,
+  labels,
+}: {
+  step: Step;
+  progress: number;
+  steps: readonly string[];
+  statuses: Record<Step, 'completed' | 'current' | 'optional' | 'missing' | 'skipped'>;
+  labels: {
+    title: string;
+    subtitle: string;
+    complete: string;
+    listTitle: string;
+    completed: string;
+    current: string;
+    upcoming: string;
+    optional: string;
+  };
+}) {
+  return (
+    <section className="progress-panel">
+      <div className="progress-panel-head">
+        <ListChecks size={20} aria-hidden="true" />
+        <div>
+          <h3>{labels.title}</h3>
+          <p>{labels.subtitle}</p>
+        </div>
+      </div>
+      <div className="progress-panel-meter">
+        <strong>{step === 8 ? labels.complete : `${progress}%`}</strong>
+        <span aria-hidden="true"><i style={{ width: `${progress}%` }} /></span>
+      </div>
+      <details className="progress-details" open>
+        <summary>
+          <span>{labels.listTitle}</span>
+          <ChevronDown size={16} aria-hidden="true" />
+        </summary>
+        <ol>
+          {steps.map((item, index) => {
+            const typed = index as Step;
+            const optional = typed === 5 || typed === 6 || typed === 7;
+            const status = step === 8 && typed === 8 ? 'completed' : statuses[typed];
+            const state = status === 'completed' ? 'done' : status === 'current' ? 'active' : status === 'optional' ? 'optional' : 'upcoming';
+            const stateLabel = state === 'done' ? labels.completed : state === 'active' ? labels.current : optional ? labels.optional : labels.upcoming;
+            return (
+              <li key={item} className={state}>
+                <span className="progress-row-icon">
+                  {state === 'done' ? <CheckCircle2 size={15} aria-hidden="true" /> : index + 1}
+                </span>
+                <b>{item}</b>
+                {optional && <em>{labels.optional}</em>}
+                <small>{stateLabel}</small>
+              </li>
+            );
+          })}
+        </ol>
+      </details>
+    </section>
+  );
+}
+
+function SummaryCard({
+  icon: Icon,
+  label,
+  value,
+  description,
+  tone,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string | number;
+  description: string;
+  tone: 'currency' | 'income' | 'remaining' | 'saving' | 'count';
+}) {
+  return (
+    <article className={`completion-summary-card ${tone}`}>
+      <div className="summary-icon" aria-hidden="true">
+        <Icon size={20} />
+      </div>
+      <div>
+        <small>{label}</small>
+        <strong>{value}</strong>
+        <p>{description}</p>
+      </div>
+    </article>
+  );
+}
+
+function ReportCard({ icon: Icon, title, value, detail }: { icon: LucideIcon; title: string; value: string; detail: string }) {
+  return (
+    <article className="report-card">
+      <Icon size={20} aria-hidden="true" />
+      <div>
+        <small>{title}</small>
+        <strong>{value}</strong>
+        <p>{detail}</p>
+      </div>
+    </article>
+  );
 }
 
 function Stepper({
@@ -1777,14 +2407,5 @@ function SelectField({ id, label, value, options, onChange }: { id: string; labe
         {options.map(option => <option value={option.value} key={option.value}>{option.label}</option>)}
       </select>
     </label>
-  );
-}
-
-function Summary({ label, value }: { label: string; value: string | number }) {
-  return (
-    <article className="summary-card">
-      <small>{label}</small>
-      <strong>{value}</strong>
-    </article>
   );
 }
