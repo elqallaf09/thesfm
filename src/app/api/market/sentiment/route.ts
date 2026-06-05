@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cleanEnv, getMarketSentimentProviderConfig } from '@/lib/market/providerConfig';
-import { getMyfxbookSentiment } from '@/lib/market/providers/myfxbook';
+import { getMyfxbookSentiment, resolveMyfxbookForexSymbol } from '@/lib/market/providers/myfxbook';
 import { normalizeAssetType, type MarketAssetType } from '@/lib/market/marketService';
 
 export const revalidate = 300;
@@ -44,6 +44,10 @@ type UnifiedSentimentCode =
   | 'NO_SENTIMENT_DATA'
   | 'PROVIDER_DOWN'
   | 'TIMEOUT'
+  | 'MISSING_CREDENTIALS'
+  | 'LOGIN_REJECTED'
+  | 'NO_SESSION'
+  | 'INVALID_FOREX_PAIR'
   | 'MISSING_PROVIDER'
   | 'SYMBOL_REQUIRED';
 
@@ -254,7 +258,11 @@ function sentimentLabel(buyPercent: number | null, sellPercent: number | null): 
 
 function sentimentMessage(assetType: SentimentAssetType, code: UnifiedSentimentCode) {
   if (code === 'SYMBOL_REQUIRED') return 'Select an asset before loading market sentiment.';
-  if (code === 'TIMEOUT') return 'Market sentiment data took longer than expected to load.';
+  if (code === 'MISSING_CREDENTIALS') return 'لم يتم إعداد بيانات Myfxbook في بيئة التشغيل.';
+  if (code === 'LOGIN_REJECTED') return 'تم رفض تسجيل الدخول من Myfxbook. تحقق من البريد وكلمة المرور أو أعد حفظ بيانات البيئة ثم أعد النشر.';
+  if (code === 'NO_SESSION') return 'لم يرجع Myfxbook جلسة صالحة.';
+  if (code === 'INVALID_FOREX_PAIR') return 'زوج العملات غير معروف.';
+  if (code === 'TIMEOUT') return 'استغرق الاتصال مع Myfxbook وقتاً أطول من المتوقع.';
   if (code === 'PROVIDER_DOWN') return 'The market sentiment provider is temporarily unavailable.';
   if (code === 'MISSING_PROVIDER') {
     if (assetType === 'forex') return 'Trader sentiment provider is not connected for this currency pair.';
@@ -295,6 +303,7 @@ function unavailableResponse(input: {
   provider?: UnifiedSentimentProvider;
   legacyCode?: string;
   message?: string;
+  suggestions?: string[];
 }) {
   const provider = input.provider ?? 'none';
   return NextResponse.json({
@@ -310,6 +319,7 @@ function unavailableResponse(input: {
     sellPercent: null,
     sentimentLabel: 'unavailable' as SentimentLabel,
     message: input.message ?? sentimentMessage(input.assetType, input.code),
+    suggestions: input.suggestions ?? [],
     items: [],
     updatedAt: null,
     updated_at: null,
@@ -389,6 +399,11 @@ function logProviderError(provider: string | null, assetType: SentimentAssetType
     message: error instanceof Error ? error.message : String(error),
     code,
   });
+}
+
+function maskProviderMessage(message: string | null | undefined) {
+  if (!message) return null;
+  return message.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]');
 }
 
 function safeNumber(value: unknown) {
@@ -634,10 +649,20 @@ function mapProviderErrorCode(error: unknown): UnifiedSentimentCode {
 }
 
 function mapMyfxbookErrorCode(code: string): UnifiedSentimentCode {
-  if (code === 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED') return 'MISSING_PROVIDER';
+  if (code === 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED') return 'MISSING_CREDENTIALS';
+  if (code === 'MYFXBOOK_AUTH_FAILED') return 'LOGIN_REJECTED';
+  if (code === 'MYFXBOOK_SESSION_MISSING') return 'NO_SESSION';
+  if (code === 'MYFXBOOK_TIMEOUT') return 'TIMEOUT';
+  if (code === 'INVALID_FOREX_PAIR') return 'INVALID_FOREX_PAIR';
   if (code === 'NO_MARKET_SENTIMENT_DATA') return 'NO_SENTIMENT_DATA';
   if (code === 'SYMBOL_REQUIRED') return 'SYMBOL_REQUIRED';
   return 'PROVIDER_DOWN';
+}
+
+function invalidForexPairMessage(suggestions: string[]) {
+  return suggestions.length > 0
+    ? `زوج العملات غير معروف. هل تقصد ${suggestions[0]}؟`
+    : 'زوج العملات غير معروف. تحقق من الرمز أو اختر زوجاً مدعوماً.';
 }
 
 async function handleForexSentiment(requestMeta: NormalizedSentimentRequest) {
@@ -649,59 +674,64 @@ async function handleForexSentiment(requestMeta: NormalizedSentimentRequest) {
     });
   }
 
-  if (!isForexPair(requestMeta.symbol)) {
+  const resolvedForexSymbol = resolveMyfxbookForexSymbol(requestMeta.symbol);
+  if (!isForexPair(requestMeta.symbol) || !resolvedForexSymbol.ok) {
+    const suggestions = resolvedForexSymbol.ok ? [] : resolvedForexSymbol.suggestions;
     return unavailableResponse({
-      code: 'UNSUPPORTED_ASSET_TYPE',
+      code: 'INVALID_FOREX_PAIR',
       symbol: requestMeta.displaySymbol,
       assetType: 'forex',
-      message: 'This symbol is not a supported Forex pair for trader sentiment.',
+      provider: 'none',
+      message: invalidForexPairMessage(suggestions),
+      suggestions,
     });
   }
 
   const config = getMarketSentimentProviderConfig();
   if (!config.hasMyfxbookCredentials) {
     return unavailableResponse({
-      code: 'MISSING_PROVIDER',
-      symbol: requestMeta.symbol,
+      code: 'MISSING_CREDENTIALS',
+      symbol: resolvedForexSymbol.symbol,
       assetType: 'forex',
       provider: 'none',
     });
   }
 
-  const result = await getMyfxbookSentiment(requestMeta.symbol);
+  const result = await getMyfxbookSentiment(resolvedForexSymbol.symbol);
   if (!result.ok) {
     const code = mapMyfxbookErrorCode(result.code);
     if (code === 'PROVIDER_DOWN') {
       console.error('Market sentiment provider error:', {
         provider: 'myfxbook',
         assetType: 'forex',
-        symbol: requestMeta.symbol,
+        symbol: resolvedForexSymbol.symbol,
         code: result.code,
-        providerMessage: result.providerMessage ?? null,
+        providerMessage: maskProviderMessage(result.providerMessage),
       });
     }
     return unavailableResponse({
       code,
       legacyCode: result.code,
-      symbol: requestMeta.symbol,
+      symbol: resolvedForexSymbol.symbol,
       assetType: 'forex',
-      provider: code === 'MISSING_PROVIDER' ? 'none' : 'myfxbook',
+      provider: code === 'MISSING_CREDENTIALS' || code === 'INVALID_FOREX_PAIR' ? 'none' : 'myfxbook',
+      suggestions: result.suggestions ?? [],
     });
   }
 
-  const matchingItems = result.items.filter(item => compactPairSymbol(item.symbol) === compactPairSymbol(requestMeta.symbol));
+  const matchingItems = result.items.filter(item => compactPairSymbol(item.symbol) === compactPairSymbol(resolvedForexSymbol.symbol));
   if (matchingItems.length === 0) {
     return unavailableResponse({
       code: 'NO_SENTIMENT_DATA',
       legacyCode: 'NO_MARKET_SENTIMENT_DATA',
-      symbol: requestMeta.symbol,
+      symbol: resolvedForexSymbol.symbol,
       assetType: 'forex',
       provider: 'myfxbook',
     });
   }
 
   return availableResponse({
-    symbol: requestMeta.symbol,
+    symbol: resolvedForexSymbol.symbol,
     assetType: 'forex',
     provider: 'myfxbook',
     source: 'Myfxbook',

@@ -100,6 +100,7 @@ type ApiListState<T> = {
   buyPercent?: number | null;
   sellPercent?: number | null;
   sentimentLabel?: string | null;
+  suggestions?: string[];
 };
 type TechnicalState = {
   loading: boolean;
@@ -422,6 +423,10 @@ function sanitizeMarketToolMessage(code: string, message: string) {
     code === 'UNSUPPORTED_ASSET_TYPE' ||
     code === 'PROVIDER_DOWN' ||
     code === 'TIMEOUT' ||
+    code === 'MISSING_CREDENTIALS' ||
+    code === 'LOGIN_REJECTED' ||
+    code === 'NO_SESSION' ||
+    code === 'INVALID_FOREX_PAIR' ||
     code === 'MISSING_PROVIDER' ||
     code === 'SYMBOL_REQUIRED' ||
     code === 'MARKET_DATA_TIMEOUT' ||
@@ -475,6 +480,7 @@ async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiLis
       buyPercent?: number | null;
       sellPercent?: number | null;
       sentimentLabel?: string | null;
+      suggestions?: unknown[];
     };
     const code = String(payload.code ?? '').trim().toUpperCase();
     const sourceAvailable = response.ok && payload.ok !== false && payload.success !== false;
@@ -495,6 +501,9 @@ async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiLis
       buyPercent: payload.buyPercent,
       sellPercent: payload.sellPercent,
       sentimentLabel: payload.sentimentLabel,
+      suggestions: Array.isArray(payload.suggestions)
+        ? payload.suggestions.map(item => String(item ?? '').trim()).filter(Boolean).slice(0, 4)
+        : undefined,
     };
   } catch (error) {
     logMarketToolPerformance(label, startedAt, { status: 'failed', code: isAbortLikeError(error) ? 'MARKET_DATA_TIMEOUT' : 'MARKET_DATA_UNAVAILABLE' });
@@ -2746,6 +2755,16 @@ export default function MarketAnalysisPage() {
             onRefreshNews={() => loadNewsSentiment(['news'], { force: true })}
             onRefreshSentiment={() => selectedSentimentAsset ? loadNewsSentiment(['sentiment'], { force: true }) : focusMarketSearch()}
             onOpenTechnicalAnalysis={() => setActiveTab('technicalAnalysis')}
+            onApplySentimentSuggestion={(symbol) => {
+              const normalized = normalizeMarketSymbolInput(symbol, 'forex');
+              void requestAnalysis(normalized.valid ? normalized.providerSymbol : symbol, 'forex', {
+                symbol: normalized.valid ? normalized.symbol : symbol,
+                providerSymbol: normalized.valid ? normalized.providerSymbol : symbol,
+                name: symbol,
+                assetType: 'forex',
+                exchange: 'FX',
+              });
+            }}
           />
         )}
 
@@ -8585,6 +8604,18 @@ function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => 
   if (normalizedCode === 'MARKET_DATA_TIMEOUT' || normalizedCode === 'MARKET_SENTIMENT_TIMEOUT' || normalizedCode === 'TIMEOUT') {
     return { title: t('market_sentiment_timeout_title'), body: t('market_sentiment_timeout_body') };
   }
+  if (normalizedCode === 'MISSING_CREDENTIALS') {
+    return { title: t('market_sentiment_myfxbook_missing_credentials_title'), body: t('market_sentiment_myfxbook_missing_credentials_body') };
+  }
+  if (normalizedCode === 'LOGIN_REJECTED') {
+    return { title: t('market_sentiment_myfxbook_login_rejected_title'), body: t('market_sentiment_myfxbook_login_rejected_body') };
+  }
+  if (normalizedCode === 'NO_SESSION') {
+    return { title: t('market_sentiment_myfxbook_no_session_title'), body: t('market_sentiment_myfxbook_no_session_body') };
+  }
+  if (normalizedCode === 'INVALID_FOREX_PAIR') {
+    return { title: t('market_sentiment_invalid_forex_pair_title'), body: t('market_sentiment_invalid_forex_pair_body') };
+  }
   if (
     normalizedCode === 'NO_SENTIMENT_DATA'
     || normalizedCode === 'UNSUPPORTED_ASSET_TYPE'
@@ -8647,6 +8678,7 @@ function NewsSentimentPanel({
   onRefreshNews,
   onRefreshSentiment,
   onOpenTechnicalAnalysis,
+  onApplySentimentSuggestion,
 }: {
   t: (key: string) => string;
   lang: string;
@@ -8657,6 +8689,7 @@ function NewsSentimentPanel({
   onRefreshNews: () => void;
   onRefreshSentiment: () => void;
   onOpenTechnicalAnalysis: () => void;
+  onApplySentimentSuggestion: (symbol: string) => void;
 }) {
   const newsEmpty = publicNewsEmptyCopy(news.code, t);
   const hasSelectedAsset = Boolean(selectedAsset?.symbol?.trim());
@@ -8674,6 +8707,7 @@ function NewsSentimentPanel({
     : undefined;
   const sentimentActionLabel = hasSelectedAsset ? t('market_refresh_sentiment') : t('market_sentiment_select_asset_action');
   const sentimentAction = hasSelectedAsset ? onRefreshSentiment : onSelectAsset;
+  const sentimentSuggestions = hasSelectedAsset ? (sentiment.suggestions ?? []).filter(Boolean) : [];
 
   return (
     <section className="news-sentiment-section" aria-labelledby="market-news-sentiment-title">
@@ -8838,6 +8872,12 @@ function NewsSentimentPanel({
                       <Activity size={15} />
                       <span>{t('market_refresh_sentiment')}</span>
                     </button>
+                    {sentimentSuggestions.map(suggestion => (
+                      <button type="button" key={suggestion} onClick={() => onApplySentimentSuggestion(suggestion)}>
+                        <Search size={15} />
+                        <span dir="ltr">{suggestion}</span>
+                      </button>
+                    ))}
                     <button type="button" onClick={onRefreshNews}>
                       <Newspaper size={15} />
                       <span>{t('market_sentiment_show_news_action')}</span>

@@ -32,6 +32,15 @@ function maskedProviderMessage(message: string | null | undefined) {
   return message.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]');
 }
 
+function publicMyfxbookCode(code: string | null | undefined) {
+  if (code === 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED') return 'MISSING_CREDENTIALS';
+  if (code === 'MYFXBOOK_AUTH_FAILED') return 'LOGIN_REJECTED';
+  if (code === 'MYFXBOOK_SESSION_MISSING') return 'NO_SESSION';
+  if (code === 'MYFXBOOK_TIMEOUT') return 'TIMEOUT';
+  if (code === 'MYFXBOOK_RATE_LIMITED') return 'RATE_LIMITED';
+  return code ? 'PROVIDER_DOWN' : null;
+}
+
 export async function GET(request: NextRequest) {
   const healthTokenConfigured = Boolean(cleanEnv(process.env.MARKET_PROVIDER_HEALTH_TOKEN));
 
@@ -72,7 +81,8 @@ export async function GET(request: NextRequest) {
     canReachMyfxbook: login?.canReachMyfxbook ?? false,
     loginAttempted: config.provider === 'myfxbook' && Boolean(rawEmail && rawPassword),
     loginOk: login?.ok ?? false,
-    code: login && !login.ok ? login.code : null,
+    code: login && !login.ok ? publicMyfxbookCode(login.code) : null,
+    providerCode: login && !login.ok ? login.code : null,
     providerMessage: login && !login.ok ? maskedProviderMessage(login.providerMessage) : null,
     hasSession: Boolean(login?.ok),
   });

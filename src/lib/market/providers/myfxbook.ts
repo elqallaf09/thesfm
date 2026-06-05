@@ -12,6 +12,8 @@ type MyfxbookErrorCode =
   | 'MYFXBOOK_SESSION_MISSING'
   | 'MYFXBOOK_RATE_LIMITED'
   | 'MYFXBOOK_PROVIDER_FAILED'
+  | 'MYFXBOOK_TIMEOUT'
+  | 'INVALID_FOREX_PAIR'
   | 'NO_MARKET_SENTIMENT_DATA'
   | 'SYMBOL_REQUIRED';
 
@@ -80,6 +82,7 @@ export type MyfxbookSentimentResult =
       items: [];
       updated_at: null;
       providerMessage?: string | null;
+      suggestions?: string[];
     };
 
 export class MyfxbookProviderError extends Error {
@@ -100,6 +103,19 @@ let cachedSession: { value: string; expiresAt: number } | null = null;
 let cachedOutlook: { items: MyfxbookSentimentItem[]; updatedAt: string; expiresAt: number } | null = null;
 let cachedFailure: { code: MyfxbookErrorCode; providerMessage: string | null; expiresAt: number } | null = null;
 let envCheckLogged = false;
+const FAILURE_TTL_MS = 60 * 1000;
+const SUPPORTED_MYFXBOOK_FOREX_PAIRS = [
+  'EURUSD',
+  'GBPUSD',
+  'USDJPY',
+  'USDCHF',
+  'USDCAD',
+  'AUDUSD',
+  'NZDUSD',
+  'EURJPY',
+  'GBPJPY',
+] as const;
+const SUPPORTED_MYFXBOOK_FOREX_SET = new Set<string>(SUPPORTED_MYFXBOOK_FOREX_PAIRS);
 
 function shouldDebug() {
   return process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true';
@@ -119,11 +135,9 @@ function logEnvCheckOnce() {
   envCheckLogged = true;
   const email = cleanEnv(process.env.MYFXBOOK_EMAIL);
   const password = cleanEnv(process.env.MYFXBOOK_PASSWORD);
-  console.log('Myfxbook env diagnostic:', {
-    hasEmail: Boolean(email),
-    hasPassword: Boolean(password),
-    passwordLength: password.length,
-  });
+  console.log('[Myfxbook] email configured:', Boolean(email));
+  console.log('[Myfxbook] password configured:', Boolean(password));
+  console.log('[Myfxbook] password length:', password.length);
 }
 
 function normalizeSymbol(value: string) {
@@ -138,12 +152,37 @@ export function normalizeMyfxbookSymbol(value: string) {
   return normalizeSymbol(value);
 }
 
+export function resolveMyfxbookForexSymbol(value: unknown) {
+  const compact = normalizeSymbol(String(value ?? ''));
+  if (!compact) {
+    return {
+      ok: false as const,
+      symbol: '',
+      code: 'SYMBOL_REQUIRED' as const,
+      suggestions: [] as string[],
+    };
+  }
+
+  if (SUPPORTED_MYFXBOOK_FOREX_SET.has(compact)) {
+    return {
+      ok: true as const,
+      symbol: compact,
+      suggestions: [] as string[],
+    };
+  }
+
+  const reversed = compact.length === 6 ? `${compact.slice(3, 6)}${compact.slice(0, 3)}` : '';
+  const suggestions = reversed && SUPPORTED_MYFXBOOK_FOREX_SET.has(reversed) ? [reversed] : [];
+  return {
+    ok: false as const,
+    symbol: compact,
+    code: 'INVALID_FOREX_PAIR' as const,
+    suggestions,
+  };
+}
+
 export function isMyfxbookSupportedSymbol(value: string) {
-  const compact = normalizeSymbol(value);
-  if (!compact) return false;
-  if (/^X(AU|AG|PT|PD)USD$/.test(compact)) return true;
-  if (/^(BTC|ETH)USD$/.test(compact)) return true;
-  return /^[A-Z]{6}$/.test(compact);
+  return resolveMyfxbookForexSymbol(value).ok;
 }
 
 export function formatMyfxbookDisplaySymbol(value: string) {
@@ -211,7 +250,7 @@ function normalizeOutlookSymbol(item: MyfxbookApiSymbol, updatedAt: string): Myf
   };
 }
 
-function unavailable(code: MyfxbookErrorCode, providerMessage: string | null = null): MyfxbookSentimentResult {
+function unavailable(code: MyfxbookErrorCode, providerMessage: string | null = null, suggestions: string[] = []): MyfxbookSentimentResult {
   return {
     ok: false,
     source: 'myfxbook',
@@ -219,7 +258,12 @@ function unavailable(code: MyfxbookErrorCode, providerMessage: string | null = n
     items: [],
     updated_at: null,
     providerMessage,
+    suggestions,
   };
+}
+
+function isTimeoutError(error: unknown) {
+  return error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError');
 }
 
 async function fetchJsonWithTimeout<T>(url: URL, timeoutMs = REQUEST_TIMEOUT_MS) {
@@ -262,11 +306,13 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
 
   logEnvCheckOnce();
 
-  const email = encodeURIComponent(rawEmail);
-  const password = encodeURIComponent(rawPassword);
-  const loginUrl = `${LOGIN_URL}?email=${email}&password=${password}`;
+  const params = new URLSearchParams({
+    email: rawEmail,
+    password: rawPassword,
+  });
+  const loginUrl = `${LOGIN_URL}?${params.toString()}`;
 
-  console.log('MYFXBOOK_LOGIN_ATTEMPT');
+  console.log('[Myfxbook] login attempt');
 
   let response: Response;
   let payload: MyfxbookLoginResponse;
@@ -277,26 +323,26 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     });
     payload = await response.json().catch(() => ({})) as MyfxbookLoginResponse;
   } catch (error) {
-    console.error('Myfxbook login network error:', {
+    const code = isTimeoutError(error) ? 'MYFXBOOK_TIMEOUT' : 'MYFXBOOK_PROVIDER_FAILED';
+    console.error('[Myfxbook] login network error:', {
       message: error instanceof Error ? error.message : String(error),
       name: error instanceof Error ? error.name : undefined,
     });
     cachedFailure = {
-      code: 'MYFXBOOK_PROVIDER_FAILED',
+      code,
       providerMessage: null,
-      expiresAt: now + OUTLOOK_TTL_MS,
+      expiresAt: now + FAILURE_TTL_MS,
     };
     return {
       ok: false as const,
-      code: 'MYFXBOOK_PROVIDER_FAILED' as const,
+      code,
       providerMessage: null,
       canReachMyfxbook: false,
     };
   }
 
-  console.error('Myfxbook login response:', {
+  console.log('[Myfxbook] login response:', {
     httpStatus: response.status,
-    ok: response.ok,
     error: payload?.error,
     message: maskProviderMessage(payload?.message),
     hasSession: Boolean(payload?.session),
@@ -306,7 +352,7 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     cachedFailure = {
       code: 'MYFXBOOK_RATE_LIMITED',
       providerMessage: payload.message ?? null,
-      expiresAt: now + OUTLOOK_TTL_MS,
+      expiresAt: now + FAILURE_TTL_MS,
     };
     return {
       ok: false as const,
@@ -321,7 +367,7 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     cachedFailure = {
       code: 'MYFXBOOK_PROVIDER_FAILED',
       providerMessage: payload.message ?? null,
-      expiresAt: now + OUTLOOK_TTL_MS,
+      expiresAt: now + FAILURE_TTL_MS,
     };
     return {
       ok: false as const,
@@ -332,12 +378,12 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     };
   }
 
-  if (payload.error !== false) {
+  if (payload.error === true) {
     const code: MyfxbookErrorCode = isRateLimitMessage(payload.message) ? 'MYFXBOOK_RATE_LIMITED' : 'MYFXBOOK_AUTH_FAILED';
     cachedFailure = {
       code,
       providerMessage: payload.message ?? null,
-      expiresAt: now + OUTLOOK_TTL_MS,
+      expiresAt: now + FAILURE_TTL_MS,
     };
     return {
       ok: false as const,
@@ -352,7 +398,7 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     cachedFailure = {
       code: 'MYFXBOOK_SESSION_MISSING',
       providerMessage: payload.message ?? null,
-      expiresAt: now + OUTLOOK_TTL_MS,
+      expiresAt: now + FAILURE_TTL_MS,
     };
     return {
       ok: false as const,
@@ -385,6 +431,16 @@ async function getSession() {
   return login.session;
 }
 
+async function fetchCommunityOutlookPayload(session: string) {
+  const url = new URL(OUTLOOK_URL);
+  url.searchParams.set('session', session);
+  return fetchJsonWithTimeout<MyfxbookOutlookResponse>(url);
+}
+
+function isInvalidSessionPayload(payload: MyfxbookOutlookResponse) {
+  return Boolean(payload.error && payload.message && /session|auth|login/i.test(payload.message));
+}
+
 async function getCommunityOutlook() {
   const now = Date.now();
   if (cachedOutlook && cachedOutlook.expiresAt > now) {
@@ -392,12 +448,19 @@ async function getCommunityOutlook() {
   }
 
   const session = await getSession();
-  const url = new URL(OUTLOOK_URL);
-  url.searchParams.set('session', session);
+  let payload = await fetchCommunityOutlookPayload(session);
 
-  const payload = await fetchJsonWithTimeout<MyfxbookOutlookResponse>(url);
+  if (isInvalidSessionPayload(payload)) {
+    cachedSession = null;
+    const relogin = await loginToMyfxbook({ force: true });
+    if (!relogin.ok) {
+      throw new MyfxbookProviderError(relogin.code, 'Myfxbook re-login failed', relogin.httpStatus, relogin.providerMessage);
+    }
+    payload = await fetchCommunityOutlookPayload(relogin.session);
+  }
+
   if (payload.error) {
-    if (payload.message && /session|auth|login/i.test(payload.message)) {
+    if (isInvalidSessionPayload(payload)) {
       cachedSession = null;
       throw new MyfxbookProviderError('MYFXBOOK_AUTH_FAILED', 'Myfxbook session was rejected', undefined, payload.message);
     }
@@ -428,9 +491,11 @@ async function getCommunityOutlook() {
 }
 
 export async function getMyfxbookSentiment(symbol: string): Promise<MyfxbookSentimentResult> {
-  const requestedSymbol = normalizeSymbol(symbol);
-  if (!requestedSymbol) return unavailable('SYMBOL_REQUIRED');
-  if (!isMyfxbookSupportedSymbol(requestedSymbol)) return unavailable('NO_MARKET_SENTIMENT_DATA');
+  const resolvedSymbol = resolveMyfxbookForexSymbol(symbol);
+  if (!resolvedSymbol.ok) {
+    return unavailable(resolvedSymbol.code, null, resolvedSymbol.suggestions);
+  }
+  const requestedSymbol = resolvedSymbol.symbol;
 
   const email = cleanEnv(process.env.MYFXBOOK_EMAIL);
   const password = cleanEnv(process.env.MYFXBOOK_PASSWORD);
@@ -462,7 +527,7 @@ export async function getMyfxbookSentiment(symbol: string): Promise<MyfxbookSent
     }
 
     if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
-      return unavailable('MYFXBOOK_PROVIDER_FAILED');
+      return unavailable('MYFXBOOK_TIMEOUT');
     }
 
     if (shouldDebug()) {
