@@ -17,6 +17,7 @@ type IncomeType = 'salary' | 'freelance' | 'project' | 'investment' | 'bonus' | 
 type IncomeStatus = 'received' | 'pending' | 'expected' | 'late';
 type Frequency = 'monthly' | 'weekly' | 'daily' | 'yearly';
 type FrequencyMode = Frequency | 'one-time';
+type CalculationMode = 'full_month' | 'prorated_current_month';
 type Lang = 'ar' | 'en' | 'fr';
 type IncomeFilter = 'all' | IncomeStatus | 'recurring' | 'one-time';
 type IncomePageTab = 'overview' | 'sources' | 'recurring' | 'analytics' | 'reports';
@@ -40,10 +41,14 @@ type IncomeRow = {
   amount_kwd?: number | null;
   source_name?: string | null;
   notes?: string | null;
-  is_recurring?: boolean | null;
+  is_recurring?: boolean | string | null;
   frequency?: string | null;
   recurrence_start_date?: string | null;
   recurrence_end_date?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_active?: boolean | string | null;
+  calculation_mode?: string | null;
   parent_recurring_income_id?: string | null;
   generated_for_date?: string | null;
   confirmed_at?: string | null;
@@ -85,6 +90,7 @@ type IncomeForm = {
   frequency: Frequency;
   recurrenceStartDate: string;
   recurrenceEndDate: string;
+  calculationMode: CalculationMode;
   sourceName: string;
   notes: string;
 };
@@ -213,6 +219,21 @@ const TX: Record<string, Record<Lang, string>> = {
   deleted: { ar: 'تم حذف الدخل', en: 'Income deleted', fr: 'Revenu supprimé' },
   exportSoon: { ar: 'التصدير غير مفعّل في هذه المرحلة.', en: 'Export is not enabled in this phase.', fr: 'L’export n’est pas activé dans cette phase.' },
   insightDetails: { ar: 'تعتمد هذه البطاقة على السجلات المحفوظة فقط، وتظهر بيانات غير كافية عندما لا تتوفر أرقام حقيقية كافية.', en: 'This card uses saved records only and shows insufficient data when there are not enough real numbers.', fr: 'Cette carte utilise uniquement les enregistrements sauvegardés et affiche des données insuffisantes lorsque les chiffres réels manquent.' },
+  monthCalculationMethod: { ar: 'طريقة احتساب هذا الشهر', en: 'This month calculation method', fr: 'Mode de calcul de ce mois' },
+  fullMonthCalculation: { ar: 'احتساب الشهر كامل', en: 'Count the full month', fr: 'Compter le mois complet' },
+  proratedMonthCalculation: { ar: 'احتساب المتبقي من هذا الشهر فقط', en: 'Count the remaining part of this month only', fr: 'Compter uniquement le reste de ce mois' },
+  calculatedFromMonthlyIncome: { ar: 'محسوب من الدخل الشهري', en: 'Calculated from monthly income', fr: 'Calculé à partir du revenu mensuel' },
+  calculatedFromRemainingMonth: { ar: 'محسوب من المتبقي من الشهر', en: 'Calculated from the remaining month', fr: 'Calculé sur le reste du mois' },
+  noIncomeAdded: { ar: 'لم يتم إضافة دخل بعد', en: 'No income has been added yet', fr: 'Aucun revenu ajouté pour le moment' },
+  incomeLoadError: { ar: 'تعذر تحميل بيانات الدخل حالياً. حاول تحديث الصفحة أو إعادة المحاولة.', en: 'Income data could not be loaded right now. Refresh the page or try again.', fr: 'Les données de revenu ne peuvent pas être chargées pour le moment. Actualisez la page ou réessayez.' },
+  retry: { ar: 'إعادة المحاولة', en: 'Retry', fr: 'Réessayer' },
+  selectedMonthLabel: { ar: 'الشهر المعروض', en: 'Selected month', fr: 'Mois affiché' },
+  currentMonthIncome: { ar: 'دخل هذا الشهر', en: 'This month income', fr: 'Revenu de ce mois' },
+  expectedRemainingMonth: { ar: 'المتبقي من هذا الشهر', en: 'Remaining from this month', fr: 'Reste de ce mois' },
+  currentMonthExpectedNet: { ar: 'الصافي المتوقع لهذا الشهر', en: 'Expected net this month', fr: 'Net prévu ce mois' },
+  fullMonthlyIncome: { ar: 'الدخل الشهري الكامل', en: 'Full monthly income', fr: 'Revenu mensuel complet' },
+  nextMonthFullIncome: { ar: 'الدخل الشهري الكامل المتوقع', en: 'Expected full monthly income', fr: 'Revenu mensuel complet prévu' },
+  monthlyCalculationTooltip: { ar: 'يتم احتساب الدخل المتكرر حسب تاريخ البداية والنهاية للشهر المعروض. إذا بدأ الدخل داخل الشهر يمكن احتسابه كاملاً أو بنسبة الأيام المتبقية.', en: 'Recurring income is calculated from its start and end dates for the selected month. If it starts inside the month, it can be counted in full or prorated by remaining days.', fr: 'Le revenu récurrent est calculé selon les dates de début et de fin du mois affiché. S’il commence dans le mois, il peut être compté en entier ou au prorata des jours restants.' },
 };
 
 const TYPES: Array<{ id: IncomeType; icon: string; label: Record<Lang, string> }> = [
@@ -257,6 +278,7 @@ const emptyForm = (): IncomeForm => ({
   frequency: 'monthly',
   recurrenceStartDate: todayDateOnly(),
   recurrenceEndDate: '',
+  calculationMode: defaultCalculationMode(todayDateOnly()),
   sourceName: '',
   notes: '',
 });
@@ -397,6 +419,189 @@ function monthKey(value: string | null | undefined) {
   return value ? value.slice(0, 7) : '';
 }
 
+function monthRange(month: string) {
+  const [year, monthNumber] = month.split('-').map(Number);
+  const safeYear = Number.isFinite(year) ? year : new Date().getFullYear();
+  const safeMonth = Number.isFinite(monthNumber) ? monthNumber : new Date().getMonth() + 1;
+  const start = new Date(safeYear, safeMonth - 1, 1);
+  const end = new Date(safeYear, safeMonth, 0);
+  const next = new Date(safeYear, safeMonth, 1);
+  const key = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  return {
+    start,
+    end,
+    startKey: key(start),
+    nextKey: key(next),
+    startDate: key(start) + '-01',
+    endDate: `${key(end)}-${String(end.getDate()).padStart(2, '0')}`,
+    daysInMonth: end.getDate(),
+  };
+}
+
+function normalizeCalculationMode(value?: string | null): CalculationMode {
+  return value === 'prorated_current_month' ? 'prorated_current_month' : 'full_month';
+}
+
+function defaultCalculationMode(startDate: string, month = todayDateOnly().slice(0, 7)): CalculationMode {
+  const startMonth = monthKey(startDate);
+  if (startMonth === month && compareDateOnly(startDate, todayDateOnly()) >= 0) return 'prorated_current_month';
+  if (startMonth === month && compareDateOnly(startDate, monthRange(month).startDate) >= 0) return 'prorated_current_month';
+  return 'full_month';
+}
+
+function isRowActive(row: IncomeRow) {
+  return row.is_active !== false && row.is_active !== 'false';
+}
+
+function rowFrequency(row: IncomeRow): Frequency | null {
+  return row.frequency === 'monthly' || row.frequency === 'weekly' || row.frequency === 'daily' || row.frequency === 'yearly' ? row.frequency : null;
+}
+
+function rowIsRecurring(row: IncomeRow) {
+  return row.is_recurring === true
+    || row.is_recurring === 'true'
+    || Boolean(row.parent_recurring_income_id)
+    || Boolean(rowFrequency(row));
+}
+
+function recurringStartDate(row: IncomeRow) {
+  return toDateInputValue(row.start_date || row.recurrence_start_date || row.received_date || row.generated_for_date || row.created_at) || todayDateOnly();
+}
+
+function recurringEndDate(row: IncomeRow) {
+  return toDateInputValue(row.end_date || row.recurrence_end_date) || '';
+}
+
+function activeDaysInMonth(startDate: string, endDate: string | null | undefined, range: ReturnType<typeof monthRange>) {
+  if (compareDateOnly(startDate, range.endDate) > 0) return 0;
+  if (endDate && compareDateOnly(endDate, range.startDate) < 0) return 0;
+  const activeStart = compareDateOnly(startDate, range.startDate) > 0 ? startDate : range.startDate;
+  const activeEnd = endDate && compareDateOnly(endDate, range.endDate) < 0 ? endDate : range.endDate;
+  const startDay = dateOnlyToLocalDate(activeStart).getDate();
+  const endDay = dateOnlyToLocalDate(activeEnd).getDate();
+  return Math.max(0, endDay - startDay + 1);
+}
+
+function annualOccurrenceDate(startDate: string, month: string) {
+  const [year] = month.split('-');
+  const [, sourceMonth, sourceDay] = startDate.split('-');
+  if (!year || !sourceMonth || !sourceDay) return '';
+  const candidate = `${year}-${sourceMonth}-${sourceDay}`;
+  return isValidDateOnly(candidate) ? candidate : '';
+}
+
+function countRecurringOccurrences(row: IncomeRow, month: string) {
+  const range = monthRange(month);
+  const startDate = recurringStartDate(row);
+  const endDate = recurringEndDate(row);
+  const frequency = rowFrequency(row) ?? 'monthly';
+  if (!isRowActive(row) || compareDateOnly(startDate, range.endDate) > 0 || (endDate && compareDateOnly(endDate, range.startDate) < 0)) return 0;
+
+  if (frequency === 'daily') return activeDaysInMonth(startDate, endDate, range);
+  if (frequency === 'weekly') {
+    let cursor = startDate;
+    let guard = 0;
+    while (compareDateOnly(cursor, range.startDate) < 0 && guard < 540) {
+      cursor = addFrequencyDate(cursor, 'weekly');
+      guard += 1;
+    }
+    let count = 0;
+    while (compareDateOnly(cursor, range.endDate) <= 0 && (!endDate || compareDateOnly(cursor, endDate) <= 0) && guard < 620) {
+      count += 1;
+      cursor = addFrequencyDate(cursor, 'weekly');
+      guard += 1;
+    }
+    return count;
+  }
+  if (frequency === 'yearly') {
+    const occurrence = annualOccurrenceDate(startDate, month);
+    if (!occurrence) return 0;
+    return compareDateOnly(occurrence, startDate) >= 0 && (!endDate || compareDateOnly(occurrence, endDate) <= 0) && monthKey(occurrence) === month ? 1 : 0;
+  }
+  return activeDaysInMonth(startDate, endDate, range) > 0 ? 1 : 0;
+}
+
+type MonthIncomeContribution = {
+  row: IncomeViewRow;
+  amount: number;
+  fullAmount: number;
+  recurring: boolean;
+  prorated: boolean;
+  occurrences: number;
+};
+
+function calculateRowForMonth(row: IncomeViewRow, month: string): MonthIncomeContribution | null {
+  if (!isRowActive(row)) return null;
+  const amount = toFiniteAmount(row.amount);
+  if (amount <= 0) return null;
+  if (!rowIsRecurring(row)) {
+    const date = toDateInputValue(row.received_date || row.generated_for_date || row.created_at);
+    if (monthKey(date) !== month) return null;
+    return { row, amount, fullAmount: amount, recurring: false, prorated: false, occurrences: 1 };
+  }
+
+  const frequency = rowFrequency(row) ?? 'monthly';
+  const occurrences = countRecurringOccurrences(row, month);
+  if (occurrences <= 0) return null;
+  const range = monthRange(month);
+  const startDate = recurringStartDate(row);
+  const endDate = recurringEndDate(row);
+  if (frequency !== 'monthly') {
+    return { row, amount: amount * occurrences, fullAmount: amount * occurrences, recurring: true, prorated: false, occurrences };
+  }
+
+  const activeDays = activeDaysInMonth(startDate, endDate, range);
+  const coversFullMonth = activeDays >= range.daysInMonth;
+  const mode = normalizeCalculationMode(row.calculation_mode);
+  const shouldProrate = !coversFullMonth && (mode === 'prorated_current_month' || Boolean(endDate && compareDateOnly(endDate, range.endDate) < 0));
+  const calculated = shouldProrate ? amount * (activeDays / range.daysInMonth) : amount;
+  return { row, amount: calculated, fullAmount: amount, recurring: true, prorated: shouldProrate, occurrences: 1 };
+}
+
+function recurringBaseRows(rows: IncomeViewRow[]) {
+  const parentIds = new Set(rows.filter(row => rowIsRecurring(row) && !row.parent_recurring_income_id).map(row => row.id));
+  const seen = new Set<string>();
+  return rows.filter(row => {
+    if (!rowIsRecurring(row)) return false;
+    if (row.parent_recurring_income_id && parentIds.has(row.parent_recurring_income_id)) return false;
+    const key = row.parent_recurring_income_id || row.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function monthIncomeSummary(rows: IncomeViewRow[], month: string) {
+  const recurringRows = recurringBaseRows(rows);
+  const recurringIds = new Set(recurringRows.map(row => row.id));
+  const oneTimeRows = rows.filter(row => !rowIsRecurring(row));
+  const contributions = [...oneTimeRows, ...recurringRows]
+    .map(row => calculateRowForMonth(row, month))
+    .filter((item): item is MonthIncomeContribution => Boolean(item));
+  const total = contributions.reduce((sum, item) => sum + item.amount, 0);
+  const recurringTotal = contributions.filter(item => item.recurring).reduce((sum, item) => sum + item.amount, 0);
+  const fullRecurringTotal = contributions.filter(item => item.recurring).reduce((sum, item) => sum + item.fullAmount, 0);
+  const oneTimeTotal = contributions.filter(item => !item.recurring).reduce((sum, item) => sum + item.amount, 0);
+  return {
+    contributions,
+    rows: contributions.map(item => item.row),
+    recurringIds,
+    total,
+    recurringTotal,
+    oneTimeTotal,
+    fullRecurringTotal,
+    proratedTotal: contributions.filter(item => item.prorated).reduce((sum, item) => sum + item.amount, 0),
+    hasProrated: contributions.some(item => item.prorated),
+    hasRecurring: contributions.some(item => item.recurring),
+    recurringCount: recurringRows.length,
+  };
+}
+
+function formatMonthLabel(month: string, locale: string) {
+  const range = monthRange(month);
+  return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(range.start);
+}
+
 function toFiniteAmount(value: unknown) {
   const amount = Number(value);
   return Number.isFinite(amount) ? amount : 0;
@@ -469,6 +674,7 @@ export default function IncomePage() {
   const [statusFilter, setStatusFilter] = useState<IncomeFilter>('all');
   const [activeTab, setActiveTab] = useState<IncomePageTab>('overview');
   const [exportOpen, setExportOpen] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(() => todayDateOnly().slice(0, 7));
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [attachmentError, setAttachmentError] = useState('');
   const exportRef = useRef<HTMLDivElement | null>(null);
@@ -554,8 +760,8 @@ export default function IncomePage() {
   const viewRows = useMemo<IncomeViewRow[]>(() => rows.map(row => ({ ...row, workflowStatus: workflowStatus(row) })), [rows]);
   const filteredRows = useMemo(() => {
     if (statusFilter === 'all') return viewRows;
-    if (statusFilter === 'recurring') return viewRows.filter(row => row.is_recurring);
-    if (statusFilter === 'one-time') return viewRows.filter(row => !row.is_recurring);
+    if (statusFilter === 'recurring') return viewRows.filter(row => rowIsRecurring(row));
+    if (statusFilter === 'one-time') return viewRows.filter(row => !rowIsRecurring(row));
     return viewRows.filter(row => row.workflowStatus === statusFilter);
   }, [statusFilter, viewRows]);
   const upcomingRows = useMemo(() => viewRows
@@ -564,26 +770,43 @@ export default function IncomePage() {
     .slice(0, 5), [viewRows]);
   const lateRows = useMemo(() => viewRows.filter(row => row.workflowStatus === 'late'), [viewRows]);
 
-  const selectedMonth = todayDateOnly().slice(0, 7);
-  const selectedMonthRows = useMemo(() => viewRows.filter(row => {
-    const key = monthKey(row.received_date || row.generated_for_date || row.created_at);
-    return key === selectedMonth;
-  }), [selectedMonth, viewRows]);
+  const selectedMonthSummary = useMemo(() => monthIncomeSummary(viewRows, selectedMonth), [selectedMonth, viewRows]);
+  const nextMonthSummary = useMemo(() => monthIncomeSummary(viewRows, monthRange(selectedMonth).nextKey), [selectedMonth, viewRows]);
   const selectedMonthExpenses = useMemo(() => expenseRows.filter(row => monthKey(row.date || row.created_at) === selectedMonth), [expenseRows, selectedMonth]);
 
-  const total = viewRows.reduce((sum, row) => sum + toFiniteAmount(row.amount), 0);
-  const selectedMonthIncomeTotal = selectedMonthRows.reduce((sum, row) => sum + toFiniteAmount(row.amount), 0);
+  const total = selectedMonthSummary.total;
+  const selectedMonthIncomeTotal = selectedMonthSummary.total;
   const selectedMonthExpenseTotal = selectedMonthExpenses.reduce((sum, row) => sum + toFiniteAmount(row.amount), 0);
-  const activeSources = viewRows.filter(row => row.workflowStatus !== 'late').length;
+  const activeSources = viewRows.filter(row => row.workflowStatus !== 'late' && isRowActive(row)).length;
   const expectedNet = Math.max(selectedMonthIncomeTotal - selectedMonthExpenseTotal, 0);
-  const recurringTotal = viewRows.filter(row => row.is_recurring).reduce((sum, row) => sum + toFiniteAmount(row.amount), 0);
-  const recurringRows = useMemo(() => viewRows.filter(row => row.is_recurring), [viewRows]);
+  const fullMonthlyIncome = selectedMonthSummary.fullRecurringTotal;
+  const remainingMonthIncome = Math.max(fullMonthlyIncome - selectedMonthSummary.recurringTotal, 0);
+  const nextMonthIncomeTotal = nextMonthSummary.total;
+  const nextMonthFullIncome = nextMonthSummary.fullRecurringTotal;
+  const calculationBadge = selectedMonthSummary.hasProrated
+    ? tr('calculatedFromRemainingMonth', lang)
+    : selectedMonthSummary.hasRecurring
+      ? tr('calculatedFromMonthlyIncome', lang)
+      : selectedMonthIncomeTotal > 0
+        ? tr('calculatedFromRealData', lang)
+        : tr('noIncomeAdded', lang);
+  const recurringTotal = selectedMonthSummary.recurringTotal;
+  const recurringRows = useMemo(() => recurringBaseRows(viewRows), [viewRows]);
   const displayRows = activeTab === 'recurring' ? recurringRows : filteredRows;
   const recurringPercent = total > 0 ? Math.round((recurringTotal / total) * 100) : 0;
-  const largestRow = viewRows.reduce<IncomeViewRow | null>((largest, row) => toFiniteAmount(row.amount) > toFiniteAmount(largest?.amount) ? row : largest, null);
+  const largestContribution = selectedMonthSummary.contributions.reduce<MonthIncomeContribution | null>((largest, item) => item.amount > (largest?.amount ?? 0) ? item : largest, null);
+  const largestRow = largestContribution?.row ?? null;
   const concentrationPercent = total > 0 && largestRow ? Math.round((toFiniteAmount(largestRow.amount) / total) * 100) : 0;
-  const stableMonths = new Set(viewRows.map(row => (row.received_date || row.generated_for_date || '').slice(0, 7)).filter(Boolean)).size;
-  const hasIncomeData = viewRows.some(row => row.workflowStatus !== 'late' && toFiniteAmount(row.amount) > 0);
+  const stableMonths = new Set(viewRows
+    .flatMap(row => {
+      if (!rowIsRecurring(row)) return [monthKey(row.received_date || row.generated_for_date || row.created_at)];
+      const start = monthKey(recurringStartDate(row));
+      const current = selectedMonthSummary.recurringIds.has(row.id) ? selectedMonth : '';
+      return [start, current];
+    })
+    .filter(Boolean)).size;
+  const hasAnyIncome = viewRows.some(row => isRowActive(row) && toFiniteAmount(row.amount) > 0);
+  const hasIncomeData = selectedMonthIncomeTotal > 0 || hasAnyIncome;
   const stabilityScore = hasIncomeData
     ? Math.max(0, Math.min(100,
       Math.min(activeSources, 5) * 6
@@ -600,27 +823,23 @@ export default function IncomePage() {
     viewRows.forEach(row => {
       const key = monthKey(row.received_date || row.generated_for_date || row.created_at);
       if (!key) return;
-      totals.set(key, (totals.get(key) ?? 0) + toFiniteAmount(row.amount));
+      totals.set(key, monthIncomeSummary(viewRows, key).total);
     });
+    totals.set(selectedMonth, selectedMonthIncomeTotal);
+    totals.set(monthRange(selectedMonth).nextKey, nextMonthSummary.total);
     return [...totals.entries()].sort(([a], [b]) => a.localeCompare(b));
-  }, [viewRows]);
+  }, [nextMonthSummary.total, selectedMonth, selectedMonthIncomeTotal, viewRows]);
   const savingsRate = selectedMonthIncomeTotal > 0
     ? ((selectedMonthIncomeTotal - selectedMonthExpenseTotal) / selectedMonthIncomeTotal) * 100
     : null;
-  const spendingRatio = selectedMonthIncomeTotal > 0 && selectedMonthExpenses.length > 0
+  const spendingRatio = selectedMonthIncomeTotal > 0
     ? (selectedMonthExpenseTotal / selectedMonthIncomeTotal) * 100
     : null;
-  const forecastPercent = useMemo(() => {
-    if (monthTotals.length < 3) return null;
-    const latest = monthTotals.at(-1)?.[1] ?? 0;
-    const previous = monthTotals.slice(Math.max(0, monthTotals.length - 4), -1);
-    const previousAverage = previous.reduce((sum, [, value]) => sum + value, 0) / previous.length;
-    if (!Number.isFinite(previousAverage) || previousAverage <= 0) return null;
-    return ((latest - previousAverage) / previousAverage) * 100;
-  }, [monthTotals]);
-  const forecastValue = monthTotals.length >= 3
-    ? monthTotals.slice(-3).reduce((sum, [, value]) => sum + value, 0) / Math.min(3, monthTotals.length)
-    : null;
+  const forecastValue = nextMonthIncomeTotal > 0
+    ? nextMonthIncomeTotal
+    : monthTotals.length >= 3
+      ? monthTotals.slice(-3).reduce((sum, [, value]) => sum + value, 0) / Math.min(3, monthTotals.length)
+      : null;
   const insightCards = useMemo(() => {
     const unavailable = (title: string, tone: 'success' | 'warning' | 'info') => ({
       title,
@@ -657,13 +876,13 @@ export default function IncomePage() {
       {
         title: tr('nextForecast', lang),
         tone: 'info' as const,
-        value: forecastPercent === null ? '' : formatPercent(forecastPercent, locale, true),
-        message: forecastPercent === null ? tr('insufficientForecast', lang) : tr('calculatedFromRealData', lang),
-        source: forecastPercent === null ? tr('insufficientData', lang) : tr('calculatedFromRealData', lang),
-        available: forecastPercent !== null,
+        value: forecastValue === null ? '' : formatMoney(forecastValue, defaultCurrency || 'KWD', lang as Lang),
+        message: forecastValue === null ? tr('insufficientForecast', lang) : tr('nextMonthFullIncome', lang),
+        source: forecastValue === null ? tr('insufficientData', lang) : (nextMonthSummary.hasRecurring ? tr('calculatedFromMonthlyIncome', lang) : tr('calculatedFromRealData', lang)),
+        available: forecastValue !== null,
       },
     ];
-  }, [forecastPercent, insightLoadError, lang, locale, savingsRate, spendingRatio]);
+  }, [defaultCurrency, forecastValue, insightLoadError, lang, locale, nextMonthSummary.hasRecurring, savingsRate, spendingRatio]);
   const smartGuidance = useMemo(() => {
     if (!hasIncomeData) return [tr('addIncomeForStability', lang)];
     const items: string[] = [];
@@ -712,9 +931,9 @@ export default function IncomePage() {
   const distribution = useMemo(() => {
     const colors = ['var(--sfm-midnight)', 'var(--sfm-primary)', 'var(--sfm-accent)', 'var(--sfm-soft-cyan)', '#7C4A12', '#047857', '#0C447C'];
     const totals = new Map<IncomeType, number>();
-    selectedMonthRows.forEach(row => {
-      const type = normalizeType(row.income_type || row.category);
-      totals.set(type, (totals.get(type) ?? 0) + toFiniteAmount(row.amount));
+    selectedMonthSummary.contributions.forEach(item => {
+      const type = normalizeType(item.row.income_type || item.row.category);
+      totals.set(type, (totals.get(type) ?? 0) + item.amount);
     });
     return [...totals.entries()]
       .filter(([, value]) => value > 0)
@@ -724,7 +943,7 @@ export default function IncomePage() {
         value: selectedMonthIncomeTotal > 0 ? (value / selectedMonthIncomeTotal) * 100 : 0,
         color: colors[index % colors.length],
       }));
-  }, [lang, selectedMonthIncomeTotal, selectedMonthRows]);
+  }, [lang, selectedMonthIncomeTotal, selectedMonthSummary.contributions]);
 
   const trend = monthTotals.map(([, value]) => value);
   const points = trend.map((value, index) => {
@@ -751,7 +970,13 @@ export default function IncomePage() {
       patchForm({ isRecurring: false }, 'frequency');
       return;
     }
-    patchForm({ isRecurring: true, frequency: mode, recurrenceStartDate: form.receivedDate || todayDateOnly() }, 'frequency');
+    const startDate = form.receivedDate || todayDateOnly();
+    patchForm({
+      isRecurring: true,
+      frequency: mode,
+      recurrenceStartDate: startDate,
+      calculationMode: mode === 'monthly' ? defaultCalculationMode(startDate) : 'full_month',
+    }, 'frequency');
   }
 
   function openCreate() {
@@ -764,9 +989,9 @@ export default function IncomePage() {
   }
 
   function openEdit(row: IncomeRow) {
-    const receivedDate = toDateInputValue(row.received_date || row.created_at) || todayDateOnly();
-    const recurrenceStartDate = toDateInputValue(row.recurrence_start_date || row.received_date || row.created_at) || receivedDate;
-    const frequency = row.frequency === 'weekly' || row.frequency === 'daily' || row.frequency === 'yearly' ? row.frequency : 'monthly';
+    const receivedDate = toDateInputValue(row.received_date || row.start_date || row.created_at) || todayDateOnly();
+    const recurrenceStartDate = toDateInputValue(row.start_date || row.recurrence_start_date || row.received_date || row.created_at) || receivedDate;
+    const frequency = rowFrequency(row) ?? 'monthly';
     setForm({
       id: row.id,
       name: legacyName(row),
@@ -775,10 +1000,11 @@ export default function IncomePage() {
       incomeType: normalizeType(row.income_type || row.category),
       receivedDate,
       status: normalizeStatus(row.status),
-      isRecurring: Boolean(row.is_recurring),
+      isRecurring: rowIsRecurring(row),
       frequency,
       recurrenceStartDate,
-      recurrenceEndDate: toDateInputValue(row.recurrence_end_date) || '',
+      recurrenceEndDate: toDateInputValue(row.end_date || row.recurrence_end_date) || '',
+      calculationMode: normalizeCalculationMode(row.calculation_mode),
       sourceName: row.source_name || '',
       notes: row.notes || '',
     });
@@ -862,7 +1088,7 @@ export default function IncomePage() {
         row.currency || 'KWD',
         row.source_name || '',
         row.notes || '',
-        row.is_recurring ? tr('recurring', lang) : tr('oneTime', lang),
+        rowIsRecurring(row) ? tr('recurring', lang) : tr('oneTime', lang),
         row.frequency || '',
       ].map(csvEscape).join(','));
       const blob = new Blob([`\uFEFF${headers.join(',')}\n${lines.join('\n')}`], { type: 'text/csv;charset=utf-8;' });
@@ -914,7 +1140,7 @@ export default function IncomePage() {
             <main class="page">
               <div class="brand">THE SFM</div>
               <h1>${tr('generatedReport', lang)}</h1>
-              <p>${tr('monthNow', lang)} · ${formatDate(todayDateOnly(), lang)}</p>
+              <p>${formatMonthLabel(selectedMonth, locale)} · ${calculationBadge}</p>
               <section class="stats">
                 <div class="stat">${tr('totalIncome', lang)}<b>${formatMoney(total || 0, defaultCurrency || 'KWD', lang as Lang)}</b></div>
                 <div class="stat">${tr('incomeSources', lang)}<b>${activeSources}</b></div>
@@ -1001,6 +1227,10 @@ export default function IncomePage() {
       frequency: form.isRecurring ? form.frequency : null,
       recurrence_start_date: form.isRecurring ? recurrenceStartDate : null,
       recurrence_end_date: form.isRecurring && recurrenceEndDate ? recurrenceEndDate : null,
+      start_date: form.isRecurring ? recurrenceStartDate : receivedDate,
+      end_date: form.isRecurring && recurrenceEndDate ? recurrenceEndDate : null,
+      is_active: true,
+      calculation_mode: form.isRecurring && form.frequency === 'monthly' ? form.calculationMode : 'full_month',
       parent_recurring_income_id: null,
       generated_for_date: form.isRecurring ? recurrenceStartDate : null,
       confirmed_at: savedStatus === 'received' ? now : null,
@@ -1016,6 +1246,10 @@ export default function IncomePage() {
       received_date: date,
       recurrence_start_date: recurrenceStartDate,
       recurrence_end_date: recurrenceEndDate || null,
+      start_date: recurrenceStartDate,
+      end_date: recurrenceEndDate || null,
+      is_active: true,
+      calculation_mode: form.frequency === 'monthly' ? form.calculationMode : 'full_month',
       parent_recurring_income_id: parentId,
       generated_for_date: date,
       confirmed_at: null,
@@ -1076,6 +1310,10 @@ export default function IncomePage() {
               frequency: form.frequency,
               recurrence_start_date: recurrenceStartDate,
               recurrence_end_date: recurrenceEndDate || null,
+              start_date: recurrenceStartDate,
+              end_date: recurrenceEndDate || null,
+              is_active: true,
+              calculation_mode: form.frequency === 'monthly' ? form.calculationMode : 'full_month',
               parent_recurring_income_id: parent.id,
               generated_for_date: date,
               confirmed_at: null,
@@ -1161,9 +1399,13 @@ export default function IncomePage() {
           <div>
             <p>{tr('breadcrumb', lang)}</p>
             <h1>{tr('title', lang)}</h1>
-            <span><CalendarDays size={15} />{tr('monthNow', lang)}</span>
+            <span><CalendarDays size={15} />{formatMonthLabel(selectedMonth, locale)}</span>
           </div>
           <div className="income-actions">
+            <label className="month-picker">
+              <span>{tr('selectedMonthLabel', lang)}</span>
+              <input type="month" value={selectedMonth} onChange={event => setSelectedMonth(event.target.value || todayDateOnly().slice(0, 7))} />
+            </label>
             <button type="button" className="primary hero-primary" onClick={openCreate} aria-label={tr('addIncome', lang)}>
               <Plus size={16} />{tr('addIncome', lang)}
             </button>
@@ -1188,6 +1430,13 @@ export default function IncomePage() {
           </div>
         </header>
 
+        {insightLoadError && (
+          <section className="income-error-state" role="alert">
+            <span><AlertTriangle size={18} />{tr('incomeLoadError', lang)}</span>
+            <button type="button" className="ghost-light" onClick={() => void load()}>{tr('retry', lang)}</button>
+          </section>
+        )}
+
         <section className="insights" aria-label="income insights">
           {insightCards.map(card => (
             <button type="button" className={`insight ${card.tone} ${card.available ? '' : 'muted'}`} key={card.title} onClick={() => setInsightOpen(`${card.title}: ${card.value || card.message}`)}>
@@ -1202,10 +1451,47 @@ export default function IncomePage() {
         </section>
 
         <section className="stat-grid">
-          <article><span><Wallet size={18} />{tr('totalIncome', lang)}</span><strong>{formatMoney(selectedMonthIncomeTotal, defaultCurrency || 'KWD', lang as Lang)}</strong><em>{tr('calculatedFromRealData', lang)}</em></article>
-          <article><span><BriefcaseBusiness size={18} />{tr('incomeSources', lang)}</span><strong>{activeSources} {tr('active', lang)}</strong><em>{tr('calculatedFromRealData', lang)}</em></article>
-          <article><span><CircleDollarSign size={18} />{tr('expectedNet', lang)}</span><strong>{formatMoney(expectedNet, defaultCurrency || 'KWD', lang as Lang)}</strong><em>{selectedMonthIncomeTotal > 0 ? tr('calculatedFromRealData', lang) : tr('insufficientData', lang)}</em></article>
+          {loading ? Array.from({ length: 6 }).map((_, index) => <article className="stat-skeleton" key={index} aria-hidden="true" />) : (
+            <>
+              <article><span><Wallet size={18} />{tr('totalIncome', lang)}</span><strong>{hasAnyIncome ? formatMoney(selectedMonthIncomeTotal, defaultCurrency || 'KWD', lang as Lang) : tr('noIncomeAdded', lang)}</strong><em title={tr('monthlyCalculationTooltip', lang)}>{calculationBadge}</em></article>
+              <article><span><BriefcaseBusiness size={18} />{tr('incomeSources', lang)}</span><strong>{activeSources} {tr('active', lang)}</strong><em>{hasAnyIncome ? tr('calculatedFromRealData', lang) : tr('noIncomeAdded', lang)}</em></article>
+              <article><span><CircleDollarSign size={18} />{tr('expectedNet', lang)}</span><strong>{hasAnyIncome ? formatMoney(expectedNet, defaultCurrency || 'KWD', lang as Lang) : tr('noIncomeAdded', lang)}</strong><em>{calculationBadge}</em></article>
+              <article><span><Gauge size={18} />{tr('savingsRateTitle', lang)}</span><strong>{savingsRate === null ? tr('noIncomeAdded', lang) : formatPercent(savingsRate, locale)}</strong><em>{savingsRate === null ? tr('noIncomeAdded', lang) : calculationBadge}</em></article>
+              <article><span><BarChart3 size={18} />{tr('spendingRatioTitle', lang)}</span><strong>{spendingRatio === null ? tr('noIncomeAdded', lang) : formatPercent(spendingRatio, locale)}</strong><em>{spendingRatio === null ? tr('noIncomeAdded', lang) : tr('calculatedFromRealData', lang)}</em></article>
+              <article><span><TrendingUp size={18} />{tr('nextForecast', lang)}</span><strong>{hasAnyIncome ? formatMoney(nextMonthIncomeTotal, defaultCurrency || 'KWD', lang as Lang) : tr('noIncomeAdded', lang)}</strong><em>{nextMonthSummary.hasRecurring ? tr('calculatedFromMonthlyIncome', lang) : tr('nextMonthFullIncome', lang)}</em></article>
+            </>
+          )}
         </section>
+
+        {!loading && hasAnyIncome && (
+          <section className="month-breakdown" aria-label={tr('currentMonthIncome', lang)}>
+            <article>
+              <span>{tr('currentMonthIncome', lang)}</span>
+              <strong>{formatMoney(selectedMonthIncomeTotal, defaultCurrency || 'KWD', lang as Lang)}</strong>
+              <em>{calculationBadge}</em>
+            </article>
+            <article>
+              <span>{tr('fullMonthlyIncome', lang)}</span>
+              <strong>{formatMoney(fullMonthlyIncome, defaultCurrency || 'KWD', lang as Lang)}</strong>
+              <em>{tr('calculatedFromMonthlyIncome', lang)}</em>
+            </article>
+            <article>
+              <span>{tr('expectedRemainingMonth', lang)}</span>
+              <strong>{formatMoney(remainingMonthIncome, defaultCurrency || 'KWD', lang as Lang)}</strong>
+              <em>{selectedMonthSummary.hasProrated ? tr('calculatedFromRemainingMonth', lang) : tr('fullMonthCalculation', lang)}</em>
+            </article>
+            <article>
+              <span>{tr('currentMonthExpectedNet', lang)}</span>
+              <strong>{formatMoney(expectedNet, defaultCurrency || 'KWD', lang as Lang)}</strong>
+              <em>{tr('currentMonthIncome', lang)}</em>
+            </article>
+            <article>
+              <span>{tr('nextForecast', lang)}</span>
+              <strong>{formatMoney(nextMonthIncomeTotal, defaultCurrency || 'KWD', lang as Lang)}</strong>
+              <em>{tr('nextMonthFullIncome', lang)}: {formatMoney(nextMonthFullIncome, defaultCurrency || 'KWD', lang as Lang)}</em>
+            </article>
+          </section>
+        )}
 
         <PageTabs
           tabs={incomeTabs}
@@ -1235,7 +1521,7 @@ export default function IncomePage() {
           <article className="panel">
             <div className="panel-title"><TrendingUp size={18} /><h2>{tr('nextForecast', lang)}</h2></div>
             <strong>{forecastValue ? formatMoney(forecastValue, defaultCurrency || 'KWD', lang as Lang) : tr('notEnoughData', lang)}</strong>
-            <p>{forecastValue ? tr('basedOnHistory', lang) : tr('notEnoughData', lang)}</p>
+            <p>{forecastValue ? (nextMonthSummary.hasRecurring ? tr('calculatedFromMonthlyIncome', lang) : tr('basedOnHistory', lang)) : tr('notEnoughData', lang)}</p>
           </article>
           <article className="panel smart-view">
             <div className="panel-title"><Sparkles size={18} /><h2>{tr('smartIncomeView', lang)}</h2></div>
@@ -1350,7 +1636,7 @@ export default function IncomePage() {
                       <div className="row-meta">
                         <em className={`status ${row.workflowStatus}`}>{statusLabel(row.workflowStatus, lang)}</em>
                         {projectLinked ? <em className="project-income">{tr('projectIncome', lang)}</em> : null}
-                        <em>{row.is_recurring ? tr('recurring', lang) : tr('oneTime', lang)}</em>
+                        <em>{rowIsRecurring(row) ? tr('recurring', lang) : tr('oneTime', lang)}</em>
                         <em><CalendarDays size={12} />{formatDate(row.received_date || row.generated_for_date || row.created_at, lang)}</em>
                         {row.attachment_url && <em><Paperclip size={12} />{tr('attachment', lang)}</em>}
                         <em>{pct}% {tr('percent', lang)}</em>
@@ -1410,7 +1696,27 @@ export default function IncomePage() {
               </div>
               <label><span>{tr('type', lang)}</span><select value={form.incomeType} onChange={e => patchForm({ incomeType: e.target.value as IncomeType }, 'incomeType')} aria-invalid={Boolean(formErrors.incomeType)}>{TYPES.map(item => <option key={item.id} value={item.id}>{item.icon} {item.label[lang as Lang]}</option>)}</select>{formErrors.incomeType && <small className="field-error">{formErrors.incomeType}</small>}</label>
               <label><span>{tr('frequency', lang)}</span><select value={frequencyMode} onChange={e => setFrequencyMode(e.target.value as FrequencyMode)} aria-invalid={Boolean(formErrors.frequency)}>{FREQUENCY_MODES.map(item => <option key={item.id} value={item.id}>{item.label[lang as Lang]}</option>)}</select>{formErrors.frequency && <small className="field-error">{formErrors.frequency}</small>}</label>
-              <label><span>{tr('receivedDate', lang)}</span><input type="date" value={form.receivedDate} onChange={e => patchForm({ receivedDate: e.target.value, recurrenceStartDate: e.target.value }, 'receivedDate')} aria-invalid={Boolean(formErrors.receivedDate)} />{formErrors.receivedDate && <small className="field-error">{formErrors.receivedDate}</small>}</label>
+              {form.isRecurring && form.frequency === 'monthly' && (
+                <label className="wide calculation-mode-field">
+                  <span>{tr('monthCalculationMethod', lang)}</span>
+                  <select value={form.calculationMode} onChange={e => patchForm({ calculationMode: e.target.value as CalculationMode })}>
+                    <option value="full_month">{tr('fullMonthCalculation', lang)}</option>
+                    <option value="prorated_current_month">{tr('proratedMonthCalculation', lang)}</option>
+                  </select>
+                  <small>{tr('monthlyCalculationTooltip', lang)}</small>
+                </label>
+              )}
+              <label><span>{form.isRecurring ? tr('startDate', lang) : tr('receivedDate', lang)}</span><input type="date" value={form.receivedDate} onChange={e => {
+                const nextDate = e.target.value;
+                patchForm({
+                  receivedDate: nextDate,
+                  recurrenceStartDate: nextDate,
+                  calculationMode: form.isRecurring && form.frequency === 'monthly' ? defaultCalculationMode(nextDate) : form.calculationMode,
+                }, 'receivedDate');
+              }} aria-invalid={Boolean(formErrors.receivedDate)} />{formErrors.receivedDate && <small className="field-error">{formErrors.receivedDate}</small>}</label>
+              {form.isRecurring && (
+                <label><span>{tr('endDateOptional', lang)}</span><input type="date" value={form.recurrenceEndDate} onChange={e => patchForm({ recurrenceEndDate: e.target.value })} /></label>
+              )}
               <label className="wide"><span>{tr('optionalNote', lang)}</span><textarea value={form.notes} onChange={e => patchForm({ notes: e.target.value })} placeholder={tr('notePlaceholder', lang)} /></label>
               {form.currency !== 'KWD' && <div className="form-note">{tr('conversionDisabled', lang)}</div>}
               {formError && <div className="form-error">{formError}</div>}
@@ -1438,19 +1744,19 @@ export default function IncomePage() {
         .income-header{position:relative;overflow:visible;z-index:20;display:flex;justify-content:space-between;align-items:flex-end;gap:18px;background:linear-gradient(135deg,var(--sfm-primary-dark) 0%,var(--sfm-midnight) 52%,var(--sfm-primary) 130%);border:1px solid rgba(167,243,240,.22);border-radius:24px;padding:28px;box-shadow:0 18px 42px rgba(3,18,37,.14)}
         .income-header:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 12% 18%,rgba(167,243,240,.28),transparent 28%),linear-gradient(120deg,transparent 0 60%,rgba(167,243,240,.08) 60% 61%,transparent 61%);pointer-events:none}.income-header>*{position:relative;z-index:1}
         .income-header p{margin:0;color:var(--sfm-soft-cyan);font-size:13px;font-weight:600}.income-header span{margin:0;color:var(--sfm-soft-cyan);font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:7px}.income-header h1{margin:8px 0;font-size:40px;font-weight:600;color:var(--sfm-card)}
-        .income-actions{display:flex;gap:10px;flex-wrap:wrap}.export-wrap{position:relative}.export-menu{position:absolute;z-index:80;inset-block-start:calc(100% + 8px);inset-inline-end:0;min-width:190px;background:var(--sfm-card);border:1px solid rgba(29,140,255,.25);border-radius:12px;padding:8px;box-shadow:0 18px 44px rgba(3,18,37,.24)}.export-menu button{width:100%;min-height:42px;border:0;border-radius:10px;background:var(--sfm-card);color:var(--sfm-foreground);display:flex;align-items:center;gap:8px;padding:0 10px;font:600 13px inherit;cursor:pointer;text-align:start;white-space:nowrap}.export-menu button:hover,.export-menu button:focus-visible{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.18)}.primary,.ghost,.primary-dark,.ghost-light{border-radius:12px;border:1px solid rgba(167,243,240,.26);height:42px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 14px inherit;cursor:pointer}.primary,.primary-dark{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:var(--sfm-primary-dark);border-color:rgba(167,243,240,.48)}.ghost{background:rgba(3,18,37,.34);color:var(--sfm-card);border-color:rgba(167,243,240,.3)}.ghost:disabled{opacity:.55;cursor:not-allowed}.ghost-light{background:var(--sfm-card);color:var(--sfm-midnight);border-color:rgba(29,140,255,.18)}
+        .income-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}.month-picker{min-width:178px;display:grid;gap:6px;color:rgba(255,255,255,.86);font-size:12px;font-weight:900}.month-picker input{height:42px;border-radius:12px;border:1px solid rgba(167,243,240,.30);background:rgba(255,255,255,.12);color:#fff;padding:0 12px;font:800 13px inherit;outline:none;color-scheme:dark}.month-picker input:focus{border-color:var(--sfm-soft-cyan);box-shadow:0 0 0 3px rgba(167,243,240,.18)}.export-wrap{position:relative}.export-menu{position:absolute;z-index:80;inset-block-start:calc(100% + 8px);inset-inline-end:0;min-width:190px;background:var(--sfm-card);border:1px solid rgba(29,140,255,.25);border-radius:12px;padding:8px;box-shadow:0 18px 44px rgba(3,18,37,.24)}.export-menu button{width:100%;min-height:42px;border:0;border-radius:10px;background:var(--sfm-card);color:var(--sfm-foreground);display:flex;align-items:center;gap:8px;padding:0 10px;font:600 13px inherit;cursor:pointer;text-align:start;white-space:nowrap}.export-menu button:hover,.export-menu button:focus-visible{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.18)}.primary,.ghost,.primary-dark,.ghost-light{border-radius:12px;border:1px solid rgba(167,243,240,.26);height:42px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 14px inherit;cursor:pointer}.primary,.primary-dark{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:var(--sfm-primary-dark);border-color:rgba(167,243,240,.48)}.ghost{background:rgba(3,18,37,.34);color:var(--sfm-card);border-color:rgba(167,243,240,.3)}.ghost:disabled{opacity:.55;cursor:not-allowed}.ghost-light{background:var(--sfm-card);color:var(--sfm-midnight);border-color:rgba(29,140,255,.18)}
         .insights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.insight{min-height:76px;text-align:start;border:1px solid rgba(29,140,255,.16);border-radius:18px;padding:15px;background:var(--sfm-card);display:flex;align-items:center;gap:10px;color:var(--sfm-midnight);cursor:pointer;box-shadow:0 8px 22px rgba(3,18,37,.04)}.insight span{display:grid;gap:3px;line-height:1.45}.insight span strong{font-weight:600}.insight span small{font-size:13px;font-weight:600}.insight b{margin-inline-start:auto;font-size:12px;color:var(--sfm-primary-hover);max-width:140px}.insight.success{background:#F0F7E8;color:#047857}.insight.warning{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover)}.insight.info{background:#EEF5FB;color:#0C447C}.insight.muted{background:var(--sfm-card);color:var(--sfm-muted)}
-        .stat-grid,.smart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.stat-grid article,.panel{background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);border-radius:20px;padding:18px;box-shadow:0 10px 26px rgba(3,18,37,.05)}.stat-grid span{display:flex;gap:8px;align-items:center;color:var(--sfm-muted);font-size:13px}.stat-grid strong{display:block;margin-top:10px;font-size:26px;font-weight:600;color:var(--sfm-midnight)}.stat-grid em{display:inline-flex;margin-top:10px;border-radius:999px;background:#ECFDF5;color:#047857;padding:4px 9px;font-style:normal;font-size:12px}
+        .stat-grid,.smart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.stat-grid article,.panel{background:var(--sfm-card);border:1px solid rgba(29,140,255,.16);border-radius:20px;padding:18px;box-shadow:0 10px 26px rgba(3,18,37,.05)}.stat-grid span{display:flex;gap:8px;align-items:center;color:var(--sfm-muted);font-size:13px}.stat-grid strong{display:block;margin-top:10px;font-size:26px;font-weight:600;color:var(--sfm-midnight);min-height:36px}.stat-grid em{display:inline-flex;margin-top:10px;border-radius:999px;background:#ECFDF5;color:#047857;padding:4px 9px;font-style:normal;font-size:12px}.stat-skeleton{min-height:130px;position:relative;overflow:hidden}.stat-skeleton:before{content:"";position:absolute;inset:18px;border-radius:14px;background:linear-gradient(90deg,#EEF2F7,#F8FBFF,#EEF2F7);background-size:220% 100%;animation:shimmer 1.2s ease-in-out infinite}@keyframes shimmer{to{background-position:-220% 0}}.month-breakdown{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.month-breakdown article{min-width:0;border:1px solid rgba(29,140,255,.14);border-radius:18px;background:linear-gradient(180deg,#fff,#F8FBFF);padding:14px;box-shadow:0 12px 28px rgba(3,18,37,.05)}.month-breakdown span{display:block;color:var(--sfm-muted);font-size:12px;font-weight:900}.month-breakdown strong{display:block;margin-top:8px;color:var(--sfm-midnight);font-size:18px;font-weight:950;white-space:normal}.month-breakdown em{display:block;margin-top:8px;color:#0369A1;font-style:normal;font-size:11px;font-weight:900;line-height:1.5}
         .smart-score strong,.smart-grid strong{display:block;color:var(--sfm-midnight);font-size:26px;font-weight:600}.smart-score span,.smart-grid p{color:var(--sfm-muted);font-size:13px;line-height:1.7;margin:8px 0 0}.score-empty{display:grid;gap:9px;align-items:start}.score-empty strong{font-size:18px}.score-empty span{margin:0}.score-empty button{width:max-content}.smart-view{grid-column:span 1}.smart-view ul{margin:0;padding-inline-start:18px;color:var(--sfm-muted);line-height:1.8;font-size:13px}
         .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.panel-title{display:flex;align-items:center;gap:9px;margin-bottom:16px;color:var(--sfm-primary)}.panel-title h2{margin:0;font-size:18px;font-weight:600;color:var(--sfm-midnight)}.donut-wrap{display:grid;grid-template-columns:180px 1fr;gap:18px;align-items:center}.donut{width:170px;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;position:relative}.donut:after{content:"";position:absolute;inset:32px;background:var(--sfm-card);border-radius:50%}.donut span{position:relative;z-index:1;font-weight:600;color:var(--sfm-midnight)}.legend{display:grid;gap:10px}.legend div{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:13px}.legend i{width:10px;height:10px;border-radius:50%}.line-chart{width:100%;height:auto;min-height:170px;background:var(--sfm-light-card);border-radius:14px;padding:12px;overflow:visible}
-        .income-report-panel p{margin:0;color:var(--sfm-muted);line-height:1.8;font-weight:600}.income-report-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+        .income-report-panel p{margin:0;color:var(--sfm-muted);line-height:1.8;font-weight:600}.income-report-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.income-error-state{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid rgba(239,68,68,.22);border-radius:18px;background:#FEF2F2;color:#B91C1C;padding:14px 16px;font-weight:900}.income-error-state span{display:flex;align-items:center;gap:8px;line-height:1.6}
         .late-card{display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);border:1px solid rgba(133,79,11,.16);border-radius:18px;padding:14px 16px}.late-card span{display:flex;align-items:center;gap:8px;font-weight:600}.late-card button,.upcoming-item button{border:1px solid rgba(133,79,11,.16);background:#fff7eb;color:var(--sfm-primary-hover);border-radius:12px;min-height:38px;padding:0 12px;display:inline-flex;align-items:center;gap:7px;font:600 12px inherit;cursor:pointer}.upcoming-panel{display:grid;gap:10px}.upcoming-list{display:grid;gap:9px}.upcoming-item{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;border:1px solid rgba(29,140,255,.14);border-radius:14px;padding:12px;background:var(--sfm-light-card)}.upcoming-item strong{display:block;color:var(--sfm-midnight);font-weight:600}.upcoming-item span{display:block;margin-top:4px;color:var(--sfm-muted);font-size:12px}.upcoming-item em,.income-filters button{font-style:normal;border-radius:999px;background:var(--sfm-background);color:var(--sfm-muted);padding:5px 10px;font-size:12px;white-space:nowrap}.upcoming-item .received{background:#ECFDF5;color:#047857}.upcoming-item .pending,.upcoming-item .expected{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover)}.upcoming-item .late{background:#FEF2F2;color:#B91C1C}.income-filters{display:flex;gap:8px;overflow-x:auto;padding:0 0 12px;margin-top:-4px;scrollbar-width:thin}.income-filters button{border:1px solid rgba(29,140,255,.14);cursor:pointer;font:600 12px inherit;background:var(--sfm-light-card)}.income-filters button.active{background:var(--sfm-midnight);color:#fff;border-color:var(--sfm-midnight)}
         .income-list{display:grid;gap:10px}.income-row{display:flex;justify-content:space-between;gap:14px;border:1px solid rgba(29,140,255,.14);border-radius:16px;padding:14px;background:var(--sfm-light-card)}.row-main{display:flex;gap:12px;min-width:0}.row-icon{width:44px;height:44px;border-radius:14px;background:rgba(29,140,255,.10);display:grid;place-items:center;font-size:21px}.row-main strong{display:block;font-size:15px;font-weight:600;color:var(--sfm-midnight)}.row-main span{display:block;margin-top:4px;color:var(--sfm-muted);font-size:12px}.row-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.row-meta em{font-style:normal;border-radius:999px;background:var(--sfm-background);color:var(--sfm-muted);padding:4px 8px;font-size:11px;display:inline-flex;align-items:center;gap:4px}.row-meta .received{background:#ECFDF5;color:#047857}.row-meta .pending,.row-meta .expected{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover)}.row-meta .late{background:#FEF2F2;color:#B91C1C}.row-meta .project-income{background:rgba(24,212,212,.14);color:var(--sfm-primary-hover);border:1px solid rgba(24,212,212,.22)}.row-side{display:flex;align-items:center;gap:12px}.row-side b{white-space:nowrap;color:var(--sfm-midnight)}.row-side div{display:flex;gap:6px}.row-side button,.modal-head button,.mini-pop button{width:36px;height:36px;border-radius:11px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);color:var(--sfm-midnight);display:grid;place-items:center;cursor:pointer}.empty{padding:24px;text-align:center;color:var(--sfm-muted);border:1px dashed rgba(29,140,255,.22);border-radius:14px;background:var(--sfm-light-card)}
-        .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(36,24,13,.42);display:grid;place-items:center;padding:18px}.income-modal{width:min(760px,100%);max-height:min(92dvh,900px);overflow:auto;background:var(--sfm-card);border-radius:20px;border:1px solid rgba(29,140,255,.18);padding:20px}.modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}.modal-head p{margin:0;color:var(--sfm-primary);font-size:12px}.modal-head h2{margin:4px 0 0;font-size:24px;color:var(--sfm-midnight)}.income-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.income-form label,.currency-field{display:grid;gap:7px;color:var(--sfm-midnight);font-size:13px;font-weight:500}.income-form input,.income-form select,.income-form textarea{width:100%;border:1px solid rgba(29,140,255,.16);border-radius:12px;background:var(--sfm-background);color:var(--sfm-midnight);padding:0 12px;min-height:46px;font:500 14px inherit;outline:none}.income-form input[type=file]{padding:11px 12px}.income-form textarea{min-height:92px;padding-top:12px;resize:vertical}.income-form input:focus,.income-form select:focus,.income-form textarea:focus{border-color:var(--sfm-primary);box-shadow:0 0 0 3px rgba(29,140,255,.14);background:var(--sfm-card)}.wide,.form-actions,.form-error,.form-note,.attachment-field,.suggestion-pill{grid-column:1/-1}.suggestion-pill{display:flex;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.18);border-radius:12px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:10px 12px;font-size:13px}.suggestion-pill button{margin-inline-start:auto;border:0;border-radius:10px;background:var(--sfm-midnight);color:#fff;padding:7px 10px;font:600 12px inherit;cursor:pointer}.attachment-field{display:grid;gap:10px}.attachment-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.16);border-radius:12px;background:var(--sfm-background);color:var(--sfm-midnight);padding:9px 10px;font-size:13px}.attachment-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attachment-chip small{color:var(--sfm-muted);margin-inline-start:auto}.attachment-chip button{width:28px;height:28px;border-radius:9px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);color:var(--sfm-midnight);display:grid;place-items:center;cursor:pointer}.toggle-line{align-content:end}.toggle{height:46px;border-radius:12px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-background);color:var(--sfm-midnight);display:flex;align-items:center;gap:9px;padding:0 12px;cursor:pointer}.toggle span{width:20px;height:20px;border-radius:50%;background:#c9bea9}.toggle.on span{background:var(--sfm-primary)}.form-actions{display:flex;justify-content:flex-end;gap:10px}.form-error{background:#FEF2F2;color:#B91C1C;border-radius:12px;padding:10px 12px;font-size:13px}.form-note{background:#E6F1FB;color:#0C447C;border-radius:12px;padding:10px 12px;font-size:13px}
+        .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(36,24,13,.42);display:grid;place-items:center;padding:18px}.income-modal{width:min(760px,100%);max-height:min(92dvh,900px);overflow:auto;background:var(--sfm-card);border-radius:20px;border:1px solid rgba(29,140,255,.18);padding:20px}.modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}.modal-head p{margin:0;color:var(--sfm-primary);font-size:12px}.modal-head h2{margin:4px 0 0;font-size:24px;color:var(--sfm-midnight)}.income-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.income-form label,.currency-field{display:grid;gap:7px;color:var(--sfm-midnight);font-size:13px;font-weight:500}.income-form input,.income-form select,.income-form textarea{width:100%;border:1px solid rgba(29,140,255,.16);border-radius:12px;background:var(--sfm-background);color:var(--sfm-midnight);padding:0 12px;min-height:46px;font:500 14px inherit;outline:none}.income-form input[type=file]{padding:11px 12px}.income-form textarea{min-height:92px;padding-top:12px;resize:vertical}.income-form input:focus,.income-form select:focus,.income-form textarea:focus{border-color:var(--sfm-primary);box-shadow:0 0 0 3px rgba(29,140,255,.14);background:var(--sfm-card)}.wide,.form-actions,.form-error,.form-note,.attachment-field,.suggestion-pill{grid-column:1/-1}.calculation-mode-field{border:1px solid rgba(29,140,255,.14);border-radius:16px;background:#F8FBFF;padding:12px}.calculation-mode-field small{color:var(--sfm-muted);font-size:12px;font-weight:800;line-height:1.7}.suggestion-pill{display:flex;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.18);border-radius:12px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:10px 12px;font-size:13px}.suggestion-pill button{margin-inline-start:auto;border:0;border-radius:10px;background:var(--sfm-midnight);color:#fff;padding:7px 10px;font:600 12px inherit;cursor:pointer}.attachment-field{display:grid;gap:10px}.attachment-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.16);border-radius:12px;background:var(--sfm-background);color:var(--sfm-midnight);padding:9px 10px;font-size:13px}.attachment-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attachment-chip small{color:var(--sfm-muted);margin-inline-start:auto}.attachment-chip button{width:28px;height:28px;border-radius:9px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);color:var(--sfm-midnight);display:grid;place-items:center;cursor:pointer}.toggle-line{align-content:end}.toggle{height:46px;border-radius:12px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-background);color:var(--sfm-midnight);display:flex;align-items:center;gap:9px;padding:0 12px;cursor:pointer}.toggle span{width:20px;height:20px;border-radius:50%;background:#c9bea9}.toggle.on span{background:var(--sfm-primary)}.form-actions{display:flex;justify-content:flex-end;gap:10px}.form-error{background:#FEF2F2;color:#B91C1C;border-radius:12px;padding:10px 12px;font-size:13px}.form-note{background:#E6F1FB;color:#0C447C;border-radius:12px;padding:10px 12px;font-size:13px}
         .mini-pop,.toast{position:fixed;z-index:100;inset-inline-end:22px;bottom:22px;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:14px;max-width:min(360px,calc(100vw - 32px));box-shadow:0 16px 38px rgba(3,18,37,.12)}.mini-pop strong{display:block;margin-bottom:6px}.mini-pop p{margin:0;color:var(--sfm-muted);line-height:1.6}.mini-pop button{float:inline-end;width:28px;height:28px}.toast{background:#ECFDF5;color:#047857;font-weight:600}
         .income-shell{background:linear-gradient(180deg,#EEF7FF 0%,#F8FBFF 42%,#FFFFFF 100%);color:#0B172A}.income-main{gap:20px;padding:28px 28px 64px}.income-header{overflow:hidden;background:linear-gradient(135deg,#061A2E 0%,#0B2A4A 58%,#0E7490 140%);border-color:rgba(34,211,238,.24);border-radius:28px;padding:34px;box-shadow:0 28px 70px rgba(3,18,37,.22)}.income-header h1{font-size:clamp(36px,6vw,58px);font-weight:900;color:#F8FAFC}.income-header p{color:#A7F3D0;font-weight:800}.income-header span{color:#BAE6FD;font-weight:700}.primary,.primary-dark{min-height:46px;border-radius:14px;background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#061A2E;font-weight:900;box-shadow:0 14px 28px rgba(29,140,255,.22)}.ghost-light,.ghost{min-height:46px;border-radius:14px;font-weight:900}.stat-grid article,.panel,.insight{border-color:#E2E8F0;background:#fff;border-radius:22px;box-shadow:0 18px 42px rgba(3,18,37,.06)}.stat-grid strong{font-size:clamp(24px,3vw,34px);font-weight:900;color:#0B172A}.income-row{border-color:#E2E8F0;background:#F8FBFF;border-radius:18px}.row-main strong,.row-side b{color:#0B172A;font-weight:950}.empty{border-radius:16px;background:#F8FBFF;font-weight:800}.compact-empty{min-height:96px;display:grid;place-items:center}.income-empty-state{min-height:280px;display:grid;place-items:center;align-content:center;gap:12px;text-align:center;border:1px dashed rgba(29,140,255,.28);border-radius:22px;background:linear-gradient(180deg,#F8FBFF,#FFFFFF);padding:34px}.income-empty-icon{width:62px;height:62px;border-radius:20px;display:grid;place-items:center;color:#061A2E;background:linear-gradient(135deg,#22D3EE,#38BDF8);box-shadow:0 18px 34px rgba(29,140,255,.22)}.income-empty-state strong{font-size:1.25rem;color:#0B172A;font-weight:950}.income-empty-state p{margin:0;max-width:480px;color:#64748B;line-height:1.8;font-weight:800}.modal-backdrop{background:rgba(6,26,46,.56);backdrop-filter:blur(10px);padding:18px}.income-modal{width:min(880px,100%);max-height:min(90vh,900px);background:#fff;border-radius:24px;border:1px solid rgba(226,232,240,.95);padding:24px;box-shadow:0 34px 90px rgba(3,18,37,.28)}.modal-head{flex-direction:row-reverse;gap:18px;margin-bottom:22px}.modal-title-wrap{display:flex;gap:12px;align-items:flex-start}.modal-title-icon{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;color:#061A2E;background:linear-gradient(135deg,#22D3EE,#38BDF8);box-shadow:0 16px 30px rgba(29,140,255,.22);flex:0 0 auto}.modal-head h2{margin:0;font-size:28px;color:#0B172A;font-weight:950}.modal-head p{margin:6px 0 0;color:#64748B;font-size:14px;font-weight:800;line-height:1.7}.income-form{gap:16px}.income-form label{gap:8px;color:#0B172A;font-weight:900}.income-form input,.income-form select,.income-form textarea{border-color:#CBD5E1;border-radius:14px;background:#F8FAFC;color:#0B172A;min-height:50px;font-weight:800}.income-form input::placeholder,.income-form textarea::placeholder{color:#94A3B8}.income-form input:focus,.income-form select:focus,.income-form textarea:focus{border-color:#22D3EE;box-shadow:0 0 0 4px rgba(34,211,238,.16);background:#fff}.income-form [aria-invalid="true"]{border-color:#EF4444}.amount-control{position:relative}.amount-control input{padding-inline-end:58px}.amount-control em{position:absolute;inset-inline-end:12px;top:50%;transform:translateY(-50%);font-style:normal;color:#0369A1;font-weight:950;pointer-events:none}.field-error{color:#B91C1C;font-size:12px;font-weight:900}.form-error{font-weight:900}:global(.dark) .income-shell{background:#0a1422;color:#e8eef6}:global(.dark) .income-header{background:linear-gradient(135deg,#061A2E,#0B2A4A 58%,#102F52 140%);border-color:rgba(47,214,192,.24)}:global(.dark) .insight,:global(.dark) .stat-grid article,:global(.dark) .panel,:global(.dark) .income-modal{background:#0f1d31;border-color:#1d3050;color:#e8eef6;box-shadow:0 18px 46px rgba(0,0,0,.30)}:global(.dark) .income-modal{background:#0f1d31}:global(.dark) .income-row,:global(.dark) .empty,:global(.dark) .income-empty-state,:global(.dark) .line-chart,:global(.dark) .upcoming-item,:global(.dark) .income-filters button,:global(.dark) .attachment-chip,:global(.dark) .toggle,:global(.dark) .income-form input,:global(.dark) .income-form select,:global(.dark) .income-form textarea{background:#13243a;border-color:#1d3050;color:#e8eef6}:global(.dark) .income-form input:focus,:global(.dark) .income-form select:focus,:global(.dark) .income-form textarea:focus{background:#0f1d31;border-color:#2fd6c0;box-shadow:0 0 0 4px rgba(47,214,192,.16)}:global(.dark) .modal-head h2,:global(.dark) .income-form label,:global(.dark) .stat-grid strong,:global(.dark) .smart-score strong,:global(.dark) .smart-grid strong,:global(.dark) .panel-title h2,:global(.dark) .donut span,:global(.dark) .legend div,:global(.dark) .upcoming-item strong,:global(.dark) .row-main strong,:global(.dark) .row-side b,:global(.dark) .income-empty-state strong,:global(.dark) .mini-pop strong{color:#e8eef6}:global(.dark) .modal-head p,:global(.dark) .smart-score span,:global(.dark) .smart-grid p,:global(.dark) .smart-view ul,:global(.dark) .income-report-panel p,:global(.dark) .upcoming-item span,:global(.dark) .row-main span,:global(.dark) .row-meta em,:global(.dark) .income-empty-state p,:global(.dark) .mini-pop p{color:#b8c7d9}:global(.dark) .amount-control em,:global(.dark) .panel-title{color:#2fd6c0}:global(.dark) .modal-head button,:global(.dark) .row-side button,:global(.dark) .mini-pop,:global(.dark) .export-menu,:global(.dark) .export-menu button{background:#0f1d31;border-color:#1d3050;color:#e8eef6}:global(.dark) .late-card{background:rgba(47,214,192,.10);border-color:rgba(47,214,192,.24);color:#b8c7d9}:global(.dark) .late-card button,:global(.dark) .upcoming-item button{background:#13243a;border-color:#1d3050;color:#e8eef6}:global(.dark) .ghost-light,:global(.dark) .ghost{background:#13243a;border-color:#1d3050;color:#e8eef6}:global(.dark) .form-note,:global(.dark) .suggestion-pill{background:rgba(47,214,192,.10);border-color:rgba(47,214,192,.24);color:#b8c7d9}:global(.dark) .form-error{background:rgba(239,68,68,.14);color:#fca5a5}:global(.dark) .toast{background:rgba(16,185,129,.16);border-color:rgba(16,185,129,.28);color:#86efac}
-        @media(max-width:1024px){.income-main{margin-inline-start:0;padding:calc(84px + env(safe-area-inset-top)) 16px 24px}.insights,.chart-grid,.smart-grid{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:680px){.income-header,.income-row,.late-card{display:grid}.income-header{padding:24px}.income-header h1{font-size:34px}.income-actions,.form-actions{display:grid;grid-template-columns:1fr}.export-wrap,.primary,.ghost,.primary-dark,.ghost-light{width:100%}.export-menu{position:static;margin-top:8px}.stat-grid,.income-form,.donut-wrap,.upcoming-item{grid-template-columns:1fr}.row-side{justify-content:space-between}.modal-backdrop{align-items:end;padding:12px}.income-modal{width:calc(100% - 24px);border-radius:24px 24px 0 0;max-height:90vh;padding:20px;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-title-wrap{display:grid}.income-form input,.income-form select,.income-form textarea{min-height:52px}.insight{align-items:flex-start}.insight b{margin-inline-start:0}.row-meta{gap:5px}.upcoming-item button,.late-card button{width:100%;justify-content:center}.suggestion-pill{display:grid}.suggestion-pill button{margin-inline-start:0;width:100%}}
+        @media(max-width:1024px){.income-main{margin-inline-start:0;padding:calc(84px + env(safe-area-inset-top)) 16px 24px}.insights,.chart-grid,.smart-grid{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.month-breakdown{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:680px){.income-header,.income-row,.late-card,.income-error-state{display:grid}.income-header{padding:24px}.income-header h1{font-size:34px}.income-actions,.form-actions{display:grid;grid-template-columns:1fr}.month-picker{width:100%}.export-wrap,.primary,.ghost,.primary-dark,.ghost-light{width:100%}.export-menu{position:static;margin-top:8px}.stat-grid,.income-form,.donut-wrap,.upcoming-item,.month-breakdown{grid-template-columns:1fr}.row-side{justify-content:space-between}.modal-backdrop{align-items:end;padding:12px}.income-modal{width:calc(100% - 24px);border-radius:24px 24px 0 0;max-height:90vh;padding:20px;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-title-wrap{display:grid}.income-form input,.income-form select,.income-form textarea{min-height:52px}.insight{align-items:flex-start}.insight b{margin-inline-start:0}.row-meta{gap:5px}.upcoming-item button,.late-card button{width:100%;justify-content:center}.suggestion-pill{display:grid}.suggestion-pill button{margin-inline-start:0;width:100%}}
       `}</style>
     </div>
   );
