@@ -215,7 +215,6 @@ const TEXT = {
     originalLanguage: 'باللغة الأصلية',
     noMore: 'تم عرض كل الأخبار المتاحة',
     examples: 'أمثلة',
-    viewMore: 'عرض المزيد',
   },
   en: {
     title: 'Energy News',
@@ -278,7 +277,6 @@ const TEXT = {
     originalLanguage: 'Original language',
     noMore: 'All available news is visible',
     examples: 'Examples',
-    viewMore: 'View more',
   },
   fr: {
     title: 'Actualités de l’énergie',
@@ -341,7 +339,6 @@ const TEXT = {
     originalLanguage: 'Langue originale',
     noMore: 'Toutes les actualités disponibles sont visibles',
     examples: 'Exemples',
-    viewMore: 'Voir plus',
   },
 } satisfies Record<LangCode, Record<string, string | string[]>>;
 
@@ -833,7 +830,7 @@ function MovementCard({ movers, tickerItems, loading, text, lang, locale }: {
   );
 }
 
-function SectorBreakdown({ lang, text, onSelect }: { lang: LangCode; text: typeof TEXT[LangCode]; onSelect: (filter: EnergyFilterId) => void }) {
+function SectorBreakdown({ lang, text }: { lang: LangCode; text: typeof TEXT[LangCode] }) {
   return (
     <section className={styles.sectorGuidePanel} aria-label={text.sectorGuideTitle as string}>
       <PanelTitle icon={BookOpen} title={text.sectorGuideTitle as string} />
@@ -846,12 +843,12 @@ function SectorBreakdown({ lang, text, onSelect }: { lang: LangCode; text: typeo
               <h3>{sector.title[lang]}</h3>
               <p>{sector.body[lang]}</p>
               <div className={styles.symbolChips} aria-label={text.examples as string}>
-                {sector.symbols.map(symbol => <span key={symbol} dir="ltr">{symbol}</span>)}
+                {sector.symbols.map(symbol => (
+                  <a key={symbol} href={`/market-analysis?symbol=${encodeURIComponent(symbol)}`} dir="ltr">
+                    {symbol}
+                  </a>
+                ))}
               </div>
-              <button type="button" onClick={() => onSelect(sector.id)}>
-                {text.viewMore as string}
-                <ArrowUpRight size={14} />
-              </button>
             </article>
           );
         })}
@@ -1326,10 +1323,6 @@ export function EnergyNewsPage() {
           <SectorBreakdown
             lang={activeLang}
             text={text}
-            onSelect={filter => {
-              setActiveFilter(filter);
-              setVisibleCount(NEWS_PAGE_SIZE);
-            }}
           />
 
           <NewsSection
