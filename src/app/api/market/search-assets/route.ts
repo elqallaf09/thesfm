@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { findAssetAliasMatches } from '@/lib/market/assetAliases';
 import { fetchYahooNormalizedQuote, type YahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
+import { normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeAssetType, normalizeMarketSymbolInput, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
 import { proxySearch } from '@/lib/market/openbbProxy';
 import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbolResolver';
@@ -46,6 +47,7 @@ type AssetSearchItem = {
   country?: string;
   asset_type: MarketAssetType;
   currency: string | null;
+  price_unit?: 'major' | 'fils' | 'pence' | null;
   price: number | null;
   change: number | null;
   change_percent: number | null;
@@ -166,21 +168,44 @@ function quoteSymbols(candidate: AssetCandidate) {
 }
 
 function normalizeQuoteUnits(quote: YahooNormalizedQuote, candidate: AssetCandidate) {
-  const yahooCurrency = quote.currency?.toUpperCase();
   const providerSymbols = quoteSymbols(candidate);
-  const isKuwaitFils = yahooCurrency === 'KWF' || providerSymbols.some(symbol => symbol.endsWith('.KW'));
-  if (!isKuwaitFils) {
-    return {
-      price: quote.price,
-      change: quote.change,
-      currency: quote.currency ?? candidate.currency ?? null,
-    };
-  }
+  const providerSymbol = quote.symbolUsed ?? candidate.providerSymbol ?? providerSymbols[0] ?? candidate.symbol;
+  const resolvedCurrency = resolveMarketCurrency({
+    providerCurrency: quote.currency ?? candidate.currency,
+    symbol: candidate.symbol,
+    providerSymbol,
+    exchange: candidate.market,
+    market: candidate.market,
+    country: candidate.country,
+    assetType: candidate.assetType,
+  });
+  const normalizedPrice = normalizeMarketPrice({
+    price: quote.price,
+    currency: resolvedCurrency.currency,
+    providerCurrency: quote.currency,
+    symbol: candidate.symbol,
+    providerSymbol,
+    exchange: candidate.market,
+    market: candidate.market,
+    assetType: candidate.assetType,
+  });
+  const normalizedChange = normalizeMarketPrice({
+    price: quote.change,
+    currency: resolvedCurrency.currency,
+    providerCurrency: quote.currency,
+    symbol: candidate.symbol,
+    providerSymbol,
+    exchange: candidate.market,
+    market: candidate.market,
+    assetType: candidate.assetType,
+    priceUnit: normalizedPrice.priceUnit,
+  });
 
   return {
-    price: quote.price === null ? null : quote.price / 1000,
-    change: quote.change === null ? null : quote.change / 1000,
-    currency: 'KWD',
+    price: normalizedPrice.price,
+    change: normalizedChange.price,
+    currency: resolvedCurrency.currency,
+    priceUnit: normalizedPrice.priceUnit,
   };
 }
 
@@ -198,6 +223,7 @@ function normalizeResult(candidate: AssetCandidate, quote: YahooNormalizedQuote)
     country: candidate.country,
     asset_type: candidate.assetType,
     currency: normalizedQuote.currency,
+    price_unit: normalizedQuote.priceUnit,
     price: normalizedQuote.price,
     change: normalizedQuote.change,
     change_percent: quote.changePercent,

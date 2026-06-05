@@ -88,7 +88,7 @@ export function InvestmentDetailDrawer({
         <div className="invest-detail-grid">
           <Info label={labels.type} value={typeLabel(investment.type)} />
           <Info label={labels.currentMarketValue || labels.currentValue} value={formatMoney(accountValue, accountValueStatus)} />
-          {nativeValue !== null && nativeCurrency && <Info label="القيمة الأصلية" value={formatNativeMoney(nativeValue, nativeCurrency, investment)} ltr />}
+          {nativeValue !== null && nativeCurrency && <Info label="القيمة الأصلية" value={formatNativeMoney(nativeValue, nativeCurrency, null)} ltr />}
           {accountValue !== null && <Info label="القيمة بعملة الحساب" value={formatMoney(accountValue, 'valid')} />}
           {investment.fxRateToUserCurrency && nativeCurrency && investment.userCurrency && nativeCurrency !== investment.userCurrency && (
             <Info label="سعر الصرف" value={`1 ${nativeCurrency} = ${formatNumber(investment.fxRateToUserCurrency)} ${investment.userCurrency}`} ltr />
@@ -108,9 +108,11 @@ export function InvestmentDetailDrawer({
           {investment.type === 'silver' && typeof investment.metalPurity === 'number' && <Info label="النقاء" value={formatPreciseNumber(investment.metalPurity)} ltr />}
           {(investment.type === 'gold' || investment.type === 'silver') && typeof investment.grams === 'number' && <Info label="الوزن بالجرام" value={`${formatPreciseNumber(investment.grams)} g`} ltr />}
           {(investment.type === 'gold' || investment.type === 'silver') && typeof investment.pureMetalGrams === 'number' && <Info label="صافي المعدن" value={`${formatPreciseNumber(investment.pureMetalGrams)} g`} ltr />}
-          {typeof investment.purchasePrice === 'number' && <Info label="سعر الشراء" value={`${investment.currency || investment.priceCurrency || ''} ${formatNumber(investment.purchasePrice)}`} ltr />}
-          {typeof investment.lastPrice === 'number' && investment.currency && (
-            <Info label={labels.currentPrice || 'Current price'} value={`${investment.currency} ${formatNumber(investment.lastPrice)}`} ltr />
+          {typeof investment.purchasePrice === 'number' && (
+            <Info label="سعر الشراء" value={formatNativeMoney(investment.purchasePrice, nativeCurrency, investment)} ltr />
+          )}
+          {typeof investment.lastPrice === 'number' && nativeCurrency && (
+            <Info label={labels.currentPrice || 'Current price'} value={formatNativeMoney(investment.lastPrice, nativeCurrency, investment)} ltr />
           )}
           {investment.lastPriceUpdatedAt && <Info label={labels.lastUpdated || 'Last updated'} value={formatDate(investment.lastPriceUpdatedAt) || unavailable} ltr />}
           {(investment.priceSource || investment.dataSource) && <Info label={labels.dataSource || 'Data source'} value={investment.priceSource || investment.dataSource || ''} />}

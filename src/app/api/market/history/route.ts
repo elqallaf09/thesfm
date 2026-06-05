@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { proxyHistory } from '@/lib/market/openbbProxy';
+import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeMarketSymbol } from '@/lib/market/normalizeSymbol';
 import { normalizeAssetType } from '@/lib/market/marketService';
 
@@ -71,6 +72,47 @@ function normalizeHistoryPoints(history: unknown) {
     .filter((point): point is NonNullable<typeof point> => point !== null);
 }
 
+function normalizeHistoryCurrencyPoints(points: ReturnType<typeof normalizeHistoryPoints>, input: {
+  symbol: string;
+  providerSymbol: string;
+  assetType: string;
+}) {
+  const currency = resolveMarketCurrency({
+    symbol: input.symbol,
+    providerSymbol: input.providerSymbol,
+    assetType: input.assetType,
+  });
+  const lastClose = points.at(-1)?.close ?? null;
+  const priceUnit = detectPriceUnit({
+    price: lastClose,
+    currency: currency.currency,
+    symbol: input.symbol,
+    providerSymbol: input.providerSymbol,
+    assetType: input.assetType,
+  });
+  const normalizeValue = (value: number | null) => normalizeMarketPrice({
+    price: value,
+    currency: currency.currency,
+    symbol: input.symbol,
+    providerSymbol: input.providerSymbol,
+    assetType: input.assetType,
+    priceUnit,
+  }).price;
+
+  return {
+    currency: currency.currency,
+    currencySource: currency.source,
+    priceUnit,
+    points: points.map(point => ({
+      ...point,
+      open: normalizeValue(point.open),
+      high: normalizeValue(point.high),
+      low: normalizeValue(point.low),
+      close: normalizeValue(point.close) ?? point.close,
+    })),
+  };
+}
+
 function statusForCode(code?: string) {
   if (code === 'openbb_timeout') return 408;
   if (code === 'invalid_symbol' || code === 'provider_no_data' || code === 'PRICE_HISTORY_UNAVAILABLE') return 422;
@@ -125,7 +167,12 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const points = normalizeHistoryPoints(result?.history);
+  const normalizedHistory = normalizeHistoryCurrencyPoints(normalizeHistoryPoints(result?.history), {
+    symbol: displaySymbol,
+    providerSymbol,
+    assetType,
+  });
+  const points = normalizedHistory.points;
   if (result?.success && points.length > 0) {
     return NextResponse.json({
       ...result,
@@ -137,6 +184,9 @@ export async function GET(request: NextRequest) {
       period,
       interval,
       points,
+      currency: normalizedHistory.currency,
+      currencySource: normalizedHistory.currencySource,
+      priceUnit: normalizedHistory.priceUnit,
       source: result.source ?? 'openbb',
       updated_at: new Date().toISOString(),
     });

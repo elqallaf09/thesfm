@@ -3,9 +3,12 @@ import {
   marketSymbolSuggestions,
   normalizeAssetType,
   normalizeMarketSymbolInput,
+  validateSymbol,
   type MarketAssetType,
   type MarketSearchItem,
 } from '@/lib/market/marketService';
+import { findAssetAliasMatches } from '@/lib/market/assetAliases';
+import { resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbolResolver';
 import symbolDirectory from '../../../openbb-service/data/symbols.json';
 
@@ -137,6 +140,28 @@ const SYMBOL_ALIASES: CanonicalAlias[] = [
   },
 ];
 
+const EXCHANGE_SUFFIX_META: Record<string, { exchange: string; country: string }> = {
+  KW: { exchange: 'Boursa Kuwait', country: 'Kuwait' },
+  SR: { exchange: 'Tadawul', country: 'Saudi Arabia' },
+  SA: { exchange: 'Tadawul', country: 'Saudi Arabia' },
+  AE: { exchange: 'UAE', country: 'United Arab Emirates' },
+  DU: { exchange: 'Dubai Financial Market', country: 'United Arab Emirates' },
+  AD: { exchange: 'Abu Dhabi Securities Exchange', country: 'United Arab Emirates' },
+  QA: { exchange: 'Qatar Exchange', country: 'Qatar' },
+  BH: { exchange: 'Bahrain Bourse', country: 'Bahrain' },
+  OM: { exchange: 'Muscat Stock Exchange', country: 'Oman' },
+  L: { exchange: 'London Stock Exchange', country: 'United Kingdom' },
+  TO: { exchange: 'Toronto Stock Exchange', country: 'Canada' },
+  HK: { exchange: 'Hong Kong Exchange', country: 'Hong Kong' },
+  T: { exchange: 'Tokyo Stock Exchange', country: 'Japan' },
+  DE: { exchange: 'Xetra', country: 'Germany' },
+  PA: { exchange: 'Euronext Paris', country: 'France' },
+  MI: { exchange: 'Borsa Italiana', country: 'Italy' },
+  MC: { exchange: 'Bolsa de Madrid', country: 'Spain' },
+  AS: { exchange: 'Euronext Amsterdam', country: 'Netherlands' },
+  AX: { exchange: 'ASX', country: 'Australia' },
+};
+
 function normalizeText(value: unknown) {
   return String(value ?? '')
     .normalize('NFKD')
@@ -254,6 +279,70 @@ function exactStaticUsItem(query: string, assetType?: MarketAssetType) {
         || compactText(item.providerSymbol) === compact));
 }
 
+function assetAliasItems(query: string, assetType?: MarketAssetType): MarketSearchItem[] {
+  return findAssetAliasMatches(query)
+    .filter(alias => !assetType || normalizeAssetType(alias.assetType) === assetType)
+    .map(alias => {
+      const providerSymbol = alias.symbolCandidates
+        .map(candidate => validateSymbol(candidate))
+        .find(Boolean) ?? validateSymbol(alias.symbol) ?? alias.symbol.toUpperCase();
+      const symbol = providerSymbol.includes('.') ? providerSymbol : (validateSymbol(alias.symbol) ?? providerSymbol);
+      const resolvedCurrency = resolveMarketCurrency({
+        providerCurrency: alias.currency,
+        symbol,
+        providerSymbol,
+        exchange: alias.marketEn,
+        assetType: alias.assetType,
+      });
+
+      return {
+        symbol,
+        providerSymbol,
+        name: alias.nameEn,
+        assetType: alias.assetType,
+        exchange: alias.marketEn,
+        currency: resolvedCurrency.currency ?? undefined,
+        currencySource: resolvedCurrency.source,
+      };
+    });
+}
+
+function exchangeSuffixItem(query: string, assetType?: MarketAssetType): MarketSearchItem | null {
+  const symbol = validateSymbol(query);
+  if (!symbol) return null;
+  if (assetType && !['stock', 'etf', 'index'].includes(assetType)) return null;
+
+  const suffix = symbol.match(/\.([A-Z]{1,3})$/)?.[1];
+  const meta = suffix ? EXCHANGE_SUFFIX_META[suffix] : undefined;
+  if (!meta) return null;
+
+  const alias = findAssetAliasMatches(symbol).find(match =>
+    match.symbolCandidates.some(candidate => validateSymbol(candidate) === symbol),
+  );
+  const providerSymbol = alias?.symbolCandidates
+    .map(candidate => validateSymbol(candidate))
+    .find(candidate => candidate === symbol) ?? symbol;
+  const resolvedCurrency = resolveMarketCurrency({
+    providerCurrency: alias?.currency,
+    symbol,
+    providerSymbol,
+    exchange: alias?.marketEn ?? meta.exchange,
+    country: meta.country,
+    assetType: alias?.assetType ?? assetType ?? 'stock',
+  });
+
+  return {
+    symbol,
+    providerSymbol,
+    name: alias?.nameEn ?? symbol,
+    assetType: alias?.assetType ?? assetType ?? 'stock',
+    exchange: alias?.marketEn ?? meta.exchange,
+    country: meta.country,
+    currency: resolvedCurrency.currency ?? undefined,
+    currencySource: resolvedCurrency.source,
+  };
+}
+
 function stringsToItems(symbols: string[], assetType?: MarketAssetType) {
   return symbols
     .map(symbol => exactAlias(symbol, assetType) ? aliasToItem(exactAlias(symbol, assetType)!) : exactDirectoryItem(symbol, assetType) ?? exactStaticUsItem(symbol, assetType) ?? null)
@@ -309,6 +398,16 @@ export async function resolveMarketSymbol(queryInput: unknown, assetTypeInput?: 
 
   const exactStatic = exactStaticUsItem(query, assetType);
   if (exactStatic) return { ok: true, asset: resolveFromItem(exactStatic, 'exact_symbol'), suggestions: [exactStatic] };
+
+  const assetAliases = dedupe(assetAliasItems(query, assetType));
+  if (assetAliases.length > 0) {
+    return { ok: true, asset: resolveFromItem(assetAliases[0]!, 'alias'), suggestions: assetAliases };
+  }
+
+  const exchangeSuffix = exchangeSuffixItem(query, assetType);
+  if (exchangeSuffix) {
+    return { ok: true, asset: resolveFromItem(exchangeSuffix, 'exact_symbol'), suggestions: [exchangeSuffix] };
+  }
 
   const normalized = normalizeMarketSymbolInput(query, assetType);
   if (normalized.valid && ['forex', 'crypto', 'gold', 'commodity'].includes(normalized.assetType)) {

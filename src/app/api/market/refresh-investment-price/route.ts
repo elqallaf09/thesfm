@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchYahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
+import { normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { validateSymbol } from '@/lib/market/marketService';
 
 export const revalidate = 300;
@@ -27,10 +28,29 @@ export async function GET(request: NextRequest) {
       displaySymbol,
     },
   });
-  const isKuwaitFils = quote.currency?.toUpperCase() === 'KWF' || symbol.endsWith('.KW');
-  const normalizedPrice = quote.price === null ? null : isKuwaitFils ? quote.price / 1000 : quote.price;
-  const normalizedChange = quote.change === null ? null : isKuwaitFils ? quote.change / 1000 : quote.change;
-  const normalizedCurrency = isKuwaitFils ? 'KWD' : quote.currency;
+  const resolvedCurrency = resolveMarketCurrency({
+    providerCurrency: quote.currency,
+    symbol: displaySymbol ?? symbol,
+    providerSymbol: quote.symbolUsed ?? symbol,
+    assetType: 'stock',
+  });
+  const normalizedQuote = normalizeMarketPrice({
+    price: quote.price,
+    currency: resolvedCurrency.currency,
+    providerCurrency: quote.currency,
+    symbol: displaySymbol ?? symbol,
+    providerSymbol: quote.symbolUsed ?? symbol,
+    assetType: 'stock',
+  });
+  const normalizedChange = normalizeMarketPrice({
+    price: quote.change,
+    currency: resolvedCurrency.currency,
+    providerCurrency: quote.currency,
+    symbol: displaySymbol ?? symbol,
+    providerSymbol: quote.symbolUsed ?? symbol,
+    assetType: 'stock',
+    priceUnit: normalizedQuote.priceUnit,
+  }).price;
 
   if (!quote.available) {
     return NextResponse.json({
@@ -40,7 +60,9 @@ export async function GET(request: NextRequest) {
         symbol: displaySymbol ?? symbol,
         provider_symbol: symbol,
         price: null,
-        currency: normalizedCurrency,
+        currency: resolvedCurrency.currency,
+        currency_source: resolvedCurrency.source,
+        price_unit: normalizedQuote.priceUnit,
         updated_at: quote.marketTime,
         source: quote.source,
       },
@@ -54,10 +76,12 @@ export async function GET(request: NextRequest) {
     item: {
       symbol: displaySymbol ?? symbol,
       provider_symbol: quote.symbolUsed ?? symbol,
-      price: normalizedPrice,
+      price: normalizedQuote.price,
       change: normalizedChange,
       change_percent: quote.changePercent,
-      currency: normalizedCurrency,
+      currency: resolvedCurrency.currency,
+      currency_source: resolvedCurrency.source,
+      price_unit: normalizedQuote.priceUnit,
       updated_at: quote.marketTime,
       source: quote.source,
       delayed: quote.delayed,

@@ -103,7 +103,7 @@ export function InvestmentRow({
           <span>{labels.currentMarketValue || 'Current market value'}: <b>{formatMoney(accountValue, accountValueStatus)}</b></span>
         )}
         {hasNativeValue && nativeCurrency && (
-          <span>القيمة الأصلية: <b dir="ltr">{formatNativeMoney(nativeValue, nativeCurrency, investment)}</b></span>
+          <span>القيمة الأصلية: <b dir="ltr">{formatNativeMoney(nativeValue, nativeCurrency, null)}</b></span>
         )}
         {showConvertedLine && (
           <span>القيمة بعملة الحساب: <b>{formatMoney(accountValue, 'valid')}</b></span>

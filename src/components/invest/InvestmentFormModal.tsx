@@ -45,6 +45,7 @@ type AssetSearchItem = {
   country?: string;
   asset_type: string;
   currency: string | null;
+  price_unit?: 'major' | 'fils' | 'pence' | null;
   price: number | null;
   change?: number | null;
   change_percent?: number | null;
@@ -303,6 +304,21 @@ function TypeIcon({ type }: { type: InvestmentType }) {
 
 function TrendingGlyph({ assetType }: { assetType: string }) {
   return <span dir="ltr">{assetType.slice(0, 2).toUpperCase()}</span>;
+}
+
+function assetSearchPrice(asset: AssetSearchItem, locale: string, unavailable: string) {
+  if (asset.price === null || !asset.currency) return unavailable;
+  return formatMarketPrice({
+    price: asset.price,
+    currency: asset.currency,
+    symbol: asset.symbol,
+    providerSymbol: asset.provider_symbol,
+    exchange: asset.market_en ?? asset.market,
+    market: asset.market_en ?? asset.market,
+    assetType: asset.asset_type,
+    locale,
+    includeKuwaitDinarEquivalent: true,
+  });
 }
 
 export function InvestmentFormModal({
@@ -947,7 +963,7 @@ export function InvestmentFormModal({
                             </small>
                           </span>
                           <span className="invest-asset-result-price" dir="ltr">
-                            {asset.price !== null && asset.currency ? `${asset.currency} ${formatNumber(asset.price)}` : labels.unavailable}
+                            {assetSearchPrice(asset, locale, labels.unavailable)}
                           </span>
                         </button>
                       ))}
@@ -971,7 +987,7 @@ export function InvestmentFormModal({
                   </div>
                   <div>
                     <span>{labels.currentPrice}</span>
-                    <strong dir="ltr">{selectedAsset.price !== null && selectedAsset.currency ? `${selectedAsset.currency} ${formatNumber(selectedAsset.price)}` : labels.unavailable}</strong>
+                    <strong dir="ltr">{assetSearchPrice(selectedAsset, locale, labels.unavailable)}</strong>
                     <small>{labels.lastUpdated}: {formatUpdatedAt(selectedAsset.updated_at) || labels.unavailable}</small>
                   </div>
                   <div>

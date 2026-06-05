@@ -1,4 +1,4 @@
-import type { MarketCurrencySource } from '@/lib/market/marketCurrency';
+import type { MarketCurrencySource, MarketPriceUnit } from '@/lib/market/marketCurrency';
 
 export type MarketAssetType = 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity' | 'gold' | 'index';
 export type MarketTrend = 'bullish' | 'neutral' | 'bearish';
@@ -34,6 +34,7 @@ export type MarketAnalysis = {
   assetType: MarketAssetType;
   currency?: string | null;
   currencySource?: MarketCurrencySource;
+  priceUnit?: MarketPriceUnit;
   exchange?: string;
   country?: string;
   market?: string;
@@ -46,6 +47,7 @@ export type MarketAnalysis = {
     changePercent: number;
     currency: string | null;
     currencySource?: MarketCurrencySource;
+    priceUnit?: MarketPriceUnit;
     timestamp: string;
   };
   fundamentals?: Record<string, unknown>;

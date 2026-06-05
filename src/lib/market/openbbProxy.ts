@@ -7,7 +7,7 @@ import {
   type MarketAssetType,
   type MarketResult,
 } from '@/lib/market/marketService';
-import { resolveMarketCurrency } from '@/lib/market/marketCurrency';
+import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import symbolDirectory from '../../../openbb-service/data/symbols.json';
 
 const OPENBB_TIMEOUT_MS = 12000;
@@ -366,12 +366,54 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
   const data = raw && typeof raw === 'object' ? raw as Record<string, any> : {};
   if (!isRealProviderPayload(data)) return null;
   const history = Array.isArray(data.history) ? data.history : [];
-  const closes = history
+  const rawCloses = history
     .map(point => Number(point?.close))
     .filter(value => Number.isFinite(value));
   const explicitQuotePrice = Number(data.quote?.price ?? data.latestPrice);
-  const latestPrice = Number(Number.isFinite(explicitQuotePrice) ? explicitQuotePrice : closes.at(-1) ?? 0);
-  if (!Number.isFinite(latestPrice) || latestPrice <= 0 || closes.length === 0) return null;
+  const rawLatestPrice = Number(Number.isFinite(explicitQuotePrice) ? explicitQuotePrice : rawCloses.at(-1) ?? 0);
+  if (!Number.isFinite(rawLatestPrice) || rawLatestPrice <= 0 || rawCloses.length === 0) return null;
+
+  const providerSymbol = data.providerSymbol ? String(data.providerSymbol) : undefined;
+  const directory = directorySymbol(String(data.symbol ?? symbol)) ?? (providerSymbol ? directorySymbol(providerSymbol) : undefined);
+  const exchange = String(data.exchange ?? data.market ?? data.quote?.exchange ?? meta?.exchange ?? directory?.exchange ?? '').trim() || undefined;
+  const country = String(data.country ?? data.quote?.country ?? meta?.country ?? directory?.country ?? '').trim() || undefined;
+  const market = String(data.market ?? data.quote?.market ?? exchange ?? '').trim() || undefined;
+  const providerCurrency = data.currency ?? data.quote?.currency ?? meta?.providerCurrency;
+  const resolvedCurrency = resolveMarketCurrency({
+    providerCurrency,
+    symbol: data.symbol ?? symbol,
+    providerSymbol: providerSymbol ?? symbol,
+    exchange,
+    market,
+    country,
+    assetType,
+  });
+  const priceUnit = detectPriceUnit({
+    price: rawLatestPrice,
+    currency: resolvedCurrency.currency,
+    providerCurrency,
+    symbol: data.symbol ?? symbol,
+    providerSymbol: providerSymbol ?? symbol,
+    exchange,
+    market,
+    assetType,
+  });
+  const normalizePriceValue = (value: unknown) => normalizeMarketPrice({
+    price: optionalFiniteNumber(value) ?? null,
+    currency: resolvedCurrency.currency,
+    providerCurrency,
+    symbol: data.symbol ?? symbol,
+    providerSymbol: providerSymbol ?? symbol,
+    exchange,
+    market,
+    assetType,
+    priceUnit,
+  }).price;
+  const closes = rawCloses
+    .map(value => normalizePriceValue(value))
+    .filter((value): value is number => value !== null && Number.isFinite(value));
+  const latestPrice = normalizePriceValue(rawLatestPrice);
+  if (latestPrice === null || !Number.isFinite(latestPrice) || latestPrice <= 0 || closes.length === 0) return null;
 
   const firstClose = closes[0] || latestPrice;
   const derivedChange = firstClose ? ((latestPrice - firstClose) / firstClose) * 100 : 0;
@@ -385,20 +427,7 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
   const riskLevel = ['low', 'medium', 'high'].includes(String(data.riskLevel))
     ? data.riskLevel
     : volatility >= 30 ? 'high' : volatility >= 12 ? 'medium' : 'low';
-  const providerSymbol = data.providerSymbol ? String(data.providerSymbol) : undefined;
-  const directory = directorySymbol(String(data.symbol ?? symbol)) ?? (providerSymbol ? directorySymbol(providerSymbol) : undefined);
-  const exchange = String(data.exchange ?? data.market ?? data.quote?.exchange ?? meta?.exchange ?? directory?.exchange ?? '').trim() || undefined;
-  const country = String(data.country ?? data.quote?.country ?? meta?.country ?? directory?.country ?? '').trim() || undefined;
-  const market = String(data.market ?? data.quote?.market ?? exchange ?? '').trim() || undefined;
   const lastUpdated = String(data.timestamp ?? data.updatedAt ?? data.quote?.timestamp ?? new Date().toISOString());
-  const resolvedCurrency = resolveMarketCurrency({
-    providerCurrency: data.currency ?? data.quote?.currency ?? meta?.providerCurrency,
-    symbol: data.symbol ?? symbol,
-    providerSymbol: providerSymbol ?? symbol,
-    exchange,
-    country,
-    assetType,
-  });
 
   return {
     success: true,
@@ -412,6 +441,7 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
     assetType,
     currency: resolvedCurrency.currency,
     currencySource: resolvedCurrency.source,
+    priceUnit,
     exchange,
     country,
     market,
@@ -424,6 +454,7 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
       changePercent,
       currency: resolvedCurrency.currency,
       currencySource: resolvedCurrency.source,
+      priceUnit,
       timestamp: lastUpdated,
     },
     fundamentals: data.fundamentals && typeof data.fundamentals === 'object' ? data.fundamentals : undefined,
@@ -445,11 +476,11 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
     },
     history: history.length ? history.map((point: any) => ({
       date: String(point.date ?? ''),
-      open: optionalFiniteNumber(point.open ?? point.o),
-      high: optionalFiniteNumber(point.high ?? point.h),
-      low: optionalFiniteNumber(point.low ?? point.l),
-      close: Number(point.close ?? 0),
-    })).filter(point => point.date && Number.isFinite(point.close)) : [],
+      open: normalizePriceValue(point.open ?? point.o) ?? undefined,
+      high: normalizePriceValue(point.high ?? point.h) ?? undefined,
+      low: normalizePriceValue(point.low ?? point.l) ?? undefined,
+      close: normalizePriceValue(point.close ?? 0) ?? 0,
+    })).filter(point => point.date && Number.isFinite(point.close) && point.close > 0) : [],
     summary: String(data.summary ?? 'Market data loaded from the configured provider. Review the source before making decisions.'),
     fallbackReason: data.fallbackReason ? String(data.fallbackReason) : undefined,
     cached: Boolean(meta?.fromCache),
