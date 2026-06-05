@@ -1,5 +1,5 @@
-import { StockCategoryNewsPage } from '@/components/stock-categories/StockCategoryNewsPage';
+import { BankNewsPage } from '@/components/banking-stocks/BankNewsPage';
 
 export default function BankingStocksPage() {
-  return <StockCategoryNewsPage categoryId="banking" />;
+  return <BankNewsPage />;
 }
