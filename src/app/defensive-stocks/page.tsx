@@ -1,5 +1,5 @@
-import { StockCategoryNewsPage } from '@/components/stock-categories/StockCategoryNewsPage';
+import { DefensiveStocksNewsPage } from '@/components/defensive-stocks/DefensiveStocksNewsPage';
 
 export default function DefensiveStocksPage() {
-  return <StockCategoryNewsPage categoryId="defensive" />;
+  return <DefensiveStocksNewsPage />;
 }
