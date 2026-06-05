@@ -48,6 +48,7 @@ import { CurrencySelect } from '@/components/CurrencySelect';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrency } from '@/lib/currencies';
 import { formatMoney } from '@/lib/formatMoney';
 import { buildFeasibilityStudyExportRow, printFeasibilityStudyToPdf } from '@/lib/reports/feasibilityStudyExport';
 import { useCurrency } from '@/lib/useCurrency';
@@ -982,6 +983,25 @@ function normalizeCurrencyCode(value: unknown, fallback = 'KWD') {
   return code || fallback;
 }
 
+function formatProjectExpenseMoney(amount: number, currency?: string | null) {
+  const code = normalizeCurrencyCode(currency, 'KWD');
+  const meta = getCurrency(code);
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+  const formatted = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: meta.decimals,
+    maximumFractionDigits: meta.decimals,
+  }).format(safeAmount);
+  const symbol = code === 'KWD' ? 'د.ك' : code === 'USD' ? '$' : (meta.symbolAr || meta.symbolEn || code);
+  return `${formatted} ${symbol}`;
+}
+
+function normalizeProjectExpenseRow(row: ProjectExpenseRow): ProjectExpenseRow {
+  return {
+    ...row,
+    currency: normalizeCurrencyCode(row.currency, 'KWD'),
+  };
+}
+
 function formatRowMoney(row: CurrencyAmountRow, money: MoneyFormatter, fallbackCurrency = 'KWD') {
   return money(toNum(row.amount), normalizeCurrencyCode(row.currency, fallbackCurrency));
 }
@@ -1152,7 +1172,7 @@ export default function ProjectWorkspacePage() {
   const [projectExpenseOpen, setProjectExpenseOpen] = useState(false);
   const [projectExpenseSaving, setProjectExpenseSaving] = useState(false);
   const [projectExpenseError, setProjectExpenseError] = useState('');
-  const [projectExpenseForm, setProjectExpenseForm] = useState<ProjectExpenseForm>(() => emptyProjectExpenseForm(userCurrency || 'KWD'));
+  const [projectExpenseForm, setProjectExpenseForm] = useState<ProjectExpenseForm>(() => emptyProjectExpenseForm(normalizeCurrencyCode(userCurrency, 'KWD')));
   const [editingProjectExpenseId, setEditingProjectExpenseId] = useState<string | null>(null);
   const [projectIncomeOpen, setProjectIncomeOpen] = useState(false);
   const [projectIncomeSaving, setProjectIncomeSaving] = useState(false);
@@ -1326,7 +1346,9 @@ export default function ProjectWorkspacePage() {
     const loadedDocumentsCount = documentsRes.error ? 0 : uniqueProjectDocumentCount(documentsRes.data ?? []);
     const loadedFeasibility = !feasibilityRes.error && feasibilityRes.data ? feasibilityRes.data as FeasibilityStudyRow : null;
     const loadedProjectIncome = projectIncomeRes.error ? [] : (projectIncomeRes.data ?? []) as ProjectIncomeRow[];
-    const loadedProjectExpenses = projectExpensesRes.error ? [] : (projectExpensesRes.data ?? []) as ProjectExpenseRow[];
+    const loadedProjectExpenses = projectExpensesRes.error
+      ? []
+      : ((projectExpensesRes.data ?? []) as ProjectExpenseRow[]).map(normalizeProjectExpenseRow);
     setProject(loadedProject);
     setProjectIncome(loadedProjectIncome);
     setProjectExpenses(loadedProjectExpenses);
@@ -1519,7 +1541,7 @@ export default function ProjectWorkspacePage() {
   const openProjectExpenseModal = () => {
     setProjectExpenseError('');
     setEditingProjectExpenseId(null);
-    setProjectExpenseForm(emptyProjectExpenseForm(projectCurrency));
+    setProjectExpenseForm(emptyProjectExpenseForm(normalizeCurrencyCode(projectCurrency, 'KWD')));
     setProjectExpenseOpen(true);
   };
 
@@ -1652,7 +1674,7 @@ export default function ProjectWorkspacePage() {
       return;
     }
 
-    let createdExpense = data as ProjectExpenseRow;
+    let createdExpense = normalizeProjectExpenseRow(data as ProjectExpenseRow);
     if (projectExpenseForm.paidFromPersonalBudget) {
       const personalPayload = {
         user_id: user.id,
@@ -1713,7 +1735,7 @@ export default function ProjectWorkspacePage() {
     setProjectExpenseSaving(false);
     setProjectExpenseOpen(false);
     setEditingProjectExpenseId(null);
-    setProjectExpenseForm(emptyProjectExpenseForm(projectCurrency));
+    setProjectExpenseForm(emptyProjectExpenseForm(normalizeCurrencyCode(projectCurrency, 'KWD')));
   };
 
   const saveProjectIncome = async (event: FormEvent<HTMLFormElement>) => {
@@ -2279,6 +2301,8 @@ export default function ProjectWorkspacePage() {
                   value={projectExpenseForm.currency}
                   onChange={value => setProjectExpenseForm(prev => ({ ...prev, currency: value }))}
                   lang={lang as Lang}
+                  ariaLabel={tr.currency}
+                  className="project-currency-select"
                 />
               </div>
 
@@ -2328,13 +2352,17 @@ export default function ProjectWorkspacePage() {
                 />
               </label>
 
-              <label className="budget-checkbox wide">
+              <label className={`budget-checkbox wide ${projectExpenseForm.paidFromPersonalBudget ? 'selected' : ''}`}>
                 <input
+                  className="budget-checkbox-input"
                   type="checkbox"
                   checked={projectExpenseForm.paidFromPersonalBudget}
                   onChange={event => setProjectExpenseForm(prev => ({ ...prev, paidFromPersonalBudget: event.target.checked }))}
                 />
-                <span>
+                <span className="budget-checkbox-indicator" aria-hidden="true">
+                  <CheckCircle2 size={18} />
+                </span>
+                <span className="budget-checkbox-copy">
                   <strong>{tr.paidFromPersonalBudget}</strong>
                   <small>{projectExpenseForm.paidFromPersonalBudget ? tr.includeInPersonalBudget : tr.doNotIncludeInPersonalBudget}</small>
                 </span>
@@ -2397,6 +2425,8 @@ export default function ProjectWorkspacePage() {
                   value={projectIncomeForm.currency}
                   onChange={value => setProjectIncomeForm(prev => ({ ...prev, currency: value }))}
                   lang={lang as Lang}
+                  ariaLabel={tr.currency}
+                  className="project-currency-select"
                 />
               </div>
 
@@ -2445,13 +2475,17 @@ export default function ProjectWorkspacePage() {
                 />
               </label>
 
-              <label className="budget-checkbox wide">
+              <label className={`budget-checkbox wide ${projectIncomeForm.transferredToPersonalIncome ? 'selected' : ''}`}>
                 <input
+                  className="budget-checkbox-input"
                   type="checkbox"
                   checked={projectIncomeForm.transferredToPersonalIncome}
                   onChange={event => setProjectIncomeForm(prev => ({ ...prev, transferredToPersonalIncome: event.target.checked }))}
                 />
-                <span>
+                <span className="budget-checkbox-indicator" aria-hidden="true">
+                  <CheckCircle2 size={18} />
+                </span>
+                <span className="budget-checkbox-copy">
                   <strong>{tr.transferredToPersonalIncome}</strong>
                   <small>{projectIncomeForm.transferredToPersonalIncome ? tr.includeInPersonalIncome : tr.doNotIncludeInPersonalIncome}</small>
                 </span>
@@ -2595,12 +2629,20 @@ export default function ProjectWorkspacePage() {
         .modal-error{border:1px solid rgba(220,38,38,.22);background:#FEF2F2;color:#B91C1C;border-radius:14px;padding:12px;font-weight:900}
         .project-expense-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
         .project-expense-form-grid .wide{grid-column:1 / -1}
-        .budget-checkbox{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:flex-start;width:100%;min-width:0;border:1px solid rgba(29,140,255,.16);border-radius:16px;background:var(--sfm-light-card);padding-block:14px;padding-inline:16px;cursor:pointer;overflow:visible;transition:border-color .18s ease,background .18s ease,box-shadow .18s ease}
-        .budget-checkbox:has(input:checked){border-color:rgba(24,212,212,.56);background:linear-gradient(135deg,rgba(29,140,255,.11),rgba(24,212,212,.10)),var(--sfm-light-card);box-shadow:inset 0 0 0 1px rgba(24,212,212,.16)}
-        .budget-checkbox input{inline-size:20px;block-size:20px;min-inline-size:20px;margin:3px 0 0;accent-color:var(--sfm-primary);justify-self:center}
-        .budget-checkbox span{display:grid;gap:4px;min-width:0}
-        .budget-checkbox strong{color:var(--sfm-midnight)}
-        .budget-checkbox small{color:var(--sfm-muted);line-height:1.6;font-weight:850}
+        .project-currency-select{min-width:0}
+        .project-currency-select .currency-trigger{min-height:48px;border-radius:13px;padding-inline:12px}
+        .project-currency-select .currency-trigger-content{column-gap:9px}
+        .project-currency-select .currency-trigger-symbol{min-inline-size:42px}
+        .budget-checkbox{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:flex-start;width:100%;min-width:0;border:1px solid rgba(29,140,255,.18);border-radius:16px;background:var(--sfm-light-card);padding-block:15px;padding-inline:18px;cursor:pointer;overflow:visible;transition:border-color .18s ease,background .18s ease,box-shadow .18s ease,transform .18s ease}
+        .budget-checkbox:hover{border-color:rgba(24,212,212,.42);transform:translateY(-1px)}
+        .budget-checkbox.selected,.budget-checkbox:has(.budget-checkbox-input:checked){border-color:rgba(24,212,212,.62);background:linear-gradient(135deg,rgba(29,140,255,.12),rgba(24,212,212,.11)),var(--sfm-light-card);box-shadow:inset 0 0 0 1px rgba(24,212,212,.18),0 12px 28px rgba(3,18,37,.07)}
+        .budget-checkbox:has(.budget-checkbox-input:focus-visible){box-shadow:0 0 0 3px rgba(24,212,212,.18),0 12px 28px rgba(3,18,37,.07)}
+        .budget-checkbox-input{position:absolute;inline-size:1px;block-size:1px;opacity:0;pointer-events:none}
+        .budget-checkbox-indicator{inline-size:28px;block-size:28px;min-inline-size:28px;border-radius:999px;border:1px solid rgba(29,140,255,.28);background:var(--sfm-card);color:transparent;display:grid;place-items:center;margin-block-start:1px;box-shadow:inset 0 0 0 4px rgba(29,140,255,.06)}
+        .budget-checkbox.selected .budget-checkbox-indicator,.budget-checkbox:has(.budget-checkbox-input:checked) .budget-checkbox-indicator{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));border-color:rgba(24,212,212,.70);color:#FFFFFF;box-shadow:0 8px 18px rgba(29,140,255,.22)}
+        .budget-checkbox-copy{display:grid;gap:5px;min-width:0}
+        .budget-checkbox strong{color:var(--sfm-midnight);line-height:1.45;overflow-wrap:anywhere}
+        .budget-checkbox small{color:var(--sfm-muted);line-height:1.65;font-weight:850;overflow-wrap:anywhere}
         .modal-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
         .modal-actions .primary-save{min-height:44px;border:0;border-radius:13px;padding:0 16px;display:inline-flex;align-items:center;gap:8px;font-family:inherit;font-weight:950;cursor:pointer}
         @media(max-width:1180px){.overview-main-layout{grid-template-columns:1fr}.overview-side-column{position:static}.compact-details{grid-template-columns:1fr 1fr}}
@@ -2669,6 +2711,7 @@ function OverviewTab({
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const recentActivity = [...projectIncome.map(row => ({
     id: `income-${row.id}`,
+    kind: 'income' as const,
     type: tr.projectIncome,
     title: row.title || tr.projectIncome,
     amount: toNum(row.amount),
@@ -2676,6 +2719,7 @@ function OverviewTab({
     date: row.income_date ?? row.created_at ?? null,
   })), ...projectExpenses.map(row => ({
     id: `expense-${row.id}`,
+    kind: 'expense' as const,
     type: tr.projectExpenses,
     title: row.title || tr.projectExpense,
     amount: -toNum(row.amount),
@@ -2685,7 +2729,7 @@ function OverviewTab({
     .sort((a, b) => String(b.date ?? '').localeCompare(String(a.date ?? '')))
     .slice(0, 5);
   const totalProjectIncome = formatRowsByCurrency(projectIncome, money, projectCurrency);
-  const totalProjectExpenses = formatRowsByCurrency(projectExpenses, money, 'KWD');
+  const totalProjectExpenses = formatRowsByCurrency(projectExpenses, formatProjectExpenseMoney, 'KWD');
 
   return (
     <section className="project-overview">
@@ -2769,7 +2813,7 @@ function OverviewTab({
                   <div key={item.id}>
                     <span>{item.title}</span>
                     <small>{item.type} · {dateLabel(item.date)}</small>
-                    <strong>{money(item.amount, item.currency)}</strong>
+                    <strong>{item.kind === 'expense' ? formatProjectExpenseMoney(item.amount, item.currency) : money(item.amount, item.currency)}</strong>
                   </div>
                 ))}
               </div>
@@ -2868,9 +2912,10 @@ function ProjectTransactionSection({
     ? (row as ProjectIncomeRow).transferred_to_personal_income === true
     : (row as ProjectExpenseRow).paid_from_personal_budget === true
   ) as CurrencyAmountRow[];
-  const totalDisplay = formatRowsByCurrency(rows as CurrencyAmountRow[], money, fallbackCurrency);
-  const monthDisplay = formatRowsByCurrency(monthRows, money, fallbackCurrency);
-  const personalDisplay = formatRowsByCurrency(personalRows, money, fallbackCurrency);
+  const rowMoney: MoneyFormatter = isIncome ? money : formatProjectExpenseMoney;
+  const totalDisplay = formatRowsByCurrency(rows as CurrencyAmountRow[], rowMoney, fallbackCurrency);
+  const monthDisplay = formatRowsByCurrency(monthRows, rowMoney, fallbackCurrency);
+  const personalDisplay = formatRowsByCurrency(personalRows, rowMoney, fallbackCurrency);
 
   return (
     <article className="warm-card project-transactions-card">
@@ -2878,9 +2923,9 @@ function ProjectTransactionSection({
       {rows.length ? (
         <>
           <div className="metric-grid">
-            <Metric label={isIncome ? tr.totalProjectIncome : tr.totalProjectExpenses} value={totalDisplay || money(isIncome ? model.actualProjectIncome : model.actualProjectExpenses, fallbackCurrency)} />
-            <Metric label={isIncome ? tr.projectIncomeThisMonth : tr.projectExpensesThisMonth} value={monthDisplay || money(isIncome ? model.monthlyProjectIncome : model.monthlyProjectExpenses, fallbackCurrency)} />
-            <Metric label={isIncome ? tr.personalIncomeProjectIncome : tr.personalBudgetProjectExpenses} value={personalDisplay || money(isIncome ? model.personalIncomeProjectIncome : model.personalBudgetProjectExpenses, fallbackCurrency)} />
+            <Metric label={isIncome ? tr.totalProjectIncome : tr.totalProjectExpenses} value={totalDisplay || rowMoney(isIncome ? model.actualProjectIncome : model.actualProjectExpenses, fallbackCurrency)} />
+            <Metric label={isIncome ? tr.projectIncomeThisMonth : tr.projectExpensesThisMonth} value={monthDisplay || rowMoney(isIncome ? model.monthlyProjectIncome : model.monthlyProjectExpenses, fallbackCurrency)} />
+            <Metric label={isIncome ? tr.personalIncomeProjectIncome : tr.personalBudgetProjectExpenses} value={personalDisplay || rowMoney(isIncome ? model.personalIncomeProjectIncome : model.personalBudgetProjectExpenses, fallbackCurrency)} />
             <Metric label={isIncome ? tr.actualVsExpected : tr.actualVsPlanned} value={actualRatio} />
           </div>
           <div className="transaction-list">
@@ -2898,7 +2943,7 @@ function ProjectTransactionSection({
                     <span>{dateLabel(date)} · {String(row.category || tr.general)}</span>
                     {badge ? <small>{badge}</small> : null}
                   </div>
-                  <div className="transaction-amount">{formatRowMoney(row as CurrencyAmountRow, money, fallbackCurrency)}</div>
+                  <div className="transaction-amount">{formatRowMoney(row as CurrencyAmountRow, rowMoney, fallbackCurrency)}</div>
                   <div className="transaction-actions">
                     <button type="button" onClick={() => onEdit(row)} aria-label={`${tr.edit} ${row.title || title}`}>
                       <Pencil size={15} />
