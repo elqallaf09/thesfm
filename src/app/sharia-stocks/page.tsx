@@ -1,5 +1,5 @@
-import { StockCategoryNewsPage } from '@/components/stock-categories/StockCategoryNewsPage';
+import { ShariahStocksNewsPage } from '@/components/shariah-stocks/ShariahStocksNewsPage';
 
 export default function ShariaStocksPage() {
-  return <StockCategoryNewsPage categoryId="sharia" />;
+  return <ShariahStocksNewsPage />;
 }
