@@ -467,6 +467,20 @@ const FEATURED_META: Record<string, { sector: Record<LangCode, string>; body: Re
   BEP: { sector: { ar: 'الطاقة المتجددة', en: 'Renewables', fr: 'Renouvelables' }, body: { ar: 'أصول طاقة متجددة عالمية تتأثر بالفائدة وأسعار الكهرباء.', en: 'Global renewable assets affected by rates and power prices.', fr: 'Actifs renouvelables mondiaux.' } },
 };
 
+function marketAnalysisHref(symbol: string) {
+  return `/market-analysis?symbol=${encodeURIComponent(symbol)}`;
+}
+
+function energySymbolAsset(symbol: string) {
+  const name = ENERGY_SYMBOL_NAMES[symbol];
+  if (!name) return null;
+  return {
+    symbol,
+    name,
+    href: marketAnalysisHref(symbol),
+  };
+}
+
 function localeFor(lang: LangCode) {
   if (lang === 'ar') return 'ar-KW';
   if (lang === 'fr') return 'fr-FR';
@@ -867,20 +881,21 @@ function SectorBreakdown({ lang, text }: { lang: LangCode; text: typeof TEXT[Lan
               <span className={styles.sectorIcon}><Icon size={21} /></span>
               <h3>{sector.title[lang]}</h3>
               <p>{sector.body[lang]}</p>
-              <div className={styles.symbolChips} aria-label={text.examples as string}>
+              <div className={`${styles.symbolChips} ${styles.energySymbolChips}`} aria-label={text.examples as string}>
                 {sector.symbols.map(symbol => {
-                  const name = ENERGY_SYMBOL_NAMES[symbol] ?? symbol;
+                  const asset = energySymbolAsset(symbol);
+                  if (!asset) return null;
                   return (
                     <a
                       key={symbol}
-                      href={`/market-analysis?symbol=${encodeURIComponent(symbol)}`}
-                      title={`${name} · ${symbol}`}
-                      aria-label={`${name} ${symbol}`}
+                      href={asset.href}
+                      title={`${asset.name} · ${asset.symbol}`}
+                      aria-label={`${asset.name} ${asset.symbol}`}
                       dir="ltr"
                     >
-                      <span className={styles.symbolCompany}>{name}</span>
+                      <span className={styles.symbolCompany}>{asset.name}</span>
                       <span className={styles.symbolDivider} aria-hidden="true">·</span>
-                      <strong>{symbol}</strong>
+                      <strong>{asset.symbol}</strong>
                     </a>
                   );
                 })}
@@ -1111,7 +1126,7 @@ function FeaturedStocks({ items, loading, lang, locale, text }: {
               ) : (
                 <p>{text.unavailable as string}</p>
               )}
-              <a href={`/market-analysis?symbol=${encodeURIComponent(symbol)}`}>
+              <a href={marketAnalysisHref(symbol)}>
                 {text.details as string}
                 <ArrowUpRight size={14} />
               </a>

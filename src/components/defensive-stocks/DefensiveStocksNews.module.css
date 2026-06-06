@@ -1385,6 +1385,21 @@
   letter-spacing: 0;
 }
 
+.energySymbolChips {
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.energySymbolChips a {
+  max-width: 100%;
+  min-height: 32px;
+  padding: 6px 9px;
+}
+
+.energySymbolChips .symbolCompany {
+  max-width: min(210px, 58vw);
+}
+
 .disclaimer {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
