@@ -17,7 +17,7 @@ import { generateEducationalMarketSummary, type EducationalSummaryLanguage } fro
 import { formatMarketPrice, marketCurrencyLabel, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeEconomicEvents, type EconomicImpact, type NormalizedEconomicEvent } from '@/lib/market/normalizeEconomicEvents';
 import type { AssetProfileResponse } from '@/lib/market/fetchAssetProfile';
-import type { MarketAiInsight, MarketAnalysis, MarketAssetType, MarketHistoryPoint, MarketResult, MarketSearchItem } from '@/lib/market/marketService';
+import type { MarketAiInsight, MarketAnalysis, MarketAssetType, MarketHistoryPoint, MarketResult, MarketSearchItem, MarketTrend } from '@/lib/market/marketService';
 import { marketSymbolSuggestions, normalizeAssetType, normalizeMarketSymbolInput, validateSymbol } from '@/lib/market/marketService';
 import { calculateLotSizeByRisk, calculatePips, calculatePositionSize, type TradeDirection, type TradingInstrumentType } from '@/lib/trading/calculators';
 import { getActiveOverlapIds, getTradingSessionsState, isHighLiquidityPeriod, TRADING_OVERLAPS } from '@/lib/trading/sessions';
@@ -3342,7 +3342,15 @@ export default function MarketAnalysisPage() {
                     </button>
                   )) : watchlist.map(asset => (
                     <span key={`${asset.id ?? asset.symbol}-${asset.assetType}`}>
-                      <button type="button" onClick={() => void requestAnalysis(asset.providerSymbol ?? asset.symbol, asset.assetType, asset)}>{asset.symbol}</button>
+                      <button type="button" onClick={() => void requestAnalysis(asset.providerSymbol ?? asset.symbol, asset.assetType, {
+                        symbol: asset.symbol,
+                        providerSymbol: asset.providerSymbol ?? undefined,
+                        name: asset.name ?? undefined,
+                        assetType: asset.assetType,
+                        exchange: asset.exchange ?? undefined,
+                        country: asset.country ?? undefined,
+                        currency: asset.currency,
+                      })}>{asset.symbol}</button>
                       <button type="button" aria-label={t('delete')} onClick={() => void removeWatchlist(asset)}><Trash2 size={13} /></button>
                     </span>
                   ))}
@@ -3462,7 +3470,15 @@ export default function MarketAnalysisPage() {
                     </button>
                   )) : watchlist.map(asset => (
                     <span key={`${asset.id ?? asset.symbol}-${asset.assetType}`}>
-                      <button type="button" onClick={() => void requestAnalysis(asset.providerSymbol ?? asset.symbol, asset.assetType, asset)}>{asset.symbol}</button>
+                      <button type="button" onClick={() => void requestAnalysis(asset.providerSymbol ?? asset.symbol, asset.assetType, {
+                        symbol: asset.symbol,
+                        providerSymbol: asset.providerSymbol ?? undefined,
+                        name: asset.name ?? undefined,
+                        assetType: asset.assetType,
+                        exchange: asset.exchange ?? undefined,
+                        country: asset.country ?? undefined,
+                        currency: asset.currency,
+                      })}>{asset.symbol}</button>
                       <button type="button" aria-label={t('delete')} onClick={() => void removeWatchlist(asset)}><Trash2 size={13} /></button>
                     </span>
                   ))}
@@ -4679,6 +4695,24 @@ export default function MarketAnalysisPage() {
           line-height: 1.7;
         }
 
+        .sentiment-updated-note {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          width: max-content;
+          max-width: 100%;
+          border: 1px solid rgba(29, 140, 255, .16);
+          border-radius: 999px;
+          background: rgba(29, 140, 255, .07);
+          color: var(--sfm-primary-hover);
+          padding: 5px 9px;
+          font-weight: 950;
+        }
+
+        .sentiment-updated-note svg {
+          flex: 0 0 auto;
+        }
+
         .news-tool-card-head {
           display: flex;
           align-items: flex-start;
@@ -4991,6 +5025,10 @@ export default function MarketAnalysisPage() {
           min-width: 0;
         }
 
+        .sentiment-card-actions {
+          padding-top: 2px;
+        }
+
         .sentiment-empty-actions button {
           min-height: 36px;
           max-width: 100%;
@@ -5021,6 +5059,10 @@ export default function MarketAnalysisPage() {
           border-color: rgba(29, 140, 255, .30);
           box-shadow: 0 12px 24px rgba(3, 18, 37, .08);
           outline: none;
+        }
+
+        .sentiment-empty-actions button:active {
+          transform: translateY(0);
         }
 
         .trading-sessions-dashboard {
@@ -9036,12 +9078,27 @@ function NewsSentimentPanel({
   const sentimentProviderKey = sentimentProviderBadgeKey(sentiment.provider, sentiment.sentimentAvailable, sentimentAssetType);
   const sentimentEmpty = publicSentimentEmptyCopy(hasSelectedAsset ? sentiment.code : 'NO_SELECTED_ASSET', t, sentimentAssetType);
   const sentimentContextBody = hasSelectedAsset ? t(sentimentContextBodyKey(sentimentAssetType)) : '';
+  const normalizedSentimentCode = String(sentiment.code ?? '').trim().toUpperCase();
+  const sentimentEmptyVariant: 'info' | 'warning' = [
+    'MISSING_CREDENTIALS',
+    'LOGIN_REJECTED',
+    'LOGIN_FAILED',
+    'NO_SESSION',
+    'PROVIDER_DOWN',
+    'TIMEOUT',
+    'RATE_LIMIT',
+    'MYFXBOOK_AUTH_FAILED',
+    'MYFXBOOK_PROVIDER_FAILED',
+  ].includes(normalizedSentimentCode) ? 'warning' : 'info';
   const newsLastAttempt = news.updatedAt
     ? `${t('market_last_attempt')}: ${formatMarketToolTimestamp(news.updatedAt, lang)}`
     : undefined;
   const sentimentLastAttempt = hasSelectedAsset && sentiment.updatedAt
     ? `${t('market_last_attempt')}: ${formatMarketToolTimestamp(sentiment.updatedAt, lang)}`
     : undefined;
+  const sentimentUpdatedLabel = hasSelectedAsset && sentiment.sentimentAvailable && sentiment.updatedAt
+    ? `${t('market_sentiment_last_updated_metric')}: ${formatMarketToolTimestamp(sentiment.updatedAt, lang)}`
+    : '';
   const sentimentActionLabel = hasSelectedAsset ? t('market_refresh_sentiment') : t('market_sentiment_select_asset_action');
   const sentimentAction = hasSelectedAsset ? onRefreshSentiment : onSelectAsset;
   const sentimentSuggestions = hasSelectedAsset ? (sentiment.suggestions ?? []).filter(Boolean) : [];
@@ -9145,6 +9202,12 @@ function NewsSentimentPanel({
                     <b>{t(sentimentProviderKey)}</b>
                   </span>
                 </div>
+                {sentimentUpdatedLabel ? (
+                  <p className="sentiment-context-note sentiment-updated-note">
+                    <Clock3 size={13} />
+                    <span>{sentimentUpdatedLabel}</span>
+                  </p>
+                ) : null}
                 {sentimentContextBody ? <p className="sentiment-context-note">{sentimentContextBody}</p> : null}
               </div>
             ) : null}
@@ -9202,6 +9265,20 @@ function NewsSentimentPanel({
                     </article>
                   );
                 })}
+                <div className="sentiment-empty-actions sentiment-card-actions">
+                  <button type="button" onClick={onRefreshSentiment}>
+                    <Activity size={15} />
+                    <span>{t('market_refresh_sentiment')}</span>
+                  </button>
+                  <button type="button" onClick={onRefreshNews}>
+                    <Newspaper size={15} />
+                    <span>{t('market_sentiment_show_news_action')}</span>
+                  </button>
+                  <button type="button" onClick={onOpenTechnicalAnalysis}>
+                    <LineChart size={15} />
+                    <span>{t('market_sentiment_technical_action')}</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <>
@@ -9212,7 +9289,7 @@ function NewsSentimentPanel({
                   meta={sentimentLastAttempt}
                   actionLabel={hasSelectedAsset ? undefined : sentimentActionLabel}
                   onAction={hasSelectedAsset ? undefined : sentimentAction}
-                  variant="info"
+                  variant={sentimentEmptyVariant}
                 />
                 {hasSelectedAsset ? (
                   <div className="sentiment-empty-actions">
@@ -13387,15 +13464,18 @@ function PriceHistoryChart({
     }).format(date);
   };
   const numericChange = numberOrNull(changePercent);
-  const partialSummaryItems = [
-    resolvedCurrentPrice !== null ? { key: 'price', label: t('market_current_price'), value: chartMoney(resolvedCurrentPrice), dir: 'ltr' as const } : null,
-    numericChange !== null ? { key: 'change', label: t('market_daily_change'), value: percent(numericChange), tone: numericChange >= 0 ? 'up' : 'down', dir: 'ltr' as const } : null,
-    trend ? { key: 'trend', label: t('market_trend'), value: t(`market_trend_${trend}`) } : null,
-    numberOrNull(support) !== null ? { key: 'support', label: t('market_support_zone'), value: chartMoney(numberOrNull(support) as number), dir: 'ltr' as const } : null,
-    numberOrNull(resistance) !== null ? { key: 'resistance', label: t('market_resistance_zone'), value: chartMoney(numberOrNull(resistance) as number), dir: 'ltr' as const } : null,
-    source ? { key: 'source', label: t('market_asset_profile_data_source'), value: source } : null,
-    formatUpdatedAt(updatedAt) ? { key: 'updated', label: t('market_last_updated'), value: formatUpdatedAt(updatedAt), dir: 'ltr' as const } : null,
-  ].filter((item): item is { key: string; label: string; value: string; tone?: string; dir?: 'ltr' } => item !== null);
+  type PartialSummaryItem = { key: string; label: string; value: string; tone?: string; dir?: 'ltr' };
+  const partialSummaryItems: PartialSummaryItem[] = [];
+  const summarySupport = numberOrNull(support);
+  const summaryResistance = numberOrNull(resistance);
+  const formattedUpdatedAt = formatUpdatedAt(updatedAt);
+  if (resolvedCurrentPrice !== null) partialSummaryItems.push({ key: 'price', label: t('market_current_price'), value: chartMoney(resolvedCurrentPrice), dir: 'ltr' });
+  if (numericChange !== null) partialSummaryItems.push({ key: 'change', label: t('market_daily_change'), value: percent(numericChange), tone: numericChange >= 0 ? 'up' : 'down', dir: 'ltr' });
+  if (trend) partialSummaryItems.push({ key: 'trend', label: t('market_trend'), value: t(`market_trend_${trend}`) });
+  if (summarySupport !== null) partialSummaryItems.push({ key: 'support', label: t('market_support_zone'), value: chartMoney(summarySupport), dir: 'ltr' });
+  if (summaryResistance !== null) partialSummaryItems.push({ key: 'resistance', label: t('market_resistance_zone'), value: chartMoney(summaryResistance), dir: 'ltr' });
+  if (source) partialSummaryItems.push({ key: 'source', label: t('market_asset_profile_data_source'), value: source });
+  if (formattedUpdatedAt) partialSummaryItems.push({ key: 'updated', label: t('market_last_updated'), value: formattedUpdatedAt, dir: 'ltr' });
   const hoveredPoint = hoveredIndex !== null ? activePoints[hoveredIndex] ?? null : null;
   const tooltipX = hoveredIndex !== null ? xFor(hoveredIndex) : 0;
   const tooltipY = hoveredPoint ? yFor(hoveredPoint.close) : 0;

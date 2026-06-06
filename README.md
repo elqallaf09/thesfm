@@ -97,11 +97,16 @@ MARKET_SENTIMENT_PROVIDER=finnhub
 MARKET_SENTIMENT_API_KEY=optional_dedicated_sentiment_key
 FINNHUB_API_KEY=your_finnhub_key
 ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key
+
+# Forex and metals trader sentiment
+MYFXBOOK_EMAIL=your_myfxbook_email
+MYFXBOOK_PASSWORD=your_myfxbook_password
+MYFXBOOK_API_BASE_URL=https://www.myfxbook.com/api
 ```
 
 Central bank news uses `CENTRAL_BANK_NEWS_API_KEY` first, then falls back to `NEWS_API_KEY`. If provider variables are empty, it defaults to `newsapi`.
 
-Market sentiment uses `MARKET_SENTIMENT_API_KEY` first for the selected provider. If no sentiment provider is set, it uses Finnhub when `FINNHUB_API_KEY` exists, then Alpha Vantage when `ALPHA_VANTAGE_API_KEY` exists.
+Market sentiment uses `MARKET_SENTIMENT_API_KEY` first for news-style providers. Forex and supported metals sentiment uses Myfxbook through the server-only variables `MYFXBOOK_EMAIL`, `MYFXBOOK_PASSWORD`, and optional `MYFXBOOK_API_BASE_URL`. If `MYFXBOOK_API_BASE_URL` is omitted, the app safely defaults to `https://www.myfxbook.com/api`. Credentials and Myfxbook session tokens are never exposed to browser code or API responses.
 
 After adding or changing provider keys in Vercel, redeploy the project so the runtime can read the updated variables. If a provider is connected but returns no usable data, the UI shows a professional unavailable state and does not invent sentiment values or news.
 

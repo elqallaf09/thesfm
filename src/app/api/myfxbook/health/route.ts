@@ -54,13 +54,17 @@ export async function GET(request: NextRequest) {
 
   const email = cleanEnv(process.env.MYFXBOOK_EMAIL);
   const password = cleanEnv(process.env.MYFXBOOK_PASSWORD);
+  const missingVariables = [
+    email ? null : 'MYFXBOOK_EMAIL',
+    password ? null : 'MYFXBOOK_PASSWORD',
+  ].filter((value): value is string => Boolean(value));
   const config = getMarketSentimentProviderConfig();
   const envConfigured = Boolean(email && password);
   const providerIsMyfxbook = config.provider === 'myfxbook';
 
-  console.log('[Myfxbook] env check', {
-    hasEmail: Boolean(email),
-    hasPassword: Boolean(password),
+  console.info('[Myfxbook] health diagnostic started', {
+    missingVariables,
+    hasApiBaseUrl: config.hasMyfxbookApiBaseUrl,
   });
 
   const login = envConfigured && providerIsMyfxbook
@@ -80,6 +84,8 @@ export async function GET(request: NextRequest) {
     providerIsMyfxbook,
     hasEmail: Boolean(email),
     hasPassword: Boolean(password),
+    hasApiBaseUrl: config.hasMyfxbookApiBaseUrl,
+    missingVariables,
     loginAttempted: Boolean(login),
     loginSuccess: login?.ok ?? false,
     errorType: login && !login.ok ? publicMyfxbookCode(login.code) : envConfigured ? null : 'MISSING_CREDENTIALS',

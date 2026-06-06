@@ -66,10 +66,12 @@ export function getMarketSentimentProviderConfig() {
   const alphaVantageApiKey = cleanEnv(process.env.ALPHA_VANTAGE_API_KEY);
   const myfxbookEmail = cleanEnv(process.env.MYFXBOOK_EMAIL);
   const myfxbookPassword = cleanEnv(process.env.MYFXBOOK_PASSWORD);
+  const myfxbookApiBaseUrl = cleanEnv(process.env.MYFXBOOK_API_BASE_URL);
   const providerEnv = cleanEnv(process.env.MARKET_SENTIMENT_PROVIDER);
   const explicitProvider = normalizeMarketSentimentProvider(providerEnv);
   const apiKey = marketSentimentApiKey || finnhubApiKey || alphaVantageApiKey;
   const inferredProvider: MarketSentimentProvider | null = explicitProvider
+    ?? (myfxbookEmail || myfxbookPassword ? 'myfxbook' : null)
     ?? (finnhubApiKey ? 'finnhub' : null)
     ?? (alphaVantageApiKey ? 'alphavantage' : null);
   const configured = inferredProvider === 'myfxbook'
@@ -86,5 +88,8 @@ export function getMarketSentimentProviderConfig() {
     hasFinnhubApiKey: Boolean(finnhubApiKey),
     hasAlphaVantageApiKey: Boolean(alphaVantageApiKey),
     hasMyfxbookCredentials: Boolean(myfxbookEmail && myfxbookPassword),
+    hasMyfxbookEmail: Boolean(myfxbookEmail),
+    hasMyfxbookPassword: Boolean(myfxbookPassword),
+    hasMyfxbookApiBaseUrl: Boolean(myfxbookApiBaseUrl),
   };
 }

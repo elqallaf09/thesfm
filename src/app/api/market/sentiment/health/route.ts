@@ -52,12 +52,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: false, code: 'SENTIMENT_HEALTH_FORBIDDEN' }, { status: 403 });
   }
 
-  console.log('MYFXBOOK_HEALTH_START');
   const rawEmail = cleanEnv(process.env.MYFXBOOK_EMAIL);
   const rawPassword = cleanEnv(process.env.MYFXBOOK_PASSWORD);
-  console.log('Myfxbook env diagnostic:', {
-    hasEmail: Boolean(rawEmail),
-    hasPassword: Boolean(rawPassword),
+  const missingVariables = [
+    rawEmail ? null : 'MYFXBOOK_EMAIL',
+    rawPassword ? null : 'MYFXBOOK_PASSWORD',
+  ].filter((value): value is string => Boolean(value));
+  console.info('[Myfxbook] health diagnostic started', {
+    missingVariables,
+    hasApiBaseUrl: Boolean(cleanEnv(process.env.MYFXBOOK_API_BASE_URL)),
   });
 
   const config = getMarketSentimentProviderConfig();
@@ -76,6 +79,8 @@ export async function GET(request: NextRequest) {
     provider: config.provider ?? (config.providerEnv || null),
     hasEmail: Boolean(rawEmail),
     hasPassword: Boolean(rawPassword),
+    hasApiBaseUrl: config.hasMyfxbookApiBaseUrl,
+    missingVariables,
     canReachMyfxbook: login?.canReachMyfxbook ?? false,
     loginAttempted: config.provider === 'myfxbook' && Boolean(rawEmail && rawPassword),
     loginOk: login?.ok ?? false,

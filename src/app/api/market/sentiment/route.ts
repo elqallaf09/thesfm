@@ -268,36 +268,27 @@ function sentimentLabel(buyPercent: number | null, sellPercent: number | null): 
   return buyPercent > sellPercent ? 'bullish' : 'bearish';
 }
 
-function sentimentMessage(assetType: SentimentAssetType, code: UnifiedSentimentCode) {
-  if (code === 'SYMBOL_REQUIRED') return 'Select an asset before loading market sentiment.';
-  if (code === 'LOGIN_FAILED') return 'تعذر تسجيل الدخول إلى Myfxbook.';
-  if (code === 'RATE_LIMIT') return 'تم تجاوز حد طلبات مزود المشاعر مؤقتاً.';
-  if (code === 'NO_DATA') return 'لم يرجع Myfxbook بيانات حالياً لهذا الأصل.';
-  if (code === 'MISSING_CREDENTIALS') return 'مزود مشاعر السوق غير مربوط حالياً.';
-  if (code === 'LOGIN_REJECTED') return 'تم رفض تسجيل الدخول من Myfxbook. تحقق من البريد وكلمة المرور أو أعد حفظ بيانات البيئة ثم أعد النشر.';
-  if (code === 'NO_SESSION') return 'لم يرجع Myfxbook جلسة صالحة.';
-  if (code === 'INVALID_FOREX_PAIR') return 'زوج العملات غير معروف.';
-  if (code === 'TIMEOUT') return 'استغرق الاتصال مع Myfxbook وقتاً أطول من المتوقع.';
-  if (code === 'PROVIDER_DOWN') return 'تعذر جلب بيانات المشاعر حالياً. حاول لاحقاً.';
-  if (code === 'MISSING_PROVIDER') {
-    if (assetType === 'forex') return 'Trader sentiment provider is not connected for this currency pair.';
-    if (assetType === 'stock') return 'No trusted stock sentiment provider is connected right now.';
-    if (assetType === 'etf') return 'No trusted ETF sentiment provider is connected right now.';
-    if (assetType === 'crypto') return 'No trusted crypto sentiment provider is connected right now.';
-    if (assetType === 'metals') return 'The sentiment provider is not connected for this metal right now.';
-    return 'No trusted sentiment provider is connected for this asset type.';
-  }
-  if (assetType === 'forex') return 'No trader sentiment data is available for this pair right now.';
-  if (assetType === 'stock') return 'Market sentiment for this stock is not currently available from a trusted provider.';
-  if (assetType === 'etf') return 'Market sentiment for this ETF is not currently available from a trusted provider.';
-  if (assetType === 'crypto') return 'Market sentiment for this crypto asset is not currently available from a trusted provider.';
-  if (assetType === 'metals') return 'The sentiment provider did not return data for this metal right now.';
-  return 'Market sentiment is not supported for this asset type.';
+function sentimentMessage(_assetType: SentimentAssetType, code: UnifiedSentimentCode) {
+  if (code === 'SYMBOL_REQUIRED') return 'اختر أصلاً قبل تحميل مشاعر السوق.';
+  if (code === 'MISSING_CREDENTIALS') return 'إعدادات مزود المشاعر غير مكتملة. يرجى إضافة بيانات Myfxbook في Environment Variables ثم إعادة النشر.';
+  if (code === 'LOGIN_REJECTED' || code === 'LOGIN_FAILED') return 'تم رفض تسجيل الدخول إلى Myfxbook. تحقق من البريد الإلكتروني وكلمة المرور، وتأكد من تفعيل الحساب وإعادة نشر الموقع.';
+  if (code === 'RATE_LIMIT') return 'تم تجاوز حد طلبات مزود المشاعر مؤقتاً. يرجى المحاولة لاحقاً.';
+  if (code === 'NO_SESSION') return 'تم الاتصال بـ Myfxbook، لكن لم يتم إنشاء جلسة صالحة. يرجى المحاولة لاحقاً.';
+  if (code === 'TIMEOUT' || code === 'PROVIDER_DOWN') return 'تعذر الاتصال بمزود المشاعر حالياً. يرجى المحاولة لاحقاً.';
+  if (
+    code === 'INVALID_FOREX_PAIR'
+    || code === 'NO_DATA'
+    || code === 'NO_SENTIMENT_DATA'
+    || code === 'UNSUPPORTED_ASSET_TYPE'
+    || code === 'MISSING_PROVIDER'
+  ) return 'لا تتوفر بيانات مشاعر لهذا الأصل من المزود الحالي.';
+  return 'لا تتوفر بيانات مشاعر لهذا الأصل من المزود الحالي.';
 }
 
 function extractPercent(item: Record<string, unknown>, keys: string[]) {
   for (const key of keys) {
     const value = item[key];
+    if (value === null || value === undefined || String(value).trim() === '') continue;
     const parsed = typeof value === 'number' ? value : Number(String(value ?? '').replace('%', '').trim());
     if (Number.isFinite(parsed)) return Math.max(0, Math.min(100, parsed));
   }
@@ -307,6 +298,7 @@ function extractPercent(item: Record<string, unknown>, keys: string[]) {
 function extractRawNumber(item: Record<string, unknown>, keys: string[]) {
   for (const key of keys) {
     const value = item[key];
+    if (value === null || value === undefined || String(value).trim() === '') continue;
     const parsed = typeof value === 'number' ? value : Number(String(value ?? '').replace(/,/g, '').trim());
     if (Number.isFinite(parsed)) return parsed;
   }
@@ -354,6 +346,7 @@ function unavailableResponse(input: {
     resolvedAssetType: input.assetType,
     assetClass: responseAssetType,
     provider,
+    source: provider === 'myfxbook' ? 'Myfxbook' : provider === 'news' ? 'News Sentiment' : null,
     sentimentType: provider === 'myfxbook' ? 'long_short' : provider === 'news' ? 'news' : null,
     sentimentAvailable: false,
     longPercent: null,
@@ -706,7 +699,7 @@ function mapProviderErrorCode(error: unknown): UnifiedSentimentCode {
 
 function mapMyfxbookErrorCode(code: string): UnifiedSentimentCode {
   if (code === 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED') return 'MISSING_CREDENTIALS';
-  if (code === 'MYFXBOOK_AUTH_FAILED') return 'LOGIN_FAILED';
+  if (code === 'MYFXBOOK_AUTH_FAILED') return 'LOGIN_REJECTED';
   if (code === 'MYFXBOOK_SESSION_MISSING') return 'NO_SESSION';
   if (code === 'MYFXBOOK_TIMEOUT') return 'TIMEOUT';
   if (code === 'MYFXBOOK_RATE_LIMITED') return 'RATE_LIMIT';
@@ -717,9 +710,10 @@ function mapMyfxbookErrorCode(code: string): UnifiedSentimentCode {
 }
 
 function invalidForexPairMessage(suggestions: string[]) {
-  return suggestions.length > 0
-    ? `زوج العملات غير معروف. هل تقصد ${suggestions[0]}؟`
-    : 'زوج العملات غير معروف. تحقق من الرمز أو اختر زوجاً مدعوماً.';
+  if (suggestions.length > 0) {
+    return `لا تتوفر بيانات مشاعر لهذا الأصل من المزود الحالي. هل تقصد ${suggestions[0]}؟`;
+  }
+  return 'لا تتوفر بيانات مشاعر لهذا الأصل من المزود الحالي.';
 }
 
 async function handleForexSentiment(requestMeta: NormalizedSentimentRequest) {
@@ -738,7 +732,7 @@ async function handleForexSentiment(requestMeta: NormalizedSentimentRequest) {
       code: 'INVALID_FOREX_PAIR',
       symbol: requestMeta.displaySymbol,
       assetType: 'forex',
-      provider: 'none',
+      provider: 'myfxbook',
       message: invalidForexPairMessage(suggestions),
       suggestions,
     });
@@ -750,7 +744,7 @@ async function handleForexSentiment(requestMeta: NormalizedSentimentRequest) {
       code: 'MISSING_CREDENTIALS',
       symbol: resolvedForexSymbol.symbol,
       assetType: 'forex',
-      provider: 'none',
+      provider: 'myfxbook',
     });
   }
 
@@ -771,7 +765,7 @@ async function handleForexSentiment(requestMeta: NormalizedSentimentRequest) {
       legacyCode: result.code,
       symbol: resolvedForexSymbol.symbol,
       assetType: 'forex',
-      provider: code === 'MISSING_CREDENTIALS' || code === 'INVALID_FOREX_PAIR' ? 'none' : 'myfxbook',
+      provider: 'myfxbook',
       suggestions: result.suggestions ?? [],
     });
   }
@@ -812,7 +806,7 @@ async function handleMetalSentiment(requestMeta: NormalizedSentimentRequest) {
       code: 'NO_DATA',
       symbol: requestMeta.displaySymbol,
       assetType: 'metals',
-      provider: 'none',
+      provider: 'myfxbook',
     });
   }
 
@@ -822,7 +816,7 @@ async function handleMetalSentiment(requestMeta: NormalizedSentimentRequest) {
       code: 'MISSING_CREDENTIALS',
       symbol: resolvedMetalSymbol.symbol,
       assetType: 'metals',
-      provider: 'none',
+      provider: 'myfxbook',
     });
   }
 
@@ -843,7 +837,7 @@ async function handleMetalSentiment(requestMeta: NormalizedSentimentRequest) {
       legacyCode: result.code,
       symbol: resolvedMetalSymbol.symbol,
       assetType: 'metals',
-      provider: code === 'MISSING_CREDENTIALS' ? 'none' : 'myfxbook',
+      provider: 'myfxbook',
       suggestions: result.suggestions ?? [],
     });
   }
