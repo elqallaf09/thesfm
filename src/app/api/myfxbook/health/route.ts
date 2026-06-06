@@ -61,7 +61,6 @@ export async function GET(request: NextRequest) {
   console.log('[Myfxbook] env check', {
     hasEmail: Boolean(email),
     hasPassword: Boolean(password),
-    passwordLength: password.length,
   });
 
   const login = envConfigured && providerIsMyfxbook
@@ -81,7 +80,6 @@ export async function GET(request: NextRequest) {
     providerIsMyfxbook,
     hasEmail: Boolean(email),
     hasPassword: Boolean(password),
-    passwordLength: password.length,
     loginAttempted: Boolean(login),
     loginSuccess: login?.ok ?? false,
     errorType: login && !login.ok ? publicMyfxbookCode(login.code) : envConfigured ? null : 'MISSING_CREDENTIALS',

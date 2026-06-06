@@ -58,7 +58,6 @@ export async function GET(request: NextRequest) {
   console.log('Myfxbook env diagnostic:', {
     hasEmail: Boolean(rawEmail),
     hasPassword: Boolean(rawPassword),
-    passwordLength: rawPassword.length,
   });
 
   const config = getMarketSentimentProviderConfig();
@@ -77,7 +76,6 @@ export async function GET(request: NextRequest) {
     provider: config.provider ?? (config.providerEnv || null),
     hasEmail: Boolean(rawEmail),
     hasPassword: Boolean(rawPassword),
-    passwordLength: rawPassword.length,
     canReachMyfxbook: login?.canReachMyfxbook ?? false,
     loginAttempted: config.provider === 'myfxbook' && Boolean(rawEmail && rawPassword),
     loginOk: login?.ok ?? false,

@@ -1,7 +1,8 @@
 import { cleanEnv } from '@/lib/market/providerConfig';
 
-const LOGIN_URL = 'https://www.myfxbook.com/api/login.json';
-const OUTLOOK_URL = 'https://www.myfxbook.com/api/get-community-outlook.json';
+const DEFAULT_MYFXBOOK_API_BASE_URL = 'https://www.myfxbook.com/api';
+const LOGIN_ENDPOINT = 'login.json';
+const OUTLOOK_ENDPOINT = 'get-community-outlook.json';
 const REQUEST_TIMEOUT_MS = 10000;
 const SESSION_TTL_MS = 28 * 24 * 60 * 60 * 1000;
 const OUTLOOK_TTL_MS = 10 * 60 * 1000;
@@ -183,7 +184,24 @@ function logEnvCheckOnce() {
   const password = cleanEnv(process.env.MYFXBOOK_PASSWORD);
   console.log('[Myfxbook] email configured:', Boolean(email));
   console.log('[Myfxbook] password configured:', Boolean(password));
-  console.log('[Myfxbook] password length:', password.length);
+}
+
+function myfxbookApiBaseUrl() {
+  const configured = cleanEnv(process.env.MYFXBOOK_API_BASE_URL);
+  const rawBase = configured || DEFAULT_MYFXBOOK_API_BASE_URL;
+  try {
+    const parsed = new URL(rawBase);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return DEFAULT_MYFXBOOK_API_BASE_URL;
+    return parsed.toString().replace(/\/+$/, '');
+  } catch {
+    return DEFAULT_MYFXBOOK_API_BASE_URL;
+  }
+}
+
+function myfxbookApiUrl(endpoint: string) {
+  const base = myfxbookApiBaseUrl();
+  const cleanEndpoint = endpoint.replace(/^\/+/, '');
+  return new URL(`${base}/${cleanEndpoint}`);
 }
 
 function normalizeSymbol(value: string) {
@@ -471,7 +489,8 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     email: rawEmail,
     password: rawPassword,
   });
-  const loginUrl = `${LOGIN_URL}?${params.toString()}`;
+  const loginUrl = myfxbookApiUrl(LOGIN_ENDPOINT);
+  params.forEach((value, key) => loginUrl.searchParams.set(key, value));
 
   logMyfxbook('login attempt');
 
@@ -597,7 +616,7 @@ async function getSession() {
 }
 
 async function fetchCommunityOutlookPayload(session: string) {
-  const url = new URL(OUTLOOK_URL);
+  const url = myfxbookApiUrl(OUTLOOK_ENDPOINT);
   url.searchParams.set('session', session);
   return fetchJsonWithTimeout<MyfxbookOutlookResponse>(url);
 }

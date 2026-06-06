@@ -273,12 +273,12 @@ function sentimentMessage(assetType: SentimentAssetType, code: UnifiedSentimentC
   if (code === 'LOGIN_FAILED') return 'تعذر تسجيل الدخول إلى Myfxbook.';
   if (code === 'RATE_LIMIT') return 'تم تجاوز حد طلبات مزود المشاعر مؤقتاً.';
   if (code === 'NO_DATA') return 'لم يرجع Myfxbook بيانات حالياً لهذا الأصل.';
-  if (code === 'MISSING_CREDENTIALS') return 'لم يتم إعداد بيانات Myfxbook في بيئة التشغيل.';
+  if (code === 'MISSING_CREDENTIALS') return 'مزود مشاعر السوق غير مربوط حالياً.';
   if (code === 'LOGIN_REJECTED') return 'تم رفض تسجيل الدخول من Myfxbook. تحقق من البريد وكلمة المرور أو أعد حفظ بيانات البيئة ثم أعد النشر.';
   if (code === 'NO_SESSION') return 'لم يرجع Myfxbook جلسة صالحة.';
   if (code === 'INVALID_FOREX_PAIR') return 'زوج العملات غير معروف.';
   if (code === 'TIMEOUT') return 'استغرق الاتصال مع Myfxbook وقتاً أطول من المتوقع.';
-  if (code === 'PROVIDER_DOWN') return 'The market sentiment provider is temporarily unavailable.';
+  if (code === 'PROVIDER_DOWN') return 'تعذر جلب بيانات المشاعر حالياً. حاول لاحقاً.';
   if (code === 'MISSING_PROVIDER') {
     if (assetType === 'forex') return 'Trader sentiment provider is not connected for this currency pair.';
     if (assetType === 'stock') return 'No trusted stock sentiment provider is connected right now.';
