@@ -126,6 +126,7 @@ type ProjectExpenseRow = {
   payment_method: string | null;
   notes: string | null;
   receipt_url?: string | null;
+  ai_analysis?: ProjectExpenseAiAnalysis | null;
   paid_from_personal_budget?: boolean | null;
   personal_expense_id?: string | null;
   created_at?: string | null;
@@ -142,6 +143,46 @@ type ProjectExpenseForm = {
   notes: string;
   receiptFile: File | null;
   paidFromPersonalBudget: boolean;
+};
+
+type ProjectExpenseReceiptAnalysis = {
+  extracted: {
+    title?: string | null;
+    vendorName?: string | null;
+    amount?: number | null;
+    currency?: string | null;
+    invoiceDate?: string | null;
+    category?: string | null;
+    notes?: string | null;
+  };
+  confidence?: {
+    invoiceNumber?: number;
+    amount?: number;
+    currency?: number;
+    invoiceDate?: number;
+  };
+  warnings?: string[];
+  summary?: string | null;
+};
+
+type ProjectExpenseAiAnalysis = {
+  source?: 'ai' | 'rules';
+  summary?: string;
+  necessity?: string;
+  category?: string;
+  budgetImpact?: string;
+  amountLevel?: 'low' | 'normal' | 'high' | 'unknown';
+  fundingReadinessImpact?: string;
+  suggestedAction?: 'approve' | 'review' | 'reduce' | 'move_category' | 'attach_document';
+  warnings?: string[];
+  budget?: {
+    plannedBudget?: number | null;
+    existingExpenses?: number;
+    expenseAmount?: number;
+    remainingAfterExpense?: number | null;
+    percentageUsed?: number | null;
+    categoryWarning?: string | null;
+  };
 };
 
 type ProjectIncomeRow = {
@@ -215,7 +256,38 @@ const TEXT = {
     category: 'التصنيف',
     paymentMethod: 'طريقة الدفع',
     notes: 'ملاحظات',
-    receipt: 'إيصال اختياري',
+    receipt: 'إيصال أو فاتورة اختيارية',
+    aiReceiptReading: 'قراءة الإيصال بالذكاء الاصطناعي',
+    aiReceiptHelper: 'ارفع صورة أو PDF للفاتورة ليتم تحليلها تلقائياً.',
+    readReceipt: 'قراءة الإيصال',
+    analyzeExpense: 'تحليل المصروف',
+    readingReceipt: 'جاري قراءة الإيصال...',
+    analyzingExpense: 'جاري تحليل المصروف...',
+    receiptReadSuccess: 'تم استخراج البيانات، يرجى مراجعتها قبل الحفظ.',
+    receiptReadError: 'تعذر تحليل الإيصال حالياً، يمكنك إدخال البيانات يدوياً.',
+    extractedReceiptTitle: 'نتيجة قراءة الإيصال',
+    applyExtractedData: 'تطبيق البيانات',
+    clearAiResult: 'مسح النتيجة',
+    confidence: 'الثقة',
+    vendorName: 'اسم المورد',
+    notClear: 'غير واضح',
+    aiExpenseAnalysis: 'تحليل المصروف',
+    aiExpenseAnalysisError: 'تعذر تحليل المصروف حالياً، يمكنك الحفظ يدوياً.',
+    budgetImpact: 'أثره على الميزانية',
+    remainingBudgetAfterExpense: 'المتبقي بعد هذا المصروف',
+    budgetUsedPercent: 'نسبة استخدام الميزانية',
+    noProjectBudgetForAnalysis: 'لا توجد ميزانية محددة لهذا المشروع، أضف ميزانية للحصول على تحليل أدق.',
+    suggestedAction: 'الإجراء المقترح',
+    expenseAction_approve: 'اعتماد',
+    expenseAction_review: 'مراجعة',
+    expenseAction_reduce: 'تخفيض',
+    expenseAction_move_category: 'نقل لتصنيف آخر',
+    expenseAction_attach_document: 'إرفاق مستند داعم',
+    amountLevel: 'مستوى المبلغ',
+    amountLevel_low: 'منخفض',
+    amountLevel_normal: 'طبيعي',
+    amountLevel_high: 'مرتفع',
+    amountLevel_unknown: 'غير محدد',
     paidFromPersonalBudget: 'تم الدفع من ميزانيتي الشخصية',
     doNotIncludeInPersonalBudget: 'لا يؤثر هذا المصروف على مصروفاتك الشخصية إلا إذا اخترت ذلك.',
     includeInPersonalBudget: 'سيظهر هذا المصروف أيضاً في صفحة المصروفات الشخصية بعلامة مصروف مشروع.',
@@ -462,7 +534,38 @@ const TEXT = {
     category: 'Category',
     paymentMethod: 'Payment method',
     notes: 'Notes',
-    receipt: 'Optional receipt',
+    receipt: 'Optional receipt or invoice',
+    aiReceiptReading: 'AI receipt reading',
+    aiReceiptHelper: 'Upload a receipt or invoice image/PDF so it can be analyzed automatically.',
+    readReceipt: 'Read receipt',
+    analyzeExpense: 'Analyze expense',
+    readingReceipt: 'Reading receipt...',
+    analyzingExpense: 'Analyzing expense...',
+    receiptReadSuccess: 'Data was extracted. Please review it before saving.',
+    receiptReadError: 'Could not analyze the receipt right now. You can enter the data manually.',
+    extractedReceiptTitle: 'Receipt reading result',
+    applyExtractedData: 'Apply data',
+    clearAiResult: 'Clear result',
+    confidence: 'Confidence',
+    vendorName: 'Vendor name',
+    notClear: 'Unclear',
+    aiExpenseAnalysis: 'Expense analysis',
+    aiExpenseAnalysisError: 'Could not analyze the expense right now. You can still save it manually.',
+    budgetImpact: 'Budget impact',
+    remainingBudgetAfterExpense: 'Remaining after this expense',
+    budgetUsedPercent: 'Budget used',
+    noProjectBudgetForAnalysis: 'No budget is defined for this project. Add a budget for more accurate analysis.',
+    suggestedAction: 'Suggested action',
+    expenseAction_approve: 'Approve',
+    expenseAction_review: 'Review',
+    expenseAction_reduce: 'Reduce',
+    expenseAction_move_category: 'Move category',
+    expenseAction_attach_document: 'Attach supporting document',
+    amountLevel: 'Amount level',
+    amountLevel_low: 'Low',
+    amountLevel_normal: 'Normal',
+    amountLevel_high: 'High',
+    amountLevel_unknown: 'Unknown',
     paidFromPersonalBudget: 'Paid from personal budget',
     doNotIncludeInPersonalBudget: 'This expense will not affect your personal spending unless you choose that.',
     includeInPersonalBudget: 'This expense will also appear on the personal expenses page marked as Project Expense.',
@@ -709,7 +812,38 @@ const TEXT = {
     category: 'Catégorie',
     paymentMethod: 'Mode de paiement',
     notes: 'Notes',
-    receipt: 'Reçu optionnel',
+    receipt: 'Reçu ou facture optionnel',
+    aiReceiptReading: 'Lecture IA du reçu',
+    aiReceiptHelper: 'Importez une image ou un PDF de reçu/facture pour une analyse automatique.',
+    readReceipt: 'Lire le reçu',
+    analyzeExpense: 'Analyser la dépense',
+    readingReceipt: 'Lecture du reçu...',
+    analyzingExpense: 'Analyse de la dépense...',
+    receiptReadSuccess: 'Les données ont été extraites. Vérifiez-les avant l’enregistrement.',
+    receiptReadError: 'Impossible d’analyser le reçu pour le moment. Vous pouvez saisir les données manuellement.',
+    extractedReceiptTitle: 'Résultat de lecture du reçu',
+    applyExtractedData: 'Appliquer les données',
+    clearAiResult: 'Effacer le résultat',
+    confidence: 'Confiance',
+    vendorName: 'Nom du fournisseur',
+    notClear: 'Peu clair',
+    aiExpenseAnalysis: 'Analyse de la dépense',
+    aiExpenseAnalysisError: 'Impossible d’analyser la dépense pour le moment. Vous pouvez l’enregistrer manuellement.',
+    budgetImpact: 'Impact sur le budget',
+    remainingBudgetAfterExpense: 'Restant après cette dépense',
+    budgetUsedPercent: 'Budget utilisé',
+    noProjectBudgetForAnalysis: 'Aucun budget n’est défini pour ce projet. Ajoutez un budget pour une analyse plus précise.',
+    suggestedAction: 'Action suggérée',
+    expenseAction_approve: 'Approuver',
+    expenseAction_review: 'Vérifier',
+    expenseAction_reduce: 'Réduire',
+    expenseAction_move_category: 'Changer de catégorie',
+    expenseAction_attach_document: 'Joindre un document',
+    amountLevel: 'Niveau du montant',
+    amountLevel_low: 'Faible',
+    amountLevel_normal: 'Normal',
+    amountLevel_high: 'Élevé',
+    amountLevel_unknown: 'Inconnu',
     paidFromPersonalBudget: 'Payé depuis mon budget personnel',
     doNotIncludeInPersonalBudget: 'Cette dépense n’affecte pas vos dépenses personnelles sauf si vous le choisissez.',
     includeInPersonalBudget: 'Cette dépense apparaîtra aussi dans les dépenses personnelles avec le libellé Dépense de projet.',
@@ -1019,6 +1153,33 @@ function formatRowsByCurrency(rows: CurrencyAmountRow[], money: MoneyFormatter, 
     .join(' + ');
 }
 
+function normalizeProjectExpenseCategory(value?: string | null) {
+  const category = String(value ?? '').trim().toLowerCase();
+  if (!category) return 'general';
+  if (['operations', 'operational', 'bills', 'utilities', 'maintenance'].includes(category)) return 'operations';
+  if (['marketing', 'marketingexpense', 'ads', 'advertising'].includes(category)) return 'marketingExpense';
+  if (['salary', 'salaries', 'payroll', 'wages'].includes(category)) return 'payroll';
+  if (['rent', 'lease'].includes(category)) return 'rent';
+  if (['equipment', 'technology', 'software', 'tools', 'subscriptions'].includes(category)) return 'equipment';
+  if (['license', 'licenses', 'government', 'legal'].includes(category)) return 'licenses';
+  return 'general';
+}
+
+function formatPercentValue(value?: number | null) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+  return `${Math.round(value)}%`;
+}
+
+function confidencePercent(value?: number | null) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+  const normalized = value > 1 ? value : value * 100;
+  return `${Math.round(Math.max(0, Math.min(100, normalized)))}%`;
+}
+
+function safeText(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 function safeDate(value?: string | null) {
   if (!value) return null;
   const date = new Date(`${value.slice(0, 10)}T00:00:00`);
@@ -1175,6 +1336,11 @@ export default function ProjectWorkspacePage() {
   const [projectExpenseError, setProjectExpenseError] = useState('');
   const [projectExpenseForm, setProjectExpenseForm] = useState<ProjectExpenseForm>(() => emptyProjectExpenseForm(normalizeCurrencyCode(userCurrency, 'KWD')));
   const [editingProjectExpenseId, setEditingProjectExpenseId] = useState<string | null>(null);
+  const [receiptReading, setReceiptReading] = useState(false);
+  const [expenseAnalyzing, setExpenseAnalyzing] = useState(false);
+  const [projectExpenseAiError, setProjectExpenseAiError] = useState('');
+  const [projectExpenseReceiptAnalysis, setProjectExpenseReceiptAnalysis] = useState<ProjectExpenseReceiptAnalysis | null>(null);
+  const [projectExpenseAiAnalysis, setProjectExpenseAiAnalysis] = useState<ProjectExpenseAiAnalysis | null>(null);
   const [projectIncomeOpen, setProjectIncomeOpen] = useState(false);
   const [projectIncomeSaving, setProjectIncomeSaving] = useState(false);
   const [projectIncomeError, setProjectIncomeError] = useState('');
@@ -1539,8 +1705,17 @@ export default function ProjectWorkspacePage() {
     }
   };
 
+  const resetProjectExpenseAiState = () => {
+    setProjectExpenseAiError('');
+    setProjectExpenseReceiptAnalysis(null);
+    setProjectExpenseAiAnalysis(null);
+    setReceiptReading(false);
+    setExpenseAnalyzing(false);
+  };
+
   const openProjectExpenseModal = () => {
     setProjectExpenseError('');
+    resetProjectExpenseAiState();
     setEditingProjectExpenseId(null);
     setProjectExpenseForm(emptyProjectExpenseForm(normalizeCurrencyCode(projectCurrency, 'KWD')));
     setProjectExpenseOpen(true);
@@ -1548,7 +1723,9 @@ export default function ProjectWorkspacePage() {
 
   const openEditProjectExpenseModal = (expense: ProjectExpenseRow) => {
     setProjectExpenseError('');
+    resetProjectExpenseAiState();
     setEditingProjectExpenseId(expense.id);
+    setProjectExpenseAiAnalysis(expense.ai_analysis ?? null);
     setProjectExpenseForm({
       title: expense.title ?? '',
       amount: String(expense.amount ?? ''),
@@ -1623,6 +1800,120 @@ export default function ProjectWorkspacePage() {
     return supabase.storage.from('receipts').getPublicUrl(path).data.publicUrl;
   };
 
+  const applyReceiptAnalysisToExpenseForm = (analysis: ProjectExpenseReceiptAnalysis) => {
+    const extracted = analysis.extracted;
+    const title = safeText(extracted.title) || safeText(extracted.vendorName);
+    setProjectExpenseForm(prev => ({
+      ...prev,
+      title: title || prev.title,
+      amount: extracted.amount && extracted.amount > 0 ? String(extracted.amount) : prev.amount,
+      currency: normalizeCurrencyCode(extracted.currency, prev.currency || projectCurrency || 'KWD'),
+      expenseDate: safeText(extracted.invoiceDate) || prev.expenseDate,
+      category: normalizeProjectExpenseCategory(extracted.category || prev.category),
+      notes: safeText(extracted.notes) || prev.notes,
+    }));
+  };
+
+  const readProjectExpenseReceipt = async () => {
+    if (!projectExpenseForm.receiptFile) {
+      setProjectExpenseAiError(tr.receiptReadError);
+      return;
+    }
+    setReceiptReading(true);
+    setProjectExpenseAiError('');
+    setProjectExpenseReceiptAnalysis(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', projectExpenseForm.receiptFile);
+      formData.append('defaultCurrency', normalizeCurrencyCode(projectExpenseForm.currency, projectCurrency || 'KWD'));
+      const response = await fetch('/api/invoices/analyze', { method: 'POST', body: formData });
+      const payload = await response.json().catch(() => null) as any;
+      if (!response.ok || !payload?.ok) {
+        setProjectExpenseAiError(payload?.message || tr.receiptReadError);
+        return;
+      }
+      const analysis: ProjectExpenseReceiptAnalysis = {
+        extracted: {
+          title: payload.extracted?.title ?? payload.extracted?.vendorName ?? null,
+          vendorName: payload.extracted?.vendorName ?? null,
+          amount: typeof payload.extracted?.amount === 'number' ? payload.extracted.amount : null,
+          currency: payload.extracted?.currency ?? null,
+          invoiceDate: payload.extracted?.invoiceDate ?? null,
+          category: payload.analysis?.suggestedCategory ?? payload.extracted?.category ?? null,
+          notes: payload.extracted?.notes ?? null,
+        },
+        confidence: payload.confidence ?? {},
+        warnings: Array.isArray(payload.analysis?.warnings) ? payload.analysis.warnings : [],
+        summary: payload.analysis?.summary ?? null,
+      };
+      setProjectExpenseReceiptAnalysis(analysis);
+      applyReceiptAnalysisToExpenseForm(analysis);
+      setNotice(tr.receiptReadSuccess);
+    } catch (error) {
+      console.error('Project expense receipt analysis failed', {
+        errorName: error instanceof Error ? error.name : 'unknown',
+        message: error instanceof Error ? error.message : 'receipt_analysis_failed',
+      });
+      setProjectExpenseAiError(tr.receiptReadError);
+    } finally {
+      setReceiptReading(false);
+    }
+  };
+
+  const analyzeProjectExpense = async () => {
+    if (!user || !project) return;
+    const amount = toNum(projectExpenseForm.amount);
+    if (amount <= 0) {
+      setProjectExpenseAiError(tr.requiredExpenseAmount);
+      return;
+    }
+    setExpenseAnalyzing(true);
+    setProjectExpenseAiError('');
+    try {
+      const sessionRes = await supabase.auth.getSession();
+      const token = sessionRes.data.session?.access_token;
+      if (!token) {
+        setProjectExpenseAiError(tr.aiExpenseAnalysisError);
+        return;
+      }
+      const response = await fetch(`/api/projects/${project.id}/expense-analysis`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          lang,
+          expense: {
+            title: projectExpenseForm.title.trim(),
+            amount,
+            currency: normalizeCurrencyCode(projectExpenseForm.currency, projectCurrency || 'KWD'),
+            date: projectExpenseForm.expenseDate || todayInputValue(),
+            category: projectExpenseForm.category || 'general',
+            paymentMethod: projectExpenseForm.paymentMethod || null,
+            notes: projectExpenseForm.notes.trim() || null,
+            hasReceipt: Boolean(projectExpenseForm.receiptFile || projectExpenseReceiptAnalysis),
+            expenseId: editingProjectExpenseId,
+          },
+        }),
+      });
+      const payload = await response.json().catch(() => null) as any;
+      if (!response.ok || !payload?.ok) {
+        setProjectExpenseAiError(payload?.message || tr.aiExpenseAnalysisError);
+        return;
+      }
+      setProjectExpenseAiAnalysis(payload.analysis as ProjectExpenseAiAnalysis);
+    } catch (error) {
+      console.error('Project expense analysis failed', {
+        errorName: error instanceof Error ? error.name : 'unknown',
+        message: error instanceof Error ? error.message : 'expense_analysis_failed',
+      });
+      setProjectExpenseAiError(tr.aiExpenseAnalysisError);
+    } finally {
+      setExpenseAnalyzing(false);
+    }
+  };
+
   const saveProjectExpense = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user || !project) return;
@@ -1659,6 +1950,7 @@ export default function ProjectWorkspacePage() {
       payment_method: projectExpenseForm.paymentMethod || null,
       notes: projectExpenseForm.notes.trim() || null,
       receipt_url: receiptUrl ?? existingExpense?.receipt_url ?? null,
+      ai_analysis: projectExpenseAiAnalysis ?? existingExpense?.ai_analysis ?? null,
       paid_from_personal_budget: projectExpenseForm.paidFromPersonalBudget,
       personal_expense_id: shouldRemoveLinkedPersonal ? null : existingExpense?.personal_expense_id ?? null,
       updated_at: new Date().toISOString(),
@@ -1696,6 +1988,7 @@ export default function ProjectWorkspacePage() {
           project_expense_id: createdExpense.id,
           project_name: project.name ?? '',
           paid_from_personal_budget: true,
+          ai_analysis: projectExpenseAiAnalysis ?? existingExpense?.ai_analysis ?? null,
         },
         updated_at: new Date().toISOString(),
       };
@@ -1736,6 +2029,7 @@ export default function ProjectWorkspacePage() {
     setProjectExpenseSaving(false);
     setProjectExpenseOpen(false);
     setEditingProjectExpenseId(null);
+    resetProjectExpenseAiState();
     setProjectExpenseForm(emptyProjectExpenseForm(normalizeCurrencyCode(projectCurrency, 'KWD')));
   };
 
@@ -2344,12 +2638,94 @@ export default function ProjectWorkspacePage() {
 
               <label className="form-field">
                 <span>{tr.receipt}</span>
+                <small>{tr.aiReceiptHelper}</small>
                 <input
                   type="file"
                   accept="image/*,application/pdf"
-                  onChange={event => setProjectExpenseForm(prev => ({ ...prev, receiptFile: event.target.files?.[0] ?? null }))}
+                  onChange={event => {
+                    setProjectExpenseAiError('');
+                    setProjectExpenseReceiptAnalysis(null);
+                    setProjectExpenseForm(prev => ({ ...prev, receiptFile: event.target.files?.[0] ?? null }));
+                  }}
                 />
+                {projectExpenseForm.receiptFile ? <em>{projectExpenseForm.receiptFile.name}</em> : null}
               </label>
+
+              <section className="project-expense-ai-panel wide" aria-label={tr.aiReceiptReading}>
+                <div className="project-expense-ai-head">
+                  <span className="project-expense-ai-icon"><Bot size={18} /></span>
+                  <div>
+                    <strong>{tr.aiReceiptReading}</strong>
+                    <small>{tr.aiReceiptHelper}</small>
+                  </div>
+                </div>
+                <div className="project-expense-ai-actions">
+                  <button type="button" className="secondary-action" onClick={readProjectExpenseReceipt} disabled={receiptReading || !projectExpenseForm.receiptFile}>
+                    <ReceiptText size={16} />
+                    {receiptReading ? tr.readingReceipt : tr.readReceipt}
+                  </button>
+                  <button type="button" className="primary-save" onClick={analyzeProjectExpense} disabled={expenseAnalyzing}>
+                    <Bot size={16} />
+                    {expenseAnalyzing ? tr.analyzingExpense : tr.analyzeExpense}
+                  </button>
+                </div>
+
+                {projectExpenseAiError ? <div className="project-expense-ai-alert" role="alert">{projectExpenseAiError}</div> : null}
+
+                {projectExpenseReceiptAnalysis ? (
+                  <article className="project-expense-ai-result">
+                    <div className="project-expense-ai-result-head">
+                      <strong>{tr.extractedReceiptTitle}</strong>
+                      <span>{projectExpenseReceiptAnalysis.warnings?.length ? tr.needsReview : tr.receiptReadSuccess}</span>
+                    </div>
+                    <div className="project-expense-extracted-grid">
+                      <div><span>{tr.expenseName}</span><b>{projectExpenseReceiptAnalysis.extracted.title || tr.notClear}</b></div>
+                      <div><span>{tr.vendorName}</span><b>{projectExpenseReceiptAnalysis.extracted.vendorName || tr.notClear}</b></div>
+                      <div><span>{tr.amount}</span><b>{projectExpenseReceiptAnalysis.extracted.amount ? formatProjectExpenseMoney(projectExpenseReceiptAnalysis.extracted.amount, projectExpenseReceiptAnalysis.extracted.currency || projectExpenseForm.currency) : tr.notClear}</b></div>
+                      <div><span>{tr.currency}</span><b>{projectExpenseReceiptAnalysis.extracted.currency || tr.notClear}</b></div>
+                      <div><span>{tr.date}</span><b>{projectExpenseReceiptAnalysis.extracted.invoiceDate || tr.notClear}</b></div>
+                      <div><span>{tr.category}</span><b>{projectExpenseReceiptAnalysis.extracted.category ? tr[normalizeProjectExpenseCategory(projectExpenseReceiptAnalysis.extracted.category) as keyof Translation] : tr.notClear}</b></div>
+                    </div>
+                    <div className="project-expense-confidence-row">
+                      <span>{tr.confidence}: {confidencePercent(projectExpenseReceiptAnalysis.confidence?.amount) || tr.needsReview}</span>
+                      {projectExpenseReceiptAnalysis.warnings?.length ? <span>{tr.needsReview}</span> : null}
+                    </div>
+                    <div className="project-expense-ai-actions compact">
+                      <button type="button" className="secondary-action" onClick={() => applyReceiptAnalysisToExpenseForm(projectExpenseReceiptAnalysis)}>{tr.applyExtractedData}</button>
+                      <button type="button" className="secondary-action" onClick={() => setProjectExpenseReceiptAnalysis(null)}>{tr.clearAiResult}</button>
+                    </div>
+                  </article>
+                ) : null}
+
+                {projectExpenseAiAnalysis ? (
+                  <article className="project-expense-ai-result analysis">
+                    <div className="project-expense-ai-result-head">
+                      <strong>{tr.aiExpenseAnalysis}</strong>
+                      <span>{projectExpenseAiAnalysis.source === 'rules' ? tr.needsReview : tr.aiReceiptReading}</span>
+                    </div>
+                    <p>{projectExpenseAiAnalysis.summary || projectExpenseAiAnalysis.budgetImpact || tr.aiExpenseAnalysis}</p>
+                    <div className="project-expense-analysis-grid">
+                      <div><span>{tr.category}</span><b>{projectExpenseAiAnalysis.category || tr.notClear}</b></div>
+                      <div><span>{tr.amountLevel}</span><b>{tr[`amountLevel_${projectExpenseAiAnalysis.amountLevel || 'unknown'}` as keyof Translation] || tr.amountLevel_unknown}</b></div>
+                      <div><span>{tr.suggestedAction}</span><b>{tr[`expenseAction_${projectExpenseAiAnalysis.suggestedAction || 'review'}` as keyof Translation] || tr.expenseAction_review}</b></div>
+                      <div><span>{tr.budgetImpact}</span><b>{projectExpenseAiAnalysis.budgetImpact || tr.notClear}</b></div>
+                    </div>
+                    {projectExpenseAiAnalysis.budget?.plannedBudget ? (
+                      <div className="project-expense-budget-impact">
+                        <span>{tr.remainingBudgetAfterExpense}: <b>{formatProjectExpenseMoney(projectExpenseAiAnalysis.budget.remainingAfterExpense ?? 0, projectExpenseForm.currency)}</b></span>
+                        <span>{tr.budgetUsedPercent}: <b>{formatPercentValue(projectExpenseAiAnalysis.budget.percentageUsed) || tr.notClear}</b></span>
+                      </div>
+                    ) : (
+                      <small className="project-expense-budget-note">{tr.noProjectBudgetForAnalysis}</small>
+                    )}
+                    {projectExpenseAiAnalysis.warnings?.length ? (
+                      <ul className="project-expense-warning-list">
+                        {projectExpenseAiAnalysis.warnings.map(item => <li key={item}>{item}</li>)}
+                      </ul>
+                    ) : null}
+                  </article>
+                ) : null}
+              </section>
 
               <label className="form-field wide">
                 <span>{tr.notes}</span>
@@ -2625,10 +3001,35 @@ export default function ProjectWorkspacePage() {
         .modal-error{border:1px solid rgba(220,38,38,.22);background:#FEF2F2;color:#B91C1C;border-radius:14px;padding:12px;font-weight:900}
         .project-expense-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
         .project-expense-form-grid .wide{grid-column:1 / -1}
+        .project-expense-form-grid .form-field small{display:block;margin-top:4px;color:var(--sfm-muted);font-size:12px;font-weight:850;line-height:1.55}
+        .project-expense-form-grid .form-field em{display:block;margin-top:7px;width:fit-content;max-width:100%;font-style:normal;border-radius:999px;background:rgba(29,140,255,.09);border:1px solid rgba(29,140,255,.14);color:var(--sfm-primary-hover);padding:5px 9px;font-size:11px;font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .project-currency-select{min-width:0}
         .project-currency-select .currency-trigger{min-height:48px;border-radius:13px;padding-inline:12px}
         .project-currency-select .currency-trigger-content{column-gap:9px}
         .project-currency-select .currency-trigger-symbol{min-inline-size:42px}
+        .project-expense-ai-panel{display:grid;gap:12px;border:1px solid rgba(29,140,255,.15);border-radius:18px;background:linear-gradient(135deg,rgba(29,140,255,.07),rgba(24,212,212,.05)),var(--sfm-light-card);padding:14px;min-width:0}
+        .project-expense-ai-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px;align-items:start;min-width:0}
+        .project-expense-ai-icon{width:38px;height:38px;border-radius:13px;background:rgba(24,212,212,.13);border:1px solid rgba(24,212,212,.20);color:var(--sfm-primary);display:grid;place-items:center}
+        .project-expense-ai-head strong{display:block;color:var(--sfm-midnight);font-weight:950;line-height:1.45;overflow-wrap:anywhere}
+        .project-expense-ai-head small{display:block;color:var(--sfm-muted);font-size:12px;font-weight:850;line-height:1.7;margin-top:3px;overflow-wrap:anywhere}
+        .project-expense-ai-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}
+        .project-expense-ai-actions.compact{justify-content:flex-start}
+        .project-expense-ai-actions button{min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-weight:950}
+        .project-expense-ai-actions button:disabled{opacity:.62;cursor:not-allowed}
+        .project-expense-ai-alert{border:1px solid rgba(245,158,11,.26);background:rgba(245,158,11,.10);color:#92400E;border-radius:14px;padding:11px 12px;font-size:13px;font-weight:900;line-height:1.65}
+        .project-expense-ai-result{display:grid;gap:11px;border:1px solid rgba(29,140,255,.13);background:var(--sfm-card);border-radius:16px;padding:13px;min-width:0;box-shadow:0 10px 24px rgba(3,18,37,.05)}
+        .project-expense-ai-result-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;min-width:0}
+        .project-expense-ai-result-head strong{color:var(--sfm-midnight);font-weight:950;line-height:1.45}
+        .project-expense-ai-result-head span,.project-expense-confidence-row span{border-radius:999px;background:rgba(16,185,129,.10);border:1px solid rgba(16,185,129,.18);color:#047857;padding:5px 8px;font-size:11px;font-weight:950;line-height:1.35;text-align:center}
+        .project-expense-extracted-grid,.project-expense-analysis-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+        .project-expense-extracted-grid div,.project-expense-analysis-grid div{min-width:0;border:1px solid rgba(29,140,255,.10);background:var(--sfm-light-card);border-radius:13px;padding:9px;display:grid;gap:4px}
+        .project-expense-extracted-grid span,.project-expense-analysis-grid span{color:var(--sfm-muted);font-size:11px;font-weight:900;line-height:1.4}
+        .project-expense-extracted-grid b,.project-expense-analysis-grid b{color:var(--sfm-midnight);font-size:13px;font-weight:950;line-height:1.55;overflow-wrap:anywhere}
+        .project-expense-confidence-row,.project-expense-budget-impact{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+        .project-expense-ai-result p{margin:0;color:var(--sfm-midnight);font-weight:900;line-height:1.8;overflow-wrap:anywhere}
+        .project-expense-budget-impact span,.project-expense-budget-note{display:inline-flex;width:fit-content;max-width:100%;border-radius:13px;background:rgba(29,140,255,.08);border:1px solid rgba(29,140,255,.12);color:var(--sfm-muted);padding:8px 10px;font-size:12px;font-weight:900;line-height:1.6;overflow-wrap:anywhere}
+        .project-expense-budget-impact b{color:var(--sfm-primary-dark)}
+        .project-expense-warning-list{margin:0;padding-inline-start:20px;color:#92400E;font-size:12px;font-weight:900;line-height:1.7}
         .budget-checkbox{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:flex-start;width:100%;min-width:0;border:1px solid rgba(29,140,255,.18);border-radius:16px;background:var(--sfm-light-card);padding-block:15px;padding-inline:18px;cursor:pointer;overflow:visible;transition:border-color .18s ease,background .18s ease,box-shadow .18s ease,transform .18s ease}
         .budget-checkbox:hover{border-color:rgba(24,212,212,.42);transform:translateY(-1px)}
         .budget-checkbox.selected,.budget-checkbox:has(.budget-checkbox-input:checked){border-color:rgba(24,212,212,.62);background:linear-gradient(135deg,rgba(29,140,255,.12),rgba(24,212,212,.11)),var(--sfm-light-card);box-shadow:inset 0 0 0 1px rgba(24,212,212,.18),0 12px 28px rgba(3,18,37,.07)}
@@ -2642,7 +3043,7 @@ export default function ProjectWorkspacePage() {
         .modal-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
         .modal-actions .primary-save{min-height:44px;border:0;border-radius:13px;padding:0 16px;display:inline-flex;align-items:center;gap:8px;font-family:inherit;font-weight:950;cursor:pointer}
         @media(max-width:1180px){.overview-main-layout{grid-template-columns:1fr}.overview-side-column{position:static}.compact-details{grid-template-columns:1fr 1fr}}
-        @media(max-width:760px){.overview-kpi-grid,.compact-details{grid-template-columns:1fr}.transaction-row,.activity-list div{grid-template-columns:1fr}.transaction-actions{justify-content:stretch}.transaction-actions button{flex:1;justify-content:center}.expense-modal-backdrop{align-items:end;padding:12px}.expense-modal,.delete-modal{border-radius:22px 22px 0 0;max-height:88vh;overflow:auto}.project-expense-form-grid{grid-template-columns:1fr}.modal-actions{display:grid;grid-template-columns:1fr}.modal-actions button{width:100%}.project-workspace .expense-list div{grid-template-columns:1fr}.project-workspace .project-income-card,.project-workspace .project-expenses-card,.project-workspace .missing-data-card{grid-column:1 / -1}.project-workspace .quick-grid button{min-height:54px}.project-workspace .action-empty{grid-template-columns:1fr;text-align:start}.project-workspace .action-empty button{width:100%;justify-self:stretch}}
+        @media(max-width:760px){.overview-kpi-grid,.compact-details{grid-template-columns:1fr}.transaction-row,.activity-list div{grid-template-columns:1fr}.transaction-actions{justify-content:stretch}.transaction-actions button{flex:1;justify-content:center}.expense-modal-backdrop{align-items:end;padding:12px}.expense-modal,.delete-modal{border-radius:22px 22px 0 0;max-height:88vh;overflow:auto}.project-expense-form-grid,.project-expense-extracted-grid,.project-expense-analysis-grid{grid-template-columns:1fr}.project-expense-ai-actions{display:grid;grid-template-columns:1fr}.project-expense-ai-actions button{width:100%}.project-expense-ai-result-head{display:grid}.modal-actions{display:grid;grid-template-columns:1fr}.modal-actions button{width:100%}.project-workspace .expense-list div{grid-template-columns:1fr}.project-workspace .project-income-card,.project-workspace .project-expenses-card,.project-workspace .missing-data-card{grid-column:1 / -1}.project-workspace .quick-grid button{min-height:54px}.project-workspace .action-empty{grid-template-columns:1fr;text-align:start}.project-workspace .action-empty button{width:100%;justify-self:stretch}}
       `}</style>
     </div>
   );
