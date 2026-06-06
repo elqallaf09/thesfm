@@ -174,7 +174,6 @@ const TEXT = {
     unavailable: 'غير متاح',
     priceSource: 'مصدر السعر',
     sectorGuideTitle: 'دليل قطاعات الأسهم الدورية',
-    viewMore: 'عرض المزيد',
     examples: 'أمثلة',
     cycleTitle: 'متى تكون الأسهم الدورية قوية؟',
     riskTitle: 'متى ترتفع المخاطر؟',
@@ -233,7 +232,6 @@ const TEXT = {
     unavailable: 'Unavailable',
     priceSource: 'Price source',
     sectorGuideTitle: 'Cyclical sector guide',
-    viewMore: 'View more',
     examples: 'Examples',
     cycleTitle: 'When are cyclicals strong?',
     riskTitle: 'When do risks rise?',
@@ -292,7 +290,6 @@ const TEXT = {
     unavailable: 'Indisponible',
     priceSource: 'Source du prix',
     sectorGuideTitle: 'Guide des secteurs cycliques',
-    viewMore: 'Voir plus',
     examples: 'Exemples',
     cycleTitle: 'Quand les cycliques sont fortes ?',
     riskTitle: 'Quand les risques montent ?',
@@ -397,6 +394,31 @@ const SECTOR_GUIDES = [
     },
   },
 ];
+
+const CYCLICAL_SYMBOL_NAMES: Record<string, string> = {
+  RACE: 'Ferrari',
+  F: 'Ford',
+  GM: 'General Motors',
+  TSLA: 'Tesla',
+  RCL: 'Royal Caribbean',
+  AAL: 'American Airlines',
+  UAL: 'United Airlines',
+  DAL: 'Delta Air Lines',
+  LVS: 'Las Vegas Sands',
+  WYNN: 'Wynn Resorts',
+  HLT: 'Hilton',
+  MAR: 'Marriott International',
+  DE: 'Deere',
+  CAT: 'Caterpillar',
+  BA: 'Boeing',
+  SBUX: 'Starbucks',
+  MCD: "McDonald's",
+  NKE: 'Nike',
+  LEN: 'Lennar',
+  DHI: 'D.R. Horton',
+  LOW: "Lowe's",
+  HD: 'Home Depot',
+};
 
 const FEATURED_META: Record<string, { sector: Record<LangCode, string>; body: Record<LangCode, string> }> = {
   TSLA: { sector: { ar: 'السيارات', en: 'Autos', fr: 'Automobile' }, body: { ar: 'شركة سيارات كهربائية وتقنيات نقل تتأثر بدورات الطلب والتمويل.', en: 'Electric vehicle and mobility company exposed to demand and financing cycles.', fr: 'Véhicules électriques exposés aux cycles de demande et financement.' } },
@@ -1057,11 +1079,9 @@ function FeaturedStocks({
 function SectorGuide({
   lang,
   text,
-  onSelect,
 }: {
   lang: LangCode;
   text: typeof TEXT[LangCode];
-  onSelect: (filter: CyclicalFilterId) => void;
 }) {
   return (
     <section className={styles.sectorGuidePanel} aria-label={text.sectorGuideTitle}>
@@ -1075,12 +1095,23 @@ function SectorGuide({
               <h3>{sector.title[lang]}</h3>
               <p>{sector.body[lang]}</p>
               <div className={styles.symbolChips} aria-label={text.examples}>
-                {sector.symbols.map(symbol => <span key={symbol} dir="ltr">{symbol}</span>)}
+                {sector.symbols.map(symbol => {
+                  const name = CYCLICAL_SYMBOL_NAMES[symbol] ?? symbol;
+                  return (
+                    <a
+                      key={symbol}
+                      href={`/market-analysis?symbol=${encodeURIComponent(symbol)}`}
+                      title={`${name} · ${symbol}`}
+                      aria-label={`${name} ${symbol}`}
+                      dir="ltr"
+                    >
+                      <span className={styles.symbolCompany}>{name}</span>
+                      <span className={styles.symbolDivider} aria-hidden="true">·</span>
+                      <strong>{symbol}</strong>
+                    </a>
+                  );
+                })}
               </div>
-              <button type="button" onClick={() => onSelect(sector.id)}>
-                {text.viewMore}
-                <ArrowUpRight size={14} />
-              </button>
             </article>
           );
         })}
@@ -1283,10 +1314,6 @@ export function CyclicalStocksNewsPage() {
           <SectorGuide
             lang={activeLang}
             text={text}
-            onSelect={filter => {
-              setActiveFilter(filter);
-              setVisibleCount(NEWS_PAGE_SIZE);
-            }}
           />
 
           <CycleRiskSection lang={activeLang} text={text} />
