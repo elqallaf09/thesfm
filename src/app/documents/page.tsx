@@ -53,15 +53,19 @@ const TEXT = {
     charityDocuments: 'مستندات الأعمال الخيرية',
     savedReports: 'التقارير المحفوظة',
     expenseAttachments: 'مرفقات المصروفات',
-    uploadDocument: 'رفع مستند',
+    uploadDocument: 'رفع مستند جديد',
+    uploadMenu: 'خيارات رفع المستند',
     uploadProject: 'رفع لمشروع',
     uploadCharity: 'رفع لمشروع خيري',
     uploadGeneral: 'رفع كمستند عام',
     generalComingSoon: 'تخزين المستندات العامة قريباً. استخدم صفحة المشروع أو المشروع الخيري حالياً.',
+    dropzoneTitle: 'اسحب الملف هنا أو اضغط للرفع',
+    dropzoneDescription: 'يدعم PDF والصور والفواتير والمستندات المالية',
+    chooseFile: 'اختيار ملف',
     searchDocuments: 'بحث في المستندات',
     searchInsideSoon: 'البحث داخل الملفات قريباً.',
-    noDocuments: 'لا توجد مستندات محفوظة حتى الآن.',
-    noDocumentsBody: 'ستظهر هنا مستندات المشاريع، الإيصالات، التقارير، والعروض الاستثمارية بعد حفظها في صفحاتها الأصلية.',
+    noDocuments: 'لا توجد مستندات مرفوعة',
+    noDocumentsBody: 'ارفع فواتيرك أو مستنداتك المالية لتنظيمها وتحليلها لاحقاً.',
     loading: 'جاري تحميل المستندات...',
     loadError: 'تعذر تحميل بعض مصادر المستندات حالياً.',
     all: 'الكل',
@@ -114,15 +118,19 @@ const TEXT = {
     charityDocuments: 'Charity Documents',
     savedReports: 'Saved Reports',
     expenseAttachments: 'Expense Attachments',
-    uploadDocument: 'Upload Document',
+    uploadDocument: 'Upload new document',
+    uploadMenu: 'Document upload options',
     uploadProject: 'Upload to Project',
     uploadCharity: 'Upload to Charity Project',
     uploadGeneral: 'Upload as General Document',
     generalComingSoon: 'General document storage is coming soon. Use a project or charity project page for now.',
+    dropzoneTitle: 'Drag the file here or click to upload',
+    dropzoneDescription: 'Supports PDFs, images, invoices, and financial documents',
+    chooseFile: 'Choose file',
     searchDocuments: 'Search documents',
     searchInsideSoon: 'Search inside files coming soon.',
-    noDocuments: 'No documents saved yet.',
-    noDocumentsBody: 'Project documents, receipts, reports, and pitch decks will appear here after you save them in their source pages.',
+    noDocuments: 'No uploaded documents',
+    noDocumentsBody: 'Upload your invoices or financial documents to organize and analyze them later.',
     loading: 'Loading documents...',
     loadError: 'Could not load some document sources right now.',
     all: 'All',
@@ -175,15 +183,19 @@ const TEXT = {
     charityDocuments: 'Documents caritatifs',
     savedReports: 'Rapports enregistrés',
     expenseAttachments: 'Pièces jointes de dépenses',
-    uploadDocument: 'Téléverser un document',
+    uploadDocument: 'Téléverser un nouveau document',
+    uploadMenu: 'Options de téléversement',
     uploadProject: 'Téléverser vers un projet',
     uploadCharity: 'Téléverser vers un projet caritatif',
     uploadGeneral: 'Téléverser comme document général',
     generalComingSoon: 'Le stockage général des documents arrive bientôt. Utilisez une page projet ou caritative pour le moment.',
+    dropzoneTitle: 'Glissez le fichier ici ou cliquez pour téléverser',
+    dropzoneDescription: 'Prend en charge les PDF, images, factures et documents financiers',
+    chooseFile: 'Choisir un fichier',
     searchDocuments: 'Rechercher des documents',
     searchInsideSoon: 'Recherche dans les fichiers bientôt disponible.',
-    noDocuments: 'Aucun document enregistré pour le moment.',
-    noDocumentsBody: 'Les documents de projet, reçus, rapports et pitch decks apparaîtront ici après leur enregistrement dans les pages sources.',
+    noDocuments: 'Aucun document téléversé',
+    noDocumentsBody: 'Téléversez vos factures ou documents financiers pour les organiser et les analyser plus tard.',
     loading: 'Chargement des documents...',
     loadError: 'Impossible de charger certaines sources de documents pour le moment.',
     all: 'Tout',
@@ -419,20 +431,31 @@ export default function DocumentsCenterPage() {
           title={text.title}
           subtitle={text.subtitle}
           icon={<FileCheck2 size={28} />}
-          actions={(
+        />
+
+        {notice ? <div className="documents-notice" role="status">{notice}</div> : null}
+        {hasLoadErrors ? <div className="documents-notice warning" role="status">{text.loadError}</div> : null}
+
+        <section className="documents-upload-panel" aria-label={text.uploadDocument}>
+          <div className="documents-upload-panel-head">
+            <div>
+              <span>{text.eyebrow}</span>
+              <h2>{text.uploadDocument}</h2>
+            </div>
             <div className="documents-upload-wrap">
               <button
                 type="button"
                 className="documents-primary-action"
                 onClick={() => setUploadOptionsOpen(open => !open)}
                 aria-expanded={uploadOptionsOpen}
+                aria-haspopup="dialog"
                 aria-label={text.uploadDocument}
               >
-                <Upload size={17} />
+                <Upload size={18} />
                 {text.uploadDocument}
               </button>
               {uploadOptionsOpen ? (
-                <div className="documents-upload-options" role="dialog" aria-label={text.uploadDocument}>
+                <div className="documents-upload-options" role="dialog" aria-label={text.uploadMenu}>
                   <Link href="/projects">
                     <FolderKanban size={17} />
                     {text.uploadProject}
@@ -449,11 +472,28 @@ export default function DocumentsCenterPage() {
                 </div>
               ) : null}
             </div>
-          )}
-        />
+          </div>
 
-        {notice ? <div className="documents-notice" role="status">{notice}</div> : null}
-        {hasLoadErrors ? <div className="documents-notice warning" role="status">{text.loadError}</div> : null}
+          <button
+            type="button"
+            className="documents-dropzone"
+            onClick={() => setUploadOptionsOpen(true)}
+            onDragOver={event => event.preventDefault()}
+            onDrop={event => {
+              event.preventDefault();
+              setUploadOptionsOpen(true);
+            }}
+          >
+            <span className="documents-dropzone-icon" aria-hidden="true">
+              <Upload size={22} />
+            </span>
+            <span className="documents-dropzone-copy">
+              <strong>{text.dropzoneTitle}</strong>
+              <small>{text.dropzoneDescription}</small>
+            </span>
+            <span className="documents-dropzone-button">{text.chooseFile}</span>
+          </button>
+        </section>
 
         <StatGrid>
           <AppCard><DocumentMetric icon={<FileText size={19} />} label={text.totalDocuments} value={summary.total} /></AppCard>
@@ -493,6 +533,7 @@ export default function DocumentsCenterPage() {
             description={text.noDocumentsBody}
             actions={(
               <button type="button" className="documents-secondary-action" onClick={() => setUploadOptionsOpen(true)}>
+                <Upload size={17} />
                 {text.uploadDocument}
               </button>
             )}
@@ -575,26 +616,72 @@ export default function DocumentsCenterPage() {
           align-items: center;
           gap: 10px;
         }
+        .documents-upload-panel {
+          position: relative;
+          display: grid;
+          gap: 14px;
+          padding: 18px;
+          border: 1px solid rgba(29, 140, 255, .16);
+          border-radius: 22px;
+          background:
+            radial-gradient(circle at 6% 10%, rgba(24, 212, 212, .18), transparent 30%),
+            linear-gradient(180deg, #FFFFFF, var(--sfm-light-card));
+          box-shadow: 0 16px 40px rgba(3, 18, 37, .08);
+          overflow: visible;
+          z-index: 4;
+        }
+        .documents-upload-panel-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          min-width: 0;
+        }
+        .documents-upload-panel-head > div:first-child {
+          min-width: 0;
+        }
+        .documents-upload-panel-head span {
+          display: block;
+          color: var(--sfm-primary);
+          font-size: 12px;
+          font-weight: 950;
+        }
+        .documents-upload-panel-head h2 {
+          margin: 5px 0 0;
+          color: var(--sfm-primary-dark);
+          font-size: clamp(20px, 2.4vw, 26px);
+          line-height: 1.2;
+          font-weight: 950;
+        }
         .documents-upload-wrap {
           position: relative;
           display: inline-flex;
           justify-content: flex-end;
+          overflow: visible;
+          z-index: 5;
         }
         .documents-primary-action,
         .documents-secondary-action {
-          min-height: 42px;
+          min-height: 44px;
           border: 0;
-          border-radius: 999px;
+          border-radius: 14px;
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
           color: #FFFFFF;
-          padding: 0 16px;
+          padding: 0 18px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
-          font: 950 13px Tajawal, Arial, sans-serif;
+          gap: 9px;
+          font: 950 14px Tajawal, Arial, sans-serif;
           cursor: pointer;
-          box-shadow: 0 12px 24px rgba(29, 140, 255, .22);
+          white-space: nowrap;
+          box-shadow: 0 14px 30px rgba(29, 140, 255, .24);
+          transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+        }
+        .documents-primary-action:hover {
+          transform: translateY(-1px);
+          filter: saturate(1.08);
+          box-shadow: 0 18px 38px rgba(29, 140, 255, .30);
         }
         .documents-secondary-action {
           background: #FFFFFF;
@@ -602,9 +689,13 @@ export default function DocumentsCenterPage() {
           border: 1px solid rgba(29, 140, 255, .22);
           box-shadow: none;
         }
+        .documents-secondary-action:hover {
+          border-color: rgba(24, 212, 212, .42);
+          background: rgba(24, 212, 212, .08);
+        }
         .documents-upload-options {
           position: absolute;
-          z-index: 20;
+          z-index: 40;
           inset-block-start: calc(100% + 10px);
           inset-inline-end: 0;
           width: min(340px, calc(100vw - 32px));
@@ -641,6 +732,70 @@ export default function DocumentsCenterPage() {
           grid-column: 2;
           color: var(--sfm-muted);
           line-height: 1.5;
+        }
+        .documents-dropzone {
+          width: 100%;
+          min-height: 96px;
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 14px;
+          border: 1px dashed rgba(29, 140, 255, .34);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, .72);
+          color: var(--sfm-primary-dark);
+          padding: 16px;
+          text-align: start;
+          font-family: Tajawal, Arial, sans-serif;
+          cursor: pointer;
+        }
+        .documents-dropzone:hover,
+        .documents-dropzone:focus-visible {
+          outline: none;
+          border-color: rgba(24, 212, 212, .58);
+          background: rgba(24, 212, 212, .07);
+          box-shadow: 0 0 0 4px rgba(24, 212, 212, .12);
+        }
+        .documents-dropzone-icon {
+          width: 48px;
+          height: 48px;
+          display: grid;
+          place-items: center;
+          border-radius: 16px;
+          background: rgba(29, 140, 255, .10);
+          color: var(--sfm-primary);
+          flex: 0 0 auto;
+        }
+        .documents-dropzone-copy {
+          min-width: 0;
+          display: grid;
+          gap: 4px;
+        }
+        .documents-dropzone-copy strong {
+          color: var(--sfm-primary-dark);
+          font-size: 16px;
+          line-height: 1.3;
+          font-weight: 950;
+        }
+        .documents-dropzone-copy small {
+          color: var(--sfm-muted);
+          font-size: 12px;
+          line-height: 1.45;
+          font-weight: 900;
+        }
+        .documents-dropzone-button {
+          min-height: 38px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 12px;
+          background: #FFFFFF;
+          border: 1px solid rgba(29, 140, 255, .18);
+          color: var(--sfm-primary-dark);
+          padding: 0 13px;
+          font-size: 12px;
+          font-weight: 950;
+          white-space: nowrap;
         }
         .documents-notice {
           border: 1px solid rgba(29, 140, 255, .2);
@@ -851,15 +1006,43 @@ export default function DocumentsCenterPage() {
           .sfm-page-topbar {
             display: none;
           }
+          .documents-upload-panel {
+            padding: 14px;
+            border-radius: 19px;
+          }
+          .documents-upload-panel-head {
+            display: grid;
+            gap: 12px;
+          }
           .documents-upload-wrap,
           .documents-primary-action,
           .documents-secondary-action {
             width: 100%;
           }
+          .documents-primary-action,
+          .documents-secondary-action {
+            min-height: 46px;
+          }
           .documents-upload-options {
             position: fixed;
             inset: auto 16px 16px;
             width: auto;
+            z-index: 160;
+          }
+          .documents-dropzone {
+            grid-template-columns: 1fr;
+            justify-items: stretch;
+            min-height: 0;
+            padding: 14px;
+            gap: 11px;
+          }
+          .documents-dropzone-icon {
+            width: 42px;
+            height: 42px;
+          }
+          .documents-dropzone-button {
+            width: 100%;
+            min-height: 42px;
           }
           .document-meta div {
             grid-template-columns: 1fr;
