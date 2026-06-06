@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
-import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDollarSign, Clock3, FileText, Gauge, Info, Landmark, LineChart, Newspaper, Percent, PieChart, Plus, Search, ShieldAlert, ShoppingCart, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDollarSign, Clock3, FileText, Gauge, Info, Landmark, LineChart, Newspaper, Percent, PieChart, Plus, RefreshCw, Search, ShieldAlert, ShoppingCart, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { AssetProfileCard } from '@/components/market/AssetProfileCard';
@@ -884,7 +884,10 @@ function hasUsableAnalysis(result: MarketResult): result is MarketAnalysis {
 
 function historyFromPricePoints(points: PriceHistoryPoint[]): MarketHistoryPoint[] {
   return points
-    .filter(point => point.time && Number.isFinite(point.close))
+    .filter(point => {
+      const time = String(point.time ?? '').trim();
+      return time && Number.isFinite(new Date(time).getTime()) && Number.isFinite(point.close) && point.close > 0;
+    })
     .map(point => ({
       date: point.time,
       open: point.open ?? undefined,
@@ -892,7 +895,8 @@ function historyFromPricePoints(points: PriceHistoryPoint[]): MarketHistoryPoint
       low: point.low ?? undefined,
       close: point.close,
       volume: point.volume,
-    }));
+    }))
+    .sort((left, right) => new Date(left.date).getTime() - new Date(right.date).getTime());
 }
 
 function normalizeChartType(value: unknown): MarketChartType {
@@ -901,10 +905,13 @@ function normalizeChartType(value: unknown): MarketChartType {
 }
 
 function hasCompleteOhlc(point: MarketHistoryPoint) {
-  return Number.isFinite(point.open)
-    && Number.isFinite(point.high)
-    && Number.isFinite(point.low)
-    && Number.isFinite(point.close);
+  const open = Number(point.open);
+  const high = Number(point.high);
+  const low = Number(point.low);
+  const close = Number(point.close);
+  return [open, high, low, close].every(value => Number.isFinite(value) && value > 0)
+    && high >= Math.max(open, close)
+    && low <= Math.min(open, close);
 }
 
 function formatChartTimestamp(value: string, locale: string, timeframe: MarketTimeframe) {
@@ -1216,9 +1223,11 @@ export default function MarketAnalysisPage() {
   const [serviceState, setServiceState] = useState<MarketServiceState>('checking');
   const [timeframe, setTimeframe] = useState<MarketTimeframe>('1D');
   const [chartType, setChartType] = useState<MarketChartType>('area');
+  const [chartHistory, setChartHistory] = useState<MarketHistoryPoint[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
   const [chartMessage, setChartMessage] = useState('');
   const [chartMeta, setChartMeta] = useState<{ interval?: string; source?: string; updatedAt?: string }>({});
+  const [chartRefreshKey, setChartRefreshKey] = useState(0);
   const [alertType, setAlertType] = useState<AlertType>('above');
   const [alertThreshold, setAlertThreshold] = useState('');
   const [whatIfAmount, setWhatIfAmount] = useState('');
@@ -1542,6 +1551,7 @@ export default function MarketAnalysisPage() {
       setErrorSuggestions(normalizeErrorSuggestions(suggestions, symbolInput));
       setSelectedAsset(null);
       setAnalysis(null);
+      setChartHistory([]);
       setAiInsight(null);
       setServiceState(current => current === 'checking' ? 'connected' : current);
       setLoading(false);
@@ -1554,6 +1564,7 @@ export default function MarketAnalysisPage() {
       setErrorSuggestions(normalizeErrorSuggestions(normalizedInput.suggestions, symbolInput));
       setSelectedAsset(null);
       setAnalysis(null);
+      setChartHistory([]);
       setAiInsight(null);
       setLoading(false);
       return;
@@ -1565,6 +1576,7 @@ export default function MarketAnalysisPage() {
     setErrorSuggestions([]);
     setNotice(t('market_progress_connecting'));
     setAnalysis(null);
+    setChartHistory([]);
     setAiInsight(null);
     const slowTimer = window.setTimeout(() => {
       setSlowLoading(true);
@@ -1659,6 +1671,7 @@ export default function MarketAnalysisPage() {
           currency: result.currency ?? selectedMeta.currency,
           assetType: normalizedType,
         };
+        setChartHistory(Array.isArray(nextAnalysis.history) ? nextAnalysis.history : []);
         setAnalysis(nextAnalysis);
         setSelectedAsset({
           symbol: nextAnalysis.symbol,
@@ -1695,6 +1708,7 @@ export default function MarketAnalysisPage() {
         if (result.cached) setNotice(t('market_cached_data'));
       } else {
         setAnalysis(null);
+        setChartHistory([]);
         setError(t('market_analysis_unavailable'));
       }
       setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -1706,6 +1720,7 @@ export default function MarketAnalysisPage() {
       }
     } catch (err) {
       setAnalysis(null);
+      setChartHistory([]);
       const message = err instanceof Error && err.name === 'AbortError'
         ? t('market_timeout_error')
         : err instanceof Error
@@ -1742,7 +1757,11 @@ export default function MarketAnalysisPage() {
   }, [chartType]);
 
   const loadHistory = useCallback((nextTimeframe: MarketTimeframe) => {
+    setChartHistory([]);
+    setChartMessage('');
+    setChartMeta({});
     setTimeframe(nextTimeframe);
+    setChartRefreshKey(value => value + 1);
   }, []);
 
   useEffect(() => {
@@ -1750,6 +1769,7 @@ export default function MarketAnalysisPage() {
       setChartLoading(false);
       setChartMessage('');
       setChartMeta({});
+      setChartHistory([]);
       return;
     }
 
@@ -1763,6 +1783,8 @@ export default function MarketAnalysisPage() {
 
     setChartLoading(true);
     setChartMessage('');
+    setChartMeta({});
+    setChartHistory([]);
 
     async function fetchHistory() {
       try {
@@ -1773,6 +1795,7 @@ export default function MarketAnalysisPage() {
           ? historyFromPricePoints(points)
           : Array.isArray(result.history) ? result.history : [];
         if (!result.success || nextHistory.length === 0) {
+          setChartHistory([]);
           setChartMessage(chartErrorText(result.code, result.error, t));
           setChartMeta({
             interval: result.interval,
@@ -1781,6 +1804,7 @@ export default function MarketAnalysisPage() {
           });
           return;
         }
+        setChartHistory(nextHistory);
         setAnalysis(current => {
           if (!current) return current;
           if ((current.providerSymbol ?? current.symbol) !== historyProviderSymbol || current.assetType !== historyAssetType) return current;
@@ -1800,6 +1824,7 @@ export default function MarketAnalysisPage() {
         if (result.cached) setNotice(t('market_cached_data'));
       } catch {
         if (!cancelled) {
+          setChartHistory([]);
           setChartMessage(t('market_chart_provider_error'));
           setChartMeta({});
         }
@@ -1812,7 +1837,7 @@ export default function MarketAnalysisPage() {
     return () => {
       cancelled = true;
     };
-  }, [historyAssetType, historyProviderSymbol, historySymbol, timeframe, t]);
+  }, [chartRefreshKey, historyAssetType, historyProviderSymbol, historySymbol, timeframe, t]);
 
   useEffect(() => {
     const cleanQuery = query.trim();
@@ -2337,7 +2362,13 @@ export default function MarketAnalysisPage() {
     }),
     [lang],
   );
-  const selectedHasOhlc = Boolean(selected?.history?.some(point => hasCompleteOhlc(point)));
+  const selectedHasOhlc = chartHistory.filter(point => hasCompleteOhlc(point)).length >= 2;
+
+  useEffect(() => {
+    if ((chartType === 'candlestick' || chartType === 'ohlc') && !selectedHasOhlc) {
+      setChartType('area');
+    }
+  }, [chartType, selectedHasOhlc]);
   const scenarioCurrencyMeta = getCurrency(scenarioCurrency);
   const scenarioCurrencyOption = SCENARIO_CURRENCY_OPTIONS.find(option => option.code === scenarioCurrency) ?? SCENARIO_CURRENCY_OPTIONS[0];
   const scenarioCurrencySymbol = scenarioCurrencyOption.symbol || currencyDisplaySymbol(scenarioCurrencyMeta, lang);
@@ -2996,7 +3027,8 @@ export default function MarketAnalysisPage() {
                             key={item}
                             aria-pressed={chartType === item}
                             disabled={disabled}
-                            title={disabled ? t('market_chart_ohlc_unavailable_short') : undefined}
+                            aria-describedby={disabled ? 'market-chart-ohlc-helper' : undefined}
+                            title={disabled ? t('market_chart_requires_historical_ohlc') : undefined}
                             onClick={() => setChartType(item)}
                           >
                             {t(`market_chart_type_${item}`)}
@@ -3004,10 +3036,15 @@ export default function MarketAnalysisPage() {
                         );
                       })}
                     </div>
+                    {!selectedHasOhlc ? (
+                      <small id="market-chart-ohlc-helper" className="chart-type-helper">
+                        {t('market_chart_requires_historical_ohlc')}
+                      </small>
+                    ) : null}
                   </div>
                 </div>
                 <PriceHistoryChart
-                  history={selected.history}
+                  history={chartHistory}
                   loading={chartLoading}
                   message={chartMessage}
                   timeframe={timeframe}
@@ -3017,8 +3054,13 @@ export default function MarketAnalysisPage() {
                   exchange={selectedExchange}
                   symbol={selectedMarketSymbol}
                   currentPrice={selected.latestPrice}
+                  changePercent={selected.changePercent}
+                  trend={selected.trend}
                   support={selected.levels.support}
                   resistance={selected.levels.resistance}
+                  source={chartMeta.source ?? selected.source ?? selected.provider}
+                  updatedAt={chartMeta.updatedAt ?? selected.lastUpdated ?? selected.quote?.timestamp ?? selected.fetchedAt}
+                  onRetry={() => loadHistory(timeframe)}
                   t={t}
                 />
                 <div className="market-chart-meta">
@@ -3031,14 +3073,38 @@ export default function MarketAnalysisPage() {
                   <MarketMetric label={t('market_daily_change')} value={`${selected.changePercent >= 0 ? '+' : ''}${selected.changePercent.toFixed(2)}%`} />
                   <MarketMetric label={t('market_trend')} value={t(`market_trend_${selected.trend}`)} icon={trendIcon} />
                 </div>
-                <div className="levels-strip">
-                  <span>{t('market_support_zone')} {selectedMoney(selected.levels.support)} ({distancePercent(selected.levels.support, selected.latestPrice).toFixed(1)}%)</span>
-                  <i>
-                    <b style={{ insetInlineStart: `${levelRange.support}%` }} />
-                    <b className="current" style={{ insetInlineStart: `${levelRange.current}%` }} />
-                    <b style={{ insetInlineStart: `${levelRange.resistance}%` }} />
-                  </i>
-                  <span>{t('market_resistance_zone')} {selectedMoney(selected.levels.resistance)} ({percent(distancePercent(selected.levels.resistance, selected.latestPrice))})</span>
+                <div className="levels-strip" aria-label={t('market_support_resistance_levels')}>
+                  <div className="levels-strip-labels">
+                    <span className="support">
+                      <small>{t('market_support_zone')}</small>
+                      <b dir="ltr">{selectedMoney(selected.levels.support)}</b>
+                      <em dir="ltr">{percent(distancePercent(selected.levels.support, selected.latestPrice))}</em>
+                    </span>
+                    <span className="current">
+                      <small>{t('market_current_price')}</small>
+                      <b dir="ltr">{selectedMoney(selected.latestPrice)}</b>
+                      <em>{t(`market_trend_${selected.trend}`)}</em>
+                    </span>
+                    <span className="resistance">
+                      <small>{t('market_resistance_zone')}</small>
+                      <b dir="ltr">{selectedMoney(selected.levels.resistance)}</b>
+                      <em dir="ltr">{percent(distancePercent(selected.levels.resistance, selected.latestPrice))}</em>
+                    </span>
+                  </div>
+                  <div className="levels-bar" aria-hidden="true">
+                    <span className="support" style={{ insetInlineStart: `${levelRange.support}%` }}>
+                      <i />
+                      <em>{t('market_support_zone')}</em>
+                    </span>
+                    <span className="current" style={{ insetInlineStart: `${levelRange.current}%` }}>
+                      <i />
+                      <em>{t('market_current_price')}</em>
+                    </span>
+                    <span className="resistance" style={{ insetInlineStart: `${levelRange.resistance}%` }}>
+                      <i />
+                      <em>{t('market_resistance_zone')}</em>
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -12204,6 +12270,16 @@ function MarketAsyncToolStyles() {
         }
       }
 
+      @media (max-width: 1024px) {
+        .price-history-chart {
+          height: 320px;
+        }
+
+        .price-history-chart svg {
+          height: 250px;
+        }
+      }
+
       @media (max-width: 720px) {
         .trader-premium-dashboard .trader-tool-switcher-shell {
           grid-template-columns: 40px minmax(0, 1fr) 40px;
@@ -12236,21 +12312,23 @@ function MarketAsyncToolStyles() {
       }
 
       .price-history-chart {
-        min-height: 318px;
+        height: clamp(360px, 32vw, 420px);
+        min-height: 0;
         border-color: rgba(47, 214, 192, .18);
         background:
           radial-gradient(circle at 12% 0%, rgba(47, 214, 192, .10), transparent 36%),
           linear-gradient(180deg, rgba(255, 255, 255, .94), rgba(239, 248, 255, .76));
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, .58), 0 12px 30px rgba(3, 18, 37, .055);
-        padding: 12px;
-        gap: 4px;
-        align-content: start;
+        padding: 14px;
+        gap: 8px;
+        align-content: stretch;
+        place-items: stretch;
       }
 
       .market-chart-controls {
         display: flex;
         align-items: flex-start;
-        justify-content: space-between;
+        justify-content: flex-end;
         gap: 12px;
         flex-wrap: wrap;
         margin: -4px 0 12px;
@@ -12318,9 +12396,23 @@ function MarketAsyncToolStyles() {
         box-shadow: none;
       }
 
+      .chart-type-helper {
+        display: inline-flex;
+        width: max-content;
+        max-width: 100%;
+        border: 1px solid rgba(245, 158, 11, .24);
+        background: rgba(245, 158, 11, .10);
+        color: #92400E;
+        border-radius: 999px;
+        padding: 5px 9px;
+        font-size: 11px;
+        font-weight: 950;
+        line-height: 1.35;
+      }
+
       .price-history-chart svg {
-        height: clamp(260px, 26vw, 320px);
-        min-height: 260px;
+        height: clamp(280px, 25vw, 330px);
+        min-height: 0;
         overflow: hidden;
       }
 
@@ -12542,13 +12634,331 @@ function MarketAsyncToolStyles() {
         fill: rgba(239, 68, 68, .70);
       }
 
-      .price-chart-state span {
-        display: block;
-        max-width: 520px;
+      .price-chart-state {
+        position: relative;
+        inset: auto;
+        width: min(780px, 100%);
+        max-height: 100%;
+        overflow: auto;
+        align-self: center;
+        justify-self: center;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 14px;
+        place-items: stretch;
+        text-align: start;
+        border: 1px solid rgba(47, 214, 192, .22);
+        background:
+          radial-gradient(circle at 10% 0%, rgba(47, 214, 192, .12), transparent 34%),
+          linear-gradient(135deg, rgba(255, 255, 255, .96), rgba(239, 248, 255, .88));
+        box-shadow: 0 18px 44px rgba(3, 18, 37, .09);
+        border-radius: 20px;
+        color: var(--sfm-muted);
+        padding: 18px;
+        line-height: 1.8;
+      }
+
+      .price-chart-state.error {
+        border-color: rgba(245, 158, 11, .28);
+        background:
+          radial-gradient(circle at 10% 0%, rgba(245, 158, 11, .12), transparent 34%),
+          linear-gradient(135deg, rgba(255, 255, 255, .96), rgba(255, 251, 235, .88));
+      }
+
+      .price-chart-state-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 18px;
+        display: grid;
+        place-items: center;
+        background: rgba(47, 214, 192, .12);
+        border: 1px solid rgba(47, 214, 192, .24);
+        color: var(--sfm-primary-hover);
+      }
+
+      .price-chart-state.error .price-chart-state-icon {
+        background: rgba(245, 158, 11, .12);
+        border-color: rgba(245, 158, 11, .24);
+        color: #B45309;
+      }
+
+      .price-chart-state-icon svg {
+        width: 22px;
+        height: 22px;
+        color: currentColor;
+      }
+
+      .price-chart-state-copy {
+        min-width: 0;
+        display: grid;
+        gap: 6px;
+      }
+
+      .price-chart-state-copy strong {
+        color: var(--sfm-foreground);
+        font-size: clamp(16px, 2vw, 21px);
+        font-weight: 950;
+        line-height: 1.35;
+      }
+
+      .price-chart-state-copy p {
+        margin: 0;
         color: var(--sfm-muted);
         font-size: 13px;
         font-weight: 850;
         line-height: 1.8;
+      }
+
+      .price-chart-state-copy small {
+        width: max-content;
+        max-width: 100%;
+        border: 1px solid rgba(29, 140, 255, .16);
+        background: rgba(29, 140, 255, .08);
+        color: var(--sfm-primary-hover);
+        border-radius: 999px;
+        padding: 5px 9px;
+        font-size: 11px;
+        font-weight: 950;
+        line-height: 1.35;
+      }
+
+      .price-chart-summary-grid {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 9px;
+      }
+
+      .price-chart-summary-item {
+        min-width: 0;
+        border: 1px solid rgba(167, 243, 240, .16);
+        background: rgba(255, 255, 255, .74);
+        border-radius: 15px;
+        padding: 10px 11px;
+        display: grid;
+        gap: 5px;
+      }
+
+      .price-chart-summary-item span {
+        color: var(--sfm-muted);
+        font-size: 11px;
+        font-weight: 950;
+        line-height: 1.35;
+      }
+
+      .price-chart-summary-item b {
+        color: var(--sfm-foreground);
+        font-size: 13px;
+        font-weight: 950;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+      }
+
+      .price-chart-summary-item.up b {
+        color: #047857;
+      }
+
+      .price-chart-summary-item.down b {
+        color: #DC2626;
+      }
+
+      .price-chart-state-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .price-chart-state-actions button {
+        min-height: 40px;
+        border: 0;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+        color: #FFFFFF;
+        padding: 0 15px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        font: 950 12px Tajawal, Arial, sans-serif;
+        cursor: pointer;
+        box-shadow: 0 12px 24px rgba(29, 140, 255, .18);
+      }
+
+      .price-chart-state-actions button:hover,
+      .price-chart-state-actions button:focus-visible {
+        outline: none;
+        transform: translateY(-1px);
+        box-shadow: 0 0 0 3px rgba(24, 212, 212, .16), 0 14px 28px rgba(29, 140, 255, .20);
+      }
+
+      .price-chart-state-actions > span {
+        color: var(--sfm-muted);
+        font-size: 12px;
+        font-weight: 900;
+        line-height: 1.6;
+      }
+
+      .market-chart .levels-strip {
+        margin-top: 16px;
+        display: grid;
+        gap: 12px;
+        border: 1px solid rgba(47, 214, 192, .16);
+        border-radius: 20px;
+        background:
+          radial-gradient(circle at 12% 0%, rgba(47, 214, 192, .10), transparent 34%),
+          linear-gradient(135deg, rgba(255, 255, 255, .84), rgba(239, 248, 255, .68));
+        padding: 13px;
+      }
+
+      .levels-strip-labels {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 9px;
+      }
+
+      .levels-strip-labels > span {
+        min-width: 0;
+        border: 1px solid rgba(167, 243, 240, .16);
+        background: rgba(255, 255, 255, .74);
+        border-radius: 15px;
+        padding: 9px 10px;
+        display: grid;
+        gap: 4px;
+      }
+
+      .levels-strip-labels small {
+        color: var(--sfm-muted);
+        font-size: 11px;
+        font-weight: 950;
+        line-height: 1.35;
+      }
+
+      .levels-strip-labels b {
+        color: var(--sfm-foreground);
+        font-size: 13px;
+        font-weight: 950;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+      }
+
+      .levels-strip-labels em {
+        color: var(--sfm-muted);
+        font-size: 11px;
+        font-style: normal;
+        font-weight: 900;
+        line-height: 1.35;
+      }
+
+      .levels-strip-labels .support b {
+        color: #047857;
+      }
+
+      .levels-strip-labels .current b {
+        color: var(--sfm-primary-hover);
+      }
+
+      .levels-strip-labels .resistance b {
+        color: #B91C1C;
+      }
+
+      .levels-bar {
+        position: relative;
+        height: 46px;
+        border-radius: 999px;
+        background:
+          linear-gradient(90deg, rgba(16, 185, 129, .22), rgba(47, 214, 192, .32), rgba(239, 68, 68, .22)),
+          rgba(255, 255, 255, .72);
+        border: 1px solid rgba(167, 243, 240, .16);
+      }
+
+      .levels-bar > span {
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        display: grid;
+        justify-items: center;
+        gap: 4px;
+        min-width: 72px;
+      }
+
+      [dir="rtl"] .levels-bar > span {
+        transform: translate(50%, -50%);
+      }
+
+      .levels-bar i {
+        width: 13px;
+        height: 13px;
+        border-radius: 999px;
+        border: 3px solid #FFFFFF;
+        box-shadow: 0 8px 16px rgba(3, 18, 37, .16);
+      }
+
+      .levels-bar .support i {
+        background: #10B981;
+      }
+
+      .levels-bar .current i {
+        width: 18px;
+        height: 18px;
+        background: var(--sfm-primary);
+      }
+
+      .levels-bar .resistance i {
+        background: #EF4444;
+      }
+
+      .levels-bar em {
+        border: 1px solid rgba(167, 243, 240, .16);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .92);
+        color: var(--sfm-foreground);
+        padding: 3px 7px;
+        font-size: 10px;
+        font-style: normal;
+        font-weight: 950;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+
+      .price-chart-loading {
+        display: grid;
+        place-items: center;
+        gap: 12px;
+      }
+
+      .price-chart-loading strong {
+        color: var(--sfm-foreground);
+        font-size: 13px;
+        font-weight: 950;
+      }
+
+      .price-chart-skeleton {
+        width: min(520px, 86%);
+        display: grid;
+        gap: 10px;
+      }
+
+      .price-chart-skeleton span {
+        display: block;
+        height: 14px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(29, 140, 255, .10), rgba(47, 214, 192, .24), rgba(29, 140, 255, .10));
+        background-size: 200% 100%;
+        animation: marketSkeleton 1.2s ease-in-out infinite;
+      }
+
+      .price-chart-skeleton span:nth-child(1) {
+        width: 72%;
+      }
+
+      .price-chart-skeleton span:nth-child(2) {
+        width: 100%;
+      }
+
+      .price-chart-skeleton span:nth-child(3) {
+        width: 54%;
       }
 
       .dark .price-history-chart {
@@ -12578,6 +12988,51 @@ function MarketAsyncToolStyles() {
         border-color: #1D3050;
         color: #8EA6C3;
         opacity: .66;
+      }
+
+      .dark .chart-type-helper {
+        background: rgba(245, 185, 66, .12);
+        border-color: rgba(245, 185, 66, .26);
+        color: #F5B942;
+      }
+
+      .dark .price-chart-state {
+        border-color: #1D3050;
+        background:
+          radial-gradient(circle at 10% 0%, rgba(47, 214, 192, .12), transparent 34%),
+          linear-gradient(135deg, rgba(15, 29, 49, .96), rgba(10, 20, 34, .92));
+        box-shadow: 0 20px 52px rgba(0, 0, 0, .26);
+      }
+
+      .dark .price-chart-state.error {
+        border-color: rgba(245, 185, 66, .26);
+        background:
+          radial-gradient(circle at 10% 0%, rgba(245, 185, 66, .12), transparent 34%),
+          linear-gradient(135deg, rgba(15, 29, 49, .96), rgba(10, 20, 34, .92));
+      }
+
+      .dark .price-chart-summary-item {
+        background: rgba(10, 20, 34, .74);
+        border-color: #1D3050;
+      }
+
+      .dark .market-chart .levels-strip {
+        background:
+          radial-gradient(circle at 12% 0%, rgba(47, 214, 192, .12), transparent 34%),
+          linear-gradient(135deg, rgba(15, 29, 49, .92), rgba(10, 20, 34, .82));
+        border-color: #1D3050;
+      }
+
+      .dark .levels-strip-labels > span,
+      .dark .levels-bar {
+        background: rgba(10, 20, 34, .74);
+        border-color: #1D3050;
+      }
+
+      .dark .levels-bar em {
+        background: rgba(15, 29, 49, .94);
+        border-color: #1D3050;
+        color: #E8EEF6;
       }
 
       .dark .price-chart-grid-line {
@@ -12634,6 +13089,16 @@ function MarketAsyncToolStyles() {
         fill: rgba(255, 91, 110, .56);
       }
 
+      @media (max-width: 1024px) {
+        .price-history-chart {
+          height: 320px;
+        }
+
+        .price-history-chart svg {
+          height: 250px;
+        }
+      }
+
       @media (max-width: 720px) {
         .market-chart-controls {
           display: grid;
@@ -12656,16 +13121,54 @@ function MarketAsyncToolStyles() {
         }
 
         .price-history-chart {
-          min-height: 300px;
+          height: 260px;
           padding: 10px;
         }
 
         .price-history-chart svg {
-          height: 250px;
-          min-height: 250px;
+          height: 210px;
+          min-height: 0;
         }
 
         .price-chart-tooltip {
+          display: none;
+        }
+
+        .price-chart-state {
+          grid-template-columns: 1fr;
+          padding: 14px;
+          gap: 11px;
+        }
+
+        .price-chart-state-icon {
+          width: 42px;
+          height: 42px;
+          border-radius: 16px;
+        }
+
+        .price-chart-summary-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+        }
+
+        .price-chart-state-actions {
+          display: grid;
+          grid-template-columns: 1fr;
+        }
+
+        .price-chart-state-actions button {
+          width: 100%;
+        }
+
+        .levels-strip-labels {
+          grid-template-columns: 1fr;
+        }
+
+        .levels-bar {
+          height: 40px;
+        }
+
+        .levels-bar em {
           display: none;
         }
       }
@@ -12701,8 +13204,13 @@ function PriceHistoryChart({
   exchange,
   symbol,
   currentPrice,
+  changePercent,
+  trend,
   support,
   resistance,
+  source,
+  updatedAt,
+  onRetry,
   t,
 }: {
   history: MarketHistoryPoint[];
@@ -12715,8 +13223,13 @@ function PriceHistoryChart({
   exchange?: string | null;
   symbol?: string | null;
   currentPrice?: number | null;
+  changePercent?: number | null;
+  trend?: MarketTrend | null;
   support?: number | null;
   resistance?: number | null;
+  source?: string | null;
+  updatedAt?: string | null;
+  onRetry?: () => void;
   t: (key: string) => string;
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -12745,11 +13258,14 @@ function PriceHistoryChart({
     return Number.isFinite(numeric) ? numeric : null;
   };
 
-  const points = history
+  const rawHistory = Array.isArray(history) ? history : [];
+
+  const points = rawHistory
     .map(point => {
       const close = numberOrNull(point.close);
       const date = String(point.date ?? '').trim();
-      if (!date || close === null || close <= 0) return null;
+      const parsedTime = new Date(date).getTime();
+      if (!date || !Number.isFinite(parsedTime) || close === null || close <= 0) return null;
       return {
         date,
         open: numberOrNull(point.open),
@@ -12757,15 +13273,21 @@ function PriceHistoryChart({
         low: numberOrNull(point.low),
         close,
         volume: numberOrNull(point.volume),
+        parsedTime,
       };
     })
-    .filter((point): point is ChartPoint => point !== null);
+    .filter((point): point is ChartPoint & { parsedTime: number } => point !== null)
+    .sort((left, right) => left.parsedTime - right.parsedTime)
+    .map(({ parsedTime: _parsedTime, ...point }) => point);
 
   const ohlcPoints = points
     .filter((point): point is OhlcChartPoint => (
       point.open !== null
       && point.high !== null
       && point.low !== null
+      && point.open > 0
+      && point.high > 0
+      && point.low > 0
       && point.high >= Math.max(point.open, point.close)
       && point.low <= Math.min(point.open, point.close)
     ));
@@ -12813,13 +13335,18 @@ function PriceHistoryChart({
   const last = activePoints.at(-1);
   const isPositive = first && last ? last.close >= first.close : true;
   const ohlcUnavailable = !loading && requiresOhlc && points.length > 0 && !hasOhlcForChart;
-  const minimumVisiblePoints = timeframe === '1D' || timeframe === '1W' ? 6 : 8;
-  const limitedData = !loading && points.length > 0 && activePoints.length < minimumVisiblePoints && !ohlcUnavailable;
+  const insufficientChartPoints = !loading && activePoints.length < 2;
   const chartMessage = message
-    || (!loading && points.length === 0 ? t('market_chart_empty_range') : '')
     || (ohlcUnavailable ? t('market_chart_ohlc_unavailable_short') : '')
-    || (limitedData ? t('market_chart_empty_range') : '');
-  const chartStateDescription = ohlcUnavailable ? t('market_chart_ohlc_use_line_or_area') : '';
+    || (insufficientChartPoints ? t('market_chart_empty_range') : '');
+  const chartStateTitle = ohlcUnavailable
+    ? t('market_chart_ohlc_unavailable_short')
+    : chartMessage === t('market_chart_provider_error')
+      ? t('market_chart_error_title')
+      : t('market_chart_partial_data_title');
+  const chartStateDescription = ohlcUnavailable
+    ? t('market_chart_ohlc_use_line_or_area')
+    : t('market_chart_partial_data_body');
   const lineStartColor = isPositive ? '#1D8CFF' : '#EF4444';
   const lineEndColor = isPositive ? '#2FD6C0' : '#F59E0B';
   const areaColor = isPositive ? '#22D3EE' : '#EF4444';
@@ -12848,6 +13375,27 @@ function PriceHistoryChart({
       notation: Math.abs(value) >= 1_000_000 ? 'compact' : 'standard',
       maximumFractionDigits: 2,
     }).format(value);
+  const formatUpdatedAt = (value?: string | null) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Intl.DateTimeFormat(normalizedLocale, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
+  };
+  const numericChange = numberOrNull(changePercent);
+  const partialSummaryItems = [
+    resolvedCurrentPrice !== null ? { key: 'price', label: t('market_current_price'), value: chartMoney(resolvedCurrentPrice), dir: 'ltr' as const } : null,
+    numericChange !== null ? { key: 'change', label: t('market_daily_change'), value: percent(numericChange), tone: numericChange >= 0 ? 'up' : 'down', dir: 'ltr' as const } : null,
+    trend ? { key: 'trend', label: t('market_trend'), value: t(`market_trend_${trend}`) } : null,
+    numberOrNull(support) !== null ? { key: 'support', label: t('market_support_zone'), value: chartMoney(numberOrNull(support) as number), dir: 'ltr' as const } : null,
+    numberOrNull(resistance) !== null ? { key: 'resistance', label: t('market_resistance_zone'), value: chartMoney(numberOrNull(resistance) as number), dir: 'ltr' as const } : null,
+    source ? { key: 'source', label: t('market_asset_profile_data_source'), value: source } : null,
+    formatUpdatedAt(updatedAt) ? { key: 'updated', label: t('market_last_updated'), value: formatUpdatedAt(updatedAt), dir: 'ltr' as const } : null,
+  ].filter((item): item is { key: string; label: string; value: string; tone?: string; dir?: 'ltr' } => item !== null);
   const hoveredPoint = hoveredIndex !== null ? activePoints[hoveredIndex] ?? null : null;
   const tooltipX = hoveredIndex !== null ? xFor(hoveredIndex) : 0;
   const tooltipY = hoveredPoint ? yFor(hoveredPoint.close) : 0;
@@ -13024,16 +13572,44 @@ function PriceHistoryChart({
         </>
       ) : null}
       {chartMessage ? (
-        <div className="price-chart-state">
-          <AlertTriangle size={18} aria-hidden="true" />
-          <strong>{chartMessage}</strong>
-          {chartStateDescription ? <span>{chartStateDescription}</span> : null}
+        <div className={`price-chart-state ${partialSummaryItems.length ? 'partial' : ''} ${chartMessage === t('market_chart_provider_error') ? 'error' : ''}`}>
+          <span className="price-chart-state-icon" aria-hidden="true">
+            {chartMessage === t('market_chart_provider_error') ? <AlertTriangle size={22} /> : <LineChart size={22} />}
+          </span>
+          <div className="price-chart-state-copy">
+            <strong>{chartStateTitle}</strong>
+            <p>{chartStateDescription}</p>
+            <small>{t('market_chart_timeframe_empty_hint').replace('{timeframe}', timeframe)}</small>
+          </div>
+          {partialSummaryItems.length ? (
+            <div className="price-chart-summary-grid">
+              {partialSummaryItems.map(item => (
+                <div key={item.key} className={item.tone ? `price-chart-summary-item ${item.tone}` : 'price-chart-summary-item'}>
+                  <span>{item.label}</span>
+                  <b dir={item.dir}>{item.value}</b>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div className="price-chart-state-actions">
+            {onRetry ? (
+              <button type="button" onClick={onRetry}>
+                <RefreshCw size={15} aria-hidden="true" />
+                {t('market_retry')}
+              </button>
+            ) : null}
+            <span>{t('market_chart_change_timeframe_hint')}</span>
+          </div>
         </div>
       ) : null}
       {loading ? (
         <div className="price-chart-loading" role="status">
-          <span />
-          {t('market_chart_loading')}
+          <div className="price-chart-skeleton" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+          <strong>{t('market_chart_loading')}</strong>
         </div>
       ) : null}
     </div>
