@@ -326,7 +326,7 @@ export default function SiteMapPage() {
       return group.items
         .filter(item => item.href)
         .map(item => {
-          const routeDescription = text[PURPOSE_KEY[item.id] ?? 'siteMapDesc'];
+          const routeDescription = item.caption ?? text[PURPOSE_KEY[item.id] ?? 'siteMapDesc'];
           const label = t(item.labelKey);
           const isComingSoon = COMING_SOON_ROUTE_IDS.has(item.id);
           return {
@@ -335,6 +335,7 @@ export default function SiteMapPage() {
             icon: item.icon as IconType,
             label,
             description: routeDescription,
+            external: item.external,
             isComingSoon,
             groupId: group.id,
             groupTitle: title,
@@ -359,7 +360,7 @@ export default function SiteMapPage() {
           ? text.accountSettingsTitle
           : t(CATEGORY_LABEL_KEY[category.id]),
       description: text[CATEGORY_DESC_KEY[category.id] ?? 'siteMapDesc'],
-      icon: (firstGroup?.items.find(item => item.href)?.icon ?? MapPinned) as IconType,
+      icon: (firstGroup?.items.find(item => item.href && !item.external)?.icon ?? firstGroup?.items.find(item => item.href)?.icon ?? MapPinned) as IconType,
       routes,
     };
   }).filter(category => category.routes.length > 0), [allLinks, sourceGroups, t, text]);
@@ -457,7 +458,13 @@ export default function SiteMapPage() {
                 {searchResults.map(item => {
                   const Icon = item.icon;
                   return (
-                    <Link className="site-map-route-card" key={`${item.groupId}-${item.id}`} href={item.href} aria-label={`${text.open}: ${item.label}`}>
+                    <Link
+                      className="site-map-route-card"
+                      key={`${item.groupId}-${item.id}`}
+                      href={item.href}
+                      aria-label={`${text.open}: ${item.label}`}
+                      {...(item.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                    >
                       <span className="route-icon" aria-hidden="true"><Icon size={19} /></span>
                       <div>
                         <small>{item.groupTitle}</small>
@@ -498,7 +505,13 @@ export default function SiteMapPage() {
                       {selectedCategory.routes.map(item => {
                         const Icon = item.icon;
                         return (
-                          <Link className="site-map-route-card" key={item.id} href={item.href} aria-label={`${text.open}: ${item.label}`}>
+                          <Link
+                            className="site-map-route-card"
+                            key={item.id}
+                            href={item.href}
+                            aria-label={`${text.open}: ${item.label}`}
+                            {...(item.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                          >
                             <span className="route-icon" aria-hidden="true"><Icon size={19} /></span>
                             <div>
                               <strong>{item.label}{item.isComingSoon ? <span className="site-map-soon-badge">{t('services.tradingCompanies.badge')}</span> : null}</strong>
@@ -529,7 +542,13 @@ export default function SiteMapPage() {
                             {category.routes.map(item => {
                               const RouteIcon = item.icon;
                               return (
-                                <Link className="site-map-route-card" key={item.id} href={item.href} aria-label={`${text.open}: ${item.label}`}>
+                                <Link
+                                  className="site-map-route-card"
+                                  key={item.id}
+                                  href={item.href}
+                                  aria-label={`${text.open}: ${item.label}`}
+                                  {...(item.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                                >
                                   <span className="route-icon" aria-hidden="true"><RouteIcon size={19} /></span>
                                   <div>
                                     <strong>{item.label}{item.isComingSoon ? <span className="site-map-soon-badge">{t('services.tradingCompanies.badge')}</span> : null}</strong>

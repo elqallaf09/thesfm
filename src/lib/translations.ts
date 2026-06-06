@@ -296,6 +296,7 @@ export const TR: Record<string, TranslationEntry> = {
   nav_support_about: { ar:'من نحن', en:'About', fr:'À propos' },
   nav_support_help_center: { ar:'مركز المساعدة', en:'Help Center', fr:'Centre d’aide' },
   nav_support_faq: { ar:'الأسئلة الشائعة', en:'FAQ', fr:'FAQ' },
+  nav_support_instagram: { ar:'Instagram', en:'Instagram', fr:'Instagram' },
   nav_support_site_map: { ar:'خريطة الموقع', en:'Site Map', fr:'Plan du site' },
   nav_support_contact: { ar:'تواصل معنا', en:'Contact Us', fr:'Contactez-nous' },
   nav_support_privacy: { ar:'سياسة الخصوصية', en:'Privacy Policy', fr:'Politique de confidentialité' },

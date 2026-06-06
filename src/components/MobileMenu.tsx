@@ -107,6 +107,10 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
     }
     if (!item.href) return;
     onClose();
+    if (item.external) {
+      window.open(item.href, '_blank', 'noopener,noreferrer');
+      return;
+    }
     router.push(item.href);
   };
 
@@ -245,6 +249,30 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
               {SUPPORT_LINKS.map(item => {
                 const Icon = item.icon;
                 const active = isNavigationItemActive(activeSource, item.href);
+                const content = (
+                  <>
+                    <span className="sfm-mobile-support-icon"><Icon size={15} /></span>
+                    <span className="sfm-mobile-support-copy">
+                      <span>{t(item.labelKey)}</span>
+                      {item.caption ? <small>{item.caption}</small> : null}
+                    </span>
+                  </>
+                );
+                if (item.external && item.href) {
+                  return (
+                    <a
+                      key={item.id}
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="sfm-mobile-support-link"
+                      aria-label={`${t(item.labelKey)} ${item.caption ?? ''}`.trim()}
+                      onClick={onClose}
+                    >
+                      {content}
+                    </a>
+                  );
+                }
                 return (
                   <button
                     key={item.id}
@@ -253,8 +281,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
                     aria-current={active ? 'page' : undefined}
                     onClick={() => go(item)}
                   >
-                    <span className="sfm-mobile-support-icon"><Icon size={15} /></span>
-                    <span>{t(item.labelKey)}</span>
+                    {content}
                   </button>
                 );
               })}
@@ -307,10 +334,13 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
         .sfm-mobile-support{margin-top:auto;padding-top:14px;border-top:1px solid rgba(34,211,238,.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.05);display:grid;gap:8px}
         .sfm-mobile-support-title{color:var(--mobile-menu-muted);font:950 11px Tajawal,Arial,sans-serif;padding-inline:4px}
         .sfm-mobile-support-links{display:grid;gap:5px}
-        .sfm-mobile-support-links button{position:relative;width:100%;min-height:38px;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--mobile-menu-secondary);display:flex;align-items:center;gap:9px;padding:7px 10px;text-align:start;font:850 12.5px Tajawal,Arial,sans-serif;cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
-        .sfm-mobile-support-links button:hover,.sfm-mobile-support-links button:focus-visible{background:var(--mobile-menu-card-hover);border-color:var(--mobile-menu-accent);color:var(--mobile-menu-text);outline:0;box-shadow:0 0 0 2px rgba(34,211,238,.16);transform:translateY(-1px)}
-        .sfm-mobile-support-links button.active{background:var(--mobile-menu-card);border-color:var(--mobile-menu-accent);color:var(--mobile-menu-text)}
+        .sfm-mobile-support-links button,.sfm-mobile-support-links a{position:relative;width:100%;min-height:38px;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--mobile-menu-secondary);display:flex;align-items:center;gap:9px;padding:7px 10px;text-align:start;text-decoration:none;font:850 12.5px Tajawal,Arial,sans-serif;cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+        .sfm-mobile-support-links button:hover,.sfm-mobile-support-links button:focus-visible,.sfm-mobile-support-links a:hover,.sfm-mobile-support-links a:focus-visible{background:var(--mobile-menu-card-hover);border-color:var(--mobile-menu-accent);color:var(--mobile-menu-text);outline:0;box-shadow:0 0 0 2px rgba(34,211,238,.16);transform:translateY(-1px)}
+        .sfm-mobile-support-links button.active,.sfm-mobile-support-links a.active{background:var(--mobile-menu-card);border-color:var(--mobile-menu-accent);color:var(--mobile-menu-text)}
         .sfm-mobile-support-icon{width:22px;height:22px;display:grid;place-items:center;border-radius:9px;background:rgba(255,255,255,.07);color:var(--mobile-menu-accent);flex:0 0 22px}
+        .sfm-mobile-support-copy{min-width:0;display:grid;gap:1px;line-height:1.2;overflow-wrap:anywhere}
+        .sfm-mobile-support-copy small{display:block;color:var(--mobile-menu-muted);font-size:11px;font-weight:900;direction:ltr;unicode-bidi:isolate}
+        .sfm-mobile-support-links button:hover .sfm-mobile-support-copy small,.sfm-mobile-support-links button:focus-visible .sfm-mobile-support-copy small,.sfm-mobile-support-links a:hover .sfm-mobile-support-copy small,.sfm-mobile-support-links a:focus-visible .sfm-mobile-support-copy small{color:var(--mobile-menu-text)}
         @media(max-width:640px){
           .sfm-mobile-overlay{backdrop-filter:none;-webkit-backdrop-filter:none}
           .sfm-mobile-panel{box-shadow:-14px 0 38px rgba(0,0,0,.34)}

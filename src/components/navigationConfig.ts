@@ -21,6 +21,7 @@ import {
   HandHeart,
   HeartHandshake,
   Info,
+  Instagram,
   Landmark,
   LayoutDashboard,
   Library,
@@ -51,6 +52,8 @@ export type NavigationItem = {
   href?: string;
   labelKey: TranslationKey;
   action?: NavigationAction;
+  external?: boolean;
+  caption?: string;
   viewModes?: NavigationViewMode[];
   children?: NavigationItem[];
 };
@@ -170,6 +173,15 @@ export const NAV_GROUPS: NavigationGroup[] = [
 ];
 
 export const SUPPORT_LINKS: NavigationItem[] = [
+  {
+    id: 'support-instagram',
+    icon: Instagram,
+    href: 'https://www.instagram.com/the_sfm',
+    labelKey: 'nav_support_instagram',
+    external: true,
+    caption: '@the_sfm',
+    viewModes: ['simple', 'professional'],
+  },
   { id: 'support-help-center', icon: Info, href: '/about', labelKey: 'nav_support_help_center', viewModes: ['simple', 'professional'] },
   { id: 'support-contact', icon: Mail, href: '/contact', labelKey: 'nav_support_contact', viewModes: ['simple', 'professional'] },
   { id: 'support-faq', icon: CircleHelp, href: '/#faq', labelKey: 'nav_support_faq', viewModes: ['simple', 'professional'] },

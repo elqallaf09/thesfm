@@ -34,6 +34,7 @@ type CommandResult = {
   title: string;
   description: string;
   href: string;
+  external?: boolean;
   keywords: string[];
   icon: LucideIcon;
 };
@@ -60,9 +61,10 @@ function pageResults(items: NavigationItem[], t: (key: any) => string): CommandR
       id: `page:${item.id}`,
       group: item.id === 'profile' || item.id === 'security' || item.id.startsWith('support-') ? 'settings' : 'pages',
       title: t(item.labelKey),
-      description: item.href ?? '',
+      description: item.caption ?? item.href ?? '',
       href: item.href ?? '/',
-      keywords: [item.id, t(item.labelKey), item.href ?? ''],
+      external: item.external,
+      keywords: [item.id, t(item.labelKey), item.caption ?? '', item.href ?? ''],
       icon: item.icon as LucideIcon,
     }));
 }
@@ -192,9 +194,13 @@ export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) 
     };
   }, [dynamicResults, staticResults]);
 
-  const openResult = (href: string) => {
+  const openResult = (item: CommandResult) => {
     setOpen(false);
-    router.push(href);
+    if (item.external) {
+      window.open(item.href, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    router.push(item.href);
   };
 
   const renderGroup = (id: CommandGroupId, label: string, items: CommandResult[]) => {
@@ -204,7 +210,7 @@ export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) 
         {items.map(item => {
           const Icon = item.icon;
           return (
-            <CommandItem key={item.id} value={[item.title, item.description, ...item.keywords].join(' ')} onSelect={() => openResult(item.href)}>
+            <CommandItem key={item.id} value={[item.title, item.description, ...item.keywords].join(' ')} onSelect={() => openResult(item)}>
               <span className="sfm-command-icon"><Icon size={17} aria-hidden="true" /></span>
               <span className="sfm-command-copy">
                 <strong>{item.title}</strong>
