@@ -422,6 +422,9 @@ function sanitizeMarketToolMessage(code: string, message: string) {
     code === 'NO_SENTIMENT_DATA' ||
     code === 'UNSUPPORTED_ASSET_TYPE' ||
     code === 'PROVIDER_DOWN' ||
+    code === 'NO_DATA' ||
+    code === 'RATE_LIMIT' ||
+    code === 'LOGIN_FAILED' ||
     code === 'TIMEOUT' ||
     code === 'MISSING_CREDENTIALS' ||
     code === 'LOGIN_REJECTED' ||
@@ -1113,7 +1116,7 @@ function sentimentAssetBadgeType(assetType: unknown, selectedAsset?: SelectedMar
   if (normalized === 'index') return 'index';
   if (normalized === 'gold' || symbol.startsWith('XAU') || symbol === 'GC') return 'gold';
   if (symbol.startsWith('XAG') || symbol === 'SI') return 'silver';
-  if (normalized === 'metals' || normalized === 'commodity') return 'metals';
+  if (normalized === 'metal' || normalized === 'metals' || normalized === 'commodity') return 'metals';
   return 'unknown';
 }
 
@@ -8867,6 +8870,9 @@ function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => 
   if (normalizedCode === 'LOGIN_REJECTED') {
     return { title: t('market_sentiment_myfxbook_login_rejected_title'), body: t('market_sentiment_myfxbook_login_rejected_body') };
   }
+  if (normalizedCode === 'LOGIN_FAILED') {
+    return { title: t('market_sentiment_myfxbook_login_rejected_title'), body: t('market_sentiment_myfxbook_login_rejected_body') };
+  }
   if (normalizedCode === 'NO_SESSION') {
     return { title: t('market_sentiment_myfxbook_no_session_title'), body: t('market_sentiment_myfxbook_no_session_body') };
   }
@@ -8904,11 +8910,19 @@ function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => 
   if (normalizedCode === 'MARKET_SENTIMENT_PLAN_NOT_ALLOWED') {
     return { title: t('market_sentiment_plan_not_allowed_title'), body: t('market_sentiment_plan_not_allowed_body') };
   }
-  if (normalizedCode === 'MARKET_SENTIMENT_RATE_LIMITED' || normalizedCode === 'MYFXBOOK_RATE_LIMITED') {
+  if (normalizedCode === 'MARKET_SENTIMENT_RATE_LIMITED' || normalizedCode === 'MYFXBOOK_RATE_LIMITED' || normalizedCode === 'RATE_LIMIT') {
     return { title: t('market_sentiment_rate_limited_title'), body: t('market_sentiment_rate_limited_body') };
   }
+  if (normalizedCode === 'NO_DATA') {
+    const bodyKey = assetType === 'forex' || assetType === 'gold' || assetType === 'silver' || assetType === 'metals'
+      ? 'market_sentiment_myfxbook_no_items_body'
+      : sentimentAssetEmptyBodyKey(assetType);
+    return { title: t('market_sentiment_asset_unavailable_title'), body: t(bodyKey) };
+  }
   if (normalizedCode === 'NO_MARKET_SENTIMENT_DATA') {
-    const bodyKey = assetType === 'forex' ? 'market_sentiment_myfxbook_no_items_body' : sentimentAssetEmptyBodyKey(assetType);
+    const bodyKey = assetType === 'forex' || assetType === 'gold' || assetType === 'silver' || assetType === 'metals'
+      ? 'market_sentiment_myfxbook_no_items_body'
+      : sentimentAssetEmptyBodyKey(assetType);
     return { title: t('market_sentiment_asset_unavailable_title'), body: t(bodyKey) };
   }
   if (normalizedCode === 'MYFXBOOK_PROVIDER_FAILED') {

@@ -3,8 +3,8 @@ import { cleanEnv } from '@/lib/market/providerConfig';
 const LOGIN_URL = 'https://www.myfxbook.com/api/login.json';
 const OUTLOOK_URL = 'https://www.myfxbook.com/api/get-community-outlook.json';
 const REQUEST_TIMEOUT_MS = 10000;
-const SESSION_TTL_MS = 25 * 60 * 1000;
-const OUTLOOK_TTL_MS = 5 * 60 * 1000;
+const SESSION_TTL_MS = 28 * 24 * 60 * 60 * 1000;
+const OUTLOOK_TTL_MS = 10 * 60 * 1000;
 
 type MyfxbookErrorCode =
   | 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED'
@@ -172,6 +172,10 @@ function maskProviderMessage(message: string | null | undefined) {
   return message.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]');
 }
 
+function logMyfxbook(message: string, payload: Record<string, unknown> = {}) {
+  console.info(`[Myfxbook] ${message}`, payload);
+}
+
 function logEnvCheckOnce() {
   if (envCheckLogged) return;
   envCheckLogged = true;
@@ -187,6 +191,7 @@ function normalizeSymbol(value: string) {
     .trim()
     .toUpperCase()
     .replace(/=X$/, '')
+    .replace(/^(FX|FOREX|OANDA|TVC|MYFXBOOK|COM):?/i, '')
     .replace(/[^A-Z0-9]/g, '');
 }
 
@@ -310,12 +315,38 @@ function sumNullableNumbers(...values: Array<number | null>) {
   return valid.reduce((total, value) => total + value, 0);
 }
 
+function symbolCandidatesFromValue(value: unknown) {
+  const raw = String(value ?? '').trim().toUpperCase();
+  const compact = normalizeSymbol(raw);
+  const candidates = new Set<string>();
+  if (compact) candidates.add(compact);
+
+  const pairMatches = raw.match(/[A-Z]{3,4}\s*[/-]\s*[A-Z]{3}/g) ?? [];
+  for (const match of pairMatches) {
+    const normalized = normalizeSymbol(match);
+    if (normalized) candidates.add(normalized);
+  }
+
+  const compactMatches = raw.match(/\b[A-Z]{6,7}\b/g) ?? [];
+  for (const match of compactMatches) {
+    const normalized = normalizeSymbol(match);
+    if (normalized) candidates.add(normalized);
+  }
+
+  return [...candidates];
+}
+
 function extractOutlookSymbol(item: MyfxbookApiSymbol) {
   const candidates = [item.symbol, item.pair, item.ticker, item.name];
   for (const candidate of candidates) {
-    const symbol = normalizeSymbol(String(candidate ?? ''));
-    if (SUPPORTED_MYFXBOOK_SYMBOL_SET.has(symbol)) return symbol;
-    if (/^[A-Z]{6}$/.test(symbol)) return symbol;
+    for (const symbol of symbolCandidatesFromValue(candidate)) {
+      if (SUPPORTED_MYFXBOOK_SYMBOL_SET.has(symbol)) return symbol;
+    }
+  }
+  for (const candidate of candidates) {
+    for (const symbol of symbolCandidatesFromValue(candidate)) {
+      if (/^[A-Z]{6}$/.test(symbol)) return symbol;
+    }
   }
   return normalizeSymbol(String(item.name ?? item.symbol ?? item.pair ?? item.ticker ?? ''));
 }
@@ -415,6 +446,7 @@ async function fetchJsonWithTimeout<T>(url: URL, timeoutMs = REQUEST_TIMEOUT_MS)
 export async function loginToMyfxbook(options: { force?: boolean } = {}): Promise<MyfxbookLoginResult> {
   const now = Date.now();
   if (!options.force && cachedSession && cachedSession.expiresAt > now) {
+    logMyfxbook('cached session reused', { sessionExists: true });
     return { ok: true as const, session: cachedSession.value, providerMessage: null, canReachMyfxbook: true };
   }
   if (!options.force && cachedFailure && cachedFailure.expiresAt > now) {
@@ -441,7 +473,7 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
   });
   const loginUrl = `${LOGIN_URL}?${params.toString()}`;
 
-  console.log('[Myfxbook] login attempt');
+  logMyfxbook('login attempt');
 
   let response: Response;
   let payload: MyfxbookLoginResponse;
@@ -470,11 +502,11 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     };
   }
 
-  console.log('[Myfxbook] login response:', {
+  logMyfxbook('login response', {
     httpStatus: response.status,
     error: payload?.error,
     message: maskProviderMessage(payload?.message),
-    hasSession: Boolean(payload?.session),
+    sessionExists: Boolean(payload?.session),
   });
 
   if (response.status === 429) {
@@ -542,6 +574,10 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     value: payload.session,
     expiresAt: now + SESSION_TTL_MS,
   };
+  logMyfxbook('session cached', {
+    sessionExists: true,
+    ttlMs: SESSION_TTL_MS,
+  });
   cachedFailure = null;
   return {
     ok: true as const,
@@ -570,22 +606,40 @@ function isInvalidSessionPayload(payload: MyfxbookOutlookResponse) {
   return Boolean(payload.error && payload.message && /session|auth|login/i.test(payload.message));
 }
 
+function logOutlookPayload(stage: string, payload: MyfxbookOutlookResponse) {
+  const rawSymbols = extractSymbolArray(payload);
+  logMyfxbook(`community outlook ${stage}`, {
+    error: payload.error,
+    message: maskProviderMessage(payload.message),
+    symbolsReturned: rawSymbols.length,
+  });
+}
+
 async function getCommunityOutlook() {
   const now = Date.now();
   if (cachedOutlook && cachedOutlook.expiresAt > now) {
+    logMyfxbook('community outlook cache hit', {
+      symbolsReturned: cachedOutlook.items.length,
+    });
     return cachedOutlook;
   }
 
   const session = await getSession();
   let payload = await fetchCommunityOutlookPayload(session);
+  logOutlookPayload('initial response', payload);
 
   if (isInvalidSessionPayload(payload)) {
+    logMyfxbook('community outlook invalid session; re-login once', {
+      error: payload.error,
+      message: maskProviderMessage(payload.message),
+    });
     cachedSession = null;
     const relogin = await loginToMyfxbook({ force: true });
     if (!relogin.ok) {
       throw new MyfxbookProviderError(relogin.code, 'Myfxbook re-login failed', relogin.httpStatus, relogin.providerMessage);
     }
     payload = await fetchCommunityOutlookPayload(relogin.session);
+    logOutlookPayload('retry response', payload);
   }
 
   if (payload.error) {
@@ -625,6 +679,10 @@ export async function getMyfxbookSentiment(symbol: string): Promise<MyfxbookSent
     return unavailable(resolvedSymbol.code, null, resolvedSymbol.suggestions);
   }
   const requestedSymbol = resolvedSymbol.symbol;
+  logMyfxbook('sentiment lookup started', {
+    requestedSymbol,
+    normalizedRequestedSymbol: requestedSymbol,
+  });
 
   const email = cleanEnv(process.env.MYFXBOOK_EMAIL);
   const password = cleanEnv(process.env.MYFXBOOK_PASSWORD);
@@ -633,6 +691,11 @@ export async function getMyfxbookSentiment(symbol: string): Promise<MyfxbookSent
   try {
     const outlook = await getCommunityOutlook();
     const matchingItems = outlook.items.filter(item => item.symbol === requestedSymbol);
+    logMyfxbook('sentiment lookup completed', {
+      requestedSymbol,
+      symbolsReturned: outlook.items.length,
+      matchFound: matchingItems.length > 0,
+    });
 
     if (matchingItems.length === 0) {
       return unavailable('NO_MARKET_SENTIMENT_DATA');
@@ -646,12 +709,11 @@ export async function getMyfxbookSentiment(symbol: string): Promise<MyfxbookSent
     };
   } catch (error) {
     if (error instanceof MyfxbookProviderError) {
-      if (shouldDebug()) {
-        console.warn('[myfxbook-sentiment] provider unavailable', {
-          code: error.code,
-          status: error.status,
-        });
-      }
+      console.warn('[Myfxbook] provider unavailable', {
+        code: error.code,
+        status: error.status,
+        message: maskProviderMessage(error.providerMessage),
+      });
       return unavailable(error.code, error.providerMessage ?? null);
     }
 
@@ -659,11 +721,9 @@ export async function getMyfxbookSentiment(symbol: string): Promise<MyfxbookSent
       return unavailable('MYFXBOOK_TIMEOUT');
     }
 
-    if (shouldDebug()) {
-      console.warn('[myfxbook-sentiment] provider failed', {
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
+    console.warn('[Myfxbook] provider failed', {
+      message: error instanceof Error ? error.message : String(error),
+    });
 
     return unavailable('MYFXBOOK_PROVIDER_FAILED');
   }

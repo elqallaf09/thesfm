@@ -46,10 +46,13 @@ type SentimentAssetType = 'forex' | 'metals' | 'crypto' | 'stock' | 'etf' | 'uns
 type SentimentLabel = 'bullish' | 'bearish' | 'neutral' | 'unavailable';
 type UnifiedSentimentCode =
   | 'UNSUPPORTED_ASSET_TYPE'
+  | 'NO_DATA'
   | 'NO_SENTIMENT_DATA'
   | 'PROVIDER_DOWN'
   | 'TIMEOUT'
+  | 'RATE_LIMIT'
   | 'MISSING_CREDENTIALS'
+  | 'LOGIN_FAILED'
   | 'LOGIN_REJECTED'
   | 'NO_SESSION'
   | 'INVALID_FOREX_PAIR'
@@ -190,6 +193,10 @@ function isMetalSymbol(value: unknown) {
 
 function normalizeSentimentAssetType(assetTypeInput: unknown, symbolInput: unknown, providerSymbolInput: unknown): { assetType: SentimentAssetType; requestedAssetType: MarketAssetType | null } {
   const rawAssetType = String(assetTypeInput ?? '').trim();
+  const normalizedRawAssetType = rawAssetType.toLowerCase().replace(/[_\s-]+/g, '');
+  if (['metal', 'metals', 'preciousmetal', 'preciousmetals'].includes(normalizedRawAssetType)) {
+    return { assetType: 'metals', requestedAssetType: null };
+  }
   const requestedAssetType = rawAssetType && rawAssetType !== 'all' ? normalizeAssetType(rawAssetType) : null;
   const symbol = symbolInput || providerSymbolInput;
 
@@ -263,6 +270,9 @@ function sentimentLabel(buyPercent: number | null, sellPercent: number | null): 
 
 function sentimentMessage(assetType: SentimentAssetType, code: UnifiedSentimentCode) {
   if (code === 'SYMBOL_REQUIRED') return 'Select an asset before loading market sentiment.';
+  if (code === 'LOGIN_FAILED') return 'تعذر تسجيل الدخول إلى Myfxbook.';
+  if (code === 'RATE_LIMIT') return 'تم تجاوز حد طلبات مزود المشاعر مؤقتاً.';
+  if (code === 'NO_DATA') return 'لم يرجع Myfxbook بيانات حالياً لهذا الأصل.';
   if (code === 'MISSING_CREDENTIALS') return 'لم يتم إعداد بيانات Myfxbook في بيئة التشغيل.';
   if (code === 'LOGIN_REJECTED') return 'تم رفض تسجيل الدخول من Myfxbook. تحقق من البريد وكلمة المرور أو أعد حفظ بيانات البيئة ثم أعد النشر.';
   if (code === 'NO_SESSION') return 'لم يرجع Myfxbook جلسة صالحة.';
@@ -294,11 +304,33 @@ function extractPercent(item: Record<string, unknown>, keys: string[]) {
   return null;
 }
 
+function extractRawNumber(item: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = item[key];
+    const parsed = typeof value === 'number' ? value : Number(String(value ?? '').replace(/,/g, '').trim());
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
 function primarySentimentValues(items: Array<Record<string, unknown>>) {
   const first = items[0] ?? {};
   const buyPercent = extractPercent(first, ['buyPercent', 'buyPercentage', 'buy', 'longPercentage']);
   const sellPercent = extractPercent(first, ['sellPercent', 'sellPercentage', 'sell', 'shortPercentage']);
   return { buyPercent, sellPercent };
+}
+
+function primaryLongShortValues(items: Array<Record<string, unknown>>) {
+  const first = items[0] ?? {};
+  const longPercent = extractPercent(first, ['longPercent', 'longPercentage', 'buyPercent', 'buyPercentage', 'buy']);
+  const shortPercent = extractPercent(first, ['shortPercent', 'shortPercentage', 'sellPercent', 'sellPercentage', 'sell']);
+  const longVolume = extractRawNumber(first, ['longVolume', 'longLots', 'buyVolume', 'buyLots']);
+  const shortVolume = extractRawNumber(first, ['shortVolume', 'shortLots', 'sellVolume', 'sellLots']);
+  const longPositions = extractRawNumber(first, ['longPositions', 'buyPositions', 'longPositionCount', 'buyPositionCount']);
+  const shortPositions = extractRawNumber(first, ['shortPositions', 'sellPositions', 'shortPositionCount', 'sellPositionCount']);
+  const positions = extractRawNumber(first, ['positions', 'totalPositions', 'positionCount', 'positionsCount'])
+    ?? (longPositions !== null || shortPositions !== null ? (longPositions ?? 0) + (shortPositions ?? 0) : null);
+  return { longPercent, shortPercent, longVolume, shortVolume, positions };
 }
 
 function unavailableResponse(input: {
@@ -311,15 +343,24 @@ function unavailableResponse(input: {
   suggestions?: string[];
 }) {
   const provider = input.provider ?? 'none';
+  const responseAssetType = input.assetType === 'metals' ? 'metal' : input.assetType;
   return NextResponse.json({
     ok: false,
     success: false,
     code: input.code,
     legacyCode: input.legacyCode ?? null,
     symbol: input.symbol,
-    assetType: input.assetType,
+    assetType: responseAssetType,
+    resolvedAssetType: input.assetType,
+    assetClass: responseAssetType,
     provider,
+    sentimentType: provider === 'myfxbook' ? 'long_short' : provider === 'news' ? 'news' : null,
     sentimentAvailable: false,
+    longPercent: null,
+    shortPercent: null,
+    longVolume: null,
+    shortVolume: null,
+    positions: null,
     buyPercent: null,
     sellPercent: null,
     sentimentLabel: 'unavailable' as SentimentLabel,
@@ -340,18 +381,28 @@ function availableResponse(input: {
   updatedAt: string | null;
 }) {
   const { buyPercent, sellPercent } = primarySentimentValues(input.items);
+  const { longPercent, shortPercent, longVolume, shortVolume, positions } = primaryLongShortValues(input.items);
   const label = sentimentLabel(buyPercent, sellPercent);
   const updatedAt = input.updatedAt ?? new Date().toISOString();
+  const responseAssetType = input.assetType === 'metals' ? 'metal' : input.assetType;
 
   return NextResponse.json({
     ok: true,
     success: true,
     code: null,
     symbol: input.symbol,
-    assetType: input.assetType,
+    assetType: responseAssetType,
+    resolvedAssetType: input.assetType,
+    assetClass: responseAssetType,
     provider: input.provider,
     source: input.source,
+    sentimentType: input.provider === 'myfxbook' ? 'long_short' : 'news',
     sentimentAvailable: true,
+    longPercent,
+    shortPercent,
+    longVolume,
+    shortVolume,
+    positions,
     buyPercent,
     sellPercent,
     sentimentLabel: label,
@@ -655,11 +706,12 @@ function mapProviderErrorCode(error: unknown): UnifiedSentimentCode {
 
 function mapMyfxbookErrorCode(code: string): UnifiedSentimentCode {
   if (code === 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED') return 'MISSING_CREDENTIALS';
-  if (code === 'MYFXBOOK_AUTH_FAILED') return 'LOGIN_REJECTED';
+  if (code === 'MYFXBOOK_AUTH_FAILED') return 'LOGIN_FAILED';
   if (code === 'MYFXBOOK_SESSION_MISSING') return 'NO_SESSION';
   if (code === 'MYFXBOOK_TIMEOUT') return 'TIMEOUT';
+  if (code === 'MYFXBOOK_RATE_LIMITED') return 'RATE_LIMIT';
   if (code === 'INVALID_FOREX_PAIR') return 'INVALID_FOREX_PAIR';
-  if (code === 'NO_MARKET_SENTIMENT_DATA') return 'NO_SENTIMENT_DATA';
+  if (code === 'NO_MARKET_SENTIMENT_DATA') return 'NO_DATA';
   if (code === 'SYMBOL_REQUIRED') return 'SYMBOL_REQUIRED';
   return 'PROVIDER_DOWN';
 }
@@ -727,7 +779,7 @@ async function handleForexSentiment(requestMeta: NormalizedSentimentRequest) {
   const matchingItems = result.items.filter(item => compactPairSymbol(item.symbol) === compactPairSymbol(resolvedForexSymbol.symbol));
   if (matchingItems.length === 0) {
     return unavailableResponse({
-      code: 'NO_SENTIMENT_DATA',
+      code: 'NO_DATA',
       legacyCode: 'NO_MARKET_SENTIMENT_DATA',
       symbol: resolvedForexSymbol.symbol,
       assetType: 'forex',
@@ -757,7 +809,7 @@ async function handleMetalSentiment(requestMeta: NormalizedSentimentRequest) {
   const resolvedMetalSymbol = resolveMyfxbookSymbol(requestMeta.symbol);
   if (!resolvedMetalSymbol.ok || !isMyfxbookSupportedMetalSymbol(resolvedMetalSymbol.symbol)) {
     return unavailableResponse({
-      code: 'NO_SENTIMENT_DATA',
+      code: 'NO_DATA',
       symbol: requestMeta.displaySymbol,
       assetType: 'metals',
       provider: 'none',
@@ -799,7 +851,7 @@ async function handleMetalSentiment(requestMeta: NormalizedSentimentRequest) {
   const matchingItems = result.items.filter(item => compactPairSymbol(item.symbol) === compactPairSymbol(resolvedMetalSymbol.symbol));
   if (matchingItems.length === 0) {
     return unavailableResponse({
-      code: 'NO_SENTIMENT_DATA',
+      code: 'NO_DATA',
       legacyCode: 'NO_MARKET_SENTIMENT_DATA',
       symbol: resolvedMetalSymbol.symbol,
       assetType: 'metals',
