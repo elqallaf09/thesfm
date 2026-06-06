@@ -277,7 +277,7 @@ export function ProjectSelector({
           </span>
           <Link className="project-selector-action add-primary" href={addProjectHref} aria-label={copy.addProject}>
             <Plus size={16} aria-hidden="true" />
-            {copy.addProject}
+            <span>{copy.addProject}</span>
           </Link>
         </section>
       ) : (
@@ -315,16 +315,16 @@ export function ProjectSelector({
           <div className="project-selector-actions">
             {selectedProject ? (
               <Link className="project-selector-action primary" href={openProjectHref(selectedProject.id)} aria-label={copy.openProject}>
-                {copy.openProject}
+                <span>{copy.openProject}</span>
               </Link>
             ) : (
               <button className="project-selector-action disabled" type="button" disabled aria-disabled="true">
-                {copy.chooseProjectFirst}
+                <span>{copy.chooseProjectFirst}</span>
               </button>
             )}
             <Link className="project-selector-action secondary" href={addProjectHref} aria-label={copy.addProject}>
               <Plus size={16} aria-hidden="true" />
-              {copy.addProject}
+              <span>{copy.addProject}</span>
             </Link>
           </div>
 
@@ -568,22 +568,27 @@ export function ProjectSelector({
           flex-wrap: wrap;
           align-items: center;
           justify-content: flex-start;
-          gap: 10px;
+          gap: 12px;
           min-width: 0;
+          margin-block-start: 2px;
+          margin-block-end: 14px;
         }
         .project-selector-action {
-          min-height: 42px;
+          flex: 1 1 170px;
+          min-width: 0;
+          min-height: 44px;
           border: 1px solid transparent;
           border-radius: 14px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
-          padding: 0 15px;
+          padding: 0 16px;
           font-size: 13px;
           font-weight: 950;
           text-decoration: none;
-          line-height: 1.2;
+          line-height: 1;
+          text-align: center;
           white-space: nowrap;
           cursor: pointer;
           font-family: Tajawal, Arial, sans-serif;
@@ -620,6 +625,13 @@ export function ProjectSelector({
         }
         .project-selector-action svg {
           flex: 0 0 auto;
+          display: block;
+        }
+        .project-selector-action span {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         .project-selector-action:not(.disabled):hover {
           transform: translateY(-1px);
@@ -835,11 +847,14 @@ export function ProjectSelector({
           .project-selector-actions {
             display: grid;
             grid-template-columns: 1fr;
+            gap: 10px;
+            margin-block-end: 16px;
           }
           .project-selector-action {
+            flex: none;
             width: 100%;
             min-height: 44px;
-            white-space: normal;
+            white-space: nowrap;
           }
           .project-selector-popover {
             position: fixed;
