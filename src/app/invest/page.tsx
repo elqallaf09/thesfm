@@ -41,6 +41,28 @@ const CHART_COLORS = ['#1D8CFF', '#18D4D4', '#10B981', '#F59E0B', '#6366F1', '#0
 const RISK_SCORE: Record<RiskLevel, number> = { low: 1, medium: 2, high: 3 };
 type InvestTab = 'portfolio' | 'assets' | 'performance' | 'risk' | 'reports';
 
+function calculateMonthlyContributionProjection(years: number, monthlyContribution: number, annualReturn: number) {
+  const safeYears = Math.max(0, years);
+  const months = safeYears * 12;
+  const contribution = Number.isFinite(monthlyContribution) ? Math.max(0, monthlyContribution) : 0;
+  const returnRate = Number.isFinite(annualReturn) ? annualReturn : 0;
+  const monthlyReturn = returnRate / 12 / 100;
+  let balance = 0;
+
+  for (let month = 0; month < months; month += 1) {
+    balance += contribution;
+    balance *= 1 + monthlyReturn;
+  }
+
+  const contribTotal = contribution * months;
+  return {
+    years,
+    value: balance,
+    contribTotal,
+    gain: balance - contribTotal,
+  };
+}
+
 function formatInvestmentType(type: string | null | undefined, t: (key: any) => string) {
   const fallback = t('investment_type_investment') || 'استثمار';
   if (!type) return fallback;
@@ -388,20 +410,10 @@ export default function InvestPage() {
       };
     });
   }, [analysisReturn, totalMonthly, totalValue, t]);
-  const projections = useMemo(() => [1, 3, 5].map(years => {
-    const months = years * 12;
-    const monthlyRate = analysisReturn / 100 / 12;
-    const factor = monthlyRate > 0 ? Math.pow(1 + monthlyRate, months) : 1;
-    const contributionGrowth = monthlyRate > 0 ? totalMonthly * ((factor - 1) / monthlyRate) : totalMonthly * months;
-    const value = totalValue * factor + contributionGrowth;
-    const contribTotal = totalMonthly * months;
-    return {
-      years,
-      value,
-      contribTotal,
-      gain: value - totalValue - contribTotal,
-    };
-  }), [analysisReturn, totalMonthly, totalValue]);
+  const projections = useMemo(
+    () => [1, 3, 5].map(years => calculateMonthlyContributionProjection(years, totalMonthly, analysisReturn)),
+    [analysisReturn, totalMonthly],
+  );
   const marketLinkedInvestments = useMemo(() => items
     .map(item => ({ investment: item, symbol: investmentSymbol(item) }))
     .filter(item => item.symbol), [items]);
@@ -843,15 +855,21 @@ export default function InvestPage() {
                   <LineChartIcon size={19} />
                   <h2>{t('invest_projections_title')}</h2>
                 </div>
+                {totalMonthly <= 0 ? (
+                  <p className="invest-projection-warning">{t('invest_projections_zeroContributionWarning')}</p>
+                ) : null}
                 {canShowReturnProjection ? (
                   <>
+                    <p className="invest-projection-rate">
+                      {t('invest_projections_selectedReturn').replace('{rate}', pct(analysisReturn))}
+                    </p>
                     <div className="invest-projection-grid">
                       {projections.map(item => (
                         <div key={item.years}>
                           <span>{t(`invest_projections_years${item.years}`)}</span>
-                          <strong>{money(Math.round(item.value))}</strong>
+                          <strong>{money(item.value)}</strong>
                           <small>{t('invest_projections_totalContributions')}: {money(item.contribTotal)}</small>
-                          <small>{t('invest_projections_expectedGain')}: {money(Math.round(item.gain))}</small>
+                          <small>{t('invest_projections_expectedGain')}: {money(item.gain)}</small>
                         </div>
                       ))}
                     </div>
@@ -966,6 +984,7 @@ export default function InvestPage() {
         .invest-chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}.invest-chart-card{padding:17px;min-height:330px}.invest-chart-skeleton{background:linear-gradient(90deg,var(--sfm-card),var(--sfm-light-card),var(--sfm-card));background-size:200% 100%;animation:invest-chart-shimmer 1.25s linear infinite}@keyframes invest-chart-shimmer{to{background-position:-200% 0}}.invest-section-head{display:flex;align-items:center;gap:9px;margin-bottom:14px;color:var(--sfm-muted);min-width:0}.invest-section-head h2{margin:0;color:var(--sfm-foreground);font-size:16px;font-weight:900}.invest-section-head span{display:block;margin-bottom:4px;color:var(--sfm-muted);font-size:11px;font-weight:900}.invest-section-head--split{justify-content:space-between;align-items:flex-start;gap:14px}.invest-currency-breakdown{padding:17px}.invest-currency-breakdown .invest-section-head strong{color:var(--sfm-muted);font-size:12px;font-weight:900}.invest-currency-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.invest-currency-grid article{display:grid;gap:6px;border:1px solid rgba(14,116,144,.14);border-radius:16px;background:rgba(236,254,255,.58);padding:12px;min-width:0}.dark .invest-currency-grid article{background:rgba(8,47,73,.36);border-color:rgba(103,232,249,.16)}.invest-currency-grid span{font-size:11px;font-weight:950;color:#0f766e}.dark .invest-currency-grid span{color:var(--sfm-soft-cyan)}.invest-currency-grid b{font-size:14px;color:var(--sfm-foreground);overflow-wrap:anywhere}.invest-currency-grid small{font-size:12px;font-weight:900;color:var(--sfm-muted);overflow-wrap:anywhere}.invest-currency-grid em{font-style:normal;color:#B45309;font-size:11px;font-weight:900}
         .invest-portfolio-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:14px;align-items:start;min-width:0;max-width:100%}.invest-preview-panel{padding:17px}.invest-list--preview{padding:0}.invest-list--preview .invest-row:last-child{padding-bottom:0}.invest-market-link{padding:17px}.invest-market-link p,.invest-report-card p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:900;line-height:1.7}.invest-market-chips{display:flex;flex-wrap:wrap;gap:9px}.invest-market-chips button{min-height:44px;border:1px solid rgba(167,243,240,.16);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-foreground);padding:8px 12px;display:flex;align-items:center;gap:8px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.invest-market-chips button strong{direction:ltr;color:var(--sfm-muted)}.invest-market-chips button span{color:var(--sfm-muted)}
         .invest-analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.invest-insights,.invest-projections,.invest-report-card{padding:18px}.invest-report-card{display:grid;gap:12px;align-content:start}.invest-insight-list{display:grid;gap:10px}.invest-insight-item{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:15px;padding:12px}.invest-insight-item span{width:30px;height:30px;border-radius:11px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));display:grid;place-items:center;color:var(--sfm-foreground);font-size:12px;font-weight:900}.invest-insight-item p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:800;line-height:1.7}.invest-empty-chart{min-height:220px;display:grid;place-items:center;text-align:center;color:var(--sfm-muted);font-size:13px;font-weight:900;line-height:1.7;background:var(--sfm-light-card);border:1px dashed rgba(167,243,240,.24);border-radius:18px;padding:18px}
+        .invest-projection-rate{margin:0 0 10px;display:inline-flex;width:max-content;max-width:100%;border:1px solid rgba(47,214,192,.22);background:rgba(47,214,192,.10);color:#0f766e;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:950;line-height:1.35}.dark .invest-projection-rate{color:var(--sfm-soft-cyan);background:rgba(47,214,192,.11);border-color:rgba(47,214,192,.24)}.invest-projection-warning{margin:0 0 10px;border:1px solid rgba(245,158,11,.24);background:rgba(245,158,11,.10);color:#92400E;border-radius:14px;padding:10px 12px;font-size:12px;font-weight:900;line-height:1.65}.dark .invest-projection-warning{color:#FCD34D;background:rgba(245,158,11,.11);border-color:rgba(245,158,11,.26)}
         .invest-projection-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.invest-projection-grid div{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:15px;padding:12px;display:grid;gap:6px}.invest-projection-grid span{color:var(--sfm-muted);font-size:11px;font-weight:900}.invest-projection-grid strong{font-size:15px;color:var(--sfm-foreground)}.invest-projection-grid small{font-size:11px;color:var(--sfm-muted);font-weight:800}.invest-disclaimer{margin:12px 0 0;color:var(--sfm-muted);font-size:11px;font-weight:900}
         .invest-empty{min-height:280px;padding:42px 20px;text-align:center;display:grid;place-items:center;align-content:center;gap:12px}.invest-empty-icon{width:68px;height:68px;border-radius:22px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.invest-empty h3{margin:0;font-size:20px}.invest-empty p{max-width:520px;margin:0;color:var(--sfm-muted);line-height:1.8;font-size:14px}
         .invest-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,220px) minmax(160px,220px);gap:10px;padding:14px;border-bottom:1px solid rgba(167,243,240,.1);min-width:0}.invest-controls input,.invest-controls select,.invest-field input,.invest-field select,.invest-field textarea{height:48px;min-width:0;width:100%;border:1.5px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-foreground);padding:0 13px;font:800 13px Tajawal,Arial,sans-serif;outline:0}.invest-controls input:focus,.invest-controls select:focus,.invest-field input:focus,.invest-field select:focus,.invest-field textarea:focus{border-color:var(--sfm-soft-cyan);background:var(--sfm-card);box-shadow:0 0 0 4px rgba(167,243,240,.12)}

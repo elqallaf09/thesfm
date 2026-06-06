@@ -2476,6 +2476,8 @@ export const TR: Record<string, TranslationEntry> = {
   invest_projections_projectedValue: { ar:'القيمة المتوقعة', en:'Projected Value', fr:'Valeur projetée' },
   invest_projections_totalContributions: { ar:'إجمالي المساهمات', en:'Total Contributions', fr:'Contributions totales' },
   invest_projections_expectedGain: { ar:'العائد المتوقع', en:'Expected Gain', fr:'Gain attendu' },
+  invest_projections_selectedReturn: { ar:'العائد السنوي المستخدم: {rate}', en:'Annual return used: {rate}', fr:'Rendement annuel utilisé : {rate}' },
+  invest_projections_zeroContributionWarning: { ar:'أضف مساهمة شهرية أكبر من صفر لعرض نمو فعلي للمساهمات.', en:'Add a monthly contribution greater than zero to show actual contribution growth.', fr:'Ajoutez une contribution mensuelle supérieure à zéro pour afficher une croissance réelle.' },
   invest_projections_disclaimer: { ar:'الأرقام تقديرية وليست توصية مالية.', en:'Figures are estimates, not financial advice.', fr:'Chiffres estimatifs, pas un conseil financier.' },
   goals_empty_state: { ar:'لا توجد أهداف مالية محفوظة حالياً', en:'No financial goals saved yet', fr:'Aucun objectif financier enregistré' },
   goal_edit_button: { ar:'تعديل الهدف', en:'Edit Goal', fr:"Modifier l'objectif" },
