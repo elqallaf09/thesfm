@@ -3091,15 +3091,15 @@ export default function MarketAnalysisPage() {
                   <div className="levels-bar" aria-hidden="true">
                     <span className="support" style={{ insetInlineStart: `${readableLevelMarkerPercent(levelRange.support)}%` }}>
                       <i />
-                      <em>{t('market_support_zone')} <b dir="ltr">{selectedMoney(selected.levels.support)}</b></em>
+                      <em>{t('market_support_zone')}</em>
                     </span>
                     <span className="current" style={{ insetInlineStart: `${readableLevelMarkerPercent(levelRange.current)}%` }}>
                       <i />
-                      <em>{t('market_current_price')} <b dir="ltr">{selectedMoney(selected.latestPrice)}</b></em>
+                      <em>{t('market_current_price')}</em>
                     </span>
                     <span className="resistance" style={{ insetInlineStart: `${readableLevelMarkerPercent(levelRange.resistance)}%` }}>
                       <i />
-                      <em>{t('market_resistance_zone')} <b dir="ltr">{selectedMoney(selected.levels.resistance)}</b></em>
+                      <em>{t('market_resistance_zone')}</em>
                     </span>
                   </div>
                 </div>
@@ -12881,12 +12881,13 @@ function MarketAsyncToolStyles() {
       .price-chart-summary-grid {
         grid-column: 1 / -1;
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
         gap: 9px;
       }
 
       .price-chart-summary-item {
         min-width: 0;
+        overflow: hidden;
         border: 1px solid rgba(167, 243, 240, .16);
         background: rgba(255, 255, 255, .74);
         border-radius: 15px;
@@ -12907,7 +12908,7 @@ function MarketAsyncToolStyles() {
         font-size: 13px;
         font-weight: 950;
         line-height: 1.35;
-        overflow-wrap: anywhere;
+        overflow-wrap: normal;
       }
 
       .price-chart-summary-item.up b {
@@ -12976,12 +12977,21 @@ function MarketAsyncToolStyles() {
 
       .levels-strip-labels > span {
         min-width: 0;
+        overflow: hidden;
         border: 1px solid rgba(167, 243, 240, .16);
         background: rgba(255, 255, 255, .74);
         border-radius: 15px;
-        padding: 9px 10px;
+        padding: 12px;
         display: grid;
-        gap: 4px;
+        gap: 6px;
+        align-content: start;
+        justify-items: start;
+        min-height: 96px;
+      }
+
+      [dir="rtl"] .levels-strip-labels > span {
+        justify-items: end;
+        text-align: end;
       }
 
       .levels-strip-labels small {
@@ -12993,18 +13003,18 @@ function MarketAsyncToolStyles() {
 
       .levels-strip-labels b {
         color: var(--sfm-foreground);
-        font-size: 13px;
+        font-size: 15px;
         font-weight: 950;
-        line-height: 1.35;
-        overflow-wrap: anywhere;
+        line-height: 1.25;
+        overflow-wrap: normal;
       }
 
       .levels-strip-labels em {
         color: var(--sfm-muted);
         font-size: 11px;
         font-style: normal;
-        font-weight: 900;
-        line-height: 1.35;
+        font-weight: 950;
+        line-height: 1.3;
       }
 
       .levels-strip-labels .support b {
@@ -13356,7 +13366,7 @@ function MarketAsyncToolStyles() {
       .levels-strip-labels em[dir="ltr"] {
         display: inline-flex !important;
         align-items: center;
-        width: max-content;
+        width: auto;
         max-width: 100%;
       }
 
@@ -13370,59 +13380,53 @@ function MarketAsyncToolStyles() {
       }
 
       .metric strong.market-numeric-value {
-        min-width: max-content;
+        min-width: 0;
       }
 
       .levels-strip-labels {
-        grid-template-columns: repeat(3, minmax(164px, 1fr));
+        grid-template-columns: repeat(3, minmax(180px, 1fr));
         align-items: stretch;
       }
 
       .levels-strip-labels > span {
+        position: relative;
+        z-index: 1;
         overflow: hidden;
       }
 
       .levels-strip-labels b[dir="ltr"],
       .levels-strip-labels em[dir="ltr"] {
-        min-width: max-content;
+        min-width: 0;
+        justify-self: inherit;
       }
 
       .levels-bar {
-        min-height: 66px;
-        height: 66px;
-        overflow: visible !important;
-        contain: layout;
-        margin-block: 4px 2px;
+        min-height: 56px;
+        height: 56px;
+        overflow: hidden !important;
+        contain: paint;
+        margin-block: 2px 0;
       }
 
       .levels-bar > span {
         width: max-content;
         min-width: max-content;
-        max-width: min(240px, 62%);
-        gap: 6px;
+        max-width: min(150px, 46%);
+        gap: 5px;
       }
 
       .levels-bar em {
         display: inline-flex !important;
         align-items: center;
         justify-content: center;
-        gap: 5px;
         width: max-content;
         min-width: max-content;
-        max-width: min(240px, 100%);
+        max-width: min(150px, 100%);
         white-space: nowrap !important;
         word-break: keep-all !important;
         overflow-wrap: normal !important;
         overflow: hidden;
         text-overflow: ellipsis;
-      }
-
-      .levels-bar em b {
-        color: inherit;
-        font-size: inherit;
-        font-weight: 950;
-        line-height: 1;
-        flex: 0 0 auto;
       }
 
       @media (max-width: 720px) {
