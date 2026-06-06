@@ -2,23 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
-  ArrowUpRight,
   Building2,
   CheckCircle2,
   Clock3,
   Globe2,
   Mail,
   MapPin,
-  Phone,
   Plus,
   Search,
   ShieldCheck,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
 import type { TranslationKey } from '@/components/navigationConfig';
-import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { COMPANY_CATEGORY_CONFIGS, type CompanyCategory, type CompanyListing, type CompanyStatus } from '@/lib/companyListings';
 
@@ -62,9 +60,7 @@ function imageBackground(url: string) {
 export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
   const config = COMPANY_CATEGORY_CONFIGS[category];
   const { t, lang, dir } = useLanguage();
-  const { session, loading: authLoading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
   const [items, setItems] = useState<CompanyListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -73,8 +69,6 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
   const [city, setCity] = useState('all');
   const [status, setStatus] = useState<'all' | CompanyStatus>('all');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [checkoutError, setCheckoutError] = useState('');
 
   const loadListings = useCallback(async () => {
     setLoading(true);
@@ -96,50 +90,9 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
     void loadListings();
   }, [loadListings]);
 
-  const startCompanyCheckout = useCallback(async () => {
-    setCheckoutError('');
-    if (!session) {
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem('sfm_pending_company_checkout', pathname);
-      }
-      router.push(`/login?next=${encodeURIComponent(pathname)}`);
-      return;
-    }
-
-    setCheckoutLoading(true);
-    try {
-      const response = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          plan: 'company',
-          billingInterval: 'yearly',
-          priceKey: 'STRIPE_PRICE_COMPANY_YEARLY',
-        }),
-      });
-      const payload = await response.json().catch(() => ({})) as { ok?: boolean; url?: string; code?: string };
-      if (!response.ok || !payload.ok || !payload.url) {
-        setCheckoutError(payload.code === 'PAYMENT_UNAVAILABLE' ? t('company_listing_payment_unavailable') : t('company_listing_checkout_error'));
-        return;
-      }
-      window.location.assign(payload.url);
-    } catch {
-      setCheckoutError(t('company_listing_checkout_error'));
-    } finally {
-      setCheckoutLoading(false);
-    }
-  }, [pathname, router, session, t]);
-
-  useEffect(() => {
-    if (authLoading || !session || typeof window === 'undefined') return;
-    const pendingPath = window.sessionStorage.getItem('sfm_pending_company_checkout');
-    if (pendingPath !== pathname) return;
-    window.sessionStorage.removeItem('sfm_pending_company_checkout');
-    void startCompanyCheckout();
-  }, [authLoading, pathname, session, startCompanyCheckout]);
+  const openCompanySubmit = useCallback(() => {
+    router.push(`/company-listing/submit?category=${encodeURIComponent(category)}`);
+  }, [category, router]);
 
   const countries = useMemo(() => uniqueValues(items, 'country'), [items]);
   const cities = useMemo(() => uniqueValues(items.filter(item => country === 'all' || item.country === country), 'city'), [country, items]);
@@ -166,6 +119,7 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
   ];
 
   return (
+    <CompanyDashboardFrame>
     <DashboardPageShell ariaLabel={t(config.titleKey)} className="company-directory-shell" contentClassName="company-directory-content">
       <section className="company-directory-hero">
         <div>
@@ -173,13 +127,11 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
           <h1>{t(config.titleKey)}</h1>
           <p>{t(config.descriptionKey)}</p>
         </div>
-        <button type="button" className="company-primary-action" onClick={() => void startCompanyCheckout()} disabled={checkoutLoading || authLoading}>
+        <button type="button" className="company-primary-action" onClick={openCompanySubmit}>
           <Plus size={18} />
-          {checkoutLoading ? t('company_listing_checkout_loading') : t('company_listing_add_company')}
+          {t('company_listing_add_company')}
         </button>
       </section>
-
-      {checkoutError ? <div className="company-alert" role="alert">{checkoutError}</div> : null}
 
       <section className="company-stats-grid" aria-label={t('company_listing_total')}>
         {stats.map(stat => (
@@ -207,7 +159,7 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
 
       {loading ? <CompanySkeleton /> : null}
       {!loading && error ? <CompanyError message={error} onRetry={loadListings} /> : null}
-      {!loading && !error && filteredItems.length === 0 ? <CompanyEmpty onAdd={() => void startCompanyCheckout()} /> : null}
+      {!loading && !error && filteredItems.length === 0 ? <CompanyEmpty onAdd={openCompanySubmit} /> : null}
 
       {!loading && !error && filteredItems.length > 0 ? (
         <>
@@ -286,15 +238,6 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
         .company-primary-action:disabled {
           opacity: 0.72;
           cursor: not-allowed;
-        }
-        .company-alert {
-          margin-top: 14px;
-          border: 1px solid rgba(220, 38, 38, 0.20);
-          background: rgba(254, 242, 242, 0.9);
-          color: #991b1b;
-          border-radius: 16px;
-          padding: 12px 14px;
-          font-weight: 900;
         }
         .company-stats-grid {
           display: grid;
@@ -392,6 +335,7 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
         }
       `}</style>
     </DashboardPageShell>
+    </CompanyDashboardFrame>
   );
 }
 
@@ -623,13 +567,21 @@ function CompanyEmpty({ onAdd }: { onAdd: () => void }) {
         .company-error {
           margin-top: 18px;
           border: 1px solid rgba(15, 23, 42, 0.08);
-          border-radius: 20px;
-          background: #ffffff;
-          padding: 28px;
+          border-radius: 22px;
+          background:
+            linear-gradient(135deg, rgba(11, 118, 224, 0.05), rgba(24, 212, 212, 0.07)),
+            #ffffff;
+          padding: 26px 22px;
           text-align: center;
           box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
         }
-        .company-empty svg {
+        .company-empty > svg {
+          width: 54px;
+          height: 54px;
+          margin: 0 auto;
+          border-radius: 18px;
+          padding: 13px;
+          background: rgba(11, 118, 224, 0.08);
           color: #0b76e0;
         }
         h2 {
@@ -644,6 +596,14 @@ function CompanyEmpty({ onAdd }: { onAdd: () => void }) {
           color: #64748b;
           line-height: 1.8;
           font-weight: 750;
+        }
+        .company-empty button {
+          min-width: 150px;
+        }
+        @media (max-width: 640px) {
+          .company-empty button {
+            width: 100%;
+          }
         }
       `}</style>
     </section>

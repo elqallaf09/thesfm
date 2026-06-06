@@ -5,9 +5,10 @@ import type { FormEvent, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Building2, CheckCircle2, CreditCard, Send } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { COMPANY_CATEGORY_CONFIGS, COMPANY_CATEGORIES, type CompanyCategory } from '@/lib/companyListings';
+import { COMPANY_CATEGORY_CONFIGS, COMPANY_CATEGORIES, normalizeCompanyCategory, type CompanyCategory } from '@/lib/companyListings';
 
 type FormState = {
   companyName: string;
@@ -65,9 +66,17 @@ export function CompanySubmitForm() {
   const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const requestedCategory = normalizeCompanyCategory(new URLSearchParams(window.location.search).get('category'));
+    if (!requestedCategory) return;
+    setForm(prev => ({ ...prev, category: requestedCategory }));
+  }, []);
+
+  useEffect(() => {
     if (authLoading) return;
     if (!session) {
-      router.replace(`/login?next=${encodeURIComponent('/company-listing/submit')}`);
+      const nextPath = typeof window === 'undefined' ? '/company-listing/submit' : `${window.location.pathname}${window.location.search}`;
+      router.replace(`/login?next=${encodeURIComponent(nextPath)}`);
       return;
     }
     let cancelled = false;
@@ -169,6 +178,7 @@ export function CompanySubmitForm() {
 
   if (checking || authLoading) {
     return (
+      <CompanyDashboardFrame>
       <DashboardPageShell ariaLabel={t('company_listing_submit_title')} className="company-submit-shell">
         <div className="company-submit-loading" />
         <style jsx>{`
@@ -182,11 +192,13 @@ export function CompanySubmitForm() {
           @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
         `}</style>
       </DashboardPageShell>
+      </CompanyDashboardFrame>
     );
   }
 
   if (!eligible) {
     return (
+      <CompanyDashboardFrame>
       <DashboardPageShell ariaLabel={t('company_listing_payment_required')} className="company-submit-shell" contentClassName="company-submit-content">
         <section className="company-submit-gate">
           <CreditCard size={34} />
@@ -199,10 +211,12 @@ export function CompanySubmitForm() {
         </section>
         <SubmitStyles />
       </DashboardPageShell>
+      </CompanyDashboardFrame>
     );
   }
 
   return (
+    <CompanyDashboardFrame>
     <DashboardPageShell ariaLabel={t('company_listing_submit_title')} className="company-submit-shell" contentClassName="company-submit-content">
       <section className="company-submit-hero">
         <div>
@@ -258,6 +272,7 @@ export function CompanySubmitForm() {
       </form>
       <SubmitStyles />
     </DashboardPageShell>
+    </CompanyDashboardFrame>
   );
 }
 

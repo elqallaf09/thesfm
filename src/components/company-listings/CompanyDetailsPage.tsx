@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Building2, Globe2, Mail, MapPin, Phone, ShieldCheck } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
 import type { TranslationKey } from '@/components/navigationConfig';
 import { useLanguage } from '@/hooks/useLanguage';
 import { COMPANY_CATEGORY_CONFIGS, type CompanyListing } from '@/lib/companyListings';
@@ -46,6 +47,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
   const categoryLabel = item ? t(COMPANY_CATEGORY_CONFIGS[item.category]?.labelKey ?? 'company_category_investment') : '';
 
   return (
+    <CompanyDashboardFrame>
     <DashboardPageShell ariaLabel={item?.company_name ?? t('company_listing_view_details')} contentClassName="company-details-content">
       {loading ? <div className="details-skeleton" /> : null}
       {!loading && error ? (
@@ -246,5 +248,6 @@ export function CompanyDetailsPage({ id }: { id: string }) {
         }
       `}</style>
     </DashboardPageShell>
+    </CompanyDashboardFrame>
   );
 }

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
 import { useLanguage } from '@/hooks/useLanguage';
 
 type ResultPageProps = {
@@ -13,6 +14,7 @@ export function CompanyListingResultPage({ type }: ResultPageProps) {
   const { t } = useLanguage();
   const isSuccess = type === 'success';
   return (
+    <CompanyDashboardFrame>
     <DashboardPageShell ariaLabel={isSuccess ? t('company_listing_success_title') : t('company_listing_cancel_title')} contentClassName="company-result-content">
       <section className="company-result-card">
         <div className={isSuccess ? 'result-icon success' : 'result-icon cancel'}>
@@ -95,5 +97,6 @@ export function CompanyListingResultPage({ type }: ResultPageProps) {
         }
       `}</style>
     </DashboardPageShell>
+    </CompanyDashboardFrame>
   );
 }

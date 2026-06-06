@@ -357,7 +357,7 @@ export const TR: Record<string, TranslationEntry> = {
   company_listing_contact: { ar:'تواصل', en:'Contact', fr:'Contacter' },
   company_listing_load_more: { ar:'عرض المزيد', en:'Load more', fr:'Afficher plus' },
   company_listing_empty_title: { ar:'لا توجد شركات مضافة حالياً', en:'No companies added yet', fr:'Aucune société ajoutée pour le moment' },
-  company_listing_empty_body: { ar:'كن أول من يضيف شركته في هذا التصنيف داخل THE SFM.', en:'Be the first to add your company in this category inside THE SFM.', fr:'Soyez le premier à ajouter votre société dans cette catégorie sur THE SFM.' },
+  company_listing_empty_body: { ar:'كن أول من يضيف شركة إلى هذا التصنيف داخل THE SFM.', en:'Be the first to add a company to this category inside THE SFM.', fr:'Soyez le premier à ajouter une société dans cette catégorie sur THE SFM.' },
   company_listing_error_title: { ar:'تعذر تحميل الشركات', en:'Could not load companies', fr:'Impossible de charger les sociétés' },
   company_listing_error_body: { ar:'حدثت مشكلة أثناء تحميل دليل الشركات. حاول مرة أخرى بعد قليل.', en:'There was a problem loading the company directory. Please try again shortly.', fr:'Un problème est survenu lors du chargement de l’annuaire. Réessayez bientôt.' },
   company_listing_retry: { ar:'إعادة المحاولة', en:'Retry', fr:'Réessayer' },
