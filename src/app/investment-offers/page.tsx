@@ -73,6 +73,7 @@ const TEXT_KEYS = {
   openProjects: 'investment_offers_open_projects',
   openBusinessHub: 'investment_offers_open_business_hub',
   openProjectPitchDeck: 'investment_offers_open_project_pitch_deck',
+  createProjectPitchDeck: 'investment_offers_create_project_pitch_deck',
   openFundingReadiness: 'investment_offers_open_funding_readiness',
   selectProject: 'investment_offers_select_project',
   selectProjectHint: 'investment_offers_select_project_hint',
@@ -237,6 +238,8 @@ function InvestmentActionButton({
   variant = 'primary',
   className = '',
   showArrow = true,
+  loading = false,
+  disabled = false,
 }: {
   href: string;
   label: string;
@@ -244,14 +247,27 @@ function InvestmentActionButton({
   variant?: 'primary' | 'secondary';
   className?: string;
   showArrow?: boolean;
+  loading?: boolean;
+  disabled?: boolean;
 }) {
+  const isUnavailable = loading || disabled;
+
   return (
     <Link
-      className={`investment-action-button ${variant} ${className}`.trim()}
+      className={`investment-action-button ${variant} ${loading ? 'is-loading' : ''} ${disabled ? 'is-disabled' : ''} ${className}`.trim()}
       href={href}
       aria-label={label}
+      aria-disabled={isUnavailable || undefined}
+      tabIndex={isUnavailable ? -1 : undefined}
+      onClick={event => {
+        if (isUnavailable) event.preventDefault();
+      }}
     >
-      {icon ? <span className="investment-action-icon" aria-hidden="true">{icon}</span> : null}
+      {loading || icon ? (
+        <span className="investment-action-icon" aria-hidden="true">
+          {loading ? <Loader2 className="investment-action-spinner" size={16} /> : icon}
+        </span>
+      ) : null}
       <span className="investment-action-label">{label}</span>
       {showArrow ? <ArrowUpRight className="investment-action-arrow" size={14} aria-hidden="true" /> : null}
     </Link>
@@ -396,7 +412,7 @@ export default function InvestmentOffersPage() {
       ready: Boolean(selectedPitchDeck),
       detail: selectedPitchDeck ? formatPercent(pitchScore, text.ready) : text.insufficientData,
       href: projectPitchHref,
-      actionLabel: text.openProjectPitchDeck,
+      actionLabel: selectedPitchDeck ? text.openProjectPitchDeck : text.createProjectPitchDeck,
       icon: <Presentation size={22} />,
       actionIcon: <Presentation size={16} aria-hidden="true" />,
     },
@@ -591,83 +607,174 @@ export default function InvestmentOffersPage() {
           gap: 18px;
           min-width: 0;
         }
-        .investment-action-button {
-          min-height: 44px;
-          border-radius: 15px;
+        :global(.investment-action-button) {
+          min-height: 50px;
+          border-radius: 999px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 9px;
-          padding: 0 14px;
-          font-size: 12px;
+          gap: 10px;
+          padding: 0 22px;
+          font-size: 13px;
           font-weight: 950;
           line-height: 1.2;
           text-decoration: none;
           cursor: pointer;
           min-width: 0;
           position: relative;
+          isolation: isolate;
+          overflow: hidden;
+          border: 1px solid rgba(24, 212, 212, .42);
+          background:
+            linear-gradient(135deg, #061629 0%, #0A2C46 44%, #0D5365 74%, #18D4D4 140%);
+          color: #FFFFFF;
+          box-shadow:
+            0 16px 34px rgba(3, 18, 37, .18),
+            0 8px 22px rgba(24, 212, 212, .16),
+            inset 0 1px 0 rgba(255, 255, 255, .16);
           transition:
             transform .18s ease,
             box-shadow .18s ease,
             border-color .18s ease,
             background .18s ease,
-            color .18s ease;
+            color .18s ease,
+            opacity .18s ease;
         }
-        .investment-action-button.primary {
-          border: 1px solid rgba(24, 212, 212, .32);
-          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+        :global(.investment-action-button)::before {
+          content: '';
+          position: absolute;
+          inset: 1px;
+          border-radius: inherit;
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, .16), transparent 42%),
+            radial-gradient(circle at 82% 18%, rgba(167, 243, 240, .22), transparent 34%);
+          pointer-events: none;
+          z-index: -1;
+        }
+        :global(.investment-action-button)::after {
+          content: '';
+          position: absolute;
+          inset: -1px;
+          border-radius: inherit;
+          background: linear-gradient(90deg, transparent, rgba(167, 243, 240, .22), transparent);
+          opacity: 0;
+          transform: translateX(-22%);
+          transition: opacity .18s ease, transform .18s ease;
+          pointer-events: none;
+          z-index: -1;
+        }
+        :global(.investment-action-button.primary) {
           color: #FFFFFF;
-          box-shadow: 0 13px 30px rgba(29, 140, 255, .24);
         }
-        .investment-action-button.secondary {
-          border: 1px solid rgba(29, 140, 255, .22);
-          background: linear-gradient(180deg, #FFFFFF, #F7FBFF);
-          color: var(--sfm-primary-dark);
-          box-shadow: 0 10px 24px rgba(3, 18, 37, .06);
+        :global(.investment-action-button.secondary) {
+          background:
+            linear-gradient(135deg, #071A30 0%, #0B3753 50%, #0F6170 86%, #18D4D4 150%);
+          color: #FFFFFF;
         }
-        .investment-action-icon {
-          width: 28px;
-          height: 28px;
-          flex: 0 0 28px;
-          border-radius: 10px;
+        :global(.investment-action-icon) {
+          width: 30px;
+          height: 30px;
+          flex: 0 0 30px;
+          border-radius: 999px;
           display: inline-grid;
           place-items: center;
-          color: inherit;
-          background: rgba(255, 255, 255, .16);
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14);
+          color: #DFFBFF;
+          background: rgba(255, 255, 255, .14);
+          border: 1px solid rgba(255, 255, 255, .16);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16);
         }
-        .investment-action-button.secondary .investment-action-icon {
-          background: rgba(29, 140, 255, .10);
-          color: var(--sfm-primary);
-          box-shadow: none;
-        }
-        .investment-action-label {
+        :global(.investment-action-label) {
           min-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          color: #FFFFFF;
         }
-        .investment-action-arrow {
+        :global(.investment-action-arrow) {
           flex: 0 0 auto;
-          margin-inline-start: auto;
+          color: #A7F3F0;
         }
-        [dir='rtl'] .investment-action-arrow {
+        [dir='rtl'] :global(.investment-action-arrow) {
           transform: scaleX(-1);
         }
-        .investment-action-button:hover,
-        .investment-action-button:focus-visible {
+        :global(.investment-action-button):hover,
+        :global(.investment-action-button):focus-visible {
           outline: none;
-          transform: translateY(-1px);
-          border-color: rgba(24, 212, 212, .48);
-          box-shadow: 0 0 0 3px rgba(24, 212, 212, .14), 0 16px 36px rgba(29, 140, 255, .20);
+          transform: translateY(-2px);
+          border-color: rgba(167, 243, 240, .68);
+          box-shadow:
+            0 0 0 3px rgba(24, 212, 212, .18),
+            0 20px 42px rgba(3, 18, 37, .22),
+            0 12px 28px rgba(24, 212, 212, .20),
+            inset 0 1px 0 rgba(255, 255, 255, .20);
         }
-        .investment-action-button.secondary:hover,
-        .investment-action-button.secondary:focus-visible {
-          background: rgba(29, 140, 255, .08);
-          color: var(--sfm-primary-hover);
+        :global(.investment-action-button):hover::after,
+        :global(.investment-action-button):focus-visible::after {
+          opacity: 1;
+          transform: translateX(16%);
         }
-        .investment-action-button:active {
-          transform: translateY(0) scale(.98);
+        :global(.investment-action-button):active {
+          transform: translateY(0) scale(.985);
+          box-shadow:
+            0 8px 20px rgba(3, 18, 37, .20),
+            inset 0 2px 10px rgba(3, 18, 37, .18);
+        }
+        :global(.investment-action-button[aria-disabled='true']),
+        :global(.investment-action-button.is-disabled),
+        :global(.investment-action-button.is-loading) {
+          cursor: not-allowed;
+          opacity: .68;
+          transform: none;
+          box-shadow: none;
+        }
+        :global(.investment-action-spinner) {
+          animation: investment-spin 1s linear infinite;
+        }
+        .investment-selector-section :global(.project-selector-change),
+        .investment-selector-section :global(.project-selector-action) {
+          min-height: 48px;
+          border-radius: 999px;
+          border: 1px solid rgba(24, 212, 212, .42);
+          background:
+            linear-gradient(135deg, #061629 0%, #0A2C46 44%, #0D5365 74%, #18D4D4 140%);
+          color: #FFFFFF;
+          padding: 0 20px;
+          font-size: 13px;
+          font-weight: 950;
+          box-shadow:
+            0 14px 30px rgba(3, 18, 37, .16),
+            0 8px 20px rgba(24, 212, 212, .14),
+            inset 0 1px 0 rgba(255, 255, 255, .16);
+        }
+        .investment-selector-section :global(.project-selector-action.secondary),
+        .investment-selector-section :global(.project-selector-action.add-primary) {
+          border-color: rgba(24, 212, 212, .42);
+          background:
+            linear-gradient(135deg, #071A30 0%, #0B3753 50%, #0F6170 86%, #18D4D4 150%);
+          color: #FFFFFF;
+        }
+        .investment-selector-section :global(.project-selector-change svg),
+        .investment-selector-section :global(.project-selector-action svg) {
+          color: #A7F3F0;
+        }
+        .investment-selector-section :global(.project-selector-action:not(.disabled):hover),
+        .investment-selector-section :global(.project-selector-action:not(.disabled):focus-visible) {
+          border-color: rgba(167, 243, 240, .68);
+          background:
+            linear-gradient(135deg, #09213A 0%, #0D3D5D 48%, #11717B 88%, #20E2E2 150%);
+          color: #FFFFFF;
+          box-shadow:
+            0 0 0 3px rgba(24, 212, 212, .16),
+            0 18px 38px rgba(3, 18, 37, .20),
+            0 10px 24px rgba(24, 212, 212, .18);
+          transform: translateY(-2px);
+        }
+        .investment-selector-section :global(.project-selector-action.disabled) {
+          border-color: rgba(29, 140, 255, .14);
+          background: #EAF1F8;
+          color: #64748B;
+          box-shadow: none;
+          opacity: .72;
         }
         .investment-loading,
         .investment-warning,
@@ -731,7 +838,7 @@ export default function InvestmentOffersPage() {
           min-width: 0;
         }
         .investment-stat small,
-        .investment-package-card small {
+        :global(.investment-package-card) small {
           color: var(--sfm-muted-readable, #475569);
           font-size: 12px;
           font-weight: 900;
@@ -745,7 +852,7 @@ export default function InvestmentOffersPage() {
         .investment-selector-section {
           min-width: 0;
         }
-        .investment-package-card {
+        :global(.investment-package-card) {
           display: grid;
           grid-template-columns: minmax(0, 1fr) auto auto;
           gap: 18px;
@@ -812,10 +919,10 @@ export default function InvestmentOffersPage() {
           gap: 9px;
           min-width: min(180px, 100%);
         }
-        .investment-status-grid {
+        :global(.investment-status-grid) {
           grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
         }
-        .investment-status-card {
+        :global(.investment-status-card) {
           display: flex;
           flex-direction: column;
           gap: 0;
@@ -867,20 +974,20 @@ export default function InvestmentOffersPage() {
           color: #92400E;
           border: 1px solid rgba(245, 158, 11, .24);
         }
-        .investment-status-card h2 {
+        :global(.investment-status-card) h2 {
           margin: 0;
           color: var(--sfm-midnight);
           font-size: 20px;
           font-weight: 950;
           line-height: 1.25;
         }
-        .investment-status-card p {
+        :global(.investment-status-card) p {
           margin: 0;
           color: var(--sfm-muted-readable, #475569);
           line-height: 1.7;
           font-weight: 850;
         }
-        .investment-status-card small {
+        :global(.investment-status-card) small {
           width: fit-content;
           max-width: 100%;
           border-radius: 999px;
@@ -900,18 +1007,18 @@ export default function InvestmentOffersPage() {
           border-top: 1px solid rgba(29, 140, 255, .11);
           min-width: 0;
         }
-        .investment-status-action {
+        :global(.investment-status-action) {
           width: 100%;
           max-width: 100%;
-          min-height: 40px;
-          border-radius: 13px;
-          padding-inline: 12px;
+          min-height: 50px;
+          border-radius: 999px;
+          padding-inline: 18px;
           align-self: auto;
           margin-top: 0;
           line-height: 1.2;
           white-space: nowrap;
         }
-        .investment-status-action .investment-action-label {
+        :global(.investment-status-action) :global(.investment-action-label) {
           min-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -921,7 +1028,7 @@ export default function InvestmentOffersPage() {
           to { transform: rotate(360deg); }
         }
         @media (max-width: 1120px) {
-          .investment-package-card {
+          :global(.investment-package-card) {
             grid-template-columns: minmax(0, 1fr) auto;
           }
           .package-actions {
@@ -933,7 +1040,7 @@ export default function InvestmentOffersPage() {
           .investment-offers-content {
             gap: 16px;
           }
-          .investment-package-card {
+          :global(.investment-package-card) {
             grid-template-columns: 1fr;
           }
           .package-meter {
@@ -943,10 +1050,10 @@ export default function InvestmentOffersPage() {
           .package-actions {
             grid-template-columns: 1fr;
           }
-          .investment-primary-action,
-          .investment-secondary-action,
-          .investment-status-action,
-          .investment-package-action {
+          :global(.investment-primary-action),
+          :global(.investment-secondary-action),
+          :global(.investment-status-action),
+          :global(.investment-package-action) {
             width: 100%;
           }
           .investment-loading,

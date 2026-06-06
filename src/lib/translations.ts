@@ -58,6 +58,7 @@ export const TR: Record<string, TranslationEntry> = {
   investment_offers_open_projects: { ar:'فتح مشاريعي', en:'Open My Projects', fr:'Ouvrir mes projets' },
   investment_offers_open_business_hub: { ar:'فتح مركز الأعمال', en:'Open Business Hub', fr:'Ouvrir le Centre d’affaires' },
   investment_offers_open_project_pitch_deck: { ar:'فتح Pitch Deck', en:'Open Pitch Deck', fr:'Ouvrir le Pitch Deck' },
+  investment_offers_create_project_pitch_deck: { ar:'إنشاء Pitch Deck', en:'Create Pitch Deck', fr:'Créer un Pitch Deck' },
   investment_offers_open_funding_readiness: { ar:'فتح جاهزية التمويل', en:'Open Funding Readiness', fr:'Ouvrir la préparation au financement' },
   investment_offers_select_project: { ar:'اختيار المشروع', en:'Select Project', fr:'Sélectionner un projet' },
   investment_offers_select_project_hint: { ar:'اختر مشروعاً لعرض حالة مواد المستثمرين بناءً على بياناته الفعلية.', en:'Choose a project to view investor material status from its real data.', fr:'Choisissez un projet pour voir l’état des éléments investisseurs selon ses données réelles.' },
