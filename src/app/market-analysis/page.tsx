@@ -317,8 +317,10 @@ function money(value: number, currency?: string | null, options?: { locale?: str
   });
 }
 
-function percent(value: number) {
-  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+function percent(value: number | null | undefined) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return '--';
+  return `${numeric >= 0 ? '+' : ''}${numeric.toFixed(2)}%`;
 }
 
 function normalizePerformanceTrend(value?: string | null): 'bullish' | 'bearish' | 'neutral' {
@@ -528,6 +530,11 @@ function distancePercent(level: number, current: number) {
 function levelMarkerPercent(value: number, min: number, max: number) {
   if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) return 50;
   return Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
+}
+
+function readableLevelMarkerPercent(value: number) {
+  if (!Number.isFinite(value)) return 50;
+  return Math.min(92, Math.max(8, value));
 }
 
 function parseNumber(value: unknown) {
@@ -3059,40 +3066,40 @@ export default function MarketAnalysisPage() {
                   {chartMeta.source ? <span>{t('market_asset_profile_data_source')}: <b>{chartMeta.source}</b></span> : null}
                 </div>
                 <div className="market-stat-row">
-                  <MarketMetric label={t('market_current_price')} value={selectedMoney(selected.latestPrice)} />
-                  <MarketMetric label={t('market_daily_change')} value={`${selected.changePercent >= 0 ? '+' : ''}${selected.changePercent.toFixed(2)}%`} />
+                  <MarketMetric label={t('market_current_price')} value={selectedMoney(selected.latestPrice)} valueDir="ltr" />
+                  <MarketMetric label={t('market_daily_change')} value={percent(selected.changePercent)} valueDir="ltr" />
                   <MarketMetric label={t('market_trend')} value={t(`market_trend_${selected.trend}`)} icon={trendIcon} />
                 </div>
                 <div className="levels-strip" aria-label={t('market_support_resistance_levels')}>
                   <div className="levels-strip-labels">
                     <span className="support">
                       <small>{t('market_support_zone')}</small>
-                      <b dir="ltr">{selectedMoney(selected.levels.support)}</b>
-                      <em dir="ltr">{percent(distancePercent(selected.levels.support, selected.latestPrice))}</em>
+                      <b className="market-numeric-value" dir="ltr">{selectedMoney(selected.levels.support)}</b>
+                      <em className="market-numeric-value" dir="ltr">{percent(distancePercent(selected.levels.support, selected.latestPrice))}</em>
                     </span>
                     <span className="current">
                       <small>{t('market_current_price')}</small>
-                      <b dir="ltr">{selectedMoney(selected.latestPrice)}</b>
+                      <b className="market-numeric-value" dir="ltr">{selectedMoney(selected.latestPrice)}</b>
                       <em>{t(`market_trend_${selected.trend}`)}</em>
                     </span>
                     <span className="resistance">
                       <small>{t('market_resistance_zone')}</small>
-                      <b dir="ltr">{selectedMoney(selected.levels.resistance)}</b>
-                      <em dir="ltr">{percent(distancePercent(selected.levels.resistance, selected.latestPrice))}</em>
+                      <b className="market-numeric-value" dir="ltr">{selectedMoney(selected.levels.resistance)}</b>
+                      <em className="market-numeric-value" dir="ltr">{percent(distancePercent(selected.levels.resistance, selected.latestPrice))}</em>
                     </span>
                   </div>
                   <div className="levels-bar" aria-hidden="true">
-                    <span className="support" style={{ insetInlineStart: `${levelRange.support}%` }}>
+                    <span className="support" style={{ insetInlineStart: `${readableLevelMarkerPercent(levelRange.support)}%` }}>
                       <i />
-                      <em>{t('market_support_zone')}</em>
+                      <em>{t('market_support_zone')} <b dir="ltr">{selectedMoney(selected.levels.support)}</b></em>
                     </span>
-                    <span className="current" style={{ insetInlineStart: `${levelRange.current}%` }}>
+                    <span className="current" style={{ insetInlineStart: `${readableLevelMarkerPercent(levelRange.current)}%` }}>
                       <i />
-                      <em>{t('market_current_price')}</em>
+                      <em>{t('market_current_price')} <b dir="ltr">{selectedMoney(selected.latestPrice)}</b></em>
                     </span>
-                    <span className="resistance" style={{ insetInlineStart: `${levelRange.resistance}%` }}>
+                    <span className="resistance" style={{ insetInlineStart: `${readableLevelMarkerPercent(levelRange.resistance)}%` }}>
                       <i />
-                      <em>{t('market_resistance_zone')}</em>
+                      <em>{t('market_resistance_zone')} <b dir="ltr">{selectedMoney(selected.levels.resistance)}</b></em>
                     </span>
                   </div>
                 </div>
@@ -3107,12 +3114,12 @@ export default function MarketAnalysisPage() {
                   </div>
                 </div>
                 <div className="indicator-list">
-                  <MarketMetric label="RSI" value={String(selected.indicators.rsi)} />
-                  <MarketMetric label="SMA 20" value={selectedMoney(selected.indicators.sma20)} />
-                  <MarketMetric label="SMA 50" value={selectedMoney(selected.indicators.sma50)} />
-                  <MarketMetric label={t('market_risk_level')} value={`${selected.indicators.volatility.toFixed(1)}%`} />
-                  <MarketMetric label={t('market_support_zone')} value={selectedMoney(selected.levels.support)} />
-                  <MarketMetric label={t('market_resistance_zone')} value={selectedMoney(selected.levels.resistance)} />
+                  <MarketMetric label="RSI" value={String(selected.indicators.rsi)} valueDir="ltr" />
+                  <MarketMetric label="SMA 20" value={selectedMoney(selected.indicators.sma20)} valueDir="ltr" />
+                  <MarketMetric label="SMA 50" value={selectedMoney(selected.indicators.sma50)} valueDir="ltr" />
+                  <MarketMetric label={t('market_risk_level')} value={Number.isFinite(selected.indicators.volatility) ? `${selected.indicators.volatility.toFixed(1)}%` : '--'} valueDir="ltr" />
+                  <MarketMetric label={t('market_support_zone')} value={selectedMoney(selected.levels.support)} valueDir="ltr" />
+                  <MarketMetric label={t('market_resistance_zone')} value={selectedMoney(selected.levels.resistance)} valueDir="ltr" />
                 </div>
               </aside>
 
@@ -13322,6 +13329,119 @@ function MarketAsyncToolStyles() {
         }
       }
 
+      .market-numeric-value,
+      .metric strong[dir="ltr"],
+      .price-chart-values strong,
+      .price-chart-axis span,
+      .price-chart-summary-item b[dir="ltr"],
+      .levels-strip-labels b[dir="ltr"],
+      .levels-strip-labels em[dir="ltr"],
+      .levels-bar b[dir="ltr"],
+      .market-chart-meta b[dir="ltr"] {
+        direction: ltr !important;
+        unicode-bidi: isolate !important;
+        writing-mode: horizontal-tb !important;
+        text-orientation: mixed !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        overflow-wrap: normal !important;
+        hyphens: none !important;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0 !important;
+      }
+
+      .metric strong.market-numeric-value,
+      .price-chart-summary-item b[dir="ltr"],
+      .levels-strip-labels b[dir="ltr"],
+      .levels-strip-labels em[dir="ltr"] {
+        display: inline-flex !important;
+        align-items: center;
+        width: max-content;
+        max-width: 100%;
+      }
+
+      .market-stat-row,
+      .indicator-list {
+        grid-template-columns: repeat(auto-fit, minmax(156px, 1fr));
+      }
+
+      .metric {
+        overflow: hidden;
+      }
+
+      .metric strong.market-numeric-value {
+        min-width: max-content;
+      }
+
+      .levels-strip-labels {
+        grid-template-columns: repeat(3, minmax(164px, 1fr));
+        align-items: stretch;
+      }
+
+      .levels-strip-labels > span {
+        overflow: hidden;
+      }
+
+      .levels-strip-labels b[dir="ltr"],
+      .levels-strip-labels em[dir="ltr"] {
+        min-width: max-content;
+      }
+
+      .levels-bar {
+        min-height: 66px;
+        height: 66px;
+        overflow: visible !important;
+        contain: layout;
+        margin-block: 4px 2px;
+      }
+
+      .levels-bar > span {
+        width: max-content;
+        min-width: max-content;
+        max-width: min(240px, 62%);
+        gap: 6px;
+      }
+
+      .levels-bar em {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        width: max-content;
+        min-width: max-content;
+        max-width: min(240px, 100%);
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        overflow-wrap: normal !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .levels-bar em b {
+        color: inherit;
+        font-size: inherit;
+        font-weight: 950;
+        line-height: 1;
+        flex: 0 0 auto;
+      }
+
+      @media (max-width: 720px) {
+        .market-stat-row,
+        .indicator-list,
+        .levels-strip-labels {
+          grid-template-columns: 1fr;
+        }
+
+        .levels-bar {
+          min-height: 44px;
+          height: 44px;
+        }
+
+        .levels-bar em {
+          display: none !important;
+        }
+      }
+
       @keyframes marketSpin {
         to { transform: rotate(360deg); }
       }
@@ -13337,7 +13457,7 @@ function MarketMetric({ label, value, icon, valueDir }: { label: string; value: 
   return (
     <div className="metric">
       <span>{label}</span>
-      <strong dir={valueDir}>{icon}{value}</strong>
+      <strong dir={valueDir} className={valueDir === 'ltr' ? 'market-numeric-value' : undefined}>{icon}{value}</strong>
     </div>
   );
 }
