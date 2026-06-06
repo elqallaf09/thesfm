@@ -313,9 +313,20 @@ const SECTOR_GUIDES = [
     },
   },
   {
+    id: 'platforms',
+    icon: Bot,
+    symbols: ['AAPL', 'AMZN', 'GOOGL', 'META', 'NFLX'],
+    title: { ar: 'التقنية والمنصات الكبرى', en: 'Big tech and platforms', fr: 'Grandes plateformes tech' },
+    body: {
+      ar: 'منصات تقنية واسعة تعتمد على الأجهزة، الإعلانات الرقمية، المحتوى، والسحابة لقيادة نمو الإيرادات.',
+      en: 'Large technology platforms driven by devices, digital ads, content, and cloud revenue growth.',
+      fr: 'Grandes plateformes portées par les appareils, la publicité numérique, le contenu et le cloud.',
+    },
+  },
+  {
     id: 'semiconductors' as GrowthFilterId,
     icon: Cpu,
-    symbols: ['NVDA', 'AMD', 'AVGO'],
+    symbols: ['NVDA', 'AMD', 'AVGO', 'INTC', 'TSM'],
     title: { ar: 'أشباه الموصلات', en: 'Semiconductors', fr: 'Semi-conducteurs' },
     body: {
       ar: 'شركات رقائق ومعالجات تستفيد من دورات الذكاء الاصطناعي ومراكز البيانات.',
@@ -324,9 +335,20 @@ const SECTOR_GUIDES = [
     },
   },
   {
+    id: 'future_mobility',
+    icon: Zap,
+    symbols: ['TSLA', 'RIVN', 'LCID'],
+    title: { ar: 'المركبات الكهربائية والتنقل المستقبلي', en: 'EV and future mobility', fr: 'VE et mobilité future' },
+    body: {
+      ar: 'شركات سيارات كهربائية وتنقل جديد تتأثر بنمو الطلب، سلاسل التوريد، والتمويل طويل الأجل.',
+      en: 'Electric vehicle and mobility companies tied to demand growth, supply chains, and long-term funding.',
+      fr: 'Entreprises de véhicules électriques et mobilité liées à la demande, aux chaînes d’approvisionnement et au financement.',
+    },
+  },
+  {
     id: 'ecommerce' as GrowthFilterId,
     icon: ShoppingBag,
-    symbols: ['AMZN', 'SHOP', 'MELI'],
+    symbols: ['AMZN', 'SHOP', 'MELI', 'ABNB'],
     title: { ar: 'التجارة الإلكترونية', en: 'E-commerce', fr: 'E-commerce' },
     body: {
       ar: 'منصات أسواق رقمية وخدمات بيع عبر الإنترنت تعتمد على نمو الإنفاق الرقمي.',
@@ -337,7 +359,7 @@ const SECTOR_GUIDES = [
   {
     id: 'cloud' as GrowthFilterId,
     icon: Cloud,
-    symbols: ['SNOW', 'NOW', 'CRM', 'DDOG'],
+    symbols: ['MSFT', 'CRM', 'NOW', 'SNOW', 'PLTR'],
     title: { ar: 'البرمجيات السحابية', en: 'Cloud software', fr: 'Logiciels cloud' },
     body: {
       ar: 'برمجيات اشتراكية وبنية سحابية ذات إيرادات متكررة وقابلة للتوسع.',
@@ -348,7 +370,7 @@ const SECTOR_GUIDES = [
   {
     id: 'cybersecurity' as GrowthFilterId,
     icon: ShieldCheck,
-    symbols: ['CRWD', 'NET'],
+    symbols: ['CRWD', 'PANW', 'NET'],
     title: { ar: 'الأمن السيبراني', en: 'Cybersecurity', fr: 'Cybersécurité' },
     body: {
       ar: 'حلول حماية رقمية تتوسع مع زيادة المخاطر والاعتماد على البنية السحابية.',
@@ -383,6 +405,78 @@ const FEATURED_META: Record<string, { sector: Record<LangCode, string> }> = {
   SNOW: { sector: { ar: 'البيانات السحابية', en: 'Cloud data', fr: 'Données cloud' } },
   NOW: { sector: { ar: 'برمجيات المؤسسات السحابية', en: 'Enterprise cloud software', fr: 'Logiciels cloud d’entreprise' } },
 };
+
+const GROWTH_SYMBOL_NAMES: Record<string, string> = {
+  NVDA: 'NVIDIA',
+  AMD: 'Advanced Micro Devices',
+  AVGO: 'Broadcom',
+  INTC: 'Intel',
+  TSM: 'Taiwan Semiconductor',
+  MSFT: 'Microsoft',
+  CRM: 'Salesforce',
+  NOW: 'ServiceNow',
+  SNOW: 'Snowflake',
+  PLTR: 'Palantir',
+  AAPL: 'Apple',
+  AMZN: 'Amazon',
+  GOOGL: 'Alphabet',
+  META: 'Meta Platforms',
+  NFLX: 'Netflix',
+  TSLA: 'Tesla',
+  RIVN: 'Rivian',
+  LCID: 'Lucid Group',
+  CRWD: 'CrowdStrike',
+  PANW: 'Palo Alto Networks',
+  NET: 'Cloudflare',
+  SHOP: 'Shopify',
+  MELI: 'MercadoLibre',
+  ABNB: 'Airbnb',
+  DDOG: 'Datadog',
+  UBER: 'Uber',
+  RBLX: 'Roblox',
+  ISRG: 'Intuitive Surgical',
+  DXCM: 'DexCom',
+};
+
+const GROWTH_SYMBOL_SECTORS: Record<string, Record<LangCode, string>> = {
+  NVDA: { ar: 'الذكاء الاصطناعي وأشباه الموصلات', en: 'AI and semiconductors', fr: 'IA et semi-conducteurs' },
+  AMD: { ar: 'الذكاء الاصطناعي وأشباه الموصلات', en: 'AI and semiconductors', fr: 'IA et semi-conducteurs' },
+  AVGO: { ar: 'الذكاء الاصطناعي وأشباه الموصلات', en: 'AI and semiconductors', fr: 'IA et semi-conducteurs' },
+  INTC: { ar: 'الذكاء الاصطناعي وأشباه الموصلات', en: 'AI and semiconductors', fr: 'IA et semi-conducteurs' },
+  TSM: { ar: 'الذكاء الاصطناعي وأشباه الموصلات', en: 'AI and semiconductors', fr: 'IA et semi-conducteurs' },
+  MSFT: { ar: 'السحابة والبرمجيات', en: 'Cloud and software', fr: 'Cloud et logiciels' },
+  CRM: { ar: 'السحابة والبرمجيات', en: 'Cloud and software', fr: 'Cloud et logiciels' },
+  NOW: { ar: 'السحابة والبرمجيات', en: 'Cloud and software', fr: 'Cloud et logiciels' },
+  SNOW: { ar: 'السحابة والبرمجيات', en: 'Cloud and software', fr: 'Cloud et logiciels' },
+  PLTR: { ar: 'السحابة والبرمجيات', en: 'Cloud and software', fr: 'Cloud et logiciels' },
+  AAPL: { ar: 'التقنية والمنصات', en: 'Big tech and platforms', fr: 'Grandes plateformes tech' },
+  AMZN: { ar: 'التقنية والمنصات', en: 'Big tech and platforms', fr: 'Grandes plateformes tech' },
+  GOOGL: { ar: 'التقنية والمنصات', en: 'Big tech and platforms', fr: 'Grandes plateformes tech' },
+  META: { ar: 'التقنية والمنصات', en: 'Big tech and platforms', fr: 'Grandes plateformes tech' },
+  NFLX: { ar: 'التقنية والمنصات', en: 'Big tech and platforms', fr: 'Grandes plateformes tech' },
+  TSLA: { ar: 'المركبات الكهربائية والتنقل', en: 'EV and future mobility', fr: 'VE et mobilité future' },
+  RIVN: { ar: 'المركبات الكهربائية والتنقل', en: 'EV and future mobility', fr: 'VE et mobilité future' },
+  LCID: { ar: 'المركبات الكهربائية والتنقل', en: 'EV and future mobility', fr: 'VE et mobilité future' },
+  CRWD: { ar: 'الأمن السيبراني', en: 'Cybersecurity', fr: 'Cybersécurité' },
+  PANW: { ar: 'الأمن السيبراني', en: 'Cybersecurity', fr: 'Cybersécurité' },
+  NET: { ar: 'الأمن السيبراني', en: 'Cybersecurity', fr: 'Cybersécurité' },
+  SHOP: { ar: 'التجارة الرقمية', en: 'E-commerce and digital economy', fr: 'E-commerce et économie numérique' },
+  MELI: { ar: 'التجارة الرقمية', en: 'E-commerce and digital economy', fr: 'E-commerce et économie numérique' },
+  ABNB: { ar: 'التجارة الرقمية', en: 'E-commerce and digital economy', fr: 'E-commerce et économie numérique' },
+  UBER: { ar: 'التجارة الرقمية', en: 'E-commerce and digital economy', fr: 'E-commerce et économie numérique' },
+  RBLX: { ar: 'التجارة الرقمية', en: 'E-commerce and digital economy', fr: 'E-commerce et économie numérique' },
+  DDOG: { ar: 'السحابة والبرمجيات', en: 'Cloud and software', fr: 'Cloud et logiciels' },
+  ISRG: { ar: 'الرعاية الصحية المبتكرة', en: 'Innovative healthcare', fr: 'Santé innovante' },
+  DXCM: { ar: 'الرعاية الصحية المبتكرة', en: 'Innovative healthcare', fr: 'Santé innovante' },
+};
+
+function growthSymbolName(symbol: string) {
+  return GROWTH_SYMBOL_NAMES[symbol] ?? symbol;
+}
+
+function growthSymbolSector(symbol: string, lang: LangCode, fallback: string) {
+  return GROWTH_SYMBOL_SECTORS[symbol]?.[lang] ?? FEATURED_META[symbol]?.sector[lang] ?? fallback;
+}
 
 function localeFor(lang: string) {
   if (lang === 'en') return 'en-US';
@@ -528,19 +622,21 @@ function GrowthTicker({
   items,
   loading,
   error,
+  lang,
   text,
   locale,
 }: {
   items: GrowthTickerItem[];
   loading: boolean;
   error: string;
+  lang: LangCode;
   text: typeof TEXT[LangCode];
   locale: string;
 }) {
   const tickerSet = items.length > 0 ? items : [];
 
   return (
-    <section className={styles.tickerPanel} aria-label={text.tickerTitle}>
+    <section className={`${styles.tickerPanel} ${styles.compactTickerPanel}`} aria-label={text.tickerTitle}>
       <PanelTitle icon={Zap} title={text.tickerTitle} subtitle={text.tickerSubtitle} />
       {loading ? (
         <div className={styles.tickerSkeletonRow} aria-hidden="true">
@@ -560,11 +656,13 @@ function GrowthTicker({
                 <div className={styles.tickerSet} key={setIndex} aria-hidden={setIndex === 1}>
                   {tickerSet.map(item => {
                     const tone = changeTone(item.changePercent);
+                    const displayName = growthSymbolName(item.symbol) === item.symbol ? item.name : growthSymbolName(item.symbol);
                     return (
                       <article className={styles.tickerItem} key={`${setIndex}-${item.symbol}`}>
                         <div>
                           <strong dir="ltr">{item.symbol}</strong>
-                          <span>{item.name}</span>
+                          <span>{displayName}</span>
+                          <span>{growthSymbolSector(item.symbol, lang, text.unavailable)}</span>
                         </div>
                         <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
                         <em className={styles[tone]} dir="ltr">{formatPercent(item.changePercent, locale)}</em>
@@ -924,13 +1022,24 @@ function FeaturedStocks({
         ) : FEATURED_SYMBOLS.map(symbol => {
           const quote = bySymbol.get(symbol);
           const tone = changeTone(quote?.changePercent);
+          const displayName = growthSymbolName(symbol) === symbol ? quote?.name ?? symbol : growthSymbolName(symbol);
+          const marketHref = `/market-analysis?symbol=${encodeURIComponent(symbol)}`;
           return (
             <article className={styles.sectorCard} key={symbol}>
               <span className={styles.sectorIcon}><Sparkles size={21} /></span>
               <h3>{quote?.name ?? symbol}</h3>
               <div className={styles.symbolChips}>
-                <span dir="ltr">{symbol}</span>
-                <span>{FEATURED_META[symbol]?.sector[lang] ?? text.unavailable}</span>
+                <a
+                  href={marketHref}
+                  title={`${displayName} · ${symbol}`}
+                  aria-label={`${displayName} ${symbol}`}
+                  dir="ltr"
+                >
+                  <span className={styles.symbolCompany}>{displayName}</span>
+                  <span className={styles.symbolDivider} aria-hidden="true">·</span>
+                  <strong>{symbol}</strong>
+                </a>
+                <span>{growthSymbolSector(symbol, lang, text.unavailable)}</span>
               </div>
               {quote ? (
                 <>
@@ -944,7 +1053,7 @@ function FeaturedStocks({
               ) : (
                 <p>{text.unavailable}</p>
               )}
-              <a href={`/market-analysis?symbol=${encodeURIComponent(symbol)}`}>
+              <a href={marketHref}>
                 {text.details}
                 <ArrowUpRight size={14} />
               </a>
@@ -959,11 +1068,9 @@ function FeaturedStocks({
 function SectorGuide({
   lang,
   text,
-  onSelect,
 }: {
   lang: LangCode;
   text: typeof TEXT[LangCode];
-  onSelect: (filter: GrowthFilterId) => void;
 }) {
   return (
     <section className={styles.sectorGuidePanel} aria-label={text.sectorGuideTitle}>
@@ -977,12 +1084,23 @@ function SectorGuide({
               <h3>{sector.title[lang]}</h3>
               <p>{sector.body[lang]}</p>
               <div className={styles.symbolChips} aria-label={text.examples}>
-                {sector.symbols.map(symbol => <span key={symbol} dir="ltr">{symbol}</span>)}
+                {sector.symbols.map(symbol => {
+                  const name = growthSymbolName(symbol);
+                  return (
+                    <a
+                      key={symbol}
+                      href={`/market-analysis?symbol=${encodeURIComponent(symbol)}`}
+                      title={`${name} · ${symbol}`}
+                      aria-label={`${name} ${symbol}`}
+                      dir="ltr"
+                    >
+                      <span className={styles.symbolCompany}>{name}</span>
+                      <span className={styles.symbolDivider} aria-hidden="true">·</span>
+                      <strong>{symbol}</strong>
+                    </a>
+                  );
+                })}
               </div>
-              <button type="button" onClick={() => onSelect(sector.id)}>
-                {text.viewMore}
-                <ArrowUpRight size={14} />
-              </button>
             </article>
           );
         })}
@@ -1123,7 +1241,7 @@ export function GrowthStocksNewsPage() {
             </div>
           </header>
 
-          <GrowthTicker items={tickerItems} loading={loading} error={marketError} text={text} locale={locale} />
+          <GrowthTicker items={tickerItems} loading={loading} error={marketError} lang={activeLang} text={text} locale={locale} />
 
           <section className={styles.summaryGrid} aria-label={text.sectorTitle}>
             <WhatGrowthCard text={text} />
@@ -1154,10 +1272,6 @@ export function GrowthStocksNewsPage() {
           <SectorGuide
             lang={activeLang}
             text={text}
-            onSelect={filter => {
-              setActiveFilter(filter);
-              setVisibleCount(NEWS_PAGE_SIZE);
-            }}
           />
 
           <section className={styles.disclaimer}>
