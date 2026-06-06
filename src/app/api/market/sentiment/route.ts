@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cleanEnv, getMarketSentimentProviderConfig } from '@/lib/market/providerConfig';
-import { getMyfxbookSentiment, resolveMyfxbookForexSymbol } from '@/lib/market/providers/myfxbook';
+import {
+  getMyfxbookSentiment,
+  isMyfxbookSupportedMetalSymbol,
+  resolveMyfxbookForexSymbol,
+  resolveMyfxbookSymbol,
+} from '@/lib/market/providers/myfxbook';
 import { normalizeAssetType, type MarketAssetType } from '@/lib/market/marketService';
 
 export const revalidate = 300;
@@ -269,14 +274,14 @@ function sentimentMessage(assetType: SentimentAssetType, code: UnifiedSentimentC
     if (assetType === 'stock') return 'No trusted stock sentiment provider is connected right now.';
     if (assetType === 'etf') return 'No trusted ETF sentiment provider is connected right now.';
     if (assetType === 'crypto') return 'No trusted crypto sentiment provider is connected right now.';
-    if (assetType === 'metals') return 'No trusted metals sentiment provider is connected right now.';
+    if (assetType === 'metals') return 'The sentiment provider is not connected for this metal right now.';
     return 'No trusted sentiment provider is connected for this asset type.';
   }
   if (assetType === 'forex') return 'No trader sentiment data is available for this pair right now.';
   if (assetType === 'stock') return 'Market sentiment for this stock is not currently available from a trusted provider.';
   if (assetType === 'etf') return 'Market sentiment for this ETF is not currently available from a trusted provider.';
   if (assetType === 'crypto') return 'Market sentiment for this crypto asset is not currently available from a trusted provider.';
-  if (assetType === 'metals') return 'Market sentiment for this metal is not currently available from a trusted provider.';
+  if (assetType === 'metals') return 'The sentiment provider did not return data for this metal right now.';
   return 'Market sentiment is not supported for this asset type.';
 }
 
@@ -740,6 +745,78 @@ async function handleForexSentiment(requestMeta: NormalizedSentimentRequest) {
   });
 }
 
+async function handleMetalSentiment(requestMeta: NormalizedSentimentRequest) {
+  if (!requestMeta.symbol) {
+    return unavailableResponse({
+      code: 'SYMBOL_REQUIRED',
+      symbol: requestMeta.displaySymbol,
+      assetType: 'metals',
+    });
+  }
+
+  const resolvedMetalSymbol = resolveMyfxbookSymbol(requestMeta.symbol);
+  if (!resolvedMetalSymbol.ok || !isMyfxbookSupportedMetalSymbol(resolvedMetalSymbol.symbol)) {
+    return unavailableResponse({
+      code: 'NO_SENTIMENT_DATA',
+      symbol: requestMeta.displaySymbol,
+      assetType: 'metals',
+      provider: 'none',
+    });
+  }
+
+  const config = getMarketSentimentProviderConfig();
+  if (!config.hasMyfxbookCredentials) {
+    return unavailableResponse({
+      code: 'MISSING_CREDENTIALS',
+      symbol: resolvedMetalSymbol.symbol,
+      assetType: 'metals',
+      provider: 'none',
+    });
+  }
+
+  const result = await getMyfxbookSentiment(resolvedMetalSymbol.symbol);
+  if (!result.ok) {
+    const code = mapMyfxbookErrorCode(result.code);
+    if (code === 'PROVIDER_DOWN') {
+      console.error('Market sentiment provider error:', {
+        provider: 'myfxbook',
+        assetType: 'metals',
+        symbol: resolvedMetalSymbol.symbol,
+        code: result.code,
+        providerMessage: maskProviderMessage(result.providerMessage),
+      });
+    }
+    return unavailableResponse({
+      code,
+      legacyCode: result.code,
+      symbol: resolvedMetalSymbol.symbol,
+      assetType: 'metals',
+      provider: code === 'MISSING_CREDENTIALS' ? 'none' : 'myfxbook',
+      suggestions: result.suggestions ?? [],
+    });
+  }
+
+  const matchingItems = result.items.filter(item => compactPairSymbol(item.symbol) === compactPairSymbol(resolvedMetalSymbol.symbol));
+  if (matchingItems.length === 0) {
+    return unavailableResponse({
+      code: 'NO_SENTIMENT_DATA',
+      legacyCode: 'NO_MARKET_SENTIMENT_DATA',
+      symbol: resolvedMetalSymbol.symbol,
+      assetType: 'metals',
+      provider: 'myfxbook',
+    });
+  }
+
+  return availableResponse({
+    symbol: resolvedMetalSymbol.symbol,
+    assetType: 'metals',
+    provider: 'myfxbook',
+    source: 'Myfxbook',
+    items: matchingItems,
+    updatedAt: result.updated_at,
+  });
+}
+
 async function handleNewsSentiment(requestMeta: NormalizedSentimentRequest) {
   const newsProvider = getNewsSentimentProvider();
   if (!newsProvider) {
@@ -829,17 +906,16 @@ export async function GET(request: NextRequest) {
     return handleForexSentiment(requestMeta);
   }
 
+  if (requestMeta.assetType === 'metals') {
+    return handleMetalSentiment(requestMeta);
+  }
+
   if (requestMeta.assetType === 'stock' || requestMeta.assetType === 'etf') {
     return handleNewsSentiment(requestMeta);
   }
 
-  if (requestMeta.assetType === 'crypto' || requestMeta.assetType === 'metals') {
-    return unavailableResponse({
-      code: 'NO_SENTIMENT_DATA',
-      symbol: requestMeta.displaySymbol,
-      assetType: requestMeta.assetType,
-      provider: 'none',
-    });
+  if (requestMeta.assetType === 'crypto') {
+    return handleNewsSentiment(requestMeta);
   }
 
   return unavailableResponse({

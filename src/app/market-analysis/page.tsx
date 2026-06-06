@@ -1134,7 +1134,10 @@ function sentimentAssetBadgeKey(assetType: SentimentAssetBadgeType) {
 
 function sentimentProviderBadgeKey(provider: unknown, sentimentAvailable: boolean | undefined, assetType: SentimentAssetBadgeType) {
   const normalized = String(provider ?? '').trim().toLowerCase();
-  if (normalized === 'myfxbook' && assetType === 'forex') return 'market_sentiment_provider_myfxbook';
+  if (
+    normalized === 'myfxbook'
+    && (assetType === 'forex' || assetType === 'gold' || assetType === 'silver' || assetType === 'metals')
+  ) return 'market_sentiment_provider_myfxbook';
   if (normalized === 'news' && sentimentAvailable) return 'market_sentiment_provider_news';
   return 'market_sentiment_provider_none';
 }
@@ -4828,6 +4831,40 @@ export default function MarketAnalysisPage() {
           font-weight: 950;
         }
 
+        .sentiment-extra-metrics {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+          min-width: 0;
+        }
+
+        .sentiment-extra-metrics span {
+          min-width: 0;
+          display: grid;
+          gap: 3px;
+          border: 1px solid rgba(29, 140, 255, .14);
+          border-radius: 14px;
+          background: rgba(29, 140, 255, .055);
+          padding: 7px 9px;
+        }
+
+        .sentiment-extra-metrics small {
+          min-width: 0;
+          color: var(--sfm-muted);
+          font-size: 10.5px;
+          font-weight: 900;
+          line-height: 1.35;
+        }
+
+        .sentiment-extra-metrics b {
+          min-width: 0;
+          color: var(--sfm-foreground);
+          font-size: 12px;
+          font-weight: 950;
+          line-height: 1.35;
+          overflow-wrap: anywhere;
+        }
+
         .sentiment-bar {
           display: flex;
           width: 100%;
@@ -5167,6 +5204,7 @@ export default function MarketAnalysisPage() {
         .dark .sentiment-card-head span,
         .dark .sentiment-card p,
         .dark .sentiment-metrics span,
+        .dark .sentiment-extra-metrics small,
         .dark .sentiment-info-card p {
           color: #b8c7d9;
         }
@@ -5203,6 +5241,11 @@ export default function MarketAnalysisPage() {
         .dark .sentiment-context-badge.source {
           background: rgba(29, 140, 255, .10);
           border-color: rgba(29, 140, 255, .24);
+        }
+
+        .dark .sentiment-extra-metrics span {
+          background: rgba(29, 140, 255, .08);
+          border-color: rgba(29, 140, 255, .22);
         }
 
         .dark .sentiment-empty-actions button:first-child {
@@ -5422,6 +5465,10 @@ export default function MarketAnalysisPage() {
           }
 
           .sentiment-context-row {
+            grid-template-columns: 1fr;
+          }
+
+          .sentiment-extra-metrics {
             grid-template-columns: 1fr;
           }
 
@@ -8693,8 +8740,18 @@ function numberField(item: Record<string, any>, keys: string[]) {
   for (const key of keys) {
     const value = item[key];
     if (value === null || value === undefined || value === '') continue;
-    const parsed = Number(String(value).replace('%', '').trim());
+    const parsed = Number(String(value).replace('%', '').replace(/,/g, '').trim());
     if (Number.isFinite(parsed)) return parsed <= 1 && parsed >= 0 ? parsed * 100 : parsed;
+  }
+  return null;
+}
+
+function plainNumberField(item: Record<string, any>, keys: string[]) {
+  for (const key of keys) {
+    const value = item[key];
+    if (value === null || value === undefined || value === '') continue;
+    const parsed = Number(String(value).replace(/,/g, '').trim());
+    if (Number.isFinite(parsed)) return parsed;
   }
   return null;
 }
@@ -8704,8 +8761,8 @@ function clampPercentValue(value: number) {
 }
 
 function sentimentValues(item: Record<string, any>) {
-  const buy = numberField(item, ['buyPercent', 'buy_percentage', 'buy_percent', 'buyRatio', 'buy_ratio', 'buy', 'longPercent', 'long_percentage', 'bullishPercent', 'bullish_percentage']);
-  const sell = numberField(item, ['sellPercent', 'sell_percentage', 'sell_percent', 'sellRatio', 'sell_ratio', 'sell', 'shortPercent', 'short_percentage', 'bearishPercent', 'bearish_percentage']);
+  const buy = numberField(item, ['buyPercent', 'buyPercentage', 'buy_percentage', 'buy_percent', 'buyRatio', 'buy_ratio', 'buy', 'longPercent', 'longPercentage', 'long_percentage', 'long', 'bullishPercent', 'bullish_percentage']);
+  const sell = numberField(item, ['sellPercent', 'sellPercentage', 'sell_percentage', 'sell_percent', 'sellRatio', 'sell_ratio', 'sell', 'shortPercent', 'shortPercentage', 'short_percentage', 'short', 'bearishPercent', 'bearish_percentage']);
   if (buy === null || sell === null) return null;
   return {
     buy: clampPercentValue(buy),
@@ -8717,6 +8774,57 @@ function sentimentTone(values: { buy: number; sell: number }) {
   if (values.buy > values.sell + 5) return 'buy';
   if (values.sell > values.buy + 5) return 'sell';
   return 'balanced';
+}
+
+function formatSentimentMetricNumber(value: number, locale: string, options: Intl.NumberFormatOptions = {}) {
+  return new Intl.NumberFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', {
+    maximumFractionDigits: 2,
+    ...options,
+  }).format(value);
+}
+
+function formatSentimentMetricPair(
+  longValue: number | null,
+  shortValue: number | null,
+  locale: string,
+  unavailableLabel: string,
+) {
+  if (longValue === null && shortValue === null) return '';
+  const longText = longValue === null ? unavailableLabel : formatSentimentMetricNumber(longValue, locale);
+  const shortText = shortValue === null ? unavailableLabel : formatSentimentMetricNumber(shortValue, locale);
+  return `${longText} / ${shortText}`;
+}
+
+function sentimentExtraMetrics(item: Record<string, any>, t: (key: string) => string, locale: string) {
+  const provider = textField(item, ['source', 'provider']);
+  const updatedAt = textField(item, ['updatedAt', 'updated_at', 'lastUpdated', 'timestamp']);
+  const totalPositions = plainNumberField(item, ['positions', 'totalPositions', 'positionCount', 'positionsCount']);
+  const longPositions = plainNumberField(item, ['longPositions', 'buyPositions', 'longPositionCount', 'buyPositionCount']);
+  const shortPositions = plainNumberField(item, ['shortPositions', 'sellPositions', 'shortPositionCount', 'sellPositionCount']);
+  const totalLots = plainNumberField(item, ['totalLots', 'lots', 'volume', 'totalVolume']);
+  const longLots = plainNumberField(item, ['longLots', 'buyLots', 'longVolume']);
+  const shortLots = plainNumberField(item, ['shortLots', 'sellLots', 'shortVolume']);
+  const averagePrice = plainNumberField(item, ['averagePrice', 'avgPrice', 'average', 'priceAvg']);
+  const averageLongPrice = plainNumberField(item, ['averageLongPrice', 'longAveragePrice', 'longAvgPrice', 'buyAveragePrice']);
+  const averageShortPrice = plainNumberField(item, ['averageShortPrice', 'shortAveragePrice', 'shortAvgPrice', 'sellAveragePrice']);
+  const unavailable = t('market_unavailable');
+  const positionValue = totalPositions !== null
+    ? formatSentimentMetricNumber(totalPositions, locale, { maximumFractionDigits: 0 })
+    : formatSentimentMetricPair(longPositions, shortPositions, locale, unavailable);
+  const lotValue = totalLots !== null
+    ? formatSentimentMetricNumber(totalLots, locale)
+    : formatSentimentMetricPair(longLots, shortLots, locale, unavailable);
+  const averageValue = averagePrice !== null
+    ? formatSentimentMetricNumber(averagePrice, locale, { maximumFractionDigits: 5 })
+    : formatSentimentMetricPair(averageLongPrice, averageShortPrice, locale, unavailable);
+
+  return [
+    provider ? [t('market_sentiment_provider_metric'), provider] as const : null,
+    updatedAt ? [t('market_sentiment_last_updated_metric'), formatMarketToolTimestamp(updatedAt, locale) || updatedAt] as const : null,
+    positionValue ? [t('market_sentiment_positions'), positionValue] as const : null,
+    lotValue ? [t('market_sentiment_lots'), lotValue] as const : null,
+    averageValue ? [t('market_sentiment_average_price'), averageValue] as const : null,
+  ].filter((row): row is readonly [string, string] => Boolean(row));
 }
 
 function formatMarketToolTimestamp(value: string | undefined, locale = 'ar') {
@@ -8981,6 +9089,7 @@ function NewsSentimentPanel({
                     );
                   }
                   const tone = sentimentTone(values);
+                  const extraMetrics = sentimentExtraMetrics(item, t, lang);
                   return (
                     <article className="sentiment-card" key={`${symbol || 'sentiment'}-${index}`}>
                       <div className="sentiment-card-head">
@@ -9000,6 +9109,16 @@ function NewsSentimentPanel({
                         <i style={{ width: `${values.buy}%` }} />
                         <b style={{ width: `${values.sell}%` }} />
                       </div>
+                      {extraMetrics.length > 0 ? (
+                        <div className="sentiment-extra-metrics">
+                          {extraMetrics.map(([label, value]) => (
+                            <span key={label}>
+                              <small>{label}</small>
+                              <b dir="ltr">{value}</b>
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </article>
                   );
                 })}

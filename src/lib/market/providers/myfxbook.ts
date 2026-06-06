@@ -18,15 +18,36 @@ type MyfxbookErrorCode =
   | 'SYMBOL_REQUIRED';
 
 type MyfxbookApiSymbol = {
+  [key: string]: unknown;
   name?: unknown;
   symbol?: unknown;
   pair?: unknown;
+  ticker?: unknown;
   longPercentage?: unknown;
   shortPercentage?: unknown;
   buyPercentage?: unknown;
   sellPercentage?: unknown;
+  longPercent?: unknown;
+  shortPercent?: unknown;
+  buyPercent?: unknown;
+  sellPercent?: unknown;
   longVolume?: unknown;
   shortVolume?: unknown;
+  longLots?: unknown;
+  shortLots?: unknown;
+  totalLots?: unknown;
+  lots?: unknown;
+  volume?: unknown;
+  longPositions?: unknown;
+  shortPositions?: unknown;
+  totalPositions?: unknown;
+  positions?: unknown;
+  avgPrice?: unknown;
+  averagePrice?: unknown;
+  averageLongPrice?: unknown;
+  averageShortPrice?: unknown;
+  longAveragePrice?: unknown;
+  shortAveragePrice?: unknown;
 };
 
 type MyfxbookLoginResponse = {
@@ -62,6 +83,17 @@ export type MyfxbookSentimentItem = {
   sell: number | null;
   longVolume: number | null;
   shortVolume: number | null;
+  longLots: number | null;
+  shortLots: number | null;
+  totalLots: number | null;
+  volume: number | null;
+  longPositions: number | null;
+  shortPositions: number | null;
+  totalPositions: number | null;
+  positions: number | null;
+  averagePrice: number | null;
+  averageLongPrice: number | null;
+  averageShortPrice: number | null;
   provider: 'myfxbook';
   source: 'Myfxbook';
   updated_at: string;
@@ -114,8 +146,18 @@ const SUPPORTED_MYFXBOOK_FOREX_PAIRS = [
   'NZDUSD',
   'EURJPY',
   'GBPJPY',
+  'EURGBP',
+] as const;
+const SUPPORTED_MYFXBOOK_METAL_SYMBOLS = [
+  'XAUUSD',
+  'XAGUSD',
 ] as const;
 const SUPPORTED_MYFXBOOK_FOREX_SET = new Set<string>(SUPPORTED_MYFXBOOK_FOREX_PAIRS);
+const SUPPORTED_MYFXBOOK_METAL_SET = new Set<string>(SUPPORTED_MYFXBOOK_METAL_SYMBOLS);
+const SUPPORTED_MYFXBOOK_SYMBOL_SET = new Set<string>([
+  ...SUPPORTED_MYFXBOOK_FOREX_PAIRS,
+  ...SUPPORTED_MYFXBOOK_METAL_SYMBOLS,
+]);
 
 function shouldDebug() {
   return process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true';
@@ -181,8 +223,50 @@ export function resolveMyfxbookForexSymbol(value: unknown) {
   };
 }
 
+export function resolveMyfxbookSymbol(value: unknown) {
+  const compact = normalizeSymbol(String(value ?? ''));
+  if (!compact) {
+    return {
+      ok: false as const,
+      symbol: '',
+      code: 'SYMBOL_REQUIRED' as const,
+      suggestions: [] as string[],
+    };
+  }
+
+  if (SUPPORTED_MYFXBOOK_SYMBOL_SET.has(compact)) {
+    return {
+      ok: true as const,
+      symbol: compact,
+      suggestions: [] as string[],
+    };
+  }
+
+  const forexResolution = resolveMyfxbookForexSymbol(compact);
+  if (forexResolution.ok) {
+    return {
+      ok: false as const,
+      symbol: compact,
+      code: 'INVALID_FOREX_PAIR' as const,
+      suggestions: [] as string[],
+    };
+  }
+
+  return {
+    ok: false as const,
+    symbol: compact,
+    code: forexResolution.code,
+    suggestions: forexResolution.suggestions,
+  };
+}
+
+export function isMyfxbookSupportedMetalSymbol(value: unknown) {
+  const compact = normalizeSymbol(String(value ?? ''));
+  return SUPPORTED_MYFXBOOK_METAL_SET.has(compact);
+}
+
 export function isMyfxbookSupportedSymbol(value: string) {
-  return resolveMyfxbookForexSymbol(value).ok;
+  return resolveMyfxbookSymbol(value).ok;
 }
 
 export function formatMyfxbookDisplaySymbol(value: string) {
@@ -211,6 +295,31 @@ function parsePercentage(value: unknown) {
   return Math.max(0, Math.min(100, asPercent));
 }
 
+function firstValue(item: MyfxbookApiSymbol, keys: string[]) {
+  for (const key of keys) {
+    const value = item[key];
+    if (value === null || value === undefined || value === '') continue;
+    return value;
+  }
+  return null;
+}
+
+function sumNullableNumbers(...values: Array<number | null>) {
+  const valid = values.filter((value): value is number => value !== null);
+  if (valid.length === 0) return null;
+  return valid.reduce((total, value) => total + value, 0);
+}
+
+function extractOutlookSymbol(item: MyfxbookApiSymbol) {
+  const candidates = [item.symbol, item.pair, item.ticker, item.name];
+  for (const candidate of candidates) {
+    const symbol = normalizeSymbol(String(candidate ?? ''));
+    if (SUPPORTED_MYFXBOOK_SYMBOL_SET.has(symbol)) return symbol;
+    if (/^[A-Z]{6}$/.test(symbol)) return symbol;
+  }
+  return normalizeSymbol(String(item.name ?? item.symbol ?? item.pair ?? item.ticker ?? ''));
+}
+
 function extractSymbolArray(payload: MyfxbookOutlookResponse) {
   if (Array.isArray(payload.symbols)) return payload.symbols;
   if (Array.isArray(payload.data)) return payload.data;
@@ -219,14 +328,23 @@ function extractSymbolArray(payload: MyfxbookOutlookResponse) {
 }
 
 function normalizeOutlookSymbol(item: MyfxbookApiSymbol, updatedAt: string): MyfxbookSentimentItem | null {
-  const rawSymbol = String(item.name ?? item.symbol ?? item.pair ?? '').trim();
-  const symbol = normalizeSymbol(rawSymbol);
+  const symbol = extractOutlookSymbol(item);
   if (!symbol) return null;
 
-  const longPercentage = parsePercentage(item.longPercentage ?? item.buyPercentage);
-  const shortPercentage = parsePercentage(item.shortPercentage ?? item.sellPercentage);
-  const longVolume = parseNumber(item.longVolume);
-  const shortVolume = parseNumber(item.shortVolume);
+  const longPercentage = parsePercentage(firstValue(item, ['longPercentage', 'buyPercentage', 'longPercent', 'buyPercent', 'long', 'buy']));
+  const shortPercentage = parsePercentage(firstValue(item, ['shortPercentage', 'sellPercentage', 'shortPercent', 'sellPercent', 'short', 'sell']));
+  const longVolume = parseNumber(firstValue(item, ['longVolume', 'buyVolume']));
+  const shortVolume = parseNumber(firstValue(item, ['shortVolume', 'sellVolume']));
+  const longLots = parseNumber(firstValue(item, ['longLots', 'buyLots', 'longVolume']));
+  const shortLots = parseNumber(firstValue(item, ['shortLots', 'sellLots', 'shortVolume']));
+  const totalLots = parseNumber(firstValue(item, ['totalLots', 'lots', 'volume'])) ?? sumNullableNumbers(longLots, shortLots);
+  const volume = parseNumber(firstValue(item, ['volume', 'totalVolume'])) ?? sumNullableNumbers(longVolume, shortVolume);
+  const longPositions = parseNumber(firstValue(item, ['longPositions', 'buyPositions', 'longPositionCount', 'buyPositionCount']));
+  const shortPositions = parseNumber(firstValue(item, ['shortPositions', 'sellPositions', 'shortPositionCount', 'sellPositionCount']));
+  const totalPositions = parseNumber(firstValue(item, ['totalPositions', 'positions', 'positionCount'])) ?? sumNullableNumbers(longPositions, shortPositions);
+  const averageLongPrice = parseNumber(firstValue(item, ['averageLongPrice', 'longAveragePrice', 'longAvgPrice', 'buyAveragePrice']));
+  const averageShortPrice = parseNumber(firstValue(item, ['averageShortPrice', 'shortAveragePrice', 'shortAvgPrice', 'sellAveragePrice']));
+  const averagePrice = parseNumber(firstValue(item, ['averagePrice', 'avgPrice', 'average', 'priceAvg']));
 
   return {
     symbol,
@@ -243,6 +361,17 @@ function normalizeOutlookSymbol(item: MyfxbookApiSymbol, updatedAt: string): Myf
     sell: shortPercentage,
     longVolume,
     shortVolume,
+    longLots,
+    shortLots,
+    totalLots,
+    volume,
+    longPositions,
+    shortPositions,
+    totalPositions,
+    positions: totalPositions,
+    averagePrice,
+    averageLongPrice,
+    averageShortPrice,
     provider: 'myfxbook',
     source: 'Myfxbook',
     updated_at: updatedAt,
@@ -491,7 +620,7 @@ async function getCommunityOutlook() {
 }
 
 export async function getMyfxbookSentiment(symbol: string): Promise<MyfxbookSentimentResult> {
-  const resolvedSymbol = resolveMyfxbookForexSymbol(symbol);
+  const resolvedSymbol = resolveMyfxbookSymbol(symbol);
   if (!resolvedSymbol.ok) {
     return unavailable(resolvedSymbol.code, null, resolvedSymbol.suggestions);
   }
