@@ -292,7 +292,7 @@ const SECTOR_GUIDES = [
   {
     id: 'consumer_staples' as DefensiveFilterId,
     icon: ShoppingCart,
-    symbols: ['PG', 'KO', 'PEP', 'WMT'],
+    symbols: ['PG', 'KO', 'PEP', 'WMT', 'COST', 'HSY'],
     title: { ar: 'السلع الاستهلاكية الأساسية', en: 'Consumer Staples', fr: 'Biens essentiels' },
     body: {
       ar: 'شركات الغذاء والمشروبات والمنتجات المنزلية التي يبقى الطلب عليها حاضرًا في أغلب الظروف.',
@@ -303,7 +303,7 @@ const SECTOR_GUIDES = [
   {
     id: 'healthcare' as DefensiveFilterId,
     icon: HeartPulse,
-    symbols: ['JNJ', 'ABBV', 'UNH', 'MRK'],
+    symbols: ['JNJ', 'ABBV', 'UNH', 'MRK', 'PFE', 'LLY'],
     title: { ar: 'الرعاية الصحية', en: 'Healthcare', fr: 'Santé' },
     body: {
       ar: 'شركات الأدوية والخدمات الصحية والتأمين الصحي المرتبطة باحتياجات أساسية طويلة الأجل.',
@@ -314,7 +314,7 @@ const SECTOR_GUIDES = [
   {
     id: 'telecom' as DefensiveFilterId,
     icon: Signal,
-    symbols: ['T', 'VZ'],
+    symbols: ['T', 'VZ', 'TMUS'],
     title: { ar: 'الاتصالات', en: 'Telecommunications', fr: 'Télécommunications' },
     body: {
       ar: 'مزودو خدمات الاتصالات والإنترنت والاشتراكات المتكررة للأفراد والشركات.',
@@ -325,7 +325,7 @@ const SECTOR_GUIDES = [
   {
     id: 'utilities' as DefensiveFilterId,
     icon: Zap,
-    symbols: ['NEE', 'DUK', 'SO'],
+    symbols: ['SO', 'DUK', 'NEE', 'AEP'],
     title: { ar: 'المرافق العامة', en: 'Utilities', fr: 'Services publics' },
     body: {
       ar: 'شركات الكهرباء والمياه والطاقة المنظمة غالبًا، مع تدفقات إيراد أكثر استقرارًا.',
@@ -373,12 +373,50 @@ const TICKER_SECTORS: Record<string, DefensiveFilterId> = {
   UNH: 'healthcare',
   MRK: 'healthcare',
   PFE: 'healthcare',
+  LLY: 'healthcare',
   T: 'telecom',
   VZ: 'telecom',
+  TMUS: 'telecom',
   NEE: 'utilities',
   DUK: 'utilities',
   SO: 'utilities',
+  AEP: 'utilities',
 };
+
+const DEFENSIVE_SYMBOL_NAMES: Record<string, string> = {
+  PG: 'Procter & Gamble',
+  KO: 'Coca-Cola',
+  PEP: 'PepsiCo',
+  WMT: 'Walmart',
+  COST: 'Costco',
+  HSY: 'Hershey',
+  CL: 'Colgate-Palmolive',
+  KMB: 'Kimberly-Clark',
+  GIS: 'General Mills',
+  MDLZ: 'Mondelez International',
+  JNJ: 'Johnson & Johnson',
+  ABBV: 'AbbVie',
+  UNH: 'UnitedHealth Group',
+  MRK: 'Merck',
+  PFE: 'Pfizer',
+  LLY: 'Eli Lilly',
+  T: 'AT&T',
+  VZ: 'Verizon',
+  TMUS: 'T-Mobile US',
+  SO: 'Southern Company',
+  DUK: 'Duke Energy',
+  NEE: 'NextEra Energy',
+  AEP: 'American Electric Power',
+};
+
+function defensiveSymbolName(symbol: string) {
+  return DEFENSIVE_SYMBOL_NAMES[symbol] ?? symbol;
+}
+
+function defensiveSymbolSector(symbol: string, lang: LangCode, fallback: string) {
+  const sectorId = TICKER_SECTORS[symbol];
+  return sectorId ? filterLabel(sectorId, lang) : fallback;
+}
 
 function localeFor(lang: string) {
   if (lang === 'en') return 'en-US';
@@ -551,18 +589,20 @@ function DefensiveTicker({
   items,
   loading,
   error,
+  lang,
   text,
   locale,
 }: {
   items: DefensiveTickerItem[];
   loading: boolean;
   error: string;
+  lang: LangCode;
   text: typeof TEXT[LangCode];
   locale: string;
 }) {
   if (loading) {
     return (
-      <section className={styles.tickerPanel} aria-label={text.tickerTitle}>
+      <section className={`${styles.tickerPanel} ${styles.compactTickerPanel}`} aria-label={text.tickerTitle}>
         <PanelTitle icon={Activity} title={text.tickerTitle} subtitle={text.tickerSubtitle} />
         <div className={styles.tickerSkeletonRow}>
           {Array.from({ length: 7 }).map((_, index) => <span key={index} />)}
@@ -573,7 +613,7 @@ function DefensiveTicker({
 
   if (items.length === 0) {
     return (
-      <section className={styles.tickerPanel} aria-label={text.tickerTitle}>
+      <section className={`${styles.tickerPanel} ${styles.compactTickerPanel}`} aria-label={text.tickerTitle}>
         <PanelTitle icon={Activity} title={text.tickerTitle} subtitle={text.tickerSubtitle} />
         <div className={styles.inlineState}>
           <AlertTriangle size={18} />
@@ -584,7 +624,7 @@ function DefensiveTicker({
   }
 
   return (
-    <section className={styles.tickerPanel} aria-label={text.tickerTitle}>
+    <section className={`${styles.tickerPanel} ${styles.compactTickerPanel}`} aria-label={text.tickerTitle}>
       <PanelTitle icon={Activity} title={text.tickerTitle} subtitle={text.tickerSubtitle} />
       <MarketTickerStrip
         ariaLabel={text.tickerTitle}
@@ -597,11 +637,13 @@ function DefensiveTicker({
         {items.map(item => {
           const tone = changeTone(item.changePercent);
           const TrendIcon = tone === 'down' ? TrendingDown : TrendingUp;
+          const displayName = defensiveSymbolName(item.symbol) === item.symbol ? item.name : defensiveSymbolName(item.symbol);
           return (
             <article className={styles.tickerItem} key={item.symbol} dir="ltr">
               <div>
                 <strong>{item.symbol}</strong>
-                <span>{item.name}</span>
+                <span>{displayName}</span>
+                <span>{defensiveSymbolSector(item.symbol, lang, text.unavailable)}</span>
               </div>
               <b>{formatMoney(item.price, item.currency, locale)}</b>
               <em className={styles[tone]}>
@@ -925,11 +967,9 @@ function NewsSection({
 function SectorGuide({
   lang,
   text,
-  onSelect,
 }: {
   lang: LangCode;
   text: typeof TEXT[LangCode];
-  onSelect: (filter: DefensiveFilterId) => void;
 }) {
   return (
     <section className={styles.sectorGuidePanel} aria-label={text.sectorGuideTitle}>
@@ -945,12 +985,23 @@ function SectorGuide({
               <h3>{sector.title[lang]}</h3>
               <p>{sector.body[lang]}</p>
               <div className={styles.symbolChips} aria-label={text.examples}>
-                {sector.symbols.map(symbol => <span key={symbol} dir="ltr">{symbol}</span>)}
+                {sector.symbols.map(symbol => {
+                  const name = defensiveSymbolName(symbol);
+                  return (
+                    <a
+                      key={symbol}
+                      href={`/market-analysis?symbol=${encodeURIComponent(symbol)}`}
+                      title={`${name} · ${symbol}`}
+                      aria-label={`${name} ${symbol}`}
+                      dir="ltr"
+                    >
+                      <span className={styles.symbolCompany}>{name}</span>
+                      <span className={styles.symbolDivider} aria-hidden="true">·</span>
+                      <strong>{symbol}</strong>
+                    </a>
+                  );
+                })}
               </div>
-              <button type="button" onClick={() => onSelect(sector.id)}>
-                {text.viewMore}
-                <ArrowUpRight size={14} />
-              </button>
             </article>
           );
         })}
@@ -1152,6 +1203,7 @@ export function DefensiveStocksNewsPage() {
             items={tickerItems}
             loading={loading}
             error={marketError}
+            lang={activeLang}
             text={text}
             locale={locale}
           />
@@ -1185,10 +1237,6 @@ export function DefensiveStocksNewsPage() {
           <SectorGuide
             lang={activeLang}
             text={text}
-            onSelect={filter => {
-              setActiveFilter(filter);
-              setVisibleCount(NEWS_PAGE_SIZE);
-            }}
           />
 
           <section className={styles.disclaimer}>
