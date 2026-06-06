@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { BarChart3, Bot, Download, Eye, Plus, Save, Trash2, WalletCards, X } from 'lucide-react';
+import { BarChart3, Bot, Download, Eye, Plus, Save, Trash2, WalletCards } from 'lucide-react';
 import { CurrencySelect } from '@/components/CurrencySelect';
+import { AppModal } from '@/components/ui/AppModal';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
 
@@ -1247,34 +1248,30 @@ function FullProjectionsModal({
   onClose: () => void;
 }) {
   return (
-    <div className="financial-modal-backdrop" role="presentation" onMouseDown={event => {
-      if (event.currentTarget === event.target) onClose();
-    }}>
-      <section className="financial-modal" role="dialog" aria-modal="true" aria-labelledby="financial-full-table-title">
-        <div className="financial-modal-head">
-          <div>
-            <h2 id="financial-full-table-title">{text.fullTableTitle}</h2>
-            <p>{text.previewCount(rows.length, rows.length)}</p>
-          </div>
-          <button type="button" className="financial-modal-close" onClick={onClose} aria-label={text.close}>
-            <X size={18} />
-          </button>
-        </div>
-        <div className="financial-modal-actions">
-          <button type="button" className="projection-disabled" disabled aria-disabled="true">
-            <Download size={16} />
-            {text.exportExcel}
-            <span>{text.comingSoon}</span>
-          </button>
-          <button type="button" className="projection-disabled" disabled aria-disabled="true">
-            <Download size={16} />
-            {text.exportPdf}
-            <span>{text.comingSoon}</span>
-          </button>
-        </div>
-        <ProjectionTable rows={rows} text={text} money={money} variant="full" />
-      </section>
-    </div>
+    <AppModal
+      open
+      title={text.fullTableTitle}
+      subtitle={text.previewCount(rows.length, rows.length)}
+      closeLabel={text.close}
+      onClose={onClose}
+      size="xl"
+      className="financial-modal"
+      bodyClassName="financial-modal-body"
+    >
+      <div className="financial-modal-actions">
+        <button type="button" className="projection-disabled" disabled aria-disabled="true">
+          <Download size={16} />
+          {text.exportExcel}
+          <span>{text.comingSoon}</span>
+        </button>
+        <button type="button" className="projection-disabled" disabled aria-disabled="true">
+          <Download size={16} />
+          {text.exportPdf}
+          <span>{text.comingSoon}</span>
+        </button>
+      </div>
+      <ProjectionTable rows={rows} text={text} money={money} variant="full" />
+    </AppModal>
   );
 }
 

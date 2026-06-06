@@ -8,7 +8,8 @@ import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 import { PageTabs } from '@/components/layout/PageTabs';
-import { Loader2, Pencil, Trash2, Send, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
+import { AppModal } from '@/components/ui/AppModal';
+import { Loader2, Pencil, Trash2, Send, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics';
 
 /* ─── Types ─── */
@@ -65,6 +66,7 @@ const PROJECT_TEXT = {
     adCalculator: '🎯 حاسبة ميزانية حملة إعلانية',
     close: 'إغلاق',
     newProject: 'مشروع جديد',
+    editProject: 'تعديل المشروع',
     totalProjects: 'إجمالي المشاريع',
     activeProjects: 'المشاريع النشطة',
     totalCapital: 'إجمالي رأس المال',
@@ -87,6 +89,7 @@ const PROJECT_TEXT = {
     adCalculator: '🎯 Ad campaign budget calculator',
     close: 'Close',
     newProject: 'New project',
+    editProject: 'Edit project',
     totalProjects: 'Total projects',
     activeProjects: 'Active projects',
     totalCapital: 'Total capital',
@@ -109,6 +112,7 @@ const PROJECT_TEXT = {
     adCalculator: '🎯 Calculateur de budget publicitaire',
     close: 'Fermer',
     newProject: 'Nouveau projet',
+    editProject: 'Modifier le projet',
     totalProjects: 'Total des projets',
     activeProjects: 'Projets actifs',
     totalCapital: 'Capital total',
@@ -268,7 +272,6 @@ export default function ProjectsPage() {
   const startEdit = (project: Project) => {
     setForm({ name: project.name, emoji: project.emoji, type: project.type, idea: project.idea, capital: project.capital, expectedProfit: project.expectedProfit, currentProfit: project.currentProfit, monthlyExpenses: project.monthlyExpenses, monthlyRevenue: project.monthlyRevenue, startDate: project.startDate, status: project.status, riskLevel: project.riskLevel, needs: project.needs, goal: project.goal, startTimeline: project.startTimeline, notes: project.notes, progress: project.progress, feasibilityTypes: project.feasibilityTypes || [] });
     setEditingId(project.id); setShowForm(true); setFormStep(0);
-    setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
   };
 
   const toggleProgress = async (projectId: string, stepId: string) => {
@@ -373,8 +376,8 @@ export default function ProjectsPage() {
                   {pt.adCalculator}
                 </button>
                 <button className="pbtn pbtn-g" style={{ padding: '11px 22px', fontSize: '14px' }}
-                  onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyForm); setFormStep(0); setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth' }), 100); }}>
-                  {showForm ? <><X className="w-4 h-4" /> {pt.close}</> : <><Plus className="w-4 h-4" /> {pt.newProject}</>}
+                  onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm); setFormStep(0); }}>
+                  <Plus className="w-4 h-4" /> {pt.newProject}
                 </button>
               </div>
             </div>
@@ -408,9 +411,19 @@ export default function ProjectsPage() {
 
           {/* Multi-step form */}
           {showForm && (
-            <div ref={formRef} className="pc" style={{ ...S(60), padding: '30px 34px' }}>
+            <AppModal
+              open={showForm}
+              title={editingId ? pt.editProject : pt.newProject}
+              subtitle={STEP_LABELS[formStep]}
+              closeLabel={pt.close}
+              onClose={() => { setShowForm(false); setEditingId(null); setForm(emptyForm); setFormStep(0); }}
+              size="lg"
+              className="project-modal"
+              bodyClassName="project-modal-body"
+            >
+            <div ref={formRef} className="project-form-modal-content" style={S(60)}>
               <div style={{ marginBottom: '4px', fontSize: '16px', fontWeight: '800', color: 'var(--sfm-foreground)' }}>
-                {editingId ? '✏️ تعديل المشروع' : '➕ مشروع جديد'} — {STEP_LABELS[formStep]}
+                {editingId ? pt.editProject : pt.newProject} — {STEP_LABELS[formStep]}
               </div>
               <div style={{ fontSize: '12px', color: 'var(--sfm-muted)', marginBottom: '20px' }}>الخطوة {formStep + 1} من {STEP_LABELS.length}</div>
               <StepDots step={formStep} total={STEP_LABELS.length} />
@@ -588,6 +601,7 @@ export default function ProjectsPage() {
                 )}
               </div>
             </div>
+            </AppModal>
           )}
 
           {/* Empty state */}

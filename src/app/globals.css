@@ -1938,35 +1938,40 @@ button:disabled,
   overflow: hidden !important;
 }
 
-html:has(:where(.sfm-modal-overlay, .entry-overlay, .documents-modal-backdrop, .tasks-modal-backdrop, .invest-overlay, .business-modal-backdrop, .security-modal-overlay, .ebooks-modal-backdrop, .financial-modal-backdrop, .market-movers-modal-backdrop, .modal-overlay)),
-body:has(:where(.sfm-modal-overlay, .entry-overlay, .documents-modal-backdrop, .tasks-modal-backdrop, .invest-overlay, .business-modal-backdrop, .security-modal-overlay, .ebooks-modal-backdrop, .financial-modal-backdrop, .market-movers-modal-backdrop, .modal-overlay)) {
+html:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-modal-backdrop, .tasks-modal-backdrop, .income-modal-backdrop, .expense-modal-backdrop, .invest-overlay, .business-modal-backdrop, .security-modal-overlay, .ebooks-modal-backdrop, .financial-modal-backdrop, .market-movers-modal-backdrop, .modal-overlay, .debt-modal-backdrop)),
+body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-modal-backdrop, .tasks-modal-backdrop, .income-modal-backdrop, .expense-modal-backdrop, .invest-overlay, .business-modal-backdrop, .security-modal-overlay, .ebooks-modal-backdrop, .financial-modal-backdrop, .market-movers-modal-backdrop, .modal-overlay, .debt-modal-backdrop)) {
   overflow: hidden !important;
 }
 
 .sfm-modal-overlay,
+.modal-backdrop,
 .entry-overlay,
 .documents-modal-backdrop,
 .tasks-modal-backdrop,
+.income-modal-backdrop,
+.expense-modal-backdrop,
 .invest-overlay,
 .business-modal-backdrop,
 .security-modal-overlay,
 .ebooks-modal-backdrop,
 .financial-modal-backdrop,
 .market-movers-modal-backdrop,
-.modal-overlay {
+.modal-overlay,
+.debt-modal-backdrop {
   position: fixed !important;
   inset: 0 !important;
-  width: auto !important;
+  width: 100vw !important;
   min-width: 0 !important;
-  height: auto !important;
+  height: 100dvh !important;
   min-height: 100dvh !important;
   max-width: none !important;
   max-height: none !important;
-  z-index: 9999 !important;
-  display: grid !important;
-  place-items: center !important;
+  margin: 0 !important;
+  transform: none !important;
+  z-index: 9998 !important;
+  display: flex !important;
   align-items: center !important;
-  justify-items: center !important;
+  justify-content: center !important;
   padding: clamp(12px, 2vw, 24px) !important;
   overflow: hidden !important;
   box-sizing: border-box !important;
@@ -1990,11 +1995,19 @@ body:has(:where(.sfm-modal-overlay, .entry-overlay, .documents-modal-backdrop, .
   background: var(--sfm-card) !important;
   color: var(--sfm-foreground) !important;
   box-shadow: 0 28px 90px rgba(3, 18, 37, 0.30) !important;
+  position: relative !important;
+  z-index: 9999 !important;
+  margin: 0 !important;
+  transform: none !important;
 }
 
 .sfm-modal-panel.tasks-modal,
 .sfm-modal-panel.documents-modal,
-.sfm-modal-panel.invest-modal {
+.sfm-modal-panel.invest-modal,
+.sfm-modal-panel.expense-modal,
+.sfm-modal-panel.delete-modal,
+.sfm-modal-panel.project-modal,
+.sfm-modal-panel.financial-modal {
   padding: 0 !important;
 }
 
@@ -2089,18 +2102,22 @@ body:has(:where(.sfm-modal-overlay, .entry-overlay, .documents-modal-backdrop, .
 
 @media (max-width: 760px) {
   .sfm-modal-overlay,
+  .modal-backdrop,
   .entry-overlay,
   .documents-modal-backdrop,
   .tasks-modal-backdrop,
+  .income-modal-backdrop,
+  .expense-modal-backdrop,
   .invest-overlay,
   .business-modal-backdrop,
   .security-modal-overlay,
   .ebooks-modal-backdrop,
   .financial-modal-backdrop,
   .market-movers-modal-backdrop,
-  .modal-overlay {
-    place-items: end center !important;
-    align-items: end !important;
+  .modal-overlay,
+  .debt-modal-backdrop {
+    align-items: flex-end !important;
+    justify-content: center !important;
     padding: 0 !important;
   }
 

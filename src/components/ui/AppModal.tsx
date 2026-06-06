@@ -25,7 +25,7 @@ type AppModalProps = {
 
 const WIDTHS: Record<AppModalSize, string> = {
   sm: '520px',
-  md: '720px',
+  md: '680px',
   lg: '900px',
   xl: '1040px',
 };
@@ -94,18 +94,45 @@ export function AppModal({
 
   if (!mounted || !open) return null;
 
-  const style = { '--sfm-modal-width': WIDTHS[size] } as CSSProperties;
+  const overlayStyle: CSSProperties = {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 9998,
+    width: '100vw',
+    height: '100dvh',
+    maxWidth: 'none',
+    maxHeight: 'none',
+    margin: 0,
+    transform: 'none',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 'clamp(12px, 2vw, 24px)',
+    overflow: 'hidden',
+    isolation: 'isolate',
+    background: 'rgba(3, 18, 37, 0.56)',
+    backdropFilter: 'blur(10px)',
+    WebkitBackdropFilter: 'blur(10px)',
+  };
+  const panelStyle = {
+    '--sfm-modal-width': WIDTHS[size],
+    position: 'relative',
+    zIndex: 9999,
+    margin: 0,
+    transform: 'none',
+  } as CSSProperties;
 
   return createPortal(
     <div
       className="sfm-modal-overlay"
+      style={overlayStyle}
       role="presentation"
       onMouseDown={closeOnBackdrop ? onClose : undefined}
     >
       <div
         ref={panelRef}
         className={`sfm-modal-panel ${className}`.trim()}
-        style={style}
+        style={panelStyle}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

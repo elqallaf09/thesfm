@@ -44,6 +44,7 @@ import {
   type ProjectTasksSummary,
 } from '@/components/projects/ProjectTasksTab';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { AppModal } from '@/components/ui/AppModal';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -2257,22 +2258,29 @@ export default function ProjectWorkspacePage() {
       </DashboardPageShell>
 
       {projectExpenseOpen ? (
-        <div className="expense-modal-backdrop" role="presentation" onMouseDown={() => setProjectExpenseOpen(false)}>
-          <form className="expense-modal" role="dialog" aria-modal="true" aria-labelledby="project-expense-title" onSubmit={saveProjectExpense} onMouseDown={event => event.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <span>{tr.projectExpenses}</span>
-                <h2 id="project-expense-title">{editingProjectExpenseId ? tr.editProjectExpense : tr.addExpense}</h2>
-                <p>{tr.doNotIncludeInPersonalBudget}</p>
-              </div>
-              <button type="button" className="icon-button" onClick={() => setProjectExpenseOpen(false)} aria-label={tr.cancel}>
-                <X size={18} />
+        <AppModal
+          open={projectExpenseOpen}
+          title={editingProjectExpenseId ? tr.editProjectExpense : tr.addExpense}
+          subtitle={tr.doNotIncludeInPersonalBudget}
+          closeLabel={tr.cancel}
+          onClose={() => setProjectExpenseOpen(false)}
+          size="md"
+          className="expense-modal"
+          bodyClassName="project-transaction-modal-body"
+          footerClassName="modal-actions"
+          footer={(
+            <>
+              <button type="button" className="secondary-action" onClick={() => setProjectExpenseOpen(false)}>{tr.cancel}</button>
+              <button type="submit" form="project-expense-form" className="primary-save" disabled={projectExpenseSaving}>
+                <Save size={16} />
+                {projectExpenseSaving ? (editingProjectExpenseId ? tr.saveEdit : tr.saveProjectExpense) : (editingProjectExpenseId ? tr.saveEdit : tr.saveProjectExpense)}
               </button>
-            </div>
-
+            </>
+          )}
+        >
             {projectExpenseError ? <div className="modal-error" role="alert">{projectExpenseError}</div> : null}
 
-            <div className="project-expense-form-grid">
+            <form id="project-expense-form" className="project-expense-form-grid" onSubmit={saveProjectExpense}>
               <label className="form-field wide">
                 <span>{tr.expenseName}</span>
                 <input
@@ -2367,36 +2375,34 @@ export default function ProjectWorkspacePage() {
                   <small>{projectExpenseForm.paidFromPersonalBudget ? tr.includeInPersonalBudget : tr.doNotIncludeInPersonalBudget}</small>
                 </span>
               </label>
-            </div>
-
-            <div className="modal-actions">
-              <button type="button" className="secondary-action" onClick={() => setProjectExpenseOpen(false)}>{tr.cancel}</button>
-              <button type="submit" className="primary-save" disabled={projectExpenseSaving}>
-                <Save size={16} />
-                {projectExpenseSaving ? (editingProjectExpenseId ? tr.saveEdit : tr.saveProjectExpense) : (editingProjectExpenseId ? tr.saveEdit : tr.saveProjectExpense)}
-              </button>
-            </div>
-          </form>
-        </div>
+            </form>
+        </AppModal>
       ) : null}
 
       {projectIncomeOpen ? (
-        <div className="expense-modal-backdrop" role="presentation" onMouseDown={() => setProjectIncomeOpen(false)}>
-          <form className="expense-modal" role="dialog" aria-modal="true" aria-labelledby="project-income-title" onSubmit={saveProjectIncome} onMouseDown={event => event.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <span>{tr.projectIncome}</span>
-                <h2 id="project-income-title">{editingProjectIncomeId ? tr.editProjectIncome : tr.addIncome}</h2>
-                <p>{tr.doNotIncludeInPersonalIncome}</p>
-              </div>
-              <button type="button" className="icon-button" onClick={() => setProjectIncomeOpen(false)} aria-label={tr.cancel}>
-                <X size={18} />
+        <AppModal
+          open={projectIncomeOpen}
+          title={editingProjectIncomeId ? tr.editProjectIncome : tr.addIncome}
+          subtitle={tr.doNotIncludeInPersonalIncome}
+          closeLabel={tr.cancel}
+          onClose={() => setProjectIncomeOpen(false)}
+          size="md"
+          className="expense-modal"
+          bodyClassName="project-transaction-modal-body"
+          footerClassName="modal-actions"
+          footer={(
+            <>
+              <button type="button" className="secondary-action" onClick={() => setProjectIncomeOpen(false)}>{tr.cancel}</button>
+              <button type="submit" form="project-income-form" className="primary-save" disabled={projectIncomeSaving}>
+                <Save size={16} />
+                {projectIncomeSaving ? (editingProjectIncomeId ? tr.saveEdit : tr.saveProjectIncome) : (editingProjectIncomeId ? tr.saveEdit : tr.saveProjectIncome)}
               </button>
-            </div>
-
+            </>
+          )}
+        >
             {projectIncomeError ? <div className="modal-error" role="alert">{projectIncomeError}</div> : null}
 
-            <div className="project-expense-form-grid">
+            <form id="project-income-form" className="project-expense-form-grid" onSubmit={saveProjectIncome}>
               <label className="form-field wide">
                 <span>{tr.incomeName}</span>
                 <input
@@ -2490,45 +2496,35 @@ export default function ProjectWorkspacePage() {
                   <small>{projectIncomeForm.transferredToPersonalIncome ? tr.includeInPersonalIncome : tr.doNotIncludeInPersonalIncome}</small>
                 </span>
               </label>
-            </div>
-
-            <div className="modal-actions">
-              <button type="button" className="secondary-action" onClick={() => setProjectIncomeOpen(false)}>{tr.cancel}</button>
-              <button type="submit" className="primary-save" disabled={projectIncomeSaving}>
-                <Save size={16} />
-                {projectIncomeSaving ? (editingProjectIncomeId ? tr.saveEdit : tr.saveProjectIncome) : (editingProjectIncomeId ? tr.saveEdit : tr.saveProjectIncome)}
-              </button>
-            </div>
-          </form>
-        </div>
+            </form>
+        </AppModal>
       ) : null}
 
       {deleteTarget ? (
-        <div className="expense-modal-backdrop" role="presentation" onMouseDown={() => setDeleteTarget(null)}>
-          <section className="delete-modal" role="dialog" aria-modal="true" aria-labelledby="project-transaction-delete-title" onMouseDown={event => event.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <span>{deleteTarget.type === 'income' ? tr.projectIncome : tr.projectExpenses}</span>
-                <h2 id="project-transaction-delete-title">{deleteTarget.type === 'income' ? tr.deleteProjectIncome : tr.deleteProjectExpense}</h2>
-                <p>{deleteTarget.type === 'income' ? tr.deleteProjectIncomeBody : tr.deleteProjectExpenseBody}</p>
-                {(deleteTarget.type === 'income' && deleteTarget.row.personal_income_id) || (deleteTarget.type === 'expense' && deleteTarget.row.personal_expense_id) ? (
-                  <p className="delete-linked-note">{deleteTarget.type === 'income' ? tr.linkedIncomeDeletePrompt : tr.linkedExpenseDeletePrompt}</p>
-                ) : null}
-              </div>
-              <button type="button" className="icon-button" onClick={() => setDeleteTarget(null)} aria-label={tr.cancel}>
-                <X size={18} />
-              </button>
-            </div>
-            {deleteError ? <div className="modal-error" role="alert">{deleteError}</div> : null}
-            <div className="modal-actions">
+        <AppModal
+          open={Boolean(deleteTarget)}
+          title={deleteTarget.type === 'income' ? tr.deleteProjectIncome : tr.deleteProjectExpense}
+          subtitle={deleteTarget.type === 'income' ? tr.deleteProjectIncomeBody : tr.deleteProjectExpenseBody}
+          closeLabel={tr.cancel}
+          onClose={() => setDeleteTarget(null)}
+          size="sm"
+          className="delete-modal"
+          footerClassName="modal-actions"
+          footer={(
+            <>
               <button type="button" className="secondary-action" onClick={() => setDeleteTarget(null)} disabled={deleteSaving}>{tr.cancel}</button>
               <button type="button" className="danger-action" onClick={() => confirmDeleteTransaction(false)} disabled={deleteSaving}>{tr.deleteFromProjectOnly}</button>
               {((deleteTarget.type === 'income' && deleteTarget.row.personal_income_id) || (deleteTarget.type === 'expense' && deleteTarget.row.personal_expense_id)) ? (
                 <button type="button" className="danger-action strong" onClick={() => confirmDeleteTransaction(true)} disabled={deleteSaving}>{tr.deleteFromBothProjectAndPersonalRecords}</button>
               ) : null}
-            </div>
-          </section>
-        </div>
+            </>
+          )}
+        >
+            {((deleteTarget.type === 'income' && deleteTarget.row.personal_income_id) || (deleteTarget.type === 'expense' && deleteTarget.row.personal_expense_id)) ? (
+              <p className="delete-linked-note">{deleteTarget.type === 'income' ? tr.linkedIncomeDeletePrompt : tr.linkedExpenseDeletePrompt}</p>
+            ) : null}
+            {deleteError ? <div className="modal-error" role="alert">{deleteError}</div> : null}
+        </AppModal>
       ) : null}
 
       <style jsx global>{`
