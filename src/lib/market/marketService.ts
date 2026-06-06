@@ -113,6 +113,14 @@ const COMMON_FOREX_PAIRS = ['USDJPY', 'EURUSD', 'GBPUSD', 'USDCHF', 'USDCAD', 'A
 const COMMON_CRYPTO_PAIRS: Record<string, string> = {
   BTCUSD: 'BTC-USD',
   ETHUSD: 'ETH-USD',
+  SOLUSD: 'SOL-USD',
+  XRPUSD: 'XRP-USD',
+  BNBUSD: 'BNB-USD',
+  ADAUSD: 'ADA-USD',
+  DOGEUSD: 'DOGE-USD',
+  TONUSD: 'TON11419-USD',
+  AVAXUSD: 'AVAX-USD',
+  LINKUSD: 'LINK-USD',
 };
 const COMMON_METAL_PAIRS: Record<string, string> = {
   XAUUSD: 'GC=F',

@@ -7,6 +7,14 @@ const ETF_SYMBOLS = new Set(['QQQ', 'SPY', 'VOO', 'DIA', 'IWM']);
 const CRYPTO_PAIRS: Record<string, { display: string; provider: string; alternatives: string[] }> = {
   BTCUSD: { display: 'BTC/USD', provider: 'BTC-USD', alternatives: ['BTC-USD', 'BTC/USD', 'BTCUSD'] },
   ETHUSD: { display: 'ETH/USD', provider: 'ETH-USD', alternatives: ['ETH-USD', 'ETH/USD', 'ETHUSD'] },
+  SOLUSD: { display: 'SOL/USD', provider: 'SOL-USD', alternatives: ['SOL-USD', 'SOL/USD', 'SOLUSD'] },
+  XRPUSD: { display: 'XRP/USD', provider: 'XRP-USD', alternatives: ['XRP-USD', 'XRP/USD', 'XRPUSD'] },
+  BNBUSD: { display: 'BNB/USD', provider: 'BNB-USD', alternatives: ['BNB-USD', 'BNB/USD', 'BNBUSD'] },
+  ADAUSD: { display: 'ADA/USD', provider: 'ADA-USD', alternatives: ['ADA-USD', 'ADA/USD', 'ADAUSD'] },
+  DOGEUSD: { display: 'DOGE/USD', provider: 'DOGE-USD', alternatives: ['DOGE-USD', 'DOGE/USD', 'DOGEUSD'] },
+  TONUSD: { display: 'TON/USD', provider: 'TON11419-USD', alternatives: ['TON11419-USD', 'TON/USD', 'TONUSD'] },
+  AVAXUSD: { display: 'AVAX/USD', provider: 'AVAX-USD', alternatives: ['AVAX-USD', 'AVAX/USD', 'AVAXUSD'] },
+  LINKUSD: { display: 'LINK/USD', provider: 'LINK-USD', alternatives: ['LINK-USD', 'LINK/USD', 'LINKUSD'] },
 };
 const METAL_PAIRS: Record<string, { display: string; provider: string; assetType: MarketAssetType; alternatives: string[] }> = {
   XAUUSD: { display: 'XAU/USD', provider: 'XAUUSD', assetType: 'gold', alternatives: ['XAUUSD', 'XAU/USD', 'GC=F'] },
@@ -82,7 +90,7 @@ export function normalizeMarketSymbol(input: unknown, assetTypeInput?: unknown):
     };
   }
 
-  const cryptoKey = compact === 'BTC' ? 'BTCUSD' : compact === 'ETH' ? 'ETHUSD' : compact;
+  const cryptoKey = compact.length <= 5 ? `${compact}USD` : compact;
   const crypto = CRYPTO_PAIRS[cryptoKey];
   if (crypto) {
     return {
