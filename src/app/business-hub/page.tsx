@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle,
@@ -145,6 +145,7 @@ type FundingProgramRow = {
   country?: string | null;
   region?: string | null;
   provider_name?: string | null;
+  provider_type?: string | null;
   website_url?: string | null;
   contact_email?: string | null;
   contact_phone?: string | null;
@@ -154,14 +155,39 @@ type FundingProgramRow = {
   eligibility_summary_ar?: string | null;
   eligibility_summary_en?: string | null;
   eligibility_summary_fr?: string | null;
+  eligibility_requirements?: unknown;
+  required_documents?: unknown;
   typical_ticket_min?: string | number | null;
   typical_ticket_max?: string | number | null;
+  min_amount?: string | number | null;
+  max_amount?: string | number | null;
   currency?: string | null;
   application_url?: string | null;
+  official_url?: string | null;
   application_deadline?: string | null;
   data_status?: string | null;
   data_source_url?: string | null;
+  is_verified?: boolean | null;
+  source_name?: string | null;
+  business_activity?: string | null;
+  required_readiness_score?: string | number | null;
   notes?: string | null;
+};
+type FundingProgramImportForm = {
+  nameAr: string;
+  nameEn: string;
+  country: string;
+  fundingType: string;
+  providerType: string;
+  currency: string;
+  minAmount: string;
+  maxAmount: string;
+  sourceName: string;
+  officialUrl: string;
+  businessActivity: string;
+  eligibilityRequirements: string;
+  requiredDocuments: string;
+  isVerified: boolean;
 };
 type FundingShortlistRow = {
   id: string;
@@ -1049,7 +1075,11 @@ const FUNDING_DIRECTORY_TEXT = {
     viewDetails: 'عرض التفاصيل',
     applicationLink: 'رابط التقديم',
     noFundingPrograms: 'لا توجد برامج تمويل متاحة حالياً',
-    noFundingProgramsDescription: 'لا توجد برامج تمويل مضافة حالياً. يمكن إضافتها لاحقاً من خلال ملف استيراد موثوق أو لوحة إدارة.',
+    noFundingProgramsDescription: 'لا توجد مصادر تمويل رسمية مربوطة حالياً. أضف برنامجاً موثقاً من الإدارة أو ابحث في المصادر الرسمية قبل عرض أي جهة للمستخدمين.',
+    addFundingProgram: 'إضافة برنامج تمويل',
+    fundingProgramEnglishName: 'اسم البرنامج بالإنجليزية',
+    searchOfficialSources: 'البحث في المصادر الرسمية',
+    fundingCategories: 'فئات تمويل يمكن إضافتها',
     verified: 'موثق',
     pendingReview: 'قيد المراجعة',
     unverified: 'غير موثق',
@@ -1080,7 +1110,28 @@ const FUNDING_DIRECTORY_TEXT = {
     accepted: 'مقبول',
     archived: 'مؤرشف',
     noProjectForShortlist: 'اختر مشروعاً لحفظ خيار التمويل.',
+    projectNotReadyToApply: 'مشروعك غير جاهز للتقديم حالياً',
+    missingProjectRequirements: 'المتطلبات الناقصة',
+    adminImportTitle: 'إضافة برنامج تمويل رسمي',
+    adminImportDescription: 'أدخل برنامجاً موثقاً يدوياً من مصدر رسمي. لن يتم عرض أي مزود غير محفوظ في قاعدة البيانات.',
+    sourceName: 'اسم المصدر أو الجهة',
+    officialUrl: 'الرابط الرسمي',
+    providerType: 'نوع الجهة',
+    businessActivity: 'النشاط المناسب',
+    minAmount: 'أقل مبلغ',
+    maxAmount: 'أعلى مبلغ',
+    eligibilityRequirementsInput: 'متطلبات الأهلية',
+    requiredDocumentsInput: 'المستندات المطلوبة',
+    markAsVerified: 'موثق من مصدر رسمي',
+    fundingProgramSaved: 'تمت إضافة برنامج التمويل.',
+    fundingProgramSaveError: 'تعذر إضافة برنامج التمويل حالياً.',
     selfFunding: 'تمويل ذاتي',
+    smeFinancing: 'تمويل المشاريع الصغيرة والمتوسطة',
+    governmentSupport: 'دعم حكومي',
+    startupGrant: 'منح الشركات الناشئة',
+    investorFunding: 'تمويل المستثمرين',
+    revenueBasedFinancing: 'تمويل مبني على الإيرادات',
+    crowdfunding: 'تمويل جماعي',
     accelerator: 'مسرّعة / حاضنة أعمال',
     incubator: 'حاضنة أعمال',
     grant: 'منحة',
@@ -1105,7 +1156,11 @@ const FUNDING_DIRECTORY_TEXT = {
     viewDetails: 'View details',
     applicationLink: 'Application link',
     noFundingPrograms: 'No funding programs available',
-    noFundingProgramsDescription: 'No funding programs are available yet. They can be added later through a trusted import file or admin panel.',
+    noFundingProgramsDescription: 'No official funding sources are connected yet. Add a verified program from the admin/import section or research official sources before showing providers to users.',
+    addFundingProgram: 'Add funding program',
+    fundingProgramEnglishName: 'Program name in English',
+    searchOfficialSources: 'Search official sources',
+    fundingCategories: 'Funding categories to add',
     verified: 'Verified',
     pendingReview: 'Pending review',
     unverified: 'Unverified',
@@ -1136,7 +1191,28 @@ const FUNDING_DIRECTORY_TEXT = {
     accepted: 'Accepted',
     archived: 'Archived',
     noProjectForShortlist: 'Select a project to save this funding option.',
+    projectNotReadyToApply: 'Your project is not ready to apply yet',
+    missingProjectRequirements: 'Missing project requirements',
+    adminImportTitle: 'Add official funding program',
+    adminImportDescription: 'Enter a manually verified program from an official source. No provider appears unless it is stored in the database.',
+    sourceName: 'Source or provider name',
+    officialUrl: 'Official URL',
+    providerType: 'Provider type',
+    businessActivity: 'Suitable activity',
+    minAmount: 'Minimum amount',
+    maxAmount: 'Maximum amount',
+    eligibilityRequirementsInput: 'Eligibility requirements',
+    requiredDocumentsInput: 'Required documents',
+    markAsVerified: 'Verified from official source',
+    fundingProgramSaved: 'Funding program added.',
+    fundingProgramSaveError: 'Could not add the funding program right now.',
     selfFunding: 'Self-funding',
+    smeFinancing: 'SME financing',
+    governmentSupport: 'Government support',
+    startupGrant: 'Startup grants',
+    investorFunding: 'Investor funding',
+    revenueBasedFinancing: 'Revenue-based financing',
+    crowdfunding: 'Crowdfunding',
     accelerator: 'Accelerator / Incubator',
     incubator: 'Incubator',
     grant: 'Grant',
@@ -1161,7 +1237,11 @@ const FUNDING_DIRECTORY_TEXT = {
     viewDetails: 'Voir les détails',
     applicationLink: 'Lien de candidature',
     noFundingPrograms: 'Aucun programme de financement disponible',
-    noFundingProgramsDescription: 'Aucun programme de financement n’est disponible pour le moment. Ils pourront être ajoutés plus tard via un fichier d’import fiable ou un panneau d’administration.',
+    noFundingProgramsDescription: 'Aucune source de financement officielle n’est connectée pour le moment. Ajoutez un programme vérifié depuis l’import admin ou recherchez les sources officielles avant d’afficher des fournisseurs.',
+    addFundingProgram: 'Ajouter un programme',
+    fundingProgramEnglishName: 'Nom du programme en anglais',
+    searchOfficialSources: 'Rechercher les sources officielles',
+    fundingCategories: 'Catégories de financement à ajouter',
     verified: 'Vérifié',
     pendingReview: 'En cours de révision',
     unverified: 'Non vérifié',
@@ -1192,7 +1272,28 @@ const FUNDING_DIRECTORY_TEXT = {
     accepted: 'Accepté',
     archived: 'Archivé',
     noProjectForShortlist: 'Sélectionnez un projet pour enregistrer cette option.',
+    projectNotReadyToApply: 'Votre projet n’est pas encore prêt à candidater',
+    missingProjectRequirements: 'Exigences manquantes du projet',
+    adminImportTitle: 'Ajouter un programme officiel',
+    adminImportDescription: 'Saisissez un programme vérifié manuellement depuis une source officielle. Aucun fournisseur n’apparaît s’il n’est pas enregistré en base.',
+    sourceName: 'Source ou fournisseur',
+    officialUrl: 'URL officielle',
+    providerType: 'Type de fournisseur',
+    businessActivity: 'Activité adaptée',
+    minAmount: 'Montant minimum',
+    maxAmount: 'Montant maximum',
+    eligibilityRequirementsInput: 'Critères d’éligibilité',
+    requiredDocumentsInput: 'Documents requis',
+    markAsVerified: 'Vérifié depuis une source officielle',
+    fundingProgramSaved: 'Programme de financement ajouté.',
+    fundingProgramSaveError: 'Impossible d’ajouter le programme pour le moment.',
     selfFunding: 'Autofinancement',
+    smeFinancing: 'Financement PME',
+    governmentSupport: 'Soutien gouvernemental',
+    startupGrant: 'Subventions startup',
+    investorFunding: 'Financement investisseurs',
+    revenueBasedFinancing: 'Financement basé sur les revenus',
+    crowdfunding: 'Financement participatif',
     accelerator: 'Accélérateur / Incubateur',
     incubator: 'Incubateur',
     grant: 'Subvention',
@@ -1236,8 +1337,14 @@ const FUNDING_TYPES = [
 ] as const;
 
 const FUNDING_PROGRAM_TYPES = [
-  { value: 'self_funding', labelKey: 'selfFunding' },
   { value: 'bank_loan', labelKey: 'bankLoanDirectory' },
+  { value: 'sme_financing', labelKey: 'smeFinancing' },
+  { value: 'government_support', labelKey: 'governmentSupport' },
+  { value: 'startup_grant', labelKey: 'startupGrant' },
+  { value: 'investor_funding', labelKey: 'investorFunding' },
+  { value: 'revenue_based_financing', labelKey: 'revenueBasedFinancing' },
+  { value: 'crowdfunding', labelKey: 'crowdfunding' },
+  { value: 'self_funding', labelKey: 'selfFunding' },
   { value: 'government_fund', labelKey: 'governmentFundDirectory' },
   { value: 'angel', labelKey: 'angel' },
   { value: 'venture_capital', labelKey: 'ventureCapitalDirectory' },
@@ -1272,6 +1379,23 @@ const emptyFundingDirectoryFilters: FundingDirectoryFilters = {
   fundingType: '',
   dataStatus: '',
   currency: '',
+};
+
+const emptyFundingProgramImportForm: FundingProgramImportForm = {
+  nameAr: '',
+  nameEn: '',
+  country: '',
+  fundingType: 'bank_loan',
+  providerType: '',
+  currency: 'KWD',
+  minAmount: '',
+  maxAmount: '',
+  sourceName: '',
+  officialUrl: '',
+  businessActivity: '',
+  eligibilityRequirements: '',
+  requiredDocuments: '',
+  isVerified: false,
 };
 
 const USE_OF_FUNDS_KEYS: UseOfFundsKey[] = [
@@ -1592,6 +1716,37 @@ function fundingProgramEligibility(program: FundingProgramRow, lang: Lang) {
   return program.eligibility_summary_ar || program.eligibility_summary_en || '';
 }
 
+function fundingArrayText(value: unknown) {
+  if (Array.isArray(value)) return value.map(item => String(item ?? '').trim()).filter(Boolean);
+  if (value && typeof value === 'object') return Object.values(value).map(item => String(item ?? '').trim()).filter(Boolean);
+  if (typeof value === 'string') return value.split(/\r?\n|;/).map(item => item.trim()).filter(Boolean);
+  return [];
+}
+
+function fundingProgramRequirements(program: FundingProgramRow, lang: Lang) {
+  const structured = fundingArrayText(program.eligibility_requirements);
+  if (structured.length) return structured.join(' · ');
+  return fundingProgramEligibility(program, lang);
+}
+
+function fundingProgramDocuments(program: FundingProgramRow) {
+  return fundingArrayText(program.required_documents);
+}
+
+function fundingProgramSource(program: FundingProgramRow, text: Record<string, string>) {
+  return program.source_name || program.provider_name || program.provider_type || text.officialVerificationRequired;
+}
+
+function fundingProgramOfficialUrl(program: FundingProgramRow) {
+  return program.official_url || program.application_url || program.website_url || program.data_source_url || '';
+}
+
+function fundingProgramDataStatus(program: FundingProgramRow) {
+  if (program.is_verified === true) return 'verified';
+  if (program.is_verified === false) return 'unverified';
+  return program.data_status || 'unverified';
+}
+
 function fundingProgramTypeLabel(value: string | null | undefined, text: Record<string, string>) {
   return optionLabel(FUNDING_PROGRAM_TYPES, value || 'other', text) || text.other;
 }
@@ -1614,13 +1769,14 @@ function normalizedFundingPreference(value?: string | null) {
   if (value === 'self_funded') return 'self_funding';
   if (value === 'angel_investor') return 'angel';
   if (value === 'investor_partner') return 'strategic_partner';
+  if (value === 'government_fund') return 'government_support';
+  if (value === 'grant') return 'startup_grant';
   return value || '';
 }
 
 function fundingTicketText(program: FundingProgramRow, text: Record<string, string>, lang: Lang) {
-  if (program.data_status !== 'verified') return text.officialVerificationRequired;
-  const min = toNumber(program.typical_ticket_min);
-  const max = toNumber(program.typical_ticket_max);
+  const min = toNumber(program.min_amount) ?? toNumber(program.typical_ticket_min);
+  const max = toNumber(program.max_amount) ?? toNumber(program.typical_ticket_max);
   const currency = program.currency || 'KWD';
   if (min !== null && max !== null) return `${formatMoney(min, currency, lang)} - ${formatMoney(max, currency, lang)}`;
   if (min !== null) return formatMoney(min, currency, lang);
@@ -1634,10 +1790,13 @@ function programMatchesSearch(program: FundingProgramRow, search: string, lang: 
   const fields = [
     fundingProgramLabel(program, lang),
     program.provider_name,
+    program.provider_type,
+    program.source_name,
     program.country,
     program.region,
+    program.business_activity,
     fundingProgramDescription(program, lang),
-    fundingProgramEligibility(program, lang),
+    fundingProgramRequirements(program, lang),
   ];
   return fields.some(field => String(field ?? '').toLowerCase().includes(value));
 }
@@ -1647,15 +1806,22 @@ function filterFundingPrograms(programs: FundingProgramRow[], filters: FundingDi
     if (!programMatchesSearch(program, filters.search, lang)) return false;
     if (filters.country && program.country !== filters.country) return false;
     if (filters.fundingType && program.funding_type !== filters.fundingType) return false;
-    if (filters.dataStatus && (program.data_status || 'unverified') !== filters.dataStatus) return false;
+    if (filters.dataStatus && fundingProgramDataStatus(program) !== filters.dataStatus) return false;
     if (filters.currency && (program.currency || 'KWD') !== filters.currency) return false;
     return true;
   });
 }
 
-function buildFundingFit(program: FundingProgramRow, selectedProject: ProjectRow | null, readiness: any, fundingRecord: FundingReadinessRow | null, text: Record<string, string>) {
+function buildFundingFit(
+  program: FundingProgramRow,
+  selectedProject: ProjectRow | null,
+  readiness: any,
+  fundingRecord: FundingReadinessRow | null,
+  checklist: Array<{ label: string; status: InvestorItemStatus }>,
+  text: Record<string, string>,
+) {
   if (!selectedProject || !readiness) {
-    return { score: null as number | null, notes: [text.noProjectForShortlist], confirmed: false };
+    return { score: null as number | null, notes: [text.noProjectForShortlist], missing: [] as string[], projectReady: false, confirmed: false };
   }
 
   const notes: string[] = [];
@@ -1667,16 +1833,29 @@ function buildFundingFit(program: FundingProgramRow, selectedProject: ProjectRow
     notes.push(text.officialVerificationRequired);
   }
 
+  const projectActivity = firstText(selectedProject, ['category', 'type', 'project_type', 'business_type', 'industry'], '').toLowerCase();
+  const programActivity = String(program.business_activity || '').toLowerCase();
+  if (projectActivity && programActivity) {
+    score += projectActivity.includes(programActivity) || programActivity.includes(projectActivity) ? 15 : 5;
+  } else if (!programActivity) {
+    score += 6;
+  }
+
   const preferredFundingType = normalizedFundingPreference(fundingRecord?.funding_type);
   if (preferredFundingType && preferredFundingType === program.funding_type) {
     score += 20;
   } else if (!preferredFundingType) {
     notes.push(text.targetFundingType);
+  } else if (
+    preferredFundingType === 'strategic_partner' &&
+    (program.funding_type === 'investor_funding' || program.funding_type === 'venture_capital' || program.funding_type === 'angel')
+  ) {
+    score += 14;
   }
 
   const fundingNeeded = toNumber(fundingRecord?.funding_needed) ?? readiness.capitalAmount ?? null;
-  const min = program.data_status === 'verified' ? toNumber(program.typical_ticket_min) : null;
-  const max = program.data_status === 'verified' ? toNumber(program.typical_ticket_max) : null;
+  const min = toNumber(program.min_amount) ?? toNumber(program.typical_ticket_min);
+  const max = toNumber(program.max_amount) ?? toNumber(program.typical_ticket_max);
   if (fundingNeeded !== null && (min !== null || max !== null)) {
     const minOk = min === null || fundingNeeded >= min;
     const maxOk = max === null || fundingNeeded <= max;
@@ -1691,9 +1870,19 @@ function buildFundingFit(program: FundingProgramRow, selectedProject: ProjectRow
   if (readiness.documents) score += 5;
   if (readiness.useOfFundsStatus === 'complete') score += 5;
 
-  const confirmed = program.data_status === 'verified' && notes.length === 0;
+  const requiredReadiness = toNumber(program.required_readiness_score) ?? 70;
+  const readinessScore = toNumber(readiness.fundingScore) ?? toNumber(readiness.score) ?? 0;
+  const missing = checklist.filter(item => item.status !== 'complete').map(item => item.label);
+  const projectReady = readinessScore >= requiredReadiness && missing.length === 0;
+  if (readinessScore < requiredReadiness || missing.length > 0) {
+    notes.push(text.projectNotReadyToApply);
+  } else {
+    score += 10;
+  }
+
+  const confirmed = fundingProgramDataStatus(program) === 'verified' && notes.length === 0;
   if (!confirmed) notes.unshift(text.fitCannotBeConfirmed);
-  return { score: clampScore(score), notes: Array.from(new Set(notes)).slice(0, 4), confirmed };
+  return { score: clampScore(score), notes: Array.from(new Set(notes)).slice(0, 4), missing, projectReady, confirmed };
 }
 
 function buildFundingApplicationChecklist(readiness: any, modules: ModuleRows, fundingRecord: FundingReadinessRow | null, text: Record<string, string>) {
@@ -2163,6 +2352,10 @@ export default function BusinessHubPage() {
   const [fundingDirectoryMessage, setFundingDirectoryMessage] = useState('');
   const [selectedFundingProgramId, setSelectedFundingProgramId] = useState('');
   const [shortlistSavingId, setShortlistSavingId] = useState('');
+  const [fundingProgramsReloadKey, setFundingProgramsReloadKey] = useState(0);
+  const [fundingImportForm, setFundingImportForm] = useState<FundingProgramImportForm>(emptyFundingProgramImportForm);
+  const [savingFundingProgram, setSavingFundingProgram] = useState(false);
+  const [fundingImportMessage, setFundingImportMessage] = useState('');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -2286,7 +2479,7 @@ export default function BusinessHubPage() {
     async function loadFundingPrograms() {
       const db = supabase as any;
       const { data, error } = await db
-        .from('business_funding_programs')
+        .from('funding_programs')
         .select('*')
         .eq('is_active', true)
         .order('created_at', { ascending: false })
@@ -2304,7 +2497,7 @@ export default function BusinessHubPage() {
     return () => {
       cancelled = true;
     };
-  }, [text.loadError]);
+  }, [fundingProgramsReloadKey, text.loadError]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2618,6 +2811,49 @@ export default function BusinessHubPage() {
       setJurisdictionMessage(text.assessmentSaved);
     }
     setSavingJurisdiction(false);
+  };
+
+  const saveFundingProgramImport = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (savingFundingProgram) return;
+    setSavingFundingProgram(true);
+    setFundingImportMessage('');
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (sessionData.session?.access_token) {
+        headers.Authorization = `Bearer ${sessionData.session.access_token}`;
+      }
+      const response = await fetch('/api/funding-programs/admin', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          name_ar: fundingImportForm.nameAr,
+          name_en: fundingImportForm.nameEn,
+          country: fundingImportForm.country,
+          funding_type: fundingImportForm.fundingType,
+          provider_type: fundingImportForm.providerType,
+          currency: fundingImportForm.currency,
+          min_amount: fundingImportForm.minAmount,
+          max_amount: fundingImportForm.maxAmount,
+          source_name: fundingImportForm.sourceName,
+          official_url: fundingImportForm.officialUrl,
+          business_activity: fundingImportForm.businessActivity,
+          eligibility_requirements: fundingImportForm.eligibilityRequirements,
+          required_documents: fundingImportForm.requiredDocuments,
+          is_verified: fundingImportForm.isVerified,
+        }),
+      });
+      const result = await response.json().catch(() => null) as { ok?: boolean; code?: string } | null;
+      if (!response.ok || !result?.ok) throw new Error(result?.code || 'save_failed');
+      setFundingImportForm(emptyFundingProgramImportForm);
+      setFundingImportMessage(text.fundingProgramSaved);
+      setFundingProgramsReloadKey(value => value + 1);
+    } catch {
+      setFundingImportMessage(text.fundingProgramSaveError);
+    } finally {
+      setSavingFundingProgram(false);
+    }
   };
 
   const saveFundingProgramToShortlist = async (program: FundingProgramRow) => {
@@ -3020,21 +3256,44 @@ export default function BusinessHubPage() {
                       <BookmarkPlus size={28} />
                       <strong>{text.noFundingPrograms}</strong>
                       <p>{text.noFundingProgramsDescription}</p>
+                      <div className="directory-empty-actions">
+                        <a href="#funding-program-import" aria-label={text.addFundingProgram}><BookmarkPlus size={15} /> {text.addFundingProgram}</a>
+                        <a href="https://www.google.com/search?q=official%20SME%20funding%20programs" target="_blank" rel="noreferrer" aria-label={text.searchOfficialSources}><Search size={15} /> {text.searchOfficialSources}</a>
+                      </div>
+                      <div className="directory-category-chips" aria-label={text.fundingCategories}>
+                        {FUNDING_PROGRAM_TYPES.slice(0, 7).map(item => (
+                          <span key={item.value}>{text[item.labelKey]}</span>
+                        ))}
+                      </div>
+                      <div className="directory-missing-list">
+                        <b>{text.missingProjectRequirements}</b>
+                        {fundingApplicationChecklist.filter(item => item.status !== 'complete').length > 0 ? (
+                          <ul>
+                            {fundingApplicationChecklist.filter(item => item.status !== 'complete').map(item => (
+                              <li key={item.label}>{item.label}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p>{selectedProject ? text.readyForReview : text.noProjectSelectedFunding}</p>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <div className="program-grid">
                       {filteredFundingPrograms.map(program => {
                         const shortlist = fundingShortlist.find(item => item.funding_program_id === program.id) ?? null;
-                        const fit = buildFundingFit(program, selectedProject, readiness, fundingRecord, text);
+                        const fit = buildFundingFit(program, selectedProject, readiness, fundingRecord, fundingApplicationChecklist, text);
                         const expanded = selectedFundingProgramId === program.id;
                         const savingThisProgram = shortlistSavingId === program.id;
-                        const programStatus = program.data_status || 'unverified';
+                        const programStatus = fundingProgramDataStatus(program);
+                        const officialUrl = fundingProgramOfficialUrl(program);
+                        const requiredDocuments = fundingProgramDocuments(program);
                         return (
                           <article className="program-card" key={program.id}>
                             <div className="program-card-head">
                               <div>
                                 <h3>{fundingProgramLabel(program, locale)}</h3>
-                                <p>{program.provider_name || text.officialVerificationRequired}</p>
+                                <p>{fundingProgramSource(program, text)}</p>
                               </div>
                               <span className={`status-badge ${fundingDataStatusClass(programStatus)}`}>{fundingDataStatusLabel(programStatus, text)}</span>
                             </div>
@@ -3052,10 +3311,18 @@ export default function BusinessHubPage() {
                                 <p>{fit.confirmed ? text.verified : (fit.notes[0] || text.fitCannotBeConfirmed)}</p>
                               </div>
                             )}
+                            {selectedProject && !fit.projectReady && fit.missing.length > 0 && (
+                              <div className="project-not-ready-box">
+                                <strong>{text.projectNotReadyToApply}</strong>
+                                <ul>
+                                  {fit.missing.map(item => <li key={item}>{item}</li>)}
+                                </ul>
+                              </div>
+                            )}
                             <div className="program-actions">
                               <button type="button" onClick={() => setSelectedFundingProgramId(expanded ? '' : program.id)} aria-label={text.viewDetails}>{text.viewDetails}</button>
-                              {program.application_url ? (
-                                <a href={program.application_url} target="_blank" rel="noreferrer" aria-label={text.applicationLink}>{text.applicationLink} <ArrowRight size={14} /></a>
+                              {officialUrl ? (
+                                <a href={officialUrl} target="_blank" rel="noreferrer" aria-label={text.applicationLink}>{text.applicationLink} <ArrowRight size={14} /></a>
                               ) : (
                                 <button type="button" disabled aria-disabled="true" aria-label={text.applicationLink}>{text.applicationLink}</button>
                               )}
@@ -3077,9 +3344,10 @@ export default function BusinessHubPage() {
                             </div>
                             {expanded && (
                               <div className="program-detail">
-                                <p><b>{text.eligibilitySummary}</b><span>{fundingProgramEligibility(program, locale) || text.officialVerificationRequired}</span></p>
+                                <p><b>{text.eligibilitySummary}</b><span>{fundingProgramRequirements(program, locale) || text.officialVerificationRequired}</span></p>
                                 <p><b>{text.description}</b><span>{fundingProgramDescription(program, locale) || text.officialVerificationRequired}</span></p>
-                                <p><b>{text.dataSource}</b><span>{program.data_source_url ? <a href={program.data_source_url} target="_blank" rel="noreferrer">{program.data_source_url}</a> : text.officialVerificationRequired}</span></p>
+                                {requiredDocuments.length > 0 && <p><b>{text.requiredDocumentsInput}</b><span>{requiredDocuments.join(' · ')}</span></p>}
+                                <p><b>{text.dataSource}</b><span>{officialUrl ? <a href={officialUrl} target="_blank" rel="noreferrer">{officialUrl}</a> : text.officialVerificationRequired}</span></p>
                                 {shortlist && <p><b>{text.selectedShortlistStatus}</b><span>{shortlistStatusLabel(shortlist.status, text)}</span></p>}
                               </div>
                             )}
@@ -3108,6 +3376,74 @@ export default function BusinessHubPage() {
                     ))}
                   </div>
                   <p className="trusted-note">{text.fitCannotBeConfirmed}</p>
+                  <div className="funding-admin-import" id="funding-program-import">
+                    <h3>{text.adminImportTitle}</h3>
+                    <p>{text.adminImportDescription}</p>
+                    <form className="funding-admin-form" onSubmit={saveFundingProgramImport}>
+                      <label className="field">
+                        <span>{text.addFundingProgram}</span>
+                        <input value={fundingImportForm.nameAr} onChange={event => setFundingImportForm(prev => ({ ...prev, nameAr: event.target.value }))} placeholder={text.addFundingProgram} required />
+                      </label>
+                      <label className="field">
+                        <span>{text.fundingProgramEnglishName}</span>
+                        <input value={fundingImportForm.nameEn} onChange={event => setFundingImportForm(prev => ({ ...prev, nameEn: event.target.value }))} placeholder={text.fundingProgramEnglishName} />
+                      </label>
+                      <label className="field">
+                        <span>{text.fundingType}</span>
+                        <select value={fundingImportForm.fundingType} onChange={event => setFundingImportForm(prev => ({ ...prev, fundingType: event.target.value }))}>
+                          {FUNDING_PROGRAM_TYPES.slice(0, 7).map(item => <option key={item.value} value={item.value}>{text[item.labelKey]}</option>)}
+                        </select>
+                      </label>
+                      <label className="field">
+                        <span>{text.country}</span>
+                        <input value={fundingImportForm.country} onChange={event => setFundingImportForm(prev => ({ ...prev, country: event.target.value }))} placeholder={text.country} />
+                      </label>
+                      <label className="field">
+                        <span>{text.providerType}</span>
+                        <input value={fundingImportForm.providerType} onChange={event => setFundingImportForm(prev => ({ ...prev, providerType: event.target.value }))} placeholder={text.providerType} />
+                      </label>
+                      <label className="field">
+                        <span>{text.sourceName}</span>
+                        <input value={fundingImportForm.sourceName} onChange={event => setFundingImportForm(prev => ({ ...prev, sourceName: event.target.value }))} placeholder={text.sourceName} />
+                      </label>
+                      <label className="field">
+                        <span>{text.currency}</span>
+                        <input value={fundingImportForm.currency} onChange={event => setFundingImportForm(prev => ({ ...prev, currency: event.target.value.toUpperCase() }))} placeholder="KWD" maxLength={8} />
+                      </label>
+                      <label className="field">
+                        <span>{text.minAmount}</span>
+                        <input type="number" min="0" value={fundingImportForm.minAmount} onChange={event => setFundingImportForm(prev => ({ ...prev, minAmount: event.target.value }))} placeholder="0" />
+                      </label>
+                      <label className="field">
+                        <span>{text.maxAmount}</span>
+                        <input type="number" min="0" value={fundingImportForm.maxAmount} onChange={event => setFundingImportForm(prev => ({ ...prev, maxAmount: event.target.value }))} placeholder="0" />
+                      </label>
+                      <label className="field">
+                        <span>{text.businessActivity}</span>
+                        <input value={fundingImportForm.businessActivity} onChange={event => setFundingImportForm(prev => ({ ...prev, businessActivity: event.target.value }))} placeholder={text.businessActivity} />
+                      </label>
+                      <label className="field wide">
+                        <span>{text.officialUrl}</span>
+                        <input type="url" value={fundingImportForm.officialUrl} onChange={event => setFundingImportForm(prev => ({ ...prev, officialUrl: event.target.value }))} placeholder="https://..." required />
+                      </label>
+                      <label className="field wide">
+                        <span>{text.eligibilityRequirementsInput}</span>
+                        <textarea value={fundingImportForm.eligibilityRequirements} onChange={event => setFundingImportForm(prev => ({ ...prev, eligibilityRequirements: event.target.value }))} rows={3} placeholder={text.eligibilityRequirementsInput} />
+                      </label>
+                      <label className="field wide">
+                        <span>{text.requiredDocumentsInput}</span>
+                        <textarea value={fundingImportForm.requiredDocuments} onChange={event => setFundingImportForm(prev => ({ ...prev, requiredDocuments: event.target.value }))} rows={3} placeholder={text.requiredDocumentsInput} />
+                      </label>
+                      <label className="field checkbox-field wide">
+                        <input type="checkbox" checked={fundingImportForm.isVerified} onChange={event => setFundingImportForm(prev => ({ ...prev, isVerified: event.target.checked }))} />
+                        <span>{text.markAsVerified}</span>
+                      </label>
+                      <button type="submit" disabled={savingFundingProgram}>
+                        {savingFundingProgram ? <Loader2 className="spin" size={15} /> : <BookmarkPlus size={15} />} {text.addFundingProgram}
+                      </button>
+                    </form>
+                    {fundingImportMessage && <p className="form-message">{fundingImportMessage}</p>}
+                  </div>
                 </aside>
               </div>
             </section>
@@ -3640,7 +3976,7 @@ const styles = `
   .planner-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.planner-grid .field:last-child{grid-column:1 / -1}.funds-table{display:grid;gap:9px;margin-top:14px}.fund-row{display:grid;grid-template-columns:minmax(120px,.75fr) repeat(2,minmax(0,1fr));gap:9px;align-items:end;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:15px;padding:10px;min-width:0}.fund-row strong{color:var(--sfm-midnight);line-height:1.35}.fund-row label{display:grid;gap:5px;min-width:0}.fund-row label span{font-size:11px;color:var(--sfm-muted);font-weight:950}.fund-row input{width:100%;min-width:0;border:1px solid rgba(29,140,255,.18);border-radius:12px;background:var(--sfm-card);min-height:38px;padding:0 10px;font:900 12px Tajawal,Arial,sans-serif;outline:none}.fund-row input:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.12)}
   .planner-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.planner-totals p{margin:0;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:15px;padding:12px}.planner-totals span{display:block;color:var(--sfm-muted);font-size:12px;font-weight:950}.planner-totals strong{display:block;margin-top:5px;color:var(--sfm-primary-dark);overflow-wrap:anywhere}.planner-warning{display:flex;align-items:center;gap:7px;margin-top:10px;border:1px solid rgba(154,94,13,.18);background:#FFF7ED;color:#7A4B09;border-radius:14px;padding:10px 12px;font-size:12px;font-weight:950}.field.wide{margin-top:12px}.save-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}.save-row button,.package-actions button{border:0;border-radius:14px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 13px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}.save-row button:disabled,.package-actions button:disabled{opacity:.62;cursor:not-allowed}.form-message{margin:10px 0 0;color:var(--sfm-muted);font-weight:900}
   .funding-side{position:sticky;top:18px}.warning-list{margin:0;padding-inline-start:18px;color:#B91C1C;line-height:1.8;font-weight:900}.missing-box a{color:var(--sfm-primary-hover);font-weight:950;text-decoration:none}.package-actions{display:grid;gap:9px;margin-top:14px}.package-actions a{min-height:42px;border-radius:14px;border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);color:var(--sfm-midnight);text-decoration:none;display:flex;align-items:center;justify-content:center;font-weight:950}.funding-empty{background:var(--sfm-card);border:1px dashed rgba(29,140,255,.24);border-radius:22px;padding:28px;display:grid;place-items:center;text-align:center;color:var(--sfm-muted);gap:8px}.funding-empty svg{color:var(--sfm-primary)}
-  .funding-directory-module{display:grid;gap:14px;min-width:0}.directory-header{background:linear-gradient(135deg,var(--sfm-primary-dark),var(--sfm-midnight) 58%,var(--sfm-card-dark) 145%);color:var(--sfm-card);border-radius:24px;padding:22px;display:flex;justify-content:space-between;gap:16px;align-items:center;min-width:0;overflow:hidden;box-shadow:0 18px 48px rgba(3,18,37,.16)}.directory-header h2{margin:12px 0 8px;font-size:clamp(26px,4vw,40px);font-weight:950}.directory-header p{margin:0;color:rgba(234,246,255,.74);line-height:1.7;font-weight:850}.directory-filters{background:var(--sfm-card);border:1px solid rgba(29,140,255,.14);border-radius:20px;padding:14px;display:grid;grid-template-columns:minmax(220px,1.3fr) repeat(4,minmax(150px,1fr));gap:10px;min-width:0}.search-field{position:relative;min-width:0}.search-field svg{position:absolute;inset-inline-start:12px;top:50%;transform:translateY(-50%);color:var(--sfm-primary)}.search-field input{padding-inline-start:38px!important}.directory-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.34fr);gap:16px;align-items:start;min-width:0}.directory-main,.directory-side{min-width:0}.directory-side{position:sticky;top:18px}.directory-empty{min-height:240px;display:grid;place-items:center;text-align:center;gap:8px;border:1px dashed rgba(29,140,255,.24);background:var(--sfm-light-card);border-radius:18px;padding:24px;color:var(--sfm-muted)}.directory-empty strong{color:var(--sfm-midnight);font-size:18px}.directory-empty p{max-width:560px;margin:0;line-height:1.7;font-weight:850}.program-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-width:0}.program-card{border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);border-radius:18px;padding:14px;display:grid;gap:12px;min-width:0}.program-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.program-card-head h3{margin:0;color:var(--sfm-midnight);font-size:18px;font-weight:950;line-height:1.35;overflow-wrap:anywhere}.program-card-head p{margin:5px 0 0;color:var(--sfm-muted);font-size:12px;font-weight:900}.program-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.program-meta p{margin:0;border:1px solid rgba(29,140,255,.1);background:var(--sfm-card);border-radius:13px;padding:10px;min-width:0}.program-meta span{display:block;color:var(--sfm-muted);font-size:11px;font-weight:950}.program-meta strong{display:block;margin-top:4px;color:var(--sfm-primary-dark);overflow-wrap:anywhere}.directory-warning,.funding-fit-box{border:1px solid rgba(154,94,13,.18);background:#FFF7ED;color:#7A4B09;border-radius:14px;padding:10px 12px;font-size:12px;font-weight:950;line-height:1.6}.directory-warning{display:flex;gap:7px;align-items:flex-start}.funding-fit-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:start}.funding-fit-box p{grid-column:1 / -1;margin:0;color:var(--sfm-muted)}.funding-fit-box span{color:var(--sfm-primary)}.program-actions{display:flex;gap:8px;flex-wrap:wrap}.program-actions button,.program-actions a,.compact-select select{min-height:38px;border-radius:12px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);color:var(--sfm-midnight);padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;text-decoration:none;cursor:pointer}.program-actions button:not(:disabled){background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;border:0}.program-actions button:disabled{opacity:.6;cursor:not-allowed}.compact-select{display:grid;gap:4px}.compact-select span{font-size:10px;color:var(--sfm-muted);font-weight:950}.program-detail{display:grid;gap:8px;border-top:1px solid rgba(29,140,255,.12);padding-top:10px}.program-detail p{margin:0;display:grid;grid-template-columns:minmax(110px,.32fr) minmax(0,1fr);gap:8px;color:var(--sfm-midnight);font-weight:850;line-height:1.6}.program-detail b{color:var(--sfm-primary-hover)}.program-detail span{min-width:0;overflow-wrap:anywhere}.program-detail a{color:var(--sfm-primary-hover)}
+  .funding-directory-module{display:grid;gap:14px;min-width:0}.directory-header{background:linear-gradient(135deg,var(--sfm-primary-dark),var(--sfm-midnight) 58%,var(--sfm-card-dark) 145%);color:var(--sfm-card);border-radius:24px;padding:22px;display:flex;justify-content:space-between;gap:16px;align-items:center;min-width:0;overflow:hidden;box-shadow:0 18px 48px rgba(3,18,37,.16)}.directory-header h2{margin:12px 0 8px;font-size:clamp(26px,4vw,40px);font-weight:950}.directory-header p{margin:0;color:rgba(234,246,255,.74);line-height:1.7;font-weight:850}.directory-filters{background:var(--sfm-card);border:1px solid rgba(29,140,255,.14);border-radius:20px;padding:14px;display:grid;grid-template-columns:minmax(220px,1.3fr) repeat(4,minmax(150px,1fr));gap:10px;min-width:0}.search-field{position:relative;min-width:0}.search-field svg{position:absolute;inset-inline-start:12px;top:50%;transform:translateY(-50%);color:var(--sfm-primary)}.search-field input{padding-inline-start:38px!important}.directory-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.34fr);gap:16px;align-items:start;min-width:0}.directory-main,.directory-side{min-width:0}.directory-side{position:sticky;top:18px}.directory-empty{min-height:240px;display:grid;place-items:center;text-align:center;gap:8px;border:1px dashed rgba(29,140,255,.24);background:var(--sfm-light-card);border-radius:18px;padding:24px;color:var(--sfm-muted)}.directory-empty strong{color:var(--sfm-midnight);font-size:18px}.directory-empty p{max-width:560px;margin:0;line-height:1.7;font-weight:850}.directory-empty-actions{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;margin-top:8px}.directory-empty-actions a{min-height:40px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 13px;text-decoration:none;font:950 12px Tajawal,Arial,sans-serif}.directory-empty-actions a:first-child{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#fff;box-shadow:0 10px 22px rgba(29,140,255,.2)}.directory-empty-actions a:last-child{background:var(--sfm-card);color:var(--sfm-primary-hover);border:1px solid rgba(29,140,255,.18)}.directory-category-chips{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;max-width:720px}.directory-category-chips span{border:1px solid rgba(29,140,255,.14);background:#fff;border-radius:999px;color:var(--sfm-primary-dark);padding:7px 10px;font-size:11px;font-weight:950}.directory-missing-list{width:min(100%,560px);border:1px solid rgba(154,94,13,.18);background:#FFF7ED;border-radius:15px;padding:12px;text-align:initial;color:#7A4B09}.directory-missing-list b{display:block;margin-bottom:6px}.directory-missing-list ul{margin:0;padding-inline-start:18px;display:grid;gap:4px}.directory-missing-list p{margin:0}.program-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-width:0}.program-card{border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);border-radius:18px;padding:14px;display:grid;gap:12px;min-width:0}.program-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.program-card-head h3{margin:0;color:var(--sfm-midnight);font-size:18px;font-weight:950;line-height:1.35;overflow-wrap:anywhere}.program-card-head p{margin:5px 0 0;color:var(--sfm-muted);font-size:12px;font-weight:900}.program-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.program-meta p{margin:0;border:1px solid rgba(29,140,255,.1);background:var(--sfm-card);border-radius:13px;padding:10px;min-width:0}.program-meta span{display:block;color:var(--sfm-muted);font-size:11px;font-weight:950}.program-meta strong{display:block;margin-top:4px;color:var(--sfm-primary-dark);overflow-wrap:anywhere}.directory-warning,.funding-fit-box{border:1px solid rgba(154,94,13,.18);background:#FFF7ED;color:#7A4B09;border-radius:14px;padding:10px 12px;font-size:12px;font-weight:950;line-height:1.6}.directory-warning{display:flex;gap:7px;align-items:flex-start}.funding-fit-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:start}.funding-fit-box p{grid-column:1 / -1;margin:0;color:var(--sfm-muted)}.funding-fit-box span{color:var(--sfm-primary)}.project-not-ready-box{border:1px solid rgba(190,18,60,.14);background:#FFF1F2;color:#9F1239;border-radius:14px;padding:10px 12px;font-size:12px;font-weight:950;line-height:1.6}.project-not-ready-box strong{display:block;margin-bottom:5px}.project-not-ready-box ul{margin:0;padding-inline-start:18px;display:grid;gap:3px}.program-actions{display:flex;gap:8px;flex-wrap:wrap}.program-actions button,.program-actions a,.compact-select select{min-height:38px;border-radius:12px;border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);color:var(--sfm-midnight);padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;text-decoration:none;cursor:pointer}.program-actions button:not(:disabled){background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;border:0}.program-actions button:disabled{opacity:.6;cursor:not-allowed}.compact-select{display:grid;gap:4px}.compact-select span{font-size:10px;color:var(--sfm-muted);font-weight:950}.program-detail{display:grid;gap:8px;border-top:1px solid rgba(29,140,255,.12);padding-top:10px}.program-detail p{margin:0;display:grid;grid-template-columns:minmax(110px,.32fr) minmax(0,1fr);gap:8px;color:var(--sfm-midnight);font-weight:850;line-height:1.6}.program-detail b{color:var(--sfm-primary-hover)}.program-detail span{min-width:0;overflow-wrap:anywhere}.program-detail a{color:var(--sfm-primary-hover)}.funding-admin-import{margin-top:14px;border-top:1px solid rgba(29,140,255,.12);padding-top:14px;display:grid;gap:10px}.funding-admin-import h3{margin:0;color:var(--sfm-midnight);font-size:16px;font-weight:950}.funding-admin-import p{margin:0;color:var(--sfm-muted);font-weight:850;line-height:1.7}.funding-admin-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.funding-admin-form .wide{grid-column:1 / -1}.funding-admin-form textarea{resize:vertical;min-height:78px}.checkbox-field{display:flex!important;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:13px;padding:10px}.checkbox-field input{width:auto!important;min-height:auto!important}.funding-admin-form button[type=submit]{grid-column:1 / -1;border:0;border-radius:14px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#fff;min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}.funding-admin-form button[type=submit]:disabled{opacity:.62;cursor:not-allowed}
   .jurisdiction-module{display:grid;gap:14px;min-width:0}.jurisdiction-header{background:linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark) 58%,var(--sfm-card-dark) 145%);color:var(--sfm-card);border-radius:24px;padding:22px;display:flex;justify-content:space-between;gap:16px;align-items:center;min-width:0;overflow:hidden;box-shadow:0 18px 48px rgba(3,18,37,.16)}.jurisdiction-header h2{margin:12px 0 8px;font-size:clamp(26px,4vw,40px);font-weight:950}.jurisdiction-header p{margin:0;color:rgba(234,246,255,.74);line-height:1.7;font-weight:850}.jurisdiction-stepper{display:flex;gap:8px;overflow-x:auto;padding:2px 1px 8px;scrollbar-width:thin}.jurisdiction-stepper button{flex:0 0 auto;min-height:42px;border-radius:999px;border:1px solid rgba(29,140,255,.18);background:var(--sfm-card);color:var(--sfm-muted);padding:0 12px;display:flex;align-items:center;gap:8px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}.jurisdiction-stepper button span{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover)}.jurisdiction-stepper button.active{background:var(--sfm-midnight);color:var(--sfm-soft-cyan)}.jurisdiction-stepper button.active span{background:var(--sfm-soft-cyan);color:var(--sfm-primary-dark)}.jurisdiction-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(310px,.5fr);gap:16px;align-items:start;min-width:0}.choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-width:0}.choice-grid.wide{grid-column:1 / -1}.choice-pill{border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);border-radius:15px;padding:11px;display:flex;align-items:center;gap:9px;color:var(--sfm-midnight);font-weight:950;min-width:0}.choice-pill input{accent-color:var(--sfm-primary)}.choice-pill span{min-width:0;overflow-wrap:anywhere}.wizard-controls{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.wizard-controls button,.primary-action,.secondary-action{border:0;border-radius:14px;min-height:42px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}.wizard-controls button,.primary-action{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.wizard-controls button:disabled,.primary-action:disabled,.secondary-action:disabled{opacity:.58;cursor:not-allowed}.secondary-action{width:100%;margin-top:10px;background:var(--sfm-light-card);color:var(--sfm-muted);border:1px solid rgba(29,140,255,.14)}.top-match-list{display:grid;gap:9px;margin-top:12px}.top-match-list div{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:14px;padding:10px;min-width:0}.top-match-list strong,.top-match-list span{min-width:0;overflow-wrap:anywhere}.primary-action{width:100%;margin-top:12px}.jurisdiction-results{display:grid;gap:12px}.section-title-row{display:flex;justify-content:space-between;gap:12px;align-items:center}.section-title-row h3{margin:0;color:var(--sfm-midnight);font-size:22px;font-weight:950}.section-title-row span{border-radius:999px;background:#FFF7ED;color:#B45309;padding:7px 10px;font-size:12px;font-weight:950}.jurisdiction-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.jurisdiction-card{background:var(--sfm-card);border:1px solid rgba(29,140,255,.14);border-radius:20px;padding:15px;box-shadow:0 14px 38px rgba(3,18,37,.06);min-width:0}.jurisdiction-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.jurisdiction-card-head h4{margin:0;color:var(--sfm-midnight);font-size:19px;font-weight:950}.jurisdiction-card-head small{display:block;margin-top:4px;color:var(--sfm-muted);font-weight:900}.jurisdiction-card-head strong{font-size:22px;color:var(--sfm-primary)}.jurisdiction-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.jurisdiction-columns div{border:1px solid rgba(29,140,255,.1);background:var(--sfm-light-card);border-radius:14px;padding:10px;min-width:0}.jurisdiction-columns b{display:block;color:var(--sfm-primary-hover);margin-bottom:6px}.jurisdiction-columns ul{margin:0;padding-inline-start:18px;color:var(--sfm-midnight);line-height:1.7;font-weight:850;overflow-wrap:anywhere}.comparison-card{min-width:0}.matrix-scroll{overflow-x:auto;max-width:100%;border-radius:15px;border:1px solid rgba(29,140,255,.12)}.matrix-scroll table{width:100%;min-width:760px;border-collapse:collapse;background:var(--sfm-light-card)}.matrix-scroll th,.matrix-scroll td{text-align:start;border-bottom:1px solid rgba(29,140,255,.1);padding:11px;color:var(--sfm-midnight);font-size:12px;line-height:1.5}.matrix-scroll th{color:var(--sfm-primary-hover);background:rgba(29,140,255,.10);font-weight:950}
   .strategic-documents-module{display:grid;gap:14px;min-width:0}.documents-header{background:linear-gradient(135deg,var(--sfm-primary-dark),var(--sfm-midnight) 62%,var(--sfm-card-dark) 140%);color:var(--sfm-card);border-radius:24px;padding:22px;display:flex;justify-content:space-between;gap:16px;align-items:center;min-width:0;overflow:hidden;box-shadow:0 18px 48px rgba(3,18,37,.14)}.documents-header h2{margin:12px 0 8px;font-size:clamp(26px,4vw,40px);font-weight:950}.documents-header p{margin:0;color:rgba(234,246,255,.72);line-height:1.7;font-weight:850}.documents-header .score-pill{background:rgba(234,246,255,.1);border-color:rgba(167,243,240,.2)}.documents-header .score-pill strong{color:var(--sfm-card)}.documents-header .score-pill span{color:var(--sfm-soft-cyan)}.documents-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.35fr);gap:16px;align-items:start;min-width:0}.documents-main{min-width:0}.document-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-width:0}.strategic-doc-card{border:1px solid rgba(29,140,255,.13);background:var(--sfm-light-card);border-radius:18px;padding:14px;display:grid;gap:11px;min-width:0}.doc-card-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start}.doc-card-head svg{color:var(--sfm-primary)}.doc-card-head h3{margin:0 0 7px;color:var(--sfm-midnight);font-size:17px;font-weight:950;line-height:1.35;overflow-wrap:anywhere}.strategic-doc-card p{margin:0;color:var(--sfm-muted);font-size:12px;font-weight:850;line-height:1.65}.doc-missing{border:1px dashed rgba(29,140,255,.24);background:var(--sfm-card);border-radius:14px;padding:10px;display:grid;gap:8px;min-width:0}.doc-missing strong{color:var(--sfm-primary-hover);font-size:12px}.doc-missing div{display:flex;flex-wrap:wrap;gap:7px}.doc-missing a,.inline-link{border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);text-decoration:none;font-size:11px;font-weight:950;padding:7px 9px}.doc-actions{display:flex;gap:8px;flex-wrap:wrap}.doc-actions a,.doc-actions button,.draft-actions button{border:0;border-radius:13px;min-height:38px;padding:0 11px;display:inline-flex;align-items:center;justify-content:center;background:var(--sfm-card);color:var(--sfm-midnight);border:1px solid rgba(29,140,255,.14);font:950 12px Tajawal,Arial,sans-serif;text-decoration:none;cursor:pointer}.doc-actions button:not(:disabled),.draft-actions button:not(:disabled){background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;border:0}.doc-actions button:disabled,.draft-actions button:disabled{opacity:.62;cursor:not-allowed}.documents-side{position:sticky;top:18px}.dd-list{display:grid;gap:9px}.dd-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:9px;align-items:center;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:14px;padding:10px;min-width:0}.dd-row strong{font-size:13px;color:var(--sfm-midnight);overflow-wrap:anywhere}.dd-row small{font-size:11px;font-weight:950;color:var(--sfm-muted)}.document-vault-summary{display:grid;gap:10px;margin-top:14px}.document-vault-summary p{margin:0;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:15px;padding:12px}.document-vault-summary span{display:block;color:var(--sfm-muted);font-size:12px;font-weight:950}.document-vault-summary strong{display:block;color:var(--sfm-primary-dark);font-size:19px}.category-list{display:grid;gap:7px;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:15px;padding:12px}.category-list strong{font-size:13px}.category-list span{border-bottom:1px solid rgba(29,140,255,.08);padding-bottom:6px}.draft-preview{scroll-margin-top:24px}.draft-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.draft-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.draft-sections section{border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:17px;padding:14px;min-width:0}.draft-sections h3{margin:0 0 8px;color:var(--sfm-midnight);font-size:16px;font-weight:950}.draft-sections ul{margin:0;padding-inline-start:18px;color:var(--sfm-midnight);line-height:1.75;font-weight:850;overflow-wrap:anywhere}
   .hub-grid{display:grid;gap:16px;min-width:0}.hub-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.wizard-layout{grid-template-columns:minmax(0,1.25fr) minmax(320px,.75fr);align-items:start}.warm-card{padding:18px}.card-title{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}.card-title svg{color:var(--sfm-primary);flex:0 0 auto}
@@ -3651,5 +3987,5 @@ const styles = `
   a:focus-visible,button:focus-visible,select:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.18)}
   @media(max-width:1260px){.readiness-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.hub-grid.two,.wizard-layout,.funding-layout,.documents-layout,.jurisdiction-layout,.directory-layout{grid-template-columns:1fr}.wizard-output,.funding-side,.documents-side,.directory-side{position:static}.directory-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:1024px){.business-hub-main{width:100%;max-width:100%;margin-inline-start:0;margin-inline-end:0;padding:calc(84px + env(safe-area-inset-top)) 16px 24px}.business-hero{grid-template-columns:1fr}.hero-actions{justify-content:stretch}.hero-actions a,.hero-actions button{flex:1 1 180px}.selector-panel{grid-template-columns:1fr}.funding-header,.documents-header,.jurisdiction-header,.directory-header{display:grid}.funding-header .score-pill,.documents-header .score-pill{width:100%}.jurisdiction-header .status-badge,.directory-header .status-badge{width:max-content}.program-grid{grid-template-columns:1fr}}
-  @media(max-width:720px){.topbar{align-items:flex-start}.business-hero{border-radius:22px}.hero-actions{display:grid}.hero-actions a,.hero-actions button{width:100%}.readiness-head{display:grid}.score-pill{width:100%}.readiness-grid,.wizard-form,.module-links,.mini-metrics,.planner-grid,.planner-totals,.document-card-grid,.draft-sections,.jurisdiction-cards,.jurisdiction-columns,.choice-grid,.directory-filters,.program-meta{grid-template-columns:1fr}.copilot-panel{grid-template-columns:1fr}.check-row,.document-link,.package-item,.dd-row{grid-template-columns:auto minmax(0,1fr)}.check-row small,.document-link small,.package-item small,.dd-row small{grid-column:2}.fund-row{grid-template-columns:1fr}.jurisdiction-summary p,.program-detail p{grid-template-columns:1fr}.section-title-row,.jurisdiction-card-head,.program-card-head{display:grid}.wizard-controls button,.program-actions button,.program-actions a{flex:1 1 140px}}
+  @media(max-width:720px){.topbar{align-items:flex-start}.business-hero{border-radius:22px}.hero-actions{display:grid}.hero-actions a,.hero-actions button{width:100%}.readiness-head{display:grid}.score-pill{width:100%}.readiness-grid,.wizard-form,.module-links,.mini-metrics,.planner-grid,.planner-totals,.document-card-grid,.draft-sections,.jurisdiction-cards,.jurisdiction-columns,.choice-grid,.directory-filters,.program-meta,.funding-admin-form{grid-template-columns:1fr}.copilot-panel{grid-template-columns:1fr}.check-row,.document-link,.package-item,.dd-row{grid-template-columns:auto minmax(0,1fr)}.check-row small,.document-link small,.package-item small,.dd-row small{grid-column:2}.fund-row{grid-template-columns:1fr}.jurisdiction-summary p,.program-detail p{grid-template-columns:1fr}.section-title-row,.jurisdiction-card-head,.program-card-head{display:grid}.wizard-controls button,.program-actions button,.program-actions a{flex:1 1 140px}}
 `;
