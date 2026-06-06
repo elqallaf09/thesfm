@@ -233,20 +233,25 @@ function StatCard({ label, value, icon }: { label: string; value: ReactNode; ico
 function StatusCard({ item, readyLabel, needsDataLabel }: { item: StatusCardItem; readyLabel: string; needsDataLabel: string }) {
   return (
     <AppCard className="investment-status-card">
-      <div className="status-card-head">
-        <span className="status-icon" aria-hidden="true">{item.icon}</span>
-        <span className={item.ready ? 'status-badge ready' : 'status-badge missing'}>
-          {item.ready ? <CheckCircle2 size={14} aria-hidden="true" /> : <AlertTriangle size={14} aria-hidden="true" />}
-          {item.ready ? readyLabel : needsDataLabel}
-        </span>
+      <div className="investment-status-main">
+        <div className="status-card-head">
+          <span className="status-icon" aria-hidden="true">{item.icon}</span>
+          <span className={item.ready ? 'status-badge ready' : 'status-badge missing'}>
+            {item.ready ? <CheckCircle2 size={14} aria-hidden="true" /> : <AlertTriangle size={14} aria-hidden="true" />}
+            {item.ready ? readyLabel : needsDataLabel}
+          </span>
+        </div>
+        <h2>{item.title}</h2>
+        <p>{item.description}</p>
+        <small>{item.detail}</small>
       </div>
-      <h2>{item.title}</h2>
-      <p>{item.description}</p>
-      <small>{item.detail}</small>
-      <Link className="investment-status-action" href={item.href} aria-label={item.actionLabel}>
-        {item.actionIcon}
-        <span>{item.actionLabel}</span>
-      </Link>
+      <div className="investment-status-footer">
+        <Link className="investment-status-action" href={item.href} aria-label={item.actionLabel}>
+          {item.actionIcon}
+          <span>{item.actionLabel}</span>
+          <ArrowUpRight className="status-action-arrow" size={14} aria-hidden="true" />
+        </Link>
+      </div>
     </AppCard>
   );
 }
@@ -727,11 +732,18 @@ export default function InvestmentOffersPage() {
           grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
         }
         .investment-status-card {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+          height: 100%;
+          min-width: 0;
+        }
+        .investment-status-main {
           display: grid;
           gap: 12px;
           align-content: start;
+          flex: 1 1 auto;
           min-width: 0;
-          grid-template-rows: auto auto auto auto 1fr;
         }
         .status-card-head {
           display: flex;
@@ -795,11 +807,37 @@ export default function InvestmentOffersPage() {
           font-weight: 950;
           overflow-wrap: anywhere;
         }
+        .investment-status-footer {
+          display: flex;
+          align-items: center;
+          justify-content: stretch;
+          margin-top: 16px;
+          padding-top: 14px;
+          border-top: 1px solid rgba(29, 140, 255, .11);
+          min-width: 0;
+        }
         .investment-status-action {
-          width: fit-content;
+          width: 100%;
           max-width: 100%;
-          align-self: end;
-          margin-top: 4px;
+          min-height: 40px;
+          border-radius: 13px;
+          padding-inline: 12px;
+          align-self: auto;
+          margin-top: 0;
+          line-height: 1.2;
+          white-space: nowrap;
+        }
+        .investment-status-action svg {
+          flex: 0 0 auto;
+        }
+        .investment-status-action span {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .status-action-arrow {
+          margin-inline-start: auto;
         }
         @keyframes investment-spin {
           to { transform: rotate(360deg); }
