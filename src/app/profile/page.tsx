@@ -234,7 +234,12 @@ const txt = {
   startDate: { ar: 'تاريخ بداية الاشتراك', en: 'Subscription start', fr: 'Début de l’abonnement' },
   renewalDate: { ar: 'تاريخ التجديد', en: 'Renewal date', fr: 'Date de renouvellement' },
   manageSubscription: { ar: 'إدارة الاشتراك', en: 'Manage subscription', fr: "Gérer l'abonnement" },
-  paymentNeeded: { ar: 'إدارة الاشتراك تحتاج ربط نظام الدفع.', en: 'Subscription management needs a payment system connection.', fr: 'La gestion de l’abonnement nécessite un système de paiement.' },
+  paymentNeeded: { ar: 'الدفع غير متاح حالياً. يرجى المحاولة لاحقاً.', en: 'Payments are not available right now. Please try again later.', fr: 'Le paiement est indisponible pour le moment. Veuillez réessayer plus tard.' },
+  subscriptionPortalIntro: { ar: 'افتح بوابة Stripe لإدارة الخطة، طريقة الدفع، الفواتير، أو إلغاء الاشتراك.', en: 'Open the Stripe portal to manage your plan, payment method, invoices, or cancellation.', fr: 'Ouvrez le portail Stripe pour gérer votre formule, le moyen de paiement, les factures ou l’annulation.' },
+  openSubscriptionPortal: { ar: 'فتح بوابة إدارة الاشتراك', en: 'Open subscription portal', fr: 'Ouvrir le portail d’abonnement' },
+  openingSubscriptionPortal: { ar: 'جاري فتح إدارة الاشتراك...', en: 'Opening subscription portal...', fr: 'Ouverture du portail d’abonnement...' },
+  subscriptionNoActive: { ar: 'لا يوجد اشتراك نشط لهذا الحساب حتى الآن.', en: 'There is no active subscription for this account yet.', fr: 'Aucun abonnement actif n’est associé à ce compte pour le moment.' },
+  subscriptionPortalError: { ar: 'تعذر فتح إدارة الاشتراك. حاول مرة أخرى.', en: 'Could not open subscription management. Please try again.', fr: 'Impossible d’ouvrir la gestion de l’abonnement. Veuillez réessayer.' },
   exportData: { ar: 'تصدير نسخة من بياناتي قبل الحذف', en: 'Export my data before deletion', fr: 'Exporter mes données avant suppression' },
   deleteAccount: { ar: 'حذف الحساب', en: 'Delete account', fr: 'Supprimer le compte' },
   deleteHint: { ar: 'سيتم حذف حسابك وبياناتك المرتبطة نهائياً. لا يمكن التراجع عن هذا الإجراء.', en: 'Your account and related data will be permanently deleted. This action cannot be undone.', fr: 'Votre compte et les données associées seront définitivement supprimés. Cette action est irréversible.' },
@@ -455,6 +460,11 @@ export default function ProfilePage() {
   });
   const [deleteWord, setDeleteWord] = useState('');
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [subscriptionPortal, setSubscriptionPortal] = useState<{ loading: boolean; message: string; tone: 'info' | 'danger' }>({
+    loading: false,
+    message: '',
+    tone: 'info',
+  });
 
   const L = (key: keyof typeof txt) => T(key, lang);
   const authUser = user as (typeof user & { new_email?: string | null; email_change_sent_at?: string | null }) | null;
@@ -864,6 +874,46 @@ export default function ProfilePage() {
     setModal('twoFactor');
   }
 
+  function openSubscriptionModal() {
+    setSubscriptionPortal({ loading: false, message: '', tone: 'info' });
+    setModal('subscription');
+    void openSubscriptionPortal();
+  }
+
+  async function openSubscriptionPortal() {
+    if (subscriptionPortal.loading) return;
+    setSubscriptionPortal({ loading: true, message: '', tone: 'info' });
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (sessionData.session?.access_token) {
+        headers.Authorization = `Bearer ${sessionData.session.access_token}`;
+      }
+
+      const response = await fetch('/api/stripe/create-portal-session', {
+        method: 'POST',
+        headers,
+      });
+      const result = await response.json().catch(() => null) as { ok?: boolean; url?: string; code?: string; message?: string } | null;
+
+      if (response.ok && result?.ok && result.url) {
+        window.location.assign(result.url);
+        return;
+      }
+
+      const message = result?.message || (result?.code === 'NO_ACTIVE_SUBSCRIPTION' ? L('subscriptionNoActive') : L('subscriptionPortalError'));
+      setSubscriptionPortal({
+        loading: false,
+        message,
+        tone: result?.code === 'NO_ACTIVE_SUBSCRIPTION' ? 'info' : 'danger',
+      });
+    } catch (error) {
+      console.error('[profile] Failed to open subscription portal', error);
+      setSubscriptionPortal({ loading: false, message: L('subscriptionPortalError'), tone: 'danger' });
+    }
+  }
+
   async function sendEmailTwoFactorCode(mode: 'enable' | 'disable') {
     if (!user?.email || !isEmail(user.email) || user.email.toLowerCase().endsWith('@smart-finance.local')) {
       setEmailTwoFactor(prev => ({ ...prev, error: L('twoFactorNoEmail'), message: '' }));
@@ -1015,7 +1065,7 @@ export default function ProfilePage() {
 
         <PremiumFeatures labels={{
           title: L('premium'), plan: L('plan'), premium: L('premiumBadge'), start: L('startDate'), renewal: L('renewalDate'), manage: L('manageSubscription'), advancedAi: L('advancedAi'), smartAdvice: L('smartAdvice'), pdf: L('pdf'), protection: L('protection'), sync: L('sync'), goals: L('unlimitedGoals'), reports: L('monthlyReports'), support: L('prioritySupport'),
-        }} onManage={() => setModal('subscription')} />
+        }} onManage={openSubscriptionModal} />
 
         <AccountActivity labels={{ title: L('activity'), today: L('today'), noActivity: L('noActivity') }} items={[L('updatedProfile'), L('addedGoal'), L('addedInvestment'), L('changedLanguage'), L('exportedReport')]} />
 
@@ -1139,7 +1189,23 @@ export default function ProfilePage() {
       </ConfirmationModal>
 
       <ConfirmationModal open={modal === 'subscription'} title={L('manageSubscription')} onClose={() => setModal(null)}>
-        <InfoBox icon={<Crown />} text={L('paymentNeeded')} />
+        <div className="modal-fields">
+          <InfoBox icon={<Crown />} text={L('subscriptionPortalIntro')} />
+          {subscriptionPortal.message && (
+            <div className={`message-inline ${subscriptionPortal.tone === 'danger' ? 'danger' : ''}`}>
+              {subscriptionPortal.message}
+            </div>
+          )}
+          <div className="section-actions">
+            <button className="gold-btn" onClick={() => void openSubscriptionPortal()} disabled={subscriptionPortal.loading}>
+              <Crown size={16} />
+              {subscriptionPortal.loading ? L('openingSubscriptionPortal') : L('openSubscriptionPortal')}
+            </button>
+            <button className="ghost-btn" onClick={() => setModal(null)} disabled={subscriptionPortal.loading}>
+              {L('cancel')}
+            </button>
+          </div>
+        </div>
       </ConfirmationModal>
 
       <ConfirmationModal open={modal === 'delete'} title={L('deleteAccount')} onClose={() => setModal(null)}>

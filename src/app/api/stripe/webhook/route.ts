@@ -1,6 +1,14 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import {
+  type BillingInterval,
+  fetchStripeSubscription,
+  findUserSubscriptionByStripeSubscriptionId,
+  objectId,
+  recordFromStripeSubscription,
+  type SubscriptionPlan,
+  upsertUserSubscription,
+} from '@/lib/server/stripeSubscriptions';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,12 +30,6 @@ function json(data: unknown, init?: ResponseInit) {
 
 function cleanString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
-}
-
-function objectId(value: unknown) {
-  if (typeof value === 'string') return value;
-  if (value && typeof value === 'object' && 'id' in value) return cleanString((value as { id?: unknown }).id);
-  return '';
 }
 
 function verifySignature(rawBody: string, signatureHeader: string | null, secret: string) {
@@ -52,49 +54,110 @@ function verifySignature(rawBody: string, signatureHeader: string | null, secret
   });
 }
 
-async function activateCompanySubscription(session: Record<string, unknown>) {
+function metadataOf(value: Record<string, unknown>) {
+  return value.metadata && typeof value.metadata === 'object'
+    ? value.metadata as Record<string, unknown>
+    : {};
+}
+
+function normalizePlan(value: unknown): SubscriptionPlan | null {
+  const plan = cleanString(value).toLowerCase();
+  return plan === 'premium' || plan === 'company' ? plan : null;
+}
+
+function normalizeBillingInterval(value: unknown): BillingInterval | null {
+  const interval = cleanString(value).toLowerCase();
+  if (interval === 'yearly' || interval === 'year') return 'yearly';
+  if (interval === 'monthly' || interval === 'month') return 'monthly';
+  return null;
+}
+
+async function handleCheckoutCompleted(session: Record<string, unknown>) {
   const metadata = (session.metadata && typeof session.metadata === 'object'
     ? session.metadata
     : {}) as Record<string, unknown>;
   const userId = cleanString(metadata.userId) || cleanString(session.client_reference_id);
-  const plan = cleanString(metadata.plan).toLowerCase();
+  const plan = normalizePlan(metadata.plan);
   const billingInterval = cleanString(metadata.billingInterval).toLowerCase() || 'yearly';
-  if (plan !== 'company' || !userId) return;
-
-  const admin = createServerSupabaseAdmin();
-  if (!admin) throw new Error('Supabase admin client is not configured');
-
-  const record = {
-    user_id: userId,
-    stripe_customer_id: objectId(session.customer) || null,
-    stripe_subscription_id: objectId(session.subscription) || null,
-    plan: 'company',
-    billing_interval: billingInterval === 'monthly' ? 'monthly' : 'yearly',
-    status: 'active',
-    updated_at: new Date().toISOString(),
-  };
-
-  const { data: existing, error: lookupError } = await admin
-    .from('user_subscriptions')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('plan', 'company')
-    .maybeSingle();
-  if (lookupError) throw lookupError;
-
-  if (existing?.id) {
-    const { error } = await admin
-      .from('user_subscriptions')
-      .update(record)
-      .eq('id', existing.id);
-    if (error) throw error;
+  const subscriptionId = objectId(session.subscription);
+  if (!userId || !plan || !subscriptionId) {
+    console.info('[stripe] checkout session skipped subscription sync', {
+      hasUser: Boolean(userId),
+      hasPlan: Boolean(plan),
+      hasSubscription: Boolean(subscriptionId),
+    });
     return;
   }
 
-  const { error } = await admin
-    .from('user_subscriptions')
-    .insert(record);
-  if (error) throw error;
+  const stripeSubscription = await fetchStripeSubscription(subscriptionId);
+  const record = stripeSubscription
+    ? recordFromStripeSubscription(stripeSubscription, {
+      user_id: userId,
+      plan,
+      billing_interval: normalizeBillingInterval(billingInterval) || (plan === 'company' ? 'yearly' : null),
+      stripe_customer_id: objectId(session.customer) || null,
+      stripe_subscription_id: subscriptionId,
+    })
+    : {
+      user_id: userId,
+      stripe_customer_id: objectId(session.customer) || null,
+      stripe_subscription_id: subscriptionId,
+      plan,
+      billing_interval: normalizeBillingInterval(billingInterval) || (plan === 'company' ? 'yearly' : null),
+      status: 'active' as const,
+      current_period_end: null,
+      updated_at: new Date().toISOString(),
+    };
+
+  if (!record) return;
+  await upsertUserSubscription(record);
+  console.info('[stripe] checkout subscription synced', {
+    hasUser: true,
+    hasCustomer: Boolean(record.stripe_customer_id),
+    hasSubscription: Boolean(record.stripe_subscription_id),
+    plan: record.plan,
+    status: record.status,
+  });
+}
+
+async function handleSubscriptionChanged(subscription: Record<string, unknown>, deleted = false) {
+  const subscriptionId = objectId(subscription.id);
+  const existing = subscriptionId ? await findUserSubscriptionByStripeSubscriptionId(subscriptionId) : null;
+  const metadata = metadataOf(subscription);
+  const userId = cleanString(metadata.userId) || existing?.user_id || '';
+  const plan = normalizePlan(metadata.plan) || existing?.plan || null;
+  if (!userId || !plan) {
+    console.info('[stripe] subscription event skipped sync', {
+      hasUser: Boolean(userId),
+      hasPlan: Boolean(plan),
+      hasSubscription: Boolean(subscriptionId),
+      deleted,
+    });
+    return;
+  }
+
+  const fallback = {
+    user_id: userId,
+    plan,
+    billing_interval: normalizeBillingInterval(metadata.billingInterval) || existing?.billing_interval || null,
+    stripe_customer_id: objectId(subscription.customer) || existing?.stripe_customer_id || null,
+    stripe_subscription_id: subscriptionId || existing?.stripe_subscription_id || null,
+    current_period_end: existing?.current_period_end || null,
+    ...(deleted ? { status: 'canceled' as const } : {}),
+  };
+  const record = recordFromStripeSubscription(subscription, fallback);
+
+  if (!record) return;
+  if (deleted) record.status = 'canceled';
+  await upsertUserSubscription(record);
+  console.info('[stripe] subscription state synced', {
+    hasUser: true,
+    hasCustomer: Boolean(record.stripe_customer_id),
+    hasSubscription: Boolean(record.stripe_subscription_id),
+    plan: record.plan,
+    status: record.status,
+    deleted,
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -115,7 +178,13 @@ export async function POST(request: NextRequest) {
 
   try {
     if (event.type === 'checkout.session.completed' && event.data?.object) {
-      await activateCompanySubscription(event.data.object);
+      await handleCheckoutCompleted(event.data.object);
+    }
+    if (event.type === 'customer.subscription.updated' && event.data?.object) {
+      await handleSubscriptionChanged(event.data.object);
+    }
+    if (event.type === 'customer.subscription.deleted' && event.data?.object) {
+      await handleSubscriptionChanged(event.data.object, true);
     }
     return json({ ok: true });
   } catch (error) {

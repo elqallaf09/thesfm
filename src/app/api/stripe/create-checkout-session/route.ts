@@ -101,6 +101,13 @@ export async function POST(request: NextRequest) {
   const expectedPriceId = allowedPriceId(plan, billingInterval);
   const requestedPriceId = cleanString(payload.priceId);
   const requestedPriceKey = cleanString(payload.priceKey);
+  console.info('[stripe] checkout configuration', {
+    secretConfigured: Boolean(secretKey),
+    publishableConfigured: Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY),
+    expectedPriceConfigured: Boolean(expectedPriceId),
+    priceKey: allowedPriceKey(plan, billingInterval),
+    appUrlConfigured: Boolean(process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL),
+  });
   if (!secretKey || !expectedPriceId || !expectedPriceId.startsWith('price_')) {
     return json({ ok: false, code: 'PAYMENT_UNAVAILABLE', message: 'Payment is currently unavailable.' }, { status: 503 });
   }
