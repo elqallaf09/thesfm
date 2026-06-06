@@ -432,6 +432,24 @@ const SECTOR_GUIDES = [
   },
 ];
 
+const DIVIDEND_SYMBOL_NAMES: Record<string, string> = {
+  KO: 'Coca-Cola',
+  PEP: 'PepsiCo',
+  PG: 'Procter & Gamble',
+  KMB: 'Kimberly-Clark',
+  T: 'AT&T',
+  VZ: 'Verizon',
+  SO: 'Southern Company',
+  DUK: 'Duke Energy',
+  NEE: 'NextEra Energy',
+  XOM: 'Exxon Mobil',
+  CVX: 'Chevron',
+  JNJ: 'Johnson & Johnson',
+  PFE: 'Pfizer',
+  ABBV: 'AbbVie',
+  O: 'Realty Income',
+};
+
 const FEATURED_META: Record<string, { sector: Record<LangCode, string>; body: Record<LangCode, string> }> = {
   JNJ: {
     sector: { ar: 'الرعاية الصحية', en: 'Healthcare', fr: 'Santé' },
@@ -681,17 +699,19 @@ function DividendTicker({
   items,
   loading,
   error,
+  lang,
   text,
   locale,
 }: {
   items: DividendTickerItem[];
   loading: boolean;
   error: string;
+  lang: LangCode;
   text: typeof TEXT[LangCode];
   locale: string;
 }) {
   return (
-    <section className={styles.tickerPanel} aria-label={text.tickerTitle}>
+    <section className={`${styles.tickerPanel} ${styles.compactTickerPanel}`} aria-label={text.tickerTitle}>
       <PanelTitle icon={Coins} title={text.tickerTitle} subtitle={text.tickerSubtitle} />
       {loading ? (
         <div className={styles.tickerSkeletonRow} aria-hidden="true">
@@ -711,7 +731,7 @@ function DividendTicker({
                         <div>
                           <strong dir="ltr">{item.symbol}</strong>
                           <span>{item.name}</span>
-                          <span dir="ltr">{text.yieldShort}: {formatDividendPercent(item.dividendYield, locale)}</span>
+                          <span>{FEATURED_META[item.symbol]?.sector[lang] ?? text.unavailable}</span>
                         </div>
                         <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
                         <em className={styles[tone]} dir="ltr">{formatPercent(item.changePercent, locale)}</em>
@@ -1109,12 +1129,28 @@ function FeaturedStocks({
         ) : FEATURED_SYMBOLS.map(symbol => {
           const quote = bySymbol.get(symbol);
           const tone = changeTone(quote?.changePercent);
+          const fallbackName = DIVIDEND_SYMBOL_NAMES[symbol] ?? symbol;
+          const displayName = quote?.name ?? fallbackName;
+          const marketHref = `/market-analysis?symbol=${encodeURIComponent(symbol)}`;
           return (
             <article className={styles.sectorCard} key={symbol}>
               <span className={styles.sectorIcon}><PiggyBank size={21} /></span>
-              <h3>{quote?.name ?? symbol}</h3>
+              <h3>
+                <a className={styles.cardTitleLink} href={marketHref} title={`${displayName} · ${symbol}`}>
+                  {displayName}
+                </a>
+              </h3>
               <div className={styles.symbolChips}>
-                <span dir="ltr">{symbol}</span>
+                <a
+                  href={marketHref}
+                  title={`${displayName} · ${symbol}`}
+                  aria-label={`${displayName} ${symbol}`}
+                  dir="ltr"
+                >
+                  <span className={styles.symbolCompany}>{displayName}</span>
+                  <span className={styles.symbolDivider} aria-hidden="true">·</span>
+                  <strong>{symbol}</strong>
+                </a>
                 <span>{FEATURED_META[symbol]?.sector[lang] ?? text.unavailable}</span>
               </div>
               <p>{FEATURED_META[symbol]?.body[lang] ?? text.unavailable}</p>
@@ -1134,10 +1170,6 @@ function FeaturedStocks({
               ) : (
                 <p>{text.unavailable}</p>
               )}
-              <a href={`/market-analysis?symbol=${encodeURIComponent(symbol)}`}>
-                {text.details}
-                <ArrowUpRight size={14} />
-              </a>
             </article>
           );
         })}
@@ -1195,11 +1227,9 @@ function DividendEventsWidget({
 function SectorGuide({
   lang,
   text,
-  onSelect,
 }: {
   lang: LangCode;
   text: typeof TEXT[LangCode];
-  onSelect: (filter: DividendFilterId) => void;
 }) {
   return (
     <section className={styles.sectorGuidePanel} aria-label={text.sectorGuideTitle}>
@@ -1213,12 +1243,23 @@ function SectorGuide({
               <h3>{sector.title[lang]}</h3>
               <p>{sector.body[lang]}</p>
               <div className={styles.symbolChips} aria-label={text.examples}>
-                {sector.symbols.map(symbol => <span key={symbol} dir="ltr">{symbol}</span>)}
+                {sector.symbols.map(symbol => {
+                  const name = DIVIDEND_SYMBOL_NAMES[symbol] ?? symbol;
+                  return (
+                    <a
+                      key={symbol}
+                      href={`/market-analysis?symbol=${encodeURIComponent(symbol)}`}
+                      title={`${name} · ${symbol}`}
+                      aria-label={`${name} ${symbol}`}
+                      dir="ltr"
+                    >
+                      <span className={styles.symbolCompany}>{name}</span>
+                      <span className={styles.symbolDivider} aria-hidden="true">·</span>
+                      <strong>{symbol}</strong>
+                    </a>
+                  );
+                })}
               </div>
-              <button type="button" onClick={() => onSelect(sector.id)}>
-                {text.viewMore}
-                <ArrowUpRight size={14} />
-              </button>
             </article>
           );
         })}
@@ -1361,7 +1402,7 @@ export function DividendStocksNewsPage() {
             </div>
           </header>
 
-          <DividendTicker items={tickerItems} loading={loading} error={marketError} text={text} locale={locale} />
+          <DividendTicker items={tickerItems} loading={loading} error={marketError} lang={activeLang} text={text} locale={locale} />
 
           <section className={styles.summaryGrid} aria-label={text.sectorTitle}>
             <WhatDividendCard text={text} />
@@ -1396,10 +1437,6 @@ export function DividendStocksNewsPage() {
           <SectorGuide
             lang={activeLang}
             text={text}
-            onSelect={filter => {
-              setActiveFilter(filter);
-              setVisibleCount(NEWS_PAGE_SIZE);
-            }}
           />
 
           <section className={styles.disclaimer}>

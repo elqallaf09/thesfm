@@ -1306,6 +1306,28 @@
   text-decoration: none;
 }
 
+.sectorCard .cardTitleLink {
+  justify-self: auto;
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  font: inherit;
+  line-height: inherit;
+  text-decoration: none;
+}
+
+.sectorCard .cardTitleLink:hover,
+.sectorCard .cardTitleLink:focus-visible {
+  outline: none;
+  color: #0e7490;
+  filter: none;
+  box-shadow: none;
+}
+
 .symbolChips a {
   justify-self: auto;
   min-height: auto;
