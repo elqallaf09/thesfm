@@ -1635,16 +1635,6 @@ export default function MarketAnalysisPage() {
         }
       }
       if (!result) throw new Error(t('market_analysis_unavailable'));
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Market analysis source:', {
-          symbol: displaySymbol,
-          source: result.success ? result.source : null,
-          fallback: result.success ? result.fallback : null,
-          fallbackReason: result.success ? result.fallbackReason : null,
-          cached: result.success ? result.cached : null,
-          dataStatus: result.success ? result.dataStatus : result.dataStatus,
-        });
-      }
       if (!result.success) {
         const publicCode = normalizePublicMarketErrorCode(result.code);
         const symbolIssue = publicCode === 'INVALID_SYMBOL';
@@ -3652,6 +3642,88 @@ export default function MarketAnalysisPage() {
           max-width: 1400px;
           min-width: 0;
           margin-inline: auto;
+        }
+
+        .market-hero {
+          position: relative !important;
+          z-index: 5 !important;
+          isolation: isolate;
+        }
+
+        .market-hero:before {
+          z-index: 0;
+          pointer-events: none;
+        }
+
+        .market-hero-copy,
+        .market-hero-card,
+        .market-search-panel {
+          position: relative;
+          z-index: 2;
+        }
+
+        .market-search-field,
+        .market-search-combobox,
+        .market-search-results {
+          isolation: isolate;
+        }
+
+        .market-status-grid,
+        .market-status-banner,
+        .market-active-dashboard,
+        .market-layout {
+          position: relative;
+          z-index: 1;
+          isolation: isolate;
+        }
+
+        .market-panel.market-chart,
+        .market-chart,
+        .price-history-chart,
+        .market-chart .levels-strip,
+        .levels-bar {
+          position: relative !important;
+          isolation: isolate;
+          overflow: hidden !important;
+          contain: paint;
+        }
+
+        .market-chart .market-section-head,
+        .market-chart-controls,
+        .price-history-chart > * {
+          position: relative;
+          z-index: 1;
+        }
+
+        .price-history-chart svg {
+          display: block;
+          width: 100%;
+          max-width: 100%;
+          overflow: hidden !important;
+          contain: paint;
+        }
+
+        .price-chart-tooltip {
+          z-index: 4;
+          max-width: min(260px, calc(100% - 24px));
+          max-height: calc(100% - 24px);
+          overflow: hidden;
+        }
+
+        .levels-strip-labels,
+        .levels-strip-labels > span {
+          min-width: 0;
+        }
+
+        .levels-bar > span {
+          max-width: calc(100% - 16px);
+          z-index: 1;
+        }
+
+        .levels-bar em {
+          max-width: 128px;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .market-active-dashboard {
@@ -13314,6 +13386,7 @@ function PriceHistoryChart({
   const lineGradientId = `${chartId}-price-line`;
   const areaGradientId = `${chartId}-price-area`;
   const clipPathId = `${chartId}-price-clip`;
+  const viewportClipPathId = `${chartId}-price-viewport-clip`;
 
   type ChartPoint = {
     date: string;
@@ -13519,115 +13592,120 @@ function PriceHistoryChart({
               <clipPath id={clipPathId}>
                 <rect x={chartLeft} y={chartTop} width={chartRight - chartLeft} height={chartBottom - chartTop} rx="8" />
               </clipPath>
+              <clipPath id={viewportClipPathId}>
+                <rect x="0" y="0" width={width} height={height} rx="12" />
+              </clipPath>
             </defs>
-            {[0, 1, 2, 3, 4].map(index => {
-              const y = chartTop + (index / 4) * (chartBottom - chartTop);
-              return <line key={`h-${index}`} x1={chartLeft} x2={chartRight} y1={y} y2={y} className="price-chart-grid-line" />;
-            })}
-            {Array.from({ length: verticalGridCount }, (_, index) => index).map(index => {
-              const x = chartLeft + (index / Math.max(verticalGridCount - 1, 1)) * (chartRight - chartLeft);
-              return <line key={`v-${index}`} x1={x} x2={x} y1={chartTop} y2={chartBottom} className="price-chart-grid-line vertical" />;
-            })}
-            {axisValues.map((value, index) => {
-              const y = yFor(value);
-              return (
-                <text key={`axis-${index}`} x={axisRight} y={y} className="price-chart-y-label" textAnchor="end" dominantBaseline="middle">
-                  {chartMoney(value)}
-                </text>
-              );
-            })}
-            {xLabelIndices.map(index => {
-              const point = activePoints[index];
-              if (!point) return null;
-              const x = xFor(index);
-              return (
-                <text key={`x-axis-${point.date}-${index}`} x={x} y={height - 12} className="price-chart-x-label" textAnchor="middle">
-                  {formatChartTimestamp(point.date, locale, timeframe)}
-                </text>
-              );
-            })}
-            <g clipPath={`url(#${clipPathId})`}>
+            <g clipPath={`url(#${viewportClipPathId})`}>
+              {[0, 1, 2, 3, 4].map(index => {
+                const y = chartTop + (index / 4) * (chartBottom - chartTop);
+                return <line key={`h-${index}`} x1={chartLeft} x2={chartRight} y1={y} y2={y} className="price-chart-grid-line" />;
+              })}
+              {Array.from({ length: verticalGridCount }, (_, index) => index).map(index => {
+                const x = chartLeft + (index / Math.max(verticalGridCount - 1, 1)) * (chartRight - chartLeft);
+                return <line key={`v-${index}`} x1={x} x2={x} y1={chartTop} y2={chartBottom} className="price-chart-grid-line vertical" />;
+              })}
+              {axisValues.map((value, index) => {
+                const y = yFor(value);
+                return (
+                  <text key={`axis-${index}`} x={axisRight} y={y} className="price-chart-y-label" textAnchor="end" dominantBaseline="middle">
+                    {chartMoney(value)}
+                  </text>
+                );
+              })}
+              {xLabelIndices.map(index => {
+                const point = activePoints[index];
+                if (!point) return null;
+                const x = xFor(index);
+                return (
+                  <text key={`x-axis-${point.date}-${index}`} x={x} y={height - 12} className="price-chart-x-label" textAnchor="middle">
+                    {formatChartTimestamp(point.date, locale, timeframe)}
+                  </text>
+                );
+              })}
+              <g clipPath={`url(#${clipPathId})`}>
+                {levelLines.map(level => {
+                  const y = yFor(level.value);
+                  return (
+                    <g key={`level-${level.key}`} className={`price-chart-level ${level.className}`}>
+                      <line x1={chartLeft} x2={chartRight} y1={y} y2={y} />
+                      <title>{`${level.label}: ${chartMoney(level.value)}`}</title>
+                    </g>
+                  );
+                })}
+                {chartType === 'area' && areaPath ? <path d={areaPath} className="price-chart-area-path" fill={`url(#${areaGradientId})`} /> : null}
+                {(chartType === 'line' || chartType === 'area') ? (
+                  <>
+                    <path d={path} className="price-chart-line-path" stroke={`url(#${lineGradientId})`} />
+                    {last ? <circle cx={xFor(activePoints.length - 1)} cy={yFor(last.close)} r="4.2" className="price-chart-last-dot" /> : null}
+                  </>
+                ) : null}
+                {chartType === 'candlestick' ? ohlcPoints.map((point, index) => {
+                  const x = xFor(index);
+                  const bullish = point.close >= point.open;
+                  const openY = yFor(point.open);
+                  const closeY = yFor(point.close);
+                  const bodyTop = Math.min(openY, closeY);
+                  const bodyHeight = Math.max(2, Math.abs(closeY - openY));
+                  return (
+                    <g key={`${point.date}-candle-${index}`} className={bullish ? 'price-candle up' : 'price-candle down'}>
+                      <line x1={x} x2={x} y1={yFor(point.high)} y2={yFor(point.low)} className="price-candle-wick" />
+                      <rect x={x - candleWidth / 2} y={bodyTop} width={candleWidth} height={bodyHeight} rx={Math.min(3, candleWidth / 2)} className="price-candle-body" />
+                      <title>{[
+                        `${t('market_time')}: ${formatChartTimestamp(point.date, locale, timeframe)}`,
+                        `${t('market_open')}: ${chartMoney(point.open)}`,
+                        `${t('market_high')}: ${chartMoney(point.high)}`,
+                        `${t('market_low')}: ${chartMoney(point.low)}`,
+                        `${t('market_close')}: ${chartMoney(point.close)}`,
+                        point.volume !== null ? `${t('market_volume')}: ${Number(point.volume).toLocaleString('en-US')}` : '',
+                      ].filter(Boolean).join('\n')}</title>
+                    </g>
+                  );
+                }) : null}
+                {chartType === 'ohlc' ? ohlcPoints.map((point, index) => {
+                  const x = xFor(index);
+                  const bullish = point.close >= point.open;
+                  return (
+                    <g key={`${point.date}-ohlc-${index}`} className={bullish ? 'price-ohlc up' : 'price-ohlc down'}>
+                      <line x1={x} x2={x} y1={yFor(point.high)} y2={yFor(point.low)} className="price-ohlc-line" />
+                      <line x1={x - tickWidth} x2={x} y1={yFor(point.open)} y2={yFor(point.open)} className="price-ohlc-tick" />
+                      <line x1={x} x2={x + tickWidth} y1={yFor(point.close)} y2={yFor(point.close)} className="price-ohlc-tick" />
+                      <title>{[
+                        `${t('market_time')}: ${formatChartTimestamp(point.date, locale, timeframe)}`,
+                        `${t('market_open')}: ${chartMoney(point.open)}`,
+                        `${t('market_high')}: ${chartMoney(point.high)}`,
+                        `${t('market_low')}: ${chartMoney(point.low)}`,
+                        `${t('market_close')}: ${chartMoney(point.close)}`,
+                        point.volume !== null ? `${t('market_volume')}: ${Number(point.volume).toLocaleString('en-US')}` : '',
+                      ].filter(Boolean).join('\n')}</title>
+                    </g>
+                  );
+                }) : null}
+                {hoveredPoint ? (
+                  <g className="price-chart-crosshair">
+                    <line x1={tooltipX} x2={tooltipX} y1={chartTop} y2={chartBottom} />
+                    <circle cx={tooltipX} cy={tooltipY} r="4" />
+                  </g>
+                ) : null}
+              </g>
               {levelLines.map(level => {
                 const y = yFor(level.value);
                 return (
-                  <g key={`level-${level.key}`} className={`price-chart-level ${level.className}`}>
-                    <line x1={chartLeft} x2={chartRight} y1={y} y2={y} />
-                    <title>{`${level.label}: ${chartMoney(level.value)}`}</title>
-                  </g>
+                  <text key={`level-label-${level.key}`} x={axisRight} y={y} className={`price-chart-level-label ${level.className}`} textAnchor="end" dominantBaseline="middle">
+                    {chartMoney(level.value)}
+                  </text>
                 );
               })}
-              {chartType === 'area' && areaPath ? <path d={areaPath} className="price-chart-area-path" fill={`url(#${areaGradientId})`} /> : null}
-              {(chartType === 'line' || chartType === 'area') ? (
-                <>
-                  <path d={path} className="price-chart-line-path" stroke={`url(#${lineGradientId})`} />
-                  {last ? <circle cx={xFor(activePoints.length - 1)} cy={yFor(last.close)} r="4.2" className="price-chart-last-dot" /> : null}
-                </>
-              ) : null}
-              {chartType === 'candlestick' ? ohlcPoints.map((point, index) => {
-                const x = xFor(index);
-                const bullish = point.close >= point.open;
-                const openY = yFor(point.open);
-                const closeY = yFor(point.close);
-                const bodyTop = Math.min(openY, closeY);
-                const bodyHeight = Math.max(2, Math.abs(closeY - openY));
-                return (
-                  <g key={`${point.date}-candle-${index}`} className={bullish ? 'price-candle up' : 'price-candle down'}>
-                    <line x1={x} x2={x} y1={yFor(point.high)} y2={yFor(point.low)} className="price-candle-wick" />
-                    <rect x={x - candleWidth / 2} y={bodyTop} width={candleWidth} height={bodyHeight} rx={Math.min(3, candleWidth / 2)} className="price-candle-body" />
-                    <title>{[
-                      `${t('market_time')}: ${formatChartTimestamp(point.date, locale, timeframe)}`,
-                      `${t('market_open')}: ${chartMoney(point.open)}`,
-                      `${t('market_high')}: ${chartMoney(point.high)}`,
-                      `${t('market_low')}: ${chartMoney(point.low)}`,
-                      `${t('market_close')}: ${chartMoney(point.close)}`,
-                      point.volume !== null ? `${t('market_volume')}: ${Number(point.volume).toLocaleString('en-US')}` : '',
-                    ].filter(Boolean).join('\n')}</title>
-                  </g>
-                );
-              }) : null}
-              {chartType === 'ohlc' ? ohlcPoints.map((point, index) => {
-                const x = xFor(index);
-                const bullish = point.close >= point.open;
-                return (
-                  <g key={`${point.date}-ohlc-${index}`} className={bullish ? 'price-ohlc up' : 'price-ohlc down'}>
-                    <line x1={x} x2={x} y1={yFor(point.high)} y2={yFor(point.low)} className="price-ohlc-line" />
-                    <line x1={x - tickWidth} x2={x} y1={yFor(point.open)} y2={yFor(point.open)} className="price-ohlc-tick" />
-                    <line x1={x} x2={x + tickWidth} y1={yFor(point.close)} y2={yFor(point.close)} className="price-ohlc-tick" />
-                    <title>{[
-                      `${t('market_time')}: ${formatChartTimestamp(point.date, locale, timeframe)}`,
-                      `${t('market_open')}: ${chartMoney(point.open)}`,
-                      `${t('market_high')}: ${chartMoney(point.high)}`,
-                      `${t('market_low')}: ${chartMoney(point.low)}`,
-                      `${t('market_close')}: ${chartMoney(point.close)}`,
-                      point.volume !== null ? `${t('market_volume')}: ${Number(point.volume).toLocaleString('en-US')}` : '',
-                    ].filter(Boolean).join('\n')}</title>
-                  </g>
-                );
-              }) : null}
-              {hoveredPoint ? (
-                <g className="price-chart-crosshair">
-                  <line x1={tooltipX} x2={tooltipX} y1={chartTop} y2={chartBottom} />
-                  <circle cx={tooltipX} cy={tooltipY} r="4" />
-                </g>
-              ) : null}
+              <rect
+                x={chartLeft}
+                y={chartTop}
+                width={chartRight - chartLeft}
+                height={chartBottom - chartTop}
+                className="price-chart-hit-zone"
+                onMouseMove={handlePointerMove}
+                onMouseLeave={clearHover}
+              />
             </g>
-            {levelLines.map(level => {
-              const y = yFor(level.value);
-              return (
-                <text key={`level-label-${level.key}`} x={axisRight} y={y} className={`price-chart-level-label ${level.className}`} textAnchor="end" dominantBaseline="middle">
-                  {chartMoney(level.value)}
-                </text>
-              );
-            })}
-            <rect
-              x={chartLeft}
-              y={chartTop}
-              width={chartRight - chartLeft}
-              height={chartBottom - chartTop}
-              className="price-chart-hit-zone"
-              onMouseMove={handlePointerMove}
-              onMouseLeave={clearHover}
-            />
           </svg>
           {hoveredPoint ? (
             <div
