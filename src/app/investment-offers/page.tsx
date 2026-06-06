@@ -230,6 +230,34 @@ function StatCard({ label, value, icon }: { label: string; value: ReactNode; ico
   );
 }
 
+function InvestmentActionButton({
+  href,
+  label,
+  icon,
+  variant = 'primary',
+  className = '',
+  showArrow = true,
+}: {
+  href: string;
+  label: string;
+  icon?: ReactNode;
+  variant?: 'primary' | 'secondary';
+  className?: string;
+  showArrow?: boolean;
+}) {
+  return (
+    <Link
+      className={`investment-action-button ${variant} ${className}`.trim()}
+      href={href}
+      aria-label={label}
+    >
+      {icon ? <span className="investment-action-icon" aria-hidden="true">{icon}</span> : null}
+      <span className="investment-action-label">{label}</span>
+      {showArrow ? <ArrowUpRight className="investment-action-arrow" size={14} aria-hidden="true" /> : null}
+    </Link>
+  );
+}
+
 function StatusCard({ item, readyLabel, needsDataLabel }: { item: StatusCardItem; readyLabel: string; needsDataLabel: string }) {
   return (
     <AppCard className="investment-status-card">
@@ -246,11 +274,13 @@ function StatusCard({ item, readyLabel, needsDataLabel }: { item: StatusCardItem
         <small>{item.detail}</small>
       </div>
       <div className="investment-status-footer">
-        <Link className="investment-status-action" href={item.href} aria-label={item.actionLabel}>
-          {item.actionIcon}
-          <span>{item.actionLabel}</span>
-          <ArrowUpRight className="status-action-arrow" size={14} aria-hidden="true" />
-        </Link>
+        <InvestmentActionButton
+          className="investment-status-action"
+          href={item.href}
+          label={item.actionLabel}
+          icon={item.actionIcon}
+          variant="primary"
+        />
       </div>
     </AppCard>
   );
@@ -407,8 +437,20 @@ export default function InvestmentOffersPage() {
 
   const heroActions = (
     <>
-      <Link className="investment-primary-action" href="/projects"><FolderKanban size={16} aria-hidden="true" />{text.openProjects}</Link>
-      <Link className="investment-secondary-action" href={businessHubDocumentsHref}><BriefcaseBusiness size={16} aria-hidden="true" />{text.openBusinessHub}</Link>
+      <InvestmentActionButton
+        className="investment-secondary-action"
+        href="/projects"
+        label={text.openProjects}
+        icon={<FolderKanban size={16} />}
+        variant="secondary"
+      />
+      <InvestmentActionButton
+        className="investment-primary-action"
+        href={businessHubDocumentsHref}
+        label={text.openBusinessHub}
+        icon={<BriefcaseBusiness size={16} />}
+        variant="primary"
+      />
     </>
   );
 
@@ -439,7 +481,7 @@ export default function InvestmentOffersPage() {
             icon={<Presentation size={34} />}
             title={text.signInTitle}
             description={text.signInBody}
-            actions={<Link className="investment-primary-action" href="/login">{text.signIn}</Link>}
+            actions={<InvestmentActionButton className="investment-primary-action" href="/login" label={text.signIn} showArrow={false} />}
           />
         ) : (
           <>
@@ -462,7 +504,15 @@ export default function InvestmentOffersPage() {
                 icon={<BriefcaseBusiness size={34} />}
                 title={text.noProjectsTitle}
                 description={text.noProjectsBody}
-                actions={<Link className="investment-primary-action" href="/projects">{text.openProjects}</Link>}
+                actions={(
+                  <InvestmentActionButton
+                    className="investment-primary-action"
+                    href="/projects"
+                    label={text.openProjects}
+                    icon={<FolderKanban size={16} />}
+                    variant="primary"
+                  />
+                )}
               />
             ) : (
               <>
@@ -492,15 +542,20 @@ export default function InvestmentOffersPage() {
                     <em>{readyCount}/4 {text.readyItems}</em>
                   </div>
                   <div className="package-actions">
-                    <Link className="investment-package-action primary" href={projectHref}>
-                      <FolderKanban size={16} aria-hidden="true" />
-                      <span>{text.openProjects}</span>
-                    </Link>
-                    <Link className="investment-package-action secondary" href={projectPitchHref}>
-                      <Presentation size={16} aria-hidden="true" />
-                      <span>{text.openProjectPitchDeck}</span>
-                      <ArrowUpRight size={14} aria-hidden="true" />
-                    </Link>
+                    <InvestmentActionButton
+                      className="investment-package-action"
+                      href={projectHref}
+                      label={text.openProjects}
+                      icon={<FolderKanban size={16} />}
+                      variant="secondary"
+                    />
+                    <InvestmentActionButton
+                      className="investment-package-action"
+                      href={projectPitchHref}
+                      label={text.openProjectPitchDeck}
+                      icon={<Presentation size={16} />}
+                      variant="primary"
+                    />
                   </div>
                 </AppCard>
 
@@ -536,53 +591,82 @@ export default function InvestmentOffersPage() {
           gap: 18px;
           min-width: 0;
         }
-        .investment-primary-action,
-        .investment-secondary-action,
-        .investment-status-action,
-        .investment-package-action {
-          min-height: 42px;
-          border-radius: 14px;
+        .investment-action-button {
+          min-height: 44px;
+          border-radius: 15px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
+          gap: 9px;
           padding: 0 14px;
           font-size: 12px;
           font-weight: 950;
+          line-height: 1.2;
           text-decoration: none;
-          transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
+          cursor: pointer;
+          min-width: 0;
+          position: relative;
+          transition:
+            transform .18s ease,
+            box-shadow .18s ease,
+            border-color .18s ease,
+            background .18s ease,
+            color .18s ease;
         }
-        .investment-primary-action,
-        .investment-status-action,
-        .investment-package-action.primary {
-          border: 0;
+        .investment-action-button.primary {
+          border: 1px solid rgba(24, 212, 212, .32);
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
           color: #FFFFFF;
-          box-shadow: 0 12px 30px rgba(29, 140, 255, .22);
+          box-shadow: 0 13px 30px rgba(29, 140, 255, .24);
         }
-        .investment-secondary-action,
-        .investment-package-action.secondary {
-          border: 1px solid rgba(29, 140, 255, .20);
-          background: #FFFFFF;
-          color: var(--sfm-midnight);
+        .investment-action-button.secondary {
+          border: 1px solid rgba(29, 140, 255, .22);
+          background: linear-gradient(180deg, #FFFFFF, #F7FBFF);
+          color: var(--sfm-primary-dark);
+          box-shadow: 0 10px 24px rgba(3, 18, 37, .06);
         }
-        .investment-primary-action:hover,
-        .investment-secondary-action:hover,
-        .investment-status-action:hover,
-        .investment-package-action:hover,
-        .investment-primary-action:focus-visible,
-        .investment-secondary-action:focus-visible,
-        .investment-status-action:focus-visible,
-        .investment-package-action:focus-visible {
+        .investment-action-icon {
+          width: 28px;
+          height: 28px;
+          flex: 0 0 28px;
+          border-radius: 10px;
+          display: inline-grid;
+          place-items: center;
+          color: inherit;
+          background: rgba(255, 255, 255, .16);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14);
+        }
+        .investment-action-button.secondary .investment-action-icon {
+          background: rgba(29, 140, 255, .10);
+          color: var(--sfm-primary);
+          box-shadow: none;
+        }
+        .investment-action-label {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .investment-action-arrow {
+          flex: 0 0 auto;
+          margin-inline-start: auto;
+        }
+        [dir='rtl'] .investment-action-arrow {
+          transform: scaleX(-1);
+        }
+        .investment-action-button:hover,
+        .investment-action-button:focus-visible {
           outline: none;
           transform: translateY(-1px);
-          border-color: rgba(24, 212, 212, .42);
+          border-color: rgba(24, 212, 212, .48);
           box-shadow: 0 0 0 3px rgba(24, 212, 212, .14), 0 16px 36px rgba(29, 140, 255, .20);
         }
-        .investment-primary-action:active,
-        .investment-secondary-action:active,
-        .investment-status-action:active,
-        .investment-package-action:active {
+        .investment-action-button.secondary:hover,
+        .investment-action-button.secondary:focus-visible {
+          background: rgba(29, 140, 255, .08);
+          color: var(--sfm-primary-hover);
+        }
+        .investment-action-button:active {
           transform: translateY(0) scale(.98);
         }
         .investment-loading,
@@ -827,17 +911,11 @@ export default function InvestmentOffersPage() {
           line-height: 1.2;
           white-space: nowrap;
         }
-        .investment-status-action svg {
-          flex: 0 0 auto;
-        }
-        .investment-status-action span {
+        .investment-status-action .investment-action-label {
           min-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
-        }
-        .status-action-arrow {
-          margin-inline-start: auto;
         }
         @keyframes investment-spin {
           to { transform: rotate(360deg); }

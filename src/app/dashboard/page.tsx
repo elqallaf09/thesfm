@@ -584,11 +584,21 @@ function SmallStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ActionLink({ href, children }: { href: string; children: ReactNode }) {
+function ActionLink({
+  href,
+  children,
+  variant = 'primary',
+}: {
+  href: string;
+  children: ReactNode;
+  variant?: 'primary' | 'secondary';
+}) {
   return (
-    <Link className="action-link" href={href} aria-label={typeof children === 'string' ? children : undefined}>
-      {children}
-      <ArrowRight size={16} aria-hidden="true" />
+    <Link className={`action-link action-link-${variant}`} href={href} aria-label={typeof children === 'string' ? children : undefined}>
+      <span className="action-link-label">{children}</span>
+      <span className="action-link-icon" aria-hidden="true">
+        <ArrowRight size={16} />
+      </span>
     </Link>
   );
 }
@@ -1209,9 +1219,9 @@ export default function ExecutiveDashboardPage() {
             icon={<BriefcaseBusiness size={20} />}
             action={
               <>
-                <ActionLink href="/projects">{text.openProjects}</ActionLink>
-                <ActionLink href="/business-hub">{text.openBusinessHub}</ActionLink>
-                {summary.activeProjects > 0 ? <ActionLink href="/projects">{text.createPitchDeck}</ActionLink> : null}
+                <ActionLink href="/projects" variant="secondary">{text.openProjects}</ActionLink>
+                <ActionLink href="/business-hub" variant="primary">{text.openBusinessHub}</ActionLink>
+                {summary.activeProjects > 0 ? <ActionLink href="/projects" variant="primary">{text.createPitchDeck}</ActionLink> : null}
               </>
             }
           >
@@ -1784,31 +1794,79 @@ const dashboardStyles = `
   }
 
   .action-link {
-    min-height: 38px;
+    min-height: 42px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 9px 13px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, var(--sfm-primary-dark), var(--sfm-card-dark));
-    color: #EAF6FF;
+    gap: 9px;
+    padding: 9px 14px;
+    border-radius: 14px;
     text-decoration: none;
-    font-weight: 800;
+    font-weight: 900;
     font-size: 0.88rem;
+    line-height: 1.25;
+    cursor: pointer;
+    min-width: 0;
     border: 1px solid rgba(24, 212, 212, 0.26);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  }
+
+  .action-link-primary {
+    background: linear-gradient(135deg, var(--sfm-primary-dark), var(--sfm-primary), var(--sfm-accent));
+    color: #FFFFFF;
+    box-shadow: 0 12px 26px rgba(29, 140, 255, 0.18);
+  }
+
+  .action-link-secondary {
+    background: linear-gradient(180deg, #FFFFFF, #F7FBFF);
+    color: var(--sfm-primary-dark);
+    border-color: rgba(29, 140, 255, 0.2);
+    box-shadow: 0 8px 20px rgba(3, 18, 37, 0.06);
+  }
+
+  .action-link-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .action-link-icon {
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.16);
+    color: inherit;
+  }
+
+  .action-link-secondary .action-link-icon {
+    background: rgba(29, 140, 255, 0.1);
+    color: var(--sfm-primary);
   }
 
   .action-link:hover,
   .action-link:focus-visible {
     transform: translateY(-1px);
-    box-shadow: 0 12px 26px rgba(3, 18, 37, 0.16);
+    border-color: rgba(24, 212, 212, 0.42);
+    box-shadow: 0 0 0 3px rgba(24, 212, 212, 0.12), 0 12px 26px rgba(3, 18, 37, 0.16);
     outline: 2px solid rgba(24, 212, 212, 0.45);
     outline-offset: 2px;
   }
 
-  [dir='rtl'] .action-link svg {
+  .action-link-secondary:hover,
+  .action-link-secondary:focus-visible {
+    background: rgba(29, 140, 255, 0.08);
+    color: var(--sfm-primary-hover);
+  }
+
+  .action-link:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  [dir='rtl'] .action-link-icon svg {
     transform: scaleX(-1);
   }
 
@@ -2168,6 +2226,26 @@ const dashboardStyles = `
     border-color: rgba(24, 212, 212, 0.28);
     color: #FFFFFF;
     box-shadow: 0 14px 30px rgba(29, 140, 255, 0.2);
+  }
+
+  .dark .action-link-primary {
+    background: linear-gradient(135deg, #1D8CFF, #18D4D4);
+    border-color: rgba(24, 212, 212, 0.3);
+    color: #FFFFFF;
+    box-shadow: 0 14px 30px rgba(29, 140, 255, 0.2);
+  }
+
+  .dark .action-link-secondary,
+  .dark .card-actions .action-link-secondary:first-child {
+    background: rgba(234, 246, 255, 0.07);
+    border-color: rgba(167, 243, 240, 0.22);
+    color: #EAF6FF;
+    box-shadow: none;
+  }
+
+  .dark .action-link-secondary .action-link-icon {
+    background: rgba(167, 243, 240, 0.12);
+    color: #A7F3F0;
   }
 
   @media (max-width: 1180px) {
