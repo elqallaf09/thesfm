@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ChangeEvent, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import Image from 'next/image';
@@ -58,6 +58,7 @@ type ProfileState = {
   displayName: string;
   username: string;
   email: string;
+  avatarUrl: string;
   phoneCode: string;
   phone: string;
   age: string;
@@ -152,7 +153,12 @@ const txt = {
   emailConfirmationResendError: { ar: 'تعذر إرسال رابط التأكيد حالياً. حاول مرة أخرى.', en: 'Could not send the confirmation link right now. Please try again.', fr: 'Impossible d’envoyer le lien de confirmation pour le moment. Réessayez.' },
   emailVerifiedFor2fa: { ar: 'يمكنك الآن تفعيل التحقق عبر البريد الإلكتروني لحماية الحساب.', en: 'You can now enable email verification to protect the account.', fr: 'Vous pouvez maintenant activer la vérification par e-mail pour protéger le compte.' },
   emailUnverifiedFor2fa: { ar: 'أكد بريدك الإلكتروني أولاً حتى تتمكن من تفعيل المصادقة الثنائية.', en: 'Confirm your email first before enabling two-factor authentication.', fr: 'Confirmez d’abord votre e-mail avant d’activer l’authentification à deux facteurs.' },
-  profilePhotoUploadUnavailable: { ar: 'تغيير صورة الملف الشخصي سيكون متاحاً قريباً.', en: 'Profile photo upload will be available soon.', fr: 'Le changement de photo de profil sera bientôt disponible.' },
+  avatarUploadLoginRequired: { ar: 'يرجى تسجيل الدخول لتعديل الصورة.', en: 'Please sign in to edit your photo.', fr: 'Veuillez vous connecter pour modifier la photo.' },
+  avatarUploadSuccess: { ar: 'تم تحديث الصورة بنجاح.', en: 'Profile photo updated successfully.', fr: 'La photo a été mise à jour avec succès.' },
+  avatarUploadError: { ar: 'تعذر تحديث الصورة حالياً. حاول مرة أخرى.', en: 'Could not update the photo right now. Please try again.', fr: 'Impossible de mettre à jour la photo pour le moment. Réessayez.' },
+  avatarUploadUnsupported: { ar: 'نوع الملف غير مدعوم. الرجاء رفع صورة JPG أو PNG أو WEBP.', en: 'Unsupported file type. Please upload a JPG, PNG, or WEBP image.', fr: 'Type de fichier non pris en charge. Importez une image JPG, PNG ou WEBP.' },
+  avatarUploadTooLarge: { ar: 'حجم الصورة كبير جداً. الحد الأقصى 5MB.', en: 'The photo is too large. Maximum size is 5MB.', fr: 'La photo est trop volumineuse. Taille maximale : 5 Mo.' },
+  avatarUploading: { ar: 'جاري رفع الصورة...', en: 'Uploading photo...', fr: 'Import de la photo...' },
   emailChangeError: { ar: 'تعذر تغيير البريد الإلكتروني حالياً. حاول مرة أخرى.', en: 'Could not change email right now. Please try again.', fr: 'Impossible de changer l’e-mail pour le moment. Réessayez.' },
   emailUseError: { ar: 'تعذر استخدام هذا البريد الإلكتروني. جرّب بريداً آخر أو حاول لاحقاً.', en: 'Could not use this email. Try another email or try again later.', fr: 'Impossible d’utiliser cet e-mail. Essayez une autre adresse ou réessayez plus tard.' },
   phone: { ar: 'رقم الهاتف', en: 'Phone number', fr: 'Téléphone' },
@@ -421,10 +427,12 @@ export default function ProfilePage() {
   const { lang, setLang, dir } = useLanguage();
   const { theme, setTheme } = useTheme();
   const { currency, setCurrency } = useCurrency();
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [profile, setProfile] = useState<ProfileState>({
     displayName: '',
     username: '',
     email: '',
+    avatarUrl: '',
     phoneCode: '+965',
     phone: '',
     age: '',
@@ -447,6 +455,7 @@ export default function ProfilePage() {
   });
   const [stats, setStats] = useState({ goals: 0, investments: 0, health: 78 });
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [toast, setToast] = useState('');
   const [modal, setModal] = useState<ModalKind>(null);
   const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' });
@@ -512,7 +521,7 @@ export default function ProfilePage() {
     const db = supabase as any;
     const { data, error } = await db
       .from('profiles')
-      .select('id,username,display_name,email,age,phone_country_code,phone_number,profession,gender,preferred_lang,preferred_currency,preferred_theme,default_currency,city,profession_other')
+      .select('*')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -546,6 +555,7 @@ export default function ProfilePage() {
       displayName: String(data?.display_name || user.user_metadata?.display_name || ''),
       username: String(data?.username || user.email?.split('@')[0] || ''),
       email: authEmail,
+      avatarUrl: String(data?.avatar_url || user.user_metadata?.avatar_url || ''),
       phoneCode,
       phone: String(data?.phone_number || extra.phone || ''),
       age: data?.age ? String(data.age) : String(extra.age || ''),
@@ -592,6 +602,106 @@ export default function ProfilePage() {
   function showToast(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(''), 2400);
+  }
+
+  function openAvatarPicker() {
+    if (uploadingAvatar) return;
+    if (!user?.id) {
+      showToast(L('avatarUploadLoginRequired'));
+      return;
+    }
+    avatarInputRef.current?.click();
+  }
+
+  async function handleAvatarFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const allowedTypes: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/jpg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+    };
+    const extension = allowedTypes[file.type];
+    if (!extension) {
+      input.value = '';
+      showToast(L('avatarUploadUnsupported'));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      input.value = '';
+      showToast(L('avatarUploadTooLarge'));
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      const sessionUser = authData.user;
+      if (authError || !sessionUser?.id) {
+        showToast(L('avatarUploadLoginRequired'));
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const filePath = `${sessionUser.id}/avatar-${Date.now()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          contentType: file.type,
+          upsert: true,
+        });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const avatarUrl = urlData.publicUrl;
+      if (!avatarUrl) throw new Error('Avatar URL missing');
+
+      const db = supabase as any;
+      let profileUpdate = await db
+        .from('profiles')
+        .update({ avatar_url: avatarUrl, updated_at: now })
+        .eq('id', sessionUser.id)
+        .select('id')
+        .maybeSingle();
+
+      if (profileUpdate.error) throw profileUpdate.error;
+
+      if (!profileUpdate.data) {
+        profileUpdate = await db
+          .from('profiles')
+          .upsert({
+            id: sessionUser.id,
+            username: profile.username || sessionUser.email?.split('@')[0] || 'sfm-user',
+            display_name: profile.displayName || sessionUser.user_metadata?.display_name || null,
+            email: sessionUser.email || profile.email || null,
+            avatar_url: avatarUrl,
+            updated_at: now,
+          }, { onConflict: 'id' })
+          .select('id')
+          .maybeSingle();
+        if (profileUpdate.error) throw profileUpdate.error;
+      }
+
+      await supabase.auth.updateUser({ data: { avatar_url: avatarUrl } });
+      setProfile(prev => ({ ...prev, avatarUrl }));
+      notifyCurrentUserProfileChanged({
+        userId: sessionUser.id,
+        authEmail: sessionUser.email,
+        profile: { avatar_url: avatarUrl },
+      });
+      router.refresh();
+      showToast(L('avatarUploadSuccess'));
+    } catch (error) {
+      console.error('[Profile] Avatar upload failed', error);
+      showToast(L('avatarUploadError'));
+    } finally {
+      input.value = '';
+      setUploadingAvatar(false);
+    }
   }
 
   function persistPreferences(next: PreferencesState) {
@@ -1064,11 +1174,21 @@ export default function ProfilePage() {
             initials={initials}
             name={profile.displayName || 'THE SFM'}
             username={profile.username}
+            avatarUrl={profile.avatarUrl}
             completion={completion}
             language={lang.toUpperCase()}
-            labels={{ premium: L('premiumBadge'), elite: L('elite'), completion: L('completion'), lastActivity: L('lastActivity'), selectedLanguage: L('selectedLanguage'), editPhoto: L('editPhoto'), viewProfile: L('viewProfile') }}
-            onEditPhoto={() => showToast(L('profilePhotoUploadUnavailable'))}
+            uploadingAvatar={uploadingAvatar}
+            labels={{ premium: L('premiumBadge'), elite: L('elite'), completion: L('completion'), lastActivity: L('lastActivity'), selectedLanguage: L('selectedLanguage'), editPhoto: L('editPhoto'), uploadingPhoto: L('avatarUploading'), viewProfile: L('viewProfile') }}
+            onEditPhoto={openAvatarPicker}
             onView={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          />
+          <input
+            ref={avatarInputRef}
+            className="avatar-upload-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={event => void handleAvatarFileChange(event)}
+            aria-label={L('editPhoto')}
           />
           <ProfileStatsCards
             labels={{ goals: L('goals'), investmentStatus: L('investmentStatus'), completion: L('completion'), health: L('health'), active: L('active'), inactive: L('inactive') }}
@@ -1283,7 +1403,7 @@ export default function ProfilePage() {
 
       <style jsx global>{`
         .profile-page{min-height:100vh;background:var(--sfm-light-card);color:var(--sfm-deep-navy);display:flex;font-family:Tajawal,Arial,sans-serif}.profile-main{flex:1;width:100%;max-width:1280px;margin:0 auto;padding:24px;margin-inline-start:230px}.profile-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px}.profile-top span{color:var(--sfm-muted);font-size:12px;font-weight:900}.profile-top h1{font-size:30px;margin:4px 0 6px;font-weight:900}.profile-top p{margin:0;color:var(--sfm-muted);font-weight:700}
-        .profile-card{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:24px;box-shadow:0 4px 22px rgba(3,18,37,.06);padding:20px}.profile-layout{display:grid;grid-template-columns:360px 1fr;gap:16px;margin-bottom:16px}.hero-card{background:linear-gradient(145deg,var(--sfm-deep-navy),var(--sfm-primary-dark));color:var(--sfm-card);border:1px solid rgba(167,243,240,.2);border-radius:26px;padding:24px;box-shadow:0 18px 55px rgba(3,18,37,.16)}.avatar{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;font-size:28px;font-weight:900;border:4px solid rgba(255,255,255,.12)}.premium-pill{display:inline-flex;align-items:center;gap:7px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);border:1px solid rgba(167,243,240,.22);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900}.hero-actions,.section-actions{display:flex;gap:8px;flex-wrap:wrap}.ghost-btn,.gold-btn,.danger-btn{height:42px;border-radius:14px;border:0;padding:0 15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;text-decoration:none;transition:.2s}.gold-btn{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 10px 24px rgba(167,243,240,.2)}.ghost-btn{background:var(--sfm-light-card);color:var(--sfm-muted);border:1px solid rgba(167,243,240,.18)}.danger-btn{background:#B91C1C;color:#fff}.danger-btn:disabled,.gold-btn:disabled{opacity:.55;cursor:not-allowed;filter:saturate(.75)}.dark-ghost{background:rgba(255,255,255,.08);color:var(--sfm-card);border:1px solid rgba(255,255,255,.14)}
+        .profile-card{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:24px;box-shadow:0 4px 22px rgba(3,18,37,.06);padding:20px}.profile-layout{display:grid;grid-template-columns:360px 1fr;gap:16px;margin-bottom:16px}.hero-card{background:linear-gradient(145deg,var(--sfm-deep-navy),var(--sfm-primary-dark));color:var(--sfm-card);border:1px solid rgba(167,243,240,.2);border-radius:26px;padding:24px;box-shadow:0 18px 55px rgba(3,18,37,.16)}.avatar{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;font-size:28px;font-weight:900;border:4px solid rgba(255,255,255,.12);overflow:hidden;background-size:cover;background-position:center}.avatar-upload-input{position:fixed;inline-size:1px;block-size:1px;opacity:0;pointer-events:none;inset-inline-start:-9999px;inset-block-start:auto}.premium-pill{display:inline-flex;align-items:center;gap:7px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);border:1px solid rgba(167,243,240,.22);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900}.hero-actions,.section-actions{display:flex;gap:8px;flex-wrap:wrap}.ghost-btn,.gold-btn,.danger-btn{height:42px;border-radius:14px;border:0;padding:0 15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;text-decoration:none;transition:.2s}.gold-btn{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 10px 24px rgba(167,243,240,.2)}.ghost-btn{background:var(--sfm-light-card);color:var(--sfm-muted);border:1px solid rgba(167,243,240,.18)}.danger-btn{background:#B91C1C;color:#fff}.danger-btn:disabled,.gold-btn:disabled,.ghost-btn:disabled{opacity:.55;cursor:not-allowed;filter:saturate(.75)}.dark-ghost{background:rgba(255,255,255,.08);color:var(--sfm-card);border:1px solid rgba(255,255,255,.14)}
         .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;height:100%}.stat-card{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:20px;padding:16px;display:grid;gap:9px;min-height:150px}.stat-icon{width:40px;height:40px;border-radius:14px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.stat-card span,.field label,.mini-label{font-size:12px;color:var(--sfm-muted);font-weight:900}.stat-card strong{font-size:22px}.section-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}.section-head h2{margin:0;font-size:18px;font-weight:900}.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.field{display:grid;gap:7px}.input-wrap{height:52px;border:1.5px solid rgba(167,243,240,.2);border-radius:15px;background:var(--sfm-light-card);display:flex;align-items:center;gap:9px;padding:0 12px;color:var(--sfm-muted);transition:border-color .18s ease,box-shadow .18s ease,background .18s ease}.input-wrap:focus-within{border-color:rgba(24,212,212,.58);box-shadow:0 0 0 4px rgba(24,212,212,.10)}.input-wrap input,.input-wrap select{border:0;outline:0;background:transparent;width:100%;height:100%;font:800 14px Tajawal,Arial,sans-serif;color:var(--sfm-foreground);min-width:0}.input-wrap input::placeholder{color:var(--sfm-muted);opacity:.9}.input-wrap input[readonly]{opacity:.65}.profile-combobox{position:relative}.profile-combobox input{cursor:pointer}.profile-combobox.open{border-color:rgba(24,212,212,.58);box-shadow:0 0 0 4px rgba(24,212,212,.10)}.profile-combobox-chevron{flex:0 0 auto;color:var(--sfm-muted);transition:.18s ease}.profile-combobox-chevron.open{transform:rotate(180deg);color:var(--sfm-primary)}.profile-combobox-menu{position:absolute;z-index:70;inset-inline:0;top:calc(100% + 8px);max-height:280px;overflow:auto;background:var(--sfm-card);border:1px solid rgba(24,212,212,.22);border-radius:16px;padding:6px;box-shadow:0 18px 42px rgba(3,18,37,.18)}.profile-combobox-menu button{width:100%;border:0;background:transparent;color:var(--sfm-foreground);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;font:900 13px Tajawal,Arial,sans-serif;text-align:inherit;cursor:pointer}.profile-combobox-menu button:hover,.profile-combobox-menu button.active{background:rgba(24,212,212,.10)}.profile-combobox-menu button.selected{background:rgba(24,212,212,.14);color:var(--sfm-primary-dark)}.profile-combobox-menu button svg{color:var(--sfm-accent);flex:0 0 auto}.field-icon-btn{border:0;background:transparent;color:var(--sfm-muted);display:grid;place-items:center;border-radius:999px;padding:5px;cursor:pointer}.field-icon-btn:hover,.field-icon-btn:focus-visible{color:var(--sfm-primary);outline:2px solid rgba(24,212,212,.24);outline-offset:2px}.profile-section{margin-bottom:16px}.setting-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid rgba(167,243,240,.1)}.setting-row:last-child{border-bottom:0}.setting-row p{margin:4px 0 0;color:var(--sfm-muted);font-size:12px;font-weight:700;overflow-wrap:anywhere}.toggle{width:48px;height:28px;border-radius:999px;border:0;background:#CBD5E1;padding:3px;cursor:pointer}.toggle i{display:block;width:22px;height:22px;border-radius:50%;background:white;transition:.2s}.toggle.on{background:var(--sfm-accent)}.toggle.on i{transform:translateX(-20px)}[dir="ltr"] .toggle.on i{transform:translateX(20px)}
         .pref-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.segmented{display:flex;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14);border-radius:14px;padding:4px;gap:4px}.segmented button{flex:1;border:0;border-radius:11px;background:transparent;height:38px;font:900 12px Tajawal,Arial,sans-serif;color:var(--sfm-muted);cursor:pointer}.segmented button.active{background:var(--sfm-card);color:var(--sfm-foreground);box-shadow:0 3px 12px rgba(3,18,37,.08)}.dark .profile-combobox-menu button.selected{color:var(--sfm-soft-cyan)}.premium-grid,.activity-list{display:grid;gap:10px}.premium-grid{grid-template-columns:repeat(4,1fr)}.feature-card{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:14px;font-weight:900;color:var(--sfm-muted);display:flex;align-items:center;gap:9px}.plan-card{background:linear-gradient(135deg,var(--sfm-foreground),var(--sfm-primary-dark));color:var(--sfm-card);border-radius:20px;padding:18px;display:grid;gap:8px}.activity-item{display:flex;align-items:center;gap:12px;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.1);border-radius:15px;padding:12px}.activity-item svg{color:var(--sfm-soft-cyan)}.danger-zone{border-color:rgba(185,28,28,.18);background:linear-gradient(135deg,var(--sfm-card),#FFF7F4)}.profile-toast{position:fixed;z-index:50;inset-inline-start:24px;inset-inline-end:auto;bottom:24px;width:max-content;max-width:min(420px,calc(100vw - 48px));display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;background:var(--sfm-primary-dark);color:#EAF6FF;border:1px solid rgba(24,212,212,.28);border-radius:18px;padding:12px 14px;font-weight:900;line-height:1.55;box-shadow:0 18px 45px rgba(3,18,37,.22),0 0 0 1px rgba(255,255,255,.04);animation:toastSlideUp .22s ease-out}.profile-toast p{margin:0;min-width:0;overflow-wrap:anywhere}.profile-toast-icon{width:30px;height:30px;border-radius:999px;display:grid;place-items:center;background:rgba(24,212,212,.14);color:var(--sfm-soft-cyan);box-shadow:0 0 18px rgba(24,212,212,.18)}.profile-toast button{width:30px;height:30px;border:0;border-radius:999px;background:rgba(255,255,255,.08);color:#EAF6FF;display:grid;place-items:center;cursor:pointer;transition:.18s ease}.profile-toast button:hover,.profile-toast button:focus-visible{background:rgba(24,212,212,.18);color:#FFFFFF;outline:2px solid rgba(24,212,212,.34);outline-offset:2px}@keyframes toastSlideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         .modal-overlay{position:fixed;inset:0;z-index:90;background:rgba(17,17,17,.45);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px}.modal-card{width:min(520px,100%);max-height:calc(100dvh - 36px);overflow:auto;background:var(--sfm-card);border:1px solid rgba(167,243,240,.18);border-radius:24px;padding:22px;box-shadow:0 24px 80px rgba(3,18,37,.28)}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.modal-head h3{margin:0;font-size:19px}.modal-fields{display:grid;gap:12px}.info-box{display:flex;gap:10px;align-items:flex-start;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:16px;padding:14px;color:var(--sfm-muted);line-height:1.7;font-weight:800}.info-box.danger{background:#FEF2F2;border-color:#FCA5A5;color:#B91C1C}.two-factor-panel{display:grid;gap:14px;border:1px solid rgba(24,212,212,.18);background:var(--sfm-light-card);border-radius:18px;padding:14px}.two-factor-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start}.two-factor-row strong{display:block;color:var(--sfm-foreground);font-size:15px}.two-factor-row p,.two-factor-copy{margin:4px 0 0;color:var(--sfm-muted);font-size:13px;font-weight:800;line-height:1.7}.status-pill{display:inline-flex;width:max-content;margin-top:9px;border-radius:999px;border:1px solid rgba(100,116,139,.20);background:rgba(100,116,139,.10);color:var(--sfm-muted);padding:5px 10px;font-weight:950;font-size:12px}.status-pill.on{background:rgba(16,185,129,.14);border-color:rgba(16,185,129,.25);color:#047857}.message-inline{border:1px solid rgba(16,185,129,.22);background:rgba(16,185,129,.10);color:#047857;border-radius:14px;padding:10px 12px;font-size:13px;font-weight:900;line-height:1.6}.message-inline.danger{background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.24);color:#B91C1C}.profile-loading{min-height:100vh;display:grid;place-items:center;background:var(--sfm-light-card);color:var(--sfm-muted);font-size:34px}
@@ -1295,11 +1415,35 @@ export default function ProfilePage() {
   );
 }
 
-function ProfileHeroCard({ initials, name, username, completion, language, labels, onEditPhoto, onView }: { initials: string; name: string; username: string; completion: number; language: string; labels: Record<string, string>; onEditPhoto: () => void; onView: () => void }) {
+function ProfileHeroCard({
+  initials,
+  name,
+  username,
+  avatarUrl,
+  completion,
+  language,
+  uploadingAvatar,
+  labels,
+  onEditPhoto,
+  onView,
+}: {
+  initials: string;
+  name: string;
+  username: string;
+  avatarUrl: string;
+  completion: number;
+  language: string;
+  uploadingAvatar: boolean;
+  labels: Record<string, string>;
+  onEditPhoto: () => void;
+  onView: () => void;
+}) {
+  const avatarStyle = avatarUrl ? { backgroundImage: `url("${avatarUrl}")` } : undefined;
+
   return (
     <aside className="hero-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
-        <div className="avatar">{initials}</div>
+        <div className="avatar" style={avatarStyle}>{avatarUrl ? null : initials}</div>
         <span className="premium-pill"><Crown size={15} />{labels.premium}</span>
       </div>
       <h2 style={{ margin: '18px 0 4px', fontSize: 24 }}>{name}</h2>
@@ -1313,7 +1457,10 @@ function ProfileHeroCard({ initials, name, username, completion, language, label
         <div style={{ width: `${completion}%`, height: '100%', background: 'linear-gradient(90deg,var(--sfm-primary),var(--sfm-accent))', borderRadius: 99 }} />
       </div>
       <div className="hero-actions">
-        <button className="ghost-btn dark-ghost" onClick={onEditPhoto}><Camera size={16} />{labels.editPhoto}</button>
+        <button className="ghost-btn dark-ghost" onClick={onEditPhoto} disabled={uploadingAvatar}>
+          <Camera size={16} />
+          {uploadingAvatar ? labels.uploadingPhoto : labels.editPhoto}
+        </button>
         <button className="gold-btn" onClick={onView}><Eye size={16} />{labels.viewProfile}</button>
       </div>
     </aside>

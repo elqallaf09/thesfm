@@ -36,6 +36,9 @@ export function UserChip({ displayName }: { displayName?: string }) {
     ? t('loading')
     : displayName || currentUser.displayName || (currentUser.isGuest ? t('guest_mode') : t('common_user'));
   const email = currentUser.email;
+  const avatarUrl = currentUser.avatarUrl;
+  const avatarStyle = avatarUrl ? { backgroundImage: `url("${avatarUrl}")` } : undefined;
+  const avatarClassName = avatarUrl ? 'sfm-user-avatar has-image' : 'sfm-user-avatar';
   const initials = (currentUser.avatarInitial || name
     .split(/\s+/)
     .map((word: string) => word[0] || '')
@@ -122,7 +125,9 @@ export function UserChip({ displayName }: { displayName?: string }) {
       role="menu"
     >
       <div className="sfm-user-menu-head" role="none">
-        <span className="sfm-user-avatar sfm-user-avatar-lg" aria-hidden="true">{initials}</span>
+        <span className={`${avatarClassName} sfm-user-avatar-lg`} style={avatarStyle} aria-hidden="true">
+          {avatarUrl ? null : initials}
+        </span>
         <span className="sfm-user-menu-copy">
           <strong>{name}</strong>
           <small dir="ltr">{currentUser.isGuest ? t('guest_mode') : email || t('common_user')}</small>
@@ -152,7 +157,7 @@ export function UserChip({ displayName }: { displayName?: string }) {
         .sfm-user-chip:hover,.sfm-user-chip[aria-expanded="true"]{background:#FFFFFF;border-color:rgba(24,212,212,.46);box-shadow:0 12px 28px rgba(29,140,255,.16)}
         .sfm-user-chip:focus-visible{outline:none;border-color:rgba(24,212,212,.72);box-shadow:0 0 0 4px rgba(24,212,212,.20),0 12px 28px rgba(29,140,255,.14)}
         .sfm-user-chip:active{transform:translateY(1px)}
-        .sfm-user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:950;color:#FFFFFF;flex:0 0 auto;box-shadow:0 8px 18px rgba(29,140,255,.24)}
+        .sfm-user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:950;color:#FFFFFF;flex:0 0 auto;box-shadow:0 8px 18px rgba(29,140,255,.24);overflow:hidden;background-size:cover;background-position:center}
         .sfm-user-identity{flex:1 1 auto;min-width:0;max-width:118px;display:block}
         .sfm-user-name{display:block;min-width:0;font-size:12.5px;font-weight:950;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#061B33}
         .sfm-user-chevron{color:#64748B;transition:transform .18s ease,color .18s ease;flex:0 0 auto}
@@ -187,7 +192,7 @@ export function UserChip({ displayName }: { displayName?: string }) {
           aria-expanded={open}
           aria-label={name}
         >
-          <span className="sfm-user-avatar">{initials}</span>
+          <span className={avatarClassName} style={avatarStyle}>{avatarUrl ? null : initials}</span>
           <span className="sfm-user-identity">
             <span className="sfm-user-name">{name}</span>
           </span>

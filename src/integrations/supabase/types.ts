@@ -18,6 +18,7 @@ export type Database = {
           username: string
           display_name: string | null
           email: string | null
+          avatar_url: string | null
           country: string | null
           city: string | null
           default_currency: string | null
@@ -48,6 +49,7 @@ export type Database = {
           username: string
           display_name?: string | null
           email?: string | null
+          avatar_url?: string | null
           country?: string | null
           city?: string | null
           default_currency?: string | null
@@ -78,6 +80,7 @@ export type Database = {
           username?: string
           display_name?: string | null
           email?: string | null
+          avatar_url?: string | null
           country?: string | null
           city?: string | null
           default_currency?: string | null
