@@ -1,8 +1,8 @@
 'use client';
 
-import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Edit3, FileDown, FileText, Loader2, Plus, ReceiptText, Search, Trash2, Truck, UserRound, WalletCards } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, Edit3, FileDown, FileText, Loader2, Plus, ReceiptText, Search, Sparkles, Trash2, Truck, UploadCloud, UserRound, WalletCards, X } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
@@ -42,6 +42,50 @@ type FieldConfig = {
   full?: boolean;
   defaultValue?: BusinessFormValue;
   options?: Array<{ value: string; label: string }>;
+};
+
+type InvoiceAnalysisLineItem = {
+  description: string;
+  quantity: number | null;
+  unitPrice: number | null;
+  total: number | null;
+};
+
+type InvoiceAnalysisResult = {
+  ok: true;
+  extracted: {
+    invoiceNumber: string | null;
+    title: string | null;
+    vendorName: string | null;
+    clientName: string | null;
+    invoiceDate: string | null;
+    dueDate: string | null;
+    amount: number | null;
+    currency: string | null;
+    taxAmount: number | null;
+    discountAmount: number | null;
+    status: string | null;
+    lineItems: InvoiceAnalysisLineItem[];
+    notes: string | null;
+  };
+  confidence: {
+    invoiceNumber?: number;
+    amount?: number;
+    currency?: number;
+    invoiceDate?: number;
+  };
+  analysis: {
+    suggestedCategory: string | null;
+    isComplete: boolean;
+    warnings: string[];
+    summary: string;
+  };
+};
+
+type InvoiceAnalysisError = {
+  ok: false;
+  code?: string;
+  message?: string;
 };
 
 type SummaryItem = {
@@ -92,6 +136,66 @@ function valueAsString(value: unknown) {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+const INVOICE_ANALYSIS_MAX_FILE_SIZE = 10 * 1024 * 1024;
+const INVOICE_ANALYSIS_SUPPORTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+
+function inferInvoiceFileType(file: File) {
+  const explicitType = file.type?.trim().toLowerCase();
+  if (explicitType) return explicitType;
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';
+  if (extension === 'png') return 'image/png';
+  if (extension === 'webp') return 'image/webp';
+  if (extension === 'pdf') return 'application/pdf';
+  return 'application/octet-stream';
+}
+
+function formatInvoiceFileSize(size: number) {
+  if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  if (size >= 1024) return `${Math.round(size / 1024)} KB`;
+  return `${size} B`;
+}
+
+function confidencePercent(value?: number) {
+  if (!Number.isFinite(value)) return '0%';
+  return `${Math.round(Math.max(0, Math.min(1, Number(value))) * 100)}%`;
+}
+
+function invoiceAnalysisWarningLabel(code: string, text: typeof BUSINESS_TEXT[BusinessLang]) {
+  const labels: Record<string, string> = {
+    missing_invoice_number: text.aiInvoiceWarningMissingInvoiceNumber,
+    missing_vendor_or_title: text.aiInvoiceWarningMissingVendor,
+    missing_invoice_date: text.aiInvoiceWarningMissingInvoiceDate,
+    missing_due_date: text.aiInvoiceWarningMissingDueDate,
+    missing_amount: text.aiInvoiceWarningMissingAmount,
+    missing_currency: text.aiInvoiceWarningMissingCurrency,
+    currency_differs: text.aiInvoiceWarningCurrencyDiffers,
+    due_soon: text.aiInvoiceWarningDueSoon,
+    tax_detected: text.aiInvoiceWarningTaxDetected,
+    discount_detected: text.aiInvoiceWarningDiscountDetected,
+    review_low_confidence: text.aiInvoiceWarningLowConfidence,
+  };
+  return labels[code] || code;
+}
+
+function invoiceAnalysisCategoryLabel(code: string | null, text: typeof BUSINESS_TEXT[BusinessLang]) {
+  const labels: Record<string, string> = {
+    operational: text.aiInvoiceCategoryOperational,
+    marketing: text.aiInvoiceCategoryMarketing,
+    payroll: text.aiInvoiceCategoryPayroll,
+    technology: text.aiInvoiceCategoryTechnology,
+    rent: text.aiInvoiceCategoryRent,
+    suppliers: text.aiInvoiceCategorySuppliers,
+    other: text.aiInvoiceCategoryOther,
+  };
+  return code ? labels[code] || text.aiInvoiceCategoryOther : text.aiInvoiceNotClear;
+}
+
+function invoiceAnalysisSummaryLabel(code: string, text: typeof BUSINESS_TEXT[BusinessLang]) {
+  if (code === 'invoice_complete') return text.aiInvoiceSummaryComplete;
+  return text.aiInvoiceSummaryNeedsReview;
 }
 
 function logSupplierSaveFailure(error: any) {
@@ -403,6 +507,11 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
   const [editing, setEditing] = useState<BusinessRecord | null>(null);
   const [form, setForm] = useState<Record<string, BusinessFormValue>>({});
   const [formError, setFormError] = useState('');
+  const [invoiceAnalysisOpen, setInvoiceAnalysisOpen] = useState(false);
+  const [invoiceAnalysisFile, setInvoiceAnalysisFile] = useState<File | null>(null);
+  const [invoiceAnalysisLoading, setInvoiceAnalysisLoading] = useState(false);
+  const [invoiceAnalysisError, setInvoiceAnalysisError] = useState('');
+  const [invoiceAnalysisResult, setInvoiceAnalysisResult] = useState<InvoiceAnalysisResult | null>(null);
 
   const customerOptions = useMemo(() => customerRows.map((row) => ({
     value: valueAsString(row.id),
@@ -526,10 +635,113 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
 
   const summaryItems = useMemo(() => config.getSummary(rows, filteredRows, helpers), [config, filteredRows, helpers, rows]);
 
+  function resetInvoiceAnalysis() {
+    setInvoiceAnalysisOpen(false);
+    setInvoiceAnalysisFile(null);
+    setInvoiceAnalysisLoading(false);
+    setInvoiceAnalysisError('');
+    setInvoiceAnalysisResult(null);
+  }
+
+  function handleInvoiceAnalysisFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] || null;
+    event.target.value = '';
+    setInvoiceAnalysisError('');
+    setInvoiceAnalysisResult(null);
+    if (!file) {
+      setInvoiceAnalysisFile(null);
+      return;
+    }
+    const mimeType = inferInvoiceFileType(file);
+    if (!INVOICE_ANALYSIS_SUPPORTED_TYPES.has(mimeType)) {
+      setInvoiceAnalysisFile(null);
+      setInvoiceAnalysisError(text.aiInvoiceUnsupportedFile);
+      return;
+    }
+    if (file.size > INVOICE_ANALYSIS_MAX_FILE_SIZE) {
+      setInvoiceAnalysisFile(null);
+      setInvoiceAnalysisError(text.aiInvoiceFileTooLarge);
+      return;
+    }
+    setInvoiceAnalysisFile(file);
+  }
+
+  function applyInvoiceAnalysis(result: InvoiceAnalysisResult) {
+    const extracted = result.extracted;
+    const matchedCustomer = extracted.clientName
+      ? customerRows.find((row) => valueAsString(row.name).trim().toLowerCase() === extracted.clientName?.trim().toLowerCase())
+      : null;
+    const lineItemNotes = extracted.lineItems.length
+      ? `${text.aiInvoiceLineItems}: ${extracted.lineItems.map((item) => item.description).filter(Boolean).slice(0, 5).join(', ')}`
+      : '';
+    const analysisNotes = [
+      extracted.notes,
+      invoiceAnalysisSummaryLabel(result.analysis.summary, text),
+      result.analysis.suggestedCategory ? `${text.aiInvoiceSuggestedCategory}: ${invoiceAnalysisCategoryLabel(result.analysis.suggestedCategory, text)}` : '',
+      lineItemNotes,
+      result.analysis.warnings.map((warning) => invoiceAnalysisWarningLabel(warning, text)).join(' | '),
+    ].filter(Boolean).join('\n');
+
+    setForm((current) => ({
+      ...current,
+      invoice_number: extracted.invoiceNumber || current.invoice_number || '',
+      title: extracted.title || extracted.vendorName || current.title || '',
+      customer_id: matchedCustomer?.id ? valueAsString(matchedCustomer.id) : current.customer_id || '',
+      amount: extracted.amount !== null && extracted.amount !== undefined ? String(extracted.amount) : current.amount || '',
+      currency: extracted.currency || current.currency || defaultCurrency,
+      status: extracted.status && BUSINESS_INVOICE_STATUS_OPTIONS.includes(extracted.status as any) ? extracted.status : current.status || 'draft',
+      invoice_date: extracted.invoiceDate || current.invoice_date || today(),
+      due_date: extracted.dueDate || current.due_date || '',
+      notes: analysisNotes || current.notes || '',
+    }));
+  }
+
+  async function analyzeInvoiceFile() {
+    if (!invoiceAnalysisFile) {
+      setInvoiceAnalysisError(text.aiInvoiceNoFile);
+      return;
+    }
+    setInvoiceAnalysisLoading(true);
+    setInvoiceAnalysisError('');
+    setInvoiceAnalysisResult(null);
+    const body = new FormData();
+    body.append('file', invoiceAnalysisFile);
+    body.append('defaultCurrency', defaultCurrency);
+    body.append('lang', locale);
+
+    try {
+      const response = await fetch('/api/invoices/analyze', {
+        method: 'POST',
+        body,
+      });
+      const payload = await response.json() as InvoiceAnalysisResult | InvoiceAnalysisError;
+      if (!response.ok || payload.ok === false) {
+        const errorPayload = payload as InvoiceAnalysisError;
+        setInvoiceAnalysisError(errorPayload.message || text.aiInvoiceFailed);
+        return;
+      }
+      const result = payload as InvoiceAnalysisResult;
+      setInvoiceAnalysisResult(result);
+      applyInvoiceAnalysis(result);
+    } catch {
+      setInvoiceAnalysisError(text.aiInvoiceFailed);
+    } finally {
+      setInvoiceAnalysisLoading(false);
+    }
+  }
+
+  function invoiceAnalysisDisplayValue(value: unknown, type?: 'money' | 'date', currency?: string | null) {
+    if (value === null || value === undefined || value === '') return text.aiInvoiceNotClear;
+    if (type === 'money') return formatMoney(numericValue(value), currency || defaultCurrency, locale);
+    if (type === 'date') return formatDate(String(value), locale);
+    return valueAsString(value);
+  }
+
   function openCreate() {
     setEditing(null);
     setForm(makeEmptyForm(config.fields, defaultCurrency));
     setFormError('');
+    resetInvoiceAnalysis();
     setFormOpen(true);
   }
 
@@ -542,6 +754,7 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
     });
     setForm(nextForm);
     setFormError('');
+    resetInvoiceAnalysis();
     setFormOpen(true);
   }
 
@@ -549,6 +762,7 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
     setEditing(null);
     setForm(makeEmptyForm(config.fields, defaultCurrency));
     setFormError('');
+    resetInvoiceAnalysis();
     setFormOpen(false);
   }
 
@@ -925,33 +1139,175 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
                 </div>
                 <button type="button" onClick={closeForm}>{text.cancel}</button>
               </div>
-              {formError ? <div className="business-form-error" role="alert">{formError}</div> : null}
-              <div className="business-form-grid">
-                {config.fields.map((field) => (
-                  <label className={`business-form-field ${field.full ? 'full' : ''} ${field.type === 'checkbox' ? 'checkbox' : ''}`} key={field.key}>
-                    <span>{field.label}{field.required ? ' *' : ''}</span>
-                    {field.type === 'textarea' ? (
-                      <textarea value={valueAsString(form[field.key])} onChange={(event) => setForm((current) => ({ ...current, [field.key]: event.target.value }))} />
-                    ) : field.type === 'select' || field.type === 'customer' ? (
-                      <select value={valueAsString(form[field.key])} onChange={(event) => setForm((current) => ({ ...current, [field.key]: event.target.value }))}>
-                        {field.type === 'customer' ? <option value="">{text.unclassified}</option> : null}
-                        {(field.options ?? []).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                      </select>
-                    ) : field.type === 'currency' ? (
-                      <CurrencySelect value={valueAsString(form[field.key] || defaultCurrency)} onChange={(code) => setForm((current) => ({ ...current, [field.key]: code }))} lang={locale} />
-                    ) : field.type === 'checkbox' ? (
-                      <input type="checkbox" checked={Boolean(form[field.key])} onChange={(event) => setForm((current) => ({ ...current, [field.key]: event.target.checked }))} />
-                    ) : (
-                      <input
-                        type={field.type}
-                        value={valueAsString(form[field.key])}
-                        min={field.type === 'number' ? '0' : undefined}
-                        step={field.type === 'number' ? '0.01' : undefined}
-                        onChange={(event) => setForm((current) => ({ ...current, [field.key]: event.target.value }))}
-                      />
-                    )}
-                  </label>
-                ))}
+              <div className="business-form-scroll">
+                {formError ? <div className="business-form-error" role="alert">{formError}</div> : null}
+                {module === 'invoices' ? (
+                  <section className="business-ai-invoice-panel" aria-label={text.aiInvoiceReader}>
+                    <div className="business-ai-invoice-head">
+                      <div>
+                        <span>{text.aiInvoiceOptional}</span>
+                        <h3>{text.aiInvoiceReader}</h3>
+                        <p>{text.aiInvoiceUploadDescription}</p>
+                      </div>
+                      <button
+                        className="business-ai-invoice-toggle"
+                        type="button"
+                        onClick={() => setInvoiceAnalysisOpen((current) => !current)}
+                      >
+                        <Sparkles size={16} aria-hidden="true" />
+                        {invoiceAnalysisOpen ? text.aiInvoiceHidePanel : text.aiInvoiceAnalyzeButton}
+                      </button>
+                    </div>
+                    {invoiceAnalysisOpen ? (
+                      <div className="business-ai-invoice-body">
+                        <label className="business-ai-upload-box">
+                          <input
+                            accept="image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf"
+                            type="file"
+                            onChange={handleInvoiceAnalysisFileChange}
+                          />
+                          <UploadCloud size={22} aria-hidden="true" />
+                          <strong>{text.aiInvoiceDropTitle}</strong>
+                          <span>{text.aiInvoiceDropDescription}</span>
+                          <em>{text.aiInvoiceChooseFile}</em>
+                        </label>
+
+                        {invoiceAnalysisFile ? (
+                          <div className="business-ai-file-row">
+                            <FileText size={17} aria-hidden="true" />
+                            <div>
+                              <strong>{invoiceAnalysisFile.name}</strong>
+                              <span>{formatInvoiceFileSize(invoiceAnalysisFile.size)}</span>
+                            </div>
+                            <button type="button" onClick={() => {
+                              setInvoiceAnalysisFile(null);
+                              setInvoiceAnalysisError('');
+                              setInvoiceAnalysisResult(null);
+                            }}>
+                              <X size={15} aria-hidden="true" />
+                              {text.aiInvoiceRemoveFile}
+                            </button>
+                          </div>
+                        ) : null}
+
+                        {invoiceAnalysisError ? (
+                          <div className="business-ai-alert" role="alert">
+                            <AlertTriangle size={16} aria-hidden="true" />
+                            <span>{invoiceAnalysisError}</span>
+                          </div>
+                        ) : null}
+
+                        <div className="business-ai-actions">
+                          <button className="business-primary-btn" type="button" onClick={analyzeInvoiceFile} disabled={invoiceAnalysisLoading || !invoiceAnalysisFile}>
+                            {invoiceAnalysisLoading ? <Loader2 className="business-spin" size={15} aria-hidden="true" /> : <Sparkles size={15} aria-hidden="true" />}
+                            {invoiceAnalysisLoading ? text.aiInvoiceReading : text.aiInvoiceStartAnalysis}
+                          </button>
+                          {invoiceAnalysisResult ? (
+                            <>
+                              <button className="business-ghost-btn" type="button" onClick={() => applyInvoiceAnalysis(invoiceAnalysisResult)}>
+                                <CheckCircle2 size={15} aria-hidden="true" />
+                                {text.aiInvoiceApplyData}
+                              </button>
+                              <button className="business-ghost-btn" type="button" onClick={() => {
+                                setInvoiceAnalysisResult(null);
+                                setInvoiceAnalysisError('');
+                              }}>
+                                {text.aiInvoiceClearResult}
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
+
+                        {invoiceAnalysisResult ? (
+                          <article className="business-ai-result-card">
+                            <div className="business-ai-result-head">
+                              <div>
+                                <span>{text.aiInvoiceReviewNotice}</span>
+                                <h4>{text.aiInvoiceResultTitle}</h4>
+                              </div>
+                              <strong>{invoiceAnalysisResult.analysis.isComplete ? text.aiInvoiceCompleteBadge : text.aiInvoiceReviewBadge}</strong>
+                            </div>
+                            <div className="business-ai-result-grid">
+                              {[
+                                { label: text.invoiceNumber, value: invoiceAnalysisResult.extracted.invoiceNumber, confidence: invoiceAnalysisResult.confidence.invoiceNumber },
+                                { label: text.invoiceTitle, value: invoiceAnalysisResult.extracted.title || invoiceAnalysisResult.extracted.vendorName, confidence: undefined },
+                                { label: text.supplierName, value: invoiceAnalysisResult.extracted.vendorName, confidence: undefined },
+                                { label: text.customer, value: invoiceAnalysisResult.extracted.clientName, confidence: undefined },
+                                { label: text.amount, value: invoiceAnalysisDisplayValue(invoiceAnalysisResult.extracted.amount, 'money', invoiceAnalysisResult.extracted.currency), confidence: invoiceAnalysisResult.confidence.amount },
+                                { label: text.currency, value: invoiceAnalysisResult.extracted.currency, confidence: invoiceAnalysisResult.confidence.currency },
+                                { label: text.status, value: invoiceStatusLabel(valueAsString(invoiceAnalysisResult.extracted.status), locale), confidence: undefined },
+                                { label: text.invoiceDate, value: invoiceAnalysisDisplayValue(invoiceAnalysisResult.extracted.invoiceDate, 'date'), confidence: invoiceAnalysisResult.confidence.invoiceDate },
+                                { label: text.dueDate, value: invoiceAnalysisDisplayValue(invoiceAnalysisResult.extracted.dueDate, 'date'), confidence: undefined },
+                                { label: text.aiInvoiceTaxAmount, value: invoiceAnalysisDisplayValue(invoiceAnalysisResult.extracted.taxAmount, 'money', invoiceAnalysisResult.extracted.currency), confidence: undefined },
+                                { label: text.aiInvoiceDiscountAmount, value: invoiceAnalysisDisplayValue(invoiceAnalysisResult.extracted.discountAmount, 'money', invoiceAnalysisResult.extracted.currency), confidence: undefined },
+                                { label: text.aiInvoiceSuggestedCategory, value: invoiceAnalysisCategoryLabel(invoiceAnalysisResult.analysis.suggestedCategory, text), confidence: undefined },
+                              ].map((item) => (
+                                <div key={item.label}>
+                                  <span>{item.label}</span>
+                                  <strong>{item.value || text.aiInvoiceNotClear}</strong>
+                                  {item.confidence !== undefined ? <em>{text.aiInvoiceConfidence}: {confidencePercent(item.confidence)}</em> : null}
+                                </div>
+                              ))}
+                            </div>
+                            {invoiceAnalysisResult.extracted.currency && invoiceAnalysisResult.extracted.currency !== defaultCurrency ? (
+                              <p className="business-ai-note">{text.aiInvoiceExchangeUnavailable}</p>
+                            ) : null}
+                            <div className="business-ai-summary">
+                              <strong>{text.aiInvoiceSmartSummary}</strong>
+                              <p>{invoiceAnalysisSummaryLabel(invoiceAnalysisResult.analysis.summary, text)}</p>
+                              {invoiceAnalysisResult.analysis.warnings.length ? (
+                                <ul>
+                                  {invoiceAnalysisResult.analysis.warnings.map((warning) => (
+                                    <li key={warning}>{invoiceAnalysisWarningLabel(warning, text)}</li>
+                                  ))}
+                                </ul>
+                              ) : null}
+                            </div>
+                            {invoiceAnalysisResult.extracted.lineItems.length ? (
+                              <div className="business-ai-line-items">
+                                <strong>{text.aiInvoiceLineItems}</strong>
+                                <div>
+                                  {invoiceAnalysisResult.extracted.lineItems.slice(0, 5).map((item, index) => (
+                                    <span key={`${item.description}-${index}`} title={item.description}>
+                                      {item.description || text.aiInvoiceNotClear}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null}
+                          </article>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </section>
+                ) : null}
+                <div className="business-form-grid">
+                  {config.fields.map((field) => (
+                    <label className={`business-form-field ${field.full ? 'full' : ''} ${field.type === 'checkbox' ? 'checkbox' : ''}`} key={field.key}>
+                      <span>{field.label}{field.required ? ' *' : ''}</span>
+                      {field.type === 'textarea' ? (
+                        <textarea value={valueAsString(form[field.key])} onChange={(event) => setForm((current) => ({ ...current, [field.key]: event.target.value }))} />
+                      ) : field.type === 'select' || field.type === 'customer' ? (
+                        <select value={valueAsString(form[field.key])} onChange={(event) => setForm((current) => ({ ...current, [field.key]: event.target.value }))}>
+                          {field.type === 'customer' ? <option value="">{text.unclassified}</option> : null}
+                          {(field.options ?? []).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                        </select>
+                      ) : field.type === 'currency' ? (
+                        <CurrencySelect value={valueAsString(form[field.key] || defaultCurrency)} onChange={(code) => setForm((current) => ({ ...current, [field.key]: code }))} lang={locale} />
+                      ) : field.type === 'checkbox' ? (
+                        <input type="checkbox" checked={Boolean(form[field.key])} onChange={(event) => setForm((current) => ({ ...current, [field.key]: event.target.checked }))} />
+                      ) : (
+                        <input
+                          type={field.type}
+                          value={valueAsString(form[field.key])}
+                          min={field.type === 'number' ? '0' : undefined}
+                          step={field.type === 'number' ? '0.01' : undefined}
+                          onChange={(event) => setForm((current) => ({ ...current, [field.key]: event.target.value }))}
+                        />
+                      )}
+                    </label>
+                  ))}
+                </div>
               </div>
               <div className="business-form-actions">
                 <button className="business-ghost-btn" type="button" onClick={closeForm}>{text.cancel}</button>
@@ -1302,12 +1658,13 @@ const businessRecordsModuleStyles = `
   }
 
   .business-form-modal {
-    width: min(760px, 100%);
+    width: min(820px, 100%);
     max-height: min(88vh, 900px);
-    overflow: auto;
-    padding: 20px;
+    overflow: hidden;
+    padding: 0;
     display: grid;
-    gap: 16px;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 0;
   }
 
   .business-form-head {
@@ -1315,6 +1672,16 @@ const businessRecordsModuleStyles = `
     justify-content: space-between;
     align-items: flex-start;
     gap: 12px;
+    padding: 20px 20px 14px;
+    border-bottom: 1px solid rgba(29, 140, 255, 0.12);
+  }
+
+  .business-form-scroll {
+    display: grid;
+    gap: 16px;
+    overflow: auto;
+    padding: 16px 20px 18px;
+    min-height: 0;
   }
 
   .business-form-grid {
@@ -1361,6 +1728,261 @@ const businessRecordsModuleStyles = `
 
   .business-form-actions {
     justify-content: flex-end;
+    padding: 14px 20px;
+    border-top: 1px solid rgba(29, 140, 255, 0.12);
+    background: color-mix(in srgb, var(--sfm-surface) 94%, transparent);
+  }
+
+  .business-ai-invoice-panel {
+    border: 1px solid rgba(29, 140, 255, 0.18);
+    background:
+      linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(45, 212, 191, 0.05)),
+      var(--sfm-surface);
+    border-radius: 18px;
+    padding: 14px;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.07);
+  }
+
+  .business-ai-invoice-head,
+  .business-ai-result-head,
+  .business-ai-file-row,
+  .business-ai-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .business-ai-invoice-head h3,
+  .business-ai-result-head h4 {
+    margin: 3px 0 0;
+    font-size: 1rem;
+    font-weight: 950;
+    color: var(--sfm-foreground);
+  }
+
+  .business-ai-invoice-head span,
+  .business-ai-result-head span,
+  .business-ai-file-row span,
+  .business-ai-result-grid span,
+  .business-ai-result-grid em,
+  .business-ai-invoice-head p,
+  .business-ai-summary p {
+    color: var(--sfm-muted);
+  }
+
+  .business-ai-invoice-head p,
+  .business-ai-summary p {
+    margin: 4px 0 0;
+    line-height: 1.55;
+  }
+
+  .business-ai-invoice-toggle {
+    border: 1px solid rgba(29, 140, 255, 0.22);
+    background: rgba(14, 165, 233, 0.1);
+    color: var(--sfm-primary);
+    min-height: 40px;
+    border-radius: 13px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 950;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .business-ai-invoice-toggle:hover {
+    transform: translateY(-1px);
+    border-color: rgba(29, 140, 255, 0.38);
+    background: rgba(14, 165, 233, 0.16);
+  }
+
+  .business-ai-invoice-body {
+    display: grid;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .business-ai-upload-box {
+    position: relative;
+    min-height: 128px;
+    border: 1px dashed rgba(29, 140, 255, 0.34);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.68);
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 6px;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .business-ai-upload-box input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .business-ai-upload-box strong {
+    font-weight: 950;
+    color: var(--sfm-foreground);
+  }
+
+  .business-ai-upload-box span,
+  .business-ai-upload-box em {
+    color: var(--sfm-muted);
+    font-style: normal;
+    font-size: 0.88rem;
+  }
+
+  .business-ai-upload-box em {
+    margin-top: 3px;
+    color: var(--sfm-primary);
+    font-weight: 950;
+  }
+
+  .business-ai-file-row {
+    border: 1px solid rgba(29, 140, 255, 0.13);
+    background: var(--sfm-card);
+    border-radius: 14px;
+    padding: 10px 12px;
+  }
+
+  .business-ai-file-row > div {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .business-ai-file-row strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .business-ai-file-row button {
+    border: 0;
+    background: rgba(239, 68, 68, 0.1);
+    color: #b91c1c;
+    min-height: 34px;
+    border-radius: 11px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .business-ai-alert,
+  .business-ai-note {
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    background: rgba(245, 158, 11, 0.1);
+    color: #92400e;
+    border-radius: 13px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 850;
+  }
+
+  .business-ai-note {
+    margin: 0;
+  }
+
+  .business-ai-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .business-ai-result-card {
+    border: 1px solid rgba(16, 185, 129, 0.22);
+    background: linear-gradient(180deg, rgba(240, 253, 250, 0.8), rgba(255, 255, 255, 0.9));
+    border-radius: 18px;
+    padding: 14px;
+    display: grid;
+    gap: 12px;
+  }
+
+  .business-ai-result-head strong {
+    border-radius: 999px;
+    padding: 7px 10px;
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .business-ai-result-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .business-ai-result-grid div {
+    min-width: 0;
+    border: 1px solid rgba(29, 140, 255, 0.11);
+    background: rgba(255, 255, 255, 0.72);
+    border-radius: 13px;
+    padding: 10px;
+    display: grid;
+    gap: 3px;
+  }
+
+  .business-ai-result-grid strong {
+    overflow-wrap: anywhere;
+    color: var(--sfm-foreground);
+  }
+
+  .business-ai-result-grid em {
+    font-style: normal;
+    font-size: 0.78rem;
+  }
+
+  .business-ai-summary,
+  .business-ai-line-items {
+    border: 1px solid rgba(29, 140, 255, 0.11);
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 14px;
+    padding: 11px 12px;
+  }
+
+  .business-ai-summary ul {
+    margin: 8px 0 0;
+    padding-inline-start: 18px;
+    color: var(--sfm-muted);
+    line-height: 1.55;
+  }
+
+  .business-ai-line-items {
+    display: grid;
+    gap: 8px;
+  }
+
+  .business-ai-line-items div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .business-ai-line-items span {
+    max-width: 100%;
+    border: 1px solid rgba(29, 140, 255, 0.13);
+    background: rgba(14, 165, 233, 0.08);
+    color: var(--sfm-foreground);
+    border-radius: 999px;
+    padding: 6px 9px;
+    font-weight: 850;
+    font-size: 0.82rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   @media (max-width: 720px) {
@@ -1379,6 +2001,41 @@ const businessRecordsModuleStyles = `
     .business-form-actions,
     .business-hero-actions {
       width: 100%;
+    }
+
+    .business-modal-backdrop {
+      padding: 12px;
+      align-items: end;
+      place-items: end center;
+    }
+
+    .business-form-modal {
+      width: 100%;
+      max-height: 92vh;
+      border-radius: 22px 22px 0 0;
+    }
+
+    .business-form-head,
+    .business-form-scroll,
+    .business-form-actions {
+      padding-inline: 14px;
+    }
+
+    .business-ai-invoice-head,
+    .business-ai-result-head,
+    .business-ai-file-row {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .business-ai-invoice-toggle,
+    .business-ai-actions button,
+    .business-ai-file-row button {
+      width: 100%;
+    }
+
+    .business-ai-result-grid {
+      grid-template-columns: 1fr;
     }
 
     .business-back-link {

@@ -960,13 +960,12 @@ function googleEntityDebugValue(entity: GoogleDocumentEntity) {
   const normalizedValue = entity.normalizedValue;
   if (!normalizedValue) return undefined;
   return {
-    text: cleanTextValue(normalizedValue.text),
+    hasText: Boolean(cleanTextValue(normalizedValue.text)),
     moneyValue: normalizedValue.moneyValue ? {
       currencyCode: normalizedValue.moneyValue.currencyCode,
-      units: normalizedValue.moneyValue.units,
-      nanos: normalizedValue.moneyValue.nanos,
+      hasAmount: normalizedValue.moneyValue.units !== undefined || normalizedValue.moneyValue.nanos !== undefined,
     } : undefined,
-    dateValue: normalizedValue.dateValue,
+    hasDateValue: Boolean(normalizedValue.dateValue),
   };
 }
 
@@ -975,7 +974,7 @@ function logGoogleEntitySummary(entities: GoogleDocumentEntity[]) {
   const flattened = flattenGoogleEntities(entities);
   console.info('Google Document AI invoice entities', flattened.slice(0, 80).map(entity => ({
     type: entity.type,
-    mentionText: entity.mentionText,
+    hasMentionText: Boolean(entity.mentionText),
     normalizedValue: googleEntityDebugValue(entity),
     confidence: entity.confidence,
     pageAnchor: Boolean(entity.pageAnchor),
@@ -1183,7 +1182,7 @@ async function scanWithGoogleDocumentAI(file: File, bytes: ArrayBuffer): Promise
     processorIdPresent: Boolean(config.processorId),
     processorPath,
     serviceAccount: maskGoogleClientEmail(config.credentials.client_email),
-    file: { name: file.name, mimeType, size: file.size },
+    file: { mimeType, size: file.size },
   });
   let response: Response;
   try {
@@ -1204,7 +1203,7 @@ async function scanWithGoogleDocumentAI(file: File, bytes: ArrayBuffer): Promise
     console.error('Google Document AI fetch failed', {
       processorPath,
       location: config.location,
-      file: { name: file.name, mimeType, size: file.size },
+      file: { mimeType, size: file.size },
       errorName: error instanceof Error ? error.name : 'unknown',
       errorMessage: error instanceof Error ? error.message : 'google_request_failed',
     });
@@ -1218,7 +1217,7 @@ async function scanWithGoogleDocumentAI(file: File, bytes: ArrayBuffer): Promise
       processorIdPresent: Boolean(config.processorId),
       processorPath,
       serviceAccount: maskGoogleClientEmail(config.credentials.client_email),
-      file: { name: file.name, mimeType, size: file.size },
+      file: { mimeType, size: file.size },
       googleStatus: detail.status,
       googleReason: detail.reason,
       googleCode: detail.code,
@@ -1523,7 +1522,7 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
         hasGoogleCredentialsJson: providerStatus.google.hasCredentialsJson,
         hasOpenAiKey: providerStatus.openai.hasApiKey,
       },
-      file: { name: file.name, type: file.type, inferredMimeType: mimeType, size: file.size },
+      file: { type: file.type, inferredMimeType: mimeType, size: file.size },
       googleClientInit: providerStatus.google.clientInitValid,
       processorLocation: process.env.GOOGLE_DOCUMENT_AI_LOCATION || null,
       processorIdPresent: providerStatus.google.hasProcessorId,
@@ -1546,7 +1545,6 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
       warnings.push(message);
       if (process.env.NODE_ENV !== 'production') {
         console.error('Google Document AI receipt scan failed:', {
-          fileName: file.name,
           fileType: file.type,
           inferredMimeType: mimeType,
           fileSize: file.size,
@@ -1576,7 +1574,6 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
         warnings.push(message);
         if (process.env.NODE_ENV !== 'production') {
           console.error('OpenAI Vision receipt scan failed:', {
-            fileName: file.name,
             errorCode: detail.message,
             providerStatusCode: detail.providerStatusCode,
             providerReason: detail.providerReason,
@@ -1647,7 +1644,7 @@ export async function POST(request: NextRequest) {
       console.info('Receipt scan request started', {
         googleConfigured: googleConfigured(),
         openaiConfigured: openaiConfigured(),
-      files: files.map(file => ({ name: file.name, type: file.type, size: file.size })),
+      files: files.map(file => ({ type: file.type, size: file.size })),
       effectiveMimeTypes: files.map(file => inferReceiptMimeType(file)),
     });
   }
