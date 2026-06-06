@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Download, Eye, FileSpreadsheet, FileText, Image as ImageIcon, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { AppModal } from '@/components/ui/AppModal';
 
 type Lang = 'ar' | 'en' | 'fr';
 type ProjectDocumentCategory =
@@ -637,13 +638,25 @@ export function ProjectDocumentsTab({
       </div>
 
       {modalOpen ? (
-        <div className="documents-modal-backdrop" role="dialog" aria-modal="true" aria-label={t.uploadDocumentShort}>
-          <div className="documents-modal">
-            <div className="documents-modal-heading">
-              <h2>{t.uploadDocumentShort}</h2>
-              <button type="button" onClick={closeModal} aria-label={t.close}><X size={18} /></button>
-            </div>
-
+        <AppModal
+          open
+          title={t.uploadDocumentShort}
+          closeLabel={t.close}
+          onClose={closeModal}
+          size="md"
+          className="documents-modal"
+          bodyClassName="documents-modal-body"
+          footerClassName="documents-modal-actions"
+          footer={(
+            <>
+              <button type="button" onClick={closeModal}>{t.cancel}</button>
+              <button type="button" className="documents-primary-btn" disabled={uploading} onClick={uploadDocument}>
+                <Upload size={16} />
+                {uploading ? t.uploadDocumentShort : t.uploadDocumentShort}
+              </button>
+            </>
+          )}
+        >
             <div className="documents-modal-grid">
               <label className="documents-field" htmlFor="project-document-title">
                 <span>{t.documentTitle}</span>
@@ -696,16 +709,7 @@ export function ProjectDocumentsTab({
                 />
               </label>
             </div>
-
-            <div className="documents-modal-actions">
-              <button type="button" onClick={closeModal}>{t.cancel}</button>
-              <button type="button" className="documents-primary-btn" disabled={uploading} onClick={uploadDocument}>
-                <Upload size={16} />
-                {uploading ? t.uploadDocumentShort : t.uploadDocumentShort}
-              </button>
-            </div>
-          </div>
-        </div>
+        </AppModal>
       ) : null}
 
       <style jsx global>{`

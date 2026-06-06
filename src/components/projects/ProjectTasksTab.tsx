@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CalendarDays, CheckCircle2, Clock3, Flag, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle2, Clock3, Flag, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
+import { AppModal } from '@/components/ui/AppModal';
 
 type Lang = 'ar' | 'en' | 'fr';
 type TaskStatus = 'todo' | 'in_progress' | 'done' | 'late' | 'cancelled';
@@ -702,30 +703,42 @@ export function ProjectTasksTab({
       </div>
 
       {taskModalOpen && (
-        <Modal title={editingTask ? t.editTask : t.addTask} closeLabel={t.close} onClose={() => setTaskModalOpen(false)}>
+        <Modal
+          title={editingTask ? t.editTask : t.addTask}
+          closeLabel={t.close}
+          onClose={() => setTaskModalOpen(false)}
+          footer={(
+            <>
+              <button type="button" onClick={() => setTaskModalOpen(false)}>{t.cancel}</button>
+              <button type="button" className="primary-modal-btn" disabled={saving} onClick={saveTask}><Save size={16} />{t.saveTask}</button>
+            </>
+          )}
+        >
           <TaskFormFields
             form={taskForm}
             t={t}
             onChange={(field, value) => setTaskForm(prev => ({ ...prev, [field]: value }))}
           />
-          <div className="modal-actions">
-            <button type="button" onClick={() => setTaskModalOpen(false)}>{t.cancel}</button>
-            <button type="button" className="primary-modal-btn" disabled={saving} onClick={saveTask}><Save size={16} />{t.saveTask}</button>
-          </div>
         </Modal>
       )}
 
       {milestoneModalOpen && (
-        <Modal title={editingMilestone ? t.editMilestone : t.addMilestone} closeLabel={t.close} onClose={() => setMilestoneModalOpen(false)}>
+        <Modal
+          title={editingMilestone ? t.editMilestone : t.addMilestone}
+          closeLabel={t.close}
+          onClose={() => setMilestoneModalOpen(false)}
+          footer={(
+            <>
+              <button type="button" onClick={() => setMilestoneModalOpen(false)}>{t.cancel}</button>
+              <button type="button" className="primary-modal-btn" disabled={saving} onClick={saveMilestone}><Save size={16} />{t.saveMilestone}</button>
+            </>
+          )}
+        >
           <MilestoneFormFields
             form={milestoneForm}
             t={t}
             onChange={(field, value) => setMilestoneForm(prev => ({ ...prev, [field]: value }))}
           />
-          <div className="modal-actions">
-            <button type="button" onClick={() => setMilestoneModalOpen(false)}>{t.cancel}</button>
-            <button type="button" className="primary-modal-btn" disabled={saving} onClick={saveMilestone}><Save size={16} />{t.saveMilestone}</button>
-          </div>
         </Modal>
       )}
 
@@ -786,17 +799,33 @@ function SectionTitle({ title, icon }: { title: string; icon: React.ReactNode })
   return <div className="tasks-section-title"><h2>{title}</h2>{icon}</div>;
 }
 
-function Modal({ title, closeLabel, onClose, children }: { title: string; closeLabel: string; onClose: () => void; children: React.ReactNode }) {
+function Modal({
+  title,
+  closeLabel,
+  onClose,
+  children,
+  footer,
+}: {
+  title: string;
+  closeLabel: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
   return (
-    <div className="tasks-modal-backdrop" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="tasks-modal">
-        <div className="modal-heading">
-          <h2>{title}</h2>
-          <button type="button" onClick={onClose} aria-label={closeLabel}><X size={18} /></button>
-        </div>
-        {children}
-      </div>
-    </div>
+    <AppModal
+      open
+      title={title}
+      closeLabel={closeLabel}
+      onClose={onClose}
+      size="md"
+      className="tasks-modal"
+      bodyClassName="tasks-modal-body"
+      footerClassName="modal-actions"
+      footer={footer}
+    >
+      {children}
+    </AppModal>
   );
 }
 

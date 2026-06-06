@@ -1916,15 +1916,167 @@ button:disabled,
 .entry-modal,
 .confirm-modal,
 .documents-modal,
+.tasks-modal,
+.invest-modal,
+.security-modal,
+.business-form-modal,
+.ebooks-modal,
+.financial-modal,
+.market-movers-modal,
 .income-modal,
 .expense-modal,
 .project-modal,
-.currency-menu,
-[role="dialog"] {
+.currency-menu {
   max-width: min(100%, 720px) !important;
   max-height: min(92dvh, 900px) !important;
   overflow: auto !important;
   overscroll-behavior: contain;
+}
+
+.sfm-modal-open,
+.sfm-modal-open-body {
+  overflow: hidden !important;
+}
+
+html:has(:where(.sfm-modal-overlay, .entry-overlay, .documents-modal-backdrop, .tasks-modal-backdrop, .invest-overlay, .business-modal-backdrop, .security-modal-overlay, .ebooks-modal-backdrop, .financial-modal-backdrop, .market-movers-modal-backdrop, .modal-overlay)),
+body:has(:where(.sfm-modal-overlay, .entry-overlay, .documents-modal-backdrop, .tasks-modal-backdrop, .invest-overlay, .business-modal-backdrop, .security-modal-overlay, .ebooks-modal-backdrop, .financial-modal-backdrop, .market-movers-modal-backdrop, .modal-overlay)) {
+  overflow: hidden !important;
+}
+
+.sfm-modal-overlay,
+.entry-overlay,
+.documents-modal-backdrop,
+.tasks-modal-backdrop,
+.invest-overlay,
+.business-modal-backdrop,
+.security-modal-overlay,
+.ebooks-modal-backdrop,
+.financial-modal-backdrop,
+.market-movers-modal-backdrop,
+.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  z-index: 9999 !important;
+  display: grid !important;
+  place-items: center !important;
+  align-items: center !important;
+  justify-items: center !important;
+  padding: clamp(12px, 2vw, 24px) !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  isolation: isolate !important;
+  background: rgba(3, 18, 37, 0.56) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.sfm-modal-panel {
+  width: min(92vw, var(--sfm-modal-width, 720px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  max-height: min(90dvh, 900px) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  overflow: hidden !important;
+  border-radius: 24px !important;
+  border: 1px solid rgba(29, 140, 255, 0.20) !important;
+  background: var(--sfm-card) !important;
+  color: var(--sfm-foreground) !important;
+  box-shadow: 0 28px 90px rgba(3, 18, 37, 0.30) !important;
+}
+
+.sfm-modal-panel.tasks-modal,
+.sfm-modal-panel.documents-modal,
+.sfm-modal-panel.invest-modal {
+  padding: 0 !important;
+}
+
+.sfm-modal-header {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  padding: 18px 20px !important;
+  border-bottom: 1px solid rgba(29, 140, 255, 0.12) !important;
+  background: linear-gradient(135deg, rgba(248, 251, 255, 0.96), rgba(236, 254, 255, 0.92)) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.dark .sfm-modal-header {
+  background: linear-gradient(135deg, rgba(15, 29, 49, 0.96), rgba(8, 47, 73, 0.90)) !important;
+}
+
+.sfm-modal-header h2 {
+  margin: 0 !important;
+  color: var(--sfm-midnight) !important;
+  font-size: clamp(19px, 2.2vw, 23px) !important;
+  line-height: 1.25 !important;
+  font-weight: 950 !important;
+}
+
+.dark .sfm-modal-header h2 {
+  color: #F8FAFC !important;
+}
+
+.sfm-modal-header p {
+  margin: 6px 0 0 !important;
+  color: var(--sfm-muted) !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  line-height: 1.6 !important;
+}
+
+.sfm-modal-close {
+  width: 40px !important;
+  height: 40px !important;
+  flex: 0 0 auto !important;
+  border: 1px solid rgba(29, 140, 255, 0.16) !important;
+  border-radius: 14px !important;
+  background: var(--sfm-card) !important;
+  color: var(--sfm-midnight) !important;
+  display: grid !important;
+  place-items: center !important;
+  cursor: pointer !important;
+}
+
+.sfm-modal-close:hover,
+.sfm-modal-close:focus-visible {
+  color: var(--sfm-primary) !important;
+  border-color: rgba(24, 212, 212, 0.42) !important;
+  background: rgba(24, 212, 212, 0.08) !important;
+}
+
+.sfm-modal-body {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  padding: 18px 20px !important;
+}
+
+.sfm-modal-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  padding: 14px 20px !important;
+  border-top: 1px solid rgba(29, 140, 255, 0.12) !important;
+  background: rgba(248, 251, 255, 0.94) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.dark .sfm-modal-footer {
+  background: rgba(15, 29, 49, 0.94) !important;
 }
 
 .modal-backdrop,
@@ -1933,6 +2085,47 @@ button:disabled,
 .income-modal-backdrop,
 .expense-modal-backdrop {
   padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)) !important;
+}
+
+@media (max-width: 760px) {
+  .sfm-modal-overlay,
+  .entry-overlay,
+  .documents-modal-backdrop,
+  .tasks-modal-backdrop,
+  .invest-overlay,
+  .business-modal-backdrop,
+  .security-modal-overlay,
+  .ebooks-modal-backdrop,
+  .financial-modal-backdrop,
+  .market-movers-modal-backdrop,
+  .modal-overlay {
+    place-items: end center !important;
+    align-items: end !important;
+    padding: 0 !important;
+  }
+
+  .sfm-modal-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 90dvh !important;
+    border-radius: 22px 22px 0 0 !important;
+  }
+
+  .sfm-modal-header,
+  .sfm-modal-body,
+  .sfm-modal-footer {
+    padding-inline: 16px !important;
+  }
+
+  .sfm-modal-footer {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .sfm-modal-footer button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
 }
 
 .table-wrap,
