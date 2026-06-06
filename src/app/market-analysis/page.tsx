@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent, ReactNode } from 'react';
+import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDollarSign, Clock3, FileText, Gauge, Info, Landmark, LineChart, Newspaper, Percent, PieChart, Plus, Search, ShieldAlert, ShoppingCart, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { PageTabs } from '@/components/layout/PageTabs';
@@ -520,6 +520,11 @@ function normalizeSummaryLanguage(lang: string): EducationalSummaryLanguage {
 function distancePercent(level: number, current: number) {
   if (!level || !current) return 0;
   return ((level - current) / current) * 100;
+}
+
+function levelMarkerPercent(value: number, min: number, max: number) {
+  if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) return 50;
+  return Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
 }
 
 function parseNumber(value: unknown) {
@@ -2293,6 +2298,22 @@ export default function MarketAnalysisPage() {
   const selectedCountry = selected?.country ?? selectedAsset?.country ?? null;
   const selectedMarketSymbol = selected?.symbol ?? selectedAsset?.symbol ?? null;
   const selectedCurrencyLabel = marketCurrencyLabel(selectedCurrency, lang);
+  const levelRange = useMemo(() => {
+    if (!selected) return { min: 0, max: 1, support: 0, current: 50, resistance: 100 };
+    const values = [selected.levels.support, selected.latestPrice, selected.levels.resistance].filter(value => Number.isFinite(value));
+    const min = values.length ? Math.min(...values) : 0;
+    const max = values.length ? Math.max(...values) : 1;
+    const spread = max - min;
+    const paddedMin = Math.max(0, min - Math.max(spread * 0.08, Math.abs(max || 1) * 0.01));
+    const paddedMax = max + Math.max(spread * 0.08, Math.abs(max || 1) * 0.01);
+    return {
+      min: paddedMin,
+      max: paddedMax,
+      support: levelMarkerPercent(selected.levels.support, paddedMin, paddedMax),
+      current: levelMarkerPercent(selected.latestPrice, paddedMin, paddedMax),
+      resistance: levelMarkerPercent(selected.levels.resistance, paddedMin, paddedMax),
+    };
+  }, [selected]);
   const selectedMoney = useCallback(
     (value: number, extra?: { includeKuwaitDinarEquivalent?: boolean }) => money(value, selectedCurrency, {
       locale: lang,
@@ -2989,6 +3010,9 @@ export default function MarketAnalysisPage() {
                   currency={selectedCurrency}
                   exchange={selectedExchange}
                   symbol={selectedMarketSymbol}
+                  currentPrice={selected.latestPrice}
+                  support={selected.levels.support}
+                  resistance={selected.levels.resistance}
                   t={t}
                 />
                 <div className="market-chart-meta">
@@ -3004,9 +3028,9 @@ export default function MarketAnalysisPage() {
                 <div className="levels-strip">
                   <span>{t('market_support_zone')} {selectedMoney(selected.levels.support)} ({distancePercent(selected.levels.support, selected.latestPrice).toFixed(1)}%)</span>
                   <i>
-                    <b style={{ insetInlineStart: '20%' }} />
-                    <b className="current" style={{ insetInlineStart: '50%' }} />
-                    <b style={{ insetInlineStart: '80%' }} />
+                    <b style={{ insetInlineStart: `${levelRange.support}%` }} />
+                    <b className="current" style={{ insetInlineStart: `${levelRange.current}%` }} />
+                    <b style={{ insetInlineStart: `${levelRange.resistance}%` }} />
                   </i>
                   <span>{t('market_resistance_zone')} {selectedMoney(selected.levels.resistance)} ({percent(distancePercent(selected.levels.resistance, selected.latestPrice))})</span>
                 </div>
@@ -12079,12 +12103,15 @@ function MarketAsyncToolStyles() {
       }
 
       .price-history-chart {
-        min-height: 340px;
+        min-height: 318px;
         border-color: rgba(47, 214, 192, .18);
         background:
           radial-gradient(circle at 12% 0%, rgba(47, 214, 192, .10), transparent 36%),
           linear-gradient(180deg, rgba(255, 255, 255, .94), rgba(239, 248, 255, .76));
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, .58), 0 12px 30px rgba(3, 18, 37, .055);
+        padding: 12px;
+        gap: 4px;
+        align-content: start;
       }
 
       .market-chart-controls {
@@ -12159,8 +12186,17 @@ function MarketAsyncToolStyles() {
       }
 
       .price-history-chart svg {
-        height: clamp(250px, 30vw, 340px);
+        height: clamp(260px, 26vw, 320px);
+        min-height: 260px;
         overflow: hidden;
+      }
+
+      .price-chart-values {
+        margin-bottom: 2px;
+      }
+
+      .price-chart-values strong {
+        font-size: 18px;
       }
 
       .price-chart-grid-line {
@@ -12180,7 +12216,7 @@ function MarketAsyncToolStyles() {
 
       .price-chart-line-path {
         fill: none;
-        stroke-width: 3;
+        stroke-width: 2.6;
         stroke-linecap: round;
         stroke-linejoin: round;
         vector-effect: non-scaling-stroke;
@@ -12203,26 +12239,150 @@ function MarketAsyncToolStyles() {
         cursor: crosshair;
       }
 
-      .price-chart-y-label {
+      .price-chart-hit-zone {
+        fill: transparent;
+        cursor: crosshair;
+        pointer-events: all;
+      }
+
+      .price-chart-y-label,
+      .price-chart-x-label,
+      .price-chart-level-label {
         fill: var(--sfm-muted);
-        font: 800 10px Tajawal, Arial, sans-serif;
+        font: 850 10px Tajawal, Arial, sans-serif;
         opacity: .78;
         direction: ltr;
         unicode-bidi: isolate;
         pointer-events: none;
       }
 
+      .price-chart-x-label {
+        font-size: 9.5px;
+        opacity: .68;
+      }
+
+      .price-chart-level line {
+        stroke-width: 1.4;
+        stroke-dasharray: 6 6;
+        vector-effect: non-scaling-stroke;
+        opacity: .9;
+      }
+
+      .price-chart-level.support line,
+      .price-chart-level-label.support {
+        stroke: #10B981;
+        fill: #047857;
+      }
+
+      .price-chart-level.resistance line,
+      .price-chart-level-label.resistance {
+        stroke: #EF4444;
+        fill: #B91C1C;
+      }
+
+      .price-chart-level.current line,
+      .price-chart-level-label.current {
+        stroke: var(--sfm-primary);
+        fill: var(--sfm-primary-hover);
+        stroke-dasharray: none;
+        font-weight: 950;
+      }
+
+      .price-chart-level-label {
+        paint-order: stroke;
+        stroke: rgba(255, 255, 255, .88);
+        stroke-width: 4px;
+        font-size: 9.5px;
+      }
+
+      .price-chart-crosshair line {
+        stroke: rgba(15, 23, 42, .26);
+        stroke-width: 1;
+        vector-effect: non-scaling-stroke;
+        pointer-events: none;
+      }
+
+      .price-chart-crosshair circle {
+        fill: #FFFFFF;
+        stroke: var(--sfm-primary);
+        stroke-width: 2;
+        vector-effect: non-scaling-stroke;
+        pointer-events: none;
+      }
+
+      .price-chart-tooltip {
+        position: absolute;
+        z-index: 4;
+        width: min(230px, calc(100% - 28px));
+        transform: translate(-50%, -104%);
+        border: 1px solid rgba(47, 214, 192, .26);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, .94);
+        box-shadow: 0 18px 44px rgba(3, 18, 37, .16);
+        backdrop-filter: blur(12px);
+        padding: 10px;
+        pointer-events: none;
+      }
+
+      [dir="rtl"] .price-chart-tooltip {
+        transform: translate(50%, -104%);
+      }
+
+      .price-chart-tooltip strong {
+        display: block;
+        color: var(--sfm-foreground);
+        font-size: 12px;
+        font-weight: 950;
+        line-height: 1.35;
+        margin-bottom: 7px;
+      }
+
+      .price-chart-tooltip dl {
+        margin: 0;
+        display: grid;
+        gap: 5px;
+      }
+
+      .price-chart-tooltip div {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .price-chart-tooltip dt,
+      .price-chart-tooltip dd {
+        margin: 0;
+        font-size: 11px;
+        line-height: 1.25;
+      }
+
+      .price-chart-tooltip dt {
+        color: var(--sfm-muted);
+        font-weight: 900;
+      }
+
+      .price-chart-tooltip dd {
+        color: var(--sfm-foreground);
+        font-weight: 950;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
       .price-candle-wick,
       .price-ohlc-line,
       .price-ohlc-tick {
-        stroke-width: 2;
+        stroke-width: 1.8;
         vector-effect: non-scaling-stroke;
         stroke-linecap: round;
         pointer-events: all;
       }
 
       .price-candle-body {
-        stroke-width: 1.2;
+        stroke-width: 1;
         vector-effect: non-scaling-stroke;
         pointer-events: all;
       }
@@ -12300,6 +12460,25 @@ function MarketAsyncToolStyles() {
         opacity: .88;
       }
 
+      .dark .price-chart-x-label {
+        fill: #8EA6C3;
+        opacity: .72;
+      }
+
+      .dark .price-chart-level-label {
+        stroke: rgba(15, 29, 49, .92);
+      }
+
+      .dark .price-chart-crosshair line {
+        stroke: rgba(184, 199, 217, .28);
+      }
+
+      .dark .price-chart-tooltip {
+        background: rgba(15, 29, 49, .94);
+        border-color: #1D3050;
+        box-shadow: 0 18px 44px rgba(0, 0, 0, .34);
+      }
+
       .dark .price-candle.up .price-candle-wick,
       .dark .price-candle.up .price-candle-body,
       .dark .price-ohlc.up .price-ohlc-line,
@@ -12342,6 +12521,20 @@ function MarketAsyncToolStyles() {
         .chart-type-row::-webkit-scrollbar {
           display: none;
         }
+
+        .price-history-chart {
+          min-height: 300px;
+          padding: 10px;
+        }
+
+        .price-history-chart svg {
+          height: 250px;
+          min-height: 250px;
+        }
+
+        .price-chart-tooltip {
+          display: none;
+        }
       }
 
       @keyframes marketSpin {
@@ -12374,6 +12567,9 @@ function PriceHistoryChart({
   currency,
   exchange,
   symbol,
+  currentPrice,
+  support,
+  resistance,
   t,
 }: {
   history: MarketHistoryPoint[];
@@ -12385,80 +12581,170 @@ function PriceHistoryChart({
   currency: string | null;
   exchange?: string | null;
   symbol?: string | null;
+  currentPrice?: number | null;
+  support?: number | null;
+  resistance?: number | null;
   t: (key: string) => string;
 }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const chartId = useId().replace(/:/g, '');
   const lineGradientId = `${chartId}-price-line`;
   const areaGradientId = `${chartId}-price-area`;
   const clipPathId = `${chartId}-price-clip`;
+
+  type ChartPoint = {
+    date: string;
+    open: number | null;
+    high: number | null;
+    low: number | null;
+    close: number;
+    volume: number | null;
+  };
+
+  type OhlcChartPoint = ChartPoint & {
+    open: number;
+    high: number;
+    low: number;
+  };
+
+  const numberOrNull = (value: unknown) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  };
+
   const points = history
-    .map(point => ({
-      date: point.date,
-      open: Number(point.open),
-      high: Number(point.high),
-      low: Number(point.low),
-      close: Number(point.close),
-      volume: point.volume ?? null,
-    }))
-    .filter(point => point.date && Number.isFinite(point.close) && point.close > 0);
-  const ohlcPoints = points.filter(point => Number.isFinite(point.open) && Number.isFinite(point.high) && Number.isFinite(point.low));
+    .map(point => {
+      const close = numberOrNull(point.close);
+      const date = String(point.date ?? '').trim();
+      if (!date || close === null || close <= 0) return null;
+      return {
+        date,
+        open: numberOrNull(point.open),
+        high: numberOrNull(point.high),
+        low: numberOrNull(point.low),
+        close,
+        volume: numberOrNull(point.volume),
+      };
+    })
+    .filter((point): point is ChartPoint => point !== null);
+
+  const ohlcPoints = points
+    .filter((point): point is OhlcChartPoint => (
+      point.open !== null
+      && point.high !== null
+      && point.low !== null
+      && point.high >= Math.max(point.open, point.close)
+      && point.low <= Math.min(point.open, point.close)
+    ));
   const requiresOhlc = chartType === 'candlestick' || chartType === 'ohlc';
-  const activeOhlcPoints = requiresOhlc ? ohlcPoints : [];
-  const hasOhlcForChart = activeOhlcPoints.length > 0;
-  const width = 640;
-  const height = 260;
-  const padX = 34;
-  const padY = 28;
-  const domainValues = requiresOhlc && hasOhlcForChart
-    ? activeOhlcPoints.flatMap(point => [point.high, point.low, point.open, point.close])
-    : points.map(point => point.close);
+  const activePoints = requiresOhlc ? ohlcPoints : points;
+  const hasOhlcForChart = ohlcPoints.length >= 2;
+  const width = 760;
+  const height = 320;
+  const chartTop = 22;
+  const chartBottom = 276;
+  const chartLeft = 58;
+  const chartRight = 666;
+  const axisRight = width - 12;
+  const plotWidth = chartRight - chartLeft;
+  const candleSlot = plotWidth / Math.max(activePoints.length, 1);
+  const candleWidth = Math.max(4, Math.min(13, candleSlot * 0.62));
+  const edgeInset = Math.min(11, Math.max(5, candleWidth / 2 + 2));
+  const xStart = chartLeft + edgeInset;
+  const xEnd = chartRight - edgeInset;
+  const domainBaseValues = (requiresOhlc && hasOhlcForChart
+    ? activePoints.flatMap(point => [point.high, point.low, point.open, point.close])
+    : points.map(point => point.close)
+  )
+    .filter((value): value is number => value !== null && Number.isFinite(value) && value > 0);
+  const domainLevelValues = [support, currentPrice, resistance]
+    .map(value => numberOrNull(value))
+    .filter((value): value is number => value !== null && Number.isFinite(value) && value > 0);
+  const domainValues = [...domainBaseValues, ...domainLevelValues];
   const min = domainValues.length > 0 ? Math.min(...domainValues) : 0;
   const max = domainValues.length > 0 ? Math.max(...domainValues) : 0;
   const rawSpread = max - min;
-  const domainPadding = Math.max(rawSpread * 0.08, Math.max(max, 1) * 0.004);
+  const domainPadding = Math.max(rawSpread * 0.08, Math.max(max, 1) * 0.0035);
   const domainMin = Math.max(0, min - domainPadding);
   const domainMax = max + domainPadding;
   const spread = domainMax - domainMin || Math.max(max, 1) * 0.01;
-  const chartTop = padY;
-  const chartBottom = height - padY;
-  const chartLeft = padX;
-  const chartRight = width - padX;
-  const xFor = (index: number) => points.length <= 1
-    ? width / 2
-    : chartLeft + (index / (points.length - 1)) * (chartRight - chartLeft);
-  const xForOhlc = (index: number) => activeOhlcPoints.length <= 1
-    ? width / 2
-    : chartLeft + (index / (activeOhlcPoints.length - 1)) * (chartRight - chartLeft);
+  const xFor = (index: number) => activePoints.length <= 1
+    ? (xStart + xEnd) / 2
+    : xStart + (index / (activePoints.length - 1)) * (xEnd - xStart);
   const yFor = (value: number) => chartTop + ((domainMax - value) / spread) * (chartBottom - chartTop);
-  const path = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${xFor(index).toFixed(2)} ${yFor(point.close).toFixed(2)}`).join(' ');
-  const areaPath = points.length > 1
-    ? `${path} L ${xFor(points.length - 1).toFixed(2)} ${chartBottom.toFixed(2)} L ${xFor(0).toFixed(2)} ${chartBottom.toFixed(2)} Z`
+  const path = activePoints.map((point, index) => `${index === 0 ? 'M' : 'L'} ${xFor(index).toFixed(2)} ${yFor(point.close).toFixed(2)}`).join(' ');
+  const areaPath = activePoints.length > 1
+    ? `${path} L ${xFor(activePoints.length - 1).toFixed(2)} ${chartBottom.toFixed(2)} L ${xFor(0).toFixed(2)} ${chartBottom.toFixed(2)} Z`
     : '';
-  const first = points[0];
-  const last = points.at(-1);
+  const first = activePoints[0];
+  const last = activePoints.at(-1);
   const isPositive = first && last ? last.close >= first.close : true;
   const ohlcUnavailable = !loading && requiresOhlc && points.length > 0 && !hasOhlcForChart;
+  const minimumVisiblePoints = timeframe === '1D' || timeframe === '1W' ? 6 : 8;
+  const limitedData = !loading && points.length > 0 && activePoints.length < minimumVisiblePoints && !ohlcUnavailable;
   const chartMessage = message
     || (!loading && points.length === 0 ? t('market_chart_empty_range') : '')
-    || (ohlcUnavailable ? t('market_chart_ohlc_unavailable_short') : '');
+    || (ohlcUnavailable ? t('market_chart_ohlc_unavailable_short') : '')
+    || (limitedData ? t('market_chart_empty_range') : '');
   const chartStateDescription = ohlcUnavailable ? t('market_chart_ohlc_use_line_or_area') : '';
   const lineStartColor = isPositive ? '#1D8CFF' : '#EF4444';
   const lineEndColor = isPositive ? '#2FD6C0' : '#F59E0B';
   const areaColor = isPositive ? '#22D3EE' : '#EF4444';
-  const axisValues = [domainMax, domainMin + spread / 2, domainMin];
-  const candleWidth = Math.max(3, Math.min(13, (chartRight - chartLeft) / Math.max(activeOhlcPoints.length, 1) * 0.48));
-  const tickWidth = Math.max(5, Math.min(11, candleWidth * 0.82));
+  const axisValues = Array.from({ length: 5 }, (_, index) => domainMax - (spread * index) / 4);
+  const verticalGridCount = Math.min(6, Math.max(3, Math.floor(activePoints.length / 8)));
+  const tickWidth = Math.max(5, Math.min(11, candleWidth * 0.86));
   const chartMoney = (value: number) => money(value, currency, { locale, exchange, symbol });
+  const chartMoneyOrUnavailable = (value: number | null) => value === null ? t('market_unavailable') : chartMoney(value);
+  const resolvedCurrentPrice = numberOrNull(currentPrice) ?? last?.close ?? null;
+  const levelLines = [
+    { key: 'support', label: t('market_support_zone'), value: numberOrNull(support), className: 'support' },
+    { key: 'current', label: t('market_current_price'), value: resolvedCurrentPrice, className: 'current' },
+    { key: 'resistance', label: t('market_resistance_zone'), value: numberOrNull(resistance), className: 'resistance' },
+  ].filter((item): item is { key: string; label: string; value: number; className: string } => item.value !== null && item.value > 0);
+  const xLabelIndices = Array.from(new Set([
+    0,
+    Math.floor((activePoints.length - 1) * 0.25),
+    Math.floor((activePoints.length - 1) * 0.5),
+    Math.floor((activePoints.length - 1) * 0.75),
+    activePoints.length - 1,
+  ].filter(index => index >= 0 && index < activePoints.length)));
+  const normalizedLocale = locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US';
+  const formatVolume = (value: number | null) => value === null
+    ? t('market_unavailable')
+    : new Intl.NumberFormat(normalizedLocale, {
+      notation: Math.abs(value) >= 1_000_000 ? 'compact' : 'standard',
+      maximumFractionDigits: 2,
+    }).format(value);
+  const hoveredPoint = hoveredIndex !== null ? activePoints[hoveredIndex] ?? null : null;
+  const tooltipX = hoveredIndex !== null ? xFor(hoveredIndex) : 0;
+  const tooltipY = hoveredPoint ? yFor(hoveredPoint.close) : 0;
+  const tooltipLeft = Math.min(78, Math.max(8, (tooltipX / width) * 100));
+  const tooltipTop = Math.min(72, Math.max(12, (tooltipY / height) * 100));
+  const handlePointerMove = (event: MouseEvent<SVGRectElement>) => {
+    if (activePoints.length < 2) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 0;
+    const nextIndex = Math.round(Math.min(1, Math.max(0, ratio)) * (activePoints.length - 1));
+    setHoveredIndex(nextIndex);
+  };
+  const clearHover = () => setHoveredIndex(null);
+  const canRenderChart = activePoints.length >= 2 && !chartMessage;
 
   return (
     <div className="price-history-chart" aria-busy={loading}>
-      {points.length > 0 && !chartMessage ? (
+      {canRenderChart ? (
         <>
           <div className="price-chart-values">
             <span>{t('market_price_chart')}</span>
             <strong dir="ltr">{chartMoney(last?.close ?? 0)}</strong>
           </div>
-          <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={t('market_price_chart')} preserveAspectRatio="none">
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            role="img"
+            aria-label={t('market_price_chart')}
+            preserveAspectRatio="none"
+            onMouseLeave={clearHover}
+          >
             <defs>
               <linearGradient id={lineGradientId} x1="0" x2="1" y1="0" y2="0">
                 <stop offset="0%" stopColor={lineStartColor} />
@@ -12470,40 +12756,54 @@ function PriceHistoryChart({
                 <stop offset="100%" stopColor={areaColor} stopOpacity="0" />
               </linearGradient>
               <clipPath id={clipPathId}>
-                <rect x={chartLeft} y={chartTop} width={chartRight - chartLeft} height={chartBottom - chartTop} rx="10" />
+                <rect x={chartLeft} y={chartTop} width={chartRight - chartLeft} height={chartBottom - chartTop} rx="8" />
               </clipPath>
             </defs>
             {[0, 1, 2, 3, 4].map(index => {
               const y = chartTop + (index / 4) * (chartBottom - chartTop);
               return <line key={`h-${index}`} x1={chartLeft} x2={chartRight} y1={y} y2={y} className="price-chart-grid-line" />;
             })}
-            {[0, 1, 2, 3].map(index => {
-              const x = chartLeft + (index / 3) * (chartRight - chartLeft);
+            {Array.from({ length: verticalGridCount }, (_, index) => index).map(index => {
+              const x = chartLeft + (index / Math.max(verticalGridCount - 1, 1)) * (chartRight - chartLeft);
               return <line key={`v-${index}`} x1={x} x2={x} y1={chartTop} y2={chartBottom} className="price-chart-grid-line vertical" />;
             })}
             {axisValues.map((value, index) => {
-              const y = index === 0 ? chartTop + 5 : index === 1 ? chartTop + (chartBottom - chartTop) / 2 : chartBottom - 5;
+              const y = yFor(value);
               return (
-                <text key={`axis-${index}`} x={chartRight - 2} y={y} className="price-chart-y-label" textAnchor="end" dominantBaseline="middle">
+                <text key={`axis-${index}`} x={axisRight} y={y} className="price-chart-y-label" textAnchor="end" dominantBaseline="middle">
                   {chartMoney(value)}
                 </text>
               );
             })}
+            {xLabelIndices.map(index => {
+              const point = activePoints[index];
+              if (!point) return null;
+              const x = xFor(index);
+              return (
+                <text key={`x-axis-${point.date}-${index}`} x={x} y={height - 12} className="price-chart-x-label" textAnchor="middle">
+                  {formatChartTimestamp(point.date, locale, timeframe)}
+                </text>
+              );
+            })}
             <g clipPath={`url(#${clipPathId})`}>
+              {levelLines.map(level => {
+                const y = yFor(level.value);
+                return (
+                  <g key={`level-${level.key}`} className={`price-chart-level ${level.className}`}>
+                    <line x1={chartLeft} x2={chartRight} y1={y} y2={y} />
+                    <title>{`${level.label}: ${chartMoney(level.value)}`}</title>
+                  </g>
+                );
+              })}
               {chartType === 'area' && areaPath ? <path d={areaPath} className="price-chart-area-path" fill={`url(#${areaGradientId})`} /> : null}
               {(chartType === 'line' || chartType === 'area') ? (
                 <>
                   <path d={path} className="price-chart-line-path" stroke={`url(#${lineGradientId})`} />
-                  {points.map((point, index) => (
-                    <circle key={`${point.date}-${index}`} cx={xFor(index)} cy={yFor(point.close)} r="9" className="price-chart-hit-point">
-                      <title>{`${formatChartTimestamp(point.date, locale, timeframe)} - ${chartMoney(point.close)}`}</title>
-                    </circle>
-                  ))}
-                  {last ? <circle cx={xFor(points.length - 1)} cy={yFor(last.close)} r="4.5" className="price-chart-last-dot" /> : null}
+                  {last ? <circle cx={xFor(activePoints.length - 1)} cy={yFor(last.close)} r="4.2" className="price-chart-last-dot" /> : null}
                 </>
               ) : null}
-              {chartType === 'candlestick' ? activeOhlcPoints.map((point, index) => {
-                const x = xForOhlc(index);
+              {chartType === 'candlestick' ? ohlcPoints.map((point, index) => {
+                const x = xFor(index);
                 const bullish = point.close >= point.open;
                 const openY = yFor(point.open);
                 const closeY = yFor(point.close);
@@ -12512,7 +12812,7 @@ function PriceHistoryChart({
                 return (
                   <g key={`${point.date}-candle-${index}`} className={bullish ? 'price-candle up' : 'price-candle down'}>
                     <line x1={x} x2={x} y1={yFor(point.high)} y2={yFor(point.low)} className="price-candle-wick" />
-                    <rect x={x - candleWidth / 2} y={bodyTop} width={candleWidth} height={bodyHeight} rx="2" className="price-candle-body" />
+                    <rect x={x - candleWidth / 2} y={bodyTop} width={candleWidth} height={bodyHeight} rx={Math.min(3, candleWidth / 2)} className="price-candle-body" />
                     <title>{[
                       `${t('market_time')}: ${formatChartTimestamp(point.date, locale, timeframe)}`,
                       `${t('market_open')}: ${chartMoney(point.open)}`,
@@ -12524,8 +12824,8 @@ function PriceHistoryChart({
                   </g>
                 );
               }) : null}
-              {chartType === 'ohlc' ? activeOhlcPoints.map((point, index) => {
-                const x = xForOhlc(index);
+              {chartType === 'ohlc' ? ohlcPoints.map((point, index) => {
+                const x = xFor(index);
                 const bullish = point.close >= point.open;
                 return (
                   <g key={`${point.date}-ohlc-${index}`} className={bullish ? 'price-ohlc up' : 'price-ohlc down'}>
@@ -12543,11 +12843,49 @@ function PriceHistoryChart({
                   </g>
                 );
               }) : null}
+              {hoveredPoint ? (
+                <g className="price-chart-crosshair">
+                  <line x1={tooltipX} x2={tooltipX} y1={chartTop} y2={chartBottom} />
+                  <circle cx={tooltipX} cy={tooltipY} r="4" />
+                </g>
+              ) : null}
             </g>
+            {levelLines.map(level => {
+              const y = yFor(level.value);
+              return (
+                <text key={`level-label-${level.key}`} x={axisRight} y={y} className={`price-chart-level-label ${level.className}`} textAnchor="end" dominantBaseline="middle">
+                  {chartMoney(level.value)}
+                </text>
+              );
+            })}
+            <rect
+              x={chartLeft}
+              y={chartTop}
+              width={chartRight - chartLeft}
+              height={chartBottom - chartTop}
+              className="price-chart-hit-zone"
+              onMouseMove={handlePointerMove}
+              onMouseLeave={clearHover}
+            />
           </svg>
+          {hoveredPoint ? (
+            <div
+              className="price-chart-tooltip"
+              style={{ insetInlineStart: `${tooltipLeft}%`, top: `${tooltipTop}%` }}
+            >
+              <strong dir="ltr">{formatChartTimestamp(hoveredPoint.date, locale, timeframe)}</strong>
+              <dl>
+                <div><dt>{t('market_open')}</dt><dd dir="ltr">{chartMoneyOrUnavailable(hoveredPoint.open)}</dd></div>
+                <div><dt>{t('market_high')}</dt><dd dir="ltr">{chartMoneyOrUnavailable(hoveredPoint.high)}</dd></div>
+                <div><dt>{t('market_low')}</dt><dd dir="ltr">{chartMoneyOrUnavailable(hoveredPoint.low)}</dd></div>
+                <div><dt>{t('market_close')}</dt><dd dir="ltr">{chartMoney(hoveredPoint.close)}</dd></div>
+                <div><dt>{t('market_volume')}</dt><dd dir="ltr">{formatVolume(hoveredPoint.volume)}</dd></div>
+              </dl>
+            </div>
+          ) : null}
           <div className="price-chart-axis">
             <span dir="ltr">{first ? formatChartTimestamp(first.date, locale, timeframe) : ''}</span>
-            <span dir="ltr">{chartMoney(min)}</span>
+            <span dir="ltr">{chartMoney(min)} - {chartMoney(max)}</span>
             <span dir="ltr">{last ? formatChartTimestamp(last.date, locale, timeframe) : ''}</span>
           </div>
         </>
