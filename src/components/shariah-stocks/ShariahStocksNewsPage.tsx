@@ -623,13 +623,13 @@ function SkeletonLine({ wide = false }: { wide?: boolean }) {
   return <span className={base.skeletonLine} style={{ width: wide ? '100%' : undefined }} aria-hidden="true" />;
 }
 
-function StatusBadge({ status }: { status: ShariahScreeningStatus }) {
-  const { language } = useLanguage();
+function StatusBadge({ status, compact = false }: { status: ShariahScreeningStatus; compact?: boolean }) {
+  const { lang: language } = useLanguage();
   const lang = (language === 'en' || language === 'fr' ? language : 'ar') as LangCode;
   const Icon = STATUS_ICON[status];
   return (
-    <span className={`${styles.statusBadge} ${statusClass(status)}`}>
-      <Icon size={13} />
+    <span className={`${styles.statusBadge} ${compact ? styles.statusBadgeCompact : ''} ${statusClass(status)}`}>
+      <Icon size={compact ? 11 : 13} />
       {statusLabel(status, lang)}
     </span>
   );
@@ -645,7 +645,7 @@ function ShariahTicker({ items, loading, error, retry, text, locale, lang }: {
   lang: LangCode;
 }) {
   return (
-    <section className={base.tickerPanel} aria-label={text.tickerTitle}>
+    <section className={`${base.tickerPanel} ${base.shariaTickerPanel}`} aria-label={text.tickerTitle}>
       <PanelTitle icon={Landmark} title={text.tickerTitle} subtitle={text.tickerSubtitle} />
       {loading ? (
         <div className={base.tickerSkeletonRow}>
@@ -678,7 +678,7 @@ function ShariahTicker({ items, loading, error, retry, text, locale, lang }: {
                           <strong>{item.name}</strong>
                           <span>{sectorLabel(item.sector, lang)}</span>
                           <span dir="ltr">{item.symbol}</span>
-                          <span className={styles.tickerStatusBadge}><StatusBadge status={item.shariahStatus} /></span>
+                          <span className={styles.tickerStatusBadge}><StatusBadge status={item.shariahStatus} compact /></span>
                         </div>
                         <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
                         <em className={base[tone]} dir="ltr">{formatPercent(item.changePercent, locale)}</em>
@@ -1148,7 +1148,7 @@ function Disclaimer({ text }: { text: typeof TEXT[LangCode] }) {
 }
 
 export function ShariahStocksNewsPage() {
-  const { language } = useLanguage();
+  const { lang: language } = useLanguage();
   const activeLang = (language === 'en' || language === 'fr' ? language : 'ar') as LangCode;
   const dir = activeLang === 'ar' ? 'rtl' : 'ltr';
   const locale = localeFor(activeLang);
