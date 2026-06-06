@@ -157,7 +157,7 @@ export function Sidebar() {
         .sfm-shared-subitem-icon{width:18px;height:18px;display:grid;place-items:center;flex:0 0 18px;color:#8FB3CF}
         .sfm-shared-subitem.active .sfm-shared-subitem-icon,.sfm-shared-subitem:hover .sfm-shared-subitem-icon{color:var(--sfm-soft-cyan)}
         .sfm-shared-subitem-label{min-width:0;overflow-wrap:anywhere;line-height:1.35}
-        .sfm-shared-support{margin:0 8px 10px;padding:10px 8px 12px;border-top:1px solid rgba(167,243,240,.10);display:grid;gap:5px;flex:0 0 auto}
+        .sfm-shared-support{margin:12px 8px 10px;margin-top:auto;padding:13px 8px 12px;border-top:1px solid rgba(167,243,240,.18);box-shadow:inset 0 1px 0 rgba(29,140,255,.12);display:grid;gap:5px;flex:0 0 auto}
         .sfm-shared-support-title{padding:0 4px 3px;color:#B8C7D9;font:950 10.5px Tajawal,Arial,sans-serif;letter-spacing:.02em}
         .sfm-shared-support-item{position:relative;width:100%;min-height:34px;border:1px solid transparent;border-radius:10px;background:transparent;color:#B8C7D9;display:flex;align-items:center;gap:8px;padding:6px 8px;text-align:start;font:850 11.5px Tajawal,Arial,sans-serif;cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
         .sfm-shared-support-item:hover,.sfm-shared-support-item:focus-visible{background:rgba(29,140,255,.12);color:#EAF6FF;border-color:rgba(167,243,240,.16);outline:0;box-shadow:0 0 0 2px rgba(24,212,212,.14);transform:translateY(-1px)}

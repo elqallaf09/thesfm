@@ -237,9 +237,12 @@ const PURPOSE_KEY: Record<string, keyof typeof TEXT.ar> = {
   profile: 'profileDesc',
   security: 'securityDesc',
   'support-about': 'aboutDesc',
+  'support-help-center': 'aboutDesc',
   'support-faq': 'faqDesc',
   'support-site-map': 'siteMapDesc',
   'support-contact': 'contactDesc',
+  'support-privacy': 'securityDesc',
+  'support-terms': 'siteMapDesc',
 };
 
 const FEATURED_ITEMS = [

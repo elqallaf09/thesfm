@@ -27,7 +27,6 @@ import {
   LineChart,
   LogOut,
   Mail,
-  Map,
   Newspaper,
   PiggyBank,
   Presentation,
@@ -171,10 +170,11 @@ export const NAV_GROUPS: NavigationGroup[] = [
 ];
 
 export const SUPPORT_LINKS: NavigationItem[] = [
-  { id: 'support-about', icon: Info, href: '/about', labelKey: 'nav_support_about', viewModes: ['simple', 'professional'] },
-  { id: 'support-faq', icon: CircleHelp, href: '/#faq', labelKey: 'nav_support_faq', viewModes: ['simple', 'professional'] },
-  { id: 'support-site-map', icon: Map, href: '/site-map', labelKey: 'nav_support_site_map', viewModes: ['simple', 'professional'] },
+  { id: 'support-help-center', icon: Info, href: '/about', labelKey: 'nav_support_help_center', viewModes: ['simple', 'professional'] },
   { id: 'support-contact', icon: Mail, href: '/contact', labelKey: 'nav_support_contact', viewModes: ['simple', 'professional'] },
+  { id: 'support-faq', icon: CircleHelp, href: '/#faq', labelKey: 'nav_support_faq', viewModes: ['simple', 'professional'] },
+  { id: 'support-privacy', icon: ShieldCheck, href: '/privacy', labelKey: 'nav_support_privacy', viewModes: ['simple', 'professional'] },
+  { id: 'support-terms', icon: FileText, href: '/terms', labelKey: 'nav_support_terms', viewModes: ['simple', 'professional'] },
 ];
 
 export function filterNavigationGroups(groups: NavigationGroup[], viewMode: NavigationViewMode) {
