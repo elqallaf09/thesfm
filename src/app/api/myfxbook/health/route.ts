@@ -6,6 +6,8 @@ import { isAdminAccessCodeConfigured, isValidAdminAccessCode } from '@/lib/serve
 
 export const dynamic = 'force-dynamic';
 
+const DEFAULT_MYFXBOOK_API_BASE_URL = 'https://www.myfxbook.com/api';
+
 function safeEqual(left: string, right: string) {
   const leftBuffer = Buffer.from(left);
   const rightBuffer = Buffer.from(right);
@@ -41,6 +43,25 @@ function publicMyfxbookCode(code: string | null | undefined) {
   return code ? 'PROVIDER_DOWN' : null;
 }
 
+function myfxbookBaseUrlDiagnostic(rawBaseUrl: string) {
+  const candidate = rawBaseUrl || DEFAULT_MYFXBOOK_API_BASE_URL;
+  try {
+    const parsed = new URL(candidate);
+    const valid = parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    return {
+      hasBaseUrl: Boolean(rawBaseUrl),
+      baseUrlValid: valid,
+      usingDefaultBaseUrl: !rawBaseUrl || !valid,
+    };
+  } catch {
+    return {
+      hasBaseUrl: Boolean(rawBaseUrl),
+      baseUrlValid: false,
+      usingDefaultBaseUrl: true,
+    };
+  }
+}
+
 export async function GET(request: NextRequest) {
   const healthTokenConfigured = Boolean(cleanEnv(process.env.MARKET_PROVIDER_HEALTH_TOKEN));
 
@@ -54,24 +75,30 @@ export async function GET(request: NextRequest) {
 
   const email = cleanEnv(process.env.MYFXBOOK_EMAIL);
   const password = cleanEnv(process.env.MYFXBOOK_PASSWORD);
+  const rawBaseUrl = cleanEnv(process.env.MYFXBOOK_API_BASE_URL);
+  const baseUrl = myfxbookBaseUrlDiagnostic(rawBaseUrl);
   const missingVariables = [
     email ? null : 'MYFXBOOK_EMAIL',
     password ? null : 'MYFXBOOK_PASSWORD',
   ].filter((value): value is string => Boolean(value));
   const config = getMarketSentimentProviderConfig();
-  const envConfigured = Boolean(email && password);
+  const providerConfigured = Boolean(email && password);
+  const envConfigured = providerConfigured;
   const providerIsMyfxbook = config.provider === 'myfxbook';
 
   console.info('[Myfxbook] health diagnostic started', {
     missingVariables,
-    hasApiBaseUrl: config.hasMyfxbookApiBaseUrl,
+    hasBaseUrl: baseUrl.hasBaseUrl,
+    baseUrlValid: baseUrl.baseUrlValid,
+    providerConfigured,
+    providerIsMyfxbook,
   });
 
-  const login = envConfigured && providerIsMyfxbook
+  const login = providerConfigured
     ? await loginToMyfxbook({ force: true }).catch(error => ({
         ok: false as const,
         code: 'MYFXBOOK_PROVIDER_FAILED' as const,
-        providerMessage: error instanceof Error ? error.message : null,
+        providerMessage: maskedProviderMessage(error instanceof Error ? error.message : null),
         httpStatus: undefined,
         canReachMyfxbook: false,
       }))
@@ -82,15 +109,20 @@ export async function GET(request: NextRequest) {
     provider: config.provider ?? config.providerEnv ?? null,
     envConfigured,
     providerIsMyfxbook,
+    providerConfigured,
     hasEmail: Boolean(email),
     hasPassword: Boolean(password),
-    hasApiBaseUrl: config.hasMyfxbookApiBaseUrl,
+    hasBaseUrl: baseUrl.hasBaseUrl,
+    hasApiBaseUrl: baseUrl.hasBaseUrl,
+    baseUrlValid: baseUrl.baseUrlValid,
+    usingDefaultBaseUrl: baseUrl.usingDefaultBaseUrl,
     missingVariables,
     loginAttempted: Boolean(login),
     loginSuccess: login?.ok ?? false,
     errorType: login && !login.ok ? publicMyfxbookCode(login.code) : envConfigured ? null : 'MISSING_CREDENTIALS',
     providerErrorType: login && !login.ok ? login.code : envConfigured ? null : 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED',
     canReachMyfxbook: login?.canReachMyfxbook ?? false,
+    httpStatus: login?.httpStatus ?? null,
     providerMessage: login && !login.ok ? maskedProviderMessage(login.providerMessage) : null,
     hasSession: Boolean(login?.ok),
   });

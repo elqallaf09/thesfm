@@ -271,9 +271,9 @@ function sentimentLabel(buyPercent: number | null, sellPercent: number | null): 
 function sentimentMessage(_assetType: SentimentAssetType, code: UnifiedSentimentCode) {
   if (code === 'SYMBOL_REQUIRED') return 'اختر أصلاً قبل تحميل مشاعر السوق.';
   if (code === 'MISSING_CREDENTIALS') return 'إعدادات مزود المشاعر غير مكتملة. يرجى إضافة بيانات Myfxbook في Environment Variables ثم إعادة النشر.';
-  if (code === 'LOGIN_REJECTED' || code === 'LOGIN_FAILED') return 'تم رفض تسجيل الدخول إلى Myfxbook. تحقق من البريد الإلكتروني وكلمة المرور، وتأكد من تفعيل الحساب وإعادة نشر الموقع.';
+  if (code === 'LOGIN_REJECTED' || code === 'LOGIN_FAILED') return 'تم رفض تسجيل الدخول إلى Myfxbook. تحقق من بيانات الحساب أو جرّب تسجيل الدخول مباشرة في موقع Myfxbook.';
   if (code === 'RATE_LIMIT') return 'تم تجاوز حد طلبات مزود المشاعر مؤقتاً. يرجى المحاولة لاحقاً.';
-  if (code === 'NO_SESSION') return 'تم الاتصال بـ Myfxbook، لكن لم يتم إنشاء جلسة صالحة. يرجى المحاولة لاحقاً.';
+  if (code === 'NO_SESSION') return 'لم يتم استلام جلسة صالحة من Myfxbook. يرجى التحقق من الحساب وإعدادات المزود.';
   if (code === 'TIMEOUT' || code === 'PROVIDER_DOWN') return 'تعذر الاتصال بمزود المشاعر حالياً. يرجى المحاولة لاحقاً.';
   if (
     code === 'INVALID_FOREX_PAIR'
@@ -281,8 +281,8 @@ function sentimentMessage(_assetType: SentimentAssetType, code: UnifiedSentiment
     || code === 'NO_SENTIMENT_DATA'
     || code === 'UNSUPPORTED_ASSET_TYPE'
     || code === 'MISSING_PROVIDER'
-  ) return 'لا تتوفر بيانات مشاعر لهذا الأصل من المزود الحالي.';
-  return 'لا تتوفر بيانات مشاعر لهذا الأصل من المزود الحالي.';
+  ) return 'لا تتوفر بيانات مشاعر لهذا الأصل من Myfxbook.';
+  return 'لا تتوفر بيانات مشاعر لهذا الأصل من Myfxbook.';
 }
 
 function extractPercent(item: Record<string, unknown>, keys: string[]) {
@@ -711,9 +711,9 @@ function mapMyfxbookErrorCode(code: string): UnifiedSentimentCode {
 
 function invalidForexPairMessage(suggestions: string[]) {
   if (suggestions.length > 0) {
-    return `لا تتوفر بيانات مشاعر لهذا الأصل من المزود الحالي. هل تقصد ${suggestions[0]}؟`;
+    return `لا تتوفر بيانات مشاعر لهذا الأصل من Myfxbook. هل تقصد ${suggestions[0]}؟`;
   }
-  return 'لا تتوفر بيانات مشاعر لهذا الأصل من المزود الحالي.';
+  return 'لا تتوفر بيانات مشاعر لهذا الأصل من Myfxbook.';
 }
 
 async function handleForexSentiment(requestMeta: NormalizedSentimentRequest) {

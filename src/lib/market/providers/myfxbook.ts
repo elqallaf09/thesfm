@@ -473,7 +473,7 @@ function unavailable(code: MyfxbookErrorCode, providerMessage: string | null = n
     code,
     items: [],
     updated_at: null,
-    providerMessage,
+    providerMessage: maskProviderMessage(providerMessage),
     suggestions,
   };
 }
@@ -564,24 +564,27 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     };
   }
 
+  const providerMessage = maskProviderMessage(payload?.message);
+  const session = typeof payload.session === 'string' ? payload.session.trim() : '';
+
   logMyfxbookStatus('login response', {
     httpStatus: response.status,
     error: payload?.error,
-    message: maskProviderMessage(payload?.message),
-    sessionReceived: Boolean(payload?.session),
+    message: providerMessage,
+    sessionReceived: Boolean(session),
   });
 
   if (response.status === 429) {
     cachedFailure = {
       code: 'MYFXBOOK_RATE_LIMITED',
-      providerMessage: payload.message ?? null,
+      providerMessage,
       expiresAt: now + FAILURE_TTL_MS,
       cacheKey: credentials.cacheKey,
     };
     return {
       ok: false as const,
       code: 'MYFXBOOK_RATE_LIMITED' as const,
-      providerMessage: payload.message ?? null,
+      providerMessage,
       httpStatus: response.status,
       canReachMyfxbook: true,
     };
@@ -593,14 +596,14 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
       : 'MYFXBOOK_PROVIDER_FAILED';
     cachedFailure = {
       code,
-      providerMessage: payload.message ?? null,
+      providerMessage,
       expiresAt: now + FAILURE_TTL_MS,
       cacheKey: credentials.cacheKey,
     };
     return {
       ok: false as const,
       code,
-      providerMessage: payload.message ?? null,
+      providerMessage,
       httpStatus: response.status,
       canReachMyfxbook: response.status < 500,
     };
@@ -610,30 +613,30 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     const code: MyfxbookErrorCode = isRateLimitMessage(payload.message) ? 'MYFXBOOK_RATE_LIMITED' : 'MYFXBOOK_AUTH_FAILED';
     cachedFailure = {
       code,
-      providerMessage: payload.message ?? null,
+      providerMessage,
       expiresAt: now + FAILURE_TTL_MS,
       cacheKey: credentials.cacheKey,
     };
     return {
       ok: false as const,
       code,
-      providerMessage: payload.message ?? null,
+      providerMessage,
       httpStatus: response.status,
       canReachMyfxbook: true,
     };
   }
 
-  if (!payload.session) {
+  if (!session) {
     cachedFailure = {
       code: 'MYFXBOOK_SESSION_MISSING',
-      providerMessage: payload.message ?? null,
+      providerMessage,
       expiresAt: now + FAILURE_TTL_MS,
       cacheKey: credentials.cacheKey,
     };
     return {
       ok: false as const,
       code: 'MYFXBOOK_SESSION_MISSING' as const,
-      providerMessage: payload.message ?? null,
+      providerMessage,
       httpStatus: response.status,
       canReachMyfxbook: true,
     };
@@ -645,8 +648,8 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
   cachedFailure = null;
   return {
     ok: true as const,
-    session: payload.session,
-    providerMessage: payload.message ?? null,
+    session,
+    providerMessage,
     httpStatus: response.status,
     canReachMyfxbook: true,
   };
@@ -708,12 +711,12 @@ async function getCommunityOutlook() {
 
   if (payload.error) {
     if (isInvalidSessionPayload(payload)) {
-      throw new MyfxbookProviderError('MYFXBOOK_AUTH_FAILED', 'Myfxbook session was rejected', undefined, payload.message);
+      throw new MyfxbookProviderError('MYFXBOOK_AUTH_FAILED', 'Myfxbook session was rejected', undefined, maskProviderMessage(payload.message));
     }
     if (isRateLimitMessage(payload.message)) {
-      throw new MyfxbookProviderError('MYFXBOOK_RATE_LIMITED', 'Myfxbook outlook request was rate limited', undefined, payload.message);
+      throw new MyfxbookProviderError('MYFXBOOK_RATE_LIMITED', 'Myfxbook outlook request was rate limited', undefined, maskProviderMessage(payload.message));
     }
-    throw new MyfxbookProviderError('MYFXBOOK_PROVIDER_FAILED', 'Myfxbook returned an outlook error', undefined, payload.message);
+    throw new MyfxbookProviderError('MYFXBOOK_PROVIDER_FAILED', 'Myfxbook returned an outlook error', undefined, maskProviderMessage(payload.message));
   }
 
   const updatedAt = new Date().toISOString();
