@@ -13,6 +13,8 @@ type DbInvestmentRow = {
   asset_name?: string | null;
   amount: number | string | null;
   user_id?: string | null;
+  ai_analysis?: string | null;
+  investment_snapshot?: Record<string, unknown> | string | null;
   type?: InvestmentType | null;
   category?: InvestmentType | string | null;
   value?: number | string | null;
@@ -21,6 +23,8 @@ type DbInvestmentRow = {
   invested_amount?: number | string | null;
   total_invested?: number | string | null;
   purchase_price?: number | string | null;
+  purchase_date?: string | null;
+  entry_date?: string | null;
   average_buy_price?: number | string | null;
   purchase_total?: number | string | null;
   monthly_contribution?: number | string | null;
@@ -88,6 +92,7 @@ type InvestmentSelectResult = {
 
 const GUEST_KEY = 'sfm_guest_investments';
 const OLD_GUEST_KEY = 'sfm_guest_invest';
+const SNAPSHOT_PREFIX = 'SFM_INVESTMENT_SNAPSHOT_V1:';
 const DEBUG_INVESTMENTS = process.env.NODE_ENV === 'development';
 const MARKET_LINKED_TYPES = new Set<InvestmentType>(['stocks', 'fund', 'crypto', 'gold', 'silver']);
 let hasLoggedInvestmentDebug = false;
@@ -210,6 +215,189 @@ function writeJson<T>(key: string, value: T) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+function compactObject<T extends Record<string, unknown>>(value: T) {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => meaningfulValue(entry)),
+  ) as Partial<T>;
+}
+
+function investmentSnapshotFromInput(item: Investment | InvestmentInput) {
+  return compactObject({
+    version: 1,
+    name: item.name,
+    currentValue: item.currentValue,
+    ...metaFromInvestment(item),
+  });
+}
+
+function investmentSnapshotText(item: Investment | InvestmentInput) {
+  return `${SNAPSHOT_PREFIX}${JSON.stringify(investmentSnapshotFromInput(item))}`;
+}
+
+function parseSnapshotValue(value: unknown, requirePrefix = false): Partial<InvestmentInput> | undefined {
+  if (!value) return undefined;
+  if (typeof value === 'object') return value as Partial<InvestmentInput>;
+  if (typeof value !== 'string') return undefined;
+
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (requirePrefix && !trimmed.startsWith(SNAPSHOT_PREFIX)) return undefined;
+
+  const json = trimmed.startsWith(SNAPSHOT_PREFIX) ? trimmed.slice(SNAPSHOT_PREFIX.length) : trimmed;
+  try {
+    const parsed = JSON.parse(json) as Partial<InvestmentInput>;
+    if (!parsed || typeof parsed !== 'object') return undefined;
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
+
+function investmentSnapshotFromRow(row: DbInvestmentRow) {
+  return parseSnapshotValue(row.investment_snapshot)
+    ?? parseSnapshotValue(row.ai_analysis, true);
+}
+
+const CORE_SAVE_KEYS = new Set([
+  'user_id',
+  'name',
+  'amount',
+  'type',
+  'current_value',
+  'monthly_contribution',
+  'start_date',
+  'risk_level',
+  'expected_annual_return',
+  'notes',
+  'symbol',
+  'provider_symbol',
+  'market',
+  'asset_type',
+  'currency',
+  'quantity',
+  'purchase_price',
+  'invested_amount',
+  'current_price',
+  'current_market_value',
+  'price_currency',
+  'last_price',
+  'last_price_updated_at',
+  'data_source',
+]);
+
+function pickPayload<T extends Record<string, unknown>>(payload: T, allowed: Set<string>) {
+  return Object.fromEntries(Object.entries(payload).filter(([key]) => allowed.has(key)));
+}
+
+function coreSavePayload(payload: Record<string, unknown>) {
+  return pickPayload(payload, CORE_SAVE_KEYS);
+}
+
+type InvestmentMutationAttempt = {
+  label: string;
+  payload: Record<string, unknown>;
+};
+
+type InvestmentMutationResult = {
+  data: unknown | null;
+  error: {
+    message?: string;
+    code?: string;
+    details?: string;
+    hint?: string;
+  } | null;
+};
+
+function mutationErrorMessage(result: InvestmentMutationResult | null) {
+  return result?.error?.message || 'Could not save investment';
+}
+
+function buildSnapshotFallbackPayload(data: InvestmentInput, userId?: string) {
+  const normalized = normalizeInvestmentForSave(data);
+  return {
+    ...(userId ? { user_id: userId } : {}),
+    name: data.name,
+    amount: normalized.accountValue,
+    type: data.type,
+    current_value: normalized.accountValue,
+    monthly_contribution: moneyNumber(data.monthlyContribution) ?? 0,
+    start_date: data.startDate,
+    risk_level: data.riskLevel,
+    expected_annual_return: moneyNumber(data.expectedAnnualReturn) ?? null,
+    notes: data.notes ?? null,
+    ai_analysis: investmentSnapshotText(data),
+  };
+}
+
+async function insertInvestmentWithAttempts(attempts: InvestmentMutationAttempt[]) {
+  let last: InvestmentMutationResult | null = null;
+
+  for (const attempt of attempts) {
+    const result = await supabase
+      .from('investment_items')
+      .insert(attempt.payload)
+      .select('*')
+      .single() as unknown as InvestmentMutationResult;
+
+    if (!result.error && result.data) {
+      debugInvestments('saved investment row', {
+        attempt: attempt.label,
+        keys: Object.keys(attempt.payload),
+      });
+      return result.data;
+    }
+
+    last = result;
+    debugInvestments('investment insert attempt failed', {
+      attempt: attempt.label,
+      message: result.error?.message,
+      code: result.error?.code,
+      details: result.error?.details,
+      hint: result.error?.hint,
+      keys: Object.keys(attempt.payload),
+    });
+  }
+
+  throw new Error(mutationErrorMessage(last));
+}
+
+async function updateInvestmentWithAttempts(id: string, userId: string, attempts: InvestmentMutationAttempt[]) {
+  let last: InvestmentMutationResult | null = null;
+
+  for (const attempt of attempts) {
+    if (Object.keys(attempt.payload).length === 0) continue;
+    const result = await supabase
+      .from('investment_items')
+      .update(attempt.payload)
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select('*')
+      .single() as unknown as InvestmentMutationResult;
+
+    if (!result.error && result.data) {
+      debugInvestments('saved investment row', {
+        attempt: attempt.label,
+        id,
+        keys: Object.keys(attempt.payload),
+      });
+      return result.data;
+    }
+
+    last = result;
+    debugInvestments('investment update attempt failed', {
+      attempt: attempt.label,
+      id,
+      message: result.error?.message,
+      code: result.error?.code,
+      details: result.error?.details,
+      hint: result.error?.hint,
+      keys: Object.keys(attempt.payload),
+    });
+  }
+
+  throw new Error(mutationErrorMessage(last));
+}
+
 function normalizeInvestmentForSave(data: InvestmentInput) {
   const quantity = moneyNumber(data.quantity);
   const purchasePrice = moneyNumber(data.purchasePrice);
@@ -321,14 +509,22 @@ function mergeInvestmentForUpdate(previous: Investment, data: InvestmentInput): 
 
 function compactUpdatePayload<T extends Record<string, unknown>>(payload: T) {
   const protectedEmptyKeys = new Set([
+    'asset_name',
     'symbol',
     'provider_symbol',
     'market',
+    'exchange',
     'asset_type',
     'currency',
     'quantity',
+    'shares',
     'purchase_price',
+    'average_buy_price',
     'purchase_total',
+    'total_invested',
+    'invested_amount',
+    'purchase_date',
+    'entry_date',
     'current_price',
     'current_market_value',
     'price_currency',
@@ -337,8 +533,10 @@ function compactUpdatePayload<T extends Record<string, unknown>>(payload: T) {
     'native_market_value',
     'last_price',
     'last_price_updated_at',
+    'price_updated_at',
     'valuation_last_updated_at',
     'data_source',
+    'investment_snapshot',
   ]);
 
   return Object.fromEntries(
@@ -351,6 +549,9 @@ function compactUpdatePayload<T extends Record<string, unknown>>(payload: T) {
 
 function buildInvestmentPayload(data: InvestmentInput, userId?: string) {
   const normalized = normalizeInvestmentForSave(data);
+  const priceUpdatedAt = normalized.currentPrice !== undefined
+    ? data.lastPriceUpdatedAt ?? data.valuationLastUpdatedAt ?? null
+    : null;
   const resolvedCurrency = resolveInvestmentCurrency({
     currency: data.currency,
     nativeCurrency: data.nativeCurrency,
@@ -363,22 +564,30 @@ function buildInvestmentPayload(data: InvestmentInput, userId?: string) {
   return {
     ...(userId ? { user_id: userId } : {}),
     name: data.name,
+    asset_name: data.name,
     amount: normalized.accountValue,
     type: data.type,
     current_value: normalized.accountValue,
     monthly_contribution: moneyNumber(data.monthlyContribution) ?? 0,
     start_date: data.startDate,
+    purchase_date: data.startDate,
+    entry_date: data.startDate,
     risk_level: data.riskLevel,
     expected_annual_return: moneyNumber(data.expectedAnnualReturn) ?? null,
     symbol: data.symbol ?? null,
     provider_symbol: data.providerSymbol ?? null,
     market: data.market ?? null,
+    exchange: data.market ?? null,
     asset_type: data.assetType ?? null,
     currency: resolvedCurrency ?? null,
     quantity: normalized.quantity ?? null,
+    shares: normalized.quantity ?? null,
     unit: data.unit ?? null,
     purchase_price: normalized.purchasePrice ?? null,
+    average_buy_price: normalized.purchasePrice ?? null,
     purchase_total: normalized.purchaseTotal ?? null,
+    total_invested: normalized.purchaseTotal ?? null,
+    invested_amount: normalized.purchaseTotal ?? null,
     profit_loss: normalized.profitLoss ?? null,
     profit_loss_percent: normalized.profitLossPercent ?? null,
     default_currency_value: normalized.defaultCurrencyValue ?? null,
@@ -399,9 +608,10 @@ function buildInvestmentPayload(data: InvestmentInput, userId?: string) {
     fx_source: data.fxSource ?? null,
     fx_last_updated_at: data.fxLastUpdatedAt ?? null,
     valuation_source: data.valuationSource ?? data.dataSource ?? data.priceSource ?? null,
-    valuation_last_updated_at: normalized.currentPrice !== undefined ? data.valuationLastUpdatedAt ?? data.lastPriceUpdatedAt ?? null : null,
+    valuation_last_updated_at: priceUpdatedAt,
     last_price: normalized.lastPrice ?? null,
-    last_price_updated_at: normalized.currentPrice !== undefined ? data.lastPriceUpdatedAt ?? data.valuationLastUpdatedAt ?? null : null,
+    last_price_updated_at: priceUpdatedAt,
+    price_updated_at: priceUpdatedAt,
     data_source: data.dataSource ?? null,
     project_id: data.projectId ?? null,
     metal_type: data.metalType ?? null,
@@ -412,12 +622,14 @@ function buildInvestmentPayload(data: InvestmentInput, userId?: string) {
     pure_metal_grams: moneyNumber(data.pureMetalGrams) ?? null,
     price_source: data.priceSource ?? data.dataSource ?? null,
     notes: data.notes ?? null,
+    investment_snapshot: investmentSnapshotFromInput(data),
   };
 }
 
-function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): Investment {
+export function normalizeInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentInput>): Investment {
+  meta = { ...investmentSnapshotFromRow(row), ...meta };
   const createdAt = row.created_at || nowIso();
-  const resolvedName = row.name || row.asset_name || '';
+  const resolvedName = row.name || row.asset_name || meta?.name || '';
   const resolvedSymbol = row.symbol ?? meta?.symbol;
   const resolvedProviderSymbol = row.provider_symbol ?? meta?.providerSymbol;
   const resolvedMarket = row.market ?? row.exchange ?? meta?.market;
@@ -506,7 +718,7 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
     displayValueRaw: displayAmount.raw,
     monthlyContribution: monthlyAmount.status === 'valid' ? monthlyAmount.value : 0,
     monthlyContributionStatus: monthlyAmount.status,
-    startDate: row.start_date || meta?.startDate || createdAt.slice(0, 10) || todayInput(),
+    startDate: row.purchase_date || row.entry_date || row.start_date || meta?.startDate || createdAt.slice(0, 10) || todayInput(),
     riskLevel: row.risk_level || meta?.riskLevel || 'medium',
     expectedAnnualReturn: expectedReturn.status === 'valid' ? expectedReturn.value : meta?.expectedAnnualReturn ?? 0,
     notes: row.notes ?? meta?.notes ?? '',
@@ -652,7 +864,7 @@ export function useInvestments() {
 
       if (isGuest || !user) {
         const saved = readJson<Investment[]>(GUEST_KEY, []);
-        const legacy = saved.length > 0 ? saved : readJson<DbInvestmentRow[]>(OLD_GUEST_KEY, []).map(row => rowToInvestment(row));
+        const legacy = saved.length > 0 ? saved : readJson<DbInvestmentRow[]>(OLD_GUEST_KEY, []).map(row => normalizeInvestment(row));
         if (!cancelled) {
           setItems(legacy);
           setIsLoading(false);
@@ -661,8 +873,8 @@ export function useInvestments() {
       }
 
       const meta = readJson<Record<string, InvestmentMeta>>(userMetaKey, {});
-      const richSelect = 'id,user_id,name,asset_name,type,category,amount,value,current_value,initial_value,invested_amount,total_invested,purchase_price,average_buy_price,purchase_total,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,exchange,asset_type,quantity,shares,unit,profit_loss,profit_loss_percent,default_currency_value,location,property_type,expected_monthly_income,expected_monthly_expense,maturity_date,current_price,current_market_value,price_currency,native_currency,native_unit_price,native_market_value,user_currency,fx_rate_to_user_currency,converted_market_value,fx_source,fx_last_updated_at,valuation_source,valuation_last_updated_at,last_price,last_price_updated_at,price_updated_at,data_source,project_id,metal_type,metal_product_type,metal_karat,metal_purity,grams,pure_metal_grams,price_source,created_at,updated_at';
-      const standardSelect = 'id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,purchase_total,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,asset_type,quantity,unit,profit_loss,profit_loss_percent,default_currency_value,location,property_type,expected_monthly_income,expected_monthly_expense,maturity_date,current_price,current_market_value,price_currency,native_currency,native_unit_price,native_market_value,user_currency,fx_rate_to_user_currency,converted_market_value,fx_source,fx_last_updated_at,valuation_source,valuation_last_updated_at,last_price,last_price_updated_at,data_source,project_id,metal_type,metal_product_type,metal_karat,metal_purity,grams,pure_metal_grams,price_source,created_at,updated_at';
+      const richSelect = 'id,user_id,name,asset_name,type,category,amount,value,current_value,initial_value,invested_amount,total_invested,purchase_price,purchase_date,entry_date,average_buy_price,purchase_total,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,exchange,asset_type,quantity,shares,unit,profit_loss,profit_loss_percent,default_currency_value,location,property_type,expected_monthly_income,expected_monthly_expense,maturity_date,current_price,current_market_value,price_currency,native_currency,native_unit_price,native_market_value,user_currency,fx_rate_to_user_currency,converted_market_value,fx_source,fx_last_updated_at,valuation_source,valuation_last_updated_at,last_price,last_price_updated_at,price_updated_at,data_source,project_id,metal_type,metal_product_type,metal_karat,metal_purity,grams,pure_metal_grams,price_source,investment_snapshot,ai_analysis,created_at,updated_at';
+      const standardSelect = 'id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,purchase_total,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,asset_type,quantity,unit,profit_loss,profit_loss_percent,default_currency_value,location,property_type,expected_monthly_income,expected_monthly_expense,maturity_date,current_price,current_market_value,price_currency,native_currency,native_unit_price,native_market_value,user_currency,fx_rate_to_user_currency,converted_market_value,fx_source,fx_last_updated_at,valuation_source,valuation_last_updated_at,last_price,last_price_updated_at,data_source,project_id,metal_type,metal_product_type,metal_karat,metal_purity,grams,pure_metal_grams,price_source,ai_analysis,created_at,updated_at';
       let full = await supabase
         .from('investment_items')
         .select(richSelect)
@@ -684,7 +896,7 @@ export function useInvestments() {
       }
 
       if (!cancelled && !full.error) {
-        const mapped = (full.data ?? []).map(row => rowToInvestment(row as DbInvestmentRow, meta[(row as DbInvestmentRow).id]));
+        const mapped = (full.data ?? []).map(row => normalizeInvestment(row as DbInvestmentRow, meta[(row as DbInvestmentRow).id]));
         debugInvestments('fetched investments', {
           source: 'full',
           count: mapped.length,
@@ -697,12 +909,12 @@ export function useInvestments() {
 
       const extended = await supabase
         .from('investment_items')
-        .select('id,name,amount,type,current_value,monthly_contribution,start_date,risk_level,expected_annual_return,notes,created_at,updated_at')
+        .select('id,name,amount,type,current_value,monthly_contribution,start_date,risk_level,expected_annual_return,notes,ai_analysis,created_at,updated_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (!cancelled && !extended.error) {
-        const mapped = (extended.data ?? []).map(row => rowToInvestment(row as DbInvestmentRow, meta[(row as DbInvestmentRow).id]));
+        const mapped = (extended.data ?? []).map(row => normalizeInvestment(row as DbInvestmentRow, meta[(row as DbInvestmentRow).id]));
         debugInvestments('fetched investments', {
           source: 'extended-fallback',
           count: mapped.length,
@@ -713,20 +925,20 @@ export function useInvestments() {
         return;
       }
 
-      const legacy = await supabase
+      const minimal = await supabase
         .from('investment_items')
-        .select('id,name,amount,created_at')
+        .select('id,name,amount,ai_analysis,created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (!cancelled) {
-        if (legacy.error) {
-          setError(legacy.error.message);
+        if (minimal.error) {
+          setError(minimal.error.message);
           setItems([]);
         } else {
-          const mapped = (legacy.data ?? []).map(row => rowToInvestment(row as DbInvestmentRow, meta[(row as DbInvestmentRow).id]));
+          const mapped = (minimal.data ?? []).map(row => normalizeInvestment(row as DbInvestmentRow, meta[(row as DbInvestmentRow).id]));
           debugInvestments('fetched investments', {
-            source: 'legacy-fallback',
+            source: 'minimal-snapshot-fallback',
             count: mapped.length,
             sample: mapped.slice(0, 3).map(safeInvestmentSummary),
           });
@@ -768,29 +980,13 @@ export function useInvestments() {
       currentMarketValue: extendedPayload.current_market_value ?? undefined,
     }));
 
-    const created = await supabase.from('investment_items').insert(extendedPayload).select('*').single();
-    if (!created.error && created.data) {
-      const next = rowToInvestment(created.data as DbInvestmentRow, metaFromInvestment(data));
-      debugInvestments('insert returned row', safeInvestmentSummary(next));
-      setItems(prev => [next, ...prev]);
-      return next;
-    }
-    debugInvestments('rich insert failed, using legacy fallback', {
-      message: created.error?.message,
-      code: created.error?.code,
-      details: created.error?.details,
-      hint: created.error?.hint,
-    });
-
-    const legacy = await supabase.from('investment_items').insert({
-      user_id: user.id,
-      name: data.name,
-      amount: extendedPayload.amount,
-    }).select('id,name,amount,created_at').single();
-
-    if (legacy.error || !legacy.data) throw new Error(legacy.error?.message || created.error?.message || 'Could not save investment');
-
-    const next = rowToInvestment(legacy.data as DbInvestmentRow, metaFromInvestment(data));
+    const savedRow = await insertInvestmentWithAttempts([
+      { label: 'full_schema', payload: extendedPayload },
+      { label: 'core_schema', payload: coreSavePayload(extendedPayload) },
+      { label: 'snapshot_fallback', payload: buildSnapshotFallbackPayload(data, user.id) },
+    ]);
+    const next = normalizeInvestment(savedRow as DbInvestmentRow, metaFromInvestment(data));
+    debugInvestments('normalized investment', safeInvestmentSummary(next));
     const meta = readJson<Record<string, InvestmentMeta>>(userMetaKey, {});
     writeJson(userMetaKey, { ...meta, [next.id]: metaFromInvestment(data) });
     setItems(prev => [next, ...prev]);
@@ -829,37 +1025,17 @@ export function useInvestments() {
       currentMarketValue: moneyNumber(extendedPayload.current_market_value),
     }));
 
-    const extended = await supabase
-      .from('investment_items')
-      .update(extendedPayload)
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .select('*')
-      .single();
-    if (!extended.error && extended.data) {
-      const next = rowToInvestment(extended.data as DbInvestmentRow, metaFromInvestment(mergedData));
-      debugInvestments('update returned row', safeInvestmentSummary(next));
-      setItems(prev => prev.map(item => item.id === id ? next : item));
-      return next;
-    }
-    debugInvestments('rich update failed, using legacy fallback', {
-      message: extended.error?.message,
-      code: extended.error?.code,
-      details: extended.error?.details,
-      hint: extended.error?.hint,
-    });
-
-    const legacy = await supabase.from('investment_items').update({
-      name: data.name,
-      amount: extendedPayload.amount,
-    }).eq('id', id).eq('user_id', user.id);
-
-    if (legacy.error) throw new Error(legacy.error.message || extended.error?.message || 'Could not update investment');
-
+    const savedRow = await updateInvestmentWithAttempts(id, user.id, [
+      { label: 'full_schema', payload: extendedPayload },
+      { label: 'core_schema', payload: compactUpdatePayload(coreSavePayload(rawPayload)) },
+      { label: 'snapshot_fallback', payload: compactUpdatePayload(buildSnapshotFallbackPayload(mergedData)) },
+    ]);
+    const next = normalizeInvestment(savedRow as DbInvestmentRow, metaFromInvestment(mergedData));
+    debugInvestments('normalized investment', safeInvestmentSummary(next));
     const meta = readJson<Record<string, InvestmentMeta>>(userMetaKey, {});
     writeJson(userMetaKey, { ...meta, [id]: metaFromInvestment(mergedData) });
-    setItems(prev => prev.map(item => item.id === id ? nextItem : item));
-    return nextItem;
+    setItems(prev => prev.map(item => item.id === id ? next : item));
+    return next;
   }, [isGuest, items, persistGuest, user, userMetaKey]);
 
   const remove = useCallback(async (id: string) => {
