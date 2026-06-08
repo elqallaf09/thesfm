@@ -41,6 +41,7 @@ interface Props {
     purchasePriceMissing?: string;
     unavailable?: string;
     approxUserCurrency?: string;
+    currency?: string;
   };
   types: InvestmentType[];
   typeLabel: (type: InvestmentType) => string;

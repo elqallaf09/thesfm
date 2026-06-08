@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { getCurrency } from '@/lib/currencies';
+import { parseMoneyValue } from '@/lib/money';
 import { formatMarketPrice } from '@/lib/market/marketCurrency';
 import { MARKET_EXCHANGE_OPTIONS, normalizeMarketExchange, type MarketExchangeId } from '@/lib/market/marketExchangeOptions';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
@@ -222,8 +223,8 @@ const SILVER_PRODUCT_GRAMS: Record<string, number | null> = {
 
 function parseDecimal(value: string | number | null | undefined) {
   if (value === null || value === undefined || value === '') return null;
-  const parsed = Number(String(value).replace(/,/g, '').trim());
-  return Number.isFinite(parsed) ? parsed : null;
+  const parsed = parseMoneyValue(value);
+  return parsed.status === 'valid' ? parsed.value : null;
 }
 
 function toInputNumber(value: number | null | undefined, max = 10) {
@@ -894,6 +895,25 @@ export function InvestmentFormModal({
       pureMetalGrams: metalTotalGrams ?? undefined,
       priceSource,
     };
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Investments] form values before save', {
+        mode,
+        type: input.type,
+        name: input.name,
+        symbol: input.symbol,
+        providerSymbol: input.providerSymbol,
+        market: input.market,
+        currency: input.currency,
+        quantity: input.quantity,
+        purchasePrice: input.purchasePrice,
+        purchaseTotal: input.purchaseTotal,
+        currentPrice: input.currentPrice,
+        currentMarketValue: input.currentMarketValue,
+        lastPriceUpdatedAt: input.lastPriceUpdatedAt,
+        hasSelectedAsset: Boolean(selectedAsset),
+      });
+    }
 
     await onSave(input, { addAnother });
     if (addAnother && mode === 'create') resetCreateForm(type);

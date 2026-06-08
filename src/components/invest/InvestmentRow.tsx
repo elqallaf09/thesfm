@@ -43,6 +43,7 @@ interface Props {
     purchasePriceMissing?: string;
     unavailable?: string;
     approxUserCurrency?: string;
+    currency?: string;
   };
   typeLabel: (type: Investment['type']) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
@@ -98,6 +99,24 @@ export function InvestmentRow({
     : metrics.isMarketLinked && metrics.currentPrice === null
       ? AlertTriangle
       : CheckCircle2;
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[Investments] card props and metrics', {
+      id: investment.id,
+      name: investment.name,
+      type: investment.type,
+      symbol: investment.symbol,
+      providerSymbol: investment.providerSymbol,
+      market: investment.market,
+      currency: nativeCurrency,
+      quantity: investment.quantity,
+      purchasePrice: investment.purchasePrice,
+      purchaseTotal: investment.purchaseTotal,
+      currentPrice: investment.currentPrice ?? investment.lastPrice,
+      currentMarketValue: investment.currentMarketValue ?? investment.nativeMarketValue,
+      metrics,
+    });
+  }
 
   return (
     <article className={`invest-row invest-holding-card invest-holding-card--${gainState}`}>
@@ -179,6 +198,7 @@ export function InvestmentRow({
         <DetailChip label={labels.monthly} value={formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)} />
         <DetailChip label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? '-' : `${formatNumber(investment.expectedAnnualReturn)}%`} />
         {investment.market && <DetailChip label={labels.market || 'Market'} value={investment.market} />}
+        {nativeCurrency && <DetailChip label={labels.currency || 'Currency'} value={nativeCurrency} />}
         {(investment.priceSource || investment.dataSource || investment.valuationSource) && (
           <DetailChip label={labels.dataSource || 'Data source'} value={investment.priceSource || investment.dataSource || investment.valuationSource || ''} />
         )}

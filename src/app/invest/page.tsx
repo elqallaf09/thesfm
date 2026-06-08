@@ -190,6 +190,7 @@ export default function InvestPage() {
     lastPrice: t('invest_asset_currentPrice'),
     symbol: t('invest_asset_symbol'),
     market: t('invest_asset_market'),
+    currency: L('العملة', 'Currency', 'Devise'),
     quantity: t('invest_asset_quantity'),
     currentMarketValue: t('invest_asset_currentMarketValue'),
     currentPrice: t('invest_asset_currentPrice'),
@@ -553,6 +554,24 @@ export default function InvestPage() {
   async function handleSave(input: InvestmentInput, options?: { addAnother?: boolean }) {
     setSaving(true);
     try {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Investments] page save input', {
+          mode,
+          editingId: selected?.id,
+          type: input.type,
+          name: input.name,
+          symbol: input.symbol,
+          providerSymbol: input.providerSymbol,
+          market: input.market,
+          currency: input.currency ?? input.nativeCurrency ?? input.priceCurrency,
+          quantity: input.quantity,
+          purchasePrice: input.purchasePrice,
+          purchaseTotal: input.purchaseTotal,
+          currentPrice: input.currentPrice ?? input.lastPrice,
+          currentMarketValue: input.currentMarketValue ?? input.nativeMarketValue,
+          lastPriceUpdatedAt: input.lastPriceUpdatedAt ?? input.valuationLastUpdatedAt,
+        });
+      }
       if (mode === 'create') {
         await add(input);
         showToast(t('invest_form_successAdd'));

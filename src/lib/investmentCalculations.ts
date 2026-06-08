@@ -49,7 +49,7 @@ export function calculateInvestmentHoldingMetrics(
     override?.currentPrice
     ?? item.lastPrice
     ?? item.currentPrice
-    ?? item.nativeUnitPrice,
+    ?? (isMarketLinked ? undefined : item.nativeUnitPrice),
   );
   const storedPurchaseTotal = positiveInvestmentNumber(item.purchaseTotal);
   const totalInvested = quantity !== null && purchasePrice !== null

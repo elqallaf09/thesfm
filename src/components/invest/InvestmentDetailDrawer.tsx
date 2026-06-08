@@ -2,6 +2,7 @@
 
 import { RefreshCw, TrendingUp, X } from 'lucide-react';
 import type { Investment } from '@/types/investment';
+import { calculateInvestmentHoldingMetrics, investmentNativeCurrency } from '@/lib/investmentCalculations';
 
 interface Props {
   open: boolean;
@@ -26,6 +27,11 @@ interface Props {
     refreshPrice?: string;
     refreshingPrice?: string;
     unavailable?: string;
+    purchasePrice?: string;
+    totalInvested?: string;
+    profitLoss?: string;
+    currentPriceUnavailable?: string;
+    purchasePriceMissing?: string;
   };
   typeLabel: (type: Investment['type']) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
@@ -54,13 +60,9 @@ export function InvestmentDetailDrawer({
 
   const linkedSymbol = investment.providerSymbol || investment.symbol;
   const unavailable = labels.unavailable || '-';
-  const nativeCurrency = investment.nativeCurrency || investment.priceCurrency || investment.currency;
-  const nativeValue = typeof investment.nativeMarketValue === 'number'
-    ? investment.nativeMarketValue
-    : typeof investment.currentMarketValue === 'number'
-      ? investment.currentMarketValue
-      : null;
-  const accountValueStatus: Investment['displayValueStatus'] = accountValue !== null ? 'valid' : 'missing';
+  const nativeCurrency = investmentNativeCurrency(investment);
+  const metrics = calculateInvestmentHoldingMetrics(investment);
+  const nativeValue = metrics.currentValue;
 
   return (
     <div className="invest-overlay" role="presentation" onMouseDown={onClose}>
@@ -87,7 +89,13 @@ export function InvestmentDetailDrawer({
 
         <div className="invest-detail-grid">
           <Info label={labels.type} value={typeLabel(investment.type)} />
-          <Info label={labels.currentMarketValue || labels.currentValue} value={formatMoney(accountValue, accountValueStatus)} />
+          <Info
+            label={labels.currentMarketValue || labels.currentValue}
+            value={metrics.currentValue !== null && nativeCurrency
+              ? formatNativeMoney(metrics.currentValue, nativeCurrency, investment)
+              : labels.currentPriceUnavailable || unavailable}
+            ltr={metrics.currentValue !== null}
+          />
           {nativeValue !== null && nativeCurrency && <Info label="القيمة الأصلية" value={formatNativeMoney(nativeValue, nativeCurrency, null)} ltr />}
           {accountValue !== null && <Info label="القيمة بعملة الحساب" value={formatMoney(accountValue, 'valid')} />}
           {investment.fxRateToUserCurrency && nativeCurrency && investment.userCurrency && nativeCurrency !== investment.userCurrency && (
@@ -100,7 +108,7 @@ export function InvestmentDetailDrawer({
           {linkedSymbol && <Info label={labels.symbol || 'Symbol'} value={linkedSymbol} ltr />}
           {investment.market && <Info label={labels.market || 'Market'} value={investment.market} />}
           {investment.type === 'project' && investment.projectId && <Info label="المشروع المرتبط" value={investment.projectName || investment.name} />}
-          {typeof investment.quantity === 'number' && <Info label={labels.quantity || 'Quantity'} value={formatPreciseNumber(investment.quantity)} ltr />}
+          {metrics.quantity !== null && <Info label={labels.quantity || 'Quantity'} value={formatPreciseNumber(metrics.quantity)} ltr />}
           {(investment.type === 'gold' || investment.type === 'silver') && investment.metalProductType && (
             <Info label="نوع المعدن" value={metalProductLabel(investment.metalProductType)} />
           )}
@@ -108,11 +116,17 @@ export function InvestmentDetailDrawer({
           {investment.type === 'silver' && typeof investment.metalPurity === 'number' && <Info label="النقاء" value={formatPreciseNumber(investment.metalPurity)} ltr />}
           {(investment.type === 'gold' || investment.type === 'silver') && typeof investment.grams === 'number' && <Info label="الوزن بالجرام" value={`${formatPreciseNumber(investment.grams)} g`} ltr />}
           {(investment.type === 'gold' || investment.type === 'silver') && typeof investment.pureMetalGrams === 'number' && <Info label="صافي المعدن" value={`${formatPreciseNumber(investment.pureMetalGrams)} g`} ltr />}
-          {typeof investment.purchasePrice === 'number' && (
-            <Info label="سعر الشراء" value={formatNativeMoney(investment.purchasePrice, nativeCurrency, investment)} ltr />
+          {metrics.purchasePrice !== null && (
+            <Info label={labels.purchasePrice || 'Purchase price'} value={formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment)} ltr />
           )}
-          {typeof investment.lastPrice === 'number' && nativeCurrency && (
-            <Info label={labels.currentPrice || 'Current price'} value={formatNativeMoney(investment.lastPrice, nativeCurrency, investment)} ltr />
+          {metrics.totalInvested !== null && nativeCurrency && (
+            <Info label={labels.totalInvested || 'Total invested'} value={formatNativeMoney(metrics.totalInvested, nativeCurrency, investment)} ltr />
+          )}
+          {metrics.currentPrice !== null && nativeCurrency && (
+            <Info label={labels.currentPrice || 'Current price'} value={formatNativeMoney(metrics.currentPrice, nativeCurrency, investment)} ltr />
+          )}
+          {metrics.currentPrice === null && metrics.isMarketLinked && (
+            <Info label={labels.currentPrice || 'Current price'} value={labels.currentPriceUnavailable || unavailable} />
           )}
           {investment.lastPriceUpdatedAt && <Info label={labels.lastUpdated || 'Last updated'} value={formatDate(investment.lastPriceUpdatedAt) || unavailable} ltr />}
           {(investment.priceSource || investment.dataSource) && <Info label={labels.dataSource || 'Data source'} value={investment.priceSource || investment.dataSource || ''} />}
