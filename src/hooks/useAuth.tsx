@@ -87,17 +87,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      const guestMode = getStoredGuestMode();
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      setIsGuest(!data.session && guestMode);
-      syncAuthCookies(data.session, !data.session && guestMode);
-      setLoading(false);
-    });
+    let mounted = true;
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        if (!mounted) return;
+        const guestMode = getStoredGuestMode();
+        if (data.session) clearStoredGuestMode();
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+        setIsGuest(!data.session && guestMode);
+        syncAuthCookies(data.session, !data.session && guestMode);
+      })
+      .catch(error => {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[auth] failed to load initial session', {
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
       console.debug('[auth] auth state changed', { event, userId: nextSession?.user?.id ?? null, hasSession: Boolean(nextSession) });
+      if (nextSession) clearStoredGuestMode();
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       const guestMode = getStoredGuestMode();
@@ -106,7 +120,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
@@ -186,7 +203,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const code = invalidCredentials ? 'invalid_credentials' : 'auth_error';
           return { error: new Error(error.message), code };
         }
-        const signedInSession = data.session;
+        const currentSession = data.session ?? (await supabase.auth.getSession()).data.session;
+        if (!currentSession?.access_token) {
+          return { error: new Error('Session missing'), code: 'auth_error' };
+        }
+        const signedInSession = currentSession;
         const signedInUser = data.user ?? signedInSession?.user ?? null;
         if (!signedInUser?.id) return { error: new Error('Profile missing'), code: 'profile_missing' };
 

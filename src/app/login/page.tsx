@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
+import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -421,6 +421,7 @@ function LoginContent() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState<Message>(null);
   const [submitting, setSubmitting] = useState(false);
+  const redirectingRef = useRef(false);
   const [recoveryQuestion, setRecoveryQuestion] = useState<string | null>(null);
   const [recoveryHash, setRecoveryHash] = useState<string | null>(null);
   const [recoveryAnswer, setRecoveryAnswer] = useState('');
@@ -434,6 +435,19 @@ function LoginContent() {
   }, [searchParams]);
   const passwordStrength = useMemo(() => strengthFor(password), [password]);
   const passwordScore = useMemo(() => scorePassword(password), [password]);
+
+  function completeAuthRedirect(targetPath: string) {
+    redirectingRef.current = true;
+    setSubmitting(true);
+    setMessage({ type: 'ok', text: text.signingIn });
+    router.refresh();
+    router.replace(targetPath);
+    window.setTimeout(() => {
+      if (!redirectingRef.current) return;
+      redirectingRef.current = false;
+      setSubmitting(false);
+    }, 8000);
+  }
 
   useEffect(() => {
     if (queryMode === 'register' || queryMode === 'forgot' || queryMode === 'forgot-password') {
@@ -459,13 +473,14 @@ function LoginContent() {
       supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(({ data }) => {
         if (data?.nextLevel === 'aal2' && data.currentLevel !== 'aal2') {
           setMfaRequiredCookie(true);
+          router.refresh();
           router.replace(`/mfa/verify?next=${encodeURIComponent(nextPath)}`);
           return;
         }
         setMfaRequiredCookie(false);
         console.debug('[auth] redirect target', nextPath);
-        router.replace(nextPath);
         router.refresh();
+        router.replace(nextPath);
       });
     }
   }, [mode, nextPath, router, session, submitting, twoFactorChallenge]);
@@ -590,20 +605,21 @@ function LoginContent() {
       if (result.code === 'invalid_credentials') return text.errorInvalidCredentials;
       return text.errorLoginGeneric;
     }
-    const authUser = result.user ?? result.session?.user ?? null;
+    const activeSession = result.session ?? (await supabase.auth.getSession()).data.session;
+    if (!activeSession?.access_token) return text.errorLoginGeneric;
+    const authUser = result.user ?? activeSession.user ?? null;
     if (!authUser?.id) return text.errorLoginGeneric;
     console.debug('[auth] login success', { userId: authUser.id });
-    console.debug('[auth] session returned', { hasSession: Boolean(result.session), hasAccessToken: Boolean(result.session?.access_token) });
+    console.debug('[auth] session returned', { hasSession: Boolean(activeSession), hasAccessToken: Boolean(activeSession.access_token) });
 
     const profile = await getOrCreateLoginProfile(authUser, loginIdentifier);
 
     const aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aal.data?.nextLevel === 'aal2' && aal.data.currentLevel !== 'aal2') {
-      syncLoggedInCookies(result.session ?? null);
+      syncLoggedInCookies(activeSession);
       setMfaRequiredCookie(true);
       console.debug('[auth] redirect target', '/mfa/verify');
-      router.replace(`/mfa/verify?next=${encodeURIComponent(nextPath)}`);
-      router.refresh();
+      completeAuthRedirect(`/mfa/verify?next=${encodeURIComponent(nextPath)}`);
       return '';
     }
 
@@ -625,11 +641,10 @@ function LoginContent() {
       setMessage({ type: 'ok', text: text.twoFactorSent });
       return '';
     }
-    syncLoggedInCookies(result.session ?? null);
+    syncLoggedInCookies(activeSession);
     setMfaRequiredCookie(false);
     console.debug('[auth] redirect target', nextPath);
-    router.replace(nextPath);
-    router.refresh();
+    completeAuthRedirect(nextPath);
     return '';
   }
 
@@ -650,8 +665,7 @@ function LoginContent() {
     setMfaRequiredCookie(false);
     void trackEvent('login', { module: 'auth', metadata: { method: 'email_2fa' } });
     console.debug('[auth] redirect target', nextPath);
-    router.replace(nextPath);
-    router.refresh();
+    completeAuthRedirect(nextPath);
     return '';
   }
 
@@ -743,8 +757,7 @@ function LoginContent() {
       syncLoggedInCookies(data.session);
       void trackEvent('signup', { module: 'auth', metadata: { method: 'email' } });
       console.debug('[auth] redirect target', '/dashboard');
-      router.replace('/dashboard');
-      router.refresh();
+      completeAuthRedirect('/dashboard');
       return '';
     }
 
@@ -825,6 +838,7 @@ function LoginContent() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
+    redirectingRef.current = false;
     setMessage(null);
     if (supabaseConfigError) {
       setMessage({ type: 'error', text: supabaseConfigError });
@@ -848,12 +862,13 @@ function LoginContent() {
       console.error('[auth] login error', error);
       setMessage({ type: 'error', text: error?.message || text.errorRegister });
     } finally {
-      setSubmitting(false);
+      if (!redirectingRef.current) setSubmitting(false);
     }
   }
 
   function enterGuestMode() {
     continueAsGuest();
+    router.refresh();
     router.replace('/dashboard');
   }
 
