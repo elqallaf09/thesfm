@@ -134,15 +134,13 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
   const pureMetalGrams = parseMoneyValue(row.pure_metal_grams ?? meta?.pureMetalGrams);
   if (process.env.NODE_ENV === 'development' && !hasLoggedInvestmentDebug) {
     hasLoggedInvestmentDebug = true;
-    console.log('RAW INVESTMENT ASSET:', row);
-    console.log('Investment amount fields:', {
-      amount: row.amount,
-      value: row.value,
-      current_value: row.current_value,
-      initial_value: row.initial_value,
-      invested_amount: row.invested_amount,
-      purchase_price: row.purchase_price,
-      monthly_contribution: row.monthly_contribution,
+    console.info('[Investments] loaded row field availability', {
+      hasAmount: row.amount != null,
+      hasCurrentPrice: row.current_price != null || row.last_price != null,
+      hasPurchasePrice: row.purchase_price != null,
+      hasQuantity: row.quantity != null,
+      hasProviderSymbol: Boolean(row.provider_symbol || row.symbol),
+      hasCurrency: Boolean(row.currency || row.native_currency || row.price_currency),
     });
   }
   return {

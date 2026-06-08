@@ -11,7 +11,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { InvestmentFormModal } from '@/components/invest/InvestmentFormModal';
 import { InvestmentList } from '@/components/invest/InvestmentList';
-import { InvestmentRow } from '@/components/invest/InvestmentRow';
+import { InvestmentRow, type InvestmentPriceRefreshStatus } from '@/components/invest/InvestmentRow';
 import { InvestmentDetailDrawer } from '@/components/invest/InvestmentDetailDrawer';
 import { ConfirmDeleteModal } from '@/components/invest/ConfirmDeleteModal';
 import { EmptyState } from '@/components/invest/EmptyState';
@@ -21,6 +21,7 @@ import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
 import { formatMarketPrice } from '@/lib/market/marketCurrency';
 import type { MoneyParseStatus } from '@/lib/money';
+import { calculateInvestmentHoldingMetrics, finiteInvestmentNumber } from '@/lib/investmentCalculations';
 import { investmentSymbol, marketAnalysisUrl } from '@/lib/data/investmentData';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
 
@@ -149,9 +150,12 @@ export default function InvestPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [refreshingPriceId, setRefreshingPriceId] = useState<string | null>(null);
+  const [refreshingAllPrices, setRefreshingAllPrices] = useState(false);
+  const [priceRefreshStatuses, setPriceRefreshStatuses] = useState<Record<string, InvestmentPriceRefreshStatus>>({});
   const [toast, setToast] = useState('');
   const [activeTab, setActiveTab] = useState<InvestTab>('portfolio');
   const insightsRef = useRef<HTMLDivElement | null>(null);
+  const L = useCallback((ar: string, en: string, fr: string) => lang === 'ar' ? ar : lang === 'fr' ? fr : en, [lang]);
 
   const labels = useMemo(() => ({
     heroTitle: t('invest_hero_title'),
@@ -181,12 +185,24 @@ export default function InvestPage() {
     currentValue: t('invest_form_currentValue'),
     refreshPrice: t('invest_asset_refreshPrice'),
     refreshingPrice: t('invest_asset_refreshingPrice'),
+    refreshAllPrices: L('تحديث الأسعار', 'Refresh prices', 'Actualiser les prix'),
+    refreshingPrices: L('جارٍ تحديث الأسعار', 'Refreshing prices', 'Actualisation des prix'),
     lastPrice: t('invest_asset_currentPrice'),
     symbol: t('invest_asset_symbol'),
     market: t('invest_asset_market'),
     quantity: t('invest_asset_quantity'),
     currentMarketValue: t('invest_asset_currentMarketValue'),
     currentPrice: t('invest_asset_currentPrice'),
+    purchasePrice: L('سعر الشراء', 'Purchase price', 'Prix d’achat'),
+    totalInvested: L('إجمالي الاستثمار', 'Total invested', 'Total investi'),
+    profitLoss: L('الربح / الخسارة', 'Profit / loss', 'Profit / perte'),
+    profitLossPercent: L('نسبة الربح / الخسارة', 'Profit / loss %', 'Profit / perte %'),
+    priceStatus: L('حالة السعر', 'Price status', 'Statut du prix'),
+    priceUpdated: L('السعر محدث', 'Price updated', 'Prix actualisé'),
+    priceUpdateFailed: L('تعذر تحديث السعر حالياً', 'Could not update the price right now', 'Impossible d’actualiser le prix pour le moment'),
+    currentPriceUnavailable: L('السعر الحالي غير متاح', 'Current price unavailable', 'Prix actuel indisponible'),
+    purchasePriceMissing: L('سعر الشراء غير مكتمل', 'Purchase price is incomplete', 'Prix d’achat incomplet'),
+    approxUserCurrency: L('تعادل تقريباً', 'Approx. in your currency', 'Équivaut environ'),
     dataSource: t('invest_asset_dataSource'),
     lastUpdated: t('invest_asset_lastUpdated'),
     unavailable: t('invest_asset_unavailable'),
@@ -194,9 +210,7 @@ export default function InvestPage() {
     startDate: t('invest_form_startDate'),
     notes: t('invest_form_notes'),
     close: t('close'),
-  }), [t]);
-
-  const L = useCallback((ar: string, en: string, fr: string) => lang === 'ar' ? ar : lang === 'fr' ? fr : en, [lang]);
+  }), [L, t]);
 
   const formLabels = useMemo(() => ({
     titleAdd: t('invest_form_titleAdd'),
@@ -554,9 +568,9 @@ export default function InvestPage() {
     }
   }
 
-  async function handleRefreshPrice(item: Investment) {
+  async function handleRefreshPrice(item: Investment, options?: { silent?: boolean }) {
     const providerSymbol = item.providerSymbol || item.symbol;
-    if (!providerSymbol) return;
+    if (!providerSymbol) return false;
 
     setRefreshingPriceId(item.id);
     try {
@@ -565,6 +579,11 @@ export default function InvestPage() {
         displaySymbol: item.symbol || providerSymbol,
         name: item.name,
       });
+      if (item.assetType) params.set('assetType', item.assetType);
+      if (item.market) params.set('market', item.market);
+      if (item.nativeCurrency || item.priceCurrency || item.currency) {
+        params.set('currency', item.nativeCurrency || item.priceCurrency || item.currency || '');
+      }
       const response = await fetch(`/api/market/refresh-investment-price?${params.toString()}`, {
         cache: 'no-store',
       });
@@ -575,6 +594,7 @@ export default function InvestPage() {
           provider_symbol?: string;
           price?: number | null;
           currency?: string | null;
+          price_unit?: string | null;
           updated_at?: string | null;
           source?: string;
         };
@@ -583,20 +603,51 @@ export default function InvestPage() {
 
       const price = Number(payload.item?.price);
       if (!response.ok || payload.ok === false || !Number.isFinite(price) || price <= 0) {
-        showToast(t('invest_asset_priceUnavailable'));
-        return;
+        const failedAt = new Date().toISOString();
+        setPriceRefreshStatuses(prev => ({
+          ...prev,
+          [item.id]: {
+            state: 'failed',
+            message: payload.code || 'PRICE_UNAVAILABLE',
+            at: failedAt,
+          },
+        }));
+        if (!options?.silent) showToast(labels.priceUpdateFailed);
+        return false;
       }
 
-      const quantity = typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : undefined;
       const nativeCurrency = (payload.item?.currency || item.nativeCurrency || item.priceCurrency || item.currency || currency).toUpperCase();
-      const currentMarketValue = quantity ? price * quantity : price;
-      const fx = await fetchFxRate(nativeCurrency, accountCurrency);
-      const convertedMarketValue = currentMarketValue * fx.rate;
+      const metrics = calculateInvestmentHoldingMetrics(item, { currentPrice: price });
+      const currentMarketValue = metrics.currentValue;
+      let fx: Awaited<ReturnType<typeof fetchFxRate>> | null = null;
+      if (currentMarketValue !== null) {
+        try {
+          fx = await fetchFxRate(nativeCurrency, accountCurrency);
+        } catch {
+          fx = nativeCurrency === accountCurrency
+            ? { rate: 1, source: 'same_currency', lastUpdated: new Date().toISOString() }
+            : null;
+        }
+      }
+      const convertedMarketValue = currentMarketValue !== null && fx
+        ? currentMarketValue * fx.rate
+        : null;
       const valuationUpdatedAt = payload.item?.updated_at || new Date().toISOString();
+      if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEBUG_MARKET_DATA === 'true') {
+        console.info('[Investments] price refresh parsed', {
+          requestedSymbol: providerSymbol,
+          providerSymbol: payload.item?.provider_symbol || providerSymbol,
+          parsedCurrentPrice: price,
+          currency: nativeCurrency,
+          lastUpdated: valuationUpdatedAt,
+          source: payload.item?.source,
+          priceUnit: payload.item?.price_unit,
+        });
+      }
       const nextInput: InvestmentInput = {
         name: item.name,
         type: item.type,
-        currentValue: convertedMarketValue,
+        currentValue: convertedMarketValue ?? currentMarketValue ?? finiteInvestmentNumber(item.currentValue) ?? 0,
         monthlyContribution: item.monthlyContribution,
         startDate: item.startDate,
         riskLevel: item.riskLevel,
@@ -608,24 +659,24 @@ export default function InvestPage() {
         assetType: item.assetType,
         currency: nativeCurrency,
         quantity: item.quantity,
-        amount: convertedMarketValue,
+        amount: convertedMarketValue ?? currentMarketValue ?? undefined,
         purchasePrice: item.purchasePrice,
-        purchaseTotal: item.purchaseTotal,
+        purchaseTotal: metrics.totalInvested ?? item.purchaseTotal,
         currentPrice: price,
-        currentMarketValue,
-        profitLoss: item.purchaseTotal !== undefined ? currentMarketValue - item.purchaseTotal : item.profitLoss,
-        profitLossPercent: item.purchaseTotal && item.purchaseTotal > 0 ? ((currentMarketValue - item.purchaseTotal) / item.purchaseTotal) * 100 : item.profitLossPercent,
-        defaultCurrencyValue: convertedMarketValue,
+        currentMarketValue: currentMarketValue ?? undefined,
+        profitLoss: metrics.profitLossAmount ?? undefined,
+        profitLossPercent: metrics.profitLossPercent ?? undefined,
+        defaultCurrencyValue: convertedMarketValue ?? undefined,
         unit: item.unit,
         priceCurrency: nativeCurrency,
         nativeCurrency,
         nativeUnitPrice: price,
-        nativeMarketValue: currentMarketValue,
+        nativeMarketValue: currentMarketValue ?? undefined,
         userCurrency: accountCurrency,
-        fxRateToUserCurrency: fx.rate,
-        convertedMarketValue,
-        fxSource: fx.source,
-        fxLastUpdatedAt: fx.lastUpdated,
+        fxRateToUserCurrency: fx?.rate,
+        convertedMarketValue: convertedMarketValue ?? undefined,
+        fxSource: fx?.source ?? (nativeCurrency === accountCurrency ? 'same_currency' : 'unavailable'),
+        fxLastUpdatedAt: fx?.lastUpdated,
         valuationSource: payload.item?.source || item.dataSource || item.priceSource,
         valuationLastUpdatedAt: valuationUpdatedAt,
         lastPrice: price,
@@ -650,11 +701,45 @@ export default function InvestPage() {
       const updated = await update(item.id, nextInput);
       if (details?.id === item.id) setDetails(updated);
       if (selected?.id === item.id) setSelected(updated);
-      showToast(t('invest_asset_priceUpdated'));
+      setPriceRefreshStatuses(prev => ({
+        ...prev,
+        [item.id]: {
+          state: 'updated',
+          at: valuationUpdatedAt,
+        },
+      }));
+      if (!options?.silent) showToast(t('invest_asset_priceUpdated'));
+      return true;
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t('invest_asset_priceUnavailable'));
+      const failedAt = new Date().toISOString();
+      setPriceRefreshStatuses(prev => ({
+        ...prev,
+        [item.id]: {
+          state: 'failed',
+          message: err instanceof Error ? err.message : 'PRICE_UNAVAILABLE',
+          at: failedAt,
+        },
+      }));
+      if (!options?.silent) showToast(labels.priceUpdateFailed);
+      return false;
     } finally {
       setRefreshingPriceId(null);
+    }
+  }
+
+  async function handleRefreshPrices(visibleItems: Investment[]) {
+    const refreshable = visibleItems.filter(item => item.providerSymbol || item.symbol);
+    if (refreshable.length === 0 || refreshingAllPrices) return;
+    setRefreshingAllPrices(true);
+    try {
+      let updatedCount = 0;
+      for (const item of refreshable) {
+        const updated = await handleRefreshPrice(item, { silent: true });
+        if (updated) updatedCount += 1;
+      }
+      showToast(updatedCount === refreshable.length ? t('invest_asset_priceUpdated') : labels.priceUpdateFailed);
+    } finally {
+      setRefreshingAllPrices(false);
     }
   }
 
@@ -792,6 +877,7 @@ export default function InvestPage() {
                     onDelete={setDeleteTarget}
                     onRefreshPrice={handleRefreshPrice}
                     refreshing={refreshingPriceId === item.id}
+                    priceRefreshStatus={priceRefreshStatuses[item.id]}
                   />
                 ))}
               </div>
@@ -916,7 +1002,10 @@ export default function InvestPage() {
               onEdit={openEdit}
               onDelete={setDeleteTarget}
               onRefreshPrice={handleRefreshPrice}
+              onRefreshPrices={handleRefreshPrices}
               refreshingPriceId={refreshingPriceId}
+              refreshingPrices={refreshingAllPrices}
+              priceRefreshStatuses={priceRefreshStatuses}
             />
             )}
           </>
@@ -989,12 +1078,13 @@ export default function InvestPage() {
         .invest-empty{min-height:280px;padding:42px 20px;text-align:center;display:grid;place-items:center;align-content:center;gap:12px}.invest-empty-icon{width:68px;height:68px;border-radius:22px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.invest-empty h3{margin:0;font-size:20px}.invest-empty p{max-width:520px;margin:0;color:var(--sfm-muted);line-height:1.8;font-size:14px}
         .invest-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,220px) minmax(160px,220px);gap:10px;padding:14px;border-bottom:1px solid rgba(167,243,240,.1);min-width:0}.invest-controls input,.invest-controls select,.invest-field input,.invest-field select,.invest-field textarea{height:48px;min-width:0;width:100%;border:1.5px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-foreground);padding:0 13px;font:800 13px Tajawal,Arial,sans-serif;outline:0}.invest-controls input:focus,.invest-controls select:focus,.invest-field input:focus,.invest-field select:focus,.invest-field textarea:focus{border-color:var(--sfm-soft-cyan);background:var(--sfm-card);box-shadow:0 0 0 4px rgba(167,243,240,.12)}
         .invest-list{display:grid;gap:0;padding:0 14px 14px;min-width:0}.invest-row{padding:13px 0;border-bottom:1px solid rgba(167,243,240,.1);display:grid;gap:9px;min-width:0}.invest-row:last-child{border-bottom:0}.invest-row-main{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}.invest-row-main>div{min-width:0}.invest-row-main h3{margin:0 0 5px;font-size:15px;font-weight:900;overflow-wrap:anywhere}.invest-row-main p{margin:0;color:#475569;font-size:12px;font-weight:800;overflow-wrap:anywhere}.invest-row-main strong{font-size:15px;color:var(--sfm-foreground);white-space:nowrap}.invest-row-main .invest-asset-value{display:inline-flex;align-items:center;justify-content:center;min-height:36px;border-radius:12px;border:1px solid rgba(14,116,144,.18);background:rgba(236,254,255,.72);color:#0F172A;font-size:clamp(16px,1.6vw,18px);font-weight:950;line-height:1.25;padding:7px 11px;font-variant-numeric:tabular-nums;letter-spacing:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.52),0 8px 20px rgba(15,23,42,.05);text-align:end}.invest-row-meta{display:flex;flex-wrap:wrap;gap:7px;min-width:0}.invest-row-meta span{font-size:11px;font-weight:800;color:var(--sfm-muted);background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:999px;padding:5px 9px;overflow-wrap:anywhere}.invest-row-actions{display:flex;gap:7px;flex-wrap:wrap}.invest-row-actions button{height:34px;border-radius:11px;border:1px solid rgba(167,243,240,.16);background:var(--sfm-card);color:var(--sfm-muted);padding:0 10px;font:900 12px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;gap:6px;cursor:pointer}.invest-row-actions button:hover{background:rgba(167,243,240,.09);color:var(--sfm-muted)}.invest-row-actions button.danger:hover{background:rgba(185,28,28,.08);color:#B91C1C}
+        .invest-list-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px;border-bottom:1px solid rgba(167,243,240,.1)}.invest-list-toolbar .invest-controls{padding:0;border-bottom:0}.invest-refresh-all{height:48px;border-radius:14px;border:1px solid rgba(47,214,192,.24);background:linear-gradient(135deg,rgba(45,212,191,.14),rgba(29,140,255,.1));color:#0f766e;padding:0 15px;font:950 13px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;white-space:nowrap}.invest-refresh-all:hover{border-color:rgba(47,214,192,.45);box-shadow:0 10px 24px rgba(15,118,110,.08)}.invest-refresh-all:disabled{opacity:.64;cursor:wait}.invest-list{gap:12px;padding:14px}.invest-holding-card{padding:16px;border:1px solid rgba(167,243,240,.16)!important;border-radius:20px;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,251,255,.98));box-shadow:0 12px 30px rgba(15,23,42,.06);display:grid;gap:14px}.dark .invest-holding-card{background:linear-gradient(180deg,rgba(15,29,49,.94),rgba(10,24,42,.94));border-color:rgba(167,243,240,.14)!important}.invest-holding-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;min-width:0}.invest-holding-identity{display:flex;align-items:flex-start;gap:12px;min-width:0}.invest-holding-identity h3{margin:0 0 8px;font-size:17px;font-weight:950;color:var(--sfm-foreground);overflow-wrap:anywhere}.invest-holding-badges{display:flex;flex-wrap:wrap;gap:7px}.invest-badge-soft,.invest-risk-badge,.invest-weight-badge{min-height:27px;border-radius:999px;padding:5px 10px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(167,243,240,.18);background:var(--sfm-light-card);color:var(--sfm-muted);font-size:11px;font-weight:950;line-height:1}.invest-risk-badge--low{color:#047857;background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.22)}.invest-risk-badge--medium{color:#B45309;background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.24)}.invest-risk-badge--high{color:#B91C1C;background:rgba(239,68,68,.09);border-color:rgba(239,68,68,.2)}.invest-weight-badge{color:#0f766e;background:rgba(45,212,191,.1);border-color:rgba(45,212,191,.22)}.invest-holding-actions{justify-content:flex-end}.invest-holding-primary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.invest-holding-metric{min-width:0;border:1px solid rgba(167,243,240,.15);border-radius:16px;background:var(--sfm-light-card);padding:12px;display:grid;gap:7px}.invest-holding-metric span{font-size:11px;font-weight:950;color:var(--sfm-muted)}.invest-holding-metric strong{min-width:0;display:flex;align-items:center;gap:6px;color:var(--sfm-foreground);font-size:15px;font-weight:950;line-height:1.35;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}.invest-holding-metric--gain strong{color:#047857}.invest-holding-metric--loss strong{color:#B91C1C}.invest-holding-metric--warning{border-color:rgba(245,158,11,.24);background:rgba(245,158,11,.08)}.invest-holding-metric--warning strong{color:#92400E}.invest-holding-secondary{display:flex;flex-wrap:wrap;gap:8px}.invest-detail-chip{display:inline-flex;align-items:center;gap:7px;max-width:100%;border:1px solid rgba(167,243,240,.13);background:var(--sfm-card);border-radius:999px;padding:6px 10px;color:var(--sfm-muted);font-size:11px;font-weight:900}.invest-detail-chip b{font-weight:950;color:var(--sfm-muted)}.invest-detail-chip em{font-style:normal;color:var(--sfm-foreground);font-weight:950;overflow-wrap:anywhere}.invest-detail-chip--gain em{color:#047857}.invest-detail-chip--loss em{color:#B91C1C}.invest-holding-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid rgba(167,243,240,.1);padding-top:12px}.invest-price-status{display:inline-flex;align-items:center;gap:7px;color:var(--sfm-muted);font-size:12px;font-weight:950}.invest-price-status svg{color:#0f766e}.invest-holding-card--loss .invest-price-status svg,.invest-holding-card--neutral .invest-price-status svg{color:var(--sfm-muted)}.invest-last-updated{font-size:12px;font-weight:900;color:var(--sfm-muted)}.invest-refresh-inline{height:36px;border-radius:12px;border:1px solid rgba(47,214,192,.22);background:rgba(45,212,191,.1);color:#0f766e;padding:0 12px;font:950 12px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;gap:7px;cursor:pointer}.invest-refresh-inline:disabled{opacity:.65;cursor:wait}.dark .invest-refresh-all,.dark .invest-refresh-inline{color:var(--sfm-soft-cyan);background:rgba(47,214,192,.1)}
         .invest-overlay{position:fixed;inset:0;z-index:80;background:rgba(17,17,17,.42);backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;padding:18px}.invest-modal{width:min(780px,100%);max-height:92vh;overflow:auto;background:var(--sfm-card);border:1px solid rgba(167,243,240,.18);border-radius:26px;box-shadow:0 28px 90px rgba(3,18,37,.3)}.invest-modal-head{position:sticky;top:0;z-index:3;background:rgba(248,251,255,.92);backdrop-filter:blur(10px);border-bottom:1px solid rgba(167,243,240,.12);padding:18px 20px;display:flex;justify-content:space-between;align-items:center}.dark .invest-modal-head{background:rgba(15,29,49,.92)}.invest-modal-head h2{margin:0;font-size:21px}.invest-icon-btn{width:38px;height:38px;border-radius:12px;border:1px solid rgba(167,243,240,.18);background:var(--sfm-card);color:var(--sfm-muted);display:grid;place-items:center;cursor:pointer}.invest-form{padding:20px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.invest-field{display:grid;gap:7px;min-width:0}.invest-field>span{font-size:12px;font-weight:900;color:var(--sfm-muted)}.invest-field b{color:#B91C1C;margin-inline-start:3px}.invest-field textarea{height:auto;min-height:88px;padding-top:12px;resize:vertical}.invest-field small{font-size:11px;color:#B91C1C;font-weight:800}.invest-field em{font-style:normal;font-size:11px;color:var(--sfm-muted);font-weight:850;line-height:1.6}.span-2{grid-column:1/-1}.invest-form-actions{display:flex;justify-content:flex-end;gap:10px}.invest-form-actions.center{justify-content:center}.invest-input-icon,.invest-money-input,.invest-suffix-input,.invest-readonly-money{height:48px;display:flex;align-items:center;gap:8px;border:1.5px solid rgba(167,243,240,.22);border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-foreground);min-width:0;transition:all .2s}.invest-input-icon:focus-within,.invest-money-input:focus-within,.invest-suffix-input:focus-within{border-color:var(--sfm-soft-cyan);background:var(--sfm-card);box-shadow:0 0 0 4px rgba(167,243,240,.12)}.invest-input-icon svg{margin-inline-start:13px;color:var(--sfm-muted);flex:0 0 auto}.invest-input-icon input,.invest-money-input input,.invest-suffix-input input{border:0!important;background:transparent!important;box-shadow:none!important;height:100%!important;padding:0 12px!important;min-width:0;flex:1}.invest-money-input>span,.invest-suffix-input>span,.invest-readonly-money>span{height:34px;min-width:58px;margin-inline-start:7px;border-radius:11px;background:rgba(15,118,110,.1);color:#0f766e;display:inline-flex;align-items:center;justify-content:center;font:950 12px Tajawal,Arial,sans-serif;border:1px solid rgba(15,118,110,.15)}.dark .invest-money-input>span,.dark .invest-suffix-input>span,.dark .invest-readonly-money>span{background:rgba(47,214,192,.13);border-color:rgba(47,214,192,.24);color:var(--sfm-soft-cyan)}.invest-readonly-money strong{flex:1;min-width:0;padding-inline:8px;color:var(--sfm-foreground);font:950 14px Arial,sans-serif}.invest-suffix-input>span{margin-inline-start:0;margin-inline-end:7px;min-width:42px}.invest-price-unavailable{height:48px;display:flex;align-items:center;gap:8px;border:1px solid rgba(245,158,11,.24);border-radius:14px;background:rgba(245,158,11,.1);color:#92400E;padding:0 13px;font:900 12px Tajawal,Arial,sans-serif}.dark .invest-price-unavailable{color:#FCD34D;background:rgba(245,158,11,.11);border-color:rgba(245,158,11,.26)}.invest-calculation-card{border:1px solid rgba(47,214,192,.24);border-radius:20px;background:linear-gradient(135deg,rgba(45,212,191,.12),rgba(29,140,255,.08));padding:14px;display:grid;gap:12px;min-width:0}.invest-calculation-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.invest-calculation-head span{font-size:12px;font-weight:950;color:var(--sfm-muted)}.invest-calculation-head button{height:34px;border-radius:12px;border:1px solid rgba(47,214,192,.24);background:rgba(45,212,191,.12);color:#0f766e;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;padding:0 12px}.dark .invest-calculation-head button{color:var(--sfm-soft-cyan);background:rgba(47,214,192,.11)}.invest-calculation-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.invest-calculation-grid>div{display:grid;gap:5px;min-width:0;padding:11px;border:1px solid rgba(167,243,240,.16);border-radius:15px;background:rgba(255,255,255,.62)}.dark .invest-calculation-grid>div{background:rgba(15,29,49,.58);border-color:rgba(167,243,240,.14)}.invest-calculation-grid span{font-size:11px;font-weight:950;color:var(--sfm-muted)}.invest-calculation-grid strong{font-size:14px;font-weight:950;color:var(--sfm-foreground);overflow-wrap:anywhere}.invest-calculation-total{border-color:rgba(47,214,192,.32)!important;background:rgba(204,251,241,.7)!important}.dark .invest-calculation-total{background:rgba(47,214,192,.12)!important}.invest-calculation-card small{color:var(--sfm-muted);font-size:12px;font-weight:900;line-height:1.6}.invest-asset-search{position:relative;min-width:0}.invest-asset-results{position:absolute;z-index:6;inset-inline:0;top:calc(100% + 8px);display:grid;gap:8px;padding:10px;border:1px solid rgba(167,243,240,.24);border-radius:18px;background:rgba(255,255,255,.98);box-shadow:0 22px 55px rgba(3,18,37,.18);max-height:320px;overflow:auto}.dark .invest-asset-results{background:rgba(15,29,49,.98);border-color:rgba(167,243,240,.18)}.invest-asset-state{display:grid;gap:6px;justify-items:start;padding:13px;border-radius:14px;background:var(--sfm-light-card);color:var(--sfm-muted);font:850 12px Tajawal,Arial,sans-serif;line-height:1.7}.invest-asset-state strong{color:var(--sfm-foreground);font-size:13px}.invest-asset-state--warning{display:flex;align-items:center;gap:8px;color:#B45309;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.18)}.invest-asset-result{width:100%;min-width:0;border:1px solid rgba(167,243,240,.14);background:var(--sfm-card);border-radius:16px;padding:10px;display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:10px;align-items:center;text-align:start;color:var(--sfm-foreground);cursor:pointer}.invest-asset-result:hover{border-color:rgba(47,214,192,.45);box-shadow:0 10px 24px rgba(15,23,42,.08);transform:translateY(-1px)}.invest-asset-result-icon{width:38px;height:38px;border-radius:14px;background:linear-gradient(135deg,rgba(29,140,255,.13),rgba(24,212,212,.16));display:grid;place-items:center;color:#0f766e;font:950 11px Arial,sans-serif}.dark .invest-asset-result-icon{color:var(--sfm-soft-cyan)}.invest-asset-result-body{display:grid;gap:4px;min-width:0}.invest-asset-result-body strong{font-size:13px;font-weight:950;color:var(--sfm-foreground);overflow-wrap:anywhere}.invest-asset-result-body small{font-size:11px;font-weight:850;color:var(--sfm-muted);overflow-wrap:anywhere}.invest-asset-result-price{font:950 12px Arial,sans-serif;color:#0f766e;white-space:nowrap}.dark .invest-asset-result-price{color:var(--sfm-soft-cyan)}.invest-selected-asset{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr) minmax(0,.8fr);gap:10px;padding:12px;border:1px solid rgba(47,214,192,.24);border-radius:18px;background:linear-gradient(135deg,rgba(45,212,191,.12),rgba(29,140,255,.08))}.invest-selected-asset>div,.invest-market-value{background:rgba(255,255,255,.62);border:1px solid rgba(167,243,240,.16);border-radius:15px;padding:11px;display:grid;gap:5px;min-width:0}.dark .invest-selected-asset>div,.dark .invest-market-value{background:rgba(15,29,49,.58);border-color:rgba(167,243,240,.14)}.invest-selected-asset span,.invest-market-value span{display:flex;align-items:center;gap:6px;color:var(--sfm-muted);font-size:11px;font-weight:950}.invest-selected-asset strong,.invest-market-value strong{font-size:14px;color:var(--sfm-foreground);font-weight:950;overflow-wrap:anywhere}.invest-selected-asset small,.invest-market-value small{font-size:11px;color:var(--sfm-muted);font-weight:850;line-height:1.5}.invest-manual-warning{display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px;border:1px solid rgba(245,158,11,.2);border-radius:17px;background:rgba(245,158,11,.1);color:#92400E;padding:12px}.dark .invest-manual-warning{color:#FCD34D;background:rgba(245,158,11,.11);border-color:rgba(245,158,11,.24)}.invest-manual-warning strong{display:block;margin-bottom:4px;font-size:13px}.invest-manual-warning p{margin:0;font-size:12px;font-weight:850;line-height:1.7}.invest-market-value{align-items:start;background:rgba(236,254,255,.7)}.invest-refresh-wide{width:100%;height:42px;margin-bottom:12px;border-radius:14px;border:1px solid rgba(47,214,192,.22);background:rgba(45,212,191,.1);color:#0f766e;font:950 13px Tajawal,Arial,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}.dark .invest-refresh-wide{color:var(--sfm-soft-cyan);background:rgba(47,214,192,.1)}.invest-spin{animation:invest-spin 1s linear infinite}@keyframes invest-spin{to{transform:rotate(360deg)}}.invest-row-actions button:disabled{opacity:.65;cursor:wait}
         .invest-confirm{position:relative;width:min(430px,100%);background:var(--sfm-card);border-radius:24px;border:1px solid rgba(167,243,240,.18);box-shadow:0 24px 75px rgba(3,18,37,.28);padding:26px;text-align:center}.invest-close{position:absolute;top:14px;inset-inline-end:14px}.invest-confirm-icon{width:62px;height:62px;margin:0 auto 12px;border-radius:20px;background:rgba(185,28,28,.08);color:#B91C1C;display:grid;place-items:center}.invest-confirm h3{margin:0 0 8px}.invest-confirm p{margin:0 0 18px;color:var(--sfm-muted);line-height:1.8;font-weight:800}
         .dark .invest-row-main .invest-asset-value{border-color:rgba(103,232,249,.28);background:rgba(8,47,73,.55);color:#F8FAFC;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04),0 10px 24px rgba(0,0,0,.18)}
         .invest-drawer{width:min(460px,100%);max-height:92vh;overflow:auto;background:var(--sfm-card);border:1px solid rgba(167,243,240,.18);border-radius:24px;padding:20px;box-shadow:0 28px 90px rgba(3,18,37,.3)}.invest-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.invest-drawer-title{display:flex;align-items:center;gap:12px}.invest-drawer-title>span{width:42px;height:42px;border-radius:14px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.invest-drawer-title p{margin:0 0 4px;color:var(--sfm-muted);font-size:12px;font-weight:900}.invest-drawer-title h3{margin:0;font-size:19px}.invest-detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.invest-detail-grid div,.invest-notes-box{background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.12);border-radius:15px;padding:12px}.invest-detail-grid span,.invest-notes-box strong{display:block;color:var(--sfm-muted);font-size:11px;font-weight:900;margin-bottom:6px}.invest-detail-grid strong,.invest-notes-box p{margin:0;color:var(--sfm-foreground);font-size:13px;font-weight:800;line-height:1.7}.invest-notes-box{margin-top:10px}
         .invest-toast{position:fixed;z-index:100;inset-inline-end:22px;bottom:22px;background:var(--sfm-foreground);color:var(--sfm-soft-cyan);border:1px solid rgba(167,243,240,.28);border-radius:16px;padding:13px 16px;font:900 13px Tajawal,Arial,sans-serif;box-shadow:0 18px 45px rgba(3,18,37,.2)}.invest-notice{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18);color:#B91C1C;border-radius:15px;padding:12px 14px;margin-bottom:14px;font-weight:800}.invest-loading{padding:34px;text-align:center;color:var(--sfm-muted);font-weight:900}
-        @keyframes pulse{50%{opacity:.45}}@media(max-width:1180px){.invest-chart-grid{grid-template-columns:1fr 1fr}.invest-analysis-grid,.invest-portfolio-grid{grid-template-columns:1fr}}@media(max-width:1024px){.invest-main{width:100%!important;margin-inline-start:0!important;margin-inline-end:0!important;padding:calc(78px + env(safe-area-inset-top)) 16px 52px!important}}@media(max-width:760px){.invest-content{gap:14px}.invest-topbar{align-items:flex-start}.invest-hero{display:grid;padding:22px}.invest-hero h2{font-size:28px}.invest-hero-total{min-width:0}.invest-hero-content .invest-primary-btn,.invest-hero-content .invest-glass-btn{width:100%;margin-inline-start:0;margin-top:8px}.invest-summary-grid,.invest-chart-grid,.invest-projection-grid{grid-template-columns:1fr}.invest-controls{grid-template-columns:1fr}.invest-form{grid-template-columns:1fr}.span-2{grid-column:auto}.invest-section-head--split{display:grid}.invest-section-head--split .invest-secondary-btn{width:100%}.invest-row-main{display:grid}.invest-row-main strong{white-space:normal;overflow-wrap:anywhere}.invest-row-actions button{flex:1}.invest-detail-grid{grid-template-columns:1fr}.invest-selected-asset,.invest-calculation-grid{grid-template-columns:1fr}.invest-asset-result{grid-template-columns:34px minmax(0,1fr);align-items:start}.invest-asset-result-price{grid-column:2;justify-self:start}.invest-overlay{align-items:flex-end;padding:0}.invest-modal,.invest-drawer{border-radius:24px 24px 0 0;max-height:95vh}.invest-confirm{margin:16px}}
+        @keyframes pulse{50%{opacity:.45}}@media(max-width:1180px){.invest-chart-grid{grid-template-columns:1fr 1fr}.invest-analysis-grid,.invest-portfolio-grid{grid-template-columns:1fr}.invest-holding-primary{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:1024px){.invest-main{width:100%!important;margin-inline-start:0!important;margin-inline-end:0!important;padding:calc(78px + env(safe-area-inset-top)) 16px 52px!important}}@media(max-width:760px){.invest-content{gap:14px}.invest-topbar{align-items:flex-start}.invest-hero{display:grid;padding:22px}.invest-hero h2{font-size:28px}.invest-hero-total{min-width:0}.invest-hero-content .invest-primary-btn,.invest-hero-content .invest-glass-btn{width:100%;margin-inline-start:0;margin-top:8px}.invest-summary-grid,.invest-chart-grid,.invest-projection-grid,.invest-holding-primary{grid-template-columns:1fr}.invest-list-toolbar{grid-template-columns:1fr}.invest-refresh-all{width:100%}.invest-controls{grid-template-columns:1fr}.invest-form{grid-template-columns:1fr}.span-2{grid-column:auto}.invest-section-head--split{display:grid}.invest-section-head--split .invest-secondary-btn{width:100%}.invest-holding-head{display:grid}.invest-holding-actions{justify-content:stretch}.invest-row-main{display:grid}.invest-row-main strong{white-space:normal;overflow-wrap:anywhere}.invest-row-actions button{flex:1}.invest-holding-footer{display:grid;justify-items:stretch}.invest-refresh-inline{width:100%;justify-content:center}.invest-detail-grid{grid-template-columns:1fr}.invest-selected-asset,.invest-calculation-grid{grid-template-columns:1fr}.invest-asset-result{grid-template-columns:34px minmax(0,1fr);align-items:start}.invest-asset-result-price{grid-column:2;justify-self:start}.invest-overlay{align-items:flex-end;padding:0}.invest-modal,.invest-drawer{border-radius:24px 24px 0 0;max-height:95vh}.invest-confirm{margin:16px}}
       `}</style>
     </div>
   );

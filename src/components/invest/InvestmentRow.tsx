@@ -1,7 +1,15 @@
 'use client';
 
-import { Edit3, Eye, RefreshCw, Trash2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Edit3, Eye, Minus, RefreshCw, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
+import type { ReactNode } from 'react';
 import type { Investment } from '@/types/investment';
+import { calculateInvestmentHoldingMetrics, investmentNativeCurrency } from '@/lib/investmentCalculations';
+
+export type InvestmentPriceRefreshStatus = {
+  state: 'failed' | 'updated';
+  message?: string;
+  at: string;
+};
 
 interface Props {
   investment: Investment;
@@ -17,10 +25,24 @@ interface Props {
     ofPortfolio: string;
     refreshPrice?: string;
     refreshingPrice?: string;
-    lastPrice?: string;
+    symbol?: string;
+    market?: string;
     quantity?: string;
     currentMarketValue?: string;
+    currentPrice?: string;
+    purchasePrice?: string;
+    totalInvested?: string;
+    profitLoss?: string;
+    profitLossPercent?: string;
     lastUpdated?: string;
+    dataSource?: string;
+    priceStatus?: string;
+    priceUpdated?: string;
+    priceUpdateFailed?: string;
+    currentPriceUnavailable?: string;
+    purchasePriceMissing?: string;
+    unavailable?: string;
+    approxUserCurrency?: string;
   };
   typeLabel: (type: Investment['type']) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
@@ -31,6 +53,7 @@ interface Props {
   onDelete: (item: Investment) => void;
   onRefreshPrice?: (item: Investment) => void;
   refreshing?: boolean;
+  priceRefreshStatus?: InvestmentPriceRefreshStatus;
 }
 
 export function InvestmentRow({
@@ -47,109 +70,195 @@ export function InvestmentRow({
   onDelete,
   onRefreshPrice,
   refreshing = false,
+  priceRefreshStatus,
 }: Props) {
-  const linkedSymbol = investment.providerSymbol || investment.symbol;
-  const isMetal = investment.type === 'gold' || investment.type === 'silver';
-  const nativeCurrency = investment.nativeCurrency || investment.priceCurrency || investment.currency;
-  const nativeValue = typeof investment.nativeMarketValue === 'number'
-    ? investment.nativeMarketValue
-    : typeof investment.currentMarketValue === 'number'
-      ? investment.currentMarketValue
-      : undefined;
-  const hasNativeValue = nativeValue !== undefined && Number.isFinite(nativeValue);
-  const hasConvertedValue = accountValue !== null && Number.isFinite(accountValue);
-  const accountValueStatus: Investment['displayValueStatus'] = hasConvertedValue ? 'valid' : 'missing';
-  const userCurrency = investment.userCurrency;
-  const showConvertedLine = hasConvertedValue && nativeCurrency && userCurrency && nativeCurrency !== userCurrency;
-  const notCalculable = labels.ofPortfolio.includes('portfolio')
-    ? 'Not calculable'
-    : labels.ofPortfolio.includes('portefeuille')
-      ? 'Non calculable'
-      : 'غير قابل للحساب';
+  const metrics = calculateInvestmentHoldingMetrics(investment);
+  const nativeCurrency = investmentNativeCurrency(investment);
+  const hasAccountValue = accountValue !== null && Number.isFinite(accountValue);
+  const showConvertedLine = hasAccountValue
+    && nativeCurrency
+    && investment.userCurrency
+    && nativeCurrency !== investment.userCurrency;
+  const gainState = metrics.profitLossAmount === null
+    ? 'neutral'
+    : metrics.profitLossAmount > 0
+      ? 'gain'
+      : metrics.profitLossAmount < 0
+        ? 'loss'
+        : 'neutral';
+  const priceStatus = priceRefreshStatus?.state === 'failed'
+    ? labels.priceUpdateFailed || 'Could not refresh price'
+    : refreshing
+      ? labels.refreshingPrice || 'Refreshing'
+      : metrics.isMarketLinked && metrics.currentPrice === null
+        ? labels.currentPriceUnavailable || labels.unavailable || 'Current price unavailable'
+        : labels.priceUpdated || 'Price available';
+  const StatusIcon = priceRefreshStatus?.state === 'failed'
+    ? AlertTriangle
+    : metrics.isMarketLinked && metrics.currentPrice === null
+      ? AlertTriangle
+      : CheckCircle2;
 
   return (
-    <article className="invest-row">
-      <div className="invest-row-main">
-        <div>
-          <h3>{investment.name}</h3>
-          <p>{typeLabel(investment.type)} · {labels.risk}: {riskLabel(investment.riskLevel)}</p>
+    <article className={`invest-row invest-holding-card invest-holding-card--${gainState}`}>
+      <header className="invest-holding-head">
+        <div className="invest-holding-identity">
+          <div>
+            <h3>{investment.name}</h3>
+            <div className="invest-holding-badges">
+              {metrics.linkedSymbol && <span className="invest-badge-soft" dir="ltr">{metrics.linkedSymbol}</span>}
+              <span className="invest-badge-soft">{typeLabel(investment.type)}</span>
+              <span className={`invest-risk-badge invest-risk-badge--${investment.riskLevel}`}>{riskLabel(investment.riskLevel)}</span>
+              {portfolioPercent !== null && (
+                <span className="invest-weight-badge">
+                  {labels.ofPortfolio.replace('{pct}', formatPercent(portfolioPercent))}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-        <strong className="invest-asset-value">{formatMoney(accountValue, accountValueStatus)}</strong>
+
+        <div className="invest-row-actions invest-holding-actions">
+          <button type="button" onClick={() => onDetails(investment)} aria-label={labels.details} title={labels.details}>
+            <Eye size={15} />
+            <span>{labels.details}</span>
+          </button>
+          <button type="button" onClick={() => onEdit(investment)} aria-label={labels.edit} title={labels.edit}>
+            <Edit3 size={15} />
+            <span>{labels.edit}</span>
+          </button>
+          <button type="button" className="danger" onClick={() => onDelete(investment)} aria-label={labels.delete} title={labels.delete}>
+            <Trash2 size={15} />
+            <span>{labels.delete}</span>
+          </button>
+        </div>
+      </header>
+
+      <div className="invest-holding-primary">
+        <Metric
+          label={labels.purchasePrice || 'Purchase price'}
+          value={metrics.purchasePrice !== null ? formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment) : labels.purchasePriceMissing || '-'}
+          tone={metrics.purchasePrice === null ? 'warning' : 'default'}
+          ltr={metrics.purchasePrice !== null}
+        />
+        <Metric
+          label={labels.currentPrice || 'Current price'}
+          value={metrics.currentPrice !== null ? formatNativeMoney(metrics.currentPrice, nativeCurrency, investment) : labels.currentPriceUnavailable || labels.unavailable || '-'}
+          tone={metrics.currentPrice === null && metrics.isMarketLinked ? 'warning' : 'default'}
+          ltr={metrics.currentPrice !== null}
+        />
+        <Metric
+          label={labels.quantity || 'Quantity'}
+          value={metrics.quantity !== null ? formatPreciseNumber(metrics.quantity) : labels.unavailable || '-'}
+          tone={metrics.quantity === null && metrics.isMarketLinked ? 'warning' : 'default'}
+          ltr={metrics.quantity !== null}
+        />
+        <Metric
+          label={labels.totalInvested || 'Total invested'}
+          value={metrics.totalInvested !== null ? formatNativeMoney(metrics.totalInvested, nativeCurrency, investment) : labels.purchasePriceMissing || '-'}
+          tone={metrics.totalInvested === null ? 'warning' : 'default'}
+          ltr={metrics.totalInvested !== null}
+        />
+        <Metric
+          label={labels.currentMarketValue || 'Current value'}
+          value={metrics.currentValue !== null ? formatNativeMoney(metrics.currentValue, nativeCurrency, investment) : labels.currentPriceUnavailable || labels.unavailable || '-'}
+          tone={metrics.currentValue === null && metrics.isMarketLinked ? 'warning' : 'default'}
+          ltr={metrics.currentValue !== null}
+        />
+        <Metric
+          label={labels.profitLoss || 'Profit / loss'}
+          value={metrics.profitLossAmount !== null ? formatNativeMoney(metrics.profitLossAmount, nativeCurrency, investment) : profitUnavailableText(metrics, labels)}
+          tone={gainState}
+          icon={gainState === 'gain' ? <TrendingUp size={15} /> : gainState === 'loss' ? <TrendingDown size={15} /> : <Minus size={15} />}
+          ltr={metrics.profitLossAmount !== null}
+        />
       </div>
 
-      <div className="invest-row-meta">
-        {linkedSymbol && <span dir="ltr">{linkedSymbol}</span>}
-        {investment.type === 'project' && investment.projectId && <span>{investment.projectName || investment.name}</span>}
-        {investment.market && <span>{investment.market}</span>}
-        {isMetal && investment.metalProductType && (
-          <span>{metalProductLabel(investment.metalProductType)}{investment.metalKarat ? ` · ${investment.metalKarat}K` : ''}</span>
-        )}
-        {isMetal && typeof investment.grams === 'number' && (
-          <span>الوزن: <b dir="ltr">{formatPreciseNumber(investment.grams)} g</b></span>
-        )}
-        {isMetal && typeof investment.pureMetalGrams === 'number' && (
-          <span>الصافي: <b dir="ltr">{formatPreciseNumber(investment.pureMetalGrams)} g</b></span>
-        )}
-        {investment.type === 'silver' && typeof investment.metalPurity === 'number' && (
-          <span>النقاء: <b dir="ltr">{formatPreciseNumber(investment.metalPurity)}</b></span>
-        )}
-        {typeof investment.lastPrice === 'number' && nativeCurrency && (
-          <span>{labels.lastPrice}: <b dir="ltr">{formatNativeMoney(investment.lastPrice, nativeCurrency, investment)}</b></span>
-        )}
-        {typeof investment.quantity === 'number' && (
-          <span>{labels.quantity || 'Quantity'}: <b dir="ltr">{formatPreciseNumber(investment.quantity)}</b></span>
-        )}
-        {linkedSymbol && (
-          <span>{labels.currentMarketValue || 'Current market value'}: <b>{formatMoney(accountValue, accountValueStatus)}</b></span>
-        )}
-        {hasNativeValue && nativeCurrency && (
-          <span>القيمة الأصلية: <b dir="ltr">{formatNativeMoney(nativeValue, nativeCurrency, null)}</b></span>
+      <div className="invest-holding-secondary">
+        <DetailChip label={labels.profitLossPercent || 'Profit / loss %'} value={metrics.profitLossPercent !== null ? `${formatSignedNumber(metrics.profitLossPercent)}%` : profitUnavailableText(metrics, labels)} tone={gainState} />
+        <DetailChip label={labels.monthly} value={formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)} />
+        <DetailChip label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? '-' : `${formatNumber(investment.expectedAnnualReturn)}%`} />
+        {investment.market && <DetailChip label={labels.market || 'Market'} value={investment.market} />}
+        {(investment.priceSource || investment.dataSource || investment.valuationSource) && (
+          <DetailChip label={labels.dataSource || 'Data source'} value={investment.priceSource || investment.dataSource || investment.valuationSource || ''} />
         )}
         {showConvertedLine && (
-          <span>القيمة بعملة الحساب: <b>{formatMoney(accountValue, 'valid')}</b></span>
+          <DetailChip label={labels.approxUserCurrency || 'Approx.'} value={formatMoney(accountValue, 'valid')} />
         )}
-        {investment.fxRateToUserCurrency && nativeCurrency && userCurrency && nativeCurrency !== userCurrency && (
-          <span dir="ltr">FX {nativeCurrency}/{userCurrency}: <b>{formatNumber(investment.fxRateToUserCurrency)}</b></span>
-        )}
-        {investment.fxSource && investment.fxSource !== 'same_currency' && (
-          <span>{investment.fxSource === 'manual' ? 'قيمة يدوية' : 'سعر صرف حقيقي'}</span>
-        )}
-        {investment.lastPriceUpdatedAt && (
-          <span>{labels.lastUpdated || 'Last updated'}: <b dir="ltr">{formatDate(investment.lastPriceUpdatedAt)}</b></span>
-        )}
-        <span>{labels.monthly}: {formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)}</span>
-        <span>{labels.expectedReturn}: {investment.expectedAnnualReturn === undefined ? '-' : `${investment.expectedAnnualReturn}%`}</span>
-        <span>{portfolioPercent === null ? notCalculable : labels.ofPortfolio.replace('{pct}', portfolioPercent.toFixed(0))}</span>
       </div>
 
-      <div className="invest-row-actions">
-        <button type="button" onClick={() => onDetails(investment)} aria-label={labels.details} title={labels.details}>
-          <Eye size={15} />
-          <span>{labels.details}</span>
-        </button>
-        <button type="button" onClick={() => onEdit(investment)} aria-label={labels.edit} title={labels.edit}>
-          <Edit3 size={15} />
-          <span>{labels.edit}</span>
-        </button>
-        {linkedSymbol && onRefreshPrice && (
-          <button type="button" onClick={() => onRefreshPrice(investment)} aria-label={labels.refreshPrice} title={labels.refreshPrice} disabled={refreshing}>
+      <footer className="invest-holding-footer">
+        <div className="invest-price-status">
+          <StatusIcon size={15} />
+          <span>{labels.priceStatus || 'Price status'}: {priceStatus}</span>
+        </div>
+        <span className="invest-last-updated">
+          {labels.lastUpdated || 'Last updated'}: <b dir="ltr">{formatDate(investment.lastPriceUpdatedAt || investment.valuationLastUpdatedAt || priceRefreshStatus?.at) || labels.unavailable || '-'}</b>
+        </span>
+        {metrics.linkedSymbol && onRefreshPrice && (
+          <button type="button" className="invest-refresh-inline" onClick={() => onRefreshPrice(investment)} aria-label={labels.refreshPrice} title={labels.refreshPrice} disabled={refreshing}>
             <RefreshCw size={15} className={refreshing ? 'invest-spin' : undefined} />
             <span>{refreshing ? labels.refreshingPrice : labels.refreshPrice}</span>
           </button>
         )}
-        <button type="button" className="danger" onClick={() => onDelete(investment)} aria-label={labels.delete} title={labels.delete}>
-          <Trash2 size={15} />
-          <span>{labels.delete}</span>
-        </button>
-      </div>
+      </footer>
     </article>
   );
+}
+
+function Metric({
+  label,
+  value,
+  tone = 'default',
+  icon,
+  ltr = false,
+}: {
+  label: string;
+  value: string;
+  tone?: 'default' | 'gain' | 'loss' | 'neutral' | 'warning';
+  icon?: ReactNode;
+  ltr?: boolean;
+}) {
+  return (
+    <div className={`invest-holding-metric invest-holding-metric--${tone}`}>
+      <span>{label}</span>
+      <strong dir={ltr ? 'ltr' : undefined}>{icon}{value}</strong>
+    </div>
+  );
+}
+
+function DetailChip({ label, value, tone = 'default' }: { label: string; value: string; tone?: 'default' | 'gain' | 'loss' | 'neutral' }) {
+  return (
+    <span className={`invest-detail-chip invest-detail-chip--${tone}`}>
+      <b>{label}</b>
+      <em dir="auto">{value}</em>
+    </span>
+  );
+}
+
+function profitUnavailableText(metrics: ReturnType<typeof calculateInvestmentHoldingMetrics>, labels: Props['labels']) {
+  if (metrics.totalInvested === null) return labels.purchasePriceMissing || labels.unavailable || '-';
+  if (metrics.currentPrice === null && metrics.isMarketLinked) return labels.currentPriceUnavailable || labels.unavailable || '-';
+  if (metrics.currentValue === null) return labels.currentPriceUnavailable || labels.unavailable || '-';
+  return labels.unavailable || '-';
 }
 
 function formatNumber(value: number) {
   return value.toLocaleString('en-US', {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 3,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatSignedNumber(value: number) {
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${formatNumber(value)}`;
+}
+
+function formatPercent(value: number) {
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
   });
 }
 
@@ -160,25 +269,10 @@ function formatPreciseNumber(value: number) {
   });
 }
 
-function metalProductLabel(value: string) {
-  const labels: Record<string, string> = {
-    bar: 'سبيكة',
-    lira: 'ليرة',
-    half_lira: 'نصف ليرة',
-    quarter_lira: 'ربع ليرة',
-    makhmus: 'مخمس',
-    half_makhmus: 'نصف مخمس',
-    ten_tola: '10 توله',
-    ounce: 'أونصة',
-    kilo: 'كيلو',
-    custom_grams: 'وزن مخصص',
-  };
-  return labels[value] || value;
-}
-
-function formatDate(value: string) {
+function formatDate(value: string | undefined) {
+  if (!value) return '';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
+  if (Number.isNaN(date.getTime())) return '';
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: '2-digit',

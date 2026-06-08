@@ -1,8 +1,9 @@
 'use client';
 
+import { RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { Investment, InvestmentType } from '@/types/investment';
-import { InvestmentRow } from './InvestmentRow';
+import { InvestmentRow, type InvestmentPriceRefreshStatus } from './InvestmentRow';
 
 type SortMode = 'valueDesc' | 'valueAsc' | 'monthlyDesc' | 'riskDesc' | 'newest';
 
@@ -27,6 +28,19 @@ interface Props {
     refreshPrice?: string;
     refreshingPrice?: string;
     lastPrice?: string;
+    refreshAllPrices?: string;
+    refreshingPrices?: string;
+    purchasePrice?: string;
+    totalInvested?: string;
+    profitLoss?: string;
+    profitLossPercent?: string;
+    priceStatus?: string;
+    priceUpdated?: string;
+    priceUpdateFailed?: string;
+    currentPriceUnavailable?: string;
+    purchasePriceMissing?: string;
+    unavailable?: string;
+    approxUserCurrency?: string;
   };
   types: InvestmentType[];
   typeLabel: (type: InvestmentType) => string;
@@ -38,7 +52,10 @@ interface Props {
   onEdit: (item: Investment) => void;
   onDelete: (item: Investment) => void;
   onRefreshPrice?: (item: Investment) => void;
+  onRefreshPrices?: (items: Investment[]) => void;
   refreshingPriceId?: string | null;
+  refreshingPrices?: boolean;
+  priceRefreshStatuses?: Record<string, InvestmentPriceRefreshStatus>;
 }
 
 export function InvestmentList({
@@ -54,7 +71,10 @@ export function InvestmentList({
   onEdit,
   onDelete,
   onRefreshPrice,
+  onRefreshPrices,
   refreshingPriceId,
+  refreshingPrices = false,
+  priceRefreshStatuses,
 }: Props) {
   const [query, setQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | InvestmentType>('all');
@@ -92,19 +112,32 @@ export function InvestmentList({
 
   return (
     <section className="invest-panel">
-      <div className="invest-controls">
-        <input value={query} onChange={event => setQuery(event.target.value)} placeholder={labels.search} />
-        <select value={filterType} onChange={event => setFilterType(event.target.value as 'all' | InvestmentType)}>
-          <option value="all">{labels.allTypes}</option>
-          {types.map(type => <option key={type} value={type}>{typeLabel(type)}</option>)}
-        </select>
-        <select value={sort} onChange={event => setSort(event.target.value as SortMode)} aria-label={labels.sortBy}>
-          <option value="valueDesc">{labels.valueDesc}</option>
-          <option value="valueAsc">{labels.valueAsc}</option>
-          <option value="monthlyDesc">{labels.monthlyDesc}</option>
-          <option value="riskDesc">{labels.riskDesc}</option>
-          <option value="newest">{labels.newest}</option>
-        </select>
+      <div className="invest-list-toolbar">
+        <div className="invest-controls">
+          <input value={query} onChange={event => setQuery(event.target.value)} placeholder={labels.search} />
+          <select value={filterType} onChange={event => setFilterType(event.target.value as 'all' | InvestmentType)}>
+            <option value="all">{labels.allTypes}</option>
+            {types.map(type => <option key={type} value={type}>{typeLabel(type)}</option>)}
+          </select>
+          <select value={sort} onChange={event => setSort(event.target.value as SortMode)} aria-label={labels.sortBy}>
+            <option value="valueDesc">{labels.valueDesc}</option>
+            <option value="valueAsc">{labels.valueAsc}</option>
+            <option value="monthlyDesc">{labels.monthlyDesc}</option>
+            <option value="riskDesc">{labels.riskDesc}</option>
+            <option value="newest">{labels.newest}</option>
+          </select>
+        </div>
+        {onRefreshPrices && (
+          <button
+            type="button"
+            className="invest-refresh-all"
+            onClick={() => onRefreshPrices(filtered)}
+            disabled={refreshingPrices || filtered.length === 0}
+          >
+            <RefreshCw size={16} className={refreshingPrices ? 'invest-spin' : undefined} />
+            {refreshingPrices ? (labels.refreshingPrices || labels.refreshingPrice) : (labels.refreshAllPrices || labels.refreshPrice)}
+          </button>
+        )}
       </div>
 
       <div className="invest-list">
@@ -124,6 +157,7 @@ export function InvestmentList({
             onDelete={onDelete}
             onRefreshPrice={onRefreshPrice}
             refreshing={refreshingPriceId === item.id}
+            priceRefreshStatus={priceRefreshStatuses?.[item.id]}
           />
         ))}
       </div>

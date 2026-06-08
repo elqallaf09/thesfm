@@ -203,17 +203,27 @@ export async function fetchYahooChartQuote(symbol: string): Promise<TechStockPri
   };
 }
 
-async function fetchYahooQuoteEndpoint(symbol: string, requestedSymbol: string, name: string, debugContext?: Record<string, unknown>): Promise<YahooNormalizedQuote> {
-  const params = new URLSearchParams({ symbols: symbol });
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?${params.toString()}`;
-  const response = await fetch(url, {
-    next: { revalidate: 300 },
+function yahooRequestOptions(forceFresh?: boolean) {
+  return {
+    ...(forceFresh ? { cache: 'no-store' as const } : { next: { revalidate: 300 } }),
     signal: AbortSignal.timeout(8000),
     headers: {
       accept: 'application/json',
       'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',
     },
-  });
+  };
+}
+
+async function fetchYahooQuoteEndpoint(
+  symbol: string,
+  requestedSymbol: string,
+  name: string,
+  debugContext?: Record<string, unknown>,
+  forceFresh?: boolean,
+): Promise<YahooNormalizedQuote> {
+  const params = new URLSearchParams({ symbols: symbol });
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?${params.toString()}`;
+  const response = await fetch(url, yahooRequestOptions(forceFresh));
 
   let body: YahooQuoteResponse | null = null;
   try {
@@ -258,16 +268,15 @@ async function fetchYahooQuoteEndpoint(symbol: string, requestedSymbol: string, 
   };
 }
 
-async function fetchYahooChartEndpoint(symbol: string, requestedSymbol: string, name: string, debugContext?: Record<string, unknown>): Promise<YahooNormalizedQuote> {
+async function fetchYahooChartEndpoint(
+  symbol: string,
+  requestedSymbol: string,
+  name: string,
+  debugContext?: Record<string, unknown>,
+  forceFresh?: boolean,
+): Promise<YahooNormalizedQuote> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=2d&interval=1d`;
-  const response = await fetch(url, {
-    next: { revalidate: 300 },
-    signal: AbortSignal.timeout(8000),
-    headers: {
-      accept: 'application/json',
-      'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',
-    },
-  });
+  const response = await fetch(url, yahooRequestOptions(forceFresh));
 
   let body: YahooChartResponse | null = null;
   try {
@@ -319,6 +328,7 @@ export async function fetchYahooNormalizedQuote(options: {
   requestedSymbol: string;
   symbols: string[];
   name: string;
+  forceFresh?: boolean;
   debugContext?: Record<string, unknown>;
 }): Promise<YahooNormalizedQuote> {
   const symbols = options.symbols.filter(Boolean);
@@ -334,17 +344,29 @@ export async function fetchYahooNormalizedQuote(options: {
 
   let lastUnavailableReason = 'provider_returned_empty_quote';
   for (const symbol of symbols) {
-    const quoteResult = await fetchYahooQuoteEndpoint(symbol, options.requestedSymbol, options.name, {
-      ...options.debugContext,
-      symbolsTried: symbols,
-    });
+    const quoteResult = await fetchYahooQuoteEndpoint(
+      symbol,
+      options.requestedSymbol,
+      options.name,
+      {
+        ...options.debugContext,
+        symbolsTried: symbols,
+      },
+      options.forceFresh,
+    );
     if (quoteResult.available) return quoteResult;
     lastUnavailableReason = quoteResult.unavailableReason ?? lastUnavailableReason;
 
-    const chartResult = await fetchYahooChartEndpoint(symbol, options.requestedSymbol, options.name, {
-      ...options.debugContext,
-      symbolsTried: symbols,
-    });
+    const chartResult = await fetchYahooChartEndpoint(
+      symbol,
+      options.requestedSymbol,
+      options.name,
+      {
+        ...options.debugContext,
+        symbolsTried: symbols,
+      },
+      options.forceFresh,
+    );
     if (chartResult.available) return chartResult;
     lastUnavailableReason = chartResult.unavailableReason ?? lastUnavailableReason;
   }
