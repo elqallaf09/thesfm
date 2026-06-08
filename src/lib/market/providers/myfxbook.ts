@@ -15,9 +15,11 @@ type MyfxbookErrorCode =
   | 'MYFXBOOK_AUTH_FAILED'
   | 'MYFXBOOK_SESSION_MISSING'
   | 'MYFXBOOK_RATE_LIMITED'
+  | 'MYFXBOOK_HTML_RESPONSE'
   | 'MYFXBOOK_CLOUDFLARE_BLOCKED'
   | 'MYFXBOOK_PROVIDER_FAILED'
   | 'MYFXBOOK_TIMEOUT'
+  | 'MYFXBOOK_UNKNOWN_ERROR'
   | 'INVALID_FOREX_PAIR'
   | 'NO_MARKET_SENTIMENT_DATA'
   | 'SYMBOL_REQUIRED';
@@ -25,9 +27,11 @@ type MyfxbookErrorCode =
 export type MyfxbookLoginStatus =
   | 'success'
   | 'invalid_credentials'
+  | 'html_response'
   | 'cloudflare_blocked'
   | 'rate_limited'
   | 'provider_unavailable'
+  | 'unknown_error'
   | 'missing_env';
 
 type MyfxbookApiSymbol = {
@@ -211,9 +215,25 @@ function looksLikeHtmlResponse(contentType: string | null, body: string) {
     || trimmed.includes('captcha');
 }
 
+function looksLikeProviderChallenge(body: string) {
+  return /cloudflare|captcha|challenge|cf-browser-verification|turnstile|checking your browser/i.test(body);
+}
+
 function classifyHtmlProviderBlock(body: string): MyfxbookErrorCode {
   if (/rate|limit|too many|throttle/i.test(body)) return 'MYFXBOOK_RATE_LIMITED';
-  return 'MYFXBOOK_CLOUDFLARE_BLOCKED';
+  if (looksLikeProviderChallenge(body)) return 'MYFXBOOK_CLOUDFLARE_BLOCKED';
+  return 'MYFXBOOK_HTML_RESPONSE';
+}
+
+function safeBodyPreview(body: string, credentials?: { email?: string; password?: string }) {
+  const compact = body.replace(/\s+/g, ' ').trim();
+  if (!compact) return null;
+  const containsSecret = [
+    credentials?.email,
+    credentials?.password,
+  ].some(value => value && compact.includes(value));
+  if (containsSecret || /session\s*[:=]/i.test(compact) || /"session"\s*:/i.test(compact)) return null;
+  return compact.slice(0, 150);
 }
 
 async function readProviderResponse<T>(response: Response): Promise<{
@@ -241,8 +261,10 @@ export function publicMyfxbookLoginStatus(code: string | null | undefined): Myfx
   if (!code) return 'success';
   if (code === 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED') return 'missing_env';
   if (code === 'MYFXBOOK_AUTH_FAILED') return 'invalid_credentials';
+  if (code === 'MYFXBOOK_HTML_RESPONSE') return 'html_response';
   if (code === 'MYFXBOOK_CLOUDFLARE_BLOCKED') return 'cloudflare_blocked';
   if (code === 'MYFXBOOK_RATE_LIMITED') return 'rate_limited';
+  if (code === 'MYFXBOOK_UNKNOWN_ERROR') return 'unknown_error';
   return 'provider_unavailable';
 }
 
@@ -635,9 +657,9 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     };
   }
 
-  const loginUrl = myfxbookApiUrl(LOGIN_ENDPOINT);
-  loginUrl.searchParams.set('email', credentials.email);
-  loginUrl.searchParams.set('password', credentials.password);
+  const encodedEmail = encodeURIComponent(credentials.email);
+  const encodedPassword = encodeURIComponent(credentials.password);
+  const loginUrl = new URL(`${myfxbookApiBaseUrl()}/${LOGIN_ENDPOINT}?email=${encodedEmail}&password=${encodedPassword}`);
 
   logMyfxbook('login request prepared', {
     endpoint: `/${LOGIN_ENDPOINT}`,
@@ -685,6 +707,7 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     error: payload?.error,
     message: providerMessage,
     sessionReceived: Boolean(session),
+    bodyPreview: safeBodyPreview(parsed.body, credentials),
   });
 
   if (parsed.responseKind === 'html') {

@@ -41,7 +41,9 @@ function publicMyfxbookCode(code: string | null | undefined) {
   if (code === 'MYFXBOOK_SESSION_MISSING') return 'NO_SESSION';
   if (code === 'MYFXBOOK_TIMEOUT') return 'TIMEOUT';
   if (code === 'MYFXBOOK_RATE_LIMITED') return 'RATE_LIMITED';
+  if (code === 'MYFXBOOK_HTML_RESPONSE') return 'HTML_RESPONSE';
   if (code === 'MYFXBOOK_CLOUDFLARE_BLOCKED') return 'CLOUDFLARE_BLOCKED';
+  if (code === 'MYFXBOOK_UNKNOWN_ERROR') return 'UNKNOWN_ERROR';
   return code ? 'PROVIDER_DOWN' : null;
 }
 
@@ -105,7 +107,7 @@ export async function GET(request: NextRequest) {
   const login = providerConfigured
     ? await loginToMyfxbook({ force: true }).catch(error => ({
         ok: false as const,
-        code: 'MYFXBOOK_PROVIDER_FAILED' as const,
+        code: 'MYFXBOOK_UNKNOWN_ERROR' as const,
         providerMessage: maskedProviderMessage(error instanceof Error ? error.message : null),
         httpStatus: undefined,
         canReachMyfxbook: false,
@@ -122,6 +124,7 @@ export async function GET(request: NextRequest) {
     hasPassword: Boolean(password),
     hasBaseUrl: baseUrl.hasBaseUrl,
     hasApiBaseUrl: baseUrl.hasBaseUrl,
+    baseUrlConfigured: baseUrl.hasBaseUrl,
     baseUrlValid: baseUrl.baseUrlValid,
     usingDefaultBaseUrl: baseUrl.usingDefaultBaseUrl,
     missingVariables,

@@ -55,9 +55,11 @@ function contentTypeCategory(contentType: string | null | undefined) {
 function publicMessageForStatus(status: MyfxbookLoginStatus) {
   if (status === 'success') return 'تم الاتصال بمزود Myfxbook واستلام جلسة صالحة.';
   if (status === 'missing_env') return 'إعدادات مزود المشاعر غير مكتملة. يرجى إضافة بيانات Myfxbook في Environment Variables ثم إعادة النشر.';
-  if (status === 'invalid_credentials') return 'تم رفض تسجيل الدخول إلى Myfxbook. تحقق من بيانات الحساب أو جرّب تسجيل الدخول مباشرة في موقع Myfxbook.';
+  if (status === 'invalid_credentials') return 'تم تأكيد أن بيانات الدخول تعمل من المتصفح، لكن Myfxbook رفض طلب الخادم. تحقق من إعدادات Vercel أو قيود الاتصال من المزود.';
+  if (status === 'html_response') return 'أعاد Myfxbook صفحة HTML بدلاً من JSON. قد يكون الطلب مرفوضاً من بيئة الخادم أو يحتاج إعدادات اتصال مختلفة.';
   if (status === 'cloudflare_blocked') return 'مزود Myfxbook رفض الاتصال من الخادم. قد يكون بسبب حماية Cloudflare أو قيود الحساب المجاني.';
   if (status === 'rate_limited') return 'تم تجاوز حد طلبات مزود المشاعر مؤقتاً. يرجى المحاولة لاحقاً.';
+  if (status === 'unknown_error') return 'حدث خطأ غير متوقع أثناء فحص اتصال Myfxbook من الخادم.';
   return 'تعذر الاتصال بمزود المشاعر حالياً. يرجى المحاولة لاحقاً.';
 }
 
@@ -85,7 +87,7 @@ export async function GET() {
   const login = providerConfigured
     ? await loginToMyfxbook({ force: true }).catch(error => ({
         ok: false as const,
-        code: 'MYFXBOOK_PROVIDER_FAILED' as const,
+        code: 'MYFXBOOK_UNKNOWN_ERROR' as const,
         providerMessage: maskProviderMessage(error instanceof Error ? error.message : null),
         httpStatus: undefined,
         contentType: null,
@@ -117,6 +119,7 @@ export async function GET() {
     hasEmail: Boolean(email),
     hasPassword: Boolean(password),
     hasBaseUrl: baseUrl.hasBaseUrl,
+    baseUrlConfigured: baseUrl.hasBaseUrl,
     baseUrlValid: baseUrl.baseUrlValid,
     usingDefaultBaseUrl: baseUrl.usingDefaultBaseUrl,
     missingVariables,

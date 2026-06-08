@@ -1408,9 +1408,11 @@ export default function MarketAnalysisPage() {
           success: undefined,
           missing_env: 'MISSING_CREDENTIALS',
           invalid_credentials: 'LOGIN_REJECTED',
+          html_response: 'HTML_RESPONSE',
           cloudflare_blocked: 'CLOUDFLARE_BLOCKED',
           rate_limited: 'RATE_LIMIT',
           provider_unavailable: 'PROVIDER_DOWN',
+          unknown_error: 'PROVIDER_DOWN',
         };
         setMarketSentiment(prev => ({
           ...prev,
@@ -9201,6 +9203,9 @@ function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => 
   if (normalizedCode === 'LOGIN_FAILED') {
     return { title: t('market_sentiment_myfxbook_login_rejected_title'), body: t('market_sentiment_myfxbook_login_rejected_body') };
   }
+  if (normalizedCode === 'HTML_RESPONSE' || normalizedCode === 'MYFXBOOK_HTML_RESPONSE') {
+    return { title: t('market_sentiment_myfxbook_html_title'), body: t('market_sentiment_myfxbook_html_body') };
+  }
   if (normalizedCode === 'CLOUDFLARE_BLOCKED' || normalizedCode === 'MYFXBOOK_CLOUDFLARE_BLOCKED') {
     return { title: t('market_sentiment_myfxbook_cloudflare_title'), body: t('market_sentiment_myfxbook_cloudflare_body') };
   }
@@ -9333,8 +9338,10 @@ function NewsSentimentPanel({
     'PROVIDER_DOWN',
     'TIMEOUT',
     'RATE_LIMIT',
+    'HTML_RESPONSE',
     'CLOUDFLARE_BLOCKED',
     'MYFXBOOK_AUTH_FAILED',
+    'MYFXBOOK_HTML_RESPONSE',
     'MYFXBOOK_CLOUDFLARE_BLOCKED',
     'MYFXBOOK_PROVIDER_FAILED',
   ].includes(normalizedSentimentCode) ? 'warning' : 'info';
@@ -9355,6 +9362,9 @@ function NewsSentimentPanel({
     : '';
   const sentimentCachedWarning = hasSelectedAsset && (sentiment.stale || sentiment.cacheStatus === 'stale')
     ? (sentiment.message || t('market_sentiment_cached_warning'))
+    : '';
+  const sentimentProviderMessage = hasSelectedAsset && sentiment.providerMessage
+    ? String(sentiment.providerMessage)
     : '';
   const sentimentActionLabel = hasSelectedAsset ? t('market_refresh_sentiment') : t('market_sentiment_select_asset_action');
   const sentimentAction = hasSelectedAsset ? onRefreshSentiment : onSelectAsset;
@@ -9479,6 +9489,12 @@ function NewsSentimentPanel({
                   <p className="sentiment-context-note sentiment-cache-note">
                     <Info size={13} />
                     <span>{sentimentCachedWarning}</span>
+                  </p>
+                ) : null}
+                {sentimentProviderMessage ? (
+                  <p className="sentiment-context-note sentiment-cache-note">
+                    <ShieldAlert size={13} />
+                    <span>{sentimentProviderMessage}</span>
                   </p>
                 ) : null}
                 {sentimentContextBody ? <p className="sentiment-context-note">{sentimentContextBody}</p> : null}

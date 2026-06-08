@@ -52,6 +52,7 @@ type UnifiedSentimentCode =
   | 'PROVIDER_DOWN'
   | 'TIMEOUT'
   | 'RATE_LIMIT'
+  | 'HTML_RESPONSE'
   | 'CLOUDFLARE_BLOCKED'
   | 'MISSING_CREDENTIALS'
   | 'LOGIN_FAILED'
@@ -272,10 +273,11 @@ function sentimentLabel(buyPercent: number | null, sellPercent: number | null): 
 
 function sentimentMessage(_assetType: SentimentAssetType, code: UnifiedSentimentCode) {
   if (code === 'CLOUDFLARE_BLOCKED') return 'مزود Myfxbook رفض الاتصال من الخادم. قد يكون بسبب حماية Cloudflare أو قيود الحساب المجاني.';
+  if (code === 'HTML_RESPONSE') return 'أعاد Myfxbook صفحة HTML بدلاً من JSON. قد يكون الطلب مرفوضاً من بيئة الخادم أو يحتاج إعدادات اتصال مختلفة.';
   if (code === 'MISSING_PROVIDER' || code === 'UNSUPPORTED_ASSET_TYPE') return 'لا يوجد مزود مشاعر موثوق مربوط حالياً لهذا النوع من الأصول.';
   if (code === 'SYMBOL_REQUIRED') return 'اختر أصلاً قبل تحميل مشاعر السوق.';
   if (code === 'MISSING_CREDENTIALS') return 'إعدادات مزود المشاعر غير مكتملة. يرجى إضافة بيانات Myfxbook في Environment Variables ثم إعادة النشر.';
-  if (code === 'LOGIN_REJECTED' || code === 'LOGIN_FAILED') return 'تم رفض تسجيل الدخول إلى Myfxbook. تحقق من بيانات الحساب أو جرّب تسجيل الدخول مباشرة في موقع Myfxbook.';
+  if (code === 'LOGIN_REJECTED' || code === 'LOGIN_FAILED') return 'تم تأكيد أن بيانات الدخول تعمل من المتصفح، لكن Myfxbook رفض طلب الخادم. تحقق من إعدادات Vercel أو قيود الاتصال من المزود.';
   if (code === 'RATE_LIMIT') return 'تم تجاوز حد طلبات مزود المشاعر مؤقتاً. يرجى المحاولة لاحقاً.';
   if (code === 'NO_SESSION') return 'لم يتم استلام جلسة صالحة من Myfxbook. يرجى التحقق من الحساب وإعدادات المزود.';
   if (code === 'TIMEOUT' || code === 'PROVIDER_DOWN') return 'تعذر الاتصال بمزود المشاعر حالياً. يرجى المحاولة لاحقاً.';
@@ -737,6 +739,7 @@ function mapMyfxbookErrorCode(code: string): UnifiedSentimentCode {
   if (code === 'MYFXBOOK_SESSION_MISSING') return 'NO_SESSION';
   if (code === 'MYFXBOOK_TIMEOUT') return 'TIMEOUT';
   if (code === 'MYFXBOOK_RATE_LIMITED') return 'RATE_LIMIT';
+  if (code === 'MYFXBOOK_HTML_RESPONSE') return 'HTML_RESPONSE';
   if (code === 'MYFXBOOK_CLOUDFLARE_BLOCKED') return 'CLOUDFLARE_BLOCKED';
   if (code === 'INVALID_FOREX_PAIR') return 'INVALID_FOREX_PAIR';
   if (code === 'NO_MARKET_SENTIMENT_DATA') return 'NO_DATA';
