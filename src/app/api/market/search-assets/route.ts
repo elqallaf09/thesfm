@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { findAssetAliasMatches } from '@/lib/market/assetAliases';
+import { findAssetAliasMatches, normalizeAssetSearchText } from '@/lib/market/assetAliases';
 import { fetchYahooNormalizedQuote, type YahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 import { normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeAssetType, normalizeMarketSymbolInput, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
@@ -17,7 +17,8 @@ import {
 import { proxySearch } from '@/lib/market/openbbProxy';
 import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbolResolver';
 
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 type MarketSymbolRow = {
   symbol: string;
@@ -95,6 +96,25 @@ function cleanSearchTerm(value: string) {
   return value.trim().replace(/[%,]/g, '').replace(/\s+/g, ' ').slice(0, 80);
 }
 
+function searchTermVariants(value: string) {
+  const normalized = normalizeAssetSearchText(value);
+  const withoutTaMarbuta = normalized.replace(/ة/g, 'ه');
+  const withTaMarbuta = normalized.replace(/ه/g, 'ة');
+  return Array.from(new Set([
+    value.trim(),
+    normalized,
+    withoutTaMarbuta,
+    withTaMarbuta,
+  ].map(item => item.trim()).filter(Boolean)));
+}
+
+function supabaseLikeFilters(query: string, fields: string[]) {
+  const variants = searchTermVariants(query).map(value => value.replace(/[(),]/g, ' '));
+  return variants
+    .flatMap(value => fields.map(field => `${field}.ilike.%${value}%`))
+    .join(',');
+}
+
 function mapMarketSymbol(row: MarketSymbolRow): AssetCandidate {
   const exchangeId = normalizeMarketExchange(row.exchange);
   const symbol = String(row.display_symbol || row.symbol).trim().toUpperCase();
@@ -127,40 +147,63 @@ async function searchSupabaseSymbols(query: string, assetType?: MarketAssetType,
   const supabase = getSupabaseServerClient();
   if (!supabase) return [];
 
-  const exchangeAliases = marketExchangeAliases(exchange);
-  let request = supabase
-    .from('market_symbols')
-    .select('symbol, provider_symbol, name, asset_type, exchange, market, display_symbol, company_name_ar, company_name_en, sector, country, currency, price_unit, source, last_synced_at')
-    .eq('is_active', true)
-    .limit(48);
+  try {
+    const exchangeAliases = marketExchangeAliases(exchange);
+    let request = supabase
+      .from('market_symbols')
+      .select('symbol, provider_symbol, name, asset_type, exchange, market, display_symbol, company_name_ar, company_name_en, sector, country, currency, price_unit, source, last_synced_at')
+      .eq('is_active', true)
+      .limit(48);
 
-  if (assetType) request = request.eq('asset_type', assetType);
-  if (exchangeAliases.length > 0) request = request.in('exchange', exchangeAliases);
+    if (assetType) request = request.eq('asset_type', assetType);
+    if (exchangeAliases.length > 0) request = request.in('exchange', exchangeAliases);
 
-  if (query) {
-    const like = `%${query}%`;
-    request = request.or(`symbol.ilike.${like},display_symbol.ilike.${like},provider_symbol.ilike.${like},name.ilike.${like},company_name_ar.ilike.${like},company_name_en.ilike.${like},exchange.ilike.${like},market.ilike.${like}`);
+    if (query) {
+      request = request.or(supabaseLikeFilters(query, [
+        'symbol',
+        'display_symbol',
+        'provider_symbol',
+        'name',
+        'company_name_ar',
+        'company_name_en',
+        'exchange',
+        'market',
+      ]));
+    }
+
+    const { data, error } = await request;
+    if (!error) return (data ?? []).map(row => mapMarketSymbol(row as MarketSymbolRow));
+
+    let legacyRequest = supabase
+      .from('market_symbols')
+      .select('symbol, provider_symbol, name, asset_type, exchange, country, currency')
+      .eq('is_active', true)
+      .limit(48);
+
+    if (assetType) legacyRequest = legacyRequest.eq('asset_type', assetType);
+    if (exchangeAliases.length > 0) legacyRequest = legacyRequest.in('exchange', exchangeAliases);
+    if (query) {
+      legacyRequest = legacyRequest.or(supabaseLikeFilters(query, [
+        'symbol',
+        'provider_symbol',
+        'name',
+        'exchange',
+      ]));
+    }
+
+    const legacy = await legacyRequest;
+    if (legacy.error) return [];
+    return (legacy.data ?? []).map(row => mapMarketSymbol(row as MarketSymbolRow));
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[MarketSearchAssets] Supabase symbol search skipped', {
+        query,
+        exchange,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return [];
   }
-
-  const { data, error } = await request;
-  if (!error) return (data ?? []).map(row => mapMarketSymbol(row as MarketSymbolRow));
-
-  let legacyRequest = supabase
-    .from('market_symbols')
-    .select('symbol, provider_symbol, name, asset_type, exchange, country, currency')
-    .eq('is_active', true)
-    .limit(48);
-
-  if (assetType) legacyRequest = legacyRequest.eq('asset_type', assetType);
-  if (exchangeAliases.length > 0) legacyRequest = legacyRequest.in('exchange', exchangeAliases);
-  if (query) {
-    const like = `%${query}%`;
-    legacyRequest = legacyRequest.or(`symbol.ilike.${like},provider_symbol.ilike.${like},name.ilike.${like},exchange.ilike.${like}`);
-  }
-
-  const legacy = await legacyRequest;
-  if (legacy.error) return [];
-  return (legacy.data ?? []).map(row => mapMarketSymbol(row as MarketSymbolRow));
 }
 
 function candidateFromSearchItem(item: MarketSearchItem, sourceHint: string): AssetCandidate {
@@ -431,10 +474,14 @@ export async function GET(request: NextRequest) {
       ...(directCandidate ? [directCandidate] : []),
     ]).slice(0, MAX_RESULTS);
 
-    const enriched = await Promise.allSettled(candidates.slice(0, PRICE_ENRICH_LIMIT).map(enrichCandidate));
+    const candidatesToEnrich = candidates.slice(0, PRICE_ENRICH_LIMIT);
+    const enriched = await Promise.allSettled(candidatesToEnrich.map(enrichCandidate));
     const enrichedItems = enriched
-      .filter((result): result is PromiseFulfilledResult<AssetSearchItem> => result.status === 'fulfilled')
-      .map(result => result.value)
+      .map((result, index) => {
+        const candidate = candidatesToEnrich[index];
+        if (result.status === 'fulfilled') return result.value;
+        return unavailableResult(candidate, 'price_provider_unavailable');
+      })
       .filter(item => item.search_source !== 'direct_quote' || item.available);
     const enrichedKeys = new Set(enrichedItems.map(item => `${item.symbol}:${item.asset_type}`));
     const fallbackItems = candidates
@@ -453,7 +500,7 @@ export async function GET(request: NextRequest) {
       items,
       message: items.length > 0 ? undefined : needsSync ? 'SYMBOLS_SYNCING' : 'NO_RESULTS',
     }, {
-      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+      headers: { 'Cache-Control': 'no-store' },
     });
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {

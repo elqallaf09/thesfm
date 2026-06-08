@@ -112,6 +112,7 @@ interface Props {
     assetSearchNoResultsBody: string;
     assetSearchProviderUnavailable: string;
     symbolsSyncing: string;
+    savedAssetMissingFromDirectory: string;
     selectedAsset: string;
     currentPrice: string;
     lastUpdated: string;
@@ -292,6 +293,7 @@ function assetFromInvestment(item: Investment | null | undefined): AssetSearchIt
     price: item.lastPrice ?? item.currentPrice ?? null,
     updated_at: item.lastPriceUpdatedAt ?? null,
     source: item.dataSource ?? item.priceSource ?? '',
+    search_source: 'saved_investment',
     available: typeof (item.lastPrice ?? item.currentPrice) === 'number' && Number.isFinite(item.lastPrice ?? item.currentPrice),
   };
 }
@@ -852,7 +854,8 @@ export function InvestmentFormModal({
 
   function handleNameChange(value: string) {
     setName(value);
-    if (selectedAsset && value.trim() !== localizedAssetName(selectedAsset, dir)) {
+    const shouldKeepSavedAsset = mode === 'edit' && selectedAsset?.search_source === 'saved_investment';
+    if (!shouldKeepSavedAsset && selectedAsset && value.trim() !== localizedAssetName(selectedAsset, dir)) {
       setSelectedAsset(null);
       setCurrentPrice('');
     }
@@ -1075,6 +1078,9 @@ export function InvestmentFormModal({
                         <div className="invest-asset-state">
                           <strong>{searchMessage === 'SYMBOLS_SYNCING' ? labels.symbolsSyncing : labels.assetSearchNoResultsTitle}</strong>
                           <span>{labels.assetSearchNoResultsBody}</span>
+                          {selectedAsset?.search_source === 'saved_investment' && (
+                            <span>{labels.savedAssetMissingFromDirectory}</span>
+                          )}
                         </div>
                       )}
                       {searchState === 'ready' && searchResults.map(asset => (

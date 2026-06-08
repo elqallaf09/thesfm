@@ -16,6 +16,8 @@ const ARABIC_NAME_OVERRIDES = {
   BURG: 'بنك برقان',
   KFH: 'بيت التمويل الكويتي',
   BOUBYAN: 'بنك بوبيان',
+  IFA: 'الاستشارات المالية الدولية القابضة',
+  IFAHR: 'إيفا للفنادق والمنتجعات',
   ZAIN: 'شركة الاتصالات المتنقلة زين',
   OOREDOO: 'أوريدو',
   STC: 'إس تي سي الكويت',
@@ -205,22 +207,24 @@ async function writeJson(fileName, records) {
 async function main() {
   const writeLocal = process.argv.includes('--write-local');
   const noSupabase = process.argv.includes('--no-supabase');
+  const onlyArg = process.argv.find(arg => arg.startsWith('--only='))?.split('=')[1]?.toLowerCase();
+  const syncBoursaOnly = onlyArg === 'boursa-kuwait' || onlyArg === 'kw' || process.argv.includes('--boursa-kuwait');
 
   const [boursaPayload, dfmRows] = await Promise.all([
     fetchJson(BOURSA_RT306_EN),
-    fetchDfmRows(),
+    syncBoursaOnly ? Promise.resolve([]) : fetchDfmRows(),
   ]);
 
   const boursa = parseBoursaRows(boursaPayload);
-  const dfm = normalizeDfmRows(dfmRows);
-  const all = [...boursa, ...dfm];
+  const dfm = syncBoursaOnly ? [] : normalizeDfmRows(dfmRows);
+  const all = syncBoursaOnly ? boursa : [...boursa, ...dfm];
 
   console.log(`Boursa Kuwait active listed stocks: ${boursa.length}`);
-  console.log(`DFM/Nasdaq Dubai listed equities and funds: ${dfm.length}`);
+  if (!syncBoursaOnly) console.log(`DFM/Nasdaq Dubai listed equities and funds: ${dfm.length}`);
 
   if (writeLocal) {
     await writeJson('boursa-kuwait.json', boursa);
-    await writeJson('dfm-listed.json', dfm);
+    if (!syncBoursaOnly) await writeJson('dfm-listed.json', dfm);
   }
 
   if (!noSupabase) await upsertSupabase(all);

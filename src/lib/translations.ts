@@ -2435,6 +2435,7 @@ export const TR: Record<string, TranslationEntry> = {
   invest_asset_noResultsBody: { ar:'جرّب كتابة الرمز أو اسم الشركة بالعربية أو الإنجليزية.', en:'Try entering the ticker or company name in Arabic or English.', fr:'Essayez de saisir le symbole ou le nom de société en arabe ou en anglais.' },
   invest_asset_providerUnavailable: { ar:'تعذر الاتصال بمصدر بيانات السوق حاليًا.', en:'The market data provider is currently unavailable.', fr:'Le fournisseur de données de marché est actuellement indisponible.' },
   invest_asset_symbolsSyncing: { ar:'يتم تحديث قائمة الرموز', en:'The symbol list is being updated', fr:'La liste des symboles est en cours de mise à jour' },
+  invest_asset_savedAssetMissingFromDirectory: { ar:'الأصل محفوظ في استثمارك لكنه غير موجود في قائمة الرموز الحالية، ويمكنك الاحتفاظ به كما هو.', en:'This asset is saved in your investment but is not in the current symbol list, so you can keep it as is.', fr:'Cet actif est enregistré dans votre investissement mais ne figure pas dans la liste actuelle des symboles; vous pouvez le conserver tel quel.' },
   invest_asset_selectedAsset: { ar:'الأصل المحدد', en:'Selected asset', fr:'Actif sélectionné' },
   invest_asset_symbol: { ar:'الرمز', en:'Symbol', fr:'Symbole' },
   invest_asset_market: { ar:'السوق', en:'Market', fr:'Marché' },

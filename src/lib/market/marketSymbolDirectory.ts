@@ -26,6 +26,7 @@ export type MarketSymbolRecord = {
   is_active?: boolean | null;
   source?: string | null;
   last_synced_at?: string | null;
+  aliases?: string[] | null;
 };
 
 export type MarketSymbolSearchResult = MarketSearchItem & {
@@ -59,6 +60,44 @@ const RECORD_ALIASES: Record<string, string[]> = {
   'BOURSA_KUWAIT:NBK': ['وطني', 'بنك الكويت الوطني'],
   'BOURSA_KUWAIT:BOUBYAN': ['بوبيان', 'بنك بوبيان'],
   'BOURSA_KUWAIT:ZAIN': ['زين', 'شركة زين'],
+  'BOURSA_KUWAIT:IFA': ['إيفا', 'ايفا', 'الاستشارات المالية الدولية', 'الاستشارات المالية الدولية القابضة'],
+  'BOURSA_KUWAIT:IFAHR': ['إيفا فنادق', 'ايفا فنادق', 'إيفا للفنادق', 'ايفا للفنادق', 'إيفا للفنادق والمنتجعات'],
+};
+
+const ARABIC_TICKER_LETTERS: Record<string, string> = {
+  A: 'ايه',
+  B: 'بي',
+  C: 'سي',
+  D: 'دي',
+  E: 'اي',
+  F: 'اف',
+  G: 'جي',
+  H: 'اتش',
+  I: 'اي',
+  J: 'جيه',
+  K: 'كي',
+  L: 'ال',
+  M: 'ام',
+  N: 'ان',
+  O: 'او',
+  P: 'بي',
+  Q: 'كيو',
+  R: 'ار',
+  S: 'اس',
+  T: 'تي',
+  U: 'يو',
+  V: 'في',
+  W: 'دبليو',
+  X: 'اكس',
+  Y: 'واي',
+  Z: 'زد',
+};
+
+const ARABIC_TICKER_OVERRIDES: Record<string, string[]> = {
+  IFA: ['إيفا', 'ايفا'],
+  IFAHR: ['إيفا إتش آر', 'ايفا اتش ار', 'إيفا فنادق', 'ايفا فنادق'],
+  STC: ['إس تي سي', 'اس تي سي'],
+  OOREDOO: ['أوريدو', 'اوريدو'],
 };
 
 function cleanSymbol(value: unknown) {
@@ -69,12 +108,38 @@ function compactSearchText(value: unknown) {
   return normalizeAssetSearchText(value).replace(/\s+/g, '');
 }
 
+function uniqueNonEmpty(values: unknown[]) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const text = String(value ?? '').trim();
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+    result.push(text);
+  }
+  return result;
+}
+
+function arabicTickerAliases(symbol: unknown) {
+  const cleaned = cleanSymbol(symbol).replace(/\..*$/, '');
+  if (!/^[A-Z]{2,8}$/.test(cleaned)) return [];
+  const spelledLetters = [...cleaned]
+    .map(letter => ARABIC_TICKER_LETTERS[letter])
+    .filter(Boolean);
+
+  return uniqueNonEmpty([
+    ...(ARABIC_TICKER_OVERRIDES[cleaned] ?? []),
+    spelledLetters.join(' '),
+    spelledLetters.join(''),
+  ]);
+}
+
 function recordKey(record: MarketSymbolRecord) {
   return `${record.exchange}:${cleanSymbol(record.symbol)}`;
 }
 
 function recordAliases(record: MarketSymbolRecord) {
-  return [
+  return uniqueNonEmpty([
     record.symbol,
     record.display_symbol,
     record.provider_symbol,
@@ -83,8 +148,11 @@ function recordAliases(record: MarketSymbolRecord) {
     record.market,
     record.exchange,
     record.sector,
+    ...(record.aliases ?? []),
+    ...arabicTickerAliases(record.symbol),
+    ...arabicTickerAliases(record.display_symbol),
     ...(RECORD_ALIASES[recordKey(record)] ?? []),
-  ].filter(Boolean) as string[];
+  ]);
 }
 
 function recordMatchesExchange(record: MarketSymbolRecord, exchange?: MarketExchangeId | string | null) {
@@ -167,6 +235,15 @@ export function searchBundledMarketSymbols({ query, assetType, exchange, limit =
     .sort((a, b) => b.score - a.score || cleanSymbol(a.record.symbol).localeCompare(cleanSymbol(b.record.symbol)))
     .slice(0, limit)
     .map(entry => marketSymbolRecordToSearchItem(entry.record));
+}
+
+export function listBundledMarketSymbols({ query = '', assetType, exchange, limit = 250 }: Partial<SearchParams> = {}) {
+  return searchBundledMarketSymbols({
+    query,
+    assetType,
+    exchange,
+    limit,
+  });
 }
 
 export function bundledExchangeSymbolCount(exchange: MarketExchangeId | string) {

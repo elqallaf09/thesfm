@@ -10,6 +10,7 @@
     "check:i18n": "node scripts/check-translations.mjs",
     "lint": "eslint .",
     "symbols:sync": "node scripts/sync-market-symbols.mjs",
+    "symbols:sync:kw": "node scripts/sync-market-symbols.mjs --only=boursa-kuwait",
     "symbols:validate": "node scripts/validate-market-symbols.mjs"
   },
   "dependencies": {

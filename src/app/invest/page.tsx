@@ -246,6 +246,7 @@ export default function InvestPage() {
     assetSearchNoResultsBody: t('invest_asset_noResultsBody'),
     assetSearchProviderUnavailable: t('invest_asset_providerUnavailable'),
     symbolsSyncing: t('invest_asset_symbolsSyncing'),
+    savedAssetMissingFromDirectory: t('invest_asset_savedAssetMissingFromDirectory'),
     selectedAsset: t('invest_asset_selectedAsset'),
     currentPrice: t('invest_asset_currentPrice'),
     lastUpdated: t('invest_asset_lastUpdated'),
