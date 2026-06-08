@@ -1,4 +1,9 @@
 import { cleanEnv } from '@/lib/market/providerConfig';
+import {
+  getStoredProviderSession,
+  storeProviderSession,
+  clearStoredProviderSession,
+} from '@/lib/server/marketProviderSession';
 
 const DEFAULT_MYFXBOOK_API_BASE_URL = 'https://www.myfxbook.com/api';
 const LOGIN_ENDPOINT = 'login.json';
@@ -306,6 +311,8 @@ export function publicMyfxbookLoginStatus(code: string | null | undefined): Myfx
 
 export function clearMyfxbookSession(reason = 'manual_clear') {
   cachedSession = null;
+  // Also clear from Supabase so other invocations don't reuse an invalid session
+  void clearStoredProviderSession('myfxbook');
   logMyfxbook('session cache cleared', { reason });
 }
 
@@ -716,8 +723,9 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     };
   }
 
+  // L1: in-memory cache (fast, lost on cold start)
   if (!options.force && cachedSession && cachedSession.cacheKey === credentials.cacheKey && cachedSession.expiresAt > now) {
-    logMyfxbook('session cache hit', {
+    logMyfxbook('session cache hit (memory)', {
       sessionReceived: true,
       sessionSource: 'cache',
     });
@@ -731,6 +739,33 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
       canReachMyfxbook: true,
       sessionSource: 'cache',
     };
+  }
+
+  // L2: Supabase persistent cache (survives serverless cold starts)
+  if (!options.force) {
+    const persistedSession = await getStoredProviderSession('myfxbook', credentials.cacheKey);
+    if (persistedSession) {
+      logMyfxbook('session cache hit (supabase)', {
+        sessionReceived: true,
+        sessionSource: 'cache',
+      });
+      // Warm the in-memory cache so subsequent calls in this invocation skip Supabase
+      cachedSession = {
+        session: persistedSession,
+        expiresAt: now + SESSION_TTL_MS,
+        cacheKey: credentials.cacheKey,
+      };
+      return {
+        ok: true as const,
+        session: persistedSession,
+        providerMessage: null,
+        httpStatus: 200,
+        contentType: 'application/json',
+        responseKind: 'json',
+        canReachMyfxbook: true,
+        sessionSource: 'cache',
+      };
+    }
   }
 
   const encodedEmail = encodeURIComponent(credentials.email);
@@ -862,6 +897,8 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     expiresAt: now + SESSION_TTL_MS,
     cacheKey: credentials.cacheKey,
   };
+  // Persist to Supabase so other serverless invocations can reuse this session
+  void storeProviderSession('myfxbook', session, credentials.cacheKey, SESSION_TTL_MS);
   return {
     ok: true as const,
     session,

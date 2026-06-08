@@ -67,12 +67,12 @@ type SessionCheck = {
   supabaseAnonKey?: string;
 };
 
-const ADMIN_EMAIL = 'elqallaf09@gmail.com';
-
 function isAdminEmail(email?: string | null) {
   const normalizedEmail = email?.trim().toLowerCase();
   if (!normalizedEmail) return false;
-  const allowedEmails = (process.env.ADMIN_EMAILS || ADMIN_EMAIL)
+  const adminEmails = process.env.ADMIN_EMAILS;
+  if (!adminEmails) return false;
+  const allowedEmails = adminEmails
     .split(',')
     .map(item => item.trim().toLowerCase())
     .filter(Boolean);
@@ -142,8 +142,9 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const response = NextResponse.next();
 
-  response.headers.set('X-Frame-Options', 'ALLOWALL');
-  response.headers.set('Content-Security-Policy', 'frame-ancestors *');
+  // Security: prevent clickjacking by restricting iframe embedding to same origin only
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  response.headers.set('Content-Security-Policy', "frame-ancestors 'self'");
 
   const session = await getSupabaseSession(request);
   const hasSession = session.hasSession;
