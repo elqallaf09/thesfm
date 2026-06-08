@@ -35,6 +35,11 @@ type FxState = {
   message?: string;
 };
 
+type ParsedFormNumber = {
+  status: 'missing' | 'valid' | 'invalid';
+  value: number | null;
+};
+
 type AssetSearchItem = {
   name: string;
   name_ar?: string;
@@ -104,7 +109,9 @@ interface Props {
     expectedReturn: string;
     notes: string;
     save: string;
+    saving: string;
     update: string;
+    updating: string;
     cancel: string;
     saveAnother: string;
     assetSearchLoading: string;
@@ -139,6 +146,7 @@ interface Props {
     purchasePricePerGram: string;
     currentPricePerGram: string;
     purchaseTotal: string;
+    purchaseTotalHelper: string;
     currentValueAuto: string;
     goldProductType: string;
     silverProductType: string;
@@ -173,6 +181,7 @@ interface Props {
     fxLoading: string;
     fxRate: string;
     fxRetry: string;
+    validationSummary: string;
     manualPriceHint: string;
     livePriceHint: string;
     searchMustSelect: string;
@@ -186,9 +195,12 @@ interface Props {
       valuePositive: string;
       contributionPositive: string;
       quantityPositive: string;
+      quantityRequired: string;
       returnRange: string;
       assetRequired: string;
       purchasePriceRequired: string;
+      purchaseBasisRequired: string;
+      numericInvalid: string;
       currentValueRequired: string;
       gramsPositive: string;
       startDateRequired: string;
@@ -222,10 +234,31 @@ const SILVER_PRODUCT_GRAMS: Record<string, number | null> = {
   other: null,
 };
 
-function parseDecimal(value: string | number | null | undefined) {
-  if (value === null || value === undefined || value === '') return null;
+function hasInputValue(value: string | number | null | undefined) {
+  if (value === null || value === undefined) return false;
+  return String(value).trim().length > 0;
+}
+
+function parseFormNumber(value: string | number | null | undefined): ParsedFormNumber {
+  if (!hasInputValue(value)) return { status: 'missing', value: null };
   const parsed = parseMoneyValue(value);
+  if (parsed.status === 'valid' && Number.isFinite(parsed.value)) {
+    return { status: 'valid', value: parsed.value };
+  }
+  return { status: 'invalid', value: null };
+}
+
+function parsedValue(parsed: ParsedFormNumber) {
   return parsed.status === 'valid' ? parsed.value : null;
+}
+
+function positiveParsedValue(parsed: ParsedFormNumber) {
+  return parsed.status === 'valid' && parsed.value !== null && parsed.value > 0 ? parsed.value : null;
+}
+
+function positiveProduct(a: number | null | undefined, b: number | null | undefined) {
+  if (a === null || a === undefined || b === null || b === undefined || a <= 0 || b <= 0) return null;
+  return a * b;
 }
 
 function toInputNumber(value: number | null | undefined, max = 10) {
@@ -374,6 +407,7 @@ export function InvestmentFormModal({
   const [investmentCurrency, setInvestmentCurrency] = useState(accountCurrency);
   const [quantity, setQuantity] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
+  const [purchaseTotalInput, setPurchaseTotalInput] = useState('');
   const [currentPrice, setCurrentPrice] = useState('');
   const [currentValue, setCurrentValue] = useState('');
   const [monthlyContribution, setMonthlyContribution] = useState('');
@@ -421,15 +455,33 @@ export function InvestmentFormModal({
       ? labels.fundSearchPlaceholder
       : labels.assetSearchPlaceholder;
 
-  const quantityValue = parseDecimal(quantity);
-  const purchaseUnitPrice = parseDecimal(purchasePrice);
-  const manualCurrentUnitPrice = parseDecimal(currentPrice);
-  const manualCurrentValue = parseDecimal(currentValue);
-  const metalGramsValue = parseDecimal(metalGrams);
-  const monthlyContributionValue = parseDecimal(monthlyContribution) ?? 0;
-  const expectedReturnValue = parseDecimal(expectedReturn);
-  const expectedMonthlyIncomeValue = parseDecimal(expectedMonthlyIncome);
-  const expectedMonthlyExpenseValue = parseDecimal(expectedMonthlyExpense);
+  const quantityParsed = parseFormNumber(quantity);
+  const purchaseUnitPriceParsed = parseFormNumber(purchasePrice);
+  const purchaseTotalInputParsed = parseFormNumber(purchaseTotalInput);
+  const manualCurrentUnitPriceParsed = parseFormNumber(currentPrice);
+  const manualCurrentValueParsed = parseFormNumber(currentValue);
+  const metalGramsParsed = parseFormNumber(metalGrams);
+  const monthlyContributionParsed = parseFormNumber(monthlyContribution);
+  const expectedReturnParsed = parseFormNumber(expectedReturn);
+  const expectedMonthlyIncomeParsed = parseFormNumber(expectedMonthlyIncome);
+  const expectedMonthlyExpenseParsed = parseFormNumber(expectedMonthlyExpense);
+  const quantityValue = parsedValue(quantityParsed);
+  const purchaseUnitPrice = parsedValue(purchaseUnitPriceParsed);
+  const enteredPurchaseTotal = parsedValue(purchaseTotalInputParsed);
+  const manualCurrentUnitPrice = parsedValue(manualCurrentUnitPriceParsed);
+  const manualCurrentValue = parsedValue(manualCurrentValueParsed);
+  const metalGramsValue = parsedValue(metalGramsParsed);
+  const monthlyContributionValue = parsedValue(monthlyContributionParsed);
+  const expectedReturnValue = parsedValue(expectedReturnParsed);
+  const expectedMonthlyIncomeValue = parsedValue(expectedMonthlyIncomeParsed);
+  const expectedMonthlyExpenseValue = parsedValue(expectedMonthlyExpenseParsed);
+  const marketPurchaseUnitPrice = isMarketType(type)
+    ? positiveParsedValue(purchaseUnitPriceParsed) ?? (
+      quantityValue !== null && quantityValue > 0 && enteredPurchaseTotal !== null && enteredPurchaseTotal > 0
+        ? enteredPurchaseTotal / quantityValue
+        : null
+    )
+    : purchaseUnitPrice;
   const metalLivePrice = type === 'gold' ? metals.gold?.price ?? null : type === 'silver' ? metals.silver?.price ?? null : null;
   const metalLiveCurrency = normalizedCurrency(type === 'gold' ? metals.gold?.currency : type === 'silver' ? metals.silver?.currency : formCurrency, formCurrency);
   const effectiveLiveMetalPrice = metalLiveCurrency === formCurrency ? metalLivePrice : null;
@@ -446,8 +498,8 @@ export function InvestmentFormModal({
     ? quantityValue * metalGramsValue
     : null;
 
-  const marketPurchaseTotal = isMarketType(type) && quantityValue !== null && quantityValue > 0 && purchaseUnitPrice !== null && purchaseUnitPrice > 0
-    ? quantityValue * purchaseUnitPrice
+  const marketPurchaseTotal = isMarketType(type)
+    ? positiveProduct(quantityValue, positiveParsedValue(purchaseUnitPriceParsed)) ?? (enteredPurchaseTotal !== null && enteredPurchaseTotal > 0 ? enteredPurchaseTotal : null)
     : null;
   const marketCurrentValue = isMarketType(type) && quantityValue !== null && quantityValue > 0 && unitPrice !== null && unitPrice > 0
     ? quantityValue * unitPrice
@@ -520,6 +572,7 @@ export function InvestmentFormModal({
     setInvestmentCurrency(accountCurrency);
     setQuantity('');
     setPurchasePrice('');
+    setPurchaseTotalInput('');
     setCurrentPrice('');
     setCurrentValue('');
     setMonthlyContribution('');
@@ -551,7 +604,10 @@ export function InvestmentFormModal({
 
     if (mode === 'edit' && initialValues) {
       const nextType = initialValues.type || 'other';
-      const initialPurchaseTotal = initialValues.purchaseTotal ?? initialValues.purchasePrice ?? initialValues.amount;
+      const initialMarketPurchaseTotal = initialValues.purchaseTotal
+        ?? positiveProduct(initialValues.quantity, initialValues.purchasePrice)
+        ?? undefined;
+      const initialDirectPurchaseTotal = initialValues.purchaseTotal ?? initialValues.purchasePrice ?? initialValues.amount;
       const initialAsset = assetFromInvestment(initialValues);
       const initialCurrency = resolveFormCurrency({
         currency: initialValues.currency,
@@ -568,8 +624,9 @@ export function InvestmentFormModal({
       setInvestmentCurrency(initialCurrency);
       setQuantity(toInputNumber(initialValues.quantity, 10));
       setPurchasePrice(toInputNumber(nextType === 'realEstate' || nextType === 'project' || nextType === 'other'
-        ? initialPurchaseTotal
+        ? initialDirectPurchaseTotal
         : initialValues.purchasePrice, 10));
+      setPurchaseTotalInput(toInputNumber(isMarketType(nextType) ? initialMarketPurchaseTotal : undefined, 10));
       setCurrentPrice(toInputNumber(initialValues.currentPrice ?? initialValues.lastPrice, 10));
       setCurrentValue(toInputNumber(initialValues.nativeMarketValue ?? initialValues.currentMarketValue ?? initialValues.currentValue, 10));
       setMonthlyContribution(toInputNumber(initialValues.monthlyContribution, 10));
@@ -597,7 +654,7 @@ export function InvestmentFormModal({
           currency: initialCurrency,
           quantity: initialValues.quantity,
           purchasePrice: initialValues.purchasePrice,
-          purchaseTotal: initialPurchaseTotal,
+          purchaseTotal: initialMarketPurchaseTotal ?? initialDirectPurchaseTotal,
           currentPrice: initialValues.currentPrice ?? initialValues.lastPrice,
           startDate: initialValues.startDate,
           hasSelectedAsset: Boolean(initialAsset),
@@ -769,43 +826,76 @@ export function InvestmentFormModal({
     const nextErrors: Record<string, string> = {};
     if (!name.trim()) nextErrors.name = labels.errors.nameRequired;
     if (!startDate) nextErrors.startDate = labels.errors.startDateRequired;
+    const marketQuantity = positiveParsedValue(quantityParsed);
+    const purchasePricePositive = positiveParsedValue(purchaseUnitPriceParsed);
+    const purchaseTotalPositive = positiveParsedValue(purchaseTotalInputParsed);
+
+    function validatePositiveNumber(key: string, parsed: ParsedFormNumber, requiredMessage: string) {
+      if (parsed.status === 'invalid') {
+        nextErrors[key] = labels.errors.numericInvalid;
+        return false;
+      }
+      if (parsed.value === null || parsed.value <= 0) {
+        nextErrors[key] = requiredMessage;
+        return false;
+      }
+      return true;
+    }
 
     if (isMarketType(type)) {
       if (!selectedAsset) nextErrors.asset = labels.errors.assetRequired;
-      if (quantityValue === null || quantityValue <= 0) nextErrors.quantity = labels.errors.quantityPositive;
-      if (purchaseUnitPrice === null || purchaseUnitPrice <= 0) nextErrors.purchasePrice = labels.errors.purchasePriceRequired;
-      if (currentPrice && (manualCurrentUnitPrice === null || manualCurrentUnitPrice <= 0)) nextErrors.currentPrice = labels.errors.valuePositive;
+      if (quantityParsed.status === 'invalid') nextErrors.quantity = labels.errors.numericInvalid;
+      else if (marketQuantity === null) nextErrors.quantity = labels.errors.quantityRequired;
+
+      const hasPurchasePriceInput = hasInputValue(purchasePrice);
+      const hasPurchaseTotalCostInput = hasInputValue(purchaseTotalInput);
+      if (hasPurchasePriceInput && !validatePositiveNumber('purchasePrice', purchaseUnitPriceParsed, labels.errors.purchasePriceRequired)) {
+        nextErrors.purchasePrice = purchaseUnitPriceParsed.status === 'invalid' ? labels.errors.numericInvalid : labels.errors.purchasePriceRequired;
+      }
+      if (hasPurchaseTotalCostInput && !validatePositiveNumber('purchaseTotal', purchaseTotalInputParsed, labels.errors.purchasePriceRequired)) {
+        nextErrors.purchaseTotal = purchaseTotalInputParsed.status === 'invalid' ? labels.errors.numericInvalid : labels.errors.purchasePriceRequired;
+      }
+      if (purchasePricePositive === null && purchaseTotalPositive === null && !nextErrors.purchasePrice && !nextErrors.purchaseTotal) {
+        nextErrors.purchaseBasis = labels.errors.purchaseBasisRequired;
+        nextErrors.purchasePrice = labels.errors.purchaseBasisRequired;
+        nextErrors.purchaseTotal = labels.errors.purchaseBasisRequired;
+      }
+      if (hasInputValue(currentPrice)) validatePositiveNumber('currentPrice', manualCurrentUnitPriceParsed, labels.errors.valuePositive);
     }
 
     if (isMetal) {
-      if (quantityValue === null || quantityValue <= 0) nextErrors.quantity = labels.errors.quantityPositive;
-      if (metalGramsValue === null || metalGramsValue <= 0) nextErrors.grams = labels.errors.gramsPositive;
-      if (purchaseUnitPrice === null || purchaseUnitPrice <= 0) nextErrors.purchasePrice = labels.errors.purchasePriceRequired;
-      if (currentPrice && (manualCurrentUnitPrice === null || manualCurrentUnitPrice <= 0)) nextErrors.currentPrice = labels.errors.valuePositive;
+      validatePositiveNumber('quantity', quantityParsed, labels.errors.quantityPositive);
+      validatePositiveNumber('grams', metalGramsParsed, labels.errors.gramsPositive);
+      validatePositiveNumber('purchasePrice', purchaseUnitPriceParsed, labels.errors.purchasePriceRequired);
+      if (hasInputValue(currentPrice)) validatePositiveNumber('currentPrice', manualCurrentUnitPriceParsed, labels.errors.valuePositive);
     }
 
     if (isRealEstate) {
-      if (purchaseUnitPrice === null || purchaseUnitPrice <= 0) nextErrors.purchasePrice = labels.errors.purchasePriceRequired;
-      if (manualCurrentValue === null || manualCurrentValue <= 0) nextErrors.currentValue = labels.errors.currentValueRequired;
+      validatePositiveNumber('purchasePrice', purchaseUnitPriceParsed, labels.errors.purchasePriceRequired);
+      validatePositiveNumber('currentValue', manualCurrentValueParsed, labels.errors.currentValueRequired);
     }
 
     if (isCash) {
-      if (manualCurrentValue === null || manualCurrentValue <= 0) nextErrors.currentValue = labels.errors.valuePositive;
+      validatePositiveNumber('currentValue', manualCurrentValueParsed, labels.errors.valuePositive);
     }
 
     if (isProject) {
-      if (purchaseUnitPrice === null || purchaseUnitPrice <= 0) nextErrors.purchasePrice = labels.errors.purchasePriceRequired;
-      if (expectedMonthlyIncome && (expectedMonthlyIncomeValue === null || expectedMonthlyIncomeValue < 0)) nextErrors.expectedMonthlyIncome = labels.errors.valuePositive;
-      if (expectedMonthlyExpense && (expectedMonthlyExpenseValue === null || expectedMonthlyExpenseValue < 0)) nextErrors.expectedMonthlyExpense = labels.errors.expensePositive;
+      validatePositiveNumber('purchasePrice', purchaseUnitPriceParsed, labels.errors.purchasePriceRequired);
+      if (expectedMonthlyIncomeParsed.status === 'invalid') nextErrors.expectedMonthlyIncome = labels.errors.numericInvalid;
+      else if (expectedMonthlyIncomeValue !== null && expectedMonthlyIncomeValue < 0) nextErrors.expectedMonthlyIncome = labels.errors.valuePositive;
+      if (expectedMonthlyExpenseParsed.status === 'invalid') nextErrors.expectedMonthlyExpense = labels.errors.numericInvalid;
+      else if (expectedMonthlyExpenseValue !== null && expectedMonthlyExpenseValue < 0) nextErrors.expectedMonthlyExpense = labels.errors.expensePositive;
     }
 
     if (isOther) {
-      if (purchaseUnitPrice === null || purchaseUnitPrice <= 0) nextErrors.purchasePrice = labels.errors.purchasePriceRequired;
-      if (manualCurrentValue === null || manualCurrentValue <= 0) nextErrors.currentValue = labels.errors.currentValueRequired;
+      validatePositiveNumber('purchasePrice', purchaseUnitPriceParsed, labels.errors.purchasePriceRequired);
+      validatePositiveNumber('currentValue', manualCurrentValueParsed, labels.errors.currentValueRequired);
     }
 
-    if (monthlyContribution && monthlyContributionValue < 0) nextErrors.monthlyContribution = labels.errors.contributionPositive;
-    if (expectedReturn && (expectedReturnValue === null || expectedReturnValue < -100 || expectedReturnValue > 1000)) nextErrors.expectedReturn = labels.errors.returnRange;
+    if (monthlyContributionParsed.status === 'invalid') nextErrors.monthlyContribution = labels.errors.numericInvalid;
+    else if (monthlyContributionValue !== null && monthlyContributionValue < 0) nextErrors.monthlyContribution = labels.errors.contributionPositive;
+    if (expectedReturnParsed.status === 'invalid') nextErrors.expectedReturn = labels.errors.numericInvalid;
+    else if (expectedReturnValue !== null && (expectedReturnValue < -100 || expectedReturnValue > 1000)) nextErrors.expectedReturn = labels.errors.returnRange;
     if (nativeValueForFx !== null && nativeValueForFx > 0 && !isSameAccountCurrency && (fx.state !== 'ready' || fx.rate === null)) {
       nextErrors.fx = labels.errors.fxRequired;
     }
@@ -815,6 +905,25 @@ export function InvestmentFormModal({
   function validate() {
     const nextErrors = buildErrors();
     setErrors(nextErrors);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Investments] form validation result', {
+        mode,
+        valid: Object.keys(nextErrors).length === 0,
+        disabledReasons: Array.from(new Set(Object.values(nextErrors))),
+        formValues: {
+          type,
+          name,
+          currency: formCurrency,
+          quantity,
+          purchasePrice,
+          purchaseTotal: purchaseTotalInput,
+          currentPrice,
+          monthlyContribution,
+          expectedReturn,
+          startDate,
+        },
+      });
+    }
     return Object.keys(nextErrors).length === 0;
   }
 
@@ -828,6 +937,7 @@ export function InvestmentFormModal({
     if (!isMarketType(nextType) || nextType === 'crypto') setSelectedExchange('');
     setQuantity('');
     setPurchasePrice('');
+    setPurchaseTotalInput('');
     setCurrentPrice('');
     setCurrentValue('');
     setLocation('');
@@ -888,6 +998,11 @@ export function InvestmentFormModal({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!validate()) return;
+    const monthlyContributionForSave = monthlyContributionParsed.status === 'valid' ? monthlyContributionParsed.value : undefined;
+    const expectedReturnForSave = expectedReturnParsed.status === 'valid' ? expectedReturnParsed.value : undefined;
+    const expectedMonthlyIncomeForSave = expectedMonthlyIncomeParsed.status === 'valid' ? expectedMonthlyIncomeParsed.value : undefined;
+    const expectedMonthlyExpenseForSave = expectedMonthlyExpenseParsed.status === 'valid' ? expectedMonthlyExpenseParsed.value : undefined;
+    const purchaseUnitPriceForSave = isMarketType(type) ? marketPurchaseUnitPrice : purchaseUnitPrice;
     const nativeValue = nativeCurrentValue ?? purchaseTotal ?? 0;
     const accountValue = convertedValueForSave ?? nativeValue;
     const addAnother = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value === 'another';
@@ -922,10 +1037,10 @@ export function InvestmentFormModal({
       type,
       currentValue: accountValue,
       amount: accountValue,
-      monthlyContribution: monthlyContributionValue,
+      monthlyContribution: monthlyContributionForSave ?? (mode === 'edit' ? initialValues?.monthlyContribution : undefined) ?? 0,
       startDate,
       riskLevel,
-      expectedAnnualReturn: expectedReturnValue === null ? undefined : expectedReturnValue,
+      expectedAnnualReturn: expectedReturnForSave ?? undefined,
       notes: notes.trim() || undefined,
       symbol: resolvedSymbol,
       providerSymbol: resolvedProviderSymbol,
@@ -934,7 +1049,7 @@ export function InvestmentFormModal({
       currency: resolvedCurrency,
       quantity: (isMarketType(type) || isMetal) && quantityValue !== null ? quantityValue : undefined,
       unit: isMetal ? metalUnit : undefined,
-      purchasePrice: purchaseUnitPrice ?? undefined,
+      purchasePrice: purchaseUnitPriceForSave ?? undefined,
       purchaseTotal: purchaseTotal ?? undefined,
       currentPrice: marketOrMetalUnitPrice,
       currentMarketValue: nativeCurrentValue ?? undefined,
@@ -957,8 +1072,8 @@ export function InvestmentFormModal({
       dataSource: priceSource,
       location: location.trim() || undefined,
       propertyType: isRealEstate ? propertyType : undefined,
-      expectedMonthlyIncome: expectedMonthlyIncomeValue ?? undefined,
-      expectedMonthlyExpense: expectedMonthlyExpenseValue ?? undefined,
+      expectedMonthlyIncome: expectedMonthlyIncomeForSave ?? undefined,
+      expectedMonthlyExpense: expectedMonthlyExpenseForSave ?? undefined,
       maturityDate: isCash && maturityDate ? maturityDate : undefined,
       metalType: type === 'gold' ? 'gold' : type === 'silver' ? 'silver' : undefined,
       metalProductType: isMetal ? metalUnit : undefined,
@@ -993,7 +1108,16 @@ export function InvestmentFormModal({
   if (!open) return null;
 
   const searchOpen = shouldSearchAssets && name.trim().length >= 2 && !selectedMatchesName && searchState !== 'idle';
-  const saveDisabled = saving || Object.keys(buildErrors()).length > 0;
+  const validationErrors = buildErrors();
+  const validationMessages = Array.from(new Set(Object.values(validationErrors)));
+  const saveDisabled = saving || validationMessages.length > 0;
+  const primaryButtonText = saving
+    ? mode === 'create'
+      ? labels.saving
+      : labels.updating
+    : mode === 'create'
+      ? labels.save
+      : labels.update;
   const nativeValueText = nativeCurrentValue !== null
     ? formatMarketPrice({ price: nativeCurrentValue, currency: formCurrency, locale })
     : labels.unavailable;
@@ -1180,8 +1304,11 @@ export function InvestmentFormModal({
               <Field label={type === 'fund' ? labels.numberOfUnits : type === 'crypto' ? labels.assetQuantity : labels.quantity} error={errors.quantity} helper={labels.quantityHelper} required>
                 <input type="number" min="0" step={type === 'crypto' ? '0.00000001' : '0.000001'} value={quantity} onChange={event => setQuantity(event.target.value)} dir="ltr" inputMode="decimal" />
               </Field>
-              <Field label={type === 'fund' ? labels.purchasePricePerUnit : labels.purchasePricePerShare} error={errors.purchasePrice} required>
+              <Field label={type === 'fund' ? labels.purchasePricePerUnit : labels.purchasePricePerShare} error={errors.purchasePrice}>
                 <MoneyInput currency={formCurrency} value={purchasePrice} onChange={setPurchasePrice} />
+              </Field>
+              <Field label={labels.purchaseTotal} error={errors.purchaseTotal || errors.purchaseBasis} helper={labels.purchaseTotalHelper}>
+                <MoneyInput currency={formCurrency} value={purchaseTotalInput} onChange={setPurchaseTotalInput} />
               </Field>
               {hasLiveAssetPrice ? (
                 <ReadonlyMoney label={type === 'fund' ? labels.currentPricePerUnit : labels.currentPricePerShare} currency={formCurrency} value={selectedPrice!} helper={labels.livePriceHint} />
@@ -1190,7 +1317,7 @@ export function InvestmentFormModal({
                   <MoneyInput currency={formCurrency} value={currentPrice} onChange={setCurrentPrice} />
                 </Field>
               )}
-              <ReadonlyMoney label={labels.purchaseTotal} currency={formCurrency} value={marketPurchaseTotal} />
+              <ReadonlyMoney label={labels.summaryPurchaseTotal} currency={formCurrency} value={marketPurchaseTotal} />
               <ReadonlyMoney label={labels.currentMarketValue} currency={formCurrency} value={marketCurrentValue} />
             </>
           )}
@@ -1322,6 +1449,18 @@ export function InvestmentFormModal({
             <textarea value={notes} onChange={event => setNotes(event.target.value)} />
           </Field>
 
+          {validationMessages.length > 0 && (
+            <div className="invest-validation-summary span-2" role="alert">
+              <AlertCircle size={17} />
+              <div>
+                <strong>{labels.validationSummary}</strong>
+                {validationMessages.map(message => (
+                  <span key={message}>{message}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="invest-form-actions invest-form-actions--sticky span-2">
             <button type="button" className="invest-secondary-btn" onClick={onClose} disabled={saving}>
               {labels.cancel}
@@ -1334,7 +1473,7 @@ export function InvestmentFormModal({
             )}
             <button type="submit" className="invest-primary-btn" value="close" disabled={saveDisabled}>
               {saving && <Loader2 size={16} className="invest-spin" />}
-              {mode === 'create' ? labels.save : labels.update}
+              {primaryButtonText}
             </button>
           </div>
         </form>
@@ -1622,6 +1761,42 @@ export function InvestmentFormModal({
             border-radius: 14px;
             padding: 11px 12px;
             font: 900 12px Tajawal,Arial,sans-serif;
+          }
+          .invest-validation-summary {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 10px;
+            align-items: start;
+            border: 1px solid rgba(245,158,11,.22);
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(255,251,235,.92), rgba(236,254,255,.72));
+            color: #92400e;
+            padding: 12px 13px;
+            font: 850 12px Tajawal, Arial, sans-serif;
+            line-height: 1.65;
+          }
+          .dark .invest-validation-summary {
+            background: linear-gradient(135deg, rgba(69,26,3,.42), rgba(8,47,73,.42));
+            border-color: rgba(245,158,11,.24);
+            color: #fbbf24;
+          }
+          .invest-validation-summary svg {
+            margin-top: 2px;
+            color: #b45309;
+          }
+          .invest-validation-summary div {
+            display: grid;
+            gap: 3px;
+            min-width: 0;
+          }
+          .invest-validation-summary strong {
+            color: var(--sfm-foreground);
+            font-size: 13px;
+            font-weight: 950;
+          }
+          .invest-validation-summary span {
+            color: inherit;
+            font-weight: 850;
           }
           .invest-form-actions--sticky {
             position: sticky;

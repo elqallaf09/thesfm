@@ -442,8 +442,14 @@ async function updateInvestmentWithAttempts(id: string, userId: string, attempts
 
 function normalizeInvestmentForSave(data: InvestmentInput) {
   const quantity = moneyNumber(data.quantity);
-  const purchasePrice = moneyNumber(data.purchasePrice);
+  const enteredPurchasePrice = moneyNumber(data.purchasePrice);
   const explicitPurchaseTotal = coalesceNumber(data.purchaseTotal, data.amount);
+  const purchasePrice = enteredPurchasePrice
+    ?? (
+      quantity !== undefined && quantity > 0 && explicitPurchaseTotal !== undefined && explicitPurchaseTotal > 0
+        ? explicitPurchaseTotal / quantity
+        : undefined
+    );
   const purchaseTotal = explicitPurchaseTotal ?? positiveProduct(quantity, purchasePrice);
   const currentPrice = coalesceNumber(data.currentPrice, data.lastPrice);
   const isMarketLinked = isMarketLinkedInput(data);
