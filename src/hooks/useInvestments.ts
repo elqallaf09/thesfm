@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
 import { firstMoneyValue, parseMoneyValue } from '@/lib/money';
+import { normalizeMarketCurrencyCode, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 
 type DbInvestmentRow = {
   id: string;
@@ -75,6 +76,15 @@ type DbInvestmentRow = {
 };
 
 type InvestmentMeta = Omit<InvestmentInput, 'name' | 'currentValue'>;
+type InvestmentSelectResult = {
+  data: unknown[] | null;
+  error: {
+    message: string;
+    code?: string;
+    details?: string;
+    hint?: string;
+  } | null;
+};
 
 const GUEST_KEY = 'sfm_guest_investments';
 const OLD_GUEST_KEY = 'sfm_guest_invest';
@@ -125,6 +135,46 @@ function safeInvestmentSummary(item: Partial<InvestmentInput & Investment>) {
     currentMarketValue: item.currentMarketValue ?? item.nativeMarketValue,
     lastPriceUpdatedAt: item.lastPriceUpdatedAt ?? item.valuationLastUpdatedAt,
   };
+}
+
+function resolveInvestmentCurrency(input: {
+  currency?: unknown;
+  nativeCurrency?: unknown;
+  priceCurrency?: unknown;
+  market?: unknown;
+  exchange?: unknown;
+  symbol?: unknown;
+  providerSymbol?: unknown;
+  assetType?: unknown;
+  fallback?: unknown;
+}) {
+  const providerCurrency = normalizeMarketCurrencyCode(input.nativeCurrency ?? input.priceCurrency ?? input.currency);
+  const resolved = resolveMarketCurrency({
+    providerCurrency,
+    symbol: input.symbol,
+    providerSymbol: input.providerSymbol,
+    exchange: input.exchange ?? input.market,
+    market: input.market ?? input.exchange,
+    assetType: typeof input.assetType === 'string' ? input.assetType : null,
+  });
+  return resolved.currency ?? providerCurrency ?? normalizeMarketCurrencyCode(input.fallback);
+}
+
+function meaningfulValue(value: unknown) {
+  if (value === undefined || value === null) return false;
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (typeof value === 'string') return value.trim().length > 0;
+  return true;
+}
+
+function protectedUpdateValue(value: unknown) {
+  if (!meaningfulValue(value)) return false;
+  if (typeof value === 'number') return value !== 0;
+  return true;
+}
+
+function preserve<T>(next: T | undefined, previous: T | undefined): T | undefined {
+  return meaningfulValue(next) ? next : previous;
 }
 
 function nowIso() {
@@ -200,8 +250,116 @@ function normalizeInvestmentForSave(data: InvestmentInput) {
   };
 }
 
+function mergeInvestmentForUpdate(previous: Investment, data: InvestmentInput): InvestmentInput {
+  const market = preserve(data.market, previous.market);
+  const symbol = preserve(data.symbol, previous.symbol);
+  const providerSymbol = preserve(data.providerSymbol, previous.providerSymbol);
+  const assetType = preserve(data.assetType, previous.assetType);
+  const resolvedCurrency = resolveInvestmentCurrency({
+    currency: data.currency,
+    nativeCurrency: data.nativeCurrency,
+    priceCurrency: data.priceCurrency,
+    market,
+    symbol,
+    providerSymbol,
+    assetType: assetType ?? data.type,
+    fallback: previous.nativeCurrency ?? previous.priceCurrency ?? previous.currency,
+  });
+
+  return {
+    ...data,
+    monthlyContribution: preserve(data.monthlyContribution, previous.monthlyContribution) ?? 0,
+    startDate: preserve(data.startDate, previous.startDate) ?? todayInput(),
+    riskLevel: preserve(data.riskLevel, previous.riskLevel) ?? 'medium',
+    expectedAnnualReturn: preserve(data.expectedAnnualReturn, previous.expectedAnnualReturn),
+    notes: preserve(data.notes, previous.notes),
+    symbol,
+    providerSymbol,
+    market,
+    assetType,
+    currency: resolvedCurrency ?? preserve(data.currency, previous.currency),
+    quantity: preserve(data.quantity, previous.quantity),
+    amount: preserve(data.amount, previous.amount),
+    purchasePrice: preserve(data.purchasePrice, previous.purchasePrice),
+    purchaseTotal: preserve(data.purchaseTotal, previous.purchaseTotal),
+    currentPrice: preserve(data.currentPrice, previous.currentPrice),
+    currentMarketValue: preserve(data.currentMarketValue, previous.currentMarketValue),
+    profitLoss: preserve(data.profitLoss, previous.profitLoss),
+    profitLossPercent: preserve(data.profitLossPercent, previous.profitLossPercent),
+    defaultCurrencyValue: preserve(data.defaultCurrencyValue, previous.defaultCurrencyValue),
+    unit: preserve(data.unit, previous.unit),
+    priceCurrency: resolvedCurrency ?? preserve(data.priceCurrency, previous.priceCurrency),
+    nativeCurrency: resolvedCurrency ?? preserve(data.nativeCurrency, previous.nativeCurrency),
+    nativeUnitPrice: preserve(data.nativeUnitPrice, previous.nativeUnitPrice),
+    nativeMarketValue: preserve(data.nativeMarketValue, previous.nativeMarketValue),
+    userCurrency: preserve(data.userCurrency, previous.userCurrency),
+    fxRateToUserCurrency: preserve(data.fxRateToUserCurrency, previous.fxRateToUserCurrency),
+    convertedMarketValue: preserve(data.convertedMarketValue, previous.convertedMarketValue),
+    fxSource: preserve(data.fxSource, previous.fxSource),
+    fxLastUpdatedAt: preserve(data.fxLastUpdatedAt, previous.fxLastUpdatedAt),
+    valuationSource: preserve(data.valuationSource, previous.valuationSource),
+    valuationLastUpdatedAt: preserve(data.valuationLastUpdatedAt, previous.valuationLastUpdatedAt),
+    lastPrice: preserve(data.lastPrice, previous.lastPrice),
+    lastPriceUpdatedAt: preserve(data.lastPriceUpdatedAt, previous.lastPriceUpdatedAt),
+    dataSource: preserve(data.dataSource, previous.dataSource),
+    projectId: preserve(data.projectId, previous.projectId),
+    projectName: preserve(data.projectName, previous.projectName),
+    location: preserve(data.location, previous.location),
+    propertyType: preserve(data.propertyType, previous.propertyType),
+    expectedMonthlyIncome: preserve(data.expectedMonthlyIncome, previous.expectedMonthlyIncome),
+    expectedMonthlyExpense: preserve(data.expectedMonthlyExpense, previous.expectedMonthlyExpense),
+    maturityDate: preserve(data.maturityDate, previous.maturityDate),
+    metalType: preserve(data.metalType, previous.metalType),
+    metalProductType: preserve(data.metalProductType, previous.metalProductType),
+    metalKarat: preserve(data.metalKarat, previous.metalKarat),
+    metalPurity: preserve(data.metalPurity, previous.metalPurity),
+    grams: preserve(data.grams, previous.grams),
+    pureMetalGrams: preserve(data.pureMetalGrams, previous.pureMetalGrams),
+    priceSource: preserve(data.priceSource, previous.priceSource),
+  };
+}
+
+function compactUpdatePayload<T extends Record<string, unknown>>(payload: T) {
+  const protectedEmptyKeys = new Set([
+    'symbol',
+    'provider_symbol',
+    'market',
+    'asset_type',
+    'currency',
+    'quantity',
+    'purchase_price',
+    'purchase_total',
+    'current_price',
+    'current_market_value',
+    'price_currency',
+    'native_currency',
+    'native_unit_price',
+    'native_market_value',
+    'last_price',
+    'last_price_updated_at',
+    'valuation_last_updated_at',
+    'data_source',
+  ]);
+
+  return Object.fromEntries(
+    Object.entries(payload).filter(([key, value]) => {
+      if (!protectedEmptyKeys.has(key)) return true;
+      return protectedUpdateValue(value);
+    }),
+  );
+}
+
 function buildInvestmentPayload(data: InvestmentInput, userId?: string) {
   const normalized = normalizeInvestmentForSave(data);
+  const resolvedCurrency = resolveInvestmentCurrency({
+    currency: data.currency,
+    nativeCurrency: data.nativeCurrency,
+    priceCurrency: data.priceCurrency,
+    market: data.market,
+    symbol: data.symbol,
+    providerSymbol: data.providerSymbol,
+    assetType: data.assetType ?? data.type,
+  });
   return {
     ...(userId ? { user_id: userId } : {}),
     name: data.name,
@@ -216,7 +374,7 @@ function buildInvestmentPayload(data: InvestmentInput, userId?: string) {
     provider_symbol: data.providerSymbol ?? null,
     market: data.market ?? null,
     asset_type: data.assetType ?? null,
-    currency: data.currency ?? data.nativeCurrency ?? data.priceCurrency ?? null,
+    currency: resolvedCurrency ?? null,
     quantity: normalized.quantity ?? null,
     unit: data.unit ?? null,
     purchase_price: normalized.purchasePrice ?? null,
@@ -231,8 +389,8 @@ function buildInvestmentPayload(data: InvestmentInput, userId?: string) {
     maturity_date: data.maturityDate ?? null,
     current_price: normalized.currentPrice ?? null,
     current_market_value: normalized.currentMarketValue ?? null,
-    price_currency: data.priceCurrency ?? data.currency ?? data.nativeCurrency ?? null,
-    native_currency: data.nativeCurrency ?? data.priceCurrency ?? data.currency ?? null,
+    price_currency: resolvedCurrency ?? null,
+    native_currency: resolvedCurrency ?? null,
     native_unit_price: normalized.nativeUnitPrice ?? null,
     native_market_value: normalized.nativeMarketValue ?? null,
     user_currency: data.userCurrency ?? null,
@@ -259,6 +417,21 @@ function buildInvestmentPayload(data: InvestmentInput, userId?: string) {
 
 function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): Investment {
   const createdAt = row.created_at || nowIso();
+  const resolvedName = row.name || row.asset_name || '';
+  const resolvedSymbol = row.symbol ?? meta?.symbol;
+  const resolvedProviderSymbol = row.provider_symbol ?? meta?.providerSymbol;
+  const resolvedMarket = row.market ?? row.exchange ?? meta?.market;
+  const resolvedAssetType = row.asset_type ?? meta?.assetType;
+  const resolvedCurrency = resolveInvestmentCurrency({
+    currency: row.currency ?? meta?.currency,
+    nativeCurrency: row.native_currency ?? meta?.nativeCurrency,
+    priceCurrency: row.price_currency ?? meta?.priceCurrency,
+    market: resolvedMarket,
+    exchange: row.exchange,
+    symbol: resolvedSymbol,
+    providerSymbol: resolvedProviderSymbol,
+    assetType: resolvedAssetType ?? row.type ?? meta?.type,
+  });
   const displayAmount = firstMoneyValue(row as Record<string, unknown>, ['converted_market_value', 'current_value', 'amount', 'current_market_value', 'native_market_value', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
   const monthlyAmount = parseMoneyValue(row.monthly_contribution ?? meta?.monthlyContribution);
   const expectedReturn = parseMoneyValue(row.expected_annual_return ?? row.expected_return ?? meta?.expectedAnnualReturn);
@@ -313,6 +486,7 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
       hasPurchaseTotal: row.purchase_total != null || row.total_invested != null || row.invested_amount != null,
       hasProviderSymbol: Boolean(row.provider_symbol || row.symbol),
       hasCurrency: Boolean(row.currency || row.native_currency || row.price_currency),
+      resolvedCurrency,
       parsed: {
         quantity: quantityValue,
         purchasePrice: purchasePriceValue,
@@ -324,7 +498,7 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
   }
   return {
     id: row.id,
-    name: row.name || row.asset_name || '',
+    name: resolvedName,
     type: row.type || (row.category as InvestmentType | undefined) || meta?.type || 'other',
     currentValue: resolvedDisplayValue ?? 0,
     displayValue: resolvedDisplayValue,
@@ -336,11 +510,11 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
     riskLevel: row.risk_level || meta?.riskLevel || 'medium',
     expectedAnnualReturn: expectedReturn.status === 'valid' ? expectedReturn.value : meta?.expectedAnnualReturn ?? 0,
     notes: row.notes ?? meta?.notes ?? '',
-    symbol: row.symbol ?? meta?.symbol,
-    providerSymbol: row.provider_symbol ?? meta?.providerSymbol,
-    market: row.market ?? row.exchange ?? meta?.market,
-    assetType: row.asset_type ?? meta?.assetType,
-    currency: row.currency ?? row.native_currency ?? row.price_currency ?? meta?.currency,
+    symbol: resolvedSymbol,
+    providerSymbol: resolvedProviderSymbol,
+    market: resolvedMarket,
+    assetType: resolvedAssetType,
+    currency: resolvedCurrency ?? meta?.currency,
     amount: amount.status === 'valid' ? amount.value : meta?.amount,
     purchasePrice: purchasePriceValue,
     purchaseTotal: purchaseTotalValue,
@@ -354,8 +528,8 @@ function rowToInvestment(row: DbInvestmentRow, meta?: Partial<InvestmentMeta>): 
     profitLossPercent: profitLossPercentValue,
     defaultCurrencyValue: defaultCurrencyValue.status === 'valid' ? defaultCurrencyValue.value : meta?.defaultCurrencyValue,
     unit: row.unit ?? meta?.unit,
-    priceCurrency: row.price_currency ?? meta?.priceCurrency ?? row.currency ?? meta?.currency,
-    nativeCurrency: row.native_currency ?? meta?.nativeCurrency ?? row.price_currency ?? row.currency ?? meta?.priceCurrency ?? meta?.currency,
+    priceCurrency: resolvedCurrency ?? row.price_currency ?? meta?.priceCurrency ?? row.currency ?? meta?.currency,
+    nativeCurrency: resolvedCurrency ?? row.native_currency ?? meta?.nativeCurrency ?? row.price_currency ?? row.currency ?? meta?.priceCurrency ?? meta?.currency,
     nativeUnitPrice: nativeUnitPrice.status === 'valid' ? nativeUnitPrice.value : meta?.nativeUnitPrice,
     nativeMarketValue: nativeMarketValue.status === 'valid'
       ? nativeMarketValue.value
@@ -487,11 +661,27 @@ export function useInvestments() {
       }
 
       const meta = readJson<Record<string, InvestmentMeta>>(userMetaKey, {});
-      const full = await supabase
+      const richSelect = 'id,user_id,name,asset_name,type,category,amount,value,current_value,initial_value,invested_amount,total_invested,purchase_price,average_buy_price,purchase_total,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,exchange,asset_type,quantity,shares,unit,profit_loss,profit_loss_percent,default_currency_value,location,property_type,expected_monthly_income,expected_monthly_expense,maturity_date,current_price,current_market_value,price_currency,native_currency,native_unit_price,native_market_value,user_currency,fx_rate_to_user_currency,converted_market_value,fx_source,fx_last_updated_at,valuation_source,valuation_last_updated_at,last_price,last_price_updated_at,price_updated_at,data_source,project_id,metal_type,metal_product_type,metal_karat,metal_purity,grams,pure_metal_grams,price_source,created_at,updated_at';
+      const standardSelect = 'id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,purchase_total,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,asset_type,quantity,unit,profit_loss,profit_loss_percent,default_currency_value,location,property_type,expected_monthly_income,expected_monthly_expense,maturity_date,current_price,current_market_value,price_currency,native_currency,native_unit_price,native_market_value,user_currency,fx_rate_to_user_currency,converted_market_value,fx_source,fx_last_updated_at,valuation_source,valuation_last_updated_at,last_price,last_price_updated_at,data_source,project_id,metal_type,metal_product_type,metal_karat,metal_purity,grams,pure_metal_grams,price_source,created_at,updated_at';
+      let full = await supabase
         .from('investment_items')
-        .select('id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,purchase_total,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,asset_type,quantity,unit,profit_loss,profit_loss_percent,default_currency_value,location,property_type,expected_monthly_income,expected_monthly_expense,maturity_date,current_price,current_market_value,price_currency,native_currency,native_unit_price,native_market_value,user_currency,fx_rate_to_user_currency,converted_market_value,fx_source,fx_last_updated_at,valuation_source,valuation_last_updated_at,last_price,last_price_updated_at,data_source,project_id,metal_type,metal_product_type,metal_karat,metal_purity,grams,pure_metal_grams,price_source,created_at,updated_at')
+        .select(richSelect)
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as unknown as InvestmentSelectResult;
+
+      if (full.error) {
+        debugInvestments('rich fetch failed, retrying standard schema', {
+          message: full.error.message,
+          code: full.error.code,
+          details: full.error.details,
+          hint: full.error.hint,
+        });
+        full = await supabase
+          .from('investment_items')
+          .select(standardSelect)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }) as unknown as InvestmentSelectResult;
+      }
 
       if (!cancelled && !full.error) {
         const mapped = (full.data ?? []).map(row => rowToInvestment(row as DbInvestmentRow, meta[(row as DbInvestmentRow).id]));
@@ -612,10 +802,12 @@ export function useInvestments() {
     const previous = items.find(item => item.id === id);
     if (!previous) throw new Error('Investment not found');
 
+    debugInvestments('investment row before edit update', safeInvestmentSummary(previous));
+    const mergedData = mergeInvestmentForUpdate(previous, data);
     const nextItem: Investment = {
       ...previous,
-      ...data,
-      displayValue: data.currentValue,
+      ...mergedData,
+      displayValue: mergedData.currentValue,
       displayValueStatus: 'valid',
       updatedAt,
     };
@@ -625,15 +817,16 @@ export function useInvestments() {
       return nextItem;
     }
 
-    const extendedPayload = buildInvestmentPayload(data);
+    const rawPayload = buildInvestmentPayload(mergedData);
+    const extendedPayload = compactUpdatePayload(rawPayload);
     debugInvestments('update payload', safeInvestmentSummary({
-      ...data,
+      ...mergedData,
       id,
-      quantity: extendedPayload.quantity ?? undefined,
-      purchasePrice: extendedPayload.purchase_price ?? undefined,
-      purchaseTotal: extendedPayload.purchase_total ?? undefined,
-      currentPrice: extendedPayload.current_price ?? undefined,
-      currentMarketValue: extendedPayload.current_market_value ?? undefined,
+      quantity: moneyNumber(extendedPayload.quantity),
+      purchasePrice: moneyNumber(extendedPayload.purchase_price),
+      purchaseTotal: moneyNumber(extendedPayload.purchase_total),
+      currentPrice: moneyNumber(extendedPayload.current_price),
+      currentMarketValue: moneyNumber(extendedPayload.current_market_value),
     }));
 
     const extended = await supabase
@@ -644,7 +837,7 @@ export function useInvestments() {
       .select('*')
       .single();
     if (!extended.error && extended.data) {
-      const next = rowToInvestment(extended.data as DbInvestmentRow, metaFromInvestment(data));
+      const next = rowToInvestment(extended.data as DbInvestmentRow, metaFromInvestment(mergedData));
       debugInvestments('update returned row', safeInvestmentSummary(next));
       setItems(prev => prev.map(item => item.id === id ? next : item));
       return next;
@@ -664,7 +857,7 @@ export function useInvestments() {
     if (legacy.error) throw new Error(legacy.error.message || extended.error?.message || 'Could not update investment');
 
     const meta = readJson<Record<string, InvestmentMeta>>(userMetaKey, {});
-    writeJson(userMetaKey, { ...meta, [id]: metaFromInvestment(data) });
+    writeJson(userMetaKey, { ...meta, [id]: metaFromInvestment(mergedData) });
     setItems(prev => prev.map(item => item.id === id ? nextItem : item));
     return nextItem;
   }, [isGuest, items, persistGuest, user, userMetaKey]);

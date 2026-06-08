@@ -1,4 +1,5 @@
 import type { Investment } from '@/types/investment';
+import { normalizeMarketCurrencyCode, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 
 export type InvestmentHoldingMetrics = {
   linkedSymbol: string;
@@ -34,7 +35,15 @@ export function isMarketLinkedInvestment(item: Investment) {
 }
 
 export function investmentNativeCurrency(item: Investment) {
-  return item.nativeCurrency || item.priceCurrency || item.currency || null;
+  const providerCurrency = normalizeMarketCurrencyCode(item.nativeCurrency ?? item.priceCurrency ?? item.currency);
+  return resolveMarketCurrency({
+    providerCurrency,
+    symbol: item.symbol,
+    providerSymbol: item.providerSymbol,
+    exchange: item.market,
+    market: item.market,
+    assetType: item.assetType ?? item.type,
+  }).currency ?? providerCurrency;
 }
 
 export function calculateInvestmentHoldingMetrics(

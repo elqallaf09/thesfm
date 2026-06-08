@@ -52,17 +52,17 @@ const EXCHANGE_CURRENCY_MATCHERS: Array<{
   test: (input: { symbols: string[]; exchange: string; market: string; country: string; assetType?: string }) => boolean;
 }> = [
   { currency: 'KWD', source: 'derived_from_symbol', test: ({ symbols }) => symbols.some(symbol => symbol.endsWith('.KW')) },
-  { currency: 'KWD', source: 'derived_from_exchange', test: ({ exchange, market, country }) => /boursa\s*kuwait|kuwait|kse/i.test(`${exchange} ${market} ${country}`) },
+  { currency: 'KWD', source: 'derived_from_exchange', test: ({ exchange, market, country }) => /boursa\s*kuwait|kuwait|kse|بورصة\s*الكويت|الكويت/i.test(`${exchange} ${market} ${country}`) },
   { currency: 'SAR', source: 'derived_from_symbol', test: ({ symbols }) => symbols.some(symbol => symbol.endsWith('.SR') || symbol.endsWith('.SA')) },
-  { currency: 'SAR', source: 'derived_from_exchange', test: ({ exchange, market, country }) => /tadawul|saudi|riyadh/i.test(`${exchange} ${market} ${country}`) },
+  { currency: 'SAR', source: 'derived_from_exchange', test: ({ exchange, market, country }) => /tadawul|saudi|riyadh|تداول|السعودية|السوق\s*السعودية/i.test(`${exchange} ${market} ${country}`) },
   { currency: 'AED', source: 'derived_from_symbol', test: ({ symbols }) => symbols.some(symbol => symbol.endsWith('.AE') || symbol.endsWith('.DU') || symbol.endsWith('.AD')) },
-  { currency: 'AED', source: 'derived_from_exchange', test: ({ exchange, market, country }) => /dubai financial market|abu dhabi securities|dfm|adx|uae|emirates/i.test(`${exchange} ${market} ${country}`) },
+  { currency: 'AED', source: 'derived_from_exchange', test: ({ exchange, market, country }) => /dubai financial market|abu dhabi securities|dfm|adx|uae|emirates|دبي|أبو\s*ظبي|ابو\s*ظبي|الإمارات|الامارات/i.test(`${exchange} ${market} ${country}`) },
   { currency: 'QAR', source: 'derived_from_symbol', test: ({ symbols }) => symbols.some(symbol => symbol.endsWith('.QA')) },
-  { currency: 'QAR', source: 'derived_from_exchange', test: ({ exchange, market, country }) => /qatar|doha|qe\b/i.test(`${exchange} ${market} ${country}`) },
+  { currency: 'QAR', source: 'derived_from_exchange', test: ({ exchange, market, country }) => /qatar|doha|qe\b|قطر|الدوحة/i.test(`${exchange} ${market} ${country}`) },
   { currency: 'BHD', source: 'derived_from_symbol', test: ({ symbols }) => symbols.some(symbol => symbol.endsWith('.BH')) },
-  { currency: 'BHD', source: 'derived_from_exchange', test: ({ exchange, market, country }) => /bahrain/i.test(`${exchange} ${market} ${country}`) },
+  { currency: 'BHD', source: 'derived_from_exchange', test: ({ exchange, market, country }) => /bahrain|البحرين/i.test(`${exchange} ${market} ${country}`) },
   { currency: 'OMR', source: 'derived_from_symbol', test: ({ symbols }) => symbols.some(symbol => symbol.endsWith('.OM')) },
-  { currency: 'OMR', source: 'derived_from_exchange', test: ({ exchange, market, country }) => /oman|muscat|msx/i.test(`${exchange} ${market} ${country}`) },
+  { currency: 'OMR', source: 'derived_from_exchange', test: ({ exchange, market, country }) => /oman|muscat|msx|عمان|مسقط/i.test(`${exchange} ${market} ${country}`) },
   { currency: 'GBP', source: 'derived_from_symbol', test: ({ symbols }) => symbols.some(symbol => symbol.endsWith('.L')) },
   { currency: 'GBP', source: 'derived_from_exchange', test: ({ exchange, market, country }) => /london|lse|united kingdom|great britain|\buk\b/i.test(`${exchange} ${market} ${country}`) },
   { currency: 'EUR', source: 'derived_from_symbol', test: ({ symbols }) => symbols.some(symbol => ['.DE', '.PA', '.MI', '.AS', '.MC'].some(suffix => symbol.endsWith(suffix))) },
@@ -230,7 +230,7 @@ function formatPlainNumber(value: number, locale?: string | null, digits = 2) {
 }
 
 function isKuwaitMarket(symbol?: string | null, exchange?: string | null, market?: string | null) {
-  return /\.KW\b/i.test(String(symbol ?? '')) || /boursa\s*kuwait|kuwait|kse/i.test(`${exchange ?? ''} ${market ?? ''}`);
+  return /\.KW\b/i.test(String(symbol ?? '')) || /boursa\s*kuwait|kuwait|kse|بورصة\s*الكويت|الكويت/i.test(`${exchange ?? ''} ${market ?? ''}`);
 }
 
 function isLondonMarket(symbol?: string | null, exchange?: string | null, market?: string | null) {

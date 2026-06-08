@@ -19,7 +19,7 @@ import { useInvestments } from '@/hooks/useInvestments';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
-import { formatMarketPrice } from '@/lib/market/marketCurrency';
+import { formatMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import type { MoneyParseStatus } from '@/lib/money';
 import { calculateInvestmentHoldingMetrics, finiteInvestmentNumber } from '@/lib/investmentCalculations';
 import { investmentSymbol, marketAnalysisUrl } from '@/lib/data/investmentData';
@@ -379,9 +379,23 @@ export default function InvestPage() {
   const accountValue = useCallback((item: Investment) => accountMarketValueOf(item, accountCurrency), [accountCurrency]);
   const formatNativeMoney = useCallback((amount: number | null | undefined, nativeCurrency?: string | null, item?: Investment | null) => {
     if (amount === null || amount === undefined || !Number.isFinite(amount)) return labels.unavailable;
+    const resolvedCurrency = resolveMarketCurrency({
+      providerCurrency: nativeCurrency ?? item?.nativeCurrency ?? item?.priceCurrency ?? item?.currency,
+      exchange: item?.market,
+      market: item?.market,
+      symbol: item?.symbol ?? item?.providerSymbol,
+      providerSymbol: item?.providerSymbol,
+      assetType: item?.assetType ?? item?.type,
+    }).currency;
+    if (!resolvedCurrency) {
+      return amount.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: Math.abs(amount) >= 1000 ? 2 : 4,
+      });
+    }
     return formatMarketPrice({
       price: amount,
-      currency: nativeCurrency ?? item?.nativeCurrency ?? item?.priceCurrency ?? item?.currency,
+      currency: resolvedCurrency,
       exchange: item?.market,
       symbol: item?.symbol ?? item?.providerSymbol,
       locale: lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en',

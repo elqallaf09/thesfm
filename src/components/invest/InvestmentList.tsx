@@ -22,6 +22,7 @@ interface Props {
     edit: string;
     delete: string;
     monthly: string;
+    startDate?: string;
     risk: string;
     expectedReturn: string;
     ofPortfolio: string;

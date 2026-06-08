@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { getCurrency } from '@/lib/currencies';
 import { parseMoneyValue } from '@/lib/money';
-import { formatMarketPrice } from '@/lib/market/marketCurrency';
+import { formatMarketPrice, normalizeMarketCurrencyCode, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { MARKET_EXCHANGE_OPTIONS, normalizeMarketExchange, type MarketExchangeId } from '@/lib/market/marketExchangeOptions';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
 
@@ -246,6 +246,28 @@ function isMarketType(type: InvestmentType) {
 function normalizedCurrency(value: string | null | undefined, fallback: string) {
   const next = String(value || fallback || 'KWD').trim().toUpperCase();
   return /^[A-Z]{3}$/.test(next) ? next : fallback.toUpperCase();
+}
+
+function resolveFormCurrency(input: {
+  currency?: unknown;
+  nativeCurrency?: unknown;
+  priceCurrency?: unknown;
+  market?: unknown;
+  symbol?: unknown;
+  providerSymbol?: unknown;
+  assetType?: unknown;
+  fallback: string;
+}) {
+  const providerCurrency = normalizeMarketCurrencyCode(input.nativeCurrency ?? input.priceCurrency ?? input.currency);
+  const resolved = resolveMarketCurrency({
+    providerCurrency,
+    symbol: input.symbol,
+    providerSymbol: input.providerSymbol,
+    exchange: input.market,
+    market: input.market,
+    assetType: typeof input.assetType === 'string' ? input.assetType : null,
+  });
+  return resolved.currency ?? providerCurrency ?? normalizedCurrency(null, input.fallback);
 }
 
 function assetInvestmentType(assetType: string): InvestmentType {
@@ -528,9 +550,20 @@ export function InvestmentFormModal({
     if (mode === 'edit' && initialValues) {
       const nextType = initialValues.type || 'other';
       const initialPurchaseTotal = initialValues.purchaseTotal ?? initialValues.purchasePrice ?? initialValues.amount;
+      const initialAsset = assetFromInvestment(initialValues);
+      const initialCurrency = resolveFormCurrency({
+        currency: initialValues.currency,
+        nativeCurrency: initialValues.nativeCurrency,
+        priceCurrency: initialValues.priceCurrency,
+        market: initialValues.market,
+        symbol: initialValues.symbol,
+        providerSymbol: initialValues.providerSymbol,
+        assetType: initialValues.assetType ?? nextType,
+        fallback: accountCurrency,
+      });
       setType(nextType);
       setName(initialValues.name || '');
-      setInvestmentCurrency(normalizedCurrency(initialValues.nativeCurrency ?? initialValues.priceCurrency ?? initialValues.currency, accountCurrency));
+      setInvestmentCurrency(initialCurrency);
       setQuantity(toInputNumber(initialValues.quantity, 10));
       setPurchasePrice(toInputNumber(nextType === 'realEstate' || nextType === 'project' || nextType === 'other'
         ? initialPurchaseTotal
@@ -549,8 +582,25 @@ export function InvestmentFormModal({
       setMaturityDate(initialValues.maturityDate || '');
       setMetalUnit(initialValues.metalProductType || (nextType === 'silver' ? 'gram' : 'bar'));
       setMetalGrams(toInputNumber(initialValues.grams && initialValues.quantity ? initialValues.grams / initialValues.quantity : initialValues.grams, 10));
-      setSelectedAsset(assetFromInvestment(initialValues));
+      setSelectedAsset(initialAsset);
       setSelectedExchange(normalizeMarketExchange(initialValues.market) ?? '');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Investments] prefilled edit form values', {
+          id: initialValues.id,
+          name: initialValues.name,
+          type: nextType,
+          symbol: initialValues.symbol,
+          providerSymbol: initialValues.providerSymbol,
+          market: initialValues.market,
+          currency: initialCurrency,
+          quantity: initialValues.quantity,
+          purchasePrice: initialValues.purchasePrice,
+          purchaseTotal: initialPurchaseTotal,
+          currentPrice: initialValues.currentPrice ?? initialValues.lastPrice,
+          startDate: initialValues.startDate,
+          hasSelectedAsset: Boolean(initialAsset),
+        });
+      }
       return;
     }
 
@@ -839,12 +889,30 @@ export function InvestmentFormModal({
     const accountValue = convertedValueForSave ?? nativeValue;
     const addAnother = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value === 'another';
     const marketOrMetalUnitPrice = unitPrice ?? undefined;
-    const priceSource = isMetal ? metals.source || undefined : selectedAsset?.source;
+    const savedSymbol = mode === 'edit' ? initialValues?.symbol : undefined;
+    const savedProviderSymbol = mode === 'edit' ? initialValues?.providerSymbol : undefined;
+    const savedMarket = mode === 'edit' ? initialValues?.market : undefined;
+    const savedAssetType = mode === 'edit' ? initialValues?.assetType : undefined;
+    const resolvedSymbol = selectedAsset?.symbol ?? savedSymbol;
+    const resolvedProviderSymbol = selectedAsset?.provider_symbol ?? savedProviderSymbol;
+    const resolvedMarket = selectedAsset ? localizedMarketName(selectedAsset, dir) : savedMarket;
+    const resolvedAssetType = selectedAsset?.asset_type ?? savedAssetType ?? (isMetal ? 'commodity' : type);
+    const resolvedCurrency = resolveFormCurrency({
+      currency: formCurrency,
+      market: resolvedMarket,
+      symbol: resolvedSymbol,
+      providerSymbol: resolvedProviderSymbol,
+      assetType: resolvedAssetType,
+      fallback: accountCurrency,
+    });
+    const priceSource = isMetal
+      ? metals.source || initialValues?.priceSource || initialValues?.dataSource || undefined
+      : selectedAsset?.source ?? initialValues?.priceSource ?? initialValues?.dataSource;
     const lastUpdated = isMetal
       ? type === 'gold'
-        ? metals.gold?.lastUpdated
-        : metals.silver?.lastUpdated
-      : selectedAsset?.updated_at ?? undefined;
+        ? metals.gold?.lastUpdated ?? initialValues?.lastPriceUpdatedAt
+        : metals.silver?.lastUpdated ?? initialValues?.lastPriceUpdatedAt
+      : selectedAsset?.updated_at ?? initialValues?.lastPriceUpdatedAt ?? initialValues?.valuationLastUpdatedAt ?? undefined;
 
     const input: InvestmentInput = {
       name: name.trim(),
@@ -856,11 +924,11 @@ export function InvestmentFormModal({
       riskLevel,
       expectedAnnualReturn: expectedReturnValue === null ? undefined : expectedReturnValue,
       notes: notes.trim() || undefined,
-      symbol: selectedAsset?.symbol,
-      providerSymbol: selectedAsset?.provider_symbol ?? undefined,
-      market: selectedAsset ? localizedMarketName(selectedAsset, dir) : undefined,
-      assetType: selectedAsset?.asset_type ?? (isMetal ? 'commodity' : type),
-      currency: formCurrency,
+      symbol: resolvedSymbol,
+      providerSymbol: resolvedProviderSymbol,
+      market: resolvedMarket,
+      assetType: resolvedAssetType,
+      currency: resolvedCurrency,
       quantity: (isMarketType(type) || isMetal) && quantityValue !== null ? quantityValue : undefined,
       unit: isMetal ? metalUnit : undefined,
       purchasePrice: purchaseUnitPrice ?? undefined,
@@ -870,8 +938,8 @@ export function InvestmentFormModal({
       profitLoss: profitLoss ?? undefined,
       profitLossPercent: profitLossPercent ?? undefined,
       defaultCurrencyValue: convertedCurrentValue ?? convertedValueForSave ?? undefined,
-      priceCurrency: formCurrency,
-      nativeCurrency: formCurrency,
+      priceCurrency: resolvedCurrency,
+      nativeCurrency: resolvedCurrency,
       nativeUnitPrice: marketOrMetalUnitPrice,
       nativeMarketValue: nativeCurrentValue ?? nativeValue,
       userCurrency: accountCurrency,

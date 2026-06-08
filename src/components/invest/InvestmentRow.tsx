@@ -20,6 +20,7 @@ interface Props {
     edit: string;
     delete: string;
     monthly: string;
+    startDate?: string;
     risk: string;
     expectedReturn: string;
     ofPortfolio: string;
@@ -198,7 +199,8 @@ export function InvestmentRow({
         <DetailChip label={labels.monthly} value={formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)} />
         <DetailChip label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? '-' : `${formatNumber(investment.expectedAnnualReturn)}%`} />
         {investment.market && <DetailChip label={labels.market || 'Market'} value={investment.market} />}
-        {nativeCurrency && <DetailChip label={labels.currency || 'Currency'} value={nativeCurrency} />}
+        <DetailChip label={labels.currency || 'Currency'} value={nativeCurrency || labels.unavailable || '-'} />
+        <DetailChip label={labels.startDate || 'Entry date'} value={formatDateOnly(investment.startDate) || labels.unavailable || '-'} />
         {(investment.priceSource || investment.dataSource || investment.valuationSource) && (
           <DetailChip label={labels.dataSource || 'Data source'} value={investment.priceSource || investment.dataSource || investment.valuationSource || ''} />
         )}
@@ -299,5 +301,16 @@ function formatDate(value: string | undefined) {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
+  }).format(date);
+}
+
+function formatDateOnly(value: string | undefined) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   }).format(date);
 }
