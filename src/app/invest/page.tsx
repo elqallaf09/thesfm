@@ -21,7 +21,7 @@ import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
 import { formatMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import type { MoneyParseStatus } from '@/lib/money';
-import { calculateInvestmentHoldingMetrics, finiteInvestmentNumber } from '@/lib/investmentCalculations';
+import { calculateInvestmentHoldingMetrics } from '@/lib/investmentCalculations';
 import { investmentSymbol, marketAnalysisUrl } from '@/lib/data/investmentData';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
 
@@ -141,7 +141,7 @@ export default function InvestPage() {
   const router = useRouter();
   const { lang, dir, t } = useLanguage();
   const { currency } = useCurrency();
-  const { items, isLoading, error, add, update, remove } = useInvestments();
+  const { items, isLoading, error, add, update, updateMarketPrice, remove } = useInvestments();
   const [modalOpen, setModalOpen] = useState(false);
   const [mode, setMode] = useState<'create' | 'edit'>('create');
   const [selected, setSelected] = useState<Investment | null>(null);
@@ -680,61 +680,27 @@ export default function InvestPage() {
           priceUnit: payload.item?.price_unit,
         });
       }
-      const nextInput: InvestmentInput = {
-        name: item.name,
-        type: item.type,
-        currentValue: convertedMarketValue ?? currentMarketValue ?? finiteInvestmentNumber(item.currentValue) ?? 0,
-        monthlyContribution: item.monthlyContribution,
-        startDate: item.startDate,
-        riskLevel: item.riskLevel,
-        expectedAnnualReturn: item.expectedAnnualReturn,
-        notes: item.notes,
-        symbol: item.symbol || payload.item?.symbol || providerSymbol,
-        providerSymbol: payload.item?.provider_symbol || providerSymbol,
-        market: item.market,
-        assetType: item.assetType,
-        currency: nativeCurrency,
-        quantity: item.quantity,
-        amount: convertedMarketValue ?? currentMarketValue ?? undefined,
-        purchasePrice: item.purchasePrice,
-        purchaseTotal: metrics.totalInvested ?? item.purchaseTotal,
+      const source = payload.item?.source || item.priceSource || item.dataSource;
+      const updated = await updateMarketPrice(item.id, {
         currentPrice: price,
         currentMarketValue: currentMarketValue ?? undefined,
-        profitLoss: metrics.profitLossAmount ?? undefined,
-        profitLossPercent: metrics.profitLossPercent ?? undefined,
         defaultCurrencyValue: convertedMarketValue ?? undefined,
-        unit: item.unit,
+        convertedMarketValue: convertedMarketValue ?? undefined,
+        lastPrice: price,
+        lastPriceUpdatedAt: valuationUpdatedAt,
+        dataSource: source,
+        priceSource: source,
+        valuationSource: source,
+        valuationLastUpdatedAt: valuationUpdatedAt,
         priceCurrency: nativeCurrency,
         nativeCurrency,
         nativeUnitPrice: price,
         nativeMarketValue: currentMarketValue ?? undefined,
         userCurrency: accountCurrency,
         fxRateToUserCurrency: fx?.rate,
-        convertedMarketValue: convertedMarketValue ?? undefined,
         fxSource: fx?.source ?? (nativeCurrency === accountCurrency ? 'same_currency' : 'unavailable'),
         fxLastUpdatedAt: fx?.lastUpdated,
-        valuationSource: payload.item?.source || item.dataSource || item.priceSource,
-        valuationLastUpdatedAt: valuationUpdatedAt,
-        lastPrice: price,
-        lastPriceUpdatedAt: valuationUpdatedAt,
-        dataSource: payload.item?.source || item.dataSource,
-        projectId: item.projectId,
-        projectName: item.projectName,
-        location: item.location,
-        propertyType: item.propertyType,
-        expectedMonthlyIncome: item.expectedMonthlyIncome,
-        expectedMonthlyExpense: item.expectedMonthlyExpense,
-        maturityDate: item.maturityDate,
-        metalType: item.metalType,
-        metalProductType: item.metalProductType,
-        metalKarat: item.metalKarat,
-        metalPurity: item.metalPurity,
-        grams: item.grams,
-        pureMetalGrams: item.pureMetalGrams,
-        priceSource: payload.item?.source || item.priceSource || item.dataSource,
-      };
-
-      const updated = await update(item.id, nextInput);
+      });
       if (details?.id === item.id) setDetails(updated);
       if (selected?.id === item.id) setSelected(updated);
       setPriceRefreshStatuses(prev => ({

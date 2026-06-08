@@ -172,12 +172,6 @@ function meaningfulValue(value: unknown) {
   return true;
 }
 
-function protectedUpdateValue(value: unknown) {
-  if (!meaningfulValue(value)) return false;
-  if (typeof value === 'number') return value !== 0;
-  return true;
-}
-
 function preserve<T>(next: T | undefined, previous: T | undefined): T | undefined {
   return meaningfulValue(next) ? next : previous;
 }
@@ -285,6 +279,26 @@ const CORE_SAVE_KEYS = new Set([
   'data_source',
 ]);
 
+const PRICE_REFRESH_UPDATE_KEYS = new Set([
+  'current_price',
+  'last_price',
+  'last_price_updated_at',
+  'price_updated_at',
+  'valuation_last_updated_at',
+  'data_source',
+  'price_source',
+  'valuation_source',
+]);
+
+const READONLY_UPDATE_KEYS = new Set([
+  'id',
+  'user_id',
+  'created_at',
+  'updated_at',
+]);
+
+type InvestmentWriteSource = 'add_form' | 'edit_form' | 'price_refresh' | 'data_repair';
+
 function pickPayload<T extends Record<string, unknown>>(payload: T, allowed: Set<string>) {
   return Object.fromEntries(Object.entries(payload).filter(([key]) => allowed.has(key)));
 }
@@ -296,6 +310,7 @@ function coreSavePayload(payload: Record<string, unknown>) {
 type InvestmentMutationAttempt = {
   label: string;
   payload: Record<string, unknown>;
+  source?: InvestmentWriteSource;
 };
 
 type InvestmentMutationResult = {
@@ -310,6 +325,22 @@ type InvestmentMutationResult = {
 
 function mutationErrorMessage(result: InvestmentMutationResult | null) {
   return result?.error?.message || 'Could not save investment';
+}
+
+function logInvestmentWriteOperation(input: {
+  operation: 'insert' | 'update' | 'upsert';
+  source: InvestmentWriteSource;
+  id?: string;
+  payload: Record<string, unknown>;
+}) {
+  if (process.env.NODE_ENV !== 'development') return;
+  console.log('INVESTMENT WRITE OPERATION', {
+    operation: input.operation,
+    source: input.source,
+    id: input.id,
+    payloadKeys: Object.keys(input.payload),
+    payload: input.payload,
+  });
 }
 
 function buildSnapshotFallbackPayload(data: InvestmentInput, userId?: string) {
@@ -333,6 +364,11 @@ async function insertInvestmentWithAttempts(attempts: InvestmentMutationAttempt[
   let last: InvestmentMutationResult | null = null;
 
   for (const attempt of attempts) {
+    logInvestmentWriteOperation({
+      operation: 'insert',
+      source: attempt.source ?? 'add_form',
+      payload: attempt.payload,
+    });
     const result = await supabase
       .from('investment_items')
       .insert(attempt.payload)
@@ -366,6 +402,12 @@ async function updateInvestmentWithAttempts(id: string, userId: string, attempts
 
   for (const attempt of attempts) {
     if (Object.keys(attempt.payload).length === 0) continue;
+    logInvestmentWriteOperation({
+      operation: 'update',
+      source: attempt.source ?? 'edit_form',
+      id,
+      payload: attempt.payload,
+    });
     const result = await supabase
       .from('investment_items')
       .update(attempt.payload)
@@ -507,6 +549,126 @@ function mergeInvestmentForUpdate(previous: Investment, data: InvestmentInput): 
   };
 }
 
+type InvestmentMarketPriceUpdate = {
+  currentPrice?: unknown;
+  currentMarketValue?: unknown;
+  defaultCurrencyValue?: unknown;
+  convertedMarketValue?: unknown;
+  lastPrice?: unknown;
+  lastPriceUpdatedAt?: string | null;
+  dataSource?: string | null;
+  priceSource?: string | null;
+  valuationSource?: string | null;
+  valuationLastUpdatedAt?: string | null;
+  priceCurrency?: string | null;
+  nativeCurrency?: string | null;
+  nativeUnitPrice?: unknown;
+  nativeMarketValue?: unknown;
+  userCurrency?: string | null;
+  fxRateToUserCurrency?: unknown;
+  fxSource?: string | null;
+  fxLastUpdatedAt?: string | null;
+};
+
+function buildPriceRefreshPayload(data: InvestmentMarketPriceUpdate) {
+  const currentPrice = coalesceNumber(data.currentPrice, data.lastPrice, data.nativeUnitPrice);
+  const lastPrice = coalesceNumber(data.lastPrice, data.currentPrice, data.nativeUnitPrice);
+  const updatedAt = data.lastPriceUpdatedAt ?? data.valuationLastUpdatedAt ?? (currentPrice !== undefined ? nowIso() : null);
+
+  return cleanInvestmentUpdatePayload({
+    current_price: currentPrice,
+    last_price: lastPrice,
+    last_price_updated_at: updatedAt,
+    price_updated_at: updatedAt,
+    valuation_last_updated_at: updatedAt,
+    data_source: data.dataSource,
+    price_source: data.priceSource ?? data.dataSource,
+    valuation_source: data.valuationSource ?? data.dataSource ?? data.priceSource,
+  }, { allowedKeys: PRICE_REFRESH_UPDATE_KEYS });
+}
+
+function mergeMarketPriceIntoInvestment(previous: Investment, data: InvestmentMarketPriceUpdate, updatedAt: string): Investment {
+  const currentPrice = coalesceNumber(data.currentPrice, data.lastPrice, data.nativeUnitPrice);
+  const quantity = moneyNumber(previous.quantity);
+  const purchasePrice = moneyNumber(previous.purchasePrice);
+  const purchaseTotal = moneyNumber(previous.purchaseTotal) ?? positiveProduct(quantity, purchasePrice);
+  const currentMarketValue = coalesceNumber(data.currentMarketValue, data.nativeMarketValue)
+    ?? positiveProduct(quantity, currentPrice)
+    ?? previous.currentMarketValue;
+  const convertedMarketValue = coalesceNumber(data.convertedMarketValue, data.defaultCurrencyValue);
+  const accountValue = convertedMarketValue ?? currentMarketValue ?? finitePreviousValue(previous);
+  const profitLoss = currentMarketValue !== undefined && purchaseTotal !== undefined
+    ? currentMarketValue - purchaseTotal
+    : previous.profitLoss;
+  const profitLossPercent = profitLoss !== undefined && purchaseTotal !== undefined && purchaseTotal > 0
+    ? (profitLoss / purchaseTotal) * 100
+    : previous.profitLossPercent;
+  const priceCurrency = normalizeMarketCurrencyCode(data.nativeCurrency ?? data.priceCurrency)
+    ?? previous.nativeCurrency
+    ?? previous.priceCurrency;
+
+  return {
+    ...previous,
+    currentValue: accountValue,
+    displayValue: accountValue,
+    displayValueStatus: 'valid',
+    currentPrice: currentPrice ?? previous.currentPrice,
+    currentMarketValue,
+    profitLoss,
+    profitLossPercent,
+    defaultCurrencyValue: convertedMarketValue ?? previous.defaultCurrencyValue,
+    priceCurrency: priceCurrency ?? previous.priceCurrency,
+    nativeCurrency: priceCurrency ?? previous.nativeCurrency,
+    nativeUnitPrice: currentPrice ?? previous.nativeUnitPrice,
+    nativeMarketValue: currentMarketValue ?? previous.nativeMarketValue,
+    userCurrency: normalizeMarketCurrencyCode(data.userCurrency) ?? previous.userCurrency,
+    fxRateToUserCurrency: moneyNumber(data.fxRateToUserCurrency) ?? previous.fxRateToUserCurrency,
+    convertedMarketValue: convertedMarketValue ?? previous.convertedMarketValue,
+    fxSource: data.fxSource ?? previous.fxSource,
+    fxLastUpdatedAt: data.fxLastUpdatedAt ?? previous.fxLastUpdatedAt,
+    valuationSource: data.valuationSource ?? data.dataSource ?? data.priceSource ?? previous.valuationSource,
+    valuationLastUpdatedAt: data.valuationLastUpdatedAt ?? data.lastPriceUpdatedAt ?? previous.valuationLastUpdatedAt,
+    lastPrice: currentPrice ?? previous.lastPrice,
+    lastPriceUpdatedAt: data.lastPriceUpdatedAt ?? data.valuationLastUpdatedAt ?? previous.lastPriceUpdatedAt,
+    dataSource: data.dataSource ?? previous.dataSource,
+    priceSource: data.priceSource ?? data.dataSource ?? previous.priceSource,
+    updatedAt,
+  };
+}
+
+function finitePreviousValue(previous: Investment) {
+  return moneyNumber(previous.currentValue) ?? previous.displayValue ?? 0;
+}
+
+type CleanInvestmentUpdateOptions = {
+  allowedKeys?: Set<string>;
+  allowNullKeys?: Set<string>;
+  allowEmptyStringKeys?: Set<string>;
+  dropZeroKeys?: Set<string>;
+};
+
+function cleanInvestmentUpdatePayload<T extends Record<string, unknown>>(
+  payload: T,
+  options: CleanInvestmentUpdateOptions = {},
+) {
+  return Object.fromEntries(
+    Object.entries(payload).filter(([key, value]) => {
+      if (READONLY_UPDATE_KEYS.has(key)) return false;
+      if (options.allowedKeys && !options.allowedKeys.has(key)) return false;
+      if (value === undefined) return false;
+      if (value === null) return Boolean(options.allowNullKeys?.has(key));
+      if (typeof value === 'string' && value.trim().length === 0) {
+        return Boolean(options.allowEmptyStringKeys?.has(key));
+      }
+      if (typeof value === 'number') {
+        if (!Number.isFinite(value)) return false;
+        if (value === 0 && options.dropZeroKeys?.has(key)) return false;
+      }
+      return true;
+    }),
+  );
+}
+
 function compactUpdatePayload<T extends Record<string, unknown>>(payload: T) {
   const protectedEmptyKeys = new Set([
     'asset_name',
@@ -539,12 +701,7 @@ function compactUpdatePayload<T extends Record<string, unknown>>(payload: T) {
     'investment_snapshot',
   ]);
 
-  return Object.fromEntries(
-    Object.entries(payload).filter(([key, value]) => {
-      if (!protectedEmptyKeys.has(key)) return true;
-      return protectedUpdateValue(value);
-    }),
-  );
+  return cleanInvestmentUpdatePayload(payload, { dropZeroKeys: protectedEmptyKeys });
 }
 
 function buildInvestmentPayload(data: InvestmentInput, userId?: string) {
@@ -981,9 +1138,9 @@ export function useInvestments() {
     }));
 
     const savedRow = await insertInvestmentWithAttempts([
-      { label: 'full_schema', payload: extendedPayload },
-      { label: 'core_schema', payload: coreSavePayload(extendedPayload) },
-      { label: 'snapshot_fallback', payload: buildSnapshotFallbackPayload(data, user.id) },
+      { label: 'full_schema', source: 'add_form', payload: extendedPayload },
+      { label: 'core_schema', source: 'add_form', payload: coreSavePayload(extendedPayload) },
+      { label: 'snapshot_fallback', source: 'add_form', payload: buildSnapshotFallbackPayload(data, user.id) },
     ]);
     const next = normalizeInvestment(savedRow as DbInvestmentRow, metaFromInvestment(data));
     debugInvestments('normalized investment', safeInvestmentSummary(next));
@@ -1026,9 +1183,9 @@ export function useInvestments() {
     }));
 
     const savedRow = await updateInvestmentWithAttempts(id, user.id, [
-      { label: 'full_schema', payload: extendedPayload },
-      { label: 'core_schema', payload: compactUpdatePayload(coreSavePayload(rawPayload)) },
-      { label: 'snapshot_fallback', payload: compactUpdatePayload(buildSnapshotFallbackPayload(mergedData)) },
+      { label: 'full_schema', source: 'edit_form', payload: extendedPayload },
+      { label: 'core_schema', source: 'edit_form', payload: compactUpdatePayload(coreSavePayload(rawPayload)) },
+      { label: 'snapshot_fallback', source: 'edit_form', payload: compactUpdatePayload(buildSnapshotFallbackPayload(mergedData)) },
     ]);
     const next = normalizeInvestment(savedRow as DbInvestmentRow, metaFromInvestment(mergedData));
     debugInvestments('normalized investment', safeInvestmentSummary(next));
@@ -1037,6 +1194,60 @@ export function useInvestments() {
     setItems(prev => prev.map(item => item.id === id ? next : item));
     return next;
   }, [isGuest, items, persistGuest, user, userMetaKey]);
+
+  const updateMarketPrice = useCallback(async (id: string, data: InvestmentMarketPriceUpdate) => {
+    const updatedAt = nowIso();
+    const previous = items.find(item => item.id === id);
+    if (!previous) throw new Error('Investment not found');
+
+    const nextItem = mergeMarketPriceIntoInvestment(previous, data, updatedAt);
+
+    if (isGuest || !user) {
+      persistGuest(items.map(item => item.id === id ? nextItem : item));
+      return nextItem;
+    }
+
+    const pricePayload = buildPriceRefreshPayload(data);
+    const minimalPayload = cleanInvestmentUpdatePayload({
+      current_price: pricePayload.current_price,
+      last_price: pricePayload.last_price,
+      last_price_updated_at: pricePayload.last_price_updated_at,
+      data_source: pricePayload.data_source,
+      price_source: pricePayload.price_source,
+    }, { allowedKeys: PRICE_REFRESH_UPDATE_KEYS });
+
+    debugInvestments('price refresh payload', {
+      id,
+      payloadKeys: Object.keys(pricePayload),
+      criticalUserFieldsIncluded: Object.keys(pricePayload).filter(key => [
+        'quantity',
+        'shares',
+        'purchase_price',
+        'average_buy_price',
+        'purchase_date',
+        'entry_date',
+        'currency',
+        'asset_name',
+        'symbol',
+        'market',
+        'exchange',
+      ].includes(key)),
+    });
+
+    const savedRow = await updateInvestmentWithAttempts(id, user.id, [
+      { label: 'price_refresh', source: 'price_refresh', payload: pricePayload },
+      {
+        label: 'price_refresh_core',
+        source: 'price_refresh',
+        payload: cleanInvestmentUpdatePayload(coreSavePayload(pricePayload), { allowedKeys: PRICE_REFRESH_UPDATE_KEYS }),
+      },
+      { label: 'price_refresh_minimal', source: 'price_refresh', payload: minimalPayload },
+    ]);
+    const next = normalizeInvestment(savedRow as DbInvestmentRow, metaFromInvestment(nextItem));
+    debugInvestments('normalized investment after price refresh', safeInvestmentSummary(next));
+    setItems(prev => prev.map(item => item.id === id ? next : item));
+    return next;
+  }, [isGuest, items, persistGuest, user]);
 
   const remove = useCallback(async (id: string) => {
     if (isGuest || !user) {
@@ -1060,6 +1271,7 @@ export function useInvestments() {
     error,
     add,
     update,
+    updateMarketPrice,
     remove,
   };
 }
