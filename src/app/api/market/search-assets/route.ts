@@ -4,6 +4,16 @@ import { findAssetAliasMatches } from '@/lib/market/assetAliases';
 import { fetchYahooNormalizedQuote, type YahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 import { normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeAssetType, normalizeMarketSymbolInput, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
+import {
+  exchangeRequiresSymbolSync,
+  marketExchangeAliases,
+  marketExchangeLabel,
+  normalizeMarketExchange,
+} from '@/lib/market/marketExchangeOptions';
+import {
+  searchBundledMarketSymbols,
+  type MarketSymbolSearchResult,
+} from '@/lib/market/marketSymbolDirectory';
 import { proxySearch } from '@/lib/market/openbbProxy';
 import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbolResolver';
 
@@ -11,12 +21,20 @@ export const revalidate = 300;
 
 type MarketSymbolRow = {
   symbol: string;
-  provider_symbol: string;
-  name: string;
+  provider_symbol?: string | null;
+  name?: string | null;
   asset_type: string;
   exchange: string | null;
+  market?: string | null;
+  display_symbol?: string | null;
+  company_name_ar?: string | null;
+  company_name_en?: string | null;
+  sector?: string | null;
   country: string | null;
   currency: string | null;
+  price_unit?: 'major' | 'fils' | 'pence' | null;
+  source?: string | null;
+  last_synced_at?: string | null;
 };
 
 type AssetCandidate = {
@@ -32,6 +50,9 @@ type AssetCandidate = {
   marketEn?: string;
   country?: string;
   currency?: string;
+  priceUnit?: 'major' | 'fils' | 'pence' | null;
+  source?: string | null;
+  lastSyncedAt?: string | null;
   sourceHint: string;
 };
 
@@ -58,11 +79,12 @@ type AssetSearchItem = {
   unavailable_reason?: string;
 };
 
-const MAX_RESULTS = 8;
+const MAX_RESULTS = 32;
+const PRICE_ENRICH_LIMIT = 10;
 
 function getSupabaseServerClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return null;
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -74,40 +96,71 @@ function cleanSearchTerm(value: string) {
 }
 
 function mapMarketSymbol(row: MarketSymbolRow): AssetCandidate {
+  const exchangeId = normalizeMarketExchange(row.exchange);
+  const symbol = String(row.display_symbol || row.symbol).trim().toUpperCase();
+  const providerSymbol = String(row.provider_symbol || symbol).trim().toUpperCase();
+  const nameEn = String(row.company_name_en || row.name || symbol).trim();
+  const nameAr = row.company_name_ar ? String(row.company_name_ar).trim() : undefined;
+  const marketEn = exchangeId ? marketExchangeLabel(exchangeId, 'en') : row.market ?? row.exchange ?? undefined;
+  const marketAr = exchangeId ? marketExchangeLabel(exchangeId, 'ar') : row.market ?? row.exchange ?? undefined;
   return {
-    symbol: row.symbol.toUpperCase(),
-    providerSymbol: row.provider_symbol.toUpperCase(),
-    providerSymbols: [row.provider_symbol.toUpperCase(), row.symbol.toUpperCase()],
-    name: row.name,
-    nameEn: row.name,
+    symbol,
+    providerSymbol,
+    providerSymbols: [providerSymbol, symbol],
+    name: nameAr ?? nameEn,
+    nameAr,
+    nameEn,
     assetType: normalizeAssetType(row.asset_type),
-    market: row.exchange ?? undefined,
+    market: marketAr ?? marketEn,
+    marketAr,
+    marketEn,
     country: row.country ?? undefined,
     currency: row.currency ?? undefined,
-    sourceHint: 'supabase',
+    priceUnit: row.price_unit ?? undefined,
+    source: row.source ?? undefined,
+    lastSyncedAt: row.last_synced_at ?? undefined,
+    sourceHint: row.source ?? 'supabase',
   };
 }
 
-async function searchSupabaseSymbols(query: string, assetType?: MarketAssetType) {
+async function searchSupabaseSymbols(query: string, assetType?: MarketAssetType, exchange?: string | null) {
   const supabase = getSupabaseServerClient();
   if (!supabase) return [];
 
+  const exchangeAliases = marketExchangeAliases(exchange);
   let request = supabase
     .from('market_symbols')
-    .select('symbol, provider_symbol, name, asset_type, exchange, country, currency')
+    .select('symbol, provider_symbol, name, asset_type, exchange, market, display_symbol, company_name_ar, company_name_en, sector, country, currency, price_unit, source, last_synced_at')
     .eq('is_active', true)
-    .limit(16);
+    .limit(48);
 
   if (assetType) request = request.eq('asset_type', assetType);
+  if (exchangeAliases.length > 0) request = request.in('exchange', exchangeAliases);
 
   if (query) {
     const like = `%${query}%`;
-    request = request.or(`symbol.ilike.${like},provider_symbol.ilike.${like},name.ilike.${like},exchange.ilike.${like}`);
+    request = request.or(`symbol.ilike.${like},display_symbol.ilike.${like},provider_symbol.ilike.${like},name.ilike.${like},company_name_ar.ilike.${like},company_name_en.ilike.${like},exchange.ilike.${like},market.ilike.${like}`);
   }
 
   const { data, error } = await request;
-  if (error) return [];
-  return (data ?? []).map(row => mapMarketSymbol(row as MarketSymbolRow));
+  if (!error) return (data ?? []).map(row => mapMarketSymbol(row as MarketSymbolRow));
+
+  let legacyRequest = supabase
+    .from('market_symbols')
+    .select('symbol, provider_symbol, name, asset_type, exchange, country, currency')
+    .eq('is_active', true)
+    .limit(48);
+
+  if (assetType) legacyRequest = legacyRequest.eq('asset_type', assetType);
+  if (exchangeAliases.length > 0) legacyRequest = legacyRequest.in('exchange', exchangeAliases);
+  if (query) {
+    const like = `%${query}%`;
+    legacyRequest = legacyRequest.or(`symbol.ilike.${like},provider_symbol.ilike.${like},name.ilike.${like},exchange.ilike.${like}`);
+  }
+
+  const legacy = await legacyRequest;
+  if (legacy.error) return [];
+  return (legacy.data ?? []).map(row => mapMarketSymbol(row as MarketSymbolRow));
 }
 
 function candidateFromSearchItem(item: MarketSearchItem, sourceHint: string): AssetCandidate {
@@ -124,6 +177,29 @@ function candidateFromSearchItem(item: MarketSearchItem, sourceHint: string): As
     country: item.country,
     currency: item.currency,
     sourceHint,
+  };
+}
+
+function candidateFromDirectory(item: MarketSymbolSearchResult): AssetCandidate {
+  const symbol = item.symbol.toUpperCase();
+  const providerSymbol = item.providerSymbol?.toUpperCase();
+  return {
+    symbol,
+    providerSymbol,
+    providerSymbols: [providerSymbol, symbol].filter(Boolean) as string[],
+    name: item.companyNameAr ?? item.companyNameEn ?? item.name,
+    nameAr: item.companyNameAr,
+    nameEn: item.companyNameEn ?? item.name,
+    assetType: normalizeAssetType(item.assetType),
+    market: item.exchangeLabelAr ?? item.exchange,
+    marketAr: item.exchangeLabelAr,
+    marketEn: item.exchangeLabelEn ?? item.exchange,
+    country: item.country,
+    currency: item.currency,
+    priceUnit: item.priceUnit,
+    source: item.exchangeLabelEn ?? item.exchange ?? 'Market symbol directory',
+    lastSyncedAt: item.lastSyncedAt,
+    sourceHint: item.source ?? 'market_symbol_directory',
   };
 }
 
@@ -188,6 +264,7 @@ function normalizeQuoteUnits(quote: YahooNormalizedQuote, candidate: AssetCandid
     exchange: candidate.market,
     market: candidate.market,
     assetType: candidate.assetType,
+    priceUnit: candidate.priceUnit,
   });
   const normalizedChange = normalizeMarketPrice({
     price: quote.change,
@@ -235,6 +312,43 @@ function normalizeResult(candidate: AssetCandidate, quote: YahooNormalizedQuote)
   };
 }
 
+function unavailableResult(candidate: AssetCandidate, unavailableReason = 'price_unavailable'): AssetSearchItem {
+  const providerSymbols = quoteSymbols(candidate);
+  const providerSymbol = candidate.providerSymbol ?? providerSymbols[0] ?? candidate.symbol;
+  const resolvedCurrency = resolveMarketCurrency({
+    providerCurrency: candidate.currency,
+    symbol: candidate.symbol,
+    providerSymbol,
+    exchange: candidate.market,
+    market: candidate.market,
+    country: candidate.country,
+    assetType: candidate.assetType,
+  });
+
+  return {
+    name: candidate.nameAr ?? candidate.name,
+    name_ar: candidate.nameAr,
+    name_en: candidate.nameEn ?? candidate.name,
+    symbol: candidate.symbol,
+    provider_symbol: providerSymbol,
+    market: candidate.marketAr ?? candidate.market ?? null,
+    market_ar: candidate.marketAr,
+    market_en: candidate.marketEn ?? candidate.market,
+    country: candidate.country,
+    asset_type: candidate.assetType,
+    currency: candidate.currency ?? resolvedCurrency.currency,
+    price_unit: candidate.priceUnit ?? null,
+    price: null,
+    change: null,
+    change_percent: null,
+    updated_at: candidate.lastSyncedAt ?? null,
+    source: candidate.source ?? candidate.sourceHint,
+    search_source: candidate.sourceHint,
+    available: false,
+    unavailable_reason: unavailableReason,
+  };
+}
+
 async function enrichCandidate(candidate: AssetCandidate): Promise<AssetSearchItem> {
   const quote = await fetchYahooNormalizedQuote({
     requestedSymbol: candidate.symbol,
@@ -275,19 +389,30 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const query = cleanSearchTerm(searchParams.get('q') ?? searchParams.get('query') ?? '');
   const assetType = searchParams.get('assetType') ? normalizeAssetType(searchParams.get('assetType')) : undefined;
+  const exchange = normalizeMarketExchange(searchParams.get('exchange') ?? searchParams.get('market'));
 
   if (query.length < 2) {
     return NextResponse.json({ ok: true, query, items: [], message: 'NO_RESULTS' });
   }
 
   try {
-    const aliasCandidates = findAssetAliasMatches(query).map(candidateFromAlias);
-    const shouldSearchUSUniverse = !assetType || assetType === 'stock' || assetType === 'etf';
+    const hasExchangeFilter = Boolean(exchange);
+    const shouldSearchUSUniverse = (!hasExchangeFilter || exchange === 'US') && (!assetType || assetType === 'stock' || assetType === 'etf');
+    const shouldSearchExternal = !hasExchangeFilter;
+    const directoryCandidates = searchBundledMarketSymbols({
+      query,
+      assetType,
+      exchange,
+      limit: hasExchangeFilter ? 48 : 16,
+    }).map(candidateFromDirectory);
+    const aliasCandidates = (!hasExchangeFilter || exchange === 'BOURSA_KUWAIT')
+      ? findAssetAliasMatches(query).map(candidateFromAlias)
+      : [];
     const [supabaseCandidates, usResults, proxyResult, directCandidate] = await Promise.all([
-      searchSupabaseSymbols(query, assetType),
+      searchSupabaseSymbols(query, assetType, exchange),
       shouldSearchUSUniverse ? searchUSSymbols(query, assetType) : Promise.resolve(null),
-      proxySearch(query, assetType),
-      directQuoteCandidate(query, assetType),
+      shouldSearchExternal ? proxySearch(query, assetType) : Promise.resolve(null),
+      shouldSearchExternal ? directQuoteCandidate(query, assetType) : Promise.resolve(null),
     ]);
 
     const proxyItems = Array.isArray(proxyResult?.results)
@@ -299,25 +424,34 @@ export async function GET(request: NextRequest) {
     ).slice(0, 16);
 
     const candidates = dedupeCandidates([
+      ...directoryCandidates,
       ...aliasCandidates,
       ...supabaseCandidates,
       ...mergedSearchItems.map(item => candidateFromSearchItem(item, usResults ? `market_search+${usResults.source}` : 'market_search')),
       ...(directCandidate ? [directCandidate] : []),
     ]).slice(0, MAX_RESULTS);
 
-    const enriched = await Promise.allSettled(candidates.map(enrichCandidate));
-    const items = enriched
+    const enriched = await Promise.allSettled(candidates.slice(0, PRICE_ENRICH_LIMIT).map(enrichCandidate));
+    const enrichedItems = enriched
       .filter((result): result is PromiseFulfilledResult<AssetSearchItem> => result.status === 'fulfilled')
       .map(result => result.value)
+      .filter(item => item.search_source !== 'direct_quote' || item.available);
+    const enrichedKeys = new Set(enrichedItems.map(item => `${item.symbol}:${item.asset_type}`));
+    const fallbackItems = candidates
+      .slice(PRICE_ENRICH_LIMIT)
+      .filter(candidate => !enrichedKeys.has(`${candidate.symbol}:${candidate.assetType}`))
+      .map(candidate => unavailableResult(candidate));
+    const items = [...enrichedItems, ...fallbackItems]
       .filter((item, index, list) => list.findIndex(entry => `${entry.symbol}:${entry.asset_type}` === `${item.symbol}:${item.asset_type}`) === index)
-      .filter(item => item.search_source !== 'direct_quote' || item.available)
       .slice(0, MAX_RESULTS);
+    const needsSync = items.length === 0 && exchangeRequiresSymbolSync(exchange);
 
     return NextResponse.json({
       ok: true,
       query,
+      exchange,
       items,
-      message: items.length > 0 ? undefined : 'NO_RESULTS',
+      message: items.length > 0 ? undefined : needsSync ? 'SYMBOLS_SYNCING' : 'NO_RESULTS',
     }, {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
     });

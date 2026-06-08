@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { getCurrency } from '@/lib/currencies';
 import { formatMarketPrice } from '@/lib/market/marketCurrency';
+import { MARKET_EXCHANGE_OPTIONS, normalizeMarketExchange, type MarketExchangeId } from '@/lib/market/marketExchangeOptions';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
 
 type Mode = 'create' | 'edit';
@@ -85,6 +86,8 @@ interface Props {
     name: string;
     namePlaceholder: string;
     type: string;
+    exchange: string;
+    exchangeAll: string;
     currentValue: string;
     currentSharePrice: string;
     currentMarketValue: string;
@@ -107,6 +110,7 @@ interface Props {
     assetSearchNoResultsTitle: string;
     assetSearchNoResultsBody: string;
     assetSearchProviderUnavailable: string;
+    symbolsSyncing: string;
     selectedAsset: string;
     currentPrice: string;
     lastUpdated: string;
@@ -361,8 +365,10 @@ export function InvestmentFormModal({
   const [metalGrams, setMetalGrams] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedAsset, setSelectedAsset] = useState<AssetSearchItem | null>(null);
+  const [selectedExchange, setSelectedExchange] = useState<MarketExchangeId | ''>('');
   const [searchResults, setSearchResults] = useState<AssetSearchItem[]>([]);
   const [searchState, setSearchState] = useState<SearchState>('idle');
+  const [searchMessage, setSearchMessage] = useState<string | null>(null);
   const [metals, setMetals] = useState<MetalsState>({
     state: 'idle',
     currency: accountCurrency,
@@ -505,8 +511,10 @@ export function InvestmentFormModal({
     setMetalGrams('');
     setErrors({});
     setSelectedAsset(null);
+    setSelectedExchange('');
     setSearchResults([]);
     setSearchState('idle');
+    setSearchMessage(null);
   }, [accountCurrency]);
 
   useEffect(() => {
@@ -514,6 +522,7 @@ export function InvestmentFormModal({
     setErrors({});
     setSearchResults([]);
     setSearchState('idle');
+    setSearchMessage(null);
 
     if (mode === 'edit' && initialValues) {
       const nextType = initialValues.type || 'other';
@@ -540,6 +549,7 @@ export function InvestmentFormModal({
       setMetalUnit(initialValues.metalProductType || (nextType === 'silver' ? 'gram' : 'bar'));
       setMetalGrams(toInputNumber(initialValues.grams && initialValues.quantity ? initialValues.grams / initialValues.quantity : initialValues.grams, 10));
       setSelectedAsset(assetFromInvestment(initialValues));
+      setSelectedExchange(normalizeMarketExchange(initialValues.market) ?? '');
       return;
     }
 
@@ -552,6 +562,7 @@ export function InvestmentFormModal({
     if (query.length < 2 || selectedMatchesName) {
       setSearchResults([]);
       setSearchState('idle');
+      setSearchMessage(null);
       return;
     }
 
@@ -561,20 +572,24 @@ export function InvestmentFormModal({
       try {
         const params = new URLSearchParams({ q: query });
         if (assetSearchType) params.set('assetType', assetSearchType);
+        if (selectedExchange) params.set('exchange', selectedExchange);
         const response = await fetch(`/api/market/search-assets?${params.toString()}`, { cache: 'no-store' });
-        const payload = await response.json() as { ok?: boolean; items?: AssetSearchItem[] };
+        const payload = await response.json() as { ok?: boolean; items?: AssetSearchItem[]; message?: string };
         if (cancelled) return;
         if (!response.ok || payload.ok === false) {
           setSearchResults([]);
           setSearchState('error');
+          setSearchMessage(null);
           return;
         }
         setSearchResults(Array.isArray(payload.items) ? payload.items : []);
+        setSearchMessage(payload.message ?? null);
         setSearchState('ready');
       } catch {
         if (!cancelled) {
           setSearchResults([]);
           setSearchState('error');
+          setSearchMessage(null);
         }
       }
     }, 350);
@@ -583,7 +598,7 @@ export function InvestmentFormModal({
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [assetSearchType, name, open, selectedMatchesName, shouldSearchAssets]);
+  }, [assetSearchType, name, open, selectedExchange, selectedMatchesName, shouldSearchAssets]);
 
   useEffect(() => {
     if (!open || !isMetal) return;
@@ -755,7 +770,9 @@ export function InvestmentFormModal({
     setErrors({});
     setSearchResults([]);
     setSearchState('idle');
+    setSearchMessage(null);
     setSelectedAsset(null);
+    if (!isMarketType(nextType) || nextType === 'crypto') setSelectedExchange('');
     setQuantity('');
     setPurchasePrice('');
     setCurrentPrice('');
@@ -790,14 +807,26 @@ export function InvestmentFormModal({
     }
   }
 
+  function handleExchangeChange(value: string) {
+    const nextExchange = normalizeMarketExchange(value) ?? '';
+    setSelectedExchange(nextExchange);
+    setSelectedAsset(null);
+    setSearchResults([]);
+    setSearchState('idle');
+    setSearchMessage(null);
+    setCurrentPrice('');
+  }
+
   function handleSelectAsset(asset: AssetSearchItem) {
     const localizedName = localizedAssetName(asset, dir);
     setSelectedAsset(asset);
     setName(localizedName);
     setType(assetInvestmentType(asset.asset_type));
     setInvestmentCurrency(normalizedCurrency(asset.currency, accountCurrency));
+    setSelectedExchange(normalizeMarketExchange(asset.market_en ?? asset.market) ?? selectedExchange);
     setSearchResults([]);
     setSearchState('idle');
+    setSearchMessage(null);
     setCurrentPrice('');
     if (!notes.trim()) setNotes(labels.fetchedPriceNote);
   }
@@ -922,6 +951,17 @@ export function InvestmentFormModal({
           <FormSection title={labels.sectionAssetDetails} icon={<CheckCircle2 size={17} />} />
           {isMarketType(type) ? (
             <>
+              <Field label={labels.exchange} className="span-2">
+                <select value={selectedExchange} onChange={event => handleExchangeChange(event.target.value)}>
+                  <option value="">{labels.exchangeAll}</option>
+                  {MARKET_EXCHANGE_OPTIONS.map(option => (
+                    <option key={option.id} value={option.id}>
+                      {dir === 'rtl' ? option.labelAr : option.labelEn}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
               <Field label={labels.name} error={errors.name || errors.asset} required className="span-2">
                 <div className="invest-asset-search">
                   <div className="invest-input-icon">
@@ -945,7 +985,7 @@ export function InvestmentFormModal({
                       )}
                       {searchState === 'ready' && searchResults.length === 0 && (
                         <div className="invest-asset-state">
-                          <strong>{labels.assetSearchNoResultsTitle}</strong>
+                          <strong>{searchMessage === 'SYMBOLS_SYNCING' ? labels.symbolsSyncing : labels.assetSearchNoResultsTitle}</strong>
                           <span>{labels.assetSearchNoResultsBody}</span>
                         </div>
                       )}
@@ -960,6 +1000,8 @@ export function InvestmentFormModal({
                               {localizedMarketName(asset, dir) || asset.country || labels.unavailable}
                               {' · '}
                               {labels.assetTypes[asset.asset_type] ?? asset.asset_type}
+                              {' · '}
+                              {asset.currency || labels.unavailable}
                             </small>
                           </span>
                           <span className="invest-asset-result-price" dir="ltr">

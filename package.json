@@ -8,7 +8,9 @@
     "build": "next build",
     "start": "next start --port ${port}",
     "check:i18n": "node scripts/check-translations.mjs",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "symbols:sync": "node scripts/sync-market-symbols.mjs",
+    "symbols:validate": "node scripts/validate-market-symbols.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^0.0.56",

@@ -130,21 +130,39 @@ Feeds are fetched through `/api/gulf-news` with a 5-minute revalidation window. 
 
 ## Market Symbols Directory
 
-Market search uses a server-side directory so global symbols are not bundled into the frontend. Apply `supabase/migrations/010_create_market_symbols.sql` to create and seed the public read-only `market_symbols` table.
+Market search uses a server-side directory so global symbols are not bundled into the frontend. Apply `supabase/migrations/010_create_market_symbols.sql` and the latest `097_upgrade_market_symbols_exchange_coverage.sql` migration to support the structured `market_symbols` schema.
 
 Search order:
 
-1. Supabase `market_symbols`
-2. OpenBB service `/market/search` when `OPENBB_SERVICE_URL` is configured
-3. Local curated fallback in `openbb-service/data/symbols.json`
+1. Bundled official snapshots for Boursa Kuwait and DFM/Nasdaq Dubai in `src/data/market-symbols`
+2. Supabase `market_symbols`, filtered by selected exchange
+3. Official US symbol directories via NasdaqTrader when US markets are searched
+4. OpenBB service `/market/search` when no exchange filter is selected and `OPENBB_SERVICE_URL` is configured
+5. Local curated fallback in `openbb-service/data/symbols.json`
 
-Future CSV imports can use `scripts/import-market-symbols.ts` with a Supabase service role key on a trusted machine only. Do not expose the service role key to the browser.
+Boursa Kuwait symbols are synced from the official Boursa Kuwait market-watch data feed and use KWD with `price_unit=fils`. DFM and Nasdaq Dubai listed equities/funds are synced from the official DFM listed securities API. Saudi Exchange, ADX, Qatar, Bahrain, and Muscat are configured as supported exchanges but require an official exchange export/import into Supabase before the UI should claim complete coverage.
+
+Refresh the bundled official snapshots and optionally upsert them into Supabase:
+
+```bash
+npm run symbols:sync -- --write-local
+```
+
+Use `--no-supabase` when only refreshing local snapshots. The sync/upsert path requires `SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_URL` plus `SUPABASE_SERVICE_ROLE_KEY` on a trusted machine only. Do not expose the service role key to the browser.
+
+Validate coverage:
+
+```bash
+npm run symbols:validate
+```
+
+Future official CSV imports can use `scripts/import-market-symbols.ts`.
 
 CSV columns:
 
 ```csv
-symbol,provider_symbol,name,asset_type,exchange,country,currency,source
-AAPL,AAPL,Apple Inc.,stock,NASDAQ,US,USD,nasdaq_import
+exchange,market,symbol,display_symbol,provider_symbol,name,company_name_ar,company_name_en,asset_type,sector,currency,country,price_unit,is_active,source,last_synced_at
+BOURSA_KUWAIT,Premier Market,NBK,NBK,NBK.KW,National Bank of Kuwait,بنك الكويت الوطني,National Bank of Kuwait,stock,Banks,KWD,KW,fils,true,boursa_import,2026-06-08T00:00:00.000Z
 ```
 
 Run later with:

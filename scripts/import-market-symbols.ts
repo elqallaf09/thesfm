@@ -9,9 +9,17 @@ type MarketSymbolCsvRow = {
   name: string;
   asset_type?: string;
   exchange?: string;
+  market?: string;
+  display_symbol?: string;
+  company_name_ar?: string;
+  company_name_en?: string;
+  sector?: string;
   country?: string;
   currency?: string;
+  price_unit?: string;
+  is_active?: boolean;
   source?: string;
+  last_synced_at?: string;
 };
 
 const SUPPORTED_TYPES = new Set(['stock', 'etf', 'crypto', 'forex', 'commodity', 'gold']);
@@ -56,9 +64,17 @@ function normalizeRow(headers: string[], cells: string[]): MarketSymbolCsvRow | 
     name,
     asset_type: normalizedType,
     exchange: row.exchange?.trim() || undefined,
+    market: row.market?.trim() || row.exchange?.trim() || undefined,
+    display_symbol: (row.display_symbol || row.displaySymbol || symbol).trim().toUpperCase(),
+    company_name_ar: row.company_name_ar || row.companyNameAr || undefined,
+    company_name_en: row.company_name_en || row.companyNameEn || name,
+    sector: row.sector?.trim() || undefined,
     country: row.country?.trim() || undefined,
     currency: row.currency?.trim() || 'USD',
+    price_unit: row.price_unit || row.priceUnit || 'major',
+    is_active: row.is_active === undefined || row.is_active === '' ? true : row.is_active !== 'false',
     source: row.source?.trim() || 'csv_import',
+    last_synced_at: row.last_synced_at || row.lastSyncedAt || new Date().toISOString(),
   };
 }
 
@@ -108,7 +124,7 @@ async function main() {
     const chunk = rows.slice(index, index + chunkSize);
     const { error } = await supabase
       .from('market_symbols')
-      .upsert(chunk, { onConflict: 'symbol,asset_type,provider_symbol', ignoreDuplicates: false });
+      .upsert(chunk, { onConflict: 'exchange,symbol', ignoreDuplicates: false });
 
     if (error) throw error;
     imported += chunk.length;
