@@ -10,7 +10,7 @@ const SESSION_TTL_MS = 45 * 60 * 1000;
 const MANUAL_REFRESH_COOLDOWN_MS = 2 * 60 * 1000;
 const MYFXBOOK_TIMEOUT_MESSAGE = 'مزود Myfxbook بطيء حالياً أو لا يستجيب. حاول لاحقاً.';
 const MYFXBOOK_CACHED_WARNING_MESSAGE = 'قد تكون البيانات مؤقتة بسبب تعذر الاتصال بالمزود.';
-const MYFXBOOK_SESSION_RENEWED_MESSAGE = 'تم تجديد جلسة Myfxbook بنجاح.';
+const MYFXBOOK_SESSION_RENEWED_MESSAGE = 'تم تجديد جلسة Myfxbook وجلب البيانات بنجاح.';
 
 type MyfxbookErrorCode =
   | 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED'
@@ -47,8 +47,10 @@ export type MyfxbookSentimentStatus =
 export type MyfxbookSentimentDiagnostics = {
   provider: 'myfxbook';
   loginStatus: MyfxbookLoginStatus;
+  sessionReceived: boolean;
   sessionUsed: boolean;
   sentimentStatus: MyfxbookSentimentStatus;
+  communityOutlookStatus: MyfxbookSentimentStatus;
   source: 'live' | 'cache';
   lastUpdatedAt: string;
 };
@@ -101,7 +103,7 @@ type MyfxbookOutlookResponse = {
 };
 
 type MyfxbookLoginResult =
-  | { ok: true; session: string; providerMessage: string | null; httpStatus?: number; contentType?: string | null; responseKind?: 'json' | 'html' | 'text' | 'empty'; canReachMyfxbook?: boolean }
+  | { ok: true; session: string; providerMessage: string | null; httpStatus?: number; contentType?: string | null; responseKind?: 'json' | 'html' | 'text' | 'empty'; canReachMyfxbook?: boolean; sessionSource?: 'cache' | 'fresh' }
   | { ok: false; code: MyfxbookErrorCode; providerMessage: string | null; httpStatus?: number; contentType?: string | null; responseKind?: 'json' | 'html' | 'text' | 'empty'; canReachMyfxbook?: boolean };
 
 export type MyfxbookSentimentItem = {
@@ -302,6 +304,11 @@ export function publicMyfxbookLoginStatus(code: string | null | undefined): Myfx
   return 'provider_unavailable';
 }
 
+export function clearMyfxbookSession(reason = 'manual_clear') {
+  cachedSession = null;
+  logMyfxbook('session cache cleared', { reason });
+}
+
 function sentimentDiagnostics(input: {
   loginStatus?: MyfxbookLoginStatus;
   sessionUsed: boolean;
@@ -312,8 +319,10 @@ function sentimentDiagnostics(input: {
   return {
     provider: 'myfxbook',
     loginStatus: input.loginStatus ?? 'success',
+    sessionReceived: input.sessionUsed,
     sessionUsed: input.sessionUsed,
     sentimentStatus: input.sentimentStatus,
+    communityOutlookStatus: input.sentimentStatus,
     source: input.source,
     lastUpdatedAt: input.lastUpdatedAt || new Date().toISOString(),
   };
@@ -710,6 +719,7 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
   if (!options.force && cachedSession && cachedSession.cacheKey === credentials.cacheKey && cachedSession.expiresAt > now) {
     logMyfxbook('session cache hit', {
       sessionReceived: true,
+      sessionSource: 'cache',
     });
     return {
       ok: true as const,
@@ -719,6 +729,7 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
       contentType: 'application/json',
       responseKind: 'json',
       canReachMyfxbook: true,
+      sessionSource: 'cache',
     };
   }
 
@@ -859,18 +870,23 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     contentType: parsed.contentType,
     responseKind: parsed.responseKind,
     canReachMyfxbook: true,
+    sessionSource: 'fresh',
   };
 }
 
-async function getLoginSession(options: { force?: boolean } = {}) {
-  const login = await loginToMyfxbook(options);
+export async function getMyfxbookSession(options: { force?: boolean } = {}) {
+  return loginToMyfxbook(options);
+}
+
+async function requireMyfxbookSession(options: { force?: boolean } = {}) {
+  const login = await getMyfxbookSession(options);
   if (!login.ok) {
     throw new MyfxbookProviderError(login.code, 'Myfxbook login failed', undefined, login.providerMessage);
   }
   return login;
 }
 
-async function fetchCommunityOutlookPayload(session: string) {
+async function fetchCommunityOutlookPayload(session: string, context: { attempt: 'initial' | 'retry'; sessionSource?: 'cache' | 'fresh' } = { attempt: 'initial' }) {
   const cleanSession = session.trim();
   if (!cleanSession) {
     throw new MyfxbookProviderError('MYFXBOOK_SESSION_MISSING', 'Myfxbook community outlook request had no session');
@@ -879,13 +895,20 @@ async function fetchCommunityOutlookPayload(session: string) {
   url.searchParams.set('session', cleanSession);
   logMyfxbook('community outlook request prepared', {
     endpoint: `/${OUTLOOK_ENDPOINT}`,
+    attempt: context.attempt,
     sessionUsed: true,
+    sessionExists: Boolean(cleanSession),
+    sessionSource: context.sessionSource ?? 'fresh',
   });
   return fetchJsonWithTimeout<MyfxbookOutlookResponse>(url);
 }
 
 function isInvalidSessionPayload(payload: MyfxbookOutlookResponse) {
-  return Boolean(payload.error && payload.message && /session|auth|login/i.test(payload.message));
+  const message = String(payload.message ?? '');
+  const errorValue = typeof payload.error === 'boolean'
+    ? payload.error
+    : /^(true|1|yes)$/i.test(String(payload.error ?? '').trim());
+  return Boolean(errorValue && /invalid\s+session|session|auth|login/i.test(message));
 }
 
 function logOutlookPayload(stage: string, payload: MyfxbookOutlookResponse) {
@@ -908,8 +931,17 @@ async function getCommunityOutlook(options: { force?: boolean } = {}) {
   }
 
   let sentimentStatus: MyfxbookSentimentStatus = 'success';
-  const login = await getLoginSession();
-  let payload = await fetchCommunityOutlookPayload(login.session);
+  const login = await requireMyfxbookSession({ force: options.force });
+  logMyfxbook('community outlook session ready', {
+    sessionReceived: true,
+    sessionUsed: Boolean(login.session),
+    sessionSource: login.sessionSource ?? (options.force ? 'fresh' : 'cache'),
+    force: Boolean(options.force),
+  });
+  let payload = await fetchCommunityOutlookPayload(login.session, {
+    attempt: 'initial',
+    sessionSource: login.sessionSource ?? (options.force ? 'fresh' : 'cache'),
+  });
   logOutlookPayload('initial response', payload);
 
   if (isInvalidSessionPayload(payload)) {
@@ -917,15 +949,23 @@ async function getCommunityOutlook(options: { force?: boolean } = {}) {
       error: payload.error,
       message: maskProviderMessage(payload.message),
     });
-    cachedSession = null;
-    const relogin = await loginToMyfxbook({ force: true });
-    if (!relogin.ok) {
-      throw new MyfxbookProviderError(relogin.code, 'Myfxbook re-login failed', relogin.httpStatus, relogin.providerMessage);
-    }
-    payload = await fetchCommunityOutlookPayload(relogin.session);
+    clearMyfxbookSession('community_outlook_invalid_session');
+    const relogin = await requireMyfxbookSession({ force: true });
+    logMyfxbook('community outlook retry session ready', {
+      sessionReceived: true,
+      sessionUsed: Boolean(relogin.session),
+      sessionSource: relogin.sessionSource ?? 'fresh',
+    });
+    payload = await fetchCommunityOutlookPayload(relogin.session, {
+      attempt: 'retry',
+      sessionSource: relogin.sessionSource ?? 'fresh',
+    });
     logOutlookPayload('retry response', payload);
     if (isInvalidSessionPayload(payload)) {
-      cachedSession = null;
+      clearMyfxbookSession('community_outlook_retry_invalid_session');
+      logMyfxbook('community outlook invalid session retry failed', {
+        message: maskProviderMessage(payload.message),
+      });
       throw new MyfxbookProviderError(
         'MYFXBOOK_INVALID_SESSION',
         'Myfxbook community outlook rejected the refreshed session',
@@ -933,12 +973,15 @@ async function getCommunityOutlook(options: { force?: boolean } = {}) {
         maskProviderMessage(payload.message),
       );
     }
+    logMyfxbook('community outlook invalid session recovered', {
+      symbolsReturned: extractSymbolArray(payload).length,
+    });
     sentimentStatus = 'invalid_session_recovered';
   }
 
   if (payload.error) {
     if (isInvalidSessionPayload(payload)) {
-      cachedSession = null;
+      clearMyfxbookSession('community_outlook_invalid_session_after_retry');
       throw new MyfxbookProviderError('MYFXBOOK_INVALID_SESSION', 'Myfxbook session was rejected by community outlook', undefined, maskProviderMessage(payload.message));
     }
     if (isRateLimitMessage(payload.message)) {

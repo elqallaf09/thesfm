@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cleanEnv } from '@/lib/market/providerConfig';
 import {
-  loginToMyfxbook,
+  getMyfxbookSession,
   publicMyfxbookLoginStatus,
   type MyfxbookLoginStatus,
 } from '@/lib/market/providers/myfxbook';
@@ -86,7 +86,7 @@ export async function GET() {
   }
 
   const login = providerConfigured
-    ? await loginToMyfxbook({ force: true }).catch(error => ({
+    ? await getMyfxbookSession({ force: true }).catch(error => ({
         ok: false as const,
         code: 'MYFXBOOK_UNKNOWN_ERROR' as const,
         providerMessage: maskProviderMessage(error instanceof Error ? error.message : null),

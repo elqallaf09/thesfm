@@ -360,6 +360,16 @@ function unavailableResponse(input: {
           : 'unavailable');
   const lastCheckedAt = input.lastCheckedAt ?? new Date().toISOString();
   const diagnostics = input.diagnostics ?? null;
+  const communityOutlookStatus = typeof diagnostics?.communityOutlookStatus === 'string'
+    ? diagnostics.communityOutlookStatus
+    : typeof diagnostics?.sentimentStatus === 'string'
+      ? diagnostics.sentimentStatus
+      : provider === 'myfxbook'
+        ? (input.code === 'INVALID_SESSION' ? 'invalid_session_retry_failed' : 'provider_error')
+        : null;
+  const providerMessage = input.code === 'INVALID_SESSION'
+    ? null
+    : maskProviderMessage(input.providerMessage);
   return NextResponse.json({
     ok: false,
     success: false,
@@ -382,19 +392,17 @@ function unavailableResponse(input: {
     sellPercent: null,
     sentimentLabel: 'unavailable' as SentimentLabel,
     message: input.message ?? sentimentMessage(input.assetType, input.code),
-    providerMessage: maskProviderMessage(input.providerMessage),
+    providerMessage,
     providerStatus,
     cacheStatus: input.cacheStatus ?? 'miss',
     cached: false,
     stale: false,
     diagnostics,
     loginStatus: typeof diagnostics?.loginStatus === 'string' ? diagnostics.loginStatus : null,
+    sessionReceived: typeof diagnostics?.sessionReceived === 'boolean' ? diagnostics.sessionReceived : false,
     sessionUsed: typeof diagnostics?.sessionUsed === 'boolean' ? diagnostics.sessionUsed : false,
-    sentimentStatus: typeof diagnostics?.sentimentStatus === 'string'
-      ? diagnostics.sentimentStatus
-      : provider === 'myfxbook'
-        ? (input.code === 'INVALID_SESSION' ? 'invalid_session_retry_failed' : 'provider_error')
-        : null,
+    sentimentStatus: communityOutlookStatus,
+    communityOutlookStatus,
     diagnosticSource: typeof diagnostics?.source === 'string' ? diagnostics.source : null,
     suggestions: input.suggestions ?? [],
     items: [],
@@ -425,6 +433,11 @@ function availableResponse(input: {
   const lastCheckedAt = input.lastCheckedAt ?? updatedAt;
   const responseAssetType = input.assetType === 'metals' ? 'metal' : input.assetType;
   const diagnostics = input.diagnostics ?? null;
+  const communityOutlookStatus = typeof diagnostics?.communityOutlookStatus === 'string'
+    ? diagnostics.communityOutlookStatus
+    : typeof diagnostics?.sentimentStatus === 'string'
+      ? diagnostics.sentimentStatus
+      : 'success';
 
   return NextResponse.json({
     ok: true,
@@ -453,8 +466,10 @@ function availableResponse(input: {
     stale: input.cacheStatus === 'stale',
     diagnostics,
     loginStatus: typeof diagnostics?.loginStatus === 'string' ? diagnostics.loginStatus : null,
+    sessionReceived: typeof diagnostics?.sessionReceived === 'boolean' ? diagnostics.sessionReceived : input.provider === 'myfxbook',
     sessionUsed: typeof diagnostics?.sessionUsed === 'boolean' ? diagnostics.sessionUsed : input.provider === 'myfxbook',
-    sentimentStatus: typeof diagnostics?.sentimentStatus === 'string' ? diagnostics.sentimentStatus : 'success',
+    sentimentStatus: communityOutlookStatus,
+    communityOutlookStatus,
     diagnosticSource: typeof diagnostics?.source === 'string' ? diagnostics.source : null,
     items: input.items,
     updatedAt,

@@ -109,8 +109,10 @@ type ApiListState<T> = {
   sentimentLabel?: string | null;
   diagnostics?: Record<string, unknown> | null;
   loginStatus?: string | null;
+  sessionReceived?: boolean;
   sessionUsed?: boolean;
   sentimentStatus?: string | null;
+  communityOutlookStatus?: string | null;
   diagnosticSource?: string | null;
   suggestions?: string[];
 };
@@ -507,8 +509,10 @@ async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiLis
       sentimentLabel?: string | null;
       diagnostics?: Record<string, unknown> | null;
       loginStatus?: string | null;
+      sessionReceived?: boolean;
       sessionUsed?: boolean;
       sentimentStatus?: string | null;
+      communityOutlookStatus?: string | null;
       diagnosticSource?: string | null;
       suggestions?: unknown[];
     };
@@ -525,6 +529,7 @@ async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiLis
       providerStatus: payload.providerStatus,
       cacheStatus: payload.cacheStatus,
       sentimentStatus: payload.sentimentStatus,
+      communityOutlookStatus: payload.communityOutlookStatus,
       diagnosticSource: payload.diagnosticSource,
     });
     return {
@@ -550,8 +555,10 @@ async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiLis
       sentimentLabel: payload.sentimentLabel,
       diagnostics: payload.diagnostics ?? null,
       loginStatus: payload.loginStatus,
+      sessionReceived: payload.sessionReceived,
       sessionUsed: payload.sessionUsed,
       sentimentStatus: payload.sentimentStatus,
+      communityOutlookStatus: payload.communityOutlookStatus,
       diagnosticSource: payload.diagnosticSource,
       suggestions: Array.isArray(payload.suggestions)
         ? payload.suggestions.map(item => String(item ?? '').trim()).filter(Boolean).slice(0, 4)
@@ -9421,7 +9428,10 @@ function NewsSentimentPanel({
     : '';
   const sentimentSessionRenewed = hasSelectedAsset
     && sentiment.sentimentAvailable
-    && String(sentiment.sentimentStatus ?? '').trim().toLowerCase() === 'invalid_session_recovered'
+    && (
+      String(sentiment.communityOutlookStatus ?? '').trim().toLowerCase() === 'invalid_session_recovered'
+      || String(sentiment.sentimentStatus ?? '').trim().toLowerCase() === 'invalid_session_recovered'
+    )
     ? (sentiment.message || t('market_sentiment_myfxbook_session_renewed'))
     : '';
   const sentimentProviderMessage = hasSelectedAsset && sentiment.providerMessage

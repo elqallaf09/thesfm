@@ -1,13 +1,16 @@
 import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { cleanEnv, getMarketSentimentProviderConfig } from '@/lib/market/providerConfig';
-import { loginToMyfxbook } from '@/lib/market/providers/myfxbook';
+import { getMyfxbookSession } from '@/lib/market/providers/myfxbook';
 import { isAdminAccessCodeConfigured, isValidAdminAccessCode } from '@/lib/server/adminAccess';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const DEFAULT_MYFXBOOK_API_BASE_URL = 'https://www.myfxbook.com/api';
+const cacheHeaders = {
+  'Cache-Control': 'private, no-store',
+};
 
 function safeEqual(left: string, right: string) {
   const leftBuffer = Buffer.from(left);
@@ -74,11 +77,11 @@ export async function GET(request: NextRequest) {
   const healthTokenConfigured = Boolean(cleanEnv(process.env.MARKET_PROVIDER_HEALTH_TOKEN));
 
   if (!healthTokenConfigured && !isAdminAccessCodeConfigured()) {
-    return NextResponse.json({ ok: false, code: 'MYFXBOOK_HEALTH_DISABLED' }, { status: 404 });
+    return NextResponse.json({ ok: false, code: 'MYFXBOOK_HEALTH_DISABLED' }, { status: 404, headers: cacheHeaders });
   }
 
   if (!isAllowed(request)) {
-    return NextResponse.json({ ok: false, code: 'MYFXBOOK_HEALTH_FORBIDDEN' }, { status: 403 });
+    return NextResponse.json({ ok: false, code: 'MYFXBOOK_HEALTH_FORBIDDEN' }, { status: 403, headers: cacheHeaders });
   }
 
   const email = cleanEnv(process.env.MYFXBOOK_EMAIL);
@@ -105,7 +108,7 @@ export async function GET(request: NextRequest) {
   }
 
   const login = providerConfigured
-    ? await loginToMyfxbook({ force: true }).catch(error => ({
+    ? await getMyfxbookSession({ force: true }).catch(error => ({
         ok: false as const,
         code: 'MYFXBOOK_UNKNOWN_ERROR' as const,
         providerMessage: maskedProviderMessage(error instanceof Error ? error.message : null),
@@ -136,5 +139,5 @@ export async function GET(request: NextRequest) {
     httpStatus: login?.httpStatus ?? null,
     providerMessage: login && !login.ok ? maskedProviderMessage(login.providerMessage) : null,
     hasSession: Boolean(login?.ok),
-  });
+  }, { status: 200, headers: cacheHeaders });
 }
