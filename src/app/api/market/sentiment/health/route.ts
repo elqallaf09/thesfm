@@ -1,46 +1,27 @@
-import { timingSafeEqual } from 'crypto';
-import { NextRequest, NextResponse } from 'next/server';
-import { cleanEnv, getMarketSentimentProviderConfig } from '@/lib/market/providerConfig';
-import { loginToMyfxbook } from '@/lib/market/providers/myfxbook';
-import { isAdminAccessCodeConfigured, isValidAdminAccessCode } from '@/lib/server/adminAccess';
+import { NextResponse } from 'next/server';
+import { cleanEnv } from '@/lib/market/providerConfig';
+import {
+  loginToMyfxbook,
+  publicMyfxbookLoginStatus,
+  type MyfxbookLoginStatus,
+} from '@/lib/market/providers/myfxbook';
 
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const DEFAULT_MYFXBOOK_API_BASE_URL = 'https://www.myfxbook.com/api';
+const cacheHeaders = {
+  'Cache-Control': 'private, no-store',
+};
 
-function safeEqual(left: string, right: string) {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+function shouldDebug() {
+  return process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true';
 }
 
-function requestToken(request: NextRequest) {
-  const bearer = request.headers.get('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1];
-  return cleanEnv(request.nextUrl.searchParams.get('code'))
-    || cleanEnv(request.headers.get('x-admin-diagnostics-token'))
-    || cleanEnv(bearer);
-}
-
-function isAllowed(request: NextRequest) {
-  const token = requestToken(request);
-  const healthToken = cleanEnv(process.env.MARKET_PROVIDER_HEALTH_TOKEN);
-  if (!token) return false;
-  if (healthToken && safeEqual(token, healthToken)) return true;
-  return isAdminAccessCodeConfigured() && isValidAdminAccessCode(token);
-}
-
-function maskedProviderMessage(message: string | null | undefined) {
+function maskProviderMessage(message: string | null | undefined) {
   if (!message) return null;
   return message.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]');
-}
-
-function publicMyfxbookCode(code: string | null | undefined) {
-  if (code === 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED') return 'MISSING_CREDENTIALS';
-  if (code === 'MYFXBOOK_AUTH_FAILED') return 'LOGIN_REJECTED';
-  if (code === 'MYFXBOOK_SESSION_MISSING') return 'NO_SESSION';
-  if (code === 'MYFXBOOK_TIMEOUT') return 'TIMEOUT';
-  if (code === 'MYFXBOOK_RATE_LIMITED') return 'RATE_LIMITED';
-  return code ? 'PROVIDER_DOWN' : null;
 }
 
 function myfxbookBaseUrlDiagnostic(rawBaseUrl: string) {
@@ -62,66 +43,92 @@ function myfxbookBaseUrlDiagnostic(rawBaseUrl: string) {
   }
 }
 
-export async function GET(request: NextRequest) {
-  const healthTokenConfigured = Boolean(cleanEnv(process.env.MARKET_PROVIDER_HEALTH_TOKEN));
+function contentTypeCategory(contentType: string | null | undefined) {
+  const normalized = String(contentType ?? '').toLowerCase();
+  if (!normalized) return null;
+  if (normalized.includes('json')) return 'json';
+  if (normalized.includes('html')) return 'html';
+  if (normalized.includes('text')) return 'text';
+  return 'other';
+}
 
-  if (!healthTokenConfigured && !isAdminAccessCodeConfigured()) {
-    return NextResponse.json({ ok: false, code: 'SENTIMENT_HEALTH_DISABLED' }, { status: 404 });
-  }
+function publicMessageForStatus(status: MyfxbookLoginStatus) {
+  if (status === 'success') return 'تم الاتصال بمزود Myfxbook واستلام جلسة صالحة.';
+  if (status === 'missing_env') return 'إعدادات مزود المشاعر غير مكتملة. يرجى إضافة بيانات Myfxbook في Environment Variables ثم إعادة النشر.';
+  if (status === 'invalid_credentials') return 'تم رفض تسجيل الدخول إلى Myfxbook. تحقق من بيانات الحساب أو جرّب تسجيل الدخول مباشرة في موقع Myfxbook.';
+  if (status === 'cloudflare_blocked') return 'مزود Myfxbook رفض الاتصال من الخادم. قد يكون بسبب حماية Cloudflare أو قيود الحساب المجاني.';
+  if (status === 'rate_limited') return 'تم تجاوز حد طلبات مزود المشاعر مؤقتاً. يرجى المحاولة لاحقاً.';
+  return 'تعذر الاتصال بمزود المشاعر حالياً. يرجى المحاولة لاحقاً.';
+}
 
-  if (!isAllowed(request)) {
-    return NextResponse.json({ ok: false, code: 'SENTIMENT_HEALTH_FORBIDDEN' }, { status: 403 });
-  }
-
-  const rawEmail = cleanEnv(process.env.MYFXBOOK_EMAIL);
-  const rawPassword = cleanEnv(process.env.MYFXBOOK_PASSWORD);
+export async function GET() {
+  const lastCheckedAt = new Date().toISOString();
+  const email = cleanEnv(process.env.MYFXBOOK_EMAIL);
+  const password = cleanEnv(process.env.MYFXBOOK_PASSWORD);
   const rawBaseUrl = cleanEnv(process.env.MYFXBOOK_API_BASE_URL);
   const baseUrl = myfxbookBaseUrlDiagnostic(rawBaseUrl);
   const missingVariables = [
-    rawEmail ? null : 'MYFXBOOK_EMAIL',
-    rawPassword ? null : 'MYFXBOOK_PASSWORD',
+    email ? null : 'MYFXBOOK_EMAIL',
+    password ? null : 'MYFXBOOK_PASSWORD',
   ].filter((value): value is string => Boolean(value));
-  const providerConfigured = Boolean(rawEmail && rawPassword);
-  const config = getMarketSentimentProviderConfig();
-  const loginAttempted = providerConfigured;
+  const providerConfigured = missingVariables.length === 0;
 
-  console.info('[Myfxbook] health diagnostic started', {
-    missingVariables,
-    hasBaseUrl: baseUrl.hasBaseUrl,
-    baseUrlValid: baseUrl.baseUrlValid,
-    providerConfigured,
-    providerIsMyfxbook: config.provider === 'myfxbook',
-  });
+  if (shouldDebug()) {
+    console.info('[Myfxbook] health diagnostic started', {
+      missingVariables,
+      hasBaseUrl: baseUrl.hasBaseUrl,
+      baseUrlValid: baseUrl.baseUrlValid,
+      providerConfigured,
+    });
+  }
 
-  const login = loginAttempted
+  const login = providerConfigured
     ? await loginToMyfxbook({ force: true }).catch(error => ({
         ok: false as const,
         code: 'MYFXBOOK_PROVIDER_FAILED' as const,
-        providerMessage: maskedProviderMessage(error instanceof Error ? error.message : null),
+        providerMessage: maskProviderMessage(error instanceof Error ? error.message : null),
         httpStatus: undefined,
+        contentType: null,
+        responseKind: 'empty' as const,
         canReachMyfxbook: false,
       }))
     : null;
 
+  const loginStatus: MyfxbookLoginStatus = !providerConfigured
+    ? 'missing_env'
+    : login?.ok
+      ? 'success'
+      : publicMyfxbookLoginStatus(login?.code);
+
+  if (shouldDebug()) {
+    console.info('[Myfxbook] health diagnostic completed', {
+      loginStatus,
+      httpStatus: login?.httpStatus ?? null,
+      contentType: contentTypeCategory(login?.contentType),
+      responseKind: login?.responseKind ?? null,
+      sessionReceived: Boolean(login?.ok),
+    });
+  }
+
   return NextResponse.json({
-    ok: true,
-    provider: config.provider ?? (config.providerEnv || null),
-    providerIsMyfxbook: config.provider === 'myfxbook',
+    provider: 'myfxbook',
+    configured: providerConfigured,
     providerConfigured,
-    hasEmail: Boolean(rawEmail),
-    hasPassword: Boolean(rawPassword),
+    hasEmail: Boolean(email),
+    hasPassword: Boolean(password),
     hasBaseUrl: baseUrl.hasBaseUrl,
-    hasApiBaseUrl: baseUrl.hasBaseUrl,
     baseUrlValid: baseUrl.baseUrlValid,
     usingDefaultBaseUrl: baseUrl.usingDefaultBaseUrl,
     missingVariables,
-    canReachMyfxbook: login?.canReachMyfxbook ?? false,
-    loginAttempted,
-    loginOk: login?.ok ?? false,
-    code: login && !login.ok ? publicMyfxbookCode(login.code) : providerConfigured ? null : 'MISSING_CREDENTIALS',
-    providerCode: login && !login.ok ? login.code : providerConfigured ? null : 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED',
+    loginStatus,
+    message: publicMessageForStatus(loginStatus),
+    lastCheckedAt,
+    loginAttempted: providerConfigured,
     httpStatus: login?.httpStatus ?? null,
-    providerMessage: login && !login.ok ? maskedProviderMessage(login.providerMessage) : null,
-    hasSession: Boolean(login?.ok),
-  });
+    responseKind: login?.responseKind ?? null,
+    contentType: contentTypeCategory(login?.contentType),
+    sessionReceived: Boolean(login?.ok),
+    canReachProvider: login?.canReachMyfxbook ?? false,
+    providerMessage: login && !login.ok ? maskProviderMessage(login.providerMessage) : null,
+  }, { status: 200, headers: cacheHeaders });
 }

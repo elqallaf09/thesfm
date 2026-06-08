@@ -5,6 +5,7 @@ import { loginToMyfxbook } from '@/lib/market/providers/myfxbook';
 import { isAdminAccessCodeConfigured, isValidAdminAccessCode } from '@/lib/server/adminAccess';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const DEFAULT_MYFXBOOK_API_BASE_URL = 'https://www.myfxbook.com/api';
 
@@ -40,7 +41,12 @@ function publicMyfxbookCode(code: string | null | undefined) {
   if (code === 'MYFXBOOK_SESSION_MISSING') return 'NO_SESSION';
   if (code === 'MYFXBOOK_TIMEOUT') return 'TIMEOUT';
   if (code === 'MYFXBOOK_RATE_LIMITED') return 'RATE_LIMITED';
+  if (code === 'MYFXBOOK_CLOUDFLARE_BLOCKED') return 'CLOUDFLARE_BLOCKED';
   return code ? 'PROVIDER_DOWN' : null;
+}
+
+function shouldDebug() {
+  return process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true';
 }
 
 function myfxbookBaseUrlDiagnostic(rawBaseUrl: string) {
@@ -86,13 +92,15 @@ export async function GET(request: NextRequest) {
   const envConfigured = providerConfigured;
   const providerIsMyfxbook = config.provider === 'myfxbook';
 
-  console.info('[Myfxbook] health diagnostic started', {
-    missingVariables,
-    hasBaseUrl: baseUrl.hasBaseUrl,
-    baseUrlValid: baseUrl.baseUrlValid,
-    providerConfigured,
-    providerIsMyfxbook,
-  });
+  if (shouldDebug()) {
+    console.info('[Myfxbook] health diagnostic started', {
+      missingVariables,
+      hasBaseUrl: baseUrl.hasBaseUrl,
+      baseUrlValid: baseUrl.baseUrlValid,
+      providerConfigured,
+      providerIsMyfxbook,
+    });
+  }
 
   const login = providerConfigured
     ? await loginToMyfxbook({ force: true }).catch(error => ({

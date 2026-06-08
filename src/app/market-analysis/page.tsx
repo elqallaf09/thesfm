@@ -97,6 +97,13 @@ type ApiListState<T> = {
   provider?: string | null;
   source?: string | null;
   sentimentAvailable?: boolean;
+  providerStatus?: string | null;
+  cacheStatus?: string | null;
+  cached?: boolean;
+  stale?: boolean;
+  lastCheckedAt?: string | null;
+  checkedAt?: string | null;
+  providerMessage?: string | null;
   buyPercent?: number | null;
   sellPercent?: number | null;
   sentimentLabel?: string | null;
@@ -467,7 +474,7 @@ async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiLis
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), MARKET_TOOL_REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
     const payload = await response.json().catch(() => ({})) as {
       items?: T[];
       events?: T[];
@@ -482,6 +489,13 @@ async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiLis
       provider?: string | null;
       source?: string | null;
       sentimentAvailable?: boolean;
+      providerStatus?: string | null;
+      cacheStatus?: string | null;
+      cached?: boolean;
+      stale?: boolean;
+      lastCheckedAt?: string | null;
+      checkedAt?: string | null;
+      providerMessage?: string | null;
       buyPercent?: number | null;
       sellPercent?: number | null;
       sentimentLabel?: string | null;
@@ -503,6 +517,13 @@ async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiLis
       provider: payload.provider,
       source: payload.source,
       sentimentAvailable: payload.sentimentAvailable,
+      providerStatus: payload.providerStatus,
+      cacheStatus: payload.cacheStatus,
+      cached: payload.cached,
+      stale: payload.stale,
+      lastCheckedAt: payload.lastCheckedAt ?? payload.checkedAt ?? undefined,
+      checkedAt: payload.checkedAt ?? payload.lastCheckedAt ?? undefined,
+      providerMessage: payload.providerMessage,
       buyPercent: payload.buyPercent,
       sellPercent: payload.sellPercent,
       sentimentLabel: payload.sentimentLabel,
@@ -1248,6 +1269,7 @@ export default function MarketAnalysisPage() {
   const [economicCalendar, setEconomicCalendar] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
   const [centralBankNews, setCentralBankNews] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
   const [marketSentiment, setMarketSentiment] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
+  const [sentimentHealthLoading, setSentimentHealthLoading] = useState(false);
   const newsSentimentLoadedRef = useRef<Record<'news' | 'sentiment', boolean>>({ news: false, sentiment: false });
   const newsSentimentLoadingRef = useRef<Record<'news' | 'sentiment', boolean>>({ news: false, sentiment: false });
   const newsSentimentSymbolRef = useRef('');
@@ -1362,6 +1384,64 @@ export default function MarketAnalysisPage() {
       });
     });
   }, [selectedSentimentAssetType, selectedSentimentProviderSymbol, selectedSentimentRequestKey, selectedSentimentSymbol, t]);
+
+  const checkMyfxbookHealth = useCallback(() => {
+    setSentimentHealthLoading(true);
+    void (async () => {
+      try {
+        const response = await fetch('/api/market/sentiment/health', { cache: 'no-store' });
+        const payload = await response.json().catch(() => ({})) as {
+          loginStatus?: string;
+          message?: string;
+          lastCheckedAt?: string;
+          providerMessage?: string | null;
+        };
+        const loginStatus = String(payload.loginStatus ?? '').trim().toLowerCase();
+        const providerStatus = loginStatus === 'success'
+          ? 'connected'
+          : loginStatus === 'rate_limited'
+            ? 'limited'
+            : loginStatus === 'missing_env'
+              ? 'needs_setup'
+              : 'unavailable';
+        const codeMap: Record<string, string | undefined> = {
+          success: undefined,
+          missing_env: 'MISSING_CREDENTIALS',
+          invalid_credentials: 'LOGIN_REJECTED',
+          cloudflare_blocked: 'CLOUDFLARE_BLOCKED',
+          rate_limited: 'RATE_LIMIT',
+          provider_unavailable: 'PROVIDER_DOWN',
+        };
+        setMarketSentiment(prev => ({
+          ...prev,
+          loading: false,
+          provider: 'myfxbook',
+          source: 'Myfxbook',
+          providerStatus,
+          code: codeMap[loginStatus],
+          message: loginStatus === 'success' ? '' : String(payload.message ?? t('market_sentiment_myfxbook_provider_failed_body')),
+          providerMessage: payload.providerMessage ?? null,
+          lastCheckedAt: payload.lastCheckedAt ?? new Date().toISOString(),
+          checkedAt: payload.lastCheckedAt ?? new Date().toISOString(),
+        }));
+      } catch {
+        const checkedAt = new Date().toISOString();
+        setMarketSentiment(prev => ({
+          ...prev,
+          loading: false,
+          provider: 'myfxbook',
+          source: 'Myfxbook',
+          providerStatus: 'unavailable',
+          code: 'PROVIDER_DOWN',
+          message: t('market_sentiment_myfxbook_provider_failed_body'),
+          lastCheckedAt: checkedAt,
+          checkedAt,
+        }));
+      } finally {
+        setSentimentHealthLoading(false);
+      }
+    })();
+  }, [t]);
 
   useEffect(() => {
     const syncTabFromRoute = () => {
@@ -2871,6 +2951,8 @@ export default function MarketAnalysisPage() {
             onSelectAsset={focusMarketSearch}
             onRefreshNews={() => loadNewsSentiment(['news'], { force: true })}
             onRefreshSentiment={() => selectedSentimentAsset ? loadNewsSentiment(['sentiment'], { force: true }) : focusMarketSearch()}
+            onCheckSentimentHealth={checkMyfxbookHealth}
+            checkingSentimentHealth={sentimentHealthLoading}
             onOpenTechnicalAnalysis={() => setActiveTab('technicalAnalysis')}
             onApplySentimentSuggestion={(symbol) => {
               const normalized = normalizeMarketSymbolInput(symbol, 'forex');
@@ -4726,7 +4808,7 @@ export default function MarketAnalysisPage() {
 
         .sentiment-context-row {
           display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
           gap: 8px;
           min-width: 0;
         }
@@ -4746,6 +4828,22 @@ export default function MarketAnalysisPage() {
         .sentiment-context-badge.source {
           border-color: rgba(29, 140, 255, .18);
           background: rgba(29, 140, 255, .08);
+        }
+
+        .sentiment-context-badge.status.connected {
+          border-color: rgba(34, 197, 94, .22);
+          background: rgba(34, 197, 94, .08);
+        }
+
+        .sentiment-context-badge.status.limited {
+          border-color: rgba(245, 158, 11, .24);
+          background: rgba(245, 158, 11, .10);
+        }
+
+        .sentiment-context-badge.status.needs-setup,
+        .sentiment-context-badge.status.disconnected {
+          border-color: rgba(239, 68, 68, .20);
+          background: rgba(239, 68, 68, .07);
         }
 
         .sentiment-context-badge small {
@@ -4789,6 +4887,24 @@ export default function MarketAnalysisPage() {
         }
 
         .sentiment-updated-note svg {
+          flex: 0 0 auto;
+        }
+
+        .sentiment-cache-note {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          width: fit-content;
+          max-width: 100%;
+          border: 1px solid rgba(245, 158, 11, .22);
+          border-radius: 14px;
+          background: rgba(245, 158, 11, .09);
+          color: #9A5F04;
+          padding: 7px 9px;
+          font-weight: 900;
+        }
+
+        .sentiment-cache-note svg {
           flex: 0 0 auto;
         }
 
@@ -5140,6 +5256,13 @@ export default function MarketAnalysisPage() {
           outline: none;
         }
 
+        .sentiment-empty-actions button:disabled {
+          cursor: not-allowed;
+          opacity: .62;
+          transform: none;
+          box-shadow: none;
+        }
+
         .sentiment-empty-actions button:active {
           transform: translateY(0);
         }
@@ -5431,6 +5554,24 @@ export default function MarketAnalysisPage() {
         .dark .sentiment-context-badge.source {
           background: rgba(29, 140, 255, .10);
           border-color: rgba(29, 140, 255, .24);
+        }
+
+        .dark .sentiment-context-badge.status.connected {
+          background: rgba(34, 197, 94, .12);
+          border-color: rgba(34, 197, 94, .28);
+        }
+
+        .dark .sentiment-context-badge.status.limited,
+        .dark .sentiment-cache-note {
+          background: rgba(245, 158, 11, .13);
+          border-color: rgba(245, 158, 11, .30);
+          color: #FCD34D;
+        }
+
+        .dark .sentiment-context-badge.status.needs-setup,
+        .dark .sentiment-context-badge.status.disconnected {
+          background: rgba(239, 68, 68, .12);
+          border-color: rgba(239, 68, 68, .26);
         }
 
         .dark .sentiment-extra-metrics span {
@@ -9060,6 +9201,9 @@ function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => 
   if (normalizedCode === 'LOGIN_FAILED') {
     return { title: t('market_sentiment_myfxbook_login_rejected_title'), body: t('market_sentiment_myfxbook_login_rejected_body') };
   }
+  if (normalizedCode === 'CLOUDFLARE_BLOCKED' || normalizedCode === 'MYFXBOOK_CLOUDFLARE_BLOCKED') {
+    return { title: t('market_sentiment_myfxbook_cloudflare_title'), body: t('market_sentiment_myfxbook_cloudflare_body') };
+  }
   if (normalizedCode === 'NO_SESSION') {
     return { title: t('market_sentiment_myfxbook_no_session_title'), body: t('market_sentiment_myfxbook_no_session_body') };
   }
@@ -9126,6 +9270,20 @@ function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => 
   return { title: t('market_sentiment_unavailable_title'), body: t('market_sentiment_unavailable_body') };
 }
 
+function sentimentProviderStatusMeta(status: unknown, t: (key: string) => string) {
+  const normalized = String(status ?? '').trim().toLowerCase();
+  if (normalized === 'connected') {
+    return { label: t('market_sentiment_status_connected'), className: 'connected' };
+  }
+  if (normalized === 'limited') {
+    return { label: t('market_sentiment_status_limited'), className: 'limited' };
+  }
+  if (normalized === 'needs_setup' || normalized === 'not_configured') {
+    return { label: t('market_sentiment_status_needs_setup'), className: 'needs-setup' };
+  }
+  return { label: t('market_sentiment_status_disconnected'), className: 'disconnected' };
+}
+
 function NewsSentimentPanel({
   t,
   lang,
@@ -9135,6 +9293,8 @@ function NewsSentimentPanel({
   onSelectAsset,
   onRefreshNews,
   onRefreshSentiment,
+  onCheckSentimentHealth,
+  checkingSentimentHealth,
   onOpenTechnicalAnalysis,
   onApplySentimentSuggestion,
 }: {
@@ -9146,6 +9306,8 @@ function NewsSentimentPanel({
   onSelectAsset: () => void;
   onRefreshNews: () => void;
   onRefreshSentiment: () => void;
+  onCheckSentimentHealth: () => void;
+  checkingSentimentHealth: boolean;
   onOpenTechnicalAnalysis: () => void;
   onApplySentimentSuggestion: (symbol: string) => void;
 }) {
@@ -9154,7 +9316,12 @@ function NewsSentimentPanel({
   const sentimentItems = hasSelectedAsset ? sentiment.items : [];
   const sentimentLoading = hasSelectedAsset && sentiment.loading;
   const sentimentAssetType = sentimentAssetBadgeType(sentiment.assetType, selectedAsset);
+  const supportsMyfxbookHealth = sentimentAssetType === 'forex'
+    || sentimentAssetType === 'gold'
+    || sentimentAssetType === 'silver'
+    || sentimentAssetType === 'metals';
   const sentimentProviderKey = sentimentProviderBadgeKey(sentiment.provider, sentiment.sentimentAvailable, sentimentAssetType);
+  const sentimentProviderStatus = sentimentProviderStatusMeta(sentiment.providerStatus, t);
   const sentimentEmpty = publicSentimentEmptyCopy(hasSelectedAsset ? sentiment.code : 'NO_SELECTED_ASSET', t, sentimentAssetType);
   const sentimentContextBody = hasSelectedAsset ? t(sentimentContextBodyKey(sentimentAssetType)) : '';
   const normalizedSentimentCode = String(sentiment.code ?? '').trim().toUpperCase();
@@ -9166,17 +9333,28 @@ function NewsSentimentPanel({
     'PROVIDER_DOWN',
     'TIMEOUT',
     'RATE_LIMIT',
+    'CLOUDFLARE_BLOCKED',
     'MYFXBOOK_AUTH_FAILED',
+    'MYFXBOOK_CLOUDFLARE_BLOCKED',
     'MYFXBOOK_PROVIDER_FAILED',
   ].includes(normalizedSentimentCode) ? 'warning' : 'info';
   const newsLastAttempt = news.updatedAt
     ? `${t('market_last_attempt')}: ${formatMarketToolTimestamp(news.updatedAt, lang)}`
     : undefined;
-  const sentimentLastAttempt = hasSelectedAsset && sentiment.updatedAt
-    ? `${t('market_last_attempt')}: ${formatMarketToolTimestamp(sentiment.updatedAt, lang)}`
+  const sentimentLastCheckedAt = hasSelectedAsset
+    ? (sentiment.lastCheckedAt || sentiment.checkedAt || sentiment.updatedAt)
+    : '';
+  const sentimentLastAttempt = hasSelectedAsset && sentimentLastCheckedAt
+    ? `${t('market_last_attempt')}: ${formatMarketToolTimestamp(sentimentLastCheckedAt, lang)}`
     : undefined;
   const sentimentUpdatedLabel = hasSelectedAsset && sentiment.sentimentAvailable && sentiment.updatedAt
     ? `${t('market_sentiment_last_updated_metric')}: ${formatMarketToolTimestamp(sentiment.updatedAt, lang)}`
+    : '';
+  const sentimentCheckedLabel = hasSelectedAsset && sentimentLastCheckedAt
+    ? `${t('market_sentiment_last_checked_metric')}: ${formatMarketToolTimestamp(sentimentLastCheckedAt, lang)}`
+    : '';
+  const sentimentCachedWarning = hasSelectedAsset && (sentiment.stale || sentiment.cacheStatus === 'stale')
+    ? (sentiment.message || t('market_sentiment_cached_warning'))
     : '';
   const sentimentActionLabel = hasSelectedAsset ? t('market_refresh_sentiment') : t('market_sentiment_select_asset_action');
   const sentimentAction = hasSelectedAsset ? onRefreshSentiment : onSelectAsset;
@@ -9280,11 +9458,27 @@ function NewsSentimentPanel({
                     <small>{t('market_sentiment_provider_label')}</small>
                     <b>{t(sentimentProviderKey)}</b>
                   </span>
+                  <span className={`sentiment-context-badge status ${sentimentProviderStatus.className}`}>
+                    <small>{t('market_sentiment_provider_status')}</small>
+                    <b>{sentimentProviderStatus.label}</b>
+                  </span>
                 </div>
                 {sentimentUpdatedLabel ? (
                   <p className="sentiment-context-note sentiment-updated-note">
                     <Clock3 size={13} />
                     <span>{sentimentUpdatedLabel}</span>
+                  </p>
+                ) : null}
+                {sentimentCheckedLabel ? (
+                  <p className="sentiment-context-note sentiment-updated-note">
+                    <Clock3 size={13} />
+                    <span>{sentimentCheckedLabel}</span>
+                  </p>
+                ) : null}
+                {sentimentCachedWarning ? (
+                  <p className="sentiment-context-note sentiment-cache-note">
+                    <Info size={13} />
+                    <span>{sentimentCachedWarning}</span>
                   </p>
                 ) : null}
                 {sentimentContextBody ? <p className="sentiment-context-note">{sentimentContextBody}</p> : null}
@@ -9349,6 +9543,12 @@ function NewsSentimentPanel({
                     <Activity size={15} />
                     <span>{t('market_refresh_sentiment')}</span>
                   </button>
+                  {supportsMyfxbookHealth ? (
+                    <button type="button" onClick={onCheckSentimentHealth} disabled={checkingSentimentHealth}>
+                      <ShieldAlert size={15} />
+                      <span>{checkingSentimentHealth ? t('market_refreshing_section') : t('market_sentiment_check_myfxbook')}</span>
+                    </button>
+                  ) : null}
                   <button type="button" onClick={onRefreshNews}>
                     <Newspaper size={15} />
                     <span>{t('market_sentiment_show_news_action')}</span>
@@ -9376,6 +9576,12 @@ function NewsSentimentPanel({
                       <Activity size={15} />
                       <span>{t('market_refresh_sentiment')}</span>
                     </button>
+                    {supportsMyfxbookHealth ? (
+                      <button type="button" onClick={onCheckSentimentHealth} disabled={checkingSentimentHealth}>
+                        <ShieldAlert size={15} />
+                        <span>{checkingSentimentHealth ? t('market_refreshing_section') : t('market_sentiment_check_myfxbook')}</span>
+                      </button>
+                    ) : null}
                     {sentimentSuggestions.map(suggestion => (
                       <button type="button" key={suggestion} onClick={() => onApplySentimentSuggestion(suggestion)}>
                         <Search size={15} />

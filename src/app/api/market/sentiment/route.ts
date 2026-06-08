@@ -8,11 +8,12 @@ import {
 } from '@/lib/market/providers/myfxbook';
 import { normalizeAssetType, type MarketAssetType } from '@/lib/market/marketService';
 
-export const revalidate = 300;
+export const runtime = 'nodejs';
+export const revalidate = 0;
 export const dynamic = 'force-dynamic';
 
 const cacheHeaders = {
-  'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+  'Cache-Control': 'private, no-store',
 };
 const REQUEST_TIMEOUT_MS = 8000;
 
@@ -51,6 +52,7 @@ type UnifiedSentimentCode =
   | 'PROVIDER_DOWN'
   | 'TIMEOUT'
   | 'RATE_LIMIT'
+  | 'CLOUDFLARE_BLOCKED'
   | 'MISSING_CREDENTIALS'
   | 'LOGIN_FAILED'
   | 'LOGIN_REJECTED'
@@ -269,6 +271,8 @@ function sentimentLabel(buyPercent: number | null, sellPercent: number | null): 
 }
 
 function sentimentMessage(_assetType: SentimentAssetType, code: UnifiedSentimentCode) {
+  if (code === 'CLOUDFLARE_BLOCKED') return 'مزود Myfxbook رفض الاتصال من الخادم. قد يكون بسبب حماية Cloudflare أو قيود الحساب المجاني.';
+  if (code === 'MISSING_PROVIDER' || code === 'UNSUPPORTED_ASSET_TYPE') return 'لا يوجد مزود مشاعر موثوق مربوط حالياً لهذا النوع من الأصول.';
   if (code === 'SYMBOL_REQUIRED') return 'اختر أصلاً قبل تحميل مشاعر السوق.';
   if (code === 'MISSING_CREDENTIALS') return 'إعدادات مزود المشاعر غير مكتملة. يرجى إضافة بيانات Myfxbook في Environment Variables ثم إعادة النشر.';
   if (code === 'LOGIN_REJECTED' || code === 'LOGIN_FAILED') return 'تم رفض تسجيل الدخول إلى Myfxbook. تحقق من بيانات الحساب أو جرّب تسجيل الدخول مباشرة في موقع Myfxbook.';
@@ -332,10 +336,21 @@ function unavailableResponse(input: {
   provider?: UnifiedSentimentProvider;
   legacyCode?: string;
   message?: string;
+  providerMessage?: string | null;
+  providerStatus?: 'connected' | 'limited' | 'unavailable' | 'needs_setup';
+  cacheStatus?: 'fresh' | 'stale' | 'miss';
+  lastCheckedAt?: string | null;
   suggestions?: string[];
 }) {
   const provider = input.provider ?? 'none';
   const responseAssetType = input.assetType === 'metals' ? 'metal' : input.assetType;
+  const providerStatus = input.providerStatus
+    ?? (input.code === 'MISSING_CREDENTIALS'
+      ? 'needs_setup'
+      : input.code === 'RATE_LIMIT'
+        ? 'limited'
+        : 'unavailable');
+  const lastCheckedAt = input.lastCheckedAt ?? new Date().toISOString();
   return NextResponse.json({
     ok: false,
     success: false,
@@ -358,10 +373,17 @@ function unavailableResponse(input: {
     sellPercent: null,
     sentimentLabel: 'unavailable' as SentimentLabel,
     message: input.message ?? sentimentMessage(input.assetType, input.code),
+    providerMessage: maskProviderMessage(input.providerMessage),
+    providerStatus,
+    cacheStatus: input.cacheStatus ?? 'miss',
+    cached: false,
+    stale: false,
     suggestions: input.suggestions ?? [],
     items: [],
     updatedAt: null,
     updated_at: null,
+    lastCheckedAt,
+    checkedAt: lastCheckedAt,
   }, { status: 200, headers: cacheHeaders });
 }
 
@@ -372,11 +394,16 @@ function availableResponse(input: {
   source: string;
   items: Array<Record<string, unknown>>;
   updatedAt: string | null;
+  message?: string | null;
+  providerStatus?: 'connected' | 'limited' | 'unavailable';
+  cacheStatus?: 'fresh' | 'stale';
+  lastCheckedAt?: string | null;
 }) {
   const { buyPercent, sellPercent } = primarySentimentValues(input.items);
   const { longPercent, shortPercent, longVolume, shortVolume, positions } = primaryLongShortValues(input.items);
   const label = sentimentLabel(buyPercent, sellPercent);
   const updatedAt = input.updatedAt ?? new Date().toISOString();
+  const lastCheckedAt = input.lastCheckedAt ?? updatedAt;
   const responseAssetType = input.assetType === 'metals' ? 'metal' : input.assetType;
 
   return NextResponse.json({
@@ -399,10 +426,16 @@ function availableResponse(input: {
     buyPercent,
     sellPercent,
     sentimentLabel: label,
-    message: '',
+    message: input.message ?? '',
+    providerStatus: input.providerStatus ?? 'connected',
+    cacheStatus: input.cacheStatus ?? 'fresh',
+    cached: input.cacheStatus === 'fresh',
+    stale: input.cacheStatus === 'stale',
     items: input.items,
     updatedAt,
     updated_at: updatedAt,
+    lastCheckedAt,
+    checkedAt: lastCheckedAt,
   }, { status: 200, headers: cacheHeaders });
 }
 
@@ -436,6 +469,7 @@ function providerFailedError(message = 'Market sentiment provider failed') {
 }
 
 function logProviderError(provider: string | null, assetType: SentimentAssetType, symbol: string, error: unknown) {
+  if (!shouldDebug()) return;
   const status = error instanceof MarketSentimentProviderError ? error.status : undefined;
   const statusText = error instanceof MarketSentimentProviderError ? error.statusText : undefined;
   const code = error instanceof MarketSentimentProviderError ? error.code : isTimeoutError(error) ? 'MARKET_SENTIMENT_TIMEOUT' : undefined;
@@ -703,6 +737,7 @@ function mapMyfxbookErrorCode(code: string): UnifiedSentimentCode {
   if (code === 'MYFXBOOK_SESSION_MISSING') return 'NO_SESSION';
   if (code === 'MYFXBOOK_TIMEOUT') return 'TIMEOUT';
   if (code === 'MYFXBOOK_RATE_LIMITED') return 'RATE_LIMIT';
+  if (code === 'MYFXBOOK_CLOUDFLARE_BLOCKED') return 'CLOUDFLARE_BLOCKED';
   if (code === 'INVALID_FOREX_PAIR') return 'INVALID_FOREX_PAIR';
   if (code === 'NO_MARKET_SENTIMENT_DATA') return 'NO_DATA';
   if (code === 'SYMBOL_REQUIRED') return 'SYMBOL_REQUIRED';
@@ -716,7 +751,7 @@ function invalidForexPairMessage(suggestions: string[]) {
   return 'لا تتوفر بيانات مشاعر لهذا الأصل من Myfxbook.';
 }
 
-async function handleForexSentiment(requestMeta: NormalizedSentimentRequest) {
+async function handleForexSentiment(requestMeta: NormalizedSentimentRequest, options: { force?: boolean } = {}) {
   if (!requestMeta.symbol) {
     return unavailableResponse({
       code: 'SYMBOL_REQUIRED',
@@ -748,7 +783,7 @@ async function handleForexSentiment(requestMeta: NormalizedSentimentRequest) {
     });
   }
 
-  const result = await getMyfxbookSentiment(resolvedForexSymbol.symbol);
+  const result = await getMyfxbookSentiment(resolvedForexSymbol.symbol, { force: options.force });
   if (!result.ok) {
     const code = mapMyfxbookErrorCode(result.code);
     if (code === 'PROVIDER_DOWN') {
@@ -766,6 +801,10 @@ async function handleForexSentiment(requestMeta: NormalizedSentimentRequest) {
       symbol: resolvedForexSymbol.symbol,
       assetType: 'forex',
       provider: 'myfxbook',
+      providerMessage: result.providerMessage,
+      providerStatus: result.providerStatus,
+      cacheStatus: result.cacheStatus,
+      lastCheckedAt: result.checked_at,
       suggestions: result.suggestions ?? [],
     });
   }
@@ -788,10 +827,14 @@ async function handleForexSentiment(requestMeta: NormalizedSentimentRequest) {
     source: 'Myfxbook',
     items: matchingItems,
     updatedAt: result.updated_at,
+    message: result.message,
+    providerStatus: result.providerStatus,
+    cacheStatus: result.cacheStatus,
+    lastCheckedAt: result.checked_at,
   });
 }
 
-async function handleMetalSentiment(requestMeta: NormalizedSentimentRequest) {
+async function handleMetalSentiment(requestMeta: NormalizedSentimentRequest, options: { force?: boolean } = {}) {
   if (!requestMeta.symbol) {
     return unavailableResponse({
       code: 'SYMBOL_REQUIRED',
@@ -820,7 +863,7 @@ async function handleMetalSentiment(requestMeta: NormalizedSentimentRequest) {
     });
   }
 
-  const result = await getMyfxbookSentiment(resolvedMetalSymbol.symbol);
+  const result = await getMyfxbookSentiment(resolvedMetalSymbol.symbol, { force: options.force });
   if (!result.ok) {
     const code = mapMyfxbookErrorCode(result.code);
     if (code === 'PROVIDER_DOWN') {
@@ -838,6 +881,10 @@ async function handleMetalSentiment(requestMeta: NormalizedSentimentRequest) {
       symbol: resolvedMetalSymbol.symbol,
       assetType: 'metals',
       provider: 'myfxbook',
+      providerMessage: result.providerMessage,
+      providerStatus: result.providerStatus,
+      cacheStatus: result.cacheStatus,
+      lastCheckedAt: result.checked_at,
       suggestions: result.suggestions ?? [],
     });
   }
@@ -860,6 +907,10 @@ async function handleMetalSentiment(requestMeta: NormalizedSentimentRequest) {
     source: 'Myfxbook',
     items: matchingItems,
     updatedAt: result.updated_at,
+    message: result.message,
+    providerStatus: result.providerStatus,
+    cacheStatus: result.cacheStatus,
+    lastCheckedAt: result.checked_at,
   });
 }
 
@@ -929,6 +980,8 @@ async function handleNewsSentiment(requestMeta: NormalizedSentimentRequest) {
 
 export async function GET(request: NextRequest) {
   const requestMeta = normalizeRequest(request);
+  const forceRefresh = request.nextUrl.searchParams.has('refresh')
+    || request.nextUrl.searchParams.get('force') === 'true';
 
   if (shouldDebug()) {
     console.info('[market-sentiment] request resolved', {
@@ -949,11 +1002,11 @@ export async function GET(request: NextRequest) {
   }
 
   if (requestMeta.assetType === 'forex') {
-    return handleForexSentiment(requestMeta);
+    return handleForexSentiment(requestMeta, { force: forceRefresh });
   }
 
   if (requestMeta.assetType === 'metals') {
-    return handleMetalSentiment(requestMeta);
+    return handleMetalSentiment(requestMeta, { force: forceRefresh });
   }
 
   if (requestMeta.assetType === 'stock' || requestMeta.assetType === 'etf') {
