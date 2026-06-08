@@ -279,8 +279,9 @@ function sentimentMessage(_assetType: SentimentAssetType, code: UnifiedSentiment
   if (code === 'MISSING_CREDENTIALS') return 'إعدادات مزود المشاعر غير مكتملة. يرجى إضافة بيانات Myfxbook في Environment Variables ثم إعادة النشر.';
   if (code === 'LOGIN_REJECTED' || code === 'LOGIN_FAILED') return 'تم تأكيد أن بيانات الدخول تعمل من المتصفح، لكن Myfxbook رفض طلب الخادم. تحقق من إعدادات Vercel أو قيود الاتصال من المزود.';
   if (code === 'RATE_LIMIT') return 'تم تجاوز حد طلبات مزود المشاعر مؤقتاً. يرجى المحاولة لاحقاً.';
+  if (code === 'TIMEOUT') return 'مزود Myfxbook بطيء حالياً أو لا يستجيب. حاول لاحقاً.';
   if (code === 'NO_SESSION') return 'لم يتم استلام جلسة صالحة من Myfxbook. يرجى التحقق من الحساب وإعدادات المزود.';
-  if (code === 'TIMEOUT' || code === 'PROVIDER_DOWN') return 'تعذر الاتصال بمزود المشاعر حالياً. يرجى المحاولة لاحقاً.';
+  if (code === 'PROVIDER_DOWN') return 'تعذر الاتصال بمزود المشاعر حالياً. يرجى المحاولة لاحقاً.';
   if (
     code === 'INVALID_FOREX_PAIR'
     || code === 'NO_DATA'
@@ -339,7 +340,7 @@ function unavailableResponse(input: {
   legacyCode?: string;
   message?: string;
   providerMessage?: string | null;
-  providerStatus?: 'connected' | 'limited' | 'unavailable' | 'needs_setup';
+  providerStatus?: 'connected' | 'limited' | 'unavailable' | 'needs_setup' | 'timeout';
   cacheStatus?: 'fresh' | 'stale' | 'miss';
   lastCheckedAt?: string | null;
   suggestions?: string[];
@@ -351,7 +352,9 @@ function unavailableResponse(input: {
       ? 'needs_setup'
       : input.code === 'RATE_LIMIT'
         ? 'limited'
-        : 'unavailable');
+        : input.code === 'TIMEOUT'
+          ? 'timeout'
+          : 'unavailable');
   const lastCheckedAt = input.lastCheckedAt ?? new Date().toISOString();
   return NextResponse.json({
     ok: false,
@@ -397,7 +400,7 @@ function availableResponse(input: {
   items: Array<Record<string, unknown>>;
   updatedAt: string | null;
   message?: string | null;
-  providerStatus?: 'connected' | 'limited' | 'unavailable';
+  providerStatus?: 'connected' | 'limited' | 'unavailable' | 'timeout';
   cacheStatus?: 'fresh' | 'stale';
   lastCheckedAt?: string | null;
 }) {

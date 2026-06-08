@@ -3,7 +3,7 @@ import { cleanEnv } from '@/lib/market/providerConfig';
 const DEFAULT_MYFXBOOK_API_BASE_URL = 'https://www.myfxbook.com/api';
 const LOGIN_ENDPOINT = 'login.json';
 const OUTLOOK_ENDPOINT = 'get-community-outlook.json';
-const REQUEST_TIMEOUT_MS = 10000;
+const REQUEST_TIMEOUT_MS = 9000;
 const OUTLOOK_TTL_MS = 30 * 60 * 1000;
 const SYMBOL_SENTIMENT_TTL_MS = 30 * 60 * 1000;
 const SESSION_TTL_MS = 45 * 60 * 1000;
@@ -26,6 +26,7 @@ type MyfxbookErrorCode =
 
 export type MyfxbookLoginStatus =
   | 'success'
+  | 'timeout'
   | 'invalid_credentials'
   | 'html_response'
   | 'cloudflare_blocked'
@@ -125,7 +126,7 @@ export type MyfxbookSentimentResult =
       updated_at: string;
       checked_at: string;
       cacheStatus: 'fresh' | 'stale';
-      providerStatus: 'connected' | 'limited' | 'unavailable';
+      providerStatus: 'connected' | 'limited' | 'unavailable' | 'timeout';
       message?: string;
     }
   | {
@@ -136,7 +137,7 @@ export type MyfxbookSentimentResult =
       updated_at: null;
       checked_at: string;
       cacheStatus: 'miss';
-      providerStatus: 'needs_setup' | 'limited' | 'unavailable';
+      providerStatus: 'needs_setup' | 'limited' | 'unavailable' | 'timeout';
       providerMessage?: string | null;
       suggestions?: string[];
     };
@@ -236,6 +237,19 @@ function safeBodyPreview(body: string, credentials?: { email?: string; password?
   return compact.slice(0, 150);
 }
 
+async function fetchMyfxbookWithTimeout(url: URL, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, {
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function readProviderResponse<T>(response: Response): Promise<{
   payload: T | null;
   body: string;
@@ -260,6 +274,7 @@ async function readProviderResponse<T>(response: Response): Promise<{
 export function publicMyfxbookLoginStatus(code: string | null | undefined): MyfxbookLoginStatus {
   if (!code) return 'success';
   if (code === 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED') return 'missing_env';
+  if (code === 'MYFXBOOK_TIMEOUT') return 'timeout';
   if (code === 'MYFXBOOK_AUTH_FAILED') return 'invalid_credentials';
   if (code === 'MYFXBOOK_HTML_RESPONSE') return 'html_response';
   if (code === 'MYFXBOOK_CLOUDFLARE_BLOCKED') return 'cloudflare_blocked';
@@ -562,7 +577,9 @@ function unavailable(code: MyfxbookErrorCode, providerMessage: string | null = n
     ? 'needs_setup'
     : code === 'MYFXBOOK_RATE_LIMITED'
       ? 'limited'
-      : 'unavailable';
+      : code === 'MYFXBOOK_TIMEOUT'
+        ? 'timeout'
+        : 'unavailable';
 
   return {
     ok: false,
@@ -583,10 +600,7 @@ function isTimeoutError(error: unknown) {
 }
 
 async function fetchJsonWithTimeout<T>(url: URL, timeoutMs = REQUEST_TIMEOUT_MS) {
-  const response = await fetch(url, {
-    cache: 'no-store',
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+  const response = await fetchMyfxbookWithTimeout(url, timeoutMs);
   const parsed = await readProviderResponse<T & { message?: string }>(response);
   const providerMessage = maskProviderMessage(parsed.payload?.message);
 
@@ -669,10 +683,7 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
   let response: Response;
   let parsed: Awaited<ReturnType<typeof readProviderResponse<MyfxbookLoginResponse>>>;
   try {
-    response = await fetch(loginUrl, {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
+    response = await fetchMyfxbookWithTimeout(loginUrl, REQUEST_TIMEOUT_MS);
     parsed = await readProviderResponse<MyfxbookLoginResponse>(response);
   } catch (error) {
     const code = isTimeoutError(error) ? 'MYFXBOOK_TIMEOUT' : 'MYFXBOOK_PROVIDER_FAILED';
@@ -682,14 +693,14 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     });
     cachedFailure = {
       code,
-      providerMessage: null,
+      providerMessage: code === 'MYFXBOOK_TIMEOUT' ? 'مزود Myfxbook بطيء حالياً أو لا يستجيب. حاول لاحقاً.' : null,
       expiresAt: now + FAILURE_TTL_MS,
       cacheKey: credentials.cacheKey,
     };
     return {
       ok: false as const,
       code,
-      providerMessage: null,
+      providerMessage: code === 'MYFXBOOK_TIMEOUT' ? 'مزود Myfxbook بطيء حالياً أو لا يستجيب. حاول لاحقاً.' : null,
       contentType: null,
       responseKind: 'empty',
       canReachMyfxbook: false,
@@ -1005,7 +1016,11 @@ export async function getMyfxbookSentiment(symbol: string, options: { force?: bo
           ...cachedSymbolSentiment.result,
           checked_at: new Date().toISOString(),
           cacheStatus: 'stale',
-          providerStatus: error.code === 'MYFXBOOK_RATE_LIMITED' ? 'limited' : 'unavailable',
+          providerStatus: error.code === 'MYFXBOOK_RATE_LIMITED'
+            ? 'limited'
+            : error.code === 'MYFXBOOK_TIMEOUT'
+              ? 'timeout'
+              : 'unavailable',
           message: 'قد تكون البيانات مؤقتة بسبب تعذر الاتصال بالمزود.',
         };
       }
@@ -1018,7 +1033,7 @@ export async function getMyfxbookSentiment(symbol: string, options: { force?: bo
           ...cachedSymbolSentiment.result,
           checked_at: new Date().toISOString(),
           cacheStatus: 'stale',
-          providerStatus: 'unavailable',
+          providerStatus: 'timeout',
           message: 'قد تكون البيانات مؤقتة بسبب تعذر الاتصال بالمزود.',
         };
       }

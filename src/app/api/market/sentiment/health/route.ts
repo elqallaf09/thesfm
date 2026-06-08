@@ -54,6 +54,7 @@ function contentTypeCategory(contentType: string | null | undefined) {
 
 function publicMessageForStatus(status: MyfxbookLoginStatus) {
   if (status === 'success') return 'تم الاتصال بمزود Myfxbook واستلام جلسة صالحة.';
+  if (status === 'timeout') return 'انتهت مهلة الاتصال مع Myfxbook. المزود قد يكون بطيئاً حالياً.';
   if (status === 'missing_env') return 'إعدادات مزود المشاعر غير مكتملة. يرجى إضافة بيانات Myfxbook في Environment Variables ثم إعادة النشر.';
   if (status === 'invalid_credentials') return 'تم تأكيد أن بيانات الدخول تعمل من المتصفح، لكن Myfxbook رفض طلب الخادم. تحقق من إعدادات Vercel أو قيود الاتصال من المزود.';
   if (status === 'html_response') return 'أعاد Myfxbook صفحة HTML بدلاً من JSON. قد يكون الطلب مرفوضاً من بيئة الخادم أو يحتاج إعدادات اتصال مختلفة.';

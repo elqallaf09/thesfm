@@ -125,7 +125,7 @@ const DEFAULT_MARKET_TYPE: MarketAssetType = 'stock';
 const DEFAULT_MARKET_ASSET_FILTER: MarketAssetFilter = 'all';
 const MARKET_REQUEST_TIMEOUT_MS = 12000;
 const MARKET_SLOW_NOTICE_MS = 5000;
-const MARKET_TOOL_REQUEST_TIMEOUT_MS = 8000;
+const MARKET_TOOL_REQUEST_TIMEOUT_MS = 12000;
 const MARKET_TIMEFRAMES = ['1D', '1W', '1M', '6M', '1Y'] as const;
 type MarketTimeframe = typeof MARKET_TIMEFRAMES[number];
 const MARKET_CHART_TYPES = ['line', 'area', 'candlestick', 'ohlc'] as const;
@@ -1388,8 +1388,10 @@ export default function MarketAnalysisPage() {
   const checkMyfxbookHealth = useCallback(() => {
     setSentimentHealthLoading(true);
     void (async () => {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), MARKET_TOOL_REQUEST_TIMEOUT_MS);
       try {
-        const response = await fetch('/api/market/sentiment/health', { cache: 'no-store' });
+        const response = await fetch('/api/market/sentiment/health', { cache: 'no-store', signal: controller.signal });
         const payload = await response.json().catch(() => ({})) as {
           loginStatus?: string;
           message?: string;
@@ -1399,6 +1401,8 @@ export default function MarketAnalysisPage() {
         const loginStatus = String(payload.loginStatus ?? '').trim().toLowerCase();
         const providerStatus = loginStatus === 'success'
           ? 'connected'
+          : loginStatus === 'timeout'
+            ? 'timeout'
           : loginStatus === 'rate_limited'
             ? 'limited'
             : loginStatus === 'missing_env'
@@ -1406,6 +1410,7 @@ export default function MarketAnalysisPage() {
               : 'unavailable';
         const codeMap: Record<string, string | undefined> = {
           success: undefined,
+          timeout: 'TIMEOUT',
           missing_env: 'MISSING_CREDENTIALS',
           invalid_credentials: 'LOGIN_REJECTED',
           html_response: 'HTML_RESPONSE',
@@ -1426,20 +1431,22 @@ export default function MarketAnalysisPage() {
           lastCheckedAt: payload.lastCheckedAt ?? new Date().toISOString(),
           checkedAt: payload.lastCheckedAt ?? new Date().toISOString(),
         }));
-      } catch {
+      } catch (error) {
         const checkedAt = new Date().toISOString();
+        const timedOut = isAbortLikeError(error);
         setMarketSentiment(prev => ({
           ...prev,
           loading: false,
           provider: 'myfxbook',
           source: 'Myfxbook',
-          providerStatus: 'unavailable',
-          code: 'PROVIDER_DOWN',
-          message: t('market_sentiment_myfxbook_provider_failed_body'),
+          providerStatus: timedOut ? 'timeout' : 'unavailable',
+          code: timedOut ? 'TIMEOUT' : 'PROVIDER_DOWN',
+          message: timedOut ? t('market_sentiment_timeout_body') : t('market_sentiment_myfxbook_provider_failed_body'),
           lastCheckedAt: checkedAt,
           checkedAt,
         }));
       } finally {
+        window.clearTimeout(timeoutId);
         setSentimentHealthLoading(false);
       }
     })();
@@ -4842,6 +4849,11 @@ export default function MarketAnalysisPage() {
           background: rgba(245, 158, 11, .10);
         }
 
+        .sentiment-context-badge.status.timeout {
+          border-color: rgba(245, 158, 11, .28);
+          background: rgba(245, 158, 11, .12);
+        }
+
         .sentiment-context-badge.status.needs-setup,
         .sentiment-context-badge.status.disconnected {
           border-color: rgba(239, 68, 68, .20);
@@ -5564,6 +5576,7 @@ export default function MarketAnalysisPage() {
         }
 
         .dark .sentiment-context-badge.status.limited,
+        .dark .sentiment-context-badge.status.timeout,
         .dark .sentiment-cache-note {
           background: rgba(245, 158, 11, .13);
           border-color: rgba(245, 158, 11, .30);
@@ -9282,6 +9295,9 @@ function sentimentProviderStatusMeta(status: unknown, t: (key: string) => string
   }
   if (normalized === 'limited') {
     return { label: t('market_sentiment_status_limited'), className: 'limited' };
+  }
+  if (normalized === 'timeout') {
+    return { label: t('market_sentiment_status_timeout'), className: 'timeout' };
   }
   if (normalized === 'needs_setup' || normalized === 'not_configured') {
     return { label: t('market_sentiment_status_needs_setup'), className: 'needs-setup' };
