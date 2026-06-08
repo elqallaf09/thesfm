@@ -107,6 +107,11 @@ type ApiListState<T> = {
   buyPercent?: number | null;
   sellPercent?: number | null;
   sentimentLabel?: string | null;
+  diagnostics?: Record<string, unknown> | null;
+  loginStatus?: string | null;
+  sessionUsed?: boolean;
+  sentimentStatus?: string | null;
+  diagnosticSource?: string | null;
   suggestions?: string[];
 };
 type TechnicalState = {
@@ -437,6 +442,7 @@ function sanitizeMarketToolMessage(code: string, message: string) {
     code === 'TIMEOUT' ||
     code === 'MISSING_CREDENTIALS' ||
     code === 'LOGIN_REJECTED' ||
+    code === 'INVALID_SESSION' ||
     code === 'NO_SESSION' ||
     code === 'INVALID_FOREX_PAIR' ||
     code === 'MISSING_PROVIDER' ||
@@ -499,13 +505,28 @@ async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiLis
       buyPercent?: number | null;
       sellPercent?: number | null;
       sentimentLabel?: string | null;
+      diagnostics?: Record<string, unknown> | null;
+      loginStatus?: string | null;
+      sessionUsed?: boolean;
+      sentimentStatus?: string | null;
+      diagnosticSource?: string | null;
       suggestions?: unknown[];
     };
     const code = String(payload.code ?? '').trim().toUpperCase();
     const sourceAvailable = response.ok && payload.ok !== false && payload.success !== false;
-    const rawMessage = sourceAvailable ? '' : String(payload.message ?? 'Data source is not configured.');
+    const rawMessage = sourceAvailable
+      ? (label === 'market-sentiment' ? String(payload.message ?? '') : '')
+      : String(payload.message ?? 'Data source is not configured.');
     const items = Array.isArray(payload.items) ? payload.items : Array.isArray(payload.events) ? payload.events : [];
-    logMarketToolPerformance(label, startedAt, { status: response.status, code, count: items.length });
+    logMarketToolPerformance(label, startedAt, {
+      status: response.status,
+      code,
+      count: items.length,
+      providerStatus: payload.providerStatus,
+      cacheStatus: payload.cacheStatus,
+      sentimentStatus: payload.sentimentStatus,
+      diagnosticSource: payload.diagnosticSource,
+    });
     return {
       loading: false,
       items,
@@ -527,6 +548,11 @@ async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiLis
       buyPercent: payload.buyPercent,
       sellPercent: payload.sellPercent,
       sentimentLabel: payload.sentimentLabel,
+      diagnostics: payload.diagnostics ?? null,
+      loginStatus: payload.loginStatus,
+      sessionUsed: payload.sessionUsed,
+      sentimentStatus: payload.sentimentStatus,
+      diagnosticSource: payload.diagnosticSource,
       suggestions: Array.isArray(payload.suggestions)
         ? payload.suggestions.map(item => String(item ?? '').trim()).filter(Boolean).slice(0, 4)
         : undefined,
@@ -1358,6 +1384,15 @@ export default function MarketAnalysisPage() {
       if (selectedSentimentAssetType) sentimentParams.set('assetType', selectedSentimentAssetType);
       const sentimentQuery = sentimentParams.toString();
       const sentimentUrl = `/api/market/sentiment${sentimentQuery ? `?${sentimentQuery}` : ''}`;
+      if (process.env.NODE_ENV === 'development' && target === 'sentiment') {
+        console.info('[market-sentiment] frontend request', {
+          route: '/api/market/sentiment',
+          symbol: selectedSentimentSymbol,
+          providerSymbol: selectedSentimentProviderSymbol || null,
+          assetType: selectedSentimentAssetType,
+          force: Boolean(options.force),
+        });
+      }
       return {
         target,
         request: target === 'news'
@@ -9216,6 +9251,9 @@ function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => 
   if (normalizedCode === 'LOGIN_FAILED') {
     return { title: t('market_sentiment_myfxbook_login_rejected_title'), body: t('market_sentiment_myfxbook_login_rejected_body') };
   }
+  if (normalizedCode === 'INVALID_SESSION' || normalizedCode === 'MYFXBOOK_INVALID_SESSION') {
+    return { title: t('market_sentiment_myfxbook_outlook_failed_title'), body: t('market_sentiment_myfxbook_outlook_failed_body') };
+  }
   if (normalizedCode === 'HTML_RESPONSE' || normalizedCode === 'MYFXBOOK_HTML_RESPONSE') {
     return { title: t('market_sentiment_myfxbook_html_title'), body: t('market_sentiment_myfxbook_html_body') };
   }
@@ -9350,6 +9388,7 @@ function NewsSentimentPanel({
     'MISSING_CREDENTIALS',
     'LOGIN_REJECTED',
     'LOGIN_FAILED',
+    'INVALID_SESSION',
     'NO_SESSION',
     'PROVIDER_DOWN',
     'TIMEOUT',
@@ -9357,6 +9396,7 @@ function NewsSentimentPanel({
     'HTML_RESPONSE',
     'CLOUDFLARE_BLOCKED',
     'MYFXBOOK_AUTH_FAILED',
+    'MYFXBOOK_INVALID_SESSION',
     'MYFXBOOK_HTML_RESPONSE',
     'MYFXBOOK_CLOUDFLARE_BLOCKED',
     'MYFXBOOK_PROVIDER_FAILED',
@@ -9378,6 +9418,11 @@ function NewsSentimentPanel({
     : '';
   const sentimentCachedWarning = hasSelectedAsset && (sentiment.stale || sentiment.cacheStatus === 'stale')
     ? (sentiment.message || t('market_sentiment_cached_warning'))
+    : '';
+  const sentimentSessionRenewed = hasSelectedAsset
+    && sentiment.sentimentAvailable
+    && String(sentiment.sentimentStatus ?? '').trim().toLowerCase() === 'invalid_session_recovered'
+    ? (sentiment.message || t('market_sentiment_myfxbook_session_renewed'))
     : '';
   const sentimentProviderMessage = hasSelectedAsset && sentiment.providerMessage
     ? String(sentiment.providerMessage)
@@ -9505,6 +9550,12 @@ function NewsSentimentPanel({
                   <p className="sentiment-context-note sentiment-cache-note">
                     <Info size={13} />
                     <span>{sentimentCachedWarning}</span>
+                  </p>
+                ) : null}
+                {sentimentSessionRenewed ? (
+                  <p className="sentiment-context-note sentiment-updated-note">
+                    <CheckCircle2 size={13} />
+                    <span>{sentimentSessionRenewed}</span>
                   </p>
                 ) : null}
                 {sentimentProviderMessage ? (

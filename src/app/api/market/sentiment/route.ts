@@ -57,6 +57,7 @@ type UnifiedSentimentCode =
   | 'MISSING_CREDENTIALS'
   | 'LOGIN_FAILED'
   | 'LOGIN_REJECTED'
+  | 'INVALID_SESSION'
   | 'NO_SESSION'
   | 'INVALID_FOREX_PAIR'
   | 'MISSING_PROVIDER'
@@ -280,6 +281,7 @@ function sentimentMessage(_assetType: SentimentAssetType, code: UnifiedSentiment
   if (code === 'LOGIN_REJECTED' || code === 'LOGIN_FAILED') return 'تم تأكيد أن بيانات الدخول تعمل من المتصفح، لكن Myfxbook رفض طلب الخادم. تحقق من إعدادات Vercel أو قيود الاتصال من المزود.';
   if (code === 'RATE_LIMIT') return 'تم تجاوز حد طلبات مزود المشاعر مؤقتاً. يرجى المحاولة لاحقاً.';
   if (code === 'TIMEOUT') return 'مزود Myfxbook بطيء حالياً أو لا يستجيب. حاول لاحقاً.';
+  if (code === 'INVALID_SESSION') return 'تم تسجيل الدخول إلى Myfxbook بنجاح، لكن تعذر جلب بيانات المشاعر. يرجى فحص طلب بيانات Community Outlook.';
   if (code === 'NO_SESSION') return 'لم يتم استلام جلسة صالحة من Myfxbook. يرجى التحقق من الحساب وإعدادات المزود.';
   if (code === 'PROVIDER_DOWN') return 'تعذر الاتصال بمزود المشاعر حالياً. يرجى المحاولة لاحقاً.';
   if (
@@ -343,6 +345,7 @@ function unavailableResponse(input: {
   providerStatus?: 'connected' | 'limited' | 'unavailable' | 'needs_setup' | 'timeout';
   cacheStatus?: 'fresh' | 'stale' | 'miss';
   lastCheckedAt?: string | null;
+  diagnostics?: Record<string, unknown>;
   suggestions?: string[];
 }) {
   const provider = input.provider ?? 'none';
@@ -356,6 +359,7 @@ function unavailableResponse(input: {
           ? 'timeout'
           : 'unavailable');
   const lastCheckedAt = input.lastCheckedAt ?? new Date().toISOString();
+  const diagnostics = input.diagnostics ?? null;
   return NextResponse.json({
     ok: false,
     success: false,
@@ -383,6 +387,15 @@ function unavailableResponse(input: {
     cacheStatus: input.cacheStatus ?? 'miss',
     cached: false,
     stale: false,
+    diagnostics,
+    loginStatus: typeof diagnostics?.loginStatus === 'string' ? diagnostics.loginStatus : null,
+    sessionUsed: typeof diagnostics?.sessionUsed === 'boolean' ? diagnostics.sessionUsed : false,
+    sentimentStatus: typeof diagnostics?.sentimentStatus === 'string'
+      ? diagnostics.sentimentStatus
+      : provider === 'myfxbook'
+        ? (input.code === 'INVALID_SESSION' ? 'invalid_session_retry_failed' : 'provider_error')
+        : null,
+    diagnosticSource: typeof diagnostics?.source === 'string' ? diagnostics.source : null,
     suggestions: input.suggestions ?? [],
     items: [],
     updatedAt: null,
@@ -403,6 +416,7 @@ function availableResponse(input: {
   providerStatus?: 'connected' | 'limited' | 'unavailable' | 'timeout';
   cacheStatus?: 'fresh' | 'stale';
   lastCheckedAt?: string | null;
+  diagnostics?: Record<string, unknown>;
 }) {
   const { buyPercent, sellPercent } = primarySentimentValues(input.items);
   const { longPercent, shortPercent, longVolume, shortVolume, positions } = primaryLongShortValues(input.items);
@@ -410,6 +424,7 @@ function availableResponse(input: {
   const updatedAt = input.updatedAt ?? new Date().toISOString();
   const lastCheckedAt = input.lastCheckedAt ?? updatedAt;
   const responseAssetType = input.assetType === 'metals' ? 'metal' : input.assetType;
+  const diagnostics = input.diagnostics ?? null;
 
   return NextResponse.json({
     ok: true,
@@ -436,6 +451,11 @@ function availableResponse(input: {
     cacheStatus: input.cacheStatus ?? 'fresh',
     cached: input.cacheStatus === 'fresh',
     stale: input.cacheStatus === 'stale',
+    diagnostics,
+    loginStatus: typeof diagnostics?.loginStatus === 'string' ? diagnostics.loginStatus : null,
+    sessionUsed: typeof diagnostics?.sessionUsed === 'boolean' ? diagnostics.sessionUsed : input.provider === 'myfxbook',
+    sentimentStatus: typeof diagnostics?.sentimentStatus === 'string' ? diagnostics.sentimentStatus : 'success',
+    diagnosticSource: typeof diagnostics?.source === 'string' ? diagnostics.source : null,
     items: input.items,
     updatedAt,
     updated_at: updatedAt,
@@ -739,6 +759,7 @@ function mapProviderErrorCode(error: unknown): UnifiedSentimentCode {
 function mapMyfxbookErrorCode(code: string): UnifiedSentimentCode {
   if (code === 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED') return 'MISSING_CREDENTIALS';
   if (code === 'MYFXBOOK_AUTH_FAILED') return 'LOGIN_REJECTED';
+  if (code === 'MYFXBOOK_INVALID_SESSION') return 'INVALID_SESSION';
   if (code === 'MYFXBOOK_SESSION_MISSING') return 'NO_SESSION';
   if (code === 'MYFXBOOK_TIMEOUT') return 'TIMEOUT';
   if (code === 'MYFXBOOK_RATE_LIMITED') return 'RATE_LIMIT';
@@ -811,6 +832,7 @@ async function handleForexSentiment(requestMeta: NormalizedSentimentRequest, opt
       providerStatus: result.providerStatus,
       cacheStatus: result.cacheStatus,
       lastCheckedAt: result.checked_at,
+      diagnostics: result.diagnostics,
       suggestions: result.suggestions ?? [],
     });
   }
@@ -823,6 +845,7 @@ async function handleForexSentiment(requestMeta: NormalizedSentimentRequest, opt
       symbol: resolvedForexSymbol.symbol,
       assetType: 'forex',
       provider: 'myfxbook',
+      diagnostics: result.diagnostics,
     });
   }
 
@@ -837,6 +860,7 @@ async function handleForexSentiment(requestMeta: NormalizedSentimentRequest, opt
     providerStatus: result.providerStatus,
     cacheStatus: result.cacheStatus,
     lastCheckedAt: result.checked_at,
+    diagnostics: result.diagnostics,
   });
 }
 
@@ -891,6 +915,7 @@ async function handleMetalSentiment(requestMeta: NormalizedSentimentRequest, opt
       providerStatus: result.providerStatus,
       cacheStatus: result.cacheStatus,
       lastCheckedAt: result.checked_at,
+      diagnostics: result.diagnostics,
       suggestions: result.suggestions ?? [],
     });
   }
@@ -903,6 +928,7 @@ async function handleMetalSentiment(requestMeta: NormalizedSentimentRequest, opt
       symbol: resolvedMetalSymbol.symbol,
       assetType: 'metals',
       provider: 'myfxbook',
+      diagnostics: result.diagnostics,
     });
   }
 
@@ -917,6 +943,7 @@ async function handleMetalSentiment(requestMeta: NormalizedSentimentRequest, opt
     providerStatus: result.providerStatus,
     cacheStatus: result.cacheStatus,
     lastCheckedAt: result.checked_at,
+    diagnostics: result.diagnostics,
   });
 }
 

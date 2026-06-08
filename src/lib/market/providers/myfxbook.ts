@@ -7,12 +7,15 @@ const REQUEST_TIMEOUT_MS = 9000;
 const OUTLOOK_TTL_MS = 30 * 60 * 1000;
 const SYMBOL_SENTIMENT_TTL_MS = 30 * 60 * 1000;
 const SESSION_TTL_MS = 45 * 60 * 1000;
-const FAILURE_TTL_MS = 2 * 60 * 1000;
 const MANUAL_REFRESH_COOLDOWN_MS = 2 * 60 * 1000;
+const MYFXBOOK_TIMEOUT_MESSAGE = 'مزود Myfxbook بطيء حالياً أو لا يستجيب. حاول لاحقاً.';
+const MYFXBOOK_CACHED_WARNING_MESSAGE = 'قد تكون البيانات مؤقتة بسبب تعذر الاتصال بالمزود.';
+const MYFXBOOK_SESSION_RENEWED_MESSAGE = 'تم تجديد جلسة Myfxbook بنجاح.';
 
 type MyfxbookErrorCode =
   | 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED'
   | 'MYFXBOOK_AUTH_FAILED'
+  | 'MYFXBOOK_INVALID_SESSION'
   | 'MYFXBOOK_SESSION_MISSING'
   | 'MYFXBOOK_RATE_LIMITED'
   | 'MYFXBOOK_HTML_RESPONSE'
@@ -34,6 +37,21 @@ export type MyfxbookLoginStatus =
   | 'provider_unavailable'
   | 'unknown_error'
   | 'missing_env';
+
+export type MyfxbookSentimentStatus =
+  | 'success'
+  | 'invalid_session_recovered'
+  | 'invalid_session_retry_failed'
+  | 'provider_error';
+
+export type MyfxbookSentimentDiagnostics = {
+  provider: 'myfxbook';
+  loginStatus: MyfxbookLoginStatus;
+  sessionUsed: boolean;
+  sentimentStatus: MyfxbookSentimentStatus;
+  source: 'live' | 'cache';
+  lastUpdatedAt: string;
+};
 
 type MyfxbookApiSymbol = {
   [key: string]: unknown;
@@ -127,6 +145,7 @@ export type MyfxbookSentimentResult =
       checked_at: string;
       cacheStatus: 'fresh' | 'stale';
       providerStatus: 'connected' | 'limited' | 'unavailable' | 'timeout';
+      diagnostics: MyfxbookSentimentDiagnostics;
       message?: string;
     }
   | {
@@ -138,6 +157,7 @@ export type MyfxbookSentimentResult =
       checked_at: string;
       cacheStatus: 'miss';
       providerStatus: 'needs_setup' | 'limited' | 'unavailable' | 'timeout';
+      diagnostics?: MyfxbookSentimentDiagnostics;
       providerMessage?: string | null;
       suggestions?: string[];
     };
@@ -156,8 +176,7 @@ export class MyfxbookProviderError extends Error {
   }
 }
 
-let cachedOutlook: { items: MyfxbookSentimentItem[]; updatedAt: string; expiresAt: number; cacheKey: string } | null = null;
-let cachedFailure: { code: MyfxbookErrorCode; providerMessage: string | null; expiresAt: number; cacheKey: string } | null = null;
+let cachedOutlook: { items: MyfxbookSentimentItem[]; updatedAt: string; expiresAt: number; cacheKey: string; sentimentStatus: MyfxbookSentimentStatus } | null = null;
 let cachedSession: { session: string; expiresAt: number; cacheKey: string } | null = null;
 const cachedSentimentBySymbol = new Map<string, {
   result: Extract<MyfxbookSentimentResult, { ok: true }>;
@@ -281,6 +300,41 @@ export function publicMyfxbookLoginStatus(code: string | null | undefined): Myfx
   if (code === 'MYFXBOOK_RATE_LIMITED') return 'rate_limited';
   if (code === 'MYFXBOOK_UNKNOWN_ERROR') return 'unknown_error';
   return 'provider_unavailable';
+}
+
+function sentimentDiagnostics(input: {
+  loginStatus?: MyfxbookLoginStatus;
+  sessionUsed: boolean;
+  sentimentStatus: MyfxbookSentimentStatus;
+  source: 'live' | 'cache';
+  lastUpdatedAt?: string | null;
+}): MyfxbookSentimentDiagnostics {
+  return {
+    provider: 'myfxbook',
+    loginStatus: input.loginStatus ?? 'success',
+    sessionUsed: input.sessionUsed,
+    sentimentStatus: input.sentimentStatus,
+    source: input.source,
+    lastUpdatedAt: input.lastUpdatedAt || new Date().toISOString(),
+  };
+}
+
+function diagnosticsForProviderError(error: MyfxbookProviderError): MyfxbookSentimentDiagnostics {
+  const sentimentStatus: MyfxbookSentimentStatus = error.code === 'MYFXBOOK_INVALID_SESSION'
+    ? 'invalid_session_retry_failed'
+    : 'provider_error';
+  const sessionUsed = ![
+    'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED',
+    'MYFXBOOK_AUTH_FAILED',
+    'MYFXBOOK_SESSION_MISSING',
+  ].includes(error.code);
+
+  return sentimentDiagnostics({
+    loginStatus: error.code === 'MYFXBOOK_INVALID_SESSION' ? 'success' : publicMyfxbookLoginStatus(error.code),
+    sessionUsed,
+    sentimentStatus,
+    source: 'live',
+  });
 }
 
 function maskProviderMessage(message: string | null | undefined) {
@@ -572,7 +626,12 @@ function normalizeOutlookSymbol(item: MyfxbookApiSymbol, updatedAt: string): Myf
   };
 }
 
-function unavailable(code: MyfxbookErrorCode, providerMessage: string | null = null, suggestions: string[] = []): MyfxbookSentimentResult {
+function unavailable(
+  code: MyfxbookErrorCode,
+  providerMessage: string | null = null,
+  suggestions: string[] = [],
+  diagnostics?: MyfxbookSentimentDiagnostics,
+): MyfxbookSentimentResult {
   const providerStatus = code === 'MYFXBOOK_CREDENTIALS_NOT_CONFIGURED'
     ? 'needs_setup'
     : code === 'MYFXBOOK_RATE_LIMITED'
@@ -590,6 +649,7 @@ function unavailable(code: MyfxbookErrorCode, providerMessage: string | null = n
     checked_at: new Date().toISOString(),
     cacheStatus: 'miss',
     providerStatus,
+    diagnostics,
     providerMessage: maskProviderMessage(providerMessage),
     suggestions,
   };
@@ -662,15 +722,6 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     };
   }
 
-  if (!options.force && cachedFailure && cachedFailure.cacheKey === credentials.cacheKey && cachedFailure.expiresAt > now) {
-    return {
-      ok: false as const,
-      code: cachedFailure.code,
-      providerMessage: cachedFailure.providerMessage,
-      canReachMyfxbook: cachedFailure.code !== 'MYFXBOOK_PROVIDER_FAILED',
-    };
-  }
-
   const encodedEmail = encodeURIComponent(credentials.email);
   const encodedPassword = encodeURIComponent(credentials.password);
   const loginUrl = new URL(`${myfxbookApiBaseUrl()}/${LOGIN_ENDPOINT}?email=${encodedEmail}&password=${encodedPassword}`);
@@ -691,16 +742,10 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
       message: error instanceof Error ? error.message : String(error),
       name: error instanceof Error ? error.name : undefined,
     });
-    cachedFailure = {
-      code,
-      providerMessage: code === 'MYFXBOOK_TIMEOUT' ? 'مزود Myfxbook بطيء حالياً أو لا يستجيب. حاول لاحقاً.' : null,
-      expiresAt: now + FAILURE_TTL_MS,
-      cacheKey: credentials.cacheKey,
-    };
     return {
       ok: false as const,
       code,
-      providerMessage: code === 'MYFXBOOK_TIMEOUT' ? 'مزود Myfxbook بطيء حالياً أو لا يستجيب. حاول لاحقاً.' : null,
+      providerMessage: code === 'MYFXBOOK_TIMEOUT' ? MYFXBOOK_TIMEOUT_MESSAGE : null,
       contentType: null,
       responseKind: 'empty',
       canReachMyfxbook: false,
@@ -723,12 +768,6 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
 
   if (parsed.responseKind === 'html') {
     const code = classifyHtmlProviderBlock(parsed.body);
-    cachedFailure = {
-      code,
-      providerMessage,
-      expiresAt: now + FAILURE_TTL_MS,
-      cacheKey: credentials.cacheKey,
-    };
     return {
       ok: false as const,
       code,
@@ -741,12 +780,6 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
   }
 
   if (parsed.responseKind !== 'json') {
-    cachedFailure = {
-      code: 'MYFXBOOK_PROVIDER_FAILED',
-      providerMessage,
-      expiresAt: now + FAILURE_TTL_MS,
-      cacheKey: credentials.cacheKey,
-    };
     return {
       ok: false as const,
       code: 'MYFXBOOK_PROVIDER_FAILED' as const,
@@ -759,12 +792,6 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
   }
 
   if (response.status === 429) {
-    cachedFailure = {
-      code: 'MYFXBOOK_RATE_LIMITED',
-      providerMessage,
-      expiresAt: now + FAILURE_TTL_MS,
-      cacheKey: credentials.cacheKey,
-    };
     return {
       ok: false as const,
       code: 'MYFXBOOK_RATE_LIMITED' as const,
@@ -780,12 +807,6 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     const code: MyfxbookErrorCode = response.status === 401 || response.status === 403
       ? 'MYFXBOOK_AUTH_FAILED'
       : 'MYFXBOOK_PROVIDER_FAILED';
-    cachedFailure = {
-      code,
-      providerMessage,
-      expiresAt: now + FAILURE_TTL_MS,
-      cacheKey: credentials.cacheKey,
-    };
     return {
       ok: false as const,
       code,
@@ -799,12 +820,6 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
 
   if (payload.error === true) {
     const code: MyfxbookErrorCode = isRateLimitMessage(payload.message) ? 'MYFXBOOK_RATE_LIMITED' : 'MYFXBOOK_AUTH_FAILED';
-    cachedFailure = {
-      code,
-      providerMessage,
-      expiresAt: now + FAILURE_TTL_MS,
-      cacheKey: credentials.cacheKey,
-    };
     return {
       ok: false as const,
       code,
@@ -817,12 +832,6 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
   }
 
   if (!session) {
-    cachedFailure = {
-      code: 'MYFXBOOK_SESSION_MISSING',
-      providerMessage,
-      expiresAt: now + FAILURE_TTL_MS,
-      cacheKey: credentials.cacheKey,
-    };
     return {
       ok: false as const,
       code: 'MYFXBOOK_SESSION_MISSING' as const,
@@ -842,7 +851,6 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
     expiresAt: now + SESSION_TTL_MS,
     cacheKey: credentials.cacheKey,
   };
-  cachedFailure = null;
   return {
     ok: true as const,
     session,
@@ -854,17 +862,25 @@ export async function loginToMyfxbook(options: { force?: boolean } = {}): Promis
   };
 }
 
-async function getSession() {
-  const login = await loginToMyfxbook();
+async function getLoginSession(options: { force?: boolean } = {}) {
+  const login = await loginToMyfxbook(options);
   if (!login.ok) {
     throw new MyfxbookProviderError(login.code, 'Myfxbook login failed', undefined, login.providerMessage);
   }
-  return login.session;
+  return login;
 }
 
 async function fetchCommunityOutlookPayload(session: string) {
+  const cleanSession = session.trim();
+  if (!cleanSession) {
+    throw new MyfxbookProviderError('MYFXBOOK_SESSION_MISSING', 'Myfxbook community outlook request had no session');
+  }
   const url = myfxbookApiUrl(OUTLOOK_ENDPOINT);
-  url.searchParams.set('session', session);
+  url.searchParams.set('session', cleanSession);
+  logMyfxbook('community outlook request prepared', {
+    endpoint: `/${OUTLOOK_ENDPOINT}`,
+    sessionUsed: true,
+  });
   return fetchJsonWithTimeout<MyfxbookOutlookResponse>(url);
 }
 
@@ -888,11 +904,12 @@ async function getCommunityOutlook(options: { force?: boolean } = {}) {
     logMyfxbook('community outlook cache hit', {
       symbolsReturned: cachedOutlook.items.length,
     });
-    return cachedOutlook;
+    return { ...cachedOutlook, source: 'cache' as const };
   }
 
-  const session = await getSession();
-  let payload = await fetchCommunityOutlookPayload(session);
+  let sentimentStatus: MyfxbookSentimentStatus = 'success';
+  const login = await getLoginSession();
+  let payload = await fetchCommunityOutlookPayload(login.session);
   logOutlookPayload('initial response', payload);
 
   if (isInvalidSessionPayload(payload)) {
@@ -907,11 +924,22 @@ async function getCommunityOutlook(options: { force?: boolean } = {}) {
     }
     payload = await fetchCommunityOutlookPayload(relogin.session);
     logOutlookPayload('retry response', payload);
+    if (isInvalidSessionPayload(payload)) {
+      cachedSession = null;
+      throw new MyfxbookProviderError(
+        'MYFXBOOK_INVALID_SESSION',
+        'Myfxbook community outlook rejected the refreshed session',
+        undefined,
+        maskProviderMessage(payload.message),
+      );
+    }
+    sentimentStatus = 'invalid_session_recovered';
   }
 
   if (payload.error) {
     if (isInvalidSessionPayload(payload)) {
-      throw new MyfxbookProviderError('MYFXBOOK_AUTH_FAILED', 'Myfxbook session was rejected', undefined, maskProviderMessage(payload.message));
+      cachedSession = null;
+      throw new MyfxbookProviderError('MYFXBOOK_INVALID_SESSION', 'Myfxbook session was rejected by community outlook', undefined, maskProviderMessage(payload.message));
     }
     if (isRateLimitMessage(payload.message)) {
       throw new MyfxbookProviderError('MYFXBOOK_RATE_LIMITED', 'Myfxbook outlook request was rate limited', undefined, maskProviderMessage(payload.message));
@@ -934,8 +962,9 @@ async function getCommunityOutlook(options: { force?: boolean } = {}) {
     updatedAt,
     expiresAt: now + OUTLOOK_TTL_MS,
     cacheKey: credentials.cacheKey,
+    sentimentStatus,
   };
-  return cachedOutlook;
+  return { ...cachedOutlook, source: 'live' as const };
 }
 
 export async function getMyfxbookSentiment(symbol: string, options: { force?: boolean } = {}): Promise<MyfxbookSentimentResult> {
@@ -971,6 +1000,12 @@ export async function getMyfxbookSentiment(symbol: string, options: { force?: bo
         checked_at: new Date().toISOString(),
         cacheStatus: 'fresh',
         providerStatus: 'connected',
+        diagnostics: sentimentDiagnostics({
+          sessionUsed: true,
+          sentimentStatus: cachedSymbolSentiment.result.diagnostics.sentimentStatus,
+          source: 'cache',
+          lastUpdatedAt: cachedSymbolSentiment.result.updated_at,
+        }),
       };
     }
   }
@@ -985,7 +1020,12 @@ export async function getMyfxbookSentiment(symbol: string, options: { force?: bo
     });
 
     if (matchingItems.length === 0) {
-      return unavailable('NO_MARKET_SENTIMENT_DATA');
+      return unavailable('NO_MARKET_SENTIMENT_DATA', null, [], sentimentDiagnostics({
+        sessionUsed: true,
+        sentimentStatus: outlook.sentimentStatus,
+        source: outlook.source,
+        lastUpdatedAt: outlook.updatedAt,
+      }));
     }
 
     const successResult: Extract<MyfxbookSentimentResult, { ok: true }> = {
@@ -996,6 +1036,15 @@ export async function getMyfxbookSentiment(symbol: string, options: { force?: bo
       checked_at: new Date().toISOString(),
       cacheStatus: 'fresh',
       providerStatus: 'connected',
+      diagnostics: sentimentDiagnostics({
+        sessionUsed: true,
+        sentimentStatus: outlook.sentimentStatus,
+        source: outlook.source,
+        lastUpdatedAt: outlook.updatedAt,
+      }),
+      message: outlook.sentimentStatus === 'invalid_session_recovered'
+        ? MYFXBOOK_SESSION_RENEWED_MESSAGE
+        : undefined,
     };
     cachedSentimentBySymbol.set(symbolCacheKey, {
       result: successResult,
@@ -1011,6 +1060,7 @@ export async function getMyfxbookSentiment(symbol: string, options: { force?: bo
         status: error.status,
         message: maskProviderMessage(error.providerMessage),
       });
+      const errorDiagnostics = diagnosticsForProviderError(error);
       if (cachedSymbolSentiment) {
         return {
           ...cachedSymbolSentiment.result,
@@ -1021,10 +1071,17 @@ export async function getMyfxbookSentiment(symbol: string, options: { force?: bo
             : error.code === 'MYFXBOOK_TIMEOUT'
               ? 'timeout'
               : 'unavailable',
-          message: 'قد تكون البيانات مؤقتة بسبب تعذر الاتصال بالمزود.',
+          diagnostics: sentimentDiagnostics({
+            loginStatus: errorDiagnostics.loginStatus,
+            sessionUsed: errorDiagnostics.sessionUsed,
+            sentimentStatus: errorDiagnostics.sentimentStatus,
+            source: 'cache',
+            lastUpdatedAt: cachedSymbolSentiment.result.updated_at,
+          }),
+          message: MYFXBOOK_CACHED_WARNING_MESSAGE,
         };
       }
-      return unavailable(error.code, error.providerMessage ?? null);
+      return unavailable(error.code, error.providerMessage ?? null, [], errorDiagnostics);
     }
 
     if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
@@ -1034,10 +1091,22 @@ export async function getMyfxbookSentiment(symbol: string, options: { force?: bo
           checked_at: new Date().toISOString(),
           cacheStatus: 'stale',
           providerStatus: 'timeout',
-          message: 'قد تكون البيانات مؤقتة بسبب تعذر الاتصال بالمزود.',
+          diagnostics: sentimentDiagnostics({
+            loginStatus: 'timeout',
+            sessionUsed: true,
+            sentimentStatus: 'provider_error',
+            source: 'cache',
+            lastUpdatedAt: cachedSymbolSentiment.result.updated_at,
+          }),
+          message: MYFXBOOK_CACHED_WARNING_MESSAGE,
         };
       }
-      return unavailable('MYFXBOOK_TIMEOUT');
+      return unavailable('MYFXBOOK_TIMEOUT', MYFXBOOK_TIMEOUT_MESSAGE, [], sentimentDiagnostics({
+        loginStatus: 'timeout',
+        sessionUsed: false,
+        sentimentStatus: 'provider_error',
+        source: 'live',
+      }));
     }
 
     logMyfxbook('provider failed', {
@@ -1050,10 +1119,22 @@ export async function getMyfxbookSentiment(symbol: string, options: { force?: bo
         checked_at: new Date().toISOString(),
         cacheStatus: 'stale',
         providerStatus: 'unavailable',
-        message: 'قد تكون البيانات مؤقتة بسبب تعذر الاتصال بالمزود.',
+        diagnostics: sentimentDiagnostics({
+          loginStatus: 'provider_unavailable',
+          sessionUsed: true,
+          sentimentStatus: 'provider_error',
+          source: 'cache',
+          lastUpdatedAt: cachedSymbolSentiment.result.updated_at,
+        }),
+        message: MYFXBOOK_CACHED_WARNING_MESSAGE,
       };
     }
 
-    return unavailable('MYFXBOOK_PROVIDER_FAILED');
+    return unavailable('MYFXBOOK_PROVIDER_FAILED', null, [], sentimentDiagnostics({
+      loginStatus: 'provider_unavailable',
+      sessionUsed: false,
+      sentimentStatus: 'provider_error',
+      source: 'live',
+    }));
   }
 }
