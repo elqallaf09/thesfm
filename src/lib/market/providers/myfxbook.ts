@@ -3,6 +3,8 @@ import {
   getStoredProviderSession,
   storeProviderSession,
   clearStoredProviderSession,
+  getStoredCommunityOutlook,
+  storeCommunityOutlook,
 } from '@/lib/server/marketProviderSession';
 
 const DEFAULT_MYFXBOOK_API_BASE_URL = 'https://www.myfxbook.com/api';
@@ -967,6 +969,23 @@ async function getCommunityOutlook(options: { force?: boolean } = {}) {
     return { ...cachedOutlook, source: 'cache' as const };
   }
 
+  // L2: Supabase persistent cache (survives cold starts + serves stale when API rejects session)
+  if (!options.force) {
+    const persistedOutlook = await getStoredCommunityOutlook(credentials.cacheKey);
+    if (persistedOutlook) {
+      const items = persistedOutlook.items as MyfxbookSentimentItem[];
+      cachedOutlook = {
+        items,
+        updatedAt: persistedOutlook.updatedAt,
+        expiresAt: now + OUTLOOK_TTL_MS,
+        cacheKey: credentials.cacheKey,
+        sentimentStatus: 'success',
+      };
+      logMyfxbook('community outlook L2 cache hit', { symbolsReturned: items.length });
+      return { ...cachedOutlook, source: 'cache' as const };
+    }
+  }
+
   let sentimentStatus: MyfxbookSentimentStatus = 'success';
   const login = await requireMyfxbookSession({ force: options.force });
   logMyfxbook('community outlook session ready', {
@@ -1044,6 +1063,8 @@ async function getCommunityOutlook(options: { force?: boolean } = {}) {
     cacheKey: credentials.cacheKey,
     sentimentStatus,
   };
+  // Persist to L2 Supabase cache with 4x TTL so stale data is available when live API fails
+  void storeCommunityOutlook(credentials.cacheKey, items, updatedAt, OUTLOOK_TTL_MS * 4);
   return { ...cachedOutlook, source: 'live' as const };
 }
 

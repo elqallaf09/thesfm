@@ -10,7 +10,7 @@ export type NewsTranslationState = {
   summary: string;
   translatedTo: AppNewsLanguage;
   isTranslated: boolean;
-  translationSource: 'Anthropic' | 'OpenAI' | 'LibreTranslate' | 'cache' | 'original';
+  translationSource: 'Anthropic' | 'OpenAI' | 'LibreTranslate' | 'MyMemory' | 'cache' | 'original';
 };
 
 type TranslatableNewsItem = {
@@ -58,6 +58,11 @@ function providerUrl() {
 }
 
 function hasTranslationProvider() {
+  // MyMemory is always available as a free fallback (no API key required)
+  return true;
+}
+
+function hasPremiumTranslationProvider() {
   return Boolean(
     process.env.ANTHROPIC_API_KEY?.trim()
     || process.env.AI_GATEWAY_TOKEN?.trim()
@@ -231,6 +236,35 @@ async function translateWithLibre(title: string, summary: string, originalLangua
   };
 }
 
+async function translateWithMyMemory(title: string, summary: string, targetLanguage: AppNewsLanguage) {
+  const langpair = `en|${targetLanguage}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    async function fetchOne(text: string): Promise<string | null> {
+      if (!text.trim()) return null;
+      const url = new URL('https://api.mymemory.translated.net/get');
+      url.searchParams.set('q', text.slice(0, 500));
+      url.searchParams.set('langpair', langpair);
+      const r = await fetch(url.toString(), { signal: controller.signal });
+      if (!r.ok) return null;
+      const json = await r.json().catch(() => null) as { responseData?: { translatedText?: string }; responseStatus?: number } | null;
+      if (json?.responseStatus !== 200 || !json?.responseData?.translatedText) return null;
+      const translated = json.responseData.translatedText.trim();
+      // MyMemory returns "PLEASE SELECT TWO DISTINCT LANGUAGES" on same-lang requests
+      if (translated.toUpperCase().startsWith('PLEASE SELECT')) return null;
+      return translated;
+    }
+    const [translatedTitle, translatedSummary] = await Promise.all([fetchOne(title), fetchOne(summary)]);
+    if (!translatedTitle && !translatedSummary) return null;
+    return { title: translatedTitle || title, summary: translatedSummary || summary, source: 'MyMemory' as const };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function isUsableTranslation<T extends { title: string; summary: string; source: string }>(
   value: T | null,
   originalTitle: string,
@@ -354,7 +388,8 @@ export async function translateNewsText(options: {
   try {
     const translated = await translateWithAnthropic(titleOriginal, summaryOriginal, options.targetLanguage)
       ?? await translateWithOpenAI(titleOriginal, summaryOriginal, options.targetLanguage)
-      ?? await translateWithLibre(titleOriginal, summaryOriginal, originalLanguage, options.targetLanguage);
+      ?? await translateWithLibre(titleOriginal, summaryOriginal, originalLanguage, options.targetLanguage)
+      ?? await translateWithMyMemory(titleOriginal, summaryOriginal, options.targetLanguage);
     if (!isUsableTranslation(translated, titleOriginal, summaryOriginal)) {
       translationCache.set(cacheKey, { value: originalState, timestamp: Date.now() });
       return originalState;

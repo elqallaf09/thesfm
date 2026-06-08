@@ -89,3 +89,59 @@ export async function clearStoredProviderSession(providerId: string): Promise<vo
     // Non-fatal
   }
 }
+
+/**
+ * Retrieve cached community outlook data from Supabase.
+ * Used as L2 cache when in-memory (L1) is empty after a cold start,
+ * or when the live Myfxbook API call fails due to IP-based session rejection.
+ */
+export async function getStoredCommunityOutlook(
+  cacheKey: string,
+): Promise<{ items: unknown[]; updatedAt: string } | null> {
+  try {
+    const client = getServiceClient();
+    if (!client) return null;
+
+    const { data, error } = await client
+      .from('market_provider_sessions')
+      .select('session_token, expires_at, cache_key')
+      .eq('id', 'myfxbook_community_outlook')
+      .maybeSingle<StoredSession>();
+
+    if (error || !data) return null;
+    if (data.cache_key !== cacheKey) return null;
+    if (new Date(data.expires_at) <= new Date()) return null;
+
+    const parsed = JSON.parse(data.session_token) as { items: unknown[]; updatedAt: string };
+    if (!Array.isArray(parsed?.items)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persist community outlook data to Supabase.
+ * TTL is longer than in-memory so stale data is available when live API fails.
+ */
+export async function storeCommunityOutlook(
+  cacheKey: string,
+  items: unknown[],
+  updatedAt: string,
+  ttlMs: number,
+): Promise<void> {
+  try {
+    const client = getServiceClient();
+    if (!client) return;
+
+    await client.from('market_provider_sessions').upsert({
+      id: 'myfxbook_community_outlook',
+      session_token: JSON.stringify({ items, updatedAt }),
+      cache_key: cacheKey,
+      expires_at: new Date(Date.now() + ttlMs).toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  } catch {
+    // Non-fatal
+  }
+}
