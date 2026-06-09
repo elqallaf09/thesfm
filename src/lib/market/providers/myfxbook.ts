@@ -272,6 +272,13 @@ async function fetchMyfxbookWithTimeout(url: URL, timeoutMs = REQUEST_TIMEOUT_MS
     return await fetch(url, {
       cache: 'no-store',
       signal: controller.signal,
+      headers: {
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'User-Agent': 'Mozilla/5.0 (compatible; SFMPlatform/1.0; +https://www.the-sfm.com)',
+      },
     });
   } finally {
     clearTimeout(timeoutId);

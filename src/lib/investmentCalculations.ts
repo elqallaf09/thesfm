@@ -53,7 +53,11 @@ export function calculateInvestmentHoldingMetrics(
   const linkedSymbol = investmentLinkedSymbol(item);
   const isMarketLinked = isMarketLinkedInvestment(item);
   const quantity = positiveInvestmentNumber(item.quantity);
-  const storedPurchaseTotal = positiveInvestmentNumber(item.purchaseTotal);
+  // item.purchaseTotal comes from purchase_total/invested_amount DB columns.
+  // item.amount holds the original investment value at creation time and is never
+  // overwritten by price-refresh updates — safe last-resort fallback for legacy rows.
+  const storedPurchaseTotal = positiveInvestmentNumber(item.purchaseTotal)
+    ?? positiveInvestmentNumber(item.amount);
   // Derive per-unit purchase price from total/quantity when not explicitly stored
   const purchasePriceRaw = positiveInvestmentNumber(item.purchasePrice);
   const purchasePrice = purchasePriceRaw
