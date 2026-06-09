@@ -440,13 +440,8 @@ function LoginContent() {
     redirectingRef.current = true;
     setSubmitting(true);
     setMessage({ type: 'ok', text: text.signingIn });
-    router.refresh();
-    router.replace(targetPath);
-    window.setTimeout(() => {
-      if (!redirectingRef.current) return;
-      redirectingRef.current = false;
-      setSubmitting(false);
-    }, 8000);
+    // Hard redirect ensures middleware reads fresh session cookie
+    window.location.href = targetPath;
   }
 
   useEffect(() => {

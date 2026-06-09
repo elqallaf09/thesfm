@@ -600,7 +600,10 @@ export default function DecisionsPage() {
               </label>
               <label>
                 <span>{text.benefit}</span>
-                <input inputMode="decimal" value={form.expectedBenefit} onChange={event => setForm(prev => ({ ...prev, expectedBenefit: event.target.value }))} />
+                <div style={{display:'flex',alignItems:'center',border:'1px solid rgba(29,140,255,.2)',borderRadius:'13px',background:'var(--sfm-light-card)',overflow:'hidden'}}>
+                  <input inputMode="decimal" value={form.expectedBenefit} onChange={event => setForm(prev => ({ ...prev, expectedBenefit: event.target.value }))} style={{flex:1,border:'none',background:'transparent',color:'var(--sfm-foreground)',padding:'11px 12px',fontFamily:'inherit',fontWeight:850,outline:'none'}} />
+                  <span style={{padding:'0 12px',color:'var(--sfm-muted)',fontWeight:900,borderInlineStart:'1px solid rgba(29,140,255,.2)',minHeight:44,display:'flex',alignItems:'center'}}>%</span>
+                </div>
               </label>
               <label>
                 <span>{text.riskLevel}</span>

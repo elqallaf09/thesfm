@@ -1079,6 +1079,9 @@ function SmartCalculatorPanel({
   const [debtRows, setDebtRows] = useState<DebtRow[]>([{ id: 'debt-1', name: '', balance: '', rate: '', minimum: '' }]);
   const [debtExtra, setDebtExtra] = useState('');
   const [riskAnswers, setRiskAnswers] = useState<Record<string, string>>({});
+  const [health, setHealth] = useState({ income: '', expenses: '', savings: '', debts: '' });
+  const [salarySplit, setSalarySplit] = useState({ income: '', needsPct: '50', wantsPct: '30', savingsPct: '20' });
+  const [emergencyFund, setEmergencyFund] = useState({ monthlyExpenses: '', targetMonths: '6', currentSavings: '' });
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1103,6 +1106,9 @@ function SmartCalculatorPanel({
     setDebtRows([{ id: 'debt-1', name: '', balance: '', rate: '', minimum: '' }]);
     setDebtExtra('');
     setRiskAnswers({});
+    setHealth({ income: '', expenses: '', savings: '', debts: '' });
+    setSalarySplit({ income: '', needsPct: '50', wantsPct: '30', savingsPct: '20' });
+    setEmergencyFund({ monthlyExpenses: '', targetMonths: '6', currentSavings: '' });
   }
 
   function prefillIncome() {
@@ -1117,6 +1123,37 @@ function SmartCalculatorPanel({
   }
 
   const relatedTheoryText = tool.relatedTheories.map(item => getFinancialTheoryText(item, lang)).join(' · ');
+
+  // financial-health
+  const healthIncome = positiveNumber(health.income);
+  const healthExpenses = positiveNumber(health.expenses);
+  const healthSavings = positiveNumber(health.savings);
+  const healthDebts = positiveNumber(health.debts) ?? 0;
+  const healthReady = hasPositive(healthIncome) && healthExpenses !== null && healthSavings !== null;
+  const healthScore = healthReady ? financialHealthScore(healthIncome!, healthExpenses!, healthSavings!, healthDebts) : 0;
+  const healthExpenseRatio = healthReady ? ratioPercent(healthExpenses! + healthDebts, healthIncome!) : 0;
+  const healthSavingsRatio = healthReady ? ratioPercent(healthSavings!, healthIncome!) : 0;
+  const healthEmergencyMonths = healthReady && healthExpenses! > 0 ? healthSavings! / healthExpenses! : 0;
+  const healthNetFlow = healthReady ? healthIncome! - healthExpenses! - healthDebts : 0;
+
+  // salary-split
+  const splitIncome = positiveNumber(salarySplit.income);
+  const splitNeedsPct = positiveNumber(salarySplit.needsPct) ?? 50;
+  const splitWantsPct = positiveNumber(salarySplit.wantsPct) ?? 30;
+  const splitSavingsPct = positiveNumber(salarySplit.savingsPct) ?? 20;
+  const splitReady = hasPositive(splitIncome) && (splitNeedsPct + splitWantsPct + splitSavingsPct) <= 100;
+  const splitNeeds = splitReady ? splitIncome! * splitNeedsPct / 100 : 0;
+  const splitWants = splitReady ? splitIncome! * splitWantsPct / 100 : 0;
+  const splitSavings = splitReady ? splitIncome! * splitSavingsPct / 100 : 0;
+
+  // emergency-fund
+  const emergMonthlyExp = positiveNumber(emergencyFund.monthlyExpenses);
+  const emergTargetMonths = positiveNumber(emergencyFund.targetMonths) ?? 6;
+  const emergCurrentSavings = positiveNumber(emergencyFund.currentSavings) ?? 0;
+  const emergReady = hasPositive(emergMonthlyExp);
+  const emergTarget = emergReady ? emergMonthlyExp! * emergTargetMonths : 0;
+  const emergGap = emergReady ? Math.max(0, emergTarget - emergCurrentSavings) : 0;
+  const emergMonthsCovered = emergReady && emergMonthlyExp! > 0 ? emergCurrentSavings / emergMonthlyExp! : 0;
   const compoundValues = {
     initial: positiveNumber(compound.initial),
     monthly: positiveNumber(compound.monthly),
@@ -1338,6 +1375,34 @@ function SmartCalculatorPanel({
             </div>
           ) : null}
 
+          {activeId === 'financial-health' ? (
+            <>
+              <CalculatorField label={copy.monthlyIncome} value={health.income} onChange={value => setHealth(prev => ({ ...prev, income: value }))} />
+              <CalculatorField label={copy.monthlyExpenses} value={health.expenses} onChange={value => setHealth(prev => ({ ...prev, expenses: value }))} />
+              <CalculatorField label={copy.currentSavings} value={health.savings} onChange={value => setHealth(prev => ({ ...prev, savings: value }))} />
+              <CalculatorField label={lang === 'ar' ? 'إجمالي الالتزامات الشهرية' : lang === 'fr' ? 'Dettes mensuelles totales' : 'Total Monthly Debts'} value={health.debts} onChange={value => setHealth(prev => ({ ...prev, debts: value }))} />
+              <button type="button" className="calculator-prefill" onClick={() => { if (healthSnapshot.hasIncome) setHealth(prev => ({ ...prev, income: String(Math.round(healthSnapshot.income * 100) / 100) })); }} disabled={!healthSnapshot.hasIncome}>{copy.monthlyIncome}</button>
+            </>
+          ) : null}
+
+          {activeId === 'salary-split' ? (
+            <>
+              <CalculatorField label={copy.monthlyIncome} value={salarySplit.income} onChange={value => setSalarySplit(prev => ({ ...prev, income: value }))} />
+              <CalculatorField label={copy.needs} value={salarySplit.needsPct} onChange={value => setSalarySplit(prev => ({ ...prev, needsPct: value }))} suffix="%" step="1" />
+              <CalculatorField label={copy.wants} value={salarySplit.wantsPct} onChange={value => setSalarySplit(prev => ({ ...prev, wantsPct: value }))} suffix="%" step="1" />
+              <CalculatorField label={copy.savingsInvestingDebt} value={salarySplit.savingsPct} onChange={value => setSalarySplit(prev => ({ ...prev, savingsPct: value }))} suffix="%" step="1" />
+              <button type="button" className="calculator-prefill" onClick={() => { if (healthSnapshot.hasIncome) setSalarySplit(prev => ({ ...prev, income: String(Math.round(healthSnapshot.income * 100) / 100) })); }} disabled={!healthSnapshot.hasIncome}>{copy.monthlyIncome}</button>
+            </>
+          ) : null}
+
+          {activeId === 'emergency-fund' ? (
+            <>
+              <CalculatorField label={copy.monthlyExpenses} value={emergencyFund.monthlyExpenses} onChange={value => setEmergencyFund(prev => ({ ...prev, monthlyExpenses: value }))} />
+              <CalculatorField label={copy.monthsCount} value={emergencyFund.targetMonths} onChange={value => setEmergencyFund(prev => ({ ...prev, targetMonths: value }))} step="1" />
+              <CalculatorField label={copy.currentSavings} value={emergencyFund.currentSavings} onChange={value => setEmergencyFund(prev => ({ ...prev, currentSavings: value }))} />
+            </>
+          ) : null}
+
           {activeId === 'risk-tolerance' ? (
             <div className="risk-question-list">
               {riskQuestions.map(question => (
@@ -1451,6 +1516,43 @@ function SmartCalculatorPanel({
                 <strong>{copy.recommendation}</strong>
                 <p>{riskAllocation}</p>
               </div>
+            </ResultSection>
+          ) : <p className="calculator-error">{copy.enterValues}</p>
+        ) : null}
+
+        {activeId === 'financial-health' ? (
+          healthReady ? (
+            <ResultSection copy={copy} summary={`${copy.monthlyIncome}: ${money(healthIncome!)} · ${copy.monthlyExpenses}: ${money(healthExpenses!)} · ${copy.currentSavings}: ${money(healthSavings!)}`} theory={relatedTheoryText} interpretation={copy.financialHealthScore}>
+              <ResultCard label={copy.financialHealthScore} value={`${healthScore}/100`} tone={healthScore >= 60 ? 'strong' : healthScore >= 40 ? 'default' : 'warning'} />
+              <ResultCard label={lang === 'ar' ? 'نسبة المصروفات' : lang === 'fr' ? 'Taux de dépenses' : 'Expense Ratio'} value={formatPercent(healthExpenseRatio, lang)} tone={healthExpenseRatio > 80 ? 'warning' : 'default'} />
+              <ResultCard label={copy.savingsRatio} value={formatPercent(healthSavingsRatio, lang)} />
+              <ResultCard label={copy.emergencyFundStatus} value={formatPercent(Math.min(100, (healthEmergencyMonths / 6) * 100), lang)} />
+              <ResultCard label={lang === 'ar' ? 'التدفق النقدي الصافي' : lang === 'fr' ? 'Flux net' : 'Net Cash Flow'} value={money(healthNetFlow)} tone={healthNetFlow >= 0 ? 'default' : 'warning'} />
+            </ResultSection>
+          ) : <p className="calculator-error">{copy.enterValues}</p>
+        ) : null}
+
+        {activeId === 'salary-split' ? (
+          splitReady ? (
+            <ResultSection copy={copy} summary={`${copy.monthlyIncome}: ${money(splitIncome!)} · ${copy.needs}: ${formatPercent(splitNeedsPct, lang)} · ${copy.wants}: ${formatPercent(splitWantsPct, lang)}`} theory={relatedTheoryText} interpretation={copy.savingsInvestingDebt}>
+              <ResultCard label={copy.needs} value={money(splitNeeds)} tone="strong" />
+              <ResultCard label={copy.wants} value={money(splitWants)} />
+              <ResultCard label={copy.savingsInvestingDebt} value={money(splitSavings)} />
+              {(splitNeedsPct + splitWantsPct + splitSavingsPct) < 100 ? (
+                <ResultCard label={lang === 'ar' ? 'غير مخصص' : lang === 'fr' ? 'Non alloué' : 'Unallocated'} value={money(splitIncome! * (100 - splitNeedsPct - splitWantsPct - splitSavingsPct) / 100)} />
+              ) : null}
+            </ResultSection>
+          ) : <p className="calculator-error">{copy.incomeMustBePositive}</p>
+        ) : null}
+
+        {activeId === 'emergency-fund' ? (
+          emergReady ? (
+            <ResultSection copy={copy} summary={`${copy.monthlyExpenses}: ${money(emergMonthlyExp!)} · ${copy.monthsCount}: ${emergTargetMonths}`} theory={relatedTheoryText} interpretation={emergGap === 0 ? copy.emergencyComplete : copy.emergencyNeedsReview}>
+              <ResultCard label={lang === 'ar' ? 'المبلغ المستهدف' : lang === 'fr' ? 'Montant cible' : 'Target Amount'} value={money(emergTarget)} tone="strong" />
+              <ResultCard label={copy.currentSavings} value={money(emergCurrentSavings)} />
+              <ResultCard label={copy.minimumEmergencyFund} value={money(emergMonthlyExp! * 3)} />
+              <ResultCard label={copy.monthsCovered} value={`${emergMonthsCovered.toFixed(1)}`} tone={emergMonthsCovered >= 3 ? 'default' : 'warning'} />
+              {emergGap > 0 ? <ResultCard label={copy.monthsRemaining} value={money(emergGap)} tone="warning" /> : null}
             </ResultSection>
           ) : <p className="calculator-error">{copy.enterValues}</p>
         ) : null}

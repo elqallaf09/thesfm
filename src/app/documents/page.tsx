@@ -733,6 +733,24 @@ export default function DocumentsCenterPage() {
           color: var(--sfm-muted);
           line-height: 1.5;
         }
+        .dark .documents-upload-options {
+          background: #0F1C2E;
+          border-color: rgba(47, 214, 192, .18);
+          box-shadow: 0 22px 60px rgba(0, 0, 0, .45);
+        }
+        .dark .documents-upload-options a,
+        .dark .documents-upload-options button {
+          background: #152035;
+          color: #A7F3D0;
+          border-color: rgba(47, 214, 192, .16);
+        }
+        .dark .documents-upload-options a:hover,
+        .dark .documents-upload-options button:not(:disabled):hover {
+          background: rgba(47, 214, 192, .10);
+        }
+        .dark .documents-upload-options small {
+          color: #8EA6C3;
+        }
         .documents-dropzone {
           width: 100%;
           min-height: 96px;
