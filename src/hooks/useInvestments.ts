@@ -288,6 +288,18 @@ const PRICE_REFRESH_UPDATE_KEYS = new Set([
   'data_source',
   'price_source',
   'valuation_source',
+  // currency & market-value fields: safe to overwrite on every price refresh
+  'native_currency',
+  'price_currency',
+  'current_market_value',
+  'native_unit_price',
+  'native_market_value',
+  'user_currency',
+  'fx_rate_to_user_currency',
+  'fx_source',
+  'fx_last_updated_at',
+  'converted_market_value',
+  'current_value',
 ]);
 
 const READONLY_UPDATE_KEYS = new Set([
@@ -579,7 +591,10 @@ type InvestmentMarketPriceUpdate = {
 function buildPriceRefreshPayload(data: InvestmentMarketPriceUpdate) {
   const currentPrice = coalesceNumber(data.currentPrice, data.lastPrice, data.nativeUnitPrice);
   const lastPrice = coalesceNumber(data.lastPrice, data.currentPrice, data.nativeUnitPrice);
+  const currentMarketValue = coalesceNumber(data.currentMarketValue, data.nativeMarketValue);
+  const convertedMarketValue = coalesceNumber(data.convertedMarketValue, data.defaultCurrencyValue);
   const updatedAt = data.lastPriceUpdatedAt ?? data.valuationLastUpdatedAt ?? (currentPrice !== undefined ? nowIso() : null);
+  const resolvedCurrency = normalizeMarketCurrencyCode(data.nativeCurrency ?? data.priceCurrency) ?? data.nativeCurrency ?? data.priceCurrency ?? null;
 
   return cleanInvestmentUpdatePayload({
     current_price: currentPrice,
@@ -590,6 +605,20 @@ function buildPriceRefreshPayload(data: InvestmentMarketPriceUpdate) {
     data_source: data.dataSource,
     price_source: data.priceSource ?? data.dataSource,
     valuation_source: data.valuationSource ?? data.dataSource ?? data.priceSource,
+    // currency
+    native_currency: resolvedCurrency,
+    price_currency: resolvedCurrency,
+    // market values
+    current_market_value: currentMarketValue,
+    native_unit_price: currentPrice,
+    native_market_value: currentMarketValue,
+    current_value: convertedMarketValue ?? currentMarketValue,
+    converted_market_value: convertedMarketValue,
+    // FX
+    user_currency: data.userCurrency ?? null,
+    fx_rate_to_user_currency: coalesceNumber(data.fxRateToUserCurrency),
+    fx_source: data.fxSource ?? null,
+    fx_last_updated_at: data.fxLastUpdatedAt ?? null,
   }, { allowedKeys: PRICE_REFRESH_UPDATE_KEYS });
 }
 
