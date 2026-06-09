@@ -1,9 +1,13 @@
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { NextResponse } from 'next/server';
 import { GET as getMarketMetals } from '@/app/api/market/metals/route';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const limited = rateLimitRequest(request, { max: 60, prefix: 'charity-metals' });
+  if (limited) return limited;
+
   const response = await getMarketMetals(new Request(new URL('/api/market/metals?currency=KWD', request.url)));
   const data = await response.json();
   const gold = Number(data?.gold?.price || 0);

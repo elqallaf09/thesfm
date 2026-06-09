@@ -1,3 +1,4 @@
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { NextResponse } from 'next/server';
 import { fetchStockCategoryNews } from '@/lib/market/fetchStockCategoryNews';
 import { compactNewsItem, parseNewsLimit } from '@/lib/news/apiPayload';
@@ -6,6 +7,9 @@ export const revalidate = 300;
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const limited = rateLimitRequest(request, { max: 60, prefix: 'cyclical-news' });
+  if (limited) return limited;
+
   try {
     const url = new URL(request.url);
     const limit = parseNewsLimit(url.searchParams.get('limit'));

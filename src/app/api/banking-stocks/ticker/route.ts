@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { fetchStockPrices, type TechStockPrice } from '@/lib/market/fetchStockPrices';
 import { getStockCategoryConfig } from '@/lib/market/stockCategoryConfigs';
 
@@ -78,7 +79,10 @@ function isUsableMarketPrice(price: TechStockPrice | undefined): price is TechSt
   return Boolean(price?.available && price.price !== null && Number.isFinite(price.price) && price.price > 0 && price.source);
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = rateLimitRequest(request, { max: 60, prefix: 'banking-ticker' });
+  if (limited) return limited;
+
   const config = getStockCategoryConfig('banking');
 
   if (!config) {

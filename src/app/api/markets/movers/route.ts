@@ -1,3 +1,4 @@
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { NextResponse } from 'next/server';
 import { fetchMarketMovers } from '@/lib/markets/marketMovers';
 
@@ -12,6 +13,9 @@ function parseLimit(value: string | null) {
 }
 
 export async function GET(request: Request) {
+  const limited = rateLimitRequest(request, { max: 60, prefix: 'markets-movers' });
+  if (limited) return limited;
+
   const url = new URL(request.url);
   const market = String(url.searchParams.get('market') ?? '').trim().toLowerCase();
   const limit = parseLimit(url.searchParams.get('limit'));

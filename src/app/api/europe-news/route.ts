@@ -1,3 +1,4 @@
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { NextResponse } from 'next/server';
 import { europeMarketDataToApiMarkets, fetchEuropeDelayedMarketData } from '@/lib/europe/fetchEuropeDelayedMarketData';
 import { parseEuropeRssFeeds } from '@/lib/europe/parseEuropeRssFeeds';
@@ -8,6 +9,9 @@ export const revalidate = 300;
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const limited = rateLimitRequest(request, { max: 60, prefix: 'europe-news' });
+  if (limited) return limited;
+
   try {
     const url = new URL(request.url);
     const language = normalizeNewsLanguage(url.searchParams.get('lang'));

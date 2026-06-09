@@ -1,3 +1,4 @@
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { NextResponse } from 'next/server';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';

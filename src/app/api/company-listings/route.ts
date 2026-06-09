@@ -1,3 +1,4 @@
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseAdmin, getUserFromBearerToken } from '@/lib/server/adminAccess';
@@ -127,6 +128,9 @@ function normalizeListing(row: Record<string, unknown>): CompanyListing {
 }
 
 export async function GET(request: NextRequest) {
+  const limited = rateLimitRequest(request, { max: 60, prefix: 'company-listings' });
+  if (limited) return limited;
+
   const category = normalizeCompanyCategory(request.nextUrl.searchParams.get('category'));
   if (!category) return json({ ok: false, code: 'INVALID_CATEGORY', items: [] }, { status: 400 });
 

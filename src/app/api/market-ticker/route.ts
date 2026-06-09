@@ -1,3 +1,4 @@
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { NextRequest, NextResponse } from 'next/server';
 
 type TickerCategory = 'global' | 'gulf' | 'asia' | 'europe' | 'crypto' | 'metals';
@@ -152,6 +153,9 @@ async function fetchMarketItems(category: TickerCategory) {
 }
 
 export async function GET(request: NextRequest) {
+  const limited = rateLimitRequest(request, { max: 60, prefix: 'market-ticker' });
+  if (limited) return limited;
+
   const category = request.nextUrl.searchParams.get('category') as TickerCategory | null;
 
   if (!category || !['global', 'gulf', 'asia', 'europe', 'crypto', 'metals'].includes(category)) {

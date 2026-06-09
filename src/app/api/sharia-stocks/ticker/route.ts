@@ -1,3 +1,4 @@
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { NextResponse } from 'next/server';
 import { fetchStockPrices, type TechStockPrice } from '@/lib/market/fetchStockPrices';
 import {
