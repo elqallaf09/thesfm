@@ -266,6 +266,27 @@ function getNewsSentimentProvider(): { provider: SentimentProvider; apiKey: stri
   return null;
 }
 
+function getAllNewsProviders(): Array<{ provider: SentimentProvider; apiKey: string }> {
+  const explicitProvider = normalizeProviderEnv(cleanEnv(process.env.MARKET_SENTIMENT_PROVIDER));
+  const marketSentimentApiKey = cleanEnv(process.env.MARKET_SENTIMENT_API_KEY);
+  const finnhubApiKey = cleanEnv(process.env.FINNHUB_API_KEY);
+  const alphaVantageApiKey = cleanEnv(process.env.ALPHA_VANTAGE_API_KEY);
+  const providers: Array<{ provider: SentimentProvider; apiKey: string }> = [];
+
+  // If explicit provider is set, only use that one
+  if (explicitProvider === 'finnhub' && (marketSentimentApiKey || finnhubApiKey)) {
+    return [{ provider: 'finnhub', apiKey: marketSentimentApiKey || finnhubApiKey }];
+  }
+  if (explicitProvider === 'alphavantage' && (marketSentimentApiKey || alphaVantageApiKey)) {
+    return [{ provider: 'alphavantage', apiKey: marketSentimentApiKey || alphaVantageApiKey }];
+  }
+
+  // No explicit provider — return all available (Finnhub first, AV as fallback)
+  if (finnhubApiKey) providers.push({ provider: 'finnhub', apiKey: finnhubApiKey });
+  if (alphaVantageApiKey) providers.push({ provider: 'alphavantage', apiKey: alphaVantageApiKey });
+  return providers;
+}
+
 function sentimentLabel(buyPercent: number | null, sellPercent: number | null): SentimentLabel {
   if (buyPercent === null || sellPercent === null) return 'unavailable';
   if (Math.abs(buyPercent - sellPercent) < 5) return 'neutral';
@@ -963,8 +984,8 @@ async function handleMetalSentiment(requestMeta: NormalizedSentimentRequest, opt
 }
 
 async function handleNewsSentiment(requestMeta: NormalizedSentimentRequest) {
-  const newsProvider = getNewsSentimentProvider();
-  if (!newsProvider) {
+  const providers = getAllNewsProviders();
+  if (providers.length === 0) {
     return unavailableResponse({
       code: 'MISSING_PROVIDER',
       symbol: requestMeta.displaySymbol,
@@ -973,57 +994,66 @@ async function handleNewsSentiment(requestMeta: NormalizedSentimentRequest) {
     });
   }
 
-  const symbols = parseNewsSymbols(requestMeta.symbol, newsProvider.provider);
-  if (symbols.length === 0) {
-    return unavailableResponse({
-      code: 'SYMBOL_REQUIRED',
-      symbol: requestMeta.displaySymbol,
-      assetType: requestMeta.assetType,
-    });
-  }
+  let lastError: unknown = null;
 
-  try {
-    const items = newsProvider.provider === 'alphavantage'
-      ? await fetchAlphaVantageSentiment(symbols, newsProvider.apiKey)
-      : await fetchFinnhubSentiment(symbols, newsProvider.apiKey);
+  for (const newsProvider of providers) {
+    const symbols = parseNewsSymbols(requestMeta.symbol, newsProvider.provider);
+    if (symbols.length === 0) continue;
 
-    if (shouldDebug()) {
-      console.info('[market-sentiment] normalized provider response', {
-        provider: newsProvider.provider,
-        assetType: requestMeta.assetType,
-        requestedSymbols: symbols.length,
-        count: items.length,
-      });
-    }
+    try {
+      const items = newsProvider.provider === 'alphavantage'
+        ? await fetchAlphaVantageSentiment(symbols, newsProvider.apiKey)
+        : await fetchFinnhubSentiment(symbols, newsProvider.apiKey);
 
-    if (items.length === 0) {
-      return unavailableResponse({
-        code: 'NO_SENTIMENT_DATA',
-        legacyCode: 'NO_MARKET_SENTIMENT_DATA',
+      if (shouldDebug()) {
+        console.info('[market-sentiment] normalized provider response', {
+          provider: newsProvider.provider,
+          assetType: requestMeta.assetType,
+          requestedSymbols: symbols.length,
+          count: items.length,
+        });
+      }
+
+      if (items.length === 0) {
+        // No data from this provider — try next
+        lastError = null;
+        continue;
+      }
+
+      return availableResponse({
         symbol: requestMeta.displaySymbol,
         assetType: requestMeta.assetType,
-        provider: 'none',
+        provider: 'news',
+        source: newsProvider.provider === 'finnhub' ? 'Finnhub' : 'Alpha Vantage',
+        items,
+        updatedAt: new Date().toISOString(),
       });
+    } catch (error) {
+      logProviderError(newsProvider.provider, requestMeta.assetType, requestMeta.displaySymbol, error);
+      lastError = error;
+      // Try next provider
+      continue;
     }
+  }
 
-    return availableResponse({
-      symbol: requestMeta.displaySymbol,
-      assetType: requestMeta.assetType,
-      provider: 'news',
-      source: newsProvider.provider === 'finnhub' ? 'Finnhub' : 'Alpha Vantage',
-      items,
-      updatedAt: new Date().toISOString(),
-    });
-  } catch (error) {
-    logProviderError(newsProvider.provider, requestMeta.assetType, requestMeta.displaySymbol, error);
+  // All providers failed or returned no data
+  if (lastError) {
     return unavailableResponse({
-      code: mapProviderErrorCode(error),
-      legacyCode: error instanceof MarketSentimentProviderError ? error.code : undefined,
+      code: mapProviderErrorCode(lastError),
+      legacyCode: lastError instanceof MarketSentimentProviderError ? lastError.code : undefined,
       symbol: requestMeta.displaySymbol,
       assetType: requestMeta.assetType,
       provider: 'none',
     });
   }
+
+  return unavailableResponse({
+    code: 'NO_SENTIMENT_DATA',
+    legacyCode: 'NO_MARKET_SENTIMENT_DATA',
+    symbol: requestMeta.displaySymbol,
+    assetType: requestMeta.assetType,
+    provider: 'none',
+  });
 }
 
 export async function GET(request: NextRequest) {
