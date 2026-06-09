@@ -394,6 +394,8 @@ export const TR: Record<string, TranslationEntry> = {
   company_listing_services: { ar:'الخدمات المقدمة', en:'Services offered', fr:'Services proposés' },
   company_listing_logo_url: { ar:'رابط شعار الشركة', en:'Company logo URL', fr:'URL du logo' },
   company_listing_cover_url: { ar:'رابط صورة الغلاف اختيارية', en:'Optional cover image URL', fr:'URL de l’image de couverture optionnelle' },
+  nav_admin_companies: { ar: 'مراجعة الشركات', en: 'Review Companies', fr: 'Réviser les sociétés' },
+  nav_group_admin: { ar: 'إدارة المنصة', en: 'Platform Admin', fr: 'Administration' },
   company_listing_submit: { ar:'إرسال للمراجعة', en:'Submit for review', fr:'Envoyer pour vérification' },
   company_listing_submit_success: { ar:'تم إرسال بيانات شركتك للمراجعة. سيتم نشرها بعد الاعتماد.', en:'Your company details were submitted for review. They will be published after approval.', fr:'Les informations de votre société ont été envoyées pour vérification. Elles seront publiées après approbation.' },
   company_listing_submit_error: { ar:'تعذر حفظ بيانات الشركة حالياً.', en:'Could not save company details right now.', fr:'Impossible d’enregistrer les informations pour le moment.' },

@@ -2,6 +2,7 @@
 
 import type { ComponentType } from 'react';
 import {
+  BarChart3,
   Bell,
   BookOpen,
   Bot,
@@ -56,6 +57,7 @@ export type NavigationItem = {
   caption?: string;
   viewModes?: NavigationViewMode[];
   children?: NavigationItem[];
+  adminOnly?: boolean;
 };
 
 export type NavigationGroup = {
@@ -63,6 +65,7 @@ export type NavigationGroup = {
   labelKey: TranslationKey;
   defaultOpen?: boolean;
   items: NavigationItem[];
+  adminOnly?: boolean;
 };
 
 export const NAV_GROUPS: NavigationGroup[] = [
@@ -161,6 +164,15 @@ export const NAV_GROUPS: NavigationGroup[] = [
     ],
   },
   {
+    id: 'admin',
+    labelKey: 'nav_group_admin',
+    adminOnly: true,
+    items: [
+      { id: 'admin-companies', icon: Building2, href: '/sfm-admin-control/companies', labelKey: 'nav_admin_companies', viewModes: ['simple', 'professional'], adminOnly: true },
+      { id: 'admin-analytics', icon: BarChart3, href: '/sfm-admin-control', labelKey: 'admin_dashboard_title', viewModes: ['simple', 'professional'], adminOnly: true },
+    ],
+  },
+  {
     id: 'account',
     labelKey: 'nav_group_account',
     defaultOpen: true,
@@ -189,12 +201,18 @@ export const SUPPORT_LINKS: NavigationItem[] = [
   { id: 'support-terms', icon: FileText, href: '/terms', labelKey: 'nav_support_terms', viewModes: ['simple', 'professional'] },
 ];
 
-export function filterNavigationGroups(groups: NavigationGroup[], viewMode: NavigationViewMode) {
-  if (viewMode === 'professional') return groups;
-  return groups
+export function filterNavigationGroups(
+  groups: NavigationGroup[],
+  viewMode: NavigationViewMode,
+  isAdmin = false,
+) {
+  const visibleGroups = isAdmin ? groups : groups.filter(g => !g.adminOnly);
+  if (viewMode === 'professional') return visibleGroups;
+  return visibleGroups
     .map(group => ({
       ...group,
       items: group.items
+        .filter(item => isAdmin || !item.adminOnly)
         .map(item => {
           const children = item.children?.filter(child => child.action || child.viewModes?.includes('simple'));
           if (children?.length) return { ...item, children };

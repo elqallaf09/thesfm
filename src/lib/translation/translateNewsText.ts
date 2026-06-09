@@ -246,6 +246,9 @@ async function translateWithMyMemory(title: string, summary: string, targetLangu
       const url = new URL('https://api.mymemory.translated.net/get');
       url.searchParams.set('q', text.slice(0, 500));
       url.searchParams.set('langpair', langpair);
+      // Adding email increases rate limit from 1k to 50k/day
+      const memEmail = process.env.MYMEMORY_EMAIL?.trim();
+      if (memEmail) url.searchParams.set('de', memEmail);
       const r = await fetch(url.toString(), { signal: controller.signal });
       if (!r.ok) return null;
       const json = await r.json().catch(() => null) as { responseData?: { translatedText?: string }; responseStatus?: number } | null;

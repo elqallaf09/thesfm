@@ -471,6 +471,43 @@ function SubmitStyles() {
           width: 100%;
         }
       }
+      /* ── Dark mode ── */
+      .dark .company-submit-hero,
+      .dark .company-submit-gate {
+        background: linear-gradient(135deg, rgba(29, 140, 255, 0.12), rgba(24, 212, 212, 0.08)), #0B2A4A;
+        border-color: rgba(47, 214, 192, 0.18);
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+      }
+      .dark .company-submit-hero h1,
+      .dark .company-submit-gate h1 {
+        color: #F8FAFC;
+      }
+      .dark .company-submit-hero > div > p,
+      .dark .company-submit-gate p {
+        color: #CBD5E1;
+      }
+      .dark .company-submit-hero > div > span {
+        color: #7DD3FC;
+      }
+      .dark .company-submit-hero svg,
+      .dark .company-submit-gate svg {
+        color: #2FD6C0;
+      }
+      .dark .submit-section {
+        background: #0B2A4A;
+        border-color: rgba(47, 214, 192, 0.14);
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+      }
+      .dark .submit-section h2 {
+        color: #F8FAFC;
+      }
+      .dark .submit-field span {
+        color: #CBD5E1;
+      }
+      .dark .submit-sticky {
+        background: rgba(11, 42, 74, 0.92);
+        border-color: rgba(47, 214, 192, 0.16);
+      }
     `}</style>
   );
 }

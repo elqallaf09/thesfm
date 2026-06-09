@@ -1082,6 +1082,8 @@ function SmartCalculatorPanel({
   const [health, setHealth] = useState({ income: '', expenses: '', savings: '', debts: '' });
   const [salarySplit, setSalarySplit] = useState({ income: '', needsPct: '50', wantsPct: '30', savingsPct: '20' });
   const [emergencyFund, setEmergencyFund] = useState({ monthlyExpenses: '', targetMonths: '6', currentSavings: '' });
+  const [debtPlan, setDebtPlan] = useState({ balance: '', rate: '', monthly: '' });
+  const [goalPlan, setGoalPlan] = useState({ target: '', current: '', months: '' });
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1154,6 +1156,27 @@ function SmartCalculatorPanel({
   const emergTarget = emergReady ? emergMonthlyExp! * emergTargetMonths : 0;
   const emergGap = emergReady ? Math.max(0, emergTarget - emergCurrentSavings) : 0;
   const emergMonthsCovered = emergReady && emergMonthlyExp! > 0 ? emergCurrentSavings / emergMonthlyExp! : 0;
+  // debt-plan
+  const debtPlanBalance = positiveNumber(debtPlan.balance);
+  const debtPlanRate = positiveNumber(debtPlan.rate) ?? 0;
+  const debtPlanMonthly = positiveNumber(debtPlan.monthly);
+  const debtPlanReady = hasPositive(debtPlanBalance) && hasPositive(debtPlanMonthly);
+  const debtPlanMonthlyRate = debtPlanRate / 100 / 12;
+  const debtPlanMonths = debtPlanReady && debtPlanMonthly! > debtPlanBalance! * debtPlanMonthlyRate
+    ? Math.ceil(debtPlanMonthlyRate > 0
+        ? -Math.log(1 - (debtPlanBalance! * debtPlanMonthlyRate) / debtPlanMonthly!) / Math.log(1 + debtPlanMonthlyRate)
+        : debtPlanBalance! / debtPlanMonthly!)
+    : null;
+  const debtPlanTotalPaid = debtPlanMonths !== null ? debtPlanMonths * debtPlanMonthly! : null;
+  const debtPlanTotalInterest = debtPlanTotalPaid !== null ? debtPlanTotalPaid - debtPlanBalance! : null;
+  // goal-plan
+  const goalPlanTarget = positiveNumber(goalPlan.target);
+  const goalPlanCurrent = positiveNumber(goalPlan.current) ?? 0;
+  const goalPlanMonths = positiveNumber(goalPlan.months);
+  const goalPlanReady = hasPositive(goalPlanTarget) && hasPositive(goalPlanMonths);
+  const goalPlanRemaining = goalPlanReady ? Math.max(0, goalPlanTarget! - goalPlanCurrent) : 0;
+  const goalPlanMonthly = goalPlanReady ? goalPlanRemaining / goalPlanMonths! : 0;
+  const goalComplete = goalPlanReady && goalPlanCurrent >= goalPlanTarget!;
   const compoundValues = {
     initial: positiveNumber(compound.initial),
     monthly: positiveNumber(compound.monthly),
@@ -1403,6 +1426,22 @@ function SmartCalculatorPanel({
             </>
           ) : null}
 
+          {activeId === 'debt-plan' ? (
+            <>
+              <CalculatorField label={copy.debtAmount} value={debtPlan.balance} onChange={value => setDebtPlan(prev => ({ ...prev, balance: value }))} />
+              <CalculatorField label={copy.annualInterestRate} value={debtPlan.rate} onChange={value => setDebtPlan(prev => ({ ...prev, rate: value }))} suffix="%" />
+              <CalculatorField label={copy.monthlyPayment} value={debtPlan.monthly} onChange={value => setDebtPlan(prev => ({ ...prev, monthly: value }))} />
+            </>
+          ) : null}
+
+          {activeId === 'goal-plan' ? (
+            <>
+              <CalculatorField label={copy.targetAmount} value={goalPlan.target} onChange={value => setGoalPlan(prev => ({ ...prev, target: value }))} />
+              <CalculatorField label={copy.currentAmount} value={goalPlan.current} onChange={value => setGoalPlan(prev => ({ ...prev, current: value }))} />
+              <CalculatorField label={copy.monthsRemaining} value={goalPlan.months} onChange={value => setGoalPlan(prev => ({ ...prev, months: value }))} step="1" />
+            </>
+          ) : null}
+
           {activeId === 'risk-tolerance' ? (
             <div className="risk-question-list">
               {riskQuestions.map(question => (
@@ -1504,6 +1543,34 @@ function SmartCalculatorPanel({
               <ResultCard label={copy.interestSaved} value={money(Math.abs(snowballResult!.totalInterest - avalancheResult!.totalInterest))} />
               <ResultCard label={copy.recommendedStrategy} value={debtRecommended} tone="strong" />
             </ResultSection>
+          ) : <p className="calculator-error">{copy.enterValues}</p>
+        ) : null}
+
+        {activeId === 'debt-plan' ? (
+          debtPlanReady && debtPlanMonths !== null ? (
+            <ResultSection copy={copy} summary={`${copy.debtAmount}: ${money(debtPlanBalance!)} · ${copy.monthlyPayment}: ${money(debtPlanMonthly!)}`} theory={relatedTheoryText} interpretation={copy.simplifiedEstimateNote}>
+              <ResultCard label={copy.estimatedMonths} value={formatDuration(debtPlanMonths, copy)} />
+              <ResultCard label={copy.totalPaid} value={money(debtPlanTotalPaid!)} />
+              <ResultCard label={copy.estimatedInterest} value={money(debtPlanTotalInterest!)} tone={debtPlanTotalInterest! > debtPlanBalance! * 0.2 ? 'warning' : 'default'} />
+            </ResultSection>
+          ) : debtPlanReady ? (
+            <p className="calculator-error">{copy.debtPaymentTooLow}</p>
+          ) : <p className="calculator-error">{copy.enterValues}</p>
+        ) : null}
+
+        {activeId === 'goal-plan' ? (
+          goalPlanReady ? (
+            goalComplete ? (
+              <ResultSection copy={copy} summary={`${copy.targetAmount}: ${money(goalPlanTarget!)} · ${copy.currentAmount}: ${money(goalPlanCurrent)}`} theory={relatedTheoryText} interpretation={copy.goalComplete}>
+                <ResultCard label={copy.monthlyRequired} value={money(0)} tone="strong" />
+                <ResultCard label={copy.monthsRemaining} value={String(Math.round(Number(goalPlan.months)))} />
+              </ResultSection>
+            ) : (
+              <ResultSection copy={copy} summary={`${copy.targetAmount}: ${money(goalPlanTarget!)} · ${copy.monthsRemaining}: ${goalPlan.months}`} theory={relatedTheoryText} interpretation={goalPlanMonthly > 0 ? copy.goalLooksRealistic : copy.goalNeedsAdjustment}>
+                <ResultCard label={copy.monthlyRequired} value={money(goalPlanMonthly)} tone={goalPlanMonthly > 0 ? 'strong' : 'warning'} />
+                <ResultCard label={copy.remainingAmount} value={money(goalPlanRemaining)} />
+              </ResultSection>
+            )
           ) : <p className="calculator-error">{copy.enterValues}</p>
         ) : null}
 
