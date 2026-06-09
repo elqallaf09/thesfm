@@ -2407,6 +2407,69 @@ function IncomeDecisionCard({
 }) {
   return (
     <section className="income-decision-card" aria-labelledby="setup-step-title">
+      <style jsx>{`
+        .income-decision-card {
+          display: grid;
+          justify-items: center;
+          text-align: center;
+          gap: 18px;
+          border: 1px solid rgba(29,140,255,.16);
+          background: linear-gradient(180deg,#FFFFFF,rgba(234,246,255,.72));
+          border-radius: 28px;
+          padding: clamp(22px,4vw,34px);
+          box-shadow: 0 18px 46px rgba(3,18,37,.08);
+          min-width: 0;
+          overflow: hidden;
+        }
+        .income-decision-icon {
+          width: 76px; height: 76px; border-radius: 999px;
+          display: grid; place-items: center;
+          background: linear-gradient(135deg,rgba(234,246,255,.95),rgba(24,212,212,.12));
+          border: 1px solid rgba(29,140,255,.16);
+          color: var(--sfm-primary);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 12px 28px rgba(29,140,255,.12);
+        }
+        .income-decision-copy { display: grid; gap: 10px; max-width: 620px; }
+        .income-decision-copy h3 { margin: 0; color: var(--sfm-primary-dark); font-size: clamp(24px,3.5vw,34px); line-height: 1.25; font-weight: 950; }
+        .income-decision-copy p { margin: 0; color: var(--sfm-muted-readable); font-size: 15px; font-weight: 850; line-height: 1.9; }
+        .income-decision-actions {
+          margin-top: 8px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+          width: 100%;
+          max-width: 340px;
+        }
+        .income-action-btn {
+          width: 100%; min-height: 52px; border-radius: 18px; padding: 0 22px;
+          font: 950 15px Tajawal,Arial,sans-serif;
+          display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+          cursor: pointer; white-space: nowrap; min-width: 0;
+          border: 0;
+          background: linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));
+          color: #FFFFFF;
+          box-shadow: 0 18px 38px rgba(29,140,255,.24);
+          transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+        }
+        .income-action-btn:hover { transform: translateY(-2px); filter: saturate(1.08) brightness(1.04); box-shadow: 0 22px 48px rgba(24,212,212,.30); }
+        .income-action-btn:active { transform: translateY(0) scale(.985); }
+        .income-skip-link {
+          display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+          background: none; border: none; padding: 6px 12px; border-radius: 10px;
+          font: 700 13px Tajawal,Arial,sans-serif;
+          color: var(--sfm-muted-readable);
+          cursor: pointer; transition: color .18s, background .18s; white-space: nowrap;
+        }
+        .income-skip-link:hover { color: var(--sfm-primary); background: rgba(29,140,255,.07); }
+        :global(.dark) .income-decision-card { background: linear-gradient(180deg,#0F1E32,#0B1728); border-color: #1D3050; }
+        :global(.dark) .income-decision-icon { background: linear-gradient(135deg,rgba(47,214,192,.18),rgba(29,140,255,.12)); border-color: rgba(47,214,192,.24); color: #8EEAE5; }
+        :global(.dark) .income-decision-copy h3 { color: #F8FBFF; }
+        :global(.dark) .income-decision-copy p { color: #C7D3E1; }
+        :global(.dark) .income-action-btn { color: #061A2E; box-shadow: 0 18px 38px rgba(47,214,192,.20); }
+        :global(.dark) .income-skip-link { color: #8A9DB5; }
+        :global(.dark) .income-skip-link:hover { color: #8EEAE5; background: rgba(47,214,192,.10); }
+      `}</style>
       <div className="income-decision-icon" aria-hidden="true">
         <CircleDollarSign size={30} />
       </div>
@@ -2417,7 +2480,7 @@ function IncomeDecisionCard({
       <div className="income-decision-actions">
         <button
           type="button"
-          className="income-action-btn primary"
+          className="income-action-btn"
           onClick={onAdd}
         >
           <Plus size={18} aria-hidden="true" />
