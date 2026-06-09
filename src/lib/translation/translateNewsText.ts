@@ -426,34 +426,73 @@ export async function translateNewsText(options: {
   }
 }
 
+// Max articles translated per API call — keeps Vercel function well under timeout.
+// Articles beyond this limit are returned in their original language and can be
+// translated lazily by subsequent requests once they land in persistent cache.
+const TRANSLATE_LIMIT = 16;
+
 export async function translateNewsItems<T extends TranslatableNewsItem>(
   items: T[],
   targetLanguage: AppNewsLanguage,
 ): Promise<Array<T & NewsTranslationState>> {
   const translated: Array<T & NewsTranslationState> = [];
+
+  // Pass-through helper: wraps an item with an originalState so it always
+  // matches the return type even when we skip translation.
+  function passThrough(item: T, index: number): void {
+    const title = item.titleOriginal || item.title || item.headline || '';
+    const summary = item.summaryOriginal || item.summary || title;
+    const originalLanguage = item.languageOriginal || detectLanguage(`${title} ${summary}`);
+    translated[index] = {
+      ...item,
+      titleOriginal: title,
+      summaryOriginal: summary,
+      languageOriginal: originalLanguage,
+      title,
+      summary,
+      translatedTo: targetLanguage,
+      isTranslated: false,
+      translationSource: 'original',
+      headline: title,
+    };
+  }
+
+  // Separate items: eagerly translate the first TRANSLATE_LIMIT, skip the rest
+  const eager = items.slice(0, TRANSLATE_LIMIT);
+  const deferred = items.slice(TRANSLATE_LIMIT);
+
+  // Pre-fill deferred items immediately (no API call needed)
+  deferred.forEach((item, i) => passThrough(item, TRANSLATE_LIMIT + i));
+
+  // Translate eager items with higher concurrency (6) for speed
   let nextIndex = 0;
-  const concurrency = Math.min(4, items.length);
+  const concurrency = Math.min(6, eager.length);
 
   async function worker() {
-    while (nextIndex < items.length) {
+    while (nextIndex < eager.length) {
       const currentIndex = nextIndex;
       nextIndex += 1;
-      const item = items[currentIndex];
+      const item = eager[currentIndex];
       const title = item.titleOriginal || item.title || item.headline || '';
       const summary = item.summaryOriginal || item.summary || title;
-      const state = await translateNewsText({
-        cacheKey: item.url || item.id,
-        title,
-        summary,
-        targetLanguage,
-        languageOriginal: item.languageOriginal,
-      });
-      translated[currentIndex] = {
-        ...item,
-        ...state,
-        headline: state.title,
-        summary: state.summary,
-      };
+      try {
+        const state = await translateNewsText({
+          cacheKey: item.url || item.id,
+          title,
+          summary,
+          targetLanguage,
+          languageOriginal: item.languageOriginal,
+        });
+        translated[currentIndex] = {
+          ...item,
+          ...state,
+          headline: state.title,
+          summary: state.summary,
+        };
+      } catch {
+        // On any error fall back to original text
+        passThrough(item, currentIndex);
+      }
     }
   }
 
