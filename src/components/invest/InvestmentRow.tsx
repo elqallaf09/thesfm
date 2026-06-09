@@ -1,6 +1,7 @@
 'use client';
 
-import { AlertTriangle, CheckCircle2, Edit3, Eye, Minus, RefreshCw, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Edit3, Eye, Minus, RefreshCw, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Investment } from '@/types/investment';
 import { calculateInvestmentHoldingMetrics, investmentNativeCurrency } from '@/lib/investmentCalculations';
@@ -75,6 +76,7 @@ export function InvestmentRow({
   priceRefreshStatus,
 }: Props) {
   const metrics = calculateInvestmentHoldingMetrics(investment);
+  const [isExpanded, setIsExpanded] = useState(false);
   const nativeCurrency = investmentNativeCurrency(investment);
   const hasAccountValue = accountValue !== null && Number.isFinite(accountValue);
   const showConvertedLine = hasAccountValue
@@ -139,9 +141,9 @@ export function InvestmentRow({
         </div>
 
         <div className="invest-row-actions invest-holding-actions">
-          <button type="button" onClick={() => onDetails(investment)} aria-label={labels.details} title={labels.details}>
-            <Eye size={15} />
-            <span>{labels.details}</span>
+          <button type="button" className="invest-expand-btn" onClick={() => setIsExpanded(v => !v)} aria-expanded={isExpanded} aria-label={isExpanded ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}>
+            {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            <span>{isExpanded ? 'إخفاء' : 'تفاصيل'}</span>
           </button>
           <button type="button" onClick={() => onEdit(investment)} aria-label={labels.edit} title={labels.edit}>
             <Edit3 size={15} />
@@ -154,7 +156,32 @@ export function InvestmentRow({
         </div>
       </header>
 
-      <div className="invest-holding-primary">
+      {!isExpanded && (
+        <div style={{display:'flex',flexWrap:'wrap',gap:'8px',alignItems:'center',minWidth:0}}>
+          {metrics.purchasePrice !== null && (
+            <span style={{display:'inline-flex',alignItems:'center',gap:'5px',borderRadius:'999px',border:'1px solid rgba(167,243,240,.18)',background:'var(--sfm-light-card)',padding:'5px 10px',fontSize:'12px',fontWeight:900,color:'var(--sfm-muted)'}}>
+              {labels.purchasePrice || 'سعر الشراء'}: <b style={{color:'var(--sfm-foreground)',fontWeight:950}} dir="ltr">{formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment)}</b>
+            </span>
+          )}
+          {metrics.purchasePrice === null && (
+            <span style={{display:'inline-flex',alignItems:'center',gap:'5px',borderRadius:'999px',border:'1px solid rgba(245,158,11,.24)',background:'rgba(245,158,11,.08)',padding:'5px 10px',fontSize:'12px',fontWeight:900,color:'#92400E'}}>
+              {labels.purchasePriceMissing || 'سعر الشراء غير مكتمل'}
+            </span>
+          )}
+          {metrics.currentPrice !== null && (
+            <span style={{display:'inline-flex',alignItems:'center',gap:'5px',borderRadius:'999px',border:'1px solid rgba(167,243,240,.18)',background:'var(--sfm-light-card)',padding:'5px 10px',fontSize:'12px',fontWeight:900,color:'var(--sfm-muted)'}}>
+              {labels.currentPrice || 'السعر الحالي'}: <b style={{color:'var(--sfm-foreground)',fontWeight:950}} dir="ltr">{formatNativeMoney(metrics.currentPrice, nativeCurrency, investment)}</b>
+            </span>
+          )}
+          {metrics.profitLossAmount !== null && (
+            <span style={{display:'inline-flex',alignItems:'center',gap:'5px',borderRadius:'999px',border: gainState==='gain'?'1px solid rgba(16,185,129,.24)':gainState==='loss'?'1px solid rgba(239,68,68,.24)':'1px solid rgba(167,243,240,.18)',background:gainState==='gain'?'rgba(16,185,129,.08)':gainState==='loss'?'rgba(239,68,68,.07)':'var(--sfm-light-card)',padding:'5px 10px',fontSize:'12px',fontWeight:900,color:gainState==='gain'?'#047857':gainState==='loss'?'#B91C1C':'var(--sfm-muted)'}}>
+              {gainState === 'gain' ? '+' : ''}{formatNativeMoney(metrics.profitLossAmount, nativeCurrency, investment)}
+              {metrics.profitLossPercent !== null && <em style={{fontStyle:'normal',fontWeight:950}}>{` (${formatSignedNumber(metrics.profitLossPercent)}%)`}</em>}
+            </span>
+          )}
+        </div>
+      )}
+      {isExpanded && <div className="invest-holding-primary">
         <Metric
           label={labels.purchasePrice || 'Purchase price'}
           value={metrics.purchasePrice !== null ? formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment) : labels.purchasePriceMissing || '-'}
@@ -192,9 +219,9 @@ export function InvestmentRow({
           icon={gainState === 'gain' ? <TrendingUp size={15} /> : gainState === 'loss' ? <TrendingDown size={15} /> : <Minus size={15} />}
           ltr={metrics.profitLossAmount !== null}
         />
-      </div>
+      </div>}
 
-      <div className="invest-holding-secondary">
+      {isExpanded && <div className="invest-holding-secondary">
         <DetailChip label={labels.profitLossPercent || 'Profit / loss %'} value={metrics.profitLossPercent !== null ? `${formatSignedNumber(metrics.profitLossPercent)}%` : profitUnavailableText(metrics, labels)} tone={gainState} />
         <DetailChip label={labels.monthly} value={formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)} />
         <DetailChip label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? '-' : `${formatNumber(investment.expectedAnnualReturn)}%`} />
@@ -207,7 +234,7 @@ export function InvestmentRow({
         {showConvertedLine && (
           <DetailChip label={labels.approxUserCurrency || 'Approx.'} value={formatMoney(accountValue, 'valid')} />
         )}
-      </div>
+      </div>}
 
       <footer className="invest-holding-footer">
         <div className="invest-price-status">

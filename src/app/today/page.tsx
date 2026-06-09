@@ -470,7 +470,14 @@ export default function FinancialTodayPage() {
 
         <section className="today-hero" aria-labelledby="financial-today-title">
           <div className="today-hero-copy">
-            <span>{text.eyebrow}</span>
+            <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+              <span style={{display:'inline-flex',alignItems:'center',gap:'6px',borderRadius:'999px',padding:'6px 12px',background:'rgba(24,212,212,.14)',border:'1px solid rgba(167,243,240,.22)',color:'#A7F3F0',fontSize:'12px',fontWeight:950}}>
+                <Sparkles size={13} aria-hidden="true" />{text.eyebrow}
+              </span>
+              <span style={{borderRadius:'999px',padding:'6px 12px',background:'rgba(255,255,255,.08)',border:'1px solid rgba(167,243,240,.14)',color:'#C7DBF5',fontSize:'12px',fontWeight:900}} dir="ltr">
+                {new Date().toLocaleDateString(locale === 'ar' ? 'ar-SA' : locale === 'fr' ? 'fr-FR' : 'en-US', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}
+              </span>
+            </div>
             <h1 id="financial-today-title">{text.title}</h1>
             <p>{text.subtitle}</p>
             <div className="today-hero-actions">
@@ -479,7 +486,7 @@ export default function FinancialTodayPage() {
             </div>
           </div>
           <div className="today-hero-mark" aria-hidden="true">
-            <CalendarDays size={44} />
+            <CalendarDays size={48} />
             <Sparkles size={22} className="today-hero-spark" />
           </div>
         </section>
@@ -489,10 +496,10 @@ export default function FinancialTodayPage() {
         ) : (
           <>
             <StatGrid className="today-summary-grid">
-              <AppCard><TodayMetric label={text.dueToday} value={`${dailyBrief.dueTodayCount}`} icon={<ClockIcon />} /></AppCard>
-              <AppCard><TodayMetric label={text.highPriority} value={`${dailyBrief.highPriorityCount}`} icon={<AlertTriangle size={20} />} /></AppCard>
-              <AppCard><TodayMetric label={text.tasksNeedAction} value={`${dailyBrief.taskActionCount}`} icon={<ClipboardList size={20} />} /></AppCard>
-              <AppCard><TodayMetric label={text.reportsReady} value={`${dailyBrief.reportsReadyCount}`} icon={<FileText size={20} />} /></AppCard>
+              <AppCard><TodayMetric label={text.dueToday} value={`${dailyBrief.dueTodayCount}`} icon={<ClockIcon />} tone="blue" /></AppCard>
+              <AppCard><TodayMetric label={text.highPriority} value={`${dailyBrief.highPriorityCount}`} icon={<AlertTriangle size={20} />} tone={dailyBrief.highPriorityCount > 0 ? 'danger' : 'blue'} /></AppCard>
+              <AppCard><TodayMetric label={text.tasksNeedAction} value={`${dailyBrief.taskActionCount}`} icon={<ClipboardList size={20} />} tone={dailyBrief.taskActionCount > 0 ? 'warning' : 'blue'} /></AppCard>
+              <AppCard><TodayMetric label={text.reportsReady} value={`${dailyBrief.reportsReadyCount}`} icon={<FileText size={20} />} tone="teal" /></AppCard>
             </StatGrid>
 
             <FeaturedAction item={dailyBrief.topAction} text={text} locale={locale} />
@@ -506,6 +513,7 @@ export default function FinancialTodayPage() {
                 empty={dailyBrief.openTaskCount > 0 ? text.noSectionItems : text.noOpenTasks}
                 locale={locale}
                 text={text}
+                accent="warning"
               />
               <PriorityLane
                 title={text.importantAlerts}
@@ -515,6 +523,7 @@ export default function FinancialTodayPage() {
                 empty={text.noSectionItems}
                 locale={locale}
                 text={text}
+                accent="danger"
               />
               <PriorityLane
                 title={text.reportsReady}
@@ -526,6 +535,7 @@ export default function FinancialTodayPage() {
                 text={text}
                 footerHref="/reports-center"
                 footerLabel={text.viewAllReports}
+                accent="teal"
               />
               <PriorityLane
                 title={text.followLater}
@@ -535,6 +545,7 @@ export default function FinancialTodayPage() {
                 empty={text.noSectionItems}
                 locale={locale}
                 text={text}
+                accent="blue"
               />
             </section>
 
@@ -816,49 +827,23 @@ function ClockIcon() {
   return <CalendarDays size={20} />;
 }
 
-function TodayMetric({ label, value, icon }: { label: string; value: string; icon: ReactNode }) {
+function TodayMetric({ label, value, icon, tone = 'blue' }: { label: string; value: string; icon: ReactNode; tone?: 'blue' | 'teal' | 'danger' | 'warning' }) {
+  const toneMap = {
+    blue:    { bg: 'rgba(29,140,255,.12)',   color: '#1D8CE0', valColor: 'var(--sfm-foreground)' },
+    teal:    { bg: 'rgba(24,212,212,.12)',   color: '#0f766e', valColor: 'var(--sfm-foreground)' },
+    danger:  { bg: 'rgba(239,68,68,.10)',    color: '#B91C1C', valColor: '#B91C1C' },
+    warning: { bg: 'rgba(245,158,11,.10)',   color: '#B45309', valColor: '#B45309' },
+  };
+  const t = toneMap[tone];
   return (
-    <div className="today-metric">
-      <span aria-hidden="true">{icon}</span>
-      <div>
-        <p>{label}</p>
-        <strong>{value}</strong>
+    <div style={{display:'flex',alignItems:'center',gap:'14px',minWidth:0,padding:'4px 0'}}>
+      <span aria-hidden="true" style={{width:'46px',height:'46px',display:'grid',placeItems:'center',flex:'0 0 46px',borderRadius:'16px',background:t.bg,color:t.color,boxShadow:`0 4px 14px ${t.bg}`}}>
+        {icon}
+      </span>
+      <div style={{minWidth:0,display:'grid',gap:'4px'}}>
+        <p style={{margin:0,color:'var(--sfm-muted)',fontSize:'12px',fontWeight:900,lineHeight:1.45}}>{label}</p>
+        <strong style={{color:t.valColor,fontSize:'26px',fontWeight:950,lineHeight:1.05,fontVariantNumeric:'tabular-nums'}}>{value}</strong>
       </div>
-      <style jsx>{`
-        .today-metric {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          min-width: 0;
-        }
-        .today-metric > span {
-          width: 42px;
-          height: 42px;
-          display: grid;
-          place-items: center;
-          flex: 0 0 42px;
-          border-radius: 14px;
-          background: rgba(29, 140, 255, .10);
-          color: var(--sfm-primary);
-        }
-        .today-metric div {
-          min-width: 0;
-          display: grid;
-          gap: 3px;
-        }
-        .today-metric p {
-          margin: 0;
-          color: var(--sfm-muted);
-          font-size: 12px;
-          font-weight: 900;
-          line-height: 1.45;
-        }
-        .today-metric strong {
-          color: var(--sfm-foreground);
-          font-size: 24px;
-          line-height: 1.1;
-        }
-      `}</style>
     </div>
   );
 }
@@ -1009,6 +994,7 @@ function PriorityLane({
   text,
   footerHref,
   footerLabel,
+  accent = 'blue',
 }: {
   title: string;
   count: number;
@@ -1019,14 +1005,22 @@ function PriorityLane({
   text: typeof TEXT.ar;
   footerHref?: string;
   footerLabel?: string;
+  accent?: 'blue' | 'teal' | 'danger' | 'warning';
 }) {
+  const accentMap = {
+    blue:    { iconBg: 'rgba(29,140,255,.12)',  iconColor: '#1D8CE0', countBg: 'rgba(29,140,255,.1)',  countColor: '#1D8CE0', borderTop: 'rgba(29,140,255,.5)' },
+    teal:    { iconBg: 'rgba(24,212,212,.12)',  iconColor: '#0f766e', countBg: 'rgba(24,212,212,.1)',  countColor: '#0f766e', borderTop: 'rgba(24,212,212,.6)' },
+    danger:  { iconBg: 'rgba(239,68,68,.10)',   iconColor: '#B91C1C', countBg: 'rgba(239,68,68,.1)',   countColor: '#B91C1C', borderTop: 'rgba(239,68,68,.6)' },
+    warning: { iconBg: 'rgba(245,158,11,.10)',  iconColor: '#B45309', countBg: 'rgba(245,158,11,.1)',  countColor: '#B45309', borderTop: 'rgba(245,158,11,.6)' },
+  };
+  const ac = accentMap[accent];
   return (
-    <AppCard className="today-lane-card">
+    <AppCard className="today-lane-card" style={{ borderTopColor: ac.borderTop, borderTopWidth: '3px' } as React.CSSProperties}>
       <header className="today-lane-head">
-        <span aria-hidden="true">{icon}</span>
+        <span aria-hidden="true" style={{ background: ac.iconBg, color: ac.iconColor }}>{icon}</span>
         <div>
           <h2>{title}</h2>
-          <small>{count}</small>
+          <small style={{ background: ac.countBg, color: ac.countColor }}>{count}</small>
         </div>
       </header>
 

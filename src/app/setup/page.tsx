@@ -2016,9 +2016,28 @@ export default function SetupPage() {
               <p>{text.realData}</p>
             </div>
           </div>
-          <div className="choice-row">
-            <button type="button" className={savingsEnabled ? 'toggle-card active' : 'toggle-card'} onClick={() => setSavingsEnabled(value => !value)}>{text.hasSavings}</button>
-            <button type="button" className={investmentsEnabled ? 'toggle-card active' : 'toggle-card'} onClick={() => setInvestmentsEnabled(value => !value)}>{text.hasInvestments}</button>
+          <div style={{display:'flex',gap:'12px',flexWrap:'wrap',marginTop:'8px'}}>
+            {([
+              [savingsEnabled, () => setSavingsEnabled(v => !v), text.hasSavings],
+              [investmentsEnabled, () => setInvestmentsEnabled(v => !v), text.hasInvestments],
+            ] as [boolean, () => void, string][]).map(([on, toggle, label]) => (
+              <button key={label} type="button" onClick={toggle} aria-pressed={on}
+                style={on ? {
+                  minHeight:'48px',borderRadius:'14px',padding:'0 22px',fontSize:'15px',
+                  fontWeight:900,cursor:'pointer',fontFamily:'Tajawal,Arial,sans-serif',
+                  display:'inline-flex',alignItems:'center',justifyContent:'center',
+                  background:'linear-gradient(135deg,#0b76e0,#18d4d4)',color:'#fff',
+                  border:'1px solid transparent',boxShadow:'0 4px 14px rgba(11,118,224,.25)',
+                  transition:'all .18s ease',whiteSpace:'nowrap',
+                } : {
+                  minHeight:'48px',borderRadius:'14px',padding:'0 22px',fontSize:'15px',
+                  fontWeight:900,cursor:'pointer',fontFamily:'Tajawal,Arial,sans-serif',
+                  display:'inline-flex',alignItems:'center',justifyContent:'center',
+                  background:'rgba(255,255,255,0.7)',color:'var(--sfm-foreground)',
+                  border:'1px solid rgba(29,140,255,.22)',transition:'all .18s ease',
+                  whiteSpace:'nowrap',
+                }}>{label}</button>
+            ))}
           </div>
           {(savingsEnabled || investmentsEnabled) && (
             <div className="form-grid">
@@ -2056,10 +2075,29 @@ export default function SetupPage() {
               <p>{text.zakatBody}</p>
             </div>
           </div>
-          <div className="focus-grid">
-            <button type="button" className={focus.zakat ? 'focus-card active' : 'focus-card'} onClick={() => setFocus(prev => ({ ...prev, zakat: !prev.zakat }))}>{text.followZakat}</button>
-            <button type="button" className={focus.charity ? 'focus-card active' : 'focus-card'} onClick={() => setFocus(prev => ({ ...prev, charity: !prev.charity }))}>{text.followCharity}</button>
-            <button type="button" className={!focus.zakat && !focus.charity ? 'focus-card active' : 'focus-card'} onClick={() => setFocus({ zakat: false, charity: false })}>{text.notNow}</button>
+          <div style={{display:'flex',gap:'12px',flexWrap:'wrap',marginTop:'8px'}}>
+            {([
+              [focus.zakat, () => setFocus(prev => ({ ...prev, zakat: !prev.zakat })), text.followZakat],
+              [focus.charity, () => setFocus(prev => ({ ...prev, charity: !prev.charity })), text.followCharity],
+              [!focus.zakat && !focus.charity, () => setFocus({ zakat: false, charity: false }), text.notNow],
+            ] as [boolean, () => void, string][]).map(([on, toggle, label]) => (
+              <button key={label} type="button" onClick={toggle} aria-pressed={on}
+                style={on ? {
+                  minHeight:'48px',borderRadius:'14px',padding:'0 22px',fontSize:'15px',
+                  fontWeight:900,cursor:'pointer',fontFamily:'Tajawal,Arial,sans-serif',
+                  display:'inline-flex',alignItems:'center',justifyContent:'center',
+                  background:'linear-gradient(135deg,#0b76e0,#18d4d4)',color:'#fff',
+                  border:'1px solid transparent',boxShadow:'0 4px 14px rgba(11,118,224,.25)',
+                  transition:'all .18s ease',whiteSpace:'nowrap',
+                } : {
+                  minHeight:'48px',borderRadius:'14px',padding:'0 22px',fontSize:'15px',
+                  fontWeight:900,cursor:'pointer',fontFamily:'Tajawal,Arial,sans-serif',
+                  display:'inline-flex',alignItems:'center',justifyContent:'center',
+                  background:'rgba(255,255,255,0.7)',color:'var(--sfm-foreground)',
+                  border:'1px solid rgba(29,140,255,.22)',transition:'all .18s ease',
+                  whiteSpace:'nowrap',
+                }}>{label}</button>
+            ))}
           </div>
         </section>
       );
@@ -2555,10 +2593,28 @@ function ToggleRow({
   yes: string;
   no: string;
 }) {
+  const base: React.CSSProperties = {
+    minHeight: '48px', borderRadius: '14px', padding: '0 22px',
+    fontSize: '15px', fontWeight: 900, cursor: 'pointer',
+    fontFamily: 'Tajawal, Arial, sans-serif', display: 'inline-flex',
+    alignItems: 'center', justifyContent: 'center', transition: 'all .18s ease',
+    whiteSpace: 'nowrap',
+  };
+  const activeStyle: React.CSSProperties = {
+    ...base,
+    background: 'linear-gradient(135deg, #0b76e0, #18d4d4)',
+    color: '#fff', border: '1px solid transparent',
+    boxShadow: '0 4px 14px rgba(11,118,224,.25)',
+  };
+  const inactiveStyle: React.CSSProperties = {
+    ...base,
+    background: 'rgba(255,255,255,0.7)', color: 'var(--sfm-foreground)',
+    border: '1px solid rgba(29,140,255,.22)',
+  };
   return (
-    <div className="choice-row">
-      <button type="button" className={active ? 'choice-btn active' : 'choice-btn'} onClick={() => setActive(true)} aria-pressed={active}>{yes}</button>
-      <button type="button" className={!active ? 'choice-btn active' : 'choice-btn'} onClick={() => setActive(false)} aria-pressed={!active}>{no}</button>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '8px' }}>
+      <button type="button" style={active ? activeStyle : inactiveStyle} onClick={() => setActive(true)} aria-pressed={active}>{yes}</button>
+      <button type="button" style={!active ? activeStyle : inactiveStyle} onClick={() => setActive(false)} aria-pressed={!active}>{no}</button>
     </div>
   );
 }
