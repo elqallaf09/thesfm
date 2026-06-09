@@ -136,6 +136,40 @@ function normalizeFinnhubMetric(symbol: string, metric: Record<string, unknown>)
   });
 }
 
+type FinnhubDividendCalendarItem = {
+  date?: string;
+  amount?: number | null;
+  adjustedAmount?: number | null;
+  payDate?: string;
+  recordDate?: string;
+  declarationDate?: string;
+  currency?: string;
+};
+
+async function fetchFinnhubDividendCalendar(symbol: string, apiKey?: string): Promise<{ exDividendDate: string | null; paymentDate: string | null }> {
+  if (!hasUsableFinnhubKey(apiKey)) return { exDividendDate: null, paymentDate: null };
+  const from = new Date().toISOString().slice(0, 10);
+  const to = new Date(Date.now() + 180 * 86400 * 1000).toISOString().slice(0, 10);
+  const params = new URLSearchParams({ symbol, from, to, token: apiKey?.trim() ?? '' });
+  try {
+    const response = await fetch(`https://finnhub.io/api/v1/stock/dividend?${params.toString()}`, {
+      next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(8000),
+      headers: { accept: 'application/json' },
+    });
+    if (!response.ok) return { exDividendDate: null, paymentDate: null };
+    const body = await response.json().catch(() => null) as FinnhubDividendCalendarItem[] | null;
+    if (!Array.isArray(body) || body.length === 0) return { exDividendDate: null, paymentDate: null };
+    // Sort by date ascending, pick the soonest upcoming
+    const upcoming = [...body].sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))[0];
+    const exDividendDate = upcoming?.date ? dateOrNull(upcoming.date) : null;
+    const paymentDate = upcoming?.payDate ? dateOrNull(upcoming.payDate) : null;
+    return { exDividendDate, paymentDate };
+  } catch {
+    return { exDividendDate: null, paymentDate: null };
+  }
+}
+
 async function fetchFinnhubDividendMetric(symbol: string, apiKey?: string): Promise<DividendStockMetric> {
   if (!hasUsableFinnhubKey(apiKey)) return emptyMetric(symbol, 'finnhub_api_key_not_configured');
   const params = new URLSearchParams({ symbol, metric: 'all', token: apiKey?.trim() ?? '' });
@@ -163,8 +197,13 @@ async function fetchYahooDividendMetric(symbol: string): Promise<DividendStockMe
       next: { revalidate: 900 },
       signal: AbortSignal.timeout(9000),
       headers: {
-        accept: 'application/json',
-        'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Referer': 'https://finance.yahoo.com/',
+        'Origin': 'https://finance.yahoo.com',
       },
     });
     const body = await response.json().catch(() => null) as YahooQuoteSummaryResponse | null;
@@ -178,9 +217,23 @@ async function fetchYahooDividendMetric(symbol: string): Promise<DividendStockMe
 }
 
 export async function fetchDividendStockMetric(symbol: string, apiKey?: string): Promise<DividendStockMetric> {
-  const finnhubMetric = await fetchFinnhubDividendMetric(symbol, apiKey);
-  if (finnhubMetric.available) return finnhubMetric;
-  return fetchYahooDividendMetric(symbol);
+  const [finnhubMetric, yahooMetric, calendarDates] = await Promise.all([
+    fetchFinnhubDividendMetric(symbol, apiKey),
+    fetchYahooDividendMetric(symbol),
+    fetchFinnhubDividendCalendar(symbol, apiKey),
+  ]);
+
+  // Merge: prefer Finnhub metric values, fill in dates from calendar or Yahoo
+  const base = finnhubMetric.available ? finnhubMetric : yahooMetric;
+  const exDividendDate = calendarDates.exDividendDate ?? yahooMetric.exDividendDate ?? base.exDividendDate;
+  const paymentDate = calendarDates.paymentDate ?? yahooMetric.paymentDate ?? base.paymentDate;
+
+  return {
+    ...base,
+    exDividendDate,
+    paymentDate,
+    available: base.available || Boolean(exDividendDate) || Boolean(paymentDate),
+  };
 }
 
 export async function fetchDividendStockMetrics(symbols: string[]) {

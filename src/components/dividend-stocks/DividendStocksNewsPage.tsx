@@ -643,32 +643,41 @@ function categoryLabelForItem(item: DividendNewsItem, lang: LangCode) {
 }
 
 function dividendEventsFromItems(items: DividendTickerItem[]) {
+  const now = Date.now();
+  // Include past events up to 14 days ago so recently-passed dates still show
+  const cutoff = now - 14 * 24 * 60 * 60 * 1000;
   return items.flatMap(item => {
     const rows: DividendEvent[] = [];
     if (item.exDividendDate) {
-      rows.push({
-        id: `${item.symbol}-ex-${item.exDividendDate}`,
-        symbol: item.symbol,
-        name: item.name,
-        type: 'ex',
-        date: item.exDividendDate,
-        annualDividend: item.annualDividend,
-        currency: item.currency,
-      });
+      const ts = new Date(item.exDividendDate).getTime();
+      if (Number.isFinite(ts) && ts >= cutoff) {
+        rows.push({
+          id: `${item.symbol}-ex-${item.exDividendDate}`,
+          symbol: item.symbol,
+          name: item.name,
+          type: 'ex',
+          date: item.exDividendDate,
+          annualDividend: item.annualDividend,
+          currency: item.currency,
+        });
+      }
     }
     if (item.paymentDate) {
-      rows.push({
-        id: `${item.symbol}-payment-${item.paymentDate}`,
-        symbol: item.symbol,
-        name: item.name,
-        type: 'payment',
-        date: item.paymentDate,
-        annualDividend: item.annualDividend,
-        currency: item.currency,
-      });
+      const ts = new Date(item.paymentDate).getTime();
+      if (Number.isFinite(ts) && ts >= cutoff) {
+        rows.push({
+          id: `${item.symbol}-payment-${item.paymentDate}`,
+          symbol: item.symbol,
+          name: item.name,
+          type: 'payment',
+          date: item.paymentDate,
+          annualDividend: item.annualDividend,
+          currency: item.currency,
+        });
+      }
     }
     return rows;
-  }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 8);
+  }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 12);
 }
 
 function SkeletonLine({ wide = false }: { wide?: boolean }) {
