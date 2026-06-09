@@ -1204,18 +1204,41 @@ function PriorityLane({
         }
         .today-lane-action {
           color: var(--sfm-primary);
+          background: rgba(29, 140, 255, .08);
+          border: 1px solid rgba(29, 140, 255, .22);
+          min-height: 34px;
+          padding: 0 14px;
+          border-radius: 999px;
+          text-decoration: none;
+          font-size: 12px;
+          font-weight: 950;
+          transition: background .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+        }
+        .today-lane-action:hover,
+        .today-lane-action:focus-visible {
+          background: rgba(29, 140, 255, .15);
+          border-color: rgba(24, 212, 212, .38);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(29, 140, 255, .14);
+          outline: none;
         }
         .today-lane-footer {
           width: fit-content;
           min-height: 36px;
-          padding: 0 12px;
-          border: 1px solid rgba(29, 140, 255, .18);
+          padding: 0 16px;
+          border: 1px solid rgba(29, 140, 255, .22);
+          background: rgba(29, 140, 255, .06);
           color: var(--sfm-primary);
           text-decoration: none;
+          font-weight: 950;
+          transition: background .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease;
         }
         .today-lane-footer:hover,
         .today-lane-footer:focus-visible {
-          border-color: rgba(24, 212, 212, .34);
+          background: rgba(29, 140, 255, .13);
+          border-color: rgba(24, 212, 212, .38);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(29, 140, 255, .14);
           outline: none;
         }
         :global(.dark) .today-lane-item {
@@ -1225,6 +1248,22 @@ function PriorityLane({
         :global(.dark) .today-lane-empty {
           background: rgba(15, 51, 92, .45);
           border-color: rgba(167, 243, 240, .16);
+        }
+        :global(.dark) .today-lane-action {
+          background: rgba(29, 140, 255, .12);
+          border-color: rgba(29, 140, 255, .26);
+        }
+        :global(.dark) .today-lane-action:hover {
+          background: rgba(29, 140, 255, .22);
+          border-color: rgba(24, 212, 212, .40);
+        }
+        :global(.dark) .today-lane-footer {
+          background: rgba(29, 140, 255, .10);
+          border-color: rgba(29, 140, 255, .26);
+        }
+        :global(.dark) .today-lane-footer:hover {
+          background: rgba(29, 140, 255, .20);
+          border-color: rgba(24, 212, 212, .40);
         }
         :global(.dark) .today-lane-badges .priority.urgent {
           color: #FCA5A5;
