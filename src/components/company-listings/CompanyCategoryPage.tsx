@@ -561,7 +561,7 @@ function CompanyEmpty({ onAdd }: { onAdd: () => void }) {
       <Building2 size={30} />
       <h2>{t('company_listing_empty_title')}</h2>
       <p>{t('company_listing_empty_body')}</p>
-      <button type="button" onClick={onAdd}><Plus size={16} />{t('company_listing_add_company')}</button>
+      <button type="button" className="company-add-btn" onClick={onAdd}><Plus size={16} /><span>{t('company_listing_add_company')}</span></button>
       <style jsx>{`
         .company-empty,
         .company-error {
@@ -597,11 +597,34 @@ function CompanyEmpty({ onAdd }: { onAdd: () => void }) {
           line-height: 1.8;
           font-weight: 750;
         }
-        .company-empty button {
-          min-width: 150px;
+        .company-add-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-width: 180px;
+          min-height: 48px;
+          padding: 0 22px;
+          border: 0;
+          border-radius: 14px;
+          background: linear-gradient(135deg, #0b76e0, #18d4d4);
+          color: #ffffff;
+          font: 950 14px/1 Tajawal, Arial, sans-serif;
+          cursor: pointer;
+          box-shadow: 0 14px 28px rgba(11, 118, 224, 0.22);
+          white-space: nowrap;
+          transition: transform .15s, box-shadow .15s, filter .15s;
+        }
+        .company-add-btn:hover {
+          transform: translateY(-2px);
+          filter: brightness(1.06);
+          box-shadow: 0 18px 36px rgba(11, 118, 224, 0.28);
+        }
+        .company-add-btn:active {
+          transform: translateY(0) scale(.97);
         }
         @media (max-width: 640px) {
-          .company-empty button {
+          .company-add-btn {
             width: 100%;
           }
         }

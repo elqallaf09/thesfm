@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
@@ -155,6 +155,7 @@ export default function InvestPage() {
   const [toast, setToast] = useState('');
   const [activeTab, setActiveTab] = useState<InvestTab>('portfolio');
   const insightsRef = useRef<HTMLDivElement | null>(null);
+  const autoRefreshedRef = useRef(false);
   const L = useCallback((ar: string, en: string, fr: string) => lang === 'ar' ? ar : lang === 'fr' ? fr : en, [lang]);
 
   const labels = useMemo(() => ({
@@ -752,6 +753,18 @@ export default function InvestPage() {
       setRefreshingAllPrices(false);
     }
   }
+
+  // Auto-refresh market prices on first load for investments missing current price
+  useEffect(() => {
+    if (isLoading || autoRefreshedRef.current) return;
+    const stale = items.filter(
+      item => (item.providerSymbol || item.symbol) && !item.lastPrice && !item.currentPrice
+    );
+    if (stale.length === 0) return;
+    autoRefreshedRef.current = true;
+    void handleRefreshPrices(stale);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, items]);
 
   async function handleDelete() {
     if (!deleteTarget) return;

@@ -53,14 +53,19 @@ export function calculateInvestmentHoldingMetrics(
   const linkedSymbol = investmentLinkedSymbol(item);
   const isMarketLinked = isMarketLinkedInvestment(item);
   const quantity = positiveInvestmentNumber(item.quantity);
-  const purchasePrice = positiveInvestmentNumber(item.purchasePrice);
+  const storedPurchaseTotal = positiveInvestmentNumber(item.purchaseTotal);
+  // Derive per-unit purchase price from total/quantity when not explicitly stored
+  const purchasePriceRaw = positiveInvestmentNumber(item.purchasePrice);
+  const purchasePrice = purchasePriceRaw
+    ?? (quantity !== null && quantity > 0 && storedPurchaseTotal !== null
+        ? storedPurchaseTotal / quantity
+        : null);
   const currentPrice = positiveInvestmentNumber(
     override?.currentPrice
     ?? item.lastPrice
     ?? item.currentPrice
     ?? (isMarketLinked ? undefined : item.nativeUnitPrice),
   );
-  const storedPurchaseTotal = positiveInvestmentNumber(item.purchaseTotal);
   const totalInvested = quantity !== null && purchasePrice !== null
     ? quantity * purchasePrice
     : storedPurchaseTotal;
