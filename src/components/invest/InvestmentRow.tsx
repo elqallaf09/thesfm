@@ -163,7 +163,12 @@ export function InvestmentRow({
               {labels.purchasePrice || 'سعر الشراء'}: <b style={{color:'var(--sfm-foreground)',fontWeight:950}} dir="ltr">{formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment)}</b>
             </span>
           )}
-          {metrics.purchasePrice === null && (
+          {metrics.purchasePrice === null && metrics.totalInvested !== null && (
+            <span style={{display:'inline-flex',alignItems:'center',gap:'5px',borderRadius:'999px',border:'1px solid rgba(167,243,240,.18)',background:'var(--sfm-light-card)',padding:'5px 10px',fontSize:'12px',fontWeight:900,color:'var(--sfm-muted)'}}>
+              {labels.totalInvested || 'إجمالي الاستثمار'}: <b style={{color:'var(--sfm-foreground)',fontWeight:950}} dir="ltr">{formatNativeMoney(metrics.totalInvested, nativeCurrency, investment)}</b>
+            </span>
+          )}
+          {metrics.purchasePrice === null && metrics.totalInvested === null && (
             <span style={{display:'inline-flex',alignItems:'center',gap:'5px',borderRadius:'999px',border:'1px solid rgba(245,158,11,.24)',background:'rgba(245,158,11,.08)',padding:'5px 10px',fontSize:'12px',fontWeight:900,color:'#92400E'}}>
               {labels.purchasePriceMissing || 'سعر الشراء غير مكتمل'}
             </span>
@@ -183,10 +188,14 @@ export function InvestmentRow({
       )}
       {isExpanded && <div className="invest-holding-primary">
         <Metric
-          label={labels.purchasePrice || 'Purchase price'}
-          value={metrics.purchasePrice !== null ? formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment) : labels.purchasePriceMissing || '-'}
-          tone={metrics.purchasePrice === null ? 'warning' : 'default'}
-          ltr={metrics.purchasePrice !== null}
+          label={metrics.purchasePrice !== null ? (labels.purchasePrice || 'Purchase price') : metrics.totalInvested !== null ? (labels.totalInvested || 'Total invested') : (labels.purchasePrice || 'Purchase price')}
+          value={metrics.purchasePrice !== null
+            ? formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment)
+            : metrics.totalInvested !== null
+              ? formatNativeMoney(metrics.totalInvested, nativeCurrency, investment)
+              : labels.purchasePriceMissing || '-'}
+          tone={metrics.purchasePrice === null && metrics.totalInvested === null ? 'warning' : 'default'}
+          ltr={metrics.purchasePrice !== null || metrics.totalInvested !== null}
         />
         <Metric
           label={labels.currentPrice || 'Current price'}
