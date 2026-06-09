@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromBearerToken } from '@/lib/server/adminAccess';
 import { findAssetAliasMatches } from '@/lib/market/assetAliases';
 import { fetchYahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 import { normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
@@ -62,6 +63,20 @@ function quoteCandidates(input: { symbol: string; displaySymbol: string; name: s
 }
 
 export async function GET(request: NextRequest) {
+  // Require authenticated user OR valid CRON_SECRET to prevent API key abuse
+  const bearerToken = request.headers.get('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  const isCron = cronSecret && bearerToken === cronSecret;
+  if (!isCron) {
+    const user = await getUserFromBearerToken(bearerToken);
+    if (!user) {
+      return NextResponse.json(
+        { ok: false, code: 'UNAUTHORIZED', item: null },
+        { status: 401, headers: noStoreHeaders },
+      );
+    }
+  }
+
   const { searchParams } = request.nextUrl;
   const symbol = validateSymbol(searchParams.get('symbol') ?? searchParams.get('provider_symbol') ?? '');
   const displaySymbol = validateSymbol(searchParams.get('displaySymbol') ?? searchParams.get('display_symbol') ?? symbol ?? '');

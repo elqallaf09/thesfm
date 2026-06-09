@@ -1,12 +1,32 @@
+import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { cleanEnv } from '@/lib/market/providerConfig';
+import { isAdminAccessCodeConfigured, isValidAdminAccessCode } from '@/lib/server/adminAccess';
 import { getGoogleClientDiagnostic, getReceiptProviderStatus, parseGoogleCredentialsJson } from '@/lib/server/receiptProviderConfig';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-function isAllowed(request: NextRequest) {
+function safeEqual(a: string, b: string) {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && timingSafeEqual(ab, bb);
+}
+
+function requestToken(request: NextRequest): string | null {
+  return (
+    request.headers.get('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ??
+    cleanEnv(request.nextUrl.searchParams.get('token'))
+  );
+}
+
+function isAllowed(request: NextRequest): boolean {
   if (process.env.NODE_ENV !== 'production') return true;
-  return request.cookies.get('sfm_auth')?.value === 'true';
+  const token = requestToken(request);
+  if (!token) return false;
+  const healthToken = cleanEnv(process.env.MARKET_PROVIDER_HEALTH_TOKEN);
+  if (healthToken && safeEqual(token, healthToken)) return true;
+  return isAdminAccessCodeConfigured() && isValidAdminAccessCode(token);
 }
 
 export async function GET(request: NextRequest) {

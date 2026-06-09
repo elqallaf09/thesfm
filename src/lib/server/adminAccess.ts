@@ -1,14 +1,13 @@
 import { createClient, type User } from '@supabase/supabase-js';
 import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
 
-export const ADMIN_EMAIL = 'elqallaf09@gmail.com';
 export const ADMIN_SESSION_COOKIE = 'sfm_admin_session';
 export const ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60;
 
 export function isAdminEmail(email?: string | null) {
   const normalizedEmail = email?.trim().toLowerCase();
   if (!normalizedEmail) return false;
-  const allowedEmails = (process.env.ADMIN_EMAILS || ADMIN_EMAIL)
+  const allowedEmails = (process.env.ADMIN_EMAILS || '')
     .split(',')
     .map(item => item.trim().toLowerCase())
     .filter(Boolean);

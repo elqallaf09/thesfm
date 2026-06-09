@@ -15,6 +15,7 @@ import { InvestmentRow, type InvestmentPriceRefreshStatus } from '@/components/i
 import { InvestmentDetailDrawer } from '@/components/invest/InvestmentDetailDrawer';
 import { ConfirmDeleteModal } from '@/components/invest/ConfirmDeleteModal';
 import { EmptyState } from '@/components/invest/EmptyState';
+import { useAuth } from '@/hooks/useAuth';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useCurrency } from '@/lib/useCurrency';
@@ -141,6 +142,7 @@ export default function InvestPage() {
   const router = useRouter();
   const { lang, dir, t } = useLanguage();
   const { currency } = useCurrency();
+  const { session } = useAuth();
   const { items, isLoading, error, add, update, updateMarketPrice, remove } = useInvestments();
   const [modalOpen, setModalOpen] = useState(false);
   const [mode, setMode] = useState<'create' | 'edit'>('create');
@@ -629,8 +631,10 @@ export default function InvestPage() {
       if (item.nativeCurrency || item.priceCurrency || item.currency) {
         params.set('currency', item.nativeCurrency || item.priceCurrency || item.currency || '');
       }
+      const authToken = session?.access_token;
       const response = await fetch(`/api/market/refresh-investment-price?${params.toString()}`, {
         cache: 'no-store',
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
       });
       const payload = await response.json() as {
         ok?: boolean;
