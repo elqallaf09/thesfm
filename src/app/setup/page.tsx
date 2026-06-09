@@ -1824,15 +1824,15 @@ export default function SetupPage() {
               <p>{text.subtitle}</p>
             </div>
           </div>
-          <div className="welcome-actions">
-            <button type="button" className="primary-btn setup-start-btn" onClick={() => {
+          <div className="welcome-actions" style={{marginTop:'10px',display:'flex',alignItems:'center',gap:'14px',flexWrap:'wrap',minWidth:0}}>
+            <button type="button" style={{minHeight:'52px',borderRadius:'16px',padding:'0 22px',gap:'12px',fontSize:'15px',border:0,background:'linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent))',color:'#FFF',boxShadow:'0 16px 34px rgba(29,140,255,.24)',fontFamily:'Tajawal,Arial,sans-serif',fontWeight:950,cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center',whiteSpace:'nowrap'}} onClick={() => {
               setSummary(buildSetupSummary());
               setStep(nextIncompleteStep);
             }}>
               <span>{text.start}</span>
               {dir === 'rtl' ? <ArrowLeft className="cta-icon" size={18} aria-hidden="true" /> : <ArrowRight className="cta-icon" size={18} aria-hidden="true" />}
             </button>
-            <button type="button" className="ghost-btn setup-skip-btn" onClick={skipSetup} disabled={saving}>
+            <button type="button" style={{minHeight:'48px',borderRadius:'15px',padding:'0 18px',background:'#FFFFFF',border:'1px solid rgba(29,140,255,.24)',color:'var(--sfm-midnight)',fontFamily:'Tajawal,Arial,sans-serif',fontWeight:950,cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center',whiteSpace:'nowrap'}} onClick={skipSetup} disabled={saving}>
               {text.skipNow}
             </button>
           </div>
@@ -2101,18 +2101,18 @@ export default function SetupPage() {
 
     return (
       <section className="step-panel completion-panel completion-dashboard completion-compact">
-        <div className="completion-hero completion-success-card">
-          <div className="completion-success-icon" aria-hidden="true">
-            <CheckCircle2 size={34} />
+        <div style={{display:'grid',gridTemplateColumns:'auto minmax(0,1fr)',gap:'16px',alignItems:'center',border:'1px solid rgba(16,185,129,.2)',background:'linear-gradient(135deg,#F0FDF4,#FFFFFF 58%,#EAF6FF)',borderRadius:'24px',padding:'20px 22px',boxShadow:'0 14px 34px rgba(3,18,37,.07)',minWidth:0}}>
+          <div style={{width:'58px',height:'58px',borderRadius:'999px',display:'grid',placeItems:'center',background:'linear-gradient(135deg,#ECFDF5,rgba(16,185,129,.18))',color:'#047857',border:'1px solid rgba(16,185,129,.22)',boxShadow:'0 8px 20px rgba(16,185,129,.15)'}} aria-hidden="true">
+            <CheckCircle2 size={28} />
           </div>
-          <div className="completion-copy">
-            <span>{text.initialPlanBuilt}</span>
-            <h2 id="setup-step-title">{text.completionTitle}</h2>
-            <p>{text.completionDescription}</p>
+          <div style={{minWidth:0}}>
+            <span style={{display:'inline-flex',borderRadius:'999px',background:'#ECFDF5',color:'#047857',padding:'4px 10px',fontSize:'12px',fontWeight:950,marginBottom:'8px'}}>{text.initialPlanBuilt}</span>
+            <h2 id="setup-step-title" style={{margin:'0 0 6px',color:'var(--sfm-primary-dark)',fontSize:'clamp(22px,3vw,30px)',lineHeight:1.2,fontWeight:950}}>{text.completionTitle}</h2>
+            <p style={{margin:0,color:'var(--sfm-muted-readable)',fontSize:'13px',lineHeight:1.75,fontWeight:850}}>{text.completionDescription}</p>
           </div>
         </div>
 
-        <section className="completion-summary-grid concise-summary-grid" aria-label={text.planSnapshotTitle}>
+        <section style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:"12px",minWidth:0}} aria-label={text.planSnapshotTitle}>
           <SummaryCard icon={CircleDollarSign} label={text.summaryCurrency} value={defaultCurrency} description={text.currencyCardDesc} tone="currency" />
           <SummaryCard
             icon={Banknote}
@@ -2151,13 +2151,13 @@ export default function SetupPage() {
           />
         </section>
 
-        <section className="financial-snapshot-card" aria-labelledby="setup-snapshot-title">
-          <div className="snapshot-copy">
+        <section style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:"18px",alignItems:"center",border:"1px solid rgba(29,140,255,.14)",background:"linear-gradient(180deg,#FFFFFF,#F4F9FF)",borderRadius:"22px",padding:"20px 22px",boxShadow:"0 12px 30px rgba(3,18,37,.06)",minWidth:0}} aria-labelledby="setup-snapshot-title">
+          <div style={{display:"grid",gap:"5px",minWidth:0}}>
             <span>{text.financialPulse}</span>
             <h3 id="setup-snapshot-title">{text.planSnapshotTitle}</h3>
             <p>{text.planSnapshotSubtitle}</p>
           </div>
-          <div className="snapshot-metrics">
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:"10px"}}>
             <article className="snapshot-metric primary">
               <small>{text.expectedSurplus}</small>
               <strong>{surplusValue}</strong>
@@ -2173,15 +2173,15 @@ export default function SetupPage() {
           </div>
         </section>
 
-        <section className="recommendation-panel compact-recommendation" aria-labelledby="setup-recommendation-title">
-          <div className="recommendation-head">
+        <section style={{display:"grid",gap:"12px",border:"1px solid rgba(24,212,212,.22)",background:"rgba(24,212,212,.06)",borderRadius:"20px",padding:"18px 20px"}} aria-labelledby="setup-recommendation-title">
+          <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:"12px",alignItems:"start"}}>
             <Sparkles size={22} aria-hidden="true" />
             <div>
               <h3 id="setup-recommendation-title">{text.recommendationTitle}</h3>
               <p>{text.recommendationBasedOn}</p>
             </div>
           </div>
-          <article className="recommendation-single">
+          <article style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:"10px",alignItems:"start",background:"rgba(255,255,255,.7)",border:"1px solid rgba(24,212,212,.18)",borderRadius:"14px",padding:"12px 14px"}}>
             <CheckCircle2 size={18} aria-hidden="true" />
             <div>
               <strong>{primaryRecommendation.title}</strong>
@@ -2196,18 +2196,18 @@ export default function SetupPage() {
           )}
         </section>
 
-        <div className="finish-actions completion-actions">
-          <button type="button" className="primary" onClick={completeAndGoDashboard} disabled={saving}>
+        <div style={{display:'flex',gap:'10px',flexWrap:'wrap',justifyContent:'flex-end',borderTop:'1px solid rgba(29,140,255,.10)',paddingTop:'14px',marginTop:'4px'}}>
+          <button type="button" style={{minHeight:'52px',borderRadius:'16px',padding:'0 22px',border:0,background:'linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent))',color:'#FFF',fontFamily:'Tajawal,Arial,sans-serif',fontWeight:950,fontSize:'15px',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center',gap:'8px',boxShadow:'0 16px 36px rgba(29,140,255,.22)',minWidth:'min(260px,100%)',whiteSpace:'nowrap'}} onClick={completeAndGoDashboard} disabled={saving}>
             {saving ? text.saving : text.goDashboard}
           </button>
-          <button type="button" className="secondary-action" onClick={openMoreData}>{text.addMoreData}</button>
-          <button type="button" className="tertiary-action" onClick={() => setShowInitialReport(true)}>{text.viewInitialReport}</button>
+          <button type="button" style={{minHeight:'52px',borderRadius:'16px',padding:'0 18px',border:'1px solid rgba(29,140,255,.24)',background:'#FFFFFF',color:'var(--sfm-midnight)',fontFamily:'Tajawal,Arial,sans-serif',fontWeight:950,cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center',gap:'8px',whiteSpace:'nowrap'}} onClick={openMoreData}>{text.addMoreData}</button>
+          <button type="button" style={{minHeight:'52px',borderRadius:'16px',padding:'0 18px',border:'1px solid rgba(29,140,255,.16)',background:'rgba(255,255,255,.62)',color:'var(--sfm-midnight)',fontFamily:'Tajawal,Arial,sans-serif',fontWeight:950,cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center',gap:'8px',whiteSpace:'nowrap'}} onClick={() => setShowInitialReport(true)}>{text.viewInitialReport}</button>
         </div>
 
         {showInitialReport && (
           <div className="report-modal-backdrop" role="presentation">
             <section className="initial-report-modal" role="dialog" aria-modal="true" aria-labelledby="initial-report-title">
-              <div className="report-modal-head">
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"12px",marginBottom:"16px"}}>
                 <div>
                   <span>{text.viewInitialReport}</span>
                   <h3 id="initial-report-title">{text.reportTitle}</h3>
@@ -2217,7 +2217,7 @@ export default function SetupPage() {
                   <X size={18} />
                 </button>
               </div>
-              <div className="report-grid">
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:"10px"}}>
                 <ReportCard icon={Banknote} title={text.reportIncome} value={formatSetupMoney(activeSummary.incomeTotal, defaultCurrency, lang)} detail={activeSummary.income > 0 ? `${formatSetupNumber(activeSummary.income, lang)} ${text.addedIncome}` : text.reportNoData} />
                 <ReportCard icon={ReceiptText} title={text.reportExpenses} value={formatSetupMoney(activeSummary.expenseTotal, defaultCurrency, lang)} detail={activeSummary.expenses > 0 ? `${formatSetupNumber(activeSummary.expenses, lang)} ${text.addedExpenses}` : text.reportNoData} />
                 <ReportCard icon={PiggyBank} title={text.reportSavings} value={formatSetupMoney(activeSummary.savingsTotal, defaultCurrency, lang)} detail={activeSummary.savings > 0 ? `${formatSetupNumber(activeSummary.savings, lang)} ${text.addedSavings}` : text.reportNoData} />
@@ -2318,15 +2318,23 @@ function SummaryCard({
   description: string;
   tone: 'currency' | 'income' | 'remaining' | 'saving' | 'count';
 }) {
+  const iconColors: Record<string, {bg:string;color:string}> = {
+    currency: {bg:'#EEF2FF',color:'#3730A3'},
+    income: {bg:'#ECFDF5',color:'#047857'},
+    saving: {bg:'#FFFBEB',color:'#B45309'},
+    count: {bg:'rgba(29,140,255,.10)',color:'var(--sfm-primary)'},
+    remaining: {bg:'rgba(24,212,212,.12)',color:'#0E7490'},
+  };
+  const ic = iconColors[tone] ?? iconColors.count;
   return (
-    <article className={`completion-summary-card ${tone}`}>
-      <div className="summary-icon" aria-hidden="true">
-        <Icon size={20} />
+    <article style={{display:'grid',gridTemplateColumns:'auto minmax(0,1fr)',gap:'12px',alignItems:'start',border:'1px solid rgba(29,140,255,.10)',background:'linear-gradient(180deg,#FFFFFF,#F8FBFF)',borderRadius:'18px',padding:'15px',minWidth:0,minHeight:'100px',boxShadow:'0 8px 22px rgba(3,18,37,.05)'}}>
+      <div style={{width:'40px',height:'40px',borderRadius:'13px',display:'grid',placeItems:'center',background:ic.bg,color:ic.color,flexShrink:0}} aria-hidden="true">
+        <Icon size={18} />
       </div>
-      <div>
-        <small>{label}</small>
-        <strong>{value}</strong>
-        <p>{description}</p>
+      <div style={{minWidth:0}}>
+        <small style={{display:'block',color:'var(--sfm-muted-readable)',fontSize:'11px',fontWeight:950,lineHeight:1.35}}>{label}</small>
+        <strong style={{display:'block',marginTop:'5px',color:'var(--sfm-midnight)',fontSize:'clamp(17px,1.8vw,22px)',lineHeight:1.18,fontWeight:950,overflowWrap:'anywhere'}}>{value}</strong>
+        <p style={{margin:'5px 0 0',color:'var(--sfm-muted-readable)',fontSize:'11px',fontWeight:820,lineHeight:1.5}}>{description}</p>
       </div>
     </article>
   );
@@ -2334,12 +2342,14 @@ function SummaryCard({
 
 function ReportCard({ icon: Icon, title, value, detail }: { icon: LucideIcon; title: string; value: string; detail: string }) {
   return (
-    <article className="report-card">
-      <Icon size={20} aria-hidden="true" />
-      <div>
-        <small>{title}</small>
-        <strong>{value}</strong>
-        <p>{detail}</p>
+    <article style={{display:'grid',gridTemplateColumns:'auto minmax(0,1fr)',gap:'12px',alignItems:'start',border:'1px solid rgba(29,140,255,.10)',background:'linear-gradient(180deg,#FFFFFF,#F8FBFF)',borderRadius:'16px',padding:'14px',boxShadow:'0 6px 18px rgba(3,18,37,.05)'}}>
+      <div style={{width:'38px',height:'38px',borderRadius:'12px',display:'grid',placeItems:'center',background:'rgba(29,140,255,.08)',color:'var(--sfm-primary)',flexShrink:0}} aria-hidden="true">
+        <Icon size={18} />
+      </div>
+      <div style={{minWidth:0}}>
+        <small style={{display:'block',color:'var(--sfm-muted-readable)',fontSize:'11px',fontWeight:950}}>{title}</small>
+        <strong style={{display:'block',marginTop:'4px',color:'var(--sfm-midnight)',fontSize:'clamp(16px,1.6vw,20px)',fontWeight:950,overflowWrap:'anywhere'}}>{value}</strong>
+        <p style={{margin:'4px 0 0',color:'var(--sfm-muted-readable)',fontSize:'11px',lineHeight:1.5}}>{detail}</p>
       </div>
     </article>
   );
