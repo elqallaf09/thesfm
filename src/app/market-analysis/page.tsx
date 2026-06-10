@@ -58,6 +58,22 @@ import {
   normalizeChartType, hasCompleteOhlc, pipAssetTypeTranslationKey, pipAssetName,
   getPipCalculatorAsset, pipCalculatorWarningKey, technicalEmptyStateCopy,
   fetchMarketToolState,
+  normalizeMarketTab,
+  chartErrorText,
+  delay,
+  formatSavedAlertThreshold,
+  invalidSymbolMessage,
+  marketAiInsightErrorText,
+  marketAssetTypeLabel,
+  marketErrorText,
+  normalizeAlertRow,
+  normalizeAlertType,
+  normalizeInvestmentItem,
+  normalizeProviderSymbolForRequest,
+  normalizeScenarioCurrency,
+  normalizeWatchlistRow,
+  readLocalList,
+  writeLocalList,
 } from '@/components/market-analysis/utils';
 
 // ── Extracted panel components ─────────────────────────────────────────────
