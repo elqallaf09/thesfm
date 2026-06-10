@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Activity, AlertTriangle, BarChart3, Brain, CheckCircle2, ChevronDown, Info, RefreshCw, Search, Sparkles, TrendingDown, TrendingUp } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, CircleDollarSign, Clock3, Gauge, Info, LineChart, RefreshCw, Search, ShieldAlert, Sparkles, Star, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import type { MarketAssetType } from '@/lib/market/marketService';
 import type { ApiListState, TechnicalState, TechnicalSymbolCategory, TechnicalSymbolOption } from './types';
 import {
@@ -16,6 +16,7 @@ import {
   levelMarkerPercent, distancePercent, formatFundamentalValue, technicalEmptyStateCopy,
   isAbortLikeError, logMarketToolPerformance, marketToolFailureState,
 } from './utils';
+import { MarketSectionLoading } from './NewsSentimentPanel';
 
 export function LegacyTechnicalAnalysisPanel({
   t,

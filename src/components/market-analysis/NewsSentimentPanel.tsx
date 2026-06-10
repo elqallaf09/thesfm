@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { AlertTriangle, Brain, Info, Newspaper, RefreshCw, Sparkles } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Brain, CheckCircle2, Clock3, Info, Landmark, LineChart, Newspaper, RefreshCw, Search, ShieldAlert, Sparkles } from 'lucide-react';
 import type { MarketAssetType } from '@/lib/market/marketService';
 import type { ApiListState } from './types';
 import {

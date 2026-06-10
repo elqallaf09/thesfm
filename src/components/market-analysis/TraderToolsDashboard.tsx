@@ -2,7 +2,7 @@
 
 import { useCallback, useId, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Activity, BarChart3, Calculator, ChevronDown, ChevronLeft, ChevronRight, Percent, Plus, RefreshCw, Sparkles } from 'lucide-react';
+import { Activity, BarChart3, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDollarSign, Gauge, Landmark, LineChart, Percent, PieChart, Plus, RefreshCw, ShieldAlert, Sparkles, TrendingUp, WalletCards } from 'lucide-react';
 import { calculateLotSizeByRisk, calculatePips, calculatePositionSize, type TradeDirection, type TradingInstrumentType } from '@/lib/trading/calculators';
 import type { MarketAssetType } from '@/lib/market/marketService';
 import { currencyDisplaySymbol } from '@/lib/currencies';
@@ -17,6 +17,7 @@ import {
   pipAssetName, pipCalculatorWarningKey, sanitizeMarketToolMessage, logMarketToolPerformance,
   marketToolFailureState, isAbortLikeError, normalizePerformanceTrend, assetTypeTranslationKey,
 } from './utils';
+import { EmptyToolState, MarketSectionLoading } from './NewsSentimentPanel';
 
 export function TraderToolsDashboard({
   t,

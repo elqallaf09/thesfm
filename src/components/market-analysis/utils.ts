@@ -1137,3 +1137,23 @@ export function normalizeAccountCurrency(value: string | null | undefined): Acco
     : 'KWD';
 }
 
+
+export function technicalEmptyStateCopy(code: string | undefined, t: (key: string) => string) {
+  const normalizedCode = String(code ?? '').toUpperCase();
+  if (normalizedCode === 'MARKET_DATA_TIMEOUT') {
+    return { title: t('market_section_timeout_title'), body: t('market_section_timeout_body') };
+  }
+  if (normalizedCode === 'SYMBOL_REQUIRED') {
+    return { title: t('market_technical_choose_asset_title'), body: t('market_technical_symbol_required_body') };
+  }
+  if (normalizedCode === 'UNSUPPORTED_SYMBOL') {
+    return { title: t('market_technical_unified_empty_title'), body: t('market_technical_unsupported_symbol_body') };
+  }
+  if (normalizedCode === 'OHLC_DATA_NOT_AVAILABLE') {
+    return { title: t('market_technical_partial_title'), body: t('market_technical_ohlc_unavailable_body') };
+  }
+  if (normalizedCode === 'PROVIDER_UNAVAILABLE' || normalizedCode === 'MARKET_DATA_UNAVAILABLE') {
+    return { title: t('market_analysis_unavailable'), body: t('market_technical_provider_unavailable_body') };
+  }
+  return { title: t('market_technical_unified_empty_title'), body: t('market_technical_unified_empty_body') };
+}
