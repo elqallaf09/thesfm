@@ -58,6 +58,7 @@ import {
   normalizeChartType, hasCompleteOhlc, pipAssetTypeTranslationKey, pipAssetName,
   getPipCalculatorAsset, pipCalculatorWarningKey, technicalEmptyStateCopy,
   fetchMarketToolState,
+  fetchJsonWithTimeout,
   normalizeMarketTab,
   chartErrorText,
   delay,
