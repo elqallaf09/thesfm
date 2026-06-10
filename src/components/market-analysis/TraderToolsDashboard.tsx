@@ -639,7 +639,7 @@ export function TraderToolsDashboard({
 
         .trader-support-card h3 {
           color: var(--sfm-foreground);
-          font-size: clamp(18px, 2vw, 22px);
+          font-size: clamp(15px, 1.6vw, 18px);
           font-weight: 950;
           line-height: 1.35;
         }
@@ -647,9 +647,9 @@ export function TraderToolsDashboard({
         .trader-support-card p {
           max-width: 38rem;
           color: var(--sfm-muted);
-          font-size: 15px;
-          font-weight: 800;
-          line-height: 1.95;
+          font-size: 13px;
+          font-weight: 850;
+          line-height: 1.75;
         }
 
         .trader-support-card.highlight {
@@ -698,7 +698,7 @@ export function TraderToolsDashboard({
         .trader-side-stat b {
           min-width: 0;
           color: var(--sfm-foreground);
-          font-size: clamp(16px, 2vw, 20px);
+          font-size: clamp(15px, 1.8vw, 18px);
           font-weight: 950;
           line-height: 1.2;
           text-align: end;
@@ -747,7 +747,7 @@ export function TraderToolsDashboard({
           justify-items: center;
           text-align: center;
           gap: 22px;
-          padding: clamp(28px, 5vw, 46px) 24px;
+          padding: clamp(18px, 3vw, 28px) 18px;
         }
 
         .trader-income-prompt-icon {
@@ -773,9 +773,9 @@ export function TraderToolsDashboard({
         .trader-income-prompt-copy h3 {
           margin: 0;
           color: var(--sfm-foreground);
-          font-size: clamp(24px, 3.4vw, 34px);
+          font-size: clamp(18px, 2.2vw, 24px);
           font-weight: 950;
-          line-height: 1.45;
+          line-height: 1.4;
         }
 
         .trader-income-prompt-copy p {
