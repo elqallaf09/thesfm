@@ -252,7 +252,7 @@ export default function CommandCenterPage() {
       if (urgentTask) {
         return {
           title: String(urgentTask.title ?? text.openTasks),
-          description: String(urgentTask.description ?? urgentTask.notes ?? ''),
+          description: String(urgentTask.description ?? ''),
           href: '/tasks',
           cta: text.tasks,
           icon: <ClipboardList size={22} />,
