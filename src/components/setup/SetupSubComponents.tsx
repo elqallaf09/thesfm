@@ -1,7 +1,7 @@
 'use client';
 
 import { useId } from 'react';
-import { ArrowLeft, ChevronDown, CheckCircle2, CircleDollarSign, Plus, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ChevronDown, CheckCircle2, CircleDollarSign, ListChecks, Plus, type LucideIcon } from 'lucide-react';
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
