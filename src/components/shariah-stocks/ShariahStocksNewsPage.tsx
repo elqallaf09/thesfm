@@ -99,11 +99,11 @@ type ScreeningItem = {
   assetType: ShariahAssetType;
   shariahStatus: ShariahScreeningStatus;
   statusLabelAr: string;
-  reason: string;
+  reason: { ar: string; en: string; fr: string };
   screeningSource: string | null;
-  methodology: string;
+  methodology: { ar: string; en: string; fr: string };
   lastScreenedAt: string | null;
-  notes: string;
+  notes: { ar: string; en: string; fr: string };
 };
 
 type ScreeningResponse = {
@@ -112,8 +112,8 @@ type ScreeningResponse = {
   sourceConnected: boolean;
   screeningSource: string | null;
   sourceName: string | null;
-  methodology: string;
-  emptyMessage: string;
+  methodology: { ar: string; en: string; fr: string };
+  emptyMessage: { ar: string; en: string; fr: string };
   counts: Record<ShariahScreeningStatus, number>;
   items: ScreeningItem[];
 };
@@ -907,7 +907,7 @@ function ScreenerSection({
                   <span>{text.source}<b>{item.screeningSource ?? text.unavailable}</b></span>
                   <span>{text.screeningDate}<b>{formatDateTime(item.lastScreenedAt, locale)}</b></span>
                 </div>
-                <p className={styles.reasonText}>{item.reason}</p>
+                <p className={styles.reasonText}>{item.reason[lang]}</p>
               </article>
             );
           })}
@@ -1086,7 +1086,7 @@ function FeaturedAssets({ items, screening, loading, text, lang, locale }: {
                 <span>{text.source}<b>{screen?.screeningSource ?? text.unavailable}</b></span>
                 <span>{text.screeningDate}<b>{formatDateTime(screen?.lastScreenedAt, locale)}</b></span>
               </div>
-              <p className={styles.reasonText}>{screen?.reason ?? text.sourceMissingBody}</p>
+              <p className={styles.reasonText}>{screen?.reason?.[lang] ?? text.sourceMissingBody}</p>
             </article>
           );
         })}

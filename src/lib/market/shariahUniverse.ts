@@ -13,18 +13,21 @@ export type ShariahUniverseItem = {
 export type ShariahScreeningItem = ShariahUniverseItem & {
   shariahStatus: ShariahScreeningStatus;
   statusLabelAr: string;
-  reason: string;
+  reason: { ar: string; en: string; fr: string };
   screeningSource: string | null;
-  methodology: string;
+  methodology: { ar: string; en: string; fr: string };
   lastScreenedAt: string | null;
   financialRatios: null;
-  notes: string;
+  notes: { ar: string; en: string; fr: string };
 };
 
 export const SHARIAH_SCREENING_SOURCE_CONNECTED = false;
 
-export const SHARIAH_SCREENING_METHOD =
-  'لم يتم ربط مصدر تصنيف شرعي موثوق بعد. يعرض النظام الأسعار والأخبار من مزودي بيانات السوق، بينما تبقى حالة التصنيف غير مصنفة إلى أن يتوفر مصدر فحص شرعي موثق.';
+export const SHARIAH_SCREENING_METHOD = {
+  ar: 'لم يتم ربط مصدر تصنيف شرعي موثوق بعد. يعرض النظام الأسعار والأخبار من مزودي بيانات السوق، بينما تبقى حالة التصنيف غير مصنفة إلى أن يتوفر مصدر فحص شرعي موثق.',
+  en: 'No trusted Sharia screening source is connected yet. The system displays prices and news from market data providers, while classification status remains unclassified until a verified Sharia screening source is available.',
+  fr: `Aucune source de filtrage charia fiable n'est encore connectée. Le système affiche les prix et les actualités des fournisseurs de données de marché, tandis que le statut de classification reste non classé jusqu'à ce qu'une source vérifiée soit disponible.`,
+};
 
 export const SHARIAH_UNIVERSE: ShariahUniverseItem[] = [
   { symbol: 'AAPL', name: 'Apple', sector: 'technology', industry: 'Consumer electronics', assetType: 'stock' },
@@ -65,12 +68,20 @@ export function buildUnknownShariahScreening(item: ShariahUniverseItem): Shariah
     ...item,
     shariahStatus: 'unknown',
     statusLabelAr: shariahStatusLabelAr('unknown'),
-    reason: 'لا تتوفر بيانات تصنيف شرعي مؤكدة من مصدر موثوق لهذا الرمز حاليًا.',
+    reason: {
+      ar: 'لا تتوفر بيانات تصنيف شرعي مؤكدة من مصدر موثوق لهذا الرمز حاليًا.',
+      en: 'No verified Sharia classification data is available for this symbol from a trusted source at this time.',
+      fr: `Aucune donnée de classification charia vérifiée n'est disponible pour ce symbole depuis une source fiable actuellement.`,
+    },
     screeningSource: null,
     methodology: SHARIAH_SCREENING_METHOD,
     lastScreenedAt: null,
     financialRatios: null,
-    notes: 'هذه الحالة ليست فتوى ولا تعني توافقًا أو عدم توافق. يلزم الرجوع إلى جهة شرعية موثوقة أو مزود فحص شرعي معتمد.',
+    notes: {
+      ar: 'هذه الحالة ليست فتوى ولا تعني توافقًا أو عدم توافق. يلزم الرجوع إلى جهة شرعية موثوقة أو مزود فحص شرعي معتمد.',
+      en: 'This status is not a Sharia ruling and does not imply compliance or non-compliance. A qualified Sharia authority or certified screening provider must be consulted.',
+      fr: `Ce statut n'est pas une décision charia et n'implique ni conformité ni non-conformité. Une autorité charia qualifiée ou un fournisseur de filtrage certifié doit être consulté.`,
+    },
   };
 }
 

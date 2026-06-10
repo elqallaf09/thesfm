@@ -21,7 +21,7 @@ export async function GET() {
       screeningSource: null,
       sourceName: null,
       methodology: SHARIAH_SCREENING_METHOD,
-      emptyMessage: 'لم يتم ربط مصدر تصنيف شرعي موثوق بعد',
+      emptyMessage: { ar: 'لم يتم ربط مصدر تصنيف شرعي موثوق بعد', en: 'No trusted Sharia screening source has been connected yet', fr: `Aucune source de filtrage charia fiable n'a encore été connectée` },
       counts: getShariahScreeningCounts(items),
       items,
     },
