@@ -1,0 +1,37 @@
+import type { Lang } from '../translations';
+
+type TranslationEntry = Partial<Record<Lang, string>> & { ar: string; en: string };
+
+export const TR_PROJECTS: Record<string, TranslationEntry> = {
+  proj_title:     { ar:'مشاريعي',             en:'My Projects', fr:'Mes projets' },
+  proj_subtitle:  { ar:'تابع مشاريعك وخططك المالية والاستثمارية', en:'Track your financial and business projects', fr:'Suivez vos projets financiers et commerciaux' },
+  proj_new:       { ar:'+ مشروع جديد',        en:'+ New Project', fr:'+ Nouveau projet' },
+  proj_total:     { ar:'إجمالي المشاريع',      en:'Total Projects', fr:'Total des projets' },
+  proj_active:    { ar:'المشاريع النشطة',      en:'Active Projects', fr:'Projets actifs' },
+  proj_capital:   { ar:'إجمالي رأس المال',     en:'Total Capital', fr:'Capital total' },
+  proj_profit:    { ar:'إجمالي الأرباح',       en:'Total Profits', fr:'Profits totaux' },
+  proj_name:      { ar:'اسم المشروع',          en:'Project Name', fr:'Nom du projet' },
+  proj_type:      { ar:'نوع المشروع',          en:'Project Type', fr:'Type de projet' },
+  proj_status:    { ar:'حالة المشروع',         en:'Project Status', fr:'Statut du projet' },
+  proj_capital_f: { ar:'رأس المال المطلوب',    en:'Required Capital', fr:'Capital requis' },
+  proj_exp_profit:{ ar:'الربح المتوقع',        en:'Expected Profit', fr:'Profit attendu' },
+  proj_cur_profit:{ ar:'الربح الحالي',         en:'Current Profit', fr:'Profit actuel' },
+  proj_expenses:  { ar:'المصروفات الشهرية',    en:'Monthly Expenses', fr:'Dépenses mensuelles' },
+  proj_revenue:   { ar:'الإيراد الشهري',       en:'Monthly Revenue', fr:'Revenu mensuel' },
+  proj_start:     { ar:'تاريخ البداية',        en:'Start Date', fr:'Date de début' },
+  proj_notes:     { ar:'ملاحظات',              en:'Notes', fr:'Notes' },
+  proj_idea:      { ar:'فكرة',                 en:'Idea', fr:'Idée' },
+  proj_inprogress:{ ar:'قيد التنفيذ',          en:'In Progress', fr:'En cours' },
+  proj_active_s:  { ar:'نشط',                  en:'Active', fr:'Actif' },
+  proj_paused:    { ar:'متوقف',                en:'Paused', fr:'Suspendu' },
+  proj_done:      { ar:'مكتمل',                en:'Completed', fr:'Terminé' },
+  proj_empty:     { ar:'لا توجد مشاريع بعد — أضف مشروعك الأول', en:'No projects yet — add your first project', fr:'Aucun projet — ajoutez votre premier projet' },
+  proj_save_analyze:{ ar:'💾 حفظ وتحليل',      en:'💾 Save & Analyze', fr:'💾 Enregistrer et analyser' },
+  proj_roi:       { ar:'استرجاع رأس المال',    en:'Capital Payback', fr:'Retour sur investissement' },
+  proj_monthly_profit:{ ar:'الربح الشهري',     en:'Monthly Profit', fr:'Profit mensuel' },
+  proj_yearly_return: { ar:'العائد السنوي',    en:'Yearly Return', fr:'Rendement annuel' },
+  proj_risk:      { ar:'مستوى المخاطرة',       en:'Risk Level', fr:'Niveau de risque' },
+  proj_risk_low:  { ar:'منخفض',               en:'Low', fr:'Faible' },
+  proj_risk_med:  { ar:'متوسط',               en:'Medium', fr:'Moyen' },
+  proj_risk_high: { ar:'عالٍ',                en:'High', fr:'Élevé' },
+};
