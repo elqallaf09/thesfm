@@ -14,10 +14,14 @@ import {
   Plus,
   ReceiptText,
   RefreshCcw,
+  Snowflake,
   Sparkles,
+  Target,
   Trash2,
+  TrendingDown,
   WalletCards,
   X,
+  Zap,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { useAuth } from '@/hooks/useAuth';
@@ -239,6 +243,39 @@ const TEXT = {
   no: { ar: 'لا', en: 'No', fr: 'Non' },
   dueToday: { ar: 'مستحق اليوم', en: 'Due today', fr: 'Dû aujourd’hui' },
   tableView: { ar: 'جدول الديون', en: 'Debts table', fr: 'Tableau des dettes' },
+  // Payoff strategies
+  payoffDate: { ar: 'تاريخ السداد المتوقع', en: 'Est. payoff date', fr: 'Date de remboursement estimée' },
+  payoffStrategies: { ar: 'اقتراحات طريقة السداد', en: 'Payoff strategies', fr: 'Stratégies de remboursement' },
+  payoffStrategiesBody: {
+    ar: 'أدخل أي مبلغ إضافي تستطيع دفعه شهريًا واكتشف الفرق بين طريقة الكرة الثلجية وطريقة الانهيار الجليدي.',
+    en: 'Enter any extra monthly amount and see the difference between the snowball and avalanche methods.',
+    fr: 'Entrez un montant mensuel supplémentaire et découvrez la différence entre la méthode boule de neige et la méthode avalanche.',
+  },
+  snowballTitle: { ar: 'الكرة الثلجية', en: 'Snowball', fr: 'Boule de neige' },
+  snowballDesc: {
+    ar: 'سدِّد أصغر الديون أولًا، ثم أضف دفعتها إلى الدين التالي — تكسب زخمًا نفسيًا وتشعر بالتقدم بسرعة.',
+    en: 'Pay off the smallest debts first, then roll that payment to the next — you build momentum and see quick wins.',
+    fr: `Remboursez d'abord les plus petites dettes, puis cumulez ce paiement sur la suivante — vous gagnez en motivation.`,
+  },
+  avalancheTitle: { ar: 'الانهيار الجليدي', en: 'Avalanche', fr: 'Avalanche' },
+  avalancheDesc: {
+    ar: 'سدِّد الدين الأعلى فائدة أولًا — توفر أكبر قدر من المال على المدى الطويل.',
+    en: 'Pay off the highest-interest debt first — you save the most money over time.',
+    fr: `Remboursez d'abord la dette au taux le plus élevé — vous économisez le plus d'argent à long terme.`,
+  },
+  extraPaymentLabel: { ar: 'دفعة إضافية شهرية', en: 'Extra monthly payment', fr: 'Versement mensuel supplémentaire' },
+  extraPaymentPlaceholder: { ar: 'مثال: 50', en: 'e.g. 50', fr: 'ex. 50' },
+  totalInterestLabel: { ar: 'إجمالي الفائدة', en: 'Total interest', fr: 'Total des intérêts' },
+  interestSaved: { ar: 'فائدة موفَّرة', en: 'Interest saved', fr: 'Intérêts économisés' },
+  payoffInMonths: { ar: 'مدة السداد الكلية', en: 'Total payoff time', fr: 'Durée totale de remboursement' },
+  debtOrderLabel: { ar: 'ترتيب السداد', en: 'Payoff order', fr: 'Ordre de remboursement' },
+  payoffMonth: { ar: 'الشهر', en: 'Month', fr: 'Mois' },
+  noActiveDebts: { ar: 'لا توجد ديون نشطة لحساب الاستراتيجية.', en: 'No active debts to calculate strategy.', fr: 'Aucune dette active pour calculer la stratégie.' },
+  interestSavedVsSnowball: { ar: 'وفر مقارنةً بالكرة الثلجية', en: 'saved vs. snowball', fr: 'économisé vs. boule de neige' },
+  fastestMethod: { ar: 'أسرع بـ', en: 'faster by', fr: 'plus rapide de' },
+  sameSpeed: { ar: 'نفس المدة', en: 'Same duration', fr: 'Même durée' },
+  recommended: { ar: 'الأفضل لتوفير المال', en: 'Best to save money', fr: 'Meilleure économie' },
+  bestMomentum: { ar: 'الأفضل نفسيًا', en: 'Best for momentum', fr: 'Meilleure motivation' },
 };
 
 function tr(lang: string | undefined, key: keyof typeof TEXT) {
@@ -375,6 +412,104 @@ function estimatePayoffMonths(debt: DebtRow) {
   return null;
 }
 
+function estimatePayoffDate(debt: DebtRow): string | null {
+  const months = estimatePayoffMonths(debt);
+  if (months === null || months === 0) return null;
+  const firstPayment = debtFirstPaymentDate(debt);
+  const base = new Date(`${firstPayment}T00:00:00`);
+  if (Number.isNaN(base.getTime())) return null;
+  base.setMonth(base.getMonth() + months);
+  return base.toISOString().slice(0, 10);
+}
+
+type StrategyEntry = { debt: DebtRow; payoffMonth: number; interestPaid: number };
+type StrategyResult = { order: StrategyEntry[]; totalMonths: number; totalInterest: number } | null;
+
+function simulatePayoffStrategy(
+  debts: DebtRow[],
+  extraMonthly: number,
+  method: 'snowball' | 'avalanche',
+): StrategyResult {
+  const active = debts.filter(
+    d => d.status === 'active' && toNumber(d.monthly_payment) > 0 && remainingForDebt(d) > 0,
+  );
+  if (active.length === 0) return null;
+
+  const sorted = [...active].sort((a, b) =>
+    method === 'snowball'
+      ? remainingForDebt(a) - remainingForDebt(b)
+      : toNumber(b.interest_rate) - toNumber(a.interest_rate),
+  );
+
+  type State = {
+    debt: DebtRow;
+    remaining: number;
+    interestPaid: number;
+    payoffMonth: number | null;
+    minPayment: number;
+    done: boolean;
+  };
+
+  const states: State[] = sorted.map(d => ({
+    debt: d,
+    remaining: remainingForDebt(d),
+    interestPaid: 0,
+    payoffMonth: null,
+    minPayment: toNumber(d.monthly_payment),
+    done: false,
+  }));
+
+  let extraPool = Math.max(0, extraMonthly);
+  const MAX_MONTHS = 600;
+
+  for (let month = 1; month <= MAX_MONTHS; month += 1) {
+    if (states.every(s => s.done)) break;
+
+    // First undone debt in priority order gets the extra payment
+    let extraApplied = false;
+    for (const state of states) {
+      if (state.done) continue;
+
+      const interestType = state.debt.interest_type || 'annual';
+      const rate = toNumber(state.debt.interest_rate);
+      const monthlyRate =
+        interestType === 'none' ? 0 : interestType === 'monthly' ? rate / 100 : rate / 100 / 12;
+      const interestCharge = state.remaining * monthlyRate;
+
+      let payment = state.minPayment;
+      if (!extraApplied) {
+        payment += extraPool;
+        extraApplied = true;
+      }
+
+      const totalOwed = state.remaining + interestCharge;
+      payment = Math.min(payment, totalOwed);
+
+      const interestPortion = Math.min(interestCharge, Math.max(0, payment));
+      const principal = Math.max(0, payment - interestPortion);
+      state.interestPaid += interestPortion;
+      state.remaining = Math.max(0, state.remaining - principal);
+
+      if (state.remaining <= 0.005) {
+        state.remaining = 0;
+        state.done = true;
+        state.payoffMonth = month;
+        extraPool += state.minPayment;
+      }
+    }
+  }
+
+  const order: StrategyEntry[] = states.map(s => ({
+    debt: s.debt,
+    payoffMonth: s.payoffMonth ?? MAX_MONTHS,
+    interestPaid: s.interestPaid,
+  }));
+
+  const totalMonths = Math.max(...order.map(o => o.payoffMonth));
+  const totalInterest = order.reduce((sum, o) => sum + o.interestPaid, 0);
+  return { order, totalMonths, totalInterest };
+}
+
 function payloadFromForm(form: DebtForm, userId: string) {
   const startDate = formatDateToYYYYMMDD(form.startDate);
   if (!startDate) throw new Error('INVALID_DATE');
@@ -490,6 +625,7 @@ export default function DebtsPage() {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [generationChecked, setGenerationChecked] = useState(false);
+  const [extraPaymentAmount, setExtraPaymentAmount] = useState('0');
   const modalRef = useRef<HTMLFormElement>(null);
 
   const t = useCallback((key: keyof typeof TEXT) => tr(locale, key), [locale]);
@@ -586,6 +722,19 @@ export default function DebtsPage() {
     const estimates = activeDebts.map(estimatePayoffMonths).filter((item): item is number => typeof item === 'number');
     return estimates.length > 0 ? Math.max(...estimates) : null;
   }, [activeDebts]);
+
+  const extraPayment = Math.max(0, parseFloat(extraPaymentAmount) || 0);
+
+  const snowballResult = useMemo(
+    () => simulatePayoffStrategy(activeDebts, extraPayment, 'snowball'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeDebts, extraPayment],
+  );
+  const avalancheResult = useMemo(
+    () => simulatePayoffStrategy(activeDebts, extraPayment, 'avalanche'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeDebts, extraPayment],
+  );
 
   const interestRiskDebt = activeDebts.find(debt => calculateDebtPayment(debt).warning);
   const highestInterest = [...activeDebts].sort((a, b) => toNumber(b.interest_rate) - toNumber(a.interest_rate))[0];
@@ -985,6 +1134,13 @@ export default function DebtsPage() {
                         <DebtMetric label={t('interestRate')} value={`${toNumber(debt.interest_rate).toFixed(2)}%`} />
                         <DebtMetric label={t('totalInterestPaid')} value={money(debt.total_interest_paid ?? 0, debt.currency)} />
                         <DebtMetric label={t('paymentDayLabel')} value={`${clampPaymentDay(debt.payment_day)}`} />
+                        {debt.status !== 'paid' && (
+                          <DebtMetric
+                            label={t('payoffDate')}
+                            value={formatDate(estimatePayoffDate(debt), locale)}
+                            highlight
+                          />
+                        )}
                       </div>
                       {(schedule.warning || calculateDebtPayment(debt).warning) && (
                         <div className="debt-warning"><AlertTriangle size={15} />{t('interestWarning')}</div>
@@ -1024,6 +1180,17 @@ export default function DebtsPage() {
             <InsightRow label={t('payoffEstimate')} value={payoffMonths === null ? t('unavailable') : `${payoffMonths} ${t('months')}`} />
           </aside>
         </section>
+
+        <PayoffStrategiesPanel
+          locale={locale}
+          dir={dir}
+          t={t}
+          money={money}
+          snowball={snowballResult}
+          avalanche={avalancheResult}
+          extraPaymentAmount={extraPaymentAmount}
+          setExtraPaymentAmount={setExtraPaymentAmount}
+        />
 
         {payments.length > 0 && (
           <section className="payments-panel">
@@ -1190,9 +1357,9 @@ function SummaryCard({ icon, label, value }: { icon: ReactNode; label: string; v
   );
 }
 
-function DebtMetric({ label, value }: { label: string; value: string }) {
+function DebtMetric({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="debt-metric">
+    <div className={`debt-metric${highlight ? ' debt-metric--highlight' : ''}`}>
       <span>{label}</span>
       <b dir="auto">{value}</b>
     </div>
@@ -1246,6 +1413,169 @@ function SuffixInput({ label, suffix, value, onChange, required, invalid = false
         <em dir="ltr">{suffix}</em>
       </div>
     </label>
+  );
+}
+
+
+function PayoffStrategiesPanel({
+  locale, dir, t, money, snowball, avalanche, extraPaymentAmount, setExtraPaymentAmount,
+}: {
+  locale: Lang;
+  dir: string;
+  t: (key: keyof typeof TEXT) => string;
+  money: (value: unknown, currency?: string) => string;
+  snowball: StrategyResult;
+  avalanche: StrategyResult;
+  extraPaymentAmount: string;
+  setExtraPaymentAmount: (v: string) => void;
+}) {
+  if (!snowball && !avalanche) {
+    return null;
+  }
+
+  const interestSaved =
+    snowball && avalanche ? Math.max(0, snowball.totalInterest - avalanche.totalInterest) : 0;
+  const monthDiff =
+    snowball && avalanche ? snowball.totalMonths - avalanche.totalMonths : 0;
+
+  function monthsLabel(n: number) {
+    return `${n} ${t('months')}`;
+  }
+
+  return (
+    <section className="strategy-panel" dir={dir}>
+      <div className="strategy-panel-head">
+        <div>
+          <span className="debts-eyebrow"><TrendingDown size={16} /> THE SFM</span>
+          <h2>{t('payoffStrategies')}</h2>
+          <p>{t('payoffStrategiesBody')}</p>
+        </div>
+        <label className="strategy-extra-input">
+          <span>{t('extraPaymentLabel')}</span>
+          <div className="affix-input">
+            <input
+              type="number"
+              min="0"
+              step="any"
+              dir="ltr"
+              value={extraPaymentAmount}
+              onChange={e => setExtraPaymentAmount(e.target.value)}
+              placeholder={t('extraPaymentPlaceholder')}
+            />
+          </div>
+        </label>
+      </div>
+
+      <div className="strategy-cols">
+        {/* ── SNOWBALL ── */}
+        <div className="strategy-card snowball">
+          <div className="strategy-card-head">
+            <span className="strategy-badge snowball-badge">
+              <Snowflake size={14} /> {t('snowballTitle')}
+            </span>
+            <span className="strategy-tag">{t('bestMomentum')}</span>
+          </div>
+          <p className="strategy-desc">{t('snowballDesc')}</p>
+          {snowball && (
+            <>
+              <div className="strategy-stats">
+                <div className="strategy-stat">
+                  <small>{t('payoffInMonths')}</small>
+                  <strong>{monthsLabel(snowball.totalMonths)}</strong>
+                </div>
+                <div className="strategy-stat">
+                  <small>{t('totalInterestLabel')}</small>
+                  <strong dir="ltr">{money(snowball.totalInterest)}</strong>
+                </div>
+              </div>
+              <div className="strategy-order-label">{t('debtOrderLabel')}</div>
+              <ol className="strategy-order">
+                {snowball.order.map((entry, i) => (
+                  <li key={entry.debt.id}>
+                    <span className="strategy-rank">{i + 1}</span>
+                    <span className="strategy-debt-name">{entry.debt.name}</span>
+                    <span className="strategy-debt-detail">
+                      <b dir="ltr">{money(entry.debt.remaining_amount, entry.debt.currency)}</b>
+                      <small>{t('payoffMonth')} {entry.payoffMonth}</small>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
+        </div>
+
+        {/* ── AVALANCHE ── */}
+        <div className="strategy-card avalanche">
+          <div className="strategy-card-head">
+            <span className="strategy-badge avalanche-badge">
+              <Zap size={14} /> {t('avalancheTitle')}
+            </span>
+            <span className="strategy-tag recommended">{t('recommended')}</span>
+          </div>
+          <p className="strategy-desc">{t('avalancheDesc')}</p>
+          {avalanche && (
+            <>
+              <div className="strategy-stats">
+                <div className="strategy-stat">
+                  <small>{t('payoffInMonths')}</small>
+                  <strong>{monthsLabel(avalanche.totalMonths)}</strong>
+                </div>
+                <div className="strategy-stat">
+                  <small>{t('totalInterestLabel')}</small>
+                  <strong dir="ltr">{money(avalanche.totalInterest)}</strong>
+                </div>
+                {interestSaved > 0.01 && (
+                  <div className="strategy-stat highlight">
+                    <small>{t('interestSaved')}</small>
+                    <strong dir="ltr" className="green">+{money(interestSaved)}</strong>
+                  </div>
+                )}
+                {monthDiff !== 0 && (
+                  <div className="strategy-stat highlight">
+                    <small>{monthDiff > 0 ? t('fastestMethod') : t('fastestMethod')}</small>
+                    <strong className="green">
+                      {Math.abs(monthDiff)} {t('months')} {monthDiff > 0 ? '⬇' : '⬆'}
+                    </strong>
+                  </div>
+                )}
+              </div>
+              <div className="strategy-order-label">{t('debtOrderLabel')}</div>
+              <ol className="strategy-order">
+                {avalanche.order.map((entry, i) => (
+                  <li key={entry.debt.id}>
+                    <span className="strategy-rank">{i + 1}</span>
+                    <span className="strategy-debt-name">{entry.debt.name}</span>
+                    <span className="strategy-debt-detail">
+                      <b dir="ltr">{money(entry.debt.remaining_amount, entry.debt.currency)}</b>
+                      <small>
+                        {toNumber(entry.debt.interest_rate).toFixed(1)}%
+                        {' · '}
+                        {t('payoffMonth')} {entry.payoffMonth}
+                      </small>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Comparison banner */}
+      {snowball && avalanche && interestSaved > 0.01 && (
+        <div className="strategy-banner">
+          <Target size={18} />
+          <span>
+            {locale === 'ar'
+              ? `طريقة الانهيار الجليدي توفر لك ${money(interestSaved)} من الفائدة${monthDiff > 0 ? ` وتنهي ديونك أسرع بـ ${monthDiff} شهر` : ''}.`
+              : locale === 'fr'
+              ? `La méthode avalanche vous fait économiser ${money(interestSaved)} d'intérêts${monthDiff > 0 ? ` et rembourse vos dettes ${monthDiff} mois plus tôt` : ''}.`
+              : `The avalanche method saves you ${money(interestSaved)} in interest${monthDiff > 0 ? ` and pays off your debts ${monthDiff} month${monthDiff !== 1 ? 's' : ''} faster` : ''}.`}
+          </span>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -2400,6 +2730,316 @@ function DebtStyles() {
         .debt-actions button {
           flex: 1 1 100%;
           justify-content: center;
+        }
+      }
+
+      /* ─── Debt Metric Highlight ─────────────────────────────────── */
+      .debt-metric--highlight {
+        border-color: rgba(47, 214, 192, .30);
+        background: rgba(47, 214, 192, .08);
+      }
+      .debt-metric--highlight b {
+        color: var(--sfm-primary-hover);
+      }
+
+      /* ─── Strategy Panel ─────────────────────────────────────────── */
+      .strategy-panel {
+        border-radius: 30px;
+        padding: 24px;
+        display: grid;
+        gap: 20px;
+      }
+
+      .strategy-panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+
+      .strategy-panel-head h2 {
+        margin: 8px 0 4px;
+        color: var(--sfm-foreground);
+        font-size: clamp(20px, 2.2vw, 26px);
+        font-weight: 950;
+        line-height: 1.2;
+      }
+
+      .strategy-panel-head p {
+        margin: 0;
+        max-width: 540px;
+        color: var(--sfm-muted);
+        font-size: 13px;
+        font-weight: 850;
+        line-height: 1.75;
+      }
+
+      .strategy-extra-input {
+        display: grid;
+        gap: 7px;
+        min-width: 200px;
+        flex-shrink: 0;
+      }
+
+      .strategy-extra-input > span {
+        color: var(--sfm-muted);
+        font-size: 12px;
+        font-weight: 950;
+      }
+
+      .strategy-cols {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+
+      .strategy-card {
+        border-radius: 26px;
+        padding: 20px;
+        display: grid;
+        gap: 16px;
+        border: 1px solid rgba(47, 214, 192, .14);
+        background: var(--sfm-light-card);
+      }
+
+      .strategy-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .strategy-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 13px;
+        font-weight: 950;
+      }
+
+      .snowball-badge {
+        background: rgba(56, 189, 248, .12);
+        border: 1px solid rgba(56, 189, 248, .28);
+        color: #0369a1;
+      }
+
+      .avalanche-badge {
+        background: rgba(168, 85, 247, .12);
+        border: 1px solid rgba(168, 85, 247, .28);
+        color: #7c3aed;
+      }
+
+      .strategy-tag {
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 950;
+        background: rgba(148, 163, 184, .12);
+        border: 1px solid rgba(148, 163, 184, .20);
+        color: var(--sfm-muted);
+      }
+
+      .strategy-tag.recommended {
+        background: rgba(34, 197, 94, .12);
+        border-color: rgba(34, 197, 94, .28);
+        color: #15803d;
+      }
+
+      .strategy-desc {
+        margin: 0;
+        color: var(--sfm-muted);
+        font-size: 13px;
+        font-weight: 850;
+        line-height: 1.75;
+      }
+
+      .strategy-stats {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .strategy-stat {
+        border-radius: 16px;
+        padding: 12px;
+        display: grid;
+        gap: 6px;
+        border: 1px solid rgba(47, 214, 192, .12);
+        background: var(--sfm-canvas, #f8fafc);
+      }
+
+      .strategy-stat.highlight {
+        border-color: rgba(34, 197, 94, .24);
+        background: rgba(34, 197, 94, .06);
+      }
+
+      .strategy-stat small {
+        display: block;
+        color: var(--sfm-muted);
+        font-size: 11px;
+        font-weight: 950;
+      }
+
+      .strategy-stat strong {
+        display: block;
+        color: var(--sfm-foreground);
+        font-size: 15px;
+        font-weight: 950;
+        line-height: 1.3;
+        overflow-wrap: anywhere;
+      }
+
+      .strategy-stat strong.green {
+        color: #15803d;
+      }
+
+      .strategy-order-label {
+        color: var(--sfm-muted);
+        font-size: 12px;
+        font-weight: 950;
+        padding-bottom: 4px;
+        border-bottom: 1px solid rgba(47, 214, 192, .14);
+      }
+
+      .strategy-order {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 8px;
+      }
+
+      .strategy-order li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-radius: 14px;
+        padding: 10px 12px;
+        border: 1px solid rgba(47, 214, 192, .10);
+        background: var(--sfm-canvas, #f8fafc);
+      }
+
+      .strategy-rank {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 950;
+        background: rgba(47, 214, 192, .14);
+        color: var(--sfm-primary-hover);
+        flex-shrink: 0;
+      }
+
+      .strategy-debt-name {
+        flex: 1;
+        color: var(--sfm-foreground);
+        font-size: 13px;
+        font-weight: 950;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .strategy-debt-detail {
+        display: grid;
+        gap: 2px;
+        text-align: end;
+        flex-shrink: 0;
+      }
+
+      .strategy-debt-detail b {
+        color: var(--sfm-foreground);
+        font-size: 13px;
+        font-weight: 950;
+      }
+
+      .strategy-debt-detail small {
+        color: var(--sfm-muted);
+        font-size: 11px;
+        font-weight: 850;
+      }
+
+      .strategy-banner {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-radius: 20px;
+        padding: 14px 16px;
+        background: rgba(34, 197, 94, .09);
+        border: 1px solid rgba(34, 197, 94, .24);
+        color: #15803d;
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1.65;
+      }
+
+      .strategy-banner svg {
+        flex-shrink: 0;
+        color: #16a34a;
+      }
+
+      /* ─── Dark mode — strategy ───────────────────────────────────── */
+      .dark .strategy-panel,
+      .dark .strategy-card {
+        border-color: rgba(47, 214, 192, .12);
+        background: #0d1f35;
+      }
+
+      .dark .strategy-stat,
+      .dark .strategy-order li {
+        background: #07172a;
+        border-color: rgba(47, 214, 192, .10);
+      }
+
+      .dark .strategy-stat.highlight {
+        background: rgba(34, 197, 94, .08);
+        border-color: rgba(34, 197, 94, .22);
+      }
+
+      .dark .snowball-badge {
+        color: #38bdf8;
+      }
+
+      .dark .avalanche-badge {
+        color: #c084fc;
+      }
+
+      .dark .strategy-tag.recommended {
+        color: #4ade80;
+      }
+
+      .dark .strategy-stat strong.green,
+      .dark .strategy-banner {
+        color: #4ade80;
+      }
+
+      .dark .strategy-banner {
+        background: rgba(34, 197, 94, .07);
+        border-color: rgba(34, 197, 94, .18);
+      }
+
+      .dark .debt-metric--highlight {
+        background: rgba(47, 214, 192, .10);
+        border-color: rgba(47, 214, 192, .28);
+      }
+
+      /* ─── Strategy responsive ────────────────────────────────────── */
+      @media (max-width: 900px) {
+        .strategy-cols {
+          grid-template-columns: 1fr;
+        }
+        .strategy-panel-head {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .strategy-extra-input {
+          width: 100%;
         }
       }
     `}</style>
