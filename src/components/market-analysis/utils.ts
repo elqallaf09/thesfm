@@ -26,7 +26,7 @@ export const MARKET_TOOL_REQUEST_TIMEOUT_MS = 12000;
 export const MARKET_TIMEFRAMES = ['1D', '1W', '1M', '6M', '1Y'] as const;
 export const MARKET_CHART_TYPES = ['line', 'area', 'candlestick', 'ohlc'] as const;
 export const MARKET_CHART_TYPE_STORAGE_KEY = 'sfm_market_chart_type';
-type PriceHistoryPoint = {
+export type PriceHistoryPoint = {
   time: string;
   open: number | null;
   high: number | null;
@@ -34,7 +34,7 @@ type PriceHistoryPoint = {
   close: number;
   volume: number | null;
 };
-type PriceHistoryResponse = {
+export type PriceHistoryResponse = {
   ok?: boolean;
   success?: boolean;
   code?: string;

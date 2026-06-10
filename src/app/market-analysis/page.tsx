@@ -59,6 +59,7 @@ import {
   getPipCalculatorAsset, pipCalculatorWarningKey, technicalEmptyStateCopy,
   fetchMarketToolState,
   fetchJsonWithTimeout,
+  type PriceHistoryResponse,
   normalizeMarketTab,
   chartErrorText,
   delay,
