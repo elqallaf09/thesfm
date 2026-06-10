@@ -1954,7 +1954,7 @@ export default function ReportsCenterPage() {
                       {items.map(({ report, status, rows }) => {
                         const missing = missingDataKeys(report, records);
                         const requirements = missing.length ? missing : report.required;
-                        const missingActions = uniqueActions(requirements.map(missingActionForKey));
+                        const missingActions = uniqueActions(requirements.map(key => missingActionForKey(key as TableKey)));
                         const canPrint = status === 'ready' && rows.length > 0;
                         const canCsv = canPrint && report.exportable;
                         const requirementsOpen = !!expandedRequirements[report.id];
