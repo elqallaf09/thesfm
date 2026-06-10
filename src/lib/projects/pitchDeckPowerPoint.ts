@@ -223,7 +223,7 @@ function addMetricCards(slide: pptxgen.Slide, metrics: PitchDeckSlide['content']
       rectRadius: 0.08,
       fill: { color: COLORS.warmWhite },
       line: { color: COLORS.gold, transparency: 45 },
-      // @ts-ignore
+      // @ts-expect-error pptxgenjs shadow type missing distance
       shadow: { type: 'outer', color: '000000', opacity: 0.12, blur: 1, angle: 45, distance: 1 },
     });
     slide.addText(truncate(metric.label, 28), {
