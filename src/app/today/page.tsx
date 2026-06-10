@@ -369,7 +369,7 @@ function notificationToItem(notice: SmartNotification, text: typeof TEXT.ar): Da
 export default function FinancialTodayPage() {
   const { user } = useAuth();
   const { lang, dir } = useLanguage();
-  const text = TEXT[(lang as Lang) || 'ar'];
+  const text = TEXT[(lang as Lang) || 'ar'] as typeof TEXT.ar;
   const locale: Lang = lang === 'en' || lang === 'fr' ? lang : 'ar';
   const { tasks, loading: tasksLoading } = useSmartTasks();
   const [loading, setLoading] = useState(true);

@@ -429,10 +429,10 @@ export async function resolveMarketSymbol(queryInput: unknown, assetTypeInput?: 
   const normalized = normalizeMarketSymbolInput(query, assetType);
   if (isKnownDirectPair(normalized)) {
     const knownPair: MarketSearchItem = {
-      symbol: normalized.displaySymbol ?? normalized.symbol,
-      providerSymbol: normalized.providerSymbol,
-      name: normalized.displaySymbol ?? normalized.symbol,
-      assetType: normalized.assetType,
+      symbol: (normalized.displaySymbol ?? normalized.symbol)! ?? normalized.symbol,
+      providerSymbol: normalized.providerSymbol!,
+      name: (normalized.displaySymbol ?? normalized.symbol)! ?? normalized.symbol,
+      assetType: normalized.assetType!,
       exchange: normalized.assetType === 'forex' ? 'FX' : normalized.assetType === 'crypto' ? 'Crypto' : 'COMEX',
       currency: 'USD',
     };

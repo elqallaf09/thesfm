@@ -2009,7 +2009,7 @@ export default function ReportsCenterPage() {
                               <div className="missing-requirements" id={`requirements-${report.id}`}>
                                 <strong>{tr.requiredData}</strong>
                                 <ul>
-                                  {requirements.map(key => <li key={key}>{tableKeyLabel(key, lang as Lang)}</li>)}
+                                  {requirements.map(key => <li key={key}>{tableKeyLabel(key as TableKey, lang as Lang)}</li>)}
                                 </ul>
                                 {missingActions.length > 0 && (
                                   <div className="missing-actions">
@@ -2111,10 +2111,10 @@ export default function ReportsCenterPage() {
                   <div className="preview-requirements">
                     <strong>{tr.requiredData}</strong>
                     <ul>
-                      {activeMissing.map(key => <li key={key}>{tableKeyLabel(key, lang as Lang)}</li>)}
+                      {activeMissing.map(key => <li key={key}>{tableKeyLabel(key as TableKey, lang as Lang)}</li>)}
                     </ul>
                     <div className="missing-actions">
-                      {uniqueActions(activeMissing.map(missingActionForKey)).slice(0, 3).map(action => (
+                      {uniqueActions(activeMissing.map(key => missingActionForKey(key as TableKey))).slice(0, 3).map(action => (
                         <button key={`${action.href}-${action.label}`} type="button" onClick={() => router.push(action.href)} aria-label={action.label}>
                           {action.label}
                         </button>

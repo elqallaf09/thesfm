@@ -1,14 +1,16 @@
 import { currencyDisplaySymbol, getCurrency } from '@/lib/currencies';
 import { formatCurrency } from '@/lib/locale';
+import type { EducationalSummaryLanguage } from '@/lib/market/generateEducationalMarketSummary';
 import { formatMarketPrice, marketCurrencyLabel, resolveMarketCurrency } from '@/lib/market/marketCurrency';
-import type { MarketAssetType, MarketSearchItem } from '@/lib/market/marketService';
-import { normalizeAssetType } from '@/lib/market/marketService';
+import type { MarketAssetType, MarketAnalysis, MarketHistoryPoint, MarketResult, MarketSearchItem } from '@/lib/market/marketService';
+import { normalizeAssetType, validateSymbol, marketSymbolSuggestions, normalizeMarketSymbolInput } from '@/lib/market/marketService';
 import type {
   AlertType, ApiListState, MarketAiInsightView, MarketAssetFilter, MarketChartType,
   MarketResultWithMeta, MarketSearchSuggestion, MarketServiceState, MarketTimeframe,
-  MarketViewAnalysis, PipCalculatorAsset, PipCalculatorAssetType, ScenarioCurrencyCode,
+  MarketViewAnalysis, PipCalculatorAsset, PipCalculatorAssetType,
+  ScenarioCurrencyCode, AccountCurrencyCode, SelectedMarketAsset,
+  WatchlistItem, SavedAlert, PortfolioInvestment, MarketTab,
   TechnicalState, TechnicalSymbolCategory, TechnicalSymbolOption, TraderToolsSubTab,
-  ScenarioCurrencyCode, AccountCurrencyCode,
 } from './types';
 
 export type { MarketChartType, MarketTimeframe, ApiListState, TechnicalState,
@@ -1033,7 +1035,7 @@ export function marketAssetTypeLabel(assetType: MarketAssetType, t: (key: string
   return t(keyMap[assetType]);
 }
 
-type SentimentAssetBadgeType = 'forex' | 'stock' | 'etf' | 'crypto' | 'gold' | 'silver' | 'metals' | 'index' | 'unknown';
+export type SentimentAssetBadgeType = 'forex' | 'stock' | 'etf' | 'crypto' | 'gold' | 'silver' | 'metals' | 'index' | 'unknown';
 
 export function compactSentimentSymbol(value: unknown) {
   return String(value ?? '')

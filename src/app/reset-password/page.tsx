@@ -108,7 +108,7 @@ function strengthFor(password: string): Strength {
 
 function ResetPasswordContent() {
   const { lang, dir } = useLanguage();
-  const text = TEXT[lang];
+  const text = TEXT[lang] as typeof TEXT.ar;
   const [status, setStatus] = useState<Status>('checking');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

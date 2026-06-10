@@ -1,10 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { ReactNode } from 'react';
 import { Activity, AlertTriangle, BarChart3, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, CircleDollarSign, Clock3, Gauge, Info, LineChart, RefreshCw, Search, ShieldAlert, Sparkles, Star, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import type { MarketAssetType } from '@/lib/market/marketService';
-import type { ApiListState, TechnicalState, TechnicalSymbolCategory, TechnicalSymbolOption } from './types';
+import type { ApiListState, MarketServiceState, MarketTab, TechnicalState, TechnicalSymbolCategory, TechnicalSymbolOption } from './types';
 import {
   MARKET_TOOL_REQUEST_TIMEOUT_MS, TECHNICAL_SYMBOL_CATEGORIES, TECHNICAL_SYMBOL_GROUPS,
   TECHNICAL_SYMBOL_OPTIONS, TECHNICAL_SYMBOL_FAVORITES_KEY,
@@ -15,6 +15,8 @@ import {
   finiteTechnicalNumber, hasDisplayValue, parseNumber, readableLevelMarkerPercent,
   levelMarkerPercent, distancePercent, formatFundamentalValue, technicalEmptyStateCopy,
   isAbortLikeError, logMarketToolPerformance, marketToolFailureState,
+  normalizePerformanceTrend, formatNumber, sentimentAssetEmptyBodyKey,
+  type SentimentAssetBadgeType,
 } from './utils';
 import { MarketSectionLoading } from './NewsSentimentPanel';
 
@@ -996,7 +998,7 @@ export function TechnicalPartialDataState({
   );
 }
 
-function textField(item: Record<string, any>, keys: string[]) {
+export function textField(item: Record<string, any>, keys: string[]) {
   for (const key of keys) {
     const value = item[key];
     if (value === null || value === undefined) continue;
@@ -1006,7 +1008,7 @@ function textField(item: Record<string, any>, keys: string[]) {
   return '';
 }
 
-function numberField(item: Record<string, any>, keys: string[]) {
+export function numberField(item: Record<string, any>, keys: string[]) {
   for (const key of keys) {
     const value = item[key];
     if (value === null || value === undefined || value === '') continue;
@@ -1016,7 +1018,7 @@ function numberField(item: Record<string, any>, keys: string[]) {
   return null;
 }
 
-function plainNumberField(item: Record<string, any>, keys: string[]) {
+export function plainNumberField(item: Record<string, any>, keys: string[]) {
   for (const key of keys) {
     const value = item[key];
     if (value === null || value === undefined || value === '') continue;
@@ -1026,11 +1028,11 @@ function plainNumberField(item: Record<string, any>, keys: string[]) {
   return null;
 }
 
-function clampPercentValue(value: number) {
+export function clampPercentValue(value: number) {
   return Math.max(0, Math.min(100, value));
 }
 
-function sentimentValues(item: Record<string, any>) {
+export function sentimentValues(item: Record<string, any>) {
   const buy = numberField(item, ['buyPercent', 'buyPercentage', 'buy_percentage', 'buy_percent', 'buyRatio', 'buy_ratio', 'buy', 'longPercent', 'longPercentage', 'long_percentage', 'long', 'bullishPercent', 'bullish_percentage']);
   const sell = numberField(item, ['sellPercent', 'sellPercentage', 'sell_percentage', 'sell_percent', 'sellRatio', 'sell_ratio', 'sell', 'shortPercent', 'shortPercentage', 'short_percentage', 'short', 'bearishPercent', 'bearish_percentage']);
   if (buy === null || sell === null) return null;
@@ -1040,20 +1042,20 @@ function sentimentValues(item: Record<string, any>) {
   };
 }
 
-function sentimentTone(values: { buy: number; sell: number }) {
+export function sentimentTone(values: { buy: number; sell: number }) {
   if (values.buy > values.sell + 5) return 'buy';
   if (values.sell > values.buy + 5) return 'sell';
   return 'balanced';
 }
 
-function formatSentimentMetricNumber(value: number, locale: string, options: Intl.NumberFormatOptions = {}) {
+export function formatSentimentMetricNumber(value: number, locale: string, options: Intl.NumberFormatOptions = {}) {
   return new Intl.NumberFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', {
     maximumFractionDigits: 2,
     ...options,
   }).format(value);
 }
 
-function formatSentimentMetricPair(
+export function formatSentimentMetricPair(
   longValue: number | null,
   shortValue: number | null,
   locale: string,
@@ -1065,7 +1067,7 @@ function formatSentimentMetricPair(
   return `${longText} / ${shortText}`;
 }
 
-function sentimentExtraMetrics(item: Record<string, any>, t: (key: string) => string, locale: string) {
+export function sentimentExtraMetrics(item: Record<string, any>, t: (key: string) => string, locale: string) {
   const provider = textField(item, ['source', 'provider']);
   const updatedAt = textField(item, ['updatedAt', 'updated_at', 'lastUpdated', 'timestamp']);
   const totalPositions = plainNumberField(item, ['positions', 'totalPositions', 'positionCount', 'positionsCount']);
@@ -1097,7 +1099,7 @@ function sentimentExtraMetrics(item: Record<string, any>, t: (key: string) => st
   ].filter((row): row is readonly [string, string] => Boolean(row));
 }
 
-function formatMarketToolTimestamp(value: string | undefined, locale = 'ar') {
+export function formatMarketToolTimestamp(value: string | undefined, locale = 'ar') {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
@@ -1107,7 +1109,7 @@ function formatMarketToolTimestamp(value: string | undefined, locale = 'ar') {
   }).format(date);
 }
 
-function publicNewsEmptyCopy(code: string | undefined, t: (key: string) => string) {
+export function publicNewsEmptyCopy(code: string | undefined, t: (key: string) => string) {
   if (code === 'MARKET_DATA_TIMEOUT') {
     return { title: t('market_section_timeout_title'), body: t('market_section_timeout_body') };
   }
@@ -1123,7 +1125,7 @@ function publicNewsEmptyCopy(code: string | undefined, t: (key: string) => strin
   return { title: t('market_news_unavailable_title'), body: t('market_news_unavailable_body') };
 }
 
-function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => string, assetType: SentimentAssetBadgeType = 'unknown') {
+export function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => string, assetType: SentimentAssetBadgeType = 'unknown') {
   const normalizedCode = String(code ?? '').trim().toUpperCase();
   if (code === 'NO_SELECTED_ASSET') {
     return { title: t('market_sentiment_symbol_required_title'), body: t('market_sentiment_symbol_required_body') };
@@ -1215,7 +1217,7 @@ function publicSentimentEmptyCopy(code: string | undefined, t: (key: string) => 
   return { title: t('market_sentiment_unavailable_title'), body: t('market_sentiment_unavailable_body') };
 }
 
-function sentimentProviderStatusMeta(status: unknown, t: (key: string) => string) {
+export function sentimentProviderStatusMeta(status: unknown, t: (key: string) => string) {
   const normalized = String(status ?? '').trim().toLowerCase();
   if (normalized === 'connected') {
     return { label: t('market_sentiment_status_connected'), className: 'connected' };

@@ -116,16 +116,32 @@ export type TechnicalSymbolCategory = 'forex' | 'stocks' | 'indices' | 'metals' 
 export type TechnicalSymbolOption = {
   symbol: string;
   label: string;
+  description: { ar: string; en: string; fr: string };
   category: TechnicalSymbolCategory;
   aliases?: string[];
 };
 
 export type PipCalculatorAssetType = 'forex' | 'metals' | 'oil' | 'indices' | 'crypto';
 export type PipCalculatorAsset = {
-  symbol: string;
-  label: string;
   type: PipCalculatorAssetType;
-  pipSize: number;
-  contractSize: number;
-  quoteCurrency: string;
+  name: { ar: string; en: string; fr: string };
+  symbol: string;
+  internalSymbol: string;
+  pointSize: number;
+  defaultPointValue: number;
+};
+
+export type EconomicCalendarFilter = 'today' | 'week' | 'high' | 'USD' | 'EUR' | 'GBP' | 'JPY' | string;
+
+export type EconomicCalendarEvent = {
+  id: string;
+  name: string;
+  currency: string;
+  country: string;
+  impact: string;
+  previous: string;
+  forecast: string;
+  actual: string;
+  eventTime: Date | null;
+  eventTimeLabel: string;
 };

@@ -10,7 +10,11 @@ import {
   buildInvestmentPayload, normalizeInvestmentForSave, mergeInvestmentForUpdate,
   buildPriceRefreshPayload, mergeMarketPriceIntoInvestment, buildSnapshotFallbackPayload,
   metaFromInvestment, toLegacyRow, mutationErrorMessage,
+  safeInvestmentSummary, nowIso, coreSavePayload, updateInvestmentWithAttempts,
+  cleanInvestmentUpdatePayload, compactUpdatePayload, moneyNumber, newId,
+  insertInvestmentWithAttempts,
   type InvestmentMeta, type InvestmentSelectResult, type DbInvestmentRow,
+  type InvestmentMarketPriceUpdate,
 } from '@/lib/investments/investmentUtils';
 
 const DEBUG_INVESTMENTS = process.env.NODE_ENV === 'development';

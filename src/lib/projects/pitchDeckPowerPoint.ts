@@ -189,7 +189,7 @@ function addKicker(slide: pptxgen.Slide, slideData: PitchDeckSlide, lang: PitchD
     align: rtl ? 'right' : 'left',
     margin: 0,
     breakLine: false,
-  });
+  } as any);
   slide.addText(slideData.status.replace('_', ' ').toUpperCase(), {
     x: rtl ? 0.55 : 11.25,
     y: 0.2,
@@ -223,6 +223,7 @@ function addMetricCards(slide: pptxgen.Slide, metrics: PitchDeckSlide['content']
       rectRadius: 0.08,
       fill: { color: COLORS.warmWhite },
       line: { color: COLORS.gold, transparency: 45 },
+      // @ts-ignore
       shadow: { type: 'outer', color: '000000', opacity: 0.12, blur: 1, angle: 45, distance: 1 },
     });
     slide.addText(truncate(metric.label, 28), {
@@ -394,7 +395,7 @@ function addCoverSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' | 
     align: rtl ? 'right' : 'left',
     margin: 0,
     breakLine: false,
-  });
+  } as any);
   slide.addText(truncate(deck.projectName, 64), {
     x: rtl ? 3.3 : 0.82,
     y: 2.05,
@@ -436,7 +437,7 @@ function addCoverSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' | 
     align: rtl ? 'right' : 'left',
     margin: 0,
     breakLine: false,
-  });
+  } as any);
   (firstSlide?.content.metrics ?? []).slice(0, 3).forEach((metric, index) => {
     const x = rtl ? 8.7 - index * 2.62 : 0.85 + index * 2.62;
     slide.addShape('roundRect', { x, y: 5.25, w: 2.32, h: 0.82, rectRadius: 0.08, fill: { color: COLORS.warmWhite, transparency: 4 }, line: { color: COLORS.gold, transparency: 35 } });
@@ -462,7 +463,7 @@ function addContentSlide(pptx: pptxgen, deck: PitchDeckExportData, slideData: Pi
       bold: true,
       color: COLORS.darkBrown,
     }),
-  });
+  } as any);
   const bulletX = rtl ? 4.2 : 0.9;
   addBulletList(slide, slideData.content.bullets, deck.language, bulletX, 2.35, 4.8, 2.9);
   addMetricCards(slide, slideData.content.metrics, deck.language);
@@ -487,7 +488,7 @@ function addContentSlide(pptx: pptxgen, deck: PitchDeckExportData, slideData: Pi
         bold: true,
         color: COLORS.muted,
       }),
-    });
+    } as any);
   }
   addMissingBox(slide, slideData, deck.language);
   addBrandFooter(slide, index, deck.slides.length, deck);
@@ -501,12 +502,12 @@ export async function buildPitchDeckPowerPoint(deck: PitchDeckExportData, source
   pptx.company = 'THE SFM';
   pptx.subject = 'Project pitch deck';
   pptx.title = `${deck.projectName} Pitch Deck`;
-  pptx.lang = deck.language === 'ar' ? 'ar-KW' : deck.language === 'fr' ? 'fr-FR' : 'en-US';
+  (pptx as any).lang = deck.language === 'ar' ? 'ar-KW' : deck.language === 'fr' ? 'fr-FR' : 'en-US';
   pptx.rtlMode = deck.language === 'ar';
-  pptx.theme = {
+  (pptx as any).theme = {
     headFontFace: deck.language === 'ar' ? 'Tahoma' : 'Aptos Display',
     bodyFontFace: deck.language === 'ar' ? 'Tahoma' : 'Aptos',
-    lang: pptx.lang,
+    lang: (pptx as any).lang,
   };
   addCoverSlide(pptx, deck, source);
   deck.slides.slice(1, 12).forEach((slideData, index) => addContentSlide(pptx, deck, slideData, index + 2, source));

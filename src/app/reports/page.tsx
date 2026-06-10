@@ -25,7 +25,7 @@ const shortcutCopy = {
 
 function ReportsCenterShortcut() {
   const router = useRouter();
-  const { language } = useLanguage();
+  const { lang: language } = useLanguage();
   const lang = (['ar', 'en', 'fr'].includes(language) ? language : 'ar') as keyof typeof shortcutCopy;
   const copy = shortcutCopy[lang];
 

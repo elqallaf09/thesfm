@@ -107,7 +107,7 @@ function createCurrency(code: string): Currency {
     nameAr: currencyName(code, 'ar'),
     nameEn: currencyName(code, 'en'),
     nameFr: currencyName(code, 'fr'),
-    decimals: currencyDecimals(code),
+    decimals: currencyDecimals(code) ?? 2,
     country: '',
   };
 }

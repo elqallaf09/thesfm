@@ -3,7 +3,8 @@ export type GulfMarketId = 'kuwait' | 'saudi' | 'oman' | 'bahrain' | 'uae' | 'qa
 export type GulfIndexSourceStrategy =
   | { provider: 'Yahoo Finance'; symbol: string; label?: string }
   | { provider: 'Bahrain Bourse' | 'Muscat Stock Exchange'; type: 'official' }
-  | { provider: 'Mubasher' | 'Investing'; symbol: string; label?: string };
+  | { provider: 'Mubasher'; symbol: string; label?: string }
+  | { provider: 'Investing'; symbol: string; label?: string };
 
 export type GulfMarket = {
   id: GulfMarketId;

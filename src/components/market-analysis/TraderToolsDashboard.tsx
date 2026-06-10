@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Activity, BarChart3, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDollarSign, Gauge, Landmark, LineChart, Percent, PieChart, Plus, RefreshCw, ShieldAlert, Sparkles, TrendingUp, WalletCards } from 'lucide-react';
 import { calculateLotSizeByRisk, calculatePips, calculatePositionSize, type TradeDirection, type TradingInstrumentType } from '@/lib/trading/calculators';
 import type { MarketAssetType } from '@/lib/market/marketService';
 import { currencyDisplaySymbol } from '@/lib/currencies';
+import { supabase } from '@/integrations/supabase/client';
 import type { ApiListState, MarketAssetFilter, MarketAiInsightView, MarketResultWithMeta,
   MarketSearchSuggestion, MarketServiceState, MarketViewAnalysis, PipCalculatorAsset,
   PipCalculatorAssetType, ScenarioCurrencyCode, AccountCurrencyCode, TraderToolsSubTab,
@@ -16,6 +17,7 @@ import {
   money, percent, formatNumber, getPipCalculatorAsset, pipAssetTypeTranslationKey,
   pipAssetName, pipCalculatorWarningKey, sanitizeMarketToolMessage, logMarketToolPerformance,
   marketToolFailureState, isAbortLikeError, normalizePerformanceTrend, assetTypeTranslationKey,
+  normalizeAccountCurrency, parseNumber,
 } from './utils';
 import { EmptyToolState, MarketSectionLoading } from './NewsSentimentPanel';
 

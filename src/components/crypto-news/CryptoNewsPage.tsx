@@ -127,7 +127,7 @@ export function CryptoNewsPage() {
     try {
       const response = await fetch('/api/crypto-news/market');
       const json = await response.json().catch(() => ({})) as CryptoMarketApiResponse;
-      if (!response.ok || !json.ok) throw new Error(json.message || t('crypto_news_market_unavailable_body'));
+      if (!response.ok || !json.ok) throw new Error((json as {message?: string}).message || t('crypto_news_market_unavailable_body'));
       setMarketData(json);
     } catch {
       setMarketData(null);

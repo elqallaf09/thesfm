@@ -1,11 +1,11 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useId, useState, type MouseEvent } from 'react';
 import type { ReactNode } from 'react';
 import { AlertTriangle, LineChart, RefreshCw } from 'lucide-react';
-import type { MarketHistoryPoint } from '@/lib/market/marketService';
+import type { MarketHistoryPoint, MarketTrend } from '@/lib/market/marketService';
 import type { MarketChartType, MarketTimeframe } from './types';
-import { money, percent } from './utils';
+import { money, percent, formatChartTimestamp } from './utils';
 
 export function MarketMetric({ label, value, icon, valueDir }: { label: string; value: string; icon?: ReactNode; valueDir?: 'ltr' | 'rtl' }) {
   return (

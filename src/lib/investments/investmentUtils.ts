@@ -103,7 +103,7 @@ export function debugInvestments(label: string, payload: Record<string, unknown>
   console.log(`[Investments] ${label}`, payload);
 }
 
-function moneyNumber(value: unknown) {
+export function moneyNumber(value: unknown) {
   const parsed = parseMoneyValue(value);
   return parsed.status === 'valid' ? parsed.value : undefined;
 }
@@ -125,7 +125,7 @@ function isMarketLinkedInput(item: Pick<InvestmentInput, 'type' | 'symbol' | 'pr
   return Boolean(item.symbol || item.providerSymbol) && MARKET_LINKED_TYPES.has(item.type);
 }
 
-function safeInvestmentSummary(item: Partial<InvestmentInput & Investment>) {
+export function safeInvestmentSummary(item: Partial<InvestmentInput & Investment>) {
   return {
     id: 'id' in item ? item.id : undefined,
     name: item.name,
@@ -177,7 +177,7 @@ function preserve<T>(next: T | undefined, previous: T | undefined): T | undefine
   return meaningfulValue(next) ? next : previous;
 }
 
-function nowIso() {
+export function nowIso() {
   return new Date().toISOString();
 }
 
@@ -185,7 +185,7 @@ function todayInput() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function newId() {
+export function newId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -316,7 +316,7 @@ function pickPayload<T extends Record<string, unknown>>(payload: T, allowed: Set
   return Object.fromEntries(Object.entries(payload).filter(([key]) => allowed.has(key)));
 }
 
-function coreSavePayload(payload: Record<string, unknown>) {
+export function coreSavePayload(payload: Record<string, unknown>) {
   return pickPayload(payload, CORE_SAVE_KEYS);
 }
 
@@ -373,7 +373,7 @@ export function buildSnapshotFallbackPayload(data: InvestmentInput, userId?: str
   };
 }
 
-async function insertInvestmentWithAttempts(attempts: InvestmentMutationAttempt[]) {
+export async function insertInvestmentWithAttempts(attempts: InvestmentMutationAttempt[]) {
   let last: InvestmentMutationResult | null = null;
 
   for (const attempt of attempts) {
@@ -410,7 +410,7 @@ async function insertInvestmentWithAttempts(attempts: InvestmentMutationAttempt[
   throw new Error(mutationErrorMessage(last));
 }
 
-async function updateInvestmentWithAttempts(id: string, userId: string, attempts: InvestmentMutationAttempt[]) {
+export async function updateInvestmentWithAttempts(id: string, userId: string, attempts: InvestmentMutationAttempt[]) {
   let last: InvestmentMutationResult | null = null;
 
   for (const attempt of attempts) {
@@ -568,7 +568,7 @@ export function mergeInvestmentForUpdate(previous: Investment, data: InvestmentI
   };
 }
 
-type InvestmentMarketPriceUpdate = {
+export type InvestmentMarketPriceUpdate = {
   currentPrice?: unknown;
   currentMarketValue?: unknown;
   defaultCurrencyValue?: unknown;
@@ -683,7 +683,7 @@ type CleanInvestmentUpdateOptions = {
   dropZeroKeys?: Set<string>;
 };
 
-function cleanInvestmentUpdatePayload<T extends Record<string, unknown>>(
+export function cleanInvestmentUpdatePayload<T extends Record<string, unknown>>(
   payload: T,
   options: CleanInvestmentUpdateOptions = {},
 ) {
@@ -705,7 +705,7 @@ function cleanInvestmentUpdatePayload<T extends Record<string, unknown>>(
   );
 }
 
-function compactUpdatePayload<T extends Record<string, unknown>>(payload: T) {
+export function compactUpdatePayload<T extends Record<string, unknown>>(payload: T) {
   const protectedEmptyKeys = new Set([
     'asset_name',
     'symbol',

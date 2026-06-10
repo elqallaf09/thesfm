@@ -292,7 +292,7 @@ async function fetchSourceMarketData(market: GulfMarket, source: GulfIndexSource
   if (source.provider === 'Muscat Stock Exchange') return fetchMuscatOfficialMarketData(market);
   if (source.provider === 'Bahrain Bourse') return fetchBahrainOfficialMarketData(market);
   if (source.provider === 'Mubasher') return fetchMubasherMarketData(market, source);
-  return fetchInvestingMarketData(market, source);
+  return fetchInvestingMarketData(market, source as Extract<GulfIndexSourceStrategy, { provider: 'Investing' }>);
 }
 
 async function fetchMarketData(market: GulfMarket): Promise<GulfMarketData> {

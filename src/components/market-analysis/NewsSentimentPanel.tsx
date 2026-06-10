@@ -4,11 +4,17 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react';
 import { Activity, AlertTriangle, BarChart3, Brain, CheckCircle2, Clock3, Info, Landmark, LineChart, Newspaper, RefreshCw, Search, ShieldAlert, Sparkles } from 'lucide-react';
 import type { MarketAssetType } from '@/lib/market/marketService';
-import type { ApiListState } from './types';
+import type { ApiListState, SelectedMarketAsset } from './types';
 import {
   MARKET_TOOL_REQUEST_TIMEOUT_MS, isAbortLikeError, logMarketToolPerformance,
   marketToolFailureState, sanitizeMarketToolMessage,
+  sentimentAssetBadgeType, sentimentProviderBadgeKey, sentimentContextBodyKey, sentimentAssetBadgeKey,
 } from './utils';
+import {
+  textField, sentimentValues, sentimentTone, sentimentExtraMetrics,
+  formatMarketToolTimestamp, publicNewsEmptyCopy, publicSentimentEmptyCopy,
+  sentimentProviderStatusMeta,
+} from './TechnicalAnalysisPanel';
 
 export function NewsSentimentPanel({
   t,

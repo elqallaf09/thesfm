@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Activity, Clock3, Gauge } from 'lucide-react';
+import type { ApiListState } from './types';
 import { EmptyToolState } from './NewsSentimentPanel';
 import { getActiveOverlapIds, getTradingSessionsState, isHighLiquidityPeriod, TRADING_OVERLAPS } from '@/lib/trading/sessions';
 
