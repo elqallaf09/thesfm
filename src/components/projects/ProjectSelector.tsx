@@ -622,10 +622,10 @@ export function ProjectSelector({
           opacity: 1;
         }
         .project-selector-action.secondary {
-          border: 1.5px solid rgba(29, 140, 255, .26);
-          background: var(--sfm-card);
-          color: var(--sfm-primary-hover);
-          box-shadow: 0 4px 14px rgba(29, 140, 255, .08);
+          border-color: transparent;
+          background: linear-gradient(135deg, var(--sfm-accent), var(--sfm-primary));
+          color: #FFFFFF;
+          box-shadow: 0 14px 30px rgba(24, 212, 212, .20);
         }
         .project-selector-action svg {
           flex: 0 0 auto;
@@ -641,15 +641,14 @@ export function ProjectSelector({
           transform: translateY(-1px);
         }
         .project-selector-action.primary:not(.disabled):hover,
-        .project-selector-action.add-primary:hover {
+        .project-selector-action.add-primary:hover,
+        .project-selector-action.secondary:not(.disabled):hover {
           box-shadow: 0 16px 36px rgba(29, 140, 255, .26);
           filter: saturate(1.06);
         }
         .project-selector-action.secondary:hover {
-          background: rgba(239, 246, 255, .95);
-          border-color: rgba(29, 140, 255, .50);
-          color: var(--sfm-primary);
-          box-shadow: 0 8px 22px rgba(29, 140, 255, .14);
+          box-shadow: 0 16px 36px rgba(24, 212, 212, .28);
+          filter: saturate(1.06);
         }
         .project-selector-action:not(.disabled):active {
           transform: translateY(0) scale(.985);
@@ -679,10 +678,10 @@ export function ProjectSelector({
           color: rgba(232, 238, 246, .72);
         }
         :global(.dark) .project-selector-action.secondary {
-          border-color: rgba(103, 232, 249, .38);
-          background: rgba(6, 182, 212, .10);
-          color: #CFFAFE;
-          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04);
+          border-color: transparent;
+          background: linear-gradient(135deg, var(--sfm-accent), var(--sfm-primary));
+          color: #ECFEFF;
+          box-shadow: 0 14px 30px rgba(6, 182, 212, .14);
         }
         :global(.dark) .project-selector-action.add-primary {
           border-color: rgba(103, 232, 249, .46);
@@ -691,10 +690,8 @@ export function ProjectSelector({
           box-shadow: 0 14px 30px rgba(6, 182, 212, .12);
         }
         :global(.dark) .project-selector-action.secondary:hover {
-          border-color: rgba(103, 232, 249, .56);
-          background: rgba(34, 211, 238, .15);
-          color: #ECFEFF;
-          box-shadow: 0 12px 28px rgba(6, 182, 212, .14);
+          box-shadow: 0 16px 36px rgba(6, 182, 212, .22);
+          filter: saturate(1.08);
         }
         :global(.dark) .project-selector-action.add-primary:hover {
           border-color: rgba(103, 232, 249, .62);
