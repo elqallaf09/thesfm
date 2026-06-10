@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { getUserFromBearerToken } from '@/lib/server/adminAccess';
 
 type IncomingMessage = { role: 'user' | 'assistant' | 'system'; content: string };
 
@@ -16,6 +17,11 @@ const getProvider = () => {
   }
   return anthropicKey ? createAnthropic({ apiKey: anthropicKey }) : null;
 };
+
+function bearerToken(req: NextRequest): string | null {
+  const auth = req.headers.get('Authorization') ?? '';
+  return auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
+}
 
 function isIncomingMessage(value: unknown): value is IncomingMessage {
   if (!value || typeof value !== 'object') return false;
@@ -33,6 +39,13 @@ function unavailableResponse() {
 }
 
 export async function POST(req: NextRequest) {
+  // Require authenticated Supabase user
+  const token = bearerToken(req);
+  const user = await getUserFromBearerToken(token);
+  if (!user) {
+    return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
+  }
+
   try {
     const body = await req.json() as { messages?: unknown };
     const messages = Array.isArray(body.messages) ? body.messages.filter(isIncomingMessage) : [];

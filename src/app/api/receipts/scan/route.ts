@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromBearerToken } from '@/lib/server/adminAccess';
 import {
   getGoogleAccessToken,
   getGoogleReceiptConfig,
@@ -17,9 +18,16 @@ const SUPPORTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'appli
 // Flip this with a real subscription check when receipt scanning becomes a paid feature.
 const RECEIPT_SCANNING_REQUIRES_PAID_PLAN = false;
 
-function isAllowed(request: NextRequest) {
+function bearerToken(req: NextRequest): string | null {
+  const auth = req.headers.get('Authorization') ?? '';
+  return auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
+}
+
+async function isAllowed(request: NextRequest): Promise<boolean> {
   if (process.env.NODE_ENV !== 'production') return true;
-  return request.cookies.get('sfm_auth')?.value === 'true';
+  const token = bearerToken(request);
+  const user = await getUserFromBearerToken(token);
+  return user !== null;
 }
 
 function receiptScanningPlanGateEnabled() {
@@ -1601,7 +1609,7 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isAllowed(request)) return errorResponse('Unauthorized', 401, undefined, 'scan_failed');
+    if (!await isAllowed(request)) return errorResponse('Unauthorized', 401, undefined, 'scan_failed');
     if (receiptScanningPlanGateEnabled()) {
       return errorResponse('Receipt scanning requires a paid plan.', 403, { stage: 'provider', errorSource: 'plan_blocked' }, 'plan_blocked');
     }

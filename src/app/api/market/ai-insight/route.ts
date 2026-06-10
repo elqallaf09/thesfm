@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import type { MarketAnalysis, MarketAiInsight } from '@/lib/market/marketService';
+import { getUserFromBearerToken } from '@/lib/server/adminAccess';
 
 const AI_TIMEOUT_MS = 10000;
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
@@ -8,6 +9,7 @@ const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
 type AiInsightFailureCode =
   | 'AI_PROVIDER_NOT_CONFIGURED'
   | 'MARKET_DATA_REQUIRED'
+  | 'UNAUTHORIZED'
   | 'AI_PROVIDER_AUTH_FAILED'
   | 'AI_PROVIDER_QUOTA_EXCEEDED'
   | 'AI_PROVIDER_RATE_LIMITED'
@@ -23,6 +25,11 @@ type OpenAiErrorLike = {
   code?: string;
   type?: string;
 };
+
+function bearerToken(req: NextRequest): string | null {
+  const auth = req.headers.get('Authorization') ?? '';
+  return auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
+}
 
 function isRealMarketAnalysis(value: unknown): value is MarketAnalysis {
   const data = value && typeof value === 'object' ? value as Partial<MarketAnalysis> : {};
@@ -41,6 +48,7 @@ function statusForFailure(code: AiInsightFailureCode) {
   const statusMap: Record<AiInsightFailureCode, number> = {
     AI_PROVIDER_NOT_CONFIGURED: 200,
     MARKET_DATA_REQUIRED: 400,
+    UNAUTHORIZED: 401,
     AI_PROVIDER_AUTH_FAILED: 401,
     AI_PROVIDER_QUOTA_EXCEEDED: 200,
     AI_PROVIDER_RATE_LIMITED: 429,
@@ -101,17 +109,17 @@ function parseProviderJson(text: string) {
 }
 
 export async function POST(request: NextRequest) {
+  // Require authenticated Supabase user
+  const token = bearerToken(request);
+  const user = await getUserFromBearerToken(token);
+  if (!user) {
+    return failureResponse('UNAUTHORIZED');
+  }
+
   const body = await request.json().catch(() => ({}));
   const marketData = body?.marketData;
   const language = body?.language === 'en' || body?.language === 'fr' || body?.language === 'ar' ? body.language : 'ar';
   const hasOpenAIKey = Boolean(process.env.OPENAI_API_KEY);
-
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('AI insight env check:', {
-      hasOpenAIKey,
-      nodeEnv: process.env.NODE_ENV,
-    });
-  }
 
   if (!isRealMarketAnalysis(marketData)) {
     return failureResponse('MARKET_DATA_REQUIRED');
@@ -192,7 +200,6 @@ export async function POST(request: NextRequest) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('[market-ai-insight] request failed', error instanceof Error ? error.message : error);
     }
-    console.error('AI insight route error:', safeErrorInfo(error));
     return failureResponse(mapOpenAiError(error));
   } finally {
     clearTimeout(timeout);
