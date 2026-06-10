@@ -245,7 +245,7 @@ export default function CommandCenterPage() {
     if (!tasksLoading) {
       const openTasks = tasks.filter(task => String(task?.status ?? 'open').toLowerCase() === 'open');
       const urgentTask = openTasks.find(task => {
-        const priority = String(task?.priority ?? task?.severity ?? '').toLowerCase();
+        const priority = String(task?.priority ?? '').toLowerCase();
         return ['urgent', 'high', 'danger'].includes(priority);
       }) ?? openTasks[0];
 
