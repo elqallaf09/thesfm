@@ -352,7 +352,7 @@ export function ProjectDocumentsTab({
 
   const loadDocuments = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('project_documents')
       .select('*')
       .eq('user_id', userId)
@@ -432,7 +432,7 @@ export function ProjectDocumentsTab({
     const now = new Date().toISOString();
 
     try {
-      const db = (supabase as any).from('project_documents');
+      const db = supabase.from('project_documents');
       const existing = await db
         .select('id,file_path')
         .eq('user_id', userId)
@@ -466,14 +466,14 @@ export function ProjectDocumentsTab({
       const previousFilePath = existing.data?.file_path ? String(existing.data.file_path) : '';
 
       const { data, error } = existingId
-        ? await (supabase as any)
+        ? await supabase
           .from('project_documents')
           .update(basePayload)
           .eq('id', existingId)
           .eq('user_id', userId)
           .select('*')
           .single()
-        : await (supabase as any)
+        : await supabase
           .from('project_documents')
           .insert({
             id: documentId,
@@ -540,7 +540,7 @@ export function ProjectDocumentsTab({
 
   const deleteDocument = async (doc: ProjectDocumentRow) => {
     if (!window.confirm(t.confirmDeleteDocument)) return;
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from('project_documents')
       .delete()
       .eq('id', doc.id)

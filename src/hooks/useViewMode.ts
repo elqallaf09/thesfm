@@ -36,7 +36,7 @@ export function useViewMode() {
       }
 
       try {
-        const { data, error } = await (supabase as any)
+        const { data, error } = await supabase
           .from('profiles')
           .select('view_mode')
           .eq('id', user.id)
@@ -92,7 +92,7 @@ export function useViewMode() {
     if (!user) return;
 
     try {
-      await (supabase as any)
+      await supabase
         .from('profiles')
         .update({ view_mode: normalized, updated_at: new Date().toISOString() })
         .eq('id', user.id);

@@ -206,7 +206,7 @@ function formatPercent(value: number | null, fallback: string) {
 
 async function loadRows(table: string, userId: string, options: { projectScoped?: boolean; select?: string } = {}) {
   try {
-    const query = (supabase as any)
+    const query = supabase
       .from(table)
       .select(options.select ?? '*')
       .eq('user_id', userId)

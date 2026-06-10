@@ -19,7 +19,7 @@ const EMPTY_STATE: LoadState = {
 
 async function loadRows(table: string, userId: string, options: { userScoped?: boolean; select?: string } = {}) {
   try {
-    let query = (supabase as any).from(table).select(options.select ?? '*').limit(1000);
+    let query = supabase.from(table).select(options.select ?? '*').limit(1000);
     if (options.userScoped !== false) query = query.eq('user_id', userId);
     const { data, error } = await query;
     return { rows: error ? [] : (data ?? []), error: error?.message ?? '' };

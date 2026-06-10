@@ -396,7 +396,7 @@ export default function DocumentsCenterPage() {
     }
     if (!window.confirm(text.confirmDelete)) return;
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from(document.deleteTable)
       .delete()
       .eq('id', document.recordId);

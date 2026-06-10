@@ -479,7 +479,7 @@ export default function DecisionsPage() {
         throw new Error('Decision title and type are required');
       }
 
-      const { data: savedDecision, error: saveError } = await (supabase as any)
+      const { data: savedDecision, error: saveError } = await supabase
         .from('user_decisions')
         .insert(payload)
         .select()
@@ -520,7 +520,7 @@ export default function DecisionsPage() {
 
   async function deleteDecision(id: string) {
     if (!user) return;
-    const { error: deleteError } = await (supabase as any).from('user_decisions').delete().eq('id', id).eq('user_id', user.id);
+    const { error: deleteError } = await supabase.from('user_decisions').delete().eq('id', id).eq('user_id', user.id);
     if (deleteError) {
       setError(deleteError.message || 'delete_error');
       return;

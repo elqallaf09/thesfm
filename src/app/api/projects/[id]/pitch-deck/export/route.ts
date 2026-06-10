@@ -584,12 +584,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!projectRes.data) return NextResponse.json({ success: false, error: 'Project not found' }, { status: 404 });
 
   const [feasibilityRes, financialRes, taskRes, milestoneRes, documentRes, savedDeckRes] = await Promise.all([
-    (supabase as any).from('project_feasibility_studies').select('*').eq('user_id', user.id).eq('project_id', id).maybeSingle(),
-    (supabase as any).from('project_financial_models').select('*').eq('user_id', user.id).eq('project_id', id).maybeSingle(),
-    (supabase as any).from('project_tasks').select('*').eq('user_id', user.id).eq('project_id', id),
-    (supabase as any).from('project_milestones').select('*').eq('user_id', user.id).eq('project_id', id),
-    (supabase as any).from('project_documents').select('id,title,category,file_name,file_type,file_size,uploaded_at').eq('user_id', user.id).eq('project_id', id),
-    (supabase as any).from('project_pitch_decks').select('*').eq('user_id', user.id).eq('project_id', id).eq('language', language).maybeSingle(),
+    supabase.from('project_feasibility_studies').select('*').eq('user_id', user.id).eq('project_id', id).maybeSingle(),
+    supabase.from('project_financial_models').select('*').eq('user_id', user.id).eq('project_id', id).maybeSingle(),
+    supabase.from('project_tasks').select('*').eq('user_id', user.id).eq('project_id', id),
+    supabase.from('project_milestones').select('*').eq('user_id', user.id).eq('project_id', id),
+    supabase.from('project_documents').select('id,title,category,file_name,file_type,file_size,uploaded_at').eq('user_id', user.id).eq('project_id', id),
+    supabase.from('project_pitch_decks').select('*').eq('user_id', user.id).eq('project_id', id).eq('language', language).maybeSingle(),
   ]);
 
   const context = {
@@ -611,7 +611,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const aiResult = await improveWithAi(ruleDeck, context);
     deck = aiResult.deck;
     source = aiResult.source;
-    await (supabase as any).from('project_pitch_decks').upsert({
+    await supabase.from('project_pitch_decks').upsert({
       user_id: user.id,
       project_id: id,
       language,
@@ -619,7 +619,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       readiness_score: deck.completionPercent,
       source,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,project_id,language' }).catch(() => undefined);
+    }, { onConflict: 'user_id,project_id,language' }).then(() => undefined, () => undefined);
   }
 
   const buffer = await buildPitchDeckPowerPoint(deck, source);

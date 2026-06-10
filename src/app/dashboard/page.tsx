@@ -145,7 +145,7 @@ const EMPTY_RECORDS = DASHBOARD_TABLES.reduce((acc, item) => {
 
 
 async function fetchDashboardTable(userId: string, item: DashboardTable): Promise<{ key: DashboardKey; rows: DataRow[] }> {
-  let query = (supabase as any)
+  let query = supabase
     .from(item.table)
     .select('*')
     .eq('user_id', userId)
@@ -475,7 +475,7 @@ export default function ExecutiveDashboardPage() {
     setIsLoadingData(true);
 
     try {
-      const profileQuery = (supabase as any).from('profiles').select('*').eq('id', userId).maybeSingle();
+      const profileQuery = supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
       const [profileResult, ...tableResults] = await Promise.allSettled([
         profileQuery,
         ...DASHBOARD_TABLES.map((item) => fetchDashboardTable(userId, item)),

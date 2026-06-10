@@ -659,7 +659,7 @@ export function ProjectFinancialModelTab({
   useEffect(() => {
     let mounted = true;
     async function loadModel() {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('project_financial_models')
         .select('*')
         .eq('user_id', userId)
@@ -715,7 +715,7 @@ export function ProjectFinancialModelTab({
       kpis,
       updated_at: new Date().toISOString(),
     };
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('project_financial_models')
       .upsert(payload, { onConflict: 'user_id,project_id' })
       .select('id')

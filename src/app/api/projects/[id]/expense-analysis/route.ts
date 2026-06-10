@@ -272,7 +272,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { id } = await params;
   const [projectRes, expensesRes] = await Promise.all([
     supabase.from('projects').select('*').eq('user_id', user.id).eq('id', id).maybeSingle(),
-    (supabase as any).from('project_expenses').select('id,amount,currency,category').eq('user_id', user.id).eq('project_id', id),
+    supabase.from('project_expenses').select('id,amount,currency,category').eq('user_id', user.id).eq('project_id', id),
   ]);
 
   if (projectRes.error) return NextResponse.json({ ok: false, message: t.projectNotFound }, { status: 500 });

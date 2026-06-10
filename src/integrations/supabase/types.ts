@@ -738,6 +738,1131 @@ export type Database = {
     Views: {
       [_ in never]: never
     }
+      ad_campaigns: {
+        Row: {
+          id: string
+          user_id: string | null
+          project_id: string | null
+          name: string
+          total_budget: number
+          duration_days: number
+          platforms: Json
+          industry: string | null
+          estimated_reach: number | null
+          estimated_clicks: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          project_id?: string | null
+          name: string
+          total_budget: number
+          duration_days: number
+          platforms: Json
+          industry?: string | null
+          estimated_reach?: number | null
+          estimated_clicks?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          project_id?: string | null
+          name?: string
+          total_budget?: number
+          duration_days?: number
+          platforms?: Json
+          industry?: string | null
+          estimated_reach?: number | null
+          estimated_clicks?: number | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      charity_commitments: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          amount: number
+          currency: string
+          frequency: string
+          next_due_date: string | null
+          category: string
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          amount?: number
+          currency?: string
+          frequency?: string
+          next_due_date?: string | null
+          category?: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          amount?: number
+          currency?: string
+          frequency?: string
+          next_due_date?: string | null
+          category?: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      charity_documents: {
+        Row: {
+          id: string
+          user_id: string
+          project_id: string | null
+          donation_id: string | null
+          zakat_asset_id: string | null
+          commitment_id: string | null
+          title: string
+          category: string
+          file_url: string
+          file_path: string
+          file_name: string
+          file_type: string | null
+          file_size: number | null
+          notes: string | null
+          uploaded_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          project_id?: string | null
+          donation_id?: string | null
+          zakat_asset_id?: string | null
+          commitment_id?: string | null
+          title: string
+          category?: string
+          file_url: string
+          file_path: string
+          file_name: string
+          file_type?: string | null
+          file_size?: number | null
+          notes?: string | null
+          uploaded_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          project_id?: string | null
+          donation_id?: string | null
+          zakat_asset_id?: string | null
+          commitment_id?: string | null
+          title?: string
+          category?: string
+          file_url?: string
+          file_path?: string
+          file_name?: string
+          file_type?: string | null
+          file_size?: number | null
+          notes?: string | null
+          uploaded_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      charity_project_donations: {
+        Row: {
+          id: string
+          user_id: string
+          project_id: string | null
+          amount: number
+          currency: string
+          donation_date: string
+          donation_type: string
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          project_id?: string | null
+          amount: number
+          currency?: string
+          donation_date?: string
+          donation_type?: string
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          project_id?: string | null
+          amount?: number
+          currency?: string
+          donation_date?: string
+          donation_type?: string
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      charity_projects: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          category: string
+          status: string
+          target_amount: number
+          collected_amount: number
+          currency: string
+          start_date: string | null
+          end_date: string | null
+          organization_name: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          category?: string
+          status?: string
+          target_amount?: number
+          collected_amount?: number
+          currency?: string
+          start_date?: string | null
+          end_date?: string | null
+          organization_name?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          category?: string
+          status?: string
+          target_amount?: number
+          collected_amount?: number
+          currency?: string
+          start_date?: string | null
+          end_date?: string | null
+          organization_name?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      charity_reminders: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          description: string | null
+          reminder_type: string
+          related_project_id: string | null
+          related_zakat_asset_id: string | null
+          related_commitment_id: string | null
+          reminder_date: string | null
+          due_date: string | null
+          hijri_date: string | null
+          remind_before_days: number
+          status: string
+          priority: string
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          description?: string | null
+          reminder_type?: string
+          related_project_id?: string | null
+          related_zakat_asset_id?: string | null
+          related_commitment_id?: string | null
+          reminder_date?: string | null
+          due_date?: string | null
+          hijri_date?: string | null
+          remind_before_days?: number
+          status?: string
+          priority?: string
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          reminder_type?: string
+          related_project_id?: string | null
+          related_zakat_asset_id?: string | null
+          related_commitment_id?: string | null
+          reminder_date?: string | null
+          due_date?: string | null
+          hijri_date?: string | null
+          remind_before_days?: number
+          status?: string
+          priority?: string
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      generated_reports: {
+        Row: {
+          id: string
+          user_id: string
+          title: string | null
+          file_name: string | null
+          file_url: string | null
+          source_url: string | null
+          category: string | null
+          metadata: Json
+          report_type: string | null
+          file_path: string | null
+          file_type: string | null
+          file_size: number | null
+          format: string | null
+          notes: string | null
+          generated_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          source_url?: string | null
+          category?: string | null
+          metadata?: Json
+          report_type?: string | null
+          file_path?: string | null
+          file_type?: string | null
+          file_size?: number | null
+          format?: string | null
+          notes?: string | null
+          generated_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          source_url?: string | null
+          category?: string | null
+          metadata?: Json
+          report_type?: string | null
+          file_path?: string | null
+          file_type?: string | null
+          file_size?: number | null
+          format?: string | null
+          notes?: string | null
+          generated_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      market_price_alerts: {
+        Row: {
+          id: string
+          user_id: string
+          symbol: string
+          asset_type: string
+          alert_type: string
+          threshold: number
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          symbol: string
+          asset_type?: string
+          alert_type: string
+          threshold: number
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          symbol?: string
+          asset_type?: string
+          alert_type?: string
+          threshold?: number
+          status?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      market_watchlist: {
+        Row: {
+          id: string
+          user_id: string
+          symbol: string
+          asset_type: string
+          name: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          symbol: string
+          asset_type?: string
+          name?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          symbol?: string
+          asset_type?: string
+          name?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string | null
+          type: string
+          title: string
+          message: string | null
+          read: boolean
+          link: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          type: string
+          title: string
+          message?: string | null
+          read?: boolean
+          link?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          type?: string
+          title?: string
+          message?: string | null
+          read?: boolean
+          link?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      project_documents: {
+        Row: {
+          id: string
+          user_id: string
+          project_id: string
+          title: string
+          category: string
+          file_url: string | null
+          file_path: string
+          file_name: string
+          file_type: string | null
+          file_size: number | null
+          notes: string | null
+          uploaded_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          project_id: string
+          title: string
+          category?: string
+          file_url?: string | null
+          file_path: string
+          file_name: string
+          file_type?: string | null
+          file_size?: number | null
+          notes?: string | null
+          uploaded_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          project_id?: string
+          title?: string
+          category?: string
+          file_url?: string | null
+          file_path?: string
+          file_name?: string
+          file_type?: string | null
+          file_size?: number | null
+          notes?: string | null
+          uploaded_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      project_expenses: {
+        Row: {
+          id: string
+          user_id: string
+          project_id: string
+          title: string
+          amount: number
+          currency: string
+          expense_date: string
+          category: string
+          payment_method: string | null
+          notes: string | null
+          receipt_url: string | null
+          paid_from_personal_budget: boolean
+          personal_expense_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          project_id: string
+          title: string
+          amount?: number
+          currency?: string
+          expense_date?: string
+          category?: string
+          payment_method?: string | null
+          notes?: string | null
+          receipt_url?: string | null
+          paid_from_personal_budget?: boolean
+          personal_expense_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          project_id?: string
+          title?: string
+          amount?: number
+          currency?: string
+          expense_date?: string
+          category?: string
+          payment_method?: string | null
+          notes?: string | null
+          receipt_url?: string | null
+          paid_from_personal_budget?: boolean
+          personal_expense_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      project_feasibility_studies: {
+        Row: {
+          id: string
+          user_id: string
+          project_id: string
+          market_data: Json
+          technical_data: Json
+          financial_data: Json
+          legal_data: Json
+          feasibility_score: number
+          feasibility_status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          project_id: string
+          market_data?: Json
+          technical_data?: Json
+          financial_data?: Json
+          legal_data?: Json
+          feasibility_score?: number
+          feasibility_status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          project_id?: string
+          market_data?: Json
+          technical_data?: Json
+          financial_data?: Json
+          legal_data?: Json
+          feasibility_score?: number
+          feasibility_status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      project_financial_models: {
+        Row: {
+          id: string
+          user_id: string
+          project_id: string
+          assumptions: Json
+          revenue_streams: Json
+          cost_items: Json
+          scenarios: Json
+          forecast: Json
+          kpis: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          project_id: string
+          assumptions?: Json
+          revenue_streams?: Json
+          cost_items?: Json
+          scenarios?: Json
+          forecast?: Json
+          kpis?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          project_id?: string
+          assumptions?: Json
+          revenue_streams?: Json
+          cost_items?: Json
+          scenarios?: Json
+          forecast?: Json
+          kpis?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      project_funding_readiness: {
+        Row: {
+          id: string
+          user_id: string
+          project_id: string
+          funding_needed: number
+          currency: string
+          funding_type: string | null
+          use_of_funds: Json
+          readiness_score: number
+          checklist: Json
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          project_id: string
+          funding_needed?: number
+          currency?: string
+          funding_type?: string | null
+          use_of_funds?: Json
+          readiness_score?: number
+          checklist?: Json
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          project_id?: string
+          funding_needed?: number
+          currency?: string
+          funding_type?: string | null
+          use_of_funds?: Json
+          readiness_score?: number
+          checklist?: Json
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      project_income: {
+        Row: {
+          id: string
+          user_id: string
+          project_id: string
+          title: string
+          amount: number
+          currency: string
+          income_date: string
+          category: string
+          source: string | null
+          description: string | null
+          notes: string | null
+          transferred_to_personal_income: boolean
+          personal_income_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          project_id: string
+          title: string
+          amount?: number
+          currency?: string
+          income_date?: string
+          category?: string
+          source?: string | null
+          description?: string | null
+          notes?: string | null
+          transferred_to_personal_income?: boolean
+          personal_income_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          project_id?: string
+          title?: string
+          amount?: number
+          currency?: string
+          income_date?: string
+          category?: string
+          source?: string | null
+          description?: string | null
+          notes?: string | null
+          transferred_to_personal_income?: boolean
+          personal_income_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      project_milestones: {
+        Row: {
+          id: string
+          user_id: string
+          project_id: string
+          title: string
+          description: string | null
+          target_date: string | null
+          status: string
+          progress_percent: number
+          related_task_ids: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          project_id: string
+          title: string
+          description?: string | null
+          target_date?: string | null
+          status?: string
+          progress_percent?: number
+          related_task_ids?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          project_id?: string
+          title?: string
+          description?: string | null
+          target_date?: string | null
+          status?: string
+          progress_percent?: number
+          related_task_ids?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      project_pitch_decks: {
+        Row: {
+          id: string
+          user_id: string
+          project_id: string
+          language: string
+          deck_data: Json
+          readiness_score: number
+          source: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          project_id: string
+          language?: string
+          deck_data?: Json
+          readiness_score?: number
+          source?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          project_id?: string
+          language?: string
+          deck_data?: Json
+          readiness_score?: number
+          source?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      project_strategic_documents: {
+        Row: {
+          id: string
+          user_id: string
+          title: string | null
+          file_name: string | null
+          file_url: string | null
+          source_url: string | null
+          category: string | null
+          metadata: Json
+          project_id: string | null
+          document_type: string | null
+          type: string | null
+          file_path: string | null
+          file_type: string | null
+          file_size: number | null
+          readiness_status: string | null
+          source: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          source_url?: string | null
+          category?: string | null
+          metadata?: Json
+          project_id?: string | null
+          document_type?: string | null
+          type?: string | null
+          file_path?: string | null
+          file_type?: string | null
+          file_size?: number | null
+          readiness_status?: string | null
+          source?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          source_url?: string | null
+          category?: string | null
+          metadata?: Json
+          project_id?: string | null
+          document_type?: string | null
+          type?: string | null
+          file_path?: string | null
+          file_type?: string | null
+          file_size?: number | null
+          readiness_status?: string | null
+          source?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      project_tasks: {
+        Row: {
+          id: string
+          user_id: string
+          project_id: string
+          title: string
+          description: string | null
+          status: string
+          priority: string
+          phase: string
+          start_date: string | null
+          due_date: string | null
+          completed_at: string | null
+          assigned_to: string | null
+          estimated_cost: number
+          actual_cost: number
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          project_id: string
+          title: string
+          description?: string | null
+          status?: string
+          priority?: string
+          phase?: string
+          start_date?: string | null
+          due_date?: string | null
+          completed_at?: string | null
+          assigned_to?: string | null
+          estimated_cost?: number
+          actual_cost?: number
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          project_id?: string
+          title?: string
+          description?: string | null
+          status?: string
+          priority?: string
+          phase?: string
+          start_date?: string | null
+          due_date?: string | null
+          completed_at?: string | null
+          assigned_to?: string | null
+          estimated_cost?: number
+          actual_cost?: number
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_decisions: {
+        Row: {
+          id: string
+          user_id: string
+          decision_title: string
+          decision_type: string
+          estimated_cost: number
+          monthly_impact: number
+          expected_benefit: string | null
+          risk_level: string
+          target_date: string | null
+          notes: string | null
+          risk_score: number
+          is_recommended: boolean
+          main_reason: string | null
+          better_alternative: string | null
+          action_plan: Json | null
+          currency: string
+          title: string | null
+          amount: number
+          priority: string
+          inputs: Json
+          analysis: Json
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          decision_title?: string
+          decision_type: string
+          estimated_cost?: number
+          monthly_impact?: number
+          expected_benefit?: string | null
+          risk_level?: string
+          target_date?: string | null
+          notes?: string | null
+          risk_score?: number
+          is_recommended?: boolean
+          main_reason?: string | null
+          better_alternative?: string | null
+          action_plan?: Json | null
+          currency?: string
+          title?: string | null
+          amount?: number
+          priority?: string
+          inputs?: Json
+          analysis?: Json
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          decision_title?: string
+          decision_type?: string
+          estimated_cost?: number
+          monthly_impact?: number
+          expected_benefit?: string | null
+          risk_level?: string
+          target_date?: string | null
+          notes?: string | null
+          risk_score?: number
+          is_recommended?: boolean
+          main_reason?: string | null
+          better_alternative?: string | null
+          action_plan?: Json | null
+          currency?: string
+          title?: string | null
+          amount?: number
+          priority?: string
+          inputs?: Json
+          analysis?: Json
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      zakat_assets: {
+        Row: {
+          id: string
+          user_id: string
+          asset_name: string
+          asset_type: string
+          amount: number
+          currency: string
+          ownership_date: string | null
+          zakat_due_date: string | null
+          is_zakatable: boolean
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          asset_name: string
+          asset_type?: string
+          amount?: number
+          currency?: string
+          ownership_date?: string | null
+          zakat_due_date?: string | null
+          is_zakatable?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          asset_name?: string
+          asset_type?: string
+          amount?: number
+          currency?: string
+          ownership_date?: string | null
+          zakat_due_date?: string | null
+          is_zakatable?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      zakat_calculations: {
+        Row: {
+          id: string
+          user_id: string
+          calculation_date: string
+          currency: string
+          cash_amount: number
+          investment_amount: number
+          gold_value: number
+          silver_value: number
+          deductible_debts: number
+          net_zakat_base: number
+          nisab_method: string
+          gold_nisab_value: number
+          silver_nisab_value: number
+          selected_nisab_value: number
+          zakat_due: number
+          price_source: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          calculation_date?: string
+          currency?: string
+          cash_amount?: number
+          investment_amount?: number
+          gold_value?: number
+          silver_value?: number
+          deductible_debts?: number
+          net_zakat_base?: number
+          nisab_method?: string
+          gold_nisab_value?: number
+          silver_nisab_value?: number
+          selected_nisab_value?: number
+          zakat_due?: number
+          price_source?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          calculation_date?: string
+          currency?: string
+          cash_amount?: number
+          investment_amount?: number
+          gold_value?: number
+          silver_value?: number
+          deductible_debts?: number
+          net_zakat_base?: number
+          nisab_method?: string
+          gold_nisab_value?: number
+          silver_nisab_value?: number
+          selected_nisab_value?: number
+          zakat_due?: number
+          price_source?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
     Functions: {
       make_unique_username: {
         Args: { base_username: string }

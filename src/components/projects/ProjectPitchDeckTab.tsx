@@ -275,7 +275,7 @@ export function ProjectPitchDeckTab({ projectId, lang, onNavigateTab }: Props) {
       const session = sessionRes.data.session;
       const userId = session?.user.id;
       if (!userId) throw new Error('Unauthorized');
-      const { error } = await (supabase as any).from('project_pitch_decks').upsert({
+      const { error } = await supabase.from('project_pitch_decks').upsert({
         user_id: userId,
         project_id: projectId,
         language: lang,

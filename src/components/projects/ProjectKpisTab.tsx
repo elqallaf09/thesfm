@@ -562,14 +562,14 @@ export function ProjectKpisTab({
   const loadData = useCallback(async () => {
     setLoading(true);
     const [financialRes, feasibilityRes, taskRes, milestoneRes, documentRes, projectIncomeRes, projectExpenseRes, legacyExpenseRes] = await Promise.all([
-      (supabase as any).from('project_financial_models').select('*').eq('user_id', userId).eq('project_id', projectId).maybeSingle(),
-      (supabase as any).from('project_feasibility_studies').select('*').eq('user_id', userId).eq('project_id', projectId).maybeSingle(),
-      (supabase as any).from('project_tasks').select('*').eq('user_id', userId).eq('project_id', projectId),
-      (supabase as any).from('project_milestones').select('*').eq('user_id', userId).eq('project_id', projectId),
-      (supabase as any).from('project_documents').select('id,title,category,file_url,file_path,uploaded_at,created_at,updated_at').eq('user_id', userId).eq('project_id', projectId),
-      (supabase as any).from('project_income').select('id, amount, currency, project_id, income_date, created_at').eq('user_id', userId).eq('project_id', projectId),
-      (supabase as any).from('project_expenses').select('id, amount, currency, project_id, expense_date, created_at').eq('user_id', userId).eq('project_id', projectId),
-      (supabase as any).from('expense_items').select('id, amount, currency, enhanced, created_at').eq('user_id', userId),
+      supabase.from('project_financial_models').select('*').eq('user_id', userId).eq('project_id', projectId).maybeSingle(),
+      supabase.from('project_feasibility_studies').select('*').eq('user_id', userId).eq('project_id', projectId).maybeSingle(),
+      supabase.from('project_tasks').select('*').eq('user_id', userId).eq('project_id', projectId),
+      supabase.from('project_milestones').select('*').eq('user_id', userId).eq('project_id', projectId),
+      supabase.from('project_documents').select('id,title,category,file_url,file_path,uploaded_at,created_at,updated_at').eq('user_id', userId).eq('project_id', projectId),
+      supabase.from('project_income').select('id, amount, currency, project_id, income_date, created_at').eq('user_id', userId).eq('project_id', projectId),
+      supabase.from('project_expenses').select('id, amount, currency, project_id, expense_date, created_at').eq('user_id', userId).eq('project_id', projectId),
+      supabase.from('expense_items').select('id, amount, currency, enhanced, created_at').eq('user_id', userId),
     ]);
     setFinancialModel(financialRes.error ? null : financialRes.data as ProjectFinancialModelKpiRow | null);
     setFeasibilityStudy(feasibilityRes.error ? null : feasibilityRes.data as ProjectFeasibilityKpiRow | null);

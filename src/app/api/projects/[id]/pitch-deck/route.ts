@@ -617,16 +617,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!projectRes.data) return NextResponse.json({ success: false, error: 'Project not found' }, { status: 404 });
 
   const [feasibilityRes, financialRes, taskRes, milestoneRes, documentRes, deckRes, projectIncomeRes, projectExpenseRes, legacyExpenseRes, incomeRes] = await Promise.all([
-    (supabase as any).from('project_feasibility_studies').select('*').eq('user_id', user.id).eq('project_id', id).maybeSingle(),
-    (supabase as any).from('project_financial_models').select('*').eq('user_id', user.id).eq('project_id', id).maybeSingle(),
-    (supabase as any).from('project_tasks').select('*').eq('user_id', user.id).eq('project_id', id),
-    (supabase as any).from('project_milestones').select('*').eq('user_id', user.id).eq('project_id', id),
-    (supabase as any).from('project_documents').select('id,title,category,file_name,file_type,file_size,uploaded_at').eq('user_id', user.id).eq('project_id', id),
-    (supabase as any).from('project_pitch_decks').select('*').eq('user_id', user.id).eq('project_id', id).eq('language', language).maybeSingle(),
-    (supabase as any).from('project_income').select('id,title,amount,currency,income_date,created_at').eq('user_id', user.id).eq('project_id', id),
-    (supabase as any).from('project_expenses').select('id,title,amount,currency,expense_date,created_at').eq('user_id', user.id).eq('project_id', id),
-    (supabase as any).from('expense_items').select('id,name,amount,currency,created_at,enhanced').eq('user_id', user.id),
-    (supabase as any).from('monthly_income_sources').select('*').eq('user_id', user.id),
+    supabase.from('project_feasibility_studies').select('*').eq('user_id', user.id).eq('project_id', id).maybeSingle(),
+    supabase.from('project_financial_models').select('*').eq('user_id', user.id).eq('project_id', id).maybeSingle(),
+    supabase.from('project_tasks').select('*').eq('user_id', user.id).eq('project_id', id),
+    supabase.from('project_milestones').select('*').eq('user_id', user.id).eq('project_id', id),
+    supabase.from('project_documents').select('id,title,category,file_name,file_type,file_size,uploaded_at').eq('user_id', user.id).eq('project_id', id),
+    supabase.from('project_pitch_decks').select('*').eq('user_id', user.id).eq('project_id', id).eq('language', language).maybeSingle(),
+    supabase.from('project_income').select('id,title,amount,currency,income_date,created_at').eq('user_id', user.id).eq('project_id', id),
+    supabase.from('project_expenses').select('id,title,amount,currency,expense_date,created_at').eq('user_id', user.id).eq('project_id', id),
+    supabase.from('expense_items').select('id,name,amount,currency,created_at,enhanced').eq('user_id', user.id),
+    supabase.from('monthly_income_sources').select('*').eq('user_id', user.id),
   ]);
 
   const legacyExpenses = (legacyExpenseRes.error ? [] : legacyExpenseRes.data ?? []).filter((item: any) => {

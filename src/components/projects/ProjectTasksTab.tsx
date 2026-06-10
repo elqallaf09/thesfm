@@ -426,14 +426,14 @@ export function ProjectTasksTab({
   const loadData = useCallback(async () => {
     setLoading(true);
     const [taskRes, milestoneRes] = await Promise.all([
-      (supabase as any)
+      supabase
         .from('project_tasks')
         .select('*')
         .eq('user_id', userId)
         .eq('project_id', projectId)
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true }),
-      (supabase as any)
+      supabase
         .from('project_milestones')
         .select('*')
         .eq('user_id', userId)
@@ -503,8 +503,8 @@ export function ProjectTasksTab({
       updated_at: new Date().toISOString(),
     };
     const query = editingTask
-      ? (supabase as any).from('project_tasks').update(payload).eq('id', editingTask.id).eq('user_id', userId).select('*').single()
-      : (supabase as any).from('project_tasks').insert(payload).select('*').single();
+      ? supabase.from('project_tasks').update(payload).eq('id', editingTask.id).eq('user_id', userId).select('*').single()
+      : supabase.from('project_tasks').insert(payload).select('*').single();
     const { data, error } = await query;
     setSaving(false);
     if (error) {
@@ -533,8 +533,8 @@ export function ProjectTasksTab({
       updated_at: new Date().toISOString(),
     };
     const query = editingMilestone
-      ? (supabase as any).from('project_milestones').update(payload).eq('id', editingMilestone.id).eq('user_id', userId).select('*').single()
-      : (supabase as any).from('project_milestones').insert(payload).select('*').single();
+      ? supabase.from('project_milestones').update(payload).eq('id', editingMilestone.id).eq('user_id', userId).select('*').single()
+      : supabase.from('project_milestones').insert(payload).select('*').single();
     const { data, error } = await query;
     setSaving(false);
     if (error) {
@@ -547,7 +547,7 @@ export function ProjectTasksTab({
   };
 
   const markTaskDone = async (task: ProjectTaskRow) => {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('project_tasks')
       .update({ status: 'done', completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('id', task.id)
@@ -563,7 +563,7 @@ export function ProjectTasksTab({
 
   const deleteTask = async (task: ProjectTaskRow) => {
     if (!window.confirm(t.confirmDeleteTask)) return;
-    const { error } = await (supabase as any).from('project_tasks').delete().eq('id', task.id).eq('user_id', userId);
+    const { error } = await supabase.from('project_tasks').delete().eq('id', task.id).eq('user_id', userId);
     if (error) {
       setNotice(t.saveError);
       return;
@@ -574,7 +574,7 @@ export function ProjectTasksTab({
 
   const deleteMilestone = async (milestone: ProjectMilestoneRow) => {
     if (!window.confirm(t.confirmDeleteMilestone)) return;
-    const { error } = await (supabase as any).from('project_milestones').delete().eq('id', milestone.id).eq('user_id', userId);
+    const { error } = await supabase.from('project_milestones').delete().eq('id', milestone.id).eq('user_id', userId);
     if (error) {
       setNotice(t.saveError);
       return;

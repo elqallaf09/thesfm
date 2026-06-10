@@ -1467,40 +1467,40 @@ export default function ProjectWorkspacePage() {
     const [projectRes, savingsRes, feasibilityRes, taskRes, milestoneRes, documentsRes, financialRes, projectIncomeRes, projectExpensesRes] = await Promise.all([
       supabase.from('projects').select('*').eq('user_id', user.id).eq('id', id).maybeSingle(),
       supabase.from('savings_items').select('amount').eq('user_id', user.id),
-      (supabase as any)
+      supabase
         .from('project_feasibility_studies')
         .select('*')
         .eq('user_id', user.id)
         .eq('project_id', id)
         .maybeSingle(),
-      (supabase as any)
+      supabase
         .from('project_tasks')
         .select('*')
         .eq('user_id', user.id)
         .eq('project_id', id),
-      (supabase as any)
+      supabase
         .from('project_milestones')
         .select('*')
         .eq('user_id', user.id)
         .eq('project_id', id),
-      (supabase as any)
+      supabase
         .from('project_documents')
         .select('id,category,source_url,document_type,uploaded_at,created_at,updated_at')
         .eq('user_id', user.id)
         .eq('project_id', id),
-      (supabase as any)
+      supabase
         .from('project_financial_models')
         .select('*')
         .eq('user_id', user.id)
         .eq('project_id', id)
         .maybeSingle(),
-      (supabase as any)
+      supabase
         .from('project_income')
         .select('*')
         .eq('user_id', user.id)
         .eq('project_id', id)
         .order('income_date', { ascending: false }),
-      (supabase as any)
+      supabase
         .from('project_expenses')
         .select('*')
         .eq('user_id', user.id)
@@ -1659,7 +1659,7 @@ export default function ProjectWorkspacePage() {
       feasibility_status: feasibilityMetrics.status,
       updated_at: savedAt,
     };
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('project_feasibility_studies')
       .upsert(payload, { onConflict: 'user_id,project_id' })
       .select('id, updated_at')
@@ -1956,7 +1956,7 @@ export default function ProjectWorkspacePage() {
       updated_at: new Date().toISOString(),
     };
 
-    const projectExpenseQuery = (supabase as any).from('project_expenses');
+    const projectExpenseQuery = supabase.from('project_expenses');
     const { data, error } = editingProjectExpenseId
       ? await projectExpenseQuery.update(payload).eq('id', editingProjectExpenseId).eq('user_id', user.id).select('*').single()
       : await projectExpenseQuery.insert(payload).select('*').single();
@@ -1993,20 +1993,20 @@ export default function ProjectWorkspacePage() {
         updated_at: new Date().toISOString(),
       };
       const personalResult = createdExpense.personal_expense_id
-        ? await (supabase as any)
+        ? await supabase
           .from('expense_items')
           .update(personalPayload)
           .eq('id', createdExpense.personal_expense_id)
           .eq('user_id', user.id)
           .select('id')
           .single()
-        : await (supabase as any)
+        : await supabase
           .from('expense_items')
           .insert(personalPayload)
           .select('id')
           .single();
       if (!personalResult.error && personalResult.data?.id) {
-        await (supabase as any)
+        await supabase
           .from('project_expenses')
           .update({ personal_expense_id: personalResult.data.id })
           .eq('id', createdExpense.id)
@@ -2014,7 +2014,7 @@ export default function ProjectWorkspacePage() {
         createdExpense = { ...createdExpense, personal_expense_id: personalResult.data.id };
       }
     } else if (shouldRemoveLinkedPersonal && existingExpense?.personal_expense_id) {
-      await (supabase as any)
+      await supabase
         .from('expense_items')
         .delete()
         .eq('id', existingExpense.personal_expense_id)
@@ -2074,7 +2074,7 @@ export default function ProjectWorkspacePage() {
       updated_at: now,
     };
 
-    const projectIncomeQuery = (supabase as any).from('project_income');
+    const projectIncomeQuery = supabase.from('project_income');
     const { data, error } = editingProjectIncomeId
       ? await projectIncomeQuery.update(payload).eq('id', editingProjectIncomeId).eq('user_id', user.id).select('*').single()
       : await projectIncomeQuery.insert(payload).select('*').single();
@@ -2113,20 +2113,20 @@ export default function ProjectWorkspacePage() {
         updated_at: now,
       };
       const personalResult = createdIncome.personal_income_id
-        ? await (supabase as any)
+        ? await supabase
           .from('monthly_income_sources')
           .update(personalPayload)
           .eq('id', createdIncome.personal_income_id)
           .eq('user_id', user.id)
           .select('id')
           .single()
-        : await (supabase as any)
+        : await supabase
           .from('monthly_income_sources')
           .insert(personalPayload)
           .select('id')
           .single();
       if (!personalResult.error && personalResult.data?.id) {
-        await (supabase as any)
+        await supabase
           .from('project_income')
           .update({ personal_income_id: personalResult.data.id })
           .eq('id', createdIncome.id)
@@ -2134,7 +2134,7 @@ export default function ProjectWorkspacePage() {
         createdIncome = { ...createdIncome, personal_income_id: personalResult.data.id };
       }
     } else if (shouldRemoveLinkedPersonal && existingIncome?.personal_income_id) {
-      await (supabase as any)
+      await supabase
         .from('monthly_income_sources')
         .delete()
         .eq('id', existingIncome.personal_income_id)
@@ -2170,13 +2170,13 @@ export default function ProjectWorkspacePage() {
     if (deleteTarget.type === 'income') {
       const row = deleteTarget.row;
       if (deleteLinkedPersonal && row.personal_income_id) {
-        await (supabase as any)
+        await supabase
           .from('monthly_income_sources')
           .delete()
           .eq('id', row.personal_income_id)
           .eq('user_id', user.id);
       }
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('project_income')
         .delete()
         .eq('id', row.id)
@@ -2194,13 +2194,13 @@ export default function ProjectWorkspacePage() {
 
     const row = deleteTarget.row;
     if (deleteLinkedPersonal && row.personal_expense_id) {
-      await (supabase as any)
+      await supabase
         .from('expense_items')
         .delete()
         .eq('id', row.personal_expense_id)
         .eq('user_id', user.id);
     }
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from('project_expenses')
       .delete()
       .eq('id', row.id)
