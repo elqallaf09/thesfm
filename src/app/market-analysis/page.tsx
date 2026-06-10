@@ -57,6 +57,7 @@ import {
   canAnalyzeDirectNormalizedInput, hasUsableAnalysis, historyFromPricePoints,
   normalizeChartType, hasCompleteOhlc, pipAssetTypeTranslationKey, pipAssetName,
   getPipCalculatorAsset, pipCalculatorWarningKey, technicalEmptyStateCopy,
+  fetchMarketToolState,
 } from '@/components/market-analysis/utils';
 
 // ── Extracted panel components ─────────────────────────────────────────────

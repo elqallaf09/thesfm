@@ -347,7 +347,7 @@ export function logMarketToolPerformance(label: string, startedAt: number, meta:
   console.info('[market-analysis] section loaded', { section: label, durationMs, ...meta });
 }
 
-async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiListState<T>> {
+export async function fetchMarketToolState<T>(url: string, label = url): Promise<ApiListState<T>> {
   const startedAt = globalThis.performance.now();
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), MARKET_TOOL_REQUEST_TIMEOUT_MS);
