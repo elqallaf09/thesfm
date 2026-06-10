@@ -1,0 +1,107 @@
+import type { MarketAiInsight, MarketAnalysis, MarketAssetType, MarketHistoryPoint, MarketResult, MarketSearchItem } from '@/lib/market/marketService';
+import type { EconomicImpact, NormalizedEconomicEvent } from '@/lib/market/normalizeEconomicEvents';
+
+export type MarketServiceState = 'checking' | 'connected' | 'degraded' | 'slow' | 'not_configured' | 'unavailable';
+export type MarketViewAnalysis = MarketAnalysis & { source?: string; fallback?: boolean; fallbackReason?: string; openbbService?: MarketServiceState };
+export type WatchlistItem = { id?: string; symbol: string; assetType: MarketAssetType; name?: string | null; providerSymbol?: string | null; currency?: string | null; exchange?: string | null; country?: string | null; createdAt?: string | null };
+export type SavedAlert = { id?: string; symbol: string; assetType: MarketAssetType; alertType: AlertType; threshold: number; currency?: string | null; exchange?: string | null; country?: string | null; createdAt?: string | null };
+export type AlertType = 'above' | 'below' | 'change_exceeds' | 'rsi_above' | 'rsi_below';
+export type SelectedMarketAsset = {
+  symbol: string;
+  providerSymbol?: string;
+  name?: string;
+  assetType: MarketAssetType;
+  exchange?: string;
+  country?: string;
+  currency?: string | null;
+};
+export type PortfolioInvestment = {
+  id: string;
+  name: string;
+  amount: number;
+  currentValue: number;
+  nativeMarketValue?: number | null;
+  nativeCurrency?: string | null;
+  type?: string | null;
+  riskLevel?: string | null;
+};
+export type MarketTab = 'analyze' | 'traderTools' | 'economicCalendar' | 'sessions' | 'technicalAnalysis' | 'newsSentiment' | 'watchlist' | 'alerts' | 'comparison' | 'assetReport';
+export type MarketAiInsightView = MarketAiInsight & { riskScore?: number };
+export type MarketSearchSuggestion = MarketSearchItem & { provider?: string };
+export type MarketResultWithMeta = MarketResult & {
+  ok?: boolean;
+  code?: string;
+  message?: string;
+  openbbService?: MarketServiceState;
+  source?: string;
+  fallback?: boolean;
+  fallbackReason?: string;
+  suggestions?: unknown[];
+  correction?: string | null;
+};
+export type MarketSearchResponse = {
+  ok?: boolean;
+  success?: boolean;
+  code?: string;
+  message?: string;
+  error?: string;
+  results?: MarketSearchItem[];
+  suggestions?: unknown[];
+  resolved?: MarketSearchItem | null;
+};
+export type TraderToolsSubTab = 'risk' | 'pips' | 'lot' | 'margin' | 'performance';
+export type MarketAssetFilter = MarketAssetType | 'all';
+export type MarketPerformanceItem = {
+  symbol: string;
+  name: string;
+  price: number;
+  currency?: string | null;
+  exchange?: string | null;
+  country?: string | null;
+  change_1d: number | null;
+  change_1w: number | null;
+  change_1m: number | null;
+  asset_type: string;
+  trend?: string;
+  updated_at?: string;
+};
+export type ApiListState<T> = {
+  loading: boolean;
+  items: T[];
+  message: string;
+  updatedAt?: string;
+  code?: string;
+  symbol?: string;
+  assetType?: string;
+  provider?: string | null;
+  source?: string | null;
+  sentimentAvailable?: boolean;
+  providerStatus?: string | null;
+  cacheStatus?: string | null;
+  cached?: boolean;
+  stale?: boolean;
+  lastCheckedAt?: string | null;
+  checkedAt?: string | null;
+  providerMessage?: string | null;
+  buyPercent?: number | null;
+  sellPercent?: number | null;
+  sentimentLabel?: string | null;
+  diagnostics?: Record<string, unknown> | null;
+  loginStatus?: string | null;
+  sessionReceived?: boolean;
+  sessionUsed?: boolean;
+  sentimentStatus?: string | null;
+  communityOutlookStatus?: string | null;
+  diagnosticSource?: string | null;
+  suggestions?: string[];
+};
+export type TechnicalState = {
+  loading: boolean;
+  data: Record<string, any> | null;
+  message: string;
+  updatedAt?: string;
+  available?: Record<string, any> | null;
+  code?: string;
+  symbol?: string;
+};
+
