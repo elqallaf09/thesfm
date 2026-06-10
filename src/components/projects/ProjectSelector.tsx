@@ -568,10 +568,14 @@ export function ProjectSelector({
           flex-wrap: wrap;
           align-items: center;
           justify-content: flex-start;
-          gap: 12px;
+          gap: 10px;
           min-width: 0;
-          margin-block-start: 2px;
+          margin-block-start: 4px;
           margin-block-end: 14px;
+          padding: 10px 12px;
+          background: linear-gradient(135deg, rgba(29,140,255,.04), rgba(24,212,212,.04));
+          border: 1px solid rgba(29,140,255,.10);
+          border-radius: 16px;
         }
         .project-selector-action {
           flex: 1 1 170px;
@@ -618,10 +622,10 @@ export function ProjectSelector({
           opacity: 1;
         }
         .project-selector-action.secondary {
-          border: 1px solid rgba(24, 212, 212, .40);
-          background: rgba(236, 254, 255, .72);
-          color: #0E7490;
-          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .38);
+          border: 1.5px solid rgba(29, 140, 255, .26);
+          background: var(--sfm-card);
+          color: var(--sfm-primary-hover);
+          box-shadow: 0 4px 14px rgba(29, 140, 255, .08);
         }
         .project-selector-action svg {
           flex: 0 0 auto;
@@ -642,10 +646,10 @@ export function ProjectSelector({
           filter: saturate(1.06);
         }
         .project-selector-action.secondary:hover {
-          background: rgba(207, 250, 254, .92);
-          border-color: rgba(24, 212, 212, .58);
-          color: #155E75;
-          box-shadow: 0 12px 28px rgba(14, 116, 144, .12);
+          background: rgba(239, 246, 255, .95);
+          border-color: rgba(29, 140, 255, .50);
+          color: var(--sfm-primary);
+          box-shadow: 0 8px 22px rgba(29, 140, 255, .14);
         }
         .project-selector-action:not(.disabled):active {
           transform: translateY(0) scale(.985);

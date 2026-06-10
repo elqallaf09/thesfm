@@ -223,4 +223,5 @@ export const TR_COMMON: Record<string, TranslationEntry> = {
   common_underDevelopment: { ar:'الصفحة تحت التطوير والإنشاء', en:'This page is under development', fr:'Cette page est en cours de développement' },
   common_comingSoon: { ar:'قريباً', en:'Coming soon', fr:'Bientôt disponible' },
   common_backToDashboard: { ar:'العودة للرئيسية', en:'Back to dashboard', fr:'Retour au tableau de bord' },
+  'services.tradingCompanies.badge': { ar: 'قريباً', en: 'Coming Soon', fr: 'Bientôt' },
 };
