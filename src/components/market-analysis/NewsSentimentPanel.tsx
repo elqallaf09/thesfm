@@ -440,4 +440,3 @@ export function MarketSectionLoading({ label, cards = 3 }: { label: string; card
   );
 }
 
-function MarketAsyncToolStyles() {
