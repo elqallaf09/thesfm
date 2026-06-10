@@ -239,22 +239,6 @@ export function isGlobalDashboardFailure(failure: DashboardLoadFailure) {
   return failure.section === 'auth' || failure.section === 'profile' || !OPTIONAL_SECTIONS.has(failure.section);
 }
 
-async function fetchDashboardTable(userId: string, item: DashboardTable): Promise<{ key: DashboardKey; rows: DataRow[] }> {
-  let query = (supabase as any)
-    .from(item.table)
-    .select('*')
-    .eq('user_id', userId)
-    .limit(item.limit ?? 1000);
-
-  if (item.order) {
-    query = query.order(item.order.column, { ascending: item.order.ascending ?? false });
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-
-  return { key: item.key, rows: Array.isArray(data) ? data : [] };
-}
 
 export function ProgressBar({ value, label }: { value: number; label: string }) {
   const normalized = Math.max(0, Math.min(value, 100));

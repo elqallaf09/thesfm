@@ -143,6 +143,20 @@ const EMPTY_RECORDS = DASHBOARD_TABLES.reduce((acc, item) => {
   return acc;
 }, {} as DashboardRecords);
 
+
+async function fetchDashboardTable(userId: string, item: DashboardTable): Promise<{ key: DashboardKey; rows: DataRow[] }> {
+  let query = (supabase as any)
+    .from(item.table)
+    .select('*')
+    .eq('user_id', userId)
+    .limit(item.limit ?? 1000);
+  if (item.order) {
+    query = query.order(item.order.column, { ascending: item.order.ascending ?? false });
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return { key: item.key, rows: (data ?? []) as DataRow[] };
+}
 const TEXT = {
   ar: {
     pageTitle: 'لوحة القيادة التنفيذية',
