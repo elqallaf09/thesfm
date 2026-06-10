@@ -2407,12 +2407,13 @@ export default function BusinessHubPage() {
         return;
       }
       setLoadingModules(true);
+      const userId = user.id;
       const db = supabase as any;
       async function rows(table: string) {
         const { data, error } = await db
           .from(table)
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .eq('project_id', selectedProjectId)
           .limit(500);
         return error ? [] : (data ?? []);
