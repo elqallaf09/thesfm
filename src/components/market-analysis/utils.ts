@@ -8,11 +8,13 @@ import type {
   MarketResultWithMeta, MarketSearchSuggestion, MarketServiceState, MarketTimeframe,
   MarketViewAnalysis, PipCalculatorAsset, PipCalculatorAssetType, ScenarioCurrencyCode,
   TechnicalState, TechnicalSymbolCategory, TechnicalSymbolOption, TraderToolsSubTab,
+  ScenarioCurrencyCode, AccountCurrencyCode,
 } from './types';
 
 export type { MarketChartType, MarketTimeframe, ApiListState, TechnicalState,
   MarketSearchSuggestion, MarketAssetFilter, MarketViewAnalysis, PipCalculatorAsset,
-  PipCalculatorAssetType, TechnicalSymbolOption, TechnicalSymbolCategory };
+  PipCalculatorAssetType, TechnicalSymbolOption, TechnicalSymbolCategory,
+  ScenarioCurrencyCode, AccountCurrencyCode };
 
 export const WATCHLIST_STORAGE_KEY = 'sfm_market_watchlist';
 export const ALERTS_STORAGE_KEY = 'sfm_market_alerts';
@@ -22,9 +24,7 @@ export const MARKET_REQUEST_TIMEOUT_MS = 12000;
 export const MARKET_SLOW_NOTICE_MS = 5000;
 export const MARKET_TOOL_REQUEST_TIMEOUT_MS = 12000;
 export const MARKET_TIMEFRAMES = ['1D', '1W', '1M', '6M', '1Y'] as const;
-type MarketTimeframe = typeof MARKET_TIMEFRAMES[number];
 export const MARKET_CHART_TYPES = ['line', 'area', 'candlestick', 'ohlc'] as const;
-type MarketChartType = typeof MARKET_CHART_TYPES[number];
 export const MARKET_CHART_TYPE_STORAGE_KEY = 'sfm_market_chart_type';
 type PriceHistoryPoint = {
   time: string;
@@ -61,7 +61,6 @@ export const SCENARIO_CURRENCY_OPTIONS = [
   { code: 'EUR', symbol: '€' },
   { code: 'GBP', symbol: '£' },
 ] as const;
-type ScenarioCurrencyCode = typeof SCENARIO_CURRENCY_OPTIONS[number]['code'];
 export const ACCOUNT_CURRENCY_OPTIONS = [
   'KWD',
   'USD',
@@ -78,7 +77,6 @@ export const ACCOUNT_CURRENCY_OPTIONS = [
   'AUD',
   'NZD',
 ] as const;
-type AccountCurrencyCode = typeof ACCOUNT_CURRENCY_OPTIONS[number];
 export const QUICK_MARKET_EXAMPLES: MarketSearchItem[] = [
   { symbol: 'MSFT', providerSymbol: 'MSFT', name: 'Microsoft Corporation', assetType: 'stock', exchange: 'NASDAQ' },
   { symbol: 'NVDA', providerSymbol: 'NVDA', name: 'NVIDIA Corporation', assetType: 'stock', exchange: 'NASDAQ' },
@@ -92,13 +90,6 @@ export const QUICK_MARKET_EXAMPLES: MarketSearchItem[] = [
   { symbol: '^GSPC', providerSymbol: '^GSPC', name: 'S&P 500 Index', assetType: 'index', exchange: 'CBOE' },
   { symbol: '^IXIC', providerSymbol: '^IXIC', name: 'Nasdaq Composite', assetType: 'index', exchange: 'NASDAQ' },
 ];
-type TechnicalSymbolCategory = 'forex' | 'stocks' | 'indices' | 'metals' | 'crypto';
-type TechnicalSymbolOption = {
-  symbol: string;
-  label: string;
-  description: Record<'ar' | 'en' | 'fr', string>;
-  category: TechnicalSymbolCategory;
-};
 export const TECHNICAL_SYMBOL_CATEGORIES: TechnicalSymbolCategory[] = ['forex', 'stocks', 'indices', 'metals', 'crypto'];
 export const TECHNICAL_SYMBOL_GROUPS: Record<TechnicalSymbolCategory, TechnicalSymbolOption[]> = {
   forex: [
@@ -132,15 +123,6 @@ export const TECHNICAL_SYMBOL_GROUPS: Record<TechnicalSymbolCategory, TechnicalS
 export const TECHNICAL_SYMBOL_OPTIONS = Object.values(TECHNICAL_SYMBOL_GROUPS).flat();
 export const TECHNICAL_SYMBOL_FAVORITES_KEY = 'sfm_market_technical_favorites';
 
-type PipCalculatorAssetType = 'forex' | 'metals' | 'oil' | 'indices' | 'crypto';
-type PipCalculatorAsset = {
-  type: PipCalculatorAssetType;
-  name: Record<'ar' | 'en' | 'fr', string>;
-  symbol: string;
-  internalSymbol: string;
-  pointSize: number;
-  defaultPointValue: number;
-};
 
 export const PIP_CALCULATOR_ASSET_TYPES: PipCalculatorAssetType[] = ['forex', 'metals', 'oil', 'indices', 'crypto'];
 export const PIP_CALCULATOR_ASSETS: Record<PipCalculatorAssetType, PipCalculatorAsset[]> = {

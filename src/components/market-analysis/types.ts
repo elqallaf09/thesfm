@@ -105,3 +105,27 @@ export type TechnicalState = {
   symbol?: string;
 };
 
+
+export type MarketTimeframe = '1D' | '1W' | '1M' | '6M' | '1Y';
+export type MarketChartType = 'line' | 'area' | 'candlestick' | 'ohlc';
+
+export type ScenarioCurrencyCode = 'KWD' | 'USD' | 'SAR' | 'AED' | 'QAR' | 'BHD' | 'OMR' | 'EUR' | 'GBP';
+export type AccountCurrencyCode = 'KWD' | 'USD' | 'EUR' | 'GBP' | 'SAR' | 'AED' | 'QAR' | 'BHD' | 'OMR' | 'JPY' | 'CHF' | 'CAD' | 'AUD' | 'NZD';
+
+export type TechnicalSymbolCategory = 'forex' | 'stocks' | 'indices' | 'metals' | 'crypto';
+export type TechnicalSymbolOption = {
+  symbol: string;
+  label: string;
+  category: TechnicalSymbolCategory;
+  aliases?: string[];
+};
+
+export type PipCalculatorAssetType = 'forex' | 'metals' | 'oil' | 'indices' | 'crypto';
+export type PipCalculatorAsset = {
+  symbol: string;
+  label: string;
+  type: PipCalculatorAssetType;
+  pipSize: number;
+  contractSize: number;
+  quoteCurrency: string;
+};
