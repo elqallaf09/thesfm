@@ -1,12 +1,8 @@
 import type { NextConfig } from "next";
 
+const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || "https://www.the-sfm.com";
+
 const nextConfig: NextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   async headers() {
     return [
       {
@@ -23,7 +19,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Access-Control-Allow-Origin",
-            value: "*",
+            value: ALLOWED_ORIGIN,
           },
           {
             key: "Access-Control-Allow-Methods",
@@ -39,11 +35,11 @@ const nextConfig: NextConfig = {
           },
           {
             key: "X-Frame-Options",
-            value: "ALLOWALL",
+            value: "SAMEORIGIN",
           },
           {
             key: "Content-Security-Policy",
-            value: "frame-ancestors 'self' *",
+            value: "frame-ancestors 'self'",
           },
         ],
       },
