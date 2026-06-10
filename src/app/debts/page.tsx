@@ -503,9 +503,9 @@ export default function DebtsPage() {
     setError('');
     try {
       const [debtsResult, paymentsResult, incomeResult] = await Promise.all([
-        (supabase as any).from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-        (supabase as any).from('debt_payments').select('*').eq('user_id', user.id).order('payment_date', { ascending: false }),
-        (supabase as any).from('monthly_income_sources').select('*').eq('user_id', user.id),
+        supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('debt_payments').select('*').eq('user_id', user.id).order('payment_date', { ascending: false }),
+        supabase.from('monthly_income_sources').select('*').eq('user_id', user.id),
       ]);
 
       if (debtsResult.error) throw debtsResult.error;
@@ -704,8 +704,8 @@ export default function DebtsPage() {
     try {
       const payload = payloadFromForm(form, user.id);
       const result = form.id
-        ? await (supabase as any).from('debts').update(payload).eq('id', form.id).eq('user_id', user.id)
-        : await (supabase as any).from('debts').insert(payload);
+        ? await supabase.from('debts').update(payload).eq('id', form.id).eq('user_id', user.id)
+        : await supabase.from('debts').insert(payload);
       if (result.error) throw result.error;
       setNotice(t('saved'));
       resetForm();
@@ -727,7 +727,7 @@ export default function DebtsPage() {
       payload.calculated_remaining_amount = remainingAmount;
       payload.last_calculated_at = new Date().toISOString();
     }
-    const { error: updateError } = await (supabase as any).from('debts').update(payload).eq('id', debt.id).eq('user_id', user.id);
+    const { error: updateError } = await supabase.from('debts').update(payload).eq('id', debt.id).eq('user_id', user.id);
     if (updateError) setError(updateError.message);
     else {
       setNotice(status === 'paid' ? t('paid') : status === 'paused' ? t('paused') : t('active'));
@@ -739,7 +739,7 @@ export default function DebtsPage() {
     if (!user) return;
     const confirmed = window.confirm(`${t('delete')} - ${debt.name}?`);
     if (!confirmed) return;
-    const { error: deleteError } = await (supabase as any).from('debts').delete().eq('id', debt.id).eq('user_id', user.id);
+    const { error: deleteError } = await supabase.from('debts').delete().eq('id', debt.id).eq('user_id', user.id);
     if (deleteError) setError(deleteError.message);
     else {
       setNotice(t('deleted'));
@@ -753,7 +753,7 @@ export default function DebtsPage() {
     const paymentDate = new Date().toISOString().slice(0, 10);
     const paymentMonth = debtPaymentMonth(paymentDate);
     const nextMonth = addOneDebtMonth(paymentMonth);
-    const existing = await (supabase as any)
+    const existing = await supabase
       .from('debt_payments')
       .select('id')
       .eq('user_id', user.id)
@@ -771,7 +771,7 @@ export default function DebtsPage() {
     try {
       let expenseId: string | null = null;
       if (debt.auto_add_to_expenses !== false) {
-        const expenseExisting = await (supabase as any)
+        const expenseExisting = await supabase
           .from('expense_items')
           .select('id')
           .eq('user_id', user.id)
@@ -783,7 +783,7 @@ export default function DebtsPage() {
           .maybeSingle();
         expenseId = expenseExisting.data?.id ?? null;
         if (!expenseId) {
-          const expenseInsert = await (supabase as any).from('expense_items').insert({
+          const expenseInsert = await supabase.from('expense_items').insert({
             user_id: user.id,
             name: `${locale === 'ar' ? 'دفعة شهرية' : locale === 'fr' ? 'Mensualité' : 'Monthly payment'}: ${debt.name}`,
             amount: payment.amount,
@@ -800,7 +800,7 @@ export default function DebtsPage() {
         }
       }
 
-      const paymentInsert = await (supabase as any).from('debt_payments').insert({
+      const paymentInsert = await supabase.from('debt_payments').insert({
         user_id: user.id,
         debt_id: debt.id,
         payment_date: paymentDate,
@@ -817,7 +817,7 @@ export default function DebtsPage() {
       const recordedTotalPaid = debtPayments.reduce((sum, item) => sum + toNumber(item.amount), 0);
       const recordedTotalInterest = debtPayments.reduce((sum, item) => sum + toNumber(item.interest_amount), 0);
       const recordedTotalPrincipal = debtPayments.reduce((sum, item) => sum + toNumber(item.principal_amount), 0);
-      const update = await (supabase as any).from('debts').update({
+      const update = await supabase.from('debts').update({
         remaining_amount: payment.nextRemaining,
         calculated_remaining_amount: payment.nextRemaining,
         total_paid_amount: (debt.total_paid_amount == null ? recordedTotalPaid : toNumber(debt.total_paid_amount)) + payment.amount,
