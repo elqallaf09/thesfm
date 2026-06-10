@@ -220,4 +220,7 @@ export const TR_COMMON: Record<string, TranslationEntry> = {
   notif_empty:          { ar:'لا توجد إشعارات حالياً', en:'No notifications yet', fr:'Aucune notification pour l\'instant' },
   notif_mark_read:      { ar:'تحديد الكل كمقروء', en:'Mark all as read', fr:'Tout marquer comme lu' },
   notif_clear:          { ar:'مسح الكل', en:'Clear all', fr:'Tout effacer' },
+  common_underDevelopment: { ar:'الصفحة تحت التطوير والإنشاء', en:'This page is under development', fr:'Cette page est en cours de développement' },
+  common_comingSoon: { ar:'قريباً', en:'Coming soon', fr:'Bientôt disponible' },
+  common_backToDashboard: { ar:'العودة للرئيسية', en:'Back to dashboard', fr:'Retour au tableau de bord' },
 };

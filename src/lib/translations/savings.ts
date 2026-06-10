@@ -29,4 +29,6 @@ export const TR_SAVINGS: Record<string, TranslationEntry> = {
   savings_entry_title: { ar:'إدخار', en:'Saving', fr:'Épargne' },
   savings_report:       { ar:'تقرير الادخار', en:'Savings report', fr:'Rapport d\'épargne' },
   savings_balance:      { ar:'رصيد الادخار المسجل', en:'Recorded savings balance', fr:'Solde d\'épargne enregistré' },
+  savings_noEntriesYet: { ar:'لم تُسجّل عمليات إدخار بعد', en:'No savings recorded yet', fr:'Aucune épargne enregistrée' },
+  savings_deleteConfirmMessage: { ar:'هل أنت متأكد من حذف عملية الإدخار هذه؟', en:'Delete this saving entry?', fr:'Supprimer cette épargne ?' },
 };
