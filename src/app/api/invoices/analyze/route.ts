@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { POST as scanReceipt } from '@/app/api/receipts/scan/route';
+import { getUserFromBearerToken } from '@/lib/server/adminAccess';
+import { cookies } from 'next/headers';
 
 export const runtime = 'nodejs';
 
@@ -190,7 +192,21 @@ function scanErrorToInvoiceError(scan: ScanResponse, status: number) {
   return errorResponse('OCR_FAILED', 'تعذر قراءة الفاتورة. حاول رفع صورة أوضح أو أدخل البيانات يدوياً.', status || 400);
 }
 
+async function getAuthUser(request: NextRequest) {
+  const header = request.headers.get('authorization') ?? '';
+  const bearerToken = header.toLowerCase().startsWith('bearer ') ? header.slice(7).trim() : null;
+  const cookieStore = await cookies();
+  const cookieToken = cookieStore.get('sfm_access_token')?.value ?? null;
+  return getUserFromBearerToken(bearerToken || cookieToken);
+}
+
 export async function POST(request: NextRequest) {
+  // Auth check — only logged-in users
+  const user = await getAuthUser(request);
+  if (!user) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') || formData.get('invoice') || formData.get('receipt');

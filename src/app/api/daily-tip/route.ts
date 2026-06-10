@@ -1,7 +1,9 @@
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { getUserFromBearerToken } from '@/lib/server/adminAccess';
+import { cookies } from 'next/headers';
 
 const getProvider = () => {
   const gatewayToken = process.env.AI_GATEWAY_TOKEN;
@@ -15,7 +17,25 @@ const getProvider = () => {
   return createAnthropic({ apiKey: anthropicKey || '' });
 };
 
-export async function GET() {
+async function getAuthUser(request: NextRequest) {
+  const header = request.headers.get('authorization') ?? '';
+  const bearerToken = header.toLowerCase().startsWith('bearer ') ? header.slice(7).trim() : null;
+  const cookieStore = await cookies();
+  const cookieToken = cookieStore.get('sfm_access_token')?.value ?? null;
+  return getUserFromBearerToken(bearerToken || cookieToken);
+}
+
+export async function GET(request: NextRequest) {
+  // Auth check — only logged-in users
+  const user = await getAuthUser(request);
+  if (!user) {
+    return NextResponse.json({ tip: null }, { status: 401 });
+  }
+
+  // Rate limit: max 10 requests per hour per user
+  const limited = await rateLimitRequest(request, { max: 10, windowMs: 60 * 60 * 1000 });
+  if (limited) return limited;
+
   try {
     const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
     const anthropic = getProvider();
