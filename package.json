@@ -11,7 +11,11 @@
     "lint": "eslint .",
     "symbols:sync": "node scripts/sync-market-symbols.mjs",
     "symbols:sync:kw": "node scripts/sync-market-symbols.mjs --only=boursa-kuwait",
-    "symbols:validate": "node scripts/validate-market-symbols.mjs"
+    "symbols:validate": "node scripts/validate-market-symbols.mjs",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
@@ -87,6 +91,10 @@
     "eslint-config-next": "^15.2.4",
     "sharp": "^0.34.5",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "@vitest/ui": "^2.0.0",
+    "vite-tsconfig-paths": "^5.0.0"
   }
 }
