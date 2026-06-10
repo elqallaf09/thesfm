@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createServerSupabaseAdmin();
+  if (!supabase) return NextResponse.json({ error: 'Server configuration error' }, { status: 503 });
   const { error } = await supabase
     .from('company_listings')
     .update({

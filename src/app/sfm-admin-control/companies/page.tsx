@@ -13,6 +13,7 @@ export default async function AdminCompaniesPage() {
   if (!isAdminEmail(user.email)) redirect('/dashboard');
 
   const supabase = createServerSupabaseAdmin();
+  if (!supabase) redirect('/dashboard');
   const { data: companies, error } = await supabase
     .from('company_listings')
     .select('id, company_name, category, country, city, status, admin_notes, reviewed_at, reviewed_by, created_at, email, website_url, short_description, logo_url')
