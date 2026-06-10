@@ -37,7 +37,7 @@ import { formatMoney } from '@/lib/formatMoney';
 import { calculateGoalProgress } from '@/lib/goalProgress';
 import { parseMoneyValue } from '@/lib/money';
 import {
-  CardShell, MetricCard, SmallStat, ActionLink, EmptyState, ProgressBar,
+  type DataRow, CardShell, MetricCard, SmallStat, ActionLink, EmptyState, ProgressBar,
   normalizeDashboardError, logDashboardFailure, isGlobalDashboardFailure,
   numberValue, firstNumber, firstText, firstDate, parseRecordDate,
   isCurrentMonth, daysUntil, isOpenStatus, isTaskOverdue, goalProgress,
