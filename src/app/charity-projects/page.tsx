@@ -23,7 +23,6 @@ import {
   X,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
-import { CurrencySelect } from '@/components/CurrencySelect';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { PageTabs } from '@/components/layout/PageTabs';
@@ -36,6 +35,12 @@ import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData'
 import type { Lang, CharityProject, ZakatAsset, Commitment, ProjectDonation, CharityDocument, ReminderType, ReminderStatus, ReminderPriority, BeneficiaryCategory, BeneficiaryStatus, ContributorRole, PaymentStatus, AssetType, DocumentCategory, CharityOrganization, CharityImpactMetric, CharityReminder, MetalsPriceResponse, ZakatCalculation, CharityBeneficiary, CharityContributor, CharityProjectsTab, OrganizationType, VerificationStatus, ProjectCategory, ProjectStatus } from './_types';
 import { TEXT } from './_text';
 import { categories, statuses, assetTypes, documentCategories, reminderTypes, reminderPriorities, beneficiaryCategories, beneficiaryStatuses, contributorRoles, paymentStatuses, organizationTypes, verificationStatuses, goldKarats, nonZakatOptions, allowedDocumentTypes, maxDocumentSize, templates, today, addYear, addDays, daysUntil, toNum, recordDate, isYear, isCurrentMonth, formatFileSize, cleanFileName, estimatedHijriDate } from './_utils';
+import { ProjectModal } from './_ProjectModal';
+import { ReminderModal } from './_ReminderModal';
+import { DocumentModal } from './_DocumentModal';
+import { BeneficiaryModal, BeneficiaryDetailsModal } from './_BeneficiaryModal';
+import { ContributorModal } from './_ContributorModal';
+import { CharityStyles } from './_styles';
 
 export default function CharityProjectsPage() {
   const router = useRouter();
@@ -2003,284 +2008,111 @@ export default function CharityProjectsPage() {
         </section>
       </DashboardPageShell>
 
-      {projectOpen && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="modal">
-            <div className="modal-head"><h2>{tr.newProject}</h2><button aria-label={tr.cancel} onClick={() => setProjectOpen(false)}><X size={18} /></button></div>
-            <div className="form-grid">
-              <label className="wide"><span>{tr.projectName}</span><input value={projectForm.name} onChange={e => setProjectForm(prev => ({ ...prev, name: e.target.value }))} /></label>
-              <label><span>{tr.category}</span><select value={projectForm.category} onChange={e => setProjectForm(prev => ({ ...prev, category: e.target.value as ProjectCategory }))}>{categories.map(category => <option key={category} value={category}>{tr[category]}</option>)}</select></label>
-              <label><span>{tr.status}</span><select value={projectForm.status} onChange={e => setProjectForm(prev => ({ ...prev, status: e.target.value as ProjectStatus }))}>{statuses.map(status => <option key={status} value={status}>{tr[status]}</option>)}</select></label>
-              <label><span>{tr.target}</span><input inputMode="decimal" value={projectForm.target_amount} onChange={e => setProjectForm(prev => ({ ...prev, target_amount: e.target.value }))} /></label>
-              <label><span>{tr.collected}</span><input inputMode="decimal" value={projectForm.collected_amount} onChange={e => setProjectForm(prev => ({ ...prev, collected_amount: e.target.value }))} /></label>
-              <div className="currency-field"><CurrencySelect value={projectForm.currency || 'KWD'} onChange={value => setProjectForm(prev => ({ ...prev, currency: value }))} lang={lang} label={tr.currency} ariaLabel={tr.currency} /></div>
-              <label><span>{tr.startDate}</span><input type="date" value={projectForm.start_date} onChange={e => setProjectForm(prev => ({ ...prev, start_date: e.target.value }))} /></label>
-              <label><span>{tr.endDate}</span><input type="date" value={projectForm.end_date} onChange={e => setProjectForm(prev => ({ ...prev, end_date: e.target.value }))} /></label>
-              <label className="wide">
-                <span>{tr.selectExecutingOrganization}</span>
-                <select
-                  value={projectForm.organization_id}
-                  disabled={manualOrganization}
-                  onChange={e => {
-                    const organization = organizationById[e.target.value];
-                    setProjectForm(prev => ({ ...prev, organization_id: e.target.value, organization_name: organizationName(organization) }));
-                  }}
-                >
-                  <option value="">-</option>
-                  {organizations.map(organization => <option key={organization.id} value={organization.id}>{organizationName(organization)} - {verificationLabel(organization.verification_status)}</option>)}
-                </select>
-              </label>
-              {selectedOrganization && selectedOrganization.verification_status !== 'verified' && <p className="privacy-note wide">{tr.unverifiedOrganizationWarning}</p>}
-              <label className="check-row wide">
-                <input type="checkbox" checked={manualOrganization} onChange={e => {
-                  setManualOrganization(e.target.checked);
-                  if (e.target.checked) setProjectForm(prev => ({ ...prev, organization_id: '' }));
-                }} />
-                <span>{tr.manualOrganizationEntry}</span>
-              </label>
-              {manualOrganization && <label className="wide"><span>{tr.organization}</span><input value={projectForm.organization_name} onChange={e => setProjectForm(prev => ({ ...prev, organization_name: e.target.value }))} /></label>}
-              <label className="wide"><span>{tr.notes}</span><textarea value={projectForm.notes} onChange={e => setProjectForm(prev => ({ ...prev, notes: e.target.value }))} /></label>
-              <div className="modal-actions"><button className="ghost-btn" onClick={() => setProjectOpen(false)}>{tr.cancel}</button><button className="gold-btn" disabled={saving} onClick={saveProject}>{tr.saveProject}</button></div>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {reminderOpen && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="modal">
-            <div className="modal-head">
-              <h2>{tr.addReminder}</h2>
-              <button aria-label={tr.cancel} onClick={() => { setReminderOpen(false); resetReminderForm(); }}><X size={18} /></button>
-            </div>
-            <div className="form-grid">
-              <label className="wide">
-                <span>{tr.reminderTitle}</span>
-                <input value={reminderForm.title} onChange={e => setReminderForm(prev => ({ ...prev, title: e.target.value }))} />
-              </label>
-              <label>
-                <span>{tr.reminderType}</span>
-                <select value={reminderForm.reminder_type} onChange={e => setReminderForm(prev => ({ ...prev, reminder_type: e.target.value as ReminderType }))}>
-                  {reminderTypes.map(type => <option key={type} value={type}>{reminderTypeLabel(type)}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>{tr.dueDate}</span>
-                <input type="date" value={reminderForm.due_date} onChange={e => setReminderForm(prev => ({ ...prev, due_date: e.target.value }))} />
-              </label>
-              <label>
-                <span>{tr.remindBefore}</span>
-                <input inputMode="numeric" value={reminderForm.remind_before_days} onChange={e => setReminderForm(prev => ({ ...prev, remind_before_days: e.target.value }))} />
-              </label>
-              <label>
-                <span>{tr.priority}</span>
-                <select value={reminderForm.priority} onChange={e => setReminderForm(prev => ({ ...prev, priority: e.target.value as ReminderPriority }))}>
-                  {reminderPriorities.map(priority => <option key={priority} value={priority}>{tr[priority]}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>{tr.linkProject}</span>
-                <select value={reminderForm.related_project_id} onChange={e => setReminderForm(prev => ({ ...prev, related_project_id: e.target.value }))}>
-                  <option value="">-</option>
-                  {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>{tr.linkZakatAsset}</span>
-                <select value={reminderForm.related_zakat_asset_id} onChange={e => setReminderForm(prev => ({ ...prev, related_zakat_asset_id: e.target.value }))}>
-                  <option value="">-</option>
-                  {assets.map(asset => <option key={asset.id} value={asset.id}>{asset.asset_name}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>{tr.linkCommitment}</span>
-                <select value={reminderForm.related_commitment_id} onChange={e => setReminderForm(prev => ({ ...prev, related_commitment_id: e.target.value }))}>
-                  <option value="">-</option>
-                  {commitments.map(commitment => <option key={commitment.id} value={commitment.id}>{commitment.name}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>{tr.hijriDate}</span>
-                <input value={estimatedHijriDate(reminderForm.due_date, lang as Lang) || tr.hijriEstimated} readOnly />
-              </label>
-              <label className="wide">
-                <span>{tr.notes}</span>
-                <textarea value={reminderForm.notes} onChange={e => setReminderForm(prev => ({ ...prev, notes: e.target.value }))} />
-              </label>
-              <div className="modal-actions">
-                <button className="ghost-btn" onClick={() => { setReminderOpen(false); resetReminderForm(); }}>{tr.cancel}</button>
-                <button className="gold-btn" disabled={saving} onClick={saveReminder}>{tr.addReminder}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ProjectModal
+        open={projectOpen}
+        onClose={() => setProjectOpen(false)}
+        tr={tr as Record<string, string>}
+        lang={lang}
+        projectForm={projectForm}
+        setProjectForm={setProjectForm}
+        organizations={organizations}
+        organizationById={organizationById}
+        organizationName={organizationName}
+        verificationLabel={verificationLabel}
+        selectedOrganization={selectedOrganization ?? undefined}
+        manualOrganization={manualOrganization}
+        setManualOrganization={setManualOrganization}
+        saving={saving}
+        saveProject={saveProject}
+        categories={categories}
+        statuses={statuses}
+      />
 
-      {documentOpen && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="modal">
-            <div className="modal-head">
-              <h2>{tr.uploadDocument}</h2>
-              <button aria-label={tr.cancel} onClick={() => setDocumentOpen(false)}><X size={18} /></button>
-            </div>
-            <div className="form-grid">
-              <label className="wide">
-                <span>{tr.documentTitle}</span>
-                <input value={documentForm.title} onChange={e => setDocumentForm(prev => ({ ...prev, title: e.target.value }))} />
-              </label>
-              <label>
-                <span>{tr.documentCategory}</span>
-                <select value={documentForm.category} onChange={e => setDocumentForm(prev => ({ ...prev, category: e.target.value as DocumentCategory }))}>
-                  {documentCategories.map(category => <option key={category} value={category}>{tr[category]}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>{tr.linkProject}</span>
-                <select value={documentForm.project_id} onChange={e => setDocumentForm(prev => ({ ...prev, project_id: e.target.value }))}>
-                  <option value="">-</option>
-                  {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>{tr.linkDonation}</span>
-                <select value={documentForm.donation_id} onChange={e => setDocumentForm(prev => ({ ...prev, donation_id: e.target.value }))}>
-                  <option value="">-</option>
-                  {donations.map(donation => {
-                    const projectName = projects.find(project => project.id === donation.project_id)?.name ?? tr.linkedDonations;
-                    return <option key={donation.id} value={donation.id}>{projectName} - {money(toNum(donation.amount), donation.currency)}</option>;
-                  })}
-                </select>
-              </label>
-              <label>
-                <span>{tr.linkZakatAsset}</span>
-                <select value={documentForm.zakat_asset_id} onChange={e => setDocumentForm(prev => ({ ...prev, zakat_asset_id: e.target.value }))}>
-                  <option value="">-</option>
-                  {assets.map(asset => <option key={asset.id} value={asset.id}>{asset.asset_name}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>{tr.linkCommitment}</span>
-                <select value={documentForm.commitment_id} onChange={e => setDocumentForm(prev => ({ ...prev, commitment_id: e.target.value }))}>
-                  <option value="">-</option>
-                  {commitments.map(commitment => <option key={commitment.id} value={commitment.id}>{commitment.name}</option>)}
-                </select>
-              </label>
-              <label className="wide">
-                <span>{tr.chooseFile}</span>
-                <input
-                  type="file"
-                  accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
-                  onChange={e => {
-                    const file = e.target.files?.[0] ?? null;
-                    setDocumentFile(file);
-                    if (file && !documentForm.title.trim()) {
-                      setDocumentForm(prev => ({ ...prev, title: file.name.replace(/\.[^.]+$/, '') }));
-                    }
-                  }}
-                />
-              </label>
-              {documentFile && (
-                <div className="file-chip wide">
-                  <FileText size={16} />
-                  <span>{documentFile.name}</span>
-                  <small>{formatFileSize(documentFile.size)}</small>
-                  <button type="button" onClick={() => setDocumentFile(null)} aria-label={tr.deleteDocument}><X size={14} /></button>
-                </div>
-              )}
-              <label className="wide">
-                <span>{tr.notes}</span>
-                <textarea value={documentForm.notes} onChange={e => setDocumentForm(prev => ({ ...prev, notes: e.target.value }))} />
-              </label>
-              <div className="modal-actions">
-                <button className="ghost-btn" onClick={() => setDocumentOpen(false)}>{tr.cancel}</button>
-                <button className="gold-btn" disabled={uploadingDocument} onClick={uploadDocument}>{tr.uploadDocument}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ReminderModal
+        open={reminderOpen}
+        onClose={() => setReminderOpen(false)}
+        tr={tr as Record<string, string>}
+        lang={lang}
+        reminderForm={reminderForm}
+        setReminderForm={setReminderForm}
+        projects={projects}
+        assets={assets}
+        commitments={commitments}
+        saving={saving}
+        saveReminder={saveReminder}
+        resetReminderForm={resetReminderForm}
+        reminderTypeLabel={reminderTypeLabel}
+        reminderTypes={reminderTypes}
+        reminderPriorities={reminderPriorities}
+      />
 
-      {beneficiaryOpen && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="modal">
-            <div className="modal-head">
-              <h2>{tr.addBeneficiary}</h2>
-              <button aria-label={tr.cancel} onClick={() => { setBeneficiaryOpen(false); resetBeneficiaryForm(); }}><X size={18} /></button>
-            </div>
-            <div className="form-grid">
-              <label><span>{tr.shortName}</span><input value={beneficiaryForm.display_name} onChange={e => setBeneficiaryForm(prev => ({ ...prev, display_name: e.target.value }))} /></label>
-              <label><span>{tr.referenceNumber}</span><input value={beneficiaryForm.reference_code} onChange={e => setBeneficiaryForm(prev => ({ ...prev, reference_code: e.target.value }))} /></label>
-              <label><span>{tr.beneficiaryType}</span><select value={beneficiaryForm.category} onChange={e => setBeneficiaryForm(prev => ({ ...prev, category: e.target.value as BeneficiaryCategory }))}>{beneficiaryCategories.map(category => <option key={category} value={category}>{tr[category]}</option>)}</select></label>
-              <label><span>{tr.linkedProject}</span><select value={beneficiaryForm.project_id} onChange={e => setBeneficiaryForm(prev => ({ ...prev, project_id: e.target.value }))}><option value="">-</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
-              <label><span>{tr.responsibleOrg}</span><input value={beneficiaryForm.organization_name} onChange={e => setBeneficiaryForm(prev => ({ ...prev, organization_name: e.target.value }))} /></label>
-              <label><span>{tr.country}</span><input value={beneficiaryForm.country} onChange={e => setBeneficiaryForm(prev => ({ ...prev, country: e.target.value }))} /></label>
-              <label><span>{tr.city}</span><input value={beneficiaryForm.city} onChange={e => setBeneficiaryForm(prev => ({ ...prev, city: e.target.value }))} /></label>
-              <label><span>{tr.monthlySupport}</span><input inputMode="decimal" value={beneficiaryForm.monthly_support_amount} onChange={e => setBeneficiaryForm(prev => ({ ...prev, monthly_support_amount: e.target.value }))} /></label>
-              <div className="currency-field"><CurrencySelect value={beneficiaryForm.currency || 'KWD'} onChange={value => setBeneficiaryForm(prev => ({ ...prev, currency: value }))} lang={lang} label={tr.currency} ariaLabel={tr.currency} /></div>
-              <label><span>{tr.sponsorshipStart}</span><input type="date" value={beneficiaryForm.sponsorship_start_date} onChange={e => setBeneficiaryForm(prev => ({ ...prev, sponsorship_start_date: e.target.value }))} /></label>
-              <label><span>{tr.sponsorshipEnd}</span><input type="date" value={beneficiaryForm.sponsorship_end_date} onChange={e => setBeneficiaryForm(prev => ({ ...prev, sponsorship_end_date: e.target.value }))} /></label>
-              <label><span>{tr.nextRenewal}</span><input type="date" value={beneficiaryForm.next_renewal_date} onChange={e => setBeneficiaryForm(prev => ({ ...prev, next_renewal_date: e.target.value }))} /></label>
-              <label><span>{tr.status}</span><select value={beneficiaryForm.status} onChange={e => setBeneficiaryForm(prev => ({ ...prev, status: e.target.value as BeneficiaryStatus }))}>{beneficiaryStatuses.map(status => <option key={status} value={status}>{tr[status]}</option>)}</select></label>
-              <label className="wide"><span>{tr.notes}</span><textarea value={beneficiaryForm.notes} onChange={e => setBeneficiaryForm(prev => ({ ...prev, notes: e.target.value }))} /></label>
-              <p className="privacy-note wide">{tr.privacyNote}</p>
-              <div className="modal-actions">
-                <button className="ghost-btn" onClick={() => { setBeneficiaryOpen(false); resetBeneficiaryForm(); }}>{tr.cancel}</button>
-                <button className="gold-btn" disabled={saving} onClick={saveBeneficiary}>{tr.addBeneficiary}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <DocumentModal
+        open={documentOpen}
+        onClose={() => setDocumentOpen(false)}
+        tr={tr as Record<string, string>}
+        projects={projects}
+        donations={donations}
+        assets={assets}
+        commitments={commitments}
+        documentForm={documentForm}
+        setDocumentForm={setDocumentForm}
+        documentFile={documentFile}
+        setDocumentFile={setDocumentFile}
+        uploadingDocument={uploadingDocument}
+        uploadDocument={uploadDocument}
+        money={money}
+        toNum={toNum}
+        formatFileSize={formatFileSize}
+        documentCategories={documentCategories}
+      />
 
-      {contributorOpen && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="modal">
-            <div className="modal-head">
-              <h2>{tr.addContributor}</h2>
-              <button aria-label={tr.cancel} onClick={() => { setContributorOpen(false); resetContributorForm(); }}><X size={18} /></button>
-            </div>
-            <div className="form-grid">
-              <label className="wide"><span>{tr.linkedProject}</span><select value={contributorForm.project_id} onChange={e => setContributorForm(prev => ({ ...prev, project_id: e.target.value }))}><option value="">-</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
-              <label><span>{tr.contributorName}</span><input value={contributorForm.contributor_name} onChange={e => setContributorForm(prev => ({ ...prev, contributor_name: e.target.value }))} /></label>
-              <label><span>{tr.emailOptional}</span><input type="email" value={contributorForm.contributor_email} onChange={e => setContributorForm(prev => ({ ...prev, contributor_email: e.target.value }))} /></label>
-              <label><span>{tr.role}</span><select value={contributorForm.role} onChange={e => setContributorForm(prev => ({ ...prev, role: e.target.value as ContributorRole }))}>{contributorRoles.map(role => <option key={role} value={role}>{tr[role]}</option>)}</select></label>
-              <label><span>{tr.paymentStatus}</span><select value={contributorForm.payment_status} onChange={e => setContributorForm(prev => ({ ...prev, payment_status: e.target.value as PaymentStatus }))}>{paymentStatuses.map(status => <option key={status} value={status}>{tr[status]}</option>)}</select></label>
-              <label><span>{tr.pledgedAmount}</span><input inputMode="decimal" value={contributorForm.pledged_amount} onChange={e => setContributorForm(prev => ({ ...prev, pledged_amount: e.target.value }))} /></label>
-              <label><span>{tr.paidAmount}</span><input inputMode="decimal" value={contributorForm.paid_amount} onChange={e => setContributorForm(prev => ({ ...prev, paid_amount: e.target.value }))} /></label>
-              <div className="currency-field"><CurrencySelect value={contributorForm.currency || 'KWD'} onChange={value => setContributorForm(prev => ({ ...prev, currency: value }))} lang={lang} label={tr.currency} ariaLabel={tr.currency} /></div>
-              <label><span>{tr.dueDate}</span><input type="date" value={contributorForm.due_date} onChange={e => setContributorForm(prev => ({ ...prev, due_date: e.target.value }))} /></label>
-              <label className="wide"><span>{tr.notes}</span><textarea value={contributorForm.notes} onChange={e => setContributorForm(prev => ({ ...prev, notes: e.target.value }))} /></label>
-              <p className="privacy-note wide">{tr.invitationsSoon}</p>
-              <div className="modal-actions">
-                <button className="ghost-btn" onClick={() => { setContributorOpen(false); resetContributorForm(); }}>{tr.cancel}</button>
-                <button className="gold-btn" disabled={saving} onClick={saveContributor}>{tr.addContributor}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <BeneficiaryModal
+        open={beneficiaryOpen}
+        onClose={() => setBeneficiaryOpen(false)}
+        tr={tr as Record<string, string>}
+        lang={lang}
+        beneficiaryForm={beneficiaryForm}
+        setBeneficiaryForm={setBeneficiaryForm}
+        projects={projects}
+        documents={documents}
+        saving={saving}
+        saveBeneficiary={saveBeneficiary}
+        resetBeneficiaryForm={resetBeneficiaryForm}
+        beneficiaryDetails={beneficiaryDetails}
+        setBeneficiaryDetails={setBeneficiaryDetails}
+        money={money}
+        toNum={toNum}
+        dateLabel={dateLabel}
+        beneficiaryCategories={beneficiaryCategories}
+        beneficiaryStatuses={beneficiaryStatuses}
+      />
 
-      {beneficiaryDetails && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="modal small">
-            <div className="modal-head">
-              <h2>{beneficiaryDetails.display_name}</h2>
-              <button aria-label={tr.cancel} onClick={() => setBeneficiaryDetails(null)}><X size={18} /></button>
-            </div>
-            <div className="details-list">
-              <p><b>{tr.referenceNumber}</b><span>{beneficiaryDetails.reference_code || '-'}</span></p>
-              <p><b>{tr.beneficiaryType}</b><span>{tr[beneficiaryDetails.category]}</span></p>
-              <p><b>{tr.linkedProject}</b><span>{projects.find(project => project.id === beneficiaryDetails.project_id)?.name || '-'}</span></p>
-              <p><b>{tr.monthlySupport}</b><span>{money(toNum(beneficiaryDetails.monthly_support_amount), beneficiaryDetails.currency)}</span></p>
-              <p><b>{tr.sponsorshipStart}</b><span>{dateLabel(beneficiaryDetails.sponsorship_start_date)}</span></p>
-              <p><b>{tr.sponsorshipEnd}</b><span>{dateLabel(beneficiaryDetails.sponsorship_end_date)}</span></p>
-              <p><b>{tr.nextRenewal}</b><span>{dateLabel(beneficiaryDetails.next_renewal_date)}</span></p>
-              <p><b>{tr.linkedDocuments}</b><span>{documents.filter(document => document.project_id && document.project_id === beneficiaryDetails.project_id).length}</span></p>
-              {beneficiaryDetails.notes && <p><b>{tr.notes}</b><span>{beneficiaryDetails.notes}</span></p>}
-            </div>
-          </div>
-        </div>
-      )}
+      <BeneficiaryDetailsModal
+        beneficiaryDetails={beneficiaryDetails}
+        setBeneficiaryDetails={setBeneficiaryDetails}
+        tr={tr as Record<string, string>}
+        projects={projects}
+        documents={documents}
+        money={money}
+        toNum={toNum}
+        dateLabel={dateLabel}
+      />
+
+      <ContributorModal
+        open={contributorOpen}
+        onClose={() => setContributorOpen(false)}
+        tr={tr as Record<string, string>}
+        lang={lang}
+        contributorForm={contributorForm}
+        setContributorForm={setContributorForm}
+        projects={projects}
+        saving={saving}
+        saveContributor={saveContributor}
+        resetContributorForm={resetContributorForm}
+        contributorRoles={contributorRoles}
+        paymentStatuses={paymentStatuses}
+      />
 
       {donationProject && (
         <div className="modal-backdrop" role="dialog" aria-modal="true">
@@ -2292,33 +2124,7 @@ export default function CharityProjectsPage() {
         </div>
       )}
 
-      <style jsx>{`
-        .charity-projects-page{min-height:100vh;background:var(--sfm-background);color:var(--sfm-deep-navy);font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}
-        .charity-projects-content{display:grid;gap:18px;width:100%;max-width:100%;min-width:0}
-        .charity-projects-content > *,.summary-grid > *,.main-grid > *,.split-grid > *,.template-grid > *,.project-grid > *,.calendar-grid > *,.reminder-grid > *{min-width:0}
-        .cp-hero{width:100%;max-width:100%;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;border-radius:26px;padding:30px;background:radial-gradient(circle at 18% 20%,rgba(24,212,212,.28),transparent 28%),linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark) 58%,var(--sfm-card-dark) 140%);color:var(--sfm-card);box-shadow:0 18px 48px rgba(3,18,37,.18);overflow:hidden}
-        .cp-hero span{color:var(--sfm-soft-cyan);font-size:12px;font-weight:800}.cp-hero h1{margin:8px 0;font-size:clamp(32px,5vw,54px);font-weight:900}.cp-hero p{max-width:760px;color:rgba(234,246,255,.78);font-size:16px;line-height:1.8}.hero-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-        button,a{font-family:inherit}.gold-btn,.dark-btn,.ghost-btn,.mini-gold,.primary-wide{border:0;border-radius:14px;min-height:44px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:800;cursor:pointer;text-decoration:none}.gold-btn,.mini-gold,.primary-wide{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:var(--sfm-deep-navy)}.dark-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:var(--sfm-card)}.ghost-btn{background:var(--sfm-card);border:1px solid rgba(29,140,255,.22);color:var(--sfm-midnight)}.mini-gold{min-height:36px;font-size:12px}
-        .notice{border:1px solid rgba(29,140,255,.2);background:var(--sfm-light-card);color:var(--sfm-primary-hover);border-radius:14px;padding:12px 14px;font-weight:800}.warm-card{background:var(--sfm-card);border:1px solid rgba(29,140,255,.14);border-radius:22px;padding:20px;box-shadow:0 8px 26px rgba(3,18,37,.05)}
-        .summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.summary-card{display:grid;gap:8px}.summary-card span{width:40px;height:40px;border-radius:14px;background:rgba(29,140,255,.10);color:var(--sfm-primary);display:grid;place-items:center}.summary-card small,.section-head small{color:#8A6A55;font-weight:800}.summary-card strong{font-size:20px;color:var(--sfm-midnight);overflow-wrap:anywhere}
-        .main-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:18px}.main-grid > #zakat-calculator,.main-grid > #zakat-calculator + .span-5{display:none}.zakat-shortcut-card{align-self:start}.zakat-shortcut-card .primary-wide{margin-top:14px}.span-7,.span-5{grid-column:auto}.split-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}.section-head h2{margin:0;color:var(--sfm-midnight);font-size:21px}.section-head svg{color:var(--sfm-primary)}
-        .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid.one{grid-template-columns:1fr}.form-grid label,.impact-input,.currency-field{display:grid;gap:7px;color:var(--sfm-midnight);font-size:13px;font-weight:800;min-width:0}.form-grid input,.form-grid select,.form-grid textarea,.impact-input input{width:100%;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:var(--sfm-background);color:var(--sfm-deep-navy);min-height:46px;padding:0 12px;outline:none}.form-grid textarea{min-height:92px;padding-top:12px;resize:vertical}.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus,.impact-input input:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.15);background:var(--sfm-card)}.wide{grid-column:1/-1}.check-row{display:flex!important;align-items:center;gap:9px}.check-row input{width:18px!important;min-height:18px!important}.primary-wide{width:100%}
-        .zakat-premium-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr) minmax(280px,.82fr);gap:14px;align-items:start}.zakat-panel{display:grid;gap:14px;border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);border-radius:20px;padding:16px;min-width:0}.zakat-panel h3,.zakat-history h3{margin:0;color:var(--sfm-midnight);font-size:17px}.asset-input-box,.non-zakat-box,.manual-price-box,.hawl-mini-list{border:1px solid rgba(29,140,255,.13);background:var(--sfm-card);border-radius:16px;padding:13px;display:grid;gap:10px;min-width:0}.asset-input-box strong,.non-zakat-box strong,.hawl-mini-list strong{color:var(--sfm-midnight)}.non-zakat-box p,.manual-price-box p{margin:0;color:var(--sfm-muted);line-height:1.7;font-size:13px}.chip-grid{display:flex;flex-wrap:wrap;gap:8px}.chip{border:1px solid rgba(29,140,255,.2);background:var(--sfm-light-card);color:var(--sfm-midnight);border-radius:999px;min-height:36px;padding:0 12px;font-weight:900;cursor:pointer}.chip.active{background:var(--sfm-midnight);color:var(--sfm-card);border-color:var(--sfm-midnight)}.other-asset-input{display:grid;gap:7px;color:var(--sfm-midnight);font-weight:800}.other-asset-input input{width:100%;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:var(--sfm-background);color:var(--sfm-deep-navy);min-height:44px;padding:0 12px;outline:none}.price-status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.price-card{background:var(--sfm-midnight);border:1px solid rgba(167,243,240,.18);border-radius:16px;padding:14px;color:var(--sfm-card);min-width:0}.price-card small,.price-card span{display:block;color:var(--sfm-soft-cyan);font-weight:800}.price-card strong{display:block;margin:5px 0;color:var(--sfm-card);font-size:20px;overflow-wrap:anywhere}.price-meta{display:flex;flex-wrap:wrap;gap:8px;color:var(--sfm-primary-hover);font-size:12px;font-weight:900}.price-meta span{border-radius:999px;background:rgba(29,140,255,.10);padding:6px 10px}.zakat-outcome{margin:0;border-radius:15px;background:#ECFDF5;color:#047857;padding:12px;font-weight:900;line-height:1.7}.guidance-list{display:grid;gap:8px}.guidance-list p{margin:0;display:flex;gap:8px;align-items:flex-start;border-radius:14px;background:var(--sfm-card);border:1px solid rgba(29,140,255,.12);padding:10px;color:var(--sfm-midnight);line-height:1.6}.guidance-list svg{color:var(--sfm-primary);flex:0 0 auto;margin-top:2px}.hawl-mini-list div{display:grid;gap:2px;border-radius:12px;background:var(--sfm-light-card);padding:9px}.hawl-mini-list b{color:var(--sfm-midnight)}.hawl-mini-list small,.hawl-mini-list span{color:var(--sfm-muted)}.zakat-history{margin-top:14px;border-top:1px solid rgba(29,140,255,.14);padding-top:14px}.history-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr .7fr auto;gap:8px;align-items:center;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:14px;padding:10px;margin-top:8px;min-width:0}.history-row span,.history-row small,.history-row strong{min-width:0;overflow-wrap:anywhere;color:var(--sfm-midnight)}.history-row small{color:var(--sfm-primary-hover)}.history-row button{border:1px solid rgba(121,31,31,.14);background:#FEF2F2;color:#B91C1C;border-radius:10px;min-height:34px;padding:0 10px;font-weight:900;cursor:pointer}
-        .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:0}.result-grid div,.big-metric{background:rgba(29,140,255,.10);border:1px solid rgba(29,140,255,.14);border-radius:16px;padding:14px}.result-grid small,.big-metric span{display:block;color:var(--sfm-primary-hover);font-weight:800}.result-grid strong,.big-metric strong{display:block;margin-top:5px;color:var(--sfm-midnight);font-size:24px;overflow-wrap:anywhere}.disclaimer,.nisab,.muted{margin:12px 0 0;color:var(--sfm-muted);line-height:1.8}.nisab{display:flex;gap:8px;align-items:flex-start;color:var(--sfm-primary-hover);background:var(--sfm-light-card);border-radius:13px;padding:10px}
-        .nisab-reached{background:#ECFDF5!important}.nisab-reached small,.nisab-reached strong{color:#047857!important}.nisab-missing{background:rgba(29,140,255,.10)!important}.metals-status{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(4,minmax(0,1fr)) auto;gap:10px;align-items:stretch;margin-top:14px;border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);border-radius:18px;padding:12px}.metals-status div{min-width:0}.metals-status strong,.metals-status b,.metals-status span,.metals-status small{display:block}.metals-status strong,.metals-status b{color:var(--sfm-midnight);overflow-wrap:anywhere}.metals-status span,.metals-status small{color:var(--sfm-primary-hover);font-size:12px;line-height:1.5}.metals-status button{border:0;border-radius:12px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:var(--sfm-deep-navy);padding:0 12px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.metals-status button:disabled{opacity:.65;cursor:wait}
-        .template-grid,.project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.template-card{text-align:start;border:1px solid rgba(29,140,255,.16);background:#FDF8EE;border-radius:16px;padding:14px;cursor:pointer}.template-card:hover{background:rgba(29,140,255,.10)}.template-card strong,.template-card span{display:block}.template-card span{margin-top:5px;color:#8A6A55}
-        .project-card{border:1px solid rgba(29,140,255,.14);border-radius:18px;background:var(--sfm-card);padding:16px;display:grid;gap:13px}.project-top{display:flex;justify-content:space-between;gap:12px;min-width:0}.project-top strong{display:block;color:var(--sfm-midnight);font-size:17px;overflow-wrap:anywhere}.project-top span,.badge-row span,.project-card p{color:var(--sfm-muted);font-size:12px;overflow-wrap:anywhere}.status,.badge-row span{border-radius:999px;padding:5px 9px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);font-size:11px}.badge-row{display:flex;gap:8px;flex-wrap:wrap}.progress{height:9px;border-radius:99px;background:#F1E6D4;overflow:hidden}.progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--sfm-primary),var(--sfm-accent))}.money-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.money-row div{background:var(--sfm-light-card);border-radius:13px;padding:10px;min-width:0}.money-row small{display:block;color:#8A6A55}.money-row strong{display:block;color:var(--sfm-midnight);font-size:13px;overflow-wrap:anywhere}.card-actions{display:flex;gap:8px;flex-wrap:wrap}.card-actions button{border:1px solid rgba(29,140,255,.16);background:var(--sfm-light-card);color:var(--sfm-midnight);border-radius:11px;min-height:36px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:800;font-size:12px}.doc-count-btn{justify-self:start;border:1px solid rgba(29,140,255,.16);background:var(--sfm-light-card);color:var(--sfm-primary-hover);border-radius:999px;min-height:34px;padding:0 12px;font-weight:900;cursor:pointer}
-        .vault-head{align-items:flex-start}.vault-head p{margin:5px 0 0;color:var(--sfm-muted);line-height:1.7}.document-tools{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,260px) minmax(190px,260px);gap:10px;margin-bottom:14px}.document-tools label{display:flex;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.18);background:var(--sfm-background);border-radius:14px;padding:0 12px;min-height:46px;color:var(--sfm-primary)}.document-tools input,.document-tools select{width:100%;border:0;background:transparent;color:var(--sfm-deep-navy);outline:none;font:800 13px Tajawal,Arial,sans-serif}.document-tools select{border:1px solid rgba(29,140,255,.18);background:var(--sfm-background);border-radius:14px;padding:0 12px;min-height:46px}.document-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.document-card{display:grid;grid-template-columns:42px minmax(0,1fr);gap:12px;border:1px solid rgba(29,140,255,.14);background:var(--sfm-card);border-radius:18px;padding:14px;min-width:0}.document-icon{width:42px;height:42px;border-radius:14px;background:rgba(29,140,255,.10);color:var(--sfm-primary);display:grid;place-items:center}.document-body{display:grid;gap:5px;min-width:0}.document-body strong{color:var(--sfm-midnight);overflow-wrap:anywhere}.document-body span{justify-self:start;border-radius:999px;background:var(--sfm-light-card);color:var(--sfm-primary-hover);padding:4px 9px;font-size:11px;font-weight:900}.document-body small,.document-body em,.document-body p{color:var(--sfm-muted);font-size:12px;line-height:1.6;overflow-wrap:anywhere}.document-body em{font-style:normal;color:var(--sfm-midnight)}.document-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}.document-actions button{border:1px solid rgba(29,140,255,.16);background:var(--sfm-light-card);color:var(--sfm-midnight);border-radius:11px;min-height:36px;padding:0 10px;cursor:pointer;font-weight:900}.document-actions button:last-child{background:#FEF2F2;color:#B91C1C;border-color:rgba(121,31,31,.14)}.empty-state.compact{padding:24px 12px}.file-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(29,140,255,.16);background:rgba(29,140,255,.10);border-radius:14px;padding:10px;color:var(--sfm-midnight);min-width:0}.file-chip span{font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-chip small{color:var(--sfm-primary-hover);margin-inline-start:auto}.file-chip button{width:30px;height:30px;border-radius:10px;border:1px solid rgba(29,140,255,.18);background:var(--sfm-card);display:grid;place-items:center;cursor:pointer}
-        .beneficiary-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.beneficiary-stats div{border:1px solid rgba(29,140,255,.14);background:#FDF8EE;border-radius:16px;padding:12px}.beneficiary-stats small,.details-list b{display:block;color:var(--sfm-primary-hover);font-weight:900}.beneficiary-stats strong{display:block;margin-top:4px;color:var(--sfm-midnight);font-size:18px}.beneficiary-grid,.contributor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.beneficiary-card,.contributor-card{border:1px solid rgba(29,140,255,.14);background:var(--sfm-card);border-radius:18px;padding:14px;display:grid;gap:12px}.privacy-note{margin:0;border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);border-radius:13px;padding:10px;color:var(--sfm-primary-hover);line-height:1.7}.details-list{display:grid;gap:9px}.details-list p{margin:0;border:1px solid rgba(29,140,255,.12);background:#FDF8EE;border-radius:12px;padding:10px}.details-list span{display:block;color:var(--sfm-midnight);margin-top:3px;overflow-wrap:anywhere}.collab-strip{display:flex;flex-wrap:wrap;gap:8px}.collab-strip span{border-radius:999px;background:#FDF8EE;border:1px solid rgba(29,140,255,.14);color:var(--sfm-primary-hover);padding:6px 10px;font-size:12px;font-weight:900}
-        .organization-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.organization-card{border:1px solid rgba(29,140,255,.14);background:var(--sfm-card);border-radius:18px;padding:15px;display:grid;gap:12px;min-width:0}.organization-top{display:flex;justify-content:space-between;gap:12px;min-width:0}.organization-top strong{display:block;color:var(--sfm-midnight);font-size:17px;overflow-wrap:anywhere}.organization-top span,.org-contact span,.org-contact small{display:block;color:var(--sfm-muted);font-size:12px;line-height:1.6;overflow-wrap:anywhere}.verify-badge{align-self:start;border-radius:999px;padding:5px 9px;font-size:11px;white-space:nowrap;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover)}.verify-badge.verified{background:#ECFDF5;color:#047857}.verify-badge.pending_review{background:#E6F1FB;color:#0C447C}.verify-badge.rejected{background:#FEF2F2;color:#B91C1C}.trust-box{border:1px solid rgba(29,140,255,.12);background:#FDF8EE;border-radius:14px;padding:11px;display:grid;gap:8px}.trust-box strong{color:var(--sfm-midnight)}.trust-box p{margin:0;color:var(--sfm-muted)}.trust-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.trust-grid span{border-radius:12px;background:var(--sfm-card);color:var(--sfm-primary-hover);padding:8px;font-size:12px;font-weight:900}.org-contact{display:grid;gap:4px}.org-contact a{color:#0C447C;overflow-wrap:anywhere}.org-strip{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid rgba(29,140,255,.12);background:#FDF8EE;border-radius:14px;padding:9px;color:var(--sfm-midnight)}.org-strip span,.org-strip small{color:var(--sfm-muted);font-size:12px}.org-strip b{font-size:11px}
-        .impact-summary-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}.impact-summary-grid div,.impact-panel{border:1px solid rgba(29,140,255,.14);background:#FDF8EE;border-radius:18px;padding:14px;min-width:0}.impact-summary-grid small,.ratio-grid small{display:block;color:var(--sfm-primary-hover);font-weight:900}.impact-summary-grid strong,.ratio-grid strong{display:block;color:var(--sfm-midnight);font-size:18px;margin-top:5px;overflow-wrap:anywhere}.impact-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}.impact-panel h3{margin:0 0 12px;color:var(--sfm-midnight)}.ratio-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ratio-grid div{border-radius:14px;background:var(--sfm-card);padding:12px}.ratio-grid p{grid-column:1/-1;margin:0;color:var(--sfm-primary-hover)}.impact-bars{display:grid;gap:8px}.impact-bar-row{display:grid;grid-template-columns:70px minmax(0,1fr) 120px;gap:8px;align-items:center}.impact-bar-row span,.impact-bar-row strong{color:var(--sfm-midnight);font-size:12px;overflow-wrap:anywhere}.impact-bar-row i{display:block;height:10px;border-radius:99px;background:#F1E6D4;overflow:hidden}.impact-bar-row b{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--sfm-primary),var(--sfm-accent))}.project-impact-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.project-impact-card{display:grid;gap:9px;border:1px solid rgba(29,140,255,.12);background:var(--sfm-card);border-radius:16px;padding:12px}.project-impact-card strong{color:var(--sfm-midnight)}.project-impact-card>span{color:var(--sfm-muted);font-size:12px}.metric-chip-row{display:flex;flex-wrap:wrap;gap:8px}.metric-chip-row span{border-radius:999px;background:var(--sfm-light-card);border:1px solid rgba(29,140,255,.14);color:var(--sfm-primary-hover);padding:6px 10px;font-size:12px;font-weight:900}
-        .calendar-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.alert-panel,.season-panel{border:1px solid rgba(29,140,255,.14);background:#FDF8EE;border-radius:18px;padding:14px;display:grid;gap:10px}.alert-panel strong,.season-panel strong{color:var(--sfm-midnight)}.alert-panel p{margin:0;color:var(--sfm-muted)}.alert-line{border-radius:14px;background:var(--sfm-card);border:1px solid rgba(29,140,255,.12);padding:10px;display:grid;gap:4px}.alert-line b{color:var(--sfm-midnight)}.alert-line span{color:var(--sfm-primary-hover);font-size:12px}.season-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.season-grid span{border-radius:14px;background:var(--sfm-card);border:1px solid rgba(29,140,255,.12);padding:10px;display:grid;gap:5px}.season-grid b{color:var(--sfm-midnight)}.season-grid small{color:#8A6A55;line-height:1.5}.reminder-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.reminder-card{border:1px solid rgba(29,140,255,.14);background:var(--sfm-card);border-radius:18px;padding:14px;display:grid;gap:10px}.reminder-card.high{border-color:rgba(121,31,31,.2);background:#FFF8F8}.reminder-card.low{background:#F9FBF6}.reminder-top{display:flex;justify-content:space-between;gap:10px;min-width:0}.reminder-top strong{display:block;color:var(--sfm-midnight);overflow-wrap:anywhere}.reminder-top span,.reminder-card small,.reminder-card p{color:var(--sfm-muted);line-height:1.6}.reminder-top b{align-self:start;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:5px 9px;font-size:11px;white-space:nowrap}
-        .empty-state{display:grid;place-items:center;text-align:center;padding:42px 16px;color:#8A6A55}.empty-state svg{color:var(--sfm-primary);margin-bottom:10px}.empty-state strong{color:var(--sfm-midnight);font-size:18px}.impact-lines{display:grid;gap:9px}.impact-lines p{margin:0;border-radius:13px;background:var(--sfm-background);padding:10px;color:var(--sfm-midnight)}.impact-lines .warn{background:rgba(29,140,255,.10);color:var(--sfm-primary-hover)}.report-card{display:grid;grid-template-columns:minmax(0,1fr) 110px auto auto;gap:10px;align-items:end;border:1px solid rgba(29,140,255,.18);border-radius:16px;background:rgba(29,140,255,.10);padding:14px;margin-bottom:12px}.report-card strong,.report-card span{display:block}.report-card strong{color:var(--sfm-midnight)}.report-card span{margin-top:4px;color:var(--sfm-primary-hover);font-size:12px}.report-card select{height:42px;border:1px solid rgba(29,140,255,.25);border-radius:12px;background:var(--sfm-card);color:var(--sfm-midnight);padding:0 10px;font:800 13px Tajawal,Arial,sans-serif}.report-card button{height:42px;border:0;border-radius:12px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:var(--sfm-deep-navy);padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}.report-card button:disabled{opacity:.65;cursor:wait}.future-list{display:grid;gap:9px}.future-list span{display:flex;justify-content:space-between;gap:8px;border:1px solid rgba(29,140,255,.12);border-radius:12px;padding:10px;color:var(--sfm-midnight)}.future-list b{color:var(--sfm-primary)}
-        .modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(3,18,37,.46);display:grid;place-items:center;padding:18px}.modal{width:min(760px,100%);max-height:92dvh;overflow:auto;background:var(--sfm-card);border:1px solid rgba(29,140,255,.18);border-radius:24px;padding:20px}.modal.small{width:min(420px,100%)}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.modal-head h2{margin:0}.modal-head button{width:40px;height:40px;border-radius:12px;border:1px solid rgba(29,140,255,.18);background:var(--sfm-background);display:grid;place-items:center;cursor:pointer}.modal-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
-        @media(max-width:1180px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.main-grid,.split-grid,.calendar-grid,.zakat-premium-grid,.impact-layout{grid-template-columns:1fr}.impact-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.project-grid,.document-grid,.reminder-grid,.beneficiary-grid,.contributor-grid,.organization-grid,.project-impact-grid{grid-template-columns:1fr}.metals-status{grid-template-columns:repeat(2,minmax(0,1fr))}.metals-status button{min-height:42px}}
-        @media(max-width:900px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:760px){.cp-hero{display:grid;padding:22px}.hero-actions,.gold-btn,.dark-btn{width:100%}.summary-grid,.template-grid,.form-grid,.result-grid,.money-row,.report-card,.document-tools,.season-grid,.metals-status,.beneficiary-stats,.price-status-grid,.trust-grid,.impact-summary-grid,.ratio-grid{grid-template-columns:1fr}.history-row,.impact-bar-row{grid-template-columns:1fr}.report-card button{width:100%}.document-card{grid-template-columns:36px minmax(0,1fr)}.document-actions button{flex:1}.modal-backdrop{align-items:end;padding:0}.modal{border-radius:24px 24px 0 0;max-height:94dvh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}.modal-actions{display:grid}.card-actions button{flex:1}.warm-card{padding:16px}}
-      `}</style>
+      <CharityStyles />
     </div>
   );
 }
