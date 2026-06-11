@@ -28,6 +28,7 @@ export const TR_NAV: Record<string, TranslationEntry> = {
   nav_debts:      { ar:'الديون', en:'Debts', fr:'Dettes' },
   nav_invest:     { ar:'الاستثمارات', en:'Investments', fr:'Investissements' },
   nav_market_analysis: { ar:'تحليلات السوق', en:'Market Analysis', fr:'Analyse du marché' },
+  nav_market_agent: { ar:'وكيل تحليل الأسواق', en:'Market Agent', fr:'Agent de marché' },
   nav_gulf_news: { ar:'أخبار أسواق الخليج', en:'Gulf Market News', fr:'Actualités des marchés du Golfe' },
   nav_europe_news: { ar:'أخبار الأسواق الأوروبية', en:'European Market News', fr:'Actualités des marchés européens' },
   nav_tech_news: { ar:'أخبار السوق التقني', en:'Tech Market News', fr:'Actualités du marché technologique' },

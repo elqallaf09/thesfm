@@ -111,6 +111,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     items: [
       { id: 'invest', icon: TrendingUp, href: '/invest', labelKey: 'nav_invest' },
       { id: 'market-analysis', icon: LineChart, href: '/market-analysis', labelKey: 'nav_market_analysis' },
+      { id: 'market-agent', icon: Bot, href: '/market-agent', labelKey: 'nav_market_agent' },
       {
         id: 'stock-news',
         icon: Newspaper,

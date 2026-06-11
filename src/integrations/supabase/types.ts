@@ -1137,6 +1137,48 @@ export type Database = {
         }
         Relationships: []
       }
+      market_agent_history: {
+        Row: {
+          id: string
+          user_id: string
+          symbol: string
+          asset_type: string
+          timeframe: string
+          suggested_action: string
+          confidence: number
+          risk_level: string
+          current_price: number | null
+          summary: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          symbol: string
+          asset_type: string
+          timeframe: string
+          suggested_action: string
+          confidence: number
+          risk_level: string
+          current_price?: number | null
+          summary?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          symbol?: string
+          asset_type?: string
+          timeframe?: string
+          suggested_action?: string
+          confidence?: number
+          risk_level?: string
+          current_price?: number | null
+          summary?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       market_price_alerts: {
         Row: {
           id: string
