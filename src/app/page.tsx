@@ -15,6 +15,7 @@ import {
   FileText,
   FolderKanban,
   HandHeart,
+  Instagram,
   Landmark,
   LineChart,
   Menu,
@@ -35,7 +36,7 @@ import { flattenNavigationItems } from '@/components/navigationConfig';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
+import { INSTAGRAM_ARIA_LABEL, INSTAGRAM_URL, SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
 import { TR } from '@/lib/translations';
 
 type Lang = 'ar' | 'en' | 'fr';
@@ -1086,13 +1087,21 @@ export default function PublicLandingPage() {
         <div className="footer-brand">
           <Image src="/sfm-logo.png" alt="THE SFM" width={42} height={42} className="landing-logo" />
           <strong>THE SFM</strong>
+          <p>
+            {text.supportContactLine}{' '}
+            <a href={SUPPORT_EMAIL_SUPPORT_MAILTO} aria-label={SUPPORT_EMAIL_ARIA_LABEL}>{SUPPORT_EMAIL}</a>
+          </p>
+          <a className="footer-social-link" href={INSTAGRAM_URL} target="_blank" rel="noreferrer" aria-label={INSTAGRAM_ARIA_LABEL}>
+            <Instagram size={16} aria-hidden="true" />
+            <span>Instagram</span>
+          </a>
         </div>
         <FooterColumn title={text.footerProduct} links={[['/', 'THE SFM'], ['/dashboard', text.openDashboard], ['/reports-center', text.reportsCenter]]} />
         <FooterColumn title={text.footerTools} links={[['/business-hub', text.businessHub], ['/zakat', text.zakat], ['/reports-center', text.reportsCenter]]} />
         <FooterColumn title={text.footerCompany} links={[['/about', aboutLabel], ['/#faq', text.navFaq]]} />
         <FooterColumn title={text.footerAccount} links={[[appHref, primaryLabel], ['/login', text.login]]} />
         <FooterColumn title={text.footerLegal} links={[['/privacy', text.privacy], ['/terms', text.terms]]} />
-        <FooterColumn title={text.footerSupport} links={[['/contact', text.contact]]} />
+        <FooterColumn title={text.footerSupport} links={[['/contact', text.contact], [INSTAGRAM_URL, 'Instagram']]} />
       </footer>
 
       <style jsx>{landingStyles}</style>
@@ -1133,8 +1142,8 @@ function FooterColumn({ title, links }: { title: string; links: [string, string]
   return (
     <div className="footer-column">
       <strong>{title}</strong>
-      {links.map(([href, label]) => href.startsWith('mailto:')
-        ? <a key={`${title}-${href}-${label}`} href={href}>{label}</a>
+      {links.map(([href, label]) => href.startsWith('mailto:') || href.startsWith('http')
+        ? <a key={`${title}-${href}-${label}`} href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined}>{label}</a>
         : <Link key={`${title}-${href}-${label}`} href={href}>{label}</Link>)}
     </div>
   );
@@ -2078,10 +2087,57 @@ const landingStyles = `
     align-self: start;
     color: var(--landing-heading);
     font-weight: 950;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .footer-brand p {
+    flex-basis: 100%;
+    margin: 4px 0 0;
+    color: var(--landing-muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .footer-brand p a {
+    color: #1D8CFF;
+    cursor: pointer;
+    font-weight: 950;
+    text-decoration: none;
+    transition: color 180ms var(--ease), text-decoration-color 180ms var(--ease);
+  }
+  .footer-brand p a:hover {
+    color: #0B76E0;
+    text-decoration: underline;
+    text-decoration-color: rgba(24, 212, 212, 0.72);
+    text-underline-offset: 4px;
+  }
+  .footer-social-link {
+    flex-basis: 100%;
+    width: max-content;
+    max-width: 100%;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 8px;
+    padding: 8px 11px;
+    border: 1px solid rgba(29, 140, 255, 0.16);
+    border-radius: 999px;
+    background: rgba(29, 140, 255, 0.08);
+    color: #0B76E0;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 950;
+    transition: background 180ms var(--ease), border-color 180ms var(--ease), color 180ms var(--ease), transform 180ms var(--ease);
+  }
+  .footer-social-link:hover {
+    background: rgba(24, 212, 212, 0.12);
+    border-color: rgba(24, 212, 212, 0.38);
+    color: #075EA8;
+    transform: translateY(-1px);
   }
   .footer-column {
     display: grid;
     gap: 8px;
+    min-width: 0;
   }
   .footer-column strong {
     color: var(--landing-heading);
@@ -2132,6 +2188,10 @@ const landingStyles = `
   :global(.dark) .landing-page .landing-links.open a {
     background: rgba(6, 27, 51, 0.85);
     color: var(--landing-dark-muted);
+  }
+  :global(.dark) .landing-page .landing-links.open {
+    background: rgba(15, 29, 49, 0.96);
+    border-color: rgba(29, 140, 255, 0.28);
   }
   :global(.dark) .landing-page .mobile-menu-button {
     background: rgba(3, 18, 37, 0.92);
@@ -2357,6 +2417,17 @@ const landingStyles = `
   :global(.dark) .landing-page .footer-brand {
     color: #FFFFFF;
   }
+  :global(.dark) .landing-page .footer-brand p {
+    color: var(--landing-dark-muted);
+  }
+  :global(.dark) .landing-page .footer-brand p a,
+  :global(.dark) .landing-page .footer-social-link {
+    color: #2FD6C0;
+  }
+  :global(.dark) .landing-page .footer-social-link {
+    background: rgba(47, 214, 192, 0.10);
+    border-color: rgba(47, 214, 192, 0.22);
+  }
   :global(.dark) .landing-page .footer-column strong {
     color: #E8EEF6;
   }
@@ -2389,9 +2460,25 @@ const landingStyles = `
     }
     .landing-links.open {
       display: grid;
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid rgba(29, 140, 255, 0.16);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 16px 34px rgba(3, 18, 37, 0.10);
     }
     .landing-links a {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 10px 12px;
+      border: 1px solid rgba(29, 140, 255, 0.12);
       background: #F8FBFF;
+      text-align: start;
+    }
+    [dir="rtl"] .landing-links a {
+      justify-content: flex-end;
     }
     .mobile-menu-ctas {
       display: grid;
@@ -2418,6 +2505,27 @@ const landingStyles = `
     }
     .trust-section, .landing-ai-card, .landing-footer {
       grid-template-columns: 1fr;
+    }
+    .landing-footer {
+      padding-inline: 16px;
+      border-radius: 24px;
+    }
+    .footer-brand,
+    .footer-column {
+      min-width: 0;
+      justify-items: start;
+      text-align: start;
+    }
+    [dir="rtl"] .footer-brand,
+    [dir="rtl"] .footer-column {
+      justify-items: end;
+      text-align: right;
+    }
+    .footer-brand p,
+    .footer-column strong,
+    .footer-column a {
+      max-width: 100%;
+      overflow-wrap: anywhere;
     }
     .how-grid, .audience-grid, .pricing-grid, .faq-accordion {
       grid-template-columns: 1fr;
@@ -2475,7 +2583,7 @@ const landingStyles = `
     }
     .landing-footer {
       margin-top: 32px;
-      padding-bottom: 24px;
+      padding: 22px 16px 24px;
     }
   }
 `;

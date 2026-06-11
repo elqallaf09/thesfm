@@ -7,6 +7,7 @@ import Link from 'next/link';
 import {
   ArrowUpRight,
   CheckCircle2,
+  Instagram,
   LockKeyhole,
   Mail,
   Menu,
@@ -19,7 +20,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
+import { INSTAGRAM_ARIA_LABEL, INSTAGRAM_URL, SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -429,12 +430,17 @@ export default function ContactPage() {
           <div>
             <strong>THE SFM</strong>
             <p>{text.footerNote}</p>
+            <a className="footer-social-link" href={INSTAGRAM_URL} target="_blank" rel="noreferrer" aria-label={INSTAGRAM_ARIA_LABEL}>
+              <Instagram size={16} aria-hidden="true" />
+              <span>Instagram</span>
+            </a>
           </div>
         </div>
         <div className="footer-links" aria-label={text.securityPrivacy}>
           <Link href="/security">{text.securityPrivacy}</Link>
           <Link href="/privacy">{text.privacy}</Link>
           <Link href="/terms">{text.terms}</Link>
+          <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" aria-label={INSTAGRAM_ARIA_LABEL}>Instagram</a>
         </div>
       </footer>
 
@@ -787,10 +793,15 @@ const contactStyles = `
   }
   .contact-honeypot {
     position: absolute;
-    left: -10000px;
     width: 1px;
     height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
     overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .form-grid {
     display: grid;
@@ -884,16 +895,44 @@ const contactStyles = `
     max-width: 620px;
     gap: 12px;
     color: #061B33;
+    min-width: 0;
   }
   .footer-brand strong {
     display: block;
     color: #061B33;
     font-weight: 950;
   }
+  .footer-brand p {
+    overflow-wrap: anywhere;
+  }
+  .footer-social-link {
+    width: max-content;
+    max-width: 100%;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 10px;
+    padding: 8px 11px;
+    border: 1px solid rgba(29, 140, 255, 0.16);
+    border-radius: 999px;
+    background: rgba(29, 140, 255, 0.08);
+    color: #0B76E0;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 950;
+    transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+  }
+  .footer-social-link:hover {
+    background: rgba(24, 212, 212, 0.12);
+    border-color: rgba(24, 212, 212, 0.38);
+    color: #075EA8;
+    transform: translateY(-1px);
+  }
   .footer-links {
     gap: 12px;
     flex-wrap: wrap;
     justify-content: flex-end;
+    min-width: 0;
   }
   .footer-links a {
     color: #64748B;
@@ -929,9 +968,25 @@ const contactStyles = `
     }
     .contact-links.open {
       display: grid;
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid rgba(29, 140, 255, 0.16);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 16px 34px rgba(3, 18, 37, 0.10);
     }
     .contact-links a {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 10px 12px;
+      border: 1px solid rgba(29, 140, 255, 0.12);
       background: #F8FBFF;
+      text-align: start;
+    }
+    [dir="rtl"] .contact-links a {
+      justify-content: flex-end;
     }
     .mobile-menu-ctas {
       display: grid;
@@ -957,9 +1012,24 @@ const contactStyles = `
     .contact-footer {
       align-items: flex-start;
       flex-direction: column;
+      padding-inline: 16px;
+      border-radius: 24px;
     }
     .footer-links {
       justify-content: flex-start;
+    }
+    [dir="rtl"] .contact-footer {
+      text-align: right;
+    }
+    [dir="rtl"] .footer-links {
+      justify-content: flex-end;
+    }
+    .footer-brand,
+    .footer-links {
+      max-width: 100%;
+    }
+    .footer-links a {
+      overflow-wrap: anywhere;
     }
   }
   @media (max-width: 620px) {
@@ -1005,6 +1075,10 @@ const contactStyles = `
       display: grid;
       grid-template-columns: 1fr;
     }
+    .contact-footer {
+      margin-top: 32px;
+      padding: 22px 16px 24px;
+    }
   }
 
   .contact-actions .sfm-theme-toggle {
@@ -1043,7 +1117,17 @@ const contactStyles = `
     color: #E8EEF6 !important;
   }
 
-  html.dark .contact-page :is(.support-email-link, .card-action, .footer-links a:hover) {
+  html.dark .contact-page .contact-links.open {
+    background: rgba(15, 29, 49, 0.96) !important;
+    border-color: #1D3050 !important;
+  }
+
+  html.dark .contact-page :is(.support-email-link, .card-action, .footer-links a:hover, .footer-social-link) {
     color: #2FD6C0 !important;
+  }
+
+  html.dark .contact-page .footer-social-link {
+    background: rgba(47, 214, 192, 0.10) !important;
+    border-color: rgba(47, 214, 192, 0.22) !important;
   }
 `;

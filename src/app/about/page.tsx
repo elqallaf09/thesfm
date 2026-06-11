@@ -11,6 +11,7 @@ import {
   FileText,
   FolderKanban,
   HandHeart,
+  Instagram,
   LineChart,
   LockKeyhole,
   Menu,
@@ -26,7 +27,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
+import { INSTAGRAM_ARIA_LABEL, INSTAGRAM_URL, SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -418,11 +419,15 @@ export default function AboutPage() {
             {text.supportContactLine}{' '}
             <a href={SUPPORT_EMAIL_SUPPORT_MAILTO} aria-label={SUPPORT_EMAIL_ARIA_LABEL}>{SUPPORT_EMAIL}</a>
           </p>
+          <a className="footer-social-link" href={INSTAGRAM_URL} target="_blank" rel="noreferrer" aria-label={INSTAGRAM_ARIA_LABEL}>
+            <Instagram size={16} aria-hidden="true" />
+            <span>Instagram</span>
+          </a>
         </div>
         <FooterColumn title={text.footerProduct} links={[['/', 'THE SFM'], ['/reports-center', text.reportsCenter], ['/business-hub', text.businessHub]]} />
         <FooterColumn title={text.footerCompany} links={[['/about', text.about], ['/security', text.security]]} />
         <FooterColumn title={text.footerAccount} links={[['/login', text.login], ['/dashboard', text.openDashboard]]} />
-        <FooterColumn title={text.footerSupport} links={[['/contact', text.contact]]} />
+        <FooterColumn title={text.footerSupport} links={[['/contact', text.contact], [INSTAGRAM_URL, 'Instagram']]} />
       </footer>
 
       <style jsx>{aboutStyles}</style>
@@ -463,8 +468,8 @@ function FooterColumn({ title, links }: { title: string; links: [string, string]
   return (
     <div className="footer-column">
       <strong>{title}</strong>
-      {links.map(([href, label]) => href.startsWith('mailto:')
-        ? <a key={`${title}-${href}-${label}`} href={href}>{label}</a>
+      {links.map(([href, label]) => href.startsWith('mailto:') || href.startsWith('http')
+        ? <a key={`${title}-${href}-${label}`} href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined}>{label}</a>
         : <Link key={`${title}-${href}-${label}`} href={href}>{label}</Link>)}
     </div>
   );
@@ -909,9 +914,34 @@ const aboutStyles = `
     text-decoration-color: rgba(24, 212, 212, 0.72);
     text-underline-offset: 4px;
   }
+  .footer-social-link {
+    flex-basis: 100%;
+    width: max-content;
+    max-width: 100%;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 8px;
+    padding: 8px 11px;
+    border: 1px solid rgba(29, 140, 255, 0.16);
+    border-radius: 999px;
+    background: rgba(29, 140, 255, 0.08);
+    color: #0B76E0;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 950;
+    transition: background 180ms var(--ease), border-color 180ms var(--ease), color 180ms var(--ease), transform 180ms var(--ease);
+  }
+  .footer-social-link:hover {
+    background: rgba(24, 212, 212, 0.12);
+    border-color: rgba(24, 212, 212, 0.38);
+    color: #075EA8;
+    transform: translateY(-1px);
+  }
   .footer-column {
     display: grid;
     gap: 8px;
+    min-width: 0;
   }
   .footer-column strong {
     color: #061B33;
@@ -943,9 +973,25 @@ const aboutStyles = `
     }
     .about-links.open {
       display: grid;
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid rgba(29, 140, 255, 0.16);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 16px 34px rgba(3, 18, 37, 0.10);
     }
     .about-links a {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 10px 12px;
+      border: 1px solid rgba(29, 140, 255, 0.12);
       background: #F8FBFF;
+      text-align: start;
+    }
+    [dir="rtl"] .about-links a {
+      justify-content: flex-end;
     }
     .nav-login, .nav-primary {
       display: none;
@@ -961,6 +1007,27 @@ const aboutStyles = `
     }
     .statement-grid, .trust-band, .about-footer {
       grid-template-columns: 1fr;
+    }
+    .about-footer {
+      padding-inline: 16px;
+      border-radius: 24px;
+    }
+    .footer-brand,
+    .footer-column {
+      min-width: 0;
+      justify-items: start;
+      text-align: start;
+    }
+    [dir="rtl"] .footer-brand,
+    [dir="rtl"] .footer-column {
+      justify-items: end;
+      text-align: right;
+    }
+    .footer-brand p,
+    .footer-column strong,
+    .footer-column a {
+      max-width: 100%;
+      overflow-wrap: anywhere;
     }
     .hero-panel {
       min-height: 320px;
@@ -1017,7 +1084,7 @@ const aboutStyles = `
     }
     .about-footer {
       margin-top: 32px;
-      padding-bottom: 24px;
+      padding: 22px 16px 24px;
     }
   }
 
@@ -1043,7 +1110,7 @@ const aboutStyles = `
     box-shadow: 0 20px 54px rgba(0, 0, 0, 0.26) !important;
   }
 
-  html.dark .about-page :is(.about-brand, .about-brand span, .about-links a, .hero-copy h1, .section-heading h2, .info-card h2, .icon-card h3, .value-card h3, .trust-card h3, .about-cta h2, .footer-brand strong, .footer-column h3) {
+  html.dark .about-page :is(.about-brand, .about-brand span, .about-links a, .hero-copy h1, .section-heading h2, .info-card h2, .icon-card h3, .value-card h3, .trust-card h3, .about-cta h2, .footer-brand strong, .footer-column strong) {
     color: #F8FBFF !important;
   }
 
@@ -1055,5 +1122,16 @@ const aboutStyles = `
     background: #13243A !important;
     border-color: #1D3050 !important;
     color: #E8EEF6 !important;
+  }
+
+  html.dark .about-page .about-links.open {
+    background: rgba(15, 29, 49, 0.96) !important;
+    border-color: #1D3050 !important;
+  }
+
+  html.dark .about-page .footer-social-link {
+    background: rgba(47, 214, 192, 0.10) !important;
+    border-color: rgba(47, 214, 192, 0.22) !important;
+    color: #2FD6C0 !important;
   }
 `;
