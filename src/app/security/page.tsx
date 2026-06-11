@@ -428,6 +428,7 @@ export default function SecurityPage() {
   const text = TEXT[activeLang];
   const [profile, setProfile] = useState<SecurityProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [ipInfo, setIpInfo] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -479,6 +480,16 @@ export default function SecurityPage() {
   useEffect(() => {
     setDeviceLabel(detectDeviceLabel(activeLang));
   }, [activeLang]);
+
+  useEffect(() => {
+    fetch('https://ipapi.co/json/')
+      .then(r => r.json())
+      .then((d: { ip?: string; city?: string; country_name?: string }) => {
+        const parts = [d.ip, d.city, d.country_name].filter(Boolean);
+        setIpInfo(parts.length ? parts.join(' · ') : null);
+      })
+      .catch(() => { /* silently ignore */ });
+  }, []);
 
   useEffect(() => {
     void loadProfile();
@@ -681,11 +692,11 @@ export default function SecurityPage() {
           <AppCard className="security-score-card">
             <div className="security-score-copy">
               <span className="security-kicker"><Shield size={16} />{text.scoreTitle}</span>
-              <h2>{security.score}%</h2>
+              <h2 style={{ color: security.score >= 50 ? '#4ADE80' : '#F87171' }}>{security.score}%</h2>
               <p>{scoreLabel(security.score, text)}</p>
             </div>
-            <div className="score-ring" style={{ '--score': `${security.score * 3.6}deg` } as CSSProperties}>
-              <strong>{security.score}</strong>
+            <div className="score-ring" style={{ '--score': `${security.score * 3.6}deg`, '--ring-color': security.score >= 50 ? '#22C55E' : '#EF4444' } as CSSProperties}>
+              <strong style={{ color: security.score >= 50 ? '#4ADE80' : '#F87171' }}>{security.score}</strong>
               <span>/100</span>
             </div>
           </AppCard>
@@ -747,7 +758,7 @@ export default function SecurityPage() {
             </div>
             <div className="muted-panel">
               <strong>{text.sessionsSoon}</strong>
-              <p>{text.ipLocation}: {text.unknown}</p>
+              <p>{text.ipLocation}: {ipInfo ?? text.unknown}</p>
             </div>
             <button type="button" className="ghost-action full" onClick={() => void signOut()}>{text.signOutAll}</button>
           </SecuritySection>
@@ -889,7 +900,7 @@ export default function SecurityPage() {
         .ghost-action.full{width:100%}
         .security-toast,.security-state,.message-inline{border:1px solid rgba(16,185,129,.20);background:rgba(16,185,129,.10);color:#047857;border-radius:16px;padding:12px 14px;font-weight:950}.message-inline.danger{background:#FEF2F2;border-color:#FCA5A5;color:#B91C1C}
         .security-state{display:flex;align-items:center;justify-content:space-between;gap:12px}.security-state.danger{background:#FEF2F2;border-color:#FCA5A5;color:#B91C1C}.security-state button{border:0;border-radius:999px;background:#fff;color:#B91C1C;padding:8px 12px;font-weight:950;cursor:pointer}
-        .security-score-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr);gap:18px}.security-score-card{display:flex;align-items:center;justify-content:space-between;gap:18px;background:linear-gradient(135deg,#061A2E,#0B2A4A);color:#F8FAFC;border-color:rgba(255,255,255,.10)}.security-kicker{display:inline-flex;align-items:center;gap:8px;color:#A7F3F0;font-weight:950}.security-score-copy{flex:1;display:flex;flex-direction:column;min-width:0}.security-score-copy h2{margin:10px 0 0;font-size:56px;line-height:1;color:#fff}.security-score-copy p{margin:8px 0 0;color:#CBD5E1;font-weight:950}.score-ring{width:128px;height:128px;display:grid;place-items:center;border-radius:50%;background:conic-gradient(#22D3EE var(--score),rgba(255,255,255,.14) 0);position:relative;isolation:isolate}.score-ring:before{content:"";position:absolute;inset:10px;border-radius:50%;background:#071B2F;z-index:-1}.score-ring strong{font-size:30px;color:#fff}.score-ring span{margin-top:-34px;color:#94A3B8;font-weight:900}
+        .security-score-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr);gap:18px}.security-score-card{display:flex;align-items:center;justify-content:space-between;gap:18px;background:linear-gradient(135deg,#061A2E,#0B2A4A);color:#F8FAFC;border-color:rgba(255,255,255,.10)}.security-kicker{display:inline-flex;align-items:center;gap:8px;color:#A7F3F0;font-weight:950}.security-score-copy{flex:1;display:flex;flex-direction:column;min-width:0}.security-score-copy h2{margin:10px 0 0;font-size:56px;line-height:1;color:#fff}.security-score-copy p{margin:8px 0 0;color:#CBD5E1;font-weight:950}.score-ring{width:128px;height:128px;display:grid;place-items:center;border-radius:50%;background:conic-gradient(var(--ring-color,#22D3EE) var(--score),rgba(255,255,255,.14) 0);position:relative;isolation:isolate}.score-ring:before{content:"";position:absolute;inset:10px;border-radius:50%;background:#071B2F;z-index:-1}.score-ring strong{font-size:30px;color:#fff}.score-ring span{margin-top:-34px;color:#94A3B8;font-weight:900}
         .security-checks-card h2,.security-section h2{margin:0;color:var(--sfm-primary-dark);font-size:20px}.security-checks-card p,.section-copy{margin:6px 0 0;color:var(--sfm-muted);font-weight:800;line-height:1.7}.check-list{display:grid;gap:9px;margin-top:14px}.check-row{display:flex;align-items:center;gap:9px;border:1px solid rgba(245,158,11,.20);background:#FFFBEB;color:#92400E;border-radius:14px;padding:10px 12px;font-weight:900}.check-row.done{border-color:rgba(16,185,129,.20);background:#ECFDF5;color:#047857}
         .security-main-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.security-section{display:grid;gap:14px}.security-section.wide{grid-column:1/-1}.section-head{display:flex;align-items:center;gap:10px}.section-head span{width:42px;height:42px;display:grid;place-items:center;border-radius:15px;background:rgba(29,140,255,.10);color:var(--sfm-primary)}
         .control-row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:18px;padding:14px}.control-row strong,.device-card strong,.muted-panel strong,.activity-item strong{display:block;color:var(--sfm-foreground);font-size:15px}.control-row p,.device-card p,.muted-panel p,.activity-item p,.danger-note{margin:4px 0 0;color:var(--sfm-muted);font-weight:800;line-height:1.65}.control-row small,.device-card small{display:block;margin-top:8px;color:#64748B;font-weight:900}
