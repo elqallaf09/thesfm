@@ -357,9 +357,9 @@ const TEXT = {
     invalidCode: 'Le code de vérification est incorrect.',
     codeExpired: 'Le code a expiré. Demandez un nouveau code.',
     codeInvalidOrExpired: 'Le code de vérification est incorrect ou expiré.',
-    twoFactorNoEmail: ‘L’authentification à deux facteurs nécessite une adresse e-mail valide.’,
-    orContinueWith: ‘Ou continuer avec’,
-    signInGoogle: ‘Se connecter avec Google’,
+    twoFactorNoEmail: 'L’authentification à deux facteurs nécessite une adresse e-mail valide.’,
+    orContinueWith: 'Ou continuer avec’,
+    signInGoogle: 'Se connecter avec Google’,
   },
 } as const;
 
@@ -1291,89 +1291,3 @@ function PasswordStrengthBar({ password, text }: { password: string; text: AuthC
     .pref-row{grid-template-columns:1fr}
   }
 `}</style>
-}.login-shell .primary:hover:not(:disabled),.login-shell .secondary:hover:not(:disabled){transform:translateY(-2px);filter:saturate(1.08) brightness(1.02);box-shadow:0 16px 38px rgba(24,212,212,.22)}.login-shell .primary[data-needs-agreement="true"]:hover:not(:disabled){filter:saturate(.9);box-shadow:none}.login-shell .primary:active:not(:disabled),.login-shell .secondary:active:not(:disabled){transform:translateY(0) scale(.985)}.login-shell .primary:disabled,.login-shell .secondary:disabled{opacity:.72;cursor:not-allowed;transform:none;box-shadow:none}
-        .login-shell .loading-label{display:inline-flex;align-items:center;justify-content:center;gap:9px}.login-shell .spinner{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#FFFFFF;animation:sfm-login-spin .75s linear infinite}@keyframes sfm-login-spin{to{transform:rotate(360deg)}}
-        .login-shell .message{background:rgba(239,68,68,.08);color:#B91C1C;border:1px solid rgba(239,68,68,.18);border-radius:13px;padding:11px 13px;font-size:13px;font-weight:850;line-height:1.6}.login-shell .message.ok{background:rgba(16,185,129,.10);border-color:rgba(16,185,129,.24);color:#047857}
-        .login-shell .actions{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin-top:18px}.login-shell .actions button{border:1px solid rgba(29,140,255,.22);background:#FFFFFF;color:#0B2748;border-radius:999px;padding:9px 13px;font:850 12px Tajawal,Arial,sans-serif;cursor:pointer;transition:background .18s ease,border-color .18s ease,color .18s ease}.login-shell .actions button:hover:not(:disabled){background:#EEF6FF;border-color:rgba(29,140,255,.34);color:#061B33}.login-shell .actions button:disabled{opacity:.55;cursor:not-allowed}
-        @media(max-width:640px){.login-shell{padding:16px;align-items:start}.login-shell .login-card,.login-shell .login-card.wide{padding:20px;border-radius:22px;width:100%}.login-shell .language-row{justify-content:center}.login-shell .form-grid,.login-shell .signup-steps{grid-template-columns:1fr}.login-shell .submit-row{display:grid;grid-template-columns:1fr}.login-shell .primary,.login-shell .secondary,.login-shell .actions button{width:100%}.login-shell .actions{display:grid;grid-template-columns:1fr}.login-shell .brand{margin-bottom:18px}}
-      `}</style>
-    </main>
-  );
-}
-
-function AuthField({
-  label,
-  icon,
-  required,
-  className,
-  children,
-}: {
-  label: string;
-  icon: ReactNode;
-  required?: boolean;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <label className={`auth-field ${className ?? ''}`}>
-      <span>{label} {required && <em>*</em>}</span>
-      <div className="input-wrap">
-        {icon}
-        {children}
-      </div>
-    </label>
-  );
-}
-
-function PasswordField({
-  label,
-  value,
-  onChange,
-  placeholder,
-  show,
-  onToggle,
-  ariaLabel,
-  autoComplete,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  show: boolean;
-  onToggle: () => void;
-  ariaLabel: string;
-  autoComplete: string;
-}) {
-  return (
-    <AuthField label={label} icon={<LockKeyhole size={18} />} required>
-      <input value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} type={show ? 'text' : 'password'} autoComplete={autoComplete} dir="ltr" />
-      <button type="button" className="icon" onClick={onToggle} aria-label={ariaLabel}>
-        {show ? <EyeOff size={17} /> : <Eye size={17} />}
-      </button>
-    </AuthField>
-  );
-}
-
-function PasswordMeter({
-  strength,
-  score,
-  labels,
-}: {
-  strength: PasswordStrength;
-  score: number;
-  labels: AuthCopy;
-}) {
-  const label = strength === 'weak' ? labels.weak : strength === 'medium' ? labels.medium : labels.strong;
-  return (
-    <div className="password-meter" aria-live="polite">
-      <div className="meter-top">
-        <span>{labels.password}</span>
-        <strong className={strength}>{label}</strong>
-      </div>
-      <div className="meter-bars" aria-hidden="true">
-        {[1, 2, 3, 4].map(item => <span key={item} className={item <= score ? `on ${strength}` : ''} />)}
-      </div>
-      {strength !== 'strong' && <p>{labels.recommended}</p>}
-    </div>
-  );
-}
