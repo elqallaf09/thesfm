@@ -22,6 +22,7 @@ export type Database = {
           country: string | null
           city: string | null
           default_currency: string | null
+          currency: string | null
           age: number | null
           gender: string | null
           profession: string | null
@@ -36,8 +37,23 @@ export type Database = {
           phone_country_code: string | null
           phone_number: string | null
           preferred_lang: string | null
+          language: string | null
           preferred_currency: string | null
           preferred_theme: string | null
+          theme: string | null
+          charity_enabled: boolean | null
+          dashboard_prefs: Json | null
+          notification_prefs: Json | null
+          onboarding_completed: boolean | null
+          onboarding_completed_at: string | null
+          onboarding_skipped: boolean | null
+          onboarding_skipped_at: string | null
+          financial_focus: string | null
+          monthly_income_target: number | null
+          essential_expenses: number | null
+          first_goal_name: string | null
+          first_goal_amount: number | null
+          first_goal_deadline: string | null
           email_2fa_enabled: boolean
           email_2fa_enabled_at: string | null
           view_mode: string | null
@@ -53,6 +69,7 @@ export type Database = {
           country?: string | null
           city?: string | null
           default_currency?: string | null
+          currency?: string | null
           age?: number | null
           gender?: string | null
           profession?: string | null
@@ -67,8 +84,23 @@ export type Database = {
           phone_country_code?: string | null
           phone_number?: string | null
           preferred_lang?: string | null
+          language?: string | null
           preferred_currency?: string | null
           preferred_theme?: string | null
+          theme?: string | null
+          charity_enabled?: boolean | null
+          dashboard_prefs?: Json | null
+          notification_prefs?: Json | null
+          onboarding_completed?: boolean | null
+          onboarding_completed_at?: string | null
+          onboarding_skipped?: boolean | null
+          onboarding_skipped_at?: string | null
+          financial_focus?: string | null
+          monthly_income_target?: number | null
+          essential_expenses?: number | null
+          first_goal_name?: string | null
+          first_goal_amount?: number | null
+          first_goal_deadline?: string | null
           email_2fa_enabled?: boolean
           email_2fa_enabled_at?: string | null
           view_mode?: string | null
@@ -84,6 +116,7 @@ export type Database = {
           country?: string | null
           city?: string | null
           default_currency?: string | null
+          currency?: string | null
           age?: number | null
           gender?: string | null
           profession?: string | null
@@ -98,8 +131,23 @@ export type Database = {
           phone_country_code?: string | null
           phone_number?: string | null
           preferred_lang?: string | null
+          language?: string | null
           preferred_currency?: string | null
           preferred_theme?: string | null
+          theme?: string | null
+          charity_enabled?: boolean | null
+          dashboard_prefs?: Json | null
+          notification_prefs?: Json | null
+          onboarding_completed?: boolean | null
+          onboarding_completed_at?: string | null
+          onboarding_skipped?: boolean | null
+          onboarding_skipped_at?: string | null
+          financial_focus?: string | null
+          monthly_income_target?: number | null
+          essential_expenses?: number | null
+          first_goal_name?: string | null
+          first_goal_amount?: number | null
+          first_goal_deadline?: string | null
           email_2fa_enabled?: boolean
           email_2fa_enabled_at?: string | null
           view_mode?: string | null

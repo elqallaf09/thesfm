@@ -16,6 +16,7 @@ type ProfileRow = {
   email?: string | null;
   avatar_url?: string | null;
   default_currency?: string | null;
+  preferred_currency?: string | null;
   country?: string | null;
 };
 
@@ -94,7 +95,7 @@ export function getUserDisplay(args: {
     displayName,
     avatarInitial: initialsFrom(displayName || email || args.fallbackName),
     avatarUrl: clean(args.profile?.avatar_url) || clean(metadata.avatar_url),
-    defaultCurrency: clean(args.profile?.default_currency) || 'KWD',
+    defaultCurrency: clean(args.profile?.default_currency) || clean(args.profile?.preferred_currency) || 'KWD',
     country: clean(args.profile?.country),
   };
 }

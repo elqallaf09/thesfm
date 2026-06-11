@@ -17,7 +17,6 @@ describe('translation function t()', () => {
   });
 
   it('returns raw key string if key does not exist (safe fallback)', () => {
-    // @ts-expect-error — deliberately testing unknown key
     const result = t('nonexistent_key_xyz', 'ar');
     expect(result).toBe('nonexistent_key_xyz');
   });

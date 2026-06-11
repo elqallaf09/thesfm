@@ -1264,14 +1264,18 @@ export default function SetupPage() {
     setError('');
     try {
       const username = String(user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`);
+      const now = new Date().toISOString();
       const { error: profileError } = await db.from('profiles').upsert({
         id: user.id,
         username,
         email: user.email ?? null,
         default_currency: defaultCurrency,
         preferred_currency: defaultCurrency,
+        currency: defaultCurrency,
+        onboarding_completed: false,
         onboarding_skipped: true,
-        updated_at: new Date().toISOString(),
+        onboarding_skipped_at: now,
+        updated_at: now,
       }, { onConflict: 'id' });
       if (profileError) throw profileError;
       router.replace('/dashboard');
@@ -1288,6 +1292,7 @@ export default function SetupPage() {
     setError('');
     try {
       const username = String(user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`);
+      const now = new Date().toISOString();
       const focusValues = [focus.zakat ? 'zakat' : '', focus.charity ? 'charity' : ''].filter(Boolean).join(',');
       const activeSummary = buildSetupSummary();
       const { error: profileError } = await db.from('profiles').upsert({
@@ -1296,11 +1301,14 @@ export default function SetupPage() {
         email: user.email ?? null,
         default_currency: defaultCurrency,
         preferred_currency: defaultCurrency,
+        currency: defaultCurrency,
         financial_focus: focusValues || existingData.profile?.financial_focus || null,
         monthly_income_target: activeSummary.incomeTotal,
         onboarding_completed: true,
+        onboarding_completed_at: now,
         onboarding_skipped: false,
-        updated_at: new Date().toISOString(),
+        onboarding_skipped_at: null,
+        updated_at: now,
       }, { onConflict: 'id' });
       if (profileError) throw profileError;
       router.replace('/dashboard');
@@ -1342,17 +1350,21 @@ export default function SetupPage() {
 
     try {
       const username = String(user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`);
+      const now = new Date().toISOString();
       const { error: profileError } = await db.from('profiles').upsert({
         id: user.id,
         username,
         email: user.email ?? null,
         default_currency: defaultCurrency,
         preferred_currency: defaultCurrency,
+        currency: defaultCurrency,
         financial_focus: focusValues || null,
         monthly_income_target: incomeAmount,
         onboarding_completed: true,
+        onboarding_completed_at: now,
         onboarding_skipped: false,
-        updated_at: new Date().toISOString(),
+        onboarding_skipped_at: null,
+        updated_at: now,
       }, { onConflict: 'id' });
       if (profileError) throw profileError;
       setGlobalCurrency(defaultCurrency);

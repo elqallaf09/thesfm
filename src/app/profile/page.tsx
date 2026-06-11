@@ -541,7 +541,7 @@ export default function ProfilePage() {
         .eq('id', user.id);
       if (emailSyncError) console.error('[profile] Failed to sync auth email to profile', emailSyncError);
     }
-    const normalizedCountry = normalizeCountry(extra.country || '');
+    const normalizedCountry = normalizeCountry(data?.country || extra.country || '');
     const phoneCode = String(data?.phone_country_code || extra.phoneCode || phoneCodeForCountry(normalizedCountry) || '+965');
     setPendingEmail(String((user as { new_email?: string | null }).new_email || ''));
     setEmailTwoFactor(prev => ({
@@ -566,11 +566,11 @@ export default function ProfilePage() {
       city: normalizeStoredCity(data?.city || extra.city || ''),
     });
 
-    const savedCurrency = data?.preferred_currency || data?.default_currency;
+    const savedCurrency = data?.preferred_currency || data?.default_currency || data?.currency;
     setPreferences(prev => ({
       ...prev,
-      language: (data?.preferred_lang as Lang) || prev.language,
-      theme: (data?.preferred_theme as ThemeMode) || prev.theme,
+      language: (data?.preferred_lang as Lang) || (data?.language as Lang) || prev.language,
+      theme: (data?.preferred_theme as ThemeMode) || (data?.theme as ThemeMode) || prev.theme,
       currency: savedCurrency || prev.currency,
     }));
 
@@ -746,9 +746,13 @@ export default function ProfilePage() {
       phone_number: cleanOptional(profile.phone),
       profession: cleanOptional(profile.profession),
       gender: cleanOptional(profile.gender),
+      country: cleanOptional(profile.country),
       preferred_lang: preferences.language,
+      language: preferences.language,
       preferred_currency: preferences.currency || 'KWD',
+      currency: preferences.currency || 'KWD',
       preferred_theme: preferences.theme,
+      theme: preferences.theme,
       default_currency: preferences.currency || 'KWD',
       city: cleanOptional(profile.city),
       profession_other: profile.profession === 'other' ? cleanOptional(profile.professionOther) : null,
@@ -870,6 +874,8 @@ export default function ProfilePage() {
           display_name: displayName,
           username,
           email: authEmail,
+          default_currency: preferences.currency || 'KWD',
+          country: cleanOptional(profile.country),
         },
       });
       router.refresh();
