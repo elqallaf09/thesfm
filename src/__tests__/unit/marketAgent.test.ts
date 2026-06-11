@@ -6,6 +6,7 @@ import {
   type MarketAgentInput,
   type MarketAgentPricePoint,
 } from '@/lib/market/marketAgent';
+import { normalizeYahooChartHistory } from '@/lib/market/fetchYahooHistory';
 
 const baseInput: MarketAgentInput = {
   symbol: 'TEST',
@@ -100,5 +101,40 @@ describe('market agent analysis rules', () => {
 
     expect(isMarketAgentResponse(success)).toBe(true);
     expect(isMarketAgentResponse(unavailable)).toBe(true);
+  });
+
+  it('normalizes real Yahoo chart candles for provider fallback without fake data', () => {
+    const response = normalizeYahooChartHistory({
+      chart: {
+        result: [{
+          meta: { symbol: 'AAPL', currency: 'USD', regularMarketTime: 1760000000 },
+          timestamp: [1760000000, 1760086400, 1760172800],
+          indicators: {
+            quote: [{
+              open: [220, 221, 222],
+              high: [222, 224, 225],
+              low: [219, 220, 221],
+              close: [221, 223, 224],
+              volume: [1000, 1200, 1300],
+            }],
+          },
+        }],
+        error: null,
+      },
+    }, {
+      symbol: 'AAPL',
+      providerSymbol: 'AAPL',
+      assetType: 'stock',
+      period: '1y',
+      interval: '1d',
+    });
+
+    expect(response.success).toBe(true);
+    if (!response.success) throw new Error(response.error);
+    expect(response.source).toBe('Yahoo Finance');
+    expect(response.provider).toBe('yahoo');
+    expect(response.history).toHaveLength(3);
+    expect(response.history[0]).toMatchObject({ close: 221, open: 220, high: 222, low: 219, volume: 1000 });
+    expect(response.currency).toBe('USD');
   });
 });

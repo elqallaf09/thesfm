@@ -8,6 +8,7 @@ import {
   type MarketResult,
 } from '@/lib/market/marketService';
 import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
+import { fetchYahooHistory } from '@/lib/market/fetchYahooHistory';
 import symbolDirectory from '../../../openbb-service/data/symbols.json';
 
 const OPENBB_TIMEOUT_MS = 12000;
@@ -611,14 +612,38 @@ export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown
   const params = new URLSearchParams({ symbol, assetType, period });
   if (interval) params.set('interval', interval);
   const result = await fetchOpenBB('/market/history', params, { timeoutMs: OPENBB_TIMEOUT_MS });
-  if (result.configured && result.available && result.data?.success && result.data?.fallback !== true && result.data?.source !== 'mock') {
+  const openbbHistory = Array.isArray(result.configured && result.available ? result.data?.history : null)
+    ? result.configured && result.available ? result.data.history : []
+    : [];
+  if (result.configured && result.available && result.data?.success && result.data?.fallback !== true && result.data?.source !== 'mock' && openbbHistory.length > 0) {
     return { ...result.data, period, interval: interval || undefined, cached: result.fromCache, cacheAgeSeconds: result.cacheAgeSeconds };
   }
 
+  const yahoo = await fetchYahooHistory(symbol, assetType, period, interval || undefined);
+  if (yahoo.success && yahoo.history.length > 0) {
+    return {
+      ...yahoo,
+      fallbackProvider: 'yahoo',
+      openbbService: result.configured
+        ? result.available
+          ? 'degraded'
+          : 'unavailable'
+        : 'not_configured',
+    };
+  }
+
+  const openbbCode = result.configured && !result.available
+    ? result.code || (result.timedOut ? 'openbb_timeout' : 'provider_no_data')
+    : result.configured && result.available && result.data?.success && openbbHistory.length === 0
+      ? 'provider_no_data'
+      : 'openbb_unreachable';
+  const yahooError = yahoo.success ? null : yahoo.error;
+  const yahooUnavailableReason = yahoo.success ? null : yahoo.unavailableReason;
+
   return {
     success: false,
-    code: result.configured && !result.available ? result.code || (result.timedOut ? 'openbb_timeout' : 'provider_no_data') : 'openbb_unreachable',
-    source: 'openbb',
+    code: openbbCode,
+    source: yahoo.source,
     fallback: false,
     openbbService: result.configured ? 'unavailable' : 'not_configured',
     symbol,
@@ -626,7 +651,8 @@ export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown
     period,
     interval: interval || undefined,
     history: [],
-    error: result.configured ? 'Market data provider is unavailable.' : 'Market data provider is not configured.',
+    error: yahooError || (result.configured ? 'Market data provider is unavailable.' : 'Market data provider is not configured.'),
+    yahooUnavailableReason,
   };
 }
 
