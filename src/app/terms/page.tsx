@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { AlertTriangle, CheckCircle2, FileText, Mail, Scale, ShieldCheck, UserCheck } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useLanguage } from '@/hooks/useLanguage';
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
 
@@ -75,8 +76,9 @@ export default function TermsPage() {
         <p>{text.subtitle}</p>
         <small>{text.updated}</small>
         <div className="legal-actions">
-          <Link href="/">{text.home}</Link>
-          <a href={SUPPORT_EMAIL_SUPPORT_MAILTO} aria-label={SUPPORT_EMAIL_ARIA_LABEL}><Mail size={16} />{text.contact}</a>
+          <ThemeToggle className="legal-theme-toggle" />
+          <Link className="primary-action" href="/">{text.home}</Link>
+          <a className="secondary-action" href={SUPPORT_EMAIL_SUPPORT_MAILTO} aria-label={SUPPORT_EMAIL_ARIA_LABEL}><Mail size={16} />{text.contact}</a>
         </div>
       </section>
 
@@ -114,8 +116,8 @@ const legalStyles = `
   small{display:block;margin-top:12px;color:#64748B;font-weight:850}
   .legal-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
   .legal-actions a{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;padding:0 16px;text-decoration:none;font-weight:950}
-  .legal-actions a:first-child{background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#fff}
-  .legal-actions a:last-child{background:#fff;color:#061B33;border:1px solid rgba(29,140,255,.18)}
+  .legal-actions .primary-action{background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#fff}
+  .legal-actions .secondary-action{background:#fff;color:#061B33;border:1px solid rgba(29,140,255,.18)}
   .legal-content{display:grid;gap:14px;padding-bottom:54px}
   article{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;background:#fff;border:1px solid rgba(29,140,255,.14);border-radius:22px;padding:20px;box-shadow:0 14px 38px rgba(3,18,37,.07)}
   article svg{margin-top:4px;color:#18D4D4}
@@ -126,5 +128,19 @@ const legalStyles = `
   .legal-email:hover{color:#A7F3F0;text-decoration:underline;text-decoration-color:rgba(24,212,212,.7);text-underline-offset:4px}
   footer span{color:#A7F3F0;font-weight:900}
   a:focus-visible{outline:3px solid rgba(24,212,212,.58);outline-offset:4px}
+  html.dark .legal-page{background:radial-gradient(circle at 14% 8%,rgba(47,214,192,.15),transparent 30%),radial-gradient(circle at 86% 12%,rgba(29,140,255,.12),transparent 28%),linear-gradient(180deg,#07111F 0%,#0B1728 50%,#06101D 100%);color:#E8EEF6;color-scheme:dark}
+  html.dark .legal-hero span{background:rgba(47,214,192,.10);border-color:rgba(47,214,192,.26);color:#8EEAE5}
+  html.dark h1{color:#F8FBFF}
+  html.dark .legal-hero p{color:#C7D3E1}
+  html.dark small{color:#94A9C2}
+  html.dark .legal-actions .primary-action{color:#061A2E;box-shadow:0 18px 38px rgba(47,214,192,.20)}
+  html.dark .legal-actions .secondary-action{background:#0F1D31;color:#E8EEF6;border-color:#1D3050;box-shadow:0 10px 24px rgba(0,0,0,.18)}
+  html.dark article{background:linear-gradient(180deg,#0F1E32,#0B1728);border-color:#1D3050;box-shadow:0 18px 46px rgba(0,0,0,.30)}
+  html.dark article svg{color:#2FD6C0}
+  html.dark h2{color:#F8FBFF}
+  html.dark article p{color:#C7D3E1}
+  html.dark footer{background:#061220;border:1px solid rgba(47,214,192,.20);box-shadow:0 16px 38px rgba(0,0,0,.28)}
+  html.dark .legal-email{color:#EAF6FF}
+  html.dark footer span{color:#8EEAE5}
   @media(max-width:680px){.legal-page{padding:16px}.legal-hero{padding-top:34px}article{grid-template-columns:1fr}.legal-actions a{width:100%}}
 `;
