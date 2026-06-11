@@ -163,6 +163,39 @@ export function AppHeader() {
             box-shadow: 0 8px 20px rgba(3, 18, 37, 0.12);
             cursor: pointer;
           }
+
+          .dark .sfm-global-header {
+            background: rgba(10, 20, 34, 0.94);
+            border-bottom-color: rgba(47, 214, 192, 0.18);
+            box-shadow: 0 12px 34px rgba(0, 0, 0, 0.34);
+          }
+
+          .dark .sfm-global-brand,
+          .dark .sfm-global-brand strong {
+            color: #F8FBFF;
+          }
+
+          .dark .sfm-global-brand span {
+            color: #B8C7D9;
+          }
+
+          .dark .sfm-global-menu-button,
+          .dark .sfm-global-actions .sfm-command-trigger.compact,
+          .dark .sfm-global-actions .sfm-language-trigger {
+            background: #0F1D31 !important;
+            background-image: none !important;
+            border-color: #1D3050 !important;
+            color: #E8EEF6 !important;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22) !important;
+          }
+
+          .dark .sfm-global-menu-button:hover,
+          .dark .sfm-global-actions .sfm-command-trigger.compact:hover,
+          .dark .sfm-global-actions .sfm-language-trigger:hover {
+            border-color: #2FD6C0 !important;
+            color: #2FD6C0 !important;
+            box-shadow: 0 0 0 4px rgba(47, 214, 192, 0.14), 0 10px 24px rgba(0, 0, 0, 0.24) !important;
+          }
         }
 
         @media (max-width: 520px) {
