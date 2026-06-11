@@ -15,6 +15,7 @@ import {
   KeyRound,
   LockKeyhole,
   Mail,
+  Phone,
   ShieldCheck,
   UserRound,
 } from 'lucide-react';
@@ -26,7 +27,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { isEmail } from '@/lib/authSecurity';
 import { trackEvent } from '@/lib/analytics';
 
-type AuthMode = 'login' | 'register' | 'forgot' | 'reset' | 'twoFactor';
+type AuthMode = 'login' | 'register' | 'forgot' | 'reset' | 'twoFactor' | 'phone';
 type Message = { type: 'error' | 'ok'; text: string } | null;
 type PasswordStrength = 'weak' | 'medium' | 'strong';
 type TwoFactorChallenge = {
@@ -83,6 +84,223 @@ const QUESTION_OPTIONS = {
     'Quel était le nom de votre premier projet ?',
   ],
 } as const;
+
+const DIAL_CODES = [
+  // GCC – أول الخيارات
+  { dial: '+965', name: 'الكويت / Kuwait', flag: '🇰🇼' },
+  { dial: '+966', name: 'السعودية / Saudi Arabia', flag: '🇸🇦' },
+  { dial: '+971', name: 'الإمارات / UAE', flag: '🇦🇪' },
+  { dial: '+974', name: 'قطر / Qatar', flag: '🇶🇦' },
+  { dial: '+973', name: 'البحرين / Bahrain', flag: '🇧🇭' },
+  { dial: '+968', name: 'عُمان / Oman', flag: '🇴🇲' },
+  // الدول العربية
+  { dial: '+20',  name: 'مصر / Egypt', flag: '🇪🇬' },
+  { dial: '+962', name: 'الأردن / Jordan', flag: '🇯🇴' },
+  { dial: '+961', name: 'لبنان / Lebanon', flag: '🇱🇧' },
+  { dial: '+963', name: 'سوريا / Syria', flag: '🇸🇾' },
+  { dial: '+964', name: 'العراق / Iraq', flag: '🇮🇶' },
+  { dial: '+967', name: 'اليمن / Yemen', flag: '🇾🇪' },
+  { dial: '+970', name: 'فلسطين / Palestine', flag: '🇵🇸' },
+  { dial: '+212', name: 'المغرب / Morocco', flag: '🇲🇦' },
+  { dial: '+213', name: 'الجزائر / Algeria', flag: '🇩🇿' },
+  { dial: '+216', name: 'تونس / Tunisia', flag: '🇹🇳' },
+  { dial: '+218', name: 'ليبيا / Libya', flag: '🇱🇾' },
+  { dial: '+249', name: 'السودان / Sudan', flag: '🇸🇩' },
+  { dial: '+252', name: 'الصومال / Somalia', flag: '🇸🇴' },
+  { dial: '+222', name: 'موريتانيا / Mauritania', flag: '🇲🇷' },
+  // أمريكا الشمالية
+  { dial: '+1',   name: 'الولايات المتحدة / USA', flag: '🇺🇸' },
+  { dial: '+1',   name: 'كندا / Canada', flag: '🇨🇦' },
+  { dial: '+52',  name: 'المكسيك / Mexico', flag: '🇲🇽' },
+  // أوروبا
+  { dial: '+44',  name: 'المملكة المتحدة / UK', flag: '🇬🇧' },
+  { dial: '+33',  name: 'فرنسا / France', flag: '🇫🇷' },
+  { dial: '+49',  name: 'ألمانيا / Germany', flag: '🇩🇪' },
+  { dial: '+39',  name: 'إيطاليا / Italy', flag: '🇮🇹' },
+  { dial: '+34',  name: 'إسبانيا / Spain', flag: '🇪🇸' },
+  { dial: '+31',  name: 'هولندا / Netherlands', flag: '🇳🇱' },
+  { dial: '+32',  name: 'بلجيكا / Belgium', flag: '🇧🇪' },
+  { dial: '+41',  name: 'سويسرا / Switzerland', flag: '🇨🇭' },
+  { dial: '+43',  name: 'النمسا / Austria', flag: '🇦🇹' },
+  { dial: '+351', name: 'البرتغال / Portugal', flag: '🇵🇹' },
+  { dial: '+30',  name: 'اليونان / Greece', flag: '🇬🇷' },
+  { dial: '+46',  name: 'السويد / Sweden', flag: '🇸🇪' },
+  { dial: '+47',  name: 'النرويج / Norway', flag: '🇳🇴' },
+  { dial: '+45',  name: 'الدنمارك / Denmark', flag: '🇩🇰' },
+  { dial: '+358', name: 'فنلندا / Finland', flag: '🇫🇮' },
+  { dial: '+354', name: 'آيسلندا / Iceland', flag: '🇮🇸' },
+  { dial: '+353', name: 'أيرلندا / Ireland', flag: '🇮🇪' },
+  { dial: '+48',  name: 'بولندا / Poland', flag: '🇵🇱' },
+  { dial: '+380', name: 'أوكرانيا / Ukraine', flag: '🇺🇦' },
+  { dial: '+40',  name: 'رومانيا / Romania', flag: '🇷🇴' },
+  { dial: '+36',  name: 'المجر / Hungary', flag: '🇭🇺' },
+  { dial: '+420', name: 'التشيك / Czech Republic', flag: '🇨🇿' },
+  { dial: '+421', name: 'سلوفاكيا / Slovakia', flag: '🇸🇰' },
+  { dial: '+386', name: 'سلوفينيا / Slovenia', flag: '🇸🇮' },
+  { dial: '+385', name: 'كرواتيا / Croatia', flag: '🇭🇷' },
+  { dial: '+387', name: 'البوسنة / Bosnia', flag: '🇧🇦' },
+  { dial: '+381', name: 'صربيا / Serbia', flag: '🇷🇸' },
+  { dial: '+382', name: 'الجبل الأسود / Montenegro', flag: '🇲🇪' },
+  { dial: '+383', name: 'كوسوفو / Kosovo', flag: '🇽🇰' },
+  { dial: '+389', name: 'مقدونيا الشمالية / N. Macedonia', flag: '🇲🇰' },
+  { dial: '+355', name: 'ألبانيا / Albania', flag: '🇦🇱' },
+  { dial: '+359', name: 'بلغاريا / Bulgaria', flag: '🇧🇬' },
+  { dial: '+372', name: 'إستونيا / Estonia', flag: '🇪🇪' },
+  { dial: '+371', name: 'لاتفيا / Latvia', flag: '🇱🇻' },
+  { dial: '+370', name: 'ليتوانيا / Lithuania', flag: '🇱🇹' },
+  { dial: '+352', name: 'لوكسمبورغ / Luxembourg', flag: '🇱🇺' },
+  { dial: '+357', name: 'قبرص / Cyprus', flag: '🇨🇾' },
+  { dial: '+356', name: 'مالطا / Malta', flag: '🇲🇹' },
+  { dial: '+376', name: 'أندورا / Andorra', flag: '🇦🇩' },
+  { dial: '+377', name: 'موناكو / Monaco', flag: '🇲🇨' },
+  { dial: '+378', name: 'سان مارينو / San Marino', flag: '🇸🇲' },
+  { dial: '+423', name: 'ليختنشتاين / Liechtenstein', flag: '🇱🇮' },
+  { dial: '+350', name: 'جبل طارق / Gibraltar', flag: '🇬🇮' },
+  { dial: '+298', name: 'جزر فاروه / Faroe Islands', flag: '🇫🇴' },
+  { dial: '+375', name: 'بيلاروسيا / Belarus', flag: '🇧🇾' },
+  { dial: '+373', name: 'مولدوفا / Moldova', flag: '🇲🇩' },
+  { dial: '+374', name: 'أرمينيا / Armenia', flag: '🇦🇲' },
+  { dial: '+994', name: 'أذربيجان / Azerbaijan', flag: '🇦🇿' },
+  { dial: '+995', name: 'جورجيا / Georgia', flag: '🇬🇪' },
+  // روسيا وآسيا الوسطى
+  { dial: '+7',   name: 'روسيا / Russia', flag: '🇷🇺' },
+  { dial: '+7',   name: 'كازاخستان / Kazakhstan', flag: '🇰🇿' },
+  { dial: '+998', name: 'أوزبكستان / Uzbekistan', flag: '🇺🇿' },
+  { dial: '+993', name: 'تركمانستان / Turkmenistan', flag: '🇹🇲' },
+  { dial: '+992', name: 'طاجيكستان / Tajikistan', flag: '🇹🇯' },
+  { dial: '+996', name: 'قيرغيزستان / Kyrgyzstan', flag: '🇰🇬' },
+  // آسيا
+  { dial: '+90',  name: 'تركيا / Turkey', flag: '🇹🇷' },
+  { dial: '+98',  name: 'إيران / Iran', flag: '🇮🇷' },
+  { dial: '+93',  name: 'أفغانستان / Afghanistan', flag: '🇦🇫' },
+  { dial: '+92',  name: 'باكستان / Pakistan', flag: '🇵🇰' },
+  { dial: '+91',  name: 'الهند / India', flag: '🇮🇳' },
+  { dial: '+880', name: 'بنغلاديش / Bangladesh', flag: '🇧🇩' },
+  { dial: '+94',  name: 'سريلانكا / Sri Lanka', flag: '🇱🇰' },
+  { dial: '+977', name: 'نيبال / Nepal', flag: '🇳🇵' },
+  { dial: '+975', name: 'بوتان / Bhutan', flag: '🇧🇹' },
+  { dial: '+960', name: 'المالديف / Maldives', flag: '🇲🇻' },
+  { dial: '+86',  name: 'الصين / China', flag: '🇨🇳' },
+  { dial: '+852', name: 'هونغ كونغ / Hong Kong', flag: '🇭🇰' },
+  { dial: '+853', name: 'ماكاو / Macao', flag: '🇲🇴' },
+  { dial: '+886', name: 'تايوان / Taiwan', flag: '🇹🇼' },
+  { dial: '+81',  name: 'اليابان / Japan', flag: '🇯🇵' },
+  { dial: '+82',  name: 'كوريا الجنوبية / South Korea', flag: '🇰🇷' },
+  { dial: '+850', name: 'كوريا الشمالية / North Korea', flag: '🇰🇵' },
+  { dial: '+976', name: 'منغوليا / Mongolia', flag: '🇲🇳' },
+  { dial: '+60',  name: 'ماليزيا / Malaysia', flag: '🇲🇾' },
+  { dial: '+65',  name: 'سنغافورة / Singapore', flag: '🇸🇬' },
+  { dial: '+62',  name: 'إندونيسيا / Indonesia', flag: '🇮🇩' },
+  { dial: '+63',  name: 'الفلبين / Philippines', flag: '🇵🇭' },
+  { dial: '+66',  name: 'تايلاند / Thailand', flag: '🇹🇭' },
+  { dial: '+84',  name: 'فيتنام / Vietnam', flag: '🇻🇳' },
+  { dial: '+855', name: 'كمبوديا / Cambodia', flag: '🇰🇭' },
+  { dial: '+856', name: 'لاوس / Laos', flag: '🇱🇦' },
+  { dial: '+95',  name: 'ميانمار / Myanmar', flag: '🇲🇲' },
+  { dial: '+670', name: 'تيمور الشرقية / Timor-Leste', flag: '🇹🇱' },
+  { dial: '+673', name: 'بروناي / Brunei', flag: '🇧🇳' },
+  // أوقيانوسيا
+  { dial: '+61',  name: 'أستراليا / Australia', flag: '🇦🇺' },
+  { dial: '+64',  name: 'نيوزيلندا / New Zealand', flag: '🇳🇿' },
+  { dial: '+675', name: 'بابوا غينيا الجديدة / Papua New Guinea', flag: '🇵🇬' },
+  { dial: '+679', name: 'فيجي / Fiji', flag: '🇫🇯' },
+  { dial: '+685', name: 'ساموا / Samoa', flag: '🇼🇸' },
+  { dial: '+676', name: 'تونغا / Tonga', flag: '🇹🇴' },
+  { dial: '+677', name: 'جزر سليمان / Solomon Islands', flag: '🇸🇧' },
+  { dial: '+678', name: 'فانواتو / Vanuatu', flag: '🇻🇺' },
+  { dial: '+680', name: 'بالاو / Palau', flag: '🇵🇼' },
+  { dial: '+691', name: 'ميكرونيزيا / Micronesia', flag: '🇫🇲' },
+  { dial: '+692', name: 'جزر مارشال / Marshall Islands', flag: '🇲🇭' },
+  { dial: '+688', name: 'توفالو / Tuvalu', flag: '🇹🇻' },
+  { dial: '+686', name: 'كيريباتي / Kiribati', flag: '🇰🇮' },
+  { dial: '+674', name: 'ناورو / Nauru', flag: '🇳🇷' },
+  { dial: '+687', name: 'كاليدونيا الجديدة / New Caledonia', flag: '🇳🇨' },
+  { dial: '+689', name: 'بولينيزيا الفرنسية / French Polynesia', flag: '🇵🇫' },
+  { dial: '+682', name: 'جزر كوك / Cook Islands', flag: '🇨🇰' },
+  // أمريكا اللاتينية
+  { dial: '+55',  name: 'البرازيل / Brazil', flag: '🇧🇷' },
+  { dial: '+54',  name: 'الأرجنتين / Argentina', flag: '🇦🇷' },
+  { dial: '+56',  name: 'تشيلي / Chile', flag: '🇨🇱' },
+  { dial: '+57',  name: 'كولومبيا / Colombia', flag: '🇨🇴' },
+  { dial: '+51',  name: 'بيرو / Peru', flag: '🇵🇪' },
+  { dial: '+58',  name: 'فنزويلا / Venezuela', flag: '🇻🇪' },
+  { dial: '+593', name: 'الإكوادور / Ecuador', flag: '🇪🇨' },
+  { dial: '+591', name: 'بوليفيا / Bolivia', flag: '🇧🇴' },
+  { dial: '+595', name: 'باراغواي / Paraguay', flag: '🇵🇾' },
+  { dial: '+598', name: 'أوروغواي / Uruguay', flag: '🇺🇾' },
+  { dial: '+592', name: 'غيانا / Guyana', flag: '🇬🇾' },
+  { dial: '+597', name: 'سورينام / Suriname', flag: '🇸🇷' },
+  { dial: '+507', name: 'بنما / Panama', flag: '🇵🇦' },
+  { dial: '+506', name: 'كوستاريكا / Costa Rica', flag: '🇨🇷' },
+  { dial: '+505', name: 'نيكاراغوا / Nicaragua', flag: '🇳🇮' },
+  { dial: '+504', name: 'هندوراس / Honduras', flag: '🇭🇳' },
+  { dial: '+503', name: 'السلفادور / El Salvador', flag: '🇸🇻' },
+  { dial: '+502', name: 'غواتيمالا / Guatemala', flag: '🇬🇹' },
+  { dial: '+501', name: 'بليز / Belize', flag: '🇧🇿' },
+  { dial: '+53',  name: 'كوبا / Cuba', flag: '🇨🇺' },
+  { dial: '+509', name: 'هايتي / Haiti', flag: '🇭🇹' },
+  { dial: '+1809',name: 'الدومينيكان / Dominican Republic', flag: '🇩🇴' },
+  { dial: '+1876',name: 'جامايكا / Jamaica', flag: '🇯🇲' },
+  { dial: '+1868',name: 'ترينيداد وتوباغو / Trinidad & Tobago', flag: '🇹🇹' },
+  { dial: '+1758',name: 'سانت لوسيا / Saint Lucia', flag: '🇱🇨' },
+  { dial: '+1473',name: 'غرينادا / Grenada', flag: '🇬🇩' },
+  { dial: '+1767',name: 'دومينيكا / Dominica', flag: '🇩🇲' },
+  { dial: '+1784',name: 'سانت فنسنت / Saint Vincent', flag: '🇻🇨' },
+  { dial: '+1869',name: 'سانت كيتس / Saint Kitts', flag: '🇰🇳' },
+  { dial: '+1268',name: 'أنتيغوا / Antigua & Barbuda', flag: '🇦🇬' },
+  { dial: '+1246',name: 'باربادوس / Barbados', flag: '🇧🇧' },
+  { dial: '+1242',name: 'الباهاما / Bahamas', flag: '🇧🇸' },
+  { dial: '+1787',name: 'بورتوريكو / Puerto Rico', flag: '🇵🇷' },
+  { dial: '+1345',name: 'جزر كايمان / Cayman Islands', flag: '🇰🇾' },
+  { dial: '+1441',name: 'برمودا / Bermuda', flag: '🇧🇲' },
+  { dial: '+297', name: 'أروبا / Aruba', flag: '🇦🇼' },
+  // أفريقيا
+  { dial: '+27',  name: 'جنوب أفريقيا / South Africa', flag: '🇿🇦' },
+  { dial: '+234', name: 'نيجيريا / Nigeria', flag: '🇳🇬' },
+  { dial: '+254', name: 'كينيا / Kenya', flag: '🇰🇪' },
+  { dial: '+256', name: 'أوغندا / Uganda', flag: '🇺🇬' },
+  { dial: '+255', name: 'تنزانيا / Tanzania', flag: '🇹🇿' },
+  { dial: '+251', name: 'إثيوبيا / Ethiopia', flag: '🇪🇹' },
+  { dial: '+233', name: 'غانا / Ghana', flag: '🇬🇭' },
+  { dial: '+221', name: 'السنغال / Senegal', flag: '🇸🇳' },
+  { dial: '+225', name: 'كوت ديفوار / Ivory Coast', flag: '🇨🇮' },
+  { dial: '+237', name: 'الكاميرون / Cameroon', flag: '🇨🇲' },
+  { dial: '+260', name: 'زامبيا / Zambia', flag: '🇿🇲' },
+  { dial: '+263', name: 'زيمبابوي / Zimbabwe', flag: '🇿🇼' },
+  { dial: '+258', name: 'موزمبيق / Mozambique', flag: '🇲🇿' },
+  { dial: '+250', name: 'رواندا / Rwanda', flag: '🇷🇼' },
+  { dial: '+261', name: 'مدغشقر / Madagascar', flag: '🇲🇬' },
+  { dial: '+248', name: 'سيشيل / Seychelles', flag: '🇸🇨' },
+  { dial: '+230', name: 'موريشيوس / Mauritius', flag: '🇲🇺' },
+  { dial: '+264', name: 'ناميبيا / Namibia', flag: '🇳🇦' },
+  { dial: '+267', name: 'بوتسوانا / Botswana', flag: '🇧🇼' },
+  { dial: '+268', name: 'إيسواتيني / Eswatini', flag: '🇸🇿' },
+  { dial: '+266', name: 'ليسوتو / Lesotho', flag: '🇱🇸' },
+  { dial: '+265', name: 'مالاوي / Malawi', flag: '🇲🇼' },
+  { dial: '+257', name: 'بوروندي / Burundi', flag: '🇧🇮' },
+  { dial: '+253', name: 'جيبوتي / Djibouti', flag: '🇩🇯' },
+  { dial: '+291', name: 'إريتريا / Eritrea', flag: '🇪🇷' },
+  { dial: '+241', name: 'الغابون / Gabon', flag: '🇬🇦' },
+  { dial: '+242', name: 'الكونغو / Congo', flag: '🇨🇬' },
+  { dial: '+243', name: 'الكونغو الديمقراطية / DR Congo', flag: '🇨🇩' },
+  { dial: '+244', name: 'أنغولا / Angola', flag: '🇦🇴' },
+  { dial: '+240', name: 'غينيا الاستوائية / Equatorial Guinea', flag: '🇬🇶' },
+  { dial: '+236', name: 'أفريقيا الوسطى / CAR', flag: '🇨🇫' },
+  { dial: '+235', name: 'تشاد / Chad', flag: '🇹🇩' },
+  { dial: '+227', name: 'النيجر / Niger', flag: '🇳🇪' },
+  { dial: '+228', name: 'توغو / Togo', flag: '🇹🇬' },
+  { dial: '+229', name: 'بنين / Benin', flag: '🇧🇯' },
+  { dial: '+226', name: 'بوركينا فاسو / Burkina Faso', flag: '🇧🇫' },
+  { dial: '+223', name: 'مالي / Mali', flag: '🇲🇱' },
+  { dial: '+224', name: 'غينيا / Guinea', flag: '🇬🇳' },
+  { dial: '+232', name: 'سيراليون / Sierra Leone', flag: '🇸🇱' },
+  { dial: '+231', name: 'ليبيريا / Liberia', flag: '🇱🇷' },
+  { dial: '+245', name: 'غينيا بيساو / Guinea-Bissau', flag: '🇬🇼' },
+  { dial: '+238', name: 'رأس الخضراء / Cape Verde', flag: '🇨🇻' },
+  { dial: '+220', name: 'غامبيا / Gambia', flag: '🇬🇲' },
+  { dial: '+269', name: 'جزر القمر / Comoros', flag: '🇰🇲' },
+  { dial: '+239', name: 'ساو تومي وبرينسيبي / São Tomé', flag: '🇸🇹' },
+] as const;
 
 const TEXT = {
   ar: {
@@ -174,6 +392,22 @@ const TEXT = {
     codeExpired: 'انتهت صلاحية الرمز. اطلب رمزاً جديداً.',
     codeInvalidOrExpired: 'رمز التحقق غير صحيح أو منتهي الصلاحية.',
     twoFactorNoEmail: 'لا يمكن إكمال المصادقة الثنائية بدون بريد إلكتروني صالح.',
+    orContinueWith: 'أو تابع عبر',
+    signInGoogle: 'تسجيل الدخول عبر Google',
+    signInApple: 'تسجيل الدخول عبر Apple',
+    signInPhone: 'تسجيل الدخول برقم الهاتف',
+    phoneTitle: 'تسجيل الدخول برقم الهاتف',
+    phoneBody: 'سنرسل رمز تحقق عبر رسالة نصية SMS إلى رقمك.',
+    phoneNumber: 'رقم الهاتف',
+    dialCode: 'رمز الدولة',
+    sendOtp: 'إرسال رمز التحقق',
+    sendingOtp: 'جاري الإرسال...',
+    otpSent: 'تم إرسال رمز التحقق إلى هاتفك.',
+    otpTitle: 'أدخل رمز التحقق',
+    otpBody: 'أدخل الرمز المكون من 6 أرقام المرسل إلى رقمك.',
+    errorPhone: 'أدخل رقم هاتف صحيح (بدون الصفر الأول).',
+    errorOtp: 'رمز التحقق غير صحيح أو منتهي الصلاحية.',
+    backToLogin: 'العودة لتسجيل الدخول',
   },
   en: {
     title: 'Smart Financial Manager',
@@ -264,6 +498,22 @@ const TEXT = {
     codeExpired: 'The code has expired. Request a new code.',
     codeInvalidOrExpired: 'The verification code is incorrect or expired.',
     twoFactorNoEmail: 'Two-factor authentication requires a valid email address.',
+    orContinueWith: 'Or continue with',
+    signInGoogle: 'Sign in with Google',
+    signInApple: 'Sign in with Apple',
+    signInPhone: 'Sign in with phone number',
+    phoneTitle: 'Sign in with phone',
+    phoneBody: 'We\'ll send a one-time SMS code to your number.',
+    phoneNumber: 'Phone number',
+    dialCode: 'Country code',
+    sendOtp: 'Send verification code',
+    sendingOtp: 'Sending...',
+    otpSent: 'Verification code sent to your phone.',
+    otpTitle: 'Enter verification code',
+    otpBody: 'Enter the 6-digit code sent to your number.',
+    errorPhone: 'Please enter a valid phone number (without leading zero).',
+    errorOtp: 'Invalid or expired verification code.',
+    backToLogin: 'Back to sign in',
   },
   fr: {
     title: 'Gestionnaire financier intelligent',
@@ -353,7 +603,23 @@ const TEXT = {
     invalidCode: 'Le code de vérification est incorrect.',
     codeExpired: 'Le code a expiré. Demandez un nouveau code.',
     codeInvalidOrExpired: 'Le code de vérification est incorrect ou expiré.',
-    twoFactorNoEmail: 'L’authentification à deux facteurs nécessite une adresse e-mail valide.',
+    twoFactorNoEmail: ‘L’authentification à deux facteurs nécessite une adresse e-mail valide.’,
+    orContinueWith: ‘Ou continuer avec’,
+    signInGoogle: ‘Se connecter avec Google’,
+    signInApple: ‘Se connecter avec Apple’,
+    signInPhone: ‘Se connecter par téléphone’,
+    phoneTitle: ‘Connexion par téléphone’,
+    phoneBody: ‘Nous enverrons un code SMS unique à votre numéro.’,
+    phoneNumber: ‘Numéro de téléphone’,
+    dialCode: ‘Indicatif pays’,
+    sendOtp: ‘Envoyer le code’,
+    sendingOtp: ‘Envoi en cours...’,
+    otpSent: ‘Code de vérification envoyé sur votre téléphone.’,
+    otpTitle: ‘Entrez le code de vérification’,
+    otpBody: ‘Entrez le code à 6 chiffres envoyé à votre numéro.’,
+    errorPhone: ‘Entrez un numéro de téléphone valide (sans zéro initial).’,
+    errorOtp: ‘Code de vérification invalide ou expiré.’,
+    backToLogin: ‘Retour à la connexion’,
   },
 } as const;
 
@@ -428,6 +694,11 @@ function LoginContent() {
   const [securityAttempts, setSecurityAttempts] = useState(0);
   const [twoFactorChallenge, setTwoFactorChallenge] = useState<TwoFactorChallenge | null>(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [dialCode, setDialCode] = useState('+965');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneOtp, setPhoneOtp] = useState('');
+  const [phoneStep, setPhoneStep] = useState<'input' | 'verify'>('input');
+  const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
 
   const nextPath = useMemo(() => {
     const requested = searchParams.get('next') || '/dashboard';
@@ -442,6 +713,48 @@ function LoginContent() {
     setMessage({ type: 'ok', text: text.signingIn });
     // Hard redirect ensures middleware reads fresh session cookie
     window.location.href = targetPath;
+  }
+
+  async function signInWithGoogle() {
+    setSocialLoading('google');
+    setMessage(null);
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
+    if (error) setMessage({ type: 'error', text: error.message });
+    setSocialLoading(null);
+  }
+
+  async function signInWithApple() {
+    setSocialLoading('apple');
+    setMessage(null);
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo } });
+    if (error) setMessage({ type: 'error', text: error.message });
+    setSocialLoading(null);
+  }
+
+  async function handlePhoneLogin(): Promise<string> {
+    const cleaned = phoneNumber.replace(/\D/g, '').replace(/^0/, '');
+    if (cleaned.length < 7) return text.errorPhone;
+    const fullPhone = `${dialCode}${cleaned}`;
+    const { error } = await supabase.auth.signInWithOtp({ phone: fullPhone });
+    if (error) return error.message;
+    setPhoneStep('verify');
+    setMessage({ type: 'ok', text: text.otpSent });
+    return '';
+  }
+
+  async function handleVerifyPhone(): Promise<string> {
+    const cleaned = phoneNumber.replace(/\D/g, '').replace(/^0/, '');
+    const fullPhone = `${dialCode}${cleaned}`;
+    const { error } = await supabase.auth.verifyOtp({ phone: fullPhone, token: phoneOtp, type: 'sms' });
+    if (error) return text.errorOtp;
+    const { data: { session: phoneSess } } = await supabase.auth.getSession();
+    if (phoneSess) {
+      syncLoggedInCookies(phoneSess);
+      completeAuthRedirect(nextPath);
+    }
+    return '';
   }
 
   useEffect(() => {
@@ -848,6 +1161,7 @@ function LoginContent() {
         : mode === 'register' ? await handleRegister()
         : mode === 'forgot' ? await handleForgotPassword()
         : mode === 'twoFactor' ? await handleTwoFactorLogin()
+        : mode === 'phone' ? (phoneStep === 'verify' ? await handleVerifyPhone() : await handlePhoneLogin())
         : await handleResetPassword();
       if (error) {
         console.error('[auth] login error', error);
@@ -867,7 +1181,7 @@ function LoginContent() {
     router.replace('/dashboard');
   }
 
-  const cardTitle = mode === 'register' ? text.create : mode === 'forgot' ? text.forgot : mode === 'reset' ? text.reset : mode === 'twoFactor' ? text.twoFactorTitle : text.login;
+  const cardTitle = mode === 'register' ? text.create : mode === 'forgot' ? text.forgot : mode === 'reset' ? text.reset : mode === 'twoFactor' ? text.twoFactorTitle : mode === 'phone' ? text.phoneTitle : text.login;
   const isRegister = mode === 'register';
 
   return (
@@ -913,6 +1227,55 @@ function LoginContent() {
             <AuthField label={text.email} icon={<Mail size={18} />} required>
               <input value={forgotEmail} onChange={event => setForgotEmail(event.target.value)} placeholder={text.emailPlaceholder} type="email" autoComplete="email" dir="ltr" />
             </AuthField>
+          )}
+
+          {mode === 'phone' && (
+            <>
+              <p className="phone-mode-body">{phoneStep === 'verify' ? text.otpBody : text.phoneBody}</p>
+              {phoneStep === 'input' ? (
+                <div className="phone-input-wrap">
+                  <label className="auth-field">
+                    <span>{text.dialCode}</span>
+                  </label>
+                  <div className="phone-row" dir="ltr">
+                    <select
+                      className="dial-select"
+                      value={dialCode}
+                      onChange={e => setDialCode(e.target.value)}
+                      aria-label={text.dialCode}
+                    >
+                      {DIAL_CODES.map((dc, i) => (
+                        <option key={`${dc.dial}-${dc.name}-${i}`} value={dc.dial}>
+                          {dc.flag} {dc.name} ({dc.dial})
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      className="phone-num-input"
+                      type="tel"
+                      inputMode="tel"
+                      value={phoneNumber}
+                      onChange={e => setPhoneNumber(e.target.value.replace(/[^\d]/g, ''))}
+                      placeholder="XXXXXXXXXX"
+                      autoComplete="tel-national"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <AuthField label={text.otpTitle} icon={<KeyRound size={18} />} required>
+                  <input
+                    value={phoneOtp}
+                    onChange={e => setPhoneOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    dir="ltr"
+                    autoFocus
+                    placeholder="• • • • • •"
+                  />
+                </AuthField>
+              )}
+            </>
           )}
 
           {mode === 'twoFactor' && (
@@ -1086,17 +1449,60 @@ function LoginContent() {
               data-needs-agreement={isRegister && signupStep === 2 && !termsAccepted ? 'true' : undefined}
             >
               {submitting ? (
-                <span className="loading-label"><span className="spinner" />{mode === 'login' ? text.signingIn : mode === 'register' ? text.saving : mode === 'twoFactor' ? text.verifyingCode : text.sendReset}</span>
-              ) : mode === 'login' ? text.signIn : mode === 'register' ? (signupStep === 1 ? text.continue : text.createAccount) : mode === 'forgot' ? text.sendReset : mode === 'twoFactor' ? text.verifyCode : text.reset}
+                <span className="loading-label"><span className="spinner" />{mode === 'login' ? text.signingIn : mode === 'register' ? text.saving : mode === 'twoFactor' ? text.verifyingCode : mode === 'phone' ? text.sendingOtp : text.sendReset}</span>
+              ) : mode === 'login' ? text.signIn : mode === 'register' ? (signupStep === 1 ? text.continue : text.createAccount) : mode === 'forgot' ? text.sendReset : mode === 'twoFactor' ? text.verifyCode : mode === 'phone' ? (phoneStep === 'verify' ? text.verifyCode : text.sendOtp) : text.reset}
             </button>
           </div>
         </form>
 
+        {mode === 'login' && (
+          <div className="social-login-block">
+            <div className="social-divider"><span>{text.orContinueWith}</span></div>
+            <div className="social-btns">
+              <button
+                type="button"
+                className="social-btn google-btn"
+                onClick={() => void signInWithGoogle()}
+                disabled={!!socialLoading || submitting}
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                  <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/>
+                  <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#34A853"/>
+                  <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z" fill="#FBBC05"/>
+                  <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58Z" fill="#EA4335"/>
+                </svg>
+                {socialLoading === 'google' ? text.signingIn : text.signInGoogle}
+              </button>
+              <button
+                type="button"
+                className="social-btn apple-btn"
+                onClick={() => void signInWithApple()}
+                disabled={!!socialLoading || submitting}
+              >
+                <svg width="17" height="18" viewBox="0 0 17 18" aria-hidden="true" fill="currentColor">
+                  <path d="M13.18 0c.02.41-.11.81-.32 1.16-.22.35-.54.64-.9.84-.36.2-.77.3-1.19.27-.04-.38.07-.76.27-1.1.2-.33.5-.6.86-.8.36-.19.77-.29 1.19-.27l.09.1Zm1.65 13.55a9.32 9.32 0 0 1-.94 1.67c-.46.67-.85 1.13-1.18 1.39-.47.43-1 .65-1.56.66-.4 0-.88-.12-1.44-.35-.56-.23-1.07-.35-1.53-.35-.48 0-1 .12-1.56.35-.56.24-1.01.36-1.36.37-.54.02-1.08-.21-1.6-.68-.36-.27-.76-.75-1.21-1.44A11.37 11.37 0 0 1 1 11.5a7.43 7.43 0 0 1-.35-2.22c0-.86.19-1.6.56-2.22a3.28 3.28 0 0 1 1.17-1.18 3.14 3.14 0 0 1 1.58-.44c.44 0 1.01.13 1.72.39.7.26 1.16.4 1.36.4.15 0 .67-.16 1.53-.47.83-.29 1.52-.41 2.1-.37 1.57.13 2.74.75 3.52 1.88-1.4.85-2.1 2.04-2.08 3.57.02 1.19.44 2.18 1.28 2.96.38.36.8.64 1.27.83l-.49.92Z"/>
+                </svg>
+                {socialLoading === 'apple' ? text.signingIn : text.signInApple}
+              </button>
+              <button
+                type="button"
+                className="social-btn phone-btn"
+                onClick={() => { setPhoneStep('input'); setPhoneNumber(''); setPhoneOtp(''); setMessage(null); setAuthMode('phone'); }}
+                disabled={!!socialLoading || submitting}
+              >
+                <Phone size={17} />
+                {text.signInPhone}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="actions">
           {mode === 'twoFactor' && <button type="button" disabled={submitting} onClick={() => void resendTwoFactorCode()}>{text.resendCode}</button>}
-          {mode !== 'login' && <button type="button" disabled={submitting} onClick={() => setAuthMode('login')}>{text.switchLogin}</button>}
-          {mode !== 'register' && mode !== 'twoFactor' && <button type="button" disabled={submitting} onClick={() => setAuthMode('register')}>{text.switchCreate}</button>}
-          {mode !== 'forgot' && mode !== 'reset' && mode !== 'twoFactor' && <button type="button" disabled={submitting} onClick={() => setAuthMode('forgot')}>{text.forgotLink}</button>}
+          {mode === 'phone' && phoneStep === 'verify' && <button type="button" disabled={submitting} onClick={() => { setPhoneStep('input'); setPhoneOtp(''); setMessage(null); }}>{text.resendCode}</button>}
+          {mode !== 'login' && <button type="button" disabled={submitting} onClick={() => setAuthMode('login')}>{text.backToLogin}</button>}
+          {mode !== 'register' && mode !== 'twoFactor' && mode !== 'phone' && <button type="button" disabled={submitting} onClick={() => setAuthMode('register')}>{text.switchCreate}</button>}
+          {mode !== 'forgot' && mode !== 'reset' && mode !== 'twoFactor' && mode !== 'phone' && <button type="button" disabled={submitting} onClick={() => setAuthMode('forgot')}>{text.forgotLink}</button>}
           {mode === 'login' && <button type="button" disabled={submitting} onClick={enterGuestMode}>{text.guest}</button>}
         </div>
       </section>
@@ -1107,6 +1513,12 @@ function LoginContent() {
         .login-shell .language-row{display:flex;justify-content:flex-end;margin-bottom:14px}.login-shell .brand{text-align:center;margin-bottom:22px}.login-shell .mark{margin:0 auto 12px}.login-shell .brand h1{font-size:clamp(24px,4vw,30px);margin:0 0 8px;color:#061B33}.login-shell .brand p{font-size:13px;color:#475569;line-height:1.7;margin:0}
         .login-shell .signup-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px}.login-shell .signup-steps span{border:1px solid rgba(29,140,255,.16);background:#F8FBFF;color:#0B2748;border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:9px;font-weight:900;font-size:13px}.login-shell .signup-steps b{width:26px;height:26px;border-radius:999px;display:grid;place-items:center;background:rgba(29,140,255,.12);color:#1D8CFF}.login-shell .signup-steps .active{background:#061B33;color:#FFFFFF;border-color:rgba(24,212,212,.35);box-shadow:inset 0 -2px 0 rgba(24,212,212,.70)}.login-shell .signup-steps .active b{background:rgba(255,255,255,.12);color:#18D4D4}.login-shell .signup-steps .done{background:#ECFDF5;color:#047857;border-color:rgba(16,185,129,.22)}
         .login-shell .form{display:grid;gap:14px}.login-shell .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.login-shell .grid-full{grid-column:1/-1}
+        .login-shell .social-login-block{margin-top:6px}.social-divider{display:flex;align-items:center;gap:10px;margin:14px 0 12px}.social-divider:before,.social-divider:after{content:"";flex:1;height:1px;background:rgba(29,140,255,.15)}.social-divider span{font-size:12px;color:#94A3B8;font-weight:900;white-space:nowrap}
+        .social-btns{display:grid;gap:9px}.social-btn{display:flex;align-items:center;justify-content:center;gap:9px;height:46px;border:1.5px solid rgba(29,140,255,.18);border-radius:14px;background:#fff;color:#0B172A;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer;transition:background .15s,border-color .15s,color .15s;width:100%}
+        .social-btn:hover{background:#F1F5FF;border-color:rgba(29,140,255,.35)}.social-btn:disabled{opacity:.5;cursor:not-allowed}
+        .social-btn.google-btn:hover{border-color:#EA4335;background:#FFF5F5}.social-btn.apple-btn:hover{background:#000;color:#fff;border-color:#000}.social-btn.phone-btn{border-color:rgba(5,150,105,.25);color:#047857}.social-btn.phone-btn:hover:not(:disabled){background:#ECFDF5;border-color:#059669}
+        .phone-mode-body{margin:0 0 12px;font-size:13px;color:#475569;font-weight:800;line-height:1.7;text-align:center}
+        .phone-input-wrap{display:grid;gap:6px}.phone-row{display:flex;gap:8px;align-items:stretch}.dial-select{height:48px;border:1.5px solid rgba(29,140,255,.18);border-radius:14px;background:#fff;color:#0B172A;padding:0 10px;font:900 13px Tajawal,Arial,sans-serif;min-width:0;width:180px;flex-shrink:0;cursor:pointer;outline:0}.dial-select:focus{border-color:#1D8CFF;box-shadow:0 0 0 4px rgba(29,140,255,.10)}.phone-num-input{flex:1;height:48px;border:1.5px solid rgba(29,140,255,.18);border-radius:14px;background:#fff;color:#0B172A;padding:0 14px;font:900 16px Tajawal,Arial,sans-serif;outline:0;min-width:0}.phone-num-input:focus{border-color:#1D8CFF;box-shadow:0 0 0 4px rgba(29,140,255,.10)}
         .login-shell .auth-field{display:grid;gap:7px;min-width:0}.login-shell .auth-field>span,.login-shell .security-check label>span{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:900;color:#0B2748}.login-shell .auth-field em{font-style:normal;color:#64748B;font-size:11px;font-weight:900}
         .login-shell .input-wrap{min-height:52px;border:1.5px solid rgba(29,140,255,.22);background:#FFFFFF;border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 13px;color:#1D8CFF;transition:border-color .18s ease,box-shadow .18s ease,background .18s ease}.login-shell .input-wrap:focus-within{border-color:#1D8CFF;background:#F8FBFF;box-shadow:0 0 0 4px rgba(29,140,255,.25)}
         .login-shell input,.login-shell select{flex:1;border:0;background:transparent;outline:0;color:#0B172A;font:800 14px Tajawal,Arial,sans-serif;min-width:0;width:100%}.login-shell input::placeholder{color:#64748B;opacity:1}.login-shell select{cursor:pointer}
