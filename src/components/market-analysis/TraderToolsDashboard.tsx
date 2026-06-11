@@ -73,7 +73,13 @@ export function TraderToolsDashboard({
   const [pipsInput, setPipsInput] = useState({ ...defaultPipsInput });
   const [lotInput, setLotInput] = useState({ ...defaultLotInput });
   const [marginInput, setMarginInput] = useState({ ...defaultMarginInput });
-  const [accountCurrency, setAccountCurrency] = useState<AccountCurrencyCode>(() => normalizeAccountCurrency(currency));
+  const [accountCurrency, setAccountCurrency] = useState<AccountCurrencyCode>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem('calculator_account_currency') as AccountCurrencyCode | null;
+      if (saved) return normalizeAccountCurrency(saved);
+    }
+    return normalizeAccountCurrency(currency);
+  });
   const [accountCurrencyTouched, setAccountCurrencyTouched] = useState(false);
   const [savingCurrency, setSavingCurrency] = useState(false);
   const [currencyMessage, setCurrencyMessage] = useState('');
@@ -81,7 +87,10 @@ export function TraderToolsDashboard({
   const [showIncomePrompt, setShowIncomePrompt] = useState(true);
 
   useEffect(() => {
-    if (!accountCurrencyTouched) setAccountCurrency(normalizeAccountCurrency(currency));
+    if (!accountCurrencyTouched) {
+      const saved = typeof window !== 'undefined' ? window.localStorage.getItem('calculator_account_currency') as AccountCurrencyCode | null : null;
+      setAccountCurrency(normalizeAccountCurrency(saved ?? currency));
+    }
   }, [accountCurrencyTouched, currency]);
 
   const position = calculatePositionSize({
@@ -138,25 +147,14 @@ export function TraderToolsDashboard({
   const riskPercentDisplay = `${formatNumber(parseNumber(positionInput.riskPercentage), 2)}%`;
   const stopLossDisplay = `${formatNumber(parseNumber(positionInput.stopLossDistance), 0)} ${pipUnit}`;
 
-  const handleSaveDefaultCurrency = async () => {
+  const handleSaveDefaultCurrency = () => {
     setCurrencyMessage('');
     setCurrencyError('');
-    if (!userId) {
-      setCurrencyError(t('market_account_currency_signin_required'));
-      return;
-    }
-    setSavingCurrency(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ default_currency: accountCurrency, preferred_currency: accountCurrency })
-        .eq('id', userId);
-      if (error) throw error;
+      window.localStorage.setItem('calculator_account_currency', accountCurrency);
       setCurrencyMessage(t('market_account_currency_saved'));
     } catch {
       setCurrencyError(t('market_account_currency_save_error'));
-    } finally {
-      setSavingCurrency(false);
     }
   };
 
