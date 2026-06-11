@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
@@ -262,6 +263,7 @@ export default function ContactPage() {
 
         <div className="contact-actions">
           <LanguageSwitcher variant="gold" compact />
+          <ThemeToggle />
           <Link href={appHref} className="nav-primary">{primaryLabel}</Link>
           <button
             type="button"
@@ -1003,5 +1005,45 @@ const contactStyles = `
       display: grid;
       grid-template-columns: 1fr;
     }
+  }
+
+  .contact-actions .sfm-theme-toggle {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    border-radius: 14px;
+  }
+
+  html.dark .contact-page {
+    color: #E8EEF6 !important;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(47, 214, 192, 0.16), transparent 28%),
+      radial-gradient(circle at 88% 12%, rgba(29, 140, 255, 0.14), transparent 30%),
+      linear-gradient(180deg, #0A1422 0%, #0F1D31 48%, #08111F 100%) !important;
+  }
+
+  html.dark .contact-page :is(.contact-nav, .contact-card, .contact-form-section, .contact-footer, .hero-copy, .hero-panel, .contact-form-preview) {
+    background: rgba(15, 29, 49, 0.94) !important;
+    border-color: #1D3050 !important;
+    color: #E8EEF6 !important;
+    box-shadow: 0 20px 54px rgba(0, 0, 0, 0.26) !important;
+  }
+
+  html.dark .contact-page :is(.contact-brand, .contact-brand span, .contact-links a, .hero-copy h1, .hero-panel strong, .contact-card h2, .form-copy h2, .footer-brand strong) {
+    color: #F8FBFF !important;
+  }
+
+  html.dark .contact-page :is(.hero-copy p, .hero-panel span, .contact-card p, .form-copy p, .footer-brand p, .footer-links a, .contact-form-preview label span) {
+    color: #B8C7D9 !important;
+  }
+
+  html.dark .contact-page :is(.contact-links.open a, .mobile-menu-button, .contact-form-preview input, .contact-form-preview textarea) {
+    background: #13243A !important;
+    border-color: #1D3050 !important;
+    color: #E8EEF6 !important;
+  }
+
+  html.dark .contact-page :is(.support-email-link, .card-action, .footer-links a:hover) {
+    color: #2FD6C0 !important;
   }
 `;

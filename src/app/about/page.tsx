@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
@@ -315,6 +316,7 @@ export default function AboutPage() {
 
         <div className="about-actions">
           <LanguageSwitcher variant="gold" compact />
+          <ThemeToggle />
           <Link href={appHref} className="nav-primary">{primaryLabel}</Link>
           <button
             type="button"
@@ -1017,5 +1019,41 @@ const aboutStyles = `
       margin-top: 32px;
       padding-bottom: 24px;
     }
+  }
+
+  .about-actions .sfm-theme-toggle {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    border-radius: 14px;
+  }
+
+  html.dark .about-page {
+    color: #E8EEF6 !important;
+    background:
+      radial-gradient(circle at 16% 7%, rgba(47, 214, 192, 0.14), transparent 28%),
+      radial-gradient(circle at 86% 18%, rgba(29, 140, 255, 0.14), transparent 30%),
+      linear-gradient(180deg, #0A1422 0%, #0F1D31 48%, #08111F 100%) !important;
+  }
+
+  html.dark .about-page :is(.about-nav, .about-footer, .info-card, .icon-card, .value-card, .trust-card, .about-cta, .trust-band) {
+    background: rgba(15, 29, 49, 0.94) !important;
+    border-color: #1D3050 !important;
+    color: #E8EEF6 !important;
+    box-shadow: 0 20px 54px rgba(0, 0, 0, 0.26) !important;
+  }
+
+  html.dark .about-page :is(.about-brand, .about-brand span, .about-links a, .hero-copy h1, .section-heading h2, .info-card h2, .icon-card h3, .value-card h3, .trust-card h3, .about-cta h2, .footer-brand strong, .footer-column h3) {
+    color: #F8FBFF !important;
+  }
+
+  html.dark .about-page :is(.hero-copy p, .info-card p, .icon-card p, .value-card p, .trust-card p, .about-cta p, .footer-brand p, .footer-column a) {
+    color: #B8C7D9 !important;
+  }
+
+  html.dark .about-page :is(.secondary-cta, .mobile-menu-button, .about-links.open a) {
+    background: #13243A !important;
+    border-color: #1D3050 !important;
+    color: #E8EEF6 !important;
   }
 `;

@@ -23,6 +23,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { isEmail } from '@/lib/authSecurity';
 import { trackEvent } from '@/lib/analytics';
 
@@ -912,6 +913,7 @@ function LoginContent() {
         <section className={`login-card ${isRegister ? 'wide' : ''}`} aria-labelledby="auth-title">
         <div className="language-row">
           <LanguageSwitcher variant="gold" compact />
+          <ThemeToggle />
         </div>
 
         <div className="brand">
@@ -1304,7 +1306,8 @@ function LoginContent() {
           overflow:hidden;
         }
         .login-card.wide{max-width:560px}
-        .language-row{display:flex;justify-content:flex-end}
+        .language-row{display:flex;justify-content:flex-end;align-items:center;gap:8px}
+        .language-row .sfm-theme-toggle{width:40px;min-width:40px;height:40px;border-radius:13px}
         .brand{text-align:center;display:flex;flex-direction:column;align-items:center;gap:7px}
         .brand h1{font-size:28px;line-height:1.15;font-weight:950;color:#0b172a;margin:10px 0 0;letter-spacing:0}
         .brand p{font-size:13px;color:#64748b;font-weight:800;margin:0;line-height:1.8;max-width:360px;overflow-wrap:anywhere}
@@ -1379,6 +1382,92 @@ function LoginContent() {
         .link-btn:disabled{opacity:.5;cursor:not-allowed}
         .guest-btn{color:#64748b}
         .guest-btn:hover{color:#0f766e}
+        .dark .login-shell{
+          background:
+            radial-gradient(circle at 14% 8%,rgba(47,214,192,.14),transparent 30%),
+            radial-gradient(circle at 84% 16%,rgba(29,140,255,.14),transparent 30%),
+            linear-gradient(135deg,#0a1422 0%,#0f1d31 48%,#08111f 100%);
+          color:#e8eef6;
+        }
+        .dark .login-showcase{
+          background:
+            linear-gradient(90deg,rgba(47,214,192,.08) 1px,transparent 1px),
+            linear-gradient(0deg,rgba(47,214,192,.06) 1px,transparent 1px),
+            linear-gradient(145deg,#061a2e 0%,#0f1d31 58%,#13243a 100%);
+          border-color:#1d3050;
+          box-shadow:0 24px 70px rgba(0,0,0,.30);
+        }
+        .dark .login-card{
+          background:rgba(15,29,49,.96);
+          border-color:#1d3050;
+          color:#e8eef6;
+          box-shadow:0 24px 70px rgba(0,0,0,.30);
+        }
+        .dark .brand h1,
+        .dark .showcase-brand,
+        .dark .showcase-copy h2,
+        .dark .auth-label,
+        .dark .recovery-title{
+          color:#f8fbff;
+        }
+        .dark .brand p,
+        .dark .showcase-copy p,
+        .dark .field-hint,
+        .dark .terms-row,
+        .dark .strength-label,
+        .dark .strength-hint,
+        .dark .social-divider span,
+        .dark .guest-btn{
+          color:#b8c7d9;
+        }
+        .dark .auth-field input,
+        .dark .auth-field select,
+        .dark .country-select,
+        .dark .social-btn{
+          background:#13243a;
+          border-color:#1d3050;
+          color:#e8eef6;
+          -webkit-text-fill-color:#e8eef6;
+        }
+        .dark .auth-field input::placeholder{color:#8ea6c3;-webkit-text-fill-color:#8ea6c3}
+        .dark .auth-field input:focus,
+        .dark .auth-field select:focus,
+        .dark .country-select:focus{
+          background:#0f1d31;
+          border-color:#2fd6c0;
+          box-shadow:0 0 0 4px rgba(47,214,192,.16);
+        }
+        .dark .security-block{
+          background:#13243a;
+          border-color:#1d3050;
+        }
+        .dark .signup-steps span{
+          background:#13243a;
+          border-color:#1d3050;
+          color:#b8c7d9;
+        }
+        .dark .signup-steps span.active,
+        .dark .signup-steps span.done{
+          background:rgba(47,214,192,.12);
+          border-color:rgba(47,214,192,.32);
+          color:#8eeae5;
+        }
+        .dark .social-divider:before,
+        .dark .social-divider:after,
+        .dark .strength-bar span{
+          background:#1d3050;
+        }
+        .dark .eye-btn{color:#b8c7d9}
+        .dark .eye-btn:hover{background:rgba(47,214,192,.10);color:#2fd6c0}
+        .dark .link-btn,
+        .dark .terms-row a{
+          color:#2fd6c0;
+        }
+        .dark .recovery-question-block{
+          background:rgba(180,83,9,.14);
+          border-color:rgba(251,191,36,.24);
+        }
+        .dark .recovery-help{color:#fbbf24}
         @media(max-width:920px){
           .login-stage,[dir="rtl"] .login-stage{grid-template-columns:minmax(0,1fr);width:100%;max-width:520px}
           .login-showcase{display:none}
