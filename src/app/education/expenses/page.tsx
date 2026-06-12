@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,12 +26,17 @@ export default function ExpensesPage() {
   const [mounted, setMounted] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => { setTimeout(() => setMounted(true), 60); if (user) load(); }, [user]);
-
-  const load = async () => {
-    const { data } = await supabase.from('expense_items').select('*').eq('user_id', user!.id).order('created_at', { ascending: false });
+  const load = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase.from('expense_items').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
     if (data) setItems(data.map((r: any) => ({ id: r.id, name: r.name, amount: parseFloat(r.amount)||0, created_at: r.created_at })));
-  };
+  }, [user]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMounted(true), 60);
+    if (user) void load();
+    return () => window.clearTimeout(timer);
+  }, [user, load]);
 
   const save = async () => {
     const amt = parseFloat(amount.replace(/[^\d.]/g, ''));
@@ -87,7 +92,7 @@ export default function ExpensesPage() {
       .row-h:hover{background:rgba(167,243,240,.04)!important}
       @media(max-width:768px){.kg{grid-template-columns:1fr 1fr!important}.g2{grid-template-columns:1fr!important}}
     `}</style>
-    <div className="ep">
+    <main className="ep">
       <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '24px 20px 60px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
         {/* Header */}
@@ -220,7 +225,7 @@ export default function ExpensesPage() {
           جميع المصاريف المسجلة تُحتسب تلقائياً في لوحة التحكم الرئيسية • <span style={{ color: 'var(--sfm-soft-cyan)', fontWeight: '700' }}>THE SFM</span>
         </div>
       </div>
-    </div>
+    </main>
   </>);
 }
 

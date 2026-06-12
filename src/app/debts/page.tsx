@@ -154,12 +154,10 @@ export default function DebtsPage() {
 
   const snowballResult = useMemo(
     () => simulatePayoffStrategy(activeDebts, extraPayment, 'snowball'),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeDebts, extraPayment],
   );
   const avalancheResult = useMemo(
     () => simulatePayoffStrategy(activeDebts, extraPayment, 'avalanche'),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeDebts, extraPayment],
   );
 

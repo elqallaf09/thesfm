@@ -244,7 +244,9 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '.65rem' }}>
                         {c.logo_url
-                          ? <img src={c.logo_url} alt="" className="ca-logo" />
+                          // Company logos come from arbitrary submitted URLs, so native img avoids blocking unconfigured hosts.
+                          // eslint-disable-next-line @next/next/no-img-element
+                          ? <img src={c.logo_url} alt={c.company_name ? `${c.company_name} logo` : ''} className="ca-logo" loading="lazy" decoding="async" />
                           : <div className="ca-logo-placeholder">{c.company_name?.[0] ?? '?'}</div>
                         }
                         <div>

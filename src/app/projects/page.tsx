@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -202,12 +202,9 @@ export default function ProjectsPage() {
   const formRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { setTimeout(() => setMounted(true), 60); }, []);
-  useEffect(() => { if (user) loadProjects(); }, [user]);
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-
-  const loadProjects = async () => {
-    const { data } = await supabase.from('projects').select('*').eq('user_id', user!.id).order('created_at', { ascending: false });
+  const loadProjects = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase.from('projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
     if (data) setProjects(data.map((p: any) => ({
       ...emptyForm, id: p.id, name: p.name, emoji: p.emoji || '🚀',
       type: p.notes?.type || '', idea: p.notes?.idea || '',
@@ -221,7 +218,14 @@ export default function ProjectsPage() {
       feasibilityTypes: p.notes?.feasibility_types || p.notes?.feasibilityTypes || [],
       analysis: p.notes?.analysis, expanded: false, createdAt: p.created_at,
     })));
-  };
+  }, [user]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMounted(true), 60);
+    return () => window.clearTimeout(timer);
+  }, []);
+  useEffect(() => { if (user) void loadProjects(); }, [user, loadProjects]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   const analyzeProject = async (): Promise<AIAnalysis | null> => {
     if (!form.name) return null;
