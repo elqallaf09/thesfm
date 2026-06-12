@@ -29,6 +29,7 @@ import {
   ReceiptText,
   RefreshCw,
   Send,
+  ShieldCheck,
   Sparkles,
   Trash2,
   Target,
@@ -2212,6 +2213,82 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     );
   }
 
+  const savingsGuide = kind === 'savings' ? {
+    eyebrow: pick({ ar: 'دليل عملي', en: 'Practical guide', fr: 'Guide pratique' }, lang),
+    title: pick({ ar: 'كل ما تحتاج معرفته عن الادخار', en: 'Everything you need to know about saving', fr: 'Tout savoir sur l epargne' }, lang),
+    subtitle: pick({
+      ar: 'تعرف على أنواع الادخار، لماذا تدخر، متى تستخدم كل نوع، وكيف تحول الادخار إلى عادة شهرية واضحة.',
+      en: 'Learn the saving types, why saving matters, when to use each type, and how to turn it into a clear monthly habit.',
+      fr: 'Decouvrez les types d epargne, pourquoi epargner, quand utiliser chaque type et comment en faire une habitude mensuelle claire.',
+    }, lang),
+    cards: [
+      {
+        icon: PiggyBank,
+        title: pick({ ar: 'أنواع الادخار', en: 'Saving types', fr: 'Types d epargne' }, lang),
+        body: pick({
+          ar: 'قسّم ادخارك حسب الهدف والمدة حتى تعرف أين تضع كل مبلغ.',
+          en: 'Split your savings by goal and timeline so every amount has a clear place.',
+          fr: 'Separez votre epargne par objectif et par duree pour donner une place claire a chaque montant.',
+        }, lang),
+        points: [
+          pick({ ar: 'ادخار الطوارئ: 3 إلى 6 أشهر من المصروفات الأساسية.', en: 'Emergency saving: 3 to 6 months of essential expenses.', fr: 'Epargne d urgence: 3 a 6 mois de depenses essentielles.' }, lang),
+          pick({ ar: 'ادخار الأهداف: سفر، سيارة، تعليم، أو دفعة أولى.', en: 'Goal saving: travel, car, education, or a down payment.', fr: 'Epargne objectif: voyage, voiture, education ou apport initial.' }, lang),
+          pick({ ar: 'ادخار قصير الأجل: احتياجات خلال سنة.', en: 'Short-term saving: needs within one year.', fr: 'Epargne court terme: besoins dans l annee.' }, lang),
+          pick({ ar: 'ادخار طويل الأجل: استقرار ورأس مال للمستقبل.', en: 'Long-term saving: stability and future capital.', fr: 'Epargne long terme: stabilite et capital futur.' }, lang),
+        ],
+      },
+      {
+        icon: ShieldCheck,
+        title: pick({ ar: 'لماذا الادخار؟', en: 'Why save?', fr: 'Pourquoi epargner ?' }, lang),
+        body: pick({
+          ar: 'الادخار يعطيك مساحة أمان ويقلل ضغط القرارات المفاجئة.',
+          en: 'Saving gives you a safety buffer and reduces pressure during sudden decisions.',
+          fr: 'L epargne cree une marge de securite et reduit la pression des decisions soudaines.',
+        }, lang),
+        points: [
+          pick({ ar: 'يحميك من الطوارئ بدون الاعتماد على الدين.', en: 'It protects you from emergencies without relying on debt.', fr: 'Elle protege des urgences sans dependre de la dette.' }, lang),
+          pick({ ar: 'يساعدك على الوصول للأهداف بدون ضغط كبير.', en: 'It helps you reach goals with less pressure.', fr: 'Elle aide a atteindre les objectifs avec moins de pression.' }, lang),
+          pick({ ar: 'يعطيك حرية أكبر عند ظهور فرصة مناسبة.', en: 'It gives you more freedom when an opportunity appears.', fr: 'Elle donne plus de liberte lorsqu une opportunite arrive.' }, lang),
+        ],
+      },
+      {
+        icon: Target,
+        title: pick({ ar: 'أسباب الادخار', en: 'Reasons to save', fr: 'Raisons d epargner' }, lang),
+        body: pick({
+          ar: 'كل مبلغ ادخار يجب أن يكون له سبب واضح حتى لا يضيع مع المصاريف اليومية.',
+          en: 'Every saved amount should have a clear reason so it does not disappear into daily spending.',
+          fr: 'Chaque montant epargne doit avoir une raison claire pour ne pas se perdre dans les depenses quotidiennes.',
+        }, lang),
+        points: [
+          pick({ ar: 'صندوق طوارئ للأسرة أو العمل.', en: 'A family or work emergency fund.', fr: 'Un fonds d urgence familial ou professionnel.' }, lang),
+          pick({ ar: 'مصاريف موسمية مثل السفر، الدراسة، أو التأمين.', en: 'Seasonal costs such as travel, school, or insurance.', fr: 'Depenses saisonnieres comme voyage, etudes ou assurance.' }, lang),
+          pick({ ar: 'تجهيز رأس مال للاستثمار أو مشروع صغير.', en: 'Preparing capital for investing or a small project.', fr: 'Preparer un capital pour investir ou lancer un petit projet.' }, lang),
+        ],
+      },
+      {
+        icon: CheckCircle2,
+        title: pick({ ar: 'طريقة الادخار', en: 'How to save', fr: 'Comment epargner' }, lang),
+        body: pick({
+          ar: 'ابدأ بخطة بسيطة ثم راقبها شهرياً. المهم هو الاستمرار وليس حجم المبلغ فقط.',
+          en: 'Start with a simple plan and review it monthly. Consistency matters as much as the amount.',
+          fr: 'Commencez par un plan simple et revisez le chaque mois. La regularite compte autant que le montant.',
+        }, lang),
+        points: [
+          pick({ ar: 'حدد هدفاً ومبلغاً وموعداً للوصول.', en: 'Set a goal, amount, and target date.', fr: 'Fixez un objectif, un montant et une date cible.' }, lang),
+          pick({ ar: 'حوّل مبلغ الادخار بعد الراتب مباشرة.', en: 'Move the saving amount right after income arrives.', fr: 'Transferez le montant juste apres le revenu.' }, lang),
+          pick({ ar: 'افصل حساب الادخار عن حساب المصروفات.', en: 'Separate savings from daily spending accounts.', fr: 'Separez l epargne du compte de depenses.' }, lang),
+        ],
+      },
+    ],
+    stepsTitle: pick({ ar: 'خطة بداية سريعة', en: 'Quick start plan', fr: 'Plan de demarrage rapide' }, lang),
+    steps: [
+      pick({ ar: 'احسب مصروفاتك الأساسية للشهر.', en: 'Calculate your essential monthly expenses.', fr: 'Calculez vos depenses essentielles mensuelles.' }, lang),
+      pick({ ar: 'اختر نسبة واقعية من الدخل، مثل 10% أو 15%.', en: 'Choose a realistic income share, such as 10% or 15%.', fr: 'Choisissez une part realiste du revenu, comme 10% ou 15%.' }, lang),
+      pick({ ar: 'سجل كل عملية ادخار في THE SFM لمتابعة التقدم.', en: 'Record every saving entry in THE SFM to track progress.', fr: 'Enregistrez chaque epargne dans THE SFM pour suivre le progres.' }, lang),
+      pick({ ar: 'راجع الخطة نهاية كل شهر وزد المبلغ تدريجياً عند القدرة.', en: 'Review the plan monthly and increase the amount gradually when possible.', fr: 'Revisez le plan chaque mois et augmentez progressivement si possible.' }, lang),
+    ],
+  } : null;
+
   return (
     <div className={`sfm-shell${kind === 'savings' ? ' savings-shell' : ''}`} dir={dir}>
       <Sidebar />
@@ -2498,6 +2575,47 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             <div>
               <strong>{summaryTitle(kind, lang)}</strong>
               <p>{summaryText(kind, data, lang, currency)}</p>
+            </div>
+          </section>
+        )}
+
+        {savingsGuide && (
+          <section className="savings-guide" aria-labelledby="savings-guide-title">
+            <div className="savings-guide-head">
+              <span className="savings-guide-eyebrow">
+                <GraduationCap size={16} />
+                {savingsGuide.eyebrow}
+              </span>
+              <h2 id="savings-guide-title">{savingsGuide.title}</h2>
+              <p>{savingsGuide.subtitle}</p>
+            </div>
+            <div className="savings-guide-grid">
+              {savingsGuide.cards.map(card => {
+                const GuideIcon = card.icon;
+                return (
+                  <article className="savings-guide-card" key={card.title}>
+                    <span className="savings-guide-icon">
+                      <GuideIcon size={20} />
+                    </span>
+                    <h3>{card.title}</h3>
+                    <p>{card.body}</p>
+                    <ul>
+                      {card.points.map(point => <li key={point}>{point}</li>)}
+                    </ul>
+                  </article>
+                );
+              })}
+            </div>
+            <div className="savings-guide-plan">
+              <strong>{savingsGuide.stepsTitle}</strong>
+              <div className="savings-guide-steps">
+                {savingsGuide.steps.map((step, index) => (
+                  <div className="savings-guide-step" key={step}>
+                    <b>{String(index + 1).padStart(2, '0')}</b>
+                    <span>{step}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
         )}
