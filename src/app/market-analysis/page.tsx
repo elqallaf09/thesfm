@@ -88,6 +88,14 @@ import { MarketAsyncToolStyles } from '@/components/market-analysis/MarketStyles
 import { MarketPageStyles } from '@/components/market-analysis/MarketPageStyles';
 import { PriceHistoryChart, MarketMetric, PortfolioComparisonMetric } from '@/components/market-analysis/MarketChartComponents';
 
+function marketSourceLabel(source?: string | null, fallback = 'OpenBB') {
+  const clean = String(source ?? '').trim();
+  if (!clean) return fallback;
+  if (clean.toLowerCase() === 'openbb') return 'OpenBB';
+  if (clean.toLowerCase() === 'yahoo') return 'Yahoo Finance';
+  return clean;
+}
+
 export default function MarketAnalysisPage() {
   const { dir, lang, t } = useLanguage();
   const { currency: userCurrency } = useCurrency();
@@ -1255,6 +1263,22 @@ export default function MarketAnalysisPage() {
   }, [alerts, isGuest, user]);
 
   const selected = analysis;
+  const selectedSourceLabel = marketSourceLabel(selected?.source ?? selected?.provider);
+  const selectedDataStatusLabel = selected
+    ? selected.cached ? t('market_cached_data') : t(`market_data_status_${selected.dataStatus ?? 'live'}`)
+    : t('market_badge_live');
+  const serviceStatusValue = serviceState === 'connected'
+    ? t('market_connected_short')
+    : serviceState === 'checking'
+      ? t('market_service_checking_short')
+      : serviceState === 'degraded' || serviceState === 'slow'
+        ? t('market_data_status_delayed')
+        : t('market_service_not_connected_short');
+  const serviceStatusTone = serviceState === 'connected'
+    ? 'success'
+    : serviceState === 'checking'
+      ? 'info'
+      : 'warning';
   const serviceNotice = serviceState === 'connected'
     ? t('market_service_connected')
     : serviceState === 'slow' || serviceState === 'degraded'
@@ -1651,7 +1675,7 @@ export default function MarketAnalysisPage() {
                 <span>{t('market_selected_asset')}</span>
                 <strong dir="ltr">{selected.symbol}</strong>
                 <p>{localizedAssetName ?? selected.name}</p>
-                <em className="market-hero-card-meta" dir="ltr">{selectedMoney(selected.latestPrice)} / {selected.cached ? t('market_cached_data') : t('market_badge_live')}</em>
+                <em className="market-hero-card-meta" dir="ltr">{selectedMoney(selected.latestPrice)} / {selectedDataStatusLabel}</em>
                 <b className={`risk ${selected.riskLevel}`}>{t(`market_risk_${selected.riskLevel}`)}</b>
               </>
             ) : (
@@ -1670,16 +1694,16 @@ export default function MarketAnalysisPage() {
           <MarketStatusCard
             icon={<Activity size={18} />}
             label={t('market_data_source')}
-            value={selected ? (selected.cached ? t('market_cached_data') : 'OpenBB') : 'OpenBB'}
+            value={selected ? (selected.cached ? t('market_cached_data') : selectedSourceLabel) : 'OpenBB'}
             helper={t('market_status_source_hint')}
             valueDir={selected?.cached ? undefined : 'ltr'}
           />
           <MarketStatusCard
             icon={serviceState === 'connected' ? <CheckCircle2 size={18} /> : <Activity size={18} />}
             label={t('market_service_status')}
-            value={serviceState === 'connected' ? t('market_connected_short') : serviceState === 'checking' ? t('market_service_checking_short') : t('market_service_not_connected_short')}
+            value={serviceStatusValue}
             helper={serviceState === 'connected' ? t('market_status_service_connected_hint') : t('market_status_service_pending_hint')}
-            tone={serviceState === 'connected' ? 'success' : serviceState === 'checking' ? 'info' : 'warning'}
+            tone={serviceStatusTone}
           />
           <MarketStatusCard
             icon={<WalletCards size={18} />}
@@ -2110,7 +2134,7 @@ export default function MarketAnalysisPage() {
                     <MarketMetric label={t('market_eps')} value={fundamentalValue('eps')} />
                     <MarketMetric label={t('market_revenue')} value={fundamentalValue('revenue')} />
                     <MarketMetric label={t('market_dividend')} value={fundamentalValue('dividend')} />
-                    <MarketMetric label={t('market_data_status')} value={`${t(`market_data_status_${selected.dataStatus ?? 'live'}`)} · ${selected.fundamentalsSource ?? selected.source ?? 'OpenBB'}`} />
+                    <MarketMetric label={t('market_data_status')} value={`${t(`market_data_status_${selected.dataStatus ?? 'live'}`)} · ${marketSourceLabel(selected.fundamentalsSource ?? selected.source ?? selected.provider)}`} />
                   </div>
                 ) : (
                   <div className="fundamentals-empty">
@@ -2361,7 +2385,7 @@ export default function MarketAnalysisPage() {
                         <span className={asset.changePercent >= 0 ? 'up' : 'down'}>{percent(asset.changePercent)}</span>
                         <span>{asset.indicators.rsi}</span>
                         <span>{t(`market_risk_${asset.riskLevel}`)}</span>
-                        <span>{view.fallback ? t('market_no_data') : 'OpenBB'}</span>
+                        <span>{marketSourceLabel(view.source ?? view.provider, view.fallback ? t('market_no_data') : 'OpenBB')}</span>
                       </div>
                     );
                   })}
@@ -2492,7 +2516,7 @@ export default function MarketAnalysisPage() {
                         <span className={asset.changePercent >= 0 ? 'up' : 'down'}>{percent(asset.changePercent)}</span>
                         <span>{asset.indicators.rsi}</span>
                         <span>{t(`market_risk_${asset.riskLevel}`)}</span>
-                        <span>{view.fallback ? t('market_no_data') : 'OpenBB'}</span>
+                        <span>{marketSourceLabel(view.source ?? view.provider, view.fallback ? t('market_no_data') : 'OpenBB')}</span>
                       </div>
                     );
                   })}

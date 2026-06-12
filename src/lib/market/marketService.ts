@@ -26,7 +26,7 @@ export type MarketHistoryPoint = {
 
 export type MarketAnalysis = {
   success: true;
-  provider?: 'openbb';
+  provider?: 'openbb' | 'yahoo';
   dataStatus?: MarketDataStatus;
   symbol: string;
   providerSymbol?: string;
@@ -85,7 +85,7 @@ export type MarketError = {
   error: string;
   suggestions?: string[];
   correction?: string | null;
-  provider?: 'openbb';
+  provider?: 'openbb' | 'yahoo';
   dataStatus?: 'unavailable';
   source?: string;
   fallback?: false;
