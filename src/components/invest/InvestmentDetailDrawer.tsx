@@ -173,6 +173,8 @@ function metalProductLabel(value: string) {
     makhmus: 'مخمس',
     half_makhmus: 'نصف مخمس',
     ten_tola: '10 توله',
+    ten_gram: '10 جرام',
+    twenty_gram: '20 جرام',
     ounce: 'أونصة',
     kilo: 'كيلو',
     custom_grams: 'وزن مخصص',

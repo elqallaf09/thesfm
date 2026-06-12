@@ -229,7 +229,11 @@ const GOLD_PRODUCT_GRAMS: Record<string, number | null> = {
 };
 const SILVER_PRODUCT_GRAMS: Record<string, number | null> = {
   gram: 1,
+  ten_gram: 10,
+  twenty_gram: 20,
   ounce: 31.1034768,
+  lira: 7.2,
+  half_lira: 3.6,
   kilo: 1000,
   other: null,
 };

@@ -387,7 +387,11 @@ export default function InvestPage() {
     },
     silverUnits: {
       gram: t('invest_form_silverUnitGram'),
+      ten_gram: t('invest_form_silverUnit10Gram'),
+      twenty_gram: t('invest_form_silverUnit20Gram'),
       ounce: t('invest_form_silverUnitOunce'),
+      lira: t('invest_form_silverUnitLira'),
+      half_lira: t('invest_form_silverUnitHalfLira'),
       kilo: t('invest_form_silverUnitKilo'),
       other: t('invest_form_silverUnitOther'),
     },
