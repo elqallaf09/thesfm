@@ -111,6 +111,35 @@ export function MarketPageStyles() {
           min-width: 0;
         }
 
+        .market-chart .levels-strip .levels-strip-labels > span {
+          min-height: 112px;
+          align-content: center !important;
+          gap: 7px;
+          padding-block: 15px;
+        }
+
+        .market-chart .levels-strip .levels-strip-labels b,
+        .market-chart .levels-strip .levels-strip-labels em {
+          position: static !important;
+          inset: auto !important;
+          top: auto !important;
+          width: auto !important;
+          height: auto !important;
+          min-height: 0 !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+          transform: none !important;
+          overflow: visible !important;
+        }
+
+        .market-chart .levels-strip .levels-strip-labels b {
+          line-height: 1.35 !important;
+        }
+
+        .market-chart .levels-strip .levels-strip-labels em {
+          line-height: 1.45 !important;
+        }
+
         .levels-bar > span {
           max-width: calc(100% - 16px);
           z-index: 1;
@@ -1937,6 +1966,11 @@ export function MarketPageStyles() {
           .market-main {
             gap: 16px !important;
             padding-inline: 14px !important;
+          }
+
+          .market-chart .levels-strip .levels-strip-labels > span {
+            min-height: 118px;
+            padding: 16px 18px;
           }
 
           .market-active-dashboard > .market-card-grid {
