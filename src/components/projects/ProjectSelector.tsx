@@ -658,6 +658,84 @@ export function ProjectSelector({
           border-color: rgba(24, 212, 212, .38);
           box-shadow: 0 0 0 3px rgba(24, 212, 212, .18);
         }
+        :global(.sfm-project-selector .project-selector-actions) {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+          min-width: 0;
+          margin-block-start: 4px;
+          margin-block-end: 14px;
+          padding: 10px 12px;
+          background: linear-gradient(135deg, rgba(29, 140, 255, .04), rgba(24, 212, 212, .04));
+          border: 1px solid rgba(29, 140, 255, .10);
+          border-radius: 16px;
+        }
+        :global(.sfm-project-selector .project-selector-action) {
+          min-width: 0;
+          min-height: 44px;
+          border: 1px solid transparent;
+          border-radius: 14px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 0 16px;
+          font-size: 13px;
+          font-weight: 950;
+          text-decoration: none;
+          line-height: 1;
+          text-align: center;
+          white-space: nowrap;
+          cursor: pointer;
+          font-family: Tajawal, Arial, sans-serif;
+          transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease, color .18s ease;
+        }
+        :global(.sfm-project-selector .project-selector-action.primary),
+        :global(.sfm-project-selector .project-selector-action.secondary),
+        :global(.sfm-project-selector .project-selector-action.add-primary) {
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          color: #FFFFFF;
+          border-color: transparent;
+          box-shadow: 0 14px 30px rgba(29, 140, 255, .20);
+        }
+        :global(.sfm-project-selector .project-selector-action.secondary) {
+          background: linear-gradient(135deg, var(--sfm-accent), var(--sfm-primary));
+          box-shadow: 0 14px 30px rgba(24, 212, 212, .20);
+        }
+        :global(.sfm-project-selector .project-selector-action.disabled) {
+          border: 1px solid rgba(29, 140, 255, .18);
+          background: #F1F5F9;
+          color: #64748B;
+          box-shadow: none;
+          cursor: not-allowed;
+          opacity: 1;
+        }
+        :global(.sfm-project-selector .project-selector-action span) {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        :global(.sfm-project-selector .project-selector-action:not(.disabled):hover) {
+          transform: translateY(-1px);
+          filter: saturate(1.06);
+          box-shadow: 0 16px 36px rgba(29, 140, 255, .26);
+        }
+        :global(.dark .sfm-project-selector .project-selector-actions) {
+          background: rgba(15, 29, 49, .78);
+          border-color: rgba(47, 214, 192, .16);
+        }
+        :global(.dark .sfm-project-selector .project-selector-action.primary),
+        :global(.dark .sfm-project-selector .project-selector-action.secondary),
+        :global(.dark .sfm-project-selector .project-selector-action.add-primary) {
+          color: #ECFEFF;
+          box-shadow: 0 14px 30px rgba(6, 182, 212, .16);
+        }
+        :global(.dark .sfm-project-selector .project-selector-action.disabled) {
+          border-color: rgba(255, 255, 255, .14);
+          background: rgba(255, 255, 255, .06);
+          color: rgba(232, 238, 246, .72);
+        }
         :global(.dark) .project-selector-empty-card {
           border-color: rgba(103, 232, 249, .18);
           background:
@@ -851,11 +929,18 @@ export function ProjectSelector({
             gap: 10px;
             margin-block-end: 16px;
           }
+          :global(.sfm-project-selector .project-selector-actions) {
+            grid-template-columns: 1fr;
+          }
           .project-selector-action {
             flex: none;
             width: 100%;
             min-height: 44px;
             white-space: nowrap;
+          }
+          :global(.sfm-project-selector .project-selector-action) {
+            width: 100%;
+            min-height: 44px;
           }
           .project-selector-popover {
             position: fixed;
