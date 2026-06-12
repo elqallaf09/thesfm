@@ -1486,12 +1486,24 @@ export function InvestmentFormModal({
           .invest-modal--asset {
             width: min(900px, 100%);
           }
+          :global(.dark) .invest-overlay {
+            background: rgba(2, 8, 23, .68);
+          }
+          :global(.dark) .invest-modal--asset {
+            background: #0b1728;
+            border-color: rgba(103, 232, 249, .18);
+            box-shadow: 0 30px 90px rgba(0, 0, 0, .58);
+          }
           .invest-modal-head--asset {
             align-items: flex-start;
             background: linear-gradient(135deg, rgba(248, 251, 255, .96), rgba(236, 254, 255, .92));
           }
-          .dark .invest-modal-head--asset {
-            background: linear-gradient(135deg, rgba(15, 29, 49, .96), rgba(8, 47, 73, .9));
+          :global(.dark) .invest-modal-head--asset {
+            background: linear-gradient(135deg, rgba(15, 29, 49, .98), rgba(8, 47, 73, .94));
+            border-bottom-color: rgba(103, 232, 249, .16);
+          }
+          :global(.dark) .invest-modal-head--asset h2 {
+            color: #F8FAFC;
           }
           .invest-modal-head--asset p {
             margin: 6px 0 0;
@@ -1499,6 +1511,19 @@ export function InvestmentFormModal({
             font-size: 12px;
             font-weight: 850;
             line-height: 1.6;
+          }
+          :global(.dark) .invest-modal-head--asset p {
+            color: #B8C7D9;
+          }
+          :global(.dark) .invest-modal--asset .invest-icon-btn {
+            background: #10243a;
+            border-color: rgba(103, 232, 249, .18);
+            color: #E8EEF6;
+          }
+          :global(.dark) .invest-form--asset {
+            background:
+              radial-gradient(circle at 100% 0%, rgba(47, 214, 192, .10), transparent 32%),
+              #0b1728;
           }
           .invest-form--asset {
             align-items: start;
@@ -1514,6 +1539,10 @@ export function InvestmentFormModal({
             color: var(--sfm-foreground);
             font-weight: 950;
             border-bottom: 1px solid rgba(14,116,144,.12);
+          }
+          :global(.dark) .invest-form-section {
+            color: #F8FAFC;
+            border-bottom-color: rgba(103, 232, 249, .14);
           }
           .invest-form-section span {
             width: 28px;
@@ -1545,22 +1574,71 @@ export function InvestmentFormModal({
             cursor: pointer;
             transition: border-color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease;
           }
-          .dark .invest-type-grid button {
-            background: rgba(15, 29, 49, .62);
+          :global(.dark) .invest-type-grid button {
+            background: #10243a;
+            border-color: rgba(103, 232, 249, .16);
+            color: #E8EEF6;
           }
           .invest-type-grid button svg {
             color: #0e7490;
           }
+          :global(.dark) .invest-type-grid button svg {
+            color: #67E8F9;
+          }
           .invest-type-grid button:hover,
           .invest-type-grid button.selected {
             border-color: rgba(24,212,212,.44);
-            background: rgba(236,254,255,.94);
+            background: linear-gradient(135deg, #1D8CFF, #2FD6C0);
+            color: #FFFFFF;
             box-shadow: 0 12px 28px rgba(14,116,144,.1);
             transform: translateY(-1px);
           }
-          .dark .invest-type-grid button:hover,
-          .dark .invest-type-grid button.selected {
-            background: rgba(8,47,73,.72);
+          .invest-type-grid button:hover svg,
+          .invest-type-grid button.selected svg {
+            color: #FFFFFF;
+          }
+          :global(.dark) .invest-type-grid button:hover,
+          :global(.dark) .invest-type-grid button.selected {
+            border-color: transparent;
+            background: linear-gradient(135deg, #1D8CFF, #2FD6C0);
+            color: #FFFFFF;
+            box-shadow: 0 14px 34px rgba(29, 140, 255, .24);
+          }
+          :global(.dark) .invest-field > span,
+          :global(.dark) .invest-field em,
+          :global(.dark) .invest-summary-item span,
+          :global(.dark) .invest-selected-asset span {
+            color: #B8C7D9;
+          }
+          :global(.dark) .invest-modal--asset input,
+          :global(.dark) .invest-modal--asset select,
+          :global(.dark) .invest-modal--asset textarea {
+            background: #10243a;
+            border-color: rgba(103, 232, 249, .18);
+            color: #F8FAFC;
+          }
+          :global(.dark) .invest-modal--asset input::placeholder,
+          :global(.dark) .invest-modal--asset textarea::placeholder {
+            color: #8EA6C3;
+            opacity: 1;
+          }
+          :global(.dark) .invest-input-icon,
+          :global(.dark) .invest-money-input,
+          :global(.dark) .invest-suffix-input,
+          :global(.dark) .invest-readonly-money {
+            background: #10243a;
+            border-color: rgba(103, 232, 249, .18);
+            color: #F8FAFC;
+          }
+          :global(.dark) .invest-input-icon:focus-within,
+          :global(.dark) .invest-money-input:focus-within,
+          :global(.dark) .invest-suffix-input:focus-within {
+            background: #0f1d31;
+            border-color: #2FD6C0;
+            box-shadow: 0 0 0 4px rgba(47, 214, 192, .14);
+          }
+          :global(.dark) .invest-input-icon svg {
+            color: #8EA6C3;
           }
           .invest-asset-search {
             position: relative;
@@ -1589,6 +1667,11 @@ export function InvestmentFormModal({
             background: rgba(15,29,49,.98);
             border-color: rgba(167,243,240,.18);
           }
+          :global(.dark) .invest-asset-results {
+            background: #0f1d31;
+            border-color: rgba(103, 232, 249, .18);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, .46);
+          }
           .invest-asset-state {
             display: grid;
             gap: 6px;
@@ -1603,6 +1686,13 @@ export function InvestmentFormModal({
           .invest-asset-state strong {
             color: var(--sfm-foreground);
             font-size: 13px;
+          }
+          :global(.dark) .invest-asset-state {
+            background: #10243a;
+            color: #B8C7D9;
+          }
+          :global(.dark) .invest-asset-state strong {
+            color: #F8FAFC;
           }
           .invest-asset-state--warning,
           .invest-inline-alert {
@@ -1628,10 +1718,19 @@ export function InvestmentFormModal({
             color: var(--sfm-foreground);
             cursor: pointer;
           }
+          :global(.dark) .invest-asset-result {
+            background: #10243a;
+            border-color: rgba(103, 232, 249, .14);
+            color: #F8FAFC;
+          }
           .invest-asset-result:hover {
             border-color: rgba(47,214,192,.45);
             box-shadow: 0 10px 24px rgba(15,23,42,.08);
             transform: translateY(-1px);
+          }
+          :global(.dark) .invest-asset-result:hover {
+            background: #123052;
+            box-shadow: 0 14px 34px rgba(0, 0, 0, .28);
           }
           .invest-asset-result-icon {
             width: 38px;
@@ -1642,6 +1741,10 @@ export function InvestmentFormModal({
             place-items: center;
             color: #0f766e;
             font: 950 11px Arial,sans-serif;
+          }
+          :global(.dark) .invest-asset-result-icon {
+            color: #67E8F9;
+            background: rgba(47, 214, 192, .12);
           }
           .invest-asset-result-body {
             display: grid;
@@ -1664,6 +1767,9 @@ export function InvestmentFormModal({
             font: 950 12px Arial,sans-serif;
             color: #0f766e;
             white-space: nowrap;
+          }
+          :global(.dark) .invest-asset-result-price {
+            color: #67E8F9;
           }
           .invest-selected-asset,
           .invest-summary-box {
@@ -1692,6 +1798,16 @@ export function InvestmentFormModal({
             background: rgba(15,29,49,.58);
             border-color: rgba(167,243,240,.14);
           }
+          :global(.dark) .invest-selected-asset,
+          :global(.dark) .invest-summary-box {
+            background: linear-gradient(135deg, rgba(29, 140, 255, .10), rgba(47, 214, 192, .08));
+            border-color: rgba(103, 232, 249, .20);
+          }
+          :global(.dark) .invest-selected-asset>div,
+          :global(.dark) .invest-summary-item {
+            background: #10243a;
+            border-color: rgba(103, 232, 249, .16);
+          }
           .invest-selected-asset span,
           .invest-summary-item span {
             display: flex;
@@ -1714,6 +1830,16 @@ export function InvestmentFormModal({
             color: var(--sfm-muted);
             font-weight: 850;
             line-height: 1.5;
+          }
+          :global(.dark) .invest-selected-asset strong,
+          :global(.dark) .invest-summary-item strong,
+          :global(.dark) .invest-summary-head strong,
+          :global(.dark) .invest-readonly-money strong {
+            color: #F8FAFC;
+          }
+          :global(.dark) .invest-selected-asset small,
+          :global(.dark) .invest-summary-item small {
+            color: #9fb0c6;
           }
           .invest-summary-box {
             align-content: start;
@@ -1755,6 +1881,11 @@ export function InvestmentFormModal({
             font-weight: 850;
             line-height: 1.7;
           }
+          :global(.dark) .invest-summary-empty {
+            background: #10243a;
+            border-color: rgba(103, 232, 249, .18);
+            color: #B8C7D9;
+          }
           .invest-inline-alert {
             border-radius: 14px;
             padding: 11px 12px;
@@ -1779,7 +1910,7 @@ export function InvestmentFormModal({
             font: 850 12px Tajawal, Arial, sans-serif;
             line-height: 1.65;
           }
-          .dark .invest-validation-summary {
+          :global(.dark) .invest-validation-summary {
             background: linear-gradient(135deg, rgba(69,26,3,.42), rgba(8,47,73,.42));
             border-color: rgba(245,158,11,.24);
             color: #fbbf24;
@@ -1812,8 +1943,28 @@ export function InvestmentFormModal({
             background: rgba(248,251,255,.94);
             backdrop-filter: blur(10px);
           }
-          .dark .invest-form-actions--sticky {
-            background: rgba(15,29,49,.94);
+          :global(.dark) .invest-form-actions--sticky {
+            background: rgba(8, 18, 32, .96);
+            border-top-color: rgba(103, 232, 249, .16);
+          }
+          :global(.dark) .invest-form-actions--sticky .invest-secondary-btn {
+            background: #10243a;
+            border-color: rgba(103, 232, 249, .18);
+            color: #F8FAFC;
+          }
+          :global(.dark) .invest-form-actions--sticky .invest-secondary-btn:not(:disabled):hover {
+            background: #123052;
+            border-color: rgba(47, 214, 192, .34);
+          }
+          :global(.dark) .invest-form-actions--sticky .invest-primary-btn {
+            background: linear-gradient(135deg, #1D8CFF, #2FD6C0);
+            color: #FFFFFF;
+          }
+          :global(.dark) .invest-form-actions--sticky button:disabled {
+            opacity: .52;
+            color: #9fb0c6;
+            background: #15263b;
+            border-color: rgba(103, 232, 249, .12);
           }
           @media (max-width: 760px) {
             .invest-type-grid,
