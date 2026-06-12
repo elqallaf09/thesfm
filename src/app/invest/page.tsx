@@ -22,7 +22,7 @@ import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
 import { formatMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import type { MoneyParseStatus } from '@/lib/money';
-import { calculateInvestmentHoldingMetrics } from '@/lib/investmentCalculations';
+import { calculateInvestmentHoldingMetrics, investmentLinkedSymbol } from '@/lib/investmentCalculations';
 import { investmentSymbol, marketAnalysisUrl } from '@/lib/data/investmentData';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
 
@@ -136,6 +136,66 @@ function accountMarketValueOf(item: Investment, accountCurrency: string) {
   }
   if (!item.nativeCurrency && !item.priceCurrency && !item.userCurrency) return finiteNumber(item.currentValue);
   return null;
+}
+
+type InvestmentPricePayload = {
+  ok?: boolean;
+  item?: {
+    symbol?: string;
+    provider_symbol?: string;
+    price?: number | null;
+    currency?: string | null;
+    price_unit?: string | null;
+    updated_at?: string | null;
+    source?: string;
+  };
+  code?: string;
+};
+
+type MetalsPricePayload = {
+  success?: boolean;
+  gold?: { price?: number | null; currency?: string | null; unit?: string | null; lastUpdated?: string | null };
+  silver?: { price?: number | null; currency?: string | null; unit?: string | null; lastUpdated?: string | null };
+  source?: string;
+  error?: string;
+};
+
+function investmentMetalKind(item: Investment) {
+  const normalized = String(item.metalType || item.type || '').trim().toLowerCase();
+  if (normalized === 'gold' || normalized === 'silver') return normalized;
+  return null;
+}
+
+async function fetchMetalInvestmentPrice(item: Investment, targetCurrency: string): Promise<{ responseOk: boolean; payload: InvestmentPricePayload }> {
+  const metalKind = investmentMetalKind(item);
+  if (!metalKind) {
+    return { responseOk: false, payload: { ok: false, code: 'NOT_METAL' } };
+  }
+
+  const response = await fetch(`/api/market/metals?currency=${encodeURIComponent(targetCurrency)}`, {
+    cache: 'no-store',
+  });
+  const metals = await response.json() as MetalsPricePayload;
+  const metal = metalKind === 'gold' ? metals.gold : metals.silver;
+  const price = Number(metal?.price);
+  const currency = String(metal?.currency || targetCurrency || '').trim().toUpperCase();
+
+  return {
+    responseOk: response.ok,
+    payload: {
+      ok: Boolean(response.ok && metals.success && Number.isFinite(price) && price > 0),
+      code: metals.error || (metals.success ? undefined : 'METALS_PRICE_UNAVAILABLE'),
+      item: {
+        symbol: metalKind === 'gold' ? 'XAUUSD' : 'XAGUSD',
+        provider_symbol: metalKind === 'gold' ? 'XAUUSD' : 'XAGUSD',
+        price: Number.isFinite(price) && price > 0 ? price : null,
+        currency: currency || null,
+        price_unit: metal?.unit || 'gram',
+        updated_at: metal?.lastUpdated || new Date().toISOString(),
+        source: metals.source ? `metals:${metals.source}` : 'metals',
+      },
+    },
+  };
 }
 
 export default function InvestPage() {
@@ -616,42 +676,40 @@ export default function InvestPage() {
   }
 
   async function handleRefreshPrice(item: Investment, options?: { silent?: boolean }) {
-    const providerSymbol = item.providerSymbol || item.symbol;
+    const providerSymbol = investmentLinkedSymbol(item);
     if (!providerSymbol) return false;
 
     setRefreshingPriceId(item.id);
     try {
-      const params = new URLSearchParams({
-        symbol: providerSymbol,
-        displaySymbol: item.symbol || providerSymbol,
-        name: item.name,
-      });
-      if (item.assetType) params.set('assetType', item.assetType);
-      if (item.market) params.set('market', item.market);
-      if (item.nativeCurrency || item.priceCurrency || item.currency) {
-        params.set('currency', item.nativeCurrency || item.priceCurrency || item.currency || '');
+      const requestedCurrency = (item.nativeCurrency || item.priceCurrency || item.currency || currency).toUpperCase();
+      const metalKind = investmentMetalKind(item);
+      let responseOk = false;
+      let payload: InvestmentPricePayload;
+
+      if (metalKind) {
+        const metalResult = await fetchMetalInvestmentPrice(item, requestedCurrency);
+        responseOk = metalResult.responseOk;
+        payload = metalResult.payload;
+      } else {
+        const params = new URLSearchParams({
+          symbol: providerSymbol,
+          displaySymbol: item.symbol || providerSymbol,
+          name: item.name,
+        });
+        if (item.assetType) params.set('assetType', item.assetType);
+        if (item.market) params.set('market', item.market);
+        if (requestedCurrency) params.set('currency', requestedCurrency);
+        const authToken = session?.access_token;
+        const response = await fetch(`/api/market/refresh-investment-price?${params.toString()}`, {
+          cache: 'no-store',
+          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        });
+        responseOk = response.ok;
+        payload = await response.json() as InvestmentPricePayload;
       }
-      const authToken = session?.access_token;
-      const response = await fetch(`/api/market/refresh-investment-price?${params.toString()}`, {
-        cache: 'no-store',
-        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-      });
-      const payload = await response.json() as {
-        ok?: boolean;
-        item?: {
-          symbol?: string;
-          provider_symbol?: string;
-          price?: number | null;
-          currency?: string | null;
-          price_unit?: string | null;
-          updated_at?: string | null;
-          source?: string;
-        };
-        code?: string;
-      };
 
       const price = Number(payload.item?.price);
-      if (!response.ok || payload.ok === false || !Number.isFinite(price) || price <= 0) {
+      if (!responseOk || payload.ok === false || !Number.isFinite(price) || price <= 0) {
         const failedAt = new Date().toISOString();
         setPriceRefreshStatuses(prev => ({
           ...prev,
@@ -665,7 +723,7 @@ export default function InvestPage() {
         return false;
       }
 
-      const nativeCurrency = (payload.item?.currency || item.nativeCurrency || item.priceCurrency || item.currency || currency).toUpperCase();
+      const nativeCurrency = (payload.item?.currency || requestedCurrency).toUpperCase();
       const metrics = calculateInvestmentHoldingMetrics(item, { currentPrice: price });
       const currentMarketValue = metrics.currentValue;
       let fx: Awaited<ReturnType<typeof fetchFxRate>> | null = null;
@@ -743,7 +801,7 @@ export default function InvestPage() {
   }
 
   async function handleRefreshPrices(visibleItems: Investment[]) {
-    const refreshable = visibleItems.filter(item => item.providerSymbol || item.symbol);
+    const refreshable = visibleItems.filter(item => investmentLinkedSymbol(item));
     if (refreshable.length === 0 || refreshingAllPrices) return;
     setRefreshingAllPrices(true);
     try {
@@ -762,7 +820,7 @@ export default function InvestPage() {
   useEffect(() => {
     if (isLoading || autoRefreshedRef.current) return;
     const stale = items.filter(
-      item => (item.providerSymbol || item.symbol) && !item.lastPrice && !item.currentPrice
+      item => investmentLinkedSymbol(item) && !item.lastPrice && !item.currentPrice
     );
     if (stale.length === 0) return;
     autoRefreshedRef.current = true;

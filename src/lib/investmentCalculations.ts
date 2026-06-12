@@ -26,12 +26,34 @@ function positiveInvestmentNumber(value: unknown) {
   return parsed !== null && parsed > 0 ? parsed : null;
 }
 
+function metalKind(item: Investment) {
+  const normalized = String(item.metalType || item.type || '').trim().toLowerCase();
+  if (normalized === 'gold' || normalized === 'silver') return normalized;
+  return null;
+}
+
+export function defaultInvestmentMetalSymbol(item: Investment) {
+  const kind = metalKind(item);
+  if (kind === 'gold') return 'XAUUSD';
+  if (kind === 'silver') return 'XAGUSD';
+  return '';
+}
+
 export function investmentLinkedSymbol(item: Investment) {
-  return String(item.providerSymbol || item.symbol || '').trim().toUpperCase();
+  return String(item.providerSymbol || item.symbol || defaultInvestmentMetalSymbol(item)).trim().toUpperCase();
 }
 
 export function isMarketLinkedInvestment(item: Investment) {
   return Boolean(investmentLinkedSymbol(item)) && MARKET_LINKED_TYPES.has(item.type);
+}
+
+function investmentPricedQuantity(item: Investment) {
+  if (metalKind(item)) {
+    return positiveInvestmentNumber(item.pureMetalGrams)
+      ?? positiveInvestmentNumber(item.grams)
+      ?? positiveInvestmentNumber(item.quantity);
+  }
+  return positiveInvestmentNumber(item.quantity);
 }
 
 export function investmentNativeCurrency(item: Investment) {
@@ -52,7 +74,7 @@ export function calculateInvestmentHoldingMetrics(
 ): InvestmentHoldingMetrics {
   const linkedSymbol = investmentLinkedSymbol(item);
   const isMarketLinked = isMarketLinkedInvestment(item);
-  const quantity = positiveInvestmentNumber(item.quantity);
+  const quantity = investmentPricedQuantity(item);
   // item.purchaseTotal comes from purchase_total/invested_amount DB columns.
   // item.amount holds the original investment value at creation time and is never
   // overwritten by price-refresh updates — safe last-resort fallback for legacy rows.
