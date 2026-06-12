@@ -399,6 +399,10 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
         }
 
         @media (max-width: 980px) {
+          .ebook-reader-topbar {
+            display: none;
+          }
+
           .ebook-reader-hero {
             grid-template-columns: 1fr;
             align-items: stretch;

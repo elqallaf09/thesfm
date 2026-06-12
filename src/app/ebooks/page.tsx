@@ -1244,13 +1244,15 @@ export default function EbooksPage() {
           }
         }
 
+        @media (max-width: 1024px) {
+          .ebooks-topbar {
+            display: none;
+          }
+        }
+
         @media (max-width: 820px) {
           .ebooks-content {
             padding: 18px 14px 44px;
-          }
-
-          .ebooks-topbar {
-            justify-content: stretch;
           }
 
           .ebooks-featured-card,

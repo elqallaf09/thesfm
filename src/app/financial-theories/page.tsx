@@ -2398,6 +2398,10 @@ export default function FinancialTheoriesPage() {
         }
 
         @media (max-width: 1024px) {
+          .financial-theories-shell .sfm-page-topbar {
+            display: none;
+          }
+
           .learning-overview,
           .why-card,
           .theory-of-day-card,

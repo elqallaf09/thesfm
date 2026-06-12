@@ -7,8 +7,7 @@ import { LazyCommandMenu } from '@/components/LazyCommandMenu';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname() || '/';
-  const isPublicPage = ['/', '/login', '/reset-password', '/about', '/contact', '/terms', '/privacy', '/financial-theories', '/ebooks'].includes(pathname)
-    || pathname.startsWith('/ebooks/');
+  const isPublicPage = ['/', '/login', '/reset-password', '/about', '/contact', '/terms', '/privacy'].includes(pathname);
 
   return (
     <div className={isPublicPage ? 'sfm-app-layout sfm-app-layout-public' : 'sfm-app-layout'}>
