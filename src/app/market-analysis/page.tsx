@@ -95,6 +95,18 @@ function marketSourceLabel(source?: string | null, fallback = 'OpenBB') {
   return clean;
 }
 
+function findBestSearchMatch(items: MarketSearchSuggestion[], query: string) {
+  const exact = findExactSearchMatch(items, query);
+  if (exact) return exact;
+  const cleanQuery = query.trim();
+  if (!cleanQuery) return undefined;
+  const ranked = items
+    .map(item => ({ item, rank: marketSearchMatchRank(item, cleanQuery) }))
+    .filter(entry => entry.rank >= 70)
+    .sort((a, b) => b.rank - a.rank || a.item.symbol.localeCompare(b.item.symbol));
+  return ranked[0]?.item;
+}
+
 export default function MarketAnalysisPage() {
   const { dir, lang, t } = useLanguage();
   const { currency: userCurrency } = useCurrency();
@@ -1115,7 +1127,7 @@ export default function MarketAnalysisPage() {
     }
 
     let suggestionCandidates = searchResults;
-    let selectedItem: MarketSearchSuggestion | undefined = item ? normalizeSearchItem(item) : findExactSearchMatch(searchResults, cleanQuery);
+    let selectedItem: MarketSearchSuggestion | undefined = item ? normalizeSearchItem(item) : findBestSearchMatch(searchResults, cleanQuery);
     if (!selectedItem && cleanQuery) {
       const requestId = searchRequestIdRef.current + 1;
       searchRequestIdRef.current = requestId;
@@ -1136,7 +1148,7 @@ export default function MarketAnalysisPage() {
         setSearchResults(results);
         setHighlightedSearchIndex(0);
         setSearchMessage(results.length === 0 ? marketErrorText(data.code, data.message || data.error || t('market_symbol_not_found_helpful'), t) : '');
-        selectedItem = resolvedItem ?? findExactSearchMatch(results, cleanQuery) ?? (results.length === 1 ? results[0] : undefined);
+        selectedItem = resolvedItem ?? findBestSearchMatch(results, cleanQuery) ?? (results.length === 1 ? results[0] : undefined);
       } catch {
         selectedItem = undefined;
       } finally {
@@ -1187,6 +1199,7 @@ export default function MarketAnalysisPage() {
     }
 
     setSearchOpen(false);
+    setSearchMessage('');
     setError('');
     setErrorSuggestions([]);
     await requestAnalysis(selectedItem.providerSymbol ?? selectedItem.symbol, selectedItem.assetType, {
