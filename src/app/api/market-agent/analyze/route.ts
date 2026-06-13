@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import { proxyHistory } from '@/lib/market/openbbProxy';
-import { normalizeMarketSymbol } from '@/lib/market/normalizeSymbol';
-import type { MarketAssetType } from '@/lib/market/marketService';
+import { normalizeMarketSymbol, type NormalizedMarketSymbol } from '@/lib/market/normalizeSymbol';
+import { searchBundledMarketSymbols } from '@/lib/market/marketSymbolDirectory';
+import { resolveMarketSymbol } from '@/lib/market/symbolResolver';
+import type { MarketAssetType, MarketSearchItem } from '@/lib/market/marketService';
 import { validateSymbol } from '@/lib/market/marketService';
 import { getUserFromBearerToken } from '@/lib/server/adminAccess';
 import {
@@ -26,6 +28,19 @@ export const dynamic = 'force-dynamic';
 
 const DEFAULT_MARKET_AGENT_AI_MODEL = 'gpt-4o-mini';
 const MARKET_AGENT_AI_TIMEOUT_MS = 8000;
+const GLOBAL_STOCK_SUFFIXES = [
+  '.KW', '.SR', '.SA', '.DU', '.AD', '.AE', '.QA', '.BH', '.OM',
+  '.T', '.HK', '.SS', '.SZ', '.KS', '.KQ', '.TW', '.TWO', '.NS', '.BO', '.SI', '.JK', '.BK', '.KL', '.AX',
+  '.L', '.DE', '.F', '.PA', '.AS', '.BR', '.LS', '.MC', '.MI', '.SW', '.VI', '.ST', '.OL', '.CO', '.HE', '.WA',
+  '.TO', '.V', '.MX', '.JO', '.IS', '.CA',
+];
+type AgentSymbolCandidate = {
+  displaySymbol: string;
+  providerSymbol: string;
+  providerAssetType: MarketAssetType;
+  responseAssetType: MarketAgentAssetType;
+  currency?: string | null;
+};
 const FORBIDDEN_ADVICE_WORDS = /مضمون|أكيد|فرصة لا تعوض|اربح الآن|guaranteed|sure signal|100%\s*accurate|risk[-\s]?free/i;
 
 function json(body: Record<string, unknown>, init?: ResponseInit) {
@@ -42,18 +57,86 @@ function bearerToken(request: NextRequest) {
   return request.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim() || null;
 }
 
-function uniqueCandidates(values: Array<string | null | undefined>) {
+function candidateFromNormalized(normalized: NormalizedMarketSymbol, requestedAssetType: MarketAgentAssetType): AgentSymbolCandidate {
+  const providerAssetType = normalized.assetType;
+  return {
+    displaySymbol: normalized.displaySymbol,
+    providerSymbol: normalized.providerSymbol,
+    providerAssetType,
+    responseAssetType: requestedAssetType === 'stock' ? agentAssetTypeFromProvider(providerAssetType) : requestedAssetType,
+  };
+}
+
+function candidateFromSearchItem(item: MarketSearchItem, requestedAssetType: MarketAgentAssetType): AgentSymbolCandidate | null {
+  const providerSymbol = validateSymbol(item.providerSymbol ?? item.symbol);
+  const displaySymbol = validateSymbol(item.symbol);
+  if (!providerSymbol || !displaySymbol) return null;
+  const providerAssetType = resolveProviderAssetType(requestedAssetType, item.assetType);
+  return {
+    displaySymbol,
+    providerSymbol,
+    providerAssetType,
+    responseAssetType: requestedAssetType === 'stock' ? agentAssetTypeFromProvider(providerAssetType) : requestedAssetType,
+    currency: item.currency,
+  };
+}
+
+function directGlobalStockCandidates(symbol: string, requestedAssetType: MarketAgentAssetType): AgentSymbolCandidate[] {
+  if (requestedAssetType !== 'stock') return [];
+  const raw = symbol.trim().toUpperCase();
+  if (!raw || /[.^=:/-]/.test(raw) || raw.length > 12 || !/^[A-Z0-9]+$/.test(raw)) return [];
+  const suffixes = /^[0-9]+$/.test(raw)
+    ? [
+      '.T', '.HK', '.SS', '.SZ', '.KS', '.KQ', '.TW', '.TWO', '.NS', '.BO', '.SI', '.JK', '.BK', '.KL', '.AX',
+      ...GLOBAL_STOCK_SUFFIXES.filter(suffix => !['.T', '.HK', '.SS', '.SZ', '.KS', '.KQ', '.TW', '.TWO', '.NS', '.BO', '.SI', '.JK', '.BK', '.KL', '.AX'].includes(suffix)),
+    ]
+    : GLOBAL_STOCK_SUFFIXES;
+  return suffixes.map(suffix => ({
+    displaySymbol: raw,
+    providerSymbol: `${raw}${suffix}`,
+    providerAssetType: 'stock' as MarketAssetType,
+    responseAssetType: 'stock' as MarketAgentAssetType,
+  }));
+}
+
+function uniqueAgentCandidates(candidates: Array<AgentSymbolCandidate | null | undefined>) {
   const seen = new Set<string>();
-  return values
-    .map(value => validateSymbol(value))
-    .filter((value): value is string => Boolean(value))
-    .filter(value => {
-      const key = value.toUpperCase();
+  return candidates
+    .filter((candidate): candidate is AgentSymbolCandidate => Boolean(candidate))
+    .map(candidate => ({
+      ...candidate,
+      displaySymbol: validateSymbol(candidate.displaySymbol) ?? candidate.displaySymbol.toUpperCase(),
+      providerSymbol: validateSymbol(candidate.providerSymbol),
+    }))
+    .filter((candidate): candidate is AgentSymbolCandidate => Boolean(candidate.providerSymbol))
+    .filter(candidate => {
+      const key = `${candidate.providerSymbol}:${candidate.providerAssetType}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     })
-    .slice(0, 8);
+    .slice(0, 48);
+}
+
+async function resolveAgentSymbolCandidates(rawSymbol: string, assetType: MarketAgentAssetType) {
+  const providerAssetType = providerAssetTypeForAgent(assetType);
+  const [resolved, directoryResults] = await Promise.all([
+    resolveMarketSymbol(rawSymbol, providerAssetType).catch(() => null),
+    Promise.resolve(searchBundledMarketSymbols({ query: rawSymbol, assetType: providerAssetType, limit: 12 })),
+  ]);
+  const normalized = normalizeMarketSymbol(rawSymbol, providerAssetType);
+  const resolverItems = resolved
+    ? resolved.ok
+      ? [resolved.asset, ...resolved.suggestions]
+      : resolved.suggestions
+    : [];
+
+  return uniqueAgentCandidates([
+    ...directoryResults.map(item => candidateFromSearchItem(item, assetType)),
+    ...resolverItems.map(item => candidateFromSearchItem(item, assetType)),
+    normalized ? candidateFromNormalized(normalized, assetType) : null,
+    ...directGlobalStockCandidates(rawSymbol, assetType),
+  ]);
 }
 
 async function explainAnalysisWithAi(analysis: MarketAgentSuccessResponse) {
@@ -178,8 +261,8 @@ export async function POST(request: NextRequest) {
     }, 'INVALID_SYMBOL'), { status: 400 });
   }
 
-  const normalized = normalizeMarketSymbol(rawSymbol, providerAssetTypeForAgent(assetType));
-  if (!normalized) {
+  const candidates = await resolveAgentSymbolCandidates(rawSymbol, assetType);
+  if (candidates.length === 0) {
     return json(insufficientMarketAgentData({
       symbol: displayInput || rawSymbol,
       assetType,
@@ -189,35 +272,30 @@ export async function POST(request: NextRequest) {
     }, 'INVALID_SYMBOL'), { status: 422 });
   }
 
-  const providerAssetType = resolveProviderAssetType(assetType, normalized.assetType);
-  const responseAssetType = assetType === 'stock' ? agentAssetTypeFromProvider(providerAssetType) : assetType;
-  const candidates = uniqueCandidates([
-    normalized.providerSymbol,
-    rawSymbol,
-    ...normalized.alternatives,
-  ]);
   const config = MARKET_AGENT_TIMEFRAME_CONFIG[timeframe];
   let lastSource = 'openbb';
+  let lastCandidate = candidates[0];
 
   for (const candidate of candidates) {
-    const result = await proxyHistory(candidate, providerAssetType, config.period, config.interval);
+    lastCandidate = candidate;
+    const result = await proxyHistory(candidate.providerSymbol, candidate.providerAssetType, config.period, config.interval);
     lastSource = String((result as Record<string, unknown>).source ?? 'openbb');
     if (!result.success || !Array.isArray(result.history) || result.history.length === 0) continue;
 
     const rawPoints = normalizeMarketAgentPoints(result.history);
     const normalizedCurrency = normalizeMarketAgentCurrencyPoints(rawPoints, {
-      symbol: displayInput || normalized.displaySymbol,
-      providerSymbol: candidate,
-      assetType: providerAssetType,
-      providerCurrency: (result as Record<string, unknown>).currency,
+      symbol: candidate.displaySymbol,
+      providerSymbol: candidate.providerSymbol,
+      assetType: candidate.providerAssetType,
+      providerCurrency: (result as Record<string, unknown>).currency ?? candidate.currency,
     });
     const points = aggregateMarketAgentPoints(normalizedCurrency.points, config.aggregateHours);
     const analysis = analyzeMarketAgentFromHistory({
-      symbol: displayInput || normalized.displaySymbol,
-      assetType: responseAssetType,
+      symbol: candidate.displaySymbol,
+      assetType: candidate.responseAssetType,
       timeframe,
-      providerSymbol: candidate,
-      providerAssetType,
+      providerSymbol: candidate.providerSymbol,
+      providerAssetType: candidate.providerAssetType,
       currency: normalizedCurrency.currency,
       source: lastSource,
       updatedAt: new Date().toISOString(),
@@ -233,8 +311,8 @@ export async function POST(request: NextRequest) {
   }
 
   return json(insufficientMarketAgentData({
-    symbol: displayInput || normalized.displaySymbol,
-    assetType: responseAssetType,
+    symbol: lastCandidate?.displaySymbol ?? displayInput,
+    assetType: lastCandidate?.responseAssetType ?? assetType,
     timeframe,
     source: lastSource,
     updatedAt: new Date().toISOString(),
