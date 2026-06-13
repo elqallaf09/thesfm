@@ -6,6 +6,7 @@ import {
   Bot,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   CreditCard,
   Edit3,
   Film,
@@ -72,6 +73,8 @@ type Text = {
   expenseNote: string;
   examplesTitle: string;
   examplesSubtitle: string;
+  showExamples: string;
+  hideExamples: string;
   category: Record<SubscriptionType, string>;
   frequencyLabel: Record<BillingFrequency, string>;
 };
@@ -153,6 +156,8 @@ const TEXT: Record<Lang, Text> = {
     expenseNote: 'يتم حفظ القيمة كأثر شهري داخل المصاريف مع حفظ مبلغ الدفع الأصلي داخل التفاصيل.',
     examplesTitle: 'أمثلة حسب نوع الاشتراك',
     examplesSubtitle: 'اختيار النوع يغيّر قائمة الخدمات المقترحة في الخانة التالية.',
+    showExamples: 'عرض الأمثلة',
+    hideExamples: 'إخفاء الأمثلة',
     category: {
       entertainment: 'وسائل الترفيه',
       ai: 'الذكاء الاصطناعي',
@@ -208,6 +213,8 @@ const TEXT: Record<Lang, Text> = {
     expenseNote: 'The value is saved as a monthly expense impact while the original billing amount stays in the details.',
     examplesTitle: 'Examples by subscription type',
     examplesSubtitle: 'Changing the type updates the suggested services in the next field.',
+    showExamples: 'Show examples',
+    hideExamples: 'Hide examples',
     category: {
       entertainment: 'Entertainment',
       ai: 'Artificial intelligence',
@@ -263,6 +270,8 @@ const TEXT: Record<Lang, Text> = {
     expenseNote: 'La valeur est enregistrée comme impact mensuel, avec le montant original dans les détails.',
     examplesTitle: 'Exemples par type',
     examplesSubtitle: 'Le type choisi met à jour les services suggérés.',
+    showExamples: 'Afficher les exemples',
+    hideExamples: 'Masquer les exemples',
     category: {
       entertainment: 'Divertissement',
       ai: 'Intelligence artificielle',
@@ -686,6 +695,7 @@ export default function MonthlySubscriptionsPage() {
   const [rows, setRows] = useState<SubscriptionRow[]>([]);
   const [form, setForm] = useState<FormState>(() => emptyForm(baseCurrency));
   const [formOpen, setFormOpen] = useState(false);
+  const [examplesOpen, setExamplesOpen] = useState(false);
   const [fxRates, setFxRates] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1119,14 +1129,25 @@ export default function MonthlySubscriptionsPage() {
         )}
 
         <section className="subscriptions-examples-card subscriptions-examples-card--wide">
-            <div className="subscriptions-section-head">
+            <div className="subscriptions-section-head subscriptions-section-head--interactive">
               <div>
                 <span>THE SFM</span>
                 <h2>{copy.examplesTitle}</h2>
                 <p>{copy.examplesSubtitle}</p>
               </div>
+              <button
+                type="button"
+                className="subscriptions-examples-toggle"
+                aria-expanded={examplesOpen}
+                aria-controls="subscription-examples-list"
+                onClick={() => setExamplesOpen(current => !current)}
+              >
+                {examplesOpen ? copy.hideExamples : copy.showExamples}
+                <ChevronDown size={16} className={examplesOpen ? 'open' : ''} />
+              </button>
             </div>
-            <div className="subscriptions-examples-list">
+            {examplesOpen && (
+            <div id="subscription-examples-list" className="subscriptions-examples-list">
               {(Object.keys(SERVICE_OPTIONS) as SubscriptionType[]).map(type => {
                 const Icon = TYPE_ICONS[type];
                 return (
@@ -1148,6 +1169,7 @@ export default function MonthlySubscriptionsPage() {
                 );
               })}
             </div>
+            )}
         </section>
 
         <section className="subscriptions-list-card">
@@ -1239,8 +1261,13 @@ export default function MonthlySubscriptionsPage() {
         .subscriptions-summary-grid strong{color:#061a2e;font-size:20px;font-weight:950;line-height:1.25;overflow-wrap:anywhere}
         .subscriptions-layout,.subscriptions-form-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
         .subscriptions-form-card,.subscriptions-examples-card,.subscriptions-list-card{padding:20px;display:grid;gap:16px}
+        .subscriptions-section-head--interactive{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center}
         .subscriptions-section-head h2{margin:4px 0 0;color:#061a2e;font-size:28px;font-weight:950}
         .subscriptions-section-head p{margin:6px 0 0;color:#64748b;font-weight:800;line-height:1.75}
+        .subscriptions-examples-toggle{min-height:42px;border:1px solid rgba(29,140,255,.16);border-radius:15px;background:#f8fbff;color:#0f1d31;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:950 13px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap;transition:.18s ease}
+        .subscriptions-examples-toggle:hover{border-color:rgba(47,214,192,.46);box-shadow:0 0 0 4px rgba(47,214,192,.10)}
+        .subscriptions-examples-toggle svg{transition:transform .18s ease}
+        .subscriptions-examples-toggle svg.open{transform:rotate(180deg)}
         .subscriptions-type-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
         .subscriptions-type-grid button{min-height:74px;border:1px solid rgba(29,140,255,.14);border-radius:18px;background:#f8fbff;color:#0f1d31;display:grid;place-items:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}
         .subscriptions-type-grid button.active{background:linear-gradient(135deg,rgba(29,140,255,.15),rgba(47,214,192,.18));border-color:rgba(47,214,192,.42);color:#0f766e;box-shadow:0 12px 28px rgba(29,140,255,.12)}
@@ -1284,7 +1311,7 @@ export default function MonthlySubscriptionsPage() {
         .dark .subscriptions-form-card,.dark .subscriptions-examples-card,.dark .subscriptions-list-card,.dark .subscriptions-summary-grid article{background:linear-gradient(180deg,#0f1d31,#0b1728);border-color:#1d3050;box-shadow:0 18px 46px rgba(0,0,0,.28);color:#e8eef6}
         .dark .subscriptions-section-head h2,.dark .subscriptions-summary-grid strong,.dark .subscriptions-examples-list strong,.dark .subscription-row-main h3,.dark .subscription-row-metrics b,.dark .subscriptions-impact-card strong,.dark .subscriptions-empty h3{color:#e8eef6}
         .dark .subscriptions-section-head p,.dark .subscriptions-summary-grid small,.dark .subscriptions-section-head span,.dark .subscriptions-form-card label span,.dark .subscriptions-impact-card span,.dark .subscriptions-impact-card p,.dark .subscription-row-main p,.dark .subscription-row-metrics span,.dark .subscriptions-examples-list p,.dark .subscriptions-empty{color:#b8c7d9}
-        .dark .subscriptions-type-grid button,.dark .subscriptions-form-card input,.dark .subscriptions-form-card select,.dark .subscriptions-form-card textarea,.dark .subscriptions-form-card .currency-trigger,.dark .subscriptions-examples-list article,.dark .subscriptions-provider-groups p,.dark .subscription-row-card,.dark .subscription-row-metrics div,.dark .subscriptions-impact-card div,.dark .subscriptions-form-actions .subscriptions-secondary,.dark .subscription-row-actions button{background:#13243a!important;border-color:#1d3050!important;color:#e8eef6!important}
+        .dark .subscriptions-type-grid button,.dark .subscriptions-form-card input,.dark .subscriptions-form-card select,.dark .subscriptions-form-card textarea,.dark .subscriptions-form-card .currency-trigger,.dark .subscriptions-examples-toggle,.dark .subscriptions-examples-list article,.dark .subscriptions-provider-groups p,.dark .subscription-row-card,.dark .subscription-row-metrics div,.dark .subscriptions-impact-card div,.dark .subscriptions-form-actions .subscriptions-secondary,.dark .subscription-row-actions button{background:#13243a!important;border-color:#1d3050!important;color:#e8eef6!important}
         .dark .subscriptions-provider-groups b{color:#7ddbd3}
         .dark .subscriptions-provider-groups span{color:#b8c7d9}
         .dark .subscriptions-type-grid button.active{background:linear-gradient(135deg,rgba(29,140,255,.22),rgba(47,214,192,.18))!important;border-color:rgba(47,214,192,.48)!important;color:#7ddbd3!important}
@@ -1294,7 +1321,7 @@ export default function MonthlySubscriptionsPage() {
         .dark .subscriptions-notice.success{color:#86efac;background:rgba(16,185,129,.14);border-color:rgba(16,185,129,.28)}
         @media(max-width:1180px){.subscriptions-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.subscriptions-layout,.subscriptions-examples-card--wide .subscriptions-examples-list,.subscription-row-card{grid-template-columns:1fr}.subscription-row-actions{justify-content:stretch}.subscription-row-actions button{flex:1}}
         @media(max-width:1024px){.subscriptions-main{margin-inline:0;padding:18px 14px 46px}.subscriptions-main>*{max-width:100%}.subscriptions-hero{margin-top:0}}
-        @media(max-width:720px){.subscriptions-hero{grid-template-columns:1fr;padding:22px;border-radius:24px}.subscriptions-hero-actions,.subscriptions-form-actions{display:grid;grid-template-columns:1fr}.subscriptions-primary,.subscriptions-secondary{width:100%}.subscriptions-summary-grid,.subscriptions-form-grid,.subscriptions-type-grid,.subscriptions-impact-card,.subscription-row-metrics{grid-template-columns:1fr}.subscriptions-form-card,.subscriptions-examples-card,.subscriptions-list-card{padding:15px;border-radius:22px}.subscriptions-section-head h2{font-size:24px}.subscriptions-hero h1{font-size:36px}}
+        @media(max-width:720px){.subscriptions-hero{grid-template-columns:1fr;padding:22px;border-radius:24px}.subscriptions-hero-actions,.subscriptions-form-actions{display:grid;grid-template-columns:1fr}.subscriptions-primary,.subscriptions-secondary{width:100%}.subscriptions-summary-grid,.subscriptions-form-grid,.subscriptions-type-grid,.subscriptions-impact-card,.subscription-row-metrics,.subscriptions-section-head--interactive{grid-template-columns:1fr}.subscriptions-examples-toggle{width:100%}.subscriptions-form-card,.subscriptions-examples-card,.subscriptions-list-card{padding:15px;border-radius:22px}.subscriptions-section-head h2{font-size:24px}.subscriptions-hero h1{font-size:36px}}
       `}</style>
     </div>
   );
