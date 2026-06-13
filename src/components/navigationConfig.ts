@@ -92,16 +92,22 @@ export const NAV_GROUPS: NavigationGroup[] = [
     labelKey: 'nav_group_personal_finance',
     items: [
       { id: 'income', icon: Wallet, href: '/income', labelKey: 'nav_income', viewModes: ['simple', 'professional'] },
-      { id: 'expenses', icon: ReceiptText, href: '/expenses', labelKey: 'nav_expenses', viewModes: ['simple', 'professional'] },
+      {
+        id: 'expenses',
+        icon: ReceiptText,
+        labelKey: 'nav_expenses',
+        viewModes: ['simple', 'professional'],
+        children: [
+          { id: 'expenses-overview', icon: ReceiptText, href: '/expenses', labelKey: 'nav_expenses', viewModes: ['simple', 'professional'] },
+          { id: 'monthly-subscriptions', icon: CreditCard, href: '/expenses/monthly-subscriptions', labelKey: 'nav_monthly_subscriptions', viewModes: ['simple', 'professional'] },
+        ],
+      },
       {
         id: 'debts',
         icon: Landmark,
+        href: '/debts',
         labelKey: 'nav_debts',
         viewModes: ['simple', 'professional'],
-        children: [
-          { id: 'debts-overview', icon: Landmark, href: '/debts', labelKey: 'nav_debts', viewModes: ['simple', 'professional'] },
-          { id: 'monthly-subscriptions', icon: CreditCard, href: '/debts/monthly-subscriptions', labelKey: 'nav_monthly_subscriptions', viewModes: ['simple', 'professional'] },
-        ],
       },
       { id: 'savings', icon: PiggyBank, href: '/savings', labelKey: 'nav_savings' },
       { id: 'goals', icon: Target, href: '/goals', labelKey: 'nav_goals', viewModes: ['simple', 'professional'] },
