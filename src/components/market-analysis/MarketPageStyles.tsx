@@ -21,11 +21,7 @@ export function MarketPageStyles() {
         }
 
         @media (min-width: 1025px) {
-          [dir="rtl"].market-shell .market-main {
-            padding-inline-start: 32px !important;
-            padding-inline-end: calc(var(--sidebar-w, 230px) + 32px) !important;
-          }
-
+          [dir="rtl"].market-shell .market-main,
           [dir="ltr"].market-shell .market-main {
             padding-inline-start: calc(var(--sidebar-w, 230px) + 32px) !important;
             padding-inline-end: 32px !important;

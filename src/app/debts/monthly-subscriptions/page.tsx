@@ -855,8 +855,10 @@ export default function MonthlySubscriptionsPage() {
 
       <style jsx global>{`
         .subscriptions-shell{min-height:100vh;background:var(--sfm-page-gradient);color:var(--sfm-foreground);font-family:Tajawal,Arial,sans-serif}
-        .subscriptions-main{margin-inline-end:var(--sidebar-w,230px);padding:28px clamp(18px,3vw,38px) 70px;display:grid;gap:18px;min-width:0}
-        [dir="ltr"] .subscriptions-main{margin-inline-end:0;margin-inline-start:var(--sidebar-w,230px)}
+        .subscriptions-main{width:100%;max-width:100%;min-height:100vh;margin:0;padding:28px clamp(18px,3vw,38px) 70px;display:grid;gap:18px;min-width:0;overflow-x:hidden;box-sizing:border-box}
+        .subscriptions-main>*{width:100%;max-width:1400px;min-width:0;margin-inline:auto;box-sizing:border-box}
+        .subscriptions-shell[dir="rtl"] .subscriptions-main{padding-inline-start:calc(var(--sidebar-w,230px) + clamp(18px,3vw,38px));padding-inline-end:clamp(18px,3vw,38px)}
+        .subscriptions-shell[dir="ltr"] .subscriptions-main{padding-inline-start:calc(var(--sidebar-w,230px) + clamp(18px,3vw,38px));padding-inline-end:clamp(18px,3vw,38px)}
         .subscriptions-hero,.subscriptions-form-card,.subscriptions-examples-card,.subscriptions-list-card,.subscriptions-summary-grid article{border:1px solid rgba(29,140,255,.12);background:linear-gradient(180deg,#fff,#f8fbff);border-radius:26px;box-shadow:0 18px 46px rgba(3,18,37,.08)}
         .subscriptions-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:18px;padding:26px;background:radial-gradient(circle at 12% 10%,rgba(47,214,192,.18),transparent 30%),linear-gradient(135deg,#071427,#10294c 60%,#0b5a75);color:#fff}
         .subscriptions-eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(167,243,240,.22);background:rgba(255,255,255,.09);border-radius:999px;padding:8px 12px;color:#a7f3f0;font-weight:950;font-size:12px}
@@ -922,7 +924,7 @@ export default function MonthlySubscriptionsPage() {
         .dark .subscriptions-notice.error{color:#fecaca;background:rgba(127,29,29,.20);border-color:rgba(248,113,113,.28)}
         .dark .subscriptions-notice.success{color:#86efac;background:rgba(16,185,129,.14);border-color:rgba(16,185,129,.28)}
         @media(max-width:1180px){.subscriptions-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.subscriptions-layout,.subscription-row-card{grid-template-columns:1fr}.subscription-row-actions{justify-content:stretch}.subscription-row-actions button{flex:1}}
-        @media(max-width:1024px){.subscriptions-main{margin-inline:0;padding:18px 14px 46px}.subscriptions-hero{margin-top:0}}
+        @media(max-width:1024px){.subscriptions-main{margin-inline:0;padding:18px 14px 46px}.subscriptions-main>*{max-width:100%}.subscriptions-hero{margin-top:0}}
         @media(max-width:720px){.subscriptions-hero{grid-template-columns:1fr;padding:22px;border-radius:24px}.subscriptions-hero-actions,.subscriptions-form-actions{display:grid;grid-template-columns:1fr}.subscriptions-primary,.subscriptions-secondary{width:100%}.subscriptions-summary-grid,.subscriptions-form-grid,.subscriptions-type-grid,.subscriptions-impact-card,.subscription-row-metrics{grid-template-columns:1fr}.subscriptions-form-card,.subscriptions-examples-card,.subscriptions-list-card{padding:15px;border-radius:22px}.subscriptions-section-head h2{font-size:24px}.subscriptions-hero h1{font-size:36px}}
       `}</style>
     </div>
