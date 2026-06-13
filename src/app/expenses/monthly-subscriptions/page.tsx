@@ -272,7 +272,215 @@ const TEXT: Record<Lang, Text> = {
   },
 };
 
-const SERVICE_OPTIONS: Record<SubscriptionType, Array<{ id: string; label: string }>> = {
+type ServiceOption = { id: string; label: string };
+type ServiceGroup = { label: string; options: ServiceOption[] };
+
+const TELECOM_SERVICE_GROUPS: ServiceGroup[] = [
+  {
+    label: 'Gulf / الخليج',
+    options: [
+      { id: 'kw-zain', label: 'Zain Kuwait' },
+      { id: 'kw-stc', label: 'stc Kuwait' },
+      { id: 'kw-ooredoo', label: 'Ooredoo Kuwait' },
+      { id: 'sa-stc', label: 'stc Saudi Arabia' },
+      { id: 'sa-mobily', label: 'Mobily' },
+      { id: 'sa-zain', label: 'Zain Saudi Arabia' },
+      { id: 'sa-salam', label: 'Salam' },
+      { id: 'sa-virgin', label: 'Virgin Mobile KSA' },
+      { id: 'sa-lebara', label: 'Lebara KSA' },
+      { id: 'ae-etisalat', label: 'e& UAE / Etisalat' },
+      { id: 'ae-du', label: 'du UAE' },
+      { id: 'ae-virgin', label: 'Virgin Mobile UAE' },
+      { id: 'qa-ooredoo', label: 'Ooredoo Qatar' },
+      { id: 'qa-vodafone', label: 'Vodafone Qatar' },
+      { id: 'bh-batelco', label: 'Batelco Bahrain' },
+      { id: 'bh-stc', label: 'stc Bahrain' },
+      { id: 'bh-zain', label: 'Zain Bahrain' },
+      { id: 'om-omantel', label: 'Omantel' },
+      { id: 'om-ooredoo', label: 'Ooredoo Oman' },
+      { id: 'om-vodafone', label: 'Vodafone Oman' },
+      { id: 'om-awa', label: 'Awasr Oman' },
+    ],
+  },
+  {
+    label: 'Arab countries / الدول العربية',
+    options: [
+      { id: 'eg-vodafone', label: 'Vodafone Egypt' },
+      { id: 'eg-orange', label: 'Orange Egypt' },
+      { id: 'eg-etisalat', label: 'Etisalat Egypt' },
+      { id: 'eg-we', label: 'WE / Telecom Egypt' },
+      { id: 'jo-zain', label: 'Zain Jordan' },
+      { id: 'jo-orange', label: 'Orange Jordan' },
+      { id: 'jo-umniah', label: 'Umniah Jordan' },
+      { id: 'lb-alfa', label: 'Alfa Lebanon' },
+      { id: 'lb-touch', label: 'Touch Lebanon' },
+      { id: 'ps-jawwal', label: 'Jawwal Palestine' },
+      { id: 'ps-paltel', label: 'Paltel' },
+      { id: 'ma-maroc-telecom', label: 'Maroc Telecom' },
+      { id: 'ma-orange', label: 'Orange Morocco' },
+      { id: 'ma-inwi', label: 'inwi Morocco' },
+      { id: 'tn-tunisie-telecom', label: 'Tunisie Telecom' },
+      { id: 'tn-ooredoo', label: 'Ooredoo Tunisia' },
+      { id: 'tn-orange', label: 'Orange Tunisia' },
+      { id: 'dz-mobilis', label: 'Mobilis Algeria' },
+      { id: 'dz-djezzy', label: 'Djezzy Algeria' },
+      { id: 'dz-ooredoo', label: 'Ooredoo Algeria' },
+      { id: 'dz-algerie-telecom', label: 'Algerie Telecom' },
+      { id: 'iq-asiacell', label: 'Asiacell Iraq' },
+      { id: 'iq-zain', label: 'Zain Iraq' },
+      { id: 'iq-korek', label: 'Korek Telecom' },
+      { id: 'iq-earthlink', label: 'EarthLink Iraq' },
+      { id: 'ly-libyana', label: 'Libyana' },
+      { id: 'ly-almadar', label: 'Almadar' },
+      { id: 'sd-zain', label: 'Zain Sudan' },
+      { id: 'sd-sudani', label: 'Sudani' },
+      { id: 'sd-mtn', label: 'MTN Sudan' },
+      { id: 'sd-canar', label: 'Canar Telecom' },
+      { id: 'sy-syriatel', label: 'Syriatel' },
+      { id: 'sy-mtn', label: 'MTN Syria' },
+      { id: 'ye-yemen-mobile', label: 'Yemen Mobile' },
+      { id: 'ye-sabafon', label: 'Sabafon' },
+      { id: 'ye-mtn', label: 'MTN Yemen' },
+      { id: 'ye-y-telecom', label: 'Y Telecom' },
+      { id: 'mr-mauritel', label: 'Mauritel' },
+      { id: 'mr-chinguitel', label: 'Chinguitel' },
+    ],
+  },
+  {
+    label: 'Global / عالمي',
+    options: [
+      { id: 'us-att', label: 'AT&T' },
+      { id: 'us-verizon', label: 'Verizon' },
+      { id: 'us-tmobile', label: 'T-Mobile' },
+      { id: 'us-xfinity', label: 'Xfinity Internet' },
+      { id: 'us-spectrum', label: 'Spectrum' },
+      { id: 'us-cox', label: 'Cox Communications' },
+      { id: 'ca-rogers', label: 'Rogers Canada' },
+      { id: 'ca-bell', label: 'Bell Canada' },
+      { id: 'ca-telus', label: 'TELUS' },
+      { id: 'au-telstra', label: 'Telstra' },
+      { id: 'au-optus', label: 'Optus' },
+      { id: 'au-tpg', label: 'TPG Telecom' },
+      { id: 'global-vodafone', label: 'Vodafone' },
+      { id: 'global-orange', label: 'Orange' },
+      { id: 'global-mtn', label: 'MTN Group' },
+      { id: 'global-airtel', label: 'Airtel' },
+      { id: 'global-jio', label: 'Jio' },
+      { id: 'global-telefonica', label: 'Telefonica / Movistar' },
+      { id: 'global-deutsche-telekom', label: 'Deutsche Telekom / T-Mobile' },
+    ],
+  },
+  {
+    label: 'Asia / آسيا',
+    options: [
+      { id: 'jp-docomo', label: 'NTT Docomo' },
+      { id: 'jp-kddi', label: 'KDDI au' },
+      { id: 'jp-softbank', label: 'SoftBank Japan' },
+      { id: 'jp-rakuten', label: 'Rakuten Mobile' },
+      { id: 'kr-sk', label: 'SK Telecom' },
+      { id: 'kr-kt', label: 'KT' },
+      { id: 'kr-lgu', label: 'LG U+' },
+      { id: 'cn-mobile', label: 'China Mobile' },
+      { id: 'cn-unicom', label: 'China Unicom' },
+      { id: 'cn-telecom', label: 'China Telecom' },
+      { id: 'tw-chunghwa', label: 'Chunghwa Telecom' },
+      { id: 'tw-taiwan-mobile', label: 'Taiwan Mobile' },
+      { id: 'tw-fareastone', label: 'Far EasTone' },
+      { id: 'sg-singtel', label: 'Singtel' },
+      { id: 'sg-starhub', label: 'StarHub' },
+      { id: 'sg-m1', label: 'M1 Singapore' },
+      { id: 'my-maxis', label: 'Maxis Malaysia' },
+      { id: 'my-celcomdigi', label: 'CelcomDigi' },
+      { id: 'my-u-mobile', label: 'U Mobile' },
+      { id: 'my-unifi', label: 'Unifi / Telekom Malaysia' },
+      { id: 'th-ais', label: 'AIS Thailand' },
+      { id: 'th-true', label: 'True Thailand' },
+      { id: 'th-dtac', label: 'dtac Thailand' },
+      { id: 'id-telkomsel', label: 'Telkomsel' },
+      { id: 'id-indosat', label: 'Indosat Ooredoo Hutchison' },
+      { id: 'id-xl', label: 'XL Axiata' },
+      { id: 'ph-globe', label: 'Globe Telecom' },
+      { id: 'ph-smart', label: 'Smart Communications' },
+      { id: 'ph-pldt', label: 'PLDT' },
+      { id: 'ph-converge', label: 'Converge ICT' },
+      { id: 'vn-viettel', label: 'Viettel' },
+      { id: 'vn-vinaphone', label: 'Vinaphone' },
+      { id: 'vn-mobifone', label: 'MobiFone' },
+      { id: 'vn-fpt', label: 'FPT Telecom' },
+      { id: 'in-jio', label: 'Jio India' },
+      { id: 'in-airtel', label: 'Airtel India' },
+      { id: 'in-vi', label: 'Vi / Vodafone Idea' },
+      { id: 'in-bsnl', label: 'BSNL' },
+      { id: 'pk-jazz', label: 'Jazz Pakistan' },
+      { id: 'pk-zong', label: 'Zong Pakistan' },
+      { id: 'pk-telenor', label: 'Telenor Pakistan' },
+      { id: 'pk-ptcl', label: 'PTCL' },
+      { id: 'bd-grameenphone', label: 'Grameenphone' },
+      { id: 'bd-robi', label: 'Robi' },
+      { id: 'bd-banglalink', label: 'Banglalink' },
+      { id: 'lk-dialog', label: 'Dialog Sri Lanka' },
+      { id: 'lk-slt', label: 'SLT-Mobitel' },
+      { id: 'np-ntc', label: 'Nepal Telecom' },
+      { id: 'np-ncell', label: 'Ncell' },
+    ],
+  },
+  {
+    label: 'Europe / أوروبا',
+    options: [
+      { id: 'uk-bt', label: 'BT' },
+      { id: 'uk-ee', label: 'EE' },
+      { id: 'uk-vodafone', label: 'Vodafone UK' },
+      { id: 'uk-o2', label: 'O2 UK' },
+      { id: 'uk-three', label: 'Three UK' },
+      { id: 'uk-virgin-media', label: 'Virgin Media O2' },
+      { id: 'fr-orange', label: 'Orange France' },
+      { id: 'fr-sfr', label: 'SFR' },
+      { id: 'fr-bouygues', label: 'Bouygues Telecom' },
+      { id: 'fr-free', label: 'Free Mobile' },
+      { id: 'de-telekom', label: 'Telekom Germany' },
+      { id: 'de-vodafone', label: 'Vodafone Germany' },
+      { id: 'de-o2', label: 'O2 Germany' },
+      { id: 'es-movistar', label: 'Movistar Spain' },
+      { id: 'es-orange', label: 'Orange Spain' },
+      { id: 'es-vodafone', label: 'Vodafone Spain' },
+      { id: 'es-masmovil', label: 'MasMovil / Yoigo' },
+      { id: 'it-tim', label: 'TIM Italy' },
+      { id: 'it-vodafone', label: 'Vodafone Italy' },
+      { id: 'it-windtre', label: 'WindTre' },
+      { id: 'it-iliad', label: 'Iliad Italy' },
+      { id: 'nl-kpn', label: 'KPN Netherlands' },
+      { id: 'nl-vodafoneziggo', label: 'VodafoneZiggo' },
+      { id: 'be-proximus', label: 'Proximus Belgium' },
+      { id: 'be-orange', label: 'Orange Belgium' },
+      { id: 'ch-swisscom', label: 'Swisscom' },
+      { id: 'ch-sunrise', label: 'Sunrise Switzerland' },
+      { id: 'at-a1', label: 'A1 Telekom Austria' },
+      { id: 'at-magenta', label: 'Magenta Telekom Austria' },
+      { id: 'pt-meo', label: 'MEO / Altice Portugal' },
+      { id: 'pt-nos', label: 'NOS Portugal' },
+      { id: 'se-telia', label: 'Telia Sweden' },
+      { id: 'se-tele2', label: 'Tele2 Sweden' },
+      { id: 'no-telenor', label: 'Telenor Norway' },
+      { id: 'dk-tdc', label: 'TDC Denmark' },
+      { id: 'fi-elisa', label: 'Elisa Finland' },
+      { id: 'fi-dna', label: 'DNA Finland' },
+      { id: 'tr-turkcell', label: 'Turkcell' },
+      { id: 'tr-turktelekom', label: 'Turk Telekom' },
+      { id: 'tr-vodafone', label: 'Vodafone Turkey' },
+    ],
+  },
+  {
+    label: 'Other / أخرى',
+    options: [
+      { id: 'home-internet', label: 'Home Internet' },
+      { id: 'fiber', label: 'Fiber Internet' },
+      { id: 'mobile-data', label: 'Mobile Data' },
+      { id: 'other', label: 'Other provider' },
+    ],
+  },
+];
+
+const SERVICE_OPTIONS: Record<SubscriptionType, ServiceOption[]> = {
   entertainment: [
     { id: 'netflix', label: 'Netflix' },
     { id: 'shahid', label: 'Shahid' },
@@ -303,15 +511,7 @@ const SERVICE_OPTIONS: Record<SubscriptionType, Array<{ id: string; label: strin
     { id: 'telegram-premium', label: 'Telegram Premium' },
     { id: 'other', label: 'Other' },
   ],
-  telecom: [
-    { id: 'zain', label: 'Zain' },
-    { id: 'stc', label: 'stc' },
-    { id: 'ooredoo', label: 'Ooredoo' },
-    { id: 'home-internet', label: 'Home Internet' },
-    { id: 'fiber', label: 'Fiber Internet' },
-    { id: 'mobile-data', label: 'Mobile Data' },
-    { id: 'other', label: 'Other' },
-  ],
+  telecom: TELECOM_SERVICE_GROUPS.flatMap(group => group.options),
   other: [
     { id: 'gym', label: 'Gym' },
     { id: 'icloud', label: 'iCloud' },
@@ -421,6 +621,7 @@ export default function MonthlySubscriptionsPage() {
   const { currency: userCurrency } = useCurrency();
   const [rows, setRows] = useState<SubscriptionRow[]>([]);
   const [form, setForm] = useState<FormState>(() => emptyForm(userCurrency || 'KWD'));
+  const [formOpen, setFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
@@ -499,13 +700,22 @@ export default function MonthlySubscriptionsPage() {
       frequency: safeFrequency(meta.billing_frequency),
       notes: row.notes || '',
     });
+    setFormOpen(true);
     setNotice('');
     setError('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  function openNewForm() {
+    setForm(emptyForm(userCurrency || 'KWD'));
+    setFormOpen(true);
+    setNotice('');
+    setError('');
+  }
+
   function resetForm() {
     setForm(emptyForm(userCurrency || 'KWD'));
+    setFormOpen(false);
     setNotice('');
     setError('');
   }
@@ -592,6 +802,7 @@ export default function MonthlySubscriptionsPage() {
       await writeExpense(payload, form.id);
       await loadData();
       setForm(emptyForm(userCurrency || 'KWD'));
+      setFormOpen(false);
       setNotice(copy.saved);
     } catch (err) {
       console.error('Monthly subscription save failed:', err);
@@ -636,7 +847,7 @@ export default function MonthlySubscriptionsPage() {
             <Link href="/expenses" className="subscriptions-secondary">
               {copy.backToExpenses}
             </Link>
-            <button type="button" className="subscriptions-primary" onClick={resetForm}>
+            <button type="button" className="subscriptions-primary" onClick={openNewForm}>
               <Plus size={18} />
               {copy.add}
             </button>
@@ -673,7 +884,8 @@ export default function MonthlySubscriptionsPage() {
           </article>
         </section>
 
-        <section className="subscriptions-layout">
+        {formOpen && (
+        <section className="subscriptions-form-wrap">
           <form className="subscriptions-form-card" onSubmit={saveSubscription}>
             <div className="subscriptions-section-head">
               <div>
@@ -704,7 +916,13 @@ export default function MonthlySubscriptionsPage() {
               <label>
                 <span>{copy.service}</span>
                 <select value={form.service} onChange={event => setForm(current => ({ ...current, service: event.target.value }))}>
-                  {SERVICE_OPTIONS[form.type].map(option => (
+                  {form.type === 'telecom' ? TELECOM_SERVICE_GROUPS.map(group => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.options.map(option => (
+                        <option key={option.id} value={option.id}>{option.label}</option>
+                      ))}
+                    </optgroup>
+                  )) : SERVICE_OPTIONS[form.type].map(option => (
                     <option key={option.id} value={option.id}>{option.label}</option>
                   ))}
                 </select>
@@ -766,8 +984,10 @@ export default function MonthlySubscriptionsPage() {
               </button>
             </div>
           </form>
+        </section>
+        )}
 
-          <aside className="subscriptions-examples-card">
+        <section className="subscriptions-examples-card subscriptions-examples-card--wide">
             <div className="subscriptions-section-head">
               <div>
                 <span>THE SFM</span>
@@ -779,14 +999,24 @@ export default function MonthlySubscriptionsPage() {
               {(Object.keys(SERVICE_OPTIONS) as SubscriptionType[]).map(type => {
                 const Icon = TYPE_ICONS[type];
                 return (
-                  <article key={type}>
+                  <article key={type} className={type === 'telecom' ? 'telecom-example' : undefined}>
                     <strong><Icon size={16} /> {copy.category[type]}</strong>
-                    <p>{SERVICE_OPTIONS[type].slice(0, 6).map(item => item.label).join(' · ')}</p>
+                    {type === 'telecom' ? (
+                      <div className="subscriptions-provider-groups">
+                        {TELECOM_SERVICE_GROUPS.map(group => (
+                          <p key={group.label}>
+                            <b>{group.label}</b>
+                            <span>{group.options.map(item => item.label).join(' · ')}</span>
+                          </p>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>{SERVICE_OPTIONS[type].map(item => item.label).join(' · ')}</p>
+                    )}
                   </article>
                 );
               })}
             </div>
-          </aside>
         </section>
 
         <section className="subscriptions-list-card">
@@ -876,7 +1106,7 @@ export default function MonthlySubscriptionsPage() {
         .subscriptions-summary-grid article>span{width:38px;height:38px;border-radius:14px;display:grid;place-items:center;color:#0f766e;background:#ccfbf1;border:1px solid rgba(15,118,110,.18)}
         .subscriptions-summary-grid small,.subscriptions-section-head span,.subscriptions-form-card label span,.subscriptions-impact-card span,.subscription-row-metrics span{color:#64748b;font-weight:950;font-size:12px}
         .subscriptions-summary-grid strong{color:#061a2e;font-size:20px;font-weight:950;line-height:1.25;overflow-wrap:anywhere}
-        .subscriptions-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:16px;align-items:start}
+        .subscriptions-layout,.subscriptions-form-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
         .subscriptions-form-card,.subscriptions-examples-card,.subscriptions-list-card{padding:20px;display:grid;gap:16px}
         .subscriptions-section-head h2{margin:4px 0 0;color:#061a2e;font-size:28px;font-weight:950}
         .subscriptions-section-head p{margin:6px 0 0;color:#64748b;font-weight:800;line-height:1.75}
@@ -895,9 +1125,15 @@ export default function MonthlySubscriptionsPage() {
         .subscriptions-form-actions{justify-content:flex-end}
         .subscriptions-form-actions .subscriptions-secondary{background:#f8fbff;color:#0f1d31;border-color:rgba(29,140,255,.16)}
         .subscriptions-examples-list{display:grid;gap:10px}
+        .subscriptions-examples-card--wide .subscriptions-examples-list{grid-template-columns:repeat(2,minmax(0,1fr))}
         .subscriptions-examples-list article{border:1px solid rgba(29,140,255,.12);background:#f8fbff;border-radius:18px;padding:13px}
+        .subscriptions-examples-list article.telecom-example{grid-column:1/-1}
         .subscriptions-examples-list strong{display:flex;align-items:center;gap:8px;color:#061a2e;font-weight:950}
         .subscriptions-examples-list p{margin:8px 0 0;color:#64748b;font-weight:800;line-height:1.7}
+        .subscriptions-provider-groups{display:grid;gap:8px;margin-top:10px}
+        .subscriptions-provider-groups p{margin:0;border:1px solid rgba(29,140,255,.10);border-radius:14px;background:#fff;padding:10px;display:grid;gap:5px}
+        .subscriptions-provider-groups b{color:#0f766e;font-size:12px;font-weight:950;line-height:1.35}
+        .subscriptions-provider-groups span{color:#64748b;font-size:12px;font-weight:850;line-height:1.7;overflow-wrap:anywhere}
         .subscriptions-table{display:grid;gap:10px}
         .subscription-row-card{display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,1.4fr) auto;gap:12px;align-items:center;border:1px solid rgba(29,140,255,.12);background:#f8fbff;border-radius:20px;padding:14px}
         .subscription-row-main{display:flex;align-items:center;gap:12px;min-width:0}
@@ -917,13 +1153,15 @@ export default function MonthlySubscriptionsPage() {
         .dark .subscriptions-form-card,.dark .subscriptions-examples-card,.dark .subscriptions-list-card,.dark .subscriptions-summary-grid article{background:linear-gradient(180deg,#0f1d31,#0b1728);border-color:#1d3050;box-shadow:0 18px 46px rgba(0,0,0,.28);color:#e8eef6}
         .dark .subscriptions-section-head h2,.dark .subscriptions-summary-grid strong,.dark .subscriptions-examples-list strong,.dark .subscription-row-main h3,.dark .subscription-row-metrics b,.dark .subscriptions-impact-card strong,.dark .subscriptions-empty h3{color:#e8eef6}
         .dark .subscriptions-section-head p,.dark .subscriptions-summary-grid small,.dark .subscriptions-section-head span,.dark .subscriptions-form-card label span,.dark .subscriptions-impact-card span,.dark .subscriptions-impact-card p,.dark .subscription-row-main p,.dark .subscription-row-metrics span,.dark .subscriptions-examples-list p,.dark .subscriptions-empty{color:#b8c7d9}
-        .dark .subscriptions-type-grid button,.dark .subscriptions-form-card input,.dark .subscriptions-form-card select,.dark .subscriptions-form-card textarea,.dark .subscriptions-form-card .currency-trigger,.dark .subscriptions-examples-list article,.dark .subscription-row-card,.dark .subscription-row-metrics div,.dark .subscriptions-impact-card div,.dark .subscriptions-form-actions .subscriptions-secondary,.dark .subscription-row-actions button{background:#13243a!important;border-color:#1d3050!important;color:#e8eef6!important}
+        .dark .subscriptions-type-grid button,.dark .subscriptions-form-card input,.dark .subscriptions-form-card select,.dark .subscriptions-form-card textarea,.dark .subscriptions-form-card .currency-trigger,.dark .subscriptions-examples-list article,.dark .subscriptions-provider-groups p,.dark .subscription-row-card,.dark .subscription-row-metrics div,.dark .subscriptions-impact-card div,.dark .subscriptions-form-actions .subscriptions-secondary,.dark .subscription-row-actions button{background:#13243a!important;border-color:#1d3050!important;color:#e8eef6!important}
+        .dark .subscriptions-provider-groups b{color:#7ddbd3}
+        .dark .subscriptions-provider-groups span{color:#b8c7d9}
         .dark .subscriptions-type-grid button.active{background:linear-gradient(135deg,rgba(29,140,255,.22),rgba(47,214,192,.18))!important;border-color:rgba(47,214,192,.48)!important;color:#7ddbd3!important}
         .dark .subscriptions-secondary{background:#13243a;color:#e8eef6;border-color:#1d3050}
         .dark .subscription-row-actions button.danger{background:rgba(127,29,29,.22)!important;color:#fecaca!important;border-color:rgba(248,113,113,.28)!important}
         .dark .subscriptions-notice.error{color:#fecaca;background:rgba(127,29,29,.20);border-color:rgba(248,113,113,.28)}
         .dark .subscriptions-notice.success{color:#86efac;background:rgba(16,185,129,.14);border-color:rgba(16,185,129,.28)}
-        @media(max-width:1180px){.subscriptions-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.subscriptions-layout,.subscription-row-card{grid-template-columns:1fr}.subscription-row-actions{justify-content:stretch}.subscription-row-actions button{flex:1}}
+        @media(max-width:1180px){.subscriptions-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.subscriptions-layout,.subscriptions-examples-card--wide .subscriptions-examples-list,.subscription-row-card{grid-template-columns:1fr}.subscription-row-actions{justify-content:stretch}.subscription-row-actions button{flex:1}}
         @media(max-width:1024px){.subscriptions-main{margin-inline:0;padding:18px 14px 46px}.subscriptions-main>*{max-width:100%}.subscriptions-hero{margin-top:0}}
         @media(max-width:720px){.subscriptions-hero{grid-template-columns:1fr;padding:22px;border-radius:24px}.subscriptions-hero-actions,.subscriptions-form-actions{display:grid;grid-template-columns:1fr}.subscriptions-primary,.subscriptions-secondary{width:100%}.subscriptions-summary-grid,.subscriptions-form-grid,.subscriptions-type-grid,.subscriptions-impact-card,.subscription-row-metrics{grid-template-columns:1fr}.subscriptions-form-card,.subscriptions-examples-card,.subscriptions-list-card{padding:15px;border-radius:22px}.subscriptions-section-head h2{font-size:24px}.subscriptions-hero h1{font-size:36px}}
       `}</style>
