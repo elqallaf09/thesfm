@@ -25,6 +25,7 @@ import { CurrencySelect } from '@/components/CurrencySelect';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
+import { convertCurrencyAmount, approximateFxRate, fxKey, normalizeMoneyCurrencyCode } from '@/lib/currencyConversion';
 import { formatMoney } from '@/lib/formatMoney';
 import { useCurrency } from '@/lib/useCurrency';
 
@@ -555,6 +556,10 @@ const OPTIONAL_EXPENSE_COLUMNS = [
   'notes',
   'source',
   'enhanced',
+  'is_recurring',
+  'frequency',
+  'start_date',
+  'end_date',
   'updated_at',
 ] as const;
 
@@ -580,62 +585,6 @@ function monthlyAmount(amount: number, frequency: BillingFrequency) {
   if (frequency === 'weekly') return amount * 52 / 12;
   if (frequency === 'yearly') return amount / 12;
   return amount;
-}
-
-const APPROX_USD_VALUE_BY_CURRENCY: Record<string, number> = {
-  KWD: 3.25,
-  USD: 1,
-  EUR: 1.08,
-  GBP: 1.27,
-  SAR: 0.2667,
-  AED: 0.2723,
-  QAR: 0.2747,
-  BHD: 2.65,
-  OMR: 2.6,
-  JOD: 1.41,
-  CAD: 0.73,
-  AUD: 0.66,
-  CHF: 1.12,
-  JPY: 0.0064,
-  CNY: 0.138,
-  INR: 0.012,
-  TRY: 0.031,
-  EGP: 0.021,
-  SGD: 0.74,
-  HKD: 0.128,
-  MYR: 0.212,
-  IDR: 0.000061,
-  THB: 0.027,
-  PHP: 0.017,
-  PKR: 0.0036,
-  ZAR: 0.055,
-  BRL: 0.19,
-  MXN: 0.054,
-  KRW: 0.00072,
-};
-
-function normalizeCurrencyCode(value: unknown, fallback = 'KWD') {
-  const code = String(value ?? '').trim().toUpperCase();
-  return /^[A-Z]{3}$/.test(code) ? code : fallback;
-}
-
-function fxKey(from: string, to: string) {
-  return `${from}:${to}`;
-}
-
-function approximateFxRate(from: string, to: string) {
-  if (from === to) return 1;
-  const fromUsd = APPROX_USD_VALUE_BY_CURRENCY[from];
-  const toUsd = APPROX_USD_VALUE_BY_CURRENCY[to];
-  return fromUsd && toUsd ? fromUsd / toUsd : null;
-}
-
-function convertCurrencyAmount(amount: number, from: string, to: string, fxRates: Record<string, number>) {
-  if (!Number.isFinite(amount)) return null;
-  if (from === to) return amount;
-  const liveRate = fxRates[fxKey(from, to)];
-  const rate = Number.isFinite(liveRate) && liveRate > 0 ? liveRate : approximateFxRate(from, to);
-  return rate ? amount * rate : null;
 }
 
 function missingColumnFromError(message: string) {
@@ -691,7 +640,7 @@ export default function MonthlySubscriptionsPage() {
   const locale: Lang = lang === 'en' || lang === 'fr' ? lang : 'ar';
   const copy = TEXT[locale];
   const { currency: userCurrency } = useCurrency();
-  const baseCurrency = normalizeCurrencyCode(userCurrency, 'KWD');
+  const baseCurrency = normalizeMoneyCurrencyCode(userCurrency, 'KWD');
   const [rows, setRows] = useState<SubscriptionRow[]>([]);
   const [form, setForm] = useState<FormState>(() => emptyForm(baseCurrency));
   const [formOpen, setFormOpen] = useState(false);
@@ -701,7 +650,7 @@ export default function MonthlySubscriptionsPage() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
-  const currency = normalizeCurrencyCode(form.currency, baseCurrency);
+  const currency = normalizeMoneyCurrencyCode(form.currency, baseCurrency);
   const billingAmount = toNumber(form.amount);
   const projectedMonthly = roundMoney(monthlyAmount(billingAmount, form.frequency));
   const projectedYearly = roundMoney(projectedMonthly * 12);
@@ -743,7 +692,7 @@ export default function MonthlySubscriptionsPage() {
   useEffect(() => {
     const sourceCurrencies = Array.from(new Set(
       rows
-        .map(row => normalizeCurrencyCode(row.currency, baseCurrency))
+        .map(row => normalizeMoneyCurrencyCode(row.currency, baseCurrency))
         .filter(code => code !== baseCurrency),
     ));
 
@@ -773,8 +722,8 @@ export default function MonthlySubscriptionsPage() {
         const payload = await response.json() as { rates?: FxRateResponse[] };
         if (cancelled) return;
         const liveRates = (payload.rates ?? []).reduce<Record<string, number>>((next, item) => {
-          const from = normalizeCurrencyCode(item.from, '');
-          const to = normalizeCurrencyCode(item.to, '');
+          const from = normalizeMoneyCurrencyCode(item.from, '');
+          const to = normalizeMoneyCurrencyCode(item.to, '');
           const rate = Number(item.rate);
           if (item.available && from && to && Number.isFinite(rate) && rate > 0) {
             next[fxKey(from, to)] = rate;
@@ -797,7 +746,7 @@ export default function MonthlySubscriptionsPage() {
 
   const totals = useMemo(() => {
     const convertedRows = rows.map(row => {
-      const rowCurrency = normalizeCurrencyCode(row.currency, baseCurrency);
+      const rowCurrency = normalizeMoneyCurrencyCode(row.currency, baseCurrency);
       const monthlyNative = toNumber(row.amount);
       return {
         row,
@@ -923,6 +872,10 @@ export default function MonthlySubscriptionsPage() {
       payment_method: 'card',
       notes: form.notes || null,
       source: 'subscription',
+      is_recurring: true,
+      frequency: 'monthly',
+      start_date: form.startedAt,
+      end_date: null,
       enhanced: {
         source: 'subscription',
         subscription_type: form.type,

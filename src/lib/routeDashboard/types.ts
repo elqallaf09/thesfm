@@ -232,6 +232,12 @@ export type SmartExpense = MoneyItem & {
   start_date?: string | null;
   end_date?: string | null;
   expense_type?: string | null;
+  original_amount?: number | null;
+  original_currency?: string | null;
+  converted_amount?: number | null;
+  converted_currency?: string | null;
+  fx_rate_to_base?: number | null;
+  amount_is_converted?: boolean | null;
 };
 export type ExpenseFormState = {
   id?: string;

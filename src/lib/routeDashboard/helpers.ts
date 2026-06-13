@@ -1112,8 +1112,20 @@ export function expenseDisplayDate(item: SmartExpense) {
   return item.date || (item.created_at ? new Date(item.created_at).toISOString().slice(0, 10) : '');
 }
 
+function expenseEnhanced(item: SmartExpense) {
+  return item.enhanced && typeof item.enhanced === 'object' ? item.enhanced : {};
+}
+
 export function recurringFrequency(item: SmartExpense) {
-  return String(item.frequency || item.expense_type || '').trim().toLowerCase();
+  const enhanced = expenseEnhanced(item);
+  return String(
+    item.frequency ||
+    item.expense_type ||
+    enhanced.billing_frequency ||
+    enhanced.frequency ||
+    enhanced.recurring_frequency ||
+    '',
+  ).trim().toLowerCase();
 }
 
 export function isTruthyFlag(value: unknown) {
@@ -1138,8 +1150,11 @@ export function isMonthlyRecurringExpense(item: SmartExpense) {
 }
 
 export function isExpenseActiveDuringRange(item: SmartExpense, range: ExpensePeriodRange) {
-  const start = localDateFromInput(item.start_date || item.date || item.created_at);
-  const end = localDateFromInput(item.end_date);
+  const enhanced = expenseEnhanced(item);
+  const subscriptionStart = typeof enhanced.subscription_start_date === 'string' ? enhanced.subscription_start_date : null;
+  const subscriptionEnd = typeof enhanced.subscription_end_date === 'string' ? enhanced.subscription_end_date : null;
+  const start = localDateFromInput(item.start_date || subscriptionStart || item.date || item.created_at);
+  const end = localDateFromInput(item.end_date || subscriptionEnd);
   return (!start || start < range.end) && (!end || end >= range.start);
 }
 

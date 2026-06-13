@@ -47,6 +47,7 @@ import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { MoneyAmount } from '@/components/finance/MoneyAmount';
 import { useCurrency } from '@/lib/useCurrency';
+import { approximateFxRate, convertCurrencyAmount, fxKey, normalizeMoneyCurrencyCode } from '@/lib/currencyConversion';
 import { formatCurrency } from '@/lib/format';
 import { getCurrency } from '@/lib/currencies';
 import { CurrencySelect } from '@/components/CurrencySelect';
@@ -84,7 +85,7 @@ import {
   startOfLocalMonth, addLocalMonths, makeExpenseRange, defaultExpensePeriodState,
   parseExpenseMonthParam, expensePeriodFromSearch, readExpensePeriodFromLocation,
   writeExpensePeriodToLocation, expensePeriodRange, previousExpensePeriodRange,
-  expenseFetchRange, expenseDisplayDate, recurringFrequency, isTruthyFlag,
+  expenseDisplayDate, recurringFrequency, isTruthyFlag,
   isRecurringExpense, isMonthlyRecurringExpense, isExpenseActiveDuringRange,
   isExpenseInPeriod, expensePeriodDayCount, formatExpenseMonthYear,
   expensePeriodOptionLabel, expensePeriodLabel, expensePeriodBadge,
@@ -140,9 +141,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [expenseTypeFilter, setExpenseTypeFilter] = useState('all');
   const [visibleCount, setVisibleCount] = useState(EXPENSE_PAGE_SIZE);
   const [expenseTab, setExpenseTab] = useState<ExpensePageTab>('overview');
+  const [expenseFxRates, setExpenseFxRates] = useState<Record<string, number>>({});
   const selectedExpenseRange = useMemo(() => expensePeriodRange(expensePeriod), [expensePeriod]);
   const previousExpenseRange = useMemo(() => previousExpensePeriodRange(expensePeriod), [expensePeriod]);
-  const expenseFetchWindow = useMemo(() => expenseFetchRange(expensePeriod), [expensePeriod]);
+  const expenseBaseCurrency = normalizeCurrencyCode(currency, 'KWD');
 
   useEffect(() => {
     if (kind !== 'expenses') return;
@@ -178,9 +180,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       const expensesQuery = async () => {
         const baseCurrentQuery = () => {
           let query = supabase.from('expense_items').select('*').eq('user_id', user.id);
-          if (kind === 'expenses' && expenseFetchWindow) {
-            query = query.gte('date', expenseFetchWindow.startDate).lt('date', expenseFetchWindow.endDate);
-          }
           return query.order('date', { ascending: false }).order('created_at', { ascending: false });
         };
         const currentSchema = await safeQuery<SmartExpense>(
@@ -223,11 +222,92 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     return () => {
       cancelled = true;
     };
-  }, [expenseFetchWindow, isGuest, kind, user]);
+  }, [isGuest, kind, user]);
+
+  useEffect(() => {
+    if (kind !== 'expenses') return;
+    const sourceCurrencies = Array.from(new Set(
+      snapshot.expenses
+        .map(item => normalizeCurrencyCode(item.currency, expenseBaseCurrency))
+        .filter(code => code !== expenseBaseCurrency),
+    ));
+
+    if (!sourceCurrencies.length) return;
+
+    let cancelled = false;
+    const fallbackRates = sourceCurrencies.reduce<Record<string, number>>((next, from) => {
+      const rate = approximateFxRate(from, expenseBaseCurrency);
+      if (rate) next[fxKey(from, expenseBaseCurrency)] = rate;
+      return next;
+    }, {});
+    if (Object.keys(fallbackRates).length) {
+      setExpenseFxRates(current => ({ ...current, ...fallbackRates }));
+    }
+
+    const timeout = window.setTimeout(async () => {
+      try {
+        const response = await fetch('/api/market/fx/batch', {
+          method: 'POST',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pairs: sourceCurrencies.map(from => ({ from, to: expenseBaseCurrency })) }),
+        });
+        const payload = await response.json() as {
+          rates?: Array<{ from?: string; to?: string; rate?: number | null; available?: boolean }>;
+        };
+        if (cancelled) return;
+        const liveRates = (payload.rates ?? []).reduce<Record<string, number>>((next, item) => {
+          const from = normalizeMoneyCurrencyCode(item.from, '');
+          const to = normalizeMoneyCurrencyCode(item.to, '');
+          const rate = Number(item.rate);
+          if (item.available && from && to && Number.isFinite(rate) && rate > 0) {
+            next[fxKey(from, to)] = rate;
+          }
+          return next;
+        }, {});
+        if (Object.keys(liveRates).length) {
+          setExpenseFxRates(current => ({ ...current, ...liveRates }));
+        }
+      } catch {
+        // Fallback rates prevent mixed-currency expenses from being summed as raw numbers.
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [expenseBaseCurrency, kind, snapshot.expenses]);
 
   const data = useMemo(() => {
     const income = snapshot.income;
-    const expenses = snapshot.expenses;
+    const expenses = snapshot.expenses.map(item => {
+      const originalCurrency = normalizeCurrencyCode(item.currency, expenseBaseCurrency);
+      const originalAmount = parseMoney(item.amount);
+      const converted = convertCurrencyAmount(originalAmount, originalCurrency, expenseBaseCurrency, expenseFxRates);
+      if (originalCurrency === expenseBaseCurrency || converted === null) {
+        return {
+          ...item,
+          original_amount: originalAmount,
+          original_currency: originalCurrency,
+          converted_amount: originalAmount,
+          converted_currency: originalCurrency,
+          fx_rate_to_base: 1,
+          amount_is_converted: false,
+        };
+      }
+      return {
+        ...item,
+        amount: converted,
+        currency: expenseBaseCurrency,
+        original_amount: originalAmount,
+        original_currency: originalCurrency,
+        converted_amount: converted,
+        converted_currency: expenseBaseCurrency,
+        fx_rate_to_base: converted / Math.max(originalAmount, 1e-9),
+        amount_is_converted: true,
+      };
+    });
     const savings = snapshot.savings;
     const investments = snapshot.investments;
     const goals = snapshot.goals;
@@ -250,7 +330,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       charityTotal,
       balance: totalIncome - totalExpenses,
     };
-  }, [snapshot]);
+  }, [expenseBaseCurrency, expenseFxRates, snapshot]);
 
   const expensePeriodExpenses = useMemo(
     () => data.expenses.filter(item => isExpenseInPeriod(item, selectedExpenseRange)),
@@ -288,13 +368,13 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       ? Math.round((comparisonDelta / previousTotal) * 100)
       : total > 0 ? 100 : 0;
     const comparisonValue = previousExpenseRange
-      ? `${comparisonDelta >= 0 ? '+' : '-'}${money(Math.abs(comparisonDelta), lang, currency)} (${comparisonDelta >= 0 ? '+' : ''}${comparisonPercent}%)`
+      ? `${comparisonDelta >= 0 ? '+' : '-'}${money(Math.abs(comparisonDelta), lang, expenseBaseCurrency)} (${comparisonDelta >= 0 ? '+' : ''}${comparisonPercent}%)`
       : pick({ ar: 'غير متاح', en: 'Unavailable', fr: 'Indisponible' }, lang);
     return [
       {
         title: { ar: 'إجمالي المصروفات', en: 'Total expenses', fr: 'Total des dépenses' },
         body: { ar: expensePeriodBadge(expensePeriod, lang), en: expensePeriodBadge(expensePeriod, lang), fr: expensePeriodBadge(expensePeriod, lang) },
-        value: money(total, lang, currency),
+        value: money(total, lang, expenseBaseCurrency),
         tone: '#EF4444',
       },
       {
@@ -306,21 +386,21 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       {
         title: { ar: 'المصروفات المتكررة', en: 'Recurring expenses', fr: 'Dépenses récurrentes' },
         body: { ar: 'اشتراكات وفواتير وقروض نشطة داخل الفترة.', en: 'Subscriptions, bills, and loans active in the period.', fr: 'Abonnements, factures et prêts actifs sur la période.' },
-        value: money(recurringTotal, lang, currency),
+        value: money(recurringTotal, lang, expenseBaseCurrency),
         tone: '#3B82F6',
       },
       {
         title: { ar: 'متوسط المصروف اليومي', en: 'Daily average', fr: 'Moyenne quotidienne' },
         body: { ar: 'محسوب على أيام الفترة المعروضة.', en: 'Calculated over the displayed period days.', fr: 'Calculé sur les jours de la période affichée.' },
-        value: money(dailyAverage, lang, currency),
+        value: money(dailyAverage, lang, expenseBaseCurrency),
         tone: '#F59E0B',
       },
       {
         title: { ar: 'أعلى تصنيف', en: 'Top category', fr: 'Catégorie principale' },
         body: {
-          ar: topCategory ? money(topCategory[1], lang, currency) : 'لا توجد مصروفات في الفترة.',
-          en: topCategory ? money(topCategory[1], lang, currency) : 'No expenses in this period.',
-          fr: topCategory ? money(topCategory[1], lang, currency) : 'Aucune dépense sur cette période.',
+          ar: topCategory ? money(topCategory[1], lang, expenseBaseCurrency) : 'لا توجد مصروفات في الفترة.',
+          en: topCategory ? money(topCategory[1], lang, expenseBaseCurrency) : 'No expenses in this period.',
+          fr: topCategory ? money(topCategory[1], lang, expenseBaseCurrency) : 'Aucune dépense sur cette période.',
         },
         value: topCategory ? categoryLabel(topCategory[0], lang) : '-',
         tone: '#22C55E',
@@ -332,7 +412,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         tone: comparisonDelta > 0 ? '#EF4444' : '#22C55E',
       },
     ];
-  }, [currency, expensePeriod, expensePeriodExpenses, expensePeriodTotal, lang, previousExpenseRange, previousPeriodExpenses, selectedExpenseRange]);
+  }, [expenseBaseCurrency, expensePeriod, expensePeriodExpenses, expensePeriodTotal, lang, previousExpenseRange, previousPeriodExpenses, selectedExpenseRange]);
   const selectedGoalCurrency = useMemo(() => getCurrency(goalForm.currency || currency || 'KWD'), [currency, goalForm.currency]);
   const selectedCurrencySymbol = isAr ? selectedGoalCurrency.symbolAr : selectedGoalCurrency.symbolEn;
   const selectedEntryCurrency = useMemo(() => getCurrency(entryForm.currency || currency || 'KWD'), [currency, entryForm.currency]);
@@ -519,8 +599,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       setExpenseForm({
         id: expense.id,
         name: expense.name,
-        amount: String(expense.amount ?? ''),
-        currency: expense.currency || currency || 'KWD',
+        amount: String(expense.original_amount ?? expense.amount ?? ''),
+        currency: expense.original_currency || expense.currency || currency || 'KWD',
         category: expense.category || 'other',
         date: expense.date || (expense.created_at ? expense.created_at.slice(0, 10) : todayInputDate()),
         paymentMethod: expense.payment_method || 'cash',
@@ -1826,13 +1906,16 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                       ? `يعرض ${Math.min(visibleCount, filteredExpenses.length)} من ${filteredExpenses.length}`
                       : `Showing ${Math.min(visibleCount, filteredExpenses.length)} of ${filteredExpenses.length}`}
                     {' · '}
-                    {money(filteredExpenses.reduce((s, item) => s + item.amount, 0), lang, currency)}
+                    {money(filteredExpenses.reduce((s, item) => s + item.amount, 0), lang, expenseBaseCurrency)}
                   </div>
                   <div className="expense-card-list">
                     {visibleExpenses.map(item => {
                       const hasReceipt = Boolean(item.receipt_image_url || item.receipt_file_name);
                       const aiAdded = Boolean(item.ai_extracted_data || item.ai_confidence_score);
                       const projectLinked = isProjectLinkedExpenseRow(item);
+                      const originalCurrency = item.original_currency || item.currency || expenseBaseCurrency;
+                      const originalAmount = Number(item.original_amount ?? item.amount ?? 0);
+                      const showConvertedAmount = Boolean(item.amount_is_converted && originalCurrency !== expenseBaseCurrency);
                       return (
                         <article className="expense-card-row" key={item.id}>
                           <div className="expense-row-main">
@@ -1849,7 +1932,14 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                             </div>
                           </div>
                           <div className="expense-row-actions">
-                            <b>{money(item.amount, lang, currency)}</b>
+                            <div className="expense-row-amount">
+                              <b>{money(item.amount, lang, expenseBaseCurrency)}</b>
+                              {showConvertedAmount && (
+                                <small dir="ltr">
+                                  {money(originalAmount, lang, originalCurrency)} = {money(item.amount, lang, expenseBaseCurrency)}
+                                </small>
+                              )}
+                            </div>
                             <div>
                               {hasReceipt && (
                                 <button type="button" className="row-action" onClick={() => setReceiptDetails(item)} aria-label={expenseText('viewReceipt', lang)} title={expenseText('viewReceipt', lang)}>
@@ -1902,7 +1992,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 <div className="panel-head compact">
                   <div>
                     <p>{expenseText('monthlySummary', lang)}</p>
-                    <h3>{money(monthlyTotal, lang, currency)}</h3>
+                    <h3>{money(monthlyTotal, lang, expenseBaseCurrency)}</h3>
                     <small>{expensePeriodLabel(expensePeriod, lang)}</small>
                   </div>
                   <ChartPie size={21} />
@@ -1911,7 +2001,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                   <div><span>{pick({ ar: 'الفترة', en: 'Period', fr: 'Période' }, lang)}</span><b>{monthlyExpenses.length}</b></div>
                   <div><span>{expenseText('hasReceipt', lang)}</span><b>{monthlyExpenses.filter(item => item.receipt_image_url || item.receipt_file_name).length}</b></div>
                   <div><span>{expenseText('aiAdded', lang)}</span><b>{monthlyExpenses.filter(item => item.ai_extracted_data || item.ai_confidence_score).length}</b></div>
-                  <div><span>{pick({ ar: 'المتكرر', en: 'Recurring', fr: 'Recurrent' }, lang)}</span><b>{money(recurringTotal, lang, currency)}</b></div>
+                  <div><span>{pick({ ar: 'المتكرر', en: 'Recurring', fr: 'Recurrent' }, lang)}</span><b>{money(recurringTotal, lang, expenseBaseCurrency)}</b></div>
                 </div>
               </section>
             </aside>
