@@ -92,6 +92,13 @@ type SubscriptionRow = {
   updated_at?: string | null;
 };
 
+type FxRateResponse = {
+  from?: string;
+  to?: string;
+  rate?: number | null;
+  available?: boolean;
+};
+
 type FormState = {
   id?: string;
   type: SubscriptionType;
@@ -566,6 +573,62 @@ function monthlyAmount(amount: number, frequency: BillingFrequency) {
   return amount;
 }
 
+const APPROX_USD_VALUE_BY_CURRENCY: Record<string, number> = {
+  KWD: 3.25,
+  USD: 1,
+  EUR: 1.08,
+  GBP: 1.27,
+  SAR: 0.2667,
+  AED: 0.2723,
+  QAR: 0.2747,
+  BHD: 2.65,
+  OMR: 2.6,
+  JOD: 1.41,
+  CAD: 0.73,
+  AUD: 0.66,
+  CHF: 1.12,
+  JPY: 0.0064,
+  CNY: 0.138,
+  INR: 0.012,
+  TRY: 0.031,
+  EGP: 0.021,
+  SGD: 0.74,
+  HKD: 0.128,
+  MYR: 0.212,
+  IDR: 0.000061,
+  THB: 0.027,
+  PHP: 0.017,
+  PKR: 0.0036,
+  ZAR: 0.055,
+  BRL: 0.19,
+  MXN: 0.054,
+  KRW: 0.00072,
+};
+
+function normalizeCurrencyCode(value: unknown, fallback = 'KWD') {
+  const code = String(value ?? '').trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(code) ? code : fallback;
+}
+
+function fxKey(from: string, to: string) {
+  return `${from}:${to}`;
+}
+
+function approximateFxRate(from: string, to: string) {
+  if (from === to) return 1;
+  const fromUsd = APPROX_USD_VALUE_BY_CURRENCY[from];
+  const toUsd = APPROX_USD_VALUE_BY_CURRENCY[to];
+  return fromUsd && toUsd ? fromUsd / toUsd : null;
+}
+
+function convertCurrencyAmount(amount: number, from: string, to: string, fxRates: Record<string, number>) {
+  if (!Number.isFinite(amount)) return null;
+  if (from === to) return amount;
+  const liveRate = fxRates[fxKey(from, to)];
+  const rate = Number.isFinite(liveRate) && liveRate > 0 ? liveRate : approximateFxRate(from, to);
+  return rate ? amount * rate : null;
+}
+
 function missingColumnFromError(message: string) {
   const match = message.match(/column\s+["']?(?:\w+\.)?(\w+)["']?\s+(?:does not exist|not found)/i)
     ?? message.match(/could not find the ['"]?(\w+)['"]? column/i);
@@ -619,14 +682,16 @@ export default function MonthlySubscriptionsPage() {
   const locale: Lang = lang === 'en' || lang === 'fr' ? lang : 'ar';
   const copy = TEXT[locale];
   const { currency: userCurrency } = useCurrency();
+  const baseCurrency = normalizeCurrencyCode(userCurrency, 'KWD');
   const [rows, setRows] = useState<SubscriptionRow[]>([]);
-  const [form, setForm] = useState<FormState>(() => emptyForm(userCurrency || 'KWD'));
+  const [form, setForm] = useState<FormState>(() => emptyForm(baseCurrency));
   const [formOpen, setFormOpen] = useState(false);
+  const [fxRates, setFxRates] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
-  const currency = form.currency || userCurrency || 'KWD';
+  const currency = normalizeCurrencyCode(form.currency, baseCurrency);
   const billingAmount = toNumber(form.amount);
   const projectedMonthly = roundMoney(monthlyAmount(billingAmount, form.frequency));
   const projectedYearly = roundMoney(projectedMonthly * 12);
@@ -662,17 +727,82 @@ export default function MonthlySubscriptionsPage() {
   }, [authLoading, loadData]);
 
   useEffect(() => {
-    if (userCurrency) setForm(current => ({ ...current, currency: current.currency || userCurrency }));
-  }, [userCurrency]);
+    if (!formOpen && !form.id) setForm(current => ({ ...current, currency: current.currency || baseCurrency }));
+  }, [baseCurrency, form.id, formOpen]);
+
+  useEffect(() => {
+    const sourceCurrencies = Array.from(new Set(
+      rows
+        .map(row => normalizeCurrencyCode(row.currency, baseCurrency))
+        .filter(code => code !== baseCurrency),
+    ));
+
+    if (!sourceCurrencies.length) return;
+
+    let cancelled = false;
+
+    const fallbackRates = sourceCurrencies.reduce<Record<string, number>>((next, from) => {
+      const rate = approximateFxRate(from, baseCurrency);
+      if (rate) next[fxKey(from, baseCurrency)] = rate;
+      return next;
+    }, {});
+    if (Object.keys(fallbackRates).length) {
+      setFxRates(current => ({ ...current, ...fallbackRates }));
+    }
+
+    const timeout = window.setTimeout(async () => {
+      try {
+        const response = await fetch('/api/market/fx/batch', {
+          method: 'POST',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pairs: sourceCurrencies.map(from => ({ from, to: baseCurrency })),
+          }),
+        });
+        const payload = await response.json() as { rates?: FxRateResponse[] };
+        if (cancelled) return;
+        const liveRates = (payload.rates ?? []).reduce<Record<string, number>>((next, item) => {
+          const from = normalizeCurrencyCode(item.from, '');
+          const to = normalizeCurrencyCode(item.to, '');
+          const rate = Number(item.rate);
+          if (item.available && from && to && Number.isFinite(rate) && rate > 0) {
+            next[fxKey(from, to)] = rate;
+          }
+          return next;
+        }, {});
+        if (Object.keys(liveRates).length) {
+          setFxRates(current => ({ ...current, ...liveRates }));
+        }
+      } catch {
+        // Keep the local fallback conversion so mixed-currency totals are not summed as raw numbers.
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [baseCurrency, rows]);
 
   const totals = useMemo(() => {
-    const monthly = rows.reduce((sum, row) => sum + toNumber(row.amount), 0);
-    const highest = rows.reduce<SubscriptionRow | null>((current, row) => {
-      if (!current || toNumber(row.amount) > toNumber(current.amount)) return row;
+    const convertedRows = rows.map(row => {
+      const rowCurrency = normalizeCurrencyCode(row.currency, baseCurrency);
+      const monthlyNative = toNumber(row.amount);
+      return {
+        row,
+        monthlyNative,
+        convertedMonthly: convertCurrencyAmount(monthlyNative, rowCurrency, baseCurrency, fxRates),
+      };
+    });
+    const monthly = convertedRows.reduce((sum, item) => sum + (item.convertedMonthly ?? 0), 0);
+    const highest = convertedRows.reduce<typeof convertedRows[number] | null>((current, item) => {
+      if (item.convertedMonthly === null) return current;
+      if (!current || item.convertedMonthly > (current.convertedMonthly ?? 0)) return item;
       return current;
     }, null);
-    return { monthly, yearly: monthly * 12, highest };
-  }, [rows]);
+    return { monthly: roundMoney(monthly), yearly: roundMoney(monthly * 12), highest: highest?.row ?? null };
+  }, [baseCurrency, fxRates, rows]);
 
   function changeType(type: SubscriptionType) {
     setForm(current => ({
@@ -707,14 +837,14 @@ export default function MonthlySubscriptionsPage() {
   }
 
   function openNewForm() {
-    setForm(emptyForm(userCurrency || 'KWD'));
+    setForm(emptyForm(baseCurrency));
     setFormOpen(true);
     setNotice('');
     setError('');
   }
 
   function resetForm() {
-    setForm(emptyForm(userCurrency || 'KWD'));
+    setForm(emptyForm(baseCurrency));
     setFormOpen(false);
     setNotice('');
     setError('');
@@ -790,6 +920,7 @@ export default function MonthlySubscriptionsPage() {
         service_label: name,
         billing_frequency: form.frequency,
         billing_amount: billingAmount,
+        billing_currency: currency,
         monthly_amount: projectedMonthly,
         yearly_amount: projectedYearly,
         subscription_start_date: form.startedAt,
@@ -801,7 +932,7 @@ export default function MonthlySubscriptionsPage() {
     try {
       await writeExpense(payload, form.id);
       await loadData();
-      setForm(emptyForm(userCurrency || 'KWD'));
+      setForm(emptyForm(baseCurrency));
       setFormOpen(false);
       setNotice(copy.saved);
     } catch (err) {
@@ -865,12 +996,12 @@ export default function MonthlySubscriptionsPage() {
           <article>
             <span><ReceiptText size={18} /></span>
             <small>{copy.totalMonthly}</small>
-            <strong dir="ltr">{formatMoney(totals.monthly, userCurrency || currency, locale)}</strong>
+            <strong dir="ltr">{formatMoney(totals.monthly, baseCurrency, locale)}</strong>
           </article>
           <article>
             <span><CalendarDays size={18} /></span>
             <small>{copy.totalYearly}</small>
-            <strong dir="ltr">{formatMoney(totals.yearly, userCurrency || currency, locale)}</strong>
+            <strong dir="ltr">{formatMoney(totals.yearly, baseCurrency, locale)}</strong>
           </article>
           <article>
             <span><CreditCard size={18} /></span>
