@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
-import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDollarSign, Clock3, FileText, Gauge, Info, Landmark, LineChart, Newspaper, Percent, PieChart, Plus, RefreshCw, Search, ShieldAlert, ShoppingCart, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, FileText, Gauge, Info, Landmark, LineChart, Newspaper, Plus, RefreshCw, Search, ShieldAlert, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { AssetProfileCard } from '@/components/market/AssetProfileCard';
@@ -27,7 +27,7 @@ import type {
   AlertType, ApiListState, MarketAiInsightView, MarketAssetFilter, MarketChartType,
   MarketPerformanceItem, MarketResultWithMeta, MarketSearchSuggestion, MarketSearchResponse,
   MarketServiceState, MarketTab, MarketTimeframe, MarketViewAnalysis, PipCalculatorAsset,
-  PipCalculatorAssetType, PortfolioInvestment, SavedAlert, ScenarioCurrencyCode,
+  PipCalculatorAssetType, SavedAlert, ScenarioCurrencyCode,
   AccountCurrencyCode, SelectedMarketAsset, TechnicalState, TechnicalSymbolCategory,
   TechnicalSymbolOption, TraderToolsSubTab, WatchlistItem,
 } from '@/components/market-analysis/types';
@@ -70,7 +70,6 @@ import {
   marketErrorText,
   normalizeAlertRow,
   normalizeAlertType,
-  normalizeInvestmentItem,
   normalizeProviderSymbolForRequest,
   normalizeScenarioCurrency,
   normalizeWatchlistRow,
@@ -86,7 +85,7 @@ import { LegacyTechnicalAnalysisPanel, TechnicalAnalysisPanel, MarketDefaultDash
 import { NewsSentimentPanel, MarketSectionRefreshButton, MarketSectionLoading } from '@/components/market-analysis/NewsSentimentPanel';
 import { MarketAsyncToolStyles } from '@/components/market-analysis/MarketStyles';
 import { MarketPageStyles } from '@/components/market-analysis/MarketPageStyles';
-import { PriceHistoryChart, MarketMetric, PortfolioComparisonMetric } from '@/components/market-analysis/MarketChartComponents';
+import { PriceHistoryChart, MarketMetric } from '@/components/market-analysis/MarketChartComponents';
 
 function marketSourceLabel(source?: string | null, fallback = 'OpenBB') {
   const clean = String(source ?? '').trim();
@@ -114,7 +113,6 @@ export default function MarketAnalysisPage() {
   const [suggestedAssets, setSuggestedAssets] = useState<MarketSearchItem[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [alerts, setAlerts] = useState<SavedAlert[]>([]);
-  const [portfolio, setPortfolio] = useState<PortfolioInvestment[]>([]);
   const [compare, setCompare] = useState<MarketAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
   const [slowLoading, setSlowLoading] = useState(false);
@@ -976,11 +974,10 @@ export default function MarketAnalysisPage() {
       if (!user || isGuest) {
         setWatchlist(readLocalList<WatchlistItem>(WATCHLIST_STORAGE_KEY));
         setAlerts(readLocalList<SavedAlert>(ALERTS_STORAGE_KEY));
-        setPortfolio([]);
         return;
       }
 
-      const [watchlistResult, alertsResult, portfolioResult] = await Promise.allSettled([
+      const [watchlistResult, alertsResult] = await Promise.allSettled([
         supabase
           .from('market_watchlist')
           .select('id, symbol, provider_symbol, asset_type, name, currency, exchange, country, created_at')
@@ -991,10 +988,6 @@ export default function MarketAnalysisPage() {
           .select('id, symbol, asset_type, alert_type, threshold, currency, exchange, country, created_at')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false }),
-        supabase
-          .from('investment_items')
-          .select('id, name, amount, current_value, current_market_value, converted_market_value, native_market_value, native_currency, price_currency, currency, created_at, ai_analysis')
-          .eq('user_id', user.id),
       ]);
 
       if (cancelled) return;
@@ -1009,21 +1002,6 @@ export default function MarketAnalysisPage() {
         setAlerts((alertsResult.value.data ?? []).map(row => normalizeAlertRow(row as Record<string, unknown>)));
       } else {
         setAlerts([]);
-      }
-
-      if (portfolioResult.status === 'fulfilled' && !portfolioResult.value.error) {
-        setPortfolio((portfolioResult.value.data ?? []).map(row => normalizeInvestmentItem(row as Record<string, unknown>)));
-      } else {
-        const investmentError = portfolioResult.status === 'fulfilled' ? portfolioResult.value.error : portfolioResult.reason;
-        if (process.env.NODE_ENV !== 'production' && investmentError) {
-          console.error('[MarketAnalysis] Failed to load investment_items', {
-            code: investmentError.code,
-            message: investmentError.message,
-            details: investmentError.details,
-            hint: investmentError.hint,
-          });
-        }
-        setPortfolio([]);
       }
     }
 
@@ -1295,20 +1273,6 @@ export default function MarketAnalysisPage() {
   const trendIcon = selected?.trend === 'bearish' ? <TrendingDown size={18} /> : <TrendingUp size={18} />;
   const cards = useMemo(() => [analysis, ...compare].filter((item): item is MarketAnalysis => Boolean(item)).slice(0, 4), [analysis, compare]);
   const watchlistHasSelected = Boolean(selected && watchlist.some(item => item.symbol === selected.symbol && item.assetType === selected.assetType));
-  const portfolioTotal = portfolio.reduce((sum, item) => sum + item.currentValue, 0);
-  const portfolioMatch = selected
-    ? portfolio.find(item => {
-      const name = item.name.toUpperCase();
-      return name.includes(selected.symbol) || selected.symbol.includes(name.replace(/[^A-Z0-9]/g, ''));
-    })
-    : undefined;
-  const purchasePrice = portfolioMatch?.amount ?? 0;
-  const unrealized = portfolioMatch && purchasePrice > 0 ? selected!.latestPrice - purchasePrice : 0;
-  const unrealizedPct = portfolioMatch && purchasePrice > 0 ? (unrealized / purchasePrice) * 100 : 0;
-  const exposure = portfolioMatch && portfolioTotal > 0 ? (portfolioMatch.currentValue / portfolioTotal) * 100 : 0;
-  const concentrationRiskLevel = exposure >= 35 ? 'high' : exposure >= 20 ? 'medium' : 'low';
-  const concentrationRisk = t(`market_concentration_risk_${concentrationRiskLevel}`);
-  const concentrationRiskTone = concentrationRiskLevel === 'high' ? 'danger' : concentrationRiskLevel === 'medium' ? 'warning' : 'success';
   const whatIfValue = parseNumber(whatIfAmount);
   const hasWhatIfAmount = whatIfValue > 0;
   const hasWhatIfInput = whatIfAmount.trim().length > 0;
@@ -1535,7 +1499,6 @@ export default function MarketAnalysisPage() {
     `${t('market_report_trend')}: ${t(`market_trend_${selected.trend}`)} ${percent(selected.changePercent)}`,
     `${t('market_report_risk')}: ${t(`market_risk_${selected.riskLevel}`)} - ${selected.indicators.volatility.toFixed(1)}%`,
     `${t('market_report_levels')}: ${t('market_support_zone')} ${selectedMoney(selected.levels.support)} / ${t('market_resistance_zone')} ${selectedMoney(selected.levels.resistance)}`,
-    `${t('market_report_portfolio')}: ${portfolioMatch ? t('market_asset_in_portfolio') : t('market_asset_not_in_portfolio')}`,
     `${t('market_report_monitor')}: RSI ${selected.indicators.rsi}, SMA 20 ${selectedMoney(selected.indicators.sma20)}, SMA 50 ${selectedMoney(selected.indicators.sma50)}`,
   ] : [];
   const marketTabs = useMemo(() => [
@@ -1950,40 +1913,6 @@ export default function MarketAnalysisPage() {
                 </div>
               </article>
 
-              <article className="market-panel portfolio-card" aria-labelledby="portfolio-comparison-title">
-                <div className="portfolio-card-head">
-                  <div className="portfolio-card-title">
-                    <span aria-hidden="true"><WalletCards size={24} /></span>
-                    <div>
-                      <h2 id="portfolio-comparison-title">{t('market_portfolio_comparison')}</h2>
-                      <p>{t('market_portfolio_comparison_subtitle')}</p>
-                      <i aria-hidden="true" />
-                    </div>
-                  </div>
-                  <span className={`portfolio-card-status ${portfolioMatch ? 'available' : 'unavailable'}`}>
-                    {portfolioMatch ? t('market_portfolio_data_available') : portfolio.length === 0 ? t('market_no_portfolio_data') : t('market_asset_not_in_portfolio')}
-                  </span>
-                </div>
-
-                {portfolio.length === 0 ? (
-                  <div className="portfolio-empty-note">
-                    <AlertTriangle size={17} />
-                    <div>
-                      <strong>{t('market_portfolio_comparison_empty_title')}</strong>
-                      <p>{t('market_portfolio_comparison_empty_body')}</p>
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="portfolio-comparison-grid">
-                  <PortfolioComparisonMetric icon={<CircleDollarSign size={18} />} label={t('market_current_price')} value={selectedMoney(selected.latestPrice)} valueDir="ltr" />
-                  <PortfolioComparisonMetric icon={<ShoppingCart size={18} />} label={t('market_purchase_price')} value={portfolioMatch ? selectedMoney(purchasePrice) : t('market_unavailable')} valueDir={portfolioMatch ? 'ltr' : undefined} status={portfolioMatch ? 'default' : 'unavailable'} />
-                  <PortfolioComparisonMetric icon={<Percent size={18} />} label={t('market_gain_loss_percent')} value={portfolioMatch ? percent(unrealizedPct) : t('market_unavailable')} valueDir={portfolioMatch ? 'ltr' : undefined} status={portfolioMatch ? unrealizedPct >= 0 ? 'success' : 'danger' : 'unavailable'} />
-                  <PortfolioComparisonMetric icon={<LineChart size={18} />} label={t('market_unrealized_pl')} value={portfolioMatch ? selectedMoney(unrealized) : t('market_unavailable')} valueDir={portfolioMatch ? 'ltr' : undefined} status={portfolioMatch ? unrealized >= 0 ? 'success' : 'danger' : 'unavailable'} />
-                  <PortfolioComparisonMetric icon={<PieChart size={18} />} label={t('market_portfolio_exposure')} value={portfolioMatch ? `${exposure.toFixed(1)}%` : t('market_unavailable')} valueDir={portfolioMatch ? 'ltr' : undefined} status={portfolioMatch ? 'default' : 'unavailable'} />
-                  <PortfolioComparisonMetric icon={<ShieldAlert size={18} />} label={t('market_concentration_risk')} value={portfolioMatch ? concentrationRisk : t('market_unavailable')} status={portfolioMatch ? concentrationRiskTone : 'unavailable'} />
-                </div>
-              </article>
             </section>
 
             <section className="market-layout">
