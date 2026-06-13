@@ -26,6 +26,7 @@ export const TR_NAV: Record<string, TranslationEntry> = {
   nav_expenses:   { ar:'المصاريف', en:'Expenses', fr:'Dépenses' },
   nav_income:     { ar:'الدخل', en:'Income', fr:'Revenus' },
   nav_debts:      { ar:'الديون', en:'Debts', fr:'Dettes' },
+  nav_monthly_subscriptions: { ar:'الاشتراكات الشهرية', en:'Monthly Subscriptions', fr:'Abonnements mensuels' },
   nav_invest:     { ar:'الاستثمارات', en:'Investments', fr:'Investissements' },
   nav_market_analysis: { ar:'تحليلات السوق', en:'Market Analysis', fr:'Analyse du marché' },
   nav_market_agent: { ar:'وكيل تحليل الأسواق', en:'Market Agent', fr:'Agent de marché' },
