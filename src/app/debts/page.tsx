@@ -128,12 +128,60 @@ export default function DebtsPage() {
 
   const activeDebts = useMemo(() => debts.filter(debt => debt.status !== 'paid'), [debts]);
   const monthlyIncome = useMemo(() => incomeRows.reduce((sum, row) => sum + toNumber(row.amount), 0), [incomeRows]);
+  const paymentsByDebt = useMemo(() => {
+    const groups = new Map<string, DebtPaymentRow[]>();
+    for (const payment of payments) {
+      const current = groups.get(payment.debt_id) ?? [];
+      current.push(payment);
+      groups.set(payment.debt_id, current);
+    }
+    for (const group of groups.values()) {
+      group.sort((a, b) => b.payment_date.localeCompare(a.payment_date));
+    }
+    return groups;
+  }, [payments]);
+  const debtDisplaySummary = useCallback((debt: DebtRow) => {
+    const schedule = debtSchedule(debt);
+    const debtPayments = paymentsByDebt.get(debt.id) ?? [];
+    const recordedTotalPaid = debtPayments.reduce((sum, payment) => sum + toNumber(payment.amount), 0);
+    const recordedTotalInterest = debtPayments.reduce((sum, payment) => sum + toNumber(payment.interest_amount), 0);
+    const recordedTotalPrincipal = debtPayments.reduce((sum, payment) => sum + toNumber(payment.principal_amount), 0);
+    const storedRemaining = remainingForDebt(debt);
+    const originalAmount = toNumber(debt.original_amount);
+    const paidFromStoredRemaining = Math.max(0, originalAmount - storedRemaining);
+    const totalPaid = Math.max(toNumber(debt.total_paid_amount), recordedTotalPaid, schedule.totalPaidAmount, paidFromStoredRemaining);
+    const totalPrincipalPaid = Math.max(toNumber(debt.total_principal_paid), recordedTotalPrincipal, schedule.totalPrincipalPaid, paidFromStoredRemaining);
+    const totalInterestPaid = Math.max(toNumber(debt.total_interest_paid), recordedTotalInterest, schedule.totalInterestPaid);
+    const computedRemaining = Math.max(0, originalAmount - totalPrincipalPaid);
+    const effectiveRemaining = Math.max(0, Math.min(storedRemaining, schedule.remainingAmount, computedRemaining));
+    const paidPaymentsCount = Math.max(debtPayments.length, schedule.duePaymentsCount);
+    const lastPaymentDate = debtPayments[0]?.payment_date ?? schedule.lastDuePaymentDate ?? '';
+    const displayDebt: DebtRow = {
+      ...debt,
+      remaining_amount: effectiveRemaining,
+      calculated_remaining_amount: effectiveRemaining,
+      total_paid_amount: totalPaid,
+      total_interest_paid: totalInterestPaid,
+      total_principal_paid: totalPrincipalPaid,
+    };
+
+    return {
+      schedule,
+      debtPayments,
+      displayDebt,
+      effectiveRemaining,
+      totalPaid,
+      totalInterestPaid,
+      paidPaymentsCount,
+      lastPaymentDate,
+    };
+  }, [paymentsByDebt]);
   const totals = useMemo(() => {
     const totalOriginal = debts.reduce((sum, debt) => sum + toNumber(debt.original_amount), 0);
-    const totalRemaining = activeDebts.reduce((sum, debt) => sum + remainingForDebt(debt), 0);
+    const totalRemaining = activeDebts.reduce((sum, debt) => sum + debtDisplaySummary(debt).effectiveRemaining, 0);
     const totalMonthly = activeDebts.reduce((sum, debt) => sum + toNumber(debt.monthly_payment), 0);
     const highest = activeDebts.reduce<DebtRow | null>((current, debt) => {
-      if (!current || remainingForDebt(debt) > remainingForDebt(current)) return debt;
+      if (!current || debtDisplaySummary(debt).effectiveRemaining > debtDisplaySummary(current).effectiveRemaining) return debt;
       return current;
     }, null);
     return {
@@ -143,27 +191,29 @@ export default function DebtsPage() {
       highest,
       ratio: monthlyIncome > 0 ? (totalMonthly / monthlyIncome) * 100 : null,
     };
-  }, [activeDebts, debts, monthlyIncome]);
+  }, [activeDebts, debtDisplaySummary, debts, monthlyIncome]);
+
+  const activeDisplayDebts = useMemo(() => activeDebts.map(debt => debtDisplaySummary(debt).displayDebt), [activeDebts, debtDisplaySummary]);
 
   const payoffMonths = useMemo(() => {
-    const estimates = activeDebts.map(estimatePayoffMonths).filter((item): item is number => typeof item === 'number');
+    const estimates = activeDisplayDebts.map(estimatePayoffMonths).filter((item): item is number => typeof item === 'number');
     return estimates.length > 0 ? Math.max(...estimates) : null;
-  }, [activeDebts]);
+  }, [activeDisplayDebts]);
 
   const extraPayment = Math.max(0, parseFloat(extraPaymentAmount) || 0);
 
   const snowballResult = useMemo(
-    () => simulatePayoffStrategy(activeDebts, extraPayment, 'snowball'),
-    [activeDebts, extraPayment],
+    () => simulatePayoffStrategy(activeDisplayDebts, extraPayment, 'snowball'),
+    [activeDisplayDebts, extraPayment],
   );
   const avalancheResult = useMemo(
-    () => simulatePayoffStrategy(activeDebts, extraPayment, 'avalanche'),
-    [activeDebts, extraPayment],
+    () => simulatePayoffStrategy(activeDisplayDebts, extraPayment, 'avalanche'),
+    [activeDisplayDebts, extraPayment],
   );
 
-  const interestRiskDebt = activeDebts.find(debt => calculateDebtPayment(debt).warning);
-  const highestInterest = [...activeDebts].sort((a, b) => toNumber(b.interest_rate) - toNumber(a.interest_rate))[0];
-  const smallestDebt = [...activeDebts].sort((a, b) => remainingForDebt(a) - remainingForDebt(b))[0];
+  const interestRiskDebt = activeDisplayDebts.find(debt => calculateDebtPayment(debt).warning);
+  const highestInterest = [...activeDisplayDebts].sort((a, b) => toNumber(b.interest_rate) - toNumber(a.interest_rate))[0];
+  const smallestDebt = [...activeDisplayDebts].sort((a, b) => remainingForDebt(a) - remainingForDebt(b))[0];
 
   function resetForm() {
     setForm(createDefaultForm(baseCurrency || 'KWD'));
@@ -283,6 +333,13 @@ export default function DebtsPage() {
       if (result.error) throw result.error;
       setNotice(t('saved'));
       resetForm();
+      try {
+        const paymentDate = new Date().toISOString().slice(0, 10);
+        window.sessionStorage.removeItem(`sfm:debts:monthly-generation:${user.id}:${paymentDate}`);
+      } catch {
+        // Session storage can be unavailable in some browser privacy modes.
+      }
+      setGenerationChecked(false);
       await loadData();
     } catch (err) {
       console.error('Debt save failed:', safeDebtSaveErrorDetails(err));
@@ -497,7 +554,7 @@ export default function DebtsPage() {
           <SummaryCard icon={<WalletCards size={18} />} label={t('totalDebts')} value={money(totals.totalOriginal)} />
           <SummaryCard icon={<CreditCard size={18} />} label={t('remainingToPay')} value={money(totals.totalRemaining)} />
           <SummaryCard icon={<ReceiptText size={18} />} label={t('monthlyInstallments')} value={money(totals.totalMonthly)} />
-          <SummaryCard icon={<Gauge size={18} />} label={t('highestDebt')} value={totals.highest ? money(remainingForDebt(totals.highest), totals.highest.currency) : t('unavailable')} />
+          <SummaryCard icon={<Gauge size={18} />} label={t('highestDebt')} value={totals.highest ? money(debtDisplaySummary(totals.highest).effectiveRemaining, totals.highest.currency) : t('unavailable')} />
           <SummaryCard icon={<Sparkles size={18} />} label={t('debtToIncome')} value={totals.ratio === null ? t('unavailable') : `${totals.ratio.toFixed(1)}%`} />
         </section>
 
@@ -521,17 +578,18 @@ export default function DebtsPage() {
             ) : (
               <div className="debt-card-grid">
                 {debts.map(debt => {
-                  const progress = payoffProgress(debt);
-                  const schedule = debtSchedule(debt);
+                  const {
+                    schedule,
+                    displayDebt,
+                    effectiveRemaining,
+                    totalPaid,
+                    totalInterestPaid,
+                    paidPaymentsCount,
+                    lastPaymentDate,
+                  } = debtDisplaySummary(debt);
+                  const progress = payoffProgress(displayDebt);
                   const status = (debt.status === 'paid' || debt.status === 'paused' || debt.status === 'active') ? debt.status : 'active';
-                  const effectiveRemaining = remainingForDebt(debt);
-                  const debtPayments = payments.filter(item => item.debt_id === debt.id);
-                  const totalPaid = debt.total_paid_amount == null
-                    ? debtPayments.reduce((sum, payment) => sum + toNumber(payment.amount), 0)
-                    : toNumber(debt.total_paid_amount);
-                  const paidAmount = Math.max(0, toNumber(debt.original_amount) - effectiveRemaining);
                   const nextPayment = schedule.nextPaymentDate ?? '';
-                  const lastPayment = debtPayments[0]?.payment_date ?? '';
                   const isDue = nextPayment === new Date().toISOString().slice(0, 10);
                   return (
                     <article className="debt-card" key={debt.id}>
@@ -552,22 +610,22 @@ export default function DebtsPage() {
                         <DebtMetric label={t('monthlyPayment')} value={money(debt.monthly_payment, debt.currency)} />
                         <DebtMetric label={t('startDate')} value={formatDate(debt.start_date, locale)} />
                         <DebtMetric label={t('firstPaymentDate')} value={formatDate(debtFirstPaymentDate(debt), locale)} />
-                        <DebtMetric label={t('lastPayment')} value={formatDate(lastPayment, locale)} />
+                        <DebtMetric label={t('lastPayment')} value={formatDate(lastPaymentDate, locale)} />
                         <DebtMetric label={t('nextPayment')} value={formatDate(nextPayment, locale)} />
-                        <DebtMetric label={t('paidPaymentsCount')} value={`${debtPayments.length}`} />
-                        <DebtMetric label={t('totalPaidAmount')} value={money(totalPaid || paidAmount, debt.currency)} />
+                        <DebtMetric label={t('paidPaymentsCount')} value={`${paidPaymentsCount}`} />
+                        <DebtMetric label={t('totalPaidAmount')} value={money(totalPaid, debt.currency)} />
                         <DebtMetric label={t('interestRate')} value={`${toNumber(debt.interest_rate).toFixed(2)}%`} />
-                        <DebtMetric label={t('totalInterestPaid')} value={money(debt.total_interest_paid ?? 0, debt.currency)} />
+                        <DebtMetric label={t('totalInterestPaid')} value={money(totalInterestPaid, debt.currency)} />
                         <DebtMetric label={t('paymentDayLabel')} value={`${clampPaymentDay(debt.payment_day)}`} />
                         {debt.status !== 'paid' && (
                           <DebtMetric
                             label={t('payoffDate')}
-                            value={formatDate(estimatePayoffDate(debt), locale)}
+                            value={formatDate(estimatePayoffDate(displayDebt), locale)}
                             highlight
                           />
                         )}
                       </div>
-                      {(schedule.warning || calculateDebtPayment(debt).warning) && (
+                      {(schedule.warning || calculateDebtPayment(displayDebt).warning) && (
                         <div className="debt-warning"><AlertTriangle size={15} />{t('interestWarning')}</div>
                       )}
                       {isDue && status === 'active' && <div className="debt-due"><CalendarDays size={15} />{t('dueToday')}</div>}
@@ -599,7 +657,7 @@ export default function DebtsPage() {
               {totals.ratio === null ? t('incomeUnavailable') : totals.ratio > 30 ? t('ratioHigh') : t('ratioOk')}
             </p>
             {interestRiskDebt && <p className="insight-alert">{t('interestWarning')}</p>}
-            <InsightRow label={t('highestImpact')} value={totals.highest ? `${totals.highest.name} - ${money(remainingForDebt(totals.highest), totals.highest.currency)}` : t('unavailable')} />
+            <InsightRow label={t('highestImpact')} value={totals.highest ? `${totals.highest.name} - ${money(debtDisplaySummary(totals.highest).effectiveRemaining, totals.highest.currency)}` : t('unavailable')} />
             <InsightRow label={t('highestInterestFirst')} value={highestInterest ? highestInterest.name : t('unavailable')} />
             <InsightRow label={t('smallestDebtFirst')} value={smallestDebt ? smallestDebt.name : t('unavailable')} />
             <InsightRow label={t('payoffEstimate')} value={payoffMonths === null ? t('unavailable') : `${payoffMonths} ${t('months')}`} />
