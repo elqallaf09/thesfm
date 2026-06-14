@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { BarChart3, Brain, Layers3, LineChart as LineChartIcon, PieChart as PieChartIcon, Plus, ShieldAlert, TrendingUp, WalletCards } from 'lucide-react';
+import { BarChart3, Brain, Layers3, LineChart as LineChartIcon, PieChart as PieChartIcon, Plus, RefreshCw, ShieldAlert, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -41,7 +41,14 @@ const TYPES: InvestmentType[] = ['stocks', 'fund', 'crypto', 'gold', 'silver', '
 const RISKS: RiskLevel[] = ['low', 'medium', 'high'];
 const CHART_COLORS = ['#1D8CFF', '#18D4D4', '#10B981', '#F59E0B', '#6366F1', '#0B3A66', '#14B8A6', '#94A3B8'];
 const RISK_SCORE: Record<RiskLevel, number> = { low: 1, medium: 2, high: 3 };
+const LIVE_PRICE_REFRESH_MS = 5000;
 type InvestTab = 'portfolio' | 'assets' | 'performance' | 'risk' | 'reports';
+type PortfolioLiveTrend = {
+  direction: 'up' | 'down' | 'flat';
+  delta: number;
+  percent: number;
+  at: string;
+};
 
 function calculateMonthlyContributionProjection(years: number, monthlyContribution: number, annualReturn: number) {
   const safeYears = Math.max(0, years);
@@ -216,8 +223,16 @@ export default function InvestPage() {
   const [priceRefreshStatuses, setPriceRefreshStatuses] = useState<Record<string, InvestmentPriceRefreshStatus>>({});
   const [toast, setToast] = useState('');
   const [activeTab, setActiveTab] = useState<InvestTab>('portfolio');
+  const [portfolioLiveTrend, setPortfolioLiveTrend] = useState<PortfolioLiveTrend | null>(null);
+  const [liveRefreshState, setLiveRefreshState] = useState<'idle' | 'refreshing' | 'error'>('idle');
+  const [lastLiveRefreshAt, setLastLiveRefreshAt] = useState<string | null>(null);
   const insightsRef = useRef<HTMLDivElement | null>(null);
   const autoRefreshedRef = useRef(false);
+  const batchPriceRefreshRef = useRef(false);
+  const liveRefreshInFlightRef = useRef(false);
+  const liveItemsRef = useRef<Investment[]>([]);
+  const liveRefreshHandlerRef = useRef<((visibleItems: Investment[], options?: { silent?: boolean }) => Promise<void>) | null>(null);
+  const lastPortfolioValueRef = useRef<number | null>(null);
   const L = useCallback((ar: string, en: string, fr: string) => lang === 'ar' ? ar : lang === 'fr' ? fr : en, [lang]);
 
   const labels = useMemo(() => ({
@@ -529,6 +544,7 @@ export default function InvestPage() {
   const marketLinkedInvestments = useMemo(() => items
     .map(item => ({ investment: item, symbol: investmentSymbol(item) }))
     .filter(item => item.symbol), [items]);
+  const liveRefreshableCount = useMemo(() => items.filter(item => investmentLinkedSymbol(item)).length, [items]);
   const portfolioPreview = useMemo(() => [...items]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 5), [items]);
@@ -809,21 +825,94 @@ export default function InvestPage() {
     }
   }
 
-  async function handleRefreshPrices(visibleItems: Investment[]) {
+  async function handleRefreshPrices(visibleItems: Investment[], options?: { silent?: boolean }) {
     const refreshable = visibleItems.filter(item => investmentLinkedSymbol(item));
-    if (refreshable.length === 0 || refreshingAllPrices) return;
-    setRefreshingAllPrices(true);
+    if (refreshable.length === 0 || batchPriceRefreshRef.current) return;
+    batchPriceRefreshRef.current = true;
+    if (!options?.silent) setRefreshingAllPrices(true);
     try {
       let updatedCount = 0;
       for (const item of refreshable) {
         const updated = await handleRefreshPrice(item, { silent: true });
         if (updated) updatedCount += 1;
       }
-      showToast(updatedCount === refreshable.length ? t('invest_asset_priceUpdated') : labels.priceUpdateFailed);
+      if (!options?.silent) {
+        showToast(updatedCount === refreshable.length ? t('invest_asset_priceUpdated') : labels.priceUpdateFailed);
+      }
     } finally {
-      setRefreshingAllPrices(false);
+      batchPriceRefreshRef.current = false;
+      if (!options?.silent) setRefreshingAllPrices(false);
     }
   }
+
+  useEffect(() => {
+    liveItemsRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
+    liveRefreshHandlerRef.current = handleRefreshPrices;
+  });
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const previous = lastPortfolioValueRef.current;
+    const current = Number(totalValue.toFixed(3));
+
+    if (previous === null) {
+      lastPortfolioValueRef.current = current;
+      return;
+    }
+
+    const delta = current - previous;
+    const epsilon = Math.max(0.001, Math.abs(previous) * 0.000001);
+    if (Math.abs(delta) <= epsilon) return;
+
+    lastPortfolioValueRef.current = current;
+    setPortfolioLiveTrend({
+      direction: delta > 0 ? 'up' : 'down',
+      delta,
+      percent: previous > 0 ? (delta / previous) * 100 : 0,
+      at: new Date().toISOString(),
+    });
+  }, [isLoading, totalValue]);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    let cancelled = false;
+    const runLiveRefresh = async () => {
+      if (cancelled || liveRefreshInFlightRef.current) return;
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+
+      const refreshable = liveItemsRef.current.filter(item => investmentLinkedSymbol(item));
+      if (refreshable.length === 0) {
+        setLiveRefreshState('idle');
+        return;
+      }
+
+      liveRefreshInFlightRef.current = true;
+      setLiveRefreshState('refreshing');
+      try {
+        await liveRefreshHandlerRef.current?.(refreshable, { silent: true });
+        if (!cancelled) {
+          setLiveRefreshState('idle');
+          setLastLiveRefreshAt(new Date().toISOString());
+        }
+      } catch {
+        if (!cancelled) setLiveRefreshState('error');
+      } finally {
+        liveRefreshInFlightRef.current = false;
+      }
+    };
+
+    void runLiveRefresh();
+    const interval = window.setInterval(() => void runLiveRefresh(), LIVE_PRICE_REFRESH_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [isLoading]);
 
   // Auto-refresh market prices on first load for investments missing current price
   useEffect(() => {
@@ -833,7 +922,7 @@ export default function InvestPage() {
     );
     if (stale.length === 0) return;
     autoRefreshedRef.current = true;
-    void handleRefreshPrices(stale);
+    void handleRefreshPrices(stale, { silent: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, items]);
 
@@ -852,6 +941,26 @@ export default function InvestPage() {
   }
 
   const pct = (value: number) => `${value.toFixed(1)}%`;
+  const PortfolioMoveIcon = portfolioLiveTrend?.direction === 'down'
+    ? TrendingDown
+    : portfolioLiveTrend?.direction === 'up'
+      ? TrendingUp
+      : RefreshCw;
+  const liveTrendClass = portfolioLiveTrend?.direction ?? 'flat';
+  const liveDeltaText = portfolioLiveTrend
+    ? `${portfolioLiveTrend.delta > 0 ? '+' : '-'}${money(Math.abs(portfolioLiveTrend.delta))}`
+    : L('بانتظار أول تحديث مباشر', 'Waiting for first live update', 'En attente de la premiere mise a jour');
+  const liveDeltaPercentText = portfolioLiveTrend
+    ? `${portfolioLiveTrend.delta > 0 ? '+' : '-'}${Math.abs(portfolioLiveTrend.percent).toFixed(2)}%`
+    : '';
+  const liveUpdatedText = lastLiveRefreshAt
+    ? new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { timeStyle: 'medium' }).format(new Date(lastLiveRefreshAt))
+    : L('لم يبدأ بعد', 'Not started yet', 'Pas encore demarre');
+  const liveRefreshCopy = liveRefreshState === 'refreshing'
+    ? L('تحديث الأسعار الآن', 'Refreshing prices now', 'Actualisation des prix')
+    : liveRefreshState === 'error'
+      ? L('تعذر آخر تحديث مباشر', 'Last live refresh failed', 'Derniere actualisation echouee')
+      : L(`تحديث حي كل ${LIVE_PRICE_REFRESH_MS / 1000} ثواني`, `Live refresh every ${LIVE_PRICE_REFRESH_MS / 1000}s`, `Actualisation toutes les ${LIVE_PRICE_REFRESH_MS / 1000}s`);
 
   return (
     <div className="invest-shell" dir={dir}>
@@ -892,10 +1001,24 @@ export default function InvestPage() {
               {labels.marketCta}
             </button>
           </div>
-          <div className="invest-hero-total">
-            <TrendingUp size={25} />
+          <div className={`invest-hero-total invest-hero-total--${liveTrendClass}`}>
+            <div className="invest-live-icon" aria-hidden="true">
+              <PortfolioMoveIcon size={25} className={liveRefreshState === 'refreshing' && !portfolioLiveTrend ? 'invest-spin' : undefined} />
+            </div>
             <span>{t('invest_summary_portfolioValue')}</span>
             <strong>{money(totalValue)}</strong>
+            <div className="invest-live-delta">
+              <b>{liveDeltaText}</b>
+              {liveDeltaPercentText && <em dir="ltr">{liveDeltaPercentText}</em>}
+            </div>
+            <small>
+              {liveRefreshCopy} · {L('آخر تحديث', 'Last update', 'Derniere mise a jour')}: <b dir="ltr">{liveUpdatedText}</b>
+            </small>
+            {liveRefreshableCount > 0 && (
+              <small className="invest-live-count">
+                {L(`متابعة ${liveRefreshableCount} أصل مرتبط بالسوق`, `Watching ${liveRefreshableCount} market-linked asset(s)`, `${liveRefreshableCount} actif(s) relies au marche`)}
+              </small>
+            )}
           </div>
         </section>
 
@@ -1160,7 +1283,7 @@ export default function InvestPage() {
         .invest-hero:before{content:"";position:absolute;inset-inline-end:-80px;top:-90px;width:240px;height:240px;border-radius:50%;background:rgba(167,243,240,.12);filter:blur(18px)}
         .invest-hero-content{position:relative;z-index:1;min-width:0}.invest-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.14);color:#86EFAC;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:900;margin-bottom:14px}.invest-badge span{width:7px;height:7px;border-radius:50%;background:#22C55E;animation:pulse 1.6s infinite}
         .invest-hero h2{font-size:34px;line-height:1.05;margin:0 0 10px;font-weight:900}.invest-hero p{max-width:680px;margin:0 0 18px;color:rgba(255,255,255,.72);line-height:1.8;font-size:14px}
-        .invest-hero-total{position:relative;z-index:1;min-width:230px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:18px;display:grid;gap:7px;backdrop-filter:blur(12px)}.invest-hero-total svg{color:var(--sfm-soft-cyan)}.invest-hero-total span{color:rgba(255,255,255,.68);font-size:12px;font-weight:800}.invest-hero-total strong{font-size:23px;color:var(--sfm-soft-cyan)}
+        .invest-hero-total{position:relative;z-index:1;min-width:250px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:18px;display:grid;gap:7px;backdrop-filter:blur(12px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}.invest-live-icon{width:38px;height:38px;border-radius:14px;display:grid;place-items:center;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan)}.invest-hero-total span{color:rgba(255,255,255,.68);font-size:12px;font-weight:800}.invest-hero-total strong{font-size:23px;color:var(--sfm-soft-cyan);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.invest-live-delta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.invest-live-delta b{font-size:13px;font-weight:950;color:rgba(255,255,255,.82)}.invest-live-delta em{font-style:normal;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:950;background:rgba(255,255,255,.12);color:rgba(255,255,255,.86)}.invest-hero-total small{color:rgba(255,255,255,.66);font-size:11px;font-weight:850;line-height:1.55}.invest-hero-total small b{font-weight:950;color:rgba(255,255,255,.9)}.invest-live-count{color:rgba(255,255,255,.58)!important}.invest-hero-total--up{border-color:rgba(34,197,94,.34);background:linear-gradient(135deg,rgba(34,197,94,.18),rgba(255,255,255,.08))}.invest-hero-total--up .invest-live-icon,.invest-hero-total--up .invest-live-delta em{background:rgba(34,197,94,.18);color:#86EFAC}.invest-hero-total--up strong,.invest-hero-total--up .invest-live-delta b{color:#A7F3D0}.invest-hero-total--down{border-color:rgba(248,113,113,.38);background:linear-gradient(135deg,rgba(239,68,68,.18),rgba(255,255,255,.08))}.invest-hero-total--down .invest-live-icon,.invest-hero-total--down .invest-live-delta em{background:rgba(248,113,113,.18);color:#FCA5A5}.invest-hero-total--down strong,.invest-hero-total--down .invest-live-delta b{color:#FECACA}
         .invest-primary-btn,.invest-secondary-btn,.invest-danger-btn,.invest-glass-btn{height:43px;border-radius:14px;border:0;padding:0 17px;font:900 13px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:all .2s}.invest-primary-btn{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;box-shadow:0 10px 24px rgba(167,243,240,.22)}.invest-primary-btn:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(167,243,240,.28)}.invest-secondary-btn{background:var(--sfm-card);color:var(--sfm-muted);border:1px solid rgba(167,243,240,.22)}.invest-danger-btn{background:#B91C1C;color:#fff}.invest-glass-btn{margin-inline-start:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:var(--sfm-card)}.invest-glass-btn:hover{background:rgba(255,255,255,.18)}.invest-primary-btn:disabled,.invest-secondary-btn:disabled,.invest-danger-btn:disabled{opacity:.6;cursor:wait}
         .invest-panel,.invest-empty{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:22px;box-shadow:0 4px 22px rgba(3,18,37,.06);min-width:0}
         .invest-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;min-width:0;max-width:100%}.invest-summary-card{min-height:132px;padding:16px;display:grid;gap:8px;align-content:start}.invest-summary-card .icon{width:38px;height:38px;border-radius:13px;background:rgba(167,243,240,.12);color:var(--sfm-soft-cyan);display:grid;place-items:center}.invest-summary-card span{font-size:11px;font-weight:900;color:var(--sfm-muted)}.invest-summary-card strong{font-size:18px;color:var(--sfm-foreground);overflow-wrap:anywhere}.invest-summary-card p{margin:0;color:var(--sfm-muted);font-size:11px;font-weight:800;line-height:1.6}
