@@ -255,6 +255,10 @@ export default function InvestPage() {
     market: t('invest_asset_market'),
     currency: L('العملة', 'Currency', 'Devise'),
     quantity: t('invest_asset_quantity'),
+    numberOfUnits: t('invest_asset_numberOfUnits'),
+    assetQuantity: t('invest_asset_assetQuantity'),
+    metalCount: L('عدد القطع', 'Pieces count', 'Nombre de pieces'),
+    metalWeight: t('invest_form_grams'),
     currentMarketValue: t('invest_asset_currentMarketValue'),
     currentPrice: t('invest_asset_currentPrice'),
     purchasePrice: L('سعر الشراء', 'Purchase price', 'Prix d’achat'),
@@ -343,6 +347,7 @@ export default function InvestPage() {
     silverProductType: t('invest_form_silverProductType'),
     grams: t('invest_form_grams'),
     count: t('invest_form_count'),
+    metalCount: L('عدد القطع', 'Pieces count', 'Nombre de pieces'),
     propertyName: t('invest_form_propertyName'),
     propertyLocation: t('invest_form_propertyLocation'),
     propertyPurchasePrice: t('invest_form_propertyPurchasePrice'),
@@ -430,7 +435,7 @@ export default function InvestPage() {
       fxRequired: t('invest_form_errors_fxRequired'),
       expensePositive: t('invest_form_errors_expensePositive'),
     },
-  }), [t]);
+  }), [L, t]);
 
   const typeLabel = useCallback((type: InvestmentType | string | null | undefined) => formatInvestmentType(type, t), [t]);
   const riskLabel = useCallback((risk: RiskLevel) => t(`invest_risks_${risk}`), [t]);

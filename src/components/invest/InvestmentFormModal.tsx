@@ -152,6 +152,7 @@ interface Props {
     silverProductType: string;
     grams: string;
     count: string;
+    metalCount: string;
     propertyName: string;
     propertyLocation: string;
     propertyPurchasePrice: string;
@@ -1338,7 +1339,7 @@ export function InvestmentFormModal({
               <Field label={labels.grams} error={errors.grams} required>
                 <input type="number" min="0" step="0.0001" value={metalGrams} onChange={event => setMetalGrams(event.target.value)} dir="ltr" inputMode="decimal" />
               </Field>
-              <Field label={labels.count} error={errors.quantity} required>
+              <Field label={labels.metalCount || labels.count} error={errors.quantity} required>
                 <input type="number" min="0" step="0.000001" value={quantity} onChange={event => setQuantity(event.target.value)} dir="ltr" inputMode="decimal" />
               </Field>
               <Field label={labels.purchasePricePerGram} error={errors.purchasePrice} required>

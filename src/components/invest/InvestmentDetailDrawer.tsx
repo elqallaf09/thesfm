@@ -20,6 +20,10 @@ interface Props {
     symbol?: string;
     market?: string;
     quantity?: string;
+    numberOfUnits?: string;
+    assetQuantity?: string;
+    metalCount?: string;
+    metalWeight?: string;
     currentPrice?: string;
     currentMarketValue?: string;
     dataSource?: string;
@@ -63,6 +67,8 @@ export function InvestmentDetailDrawer({
   const nativeCurrency = investmentNativeCurrency(investment);
   const metrics = calculateInvestmentHoldingMetrics(investment);
   const nativeValue = metrics.currentValue;
+  const isMetal = investment.type === 'gold' || investment.type === 'silver';
+  const metalPieceCount = Number(investment.quantity);
 
   return (
     <div className="invest-overlay" role="presentation" onMouseDown={onClose}>
@@ -108,8 +114,11 @@ export function InvestmentDetailDrawer({
           {linkedSymbol && <Info label={labels.symbol || 'Symbol'} value={linkedSymbol} ltr />}
           {investment.market && <Info label={labels.market || 'Market'} value={investment.market} />}
           {investment.type === 'project' && investment.projectId && <Info label="المشروع المرتبط" value={investment.projectName || investment.name} />}
-          {metrics.quantity !== null && <Info label={labels.quantity || 'Quantity'} value={formatPreciseNumber(metrics.quantity)} ltr />}
-          {(investment.type === 'gold' || investment.type === 'silver') && investment.metalProductType && (
+          {!isMetal && metrics.quantity !== null && <Info label={quantityLabel(investment, labels)} value={formatPreciseNumber(metrics.quantity)} ltr />}
+          {isMetal && Number.isFinite(metalPieceCount) && metalPieceCount > 0 && (
+            <Info label={labels.metalCount || labels.assetQuantity || 'عدد القطع'} value={formatPreciseNumber(metalPieceCount)} ltr />
+          )}
+          {isMetal && investment.metalProductType && (
             <Info label="نوع المعدن" value={metalProductLabel(investment.metalProductType)} />
           )}
           {investment.type === 'gold' && typeof investment.metalKarat === 'number' && <Info label="العيار" value={`${investment.metalKarat}K`} ltr />}
@@ -139,6 +148,12 @@ export function InvestmentDetailDrawer({
       </aside>
     </div>
   );
+}
+
+function quantityLabel(investment: Investment, labels: Props['labels']) {
+  if (investment.type === 'fund') return labels.numberOfUnits || labels.quantity || 'Units';
+  if (investment.type === 'crypto') return labels.assetQuantity || labels.quantity || 'Quantity';
+  return labels.quantity || 'Quantity';
 }
 
 function Info({ label, value, ltr = false }: { label: string; value: string; ltr?: boolean }) {

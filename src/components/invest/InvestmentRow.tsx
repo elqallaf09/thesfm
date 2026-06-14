@@ -30,6 +30,10 @@ interface Props {
     symbol?: string;
     market?: string;
     quantity?: string;
+    numberOfUnits?: string;
+    assetQuantity?: string;
+    metalCount?: string;
+    metalWeight?: string;
     currentMarketValue?: string;
     currentPrice?: string;
     purchasePrice?: string;
@@ -78,6 +82,14 @@ export function InvestmentRow({
   const metrics = calculateInvestmentHoldingMetrics(investment);
   const [isExpanded, setIsExpanded] = useState(false);
   const nativeCurrency = investmentNativeCurrency(investment);
+  const isMetal = investment.type === 'gold' || investment.type === 'silver';
+  const quantityLabel = quantityMetricLabel(investment, labels);
+  const quantityValue = isMetal && metrics.quantity !== null
+    ? `${formatPreciseNumber(metrics.quantity)} g`
+    : metrics.quantity !== null
+      ? formatPreciseNumber(metrics.quantity)
+      : labels.unavailable || '-';
+  const metalPieceCount = Number(investment.quantity);
   const hasAccountValue = accountValue !== null && Number.isFinite(accountValue);
   const showConvertedLine = hasAccountValue
     && nativeCurrency
@@ -204,8 +216,8 @@ export function InvestmentRow({
           ltr={metrics.currentPrice !== null}
         />
         <Metric
-          label={labels.quantity || 'Quantity'}
-          value={metrics.quantity !== null ? formatPreciseNumber(metrics.quantity) : labels.unavailable || '-'}
+          label={quantityLabel}
+          value={quantityValue}
           tone={metrics.quantity === null && metrics.isMarketLinked ? 'warning' : 'default'}
           ltr={metrics.quantity !== null}
         />
@@ -236,6 +248,9 @@ export function InvestmentRow({
         <DetailChip label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? '-' : `${formatNumber(investment.expectedAnnualReturn)}%`} />
         {investment.market && <DetailChip label={labels.market || 'Market'} value={investment.market} />}
         <DetailChip label={labels.currency || 'Currency'} value={nativeCurrency || labels.unavailable || '-'} />
+        {isMetal && Number.isFinite(metalPieceCount) && metalPieceCount > 0 && (
+          <DetailChip label={labels.metalCount || labels.assetQuantity || 'Pieces'} value={formatPreciseNumber(metalPieceCount)} />
+        )}
         <DetailChip label={labels.startDate || 'Entry date'} value={formatDateOnly(investment.startDate) || labels.unavailable || '-'} />
         {(investment.priceSource || investment.dataSource || investment.valuationSource) && (
           <DetailChip label={labels.dataSource || 'Data source'} value={investment.priceSource || investment.dataSource || investment.valuationSource || ''} />
@@ -262,6 +277,13 @@ export function InvestmentRow({
       </footer>
     </article>
   );
+}
+
+function quantityMetricLabel(investment: Investment, labels: Props['labels']) {
+  if (investment.type === 'gold' || investment.type === 'silver') return labels.metalWeight || 'Weight in grams';
+  if (investment.type === 'fund') return labels.numberOfUnits || labels.quantity || 'Units';
+  if (investment.type === 'crypto') return labels.assetQuantity || labels.quantity || 'Quantity';
+  return labels.quantity || 'Quantity';
 }
 
 function Metric({

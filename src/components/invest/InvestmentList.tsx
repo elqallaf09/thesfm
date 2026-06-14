@@ -33,6 +33,11 @@ interface Props {
     refreshingPrices?: string;
     purchasePrice?: string;
     totalInvested?: string;
+    quantity?: string;
+    numberOfUnits?: string;
+    assetQuantity?: string;
+    metalCount?: string;
+    metalWeight?: string;
     profitLoss?: string;
     profitLossPercent?: string;
     priceStatus?: string;
