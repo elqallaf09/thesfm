@@ -95,6 +95,40 @@ import {
 } from '@/lib/routeDashboard/helpers';
 
 import { buildCards, buildDataShape, buildRows, buildGoalAnalysis, buildInsights, suggestion, sectionTitle, summaryTitle, summaryText, buildPrimaryActions, baseStyles, expenseSmartStyles } from './_helpers';
+
+function smartExpenseEnhanced(item: SmartExpense) {
+  return item.enhanced && typeof item.enhanced === 'object' ? item.enhanced : {};
+}
+
+function looseExpenseValue(item: SmartExpense, key: string) {
+  const loose = item as SmartExpense & Record<string, unknown>;
+  return loose[key];
+}
+
+function isMonthlySubscriptionExpense(item: SmartExpense) {
+  const category = String(item.category || '').trim().toLowerCase();
+  const source = String(looseExpenseValue(item, 'source') || '').trim().toLowerCase();
+  const enhanced = smartExpenseEnhanced(item);
+  const enhancedSource = String(enhanced.source || '').trim().toLowerCase();
+  const createdFrom = String(enhanced.created_from || '').trim().toLowerCase();
+  return category === 'subscriptions' ||
+    source === 'subscription' ||
+    enhancedSource === 'subscription' ||
+    createdFrom === 'monthly_subscriptions_page';
+}
+
+function isDebtInstallmentExpense(item: SmartExpense) {
+  const category = String(item.category || '').trim().toLowerCase();
+  const source = String(looseExpenseValue(item, 'source') || '').trim().toLowerCase();
+  const enhanced = smartExpenseEnhanced(item);
+  const enhancedSource = String(enhanced.source || '').trim().toLowerCase();
+  const hasDebtId = Boolean(looseExpenseValue(item, 'debt_id') || enhanced.debt_id);
+  return ['debt', 'debts', 'loan', 'loans'].includes(category) ||
+    source === 'debt' ||
+    enhancedSource === 'debt' ||
+    hasDebtId;
+}
+
 export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const router = useRouter();
   const { user, loading, isGuest } = useAuth();
@@ -1735,6 +1769,9 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     const monthlyExpenses = expensePeriodExpenses;
     const monthlyTotal = expensePeriodTotal;
     const recurringTotal = monthlyExpenses.filter(isRecurringExpense).reduce((sum, item) => sum + item.amount, 0);
+    const monthlySubscriptionsTotal = monthlyExpenses.filter(isMonthlySubscriptionExpense).reduce((sum, item) => sum + item.amount, 0);
+    const debtInstallmentsTotal = monthlyExpenses.filter(isDebtInstallmentExpense).reduce((sum, item) => sum + item.amount, 0);
+    const fixedCommitmentsTotal = monthlySubscriptionsTotal + debtInstallmentsTotal;
     const expenseNow = new Date();
     const expenseYearOptions = Array.from({ length: 8 }, (_, index) => expenseNow.getFullYear() + 1 - index);
     const expenseMonthFormatter = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'long' });
@@ -1798,6 +1835,25 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 <small>{pick(card.body, lang)}</small>
               </article>
             ))}
+            <article className="kpi-card expense-obligations-card">
+              <span style={{ background: '#14B8A6' }} />
+              <p>{pick({ ar: 'الاشتراكات وأقساط الديون', en: 'Subscriptions and debt payments', fr: 'Abonnements et mensualités' }, lang)}</p>
+              <strong>{money(fixedCommitmentsTotal, lang, expenseBaseCurrency)}</strong>
+              <small className="expense-obligation-lines">
+                <span>
+                  {pick({ ar: 'إجمالي الاشتراكات الشهرية', en: 'Total monthly subscriptions', fr: 'Total abonnements mensuels' }, lang)}
+                  <b>{money(monthlySubscriptionsTotal, lang, expenseBaseCurrency)}</b>
+                </span>
+                <span>
+                  {pick({ ar: 'إجمالي أقساط الديون', en: 'Total debt payments', fr: 'Total mensualités de dettes' }, lang)}
+                  <b>{money(debtInstallmentsTotal, lang, expenseBaseCurrency)}</b>
+                </span>
+                <span>
+                  {pick({ ar: 'إجمالي الاشتراكات + أقساط الديون', en: 'Subscriptions + debt payments', fr: 'Abonnements + mensualités' }, lang)}
+                  <b>{money(fixedCommitmentsTotal, lang, expenseBaseCurrency)}</b>
+                </span>
+              </small>
+            </article>
           </section>
 
           <PageTabs
