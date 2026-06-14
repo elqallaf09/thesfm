@@ -32,7 +32,7 @@ import { useCurrency } from '@/lib/useCurrency';
 
 import type { Lang, DebtRow, DebtPaymentRow, DebtForm, DebtStatus, InterestType } from './_types';
 import { TEXT } from './_text';
-import { SUPPORTED_CURRENCIES, DEFAULT_FORM, createDefaultForm, tr as trFn, debtPaymentMonth, deriveFirstPaymentDate, toNumber, remainingForDebt, optionalNumber, cleanNumericInput, formatDateToYYYYMMDD, mapInterestTypeToDb, mapDebtStatusToDb, clampPaymentDay, addOneDebtMonth, debtFirstPaymentDate, debtSchedule, formatDate, monthlyInterestAmount, calculateDebtPayment, payoffProgress, estimatePayoffMonths, estimatePayoffDate, simulatePayoffStrategy, payloadFromForm, validateDebtForm, debtSaveErrorMessage, safeDebtSaveErrorDetails } from './_utils';
+import { SUPPORTED_CURRENCIES, DEFAULT_FORM, createDefaultForm, tr as trFn, debtPaymentMonth, deriveFirstPaymentDate, toNumber, remainingForDebt, optionalNumber, cleanNumericInput, formatDateToYYYYMMDD, mapInterestTypeToDb, mapDebtStatusToDb, clampPaymentDay, addOneDebtMonth, debtFirstPaymentDate, debtSchedule, formatDate, monthlyInterestAmount, calculateDebtPayment, estimatePayoffMonths, estimatePayoffDate, simulatePayoffStrategy, payloadFromForm, validateDebtForm, debtSaveErrorMessage, safeDebtSaveErrorDetails } from './_utils';
 import { SummaryCard, DebtMetric, InsightRow, FormSectionTitle, RequiredMark, DebtInput, MoneyInput, SuffixInput, PayoffStrategiesPanel, DebtStyles } from './_components';
 
 export default function DebtsPage() {
@@ -142,18 +142,22 @@ export default function DebtsPage() {
   }, [payments]);
   const debtDisplaySummary = useCallback((debt: DebtRow) => {
     const schedule = debtSchedule(debt);
-    const debtPayments = paymentsByDebt.get(debt.id) ?? [];
+    const firstPaymentDate = debtFirstPaymentDate(debt);
+    const today = new Date().toISOString().slice(0, 10);
+    const debtPayments = (paymentsByDebt.get(debt.id) ?? [])
+      .filter(payment => (!firstPaymentDate || payment.payment_date >= firstPaymentDate) && payment.payment_date <= today);
     const recordedTotalPaid = debtPayments.reduce((sum, payment) => sum + toNumber(payment.amount), 0);
     const recordedTotalInterest = debtPayments.reduce((sum, payment) => sum + toNumber(payment.interest_amount), 0);
     const recordedTotalPrincipal = debtPayments.reduce((sum, payment) => sum + toNumber(payment.principal_amount), 0);
     const storedRemaining = remainingForDebt(debt);
     const originalAmount = toNumber(debt.original_amount);
     const paidFromStoredRemaining = Math.max(0, originalAmount - storedRemaining);
-    const totalPaid = Math.max(toNumber(debt.total_paid_amount), recordedTotalPaid, schedule.totalPaidAmount, paidFromStoredRemaining);
-    const totalPrincipalPaid = Math.max(toNumber(debt.total_principal_paid), recordedTotalPrincipal, schedule.totalPrincipalPaid, paidFromStoredRemaining);
-    const totalInterestPaid = Math.max(toNumber(debt.total_interest_paid), recordedTotalInterest, schedule.totalInterestPaid);
+    const canTrustStoredTotals = !firstPaymentDate || firstPaymentDate <= today;
+    const totalPaid = Math.max(canTrustStoredTotals ? toNumber(debt.total_paid_amount) : 0, recordedTotalPaid, schedule.totalPaidAmount, canTrustStoredTotals ? paidFromStoredRemaining : 0);
+    const totalPrincipalPaid = Math.max(canTrustStoredTotals ? toNumber(debt.total_principal_paid) : 0, recordedTotalPrincipal, schedule.totalPrincipalPaid, canTrustStoredTotals ? paidFromStoredRemaining : 0);
+    const totalInterestPaid = Math.max(canTrustStoredTotals ? toNumber(debt.total_interest_paid) : 0, recordedTotalInterest, schedule.totalInterestPaid);
     const computedRemaining = Math.max(0, originalAmount - totalPrincipalPaid);
-    const effectiveRemaining = Math.max(0, Math.min(storedRemaining, schedule.remainingAmount, computedRemaining));
+    const effectiveRemaining = Math.max(0, Math.min(canTrustStoredTotals ? storedRemaining : originalAmount, schedule.remainingAmount, computedRemaining));
     const paidPaymentsCount = Math.max(debtPayments.length, schedule.duePaymentsCount);
     const lastPaymentDate = debtPayments[0]?.payment_date ?? schedule.lastDuePaymentDate ?? '';
     const displayDebt: DebtRow = {
@@ -382,6 +386,21 @@ export default function DebtsPage() {
     if (!user) return;
     setError('');
     const paymentDate = new Date().toISOString().slice(0, 10);
+    const firstPaymentDate = debtFirstPaymentDate(debt);
+    if (firstPaymentDate && paymentDate < firstPaymentDate) {
+      setError(t('paymentNotDueYet'));
+      return;
+    }
+    const schedule = debtSchedule(debt);
+    const existingDueMonths = new Set((paymentsByDebt.get(debt.id) ?? [])
+      .filter(payment => (!firstPaymentDate || payment.payment_date >= firstPaymentDate) && payment.payment_date <= paymentDate)
+      .map(payment => debtPaymentMonth(payment.payment_date))
+      .filter(Boolean));
+    const hasUnrecordedDuePayment = schedule.duePayments.some(payment => !existingDueMonths.has(payment.paymentMonth));
+    if (!hasUnrecordedDuePayment) {
+      setError(t('paymentNotDueYet'));
+      return;
+    }
     const paymentMonth = debtPaymentMonth(paymentDate);
     const nextMonth = addOneDebtMonth(paymentMonth);
     const existing = await supabase
@@ -587,7 +606,8 @@ export default function DebtsPage() {
                     paidPaymentsCount,
                     lastPaymentDate,
                   } = debtDisplaySummary(debt);
-                  const progress = payoffProgress(displayDebt);
+                  const originalAmount = toNumber(debt.original_amount);
+                  const progress = originalAmount > 0 ? Math.min(100, Math.max(0, ((originalAmount - effectiveRemaining) / originalAmount) * 100)) : 0;
                   const status = (debt.status === 'paid' || debt.status === 'paused' || debt.status === 'active') ? debt.status : 'active';
                   const nextPayment = schedule.nextPaymentDate ?? '';
                   const isDue = nextPayment === new Date().toISOString().slice(0, 10);

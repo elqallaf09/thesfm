@@ -90,6 +90,7 @@ export const TEXT = {
   calculatingDebts: { ar: 'جارٍ تحديث الحساب...', en: 'Updating calculations...', fr: 'Mise à jour des calculs...' },
   debtCalculationUpdated: { ar: 'تم تحديث حساب الديون بنجاح.', en: 'Debt calculations updated successfully.', fr: 'Les calculs des dettes ont été mis à jour.' },
   noDueMonthlyPayments: { ar: 'لا توجد دفعات شهرية مستحقة حاليًا.', en: 'No monthly payments are currently due.', fr: 'Aucune mensualité n’est actuellement due.' },
+  paymentNotDueYet: { ar: 'لا توجد دفعة مستحقة لهذا الدين حالياً. سيتم احتسابها عند تاريخ أول قسط أو تاريخ الاستحقاق التالي.', en: 'No payment is due for this debt yet. It will be counted on the first payment date or the next due date.', fr: 'Aucun paiement n’est encore dû pour cette dette. Il sera comptabilisé à la première échéance ou à la prochaine date due.' },
   required: { ar: 'يرجى إكمال الحقول المطلوبة بقيم صحيحة.', en: 'Please complete required fields with valid values.', fr: 'Veuillez compléter les champs obligatoires avec des valeurs valides.' },
   completeRequired: { ar: 'يرجى إدخال الحقول المطلوبة قبل الحفظ.', en: 'Please complete the required fields before saving.', fr: 'Veuillez compléter les champs obligatoires avant l’enregistrement.' },
   completeRequiredButton: { ar: 'أكمل البيانات المطلوبة', en: 'Complete required fields', fr: 'Compléter les champs requis' },
