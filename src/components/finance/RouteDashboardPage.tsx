@@ -63,7 +63,7 @@ import type {
   GoalItem, GoalRow, GoalFormState, QueryResult, ChatMessage, DataErrorKind, DataLoadError,
   DataResult, ReceiptItem, ReceiptAmountCandidate, AiExtractedData, ReceiptScanDebug,
   ReceiptScanApiResult, ReceiptScanApiPayload, SmartExpense, ExpenseFormState,
-  ExpenseModalMode, PendingReceiptExpense, Snapshot, SectionCard,
+  ExpenseModalMode, PendingReceiptExpense, Snapshot, SectionCard, DebtSnapshotItem,
 } from '@/lib/routeDashboard/types';
 import {
   emptySnapshot, todayInputDate, emptyEntryForm, emptyExpenseForm, emptyGoalForm,
@@ -197,6 +197,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             expenses: readGuestItems('expenses') as MoneyItem[],
             savings: readGuestItems('savings') as MoneyItem[],
             investments: readGuestItems('invest') as MoneyItem[],
+            debts: [],
           });
         }
         setDataLoading(false);
@@ -228,12 +229,19 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         );
         return legacy.error ? currentSchema : legacy;
       };
-      const [income, expenses, savings, investments, goals] = await Promise.all([
+      const [income, expenses, savings, investments, goals, debts] = await Promise.all([
         safeQuery<IncomeSource>(supabase.from('monthly_income_sources').select('*').eq('user_id', user.id) as unknown as QueryResult<IncomeSource>, queryMeta('monthly_income_sources', 'monthly_income_sources')),
         expensesQuery(),
         safeQuery<MoneyItem>(supabase.from('savings_items').select('*').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<MoneyItem>, queryMeta('savings_items', 'savings_items')),
         safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount, converted_market_value, current_value, current_market_value, native_market_value, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('investment_items', 'investment_items')),
         safeQuery<GoalRow>(supabase.from('financial_goals').select('*').eq('user_id', user.id) as unknown as QueryResult<GoalRow>, queryMeta('financial_goals', 'financial_goals')),
+        safeQuery<DebtSnapshotItem>(
+          supabase
+            .from('debts')
+            .select('id,name,monthly_payment,currency,status,remaining_amount,calculated_remaining_amount')
+            .eq('user_id', user.id) as unknown as QueryResult<DebtSnapshotItem>,
+          queryMeta('debts', 'debts'),
+        ),
       ]);
 
       if (cancelled) return;
@@ -246,8 +254,9 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           ...item,
           amount: parseMoney(item.converted_market_value ?? item.current_value ?? item.amount ?? item.current_market_value ?? item.native_market_value),
         })),
+        debts: debts.data,
         goals: goals.data.map(goalFromRow),
-        error: [income.error, expenses.error, savings.error, investments.error, goals.error].find(Boolean) ?? null,
+        error: [income.error, expenses.error, savings.error, investments.error, goals.error, debts.error].find(Boolean) ?? null,
       });
       setDataLoading(false);
     }
@@ -261,8 +270,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   useEffect(() => {
     if (kind !== 'expenses') return;
     const sourceCurrencies = Array.from(new Set(
-      snapshot.expenses
-        .map(item => normalizeCurrencyCode(item.currency, expenseBaseCurrency))
+      [
+        ...snapshot.expenses.map(item => normalizeCurrencyCode(item.currency, expenseBaseCurrency)),
+        ...snapshot.debts.map(item => normalizeCurrencyCode(item.currency, expenseBaseCurrency)),
+      ]
         .filter(code => code !== expenseBaseCurrency),
     ));
 
@@ -311,7 +322,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [expenseBaseCurrency, kind, snapshot.expenses]);
+  }, [expenseBaseCurrency, kind, snapshot.debts, snapshot.expenses]);
 
   const data = useMemo(() => {
     const income = snapshot.income;
@@ -1770,7 +1781,17 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     const monthlyTotal = expensePeriodTotal;
     const recurringTotal = monthlyExpenses.filter(isRecurringExpense).reduce((sum, item) => sum + item.amount, 0);
     const monthlySubscriptionsTotal = monthlyExpenses.filter(isMonthlySubscriptionExpense).reduce((sum, item) => sum + item.amount, 0);
-    const debtInstallmentsTotal = monthlyExpenses.filter(isDebtInstallmentExpense).reduce((sum, item) => sum + item.amount, 0);
+    const expenseDebtInstallmentsTotal = monthlyExpenses.filter(isDebtInstallmentExpense).reduce((sum, item) => sum + item.amount, 0);
+    const scheduledDebtInstallmentsTotal = snapshot.debts.reduce((sum, debt) => {
+      const status = String(debt.status || 'active').trim().toLowerCase();
+      const remaining = parseMoney(debt.calculated_remaining_amount ?? debt.remaining_amount);
+      const monthlyPayment = parseMoney(debt.monthly_payment);
+      if (status === 'paid' || remaining <= 0 || monthlyPayment <= 0) return sum;
+      const debtCurrency = normalizeCurrencyCode(debt.currency, expenseBaseCurrency);
+      const converted = convertCurrencyAmount(monthlyPayment, debtCurrency, expenseBaseCurrency, expenseFxRates);
+      return sum + (converted ?? 0);
+    }, 0);
+    const debtInstallmentsTotal = scheduledDebtInstallmentsTotal > 0 ? scheduledDebtInstallmentsTotal : expenseDebtInstallmentsTotal;
     const fixedCommitmentsTotal = monthlySubscriptionsTotal + debtInstallmentsTotal;
     const expenseNow = new Date();
     const expenseYearOptions = Array.from({ length: 8 }, (_, index) => expenseNow.getFullYear() + 1 - index);

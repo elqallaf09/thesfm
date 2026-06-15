@@ -102,6 +102,17 @@ export type GoalRow = {
   created_at?: string | null;
   updated_at?: string | null;
 };
+
+export type DebtSnapshotItem = {
+  id: string;
+  name?: string | null;
+  monthly_payment?: number | string | null;
+  currency?: string | null;
+  status?: string | null;
+  remaining_amount?: number | string | null;
+  calculated_remaining_amount?: number | string | null;
+};
+
 export type GoalFormState = {
   id: string;
   name: string;
@@ -280,6 +291,7 @@ export interface Snapshot {
   expenses: SmartExpense[];
   savings: MoneyItem[];
   investments: MoneyItem[];
+  debts: DebtSnapshotItem[];
   goals: GoalItem[];
   error: DataLoadError | null;
 }

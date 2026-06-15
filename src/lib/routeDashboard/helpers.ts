@@ -22,6 +22,7 @@ export const emptySnapshot: Snapshot = {
   expenses: [],
   savings: [],
   investments: [],
+  debts: [],
   goals: [],
   error: null,
 };
