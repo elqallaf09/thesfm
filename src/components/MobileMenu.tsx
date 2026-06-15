@@ -7,6 +7,7 @@ import { ChevronDown, X } from 'lucide-react';
 import { UserChip } from '@/components/UserChip';
 import { ViewModeSelector } from '@/components/ViewModeSelector';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { useViewMode } from '@/hooks/useViewMode';
@@ -138,6 +139,10 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
 
         <div className="sfm-mobile-user">
           <UserChip />
+        </div>
+
+        <div className="sfm-mobile-lang">
+          <LanguageSwitcher variant="dark" compact />
         </div>
 
         <div className="sfm-mobile-view-mode">
@@ -298,11 +303,16 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
         html.dark[dir="ltr"] .sfm-mobile-panel,.dark[dir="ltr"] .sfm-mobile-panel,html.dark [dir="ltr"] .sfm-mobile-panel,.dark [dir="ltr"] .sfm-mobile-panel{box-shadow:24px 0 70px rgba(0,0,0,.50)!important}
         .sfm-mobile-layer.open .sfm-mobile-panel{transform:translateX(0)}
         .sfm-mobile-panel-head,.sfm-mobile-logo,.sfm-mobile-nav button{display:flex;align-items:center}
+        body.sfm-mobile-lock .sfm-language-dropdown,
+        body.sfm-mobile-lock .sfm-user-chip-wrap{visibility:hidden!important;pointer-events:none!important}
+        body.sfm-mobile-lock .sfm-mobile-panel .sfm-language-dropdown,
+        body.sfm-mobile-lock .sfm-mobile-panel .sfm-user-chip-wrap{visibility:visible!important;pointer-events:auto!important}
         .sfm-mobile-panel-head{justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--mobile-menu-border)}
         .sfm-mobile-head-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
         .sfm-mobile-logo{min-width:0;gap:10px}.sfm-mobile-logo img{object-fit:cover}.sfm-mobile-logo strong{display:block;color:var(--mobile-menu-accent);font-size:17px;font-weight:900;letter-spacing:0}.sfm-mobile-logo span{display:block;color:var(--mobile-menu-secondary);font-size:12px;font-weight:800;margin-top:2px}
         .sfm-mobile-close{flex:0 0 auto;width:42px;height:42px;border:1px solid var(--mobile-menu-border);border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.08);color:var(--mobile-menu-text);cursor:pointer}
         .sfm-mobile-user{padding:12px 0;border-bottom:1px solid var(--mobile-menu-border)}
+        .sfm-mobile-lang{display:flex;justify-content:center;padding:12px 0;border-bottom:1px solid var(--mobile-menu-border)}
         .sfm-mobile-view-mode{padding:12px 0;border-bottom:1px solid var(--mobile-menu-border)}
         .sfm-mobile-nav{display:grid;gap:8px;padding:12px 0 4px}
         .sfm-mobile-group{display:grid;gap:5px;border-bottom:1px solid var(--mobile-menu-border);padding-bottom:7px}
