@@ -15,7 +15,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import { getCurrency } from '@/lib/currencies';
+import { currencyDisplayName, getCurrency, getCurrencyOptions, type CurrencyLocale } from '@/lib/currencies';
 import { parseMoneyValue } from '@/lib/money';
 import { formatMarketPrice, normalizeMarketCurrencyCode, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { MARKET_EXCHANGE_OPTIONS, normalizeMarketExchange, type MarketExchangeId } from '@/lib/market/marketExchangeOptions';
@@ -220,7 +220,6 @@ interface Props {
 }
 
 const MARKET_TYPES: InvestmentType[] = ['stocks', 'fund', 'crypto'];
-const CURRENCY_OPTIONS = ['KWD', 'USD', 'EUR', 'GBP', 'SAR', 'AED', 'QAR', 'BHD', 'OMR', 'CAD', 'AUD', 'CHF', 'JPY'];
 const GOLD_PRODUCT_GRAMS: Record<string, number | null> = {
   bar: null,
   lira: 7.2,
@@ -406,6 +405,7 @@ export function InvestmentFormModal({
   const currencyInfo = useMemo(() => getCurrency(currency), [currency]);
   const accountCurrency = normalizedCurrency(currencyInfo.code || currency, 'KWD');
   const locale = dir === 'rtl' ? 'ar' : 'en';
+  const currencyLocale: CurrencyLocale = locale === 'ar' ? 'ar' : 'en';
 
   const [type, setType] = useState<InvestmentType>('stocks');
   const [name, setName] = useState('');
@@ -444,6 +444,16 @@ export function InvestmentFormModal({
   const [fxReloadKey, setFxReloadKey] = useState(0);
 
   const formCurrency = normalizedCurrency(investmentCurrency, accountCurrency);
+  const currencyOptions = useMemo(() => {
+    const seen = new Set<string>();
+    return [getCurrency(accountCurrency), getCurrency(formCurrency), ...getCurrencyOptions(currencyLocale)]
+      .filter(item => {
+        const code = normalizedCurrency(item.code, '');
+        if (!code || seen.has(code)) return false;
+        seen.add(code);
+        return true;
+      });
+  }, [accountCurrency, currencyLocale, formCurrency]);
   const selectedPrice = selectedAsset?.price ?? null;
   const hasLiveAssetPrice = selectedPrice !== null && Number.isFinite(selectedPrice) && selectedPrice > 0;
   const isMetal = type === 'gold' || type === 'silver';
@@ -1296,8 +1306,8 @@ export function InvestmentFormModal({
 
           <Field label={labels.investmentCurrency} required>
             <select value={formCurrency} onChange={event => setInvestmentCurrency(event.target.value)}>
-              {Array.from(new Set([accountCurrency, formCurrency, ...CURRENCY_OPTIONS])).map(code => (
-                <option key={code} value={code}>{code}</option>
+              {currencyOptions.map(item => (
+                <option key={item.code} value={item.code}>{item.code} - {currencyDisplayName(item, currencyLocale)}</option>
               ))}
             </select>
           </Field>
