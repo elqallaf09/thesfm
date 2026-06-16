@@ -66,6 +66,7 @@ export function WorkspaceStyles() {
         .delete-linked-note{border:1px solid rgba(245,158,11,.22);background:#FFFBEB;color:#92400E;border-radius:14px;padding:10px 12px;margin-top:10px!important;font-weight:900}
         .dark .transaction-row,.dark .activity-list div,.dark .delete-modal{background:var(--card);border-color:var(--border)}
         .dark .transaction-main strong,.dark .activity-list span{color:var(--foreground)}
+        .dark .transaction-amount,.dark .activity-list strong{color:#FFFFFF;text-shadow:0 1px 1px rgba(0,0,0,.24)}
         .dark .transaction-actions button{background:var(--sfm-card-elevated,#0F335C);color:var(--foreground);border-color:var(--border)}
         .dark .quick-card .quick-grid button{background:rgba(47,214,192,.12);border-color:rgba(167,243,240,.30);color:#EAF6FF}
         .dark .quick-card .quick-grid button:hover,.dark .quick-card .quick-grid button:focus-visible{background:rgba(47,214,192,.18);border-color:rgba(103,232,249,.58);color:#FFFFFF}
