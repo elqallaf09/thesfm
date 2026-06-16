@@ -723,11 +723,11 @@ export default function ProjectWorkspacePage() {
             <p>{model.description || tr.projectSummary}</p>
           </div>
           <div className="hero-actions">
-            <button type="button" onClick={() => router.push('/projects')}><Pencil size={16} /> {tr.editProject}</button>
-            <button type="button" onClick={openProjectExpenseModal}><Plus size={16} /> {tr.addExpense}</button>
-            <button type="button" onClick={openProjectIncomeModal}><Plus size={16} /> {tr.addIncome}</button>
-            <button type="button" onClick={() => setActiveTab('ai')}><Bot size={16} /> {tr.analyzeProject}</button>
-            <button type="button" onClick={() => router.push(`/business-hub?project=${project.id}#jurisdiction-wizard-module`)}>
+            <button className="hero-action-btn primary" type="button" onClick={() => router.push('/projects')}><Pencil size={16} /> {tr.editProject}</button>
+            <button className="hero-action-btn" type="button" onClick={openProjectExpenseModal}><Plus size={16} /> {tr.addExpense}</button>
+            <button className="hero-action-btn" type="button" onClick={openProjectIncomeModal}><Plus size={16} /> {tr.addIncome}</button>
+            <button className="hero-action-btn" type="button" onClick={() => setActiveTab('ai')}><Bot size={16} /> {tr.analyzeProject}</button>
+            <button className="hero-action-btn" type="button" onClick={() => router.push(`/business-hub?project=${project.id}#jurisdiction-wizard-module`)}>
               <Globe2 size={16} /> {tr.chooseJurisdiction}
             </button>
             <LanguageSwitcher variant="dark" compact />
