@@ -129,7 +129,7 @@ export function ExpenseModal({
         <section className="project-expense-ai-panel wide" aria-label={tr.aiReceiptReading}>
           <div className="project-expense-ai-head">
             <span className="project-expense-ai-icon"><Bot size={18} /></span>
-            <div>
+            <div className="project-expense-ai-copy">
               <strong>{tr.aiReceiptReading}</strong>
               <small>{tr.aiReceiptHelper}</small>
             </div>
