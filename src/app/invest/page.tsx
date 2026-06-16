@@ -41,7 +41,8 @@ const TYPES: InvestmentType[] = ['stocks', 'fund', 'crypto', 'gold', 'silver', '
 const RISKS: RiskLevel[] = ['low', 'medium', 'high'];
 const CHART_COLORS = ['#1D8CFF', '#18D4D4', '#10B981', '#F59E0B', '#6366F1', '#0B3A66', '#14B8A6', '#94A3B8'];
 const RISK_SCORE: Record<RiskLevel, number> = { low: 1, medium: 2, high: 3 };
-const LIVE_PRICE_REFRESH_MS = 5000;
+const LIVE_PRICE_REFRESH_MS = 3000;
+const LIVE_PRICE_BATCH_CONCURRENCY = 4;
 type InvestTab = 'portfolio' | 'assets' | 'performance' | 'risk' | 'reports';
 type PortfolioLiveTrend = {
   direction: 'up' | 'down' | 'flat';
@@ -704,7 +705,7 @@ export default function InvestPage() {
     const providerSymbol = investmentLinkedSymbol(item);
     if (!providerSymbol) return false;
 
-    setRefreshingPriceId(item.id);
+    if (!options?.silent) setRefreshingPriceId(item.id);
     try {
       const requestedCurrency = (item.nativeCurrency || item.priceCurrency || item.currency || currency).toUpperCase();
       const metalKind = investmentMetalKind(item);
@@ -821,7 +822,7 @@ export default function InvestPage() {
       if (!options?.silent) showToast(labels.priceUpdateFailed);
       return false;
     } finally {
-      setRefreshingPriceId(null);
+      if (!options?.silent) setRefreshingPriceId(null);
     }
   }
 
@@ -832,9 +833,18 @@ export default function InvestPage() {
     if (!options?.silent) setRefreshingAllPrices(true);
     try {
       let updatedCount = 0;
-      for (const item of refreshable) {
-        const updated = await handleRefreshPrice(item, { silent: true });
-        if (updated) updatedCount += 1;
+      const canRefreshInParallel = Boolean(session?.access_token) && refreshable.length > 1;
+      if (canRefreshInParallel) {
+        for (let index = 0; index < refreshable.length; index += LIVE_PRICE_BATCH_CONCURRENCY) {
+          const batch = refreshable.slice(index, index + LIVE_PRICE_BATCH_CONCURRENCY);
+          const results = await Promise.all(batch.map(item => handleRefreshPrice(item, { silent: true })));
+          updatedCount += results.filter(Boolean).length;
+        }
+      } else {
+        for (const item of refreshable) {
+          const updated = await handleRefreshPrice(item, { silent: true });
+          if (updated) updatedCount += 1;
+        }
       }
       if (!options?.silent) {
         showToast(updatedCount === refreshable.length ? t('invest_asset_priceUpdated') : labels.priceUpdateFailed);
