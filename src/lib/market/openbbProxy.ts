@@ -9,6 +9,7 @@ import {
 } from '@/lib/market/marketService';
 import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { fetchYahooHistory } from '@/lib/market/fetchYahooHistory';
+import { fetchYahooNormalizedQuote, type YahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 import symbolDirectory from '../../../openbb-service/data/symbols.json';
 
 const OPENBB_TIMEOUT_MS = 12000;
@@ -619,6 +620,169 @@ async function analyzeWithYahooFallback(input: {
   };
 }
 
+function yahooQuoteSymbols(providerSymbol: string, displaySymbol: string, assetType: MarketAssetType) {
+  const clean = (value: unknown) => String(value ?? '').trim().toUpperCase();
+  const compact = (value: unknown) => clean(value).replace(/[\\/:]/g, '').replace(/-/g, '');
+  const symbols = new Set<string>();
+  const provider = clean(providerSymbol);
+  const display = clean(displaySymbol);
+
+  if (provider) symbols.add(provider);
+  if (display) symbols.add(display);
+
+  if (assetType === 'crypto') {
+    const base = compact(display || provider).replace(/USD$/, '').replace(/USDT$/, '');
+    if (/^[A-Z0-9]{2,12}$/.test(base)) symbols.add(`${base}-USD`);
+  }
+
+  if (assetType === 'forex') {
+    const pair = compact(display || provider).replace(/=X$/, '');
+    if (/^[A-Z]{6}$/.test(pair)) symbols.add(`${pair}=X`);
+  }
+
+  return Array.from(symbols).filter(Boolean);
+}
+
+function analysisFromYahooQuote(input: {
+  quote: YahooNormalizedQuote;
+  providerSymbol: string;
+  displaySymbol: string;
+  assetType: MarketAssetType;
+  friendlyName?: string;
+  exchange?: unknown;
+  country?: unknown;
+  providerCurrency?: unknown;
+  openbbCode: string;
+}): (MarketAnalysis & { displaySymbol?: string; openbbService?: ProxyState }) | null {
+  const { quote, displaySymbol, providerSymbol, assetType } = input;
+  if (!quote.available || quote.price === null || !Number.isFinite(quote.price) || quote.price <= 0) return null;
+
+  const directory = directorySymbol(displaySymbol) ?? directorySymbol(quote.symbolUsed ?? '') ?? directorySymbol(providerSymbol);
+  const exchange = input.exchange ?? directory?.exchange;
+  const country = input.country ?? directory?.country;
+  const resolvedCurrency = resolveMarketCurrency({
+    providerCurrency: quote.currency ?? input.providerCurrency,
+    symbol: displaySymbol,
+    providerSymbol: quote.symbolUsed ?? providerSymbol,
+    exchange,
+    country,
+    assetType,
+  });
+  const priceUnit = detectPriceUnit({
+    price: quote.price,
+    currency: resolvedCurrency.currency,
+    providerCurrency: quote.currency ?? input.providerCurrency,
+    symbol: displaySymbol,
+    providerSymbol: quote.symbolUsed ?? providerSymbol,
+    exchange,
+    assetType,
+  });
+  const normalizePriceValue = (value: unknown) => normalizeMarketPrice({
+    price: optionalFiniteNumber(value) ?? null,
+    currency: resolvedCurrency.currency,
+    providerCurrency: quote.currency ?? input.providerCurrency,
+    symbol: displaySymbol,
+    providerSymbol: quote.symbolUsed ?? providerSymbol,
+    exchange,
+    assetType,
+    priceUnit,
+  }).price;
+  const latestPrice = normalizePriceValue(quote.price);
+  if (latestPrice === null || latestPrice <= 0) return null;
+
+  const change = normalizePriceValue(quote.change) ?? 0;
+  const changePercent = Number.isFinite(Number(quote.changePercent)) ? Number(quote.changePercent) : 0;
+  const bandValue = Math.max(Math.abs(change), latestPrice * 0.02);
+  const support = Math.max(0, latestPrice - bandValue);
+  const resistance = latestPrice + bandValue;
+  const volatility = Math.min(100, Math.max(Math.abs(changePercent), (bandValue / latestPrice) * 100));
+  const trend = changePercent > 0.35 ? 'bullish' : changePercent < -0.35 ? 'bearish' : 'neutral';
+  const riskLevel = assetType === 'crypto' ? 'high' : volatility >= 6 ? 'high' : volatility >= 2 ? 'medium' : 'low';
+  const lastUpdated = quote.marketTime ?? new Date().toISOString();
+  const name = input.friendlyName || quote.name || String(directory?.name ?? displaySymbol);
+
+  return {
+    success: true,
+    provider: 'yahoo',
+    dataStatus: 'delayed',
+    source: quote.source,
+    fallback: false,
+    fallbackReason: input.openbbCode,
+    symbol: displaySymbol,
+    displaySymbol,
+    providerSymbol: quote.symbolUsed ?? providerSymbol,
+    name,
+    assetType,
+    currency: resolvedCurrency.currency,
+    currencySource: resolvedCurrency.source,
+    priceUnit,
+    exchange: typeof exchange === 'string' ? exchange : undefined,
+    country: typeof country === 'string' ? country : undefined,
+    market: typeof exchange === 'string' ? exchange : undefined,
+    latestPrice,
+    changePercent,
+    quote: {
+      price: latestPrice,
+      change,
+      changePercent,
+      currency: resolvedCurrency.currency,
+      currencySource: resolvedCurrency.source,
+      priceUnit,
+      timestamp: lastUpdated,
+    },
+    fundamentals: undefined,
+    fundamentalsAvailable: false,
+    fundamentalsUnavailableReason: fundamentalsReason(assetType, undefined),
+    fundamentalsSource: undefined,
+    technicals: undefined,
+    trend,
+    riskLevel,
+    indicators: {
+      rsi: 50,
+      sma20: latestPrice,
+      sma50: latestPrice,
+      volatility: Number(volatility.toFixed(2)),
+    },
+    levels: {
+      support: Number(support.toFixed(6)),
+      resistance: Number(resistance.toFixed(6)),
+    },
+    history: [],
+    summary: 'Latest delayed quote is available, but historical chart data is not currently available from the configured provider.',
+    fetchedAt: new Date().toISOString(),
+    lastUpdated,
+    warnings: [
+      'Primary OpenBB historical analysis is unavailable; delayed Yahoo Finance quote data was used.',
+      'Historical chart candles are not available for this response.',
+    ],
+    openbbService: 'degraded',
+  };
+}
+
+async function analyzeWithYahooQuoteFallback(input: {
+  providerSymbol: string;
+  displaySymbol: string;
+  assetType: MarketAssetType;
+  friendlyName?: string;
+  exchange?: unknown;
+  country?: unknown;
+  providerCurrency?: unknown;
+  openbbCode: string;
+}) {
+  const quote = await fetchYahooNormalizedQuote({
+    requestedSymbol: input.displaySymbol,
+    symbols: yahooQuoteSymbols(input.providerSymbol, input.displaySymbol, input.assetType),
+    name: input.friendlyName || input.displaySymbol,
+    debugContext: {
+      route: '/api/market/analyze',
+      fallback: 'openbb_to_yahoo_quote',
+      assetType: input.assetType,
+    },
+  }).catch(() => null);
+
+  return quote ? analysisFromYahooQuote({ ...input, quote }) : null;
+}
+
 export async function proxyHealth() {
   const result = await fetchOpenBB('/health', undefined, { timeoutMs: OPENBB_HEALTH_TIMEOUT_MS, cacheTtlMs: 0 });
   if (!result.configured) return marketServiceNotConfigured();
@@ -673,6 +837,31 @@ export async function proxyAnalyze(
     if (!enriched) {
       const code = result.data?.fallback === true || result.data?.source === 'mock' ? 'provider_no_data' : 'response_mapping_failed';
       console.warn('OpenBB analyze mapping failed', { ...startedLog, status: result.status, elapsedMs: result.elapsedMs, code });
+      const yahooFallback = await analyzeWithYahooFallback({
+        providerSymbol,
+        displaySymbol,
+        assetType,
+        friendlyName,
+        exchange: metaInput?.exchange,
+        country: metaInput?.country,
+        providerCurrency: metaInput?.currency,
+        openbbCode: code,
+        openbbFromCache: result.fromCache,
+      });
+      if (yahooFallback) return yahooFallback;
+
+      const yahooQuoteFallback = await analyzeWithYahooQuoteFallback({
+        providerSymbol,
+        displaySymbol,
+        assetType,
+        friendlyName,
+        exchange: metaInput?.exchange,
+        country: metaInput?.country,
+        providerCurrency: metaInput?.currency,
+        openbbCode: code,
+      });
+      if (yahooQuoteFallback) return yahooQuoteFallback;
+
       return marketError(code, { openbbService: 'degraded' });
     }
     let marketAnalysis: MarketAnalysis & { displaySymbol?: string } = {
@@ -712,6 +901,18 @@ export async function proxyAnalyze(
     openbbFromCache: result.configured && result.available ? result.fromCache : false,
   });
   if (yahooFallback) return yahooFallback;
+
+  const yahooQuoteFallback = await analyzeWithYahooQuoteFallback({
+    providerSymbol,
+    displaySymbol,
+    assetType,
+    friendlyName,
+    exchange: metaInput?.exchange,
+    country: metaInput?.country,
+    providerCurrency: metaInput?.currency,
+    openbbCode: code,
+  });
+  if (yahooQuoteFallback) return yahooQuoteFallback;
 
   return marketError(code, {
     openbbService: result.configured ? (code === 'provider_no_data' || code === 'symbol_not_found' ? 'degraded' : 'unavailable') : 'not_configured',

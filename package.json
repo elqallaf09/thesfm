@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "symbols:sync": "node scripts/sync-market-symbols.mjs",
     "symbols:sync:kw": "node scripts/sync-market-symbols.mjs --only=boursa-kuwait",
+    "symbols:sync:crypto": "node scripts/sync-crypto-symbols.mjs",
     "symbols:validate": "node scripts/validate-market-symbols.mjs",
     "test": "vitest",
     "test:run": "vitest run",

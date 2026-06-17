@@ -272,7 +272,9 @@ function dedupeCandidates(candidates: AssetCandidate[]) {
       providerSymbol: candidate.providerSymbol?.toUpperCase(),
       providerSymbols: candidate.providerSymbols?.map(symbol => symbol.toUpperCase()),
     };
-    const key = `${normalized.symbol}:${normalized.assetType}`;
+    const key = normalized.assetType === 'crypto'
+      ? `${normalized.symbol}:${normalized.providerSymbol ?? ''}:${normalized.name}:${normalized.assetType}`
+      : `${normalized.symbol}:${normalized.assetType}`;
     if (!byKey.has(key)) byKey.set(key, normalized);
   }
   return Array.from(byKey.values());

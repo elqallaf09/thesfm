@@ -1,4 +1,5 @@
 import boursaKuwaitSymbols from '@/data/market-symbols/boursa-kuwait.json';
+import cryptoSymbols from '@/data/market-symbols/crypto.json';
 import dfmListedSymbols from '@/data/market-symbols/dfm-listed.json';
 import { normalizeAssetSearchText } from '@/lib/market/assetAliases';
 import { normalizeAssetType, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
@@ -51,6 +52,7 @@ type SearchParams = {
 
 const BUNDLED_SYMBOLS = [
   ...(boursaKuwaitSymbols as MarketSymbolRecord[]),
+  ...(cryptoSymbols as MarketSymbolRecord[]),
   ...(dfmListedSymbols as MarketSymbolRecord[]),
 ];
 

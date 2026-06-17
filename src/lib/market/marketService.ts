@@ -1,4 +1,5 @@
 import type { MarketCurrencySource, MarketPriceUnit } from '@/lib/market/marketCurrency';
+import cryptoSymbols from '@/data/market-symbols/crypto.json';
 
 export type MarketAssetType = 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity' | 'gold' | 'index';
 export type MarketTrend = 'bullish' | 'neutral' | 'bearish';
@@ -110,18 +111,23 @@ export type MarketSearchItem = {
 const SUPPORTED_ASSET_TYPES: MarketAssetType[] = ['stock', 'etf', 'crypto', 'forex', 'commodity', 'gold', 'index'];
 const COMMON_CURRENCY_CODES = ['USD', 'EUR', 'JPY', 'GBP', 'CHF', 'CAD', 'AUD', 'NZD'] as const;
 const COMMON_FOREX_PAIRS = ['USDJPY', 'EURUSD', 'GBPUSD', 'USDCHF', 'USDCAD', 'AUDUSD', 'NZDUSD', 'EURJPY', 'GBPJPY'] as const;
-const COMMON_CRYPTO_PAIRS: Record<string, string> = {
-  BTCUSD: 'BTC-USD',
-  ETHUSD: 'ETH-USD',
-  SOLUSD: 'SOL-USD',
-  XRPUSD: 'XRP-USD',
-  BNBUSD: 'BNB-USD',
-  ADAUSD: 'ADA-USD',
-  DOGEUSD: 'DOGE-USD',
-  TONUSD: 'TON11419-USD',
-  AVAXUSD: 'AVAX-USD',
-  LINKUSD: 'LINK-USD',
-};
+const CRYPTO_RECORDS = (cryptoSymbols as Array<{
+  symbol?: string;
+  provider_symbol?: string | null;
+  name?: string | null;
+  aliases?: string[] | null;
+}>)
+  .map(record => ({
+    symbol: String(record.symbol ?? '').trim().toUpperCase(),
+    providerSymbol: String(record.provider_symbol ?? '').trim().toUpperCase(),
+    name: String(record.name ?? record.symbol ?? '').trim(),
+    aliases: record.aliases ?? [],
+  }))
+  .filter(record => record.symbol && record.providerSymbol);
+
+const COMMON_CRYPTO_PAIRS: Record<string, string> = Object.fromEntries(
+  CRYPTO_RECORDS.map(record => [`${record.symbol}USD`, record.providerSymbol]),
+);
 const COMMON_METAL_PAIRS: Record<string, string> = {
   XAUUSD: 'GC=F',
   XAGUSD: 'SI=F',
@@ -148,6 +154,35 @@ function compactSymbol(symbol: unknown) {
     .replace(/^([A-Z]{6})=X$/, '$1')
     .replace(/^(FX|FOREX|OANDA|TVC)(?=[A-Z]{6}$)/, '')
     .replace(/^(NASDAQ|NYSE|AMEX|COINBASE)(?=[A-Z0-9.^=-]{1,12}$)/, '');
+}
+
+function compactCryptoSymbol(symbol: unknown) {
+  return compactSymbol(symbol).replace(/-/g, '');
+}
+
+function cryptoRecordForInput(symbol: unknown) {
+  const compact = compactCryptoSymbol(symbol);
+  if (!compact) return null;
+  return CRYPTO_RECORDS.find(record => {
+    const symbolKey = compactCryptoSymbol(record.symbol);
+    const providerKey = compactCryptoSymbol(record.providerSymbol);
+    const usdKey = `${symbolKey}USD`;
+    return compact === symbolKey || compact === usdKey || compact === providerKey;
+  }) ?? null;
+}
+
+function inferredCryptoRecord(symbol: unknown) {
+  const direct = cryptoRecordForInput(symbol);
+  if (direct) return direct;
+  const compact = compactCryptoSymbol(symbol);
+  const withoutQuote = compact.endsWith('USD') && compact.length > 5 ? compact.slice(0, -3) : compact;
+  if (!/^[A-Z0-9]{2,12}$/.test(withoutQuote)) return null;
+  return {
+    symbol: withoutQuote,
+    providerSymbol: `${withoutQuote}-USD`,
+    name: withoutQuote,
+    aliases: [withoutQuote, `${withoutQuote}USD`, `${withoutQuote}-USD`],
+  };
 }
 
 function isCurrencyCode(code: string) {
@@ -201,6 +236,7 @@ export function marketSymbolSuggestions(symbol: unknown) {
   const relatedSymbols = [
     ...COMMON_FOREX_PAIRS,
     ...Object.keys(COMMON_CRYPTO_PAIRS),
+    ...CRYPTO_RECORDS.flatMap(record => [record.symbol, record.name, ...record.aliases]),
     ...Object.entries(COMMON_METAL_PAIRS).map(([input, provider]) => {
       if (provider === 'GC=F') return input === 'GOLD' || input === 'XAU' ? 'XAUUSD' : input;
       if (provider === 'SI=F') return input === 'SILVER' || input === 'XAG' ? 'XAGUSD' : input;
@@ -208,7 +244,10 @@ export function marketSymbolSuggestions(symbol: unknown) {
     }),
   ].filter((item, index, list) => list.indexOf(item) === index);
 
-  const relatedMatches = relatedSymbols.filter(item => item.startsWith(compact) || item.includes(compact));
+  const relatedMatches = relatedSymbols.filter(item => {
+    const normalized = String(item).toUpperCase();
+    return normalized.startsWith(compact) || normalized.includes(compact);
+  });
   if (compact.length === 6) {
     const from = closestCurrencyCode(compact.slice(0, 3));
     const to = closestCurrencyCode(compact.slice(3, 6));
@@ -239,13 +278,26 @@ export function normalizeMarketSymbolInput(symbol: unknown, assetTypeInput?: unk
   }
 
   if (COMMON_CRYPTO_PAIRS[compact]) {
+    const record = cryptoRecordForInput(compact);
     return {
       valid: true as const,
-      symbol: compact,
-      displaySymbol: compact,
+      symbol: record ? `${record.symbol}USD` : compact,
+      displaySymbol: record ? record.symbol : compact,
       providerSymbol: COMMON_CRYPTO_PAIRS[compact],
       assetType: 'crypto' as MarketAssetType,
       suggestions: marketSymbolSuggestions(compact),
+    };
+  }
+
+  const requestedCrypto = requestedAssetType === 'crypto' ? inferredCryptoRecord(compact) : null;
+  if (requestedCrypto) {
+    return {
+      valid: true as const,
+      symbol: `${requestedCrypto.symbol}USD`,
+      displaySymbol: requestedCrypto.symbol,
+      providerSymbol: requestedCrypto.providerSymbol,
+      assetType: 'crypto' as MarketAssetType,
+      suggestions: marketSymbolSuggestions(requestedCrypto.symbol),
     };
   }
 

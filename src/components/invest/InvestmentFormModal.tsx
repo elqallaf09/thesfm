@@ -138,15 +138,21 @@ interface Props {
     symbolRequired: string;
     symbolOptional: string;
     marketOptional: string;
+    marketSource: string;
     investmentCurrency: string;
     purchasePricePerShare: string;
     currentPricePerShare: string;
     purchasePricePerUnit: string;
     currentPricePerUnit: string;
+    purchasePricePerCoin: string;
+    currentPricePerCoin: string;
     purchasePricePerGram: string;
     currentPricePerGram: string;
     purchaseTotal: string;
     purchaseTotalHelper: string;
+    cryptoQuantityHelper: string;
+    cryptoPurchasePriceHelper: string;
+    cryptoPurchaseTotalHelper: string;
     currentValueAuto: string;
     goldProductType: string;
     silverProductType: string;
@@ -265,9 +271,11 @@ function positiveProduct(a: number | null | undefined, b: number | null | undefi
   return a * b;
 }
 
-function toInputNumber(value: number | null | undefined, max = 10) {
-  if (value === null || value === undefined || !Number.isFinite(value)) return '';
-  return Number(value.toFixed(max)).toString();
+function toInputNumber(value: number | string | null | undefined, max = 10) {
+  const parsed = typeof value === 'number' ? null : parseMoneyValue(value);
+  const numeric = typeof value === 'number' ? value : parsed?.status === 'valid' ? parsed.value : null;
+  if (numeric === null || numeric === undefined || !Number.isFinite(numeric)) return '';
+  return Number(numeric.toFixed(max)).toString();
 }
 
 function formatNumber(value: number, decimals = 4) {
@@ -1148,6 +1156,31 @@ export function InvestmentFormModal({
   const activePriceHint = (isMarketType(type) && hasLiveAssetPrice) || (isMetal && effectiveLiveMetalPrice)
     ? labels.livePriceHint
     : labels.manualPriceHint;
+  const selectedUnitSymbol = selectedAsset?.symbol || (type === 'crypto' ? 'BTC' : labels.assetTypes[assetSearchType ?? 'stock'] ?? '');
+  const marketQuantityLabel = type === 'fund'
+    ? labels.numberOfUnits
+    : type === 'crypto'
+      ? labels.assetQuantity
+      : labels.quantity;
+  const marketQuantityHelper = type === 'crypto'
+    ? labels.cryptoQuantityHelper.replace('{symbol}', selectedUnitSymbol)
+    : labels.quantityHelper;
+  const purchaseUnitLabel = type === 'fund'
+    ? labels.purchasePricePerUnit
+    : type === 'crypto'
+      ? labels.purchasePricePerCoin
+      : labels.purchasePricePerShare;
+  const currentUnitLabel = type === 'fund'
+    ? labels.currentPricePerUnit
+    : type === 'crypto'
+      ? labels.currentPricePerCoin
+      : labels.currentPricePerShare;
+  const purchaseUnitHelper = type === 'crypto'
+    ? labels.cryptoPurchasePriceHelper.replace('{symbol}', selectedUnitSymbol)
+    : undefined;
+  const purchaseTotalHelper = type === 'crypto'
+    ? labels.cryptoPurchaseTotalHelper
+    : labels.purchaseTotalHelper;
 
   return (
     <div className="invest-overlay" role="presentation" onMouseDown={onClose}>
@@ -1162,7 +1195,7 @@ export function InvestmentFormModal({
           </button>
         </div>
 
-        <form className="invest-form invest-form--asset" onSubmit={handleSubmit}>
+        <form className="invest-form invest-form--asset" onSubmit={handleSubmit} noValidate>
           <FormSection title={labels.sectionAssetType} icon={<Building2 size={17} />} />
           <div className="invest-type-grid span-2">
             {typeOptions.map(option => (
@@ -1181,16 +1214,18 @@ export function InvestmentFormModal({
           <FormSection title={labels.sectionAssetDetails} icon={<CheckCircle2 size={17} />} />
           {isMarketType(type) ? (
             <>
-              <Field label={labels.exchange} className="span-2">
-                <select value={selectedExchange} onChange={event => handleExchangeChange(event.target.value)}>
-                  <option value="">{labels.exchangeAll}</option>
-                  {MARKET_EXCHANGE_OPTIONS.map(option => (
-                    <option key={option.id} value={option.id}>
-                      {dir === 'rtl' ? option.labelAr : option.labelEn}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+              {type !== 'crypto' && (
+                <Field label={labels.exchange} className="span-2">
+                  <select value={selectedExchange} onChange={event => handleExchangeChange(event.target.value)}>
+                    <option value="">{labels.exchangeAll}</option>
+                    {MARKET_EXCHANGE_OPTIONS.map(option => (
+                      <option key={option.id} value={option.id}>
+                        {dir === 'rtl' ? option.labelAr : option.labelEn}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
 
               <Field label={labels.name} error={errors.name || errors.asset} required className="span-2">
                 <div className="invest-asset-search">
@@ -1223,7 +1258,7 @@ export function InvestmentFormModal({
                         </div>
                       )}
                       {searchState === 'ready' && searchResults.map(asset => (
-                        <button key={`${asset.symbol}:${asset.provider_symbol ?? asset.asset_type}`} type="button" className="invest-asset-result" onClick={() => handleSelectAsset(asset)}>
+                        <button key={`${asset.symbol}:${asset.provider_symbol ?? asset.asset_type}:${asset.name_en ?? asset.name}`} type="button" className="invest-asset-result" onClick={() => handleSelectAsset(asset)}>
                           <span className="invest-asset-result-icon"><TrendingGlyph assetType={asset.asset_type} /></span>
                           <span className="invest-asset-result-body">
                             <strong>{localizedAssetName(asset, dir)}</strong>
@@ -1276,8 +1311,8 @@ export function InvestmentFormModal({
               <Field label={labels.symbolRequired} required>
                 <input value={selectedAsset?.symbol ?? ''} readOnly dir="ltr" />
               </Field>
-              <Field label={labels.marketOptional}>
-                <input value={selectedAsset ? localizedMarketName(selectedAsset, dir) : ''} readOnly />
+              <Field label={type === 'crypto' ? labels.marketSource : labels.marketOptional}>
+                <input value={selectedAsset ? localizedMarketName(selectedAsset, dir) || 'Crypto' : type === 'crypto' ? 'Crypto' : ''} readOnly />
               </Field>
             </>
           ) : (
@@ -1316,19 +1351,19 @@ export function InvestmentFormModal({
 
           {isMarketType(type) && (
             <>
-              <Field label={type === 'fund' ? labels.numberOfUnits : type === 'crypto' ? labels.assetQuantity : labels.quantity} error={errors.quantity} helper={labels.quantityHelper} required>
-                <input type="number" min="0" step={type === 'crypto' ? '0.00000001' : '0.000001'} value={quantity} onChange={event => setQuantity(event.target.value)} dir="ltr" inputMode="decimal" />
+              <Field label={marketQuantityLabel} error={errors.quantity} helper={marketQuantityHelper} required>
+                <input type="number" min="0" step="any" value={quantity} onChange={event => setQuantity(event.target.value)} dir="ltr" inputMode="decimal" />
               </Field>
-              <Field label={type === 'fund' ? labels.purchasePricePerUnit : labels.purchasePricePerShare} error={errors.purchasePrice}>
+              <Field label={purchaseUnitLabel} error={errors.purchasePrice} helper={purchaseUnitHelper}>
                 <MoneyInput currency={formCurrency} value={purchasePrice} onChange={setPurchasePrice} />
               </Field>
-              <Field label={labels.purchaseTotal} error={errors.purchaseTotal || errors.purchaseBasis} helper={labels.purchaseTotalHelper}>
+              <Field label={labels.purchaseTotal} error={errors.purchaseTotal || errors.purchaseBasis} helper={purchaseTotalHelper}>
                 <MoneyInput currency={formCurrency} value={purchaseTotalInput} onChange={setPurchaseTotalInput} />
               </Field>
               {hasLiveAssetPrice ? (
-                <ReadonlyMoney label={type === 'fund' ? labels.currentPricePerUnit : labels.currentPricePerShare} currency={formCurrency} value={selectedPrice!} helper={labels.livePriceHint} />
+                <ReadonlyMoney label={currentUnitLabel} currency={formCurrency} value={selectedPrice!} helper={labels.livePriceHint} />
               ) : (
-                <Field label={type === 'fund' ? labels.currentPricePerUnit : labels.currentPricePerShare} error={errors.currentPrice} helper={activePriceHint}>
+                <Field label={currentUnitLabel} error={errors.currentPrice} helper={activePriceHint}>
                   <MoneyInput currency={formCurrency} value={currentPrice} onChange={setCurrentPrice} />
                 </Field>
               )}
@@ -1347,10 +1382,10 @@ export function InvestmentFormModal({
                 </select>
               </Field>
               <Field label={labels.grams} error={errors.grams} required>
-                <input type="number" min="0" step="0.0001" value={metalGrams} onChange={event => setMetalGrams(event.target.value)} dir="ltr" inputMode="decimal" />
+                <input type="number" min="0" step="any" value={metalGrams} onChange={event => setMetalGrams(event.target.value)} dir="ltr" inputMode="decimal" />
               </Field>
               <Field label={labels.metalCount || labels.count} error={errors.quantity} required>
-                <input type="number" min="0" step="0.000001" value={quantity} onChange={event => setQuantity(event.target.value)} dir="ltr" inputMode="decimal" />
+                <input type="number" min="0" step="any" value={quantity} onChange={event => setQuantity(event.target.value)} dir="ltr" inputMode="decimal" />
               </Field>
               <Field label={labels.purchasePricePerGram} error={errors.purchasePrice} required>
                 <MoneyInput currency={formCurrency} value={purchasePrice} onChange={setPurchasePrice} />
@@ -2045,7 +2080,7 @@ function MoneyInput({ currency, value, onChange }: { currency: string; value: st
   return (
     <div className="invest-money-input">
       <span dir="ltr">{currency}</span>
-      <input type="number" min="0" step="0.000001" value={value} onChange={event => onChange(event.target.value)} dir="ltr" inputMode="decimal" />
+      <input type="number" min="0" step="any" value={value} onChange={event => onChange(event.target.value)} dir="ltr" inputMode="decimal" />
     </div>
   );
 }
@@ -2053,7 +2088,7 @@ function MoneyInput({ currency, value, onChange }: { currency: string; value: st
 function PercentInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
     <div className="invest-suffix-input">
-      <input type="number" min="-100" max="1000" step="0.1" value={value} onChange={event => onChange(event.target.value)} dir="ltr" />
+      <input type="number" min="-100" max="1000" step="any" value={value} onChange={event => onChange(event.target.value)} dir="ltr" />
       <span>%</span>
     </div>
   );

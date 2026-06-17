@@ -809,9 +809,7 @@ export function hasUsableAnalysis(result: MarketResult): result is MarketAnalysi
   return Boolean(
     result.success
     && Number.isFinite(result.latestPrice)
-    && result.latestPrice > 0
-    && Array.isArray(result.history)
-    && result.history.length > 0,
+    && result.latestPrice > 0,
   );
 }
 

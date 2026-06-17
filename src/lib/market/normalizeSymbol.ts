@@ -1,21 +1,23 @@
 import { validateSymbol, type MarketAssetType } from '@/lib/market/marketService';
+import cryptoSymbols from '@/data/market-symbols/crypto.json';
 
 const SUPPORTED_ASSET_TYPES: MarketAssetType[] = ['stock', 'etf', 'crypto', 'forex', 'commodity', 'gold', 'index'];
 const CURRENCY_CODES = ['USD', 'EUR', 'JPY', 'GBP', 'CHF', 'CAD', 'AUD', 'NZD'] as const;
 const COMMON_FOREX_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'NZDUSD', 'USDCAD', 'EURJPY', 'GBPJPY'] as const;
 const ETF_SYMBOLS = new Set(['QQQ', 'SPY', 'VOO', 'DIA', 'IWM']);
-const CRYPTO_PAIRS: Record<string, { display: string; provider: string; alternatives: string[] }> = {
-  BTCUSD: { display: 'BTC/USD', provider: 'BTC-USD', alternatives: ['BTC-USD', 'BTC/USD', 'BTCUSD'] },
-  ETHUSD: { display: 'ETH/USD', provider: 'ETH-USD', alternatives: ['ETH-USD', 'ETH/USD', 'ETHUSD'] },
-  SOLUSD: { display: 'SOL/USD', provider: 'SOL-USD', alternatives: ['SOL-USD', 'SOL/USD', 'SOLUSD'] },
-  XRPUSD: { display: 'XRP/USD', provider: 'XRP-USD', alternatives: ['XRP-USD', 'XRP/USD', 'XRPUSD'] },
-  BNBUSD: { display: 'BNB/USD', provider: 'BNB-USD', alternatives: ['BNB-USD', 'BNB/USD', 'BNBUSD'] },
-  ADAUSD: { display: 'ADA/USD', provider: 'ADA-USD', alternatives: ['ADA-USD', 'ADA/USD', 'ADAUSD'] },
-  DOGEUSD: { display: 'DOGE/USD', provider: 'DOGE-USD', alternatives: ['DOGE-USD', 'DOGE/USD', 'DOGEUSD'] },
-  TONUSD: { display: 'TON/USD', provider: 'TON11419-USD', alternatives: ['TON11419-USD', 'TON/USD', 'TONUSD'] },
-  AVAXUSD: { display: 'AVAX/USD', provider: 'AVAX-USD', alternatives: ['AVAX-USD', 'AVAX/USD', 'AVAXUSD'] },
-  LINKUSD: { display: 'LINK/USD', provider: 'LINK-USD', alternatives: ['LINK-USD', 'LINK/USD', 'LINKUSD'] },
-};
+const CRYPTO_PAIRS: Record<string, { display: string; provider: string; alternatives: string[] }> = (
+  cryptoSymbols as Array<{ symbol?: string; provider_symbol?: string | null; aliases?: string[] | null }>
+).reduce<Record<string, { display: string; provider: string; alternatives: string[] }>>((pairs, record) => {
+  const symbol = String(record.symbol ?? '').trim().toUpperCase();
+  const provider = String(record.provider_symbol ?? '').trim().toUpperCase();
+  if (!symbol || !provider) return pairs;
+  pairs[`${symbol}USD`] = {
+    display: `${symbol}/USD`,
+    provider,
+    alternatives: [provider, `${symbol}/USD`, `${symbol}USD`, symbol, ...(record.aliases ?? [])],
+  };
+  return pairs;
+}, {});
 const METAL_PAIRS: Record<string, { display: string; provider: string; assetType: MarketAssetType; alternatives: string[] }> = {
   XAUUSD: { display: 'XAU/USD', provider: 'XAUUSD', assetType: 'gold', alternatives: ['XAUUSD', 'XAU/USD', 'GC=F'] },
   XAGUSD: { display: 'XAG/USD', provider: 'XAGUSD', assetType: 'commodity', alternatives: ['XAGUSD', 'XAG/USD', 'SI=F'] },
