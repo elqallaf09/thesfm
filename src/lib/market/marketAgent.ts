@@ -619,7 +619,7 @@ export function analyzeMarketAgentFromHistory(input: MarketAgentInput, history: 
     disclaimerArabic: MARKET_AGENT_DISCLAIMER_AR,
     disclaimerEnglish: MARKET_AGENT_DISCLAIMER_EN,
     dataStatus: 'available',
-    source: input.source ?? 'openbb',
+    source: input.source ?? 'yahoo',
     updatedAt: input.updatedAt ?? new Date().toISOString(),
     debugSignals: {
       bullishScore,

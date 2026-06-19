@@ -88,7 +88,7 @@ async function analyzeResolved(input: {
     suggestions: resolved.suggestions,
     openbbService: result.openbbService,
     dataStatus: 'unavailable',
-    source: 'openbb',
+    source: 'yahoo',
     fallback: false,
     warnings: result.warnings,
   });

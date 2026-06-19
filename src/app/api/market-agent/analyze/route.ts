@@ -256,7 +256,7 @@ export async function POST(request: NextRequest) {
       symbol: '',
       assetType,
       timeframe,
-      source: 'openbb',
+      source: 'yahoo',
       updatedAt: new Date().toISOString(),
     }, 'INVALID_SYMBOL'), { status: 400 });
   }
@@ -267,19 +267,19 @@ export async function POST(request: NextRequest) {
       symbol: displayInput || rawSymbol,
       assetType,
       timeframe,
-      source: 'openbb',
+      source: 'yahoo',
       updatedAt: new Date().toISOString(),
     }, 'INVALID_SYMBOL'), { status: 422 });
   }
 
   const config = MARKET_AGENT_TIMEFRAME_CONFIG[timeframe];
-  let lastSource = 'openbb';
+  let lastSource = 'yahoo';
   let lastCandidate = candidates[0];
 
   for (const candidate of candidates) {
     lastCandidate = candidate;
     const result = await proxyHistory(candidate.providerSymbol, candidate.providerAssetType, config.period, config.interval);
-    lastSource = String((result as Record<string, unknown>).source ?? 'openbb');
+    lastSource = String((result as Record<string, unknown>).source ?? 'yahoo');
     if (!result.success || !Array.isArray(result.history) || result.history.length === 0) continue;
 
     const rawPoints = normalizeMarketAgentPoints(result.history);

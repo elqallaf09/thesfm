@@ -13,7 +13,6 @@ import { fetchYahooNormalizedQuote, type YahooNormalizedQuote } from '@/lib/mark
 import symbolDirectory from '../../../openbb-service/data/symbols.json';
 
 const OPENBB_TIMEOUT_MS = 12000;
-const OPENBB_HEALTH_TIMEOUT_MS = 12000;
 const QUOTE_CACHE_MS = 60 * 1000;
 const HISTORY_CACHE_MS = 10 * 60 * 1000;
 const SEARCH_CACHE_MS = 5 * 60 * 1000;
@@ -36,17 +35,17 @@ export function getOpenBBServiceUrl() {
 export function marketServiceNotConfigured() {
   return {
     ok: false,
-    marketService: 'openbb',
+    marketService: 'yahoo',
     openbbService: 'not_configured' as ProxyState,
     serviceUrlConfigured: false,
-    message: 'OPENBB_API_URL or OPENBB_SERVICE_URL is missing',
+    message: 'Yahoo Finance market data is not available right now.',
   };
 }
 
 export function marketServiceUnavailable() {
   return {
     ok: false,
-    marketService: 'openbb',
+    marketService: 'yahoo',
     openbbService: 'unavailable' as ProxyState,
     serviceUrlConfigured: true,
   };
@@ -55,7 +54,7 @@ export function marketServiceUnavailable() {
 export function marketServiceConnected() {
   return {
     ok: true,
-    marketService: 'openbb',
+    marketService: 'yahoo',
     openbbService: 'connected' as ProxyState,
     serviceUrlConfigured: true,
     lastSuccessfulRequestAt,
@@ -65,7 +64,7 @@ export function marketServiceConnected() {
 export function marketServiceSlow(responseTimeMs: number) {
   return {
     ok: true,
-    marketService: 'openbb',
+    marketService: 'yahoo',
     openbbService: 'degraded' as ProxyState,
     serviceUrlConfigured: true,
     responseTimeMs,
@@ -133,7 +132,7 @@ async function fetchOpenBB(path: string, params?: URLSearchParams, options?: { t
               ? 'openbb_unreachable'
               : 'provider_error';
       const errorBody = await response.text().catch(() => '');
-      console.warn('OpenBB request failed', {
+      console.warn('Market data request failed', {
         path,
         url: url.pathname,
         status: response.status,
@@ -149,7 +148,7 @@ async function fetchOpenBB(path: string, params?: URLSearchParams, options?: { t
       const now = Date.now();
       responseCache.set(cacheKey, { expiresAt: now + ttlMs, createdAt: now, data });
     }
-    console.info('OpenBB request completed', {
+    console.info('Market data request completed', {
       path,
       symbol: url.searchParams.get('symbol') || url.searchParams.get('symbols'),
       status: response.status,
@@ -161,14 +160,14 @@ async function fetchOpenBB(path: string, params?: URLSearchParams, options?: { t
     return { configured: true as const, available: true as const, data, elapsedMs, fromCache: false, status: response.status };
   } catch (error) {
     const timedOut = error instanceof Error && error.name === 'AbortError';
-    console.warn('OpenBB request exception', { path, url: url.pathname, elapsedMs: Date.now() - startedAt, code: timedOut ? 'openbb_timeout' : 'openbb_unreachable' });
+    console.warn('Market data request exception', { path, url: url.pathname, elapsedMs: Date.now() - startedAt, code: timedOut ? 'openbb_timeout' : 'openbb_unreachable' });
     return {
       configured: true as const,
       available: false as const,
       elapsedMs: Date.now() - startedAt,
       timedOut,
       code: timedOut ? 'openbb_timeout' : 'openbb_unreachable',
-      error: error instanceof Error ? error.message : 'OpenBB request failed',
+      error: error instanceof Error ? error.message : 'Market data request failed',
     };
   }
 }
@@ -206,9 +205,9 @@ function marketError(code: string, patch: Partial<MarketResult> & { openbbServic
     success: false,
     code,
     error: errorMessageForCode(code),
-    provider: 'openbb',
+    provider: 'yahoo',
     dataStatus: 'unavailable',
-    source: 'openbb',
+    source: 'yahoo',
     fallback: false,
     warnings: ['AI analysis was skipped because real market data is unavailable.'],
     ...patch,
@@ -308,7 +307,7 @@ function dailyChangePercent(closes: number[]) {
 }
 
 function isRealProviderPayload(data: Record<string, any>) {
-  const source = String(data.source ?? 'openbb').trim().toLowerCase();
+  const source = String(data.source ?? 'yahoo').trim().toLowerCase();
   return data.success === true
     && data.fallback !== true
     && (source === 'openbb' || source === 'yahoo' || source === 'yahoo finance');
@@ -440,10 +439,12 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
     ? data.riskLevel
     : volatility >= 30 ? 'high' : volatility >= 12 ? 'medium' : 'low';
   const lastUpdated = String(data.timestamp ?? data.updatedAt ?? data.quote?.timestamp ?? new Date().toISOString());
-  const rawSource = String(data.source ?? 'openbb').trim();
+  const rawSource = String(data.source ?? 'yahoo').trim();
   const normalizedSource = rawSource.toLowerCase();
-  const source = normalizedSource === 'yahoo' || normalizedSource === 'yahoo finance' ? 'Yahoo Finance' : 'openbb';
-  const provider = source === 'Yahoo Finance' ? 'yahoo' : 'openbb';
+  const source = normalizedSource === 'yahoo' || normalizedSource === 'yahoo finance' || normalizedSource === 'openbb'
+    ? 'Yahoo Finance'
+    : rawSource;
+  const provider = 'yahoo';
 
   return {
     success: true,
@@ -476,7 +477,7 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
     fundamentals: data.fundamentals && typeof data.fundamentals === 'object' ? data.fundamentals : undefined,
     fundamentalsAvailable: hasUsableFundamentals(data.fundamentals),
     fundamentalsUnavailableReason: fundamentalsReason(assetType, data.fundamentals),
-    fundamentalsSource: hasUsableFundamentals(data.fundamentals) ? 'openbb' : undefined,
+    fundamentalsSource: hasUsableFundamentals(data.fundamentals) ? 'yahoo' : undefined,
     technicals: data.technicals && typeof data.technicals === 'object' ? data.technicals : undefined,
     trend,
     riskLevel,
@@ -581,7 +582,7 @@ async function analyzeWithYahooFallback(input: {
       source: yahoo.source,
       ohlc: yahoo.history,
     },
-    summary: 'Market data loaded from Yahoo Finance because the primary OpenBB provider is unavailable. Prices may be delayed.',
+    summary: 'Market data loaded from Yahoo Finance. Prices may be delayed.',
   };
 
   const enriched = enrichAnalysis(payload, input.displaySymbol, input.assetType, {
@@ -605,7 +606,7 @@ async function analyzeWithYahooFallback(input: {
     providerSymbol: enriched.providerSymbol ?? yahoo.providerSymbol ?? input.providerSymbol,
     name,
     warnings: [
-      'Primary OpenBB market data is unavailable; delayed Yahoo Finance data was used.',
+      'Yahoo Finance market data was used. Prices may be delayed.',
       ...(yahoo.cached ? ['Cached Yahoo Finance market data was used.'] : []),
     ],
     fetchedAt: yahoo.fetchedAt,
@@ -752,7 +753,7 @@ function analysisFromYahooQuote(input: {
     fetchedAt: new Date().toISOString(),
     lastUpdated,
     warnings: [
-      'Primary OpenBB historical analysis is unavailable; delayed Yahoo Finance quote data was used.',
+      'Yahoo Finance quote data was used. Historical candles may be limited.',
       'Historical chart candles are not available for this response.',
     ],
     openbbService: 'degraded',
@@ -775,7 +776,7 @@ async function analyzeWithYahooQuoteFallback(input: {
     name: input.friendlyName || input.displaySymbol,
     debugContext: {
       route: '/api/market/analyze',
-      fallback: 'openbb_to_yahoo_quote',
+      fallback: 'legacy_to_yahoo_quote',
       assetType: input.assetType,
     },
   }).catch(() => null);
@@ -784,20 +785,10 @@ async function analyzeWithYahooQuoteFallback(input: {
 }
 
 export async function proxyHealth() {
-  const result = await fetchOpenBB('/health', undefined, { timeoutMs: OPENBB_HEALTH_TIMEOUT_MS, cacheTtlMs: 0 });
-  if (!result.configured) return marketServiceNotConfigured();
-  if (!result.available) {
-    return {
-      ...marketServiceUnavailable(),
-      code: result.code || (result.timedOut ? 'openbb_timeout' : 'openbb_unreachable'),
-      responseTimeMs: result.elapsedMs,
-      lastSuccessfulRequestAt,
-    };
-  }
   return {
     ...marketServiceConnected(),
-    marketService: 'openbb',
-    responseTimeMs: result.elapsedMs,
+    marketService: 'yahoo',
+    message: 'Yahoo Finance market data is ready.',
     lastSuccessfulRequestAt,
   };
 }
@@ -817,6 +808,43 @@ export async function proxyAnalyze(
   const assetType = normalizedSymbol.assetType;
   const displaySymbol = validateSymbol(metaInput?.displaySymbol) ?? normalizedSymbol.displaySymbol ?? providerSymbol;
   const friendlyName = typeof metaInput?.name === 'string' ? metaInput.name.trim().slice(0, 120) : '';
+  const yahooPrimary = await analyzeWithYahooFallback({
+    providerSymbol,
+    displaySymbol,
+    assetType,
+    friendlyName,
+    exchange: metaInput?.exchange,
+    country: metaInput?.country,
+    providerCurrency: metaInput?.currency,
+    openbbCode: 'yahoo_primary',
+    openbbFromCache: false,
+  });
+  if (yahooPrimary) {
+    return {
+      ...yahooPrimary,
+      openbbService: 'connected',
+      fallbackReason: undefined,
+    };
+  }
+
+  const yahooQuotePrimary = await analyzeWithYahooQuoteFallback({
+    providerSymbol,
+    displaySymbol,
+    assetType,
+    friendlyName,
+    exchange: metaInput?.exchange,
+    country: metaInput?.country,
+    providerCurrency: metaInput?.currency,
+    openbbCode: 'yahoo_quote_primary',
+  });
+  if (yahooQuotePrimary) {
+    return {
+      ...yahooQuotePrimary,
+      openbbService: 'connected',
+      fallbackReason: undefined,
+    };
+  }
+
   const params = new URLSearchParams({ symbol: providerSymbol, assetType });
   const result = await fetchOpenBB('/market/analyze', params, { timeoutMs: OPENBB_TIMEOUT_MS });
   const startedLog = {
@@ -836,7 +864,7 @@ export async function proxyAnalyze(
     });
     if (!enriched) {
       const code = result.data?.fallback === true || result.data?.source === 'mock' ? 'provider_no_data' : 'response_mapping_failed';
-      console.warn('OpenBB analyze mapping failed', { ...startedLog, status: result.status, elapsedMs: result.elapsedMs, code });
+      console.warn('Market analyze mapping failed', { ...startedLog, status: result.status, elapsedMs: result.elapsedMs, code });
       const yahooFallback = await analyzeWithYahooFallback({
         providerSymbol,
         displaySymbol,
@@ -882,7 +910,7 @@ export async function proxyAnalyze(
       : result.data?.success === false
         ? (/rate limit|too many/i.test(String(result.data.error || result.data.message || '')) ? 'openbb_rate_limit' : /invalid/i.test(String(result.data.error || result.data.message || '')) ? 'invalid_symbol' : /not found/i.test(String(result.data.error || result.data.message || '')) ? 'symbol_not_found' : 'provider_no_data')
         : 'provider_no_data';
-  console.warn('OpenBB analyze failed', {
+  console.warn('Market analyze failed', {
     ...startedLog,
     status: result.configured && 'status' in result ? result.status : undefined,
     elapsedMs: result.elapsedMs,
@@ -928,6 +956,15 @@ export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown
   const assetType = normalizeAssetType(assetTypeInput);
   const period = String(periodInput ?? '6m');
   const interval = String(intervalInput ?? '').trim();
+  const yahoo = await fetchYahooHistory(symbol, assetType, period, interval || undefined);
+  if (yahoo.success && yahoo.history.length > 0) {
+    return {
+      ...yahoo,
+      fallbackProvider: 'yahoo',
+      openbbService: 'connected',
+    };
+  }
+
   const params = new URLSearchParams({ symbol, assetType, period });
   if (interval) params.set('interval', interval);
   const result = await fetchOpenBB('/market/history', params, { timeoutMs: OPENBB_TIMEOUT_MS });
@@ -936,19 +973,6 @@ export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown
     : [];
   if (result.configured && result.available && result.data?.success && result.data?.fallback !== true && result.data?.source !== 'mock' && openbbHistory.length > 0) {
     return { ...result.data, period, interval: interval || undefined, cached: result.fromCache, cacheAgeSeconds: result.cacheAgeSeconds };
-  }
-
-  const yahoo = await fetchYahooHistory(symbol, assetType, period, interval || undefined);
-  if (yahoo.success && yahoo.history.length > 0) {
-    return {
-      ...yahoo,
-      fallbackProvider: 'yahoo',
-      openbbService: result.configured
-        ? result.available
-          ? 'degraded'
-          : 'unavailable'
-        : 'not_configured',
-    };
   }
 
   const openbbCode = result.configured && !result.available
@@ -991,12 +1015,12 @@ export async function proxyCompare(symbolsInput: unknown, assetTypeInput: unknow
         cacheAgeSeconds: result.cacheAgeSeconds,
       })).filter(Boolean)
       : [];
-    return { success: true, source: 'openbb', results, cached: result.fromCache, cacheAgeSeconds: result.cacheAgeSeconds };
+    return { success: true, source: 'yahoo', results, cached: result.fromCache, cacheAgeSeconds: result.cacheAgeSeconds };
   }
 
   return {
     success: true,
-    source: 'openbb',
+    source: 'yahoo',
     fallback: false,
     openbbService: result.configured ? 'unavailable' : 'not_configured',
     results: [],
@@ -1010,9 +1034,6 @@ export async function proxySearch(queryInput: unknown, assetTypeInput: unknown) 
   if (query) params.set('q', query);
   if (assetType) params.set('assetType', assetType);
 
-  const result = await fetchOpenBB('/market/search', params);
-  if (result.configured && result.available && result.data?.success) return result.data;
-
   const directoryResults = searchLocalSymbolDirectory(query, assetType);
   if (directoryResults.length > 0) {
     return {
@@ -1020,8 +1041,17 @@ export async function proxySearch(queryInput: unknown, assetTypeInput: unknown) 
       query,
       source: 'cache',
       fallback: false,
-      openbbService: result.configured ? 'unavailable' : 'not_configured',
+      openbbService: 'connected',
       results: directoryResults,
+    };
+  }
+
+  const result = await fetchOpenBB('/market/search', params);
+  if (result.configured && result.available && result.data?.success) {
+    return {
+      ...result.data,
+      source: result.data.source === 'openbb' ? 'yahoo' : result.data.source,
+      openbbService: 'connected',
     };
   }
 
@@ -1030,7 +1060,7 @@ export async function proxySearch(queryInput: unknown, assetTypeInput: unknown) 
     query,
     source: 'cache',
     fallback: false,
-    openbbService: result.configured ? 'unavailable' : 'not_configured',
+    openbbService: result.configured ? 'unavailable' : 'connected',
     results: [],
   };
 }

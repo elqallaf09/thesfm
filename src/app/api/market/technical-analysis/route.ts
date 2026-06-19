@@ -116,7 +116,7 @@ function partialOhlcResponse(
       price: analysis.latestPrice,
       currentPrice: analysis.latestPrice,
       currency: analysis.currency ?? analysis.quote?.currency,
-      source: analysis.source ?? 'openbb',
+      source: analysis.source ?? 'yahoo',
       updatedAt,
       rsi: analysis.indicators.rsi,
       sma20: analysis.indicators.sma20,
@@ -236,7 +236,7 @@ export async function GET(request: NextRequest) {
         sma50: analysis.indicators.sma50,
       },
       summary: analysis.summary,
-      source: analysis.source ?? 'openbb',
+      source: analysis.source ?? 'yahoo',
       updated_at: analysis.fetchedAt ?? new Date().toISOString(),
       attemptedSymbols: candidates.map(item => item.symbol),
     }, { status: 200, headers: cacheHeaders });

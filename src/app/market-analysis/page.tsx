@@ -87,11 +87,11 @@ import { MarketAsyncToolStyles } from '@/components/market-analysis/MarketStyles
 import { MarketPageStyles } from '@/components/market-analysis/MarketPageStyles';
 import { PriceHistoryChart, MarketMetric } from '@/components/market-analysis/MarketChartComponents';
 
-function marketSourceLabel(source?: string | null, fallback = 'OpenBB') {
+function marketSourceLabel(source?: string | null, fallback = 'Yahoo Finance') {
   const clean = String(source ?? '').trim();
   if (!clean) return fallback;
-  if (clean.toLowerCase() === 'openbb') return 'OpenBB';
-  if (clean.toLowerCase() === 'yahoo') return 'Yahoo Finance';
+  if (clean.toLowerCase() === 'openbb') return 'Yahoo Finance';
+  if (clean.toLowerCase() === 'yahoo' || clean.toLowerCase() === 'yahoo finance') return 'Yahoo Finance';
   return clean;
 }
 
@@ -1670,7 +1670,7 @@ export default function MarketAnalysisPage() {
           <MarketStatusCard
             icon={<Activity size={18} />}
             label={t('market_data_source')}
-            value={selected ? (selected.cached ? t('market_cached_data') : selectedSourceLabel) : 'OpenBB'}
+            value={selected ? (selected.cached ? t('market_cached_data') : selectedSourceLabel) : 'Yahoo Finance'}
             helper={t('market_status_source_hint')}
             valueDir={selected?.cached ? undefined : 'ltr'}
           />
@@ -2327,7 +2327,7 @@ export default function MarketAnalysisPage() {
                         <span className={asset.changePercent >= 0 ? 'up' : 'down'}>{percent(asset.changePercent)}</span>
                         <span>{asset.indicators.rsi}</span>
                         <span>{t(`market_risk_${asset.riskLevel}`)}</span>
-                        <span>{marketSourceLabel(view.source ?? view.provider, view.fallback ? t('market_no_data') : 'OpenBB')}</span>
+                        <span>{marketSourceLabel(view.source ?? view.provider, view.fallback ? t('market_no_data') : 'Yahoo Finance')}</span>
                       </div>
                     );
                   })}
@@ -2458,7 +2458,7 @@ export default function MarketAnalysisPage() {
                         <span className={asset.changePercent >= 0 ? 'up' : 'down'}>{percent(asset.changePercent)}</span>
                         <span>{asset.indicators.rsi}</span>
                         <span>{t(`market_risk_${asset.riskLevel}`)}</span>
-                        <span>{marketSourceLabel(view.source ?? view.provider, view.fallback ? t('market_no_data') : 'OpenBB')}</span>
+                        <span>{marketSourceLabel(view.source ?? view.provider, view.fallback ? t('market_no_data') : 'Yahoo Finance')}</span>
                       </div>
                     );
                   })}

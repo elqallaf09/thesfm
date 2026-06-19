@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
       range: requestedRange,
       interval,
       points: [],
-      source: 'openbb',
+      source: 'yahoo',
       updated_at: new Date().toISOString(),
       error: 'Invalid symbol.',
     }, { status: statusForCode('invalid_symbol') });
@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
       currency: normalizedHistory.currency,
       currencySource: normalizedHistory.currencySource,
       priceUnit: normalizedHistory.priceUnit,
-      source: result.source ?? 'openbb',
+      source: result.source ?? 'yahoo',
       updated_at: new Date().toISOString(),
     });
   }
@@ -204,7 +204,7 @@ export async function GET(request: NextRequest) {
     interval,
     points: [],
     history: [],
-    source: 'openbb',
+    source: 'yahoo',
     updated_at: new Date().toISOString(),
     error: result?.error || 'Price history is unavailable.',
   }, { status: statusForCode(code) });

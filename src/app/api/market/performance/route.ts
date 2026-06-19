@@ -42,7 +42,7 @@ export async function GET() {
         change_1m: changeFromHistory(history, 21, analysis.latestPrice),
         asset_type: normalizeAssetType(analysis.assetType),
         trend: analysis.trend,
-        source: analysis.source ?? 'openbb',
+        source: analysis.source ?? 'yahoo',
         updated_at: analysis.fetchedAt ?? new Date().toISOString(),
       };
     })
@@ -52,11 +52,11 @@ export async function GET() {
 
   return NextResponse.json({
     success: rows.length > 0,
-    source: 'openbb',
+    source: 'yahoo',
     code: rows.length > 0 ? undefined : hasConfiguredProvider ? 'provider_no_data' : 'market_data_not_configured',
     message: rows.length > 0 ? undefined : hasConfiguredProvider
       ? 'Market provider did not return usable performance data.'
-      : 'OPENBB_API_URL or OPENBB_SERVICE_URL is missing.',
+      : 'Yahoo Finance market data is not available right now.',
     items: rows,
     updated_at: new Date().toISOString(),
   }, { status: rows.length > 0 ? 200 : 503 });

@@ -680,7 +680,7 @@ export function normalizeAssetSearchResult(result: Partial<MarketSearchItem> & R
     country,
     currency: currency.currency ?? undefined,
     currencySource: currency.source,
-    provider: cleanSearchText(result.provider ?? result.source) || 'OpenBB',
+    provider: cleanSearchText(result.provider ?? result.source) || 'Yahoo Finance',
     aliases,
   };
 }
