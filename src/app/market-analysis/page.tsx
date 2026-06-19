@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, FileText, Gauge, Info, Landmark, LineChart, Newspaper, Plus, RefreshCw, Search, ShieldAlert, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { PageTabs } from '@/components/layout/PageTabs';
@@ -78,14 +79,71 @@ import {
 } from '@/components/market-analysis/utils';
 
 // ── Extracted panel components ─────────────────────────────────────────────
-import { TraderToolsDashboard } from '@/components/market-analysis/TraderToolsDashboard';
-import { EconomicCalendarPanel, LegacyEconomicCalendarPanel } from '@/components/market-analysis/EconomicCalendarPanel';
-import { MarketDataPanel, TradingSessionsPanel } from '@/components/market-analysis/TradingSessionsPanel';
-import { LegacyTechnicalAnalysisPanel, TechnicalAnalysisPanel, MarketDefaultDashboard, MarketEmptyState, MarketStatusCard, MarketStatusBanner } from '@/components/market-analysis/TechnicalAnalysisPanel';
-import { NewsSentimentPanel, MarketSectionRefreshButton, MarketSectionLoading } from '@/components/market-analysis/NewsSentimentPanel';
+import { MarketDefaultDashboard, MarketEmptyState, MarketStatusCard, MarketStatusBanner } from '@/components/market-analysis/TechnicalAnalysisPanel';
 import { MarketAsyncToolStyles } from '@/components/market-analysis/MarketStyles';
 import { MarketPageStyles } from '@/components/market-analysis/MarketPageStyles';
-import { PriceHistoryChart, MarketMetric } from '@/components/market-analysis/MarketChartComponents';
+import { MarketMetric } from '@/components/market-analysis/MarketChartComponents';
+
+function MarketSectionLoading({ label, cards = 3 }: { label: string; cards?: number }) {
+  return (
+    <div className="market-section-loading" role="status" aria-live="polite">
+      <div className="market-section-loading-head">
+        <span className="market-loading-dot" />
+        <strong>{label}</strong>
+      </div>
+      <div className="market-loading-card-grid" aria-hidden="true">
+        {Array.from({ length: cards }).map((_, index) => (
+          <span className="market-loading-card" key={index}>
+            <i />
+            <b />
+            <em />
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function lazyMarketPanel(label: string, cards = 3) {
+  function MarketPanelLoadingFallback() {
+    return <MarketSectionLoading label={label} cards={cards} />;
+  }
+  MarketPanelLoadingFallback.displayName = `MarketPanelLoadingFallback(${label})`;
+  return MarketPanelLoadingFallback;
+}
+
+const TraderToolsDashboard = dynamic(
+  () => import('@/components/market-analysis/TraderToolsDashboard').then(mod => mod.TraderToolsDashboard),
+  { ssr: false, loading: lazyMarketPanel('Loading trader tools...', 3) },
+);
+
+const EconomicCalendarPanel = dynamic(
+  () => import('@/components/market-analysis/EconomicCalendarPanel').then(mod => mod.EconomicCalendarPanel),
+  { ssr: false, loading: lazyMarketPanel('Loading economic calendar...', 3) },
+);
+
+const TradingSessionsPanel = dynamic(
+  () => import('@/components/market-analysis/TradingSessionsPanel').then(mod => mod.TradingSessionsPanel),
+  { ssr: false, loading: lazyMarketPanel('Loading trading sessions...', 2) },
+);
+
+const TechnicalAnalysisPanel = dynamic(
+  () => import('@/components/market-analysis/TechnicalAnalysisPanel').then(mod => mod.TechnicalAnalysisPanel),
+  { ssr: false, loading: lazyMarketPanel('Loading technical analysis...', 3) },
+);
+
+const NewsSentimentPanel = dynamic(
+  () => import('@/components/market-analysis/NewsSentimentPanel').then(mod => mod.NewsSentimentPanel),
+  { ssr: false, loading: lazyMarketPanel('Loading news and sentiment...', 3) },
+);
+
+const PriceHistoryChart = dynamic(
+  () => import('@/components/market-analysis/MarketChartComponents').then(mod => mod.PriceHistoryChart),
+  {
+    ssr: false,
+    loading: () => <div className="market-chart-placeholder" aria-hidden="true" />,
+  },
+);
 
 function marketSourceLabel(source?: string | null, fallback = 'Yahoo Finance') {
   const clean = String(source ?? '').trim();

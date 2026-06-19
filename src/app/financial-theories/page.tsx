@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
   ArrowUpRight,
@@ -48,8 +49,6 @@ import {
   getFinancialTheoryText,
   type FinancialTheory,
   type FinancialTheoryLang,
-  type LocalizedText,
-  type TheoryCalculatorDefinition,
   type TheoryCalculatorId,
 } from '@/lib/financial-theories';
 
@@ -58,18 +57,26 @@ import {
 import {
   type CalculatorId, type FinancialHealthSnapshot, type GuidedToolCategoryId,
   type LearningLevelId, type LearningSection, type DebtRow, type LearningGoalId, type LearningSectionId,
-  THEORY_ICONS, UI_COPY, THEORY_PROGRESS_STORAGE_KEY, TOOL_PROGRESS_STORAGE_KEY,
+  UI_COPY, THEORY_PROGRESS_STORAGE_KEY, TOOL_PROGRESS_STORAGE_KEY,
   LEARNING_GOALS, LEARNING_LEVELS, LEVEL_ORDER, THEORY_LEVELS,
   LEARNING_SECTIONS, GUIDED_TOOL_TABS, ACTIVE_CALCULATORS, HEALTH_DATA_TABLES,
   EMPTY_HEALTH_SNAPSHOT, THEORY_CALCULATOR_MAP, ACTIVE_CALCULATORS as ACTIVE_CALCS,
   localeFrom, normalize, buildProgressText, readProgressFromStorage,
   saveProgressToStorage, readToolProgressFromStorage, saveToolProgressToStorage,
   relatedTheory, theoryLevel, levelAllows, theoryMatchesQuery,
-  commonMistakeCopy, applyCopy, isCalculatorId, calculatorForTheory,
+  isCalculatorId, calculatorForTheory,
   asNumber, formatCalculatorDate, monthsUntil, formatPercent, ratioPercent,
   clampScore, financialHealthScore,
 } from './_lib';
-import { CalculatorField, ResultCard, ResultSection, SmartCalculatorPanel, TheoryCard } from './_components';
+import { TheoryCard } from './TheoryCard';
+
+const SmartCalculatorPanel = dynamic(
+  () => import('./_components').then(mod => mod.SmartCalculatorPanel),
+  {
+    ssr: false,
+    loading: () => <div className="calculator-panel calculator-panel-skeleton" aria-hidden="true" />,
+  },
+);
 
 export default function FinancialTheoriesPage() {
   const { lang, dir } = useLanguage();

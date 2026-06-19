@@ -9,11 +9,8 @@ import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { PageTabs } from '@/components/layout/PageTabs';
-import { InvestmentFormModal } from '@/components/invest/InvestmentFormModal';
 import { InvestmentList } from '@/components/invest/InvestmentList';
 import { InvestmentRow, type InvestmentPriceRefreshStatus } from '@/components/invest/InvestmentRow';
-import { InvestmentDetailDrawer } from '@/components/invest/InvestmentDetailDrawer';
-import { ConfirmDeleteModal } from '@/components/invest/ConfirmDeleteModal';
 import { EmptyState } from '@/components/invest/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import { useInvestments } from '@/hooks/useInvestments';
@@ -36,6 +33,21 @@ const InvestPerformanceCharts = dynamic(() => import('@/components/invest/Invest
     </section>
   ),
 });
+
+const InvestmentFormModal = dynamic(
+  () => import('@/components/invest/InvestmentFormModal').then(mod => mod.InvestmentFormModal),
+  { ssr: false },
+);
+
+const InvestmentDetailDrawer = dynamic(
+  () => import('@/components/invest/InvestmentDetailDrawer').then(mod => mod.InvestmentDetailDrawer),
+  { ssr: false },
+);
+
+const ConfirmDeleteModal = dynamic(
+  () => import('@/components/invest/ConfirmDeleteModal').then(mod => mod.ConfirmDeleteModal),
+  { ssr: false },
+);
 
 const TYPES: InvestmentType[] = ['stocks', 'fund', 'crypto', 'gold', 'silver', 'realEstate', 'cash', 'project', 'other'];
 const RISKS: RiskLevel[] = ['low', 'medium', 'high'];
@@ -671,24 +683,6 @@ export default function InvestPage() {
   async function handleSave(input: InvestmentInput, options?: { addAnother?: boolean }) {
     setSaving(true);
     try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Investments] page save input', {
-          mode,
-          editingId: selected?.id,
-          type: input.type,
-          name: input.name,
-          symbol: input.symbol,
-          providerSymbol: input.providerSymbol,
-          market: input.market,
-          currency: input.currency ?? input.nativeCurrency ?? input.priceCurrency,
-          quantity: input.quantity,
-          purchasePrice: input.purchasePrice,
-          purchaseTotal: input.purchaseTotal,
-          currentPrice: input.currentPrice ?? input.lastPrice,
-          currentMarketValue: input.currentMarketValue ?? input.nativeMarketValue,
-          lastPriceUpdatedAt: input.lastPriceUpdatedAt ?? input.valuationLastUpdatedAt,
-        });
-      }
       if (mode === 'create') {
         await add(input);
         showToast(t('invest_form_successAdd'));
@@ -772,17 +766,6 @@ export default function InvestPage() {
         ? currentMarketValue * fx.rate
         : null;
       const valuationUpdatedAt = payload.item?.updated_at || new Date().toISOString();
-      if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEBUG_MARKET_DATA === 'true') {
-        console.info('[Investments] price refresh parsed', {
-          requestedSymbol: providerSymbol,
-          providerSymbol: payload.item?.provider_symbol || providerSymbol,
-          parsedCurrentPrice: price,
-          currency: nativeCurrency,
-          lastUpdated: valuationUpdatedAt,
-          source: payload.item?.source,
-          priceUnit: payload.item?.price_unit,
-        });
-      }
       const source = payload.item?.source || item.priceSource || item.dataSource;
       const updated = await updateMarketPrice(item.id, {
         currentPrice: price,

@@ -93,14 +93,12 @@ export type InvestmentSelectResult = {
 export const GUEST_KEY = 'sfm_guest_investments';
 export const OLD_GUEST_KEY = 'sfm_guest_invest';
 export const SNAPSHOT_PREFIX = 'SFM_INVESTMENT_SNAPSHOT_V1:';
-const DEBUG_INVESTMENTS = process.env.NODE_ENV === 'development';
 export const MARKET_LINKED_TYPES = new Set<InvestmentType>(['stocks', 'fund', 'crypto', 'gold', 'silver']);
-let hasLoggedInvestmentDebug = false;
 
 
 export function debugInvestments(label: string, payload: Record<string, unknown>) {
-  if (!DEBUG_INVESTMENTS) return;
-  console.log(`[Investments] ${label}`, payload);
+  void label;
+  void payload;
 }
 
 export function moneyNumber(value: unknown) {
@@ -346,14 +344,7 @@ function logInvestmentWriteOperation(input: {
   id?: string;
   payload: Record<string, unknown>;
 }) {
-  if (process.env.NODE_ENV !== 'development') return;
-  console.log('INVESTMENT WRITE OPERATION', {
-    operation: input.operation,
-    source: input.source,
-    id: input.id,
-    payloadKeys: Object.keys(input.payload),
-    payload: input.payload,
-  });
+  void input;
 }
 
 export function buildSnapshotFallbackPayload(data: InvestmentInput, userId?: string) {
@@ -881,26 +872,6 @@ export function normalizeInvestment(row: DbInvestmentRow, meta?: Partial<Investm
   const pureMetalGrams = parseMoneyValue(row.pure_metal_grams ?? meta?.pureMetalGrams);
   const resolvedDisplayValue = displayAmount.status === 'valid' ? displayAmount.value : purchaseTotalValue ?? null;
   const resolvedDisplayStatus = resolvedDisplayValue !== null ? 'valid' : displayAmount.status;
-  if (process.env.NODE_ENV === 'development' && !hasLoggedInvestmentDebug) {
-    hasLoggedInvestmentDebug = true;
-    debugInvestments('loaded row field availability', {
-      hasAmount: row.amount != null,
-      hasCurrentPrice: row.current_price != null || row.last_price != null,
-      hasPurchasePrice: row.purchase_price != null,
-      hasQuantity: row.quantity != null || row.shares != null,
-      hasPurchaseTotal: row.purchase_total != null || row.total_invested != null || row.invested_amount != null,
-      hasProviderSymbol: Boolean(row.provider_symbol || row.symbol),
-      hasCurrency: Boolean(row.currency || row.native_currency || row.price_currency),
-      resolvedCurrency,
-      parsed: {
-        quantity: quantityValue,
-        purchasePrice: purchasePriceValue,
-        purchaseTotal: purchaseTotalValue,
-        currentPrice: currentPriceValue,
-        currentMarketValue: currentMarketValueValue,
-      },
-    });
-  }
   return {
     id: row.id,
     name: resolvedName,
