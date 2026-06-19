@@ -8,3 +8,10 @@ node_modules
 !.env.example
 .vercel
 tsconfig.tsbuildinfo
+
+# iOS / Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+ios-native/**/xcuserdata/
+ios-native/**/*.xcworkspace/xcuserdata/
