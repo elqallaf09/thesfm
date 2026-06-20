@@ -159,7 +159,7 @@ async function fetchDashboardTable(userId: string, item: DashboardTable): Promis
 }
 const TEXT = {
   ar: {
-    pageTitle: 'لوحة القيادة التنفيذية',
+    pageTitle: 'الصفحة الرئيسية',
     pageSubtitle: 'نظرة شاملة على أموالك، مشاريعك، استثماراتك، زكاتك، وتنبيهاتك في مكان واحد.',
     updatedNow: 'محدث الآن',
     lastUpdatedNow: 'آخر تحديث: الآن',
@@ -255,7 +255,7 @@ const TEXT = {
     notificationAction: 'راجع الإشعارات عالية الأهمية.',
   },
   en: {
-    pageTitle: 'Executive Dashboard',
+    pageTitle: 'Home Page',
     pageSubtitle: 'A complete overview of your finances, projects, investments, zakat, and alerts in one place.',
     updatedNow: 'Updated now',
     lastUpdatedNow: 'Last updated: now',
@@ -340,9 +340,9 @@ const TEXT = {
     viewAllNotifications: 'View all notifications',
     noNotifications: 'No notifications yet',
     completeSetupTitle: 'Complete your account setup',
-    completeSetupText: 'Add your core data to get a more accurate executive dashboard.',
+    completeSetupText: 'Add your core data to get a more accurate home page.',
     completeSetup: 'Complete Setup',
-    loading: 'Loading executive dashboard...',
+    loading: 'Loading home page...',
     dataError: 'Could not load some data right now.',
     addIncomeAction: 'Add monthly income to activate income reports and dashboard totals.',
     reportNeedsDataAction: 'Complete the required data in Reports Center.',
@@ -351,7 +351,7 @@ const TEXT = {
     notificationAction: 'Review high priority notifications.',
   },
   fr: {
-    pageTitle: 'Tableau de bord exécutif',
+    pageTitle: "Page d'accueil",
     pageSubtitle: 'Une vue complète de vos finances, projets, investissements, zakat et alertes en un seul endroit.',
     updatedNow: 'Mis à jour',
     lastUpdatedNow: 'Dernière mise à jour : maintenant',

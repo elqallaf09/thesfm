@@ -1317,7 +1317,7 @@ export const FINANCIAL_THEORIES: FinancialTheory[] = [
       en: 'The goal is not only to collect money; it is to build recurring income.',
       fr: 'L’objectif n’est pas seulement d’accumuler de l’argent, mais de créer un revenu durable.',
     },
-    sfmTool: { ar: 'لوحة القيادة التنفيذية', en: 'Executive Dashboard', fr: 'Tableau de bord exécutif' },
+    sfmTool: { ar: 'الصفحة الرئيسية', en: 'Home Page', fr: "Page d'accueil" },
     sfmToolHref: '/dashboard',
   },
 ];

@@ -18,7 +18,7 @@ This document maps the main product routes after the navigation cleanup. Public 
 
 | Route | Arabic Name | English Name | Sidebar Group | Related Pages |
 | --- | --- | --- | --- | --- |
-| `/dashboard` | الصفحة الرئيسية | Home Dashboard | الرئيسية | `/command-center`, `/today`, `/reports-center`, `/notifications` |
+| `/dashboard` | الصفحة الرئيسية | Home Page | الرئيسية | `/command-center`, `/today`, `/reports-center`, `/notifications` |
 | `/command-center` | مركز القيادة | Command Center | الرئيسية | `/dashboard`, `/today`, `/site-map` |
 | `/today` | اليوم المالي | Financial Today | الرئيسية | `/notifications`, `/tasks`, `/income`, `/projects`, `/zakat` |
 | `/tasks` | مركز المهام | Tasks Center | الرئيسية | `/dashboard`, `/today`, `/command-center`, `/notifications` |

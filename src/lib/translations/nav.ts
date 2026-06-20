@@ -15,7 +15,7 @@ export const TR_NAV: Record<string, TranslationEntry> = {
   nav_mobile_menu: { ar:'القائمة الرئيسية', en:'Main menu', fr:'Menu principal' },
   nav_open_menu: { ar:'فتح القائمة', en:'Open navigation', fr:'Ouvrir la navigation' },
   nav_close_menu: { ar:'إغلاق القائمة', en:'Close navigation', fr:'Fermer la navigation' },
-  nav_home:       { ar:'الصفحة الرئيسية', en:'Executive Dashboard', fr:'Tableau de bord exécutif' },
+  nav_home:       { ar:'الصفحة الرئيسية', en:'Home Page', fr:"Page d'accueil" },
   nav_command_center: { ar:'مركز القيادة', en:'Command Center', fr:'Centre de commande' },
   nav_decisions: { ar:'محلل القرارات', en:'Decision Analyzer', fr:'Analyseur de décisions' },
   nav_today: { ar:'اليوم المالي', en:'Financial Today', fr:'Aujourd’hui financier' },
