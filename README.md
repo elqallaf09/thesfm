@@ -35,38 +35,11 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-## OpenBB Market Data Service
+## Market Data
 
-THE SFM market analysis uses a separate FastAPI OpenBB service deployed outside Vercel. Do not install OpenBB in the Next.js app.
+THE SFM uses Yahoo Finance through server-side Next.js routes for market quotes, history, and analysis. No separate Python market-data deployment is required for the active application.
 
-Required Vercel environment variable:
-
-```text
-OPENBB_SERVICE_URL=https://the-sfm-openbb-service.onrender.com
-```
-
-Render deployment settings for the OpenBB service:
-
-- Branch: `main`
-- Auto Deploy: On
-- Root Directory: `openbb-service`
-- Runtime: `Docker`
-- Dockerfile Path: `Dockerfile`
-- Health Check Path: `/health`
-
-The repository also includes a root-level `render.yaml` blueprint with these settings. If Render reports that `openbb-service` does not exist, verify the Render service is connected to this repository and the `main` branch, because `openbb-service` is a tracked top-level folder in this repo.
-
-Setup:
-
-1. Open the Vercel Project.
-2. Go to Settings.
-3. Open Environment Variables.
-4. Add `OPENBB_SERVICE_URL`.
-5. Choose Production.
-6. Save.
-7. Redeploy.
-
-The browser should call the local Next.js proxy routes, such as `/api/market/health` and `/api/market/analyze?symbol=AAPL&assetType=stock`. Client components should not call the Render URL directly.
+The browser should call local Next.js routes, such as `/api/market/health` and `/api/market/analyze?symbol=AAPL&assetType=stock`. Client components should not call external market-data hosts directly.
 
 ## Economic Calendar
 
@@ -137,8 +110,8 @@ Search order:
 1. Bundled official snapshots for Boursa Kuwait and DFM/Nasdaq Dubai in `src/data/market-symbols`
 2. Supabase `market_symbols`, filtered by selected exchange
 3. Official US symbol directories via NasdaqTrader when US markets are searched
-4. OpenBB service `/market/search` when no exchange filter is selected and `OPENBB_SERVICE_URL` is configured
-5. Local curated fallback in `openbb-service/data/symbols.json`
+4. Local curated fallback in `src/data/market-symbols.json`
+5. Direct Yahoo-compatible quote lookup when the symbol can be normalized safely
 
 Boursa Kuwait symbols are synced from the official Boursa Kuwait market-watch data feed and use KWD with `price_unit=fils`. DFM and Nasdaq Dubai listed equities/funds are synced from the official DFM listed securities API. Saudi Exchange, ADX, Qatar, Bahrain, and Muscat are configured as supported exchanges but require an official exchange export/import into Supabase before the UI should claim complete coverage.
 

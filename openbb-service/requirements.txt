@@ -1,9 +1,0 @@
-fastapi
-uvicorn[standard]
-openbb
-openbb-yfinance
-yfinance
-pandas
-numpy
-python-dotenv
-pydantic
