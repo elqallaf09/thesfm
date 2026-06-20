@@ -19,6 +19,64 @@
   transition: transform 160ms ease;
 }
 
+@media (max-width: 1024px) {
+  .market-agent-page,
+  .financial-theories-shell {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  .market-agent-page .market-agent-main,
+  .financial-theories-shell .sfm-dashboard-page-shell {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-inline: 0 !important;
+    padding-inline: 18px !important;
+    overflow-x: hidden !important;
+  }
+
+  .market-agent-page .market-agent-main > *,
+  .financial-theories-shell .sfm-dashboard-page-content {
+    width: 100% !important;
+    max-width: calc(100vw - 36px) !important;
+    min-width: 0 !important;
+    margin-inline: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .market-agent-page .market-agent-hero,
+  .financial-theories-shell .financial-theories-hero {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .market-agent-page .market-agent-main,
+  .financial-theories-shell .sfm-dashboard-page-shell {
+    padding-inline: 14px !important;
+  }
+
+  .market-agent-page .market-agent-main > *,
+  .financial-theories-shell .sfm-dashboard-page-content {
+    max-width: calc(100vw - 28px) !important;
+  }
+
+  .market-agent-page .market-agent-timeframes div {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .market-agent-page .market-agent-timeframes button {
+    min-width: 0 !important;
+    width: 100% !important;
+    padding-inline: 0;
+  }
+}
+
 .sfm-skip-link:focus,
 .sfm-skip-link:focus-visible {
   transform: translateY(0);

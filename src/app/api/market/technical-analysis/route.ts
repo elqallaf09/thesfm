@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { proxyAnalyze } from '@/lib/market/openbbProxy';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { proxyAnalyze } from '@/lib/market/marketDataProvider';
 import { normalizeMarketSymbol, type NormalizedMarketSymbol } from '@/lib/market/normalizeSymbol';
 import { validateSymbol, type MarketAssetType } from '@/lib/market/marketService';
 import { hasOhlcPoint, calculatePivotPoints, trendFromAverages, type OhlcPoint } from '@/lib/trading/technical';
@@ -201,7 +201,7 @@ export async function GET(request: NextRequest) {
         success: false,
         code: error instanceof Error && error.name === 'TimeoutError' ? 'MARKET_DATA_TIMEOUT' : 'TECHNICAL_ANALYSIS_PROVIDER_ERROR',
         error: null,
-        openbbService: 'unavailable',
+        marketDataService: 'unavailable',
       } as unknown as TechnicalAnalyzeResult;
     });
 

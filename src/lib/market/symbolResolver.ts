@@ -1,4 +1,4 @@
-import staticUsSymbols from '@/data/us-symbols.json';
+﻿import staticUsSymbols from '@/data/us-symbols.json';
 import {
   marketSymbolSuggestions,
   normalizeAssetType,
@@ -10,7 +10,7 @@ import {
 import { findAssetAliasMatches } from '@/lib/market/assetAliases';
 import { resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbolResolver';
-import symbolDirectory from '../../../openbb-service/data/symbols.json';
+import symbolDirectory from '../../data/market-symbols.json';
 
 export type MarketApiErrorCode = 'INVALID_SYMBOL' | 'NO_DATA' | 'PROVIDER_DOWN' | 'TIMEOUT' | 'RATE_LIMIT';
 
@@ -126,7 +126,7 @@ const SYMBOL_ALIASES: CanonicalAlias[] = [
     exchange: 'COMEX',
     country: 'Global',
     currency: 'USD',
-    aliases: ['xau', 'xauusd', 'xau/usd', 'gold', 'gold usd', 'ذهب', 'الذهب'],
+    aliases: ['xau', 'xauusd', 'xau/usd', 'gold', 'gold usd', 'Ø°Ù‡Ø¨', 'Ø§Ù„Ø°Ù‡Ø¨'],
   },
   {
     symbol: 'BTCUSD',
@@ -136,7 +136,7 @@ const SYMBOL_ALIASES: CanonicalAlias[] = [
     exchange: 'Crypto',
     country: 'Global',
     currency: 'USD',
-    aliases: ['btc', 'btcusd', 'btc/usd', 'bitcoin', 'bitcoin usd', 'بيتكوين'],
+    aliases: ['btc', 'btcusd', 'btc/usd', 'bitcoin', 'bitcoin usd', 'Ø¨ÙŠØªÙƒÙˆÙŠÙ†'],
   },
 ];
 
@@ -385,8 +385,8 @@ export function normalizeMarketApiCode(code?: string | null): MarketApiErrorCode
   const normalized = String(code ?? '').trim().toUpperCase();
   if (normalized === 'INVALID_SYMBOL' || normalized === 'SYMBOL_NOT_FOUND' || normalized === 'INVALID_SYMBOL_INPUT') return 'INVALID_SYMBOL';
   if (normalized === 'NO_DATA' || normalized === 'PROVIDER_NO_DATA' || normalized === 'RESPONSE_MAPPING_FAILED') return 'NO_DATA';
-  if (normalized === 'TIMEOUT' || normalized === 'OPENBB_TIMEOUT' || normalized === 'MARKET_DATA_TIMEOUT') return 'TIMEOUT';
-  if (normalized === 'RATE_LIMIT' || normalized === 'TOO_MANY_REQUESTS' || normalized === 'OPENBB_RATE_LIMIT') return 'RATE_LIMIT';
+  if (normalized === 'TIMEOUT' || normalized === 'MARKET_DATA_TIMEOUT') return 'TIMEOUT';
+  if (normalized === 'RATE_LIMIT' || normalized === 'TOO_MANY_REQUESTS' || normalized === 'MARKET_DATA_RATE_LIMIT') return 'RATE_LIMIT';
   return 'PROVIDER_DOWN';
 }
 

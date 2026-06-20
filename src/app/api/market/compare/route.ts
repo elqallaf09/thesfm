@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { proxyCompare } from '@/lib/market/openbbProxy';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { proxyCompare } from '@/lib/market/marketDataProvider';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;

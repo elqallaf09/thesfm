@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { proxySearch } from '@/lib/market/openbbProxy';
+import { proxySearch } from '@/lib/market/marketDataProvider';
 import { resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeAssetType, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
 import { marketExchangeAliases, normalizeMarketExchange } from '@/lib/market/marketExchangeOptions';
@@ -237,7 +237,7 @@ export async function GET(request: NextRequest) {
       exchange,
       source: result?.source ?? 'resolver',
       fallback: result?.fallback,
-      openbbService: result?.openbbService,
+      marketDataService: result?.marketDataService,
       results: fallbackResults,
       resolved: resolved?.ok ? resolved.asset : null,
     });

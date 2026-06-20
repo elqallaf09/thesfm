@@ -696,6 +696,14 @@ export default function FinancialTheoriesPage() {
           align-items: center !important;
         }
 
+        .financial-theories-hero h1,
+        .financial-theories-hero p,
+        .hero-note {
+          max-width: 100%;
+          white-space: normal;
+          overflow-wrap: anywhere;
+        }
+
         .financial-theories-hero::before {
           content: '';
           position: absolute;
@@ -2405,6 +2413,20 @@ export default function FinancialTheoriesPage() {
         }
 
         @media (max-width: 1024px) {
+          .financial-theories-shell .sfm-dashboard-page-shell {
+            width: 100%;
+            max-width: 100vw;
+            margin-inline: 0 !important;
+            padding-inline: 16px !important;
+            overflow-x: hidden;
+          }
+
+          .financial-theories-shell .sfm-dashboard-page-content {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+          }
+
           .financial-theories-shell .sfm-page-topbar {
             display: none;
           }
@@ -2432,6 +2454,10 @@ export default function FinancialTheoriesPage() {
         }
 
         @media (max-width: 720px) {
+          .financial-theories-shell .sfm-dashboard-page-shell {
+            padding-inline: 14px !important;
+          }
+
           .financial-theories-content {
             gap: 16px;
           }

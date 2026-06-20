@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { proxyHistory } from '@/lib/market/openbbProxy';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { proxyHistory } from '@/lib/market/marketDataProvider';
 import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeMarketSymbol } from '@/lib/market/normalizeSymbol';
 import { normalizeAssetType } from '@/lib/market/marketService';
@@ -114,9 +114,9 @@ function normalizeHistoryCurrencyPoints(points: ReturnType<typeof normalizeHisto
 }
 
 function statusForCode(code?: string) {
-  if (code === 'openbb_timeout') return 408;
+  if (code === 'market_data_timeout') return 408;
   if (code === 'invalid_symbol' || code === 'provider_no_data' || code === 'PRICE_HISTORY_UNAVAILABLE') return 422;
-  if (code === 'openbb_unreachable' || code === 'provider_error') return 503;
+  if (code === 'market_data_unreachable' || code === 'provider_error') return 503;
   return 400;
 }
 

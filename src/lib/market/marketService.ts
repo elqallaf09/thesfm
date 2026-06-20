@@ -1,4 +1,4 @@
-import type { MarketCurrencySource, MarketPriceUnit } from '@/lib/market/marketCurrency';
+﻿import type { MarketCurrencySource, MarketPriceUnit } from '@/lib/market/marketCurrency';
 import cryptoSymbols from '@/data/market-symbols/crypto.json';
 
 export type MarketAssetType = 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity' | 'gold' | 'index';
@@ -27,7 +27,7 @@ export type MarketHistoryPoint = {
 
 export type MarketAnalysis = {
   success: true;
-  provider?: 'openbb' | 'yahoo';
+  provider?: 'yahoo';
   dataStatus?: MarketDataStatus;
   symbol: string;
   providerSymbol?: string;
@@ -86,11 +86,11 @@ export type MarketError = {
   error: string;
   suggestions?: string[];
   correction?: string | null;
-  provider?: 'openbb' | 'yahoo';
+  provider?: 'yahoo';
   dataStatus?: 'unavailable';
   source?: string;
   fallback?: false;
-  openbbService?: 'connected' | 'degraded' | 'slow' | 'not_configured' | 'unavailable';
+  marketDataService?: 'connected' | 'degraded' | 'slow' | 'not_configured' | 'unavailable';
   warnings?: string[];
 };
 

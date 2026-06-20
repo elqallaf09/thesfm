@@ -964,7 +964,7 @@ export function TechnicalPartialDataState({
     displaySymbol ? [t('market_symbol'), formatTechnicalSymbol(displaySymbol), 'ltr'] as const : null,
     Number.isFinite(parsedPrice) && parsedPrice > 0 ? [t('market_current_price'), formatTechnicalPrice(parsedPrice), 'ltr'] as const : null,
     availableUpdatedAt ? [t('market_last_updated'), formatTechnicalTimestamp(availableUpdatedAt, locale) || t('market_unavailable'), 'ltr'] as const : null,
-    source ? [t('market_data_source'), ['openbb', 'yahoo', 'yahoo finance'].includes(source.toLowerCase()) ? 'Yahoo Finance' : source, 'ltr'] as const : null,
+    source ? [t('market_data_source'), ['yahoo', 'yahoo finance'].includes(source.toLowerCase()) ? 'Yahoo Finance' : source, 'ltr'] as const : null,
   ].filter((row): row is readonly [string, string, 'ltr'] => Boolean(row));
 
   return (

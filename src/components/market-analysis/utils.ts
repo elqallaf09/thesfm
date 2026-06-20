@@ -1,4 +1,4 @@
-import { currencyDisplaySymbol, getCurrency } from '@/lib/currencies';
+﻿import { currencyDisplaySymbol, getCurrency } from '@/lib/currencies';
 import { formatCurrency } from '@/lib/locale';
 import type { EducationalSummaryLanguage } from '@/lib/market/generateEducationalMarketSummary';
 import { formatMarketPrice, marketCurrencyLabel, resolveMarketCurrency } from '@/lib/market/marketCurrency';
@@ -53,15 +53,15 @@ export type PriceHistoryResponse = {
   cached?: boolean;
 };
 export const SCENARIO_CURRENCY_OPTIONS = [
-  { code: 'KWD', symbol: 'د.ك' },
+  { code: 'KWD', symbol: 'Ø¯.Ùƒ' },
   { code: 'USD', symbol: '$' },
-  { code: 'SAR', symbol: 'ر.س' },
-  { code: 'AED', symbol: 'د.إ' },
-  { code: 'QAR', symbol: 'ر.ق' },
-  { code: 'BHD', symbol: 'د.ب' },
-  { code: 'OMR', symbol: 'ر.ع' },
-  { code: 'EUR', symbol: '€' },
-  { code: 'GBP', symbol: '£' },
+  { code: 'SAR', symbol: 'Ø±.Ø³' },
+  { code: 'AED', symbol: 'Ø¯.Ø¥' },
+  { code: 'QAR', symbol: 'Ø±.Ù‚' },
+  { code: 'BHD', symbol: 'Ø¯.Ø¨' },
+  { code: 'OMR', symbol: 'Ø±.Ø¹' },
+  { code: 'EUR', symbol: 'â‚¬' },
+  { code: 'GBP', symbol: 'Â£' },
 ] as const;
 export const ACCOUNT_CURRENCY_OPTIONS = [
   'KWD',
@@ -129,42 +129,42 @@ export const TECHNICAL_SYMBOL_FAVORITES_KEY = 'sfm_market_technical_favorites';
 export const PIP_CALCULATOR_ASSET_TYPES: PipCalculatorAssetType[] = ['forex', 'metals', 'oil', 'indices', 'crypto'];
 export const PIP_CALCULATOR_ASSETS: Record<PipCalculatorAssetType, PipCalculatorAsset[]> = {
   forex: [
-    { type: 'forex', name: { ar: 'يورو / دولار', en: 'Euro / US Dollar', fr: 'Euro / dollar US' }, symbol: 'EUR/USD', internalSymbol: 'EURUSD', pointSize: 0.0001, defaultPointValue: 10 },
-    { type: 'forex', name: { ar: 'جنيه إسترليني / دولار', en: 'British Pound / US Dollar', fr: 'Livre sterling / dollar US' }, symbol: 'GBP/USD', internalSymbol: 'GBPUSD', pointSize: 0.0001, defaultPointValue: 10 },
-    { type: 'forex', name: { ar: 'دولار / ين ياباني', en: 'US Dollar / Japanese Yen', fr: 'Dollar US / yen japonais' }, symbol: 'USD/JPY', internalSymbol: 'USDJPY', pointSize: 0.01, defaultPointValue: 10 },
-    { type: 'forex', name: { ar: 'دولار / فرنك سويسري', en: 'US Dollar / Swiss Franc', fr: 'Dollar US / franc suisse' }, symbol: 'USD/CHF', internalSymbol: 'USDCHF', pointSize: 0.0001, defaultPointValue: 10 },
-    { type: 'forex', name: { ar: 'دولار أسترالي / دولار', en: 'Australian Dollar / US Dollar', fr: 'Dollar australien / dollar US' }, symbol: 'AUD/USD', internalSymbol: 'AUDUSD', pointSize: 0.0001, defaultPointValue: 10 },
-    { type: 'forex', name: { ar: 'دولار نيوزيلندي / دولار', en: 'New Zealand Dollar / US Dollar', fr: 'Dollar néo-zélandais / dollar US' }, symbol: 'NZD/USD', internalSymbol: 'NZDUSD', pointSize: 0.0001, defaultPointValue: 10 },
-    { type: 'forex', name: { ar: 'دولار / دولار كندي', en: 'US Dollar / Canadian Dollar', fr: 'Dollar US / dollar canadien' }, symbol: 'USD/CAD', internalSymbol: 'USDCAD', pointSize: 0.0001, defaultPointValue: 10 },
-    { type: 'forex', name: { ar: 'يورو / جنيه إسترليني', en: 'Euro / British Pound', fr: 'Euro / livre sterling' }, symbol: 'EUR/GBP', internalSymbol: 'EURGBP', pointSize: 0.0001, defaultPointValue: 10 },
-    { type: 'forex', name: { ar: 'يورو / ين ياباني', en: 'Euro / Japanese Yen', fr: 'Euro / yen japonais' }, symbol: 'EUR/JPY', internalSymbol: 'EURJPY', pointSize: 0.01, defaultPointValue: 10 },
-    { type: 'forex', name: { ar: 'جنيه إسترليني / ين ياباني', en: 'British Pound / Japanese Yen', fr: 'Livre sterling / yen japonais' }, symbol: 'GBP/JPY', internalSymbol: 'GBPJPY', pointSize: 0.01, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'ÙŠÙˆØ±Ùˆ / Ø¯ÙˆÙ„Ø§Ø±', en: 'Euro / US Dollar', fr: 'Euro / dollar US' }, symbol: 'EUR/USD', internalSymbol: 'EURUSD', pointSize: 0.0001, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'Ø¬Ù†ÙŠÙ‡ Ø¥Ø³ØªØ±Ù„ÙŠÙ†ÙŠ / Ø¯ÙˆÙ„Ø§Ø±', en: 'British Pound / US Dollar', fr: 'Livre sterling / dollar US' }, symbol: 'GBP/USD', internalSymbol: 'GBPUSD', pointSize: 0.0001, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'Ø¯ÙˆÙ„Ø§Ø± / ÙŠÙ† ÙŠØ§Ø¨Ø§Ù†ÙŠ', en: 'US Dollar / Japanese Yen', fr: 'Dollar US / yen japonais' }, symbol: 'USD/JPY', internalSymbol: 'USDJPY', pointSize: 0.01, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'Ø¯ÙˆÙ„Ø§Ø± / ÙØ±Ù†Ùƒ Ø³ÙˆÙŠØ³Ø±ÙŠ', en: 'US Dollar / Swiss Franc', fr: 'Dollar US / franc suisse' }, symbol: 'USD/CHF', internalSymbol: 'USDCHF', pointSize: 0.0001, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'Ø¯ÙˆÙ„Ø§Ø± Ø£Ø³ØªØ±Ø§Ù„ÙŠ / Ø¯ÙˆÙ„Ø§Ø±', en: 'Australian Dollar / US Dollar', fr: 'Dollar australien / dollar US' }, symbol: 'AUD/USD', internalSymbol: 'AUDUSD', pointSize: 0.0001, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'Ø¯ÙˆÙ„Ø§Ø± Ù†ÙŠÙˆØ²ÙŠÙ„Ù†Ø¯ÙŠ / Ø¯ÙˆÙ„Ø§Ø±', en: 'New Zealand Dollar / US Dollar', fr: 'Dollar nÃ©o-zÃ©landais / dollar US' }, symbol: 'NZD/USD', internalSymbol: 'NZDUSD', pointSize: 0.0001, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'Ø¯ÙˆÙ„Ø§Ø± / Ø¯ÙˆÙ„Ø§Ø± ÙƒÙ†Ø¯ÙŠ', en: 'US Dollar / Canadian Dollar', fr: 'Dollar US / dollar canadien' }, symbol: 'USD/CAD', internalSymbol: 'USDCAD', pointSize: 0.0001, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'ÙŠÙˆØ±Ùˆ / Ø¬Ù†ÙŠÙ‡ Ø¥Ø³ØªØ±Ù„ÙŠÙ†ÙŠ', en: 'Euro / British Pound', fr: 'Euro / livre sterling' }, symbol: 'EUR/GBP', internalSymbol: 'EURGBP', pointSize: 0.0001, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'ÙŠÙˆØ±Ùˆ / ÙŠÙ† ÙŠØ§Ø¨Ø§Ù†ÙŠ', en: 'Euro / Japanese Yen', fr: 'Euro / yen japonais' }, symbol: 'EUR/JPY', internalSymbol: 'EURJPY', pointSize: 0.01, defaultPointValue: 10 },
+    { type: 'forex', name: { ar: 'Ø¬Ù†ÙŠÙ‡ Ø¥Ø³ØªØ±Ù„ÙŠÙ†ÙŠ / ÙŠÙ† ÙŠØ§Ø¨Ø§Ù†ÙŠ', en: 'British Pound / Japanese Yen', fr: 'Livre sterling / yen japonais' }, symbol: 'GBP/JPY', internalSymbol: 'GBPJPY', pointSize: 0.01, defaultPointValue: 10 },
   ],
   metals: [
-    { type: 'metals', name: { ar: 'الذهب', en: 'Gold', fr: 'Or' }, symbol: 'XAU/USD', internalSymbol: 'XAUUSD', pointSize: 0.01, defaultPointValue: 1 },
-    { type: 'metals', name: { ar: 'الفضة', en: 'Silver', fr: 'Argent' }, symbol: 'XAG/USD', internalSymbol: 'XAGUSD', pointSize: 0.001, defaultPointValue: 1 },
-    { type: 'metals', name: { ar: 'البلاتين', en: 'Platinum', fr: 'Platine' }, symbol: 'XPT/USD', internalSymbol: 'XPTUSD', pointSize: 0.01, defaultPointValue: 1 },
-    { type: 'metals', name: { ar: 'البلاديوم', en: 'Palladium', fr: 'Palladium' }, symbol: 'XPD/USD', internalSymbol: 'XPDUSD', pointSize: 0.01, defaultPointValue: 1 },
+    { type: 'metals', name: { ar: 'Ø§Ù„Ø°Ù‡Ø¨', en: 'Gold', fr: 'Or' }, symbol: 'XAU/USD', internalSymbol: 'XAUUSD', pointSize: 0.01, defaultPointValue: 1 },
+    { type: 'metals', name: { ar: 'Ø§Ù„ÙØ¶Ø©', en: 'Silver', fr: 'Argent' }, symbol: 'XAG/USD', internalSymbol: 'XAGUSD', pointSize: 0.001, defaultPointValue: 1 },
+    { type: 'metals', name: { ar: 'Ø§Ù„Ø¨Ù„Ø§ØªÙŠÙ†', en: 'Platinum', fr: 'Platine' }, symbol: 'XPT/USD', internalSymbol: 'XPTUSD', pointSize: 0.01, defaultPointValue: 1 },
+    { type: 'metals', name: { ar: 'Ø§Ù„Ø¨Ù„Ø§Ø¯ÙŠÙˆÙ…', en: 'Palladium', fr: 'Palladium' }, symbol: 'XPD/USD', internalSymbol: 'XPDUSD', pointSize: 0.01, defaultPointValue: 1 },
   ],
   oil: [
-    { type: 'oil', name: { ar: 'نفط خام WTI', en: 'WTI crude oil', fr: 'Pétrole brut WTI' }, symbol: 'XTI/USD', internalSymbol: 'XTIUSD', pointSize: 0.01, defaultPointValue: 1 },
-    { type: 'oil', name: { ar: 'نفط برنت', en: 'Brent crude oil', fr: 'Pétrole Brent' }, symbol: 'XBR/USD', internalSymbol: 'XBRUSD', pointSize: 0.01, defaultPointValue: 1 },
+    { type: 'oil', name: { ar: 'Ù†ÙØ· Ø®Ø§Ù… WTI', en: 'WTI crude oil', fr: 'PÃ©trole brut WTI' }, symbol: 'XTI/USD', internalSymbol: 'XTIUSD', pointSize: 0.01, defaultPointValue: 1 },
+    { type: 'oil', name: { ar: 'Ù†ÙØ· Ø¨Ø±Ù†Øª', en: 'Brent crude oil', fr: 'PÃ©trole Brent' }, symbol: 'XBR/USD', internalSymbol: 'XBRUSD', pointSize: 0.01, defaultPointValue: 1 },
   ],
   indices: [
-    { type: 'indices', name: { ar: 'ناسداك 100', en: 'Nasdaq 100', fr: 'Nasdaq 100' }, symbol: 'NAS100', internalSymbol: 'NAS100', pointSize: 1, defaultPointValue: 1 },
-    { type: 'indices', name: { ar: 'ستاندرد آند بورز 500', en: 'S&P 500', fr: 'S&P 500' }, symbol: 'SPX500', internalSymbol: 'SPX500', pointSize: 1, defaultPointValue: 1 },
-    { type: 'indices', name: { ar: 'داو جونز', en: 'Dow Jones', fr: 'Dow Jones' }, symbol: 'US30', internalSymbol: 'US30', pointSize: 1, defaultPointValue: 1 },
-    { type: 'indices', name: { ar: 'داكس الألماني', en: 'Germany DAX', fr: 'DAX allemand' }, symbol: 'GER40', internalSymbol: 'GER40', pointSize: 1, defaultPointValue: 1 },
-    { type: 'indices', name: { ar: 'فوتسي البريطاني', en: 'UK FTSE', fr: 'FTSE britannique' }, symbol: 'UK100', internalSymbol: 'UK100', pointSize: 1, defaultPointValue: 1 },
-    { type: 'indices', name: { ar: 'كاك الفرنسي', en: 'France CAC', fr: 'CAC français' }, symbol: 'FRA40', internalSymbol: 'FRA40', pointSize: 1, defaultPointValue: 1 },
-    { type: 'indices', name: { ar: 'نيكاي الياباني', en: 'Japan Nikkei', fr: 'Nikkei japonais' }, symbol: 'JPN225', internalSymbol: 'JPN225', pointSize: 1, defaultPointValue: 1 },
+    { type: 'indices', name: { ar: 'Ù†Ø§Ø³Ø¯Ø§Ùƒ 100', en: 'Nasdaq 100', fr: 'Nasdaq 100' }, symbol: 'NAS100', internalSymbol: 'NAS100', pointSize: 1, defaultPointValue: 1 },
+    { type: 'indices', name: { ar: 'Ø³ØªØ§Ù†Ø¯Ø±Ø¯ Ø¢Ù†Ø¯ Ø¨ÙˆØ±Ø² 500', en: 'S&P 500', fr: 'S&P 500' }, symbol: 'SPX500', internalSymbol: 'SPX500', pointSize: 1, defaultPointValue: 1 },
+    { type: 'indices', name: { ar: 'Ø¯Ø§Ùˆ Ø¬ÙˆÙ†Ø²', en: 'Dow Jones', fr: 'Dow Jones' }, symbol: 'US30', internalSymbol: 'US30', pointSize: 1, defaultPointValue: 1 },
+    { type: 'indices', name: { ar: 'Ø¯Ø§ÙƒØ³ Ø§Ù„Ø£Ù„Ù…Ø§Ù†ÙŠ', en: 'Germany DAX', fr: 'DAX allemand' }, symbol: 'GER40', internalSymbol: 'GER40', pointSize: 1, defaultPointValue: 1 },
+    { type: 'indices', name: { ar: 'ÙÙˆØªØ³ÙŠ Ø§Ù„Ø¨Ø±ÙŠØ·Ø§Ù†ÙŠ', en: 'UK FTSE', fr: 'FTSE britannique' }, symbol: 'UK100', internalSymbol: 'UK100', pointSize: 1, defaultPointValue: 1 },
+    { type: 'indices', name: { ar: 'ÙƒØ§Ùƒ Ø§Ù„ÙØ±Ù†Ø³ÙŠ', en: 'France CAC', fr: 'CAC franÃ§ais' }, symbol: 'FRA40', internalSymbol: 'FRA40', pointSize: 1, defaultPointValue: 1 },
+    { type: 'indices', name: { ar: 'Ù†ÙŠÙƒØ§ÙŠ Ø§Ù„ÙŠØ§Ø¨Ø§Ù†ÙŠ', en: 'Japan Nikkei', fr: 'Nikkei japonais' }, symbol: 'JPN225', internalSymbol: 'JPN225', pointSize: 1, defaultPointValue: 1 },
   ],
   crypto: [
-    { type: 'crypto', name: { ar: 'بيتكوين', en: 'Bitcoin', fr: 'Bitcoin' }, symbol: 'BTC/USD', internalSymbol: 'BTCUSD', pointSize: 1, defaultPointValue: 1 },
-    { type: 'crypto', name: { ar: 'إيثريوم', en: 'Ethereum', fr: 'Ethereum' }, symbol: 'ETH/USD', internalSymbol: 'ETHUSD', pointSize: 1, defaultPointValue: 1 },
-    { type: 'crypto', name: { ar: 'سولانا', en: 'Solana', fr: 'Solana' }, symbol: 'SOL/USD', internalSymbol: 'SOLUSD', pointSize: 0.01, defaultPointValue: 1 },
-    { type: 'crypto', name: { ar: 'ريبل', en: 'Ripple', fr: 'Ripple' }, symbol: 'XRP/USD', internalSymbol: 'XRPUSD', pointSize: 0.0001, defaultPointValue: 1 },
-    { type: 'crypto', name: { ar: 'كاردانو', en: 'Cardano', fr: 'Cardano' }, symbol: 'ADA/USD', internalSymbol: 'ADAUSD', pointSize: 0.0001, defaultPointValue: 1 },
+    { type: 'crypto', name: { ar: 'Ø¨ÙŠØªÙƒÙˆÙŠÙ†', en: 'Bitcoin', fr: 'Bitcoin' }, symbol: 'BTC/USD', internalSymbol: 'BTCUSD', pointSize: 1, defaultPointValue: 1 },
+    { type: 'crypto', name: { ar: 'Ø¥ÙŠØ«Ø±ÙŠÙˆÙ…', en: 'Ethereum', fr: 'Ethereum' }, symbol: 'ETH/USD', internalSymbol: 'ETHUSD', pointSize: 1, defaultPointValue: 1 },
+    { type: 'crypto', name: { ar: 'Ø³ÙˆÙ„Ø§Ù†Ø§', en: 'Solana', fr: 'Solana' }, symbol: 'SOL/USD', internalSymbol: 'SOLUSD', pointSize: 0.01, defaultPointValue: 1 },
+    { type: 'crypto', name: { ar: 'Ø±ÙŠØ¨Ù„', en: 'Ripple', fr: 'Ripple' }, symbol: 'XRP/USD', internalSymbol: 'XRPUSD', pointSize: 0.0001, defaultPointValue: 1 },
+    { type: 'crypto', name: { ar: 'ÙƒØ§Ø±Ø¯Ø§Ù†Ùˆ', en: 'Cardano', fr: 'Cardano' }, symbol: 'ADA/USD', internalSymbol: 'ADAUSD', pointSize: 0.0001, defaultPointValue: 1 },
   ],
 };
 
@@ -211,8 +211,8 @@ export function percent(value: number | null | undefined) {
 
 export function normalizePerformanceTrend(value?: string | null): 'bullish' | 'bearish' | 'neutral' {
   const normalized = String(value ?? '').trim().toLowerCase();
-  if (['bullish', 'up', 'positive', 'صاعد', 'haussier'].some(token => normalized.includes(token))) return 'bullish';
-  if (['bearish', 'down', 'negative', 'هابط', 'baissier'].some(token => normalized.includes(token))) return 'bearish';
+  if (['bullish', 'up', 'positive', 'ØµØ§Ø¹Ø¯', 'haussier'].some(token => normalized.includes(token))) return 'bullish';
+  if (['bearish', 'down', 'negative', 'Ù‡Ø§Ø¨Ø·', 'baissier'].some(token => normalized.includes(token))) return 'bearish';
   return 'neutral';
 }
 
@@ -465,8 +465,8 @@ export function readableLevelMarkerPercent(value: number) {
 
 export function parseNumber(value: unknown) {
   const normalized = String(value ?? '')
-    .replace(/[\u0660-\u0669]/g, digit => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
-    .replace(/[\u06F0-\u06F9]/g, digit => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
+    .replace(/[\u0660-\u0669]/g, digit => String('Ù Ù¡Ù¢Ù£Ù¤Ù¥Ù¦Ù§Ù¨Ù©'.indexOf(digit)))
+    .replace(/[\u06F0-\u06F9]/g, digit => String('Û°Û±Û²Û³Û´ÛµÛ¶Û·Û¸Û¹'.indexOf(digit)))
     .replace(/[^\d.,-]/g, '')
     .replace(/,/g, '');
   const parsed = Number(normalized || 0);
@@ -589,7 +589,7 @@ export function fundamentalsReasonTranslationKey(reason: MarketAnalysis['fundame
 export function cleanSearchText(value: unknown) {
   return String(value ?? '')
     .replace(/\s+/g, ' ')
-    .replace(/^[\s|:·,-]+|[\s|:·,-]+$/g, '')
+    .replace(/^[\s|:Â·,-]+|[\s|:Â·,-]+$/g, '')
     .trim();
 }
 
@@ -598,9 +598,9 @@ export function normalizeSearchComparable(value: unknown) {
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
-    .replace(/[أإآٱ]/g, 'ا')
-    .replace(/ى/g, 'ي')
-    .replace(/ة/g, 'ه')
+    .replace(/[Ø£Ø¥Ø¢Ù±]/g, 'Ø§')
+    .replace(/Ù‰/g, 'ÙŠ')
+    .replace(/Ø©/g, 'Ù‡')
     .replace(/[^\p{L}\p{N}\s./:-]/gu, ' ')
     .toLowerCase()
     .replace(/\s+/g, ' ')
@@ -787,12 +787,12 @@ export function normalizePublicMarketErrorCode(code: string | undefined) {
     PROVIDER_NO_DATA: 'NO_DATA',
     PRICE_HISTORY_UNAVAILABLE: 'NO_DATA',
     PROVIDER_DOWN: 'PROVIDER_DOWN',
-    OPENBB_UNREACHABLE: 'PROVIDER_DOWN',
+    MARKET_DATA_UNREACHABLE: 'PROVIDER_DOWN',
     PROVIDER_ERROR: 'PROVIDER_DOWN',
     TIMEOUT: 'TIMEOUT',
-    OPENBB_TIMEOUT: 'TIMEOUT',
+    MARKET_DATA_TIMEOUT: 'TIMEOUT',
     RATE_LIMIT: 'RATE_LIMIT',
-    OPENBB_RATE_LIMIT: 'RATE_LIMIT',
+    MARKET_DATA_RATE_LIMIT: 'RATE_LIMIT',
   };
   return map[normalized] ?? normalized;
 }
@@ -857,7 +857,7 @@ export function formatChartTimestamp(value: string, locale: string, timeframe: M
 export function chartErrorText(code: string | undefined, fallback: string | undefined, t: (key: string) => string) {
   if (code === 'invalid_symbol' || code === 'symbol_not_found') return t('market_chart_unsupported_symbol');
   if (code === 'provider_no_data' || code === 'PRICE_HISTORY_UNAVAILABLE') return t('market_chart_empty_range');
-  if (code === 'openbb_timeout' || code === 'openbb_unreachable' || code === 'provider_error') return t('market_chart_provider_error');
+  if (code === 'market_data_timeout' || code === 'market_data_unreachable' || code === 'provider_error') return t('market_chart_provider_error');
   return fallback || t('market_chart_provider_error');
 }
 
@@ -979,9 +979,9 @@ export function marketErrorText(code: string | undefined, fallback: string, t: (
   };
   if (publicMap[publicCode]) return publicMap[publicCode];
   const map: Record<string, string> = {
-    openbb_unreachable: t('market_service_unavailable'),
-    openbb_timeout: t('market_timeout_error'),
-    openbb_rate_limit: t('market_rate_limit_error'),
+    market_data_unreachable: t('market_service_unavailable'),
+    market_data_timeout: t('market_timeout_error'),
+    market_data_rate_limit: t('market_rate_limit_error'),
     symbol_not_found: t('market_symbol_not_found_helpful'),
     invalid_symbol: t('market_symbol_not_found_helpful'),
     provider_no_data: t('market_no_data_for_symbol'),

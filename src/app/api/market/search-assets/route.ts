@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { findAssetAliasMatches, normalizeAssetSearchText } from '@/lib/market/assetAliases';
 import { fetchYahooNormalizedQuote, type YahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
@@ -14,7 +14,7 @@ import {
   searchBundledMarketSymbols,
   type MarketSymbolSearchResult,
 } from '@/lib/market/marketSymbolDirectory';
-import { proxySearch } from '@/lib/market/openbbProxy';
+import { proxySearch } from '@/lib/market/marketDataProvider';
 import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbolResolver';
 
 export const dynamic = 'force-dynamic';
@@ -98,8 +98,8 @@ function cleanSearchTerm(value: string) {
 
 function searchTermVariants(value: string) {
   const normalized = normalizeAssetSearchText(value);
-  const withoutTaMarbuta = normalized.replace(/ة/g, 'ه');
-  const withTaMarbuta = normalized.replace(/ه/g, 'ة');
+  const withoutTaMarbuta = normalized.replace(/Ø©/g, 'Ù‡');
+  const withTaMarbuta = normalized.replace(/Ù‡/g, 'Ø©');
   return Array.from(new Set([
     value.trim(),
     normalized,

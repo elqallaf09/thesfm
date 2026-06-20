@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { proxyAnalyze } from '@/lib/market/openbbProxy';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { proxyAnalyze } from '@/lib/market/marketDataProvider';
 import { marketApiMessage, normalizeMarketApiCode, resolveMarketSymbol } from '@/lib/market/symbolResolver';
 
 function statusForCode(code?: string) {
@@ -44,7 +44,7 @@ async function analyzeResolved(input: {
     });
     return publicFailure('INVALID_SYMBOL', {
       suggestions: resolved.suggestions,
-      openbbService: 'connected',
+      marketDataService: 'connected',
     });
   }
 
@@ -79,14 +79,14 @@ async function analyzeResolved(input: {
     assetType: resolved.asset.assetType,
     code,
     providerCode: result.code,
-    openbbService: result.openbbService,
+    marketDataService: result.marketDataService,
     error: result.error,
   });
 
   return publicFailure(code, {
     providerCode: result.code,
     suggestions: resolved.suggestions,
-    openbbService: result.openbbService,
+    marketDataService: result.marketDataService,
     dataStatus: 'unavailable',
     source: 'yahoo',
     fallback: false,

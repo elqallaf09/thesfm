@@ -1,8 +1,8 @@
-import type { MarketAiInsight, MarketAnalysis, MarketAssetType, MarketHistoryPoint, MarketResult, MarketSearchItem } from '@/lib/market/marketService';
+﻿import type { MarketAiInsight, MarketAnalysis, MarketAssetType, MarketHistoryPoint, MarketResult, MarketSearchItem } from '@/lib/market/marketService';
 import type { EconomicImpact, NormalizedEconomicEvent } from '@/lib/market/normalizeEconomicEvents';
 
 export type MarketServiceState = 'checking' | 'connected' | 'degraded' | 'slow' | 'not_configured' | 'unavailable';
-export type MarketViewAnalysis = MarketAnalysis & { source?: string; fallback?: boolean; fallbackReason?: string; openbbService?: MarketServiceState };
+export type MarketViewAnalysis = MarketAnalysis & { source?: string; fallback?: boolean; fallbackReason?: string; marketDataService?: MarketServiceState };
 export type WatchlistItem = { id?: string; symbol: string; assetType: MarketAssetType; name?: string | null; providerSymbol?: string | null; currency?: string | null; exchange?: string | null; country?: string | null; createdAt?: string | null };
 export type SavedAlert = { id?: string; symbol: string; assetType: MarketAssetType; alertType: AlertType; threshold: number; currency?: string | null; exchange?: string | null; country?: string | null; createdAt?: string | null };
 export type AlertType = 'above' | 'below' | 'change_exceeds' | 'rsi_above' | 'rsi_below';
@@ -32,7 +32,7 @@ export type MarketResultWithMeta = MarketResult & {
   ok?: boolean;
   code?: string;
   message?: string;
-  openbbService?: MarketServiceState;
+  marketDataService?: MarketServiceState;
   source?: string;
   fallback?: boolean;
   fallbackReason?: string;

@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { proxyAnalyze } from '@/lib/market/openbbProxy';
+﻿import { NextResponse } from 'next/server';
+import { proxyAnalyze } from '@/lib/market/marketDataProvider';
 import { normalizeAssetType } from '@/lib/market/marketService';
 
 const DEFAULT_ASSETS = [
@@ -48,7 +48,7 @@ export async function GET() {
     })
     .filter(Boolean);
 
-  const hasConfiguredProvider = settled.some(result => result.status === 'fulfilled' && result.value.openbbService !== 'not_configured');
+  const hasConfiguredProvider = settled.some(result => result.status === 'fulfilled' && result.value.marketDataService !== 'not_configured');
 
   return NextResponse.json({
     success: rows.length > 0,

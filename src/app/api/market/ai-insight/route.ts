@@ -34,7 +34,7 @@ function bearerToken(req: NextRequest): string | null {
 function isRealMarketAnalysis(value: unknown): value is MarketAnalysis {
   const data = value && typeof value === 'object' ? value as Partial<MarketAnalysis> : {};
   const source = String(data.source ?? data.provider ?? '').trim().toLowerCase();
-  const isSupportedRealSource = source === 'openbb' || source === 'yahoo' || source === 'yahoo finance';
+  const isSupportedRealSource = source === 'yahoo' || source === 'yahoo finance';
   return Boolean(
     data.success === true
     && isSupportedRealSource
