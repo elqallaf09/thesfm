@@ -1,9 +1,4 @@
-'use client';
-
-export function MarketPageStyles() {
-  return (
-    <style jsx global>{`
-        .market-shell,
+.market-shell,
         .market-main {
           max-width: 100%;
           overflow-x: hidden;
@@ -2206,6 +2201,3 @@ export function MarketPageStyles() {
             height: 40px;
           }
         }
-      `}</style>
-  );
-}

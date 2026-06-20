@@ -79,9 +79,8 @@ import {
 } from '@/components/market-analysis/utils';
 
 // â”€â”€ Extracted panel components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-import { MarketDefaultDashboard, MarketEmptyState, MarketStatusCard, MarketStatusBanner } from '@/components/market-analysis/TechnicalAnalysisPanel';
+import { MarketDefaultDashboard, MarketEmptyState, MarketStatusCard, MarketStatusBanner } from '@/components/market-analysis/MarketPanelPrimitives';
 import { MarketAsyncToolStyles } from '@/components/market-analysis/MarketStyles';
-import { MarketPageStyles } from '@/components/market-analysis/MarketPageStyles';
 import { MarketMetric } from '@/components/market-analysis/MarketChartComponents';
 
 function MarketSectionLoading({ label, cards = 3 }: { label: string; cards?: number }) {
@@ -2608,7 +2607,6 @@ export default function MarketAnalysisPage() {
         @media(max-width:720px){.market-search-results{width:100%;max-height:min(320px,48dvh)}.market-search-results button{align-items:stretch}.market-search-results button small{white-space:nowrap;text-align:start}.market-search-result-main{gap:10px}.market-search-results button b{font-size:13px}}
         @media(max-width:460px){.technical-selected-summary{grid-template-columns:1fr}.technical-search{min-height:46px}.technical-symbol-favorite{width:30px;height:30px}.technical-symbol-pill{min-height:40px}.portfolio-metric-grid,.performance-metric-grid{grid-template-columns:1fr}}
       `}</style>
-        <MarketPageStyles />
     </div>
   );
 }

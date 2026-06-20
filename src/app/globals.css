@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "../components/market-analysis/market-page.css";
+@import "./invest/invest.css";
+@import "./financial-theories/financial-theories.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
