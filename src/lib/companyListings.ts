@@ -4,9 +4,11 @@ type TranslationKey = keyof typeof TR;
 
 export const COMPANY_CATEGORIES = ['investment', 'trading', 'accounting', 'feasibility', 'financial_consulting'] as const;
 export const COMPANY_STATUSES = ['pending_review', 'approved', 'rejected', 'needs_changes', 'inactive'] as const;
+export const COMPANY_UPDATE_STATUSES = ['none', 'pending_update', 'deletion_requested'] as const;
 
 export type CompanyCategory = typeof COMPANY_CATEGORIES[number];
 export type CompanyStatus = typeof COMPANY_STATUSES[number];
+export type CompanyUpdateStatus = typeof COMPANY_UPDATE_STATUSES[number];
 
 export type CompanyListing = {
   id: string;
@@ -33,6 +35,11 @@ export type CompanyListing = {
   logo_url?: string | null;
   cover_image_url?: string | null;
   status: CompanyStatus;
+  update_status?: CompanyUpdateStatus | null;
+  pending_update?: Record<string, unknown> | null;
+  deletion_requested?: boolean | null;
+  deletion_requested_at?: string | null;
+  last_owner_update_at?: string | null;
   admin_notes?: string | null;
   reviewed_at?: string | null;
   reviewed_by?: string | null;
@@ -96,6 +103,10 @@ export function isCompanyStatus(value: unknown): value is CompanyStatus {
   return COMPANY_STATUSES.includes(value as CompanyStatus);
 }
 
+export function isCompanyUpdateStatus(value: unknown): value is CompanyUpdateStatus {
+  return COMPANY_UPDATE_STATUSES.includes(value as CompanyUpdateStatus);
+}
+
 export function normalizeCompanyCategory(value: unknown): CompanyCategory | null {
   const normalized = String(value ?? '').trim().toLowerCase().replace(/-/g, '_');
   return isCompanyCategory(normalized) ? normalized : null;
@@ -104,6 +115,11 @@ export function normalizeCompanyCategory(value: unknown): CompanyCategory | null
 export function normalizeCompanyStatus(value: unknown): CompanyStatus | null {
   const normalized = String(value ?? '').trim().toLowerCase().replace(/-/g, '_');
   return isCompanyStatus(normalized) ? normalized : null;
+}
+
+export function normalizeCompanyUpdateStatus(value: unknown): CompanyUpdateStatus | null {
+  const normalized = String(value ?? '').trim().toLowerCase().replace(/-/g, '_');
+  return isCompanyUpdateStatus(normalized) ? normalized : null;
 }
 
 export function companyCategoryFromPath(pathname: string) {

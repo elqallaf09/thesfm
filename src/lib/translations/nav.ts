@@ -56,6 +56,7 @@ export const TR_NAV: Record<string, TranslationEntry> = {
   nav_notif:      { ar:'الإشعارات', en:'Notifications', fr:'Notifications' },
   nav_security:   { ar:'الأمان والخصوصية', en:'Security & Privacy', fr:'Sécurité et confidentialité' },
   nav_profile:    { ar:'الملف الشخصي', en:'Profile', fr:'Profil' },
+  nav_my_companies: { ar:'شركاتي', en:'My Companies', fr:'Mes sociétés' },
   nav_logout:     { ar:'تسجيل الخروج', en:'Logout', fr:'Déconnexion' },
   nav_savings:    { ar:'المدخرات', en:'Savings', fr:'Épargne' },
   nav_documents: { ar:'المستندات', en:'Documents', fr:'Documents' },

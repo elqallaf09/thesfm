@@ -1,14 +1,20 @@
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseAdmin, getUserFromBearerToken } from '@/lib/server/adminAccess';
+import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import { resolvePublicImageUrl } from '@/lib/server/imageUrlResolver';
 import { isSmtpMailConfigured, sendSmtpMail } from '@/lib/server/smtpMail';
+import {
+  COMPANY_LISTING_SELECT_COLUMNS,
+  cleanCompanyText,
+  cleanCompanyUrl,
+  companyYearOrNull,
+  getCompanyRequestUser,
+  normalizeCompanyListing,
+} from '@/lib/server/companyListingHelpers';
 import {
   normalizeCompanyCategory,
   normalizeCompanyStatus,
   splitServices,
-  type CompanyCategory,
   type CompanyListing,
   type CompanyStatus,
 } from '@/lib/companyListings';
@@ -16,7 +22,7 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const SELECT_COLUMNS = 'id,user_id,stripe_customer_id,stripe_subscription_id,company_name,category,country,city,short_description,long_description,website_url,email,phone,whatsapp,linkedin_url,twitter_url,instagram_url,founded_year,license_number,regulator_name,services,logo_url,cover_image_url,status,is_featured,created_at,updated_at,approved_at';
+const SELECT_COLUMNS = COMPANY_LISTING_SELECT_COLUMNS;
 const COMPANY_REVIEW_EMAIL = 'SUPPORT@THE-SFM.COM';
 
 type CompanyPayload = {
@@ -51,40 +57,18 @@ function json(data: unknown, init?: ResponseInit) {
   });
 }
 
-function cleanText(value: unknown, max = 500) {
-  return typeof value === 'string' ? value.trim().slice(0, max) : '';
-}
-
-function cleanUrl(value: unknown) {
-  const raw = cleanText(value, 500);
-  if (!raw) return null;
-  try {
-    const url = new URL(raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`);
-    if (!['http:', 'https:'].includes(url.protocol) || !url.hostname.includes('.')) return null;
-    if (/[^\x00-\x7F]/.test(url.toString())) return null;
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
 function hasInvalidOptionalUrl(value: unknown) {
-  return cleanText(value, 500) !== '' && cleanUrl(value) === null;
+  return cleanCompanyText(value, 500) !== '' && cleanCompanyUrl(value) === null;
 }
 
 function isValidOptionalEmail(value: unknown) {
-  const raw = cleanText(value, 180);
+  const raw = cleanCompanyText(value, 180);
   return !raw || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw);
 }
 
 function isValidOptionalPhone(value: unknown) {
-  const raw = cleanText(value, 80);
+  const raw = cleanCompanyText(value, 80);
   return !raw || /^\+\d{1,4}\s?\d{5,18}$/.test(raw);
-}
-
-function numberOrNull(value: unknown) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 1800 && parsed < 2200 ? Math.trunc(parsed) : null;
 }
 
 function escapeHtml(value: string | null | undefined) {
@@ -94,14 +78,6 @@ function escapeHtml(value: string | null | undefined) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-}
-
-async function currentUser(request: NextRequest) {
-  const header = request.headers.get('authorization');
-  const bearerToken = header?.toLowerCase().startsWith('bearer ') ? header.slice(7).trim() : '';
-  const cookieStore = await cookies();
-  const cookieToken = cookieStore.get('sfm_access_token')?.value ?? '';
-  return getUserFromBearerToken(bearerToken || cookieToken);
 }
 
 async function getActiveCompanyPlan(userId: string) {
@@ -120,39 +96,6 @@ async function getActiveCompanyPlan(userId: string) {
     return null;
   }
   return (data?.[0] as { stripe_customer_id?: string | null; stripe_subscription_id?: string | null } | undefined) ?? null;
-}
-
-function normalizeListing(row: Record<string, unknown>): CompanyListing {
-  return {
-    id: String(row.id),
-    user_id: row.user_id ? String(row.user_id) : null,
-    stripe_customer_id: row.stripe_customer_id ? String(row.stripe_customer_id) : null,
-    stripe_subscription_id: row.stripe_subscription_id ? String(row.stripe_subscription_id) : null,
-    company_name: String(row.company_name ?? ''),
-    category: normalizeCompanyCategory(row.category) ?? 'investment',
-    country: row.country ? String(row.country) : null,
-    city: row.city ? String(row.city) : null,
-    short_description: row.short_description ? String(row.short_description) : null,
-    long_description: row.long_description ? String(row.long_description) : null,
-    website_url: row.website_url ? String(row.website_url) : null,
-    email: row.email ? String(row.email) : null,
-    phone: row.phone ? String(row.phone) : null,
-    whatsapp: row.whatsapp ? String(row.whatsapp) : null,
-    linkedin_url: row.linkedin_url ? String(row.linkedin_url) : null,
-    twitter_url: row.twitter_url ? String(row.twitter_url) : null,
-    instagram_url: row.instagram_url ? String(row.instagram_url) : null,
-    founded_year: typeof row.founded_year === 'number' ? row.founded_year : null,
-    license_number: row.license_number ? String(row.license_number) : null,
-    regulator_name: row.regulator_name ? String(row.regulator_name) : null,
-    services: Array.isArray(row.services) ? row.services.map(item => String(item)) : null,
-    logo_url: row.logo_url ? String(row.logo_url) : null,
-    cover_image_url: row.cover_image_url ? String(row.cover_image_url) : null,
-    status: normalizeCompanyStatus(row.status) ?? 'pending_review',
-    is_featured: Boolean(row.is_featured),
-    created_at: row.created_at ? String(row.created_at) : null,
-    updated_at: row.updated_at ? String(row.updated_at) : null,
-    approved_at: row.approved_at ? String(row.approved_at) : null,
-  };
 }
 
 async function notifyCompanyReviewRequest(request: NextRequest, listing: CompanyListing, submitterEmail?: string | null) {
@@ -228,9 +171,9 @@ export async function GET(request: NextRequest) {
   const admin = createServerSupabaseAdmin();
   if (!admin) return json({ ok: true, items: [], stats: null, code: 'SERVICE_NOT_CONFIGURED' });
 
-  const search = cleanText(request.nextUrl.searchParams.get('q'), 100).toLowerCase();
-  const country = cleanText(request.nextUrl.searchParams.get('country'), 80);
-  const city = cleanText(request.nextUrl.searchParams.get('city'), 80);
+  const search = cleanCompanyText(request.nextUrl.searchParams.get('q'), 100).toLowerCase();
+  const country = cleanCompanyText(request.nextUrl.searchParams.get('country'), 80);
+  const city = cleanCompanyText(request.nextUrl.searchParams.get('city'), 80);
   const status = normalizeCompanyStatus(request.nextUrl.searchParams.get('status')) ?? 'approved';
   const publicStatus: CompanyStatus = status === 'approved' ? 'approved' : 'approved';
 
@@ -249,7 +192,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query;
     if (error) throw error;
-    const items = (data ?? []).map(row => normalizeListing(row as Record<string, unknown>))
+    const items = (data ?? []).map(row => normalizeCompanyListing(row as Record<string, unknown>))
       .filter(item => {
         if (!search) return true;
         const haystack = `${item.company_name} ${item.short_description ?? ''} ${item.country ?? ''} ${item.city ?? ''} ${(item.services ?? []).join(' ')}`.toLowerCase();
@@ -278,7 +221,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await currentUser(request);
+  const user = await getCompanyRequestUser(request);
   if (!user) return json({ ok: false, code: 'AUTH_REQUIRED' }, { status: 401 });
 
   const companyPlan = await getActiveCompanyPlan(user.id);
@@ -292,7 +235,7 @@ export async function POST(request: NextRequest) {
   }
 
   const category = normalizeCompanyCategory(payload.category);
-  const companyName = cleanText(payload.companyName, 160);
+  const companyName = cleanCompanyText(payload.companyName, 160);
   if (!category || !companyName) return json({ ok: false, code: 'VALIDATION_ERROR' }, { status: 400 });
   if (
     hasInvalidOptionalUrl(payload.websiteUrl) ||
@@ -311,8 +254,8 @@ export async function POST(request: NextRequest) {
   const admin = createServerSupabaseAdmin();
   if (!admin) return json({ ok: false, code: 'SERVICE_NOT_CONFIGURED' }, { status: 503 });
 
-  const logoUrl = cleanUrl(payload.logoUrl);
-  const coverImageUrl = cleanUrl(payload.coverImageUrl);
+  const logoUrl = cleanCompanyUrl(payload.logoUrl);
+  const coverImageUrl = cleanCompanyUrl(payload.coverImageUrl);
   const resolvedLogo = logoUrl ? await resolvePublicImageUrl(logoUrl) : null;
   const resolvedCoverImage = coverImageUrl ? await resolvePublicImageUrl(coverImageUrl) : null;
 
@@ -326,20 +269,20 @@ export async function POST(request: NextRequest) {
     stripe_subscription_id: companyPlan.stripe_subscription_id ?? null,
     company_name: companyName,
     category,
-    country: cleanText(payload.country, 100) || null,
-    city: cleanText(payload.city, 100) || null,
-    short_description: cleanText(payload.shortDescription, 320) || null,
-    long_description: cleanText(payload.longDescription, 2500) || null,
-    website_url: cleanUrl(payload.websiteUrl),
-    email: cleanText(payload.email, 180).toUpperCase() || null,
-    phone: cleanText(payload.phone, 80) || null,
-    whatsapp: cleanText(payload.whatsapp, 80) || null,
-    linkedin_url: cleanUrl(payload.linkedinUrl),
-    twitter_url: cleanUrl(payload.twitterUrl),
-    instagram_url: cleanUrl(payload.instagramUrl),
-    founded_year: numberOrNull(payload.foundedYear),
-    license_number: cleanText(payload.licenseNumber, 180) || null,
-    regulator_name: cleanText(payload.regulatorName, 180) || null,
+    country: cleanCompanyText(payload.country, 100) || null,
+    city: cleanCompanyText(payload.city, 100) || null,
+    short_description: cleanCompanyText(payload.shortDescription, 320) || null,
+    long_description: cleanCompanyText(payload.longDescription, 2500) || null,
+    website_url: cleanCompanyUrl(payload.websiteUrl),
+    email: cleanCompanyText(payload.email, 180).toUpperCase() || null,
+    phone: cleanCompanyText(payload.phone, 80) || null,
+    whatsapp: cleanCompanyText(payload.whatsapp, 80) || null,
+    linkedin_url: cleanCompanyUrl(payload.linkedinUrl),
+    twitter_url: cleanCompanyUrl(payload.twitterUrl),
+    instagram_url: cleanCompanyUrl(payload.instagramUrl),
+    founded_year: companyYearOrNull(payload.foundedYear),
+    license_number: cleanCompanyText(payload.licenseNumber, 180) || null,
+    regulator_name: cleanCompanyText(payload.regulatorName, 180) || null,
     services: splitServices(payload.services),
     logo_url: resolvedLogo?.ok ? resolvedLogo.imageUrl : null,
     cover_image_url: resolvedCoverImage?.ok ? resolvedCoverImage.imageUrl : null,
@@ -358,7 +301,7 @@ export async function POST(request: NextRequest) {
     return json({ ok: false, code: 'SAVE_FAILED' }, { status: 500 });
   }
 
-  const item = normalizeListing(data as Record<string, unknown>);
+  const item = normalizeCompanyListing(data as Record<string, unknown>);
   await notifyCompanyReviewRequest(request, item, user.email);
 
   return json({ ok: true, item });

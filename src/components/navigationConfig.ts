@@ -195,6 +195,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     defaultOpen: true,
     items: [
       { id: 'profile', icon: UserRound, href: '/profile', labelKey: 'nav_profile', viewModes: ['simple', 'professional'] },
+      { id: 'my-companies', icon: Building2, href: '/profile/companies', labelKey: 'nav_my_companies', viewModes: ['simple', 'professional'] },
       { id: 'security', icon: ShieldCheck, href: '/security', labelKey: 'nav_security', viewModes: ['simple', 'professional'] },
       { id: 'logout', icon: LogOut, action: 'logout', labelKey: 'nav_logout', viewModes: ['simple', 'professional'] },
     ],

@@ -20,6 +20,10 @@ interface Company {
   country: string | null;
   city: string | null;
   status: CompanyStatus;
+  update_status: 'none' | 'pending_update' | 'deletion_requested' | null;
+  deletion_requested: boolean | null;
+  deletion_requested_at: string | null;
+  last_owner_update_at: string | null;
   admin_notes: string | null;
   reviewed_at: string | null;
   reviewed_by: string | null;
@@ -83,6 +87,10 @@ const COPY = {
       rejected: 'مرفوضة',
       inactive: 'غير نشطة',
     },
+    pendingUpdate: 'تعديل بانتظار المراجعة',
+    deletionRequest: 'طلب حذف / إلغاء نشر',
+    acceptUpdate: 'قبول التعديلات',
+    acceptDeletion: 'قبول الحذف',
   },
   en: {
     adminFallback: 'THE SFM Admin',
@@ -121,6 +129,10 @@ const COPY = {
       rejected: 'Rejected',
       inactive: 'Inactive',
     },
+    pendingUpdate: 'Pending update',
+    deletionRequest: 'Deletion request',
+    acceptUpdate: 'Approve update',
+    acceptDeletion: 'Approve deletion',
   },
   fr: {
     adminFallback: 'Admin THE SFM',
@@ -159,6 +171,10 @@ const COPY = {
       rejected: 'Refusée',
       inactive: 'Inactive',
     },
+    pendingUpdate: 'Modification en attente',
+    deletionRequest: 'Demande de suppression',
+    acceptUpdate: 'Approuver la modification',
+    acceptDeletion: 'Approuver la suppression',
   },
 } satisfies Record<Lang, Record<string, unknown> & { statuses: Record<CompanyStatus, string> }>;
 
@@ -234,7 +250,16 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
         setCompanies(previous =>
           previous.map(company =>
             company.id === selected.id
-              ? { ...company, status: newStatus, admin_notes: visibleReviewNote, reviewed_by: adminEmail, reviewed_at: new Date().toISOString() }
+              ? {
+                  ...company,
+                  status: newStatus,
+                  admin_notes: visibleReviewNote,
+                  reviewed_by: adminEmail,
+                  reviewed_at: new Date().toISOString(),
+                  update_status: 'none',
+                  deletion_requested: newStatus === 'approved' || newStatus === 'inactive' ? false : company.deletion_requested,
+                  deletion_requested_at: newStatus === 'approved' || newStatus === 'inactive' ? null : company.deletion_requested_at,
+                }
               : company,
           ),
         );
@@ -276,6 +301,7 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
         .ca-logo{width:36px;height:36px;border-radius:8px;object-fit:cover;background:#e2e8f0}.dark .ca-logo{background:#1e3a5f}
         .ca-logo-placeholder{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#0b76e0,#18d4d4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.95rem;font-weight:800}
         .ca-status-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.25rem .7rem;border-radius:999px;font-size:.78rem;font-weight:800}
+        .ca-request-badge{display:inline-flex;align-items:center;gap:.35rem;margin-top:.35rem;padding:.25rem .6rem;border-radius:999px;background:rgba(245,158,11,.14);color:#b45309;font-size:.72rem;font-weight:900}
         .ca-review-btn{min-height:36px;padding:.35rem .9rem;border-radius:8px;border:1.5px solid var(--sfm-primary);color:var(--sfm-primary);background:transparent;font-size:.82rem;font-weight:800;cursor:pointer;transition:all .15s}.ca-review-btn:hover{background:var(--sfm-primary);color:#fff}
         .ca-empty{text-align:center;padding:3rem 1rem;color:#64748b;font-size:.95rem;font-weight:800}.dark .ca-empty{color:#94a3b8}
         .ca-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
@@ -352,6 +378,8 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
                           : <div className="ca-logo-placeholder">{company.company_name?.[0] ?? '?'}</div>}
                         <div>
                           <div style={{ fontWeight: 800 }}>{company.company_name}</div>
+                          {company.update_status === 'pending_update' && <div className="ca-request-badge">{text.pendingUpdate as string}</div>}
+                          {company.deletion_requested && <div className="ca-request-badge">{text.deletionRequest as string}</div>}
                           {company.email && <div style={{ fontSize: '.75rem', color: '#94A3B8' }}>{company.email}</div>}
                         </div>
                       </div>
@@ -399,6 +427,8 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
                 </div>
               )}
               {selected.short_description && <div className="ca-desc">{selected.short_description}</div>}
+              {selected.update_status === 'pending_update' && <div className="ca-desc">{text.pendingUpdate as string}</div>}
+              {selected.deletion_requested && <div className="ca-desc">{text.deletionRequest as string}</div>}
               <div className="ca-info-row">
                 <strong>{text.status as string}:</strong>
                 <span className="ca-status-badge" style={{ background: `${STATUS_COLORS[selected.status]}18`, color: STATUS_COLORS[selected.status] }}>
@@ -424,6 +454,16 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
               {feedback && <div className={`ca-feedback ${feedback.type}`}>{feedback.msg}</div>}
 
               <div className="ca-actions">
+                {selected.update_status === 'pending_update' ? (
+                  <button className="ca-action-btn ca-btn-approve" disabled={isPending} onClick={() => submitAction('approved')}>
+                    {text.acceptUpdate as string}
+                  </button>
+                ) : null}
+                {selected.deletion_requested ? (
+                  <button className="ca-action-btn ca-btn-reject" disabled={isPending} onClick={() => submitAction('inactive')}>
+                    {text.acceptDeletion as string}
+                  </button>
+                ) : null}
                 <button className="ca-action-btn ca-btn-approve" disabled={isPending} onClick={() => submitAction('approved')}>
                   {text.approve as string}
                 </button>

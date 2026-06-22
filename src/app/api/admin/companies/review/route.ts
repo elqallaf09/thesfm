@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
 
   const { data: companyBeforeReview, error: companyError } = await supabase
     .from('company_listings')
-    .select('id,user_id,company_name,category,email,status')
+    .select('id,user_id,company_name,category,email,status,pending_update,update_status,deletion_requested')
     .eq('id', companyId)
     .single();
 
@@ -159,16 +159,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Company not found' }, { status: 404 });
   }
 
+  const pendingUpdate = companyBeforeReview.pending_update && typeof companyBeforeReview.pending_update === 'object'
+    ? companyBeforeReview.pending_update as Record<string, unknown>
+    : null;
+  const appliesPendingUpdate = Boolean(status === 'approved' && companyBeforeReview.update_status === 'pending_update' && pendingUpdate);
+  const acceptsDeletion = status === 'inactive' && Boolean(companyBeforeReview.deletion_requested);
+  const updatePayload: Record<string, unknown> = {
+    ...(appliesPendingUpdate && pendingUpdate ? pendingUpdate : {}),
+    status,
+    admin_notes: visibleReviewNote,
+    update_status: 'none',
+    pending_update: null,
+    deletion_requested: acceptsDeletion ? false : Boolean(companyBeforeReview.deletion_requested) && status !== 'approved',
+    reviewed_at: new Date().toISOString(),
+    reviewed_by: user.email,
+    ...(status === 'approved' ? { approved_at: new Date().toISOString() } : {}),
+  };
+
+  if (acceptsDeletion || status === 'approved') {
+    updatePayload.deletion_requested_at = null;
+  }
+
   const { error } = await supabase
     .from('company_listings')
-    .update({
-      status,
-      admin_notes: visibleReviewNote,
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: user.email,
-      // If approved, also set approved_at
-      ...(status === 'approved' ? { approved_at: new Date().toISOString() } : {}),
-    })
+    .update(updatePayload)
     .eq('id', companyId);
 
   if (error) {
