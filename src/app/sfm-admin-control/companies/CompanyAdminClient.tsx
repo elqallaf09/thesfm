@@ -213,6 +213,9 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
       setFeedback({ type: 'err', msg: text.noteRequired as string });
       return;
     }
+    const visibleReviewNote = newStatus === 'rejected' || newStatus === 'needs_changes'
+      ? note.trim() || null
+      : null;
 
     startTransition(async () => {
       try {
@@ -222,7 +225,7 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
           body: JSON.stringify({
             companyId: selected.id,
             status: newStatus,
-            adminNotes: note.trim() || null,
+            adminNotes: visibleReviewNote,
             adminEmail,
           }),
         });
@@ -231,7 +234,7 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
         setCompanies(previous =>
           previous.map(company =>
             company.id === selected.id
-              ? { ...company, status: newStatus, admin_notes: note.trim() || null, reviewed_by: adminEmail, reviewed_at: new Date().toISOString() }
+              ? { ...company, status: newStatus, admin_notes: visibleReviewNote, reviewed_by: adminEmail, reviewed_at: new Date().toISOString() }
               : company,
           ),
         );

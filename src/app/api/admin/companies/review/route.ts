@@ -144,6 +144,9 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServerSupabaseAdmin();
   if (!supabase) return NextResponse.json({ error: 'Server configuration error' }, { status: 503 });
+  const visibleReviewNote = status === 'rejected' || status === 'needs_changes'
+    ? (typeof adminNotes === 'string' && adminNotes.trim() ? adminNotes.trim() : null)
+    : null;
 
   const { data: companyBeforeReview, error: companyError } = await supabase
     .from('company_listings')
@@ -160,7 +163,7 @@ export async function POST(req: NextRequest) {
     .from('company_listings')
     .update({
       status,
-      admin_notes: adminNotes ?? null,
+      admin_notes: visibleReviewNote,
       reviewed_at: new Date().toISOString(),
       reviewed_by: user.email,
       // If approved, also set approved_at
@@ -184,7 +187,7 @@ export async function POST(req: NextRequest) {
       email: companyBeforeReview.email ? String(companyBeforeReview.email) : null,
     },
     status,
-    adminNotes,
+    adminNotes: visibleReviewNote,
   });
 
   return NextResponse.json({ ok: true });

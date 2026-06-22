@@ -85,6 +85,19 @@ function safeTel(value: string) {
   return value.replace(/[^\d+]/g, '');
 }
 
+function statusMessage(status: CompanyStatus, adminNotes?: string | null) {
+  if (status === 'approved') return 'تم اعتماد الشركة ونشرها في دليل THE SFM.';
+  if (status === 'pending_review') return 'بانتظار مراجعة الإدارة.';
+  if (status === 'needs_changes') return adminNotes?.trim() || 'تحتاج بيانات الشركة إلى تعديل قبل الاعتماد.';
+  if (status === 'rejected') return adminNotes?.trim() || 'تم رفض طلب الشركة.';
+  if (status === 'inactive') return 'الشركة غير نشطة حالياً.';
+  return '';
+}
+
+function shouldShowReviewNote(status: CompanyStatus) {
+  return status === 'rejected' || status === 'needs_changes';
+}
+
 function ProfileLogo({ item }: { item: CompanyListing }) {
   const { imageUrl, loading, failed, setFailed } = useResolvedImageUrl(item.logo_url);
   if (!item.logo_url || failed || (!loading && !imageUrl)) {
@@ -186,16 +199,18 @@ export function CompanyDetailsPage({ id }: { id: string }) {
   async function reviewCompany(nextStatus: CompanyStatus) {
     if (!item || busyStatus) return;
     setBusyStatus(nextStatus);
+    const adminNotes = shouldShowReviewNote(nextStatus) ? item.admin_notes ?? null : null;
     try {
       const response = await fetch('/api/admin/companies/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyId: item.id, status: nextStatus, adminNotes: item.admin_notes ?? null }),
+        body: JSON.stringify({ companyId: item.id, status: nextStatus, adminNotes }),
       });
       if (!response.ok) throw new Error('review failed');
       setItem(previous => previous ? {
         ...previous,
         status: nextStatus,
+        admin_notes: adminNotes,
         reviewed_at: new Date().toISOString(),
         approved_at: nextStatus === 'approved' ? new Date().toISOString() : previous.approved_at,
       } : previous);
@@ -255,7 +270,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                 <ShieldAlert size={20} />
                 <div>
                   <strong>المعلومات مقدمة من الشركة وتخضع للمراجعة قبل النشر.</strong>
-                  {item.admin_notes ? <p>{item.admin_notes}</p> : null}
+                  {shouldShowReviewNote(status) && item.admin_notes ? <p>{item.admin_notes}</p> : null}
                 </div>
               </section>
             ) : null}
@@ -351,7 +366,10 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                     <DetailTile icon={<CalendarDays size={16} />} label="تاريخ الإرسال" value={formatDate(item.created_at, locale)} />
                     <DetailTile icon={<CalendarDays size={16} />} label="تاريخ المراجعة" value={formatDate(item.reviewed_at, locale)} />
                   </div>
-                  {item.admin_notes ? <p className="admin-note">{item.admin_notes}</p> : null}
+                  <p className={`status-message ${status}`}>{statusMessage(status, item.admin_notes)}</p>
+                  {viewer?.canReview && shouldShowReviewNote(status) && item.admin_notes ? (
+                    <p className="admin-note"><strong>ملاحظة المراجعة:</strong> {item.admin_notes}</p>
+                  ) : null}
                 </SectionCard>
 
                 {viewer?.canReview ? (
@@ -789,6 +807,33 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             align-items: center;
             margin-bottom: 12px;
           }
+          .status-message {
+            margin: 12px 0 0;
+            border-radius: 14px;
+            padding: 12px;
+            line-height: 1.8;
+            font-weight: 900;
+          }
+          .status-message.approved {
+            color: #047857;
+            background: #ecfdf5;
+          }
+          .status-message.pending_review {
+            color: #b45309;
+            background: #fffbeb;
+          }
+          .status-message.rejected {
+            color: #b91c1c;
+            background: #fef2f2;
+          }
+          .status-message.needs_changes {
+            color: #1d4ed8;
+            background: #eff6ff;
+          }
+          .status-message.inactive {
+            color: #475569;
+            background: #f8fafc;
+          }
           .admin-note {
             margin: 12px 0 0;
             border-radius: 14px;
@@ -889,6 +934,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           .dark .detail-tile,
           .dark .contact-action,
           .dark .empty-card,
+          .dark .status-message,
           .dark .admin-card button,
           .dark .admin-card a {
             background: #0A1F36;
