@@ -7,6 +7,7 @@ import {
   Building2,
   CheckCircle2,
   Clock3,
+  Eye,
   Globe2,
   Mail,
   MapPin,
@@ -395,7 +396,10 @@ function CompanyCard({ item, categoryLabel, t }: { item: CompanyListing; categor
       </div>
       <p>{item.short_description || item.long_description || t('company_listing_info_note')}</p>
       <div className="company-actions">
-        <Link href={`/companies/${item.id}`}>{t('company_listing_view_details')}</Link>
+        <Link className="company-action-primary" href={`/companies/${item.id}`} aria-label={`عرض تفاصيل الشركة ${item.company_name}`}>
+          <Eye size={14} />
+          {t('company_listing_view_details')}
+        </Link>
         {item.website_url ? <a href={item.website_url} target="_blank" rel="noreferrer"><Globe2 size={14} />{t('company_listing_visit_website')}</a> : null}
         {contactHref ? <a href={contactHref} target={contactHref.startsWith('http') ? '_blank' : undefined} rel="noreferrer"><Mail size={14} />{t('company_listing_contact')}</a> : null}
       </div>
@@ -501,20 +505,63 @@ function CompanyCard({ item, categoryLabel, t }: { item: CompanyListing; categor
           display: flex;
           flex-wrap: wrap;
           gap: 8px;
+          align-items: center;
         }
         .company-actions a {
-          min-height: 34px;
+          min-height: 40px;
           display: inline-flex;
           align-items: center;
+          justify-content: center;
           gap: 5px;
-          border-radius: 10px;
-          padding: 0 10px;
+          border-radius: 12px;
+          padding: 0 12px;
           border: 1px solid rgba(11, 118, 224, 0.16);
           color: #0b76e0;
           text-decoration: none;
           font-size: 12px;
           font-weight: 950;
           background: #ffffff;
+          cursor: pointer;
+          transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease, color .16s ease;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .company-actions a:hover,
+        .company-actions a:focus-visible {
+          outline: none;
+          border-color: rgba(24, 212, 212, 0.42);
+          background: #f0fdff;
+          box-shadow: 0 0 0 3px rgba(24, 212, 212, 0.14), 0 10px 22px rgba(15, 23, 42, 0.08);
+          transform: translateY(-1px);
+        }
+        .company-actions a:active {
+          transform: translateY(0) scale(.98);
+          box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+        }
+        .company-actions a.company-action-primary {
+          flex: 1 1 150px;
+          border: 0;
+          color: #ffffff;
+          background: linear-gradient(135deg, #0b76e0, #18d4d4);
+          box-shadow: 0 12px 24px rgba(11, 118, 224, 0.18);
+        }
+        .company-actions a.company-action-primary:hover,
+        .company-actions a.company-action-primary:focus-visible {
+          color: #ffffff;
+          background: linear-gradient(135deg, #075fb8, #0fbfc9);
+          box-shadow: 0 0 0 3px rgba(24, 212, 212, 0.18), 0 14px 28px rgba(11, 118, 224, 0.24);
+        }
+        .company-actions a svg {
+          flex: 0 0 auto;
+        }
+        @media (max-width: 520px) {
+          .company-actions {
+            display: grid;
+            grid-template-columns: 1fr;
+          }
+          .company-actions a {
+            width: 100%;
+            min-height: 44px;
+          }
         }
       `}</style>
     </article>
