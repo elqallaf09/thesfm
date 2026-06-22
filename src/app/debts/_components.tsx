@@ -505,6 +505,7 @@ export function DebtStyles() {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 14px;
+        align-items: start;
       }
 
       .debt-card {
@@ -513,6 +514,7 @@ export function DebtStyles() {
         display: grid;
         gap: 14px;
         min-width: 0;
+        align-self: start;
       }
 
       .debt-card.expanded {
