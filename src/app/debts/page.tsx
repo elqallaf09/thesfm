@@ -4,6 +4,8 @@ import { FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, use
 import {
   AlertTriangle,
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
   CheckCircle2,
   CreditCard,
   Edit3,
@@ -15,7 +17,6 @@ import {
   ReceiptText,
   RefreshCcw,
   Snowflake,
-  Sparkles,
   Target,
   Trash2,
   TrendingDown,
@@ -53,12 +54,25 @@ export default function DebtsPage() {
   const [error, setError] = useState('');
   const [generationChecked, setGenerationChecked] = useState(false);
   const [extraPaymentAmount, setExtraPaymentAmount] = useState('0');
+  const [expandedDebtIds, setExpandedDebtIds] = useState<Set<string>>(() => new Set());
   const modalRef = useRef<HTMLFormElement>(null);
 
   const t = useCallback((key: keyof typeof TEXT) => trFn(locale, key), [locale]);
   const validationKeys = useMemo(() => validateDebtForm(form), [form]);
   const formIsValid = validationKeys.length === 0;
   const visibleValidationKeys = submitAttempted && !formIsValid ? validationKeys : [];
+
+  const toggleDebtExpanded = useCallback((debtId: string) => {
+    setExpandedDebtIds(current => {
+      const next = new Set(current);
+      if (next.has(debtId)) {
+        next.delete(debtId);
+      } else {
+        next.add(debtId);
+      }
+      return next;
+    });
+  }, []);
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -573,8 +587,7 @@ export default function DebtsPage() {
           <SummaryCard icon={<WalletCards size={18} />} label={t('totalDebts')} value={money(totals.totalOriginal)} />
           <SummaryCard icon={<CreditCard size={18} />} label={t('remainingToPay')} value={money(totals.totalRemaining)} />
           <SummaryCard icon={<ReceiptText size={18} />} label={t('monthlyInstallments')} value={money(totals.totalMonthly)} />
-          <SummaryCard icon={<Gauge size={18} />} label={t('highestDebt')} value={totals.highest ? money(debtDisplaySummary(totals.highest).effectiveRemaining, totals.highest.currency) : t('unavailable')} />
-          <SummaryCard icon={<Sparkles size={18} />} label={t('debtToIncome')} value={totals.ratio === null ? t('unavailable') : `${totals.ratio.toFixed(1)}%`} />
+          <SummaryCard icon={<Gauge size={18} />} label={t('activeDebtsCount')} value={`${activeDebts.length}`} />
         </section>
 
         <section className="debts-layout">
@@ -611,53 +624,79 @@ export default function DebtsPage() {
                   const status = (debt.status === 'paid' || debt.status === 'paused' || debt.status === 'active') ? debt.status : 'active';
                   const nextPayment = schedule.nextPaymentDate ?? '';
                   const isDue = nextPayment === new Date().toISOString().slice(0, 10);
+                  const isExpanded = expandedDebtIds.has(debt.id);
+                  const remainingPaymentsCount = estimatePayoffMonths(displayDebt);
+                  const payoffDate = estimatePayoffDate(displayDebt);
                   return (
-                    <article className="debt-card" key={debt.id}>
+                    <article className={`debt-card ${isExpanded ? 'expanded' : ''}`} key={debt.id}>
                       <div className="debt-card-top">
-                        <div>
+                        <div className="debt-title-block">
                           <h3>{debt.name}</h3>
                           <p>{debt.creditor_name || t('unavailable')}</p>
                         </div>
-                        <span className={`debt-status ${status}`}>{t(status)}</span>
+                        <div className="debt-card-controls">
+                          <span className={`debt-status ${status}`}>{t(status)}</span>
+                          <button
+                            type="button"
+                            className="debt-expand-toggle"
+                            onClick={() => toggleDebtExpanded(debt.id)}
+                            aria-expanded={isExpanded}
+                            aria-label={isExpanded ? t('hideDebtDetails') : t('showDebtDetails')}
+                            title={isExpanded ? t('hideDebtDetails') : t('showDebtDetails')}
+                          >
+                            {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                          </button>
+                        </div>
                       </div>
-                      <div className="debt-progress">
-                        <span><b>{t('payoffRate')}</b><strong dir="ltr">{progress.toFixed(1)}%</strong></span>
-                        <i><b style={{ width: `${progress}%` }} /></i>
-                      </div>
-                      <div className="debt-metrics">
-                        <DebtMetric label={t('originalAmount')} value={money(debt.original_amount, debt.currency)} />
+                      <div className="debt-summary-strip">
                         <DebtMetric label={t('remaining')} value={money(effectiveRemaining, debt.currency)} />
                         <DebtMetric label={t('monthlyPayment')} value={money(debt.monthly_payment, debt.currency)} />
-                        <DebtMetric label={t('startDate')} value={formatDate(debt.start_date, locale)} />
-                        <DebtMetric label={t('firstPaymentDate')} value={formatDate(debtFirstPaymentDate(debt), locale)} />
-                        <DebtMetric label={t('lastPayment')} value={formatDate(lastPaymentDate, locale)} />
                         <DebtMetric label={t('nextPayment')} value={formatDate(nextPayment, locale)} />
-                        <DebtMetric label={t('paidPaymentsCount')} value={`${paidPaymentsCount}`} />
-                        <DebtMetric label={t('totalPaidAmount')} value={money(totalPaid, debt.currency)} />
-                        <DebtMetric label={t('interestRate')} value={`${toNumber(debt.interest_rate).toFixed(2)}%`} />
-                        <DebtMetric label={t('totalInterestPaid')} value={money(totalInterestPaid, debt.currency)} />
-                        <DebtMetric label={t('paymentDayLabel')} value={`${clampPaymentDay(debt.payment_day)}`} />
-                        {debt.status !== 'paid' && (
-                          <DebtMetric
-                            label={t('payoffDate')}
-                            value={formatDate(estimatePayoffDate(displayDebt), locale)}
-                            highlight
-                          />
-                        )}
                       </div>
-                      {(schedule.warning || calculateDebtPayment(displayDebt).warning) && (
-                        <div className="debt-warning"><AlertTriangle size={15} />{t('interestWarning')}</div>
+                      {isExpanded && (
+                        <div className="debt-expanded-details">
+                          <div className="debt-progress">
+                            <span><b>{t('payoffRate')}</b><strong dir="ltr">{progress.toFixed(1)}%</strong></span>
+                            <i><b style={{ width: `${progress}%` }} /></i>
+                          </div>
+                          <div className="debt-metrics">
+                            <DebtMetric label={t('originalAmount')} value={money(debt.original_amount, debt.currency)} />
+                            <DebtMetric label={t('totalPaidAmount')} value={money(totalPaid, debt.currency)} />
+                            <DebtMetric label={t('remaining')} value={money(effectiveRemaining, debt.currency)} />
+                            <DebtMetric label={t('monthlyPayment')} value={money(debt.monthly_payment, debt.currency)} />
+                            <DebtMetric label={t('interestRate')} value={`${toNumber(debt.interest_rate).toFixed(2)}%`} />
+                            <DebtMetric label={t('startDate')} value={formatDate(debt.start_date, locale)} />
+                            <DebtMetric label={t('nextPayment')} value={formatDate(nextPayment, locale)} />
+                            <DebtMetric label={t('remainingPaymentsCount')} value={remainingPaymentsCount === null ? t('unavailable') : `${remainingPaymentsCount}`} />
+                            <DebtMetric label={t('lastPayment')} value={formatDate(lastPaymentDate, locale)} />
+                            <DebtMetric label={t('repaymentPlan')} value={debt.status === 'paid' ? t('paid') : formatDate(payoffDate, locale)} highlight={debt.status !== 'paid'} />
+                            <DebtMetric label={t('firstPaymentDate')} value={formatDate(debtFirstPaymentDate(debt), locale)} />
+                            <DebtMetric label={t('paidPaymentsCount')} value={`${paidPaymentsCount}`} />
+                            <DebtMetric label={t('totalInterestPaid')} value={money(totalInterestPaid, debt.currency)} />
+                            <DebtMetric label={t('paymentDayLabel')} value={`${clampPaymentDay(debt.payment_day)}`} />
+                            {debt.status !== 'paid' && (
+                              <DebtMetric
+                                label={t('payoffDate')}
+                                value={formatDate(payoffDate, locale)}
+                                highlight
+                              />
+                            )}
+                          </div>
+                          {(schedule.warning || calculateDebtPayment(displayDebt).warning) && (
+                            <div className="debt-warning"><AlertTriangle size={15} />{t('interestWarning')}</div>
+                          )}
+                          {isDue && status === 'active' && <div className="debt-due"><CalendarDays size={15} />{t('dueToday')}</div>}
+                          <div className="debt-actions">
+                            <button type="button" onClick={() => openEditForm(debt)}><Edit3 size={15} />{t('edit')}</button>
+                            {status === 'active' && <button type="button" onClick={() => void recordPayment(debt)}><ReceiptText size={15} />{t('recordPayment')}</button>}
+                            {status === 'paused'
+                              ? <button type="button" onClick={() => void updateStatus(debt, 'active')}><PlayCircle size={15} />{t('resume')}</button>
+                              : status === 'active' ? <button type="button" onClick={() => void updateStatus(debt, 'paused')}><PauseCircle size={15} />{t('pause')}</button> : null}
+                            {status !== 'paid' && <button type="button" onClick={() => void updateStatus(debt, 'paid', 0)}><CheckCircle2 size={15} />{t('markPaid')}</button>}
+                            <button type="button" className="danger" onClick={() => void deleteDebt(debt)}><Trash2 size={15} />{t('delete')}</button>
+                          </div>
+                        </div>
                       )}
-                      {isDue && status === 'active' && <div className="debt-due"><CalendarDays size={15} />{t('dueToday')}</div>}
-                      <div className="debt-actions">
-                        <button type="button" onClick={() => openEditForm(debt)}><Edit3 size={15} />{t('edit')}</button>
-                        {status === 'active' && <button type="button" onClick={() => void recordPayment(debt)}><ReceiptText size={15} />{t('recordPayment')}</button>}
-                        {status === 'paused'
-                          ? <button type="button" onClick={() => void updateStatus(debt, 'active')}><PlayCircle size={15} />{t('resume')}</button>
-                          : status === 'active' ? <button type="button" onClick={() => void updateStatus(debt, 'paused')}><PauseCircle size={15} />{t('pause')}</button> : null}
-                        {status !== 'paid' && <button type="button" onClick={() => void updateStatus(debt, 'paid', 0)}><CheckCircle2 size={15} />{t('markPaid')}</button>}
-                        <button type="button" className="danger" onClick={() => void deleteDebt(debt)}><Trash2 size={15} />{t('delete')}</button>
-                      </div>
                     </article>
                   );
                 })}

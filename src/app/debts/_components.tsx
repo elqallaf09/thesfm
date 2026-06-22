@@ -515,11 +515,19 @@ export function DebtStyles() {
         min-width: 0;
       }
 
+      .debt-card.expanded {
+        border-color: rgba(47, 214, 192, .24);
+      }
+
       .debt-card-top {
         display: flex;
         justify-content: space-between;
         gap: 12px;
         align-items: flex-start;
+      }
+
+      .debt-title-block {
+        min-width: 0;
       }
 
       .debt-card h3 {
@@ -528,6 +536,7 @@ export function DebtStyles() {
         font-size: 18px;
         font-weight: 950;
         line-height: 1.35;
+        overflow-wrap: anywhere;
       }
 
       .debt-card p {
@@ -535,6 +544,66 @@ export function DebtStyles() {
         color: var(--sfm-muted);
         font-size: 13px;
         font-weight: 850;
+        overflow-wrap: anywhere;
+      }
+
+      .debt-card-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 0 0 auto;
+      }
+
+      .debt-expand-toggle {
+        width: 44px;
+        height: 44px;
+        border: 1px solid rgba(47, 214, 192, .20);
+        border-radius: 14px;
+        background: rgba(47, 214, 192, .08);
+        color: var(--sfm-primary-hover);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform .18s ease, border-color .18s ease, background .18s ease;
+      }
+
+      .debt-expand-toggle:hover,
+      .debt-expand-toggle:focus-visible {
+        background: rgba(47, 214, 192, .14);
+        border-color: rgba(47, 214, 192, .34);
+        outline: none;
+      }
+
+      .debt-expand-toggle:active {
+        transform: scale(.96);
+      }
+
+      .debt-summary-strip,
+      .debt-expanded-details {
+        animation: debtReveal .18s ease;
+      }
+
+      .debt-summary-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 9px;
+      }
+
+      .debt-expanded-details {
+        display: grid;
+        gap: 14px;
+      }
+
+      @keyframes debtReveal {
+        from {
+          opacity: 0;
+          transform: translateY(-4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
 
       .debt-status,
@@ -1344,6 +1413,25 @@ export function DebtStyles() {
         .debt-form-grid {
           grid-template-columns: 1fr;
         }
+        .debts-summary-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .debt-card {
+          border-radius: 22px;
+          padding: 14px;
+          gap: 12px;
+        }
+        .debt-card-top {
+          align-items: flex-start;
+        }
+        .debt-card-controls {
+          align-items: flex-end;
+          flex-direction: column;
+        }
+        .debt-summary-strip {
+          grid-template-columns: 1fr;
+        }
         .debt-metrics {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
@@ -1385,6 +1473,8 @@ export function DebtStyles() {
       }
 
       @media (max-width: 430px) {
+        .debts-summary-grid,
+        .debt-summary-strip,
         .debt-metrics {
           grid-template-columns: 1fr;
         }
