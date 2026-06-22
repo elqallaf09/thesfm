@@ -1,11 +1,11 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseAdmin, getUserFromBearerToken } from '@/lib/server/adminAccess';
+import { createServerSupabaseAdmin, getUserFromBearerToken, isAdminEmail } from '@/lib/server/adminAccess';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const SELECT_COLUMNS = 'id,user_id,company_name,category,country,city,short_description,long_description,website_url,email,phone,whatsapp,linkedin_url,twitter_url,instagram_url,founded_year,license_number,regulator_name,services,logo_url,cover_image_url,status,is_featured,created_at,updated_at,approved_at';
+const SELECT_COLUMNS = 'id,user_id,company_name,category,country,city,short_description,long_description,website_url,email,phone,whatsapp,linkedin_url,twitter_url,instagram_url,founded_year,license_number,regulator_name,services,logo_url,cover_image_url,status,admin_notes,reviewed_at,reviewed_by,is_featured,created_at,updated_at,approved_at';
 
 function json(data: unknown, init?: ResponseInit) {
   return NextResponse.json(data, {
@@ -44,9 +44,11 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
   const user = await currentUser(request);
   const row = data as { status?: string; user_id?: string | null };
-  if (row.status !== 'approved' && row.user_id !== user?.id) {
-    return json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
+  const isOwner = Boolean(user?.id && row.user_id === user.id);
+  const isAdmin = isAdminEmail(user?.email);
+  if (row.status !== 'approved' && !isOwner && !isAdmin) {
+    return json({ ok: false, code: 'ACCESS_DENIED' }, { status: 403 });
   }
 
-  return json({ ok: true, item: data });
+  return json({ ok: true, item: data, viewer: { isOwner, isAdmin, canReview: isAdmin } });
 }

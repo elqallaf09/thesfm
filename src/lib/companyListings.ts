@@ -3,7 +3,7 @@ import { TR } from '@/lib/translations';
 type TranslationKey = keyof typeof TR;
 
 export const COMPANY_CATEGORIES = ['investment', 'trading', 'accounting', 'feasibility', 'financial_consulting'] as const;
-export const COMPANY_STATUSES = ['pending_review', 'approved', 'rejected', 'inactive'] as const;
+export const COMPANY_STATUSES = ['pending_review', 'approved', 'rejected', 'needs_changes', 'inactive'] as const;
 
 export type CompanyCategory = typeof COMPANY_CATEGORIES[number];
 export type CompanyStatus = typeof COMPANY_STATUSES[number];
@@ -33,6 +33,9 @@ export type CompanyListing = {
   logo_url?: string | null;
   cover_image_url?: string | null;
   status: CompanyStatus;
+  admin_notes?: string | null;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
   is_featured?: boolean | null;
   created_at?: string | null;
   updated_at?: string | null;
