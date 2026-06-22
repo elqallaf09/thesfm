@@ -688,6 +688,8 @@ const adminStyles = `
   .admin-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid rgba(29,140,255,.12);background:var(--sfm-card-bg);border-radius:22px;padding:12px;box-shadow:0 12px 30px rgba(3,18,37,.05)}
   .admin-user-chip{min-height:42px;border-radius:999px;border:1px solid rgba(47,214,192,.18);background:rgba(47,214,192,.08);color:var(--sfm-foreground);padding:0 14px;display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:950;overflow-wrap:anywhere}
   .admin-control-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .admin-control-actions :global(.sfm-language-dropdown[data-variant='dark'] .sfm-language-trigger){background:linear-gradient(180deg,#ffffff,#f8fbff);border-color:rgba(29,48,80,.14);color:#0f1d31;box-shadow:0 8px 20px rgba(3,18,37,.10)}
+  .admin-control-actions :global(.sfm-language-dropdown[data-variant='dark'] .sfm-language-trigger:hover),.admin-control-actions :global(.sfm-language-dropdown[data-variant='dark'] .sfm-language-trigger:focus-visible){border-color:rgba(47,214,192,.52);color:#0f766e;box-shadow:0 0 0 4px rgba(47,214,192,.12),0 10px 24px rgba(3,18,37,.12)}
   .admin-auth-button{min-height:44px;border:1px solid rgba(47,214,192,.22);border-radius:14px;background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#fff;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:950 13px Tajawal,Arial,sans-serif;text-decoration:none;cursor:pointer;box-shadow:0 12px 28px rgba(29,140,255,.18);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
   .admin-auth-button:hover,.admin-auth-button:focus-visible{transform:translateY(-1px);outline:none;box-shadow:0 14px 34px rgba(29,140,255,.26);border-color:rgba(47,214,192,.42)}
   .admin-auth-button.secondary{background:rgba(15,29,49,.72);color:#e8eef6;border-color:rgba(47,214,192,.24);box-shadow:none}
@@ -759,6 +761,7 @@ const adminStyles = `
   .admin-code-card button{min-height:48px;border:0;border-radius:15px;background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#061A2E;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer}
   .admin-code-card button:disabled{opacity:.6;cursor:not-allowed}
   :global(.dark) .admin-topbar,:global(.dark) .admin-user-chip,:global(.dark) .admin-auth-button.secondary,:global(.dark) .admin-stat-card,:global(.dark) .admin-panel,:global(.dark) .admin-filters,:global(.dark) .admin-state,:global(.dark) .admin-code-card,:global(.dark) .admin-tracking-status{background:#102A45;border-color:rgba(255,255,255,.10);box-shadow:0 16px 44px rgba(0,0,0,.18)}
+  :global(.dark) .admin-control-actions :global(.sfm-language-dropdown[data-variant='dark'] .sfm-language-trigger){background:#0f1d31;border-color:#1d3050;color:#e8eef6;box-shadow:0 10px 24px rgba(0,0,0,.18)}
   :global(.dark) .admin-empty-compact{background:rgba(24,212,212,.07);border-color:rgba(24,212,212,.18)}
   :global(.dark) .admin-filters select,:global(.dark) .admin-filters input{background:#0F2942;border-color:rgba(255,255,255,.12);color:#F8FAFC}
   :global(.dark) .admin-code-card input{background:#0F2942;border-color:rgba(255,255,255,.12);color:#F8FAFC}

@@ -143,10 +143,14 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
         .ca-topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.35rem; flex-wrap: wrap; }
         .ca-admin-chip { min-height: 42px; border-radius: 999px; border: 1px solid rgba(47,214,192,.18); background: rgba(47,214,192,.08); color: var(--sfm-foreground); padding: 0 .95rem; display: inline-flex; align-items: center; gap: .45rem; font-size: .82rem; font-weight: 800; }
         .ca-toolbar { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }
+        .ca-toolbar :global(.sfm-language-dropdown[data-variant='dark'] .sfm-language-trigger) { background: linear-gradient(180deg,#ffffff,#f8fbff); border-color: rgba(29,48,80,.14); color: #0f1d31; box-shadow: 0 8px 20px rgba(3,18,37,.10); }
+        .ca-toolbar :global(.sfm-language-dropdown[data-variant='dark'] .sfm-language-trigger:hover),
+        .ca-toolbar :global(.sfm-language-dropdown[data-variant='dark'] .sfm-language-trigger:focus-visible) { border-color: rgba(47,214,192,.52); color: #0f766e; box-shadow: 0 0 0 4px rgba(47,214,192,.12),0 10px 24px rgba(3,18,37,.12); }
         .ca-auth-action { min-height: 44px; border: 1px solid rgba(47,214,192,.22); border-radius: 14px; background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent)); color: #fff; padding: 0 .95rem; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; font: 900 .84rem Tajawal, Arial, sans-serif; text-decoration: none; cursor: pointer; box-shadow: 0 12px 28px rgba(29,140,255,.18); transition: transform .18s ease, box-shadow .18s ease; }
         .ca-auth-action:hover, .ca-auth-action:focus-visible { transform: translateY(-1px); outline: none; box-shadow: 0 14px 34px rgba(29,140,255,.26); }
         .ca-auth-action.secondary { background: rgba(15,29,49,.72); color: #e8eef6; border-color: rgba(47,214,192,.24); box-shadow: none; }
         .dark .ca-admin-chip, .dark .ca-auth-action.secondary { background: #0f1d31; border-color: #1d3050; color: #e8eef6; }
+        .dark .ca-toolbar :global(.sfm-language-dropdown[data-variant='dark'] .sfm-language-trigger) { background: #0f1d31; border-color: #1d3050; color: #e8eef6; box-shadow: 0 10px 24px rgba(0,0,0,.18); }
         .ca-header { margin-bottom: 2rem; }
         .ca-header h1 { font-size: 1.6rem; font-weight: 700; color: var(--sfm-foreground); margin: 0 0 .3rem; }
         .ca-header p  { color: #64748B; font-size: .9rem; margin: 0; }
