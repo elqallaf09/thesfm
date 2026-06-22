@@ -41,7 +41,7 @@ export const TR_COMPANY: Record<string, TranslationEntry> = {
   company_listing_success_body: { ar:'يمكنك الآن إرسال بيانات شركتك للمراجعة قبل ظهورها في المنصة.', en:'You can now submit your company details for review before it appears on the platform.', fr:'Vous pouvez maintenant envoyer les informations de votre société pour vérification avant publication.' },
   company_listing_cancel_title: { ar:'لم يكتمل الدفع', en:'Payment was not completed', fr:'Le paiement n’a pas été finalisé' },
   company_listing_cancel_body: { ar:'يمكنك العودة إلى دليل الخدمات والمحاولة مرة أخرى عند جاهزيتك.', en:'You can return to the service directory and try again when ready.', fr:'Vous pouvez revenir à l’annuaire des services et réessayer plus tard.' },
-  company_listing_back_services: { ar:'العودة للخدمات', en:'Back to services', fr:'Retour aux services' },
+  company_listing_back_services: { ar:'العودة إلى الخدمات', en:'Back to services', fr:'Retour aux services' },
   company_listing_basic_info: { ar:'بيانات أساسية', en:'Basic information', fr:'Informations générales' },
   company_listing_contact_info: { ar:'بيانات التواصل', en:'Contact information', fr:'Coordonnées' },
   company_listing_extra_info: { ar:'بيانات إضافية', en:'Additional information', fr:'Informations supplémentaires' },

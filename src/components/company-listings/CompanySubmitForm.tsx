@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Building2, CheckCircle2, CreditCard, Send } from 'lucide-react';
+import { Building2, CheckCircle2, ChevronRight, CreditCard, Send } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
 import { useResolvedImageUrl } from '@/components/company-listings/useResolvedImageUrl';
@@ -212,6 +213,8 @@ export function CompanySubmitForm() {
     setMessage(null);
   }
 
+  const servicesBackHref = COMPANY_CATEGORY_CONFIGS[form.category]?.path ?? '/services';
+
   function updateCountry(countryLabel: string) {
     const countryCode = countryOptions.find(option => option.label === countryLabel)?.code;
     const dialCode = countryCode ? DIAL_CODE_OPTIONS.find(([code]) => code === countryCode)?.[1] : null;
@@ -355,6 +358,7 @@ export function CompanySubmitForm() {
     return (
       <CompanyDashboardFrame>
       <DashboardPageShell ariaLabel={t('company_listing_payment_required')} className="company-submit-shell" contentClassName="company-submit-content">
+        <BackToServicesButton href={servicesBackHref} label={t('company_listing_back_services')} />
         <section className="company-submit-gate">
           <CreditCard size={34} />
           <h1>{t('company_listing_payment_required')}</h1>
@@ -373,6 +377,7 @@ export function CompanySubmitForm() {
   return (
     <CompanyDashboardFrame>
     <DashboardPageShell ariaLabel={t('company_listing_submit_title')} className="company-submit-shell" contentClassName="company-submit-content">
+      <BackToServicesButton href={servicesBackHref} label={t('company_listing_back_services')} />
       <section className="company-submit-hero">
         <div>
           <span>THE SFM</span>
@@ -440,6 +445,17 @@ function FormSection({ title, children }: { title: string; children: ReactNode }
       <h2>{title}</h2>
       <div className="submit-grid">{children}</div>
     </section>
+  );
+}
+
+function BackToServicesButton({ href, label }: { href: string; label: string }) {
+  return (
+    <div className="company-submit-backbar">
+      <Link className="company-submit-back" href={href} aria-label={label}>
+        <ChevronRight size={18} />
+        <span>{label}</span>
+      </Link>
+    </div>
   );
 }
 
@@ -521,6 +537,45 @@ function SubmitStyles() {
     <style jsx global>{`
       .company-submit-content {
         width: min(100%, 1040px);
+      }
+      .company-submit-backbar {
+        display: flex;
+        justify-content: flex-start;
+        margin-bottom: 14px;
+      }
+      .company-submit-back {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border-radius: 16px;
+        border: 1px solid rgba(11, 118, 224, 0.18);
+        background: rgba(255, 255, 255, 0.94);
+        color: #0b2a4a;
+        padding: 0 16px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 950;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease, color .16s ease;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .company-submit-back svg {
+        color: #0b76e0;
+        flex: 0 0 auto;
+      }
+      .company-submit-back:hover,
+      .company-submit-back:focus-visible {
+        outline: none;
+        border-color: rgba(24, 212, 212, 0.52);
+        background: #f0fdff;
+        color: #07172a;
+        box-shadow: 0 0 0 3px rgba(24, 212, 212, 0.14), 0 16px 34px rgba(15, 23, 42, 0.10);
+        transform: translateY(-1px);
+      }
+      .company-submit-back:active {
+        transform: translateY(0) scale(.98);
       }
       .company-submit-hero,
       .company-submit-gate {
@@ -723,6 +778,12 @@ function SubmitStyles() {
         cursor: not-allowed;
       }
       @media (max-width: 700px) {
+        .company-submit-backbar {
+          display: block;
+        }
+        .company-submit-back {
+          width: 100%;
+        }
         .company-submit-hero {
           align-items: flex-start;
           flex-direction: column;
@@ -747,6 +808,17 @@ function SubmitStyles() {
         background: linear-gradient(135deg, rgba(29, 140, 255, 0.12), rgba(24, 212, 212, 0.08)), #0B2A4A;
         border-color: rgba(47, 214, 192, 0.18);
         box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+      }
+      .dark .company-submit-back {
+        background: rgba(11, 42, 74, 0.92);
+        border-color: rgba(92, 225, 230, 0.22);
+        color: #eefbff;
+        box-shadow: 0 16px 34px rgba(0, 0, 0, 0.20);
+      }
+      .dark .company-submit-back:hover,
+      .dark .company-submit-back:focus-visible {
+        background: rgba(13, 62, 100, 0.94);
+        border-color: rgba(92, 225, 230, 0.44);
       }
       .dark .company-submit-hero h1,
       .dark .company-submit-gate h1 {
