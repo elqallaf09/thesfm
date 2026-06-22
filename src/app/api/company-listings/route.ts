@@ -59,10 +59,26 @@ function cleanUrl(value: unknown) {
   if (!raw) return null;
   try {
     const url = new URL(raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`);
+    if (!['http:', 'https:'].includes(url.protocol) || !url.hostname.includes('.')) return null;
+    if (/[^\x00-\x7F]/.test(url.toString())) return null;
     return url.toString();
   } catch {
-    return raw;
+    return null;
   }
+}
+
+function hasInvalidOptionalUrl(value: unknown) {
+  return cleanText(value, 500) !== '' && cleanUrl(value) === null;
+}
+
+function isValidOptionalEmail(value: unknown) {
+  const raw = cleanText(value, 180);
+  return !raw || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw);
+}
+
+function isValidOptionalPhone(value: unknown) {
+  const raw = cleanText(value, 80);
+  return !raw || /^\+\d{1,4}\s?\d{5,18}$/.test(raw);
 }
 
 function numberOrNull(value: unknown) {
@@ -277,6 +293,19 @@ export async function POST(request: NextRequest) {
   const category = normalizeCompanyCategory(payload.category);
   const companyName = cleanText(payload.companyName, 160);
   if (!category || !companyName) return json({ ok: false, code: 'VALIDATION_ERROR' }, { status: 400 });
+  if (
+    hasInvalidOptionalUrl(payload.websiteUrl) ||
+    hasInvalidOptionalUrl(payload.linkedinUrl) ||
+    hasInvalidOptionalUrl(payload.twitterUrl) ||
+    hasInvalidOptionalUrl(payload.instagramUrl) ||
+    hasInvalidOptionalUrl(payload.logoUrl) ||
+    hasInvalidOptionalUrl(payload.coverImageUrl) ||
+    !isValidOptionalEmail(payload.email) ||
+    !isValidOptionalPhone(payload.phone) ||
+    !isValidOptionalPhone(payload.whatsapp)
+  ) {
+    return json({ ok: false, code: 'VALIDATION_ERROR' }, { status: 400 });
+  }
 
   const admin = createServerSupabaseAdmin();
   if (!admin) return json({ ok: false, code: 'SERVICE_NOT_CONFIGURED' }, { status: 503 });
@@ -292,7 +321,7 @@ export async function POST(request: NextRequest) {
     short_description: cleanText(payload.shortDescription, 320) || null,
     long_description: cleanText(payload.longDescription, 2500) || null,
     website_url: cleanUrl(payload.websiteUrl),
-    email: cleanText(payload.email, 180) || null,
+    email: cleanText(payload.email, 180).toUpperCase() || null,
     phone: cleanText(payload.phone, 80) || null,
     whatsapp: cleanText(payload.whatsapp, 80) || null,
     linkedin_url: cleanUrl(payload.linkedinUrl),
