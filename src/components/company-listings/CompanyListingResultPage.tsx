@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, ChevronRight, XCircle } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -24,7 +24,10 @@ export function CompanyListingResultPage({ type }: ResultPageProps) {
         <p>{isSuccess ? t('company_listing_success_body') : t('company_listing_cancel_body')}</p>
         <div className="result-actions">
           {isSuccess ? <Link className="primary" href="/company-listing/submit">{t('company_listing_submit_title')}</Link> : null}
-          <Link href="/investment-companies">{t('company_listing_back_services')}</Link>
+          <Link href="/investment-companies" aria-label="العودة إلى صفحة الخدمات">
+            <ChevronRight size={18} />
+            <span>العودة إلى الخدمات</span>
+          </Link>
         </div>
       </section>
       <style jsx>{`
@@ -83,11 +86,26 @@ export function CompanyListingResultPage({ type }: ResultPageProps) {
           display: inline-flex;
           align-items: center;
           justify-content: center;
+          gap: 8px;
           border: 1px solid rgba(11, 118, 224, 0.18);
           color: #0b76e0;
           background: #ffffff;
           text-decoration: none;
           font-weight: 950;
+          cursor: pointer;
+          transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease;
+        }
+        .result-actions a:hover,
+        .result-actions a:focus-visible {
+          outline: none;
+          border-color: rgba(24, 212, 212, 0.40);
+          background: #f0fdff;
+          box-shadow: 0 0 0 3px rgba(24, 212, 212, 0.14), 0 10px 22px rgba(15, 23, 42, 0.08);
+          transform: translateY(-1px);
+        }
+        .result-actions a:active {
+          transform: translateY(0) scale(.98);
+          box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
         }
         .result-actions a.primary {
           border-color: transparent;

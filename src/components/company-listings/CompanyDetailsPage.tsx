@@ -6,6 +6,7 @@ import {
   Archive,
   Building2,
   CheckCircle2,
+  ChevronRight,
   Clock3,
   Edit3,
   Globe2,
@@ -140,6 +141,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
   const location = [item?.country, item?.city].filter(Boolean).join(' / ');
   const services = useMemo(() => item?.services?.filter(Boolean) ?? [], [item?.services]);
   const hasContact = Boolean(item?.website_url || item?.email || item?.phone || item?.instagram_url || item?.linkedin_url || item?.whatsapp);
+  const backHref = item ? (COMPANY_CATEGORY_CONFIGS[item.category]?.path ?? '/investment-companies') : '/investment-companies';
 
   async function reviewCompany(nextStatus: CompanyStatus) {
     if (!item || busyStatus) return;
@@ -174,12 +176,22 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             <ShieldAlert size={34} />
             <h1>{t('company_listing_error_title')}</h1>
             <p>{error}</p>
-            <Link href="/investment-companies">{t('company_listing_back_services')}</Link>
+            <Link href="/investment-companies" aria-label="العودة إلى صفحة الخدمات">
+              <ChevronRight size={18} />
+              <span>العودة إلى الخدمات</span>
+            </Link>
           </section>
         ) : null}
 
         {!loading && item ? (
           <article className="company-profile" dir={dir}>
+            <div className="details-toolbar">
+              <Link className="details-back-button" href={backHref} aria-label="العودة إلى صفحة الخدمات">
+                <ChevronRight size={18} />
+                <span>العودة إلى الخدمات</span>
+              </Link>
+            </div>
+
             <section className="company-profile-hero">
               <div className="hero-content">
                 <div className="company-logo">
@@ -315,9 +327,6 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                   </section>
                 ) : null}
 
-                <Link className="details-back" href={COMPANY_CATEGORY_CONFIGS[item.category]?.path ?? '/investment-companies'}>
-                  {t('company_listing_back_services')}
-                </Link>
               </aside>
             </div>
           </article>
@@ -360,22 +369,56 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             font-weight: 850;
           }
           .details-state a,
-          .details-back {
+          .details-back-button {
             min-height: 44px;
             border-radius: 14px;
             padding: 0 16px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            gap: 8px;
             color: #ffffff;
             background: linear-gradient(135deg, #0b76e0, #18d4d4);
             text-decoration: none;
             font-weight: 950;
+            border: 0;
+            box-shadow: 0 12px 26px rgba(11, 118, 224, 0.18);
+            transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+          }
+          .details-state a:hover,
+          .details-state a:focus-visible,
+          .details-back-button:hover,
+          .details-back-button:focus-visible {
+            outline: none;
+            color: #ffffff;
+            background: linear-gradient(135deg, #075fb8, #0fbfc9);
+            box-shadow: 0 0 0 3px rgba(24, 212, 212, 0.18), 0 16px 32px rgba(11, 118, 224, 0.24);
+            transform: translateY(-1px);
+          }
+          .details-state a:active,
+          .details-back-button:active {
+            transform: translateY(0) scale(.98);
+            box-shadow: 0 8px 18px rgba(11, 118, 224, 0.16);
           }
           .company-profile {
             display: grid;
             gap: 18px;
             min-width: 0;
+          }
+          .details-toolbar {
+            display: flex;
+            justify-content: flex-start;
+          }
+          .details-back-button {
+            color: #0C447C;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(232, 250, 255, 0.96));
+            border: 1px solid rgba(24, 212, 212, 0.22);
+            box-shadow: 0 12px 28px rgba(3, 18, 37, 0.08);
+          }
+          .details-back-button:hover,
+          .details-back-button:focus-visible {
+            color: #07172A;
+            background: linear-gradient(135deg, #D9FFFA, #BEEFFF);
           }
           .company-profile-hero {
             border: 1px solid rgba(47, 214, 192, 0.20);
@@ -689,9 +732,6 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             background: #FEF2F2;
             color: #B91C1C;
           }
-          .details-back {
-            width: 100%;
-          }
           @media (max-width: 980px) {
             .company-profile-hero,
             .company-profile-grid {
@@ -705,6 +745,10 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             }
           }
           @media (max-width: 640px) {
+            .details-toolbar,
+            .details-back-button {
+              width: 100%;
+            }
             .company-profile-hero,
             .profile-card {
               border-radius: 20px;
