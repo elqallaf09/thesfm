@@ -2,6 +2,7 @@ import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseAdmin, getUserFromBearerToken } from '@/lib/server/adminAccess';
+import { resolvePublicImageUrl } from '@/lib/server/imageUrlResolver';
 import { isSmtpMailConfigured, sendSmtpMail } from '@/lib/server/smtpMail';
 import {
   normalizeCompanyCategory,
@@ -310,6 +311,15 @@ export async function POST(request: NextRequest) {
   const admin = createServerSupabaseAdmin();
   if (!admin) return json({ ok: false, code: 'SERVICE_NOT_CONFIGURED' }, { status: 503 });
 
+  const logoUrl = cleanUrl(payload.logoUrl);
+  const coverImageUrl = cleanUrl(payload.coverImageUrl);
+  const resolvedLogo = logoUrl ? await resolvePublicImageUrl(logoUrl) : null;
+  const resolvedCoverImage = coverImageUrl ? await resolvePublicImageUrl(coverImageUrl) : null;
+
+  if ((logoUrl && !resolvedLogo?.ok) || (coverImageUrl && !resolvedCoverImage?.ok)) {
+    return json({ ok: false, code: 'IMAGE_URL_NOT_RESOLVED' }, { status: 400 });
+  }
+
   const record = {
     user_id: user.id,
     stripe_customer_id: companyPlan.stripe_customer_id ?? null,
@@ -331,8 +341,8 @@ export async function POST(request: NextRequest) {
     license_number: cleanText(payload.licenseNumber, 180) || null,
     regulator_name: cleanText(payload.regulatorName, 180) || null,
     services: splitServices(payload.services),
-    logo_url: cleanUrl(payload.logoUrl),
-    cover_image_url: cleanUrl(payload.coverImageUrl),
+    logo_url: resolvedLogo?.ok ? resolvedLogo.imageUrl : null,
+    cover_image_url: resolvedCoverImage?.ok ? resolvedCoverImage.imageUrl : null,
     status: 'pending_review',
     updated_at: new Date().toISOString(),
   };

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
+import { useResolvedImageUrl } from '@/components/company-listings/useResolvedImageUrl';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { COMPANY_CATEGORY_CONFIGS, type CompanyListing, type CompanyStatus } from '@/lib/companyListings';
@@ -70,11 +71,14 @@ function safeTel(value: string) {
 }
 
 function ProfileLogo({ item }: { item: CompanyListing }) {
-  const [failed, setFailed] = useState(false);
-  if (!item.logo_url || failed) {
+  const { imageUrl, loading, failed, setFailed } = useResolvedImageUrl(item.logo_url);
+  if (!item.logo_url || failed || (!loading && !imageUrl)) {
     return <div className="company-avatar-fallback" aria-label={item.company_name}>{initials(item.company_name)}</div>;
   }
-  return <img src={item.logo_url} alt={`${item.company_name} logo`} onError={() => setFailed(true)} loading="lazy" decoding="async" />;
+  if (loading && !imageUrl) {
+    return <div className="company-avatar-fallback resolving" aria-label={item.company_name}>{initials(item.company_name)}</div>;
+  }
+  return <img src={imageUrl} alt={`${item.company_name} logo`} onError={() => setFailed(true)} loading="lazy" decoding="async" />;
 }
 
 function DetailRow({ label, value }: { label: string; value?: string | number | null }) {
@@ -466,6 +470,9 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             background: linear-gradient(135deg, #BFF6F0, #23C7D9);
             font-size: 30px;
             font-weight: 950;
+          }
+          .company-avatar-fallback.resolving {
+            color: rgba(7, 23, 42, 0.62);
           }
           .hero-copy {
             min-width: 0;

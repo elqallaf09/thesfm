@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Building2, CheckCircle2, CreditCard, Send } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
+import { useResolvedImageUrl } from '@/components/company-listings/useResolvedImageUrl';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { COMPANY_CATEGORY_CONFIGS, COMPANY_CATEGORIES, normalizeCompanyCategory, type CompanyCategory } from '@/lib/companyListings';
@@ -478,14 +479,24 @@ function PhoneField({ label, code, value, onCodeChange, onChange }: { label: str
 
 function ImageUrlField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   const valid = isAsciiUrl(value);
+  const { imageUrl, loading, failed, setFailed } = useResolvedImageUrl(valid ? value : '');
   return (
     <label className="submit-field image-url-field">
       <span>{label}</span>
       <input value={value} onChange={event => onChange(event.target.value)} inputMode="url" dir="ltr" placeholder="https://example.com/logo.png" />
       {value.trim() ? (
-        <div className={`image-preview ${valid ? '' : 'invalid'}`}>
-          {valid ? <img src={value.startsWith('http') ? value : `https://${value}`} alt={label} loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }} /> : null}
-          <small>{valid ? 'معاينة الرابط' : 'الرابط غير صحيح'}</small>
+        <div className={`image-preview ${valid && !failed ? '' : 'invalid'}`}>
+          {valid && imageUrl && !failed ? <img src={imageUrl} alt={label} loading="lazy" onError={() => setFailed(true)} /> : null}
+          {valid && loading ? <span className="image-preview-loader">...</span> : null}
+          <small>
+            {!valid
+              ? 'الرابط غير صحيح'
+              : loading
+                ? 'جاري التحقق من الصورة'
+                : failed
+                  ? 'تعذر عرض صورة من هذا الرابط'
+                  : 'معاينة الصورة'}
+          </small>
         </div>
       ) : null}
     </label>
@@ -640,6 +651,17 @@ function SubmitStyles() {
       .image-preview small {
         color: #0f766e;
         font-weight: 900;
+      }
+      .image-preview-loader {
+        min-height: 52px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        color: #0f766e;
+        background: rgba(20, 184, 166, 0.08);
+        font-size: 24px;
+        font-weight: 950;
+        letter-spacing: 2px;
       }
       .image-preview.invalid {
         border-color: rgba(220, 38, 38, 0.24);

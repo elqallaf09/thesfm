@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
+import { useResolvedImageUrl } from '@/components/company-listings/useResolvedImageUrl';
 import type { TranslationKey } from '@/components/navigationConfig';
 import { useLanguage } from '@/hooks/useLanguage';
 import { COMPANY_CATEGORY_CONFIGS, type CompanyCategory, type CompanyListing, type CompanyStatus } from '@/lib/companyListings';
@@ -52,10 +53,6 @@ function statusClass(status: CompanyStatus) {
 
 function normalizeText(value: unknown) {
   return String(value ?? '').trim().toLowerCase();
-}
-
-function imageBackground(url: string) {
-  return { backgroundImage: `url(${JSON.stringify(url)})` };
 }
 
 export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
@@ -382,7 +379,7 @@ function CompanyCard({ item, categoryLabel, t }: { item: CompanyListing; categor
     <article className="company-card">
       <div className="company-card-top">
         <div className="company-logo">
-          {item.logo_url ? <span className="company-logo-image" style={imageBackground(item.logo_url)} /> : <Building2 size={24} />}
+          <CompanyLogo item={item} />
         </div>
         <span className={`company-status ${statusClass(item.status)}`}>
           {item.status === 'approved' ? <CheckCircle2 size={13} /> : item.status === 'inactive' ? <ShieldCheck size={13} /> : <Clock3 size={13} />}
@@ -432,12 +429,18 @@ function CompanyCard({ item, categoryLabel, t }: { item: CompanyListing; categor
           background: linear-gradient(135deg, rgba(11, 118, 224, 0.10), rgba(24, 212, 212, 0.12));
           color: #0b76e0;
         }
-        .company-logo-image {
-          display: block;
+        .company-logo :global(img) {
           width: 100%;
           height: 100%;
-          background-size: cover;
-          background-position: center;
+          object-fit: cover;
+        }
+        .company-logo :global(.company-logo-initials) {
+          font-size: 18px;
+          font-weight: 950;
+          color: #0b76e0;
+        }
+        .company-logo :global(.company-logo-initials.resolving) {
+          color: rgba(11, 118, 224, 0.58);
         }
         .company-status {
           display: inline-flex;
@@ -566,6 +569,20 @@ function CompanyCard({ item, categoryLabel, t }: { item: CompanyListing; categor
       `}</style>
     </article>
   );
+}
+
+function CompanyLogo({ item }: { item: CompanyListing }) {
+  const { imageUrl, loading, failed, setFailed } = useResolvedImageUrl(item.logo_url);
+
+  if (imageUrl && !failed) {
+    return <img src={imageUrl} alt={item.company_name ? `${item.company_name} logo` : ''} loading="lazy" decoding="async" onError={() => setFailed(true)} />;
+  }
+
+  if (item.logo_url && loading) {
+    return <span className="company-logo-initials resolving">{item.company_name?.trim()?.[0] ?? 'S'}</span>;
+  }
+
+  return <Building2 size={24} />;
 }
 
 function CompanySkeleton() {
