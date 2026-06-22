@@ -1,14 +1,19 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import {
   Archive,
+  ArrowRight,
+  BadgeCheck,
   Building2,
+  CalendarDays,
   CheckCircle2,
   ChevronRight,
   Clock3,
   Edit3,
+  FileText,
   Globe2,
   Instagram,
   Linkedin,
@@ -17,6 +22,7 @@ import {
   Phone,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
   Trash2,
   XCircle,
 } from 'lucide-react';
@@ -54,9 +60,18 @@ const STATUS_ICONS: Record<CompanyStatus, typeof ShieldCheck> = {
   inactive: Archive,
 };
 
+function isMissing(value?: string | number | null) {
+  const text = String(value ?? '').trim();
+  return !text || ['null', 'undefined', 'no', 'n/a', 'na', '-'].includes(text.toLowerCase());
+}
+
+function displayValue(value?: string | number | null, fallback = 'غير محدد') {
+  return isMissing(value) ? fallback : String(value).trim();
+}
+
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
-  return (parts[0]?.[0] ?? 'S') + (parts[1]?.[0] ?? '');
+  return ((parts[0]?.[0] ?? 'S') + (parts[1]?.[0] ?? '')).toUpperCase();
 }
 
 function formatDate(value?: string | null, locale = 'ar-KW') {
@@ -78,31 +93,51 @@ function ProfileLogo({ item }: { item: CompanyListing }) {
   if (loading && !imageUrl) {
     return <div className="company-avatar-fallback resolving" aria-label={item.company_name}>{initials(item.company_name)}</div>;
   }
-  return <img src={imageUrl} alt={`${item.company_name} logo`} onError={() => setFailed(true)} loading="lazy" decoding="async" />;
+  return <Image src={imageUrl} alt={`${item.company_name} logo`} width={196} height={196} unoptimized onError={() => setFailed(true)} />;
 }
 
-function DetailRow({ label, value }: { label: string; value?: string | number | null }) {
+function DetailTile({ icon, label, value, fallback }: { icon: ReactNode; label: string; value?: string | number | null; fallback?: string }) {
   return (
-    <div className="detail-row">
-      <span>{label}</span>
-      <strong>{value || 'غير محدد'}</strong>
+    <div className="detail-tile">
+      <span className="detail-icon">{icon}</span>
+      <div>
+        <span>{label}</span>
+        <strong>{displayValue(value, fallback)}</strong>
+      </div>
     </div>
   );
 }
 
-function ContactLink({ href, icon, label, value }: { href?: string | null; icon: React.ReactNode; label: string; value?: string | null }) {
-  if (!href || !value) return null;
+function ContactAction({ href, icon, label, value }: { href?: string | null; icon: ReactNode; label: string; value?: string | null }) {
+  if (!href || isMissing(value)) return null;
   return (
-    <a className="contact-link" href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined}>
-      {icon}
-      <span>{label}</span>
-      <strong dir="ltr">{value}</strong>
+    <a className="contact-action" href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined}>
+      <span>{icon}</span>
+      <div>
+        <small>{label}</small>
+        <strong dir="ltr">{value}</strong>
+      </div>
     </a>
   );
 }
 
+function SectionCard({ eyebrow, title, icon, children, className = '' }: { eyebrow: string; title: string; icon: ReactNode; children: ReactNode; className?: string }) {
+  return (
+    <section className={`profile-card ${className}`}>
+      <div className="section-head">
+        <span className="section-icon">{icon}</span>
+        <div>
+          <small>{eyebrow}</small>
+          <h2>{title}</h2>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export function CompanyDetailsPage({ id }: { id: string }) {
-  const { t, dir } = useLanguage();
+  const { t, dir, lang } = useLanguage();
   const { session } = useAuth();
   const [item, setItem] = useState<CompanyListing | null>(null);
   const [viewer, setViewer] = useState<DetailPayload['viewer']>({});
@@ -143,9 +178,10 @@ export function CompanyDetailsPage({ id }: { id: string }) {
   const status = item?.status ?? 'pending_review';
   const StatusIcon = STATUS_ICONS[status] ?? Clock3;
   const location = [item?.country, item?.city].filter(Boolean).join(' / ');
-  const services = useMemo(() => item?.services?.filter(Boolean) ?? [], [item?.services]);
-  const hasContact = Boolean(item?.website_url || item?.email || item?.phone || item?.instagram_url || item?.linkedin_url || item?.whatsapp);
-  const backHref = item ? (COMPANY_CATEGORY_CONFIGS[item.category]?.path ?? '/investment-companies') : '/investment-companies';
+  const services = useMemo(() => item?.services?.map(service => service.trim()).filter(Boolean) ?? [], [item?.services]);
+  const hasContact = Boolean(item?.website_url || item?.email || item?.phone || item?.instagram_url || item?.linkedin_url || item?.whatsapp || location);
+  const backHref = item ? (COMPANY_CATEGORY_CONFIGS[item.category]?.path ?? '/services') : '/services';
+  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
 
   async function reviewCompany(nextStatus: CompanyStatus) {
     if (!item || busyStatus) return;
@@ -177,10 +213,10 @@ export function CompanyDetailsPage({ id }: { id: string }) {
 
         {!loading && error && !item ? (
           <section className="details-state">
-            <ShieldAlert size={34} />
+            <ShieldAlert size={36} />
             <h1>{t('company_listing_error_title')}</h1>
             <p>{error}</p>
-            <Link href="/investment-companies" aria-label="العودة إلى صفحة الخدمات">
+            <Link href={backHref} aria-label="العودة إلى صفحة الخدمات">
               <ChevronRight size={18} />
               <span>العودة إلى الخدمات</span>
             </Link>
@@ -189,33 +225,28 @@ export function CompanyDetailsPage({ id }: { id: string }) {
 
         {!loading && item ? (
           <article className="company-profile" dir={dir}>
-            <div className="details-toolbar">
-              <Link className="details-back-button" href={backHref} aria-label="العودة إلى صفحة الخدمات">
-                <ChevronRight size={18} />
-                <span>العودة إلى الخدمات</span>
-              </Link>
-            </div>
-
-            <section className="company-profile-hero">
-              <div className="hero-content">
+            <section className="company-hero-card">
+              <div className="hero-main">
                 <div className="company-logo">
                   <ProfileLogo item={item} />
                 </div>
                 <div className="hero-copy">
-                  <span className={`status-badge ${status}`}>
+                  <span className={`status-pill ${status}`}>
                     <StatusIcon size={15} />
                     {STATUS_LABELS[status] ?? status}
                   </span>
                   <h1>{item.company_name}</h1>
-                  <p className="company-type">{categoryLabel}</p>
-                  {location ? <p className="company-location"><MapPin size={16} />{location}</p> : null}
-                  <p className="company-short">{item.short_description || 'لم يتم إضافة وصف مختصر بعد.'}</p>
+                  <div className="hero-meta">
+                    <span><Building2 size={15} />{categoryLabel}</span>
+                    {location ? <span><MapPin size={15} />{location}</span> : null}
+                  </div>
+                  <p>{displayValue(item.short_description, 'لم يتم إضافة وصف مختصر بعد.')}</p>
                 </div>
               </div>
               <div className="hero-actions">
                 {item.website_url ? <a className="primary-action" href={item.website_url} target="_blank" rel="noreferrer"><Globe2 size={17} />زيارة الموقع</a> : null}
-                {item.email ? <a href={`mailto:${item.email}`}><Mail size={17} />البريد الإلكتروني</a> : null}
-                {item.phone ? <a href={`tel:${safeTel(item.phone)}`}><Phone size={17} />اتصال</a> : null}
+                {item.email ? <a href={`mailto:${item.email}`}><Mail size={17} />تواصل</a> : item.phone ? <a href={`tel:${safeTel(item.phone)}`}><Phone size={17} />تواصل</a> : null}
+                <Link href={backHref} aria-label="العودة إلى صفحة الخدمات"><ArrowRight size={17} />العودة إلى الخدمات</Link>
               </div>
             </section>
 
@@ -229,108 +260,117 @@ export function CompanyDetailsPage({ id }: { id: string }) {
               </section>
             ) : null}
 
-            <div className="company-profile-grid">
+            <div className="company-layout">
               <main className="company-main-column">
-                <section className="profile-card">
-                  <div className="section-head">
-                    <span>THE SFM</span>
-                    <h2>نظرة عامة على الشركة</h2>
+                <SectionCard eyebrow="Overview" title="نبذة عن الشركة" icon={<FileText size={19} />}>
+                  <div className="overview-block">
+                    <div>
+                      <span>وصف مختصر</span>
+                      <p>{displayValue(item.short_description, 'لم يتم إضافة وصف مختصر بعد.')}</p>
+                    </div>
+                    <div>
+                      <span>وصف تفصيلي</span>
+                      <p>{displayValue(item.long_description, 'لم يتم إضافة وصف تفصيلي بعد.')}</p>
+                    </div>
                   </div>
-                  <p className="overview-text">{item.short_description || 'لم يتم إضافة وصف مختصر بعد.'}</p>
-                  <p className="overview-text muted">{item.long_description || 'لم يتم إضافة وصف تفصيلي بعد.'}</p>
                   <div className="details-grid">
-                    <DetailRow label="نوع الشركة" value={categoryLabel} />
-                    <DetailRow label="الدولة" value={item.country} />
-                    <DetailRow label="المدينة" value={item.city} />
-                    <DetailRow label="تاريخ الإضافة" value={formatDate(item.created_at)} />
-                    <DetailRow label="حالة الاعتماد" value={STATUS_LABELS[status] ?? status} />
-                    <DetailRow label="سنة التأسيس" value={item.founded_year} />
+                    <DetailTile icon={<Building2 size={17} />} label="نوع الشركة" value={categoryLabel} />
+                    <DetailTile icon={<MapPin size={17} />} label="الدولة" value={item.country} />
+                    <DetailTile icon={<MapPin size={17} />} label="المدينة" value={item.city} />
+                    <DetailTile icon={<CalendarDays size={17} />} label="سنة التأسيس" value={item.founded_year} fallback="لم يتم تحديد سنة التأسيس" />
+                    <DetailTile icon={<BadgeCheck size={17} />} label="رقم الترخيص" value={item.license_number} fallback="لم يتم إضافة رقم ترخيص" />
+                    <DetailTile icon={<ShieldCheck size={17} />} label="الجهة المنظمة" value={item.regulator_name} fallback="لم يتم تحديد جهة منظمة" />
                   </div>
-                </section>
+                </SectionCard>
 
-                <section className="profile-card">
-                  <div className="section-head">
-                    <span>Services</span>
-                    <h2>الخدمات المقدمة</h2>
-                  </div>
+                <SectionCard eyebrow="Services" title="الخدمات المقدمة" icon={<Sparkles size={19} />}>
                   {services.length ? (
                     <div className="services-grid">
-                      {services.map(service => <span key={service}>{service}</span>)}
+                      {services.map((service, index) => (
+                        <article key={`${service}-${index}`} className="service-card">
+                          <span><Sparkles size={16} /></span>
+                          <strong>{service}</strong>
+                        </article>
+                      ))}
                     </div>
                   ) : (
-                    <p className="empty-copy">لم تتم إضافة خدمات لهذه الشركة بعد.</p>
+                    <div className="empty-card">
+                      <Sparkles size={22} />
+                      <p>لم يتم إضافة خدمات لهذه الشركة بعد.</p>
+                    </div>
                   )}
-                </section>
+                </SectionCard>
 
-                <section className="profile-card">
-                  <div className="section-head">
-                    <span>Details</span>
-                    <h2>بيانات إضافية</h2>
-                  </div>
+                <SectionCard eyebrow="Company Data" title="بيانات إضافية" icon={<BadgeCheck size={19} />}>
                   <div className="details-grid">
-                    <DetailRow label="رقم الترخيص" value={item.license_number} />
-                    <DetailRow label="الجهة المنظمة أو الرقابية" value={item.regulator_name} />
-                    <DetailRow label="آخر مراجعة" value={formatDate(item.reviewed_at ?? item.approved_at)} />
-                    <DetailRow label="مميزة" value={item.is_featured ? 'نعم' : 'لا'} />
+                    <DetailTile icon={<CalendarDays size={17} />} label="تاريخ الإضافة" value={formatDate(item.created_at, locale)} />
+                    <DetailTile icon={<CalendarDays size={17} />} label="تاريخ الاعتماد" value={formatDate(item.approved_at, locale)} />
+                    <DetailTile icon={<ShieldCheck size={17} />} label="حالة الاعتماد" value={STATUS_LABELS[status] ?? status} />
+                    <DetailTile icon={<Sparkles size={17} />} label="شركة مميزة" value={item.is_featured ? 'نعم' : 'لا'} />
                   </div>
-                </section>
+                </SectionCard>
               </main>
 
               <aside className="company-side-column">
-                <section className="profile-card contact-card">
-                  <div className="section-head">
-                    <span>Contact</span>
-                    <h2>بيانات التواصل</h2>
-                  </div>
+                <SectionCard eyebrow="Contact" title="بيانات التواصل" icon={<Phone size={19} />} className="side-card">
                   {hasContact ? (
                     <div className="contact-list">
-                      <ContactLink href={item.website_url} icon={<Globe2 size={16} />} label="الموقع الإلكتروني" value={item.website_url} />
-                      <ContactLink href={item.email ? `mailto:${item.email}` : null} icon={<Mail size={16} />} label="البريد الإلكتروني" value={item.email} />
-                      <ContactLink href={item.phone ? `tel:${safeTel(item.phone)}` : null} icon={<Phone size={16} />} label="رقم الهاتف" value={item.phone} />
-                      <ContactLink href={item.whatsapp ? `https://wa.me/${safeTel(item.whatsapp).replace(/^\+/, '')}` : null} icon={<Phone size={16} />} label="واتساب" value={item.whatsapp} />
-                      <ContactLink href={item.instagram_url} icon={<Instagram size={16} />} label="Instagram" value={item.instagram_url} />
-                      <ContactLink href={item.linkedin_url} icon={<Linkedin size={16} />} label="LinkedIn" value={item.linkedin_url} />
+                      <ContactAction href={item.website_url} icon={<Globe2 size={16} />} label="الموقع الإلكتروني" value={item.website_url} />
+                      <ContactAction href={item.email ? `mailto:${item.email}` : null} icon={<Mail size={16} />} label="البريد الإلكتروني" value={item.email} />
+                      <ContactAction href={item.phone ? `tel:${safeTel(item.phone)}` : null} icon={<Phone size={16} />} label="رقم الهاتف" value={item.phone} />
+                      <ContactAction href={item.whatsapp ? `https://wa.me/${safeTel(item.whatsapp).replace(/^\+/, '')}` : null} icon={<Phone size={16} />} label="واتساب" value={item.whatsapp} />
+                      <ContactAction href={item.instagram_url} icon={<Instagram size={16} />} label="Instagram" value={item.instagram_url} />
+                      <ContactAction href={item.linkedin_url} icon={<Linkedin size={16} />} label="LinkedIn" value={item.linkedin_url} />
+                      {location ? (
+                        <div className="contact-action static">
+                          <span><MapPin size={16} /></span>
+                          <div>
+                            <small>الموقع</small>
+                            <strong>{location}</strong>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   ) : (
-                    <p className="empty-copy">لم يتم إضافة بيانات تواصل كافية.</p>
+                    <div className="empty-card compact">
+                      <Phone size={20} />
+                      <p>لم يتم إضافة بيانات تواصل كافية.</p>
+                    </div>
                   )}
-                </section>
+                </SectionCard>
 
-                <section className="profile-card status-card">
-                  <div className={`status-large ${status}`}>
-                    <StatusIcon size={22} />
+                <SectionCard eyebrow="Status" title="حالة الشركة" icon={<StatusIcon size={19} />} className="side-card">
+                  <div className={`status-card ${status}`}>
+                    <StatusIcon size={24} />
                     <div>
-                      <span>حالة الشركة</span>
+                      <span>الحالة الحالية</span>
                       <strong>{STATUS_LABELS[status] ?? status}</strong>
                     </div>
                   </div>
-                  <DetailRow label="تاريخ الإضافة" value={formatDate(item.created_at)} />
-                  <DetailRow label="تاريخ المراجعة" value={formatDate(item.reviewed_at)} />
+                  <div className="status-list">
+                    <DetailTile icon={<CalendarDays size={16} />} label="تاريخ الإرسال" value={formatDate(item.created_at, locale)} />
+                    <DetailTile icon={<CalendarDays size={16} />} label="تاريخ المراجعة" value={formatDate(item.reviewed_at, locale)} />
+                  </div>
                   {item.admin_notes ? <p className="admin-note">{item.admin_notes}</p> : null}
-                </section>
+                </SectionCard>
 
                 {viewer?.canReview ? (
-                  <section className="profile-card admin-actions">
-                    <div className="section-head">
-                      <span>Admin</span>
-                      <h2>إجراءات المراجعة</h2>
-                    </div>
-                    <button type="button" onClick={() => void reviewCompany('approved')} disabled={Boolean(busyStatus)}>
+                  <SectionCard eyebrow="Admin" title="إجراءات المراجعة" icon={<ShieldCheck size={19} />} className="side-card admin-card">
+                    <button type="button" className="approve" onClick={() => void reviewCompany('approved')} disabled={Boolean(busyStatus)}>
                       <CheckCircle2 size={16} /> قبول ونشر
                     </button>
-                    <button type="button" onClick={() => void reviewCompany('needs_changes')} disabled={Boolean(busyStatus)}>
+                    <button type="button" className="needs" onClick={() => void reviewCompany('needs_changes')} disabled={Boolean(busyStatus)}>
                       <Edit3 size={16} /> طلب تعديل
                     </button>
-                    <button type="button" onClick={() => void reviewCompany('rejected')} disabled={Boolean(busyStatus)}>
+                    <button type="button" className="reject" onClick={() => void reviewCompany('rejected')} disabled={Boolean(busyStatus)}>
                       <XCircle size={16} /> رفض
                     </button>
-                    <button type="button" onClick={() => void reviewCompany('inactive')} disabled={Boolean(busyStatus)}>
-                      <Trash2 size={16} /> حذف / أرشفة
+                    <button type="button" className="archive" onClick={() => void reviewCompany('inactive')} disabled={Boolean(busyStatus)}>
+                      <Trash2 size={16} /> أرشفة
                     </button>
-                    <Link href="/sfm-admin-control/companies">تعديل بيانات الشركة</Link>
-                  </section>
+                    <Link href="/sfm-admin-control/companies"><Edit3 size={16} /> تعديل البيانات</Link>
+                  </SectionCard>
                 ) : null}
-
               </aside>
             </div>
           </article>
@@ -372,8 +412,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             color: #64748b;
             font-weight: 850;
           }
-          .details-state a,
-          .details-back-button {
+          .details-state a {
             min-height: 44px;
             border-radius: 14px;
             padding: 0 16px;
@@ -385,46 +424,13 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             background: linear-gradient(135deg, #0b76e0, #18d4d4);
             text-decoration: none;
             font-weight: 950;
-            border: 0;
-            box-shadow: 0 12px 26px rgba(11, 118, 224, 0.18);
-            transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
-          }
-          .details-state a:hover,
-          .details-state a:focus-visible,
-          .details-back-button:hover,
-          .details-back-button:focus-visible {
-            outline: none;
-            color: #ffffff;
-            background: linear-gradient(135deg, #075fb8, #0fbfc9);
-            box-shadow: 0 0 0 3px rgba(24, 212, 212, 0.18), 0 16px 32px rgba(11, 118, 224, 0.24);
-            transform: translateY(-1px);
-          }
-          .details-state a:active,
-          .details-back-button:active {
-            transform: translateY(0) scale(.98);
-            box-shadow: 0 8px 18px rgba(11, 118, 224, 0.16);
           }
           .company-profile {
             display: grid;
             gap: 18px;
             min-width: 0;
           }
-          .details-toolbar {
-            display: flex;
-            justify-content: flex-start;
-          }
-          .details-back-button {
-            color: #0C447C;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(232, 250, 255, 0.96));
-            border: 1px solid rgba(24, 212, 212, 0.22);
-            box-shadow: 0 12px 28px rgba(3, 18, 37, 0.08);
-          }
-          .details-back-button:hover,
-          .details-back-button:focus-visible {
-            color: #07172A;
-            background: linear-gradient(135deg, #D9FFFA, #BEEFFF);
-          }
-          .company-profile-hero {
+          .company-hero-card {
             border: 1px solid rgba(47, 214, 192, 0.20);
             border-radius: 28px;
             padding: 24px;
@@ -439,22 +445,23 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             align-items: end;
             overflow: hidden;
           }
-          .hero-content {
+          .hero-main {
             display: flex;
             align-items: center;
             gap: 18px;
             min-width: 0;
           }
           .company-logo {
-            width: 92px;
-            height: 92px;
-            border-radius: 24px;
+            width: 98px;
+            height: 98px;
+            border-radius: 26px;
             border: 1px solid rgba(255, 255, 255, 0.18);
             background: rgba(255, 255, 255, 0.10);
             display: grid;
             place-items: center;
             overflow: hidden;
             flex: 0 0 auto;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 18px 42px rgba(0,0,0,.18);
           }
           .company-logo img {
             width: 100%;
@@ -468,7 +475,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             place-items: center;
             color: #07172A;
             background: linear-gradient(135deg, #BFF6F0, #23C7D9);
-            font-size: 30px;
+            font-size: 32px;
             font-weight: 950;
           }
           .company-avatar-fallback.resolving {
@@ -477,7 +484,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           .hero-copy {
             min-width: 0;
           }
-          .status-badge {
+          .status-pill {
             display: inline-flex;
             align-items: center;
             gap: 7px;
@@ -488,39 +495,44 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             font-size: 12px;
             font-weight: 950;
           }
-          .status-badge.approved,
-          .status-large.approved { color: #16A34A; background: rgba(220, 252, 231, 0.96); }
-          .status-badge.pending_review,
-          .status-large.pending_review { color: #B45309; background: rgba(254, 243, 199, 0.96); }
-          .status-badge.rejected,
-          .status-large.rejected { color: #B91C1C; background: rgba(254, 226, 226, 0.96); }
-          .status-badge.needs_changes,
-          .status-large.needs_changes { color: #1D4ED8; background: rgba(219, 234, 254, 0.96); }
-          .status-badge.inactive,
-          .status-large.inactive { color: #475569; background: rgba(241, 245, 249, 0.96); }
+          .status-pill.approved,
+          .status-card.approved { color: #15803d; background: rgba(220, 252, 231, 0.96); }
+          .status-pill.pending_review,
+          .status-card.pending_review { color: #b45309; background: rgba(254, 243, 199, 0.96); }
+          .status-pill.rejected,
+          .status-card.rejected { color: #b91c1c; background: rgba(254, 226, 226, 0.96); }
+          .status-pill.needs_changes,
+          .status-card.needs_changes { color: #1d4ed8; background: rgba(219, 234, 254, 0.96); }
+          .status-pill.inactive,
+          .status-card.inactive { color: #475569; background: rgba(241, 245, 249, 0.96); }
           .hero-copy h1 {
-            margin: 12px 0 4px;
-            font-size: clamp(30px, 4vw, 54px);
+            margin: 12px 0 8px;
+            font-size: clamp(32px, 4vw, 56px);
             line-height: 1.08;
             font-weight: 950;
             overflow-wrap: anywhere;
           }
-          .company-type,
-          .company-location,
-          .company-short {
-            margin: 0;
-            color: rgba(234, 246, 255, 0.78);
-            font-weight: 850;
+          .hero-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
           }
-          .company-location {
-            margin-top: 8px;
+          .hero-meta span {
             display: inline-flex;
             align-items: center;
-            gap: 7px;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 7px 10px;
+            background: rgba(255, 255, 255, 0.10);
+            color: rgba(234, 246, 255, 0.88);
+            font-size: 13px;
+            font-weight: 900;
           }
-          .company-short {
-            margin-top: 12px;
+          .hero-copy p {
+            margin: 14px 0 0;
+            color: rgba(234, 246, 255, 0.78);
             line-height: 1.8;
+            font-weight: 850;
             max-width: 760px;
           }
           .hero-actions {
@@ -542,6 +554,15 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             color: #EAF6FF;
             text-decoration: none;
             font-weight: 950;
+            transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+          }
+          .hero-actions a:hover,
+          .hero-actions a:focus-visible,
+          .details-state a:hover,
+          .details-state a:focus-visible {
+            outline: none;
+            transform: translateY(-1px);
+            box-shadow: 0 0 0 3px rgba(24, 212, 212, 0.16), 0 16px 30px rgba(0,0,0,.16);
           }
           .hero-actions a.primary-action {
             border: 0;
@@ -567,9 +588,9 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             line-height: 1.7;
             font-weight: 850;
           }
-          .company-profile-grid {
+          .company-layout {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+            grid-template-columns: minmax(0, 1fr) minmax(320px, 370px);
             gap: 18px;
             align-items: start;
           }
@@ -588,50 +609,97 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             min-width: 0;
           }
           .section-head {
-            margin-bottom: 14px;
+            display: flex;
+            gap: 11px;
+            align-items: center;
+            margin-bottom: 16px;
           }
-          .section-head span {
+          .section-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            background: rgba(24, 212, 212, 0.12);
+            color: #0B9EAD;
+            flex: 0 0 auto;
+          }
+          .section-head small {
+            display: block;
             color: #0B9EAD;
             font-size: 12px;
             font-weight: 950;
           }
           .section-head h2 {
-            margin: 4px 0 0;
+            margin: 2px 0 0;
             color: #0F172A;
             font-size: 22px;
             font-weight: 950;
           }
-          .overview-text {
-            margin: 0 0 12px;
+          .overview-block {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 14px;
+          }
+          .overview-block div {
+            border-radius: 18px;
+            border: 1px solid rgba(15, 23, 42, 0.07);
+            background: #F8FBFF;
+            padding: 14px;
+          }
+          .overview-block span {
+            color: #0B9EAD;
+            font-size: 12px;
+            font-weight: 950;
+          }
+          .overview-block p {
+            margin: 7px 0 0;
             color: #0F172A;
             line-height: 1.9;
             font-weight: 850;
           }
-          .overview-text.muted,
-          .empty-copy {
-            color: #64748B;
-          }
-          .details-grid {
+          .details-grid,
+          .status-list {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 10px;
           }
-          .detail-row {
+          .status-list {
+            grid-template-columns: 1fr;
+          }
+          .detail-tile {
+            min-width: 0;
             border: 1px solid rgba(15, 23, 42, 0.08);
             border-radius: 16px;
             background: #F8FBFF;
             padding: 12px;
-            min-width: 0;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
           }
-          .detail-row span {
+          .detail-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 11px;
+            display: grid;
+            place-items: center;
+            background: rgba(11, 118, 224, 0.08);
+            color: #0B76E0;
+            flex: 0 0 auto;
+          }
+          .detail-tile span:not(.detail-icon),
+          .contact-action small,
+          .status-card span {
             display: block;
             color: #64748B;
             font-size: 12px;
             font-weight: 900;
           }
-          .detail-row strong {
+          .detail-tile strong,
+          .contact-action strong,
+          .status-card strong {
             display: block;
-            margin-top: 5px;
+            margin-top: 4px;
             color: #0F172A;
             font-size: 15px;
             font-weight: 950;
@@ -639,79 +707,87 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
           .services-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
             gap: 10px;
           }
-          .services-grid span {
+          .service-card {
+            min-height: 86px;
             border: 1px solid rgba(11, 118, 224, 0.12);
-            border-radius: 16px;
+            border-radius: 18px;
             background: linear-gradient(135deg, rgba(11, 118, 224, 0.07), rgba(24, 212, 212, 0.09));
+            padding: 14px;
+            display: grid;
+            align-content: start;
+            gap: 10px;
+          }
+          .service-card span {
+            width: 34px;
+            height: 34px;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+            background: rgba(255,255,255,.72);
+            color: #0B9EAD;
+          }
+          .service-card strong {
             color: #0C447C;
-            padding: 12px;
             font-weight: 950;
             overflow-wrap: anywhere;
           }
-          .empty-copy {
-            margin: 0;
-            line-height: 1.8;
+          .empty-card {
+            min-height: 120px;
+            border: 1px dashed rgba(11, 118, 224, 0.20);
+            border-radius: 18px;
+            background: #F8FBFF;
+            color: #64748B;
+            display: grid;
+            place-items: center;
+            gap: 8px;
+            padding: 18px;
+            text-align: center;
             font-weight: 850;
           }
+          .empty-card.compact {
+            min-height: 96px;
+          }
           .contact-list,
-          .admin-actions {
+          .admin-card {
             display: grid;
             gap: 10px;
           }
-          .contact-link,
-          .admin-actions button,
-          .admin-actions a {
-            min-height: 46px;
+          .contact-action {
+            min-height: 52px;
             border: 1px solid rgba(15, 23, 42, 0.08);
-            border-radius: 15px;
+            border-radius: 16px;
             background: #F8FBFF;
             color: #0F172A;
             padding: 10px 12px;
             display: grid;
             grid-template-columns: auto minmax(0, 1fr);
-            column-gap: 10px;
-            row-gap: 2px;
+            gap: 10px;
             align-items: center;
             text-decoration: none;
             font-weight: 900;
-            text-align: start;
           }
-          .contact-link svg,
-          .admin-actions svg {
+          .contact-action > span {
+            width: 34px;
+            height: 34px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            background: rgba(24, 212, 212, 0.12);
             color: #0B9EAD;
-            grid-row: span 2;
           }
-          .contact-link span {
-            color: #64748B;
-            font-size: 12px;
+          .contact-action.static {
+            pointer-events: none;
           }
-          .contact-link strong {
-            color: #0F172A;
-            font-size: 13px;
-            overflow-wrap: anywhere;
-          }
-          .status-large {
+          .status-card {
             border-radius: 18px;
             padding: 14px;
             display: flex;
             gap: 12px;
             align-items: center;
             margin-bottom: 12px;
-          }
-          .status-large span {
-            display: block;
-            font-size: 12px;
-            font-weight: 900;
-            opacity: .78;
-          }
-          .status-large strong {
-            display: block;
-            margin-top: 2px;
-            font-size: 18px;
-            font-weight: 950;
           }
           .admin-note {
             margin: 12px 0 0;
@@ -722,56 +798,69 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             line-height: 1.7;
             font-weight: 850;
           }
-          .admin-actions button {
+          .admin-card button,
+          .admin-card a {
+            min-height: 46px;
+            border-radius: 15px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            background: #F8FBFF;
+            color: #0F172A;
+            padding: 0 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
             cursor: pointer;
             font: 950 14px/1.2 Tajawal, Arial, sans-serif;
           }
-          .admin-actions button:disabled {
+          .admin-card button:disabled {
             opacity: .68;
             cursor: not-allowed;
           }
-          .admin-actions button:first-of-type {
+          .admin-card .approve {
             background: #ECFDF5;
             color: #047857;
           }
-          .admin-actions button:nth-of-type(3),
-          .admin-actions button:nth-of-type(4) {
+          .admin-card .needs {
+            background: #EFF6FF;
+            color: #1D4ED8;
+          }
+          .admin-card .reject,
+          .admin-card .archive {
             background: #FEF2F2;
             color: #B91C1C;
           }
           @media (max-width: 980px) {
-            .company-profile-hero,
-            .company-profile-grid {
+            .company-hero-card,
+            .company-layout {
               grid-template-columns: 1fr;
             }
             .hero-actions {
               justify-content: stretch;
             }
             .hero-actions a {
-              flex: 1 1 160px;
+              flex: 1 1 170px;
             }
           }
           @media (max-width: 640px) {
-            .details-toolbar,
-            .details-back-button {
-              width: 100%;
-            }
-            .company-profile-hero,
+            .company-hero-card,
             .profile-card {
               border-radius: 20px;
               padding: 16px;
             }
-            .hero-content {
+            .hero-main {
               align-items: flex-start;
               flex-direction: column;
             }
             .company-logo {
-              width: 76px;
-              height: 76px;
+              width: 78px;
+              height: 78px;
               border-radius: 20px;
             }
             .hero-actions {
               display: grid;
+              grid-template-columns: 1fr;
             }
             .details-grid {
               grid-template-columns: 1fr;
@@ -784,37 +873,35 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             box-shadow: 0 16px 42px rgba(0, 0, 0, 0.22);
           }
           .dark .section-head h2,
-          .dark .overview-text,
+          .dark .overview-block p,
+          .dark .detail-tile strong,
+          .dark .contact-action strong,
           .dark .details-state h1 {
             color: #F8FAFC;
           }
-          .dark .overview-text.muted,
-          .dark .empty-copy,
-          .dark .details-state p {
+          .dark .details-state p,
+          .dark .detail-tile span:not(.detail-icon),
+          .dark .contact-action small,
+          .dark .empty-card {
             color: #CBD5E1;
           }
-          .dark .detail-row,
-          .dark .contact-link,
-          .dark .admin-actions button,
-          .dark .admin-actions a {
+          .dark .overview-block div,
+          .dark .detail-tile,
+          .dark .contact-action,
+          .dark .empty-card,
+          .dark .admin-card button,
+          .dark .admin-card a {
             background: #0A1F36;
             border-color: rgba(47, 214, 192, 0.14);
           }
-          .dark .detail-row strong,
-          .dark .contact-link strong,
-          .dark .contact-link,
-          .dark .admin-actions button,
-          .dark .admin-actions a {
-            color: #F8FAFC;
-          }
-          .dark .detail-row span,
-          .dark .contact-link span {
-            color: #CBD5E1;
-          }
-          .dark .services-grid span {
+          .dark .service-card {
             background: rgba(29, 140, 255, 0.14);
             border-color: rgba(47, 214, 192, 0.16);
-            color: #BAE6FD;
+          }
+          .dark .service-card strong,
+          .dark .admin-card button,
+          .dark .admin-card a {
+            color: #F8FAFC;
           }
         `}</style>
       </DashboardPageShell>
