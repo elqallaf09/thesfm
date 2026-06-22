@@ -2,6 +2,7 @@ import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseAdmin, getUserFromBearerToken } from '@/lib/server/adminAccess';
+import { isSmtpMailConfigured, sendSmtpMail } from '@/lib/server/smtpMail';
 import {
   normalizeCompanyCategory,
   normalizeCompanyStatus,
@@ -15,6 +16,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const SELECT_COLUMNS = 'id,user_id,stripe_customer_id,stripe_subscription_id,company_name,category,country,city,short_description,long_description,website_url,email,phone,whatsapp,linkedin_url,twitter_url,instagram_url,founded_year,license_number,regulator_name,services,logo_url,cover_image_url,status,is_featured,created_at,updated_at,approved_at';
+const COMPANY_REVIEW_EMAIL = 'SUPPORT@THE-SFM.COM';
 
 type CompanyPayload = {
   companyName?: unknown;
@@ -66,6 +68,15 @@ function cleanUrl(value: unknown) {
 function numberOrNull(value: unknown) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 1800 && parsed < 2200 ? Math.trunc(parsed) : null;
+}
+
+function escapeHtml(value: string | null | undefined) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 async function currentUser(request: NextRequest) {
@@ -125,6 +136,69 @@ function normalizeListing(row: Record<string, unknown>): CompanyListing {
     updated_at: row.updated_at ? String(row.updated_at) : null,
     approved_at: row.approved_at ? String(row.approved_at) : null,
   };
+}
+
+async function notifyCompanyReviewRequest(request: NextRequest, listing: CompanyListing, submitterEmail?: string | null) {
+  if (!isSmtpMailConfigured()) {
+    console.warn('[company-listings] review email skipped: SMTP is not configured');
+    return;
+  }
+
+  const configuredTo = process.env.COMPANY_REVIEW_TO_EMAIL?.trim() || COMPANY_REVIEW_EMAIL;
+  const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim() || request.nextUrl.origin;
+  const reviewUrl = new URL('/sfm-admin-control/companies', siteOrigin).toString();
+  const submittedAt = new Date().toLocaleString('ar-KW', { timeZone: 'Asia/Kuwait' });
+  const subject = `طلب إدراج شركة جديد: ${listing.company_name}`;
+  const text = [
+    'يوجد طلب إدراج شركة جديد في THE SFM.',
+    '',
+    `اسم الشركة: ${listing.company_name}`,
+    `التصنيف: ${listing.category}`,
+    `الدولة: ${listing.country || 'غير محدد'}`,
+    `المدينة: ${listing.city || 'غير محدد'}`,
+    `البريد: ${listing.email || submitterEmail || 'غير محدد'}`,
+    `الهاتف: ${listing.phone || 'غير محدد'}`,
+    `الموقع: ${listing.website_url || 'غير محدد'}`,
+    `وقت الإرسال: ${submittedAt}`,
+    '',
+    `رابط المراجعة: ${reviewUrl}`,
+  ].join('\n');
+
+  const html = `
+    <div dir="rtl" style="font-family:Arial,Tahoma,sans-serif;background:#f4fbff;padding:24px;color:#0b1b34">
+      <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #cfeefa;border-radius:18px;padding:24px">
+        <p style="margin:0 0 8px;color:#0b9ead;font-weight:700">THE SFM</p>
+        <h1 style="margin:0 0 14px;font-size:24px">طلب إدراج شركة جديد</h1>
+        <p style="margin:0 0 20px;line-height:1.8">يوجد شركة تريد إضافة بياناتها إلى دليل الشركات. الرجاء مراجعة الطلب من لوحة الأدمن.</p>
+        <table style="width:100%;border-collapse:collapse;margin:0 0 22px">
+          <tr><td style="padding:8px;border-bottom:1px solid #e6f4f8;color:#64748b">اسم الشركة</td><td style="padding:8px;border-bottom:1px solid #e6f4f8;font-weight:700">${escapeHtml(listing.company_name)}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #e6f4f8;color:#64748b">التصنيف</td><td style="padding:8px;border-bottom:1px solid #e6f4f8">${escapeHtml(listing.category)}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #e6f4f8;color:#64748b">الدولة / المدينة</td><td style="padding:8px;border-bottom:1px solid #e6f4f8">${escapeHtml(listing.country || 'غير محدد')} - ${escapeHtml(listing.city || 'غير محدد')}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #e6f4f8;color:#64748b">البريد</td><td style="padding:8px;border-bottom:1px solid #e6f4f8">${escapeHtml(listing.email || submitterEmail || 'غير محدد')}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #e6f4f8;color:#64748b">الهاتف</td><td style="padding:8px;border-bottom:1px solid #e6f4f8">${escapeHtml(listing.phone || 'غير محدد')}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #e6f4f8;color:#64748b">الموقع</td><td style="padding:8px;border-bottom:1px solid #e6f4f8">${escapeHtml(listing.website_url || 'غير محدد')}</td></tr>
+          <tr><td style="padding:8px;color:#64748b">وقت الإرسال</td><td style="padding:8px">${escapeHtml(submittedAt)}</td></tr>
+        </table>
+        <a href="${escapeHtml(reviewUrl)}" style="display:inline-block;background:linear-gradient(135deg,#22c7d8,#1689f2);color:#ffffff;text-decoration:none;font-weight:700;border-radius:999px;padding:13px 22px">مراجعة الطلب</a>
+      </div>
+    </div>
+  `;
+
+  try {
+    await sendSmtpMail({
+      to: configuredTo,
+      subject,
+      text,
+      html,
+      replyTo: listing.email || submitterEmail || undefined,
+      fromName: 'THE SFM Companies',
+    });
+  } catch (error) {
+    console.error('[company-listings] review email failed', {
+      companyId: listing.id,
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -245,5 +319,8 @@ export async function POST(request: NextRequest) {
     return json({ ok: false, code: 'SAVE_FAILED' }, { status: 500 });
   }
 
-  return json({ ok: true, item: normalizeListing(data as Record<string, unknown>) });
+  const item = normalizeListing(data as Record<string, unknown>);
+  await notifyCompanyReviewRequest(request, item, user.email);
+
+  return json({ ok: true, item });
 }
