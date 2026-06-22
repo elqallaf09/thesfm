@@ -184,6 +184,25 @@ function formatDate(iso: string | null, lang: Lang) {
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
 }
 
+function CompanyAdminLogo({ company }: { company: Company }) {
+  const [failed, setFailed] = useState(false);
+  if (company.logo_url && !failed) {
+    return (
+      // Company logos are submitted external URLs, so native img keeps support broad.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={company.logo_url}
+        alt={company.company_name ? `${company.company_name} logo` : ''}
+        className="ca-logo"
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return <div className="ca-logo-placeholder">{company.company_name?.[0] ?? '?'}</div>;
+}
+
 export default function CompanyAdminClient({ companies: initial, adminEmail }: Props) {
   const router = useRouter();
   const { user, signOut, loading: authLoading } = useAuth();
@@ -371,11 +390,7 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
                   <tr key={company.id}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '.65rem' }}>
-                        {company.logo_url
-                          // Company logos come from submitted URLs, so native img avoids blocking unconfigured hosts.
-                          // eslint-disable-next-line @next/next/no-img-element
-                          ? <img src={company.logo_url} alt={company.company_name ? `${company.company_name} logo` : ''} className="ca-logo" loading="lazy" decoding="async" />
-                          : <div className="ca-logo-placeholder">{company.company_name?.[0] ?? '?'}</div>}
+                        <CompanyAdminLogo company={company} />
                         <div>
                           <div style={{ fontWeight: 800 }}>{company.company_name}</div>
                           {company.update_status === 'pending_update' && <div className="ca-request-badge">{text.pendingUpdate as string}</div>}
