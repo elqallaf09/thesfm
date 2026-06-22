@@ -1,6 +1,12 @@
 'use client';
 
 import { useState, useTransition, useMemo } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { LogIn, LogOut } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { useAuth } from '@/hooks/useAuth';
 
 type CompanyStatus = 'pending_review' | 'approved' | 'rejected' | 'needs_changes' | 'inactive';
 
@@ -58,6 +64,8 @@ function fmtDate(iso: string | null) {
 }
 
 export default function CompanyAdminClient({ companies: initial, adminEmail }: Props) {
+  const router = useRouter();
+  const { user, signOut, loading: authLoading } = useAuth();
   const [companies, setCompanies] = useState<Company[]>(initial);
   const [activeTab, setActiveTab] = useState<Tab>('pending_review');
   const [selected, setSelected] = useState<Company | null>(null);
@@ -75,6 +83,11 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
   }, [companies]);
 
   const filtered = companies.filter(c => c.status === activeTab);
+
+  async function handleSignOut() {
+    await signOut();
+    router.replace('/login?next=/sfm-admin-control/companies');
+  }
 
   function openPanel(c: Company) {
     setSelected(c);
@@ -127,6 +140,13 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
     <>
       <style>{`
         .ca-page { min-height: 100vh; background: var(--sfm-background); padding: 2rem 1.5rem; direction: rtl; font-family: inherit; }
+        .ca-topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.35rem; flex-wrap: wrap; }
+        .ca-admin-chip { min-height: 42px; border-radius: 999px; border: 1px solid rgba(47,214,192,.18); background: rgba(47,214,192,.08); color: var(--sfm-foreground); padding: 0 .95rem; display: inline-flex; align-items: center; gap: .45rem; font-size: .82rem; font-weight: 800; }
+        .ca-toolbar { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }
+        .ca-auth-action { min-height: 44px; border: 1px solid rgba(47,214,192,.22); border-radius: 14px; background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent)); color: #fff; padding: 0 .95rem; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; font: 900 .84rem Tajawal, Arial, sans-serif; text-decoration: none; cursor: pointer; box-shadow: 0 12px 28px rgba(29,140,255,.18); transition: transform .18s ease, box-shadow .18s ease; }
+        .ca-auth-action:hover, .ca-auth-action:focus-visible { transform: translateY(-1px); outline: none; box-shadow: 0 14px 34px rgba(29,140,255,.26); }
+        .ca-auth-action.secondary { background: rgba(15,29,49,.72); color: #e8eef6; border-color: rgba(47,214,192,.24); box-shadow: none; }
+        .dark .ca-admin-chip, .dark .ca-auth-action.secondary { background: #0f1d31; border-color: #1d3050; color: #e8eef6; }
         .ca-header { margin-bottom: 2rem; }
         .ca-header h1 { font-size: 1.6rem; font-weight: 700; color: var(--sfm-foreground); margin: 0 0 .3rem; }
         .ca-header p  { color: #64748B; font-size: .9rem; margin: 0; }
@@ -195,6 +215,10 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
 
         @media (max-width: 700px) {
           .ca-page { padding: 1rem; }
+          .ca-topbar { align-items: stretch; }
+          .ca-toolbar, .ca-admin-chip, .ca-auth-action { width: 100%; }
+          .ca-toolbar { display: grid; grid-template-columns: 1fr 44px; }
+          .ca-auth-action { grid-column: 1 / -1; }
           .ca-table th:nth-child(3),
           .ca-table td:nth-child(3),
           .ca-table th:nth-child(4),
@@ -203,6 +227,24 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
       `}</style>
 
       <div className="ca-page">
+        <div className="ca-topbar">
+          <div className="ca-admin-chip">{adminEmail || user?.email || 'THE SFM Admin'}</div>
+          <div className="ca-toolbar">
+            <LanguageSwitcher variant="dark" compact />
+            <ThemeToggle />
+            {user ? (
+              <button type="button" className="ca-auth-action secondary" onClick={() => void handleSignOut()} disabled={authLoading}>
+                <LogOut size={16} />
+                تسجيل الخروج
+              </button>
+            ) : (
+              <Link className="ca-auth-action" href="/login?next=/sfm-admin-control/companies">
+                <LogIn size={16} />
+                تسجيل الدخول
+              </Link>
+            )}
+          </div>
+        </div>
         <div className="ca-header">
           <h1>مراجعة طلبات الشركات</h1>
           <p>مراجعة وإدارة طلبات إدراج الشركات في الدليل</p>
