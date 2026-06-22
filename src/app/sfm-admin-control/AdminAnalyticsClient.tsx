@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Activity, BarChart3, Building2, Clock3, Eye, Globe2, Languages, LockKeyhole, MonitorSmartphone, ShieldCheck, Users, type LucideIcon } from 'lucide-react';
+import { Activity, BarChart3, Building2, Clock3, Eye, Globe2, Languages, LockKeyhole, LogIn, LogOut, MonitorSmartphone, ShieldCheck, Users, type LucideIcon } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { COMPANY_CATEGORY_CONFIGS, isCompanyCategory } from '@/lib/companyListings';
@@ -172,7 +175,7 @@ function formatRelative(value: string | null | undefined, lang: string, fallback
 }
 
 export default function AdminAnalyticsClient() {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const { lang, dir, t } = useLanguage();
   const router = useRouter();
   const [range, setRange] = useState('30d');
@@ -188,6 +191,33 @@ export default function AdminAnalyticsClient() {
   const [companyRequests, setCompanyRequests] = useState<AdminCompanyListing[]>([]);
   const [companyRequestsState, setCompanyRequestsState] = useState<'loading' | 'ready' | 'empty' | 'error' | 'forbidden' | 'code_required'>('loading');
   const [updatingCompanyId, setUpdatingCompanyId] = useState('');
+  const loginLabel = lang === 'en' ? 'Sign in' : lang === 'fr' ? 'Connexion' : 'تسجيل الدخول';
+
+  const handleSignOut = useCallback(async () => {
+    await signOut();
+    router.replace('/login?next=/sfm-admin-control');
+  }, [router, signOut]);
+
+  const adminControls = (
+    <div className="admin-topbar">
+      <div className="admin-user-chip">{user?.email ?? 'THE SFM Admin'}</div>
+      <div className="admin-control-actions">
+        <LanguageSwitcher variant="dark" compact />
+        <ThemeToggle />
+        {user ? (
+          <button type="button" className="admin-auth-button secondary" onClick={() => void handleSignOut()} disabled={loading}>
+            <LogOut size={16} aria-hidden="true" />
+            {t('nav_logout')}
+          </button>
+        ) : (
+          <Link className="admin-auth-button" href="/login?next=/sfm-admin-control">
+            <LogIn size={16} aria-hidden="true" />
+            {loginLabel}
+          </Link>
+        )}
+      </div>
+    </div>
+  );
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login?next=/sfm-admin-control');
@@ -343,16 +373,17 @@ export default function AdminAnalyticsClient() {
   ] as const;
 
   if (loading || (!user && state === 'loading')) {
-    return <AdminShell dir={dir}><StateCard icon={Clock3} text={t('admin_loading')} /></AdminShell>;
+    return <AdminShell dir={dir}>{adminControls}<StateCard icon={Clock3} text={t('admin_loading')} /></AdminShell>;
   }
 
   if (state === 'forbidden') {
-    return <AdminShell dir={dir}><StateCard icon={LockKeyhole} text={t('admin_unauthorized')} /></AdminShell>;
+    return <AdminShell dir={dir}>{adminControls}<StateCard icon={LockKeyhole} text={t('admin_unauthorized')} /></AdminShell>;
   }
 
   if (state === 'code_required') {
     return (
       <AdminShell dir={dir}>
+        {adminControls}
         <section className="admin-code-card" aria-labelledby="admin-code-title">
           <div className="admin-code-icon" aria-hidden="true"><LockKeyhole size={24} /></div>
           <h1 id="admin-code-title">{t('admin_code_title')}</h1>
@@ -381,6 +412,7 @@ export default function AdminAnalyticsClient() {
   return (
     <DashboardPageShell ariaLabel={t('admin_dashboard_title')} contentClassName="admin-dashboard-content">
       <main className="admin-dashboard" dir={dir}>
+        {adminControls}
         <section className="admin-hero">
           <div>
             <span className="admin-eyebrow"><LockKeyhole size={16} aria-hidden="true" />THE SFM</span>
@@ -653,6 +685,12 @@ function Breakdown({
 
 const adminStyles = `
   .admin-dashboard{width:100%;max-width:1480px;margin:0 auto;padding:22px;display:grid;gap:16px;color:var(--sfm-foreground)}
+  .admin-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid rgba(29,140,255,.12);background:var(--sfm-card-bg);border-radius:22px;padding:12px;box-shadow:0 12px 30px rgba(3,18,37,.05)}
+  .admin-user-chip{min-height:42px;border-radius:999px;border:1px solid rgba(47,214,192,.18);background:rgba(47,214,192,.08);color:var(--sfm-foreground);padding:0 14px;display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:950;overflow-wrap:anywhere}
+  .admin-control-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .admin-auth-button{min-height:44px;border:1px solid rgba(47,214,192,.22);border-radius:14px;background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#fff;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:950 13px Tajawal,Arial,sans-serif;text-decoration:none;cursor:pointer;box-shadow:0 12px 28px rgba(29,140,255,.18);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+  .admin-auth-button:hover,.admin-auth-button:focus-visible{transform:translateY(-1px);outline:none;box-shadow:0 14px 34px rgba(29,140,255,.26);border-color:rgba(47,214,192,.42)}
+  .admin-auth-button.secondary{background:rgba(15,29,49,.72);color:#e8eef6;border-color:rgba(47,214,192,.24);box-shadow:none}
   .admin-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;border-radius:26px;padding:24px;background:radial-gradient(circle at 12% 10%,rgba(34,211,238,.22),transparent 30%),linear-gradient(135deg,#061A2E,#0B2748 58%,#071E3A);color:#fff;box-shadow:0 20px 56px rgba(3,18,37,.16)}
   .admin-eyebrow,.admin-privacy-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(167,243,240,.24);background:rgba(255,255,255,.08);border-radius:999px;padding:8px 12px;color:#A7F3F0;font-weight:950}
   .admin-hero h1{margin:13px 0 8px;font-size:clamp(28px,4.2vw,48px);line-height:1.05;font-weight:950;letter-spacing:0}
@@ -720,10 +758,10 @@ const adminStyles = `
   .admin-code-card strong{color:#DC2626;font-size:13px}
   .admin-code-card button{min-height:48px;border:0;border-radius:15px;background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#061A2E;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer}
   .admin-code-card button:disabled{opacity:.6;cursor:not-allowed}
-  :global(.dark) .admin-stat-card,:global(.dark) .admin-panel,:global(.dark) .admin-filters,:global(.dark) .admin-state,:global(.dark) .admin-code-card,:global(.dark) .admin-tracking-status{background:#102A45;border-color:rgba(255,255,255,.10);box-shadow:0 16px 44px rgba(0,0,0,.18)}
+  :global(.dark) .admin-topbar,:global(.dark) .admin-user-chip,:global(.dark) .admin-auth-button.secondary,:global(.dark) .admin-stat-card,:global(.dark) .admin-panel,:global(.dark) .admin-filters,:global(.dark) .admin-state,:global(.dark) .admin-code-card,:global(.dark) .admin-tracking-status{background:#102A45;border-color:rgba(255,255,255,.10);box-shadow:0 16px 44px rgba(0,0,0,.18)}
   :global(.dark) .admin-empty-compact{background:rgba(24,212,212,.07);border-color:rgba(24,212,212,.18)}
   :global(.dark) .admin-filters select,:global(.dark) .admin-filters input{background:#0F2942;border-color:rgba(255,255,255,.12);color:#F8FAFC}
   :global(.dark) .admin-code-card input{background:#0F2942;border-color:rgba(255,255,255,.12);color:#F8FAFC}
   @media(max-width:1100px){.admin-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-section-grid,.admin-section-grid.two,.admin-filters{grid-template-columns:1fr 1fr}}
-  @media(max-width:720px){.admin-dashboard{padding:14px}.admin-hero{display:grid;padding:20px}.admin-privacy-badge{width:max-content;max-width:100%}.admin-stat-grid,.admin-section-grid,.admin-section-grid.two,.admin-filters,.admin-event-grid.compact{grid-template-columns:1fr}table{min-width:620px}.admin-stat-card strong{font-size:24px}}
+  @media(max-width:720px){.admin-dashboard{padding:14px}.admin-topbar{align-items:stretch}.admin-user-chip,.admin-control-actions,.admin-auth-button{width:100%}.admin-control-actions{display:grid;grid-template-columns:1fr 44px}.admin-auth-button{grid-column:1/-1}.admin-hero{display:grid;padding:20px}.admin-privacy-badge{width:max-content;max-width:100%}.admin-stat-grid,.admin-section-grid,.admin-section-grid.two,.admin-filters,.admin-event-grid.compact{grid-template-columns:1fr}table{min-width:620px}.admin-stat-card strong{font-size:24px}}
 `;
