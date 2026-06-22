@@ -53,23 +53,10 @@ export function Sidebar() {
   const activeSidebarGroupId = activeGroupId ?? (activeSupport ? 'support' : null);
   const isAdmin = isAdminEmailClient(user?.email);
   const navGroups = useMemo(() => filterNavigationGroups(NAV_GROUPS, viewMode, isAdmin), [viewMode, isAdmin]);
-  const activeChildParentIds = useMemo(
-    () => navGroups.flatMap(group =>
-      group.items
-        .filter(item => item.children?.some(child => isNavigationItemOrChildActive(activeSource, child)))
-        .map(item => item.id),
-    ),
-    [activeSource, navGroups],
-  );
-
   useEffect(() => {
-    setOpenGroupId(activeSidebarGroupId);
-  }, [activeSidebarGroupId]);
-
-  useEffect(() => {
-    if (!activeChildParentIds.length) return;
-    setOpenItemIds(current => Array.from(new Set([...current, ...activeChildParentIds])));
-  }, [activeChildParentIds]);
+    setOpenGroupId(null);
+    setOpenItemIds([]);
+  }, [pathname, viewMode]);
 
   useEffect(() => {
     let cancelled = false;

@@ -43,15 +43,6 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
   );
   const activeSidebarGroupId = activeGroupId ?? (activeSupport ? 'support' : null);
   const navGroups = useMemo(() => filterNavigationGroups(NAV_GROUPS, viewMode), [viewMode]);
-  const activeChildParentIds = useMemo(
-    () => navGroups.flatMap(group =>
-      group.items
-        .filter(item => item.children?.some(child => isNavigationItemOrChildActive(activeSource, child)))
-        .map(item => item.id),
-    ),
-    [activeSource, navGroups],
-  );
-
   useEffect(() => {
     const nextPath = typeof window === 'undefined'
       ? null
@@ -69,7 +60,8 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
 
   useEffect(() => {
     if (!open) return;
-    setOpenGroupId(activeSidebarGroupId);
+    setOpenGroupId(null);
+    setOpenItemIds([]);
     const original = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.body.classList.add('sfm-mobile-lock');
@@ -77,12 +69,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
       document.body.style.overflow = original;
       document.body.classList.remove('sfm-mobile-lock');
     };
-  }, [activeSidebarGroupId, open]);
-
-  useEffect(() => {
-    if (!activeChildParentIds.length) return;
-    setOpenItemIds(current => Array.from(new Set([...current, ...activeChildParentIds])));
-  }, [activeChildParentIds]);
+  }, [open]);
 
   useEffect(() => {
     if (previousLang.current !== lang && open) onClose();
