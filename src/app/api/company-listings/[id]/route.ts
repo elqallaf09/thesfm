@@ -5,7 +5,7 @@ import { createServerSupabaseAdmin, getUserFromBearerToken, isAdminEmail } from 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const SELECT_COLUMNS = 'id,user_id,company_name,category,country,city,short_description,long_description,website_url,email,phone,whatsapp,linkedin_url,twitter_url,instagram_url,founded_year,license_number,regulator_name,services,logo_url,cover_image_url,status,admin_notes,reviewed_at,reviewed_by,is_featured,created_at,updated_at,approved_at';
+const SELECT_COLUMNS = 'id,user_id,company_name,category,country,city,full_address,google_maps_url,latitude,longitude,short_description,long_description,website_url,email,phone,whatsapp,linkedin_url,twitter_url,instagram_url,founded_year,license_number,regulator_name,services,logo_url,cover_image_url,status,admin_notes,reviewed_at,reviewed_by,is_featured,created_at,updated_at,approved_at';
 
 function json(data: unknown, init?: ResponseInit) {
   return NextResponse.json(data, {

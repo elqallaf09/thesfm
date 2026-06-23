@@ -19,6 +19,10 @@ export type CompanyListing = {
   category: CompanyCategory;
   country?: string | null;
   city?: string | null;
+  full_address?: string | null;
+  google_maps_url?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   short_description?: string | null;
   long_description?: string | null;
   website_url?: string | null;

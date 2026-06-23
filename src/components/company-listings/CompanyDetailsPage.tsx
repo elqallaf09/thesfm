@@ -193,7 +193,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
   const StatusIcon = STATUS_ICONS[status] ?? Clock3;
   const location = [item?.country, item?.city].filter(Boolean).join(' / ');
   const services = useMemo(() => item?.services?.map(service => service.trim()).filter(Boolean) ?? [], [item?.services]);
-  const hasContact = Boolean(item?.website_url || item?.email || item?.phone || item?.instagram_url || item?.linkedin_url || item?.whatsapp || location);
+  const coordinates = [item?.latitude, item?.longitude].filter(value => typeof value === 'number').join(', ');
+  const hasContact = Boolean(item?.website_url || item?.email || item?.phone || item?.instagram_url || item?.linkedin_url || item?.whatsapp || item?.google_maps_url || item?.full_address || location);
   const backHref = item ? (COMPANY_CATEGORY_CONFIGS[item.category]?.path ?? '/services') : '/services';
   const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
 
@@ -329,6 +330,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                     <DetailTile icon={<Building2 size={17} />} label="نوع الشركة" value={categoryLabel} />
                     <DetailTile icon={<MapPin size={17} />} label="الدولة" value={item.country} />
                     <DetailTile icon={<MapPin size={17} />} label="المدينة" value={item.city} />
+                    <DetailTile icon={<MapPin size={17} />} label="عنوان الشركة بالكامل" value={item.full_address} fallback="لم يتم إضافة عنوان كامل بعد." />
+                    <DetailTile icon={<MapPin size={17} />} label="إحداثيات الموقع" value={coordinates} fallback="لم يتم تحديد الإحداثيات بعد." />
                     <DetailTile icon={<CalendarDays size={17} />} label="سنة التأسيس" value={item.founded_year} fallback="لم يتم تحديد سنة التأسيس" />
                     <DetailTile icon={<BadgeCheck size={17} />} label="رقم الترخيص" value={item.license_number} fallback="لم يتم إضافة رقم ترخيص" />
                     <DetailTile icon={<ShieldCheck size={17} />} label="الجهة المنظمة" value={item.regulator_name} fallback="لم يتم تحديد جهة منظمة" />
@@ -373,6 +376,16 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                       <ContactAction href={item.whatsapp ? `https://wa.me/${safeTel(item.whatsapp).replace(/^\+/, '')}` : null} icon={<Phone size={16} />} label="واتساب" value={item.whatsapp} />
                       <ContactAction href={item.instagram_url} icon={<Instagram size={16} />} label="Instagram" value={item.instagram_url} />
                       <ContactAction href={item.linkedin_url} icon={<Linkedin size={16} />} label="LinkedIn" value={item.linkedin_url} />
+                      <ContactAction href={item.google_maps_url} icon={<MapPin size={16} />} label="Google Maps" value={item.full_address || item.google_maps_url} />
+                      {!item.google_maps_url && item.full_address ? (
+                        <div className="contact-action static">
+                          <span><MapPin size={16} /></span>
+                          <div>
+                            <small>العنوان الكامل</small>
+                            <strong>{item.full_address}</strong>
+                          </div>
+                        </div>
+                      ) : null}
                       {location ? (
                         <div className="contact-action static">
                           <span><MapPin size={16} /></span>

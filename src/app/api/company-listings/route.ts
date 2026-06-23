@@ -30,6 +30,10 @@ type CompanyPayload = {
   category?: unknown;
   country?: unknown;
   city?: unknown;
+  fullAddress?: unknown;
+  googleMapsUrl?: unknown;
+  latitude?: unknown;
+  longitude?: unknown;
   shortDescription?: unknown;
   longDescription?: unknown;
   websiteUrl?: unknown;
@@ -69,6 +73,12 @@ function isValidOptionalEmail(value: unknown) {
 function isValidOptionalPhone(value: unknown) {
   const raw = cleanCompanyText(value, 80);
   return !raw || /^\+\d{1,4}\s?\d{5,18}$/.test(raw);
+}
+
+function coordinateOrNull(value: unknown, min: number, max: number) {
+  if (value === null || value === undefined || String(value).trim() === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : null;
 }
 
 function escapeHtml(value: string | null | undefined) {
@@ -244,6 +254,7 @@ export async function POST(request: NextRequest) {
     hasInvalidOptionalUrl(payload.instagramUrl) ||
     hasInvalidOptionalUrl(payload.logoUrl) ||
     hasInvalidOptionalUrl(payload.coverImageUrl) ||
+    hasInvalidOptionalUrl(payload.googleMapsUrl) ||
     !isValidOptionalEmail(payload.email) ||
     !isValidOptionalPhone(payload.phone) ||
     !isValidOptionalPhone(payload.whatsapp)
@@ -271,6 +282,10 @@ export async function POST(request: NextRequest) {
     category,
     country: cleanCompanyText(payload.country, 100) || null,
     city: cleanCompanyText(payload.city, 100) || null,
+    full_address: cleanCompanyText(payload.fullAddress, 420) || null,
+    google_maps_url: cleanCompanyUrl(payload.googleMapsUrl),
+    latitude: coordinateOrNull(payload.latitude, -90, 90),
+    longitude: coordinateOrNull(payload.longitude, -180, 180),
     short_description: cleanCompanyText(payload.shortDescription, 320) || null,
     long_description: cleanCompanyText(payload.longDescription, 2500) || null,
     website_url: cleanCompanyUrl(payload.websiteUrl),

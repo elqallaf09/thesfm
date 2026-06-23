@@ -8,7 +8,13 @@ import {
   type CompanyListing,
 } from '@/lib/companyListings';
 
-export const COMPANY_LISTING_SELECT_COLUMNS = 'id,user_id,stripe_customer_id,stripe_subscription_id,company_name,category,country,city,short_description,long_description,website_url,email,phone,whatsapp,linkedin_url,twitter_url,instagram_url,founded_year,license_number,regulator_name,services,logo_url,cover_image_url,status,update_status,pending_update,deletion_requested,deletion_requested_at,last_owner_update_at,admin_notes,reviewed_at,reviewed_by,is_featured,created_at,updated_at,approved_at';
+export const COMPANY_LISTING_SELECT_COLUMNS = 'id,user_id,stripe_customer_id,stripe_subscription_id,company_name,category,country,city,full_address,google_maps_url,latitude,longitude,short_description,long_description,website_url,email,phone,whatsapp,linkedin_url,twitter_url,instagram_url,founded_year,license_number,regulator_name,services,logo_url,cover_image_url,status,update_status,pending_update,deletion_requested,deletion_requested_at,last_owner_update_at,admin_notes,reviewed_at,reviewed_by,is_featured,created_at,updated_at,approved_at';
+
+function numericOrNull(value: unknown) {
+  if (value === null || value === undefined || String(value).trim() === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 export function cleanCompanyText(value: unknown, max = 500) {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -50,6 +56,10 @@ export function normalizeCompanyListing(row: Record<string, unknown>): CompanyLi
     category: normalizeCompanyCategory(row.category) ?? 'investment',
     country: row.country ? String(row.country) : null,
     city: row.city ? String(row.city) : null,
+    full_address: row.full_address ? String(row.full_address) : null,
+    google_maps_url: row.google_maps_url ? String(row.google_maps_url) : null,
+    latitude: numericOrNull(row.latitude),
+    longitude: numericOrNull(row.longitude),
     short_description: row.short_description ? String(row.short_description) : null,
     long_description: row.long_description ? String(row.long_description) : null,
     website_url: row.website_url ? String(row.website_url) : null,

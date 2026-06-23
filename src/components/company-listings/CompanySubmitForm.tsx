@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Building2, CheckCircle2, ChevronRight, CreditCard, Send } from 'lucide-react';
+import { Building2, CheckCircle2, ChevronRight, CreditCard, ExternalLink, MapPin, Send } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
 import { useResolvedImageUrl } from '@/components/company-listings/useResolvedImageUrl';
@@ -17,6 +17,10 @@ type FormState = {
   category: CompanyCategory;
   country: string;
   city: string;
+  fullAddress: string;
+  googleMapsUrl: string;
+  latitude: string;
+  longitude: string;
   shortDescription: string;
   longDescription: string;
   websiteUrl: string;
@@ -41,6 +45,10 @@ const initialForm: FormState = {
   category: 'investment',
   country: '',
   city: '',
+  fullAddress: '',
+  googleMapsUrl: '',
+  latitude: '',
+  longitude: '',
   shortDescription: '',
   longDescription: '',
   websiteUrl: '',
@@ -141,6 +149,34 @@ function normalizeHandle(value: string, network: 'linkedin' | 'twitter' | 'insta
   return `https://www.instagram.com/${handle}`;
 }
 
+function parseGoogleMapsCoordinates(value: string) {
+  const raw = value.trim();
+  if (!raw) return { latitude: '', longitude: '' };
+  const decoded = decodeURIComponent(raw);
+  const atMatch = decoded.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
+  if (atMatch) return { latitude: atMatch[1], longitude: atMatch[2] };
+  const bangMatch = decoded.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  if (bangMatch) return { latitude: bangMatch[1], longitude: bangMatch[2] };
+
+  try {
+    const url = new URL(raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`);
+    const query = url.searchParams.get('q') || url.searchParams.get('query') || '';
+    const queryMatch = query.match(/(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
+    if (queryMatch) return { latitude: queryMatch[1], longitude: queryMatch[2] };
+  } catch {
+    return { latitude: '', longitude: '' };
+  }
+
+  return { latitude: '', longitude: '' };
+}
+
+function isValidCoordinate(value: string, min: number, max: number) {
+  const raw = value.trim();
+  if (!raw) return true;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed >= min && parsed <= max;
+}
+
 function digitsOnly(value: string) {
   return value.replace(/[^\d]/g, '');
 }
@@ -228,6 +264,23 @@ export function CompanySubmitForm() {
     setMessage(null);
   }
 
+  function updateMapsUrl(value: string) {
+    const coords = parseGoogleMapsCoordinates(value);
+    setForm(prev => ({
+      ...prev,
+      googleMapsUrl: value,
+      latitude: coords.latitude || prev.latitude,
+      longitude: coords.longitude || prev.longitude,
+    }));
+    setMessage(null);
+  }
+
+  function openGoogleMapsPicker() {
+    if (typeof window === 'undefined') return;
+    const query = [form.fullAddress, form.city, form.country].map(part => part.trim()).filter(Boolean).join(', ') || 'Kuwait';
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank', 'noopener,noreferrer');
+  }
+
   function validateForm() {
     const imageUrls = [
       [form.logoUrl, 'رابط شعار الشركة'],
@@ -235,7 +288,11 @@ export function CompanySubmitForm() {
     ] as const;
     if (!hasLetter(form.companyName)) return 'اسم الشركة يجب أن يحتوي على أحرف واضحة.';
     if (!form.country.trim()) return 'اختر الدولة من القائمة.';
-    if (form.shortDescription.trim() && !hasLetter(form.shortDescription)) return 'الوصف المختصر يجب أن يكون أحرف أو جملة واضحة.';
+    if (form.fullAddress.trim() && !hasLetter(form.fullAddress)) return 'عنوان الشركة بالكامل يجب أن يحتوي على أحرف أو جملة واضحة.';
+    if (!isAsciiUrl(form.googleMapsUrl)) return 'رابط Google Maps يجب أن يكون رابطاً صحيحاً.';
+    if (!isValidCoordinate(form.latitude, -90, 90)) return 'خط العرض غير صحيح. يجب أن يكون بين -90 و 90.';
+    if (!isValidCoordinate(form.longitude, -180, 180)) return 'خط الطول غير صحيح. يجب أن يكون بين -180 و 180.';
+    if (form.shortDescription.trim() && !hasLetter(form.shortDescription)) return 'الوصف المختصر يجب أن يكون أحرفاً أو جملة واضحة.';
     if (form.longDescription.trim() && !hasLetter(form.longDescription)) return 'الوصف التفصيلي يجب أن يحتوي على أحرف أو جملة واضحة.';
     if (!isAsciiUrl(form.websiteUrl)) return 'الموقع الإلكتروني يجب أن يكون رابطاً صحيحاً باللغة الإنجليزية.';
     if (!isValidEmail(form.email)) return 'البريد الإلكتروني يجب أن يكون بصيغة EXAMPLE@EXAMPLE.COM.';
@@ -244,14 +301,13 @@ export function CompanySubmitForm() {
     if (!isValidHandle(form.linkedinUrl)) return 'رابط LinkedIn يجب أن يكون @EXAMPLE أو رابطاً صحيحاً.';
     if (!isValidHandle(form.twitterUrl)) return 'رابط X / Twitter يجب أن يكون @EXAMPLE أو رابطاً صحيحاً.';
     if (!isValidHandle(form.instagramUrl)) return 'رابط Instagram يجب أن يكون @EXAMPLE أو رابطاً صحيحاً.';
-    if (form.regulatorName.trim() && !hasLetter(form.regulatorName)) return 'الجهة المنظمة يجب أن تكون أحرف أو جملة.';
-    if (form.services.trim() && !hasLetter(form.services)) return 'الخدمات المقدمة يجب أن تكون أحرف أو جمل.';
+    if (form.regulatorName.trim() && !hasLetter(form.regulatorName)) return 'الجهة المنظمة يجب أن تكون أحرفاً أو جملة.';
+    if (form.services.trim() && !hasLetter(form.services)) return 'الخدمات المقدمة يجب أن تكون أحرفاً أو جملاً.';
     for (const [url, label] of imageUrls) {
       if (url.trim() && !isAsciiUrl(url)) return `${label} يجب أن يكون رابط صورة صحيحاً.`;
     }
     return '';
   }
-
   function submissionPayload() {
     return {
       ...form,
@@ -403,6 +459,16 @@ export function CompanySubmitForm() {
           <datalist id="company-city-options">
             {cityOptions.map(city => <option key={city} value={city} />)}
           </datalist>
+          <Field label="عنوان الشركة بالكامل" value={form.fullAddress} placeholder="المنطقة، الشارع، المبنى، الدور أو المكتب" onChange={value => updateField('fullAddress', value)} span />
+          <MapLocationField
+            mapsUrl={form.googleMapsUrl}
+            latitude={form.latitude}
+            longitude={form.longitude}
+            onMapsUrlChange={updateMapsUrl}
+            onLatitudeChange={value => updateField('latitude', value)}
+            onLongitudeChange={value => updateField('longitude', value)}
+            onOpenMaps={openGoogleMapsPicker}
+          />
           <Field label={t('company_listing_short_description')} value={form.shortDescription} placeholder="وصف مختصر عن نشاط الشركة" onChange={value => updateField('shortDescription', value)} span />
           <Field label={t('company_listing_long_description')} value={form.longDescription} placeholder="وصف تفصيلي يشمل الخبرة والخدمات والأرقام المهمة" onChange={value => updateField('longDescription', value)} span textarea />
         </FormSection>
@@ -490,6 +556,56 @@ function PhoneField({ label, code, value, onCodeChange, onChange }: { label: str
         />
       </div>
     </label>
+  );
+}
+
+function MapLocationField({
+  mapsUrl,
+  latitude,
+  longitude,
+  onMapsUrlChange,
+  onLatitudeChange,
+  onLongitudeChange,
+  onOpenMaps,
+}: {
+  mapsUrl: string;
+  latitude: string;
+  longitude: string;
+  onMapsUrlChange: (value: string) => void;
+  onLatitudeChange: (value: string) => void;
+  onLongitudeChange: (value: string) => void;
+  onOpenMaps: () => void;
+}) {
+  return (
+    <div className="map-location-field span-2">
+      <div className="map-location-head">
+        <div>
+          <span>تحديد الموقع على Google Maps</span>
+          <small>افتح الخرائط، اختر دبوس الشركة، ثم انسخ رابط المشاركة هنا.</small>
+        </div>
+        <button type="button" onClick={onOpenMaps}>
+          <ExternalLink size={16} />
+          فتح Google Maps
+        </button>
+      </div>
+      <label>
+        <span>رابط الدبوس أو المشاركة</span>
+        <div className="map-url-input">
+          <MapPin size={17} />
+          <input value={mapsUrl} onChange={event => onMapsUrlChange(event.target.value)} inputMode="url" dir="ltr" placeholder="https://maps.google.com/..." />
+        </div>
+      </label>
+      <div className="map-coordinate-grid">
+        <label>
+          <span>خط العرض</span>
+          <input value={latitude} onChange={event => onLatitudeChange(event.target.value)} inputMode="decimal" dir="ltr" placeholder="29.3759" />
+        </label>
+        <label>
+          <span>خط الطول</span>
+          <input value={longitude} onChange={event => onLongitudeChange(event.target.value)} inputMode="decimal" dir="ltr" placeholder="47.9774" />
+        </label>
+      </div>
+    </div>
   );
 }
 
@@ -652,6 +768,82 @@ function SubmitStyles() {
       .submit-field.span-2 {
         grid-column: 1 / -1;
       }
+      .map-location-field {
+        grid-column: 1 / -1;
+        display: grid;
+        gap: 12px;
+        border: 1px solid rgba(11, 118, 224, 0.14);
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(11, 118, 224, 0.05), rgba(24, 212, 212, 0.08));
+        padding: 14px;
+      }
+      .map-location-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .map-location-head > div {
+        display: grid;
+        gap: 3px;
+      }
+      .map-location-field span,
+      .map-location-head span {
+        color: #0f172a;
+        font-size: 13px;
+        font-weight: 950;
+      }
+      .map-location-head small {
+        color: #64748b;
+        font-weight: 800;
+        line-height: 1.6;
+      }
+      .map-location-head button {
+        min-height: 44px;
+        border: 1px solid rgba(11, 118, 224, 0.18);
+        border-radius: 14px;
+        background: #ffffff;
+        color: #0b76e0;
+        padding: 0 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font: 950 13px/1 Tajawal, Arial, sans-serif;
+        cursor: pointer;
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+      }
+      .map-location-head button:hover,
+      .map-location-head button:focus-visible {
+        outline: none;
+        border-color: rgba(24, 212, 212, 0.48);
+        background: #f0fdff;
+      }
+      .map-location-field label {
+        display: grid;
+        gap: 6px;
+      }
+      .map-url-input {
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr);
+        align-items: center;
+        border: 1px solid rgba(15, 23, 42, 0.10);
+        border-radius: 14px;
+        background: #f8fbff;
+      }
+      .map-url-input svg {
+        justify-self: center;
+        color: #0b76e0;
+      }
+      .map-url-input input {
+        border: 0;
+        background: transparent;
+      }
+      .map-coordinate-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
       .submit-field span {
         color: #475569;
         font-size: 13px;
@@ -794,6 +986,16 @@ function SubmitStyles() {
         .submit-field.span-2 {
           grid-column: auto;
         }
+        .map-location-head {
+          align-items: stretch;
+          flex-direction: column;
+        }
+        .map-location-head button {
+          width: 100%;
+        }
+        .map-coordinate-grid {
+          grid-template-columns: 1fr;
+        }
         .phone-field {
           grid-template-columns: 118px minmax(0, 1fr);
         }
@@ -845,6 +1047,25 @@ function SubmitStyles() {
       }
       .dark .submit-field span {
         color: #CBD5E1;
+      }
+      .dark .map-location-field {
+        background: linear-gradient(135deg, rgba(29, 140, 255, 0.10), rgba(24, 212, 212, 0.06));
+        border-color: rgba(92, 225, 230, 0.18);
+      }
+      .dark .map-location-field span,
+      .dark .map-location-head span {
+        color: #F8FAFC;
+      }
+      .dark .map-location-head small {
+        color: #CBD5E1;
+      }
+      .dark .map-location-head button,
+      .dark .map-url-input {
+        background: rgba(7, 23, 42, 0.72);
+        border-color: rgba(92, 225, 230, 0.18);
+      }
+      .dark .map-location-head button {
+        color: #8BE9F0;
       }
       .dark .submit-field input,
       .dark .submit-field textarea,

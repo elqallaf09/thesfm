@@ -33,6 +33,10 @@ type FormState = {
   category: CompanyCategory;
   country: string;
   city: string;
+  fullAddress: string;
+  googleMapsUrl: string;
+  latitude: string;
+  longitude: string;
   shortDescription: string;
   longDescription: string;
   websiteUrl: string;
@@ -91,6 +95,10 @@ function formFromCompany(company: CompanyListing): FormState {
     category: company.category,
     country: company.country ?? '',
     city: company.city ?? '',
+    fullAddress: company.full_address ?? '',
+    googleMapsUrl: company.google_maps_url ?? '',
+    latitude: company.latitude ? String(company.latitude) : '',
+    longitude: company.longitude ? String(company.longitude) : '',
     shortDescription: company.short_description ?? '',
     longDescription: company.long_description ?? '',
     websiteUrl: company.website_url ?? '',
@@ -115,6 +123,10 @@ function formPayload(form: FormState) {
     category: form.category,
     country: form.country,
     city: form.city,
+    fullAddress: form.fullAddress,
+    googleMapsUrl: form.googleMapsUrl,
+    latitude: form.latitude,
+    longitude: form.longitude,
     shortDescription: form.shortDescription,
     longDescription: form.longDescription,
     websiteUrl: form.websiteUrl,
@@ -443,6 +455,10 @@ export function OwnerCompaniesPage() {
               </label>
               <Field label="الدولة" value={form.country} onChange={value => updateForm('country', value)} />
               <Field label="المدينة" value={form.city} onChange={value => updateForm('city', value)} />
+              <Field label="عنوان الشركة بالكامل" value={form.fullAddress} onChange={value => updateForm('fullAddress', value)} full placeholder="المنطقة، الشارع، المبنى، الدور أو المكتب" />
+              <Field label="رابط Google Maps / موقع الدبوس" value={form.googleMapsUrl} onChange={value => updateForm('googleMapsUrl', value)} dir="ltr" full placeholder="https://maps.google.com/..." />
+              <Field label="خط العرض" value={form.latitude} onChange={value => updateForm('latitude', value)} dir="ltr" />
+              <Field label="خط الطول" value={form.longitude} onChange={value => updateForm('longitude', value)} dir="ltr" />
               <Field label="وصف مختصر" value={form.shortDescription} onChange={value => updateForm('shortDescription', value)} full />
               <Field label="وصف تفصيلي" value={form.longDescription} onChange={value => updateForm('longDescription', value)} textarea full />
               <Field label="الموقع الإلكتروني" value={form.websiteUrl} onChange={value => updateForm('websiteUrl', value)} dir="ltr" />
