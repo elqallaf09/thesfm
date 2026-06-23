@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromBearerToken } from '@/lib/server/adminAccess';
+import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_RECEIPTS = 10;
@@ -71,6 +73,15 @@ type ScanFileResult = {
 
 function errorResponse(error: string, status = 400) {
   return NextResponse.json({ success: false, error }, { status });
+}
+
+function bearerToken(request: NextRequest) {
+  const auth = request.headers.get('Authorization') ?? '';
+  return auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+}
+
+async function requestUser(request: NextRequest) {
+  return getUserFromBearerToken(bearerToken(request) || request.cookies.get('sfm_access_token')?.value || null);
 }
 
 function normalizeArabicNumbers(value: string) {
@@ -763,11 +774,34 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requestUser(request);
+    if (!user) return errorResponse('Unauthorized', 401);
+
     const formData = await request.formData();
     const files = [...formData.getAll('receipt'), ...formData.getAll('receipts')].filter((file): file is File => file instanceof File);
     if (!files.length) return errorResponse('No receipt file uploaded');
     if (files.length > MAX_RECEIPTS) return errorResponse('You can upload up to 10 receipts at once', 413);
     const receiptText = formData.get('receiptText');
+    const hasReceiptText = typeof receiptText === 'string' && receiptText.trim().length > 0;
+    const openAiUnits = process.env.OPENAI_API_KEY && !hasReceiptText
+      ? files.filter(file => SUPPORTED_TYPES.has(file.type) && file.type !== 'application/pdf' && file.size <= MAX_FILE_SIZE).length
+      : 0;
+
+    if (openAiUnits > 0) {
+      const usage = await consumeAiUsage({
+        userId: user.id,
+        feature: 'receipt_scan',
+        units: openAiUnits,
+        metadata: {
+          route: '/api/ai/receipt-scan',
+          fileCount: files.length,
+          openAiUnits,
+          legacy: true,
+        },
+      });
+      if (!usage.allowed) return aiUsageLimitResponse(usage);
+    }
+
     if (process.env.NODE_ENV !== 'production') {
       console.info('Receipt scan request started', {
         providerConfigured: Boolean(process.env.OPENAI_API_KEY),

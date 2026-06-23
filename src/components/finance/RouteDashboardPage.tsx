@@ -129,9 +129,196 @@ function isDebtInstallmentExpense(item: SmartExpense) {
     hasDebtId;
 }
 
+function normalizedExpenseCategory(item: SmartExpense) {
+  return isDebtInstallmentExpense(item) ? 'loans' : (item.category || 'other');
+}
+
+function debtExpenseDebtId(item: SmartExpense) {
+  const enhanced = smartExpenseEnhanced(item);
+  const raw = looseExpenseValue(item, 'debt_id') ?? enhanced.debt_id;
+  if (raw === null || raw === undefined) return '';
+  return String(raw).trim();
+}
+
+function monthKeyFromDate(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function expenseMonthKey(item: SmartExpense) {
+  const date = localDateFromInput(item.date || item.created_at);
+  return date ? monthKeyFromDate(date) : '';
+}
+
+function isScheduledDebtDisplayExpense(item: SmartExpense) {
+  const enhanced = smartExpenseEnhanced(item);
+  return enhanced.source === 'debt' && enhanced.virtual === true && enhanced.scheduled === true;
+}
+
+function clampDebtPaymentDay(value: unknown) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.min(31, Math.max(1, Math.trunc(parsed)));
+}
+
+function dateWithPaymentDay(year: number, monthIndex: number, paymentDay: number) {
+  const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+  return new Date(year, monthIndex, Math.min(paymentDay, lastDay));
+}
+
+function countDebtInstallmentsInRange(debt: DebtSnapshotItem, range: ExpensePeriodRange | null) {
+  if (debt.auto_add_to_expenses === false || debt.auto_add_to_expenses === 'false') return 0;
+
+  const status = String(debt.status || 'active').trim().toLowerCase();
+  const remaining = parseMoney(debt.calculated_remaining_amount ?? debt.remaining_amount);
+  const monthlyPayment = parseMoney(debt.monthly_payment);
+  if (status === 'paid' || remaining <= 0 || monthlyPayment <= 0) return 0;
+
+  if (!range) return 1;
+
+  const firstPaymentDate = localDateFromInput(debt.first_payment_date || debt.start_date);
+  if (!firstPaymentDate) return Math.max(1, range.months);
+
+  const paymentDay = clampDebtPaymentDay(debt.payment_day ?? firstPaymentDate.getDate());
+  let cursor = new Date(firstPaymentDate.getFullYear(), firstPaymentDate.getMonth(), 1);
+  const rangeStartMonth = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
+  if (cursor < rangeStartMonth) cursor = rangeStartMonth;
+
+  let count = 0;
+  while (cursor < range.end) {
+    const paymentDate = dateWithPaymentDay(cursor.getFullYear(), cursor.getMonth(), paymentDay);
+    if (paymentDate >= firstPaymentDate && paymentDate >= range.start && paymentDate < range.end) {
+      count += 1;
+    }
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+  }
+
+  return count;
+}
+
+function scheduledDebtInstallmentsForRange(
+  debts: DebtSnapshotItem[],
+  range: ExpensePeriodRange | null,
+  baseCurrency: string,
+  fxRates: Record<string, number>,
+) {
+  return debts.reduce((sumValue, debt) => {
+    const installmentCount = countDebtInstallmentsInRange(debt, range);
+    if (installmentCount <= 0) return sumValue;
+    const debtCurrency = normalizeCurrencyCode(debt.currency, baseCurrency);
+    const monthlyPayment = parseMoney(debt.monthly_payment) * installmentCount;
+    const converted = convertCurrencyAmount(monthlyPayment, debtCurrency, baseCurrency, fxRates);
+    return sumValue + (converted ?? 0);
+  }, 0);
+}
+
+function debtInstallmentExpenseTotal(expenses: SmartExpense[]) {
+  return expenses.filter(isDebtInstallmentExpense).reduce((sumValue, item) => sumValue + item.amount, 0);
+}
+
+function fallbackDebtRange(range: ExpensePeriodRange | null): ExpensePeriodRange {
+  if (range) return range;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return {
+    start,
+    end,
+    startDate: formatDateInput(start),
+    endDate: formatDateInput(end),
+    months: 1,
+  };
+}
+
+function scheduledDebtInstallmentExpensesForRange(
+  debts: DebtSnapshotItem[],
+  existingExpenses: SmartExpense[],
+  range: ExpensePeriodRange | null,
+  baseCurrency: string,
+  fxRates: Record<string, number>,
+  lang: string,
+) {
+  const effectiveRange = fallbackDebtRange(range);
+  const existingDebtMonths = new Set(
+    existingExpenses
+      .filter(isDebtInstallmentExpense)
+      .map(item => {
+        const debtId = debtExpenseDebtId(item);
+        const monthKey = expenseMonthKey(item);
+        return debtId && monthKey ? `${debtId}:${monthKey}` : '';
+      })
+      .filter(Boolean),
+  );
+  const rows: SmartExpense[] = [];
+
+  debts.forEach(debt => {
+    if (debt.auto_add_to_expenses === false || debt.auto_add_to_expenses === 'false') return;
+
+    const status = String(debt.status || 'active').trim().toLowerCase();
+    const remaining = parseMoney(debt.calculated_remaining_amount ?? debt.remaining_amount);
+    const monthlyPayment = parseMoney(debt.monthly_payment);
+    if (status === 'paid' || remaining <= 0 || monthlyPayment <= 0) return;
+
+    const firstPaymentDate = localDateFromInput(debt.first_payment_date || debt.start_date) ?? effectiveRange.start;
+    const paymentDay = clampDebtPaymentDay(debt.payment_day ?? firstPaymentDate.getDate());
+    let cursor = new Date(firstPaymentDate.getFullYear(), firstPaymentDate.getMonth(), 1);
+    const rangeStartMonth = new Date(effectiveRange.start.getFullYear(), effectiveRange.start.getMonth(), 1);
+    if (cursor < rangeStartMonth) cursor = rangeStartMonth;
+
+    while (cursor < effectiveRange.end) {
+      const paymentDate = dateWithPaymentDay(cursor.getFullYear(), cursor.getMonth(), paymentDay);
+      if (paymentDate >= firstPaymentDate && paymentDate >= effectiveRange.start && paymentDate < effectiveRange.end) {
+        const paymentMonth = monthKeyFromDate(paymentDate);
+        const existingKey = `${debt.id}:${paymentMonth}`;
+        if (!existingDebtMonths.has(existingKey)) {
+          const debtCurrency = normalizeCurrencyCode(debt.currency, baseCurrency);
+          const converted = convertCurrencyAmount(monthlyPayment, debtCurrency, baseCurrency, fxRates);
+          const amount = converted ?? monthlyPayment;
+          const paymentDateInput = formatDateInput(paymentDate);
+          const debtName = String(debt.name || '').trim() || pick({ ar: 'دين', en: 'Debt', fr: 'Dette' }, lang);
+
+          rows.push({
+            id: `scheduled-debt-${debt.id}-${paymentMonth}`,
+            name: pick({
+              ar: `قسط دين شهري: ${debtName}`,
+              en: `Monthly debt payment: ${debtName}`,
+              fr: `Mensualite de dette : ${debtName}`,
+            }, lang),
+            amount,
+            currency: baseCurrency,
+            category: 'loans',
+            date: paymentDateInput,
+            created_at: paymentDateInput,
+            updated_at: paymentDateInput,
+            payment_method: 'transfer',
+            original_amount: monthlyPayment,
+            original_currency: debtCurrency,
+            converted_amount: converted ?? null,
+            converted_currency: converted === null ? null : baseCurrency,
+            fx_rate_to_base: converted !== null && monthlyPayment > 0 ? converted / monthlyPayment : null,
+            amount_is_converted: Boolean(converted !== null && debtCurrency !== baseCurrency),
+            is_recurring: true,
+            frequency: 'monthly',
+            enhanced: {
+              source: 'debt',
+              virtual: true,
+              scheduled: true,
+              debt_id: debt.id,
+              payment_month: paymentMonth,
+              display_only: true,
+            },
+          });
+        }
+      }
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    }
+  });
+
+  return rows;
+}
+
 export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const router = useRouter();
-  const { user, loading, isGuest } = useAuth();
+  const { user, session, loading, isGuest } = useAuth();
   const { lang, isAr, dir, t } = useLanguage();
   const { currency } = useCurrency();
   const meta = pageMeta[kind];
@@ -176,6 +363,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [visibleCount, setVisibleCount] = useState(EXPENSE_PAGE_SIZE);
   const [expenseTab, setExpenseTab] = useState<ExpensePageTab>('overview');
   const [expenseFxRates, setExpenseFxRates] = useState<Record<string, number>>({});
+  const [debtGenerationChecked, setDebtGenerationChecked] = useState(false);
+  const [debtGenerationRefreshKey, setDebtGenerationRefreshKey] = useState(0);
   const selectedExpenseRange = useMemo(() => expensePeriodRange(expensePeriod), [expensePeriod]);
   const previousExpenseRange = useMemo(() => previousExpensePeriodRange(expensePeriod), [expensePeriod]);
   const expenseBaseCurrency = normalizeCurrencyCode(currency, 'KWD');
@@ -184,6 +373,43 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     if (kind !== 'expenses') return;
     setExpensePeriod(readExpensePeriodFromLocation());
   }, [kind]);
+
+  useEffect(() => {
+    async function generateDueDebtExpenses() {
+      if (kind !== 'expenses' || !user || !session?.access_token || debtGenerationChecked) return;
+
+      const paymentDate = new Date().toISOString().slice(0, 10);
+      const generationKey = `sfm:expenses:debt-generation:${user.id}:${paymentDate}`;
+      if (typeof window !== 'undefined' && window.sessionStorage.getItem(generationKey)) {
+        setDebtGenerationChecked(true);
+        return;
+      }
+
+      setDebtGenerationChecked(true);
+      try {
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.setItem(generationKey, 'checked');
+        }
+      } catch {
+        // Some browsers can block sessionStorage; generation still runs safely.
+      }
+
+      try {
+        const response = await fetch('/api/debts/generate-monthly-expenses', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const payload = await response.json().catch(() => null) as { processed?: number } | null;
+        if (response.ok && payload?.processed && payload.processed > 0) {
+          setDebtGenerationRefreshKey(value => value + 1);
+        }
+      } catch {
+        // Expenses remain usable; scheduled installments are still counted below.
+      }
+    }
+
+    void generateDueDebtExpenses();
+  }, [debtGenerationChecked, kind, session?.access_token, user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -238,7 +464,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         safeQuery<DebtSnapshotItem>(
           supabase
             .from('debts')
-            .select('id,name,monthly_payment,currency,status,remaining_amount,calculated_remaining_amount')
+            .select('id,name,monthly_payment,currency,status,remaining_amount,calculated_remaining_amount,start_date,first_payment_date,payment_day,auto_add_to_expenses')
             .eq('user_id', user.id) as unknown as QueryResult<DebtSnapshotItem>,
           queryMeta('debts', 'debts'),
         ),
@@ -265,7 +491,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     return () => {
       cancelled = true;
     };
-  }, [isGuest, kind, user]);
+  }, [debtGenerationRefreshKey, isGuest, kind, user]);
 
   useEffect(() => {
     if (kind !== 'expenses') return;
@@ -385,7 +611,44 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     () => previousExpenseRange ? data.expenses.filter(item => isExpenseInPeriod(item, previousExpenseRange)) : [],
     [data.expenses, previousExpenseRange],
   );
-  const expensePeriodTotal = useMemo(() => sum(expensePeriodExpenses), [expensePeriodExpenses]);
+  const actualExpensePeriodTotal = useMemo(() => sum(expensePeriodExpenses), [expensePeriodExpenses]);
+  const actualDebtInstallmentsTotal = useMemo(() => debtInstallmentExpenseTotal(expensePeriodExpenses), [expensePeriodExpenses]);
+  const scheduledDebtInstallmentsTotal = useMemo(
+    () => scheduledDebtInstallmentsForRange(snapshot.debts, selectedExpenseRange, expenseBaseCurrency, expenseFxRates),
+    [expenseBaseCurrency, expenseFxRates, selectedExpenseRange, snapshot.debts],
+  );
+  const missingScheduledDebtInstallmentsTotal = useMemo(
+    () => Math.max(0, scheduledDebtInstallmentsTotal - actualDebtInstallmentsTotal),
+    [actualDebtInstallmentsTotal, scheduledDebtInstallmentsTotal],
+  );
+  const scheduledDebtExpenseRows = useMemo(
+    () => scheduledDebtInstallmentExpensesForRange(
+      snapshot.debts,
+      expensePeriodExpenses,
+      selectedExpenseRange,
+      expenseBaseCurrency,
+      expenseFxRates,
+      lang,
+    ),
+    [expenseBaseCurrency, expenseFxRates, expensePeriodExpenses, lang, selectedExpenseRange, snapshot.debts],
+  );
+  const expenseDisplayRecords = useMemo(
+    () => [...expensePeriodExpenses, ...scheduledDebtExpenseRows],
+    [expensePeriodExpenses, scheduledDebtExpenseRows],
+  );
+  const expensePeriodTotal = useMemo(
+    () => actualExpensePeriodTotal + missingScheduledDebtInstallmentsTotal,
+    [actualExpensePeriodTotal, missingScheduledDebtInstallmentsTotal],
+  );
+  const previousActualDebtInstallmentsTotal = useMemo(() => debtInstallmentExpenseTotal(previousPeriodExpenses), [previousPeriodExpenses]);
+  const previousScheduledDebtInstallmentsTotal = useMemo(
+    () => scheduledDebtInstallmentsForRange(snapshot.debts, previousExpenseRange, expenseBaseCurrency, expenseFxRates),
+    [expenseBaseCurrency, expenseFxRates, previousExpenseRange, snapshot.debts],
+  );
+  const previousExpensePeriodTotal = useMemo(
+    () => sum(previousPeriodExpenses) + Math.max(0, previousScheduledDebtInstallmentsTotal - previousActualDebtInstallmentsTotal),
+    [previousActualDebtInstallmentsTotal, previousPeriodExpenses, previousScheduledDebtInstallmentsTotal],
+  );
   const expenseScopedData = useMemo(() => ({
     ...data,
     expenses: expensePeriodExpenses,
@@ -399,15 +662,18 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const insights = useMemo(() => buildInsights(kind, dashboardData, lang, currency, t), [dashboardData, lang, kind, currency, t]);
   const expenseSummaryCards = useMemo<SectionCard[]>(() => {
     const total = expensePeriodTotal;
-    const recurringTotal = expensePeriodExpenses.filter(isRecurringExpense).reduce((sumValue, item) => sumValue + item.amount, 0);
+    const recurringTotal = expensePeriodExpenses.filter(isRecurringExpense).reduce((sumValue, item) => sumValue + item.amount, 0) + missingScheduledDebtInstallmentsTotal;
     const dailyAverage = total / expensePeriodDayCount(selectedExpenseRange, expensePeriodExpenses);
     const byCategory = expensePeriodExpenses.reduce<Record<string, number>>((acc, item) => {
-      const key = item.category || 'other';
+      const key = normalizedExpenseCategory(item);
       acc[key] = (acc[key] || 0) + item.amount;
       return acc;
     }, {});
+    if (missingScheduledDebtInstallmentsTotal > 0) {
+      byCategory.loans = (byCategory.loans || 0) + missingScheduledDebtInstallmentsTotal;
+    }
     const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0];
-    const previousTotal = sum(previousPeriodExpenses);
+    const previousTotal = previousExpensePeriodTotal;
     const comparisonDelta = total - previousTotal;
     const comparisonPercent = previousTotal > 0
       ? Math.round((comparisonDelta / previousTotal) * 100)
@@ -425,7 +691,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       {
         title: { ar: 'عدد المصروفات', en: 'Expense count', fr: 'Nombre de dépenses' },
         body: { ar: 'سجلات داخل الفترة المحددة فقط.', en: 'Records in the selected period only.', fr: 'Enregistrements de la période sélectionnée.' },
-        value: String(expensePeriodExpenses.length),
+        value: String(expenseDisplayRecords.length),
         tone: 'var(--sfm-soft-cyan)',
       },
       {
@@ -457,7 +723,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         tone: comparisonDelta > 0 ? '#EF4444' : '#22C55E',
       },
     ];
-  }, [expenseBaseCurrency, expensePeriod, expensePeriodExpenses, expensePeriodTotal, lang, previousExpenseRange, previousPeriodExpenses, selectedExpenseRange]);
+  }, [expenseBaseCurrency, expenseDisplayRecords.length, expensePeriod, expensePeriodExpenses, expensePeriodTotal, lang, missingScheduledDebtInstallmentsTotal, previousExpensePeriodTotal, previousExpenseRange, selectedExpenseRange]);
   const selectedGoalCurrency = useMemo(() => getCurrency(goalForm.currency || currency || 'KWD'), [currency, goalForm.currency]);
   const selectedCurrencySymbol = isAr ? selectedGoalCurrency.symbolAr : selectedGoalCurrency.symbolEn;
   const selectedEntryCurrency = useMemo(() => getCurrency(entryForm.currency || currency || 'KWD'), [currency, entryForm.currency]);
@@ -532,24 +798,26 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   }, [rows, rowSearch, rowSort, rowRange, kind]);
 
   const filteredExpenses = useMemo(() => {
-    let result = [...expensePeriodExpenses];
+    let result = [...expenseDisplayRecords];
     if (rowSearch.trim()) {
       const q = rowSearch.toLowerCase();
       result = result.filter(item =>
         item.name.toLowerCase().includes(q) ||
-        categoryLabel(item.category, lang).toLowerCase().includes(q) ||
+        categoryLabel(normalizedExpenseCategory(item), lang).toLowerCase().includes(q) ||
         paymentLabel(item.payment_method, lang).toLowerCase().includes(q),
       );
     }
-    if (expenseCategoryFilter !== 'all') result = result.filter(item => (item.category || 'other') === expenseCategoryFilter);
+    if (expenseCategoryFilter !== 'all') result = result.filter(item => normalizedExpenseCategory(item) === expenseCategoryFilter);
     if (expensePaymentFilter !== 'all') result = result.filter(item => (item.payment_method || 'cash') === expensePaymentFilter);
-    if (expenseTypeFilter !== 'all') result = result.filter(item => expenseMatchesType(item, expenseTypeFilter));
+    if (expenseTypeFilter !== 'all') {
+      result = result.filter(item => expenseMatchesType({ ...item, category: normalizedExpenseCategory(item) }, expenseTypeFilter));
+    }
     if (rowSort === 'amountDesc') result.sort((a, b) => b.amount - a.amount);
     else if (rowSort === 'amountAsc') result.sort((a, b) => a.amount - b.amount);
     else if (rowSort === 'dateAsc') result.sort((a, b) => (localDateFromInput(a.date || a.created_at)?.getTime() ?? 0) - (localDateFromInput(b.date || b.created_at)?.getTime() ?? 0));
     else result.sort((a, b) => (localDateFromInput(b.date || b.created_at)?.getTime() ?? 0) - (localDateFromInput(a.date || a.created_at)?.getTime() ?? 0));
     return result;
-  }, [expenseCategoryFilter, expensePaymentFilter, expensePeriodExpenses, expenseTypeFilter, lang, rowSearch, rowSort]);
+  }, [expenseCategoryFilter, expenseDisplayRecords, expensePaymentFilter, expenseTypeFilter, lang, rowSearch, rowSort]);
 
   useEffect(() => { setVisibleCount(EXPENSE_PAGE_SIZE); }, [expenseCategoryFilter, expensePaymentFilter, expensePeriod, expenseTypeFilter, rowSearch, rowSort, rowRange, kind]);
 
@@ -1778,20 +2046,13 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   if (kind === 'expenses') {
     const visibleExpenses = filteredExpenses.slice(0, visibleCount);
     const monthlyExpenses = expensePeriodExpenses;
+    const monthlyExpenseRecords = expenseDisplayRecords;
     const monthlyTotal = expensePeriodTotal;
-    const recurringTotal = monthlyExpenses.filter(isRecurringExpense).reduce((sum, item) => sum + item.amount, 0);
+    const recurringTotal = monthlyExpenses
+      .filter(item => isRecurringExpense(item) || isDebtInstallmentExpense(item))
+      .reduce((sum, item) => sum + item.amount, 0) + missingScheduledDebtInstallmentsTotal;
     const monthlySubscriptionsTotal = monthlyExpenses.filter(isMonthlySubscriptionExpense).reduce((sum, item) => sum + item.amount, 0);
-    const expenseDebtInstallmentsTotal = monthlyExpenses.filter(isDebtInstallmentExpense).reduce((sum, item) => sum + item.amount, 0);
-    const scheduledDebtInstallmentsTotal = snapshot.debts.reduce((sum, debt) => {
-      const status = String(debt.status || 'active').trim().toLowerCase();
-      const remaining = parseMoney(debt.calculated_remaining_amount ?? debt.remaining_amount);
-      const monthlyPayment = parseMoney(debt.monthly_payment);
-      if (status === 'paid' || remaining <= 0 || monthlyPayment <= 0) return sum;
-      const debtCurrency = normalizeCurrencyCode(debt.currency, expenseBaseCurrency);
-      const converted = convertCurrencyAmount(monthlyPayment, debtCurrency, expenseBaseCurrency, expenseFxRates);
-      return sum + (converted ?? 0);
-    }, 0);
-    const debtInstallmentsTotal = scheduledDebtInstallmentsTotal > 0 ? scheduledDebtInstallmentsTotal : expenseDebtInstallmentsTotal;
+    const debtInstallmentsTotal = actualDebtInstallmentsTotal + missingScheduledDebtInstallmentsTotal;
     const fixedCommitmentsTotal = monthlySubscriptionsTotal + debtInstallmentsTotal;
     const expenseNow = new Date();
     const expenseYearOptions = Array.from({ length: 8 }, (_, index) => expenseNow.getFullYear() + 1 - index);
@@ -1801,16 +2062,16 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       : selectedExpenseRange?.months === 1
         ? pick({ ar: 'لا توجد مصروفات في هذا الشهر', en: 'No expenses in this month', fr: 'Aucune dépense ce mois-ci' }, lang)
         : pick({ ar: 'لا توجد مصروفات في الفترة المحددة', en: 'No expenses in this period', fr: 'Aucune dépense sur cette période' }, lang);
-    const expenseFilteredEmptyTitle = monthlyExpenses.length > 0
+    const expenseFilteredEmptyTitle = monthlyExpenseRecords.length > 0
       ? pick({ ar: 'لا توجد مصروفات مطابقة للفلاتر', en: 'No expenses match these filters', fr: 'Aucune dépense ne correspond aux filtres' }, lang)
       : expensePeriodEmptyTitle;
-    const expenseEmptyBody = monthlyExpenses.length > 0
+    const expenseEmptyBody = monthlyExpenseRecords.length > 0
       ? pick({ ar: 'جرّب تعديل البحث أو التصنيف أو طريقة الدفع داخل الفترة المحددة.', en: 'Try adjusting search, category, or payment filters inside this period.', fr: 'Ajustez la recherche, la catégorie ou le mode de paiement sur cette période.' }, lang)
       : pick({ ar: 'يمكنك إضافة مصروف جديد أو عرض كل المصروفات التاريخية بشكل صريح.', en: 'Add a new expense or explicitly switch to all historical expenses.', fr: 'Ajoutez une dépense ou affichez explicitement tout l’historique.' }, lang);
     const expenseTabs = [
       { id: 'overview', label: pick({ ar: 'نظرة عامة', en: 'Overview', fr: 'Aperçu' }, lang) },
-      { id: 'records', label: pick({ ar: 'السجلات', en: 'Records', fr: 'Enregistrements' }, lang), count: monthlyExpenses.length },
-      { id: 'receipts', label: pick({ ar: 'الإيصالات', en: 'Receipts', fr: 'Reçus' }, lang), count: monthlyExpenses.filter(item => item.receipt_image_url || item.receipt_file_name).length },
+      { id: 'records', label: pick({ ar: 'السجلات', en: 'Records', fr: 'Enregistrements' }, lang), count: monthlyExpenseRecords.length },
+      { id: 'receipts', label: pick({ ar: 'الإيصالات', en: 'Receipts', fr: 'Reçus' }, lang), count: monthlyExpenseRecords.filter(item => item.receipt_image_url || item.receipt_file_name).length },
       { id: 'categories', label: pick({ ar: 'التصنيفات', en: 'Categories', fr: 'Catégories' }, lang) },
       { id: 'analytics', label: pick({ ar: 'التحليلات', en: 'Analytics', fr: 'Analyses' }, lang) },
       { id: 'reports', label: pick({ ar: 'التقارير', en: 'Reports', fr: 'Rapports' }, lang) },
@@ -1990,6 +2251,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                       const hasReceipt = Boolean(item.receipt_image_url || item.receipt_file_name);
                       const aiAdded = Boolean(item.ai_extracted_data || item.ai_confidence_score);
                       const projectLinked = isProjectLinkedExpenseRow(item);
+                      const scheduledDebtRow = isScheduledDebtDisplayExpense(item);
                       const originalCurrency = item.original_currency || item.currency || expenseBaseCurrency;
                       const originalAmount = Number(item.original_amount ?? item.amount ?? 0);
                       const showConvertedAmount = Boolean(item.amount_is_converted && originalCurrency !== expenseBaseCurrency);
@@ -2002,7 +2264,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                               <span>{expenseDisplayDate(item)} · {paymentLabel(item.payment_method, lang)}</span>
                               <div className="expense-badges">
                                 {projectLinked && <em className="project">{projectExpenseLabel(lang)}</em>}
-                                <em>{categoryLabel(item.category, lang)}</em>
+                                <em>{categoryLabel(normalizedExpenseCategory(item), lang)}</em>
+                                {scheduledDebtRow && <em className="ok">{pick({ ar: 'قسط دين مجدول', en: 'Scheduled debt payment', fr: 'Mensualite planifiee' }, lang)}</em>}
                                 <em className={hasReceipt ? 'ok' : ''}>{hasReceipt ? expenseText('hasReceipt', lang) : expenseText('noReceipt', lang)}</em>
                                 {aiAdded && <em className="ai">{expenseText('aiAdded', lang)}</em>}
                               </div>
@@ -2023,12 +2286,16 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                                   <Eye size={15} />
                                 </button>
                               )}
-                              <button type="button" className="row-action" onClick={() => openEditEntry(item)} aria-label={t('edit')} title={t('edit')}>
-                                <Edit3 size={15} />
-                              </button>
-                              <button type="button" className="row-action" onClick={() => setConfirmDelete(item)} aria-label={t('delete')} title={t('delete')}>
-                                <Trash2 size={15} />
-                              </button>
+                              {!scheduledDebtRow && (
+                                <>
+                                  <button type="button" className="row-action" onClick={() => openEditEntry(item)} aria-label={t('edit')} title={t('edit')}>
+                                    <Edit3 size={15} />
+                                  </button>
+                                  <button type="button" className="row-action" onClick={() => setConfirmDelete(item)} aria-label={t('delete')} title={t('delete')}>
+                                    <Trash2 size={15} />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </div>
                         </article>
@@ -2075,9 +2342,9 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                   <ChartPie size={21} />
                 </div>
                 <div className="monthly-grid">
-                  <div><span>{pick({ ar: 'الفترة', en: 'Period', fr: 'Période' }, lang)}</span><b>{monthlyExpenses.length}</b></div>
-                  <div><span>{expenseText('hasReceipt', lang)}</span><b>{monthlyExpenses.filter(item => item.receipt_image_url || item.receipt_file_name).length}</b></div>
-                  <div><span>{expenseText('aiAdded', lang)}</span><b>{monthlyExpenses.filter(item => item.ai_extracted_data || item.ai_confidence_score).length}</b></div>
+                  <div><span>{pick({ ar: 'الفترة', en: 'Period', fr: 'Période' }, lang)}</span><b>{monthlyExpenseRecords.length}</b></div>
+                  <div><span>{expenseText('hasReceipt', lang)}</span><b>{monthlyExpenseRecords.filter(item => item.receipt_image_url || item.receipt_file_name).length}</b></div>
+                  <div><span>{expenseText('aiAdded', lang)}</span><b>{monthlyExpenseRecords.filter(item => item.ai_extracted_data || item.ai_confidence_score).length}</b></div>
                   <div><span>{pick({ ar: 'المتكرر', en: 'Recurring', fr: 'Recurrent' }, lang)}</span><b>{money(recurringTotal, lang, expenseBaseCurrency)}</b></div>
                 </div>
               </section>

@@ -18,6 +18,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { Sidebar } from '@/components/Sidebar';
 import { CompanyImageUploadField } from '@/components/company-listings/CompanyImageUploadField';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -285,7 +286,9 @@ export function OwnerCompaniesPage() {
   }
 
   return (
-    <DashboardPageShell ariaLabel="شركاتي" className="owner-companies-shell" contentClassName="owner-companies-content">
+    <>
+      <Sidebar />
+      <DashboardPageShell ariaLabel="شركاتي" className="owner-companies-shell" contentClassName="owner-companies-content">
       <style>{`
         .owner-companies-shell{direction:${dir};}
         .owner-companies-content{max-width:1180px;margin:0 auto;padding:clamp(1rem,3vw,2rem);display:flex;flex-direction:column;gap:1.25rem}
@@ -488,7 +491,8 @@ export function OwnerCompaniesPage() {
           </section>
         </div>
       ) : null}
-    </DashboardPageShell>
+      </DashboardPageShell>
+    </>
   );
 }
 

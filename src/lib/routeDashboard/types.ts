@@ -111,6 +111,10 @@ export type DebtSnapshotItem = {
   status?: string | null;
   remaining_amount?: number | string | null;
   calculated_remaining_amount?: number | string | null;
+  start_date?: string | null;
+  first_payment_date?: string | null;
+  payment_day?: number | string | null;
+  auto_add_to_expenses?: boolean | string | null;
 };
 
 export type GoalFormState = {

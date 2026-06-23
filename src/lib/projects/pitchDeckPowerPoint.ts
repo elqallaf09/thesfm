@@ -80,6 +80,33 @@ const NOTES_TEXT = {
   },
 } as const;
 
+const PPT_TEXT = {
+  ar: {
+    reviewTitle: 'مراجعة قبل المشاركة',
+    reviewBody: 'راجع الأرقام، المستندات، والمخاطر قبل إرسال العرض لأي مستثمر أو جهة رسمية.',
+    readiness: 'جاهزية العرض',
+    source: 'مصدر المحتوى',
+    nextSteps: 'الخطوات التالية',
+    nextStepsBody: 'أكمل البيانات الناقصة، حدث النموذج المالي، ثم صدر نسخة نهائية للمشاركة.',
+  },
+  en: {
+    reviewTitle: 'Review Before Sharing',
+    reviewBody: 'Review numbers, documents, and risks before sending this deck to any investor or official party.',
+    readiness: 'Deck readiness',
+    source: 'Content source',
+    nextSteps: 'Next steps',
+    nextStepsBody: 'Fill missing data, refresh the financial model, then export a final copy for sharing.',
+  },
+  fr: {
+    reviewTitle: 'Revue avant partage',
+    reviewBody: 'Vérifiez les chiffres, documents et risques avant de partager ce deck avec un investisseur ou une entité officielle.',
+    readiness: 'Préparation du deck',
+    source: 'Source du contenu',
+    nextSteps: 'Prochaines étapes',
+    nextStepsBody: 'Complétez les données manquantes, mettez à jour le modèle financier, puis exportez une version finale.',
+  },
+} as const;
+
 const STATUS_COLOR: Record<PitchDeckSlideStatus, string> = {
   complete: COLORS.success,
   needs_data: COLORS.gold,
@@ -374,7 +401,7 @@ function buildNotes(slideData: PitchDeckSlide, lang: PitchDeckLanguage, source: 
   ].join('\n');
 }
 
-function addCoverSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' | 'rules') {
+function addCoverSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' | 'rules', totalSlides: number) {
   const slide = pptx.addSlide();
   const rtl = deck.language === 'ar';
   const firstSlide = deck.slides[0];
@@ -444,11 +471,11 @@ function addCoverSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' | 
     slide.addText(truncate(metric.label, 20), { x: x + 0.14, y: 5.38, w: 2.04, h: 0.16, fontSize: 6.8, color: COLORS.muted, fontFace: rtl ? 'Tahoma' : 'Aptos', rtlMode: rtl, align: rtl ? 'right' : 'left', margin: 0, fit: 'shrink' });
     slide.addText(truncate(metric.value, 18), { x: x + 0.14, y: 5.65, w: 2.04, h: 0.24, fontSize: 12, bold: true, color: COLORS.deepBrown, fontFace: rtl ? 'Tahoma' : 'Aptos', rtlMode: rtl, align: rtl ? 'right' : 'left', margin: 0, fit: 'shrink' });
   });
-  addBrandFooter(slide, 1, deck.slides.length, deck);
+  addBrandFooter(slide, 1, totalSlides, deck);
   slide.addNotes(buildNotes(firstSlide ?? deck.slides[0], deck.language, source));
 }
 
-function addContentSlide(pptx: pptxgen, deck: PitchDeckExportData, slideData: PitchDeckSlide, index: number, source: 'ai' | 'rules') {
+function addContentSlide(pptx: pptxgen, deck: PitchDeckExportData, slideData: PitchDeckSlide, index: number, source: 'ai' | 'rules', totalSlides: number) {
   const slide = pptx.addSlide();
   const rtl = deck.language === 'ar';
   slide.background = { color: COLORS.cream };
@@ -491,8 +518,94 @@ function addContentSlide(pptx: pptxgen, deck: PitchDeckExportData, slideData: Pi
     } as any);
   }
   addMissingBox(slide, slideData, deck.language);
-  addBrandFooter(slide, index, deck.slides.length, deck);
+  addBrandFooter(slide, index, totalSlides, deck);
   slide.addNotes(buildNotes(slideData, deck.language, source));
+}
+
+function addReviewSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' | 'rules', index: number, totalSlides: number) {
+  const slide = pptx.addSlide();
+  const rtl = deck.language === 'ar';
+  const t = PPT_TEXT[deck.language] ?? PPT_TEXT.en;
+  const notes = NOTES_TEXT[deck.language] ?? NOTES_TEXT.en;
+
+  slide.background = { color: COLORS.darkBrown };
+  slide.addShape('rect', { x: 0, y: 0, w: 13.333, h: 7.5, fill: { color: COLORS.darkBrown }, line: { color: COLORS.darkBrown } });
+  slide.addShape('rect', { x: rtl ? 0 : 8.8, y: 0, w: 4.533, h: 7.5, fill: { color: COLORS.deepBrown, transparency: 10 }, line: { color: COLORS.deepBrown } });
+  slide.addText(t.reviewTitle, {
+    x: rtl ? 3.6 : 0.82,
+    y: 1.1,
+    w: 8.9,
+    h: 0.7,
+    ...textOptions(deck.language, {
+      fontSize: 30,
+      bold: true,
+      color: COLORS.warmWhite,
+    }),
+  } as any);
+  slide.addText(t.reviewBody, {
+    x: rtl ? 3.9 : 0.86,
+    y: 2.05,
+    w: 8.5,
+    h: 0.72,
+    ...textOptions(deck.language, {
+      fontSize: 15,
+      color: 'D7E8F7',
+    }),
+  } as any);
+
+  const cards = [
+    { label: t.readiness, value: `${deck.completionPercent}/100` },
+    { label: t.source, value: source === 'ai' ? notes.aiDesigned : notes.rulesDesigned },
+    { label: t.nextSteps, value: t.nextStepsBody },
+  ];
+  cards.forEach((card, cardIndex) => {
+    const x = rtl ? 8.55 - cardIndex * 3.05 : 0.86 + cardIndex * 3.05;
+    slide.addShape('roundRect', {
+      x,
+      y: 3.45,
+      w: 2.75,
+      h: 1.45,
+      rectRadius: 0.08,
+      fill: { color: COLORS.warmWhite, transparency: 5 },
+      line: { color: COLORS.gold, transparency: 35 },
+    });
+    slide.addText(card.label, {
+      x: x + 0.16,
+      y: 3.72,
+      w: 2.42,
+      h: 0.22,
+      ...textOptions(deck.language, {
+        fontSize: 8.8,
+        bold: true,
+        color: COLORS.gold,
+      }),
+    } as any);
+    slide.addText(truncate(card.value, cardIndex === 2 ? 92 : 30), {
+      x: x + 0.16,
+      y: 4.08,
+      w: 2.42,
+      h: 0.42,
+      ...textOptions(deck.language, {
+        fontSize: cardIndex === 2 ? 9.2 : 15,
+        bold: true,
+        color: COLORS.warmWhite,
+      }),
+    } as any);
+  });
+
+  slide.addText(notes.disclaimer, {
+    x: rtl ? 2.1 : 0.9,
+    y: 5.62,
+    w: 10.35,
+    h: 0.45,
+    ...textOptions(deck.language, {
+      fontSize: 9.5,
+      color: 'C9D8E8',
+    }),
+  } as any);
+
+  addBrandFooter(slide, index, totalSlides, deck);
+  slide.addNotes([t.reviewTitle, t.reviewBody, '', t.nextSteps, t.nextStepsBody, '', notes.disclaimer].join('\n'));
 }
 
 export async function buildPitchDeckPowerPoint(deck: PitchDeckExportData, source: 'ai' | 'rules') {
@@ -509,8 +622,11 @@ export async function buildPitchDeckPowerPoint(deck: PitchDeckExportData, source
     bodyFontFace: deck.language === 'ar' ? 'Tahoma' : 'Aptos',
     lang: (pptx as any).lang,
   };
-  addCoverSlide(pptx, deck, source);
-  deck.slides.slice(1, 12).forEach((slideData, index) => addContentSlide(pptx, deck, slideData, index + 2, source));
+  const contentSlides = deck.slides.slice(1, 12);
+  const totalSlides = 1 + contentSlides.length + 1;
+  addCoverSlide(pptx, deck, source, totalSlides);
+  contentSlides.forEach((slideData, index) => addContentSlide(pptx, deck, slideData, index + 2, source, totalSlides));
+  addReviewSlide(pptx, deck, source, contentSlides.length + 2, totalSlides);
   const output = await pptx.write({ outputType: 'nodebuffer', compression: true });
   if (Buffer.isBuffer(output)) return output;
   if (output instanceof Uint8Array) return Buffer.from(output);

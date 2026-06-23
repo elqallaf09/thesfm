@@ -1,7 +1,7 @@
 ﻿import { currencyDisplaySymbol, getCurrency } from '@/lib/currencies';
 import { formatCurrency } from '@/lib/locale';
 import type { EducationalSummaryLanguage } from '@/lib/market/generateEducationalMarketSummary';
-import { formatMarketPrice, marketCurrencyLabel, resolveMarketCurrency } from '@/lib/market/marketCurrency';
+import { formatMarketPrice, marketCurrencyLabel, resolveMarketCurrency, type MarketPriceUnit } from '@/lib/market/marketCurrency';
 import type { MarketAssetType, MarketAnalysis, MarketHistoryPoint, MarketResult, MarketSearchItem } from '@/lib/market/marketService';
 import { normalizeAssetType, validateSymbol, marketSymbolSuggestions, normalizeMarketSymbolInput } from '@/lib/market/marketService';
 import type {
@@ -192,12 +192,23 @@ export function pipCalculatorWarningKey(type: PipCalculatorAssetType) {
   return `market_pip_value_warning_${type}`;
 }
 
-export function money(value: number, currency?: string | null, options?: { locale?: string | null; exchange?: string | null; symbol?: string | null; includeKuwaitDinarEquivalent?: boolean }) {
+export function money(value: number, currency?: string | null, options?: {
+  locale?: string | null;
+  exchange?: string | null;
+  symbol?: string | null;
+  providerSymbol?: string | null;
+  assetType?: MarketAssetType | string | null;
+  priceUnit?: MarketPriceUnit;
+  includeKuwaitDinarEquivalent?: boolean;
+}) {
   return formatMarketPrice({
     price: value,
     currency,
     exchange: options?.exchange,
     symbol: options?.symbol,
+    providerSymbol: options?.providerSymbol,
+    assetType: options?.assetType,
+    priceUnit: options?.priceUnit,
     locale: options?.locale ?? 'ar',
     includeKuwaitDinarEquivalent: options?.includeKuwaitDinarEquivalent,
   });
@@ -497,7 +508,8 @@ export function formatTechnicalNumberValue(value: unknown, maximumFractionDigits
 export function formatTechnicalPrice(value: unknown) {
   const parsed = finiteTechnicalNumber(value);
   if (parsed === null) return '';
-  const digits = Math.abs(parsed) >= 10 ? 2 : 4;
+  const absolute = Math.abs(parsed);
+  const digits = absolute >= 10 ? 2 : absolute >= 1 ? 4 : 6;
   return formatNumber(parsed, digits);
 }
 

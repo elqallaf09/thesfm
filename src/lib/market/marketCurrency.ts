@@ -98,6 +98,12 @@ const ARABIC_MARKET_SYMBOLS: Record<string, string> = {
 const PREFIX_SYMBOLS = new Set(['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'HKD', 'AUD']);
 const ZERO_DECIMAL_CURRENCIES = new Set(['JPY', 'KRW']);
 const THREE_DECIMAL_CURRENCIES = new Set(['KWD', 'BHD', 'OMR']);
+const FOREX_CURRENCY_CODES = new Set([
+  'USD', 'EUR', 'JPY', 'GBP', 'CHF', 'CAD', 'AUD', 'NZD',
+  'KWD', 'SAR', 'AED', 'QAR', 'BHD', 'OMR',
+  'CNY', 'CNH', 'HKD', 'SGD', 'KRW', 'INR', 'TRY',
+  'NOK', 'SEK', 'DKK', 'ZAR', 'MXN', 'THB', 'MYR', 'IDR', 'PHP',
+]);
 
 export function normalizeMarketCurrencyCode(value: unknown) {
   const raw = String(value ?? '').trim();
@@ -125,6 +131,23 @@ function quoteCurrencyFromPair(symbols: string[]) {
     if (compact.length === 6) return compact.slice(3);
     const cryptoQuote = symbol.match(/[-/]([A-Z]{3})$/);
     if (cryptoQuote?.[1]) return cryptoQuote[1];
+  }
+  return null;
+}
+
+function forexPairParts(symbol: string) {
+  const compact = symbol.replace(/=X$/, '').replace(/[^A-Z]/g, '');
+  if (compact.length !== 6) return null;
+  const base = compact.slice(0, 3);
+  const quote = compact.slice(3, 6);
+  if (!FOREX_CURRENCY_CODES.has(base) || !FOREX_CURRENCY_CODES.has(quote)) return null;
+  return { base, quote };
+}
+
+function forexQuoteCurrencyFromPair(symbols: string[]) {
+  for (const symbol of symbols) {
+    const pair = forexPairParts(symbol);
+    if (pair) return pair.quote;
   }
   return null;
 }
@@ -220,6 +243,15 @@ function marketDecimals(price: number, currency: string | null) {
   if (ZERO_DECIMAL_CURRENCIES.has(currency)) return 0;
   if (THREE_DECIMAL_CURRENCIES.has(currency)) return 3;
   return 2;
+}
+
+function forexRateDecimals(price: number, quoteCurrency: string | null) {
+  const absolute = Math.abs(price);
+  if (quoteCurrency === 'JPY' || quoteCurrency === 'KRW') return absolute >= 1 ? 3 : 5;
+  if (absolute >= 100) return 3;
+  if (absolute >= 1) return 5;
+  if (absolute >= 0.01) return 5;
+  return 6;
 }
 
 function formatPlainNumber(value: number, locale?: string | null, digits = 2) {
@@ -355,6 +387,20 @@ export function formatMarketPrice({
   const numeric = normalizedPrice.price;
   const normalizedCurrency = normalizedPrice.currency;
   const unknownLabel = unknownCurrencyLabel ?? (locale === 'ar' ? 'العملة غير متاحة' : locale === 'fr' ? 'devise indisponible' : 'currency unavailable');
+
+  const symbols = marketSymbols(symbol, providerSymbol);
+  const assetTypeText = cleanMarketText(assetType).toLowerCase();
+  const hasForexProviderSymbol = symbols.some(item => /=X$/i.test(item));
+  const inferredForexQuoteCurrency = forexQuoteCurrencyFromPair(symbols);
+  const forexQuoteCurrency = assetTypeText === 'forex' || hasForexProviderSymbol || (!assetTypeText && inferredForexQuoteCurrency)
+    ? inferredForexQuoteCurrency ?? normalizedCurrency
+    : null;
+
+  if (forexQuoteCurrency) {
+    const digits = forexRateDecimals(numeric, forexQuoteCurrency);
+    const sign = numeric < 0 ? '-' : '';
+    return `${sign}${formatPlainNumber(Math.abs(numeric), locale, digits)} ${forexQuoteCurrency}`;
+  }
 
   if (normalizedCurrency === 'KWD' && isKuwaitMarket(symbol ?? providerSymbol, exchange, market)) {
     const primary = `${formatPlainNumber(numeric, locale, 3)} ${marketCurrencyLabel('KWD', locale)}`;

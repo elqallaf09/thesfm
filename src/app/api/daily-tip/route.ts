@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { getUserFromBearerToken } from '@/lib/server/adminAccess';
+import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
 import { cookies } from 'next/headers';
 
 const getProvider = () => {
@@ -14,7 +15,7 @@ const getProvider = () => {
       baseURL: 'https://ai-gateway.vercel.sh/v1/anthropic',
     });
   }
-  return createAnthropic({ apiKey: anthropicKey || '' });
+  return anthropicKey ? createAnthropic({ apiKey: anthropicKey }) : null;
 };
 
 async function getAuthUser(request: NextRequest) {
@@ -39,6 +40,17 @@ export async function GET(request: NextRequest) {
   try {
     const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
     const anthropic = getProvider();
+    if (!anthropic) return NextResponse.json({ tip: null });
+
+    const usage = await consumeAiUsage({
+      userId: user.id,
+      feature: 'daily_tip',
+      metadata: {
+        route: '/api/daily-tip',
+        dayOfYear,
+      },
+    });
+    if (!usage.allowed) return aiUsageLimitResponse(usage);
 
     const { text } = await generateText({
       model: anthropic('claude-haiku-4-5-20251001'),

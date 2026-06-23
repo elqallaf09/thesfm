@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { personalIncomeRows } from '@/lib/data/financeData';
+import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
 
 type Lang = 'ar' | 'en' | 'fr';
 type AdvisorMode = 'summary' | 'risks' | 'actions' | 'plan90' | 'report' | 'chat';
@@ -249,6 +250,10 @@ function getProvider() {
     });
   }
   return anthropicKey ? createAnthropic({ apiKey: anthropicKey }) : null;
+}
+
+function aiProviderConfigured() {
+  return Boolean(process.env.AI_GATEWAY_TOKEN || process.env.ANTHROPIC_API_KEY);
 }
 
 function toNum(value: unknown) {
@@ -641,6 +646,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   };
 
   const fallback = buildRulesResponse(context, lang, mode, body.question);
+  if (aiProviderConfigured()) {
+    const usage = await consumeAiUsage({
+      userId: user.id,
+      feature: 'project_ai_advisor',
+      metadata: {
+        route: '/api/projects/[id]/ai-advisor',
+        projectId: id,
+        mode,
+        lang,
+      },
+    });
+    if (!usage.allowed) return aiUsageLimitResponse(usage);
+  }
+
   const result = await runAi(context, fallback, mode, lang, body.question);
   return NextResponse.json(result);
 }

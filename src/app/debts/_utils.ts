@@ -172,11 +172,17 @@ export function estimatePayoffMonths(debt: DebtRow) {
 export function estimatePayoffDate(debt: DebtRow): string | null {
   const months = estimatePayoffMonths(debt);
   if (months === null || months === 0) return null;
-  const firstPayment = debtFirstPaymentDate(debt);
-  const base = new Date(`${firstPayment}T00:00:00`);
-  if (Number.isNaN(base.getTime())) return null;
-  base.setMonth(base.getMonth() + months);
-  return base.toISOString().slice(0, 10);
+  const nextPaymentDate = debtSchedule(debt).nextPaymentDate || debtFirstPaymentDate(debt);
+  const match = String(nextPaymentDate || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const targetMonthIndex = monthIndex + Math.max(0, months - 1);
+  const lastDay = new Date(Date.UTC(year, targetMonthIndex + 1, 0)).getUTCDate();
+  const payoffDate = new Date(Date.UTC(year, targetMonthIndex, Math.min(day, lastDay)));
+  return payoffDate.toISOString().slice(0, 10);
 }
 
 export type StrategyEntry = { debt: DebtRow; payoffMonth: number; interestPaid: number };

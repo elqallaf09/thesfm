@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromBearerToken } from '@/lib/server/adminAccess';
+import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
 import {
   getGoogleAccessToken,
   getGoogleReceiptConfig,
@@ -23,11 +24,9 @@ function bearerToken(req: NextRequest): string | null {
   return auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
 }
 
-async function isAllowed(request: NextRequest): Promise<boolean> {
-  if (process.env.NODE_ENV !== 'production') return true;
-  const token = bearerToken(request);
-  const user = await getUserFromBearerToken(token);
-  return user !== null;
+async function requestUser(request: NextRequest) {
+  const token = bearerToken(request) || request.cookies.get('sfm_access_token')?.value || null;
+  return getUserFromBearerToken(token);
 }
 
 function receiptScanningPlanGateEnabled() {
@@ -1609,7 +1608,8 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
 
 export async function POST(request: NextRequest) {
   try {
-    if (!await isAllowed(request)) return errorResponse('Unauthorized', 401, undefined, 'scan_failed');
+    const user = await requestUser(request);
+    if (!user) return errorResponse('Unauthorized', 401, undefined, 'scan_failed');
     if (receiptScanningPlanGateEnabled()) {
       return errorResponse('Receipt scanning requires a paid plan.', 403, { stage: 'provider', errorSource: 'plan_blocked' }, 'plan_blocked');
     }
@@ -1622,6 +1622,27 @@ export async function POST(request: NextRequest) {
     const receiptText = formData.get('receiptText');
     const hasReceiptText = typeof receiptText === 'string' && receiptText.trim().length > 0;
     const providerStatus = getReceiptProviderStatus();
+    const openAiUnits = providerStatus.openai.configured && !hasReceiptText
+      ? files.filter(file => {
+        const mimeType = inferReceiptMimeType(file);
+        return SUPPORTED_TYPES.has(mimeType) && mimeType !== 'application/pdf' && file.size <= MAX_FILE_SIZE;
+      }).length
+      : 0;
+
+    if (openAiUnits > 0) {
+      const usage = await consumeAiUsage({
+        userId: user.id,
+        feature: 'receipt_scan',
+        units: openAiUnits,
+        metadata: {
+          route: '/api/receipts/scan',
+          fileCount: files.length,
+          openAiUnits,
+        },
+      });
+      if (!usage.allowed) return aiUsageLimitResponse(usage);
+    }
+
     if (!providerStatus.google.configured && !providerStatus.openai.configured && !hasReceiptText) {
       const googleError = providerStatus.google.error || 'google_env_missing';
       return NextResponse.json({

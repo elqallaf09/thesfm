@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
 import {
   buildPitchDeckPowerPoint,
   type PitchDeckExportData,
@@ -176,6 +177,10 @@ function getProvider() {
     });
   }
   return anthropicKey ? createAnthropic({ apiKey: anthropicKey }) : null;
+}
+
+function aiProviderConfigured() {
+  return Boolean(process.env.AI_GATEWAY_TOKEN || process.env.ANTHROPIC_API_KEY);
 }
 
 function parseRecord(value: unknown): Record<string, any> {
@@ -608,6 +613,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   let source: DeckSource = savedDeck ? (savedDeckRes.data?.source === 'ai' ? 'ai' : 'rules') : 'rules';
 
   if (!savedDeck) {
+    if (aiProviderConfigured()) {
+      const usage = await consumeAiUsage({
+        userId: user.id,
+        feature: 'project_pitch_deck_export',
+        metadata: {
+          route: '/api/projects/[id]/pitch-deck/export',
+          projectId: id,
+          language,
+        },
+      });
+      if (!usage.allowed) return aiUsageLimitResponse(usage);
+    }
+
     const aiResult = await improveWithAi(ruleDeck, context);
     deck = aiResult.deck;
     source = aiResult.source;

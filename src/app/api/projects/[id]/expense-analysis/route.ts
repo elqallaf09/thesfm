@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
 
 type Lang = 'ar' | 'en' | 'fr';
 type SuggestedAction = 'approve' | 'review' | 'reduce' | 'move_category' | 'attach_document';
@@ -107,6 +108,10 @@ function getProvider() {
     });
   }
   return anthropicKey ? createAnthropic({ apiKey: anthropicKey }) : null;
+}
+
+function aiProviderConfigured() {
+  return Boolean(process.env.AI_GATEWAY_TOKEN || process.env.ANTHROPIC_API_KEY);
 }
 
 function toNum(value: unknown) {
@@ -280,6 +285,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const expenses = expensesRes.error ? [] : expensesRes.data ?? [];
   const fallback = buildRulesAnalysis(lang, projectRes.data, expenses, expense);
+  if (aiProviderConfigured()) {
+    const usage = await consumeAiUsage({
+      userId: user.id,
+      feature: 'project_expense_analysis',
+      metadata: {
+        route: '/api/projects/[id]/expense-analysis',
+        projectId: id,
+        expenseId: expense.expenseId ?? null,
+      },
+    });
+    if (!usage.allowed) return aiUsageLimitResponse(usage);
+  }
+
   const analysis = await runAi(projectRes.data, expenses, expense, fallback, lang);
   return NextResponse.json({ ok: true, analysis });
 }

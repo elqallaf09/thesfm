@@ -8,6 +8,7 @@ import { resolveMarketSymbol } from '@/lib/market/symbolResolver';
 import type { MarketAssetType, MarketSearchItem } from '@/lib/market/marketService';
 import { validateSymbol } from '@/lib/market/marketService';
 import { getUserFromBearerToken } from '@/lib/server/adminAccess';
+import { consumeAiUsage } from '@/lib/server/aiUsage';
 import {
   aggregateMarketAgentPoints,
   agentAssetTypeFromProvider,
@@ -139,9 +140,21 @@ async function resolveAgentSymbolCandidates(rawSymbol: string, assetType: Market
   ]);
 }
 
-async function explainAnalysisWithAi(analysis: MarketAgentSuccessResponse) {
+async function explainAnalysisWithAi(analysis: MarketAgentSuccessResponse, userId?: string | null) {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) return analysis.summaryArabic;
+  if (!apiKey || !userId) return analysis.summaryArabic;
+
+  const usage = await consumeAiUsage({
+    userId,
+    feature: 'market_agent_explanation',
+    metadata: {
+      route: '/api/market-agent/analyze',
+      symbol: analysis.symbol,
+      assetType: analysis.assetType,
+      timeframe: analysis.timeframe,
+    },
+  });
+  if (!usage.allowed) return analysis.summaryArabic;
 
   const openai = new OpenAI({ apiKey });
   const controller = new AbortController();
@@ -245,6 +258,8 @@ async function saveHistory(token: string | null, analysis: MarketAgentSuccessRes
 }
 
 export async function POST(request: NextRequest) {
+  const token = bearerToken(request);
+  const user = token ? await getUserFromBearerToken(token) : null;
   const body = await request.json().catch(() => ({}));
   const rawSymbol = String(body?.symbol ?? '').trim();
   const assetType = normalizeMarketAgentAssetType(body?.assetType);
@@ -303,10 +318,10 @@ export async function POST(request: NextRequest) {
 
     if (!analysis.ok) continue;
 
-    const summaryArabic = await explainAnalysisWithAi(analysis);
+    const summaryArabic = await explainAnalysisWithAi(analysis, user?.id);
     const response = summaryArabic === analysis.summaryArabic ? analysis : { ...analysis, summaryArabic };
 
-    await saveHistory(bearerToken(request), response);
+    await saveHistory(token, response);
     return json(response);
   }
 

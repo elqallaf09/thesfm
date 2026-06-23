@@ -1172,6 +1172,8 @@ const landingStyles = `
     --landing-dark-text: #EAF6FF;
     --landing-dark-muted: #A7C7E7;
     --landing-border: rgba(29, 140, 255, 0.20);
+    width: 100%;
+    max-width: 100%;
     min-height: 100vh;
     overflow-x: clip;
     color: var(--landing-body);
@@ -1198,10 +1200,13 @@ const landingStyles = `
     justify-content: space-between;
     gap: 14px;
     padding: 10px 14px;
+    max-width: calc(100% - 32px);
+    overflow: visible;
   }
   .landing-brand, .landing-actions, .landing-links, .hero-buttons, .trust-card, .feature-card div, .ai-icon, .audience-grid article, .footer-brand {
     display: flex;
     align-items: center;
+    min-width: 0;
   }
   .landing-brand {
     gap: 10px;
@@ -1302,6 +1307,7 @@ const landingStyles = `
   }
   .hero-section {
     width: min(1180px, calc(100% - 32px));
+    max-width: calc(100% - 32px);
     margin: 18px auto 0;
     min-height: 560px;
     display: grid;
@@ -1309,10 +1315,13 @@ const landingStyles = `
     align-items: center;
     gap: 22px;
     padding: 34px 0 46px;
+    overflow-x: clip;
   }
   .hero-copy {
     display: grid;
     gap: 16px;
+    min-width: 0;
+    max-width: 100%;
   }
   .kicker {
     width: fit-content;
@@ -1334,6 +1343,8 @@ const landingStyles = `
     line-height: 1.04;
     font-weight: 950;
     letter-spacing: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
   .hero-copy p {
     max-width: 700px;
@@ -1342,6 +1353,7 @@ const landingStyles = `
     font-size: 18px;
     line-height: 1.75;
     font-weight: 700;
+    overflow-wrap: anywhere;
   }
   .hero-buttons {
     gap: 12px;
@@ -1375,6 +1387,8 @@ const landingStyles = `
   .product-preview {
     display: grid;
     gap: 12px;
+    min-width: 0;
+    max-width: 100%;
   }
   .preview-label {
     justify-self: start;
@@ -1397,12 +1411,15 @@ const landingStyles = `
     border: 1px solid rgba(15, 118, 110, 0.18);
     box-shadow: 0 18px 46px rgba(3, 18, 37, 0.08);
     padding: 24px;
+    min-width: 0;
+    max-width: 100%;
   }
   .preview-top {
     display: flex;
     justify-content: space-between;
     gap: 16px;
     margin-bottom: 22px;
+    min-width: 0;
   }
   .preview-top span {
     color: #0F766E;
@@ -1414,6 +1431,7 @@ const landingStyles = `
     color: #334155;
     line-height: 1.7;
     font-weight: 760;
+    overflow-wrap: anywhere;
   }
   .preview-top svg {
     color: #0F766E;
@@ -1493,6 +1511,7 @@ const landingStyles = `
   }
   .trust-section, .how-section, .section-block, .ai-section, .final-cta, .landing-footer {
     width: min(1180px, calc(100% - 32px));
+    max-width: calc(100% - 32px);
     margin: 0 auto;
   }
   .trust-section {
@@ -2562,7 +2581,8 @@ const landingStyles = `
   }
   @media (max-width: 620px) {
     .landing-nav, .hero-section, .trust-section, .how-section, .section-block, .ai-section, .final-cta, .landing-footer {
-      width: min(100% - 24px, 1180px);
+      width: min(1180px, calc(100% - 24px));
+      max-width: calc(100% - 24px);
     }
     .landing-nav {
       margin-top: 12px;
@@ -2575,7 +2595,7 @@ const landingStyles = `
       gap: 6px;
     }
     .hero-copy h1 {
-      font-size: 36px;
+      font-size: clamp(30px, 9vw, 36px);
     }
     .hero-copy p {
       font-size: 16px;

@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { personalIncomeRows } from '@/lib/data/financeData';
+import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
 
 type Lang = 'ar' | 'en' | 'fr';
 type PitchMode = 'generate' | 'improve_slide' | 'report_missing_data';
@@ -233,6 +234,10 @@ function getProvider() {
     });
   }
   return anthropicKey ? createAnthropic({ apiKey: anthropicKey }) : null;
+}
+
+function aiProviderConfigured() {
+  return Boolean(process.env.AI_GATEWAY_TOKEN || process.env.ANTHROPIC_API_KEY);
 }
 
 function parseRecord(value: unknown): Record<string, any> {
@@ -656,6 +661,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const savedDeck = deckRes.error ? null : deckRes.data?.deck_data;
   const ruleDeck = mergeSavedDeck(buildRuleDeck(context, language), savedDeck);
+  if (mode !== 'report_missing_data' && aiProviderConfigured()) {
+    const usage = await consumeAiUsage({
+      userId: user.id,
+      feature: 'project_pitch_deck',
+      metadata: {
+        route: '/api/projects/[id]/pitch-deck',
+        projectId: id,
+        mode,
+        language,
+        slideId: body.slideId ?? null,
+      },
+    });
+    if (!usage.allowed) return aiUsageLimitResponse(usage);
+  }
+
   const aiResult = mode === 'report_missing_data' ? { source: 'rules' as DeckSource, deck: ruleDeck } : await improveWithAi(ruleDeck, context, mode, body.slideId);
   await saveDeck(supabase as any, user.id, id, aiResult.deck, aiResult.source).catch(() => undefined);
 

@@ -13,6 +13,7 @@ import {
   MessageCircle,
   MoreHorizontal,
   Plus,
+  Printer,
   ReceiptText,
   Sparkles,
   Trash2,
@@ -925,6 +926,10 @@ export default function MonthlySubscriptionsPage() {
     setNotice(copy.deleted);
   }
 
+  function printSubscriptionsReport() {
+    window.setTimeout(() => window.print(), 80);
+  }
+
   const pageError = error || supabaseConfigError;
 
   return (
@@ -941,6 +946,10 @@ export default function MonthlySubscriptionsPage() {
             <Link href="/expenses" className="subscriptions-secondary">
               {copy.backToExpenses}
             </Link>
+            <button type="button" className="subscriptions-secondary" onClick={printSubscriptionsReport}>
+              <Printer size={18} />
+              {locale === 'ar' ? 'تصدير PDF' : locale === 'fr' ? 'Exporter PDF' : 'Export PDF'}
+            </button>
             <button type="button" className="subscriptions-primary" onClick={openNewForm}>
               <Plus size={18} />
               {copy.add}
@@ -1187,6 +1196,59 @@ export default function MonthlySubscriptionsPage() {
             </div>
           )}
         </section>
+
+        <section className="subscriptions-print-report" aria-hidden="true">
+          <header>
+            <span>THE SFM</span>
+            <h1>{copy.title}</h1>
+            <p>{copy.subtitle}</p>
+          </header>
+          <div className="subscriptions-print-summary">
+            <article>
+              <small>{copy.totalMonthly}</small>
+              <strong dir="ltr">{formatMoney(totals.monthly, baseCurrency, locale)}</strong>
+            </article>
+            <article>
+              <small>{copy.totalYearly}</small>
+              <strong dir="ltr">{formatMoney(totals.yearly, baseCurrency, locale)}</strong>
+            </article>
+            <article>
+              <small>{copy.activeCount}</small>
+              <strong>{rows.length}</strong>
+            </article>
+            <article>
+              <small>{copy.highest}</small>
+              <strong>{totals.highest ? totals.highest.name : '-'}</strong>
+            </article>
+          </div>
+          <div className="subscriptions-print-table">
+            <div className="subscriptions-print-head">
+              <span>{copy.service}</span>
+              <span>{copy.frequency}</span>
+              <span>{copy.amount}</span>
+              <span>{copy.monthlyImpact}</span>
+              <span>{copy.date}</span>
+            </div>
+            {rows.length ? rows.map(row => {
+              const meta = metadata(row);
+              const type = safeType(meta.subscription_type);
+              const frequency = safeFrequency(meta.billing_frequency);
+              const originalAmount = toNumber(meta.billing_amount ?? row.amount);
+              return (
+                <div key={row.id} className="subscriptions-print-row">
+                  <span>{row.name} · {copy.category[type]}</span>
+                  <span>{copy.frequencyLabel[frequency]}</span>
+                  <span dir="ltr">{formatMoney(originalAmount, row.currency || currency, locale)}</span>
+                  <span dir="ltr">{formatMoney(toNumber(row.amount), row.currency || currency, locale)}</span>
+                  <span>{row.date || '-'}</span>
+                </div>
+              );
+            }) : (
+              <div className="subscriptions-print-empty">{copy.emptyTitle}</div>
+            )}
+          </div>
+          <footer>{new Date().toLocaleDateString(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US')}</footer>
+        </section>
       </main>
 
       <style jsx global>{`
@@ -1260,6 +1322,7 @@ export default function MonthlySubscriptionsPage() {
         .subscriptions-empty{min-height:180px;border:1px dashed rgba(29,140,255,.22);border-radius:22px;display:grid;place-items:center;text-align:center;gap:8px;color:#64748b;font-weight:900;padding:24px}
         .subscriptions-empty h3{margin:0;color:#061a2e;font-size:24px}
         .subscriptions-empty p{margin:0;max-width:520px;line-height:1.8}
+        .subscriptions-print-report{display:none}
         .dark .subscriptions-shell{background:radial-gradient(circle at 14% 8%,rgba(47,214,192,.12),transparent 30%),linear-gradient(160deg,#0a1422 0%,#0b1728 56%,#08111f 100%);color:#e8eef6}
         .dark .subscriptions-form-card,.dark .subscriptions-examples-card,.dark .subscriptions-list-card,.dark .subscriptions-summary-grid article{background:linear-gradient(180deg,#0f1d31,#0b1728);border-color:#1d3050;box-shadow:0 18px 46px rgba(0,0,0,.28);color:#e8eef6}
         .dark .subscriptions-section-head h2,.dark .subscriptions-summary-grid strong,.dark .subscriptions-examples-list strong,.dark .subscription-row-main h3,.dark .subscription-row-metrics b,.dark .subscriptions-impact-card strong,.dark .subscriptions-empty h3{color:#e8eef6}
@@ -1275,6 +1338,7 @@ export default function MonthlySubscriptionsPage() {
         @media(max-width:1180px){.subscriptions-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.subscriptions-layout,.subscriptions-examples-card--wide .subscriptions-examples-list,.subscription-row-card{grid-template-columns:1fr}.subscription-row-actions{justify-content:stretch}.subscription-row-actions button{flex:1}}
         @media(max-width:1024px){.subscriptions-main{margin-inline:0;padding:18px 14px 46px}.subscriptions-main>*{max-width:100%}.subscriptions-hero{margin-top:0}}
         @media(max-width:720px){.subscriptions-hero{grid-template-columns:1fr;padding:22px;border-radius:24px}.subscriptions-hero-actions,.subscriptions-form-actions{display:grid;grid-template-columns:1fr}.subscriptions-primary,.subscriptions-secondary{width:100%}.subscriptions-summary-grid,.subscriptions-form-grid,.subscriptions-type-grid,.subscriptions-impact-card,.subscription-row-metrics,.subscriptions-section-head--interactive{grid-template-columns:1fr}.subscriptions-examples-toggle{width:100%}.subscriptions-form-card,.subscriptions-examples-card,.subscriptions-list-card{padding:15px;border-radius:22px}.subscriptions-section-head h2{font-size:24px}.subscriptions-hero h1{font-size:36px}}
+        @media print{@page{size:A4;margin:12mm}body *{visibility:hidden!important}.subscriptions-print-report,.subscriptions-print-report *{visibility:visible!important}.subscriptions-print-report{display:block!important;position:absolute;inset:0;width:100%;min-height:100%;padding:0;background:#fff;color:#061a2e;font-family:Tajawal,Arial,sans-serif}.subscriptions-print-report header{border-radius:18px;background:linear-gradient(135deg,#071427,#10294c 62%,#0b5a75);color:#fff;padding:24px;margin-bottom:18px}.subscriptions-print-report header span{color:#a7f3f0;font-weight:950}.subscriptions-print-report h1{margin:8px 0 6px;font-size:30px}.subscriptions-print-report p{margin:0;color:#d7e8f7;font-weight:800}.subscriptions-print-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}.subscriptions-print-summary article{border:1px solid #d8e8f5;border-radius:14px;padding:12px;background:#f8fbff}.subscriptions-print-summary small,.subscriptions-print-head{display:block;color:#64748b;font-weight:900;font-size:11px}.subscriptions-print-summary strong{display:block;margin-top:7px;color:#061a2e;font-size:17px;overflow-wrap:anywhere}.subscriptions-print-table{border:1px solid #d8e8f5;border-radius:16px;overflow:hidden}.subscriptions-print-head,.subscriptions-print-row{display:grid;grid-template-columns:1.5fr .75fr .9fr .9fr .8fr;gap:8px;align-items:center;padding:10px 12px}.subscriptions-print-head{background:#eef8fb;color:#0f1d31}.subscriptions-print-row{border-top:1px solid #d8e8f5;font-weight:850;color:#0f1d31}.subscriptions-print-empty{padding:18px;text-align:center;color:#64748b;font-weight:900}.subscriptions-print-report footer{margin-top:14px;color:#64748b;font-weight:900;text-align:center}}
       `}</style>
     </div>
   );

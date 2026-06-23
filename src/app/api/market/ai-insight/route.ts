@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import type { MarketAnalysis, MarketAiInsight } from '@/lib/market/marketService';
 import { getUserFromBearerToken } from '@/lib/server/adminAccess';
+import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
 
 const AI_TIMEOUT_MS = 10000;
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
@@ -130,6 +131,18 @@ export async function POST(request: NextRequest) {
   if (!hasOpenAIKey) {
     return failureResponse('AI_PROVIDER_NOT_CONFIGURED');
   }
+
+  const usage = await consumeAiUsage({
+    userId: user.id,
+    feature: 'market_ai_insight',
+    metadata: {
+      route: '/api/market/ai-insight',
+      symbol: marketData.symbol,
+      assetType: marketData.assetType,
+      language,
+    },
+  });
+  if (!usage.allowed) return aiUsageLimitResponse(usage);
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const controller = new AbortController();

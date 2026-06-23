@@ -1352,6 +1352,8 @@ export default function MarketAnalysisPage() {
   const selectedExchange = selected?.exchange ?? selectedAsset?.exchange ?? null;
   const selectedCountry = selected?.country ?? selectedAsset?.country ?? null;
   const selectedMarketSymbol = selected?.symbol ?? selectedAsset?.symbol ?? null;
+  const selectedProviderMarketSymbol = selected?.providerSymbol ?? selectedAsset?.providerSymbol ?? null;
+  const selectedMarketAssetType = selected?.assetType ?? selectedAsset?.assetType ?? null;
   const selectedCurrencyLabel = marketCurrencyLabel(selectedCurrency, lang);
   const levelRange = useMemo(() => {
     if (!selected) return { min: 0, max: 1, support: 0, current: 50, resistance: 100 };
@@ -1374,15 +1376,21 @@ export default function MarketAnalysisPage() {
       locale: lang,
       exchange: selectedExchange,
       symbol: selectedMarketSymbol,
+      providerSymbol: selectedProviderMarketSymbol,
+      assetType: selectedMarketAssetType,
+      priceUnit: selected?.priceUnit ?? selected?.quote?.priceUnit,
       includeKuwaitDinarEquivalent: extra?.includeKuwaitDinarEquivalent,
     }),
-    [lang, selectedCurrency, selectedExchange, selectedMarketSymbol],
+    [lang, selected?.priceUnit, selected?.quote?.priceUnit, selectedCurrency, selectedExchange, selectedMarketAssetType, selectedMarketSymbol, selectedProviderMarketSymbol],
   );
   const assetMoney = useCallback(
-    (asset: Pick<MarketAnalysis, 'currency' | 'quote' | 'exchange' | 'symbol'>, value: number) => money(value, asset.currency ?? asset.quote?.currency ?? null, {
+    (asset: Pick<MarketAnalysis, 'assetType' | 'currency' | 'priceUnit' | 'providerSymbol' | 'quote' | 'exchange' | 'symbol'>, value: number) => money(value, asset.currency ?? asset.quote?.currency ?? null, {
       locale: lang,
       exchange: asset.exchange,
       symbol: asset.symbol,
+      providerSymbol: asset.providerSymbol,
+      assetType: asset.assetType,
+      priceUnit: asset.priceUnit ?? asset.quote?.priceUnit,
     }),
     [lang],
   );

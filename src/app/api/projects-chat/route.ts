@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { getUserFromBearerToken } from '@/lib/server/adminAccess';
+import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
 
 type IncomingMessage = { role: 'user' | 'assistant' | 'system'; content: string };
 
@@ -54,6 +55,16 @@ export async function POST(req: NextRequest) {
     if (!anthropic) {
       return NextResponse.json({ text: unavailableResponse(), source: 'unavailable' });
     }
+
+    const usage = await consumeAiUsage({
+      userId: user.id,
+      feature: 'projects_chat',
+      metadata: {
+        route: '/api/projects-chat',
+        messageCount: messages.length,
+      },
+    });
+    if (!usage.allowed) return aiUsageLimitResponse(usage);
 
     const { text } = await generateText({
       model: anthropic('claude-haiku-4-5-20251001'),
