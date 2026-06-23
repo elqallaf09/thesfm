@@ -132,7 +132,7 @@ export function MarketStatusCard({
   valueDir?: 'ltr' | 'rtl';
 }) {
   return (
-    <article className="market-status-card">
+    <article className={`market-status-card${tone ? ` tone-${tone}` : ''}`}>
       <span className="market-status-icon">{icon}</span>
       <div className="market-status-body">
         <small>{label}</small>
