@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Clock3,
   Edit3,
+  Eye,
   FileText,
   Globe2,
   Instagram,
@@ -32,6 +33,7 @@ import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDash
 import { useResolvedImageUrl } from '@/components/company-listings/useResolvedImageUrl';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import type { CompanyAnalyticsEventType, CompanyAnalyticsSummary } from '@/lib/companyAnalytics';
 import { COMPANY_CATEGORY_CONFIGS, type CompanyListing, type CompanyStatus } from '@/lib/companyListings';
 
 type DetailPayload = {
@@ -43,6 +45,10 @@ type DetailPayload = {
     isAdmin?: boolean;
     canReview?: boolean;
   };
+};
+
+type AnalyticsPayload = CompanyAnalyticsSummary & {
+  ok?: boolean;
 };
 
 const STATUS_LABELS: Record<CompanyStatus, string> = {
@@ -86,6 +92,24 @@ function safeTel(value: string) {
   return value.replace(/[^\d+]/g, '');
 }
 
+async function trackCompanyEvent(companyId: string, eventType: CompanyAnalyticsEventType, accessToken?: string) {
+  try {
+    const response = await fetch(`/api/companies/${encodeURIComponent(companyId)}/track`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify({ eventType }),
+      keepalive: true,
+    });
+    const payload = await response.json().catch(() => ({})) as { inserted?: boolean };
+    return Boolean(response.ok && payload.inserted);
+  } catch {
+    return false;
+  }
+}
+
 function statusMessage(status: CompanyStatus, adminNotes?: string | null) {
   if (status === 'approved') return 'تم اعتماد الشركة ونشرها في دليل THE SFM.';
   if (status === 'pending_review') return 'بانتظار مراجعة الإدارة.';
@@ -122,10 +146,22 @@ function DetailTile({ icon, label, value, fallback }: { icon: ReactNode; label: 
   );
 }
 
-function ContactAction({ href, icon, label, value }: { href?: string | null; icon: ReactNode; label: string; value?: string | null }) {
+function ContactAction({
+  href,
+  icon,
+  label,
+  value,
+  onClick,
+}: {
+  href?: string | null;
+  icon: ReactNode;
+  label: string;
+  value?: string | null;
+  onClick?: () => void;
+}) {
   if (!href || isMissing(value)) return null;
   return (
-    <a className="contact-action" href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined}>
+    <a className="contact-action" href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined} onClick={onClick}>
       <span>{icon}</span>
       <div>
         <small>{label}</small>
@@ -158,6 +194,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busyStatus, setBusyStatus] = useState<CompanyStatus | null>(null);
+  const [analytics, setAnalytics] = useState<CompanyAnalyticsSummary | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -188,6 +225,34 @@ export function CompanyDetailsPage({ id }: { id: string }) {
     };
   }, [id, session?.access_token, t]);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/companies/${encodeURIComponent(id)}/analytics`, { cache: 'no-store' })
+      .then(response => response.json())
+      .then((payload: AnalyticsPayload) => {
+        if (!cancelled && payload.ok) setAnalytics(payload);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (!item?.id) return;
+    void trackCompanyEvent(item.id, 'company_profile_view', session?.access_token).then(inserted => {
+      if (!inserted) return;
+      setAnalytics(previous => ({
+        companyId: item.id,
+        cardViews: previous?.cardViews ?? 0,
+        profileViews: (previous?.profileViews ?? 0) + 1,
+        websiteClicks: previous?.websiteClicks ?? 0,
+        contactClicks: previous?.contactClicks ?? 0,
+        lastViewedAt: new Date().toISOString(),
+      }));
+    });
+  }, [item?.id, session?.access_token]);
+
   const categoryLabel = item ? t(COMPANY_CATEGORY_CONFIGS[item.category]?.labelKey ?? 'company_category_investment') : '';
   const status = item?.status ?? 'pending_review';
   const StatusIcon = STATUS_ICONS[status] ?? Clock3;
@@ -197,6 +262,29 @@ export function CompanyDetailsPage({ id }: { id: string }) {
   const hasContact = Boolean(item?.website_url || item?.email || item?.phone || item?.instagram_url || item?.linkedin_url || item?.whatsapp || item?.google_maps_url || item?.full_address || location);
   const backHref = item ? (COMPANY_CATEGORY_CONFIGS[item.category]?.path ?? '/services') : '/services';
   const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const canSeeDetailedAnalytics = Boolean(viewer?.canReview || viewer?.isOwner);
+  const numberFormat = useMemo(() => new Intl.NumberFormat(locale), [locale]);
+
+  function trackInteraction(eventType: CompanyAnalyticsEventType) {
+    if (!item?.id) return;
+    void trackCompanyEvent(item.id, eventType, session?.access_token).then(inserted => {
+      if (!inserted) return;
+      setAnalytics(previous => {
+        const current = previous ?? {
+          companyId: item.id,
+          cardViews: 0,
+          profileViews: 0,
+          websiteClicks: 0,
+          contactClicks: 0,
+          lastViewedAt: null,
+        };
+        const next = { ...current, lastViewedAt: new Date().toISOString() };
+        if (eventType === 'company_website_click') next.websiteClicks += 1;
+        if (eventType === 'company_contact_click') next.contactClicks += 1;
+        return next;
+      });
+    });
+  }
 
   async function reviewCompany(nextStatus: CompanyStatus) {
     if (!item || busyStatus) return;
@@ -272,6 +360,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                     ariaLabel={`زيارة موقع ${item.company_name}`}
                     variant="primary"
                     external
+                    onClick={() => trackInteraction('company_website_click')}
                   />
                 ) : null}
                 {item.email ? (
@@ -282,6 +371,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                     ariaLabel={`تواصل مع ${item.company_name}`}
                     variant="ghost"
                     external
+                    onClick={() => trackInteraction('company_contact_click')}
                   />
                 ) : item.phone ? (
                   <ActionButtonLink
@@ -291,6 +381,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                     ariaLabel={`تواصل مع ${item.company_name}`}
                     variant="ghost"
                     external
+                    onClick={() => trackInteraction('company_contact_click')}
                   />
                 ) : null}
                 <ActionButtonLink
@@ -369,7 +460,15 @@ export function CompanyDetailsPage({ id }: { id: string }) {
               <aside className="company-side-column">
                 <SectionCard eyebrow="Contact" title="بيانات التواصل" icon={<Phone size={19} />} className="side-card">
                   {hasContact ? (
-                    <div className="contact-list">
+                    <div
+                      className="contact-list"
+                      onClickCapture={event => {
+                        const anchor = (event.target as HTMLElement).closest('a');
+                        if (!anchor) return;
+                        const href = anchor.getAttribute('href') || '';
+                        trackInteraction(href.startsWith('http') && !href.includes('wa.me') ? 'company_website_click' : 'company_contact_click');
+                      }}
+                    >
                       <ContactAction href={item.website_url} icon={<Globe2 size={16} />} label="الموقع الإلكتروني" value={item.website_url} />
                       <ContactAction href={item.email ? `mailto:${item.email}` : null} icon={<Mail size={16} />} label="البريد الإلكتروني" value={item.email} />
                       <ContactAction href={item.phone ? `tel:${safeTel(item.phone)}` : null} icon={<Phone size={16} />} label="رقم الهاتف" value={item.phone} />
@@ -402,6 +501,20 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                       <p>لم يتم إضافة بيانات تواصل كافية.</p>
                     </div>
                   )}
+                </SectionCard>
+
+                <SectionCard eyebrow="Analytics" title="إحصائيات الشركة" icon={<Eye size={19} />} className="side-card">
+                  <div className="analytics-grid">
+                    <DetailTile icon={<Eye size={16} />} label="زيارات الصفحة" value={numberFormat.format(analytics?.profileViews ?? 0)} />
+                    {canSeeDetailedAnalytics ? (
+                      <>
+                        <DetailTile icon={<Eye size={16} />} label="مشاهدات البطاقة" value={numberFormat.format(analytics?.cardViews ?? 0)} />
+                        <DetailTile icon={<Globe2 size={16} />} label="نقرات زيارة الموقع" value={numberFormat.format(analytics?.websiteClicks ?? 0)} />
+                        <DetailTile icon={<Mail size={16} />} label="نقرات التواصل" value={numberFormat.format(analytics?.contactClicks ?? 0)} />
+                        <DetailTile icon={<CalendarDays size={16} />} label="آخر مشاهدة" value={formatDate(analytics?.lastViewedAt, locale)} />
+                      </>
+                    ) : null}
+                  </div>
                 </SectionCard>
 
                 <SectionCard eyebrow="Status" title="حالة الشركة" icon={<StatusIcon size={19} />} className="side-card">
@@ -795,6 +908,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             min-height: 96px;
           }
           .contact-list,
+          .analytics-grid,
           .admin-card {
             display: grid;
             gap: 10px;

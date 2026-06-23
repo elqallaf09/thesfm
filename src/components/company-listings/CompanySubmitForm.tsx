@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Building2, CheckCircle2, ChevronRight, CreditCard, ExternalLink, MapPin, Send } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
+import { CompanyImageUploadField } from '@/components/company-listings/CompanyImageUploadField';
 import { useResolvedImageUrl } from '@/components/company-listings/useResolvedImageUrl';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -488,8 +489,8 @@ export function CompanySubmitForm() {
           <Field label={t('company_listing_license_number')} value={form.licenseNumber} placeholder="رقم أو أحرف الترخيص" onChange={value => updateField('licenseNumber', value)} />
           <Field label={t('company_listing_regulator_name')} value={form.regulatorName} placeholder="اسم الجهة المنظمة أو الرقابية" onChange={value => updateField('regulatorName', value)} />
           <Field label={t('company_listing_services')} value={form.services} placeholder="اكتب الخدمات مفصولة بفواصل" onChange={value => updateField('services', value)} span textarea />
-          <ImageUrlField label={t('company_listing_logo_url')} value={form.logoUrl} onChange={value => updateField('logoUrl', value)} />
-          <ImageUrlField label={t('company_listing_cover_url')} value={form.coverImageUrl} onChange={value => updateField('coverImageUrl', value)} />
+          <CompanyImageUploadField label={t('company_listing_logo_url')} value={form.logoUrl} onChange={value => updateField('logoUrl', value)} kind="logo" />
+          <CompanyImageUploadField label={t('company_listing_cover_url')} value={form.coverImageUrl} onChange={value => updateField('coverImageUrl', value)} kind="cover" />
         </FormSection>
 
         <div className="submit-sticky">

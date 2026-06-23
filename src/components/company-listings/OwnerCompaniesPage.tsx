@@ -18,6 +18,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { CompanyImageUploadField } from '@/components/company-listings/CompanyImageUploadField';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import {
@@ -472,8 +473,8 @@ export function OwnerCompaniesPage() {
               <Field label="رقم الترخيص" value={form.licenseNumber} onChange={value => updateForm('licenseNumber', value)} />
               <Field label="الجهة المنظمة" value={form.regulatorName} onChange={value => updateForm('regulatorName', value)} />
               <Field label="الخدمات المقدمة" value={form.services} onChange={value => updateForm('services', value)} textarea full />
-              <Field label="رابط شعار الشركة" value={form.logoUrl} onChange={value => updateForm('logoUrl', value)} dir="ltr" />
-              <Field label="رابط صورة الغلاف" value={form.coverImageUrl} onChange={value => updateForm('coverImageUrl', value)} dir="ltr" />
+              <CompanyImageUploadField label="رابط شعار الشركة" value={form.logoUrl} onChange={value => updateForm('logoUrl', value)} kind="logo" companyId={editing.id} />
+              <CompanyImageUploadField label="رابط صورة الغلاف" value={form.coverImageUrl} onChange={value => updateForm('coverImageUrl', value)} kind="cover" companyId={editing.id} />
             </div>
             <div className="owner-modal-actions">
               <button type="button" className="owner-primary-btn" disabled={saving} onClick={() => void saveEdit()}>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Building2,
@@ -20,6 +20,7 @@ import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDash
 import { useResolvedImageUrl } from '@/components/company-listings/useResolvedImageUrl';
 import type { TranslationKey } from '@/components/navigationConfig';
 import { useLanguage } from '@/hooks/useLanguage';
+import type { CompanyAnalyticsEventType, CompanyAnalyticsSummary } from '@/lib/companyAnalytics';
 import { COMPANY_CATEGORY_CONFIGS, type CompanyCategory, type CompanyListing, type CompanyStatus } from '@/lib/companyListings';
 
 type ApiResponse = {
@@ -40,6 +41,21 @@ type CompanyCategoryPageProps = {
 
 const statusOptions: Array<'all' | CompanyStatus> = ['all', 'approved', 'pending_review', 'inactive'];
 const PAGE_SIZE = 12;
+
+async function trackCompanyEvent(companyId: string, eventType: CompanyAnalyticsEventType) {
+  try {
+    const response = await fetch(`/api/companies/${encodeURIComponent(companyId)}/track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventType }),
+      keepalive: true,
+    });
+    const payload = await response.json().catch(() => ({})) as { inserted?: boolean };
+    return Boolean(response.ok && payload.inserted);
+  } catch {
+    return false;
+  }
+}
 
 function uniqueValues(items: CompanyListing[], key: 'country' | 'city') {
   return Array.from(new Set(items.map(item => (item[key] ?? '').trim()).filter(Boolean))).sort();
@@ -67,6 +83,7 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
   const [city, setCity] = useState('all');
   const [status, setStatus] = useState<'all' | CompanyStatus>('all');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [analyticsByCompany, setAnalyticsByCompany] = useState<Record<string, CompanyAnalyticsSummary>>({});
 
   const loadListings = useCallback(async () => {
     setLoading(true);
@@ -108,6 +125,10 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
   }, [city, country, items, query, status]);
 
   const visibleItems = filteredItems.slice(0, visibleCount);
+  const visibleCompanyIds = useMemo(
+    () => filteredItems.slice(0, visibleCount).map(item => item.id).join(','),
+    [filteredItems, visibleCount],
+  );
   const monthPrefix = new Date().toISOString().slice(0, 7);
   const stats = [
     { label: t('company_listing_total'), value: filteredItems.length },
@@ -115,6 +136,41 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
     { label: t('company_listing_pending'), value: filteredItems.filter(item => item.status === 'pending_review').length },
     { label: t('company_listing_added_month'), value: filteredItems.filter(item => item.created_at?.startsWith(monthPrefix)).length },
   ];
+
+  useEffect(() => {
+    if (!visibleCompanyIds) return;
+    let cancelled = false;
+    fetch(`/api/companies/analytics?ids=${encodeURIComponent(visibleCompanyIds)}`, { cache: 'no-store' })
+      .then(response => response.json())
+      .then((payload: { ok?: boolean; items?: Record<string, CompanyAnalyticsSummary> }) => {
+        if (!cancelled && payload.ok && payload.items) {
+          setAnalyticsByCompany(previous => ({ ...previous, ...payload.items }));
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [visibleCompanyIds]);
+
+  const incrementAnalytics = useCallback((companyId: string, eventType: CompanyAnalyticsEventType) => {
+    setAnalyticsByCompany(previous => {
+      const current = previous[companyId] ?? {
+        companyId,
+        cardViews: 0,
+        profileViews: 0,
+        websiteClicks: 0,
+        contactClicks: 0,
+        lastViewedAt: null,
+      };
+      const next = { ...current, lastViewedAt: new Date().toISOString() };
+      if (eventType === 'company_card_view') next.cardViews += 1;
+      if (eventType === 'company_profile_view') next.profileViews += 1;
+      if (eventType === 'company_website_click') next.websiteClicks += 1;
+      if (eventType === 'company_contact_click') next.contactClicks += 1;
+      return { ...previous, [companyId]: next };
+    });
+  }, []);
 
   return (
     <CompanyDashboardFrame>
@@ -163,7 +219,14 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
         <>
           <section className="company-grid" dir={dir}>
             {visibleItems.map(item => (
-              <CompanyCard key={item.id} item={item} categoryLabel={t(COMPANY_CATEGORY_CONFIGS[item.category]?.labelKey ?? config.labelKey)} t={t} />
+              <CompanyCard
+                key={item.id}
+                item={item}
+                categoryLabel={t(COMPANY_CATEGORY_CONFIGS[item.category]?.labelKey ?? config.labelKey)}
+                t={t}
+                analytics={analyticsByCompany[item.id]}
+                onTracked={incrementAnalytics}
+              />
             ))}
           </section>
           {visibleCount < filteredItems.length ? (
@@ -373,10 +436,60 @@ function CompanySelect({ label, value, options, onChange }: { label: string; val
   );
 }
 
-function CompanyCard({ item, categoryLabel, t }: { item: CompanyListing; categoryLabel: string; t: (key: TranslationKey) => string }) {
+function CompanyCard({
+  item,
+  categoryLabel,
+  t,
+  analytics,
+  onTracked,
+}: {
+  item: CompanyListing;
+  categoryLabel: string;
+  t: (key: TranslationKey) => string;
+  analytics?: CompanyAnalyticsSummary;
+  onTracked: (companyId: string, eventType: CompanyAnalyticsEventType) => void;
+}) {
+  const cardRef = useRef<HTMLElement | null>(null);
+  const trackedRef = useRef(false);
   const contactHref = item.email ? `mailto:${item.email}` : item.phone ? `tel:${item.phone}` : item.whatsapp ? `https://wa.me/${item.whatsapp.replace(/[^\d]/g, '')}` : '';
+  const visibleViews = analytics?.profileViews ?? 0;
+
+  useEffect(() => {
+    if (trackedRef.current || typeof IntersectionObserver === 'undefined') return;
+    const element = cardRef.current;
+    if (!element) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const observer = new IntersectionObserver(entries => {
+      const entry = entries[0];
+      if (entry?.isIntersecting && entry.intersectionRatio >= 0.5) {
+        timer = setTimeout(() => {
+          if (trackedRef.current) return;
+          trackedRef.current = true;
+          void trackCompanyEvent(item.id, 'company_card_view').then(inserted => {
+            if (inserted) onTracked(item.id, 'company_card_view');
+          });
+          observer.disconnect();
+        }, 1000);
+      } else if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    }, { threshold: [0, 0.5, 1] });
+    observer.observe(element);
+    return () => {
+      if (timer) clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [item.id, onTracked]);
+
+  const trackClick = (eventType: CompanyAnalyticsEventType) => {
+    void trackCompanyEvent(item.id, eventType).then(inserted => {
+      if (inserted) onTracked(item.id, eventType);
+    });
+  };
+
   return (
-    <article className="company-card">
+    <article className="company-card" ref={cardRef}>
       <div className="company-card-top">
         <div className="company-logo">
           <CompanyLogo item={item} />
@@ -390,6 +503,7 @@ function CompanyCard({ item, categoryLabel, t }: { item: CompanyListing; categor
       <div className="company-meta">
         <span>{categoryLabel}</span>
         {(item.country || item.city) ? <span><MapPin size={13} />{[item.country, item.city].filter(Boolean).join(' / ')}</span> : null}
+        <span className="company-view-counter"><Eye size={13} />{new Intl.NumberFormat('ar-KW').format(visibleViews)} مشاهدة</span>
       </div>
       <p>{item.short_description || item.long_description || t('company_listing_info_note')}</p>
       <div className="company-actions">
@@ -400,6 +514,7 @@ function CompanyCard({ item, categoryLabel, t }: { item: CompanyListing; categor
           label={t('company_listing_view_details')}
           ariaLabel={`عرض تفاصيل الشركة ${item.company_name}`}
           variant="primary"
+          onClick={() => trackClick('company_profile_view')}
         />
         {item.website_url ? (
           <ActionButtonLink
@@ -409,6 +524,7 @@ function CompanyCard({ item, categoryLabel, t }: { item: CompanyListing; categor
             ariaLabel={`زيارة موقع ${item.company_name}`}
             variant="secondary"
             external
+            onClick={() => trackClick('company_website_click')}
           />
         ) : null}
         {contactHref ? (
@@ -419,6 +535,7 @@ function CompanyCard({ item, categoryLabel, t }: { item: CompanyListing; categor
             ariaLabel={`تواصل مع ${item.company_name}`}
             variant="secondary"
             external
+            onClick={() => trackClick('company_contact_click')}
           />
         ) : null}
       </div>
@@ -513,6 +630,11 @@ function CompanyCard({ item, categoryLabel, t }: { item: CompanyListing; categor
           padding: 5px 8px;
           font-size: 12px;
           font-weight: 850;
+        }
+        .company-meta .company-view-counter {
+          color: #0b76e0;
+          background: rgba(11, 118, 224, 0.08);
+          border-color: rgba(11, 118, 224, 0.14);
         }
         p {
           margin: 0;

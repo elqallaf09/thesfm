@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import type { MouseEventHandler, ReactNode } from 'react';
 
 type ActionButtonLinkProps = {
   href: string;
@@ -11,6 +11,7 @@ type ActionButtonLinkProps = {
   variant?: 'primary' | 'secondary' | 'ghost';
   className?: string;
   external?: boolean;
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
 };
 
 function isExternalHref(href: string) {
@@ -25,6 +26,7 @@ export function ActionButtonLink({
   variant = 'secondary',
   className = '',
   external,
+  onClick,
 }: ActionButtonLinkProps) {
   const classes = `sfm-action-link sfm-action-link-${variant} ${className}`.trim();
   const isExternal = external ?? isExternalHref(href);
@@ -44,6 +46,7 @@ export function ActionButtonLink({
           target={href.startsWith('http') ? '_blank' : undefined}
           rel={href.startsWith('http') ? 'noreferrer' : undefined}
           aria-label={ariaLabel ?? label}
+          onClick={onClick}
         >
           {content}
         </a>
@@ -54,7 +57,7 @@ export function ActionButtonLink({
 
   return (
     <>
-      <Link className={classes} href={href} aria-label={ariaLabel ?? label}>
+      <Link className={classes} href={href} aria-label={ariaLabel ?? label} onClick={onClick}>
         {content}
       </Link>
       <ActionButtonLinkStyles />
