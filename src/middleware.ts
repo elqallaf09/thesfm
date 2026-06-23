@@ -44,6 +44,7 @@ const protectedPrefixes = [
   '/market-watchlist',
   '/watchlist',
   '/sfm-admin-control',
+  '/thesfm-trader-own',
 ];
 
 const authPages = ['/login', '/reset-password'];
@@ -163,6 +164,12 @@ export async function middleware(request: NextRequest) {
       adminTargetUrl.pathname = isAdminEmail(session.email) ? nextPath : '/dashboard';
       adminTargetUrl.search = '';
       return NextResponse.redirect(adminTargetUrl);
+    }
+    if (nextPath && isProtected(nextPath)) {
+      const protectedTargetUrl = request.nextUrl.clone();
+      protectedTargetUrl.pathname = nextPath;
+      protectedTargetUrl.search = '';
+      return NextResponse.redirect(protectedTargetUrl);
     }
     const dashboardUrl = request.nextUrl.clone();
     dashboardUrl.pathname = '/dashboard';
