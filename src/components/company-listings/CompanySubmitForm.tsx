@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Building2, CheckCircle2, ChevronRight, CreditCard, ExternalLink, MapPin, Send } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
@@ -619,7 +620,17 @@ function ImageUrlField({ label, value, onChange }: { label: string; value: strin
       <input value={value} onChange={event => onChange(event.target.value)} inputMode="url" dir="ltr" placeholder="https://example.com/logo.png" />
       {value.trim() ? (
         <div className={`image-preview ${valid && !failed ? '' : 'invalid'}`}>
-          {valid && imageUrl && !failed ? <img src={imageUrl} alt={label} loading="lazy" onError={() => setFailed(true)} /> : null}
+          {valid && imageUrl && !failed ? (
+            <Image
+              src={imageUrl}
+              alt={label}
+              width={480}
+              height={260}
+              unoptimized
+              loading="lazy"
+              onError={() => setFailed(true)}
+            />
+          ) : null}
           {valid && loading ? <span className="image-preview-loader">...</span> : null}
           <small>
             {!valid

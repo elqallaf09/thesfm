@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   Building2,
@@ -682,7 +683,17 @@ function CompanyLogo({ item }: { item: CompanyListing }) {
   const { imageUrl, loading, failed, setFailed } = useResolvedImageUrl(item.logo_url);
 
   if (imageUrl && !failed) {
-    return <img src={imageUrl} alt={item.company_name ? `${item.company_name} logo` : ''} loading="lazy" decoding="async" onError={() => setFailed(true)} />;
+    return (
+      <Image
+        src={imageUrl}
+        alt={item.company_name ? `${item.company_name} logo` : 'Company logo'}
+        width={56}
+        height={56}
+        unoptimized
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+    );
   }
 
   if (item.logo_url && loading) {

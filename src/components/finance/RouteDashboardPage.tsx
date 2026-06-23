@@ -2409,8 +2409,13 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                           {receiptFiles.map(({ file, previewUrl }) => (
                             <div key={`${file.name}-${file.size}`}>
                               {previewUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={previewUrl} alt={file.name} />
+                                <Image
+                                  src={previewUrl}
+                                  alt={file.name}
+                                  width={240}
+                                  height={160}
+                                  unoptimized
+                                />
                               ) : <ReceiptText size={28} />}
                               <small>{file.name}</small>
                             </div>
@@ -2497,8 +2502,13 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                             </label>
                             <div className="receipt-review-body">
                               {item.previewUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={item.previewUrl} alt={item.fileName} />
+                                <Image
+                                  src={item.previewUrl}
+                                  alt={item.fileName}
+                                  width={240}
+                                  height={180}
+                                  unoptimized
+                                />
                               ) : <ReceiptText size={34} />}
                               <div className="receipt-review-fields">
                                 <input value={item.name} onChange={event => setPendingReceiptExpenses(prev => prev.map(row => row.id === item.id ? { ...row, name: event.target.value } : row))} />
@@ -2613,8 +2623,14 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 <button type="button" className="icon-btn" onClick={() => setReceiptDetails(null)} aria-label={t('close')}><X size={18} /></button>
               </div>
               {receiptDetails.receipt_image_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img className="receipt-detail-image" src={receiptDetails.receipt_image_url} alt={expenseText('originalImage', lang)} />
+                <Image
+                  className="receipt-detail-image"
+                  src={receiptDetails.receipt_image_url}
+                  alt={expenseText('originalImage', lang)}
+                  width={900}
+                  height={640}
+                  unoptimized
+                />
               )}
               <div className="receipt-detail-grid">
                 <div><span>{expenseText('merchant', lang)}</span><b>{receiptDetails.ai_extracted_data?.description || receiptDetails.ai_extracted_data?.merchantName || receiptDetails.name}</b></div>

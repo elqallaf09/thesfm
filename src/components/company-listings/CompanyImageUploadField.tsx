@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
+import NextImage from 'next/image';
 import { ImagePlus, Loader2, RotateCcw, Trash2, UploadCloud } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -198,7 +199,17 @@ export function CompanyImageUploadField({ label, value, onChange, kind, companyI
         <input value={value} onChange={event => { setError(''); onChange(event.target.value); }} inputMode="url" dir="ltr" placeholder="https://example.com/logo.png" />
         {value.trim() ? (
           <div className={`image-preview ${valid && !failed ? '' : 'invalid'}`}>
-            {valid && imageUrl && !failed ? <img src={imageUrl} alt={label} loading="lazy" onError={() => setFailed(true)} /> : null}
+            {valid && imageUrl && !failed ? (
+              <NextImage
+                src={imageUrl}
+                alt={label}
+                width={480}
+                height={260}
+                unoptimized
+                loading="lazy"
+                onError={() => setFailed(true)}
+              />
+            ) : null}
             {valid && loading ? <span className="image-preview-loader">...</span> : null}
             <small>
               {!valid

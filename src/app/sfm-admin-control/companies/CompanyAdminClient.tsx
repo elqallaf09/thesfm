@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { LogIn, LogOut } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -188,14 +189,14 @@ function CompanyAdminLogo({ company }: { company: Company }) {
   const [failed, setFailed] = useState(false);
   if (company.logo_url && !failed) {
     return (
-      // Company logos are submitted external URLs, so native img keeps support broad.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <Image
         src={company.logo_url}
-        alt={company.company_name ? `${company.company_name} logo` : ''}
+        alt={company.company_name ? `${company.company_name} logo` : 'Company logo'}
         className="ca-logo"
+        width={36}
+        height={36}
+        unoptimized
         loading="lazy"
-        decoding="async"
         onError={() => setFailed(true)}
       />
     );

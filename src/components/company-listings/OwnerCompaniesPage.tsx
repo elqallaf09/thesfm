@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
@@ -151,14 +152,14 @@ function CompanyLogo({ company }: { company: CompanyListing }) {
   const [failed, setFailed] = useState(false);
   if (company.logo_url && !failed) {
     return (
-      // Submitted company logos can be external URLs, so native img avoids Next host allow-list issues.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <Image
         className="owner-company-logo"
         src={company.logo_url}
-        alt={company.company_name}
+        alt={`${company.company_name || 'Company'} logo`}
+        width={58}
+        height={58}
+        unoptimized
         loading="lazy"
-        decoding="async"
         onError={() => setFailed(true)}
       />
     );
