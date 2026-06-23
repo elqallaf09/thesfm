@@ -455,19 +455,41 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         );
         return legacy.error ? currentSchema : legacy;
       };
+      const debtsQuery = async () => {
+        const currentSchema = await safeQuery<DebtSnapshotItem>(
+          supabase
+            .from('debts')
+            .select('id,name,monthly_payment,currency,status,remaining_amount,calculated_remaining_amount,start_date,first_payment_date,payment_day,auto_add_to_expenses')
+            .eq('user_id', user.id) as unknown as QueryResult<DebtSnapshotItem>,
+          queryMeta('debts', 'debts'),
+        );
+        if (!currentSchema.error || !/column|schema|pgrst/i.test(currentSchema.error.message)) return currentSchema;
+
+        const compactSchema = await safeQuery<DebtSnapshotItem>(
+          supabase
+            .from('debts')
+            .select('id,name,monthly_payment,currency,status,remaining_amount,start_date,first_payment_date,payment_day')
+            .eq('user_id', user.id) as unknown as QueryResult<DebtSnapshotItem>,
+          queryMeta('debts.compact', 'debts'),
+        );
+        if (!compactSchema.error || !/column|schema|pgrst/i.test(compactSchema.error.message)) return compactSchema;
+
+        const legacySchema = await safeQuery<DebtSnapshotItem>(
+          supabase
+            .from('debts')
+            .select('id,name,monthly_payment,currency,status,remaining_amount,start_date')
+            .eq('user_id', user.id) as unknown as QueryResult<DebtSnapshotItem>,
+          queryMeta('debts.legacy', 'debts'),
+        );
+        return legacySchema.error ? currentSchema : legacySchema;
+      };
       const [income, expenses, savings, investments, goals, debts] = await Promise.all([
         safeQuery<IncomeSource>(supabase.from('monthly_income_sources').select('*').eq('user_id', user.id) as unknown as QueryResult<IncomeSource>, queryMeta('monthly_income_sources', 'monthly_income_sources')),
         expensesQuery(),
         safeQuery<MoneyItem>(supabase.from('savings_items').select('*').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<MoneyItem>, queryMeta('savings_items', 'savings_items')),
         safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount, converted_market_value, current_value, current_market_value, native_market_value, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('investment_items', 'investment_items')),
         safeQuery<GoalRow>(supabase.from('financial_goals').select('*').eq('user_id', user.id) as unknown as QueryResult<GoalRow>, queryMeta('financial_goals', 'financial_goals')),
-        safeQuery<DebtSnapshotItem>(
-          supabase
-            .from('debts')
-            .select('id,name,monthly_payment,currency,status,remaining_amount,calculated_remaining_amount,start_date,first_payment_date,payment_day,auto_add_to_expenses')
-            .eq('user_id', user.id) as unknown as QueryResult<DebtSnapshotItem>,
-          queryMeta('debts', 'debts'),
-        ),
+        debtsQuery(),
       ]);
 
       if (cancelled) return;
@@ -611,16 +633,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     () => previousExpenseRange ? data.expenses.filter(item => isExpenseInPeriod(item, previousExpenseRange)) : [],
     [data.expenses, previousExpenseRange],
   );
-  const actualExpensePeriodTotal = useMemo(() => sum(expensePeriodExpenses), [expensePeriodExpenses]);
-  const actualDebtInstallmentsTotal = useMemo(() => debtInstallmentExpenseTotal(expensePeriodExpenses), [expensePeriodExpenses]);
-  const scheduledDebtInstallmentsTotal = useMemo(
-    () => scheduledDebtInstallmentsForRange(snapshot.debts, selectedExpenseRange, expenseBaseCurrency, expenseFxRates),
-    [expenseBaseCurrency, expenseFxRates, selectedExpenseRange, snapshot.debts],
-  );
-  const missingScheduledDebtInstallmentsTotal = useMemo(
-    () => Math.max(0, scheduledDebtInstallmentsTotal - actualDebtInstallmentsTotal),
-    [actualDebtInstallmentsTotal, scheduledDebtInstallmentsTotal],
-  );
   const scheduledDebtExpenseRows = useMemo(
     () => scheduledDebtInstallmentExpensesForRange(
       snapshot.debts,
@@ -637,8 +649,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     [expensePeriodExpenses, scheduledDebtExpenseRows],
   );
   const expensePeriodTotal = useMemo(
-    () => actualExpensePeriodTotal + missingScheduledDebtInstallmentsTotal,
-    [actualExpensePeriodTotal, missingScheduledDebtInstallmentsTotal],
+    () => sum(expenseDisplayRecords),
+    [expenseDisplayRecords],
   );
   const previousActualDebtInstallmentsTotal = useMemo(() => debtInstallmentExpenseTotal(previousPeriodExpenses), [previousPeriodExpenses]);
   const previousScheduledDebtInstallmentsTotal = useMemo(
@@ -651,27 +663,26 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   );
   const expenseScopedData = useMemo(() => ({
     ...data,
-    expenses: expensePeriodExpenses,
+    expenses: expenseDisplayRecords,
     totalExpenses: expensePeriodTotal,
-    charityTotal: expensePeriodExpenses.filter(item => item.name.startsWith('خيرية:')).reduce((total, item) => total + item.amount, 0),
+    charityTotal: expenseDisplayRecords.filter(item => item.name.startsWith('خيرية:')).reduce((total, item) => total + item.amount, 0),
     balance: data.totalIncome - expensePeriodTotal,
-  }), [data, expensePeriodExpenses, expensePeriodTotal]);
+  }), [data, expenseDisplayRecords, expensePeriodTotal]);
   const dashboardData = kind === 'expenses' ? expenseScopedData : data;
   const cards = useMemo<SectionCard[]>(() => buildCards(kind, dashboardData, lang, currency), [dashboardData, lang, kind, currency]);
   const rows = useMemo(() => buildRows(kind, dashboardData, lang, currency, t), [dashboardData, lang, kind, currency, t]);
   const insights = useMemo(() => buildInsights(kind, dashboardData, lang, currency, t), [dashboardData, lang, kind, currency, t]);
   const expenseSummaryCards = useMemo<SectionCard[]>(() => {
     const total = expensePeriodTotal;
-    const recurringTotal = expensePeriodExpenses.filter(isRecurringExpense).reduce((sumValue, item) => sumValue + item.amount, 0) + missingScheduledDebtInstallmentsTotal;
-    const dailyAverage = total / expensePeriodDayCount(selectedExpenseRange, expensePeriodExpenses);
-    const byCategory = expensePeriodExpenses.reduce<Record<string, number>>((acc, item) => {
+    const recurringTotal = expenseDisplayRecords
+      .filter(item => isRecurringExpense(item) || isDebtInstallmentExpense(item))
+      .reduce((sumValue, item) => sumValue + item.amount, 0);
+    const dailyAverage = total / expensePeriodDayCount(selectedExpenseRange, expenseDisplayRecords);
+    const byCategory = expenseDisplayRecords.reduce<Record<string, number>>((acc, item) => {
       const key = normalizedExpenseCategory(item);
       acc[key] = (acc[key] || 0) + item.amount;
       return acc;
     }, {});
-    if (missingScheduledDebtInstallmentsTotal > 0) {
-      byCategory.loans = (byCategory.loans || 0) + missingScheduledDebtInstallmentsTotal;
-    }
     const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0];
     const previousTotal = previousExpensePeriodTotal;
     const comparisonDelta = total - previousTotal;
@@ -723,7 +734,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         tone: comparisonDelta > 0 ? '#EF4444' : '#22C55E',
       },
     ];
-  }, [expenseBaseCurrency, expenseDisplayRecords.length, expensePeriod, expensePeriodExpenses, expensePeriodTotal, lang, missingScheduledDebtInstallmentsTotal, previousExpensePeriodTotal, previousExpenseRange, selectedExpenseRange]);
+  }, [expenseBaseCurrency, expenseDisplayRecords, expensePeriod, expensePeriodTotal, lang, previousExpensePeriodTotal, previousExpenseRange, selectedExpenseRange]);
   const selectedGoalCurrency = useMemo(() => getCurrency(goalForm.currency || currency || 'KWD'), [currency, goalForm.currency]);
   const selectedCurrencySymbol = isAr ? selectedGoalCurrency.symbolAr : selectedGoalCurrency.symbolEn;
   const selectedEntryCurrency = useMemo(() => getCurrency(entryForm.currency || currency || 'KWD'), [currency, entryForm.currency]);
@@ -2045,14 +2056,14 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
   if (kind === 'expenses') {
     const visibleExpenses = filteredExpenses.slice(0, visibleCount);
-    const monthlyExpenses = expensePeriodExpenses;
     const monthlyExpenseRecords = expenseDisplayRecords;
+    const monthlyExpenses = monthlyExpenseRecords;
     const monthlyTotal = expensePeriodTotal;
     const recurringTotal = monthlyExpenses
       .filter(item => isRecurringExpense(item) || isDebtInstallmentExpense(item))
-      .reduce((sum, item) => sum + item.amount, 0) + missingScheduledDebtInstallmentsTotal;
+      .reduce((sum, item) => sum + item.amount, 0);
     const monthlySubscriptionsTotal = monthlyExpenses.filter(isMonthlySubscriptionExpense).reduce((sum, item) => sum + item.amount, 0);
-    const debtInstallmentsTotal = actualDebtInstallmentsTotal + missingScheduledDebtInstallmentsTotal;
+    const debtInstallmentsTotal = monthlyExpenses.filter(isDebtInstallmentExpense).reduce((sum, item) => sum + item.amount, 0);
     const fixedCommitmentsTotal = monthlySubscriptionsTotal + debtInstallmentsTotal;
     const expenseNow = new Date();
     const expenseYearOptions = Array.from({ length: 8 }, (_, index) => expenseNow.getFullYear() + 1 - index);
