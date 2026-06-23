@@ -58,8 +58,18 @@ export async function downloadXlsx<T>(filename: string, rows: T[], columns: Expo
   XLSX.writeFile(workbook, filename);
 }
 
-function escapeHtml(value: unknown) {
+function cleanPdfText(value: unknown) {
   return String(value ?? '')
+    .replace(/\u00C2\u00B7/g, ' | ')
+    .replace(/\u00B7/g, ' | ')
+    .replace(/\uFFFD/g, '')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function escapeHtml(value: unknown) {
+  return cleanPdfText(value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -73,9 +83,16 @@ export function printPdf<T>({ title, lang, columns, rows, totals = [], filters =
   if (!report) return false;
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
   const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
-  const bodyRows = rows.map((row) => `
-    <tr>${columns.map((column) => `<td>${escapeHtml(column.value(row))}</td>`).join('')}</tr>
-  `).join('');
+  const generatedAt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date());
+  const noDataLabel = lang === 'ar' ? 'لا توجد بيانات في هذا التقرير.' : lang === 'fr' ? 'Aucune donnée dans ce rapport.' : 'No data in this report.';
+  const filtersLabel = lang === 'ar' ? 'الفلاتر' : lang === 'fr' ? 'Filtres' : 'Filters';
+  const totalsLabel = lang === 'ar' ? 'الملخص' : lang === 'fr' ? 'Résumé' : 'Summary';
+  const rowsLabel = lang === 'ar' ? 'السجلات' : lang === 'fr' ? 'Lignes' : 'Rows';
+  const bodyRows = rows.length > 0
+    ? rows.map((row) => `
+      <tr>${columns.map((column) => `<td>${escapeHtml(column.value(row))}</td>`).join('')}</tr>
+    `).join('')
+    : `<tr><td class="empty-cell" colspan="${Math.max(columns.length, 1)}">${escapeHtml(noDataLabel)}</td></tr>`;
   report.document.write(`
     <!doctype html>
     <html lang="${lang}" dir="${dir}">
@@ -83,33 +100,44 @@ export function printPdf<T>({ title, lang, columns, rows, totals = [], filters =
         <meta charset="utf-8" />
         <title>${escapeHtml(title)}</title>
         <style>
-          body{font-family:Tajawal,Arial,sans-serif;background:#f6f9fc;color:#061B33;margin:0;padding:28px}
-          .page{background:white;border:1px solid #d8e7f7;border-radius:22px;padding:24px}
-          header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;border-bottom:1px solid #d8e7f7;padding-bottom:16px;margin-bottom:18px}
-          h1{margin:0;font-size:26px}.brand{font-weight:950;color:#1D8CFF}.muted{color:#64748B;font-weight:700}
-          .meta,.totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:14px 0}
-          .box{border:1px solid #d8e7f7;background:#f8fbff;border-radius:14px;padding:10px}
-          .box span{display:block;color:#64748B;font-size:12px;font-weight:800}.box strong{display:block;margin-top:5px}
-          table{width:100%;border-collapse:collapse;margin-top:14px}th,td{border-bottom:1px solid #e3edf8;padding:10px;text-align:start;font-size:12px}th{background:#eef7ff;color:#334155}
-          @media print{body{background:white;padding:0}.page{border:0;border-radius:0}}
+          @page{size:A4;margin:12mm}
+          *{box-sizing:border-box}
+          body{font-family:Tajawal,Arial,sans-serif;background:#eef6ff;color:#071a2f;margin:0;padding:24px;line-height:1.65}
+          .page{background:#fff;border:1px solid #d8e7f7;border-radius:26px;overflow:hidden;box-shadow:0 22px 60px rgba(3,18,37,.10)}
+          header{background:linear-gradient(135deg,#061a2e,#0b3558 58%,#18d4d4);color:#fff;padding:28px 30px;display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+          h1{margin:10px 0 0;font-size:30px;line-height:1.25;font-weight:950;letter-spacing:0}
+          .brand{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.10);border-radius:999px;padding:8px 12px;font-size:12px;font-weight:950;color:#9ff8ef}
+          .muted{border:1px solid rgba(255,255,255,.20);background:rgba(6,26,46,.30);border-radius:16px;padding:10px 12px;color:#d9fbff;font-size:12px;font-weight:850;text-align:start;max-width:260px}
+          .content{padding:24px}
+          .section-title{margin:0 0 10px;color:#0b3558;font-size:14px;font-weight:950}
+          .meta,.totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:0 0 18px}
+          .box{border:1px solid #d8e7f7;background:linear-gradient(135deg,#f8fbff,#eefaff);border-radius:16px;padding:13px 14px;min-height:76px}
+          .box span{display:block;color:#64748b;font-size:11px;font-weight:900}.box strong{display:block;margin-top:6px;color:#061a2e;font-size:14px;font-weight:950;overflow-wrap:anywhere}
+          .table-wrap{border:1px solid #d8e7f7;border-radius:18px;overflow:hidden;background:#fff}
+          table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border-bottom:1px solid #e3edf8;padding:11px 12px;text-align:start;font-size:11px;vertical-align:top;overflow-wrap:anywhere}th{background:#eef7ff;color:#0b3558;font-weight:950}.empty-cell{text-align:center;color:#64748b;font-weight:850;padding:26px}
+          footer{display:flex;justify-content:space-between;gap:12px;border-top:1px solid #e3edf8;background:#f8fbff;padding:14px 24px;color:#64748b;font-size:11px;font-weight:850}
+          @media print{body{background:white;padding:0}.page{border:0;border-radius:0;box-shadow:none}header{border-radius:0}.content{padding:18px}footer{padding:12px 18px}}
+          @media(max-width:720px){body{padding:14px}header{display:grid;padding:22px}.content{padding:16px}.meta,.totals{grid-template-columns:1fr}}
         </style>
       </head>
       <body>
         <main class="page">
           <header>
             <div><div class="brand">THE SFM</div><h1>${escapeHtml(title)}</h1></div>
-            <div class="muted">${escapeHtml(text.generatedAt)}: ${escapeHtml(new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()))}</div>
+            <div class="muted">${escapeHtml(text.generatedAt)}: ${escapeHtml(generatedAt)}</div>
           </header>
-          <section class="meta">
-            ${filters.map((item) => `<div class="box"><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong></div>`).join('')}
+          <section class="content">
+            ${filters.length ? `<h2 class="section-title">${escapeHtml(filtersLabel)}</h2><section class="meta">${filters.map((item) => `<div class="box"><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong></div>`).join('')}</section>` : ''}
+            ${totals.length ? `<h2 class="section-title">${escapeHtml(totalsLabel)}</h2><section class="totals">${totals.map((item) => `<div class="box"><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong></div>`).join('')}</section>` : ''}
+            <h2 class="section-title">${escapeHtml(rowsLabel)}</h2>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('')}</tr></thead>
+                <tbody>${bodyRows}</tbody>
+              </table>
+            </div>
           </section>
-          <section class="totals">
-            ${totals.map((item) => `<div class="box"><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong></div>`).join('')}
-          </section>
-          <table>
-            <thead><tr>${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('')}</tr></thead>
-            <tbody>${bodyRows}</tbody>
-          </table>
+          <footer><span>THE SFM</span><span>${escapeHtml(title)}</span></footer>
         </main>
         <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script>
       </body>

@@ -167,11 +167,11 @@ function daysUntil(date: string | null) {
 function suggestCategory(text: string) {
   const normalized = text.toLowerCase();
   if (/rent|lease|إيجار|ايجار/.test(normalized)) return 'rent';
-  if (/salary|payroll|wage|رواتب|راتب/.test(normalized)) return 'payroll';
+  if (/salary|payroll|wage|رواتب|راتب|أجور|اجور/.test(normalized)) return 'payroll';
   if (/marketing|ads|advertising|campaign|تسويق|إعلان|اعلان/.test(normalized)) return 'marketing';
-  if (/software|cloud|hosting|subscription|saas|تقنية|استضافة|اشتراك/.test(normalized)) return 'technology';
-  if (/supplier|vendor|purchase|materials|مورد|توريد|مشتريات/.test(normalized)) return 'suppliers';
-  if (/operation|utilities|maintenance|تشغيل|صيانة/.test(normalized)) return 'operational';
+  if (/software|cloud|hosting|subscription|saas|تقنية|استضافة|اشتراك|برمجيات/.test(normalized)) return 'technology';
+  if (/supplier|vendor|purchase|materials|مورد|توريد|مشتريات|مواد/.test(normalized)) return 'suppliers';
+  if (/operation|utilities|maintenance|تشغيل|صيانة|مرافق|خدمات/.test(normalized)) return 'operational';
   return 'other';
 }
 
@@ -201,7 +201,7 @@ async function getAuthUser(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  // Auth check — only logged-in users
+  // Auth check: only logged-in users.
   const user = await getAuthUser(request);
   if (!user) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });

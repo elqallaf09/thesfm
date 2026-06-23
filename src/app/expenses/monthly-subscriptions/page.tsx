@@ -983,7 +983,7 @@ export default function MonthlySubscriptionsPage() {
           <article>
             <span><Sparkles size={18} /></span>
             <small>{copy.highest}</small>
-            <strong dir="auto">{totals.highest ? `${totals.highest.name} · ${formatMoney(toNumber(totals.highest.amount), totals.highest.currency || currency, locale)}` : '-'}</strong>
+            <strong dir="auto">{totals.highest ? `${totals.highest.name} | ${formatMoney(toNumber(totals.highest.amount), totals.highest.currency || currency, locale)}` : '-'}</strong>
           </article>
         </section>
 

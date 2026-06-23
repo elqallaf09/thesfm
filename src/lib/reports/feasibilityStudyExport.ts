@@ -195,8 +195,18 @@ export function buildFeasibilityStudyExportRow(input: FeasibilityExportInput, la
   };
 }
 
-function escapeHtml(value: unknown) {
+function cleanPdfText(value: unknown) {
   return String(value ?? '')
+    .replace(/\u00C2\u00B7/g, ' | ')
+    .replace(/\u00B7/g, ' | ')
+    .replace(/\uFFFD/g, '')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function escapeHtml(value: unknown) {
+  return cleanPdfText(value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -216,7 +226,14 @@ export function printFeasibilityStudyToPdf(options: {
   const labels = PDF_LABELS[options.lang];
   const dir = options.dir ?? (options.lang === 'ar' ? 'rtl' : 'ltr');
   const localeFont = options.lang === 'ar' ? 'Tajawal, Arial, sans-serif' : 'Inter, Arial, sans-serif';
-  const cards = options.rows.map(row => `
+  const locale = options.lang === 'ar' ? 'ar-KW' : options.lang === 'fr' ? 'fr-FR' : 'en-US';
+  const generatedAtLabel = options.lang === 'ar' ? 'تاريخ الإنشاء' : options.lang === 'fr' ? 'Généré le' : 'Generated at';
+  const emptyLabel = options.lang === 'ar'
+    ? 'لا توجد بيانات دراسة جدوى جاهزة للتصدير.'
+    : options.lang === 'fr'
+      ? 'Aucune donnée de faisabilité prête à exporter.'
+      : 'No feasibility study data is ready to export.';
+  const cards = options.rows.length ? options.rows.map(row => `
     <section class="report-card">
       ${Object.entries(row).map(([key, value]) => `
         <div class="report-item">
@@ -225,7 +242,7 @@ export function printFeasibilityStudyToPdf(options: {
         </div>
       `).join('')}
     </section>
-  `).join('');
+  `).join('') : `<section class="empty-state">${escapeHtml(emptyLabel)}</section>`;
 
   printWindow.document.write(`
     <!doctype html>
@@ -235,22 +252,51 @@ export function printFeasibilityStudyToPdf(options: {
         <title>${escapeHtml(options.title)}</title>
         <style>
           * { box-sizing: border-box; }
+          @page { size: A4; margin: 12mm; }
           body {
             margin: 0;
-            padding: 32px;
-            background: #f8fafc;
-            color: #0f172a;
+            padding: 24px;
+            background: #eef6ff;
+            color: #071a2f;
             font-family: ${localeFont};
+            line-height: 1.65;
+          }
+          .page {
+            overflow: hidden;
+            background: #ffffff;
+            border: 1px solid #d8e7f7;
+            border-radius: 26px;
+            box-shadow: 0 22px 60px rgba(3, 18, 37, .10);
           }
           header {
-            border-bottom: 2px solid #0f2f52;
-            padding-bottom: 16px;
-            margin-bottom: 18px;
+            background: linear-gradient(135deg, #061a2e, #0b3558 58%, #18d4d4);
+            color: #ffffff;
+            padding: 28px 30px;
+          }
+          .brand {
+            display: inline-flex;
+            border: 1px solid rgba(255,255,255,.22);
+            background: rgba(255,255,255,.10);
+            border-radius: 999px;
+            padding: 8px 12px;
+            color: #9ff8ef;
+            font-size: 12px;
+            font-weight: 950;
           }
           h1 {
-            margin: 0;
-            color: #061a2e;
-            font-size: 28px;
+            margin: 12px 0 6px;
+            color: #ffffff;
+            font-size: 30px;
+            line-height: 1.25;
+            font-weight: 950;
+          }
+          .header-meta {
+            color: #d9fbff;
+            font-size: 12px;
+            font-weight: 850;
+          }
+          .content {
+            padding: 24px;
           }
           .report-card {
             display: grid;
@@ -258,15 +304,16 @@ export function printFeasibilityStudyToPdf(options: {
             gap: 12px;
             break-inside: avoid;
             background: #ffffff;
-            border: 1px solid #dbeafe;
+            border: 1px solid #d8e7f7;
             border-radius: 18px;
             padding: 18px;
             margin-bottom: 16px;
           }
           .report-item {
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 12px;
+            border: 1px solid #e3edf8;
+            background: linear-gradient(135deg, #f8fbff, #eefaff);
+            border-radius: 14px;
+            padding: 13px;
             min-height: 72px;
           }
           .report-item span {
@@ -278,14 +325,32 @@ export function printFeasibilityStudyToPdf(options: {
           }
           .report-item strong {
             display: block;
-            color: #0f172a;
+            color: #061a2e;
             font-size: 16px;
             line-height: 1.6;
             overflow-wrap: anywhere;
           }
+          .empty-state {
+            border: 1px solid #d8e7f7;
+            background: linear-gradient(135deg, #f8fbff, #eefaff);
+            border-radius: 18px;
+            padding: 28px;
+            color: #64748b;
+            font-weight: 850;
+            text-align: center;
+          }
+          footer {
+            border-top: 1px solid #e3edf8;
+            background: #f8fbff;
+            padding: 14px 24px;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 850;
+          }
           @media print {
-            body { background: #ffffff; padding: 18px; }
-            .report-card { box-shadow: none; }
+            body { background: #ffffff; padding: 0; }
+            .page { border: 0; border-radius: 0; box-shadow: none; }
+            .content { padding: 18px; }
           }
           @media (max-width: 720px) {
             body { padding: 18px; }
@@ -294,8 +359,15 @@ export function printFeasibilityStudyToPdf(options: {
         </style>
       </head>
       <body>
-        <header><h1>${escapeHtml(options.title)}</h1></header>
-        ${cards}
+        <main class="page">
+          <header>
+            <div class="brand">THE SFM</div>
+            <h1>${escapeHtml(options.title)}</h1>
+            <div class="header-meta">${escapeHtml(generatedAtLabel)}: ${escapeHtml(new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()))}</div>
+          </header>
+          <section class="content">${cards}</section>
+          <footer>THE SFM</footer>
+        </main>
         <script>
           window.setTimeout(function () {
             window.focus();
