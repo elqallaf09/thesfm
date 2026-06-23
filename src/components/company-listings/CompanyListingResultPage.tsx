@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { CheckCircle2, ChevronRight, XCircle } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { ActionButtonLink } from '@/components/company-listings/ActionButtonLink';
 import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
 import { useLanguage } from '@/hooks/useLanguage';
 
@@ -24,10 +25,13 @@ export function CompanyListingResultPage({ type }: ResultPageProps) {
         <p>{isSuccess ? t('company_listing_success_body') : t('company_listing_cancel_body')}</p>
         <div className="result-actions">
           {isSuccess ? <Link className="primary" href="/company-listing/submit">{t('company_listing_submit_title')}</Link> : null}
-          <Link href="/investment-companies" aria-label="العودة إلى صفحة الخدمات">
-            <ChevronRight size={18} />
-            <span>العودة إلى الخدمات</span>
-          </Link>
+          <ActionButtonLink
+            href="/investment-companies"
+            icon={<ChevronRight size={18} />}
+            label="العودة إلى الخدمات"
+            ariaLabel="العودة إلى صفحة الخدمات"
+            variant="secondary"
+          />
         </div>
       </section>
       <style jsx>{`

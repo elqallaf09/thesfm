@@ -27,6 +27,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { ActionButtonLink } from '@/components/company-listings/ActionButtonLink';
 import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
 import { useResolvedImageUrl } from '@/components/company-listings/useResolvedImageUrl';
 import { useAuth } from '@/hooks/useAuth';
@@ -231,10 +232,13 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             <ShieldAlert size={36} />
             <h1>{t('company_listing_error_title')}</h1>
             <p>{error}</p>
-            <Link href={backHref} aria-label="العودة إلى صفحة الخدمات">
-              <ChevronRight size={18} />
-              <span>العودة إلى الخدمات</span>
-            </Link>
+            <ActionButtonLink
+              href={backHref}
+              icon={<ChevronRight size={18} />}
+              label="العودة إلى الخدمات"
+              ariaLabel="العودة إلى صفحة الخدمات"
+              variant="secondary"
+            />
           </section>
         ) : null}
 
@@ -259,9 +263,42 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                 </div>
               </div>
               <div className="hero-actions">
-                {item.website_url ? <a className="primary-action" href={item.website_url} target="_blank" rel="noreferrer"><Globe2 size={17} />زيارة الموقع</a> : null}
-                {item.email ? <a href={`mailto:${item.email}`}><Mail size={17} />تواصل</a> : item.phone ? <a href={`tel:${safeTel(item.phone)}`}><Phone size={17} />تواصل</a> : null}
-                <Link href={backHref} aria-label="العودة إلى صفحة الخدمات"><ArrowRight size={17} />العودة إلى الخدمات</Link>
+                {item.website_url ? (
+                  <ActionButtonLink
+                    href={item.website_url}
+                    icon={<Globe2 size={17} />}
+                    label="زيارة الموقع"
+                    ariaLabel={`زيارة موقع ${item.company_name}`}
+                    variant="primary"
+                    external
+                  />
+                ) : null}
+                {item.email ? (
+                  <ActionButtonLink
+                    href={`mailto:${item.email}`}
+                    icon={<Mail size={17} />}
+                    label="تواصل"
+                    ariaLabel={`تواصل مع ${item.company_name}`}
+                    variant="ghost"
+                    external
+                  />
+                ) : item.phone ? (
+                  <ActionButtonLink
+                    href={`tel:${safeTel(item.phone)}`}
+                    icon={<Phone size={17} />}
+                    label="تواصل"
+                    ariaLabel={`تواصل مع ${item.company_name}`}
+                    variant="ghost"
+                    external
+                  />
+                ) : null}
+                <ActionButtonLink
+                  href={backHref}
+                  icon={<ArrowRight size={17} />}
+                  label="العودة إلى الخدمات"
+                  ariaLabel="العودة إلى صفحة الخدمات"
+                  variant="ghost"
+                />
               </div>
             </section>
 
@@ -559,33 +596,9 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             justify-content: flex-end;
             gap: 10px;
           }
-          .hero-actions a {
-            min-height: 44px;
-            border-radius: 14px;
-            padding: 0 14px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            background: rgba(255, 255, 255, 0.10);
-            color: #EAF6FF;
-            text-decoration: none;
-            font-weight: 950;
-            transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
-          }
-          .hero-actions a:hover,
-          .hero-actions a:focus-visible,
-          .details-state a:hover,
-          .details-state a:focus-visible {
-            outline: none;
-            transform: translateY(-1px);
-            box-shadow: 0 0 0 3px rgba(24, 212, 212, 0.16), 0 16px 30px rgba(0,0,0,.16);
-          }
-          .hero-actions a.primary-action {
-            border: 0;
-            color: #07172A;
-            background: linear-gradient(135deg, #A7F3D0, #22D3EE);
+          .hero-actions :global(.sfm-action-link),
+          .details-state :global(.sfm-action-link) {
+            min-height: 46px;
           }
           .review-warning {
             border: 1px solid rgba(245, 158, 11, 0.26);
@@ -884,7 +897,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             .hero-actions {
               justify-content: stretch;
             }
-            .hero-actions a {
+            .hero-actions :global(.sfm-action-link) {
               flex: 1 1 170px;
             }
           }
@@ -906,6 +919,9 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             .hero-actions {
               display: grid;
               grid-template-columns: 1fr;
+            }
+            .hero-actions :global(.sfm-action-link) {
+              width: 100%;
             }
             .details-grid {
               grid-template-columns: 1fr;
