@@ -177,9 +177,12 @@ export function estimatePayoffDateFromNextPayment(nextPaymentDate: string | null
   const year = Number(match[1]);
   const monthIndex = Number(match[2]) - 1;
   const day = Number(match[3]);
-  const targetMonthIndex = monthIndex + Math.max(0, remainingPaymentsCount - 1);
-  const lastDay = new Date(Date.UTC(year, targetMonthIndex + 1, 0)).getUTCDate();
-  const payoffDate = new Date(Date.UTC(year, targetMonthIndex, Math.min(day, lastDay)));
+  const monthsToAdd = Math.ceil(remainingPaymentsCount);
+  const targetMonthIndex = monthIndex + monthsToAdd;
+  const targetYear = year + Math.floor(targetMonthIndex / 12);
+  const normalizedMonth = ((targetMonthIndex % 12) + 12) % 12;
+  const lastDay = new Date(Date.UTC(targetYear, normalizedMonth + 1, 0)).getUTCDate();
+  const payoffDate = new Date(Date.UTC(targetYear, normalizedMonth, Math.min(day, lastDay)));
   return payoffDate.toISOString().slice(0, 10);
 }
 
