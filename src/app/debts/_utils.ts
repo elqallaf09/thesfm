@@ -169,20 +169,24 @@ export function estimatePayoffMonths(debt: DebtRow) {
   return null;
 }
 
-export function estimatePayoffDate(debt: DebtRow): string | null {
-  const months = estimatePayoffMonths(debt);
-  if (months === null || months === 0) return null;
-  const nextPaymentDate = debtSchedule(debt).nextPaymentDate || debtFirstPaymentDate(debt);
+export function estimatePayoffDateFromNextPayment(nextPaymentDate: string | null | undefined, remainingPaymentsCount: number | null) {
+  if (remainingPaymentsCount === null || remainingPaymentsCount <= 0) return null;
   const match = String(nextPaymentDate || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return null;
 
   const year = Number(match[1]);
   const monthIndex = Number(match[2]) - 1;
   const day = Number(match[3]);
-  const targetMonthIndex = monthIndex + Math.max(0, months - 1);
+  const targetMonthIndex = monthIndex + Math.max(0, remainingPaymentsCount - 1);
   const lastDay = new Date(Date.UTC(year, targetMonthIndex + 1, 0)).getUTCDate();
   const payoffDate = new Date(Date.UTC(year, targetMonthIndex, Math.min(day, lastDay)));
   return payoffDate.toISOString().slice(0, 10);
+}
+
+export function estimatePayoffDate(debt: DebtRow): string | null {
+  const months = estimatePayoffMonths(debt);
+  const nextPaymentDate = debtSchedule(debt).nextPaymentDate || debtFirstPaymentDate(debt);
+  return estimatePayoffDateFromNextPayment(nextPaymentDate, months);
 }
 
 export type StrategyEntry = { debt: DebtRow; payoffMonth: number; interestPaid: number };

@@ -33,7 +33,7 @@ import { useCurrency } from '@/lib/useCurrency';
 
 import type { Lang, DebtRow, DebtPaymentRow, DebtForm, DebtStatus, InterestType } from './_types';
 import { TEXT } from './_text';
-import { SUPPORTED_CURRENCIES, DEFAULT_FORM, createDefaultForm, tr as trFn, debtPaymentMonth, deriveFirstPaymentDate, toNumber, remainingForDebt, optionalNumber, cleanNumericInput, formatDateToYYYYMMDD, mapInterestTypeToDb, mapDebtStatusToDb, clampPaymentDay, addOneDebtMonth, debtFirstPaymentDate, debtSchedule, formatDate, monthlyInterestAmount, calculateDebtPayment, estimatePayoffMonths, estimatePayoffDate, simulatePayoffStrategy, payloadFromForm, validateDebtForm, debtSaveErrorMessage, safeDebtSaveErrorDetails } from './_utils';
+import { SUPPORTED_CURRENCIES, DEFAULT_FORM, createDefaultForm, tr as trFn, debtPaymentMonth, deriveFirstPaymentDate, toNumber, remainingForDebt, optionalNumber, cleanNumericInput, formatDateToYYYYMMDD, mapInterestTypeToDb, mapDebtStatusToDb, clampPaymentDay, addOneDebtMonth, debtFirstPaymentDate, debtSchedule, formatDate, monthlyInterestAmount, calculateDebtPayment, estimatePayoffMonths, estimatePayoffDateFromNextPayment, simulatePayoffStrategy, payloadFromForm, validateDebtForm, debtSaveErrorMessage, safeDebtSaveErrorDetails } from './_utils';
 import { SummaryCard, DebtMetric, InsightRow, FormSectionTitle, RequiredMark, DebtInput, MoneyInput, SuffixInput, PayoffStrategiesPanel, DebtStyles } from './_components';
 
 export default function DebtsPage() {
@@ -626,7 +626,7 @@ export default function DebtsPage() {
                   const isDue = nextPayment === new Date().toISOString().slice(0, 10);
                   const isExpanded = expandedDebtIds.has(debt.id);
                   const remainingPaymentsCount = estimatePayoffMonths(displayDebt);
-                  const payoffDate = estimatePayoffDate(displayDebt);
+                  const payoffDate = estimatePayoffDateFromNextPayment(nextPayment, remainingPaymentsCount);
                   return (
                     <article className={`debt-card ${isExpanded ? 'expanded' : ''}`} key={debt.id}>
                       <div className="debt-card-top">
