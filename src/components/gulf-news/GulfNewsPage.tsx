@@ -1,7 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Newspaper, RefreshCcw, Search } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowUpDown,
+  BarChart3,
+  Clock3,
+  Filter,
+  LayoutGrid,
+  List,
+  Newspaper,
+  RefreshCcw,
+  Search,
+  X,
+} from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import { GULF_MARKETS, getGulfMarket, type GulfMarketId } from '@/lib/gulf/gulfMarkets';
@@ -62,12 +74,56 @@ function formatCountdown(totalSeconds: number) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
+const INITIAL_NEWS_LIMIT = 12;
+
+type GulfNewsSort = 'recent' | 'oldest' | 'source';
+type GulfNewsTimeRange = 'all' | 'hour' | 'today' | '7d' | '30d';
+type GulfNewsViewMode = 'grid' | 'list';
+
+function normalizeNewsTitle(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function dedupeNewsItems(newsItems: GulfNewsItem[]) {
+  const seen = new Set<string>();
+  return newsItems.filter(item => {
+    const urlKey = item.url.trim().toLowerCase();
+    const titleKey = `${item.market}:${normalizeNewsTitle(item.title || item.headline)}`;
+    const key = urlKey || titleKey;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    seen.add(titleKey);
+    return true;
+  });
+}
+
+function isWithinRange(value: string, range: GulfNewsTimeRange) {
+  if (range === 'all') return true;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const now = Date.now();
+  const elapsed = now - date.getTime();
+  if (range === 'hour') return elapsed <= 60 * 60 * 1000;
+  if (range === 'today') return elapsed <= 24 * 60 * 60 * 1000;
+  if (range === '7d') return elapsed <= 7 * 24 * 60 * 60 * 1000;
+  return elapsed <= 30 * 24 * 60 * 60 * 1000;
+}
+
 export function GulfNewsPage() {
   const { dir, lang, t } = useLanguage();
   const [items, setItems] = useState<GulfNewsItem[]>([]);
   const [marketData, setMarketData] = useState<Partial<Record<GulfMarketId, GulfMarketData>>>({});
   const [selectedMarket, setSelectedMarket] = useState<GulfMarketId>('saudi');
   const [query, setQuery] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [timeRange, setTimeRange] = useState<GulfNewsTimeRange>('all');
+  const [sortBy, setSortBy] = useState<GulfNewsSort>('recent');
+  const [viewMode, setViewMode] = useState<GulfNewsViewMode>('grid');
+  const [visibleCount, setVisibleCount] = useState(INITIAL_NEWS_LIMIT);
   const [lastUpdated, setLastUpdated] = useState('');
   const [lastLoadedAt, setLastLoadedAt] = useState(Date.now());
   const [countdown, setCountdown] = useState(300);
@@ -75,6 +131,90 @@ export function GulfNewsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const locale = localeFor(lang);
+  const ui = useMemo(() => {
+    if (lang === 'en') {
+      return {
+        allSources: 'All sources',
+        allTime: 'All time',
+        lastHour: 'Last hour',
+        today: 'Today',
+        last7Days: 'Last 7 days',
+        last30Days: 'Last 30 days',
+        source: 'Source',
+        timeRange: 'Time range',
+        clearFilters: 'Clear filters',
+        resultsTitle: 'Available market stories',
+        featuredTitle: 'Latest highlighted stories',
+        featuredSubtitle: 'A compact lead area based on the newest matching real news.',
+        resultCount: (count: number) => `${count} ${count === 1 ? 'story' : 'stories'}`,
+        sortOldest: 'Oldest',
+        sortSource: 'Source name',
+        gridView: 'Grid',
+        listView: 'List',
+        loadMore: 'Load more news',
+        activeFilters: 'Active filters',
+        marketPulse: 'Gulf market pulse',
+        risingMarkets: 'Rising markets',
+        fallingMarkets: 'Falling markets',
+        availableIndexes: 'Available indexes',
+        strongestMarket: 'Strongest market',
+      };
+    }
+    if (lang === 'fr') {
+      return {
+        allSources: 'Toutes les sources',
+        allTime: 'Toute la période',
+        lastHour: 'Dernière heure',
+        today: 'Aujourd’hui',
+        last7Days: '7 derniers jours',
+        last30Days: '30 derniers jours',
+        source: 'Source',
+        timeRange: 'Période',
+        clearFilters: 'Effacer les filtres',
+        resultsTitle: 'Actualités disponibles',
+        featuredTitle: 'Actualités récentes mises en avant',
+        featuredSubtitle: 'Une zone de lecture basée sur les dernières actualités réelles.',
+        resultCount: (count: number) => `${count} actualité${count > 1 ? 's' : ''}`,
+        sortOldest: 'Les plus anciennes',
+        sortSource: 'Nom de source',
+        gridView: 'Grille',
+        listView: 'Liste',
+        loadMore: 'Afficher plus',
+        activeFilters: 'Filtres actifs',
+        marketPulse: 'Synthèse des marchés du Golfe',
+        risingMarkets: 'Marchés en hausse',
+        fallingMarkets: 'Marchés en baisse',
+        availableIndexes: 'Indices disponibles',
+        strongestMarket: 'Marché le plus fort',
+      };
+    }
+    return {
+      allSources: 'كل المصادر',
+      allTime: 'كل الفترات',
+      lastHour: 'آخر ساعة',
+      today: 'اليوم',
+      last7Days: 'آخر 7 أيام',
+      last30Days: 'آخر 30 يوما',
+      source: 'مصدر الخبر',
+      timeRange: 'الفترة الزمنية',
+      clearFilters: 'مسح الفلاتر',
+      resultsTitle: 'الأخبار المتاحة',
+      featuredTitle: 'أبرز الأخبار الحديثة',
+      featuredSubtitle: 'منطقة مختصرة تعرض أحدث الأخبار المطابقة من البيانات الفعلية.',
+      resultCount: (count: number) => `${count} ${count === 1 ? 'خبر' : 'خبر'}`,
+      sortOldest: 'الأقدم',
+      sortSource: 'اسم المصدر',
+      gridView: 'شبكة',
+      listView: 'قائمة',
+      loadMore: 'عرض المزيد من الأخبار',
+      activeFilters: 'الفلاتر النشطة',
+      marketPulse: 'ملخص الأسواق الخليجية اليوم',
+      risingMarkets: 'أسواق مرتفعة',
+      fallingMarkets: 'أسواق منخفضة',
+      availableIndexes: 'مؤشرات متاحة',
+      strongestMarket: 'أقوى سوق',
+    };
+  }, [lang]);
 
   const load = useCallback(async (showLoader = true) => {
     if (showLoader) setLoading(true);
@@ -127,18 +267,81 @@ export function GulfNewsPage() {
     qatar: t('gulf_news_market_qatar'),
   }), [t]);
 
-  const visibleItems = useMemo(() => {
+  useEffect(() => {
+    setVisibleCount(INITIAL_NEWS_LIMIT);
+  }, [selectedMarket, query, sourceFilter, timeRange, sortBy]);
+
+  useEffect(() => {
+    setSourceFilter('all');
+  }, [selectedMarket]);
+
+  const dedupedItems = useMemo(() => dedupeNewsItems(items), [items]);
+
+  const selectedMarketItems = useMemo(() => (
+    dedupedItems.filter(item => item.market === selectedMarket)
+  ), [dedupedItems, selectedMarket]);
+
+  const sourceOptions = useMemo(() => (
+    Array.from(new Set(selectedMarketItems.map(item => item.source).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+  ), [selectedMarketItems]);
+
+  const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return items
-      .filter(item => item.market === selectedMarket)
+    const sorted = selectedMarketItems
       .filter(item => !needle
         || item.title.toLowerCase().includes(needle)
         || item.summary.toLowerCase().includes(needle)
         || (item.titleOriginal ?? '').toLowerCase().includes(needle)
         || (item.summaryOriginal ?? '').toLowerCase().includes(needle)
-        || item.source.toLowerCase().includes(needle))
-      .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-  }, [items, query, selectedMarket]);
+        || item.source.toLowerCase().includes(needle)
+        || marketLabels[item.market].toLowerCase().includes(needle))
+      .filter(item => sourceFilter === 'all' || item.source === sourceFilter)
+      .filter(item => isWithinRange(item.publishedAt, timeRange));
+
+    return [...sorted].sort((a, b) => {
+      if (sortBy === 'oldest') return new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime();
+      if (sortBy === 'source') return a.source.localeCompare(b.source) || new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+    });
+  }, [marketLabels, query, selectedMarketItems, sortBy, sourceFilter, timeRange]);
+
+  const featuredItems = useMemo(() => filteredItems.slice(0, Math.min(3, filteredItems.length)), [filteredItems]);
+  const featuredIds = useMemo(() => new Set(featuredItems.map(item => item.id)), [featuredItems]);
+  const regularItems = useMemo(() => filteredItems.filter(item => !featuredIds.has(item.id)), [featuredIds, filteredItems]);
+  const visibleItems = useMemo(() => regularItems.slice(0, visibleCount), [regularItems, visibleCount]);
+
+  const activeFilters = useMemo(() => {
+    const filters: Array<{ key: string; label: string; onClear: () => void }> = [];
+    if (query.trim()) filters.push({ key: 'query', label: query.trim(), onClear: () => setQuery('') });
+    if (sourceFilter !== 'all') filters.push({ key: 'source', label: sourceFilter, onClear: () => setSourceFilter('all') });
+    if (timeRange !== 'all') {
+      const timeLabel = {
+        hour: ui.lastHour,
+        today: ui.today,
+        '7d': ui.last7Days,
+        '30d': ui.last30Days,
+        all: ui.allTime,
+      }[timeRange];
+      filters.push({ key: 'time', label: timeLabel, onClear: () => setTimeRange('all') });
+    }
+    return filters;
+  }, [query, sourceFilter, timeRange, ui]);
+
+  const marketPulse = useMemo(() => {
+    const availableMarkets = GULF_MARKETS
+      .map(market => ({ market, data: marketData[market.id] }))
+      .filter(entry => entry.data?.value !== null && entry.data?.value !== undefined);
+    const rising = availableMarkets.filter(entry => (entry.data?.changePercent ?? 0) > 0);
+    const falling = availableMarkets.filter(entry => (entry.data?.changePercent ?? 0) < 0);
+    const strongest = [...availableMarkets].sort((a, b) => (b.data?.changePercent ?? -Infinity) - (a.data?.changePercent ?? -Infinity))[0];
+    return {
+      availableCount: availableMarkets.length,
+      risingCount: rising.length,
+      fallingCount: falling.length,
+      strongestLabel: strongest ? marketLabels[strongest.market.id] : t('gulf_news_unavailable'),
+      strongestChange: strongest?.data?.changePercent ?? null,
+    };
+  }, [marketData, marketLabels, t]);
 
   const formatDateTime = (value: string) => {
     const date = new Date(value);
@@ -227,6 +430,37 @@ export function GulfNewsPage() {
           formatPercent={formatPercent}
         />
 
+        <section className="gulf-news-market-pulse" aria-label={ui.marketPulse}>
+          <div className="gulf-news-section-heading compact">
+            <span>
+              <BarChart3 size={18} />
+            </span>
+            <div>
+              <h2>{ui.marketPulse}</h2>
+              <p>{t('gulf_news_delayed_15')}</p>
+            </div>
+          </div>
+          <div className="gulf-news-pulse-grid">
+            <div>
+              <span>{ui.risingMarkets}</span>
+              <strong>{marketPulse.risingCount}</strong>
+            </div>
+            <div>
+              <span>{ui.fallingMarkets}</span>
+              <strong>{marketPulse.fallingCount}</strong>
+            </div>
+            <div>
+              <span>{ui.availableIndexes}</span>
+              <strong>{marketPulse.availableCount}</strong>
+            </div>
+            <div>
+              <span>{ui.strongestMarket}</span>
+              <strong>{marketPulse.strongestLabel}</strong>
+              <em dir="ltr">{formatPercent(marketPulse.strongestChange)}</em>
+            </div>
+          </div>
+        </section>
+
         <section className="gulf-news-content-layout">
           <div className="gulf-news-news-column">
             <section className="gulf-news-controls">
@@ -239,6 +473,56 @@ export function GulfNewsPage() {
                   aria-label={searchPlaceholder}
                 />
               </label>
+              <div className="gulf-news-filter-row">
+                <label>
+                  <span>{ui.source}</span>
+                  <select value={sourceFilter} onChange={event => setSourceFilter(event.target.value)}>
+                    <option value="all">{ui.allSources}</option>
+                    {sourceOptions.map(source => (
+                      <option value={source} key={source}>{source}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>{ui.timeRange}</span>
+                  <select value={timeRange} onChange={event => setTimeRange(event.target.value as GulfNewsTimeRange)}>
+                    <option value="all">{ui.allTime}</option>
+                    <option value="hour">{ui.lastHour}</option>
+                    <option value="today">{ui.today}</option>
+                    <option value="7d">{ui.last7Days}</option>
+                    <option value="30d">{ui.last30Days}</option>
+                  </select>
+                </label>
+                <label>
+                  <span>{t('gulf_news_sort')}</span>
+                  <select value={sortBy} onChange={event => setSortBy(event.target.value as GulfNewsSort)}>
+                    <option value="recent">{t('gulf_news_sort_recent')}</option>
+                    <option value="oldest">{ui.sortOldest}</option>
+                    <option value="source">{ui.sortSource}</option>
+                  </select>
+                </label>
+              </div>
+              {activeFilters.length > 0 && (
+                <div className="gulf-news-active-filters" aria-label={ui.activeFilters}>
+                  <span>
+                    <Filter size={14} />
+                    {ui.activeFilters}
+                  </span>
+                  {activeFilters.map(filter => (
+                    <button type="button" key={filter.key} onClick={filter.onClear}>
+                      {filter.label}
+                      <X size={13} />
+                    </button>
+                  ))}
+                  <button type="button" className="clear" onClick={() => {
+                    setQuery('');
+                    setSourceFilter('all');
+                    setTimeRange('all');
+                  }}>
+                    {ui.clearFilters}
+                  </button>
+                </div>
+              )}
             </section>
 
             {loading ? (
@@ -253,33 +537,106 @@ export function GulfNewsPage() {
                   {t('market_retry')}
                 </button>
               </section>
-            ) : visibleItems.length === 0 ? (
+            ) : filteredItems.length === 0 ? (
               <section className="gulf-news-state">
                 <Newspaper size={24} />
                 <strong>{t('gulf_news_empty')}</strong>
                 <p>{t('gulf_news_empty_hint')}</p>
+                {activeFilters.length > 0 && (
+                  <button type="button" onClick={() => {
+                    setQuery('');
+                    setSourceFilter('all');
+                    setTimeRange('all');
+                  }}>
+                    <X size={16} />
+                    {ui.clearFilters}
+                  </button>
+                )}
               </section>
             ) : (
-              <section className="gulf-news-grid" aria-label={t('gulf_news_title')}>
-                {visibleItems.map(item => {
-                  const market = getGulfMarket(item.market);
-                  return (
-                    <GulfNewsCard
-                      key={item.id}
-                      item={item}
-                      marketBadge={`${market.code} ${marketLabels[item.market]}`}
-                      labels={{
-                        source: t('gulf_news_source'),
-                        published: t('gulf_news_published'),
-                        openArticle: t('gulf_news_open_article'),
-                        translated: t('news_translated_badge'),
-                        originalLanguage: t('news_original_language_badge'),
-                      }}
-                      formatDateTime={formatDateTime}
-                    />
-                  );
-                })}
-              </section>
+              <>
+                <section className="gulf-news-featured" aria-label={ui.featuredTitle}>
+                  <div className="gulf-news-section-heading">
+                    <span>
+                      <Newspaper size={18} />
+                    </span>
+                    <div>
+                      <h2>{ui.featuredTitle}</h2>
+                      <p>{ui.featuredSubtitle}</p>
+                    </div>
+                  </div>
+                  <div className="gulf-news-featured-grid">
+                    {featuredItems.map((item, index) => {
+                      const market = getGulfMarket(item.market);
+                      return (
+                        <GulfNewsCard
+                          key={item.id}
+                          item={item}
+                          variant={index === 0 ? 'featured' : 'compact'}
+                          marketBadge={`${market.code} ${marketLabels[item.market]}`}
+                          labels={{
+                            source: t('gulf_news_source'),
+                            published: t('gulf_news_published'),
+                            openArticle: t('gulf_news_open_article'),
+                            translated: t('news_translated_badge'),
+                            originalLanguage: t('news_original_language_badge'),
+                          }}
+                          formatDateTime={formatDateTime}
+                        />
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <section className="gulf-news-results-toolbar">
+                  <div>
+                    <span>
+                      <Clock3 size={16} />
+                      {ui.resultCount(filteredItems.length)}
+                    </span>
+                    <h2>{ui.resultsTitle}</h2>
+                  </div>
+                  <div className="gulf-news-view-toggle" role="group" aria-label="View mode">
+                    <button type="button" className={viewMode === 'grid' ? 'active' : ''} aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>
+                      <LayoutGrid size={15} />
+                      {ui.gridView}
+                    </button>
+                    <button type="button" className={viewMode === 'list' ? 'active' : ''} aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>
+                      <List size={15} />
+                      {ui.listView}
+                    </button>
+                  </div>
+                </section>
+
+                <section className={`gulf-news-grid ${viewMode}`} aria-label={t('gulf_news_title')}>
+                  {visibleItems.map(item => {
+                    const market = getGulfMarket(item.market);
+                    return (
+                      <GulfNewsCard
+                        key={item.id}
+                        item={item}
+                        variant={viewMode === 'list' ? 'compact' : 'standard'}
+                        marketBadge={`${market.code} ${marketLabels[item.market]}`}
+                        labels={{
+                          source: t('gulf_news_source'),
+                          published: t('gulf_news_published'),
+                          openArticle: t('gulf_news_open_article'),
+                          translated: t('news_translated_badge'),
+                          originalLanguage: t('news_original_language_badge'),
+                        }}
+                        formatDateTime={formatDateTime}
+                      />
+                    );
+                  })}
+                </section>
+
+                {visibleCount < regularItems.length && (
+                  <button type="button" className="gulf-news-load-more" onClick={() => setVisibleCount(count => count + INITIAL_NEWS_LIMIT)}>
+                    <ArrowUpDown size={16} />
+                    {ui.loadMore}
+                  </button>
+                )}
+              </>
             )}
 
             <p className="gulf-news-disclaimer">{t('gulf_news_disclaimer')}</p>
@@ -370,6 +727,80 @@ export function GulfNewsPage() {
         @media(max-width:1024px){.gulf-news-content-layout{grid-template-columns:1fr}.gulf-news-side-panel{position:relative;top:auto;order:-1}}
         @media(max-width:1024px){.gulf-news-main{margin-inline-start:0;padding-top:92px}.gulf-news-header{align-items:flex-start}.gulf-news-grid{grid-template-columns:1fr}}
         @media(max-width:720px){.gulf-news-main{padding-inline:14px}.gulf-news-header{display:grid}.gulf-news-header-actions{justify-content:flex-start}.gulf-news-title-icon{width:50px;height:50px}.gulf-news-header h1{font-size:29px}.gulf-news-exchange-grid,.gulf-news-summary{grid-template-columns:1fr}.gulf-news-summary-market{justify-items:start;min-width:0}.gulf-news-summary-market p{text-align:start}.gulf-news-card,.gulf-news-search{border-radius:18px}.gulf-news-meta{display:grid;gap:8px}.gulf-ticker-strip{margin-inline:-2px}.gulf-ticker-viewport{overflow-x:auto;scrollbar-width:thin;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}.gulf-ticker-item span{max-width:210px}}
+        .gulf-news-main{padding:24px clamp(16px,2vw,32px) 40px;gap:20px}
+        @media(min-width:1025px){[dir="rtl"].gulf-news-shell .gulf-news-main{padding-right:calc(var(--sidebar-w,230px) + 32px);padding-left:32px}[dir="ltr"].gulf-news-shell .gulf-news-main{padding-left:calc(var(--sidebar-w,230px) + 32px);padding-right:32px}.gulf-news-main>*{max-width:1500px}}
+        .gulf-news-header{position:relative;overflow:hidden;padding:24px;border:1px solid var(--gulf-border);border-radius:24px;background:linear-gradient(135deg,#071C31 0%,#0B2F44 58%,rgba(47,214,192,.28) 100%);box-shadow:0 20px 54px rgba(3,18,37,.14)}
+        .gulf-news-header:before{content:"";position:absolute;inset-inline-start:5%;top:-70px;width:220px;height:220px;border-radius:50%;background:rgba(47,214,192,.18);filter:blur(32px);pointer-events:none}
+        .gulf-news-header h1{color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.12)}
+        .gulf-news-header p{color:rgba(232,244,255,.78)}
+        .gulf-news-title-row,.gulf-news-header-actions{position:relative;z-index:1}
+        .gulf-news-icon-btn{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.18);color:#fff}
+        .gulf-news-status-bar{border-radius:16px;padding:12px 16px;justify-content:space-between}
+        .gulf-news-exchange-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:14px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+        .gulf-news-exchange-grid button{min-width:180px;min-height:104px;padding:14px;border-radius:18px;box-shadow:0 14px 34px rgba(3,18,37,.08)}
+        .gulf-news-exchange-code{width:48px;height:48px;border-radius:15px;font-size:17px}
+        .gulf-news-exchange-name{font-size:14px}
+        .gulf-news-exchange-value{font-size:15px}
+        .gulf-news-summary{border-radius:22px;padding:18px 20px;box-shadow:0 16px 40px rgba(3,18,37,.08)}
+        .gulf-news-market-pulse{display:grid;grid-template-columns:minmax(240px,.65fr) 1fr;gap:16px;align-items:stretch;border:1px solid var(--gulf-border);border-radius:22px;background:linear-gradient(180deg,var(--gulf-panel),var(--gulf-panel-soft));padding:18px;box-shadow:0 16px 40px rgba(3,18,37,.08)}
+        .gulf-news-section-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;min-width:0}
+        .gulf-news-section-heading.compact{justify-content:flex-start}
+        .gulf-news-section-heading>span{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:rgba(47,214,192,.12);border:1px solid rgba(47,214,192,.24);color:var(--gulf-accent);flex:0 0 auto}
+        .gulf-news-section-heading h2{margin:0;color:var(--gulf-text);font-size:20px;font-weight:950;line-height:1.25}
+        .gulf-news-section-heading p{margin:5px 0 0;color:var(--gulf-muted);font-size:13px;font-weight:800;line-height:1.55}
+        .gulf-news-pulse-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+        .gulf-news-pulse-grid div{min-width:0;border:1px solid var(--gulf-border);border-radius:16px;background:rgba(255,255,255,.46);padding:14px;display:grid;gap:5px}
+        .dark .gulf-news-pulse-grid div{background:rgba(255,255,255,.035)}
+        .gulf-news-pulse-grid span{color:var(--gulf-muted);font-size:12px;font-weight:900}
+        .gulf-news-pulse-grid strong{color:var(--gulf-text);font-size:22px;font-weight:950;line-height:1.15}
+        .gulf-news-pulse-grid em{font-style:normal;color:var(--gulf-accent);font-size:12px;font-weight:950}
+        .gulf-news-content-layout{grid-template-columns:minmax(0,1fr) 380px;gap:24px}
+        .gulf-news-side-panel{top:112px}
+        .gulf-news-controls{background:linear-gradient(180deg,var(--gulf-panel),var(--gulf-panel-soft));border:1px solid var(--gulf-border);border-radius:22px;padding:16px;box-shadow:0 16px 40px rgba(3,18,37,.08)}
+        .gulf-news-search{min-height:52px;border-radius:16px;box-shadow:none;background:rgba(255,255,255,.68)}
+        .dark .gulf-news-search{background:rgba(255,255,255,.04)}
+        .gulf-news-filter-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+        .gulf-news-filter-row label{display:grid;gap:7px;min-width:0;color:var(--gulf-muted);font-size:12px;font-weight:950}
+        .gulf-news-filter-row select{width:100%;min-height:46px;border:1px solid var(--gulf-border);border-radius:14px;background:rgba(255,255,255,.72);color:var(--gulf-text);font:900 13px Tajawal,Arial,sans-serif;padding-inline:12px;outline:none}
+        .dark .gulf-news-filter-row select{background:rgba(255,255,255,.04)}
+        .gulf-news-filter-row select:focus-visible{border-color:rgba(47,214,192,.62);box-shadow:0 0 0 4px rgba(47,214,192,.10)}
+        .gulf-news-active-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--gulf-muted);font-size:12px;font-weight:900}
+        .gulf-news-active-filters>span,.gulf-news-active-filters button{min-height:34px;display:inline-flex;align-items:center;gap:6px;border-radius:999px;border:1px solid var(--gulf-border);background:rgba(255,255,255,.58);color:var(--gulf-text);padding:0 11px;font:900 12px Tajawal,Arial,sans-serif}
+        .dark .gulf-news-active-filters>span,.dark .gulf-news-active-filters button{background:rgba(255,255,255,.04)}
+        .gulf-news-active-filters button{cursor:pointer}
+        .gulf-news-active-filters button:hover,.gulf-news-active-filters button:focus-visible{outline:none;border-color:rgba(47,214,192,.48);color:var(--gulf-accent)}
+        .gulf-news-active-filters button.clear{background:rgba(47,214,192,.12);color:var(--gulf-accent);border-color:rgba(47,214,192,.28)}
+        .gulf-news-featured{display:grid;gap:14px}
+        .gulf-news-featured-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(260px,.9fr);gap:16px;align-items:stretch}
+        .gulf-news-featured-grid .gulf-news-card.featured{grid-row:span 2}
+        .gulf-news-results-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid var(--gulf-border);border-radius:20px;background:linear-gradient(180deg,var(--gulf-panel),var(--gulf-panel-soft));padding:14px 16px;box-shadow:0 14px 34px rgba(3,18,37,.06)}
+        .gulf-news-results-toolbar h2{margin:3px 0 0;color:var(--gulf-text);font-size:20px;font-weight:950}
+        .gulf-news-results-toolbar span{display:inline-flex;align-items:center;gap:6px;color:var(--gulf-muted);font-size:12px;font-weight:950}
+        .gulf-news-view-toggle{display:flex;align-items:center;gap:6px;border:1px solid var(--gulf-border);background:rgba(142,166,195,.08);padding:5px;border-radius:999px}
+        .gulf-news-view-toggle button{min-height:36px;border:0;border-radius:999px;background:transparent;color:var(--gulf-muted);display:inline-flex;align-items:center;gap:6px;padding:0 11px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}
+        .gulf-news-view-toggle button.active{background:var(--gulf-accent);color:#061A2E}
+        .gulf-news-view-toggle button:focus-visible{outline:2px solid rgba(47,214,192,.66);outline-offset:2px}
+        .gulf-news-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+        .gulf-news-grid.list{grid-template-columns:1fr}
+        .gulf-news-card{min-height:100%;padding:18px;border-radius:20px;box-shadow:0 16px 40px rgba(3,18,37,.09)}
+        .gulf-news-card.featured{padding:22px;background:linear-gradient(135deg,var(--gulf-panel) 0%,var(--gulf-panel-soft) 55%,rgba(47,214,192,.13) 100%);border-color:rgba(47,214,192,.30)}
+        .gulf-news-card.compact{box-shadow:0 12px 30px rgba(3,18,37,.07)}
+        .gulf-news-card-body{display:grid;gap:9px;min-width:0}
+        .gulf-news-card-kicker{display:inline-flex;align-items:center;gap:6px;width:max-content;max-width:100%;color:var(--gulf-muted);font-size:12px;font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .gulf-news-card.featured h2{font-size:24px;line-height:1.35;-webkit-line-clamp:3}
+        .gulf-news-card.featured p{-webkit-line-clamp:4;font-size:14px}
+        .gulf-news-grid.list .gulf-news-card{grid-template-columns:minmax(0,1fr) auto;align-items:center}
+        .gulf-news-grid.list .gulf-news-card-top{grid-column:1 / -1}
+        .gulf-news-grid.list .gulf-news-meta{border-top:0;padding-top:0;min-width:220px;justify-content:end}
+        .gulf-news-meta{gap:12px}
+        .gulf-news-read-link{min-height:38px;border-radius:999px;border:1px solid rgba(47,214,192,.28);background:rgba(47,214,192,.12);color:var(--gulf-accent)!important;padding:0 12px;font-weight:950;white-space:nowrap}
+        .gulf-news-read-link:hover,.gulf-news-read-link:focus-visible{background:var(--gulf-accent);color:#061A2E!important}
+        .gulf-news-load-more{justify-self:center;min-height:46px;border:1px solid rgba(47,214,192,.34);border-radius:999px;background:linear-gradient(135deg,#1D8CFF,var(--gulf-accent));color:#061A2E;display:inline-flex;align-items:center;gap:8px;padding:0 18px;font:950 13px Tajawal,Arial,sans-serif;cursor:pointer;box-shadow:0 14px 34px rgba(29,140,255,.18)}
+        .gulf-news-load-more:hover,.gulf-news-load-more:focus-visible{outline:none;transform:translateY(-1px);box-shadow:0 18px 42px rgba(29,140,255,.24)}
+        .gulf-news-state{padding:46px 20px}
+        @media(max-width:1280px){.gulf-news-content-layout{grid-template-columns:1fr}.gulf-news-side-panel{position:relative;top:auto;order:-1}.gulf-news-exchange-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.gulf-news-market-pulse{grid-template-columns:1fr}}
+        @media(max-width:900px){.gulf-news-featured-grid,.gulf-news-grid,.gulf-news-grid.list .gulf-news-card{grid-template-columns:1fr}.gulf-news-filter-row{grid-template-columns:1fr}.gulf-news-results-toolbar{display:grid}.gulf-news-view-toggle{width:max-content;max-width:100%;overflow-x:auto}.gulf-news-pulse-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.gulf-news-grid.list .gulf-news-meta{min-width:0;justify-content:space-between;border-top:1px solid var(--gulf-border);padding-top:13px}.gulf-news-card.featured h2{font-size:20px}}
+        @media(max-width:720px){.gulf-news-main{padding-top:92px}.gulf-news-header{padding:18px;border-radius:20px}.gulf-news-status-bar{justify-content:flex-start}.gulf-news-exchange-grid{display:flex;overflow-x:auto}.gulf-news-exchange-grid button{min-width:176px}.gulf-news-pulse-grid{grid-template-columns:1fr}.gulf-news-summary{padding:16px}.gulf-news-results-toolbar h2{font-size:18px}.gulf-news-card h2{font-size:17px}.gulf-news-meta{display:grid}.gulf-news-read-link{justify-content:center}}
         @media(prefers-reduced-motion:reduce){.gulf-ticker-viewport{overflow-x:auto;scrollbar-width:thin}.gulf-ticker-track{animation-duration:60s}.gulf-ticker-set[aria-hidden="true"]{display:none}}
       `}</style>
     </div>
