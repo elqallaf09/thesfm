@@ -49,7 +49,7 @@ import {
   logMarketToolPerformance, normalizeSummaryLanguage, distancePercent, levelMarkerPercent,
   readableLevelMarkerPercent, parseNumber, hasDisplayValue, finiteTechnicalNumber,
   formatTechnicalNumberValue, formatTechnicalPrice, technicalTrendLabelKey,
-  technicalRsiStatusKey, technicalSignalStrength, formatFundamentalValue,
+  technicalSignalStrength, formatFundamentalValue,
   assetTypeTranslationKey, fundamentalsReasonTranslationKey, cleanSearchText,
   normalizeSearchComparable, compactSearchComparable, normalizeSearchSymbol,
   marketSearchMatchRank, normalizeAssetSearchResult, normalizeSearchItems,
@@ -1656,6 +1656,131 @@ export default function MarketAnalysisPage() {
       ? t('market_educational_only')
       : ruleBasedSummary?.badge ?? t('market_ai_summary_automatic_badge');
   const aiSummaryIntro = !aiLoading && ruleBasedSummary ? ruleBasedSummary.intro : '';
+  const analysisCopy = useMemo(() => {
+    const copy = {
+      ar: {
+        currentReading: 'القراءة الحالية',
+        confidence: 'اكتمال القراءة',
+        confidenceHelp: 'كيف تم احتساب الثقة؟',
+        dataCoverage: 'تغطية البيانات',
+        priceHistory: 'سجل السعر',
+        dataFreshness: 'حالة البيانات',
+        quickActions: 'إجراءات سريعة',
+        keyLevels: 'المستويات الرئيسية',
+        invalidation: 'مستوى إبطال القراءة',
+        expectedRange: 'نطاق الحركة المتوقع',
+        supportFactors: 'العوامل الداعمة',
+        cautionFactors: 'عوامل الحذر',
+        profileModule: 'معلومات الأصل',
+        secondaryTools: 'أدوات إضافية',
+        refreshAnalysis: 'تحديث التحليل',
+        quoteSnapshot: 'لقطة موحدة للسعر',
+        analysisTimestamp: 'وقت التحليل',
+        chartSummary: 'ملخص الرسم البياني',
+        exchangeLabel: 'البورصة',
+        currencyLabel: 'العملة',
+        availableData: 'بيانات متاحة',
+        unavailableData: 'غير متاح',
+      },
+      en: {
+        currentReading: 'Current reading',
+        confidence: 'Reading completeness',
+        confidenceHelp: 'How was confidence calculated?',
+        dataCoverage: 'Data coverage',
+        priceHistory: 'Price history',
+        dataFreshness: 'Data freshness',
+        quickActions: 'Quick actions',
+        keyLevels: 'Key market levels',
+        invalidation: 'Reading invalidation',
+        expectedRange: 'Expected range',
+        supportFactors: 'Supporting factors',
+        cautionFactors: 'Caution factors',
+        profileModule: 'Asset profile',
+        secondaryTools: 'Additional tools',
+        refreshAnalysis: 'Refresh analysis',
+        quoteSnapshot: 'Unified quote snapshot',
+        analysisTimestamp: 'Analysis timestamp',
+        chartSummary: 'Chart summary',
+        exchangeLabel: 'Exchange',
+        currencyLabel: 'Currency',
+        availableData: 'Available data',
+        unavailableData: 'Unavailable',
+      },
+      fr: {
+        currentReading: 'Lecture actuelle',
+        confidence: 'Complétude de lecture',
+        confidenceHelp: 'Comment la confiance est-elle calculée ?',
+        dataCoverage: 'Couverture des données',
+        priceHistory: 'Historique du prix',
+        dataFreshness: 'Fraîcheur des données',
+        quickActions: 'Actions rapides',
+        keyLevels: 'Niveaux clés',
+        invalidation: 'Niveau d’invalidation',
+        expectedRange: 'Fourchette attendue',
+        supportFactors: 'Facteurs favorables',
+        cautionFactors: 'Facteurs de prudence',
+        profileModule: 'Profil de l’actif',
+        secondaryTools: 'Outils supplémentaires',
+        refreshAnalysis: 'Actualiser l’analyse',
+        quoteSnapshot: 'Instantané de cotation unifié',
+        analysisTimestamp: 'Horodatage de l’analyse',
+        chartSummary: 'Résumé du graphique',
+        exchangeLabel: 'Bourse',
+        currencyLabel: 'Devise',
+        availableData: 'Données disponibles',
+        unavailableData: 'Indisponible',
+      },
+    };
+    return copy[lang as 'ar' | 'en' | 'fr'] ?? copy.ar;
+  }, [lang]);
+  const analysisConfidence = selected ? Math.min(100, Math.max(0, Math.round(
+    35
+    + ((selected.dataStatus ?? 'live') === 'live' ? 15 : selected.dataStatus === 'delayed' ? 9 : 0)
+    + (chartHistory.length >= 30 ? 18 : chartHistory.length >= 10 ? 10 : chartHistory.length > 0 ? 5 : 0)
+    + (selectedHasOhlc ? 7 : 0)
+    + (hasFundamentals ? 8 : 0)
+    + (aiInsight?.status === 'ready' ? 12 : ruleBasedSummary ? 6 : 0)
+    + (Number.isFinite(selected.latestPrice) && selected.latestPrice > 0 ? 5 : 0),
+  ))) : 0;
+  const confidenceFactors = selected ? [
+    {
+      label: t('market_data_status'),
+      value: (selected.dataStatus ?? 'live') === 'live'
+        ? t('market_data_status_live')
+        : selected.dataStatus === 'delayed'
+          ? t('market_data_status_delayed')
+          : t('market_data_status_unavailable'),
+    },
+    {
+      label: analysisCopy.priceHistory,
+      value: chartHistory.length > 0 ? `${chartHistory.length}` : analysisCopy.unavailableData,
+    },
+    {
+      label: t('market_fundamental_snapshot'),
+      value: hasFundamentals ? analysisCopy.availableData : analysisCopy.unavailableData,
+    },
+  ] : [];
+  const assetSnapshot = selected ? {
+    symbol: selected.symbol,
+    providerSymbol: selected.providerSymbol ?? selected.symbol,
+    companyName: localizedAssetName ?? selected.name,
+    assetType: selected.assetType,
+    exchange: selectedExchange,
+    currency: selectedCurrency,
+    currencyLabel: selectedCurrencyLabel,
+    currentPrice: selected.latestPrice,
+    currentPriceLabel: selectedMoney(selected.latestPrice, { includeKuwaitDinarEquivalent: true }),
+    priceChange: selected.quote?.change ?? null,
+    priceChangePercent: selected.changePercent,
+    priceChangeLabel: percent(selected.changePercent),
+    quoteTimestamp: selected.quote?.timestamp ?? selected.lastUpdated ?? selected.fetchedAt ?? chartMeta.updatedAt ?? null,
+    quoteTimestampLabel: lastUpdated || selected.quote?.timestamp || selected.lastUpdated || selected.fetchedAt || t('market_unavailable'),
+    dataProvider: selectedSourceLabel,
+    dataStatus: selected.dataStatus ?? 'live',
+    dataStatusLabel: selectedDataStatusLabel,
+    trendLabel: t(technicalTrendLabelKey(selected.trend)),
+    riskLabel: t(`market_risk_${selected.riskLevel}`),
+  } : null;
   const reportLines = selected ? [
     `${t('market_report_trend')}: ${t(`market_trend_${selected.trend}`)} ${percent(selected.changePercent)}`,
     `${t('market_report_risk')}: ${t(`market_risk_${selected.riskLevel}`)} - ${selected.indicators.volatility.toFixed(1)}%`,
@@ -1689,7 +1814,7 @@ export default function MarketAnalysisPage() {
       <Sidebar />
       <main className="market-main">
         <MarketAsyncToolStyles />
-        <section className="market-hero">
+        <section className={`market-hero ${assetSnapshot ? 'compact-result' : ''}`}>
           <div className="market-hero-copy">
             <span className="market-eyebrow"><Sparkles size={15} />{heroBadge}</span>
             <h1>{t('market_title')}</h1>
@@ -1737,21 +1862,13 @@ export default function MarketAnalysisPage() {
                     {searchLoading ? (
                       <p role="status">{t('loading')}</p>
                     ) : searchResults.length > 0 ? searchResults.map((item, index) => {
-                      const meta = [
-                        item.symbol,
-                        item.exchange,
-                        marketCurrencyLabel(item.currency, lang),
-                        marketAssetTypeLabel(item.assetType, t),
-                        item.provider,
-                      ].filter(Boolean).join(' Â· ');
-                      const cleanMeta = meta.replace(/\u00c2\u00b7/g, 'Â·');
                       const readableMeta = [
                         item.symbol,
                         item.exchange,
                         marketCurrencyLabel(item.currency, lang),
                         marketAssetTypeLabel(item.assetType, t),
                         item.provider,
-                      ].filter(Boolean).join(' Â· ');
+                      ].filter(Boolean).join(' · ');
                       return (
                       <button
                         type="button"
@@ -1767,7 +1884,7 @@ export default function MarketAnalysisPage() {
                           <b title={item.name}>{item.name || item.symbol}</b>
                           <em>{item.symbol}</em>
                         </span>
-                        <small title={readableMeta || cleanMeta}>{readableMeta || cleanMeta}</small>
+                        <small title={readableMeta}>{readableMeta}</small>
                       </button>
                       );
                     }) : (
@@ -1793,14 +1910,14 @@ export default function MarketAnalysisPage() {
               <button className="market-search-submit" type="submit" disabled={loading || (!selectedAsset && query.trim().length < 2)}><Activity size={17} />{loading ? loadingLabel : t('market_analyze_now')}</button>
             </form>
           </div>
-          <div className={`market-hero-card ${selected ? 'selected' : 'empty'}`}>
-            {selected ? (
+          <div className={`market-hero-card ${assetSnapshot ? 'selected compact' : 'empty'}`}>
+            {assetSnapshot ? (
               <>
-                <span>{t('market_selected_asset')}</span>
-                <strong dir="ltr">{selected.symbol}</strong>
-                <p>{localizedAssetName ?? selected.name}</p>
-                <em className="market-hero-card-meta" dir="ltr">{selectedMoney(selected.latestPrice)} / {selectedDataStatusLabel}</em>
-                <b className={`risk ${selected.riskLevel}`}>{t(`market_risk_${selected.riskLevel}`)}</b>
+                <span>{analysisCopy.quoteSnapshot}</span>
+                <strong>{assetSnapshot.dataProvider}</strong>
+                <p>{assetSnapshot.dataStatusLabel}</p>
+                <em className="market-hero-card-meta" dir="ltr">{assetSnapshot.quoteTimestampLabel}</em>
+                <b className={`risk ${selected?.riskLevel ?? 'medium'}`}>{assetSnapshot.currencyLabel}</b>
               </>
             ) : !activeToolRequirements.requiresAsset ? (
               <>
@@ -1958,7 +2075,7 @@ export default function MarketAnalysisPage() {
         )}
 
         <section className="market-active-dashboard">
-        {activeTab === 'analyze' && <section className="market-card-grid" aria-label={t('market_analysis_cards')}>
+        {activeTab === 'analyze' && !selected && <section className="market-card-grid" aria-label={t('market_analysis_cards')}>
           {loading ? (
             <MarketSectionLoading label={loadingLabel} cards={4} />
           ) : cards.length === 0 ? (
@@ -2048,21 +2165,71 @@ export default function MarketAnalysisPage() {
           />
         )}
 
-        {(['traderTools', 'economicCalendar', 'sessions', 'technicalAnalysis', 'newsSentiment'] as MarketTab[]).includes(activeTab) ? null : selected && activeTab === 'analyze' ? (
-          <>
-            <section className="market-stock-header">
-              <div>
-                <span className={`data-badge ${selected.dataStatus ?? 'live'}`}>
-                  {selected.cached ? t('market_cached_data') : t(`market_data_status_${selected.dataStatus ?? 'live'}`)}
-                </span>
-                <h2>{selected.symbol}</h2>
-                <p>{localizedAssetName ?? selected.name}</p>
+        {(['traderTools', 'economicCalendar', 'sessions', 'technicalAnalysis', 'newsSentiment'] as MarketTab[]).includes(activeTab) ? null : selected && activeTab === 'analyze' && assetSnapshot ? (
+          <section className="market-analysis-result-workspace" aria-live="polite">
+            <section className="market-stock-header analysis-asset-hero">
+              <div className="analysis-asset-identity">
+                <span className="analysis-asset-logo" aria-hidden="true">{assetSnapshot.symbol.slice(0, 2)}</span>
+                <div>
+                  <span className={`data-badge ${assetSnapshot.dataStatus}`}>
+                    {selected.cached ? t('market_cached_data') : assetSnapshot.dataStatusLabel}
+                  </span>
+                  <h2 dir="ltr">{assetSnapshot.symbol}</h2>
+                  <p>{assetSnapshot.companyName}</p>
+                  <small>{t('market_asset_type_label')}: {t(assetTypeTranslationKey(assetSnapshot.assetType))} · {assetSnapshot.exchange ?? t('market_unavailable')}</small>
+                </div>
               </div>
-              <div className="stock-price-block">
-                <strong>{selectedMoney(selected.latestPrice, { includeKuwaitDinarEquivalent: true })}</strong>
-                <b className={selected.changePercent >= 0 ? 'change up' : 'change down'}>{percent(selected.changePercent)}</b>
-                <small>{t('market_last_updated')}: {lastUpdated || t('market_unavailable')} Â· {selectedCurrencyLabel}</small>
+              <div className="analysis-asset-price">
+                <span>{t('market_current_price')}</span>
+                <strong dir="ltr">{assetSnapshot.currentPriceLabel}</strong>
+                <b className={assetSnapshot.priceChangePercent >= 0 ? 'change up' : 'change down'}>{assetSnapshot.priceChangeLabel}</b>
+                <small>{t('market_last_updated')}: {assetSnapshot.quoteTimestampLabel}</small>
               </div>
+              <div className={`analysis-reading-card ${decision?.tone ?? ''}`}>
+                <span>{analysisCopy.currentReading}</span>
+                <strong>{decision?.status ?? assetSnapshot.trendLabel}</strong>
+                <small>{analysisCopy.confidence}: <b dir="ltr">{analysisConfidence}%</b></small>
+                <div className="analysis-confidence-track" aria-hidden="true"><i style={{ width: `${analysisConfidence}%` }} /></div>
+              </div>
+              <div className="analysis-hero-actions" aria-label={analysisCopy.quickActions}>
+                <button type="button" onClick={() => void requestAnalysis(assetSnapshot.providerSymbol, assetSnapshot.assetType, {
+                  symbol: assetSnapshot.symbol,
+                  providerSymbol: assetSnapshot.providerSymbol,
+                  name: assetSnapshot.companyName,
+                  assetType: assetSnapshot.assetType,
+                  exchange: assetSnapshot.exchange ?? undefined,
+                  country: selectedCountry ?? undefined,
+                  currency: assetSnapshot.currency ?? undefined,
+                })}>
+                  <Activity size={15} />{t('market_analyze_now')}
+                </button>
+                <button type="button" onClick={() => void loadHistory(timeframe)}>
+                  <RefreshCw size={15} />{analysisCopy.refreshAnalysis}
+                </button>
+                <button
+                  type="button"
+                  disabled={watchlistHasSelected}
+                  onClick={() => void saveWatchlist({
+                    symbol: selected.symbol,
+                    providerSymbol: selected.providerSymbol ?? selected.symbol,
+                    assetType: selected.assetType,
+                    name: localizedAssetName ?? selected.name,
+                    currency: selectedCurrency ?? undefined,
+                    exchange: selectedExchange ?? undefined,
+                    country: selectedCountry ?? undefined,
+                  })}
+                >
+                  <Star size={15} />{watchlistHasSelected ? t('market_in_watchlist') : t('market_add_to_watchlist')}
+                </button>
+              </div>
+            </section>
+
+            <section className="analysis-status-strip" aria-label={analysisCopy.dataFreshness}>
+              <MarketMetric label={t('market_data_source')} value={assetSnapshot.dataProvider} valueDir="ltr" />
+              <MarketMetric label={t('market_data_status')} value={assetSnapshot.dataStatusLabel} />
+              <MarketMetric label={analysisCopy.exchangeLabel} value={assetSnapshot.exchange ?? t('market_unavailable')} valueDir={assetSnapshot.exchange ? 'ltr' : undefined} />
+              <MarketMetric label={analysisCopy.currencyLabel} value={assetSnapshot.currencyLabel} valueDir="ltr" />
+              <MarketMetric label={analysisCopy.analysisTimestamp} value={assetSnapshot.quoteTimestampLabel} valueDir="ltr" />
             </section>
 
             <AssetProfileCard
@@ -2267,7 +2434,7 @@ export default function MarketAnalysisPage() {
                     <MarketMetric label={t('market_eps')} value={fundamentalValue('eps')} />
                     <MarketMetric label={t('market_revenue')} value={fundamentalValue('revenue')} />
                     <MarketMetric label={t('market_dividend')} value={fundamentalValue('dividend')} />
-                    <MarketMetric label={t('market_data_status')} value={`${t(`market_data_status_${selected.dataStatus ?? 'live'}`)} Â· ${marketSourceLabel(selected.fundamentalsSource ?? selected.source ?? selected.provider)}`} />
+                    <MarketMetric label={t('market_data_status')} value={`${t(`market_data_status_${selected.dataStatus ?? 'live'}`)} · ${marketSourceLabel(selected.fundamentalsSource ?? selected.source ?? selected.provider)}`} />
                   </div>
                 ) : (
                   <div className="fundamentals-empty">
@@ -2445,7 +2612,15 @@ export default function MarketAnalysisPage() {
                   type="button"
                   className="inline-action"
                   disabled={watchlistHasSelected}
-                  onClick={() => void saveWatchlist({ symbol: selected.symbol, providerSymbol: selected.providerSymbol ?? selected.symbol, assetType: selected.assetType, name: localizedAssetName, currency: selectedCurrency, exchange: selectedExchange, country: selectedCountry })}
+                  onClick={() => void saveWatchlist({
+                    symbol: selected.symbol,
+                    providerSymbol: selected.providerSymbol ?? selected.symbol,
+                    assetType: selected.assetType,
+                    name: localizedAssetName ?? selected.name,
+                    currency: selectedCurrency ?? undefined,
+                    exchange: selectedExchange ?? undefined,
+                    country: selectedCountry ?? undefined,
+                  })}
                 >
                   <Plus size={15} />{watchlistHasSelected ? t('market_in_watchlist') : t('market_add_to_watchlist')}
                 </button>
@@ -2526,7 +2701,7 @@ export default function MarketAnalysisPage() {
                 <p className="market-muted">{t('market_compare_note')}</p>
               </div>
             </section>
-          </>
+          </section>
         ) : selected ? (
           <section className="market-panel market-focused-tab">
             {activeTab === 'alerts' && (
@@ -2573,7 +2748,15 @@ export default function MarketAnalysisPage() {
                   type="button"
                   className="inline-action"
                   disabled={watchlistHasSelected}
-                  onClick={() => void saveWatchlist({ symbol: selected.symbol, providerSymbol: selected.providerSymbol ?? selected.symbol, assetType: selected.assetType, name: localizedAssetName, currency: selectedCurrency, exchange: selectedExchange, country: selectedCountry })}
+                  onClick={() => void saveWatchlist({
+                    symbol: selected.symbol,
+                    providerSymbol: selected.providerSymbol ?? selected.symbol,
+                    assetType: selected.assetType,
+                    name: localizedAssetName ?? selected.name,
+                    currency: selectedCurrency ?? undefined,
+                    exchange: selectedExchange ?? undefined,
+                    country: selectedCountry ?? undefined,
+                  })}
                 >
                   <Plus size={15} />{watchlistHasSelected ? t('market_in_watchlist') : t('market_add_to_watchlist')}
                 </button>
@@ -3303,7 +3486,274 @@ export default function MarketAnalysisPage() {
           color:#ffffff!important;
           background:linear-gradient(135deg,var(--market-blue),var(--market-cyan))!important;
         }
+        :global(.market-hero.compact-result){
+          width:min(1450px,100%)!important;
+          margin-inline:auto!important;
+          padding:22px!important;
+          align-items:stretch!important;
+          grid-template-columns:minmax(0,1fr) minmax(260px,340px)!important;
+        }
+        :global(.market-analysis-result-workspace){
+          width:min(1450px,100%)!important;
+          margin-inline:auto!important;
+          display:grid!important;
+          grid-template-columns:minmax(0,1fr) minmax(320px,360px)!important;
+          gap:20px!important;
+          align-items:start!important;
+          min-width:0!important;
+        }
+        :global(.market-analysis-result-workspace > .analysis-asset-hero),
+        :global(.market-analysis-result-workspace > .analysis-status-strip){
+          grid-column:1 / -1!important;
+        }
+        :global(.analysis-asset-hero){
+          display:grid!important;
+          grid-template-columns:minmax(0,1.25fr) minmax(220px,.45fr) minmax(220px,.45fr) auto!important;
+          align-items:stretch!important;
+          gap:16px!important;
+          padding:20px!important;
+          border-radius:26px!important;
+          background:linear-gradient(135deg,rgba(31,149,255,.08),rgba(32,212,207,.07)),var(--sfm-card)!important;
+        }
+        :global(.analysis-asset-identity){
+          display:flex!important;
+          align-items:center!important;
+          gap:14px!important;
+          min-width:0!important;
+        }
+        :global(.analysis-asset-logo){
+          flex:0 0 auto!important;
+          width:62px!important;
+          height:62px!important;
+          border-radius:22px!important;
+          display:grid!important;
+          place-items:center!important;
+          border:1px solid rgba(32,212,207,.26)!important;
+          background:radial-gradient(circle at 35% 25%,rgba(32,212,207,.34),transparent 38%),linear-gradient(135deg,rgba(31,149,255,.18),rgba(32,212,207,.10))!important;
+          color:var(--sfm-foreground)!important;
+          font-size:18px!important;
+          font-weight:950!important;
+          letter-spacing:0!important;
+          direction:ltr!important;
+          unicode-bidi:isolate!important;
+          box-shadow:0 18px 38px rgba(7,28,52,.12)!important;
+        }
+        :global(.analysis-asset-identity h2){
+          margin:8px 0 2px!important;
+          color:var(--sfm-foreground)!important;
+          font-size:clamp(25px,2.4vw,38px)!important;
+          font-weight:950!important;
+          line-height:1.08!important;
+        }
+        :global(.analysis-asset-identity p),
+        :global(.analysis-asset-identity small){
+          margin:0!important;
+          color:var(--sfm-muted)!important;
+          font-weight:850!important;
+          line-height:1.55!important;
+        }
+        :global(.analysis-asset-price),
+        :global(.analysis-reading-card){
+          min-width:0!important;
+          display:grid!important;
+          align-content:center!important;
+          gap:7px!important;
+          border:1px solid rgba(167,243,240,.16)!important;
+          background:var(--sfm-light-card)!important;
+          border-radius:20px!important;
+          padding:14px!important;
+        }
+        :global(.analysis-asset-price span),
+        :global(.analysis-reading-card span){
+          color:var(--sfm-muted)!important;
+          font-size:11px!important;
+          font-weight:950!important;
+          line-height:1.35!important;
+        }
+        :global(.analysis-asset-price strong){
+          color:var(--sfm-foreground)!important;
+          font-size:clamp(20px,2vw,30px)!important;
+          font-weight:950!important;
+          line-height:1.1!important;
+          overflow-wrap:anywhere!important;
+        }
+        :global(.analysis-asset-price small),
+        :global(.analysis-reading-card small){
+          color:var(--sfm-muted)!important;
+          font-size:11px!important;
+          font-weight:850!important;
+          line-height:1.45!important;
+        }
+        :global(.analysis-reading-card strong){
+          color:var(--sfm-foreground)!important;
+          font-size:22px!important;
+          font-weight:950!important;
+          line-height:1.15!important;
+        }
+        :global(.analysis-reading-card.ok){border-color:rgba(34,197,94,.28)!important;background:linear-gradient(135deg,rgba(34,197,94,.11),transparent),var(--sfm-light-card)!important}
+        :global(.analysis-reading-card.warn){border-color:rgba(245,158,11,.30)!important;background:linear-gradient(135deg,rgba(245,158,11,.11),transparent),var(--sfm-light-card)!important}
+        :global(.analysis-reading-card.danger){border-color:rgba(239,68,68,.28)!important;background:linear-gradient(135deg,rgba(239,68,68,.10),transparent),var(--sfm-light-card)!important}
+        :global(.analysis-confidence-track){
+          height:8px!important;
+          border-radius:999px!important;
+          background:rgba(100,116,139,.16)!important;
+          overflow:hidden!important;
+        }
+        :global(.analysis-confidence-track i){
+          display:block!important;
+          height:100%!important;
+          border-radius:inherit!important;
+          background:linear-gradient(90deg,var(--sfm-primary),var(--sfm-accent))!important;
+        }
+        :global(.analysis-hero-actions){
+          display:grid!important;
+          align-content:center!important;
+          gap:8px!important;
+          min-width:168px!important;
+        }
+        :global(.analysis-hero-actions button){
+          min-height:42px!important;
+          border-radius:14px!important;
+          border:1px solid rgba(32,212,207,.24)!important;
+          background:rgba(32,212,207,.10)!important;
+          color:var(--sfm-foreground)!important;
+          display:inline-flex!important;
+          align-items:center!important;
+          justify-content:center!important;
+          gap:8px!important;
+          padding:0 13px!important;
+          font:950 12px Tajawal,Arial,sans-serif!important;
+          cursor:pointer!important;
+          white-space:nowrap!important;
+        }
+        :global(.analysis-hero-actions button:hover),
+        :global(.analysis-hero-actions button:focus-visible){
+          outline:none!important;
+          border-color:var(--sfm-accent)!important;
+          box-shadow:0 0 0 3px rgba(24,212,212,.14)!important;
+        }
+        :global(.analysis-hero-actions button:disabled){
+          opacity:.58!important;
+          cursor:not-allowed!important;
+        }
+        :global(.analysis-status-strip){
+          display:grid!important;
+          grid-template-columns:repeat(5,minmax(0,1fr))!important;
+          gap:12px!important;
+        }
+        :global(.analysis-status-strip .metric){
+          min-height:74px!important;
+          padding:12px 14px!important;
+          border-radius:18px!important;
+        }
+        :global(.market-analysis-result-workspace > .market-layout){
+          grid-column:1!important;
+          grid-row:3!important;
+          display:grid!important;
+          grid-template-columns:1fr!important;
+          gap:16px!important;
+          min-width:0!important;
+        }
+        :global(.market-analysis-result-workspace > .market-decision-grid){
+          grid-column:2!important;
+          grid-row:3!important;
+          display:grid!important;
+          grid-template-columns:1fr!important;
+          gap:14px!important;
+          min-width:0!important;
+          position:sticky!important;
+          top:92px!important;
+        }
+        :global(.market-analysis-result-workspace > .asset-profile-card){
+          grid-column:2!important;
+          grid-row:4!important;
+          margin:0!important;
+          min-width:0!important;
+        }
+        :global(.market-analysis-result-workspace > .market-tools-grid){
+          grid-column:1!important;
+          grid-row:4!important;
+          grid-template-columns:repeat(3,minmax(0,1fr))!important;
+          gap:14px!important;
+          min-width:0!important;
+        }
+        :global(.market-analysis-result-workspace > .market-bottom-grid){
+          grid-column:1 / -1!important;
+          grid-row:5!important;
+          grid-template-columns:repeat(2,minmax(0,1fr))!important;
+          gap:14px!important;
+        }
+        :global(.market-analysis-result-workspace > .market-bottom-grid > .market-panel:first-child){
+          display:none!important;
+        }
+        :global(.market-analysis-result-workspace .market-panel){
+          border-radius:22px!important;
+          padding:18px!important;
+        }
+        :global(.market-analysis-result-workspace .market-chart){
+          grid-row:auto!important;
+        }
+        :global(.market-analysis-result-workspace .price-history-chart){
+          min-height:430px!important;
+          padding:18px!important;
+          border-radius:22px!important;
+        }
+        :global(.market-analysis-result-workspace .price-history-chart svg){
+          height:350px!important;
+        }
+        :global(.market-analysis-result-workspace .market-section-head){
+          margin-bottom:12px!important;
+        }
+        :global(.market-analysis-result-workspace .market-section-head h2){
+          font-size:18px!important;
+        }
+        :global(.market-analysis-result-workspace .indicator-list){
+          grid-template-columns:repeat(3,minmax(0,1fr))!important;
+        }
+        :global(.market-analysis-result-workspace .asset-profile-header){
+          display:grid!important;
+        }
+        :global(.market-analysis-result-workspace .asset-profile-metrics),
+        :global(.market-analysis-result-workspace .asset-profile-holdings){
+          grid-template-columns:1fr!important;
+        }
+        :global(.market-analysis-result-workspace .ai-summary-section),
+        :global(.market-analysis-result-workspace .risk-score),
+        :global(.market-analysis-result-workspace .metric){
+          box-shadow:none!important;
+        }
+        :global(.market-analysis-result-workspace .market-tools-grid .market-panel){
+          align-content:start!important;
+        }
         @media(max-width:1180px){
+          :global(.market-analysis-result-workspace){
+            grid-template-columns:1fr!important;
+          }
+          :global(.market-analysis-result-workspace > .market-layout),
+          :global(.market-analysis-result-workspace > .market-decision-grid),
+          :global(.market-analysis-result-workspace > .asset-profile-card),
+          :global(.market-analysis-result-workspace > .market-tools-grid),
+          :global(.market-analysis-result-workspace > .market-bottom-grid){
+            grid-column:1!important;
+            grid-row:auto!important;
+            position:static!important;
+          }
+          :global(.market-analysis-result-workspace > .market-decision-grid){
+            grid-template-columns:repeat(2,minmax(0,1fr))!important;
+          }
+          :global(.market-analysis-result-workspace > .market-tools-grid){
+            grid-template-columns:repeat(2,minmax(0,1fr))!important;
+          }
+          :global(.analysis-asset-hero){
+            grid-template-columns:1fr 1fr!important;
+          }
+          :global(.analysis-hero-actions){
+            grid-template-columns:repeat(3,minmax(0,1fr))!important;
+            grid-column:1 / -1!important;
+          }
+          :global(.analysis-status-strip){
+            grid-template-columns:repeat(3,minmax(0,1fr))!important;
+          }
           :global(.market-hero){
             grid-template-columns:minmax(0,1fr) minmax(260px,320px)!important;
           }
@@ -3319,6 +3769,23 @@ export default function MarketAnalysisPage() {
           }
         }
         @media(max-width:900px){
+          :global(.analysis-asset-hero){
+            grid-template-columns:1fr!important;
+          }
+          :global(.analysis-hero-actions),
+          :global(.analysis-status-strip),
+          :global(.market-analysis-result-workspace > .market-decision-grid),
+          :global(.market-analysis-result-workspace > .market-tools-grid),
+          :global(.market-analysis-result-workspace > .market-bottom-grid),
+          :global(.market-analysis-result-workspace .indicator-list){
+            grid-template-columns:1fr!important;
+          }
+          :global(.market-analysis-result-workspace .price-history-chart){
+            min-height:330px!important;
+          }
+          :global(.market-analysis-result-workspace .price-history-chart svg){
+            height:250px!important;
+          }
           :global(.market-hero){
             grid-template-columns:1fr!important;
           }
