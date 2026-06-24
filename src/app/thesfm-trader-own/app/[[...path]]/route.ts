@@ -76,6 +76,7 @@ export async function GET(_request: Request, context: { params: Promise<{ path?:
         headers: {
           'Content-Type': contentType,
           'Cache-Control': 'no-store',
+          'X-Robots-Tag': 'noindex, nofollow',
         },
       });
     }
@@ -84,6 +85,7 @@ export async function GET(_request: Request, context: { params: Promise<{ path?:
       headers: {
         'Content-Type': contentType,
         'Cache-Control': 'private, max-age=3600',
+        'X-Robots-Tag': 'noindex, nofollow',
       },
     });
   } catch {
